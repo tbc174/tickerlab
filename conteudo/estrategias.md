@@ -95,3 +95,47 @@ Textos da aba **Backtest**, escritos para quem está começando. Cada estratégi
 **Quando costuma falhar:** quando o rompimento é "falso" e o preço volta logo para dentro da faixa. Também fica muito tempo em caixa em mercados calmos.
 
 **O que olhar nos resultados:** a **exposição** (costuma ser baixa, porque a regra é seletiva) e se o retorno por tempo investido compensa ficar tanto tempo parado. Teste outros valores do multiplicador: se só um funciona, é sinal de ajuste ao passado.
+
+## RSI clássico
+**A ideia:** o RSI (Índice de Força Relativa) mede, de 0 a 100, o quanto o preço subiu ou caiu nos últimos dias. Valor muito baixo significa "caiu demais, rápido demais" (sobrevendido); valor muito alto, o contrário. A aposta é que o exagero se corrige.
+
+**A regra:** compra quando o RSI de 14 dias cai abaixo de 30 e vende quando sobe acima de 70. Entre um sinal e outro, mantém a posição.
+
+**Quando costuma funcionar:** em mercados que oscilam dentro de uma faixa, em que as quedas fortes voltam a subir.
+
+**Quando costuma falhar:** em tendências fortes. Numa queda longa o RSI fica baixo por muito tempo, a estratégia compra "a faca caindo" e a perda cresce. Em alta forte, vende cedo demais.
+
+**O que olhar nos resultados:** a **maior queda** (compras em queda livre aparecem aí), a **taxa de acerto** (costuma ser alta, com ganhos pequenos) e o **payoff médio**: muitos acertos pequenos e poucas perdas grandes são a "assinatura" das estratégias de reversão.
+
+## RSI curto com filtro de tendência
+**A ideia:** variação do RSI com um período bem curto (2 dias), que reage a quedas rápidas, combinada com um filtro: só comprar a queda se o preço está **acima da média de 200 dias**. É "comprar o recuo dentro de uma tendência de alta".
+
+**A regra:** compra quando o RSI de 2 dias cai abaixo de 10 **e** o preço está acima da média de 200 dias. Vende quando o RSI de 2 dias sobe acima de 70.
+
+**Quando costuma funcionar:** em ativos em tendência de alta, em que recuos curtos são seguidos de retomada. O filtro evita comprar quedas em mercado de baixa.
+
+**Quando costuma falhar:** quando a tendência de alta termina e o recuo vira queda longa. Como compra cedo e sai rápido, as operações têm ganhos pequenos e ela fica pouco tempo no mercado.
+
+**O que olhar nos resultados:** a **exposição** (costuma ser baixa), a **taxa de acerto** e se o resultado compensa ficar tanto tempo em caixa. Precisa de pelo menos 200 dias de histórico para começar.
+
+## Bandas de Bollinger
+**A ideia:** uma faixa em volta da média móvel, com largura dada pela oscilação recente (desvio-padrão). Preço fora da faixa é um evento "raro", e a pergunta é: ele volta ou continua?
+
+**A regra:** a média é de 20 dias e as bandas ficam 2 desvios-padrão acima e abaixo. No **modo reversão**, compra quando o preço fecha abaixo da banda inferior e vende quando volta à média. No **modo rompimento**, compra quando fecha acima da banda superior e vende quando perde a média.
+
+**Quando costuma funcionar:** a reversão, em mercado lateral; o rompimento, em arrancadas de preço.
+
+**Quando costuma falhar:** a reversão, em quedas que continuam; o rompimento, em falsos rompimentos. Atenção: os preços saem das bandas mais vezes do que a teoria prevê, porque os retornos têm "caudas pesadas" (movimentos extremos mais comuns do que numa curva normal).
+
+**O que olhar nos resultados:** compare os dois modos: eles apostam em direções opostas. Veja o **número de operações** e a **exposição**. Curiosidade: o modo reversão com 2 desvios dá o mesmo resultado que a estratégia do **z-score** com os valores padrão (são a mesma regra escrita de duas formas).
+
+## Z-score do preço
+**A ideia:** o z-score diz a que distância, em desvios-padrão, o preço está da sua média recente. Zero é "na média"; -2 é "bem abaixo do normal".
+
+**A regra:** compra quando o z-score cai abaixo de -2 e vende quando volta acima de 0 (padrões ajustáveis). A média e o desvio vêm dos últimos 20 dias.
+
+**Quando costuma funcionar:** em ativos que oscilam em torno de um nível, como uma faixa de preço bem definida.
+
+**Quando costuma falhar:** quando o preço muda de nível e não volta (uma notícia relevante, por exemplo): a "média" passa a ser outra e a estratégia segue comprando uma queda que não se reverte.
+
+**O que olhar nos resultados:** com os valores padrão, o z-score é **exatamente a mesma estratégia** das Bandas de Bollinger no modo reversão (comprar abaixo da média menos 2 desvios é comprar com z-score abaixo de -2; vender acima da média é vender com z-score acima de 0), só escrita de outro jeito. Teste os dois e confira que os resultados coincidem. Mude os limites do z-score para ver o que a faixa fixa das bandas não deixa fazer. Veja se os ganhos vêm de muitas operações pequenas e quantas perdas grandes aparecem.

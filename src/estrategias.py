@@ -158,6 +158,74 @@ def posicao_canal_de_keltner(
     return _manter_estado(fechamento > faixa_superior, fechamento < media)
 
 
+def posicao_rsi_classico(
+    dados: pd.DataFrame,
+    periodo: int = 14,
+    nivel_de_compra: int = 30,
+    nivel_de_venda: int = 70,
+) -> pd.Series:
+    """Reversão à média pelo RSI: compra quando está "sobrevendido" e vende quando se recupera."""
+    if nivel_de_compra >= nivel_de_venda:
+        raise ValueError("O nível de compra precisa ser menor que o de venda.")
+    rsi = ind.calcular_rsi(dados["Close"], periodo)
+    return _manter_estado(rsi < nivel_de_compra, rsi > nivel_de_venda)
+
+
+def posicao_rsi_curto_com_filtro(
+    dados: pd.DataFrame,
+    periodo: int = 2,
+    nivel_de_compra: int = 10,
+    nivel_de_venda: int = 70,
+    filtro: int = 200,
+) -> pd.Series:
+    """RSI de curtíssimo prazo, mas só compra quedas se o preço está em tendência de alta
+    (acima da média de `filtro` dias). Vende quando o RSI se recupera."""
+    if nivel_de_compra >= nivel_de_venda:
+        raise ValueError("O nível de compra precisa ser menor que o de venda.")
+    fechamento = dados["Close"]
+    rsi = ind.calcular_rsi(fechamento, periodo)
+    em_alta = fechamento > ind.calcular_media_movel(fechamento, filtro)
+    return _manter_estado((rsi < nivel_de_compra) & em_alta, rsi > nivel_de_venda)
+
+
+def posicao_bandas_de_bollinger(
+    dados: pd.DataFrame,
+    janela: int = 20,
+    desvios: float = 2.0,
+    modo: str = "Reversão",
+) -> pd.Series:
+    """Bandas de Bollinger em dois modos.
+
+    Reversão: compra abaixo da banda inferior e vende ao voltar à média.
+    Rompimento: compra acima da banda superior e vende ao perder a média.
+    """
+    fechamento = dados["Close"]
+    bandas = ind.calcular_bandas_de_bollinger(fechamento, janela, desvios)
+    if modo == "Reversão":
+        return _manter_estado(
+            fechamento < bandas["inferior"], fechamento > bandas["media"]
+        )
+    if modo == "Rompimento":
+        return _manter_estado(
+            fechamento > bandas["superior"], fechamento < bandas["media"]
+        )
+    raise ValueError(f"Modo desconhecido: {modo}.")
+
+
+def posicao_zscore(
+    dados: pd.DataFrame,
+    janela: int = 20,
+    zscore_de_compra: float = -2.0,
+    zscore_de_venda: float = 0.0,
+) -> pd.Series:
+    """Compra quando o preço está muito abaixo da própria média (em desvios-padrão) e vende
+    quando volta perto dela."""
+    if zscore_de_compra >= zscore_de_venda:
+        raise ValueError("O z-score de compra precisa ser menor que o de venda.")
+    z = ind.calcular_zscore(dados["Close"], janela)
+    return _manter_estado(z < zscore_de_compra, z > zscore_de_venda)
+
+
 # --- Registro -----------------------------------------------------------------------
 
 ESTRATEGIAS: dict[str, Estrategia] = {
@@ -238,6 +306,65 @@ ESTRATEGIAS: dict[str, Estrategia] = {
                 Parametro("janela_media", "Média exponencial (dias)", 20, 5, 60, 1),
                 Parametro("janela_atr", "ATR (dias)", 10, 5, 30, 1),
                 Parametro("multiplicador", "Multiplicador do ATR", 2.0, 0.5, 4.0, 0.5),
+            ),
+        ),
+        Estrategia(
+            "RSI clássico",
+            "Reversão à média",
+            posicao_rsi_classico,
+            (
+                Parametro("periodo", "Período do RSI (dias)", 14, 2, 30, 1),
+                Parametro("nivel_de_compra", "Comprar abaixo de", 30, 5, 50, 5),
+                Parametro("nivel_de_venda", "Vender acima de", 70, 50, 95, 5),
+            ),
+        ),
+        Estrategia(
+            "RSI curto com filtro de tendência",
+            "Reversão à média",
+            posicao_rsi_curto_com_filtro,
+            (
+                Parametro("periodo", "Período do RSI (dias)", 2, 2, 5, 1),
+                Parametro("nivel_de_compra", "Comprar abaixo de", 10, 5, 30, 5),
+                Parametro("nivel_de_venda", "Vender acima de", 70, 50, 95, 5),
+                Parametro(
+                    "filtro",
+                    "Só comprar acima da média de (dias)",
+                    200,
+                    50,
+                    300,
+                    10,
+                    ajuda="Evita comprar quedas quando a tendência geral é de baixa.",
+                ),
+            ),
+        ),
+        Estrategia(
+            "Bandas de Bollinger",
+            "Reversão à média",
+            posicao_bandas_de_bollinger,
+            (
+                Parametro("janela", "Janela da média (dias)", 20, 5, 100, 1),
+                Parametro("desvios", "Desvios-padrão", 2.0, 1.0, 3.0, 0.5),
+                Parametro(
+                    "modo",
+                    "Modo",
+                    "Reversão",
+                    opcoes=("Reversão", "Rompimento"),
+                    ajuda="Reversão compra quedas fortes; rompimento compra arrancadas.",
+                ),
+            ),
+        ),
+        Estrategia(
+            "Z-score do preço",
+            "Reversão à média",
+            posicao_zscore,
+            (
+                Parametro("janela", "Janela da média (dias)", 20, 5, 100, 1),
+                Parametro(
+                    "zscore_de_compra", "Comprar abaixo de (z)", -2.0, -4.0, -0.5, 0.5
+                ),
+                Parametro(
+                    "zscore_de_venda", "Vender acima de (z)", 0.0, -1.0, 2.0, 0.5
+                ),
             ),
         ),
     )
