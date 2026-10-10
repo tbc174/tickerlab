@@ -1,6 +1,6 @@
 # Pandas
 
-Notas da sessão 1 (`estudos/sessao01.ipynb`), com os dados de `PETR4.SA` (2 anos, 501 dias).
+Notas da sessão 1 (`estudos/sessao01.ipynb`), com os dados da `AAPL` (preços em US$, 2 anos, 501 dias).
 
 ## DataFrame e Series
 - **O que é:** o **DataFrame** é uma tabela (aqui, um dia por linha; colunas `Close`, `High`, `Low`, `Open`, `Volume`). A **Series** é uma coluna só, com o índice (as datas) ao lado.
@@ -25,7 +25,7 @@ Notas da sessão 1 (`estudos/sessao01.ipynb`), com os dados de `PETR4.SA` (2 ano
 
 ## Maior, menor e onde estão: `max()`, `min()`, `idxmax()`, `idxmin()`
 - **O que é:** `max()` e `min()` dão o **valor**; `idxmax()` e `idxmin()` dão o **rótulo do índice** (a data) onde ele está.
-- **Exemplo:** `fechamento.max()` (341,07) e `fechamento.idxmax()` (25/09/2026).
+- **Exemplo:** `fechamento.max()` (US$ 341,07) e `fechamento.idxmax()` (25/09/2026).
 - **Cuidado:** valores como `341.07000732421875` vêm do ajuste de dividendos do Yahoo. Arredondar (`round(x, 2)`) só para mostrar, nunca nos dados.
 - **Data:** 10/10/2026
 
