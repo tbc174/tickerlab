@@ -128,6 +128,48 @@ dados no app (um `##` por termo).
 
 **Cuidado:** só entram os dias em que todos os ativos negociaram. Feriados diferentes (B3 e bolsas dos EUA) fazem alguns dias serem descartados, e o app avisa quantos. Os preços não são preenchidos nem estimados.
 
+## Stop-loss
+**O que é:** uma ordem de segurança que tira você da posição se o preço cair uma certa porcentagem abaixo do preço de compra. Limita a perda de cada operação.
+
+**Exemplo:** compra a R$ 100 com stop-loss de 8%: se o preço fechar em R$ 92 ou menos, a posição é encerrada.
+
+**Cuidado:** um stop curto demais é acionado por oscilações normais e você sai no "susto", antes de o preço se recuperar. Aqui o stop é conferido no fechamento do dia.
+
+## Take-profit
+**O que é:** o contrário do stop-loss: encerra a posição quando o ganho chega a uma porcentagem definida, para "garantir o lucro".
+
+**Exemplo:** compra a R$ 100 com take-profit de 15%: ao fechar em R$ 115 ou mais, vende.
+
+**Cuidado:** limita os ganhos. Nas grandes altas, quem usa take-profit sai cedo e perde o resto do movimento.
+
+## Stop móvel
+**O que é:** um stop que **sobe junto com o preço**. Em vez de olhar o preço de compra, olha o maior preço atingido depois da compra.
+
+**Exemplo:** stop móvel de 10%: se o preço sobe de R$ 100 para R$ 120, o limite vira R$ 108. Se cair até lá, a posição é encerrada, com o lucro parcialmente protegido.
+
+**Cuidado:** em mercados que sobem e descem muito, ele sai cedo e nunca deixa o ganho "respirar".
+
+## Stop por ATR
+**O que é:** um stop cuja distância depende da **volatilidade** do ativo. O ATR (*Average True Range*) é o tamanho médio do movimento diário. Em ativos agitados o stop fica mais longe; em ativos calmos, mais perto.
+
+**Exemplo:** com ATR de R$ 1,00 e multiplicador 2, o stop fica R$ 2,00 abaixo do preço de compra. É a regra usada pelas "Tartarugas", um grupo famoso de operadores.
+
+**Cuidado:** o ATR usado é o do dia da compra e não muda depois.
+
+## Risco por operação
+**O que é:** em vez de comprar sempre com todo o capital, o tamanho da posição é calculado para que, se o stop for atingido, você perca só uma pequena fração do capital (como 1%). Funciona junto com o stop por ATR.
+
+**Exemplo:** capital de R$ 10.000, risco de 1% (R$ 100) e stop 4% abaixo do preço: a posição é de R$ 2.500 (25% do capital), pois uma queda de 4% sobre R$ 2.500 custa R$ 100.
+
+**Cuidado:** ativos muito voláteis geram posições pequenas, e o restante do capital fica parado em caixa, sem render.
+
+## Alvo de volatilidade
+**O que é:** ajusta o tamanho da posição para que a volatilidade da carteira fique perto de um valor escolhido. Quando o mercado fica agitado, a posição diminui; quando fica calmo, volta ao máximo.
+
+**Exemplo:** alvo de 15% ao ano. Se a volatilidade recente do ativo é de 30%, o app fica com metade da posição (e metade em caixa).
+
+**Cuidado:** o app nunca usa dinheiro emprestado (a posição máxima é 100%). A volatilidade é medida no passado e pode mudar de repente.
+
 ## Média móvel
 **O que é:** a média dos últimos N preços, recalculada a cada dia. Suaviza o gráfico e mostra a tendência.
 

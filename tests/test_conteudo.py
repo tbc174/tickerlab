@@ -85,6 +85,12 @@ TERMOS_DO_PAINEL = [
     "Retorno mensal",
     "Sazonalidade",
     "Base 100",
+    "Stop-loss",
+    "Take-profit",
+    "Stop móvel",
+    "Stop por ATR",
+    "Risco por operação",
+    "Alvo de volatilidade",
 ]
 
 

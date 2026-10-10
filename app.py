@@ -27,10 +27,17 @@ from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.indicadores import NOMES_DOS_MESES
 from src.metricas import calcular_intervalo_do_sharpe, resumir_desempenho
+from src.protecoes import Protecoes, aplicar_protecoes
 
 MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
 JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 JANELAS_MEDIAS = [20, 50, 200]  # dias
+ESPERAS_DEPOIS_DO_STOP = {
+    "Só com um sinal novo da estratégia": None,
+    "Esperar 5 dias úteis": 5,
+    "Esperar 20 dias úteis": 20,
+    "Esperar 60 dias úteis": 60,
+}
 PERIODOS_DAS_VELAS = {"3 meses": 63, "6 meses": 126, "1 ano": 252, "Tudo": None}
 ESTRATEGIA_DE_REFERENCIA = "Comprar e segurar"
 METRICAS_EM_PORCENTAGEM_COM_SINAL = {
@@ -429,6 +436,111 @@ def escolher_estrategia():
     return nome, parametros
 
 
+def _opcao_com_valor(
+    coluna, chave, rotulo, rotulo_do_valor, padrao, minimo, maximo, termo
+):
+    """Uma caixa para ligar a proteção e, se ligada, o campo do valor. Devolve o valor ou None."""
+    if not coluna.checkbox(rotulo, key=f"liga_{chave}", help=ajuda_do(termo)):
+        return None
+    return coluna.number_input(
+        rotulo_do_valor,
+        min_value=minimo,
+        max_value=maximo,
+        value=padrao,
+        step=0.5,
+        key=f"valor_{chave}",
+    )
+
+
+def escolher_protecoes():
+    """Controles das proteções de risco (todas desligadas por padrão)."""
+    with st.expander("Proteções de risco (opcional)"):
+        st.caption(
+            "Uma camada extra por cima da estratégia. Depois de um stop, a estratégia só volta "
+            "a comprar quando mandar sair e depois entrar de novo (um sinal novo)."
+        )
+        col1, col2, col3 = st.columns(3)
+        stop_loss = _opcao_com_valor(
+            col1,
+            "stop_loss",
+            "Stop-loss",
+            "Sair se cair (%)",
+            8.0,
+            1.0,
+            50.0,
+            "Stop-loss",
+        )
+        take_profit = _opcao_com_valor(
+            col2,
+            "take_profit",
+            "Take-profit",
+            "Sair se subir (%)",
+            15.0,
+            1.0,
+            200.0,
+            "Take-profit",
+        )
+        stop_movel = _opcao_com_valor(
+            col3,
+            "stop_movel",
+            "Stop móvel",
+            "Sair se cair da máxima (%)",
+            10.0,
+            1.0,
+            50.0,
+            "Stop móvel",
+        )
+        col4, col5, col6 = st.columns(3)
+        stop_atr = _opcao_com_valor(
+            col4,
+            "stop_atr",
+            "Stop por ATR",
+            "Distância (x ATR)",
+            2.0,
+            0.5,
+            6.0,
+            "Stop por ATR",
+        )
+        risco = None
+        if stop_atr is not None:
+            risco = _opcao_com_valor(
+                col5,
+                "risco",
+                "Risco por operação",
+                "Capital arriscado (%)",
+                1.0,
+                0.5,
+                10.0,
+                "Risco por operação",
+            )
+        alvo = _opcao_com_valor(
+            col6,
+            "alvo_vol",
+            "Alvo de volatilidade",
+            "Volatilidade anual (%)",
+            15.0,
+            5.0,
+            50.0,
+            "Alvo de volatilidade",
+        )
+        espera = st.selectbox(
+            "Depois de um stop, voltar a comprar...",
+            list(ESPERAS_DEPOIS_DO_STOP),
+            key="espera_depois_do_stop",
+            help="Estratégias que nunca mandam sair (como comprar e segurar) só voltam se "
+            "houver uma espera.",
+        )
+    return Protecoes(
+        stop_loss=None if stop_loss is None else stop_loss / 100,
+        take_profit=None if take_profit is None else take_profit / 100,
+        stop_movel=None if stop_movel is None else stop_movel / 100,
+        stop_atr=stop_atr,
+        risco_por_operacao=None if risco is None else risco / 100,
+        alvo_de_volatilidade=None if alvo is None else alvo / 100,
+        dias_de_espera=ESPERAS_DEPOIS_DO_STOP[espera],
+    )
+
+
 def secao_backtest(dados, taxa_livre_de_risco):
     st.subheader("Backtest: e se eu tivesse seguido esta regra?")
     st.caption(
@@ -451,18 +563,51 @@ def secao_backtest(dados, taxa_livre_de_risco):
         capital_inicial = col_capital.number_input(
             "Capital inicial (R\\$)", min_value=100.0, value=10_000.0, step=1_000.0
         )
+        protecoes = escolher_protecoes()
 
     fechamento = dados["Close"]
     try:
         posicao = gerar_posicao(nome, dados, **parametros)
+        posicao_protegida = aplicar_protecoes(dados, posicao, protecoes)
     except ValueError as erro:
         st.error(str(erro))
         return
-    custo = custo_percentual / 100
-    resultado = executar_backtest(fechamento, posicao, custo)
-    referencia = executar_backtest(
-        fechamento, gerar_posicao(ESTRATEGIA_DE_REFERENCIA, dados), custo
+    tem_stop = any(
+        v is not None
+        for v in (
+            protecoes.stop_loss,
+            protecoes.take_profit,
+            protecoes.stop_movel,
+            protecoes.stop_atr,
+        )
     )
+    if (
+        nome == ESTRATEGIA_DE_REFERENCIA
+        and tem_stop
+        and protecoes.dias_de_espera is None
+    ):
+        st.info(
+            "Comprar e segurar nunca manda sair, então depois de um stop ela não teria um "
+            "sinal novo para voltar e ficaria fora do mercado até o fim. Para ver o efeito "
+            'do stop com reentrada, escolha uma espera em "Depois de um stop".'
+        )
+    custo = custo_percentual / 100
+    com_protecao = protecoes.alguma_ligada()
+    nome_principal = f"{nome} + proteções" if com_protecao else nome
+
+    # todas as simulações, na ordem em que aparecem nos gráficos e na tabela
+    resultados = {
+        nome_principal: executar_backtest(fechamento, posicao_protegida, custo)
+    }
+    if com_protecao:
+        resultados[f"{nome} (sem proteções)"] = executar_backtest(
+            fechamento, posicao, custo
+        )
+    if nome != ESTRATEGIA_DE_REFERENCIA:
+        resultados[ESTRATEGIA_DE_REFERENCIA] = executar_backtest(
+            fechamento, gerar_posicao(ESTRATEGIA_DE_REFERENCIA, dados), custo
+        )
+    resultado = resultados[nome_principal]
 
     explicacao = obter_estrategias().get(nome)
     if explicacao:
@@ -486,15 +631,14 @@ def secao_backtest(dados, taxa_livre_de_risco):
                 "comprar e segurar não ficaram expostas pelo mesmo tempo."
             )
 
-    numeros = resumir_desempenho(
-        resultado.retorno, resultado.posicao, resultado.operacoes, taxa_livre_de_risco
-    )
-    numeros_referencia = resumir_desempenho(
-        referencia.retorno,
-        referencia.posicao,
-        referencia.operacoes,
-        taxa_livre_de_risco,
-    )
+    numeros = {
+        rotulo: resumir_desempenho(
+            r.retorno, r.posicao, r.operacoes, taxa_livre_de_risco
+        )
+        for rotulo, r in resultados.items()
+    }
+    numeros_principal = numeros[nome_principal]
+    numeros_referencia = numeros.get(ESTRATEGIA_DE_REFERENCIA, numeros_principal)
 
     cartoes = st.columns(4)
     for coluna, metrica in zip(
@@ -507,7 +651,7 @@ def secao_backtest(dados, taxa_livre_de_risco):
         )
         coluna.metric(
             metrica,
-            formatar_metrica(metrica, numeros[metrica]),
+            formatar_metrica(metrica, numeros_principal[metrica]),
             delta=comparacao,
             delta_color="off",
             delta_arrow="off",
@@ -531,16 +675,18 @@ def secao_backtest(dados, taxa_livre_de_risco):
             "o Sharpe é muito incerto: não compare estratégias por diferenças pequenas."
         )
 
-    curvas = {nome: resultado.curva_de_capital}
-    if nome != ESTRATEGIA_DE_REFERENCIA:
-        curvas[ESTRATEGIA_DE_REFERENCIA] = referencia.curva_de_capital
+    curvas = {rotulo: r.curva_de_capital for rotulo, r in resultados.items()}
     mostrar_grafico(
-        graficos.criar_grafico_curvas_de_capital(curvas, capital_inicial, destaque=nome)
+        graficos.criar_grafico_curvas_de_capital(
+            curvas, capital_inicial, destaque=nome_principal
+        )
     )
 
     col_quedas, col_preco = st.columns(2)
     with col_quedas:
-        mostrar_grafico(graficos.criar_grafico_quedas_comparadas(curvas, destaque=nome))
+        mostrar_grafico(
+            graficos.criar_grafico_quedas_comparadas(curvas, destaque=nome_principal)
+        )
     with col_preco:
         mostrar_grafico(
             graficos.criar_grafico_operacoes_no_preco(fechamento, resultado.operacoes)
@@ -549,15 +695,8 @@ def secao_backtest(dados, taxa_livre_de_risco):
     st.markdown("**Números lado a lado**")
     tabela = pd.DataFrame(
         {
-            nome_da_coluna: {m: formatar_metrica(m, v) for m, v in valores.items()}
-            for nome_da_coluna, valores in (
-                (nome, numeros),
-                *(
-                    ((ESTRATEGIA_DE_REFERENCIA, numeros_referencia),)
-                    if nome != ESTRATEGIA_DE_REFERENCIA
-                    else ()
-                ),
-            )
+            rotulo: {m: formatar_metrica(m, v) for m, v in valores.items()}
+            for rotulo, valores in numeros.items()
         }
     )
     st.dataframe(tabela, width="stretch")
