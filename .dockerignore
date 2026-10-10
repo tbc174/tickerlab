@@ -1,0 +1,22 @@
+# O que não precisa entrar na imagem (deixa o build rápido e a imagem pequena)
+.git
+.github
+.venv
+.vscode
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+tests
+estudos
+guias
+notas
+dados_locais
+*.sqlite
+.env
+README.md
+requirements.txt
+ruff.toml
+pytest.ini
+Dockerfile
+compose.yaml

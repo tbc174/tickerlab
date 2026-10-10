@@ -1,0 +1,22 @@
+# Stack do TickerLab para o servidor (vai em /opt/stacks/tickerlab).
+#
+# A porta fica só em 127.0.0.1 (padrão do servidor: o Docker ignora o firewall nas portas que
+# publica). O acesso de fora vem do Tailscale Funnel, que aponta para esta porta:
+#   sudo tailscale funnel --bg --https=8443 http://127.0.0.1:8501
+#
+# A pasta dados_locais guarda o cache de preços (SQLite). O contêiner roda como usuário 1000,
+# então a pasta precisa ser desse usuário ANTES do primeiro "docker compose up":
+#   mkdir -p dados_locais && sudo chown 1000:1000 dados_locais
+services:
+  tickerlab:
+    build: .
+    image: tickerlab:local
+    container_name: tickerlab
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8501:8501"
+    volumes:
+      - ./dados_locais:/app/dados_locais
+    # o servidor tem pouca RAM (8 GB com o Minecraft): o app não pode comer tudo
+    mem_limit: 768m
+    cpus: 1.0
