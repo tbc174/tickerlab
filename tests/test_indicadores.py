@@ -8,10 +8,16 @@ from pandas.testing import assert_series_equal
 from src.indicadores import (
     DIAS_POR_ANO,
     calcular_drawdown,
+    calcular_indice_sharpe,
     calcular_media_movel,
+    calcular_percentual_dias_positivos,
     calcular_retorno_acumulado,
+    calcular_retorno_anualizado,
     calcular_retorno_diario,
+    calcular_var_historico,
     calcular_volatilidade_anual,
+    encontrar_melhor_dia,
+    encontrar_pior_dia,
 )
 
 
@@ -79,3 +85,88 @@ def test_drawdown_nunca_e_positivo():
 def test_drawdown_de_preco_sempre_subindo_e_zero():
     fechamento = pd.Series([10.0, 11.0, 12.0, 13.0])
     assert calcular_drawdown(fechamento).min() == 0.0
+
+
+def test_retorno_anualizado_de_um_ano_inteiro():
+    # 252 dias de +0,1% compõem (1,001)^252 - 1 em um ano.
+    retorno = pd.Series([0.001] * 252)
+    assert calcular_retorno_anualizado(retorno) == pytest.approx(1.001**252 - 1)
+
+
+def test_retorno_anualizado_de_meio_ano_projeta_para_um_ano():
+    # Meio ano (126 dias) de +0,2%: manter esse ritmo por 252 dias dá (1,002)^252 - 1.
+    retorno = pd.Series([0.002] * 126)
+    assert calcular_retorno_anualizado(retorno) == pytest.approx(1.002**252 - 1)
+
+
+def test_retorno_anualizado_ignora_o_primeiro_dia_vazio():
+    com_vazio = pd.Series([np.nan] + [0.001] * 252)
+    sem_vazio = pd.Series([0.001] * 252)
+    assert calcular_retorno_anualizado(com_vazio) == pytest.approx(
+        calcular_retorno_anualizado(sem_vazio)
+    )
+
+
+def test_sharpe_com_taxa_zero():
+    retorno = pd.Series([0.02, -0.01] * 126)
+    anualizado = (1 + retorno).prod() ** (DIAS_POR_ANO / len(retorno)) - 1
+    volatilidade = retorno.std() * np.sqrt(DIAS_POR_ANO)
+    assert calcular_indice_sharpe(retorno) == pytest.approx(anualizado / volatilidade)
+
+
+def test_sharpe_diminui_quando_a_taxa_livre_de_risco_sobe():
+    retorno = pd.Series([0.02, -0.01] * 126)
+    assert calcular_indice_sharpe(retorno, 0.10) < calcular_indice_sharpe(retorno, 0.0)
+
+
+def test_sharpe_sem_volatilidade_e_nan():
+    retorno = pd.Series([0.001] * 50)  # sobe igual todo dia: desvio padrão zero
+    assert np.isnan(calcular_indice_sharpe(retorno))
+
+
+def test_melhor_e_pior_dia():
+    datas = pd.date_range("2026-01-01", periods=4)
+    retorno = pd.Series([np.nan, 0.05, -0.03, 0.02], index=datas)
+    assert encontrar_melhor_dia(retorno) == (pd.Timestamp("2026-01-02"), 0.05)
+    assert encontrar_pior_dia(retorno) == (pd.Timestamp("2026-01-03"), -0.03)
+
+
+# --- Extras da issue #7 -------------------------------------------------------
+
+
+def test_percentual_dias_positivos():
+    # Dias válidos: 4. Subiram: 2 (+1% e +3%). O dia parado (0%) não conta como alta.
+    retorno = pd.Series([np.nan, 0.01, -0.02, 0.03, 0.0])
+    assert calcular_percentual_dias_positivos(retorno) == pytest.approx(0.5)
+
+
+def test_var_historico():
+    # 101 retornos de -50% a +50%: o pior 1 dia em cada 20 (5%) fica em -45%.
+    retorno = pd.Series(np.arange(-50, 51) / 100)
+    assert calcular_var_historico(retorno) == pytest.approx(-0.45)
+    assert calcular_var_historico(retorno, nivel=0.99) == pytest.approx(-0.49)
+
+
+# --- Casos de borda: série vazia ou com um único dia --------------------------
+# O app não pode quebrar se a pessoa pedir um período curto demais.
+
+
+@pytest.mark.parametrize(
+    "funcao",
+    [
+        calcular_retorno_anualizado,
+        calcular_indice_sharpe,
+        calcular_volatilidade_anual,
+        calcular_percentual_dias_positivos,
+        calcular_var_historico,
+    ],
+)
+@pytest.mark.parametrize("retorno", [pd.Series([], dtype=float), pd.Series([np.nan])])
+def test_sem_retornos_validos_devolve_nan(funcao, retorno):
+    assert np.isnan(funcao(retorno))
+
+
+@pytest.mark.parametrize("funcao", [encontrar_melhor_dia, encontrar_pior_dia])
+def test_melhor_e_pior_dia_sem_dados_levantam_erro(funcao):
+    with pytest.raises(ValueError, match="vazia"):
+        funcao(pd.Series([np.nan]))
