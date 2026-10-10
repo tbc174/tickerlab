@@ -79,6 +79,8 @@ TERMOS_DO_PAINEL = [
     "Volatilidade móvel",
     "Recuperação de um drawdown",
     "Gráfico de velas (candlestick)",
+    "Retorno mensal",
+    "Sazonalidade",
 ]
 
 

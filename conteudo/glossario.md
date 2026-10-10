@@ -107,6 +107,20 @@ dados no app (um `##` por termo).
 
 **Cuidado:** a linha mostra só o fechamento e é mais limpa para ver a tendência; as velas mostram mais detalhe e ajudam a ver a oscilação dentro de cada dia.
 
+## Retorno mensal
+**O que é:** quanto o preço subiu ou caiu em cada mês do calendário, juntando os retornos de todos os dias do mês. O app mostra uma grade com um ano por linha e um mês por coluna: verde é alta e vermelho é queda.
+
+**Exemplo:** +10% em janeiro e -1% em fevereiro dão +8,9% no acumulado dos dois meses, porque os ganhos se acumulam (juros compostos) em vez de simplesmente se somarem.
+
+**Cuidado:** o primeiro e o último mês do período podem estar incompletos, então não são comparáveis com os meses inteiros.
+
+## Sazonalidade
+**O que é:** a ideia de que certos meses costumam ser melhores ou piores que outros, ano após ano. A última linha da grade mostra a média de cada mês ao longo dos anos.
+
+**Exemplo:** se janeiro teve média de +4% nos últimos cinco anos, dizemos que janeiro foi historicamente bom para aquela ação.
+
+**Cuidado:** com poucos anos de dados, a média é só coincidência. Um padrão do passado não garante que se repita.
+
 ## Média móvel
 **O que é:** a média dos últimos N preços, recalculada a cada dia. Suaviza o gráfico e mostra a tendência.
 
