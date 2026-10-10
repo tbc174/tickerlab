@@ -4,7 +4,7 @@ import plotly.express as px
 import streamlit as st
 
 from src import indicadores as ind
-from src.dados import DadosIndisponiveisError, baixar_dados
+from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.title("TickerLab")
@@ -15,8 +15,15 @@ ticker = st.text_input("Ticker", value="PETR4.SA")
 periodo = st.selectbox("Período", ["6mo", "1y", "2y", "5y"], index=2)
 
 # --- Passo 2: baixar os dados (a lógica fica em src/dados.py) -----------------
+@st.cache_data(ttl=3600, show_spinner="Baixando dados...")
+def carregar_dados(ticker, periodo):
+    """Guarda o download por 1 hora para não consultar o Yahoo a cada clique."""
+    return baixar_dados(ticker, periodo)
+
+
 try:
-    dados = baixar_dados(ticker, periodo)
+    # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
+    dados = carregar_dados(normalizar_ticker(ticker), periodo)
 except DadosIndisponiveisError as erro:
     st.error(str(erro))
     st.stop()
