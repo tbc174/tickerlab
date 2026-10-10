@@ -4,7 +4,9 @@ import pandas as pd
 import pytest
 
 from src.conteudo import (
+    CAMINHO_ESTRATEGIAS,
     CAMINHO_GLOSSARIO,
+    carregar_estrategias,
     carregar_glossario,
     descrever_pior_drawdown,
     proteger_cifrao,
@@ -147,3 +149,33 @@ def test_nenhum_verbete_real_deixa_cifrao_solto_depois_de_protegido():
     for texto in carregar_glossario(CAMINHO_GLOSSARIO).values():
         protegido = proteger_cifrao(texto)
         assert protegido.count("$") == protegido.count(r"\$")
+
+
+# --- Explicações das estratégias ---------------------------------------------------------
+
+SECOES_DE_UMA_ESTRATEGIA = [
+    "**A ideia:**",
+    "**A regra:**",
+    "**Quando costuma funcionar:**",
+    "**Quando costuma falhar:**",
+    "**O que olhar nos resultados:**",
+]
+
+
+def test_toda_estrategia_do_registro_tem_explicacao_completa():
+    # Se alguém registrar uma estratégia nova e esquecer de explicá-la, este teste avisa.
+    from src.estrategias import ESTRATEGIAS
+
+    explicacoes = carregar_estrategias(CAMINHO_ESTRATEGIAS)
+    for nome in ESTRATEGIAS:
+        assert nome in explicacoes, (
+            f"Falta o verbete de {nome} em conteudo/estrategias.md"
+        )
+        for secao in SECOES_DE_UMA_ESTRATEGIA:
+            assert secao in explicacoes[nome], f"{nome}: falta a seção {secao}"
+
+
+def test_nao_ha_explicacao_sem_estrategia():
+    from src.estrategias import ESTRATEGIAS
+
+    assert set(carregar_estrategias(CAMINHO_ESTRATEGIAS)) <= set(ESTRATEGIAS)

@@ -8,6 +8,7 @@ from src.indicadores import PiorDrawdown
 
 PASTA_RAIZ = Path(__file__).resolve().parent.parent
 CAMINHO_GLOSSARIO = PASTA_RAIZ / "conteudo" / "glossario.md"
+CAMINHO_ESTRATEGIAS = PASTA_RAIZ / "conteudo" / "estrategias.md"
 MARCA_DE_TERMO = "## "
 
 
@@ -60,3 +61,8 @@ def descrever_pior_drawdown(pior: PiorDrawdown) -> str:
 def proteger_cifrao(texto: str | None) -> str | None:
     """Põe uma barra antes de cada "$": o Streamlit lê "R$ 1 e US$ 2" como fórmula matemática."""
     return texto.replace("$", r"\$") if texto else texto
+
+
+def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
+    """Explicações das estratégias (um verbete por estratégia), no mesmo formato do glossário."""
+    return carregar_glossario(caminho)
