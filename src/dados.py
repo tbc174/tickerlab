@@ -32,7 +32,9 @@ def baixar_dados(ticker: str, periodo: str = "2y") -> pd.DataFrame:
     ticker = normalizar_ticker(ticker)
 
     if periodo not in PERIODOS_VALIDOS:
-        raise ValueError(f"Período inválido: {periodo}. Use um destes: {PERIODOS_VALIDOS}.")
+        raise ValueError(
+            f"Período inválido: {periodo}. Use um destes: {PERIODOS_VALIDOS}."
+        )
 
     if not ticker:
         raise DadosIndisponiveisError("Digite um ticker, por exemplo PETR4 ou AAPL.")

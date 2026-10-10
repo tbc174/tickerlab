@@ -22,12 +22,11 @@ from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
         ("^BVSP", "^BVSP"),  # índice (^): não mexe
         ("^gspc", "^GSPC"),  # índice em minúsculas
         ("^N225", "^N225"),  # índice japonês: não mexe
-        ("ABC12", "ABC12")
+        ("ABC12", "ABC12"),
     ],
 )
 def test_normalizar_ticker(digitado, esperado):
     assert normalizar_ticker(digitado) == esperado
-
 
 
 # --- baixar_dados -------------------------------------------------------------
