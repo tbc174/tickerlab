@@ -17,3 +17,7 @@ dados/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Banco de preços local (cache em SQLite): cada pessoa gera o seu
+dados_locais/
+*.sqlite
