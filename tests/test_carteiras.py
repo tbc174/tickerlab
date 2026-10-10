@@ -225,3 +225,10 @@ def test_gerar_pesos_valida_estrategia_parametros_e_numero_de_ativos():
         gerar_pesos("Momentum dual", precos[["A"]])
     with pytest.raises(ValueError, match="mais ativos"):
         gerar_pesos("Momentum dual", precos[["A", "B"]], melhores=3)
+
+
+def test_hrp_comeca_com_60_dias_de_historico_e_nao_um_ano():
+    pesos = gerar_pesos("Paridade hierárquica de risco (HRP)", _precos())
+    primeiro = pesos.index[(pesos.sum(axis=1) > 0).to_numpy()][0]
+    assert (primeiro - pesos.index[0]).days < 130
+    assert pesos.loc[primeiro].sum() == pytest.approx(1.0)

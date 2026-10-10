@@ -17,9 +17,11 @@ import pandas as pd
 from src import indicadores as ind
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.estrategias import Parametro, _conferir_parametro
+from src.hrp import calcular_pesos_hrp
 
 MAX_ATIVOS_NA_CARTEIRA = 8
 MIN_ATIVOS_NA_CARTEIRA = 2
+DIAS_MINIMOS_DA_COVARIANCIA = 60
 
 
 @dataclass(frozen=True)
@@ -131,6 +133,27 @@ def canario(
     return _pesos_dos_dias_de_decisao(pesos, fechamentos.index)
 
 
+def paridade_hierarquica(fechamentos: pd.DataFrame, janela: int = 252) -> pd.DataFrame:
+    """Pesos da paridade hierárquica de risco (HRP), com a covariância dos últimos `janela` dias
+    (no início, com os dias que houver, a partir de 60)."""
+    decisao = dias_de_decisao(fechamentos.index)
+    retorno = fechamentos.pct_change()
+    pesos = pd.DataFrame(np.nan, index=decisao, columns=fechamentos.columns)
+    for dia in decisao:
+        fim = fechamentos.index.get_loc(dia) + 1
+        if fim <= DIAS_MINIMOS_DA_COVARIANCIA:
+            continue  # sem histórico suficiente: fica em caixa
+        # no começo usa o que já existe (pelo menos 60 dias) em vez de ficar parada um ano
+        trecho = retorno.iloc[max(1, fim - janela) : fim].dropna(axis=1)
+        if trecho.shape[1] < 2:
+            continue
+        try:
+            pesos.loc[dia, trecho.columns] = calcular_pesos_hrp(trecho)
+        except ValueError:
+            continue  # ex.: ativo parado no período: mantém o caixa
+    return _pesos_dos_dias_de_decisao(pesos.fillna(0.0), fechamentos.index)
+
+
 _MELHORES = Parametro(
     "melhores",
     "Quantos ativos manter",
@@ -149,6 +172,15 @@ _PULAR = Parametro(
     63,
     1,
     ajuda="Pula o último mês, para evitar a reversão de curtíssimo prazo.",
+)
+_JANELA_COVARIANCIA = Parametro(
+    "janela",
+    "Janela da covariância (dias)",
+    252,
+    63,
+    504,
+    21,
+    ajuda="Quantos dias passados entram no cálculo de como os ativos andam juntos.",
 )
 _JANELA_VOLATILIDADE = Parametro(
     "janela", "Janela da volatilidade (dias)", 60, 20, 252, 5
@@ -175,6 +207,11 @@ ESTRATEGIAS_DE_CARTEIRA: dict[str, EstrategiaDeCarteira] = {
             "Baixa volatilidade", baixa_volatilidade, (_MELHORES, _JANELA_VOLATILIDADE)
         ),
         EstrategiaDeCarteira("Ativo-canário", canario, (_JANELA_MOMENTUM, _PULAR)),
+        EstrategiaDeCarteira(
+            "Paridade hierárquica de risco (HRP)",
+            paridade_hierarquica,
+            (_JANELA_COVARIANCIA,),
+        ),
     )
 }
 
