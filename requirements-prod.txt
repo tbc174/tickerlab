@@ -2,6 +2,7 @@
 # O requirements.txt completo inclui testes, ruff e Jupyter, que não vão para produção.
 # As versões são as mesmas do requirements.txt; o pip resolve o resto.
 alembic==1.20.0
+Authlib==1.8.0
 numpy==2.5.3
 pandas==3.0.6
 plotly==7.1.0
