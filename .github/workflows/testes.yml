@@ -36,3 +36,35 @@ jobs:
 
       - name: Testes
         run: python -m pytest -q
+
+  imagem:
+    name: imagem Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir a imagem
+        run: docker build -t tickerlab:ci .
+
+      - name: O app abre sem erro dentro da imagem (dados de exemplo, sem internet)
+        run: |
+          docker run --rm tickerlab:ci python -c "
+          from streamlit.testing.v1 import AppTest
+          at = AppTest.from_file('app.py', default_timeout=180)
+          at.session_state['usar_exemplo'] = True
+          at.run()
+          assert not at.exception, [e.value for e in at.exception]
+          assert not at.error, [e.value for e in at.error]
+          print('app abriu sem erro')
+          "
+
+      - name: O servidor responde no teste de saúde
+        run: |
+          docker run -d --name tickerlab -p 127.0.0.1:8501:8501 tickerlab:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8501/_stcore/health && exit 0
+            sleep 2
+          done
+          docker logs tickerlab
+          exit 1

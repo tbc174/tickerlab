@@ -28,6 +28,19 @@ Sem internet (ou se o Yahoo Finance falhar), marque "Usar dados de exemplo" no t
 
 Ao mudar algo em `src/`, reinicie o Streamlit (`Ctrl+C` e rode de novo) para ver o efeito.
 
+## Publicar com Docker
+
+O repositório traz um `Dockerfile` (imagem enxuta, sem testes), um `compose.yaml` e o
+`requirements-prod.txt`. No servidor:
+
+```bash
+mkdir -p dados_locais && sudo chown 1000:1000 dados_locais   # pasta do cache de preços
+docker compose up -d --build                                  # app em 127.0.0.1:8501
+```
+
+A porta fica só em `127.0.0.1`; o acesso de fora vem de um proxy (aqui, o Tailscale Funnel).
+O GitHub Actions constrói a imagem e testa o app dentro dela a cada push.
+
 ## O que o app faz
 
 Cada aba responde a uma pergunta, sempre com explicações em português e avisos sobre os
