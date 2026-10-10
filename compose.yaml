@@ -15,8 +15,16 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8501:8501"
+    env_file:
+      - .env   # TICKERLAB_DATABASE_URL e os outros segredos (permissão 600, fora do Git)
     volumes:
       - ./dados_locais:/app/dados_locais
+    networks:
+      - db
     # o servidor tem pouca RAM (8 GB com o Minecraft): o app não pode comer tudo
     mem_limit: 768m
     cpus: 1.0
+
+networks:
+  db:
+    external: true   # a rede onde está o PostgreSQL do servidor

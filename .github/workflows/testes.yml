@@ -16,6 +16,22 @@ jobs:
   testes:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: senha_de_teste
+          POSTGRES_DB: tickerlab_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # os testes do banco rodam no PostgreSQL de verdade (no PC rodam em SQLite)
+      TICKERLAB_TEST_DATABASE_URL: postgresql://postgres:senha_de_teste@localhost:5432/tickerlab_teste
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +74,9 @@ jobs:
           assert not at.error, [e.value for e in at.error]
           print('app abriu sem erro')
           "
+
+      - name: As migrações do banco rodam dentro da imagem
+        run: docker run --rm tickerlab:ci python -m alembic upgrade head
 
       - name: O servidor responde no teste de saúde
         run: |

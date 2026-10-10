@@ -15,6 +15,8 @@ RUN pip install -r requirements-prod.txt
 COPY .streamlit ./.streamlit
 COPY app.py ./
 COPY src ./src
+COPY alembic.ini ./
+COPY migracoes ./migracoes
 COPY conteudo ./conteudo
 COPY dados_de_exemplo ./dados_de_exemplo
 
@@ -29,8 +31,6 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4)"
 
-CMD ["streamlit", "run", "app.py", \
-     "--server.address=0.0.0.0", \
-     "--server.port=8501", \
-     "--server.headless=true", \
-     "--browser.gatherUsageStats=false"]
+# aplica as migrações do banco e depois sobe o app (se o banco estiver fora, o contêiner cai e
+# o Docker tenta de novo)
+CMD ["sh", "-c", "python -m alembic upgrade head && exec streamlit run app.py --server.address=0.0.0.0 --server.port=8501 --server.headless=true --browser.gatherUsageStats=false"]
