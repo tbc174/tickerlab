@@ -846,6 +846,105 @@ def criar_grafico_z_do_par(
     return figura
 
 
+def criar_mapa_de_calor_de_correlacao(matriz: pd.DataFrame) -> go.Figure:
+    """Quadro de correlações: verde = andam juntos, vermelho = opostos, escuro = sem relação."""
+    if matriz.shape[0] < 2 or matriz.shape[0] != matriz.shape[1]:
+        raise ValueError(
+            "A matriz de correlação precisa ser quadrada, com 2 ou mais ativos."
+        )
+    nomes = [str(c) for c in matriz.columns]
+    valores = matriz.to_numpy(dtype=float)
+    textos = [[f"{v:.2f}".replace(".", ",") for v in linha] for linha in valores]
+    figura = go.Figure(
+        go.Heatmap(
+            z=valores,
+            x=nomes,
+            y=nomes,
+            text=textos,
+            texttemplate="%{text}",
+            textfont={"size": 12},
+            zmin=-1,
+            zmax=1,
+            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            xgap=2,
+            ygap=2,
+            showscale=False,
+            hovertemplate="%{y} × %{x}: %{text}<extra></extra>",
+        )
+    )
+    figura.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=140 + 55 * len(nomes),
+        margin={"l": 10, "r": 10, "t": 10, "b": 10},
+        xaxis={"side": "top", "fixedrange": True},
+        yaxis={"autorange": "reversed", "fixedrange": True},
+        dragmode=False,
+    )
+    return figura
+
+
+def criar_grafico_beta_movel(beta: pd.Series, janela: int) -> go.Figure:
+    """Como o beta do ativo mudou ao longo do tempo (calculado nos últimos `janela` dias)."""
+    if beta.empty:
+        raise ValueError("Não há beta para mostrar.")
+    figura = _figura_base(f"Beta móvel ({janela} dias)")
+    figura.update_yaxes(tickformat=".2f")
+    figura.add_hline(y=1, line_dash="dot", line_color="rgba(255,255,255,0.35)")
+    figura.add_trace(
+        go.Scatter(
+            x=beta.index,
+            y=beta,
+            mode="lines",
+            line={"color": COR_AZUL, "width": 2},
+            hovertemplate="beta %{y:.2f}",
+        )
+    )
+    return figura
+
+
+def criar_grafico_dispersao_do_beta(
+    retorno_do_ativo: pd.Series,
+    retorno_do_indice: pd.Series,
+    beta: float,
+    alfa_diario: float,
+) -> go.Figure:
+    """Cada ponto é um dia (índice no eixo x, ativo no y); a reta tem a inclinação do beta."""
+    tabela = pd.concat(
+        [retorno_do_indice, retorno_do_ativo], axis=1, join="inner"
+    ).dropna()
+    if tabela.empty:
+        raise ValueError("Não há dias em comum para mostrar.")
+    x, y = tabela.iloc[:, 0], tabela.iloc[:, 1]
+    figura = _figura_base("Cada dia: índice × ativo")
+    figura.update_xaxes(tickformat=".1%", title_text="Retorno do índice no dia")
+    figura.update_yaxes(tickformat=".1%", title_text="Retorno do ativo no dia")
+    figura.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            mode="markers",
+            marker={"color": COR_AZUL_CLARO, "size": 4, "opacity": 0.55},
+            hovertemplate="índice %{x:.2%}<br>ativo %{y:.2%}<extra></extra>",
+            name="dias",
+        )
+    )
+    extremos = pd.Series([x.min(), x.max()])
+    figura.add_trace(
+        go.Scatter(
+            x=extremos,
+            y=alfa_diario + beta * extremos,
+            mode="lines",
+            line={"color": COR_QUEDA, "width": 2},
+            name=f"reta (beta {beta:.2f})".replace(".", ","),
+            hoverinfo="skip",
+        )
+    )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.2})
+    return figura
+
+
 def criar_grafico_quedas_comparadas(
     curvas: dict[str, pd.Series], destaque: str
 ) -> go.Figure:

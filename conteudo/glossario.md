@@ -408,6 +408,27 @@ dados no app (um `##` por termo).
 
 **Cuidado:** correlação não é causa, e muda ao longo do tempo (em crises, quase tudo cai junto).
 
+## Beta
+**O que é:** quanto um ativo costuma se mexer para cada 1% que o índice se mexe. É a inclinação da reta que liga os retornos diários do ativo aos do índice.
+
+**Exemplo:** beta de 1,5 significa que, em média, quando o Ibovespa sobe 1% o ativo sobe 1,5%, e quando cai 1% o ativo cai 1,5%. Beta abaixo de 1 amortece o índice; beta negativo anda ao contrário.
+
+**Cuidado:** o beta muda com o tempo e com o período, e tem uma margem de erro (o app mostra o intervalo de 95%). Beta mede só a parte do risco que vem do índice, não o risco total do ativo.
+
+## Alfa
+**O que é:** o retorno anual que sobra depois de descontar o que o índice explica (o beta). Seria a parte do resultado que não veio de acompanhar o mercado.
+
+**Exemplo:** alfa de +4% ao ano: o ativo rendeu 4% a mais do que o beta dele justificaria.
+
+**Cuidado:** em poucos anos de dados, o alfa é muito incerto e pode ser só sorte. Não é prova de habilidade.
+
+## R² (poder de explicação do índice)
+**O que é:** a parte da variação diária do ativo que o índice explica, de 0% a 100%.
+
+**Exemplo:** R² de 40% quer dizer que 40% das oscilações do ativo vieram do movimento do índice; o resto é próprio do ativo.
+
+**Cuidado:** R² baixo torna o beta pouco útil para prever o ativo, mesmo que o número do beta pareça claro.
+
 ## Diversificação
 **O que é:** dividir o dinheiro entre ativos que não andam juntos, para que a queda de um seja amortecida por outro.
 

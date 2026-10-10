@@ -119,6 +119,9 @@ TERMOS_DO_PAINEL = [
     "Ômega",
     "Critério de Kelly",
     "Comprimento mínimo do histórico",
+    "Beta",
+    "Alfa",
+    "R² (poder de explicação do índice)",
 ]
 
 

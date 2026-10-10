@@ -8,11 +8,13 @@ from src.graficos import (
     CONFIG_PLOTLY,
     ZOOM_COM_A_RODA_DO_MOUSE,
     _numero_br,
+    criar_grafico_beta_movel,
     criar_grafico_comparacao,
     criar_grafico_cone_monte_carlo,
     criar_grafico_curvas_de_capital,
     criar_grafico_diferenca_das_janelas,
     criar_grafico_disjuntor,
+    criar_grafico_dispersao_do_beta,
     criar_grafico_drawdown,
     criar_grafico_operacoes_no_preco,
     criar_grafico_pesos,
@@ -24,6 +26,7 @@ from src.graficos import (
     criar_grafico_volatilidade_prevista,
     criar_grafico_z_do_par,
     criar_histograma_do_acaso,
+    criar_mapa_de_calor_de_correlacao,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
 )
@@ -609,3 +612,34 @@ def test_grafico_do_z_do_par_marca_posicoes_e_inicio_do_teste():
     )  # zero, duas entradas, dois stops e o início do teste
     with pytest.raises(ValueError, match="z-score"):
         criar_grafico_z_do_par(z * float("nan"), lado, 2.0, 4.0, indice[2])
+
+
+def test_mapa_de_correlacao_mostra_a_matriz_em_formato_brasileiro():
+    matriz = pd.DataFrame(
+        [[1.0, 0.5], [0.5, 1.0]], index=["A", "B"], columns=["A", "B"]
+    )
+    figura = criar_mapa_de_calor_de_correlacao(matriz)
+    assert figura.data[0].text[0][1] == "0,50"
+    assert figura.data[0].zmin == -1 and figura.data[0].zmax == 1
+    with pytest.raises(ValueError, match="quadrada"):
+        criar_mapa_de_calor_de_correlacao(matriz.iloc[:1])
+
+
+def test_grafico_do_beta_movel_tem_linha_em_um():
+    beta = pd.Series([0.9, 1.1, 1.3], index=pd.date_range("2026-01-01", periods=3))
+    figura = criar_grafico_beta_movel(beta, 126)
+    assert list(figura.data[0].y) == [0.9, 1.1, 1.3]
+    assert figura.layout.shapes[0].y0 == 1
+    with pytest.raises(ValueError, match="beta"):
+        criar_grafico_beta_movel(beta.iloc[:0], 126)
+
+
+def test_dispersao_do_beta_tem_pontos_e_reta_com_a_inclinacao_certa():
+    indice = pd.date_range("2026-01-01", periods=4)
+    x = pd.Series([-0.02, -0.01, 0.01, 0.02], index=indice)
+    figura = criar_grafico_dispersao_do_beta(2 * x, x, 2.0, 0.0)
+    assert len(figura.data[0].x) == 4
+    reta = figura.data[1]
+    assert list(reta.y) == pytest.approx([-0.04, 0.04])
+    with pytest.raises(ValueError, match="em comum"):
+        criar_grafico_dispersao_do_beta(x.iloc[:0], x.iloc[:0], 1.0, 0.0)

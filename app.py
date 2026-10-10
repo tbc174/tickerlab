@@ -46,6 +46,13 @@ from src.conteudo import (
     descrever_pior_drawdown,
     proteger_cifrao,
 )
+from src.correlacao import (
+    calcular_beta,
+    calcular_beta_movel,
+    calcular_correlacao_nas_quedas,
+    calcular_retornos,
+    resumir_betas,
+)
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -1352,6 +1359,131 @@ def _lista_de_verbetes(verbetes, rotulo_da_busca, chave):
             st.markdown(proteger_cifrao(texto))
 
 
+def secao_correlacao(principal, periodo):
+    st.subheader("Correlação e beta: como os ativos se mexem juntos")
+    st.caption(
+        "A correlação mostra se dois ativos andam juntos; o beta mostra quanto o ativo se "
+        "mexe para cada 1% do índice. Tudo é calculado com os retornos diários dos dias em "
+        "que todos têm preço."
+    )
+    c1, c2 = st.columns([1, 2])
+    nome_do_indice = c1.selectbox(
+        "Índice de referência", ["Ibovespa", "S&P 500"], key="corr_indice"
+    )
+    texto = c2.text_input(
+        "Outros ativos (separados por vírgula)",
+        value="VALE3, ITUB4, AAPL",
+        key="corr_ativos",
+        help=f"O ativo principal ({principal}) entra sempre. No máximo {MAX_ATIVOS_CORRELACAO} ativos, fora o índice.",
+    )
+    indice = ATALHOS[nome_do_indice]
+    tickers, ignorados = escolher_ativos(
+        principal, [], texto, maximo=MAX_ATIVOS_CORRELACAO
+    )
+    tickers = [t for t in tickers if t != indice]
+    if ignorados:
+        st.warning(
+            f"O limite é de {MAX_ATIVOS_CORRELACAO} ativos. Ficaram de fora: {', '.join(ignorados)}."
+        )
+    fechamentos, sem_dados = {}, []
+    for ticker in [indice, *tickers]:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except DadosIndisponiveisError:
+            sem_dados.append(ticker)
+    if sem_dados:
+        st.warning(
+            f"Não encontrei dados para: {', '.join(sem_dados)}. Eles ficaram de fora."
+        )
+    if indice not in fechamentos or len(fechamentos) < 2:
+        st.info("Não há ativos suficientes com dados.")
+        return
+    alinhado, descartados = alinhar_fechamentos(fechamentos)
+    if len(alinhado) <= MIN_DIAS_PARA_ANALISE:
+        st.warning(
+            f"Só há {len(alinhado)} dias em comum e são necessários mais de "
+            f"{MIN_DIAS_PARA_ANALISE}. Tente um período mais longo."
+        )
+        return
+    retornos = calcular_retornos(alinhado)
+    nome = lambda t: NOMES_AMIGAVEIS.get(t, t)
+
+    st.markdown("**Correlação entre os ativos**")
+    matriz = retornos.corr().rename(columns=nome, index=nome)
+    mostrar_grafico(graficos.criar_mapa_de_calor_de_correlacao(matriz))
+    st.caption(ajuda_do("Correlação"))
+
+    st.markdown(f"**Beta contra o {nome_do_indice}**")
+    try:
+        betas = resumir_betas(retornos, indice)
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    exibicao = pd.DataFrame(index=betas.index)
+    exibicao["Beta"] = [formatar_metrica("Sharpe", v) for v in betas["Beta"]]
+    exibicao["Intervalo de 95%"] = [
+        f"{formatar_metrica('Sharpe', lo)} a {formatar_metrica('Sharpe', hi)}"
+        for lo, hi in zip(betas["Beta (mín. 95%)"], betas["Beta (máx. 95%)"])
+    ]
+    exibicao["Alfa anual"] = [
+        formatar_pct(v, com_sinal=True) for v in betas["Alfa anual"]
+    ]
+    exibicao["Correlação"] = [
+        formatar_metrica("Sharpe", v) for v in betas["Correlação"]
+    ]
+    exibicao["R²"] = [formatar_pct(v) for v in betas["R²"]]
+    st.dataframe(exibicao, width="stretch")
+    st.caption(
+        f"{len(alinhado)} dias em comum ({descartados} descartados por feriados diferentes). "
+        "Beta acima de 1 amplifica o índice; abaixo de 1 amortece. O alfa em poucos anos de "
+        "dados é muito incerto: não o leia como habilidade."
+    )
+
+    st.markdown("**Um ativo de perto**")
+    ativos = list(betas.index)
+    escolhido = st.selectbox(
+        "Ativo", ativos, index=0, key="corr_detalhe", format_func=nome
+    )
+    janela = st.slider(
+        "Janela do beta móvel (dias)", 60, 252, 126, 6, key="corr_janela"
+    )
+    resultado = calcular_beta(retornos[escolhido], retornos[indice])
+    col_dispersao, col_movel = st.columns(2)
+    with col_dispersao:
+        mostrar_grafico(
+            graficos.criar_grafico_dispersao_do_beta(
+                retornos[escolhido],
+                retornos[indice],
+                resultado.beta,
+                resultado.alfa_anual / ind.DIAS_POR_ANO,
+            )
+        )
+    with col_movel:
+        try:
+            mostrar_grafico(
+                graficos.criar_grafico_beta_movel(
+                    calcular_beta_movel(retornos[escolhido], retornos[indice], janela),
+                    janela,
+                )
+            )
+        except ValueError as erro:
+            st.info(str(erro))
+
+    try:
+        quedas = calcular_correlacao_nas_quedas(retornos, indice)
+        linha = quedas.loc[escolhido]
+        st.caption(
+            f"Correlação de {nome(escolhido)} com o {nome_do_indice}: "
+            f"{formatar_metrica('Sharpe', linha['Todos os dias'])} em todos os dias e "
+            f"{formatar_metrica('Sharpe', linha['Piores dias do índice'])} nos 10% piores dias "
+            "do índice. Cuidado ao comparar os dois números: olhar só os dias extremos do "
+            "índice reduz a correlação por construção, então um valor menor aqui não prova "
+            "que a diversificação funcionou nas quedas."
+        )
+    except ValueError as erro:
+        st.caption(str(erro))
+
+
 CORES_DOS_REGIMES = {
     "Calmo": graficos.COR_ALTA,
     "Agitado": graficos.COR_QUEDA,
@@ -1933,6 +2065,7 @@ def secao_aprendizado(dados, taxa_livre_de_risco):
         _ml_volatilidade(dados, taxa_livre_de_risco)
 
 
+MAX_ATIVOS_CORRELACAO = 5
 PARES_PADRAO = "ITUB4, BBDC4, BBAS3, PETR4, PETR3"
 
 
@@ -2735,6 +2868,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     aba_regimes,
     aba_aprendizado,
     aba_pares,
+    aba_correlacao,
     aba_sobre,
 ) = st.tabs(
     [
@@ -2749,6 +2883,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
         "Regimes",
         "Aprendizado de máquina",
         "Pares",
+        "Correlação e beta",
         "Sobre",
     ]
 )
@@ -2783,6 +2918,8 @@ with aba_aprendizado:
     secao_aprendizado(dados, taxa_livre_de_risco)
 with aba_pares:
     secao_pares(periodo, taxa_livre_de_risco)
+with aba_correlacao:
+    secao_correlacao(normalizar_ticker(ticker), periodo)
 with aba_sobre:
     secao_sobre()
 
