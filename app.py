@@ -5,7 +5,21 @@ import streamlit as st
 
 from src import graficos
 from src import indicadores as ind
-from src.conteudo import carregar_glossario, descrever_pior_drawdown
+from src.comparacao import (
+    ATALHOS,
+    ATALHOS_PADRAO,
+    MAX_ATIVOS,
+    NOMES_AMIGAVEIS,
+    alinhar_fechamentos,
+    escolher_ativos,
+    montar_tabela_comparativa,
+    rebasear_para_100,
+)
+from src.conteudo import (
+    carregar_glossario,
+    descrever_pior_drawdown,
+    proteger_cifrao,
+)
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 from src.estilo import CSS_DO_APP
 from src.indicadores import NOMES_DOS_MESES
@@ -40,10 +54,14 @@ def formatar_pct(valor, com_sinal=False):
     return texto.replace(".", ",")
 
 
+def ajuda_do(termo):
+    """Texto do glossário para o "?" de um campo (com o cifrão protegido)."""
+    return proteger_cifrao(obter_glossario().get(termo))
+
+
 def mostrar_metrica(coluna, rotulo, valor, termo_do_glossario):
     """Um número com o "?" que explica o termo, usando o texto do glossário."""
-    ajuda = obter_glossario().get(termo_do_glossario)
-    coluna.metric(rotulo, valor, help=ajuda)
+    coluna.metric(rotulo, valor, help=ajuda_do(termo_do_glossario))
 
 
 def mostrar_grafico(figura):
@@ -154,13 +172,13 @@ def secao_preco(dados):
         "Tipo de gráfico",
         ["Linha", "Velas"],
         horizontal=True,
-        help=obter_glossario().get("Gráfico de velas (candlestick)"),
+        help=ajuda_do("Gráfico de velas (candlestick)"),
     )
     medias_escolhidas = col_medias.multiselect(
         "Médias móveis (dias)",
         JANELAS_MEDIAS,
         placeholder="Escolha uma ou mais médias",
-        help=obter_glossario().get("Média móvel"),
+        help=ajuda_do("Média móvel"),
     )
     dias_visiveis = None
     if tipo_do_grafico == "Velas":
@@ -195,7 +213,7 @@ def secao_risco(fechamento, retorno):
         "Janela da volatilidade (dias)",
         JANELAS_VOLATILIDADE,
         horizontal=True,
-        help=obter_glossario().get("Volatilidade móvel"),
+        help=ajuda_do("Volatilidade móvel"),
     )
     drawdown = ind.calcular_drawdown(fechamento)
     pior_drawdown = ind.encontrar_pior_drawdown(fechamento)
@@ -218,7 +236,7 @@ def secao_risco(fechamento, retorno):
 
 
 def secao_retorno_mensal(retorno):
-    st.subheader("Retorno por mês e ano", help=obter_glossario().get("Sazonalidade"))
+    st.subheader("Retorno por mês e ano", help=ajuda_do("Sazonalidade"))
     retorno_mensal = ind.calcular_retorno_mensal(retorno)
     tabela_mensal = ind.montar_tabela_retornos(retorno_mensal)
     (mes_melhor, valor_melhor), (mes_pior, valor_pior) = (
@@ -253,6 +271,94 @@ def secao_retorno_mensal(retorno):
     )
 
 
+def formatar_tabela_comparativa(tabela):
+    """Troca os números da tabela comparativa por textos no formato brasileiro."""
+    exibicao = pd.DataFrame(index=[NOMES_AMIGAVEIS.get(t, t) for t in tabela.index])
+    for coluna in ("Retorno total", "Retorno anualizado"):
+        exibicao[coluna] = [formatar_pct(v, com_sinal=True) for v in tabela[coluna]]
+    for coluna in ("Volatilidade anual", "Maior queda"):
+        exibicao[coluna] = [formatar_pct(v) for v in tabela[coluna]]
+    exibicao["Índice de Sharpe"] = [
+        "—" if pd.isna(v) else f"{v:.2f}".replace(".", ",")
+        for v in tabela["Índice de Sharpe"]
+    ]
+    return exibicao
+
+
+def secao_comparar(principal, periodo, taxa_livre_de_risco):
+    st.subheader("Comparar ativos", help=ajuda_do("Base 100"))
+    st.caption(
+        f"O ativo principal é {NOMES_AMIGAVEIS.get(principal, principal)} (troque lá em cima). "
+        "Escolha com o que compará-lo ou digite outros tickers."
+    )
+    col_atalhos, col_extra = st.columns([3, 2])
+    atalhos_escolhidos = col_atalhos.multiselect(
+        "Comparar com",
+        list(ATALHOS),
+        default=ATALHOS_PADRAO,
+        placeholder="Escolha índices ou ativos",
+    )
+    texto_extra = col_extra.text_input(
+        "Outros tickers (separados por vírgula)", placeholder="Ex.: VALE3, AAPL"
+    )
+
+    tickers, ignorados = escolher_ativos(
+        principal, [ATALHOS[nome] for nome in atalhos_escolhidos], texto_extra
+    )
+    if ignorados:
+        st.warning(
+            f"O limite é de {MAX_ATIVOS} ativos por comparação. "
+            f"Ficaram de fora: {', '.join(ignorados)}."
+        )
+    if len(tickers) < 2:
+        st.info("Escolha pelo menos um ativo para comparar.")
+        return
+
+    fechamentos, sem_dados = {}, []
+    for ticker in tickers:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except DadosIndisponiveisError:
+            sem_dados.append(ticker)
+    if sem_dados:
+        st.warning(
+            f"Não encontrei dados para: {', '.join(sem_dados)}. "
+            "Eles ficaram de fora da comparação."
+        )
+    if principal not in fechamentos or len(fechamentos) < 2:
+        st.info("Não há ativos suficientes com dados para comparar.")
+        return
+
+    alinhado, descartados = alinhar_fechamentos(fechamentos)
+    if len(alinhado) <= MIN_DIAS_PARA_ANALISE:
+        st.warning(
+            f"Só há {len(alinhado)} dias em comum entre esses ativos, e são necessários "
+            f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
+        )
+        return
+
+    mostrar_grafico(
+        graficos.criar_grafico_comparacao(
+            rebasear_para_100(alinhado), principal, NOMES_AMIGAVEIS
+        )
+    )
+    st.markdown("**Números no mesmo período**")
+    st.dataframe(
+        formatar_tabela_comparativa(
+            montar_tabela_comparativa(alinhado, taxa_livre_de_risco)
+        ),
+        width="stretch",
+    )
+    st.caption(
+        f"Comparação feita em {len(alinhado)} dias em comum. "
+        f"{descartados} dias foram descartados porque algum ativo não tinha preço neles "
+        "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
+        "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
+        "As moedas diferentes "
+        "(R\\$ e US\\$) não atrapalham, porque comparamos a variação percentual, não os preços."
+    )
+
+
 # --- Página -----------------------------------------------------------------
 mostrar_cabecalho()
 ticker, periodo, taxa_livre_de_risco = ler_entradas()
@@ -274,7 +380,9 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     )
     st.stop()
 
-aba_geral, aba_risco, aba_mensal = st.tabs(["Visão geral", "Risco", "Retorno mensal"])
+aba_geral, aba_risco, aba_mensal, aba_comparar = st.tabs(
+    ["Visão geral", "Risco", "Retorno mensal", "Comparar"]
+)
 with aba_geral:
     secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco)
     st.divider()
@@ -283,6 +391,8 @@ with aba_risco:
     secao_risco(fechamento, retorno)
 with aba_mensal:
     secao_retorno_mensal(retorno)
+with aba_comparar:
+    secao_comparar(normalizar_ticker(ticker), periodo, taxa_livre_de_risco)
 
 st.divider()
 st.caption(
