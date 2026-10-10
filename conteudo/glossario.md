@@ -65,6 +65,27 @@ dados no app (um `##` por termo).
 
 **Cuidado:** depende do período e de uma taxa livre de risco; valores muito altos em períodos curtos costumam ser sorte.
 
+## Retorno anualizado
+**O que é:** o retorno do período convertido para a escala de um ano, como se o ritmo se mantivesse. Permite comparar períodos de tamanhos diferentes, como 6 meses e 5 anos.
+
+**Exemplo:** +10% em 6 meses equivale a cerca de +21% ao ano (os ganhos se acumulam, o que se chama juros compostos).
+
+**Cuidado:** é uma projeção matemática, não uma previsão. Em períodos curtos, o número fica exagerado.
+
+## Dias de alta
+**O que é:** a porcentagem dos dias em que o preço fechou acima do dia anterior.
+
+**Exemplo:** 55% de dias de alta quer dizer que, em cada 100 dias, 55 fecharam em alta e 45 em queda ou parados.
+
+**Cuidado:** acertar muitos dias não basta. Uma ação pode subir na maioria dos dias e ainda assim perder dinheiro se as quedas forem grandes.
+
+## Perda de um dia ruim (VaR)
+**O que é:** uma medida de risco que responde: "em um dia ruim, qual perda eu devo esperar?". Aqui, olhamos o pior dia em cada 20 (nível de 95%) na história do período.
+
+**Exemplo:** VaR de -2,6% quer dizer que, em 95% dos dias, a perda não passou de 2,6%. Nos outros 5%, passou.
+
+**Cuidado:** é calculado com o passado e não diz o tamanho da perda nos dias realmente extremos.
+
 ## Média móvel
 **O que é:** a média dos últimos N preços, recalculada a cada dia. Suaviza o gráfico e mostra a tendência.
 
