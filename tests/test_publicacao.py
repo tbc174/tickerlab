@@ -49,6 +49,7 @@ def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     for pasta in ("src", "conteudo", "dados_de_exemplo", ".streamlit"):
         assert f"COPY {pasta} " in dockerfile or f"COPY {pasta}\n" in dockerfile, pasta
     assert "COPY app.py" in dockerfile
+    assert "COPY migracoes " in dockerfile and "COPY alembic.ini" in dockerfile
     assert "USER app" in dockerfile  # não roda como root
     dockerignore = (RAIZ / ".dockerignore").read_text(encoding="utf-8")
     for fora in (".venv", "tests", "dados_locais", ".git"):
