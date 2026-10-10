@@ -100,6 +100,13 @@ dados no app (um `##` por termo).
 
 **Cuidado:** é calculado com o passado e não diz o tamanho da perda nos dias realmente extremos.
 
+## Gráfico de velas (candlestick)
+**O que é:** um jeito de mostrar o preço de cada dia com quatro informações de uma vez: abertura, fechamento, máxima e mínima. O "corpo" da vela vai da abertura ao fechamento; os "pavios" mostram a máxima e a mínima do dia. Verde indica que o preço fechou acima da abertura; vermelho, abaixo.
+
+**Exemplo:** uma vela verde com pavio longo para cima mostra que o preço subiu bastante durante o dia, mas recuou antes do fechamento.
+
+**Cuidado:** a linha mostra só o fechamento e é mais limpa para ver a tendência; as velas mostram mais detalhe e ajudam a ver a oscilação dentro de cada dia.
+
 ## Média móvel
 **O que é:** a média dos últimos N preços, recalculada a cada dia. Suaviza o gráfico e mostra a tendência.
 

@@ -78,6 +78,7 @@ TERMOS_DO_PAINEL = [
     "Perda de um dia ruim (VaR)",
     "Volatilidade móvel",
     "Recuperação de um drawdown",
+    "Gráfico de velas (candlestick)",
 ]
 
 
