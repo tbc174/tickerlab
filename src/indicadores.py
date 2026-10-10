@@ -178,3 +178,41 @@ def encontrar_melhor_e_pior_mes(
     melhor = (retorno_mensal.idxmax(), float(retorno_mensal.max()))
     pior = (retorno_mensal.idxmin(), float(retorno_mensal.min()))
     return melhor, pior
+
+
+def calcular_media_movel_exponencial(fechamento: pd.Series, janela: int) -> pd.Series:
+    """Média que dá mais peso aos dias recentes. Os primeiros dias, sem histórico, ficam vazios."""
+    media = fechamento.ewm(span=janela, adjust=False).mean()
+    return media.where(fechamento.expanding().count() >= janela)
+
+
+def calcular_macd(
+    fechamento: pd.Series, rapida: int = 12, lenta: int = 26, sinal: int = 9
+) -> pd.DataFrame:
+    """MACD: média exponencial rápida menos a lenta, sua linha de sinal e o histograma."""
+    macd = calcular_media_movel_exponencial(
+        fechamento, rapida
+    ) - calcular_media_movel_exponencial(fechamento, lenta)
+    linha_de_sinal = macd.ewm(span=sinal, adjust=False).mean().where(macd.notna())
+    return pd.DataFrame(
+        {"macd": macd, "sinal": linha_de_sinal, "histograma": macd - linha_de_sinal}
+    )
+
+
+def calcular_atr(dados: pd.DataFrame, janela: int = 14) -> pd.Series:
+    """ATR: o tamanho médio do movimento diário (máxima, mínima e o fechamento anterior).
+
+    Usa a suavização de Wilder. Os primeiros dias, sem histórico, ficam vazios.
+    """
+    fechamento_anterior = dados["Close"].shift(1)
+    amplitudes = pd.concat(
+        [
+            dados["High"] - dados["Low"],
+            (dados["High"] - fechamento_anterior).abs(),
+            (dados["Low"] - fechamento_anterior).abs(),
+        ],
+        axis=1,
+    )
+    amplitude_verdadeira = amplitudes.max(axis=1)
+    atr = amplitude_verdadeira.ewm(alpha=1 / janela, adjust=False).mean()
+    return atr.where(amplitude_verdadeira.expanding().count() >= janela)

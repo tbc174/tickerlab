@@ -328,3 +328,55 @@ def test_melhor_e_pior_mes():
 def test_melhor_e_pior_mes_sem_dados():
     with pytest.raises(ValueError, match="vazia"):
         encontrar_melhor_e_pior_mes(pd.Series([], dtype=float))
+
+
+# --- Média exponencial, MACD e ATR --------------------------------------------------------
+
+
+def test_media_movel_exponencial_pesa_mais_os_dias_recentes():
+    # janela (span) 3 -> peso 0,5: 1; 1,5; 2,25. Os 2 primeiros ficam vazios (sem histórico).
+    from src.indicadores import calcular_media_movel_exponencial
+
+    resultado = calcular_media_movel_exponencial(pd.Series([1.0, 2.0, 3.0]), 3)
+    assert resultado.iloc[:2].isna().all()
+    assert resultado.iloc[2] == pytest.approx(2.25)
+
+
+def test_macd_e_a_diferenca_entre_as_medias_exponenciais():
+    from src.indicadores import calcular_macd, calcular_media_movel_exponencial
+
+    fechamento = pd.Series(np.linspace(10, 20, 60) + np.sin(np.arange(60)))
+    macd = calcular_macd(fechamento, rapida=5, lenta=10, sinal=3)
+    esperado = calcular_media_movel_exponencial(
+        fechamento, 5
+    ) - calcular_media_movel_exponencial(fechamento, 10)
+    assert macd["macd"].dropna().to_numpy() == pytest.approx(
+        esperado.dropna().to_numpy()
+    )
+    assert (macd["histograma"] - (macd["macd"] - macd["sinal"])).abs().max() < 1e-12
+
+
+def test_macd_de_preco_so_subindo_fica_positivo():
+    from src.indicadores import calcular_macd
+
+    macd = calcular_macd(pd.Series(np.linspace(10, 30, 80)))
+    assert macd["macd"].dropna().iloc[-1] > 0
+
+
+def test_atr_com_numeros_pequenos():
+    from src.indicadores import calcular_atr
+
+    dados = pd.DataFrame(
+        {
+            "High": [10.0, 11.0, 12.0],
+            "Low": [9.0, 10.0, 10.0],
+            "Close": [9.5, 10.5, 11.0],
+        }
+    )
+    # amplitude verdadeira: 1; 1,5; 2. Suavização de Wilder com janela 3 (peso 1/3):
+    # 1; 1,1667; 1,4444. Só o terceiro dia tem histórico suficiente.
+    atr = calcular_atr(dados, janela=3)
+    assert atr.iloc[:2].isna().all()
+    assert atr.iloc[2] == pytest.approx(
+        1.0 / 3 * 2 + 2.0 / 3 * (1.0 / 3 * 1.5 + 2.0 / 3 * 1.0)
+    )
