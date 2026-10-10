@@ -12,6 +12,12 @@ from src.acaso import (
     testar_contra_o_acaso,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.cdi import (
+    CDIIndisponivelError,
+    baixar_cdi,
+    calcular_taxa_anual_do_cdi,
+    curva_do_cdi,
+)
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -31,6 +37,7 @@ from src.conteudo import (
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
 from src.metricas import calcular_intervalo_do_sharpe, resumir_desempenho
 from src.protecoes import Protecoes, aplicar_protecoes
@@ -135,22 +142,54 @@ def mostrar_cabecalho():
     st.caption("Análise de ações para estudo. Não é recomendação de investimento.")
 
 
+MODOS_DA_TAXA = ("Zero", "CDI (Banco Central)", "Digitar")
+
+
 def ler_entradas():
-    """Campos do topo da página. Devolve (ticker, período, taxa livre de risco)."""
+    """Campos do topo da página. Devolve (ticker, período, modo da taxa, taxa digitada)."""
     with st.container(border=True):
         col_ticker, col_periodo, col_taxa = st.columns(3)
         ticker = col_ticker.text_input("Ticker", value="PETR4.SA")
         periodo = col_periodo.selectbox("Período", ["6mo", "1y", "2y", "5y"], index=2)
-        taxa_percentual = col_taxa.number_input(
-            "Taxa livre de risco (% ao ano)",
-            min_value=0.0,
-            max_value=50.0,
-            value=0.0,
-            step=0.5,
-            help="Quanto renderia um investimento sem risco, como o Tesouro Selic. "
-            "Entra no cálculo do Índice de Sharpe. Deixe em 0 para ignorá-la.",
+        modo = col_taxa.selectbox(
+            "Taxa livre de risco",
+            MODOS_DA_TAXA,
+            help=ajuda_do("CDI"),
         )
-    return ticker, periodo, taxa_percentual / 100
+        taxa_digitada = 0.0
+        if modo == "Digitar":
+            taxa_digitada = (
+                col_taxa.number_input(
+                    "Taxa (% ao ano)",
+                    min_value=0.0,
+                    max_value=50.0,
+                    value=0.0,
+                    step=0.5,
+                    help="Quanto renderia um investimento sem risco. Entra no cálculo "
+                    "do Índice de Sharpe.",
+                )
+                / 100
+            )
+    return ticker, periodo, modo, taxa_digitada
+
+
+@st.cache_data(ttl=86_400, show_spinner="Buscando o CDI no Banco Central...")
+def obter_cdi(inicio, fim):
+    """Guarda o CDI por um dia: ele só muda uma vez por dia útil."""
+    return baixar_cdi(inicio, fim)
+
+
+def resolver_taxa_livre_de_risco(modo, taxa_digitada, indice):
+    """Devolve (taxa anual, CDI diário ou None). Se o CDI falhar, cai para zero e avisa."""
+    if modo == "Digitar":
+        return taxa_digitada, None
+    if modo == "CDI (Banco Central)":
+        try:
+            cdi_diario = obter_cdi(indice[0], indice[-1])
+            return calcular_taxa_anual_do_cdi(cdi_diario, indice), cdi_diario
+        except (CDIIndisponivelError, ValueError) as erro:
+            st.warning(f"{erro} Usei taxa livre de risco zero.")
+    return 0.0, None
 
 
 # --- Seções -----------------------------------------------------------------
@@ -1006,16 +1045,17 @@ def secao_ranking(dados, taxa_livre_de_risco):
         )
 
 
-def secao_backtest(dados, taxa_livre_de_risco):
-    st.subheader("Backtest: e se eu tivesse seguido esta regra?")
-    st.caption(
-        "Simulação com dados do passado. A decisão tomada no fim de cada dia só vale a partir "
-        "do dia seguinte, para a simulação não usar o futuro."
+def escolher_custos():
+    """Custo por operação em %: um número só ou separado em corretagem, taxas e slippage."""
+    modo = st.radio(
+        "Custos",
+        ["Um número só", "Detalhados"],
+        horizontal=True,
+        key="backtest_modo_custos",
+        help=ajuda_do("Custo de operação"),
     )
-    with st.container(border=True):
-        nome, parametros = escolher_estrategia()
-        col_custo, col_capital = st.columns(2)
-        custo_percentual = col_custo.number_input(
+    if modo == "Um número só":
+        return st.number_input(
             "Custo por operação (%)",
             min_value=0.0,
             max_value=2.0,
@@ -1025,10 +1065,63 @@ def secao_backtest(dados, taxa_livre_de_risco):
             help="Corretagem, taxas e a diferença entre o preço pedido e o executado, "
             "cobrados em cada compra e em cada venda.",
         )
-        capital_inicial = col_capital.number_input(
+    c1, c2, c3 = st.columns(3)
+    corretagem = c1.number_input(
+        "Corretagem (%)", 0.0, 1.0, 0.0, 0.01, format="%.2f", key="custo_corretagem"
+    )
+    taxas = c2.number_input(
+        "Taxas e emolumentos (%)",
+        0.0,
+        1.0,
+        0.03,
+        0.01,
+        format="%.2f",
+        key="custo_taxas",
+        help="Taxas da bolsa e da liquidação. Os valores variam: confira na sua corretora.",
+    )
+    slippage = c3.number_input(
+        "Slippage (%)",
+        0.0,
+        1.0,
+        0.02,
+        0.01,
+        format="%.2f",
+        key="custo_slippage",
+        help="Diferença entre o preço que você via e o preço em que a ordem foi executada.",
+    )
+    total = corretagem + taxas + slippage
+    st.caption(
+        f"Custo total: {f'{total:.2f}'.replace('.', ',')}% em cada compra e em cada venda."
+    )
+    return total
+
+
+def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
+    st.subheader("Backtest: e se eu tivesse seguido esta regra?")
+    st.caption(
+        "Simulação com dados do passado. A decisão tomada no fim de cada dia só vale a partir "
+        "do dia seguinte, para a simulação não usar o futuro."
+    )
+    with st.container(border=True):
+        nome, parametros = escolher_estrategia()
+        custo_percentual = escolher_custos()
+        capital_inicial = st.number_input(
             "Capital inicial (R\\$)", min_value=100.0, value=10_000.0, step=1_000.0
         )
         protecoes = escolher_protecoes()
+        col_imposto, col_cdi = st.columns(2)
+        descontar_imposto = col_imposto.checkbox(
+            "Descontar imposto de renda (simplificado)",
+            key="backtest_imposto",
+            help=ajuda_do("Imposto de renda (simplificado)"),
+        )
+        mostrar_cdi = False
+        if cdi_diario is None:
+            mostrar_cdi = col_cdi.checkbox(
+                "Mostrar o CDI como referência",
+                key="backtest_mostrar_cdi",
+                help=ajuda_do("CDI"),
+            )
 
     fechamento = dados["Close"]
     try:
@@ -1072,6 +1165,13 @@ def secao_backtest(dados, taxa_livre_de_risco):
         resultados[ESTRATEGIA_DE_REFERENCIA] = executar_backtest(
             fechamento, gerar_posicao(ESTRATEGIA_DE_REFERENCIA, dados), custo
         )
+    resultados_brutos = resultados
+    impostos = {}
+    if descontar_imposto:
+        resultados = {}
+        for rotulo, r in resultados_brutos.items():
+            impostos[rotulo] = aplicar_imposto(r, capital_inicial)
+            resultados[rotulo] = impostos[rotulo].resultado
     resultado = resultados[nome_principal]
 
     explicacao = obter_estrategias().get(nome)
@@ -1141,6 +1241,24 @@ def secao_backtest(dados, taxa_livre_de_risco):
         )
 
     curvas = {rotulo: r.curva_de_capital for rotulo, r in resultados.items()}
+    if mostrar_cdi:
+        try:
+            cdi_diario = obter_cdi(fechamento.index[0], fechamento.index[-1])
+        except CDIIndisponivelError as erro:
+            st.warning(str(erro))
+    if cdi_diario is not None:
+        curva_cdi = curva_do_cdi(cdi_diario, fechamento.index)
+        curvas["CDI"] = curva_cdi
+        rendimento = float(resultado.curva_de_capital.iloc[-1] - 1)
+        st.caption(
+            f"O CDI rendeu {formatar_pct(curva_cdi.iloc[-1] - 1, com_sinal=True)} no período; "
+            f"a estratégia, {formatar_pct(rendimento, com_sinal=True)}. "
+            + (
+                "Ela ficou acima do CDI."
+                if rendimento > curva_cdi.iloc[-1] - 1
+                else "Ela não bateu o CDI."
+            )
+        )
     mostrar_grafico(
         graficos.criar_grafico_curvas_de_capital(
             curvas, capital_inicial, destaque=nome_principal
@@ -1165,6 +1283,23 @@ def secao_backtest(dados, taxa_livre_de_risco):
         }
     )
     st.dataframe(tabela, width="stretch")
+
+    if descontar_imposto:
+        pago = impostos[nome_principal]
+        valor = f"{pago.imposto_total:,.2f}".replace(",", "X").replace(".", ",")
+        valor = valor.replace("X", ".")
+        st.caption(
+            f"Imposto pago por {nome_principal}: R\\$ {valor}. "
+            "Regras simplificadas da B3 (15% sobre o lucro do mês, isento até R\\$ 20 mil "
+            "vendidos no mês); não é orientação tributária. Comprar e segurar só paga "
+            "imposto quando vende."
+        )
+        if not pago.meses.empty:
+            with st.expander("Ver o imposto mês a mês"):
+                mensal = pago.meses.copy()
+                for coluna in mensal.columns[1:]:
+                    mensal[coluna] = [f"{v:,.2f}" for v in mensal[coluna]]
+                st.dataframe(mensal, width="stretch", hide_index=True)
 
     if not resultado.operacoes.empty:
         with st.expander(f"Ver as {len(resultado.operacoes)} operações"):
@@ -1191,8 +1326,8 @@ def secao_backtest(dados, taxa_livre_de_risco):
         custo,
         protecoes,
         taxa_livre_de_risco,
-        resultado.retorno,
-        resultados[ESTRATEGIA_DE_REFERENCIA].retorno,
+        resultados_brutos[nome_principal].retorno,
+        resultados_brutos[ESTRATEGIA_DE_REFERENCIA].retorno,
         capital_inicial,
         resultado.operacoes,
         posicao_protegida,
@@ -1207,7 +1342,7 @@ def secao_backtest(dados, taxa_livre_de_risco):
 
 # --- Página -----------------------------------------------------------------
 mostrar_cabecalho()
-ticker, periodo, taxa_livre_de_risco = ler_entradas()
+ticker, periodo, modo_da_taxa, taxa_digitada = ler_entradas()
 
 try:
     # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
@@ -1217,6 +1352,13 @@ except DadosIndisponiveisError as erro:
     st.stop()
 fechamento = dados["Close"]
 retorno = ind.calcular_retorno_diario(fechamento)
+taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(
+    modo_da_taxa, taxa_digitada, dados.index
+)
+if cdi_diario is not None:
+    st.caption(
+        f"CDI no período: {formatar_pct(taxa_livre_de_risco)} ao ano (usado como taxa livre de risco)."
+    )
 
 if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     st.warning(
@@ -1240,7 +1382,7 @@ with aba_mensal:
 with aba_comparar:
     secao_comparar(normalizar_ticker(ticker), periodo, taxa_livre_de_risco)
 with aba_backtest:
-    secao_backtest(dados, taxa_livre_de_risco)
+    secao_backtest(dados, taxa_livre_de_risco, cdi_diario)
 with aba_ranking:
     secao_ranking(dados, taxa_livre_de_risco)
 

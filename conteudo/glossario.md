@@ -268,6 +268,20 @@ dados no app (um `##` por termo).
 
 **Cuidado:** a conta vale para tudo o que você testou, inclusive fora do app. Se já testou outras ideias, some-as nas "tentativas extras".
 
+## CDI
+**O que é:** a taxa dos empréstimos entre bancos, que acompanha de perto a Selic. É a "régua" do investimento sem risco no Brasil: a renda fixa e a poupança dos fundos são comparadas a ela. O app busca o CDI de cada dia no Banco Central.
+
+**Exemplo:** se a estratégia rendeu 12% no ano e o CDI rendeu 14%, ela não valeu o risco: era melhor ter deixado o dinheiro parado no CDI.
+
+**Cuidado:** o CDI é em reais. Para ações de fora (como a AAPL), a comparação mistura moedas. O Sharpe usa o CDI do período como taxa livre de risco.
+
+## Imposto de renda (simplificado)
+**O que é:** uma estimativa do imposto sobre as operações do backtest, com as regras de ações na B3 em operações normais (*swing trade*): 15% sobre o lucro do mês, isento se o total vendido no mês é de até R$ 20 mil, e o prejuízo de um mês abate o lucro dos seguintes.
+
+**Exemplo:** comprar e segurar só paga imposto quando vende, então o dinheiro continua rendendo sem o desconto. Estratégias que compram e vendem muito pagam a cada ciclo.
+
+**Cuidado:** é uma simplificação para estudo. Não considera *day trade*, retenção na fonte, dividendos nem ativos de fora, e **não é orientação tributária**. Confira as regras atuais na Receita Federal e na B3.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

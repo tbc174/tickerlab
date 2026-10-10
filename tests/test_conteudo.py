@@ -99,6 +99,8 @@ TERMOS_DO_PAINEL = [
     "Sharpe deflacionado",
     "PBO (probabilidade de overfitting)",
     "Data snooping (ir pescando resultados)",
+    "CDI",
+    "Imposto de renda (simplificado)",
 ]
 
 
