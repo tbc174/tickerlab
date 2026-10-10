@@ -24,6 +24,17 @@ from src.autenticacao import (
     registrar_login,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco.conexao import obter_engine
+from src.banco.dados_do_usuario import (
+    DadosInvalidosError,
+    apagar_simulacao,
+    carregar_preferencias,
+    listar_favoritos,
+    listar_simulacoes,
+    salvar_favoritos,
+    salvar_preferencias,
+    salvar_simulacao,
+)
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
@@ -107,6 +118,7 @@ from src.regimes import (
     resumir_por_regime,
     varrer_disjuntor,
 )
+from src.simulacoes import NOMES_DOS_TIPOS, capturar_estado, restaurar_estado
 from src.validacao import (
     avaliar_treino_e_teste,
     calcular_retornos_dos_candidatos,
@@ -292,6 +304,232 @@ def mostrar_conta(usuario):
             f"Conta criada em {usuario.criado_em:%d/%m/%Y}"
         )
         st.button("Sair", on_click=st.logout, width="stretch")
+
+
+# --- Dados da conta: favoritos, preferências e simulações salvas ------------------------
+log_da_conta = logging.getLogger("tickerlab.conta")
+
+
+def carregar_da_conta(usuario):
+    """Uma vez por sessão: favoritos e preferências da conta viram o ponto de partida.
+
+    Vem antes de `ler_entradas`, então um link compartilhado (que é lido depois) ainda manda.
+    """
+    if usuario is None or st.session_state.get("conta_carregada"):
+        return
+    st.session_state["conta_carregada"] = True
+    try:
+        with obter_engine().connect() as conexao:
+            favoritos = listar_favoritos(conexao, usuario.id)
+            preferencias = carregar_preferencias(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao carregar os dados da conta")
+        st.warning("Não consegui carregar os favoritos e as preferências da sua conta.")
+        return
+    lidos = ler_parametros(
+        {
+            "ticker": str(preferencias.get("ticker", "")),
+            "periodo": str(preferencias.get("periodo", "")),
+            "taxa": str(preferencias.get("taxa", "")),
+            "reais": "1" if preferencias.get("em_reais") is True else "",
+            "fav": ",".join(favoritos),
+        }
+    )
+    for chave in ("ticker", "periodo", "taxa", "em_reais", "favoritos"):
+        if chave in lidos:
+            st.session_state[chave] = lidos[chave]
+
+
+def salvar_na_conta(usuario):
+    """Grava favoritos e preferências só quando o usuário muda alguma coisa."""
+    if usuario is None:
+        return
+    atual = {
+        "favoritos": list(st.session_state["favoritos"]),
+        "preferencias": {
+            "ticker": st.session_state["ticker"],
+            "periodo": st.session_state["periodo"],
+            "taxa": st.session_state["taxa"],
+            "em_reais": bool(st.session_state.get("em_reais")),
+        },
+    }
+    antes = st.session_state.get("conta_snapshot")
+    if (
+        antes is None
+    ):  # primeira vez na sessão: o que veio da conta ou do link não é mudança
+        st.session_state["conta_snapshot"] = atual
+        return
+    if atual == antes:
+        return
+    try:
+        with obter_engine().begin() as conexao:
+            if atual["favoritos"] != antes["favoritos"]:
+                salvar_favoritos(conexao, usuario.id, atual["favoritos"])
+            if atual["preferencias"] != antes["preferencias"]:
+                salvar_preferencias(conexao, usuario.id, atual["preferencias"])
+        st.session_state["conta_snapshot"] = atual
+    except Exception:
+        log_da_conta.exception("Falha ao salvar os dados da conta")
+        st.toast("Não consegui salvar as suas escolhas na conta agora.")
+
+
+def _campo_ainda_vale(chave, valor):
+    """A tela de hoje ainda aceita este valor guardado? (evita quebrar um campo ao reabrir)"""
+    if chave == "backtest_estrategia":
+        return valor in ESTRATEGIAS
+    if chave == "carteira_estrategia":
+        return valor in ESTRATEGIAS_DE_CARTEIRA
+    if chave == "espera_depois_do_stop":
+        return valor in ESPERAS_DEPOIS_DO_STOP
+    if chave == "backtest_modo_custos":
+        return valor in ("Um número só", "Detalhados")
+    registros = (
+        ("parametro_", ESTRATEGIAS),
+        ("carteira_", ESTRATEGIAS_DE_CARTEIRA),
+    )
+    for prefixo, registro in registros:
+        for nome, estrategia in registro.items():
+            for p in estrategia.parametros:
+                if chave == f"{prefixo}{nome}_{p.nome}":
+                    if getattr(p, "opcoes", None):
+                        return valor in p.opcoes
+                    return (
+                        isinstance(valor, int | float)
+                        and not isinstance(valor, bool)
+                        and p.minimo <= valor <= p.maximo
+                    )
+    return not chave.startswith("parametro_")  # parâmetro desconhecido: não volta
+
+
+def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo):
+    nome = st.session_state.get(f"salvar_nome_{tipo}", "").strip() or nome_sugerido
+    try:
+        with obter_engine().begin() as conexao:
+            salvar_simulacao(
+                conexao,
+                usuario.id,
+                tipo,
+                nome,
+                capturar_estado(st.session_state, tipo),
+                resumo,
+            )
+    except DadosInvalidosError as erro:
+        st.toast(str(erro))
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao salvar a simulação")
+        st.toast("Não consegui salvar a simulação agora. Tente de novo em instantes.")
+        return
+    st.session_state[f"salvar_nome_{tipo}"] = ""
+    st.toast(f"Simulação salva: {nome}. Veja em Minhas simulações.")
+
+
+def oferecer_salvar_simulacao(tipo, nome_sugerido, numeros, dados_ate):
+    """Caixa para guardar a simulação da tela na conta do usuário."""
+    usuario = st.session_state.get("usuario")
+    nome_sugerido = nome_sugerido[:120]
+    resumo = {
+        "numeros": {str(k): str(v) for k, v in numeros.items()},
+        "dados_ate": dados_ate,
+    }
+    with st.expander("Salvar esta simulação na minha conta"):
+        if usuario is None:
+            st.caption("Entre com a sua conta do Google para guardar simulações.")
+            return
+        st.text_input(
+            "Nome",
+            key=f"salvar_nome_{tipo}",
+            placeholder=nome_sugerido,
+            max_chars=120,
+            help="Se ficar em branco, uso o nome sugerido.",
+        )
+        st.button(
+            "Salvar",
+            key=f"salvar_{tipo}",
+            on_click=_salvar_simulacao,
+            args=(usuario, tipo, nome_sugerido, resumo),
+        )
+        st.caption(
+            "Guardo as escolhas desta aba e um resumo dos números. Ao reabrir, "
+            "tudo é recalculado com os dados de hoje."
+        )
+
+
+def _reabrir_simulacao(simulacao):
+    campos = restaurar_estado(
+        simulacao.parametros, simulacao.tipo, campo_ainda_vale=_campo_ainda_vale
+    )
+    for chave, valor in campos.items():
+        st.session_state[chave] = valor
+    st.toast(
+        f'Reabri "{simulacao.nome}". Abra a aba {NOMES_DOS_TIPOS[simulacao.tipo]} '
+        "para ver."
+    )
+
+
+def _apagar_simulacao(usuario, simulacao):
+    try:
+        with obter_engine().begin() as conexao:
+            apagar_simulacao(conexao, usuario.id, simulacao.id)
+    except Exception:
+        log_da_conta.exception("Falha ao apagar a simulação")
+        st.toast("Não consegui apagar agora. Tente de novo em instantes.")
+        return
+    st.toast(f"Simulação apagada: {simulacao.nome}.")
+
+
+def secao_minhas_simulacoes():
+    st.subheader("Minhas simulações")
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        st.info(
+            "Entre com a sua conta do Google para guardar e reabrir simulações. "
+            "Depois de rodar um Backtest, uma Carteira ou um Par, use "
+            '"Salvar esta simulação na minha conta".'
+        )
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            simulacoes = listar_simulacoes(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao listar as simulações")
+        st.warning("Não consegui carregar as suas simulações agora.")
+        return
+    if not simulacoes:
+        st.info(
+            "Você ainda não salvou nenhuma simulação. Rode um Backtest, uma Carteira ou "
+            'um Par e use "Salvar esta simulação na minha conta".'
+        )
+        return
+    st.caption(f"{len(simulacoes)} guardada(s), da mais nova para a mais antiga.")
+    for simulacao in simulacoes:
+        titulo = (
+            f"{simulacao.nome} · {NOMES_DOS_TIPOS[simulacao.tipo]} · "
+            f"{simulacao.criada_em:%d/%m/%Y %H:%M}"
+        )
+        with st.expander(titulo):
+            numeros = simulacao.resultado.get("numeros", {})
+            if numeros:
+                st.dataframe(pd.DataFrame({"Resultado": numeros}), width="stretch")
+            if simulacao.resultado.get("dados_ate"):
+                st.caption(
+                    f"Números calculados com dados até {simulacao.resultado['dados_ate']}."
+                )
+            col_reabrir, col_apagar, _ = st.columns([1, 1, 4])
+            col_reabrir.button(
+                "Reabrir",
+                key=f"reabrir_{simulacao.id}",
+                on_click=_reabrir_simulacao,
+                args=(simulacao,),
+            )
+            with col_apagar.popover("Apagar"):
+                st.write("Apagar esta simulação para sempre?")
+                st.button(
+                    "Sim, apagar",
+                    key=f"apagar_{simulacao.id}",
+                    on_click=_apagar_simulacao,
+                    args=(usuario, simulacao),
+                )
 
 
 # --- Cabeçalho e entradas -----------------------------------------------------
@@ -721,6 +959,7 @@ def escolher_estrategia():
         "Estratégia",
         list(ESTRATEGIAS),
         format_func=lambda n: f"{ESTRATEGIAS[n].grupo} · {n}",
+        key="backtest_estrategia",
     )
     parametros = {}
     if ESTRATEGIAS[nome].parametros:
@@ -2449,6 +2688,12 @@ def secao_pares(periodo, taxa_livre_de_risco):
         cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"]
     ):
         coluna.metric(metrica, formatar_metrica(metrica, numeros[metrica]))
+    oferecer_salvar_simulacao(
+        "pares",
+        f"Par {a} × {b} · {periodo}",
+        {m: formatar_metrica(m, v) for m, v in numeros.items()},
+        f"{alinhado.index[-1]:%d/%m/%Y}",
+    )
     meia = r.treino.meia_vida
     st.caption(
         f"Relação estimada no treino: log {a} = {formatar_metrica('Sharpe', r.treino.beta)} × log {b} + constante. "
@@ -2631,6 +2876,12 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         f"Giro de {formatar_pct(principal.giro / anos)} do capital por ano "
         "(tudo o que foi comprado e vendido, dividido pelos anos do período)."
     )
+    oferecer_salvar_simulacao(
+        "carteira",
+        f"{nome} · {', '.join(alinhado.columns)} · {periodo}",
+        {m: formatar_metrica(m, v) for m, v in numeros[nome].items()},
+        f"{alinhado.index[-1]:%d/%m/%Y}",
+    )
 
     curvas = {rotulo: r.curva_de_capital for rotulo, r in carteiras.items()}
     escolhidos = st.multiselect(
@@ -2751,6 +3002,7 @@ def escolher_custos():
             value=CUSTO_PADRAO_POR_OPERACAO * 100,
             step=0.01,
             format="%.2f",
+            key="backtest_custo",
             help="Corretagem, taxas e a diferença entre o preço pedido e o executado, "
             "cobrados em cada compra e em cada venda.",
         )
@@ -2795,7 +3047,11 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         nome, parametros = escolher_estrategia()
         custo_percentual = escolher_custos()
         capital_inicial = st.number_input(
-            "Capital inicial (R\\$)", min_value=100.0, value=10_000.0, step=1_000.0
+            "Capital inicial (R\\$)",
+            min_value=100.0,
+            value=10_000.0,
+            step=1_000.0,
+            key="backtest_capital",
         )
         protecoes = escolher_protecoes()
         col_imposto, col_cdi = st.columns(2)
@@ -2972,6 +3228,13 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         }
     )
     st.dataframe(tabela, width="stretch")
+    oferecer_salvar_simulacao(
+        "backtest",
+        f"{nome_principal} · {normalizar_ticker(st.session_state['ticker'])} · "
+        f"{st.session_state['periodo']}",
+        tabela[nome_principal].to_dict(),
+        f"{fechamento.index[-1]:%d/%m/%Y}",
+    )
     st.download_button(
         "Baixar as curvas de capital (CSV)",
         converter_para_csv(montar_tabela_de_curvas(curvas, capital_inicial)),
@@ -3081,6 +3344,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
 
 # --- Página -----------------------------------------------------------------
 usuario_logado = obter_usuario_logado()
+carregar_da_conta(usuario_logado)
 mostrar_cabecalho()
 if usuario_logado is not None:
     if st.session_state.pop("primeira_vez", False):
@@ -3089,6 +3353,7 @@ if usuario_logado is not None:
         )
     mostrar_conta(usuario_logado)
 ticker, periodo, modo_da_taxa, taxa_digitada = ler_entradas()
+salvar_na_conta(usuario_logado)
 
 try:
     # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
@@ -3148,6 +3413,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     aba_pares,
     aba_correlacao,
     aba_momentum,
+    aba_simulacoes,
     aba_sobre,
 ) = st.tabs(
     [
@@ -3164,6 +3430,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
         "Pares",
         "Correlação e beta",
         "Favoritos e momentum",
+        "Minhas simulações",
         "Sobre",
     ]
 )
@@ -3202,6 +3469,8 @@ with aba_correlacao:
     secao_correlacao(normalizar_ticker(ticker), periodo)
 with aba_momentum:
     secao_momentum(normalizar_ticker(ticker), periodo)
+with aba_simulacoes:
+    secao_minhas_simulacoes()
 with aba_sobre:
     secao_sobre()
 
