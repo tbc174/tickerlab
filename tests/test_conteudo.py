@@ -91,6 +91,9 @@ TERMOS_DO_PAINEL = [
     "Stop por ATR",
     "Risco por operação",
     "Alvo de volatilidade",
+    "Treino e teste",
+    "Walk-forward",
+    "Mapa de parâmetros",
 ]
 
 

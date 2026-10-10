@@ -15,6 +15,7 @@ from src.graficos import (
     criar_grafico_preco,
     criar_grafico_quedas_comparadas,
     criar_grafico_volatilidade,
+    criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
 )
 from src.indicadores import (
@@ -395,3 +396,52 @@ def test_operacoes_no_preco_sem_operacoes_mostra_so_o_preco():
     vazio = pd.DataFrame(columns=["entrada", "saida", "dias", "retorno", "aberta"])
     figura = criar_grafico_operacoes_no_preco(fechamento, vazio)
     assert [tr.name for tr in figura.data] == ["Preço"]
+
+
+# --- Mapa de parâmetros ---------------------------------------------------------------------
+
+
+def _mapa_de_parametros():
+    return pd.DataFrame([[0.5, np.nan], [-0.2, 1.3]], index=[50, 100], columns=[10, 20])
+
+
+def test_mapa_de_parametros_mostra_cada_celula_e_deixa_a_invalida_vazia():
+    figura = criar_mapa_de_calor_de_parametros(_mapa_de_parametros(), "Curta", "Longa")
+    heat = figura.data[0]
+    assert list(heat.x) == ["10", "20"] and list(heat.y) == ["50", "100"]
+    assert heat.text[0][0] == "0,50" and heat.text[0][1] == ""
+    assert heat.text[1][0] == "-0,20"
+
+
+def test_mapa_de_parametros_centra_as_cores_no_zero():
+    heat = criar_mapa_de_calor_de_parametros(
+        _mapa_de_parametros(), "Curta", "Longa"
+    ).data[0]
+    assert heat.zmin == -heat.zmax
+
+
+def test_mapa_de_parametros_marca_a_escolha_atual():
+    figura = criar_mapa_de_calor_de_parametros(
+        _mapa_de_parametros(), "Curta", "Longa", escolhido=(20, 100)
+    )
+    assert len(figura.data) == 2
+    assert figura.data[1].x == ("20",) and figura.data[1].y == ("100",)
+
+
+def test_mapa_de_parametros_ignora_escolha_fora_da_grade():
+    figura = criar_mapa_de_calor_de_parametros(
+        _mapa_de_parametros(), "Curta", "Longa", escolhido=(999, 100)
+    )
+    assert len(figura.data) == 1
+
+
+def test_mapa_de_parametros_com_uma_linha_esconde_o_eixo_y():
+    mapa = pd.DataFrame([[0.4, 0.9]], index=[""], columns=[100, 200])
+    figura = criar_mapa_de_calor_de_parametros(mapa, "Janela", escolhido=(200, ""))
+    assert figura.layout.yaxis.showticklabels is False
+    assert len(figura.data) == 2
+
+
+def test_mapa_de_parametros_vazio_da_erro():
+    with pytest.raises(ValueError, match="vazio"):
+        criar_mapa_de_calor_de_parametros(pd.DataFrame(), "Curta")

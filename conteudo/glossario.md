@@ -212,6 +212,27 @@ dados no app (um `##` por termo).
 
 **Cuidado:** teste em um período diferente do usado para escolher os parâmetros.
 
+## Treino e teste
+**O que é:** dividir o histórico em duas partes. No **treino** você escolhe os parâmetros da estratégia; no **teste**, um período que ela nunca viu, você confere se a escolha se sustenta. Resultado "fora da amostra" é o do teste.
+
+**Exemplo:** escolher a melhor média móvel nos primeiros 3,5 anos de 5 e medir só nos 1,5 ano seguintes. Se o Sharpe cai muito, o ajuste foi sorte.
+
+**Cuidado:** o teste só vale uma vez. Se você olhar o teste, mudar a estratégia e olhar de novo, o teste virou treino.
+
+## Walk-forward
+**O que é:** um treino/teste repetido ao longo do tempo. Escolhe os parâmetros numa janela, opera a janela seguinte, anda para frente e repete. Só os resultados dos períodos de teste são emendados.
+
+**Exemplo:** treinar em 2 anos, operar 6 meses, avançar 6 meses e repetir. É o mais próximo de como a estratégia seria usada de verdade.
+
+**Cuidado:** a **eficiência** (Sharpe de fora dividido pelo Sharpe de treino) perto de 1 é bom sinal; perto de 0 ou negativa, o ajuste não se sustentou. Com poucos anos de dados há poucas janelas.
+
+## Mapa de parâmetros
+**O que é:** uma grade colorida com o Sharpe de cada combinação de valores de uma estratégia. Mostra se o bom resultado vem de uma região larga e suave (robusto) ou de um ponto isolado (provavelmente sorte).
+
+**Exemplo:** se a média de 50 dias vai bem mas 45 e 55 vão mal, o 50 foi coincidência.
+
+**Cuidado:** escolher o ponto mais verde do mapa é o *overfitting* de novo. Use o mapa para ver a **vizinhança**, não para caçar o recorde.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

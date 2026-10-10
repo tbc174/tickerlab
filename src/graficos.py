@@ -398,6 +398,94 @@ def criar_grafico_comparacao(
     return figura
 
 
+def criar_mapa_de_calor_de_parametros(
+    mapa: pd.DataFrame,
+    rotulo_x: str,
+    rotulo_y: str | None = None,
+    escolhido: tuple | None = None,
+) -> go.Figure:
+    """Sharpe de cada combinação de parâmetros: verde acima de zero, vermelho abaixo.
+
+    `escolhido` é o par (x, y) em uso no momento; ele ganha uma moldura para a pessoa
+    ver onde a escolha dela está na paisagem. Combinações sem resultado ficam vazias.
+    """
+    if mapa.empty:
+        raise ValueError("O mapa está vazio: não há o que mostrar.")
+    valores = mapa.to_numpy(dtype=float)
+    colunas = [str(c) for c in mapa.columns]
+    linhas = [str(i) for i in mapa.index]
+    textos = [
+        ["" if np.isnan(v) else _numero_br(v) for v in linha] for linha in valores
+    ]
+    limite = (
+        max(float(np.nanmax(np.abs(valores))), 0.1)
+        if not np.all(np.isnan(valores))
+        else 1.0
+    )
+
+    figura = go.Figure(
+        go.Heatmap(
+            z=valores,
+            x=colunas,
+            y=linhas,
+            text=textos,
+            texttemplate="%{text}",
+            textfont={"size": 12},
+            zmin=-limite,
+            zmax=limite,
+            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            xgap=2,
+            ygap=2,
+            showscale=False,
+            hovertemplate=(
+                f"{rotulo_x}: %{{x}}"
+                + (f"<br>{rotulo_y}: %{{y}}" if rotulo_y else "")
+                + "<br>Sharpe: %{text}<extra></extra>"
+            ),
+        )
+    )
+    if escolhido is not None and str(escolhido[0]) in colunas:
+        y = str(escolhido[1]) if rotulo_y else ""
+        if y in linhas:
+            figura.add_trace(
+                go.Scatter(
+                    x=[str(escolhido[0])],
+                    y=[y],
+                    mode="markers",
+                    marker={
+                        "symbol": "square-open",
+                        "size": 34,
+                        "color": COR_AZUL_CLARO,
+                        "line": {"width": 3},
+                    },
+                    hoverinfo="skip",
+                )
+            )
+    figura.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=max(150, 90 + 46 * len(linhas)),
+        margin={"l": 10, "r": 10, "t": 10, "b": 10},
+        xaxis={
+            "title": rotulo_x,
+            "side": "top",
+            "fixedrange": True,
+            "type": "category",
+        },
+        yaxis={
+            "title": rotulo_y or "",
+            "autorange": "reversed",
+            "fixedrange": True,
+            "type": "category",
+            "showticklabels": bool(rotulo_y),
+        },
+        showlegend=False,
+        dragmode=False,
+    )
+    return figura
+
+
 def criar_grafico_curvas_de_capital(
     curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
 ) -> go.Figure:
