@@ -1,7 +1,6 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 from src import graficos
@@ -11,6 +10,8 @@ from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 
 MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
 JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
+JANELAS_MEDIAS = [20, 50, 200]  # dias
+PERIODOS_DAS_VELAS = {"3 meses": 63, "6 meses": 126, "1 ano": 252, "Tudo": None}
 
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.title("TickerLab")
@@ -147,9 +148,45 @@ mostrar_metrica(
 )
 
 # --- Gráfico de preço -------------------------------------------------------
-st.subheader("Preço de fechamento")
-figura = px.line(fechamento)
-st.plotly_chart(figura, width="stretch")
+st.subheader("Preço")
+col_tipo, col_medias = st.columns([1, 2])
+tipo_do_grafico = col_tipo.radio(
+    "Tipo de gráfico",
+    ["Linha", "Velas"],
+    horizontal=True,
+    help=obter_glossario().get("Gráfico de velas (candlestick)"),
+)
+medias_escolhidas = col_medias.multiselect(
+    "Médias móveis (dias)",
+    JANELAS_MEDIAS,
+    help=obter_glossario().get("Média móvel"),
+)
+dias_visiveis = None
+if tipo_do_grafico == "Velas":
+    # com muitos dias as velas ficam finas demais; começa mostrando os últimos meses
+    periodo_velas = st.radio(
+        "Velas: período mostrado",
+        list(PERIODOS_DAS_VELAS),
+        index=1,
+        horizontal=True,
+        help="Cada vela é um dia. Com muitos dias elas ficam finas; use o zoom ou "
+        "troque o período para ver os detalhes.",
+    )
+    dias_visiveis = PERIODOS_DAS_VELAS[periodo_velas]
+st.plotly_chart(
+    graficos.criar_grafico_preco(
+        dados,
+        tipo_do_grafico.lower(),
+        tuple(sorted(medias_escolhidas)),
+        dias_visiveis,
+    ),
+    width="stretch",
+    config=graficos.CONFIG_PLOTLY,
+)
+st.caption(
+    "Dica: use a roda do mouse para dar zoom, arraste para mover, "
+    "clique duas vezes para voltar ao início e use os botões 1M a Tudo para trocar o período."
+)
 
 # --- Risco ao longo do tempo ------------------------------------------------
 st.subheader("Risco ao longo do tempo")
@@ -164,7 +201,9 @@ st.markdown(descrever_pior_drawdown(pior_drawdown))
 
 col_drawdown, col_volatilidade = st.columns(2)
 col_drawdown.plotly_chart(
-    graficos.criar_grafico_drawdown(drawdown, pior_drawdown), width="stretch"
+    graficos.criar_grafico_drawdown(drawdown, pior_drawdown),
+    width="stretch",
+    config=graficos.CONFIG_PLOTLY,
 )
 volatilidade_movel = ind.calcular_volatilidade_movel(retorno, janela)
 if volatilidade_movel.dropna().empty:
@@ -176,4 +215,5 @@ else:
     col_volatilidade.plotly_chart(
         graficos.criar_grafico_volatilidade(volatilidade_movel, janela),
         width="stretch",
+        config=graficos.CONFIG_PLOTLY,
     )
