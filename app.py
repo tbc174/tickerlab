@@ -2,9 +2,9 @@
 
 import plotly.express as px
 import streamlit as st
-import yfinance as yf
 
 from src import indicadores as ind
+from src.dados import DadosIndisponiveisError, baixar_dados
 
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.title("TickerLab")
@@ -14,14 +14,12 @@ st.caption("Análise de ações para estudo. Não é recomendação de investime
 ticker = st.text_input("Ticker", value="PETR4.SA")
 periodo = st.selectbox("Período", ["6mo", "1y", "2y", "5y"], index=2)
 
-# --- Passo 2: baixar os dados (já pronto; vira src/dados.py mais adiante) ----
-dados = yf.download(ticker, period=periodo, auto_adjust=True, progress=False)
-if dados is None or dados.empty:
-    st.error(
-        f"Não encontrei dados para {ticker}. Confira o ticker (B3 termina em .SA)."
-    )
+# --- Passo 2: baixar os dados (a lógica fica em src/dados.py) -----------------
+try:
+    dados = baixar_dados(ticker, periodo)
+except DadosIndisponiveisError as erro:
+    st.error(str(erro))
     st.stop()
-dados.columns = dados.columns.droplevel("Ticker")
 fechamento = dados["Close"]
 
 # --- Passo 3: calcular com as funções de src/indicadores.py -------------------
@@ -39,6 +37,6 @@ colunas[0].metric("Retorno total", f"{retorno_acumulado.iloc[-1]:.2%}")
 colunas[1].metric("Volatilidade anual", f"{volatilidade:.2%}")
 colunas[2].metric("Maior queda", f"{drawdown.min():.2%}")
 # --- Passo 5: gráfico de preço ----------------------------------------------
-# TODO: px.line(fechamento) e st.plotly_chart(figura, use_container_width=True)
+# TODO: px.line(fechamento) e st.plotly_chart(figura, width="stretch")
 figura = px.line(fechamento)
-st.plotly_chart(figura, use_container_width=True)
+st.plotly_chart(figura, width="stretch")
