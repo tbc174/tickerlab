@@ -41,9 +41,38 @@ Notas da sessão 1 (`estudos/sessao01.ipynb`), com os dados de `PETR4.SA` (2 ano
 - **Cuidado:** `retorno[retorno < 0]` (colchetes) **filtra**, devolvendo só as linhas negativas; `len()` dessa série também conta.
 - **Data:** 10/10/2026
 
+## Retorno acumulado: `cumprod()`
+- **O que é:** o produto acumulado: em cada dia, multiplica todos os valores até ali. Primo do `cumsum()`, que soma.
+- **Para que serve:** juntar os retornos diários num retorno total. `(1 + retorno).cumprod() - 1` dá, para cada dia, quanto se ganhou desde o começo.
+- **Exemplo:** o último valor da série acumulada é igual a `fechamento.iloc[-1] / fechamento.iloc[0] - 1`. É o mesmo número por dois caminhos.
+- **Cuidado:** não confundir **um número** (o retorno total, só o último ponto) com **uma série** (o retorno acumulado, um valor por dia). Foi o erro do exercício D.
+- **Data:** 10/10/2026
+
+## Janela deslizante: `rolling(N)`
+- **O que é:** olha, em cada dia, os últimos N dias. Depois se aplica um cálculo: `.mean()` (média móvel) ou `.std()` (volatilidade móvel).
+- **Exemplo:** `fechamento.rolling(20).mean()`. Os primeiros 19 dias ficam `NaN`, porque ainda não existem 20 dias de histórico.
+- **Cuidado:** `rolling(20)` sozinho não calcula nada; falta dizer o quê (`.mean()`, `.std()`...).
+- **Data:** 10/10/2026
+
+## Desvio padrão: `std()`
+- **O que é:** o quanto os valores se afastam da própria média.
+- **Para que serve:** medir a volatilidade dos retornos.
+- **Exemplo:** `retorno.std()` (diário) e `retorno.std() * np.sqrt(DIAS_POR_ANO)` (anualizado).
+- **Cuidado:** o `std()` ignora o `NaN` do primeiro dia. Se trocar o `NaN` por 0 (`fillna(0)`), o 0 entra na conta e a volatilidade sai um pouco menor do que a real.
+- **Data:** 10/10/2026
+
+## Máximo acumulado: `cummax()`
+- **O que é:** em cada dia, o maior valor visto até aquele dia.
+- **Para que serve:** achar o "pico até agora", base do drawdown: `fechamento / fechamento.cummax() - 1`.
+- **Exemplo:** `drawdown.min()` é a pior queda; `drawdown.idxmin()` é a data do fundo.
+- **Data:** 10/10/2026
+
+## Comparar séries inteiras
+- `(fechamento > mm20).sum()` compara dia a dia duas séries e conta quantos dias deram verdadeiro. Dias com `NaN` na média móvel contam como falso.
+- **Data:** 10/10/2026
+
 ## A ver
 - Selecionar várias colunas e filtrar linhas de um DataFrame
-- `rolling()` (médias móveis e volatilidade móvel)
 - `groupby` e `resample`
 - Alinhar datas de dois tickers
 

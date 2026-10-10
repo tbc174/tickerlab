@@ -67,6 +67,31 @@ Fluxo: **mexo nos arquivos, `git status` (o que mudou?), `git add` (separo o que
 - **Para que serve:** conferir que o commit existe. Se mostrar "does not have any commits yet", nada foi gravado.
 - **Data:** 10/10/2026
 
+### Branch: `git switch -c` e `git branch`
+- **O que é:** uma linha do tempo paralela do projeto. Trabalha-se nela sem arriscar a `main`.
+- **Para que serve:** a `main` sempre funciona; cada funcionalidade nasce numa branch e só entra na `main` quando está pronta.
+- **Como usar:** `git switch -c feat/nome` cria e entra; `git switch main` volta; `git branch` lista (a atual tem `*`).
+- **Exemplo:** `feat/app-inicial`, `fix/ticker-sem-sa`.
+- **Cuidado:** faça o commit **antes** de trocar de branch.
+- **Data:** 10/10/2026
+
+### Merge: `git merge`
+- **O que é:** junta o trabalho de uma branch na branch atual.
+- **Como usar:** `git switch main`, depois `git merge feat/app-inicial`. Se a `main` não mudou desde que a branch nasceu, é **fast-forward**: a `main` só avança, sem commit extra.
+- **Depois:** `git push` e `git branch -d feat/app-inicial` (o `-d` minúsculo só apaga se já foi juntada; evite o `-D`).
+- **Cuidado:** se aparecer `CONFLICT`, parar e pedir ajuda antes de mexer nos arquivos.
+- **Data:** 10/10/2026
+
+### `git push` e as issues do GitHub
+- **O que é:** o `push` envia os commits locais ao GitHub. `git status -sb` mostra `ahead 1` quando há commit local ainda não enviado.
+- **Fechar issue pelo commit:** escrever `closes #6` na mensagem fecha a issue #6 **quando o commit chega à `main` do GitHub** (ou seja, depois do `push`), e o cartão vai para "Done" no quadro.
+- **Primeiro `push`:** `git push -u origin main` liga a `main` local à do GitHub (`-u` grava isso).
+- **Data:** 10/10/2026
+
+### Quadro de tarefas (GitHub Projects)
+- Quadro público "TickerLab" ligado ao repositório, com uma issue por tarefa e rótulos `fase-0`, `fase-1`, `fase-2`. Criado pelo `gh project` e `gh issue`.
+- **Data:** 10/10/2026
+
 *(Tiago: reescreva com suas palavras o que ficou estranho e acrescente o que você entendeu do fluxo.)*
 
 ## Regras que adotamos
