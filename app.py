@@ -16,6 +16,13 @@ from src.acaso import (
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
+from src.autenticacao import (
+    LoginInvalidoError,
+    emails_de_admin,
+    ler_identidade,
+    login_esta_configurado,
+    registrar_login,
+)
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
@@ -220,6 +227,71 @@ def mostrar_metrica(coluna, rotulo, valor, termo_do_glossario):
 def mostrar_grafico(figura):
     """Gráfico do Plotly com a interação padrão do app (zoom, linha-guia, duplo clique)."""
     st.plotly_chart(figura, width="stretch", config=graficos.CONFIG_PLOTLY)
+
+
+# --- Conta e login ----------------------------------------------------------
+def mostrar_tela_de_entrada():
+    """Tela para quem ainda não entrou: o app só abre depois do login com o Google."""
+    mostrar_cabecalho()
+    st.markdown(
+        "Entre com a sua conta do Google para analisar ações, rodar backtests e guardar "
+        "o que você fizer."
+    )
+    st.button("Entrar com o Google", type="primary", on_click=st.login)
+    st.caption(
+        "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado."
+    )
+
+
+def obter_usuario_logado():
+    """O usuário da sessão (ou None no modo local, sem contas). Para a página se não houver login."""
+    if not login_esta_configurado(_segredos()):
+        return None
+    if not st.user.get("is_logged_in", False):
+        mostrar_tela_de_entrada()
+        st.stop()
+    atual = st.session_state.get("usuario")
+    if atual is not None and atual.google_sub == st.user.get("sub"):
+        return atual
+    try:
+        usuario, primeira_vez = registrar_login(
+            ler_identidade(st.user.to_dict()), admins=emails_de_admin()
+        )
+    except LoginInvalidoError as erro:
+        st.error(f"Não foi possível entrar: {erro}")
+        st.button("Sair", on_click=st.logout)
+        st.stop()
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao registrar o login")
+        st.error(
+            "O serviço de contas está indisponível agora. Tente de novo em instantes."
+        )
+        st.stop()
+    st.session_state["usuario"] = usuario
+    st.session_state["primeira_vez"] = primeira_vez
+    return usuario
+
+
+def _segredos():
+    try:
+        return st.secrets
+    except FileNotFoundError:
+        return None
+
+
+def mostrar_conta(usuario):
+    """Botão no topo com os dados da conta e a saída."""
+    with st.popover(usuario.nome or usuario.email, icon=":material/account_circle:"):
+        if usuario.foto_url:
+            st.image(usuario.foto_url, width=56)
+        st.markdown(f"**{usuario.nome or 'Sem nome'}**")
+        st.caption(usuario.email)
+        st.markdown(
+            f"Plano: **{usuario.plano.capitalize()}**\n\n"
+            f"Perfil: **{'Administrador' if usuario.e_admin else 'Usuário'}**\n\n"
+            f"Conta criada em {usuario.criado_em:%d/%m/%Y}"
+        )
+        st.button("Sair", on_click=st.logout, width="stretch")
 
 
 # --- Cabeçalho e entradas -----------------------------------------------------
@@ -3008,7 +3080,14 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
 
 
 # --- Página -----------------------------------------------------------------
+usuario_logado = obter_usuario_logado()
 mostrar_cabecalho()
+if usuario_logado is not None:
+    if st.session_state.pop("primeira_vez", False):
+        st.toast(
+            f"Bem-vindo ao TickerLab, {usuario_logado.nome or usuario_logado.email}!"
+        )
+    mostrar_conta(usuario_logado)
 ticker, periodo, modo_da_taxa, taxa_digitada = ler_entradas()
 
 try:
