@@ -7,6 +7,7 @@ from src.conteudo import (
     CAMINHO_GLOSSARIO,
     carregar_glossario,
     descrever_pior_drawdown,
+    proteger_cifrao,
 )
 from src.indicadores import PiorDrawdown
 
@@ -81,6 +82,7 @@ TERMOS_DO_PAINEL = [
     "Gráfico de velas (candlestick)",
     "Retorno mensal",
     "Sazonalidade",
+    "Base 100",
 ]
 
 
@@ -124,3 +126,24 @@ def test_descricao_de_preco_sempre_subindo():
 def test_descricao_sem_dados():
     texto = descrever_pior_drawdown(PiorDrawdown(float("nan"), None, None, None))
     assert "dados suficientes" in texto
+
+
+# --- Cifrão: o Streamlit lê "$...$" como fórmula --------------------------------------
+
+
+def test_proteger_cifrao_poe_barra_antes_de_cada_cifrao():
+    assert (
+        proteger_cifrao("R$ 1.000 viraram R$ 1.300") == r"R\$ 1.000 viraram R\$ 1.300"
+    )
+
+
+def test_proteger_cifrao_nao_mexe_no_que_nao_tem():
+    assert proteger_cifrao("sem moeda") == "sem moeda"
+    assert proteger_cifrao("") == ""
+    assert proteger_cifrao(None) is None
+
+
+def test_nenhum_verbete_real_deixa_cifrao_solto_depois_de_protegido():
+    for texto in carregar_glossario(CAMINHO_GLOSSARIO).values():
+        protegido = proteger_cifrao(texto)
+        assert protegido.count("$") == protegido.count(r"\$")

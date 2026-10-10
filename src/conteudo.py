@@ -55,3 +55,8 @@ def descrever_pior_drawdown(pior: PiorDrawdown) -> str:
         frase
         + f", e só voltou ao topo em {_data_br(pior.data_recuperacao)} ({dias} dias depois)."
     )
+
+
+def proteger_cifrao(texto: str | None) -> str | None:
+    """Põe uma barra antes de cada "$": o Streamlit lê "R$ 1 e US$ 2" como fórmula matemática."""
+    return texto.replace("$", r"\$") if texto else texto

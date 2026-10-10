@@ -121,6 +121,13 @@ dados no app (um `##` por termo).
 
 **Cuidado:** com poucos anos de dados, a média é só coincidência. Um padrão do passado não garante que se repita.
 
+## Base 100
+**O que é:** um jeito de comparar ativos de preços e moedas diferentes. Todos começam valendo 100 no primeiro dia em comum, e a linha mostra quanto aquele "100" virou depois.
+
+**Exemplo:** se a linha da Petrobras termina em 150 e a do Ibovespa em 120, quem comprou a Petrobras no começo ganhou +50% e quem comprou o índice ganhou +20%.
+
+**Cuidado:** só entram os dias em que todos os ativos negociaram. Feriados diferentes (B3 e bolsas dos EUA) fazem alguns dias serem descartados, e o app avisa quantos. Os preços não são preenchidos nem estimados.
+
 ## Média móvel
 **O que é:** a média dos últimos N preços, recalculada a cada dia. Suaviza o gráfico e mostra a tendência.
 
