@@ -3027,6 +3027,11 @@ if dados.attrs.get("cambio_falhou"):
         "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
         "Tente de novo mais tarde."
     )
+if dados.attrs.get("origem") == "cache_antigo":
+    st.warning(
+        "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
+        f"tinha guardado, até {dados.attrs['ate']}."
+    )
 if dados.attrs.get("origem") == "exemplo":
     st.warning(
         f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
