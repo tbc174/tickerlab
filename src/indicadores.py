@@ -216,3 +216,51 @@ def calcular_atr(dados: pd.DataFrame, janela: int = 14) -> pd.Series:
     amplitude_verdadeira = amplitudes.max(axis=1)
     atr = amplitude_verdadeira.ewm(alpha=1 / janela, adjust=False).mean()
     return atr.where(amplitude_verdadeira.expanding().count() >= janela)
+
+
+def calcular_rsi(fechamento: pd.Series, janela: int = 14) -> pd.Series:
+    """Índice de Força Relativa (0 a 100), com a suavização de Wilder.
+
+    RSI = 100 - 100 / (1 + RS), com RS = ganho médio / perda média. Perto de 0 o preço caiu
+    quase todos os dias; perto de 100, subiu quase todos. Os primeiros dias ficam vazios.
+    """
+    variacao = fechamento.diff()
+    ganho = variacao.clip(lower=0)
+    perda = (-variacao).clip(lower=0)
+    ganho_medio = ganho.ewm(alpha=1 / janela, adjust=False).mean()
+    perda_media = perda.ewm(alpha=1 / janela, adjust=False).mean()
+    forca_relativa = ganho_medio / perda_media
+    rsi = 100 - 100 / (1 + forca_relativa)
+    rsi = rsi.where(perda_media > 0, 100.0)  # sem perdas: 100
+    rsi = rsi.where((ganho_medio > 0) | (perda_media > 0), 50.0)  # preço parado: neutro
+    return rsi.where(variacao.expanding().count() >= janela)
+
+
+def calcular_bandas_de_bollinger(
+    fechamento: pd.Series, janela: int = 20, desvios: float = 2.0
+) -> pd.DataFrame:
+    """Média móvel com uma faixa de `desvios` desvios-padrão para cima e para baixo.
+
+    Também devolve o %b (0 na banda inferior, 1 na superior) e a largura relativa da faixa.
+    """
+    media = fechamento.rolling(janela).mean()
+    desvio = fechamento.rolling(janela).std(ddof=0)
+    superior = media + desvios * desvio
+    inferior = media - desvios * desvio
+    largura_da_faixa = (superior - inferior).where(superior != inferior)
+    return pd.DataFrame(
+        {
+            "media": media,
+            "superior": superior,
+            "inferior": inferior,
+            "percentual_b": (fechamento - inferior) / largura_da_faixa,
+            "largura": largura_da_faixa / media,
+        }
+    )
+
+
+def calcular_zscore(fechamento: pd.Series, janela: int = 20) -> pd.Series:
+    """A que distância, em desvios-padrão, o preço está da sua média dos últimos `janela` dias."""
+    media = fechamento.rolling(janela).mean()
+    desvio = fechamento.rolling(janela).std(ddof=0)
+    return (fechamento - media) / desvio.where(desvio > 0)

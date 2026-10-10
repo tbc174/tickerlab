@@ -380,3 +380,76 @@ def test_atr_com_numeros_pequenos():
     assert atr.iloc[2] == pytest.approx(
         1.0 / 3 * 2 + 2.0 / 3 * (1.0 / 3 * 1.5 + 2.0 / 3 * 1.0)
     )
+
+
+# --- RSI, Bandas de Bollinger e z-score -----------------------------------------------------
+
+
+def test_rsi_com_numeros_pequenos():
+    from src.indicadores import calcular_rsi
+
+    # janela 2 (peso 1/2): variações +2 e -1 -> ganho médio 1, perda média 0,5 -> RS = 2
+    rsi = calcular_rsi(pd.Series([10.0, 12.0, 11.0]), janela=2)
+    assert rsi.iloc[:2].isna().all()
+    assert rsi.iloc[2] == pytest.approx(100 - 100 / 3)
+
+
+def test_rsi_so_de_altas_e_100_e_so_de_quedas_e_0():
+    from src.indicadores import calcular_rsi
+
+    assert calcular_rsi(pd.Series(np.arange(1.0, 30.0)), 14).iloc[-1] == 100
+    assert calcular_rsi(pd.Series(np.arange(30.0, 1.0, -1)), 14).iloc[-1] == 0
+
+
+def test_rsi_de_preco_parado_e_neutro():
+    from src.indicadores import calcular_rsi
+
+    assert calcular_rsi(pd.Series([5.0] * 30), 14).iloc[-1] == 50
+
+
+def test_rsi_fica_entre_0_e_100():
+    from src.indicadores import calcular_rsi
+
+    rng = np.random.default_rng(3)
+    serie = pd.Series(50 * np.cumprod(1 + rng.normal(0, 0.03, 300)))
+    rsi = calcular_rsi(serie).dropna()
+    assert rsi.between(0, 100).all()
+
+
+def test_bandas_de_bollinger_com_numeros_pequenos():
+    from src.indicadores import calcular_bandas_de_bollinger
+
+    # [1, 2, 3]: média 2; desvio-padrão (população) = raiz(2/3) = 0,8165
+    bandas = calcular_bandas_de_bollinger(
+        pd.Series([1.0, 2.0, 3.0]), janela=3, desvios=2.0
+    )
+    desvio = np.sqrt(2 / 3)
+    assert bandas["media"].iloc[2] == pytest.approx(2.0)
+    assert bandas["superior"].iloc[2] == pytest.approx(2 + 2 * desvio)
+    assert bandas["inferior"].iloc[2] == pytest.approx(2 - 2 * desvio)
+    assert bandas["percentual_b"].iloc[2] == pytest.approx(
+        (3 - (2 - 2 * desvio)) / (4 * desvio)
+    )
+    assert bandas["largura"].iloc[2] == pytest.approx(4 * desvio / 2)
+    assert bandas["media"].iloc[:2].isna().all()
+
+
+def test_bandas_de_preco_parado_nao_dividem_por_zero():
+    from src.indicadores import calcular_bandas_de_bollinger
+
+    bandas = calcular_bandas_de_bollinger(pd.Series([7.0] * 10), janela=3)
+    assert bandas["percentual_b"].dropna().empty
+    assert (bandas["largura"].dropna() == 0).all()
+
+
+def test_zscore_com_numeros_pequenos():
+    from src.indicadores import calcular_zscore
+
+    z = calcular_zscore(pd.Series([1.0, 2.0, 3.0]), janela=3)
+    assert z.iloc[2] == pytest.approx((3 - 2) / np.sqrt(2 / 3))
+
+
+def test_zscore_de_preco_parado_nao_existe():
+    from src.indicadores import calcular_zscore
+
+    assert calcular_zscore(pd.Series([4.0] * 10), janela=3).dropna().empty
