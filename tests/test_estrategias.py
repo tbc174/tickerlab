@@ -7,6 +7,7 @@ import pytest
 from src.estrategias import (
     ESTRATEGIAS,
     gerar_posicao,
+    posicao_bandas_de_bollinger,
     posicao_canal_de_keltner,
     posicao_comprar_e_segurar,
     posicao_cruzamento_de_medias,
@@ -15,6 +16,9 @@ from src.estrategias import (
     posicao_macd,
     posicao_momentum,
     posicao_rompimento_de_canal,
+    posicao_rsi_classico,
+    posicao_rsi_curto_com_filtro,
+    posicao_zscore,
 )
 
 
@@ -225,3 +229,100 @@ def test_parametro_decimal_do_registro():
     assert posicao.between(0, 1).all()
     with pytest.raises(ValueError, match="deve ficar entre"):
         gerar_posicao("Canal de Keltner", dados, multiplicador=9.0)
+
+
+# --- Estratégias de reversão à média: casos conferíveis de cabeça --------------------------
+
+
+def test_rsi_classico_compra_na_queda_e_vende_na_recuperacao():
+    # RSI de 2 dias: 0, 0, 50, 75, 87,5, 93,75 a partir do 3º dia (ver cálculo no teste do RSI)
+    dados = _dados_ohlc([10, 9, 8, 7, 8, 9, 10, 11])
+    posicao = posicao_rsi_classico(
+        dados, periodo=2, nivel_de_compra=30, nivel_de_venda=70
+    )
+    assert list(posicao) == [0, 0, 1, 1, 1, 0, 0, 0]
+
+
+def test_rsi_exige_nivel_de_compra_menor_que_o_de_venda():
+    with pytest.raises(ValueError, match="nível de compra"):
+        posicao_rsi_classico(
+            _dados_ohlc([1, 2, 3, 4]), nivel_de_compra=70, nivel_de_venda=70
+        )
+
+
+def test_rsi_curto_so_compra_quedas_dentro_de_tendencia_de_alta():
+    # sobe, recua um pouco (RSI de 2 dias cai a 40) e retoma: com média de 8 dias, o recuo
+    # acontece acima da média, então compra; a recuperação do RSI (acima de 70) vende
+    subindo_e_recuando = _dados_ohlc([10, 11, 12, 13, 14, 15, 16, 15.5, 15, 16, 17])
+    posicao = posicao_rsi_curto_com_filtro(
+        subindo_e_recuando, periodo=2, nivel_de_compra=45, nivel_de_venda=70, filtro=8
+    )
+    assert list(posicao) == [0] * 8 + [1, 0, 0]
+
+
+def test_rsi_curto_nao_compra_queda_em_tendencia_de_baixa():
+    caindo = _dados_ohlc(np.linspace(30, 10, 60))
+    sem_filtro = posicao_rsi_classico(
+        caindo, periodo=2, nivel_de_compra=30, nivel_de_venda=70
+    )
+    com_filtro = posicao_rsi_curto_com_filtro(
+        caindo, periodo=2, nivel_de_compra=30, filtro=10
+    )
+    assert sem_filtro.sum() > 0  # sem o filtro, compraria a queda
+    assert (
+        com_filtro.sum() == 0
+    )  # com o filtro, fica fora: o preço está abaixo da média
+
+
+def test_bollinger_reversao_compra_abaixo_da_banda_e_vende_na_media():
+    dados = _dados_ohlc([10, 10, 10, 8, 10, 12, 12, 12])
+    posicao = posicao_bandas_de_bollinger(dados, janela=3, desvios=1.0, modo="Reversão")
+    assert list(posicao) == [0, 0, 0, 1, 0, 0, 0, 0]
+
+
+def test_bollinger_rompimento_compra_acima_da_banda_e_segue_ate_perder_a_media():
+    dados = _dados_ohlc([10, 10, 10, 8, 10, 12, 12, 12])
+    posicao = posicao_bandas_de_bollinger(
+        dados, janela=3, desvios=1.0, modo="Rompimento"
+    )
+    assert list(posicao) == [0, 0, 0, 0, 0, 1, 1, 1]
+
+
+def test_bollinger_modo_invalido_e_barrado_pelo_registro():
+    with pytest.raises(ValueError, match="opções"):
+        gerar_posicao("Bandas de Bollinger", _dados_sinteticos(), modo="Aleatório")
+
+
+def test_zscore_compra_muito_abaixo_da_media_e_vende_ao_voltar():
+    dados = _dados_ohlc([10, 10, 10, 8, 10, 11])
+    posicao = posicao_zscore(
+        dados, janela=3, zscore_de_compra=-1.0, zscore_de_venda=0.0
+    )
+    assert list(posicao) == [0, 0, 0, 1, 0, 0]
+
+
+def test_zscore_exige_compra_menor_que_venda():
+    with pytest.raises(ValueError, match="z-score"):
+        posicao_zscore(
+            _dados_ohlc([1, 2, 3, 4]), zscore_de_compra=1.0, zscore_de_venda=0.0
+        )
+
+
+def test_estrategias_de_reversao_estao_no_grupo_certo():
+    for nome in (
+        "RSI clássico",
+        "RSI curto com filtro de tendência",
+        "Bandas de Bollinger",
+        "Z-score do preço",
+    ):
+        assert ESTRATEGIAS[nome].grupo == "Reversão à média"
+
+
+def test_bollinger_reversao_e_zscore_sao_a_mesma_regra_escrita_de_duas_formas():
+    # comprar abaixo de (média - k desvios) = comprar com z-score abaixo de -k;
+    # vender acima da média = vender com z-score acima de 0
+    dados = _dados_sinteticos(500, semente=11)
+    for janela, k in [(20, 2.0), (10, 1.5), (30, 1.0)]:
+        bollinger = posicao_bandas_de_bollinger(dados, janela, k, "Reversão")
+        zscore = posicao_zscore(dados, janela, -k, 0.0)
+        assert bollinger.equals(zscore)
