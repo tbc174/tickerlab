@@ -5,7 +5,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from src.indicadores import PiorDrawdown, calcular_media_movel
+from src.indicadores import (
+    NOMES_DOS_MESES,
+    PiorDrawdown,
+    calcular_media_movel,
+    calcular_media_por_mes,
+)
 
 COR_AZUL = "#2962ff"  # cor principal do TickerLab
 COR_AZUL_CLARO = "#7aa2ff"
@@ -17,9 +22,13 @@ ALTURA_PRECO = 520
 TIPOS_DE_GRAFICO = ("linha", "velas")
 COLUNAS_DE_PRECO = ("Open", "High", "Low", "Close", "Volume")
 
+# Com a roda do mouse ligada, rolar a página por cima de um gráfico dá zoom nele em vez de
+# rolar a página (os gráficos são grandes e prendem a rolagem). Mude para True se preferir.
+ZOOM_COM_A_RODA_DO_MOUSE = False
+
 # Opções da barra de ferramentas do Plotly: use em st.plotly_chart(..., config=CONFIG_PLOTLY)
 CONFIG_PLOTLY = {
-    "scrollZoom": True,  # zoom com a roda do mouse
+    "scrollZoom": ZOOM_COM_A_RODA_DO_MOUSE,
     "displaylogo": False,
     "doubleClick": "reset+autosize",  # duplo clique volta ao zoom inicial
     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
@@ -60,8 +69,13 @@ def _estilo_base(figura: go.Figure, titulo: str | None, altura: int) -> None:
     figura.update_yaxes(gridcolor="rgba(255,255,255,0.08)")
 
 
-def _seletor_de_periodo() -> dict:
+def _seletor_de_periodo(a_direita: bool = False) -> dict:
+    """Botões 1M a Tudo. `a_direita` os põe no canto, ao lado do título, sem cobri-lo."""
+    posicao = (
+        {"x": 1, "xanchor": "right", "y": 1.0, "yanchor": "bottom"} if a_direita else {}
+    )
     return {
+        **posicao,
         "buttons": _BOTOES_DE_PERIODO,
         "bgcolor": "rgba(255,255,255,0.06)",
         "activecolor": COR_AZUL,
@@ -73,7 +87,7 @@ def _figura_base(titulo: str) -> go.Figure:
     """Figura de um painel só (drawdown, volatilidade), com botões de período."""
     figura = go.Figure()
     _estilo_base(figura, titulo, ALTURA_PADRAO)
-    figura.update_xaxes(rangeselector=_seletor_de_periodo())
+    figura.update_xaxes(rangeselector=_seletor_de_periodo(a_direita=True))
     figura.update_yaxes(tickformat=".0%")
     return figura
 
@@ -273,5 +287,63 @@ def criar_grafico_volatilidade(vol_movel: pd.Series, janela: int) -> go.Figure:
             hovertemplate="%{y:.1%}",
             name="Volatilidade",
         )
+    )
+    return figura
+
+
+def _pct_br(valor: float, com_sinal: bool = True) -> str:
+    """Porcentagem no estilo brasileiro com 1 casa; vazio vira um traço."""
+    if pd.isna(valor):
+        return "—"
+    texto = f"{valor:+.1%}" if com_sinal else f"{valor:.1%}"
+    return texto.replace(".", ",")
+
+
+def criar_mapa_de_calor_mensal(tabela: pd.DataFrame) -> go.Figure:
+    """Grade de retornos: um ano por linha, os 12 meses em colunas e uma linha de médias.
+
+    O total de cada ano aparece no rótulo da linha. As cores vão do vermelho (queda)
+    ao verde (alta), com o preto no zero.
+    """
+    if tabela.empty:
+        raise ValueError("Tabela de retornos vazia: não há o que mostrar.")
+
+    meses = list(NOMES_DOS_MESES)
+    grade = tabela[meses].copy()
+    rotulos = [f"{ano}  ({_pct_br(tabela.loc[ano, 'Ano'])})" for ano in tabela.index]
+    grade.index = rotulos
+    grade.loc["Média do mês"] = calcular_media_por_mes(tabela)
+
+    valores = grade.to_numpy(dtype=float)
+    textos = [[_pct_br(v) for v in linha] for linha in valores]
+    # limite das cores: um mês excepcional não pode "apagar" os outros
+    limite = max(float(np.nanpercentile(np.abs(valores), 95)), 0.01)
+
+    figura = go.Figure(
+        go.Heatmap(
+            z=valores,
+            x=meses,
+            y=list(grade.index),
+            text=textos,
+            texttemplate="%{text}",
+            textfont={"size": 12},
+            zmin=-limite,
+            zmax=limite,
+            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            xgap=2,
+            ygap=2,
+            showscale=False,
+            hovertemplate="%{y}<br>%{x}: %{text}<extra></extra>",
+        )
+    )
+    figura.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=90 + 38 * len(grade),
+        margin={"l": 10, "r": 10, "t": 10, "b": 10},
+        xaxis={"side": "top", "fixedrange": True},
+        yaxis={"autorange": "reversed", "fixedrange": True},
+        dragmode=False,
     )
     return figura

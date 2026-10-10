@@ -6,12 +6,18 @@ import pytest
 
 from src.graficos import (
     CONFIG_PLOTLY,
+    ZOOM_COM_A_RODA_DO_MOUSE,
     _numero_br,
     criar_grafico_drawdown,
     criar_grafico_preco,
     criar_grafico_volatilidade,
+    criar_mapa_de_calor_mensal,
 )
-from src.indicadores import calcular_drawdown, encontrar_pior_drawdown
+from src.indicadores import (
+    calcular_drawdown,
+    encontrar_pior_drawdown,
+    montar_tabela_retornos,
+)
 
 
 def _fechamento():
@@ -137,8 +143,8 @@ def test_dados_sem_colunas_de_preco():
         criar_grafico_preco(_ohlcv().drop(columns=["Volume"]))
 
 
-def test_config_permite_zoom_com_a_roda_do_mouse():
-    assert CONFIG_PLOTLY["scrollZoom"] is True
+def test_config_acompanha_a_opcao_de_zoom_com_a_roda_do_mouse():
+    assert CONFIG_PLOTLY["scrollZoom"] is ZOOM_COM_A_RODA_DO_MOUSE
     assert CONFIG_PLOTLY["displaylogo"] is False
 
 
@@ -204,3 +210,62 @@ def test_variacao_do_dia_usa_o_fechamento_anterior():
     vela = criar_grafico_preco(dados, tipo="velas").data[0]
     assert "—" in vela.hovertext[0]  # primeiro dia: sem dia anterior
     assert "+10,00%" in vela.hovertext[1]  # 11 contra o fechamento anterior de 10
+
+
+# --- Mapa de calor do retorno mensal ---------------------------------------------
+
+
+def _tabela_de_exemplo():
+    meses = pd.PeriodIndex(["2025-12", "2026-01", "2026-02"], freq="M")
+    return montar_tabela_retornos(pd.Series([0.05, 0.10, -0.01], index=meses))
+
+
+def test_mapa_de_calor_tem_uma_linha_por_ano_mais_a_media():
+    figura = criar_mapa_de_calor_mensal(_tabela_de_exemplo())
+    mapa = figura.data[0]
+    assert len(mapa.y) == 3  # 2025, 2026 e "Média do mês"
+    assert list(mapa.x) == [
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez",
+    ]
+    assert np.array(mapa.z).shape == (3, 12)
+
+
+def test_total_do_ano_aparece_no_rotulo_da_linha():
+    mapa = criar_mapa_de_calor_mensal(_tabela_de_exemplo()).data[0]
+    assert mapa.y[0] == "2025  (+5,0%)"
+    assert mapa.y[1] == "2026  (+8,9%)"  # 1,10 x 0,99 - 1
+
+
+def test_texto_das_celulas_em_formato_brasileiro_e_traco_para_vazio():
+    mapa = criar_mapa_de_calor_mensal(_tabela_de_exemplo()).data[0]
+    linha_2026 = mapa.text[1]
+    assert linha_2026[0] == "+10,0%"  # janeiro de 2026
+    assert linha_2026[1] == "-1,0%"  # fevereiro de 2026
+    assert linha_2026[2] == "—"  # março: sem dados
+
+
+def test_cores_simetricas_em_torno_do_zero():
+    mapa = criar_mapa_de_calor_mensal(_tabela_de_exemplo()).data[0]
+    assert mapa.zmin == -mapa.zmax
+
+
+def test_mapa_de_calor_sem_dados_levanta_erro():
+    with pytest.raises(ValueError, match="vazia"):
+        criar_mapa_de_calor_mensal(montar_tabela_retornos(pd.Series(dtype=float)))
+
+
+def test_botoes_dos_graficos_de_risco_ficam_a_direita_do_titulo():
+    figura = criar_grafico_drawdown(calcular_drawdown(_fechamento()))
+    seletor = figura.layout.xaxis.rangeselector
+    assert seletor.x == 1 and seletor.xanchor == "right"
