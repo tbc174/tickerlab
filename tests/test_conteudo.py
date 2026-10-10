@@ -102,6 +102,9 @@ TERMOS_DO_PAINEL = [
     "CDI",
     "Imposto de renda (simplificado)",
     "Rebalanceamento",
+    "DCA (aportes parcelados)",
+    "Retorno da noite e do dia",
+    "Virada do mês",
 ]
 
 

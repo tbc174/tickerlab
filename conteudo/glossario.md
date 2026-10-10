@@ -289,6 +289,27 @@ dados no app (um `##` por termo).
 
 **Cuidado:** cada rebalanceamento tem custo. Rebalancear com muita frequência pode comer o ganho que ele busca.
 
+## DCA (aportes parcelados)
+**O que é:** em inglês, *dollar-cost averaging*: em vez de investir tudo de uma vez, dividir o valor em parcelas e comprar aos poucos (por exemplo, uma por mês).
+
+**Exemplo:** R$ 12.000 viram 12 compras de R$ 1.000. Se o preço cai no meio do caminho, as últimas parcelas compram mais barato; se só sobe, o dinheiro que esperou perdeu a alta.
+
+**Cuidado:** em mercados que sobem na maior parte do tempo, o aporte único costuma vencer, porque fica mais tempo investido. O DCA vence mais em quedas e traz menos arrependimento, mas isso é conforto, não lucro garantido. O experimento mostra o resultado do ativo escolhido, não uma regra geral.
+
+## Retorno da noite e do dia
+**O que é:** o retorno de um dia se divide em duas partes: a **noite** (do fechamento de ontem até a abertura de hoje) e o **dia** (da abertura até o fechamento). Em alguns mercados, boa parte do ganho de longo prazo vem de uma só das partes.
+
+**Exemplo:** se uma ação fecha a R$ 10 e abre a R$ 10,20, a noite rendeu +2%. Se depois fecha a R$ 10,10, o dia rendeu -1%.
+
+**Cuidado:** estudos americanos não valem automaticamente para o Brasil. E comprar no fechamento e vender na abertura todo dia custa duas operações por dia, o que costuma consumir o ganho.
+
+## Virada do mês
+**O que é:** um efeito de calendário: em alguns mercados, os retornos costumam ser melhores nos últimos dias de um mês e nos primeiros do seguinte (quando entram salários, aportes e fluxos de fundos).
+
+**Exemplo:** ficar comprado só do último pregão do mês até o 3º pregão do mês seguinte, cerca de 20% do tempo.
+
+**Cuidado:** efeitos de calendário somem quando muita gente passa a explorá-los e podem ser coincidência. O app compara com posições sem relação com o preço (teste contra o acaso) para ajudar a separar um efeito real da sorte.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

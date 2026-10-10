@@ -664,6 +664,27 @@ def criar_grafico_pesos(pesos: pd.DataFrame) -> go.Figure:
     return figura
 
 
+def criar_grafico_diferenca_das_janelas(diferenca: pd.Series) -> go.Figure:
+    """Aporte único menos parcelado, por data de início: acima de zero o aporte único venceu."""
+    if diferenca.empty:
+        raise ValueError("Não há janelas para mostrar.")
+    figura = _figura_base("Aporte único menos aportes parcelados (por data de início)")
+    figura.update_yaxes(tickformat="+.0%")
+    figura.add_hline(y=0, line_color="rgba(255,255,255,0.35)")
+    figura.add_trace(
+        go.Scatter(
+            x=diferenca.index,
+            y=diferenca,
+            mode="lines",
+            fill="tozeroy",
+            line={"color": COR_AZUL, "width": 1.5},
+            fillcolor="rgba(41,98,255,0.25)",
+            hovertemplate="%{y:+.1%}",
+        )
+    )
+    return figura
+
+
 def criar_grafico_curvas_de_capital(
     curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
 ) -> go.Figure:

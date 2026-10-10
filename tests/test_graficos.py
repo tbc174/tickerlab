@@ -11,6 +11,7 @@ from src.graficos import (
     criar_grafico_comparacao,
     criar_grafico_cone_monte_carlo,
     criar_grafico_curvas_de_capital,
+    criar_grafico_diferenca_das_janelas,
     criar_grafico_drawdown,
     criar_grafico_operacoes_no_preco,
     criar_grafico_pesos,
@@ -534,3 +535,18 @@ def test_grafico_de_pesos_tem_um_traco_por_ativo_mais_o_caixa():
 def test_grafico_de_pesos_vazio_da_erro():
     with pytest.raises(ValueError, match="pesos"):
         criar_grafico_pesos(pd.DataFrame())
+
+
+# --- Diferença das janelas --------------------------------------------------------------------
+
+
+def test_diferenca_das_janelas_desenha_a_serie_com_linha_no_zero():
+    serie = pd.Series([0.1, -0.05, 0.02], index=pd.date_range("2026-01-01", periods=3))
+    figura = criar_grafico_diferenca_das_janelas(serie)
+    assert list(figura.data[0].y) == [0.1, -0.05, 0.02]
+    assert figura.layout.shapes[0].y0 == 0
+
+
+def test_diferenca_das_janelas_vazia_da_erro():
+    with pytest.raises(ValueError, match="janelas"):
+        criar_grafico_diferenca_das_janelas(pd.Series(dtype=float))
