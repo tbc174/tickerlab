@@ -7,19 +7,24 @@ from pandas.testing import assert_series_equal
 
 from src.indicadores import (
     DIAS_POR_ANO,
+    NOMES_DOS_MESES,
     calcular_drawdown,
     calcular_indice_sharpe,
     calcular_media_movel,
+    calcular_media_por_mes,
     calcular_percentual_dias_positivos,
     calcular_retorno_acumulado,
     calcular_retorno_anualizado,
     calcular_retorno_diario,
+    calcular_retorno_mensal,
     calcular_var_historico,
     calcular_volatilidade_anual,
     calcular_volatilidade_movel,
     encontrar_melhor_dia,
+    encontrar_melhor_e_pior_mes,
     encontrar_pior_dia,
     encontrar_pior_drawdown,
+    montar_tabela_retornos,
 )
 
 
@@ -236,3 +241,90 @@ def test_pior_drawdown_sem_dados():
     pior = encontrar_pior_drawdown(pd.Series([], dtype=float))
     assert np.isnan(pior.queda)
     assert pior.data_fundo is None
+
+
+# --- Issue #9: retorno por mês e por ano ------------------------------------------
+
+
+def _retornos_de_dois_meses():
+    # Fechamentos 100, 110, 121, 108,9 em quatro dias: retornos +10%, +10%, -10%.
+    datas = pd.to_datetime(["2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03"])
+    return calcular_retorno_diario(pd.Series([100.0, 110.0, 121.0, 108.9], index=datas))
+
+
+def test_retorno_mensal_compoe_os_retornos_do_mes():
+    mensal = calcular_retorno_mensal(_retornos_de_dois_meses())
+    assert list(mensal.index.astype(str)) == ["2026-01", "2026-02"]
+    assert mensal.iloc[0] == pytest.approx(
+        0.10
+    )  # janeiro: só o +10% (o 1º dia não tem retorno)
+    assert mensal.iloc[1] == pytest.approx(
+        1.10 * 0.90 - 1
+    )  # fevereiro: +10% e depois -10% = -1%
+
+
+def test_retorno_mensal_nao_inventa_meses_sem_dados():
+    datas = pd.to_datetime(["2026-01-30", "2026-02-02", "2026-04-01"])  # nada em março
+    retorno = pd.Series([0.01, 0.02, 0.03], index=datas)
+    meses = list(calcular_retorno_mensal(retorno).index.astype(str))
+    assert meses == ["2026-01", "2026-02", "2026-04"]
+
+
+def test_retorno_mensal_sem_dados():
+    assert calcular_retorno_mensal(pd.Series([np.nan])).empty
+    assert calcular_retorno_mensal(pd.Series([], dtype=float)).empty
+
+
+def _mensal_de_exemplo():
+    meses = pd.PeriodIndex(["2025-12", "2026-01", "2026-02"], freq="M")
+    return pd.Series([0.05, 0.10, -0.01], index=meses)
+
+
+def test_tabela_tem_um_ano_por_linha_e_os_doze_meses():
+    tabela = montar_tabela_retornos(_mensal_de_exemplo())
+    assert list(tabela.index) == [2025, 2026]
+    assert list(tabela.columns) == [*NOMES_DOS_MESES, "Ano"]
+    assert tabela.loc[2025, "Dez"] == pytest.approx(0.05)
+    assert tabela.loc[2026, "Jan"] == pytest.approx(0.10)
+    assert tabela.loc[2026, "Fev"] == pytest.approx(-0.01)
+
+
+def test_tabela_deixa_vazios_os_meses_sem_dados():
+    tabela = montar_tabela_retornos(_mensal_de_exemplo())
+    assert np.isnan(tabela.loc[2025, "Jan"])
+    assert np.isnan(tabela.loc[2026, "Dez"])
+
+
+def test_total_do_ano_compoe_os_meses():
+    tabela = montar_tabela_retornos(_mensal_de_exemplo())
+    assert tabela.loc[2025, "Ano"] == pytest.approx(0.05)
+    assert tabela.loc[2026, "Ano"] == pytest.approx(1.10 * 0.99 - 1)
+
+
+def test_tabela_sem_dados_tem_so_as_colunas():
+    tabela = montar_tabela_retornos(calcular_retorno_mensal(pd.Series([], dtype=float)))
+    assert tabela.empty
+    assert list(tabela.columns) == [*NOMES_DOS_MESES, "Ano"]
+
+
+def test_media_por_mes_do_calendario():
+    # Dois janeiros: +10% e +20% -> média 15%. Fevereiro só tem um: -2%.
+    meses = pd.PeriodIndex(["2025-01", "2025-02", "2026-01"], freq="M")
+    tabela = montar_tabela_retornos(pd.Series([0.10, -0.02, 0.20], index=meses))
+    media = calcular_media_por_mes(tabela)
+    assert media["Jan"] == pytest.approx(0.15)
+    assert media["Fev"] == pytest.approx(-0.02)
+    assert np.isnan(media["Mar"])
+
+
+def test_melhor_e_pior_mes():
+    (mes_melhor, melhor), (mes_pior, pior) = encontrar_melhor_e_pior_mes(
+        _mensal_de_exemplo()
+    )
+    assert (str(mes_melhor), melhor) == ("2026-01", pytest.approx(0.10))
+    assert (str(mes_pior), pior) == ("2026-02", pytest.approx(-0.01))
+
+
+def test_melhor_e_pior_mes_sem_dados():
+    with pytest.raises(ValueError, match="vazia"):
+        encontrar_melhor_e_pior_mes(pd.Series([], dtype=float))

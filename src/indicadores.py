@@ -6,6 +6,20 @@ import numpy as np
 import pandas as pd
 
 DIAS_POR_ANO = 252
+NOMES_DOS_MESES = [
+    "Jan",
+    "Fev",
+    "Mar",
+    "Abr",
+    "Mai",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Set",
+    "Out",
+    "Nov",
+    "Dez",
+]
 
 
 class PiorDrawdown(NamedTuple):
@@ -120,3 +134,47 @@ def encontrar_pior_drawdown(fechamento: pd.Series) -> PiorDrawdown:
     recuperou = depois[depois == 0]
     data_recuperacao = recuperou.index[0] if not recuperou.empty else None
     return PiorDrawdown(queda, data_topo, data_fundo, data_recuperacao)
+
+
+def calcular_retorno_mensal(retorno: pd.Series) -> pd.Series:
+    """Retorno de cada mês, juntando os retornos diários (juros compostos). Só meses com dados."""
+    retorno = retorno.dropna()
+    if retorno.empty:
+        return pd.Series(dtype=float, index=pd.PeriodIndex([], freq="M"))
+    meses = retorno.index.to_period("M")
+    return (1 + retorno).groupby(meses).prod() - 1
+
+
+def montar_tabela_retornos(retorno_mensal: pd.Series) -> pd.DataFrame:
+    """Tabela com um ano por linha, os 12 meses em colunas e o total do ano em "Ano"."""
+    if retorno_mensal.empty:
+        return pd.DataFrame(columns=[*NOMES_DOS_MESES, "Ano"], dtype=float)
+    longa = pd.DataFrame(
+        {
+            "ano": retorno_mensal.index.year,
+            "mes": retorno_mensal.index.month,
+            "retorno": retorno_mensal.to_numpy(),
+        }
+    )
+    tabela = longa.pivot(index="ano", columns="mes", values="retorno")
+    tabela = tabela.reindex(columns=range(1, 13))  # meses sem dados ficam vazios
+    tabela.columns = NOMES_DOS_MESES
+    tabela.index.name = None
+    tabela["Ano"] = (1 + tabela).prod(axis=1) - 1  # o NaN conta como "mês sem dados"
+    return tabela
+
+
+def calcular_media_por_mes(tabela: pd.DataFrame) -> pd.Series:
+    """Média do retorno de cada mês do calendário (todos os janeiros, todos os fevereiros...)."""
+    return tabela[NOMES_DOS_MESES].mean()
+
+
+def encontrar_melhor_e_pior_mes(
+    retorno_mensal: pd.Series,
+) -> tuple[tuple[pd.Period, float], tuple[pd.Period, float]]:
+    """Devolve ((mês, retorno) do melhor mês, (mês, retorno) do pior mês)."""
+    if retorno_mensal.empty:
+        raise ValueError("Série de retornos mensais vazia: não há melhor nem pior mês.")
+    melhor = (retorno_mensal.idxmax(), float(retorno_mensal.max()))
+    pior = (retorno_mensal.idxmin(), float(retorno_mensal.min()))
+    return melhor, pior
