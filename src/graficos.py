@@ -486,6 +486,95 @@ def criar_mapa_de_calor_de_parametros(
     return figura
 
 
+def criar_grafico_cone_monte_carlo(
+    percentis: pd.DataFrame, observada: np.ndarray
+) -> go.Figure:
+    """Cone de curvas possíveis (faixas de 5-95% e 25-75%) com a ordem real em azul."""
+    if percentis.empty:
+        raise ValueError("Não há simulações para mostrar.")
+    x = list(percentis.index)
+    figura = _figura_base("Capital depois de cada operação (simulações)")
+    figura.update_layout(
+        hovermode="x unified", showlegend=True, legend={"orientation": "h", "y": -0.18}
+    )
+    figura.update_xaxes(title="Número da operação")
+    for baixo, alto, rotulo, cor in (
+        ("p5", "p95", "5% a 95%", "rgba(154,160,166,0.18)"),
+        ("p25", "p75", "25% a 75%", "rgba(154,160,166,0.32)"),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=x,
+                y=percentis[alto],
+                mode="lines",
+                line={"width": 0},
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
+        figura.add_trace(
+            go.Scatter(
+                x=x,
+                y=percentis[baixo],
+                mode="lines",
+                line={"width": 0},
+                fill="tonexty",
+                fillcolor=cor,
+                name=rotulo,
+                hoverinfo="skip",
+            )
+        )
+    figura.add_trace(
+        go.Scatter(
+            x=x,
+            y=percentis["p50"],
+            mode="lines",
+            name="Mediana",
+            line={"color": COR_INDICE, "width": 1.8, "dash": "dot"},
+            hovertemplate="%{y:.2f}x",
+        )
+    )
+    figura.add_trace(
+        go.Scatter(
+            x=list(range(len(observada))),
+            y=observada,
+            mode="lines",
+            name="Ordem real",
+            line={"color": COR_AZUL, "width": 2.5},
+            hovertemplate="%{y:.2f}x",
+        )
+    )
+    return figura
+
+
+def criar_histograma_do_acaso(
+    sharpes_ao_acaso: np.ndarray, sharpe_real: float
+) -> go.Figure:
+    """Sharpes das versões ao acaso, com uma linha no Sharpe real da estratégia."""
+    if len(sharpes_ao_acaso) == 0:
+        raise ValueError("Não há sorteios para mostrar.")
+    figura = go.Figure(
+        go.Histogram(
+            x=sharpes_ao_acaso,
+            nbinsx=30,
+            marker={"color": COR_INDICE},
+            hovertemplate="Sharpe %{x}<br>%{y} sorteios<extra></extra>",
+        )
+    )
+    figura.add_vline(
+        x=sharpe_real,
+        line_color=COR_AZUL,
+        line_width=3,
+        annotation_text="Estratégia real",
+        annotation_font_color=COR_AZUL_CLARO,
+    )
+    _estilo_base(figura, "Sharpe de versões ao acaso (mesma exposição)", ALTURA_PADRAO)
+    figura.update_layout(hovermode="closest", bargap=0.05)
+    figura.update_xaxes(title="Índice de Sharpe", showspikes=False)
+    figura.update_yaxes(title="Sorteios")
+    return figura
+
+
 def criar_grafico_curvas_de_capital(
     curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
 ) -> go.Figure:

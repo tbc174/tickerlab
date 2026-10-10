@@ -233,6 +233,34 @@ dados no app (um `##` por termo).
 
 **Cuidado:** escolher o ponto mais verde do mapa é o *overfitting* de novo. Use o mapa para ver a **vizinhança**, não para caçar o recorde.
 
+## Monte Carlo (das operações)
+**O que é:** sorteia, milhares de vezes, as operações da estratégia (com reposição) e refaz a curva de capital. Mostra o intervalo de resultados que teriam sido possíveis se os ganhos e as perdas tivessem vindo em outra ordem.
+
+**Exemplo:** com 30 operações, o app mostra que em 90% das simulações o retorno ficou entre -5% e +60%. O resultado real é só um desses caminhos.
+
+**Cuidado:** só reordena o que já aconteceu. Não cria cenários novos, e pouquíssimas operações dão um cone sem sentido (o app pede pelo menos 5).
+
+## Teste contra o acaso
+**O que é:** compara a estratégia com versões que têm a mesma exposição e o mesmo número de operações, mas com a posição deslocada no tempo, sem relação com o preço do dia. O *p-valor* é a fatia das versões ao acaso que fez igual ou melhor.
+
+**Exemplo:** p-valor de 0,02 quer dizer que só 2% das versões ao acaso bateram a estratégia. Já 0,40 quer dizer que 40% fizeram igual: o resultado pode ser só sorte.
+
+**Cuidado:** num ativo que sobe o tempo todo, qualquer posição comprada ganha, e o teste mostra isso: a estratégia não se destaca do acaso. E um p-valor baixo não prova que o resultado vai se repetir.
+
+## Sharpe deflacionado
+**O que é:** o Sharpe do melhor candidato, descontado pelo número de combinações testadas. Quanto mais combinações você experimenta, maior é o Sharpe do vencedor só por sorte. O resultado é uma probabilidade: acima de 95%, é difícil explicar o Sharpe apenas pela sorte.
+
+**Exemplo:** o melhor de 49 combinações tem Sharpe 1,1, mas a sorte sozinha já explicaria cerca de 0,9. A probabilidade fica baixa, e o 1,1 não convence.
+
+**Cuidado:** o app só conhece as combinações da grade. Se você testou outras antes (em outros ativos, em outras estratégias), some-as em "outras tentativas".
+
+## PBO (probabilidade de overfitting)
+**O que é:** o histórico é cortado em blocos e o app testa muitas divisões treino/teste. Em cada uma, pega a melhor combinação do treino e vê onde ela cai no teste. PBO é a fatia das vezes em que ela caiu abaixo da mediana.
+
+**Exemplo:** PBO de 10% é bom sinal: a melhor do treino quase sempre continua boa. Perto de 50%, escolher a melhor do treino equivale a tirar no sorteio.
+
+**Cuidado:** combinações de uma mesma estratégia são parecidas entre si, então o PBO costuma ficar baixo mesmo quando a estratégia toda não vale nada. Ele mede a escolha entre variações, não a estratégia.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

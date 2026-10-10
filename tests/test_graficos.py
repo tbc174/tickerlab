@@ -9,12 +9,14 @@ from src.graficos import (
     ZOOM_COM_A_RODA_DO_MOUSE,
     _numero_br,
     criar_grafico_comparacao,
+    criar_grafico_cone_monte_carlo,
     criar_grafico_curvas_de_capital,
     criar_grafico_drawdown,
     criar_grafico_operacoes_no_preco,
     criar_grafico_preco,
     criar_grafico_quedas_comparadas,
     criar_grafico_volatilidade,
+    criar_histograma_do_acaso,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
 )
@@ -445,3 +447,42 @@ def test_mapa_de_parametros_com_uma_linha_esconde_o_eixo_y():
 def test_mapa_de_parametros_vazio_da_erro():
     with pytest.raises(ValueError, match="vazio"):
         criar_mapa_de_calor_de_parametros(pd.DataFrame(), "Curta")
+
+
+# --- Monte Carlo e acaso ----------------------------------------------------------------------
+
+
+def _percentis():
+    return pd.DataFrame(
+        {
+            "p5": [1, 0.9, 0.8],
+            "p25": [1, 1.0, 0.95],
+            "p50": [1, 1.05, 1.1],
+            "p75": [1, 1.1, 1.25],
+            "p95": [1, 1.2, 1.5],
+        }
+    )
+
+
+def test_cone_tem_faixas_mediana_e_ordem_real():
+    figura = criar_grafico_cone_monte_carlo(_percentis(), np.array([1.0, 1.1, 1.3]))
+    nomes = [t.name for t in figura.data]
+    assert nomes[-2:] == ["Mediana", "Ordem real"]
+    assert "5% a 95%" in nomes and "25% a 75%" in nomes
+    assert list(figura.data[-1].y) == [1.0, 1.1, 1.3]
+
+
+def test_cone_vazio_da_erro():
+    with pytest.raises(ValueError, match="simulações"):
+        criar_grafico_cone_monte_carlo(pd.DataFrame(), np.array([1.0]))
+
+
+def test_histograma_do_acaso_marca_o_sharpe_real():
+    figura = criar_histograma_do_acaso(np.array([0.1, 0.2, -0.3, 0.5]), 0.9)
+    assert figura.layout.shapes[0].x0 == 0.9
+    assert len(figura.data[0].x) == 4
+
+
+def test_histograma_do_acaso_vazio_da_erro():
+    with pytest.raises(ValueError, match="sorteios"):
+        criar_histograma_do_acaso(np.array([]), 1.0)

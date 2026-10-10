@@ -94,6 +94,10 @@ TERMOS_DO_PAINEL = [
     "Treino e teste",
     "Walk-forward",
     "Mapa de parâmetros",
+    "Monte Carlo (das operações)",
+    "Teste contra o acaso",
+    "Sharpe deflacionado",
+    "PBO (probabilidade de overfitting)",
 ]
 
 
