@@ -19,6 +19,9 @@ services:
       - .env   # TICKERLAB_DATABASE_URL e os outros segredos (permissão 600, fora do Git)
     volumes:
       - ./dados_locais:/app/dados_locais
+      # login do Google: o secrets.toml fica só no servidor (permissão 600, fora do Git). Crie o
+      # arquivo ANTES do "up" (pode ficar vazio = modo local); senão o Docker cria uma pasta no lugar.
+      - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
     networks:
       - db
     # o servidor tem pouca RAM (8 GB com o Minecraft): o app não pode comer tudo

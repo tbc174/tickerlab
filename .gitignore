@@ -21,3 +21,6 @@ Thumbs.db
 # Banco de preços local (cache em SQLite): cada pessoa gera o seu
 dados_locais/
 *.sqlite
+
+# Segredos do Streamlit (login do Google): nunca commitar
+.streamlit/secrets.toml
