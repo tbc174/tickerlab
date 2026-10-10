@@ -715,6 +715,54 @@ def criar_grafico_curvas_de_capital(
     return figura
 
 
+def criar_grafico_regimes(
+    fechamento: pd.Series, regimes: pd.Series, cores: dict[str, str]
+) -> go.Figure:
+    """O preço com cada dia pintado pela cor do seu regime (dias sem regime ficam de fora)."""
+    if fechamento.empty or not fechamento.index.equals(regimes.index):
+        raise ValueError("Preços e regimes precisam ter as mesmas datas.")
+    figura = _figura_base("Preço por regime de mercado")
+    figura.update_yaxes(tickformat=",.2f")
+    for nome, cor in cores.items():
+        pontos = fechamento.where(regimes == nome)
+        if pontos.notna().any():
+            figura.add_trace(
+                go.Scatter(
+                    x=pontos.index,
+                    y=pontos,
+                    mode="markers",
+                    marker={"color": cor, "size": 4},
+                    name=nome,
+                    hovertemplate=f"{nome}: %{{y:,.2f}}",
+                )
+            )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_disjuntor(
+    curvas: dict[str, pd.Series],
+    capital_inicial: float,
+    destaque: str,
+    acionamentos: pd.DatetimeIndex,
+) -> go.Figure:
+    """As curvas de capital, com um marcador onde o disjuntor disparou na curva em destaque."""
+    figura = criar_grafico_curvas_de_capital(curvas, capital_inicial, destaque)
+    if len(acionamentos):
+        pontos = curvas[destaque].reindex(acionamentos) * capital_inicial
+        figura.add_trace(
+            go.Scatter(
+                x=pontos.index,
+                y=pontos,
+                mode="markers",
+                marker={"color": COR_QUEDA, "size": 9, "symbol": "x"},
+                name="Disjuntor disparou",
+                hovertemplate="Disparou: R$ %{y:,.2f}",
+            )
+        )
+    return figura
+
+
 def criar_grafico_quedas_comparadas(
     curvas: dict[str, pd.Series], destaque: str
 ) -> go.Figure:

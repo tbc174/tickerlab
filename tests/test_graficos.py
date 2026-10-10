@@ -12,11 +12,13 @@ from src.graficos import (
     criar_grafico_cone_monte_carlo,
     criar_grafico_curvas_de_capital,
     criar_grafico_diferenca_das_janelas,
+    criar_grafico_disjuntor,
     criar_grafico_drawdown,
     criar_grafico_operacoes_no_preco,
     criar_grafico_pesos,
     criar_grafico_preco,
     criar_grafico_quedas_comparadas,
+    criar_grafico_regimes,
     criar_grafico_risco_retorno,
     criar_grafico_volatilidade,
     criar_histograma_do_acaso,
@@ -550,3 +552,30 @@ def test_diferenca_das_janelas_desenha_a_serie_com_linha_no_zero():
 def test_diferenca_das_janelas_vazia_da_erro():
     with pytest.raises(ValueError, match="janelas"):
         criar_grafico_diferenca_das_janelas(pd.Series(dtype=float))
+
+
+def test_grafico_de_regimes_pinta_cada_dia_com_a_cor_do_seu_regime():
+    indice = pd.date_range("2026-01-01", periods=4)
+    preco = pd.Series([10.0, 11.0, 12.0, 13.0], index=indice)
+    regime = pd.Series(["Calmo", "Agitado", "Calmo", "Sem histórico"], index=indice)
+    figura = criar_grafico_regimes(
+        preco, regime, {"Calmo": "#26a69a", "Agitado": "#ef5350"}
+    )
+    assert [t.name for t in figura.data] == ["Calmo", "Agitado"]
+    assert figura.data[0].y[0] == 10.0 and figura.data[0].y[2] == 12.0
+
+
+def test_grafico_de_regimes_exige_as_mesmas_datas():
+    preco = pd.Series([1.0, 2.0], index=pd.date_range("2026-01-01", periods=2))
+    with pytest.raises(ValueError, match="mesmas datas"):
+        criar_grafico_regimes(preco, preco.iloc[:1].astype(object), {"A": "#000"})
+
+
+def test_grafico_do_disjuntor_marca_os_disparos():
+    indice = pd.date_range("2026-01-01", periods=5)
+    curva = pd.Series([1.0, 1.1, 1.0, 0.9, 0.95], index=indice)
+    figura = criar_grafico_disjuntor({"Com": curva}, 100.0, "Com", indice[[3]])
+    assert figura.data[-1].name == "Disjuntor disparou"
+    assert list(figura.data[-1].y) == pytest.approx([90.0])
+    sem = criar_grafico_disjuntor({"Com": curva}, 100.0, "Com", indice[:0])
+    assert len(sem.data) == 1

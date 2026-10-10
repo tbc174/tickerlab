@@ -105,6 +105,9 @@ TERMOS_DO_PAINEL = [
     "DCA (aportes parcelados)",
     "Retorno da noite e do dia",
     "Virada do mês",
+    "Regime de mercado",
+    "Variância gerida",
+    "Disjuntor de drawdown",
 ]
 
 

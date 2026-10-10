@@ -310,6 +310,27 @@ dados no app (um `##` por termo).
 
 **Cuidado:** efeitos de calendário somem quando muita gente passa a explorá-los e podem ser coincidência. O app compara com posições sem relação com o preço (teste contra o acaso) para ajudar a separar um efeito real da sorte.
 
+## Regime de mercado
+**O que é:** um "clima" em que o mercado se encontra: calmo ou agitado (pela volatilidade recente) e de alta ou de baixa (pelo preço acima ou abaixo de uma média longa). Cada regime costuma ter retorno e risco bem diferentes.
+
+**Exemplo:** o app chama de "agitado" o dia em que a volatilidade dos últimos 20 dias passa da mediana de tudo o que já aconteceu até ali.
+
+**Cuidado:** o regime só é conhecido depois que acontece, e costuma mudar tarde: quando o app avisa que está agitado, parte do susto já passou. Por isso a tabela compara cada dia com o regime da véspera, que é o que dava para saber antes.
+
+## Variância gerida
+**O que é:** reduzir a posição quando a variância dos últimos dias está alta e deixá-la cheia quando está baixa. Vem de um estudo de Moreira e Muir (2017) que mostrou ganho de Sharpe em vários fatores.
+
+**Exemplo:** se a variância de hoje é o dobro da típica, a posição cai para a metade.
+
+**Cuidado:** o app nunca usa alavancagem (no máximo 100% do capital) e a variância "típica" é a mediana só do passado. O resultado depende do ativo e do período, e cada ajuste custa.
+
+## Disjuntor de drawdown
+**O que é:** uma regra que desliga a estratégia quando ela cai mais de X% desde o seu último topo e a deixa em caixa por N dias.
+
+**Exemplo:** queda de 15% e pausa de 21 dias: ao cair 15% desde o topo, a estratégia fica parada por cerca de um mês.
+
+**Cuidado:** proteger tem preço. O disjuntor evita parte de uma queda longa, mas também faz perder a recuperação que vem depois (o dia em que o mercado vira costuma ser o de maior alta). Por isso o app mostra o resultado com e sem disjuntor lado a lado.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 
