@@ -8,6 +8,7 @@ from src.graficos import (
     CONFIG_PLOTLY,
     ZOOM_COM_A_RODA_DO_MOUSE,
     _numero_br,
+    criar_grafico_comparacao,
     criar_grafico_drawdown,
     criar_grafico_preco,
     criar_grafico_volatilidade,
@@ -269,3 +270,52 @@ def test_botoes_dos_graficos_de_risco_ficam_a_direita_do_titulo():
     figura = criar_grafico_drawdown(calcular_drawdown(_fechamento()))
     seletor = figura.layout.xaxis.rangeselector
     assert seletor.x == 1 and seletor.xanchor == "right"
+
+
+# --- Gráfico de comparação (base 100) ----------------------------------------------------
+
+
+def _base100():
+    datas = pd.date_range("2026-01-05", periods=4, freq="B")
+    return pd.DataFrame(
+        {
+            "PETR4.SA": [100.0, 105.0, 103.0, 110.0],
+            "^BVSP": [100.0, 101.0, 102.0, 103.0],
+            "^GSPC": [100.0, 99.0, 101.0, 104.0],
+            "AAPL": [100.0, 102.0, 104.0, 106.0],
+            "VALE3.SA": [100.0, 98.0, 99.0, 97.0],
+        },
+        index=datas,
+    )
+
+
+def test_comparacao_tem_uma_linha_por_ativo_com_a_cor_certa():
+    figura = criar_grafico_comparacao(_base100(), principal="PETR4.SA")
+    linhas = {tr.name: tr.line for tr in figura.data}
+    assert list(linhas) == ["PETR4.SA", "^BVSP", "^GSPC", "AAPL", "VALE3.SA"]
+    assert linhas["PETR4.SA"].color == "#2962ff"  # o principal, em azul
+    assert linhas["^BVSP"].color == linhas["^GSPC"].color  # índices em cinza
+    assert linhas["^GSPC"].dash == "dash"  # S&P 500 tracejado
+    assert linhas["^BVSP"].dash is None
+    assert (
+        linhas["AAPL"].color != linhas["VALE3.SA"].color
+    )  # os demais, cores diferentes
+
+
+def test_comparacao_usa_nomes_amigaveis_na_legenda():
+    figura = criar_grafico_comparacao(
+        _base100(), "PETR4.SA", nomes={"^BVSP": "Ibovespa", "^GSPC": "S&P 500"}
+    )
+    nomes = [tr.name for tr in figura.data]
+    assert "Ibovespa" in nomes and "S&P 500" in nomes and "^BVSP" not in nomes
+    assert figura.layout.showlegend is True
+
+
+def test_comparacao_tem_linha_de_referencia_em_100():
+    figura = criar_grafico_comparacao(_base100(), "PETR4.SA")
+    assert any(forma.y0 == 100 for forma in figura.layout.shapes)
+
+
+def test_comparacao_sem_dados_levanta_erro():
+    with pytest.raises(ValueError, match="em comum"):
+        criar_grafico_comparacao(pd.DataFrame(), "PETR4.SA")

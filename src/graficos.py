@@ -16,6 +16,13 @@ COR_AZUL = "#2962ff"  # cor principal do TickerLab
 COR_AZUL_CLARO = "#7aa2ff"
 COR_ALTA = "#26a69a"  # verde só para alta
 COR_QUEDA = "#ef5350"  # vermelho só para queda
+COR_INDICE = "#9aa0a6"  # índices em cinza
+CORES_OUTROS_ATIVOS = [
+    "#a78bfa",
+    "#2dd4bf",
+    "#f472b6",
+    "#94a3b8",
+]  # violeta, verde-água, rosa, azul-cinza
 CORES_MEDIAS = ["#a78bfa", "#f472b6", "#94a3b8"]  # violeta, rosa e cinza (sem laranja)
 ALTURA_PADRAO = 320
 ALTURA_PRECO = 520
@@ -346,4 +353,46 @@ def criar_mapa_de_calor_mensal(tabela: pd.DataFrame) -> go.Figure:
         yaxis={"autorange": "reversed", "fixedrange": True},
         dragmode=False,
     )
+    return figura
+
+
+def criar_grafico_comparacao(
+    base100: pd.DataFrame, principal: str, nomes: dict[str, str] | None = None
+) -> go.Figure:
+    """Linhas de desempenho de vários ativos, todos começando em 100.
+
+    O ativo principal fica em azul; os índices (começam com "^") em cinza, e o S&P 500 tracejado;
+    os demais usam cores fixas, na ordem em que aparecem.
+    """
+    if base100.empty:
+        raise ValueError("Não há dias em comum para comparar.")
+    nomes = nomes or {}
+    figura = _figura_base("Desempenho (base 100 no primeiro dia em comum)")
+    figura.update_yaxes(tickformat=",.0f")
+    figura.add_hline(y=100, line_dash="dot", line_color="rgba(255,255,255,0.25)")
+
+    proxima_cor = 0
+    for ticker in base100.columns:
+        linha = {"width": 2}
+        if ticker == principal:
+            linha["color"] = COR_AZUL
+            linha["width"] = 2.5
+        elif ticker.startswith("^"):
+            linha["color"] = COR_INDICE
+            if ticker == "^GSPC":
+                linha["dash"] = "dash"
+        else:
+            linha["color"] = CORES_OUTROS_ATIVOS[proxima_cor % len(CORES_OUTROS_ATIVOS)]
+            proxima_cor += 1
+        figura.add_trace(
+            go.Scatter(
+                x=base100.index,
+                y=base100[ticker],
+                mode="lines",
+                line=linha,
+                hovertemplate="%{y:,.1f}",
+                name=nomes.get(ticker, ticker),
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
     return figura
