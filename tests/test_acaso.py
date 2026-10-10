@@ -243,3 +243,23 @@ def test_pbo_valida_entradas():
         acaso.calcular_pbo(base[[0]])
     with pytest.raises(ValueError, match="Poucos dados"):
         acaso.calcular_pbo(base.iloc[:30])
+
+
+def test_comprimento_minimo_bate_com_o_sharpe_probabilistico():
+    rng = np.random.default_rng(3)
+    retorno = pd.Series(rng.normal(0.001, 0.01, 4000))
+    n = acaso.calcular_comprimento_minimo(retorno, 0.95)
+    assert 2 < n < 4000
+    # com exatamente n dias, o PSR da mesma série com n dias fica perto de 95%
+    psr = acaso.calcular_sharpe_probabilistico(retorno.iloc[: round(n)])
+    assert 0.8 < psr < 0.999
+    # mais confiança pede mais dias; Sharpe pior que a referência nunca chega lá
+    assert acaso.calcular_comprimento_minimo(retorno, 0.99) > n
+    assert acaso.calcular_comprimento_minimo(-retorno) == float("inf")
+
+
+def test_comprimento_minimo_valida_entradas():
+    retorno = pd.Series(np.random.default_rng(0).normal(0, 0.01, 100))
+    with pytest.raises(ValueError, match="confiança"):
+        acaso.calcular_comprimento_minimo(retorno, 1.0)
+    assert np.isnan(acaso.calcular_comprimento_minimo(retorno.iloc[:5]))

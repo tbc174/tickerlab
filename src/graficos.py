@@ -763,6 +763,89 @@ def criar_grafico_disjuntor(
     return figura
 
 
+def criar_grafico_volatilidade_prevista(
+    prevista: pd.Series, ingenua: pd.Series, realizada: pd.Series
+) -> go.Figure:
+    """Volatilidade anual que veio (cinza), a prevista pelo modelo (azul) e a ingênua (rosa)."""
+    if prevista.empty:
+        raise ValueError("Não há previsões para mostrar.")
+    figura = _figura_base("Volatilidade anual: prevista × que veio de fato")
+    figura.update_yaxes(tickformat=".0%")
+    for nome, serie, cor, largura in (
+        ("Que veio de fato", realizada, COR_INDICE, 1.5),
+        ("Ingênua (últimos 20 dias)", ingenua, CORES_MEDIAS[1], 1.2),
+        ("Prevista pelo modelo", prevista, COR_AZUL, 2.0),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=serie.index,
+                y=serie,
+                mode="lines",
+                line={"color": cor, "width": largura},
+                name=nome,
+                hovertemplate="%{y:.1%}",
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_z_do_par(
+    z: pd.Series,
+    lado: pd.Series,
+    entrada: float,
+    stop: float,
+    inicio_do_teste: pd.Timestamp,
+) -> go.Figure:
+    """O z-score do spread com as faixas de entrada e de stop; os dias posicionados ficam em cores."""
+    if z.dropna().empty:
+        raise ValueError("Não há z-score para mostrar.")
+    figura = _figura_base("Distância do par em relação ao normal (z-score)")
+    figura.add_hline(y=0, line_color="rgba(255,255,255,0.35)")
+    for nivel in (entrada, -entrada):
+        figura.add_hline(y=nivel, line_dash="dot", line_color="rgba(255,255,255,0.35)")
+    for nivel in (stop, -stop):
+        figura.add_hline(y=nivel, line_dash="dash", line_color=COR_QUEDA)
+    figura.add_trace(
+        go.Scatter(
+            x=z.index,
+            y=z,
+            mode="lines",
+            line={"color": COR_INDICE, "width": 1.2},
+            name="z-score",
+            hovertemplate="%{y:.2f}",
+        )
+    )
+    for valor, nome, cor in (
+        (1.0, "Comprado em A, vendido em B", COR_ALTA),
+        (-1.0, "Vendido em A, comprado em B", COR_QUEDA),
+    ):
+        pontos = z.where(lado == valor)
+        if pontos.notna().any():
+            figura.add_trace(
+                go.Scatter(
+                    x=pontos.index,
+                    y=pontos,
+                    mode="markers",
+                    marker={"color": cor, "size": 4},
+                    name=nome,
+                    hovertemplate="%{y:.2f}",
+                )
+            )
+    figura.add_vline(x=inicio_do_teste, line_dash="dot", line_color=COR_AZUL)
+    figura.add_annotation(
+        x=inicio_do_teste,
+        y=1,
+        yref="paper",
+        text="início do teste",
+        showarrow=False,
+        xanchor="left",
+        font={"color": COR_AZUL, "size": 11},
+    )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
 def criar_grafico_quedas_comparadas(
     curvas: dict[str, pd.Series], destaque: str
 ) -> go.Figure:

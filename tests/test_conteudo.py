@@ -108,6 +108,15 @@ TERMOS_DO_PAINEL = [
     "Regime de mercado",
     "Variância gerida",
     "Disjuntor de drawdown",
+    "Barreira tripla",
+    "Expurgo e embargo",
+    "Meta-rotulagem",
+    "Pairs trading",
+    "Cointegração",
+    "Paridade hierárquica de risco (HRP)",
+    "Ômega",
+    "Critério de Kelly",
+    "Comprimento mínimo do histórico",
 ]
 
 

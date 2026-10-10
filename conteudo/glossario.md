@@ -331,6 +331,69 @@ dados no app (um `##` por termo).
 
 **Cuidado:** proteger tem preço. O disjuntor evita parte de uma queda longa, mas também faz perder a recuperação que vem depois (o dia em que o mercado vira costuma ser o de maior alta). Por isso o app mostra o resultado com e sem disjuntor lado a lado.
 
+## Barreira tripla
+**O que é:** uma forma de dar a "resposta certa" a um modelo de aprendizado de máquina. A partir de um dia, acompanha-se o preço até ele tocar o **alvo** (ganho), o **stop** (perda) ou acabar o **prazo**; o que vier primeiro decide o rótulo (1 = bateu o alvo, 0 = não).
+
+**Exemplo:** alvo de 3%, stop de 3% e prazo de 10 dias: se o preço sobe 3% no 4º dia sem antes cair 3%, o dia de partida recebe o rótulo 1.
+
+**Cuidado:** o rótulo só fica conhecido depois de vários dias. Por isso o treino não pode usar exemplos cujo rótulo ainda não estava resolvido na data da previsão (veja *Expurgo e embargo*).
+
+## Expurgo e embargo
+**O que é:** cuidados para a validação cruzada não "vazar" o futuro. Em séries de preços, o rótulo de um dia depende dos dias seguintes, então um exemplo do treino pode compartilhar o mesmo futuro com um exemplo do teste. O **expurgo** tira do treino o que se sobrepõe ao teste; o **embargo** deixa uma folga de alguns dias logo depois do teste.
+
+**Exemplo:** teste de 1º a 31 de março, rótulos de 10 dias: saem do treino os exemplos de meados de fevereiro (cujo rótulo olha março) e os primeiros dias de abril.
+
+**Cuidado:** sem isso o modelo parece melhor do que é, e a diferença entre a validação com e sem expurgo mede o tamanho do vazamento.
+
+## Meta-rotulagem
+**O que é:** usar duas camadas. Uma regra simples (por exemplo, um cruzamento de médias) decide a **direção**; um modelo decide **se vale a pena agir** naquele sinal, a partir da chance de sucesso.
+
+**Exemplo:** a regra manda comprar 100 vezes; o modelo aceita 40 em que acha o sucesso mais provável. Se a taxa de sucesso dessas 40 não for maior que a das 100, o modelo não ajudou.
+
+**Cuidado:** o modelo precisa de muitos sinais para aprender; com poucos, qualquer diferença é ruído. Passe o resultado pelo teste contra o acaso.
+
+## Pairs trading
+**O que é:** uma estratégia com dois ativos parecidos (por exemplo, dois bancos). Quando a diferença entre eles foge do normal, compra-se o que ficou barato e vende-se o que ficou caro, apostando que a relação volta. O resultado não depende de o mercado subir ou cair.
+
+**Exemplo:** se o Banco A costuma valer 0,8 vezes o Banco B e hoje vale 0,7, compra-se A e vende-se B até a proporção voltar.
+
+**Cuidado:** a relação pode se desfazer para sempre (uma das empresas muda). A perna vendida exige aluguel de ações, com custo e disponibilidade limitada. E, ao testar muitos pares, alguns parecem ligados só por sorte: confirme a relação em um período que não foi usado para escolhê-la.
+
+## Cointegração
+**O que é:** dois preços são cointegrados quando, mesmo vagando cada um para um lado, uma combinação deles (o spread) volta sempre para a média. É a base estatística do pairs trading. O app usa o teste de Dickey-Fuller aumentado (ADF) no spread: quanto mais negativo, mais evidência de que ele volta.
+
+**Exemplo:** ADF abaixo de −3,34 indica relação com cerca de 95% de confiança (valor aproximado de Engle-Granger para dois ativos).
+
+**Cuidado:** correlação alta não é cointegração: dois ativos podem subir juntos e se afastar para sempre. A **meia-vida** diz em quantos dias o spread volta metade do caminho; muito longa, a estratégia fica lenta e cara.
+
+## Paridade hierárquica de risco (HRP)
+**O que é:** um jeito de dividir o dinheiro entre ativos pelo risco, sem prever retornos. Agrupa os ativos que andam juntos numa árvore e divide a carteira de cima para baixo, dando fatias menores aos grupos mais arriscados. Foi proposta por Marcos López de Prado como alternativa mais estável à otimização de Markowitz.
+
+**Exemplo:** com três bancos e uma mineradora, os três bancos dividem uma fatia, em vez de ficarem com três quartos da carteira.
+
+**Cuidado:** depende de como os ativos se moveram no passado, e essas relações mudam, em especial nas crises, quando tudo cai junto.
+
+## Ômega
+**O que é:** a soma de todos os ganhos diários dividida pela soma de todas as perdas diárias. Acima de 1, os ganhos pesam mais que as perdas.
+
+**Exemplo:** ômega de 1,2 significa R$ 1,20 de ganho para cada R$ 1,00 de perda.
+
+**Cuidado:** usa todos os dias, não só a média e o desvio como o Sharpe, então é menos enganado por quedas raras e grandes. Mas ainda é uma medida do passado.
+
+## Critério de Kelly
+**O que é:** a fração do capital que, em teoria, maximizaria o crescimento a longo prazo, dada a média e a variância dos retornos. O app mostra **meio Kelly**, que é o que se costuma discutir na prática.
+
+**Exemplo:** meio Kelly de 40% sugere ter 40% do capital na estratégia e o resto em caixa.
+
+**Cuidado:** é extremamente sensível ao erro de estimar a média: um erro pequeno muda muito o resultado. Acima de 100% pediria alavancagem. Use como curiosidade, nunca como instrução.
+
+## Comprimento mínimo do histórico
+**O que é:** quantos anos de dados seriam necessários para ter 95% de confiança de que o Sharpe verdadeiro é positivo, dado o Sharpe medido e o formato dos retornos (assimetria e curtose). Vem da mesma conta do Sharpe probabilístico (Bailey e López de Prado).
+
+**Exemplo:** se a tela mostra 8 anos e você só tem 5 anos de dados, o resultado ainda não é confiável.
+
+**Cuidado:** quanto mais combinações você testou antes de escolher a estratégia, mais anos são necessários; esta conta não desconta isso (veja o Sharpe deflacionado).
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

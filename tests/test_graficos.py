@@ -21,6 +21,8 @@ from src.graficos import (
     criar_grafico_regimes,
     criar_grafico_risco_retorno,
     criar_grafico_volatilidade,
+    criar_grafico_volatilidade_prevista,
+    criar_grafico_z_do_par,
     criar_histograma_do_acaso,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
@@ -579,3 +581,31 @@ def test_grafico_do_disjuntor_marca_os_disparos():
     assert list(figura.data[-1].y) == pytest.approx([90.0])
     sem = criar_grafico_disjuntor({"Com": curva}, 100.0, "Com", indice[:0])
     assert len(sem.data) == 1
+
+
+def test_grafico_da_volatilidade_prevista_tem_tres_linhas():
+    indice = pd.date_range("2026-01-01", periods=5)
+    serie = pd.Series([0.2, 0.25, 0.3, 0.2, 0.22], index=indice)
+    figura = criar_grafico_volatilidade_prevista(serie, serie * 1.1, serie * 0.9)
+    assert [t.name for t in figura.data][-1] == "Prevista pelo modelo"
+    assert len(figura.data) == 3
+    with pytest.raises(ValueError, match="previsões"):
+        criar_grafico_volatilidade_prevista(serie.iloc[:0], serie, serie)
+
+
+def test_grafico_do_z_do_par_marca_posicoes_e_inicio_do_teste():
+    indice = pd.date_range("2026-01-01", periods=6)
+    z = pd.Series([0.0, -2.5, -2.0, 0.1, 2.6, 0.0], index=indice)
+    lado = pd.Series([0.0, 1.0, 1.0, 0.0, -1.0, 0.0], index=indice)
+    figura = criar_grafico_z_do_par(z, lado, 2.0, 4.0, indice[2])
+    nomes = [t.name for t in figura.data]
+    assert nomes == [
+        "z-score",
+        "Comprado em A, vendido em B",
+        "Vendido em A, comprado em B",
+    ]
+    assert (
+        len(figura.layout.shapes) == 6
+    )  # zero, duas entradas, dois stops e o início do teste
+    with pytest.raises(ValueError, match="z-score"):
+        criar_grafico_z_do_par(z * float("nan"), lado, 2.0, 4.0, indice[2])

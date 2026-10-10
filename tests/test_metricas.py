@@ -13,6 +13,8 @@ from src.metricas import (
     calcular_gain_to_pain,
     calcular_indice_ulcer,
     calcular_intervalo_do_sharpe,
+    calcular_kelly,
+    calcular_omega,
     calcular_razao_de_cauda,
     calcular_retorno_total,
     calcular_sortino,
@@ -202,3 +204,19 @@ def test_resumo_de_desempenho_traz_as_metricas_na_ordem_da_tela():
     assert chaves[:3] == ["Retorno total", "Retorno anualizado", "Volatilidade anual"]
     assert "Índice de Sortino" in resumo and "Exposição média" in resumo
     assert "Profit factor" in resumo or "Expectativa por operação" in resumo
+
+
+def test_omega_com_numeros_conferidos_a_mao():
+    retorno = pd.Series([0.02, -0.01, 0.03, -0.02] * 10)
+    assert calcular_omega(retorno) == pytest.approx(0.05 / 0.03)
+    assert calcular_omega(pd.Series([0.01, 0.02])) == float("inf")
+    assert calcular_omega(retorno, limite_diario=0.05) < 1
+
+
+def test_kelly_e_media_sobre_variancia():
+    rng = np.random.default_rng(0)
+    retorno = pd.Series(rng.normal(0.001, 0.01, 2000))
+    assert calcular_kelly(retorno) == pytest.approx(retorno.mean() / retorno.var())
+    assert 5 < calcular_kelly(retorno) < 15  # 0,001 / 0,0001
+    assert np.isnan(calcular_kelly(pd.Series([0.01] * 40)))  # sem variância
+    assert np.isnan(calcular_kelly(pd.Series([0.01, 0.02])))  # poucos dias

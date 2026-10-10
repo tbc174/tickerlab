@@ -117,6 +117,28 @@ def calcular_intervalo_do_sharpe(
     return float(sharpe), float(sharpe - margem), float(sharpe + margem)
 
 
+def calcular_omega(retorno: pd.Series, limite_diario: float = 0.0) -> float:
+    """Ganhos acima do limite ÷ perdas abaixo dele (acima de 1: os ganhos pesam mais)."""
+    retorno = retorno.dropna()
+    ganhos = float((retorno - limite_diario).clip(lower=0).sum())
+    perdas = float((limite_diario - retorno).clip(lower=0).sum())
+    if perdas == 0:
+        return float("inf") if ganhos > 0 else NAN
+    return ganhos / perdas
+
+
+def calcular_kelly(retorno: pd.Series) -> float:
+    """Fração do capital que maximizaria o crescimento a longo prazo: média ÷ variância diária.
+
+    É uma aproximação contínua, muito sensível ao erro de estimar a média. Meio Kelly (a
+    metade) é o que se costuma discutir na prática. Valores acima de 1 pediriam alavancagem.
+    """
+    retorno = retorno.dropna()
+    if len(retorno) < 30 or retorno.var() == 0:
+        return NAN
+    return float(retorno.mean() / retorno.var())
+
+
 def calcular_exposicao(posicao: pd.Series) -> float:
     """Fração média do capital que ficou aplicada (1 = sempre comprado, 0 = sempre em caixa)."""
     return float(posicao.mean()) if not posicao.empty else NAN

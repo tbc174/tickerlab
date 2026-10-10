@@ -181,6 +181,34 @@ def calcular_sharpe_probabilistico(
     return float(NORMAL.cdf(z))
 
 
+def calcular_comprimento_minimo(
+    retorno: pd.Series,
+    confianca: float = 0.95,
+    sharpe_diario_de_referencia: float = 0.0,
+    taxa_livre_de_risco: float = 0.0,
+) -> float:
+    """Quantos DIAS de dados fariam o Sharpe medido superar a referência com a confiança dada.
+
+    Resolve a fórmula do Sharpe probabilístico (PSR) para o tamanho da amostra, mantendo
+    assimetria e curtose observadas. Infinito se o Sharpe medido não passa da referência.
+    """
+    if not 0.5 < confianca < 1:
+        raise ValueError("A confiança deve ficar entre 0,5 e 1 (por exemplo, 0,95).")
+    retorno = retorno.dropna()
+    sharpe = _sharpe_diario(retorno, taxa_livre_de_risco)
+    if np.isnan(sharpe):
+        return NAN
+    if sharpe <= sharpe_diario_de_referencia:
+        return float("inf")
+    assimetria = float(retorno.skew())
+    curtose = float(retorno.kurt()) + 3
+    termo = 1 - assimetria * sharpe + (curtose - 1) / 4 * sharpe**2
+    if termo <= 0:
+        return NAN
+    z = NORMAL.inv_cdf(confianca)
+    return float(1 + termo * (z / (sharpe - sharpe_diario_de_referencia)) ** 2)
+
+
 def calcular_sharpe_maximo_esperado(
     variancia_dos_sharpes_diarios: float, tentativas: int
 ) -> float:

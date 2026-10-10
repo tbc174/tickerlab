@@ -205,3 +205,14 @@ Textos da aba **Backtest**, escritos para quem está começando. Cada estratégi
 **Quando costuma falhar:** quando o canário e os outros ativos andam em direções diferentes, e nas viradas rápidas.
 
 **O que olhar nos resultados:** a **exposição média**, a **maior queda** e se o canário que você escolheu realmente "avisa" dos outros: teste com um índice e com uma ação.
+
+## Paridade hierárquica de risco (HRP)
+**A ideia:** dividir o risco de forma esperta entre os ativos, sem exigir previsões de retorno. Ativos que andam juntos formam um grupo e dividem uma mesma fatia; ativos diferentes recebem fatias separadas. Foi proposta por Marcos López de Prado como alternativa mais estável à otimização clássica de Markowitz.
+
+**A regra:** no fim do mês, olha como os ativos se moveram nos últimos 252 dias (padrão), agrupa os mais parecidos numa árvore e divide a carteira de cima para baixo: em cada ramificação, o ramo menos arriscado recebe mais. Dentro de cada ramo, o peso é inversamente proporcional à variância. Nenhum peso fica negativo e os pesos somam 100%.
+
+**Quando costuma funcionar:** quando há grupos claros de ativos parecidos (por exemplo, três bancos e uma mineradora): a HRP evita que o setor repetido domine a carteira, o que os pesos iguais não fazem.
+
+**Quando costuma falhar:** com poucos ativos ou ativos muito diferentes, ela se parece com o inverso da volatilidade; e como qualquer regra baseada no passado, depende de as relações entre os ativos se manterem.
+
+**O que olhar nos resultados:** a **maior queda** e o **Sharpe** contra os pesos iguais e o inverso da volatilidade, e o gráfico de pesos: a HRP deve dar fatias menores aos ativos que se repetem.

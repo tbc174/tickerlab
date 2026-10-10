@@ -1,11 +1,13 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src import graficos
+from src import aprendizado, graficos
 from src import indicadores as ind
 from src.acaso import (
+    calcular_comprimento_minimo,
     calcular_pbo,
     calcular_sharpe_deflacionado,
     simular_monte_carlo,
@@ -58,7 +60,13 @@ from src.experimentos import (
 )
 from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
-from src.metricas import calcular_intervalo_do_sharpe, resumir_desempenho
+from src.metricas import (
+    calcular_intervalo_do_sharpe,
+    calcular_kelly,
+    calcular_omega,
+    resumir_desempenho,
+)
+from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.protecoes import Protecoes, aplicar_protecoes
 from src.ranking import montar_ranking
 from src.regimes import (
@@ -1559,6 +1567,473 @@ def secao_regimes(dados, taxa_livre_de_risco):
         _disjuntor(dados, taxa_livre_de_risco)
 
 
+@st.cache_data(show_spinner="Treinando o modelo (só com o passado de cada data)...")
+def calcular_previsoes_do_sinal(dados, tipo, alvo, stop, prazo, mascara_bytes=None):
+    """Treino com janela que expande; guardado em cache porque leva alguns segundos."""
+    if tipo == "dia":
+        conjunto = aprendizado.rotular_proximo_dia(dados)
+    else:
+        conjunto = aprendizado.rotular_barreira_tripla(dados, alvo, stop, prazo)
+    mascara = None
+    if mascara_bytes is not None:
+        sinal = np.frombuffer(mascara_bytes, dtype=bool)
+        mascara = sinal[conjunto.posicao]
+    return conjunto, aprendizado.prever_fora_da_amostra(conjunto, mascara=mascara)
+
+
+def _tabela_de_avaliacao(r):
+    return pd.DataFrame(
+        {
+            "Modelo": [
+                formatar_pct(r["Acurácia do modelo"]),
+                formatar_metrica("Sharpe", r["AUC"]),
+                formatar_metrica("Sharpe", r["Brier do modelo"]),
+            ],
+            "Previsão ingênua": [
+                formatar_pct(r["Acurácia ingênua"]),
+                "0,50",
+                formatar_metrica("Sharpe", r["Brier ingênuo"]),
+            ],
+        },
+        index=[
+            "Acurácia (acertos)",
+            "AUC (0,5 = acaso)",
+            "Erro de Brier (menor é melhor)",
+        ],
+    )
+
+
+def _veredito(r):
+    z = r["Diferença em erros-padrão"]
+    if z >= 2:
+        return (
+            f"O modelo acertou {formatar_pct(r['Acurácia do modelo'] - r['Acurácia ingênua'], com_sinal=True)} "
+            f"a mais que a previsão ingênua, a {formatar_metrica('Sharpe', z)} erros-padrão. "
+            "Isso é raro: desconfie antes de comemorar e confira em outro período e outro ativo."
+        )
+    return (
+        f"A diferença para a previsão ingênua foi de {formatar_metrica('Sharpe', z)} "
+        "erros-padrão: dentro do que o acaso produz. O modelo não mostrou saber algo "
+        "que o preço passado não esconda."
+    )
+
+
+def _ml_sinal_do_dia(dados, taxa_livre_de_risco):
+    st.markdown("**Um modelo consegue prever se amanhã sobe?**")
+    st.caption(
+        "Regressão logística com 8 variáveis simples (retornos, volatilidade, amplitude, "
+        "volume, distância da média). Treina só com o passado de cada data, numa janela que "
+        "cresce, e é comparada com a previsão ingênua: sempre apostar no lado mais comum."
+    )
+    c1, c2 = st.columns(2)
+    limiar = c1.slider(
+        "Compra se a probabilidade passar de", 0.45, 0.65, 0.5, 0.01, key="ml_limiar"
+    )
+    with c2:
+        custo = _custo_do_experimento("ml_dia")
+    try:
+        conjunto, previsoes = calcular_previsoes_do_sinal(dados, "dia", 0, 0, 0)
+        r = aprendizado.avaliar_previsoes(conjunto.y, previsoes, limiar)
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    st.dataframe(_tabela_de_avaliacao(r), width="stretch")
+    st.caption(f"{int(r['Previsões'])} previsões fora da amostra. " + _veredito(r))
+
+    fechamento = dados["Close"]
+    posicao = aprendizado.posicao_a_partir_das_probabilidades(
+        previsoes["p"], fechamento.index, limiar
+    )
+    inicio = previsoes["p"].first_valid_index()
+    teste = fechamento.loc[inicio:]
+    resultados = {
+        "Modelo (sinal do dia)": executar_backtest(teste, posicao.loc[inicio:], custo),
+        ESTRATEGIA_DE_REFERENCIA: executar_backtest(
+            teste, pd.Series(1.0, index=teste.index), custo
+        ),
+    }
+    mostrar_grafico(
+        graficos.criar_grafico_curvas_de_capital(
+            {n: x.curva_de_capital for n, x in resultados.items()},
+            10_000.0,
+            destaque="Modelo (sinal do dia)",
+        )
+    )
+    st.dataframe(
+        _tabela_de_resultados(resultados, taxa_livre_de_risco), width="stretch"
+    )
+    try:
+        acaso = testar_contra_o_acaso(
+            teste, posicao.loc[inicio:], custo, taxa_livre_de_risco
+        )
+        st.caption(
+            f"Teste contra o acaso: p-valor de {formatar_metrica('Sharpe', acaso.p_valor)}. "
+            "Abaixo de 0,05, poucas posições sem relação com o preço fariam igual."
+        )
+    except ValueError as erro:
+        st.caption(str(erro))
+    st.caption(
+        "Só vale o período de teste (depois do primeiro treino). Comprar e segurar é medido "
+        "no mesmo período, para a comparação ser justa."
+    )
+
+
+def _ml_barreira_e_meta(dados, taxa_livre_de_risco):
+    st.markdown("**Barreira tripla, validação com expurgo e meta-rotulagem**")
+    st.caption(ajuda_do("Barreira tripla"))
+    c1, c2, c3 = st.columns(3)
+    alvo = c1.slider("Alvo (%)", 1, 10, 3, 1, key="ml_alvo")
+    stop = c2.slider("Stop (%)", 1, 10, 3, 1, key="ml_stop")
+    prazo = c3.slider("Prazo (dias)", 3, 40, 10, 1, key="ml_prazo")
+    try:
+        conjunto, previsoes = calcular_previsoes_do_sinal(
+            dados, "barreira", alvo / 100, stop / 100, prazo
+        )
+        com = aprendizado.validar_com_expurgo(conjunto, 5, prazo, expurgar=True)
+        sem = aprendizado.validar_com_expurgo(conjunto, 5, prazo, expurgar=False)
+        r = aprendizado.avaliar_previsoes(conjunto.y, previsoes)
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    st.markdown(
+        "*Quanto o modelo acerta se bate o alvo antes do stop (treino que expande)*"
+    )
+    st.dataframe(_tabela_de_avaliacao(r), width="stretch")
+    st.caption(
+        f"Em {formatar_pct(r['Fração de 1'])} dos dias o alvo veio antes do stop. "
+        + _veredito(r)
+    )
+    st.markdown("*Validação cruzada em 5 blocos, com e sem expurgo*")
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "k-fold comum": [
+                    formatar_pct(sem["Acurácia do modelo"]),
+                    formatar_metrica("Sharpe", sem["AUC"]),
+                ],
+                "Com expurgo e embargo": [
+                    formatar_pct(com["Acurácia do modelo"]),
+                    formatar_metrica("Sharpe", com["AUC"]),
+                ],
+            },
+            index=["Acurácia", "AUC"],
+        ),
+        width="stretch",
+    )
+    st.caption(
+        "Como cada rótulo olha os próximos dias, exemplos vizinhos do treino e do teste "
+        "compartilham o mesmo futuro. O expurgo tira do treino o que encosta no teste e o "
+        "embargo deixa uma folga depois dele. Uma diferença grande entre as colunas indica vazamento."
+    )
+
+    st.markdown("*Meta-rotulagem: o modelo filtra os sinais de uma regra simples*")
+    nome = _escolher_estrategia_simples("ml_meta")
+    limiar = st.slider(
+        "Age se a probabilidade de sucesso passar de",
+        0.4,
+        0.7,
+        0.5,
+        0.01,
+        key="ml_meta_limiar",
+    )
+    custo = _custo_do_experimento("ml_meta")
+    fechamento = dados["Close"]
+    try:
+        base = gerar_posicao(nome, dados)
+        sinal = (base > 0).to_numpy()
+        conjunto_meta, previsoes_meta = calcular_previsoes_do_sinal(
+            dados, "barreira", alvo / 100, stop / 100, prazo, sinal.tobytes()
+        )
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    aceitos = previsoes_meta["p"] > limiar
+    avaliados = previsoes_meta["p"].notna()
+    if avaliados.sum() < 30:
+        st.info(
+            "Há poucos sinais da regra para treinar o modelo. Use outra regra ou um período maior."
+        )
+        return
+    taxa_geral = conjunto_meta.y[avaliados].mean()
+    taxa_aceitos = conjunto_meta.y[aceitos].mean() if aceitos.any() else float("nan")
+    meta = base.where(base.index.isin(aceitos[aceitos].index), 0.0)
+    inicio = previsoes_meta["p"].first_valid_index()
+    teste = fechamento.loc[inicio:]
+    resultados = {
+        f"{nome} + meta-modelo": executar_backtest(teste, meta.loc[inicio:], custo),
+        nome: executar_backtest(teste, base.loc[inicio:], custo),
+    }
+    if nome != ESTRATEGIA_DE_REFERENCIA:
+        resultados[ESTRATEGIA_DE_REFERENCIA] = executar_backtest(
+            teste, pd.Series(1.0, index=teste.index), custo
+        )
+    st.caption(
+        f"Dos {int(avaliados.sum())} sinais avaliados, o alvo veio primeiro em "
+        f"{formatar_pct(taxa_geral)}; nos {int(aceitos.sum())} que o modelo aceitou, em "
+        f"{formatar_pct(taxa_aceitos)}."
+    )
+    mostrar_grafico(
+        graficos.criar_grafico_curvas_de_capital(
+            {n: x.curva_de_capital for n, x in resultados.items()},
+            10_000.0,
+            destaque=f"{nome} + meta-modelo",
+        )
+    )
+    st.dataframe(
+        _tabela_de_resultados(resultados, taxa_livre_de_risco), width="stretch"
+    )
+
+
+def _ml_volatilidade(dados, taxa_livre_de_risco):
+    st.markdown("**Prever a volatilidade (mais fácil que prever o preço)**")
+    st.caption(
+        "Regressão linear do log da volatilidade futura nas volatilidades de 5, 20 e 60 dias "
+        "(estilo HAR), treinada só com o passado. A base de comparação é dizer que os próximos "
+        "dias serão iguais aos últimos 20."
+    )
+    c1, c2, c3 = st.columns(3)
+    horizonte = c1.slider("Prever os próximos (dias)", 5, 42, 21, 1, key="ml_horizonte")
+    alvo = c2.slider("Alvo de volatilidade (% ao ano)", 5, 40, 15, 1, key="ml_alvo_vol")
+    with c3:
+        custo = _custo_do_experimento("ml_vol")
+    try:
+        r = aprendizado.prever_volatilidade(dados, horizonte)
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    m = r.metricas
+    cartoes = st.columns(3)
+    cartoes[0].metric(
+        "Erro do modelo (log)",
+        formatar_metrica("Sharpe", m["Erro do modelo (log)"]),
+        delta=f"{formatar_metrica('Sharpe', m['Erro ingênuo (log)'])} na previsão ingênua",
+        delta_color="off",
+        delta_arrow="off",
+    )
+    cartoes[1].metric(
+        "Melhora sobre a ingênua",
+        formatar_pct(m["Melhora sobre o ingênuo"], com_sinal=True),
+    )
+    cartoes[2].metric(
+        "Correlação com o que veio",
+        formatar_metrica("Sharpe", m["Correlação do modelo"]),
+        delta=f"{formatar_metrica('Sharpe', m['Correlação ingênua'])} na ingênua",
+        delta_color="off",
+        delta_arrow="off",
+    )
+    mostrar_grafico(
+        graficos.criar_grafico_volatilidade_prevista(r.prevista, r.ingenua, r.realizada)
+    )
+    fechamento = dados["Close"]
+    inicio = r.prevista.index[0]
+    teste = fechamento.loc[inicio:]
+    posicoes = {
+        "Alvo com a volatilidade prevista": aprendizado.posicao_pelo_alvo_de_volatilidade(
+            r.prevista, fechamento.index, alvo / 100
+        ),
+        "Alvo com a volatilidade dos últimos 20 dias": aprendizado.posicao_pelo_alvo_de_volatilidade(
+            r.ingenua, fechamento.index, alvo / 100
+        ),
+    }
+    resultados = {
+        n: executar_backtest(teste, p.loc[inicio:], custo) for n, p in posicoes.items()
+    }
+    resultados[ESTRATEGIA_DE_REFERENCIA] = executar_backtest(
+        teste, pd.Series(1.0, index=teste.index), custo
+    )
+    mostrar_grafico(
+        graficos.criar_grafico_curvas_de_capital(
+            {n: x.curva_de_capital for n, x in resultados.items()},
+            10_000.0,
+            destaque="Alvo com a volatilidade prevista",
+        )
+    )
+    st.dataframe(
+        _tabela_de_resultados(resultados, taxa_livre_de_risco), width="stretch"
+    )
+    st.caption(
+        "A volatilidade é persistente (dias agitados vêm em sequência), por isso é bem mais "
+        "previsível que o sinal do preço. O erro do modelo costuma cair em relação aos "
+        "últimos 20 dias porque ele corrige o nível (a volatilidade tende a voltar à média), "
+        "mas a correlação com o que veio quase não melhora. Sem alavancagem (no máximo 100%)."
+    )
+
+
+def secao_aprendizado(dados, taxa_livre_de_risco):
+    st.subheader("Aprendizado de máquina honesto")
+    st.warning(
+        "Aprendizado de máquina aumenta muito o risco de overfitting. Aqui o modelo sempre "
+        "treina só com o passado e é medido contra uma previsão ingênua. É normal ele não vencer."
+    )
+    aba_dia, aba_barreira, aba_vol = st.tabs(
+        ["Sinal do dia", "Barreira tripla e meta-rotulagem", "Volatilidade"]
+    )
+    with aba_dia:
+        _ml_sinal_do_dia(dados, taxa_livre_de_risco)
+    with aba_barreira:
+        _ml_barreira_e_meta(dados, taxa_livre_de_risco)
+    with aba_vol:
+        _ml_volatilidade(dados, taxa_livre_de_risco)
+
+
+PARES_PADRAO = "ITUB4, BBDC4, BBAS3, PETR4, PETR3"
+
+
+def _tabela_de_pares(tabela):
+    exibicao = pd.DataFrame(index=tabela.index)
+    exibicao["Correlação"] = [
+        formatar_metrica("Sharpe", v) for v in tabela["Correlação"]
+    ]
+    exibicao["Beta"] = [formatar_metrica("Sharpe", v) for v in tabela["Beta"]]
+    exibicao["ADF no treino"] = [
+        formatar_metrica("Sharpe", v) for v in tabela["ADF no treino"]
+    ]
+    exibicao["Meia-vida (dias)"] = [
+        "—" if not np.isfinite(v) else f"{v:.0f}" for v in tabela["Meia-vida (dias)"]
+    ]
+    exibicao["Ligado no treino?"] = [
+        "Sim" if v else "Não" for v in tabela["Cointegrado no treino"]
+    ]
+    exibicao["ADF no teste"] = [
+        formatar_metrica("Sharpe", v) for v in tabela["ADF no teste"]
+    ]
+    exibicao["Continuou no teste?"] = [
+        "Sim" if v else "Não" for v in tabela["Continuou no teste"]
+    ]
+    return exibicao
+
+
+def secao_pares(periodo, taxa_livre_de_risco):
+    st.subheader("Pairs trading: apostar que dois ativos voltam a andar juntos")
+    st.caption(ajuda_do("Pairs trading"))
+    st.warning(
+        "Este é um desafio educativo. A perna vendida exige aluguel de ações, que tem custo e "
+        "nem sempre está disponível; esse custo não entra na simulação. Resultado do passado "
+        "não garante nada."
+    )
+    with st.container(border=True):
+        texto = st.text_input(
+            f"Ativos (2 a {MAX_ATIVOS_PARA_PARES}, separados por vírgula)",
+            value=PARES_PADRAO,
+            key="pares_ativos",
+            help="O app testa todos os pares possíveis da lista.",
+        )
+        c1, c2 = st.columns(2)
+        fracao = c1.slider(
+            "Parte do período usada para estimar (treino)",
+            0.3,
+            0.8,
+            0.5,
+            0.05,
+            key="pares_treino",
+            help="A relação entre os ativos é estimada só nesta parte; a negociação acontece no resto.",
+        )
+        custo = (
+            c2.number_input(
+                "Custo por operação (%)",
+                0.0,
+                2.0,
+                CUSTO_PADRAO_POR_OPERACAO * 100,
+                0.01,
+                format="%.2f",
+                key="pares_custo",
+            )
+            / 100
+        )
+    tickers = interpretar_tickers(texto)
+    if not 2 <= len(tickers) <= MAX_ATIVOS_PARA_PARES:
+        st.info(
+            f"Escolha de 2 a {MAX_ATIVOS_PARA_PARES} ativos (agora são {len(tickers)})."
+        )
+        return
+    fechamentos, sem_dados = {}, []
+    for ticker in tickers:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except DadosIndisponiveisError:
+            sem_dados.append(ticker)
+    if sem_dados:
+        st.warning(
+            f"Não encontrei dados para: {', '.join(sem_dados)}. Eles ficaram de fora."
+        )
+    if len(fechamentos) < 2:
+        st.info("Não há ativos suficientes com dados.")
+        return
+    alinhado, _ = alinhar_fechamentos(fechamentos)
+    try:
+        tabela = procurar_pares(alinhado, fracao)
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    st.markdown("**Todos os pares da lista**")
+    st.dataframe(_tabela_de_pares(tabela), width="stretch")
+    sobreviventes = int(tabela["Cointegrado no treino"].sum())
+    continuaram = int(
+        (tabela["Cointegrado no treino"] & tabela["Continuou no teste"]).sum()
+    )
+    st.caption(
+        f"{len(tabela)} pares testados; {sobreviventes} pareceram ligados no treino e "
+        f"{continuaram} continuaram ligados no teste. ADF abaixo de −3,34 indica relação "
+        "(valor aproximado de Engle-Granger a 5%). Ao testar muitos pares, uns 5% parecem "
+        "ligados só por sorte: por isso a conferência no teste."
+    )
+
+    par = st.selectbox("Par para simular", list(tabela.index), key="pares_escolhido")
+    a, b = par.split(" × ")
+    c1, c2, c3, c4 = st.columns(4)
+    entrada = c1.slider(
+        "Entra com |z| acima de", 1.0, 3.0, 2.0, 0.1, key="pares_entrada"
+    )
+    saida = c2.slider("Sai com |z| abaixo de", 0.0, 1.0, 0.5, 0.1, key="pares_saida")
+    stop = c3.slider("Stop com |z| acima de", 3.0, 6.0, 4.0, 0.5, key="pares_stop")
+    janela = c4.slider("Janela do z-score (dias)", 20, 120, 60, 5, key="pares_janela")
+    try:
+        r = simular_par(
+            alinhado[a], alinhado[b], fracao, entrada, saida, stop, janela, custo
+        )
+    except ValueError as erro:
+        st.info(str(erro))
+        return
+    bt = r.backtest
+    numeros = resumir_desempenho(
+        bt.retorno, bt.posicao, bt.operacoes, taxa_livre_de_risco
+    )
+    cartoes = st.columns(4)
+    for coluna, metrica in zip(
+        cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"]
+    ):
+        coluna.metric(metrica, formatar_metrica(metrica, numeros[metrica]))
+    meia = r.treino.meia_vida
+    st.caption(
+        f"Relação estimada no treino: log {a} = {formatar_metrica('Sharpe', r.treino.beta)} × log {b} + constante. "
+        f"Meia-vida do spread no treino: {'sem volta' if not np.isfinite(meia) else f'{meia:.0f} dias'}. "
+        f"ADF: {formatar_metrica('Sharpe', r.treino.adf)} no treino e "
+        f"{formatar_metrica('Sharpe', r.teste.adf)} no teste "
+        f"({'a relação continuou' if r.teste.cointegrado else 'a relação NÃO se confirmou no teste'})."
+    )
+    mostrar_grafico(
+        graficos.criar_grafico_z_do_par(r.z, r.lado, entrada, stop, r.inicio_do_teste)
+    )
+    teste_a = alinhado[a].loc[r.inicio_do_teste :]
+    teste_b = alinhado[b].loc[r.inicio_do_teste :]
+    mostrar_grafico(
+        graficos.criar_grafico_curvas_de_capital(
+            {
+                f"Par {a} × {b}": bt.curva_de_capital,
+                f"Comprar e segurar {a}": teste_a / teste_a.iloc[0],
+                f"Comprar e segurar {b}": teste_b / teste_b.iloc[0],
+            },
+            10_000.0,
+            destaque=f"Par {a} × {b}",
+        )
+    )
+    st.caption(
+        "O par é neutro ao mercado: não depende de os preços subirem. Compare o retorno e a "
+        "queda com os dois ativos sozinhos, no mesmo período de teste. Se o ADF do teste não "
+        "confirma a relação, o lucro (se houve) provavelmente foi sorte."
+    )
+
+
 ATIVOS_PADRAO_DA_CARTEIRA = "PETR4, VALE3, ITUB4, WEGE3, ABEV3"
 
 
@@ -2052,6 +2527,42 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
     )
     st.dataframe(tabela, width="stretch")
 
+    with st.expander("Mais números: Ômega, Kelly e quanto histórico seria preciso"):
+        retorno_principal = resultado.retorno
+        omega = calcular_omega(retorno_principal)
+        kelly = calcular_kelly(retorno_principal)
+        dias_minimos = calcular_comprimento_minimo(
+            retorno_principal, 0.95, 0.0, taxa_livre_de_risco
+        )
+        c1, c2, c3 = st.columns(3)
+        c1.metric(
+            "Ômega",
+            "—" if pd.isna(omega) else formatar_metrica("Sharpe", omega),
+            help=ajuda_do("Ômega"),
+        )
+        c2.metric(
+            "Meio Kelly (fração do capital)",
+            "—" if pd.isna(kelly) else formatar_pct(kelly / 2),
+            help=ajuda_do("Critério de Kelly"),
+        )
+        if pd.isna(dias_minimos):
+            texto_dias = "—"
+        elif dias_minimos == float("inf"):
+            texto_dias = "nunca (Sharpe não passa de zero)"
+        else:
+            texto_dias = f"{dias_minimos / ind.DIAS_POR_ANO:.1f} anos".replace(".", ",")
+        c3.metric(
+            "Histórico para 95% de confiança",
+            texto_dias,
+            help=ajuda_do("Comprimento mínimo do histórico"),
+        )
+        anos = f"{len(retorno_principal) / ind.DIAS_POR_ANO:.1f}".replace(".", ",")
+        st.caption(
+            f"Os dados disponíveis têm {anos} anos. O Kelly é muito sensível ao erro de "
+            "estimativa e acima de 100% pediria alavancagem: trate-o como curiosidade, "
+            "não como recomendação."
+        )
+
     if descontar_imposto:
         pago = impostos[nome_principal]
         valor = f"{pago.imposto_total:,.2f}".replace(",", "X").replace(".", ",")
@@ -2146,6 +2657,8 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     aba_carteira,
     aba_experimentos,
     aba_regimes,
+    aba_aprendizado,
+    aba_pares,
 ) = st.tabs(
     [
         "Visão geral",
@@ -2157,6 +2670,8 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
         "Carteira",
         "Experimentos",
         "Regimes",
+        "Aprendizado de máquina",
+        "Pares",
     ]
 )
 with aba_geral:
@@ -2179,6 +2694,10 @@ with aba_experimentos:
     secao_experimentos(dados, periodo, taxa_livre_de_risco)
 with aba_regimes:
     secao_regimes(dados, taxa_livre_de_risco)
+with aba_aprendizado:
+    secao_aprendizado(dados, taxa_livre_de_risco)
+with aba_pares:
+    secao_pares(periodo, taxa_livre_de_risco)
 
 st.divider()
 st.caption(
