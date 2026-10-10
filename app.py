@@ -1,6 +1,7 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
 import logging
+from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
@@ -76,6 +77,7 @@ from src.exportacao import (
 )
 from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
+from src.link import alternar_favorito, ler_parametros, montar_parametros
 from src.metricas import (
     calcular_intervalo_do_sharpe,
     calcular_kelly,
@@ -83,6 +85,7 @@ from src.metricas import (
     resumir_desempenho,
 )
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
+from src.momentum import montar_tabela_de_momentum
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.protecoes import Protecoes, aplicar_protecoes
 from src.ranking import montar_ranking
@@ -228,15 +231,97 @@ def mostrar_cabecalho():
 MODOS_DA_TAXA = ("Zero", "CDI (Banco Central)", "Digitar")
 
 
+def preparar_estado_inicial():
+    """Valores iniciais dos campos do topo; na primeira visita, lê os da URL (link compartilhado)."""
+    padroes = {"ticker": "PETR4.SA", "periodo": "2y", "taxa": "Zero", "favoritos": []}
+    for chave, valor in padroes.items():
+        st.session_state.setdefault(chave, valor)
+    if not st.session_state.get("url_lida"):
+        st.session_state["url_lida"] = True
+        lidos = ler_parametros(dict(st.query_params))
+        for chave in (
+            "ticker",
+            "periodo",
+            "taxa",
+            "em_reais",
+            "usar_exemplo",
+            "favoritos",
+        ):
+            if chave in lidos:
+                st.session_state[chave] = lidos[chave]
+
+
+def _alternar_favorito_atual():
+    try:
+        st.session_state["favoritos"] = alternar_favorito(
+            st.session_state["favoritos"], normalizar_ticker(st.session_state["ticker"])
+        )
+        st.session_state.pop("erro_favorito", None)
+    except ValueError as erro:
+        st.session_state["erro_favorito"] = str(erro)
+
+
+def _ir_para_favorito():
+    escolhido = st.session_state.get("favorito_escolhido")
+    if escolhido and escolhido != "—":
+        st.session_state["ticker"] = escolhido
+    st.session_state["favorito_escolhido"] = "—"
+
+
+def mostrar_favoritos():
+    """Botão de favoritar o ticker atual e atalho para ir a um favorito (vale só nesta sessão)."""
+    favoritos = st.session_state["favoritos"]
+    atual = normalizar_ticker(st.session_state["ticker"])
+    col_botao, col_lista = st.columns([1, 1])
+    col_botao.button(
+        f"Tirar {atual} dos favoritos" if atual in favoritos else f"Favoritar {atual}",
+        on_click=_alternar_favorito_atual,
+        key="botao_favorito",
+        help="Favoritos ficam guardados nesta sessão e vão junto no link compartilhável.",
+    )
+    col_lista.selectbox(
+        "Ir para um favorito",
+        ["—", *favoritos],
+        key="favorito_escolhido",
+        on_change=_ir_para_favorito,
+        label_visibility="collapsed",
+    )
+    if st.session_state.get("erro_favorito"):
+        st.warning(st.session_state["erro_favorito"])
+
+
+def mostrar_link(ticker, periodo, modo):
+    """Grava a escolha atual na URL do navegador e mostra o texto do link."""
+    parametros = montar_parametros(
+        normalizar_ticker(ticker),
+        periodo,
+        modo,
+        bool(st.session_state.get("em_reais")),
+        bool(st.session_state.get("usar_exemplo")),
+        st.session_state["favoritos"],
+    )
+    st.query_params.from_dict(parametros)
+    with st.expander("Link desta tela"):
+        st.caption(
+            "O endereço na barra do navegador já guarda o ticker, o período e as opções "
+            "escolhidas aqui. Copie-o para abrir a mesma tela depois ou mandar para alguém."
+        )
+        st.code("?" + urlencode(parametros), language=None)
+
+
 def ler_entradas():
     """Campos do topo da página. Devolve (ticker, período, modo da taxa, taxa digitada)."""
+    preparar_estado_inicial()
     with st.container(border=True):
         col_ticker, col_periodo, col_taxa = st.columns(3)
-        ticker = col_ticker.text_input("Ticker", value="PETR4.SA")
-        periodo = col_periodo.selectbox("Período", ["6mo", "1y", "2y", "5y"], index=2)
+        ticker = col_ticker.text_input("Ticker", key="ticker")
+        periodo = col_periodo.selectbox(
+            "Período", ["6mo", "1y", "2y", "5y"], key="periodo"
+        )
         modo = col_taxa.selectbox(
             "Taxa livre de risco",
             MODOS_DA_TAXA,
+            key="taxa",
             help=ajuda_do("CDI"),
         )
         taxa_digitada = 0.0
@@ -266,6 +351,8 @@ def ler_entradas():
             help="Cópias de 5 anos de 13 tickers, tiradas em 09/10/2026, guardadas no "
             "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
         )
+        mostrar_favoritos()
+    mostrar_link(ticker, periodo, modo)
     return ticker, periodo, modo, taxa_digitada
 
 
@@ -1510,6 +1597,75 @@ def secao_correlacao(principal, periodo):
         )
     except ValueError as erro:
         st.caption(str(erro))
+
+
+def secao_momentum(principal, periodo):
+    st.subheader("Favoritos e momentum")
+    st.caption(
+        "Compara o momentum (a tendência recente) do ativo principal e dos seus favoritos. "
+        "Marque favoritos com o botão do topo da página."
+    )
+    favoritos = st.session_state.get("favoritos", [])
+    tickers = [principal, *[normalizar_ticker(f) for f in favoritos]]
+    tickers = list(dict.fromkeys(tickers))
+    if len(tickers) < 2:
+        st.info(
+            "Favorite alguns ativos para compará-los aqui. Por enquanto só há o principal."
+        )
+    mostrar_reversao = st.checkbox(
+        "Mostrar também a reversão à média (z-score de 20 dias)",
+        key="momentum_reversao",
+        help=ajuda_do("Reversão à média"),
+    )
+    fechamentos, sem_dados = {}, []
+    for ticker in tickers:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except DadosIndisponiveisError:
+            sem_dados.append(ticker)
+    if sem_dados:
+        st.warning(f"Não encontrei dados para: {', '.join(sem_dados)}.")
+    try:
+        tabela, sem_historico = montar_tabela_de_momentum(fechamentos)
+    except ValueError as erro:
+        st.info(f"{erro} Escolha o período de 2 ou 5 anos.")
+        return
+    if sem_historico:
+        st.caption(
+            f"Sem histórico suficiente (menos de 1 ano): {', '.join(sem_historico)}."
+        )
+    exibicao = pd.DataFrame(index=tabela.index)
+    exibicao["Posição"] = tabela["Posição"].astype(int)
+    for coluna in ("1 mês", "3 meses", "6 meses", "12-1 meses"):
+        exibicao[coluna] = [formatar_pct(v, com_sinal=True) for v in tabela[coluna]]
+    exibicao["Momentum"] = [
+        "positivo" if v > 0 else "negativo" for v in tabela["12-1 meses"]
+    ]
+    if mostrar_reversao:
+        exibicao["Z-score (20 dias)"] = [
+            formatar_metrica("Sharpe", v) for v in tabela["Z-score (20 dias)"]
+        ]
+        exibicao["Leitura da reversão"] = [
+            "esticado para cima"
+            if v > 2
+            else "esticado para baixo"
+            if v < -2
+            else "perto da média"
+            for v in tabela["Z-score (20 dias)"]
+        ]
+    st.dataframe(exibicao, width="stretch")
+    mostrar_grafico(graficos.criar_grafico_momentum(tabela["12-1 meses"]))
+    st.caption(
+        "A posição segue o momentum 12-1 (retorno de 12 meses sem contar o último mês). "
+        "Momentum positivo não é recomendação de compra: é um fato do passado. Com "
+        "poucos ativos e poucos anos, a ordem muda muito de um período para outro. "
+        + (
+            "Um z-score acima de +2 ou abaixo de −2 indica um preço bem afastado da média "
+            "de 20 dias; a reversão à média aposta que ele volta, o momentum aposta que continua."
+            if mostrar_reversao
+            else ""
+        )
+    )
 
 
 CORES_DOS_REGIMES = {
@@ -2907,6 +3063,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     aba_aprendizado,
     aba_pares,
     aba_correlacao,
+    aba_momentum,
     aba_sobre,
 ) = st.tabs(
     [
@@ -2922,6 +3079,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
         "Aprendizado de máquina",
         "Pares",
         "Correlação e beta",
+        "Favoritos e momentum",
         "Sobre",
     ]
 )
@@ -2958,6 +3116,8 @@ with aba_pares:
     secao_pares(periodo, taxa_livre_de_risco)
 with aba_correlacao:
     secao_correlacao(normalizar_ticker(ticker), periodo)
+with aba_momentum:
+    secao_momentum(normalizar_ticker(ticker), periodo)
 with aba_sobre:
     secao_sobre()
 

@@ -945,6 +945,26 @@ def criar_grafico_dispersao_do_beta(
     return figura
 
 
+def criar_grafico_momentum(momentum: pd.Series) -> go.Figure:
+    """Barras do momentum de cada ativo, do mais forte (em cima) ao mais fraco."""
+    if momentum.empty:
+        raise ValueError("Não há momentum para mostrar.")
+    ordenado = momentum.sort_values()
+    figura = _figura_base("Momentum 12-1 por ativo")
+    figura.update_xaxes(tickformat="+.0%")
+    figura.add_trace(
+        go.Bar(
+            x=ordenado,
+            y=[str(i) for i in ordenado.index],
+            orientation="h",
+            marker={"color": [COR_ALTA if v > 0 else COR_QUEDA for v in ordenado]},
+            hovertemplate="%{y}: %{x:+.1%}<extra></extra>",
+        )
+    )
+    figura.update_layout(height=max(ALTURA_PADRAO - 80, 60 + 45 * len(ordenado)))
+    return figura
+
+
 def criar_grafico_quedas_comparadas(
     curvas: dict[str, pd.Series], destaque: str
 ) -> go.Figure:

@@ -16,6 +16,7 @@ from src.graficos import (
     criar_grafico_disjuntor,
     criar_grafico_dispersao_do_beta,
     criar_grafico_drawdown,
+    criar_grafico_momentum,
     criar_grafico_operacoes_no_preco,
     criar_grafico_pesos,
     criar_grafico_preco,
@@ -643,3 +644,13 @@ def test_dispersao_do_beta_tem_pontos_e_reta_com_a_inclinacao_certa():
     assert list(reta.y) == pytest.approx([-0.04, 0.04])
     with pytest.raises(ValueError, match="em comum"):
         criar_grafico_dispersao_do_beta(x.iloc[:0], x.iloc[:0], 1.0, 0.0)
+
+
+def test_grafico_do_momentum_pinta_positivos_de_verde_e_negativos_de_vermelho():
+    momentum = pd.Series({"A": 0.3, "B": -0.1, "C": 0.05})
+    figura = criar_grafico_momentum(momentum)
+    barra = figura.data[0]
+    assert list(barra.y) == ["B", "C", "A"]  # do mais fraco ao mais forte
+    assert list(barra.marker.color) == ["#ef5350", "#26a69a", "#26a69a"]
+    with pytest.raises(ValueError, match="momentum"):
+        criar_grafico_momentum(momentum.iloc[:0])

@@ -429,6 +429,20 @@ dados no app (um `##` por termo).
 
 **Cuidado:** R² baixo torna o beta pouco útil para prever o ativo, mesmo que o número do beta pareça claro.
 
+## Momentum
+**O que é:** a tendência recente do preço. Quem subiu mais nos últimos meses tende, em média, a continuar à frente por um tempo. O app usa o **12-1**: o retorno de 12 meses sem contar o último mês, que costuma ter o efeito contrário.
+
+**Exemplo:** se a ação subiu 30% de 12 meses atrás até 1 mês atrás, o momentum 12-1 é +30%.
+
+**Cuidado:** é uma regularidade de médias, não uma garantia. Muda de um período para o outro e quase some em amostras curtas. Os momentos de virada são justamente os mais caros.
+
+## Reversão à média
+**O que é:** a ideia contrária ao momentum: o que se afastou muito da própria média recente tende a voltar a ela. O app mede o afastamento com o **z-score de 20 dias**, o número de desvios-padrão entre o preço e a média dos últimos 20 dias.
+
+**Exemplo:** z-score de +2,5 significa que o preço está 2,5 desvios acima da média de 20 dias; z-score de −2,5, abaixo.
+
+**Cuidado:** um preço esticado pode continuar esticando (é o que o momentum aposta). A reversão tende a valer em prazos curtos e o momentum em prazos longos, mas nenhuma das duas funciona sempre.
+
 ## Diversificação
 **O que é:** dividir o dinheiro entre ativos que não andam juntos, para que a queda de um seja amortecida por outro.
 

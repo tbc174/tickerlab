@@ -122,6 +122,8 @@ TERMOS_DO_PAINEL = [
     "Beta",
     "Alfa",
     "R² (poder de explicação do índice)",
+    "Momentum",
+    "Reversão à média",
 ]
 
 
