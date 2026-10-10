@@ -1,0 +1,19 @@
+# Ambiente virtual (cada pessoa cria o seu)
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.ruff_cache/
+
+# Segredos: nunca commitar
+.env
+*.key
+
+# Dados baixados (podem ser baixados de novo)
+dados/
+
+# Sistema
+.DS_Store
+Thumbs.db
