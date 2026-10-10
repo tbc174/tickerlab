@@ -6,8 +6,10 @@ import pytest
 from src.conteudo import (
     CAMINHO_ESTRATEGIAS,
     CAMINHO_GLOSSARIO,
+    CAMINHO_SOBRE,
     carregar_estrategias,
     carregar_glossario,
+    carregar_sobre,
     descrever_pior_drawdown,
     proteger_cifrao,
 )
@@ -215,3 +217,21 @@ def test_nao_ha_explicacao_sem_estrategia():
     assert set(carregar_estrategias(CAMINHO_ESTRATEGIAS)) <= set(ESTRATEGIAS) | set(
         ESTRATEGIAS_DE_CARTEIRA
     )
+
+
+SECOES_DA_PAGINA_SOBRE = [
+    "O que é o TickerLab",
+    "Aviso importante",
+    "De onde vêm os dados",
+    "Como o backtest funciona",
+    "O que o app faz para não enganar",
+    "Limites",
+    "Referências",
+]
+
+
+def test_pagina_sobre_tem_todas_as_secoes_e_o_aviso():
+    sobre = carregar_sobre(CAMINHO_SOBRE)
+    assert list(sobre) == SECOES_DA_PAGINA_SOBRE
+    assert "recomendação de investimento" in sobre["Aviso importante"]
+    assert all(texto.strip() for texto in sobre.values())

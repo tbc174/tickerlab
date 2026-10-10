@@ -40,6 +40,7 @@ from src.comparacao import (
 from src.conteudo import (
     carregar_estrategias,
     carregar_glossario,
+    carregar_sobre,
     descrever_pior_drawdown,
     proteger_cifrao,
 )
@@ -57,6 +58,12 @@ from src.experimentos import (
     simular_aporte_unico_e_dca,
     simular_rebalanceamento,
     simular_virada_do_mes,
+)
+from src.exportacao import (
+    converter_para_csv,
+    montar_tabela_de_curvas,
+    montar_tabela_de_operacoes,
+    montar_tabela_de_precos,
 )
 from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
@@ -1295,6 +1302,38 @@ def secao_experimentos(dados, periodo, taxa_livre_de_risco):
         _experimento_virada_do_mes(dados, taxa_livre_de_risco)
 
 
+def secao_sobre():
+    st.subheader("Sobre o TickerLab")
+    aba_metodo, aba_glossario, aba_estrategias = st.tabs(
+        ["Metodologia e limites", "Glossário", "Estratégias"]
+    )
+    with aba_metodo:
+        for titulo, texto in carregar_sobre().items():
+            st.markdown(f"#### {titulo}")
+            st.markdown(proteger_cifrao(texto))
+    with aba_glossario:
+        _lista_de_verbetes(
+            obter_glossario(), "Buscar no glossário", "sobre_busca_glossario"
+        )
+    with aba_estrategias:
+        _lista_de_verbetes(
+            obter_estrategias(), "Buscar nas estratégias", "sobre_busca_estrategias"
+        )
+
+
+def _lista_de_verbetes(verbetes, rotulo_da_busca, chave):
+    busca = st.text_input(rotulo_da_busca, key=chave).strip().lower()
+    achados = {
+        termo: texto
+        for termo, texto in verbetes.items()
+        if busca in termo.lower() or busca in texto.lower()
+    }
+    st.caption(f"{len(achados)} de {len(verbetes)} verbetes.")
+    for termo, texto in achados.items():
+        with st.expander(termo):
+            st.markdown(proteger_cifrao(texto))
+
+
 CORES_DOS_REGIMES = {
     "Calmo": graficos.COR_ALTA,
     "Agitado": graficos.COR_QUEDA,
@@ -2526,6 +2565,13 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         }
     )
     st.dataframe(tabela, width="stretch")
+    st.download_button(
+        "Baixar as curvas de capital (CSV)",
+        converter_para_csv(montar_tabela_de_curvas(curvas, capital_inicial)),
+        file_name="curvas_de_capital.csv",
+        mime="text/csv",
+        key="baixar_curvas_backtest",
+    )
 
     with st.expander("Mais números: Ômega, Kelly e quanto histórico seria preciso"):
         retorno_principal = resultado.retorno
@@ -2597,6 +2643,13 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
                 "Em aberto",
             ]
             st.dataframe(operacoes, width="stretch", hide_index=True)
+            st.download_button(
+                "Baixar as operações (CSV)",
+                converter_para_csv(montar_tabela_de_operacoes(resultado.operacoes)),
+                file_name="operacoes.csv",
+                mime="text/csv",
+                key="baixar_operacoes_backtest",
+            )
 
     secao_validacao(
         dados,
@@ -2659,6 +2712,7 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     aba_regimes,
     aba_aprendizado,
     aba_pares,
+    aba_sobre,
 ) = st.tabs(
     [
         "Visão geral",
@@ -2672,12 +2726,20 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
         "Regimes",
         "Aprendizado de máquina",
         "Pares",
+        "Sobre",
     ]
 )
 with aba_geral:
     secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco)
     st.divider()
     secao_preco(dados)
+    st.download_button(
+        "Baixar os preços (CSV)",
+        converter_para_csv(montar_tabela_de_precos(dados)),
+        file_name=f"{normalizar_ticker(ticker)}_{periodo}.csv",
+        mime="text/csv",
+        help="Preços, volume e retorno diário, prontos para abrir no Excel (separador ponto e vírgula).",
+    )
 with aba_risco:
     secao_risco(fechamento, retorno)
 with aba_mensal:
@@ -2698,6 +2760,8 @@ with aba_aprendizado:
     secao_aprendizado(dados, taxa_livre_de_risco)
 with aba_pares:
     secao_pares(periodo, taxa_livre_de_risco)
+with aba_sobre:
+    secao_sobre()
 
 st.divider()
 st.caption(

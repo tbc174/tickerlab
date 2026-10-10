@@ -9,6 +9,7 @@ from src.indicadores import PiorDrawdown
 PASTA_RAIZ = Path(__file__).resolve().parent.parent
 CAMINHO_GLOSSARIO = PASTA_RAIZ / "conteudo" / "glossario.md"
 CAMINHO_ESTRATEGIAS = PASTA_RAIZ / "conteudo" / "estrategias.md"
+CAMINHO_SOBRE = PASTA_RAIZ / "conteudo" / "sobre.md"
 MARCA_DE_TERMO = "## "
 
 
@@ -65,4 +66,9 @@ def proteger_cifrao(texto: str | None) -> str | None:
 
 def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
     """Explicações das estratégias (um verbete por estratégia), no mesmo formato do glossário."""
+    return carregar_glossario(caminho)
+
+
+def carregar_sobre(caminho: Path = CAMINHO_SOBRE) -> dict[str, str]:
+    """As seções da página Sobre, na ordem do arquivo (mesmo formato do glossário)."""
     return carregar_glossario(caminho)
