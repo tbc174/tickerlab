@@ -1,8 +1,14 @@
 """Testes de src/conteudo.py."""
 
+import pandas as pd
 import pytest
 
-from src.conteudo import CAMINHO_GLOSSARIO, carregar_glossario
+from src.conteudo import (
+    CAMINHO_GLOSSARIO,
+    carregar_glossario,
+    descrever_pior_drawdown,
+)
+from src.indicadores import PiorDrawdown
 
 EXEMPLO = """# Glossário de teste
 Texto de introdução, que não é um termo.
@@ -70,6 +76,8 @@ TERMOS_DO_PAINEL = [
     "Índice de Sharpe",
     "Dias de alta",
     "Perda de um dia ruim (VaR)",
+    "Volatilidade móvel",
+    "Recuperação de um drawdown",
 ]
 
 
@@ -84,3 +92,32 @@ def test_glossario_real_nao_tem_verbete_vazio():
     glossario = carregar_glossario(CAMINHO_GLOSSARIO)
     assert glossario  # tem alguma coisa
     assert all(texto for texto in glossario.values())
+
+
+# --- Descrição da pior queda ----------------------------------------------------
+
+TOPO = pd.Timestamp("2026-01-10")
+FUNDO = pd.Timestamp("2026-04-10")
+
+
+def test_descricao_de_queda_recuperada():
+    pior = PiorDrawdown(-0.253, TOPO, FUNDO, pd.Timestamp("2026-09-10"))
+    texto = descrever_pior_drawdown(pior)
+    assert "-25,3%" in texto
+    assert "10/01/2026" in texto and "10/04/2026" in texto and "10/09/2026" in texto
+    assert "153 dias depois" in texto
+
+
+def test_descricao_de_queda_nao_recuperada():
+    texto = descrever_pior_drawdown(PiorDrawdown(-0.4, TOPO, FUNDO, None))
+    assert "não voltou" in texto
+
+
+def test_descricao_de_preco_sempre_subindo():
+    texto = descrever_pior_drawdown(PiorDrawdown(0.0, None, None, None))
+    assert "nunca ficou abaixo" in texto
+
+
+def test_descricao_sem_dados():
+    texto = descrever_pior_drawdown(PiorDrawdown(float("nan"), None, None, None))
+    assert "dados suficientes" in texto

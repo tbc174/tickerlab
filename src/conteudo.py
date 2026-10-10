@@ -2,6 +2,10 @@
 
 from pathlib import Path
 
+import pandas as pd
+
+from src.indicadores import PiorDrawdown
+
 PASTA_RAIZ = Path(__file__).resolve().parent.parent
 CAMINHO_GLOSSARIO = PASTA_RAIZ / "conteudo" / "glossario.md"
 MARCA_DE_TERMO = "## "
@@ -26,3 +30,28 @@ def carregar_glossario(caminho: Path = CAMINHO_GLOSSARIO) -> dict[str, str]:
         glossario[termo] = "\n".join(linhas).strip()
 
     return glossario
+
+
+def _data_br(data: pd.Timestamp) -> str:
+    return f"{data:%d/%m/%Y}"
+
+
+def descrever_pior_drawdown(pior: PiorDrawdown) -> str:
+    """Frase em português que conta a pior queda do período, para quem está começando."""
+    if pd.isna(pior.queda):
+        return "Não há dados suficientes para calcular a pior queda."
+    if pior.data_fundo is None:
+        return "Neste período o preço nunca ficou abaixo de um topo anterior."
+
+    queda = f"{pior.queda:.1%}".replace(".", ",")
+    frase = (
+        f"Pior queda: **{queda}**. O preço estava no topo em {_data_br(pior.data_topo)} "
+        f"e chegou ao fundo em {_data_br(pior.data_fundo)}"
+    )
+    if pior.data_recuperacao is None:
+        return frase + ". Ainda **não voltou** ao topo anterior."
+    dias = (pior.data_recuperacao - pior.data_fundo).days
+    return (
+        frase
+        + f", e só voltou ao topo em {_data_br(pior.data_recuperacao)} ({dias} dias depois)."
+    )

@@ -51,6 +51,20 @@ dados no app (um `##` por termo).
 
 **Cuidado:** mostra o pior susto que quem comprou no topo teria passado. É útil para saber se você aguentaria segurar a ação.
 
+## Volatilidade móvel
+**O que é:** a volatilidade calculada só com os últimos N dias (a "janela"), recalculada a cada dia. Mostra como o nível de oscilação muda ao longo do tempo.
+
+**Exemplo:** uma linha que sobe de 20% para 50% em março de 2020 mostra que o mercado ficou muito mais agitado naquele mês.
+
+**Cuidado:** janelas curtas (20 dias) reagem rápido, mas são "nervosas"; janelas longas (120 dias) são suaves, mas demoram a perceber mudanças.
+
+## Recuperação de um drawdown
+**O que é:** o dia em que o preço volta ao nível do topo anterior, encerrando a queda. Entre o topo e a recuperação, quem comprou no topo estava no prejuízo.
+
+**Exemplo:** topo em janeiro, fundo em abril e recuperação em setembro: foram quase 8 meses até empatar.
+
+**Cuidado:** algumas quedas nunca são recuperadas dentro do período analisado. O app avisa quando isso acontece.
+
 ## Melhor e pior dia
 **O que é:** o maior ganho e a maior perda em um único dia no período.
 

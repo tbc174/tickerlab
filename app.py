@@ -4,11 +4,13 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from src import graficos
 from src import indicadores as ind
-from src.conteudo import carregar_glossario
+from src.conteudo import carregar_glossario, descrever_pior_drawdown
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 
 MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
+JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.title("TickerLab")
@@ -148,3 +150,30 @@ mostrar_metrica(
 st.subheader("Preço de fechamento")
 figura = px.line(fechamento)
 st.plotly_chart(figura, width="stretch")
+
+# --- Risco ao longo do tempo ------------------------------------------------
+st.subheader("Risco ao longo do tempo")
+janela = st.radio(
+    "Janela da volatilidade (dias)",
+    JANELAS_VOLATILIDADE,
+    horizontal=True,
+    help=obter_glossario().get("Volatilidade móvel"),
+)
+pior_drawdown = ind.encontrar_pior_drawdown(fechamento)
+st.markdown(descrever_pior_drawdown(pior_drawdown))
+
+col_drawdown, col_volatilidade = st.columns(2)
+col_drawdown.plotly_chart(
+    graficos.criar_grafico_drawdown(drawdown, pior_drawdown), width="stretch"
+)
+volatilidade_movel = ind.calcular_volatilidade_movel(retorno, janela)
+if volatilidade_movel.dropna().empty:
+    col_volatilidade.info(
+        f"O período é curto demais para uma janela de {janela} dias. "
+        "Escolha uma janela menor ou um período maior."
+    )
+else:
+    col_volatilidade.plotly_chart(
+        graficos.criar_grafico_volatilidade(volatilidade_movel, janela),
+        width="stretch",
+    )
