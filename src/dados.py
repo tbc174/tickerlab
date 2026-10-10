@@ -32,6 +32,17 @@ def normalizar_ticker(ticker: str) -> str:
     return ticker  # EUA, cripto e o resto: não mexe
 
 
+def manter_apenas_dias_uteis(dados: pd.DataFrame) -> pd.DataFrame:
+    """Tira sábados e domingos (o Bitcoin negocia todo dia; o resto do app conta 252 dias/ano).
+
+    Nenhum retorno se perde: a variação do fim de semana passa a aparecer na segunda-feira, que
+    é comparada com a sexta. Máxima e mínima de sábado e domingo deixam de aparecer.
+    """
+    uteis = dados[dados.index.dayofweek < 5]
+    uteis.attrs = dict(dados.attrs)
+    return uteis
+
+
 def baixar_dados(
     ticker: str, periodo: str = "2y", forcar_exemplo: bool = False
 ) -> pd.DataFrame:
@@ -57,7 +68,7 @@ def baixar_dados(
                 f"Não há dados de exemplo para {ticker}. Desmarque a opção de dados de exemplo."
             )
         log.info("Usando dados de exemplo para %s (pedido do usuário).", ticker)
-        return exemplo
+        return manter_apenas_dias_uteis(exemplo)
 
     try:
         dados = yf.download(ticker, period=periodo, auto_adjust=True, progress=False)
@@ -71,11 +82,11 @@ def baixar_dados(
             log.warning(
                 "Sem resposta do Yahoo para %s: usando dados de exemplo.", ticker
             )
-            return exemplo
+            return manter_apenas_dias_uteis(exemplo)
         raise DadosIndisponiveisError(
             f"Não encontrei dados para {ticker}. Confira o ticker (B3 termina em .SA)."
         )
 
     log.info("Baixados %d dias de %s (%s).", len(dados), ticker, periodo)
     dados.columns = dados.columns.droplevel("Ticker")  # tira o nível do ticker
-    return dados
+    return manter_apenas_dias_uteis(dados)

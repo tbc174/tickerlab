@@ -82,6 +82,7 @@ from src.metricas import (
     calcular_omega,
     resumir_desempenho,
 )
+from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.protecoes import Protecoes, aplicar_protecoes
 from src.ranking import montar_ranking
@@ -146,10 +147,28 @@ def _carregar_dados_em_cache(ticker, periodo, forcar_exemplo):
 
 
 def carregar_dados(ticker, periodo):
-    """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados."""
-    return _carregar_dados_em_cache(
-        ticker, periodo, bool(st.session_state.get("usar_exemplo", False))
-    )
+    """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados.
+
+    Com "Converter para reais", ativos cotados em dólar (EUA, S&P 500, Bitcoin) são
+    multiplicados pelo câmbio do dia. Se o câmbio falhar, o ativo segue em dólar e a marca
+    `attrs["cambio_falhou"]` avisa a tela.
+    """
+    ticker = normalizar_ticker(ticker)
+    exemplo = bool(st.session_state.get("usar_exemplo", False))
+    dados = _carregar_dados_em_cache(ticker, periodo, exemplo)
+    if st.session_state.get("em_reais") and moeda_do_ticker(ticker) == "USD":
+        try:
+            cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)[
+                "Close"
+            ]
+            return converter_para_reais(dados, cambio)
+        except (DadosIndisponiveisError, ValueError) as erro:
+            logging.getLogger(__name__).warning(
+                "Câmbio indisponível para converter %s: %s", ticker, erro
+            )
+            dados = dados.copy()
+            dados.attrs = {**dados.attrs, "cambio_falhou": True}
+    return dados
 
 
 @st.cache_data
@@ -235,9 +254,16 @@ def ler_entradas():
                 / 100
             )
         st.checkbox(
+            "Converter ativos em dólar para reais (R$)",
+            key="em_reais",
+            help="Multiplica os preços de ações americanas, do S&P 500 e do Bitcoin pelo "
+            "dólar do dia. Ações da B3 e o Ibovespa já estão em reais. Assim a comparação "
+            "inclui o efeito do câmbio, como para quem investe daqui.",
+        )
+        st.checkbox(
             "Usar dados de exemplo (sem internet)",
             key="usar_exemplo",
-            help="Cópias de 5 anos de 11 tickers, tiradas em 09/10/2026, guardadas no "
+            help="Cópias de 5 anos de 13 tickers, tiradas em 09/10/2026, guardadas no "
             "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
         )
     return ticker, periodo, modo, taxa_digitada
@@ -524,7 +550,9 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
         "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
         "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
         "As moedas diferentes "
-        "(R\\$ e US\\$) não atrapalham, porque comparamos a variação percentual, não os preços."
+        "(R\\$ e US\\$) não atrapalham, porque comparamos a variação percentual, não os "
+        "preços. Para incluir o efeito do câmbio, marque a opção de converter ativos em "
+        "dólar para reais, no topo."
     )
 
 
@@ -2833,6 +2861,16 @@ try:
 except DadosIndisponiveisError as erro:
     st.error(str(erro))
     st.stop()
+if dados.attrs.get("moeda") == "BRL":
+    st.caption(
+        "Preços convertidos para reais (R\\$) pelo dólar do dia (USDBRL=X): o retorno inclui "
+        "a variação do câmbio."
+    )
+if dados.attrs.get("cambio_falhou"):
+    st.warning(
+        "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
+        "Tente de novo mais tarde."
+    )
 if dados.attrs.get("origem") == "exemplo":
     st.warning(
         f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "

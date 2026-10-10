@@ -24,7 +24,7 @@ Testes e verificação de estilo:
 .venv\Scripts\python -m ruff check .
 ```
 
-Sem internet (ou se o Yahoo Finance falhar), marque "Usar dados de exemplo" no topo do app: ele usa cópias de 5 anos de 11 tickers guardadas em `dados_de_exemplo/` (tiradas em 09/10/2026) e avisa na tela.
+Sem internet (ou se o Yahoo Finance falhar), marque "Usar dados de exemplo" no topo do app: ele usa cópias de 5 anos de 13 tickers guardadas em `dados_de_exemplo/` (tiradas em 09/10/2026) e avisa na tela.
 
 Ao mudar algo em `src/`, reinicie o Streamlit (`Ctrl+C` e rode de novo) para ver o efeito.
 

@@ -22,6 +22,8 @@ TICKERS_USADOS_NO_APP = [
     "AAPL",
     "^BVSP",
     "^GSPC",
+    "BTC-USD",
+    "USDBRL=X",
 ]
 
 

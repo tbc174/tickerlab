@@ -1,6 +1,6 @@
 """Dados de exemplo guardados no projeto: o plano B para quando o Yahoo Finance falha.
 
-São cópias de 5 anos de alguns tickers, tiradas em 09/10/2026 e guardadas em
+São cópias de 5 anos de 13 tickers (inclui Bitcoin e dólar), tiradas em 09/10/2026 e guardadas em
 `dados_de_exemplo/`. Servem para demonstrar o app sem internet e para não ficar sem tela quando
 o Yahoo está fora do ar. Não são atualizadas: o app sempre avisa quando usa estes dados.
 """
