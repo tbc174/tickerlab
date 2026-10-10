@@ -31,7 +31,9 @@ FRACAO_DE_TREINO_PADRAO = 0.7
 # --- Grade de candidatos -----------------------------------------------------------------
 
 
-def valores_do_parametro(parametro: Parametro, quantidade: int = VALORES_POR_PARAMETRO):
+def valores_do_parametro(
+    parametro: Parametro, quantidade: int = VALORES_POR_PARAMETRO
+) -> list[float | str]:
     """Valores espalhados entre o mínimo e o máximo do parâmetro, incluindo o padrão."""
     if parametro.opcoes:
         return list(parametro.opcoes)

@@ -216,7 +216,9 @@ ESTRATEGIAS_DE_CARTEIRA: dict[str, EstrategiaDeCarteira] = {
 }
 
 
-def gerar_pesos(nome: str, fechamentos: pd.DataFrame, **parametros) -> pd.DataFrame:
+def gerar_pesos(
+    nome: str, fechamentos: pd.DataFrame, **parametros: float | str
+) -> pd.DataFrame:
     """Aplica a estratégia `nome`, conferindo os parâmetros e os ativos."""
     if nome not in ESTRATEGIAS_DE_CARTEIRA:
         raise ValueError(f"Estratégia de carteira desconhecida: {nome}.")
@@ -333,7 +335,7 @@ def simular_carteira(
     fechamentos: pd.DataFrame,
     custo_por_operacao: float = CUSTO_PADRAO_POR_OPERACAO,
     retorno_do_caixa: pd.Series | None = None,
-    **parametros,
+    **parametros: float | str,
 ) -> ResultadoCarteira:
     """Gera os pesos da estratégia `nome` e roda o backtest."""
     pesos = gerar_pesos(nome, fechamentos, **parametros)

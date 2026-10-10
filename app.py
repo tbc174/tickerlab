@@ -1,5 +1,7 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -122,15 +124,25 @@ METRICAS_EM_PORCENTAGEM = {
 }
 METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
 
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
 
 
 # --- Ajudantes --------------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner="Baixando dados...")
-def carregar_dados(ticker, periodo):
+def _carregar_dados_em_cache(ticker, periodo, forcar_exemplo):
     """Guarda o download por 1 hora para não consultar o Yahoo a cada clique."""
-    return baixar_dados(ticker, periodo)
+    return baixar_dados(ticker, periodo, forcar_exemplo)
+
+
+def carregar_dados(ticker, periodo):
+    """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados."""
+    return _carregar_dados_em_cache(
+        ticker, periodo, bool(st.session_state.get("usar_exemplo", False))
+    )
 
 
 @st.cache_data
@@ -215,6 +227,12 @@ def ler_entradas():
                 )
                 / 100
             )
+        st.checkbox(
+            "Usar dados de exemplo (sem internet)",
+            key="usar_exemplo",
+            help="Cópias de 5 anos de 11 tickers, tiradas em 09/10/2026, guardadas no "
+            "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
+        )
     return ticker, periodo, modo, taxa_digitada
 
 
@@ -2682,6 +2700,11 @@ try:
 except DadosIndisponiveisError as erro:
     st.error(str(erro))
     st.stop()
+if dados.attrs.get("origem") == "exemplo":
+    st.warning(
+        f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
+        "e não os mais recentes do Yahoo Finance."
+    )
 fechamento = dados["Close"]
 retorno = ind.calcular_retorno_diario(fechamento)
 taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(

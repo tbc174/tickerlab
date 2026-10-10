@@ -14,6 +14,7 @@ A lição mais comum: prever o sinal do dia seguinte fica perto do acaso; prever
 funciona bem melhor, porque ela é persistente.
 """
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 import numpy as np
@@ -154,7 +155,7 @@ def _sigmoide(z: np.ndarray) -> np.ndarray:
 class RegressaoLogistica:
     """Regressão logística com penalidade L2, ajustada pelo método de Newton."""
 
-    def __init__(self, l2: float = 1.0, iteracoes: int = 30):
+    def __init__(self, l2: float = 1.0, iteracoes: int = 30) -> None:
         if l2 <= 0:
             raise ValueError("A penalidade L2 precisa ser maior que zero.")
         self.l2 = l2
@@ -296,7 +297,7 @@ def posicao_a_partir_das_probabilidades(
 
 def dividir_com_expurgo(
     conjunto: ConjuntoDeDados, k: int = 5, embargo: int = 5, expurgar: bool = True
-):
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """Gera (treino, teste) em `k` blocos contínuos.
 
     Com `expurgar`, sai do treino todo exemplo cujo intervalo (do dia até a resolução do

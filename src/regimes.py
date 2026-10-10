@@ -217,7 +217,7 @@ def varrer_disjuntor(
     """Compara várias combinações de limite e pausa (e a estratégia sem disjuntor)."""
     linhas = []
 
-    def _linha(rotulo, posicao, acionamentos):
+    def _linha(rotulo: str, posicao: pd.Series, acionamentos: int) -> None:
         r = executar_backtest(fechamento, posicao, custo_por_operacao)
         linhas.append(
             {

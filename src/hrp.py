@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 
-def _montar_arvore(distancia: np.ndarray):
+def _montar_arvore(distancia: np.ndarray) -> int | tuple:
     """Agrupamento por ligação simples. Cada nó é um ativo (inteiro) ou um par (ramo, ramo)."""
     grupos = [
         ([i], i) for i in range(len(distancia))
@@ -38,7 +38,7 @@ def _montar_arvore(distancia: np.ndarray):
     return grupos[0][1]
 
 
-def _folhas(no) -> list[int]:
+def _folhas(no: int | tuple) -> list[int]:
     return [no] if isinstance(no, int) else _folhas(no[0]) + _folhas(no[1])
 
 

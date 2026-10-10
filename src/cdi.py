@@ -4,6 +4,8 @@ A série traz o CDI de cada dia útil, em % ao dia. Com ela o app responde "bati
 uma taxa livre de risco real no Sharpe, em vez de um número digitado.
 """
 
+import logging
+
 import pandas as pd
 import requests
 
@@ -12,6 +14,8 @@ ANOS_POR_CONSULTA = (
     9  # o Banco Central limita o tamanho da consulta (10 anos desde 2025)
 )
 TEMPO_LIMITE = 20  # segundos
+
+log = logging.getLogger(__name__)
 
 
 class CDIIndisponivelError(Exception):
@@ -32,6 +36,7 @@ def _consultar(inicio: pd.Timestamp, fim: pd.Timestamp) -> list[dict]:
         resposta.raise_for_status()
         return resposta.json()
     except (requests.RequestException, ValueError) as erro:
+        log.warning("Falha ao consultar o CDI no Banco Central: %s", erro)
         raise CDIIndisponivelError(
             "Não consegui buscar o CDI no Banco Central agora."
         ) from erro

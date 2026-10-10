@@ -1,3 +1,9 @@
 [lint]
+extend-select = ["ANN"]  # anotações de tipo (só em src; veja per-file-ignores)
 # No modo interativo (# %%), a última expressão do bloco mostra o resultado.
 ignore = ["B018"]
+
+[lint.per-file-ignores]
+"app.py" = ["ANN"]
+"tests/**" = ["ANN"]
+"estudos/**" = ["ANN"]

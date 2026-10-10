@@ -371,7 +371,7 @@ ESTRATEGIAS: dict[str, Estrategia] = {
 }
 
 
-def _conferir_parametro(parametro: Parametro, valor) -> None:
+def _conferir_parametro(parametro: Parametro, valor: float | str) -> None:
     if parametro.opcoes:
         if valor not in parametro.opcoes:
             raise ValueError(
@@ -384,7 +384,9 @@ def _conferir_parametro(parametro: Parametro, valor) -> None:
         )
 
 
-def gerar_posicao(nome: str, dados: pd.DataFrame, **parametros) -> pd.Series:
+def gerar_posicao(
+    nome: str, dados: pd.DataFrame, **parametros: float | str
+) -> pd.Series:
     """Aplica a estratégia `nome`, conferindo os parâmetros contra os limites do registro."""
     if nome not in ESTRATEGIAS:
         raise ValueError(f"Estratégia desconhecida: {nome}.")
