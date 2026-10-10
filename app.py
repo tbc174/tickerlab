@@ -34,6 +34,7 @@ from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.indicadores import NOMES_DOS_MESES
 from src.metricas import calcular_intervalo_do_sharpe, resumir_desempenho
 from src.protecoes import Protecoes, aplicar_protecoes
+from src.ranking import montar_ranking
 from src.validacao import (
     avaliar_treino_e_teste,
     calcular_retornos_dos_candidatos,
@@ -61,6 +62,7 @@ METRICAS_EM_PORCENTAGEM_COM_SINAL = {
     "Expectativa por operação",
 }
 METRICAS_EM_PORCENTAGEM = {
+    "Chance de não ser sorte",
     "Volatilidade anual",
     "Maior queda",
     "Exposição média",
@@ -935,6 +937,75 @@ def secao_validacao(
             )
 
 
+@st.cache_data(show_spinner="Rodando todas as estratégias...")
+def calcular_ranking(dados, custo, taxa, extras):
+    return montar_ranking(dados, custo, taxa, extras)
+
+
+def secao_ranking(dados, taxa_livre_de_risco):
+    st.subheader("Ranking: todas as estratégias no mesmo ativo")
+    st.caption(
+        "Cada estratégia roda com os valores padrão, sem proteções, e é ordenada pelo Sharpe. "
+        "Olhar só o topo da lista é o jeito mais fácil de se enganar: leia as duas colunas "
+        "que descontam a sorte."
+    )
+    col_custo, col_extras = st.columns(2)
+    custo_percentual = col_custo.number_input(
+        "Custo por operação (%)",
+        min_value=0.0,
+        max_value=2.0,
+        value=CUSTO_PADRAO_POR_OPERACAO * 100,
+        step=0.01,
+        format="%.2f",
+        key="ranking_custo",
+    )
+    extras = col_extras.number_input(
+        "Outras ideias que você já testou (opcional)",
+        min_value=0,
+        max_value=10_000,
+        value=0,
+        step=10,
+        key="ranking_extras",
+        help=ajuda_do("Data snooping (ir pescando resultados)"),
+    )
+    tabela, resultados = calcular_ranking(
+        dados, custo_percentual / 100, taxa_livre_de_risco, int(extras)
+    )
+    st.caption(f"{len(tabela) + int(extras)} tentativas contadas.")
+
+    exibicao = tabela.copy()
+    for coluna in exibicao.columns:
+        if coluna != "Grupo":
+            exibicao[coluna] = [formatar_metrica(coluna, v) for v in exibicao[coluna]]
+    st.dataframe(exibicao, width="stretch")
+    st.caption(
+        "**Chance de não ser sorte:** Sharpe deflacionado (acima de 95% é convincente). "
+        "**p-valor (acaso):** fatia de posições sem relação com o preço que fez igual ou "
+        "melhor (abaixo de 5% é convincente)."
+    )
+
+    mostrar_grafico(
+        graficos.criar_grafico_risco_retorno(tabela, destaque=ESTRATEGIA_DE_REFERENCIA)
+    )
+    padrao = [ESTRATEGIA_DE_REFERENCIA] + [
+        n for n in tabela.index if n != ESTRATEGIA_DE_REFERENCIA
+    ][:2]
+    escolhidas = st.multiselect(
+        "Curvas de capital",
+        list(tabela.index),
+        default=padrao,
+        key="ranking_curvas",
+    )
+    if escolhidas:
+        mostrar_grafico(
+            graficos.criar_grafico_curvas_de_capital(
+                {n: resultados[n].curva_de_capital for n in escolhidas},
+                10_000.0,
+                destaque=escolhidas[0],
+            )
+        )
+
+
 def secao_backtest(dados, taxa_livre_de_risco):
     st.subheader("Backtest: e se eu tivesse seguido esta regra?")
     st.caption(
@@ -1155,8 +1226,8 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     )
     st.stop()
 
-aba_geral, aba_risco, aba_mensal, aba_comparar, aba_backtest = st.tabs(
-    ["Visão geral", "Risco", "Retorno mensal", "Comparar", "Backtest"]
+aba_geral, aba_risco, aba_mensal, aba_comparar, aba_backtest, aba_ranking = st.tabs(
+    ["Visão geral", "Risco", "Retorno mensal", "Comparar", "Backtest", "Ranking"]
 )
 with aba_geral:
     secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco)
@@ -1170,6 +1241,8 @@ with aba_comparar:
     secao_comparar(normalizar_ticker(ticker), periodo, taxa_livre_de_risco)
 with aba_backtest:
     secao_backtest(dados, taxa_livre_de_risco)
+with aba_ranking:
+    secao_ranking(dados, taxa_livre_de_risco)
 
 st.divider()
 st.caption(

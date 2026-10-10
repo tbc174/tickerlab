@@ -261,6 +261,13 @@ dados no app (um `##` por termo).
 
 **Cuidado:** combinações de uma mesma estratégia são parecidas entre si, então o PBO costuma ficar baixo mesmo quando a estratégia toda não vale nada. Ele mede a escolha entre variações, não a estratégia.
 
+## Data snooping (ir pescando resultados)
+**O que é:** testar muitas estratégias, ativos ou parâmetros e destacar só a que foi melhor. Quanto mais se testa, mais certo é que alguma pareça boa só por sorte.
+
+**Exemplo:** com 12 estratégias no mesmo ativo, a melhor do ranking quase sempre tem um Sharpe bom, mesmo que nenhuma tenha valor. Por isso o app mostra também a "chance de não ser sorte", que desconta o número de estratégias testadas.
+
+**Cuidado:** a conta vale para tudo o que você testou, inclusive fora do app. Se já testou outras ideias, some-as nas "tentativas extras".
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

@@ -15,6 +15,7 @@ from src.graficos import (
     criar_grafico_operacoes_no_preco,
     criar_grafico_preco,
     criar_grafico_quedas_comparadas,
+    criar_grafico_risco_retorno,
     criar_grafico_volatilidade,
     criar_histograma_do_acaso,
     criar_mapa_de_calor_de_parametros,
@@ -486,3 +487,30 @@ def test_histograma_do_acaso_marca_o_sharpe_real():
 def test_histograma_do_acaso_vazio_da_erro():
     with pytest.raises(ValueError, match="sorteios"):
         criar_histograma_do_acaso(np.array([]), 1.0)
+
+
+# --- Risco e retorno --------------------------------------------------------------------------
+
+
+def _pontos():
+    return pd.DataFrame(
+        {
+            "Volatilidade anual": [0.2, 0.1, np.nan],
+            "Retorno anualizado": [0.15, 0.05, 0.3],
+        },
+        index=["Comprar e segurar", "Filtro de tendência", "Sem dados"],
+    )
+
+
+def test_risco_retorno_tem_um_ponto_por_estrategia_com_numeros():
+    figura = criar_grafico_risco_retorno(_pontos(), destaque="Comprar e segurar")
+    assert list(figura.data[0].text) == ["Comprar e segurar", "Filtro de tendência"]
+    assert figura.data[0].marker.color[0] == "#2962ff"
+    assert figura.data[0].marker.color[1] != "#2962ff"
+
+
+def test_risco_retorno_vazio_da_erro():
+    with pytest.raises(ValueError, match="estratégias"):
+        criar_grafico_risco_retorno(pd.DataFrame())
+    with pytest.raises(ValueError, match="números"):
+        criar_grafico_risco_retorno(_pontos().iloc[[2]])

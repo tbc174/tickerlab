@@ -98,6 +98,7 @@ TERMOS_DO_PAINEL = [
     "Teste contra o acaso",
     "Sharpe deflacionado",
     "PBO (probabilidade de overfitting)",
+    "Data snooping (ir pescando resultados)",
 ]
 
 

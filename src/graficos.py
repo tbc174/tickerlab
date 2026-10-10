@@ -575,6 +575,51 @@ def criar_histograma_do_acaso(
     return figura
 
 
+def criar_grafico_risco_retorno(
+    pontos: pd.DataFrame, destaque: str | None = None
+) -> go.Figure:
+    """Cada estratégia como um ponto: risco (volatilidade) no eixo x e retorno anual no y.
+
+    `pontos` tem uma linha por estratégia e as colunas "Volatilidade anual" e "Retorno anualizado".
+    Quanto mais para cima e para a esquerda, melhor. A de `destaque` aparece em azul.
+    """
+    if pontos.empty:
+        raise ValueError("Não há estratégias para mostrar.")
+    pontos = pontos.dropna(subset=["Volatilidade anual", "Retorno anualizado"])
+    if pontos.empty:
+        raise ValueError("Não há estratégias com números para mostrar.")
+    figura = go.Figure(
+        go.Scatter(
+            x=pontos["Volatilidade anual"],
+            y=pontos["Retorno anualizado"],
+            mode="markers+text",
+            text=list(pontos.index),
+            textposition="top center",
+            textfont={"size": 11},
+            marker={
+                "size": [14 if n == destaque else 10 for n in pontos.index],
+                "color": [
+                    COR_AZUL if n == destaque else COR_INDICE for n in pontos.index
+                ],
+            },
+            customdata=[
+                [_pct_br(v), _pct_br(r)]
+                for v, r in zip(
+                    pontos["Volatilidade anual"], pontos["Retorno anualizado"]
+                )
+            ],
+            hovertemplate="%{text}<br>Risco: %{customdata[0]}<br>Retorno: %{customdata[1]}<extra></extra>",
+        )
+    )
+    _estilo_base(figura, "Risco e retorno por estratégia (ao ano)", 460)
+    figura.update_layout(hovermode="closest")
+    figura.update_xaxes(
+        title="Volatilidade anual (risco)", tickformat=".0%", showspikes=False
+    )
+    figura.update_yaxes(title="Retorno anualizado", tickformat=".0%")
+    return figura
+
+
 def criar_grafico_curvas_de_capital(
     curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
 ) -> go.Figure:
