@@ -282,6 +282,13 @@ dados no app (um `##` por termo).
 
 **Cuidado:** é uma simplificação para estudo. Não considera *day trade*, retenção na fonte, dividendos nem ativos de fora, e **não é orientação tributária**. Confira as regras atuais na Receita Federal e na B3.
 
+## Rebalanceamento
+**O que é:** voltar a carteira aos pesos desejados. Entre um rebalanceamento e outro, quem sobe passa a pesar mais (a *deriva* dos pesos). Rebalancear é vender um pouco do que subiu e comprar um pouco do que ficou para trás.
+
+**Exemplo:** carteira 50% A e 50% B. Se A dobra e B fica parado, A passa a pesar 67%. No rebalanceamento, vende-se parte de A e compra-se B para voltar a 50% e 50%.
+
+**Cuidado:** cada rebalanceamento tem custo. Rebalancear com muita frequência pode comer o ganho que ele busca.
+
 ## Custo de operação
 **O que é:** taxas e impostos pagos a cada compra ou venda. Reduzem o resultado real.
 

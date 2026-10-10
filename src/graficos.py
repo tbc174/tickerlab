@@ -620,6 +620,50 @@ def criar_grafico_risco_retorno(
     return figura
 
 
+def criar_grafico_pesos(pesos: pd.DataFrame) -> go.Figure:
+    """Áreas empilhadas: quanto da carteira estava em cada ativo (e em caixa) ao longo do tempo."""
+    if pesos.empty:
+        raise ValueError("Não há pesos para mostrar.")
+    caixa = (1 - pesos.sum(axis=1)).clip(lower=0)
+    figura = _figura_base("Composição da carteira")
+    figura.update_yaxes(tickformat=".0%", range=[0, 1])
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    cores = [
+        COR_AZUL,
+        "#a78bfa",
+        "#f472b6",
+        COR_ALTA,
+        "#38bdf8",
+        "#94a3b8",
+        COR_AZUL_CLARO,
+        "#facc15",
+    ]
+    for i, coluna in enumerate(pesos.columns):
+        figura.add_trace(
+            go.Scatter(
+                x=pesos.index,
+                y=pesos[coluna],
+                name=str(coluna),
+                stackgroup="carteira",
+                mode="lines",
+                line={"width": 0.5, "color": cores[i % len(cores)]},
+                hovertemplate="%{y:.1%}",
+            )
+        )
+    figura.add_trace(
+        go.Scatter(
+            x=pesos.index,
+            y=caixa,
+            name="Caixa",
+            stackgroup="carteira",
+            mode="lines",
+            line={"width": 0.5, "color": COR_INDICE},
+            hovertemplate="%{y:.1%}",
+        )
+    )
+    return figura
+
+
 def criar_grafico_curvas_de_capital(
     curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
 ) -> go.Figure:

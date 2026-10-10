@@ -139,3 +139,69 @@ Textos da aba **Backtest**, escritos para quem está começando. Cada estratégi
 **Quando costuma falhar:** quando o preço muda de nível e não volta (uma notícia relevante, por exemplo): a "média" passa a ser outra e a estratégia segue comprando uma queda que não se reverte.
 
 **O que olhar nos resultados:** com os valores padrão, o z-score é **exatamente a mesma estratégia** das Bandas de Bollinger no modo reversão (comprar abaixo da média menos 2 desvios é comprar com z-score abaixo de -2; vender acima da média é vender com z-score acima de 0), só escrita de outro jeito. Teste os dois e confira que os resultados coincidem. Mude os limites do z-score para ver o que a faixa fixa das bandas não deixa fazer. Veja se os ganhos vêm de muitas operações pequenas e quantas perdas grandes aparecem.
+
+## Pesos iguais (referência)
+**A ideia:** dividir o dinheiro em partes iguais entre todos os ativos e, todo mês, voltar às partes iguais. É a "régua" das carteiras: dá o trabalho mínimo e costuma ser difícil de bater.
+
+**A regra:** cada ativo recebe 1/N do capital. Entre um mês e outro, quem sobe fica com mais peso; no fim do mês, vende-se um pouco de quem subiu e compra-se um pouco de quem ficou para trás.
+
+**Quando costuma funcionar:** quando os ativos variam de forma diferente entre si e o rebalanceamento "compra na baixa e vende na alta" quase sem pensar.
+
+**Quando costuma falhar:** quando todos caem juntos (a diversificação some em crises) ou quando um só ativo domina o período inteiro.
+
+**O que olhar nos resultados:** compare qualquer outra estratégia de carteira com esta. Se não vence os pesos iguais depois dos custos, a complexidade não se pagou.
+
+## Rotação por momentum
+**A ideia:** os ativos que mais subiram nos últimos meses tendem a continuar na frente por um tempo. A carteira fica só com os melhores.
+
+**A regra:** no fim de cada mês, calcula o retorno de cerca de 12 meses de cada ativo, pulando o último mês, e fica com os N melhores em partes iguais (padrão: 2).
+
+**Quando costuma funcionar:** em mercados com líderes claros e tendências de vários meses.
+
+**Quando costuma falhar:** nas viradas bruscas, em que os líderes de ontem viram os piores de hoje, e com poucos ativos, em que um ou dois dominam o resultado.
+
+**O que olhar nos resultados:** a concentração (quantos ativos de fato aparecem no gráfico de composição), o giro e se ela supera os pesos iguais. Com poucos ativos e poucos anos, o resultado depende muito de quais ativos você escolheu.
+
+## Momentum dual
+**A ideia:** combina duas perguntas. A relativa: quem está melhor que os outros? A absoluta: está subindo de verdade, ou só caiu menos? Só entra quem passa nas duas.
+
+**A regra:** igual à rotação por momentum, mas só ficam os ativos com retorno positivo. Se nenhum passa, a carteira inteira vai para o caixa.
+
+**Quando costuma funcionar:** em quedas longas de mercado, porque a regra absoluta tira a carteira de tudo e ela espera no caixa (ou no CDI).
+
+**Quando costuma falhar:** em mercados de lado, com entradas e saídas sem ganho, e depois de quedas rápidas seguidas de recuperação rápida.
+
+**O que olhar nos resultados:** a **exposição média** (quanto tempo ficou em caixa) e a **maior queda**, comparadas com a rotação simples. O objetivo costuma ser reduzir o susto.
+
+## Pesos pelo inverso da volatilidade
+**A ideia:** em vez de dar o mesmo dinheiro a cada ativo, dar o mesmo "risco". Quem oscila mais recebe menos dinheiro; quem oscila menos recebe mais.
+
+**A regra:** o peso de cada ativo é proporcional a 1 dividido pela sua volatilidade dos últimos 60 dias (padrão), e os pesos somam 100%. Rebalanceia no fim do mês.
+
+**Quando costuma funcionar:** quando a volatilidade passada ajuda a prever a futura (o que costuma valer), reduzindo a influência dos ativos mais agitados.
+
+**Quando costuma falhar:** quando um ativo calmo de repente fica agitado, e nos mercados em que os ativos mais arriscados foram os que mais renderam.
+
+**O que olhar nos resultados:** a **volatilidade anual** e a **maior queda** em comparação com os pesos iguais. O ganho esperado é em risco, não necessariamente em retorno.
+
+## Baixa volatilidade
+**A ideia:** ações mais calmas tendem a render, ajustadas ao risco, tanto quanto ou mais que as agitadas. A carteira fica só com as mais calmas.
+
+**A regra:** no fim do mês, fica com os N ativos de menor volatilidade dos últimos 60 dias (padrão: 2), em partes iguais.
+
+**Quando costuma funcionar:** em quedas de mercado e em períodos agitados, em que os ativos calmos caem menos.
+
+**Quando costuma falhar:** em altas fortes e rápidas, lideradas pelos ativos mais arriscados.
+
+**O que olhar nos resultados:** a **maior queda** e o **Sharpe** em comparação com os pesos iguais. Com poucos ativos, o resultado depende muito de quais são os "calmos" da sua lista.
+
+## Ativo-canário
+**A ideia:** um ativo funciona como termômetro do mercado, como o canário na mina. Se ele fica fraco, o perigo está no ar e a carteira inteira vai para o caixa.
+
+**A regra:** o primeiro ativo da lista é o canário. No fim do mês, se o retorno dele nos últimos 12 meses (pulando o último) é positivo, a carteira fica em partes iguais em todos os ativos; senão, fica toda em caixa.
+
+**Quando costuma funcionar:** quando o canário antecipa as quedas dos outros ativos, em geral porque representa o mercado inteiro (como um índice).
+
+**Quando costuma falhar:** quando o canário e os outros ativos andam em direções diferentes, e nas viradas rápidas.
+
+**O que olhar nos resultados:** a **exposição média**, a **maior queda** e se o canário que você escolheu realmente "avisa" dos outros: teste com um índice e com uma ação.

@@ -101,6 +101,7 @@ TERMOS_DO_PAINEL = [
     "Data snooping (ir pescando resultados)",
     "CDI",
     "Imposto de renda (simplificado)",
+    "Rebalanceamento",
 ]
 
 
@@ -180,10 +181,11 @@ SECOES_DE_UMA_ESTRATEGIA = [
 
 def test_toda_estrategia_do_registro_tem_explicacao_completa():
     # Se alguém registrar uma estratégia nova e esquecer de explicá-la, este teste avisa.
+    from src.carteiras import ESTRATEGIAS_DE_CARTEIRA
     from src.estrategias import ESTRATEGIAS
 
     explicacoes = carregar_estrategias(CAMINHO_ESTRATEGIAS)
-    for nome in ESTRATEGIAS:
+    for nome in [*ESTRATEGIAS, *ESTRATEGIAS_DE_CARTEIRA]:
         assert nome in explicacoes, (
             f"Falta o verbete de {nome} em conteudo/estrategias.md"
         )
@@ -192,6 +194,9 @@ def test_toda_estrategia_do_registro_tem_explicacao_completa():
 
 
 def test_nao_ha_explicacao_sem_estrategia():
+    from src.carteiras import ESTRATEGIAS_DE_CARTEIRA
     from src.estrategias import ESTRATEGIAS
 
-    assert set(carregar_estrategias(CAMINHO_ESTRATEGIAS)) <= set(ESTRATEGIAS)
+    assert set(carregar_estrategias(CAMINHO_ESTRATEGIAS)) <= set(ESTRATEGIAS) | set(
+        ESTRATEGIAS_DE_CARTEIRA
+    )

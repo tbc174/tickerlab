@@ -13,6 +13,7 @@ from src.graficos import (
     criar_grafico_curvas_de_capital,
     criar_grafico_drawdown,
     criar_grafico_operacoes_no_preco,
+    criar_grafico_pesos,
     criar_grafico_preco,
     criar_grafico_quedas_comparadas,
     criar_grafico_risco_retorno,
@@ -514,3 +515,22 @@ def test_risco_retorno_vazio_da_erro():
         criar_grafico_risco_retorno(pd.DataFrame())
     with pytest.raises(ValueError, match="números"):
         criar_grafico_risco_retorno(_pontos().iloc[[2]])
+
+
+# --- Composição da carteira -------------------------------------------------------------------
+
+
+def test_grafico_de_pesos_tem_um_traco_por_ativo_mais_o_caixa():
+    pesos = pd.DataFrame(
+        {"A": [0.5, 0.0, 0.3], "B": [0.25, 0.0, 0.3]},
+        index=pd.date_range("2026-01-01", periods=3),
+    )
+    figura = criar_grafico_pesos(pesos)
+    assert [t.name for t in figura.data] == ["A", "B", "Caixa"]
+    assert list(figura.data[-1].y) == pytest.approx([0.25, 1.0, 0.4])
+    assert all(t.stackgroup == "carteira" for t in figura.data)
+
+
+def test_grafico_de_pesos_vazio_da_erro():
+    with pytest.raises(ValueError, match="pesos"):
+        criar_grafico_pesos(pd.DataFrame())
