@@ -1,9 +1,20 @@
 """Indicadores de análise de ações: retorno, médias móveis, volatilidade e drawdown."""
 
+from typing import NamedTuple
+
 import numpy as np
 import pandas as pd
 
 DIAS_POR_ANO = 252
+
+
+class PiorDrawdown(NamedTuple):
+    """A pior queda do período: quanto caiu e as datas do topo, do fundo e da recuperação."""
+
+    queda: float
+    data_topo: pd.Timestamp | None
+    data_fundo: pd.Timestamp | None
+    data_recuperacao: pd.Timestamp | None  # None se ainda não voltou ao topo
 
 
 def calcular_retorno_diario(fechamento: pd.Series) -> pd.Series:
@@ -83,3 +94,29 @@ def calcular_var_historico(retorno: pd.Series, nivel: float = 0.95) -> float:
     """Perda diária que só foi superada em (1 - nivel) dos dias. Vem negativa (é uma perda)."""
     # o quantile ignora o NaN e devolve NaN se não houver nenhum dado
     return retorno.quantile(1 - nivel)
+
+
+def calcular_volatilidade_movel(retorno: pd.Series, janela: int = 20) -> pd.Series:
+    """Volatilidade anualizada calculada numa janela deslizante de `janela` dias."""
+    if janela < 2:
+        raise ValueError("A janela precisa ter pelo menos 2 dias.")
+    return retorno.rolling(window=janela).std() * np.sqrt(DIAS_POR_ANO)
+
+
+def encontrar_pior_drawdown(fechamento: pd.Series) -> PiorDrawdown:
+    """Acha a maior queda do topo ao fundo e diz quando começou e se já foi recuperada."""
+    drawdown = calcular_drawdown(fechamento).dropna()
+    if drawdown.empty:
+        return PiorDrawdown(float("nan"), None, None, None)
+
+    queda = float(drawdown.min())
+    if queda == 0:  # o preço nunca ficou abaixo de um topo anterior
+        return PiorDrawdown(0.0, None, None, None)
+
+    data_fundo = drawdown.idxmin()
+    antes = drawdown.loc[:data_fundo]
+    data_topo = antes[antes == 0].index[-1]  # último dia no topo antes do fundo
+    depois = drawdown.loc[data_fundo:]
+    recuperou = depois[depois == 0]
+    data_recuperacao = recuperou.index[0] if not recuperou.empty else None
+    return PiorDrawdown(queda, data_topo, data_fundo, data_recuperacao)

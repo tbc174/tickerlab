@@ -16,8 +16,10 @@ from src.indicadores import (
     calcular_retorno_diario,
     calcular_var_historico,
     calcular_volatilidade_anual,
+    calcular_volatilidade_movel,
     encontrar_melhor_dia,
     encontrar_pior_dia,
+    encontrar_pior_drawdown,
 )
 
 
@@ -170,3 +172,67 @@ def test_sem_retornos_validos_devolve_nan(funcao, retorno):
 def test_melhor_e_pior_dia_sem_dados_levantam_erro(funcao):
     with pytest.raises(ValueError, match="vazia"):
         funcao(pd.Series([np.nan]))
+
+
+# --- Issue #8: volatilidade móvel e pior drawdown -------------------------------
+
+
+def test_volatilidade_movel():
+    # Janela 3 sobre [nan, +1%, -1%, +1%, -1%]: o primeiro valor só existe no 4º dia,
+    # quando há 3 retornos válidos (+1%, -1%, +1%).
+    retorno = pd.Series([np.nan, 0.01, -0.01, 0.01, -0.01])
+    resultado = calcular_volatilidade_movel(retorno, janela=3)
+    esperado = np.std([0.01, -0.01, 0.01], ddof=1) * np.sqrt(DIAS_POR_ANO)
+    assert len(resultado) == len(retorno)
+    assert resultado.iloc[:3].isna().all()
+    assert resultado.iloc[3] == pytest.approx(esperado)
+    assert resultado.iloc[4] == pytest.approx(
+        esperado
+    )  # (-1%, +1%, -1%) tem o mesmo desvio
+
+
+def test_volatilidade_movel_de_preco_parado_e_zero():
+    retorno = pd.Series([0.0] * 10)
+    assert (calcular_volatilidade_movel(retorno, janela=5).dropna() == 0).all()
+
+
+@pytest.mark.parametrize("janela", [1, 0, -5])
+def test_volatilidade_movel_com_janela_invalida(janela):
+    with pytest.raises(ValueError, match="janela"):
+        calcular_volatilidade_movel(pd.Series([0.01, 0.02, 0.03]), janela=janela)
+
+
+def _datas(n):
+    return pd.date_range("2026-01-01", periods=n)
+
+
+def test_pior_drawdown_sem_recuperacao():
+    # Topo 120 (dia 4), fundo 60 (dia 5): queda de 50%. Nunca voltou a 120.
+    fechamento = pd.Series([100.0, 120.0, 90.0, 120.0, 60.0, 100.0], index=_datas(6))
+    pior = encontrar_pior_drawdown(fechamento)
+    assert pior.queda == pytest.approx(-0.50)
+    assert pior.data_topo == pd.Timestamp("2026-01-04")
+    assert pior.data_fundo == pd.Timestamp("2026-01-05")
+    assert pior.data_recuperacao is None
+
+
+def test_pior_drawdown_com_recuperacao():
+    # Topo 120 (dia 2), fundo 90 (dia 3), volta ao topo no dia 4 (130 passa de 120).
+    fechamento = pd.Series([100.0, 120.0, 90.0, 130.0], index=_datas(4))
+    pior = encontrar_pior_drawdown(fechamento)
+    assert pior.queda == pytest.approx(-0.25)
+    assert pior.data_topo == pd.Timestamp("2026-01-02")
+    assert pior.data_fundo == pd.Timestamp("2026-01-03")
+    assert pior.data_recuperacao == pd.Timestamp("2026-01-04")
+
+
+def test_pior_drawdown_de_preco_sempre_subindo():
+    fechamento = pd.Series([10.0, 11.0, 12.0], index=_datas(3))
+    pior = encontrar_pior_drawdown(fechamento)
+    assert pior == (0.0, None, None, None)
+
+
+def test_pior_drawdown_sem_dados():
+    pior = encontrar_pior_drawdown(pd.Series([], dtype=float))
+    assert np.isnan(pior.queda)
+    assert pior.data_fundo is None
