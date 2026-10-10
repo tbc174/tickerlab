@@ -9,8 +9,11 @@ from src.graficos import (
     ZOOM_COM_A_RODA_DO_MOUSE,
     _numero_br,
     criar_grafico_comparacao,
+    criar_grafico_curvas_de_capital,
     criar_grafico_drawdown,
+    criar_grafico_operacoes_no_preco,
     criar_grafico_preco,
+    criar_grafico_quedas_comparadas,
     criar_grafico_volatilidade,
     criar_mapa_de_calor_mensal,
 )
@@ -319,3 +322,76 @@ def test_comparacao_tem_linha_de_referencia_em_100():
 def test_comparacao_sem_dados_levanta_erro():
     with pytest.raises(ValueError, match="em comum"):
         criar_grafico_comparacao(pd.DataFrame(), "PETR4.SA")
+
+
+# --- Gráficos do backtest ----------------------------------------------------------------
+
+
+def _curvas():
+    datas = pd.date_range("2026-01-05", periods=4, freq="B")
+    return {
+        "Cruzamento de médias": pd.Series([1.0, 1.05, 1.02, 1.10], index=datas),
+        "Comprar e segurar": pd.Series([1.0, 1.10, 0.90, 1.20], index=datas),
+    }
+
+
+def test_curvas_de_capital_multiplicam_pelo_capital_inicial():
+    figura = criar_grafico_curvas_de_capital(
+        _curvas(), 10_000, destaque="Cruzamento de médias"
+    )
+    destaque = next(tr for tr in figura.data if tr.name == "Cruzamento de médias")
+    assert list(destaque.y) == pytest.approx([10_000, 10_500, 10_200, 11_000])
+    assert destaque.line.color == "#2962ff"  # a estratégia em destaque, em azul
+    outra = next(tr for tr in figura.data if tr.name == "Comprar e segurar")
+    assert outra.line.color != "#2962ff"
+    assert any(forma.y0 == 10_000 for forma in figura.layout.shapes)
+
+
+def test_quedas_comparadas_comecam_em_zero_e_nunca_sao_positivas():
+    figura = criar_grafico_quedas_comparadas(_curvas(), destaque="Cruzamento de médias")
+    assert len(figura.data) == 2
+    for tr in figura.data:
+        assert max(tr.y) <= 0
+    referencia = next(tr for tr in figura.data if tr.name == "Comprar e segurar")
+    assert min(referencia.y) == pytest.approx(0.90 / 1.10 - 1)
+
+
+@pytest.mark.parametrize(
+    "funcao",
+    [
+        lambda: criar_grafico_curvas_de_capital({}, 10_000, "x"),
+        lambda: criar_grafico_quedas_comparadas({}, "x"),
+    ],
+)
+def test_graficos_do_backtest_sem_curvas(funcao):
+    with pytest.raises(ValueError, match="curvas"):
+        funcao()
+
+
+def test_operacoes_no_preco_marcam_entradas_e_saidas():
+    datas = pd.date_range("2026-01-05", periods=6, freq="B")
+    fechamento = pd.Series([10, 11, 12, 11, 10, 12], index=datas, dtype=float)
+    operacoes = pd.DataFrame(
+        {
+            "entrada": [datas[1], datas[4]],
+            "saida": [datas[2], datas[5]],
+            "dias": [2, 2],
+            "retorno": [0.1, 0.2],
+            "aberta": [False, True],
+        }
+    )
+    figura = criar_grafico_operacoes_no_preco(fechamento, operacoes)
+    nomes = [tr.name for tr in figura.data]
+    assert nomes == ["Preço", "Entrada", "Saída"]
+    entrada = figura.data[1]
+    assert list(entrada.y) == [11, 10]
+    saida = figura.data[2]
+    assert list(saida.y) == [12]  # a operação aberta ainda não tem saída
+
+
+def test_operacoes_no_preco_sem_operacoes_mostra_so_o_preco():
+    datas = pd.date_range("2026-01-05", periods=3, freq="B")
+    fechamento = pd.Series([10, 11, 12], index=datas, dtype=float)
+    vazio = pd.DataFrame(columns=["entrada", "saida", "dias", "retorno", "aberta"])
+    figura = criar_grafico_operacoes_no_preco(fechamento, vazio)
+    assert [tr.name for tr in figura.data] == ["Preço"]

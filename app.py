@@ -5,6 +5,7 @@ import streamlit as st
 
 from src import graficos
 from src import indicadores as ind
+from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -16,18 +17,34 @@ from src.comparacao import (
     rebasear_para_100,
 )
 from src.conteudo import (
+    carregar_estrategias,
     carregar_glossario,
     descrever_pior_drawdown,
     proteger_cifrao,
 )
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 from src.estilo import CSS_DO_APP
+from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.indicadores import NOMES_DOS_MESES
+from src.metricas import calcular_intervalo_do_sharpe, resumir_desempenho
 
 MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
 JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 JANELAS_MEDIAS = [20, 50, 200]  # dias
 PERIODOS_DAS_VELAS = {"3 meses": 63, "6 meses": 126, "1 ano": 252, "Tudo": None}
+ESTRATEGIA_DE_REFERENCIA = "Comprar e segurar"
+METRICAS_EM_PORCENTAGEM_COM_SINAL = {
+    "Retorno total",
+    "Retorno anualizado",
+    "Expectativa por operação",
+}
+METRICAS_EM_PORCENTAGEM = {
+    "Volatilidade anual",
+    "Maior queda",
+    "Exposição média",
+    "Taxa de acerto",
+}
+METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
 
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
@@ -44,6 +61,25 @@ def carregar_dados(ticker, periodo):
 def obter_glossario():
     """Lê o glossário uma vez só; o arquivo não muda enquanto o app roda."""
     return carregar_glossario()
+
+
+@st.cache_data
+def obter_estrategias():
+    """Lê as explicações das estratégias uma vez só."""
+    return carregar_estrategias()
+
+
+def formatar_metrica(nome, valor):
+    """Escolhe o formato de cada métrica do backtest (porcentagem, razão ou contagem)."""
+    if pd.isna(valor):
+        return "—"
+    if nome in METRICAS_EM_PORCENTAGEM_COM_SINAL:
+        return formatar_pct(valor, com_sinal=True)
+    if nome in METRICAS_EM_PORCENTAGEM:
+        return formatar_pct(valor)
+    if nome in METRICAS_INTEIRAS:
+        return f"{int(valor)}"
+    return f"{valor:.2f}".replace(".", ",")
 
 
 def formatar_pct(valor, com_sinal=False):
@@ -359,6 +395,198 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
     )
 
 
+def escolher_estrategia():
+    """Menu da estratégia e controles dos parâmetros, gerados a partir do registro."""
+    nome = st.selectbox(
+        "Estratégia",
+        list(ESTRATEGIAS),
+        format_func=lambda n: f"{ESTRATEGIAS[n].grupo} · {n}",
+    )
+    parametros = {}
+    if ESTRATEGIAS[nome].parametros:
+        colunas = st.columns(min(len(ESTRATEGIAS[nome].parametros), 3))
+        for posicao, p in enumerate(ESTRATEGIAS[nome].parametros):
+            coluna = colunas[posicao % len(colunas)]
+            chave = f"parametro_{nome}_{p.nome}"
+            if p.opcoes:
+                parametros[p.nome] = coluna.selectbox(
+                    p.rotulo,
+                    p.opcoes,
+                    index=p.opcoes.index(p.padrao),
+                    key=chave,
+                    help=p.ajuda or None,
+                )
+            else:
+                parametros[p.nome] = coluna.slider(
+                    p.rotulo,
+                    p.minimo,
+                    p.maximo,
+                    p.padrao,
+                    p.passo,
+                    key=chave,
+                    help=p.ajuda or None,
+                )
+    return nome, parametros
+
+
+def secao_backtest(dados, taxa_livre_de_risco):
+    st.subheader("Backtest: e se eu tivesse seguido esta regra?")
+    st.caption(
+        "Simulação com dados do passado. A decisão tomada no fim de cada dia só vale a partir "
+        "do dia seguinte, para a simulação não usar o futuro."
+    )
+    with st.container(border=True):
+        nome, parametros = escolher_estrategia()
+        col_custo, col_capital = st.columns(2)
+        custo_percentual = col_custo.number_input(
+            "Custo por operação (%)",
+            min_value=0.0,
+            max_value=2.0,
+            value=CUSTO_PADRAO_POR_OPERACAO * 100,
+            step=0.01,
+            format="%.2f",
+            help="Corretagem, taxas e a diferença entre o preço pedido e o executado, "
+            "cobrados em cada compra e em cada venda.",
+        )
+        capital_inicial = col_capital.number_input(
+            "Capital inicial (R\\$)", min_value=100.0, value=10_000.0, step=1_000.0
+        )
+
+    fechamento = dados["Close"]
+    try:
+        posicao = gerar_posicao(nome, dados, **parametros)
+    except ValueError as erro:
+        st.error(str(erro))
+        return
+    custo = custo_percentual / 100
+    resultado = executar_backtest(fechamento, posicao, custo)
+    referencia = executar_backtest(
+        fechamento, gerar_posicao(ESTRATEGIA_DE_REFERENCIA, dados), custo
+    )
+
+    explicacao = obter_estrategias().get(nome)
+    if explicacao:
+        with st.expander("Como funciona esta estratégia", expanded=True):
+            st.markdown(proteger_cifrao(explicacao))
+
+    if resultado.operacoes.empty:
+        st.info(
+            "A estratégia não fez nenhuma operação neste período. Algumas regras precisam de "
+            "mais histórico (por exemplo, uma média de 200 dias): tente um período maior."
+        )
+
+    if nome != ESTRATEGIA_DE_REFERENCIA and not resultado.operacoes.empty:
+        primeira_entrada = resultado.operacoes.iloc[0]["entrada"]
+        dias_parada = (primeira_entrada - fechamento.index[0]).days
+        dias_totais = (fechamento.index[-1] - fechamento.index[0]).days
+        if dias_parada > 0.15 * dias_totais:
+            st.caption(
+                f"Atenção: a estratégia só entrou no mercado em {primeira_entrada:%d/%m/%Y}. "
+                "Antes disso ficou em caixa (falta de histórico ou de sinal), então ela e "
+                "comprar e segurar não ficaram expostas pelo mesmo tempo."
+            )
+
+    numeros = resumir_desempenho(
+        resultado.retorno, resultado.posicao, resultado.operacoes, taxa_livre_de_risco
+    )
+    numeros_referencia = resumir_desempenho(
+        referencia.retorno,
+        referencia.posicao,
+        referencia.operacoes,
+        taxa_livre_de_risco,
+    )
+
+    cartoes = st.columns(4)
+    for coluna, metrica in zip(
+        cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"]
+    ):
+        comparacao = (
+            f"{formatar_metrica(metrica, numeros_referencia[metrica])} em {ESTRATEGIA_DE_REFERENCIA.lower()}"
+            if nome != ESTRATEGIA_DE_REFERENCIA
+            else None
+        )
+        coluna.metric(
+            metrica,
+            formatar_metrica(metrica, numeros[metrica]),
+            delta=comparacao,
+            delta_color="off",
+            delta_arrow="off",
+            help=ajuda_do(
+                {"Retorno total": "Retorno acumulado", "Maior queda": "Drawdown"}.get(
+                    metrica, metrica
+                )
+            ),
+        )
+
+    sharpe, minimo, maximo = calcular_intervalo_do_sharpe(
+        resultado.retorno, taxa_livre_de_risco
+    )
+    if not pd.isna(sharpe):
+        medido, baixo, alto = (
+            formatar_metrica("Sharpe", v) for v in (sharpe, minimo, maximo)
+        )
+        st.caption(
+            f"O Sharpe medido é {medido}, mas com estes dados ele pode estar entre "
+            f"{baixo} e {alto} (intervalo de ~95%). Com poucos anos de dados, "
+            "o Sharpe é muito incerto: não compare estratégias por diferenças pequenas."
+        )
+
+    curvas = {nome: resultado.curva_de_capital}
+    if nome != ESTRATEGIA_DE_REFERENCIA:
+        curvas[ESTRATEGIA_DE_REFERENCIA] = referencia.curva_de_capital
+    mostrar_grafico(
+        graficos.criar_grafico_curvas_de_capital(curvas, capital_inicial, destaque=nome)
+    )
+
+    col_quedas, col_preco = st.columns(2)
+    with col_quedas:
+        mostrar_grafico(graficos.criar_grafico_quedas_comparadas(curvas, destaque=nome))
+    with col_preco:
+        mostrar_grafico(
+            graficos.criar_grafico_operacoes_no_preco(fechamento, resultado.operacoes)
+        )
+
+    st.markdown("**Números lado a lado**")
+    tabela = pd.DataFrame(
+        {
+            nome_da_coluna: {m: formatar_metrica(m, v) for m, v in valores.items()}
+            for nome_da_coluna, valores in (
+                (nome, numeros),
+                *(
+                    ((ESTRATEGIA_DE_REFERENCIA, numeros_referencia),)
+                    if nome != ESTRATEGIA_DE_REFERENCIA
+                    else ()
+                ),
+            )
+        }
+    )
+    st.dataframe(tabela, width="stretch")
+
+    if not resultado.operacoes.empty:
+        with st.expander(f"Ver as {len(resultado.operacoes)} operações"):
+            operacoes = resultado.operacoes.copy()
+            operacoes["entrada"] = operacoes["entrada"].dt.strftime("%d/%m/%Y")
+            operacoes["saida"] = operacoes["saida"].dt.strftime("%d/%m/%Y")
+            operacoes["retorno"] = [
+                formatar_pct(v, com_sinal=True) for v in operacoes["retorno"]
+            ]
+            operacoes["aberta"] = operacoes["aberta"].map({True: "sim", False: "não"})
+            operacoes.columns = [
+                "Primeiro dia",
+                "Último dia",
+                "Dias",
+                "Retorno",
+                "Em aberto",
+            ]
+            st.dataframe(operacoes, width="stretch", hide_index=True)
+
+    st.warning(
+        "Cuidado: o passado não garante o futuro. Uma regra que funcionou aqui pode ter sido "
+        "ajustada ao acaso (*overfitting*); o app usa só ativos que existem hoje (*viés de "
+        "sobrevivência*); e os custos reais podem ser maiores que os simulados."
+    )
+
+
 # --- Página -----------------------------------------------------------------
 mostrar_cabecalho()
 ticker, periodo, taxa_livre_de_risco = ler_entradas()
@@ -380,8 +608,8 @@ if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
     )
     st.stop()
 
-aba_geral, aba_risco, aba_mensal, aba_comparar = st.tabs(
-    ["Visão geral", "Risco", "Retorno mensal", "Comparar"]
+aba_geral, aba_risco, aba_mensal, aba_comparar, aba_backtest = st.tabs(
+    ["Visão geral", "Risco", "Retorno mensal", "Comparar", "Backtest"]
 )
 with aba_geral:
     secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco)
@@ -393,6 +621,8 @@ with aba_mensal:
     secao_retorno_mensal(retorno)
 with aba_comparar:
     secao_comparar(normalizar_ticker(ticker), periodo, taxa_livre_de_risco)
+with aba_backtest:
+    secao_backtest(dados, taxa_livre_de_risco)
 
 st.divider()
 st.caption(

@@ -396,3 +396,108 @@ def criar_grafico_comparacao(
         )
     figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
     return figura
+
+
+def criar_grafico_curvas_de_capital(
+    curvas: dict[str, pd.Series], capital_inicial: float, destaque: str
+) -> go.Figure:
+    """Quanto o capital inicial viraria em cada estratégia. A de `destaque` aparece em azul."""
+    if not curvas:
+        raise ValueError("Não há curvas para mostrar.")
+    figura = _figura_base("Evolução do capital (R$)")
+    figura.update_yaxes(tickformat=",.0f", tickprefix="R$ ")
+    figura.add_hline(
+        y=capital_inicial, line_dash="dot", line_color="rgba(255,255,255,0.25)"
+    )
+    for nome, curva in curvas.items():
+        em_destaque = nome == destaque
+        figura.add_trace(
+            go.Scatter(
+                x=curva.index,
+                y=curva * capital_inicial,
+                mode="lines",
+                line={
+                    "color": COR_AZUL if em_destaque else COR_INDICE,
+                    "width": 2.5 if em_destaque else 1.8,
+                },
+                hovertemplate="R$ %{y:,.2f}",
+                name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_quedas_comparadas(
+    curvas: dict[str, pd.Series], destaque: str
+) -> go.Figure:
+    """Drawdown de cada estratégia: o quanto estava abaixo do próprio topo em cada dia."""
+    from src.indicadores import calcular_drawdown
+
+    if not curvas:
+        raise ValueError("Não há curvas para mostrar.")
+    figura = _figura_base("Quedas desde o topo (drawdown)")
+    for nome, curva in curvas.items():
+        em_destaque = nome == destaque
+        queda = calcular_drawdown(curva)
+        figura.add_trace(
+            go.Scatter(
+                x=queda.index,
+                y=queda,
+                mode="lines",
+                fill="tozeroy" if em_destaque else None,
+                fillcolor="rgba(41, 98, 255, 0.18)" if em_destaque else None,
+                line={
+                    "color": COR_AZUL if em_destaque else COR_INDICE,
+                    "width": 1.8 if em_destaque else 1.3,
+                },
+                hovertemplate="%{y:.2%}",
+                name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_operacoes_no_preco(
+    fechamento: pd.Series, operacoes: pd.DataFrame
+) -> go.Figure:
+    """Preço de fechamento com setas nos dias de entrada e de saída de cada operação."""
+    figura = _figura_base("Preço e operações")
+    figura.update_yaxes(tickformat=",.2f")
+    figura.add_trace(
+        go.Scatter(
+            x=fechamento.index,
+            y=fechamento,
+            mode="lines",
+            line={"color": COR_INDICE, "width": 1.5},
+            hovertemplate="%{y:,.2f}",
+            name="Preço",
+        )
+    )
+    if not operacoes.empty:
+        entradas = pd.to_datetime(operacoes["entrada"])
+        figura.add_trace(
+            go.Scatter(
+                x=entradas,
+                y=fechamento.loc[entradas],
+                mode="markers",
+                marker={"symbol": "triangle-up", "color": COR_ALTA, "size": 10},
+                hovertemplate="Primeiro dia comprado: %{y:,.2f}",
+                name="Entrada",
+            )
+        )
+        fechadas = operacoes[~operacoes["aberta"]]
+        saidas = pd.to_datetime(fechadas["saida"])
+        figura.add_trace(
+            go.Scatter(
+                x=saidas,
+                y=fechamento.loc[saidas],
+                mode="markers",
+                marker={"symbol": "triangle-down", "color": COR_QUEDA, "size": 10},
+                hovertemplate="Último dia comprado: %{y:,.2f}",
+                name="Saída",
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura

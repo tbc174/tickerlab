@@ -13,6 +13,7 @@ from src.estilo import COR_AZUL, CSS_DO_APP
         ".stTabs",  # abas
         "hr {",  # divisórias
         COR_AZUL,  # azul vivo do app
+        "stIconMaterial",  # os ícones não podem perder a fonte de ícones
     ],
 )
 def test_css_estiliza_os_elementos_principais(trecho):

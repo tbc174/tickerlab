@@ -11,6 +11,11 @@ html, body, [class*="st-"], .stMarkdown, button, input, textarea, select {{
     font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }}
 
+/* Os ícones do Streamlit (setas, etc.) usam uma fonte própria: não trocar por Manrope */
+[data-testid="stIconMaterial"], .material-icons, .material-symbols-rounded {{
+    font-family: 'Material Symbols Rounded' !important;
+}}
+
 /* Largura e respiro da página */
 .block-container, [data-testid="stMainBlockContainer"] {{
     max-width: 1280px;
