@@ -370,3 +370,40 @@ def test_falha_no_meio_nao_deixa_o_evento_marcado_como_visto(monkeypatch):
         total = c.execute(sa.select(sa.func.count()).select_from(eventos_stripe))
         assert total.scalar_one() == 0
         assert buscar_assinatura(c, usuario.id) is None
+
+
+def test_checkout_no_mesmo_segundo_nao_apaga_o_fim_do_periodo(conexao, ana):
+    """No pagamento real, a assinatura e o checkout chegam juntos, em qualquer ordem."""
+    processar_evento(
+        conexao,
+        _assinatura(
+            "evt_a",
+            "customer.subscription.created",
+            "active",
+            100,
+            current_period_end=1_900_000_000,
+            cancel_at_period_end=True,
+            metadata={"usuario_id": str(ana.id)},
+        ),
+    )
+    processar_evento(conexao, _checkout(ana, "evt_b", criado=100))
+    a = buscar_assinatura(conexao, ana.id)
+    assert a.periodo_fim is not None and a.periodo_fim.year == 2030
+    assert a.cancela_no_fim is True
+    assert _plano(conexao, ana) == "pro"
+
+
+def test_checkout_primeiro_e_assinatura_depois_completa_os_dados(conexao, ana):
+    processar_evento(conexao, _checkout(ana, "evt_a", criado=100))
+    assert buscar_assinatura(conexao, ana.id).periodo_fim is None
+    processar_evento(
+        conexao,
+        _assinatura(
+            "evt_b",
+            "customer.subscription.created",
+            "active",
+            100,
+            current_period_end=1_900_000_000,
+        ),
+    )
+    assert buscar_assinatura(conexao, ana.id).periodo_fim.year == 2030

@@ -233,7 +233,7 @@ def _gravar_assinatura(
     id_da_assinatura: str | None,
     status: str,
     periodo_fim: datetime | None,
-    cancela_no_fim: bool,
+    cancela_no_fim: bool | None,
     criado_em: int,
 ) -> bool:
     """Grava a assinatura se o evento não for mais velho que o último aplicado.
@@ -247,12 +247,17 @@ def _gravar_assinatura(
         "stripe_customer_id": id_do_cliente,
         "stripe_subscription_id": id_da_assinatura,
         "status": status,
-        "periodo_fim": periodo_fim,
-        "cancela_no_fim": cancela_no_fim,
         "evento_em": criado_em,
         "atualizada_em": datetime.now(UTC),
     }
+    # o evento do Checkout não traz o fim do período nem o pedido de cancelamento: None quer
+    # dizer "este evento não sabe", e o que já estava guardado fica como está
+    if periodo_fim is not None:
+        valores["periodo_fim"] = periodo_fim
+    if cancela_no_fim is not None:
+        valores["cancela_no_fim"] = cancela_no_fim
     if existente is None:
+        valores.setdefault("cancela_no_fim", False)
         conexao.execute(sa.insert(assinaturas).values(usuario_id=usuario_id, **valores))
         return True
     if criado_em < existente.evento_em:
@@ -293,7 +298,7 @@ def _aplicar_checkout_concluido(
         sessao.get("subscription"),
         status,
         None,
-        False,
+        None,
         criado_em,
     ):
         _acompanhar_o_plano(conexao, usuario_id, status)
