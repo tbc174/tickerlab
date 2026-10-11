@@ -89,7 +89,7 @@ def test_gratuito_assina_pelo_convite_de_um_recurso_do_pro(
     banco, stripe_ligado, monkeypatch
 ):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    app = abrir_app()
+    app = abrir_app("pares")
     app.button(key="assinar_recurso_pares").click().run()
     assert not app.exception
     assert _links(app) == ["https://checkout.stripe.exemplo/sessao"]

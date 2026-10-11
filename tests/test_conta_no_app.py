@@ -8,13 +8,14 @@ from tests.ajudantes_da_conta import (
     botao,
     entrar_como,
     id_do_usuario,
+    ir_para,
 )
 from tests.test_autenticacao import AUTH_COMPLETO
 
 
 def test_favoritos_e_preferencias_voltam_na_proxima_sessao(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    app = abrir_app()
+    app = abrir_app("visao_geral")
     assert not app.exception
     botao(app, "Favoritar PETR4.SA").click().run()
     app.selectbox(key="periodo").select("5y").run()
@@ -31,7 +32,7 @@ def test_favoritos_e_preferencias_voltam_na_proxima_sessao(banco, monkeypatch):
 
 def test_so_grava_quando_ha_mudanca(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    app = abrir_app()
+    app = abrir_app("visao_geral")
     app.run()  # outra execução sem mudar nada
     ana = id_do_usuario(banco, "ana")
     with banco.connect() as conexao:
@@ -41,7 +42,8 @@ def test_so_grava_quando_ha_mudanca(banco, monkeypatch):
 
 def test_link_compartilhado_nao_apaga_os_favoritos_da_conta(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    ana = id_do_usuario_depois_de(banco, monkeypatch)
+    abrir_app()  # cria o usuário
+    ana = id_do_usuario(banco, "ana")
     with banco.begin() as conexao:
         repo.salvar_favoritos(conexao, ana, ["AAPL"])
     app = AppTest.from_file("../app.py", default_timeout=90)
@@ -49,19 +51,29 @@ def test_link_compartilhado_nao_apaga_os_favoritos_da_conta(banco, monkeypatch):
     app.session_state["usar_exemplo"] = True
     app.query_params["fav"] = "VALE3.SA"
     app.run()
+    ir_para(app, "visao_geral")
     assert not app.exception
     with banco.connect() as conexao:
         assert repo.listar_favoritos(conexao, ana) == ["AAPL"]
 
 
-def id_do_usuario_depois_de(banco, monkeypatch):
-    abrir_app()  # cria o usuário
-    return id_do_usuario(banco, "ana")
+def test_campos_sobrevivem_a_troca_de_pagina(banco, monkeypatch):
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("visao_geral")
+    app.text_input(key="ticker").input("VALE3.SA").run()
+    ir_para(app, "planos")
+    ir_para(app, "backtest")
+    assert app.session_state["ticker"] == "VALE3.SA"
+    app.selectbox(key="backtest_estrategia").select("MACD").run()
+    ir_para(app, "ranking")
+    ir_para(app, "backtest")
+    assert app.session_state["backtest_estrategia"] == "MACD"
+    assert app.session_state["ticker"] == "VALE3.SA"
 
 
 def test_salvar_reabrir_e_apagar_uma_simulacao(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    app = abrir_app()
+    app = abrir_app("backtest")
     app.selectbox(key="backtest_estrategia").select("Cruzamento de médias").run()
     app.text_input(key="salvar_nome_backtest").input("Meu cruzamento").run()
     app.button(key="salvar_backtest").click().run()
@@ -75,12 +87,16 @@ def test_salvar_reabrir_e_apagar_uma_simulacao(banco, monkeypatch):
     assert "Retorno total" in salvas[0].resultado["numeros"]
 
     # outra sessão: a simulação aparece na lista e reabrir restaura os campos
-    nova = abrir_app()
-    assert nova.session_state["backtest_estrategia"] != "Cruzamento de médias"
+    nova = abrir_app("simulacoes")
+    assert "backtest_estrategia" not in nova.session_state
     nova.button(key=f"reabrir_{salvas[0].id}").click().run()
     assert not nova.exception
     assert nova.session_state["backtest_estrategia"] == "Cruzamento de médias"
+    # e a página do Backtest já abre com a estratégia reaberta
+    ir_para(nova, "backtest")
+    assert nova.selectbox(key="backtest_estrategia").value == "Cruzamento de médias"
 
+    ir_para(nova, "simulacoes")
     nova.button(key=f"apagar_{salvas[0].id}").click().run()
     assert not nova.exception
     with banco.connect() as conexao:
@@ -89,14 +105,14 @@ def test_salvar_reabrir_e_apagar_uma_simulacao(banco, monkeypatch):
 
 def test_simulacao_de_outro_usuario_nao_aparece(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    ana_app = abrir_app()
+    ana_app = abrir_app("backtest")
     ana_app.button(key="salvar_backtest").click().run()
     ana = id_do_usuario(banco, "ana")
     with banco.connect() as conexao:
         da_ana = repo.listar_simulacoes(conexao, ana)[0]
 
     entrar_como(monkeypatch, "bia", "bia@exemplo.com")
-    bia_app = abrir_app()
+    bia_app = abrir_app("simulacoes")
     assert not bia_app.exception
     chaves = [b.key for b in bia_app.button]
     assert f"reabrir_{da_ana.id}" not in chaves
@@ -107,7 +123,7 @@ def test_simulacao_de_outro_usuario_nao_aparece(banco, monkeypatch):
 
 def test_reabrir_ignora_estrategia_que_nao_existe_mais(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
-    app = abrir_app()
+    abrir_app()  # cria o usuário
     ana = id_do_usuario(banco, "ana")
     with banco.begin() as conexao:
         simulacao = repo.salvar_simulacao(
@@ -118,16 +134,19 @@ def test_reabrir_ignora_estrategia_que_nao_existe_mais(banco, monkeypatch):
             {"backtest_estrategia": "Extinta", "backtest_capital": 5000.0},
             {"numeros": {}},
         )
-    app = abrir_app()
+    app = abrir_app("simulacoes")
     app.button(key=f"reabrir_{simulacao.id}").click().run()
     assert not app.exception
-    assert app.session_state["backtest_estrategia"] != "Extinta"
+    assert "backtest_estrategia" not in app.session_state
     assert app.session_state["backtest_capital"] == 5000.0
+    ir_para(app, "backtest")
+    assert not app.exception
 
 
-def test_no_modo_local_a_aba_pede_login():
+def test_no_modo_local_a_pagina_de_simulacoes_pede_login():
     app = AppTest.from_file("../app.py", default_timeout=90)
     app.session_state["usar_exemplo"] = True
     app.run()
+    ir_para(app, "simulacoes")
     assert not app.exception
     assert any("Entre com a sua conta" in i.value for i in app.info)

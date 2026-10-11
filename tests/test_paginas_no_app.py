@@ -1,0 +1,51 @@
+"""Todas as páginas do menu abrem sem erro, e cada uma mostra o seu título e a sua frase."""
+
+from streamlit.testing.v1 import AppTest
+
+from src.paginas import PAGINA_INICIAL, PAGINAS
+from tests.ajudantes_da_conta import ir_para
+
+
+def _app_local() -> AppTest:
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    return app.run()
+
+
+def test_o_menu_registra_todas_as_paginas_do_mapa():
+    app = _app_local()
+    assert not app.exception
+    enderecos = {i["url_pathname"] for i in app._registered_pages.values()}
+    esperados = {"" if p.chave == PAGINA_INICIAL else p.url for p in PAGINAS}
+    assert enderecos == esperados
+
+
+def test_todas_as_paginas_abrem_sem_erro_no_modo_local():
+    app = _app_local()
+    for p in PAGINAS:
+        ir_para(app, p.chave)
+        assert not app.exception, f"{p.chave}: {[e.value for e in app.exception]}"
+        assert not app.error, f"{p.chave}: {[e.value for e in app.error]}"
+        if p.chave == PAGINA_INICIAL:  # a chamada principal faz o papel de título
+            continue
+        titulos = " ".join(m.value for m in app.markdown)
+        assert p.titulo in titulos, f"{p.chave}: sem título"
+        legendas = " ".join(c.value for c in app.caption)
+        assert p.descricao in legendas, f"{p.chave}: sem a frase de apoio"
+
+
+def test_a_pagina_inicial_explica_e_leva_aos_proximos_passos():
+    app = _app_local()
+    texto = " ".join(m.value for m in app.markdown)
+    assert "Entenda uma ação antes de investir" in texto
+    assert "Escolha um ativo" in texto and "Teste uma ideia" in texto
+    assert [b.label for b in app.button] == ["Começar pela visão geral"]
+
+
+def test_paginas_de_analise_mostram_o_ativo_e_as_outras_nao():
+    app = _app_local()
+    assert not app.text_input  # Início não pede ativo
+    ir_para(app, "visao_geral")
+    assert [t.key for t in app.text_input] == ["ticker"]
+    ir_para(app, "guia")
+    assert not [t for t in app.text_input if t.key == "ticker"]

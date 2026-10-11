@@ -18,7 +18,7 @@ def test_com_login_configurado_e_sem_entrar_mostra_so_a_tela_de_entrada():
     assert not app.exception
     assert [b.label for b in app.button] == ["Entrar com o Google"]
     # nada do app de verdade aparece antes do login
-    assert not app.tabs
+    assert not app.get("unknown")
     assert not app.text_input
 
 
@@ -44,7 +44,7 @@ def test_com_login_o_usuario_e_criado_e_aparece_no_topo(tmp_path, monkeypatch):
     assert app.session_state["usuario"].email == "ana@exemplo.com"
     assert app.session_state["usuario"].plano == "gratuito"
     assert "Entrar com o Google" not in [b.label for b in app.button]
-    assert app.tabs  # o app de verdade abriu
+    assert "Começar pela visão geral" in [b.label for b in app.button]  # o app abriu
 
 
 def test_sem_login_configurado_o_app_abre_direto_no_modo_local():
@@ -52,6 +52,6 @@ def test_sem_login_configurado_o_app_abre_direto_no_modo_local():
     app.session_state["usar_exemplo"] = True
     app.run()
     assert not app.exception
-    assert app.tabs
+    assert "Começar pela visão geral" in [b.label for b in app.button]
     assert "Entrar com o Google" not in [b.label for b in app.button]
     assert "usuario" not in app.session_state
