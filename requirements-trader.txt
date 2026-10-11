@@ -1,0 +1,10 @@
+# Dependências da divisão de machine learning e MetaTrader 5 (roda no PC, fora da imagem Docker).
+#   python -m pip install -r requirements-trader.txt
+-r requirements.txt
+scikit-learn==1.9.1
+lightgbm==4.7.0
+optuna==5.0.0
+statsmodels==0.15.0
+pyarrow==25.0.1
+# o pacote do MT5 só existe para Windows (precisa do terminal MetaTrader 5 instalado)
+MetaTrader5==5.0.6231; sys_platform == "win32"

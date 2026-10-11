@@ -24,3 +24,6 @@ dados_locais/
 
 # Segredos do Streamlit (login do Google): nunca commitar
 .streamlit/secrets.toml
+
+# Dados baixados do MetaTrader 5 (cada pessoa baixa os seus)
+dados_mt5/
