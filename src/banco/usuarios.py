@@ -27,6 +27,8 @@ class Usuario:
     plano: str
     criado_em: datetime
     ultimo_acesso: datetime | None
+    termos_versao: str | None = None
+    termos_aceitos_em: datetime | None = None
 
     @property
     def e_admin(self) -> bool:
@@ -48,6 +50,8 @@ def _de_linha(linha: sa.Row) -> Usuario:
         plano=linha.plano,
         criado_em=linha.criado_em,
         ultimo_acesso=linha.ultimo_acesso,
+        termos_versao=linha.termos_versao,
+        termos_aceitos_em=linha.termos_aceitos_em,
     )
 
 

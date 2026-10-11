@@ -53,6 +53,9 @@ usuarios = sa.Table(
     _momento("criado_em"),
     sa.Column("ultimo_acesso", sa.DateTime(timezone=True)),
     sa.Column("excluido_em", sa.DateTime(timezone=True)),
+    # versão dos termos de uso e da política de privacidade que a pessoa aceitou, e quando
+    sa.Column("termos_versao", sa.String(20)),
+    sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
     sa.CheckConstraint("plano IN ('gratuito', 'pro')", name="plano"),
 )
@@ -111,3 +114,18 @@ eventos_stripe = sa.Table(
     sa.Column("tipo", sa.String(100), nullable=False),
     _momento("processado_em"),
 )
+
+# registro do que aconteceu de importante (ações de administrador, aceite dos termos, conta
+# apagada). Guarda ids, nunca e-mail nem nome: assim sobrevive à exclusão da conta sem manter
+# dados pessoais. O ator vira nulo se a conta dele for apagada.
+auditoria = sa.Table(
+    "auditoria",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("ator_id", sa.Uuid, sa.ForeignKey("usuarios.id", ondelete="SET NULL")),
+    sa.Column("acao", sa.String(60), nullable=False),
+    sa.Column("alvo_id", sa.Uuid),
+    sa.Column("detalhes", JSON_PORTATIL, nullable=False),
+    _momento("criado_em"),
+)
+sa.Index("ix_auditoria_criado_em", auditoria.c.criado_em)
