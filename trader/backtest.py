@@ -137,11 +137,14 @@ def executar_backtest(
     posicao_desejada: pd.Series,
     custos: Custos | None = None,
     limite: float = 1.0,
+    retorno_do_ativo: pd.Series | None = None,
 ) -> ResultadoBacktest:
     """Simula a estratégia.
 
     `posicao_desejada` é a decisão tomada no FIM de cada dia: de -`limite` (vendido) a
     +`limite` (comprado), 0 = caixa. A posição que de fato rende em um dia é a de ontem.
+    `retorno_do_ativo`, se dado, substitui a variação do fechamento (ex.: `retornos_seguros`,
+    que não explode com preço negativo).
     """
     custos = custos or Custos()
     if limite <= 0:
@@ -155,7 +158,12 @@ def executar_backtest(
             f"A posição desejada deve ficar entre -{limite:g} e {limite:g}, sem valores vazios."
         )
 
-    retorno_do_ativo = fechamento.pct_change().fillna(0.0)
+    if retorno_do_ativo is None:
+        retorno_do_ativo = fechamento.pct_change().fillna(0.0)
+    elif not retorno_do_ativo.index.equals(fechamento.index):
+        raise ValueError("O retorno do ativo precisa ter as mesmas datas dos preços.")
+    else:
+        retorno_do_ativo = retorno_do_ativo.fillna(0.0)
     posicao = posicao_desejada.shift(1, fill_value=0.0)  # NÃO olha o futuro
     mudanca = posicao.diff().abs().fillna(posicao.abs())  # entrar também custa
     custo_do_dia = mudanca * custos.custo_por_lado(fechamento.index)

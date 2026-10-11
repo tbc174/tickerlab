@@ -41,6 +41,11 @@ AVISOS = {
 }
 
 
+# Futuros contínuos do Yahoo (`=F`) são SÓ ATRIBUTO (decisão do Tiago, 11/10/2026): a série emenda
+# contratos sem ajuste e a troca de contrato vira um salto falso de preço (no gás natural, os maiores
+# "retornos" diários, de +20% a +46%, caem todos na semana do vencimento). Voltam a ser operáveis
+# quando houver dado por contrato (boletim da B3 acumulado ou corretora).
+#
 # Enquanto o histórico dos futuros da B3 não existe (a B3 só guarda ~3 semanas, ver `b3.py`),
 # estas séries longas fazem o papel deles na pesquisa. Nenhuma é igual ao contrato real.
 PROXIES = {
@@ -80,8 +85,10 @@ UNIVERSO: list[Ativo] = [
         "USDZAR",
     ),
     *_mt5("metais", "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"),
-    *_yf("energia", "CL=F", "BZ=F", "NG=F"),  # petróleo WTI, Brent, gás natural
-    *_yf("metais", "HG=F"),  # cobre
+    *_yf(
+        "energia", "CL=F", "BZ=F", "NG=F", papel="atributo"
+    ),  # petróleo WTI, Brent, gás natural
+    *_yf("metais", "HG=F", papel="atributo"),  # cobre
     *_yf(
         "agro",
         "KC=F",  # café arábica
@@ -94,6 +101,7 @@ UNIVERSO: list[Ativo] = [
         "ZC=F",  # milho
         "ZW=F",  # trigo
         "OJ=F",  # suco de laranja
+        papel="atributo",
     ),
     *_yf("cripto", "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "XRP-USD"),
     *_yf(

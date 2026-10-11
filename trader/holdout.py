@@ -33,6 +33,11 @@ from trader import dados as dados_do_trader
 from trader.registro import PASTA_DA_PESQUISA, RAIZ, Registro
 
 FIM_DO_DESENVOLVIMENTO = pd.Timestamp("2023-09-08")
+# Decisão do Tiago (11/10/2026), depois das primeiras baselines: a avaliação começa em 03/01/2000
+# para todos. Antes disso quase só há índices à vista (S&P desde 1927, Nasdaq desde 1971), que
+# dominavam a carteira e têm autocorrelação falsa por preço defasado; nem eram negociáveis (não
+# havia futuro de índice antes de 1982). Os sinais podem usar o histórico anterior para aquecer.
+INICIO_DA_AVALIACAO = pd.Timestamp("2000-01-03")
 INICIO_DO_HOLDOUT = pd.Timestamp("2023-10-10")
 FIM_DO_HOLDOUT = pd.Timestamp("2026-10-09")
 CAMINHO_DO_CRITERIO = RAIZ / "docs" / "pre-registro-m2-v0.1.md"

@@ -235,3 +235,18 @@ def test_resumo_traz_metricas_do_app_e_as_do_trader():
     assert resumo["Exposição média"] == pytest.approx(r.posicao.abs().mean())
     assert resumo["Giro por ano"] == pytest.approx(r.giro / 2, rel=0.01)
     assert resumo["Custos por ano"] > 0
+
+
+def test_retorno_do_ativo_dado_substitui_a_variacao_do_preco():
+    p = _precos([18.0, -37.63, 10.0, 11.0])  # o pct_change explodiria
+    seguro = pd.Series([0.0, 0.0, 0.0, 0.1], index=p.index)
+    r = executar_backtest(p, _posicao([1, 1, 1, 1], p), retorno_do_ativo=seguro)
+    assert r.retorno.tolist() == pytest.approx([0.0, 0.0, 0.0, 0.1])
+
+
+def test_retorno_do_ativo_com_datas_diferentes_e_recusado():
+    p = _precos([100, 101, 102])
+    with pytest.raises(ValueError, match="mesmas datas"):
+        executar_backtest(
+            p, _posicao([0, 0, 0], p), retorno_do_ativo=pd.Series([0.0, 0.0])
+        )
