@@ -36,6 +36,9 @@ class IdentidadeDoGoogle:
     email: str
     nome: str | None
     foto_url: str | None
+    email_verificado: bool = (
+        False  # só quem o Google confirmou pode virar administrador
+    )
 
 
 def login_esta_configurado(segredos: Mapping | None) -> bool:
@@ -74,7 +77,13 @@ def ler_identidade(usuario_do_google: Mapping) -> IdentidadeDoGoogle:
     foto = str(usuario_do_google.get("picture") or "").strip() or None
     if foto is not None and not foto.startswith("https://"):
         foto = None  # só imagens por HTTPS entram na tela
-    return IdentidadeDoGoogle(sub=sub, email=email, nome=nome, foto_url=foto)
+    return IdentidadeDoGoogle(
+        sub=sub,
+        email=email,
+        nome=nome,
+        foto_url=foto,
+        email_verificado=usuario_do_google.get("email_verified") is True,
+    )
 
 
 def registrar_login(
@@ -91,7 +100,8 @@ def registrar_login(
                 email=identidade.email,
                 nome=identidade.nome,
                 foto_url=identidade.foto_url,
-                emails_de_admin=admins,
+                # o e-mail só dá o papel de administrador se o Google o confirmou
+                emails_de_admin=admins if identidade.email_verificado else (),
             )
     except ValueError as erro:
         raise LoginInvalidoError(str(erro)) from erro

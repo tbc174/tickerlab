@@ -250,3 +250,15 @@ def test_json_guarda_e_devolve_estruturas(motor):
         )
         linha = conexao.execute(sa.select(simulacoes)).one()
     assert linha.parametros == parametros and linha.resultado == {"retorno": 0.12}
+
+
+def test_erros_do_banco_nao_citam_os_valores_da_consulta(motor):
+    """Os valores (e-mails, nomes) não podem vazar para os logs pelas mensagens de erro."""
+    segredo = "pessoa.secreta@exemplo.com"
+    with pytest.raises(sa.exc.IntegrityError) as erro, motor.begin() as conexao:
+        conexao.execute(
+            sa.insert(usuarios).values(
+                id=uuid.uuid4(), google_sub=None, email=segredo, papel="usuario"
+            )
+        )
+    assert segredo not in str(erro.value)

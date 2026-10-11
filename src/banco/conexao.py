@@ -36,7 +36,9 @@ def criar_engine(url: str | None = None) -> sa.Engine:
         caminho = sa.engine.make_url(url).database
         if caminho and caminho != ":memory:":
             Path(caminho).parent.mkdir(parents=True, exist_ok=True)
-    motor = sa.create_engine(url, pool_pre_ping=True)
+    # hide_parameters: os erros do SQLAlchemy citariam os valores da consulta (e-mails, nomes)
+    # e iriam parar nos logs
+    motor = sa.create_engine(url, pool_pre_ping=True, hide_parameters=True)
     if motor.dialect.name == "sqlite":
         sa.event.listen(motor, "connect", _ligar_chaves_estrangeiras_no_sqlite)
     log.info("Banco configurado: %s", url_sem_senha(url))

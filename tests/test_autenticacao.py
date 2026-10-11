@@ -80,7 +80,11 @@ def test_ler_identidade_completa():
         }
     )
     assert identidade == IdentidadeDoGoogle(
-        "123", "ana@exemplo.com", "Ana", "https://exemplo.com/foto.png"
+        "123",
+        "ana@exemplo.com",
+        "Ana",
+        "https://exemplo.com/foto.png",
+        email_verificado=True,
     )
 
 
@@ -131,9 +135,25 @@ def test_primeiro_login_cria_e_o_segundo_so_atualiza(motor):
 
 
 def test_email_de_admin_vira_administrador(motor):
-    identidade = IdentidadeDoGoogle("9", "chefe@exemplo.com", None, None)
+    identidade = IdentidadeDoGoogle(
+        "9", "chefe@exemplo.com", None, None, email_verificado=True
+    )
     usuario, _ = registrar_login(identidade, admins=("chefe@exemplo.com",), motor=motor)
     assert usuario.e_admin
+
+
+def test_email_de_admin_sem_confirmacao_do_google_nao_vira_administrador(motor):
+    nao_confirmado = IdentidadeDoGoogle("9", "chefe@exemplo.com", None, None)
+    usuario, _ = registrar_login(
+        nao_confirmado, admins=("chefe@exemplo.com",), motor=motor
+    )
+    assert not usuario.e_admin
+
+
+def test_ler_identidade_marca_se_o_google_confirmou_o_email():
+    com = ler_identidade({"sub": "1", "email": "a@b.com", "email_verified": True})
+    sem = ler_identidade({"sub": "1", "email": "a@b.com"})
+    assert com.email_verificado is True and sem.email_verificado is False
 
 
 def test_admin_nao_vale_para_outro_sub_com_email_diferente(motor):
