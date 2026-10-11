@@ -17,6 +17,7 @@ CONVENCAO_DE_NOMES = {
 
 PAPEIS = ("usuario", "admin")
 PLANOS = ("gratuito", "pro")
+TIPOS_DE_RELATORIO = ("ativo", "comparacao", "backtest", "carteira", "minha_carteira")
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
@@ -129,3 +130,24 @@ auditoria = sa.Table(
     _momento("criado_em"),
 )
 sa.Index("ix_auditoria_criado_em", auditoria.c.criado_em)
+
+
+# Relatórios em PDF gerados: só o tipo e a hora, para contar o limite do plano (o PDF não é
+# guardado). Apagados junto com a conta.
+relatorios = sa.Table(
+    "relatorios",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("tipo", sa.String(20), nullable=False),
+    _momento("criado_em"),
+    sa.CheckConstraint(
+        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira')",
+        name="tipo",
+    ),
+)
+sa.Index(
+    "ix_relatorios_usuario_id_criado_em",
+    relatorios.c.usuario_id,
+    relatorios.c.criado_em,
+)

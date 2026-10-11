@@ -6,7 +6,7 @@ Mudar um limite é mudar um número neste arquivo.
 
 from dataclasses import dataclass
 
-from src.banco.modelo import PLANOS
+from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
 
 PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limitar
 
@@ -25,6 +25,10 @@ class Limites:
     favoritos: int
     ativos_na_carteira: int
     recursos: frozenset[str]
+    relatorios_por_dia: (
+        int | None
+    )  # relatórios em PDF a cada 24 horas (None = sem limite)
+    tipos_de_relatorio: frozenset[str]
 
 
 LIMITES_DOS_PLANOS = {
@@ -34,6 +38,8 @@ LIMITES_DOS_PLANOS = {
         favoritos=3,
         ativos_na_carteira=4,
         recursos=frozenset(),
+        relatorios_por_dia=3,
+        tipos_de_relatorio=frozenset({"ativo"}),
     ),
     "pro": Limites(
         nome="Pro",
@@ -41,6 +47,8 @@ LIMITES_DOS_PLANOS = {
         favoritos=20,
         ativos_na_carteira=8,
         recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES}),
+        relatorios_por_dia=None,
+        tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -72,6 +80,22 @@ def conferir_simulacoes(plano: str | None, ja_salvas: int) -> None:
         raise LimiteDoPlanoError(
             f"O plano {limites_do(plano).nome} guarda até {maximo} simulações. "
             "Apague alguma ou conheça o plano Pro."
+        )
+
+
+def conferir_relatorio(plano: str | None, tipo: str, gerados_em_24h: int) -> None:
+    """Levanta `LimiteDoPlanoError` se o plano não gera este tipo ou já chegou ao limite do dia."""
+    limites = limites_do(plano)
+    if tipo not in limites.tipos_de_relatorio:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} gera só o relatório do ativo. "
+            "Comparação, backtest e carteira em PDF fazem parte do plano Pro."
+        )
+    maximo = limites.relatorios_por_dia
+    if maximo is not None and gerados_em_24h >= maximo:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} gera até {maximo} relatórios a cada 24 horas. "
+            "Tente mais tarde ou conheça o plano Pro."
         )
 
 
@@ -121,6 +145,11 @@ def tabela_de_planos() -> list[dict[str, str]]:
             "Recurso": "Pairs trading",
             "Gratuito": sim_nao("gratuito", PARES),
             "Pro": sim_nao("pro", PARES),
+        },
+        {
+            "Recurso": "Relatórios em PDF",
+            "Gratuito": f"Do ativo, {gratuito.relatorios_por_dia} por dia",
+            "Pro": "Todos os tipos, ilimitados",
         },
         {"Recurso": "Exportar CSV", "Gratuito": "Sim", "Pro": "Sim"},
     ]

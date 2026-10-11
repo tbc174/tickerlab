@@ -31,6 +31,18 @@ ATENCAO = "#f5b83d"
 # séries dos gráficos, sempre nesta ordem (vizinhas distinguíveis por daltônicos)
 SERIES = ("#6e95ff", "#f5a524", "#2bc4a9", "#e874b6", "#e8d44d", "#a98bff")
 
+# Versão "papel" (relatórios em PDF): a mesma identidade em fundo claro, que gasta menos tinta e
+# lê melhor impressa. Verde, vermelho e as séries ficam um pouco mais escuros para ter contraste
+# sobre o branco; o azul da marca é o mesmo.
+PAPEL_FUNDO = "#ffffff"
+PAPEL_SUPERFICIE = "#f3f5fa"
+PAPEL_LINHA = "#dde3ee"
+PAPEL_TEXTO = "#0f1420"
+PAPEL_APAGADO = "#5b667a"
+PAPEL_ALTA = "#178a5d"
+PAPEL_QUEDA = "#cf3540"
+PAPEL_SERIES = ("#2962ff", "#c77700", "#11897a", "#b8417f", "#8a7a00", "#6b4fe0")
+
 FONTE = "Manrope"
 FONTE_MONO = "JetBrains Mono"
 
@@ -40,6 +52,11 @@ ARQUIVO_DO_ICONE = PASTA_ESTATICA / "marca" / "icone.png"
 # símbolo + "TickerLab", para o st.logo; os arquivos saem de `python -m scripts.gerar_marca`
 ARQUIVO_DA_ASSINATURA = PASTA_ESTATICA / "marca" / "assinatura.png"
 ARQUIVO_DA_FONTE = PASTA_ESTATICA / "fontes" / "Manrope-VariableFont_wght.ttf"
+# versões de um peso só, para os relatórios em PDF (geradas por `python -m scripts.gerar_marca`)
+FONTE_PDF_TEXTO = PASTA_ESTATICA / "fontes" / "Manrope-Regular.ttf"
+FONTE_PDF_MEDIA = PASTA_ESTATICA / "fontes" / "Manrope-SemiBold.ttf"
+FONTE_PDF_TITULO = PASTA_ESTATICA / "fontes" / "Manrope-ExtraBold.ttf"
+FONTE_PDF_MONO = PASTA_ESTATICA / "fontes" / "JetBrainsMono-SemiBold.ttf"
 
 
 def seta(valor: float) -> str:

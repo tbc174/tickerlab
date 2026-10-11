@@ -16,6 +16,8 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (veja
 | Identificador da conta Google | Login com o Google | Reconhecer você nos próximos acessos |
 | Ativo, período e opções que você escolhe | Você, no app | Lembrar as suas preferências |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
+| Relatórios em PDF gerados (só o tipo e a hora; o PDF não é guardado) | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano |
+| Planilha de posição da B3, se você enviar (a sua carteira) | Você, em Gerar relatório | Montar o relatório da sua carteira. É lida **só na memória**, não é guardada e não vai para os registros (logs) |
 | Plano e situação da assinatura | O app e o Stripe | Liberar o que o seu plano inclui |
 | Versão dos termos aceita e data | Você, no aceite | Comprovar que você concordou |
 | Registro de ações importantes (ids, sem nome nem e-mail) | O app | Segurança e prestação de contas |
@@ -36,7 +38,7 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 
 ## Por quanto tempo guardamos
 
-Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações e assinatura, e encerramos a cobrança no Stripe. Fica apenas um registro técnico de segurança, sem nome nem e-mail, que mostra que uma conta foi apagada.
+Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, o registro dos relatórios gerados e assinatura, e encerramos a cobrança no Stripe. Fica apenas um registro técnico de segurança, sem nome nem e-mail, que mostra que uma conta foi apagada.
 
 ## Seus direitos (LGPD, art. 18)
 

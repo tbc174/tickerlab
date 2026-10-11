@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from src import administracao as adm
-from src import aprendizado, graficos, marca, trade
+from src import aprendizado, graficos, marca, relatorios, trade
 from src import indicadores as ind
 from src.acaso import (
     calcular_comprimento_minimo,
@@ -34,15 +34,18 @@ from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_simulacao,
     carregar_preferencias,
+    contar_relatorios_recentes,
     contar_simulacoes,
     listar_favoritos,
     listar_simulacoes,
+    registrar_relatorio,
     salvar_favoritos,
     salvar_preferencias,
     salvar_simulacao,
 )
 from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
+from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
@@ -3868,6 +3871,270 @@ def pagina_inicio():
         )
 
 
+# --- Gerar relatório (PDF) -------------------------------------------------------------------
+def atalho_para_o_relatorio(tipo):
+    """Botão nas páginas de análise que abre "Gerar relatório" já no tipo certo."""
+
+    def ir():
+        st.session_state["tipo_de_relatorio"] = tipo
+        st.session_state["ir_para_relatorio"] = True
+
+    st.button(
+        "Gerar relatório desta análise",
+        icon=":material/picture_as_pdf:",
+        key=f"atalho_relatorio_{tipo}",
+        on_click=ir,
+    )
+    if st.session_state.pop("ir_para_relatorio", False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio"])
+
+
+def _uso_de_relatorios(usuario, limites):
+    """Quantos relatórios a pessoa ainda pode gerar hoje (texto) e se já chegou ao limite."""
+    if usuario is None or limites.relatorios_por_dia is None:
+        return "Relatórios sem limite no seu plano.", False
+    try:
+        with obter_engine().connect() as conexao:
+            feitos = contar_relatorios_recentes(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao contar os relatórios")
+        return "Não consegui conferir quantos relatórios você já gerou.", False
+    maximo = limites.relatorios_por_dia
+    texto = (
+        f"Você gerou {feitos} de {maximo} relatórios nas últimas 24 horas "
+        f"(plano {limites.nome})."
+    )
+    return texto, feitos >= maximo
+
+
+def _baixar_fechamentos(tickers, periodo):
+    fechamentos, falharam = {}, []
+    for ticker in tickers:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except (DadosIndisponiveisError, ValueError):
+            falharam.append(ticker)
+    return fechamentos, falharam
+
+
+def _montar_relatorio(tipo, c):
+    """Lê os campos do tipo escolhido e devolve (nome do arquivo, função que gera o PDF)."""
+    exemplo = bool(st.session_state.get("usar_exemplo"))
+    rotulo = PERIODOS_DO_TOPO.get(c.periodo, c.periodo)
+    base = {
+        "taxa_livre_de_risco": c.taxa_livre_de_risco,
+        "periodo": rotulo,
+        "exemplo": exemplo,
+    }
+    if tipo == relatorios.MINHA_CARTEIRA:
+        return _montar_minha_carteira(c, base)
+    if tipo == relatorios.ATIVO:
+        st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
+        return f"tickerlab-{c.ticker}.pdf", lambda: relatorios.relatorio_do_ativo(
+            c.ticker, c.dados, **base
+        )
+    if tipo == relatorios.COMPARACAO:
+        texto = st.text_input(
+            "Comparar com (separe por vírgula)",
+            value="^BVSP, ^GSPC",
+            key="relatorio_comparar_com",
+            help="O ativo do topo entra primeiro. Exemplo: VALE3.SA, ^BVSP, AAPL.",
+        )
+        outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
+        if len(outros) < 2:
+            st.info("Escolha pelo menos um ativo para comparar.")
+            return None, None
+
+        def gerar():
+            fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
+            if falharam:
+                st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
+            alinhado, _ = alinhar_fechamentos(fechamentos)
+            return relatorios.relatorio_de_comparacao(alinhado, **base)
+
+        return "tickerlab-comparacao.pdf", gerar
+    if tipo == relatorios.BACKTEST:
+        col_estrategia, col_custo = st.columns([2, 1])
+        nome = col_estrategia.selectbox(
+            "Estratégia (com os parâmetros padrão)",
+            [n for n in ESTRATEGIAS if n != "Comprar e segurar"],
+            key="relatorio_estrategia",
+            help="Para mudar os parâmetros, use a página Backtest; o relatório usa os padrões.",
+        )
+        custo = (
+            col_custo.number_input(
+                "Custo por operação (%)",
+                min_value=0.0,
+                max_value=2.0,
+                value=CUSTO_PADRAO_POR_OPERACAO * 100,
+                step=0.05,
+                key="relatorio_custo",
+            )
+            / 100
+        )
+        return (
+            f"tickerlab-backtest-{c.ticker}.pdf",
+            lambda: relatorios.relatorio_de_backtest(
+                c.ticker, c.dados, nome, {}, custo, **base
+            ),
+        )
+    # carteira
+    limites = limites_do(plano_atual())
+    texto = st.text_input(
+        f"Ativos da carteira (de {MIN_ATIVOS_NA_CARTEIRA} a {limites.ativos_na_carteira}, "
+        "separe por vírgula)",
+        value=f"{c.ticker}, VALE3.SA, ITUB4.SA, WEGE3.SA",
+        key="relatorio_carteira_ativos",
+    )
+    ativos = list(dict.fromkeys(interpretar_tickers(texto)))[
+        : limites.ativos_na_carteira
+    ]
+    nome = st.selectbox(
+        "Estratégia da carteira",
+        list(ESTRATEGIAS_DE_CARTEIRA),
+        key="relatorio_carteira",
+    )
+    if len(ativos) < MIN_ATIVOS_NA_CARTEIRA:
+        st.info(f"Escolha pelo menos {MIN_ATIVOS_NA_CARTEIRA} ativos.")
+        return None, None
+
+    def gerar():
+        fechamentos, falharam = _baixar_fechamentos(ativos, c.periodo)
+        if falharam:
+            st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
+        tabela = pd.DataFrame(fechamentos).dropna()
+        return relatorios.relatorio_de_carteira(tabela, nome, {}, **base)
+
+    return "tickerlab-carteira.pdf", gerar
+
+
+def _montar_minha_carteira(c, base):
+    """A carteira real da pessoa, pelo arquivo da Área do Investidor (lido só na memória)."""
+    st.info(
+        "**Conexão direta com a B3:** a API da Área do Investidor só atende empresas "
+        "credenciadas (com CNPJ, certificado digital e contrato com a B3). Por enquanto, o "
+        "caminho é o arquivo que você mesmo baixa.",
+        icon=":material/link_off:",
+    )
+    st.markdown(
+        "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+        "2. Em **Extratos → Posição**, escolha a data e baixe a planilha em **Excel**.\n"
+        "3. Envie o arquivo aqui. Ele é lido **só na memória**, para montar o relatório, e não "
+        "fica guardado."
+    )
+    arquivo = st.file_uploader(
+        "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_b3"
+    )
+    if arquivo is None:
+        return None, None
+    try:
+        carteira = ler_carteira(arquivo.getvalue(), arquivo.name)
+    except ArquivoDaB3Error as erro:
+        st.error(str(erro))
+        return None, None
+    for aviso in carteira.avisos:
+        st.warning(aviso)
+    if carteira.posicoes.empty:
+        st.info(
+            "O arquivo só tem Tesouro e renda fixa, sem ativos com cotação para analisar."
+        )
+        return None, None
+    st.caption(
+        f"{len(carteira.posicoes)} ativos com cotação e {len(carteira.sem_cotacao)} de "
+        "Tesouro ou renda fixa encontrados no arquivo."
+    )
+
+    def gerar():
+        fechamentos, falharam = _baixar_fechamentos(
+            list(carteira.posicoes["ticker"]), c.periodo
+        )
+        if falharam:
+            st.warning(
+                f"Sem histórico de preço, ficaram de fora da análise: {', '.join(falharam)}."
+            )
+        if not fechamentos:
+            raise ValueError(
+                "nenhum ativo da carteira tem histórico de preço no período"
+            )
+        ibovespa = _baixar_fechamentos(["^BVSP"], c.periodo)[0].get("^BVSP")
+        return relatorios.relatorio_da_minha_carteira(
+            carteira, pd.DataFrame(fechamentos), ibovespa, **base
+        )
+
+    return "tickerlab-minha-carteira.pdf", gerar
+
+
+def pagina_relatorio():
+    cabecalho_da_pagina("relatorio")
+    c = carregar_contexto()
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    tipo = st.segmented_control(
+        "Tipo de relatório",
+        list(relatorios.NOMES_DOS_RELATORIOS),
+        format_func=relatorios.NOMES_DOS_RELATORIOS.get,
+        default=relatorios.ATIVO,
+        required=True,
+        key="tipo_de_relatorio",
+    )
+    if tipo not in limites.tipos_de_relatorio:
+        st.info(
+            f"O plano {limites.nome} gera o relatório do ativo. "
+            f"{relatorios.NOMES_DOS_RELATORIOS[tipo]} em PDF faz parte do plano Pro."
+        )
+        st.page_link(
+            PAGINAS_DO_MENU["planos"],
+            label="Conhecer o plano Pro",
+            icon=":material/workspace_premium:",
+        )
+        return
+    nome_do_arquivo, gerar = _montar_relatorio(tipo, c)
+    _, no_limite = _uso_de_relatorios(usuario, limites)
+    if gerar is None:
+        return
+    if st.button(
+        "Gerar PDF",
+        type="primary",
+        icon=":material/picture_as_pdf:",
+        disabled=no_limite,
+        key="gerar_pdf",
+    ):
+        try:
+            with st.spinner("Montando o relatório..."):
+                pdf = gerar()
+        except (DadosIndisponiveisError, ValueError) as erro:
+            st.error(f"Não consegui montar o relatório: {erro}")
+            return
+        if usuario is not None:  # conta só o que deu certo (o PDF já está pronto)
+            try:
+                with obter_engine().begin() as conexao:
+                    registrar_relatorio(conexao, usuario.id, tipo, plano=usuario.plano)
+            except LimiteDoPlanoError as erro:
+                st.warning(str(erro))
+                return
+            except Exception:
+                logging.getLogger(__name__).exception("Falha ao registrar o relatório")
+                st.error(
+                    "Não consegui registrar o relatório agora. Tente de novo em instantes."
+                )
+                return
+        st.session_state["pdf_pronto"] = (nome_do_arquivo, pdf)
+    pronto = st.session_state.get("pdf_pronto")
+    if pronto:
+        st.success("Relatório pronto.")
+        st.download_button(
+            "Baixar o PDF",
+            data=pronto[1],
+            file_name=pronto[0],
+            mime="application/pdf",
+            icon=":material/download:",
+            key="baixar_pdf",
+        )
+    st.caption(
+        _uso_de_relatorios(usuario, limites)[0]
+    )  # depois de gerar, já com o novo
+
+
 def pagina_trade():
     fase = trade.fase_atual()
     st.markdown(
@@ -3919,6 +4186,7 @@ def pagina_guia():
 def pagina_visao_geral():
     cabecalho_da_pagina("visao_geral")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.ATIVO)
     secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
     st.divider()
     secao_preco(c.dados)
@@ -3946,6 +4214,7 @@ def pagina_retorno_mensal():
 def pagina_comparar():
     cabecalho_da_pagina("comparar")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.COMPARACAO)
     secao_comparar(c.ticker, c.periodo, c.taxa_livre_de_risco)
 
 
@@ -3958,6 +4227,7 @@ def pagina_correlacao():
 def pagina_backtest():
     cabecalho_da_pagina("backtest")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.BACKTEST)
     secao_backtest(c.dados, c.taxa_livre_de_risco, c.cdi_diario)
 
 
@@ -3970,6 +4240,7 @@ def pagina_ranking():
 def pagina_carteira():
     cabecalho_da_pagina("carteira")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.CARTEIRA)
     secao_carteira(c.periodo, c.taxa_livre_de_risco, c.cdi_diario)
 
 
@@ -4351,6 +4622,7 @@ def pagina_admin():
 
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
+    "relatorio": pagina_relatorio,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

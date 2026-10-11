@@ -8,12 +8,18 @@ não reabre nem apaga o que é de outro.
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 
-from src.banco.modelo import favoritos, preferencias, simulacoes
-from src.planos import conferir_favoritos, conferir_simulacoes
+from src.banco.modelo import (
+    TIPOS_DE_RELATORIO,
+    favoritos,
+    preferencias,
+    relatorios,
+    simulacoes,
+)
+from src.planos import conferir_favoritos, conferir_relatorio, conferir_simulacoes
 
 TIPOS_DE_SIMULACAO = ("backtest", "carteira", "pares")
 TAMANHO_MAXIMO_DO_NOME = 120
@@ -231,3 +237,55 @@ def apagar_simulacao(
         )
     )
     return resultado.rowcount > 0
+
+
+# --- relatórios em PDF (só o tipo e a hora, para o limite do plano) --------------------------
+JANELA_DO_LIMITE_DE_RELATORIOS = timedelta(hours=24)
+
+
+def contar_relatorios_recentes(
+    conexao: sa.Connection, usuario_id: uuid.UUID, agora: datetime | None = None
+) -> int:
+    """Quantos relatórios o usuário gerou nas últimas 24 horas."""
+    desde = (agora or _agora()) - JANELA_DO_LIMITE_DE_RELATORIOS
+    return conexao.execute(
+        sa.select(sa.func.count())
+        .select_from(relatorios)
+        .where(relatorios.c.usuario_id == usuario_id, relatorios.c.criado_em > desde)
+    ).scalar_one()
+
+
+def registrar_relatorio(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    tipo: str,
+    plano: str | None = None,
+    agora: datetime | None = None,
+) -> None:
+    """Anota um relatório gerado. Com `plano`, recusa (antes de anotar) o que passa do limite."""
+    if tipo not in TIPOS_DE_RELATORIO:
+        raise DadosInvalidosError(
+            f"Tipo de relatório desconhecido: {tipo}. Use um destes: {TIPOS_DE_RELATORIO}."
+        )
+    agora = agora or _agora()
+    if plano is not None:
+        conferir_relatorio(
+            plano, tipo, contar_relatorios_recentes(conexao, usuario_id, agora)
+        )
+    conexao.execute(
+        sa.insert(relatorios).values(
+            id=uuid.uuid4(), usuario_id=usuario_id, tipo=tipo, criado_em=agora
+        )
+    )
+
+
+def listar_relatorios(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[dict]:
+    """Os relatórios que o usuário gerou (tipo e hora), do mais novo para o mais antigo."""
+    return [
+        {"tipo": l.tipo, "criado_em": l.criado_em.isoformat()}
+        for l in conexao.execute(
+            sa.select(relatorios.c.tipo, relatorios.c.criado_em)
+            .where(relatorios.c.usuario_id == usuario_id)
+            .order_by(relatorios.c.criado_em.desc())
+        )
+    ]

@@ -70,6 +70,13 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "relatorio",
+        "Gerar relatório",
+        GRUPO_TOPO,
+        ":material/picture_as_pdf:",
+        "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
+    ),
+    Pagina(
         "guia",
         "Guia e glossário",
         GRUPO_APRENDER,
