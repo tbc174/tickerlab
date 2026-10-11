@@ -73,13 +73,21 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 - O repositório não tem licença de código aberto (todos os direitos reservados): não adicionar
   `LICENSE` nem dependência GPL/AGPL.
 
+## Padrões de código
+
+**Leia `docs/padroes-de-codigo.md`** antes de escrever código: funções curtas com uma
+responsabilidade, nomes claros em português, sem números mágicos, tipos e docstrings em `src/`,
+comentário explica o porquê, refatoração separada de mudança de comportamento. Fique atento ao
+código em toda tarefa: deixe o trecho tocado mais limpo do que estava e aponte problemas que
+encontrar fora do pedido (sem refatorar a área de outra sessão sem combinar).
+
 ## Conteúdo e estilo
 
 - Português do Brasil no código, nos textos e nas mensagens; termos técnicos em inglês quando
   consagrados (Sharpe, backtest, drawdown). Cada conceito explicado na tela.
 - **Honestidade com os números:** mostrar o que não funciona; nunca prometer rentabilidade; nada é
   recomendação de investimento.
-- Siga o estilo do código ao redor (nomes, densidade de comentários, anotações de tipo em `src/`).
+- Siga o estilo do código ao redor e o guia de padrões.
 
 ## `trader/` (pesquisa de trading)
 
