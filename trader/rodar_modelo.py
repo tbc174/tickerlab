@@ -94,8 +94,8 @@ def escrever_relatorio(
             f"{vaz_det['sharpe_futuro']:.2f}; rótulos embaralhados "
             f"{vaz_det['sharpe_embaralhado']:.2f} contra a referência da proporção "
             f"{vaz_det['sharpe_proporcao']:.2f}: Sharpe da diferença "
-            f"{vaz_det['sharpe_da_diferenca']:.2f} (limite ±{vaz_det['limite_da_diferenca']:.2f}, "
-            "regra da v0.2)."
+            f"{vaz_det['sharpe_da_diferenca']:.2f} (só reprova acima de "
+            f"+{vaz_det['limite_da_diferenca']:.2f}, regra unilateral da v0.4)."
         ),
         (
             f"- Contra o acaso: Sharpe real {acaso['sharpe_real']:.2f}, percentil 95 dos "
