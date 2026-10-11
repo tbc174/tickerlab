@@ -1,13 +1,43 @@
 # TickerLab
 
-Projeto da matéria de Python e Pandas. App web (Streamlit) em que se digita o ticker de uma
-empresa, busca-se os dados no Yahoo Finance, analisa-se com Pandas e testam-se estratégias com
-um motor de backtest escrito à mão, sem biblioteca pronta de backtest.
+Serviço web (SaaS) de análise de ações e teste de estratégias, feito para a matéria de Python e
+Pandas. Digite o ticker de uma empresa, o app busca os dados no Yahoo Finance, analisa com Pandas
+e testa estratégias com um motor de backtest escrito à mão, sem biblioteca pronta de backtest.
+Tem contas (login com o Google), planos Gratuito e Pro (pagamento em modo de teste do Stripe),
+painel de administração e privacidade de acordo com a LGPD.
 
 > Projeto educacional. Nada aqui é recomendação de investimento. Os dados vêm do Yahoo Finance
 > e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.
 
-## Como rodar
+![Preço da PETR4 com médias móveis e volume](docs/imagens/preco.png)
+
+## O que o app faz
+
+O menu do topo tem 5 grupos (e um sexto, só para administradores). Cada página tem uma frase
+dizendo para que serve, e cada número tem uma explicação em português ao passar o mouse no **?**.
+
+| Grupo | Páginas | Pergunta que respondem |
+|---|---|---|
+| Começar | Início, Guia e glossário, Termos de uso, Política de privacidade | O que é isto e como usar? |
+| Analisar | Visão geral, Risco, Retorno mensal, Comparar ativos, Correlação e beta | Como o ativo se comportou: retorno, volatilidade, quedas, calendário, comparação com Ibovespa e S&P 500, beta |
+| Estratégias | Backtest, Ranking, Carteira, Experimentos, Fases do mercado | E se eu tivesse seguido uma regra? Qual estratégia foi melhor, descontando a sorte? E com vários ativos? |
+| Avançado (Pro) | Aprendizado de máquina, Pairs trading | Um modelo vence a previsão ingênua? Pares de ativos cointegrados |
+| Minha conta | Minhas simulações, Favoritos e momentum, Meus dados e privacidade, Planos e assinatura | O que é meu: simulações guardadas, favoritos, exportar e apagar os dados, plano |
+| Administração | Administração | Usuários, planos, assinaturas e registro de ações (só administradores) |
+
+![Evolução do capital: estratégia contra comprar e segurar](docs/imagens/backtest.png)
+
+No Backtest há 12 estratégias (tendência e reversão), custos, stops, CDI, imposto e validação
+(treino e teste, walk-forward, mapa de parâmetros, Monte Carlo, teste contra o acaso, Sharpe
+deflacionado e PBO). O Ranking compara todas descontando a sorte de escolher a melhor entre
+muitas. A Carteira traz rotação, momentum dual, inverso da volatilidade, baixa volatilidade,
+canário e paridade hierárquica de risco (HRP).
+
+| Risco | Retorno mensal |
+|---|---|
+| ![Drawdown](docs/imagens/drawdown.png) | ![Retorno mensal](docs/imagens/retorno-mensal.png) |
+
+## Como rodar no seu computador
 
 Requer Python 3.12.
 
@@ -17,46 +47,70 @@ python -m venv .venv
 .venv\Scripts\python -m streamlit run app.py
 ```
 
-Testes e verificação de estilo:
+Sem a configuração do login (`.streamlit/secrets.toml`), o app roda em **modo local**: sem
+contas, com todos os recursos liberados e um banco SQLite em `dados_locais/`. Sem internet (ou se
+o Yahoo Finance falhar), marque "Usar dados de exemplo" em "Opções avançadas": ele usa cópias de
+5 anos de 13 tickers guardadas em `dados_de_exemplo/`.
+
+Testes e estilo:
 
 ```powershell
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m ruff format --check app.py src tests
 ```
 
-Sem internet (ou se o Yahoo Finance falhar), marque "Usar dados de exemplo" no topo do app: ele usa cópias de 5 anos de 13 tickers guardadas em `dados_de_exemplo/` (tiradas em 09/10/2026) e avisa na tela.
+## Configuração (produção)
 
-Ao mudar algo em `src/`, reinicie o Streamlit (`Ctrl+C` e rode de novo) para ver o efeito.
+Segredos nunca vão para o Git: ficam em arquivos com permissão 600 no servidor.
+
+| Onde | O que |
+|---|---|
+| `.env` (modelo em `.env.example`) | `TICKERLAB_DATABASE_URL` (PostgreSQL), `TICKERLAB_ADMINS`, chaves do Stripe de **teste** (`rk_test_`/`sk_test_`: chaves de produção são recusadas), `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `TICKERLAB_URL_PUBLICA` |
+| `.streamlit/secrets.toml` (modelo em `secrets.toml.example`) | Cliente OAuth do Google (`[auth]`) |
+
+O esquema do banco é criado pelas migrações do Alembic (`migracoes/`), aplicadas sozinhas quando
+o contêiner sobe: `python -m alembic upgrade head`.
 
 ## Publicar com Docker
 
-O repositório traz um `Dockerfile` (imagem enxuta, sem testes), um `compose.yaml` e o
-`requirements-prod.txt`. No servidor:
+O `compose.yaml` sobe dois serviços com a mesma imagem: `tickerlab` (o app, `127.0.0.1:8501`) e
+`tickerlab-api` (FastAPI, `127.0.0.1:8000`: `/saude` e o webhook do Stripe). As portas ficam só em
+`127.0.0.1`; o acesso de fora vem de um proxy (aqui, o Tailscale).
 
 ```bash
-mkdir -p dados_locais && sudo chown 1000:1000 dados_locais   # pasta do cache de preços
-docker compose up -d --build                                  # app em 127.0.0.1:8501
+mkdir -p dados_locais && touch .streamlit/secrets.toml   # pasta do cache e arquivo de login
+docker compose up -d --build
 ```
 
-A porta fica só em `127.0.0.1`; o acesso de fora vem de um proxy (aqui, o Tailscale Funnel).
-O GitHub Actions constrói a imagem e testa o app dentro dela a cada push.
+Veja `projeto-acoes/stripe.md` (fora deste repositório, na pasta do projeto) para ligar a
+cobrança de teste.
 
-## O que o app faz
+## Operação
 
-Cada aba responde a uma pergunta, sempre com explicações em português e avisos sobre os
-limites do que está sendo mostrado.
+- **Deploy automático:** `scripts/deploy-automatico.sh`, no cron do servidor (a cada 5 minutos),
+  puxa a `main` **só se os testes do GitHub Actions passaram** nesse commit, reconstrói os
+  contêineres, espera o app e a API ficarem saudáveis e, se não ficarem, volta sozinho para a
+  versão anterior. Log em `~/deploy-tickerlab.log`.
+- **Logs:** uma linha de JSON por registro (`TICKERLAB_LOG_FORMATO=json`), sem e-mail nem nome:
+  `docker logs tickerlab-api | jq`.
+- **Monitor:** o Uptime Kuma verifica `http://127.0.0.1:8501/_stcore/health` (app) e
+  `http://127.0.0.1:8000/saude` (API).
+- **Carga leve:** `python scripts/carga_leve.py URL --total 300 --simultaneas 20`.
+- **Integração contínua:** o GitHub Actions roda `ruff` e os testes (com PostgreSQL de verdade),
+  constrói a imagem e confere que o app, a API e o login do Google abrem dentro dela.
 
-| Aba | Pergunta |
-|---|---|
-| Visão geral, Risco, Retorno mensal | Como o ativo se comportou: retorno, volatilidade, quedas, melhores e piores dias, calendário de retornos |
-| Comparar | Como ele se compara com outros ativos e com índices (Ibovespa, S&P 500) |
-| Backtest | E se eu tivesse seguido uma regra? 12 estratégias (tendência e reversão), custos, stops, CDI, imposto e validação (treino e teste, walk-forward, mapa de parâmetros, Monte Carlo, teste contra o acaso, Sharpe deflacionado e PBO) |
-| Ranking | Qual das 12 estratégias foi melhor, descontando a sorte de escolher a melhor entre muitas |
-| Carteira | E com vários ativos? Rotação, momentum dual, inverso da volatilidade, baixa volatilidade, canário e paridade hierárquica de risco (HRP) |
-| Experimentos | Aporte único × parcelado, rebalanceamento, retorno da noite × do dia, virada do mês |
-| Regimes | O ativo se comporta diferente em fases calmas e agitadas? Filtro por regime, variância gerida e disjuntor de drawdown |
-| Aprendizado de máquina | Um modelo vence a previsão ingênua? Sinal do dia, barreira tripla com validação com expurgo, meta-rotulagem e previsão de volatilidade |
-| Pares | Pairs trading: pares de ativos, cointegração e simulação com a relação estimada só no treino |
+## Segurança e privacidade
+
+- Login só com o Google; e-mail não verificado é recusado. Cada pessoa vê apenas os próprios
+  dados (toda consulta filtra pelo usuário, com testes de isolamento).
+- Webhook do Stripe com assinatura verificada, idempotente e tolerante a eventos fora de ordem.
+- Painel de administração confere o papel **no banco** a cada ação e registra tudo em uma
+  auditoria que guarda só ids, nunca e-mail ou nome.
+- LGPD: aceite dos termos no primeiro acesso (com versão e data), exportação dos dados em JSON e
+  exclusão da conta em cascata, encerrando antes a cobrança no Stripe. Os textos estão em
+  `conteudo/termos.md` e `conteudo/privacidade.md` (modelos para um projeto educacional, sem
+  revisão de advogado).
 
 ## Princípios do projeto
 
@@ -73,26 +127,30 @@ limites do que está sendo mostrado.
 ## Estrutura
 
 ```
-app.py                interface (só mostra; os cálculos ficam em src/)
+app.py                interface: menu, páginas e telas (só mostra; as contas ficam em src/)
 src/
-  dados.py            download e limpeza (yfinance)
-  indicadores.py      indicadores e métricas básicas
-  metricas.py         métricas de desempenho (Sharpe, Sortino, Calmar, Ulcer, Ômega, Kelly...)
-  backtest.py         motor vetorizado de um ativo
-  estrategias.py      12 estratégias com parâmetros e limites
-  protecoes.py        stops, tamanho por risco, alvo de volatilidade
-  validacao.py        treino e teste, walk-forward, mapa de parâmetros
-  acaso.py            Monte Carlo, teste contra o acaso, DSR, PBO, comprimento mínimo
-  ranking.py          comparação de todas as estratégias
-  cdi.py, imposto.py  CDI do Banco Central e imposto de renda simplificado
-  carteiras.py, hrp.py  estratégias de vários ativos e HRP
-  experimentos.py     aporte, rebalanceamento, noite × dia, virada do mês
-  regimes.py          regimes de mercado, variância gerida, disjuntor de drawdown
-  aprendizado.py      modelo logístico à mão, barreira tripla, expurgo, volatilidade
-  pares.py            cointegração e pairs trading
+  paginas.py          o mapa do site: grupos, páginas e a frase de cada uma
+  planos.py           limites do Gratuito e do Pro (um lugar só)
+  autenticacao.py     regras do login com o Google
+  banco/              modelo, conexão, usuários e dados por usuário (SQLAlchemy)
+  cobranca.py         Stripe: pagamento, portal e eventos (idempotentes)
+  api.py              FastAPI: /saude e webhook do Stripe
+  administracao.py    painel de administração (permissão conferida no banco)
+  conformidade.py     termos, exportar os meus dados e apagar a conta
+  auditoria.py        registro de ações sem dados pessoais
+  simulacoes.py       salvar e reabrir simulações
+  logs.py             logs em texto ou JSON
+  dados.py, armazenamento.py, exemplos.py   dados do Yahoo, cache em SQLite e dados de exemplo
+  indicadores.py, metricas.py               números básicos e métricas de desempenho
+  backtest.py, estrategias.py, protecoes.py motor vetorizado, 12 estratégias e stops
+  validacao.py, acaso.py, ranking.py        validação honesta dos resultados
+  carteiras.py, hrp.py, experimentos.py, regimes.py, aprendizado.py, pares.py
   graficos.py         gráficos Plotly
-conteudo/             glossário e explicações das estratégias
+conteudo/             glossário, estratégias, termos de uso e política de privacidade
+migracoes/            migrações do banco (Alembic)
+scripts/              deploy automático, carga leve, imagens do README
 tests/                testes automatizados (pytest)
+docs/imagens/         figuras deste README (geradas por scripts/gerar_imagens_do_readme.py)
 ```
 
 ## Referências das técnicas

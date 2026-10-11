@@ -77,3 +77,16 @@ def test_a_imagem_de_producao_tem_o_que_o_login_do_google_exige():
     """O st.login usa o cliente Starlette do Authlib, que importa o httpx (sem ele: erro 500)."""
     producao = _pacotes_do_requirements("requirements-prod.txt")
     assert "authlib" in producao and "httpx" in producao
+
+
+def test_toda_imagem_do_readme_existe():
+    readme = (RAIZ / "README.md").read_text(encoding="utf-8")
+    imagens = re.findall(r"\]\((docs/imagens/[^)]+)\)", readme)
+    assert imagens, "o README deveria ter imagens"
+    for caminho in imagens:
+        assert (RAIZ / caminho).is_file(), caminho
+
+
+def test_compose_manda_os_logs_em_json_nos_dois_servicos():
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    assert compose.count("TICKERLAB_LOG_FORMATO: json") == 2
