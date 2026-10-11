@@ -176,6 +176,33 @@ def buscar_assinatura(
     )
 
 
+def encerrar_cobranca(
+    assinatura: Assinatura | None,
+    configuracao: ConfiguracaoDaCobranca | None = None,
+    cliente: stripe.StripeClient | None = None,
+) -> None:
+    """Cancela a assinatura e apaga o cliente no Stripe (usado ao apagar a conta).
+
+    Se algo falhar, levanta o erro: quem chama não deve apagar a conta enquanto a cobrança
+    continuar existindo. O que já não existe mais no Stripe é tratado como já feito.
+    """
+    if assinatura is None:
+        return
+    cliente = cliente or _cliente(configuracao or ler_configuracao())
+    if assinatura.stripe_subscription_id and assinatura.status not in (
+        "canceled",
+        "incomplete_expired",
+    ):
+        try:
+            cliente.v1.subscriptions.cancel(assinatura.stripe_subscription_id)
+        except stripe.InvalidRequestError:
+            log.info("Assinatura já não existia no Stripe")
+    try:
+        cliente.v1.customers.delete(assinatura.stripe_customer_id)
+    except stripe.InvalidRequestError:
+        log.info("Cliente já não existia no Stripe")
+
+
 # --- receber eventos (webhook) ------------------------------------------------------------
 def _de_timestamp(valor: object) -> datetime | None:
     if isinstance(valor, int | float) and not isinstance(valor, bool):
