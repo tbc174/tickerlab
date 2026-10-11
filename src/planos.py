@@ -57,9 +57,9 @@ LIMITES_DOS_PLANOS = {
         recursos=frozenset(),  # Aprendizado de máquina e Pairs trading ficam no Pro
         relatorios_por_dia=20,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
-        ativos_com_parametros=10,  # provisório: aguardando a decisão do Tiago
-        watchlists=3,  # provisório: aguardando a decisão do Tiago
-        ativos_por_watchlist=20,  # provisório: aguardando a decisão do Tiago
+        ativos_com_parametros=10,  # Research (confirmado pelo Tiago em 11/10/2026)
+        watchlists=3,
+        ativos_por_watchlist=20,
     ),
     "pro": Limites(
         nome="Pro",
