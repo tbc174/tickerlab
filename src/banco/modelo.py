@@ -92,6 +92,26 @@ simulacoes = sa.Table(
 )
 sa.Index("ix_simulacoes_usuario_id", simulacoes.c.usuario_id)
 
+# Research (0007): cada mudança de parâmetros é uma versão nova; nada é sobrescrito.
+# alvo "" = o padrão do usuário; senão, o ticker (ou a watchlist, numa etapa futura).
+ESCOPOS_DE_PRESET = ("global", "watchlist", "ativo")
+presets = sa.Table(
+    "presets",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("escopo", sa.String(20), nullable=False),
+    sa.Column("alvo", sa.String(40), nullable=False, server_default=""),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("nome", sa.String(80), nullable=False, server_default=""),
+    sa.Column("parametros", JSON_PORTATIL, nullable=False),
+    sa.Column("motivo", sa.String(200), nullable=False, server_default=""),
+    _momento("criado_em"),
+    sa.CheckConstraint("escopo IN ('global', 'watchlist', 'ativo')", name="escopo"),
+    sa.CheckConstraint("versao >= 1", name="versao"),
+    sa.UniqueConstraint("usuario_id", "escopo", "alvo", "versao"),
+)
+
 assinaturas = sa.Table(
     "assinaturas",
     metadata,

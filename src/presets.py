@@ -246,6 +246,38 @@ def resolver(
     return Resolucao(efetivos)
 
 
+def substituir(atuais: Iterable[Preset], novo: Preset) -> list[Preset]:
+    """A lista de presets com `novo` no lugar do preset do mesmo escopo e alvo."""
+    outros = [
+        p for p in atuais if not (p.escopo == novo.escopo and p.alvo == novo.alvo)
+    ]
+    return [*outros, novo] if novo.parametros else outros
+
+
+def conferir_ao_salvar(atuais: Iterable[Preset], novo: Preset) -> None:
+    """Recusa um preset que quebra as regras no conjunto final.
+
+    Confere o próprio escopo e, quando o novo é o padrão do usuário (global), também cada ativo
+    com parâmetros próprios, que herda esse padrão. Levanta `CombinacaoInvalidaError`.
+    """
+    lista = list(atuais)
+    juntos = substituir(lista, novo)
+    if novo.escopo == ATIVO:
+        tickers: list[str | None] = [novo.alvo]
+    else:
+        tickers = [None, *(p.alvo for p in lista if p.escopo == ATIVO and p.alvo)]
+    for ticker in tickers:
+        try:
+            resolver(juntos, ticker=ticker)
+        except CombinacaoInvalidaError as erro:
+            if ticker and novo.escopo != ATIVO:
+                raise CombinacaoInvalidaError(
+                    [f"{problema} (no {ticker}, que tem parâmetros próprios)"
+                     for problema in erro.problemas]
+                ) from erro  # fmt: skip
+            raise
+
+
 # --- presets prontos (PRD 9.3): modos de leitura, todos editáveis ----------------------------
 @dataclass(frozen=True)
 class PresetPronto:

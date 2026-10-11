@@ -326,7 +326,7 @@ def test_migracao_0006_vai_e_volta_sem_perder_os_relatorios(tmp_path):
     with motor.begin() as conexao:
         ana = _usuario(conexao, "ana")
         repo.registrar_relatorio(conexao, ana, "ativo", titulo="T", agora=AGORA)
-    migrar_para("-1", url=url)  # volta para a 0005
+    migrar_para("-2", url=url)  # volta para a 0005 (desfaz a 0007 e a 0006)
     colunas = {
         c["name"] for c in sa.inspect(criar_engine(url)).get_columns("relatorios")
     }

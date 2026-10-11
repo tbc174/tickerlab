@@ -1,4 +1,4 @@
-"""Os planos do TickerLab (Gratuito e Pro) e o que cada um permite.
+"""Os planos do TickerLab (Gratuito, Plus e Pro) e o que cada um permite.
 
 Este é o único lugar onde os limites são definidos: a tela, o banco e os testes leem daqui.
 Mudar um limite é mudar um número neste arquivo.
@@ -29,6 +29,8 @@ class Limites:
         int | None
     )  # relatórios em PDF a cada 24 horas (None = sem limite)
     tipos_de_relatorio: frozenset[str]
+    # Research: ativos com parâmetros próprios (o "seu padrão" vale em todos os planos)
+    ativos_com_parametros: int = 0
 
 
 LIMITES_DOS_PLANOS = {
@@ -40,6 +42,7 @@ LIMITES_DOS_PLANOS = {
         recursos=frozenset(),
         relatorios_por_dia=3,
         tipos_de_relatorio=frozenset({"ativo"}),
+        ativos_com_parametros=0,
     ),
     "plus": Limites(
         nome="Plus",
@@ -49,6 +52,7 @@ LIMITES_DOS_PLANOS = {
         recursos=frozenset(),  # Aprendizado de máquina e Pairs trading ficam no Pro
         relatorios_por_dia=20,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
+        ativos_com_parametros=10,  # provisório: aguardando a decisão do Tiago
     ),
     "pro": Limites(
         nome="Pro",
@@ -58,6 +62,7 @@ LIMITES_DOS_PLANOS = {
         recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES}),
         relatorios_por_dia=None,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
+        ativos_com_parametros=50,
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -108,6 +113,28 @@ def conferir_relatorio(plano: str | None, tipo: str, gerados_em_24h: int) -> Non
         )
 
 
+def conferir_parametros_por_ativo(
+    plano: str | None, ativos_ja_personalizados: int, ja_tem_este: bool
+) -> None:
+    """Levanta `LimiteDoPlanoError` se o plano não permite parâmetros próprios para mais um ativo.
+
+    Mudar um ativo que já tem parâmetros próprios sempre pode (inclusive para restaurar).
+    """
+    limites = limites_do(plano)
+    if ja_tem_este:
+        return
+    if limites.ativos_com_parametros == 0:
+        raise LimiteDoPlanoError(
+            f"No plano {limites.nome}, os parâmetros valem para todos os ativos (o seu padrão). "
+            "Parâmetros só para um ativo fazem parte dos planos Plus e Pro."
+        )
+    if ativos_ja_personalizados >= limites.ativos_com_parametros:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} guarda parâmetros próprios para até "
+            f"{limites.ativos_com_parametros} ativos. Restaure algum ou conheça o plano Pro."
+        )
+
+
 def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -> None:
     """Levanta `LimiteDoPlanoError` se a lista de favoritos CRESCERIA além do limite do plano.
 
@@ -148,5 +175,6 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Relatórios em PDF", relatorios),
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
+        linha("Parâmetros só para um ativo", lambda l: str(l.ativos_com_parametros)),
         linha("Exportar CSV", lambda l: "Sim"),
     ]

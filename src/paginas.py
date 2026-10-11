@@ -13,6 +13,7 @@ GRUPO_TOPO = ""
 GRUPO_ANALISAR = "Analisar"
 GRUPO_ESTRATEGIAS = "Estratégias"
 GRUPO_AVANCADO = "Avançado (Pro)"
+GRUPO_RESEARCH = "Research"
 GRUPO_APRENDER = "Aprender"
 GRUPO_CONTA = "Minha conta"
 GRUPO_MAIS = "Mais"  # experimental e menos usado (blueprint: TickerLab Trade fica aqui como Beta)
@@ -22,6 +23,7 @@ GRUPOS = (
     GRUPO_ANALISAR,
     GRUPO_ESTRATEGIAS,
     GRUPO_AVANCADO,
+    GRUPO_RESEARCH,
     GRUPO_APRENDER,
     GRUPO_CONTA,
     GRUPO_MAIS,
@@ -35,6 +37,7 @@ FRASE_DE_CADA_GRUPO = {
     GRUPO_ANALISAR: "Entenda um ativo: preço, risco e comportamento ao longo do tempo.",
     GRUPO_ESTRATEGIAS: "Teste regras de compra e venda no passado, com custos.",
     GRUPO_AVANCADO: "Ferramentas mais técnicas, do plano Pro.",
+    GRUPO_RESEARCH: "Pesquisa sob medida: você escolhe como analisar, e cada número diz de onde veio.",
     GRUPO_CONTA: "O que é seu: simulações guardadas, favoritos, plano e privacidade.",
     GRUPO_ADMIN: "Só para administradores: usuários, planos e assinaturas.",
 }
@@ -198,6 +201,14 @@ PAGINAS = (
         ":material/swap_horiz:",
         "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
         recurso=PARES,
+    ),
+    Pagina(
+        "parametros",
+        "Parâmetros",
+        GRUPO_RESEARCH,
+        ":material/tune:",
+        "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só "
+        "para um, e veja o efeito antes de salvar.",
     ),
     Pagina(
         "simulacoes",
