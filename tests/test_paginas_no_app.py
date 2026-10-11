@@ -58,7 +58,9 @@ def test_a_pagina_inicial_explica_e_leva_aos_proximos_passos():
     assert (
         "TickerLab Trade" not in texto
     )  # experimental: fica no menu "Mais", não no destaque
-    assert [b.label for b in app.button] == ["Analisar ativo", "Abrir"]
+    rotulos = [b.label for b in app.button]
+    assert rotulos[0] == "Analisar ativo" and "Abrir" in rotulos
+    assert rotulos.count("Começar") == 3  # as três portas do tutorial (primeira visita)
     assert [s.key for s in app.selectbox] == ["ativo_do_inicio"]  # a busca do início
 
 

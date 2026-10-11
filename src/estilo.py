@@ -6,6 +6,18 @@ do nosso próprio servidor: aqui não há `@import` do Google Fonts (mandaria o 
 
 from src import marca
 
+# a lupa do Material ("search"), como máscara: a cor vem do CSS (cinza; azul ao passar o mouse)
+LUPA = (
+    (
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 "
+        "3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 "
+        "5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg>"
+    )
+    .replace("<", "%3C")
+    .replace(">", "%3E")
+)  # sem < e > crus dentro do <style>
+
 CSS_DO_APP = f"""
 /* Largura e respiro da página */
 .block-container, [data-testid="stMainBlockContainer"] {{
@@ -260,6 +272,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* metadados curtos */
 .tl-sutil {{ color: {marca.TEXTO_SUTIL}; font-size: 0.82rem; }}
+
+/* busca de ativos: lupa no lugar da seta (é um campo de busca, não uma lista para abrir) */
+.st-key-ticker [aria-label="Open"] svg,
+.st-key-ativo_do_inicio [aria-label="Open"] svg {{
+    display: none;
+}}
+.st-key-ticker [aria-label="Open"]::before,
+.st-key-ativo_do_inicio [aria-label="Open"]::before {{
+    content: "";
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+    background-color: {marca.TEXTO_APAGADO};
+    -webkit-mask: url("{LUPA}") center / contain no-repeat;
+    mask: url("{LUPA}") center / contain no-repeat;
+}}
+.st-key-ticker [aria-label="Open"]:hover::before,
+.st-key-ativo_do_inicio [aria-label="Open"]:hover::before {{
+    background-color: {marca.AZUL_TEXTO};
+}}
 
 /* Report Studio: as páginas da prévia parecem folhas (sombra e cantos leves) */
 .st-key-tl-previa img {{

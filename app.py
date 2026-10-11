@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
@@ -21,6 +22,7 @@ from src import (
     previa_pdf,
     relatorios,
     trade,
+    tutorial,
 )
 from src import indicadores as ind
 from src.acaso import (
@@ -582,6 +584,8 @@ def carregar_da_conta(usuario):
             st.session_state[chave] = lidos[chave]
     if isinstance(preferencias.get("relatorio"), dict):
         st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
+    if preferencias.get("tutorial_visto") is True:
+        st.session_state["tutorial_visto"] = True
 
 
 def salvar_na_conta(usuario):
@@ -895,8 +899,21 @@ def mostrar_link(ticker, periodo, modo):
     st.code("?" + urlencode(parametros), language=None)
 
 
+def marcar_feito(acao):
+    """Anota uma ação feita nesta sessão (o tutorial e a lista de tarefas leem daqui)."""
+    st.session_state.setdefault("tutorial_feitos", set()).add(acao)
+
+
+def acoes_feitas():
+    feitos = set(st.session_state.get("tutorial_feitos", set()))
+    if st.session_state.get("favoritos"):
+        feitos.add("salvou_favorito")
+    return feitos
+
+
 def _resolver_o_ticker():
     """Um código digitado vira o símbolo do catálogo (petr4 → PETR4.SA), sem trocar de ativo."""
+    marcar_feito("escolheu_ativo")
     st.session_state["ticker"] = (
         catalogo.resolver(st.session_state.get("ticker")) or "PETR4.SA"
     )
@@ -3834,6 +3851,7 @@ def _analisar_o_ativo_do_inicio():
     if simbolo:
         st.session_state["ticker"] = simbolo
         st.session_state["ir_para_visao_geral"] = True
+        marcar_feito("escolheu_ativo")
 
 
 def _analisar_o_atalho(chave):
@@ -3841,11 +3859,244 @@ def _analisar_o_atalho(chave):
     if simbolo:
         st.session_state["ticker"] = simbolo
         st.session_state["ir_para_visao_geral"] = True
+        marcar_feito("escolheu_ativo")
+
+
+# --- Tutorial por objetivo (blueprint, seção 4) ---------------------------------------------
+def _guardar_na_conta(chave, valor):
+    """Grava uma preferência na conta, sem apagar as outras (sem conta, fica só na sessão)."""
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        return
+    try:
+        with obter_engine().begin() as conexao:
+            atuais = carregar_preferencias(conexao, usuario.id)
+            salvar_preferencias(conexao, usuario.id, {**atuais, chave: valor})
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao salvar a preferência %s", chave)
+
+
+def _preparar_o_estudio(tipo, modelo=relatorios.EXECUTIVO):
+    st.session_state["tipo_de_relatorio"] = tipo
+    st.session_state["relatorio_modelo"] = modelo
+    _aplicar_secoes(tipo, relatorios.secoes_do_modelo(tipo, modelo))
+    st.session_state.pop("relatorio_gerado", None)
+
+
+def _comecar_tutorial(objetivo):
+    st.session_state["tutorial"] = {"objetivo": objetivo, "passo": 0}
+    if objetivo == tutorial.CARTEIRA:
+        _preparar_o_estudio(relatorios.MINHA_CARTEIRA, relatorios.COMPLETO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+    elif objetivo == tutorial.RELATORIO:
+        _preparar_o_estudio(relatorios.ATIVO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+
+
+def _encerrar_tutorial(concluiu):
+    st.session_state.pop("tutorial", None)
+    st.session_state["tutorial_visto"] = True
+    _guardar_na_conta("tutorial_visto", True)
+    if concluiu:
+        st.toast(
+            "Tutorial concluído. Dá para reabrir na página inicial.",
+            icon=":material/school:",
+        )
+
+
+def _reabrir_tutorial():
+    st.session_state["tutorial_visto"] = False
+    st.session_state.pop("tutorial", None)
+    st.session_state.pop("checklist_escondido", None)
+
+
+def _andar_no_tutorial(passo):
+    estado = st.session_state["tutorial"]
+    total = len(tutorial.passos(estado["objetivo"]))
+    novo = estado["passo"] + passo
+    if novo >= total:
+        _encerrar_tutorial(concluiu=True)
+        return
+    estado["passo"] = max(0, novo)
+    atual = tutorial.passo_atual(estado["objetivo"], estado["passo"])
+    if (
+        atual.chave == "gere"
+    ):  # o passo do relatório já abre o estúdio no modelo Executivo
+        _preparar_o_estudio(relatorios.ATIVO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+
+
+def _ir_pelo_tutorial(chave_da_pagina):
+    if (
+        chave_da_pagina == "relatorio"
+        and st.session_state.get("tutorial", {}).get("objetivo") == tutorial.ANALISAR
+    ):
+        _preparar_o_estudio(relatorios.ATIVO)
+    st.session_state["tutorial_ir_para"] = chave_da_pagina
+
+
+def _explicar_dois_numeros(c):
+    """A mini-lição do passo "Leia dois números", com os números do ativo aberto."""
+    total = float(ind.calcular_retorno_acumulado(c.retorno).iloc[-1])
+    queda = float(ind.calcular_drawdown(c.fechamento).min())
+    rotulo = PERIODOS_DO_TOPO.get(c.periodo, c.periodo)
+    st.markdown(
+        f"- **Retorno total ({formatar_pct(total, com_sinal=True)}):** quem comprou {c.ticker} no "
+        f"primeiro dia dos últimos {rotulo} e vendeu no último teria essa variação, antes de "
+        "impostos e custos.\n"
+        f"- **Maior queda ({formatar_pct(queda)}):** em algum momento, quem tinha "
+        "comprado no topo chegou a ver esse prejuízo no papel. É uma medida do susto, não "
+        "do resultado final.\n\n"
+        "Os dois descrevem o **passado**: não dizem o que vai acontecer."
+    )
+
+
+def mostrar_tutorial(pagina_atual, c=None):
+    """A faixa do tutorial: passo atual, progresso, o que falta e os botões (sem bloquear a
+    tela: a pessoa continua usando tudo normalmente)."""
+    destino = st.session_state.pop("tutorial_ir_para", None)
+    if destino and destino != pagina_atual:
+        st.switch_page(PAGINAS_DO_MENU[destino])
+    estado = st.session_state.get("tutorial")
+    if not estado:
+        return
+    objetivo = tutorial.OBJETIVOS[estado["objetivo"]]
+    roteiro = tutorial.passos(objetivo.chave)
+    passo = tutorial.passo_atual(objetivo.chave, estado["passo"])
+    feitos = acoes_feitas()
+    cumprido = tutorial.pode_continuar(passo, feitos)
+    with st.container(border=True, key="tl-tutorial"):
+        st.caption(
+            f"Tutorial · {objetivo.nome_do_roteiro} · passo {estado['passo'] + 1} de "
+            f"{len(roteiro)}"
+        )
+        st.progress((estado["passo"] + 1) / len(roteiro))
+        st.markdown(f"**{passo.titulo}**")
+        st.markdown(passo.texto)
+        if passo.chave == "explore" and c is not None and pagina_atual == "visao_geral":
+            if st.button(
+                "Mostrar como ler", icon=":material/lightbulb:", key="tut_ler"
+            ):
+                marcar_feito("leu_os_numeros")
+                cumprido = True
+            if "leu_os_numeros" in acoes_feitas():
+                _explicar_dois_numeros(c)
+        if passo.chave == "pronto" and objetivo.chave == tutorial.ANALISAR:
+            col_fav, col_outro = st.columns(2)
+            ticker = normalizar_ticker(st.session_state.get("ticker", ""))
+            if ticker not in st.session_state.get("favoritos", []):
+                col_fav.button(
+                    f"Adicionar {ticker} aos favoritos",
+                    icon=":material/star:",
+                    key="tut_favoritar",
+                    on_click=_alternar_favorito_atual,
+                )
+            col_outro.button(
+                "Analisar outro ativo",
+                icon=":material/search:",
+                key="tut_outro",
+                on_click=_ir_pelo_tutorial,
+                args=("inicio",),
+            )
+        if not cumprido:
+            st.caption(f"Falta: {passo.pendente}")
+            if passo.pagina != pagina_atual:
+                st.button(
+                    f"Ir para {pagina(passo.pagina).titulo}",
+                    icon=":material/arrow_forward:",
+                    key="tut_ir",
+                    on_click=_ir_pelo_tutorial,
+                    args=(passo.pagina,),
+                )
+        col_voltar, col_seguir, col_pular = st.columns([1, 1, 1])
+        col_voltar.button(
+            "Voltar",
+            icon=":material/arrow_back:",
+            key="tut_voltar",
+            disabled=estado["passo"] == 0,
+            on_click=_andar_no_tutorial,
+            args=(-1,),
+            width="stretch",
+        )
+        ultimo = estado["passo"] == len(roteiro) - 1
+        col_seguir.button(
+            "Concluir" if ultimo else "Continuar",
+            type="primary",
+            icon=":material/check:" if ultimo else ":material/arrow_forward:",
+            key="tut_seguir",
+            disabled=not cumprido,
+            on_click=_andar_no_tutorial,
+            args=(1,),
+            width="stretch",
+        )
+        col_pular.button(
+            "Pular tutorial",
+            key="tut_pular",
+            on_click=_encerrar_tutorial,
+            args=(False,),
+            width="stretch",
+        )
+    destino = st.session_state.pop("tutorial_ir_para", None)
+    if destino and destino != pagina_atual:
+        st.switch_page(PAGINAS_DO_MENU[destino])
+
+
+def mostrar_portas_de_entrada():
+    """'O que você quer fazer hoje?': três objetivos, não três níveis técnicos."""
+    st.subheader("O que você quer fazer hoje?")
+    for i, (coluna, objetivo) in enumerate(
+        zip(st.columns(3), tutorial.OBJETIVOS.values(), strict=True)
+    ):
+        with coluna, st.container(border=True, height=176, key=f"tl-cartao-porta-{i}"):
+            st.markdown(f"#### {objetivo.icone} {objetivo.titulo}")
+            st.caption(objetivo.descricao)
+            st.button(
+                "Começar",
+                key=f"tut_porta_{objetivo.chave}",
+                icon=":material/play_arrow:",
+                on_click=_comecar_tutorial,
+                args=(objetivo.chave,),
+            )
+    st.button(
+        "Pular: já sei usar",
+        key="tut_pular_portas",
+        on_click=_encerrar_tutorial,
+        args=(False,),
+        type="tertiary",
+    )
+
+
+def mostrar_lista_de_tarefas():
+    """Três primeiras ações, discretas; some quando tudo foi feito ou quando a pessoa esconde."""
+    if st.session_state.get("checklist_escondido"):
+        return
+    feitos = acoes_feitas()
+    if not tutorial.tarefas_pendentes(feitos):
+        return
+    with st.container(border=True, key="tl-primeiros-passos"):
+        col_titulo, col_esconder = st.columns([4, 1], vertical_alignment="center")
+        col_titulo.markdown(
+            f"**Primeiros passos** · {len(tutorial.TAREFAS) - len(tutorial.tarefas_pendentes(feitos))} "
+            f"de {len(tutorial.TAREFAS)}"
+        )
+        if col_esconder.button("Esconder", key="tut_esconder", type="tertiary"):
+            st.session_state["checklist_escondido"] = True
+            st.rerun()
+        for tarefa in tutorial.TAREFAS:
+            if tarefa.chave in feitos:
+                st.markdown(f":material/check_circle: ~~{tarefa.rotulo}~~")
+            else:
+                st.page_link(
+                    PAGINAS_DO_MENU[tarefa.pagina],
+                    label=tarefa.rotulo,
+                    icon=":material/radio_button_unchecked:",
+                )
 
 
 def pagina_inicio():
     if st.session_state.pop("ir_para_visao_geral", False):
         st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    mostrar_tutorial("inicio")
     st.markdown(
         '<div class="tl-olho">Ações da B3 e dos EUA</div>', unsafe_allow_html=True
     )
@@ -3890,6 +4141,12 @@ def pagina_inicio():
     col_guia.page_link(
         PAGINAS_DO_MENU["guia"], label="Ver o guia", icon=":material/menu_book:"
     )
+
+    if not st.session_state.get("tutorial") and not st.session_state.get(
+        "tutorial_visto"
+    ):
+        mostrar_portas_de_entrada()
+    mostrar_lista_de_tarefas()
 
     st.subheader("O que dá para fazer")
     cartoes = [
@@ -3962,6 +4219,14 @@ def pagina_inicio():
             label="Planos e assinatura",
             icon=":material/workspace_premium:",
         )
+    if st.session_state.get("tutorial_visto") and not st.session_state.get("tutorial"):
+        st.button(
+            "Reabrir o tutorial",
+            icon=":material/school:",
+            key="tut_reabrir",
+            type="tertiary",
+            on_click=_reabrir_tutorial,
+        )
 
 
 # --- Gerar relatório (PDF) -------------------------------------------------------------------
@@ -4017,6 +4282,9 @@ def _baixar_fechamentos(tickers, periodo):
 # Configurar → pré-visualizar → gerar → revisar → exportar. A prévia é o próprio PDF (só a capa e
 # a primeira página) e não conta no limite do plano; só "Gerar relatório" conta.
 PERSONALIZADO = "personalizado"
+ARQUIVO_DA_CARTEIRA_DE_EXEMPLO = (
+    Path(__file__).parent / "conteudo" / "carteira_de_exemplo.xlsx"
+)
 NOMES_DOS_MODELOS = {**relatorios.MODELOS, PERSONALIZADO: "Personalizado"}
 PAGINAS_DA_PREVIA = 2
 MAX_PREVIAS_GUARDADAS = 6
@@ -4202,14 +4470,31 @@ def _montar_minha_carteira(c, base):
         "3. Envie o arquivo aqui. Ele é lido **só na memória**, para montar o relatório, e não "
         "fica guardado."
     )
-    arquivo = st.file_uploader(
-        "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_b3"
+    demonstracao = st.toggle(
+        "Usar a carteira de exemplo (fictícia)",
+        key="relatorio_carteira_exemplo",
+        help="Uma posição inventada, para conhecer o relatório sem enviar a sua planilha. "
+        "O PDF sai marcado como exemplo demonstrativo.",
     )
-    if arquivo is None:
-        return None
-    conteudo = arquivo.getvalue()
+    if demonstracao:
+        st.warning(
+            "**Exemplo demonstrativo:** carteira fictícia, não é a sua. O PDF sai marcado "
+            "como demonstração.",
+            icon=":material/science:",
+        )
+        conteudo, nome_do_arquivo = (
+            ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.read_bytes(),
+            (ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.name),
+        )
+    else:
+        arquivo = st.file_uploader(
+            "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_b3"
+        )
+        if arquivo is None:
+            return None
+        conteudo, nome_do_arquivo = arquivo.getvalue(), arquivo.name
     try:
-        carteira = ler_carteira(conteudo, arquivo.name)
+        carteira = ler_carteira(conteudo, nome_do_arquivo)
     except ArquivoDaB3Error as erro:
         st.error(str(erro))
         return None
@@ -4224,6 +4509,7 @@ def _montar_minha_carteira(c, base):
         f"{len(carteira.posicoes)} ativos com cotação e {len(carteira.sem_cotacao)} de "
         "Tesouro ou renda fixa encontrados no arquivo."
     )
+    marcar_feito("carregou_a_carteira")
 
     def montar(config, ao_avancar):
         if ao_avancar:
@@ -4242,7 +4528,7 @@ def _montar_minha_carteira(c, base):
         ibovespa = _baixar_fechamentos(["^BVSP"], c.periodo)[0].get("^BVSP")
         return relatorios.relatorio_da_minha_carteira(
             carteira, pd.DataFrame(fechamentos), ibovespa, **base, config=config,
-            ao_avancar=ao_avancar,
+            ao_avancar=ao_avancar, demonstracao=demonstracao,
         )  # fmt: skip
 
     # a identidade usa um resumo do arquivo (não o conteúdo), só para saber se ele mudou
@@ -4251,8 +4537,8 @@ def _montar_minha_carteira(c, base):
         relatorios.MINHA_CARTEIRA,
         c,
         "tickerlab-minha-carteira.pdf",
-        "Minha carteira (B3)",
-        {"periodo": c.periodo},
+        "Minha carteira (exemplo fictício)" if demonstracao else "Minha carteira (B3)",
+        {"periodo": c.periodo, "carteira_de_exemplo": demonstracao},
         montar,
         extra=resumo_do_arquivo,
     )
@@ -4388,6 +4674,7 @@ def _previa(pedido, config):
         )
         while len(guardadas) > MAX_PREVIAS_GUARDADAS:
             guardadas.pop(next(iter(guardadas)))
+    marcar_feito("viu_a_previa")
     return guardadas[chave]
 
 
@@ -4528,6 +4815,8 @@ def mostrar_estudio(usuario, limites, c):
             required=True,
             key="relatorio_estilo",
             label_visibility="collapsed",
+            on_change=marcar_feito,
+            args=("trocou_o_estilo",),
         )
         st.caption(estilos_pdf.estilo(estilo).descricao + " Muda só as cores.")
         with st.expander("4 · Seções e ordem", expanded=modelo == PERSONALIZADO):
@@ -4635,6 +4924,7 @@ CAMPOS_PARA_REABRIR = {
     "custo": "relatorio_custo",
     "ativos": "relatorio_carteira_ativos",
     "estrategia_carteira": "relatorio_carteira",
+    "carteira_de_exemplo": "relatorio_carteira_exemplo",
 }
 
 
@@ -4659,7 +4949,7 @@ def _reabrir(relatorio):
     st.session_state.pop("relatorio_gerado", None)
     aviso = (
         " Envie de novo a planilha da B3: ela não fica guardada."
-        if tipo == relatorios.MINHA_CARTEIRA
+        if tipo == relatorios.MINHA_CARTEIRA and not p.get("carteira_de_exemplo")
         else ""
     )
     st.toast(
@@ -4776,6 +5066,9 @@ def mostrar_biblioteca(usuario):
 def pagina_relatorio():
     cabecalho_da_pagina("relatorio")
     c = carregar_contexto()
+    # o lugar da faixa fica no topo, mas ela é desenhada no fim: assim já enxerga o que o
+    # estúdio acabou de fazer (prévia pronta, carteira carregada) e libera o "Continuar"
+    lugar_do_tutorial = st.container()
     usuario = st.session_state.get("usuario")
     limites = limites_do(plano_atual())
     aba_estudio, aba_biblioteca = st.tabs(
@@ -4785,6 +5078,8 @@ def pagina_relatorio():
         mostrar_estudio(usuario, limites, c)
     with aba_biblioteca:
         mostrar_biblioteca(usuario)
+    with lugar_do_tutorial:
+        mostrar_tutorial("relatorio", c)
 
 
 def pagina_trade():
@@ -4838,6 +5133,7 @@ def pagina_guia():
 def pagina_visao_geral():
     cabecalho_da_pagina("visao_geral")
     c = carregar_contexto()
+    mostrar_tutorial("visao_geral", c)
     atalho_para_o_relatorio(relatorios.ATIVO)
     secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
     st.divider()

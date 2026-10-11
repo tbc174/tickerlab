@@ -1149,8 +1149,12 @@ def relatorio_da_minha_carteira(
     exemplo: bool = False,
     config: Configuracao | None = None,
     ao_avancar: AoAvancar = None,
+    demonstracao: bool = False,
 ) -> bytes:
-    """`fechamentos`: um ativo da carteira por coluna (tickers com .SA); `referencia`: o Ibovespa."""
+    """`fechamentos`: um ativo da carteira por coluna (tickers com .SA); `referencia`: o Ibovespa.
+
+    `demonstracao`: a carteira é a fictícia de exemplo; o PDF diz isso na capa e no subtítulo
+    de todas as páginas (blueprint: dado de demonstração sempre rotulado)."""
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
@@ -1169,8 +1173,10 @@ def relatorio_da_minha_carteira(
     indice = fechamentos.dropna(how="all").index
 
     pdf = RelatorioPDF(
-        "Minha carteira",
-        "A sua posição na B3: composição, concentração, risco e como ela se comportou",
+        "Carteira de exemplo (fictícia)" if demonstracao else "Minha carteira",
+        "EXEMPLO DEMONSTRATIVO: carteira fictícia, para conhecer o relatório"
+        if demonstracao
+        else "A sua posição na B3: composição, concentração, risco e como ela se comportou",
         gerado_em,
         e,
     )
@@ -1324,7 +1330,12 @@ def relatorio_da_minha_carteira(
         ("Tesouro e renda fixa", str(len(carteira.sem_cotacao))),
         ("Valor total (posição)", f"R$ {gp.numero_br(total)}"),
         ("Período analisado", _intervalo(indice)),
-        ("Fonte da posição", "arquivo da Área do Investidor da B3"),
+        (
+            "Fonte da posição",
+            "carteira FICTÍCIA de exemplo (demonstração)"
+            if demonstracao
+            else "arquivo da Área do Investidor da B3",
+        ),
         ("Gerado em", f"{gerado_em:%d/%m/%Y %H:%M}"),
     ]
     return _montar(pdf, MINHA_CARTEIRA, config, capa, partes, ao_avancar)

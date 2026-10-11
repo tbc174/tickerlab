@@ -49,3 +49,11 @@ def test_cabecalho_do_arquivo_diz_de_onde_veio():
     primeira = catalogo.ARQUIVO.read_text(encoding="utf-8").splitlines()[0]
     assert primeira.startswith("# catálogo de ativos") and "gerar_catalogo" in primeira
     assert isinstance(catalogo.carregar(), pd.DataFrame)
+
+
+def test_busca_de_ativos_tem_lupa_no_lugar_da_seta():
+    from src import estilo
+
+    for campo in ("ticker", "ativo_do_inicio"):
+        assert f'.st-key-{campo} [aria-label="Open"] svg' in estilo.CSS_DO_APP
+    assert "%3Csvg" in estilo.CSS_DO_APP and "<svg" not in estilo.CSS_DO_APP
