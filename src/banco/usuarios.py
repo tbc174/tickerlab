@@ -69,6 +69,16 @@ def buscar_por_google_sub(conexao: sa.Connection, google_sub: str) -> Usuario | 
     return _de_linha(linha) if linha else None
 
 
+def buscar_por_email(conexao: sa.Connection, email: str) -> Usuario | None:
+    linha = conexao.execute(
+        sa.select(usuarios).where(
+            usuarios.c.email == (email or "").strip().lower(),
+            usuarios.c.excluido_em.is_(None),
+        )
+    ).first()
+    return _de_linha(linha) if linha else None
+
+
 def entrar(
     conexao: sa.Connection,
     google_sub: str,
