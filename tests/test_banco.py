@@ -5,6 +5,7 @@ TICKERLAB_TEST_DATABASE_URL com a URL de um banco de TESTE (as tabelas dele são
 """
 
 import os
+import traceback
 import uuid
 
 import pytest
@@ -262,3 +263,45 @@ def test_erros_do_banco_nao_citam_os_valores_da_consulta(motor):
             )
         )
     assert segredo not in str(erro.value)
+    # nem no traceback completo (o erro original vem encadeado e iria junto para um log)
+    assert segredo not in "".join(traceback.format_exception(erro.value))
+
+
+def test_identificador_duplicado_nao_aparece_no_erro(motor):
+    """No PostgreSQL, a violação de unicidade traz "Key (google_sub)=(...) already exists"."""
+    segredo = "google-sub-secreto-123"
+    with motor.begin() as conexao:
+        repo.entrar(conexao, segredo, "a@exemplo.com")
+    with pytest.raises(sa.exc.IntegrityError) as erro, motor.begin() as conexao:
+        conexao.execute(
+            sa.insert(usuarios).values(
+                id=uuid.uuid4(),
+                google_sub=segredo,
+                email="b@exemplo.com",
+                papel="usuario",
+            )
+        )
+    assert segredo not in "".join(traceback.format_exception(erro.value))
+
+
+def test_mensagem_sem_valores_usa_so_identificadores():
+    from types import SimpleNamespace
+
+    from src.banco.conexao import mensagem_sem_valores
+
+    class UniqueViolation(Exception):
+        sqlstate = "23505"
+        diag = SimpleNamespace(
+            table_name="usuarios",
+            column_name=None,
+            constraint_name="usuarios_email_key",
+            message_detail="Key (email)=(x@y.com) already exists.",
+        )
+
+    texto = mensagem_sem_valores(
+        UniqueViolation("Key (email)=(x@y.com) already exists.")
+    )
+    assert texto == (
+        "UniqueViolation (código 23505); tabela usuarios; restrição usuarios_email_key"
+    )
+    assert mensagem_sem_valores(ValueError("não é do banco")) is None

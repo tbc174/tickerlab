@@ -91,7 +91,9 @@ jobs:
           exit 1
 
       - name: A API abre dentro da imagem
-        run: docker run --rm tickerlab:ci python -c "from src.api import app; print(sorted(r.path for r in app.routes))"
+        # os caminhos pelo esquema OpenAPI: no FastAPI 0.143 o include_router guarda o roteador
+        # inteiro (_IncludedRouter, sem .path), então listar app.routes quebrava a verificação
+        run: docker run --rm tickerlab:ci python -c "from src.api import app; p = sorted(app.openapi()['paths']); print(p); assert '/saude' in p and '/api/saude' in p"
 
       - name: O login com o Google tem o que precisa dentro da imagem
         run: docker run --rm tickerlab:ci python -c "from authlib.integrations.starlette_client import OAuth; print('login ok')"
