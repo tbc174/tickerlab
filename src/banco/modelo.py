@@ -87,3 +87,27 @@ simulacoes = sa.Table(
     _momento("criada_em"),
 )
 sa.Index("ix_simulacoes_usuario_id", simulacoes.c.usuario_id)
+
+assinaturas = sa.Table(
+    "assinaturas",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("stripe_customer_id", sa.String(64), nullable=False, unique=True),
+    sa.Column("stripe_subscription_id", sa.String(64), unique=True),
+    sa.Column("status", sa.String(30), nullable=False),
+    sa.Column("periodo_fim", sa.DateTime(timezone=True)),
+    sa.Column("cancela_no_fim", sa.Boolean, nullable=False, server_default=sa.false()),
+    # momento (do Stripe) do último evento aplicado: eventos mais velhos que isso são ignorados
+    sa.Column("evento_em", sa.BigInteger, nullable=False, server_default="0"),
+    _momento("atualizada_em"),
+)
+
+# um registro por evento do Stripe já processado: o Stripe repete entregas, e isto evita aplicar
+# o mesmo evento duas vezes (idempotência)
+eventos_stripe = sa.Table(
+    "eventos_stripe",
+    metadata,
+    sa.Column("id", sa.String(100), primary_key=True),
+    sa.Column("tipo", sa.String(100), nullable=False),
+    _momento("processado_em"),
+)
