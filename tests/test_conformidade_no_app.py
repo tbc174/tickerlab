@@ -37,7 +37,7 @@ def test_aceitar_libera_o_app_e_fica_registrado(banco, monkeypatch):
     app.checkbox(key="aceite_dos_termos").check().run()
     next(b for b in app.button if b.label == "Continuar").click().run()
     assert not app.exception
-    assert "Começar pela visão geral" in _rotulos(app)
+    assert "Analisar" in _rotulos(app)
     with banco.connect() as conexao:
         usuario = buscar_por_id(conexao, id_do_usuario(banco, "ana"))
     assert usuario.termos_versao == conformidade.VERSAO_DOS_TERMOS
@@ -47,7 +47,7 @@ def test_quem_ja_aceitou_nao_ve_a_tela_de_novo(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     abrir_app()
     segunda_visita = abrir_app(aceitar_termos=False)
-    assert "Começar pela visão geral" in _rotulos(segunda_visita)
+    assert "Analisar" in _rotulos(segunda_visita)
 
 
 def test_termos_novos_pedem_novo_aceite(banco, monkeypatch):

@@ -13,6 +13,7 @@ COPY requirements-prod.txt .
 RUN pip install -r requirements-prod.txt
 
 COPY .streamlit ./.streamlit
+COPY static ./static
 COPY app.py ./
 COPY src ./src
 COPY alembic.ini ./
