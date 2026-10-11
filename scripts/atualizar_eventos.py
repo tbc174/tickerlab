@@ -23,6 +23,7 @@ from src.configuracao import url_do_banco
 
 log = logging.getLogger("tickerlab.eventos")
 ANOS_DE_FCA = 4  # o FCA só é reenviado quando algo muda: junta os últimos anos
+MAX_ANOS_DE_EVENTOS = 5  # mais que isso pesa no banco sem ajudar o Research
 
 
 def baixar(url: str) -> bytes:
@@ -36,7 +37,10 @@ def baixar(url: str) -> bytes:
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     argumentos.add_argument(
-        "--anos", type=int, default=None, help="anos de eventos (1 a 5)"
+        "--anos",
+        type=int,
+        default=None,
+        help=f"anos de eventos (1 a {MAX_ANOS_DE_EVENTOS})",
     )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
@@ -44,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
     anos = opcoes.anos or (2 if hoje.month == 1 else 1)
-    anos = max(1, min(anos, 5))
+    anos = max(1, min(anos, MAX_ANOS_DE_EVENTOS))
     url = url_do_banco()
     migrar_para("head", url=url)
     motor = criar_engine(url)

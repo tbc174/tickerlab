@@ -6243,8 +6243,13 @@ def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
             with col_apagar.popover("Apagar a lista", icon=":material/delete:"):
                 st.caption(f'Apagar "{nome_atual}"? Os eventos continuam na CVM.')
                 if st.button("Apagar de vez", key="rsb_apagar", type="primary"):
-                    with obter_engine().begin() as conexao:
-                        apagar_watchlist(conexao, usuario.id, id_atual)
+                    try:
+                        with obter_engine().begin() as conexao:
+                            apagar_watchlist(conexao, usuario.id, id_atual)
+                    except Exception:
+                        logging.getLogger(__name__).exception("Falha ao apagar a lista")
+                        st.error("Não consegui apagar a lista agora. Tente de novo.")
+                        return
                     st.session_state["research_lista_pendente"] = (
                         None  # volta à primeira
                     )
@@ -6346,9 +6351,10 @@ def pagina_research():
     )
     sem_cobertura = [t for t in tickers if t not in empresas]
     todos = st.toggle(
-        "Mostrar todos (sem limite de 3 por empresa)",
+        f"Mostrar todos (sem limite de {research.MAXIMO_POR_EMPRESA} por empresa)",
         key="research_todos",
-        help="Por padrão, uma empresa não ocupa mais de 3 lugares, para nenhuma dominar a lista.",
+        help=f"Por padrão, uma empresa não ocupa mais de {research.MAXIMO_POR_EMPRESA} lugares, "
+        "para nenhuma dominar a lista.",
     )
     itens = research.ordenar(
         eventos_da_lista,
@@ -6357,7 +6363,7 @@ def pagina_research():
         hoje,
         janela,
         nome,
-        maximo_por_ativo=10_000 if todos else 3,
+        maximo_por_ativo=None if todos else research.MAXIMO_POR_EMPRESA,
     )
     if not itens:
         st.info(

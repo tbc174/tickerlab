@@ -32,6 +32,9 @@ QUALIDADE_DAS_FONTES = {
 NOMES_DAS_FONTES = {"cvm_ipe": "CVM (documento entregue pela empresa)"}
 DEMONSTRACAO = ("PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA", "BBAS3.SA")
 NOME_DA_DEMONSTRACAO = "Demonstração"
+MAXIMO_POR_EMPRESA = (
+    3  # supressão de ruído: nenhuma empresa ocupa mais lugares que isso
+)
 
 
 @dataclass(frozen=True)
@@ -92,13 +95,13 @@ def ordenar(
     hoje: date,
     janela_em_dias: int,
     nome_da_lista: str,
-    maximo_por_ativo: int = 3,
+    maximo_por_ativo: int | None = MAXIMO_POR_EMPRESA,
     maximo: int | None = None,
 ) -> list[ItemDoResearch]:
     """Os eventos por relevância (empate: o mais recente), sem que uma empresa domine a lista.
 
-    `maximo_por_ativo` (supressão de ruído, PRD 10.4): o resto da empresa continua disponível no
-    histórico do ativo, só não ocupa o topo.
+    `maximo_por_ativo` (supressão de ruído, PRD 10.4): o resto da empresa aparece com `None`
+    (na tela, "Mostrar todos"); só não ocupa o topo por padrão.
     """
     pontuados = sorted(
         (
@@ -111,7 +114,10 @@ def ordenar(
     por_ativo: Counter[str] = Counter()
     saida = []
     for item in pontuados:
-        if por_ativo[item.evento.ticker] >= maximo_por_ativo:
+        if (
+            maximo_por_ativo is not None
+            and por_ativo[item.evento.ticker] >= maximo_por_ativo
+        ):
             continue
         por_ativo[item.evento.ticker] += 1
         saida.append(item)

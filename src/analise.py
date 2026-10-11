@@ -178,30 +178,14 @@ class _Montador:
         return ""
 
 
-def analisar_ativo(
-    ticker: str,
-    dados: pd.DataFrame,
-    resolucao: Resolucao | None = None,
-    taxa_cdi_anual: float | None = None,
-    benchmark: pd.Series | None = None,
-    agora: datetime | None = None,
-) -> Analise:
-    """As métricas do ativo com os parâmetros efetivos (padrão do sistema se `resolucao` faltar).
-
-    `dados`: o DataFrame de `src.dados` (Open, High, Low, Close; `attrs` com a origem).
-    `taxa_cdi_anual`: só é usada se o parâmetro `quant.taxa_livre_de_risco` for "cdi".
-    `benchmark`: fechamentos do índice de referência (para beta e correlação).
-    """
-    r = resolucao or resolver([])
-    fechamento = dados["Close"].dropna()
-    if len(fechamento) < 2:
-        raise ValueError(
-            "São necessários pelo menos dois pregões para analisar o ativo."
-        )
-    retorno = ind.calcular_retorno_diario(fechamento)
-    pregoes = len(fechamento)
-    m = _Montador(pregoes)
-
+def _retorno_e_risco(
+    m: _Montador,
+    r: Resolucao,
+    fechamento: pd.Series,
+    retorno: pd.Series,
+    taxa_cdi_anual: float | None,
+) -> None:
+    """Retorno, volatilidade, quedas, Sharpe, Sortino, VaR e dias de alta."""
     # taxa livre de risco: zero, ou o CDI informado (sem CDI, Sharpe e Sortino ficam indisponíveis)
     modo_da_taxa = r["quant.taxa_livre_de_risco"]
     taxa = 0.0 if modo_da_taxa == "zero" else taxa_cdi_anual
@@ -267,6 +251,11 @@ def analisar_ativo(
         "fração",
     )
 
+
+def _dependencia_do_indice(
+    m: _Montador, r: Resolucao, fechamento: pd.Series, benchmark: pd.Series | None
+) -> None:
+    """Beta e correlação recente contra o índice de referência escolhido."""
     # --- dependência do índice de referência ---------------------------------------------------
     indice = r["quant.benchmark"]
     janela_corr = int(r["quant.janela_correlacao"])
@@ -308,6 +297,9 @@ def analisar_ativo(
             curta,
         )
 
+
+def _medias_e_rsi(m: _Montador, r: Resolucao, fechamento: pd.Series) -> None:
+    """Médias rápida e lenta (simples ou exponencial) e RSI."""
     # --- técnica (as mesmas funções das estratégias) -------------------------------------------
     tipo = r["tecnica.tipo_de_media"]
     media = (
@@ -336,6 +328,12 @@ def analisar_ativo(
          "tecnica.rsi_superior": r["tecnica.rsi_superior"]},
         curta,
     )  # fmt: skip
+
+
+def _macd_bollinger_e_atr(
+    m: _Montador, r: Resolucao, dados: pd.DataFrame, fechamento: pd.Series
+) -> None:
+    """MACD e linha de sinal, %b de Bollinger e ATR."""
     rapida, lenta, sinal = (
         int(r["tecnica.macd_rapida"]), int(r["tecnica.macd_lenta"]), int(r["tecnica.macd_sinal"]),
     )  # fmt: skip
@@ -377,6 +375,35 @@ def analisar_ativo(
         None if motivo_atr else _ultimo(ind.calcular_atr(dados, periodo_atr)), "preço",
         {"tecnica.atr_periodo": periodo_atr}, motivo_atr,
     )  # fmt: skip
+
+
+def analisar_ativo(
+    ticker: str,
+    dados: pd.DataFrame,
+    resolucao: Resolucao | None = None,
+    taxa_cdi_anual: float | None = None,
+    benchmark: pd.Series | None = None,
+    agora: datetime | None = None,
+) -> Analise:
+    """As métricas do ativo com os parâmetros efetivos (padrão do sistema se `resolucao` faltar).
+
+    `dados`: o DataFrame de `src.dados` (Open, High, Low, Close; `attrs` com a origem).
+    `taxa_cdi_anual`: só é usada se o parâmetro `quant.taxa_livre_de_risco` for "cdi".
+    `benchmark`: fechamentos do índice de referência (para beta e correlação).
+    """
+    r = resolucao or resolver([])
+    fechamento = dados["Close"].dropna()
+    if len(fechamento) < 2:
+        raise ValueError(
+            "São necessários pelo menos dois pregões para analisar o ativo."
+        )
+    retorno = ind.calcular_retorno_diario(fechamento)
+    pregoes = len(fechamento)
+    m = _Montador(pregoes)
+    _retorno_e_risco(m, r, fechamento, retorno, taxa_cdi_anual)
+    _dependencia_do_indice(m, r, fechamento, benchmark)
+    _medias_e_rsi(m, r, fechamento)
+    _macd_bollinger_e_atr(m, r, dados, fechamento)
 
     proveniencia = Proveniencia(
         ticker=ticker,
