@@ -40,3 +40,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `pct_change().fillna(0)` troca o `NaN` do primeiro dia por 0, e esse 0 entra no desvio padrão.
 - **Solução:** deixar o `NaN` (o `std()` já o ignora): `return fechamento.pct_change()`.
 - **Data:** 10/10/2026
+
+## Relatórios de proventos da CVM sumiam da coleta de eventos
+- **Sintoma:** nenhum evento do tipo "Relatório Proventos" entrava no banco, mesmo existindo no arquivo da CVM.
+- **Causa:** no arquivo IPE da CVM, essas linhas vêm com a coluna `Protocolo_Entrega` **vazia**; o coletor descartava toda linha sem protocolo.
+- **Solução:** quando o protocolo vier vazio, usar o número que está no próprio link do documento (`numProtocolo=...&numVersao=...`), como `rad-1477025`. Entraram ~1.400 relatórios de proventos que se perdiam. Lição: conferir os dados reais antes de supor que uma coluna sempre vem preenchida.
+- **Data:** 11/10/2026
+
+## `StreamlitAPIException` ao mudar o valor de um campo depois de desenhá-lo
+- **Sintoma:** ao criar uma lista no Research, o código tentava abrir a lista nova trocando `st.session_state["research_lista"]`, e o Streamlit recusa.
+- **Causa:** o valor de um campo com `key` só pode ser mudado **antes** de o campo aparecer na tela naquela execução (ou dentro de um `on_click`).
+- **Solução:** guardar um "pedido pendente" (`research_lista_pendente`) e aplicá-lo no começo da próxima execução, antes do `st.selectbox`.
+- **Data:** 11/10/2026
+
+## Testes de migração quebravam a cada migração nova
+- **Sintoma:** `test_migracao_0006_vai_e_volta` falhou depois de criar a 0007 (e de novo com a 0008).
+- **Causa:** o teste descia "uma versão" (`migrar_para("-1")`) a partir da última; com uma migração nova, "-1" passou a desfazer outra.
+- **Solução:** função `desfazer_ate("0005")` em `src/banco/conexao.py`, que desce até uma versão exata; os testes usam o número da versão, não uma contagem.
+- **Data:** 11/10/2026
+
+## Página nova acusava "não consegui ler os eventos" no modo local
+- **Sintoma:** a página Acontecimentos mostrava erro ao rodar sem conta, num banco SQLite antigo.
+- **Causa:** o app abre o banco sem aplicar as migrações (no servidor, quem aplica é o contêiner ao subir); no banco local antigo, a tabela `eventos` não existia.
+- **Solução:** tratar "tabela não existe" (`OperationalError`/`ProgrammingError`) como "eventos ainda não coletados", com a dica de rodar `python -m scripts.atualizar_eventos` (que também prepara o banco).
+- **Data:** 11/10/2026
