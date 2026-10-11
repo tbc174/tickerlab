@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from src import graficos
 from src.graficos import (
     CONFIG_PLOTLY,
     ZOOM_COM_A_RODA_DO_MOUSE,
@@ -310,7 +311,7 @@ def test_comparacao_tem_uma_linha_por_ativo_com_a_cor_certa():
     figura = criar_grafico_comparacao(_base100(), principal="PETR4.SA")
     linhas = {tr.name: tr.line for tr in figura.data}
     assert list(linhas) == ["PETR4.SA", "^BVSP", "^GSPC", "AAPL", "VALE3.SA"]
-    assert linhas["PETR4.SA"].color == "#2962ff"  # o principal, em azul
+    assert linhas["PETR4.SA"].color == graficos.COR_AZUL  # o principal, em azul
     assert linhas["^BVSP"].color == linhas["^GSPC"].color  # índices em cinza
     assert linhas["^GSPC"].dash == "dash"  # S&P 500 tracejado
     assert linhas["^BVSP"].dash is None
@@ -355,9 +356,9 @@ def test_curvas_de_capital_multiplicam_pelo_capital_inicial():
     )
     destaque = next(tr for tr in figura.data if tr.name == "Cruzamento de médias")
     assert list(destaque.y) == pytest.approx([10_000, 10_500, 10_200, 11_000])
-    assert destaque.line.color == "#2962ff"  # a estratégia em destaque, em azul
+    assert destaque.line.color == graficos.COR_AZUL  # a estratégia em destaque, em azul
     outra = next(tr for tr in figura.data if tr.name == "Comprar e segurar")
-    assert outra.line.color != "#2962ff"
+    assert outra.line.color != graficos.COR_AZUL
     assert any(forma.y0 == 10_000 for forma in figura.layout.shapes)
 
 
@@ -515,8 +516,8 @@ def _pontos():
 def test_risco_retorno_tem_um_ponto_por_estrategia_com_numeros():
     figura = criar_grafico_risco_retorno(_pontos(), destaque="Comprar e segurar")
     assert list(figura.data[0].text) == ["Comprar e segurar", "Filtro de tendência"]
-    assert figura.data[0].marker.color[0] == "#2962ff"
-    assert figura.data[0].marker.color[1] != "#2962ff"
+    assert figura.data[0].marker.color[0] == graficos.COR_AZUL
+    assert figura.data[0].marker.color[1] != graficos.COR_AZUL
 
 
 def test_risco_retorno_vazio_da_erro():
@@ -565,7 +566,7 @@ def test_grafico_de_regimes_pinta_cada_dia_com_a_cor_do_seu_regime():
     preco = pd.Series([10.0, 11.0, 12.0, 13.0], index=indice)
     regime = pd.Series(["Calmo", "Agitado", "Calmo", "Sem histórico"], index=indice)
     figura = criar_grafico_regimes(
-        preco, regime, {"Calmo": "#26a69a", "Agitado": "#ef5350"}
+        preco, regime, {"Calmo": graficos.COR_ALTA, "Agitado": graficos.COR_QUEDA}
     )
     assert [t.name for t in figura.data] == ["Calmo", "Agitado"]
     assert figura.data[0].y[0] == 10.0 and figura.data[0].y[2] == 12.0
@@ -651,6 +652,10 @@ def test_grafico_do_momentum_pinta_positivos_de_verde_e_negativos_de_vermelho():
     figura = criar_grafico_momentum(momentum)
     barra = figura.data[0]
     assert list(barra.y) == ["B", "C", "A"]  # do mais fraco ao mais forte
-    assert list(barra.marker.color) == ["#ef5350", "#26a69a", "#26a69a"]
+    assert list(barra.marker.color) == [
+        graficos.COR_QUEDA,
+        graficos.COR_ALTA,
+        graficos.COR_ALTA,
+    ]
     with pytest.raises(ValueError, match="momentum"):
         criar_grafico_momentum(momentum.iloc[:0])

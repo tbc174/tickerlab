@@ -1,63 +1,54 @@
-"""Estilo visual do app (CSS). Segue a direção aprovada: preto, minimalista, azul vivo."""
+"""CSS do TickerLab: só o que o tema oficial do Streamlit (`.streamlit/config.toml`) não cobre.
 
-COR_AZUL = "#2962ff"
-COR_AZUL_CLARO = "#7aa2ff"
-COR_LINHA_FINA = "rgba(255, 255, 255, 0.12)"
+As cores vêm de `src/marca.py` (identidade aprovada em 11/10/2026). A fonte é carregada pelo tema,
+do nosso próprio servidor: aqui não há `@import` do Google Fonts (mandaria o IP de quem visita).
+"""
+
+from src import marca
 
 CSS_DO_APP = f"""
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
-html, body, [class*="st-"], .stMarkdown, button, input, textarea, select {{
-    font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
-}}
-
-/* Os ícones do Streamlit (setas, etc.) usam uma fonte própria: não trocar por Manrope */
-[data-testid="stIconMaterial"], .material-icons, .material-symbols-rounded {{
-    font-family: 'Material Symbols Rounded' !important;
-}}
-
 /* Largura e respiro da página */
 .block-container, [data-testid="stMainBlockContainer"] {{
-    max-width: 1280px;
-    padding-top: 2.5rem;
-    padding-bottom: 4rem;
+    max-width: 1240px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
 }}
 
-/* Título */
-h1 {{
-    font-weight: 800;
+/* Números alinhados (algarismos de largura fixa) em métricas e tabelas */
+[data-testid="stMetricValue"], [data-testid="stMetricDelta"], [data-testid="stDataFrame"],
+[data-testid="stTable"], .tl-num {{
+    font-variant-numeric: tabular-nums;
+}}
+
+/* Títulos: mais justos, com quebra equilibrada */
+h1, h2, h3 {{
     letter-spacing: -0.02em;
-    padding-bottom: 0.25rem;
+    text-wrap: balance;
 }}
-
-/* Subtítulos de seção: mais espaço em cima, menos embaixo */
 h2, h3 {{
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    margin-top: 1.75rem;
-    margin-bottom: 0.25rem;
+    margin-top: 1.5rem;
 }}
 
-/* Linhas divisórias mais discretas, com espaço dos dois lados */
+/* Linhas divisórias discretas */
 hr {{
-    margin: 2.25rem 0 1.5rem 0;
-    border-color: {COR_LINHA_FINA};
+    margin: 2rem 0 1.25rem 0;
+    border-color: {marca.LINHA};
 }}
 
-/* Cartões das métricas: sem preenchimento, só uma linha fina */
+/* Métricas como cartões na superfície intermediária */
 [data-testid="stMetric"] {{
-    background: transparent;
-    border: 1px solid {COR_LINHA_FINA};
-    border-radius: 14px;
-    padding: 0.9rem 1.1rem;
-    min-height: 6.4rem;
+    background: {marca.SUPERFICIE};
+    border: 1px solid {marca.LINHA};
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    min-height: 6.2rem;
 }}
 [data-testid="stMetricValue"] {{
-    font-weight: 700;
-    font-size: 1.75rem;
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
 }}
 [data-testid="stMetricLabel"] {{
-    opacity: 0.75;
+    color: {marca.TEXTO_APAGADO};
 }}
 /* rótulos longos quebram a linha em vez de virar "Maior queda (drawdo..." */
 [data-testid="stMetricLabel"] *, [data-testid="stMetricLabel"] p {{
@@ -66,93 +57,171 @@ hr {{
     text-overflow: clip !important;
     line-height: 1.25;
 }}
-
-/* Espaço entre as colunas e as linhas de cartões */
-[data-testid="stHorizontalBlock"] {{
-    gap: 1rem;
+/* o número principal da página (o primeiro cartão de .tl-heroi) fica maior e mais claro */
+.st-key-tl-numero-principal [data-testid="stMetric"] {{
+    background: {marca.DESTAQUE};
+    border-color: {marca.LINHA_FORTE};
+}}
+.st-key-tl-numero-principal [data-testid="stMetricValue"] {{
+    font-size: 2.2rem;
 }}
 
-/* Abas: sem fundo, a ativa em azul */
+/* Espaço entre colunas e linhas de cartões */
+[data-testid="stHorizontalBlock"] {{
+    gap: 0.75rem;
+}}
+
+/* Abas: a ativa em azul */
 .stTabs [data-baseweb="tab-list"] {{
-    gap: 0.5rem;
-    border-bottom: 1px solid {COR_LINHA_FINA};
+    gap: 0.25rem;
+    border-bottom: 1px solid {marca.LINHA};
 }}
 .stTabs [data-baseweb="tab"] {{
-    height: 3rem;
-    padding: 0 1.1rem;
+    height: 2.75rem;
+    padding: 0 1rem;
     font-weight: 600;
 }}
 .stTabs [aria-selected="true"] {{
-    color: {COR_AZUL_CLARO};
+    color: {marca.AZUL_TEXTO};
 }}
 .stTabs [data-baseweb="tab-highlight"] {{
-    background-color: {COR_AZUL};
-    height: 3px;
+    background-color: {marca.AZUL};
+    height: 2px;
 }}
 .stTabs [data-baseweb="tab-panel"] {{
-    padding-top: 1.5rem;
+    padding-top: 1.25rem;
 }}
 
-/* Caixa de controles: cantos arredondados e linha fina */
-[data-testid="stVerticalBlockBorderWrapper"] {{
-    border-radius: 16px;
-    border-color: {COR_LINHA_FINA};
+/* Caixas com borda (controles, cartões): superfície intermediária */
+[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"]) {{
+    background: {marca.SUPERFICIE};
 }}
 
-/* Legendas um pouco mais claras e com folga */
+/* Legendas mais claras */
 [data-testid="stCaptionContainer"] {{
-    opacity: 0.7;
-    margin-top: 0.25rem;
+    color: {marca.TEXTO_APAGADO};
 }}
 
-/* Botões e campos em formato de pílula */
-.stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div {{
-    border-radius: 999px;
-}}
+/* --- peças da marca ------------------------------------------------------------------- */
 
-/* Marca no topo */
+/* Nome no topo: "Ticker" + "Lab" em azul, com o símbolo */
 .tl-marca {{
-    font-size: 1.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.35rem;
     font-weight: 800;
     letter-spacing: -0.03em;
-    line-height: 1.1;
+    line-height: 1;
+}}
+.tl-marca svg {{
+    width: 28px;
+    height: 28px;
 }}
 .tl-marca span {{
-    color: {COR_AZUL_CLARO};
+    color: {marca.AZUL_TEXTO};
 }}
 
-/* Título de cada página, com o selo Pro quando for o caso */
-.tl-titulo {{
-    margin: 0.25rem 0 0 0;
-    padding: 0;
-    font-size: 1.9rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-}}
-.tl-selo {{
-    display: inline-block;
-    margin-left: 0.7rem;
-    padding: 0.1rem 0.65rem;
-    border: 1px solid {COR_AZUL};
-    border-radius: 999px;
-    color: {COR_AZUL_CLARO};
-    font-size: 0.75rem;
+/* "Olho": o grupo da página, acima do título */
+.tl-olho {{
+    margin: 0.5rem 0 -0.4rem 0;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
-    vertical-align: middle;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: {marca.AZUL_TEXTO};
 }}
+
+/* Código de ativo em fonte monoespaçada, como numa tela de cotações */
+.tl-ticker {{
+    font-family: '{marca.FONTE_MONO}', monospace;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}}
+.tl-alta {{ color: {marca.ALTA}; }}
+.tl-queda {{ color: {marca.QUEDA}; }}
+.tl-apagado {{ color: {marca.TEXTO_APAGADO}; }}
 
 /* Frase de abertura da página inicial e da tela de entrada */
 .tl-hero {{
-    margin: 1.25rem 0 0.75rem 0;
-    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    margin: 0.5rem 0 0.75rem 0;
+    font-size: clamp(2rem, 4.2vw, 3rem);
     font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    text-wrap: balance;
 }}
 
-/* Links de página dentro dos cartões da página inicial */
+/* Princípios da página inicial: um traço azul à esquerda */
+.tl-principio {{
+    border-left: 2px solid {marca.AZUL};
+    padding: 0.1rem 0 0.1rem 0.8rem;
+    color: {marca.TEXTO_APAGADO};
+    font-size: 0.92rem;
+}}
+.tl-principio b {{
+    display: block;
+    color: {marca.TEXTO};
+}}
+
+/* TickerLab Trade: o estado da pesquisa e as fases */
+.tl-estado {{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: {marca.ATENCAO};
+}}
+.tl-estado::before {{
+    content: "";
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: {marca.ATENCAO};
+}}
+.tl-fases {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.5rem;
+    margin: 0.5rem 0 1rem 0;
+}}
+.tl-fase {{
+    background: {marca.SUPERFICIE};
+    border: 1px solid {marca.LINHA};
+    border-radius: 12px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.88rem;
+}}
+.tl-fase b {{
+    display: block;
+    font-family: '{marca.FONTE_MONO}', monospace;
+    font-size: 0.8rem;
+    color: {marca.TEXTO_APAGADO};
+}}
+.tl-fase.feita b {{ color: {marca.ALTA}; }}
+.tl-fase.agora {{ border-color: {marca.ATENCAO}; }}
+.tl-fase.agora b {{ color: {marca.ATENCAO}; }}
+
+/* Rodapé */
+.tl-rodape {{
+    color: {marca.TEXTO_APAGADO};
+    font-size: 0.82rem;
+}}
+.tl-rodape b {{
+    color: {marca.TEXTO};
+    font-weight: 800;
+}}
+.tl-rodape b span {{
+    color: {marca.AZUL_TEXTO};
+}}
+
+/* Links de página nos cartões */
 [data-testid="stPageLink"] a {{
     font-weight: 700;
+}}
+
+@media (prefers-reduced-motion: reduce) {{
+    * {{ transition: none !important; animation: none !important; }}
 }}
 """

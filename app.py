@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from src import administracao as adm
-from src import aprendizado, graficos
+from src import aprendizado, graficos, marca, trade
 from src import indicadores as ind
 from src.acaso import (
     calcular_comprimento_minimo,
@@ -134,8 +134,8 @@ from src.paginas import (
     FRASE_DE_CADA_GRUPO,
     GRUPO_ANALISAR,
     GRUPO_AVANCADO,
-    GRUPO_CONTA,
     GRUPO_ESTRATEGIAS,
+    GRUPO_TOPO,
     GRUPOS,
     PAGINA_INICIAL,
     pagina,
@@ -204,8 +204,21 @@ METRICAS_EM_PORCENTAGEM = {
 METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
 
 configurar_logs()
-st.set_page_config(page_title="TickerLab", layout="wide")
+st.set_page_config(
+    page_title="TickerLab", page_icon=str(marca.ARQUIVO_DO_ICONE), layout="wide"
+)
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
+# símbolo + "TickerLab" no canto do menu (clicar volta ao Início); só o símbolo se faltar espaço
+st.logo(
+    str(marca.ARQUIVO_DA_ASSINATURA),
+    size="large",
+    icon_image=str(marca.ARQUIVO_DO_ICONE),
+)
+
+
+def marca_html():
+    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos)."""
+    return f'<div class="tl-marca">{marca.simbolo_svg()}<div>Ticker<span>Lab</span></div></div>'
 
 
 # --- Ajudantes --------------------------------------------------------------
@@ -293,10 +306,7 @@ def mostrar_tela_de_entrada():
     """Tela para quem ainda não entrou: o app só abre depois do login com o Google."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(
-            '<div class="tl-marca">Ticker<span>Lab</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(marca_html(), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
             unsafe_allow_html=True,
@@ -810,6 +820,7 @@ def _ir_para_favorito():
 
 
 PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
+ROTULOS_CURTOS_DO_PERIODO = {"6mo": "6M", "1y": "1A", "2y": "2A", "5y": "5A"}
 NOMES_DOS_MODOS_DA_TAXA = {
     "Zero": "Nenhum (zero)",
     "CDI (Banco Central)": "CDI (Banco Central)",
@@ -885,12 +896,13 @@ def mostrar_controles():
             help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm "
             "sufixo (AAPL). Índices começam com ^ (^BVSP é o Ibovespa).",
         )
-        periodo = col_periodo.selectbox(
+        periodo = col_periodo.segmented_control(
             "Período",
             list(PERIODOS_DO_TOPO),
-            format_func=PERIODOS_DO_TOPO.get,
+            format_func=ROTULOS_CURTOS_DO_PERIODO.get,
             key="periodo",
-            help="Quanto tempo de histórico olhar para trás.",
+            required=True,  # sempre um período escolhido (clicar no ativo não o desmarca)
+            help="Quanto tempo de histórico olhar para trás: 6 meses, 1 ano, 2 anos ou 5 anos.",
         )
         with col_favoritos:
             mostrar_favoritos()
@@ -966,13 +978,13 @@ def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
     data_pior, pior_dia = ind.encontrar_pior_dia(retorno)
 
     st.markdown("**Retorno e risco**")
-    linha1 = st.columns(4)
-    mostrar_metrica(
-        linha1[0],
-        "Retorno total",
-        formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
-        "Retorno acumulado",
-    )
+    linha1 = st.columns([1.4, 1, 1, 1])
+    with linha1[0]:  # o número principal da página, maior e mais claro
+        mostrar_numero_principal(
+            "Retorno total",
+            formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
+            ajuda=ajuda_do("Retorno acumulado"),
+        )
     mostrar_metrica(
         linha1[1],
         "Retorno anualizado",
@@ -3738,19 +3750,25 @@ def carregar_contexto():
 
 
 def cabecalho_da_pagina(chave):
-    """Título da página, selo Pro (se for o caso) e uma frase dizendo para que ela serve."""
+    """O molde de toda página: grupo (olho), ícone e título, selo Pro e para que ela serve."""
     p = pagina(chave)
-    selo = '<span class="tl-selo">Pro</span>' if p.e_pro else ""
-    st.markdown(f'<h2 class="tl-titulo">{p.titulo}{selo}</h2>', unsafe_allow_html=True)
+    if p.grupo != GRUPO_TOPO:
+        grupo = p.grupo.removesuffix(" (Pro)")
+        st.markdown(f'<div class="tl-olho">{grupo}</div>', unsafe_allow_html=True)
+    selo = " :blue-badge[Pro]" if p.e_pro else ""
+    st.markdown(f"## {p.icone} {p.titulo}{selo}")
     st.caption(p.descricao)
 
 
+def mostrar_numero_principal(rotulo, valor, delta=None, ajuda=None):
+    """O número mais importante da página, maior e numa superfície mais clara."""
+    with st.container(key="tl-numero-principal"):
+        st.metric(rotulo, valor, delta, help=ajuda)
+
+
 def mostrar_topo(usuario):
-    """Marca do app à esquerda e a conta (ou o aviso de modo local) à direita."""
-    col_marca, col_conta = st.columns([5, 2], vertical_alignment="center")
-    col_marca.markdown(
-        '<div class="tl-marca">Ticker<span>Lab</span></div>', unsafe_allow_html=True
-    )
+    """A conta (ou o aviso de modo local) à direita; a marca fica no canto do menu."""
+    _, col_conta = st.columns([5, 2], vertical_alignment="center")
     with col_conta:
         if usuario is not None:
             mostrar_conta(usuario)
@@ -3758,69 +3776,87 @@ def mostrar_topo(usuario):
             st.caption("Modo local, sem login")
 
 
+def _analisar_o_ativo_do_inicio():
+    codigo = (st.session_state.get("ativo_do_inicio") or "").strip().upper()
+    if codigo:
+        st.session_state["ticker"] = codigo
+        st.session_state["ir_para_visao_geral"] = True
+
+
 def pagina_inicio():
+    if st.session_state.pop("ir_para_visao_geral", False):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    st.markdown(
+        '<div class="tl-olho">Ações da B3 e dos EUA</div>', unsafe_allow_html=True
+    )
     st.markdown(
         '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        "O TickerLab mostra o retorno, o risco e o comportamento de ações da B3 e dos EUA, "
-        "e deixa você testar regras de compra e venda **no passado**. Cada número vem com uma "
-        "explicação em português: passe o mouse no **?**."
+        "Retorno, risco e testes de estratégia **no passado**, com custos e cada número "
+        "explicado em português: passe o mouse no **?**."
     )
-    if st.button("Começar pela visão geral", type="primary", key="comecar"):
-        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    col_ativo, col_analisar, col_guia = st.columns(
+        [3, 1, 1], vertical_alignment="bottom"
+    )
+    col_ativo.text_input(
+        "Ativo (ticker)",
+        key="ativo_do_inicio",
+        placeholder="PETR4.SA, AAPL, BTC-USD",
+        help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm sufixo (AAPL). "
+        "Índices começam com ^ (^BVSP é o Ibovespa).",
+        on_change=_analisar_o_ativo_do_inicio,
+    )
+    col_analisar.button(
+        "Analisar",
+        type="primary",
+        key="comecar",
+        width="stretch",
+        on_click=_analisar_o_ativo_do_inicio,
+    )
+    col_guia.page_link(
+        PAGINAS_DO_MENU["guia"], label="Ver o guia", icon=":material/menu_book:"
+    )
 
-    st.subheader("Como usar em 3 passos")
-    passos = [
-        (
-            "1. Escolha um ativo",
-            (
-                "Digite o código (ticker) e o período no topo das páginas de análise. "
-                "Exemplo: PETR4.SA ou AAPL."
-            ),
-        ),
-        (
-            "2. Veja os números",
-            (
-                "Retorno, risco e as maiores quedas, com cada termo explicado. "
-                "Comece pela Visão geral."
-            ),
-        ),
-        (
-            "3. Teste uma ideia",
-            (
-                "No Backtest, simule uma regra no passado, com custos, e veja se teria "
-                "funcionado. Guarde o que gostar."
-            ),
-        ),
+    st.subheader("O que dá para fazer")
+    cartoes = [
+        (GRUPO_ANALISAR, ":material/dashboard:", paginas_do_grupo(GRUPO_ANALISAR)),
+        (GRUPO_ESTRATEGIAS, ":material/history:", paginas_do_grupo(GRUPO_ESTRATEGIAS)),
+        (GRUPO_AVANCADO, ":material/science:", paginas_do_grupo(GRUPO_AVANCADO)),
+        ("TickerLab Trade", ":material/memory:", [pagina("trade")]),
     ]
-    for coluna, (titulo, texto) in zip(st.columns(3), passos, strict=True):
-        with coluna, st.container(border=True, height=135):
-            st.markdown(f"**{titulo}**")
-            st.caption(texto)
+    for coluna, (titulo, icone, itens) in zip(st.columns(4), cartoes, strict=True):
+        with coluna, st.container(border=True):
+            st.markdown(f"#### {icone} {titulo.removesuffix(' (Pro)')}")
+            if titulo == "TickerLab Trade":
+                st.caption("A pesquisa de trading quantitativo, em andamento.")
+            else:
+                st.caption(FRASE_DE_CADA_GRUPO[titulo])
+            for item in itens:
+                selo = " · Pro" if item.e_pro else ""
+                st.page_link(
+                    PAGINAS_DO_MENU[item.chave],
+                    label=f"{item.titulo}{selo}",
+                    icon=item.icone,
+                )
 
-    st.subheader("O que você encontra aqui")
-    for grupo in (GRUPO_ANALISAR, GRUPO_ESTRATEGIAS, GRUPO_AVANCADO, GRUPO_CONTA):
-        st.markdown(f"**{grupo}**")
-        st.caption(FRASE_DE_CADA_GRUPO[grupo])
-        itens = paginas_do_grupo(grupo)
-        for inicio in range(
-            0, len(itens), 2
-        ):  # duas por linha, cartões do mesmo tamanho
-            for coluna, item in zip(st.columns(2), itens[inicio : inicio + 2]):
-                with coluna, st.container(border=True, height=150):
-                    selo = " · Pro" if item.e_pro else ""
-                    st.page_link(
-                        PAGINAS_DO_MENU[item.chave],
-                        label=f"{item.titulo}{selo}",
-                        icon=item.icone,
-                    )
-                    st.caption(item.descricao)
+    st.subheader("Como o TickerLab trabalha")
+    principios = [
+        ("Sem olhar o futuro", "A decisão de um dia só vale no dia seguinte."),
+        ("Com custos", "Corretagem, impostos e o CDI entram em todo teste."),
+        ("Honesto", "O app mostra quando uma estratégia não funciona."),
+        ("Explicado", "Cada termo técnico vem com uma explicação em português."),
+    ]
+    for coluna, (titulo, texto) in zip(st.columns(4), principios, strict=True):
+        coluna.markdown(
+            f'<div class="tl-principio"><b>{titulo}</b>{texto}</div>',
+            unsafe_allow_html=True,
+        )
 
-    limites = limites_do(plano_atual())
-    st.divider()
     if st.session_state.get("usuario") is not None:
+        limites = limites_do(plano_atual())
+        st.divider()
         st.info(
             f"Você está no plano **{limites.nome}**. "
             "Veja o que cada plano inclui em **Planos e assinatura**."
@@ -3830,9 +3866,48 @@ def pagina_inicio():
             label="Planos e assinatura",
             icon=":material/workspace_premium:",
         )
-    st.caption(
-        "Projeto educacional: nada aqui é recomendação de investimento. Resultados do "
-        "passado não garantem resultados futuros."
+
+
+def pagina_trade():
+    fase = trade.fase_atual()
+    st.markdown(
+        f'<span class="tl-estado">Em pesquisa · fase {fase.codigo}</span>',
+        unsafe_allow_html=True,
+    )
+    cabecalho_da_pagina("trade")
+    st.markdown(
+        "Uma pesquisa de **trading quantitativo**: modelos de aprendizado de máquina testados "
+        "em mais de 80 ativos (ações, índices, moedas, juros, commodities e cripto), com regras "
+        "de aprovação **escritas antes de olhar os resultados**. Só se um modelo passar, ele "
+        "vira um robô numa **conta de demonstração** do MetaTrader 5, sem dinheiro de verdade. "
+        "Resultado negativo também é publicado."
+    )
+    fases = "".join(
+        f'<div class="tl-fase {f.estado}"><b>{f.codigo}'
+        f"{' ✓' if f.estado == trade.FEITA else ' ●' if f.estado == trade.AGORA else ''}"
+        f"</b>{f.nome}</div>"
+        for f in trade.FASES
+    )
+    st.markdown(f'<div class="tl-fases">{fases}</div>', unsafe_allow_html=True)
+    st.caption(f"Agora: {fase.nome}. {fase.explicacao}")
+
+    st.subheader("Downloads")
+    for coluna, item in zip(
+        st.columns(len(trade.DOWNLOADS)), trade.DOWNLOADS, strict=True
+    ):
+        with coluna, st.container(border=True):
+            st.markdown(f"**{item.titulo}**")
+            st.caption(item.descricao)
+            st.button(
+                "Disponível no fim do projeto",
+                key=f"download_{item.titulo}",
+                disabled=not item.disponivel,
+                width="stretch",
+            )
+    st.warning(
+        "É uma pesquisa educacional. Nada aqui é recomendação de investimento, e nenhum teste "
+        "garante rentabilidade.",
+        icon=":material/info:",
     )
 
 
@@ -4011,10 +4086,7 @@ def mostrar_aceite_dos_termos(usuario):
     """Tela de primeiro acesso (ou de termos novos): o app só abre depois do aceite."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(
-            '<div class="tl-marca">Ticker<span>Lab</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(marca_html(), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
         )
@@ -4279,6 +4351,7 @@ def pagina_admin():
 
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
+    "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,
     "privacidade": pagina_privacidade,
@@ -4319,6 +4392,7 @@ def montar_navegacao(e_admin=False):
                 icon=":material/lock:" if bloqueada else p.icone,
                 url_path="" if e_a_inicial else p.url,
                 default=e_a_inicial,
+                visibility="visible" if p.no_menu else "hidden",
             )
             PAGINAS_DO_MENU[p.chave] = pagina_do_menu
             itens.append(pagina_do_menu)
@@ -4346,10 +4420,15 @@ if usuario_logado is not None:
 pagina_atual.run()
 
 st.divider()
-col_termos, col_privacidade, col_aviso = st.columns([1, 1.2, 5])
+col_aviso, col_guia, col_termos, col_privacidade = st.columns(
+    [5, 1, 1.2, 1.2], vertical_alignment="center"
+)
+col_aviso.markdown(
+    '<div class="tl-rodape"><b>Ticker<span>Lab</span></b> · projeto educacional, não é '
+    "recomendação de investimento. Dados do Yahoo Finance, que podem ter atraso ou erros. "
+    "Rentabilidade passada não garante resultado futuro.</div>",
+    unsafe_allow_html=True,
+)
+col_guia.page_link(PAGINAS_DO_MENU["guia"], label="Guia")
 col_termos.page_link(PAGINAS_DO_MENU["termos"], label="Termos de uso")
 col_privacidade.page_link(PAGINAS_DO_MENU["privacidade"], label="Privacidade")
-col_aviso.caption(
-    "TickerLab é um projeto educacional. Os dados vêm do Yahoo Finance e podem ter atraso "
-    "ou erros. Rentabilidade passada não garante resultado futuro."
-)

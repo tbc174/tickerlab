@@ -18,7 +18,7 @@ def test_favoritos_e_preferencias_voltam_na_proxima_sessao(banco, monkeypatch):
     app = abrir_app("visao_geral")
     assert not app.exception
     botao(app, "Favoritar PETR4.SA").click().run()
-    app.selectbox(key="periodo").select("5y").run()
+    app.button_group(key="periodo").set_value("5y").run()
     ana = id_do_usuario(banco, "ana")
     with banco.connect() as conexao:
         assert repo.listar_favoritos(conexao, ana) == ["PETR4.SA"]

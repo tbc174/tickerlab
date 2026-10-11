@@ -13,15 +13,22 @@ painel de administração e privacidade de acordo com a LGPD.
 
 ## O que o app faz
 
-O menu do topo tem 5 grupos (e um sexto, só para administradores). Cada página tem uma frase
-dizendo para que serve, e cada número tem uma explicação em português ao passar o mouse no **?**.
+**Identidade visual:** tema escuro em degraus de cinza-azulado, azul `#2962FF`, o símbolo "Vela T"
+(`static/marca/`) e a fonte Manrope servida pelo próprio site, sem Google Fonts. As cores ficam
+num lugar só, `src/marca.py`, de onde saem o tema do Streamlit, o CSS e o tema dos gráficos.
+
+No menu do topo, **Início** e **TickerLab Trade** ficam como links diretos, seguidos de 5 grupos
+(e um sexto, só para administradores). Termos de uso e Política de privacidade ficam no rodapé.
+Cada página tem uma frase dizendo para que serve, e cada número tem uma explicação em português
+ao passar o mouse no **?**.
 
 | Grupo | Páginas | Pergunta que respondem |
 |---|---|---|
-| Começar | Início, Guia e glossário, Termos de uso, Política de privacidade | O que é isto e como usar? |
+| (direto no menu) | Início, TickerLab Trade | O que é isto? E a pesquisa de trading quantitativo, em que fase está? |
 | Analisar | Visão geral, Risco, Retorno mensal, Comparar ativos, Correlação e beta | Como o ativo se comportou: retorno, volatilidade, quedas, calendário, comparação com Ibovespa e S&P 500, beta |
 | Estratégias | Backtest, Ranking, Carteira, Experimentos, Fases do mercado | E se eu tivesse seguido uma regra? Qual estratégia foi melhor, descontando a sorte? E com vários ativos? |
 | Avançado (Pro) | Aprendizado de máquina, Pairs trading | Um modelo vence a previsão ingênua? Pares de ativos cointegrados |
+| Aprender | Guia e glossário (Termos e Privacidade no rodapé) | Como os números são calculados e o que cada termo quer dizer |
 | Minha conta | Minhas simulações, Favoritos e momentum, Meus dados e privacidade, Planos e assinatura | O que é meu: simulações guardadas, favoritos, exportar e apagar os dados, plano |
 | Administração | Administração | Usuários, planos, assinaturas e registro de ações (só administradores) |
 

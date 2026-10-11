@@ -45,13 +45,34 @@ def test_a_pagina_inicial_explica_e_leva_aos_proximos_passos():
     app = _app_local()
     texto = " ".join(m.value for m in app.markdown)
     assert "Entenda uma ação antes de investir" in texto
-    assert "Escolha um ativo" in texto and "Teste uma ideia" in texto
-    assert [b.label for b in app.button] == ["Começar pela visão geral"]
+    for principio in ("Sem olhar o futuro", "Com custos", "Honesto", "Explicado"):
+        assert principio in texto
+    assert "TickerLab Trade" in texto  # o cartão da pesquisa de trading
+    assert [b.label for b in app.button] == ["Analisar"]
+    assert [t.key for t in app.text_input] == ["ativo_do_inicio"]
+
+
+def test_analisar_no_inicio_abre_a_visao_geral_com_o_ativo_digitado():
+    app = _app_local()
+    app.text_input(key="ativo_do_inicio").input("vale3.sa")
+    app.button(key="comecar").click().run()
+    assert not app.exception
+    assert app.session_state["ticker"] == "VALE3.SA"
+    assert app.text_input(key="ticker").value == "VALE3.SA"  # já na Visão geral
+
+
+def test_termos_e_privacidade_ficam_fora_do_menu_mas_abrem():
+    app = _app_local()
+    paginas = {i["url_pathname"]: i for i in app._registered_pages.values()}
+    assert "termos" in paginas and "privacidade" in paginas
+    ir_para(app, "termos")
+    assert not app.exception
 
 
 def test_paginas_de_analise_mostram_o_ativo_e_as_outras_nao():
     app = _app_local()
-    assert not app.text_input  # Início não pede ativo
+    # Início tem o seu próprio campo (que leva à Visão geral), mas não o do topo das análises
+    assert not [t for t in app.text_input if t.key == "ticker"]
     ir_para(app, "visao_geral")
     assert [t.key for t in app.text_input] == ["ticker"]
     ir_para(app, "guia")

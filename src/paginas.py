@@ -8,23 +8,27 @@ from dataclasses import dataclass
 
 from src.planos import APRENDIZADO_DE_MAQUINA, PARES
 
-GRUPO_COMECAR = "Começar"
+# Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
+GRUPO_TOPO = ""
 GRUPO_ANALISAR = "Analisar"
 GRUPO_ESTRATEGIAS = "Estratégias"
 GRUPO_AVANCADO = "Avançado (Pro)"
+GRUPO_APRENDER = "Aprender"
 GRUPO_CONTA = "Minha conta"
 GRUPO_ADMIN = "Administração"
 GRUPOS = (
-    GRUPO_COMECAR,
+    GRUPO_TOPO,
     GRUPO_ANALISAR,
     GRUPO_ESTRATEGIAS,
     GRUPO_AVANCADO,
+    GRUPO_APRENDER,
     GRUPO_CONTA,
     GRUPO_ADMIN,
 )
 
 FRASE_DE_CADA_GRUPO = {
-    GRUPO_COMECAR: "O que é o TickerLab e como usar.",
+    GRUPO_TOPO: "O começo e a pesquisa de trading do TickerLab.",
+    GRUPO_APRENDER: "Como os números são calculados, os limites do app e cada termo explicado.",
     GRUPO_ANALISAR: "Entenda um ativo: preço, risco e comportamento ao longo do tempo.",
     GRUPO_ESTRATEGIAS: "Teste regras de compra e venda no passado, com custos.",
     GRUPO_AVANCADO: "Ferramentas mais técnicas, do plano Pro.",
@@ -43,6 +47,9 @@ class Pagina:
     recurso: str | None = None  # recurso do plano que a página exige (None = livre)
     precisa_do_ativo: bool = True  # mostra os campos de ativo e período no topo
     somente_admin: bool = False  # só aparece no menu (e só abre) para administradores
+    no_menu: bool = (
+        True  # False: fora do menu, mas com endereço (Termos e Privacidade, no rodapé)
+    )
 
     @property
     def url(self) -> str:
@@ -57,7 +64,7 @@ PAGINAS = (
     Pagina(
         "inicio",
         "Início",
-        GRUPO_COMECAR,
+        GRUPO_TOPO,
         ":material/home:",
         "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
         precisa_do_ativo=False,
@@ -65,7 +72,7 @@ PAGINAS = (
     Pagina(
         "guia",
         "Guia e glossário",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/menu_book:",
         "Como os números são calculados, os limites do app e cada termo explicado em português.",
         precisa_do_ativo=False,
@@ -73,17 +80,27 @@ PAGINAS = (
     Pagina(
         "termos",
         "Termos de uso",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/gavel:",
         "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
         precisa_do_ativo=False,
+        no_menu=False,
     ),
     Pagina(
         "privacidade",
         "Política de privacidade",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/lock_person:",
         "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
+        precisa_do_ativo=False,
+        no_menu=False,
+    ),
+    Pagina(
+        "trade",
+        "TickerLab Trade",
+        GRUPO_TOPO,
+        ":material/memory:",
+        "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
         precisa_do_ativo=False,
     ),
     Pagina(

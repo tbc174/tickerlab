@@ -1,9 +1,52 @@
-[theme]
-base = "dark"
-primaryColor = "#2962ff"
-backgroundColor = "#000000"
-secondaryBackgroundColor = "#0d0d12"
-textColor = "#ffffff"
+# Tema do TickerLab (identidade aprovada em 11/10/2026; as cores vêm de src/marca.py e um teste
+# confere que batem). Quase todo o visual sai daqui, do tema oficial do Streamlit; o CSS próprio
+# (src/estilo.py) fica só para o que o tema não cobre.
+
+[server]
+# serve a pasta static/ (fontes e símbolo): as fontes saem do nosso servidor, não do Google Fonts,
+# para não mandar o IP de quem visita a terceiros
+enableStaticServing = true
 
 [client]
 toolbarMode = "minimal"
+
+[[theme.fontFaces]]
+family = "Manrope"
+url = "app/static/fontes/Manrope-VariableFont_wght.ttf"
+weight = "200 800"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "JetBrains Mono"
+url = "app/static/fontes/JetBrainsMono-VariableFont_wght.ttf"
+weight = "100 800"
+style = "normal"
+
+[theme]
+base = "dark"
+font = "Manrope, sans-serif"
+headingFont = "Manrope, sans-serif"
+codeFont = "'JetBrains Mono', monospace"
+headingFontWeights = [800, 800, 700, 700, 600, 600]
+metricValueFontWeight = 800
+# cores (src/marca.py)
+primaryColor = "#2962ff"
+backgroundColor = "#0a0d13"
+secondaryBackgroundColor = "#161b26"
+textColor = "#e8ecf4"
+linkColor = "#6e95ff"
+linkUnderline = false
+borderColor = "rgba(148, 163, 190, 0.18)"
+dataframeBorderColor = "rgba(148, 163, 190, 0.14)"
+dataframeHeaderBackgroundColor = "#10141c"
+showWidgetBorder = true
+baseRadius = "0.625rem"
+buttonRadius = "0.625rem"
+blueColor = "#6e95ff"
+greenColor = "#2ebd85"
+redColor = "#f0525b"
+orangeColor = "#f5a524"
+yellowColor = "#f5b83d"
+violetColor = "#a98bff"
+grayColor = "#93a0b8"
+chartCategoricalColors = ["#6e95ff", "#f5a524", "#2bc4a9", "#e874b6", "#e8d44d", "#a98bff"]
