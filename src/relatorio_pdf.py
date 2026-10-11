@@ -56,6 +56,7 @@ class RelatorioPDF(FPDF):
         self.set_title(f"TickerLab — {titulo}")
         self.set_author("TickerLab")
         self.set_creator("TickerLab (tickerlab.com.br)")
+        self.creation_date = gerado_em  # a data dos dados, não a do computador
         self.set_text_color(*_rgb(estilo.texto))
 
     def _cor_do_texto(self, apagado: bool = False) -> None:
