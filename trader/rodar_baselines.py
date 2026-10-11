@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from trader import avaliacao, baselines, juros, viabilidade
+from trader import armazem, avaliacao, baselines, juros, viabilidade
 from trader.backtest import executar_backtest
 from trader.custos import MARGEM_DO_SWAP, VERSAO_DA_TABELA, custos_do_ativo
 from trader.holdout import (
@@ -86,6 +86,7 @@ def rodar_baseline(
     """Backtest de cada ativo com custos ×1 e ×2; devolve resumo da carteira e por ativo."""
     por_multiplicador: dict[str, dict] = {}
     por_ativo: list[dict] = []
+    series_da_carteira: dict[str, pd.Series] = {}
     for mult in MULTIPLICADORES:
         retornos: dict[str, pd.Series] = {}
         for serie in series:
@@ -128,7 +129,14 @@ def rodar_baseline(
                     }
                 )
         por_multiplicador[f"x{mult:g}"] = avaliacao.resumir_carteira(retornos)
-    return {"carteira": por_multiplicador, "por_ativo": por_ativo}
+        series_da_carteira[f"x{mult:g}"] = avaliacao.retorno_da_carteira(
+            avaliacao.montar_carteira(retornos)
+        )
+    return {
+        "carteira": por_multiplicador,
+        "por_ativo": por_ativo,
+        "series": series_da_carteira,
+    }
 
 
 def especificacao(nome: str, series: list[SerieDoAtivo]) -> dict:
@@ -327,6 +335,12 @@ def main() -> int:
         )
         resultados[nome] = rodar_baseline(nome, series, taxas)
         registro.salvar_resultado(tentativa, {"carteira": resultados[nome]["carteira"]})
+        armazem.salvar(
+            registro.obter(tentativa)["hash"],
+            resultados[nome]["series"]["x1"],
+            resultados[nome]["series"]["x2"],
+            apelido=f"baseline_{nome}",
+        )
         tentativas[nome] = tentativa
     print("Viabilidade...")
     viab, apostas = rodar_viabilidade(series)

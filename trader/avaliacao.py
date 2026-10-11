@@ -77,7 +77,9 @@ def montar_carteira(retornos: dict[str, pd.Series]) -> pd.DataFrame:
     """Uma coluna por ativo, em dias úteis (cripto com o fim de semana composto na segunda)."""
     if not retornos:
         return pd.DataFrame()
-    return pd.concat({nome: para_dias_uteis(r) for nome, r in retornos.items()}, axis=1)
+    return pd.concat(
+        {nome: para_dias_uteis(r) for nome, r in retornos.items()}, axis=1, sort=True
+    )
 
 
 def retorno_da_carteira(tabela: pd.DataFrame) -> pd.Series:

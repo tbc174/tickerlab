@@ -150,13 +150,15 @@ def executar_backtest(
     custos: Custos | None = None,
     limite: float = 1.0,
     retorno_do_ativo: pd.Series | None = None,
+    com_operacoes: bool = True,
 ) -> ResultadoBacktest:
     """Simula a estratégia.
 
     `posicao_desejada` é a decisão tomada no FIM de cada dia: de -`limite` (vendido) a
     +`limite` (comprado), 0 = caixa. A posição que de fato rende em um dia é a de ontem.
     `retorno_do_ativo`, se dado, substitui a variação do fechamento (ex.: `retornos_seguros`,
-    que não explode com preço negativo).
+    que não explode com preço negativo). `com_operacoes=False` pula a lista de operações (lenta
+    com milhares de trocas); o retorno é o mesmo.
     """
     custos = custos or Custos()
     if limite <= 0:
@@ -203,7 +205,11 @@ def executar_backtest(
         custos=custo_do_dia,
         swap=swap,
         curva_de_capital=(1 + retorno).cumprod(),
-        operacoes=_extrair_operacoes(posicao, retorno, custo_do_dia),
+        operacoes=(
+            _extrair_operacoes(posicao, retorno, custo_do_dia)
+            if com_operacoes
+            else pd.DataFrame(columns=COLUNAS_DAS_OPERACOES)
+        ),
         giro=float(mudanca.sum()),
     )
 

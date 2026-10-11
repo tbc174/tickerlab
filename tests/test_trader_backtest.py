@@ -250,3 +250,13 @@ def test_retorno_do_ativo_com_datas_diferentes_e_recusado():
         executar_backtest(
             p, _posicao([0, 0, 0], p), retorno_do_ativo=pd.Series([0.0, 0.0])
         )
+
+
+def test_sem_operacoes_da_o_mesmo_retorno_e_e_mais_leve():
+    rng = np.random.default_rng(8)
+    p = _precos(100 * np.cumprod(1 + rng.normal(0, 0.01, 500)))
+    pos = _posicao(rng.integers(-1, 2, 500), p)
+    com = executar_backtest(p, pos, Custos(spread=0.0002))
+    sem = executar_backtest(p, pos, Custos(spread=0.0002), com_operacoes=False)
+    pd.testing.assert_series_equal(com.retorno, sem.retorno)
+    assert sem.operacoes.empty and not com.operacoes.empty

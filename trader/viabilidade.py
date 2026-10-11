@@ -57,7 +57,7 @@ def retornos_semanais(retornos: dict[str, pd.Series]) -> pd.DataFrame:
         nome: (1 + para_dias_uteis(r)).resample("W-FRI").prod() - 1
         for nome, r in retornos.items()
     }
-    tabela = pd.concat(semanais, axis=1)
+    tabela = pd.concat(semanais, axis=1, sort=True)
     # semanas sem nenhum dado do ativo viram vazio, não zero
     contagem = pd.concat(
         {
@@ -65,6 +65,7 @@ def retornos_semanais(retornos: dict[str, pd.Series]) -> pd.DataFrame:
             for nome, r in retornos.items()
         },
         axis=1,
+        sort=True,
     )
     return tabela.where(contagem > 0)
 
