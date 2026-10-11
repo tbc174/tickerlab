@@ -103,14 +103,14 @@ class Tela(QWidget):
 
 
 def _texto_do_embaralhado(vaz: dict) -> str:
-    """Regra da v0.2 (contra a referência da proporção) ou, nas tentativas antigas, a da v0.1."""
+    """Contra a referência da proporção (desde a v0.2) ou, nas tentativas antigas, a regra da v0.1."""
     emb = formatar(vaz.get("sharpe_embaralhado"), "num2")
     if "sharpe_da_diferenca" in vaz:
         return (
             f"rótulos embaralhados {emb} contra a proporção "
             f"{formatar(vaz.get('sharpe_proporcao'), 'num2')} (diferença "
-            f"{formatar(vaz.get('sharpe_da_diferenca'), 'num2')}, limite "
-            f"±{formatar(vaz.get('limite_da_diferenca'), 'num2')})"
+            f"{formatar(vaz.get('sharpe_da_diferenca'), 'num2')}; desde a v0.4 só reprova acima de "
+            f"+{formatar(vaz.get('limite_da_diferenca'), 'num2')})"
         )
     return (
         f"rótulos embaralhados {emb} "
@@ -257,6 +257,8 @@ class TelaPesquisa(Tela):
                 "H1 linear",
                 "H2 árvores",
                 "H3 meta-rotulagem",
+                "H4 deep learning",
+                "H5 séries temporais",
             ]
         )
         self.f_veredito = QComboBox()

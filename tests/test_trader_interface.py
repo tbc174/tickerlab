@@ -252,6 +252,35 @@ def test_pesquisa_filtra_e_mostra_o_veredito_item_a_item(janela, qtbot):
     assert pesquisa.tabela.modelo.rowCount() == 1
 
 
+def test_filtro_tem_todas_as_familias_do_registro(janela):
+    from trader.registro import FAMILIAS
+
+    pesquisa: TelaPesquisa = janela.telas[1]
+    no_filtro = {
+        pesquisa.f_familia.itemText(i).split()[0]
+        for i in range(1, pesquisa.f_familia.count())
+    }
+    assert no_filtro == set(FAMILIAS)
+
+
+def test_texto_do_embaralhado_segue_a_regra_de_cada_versao():
+    from trader.interface.telas import _texto_do_embaralhado
+
+    novo = _texto_do_embaralhado(
+        {
+            "sharpe_embaralhado": -0.16,
+            "sharpe_proporcao": 0.23,
+            "sharpe_da_diferenca": -0.74,
+            "limite_da_diferenca": 0.46,
+        }
+    )
+    assert "proporção 0,23" in novo and "acima de +0,46" in novo
+    antigo = _texto_do_embaralhado(
+        {"sharpe_embaralhado": 0.41, "limite_do_embaralhado": 0.42}
+    )
+    assert "v0.1" in antigo and "±0,42" in antigo
+
+
 def test_baselines_mostram_resumo_ativos_e_apostas(janela):
     janela.ir_para(2)
     tela = janela.telas[2]
