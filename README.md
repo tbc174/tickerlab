@@ -1,48 +1,121 @@
 # TickerLab
 
-Serviço web (SaaS) de análise de ações e teste de estratégias, feito para a matéria de Python e
-Pandas. Digite o ticker de uma empresa, o app busca os dados no Yahoo Finance, analisa com Pandas
-e testa estratégias com um motor de backtest escrito à mão, sem biblioteca pronta de backtest.
-Tem contas (login com o Google), planos Gratuito e Pro (pagamento em modo de teste do Stripe),
-painel de administração e privacidade de acordo com a LGPD.
+O TickerLab é uma plataforma educacional de **análise de ações e teste de estratégias com dados
+do passado**, para a bolsa brasileira (B3) e a americana. Começou como trabalho da matéria de
+Python e Pandas e virou um serviço web completo (SaaS), com contas, planos, relatórios em PDF, site
+público e uma linha de pesquisa em trading quantitativo com machine learning.
+
+Digite o código de um ativo e o app busca os dados, analisa com Pandas e testa estratégias num
+motor de backtest escrito à mão, sem biblioteca pronta de backtest. Cada número vem explicado em
+português, e o app mostra também o que **não** funciona.
 
 > Projeto educacional. Nada aqui é recomendação de investimento. Os dados vêm do Yahoo Finance
 > e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.
 
 ![Preço da PETR4 com médias móveis e volume](docs/imagens/preco.png)
 
+## As partes do projeto
+
+| Parte | O que é | Onde fica |
+|---|---|---|
+| **App** (`app.tickerlab.com.br`) | o serviço web: análises, estratégias, carteiras, relatórios em PDF, contas e planos | `app.py`, `src/` |
+| **Site público** (`tickerlab.com.br`) | páginas estáticas que apresentam o produto, os planos e a metodologia, e levam ao app | `site/`, gerado por `scripts/gerar_site.py` |
+| **API** | saúde do serviço e webhook do Stripe | `src/api.py` (FastAPI) |
+| **TickerLab Trade** | pesquisa de trading quantitativo com machine learning e MetaTrader 5, em conta de demonstração | `trader/` (roda no PC, fora do app) |
+| **Caderno de estudos** | anotações do aprendizado: Python, Pandas, Git, Streamlit, finanças e os erros resolvidos | `notas/`, `guias/`, `estudos/` |
+
+**Tecnologias:** Python 3.12, Pandas, yfinance, Streamlit, Plotly, SQLAlchemy 2, Alembic,
+PostgreSQL 16, FastAPI, Stripe (modo de teste), Docker Compose e GitHub Actions. Na pesquisa:
+scikit-learn, LightGBM, statsmodels, PyTorch (CPU), numba, joblib e o pacote MetaTrader5.
+
 ## O que o app faz
 
-**Identidade visual:** tema escuro em degraus de cinza-azulado, azul `#2962FF`, o símbolo "Vela T"
-(`static/marca/`) e a fonte Manrope servida pelo próprio site, sem Google Fonts. As cores ficam
-num lugar só, `src/marca.py`, de onde saem o tema do Streamlit, o CSS e o tema dos gráficos.
-
-No menu do topo, **Início** e **TickerLab Trade** ficam como links diretos, seguidos de 5 grupos
-(e um sexto, só para administradores). Termos de uso e Política de privacidade ficam no rodapé.
-Cada página tem uma frase dizendo para que serve, e cada número tem uma explicação em português
-ao passar o mouse no **?**.
+No menu do topo, **Início** e **Gerar relatório** ficam como links diretos, seguidos dos grupos
+abaixo. Cada página tem uma frase dizendo para que serve, e cada número tem uma explicação em
+português ao passar o mouse no **?**.
 
 | Grupo | Páginas | Pergunta que respondem |
 |---|---|---|
-| (direto no menu) | Início, TickerLab Trade | O que é isto? E a pesquisa de trading quantitativo, em que fase está? |
+| (direto no menu) | Início, Gerar relatório | Por onde começo? Como levo a análise comigo em PDF? |
 | Analisar | Visão geral, Risco, Retorno mensal, Comparar ativos, Correlação e beta | Como o ativo se comportou: retorno, volatilidade, quedas, calendário, comparação com Ibovespa e S&P 500, beta |
-| Estratégias | Backtest, Ranking, Carteira, Experimentos, Fases do mercado | E se eu tivesse seguido uma regra? Qual estratégia foi melhor, descontando a sorte? E com vários ativos? |
+| Estratégias | Backtest, Ranking de estratégias, Carteira, Experimentos, Fases do mercado | E se eu tivesse seguido uma regra? Qual estratégia foi melhor, descontando a sorte? E com vários ativos? |
 | Avançado (Pro) | Aprendizado de máquina, Pairs trading | Um modelo vence a previsão ingênua? Pares de ativos cointegrados |
-| Aprender | Guia e glossário (Termos e Privacidade no rodapé) | Como os números são calculados e o que cada termo quer dizer |
+| Aprender | Guia e glossário, Termos de uso, Política de privacidade | Como os números são calculados e o que cada termo quer dizer |
 | Minha conta | Minhas simulações, Favoritos e momentum, Meus dados e privacidade, Planos e assinatura | O que é meu: simulações guardadas, favoritos, exportar e apagar os dados, plano |
+| Mais | TickerLab Trade (Beta) | Em que fase está a pesquisa de trading quantitativo? |
 | Administração | Administração | Usuários, planos, assinaturas e registro de ações (só administradores) |
 
 ![Evolução do capital: estratégia contra comprar e segurar](docs/imagens/backtest.png)
 
-No Backtest há 12 estratégias (tendência e reversão), custos, stops, CDI, imposto e validação
-(treino e teste, walk-forward, mapa de parâmetros, Monte Carlo, teste contra o acaso, Sharpe
-deflacionado e PBO). O Ranking compara todas descontando a sorte de escolher a melhor entre
-muitas. A Carteira traz rotação, momentum dual, inverso da volatilidade, baixa volatilidade,
-canário e paridade hierárquica de risco (HRP).
+- **Backtest:** 12 estratégias (tendência e reversão), custos, stops, CDI, imposto e validação
+  (treino e teste, walk-forward, mapa de parâmetros, Monte Carlo, teste contra o acaso, Sharpe
+  deflacionado e PBO). O **Ranking** compara todas descontando a sorte de escolher a melhor
+  entre muitas.
+- **Carteira:** rotação, momentum dual, inverso da volatilidade, baixa volatilidade, canário e
+  paridade hierárquica de risco (HRP).
+- **Relatórios em PDF (Report Studio):** relatórios do ativo, de comparação, de backtest e de
+  carteira, com prévia real antes de baixar, modelos (Executivo, Completo ou Personalizado),
+  escolha e ordem das seções e três estilos visuais. Os números saem das mesmas funções que a tela
+  usa, e a seção "Limites e cuidados" é obrigatória. Os relatórios ficam guardados em "Meus
+  relatórios".
+- **Minha carteira (B3):** envie a planilha de posição baixada na Área do Investidor da B3 para
+  analisar a sua carteira e gerar o relatório. O arquivo é lido só na memória: nada é gravado e
+  nada vai para os logs.
+- **Busca de ativos:** campo com autocomplete por código ou nome da empresa, a partir de um
+  catálogo de cerca de 1.700 ativos (B3, S&P 500, índices, criptomoedas e câmbio). Um código
+  digitado nunca é trocado em silêncio.
+- **Tutorial por objetivo:** três portas de entrada (analisar uma ação, entender a carteira, gerar
+  um relatório), com passos que acontecem em telas de verdade.
+- **Outros:** link compartilhável com as escolhas da tela, conversão de ativos em dólar para reais,
+  dados de exemplo para usar sem internet.
 
 | Risco | Retorno mensal |
 |---|---|
 | ![Drawdown](docs/imagens/drawdown.png) | ![Retorno mensal](docs/imagens/retorno-mensal.png) |
+
+### Planos
+
+Os limites ficam num lugar só (`src/planos.py`) e valem também no banco de dados. A cobrança é
+**só em modo de teste** do Stripe: nenhum pagamento real é feito.
+
+| | Gratuito | Plus | Pro |
+|---|---|---|---|
+| Simulações guardadas | 5 | 30 | ilimitadas |
+| Favoritos | 3 | 10 | 20 |
+| Ativos na carteira | 4 | 6 | 8 |
+| Relatórios em PDF | do ativo, 3 por dia | todos os tipos, 20 por dia | todos, sem limite |
+| Aprendizado de máquina e Pairs trading | não | não | sim |
+
+### Identidade visual
+
+Tema escuro em degraus de cinza-azulado, azul `#2962FF`, o símbolo "Vela T" (`static/marca/`) e
+as fontes Manrope e JetBrains Mono servidas pelo próprio site, sem Google Fonts. As cores ficam
+num lugar só, `src/marca.py`, de onde saem o tema do Streamlit, o CSS, o tema dos gráficos e o
+site público.
+
+## TickerLab Trade: a pesquisa de trading quantitativo
+
+Uma linha de pesquisa separada do app, para responder com rigor: **um modelo de machine learning,
+treinado só com o passado, consegue operar melhor do que uma regra simples de tendência, depois de
+custos e descontando a sorte de testar muitas ideias?**
+
+- **Fases:** M0 ambiente (MetaTrader 5 em conta de demonstração) → M1 dados (histórico diário de
+  mais de 80 ativos: forex, ações da B3, índices, renda fixa, commodities e cripto) → M2 pesquisa
+  com ML → M3 teste em conta demo → M4 controles de risco → M5 painel. Hoje a pesquisa está na M2.
+- **Método da M2:** critério de aprovação escrito e aprovado **antes** de ver qualquer resultado
+  (Sharpe deflacionado, PBO, t-estatística ≥ 3, vitória sobre a regra de tendência com folga
+  estatística, consistência entre ativos e no tempo, estresse de custos, teste contra o acaso);
+  validação cruzada combinatória com expurgo (CPCV); custos por classe de ativo e carry de juros;
+  testes automáticos de vazamento de informação; registro de **todas** as tentativas; os últimos
+  3 anos de dados lacrados como prova final.
+- **Resultado até agora:** nenhum modelo foi aprovado (regressão logística, floresta aleatória,
+  LightGBM, meta-rotulagem, rede neural MLP e ARIMA). Resultado negativo também é publicado.
+- **Regras:** só leitura (há testes que impedem o código de enviar ordens), só conta de
+  demonstração, nenhuma ordem com dinheiro real sem decisão escrita do autor, e nada disso roda no
+  app público. O pacote `MetaTrader5` só funciona no Windows, por isso a pesquisa roda no PC.
+
+A base do pacote está em `trader/`; o código das fases M1 e M2 fica num ramo separado até a
+conclusão da pesquisa.
 
 ## Como rodar no seu computador
 
@@ -59,12 +132,19 @@ contas, com todos os recursos liberados e um banco SQLite em `dados_locais/`. Se
 o Yahoo Finance falhar), marque "Usar dados de exemplo" em "Opções avançadas": ele usa cópias de
 5 anos de 13 tickers guardadas em `dados_de_exemplo/`.
 
-Testes e estilo:
+Site público e pesquisa:
+
+```powershell
+.venv\Scripts\python -m scripts.gerar_site                     # gera site/
+.venv\Scripts\python -m pip install -r requirements-trader.txt  # só para a pesquisa (Windows)
+```
+
+Testes e estilo (mais de mil testes automatizados; a suíte leva alguns minutos):
 
 ```powershell
 .venv\Scripts\python -m pytest
 .venv\Scripts\python -m ruff check .
-.venv\Scripts\python -m ruff format --check app.py src tests
+.venv\Scripts\python -m ruff format --check app.py src tests trader scripts
 ```
 
 ## Configuração (produção)
@@ -76,14 +156,15 @@ Segredos nunca vão para o Git: ficam em arquivos com permissão 600 no servidor
 | `.env` (modelo em `.env.example`) | `TICKERLAB_DATABASE_URL` (PostgreSQL), `TICKERLAB_ADMINS`, chaves do Stripe de **teste** (`rk_test_`/`sk_test_`: chaves de produção são recusadas), `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET`, `TICKERLAB_URL_PUBLICA` |
 | `.streamlit/secrets.toml` (modelo em `secrets.toml.example`) | Cliente OAuth do Google (`[auth]`) |
 
-O esquema do banco é criado pelas migrações do Alembic (`migracoes/`), aplicadas sozinhas quando
-o contêiner sobe: `python -m alembic upgrade head`.
+O esquema do banco é criado pelas migrações do Alembic (`migracoes/`, de 0001 a 0006), aplicadas
+sozinhas quando o contêiner sobe: `python -m alembic upgrade head`.
 
 ## Publicar com Docker
 
 O `compose.yaml` sobe dois serviços com a mesma imagem: `tickerlab` (o app, `127.0.0.1:8501`) e
 `tickerlab-api` (FastAPI, `127.0.0.1:8000`: `/saude` e o webhook do Stripe). As portas ficam só em
-`127.0.0.1`; o acesso de fora vem de um proxy (aqui, o Tailscale).
+`127.0.0.1`; o acesso de fora vem de um túnel (Cloudflare Tunnel), sem nenhuma porta aberta para a
+internet.
 
 ```bash
 mkdir -p dados_locais && touch .streamlit/secrets.toml   # pasta do cache e arquivo de login
@@ -95,14 +176,18 @@ cobrança de teste.
 
 ## Operação
 
+- **Hospedagem:** um VPS em São Paulo com os contêineres Docker e o PostgreSQL, sem nenhuma porta
+  aberta para a internet. O tráfego chega pelo Cloudflare Tunnel: `app.tickerlab.com.br` (app),
+  `api.tickerlab.com.br` (API e webhook) e `tickerlab.com.br` (site público, servido pelo nginx).
+  A administração do servidor é feita só por uma rede privada (Tailscale).
 - **Deploy automático:** `scripts/deploy-automatico.sh`, no cron do servidor (a cada 5 minutos),
   puxa a `main` **só se os testes do GitHub Actions passaram** nesse commit, reconstrói os
   contêineres, espera o app e a API ficarem saudáveis e, se não ficarem, volta sozinho para a
   versão anterior. Log em `~/deploy-tickerlab.log`.
 - **Logs:** uma linha de JSON por registro (`TICKERLAB_LOG_FORMATO=json`), sem e-mail nem nome:
   `docker logs tickerlab-api | jq`.
-- **Monitor:** o Uptime Kuma verifica `http://127.0.0.1:8501/_stcore/health` (app) e
-  `http://127.0.0.1:8000/saude` (API).
+- **Monitor:** um Uptime Kuma em outra máquina verifica de fora o app, a API, o site e a rota
+  do webhook.
 - **Carga leve:** `python scripts/carga_leve.py URL --total 300 --simultaneas 20`.
 - **Integração contínua:** o GitHub Actions roda `ruff` e os testes (com PostgreSQL de verdade),
   constrói a imagem e confere que o app, a API e o login do Google abrem dentro dela.
@@ -112,12 +197,13 @@ cobrança de teste.
 - Login só com o Google; e-mail não verificado é recusado. Cada pessoa vê apenas os próprios
   dados (toda consulta filtra pelo usuário, com testes de isolamento).
 - Webhook do Stripe com assinatura verificada, idempotente e tolerante a eventos fora de ordem.
+  O plano só muda pelo webhook.
 - Painel de administração confere o papel **no banco** a cada ação e registra tudo em uma
-  auditoria que guarda só ids, nunca e-mail ou nome.
+  auditoria que guarda só ids, nunca e-mail ou nome. Erros do banco não expõem dados pessoais.
 - LGPD: aceite dos termos no primeiro acesso (com versão e data), exportação dos dados em JSON e
-  exclusão da conta em cascata, encerrando antes a cobrança no Stripe. Os textos estão em
-  `conteudo/termos.md` e `conteudo/privacidade.md` (modelos para um projeto educacional, sem
-  revisão de advogado).
+  exclusão da conta em cascata, encerrando antes a cobrança no Stripe. A planilha da B3 nunca é
+  gravada. Os textos estão em `conteudo/termos.md` e `conteudo/privacidade.md` (modelos para um
+  projeto educacional, sem revisão de advogado).
 
 ## Princípios do projeto
 
@@ -125,11 +211,13 @@ cobrança de teste.
   há testes que conferem que cortar o futuro não muda o passado.
 - **Honestidade com os números.** O app mostra o que não funcionou: a maioria das estratégias
   não passa no teste contra o acaso, o Sharpe vem com intervalo e o modelo de aprendizado de
-  máquina é comparado com uma previsão ingênua.
-- **Limites explícitos.** Só 5 anos de dados, viés de sobrevivência, custos e imposto
-  simplificados, perna vendida do pairs trading sem o custo do aluguel.
+  máquina é comparado com uma previsão ingênua. Na pesquisa, as regras são escritas antes dos
+  resultados e resultado negativo também conta.
+- **Limites explícitos.** Viés de sobrevivência, custos e imposto simplificados, perna vendida do
+  pairs trading sem o custo do aluguel.
 - **Cada conceito explicado.** O glossário (`conteudo/glossario.md`) e as explicações de cada
   estratégia (`conteudo/estrategias.md`) aparecem na tela e são conferidos por testes.
+- **Sem promessa de rentabilidade.** Em nenhuma tela, relatório ou página do site.
 
 ## Estrutura
 
@@ -137,7 +225,8 @@ cobrança de teste.
 app.py                interface: menu, páginas e telas (só mostra; as contas ficam em src/)
 src/
   paginas.py          o mapa do site: grupos, páginas e a frase de cada uma
-  planos.py           limites do Gratuito e do Pro (um lugar só)
+  planos.py           limites do Gratuito, do Plus e do Pro (um lugar só)
+  marca.py            cores e fontes da identidade visual
   autenticacao.py     regras do login com o Google
   banco/              modelo, conexão, usuários e dados por usuário (SQLAlchemy)
   cobranca.py         Stripe: pagamento, portal e eventos (idempotentes)
@@ -146,27 +235,38 @@ src/
   conformidade.py     termos, exportar os meus dados e apagar a conta
   auditoria.py        registro de ações sem dados pessoais
   simulacoes.py       salvar e reabrir simulações
+  relatorios.py, relatorio_pdf.py, estilos_pdf.py, graficos_pdf.py, previa_pdf.py   relatórios em PDF
+  carteira_b3.py      leitura da planilha da Área do Investidor da B3
+  catalogo.py         catálogo da busca de ativos
+  tutorial.py         tutorial por objetivo e primeiros passos
+  trade.py            conteúdo da página TickerLab Trade
   logs.py             logs em texto ou JSON
-  dados.py, armazenamento.py, exemplos.py   dados do Yahoo, cache em SQLite e dados de exemplo
+  dados.py, armazenamento.py, exemplos.py, moedas.py   dados do Yahoo, cache, exemplos e câmbio
   indicadores.py, metricas.py               números básicos e métricas de desempenho
   backtest.py, estrategias.py, protecoes.py motor vetorizado, 12 estratégias e stops
   validacao.py, acaso.py, ranking.py        validação honesta dos resultados
   carteiras.py, hrp.py, experimentos.py, regimes.py, aprendizado.py, pares.py
   graficos.py         gráficos Plotly
-conteudo/             glossário, estratégias, termos de uso e política de privacidade
+trader/               TickerLab Trade: conexão de só leitura com o MetaTrader 5 e dados
+site/                 site público estático (gerado)
+static/               fontes e símbolo servidos pelo próprio site
+conteudo/             glossário, estratégias, catálogo de ativos, termos e privacidade
 migracoes/            migrações do banco (Alembic)
-scripts/              deploy automático, carga leve, imagens do README
+scripts/              deploy automático, site público, catálogo, marca, carga leve, imagens do README
 tests/                testes automatizados (pytest)
+notas/, guias/, estudos/   caderno de estudos do autor
 docs/imagens/         figuras deste README (geradas por scripts/gerar_imagens_do_readme.py)
 ```
 
 ## Referências das técnicas
 
 Sharpe probabilístico e deflacionado (Bailey e López de Prado, 2014), PBO (Bailey, Borwein,
-López de Prado e Zhu, 2017), barreira tripla, expurgo e embargo, meta-rotulagem e HRP
-(López de Prado), variância gerida (Moreira e Muir, 2017), cointegração (Engle e Granger).
-As fórmulas foram implementadas a partir da descrição dos artigos e conferidas por testes e
-simulações; vale conferi-las nas fontes originais antes de qualquer uso sério.
+López de Prado e Zhu, 2017), barreira tripla, expurgo e embargo, validação cruzada combinatória,
+meta-rotulagem e HRP (López de Prado), variância gerida (Moreira e Muir, 2017), cointegração
+(Engle e Granger), limiar de t-estatística para múltiplos testes (Harvey, Liu e Zhu, 2016) e
+decaimento de sinais depois de publicados (McLean e Pontiff, 2016). As fórmulas foram
+implementadas a partir da descrição dos artigos e conferidas por testes e simulações; vale
+conferi-las nas fontes originais antes de qualquer uso sério.
 
 ## Direitos autorais
 
@@ -179,5 +279,5 @@ autor. Ver o código no GitHub e criar um fork pela própria plataforma é permi
 uso do GitHub; isso não dá direito de uso fora dele.
 
 Componentes de terceiros continuam com as próprias licenças: as bibliotecas listadas em
-`requirements.txt` e as fontes Manrope e JetBrains Mono (SIL Open Font License, textos em
-`static/fontes/`).
+`requirements.txt` e `requirements-trader.txt` e as fontes Manrope e JetBrains Mono (SIL Open
+Font License, textos em `static/fontes/`).
