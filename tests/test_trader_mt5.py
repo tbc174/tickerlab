@@ -208,7 +208,11 @@ def test_o_codigo_do_trader_nao_tem_nenhuma_chamada_de_ordem():
     proibidos = re.compile(
         r"order_send|order_check|order_calc|ORDER_TYPE|TRADE_ACTION|position_close|orders_cancel|positions_close"
     )
-    for arquivo in (RAIZ / "trader").glob("*.py"):
+    arquivos = list((RAIZ / "trader").rglob("*.py"))
+    assert any(
+        a.parent.name == "interface" for a in arquivos
+    )  # a interface também é varrida
+    for arquivo in arquivos:
         assert not proibidos.search(arquivo.read_text(encoding="utf-8")), arquivo.name
 
 
@@ -216,3 +220,18 @@ def test_a_conexao_nao_tem_metodo_publico_de_ordem():
     publicos = [n for n in dir(ConexaoMT5) if not n.startswith("_")]
     assert not [n for n in publicos if "order" in n.lower() or "ordem" in n.lower()]
     assert pd.Timestamp  # (o pandas é só do formato dos candles)
+
+
+def test_cotacao_le_compra_venda_e_hora():
+    class ComTick(MT5Falso):
+        def symbol_info_tick(self, simbolo):
+            if simbolo != "EURUSD":
+                return None
+            return SimpleNamespace(bid=1.1000, ask=1.1002, time=1_700_000_000)
+
+    with ConexaoMT5(ComTick()) as mt5:
+        c = mt5.cotacao("EURUSD")
+        assert c["compra"] == 1.1 and c["venda"] == 1.1002
+        assert c["hora"] == pd.Timestamp(1_700_000_000, unit="s")
+        with pytest.raises(SimboloIndisponivelError):
+            mt5.cotacao("USDJPY")  # habilita, mas sem tick

@@ -128,6 +128,24 @@ class ConexaoMT5:
             "spread_atual_em_pontos": int(info.spread),
         }
 
+    def cotacao(self, simbolo: str) -> dict[str, Any]:
+        """Último preço de compra e de venda e a hora (só leitura), para a lista de observação."""
+        if not self._mt5.symbol_select(simbolo, True):
+            raise SimboloIndisponivelError(
+                f"Não consegui habilitar o símbolo {simbolo}."
+            )
+        tick = self._mt5.symbol_info_tick(simbolo)
+        if tick is None:
+            raise SimboloIndisponivelError(
+                f"Sem cotação de {simbolo}: {self._mt5.last_error()}"
+            )
+        return {
+            "simbolo": simbolo,
+            "compra": float(tick.bid),
+            "venda": float(tick.ask),
+            "hora": pd.Timestamp(int(tick.time), unit="s"),
+        }
+
     def candles(
         self,
         simbolo: str,

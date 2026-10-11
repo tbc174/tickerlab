@@ -8,6 +8,7 @@ Cada baseline entra no registro de tentativas (família H0) e o relatório vai p
 
 from __future__ import annotations
 
+import json
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -349,6 +350,9 @@ def main() -> int:
         [linha for r in resultados.values() for linha in r["por_ativo"]]
     ).to_csv(PASTA_DOS_RELATORIOS / "baselines_por_ativo.csv", index=False)
     viab.to_csv(PASTA_DOS_RELATORIOS / "viabilidade.csv", index=False)
+    (PASTA_DOS_RELATORIOS / "viabilidade_resumo.json").write_text(
+        json.dumps(apostas, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     caminho = escrever_relatorio(
         resultados, tentativas, viab, apostas, PASTA_DOS_RELATORIOS, registro, series
     )
