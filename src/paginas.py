@@ -13,12 +13,14 @@ GRUPO_ANALISAR = "Analisar"
 GRUPO_ESTRATEGIAS = "Estratégias"
 GRUPO_AVANCADO = "Avançado (Pro)"
 GRUPO_CONTA = "Minha conta"
+GRUPO_ADMIN = "Administração"
 GRUPOS = (
     GRUPO_COMECAR,
     GRUPO_ANALISAR,
     GRUPO_ESTRATEGIAS,
     GRUPO_AVANCADO,
     GRUPO_CONTA,
+    GRUPO_ADMIN,
 )
 
 FRASE_DE_CADA_GRUPO = {
@@ -26,7 +28,8 @@ FRASE_DE_CADA_GRUPO = {
     GRUPO_ANALISAR: "Entenda um ativo: preço, risco e comportamento ao longo do tempo.",
     GRUPO_ESTRATEGIAS: "Teste regras de compra e venda no passado, com custos.",
     GRUPO_AVANCADO: "Ferramentas mais técnicas, do plano Pro.",
-    GRUPO_CONTA: "O que é seu: simulações guardadas, favoritos e plano.",
+    GRUPO_CONTA: "O que é seu: simulações guardadas, favoritos, plano e privacidade.",
+    GRUPO_ADMIN: "Só para administradores: usuários, planos e assinaturas.",
 }
 
 
@@ -39,6 +42,7 @@ class Pagina:
     descricao: str  # uma frase: para que serve esta página
     recurso: str | None = None  # recurso do plano que a página exige (None = livre)
     precisa_do_ativo: bool = True  # mostra os campos de ativo e período no topo
+    somente_admin: bool = False  # só aparece no menu (e só abre) para administradores
 
     @property
     def url(self) -> str:
@@ -64,6 +68,22 @@ PAGINAS = (
         GRUPO_COMECAR,
         ":material/menu_book:",
         "Como os números são calculados, os limites do app e cada termo explicado em português.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "termos",
+        "Termos de uso",
+        GRUPO_COMECAR,
+        ":material/gavel:",
+        "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "privacidade",
+        "Política de privacidade",
+        GRUPO_COMECAR,
+        ":material/lock_person:",
+        "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -168,12 +188,29 @@ PAGINAS = (
         "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
     ),
     Pagina(
+        "meus_dados",
+        "Meus dados e privacidade",
+        GRUPO_CONTA,
+        ":material/shield_person:",
+        "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "planos",
         "Planos e assinatura",
         GRUPO_CONTA,
         ":material/workspace_premium:",
         "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
         precisa_do_ativo=False,
+    ),
+    Pagina(
+        "admin",
+        "Administração",
+        GRUPO_ADMIN,
+        ":material/admin_panel_settings:",
+        "Usuários, planos, assinaturas e o registro de ações de administrador.",
+        precisa_do_ativo=False,
+        somente_admin=True,
     ),
 )
 

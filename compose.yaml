@@ -17,6 +17,8 @@ services:
       - "127.0.0.1:8501:8501"
     env_file:
       - .env   # TICKERLAB_DATABASE_URL e os outros segredos (permissão 600, fora do Git)
+    environment:
+      TICKERLAB_LOG_FORMATO: json   # uma linha de JSON por registro: docker logs ... | jq
     volumes:
       - ./dados_locais:/app/dados_locais
       # login do Google: o secrets.toml fica só no servidor (permissão 600, fora do Git). Crie o
@@ -39,6 +41,8 @@ services:
       - "127.0.0.1:8000:8000"
     env_file:
       - .env   # TICKERLAB_DATABASE_URL, STRIPE_WEBHOOK_SECRET (permissão 600, fora do Git)
+    environment:
+      TICKERLAB_LOG_FORMATO: json
     networks:
       - db
     depends_on:

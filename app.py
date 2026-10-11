@@ -1,5 +1,6 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from src import administracao as adm
 from src import aprendizado, graficos
 from src import indicadores as ind
 from src.acaso import (
@@ -18,6 +20,7 @@ from src.acaso import (
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
+from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
 from src.autenticacao import (
     LoginInvalidoError,
     emails_de_admin,
@@ -38,6 +41,7 @@ from src.banco.dados_do_usuario import (
     salvar_preferencias,
     salvar_simulacao,
 )
+from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
@@ -57,6 +61,7 @@ from src.cobranca import (
     cobranca_esta_configurada,
     criar_pagina_de_pagamento,
     criar_portal_da_assinatura,
+    encerrar_cobranca,
 )
 from src.comparacao import (
     ATALHOS,
@@ -68,6 +73,15 @@ from src.comparacao import (
     interpretar_tickers,
     montar_tabela_comparativa,
     rebasear_para_100,
+)
+from src.conformidade import (
+    TEXTO_PARA_CONFIRMAR_A_EXCLUSAO,
+    VERSAO_DOS_TERMOS,
+    apagar_conta,
+    carregar_texto,
+    exportar_meus_dados,
+    precisa_aceitar_os_termos,
+    registrar_aceite,
 )
 from src.conteudo import (
     carregar_estrategias,
@@ -107,6 +121,7 @@ from src.exportacao import (
 from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
 from src.link import alternar_favorito, ler_parametros, montar_parametros
+from src.logs import configurar_logs
 from src.metricas import (
     calcular_intervalo_do_sharpe,
     calcular_kelly,
@@ -188,9 +203,7 @@ METRICAS_EM_PORCENTAGEM = {
 }
 METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-)
+configurar_logs()
 st.set_page_config(page_title="TickerLab", layout="wide")
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
 
@@ -299,7 +312,7 @@ def mostrar_tela_de_entrada():
         )
 
 
-def obter_usuario_logado():
+def _usuario_da_sessao():
     """O usuário da sessão (ou None no modo local, sem contas). Para a página se não houver login."""
     if not login_esta_configurado(_segredos()):
         return None
@@ -502,6 +515,16 @@ def mostrar_conta(usuario):
             verbo = "Termina" if assinatura.cancela_no_fim else "Renova"
             st.caption(f"{verbo} em {assinatura.periodo_fim:%d/%m/%Y}.")
         mostrar_assinatura("conta")
+        st.page_link(
+            PAGINAS_DO_MENU["planos"],
+            label="Planos e assinatura",
+            icon=":material/workspace_premium:",
+        )
+        st.page_link(
+            PAGINAS_DO_MENU["meus_dados"],
+            label="Meus dados e privacidade",
+            icon=":material/shield_person:",
+        )
         st.button("Sair", on_click=st.logout, width="stretch")
 
 
@@ -3953,9 +3976,312 @@ def pagina_planos():
     mostrar_assinatura("planos")
 
 
+def _corpo_do_texto(nome):
+    """O texto legal sem o título da primeira linha (o título vem do cabeçalho da página)."""
+    texto = carregar_texto(nome)
+    return texto.split("\n", 1)[1].lstrip() if texto.startswith("# ") else texto
+
+
+def pagina_termos():
+    cabecalho_da_pagina("termos")
+    st.markdown(_corpo_do_texto("termos"))
+    st.caption(f"Versão dos termos: {VERSAO_DOS_TERMOS}.")
+
+
+def pagina_privacidade():
+    cabecalho_da_pagina("privacidade")
+    st.markdown(_corpo_do_texto("privacidade"))
+    st.caption(f"Versão da política: {VERSAO_DOS_TERMOS}.")
+
+
+def _registrar_aceite(usuario):
+    try:
+        with obter_engine().begin() as conexao:
+            registrar_aceite(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao registrar o aceite dos termos")
+        st.toast("Não consegui registrar o aceite agora. Tente de novo em instantes.")
+        return
+    st.session_state.pop(
+        "usuario", None
+    )  # a próxima execução relê o usuário já com o aceite
+
+
+def mostrar_aceite_dos_termos(usuario):
+    """Tela de primeiro acesso (ou de termos novos): o app só abre depois do aceite."""
+    _, centro, _ = st.columns([1, 3, 1])
+    with centro:
+        st.markdown(
+            '<div class="tl-marca">Ticker<span>Lab</span></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
+        )
+        st.markdown(
+            "O TickerLab é um projeto educacional: **nada aqui é recomendação de "
+            "investimento**. Leia os termos e a política de privacidade e confirme."
+        )
+        with st.expander("Termos de uso"):
+            st.markdown(_corpo_do_texto("termos"))
+        with st.expander("Política de privacidade"):
+            st.markdown(_corpo_do_texto("privacidade"))
+        aceitou = st.checkbox(
+            "Li e aceito os Termos de uso e a Política de privacidade",
+            key="aceite_dos_termos",
+        )
+        st.button(
+            "Continuar",
+            type="primary",
+            disabled=not aceitou,
+            on_click=_registrar_aceite,
+            args=(usuario,),
+        )
+        st.button("Sair", on_click=st.logout)
+
+
+def obter_usuario_logado():
+    """O usuário da sessão, já com os termos aceitos (ou None no modo local)."""
+    usuario = _usuario_da_sessao()
+    if usuario is not None and precisa_aceitar_os_termos(usuario):
+        mostrar_aceite_dos_termos(usuario)
+        st.stop()
+    return usuario
+
+
+def _preparar_exportacao(usuario):
+    try:
+        with obter_engine().begin() as conexao:
+            dados = exportar_meus_dados(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao exportar os dados")
+        st.toast("Não consegui preparar o arquivo agora. Tente de novo em instantes.")
+        return
+    st.session_state["exportacao_json"] = json.dumps(
+        dados, ensure_ascii=False, indent=2, default=str
+    )
+
+
+def _apagar_minha_conta(usuario):
+    """Encerra a cobrança, apaga tudo e sai. Se a cobrança não puder ser encerrada, não apaga."""
+    try:
+        with obter_engine().connect() as conexao:
+            assinatura = buscar_assinatura(conexao, usuario.id)
+        encerrar_cobranca(assinatura)
+        with obter_engine().begin() as conexao:
+            apagar_conta(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao apagar a conta")
+        st.toast(
+            "Não consegui apagar a conta agora (a cobrança precisa ser encerrada antes). "
+            "Tente de novo em instantes."
+        )
+        return
+    st.session_state.clear()
+    st.logout()
+
+
+def pagina_meus_dados():
+    cabecalho_da_pagina("meus_dados")
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        st.info("Sem login (modo local) não há conta nem dados pessoais guardados.")
+        return
+    st.subheader("Baixar uma cópia dos meus dados")
+    st.caption(
+        "Perfil, preferências, favoritos, simulações e situação da assinatura, em um "
+        "arquivo JSON."
+    )
+    st.button(
+        "Preparar o arquivo",
+        key="preparar_exportacao",
+        on_click=_preparar_exportacao,
+        args=(usuario,),
+    )
+    if "exportacao_json" in st.session_state:
+        st.download_button(
+            "Baixar meus dados (JSON)",
+            st.session_state["exportacao_json"],
+            file_name="meus-dados-tickerlab.json",
+            mime="application/json",
+            key="baixar_meus_dados",
+        )
+    st.divider()
+    st.subheader("Apagar a minha conta")
+    st.warning(
+        "Isto apaga **para sempre** o seu perfil, preferências, favoritos e simulações, "
+        "e cancela a sua assinatura. Não dá para desfazer."
+    )
+    st.text_input(
+        f"Para confirmar, digite {TEXTO_PARA_CONFIRMAR_A_EXCLUSAO}",
+        key="confirmar_exclusao",
+    )
+    digitado = st.session_state.get("confirmar_exclusao", "").strip()
+    st.button(
+        "Apagar a minha conta e os meus dados",
+        type="primary",
+        key="apagar_minha_conta",
+        disabled=digitado != TEXTO_PARA_CONFIRMAR_A_EXCLUSAO,
+        on_click=_apagar_minha_conta,
+        args=(usuario,),
+    )
+
+
+def _admin_aplicar(usuario, tipo):
+    alvo_id = st.session_state.get("admin_alvo")
+    valor = st.session_state.get(f"admin_{tipo}")
+    try:
+        with obter_engine().begin() as conexao:
+            if tipo == "plano":
+                adm.alterar_plano(conexao, usuario.id, alvo_id, valor)
+            else:
+                adm.alterar_papel(conexao, usuario.id, alvo_id, valor)
+    except (PermissaoNegadaError, OperacaoInvalidaError) as erro:
+        st.toast(str(erro))
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao aplicar uma mudança de administrador")
+        st.toast("Não consegui aplicar agora. Tente de novo em instantes.")
+        return
+    st.toast("Pronto, mudança aplicada e registrada.")
+
+
+def _quando(momento):
+    return f"{momento:%d/%m/%Y %H:%M}" if momento else "—"
+
+
+def pagina_admin():
+    cabecalho_da_pagina("admin")
+    usuario = st.session_state.get("usuario")
+    if usuario is None or not usuario.e_admin:
+        st.error("Esta página é só para administradores.")
+        return
+    busca = st.text_input("Buscar por e-mail ou nome", key="admin_busca")
+    try:
+        with obter_engine().connect() as conexao:
+            resumo = adm.resumo_geral(conexao, usuario.id)
+            linhas = adm.listar_usuarios(conexao, usuario.id, busca)
+            registros = adm.auditoria_recente(conexao, usuario.id, 30)
+            eventos = adm.eventos_recentes_do_stripe(conexao, usuario.id, 15)
+    except PermissaoNegadaError:
+        st.error("Esta página é só para administradores.")
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao carregar o painel de administração")
+        st.warning("Não consegui carregar o painel agora.")
+        return
+
+    primeira = st.columns(4)
+    primeira[0].metric("Usuários", resumo["usuarios"])
+    primeira[1].metric("Plano Pro", resumo["pro"])
+    primeira[2].metric("Novos na semana", resumo["novos_na_semana"])
+    primeira[3].metric("Ativos na semana", resumo["ativos_na_semana"])
+    segunda = st.columns(4)
+    segunda[0].metric("Plano Gratuito", resumo["gratuito"])
+    segunda[1].metric(
+        "Assinaturas ativas", resumo["assinaturas_por_status"].get("active", 0)
+    )
+    segunda[2].metric("Simulações salvas", resumo["simulacoes"])
+    segunda[3].metric("Eventos do Stripe", resumo["eventos_do_stripe"])
+
+    st.subheader("Usuários")
+    if not linhas:
+        st.info("Nenhum usuário encontrado.")
+    else:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Nome": [l.nome or "—" for l in linhas],
+                    "E-mail": [l.email for l in linhas],
+                    "Plano": [l.plano for l in linhas],
+                    "Papel": [l.papel for l in linhas],
+                    "Assinatura": [l.status_da_assinatura or "—" for l in linhas],
+                    "Simulações": [l.simulacoes for l in linhas],
+                    "Criada em": [_quando(l.criado_em) for l in linhas],
+                    "Último acesso": [_quando(l.ultimo_acesso) for l in linhas],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+        st.markdown("**Alterar um usuário**")
+        por_id = {l.id: l for l in linhas}
+        st.selectbox(
+            "Usuário",
+            list(por_id),
+            format_func=lambda i: (
+                f"{por_id[i].email} ({por_id[i].plano}, {por_id[i].papel})"
+            ),
+            key="admin_alvo",
+        )
+        col_plano, col_papel = st.columns(2)
+        with col_plano:
+            st.selectbox("Plano", list(PLANOS), key="admin_plano")
+            st.button(
+                "Aplicar plano",
+                key="admin_aplicar_plano",
+                on_click=_admin_aplicar,
+                args=(usuario, "plano"),
+            )
+        with col_papel:
+            st.selectbox("Papel", list(PAPEIS), key="admin_papel")
+            st.button(
+                "Aplicar papel",
+                key="admin_aplicar_papel",
+                on_click=_admin_aplicar,
+                args=(usuario, "papel"),
+            )
+        st.caption(
+            "Mudar o plano aqui não cria nem cancela assinatura no Stripe. Toda mudança "
+            "fica no registro abaixo."
+        )
+
+    st.subheader("Registro de ações")
+    if registros:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Quando": [_quando(r.criado_em) for r in registros],
+                    "Ação": [r.acao for r in registros],
+                    "Quem fez": [
+                        str(r.ator_id)[:8] if r.ator_id else "—" for r in registros
+                    ],
+                    "Alvo": [
+                        str(r.alvo_id)[:8] if r.alvo_id else "—" for r in registros
+                    ],
+                    "Detalhes": [
+                        json.dumps(r.detalhes, ensure_ascii=False) for r in registros
+                    ],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+    else:
+        st.caption("Nada registrado ainda.")
+
+    st.subheader("Últimos eventos do Stripe")
+    if eventos:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Quando": [_quando(e[2]) for e in eventos],
+                    "Tipo": [e[1] for e in eventos],
+                    "Evento": [e[0] for e in eventos],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+    else:
+        st.caption("Nenhum evento recebido ainda.")
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "guia": pagina_guia,
+    "termos": pagina_termos,
+    "privacidade": pagina_privacidade,
     "visao_geral": pagina_visao_geral,
     "risco": pagina_risco,
     "retorno_mensal": pagina_retorno_mensal,
@@ -3969,18 +4295,22 @@ FUNCOES_DAS_PAGINAS = {
     "aprendizado": pagina_aprendizado,
     "pares": pagina_pares,
     "simulacoes": pagina_simulacoes,
+    "meus_dados": pagina_meus_dados,
+    "admin": pagina_admin,
     "momentum": pagina_momentum,
     "planos": pagina_planos,
 }
 
 
-def montar_navegacao():
+def montar_navegacao(e_admin=False):
     """O menu do topo: um grupo por seção; páginas do Pro ganham cadeado no plano Gratuito."""
     plano = plano_atual()
     estrutura = {}
     for grupo in GRUPOS:
         itens = []
         for p in paginas_do_grupo(grupo):
+            if p.somente_admin and not e_admin:
+                continue
             bloqueada = p.recurso is not None and not pode_usar(plano, p.recurso)
             e_a_inicial = p.chave == PAGINA_INICIAL
             pagina_do_menu = st.Page(
@@ -3992,7 +4322,8 @@ def montar_navegacao():
             )
             PAGINAS_DO_MENU[p.chave] = pagina_do_menu
             itens.append(pagina_do_menu)
-        estrutura[grupo] = itens
+        if itens:
+            estrutura[grupo] = itens
     return estrutura
 
 
@@ -4001,6 +4332,10 @@ usuario_logado = obter_usuario_logado()
 carregar_da_conta(usuario_logado)
 preparar_estado_inicial()
 manter_estado()
+pagina_atual = st.navigation(
+    montar_navegacao(e_admin=bool(usuario_logado and usuario_logado.e_admin)),
+    position="top",
+)
 mostrar_topo(usuario_logado)
 if usuario_logado is not None:
     if st.session_state.pop("primeira_vez", False):
@@ -4008,11 +4343,13 @@ if usuario_logado is not None:
             f"Bem-vindo ao TickerLab, {usuario_logado.nome or usuario_logado.email}!"
         )
     mostrar_retorno_do_pagamento()
-pagina_atual = st.navigation(montar_navegacao(), position="top")
 pagina_atual.run()
 
 st.divider()
-st.caption(
+col_termos, col_privacidade, col_aviso = st.columns([1, 1.2, 5])
+col_termos.page_link(PAGINAS_DO_MENU["termos"], label="Termos de uso")
+col_privacidade.page_link(PAGINAS_DO_MENU["privacidade"], label="Privacidade")
+col_aviso.caption(
     "TickerLab é um projeto educacional. Os dados vêm do Yahoo Finance e podem ter atraso "
     "ou erros. Rentabilidade passada não garante resultado futuro."
 )

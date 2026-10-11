@@ -29,12 +29,24 @@ def ir_para(app: AppTest, chave: str) -> AppTest:
     return app.run()
 
 
-def abrir_app(chave_da_pagina: str | None = None) -> AppTest:
+def aceitar_os_termos_se_pedido(app: AppTest) -> AppTest:
+    """No primeiro acesso o app pede o aceite dos termos: marca, confirma e segue."""
+    if any(c.key == "aceite_dos_termos" for c in app.checkbox):
+        app.checkbox(key="aceite_dos_termos").check().run()
+        next(b for b in app.button if b.label == "Continuar").click().run()
+    return app
+
+
+def abrir_app(
+    chave_da_pagina: str | None = None, aceitar_termos: bool = True
+) -> AppTest:
     """Abre o app já logado (se o teste simulou o login) e, se pedido, numa página."""
     app = AppTest.from_file("../app.py", default_timeout=90)
     app.secrets["auth"] = AUTH_COMPLETO
     app.session_state["usar_exemplo"] = True
     app.run()
+    if aceitar_termos:
+        aceitar_os_termos_se_pedido(app)
     return ir_para(app, chave_da_pagina) if chave_da_pagina else app
 
 

@@ -10,6 +10,8 @@ caminho quanto se ele o repassar.
 import json
 import logging
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
@@ -17,6 +19,7 @@ from fastapi.responses import JSONResponse
 
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
+from src.logs import configurar_logs
 
 log = logging.getLogger(__name__)
 
@@ -63,6 +66,18 @@ async def receber_webhook_do_stripe(request: Request) -> dict[str, str]:
     return {"resultado": resultado}
 
 
-app = FastAPI(title="TickerLab API", docs_url=None, redoc_url=None, openapi_url=None)
+@asynccontextmanager
+async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
+    configurar_logs()  # ao subir o serviço (nos testes, sem servidor, não mexe nos logs)
+    yield
+
+
+app = FastAPI(
+    title="TickerLab API",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    lifespan=_ciclo_de_vida,
+)
 app.include_router(router)
 app.include_router(router, prefix="/api")

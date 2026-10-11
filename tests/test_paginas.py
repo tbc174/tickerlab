@@ -45,5 +45,19 @@ def test_o_grupo_avancado_tem_so_paginas_pro_e_so_ele():
 
 
 def test_paginas_de_conta_e_ajuda_nao_pedem_ativo():
-    for chave in ("inicio", "guia", "simulacoes", "planos"):
+    for chave in (
+        "inicio",
+        "guia",
+        "termos",
+        "privacidade",
+        "simulacoes",
+        "meus_dados",
+        "planos",
+        "admin",
+    ):
         assert not paginas.pagina(chave).precisa_do_ativo
+
+
+def test_so_o_grupo_de_administracao_e_restrito_a_administradores():
+    for p in paginas.PAGINAS:
+        assert p.somente_admin == (p.grupo == paginas.GRUPO_ADMIN)

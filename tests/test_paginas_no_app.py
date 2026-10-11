@@ -16,13 +16,20 @@ def test_o_menu_registra_todas_as_paginas_do_mapa():
     app = _app_local()
     assert not app.exception
     enderecos = {i["url_pathname"] for i in app._registered_pages.values()}
-    esperados = {"" if p.chave == PAGINA_INICIAL else p.url for p in PAGINAS}
+    # a página de administração só existe no menu de administradores
+    esperados = {
+        "" if p.chave == PAGINA_INICIAL else p.url
+        for p in PAGINAS
+        if not p.somente_admin
+    }
     assert enderecos == esperados
 
 
 def test_todas_as_paginas_abrem_sem_erro_no_modo_local():
     app = _app_local()
     for p in PAGINAS:
+        if p.somente_admin:  # testada em test_admin_no_app.py
+            continue
         ir_para(app, p.chave)
         assert not app.exception, f"{p.chave}: {[e.value for e in app.exception]}"
         assert not app.error, f"{p.chave}: {[e.value for e in app.error]}"
