@@ -9,6 +9,11 @@ Para cada divisão:
    com custos ×1 e ×2, guardando só as datas de teste.
 Depois junta tudo nos 9 caminhos.
 
+Desempenho: o que não depende da divisão (volatilidade, escala da posição, custos e carry) é
+calculado uma vez por ativo (`preparar_ativos`); o buffer roda compilado pelo numba e o backtest
+usa o mesmo núcleo numpy de `trader.backtest`; os treinos das 45 divisões rodam em paralelo
+(joblib, processos separados).
+
 Variantes (seção 8 do critério): "normal"; "futuro" (atributos de amanhã, para provar que olhar o
 futuro infla o resultado); "embaralhado" (rótulos de treino sorteados, para provar que sem relação o
 resultado some).
@@ -19,21 +24,30 @@ grupo do dia útil seguinte; na carteira, o fim de semana é composto na segunda
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 
 from trader import atributos as atr
 from trader import avaliacao, modelos
-from trader.backtest import executar_backtest
-from trader.baselines import preco_sintetico
+from trader.backtest import calcular_nucleo, dias_corridos
 from trader.custos import custos_do_ativo
-from trader.posicao import TETO_PADRAO, dimensionar
+from trader.posicao import (
+    ALVO_PADRAO,
+    LARGURA_DO_BUFFER,
+    TETO_PADRAO,
+    buffer_numpy,
+    volatilidade_mista,
+)
 from trader.validacao import CPCV
 
 MEDIA_ABSOLUTA_DO_SINAL = 0.5
+MULTIPLICADORES = (1.0, 2.0)
+TRABALHADORES = max(1, min(8, (os.cpu_count() or 2) - 2))
 
 
 @dataclass(frozen=True)
@@ -67,6 +81,74 @@ class ResultadoDoPipeline:
     custo_por_lado: pd.Series  # por ativo, sem swap (para o teste contra o acaso)
 
 
+@dataclass(frozen=True)
+class PreparoDoAtivo:
+    """O que não depende da divisão do CPCV: calculado uma vez por ativo e reaproveitado."""
+
+    simbolo: str
+    indice: pd.DatetimeIndex
+    retorno: np.ndarray
+    escala: (
+        np.ndarray
+    )  # alvo ÷ volatilidade (vazio quando a volatilidade é desconhecida)
+    meia_faixa: np.ndarray  # largura do buffer × posição de sinal cheio
+    custo_por_lado: dict[float, np.ndarray]  # por multiplicador de custo (1 e 2)
+    swap_comprado: dict[float, np.ndarray]
+    swap_vendido: dict[float, np.ndarray]
+    dias: np.ndarray
+
+    def posicao(self, sinal: np.ndarray) -> np.ndarray:
+        """O mesmo que `posicao.dimensionar`, sem refazer a volatilidade a cada divisão."""
+        ideal = np.clip(np.clip(sinal, -1, 1) * self.escala, -TETO_PADRAO, TETO_PADRAO)
+        return buffer_numpy(np.nan_to_num(ideal, nan=0.0), self.meia_faixa)
+
+    def retorno_liquido(
+        self, posicao_desejada: np.ndarray, multiplicador: float
+    ) -> np.ndarray:
+        return calcular_nucleo(
+            posicao_desejada,
+            self.retorno,
+            self.custo_por_lado[multiplicador],
+            self.swap_comprado[multiplicador],
+            self.swap_vendido[multiplicador],
+            self.dias,
+        )["retorno"]
+
+
+def preparar_ativos(
+    series: list, taxas: pd.DataFrame | None
+) -> dict[str, PreparoDoAtivo]:
+    preparos = {}
+    for s in series:
+        indice = s.retorno.index
+        vol = volatilidade_mista(s.retorno, dias_por_ano=s.dias_por_ano)
+        escala = (ALVO_PADRAO / vol).where(vol > 0).to_numpy(dtype=float)
+        cheia = np.nan_to_num(np.clip(escala, -TETO_PADRAO, TETO_PADRAO), nan=0.0)
+        custos = {
+            m: custos_do_ativo(s.ativo, m, taxas, indice) for m in MULTIPLICADORES
+        }
+        swaps = {m: custos[m].swaps(indice) for m in MULTIPLICADORES}
+        preparos[s.ativo.simbolo] = PreparoDoAtivo(
+            simbolo=s.ativo.simbolo,
+            indice=indice,
+            retorno=s.retorno.fillna(0.0).to_numpy(dtype=float),
+            escala=escala,
+            meia_faixa=LARGURA_DO_BUFFER * np.abs(cheia),
+            custo_por_lado={
+                m: custos[m].custo_por_lado(indice).to_numpy(dtype=float)
+                for m in MULTIPLICADORES
+            },
+            swap_comprado={
+                m: swaps[m][0].to_numpy(dtype=float) for m in MULTIPLICADORES
+            },
+            swap_vendido={
+                m: swaps[m][1].to_numpy(dtype=float) for m in MULTIPLICADORES
+            },
+            dias=dias_corridos(indice),
+        )
+    return preparos
+
+
 def dias_uteis(painel: pd.DataFrame) -> pd.DatetimeIndex:
     datas = pd.DatetimeIndex(painel["Date"].unique()).sort_values()
     return datas[datas.weekday < 5]
@@ -97,6 +179,35 @@ def _escala_do_sinal(p_treino: np.ndarray) -> float:
     return media / MEDIA_ABSOLUTA_DO_SINAL if media > 0 else 1.0
 
 
+def _treinar_e_prever(
+    tipo: str,
+    ajustes: dict[str, Any],
+    semente: int,
+    x: np.ndarray,
+    y: np.ndarray,
+    treino: np.ndarray,
+    teste: np.ndarray,
+    completos: np.ndarray,
+    embaralhar_com: int | None,
+) -> tuple[np.ndarray, float]:
+    """Treina numa divisão e devolve (probabilidade nas linhas de teste, escala do sinal).
+
+    Função de módulo para o joblib conseguir mandá-la a outro processo. `x` e `y` são o painel
+    inteiro (o joblib grava uma vez em disco e os processos leem sem copiar).
+    """
+    y_treino = y[treino]
+    if embaralhar_com is not None:
+        y_treino = np.random.default_rng(embaralhar_com).permutation(y_treino)
+    modelo = modelos.criar(tipo, ajustes, semente)
+    modelo.fit(x[treino], y_treino)
+    escala = _escala_do_sinal(modelo.predict_proba(x[treino])[:, 1])
+    p = np.full(teste.shape[0], 0.5)
+    prever = completos[teste]
+    if prever.any():
+        p[prever] = modelo.predict_proba(x[teste[prever]])[:, 1]
+    return p, escala
+
+
 def rodar(
     config: Configuracao,
     painel: pd.DataFrame,
@@ -105,67 +216,81 @@ def rodar(
     variante: str = "normal",
     cpcv: CPCV | None = None,
     progresso: bool = False,
+    preparos: dict[str, PreparoDoAtivo] | None = None,
+    trabalhadores: int = TRABALHADORES,
 ) -> ResultadoDoPipeline:
-    """Roda a configuração nas 45 divisões e monta os 9 caminhos."""
+    """Roda a configuração nas 45 divisões e monta os 9 caminhos.
+
+    `preparos` (de `preparar_ativos`) pode ser reaproveitado entre variantes. `trabalhadores`:
+    processos em paralelo para treinar as divisões (1 = sem paralelismo).
+    """
     cpcv = cpcv or CPCV()
-    dados = preparar_variante(painel, variante)
+    preparos = preparos or preparar_ativos(series, taxas)
+    dados = preparar_variante(painel, variante).reset_index(drop=True)
     colunas = list(config.atributos)
     uteis = dias_uteis(dados)
     dia_util = _dia_util_de(pd.DatetimeIndex(dados["Date"]), uteis)
-    completos = dados[colunas].notna().all(axis=1).to_numpy()
-    tem_rotulo = dados["y"].notna().to_numpy()
-    por_simbolo = {s.ativo.simbolo: s for s in series}
-    gerador = np.random.default_rng(config.semente)
+    x = dados[colunas].to_numpy(dtype=float)
+    y = dados["y"].to_numpy(dtype=float)
+    completos = ~np.isnan(x).any(axis=1)
+    tem_rotulo = ~np.isnan(y)
+    divisoes = cpcv.divisoes(uteis)
+    indices = []
+    for d in divisoes:
+        treino = np.flatnonzero(dia_util.isin(d.treino) & completos & tem_rotulo)
+        teste = np.flatnonzero(dia_util.isin(d.teste))
+        indices.append((treino, teste))
+    tarefas = [
+        delayed(_treinar_e_prever)(
+            config.modelo,
+            config.ajustes,
+            config.semente,
+            x,
+            y,
+            treino,
+            teste,
+            completos,
+            config.semente * 1000 + d.numero if variante == "embaralhado" else None,
+        )
+        for d, (treino, teste) in zip(divisoes, indices, strict=True)
+    ]
+    if progresso:
+        print(
+            f"  treinando {len(tarefas)} divisões em {trabalhadores} processos...",
+            flush=True,
+        )
+    saidas = Parallel(n_jobs=trabalhadores, backend="loky")(tarefas)
 
+    datas = pd.DatetimeIndex(dados["Date"])
+    simbolos = dados["simbolo"].to_numpy()
     retornos_por_divisao: dict[int, pd.Series] = {}
     retornos_por_divisao_x2: dict[int, pd.Series] = {}
     ativos_por_divisao: dict[int, dict[str, pd.Series]] = {}
     posicoes_por_divisao: dict[int, dict[str, pd.Series]] = {}
-
-    for divisao in cpcv.divisoes(uteis):
-        no_treino = dia_util.isin(divisao.treino) & completos & tem_rotulo
-        no_teste = dia_util.isin(divisao.teste)
-        y = dados.loc[no_treino, "y"].to_numpy()
-        if variante == "embaralhado":
-            y = gerador.permutation(y)
-        modelo = modelos.criar(config.modelo, config.ajustes, config.semente)
-        x_treino = dados.loc[no_treino, colunas].to_numpy(dtype=float)
-        modelo.fit(x_treino, y)
-        escala = _escala_do_sinal(modelo.predict_proba(x_treino)[:, 1])
-
-        teste = dados.loc[no_teste, ["Date", "simbolo"]].copy()
-        p = np.full(len(teste), 0.5)
-        prever = completos[no_teste]
-        if prever.any():
-            p[prever] = modelo.predict_proba(
-                dados.loc[no_teste, colunas].to_numpy(dtype=float)[prever]
-            )[:, 1]
-        teste["sinal"] = np.clip((2 * p - 1) / escala, -1, 1)
-
+    for d, (_, teste), (p, escala) in zip(divisoes, indices, saidas, strict=True):
+        sinal_do_teste = np.clip((2 * p - 1) / escala, -1, 1)
+        simbolos_do_teste = simbolos[teste]
         retornos_x1, retornos_x2, posicoes = {}, {}, {}
-        for simbolo, linhas in teste.groupby("simbolo"):
-            serie = por_simbolo[simbolo]
+        for simbolo in np.unique(simbolos_do_teste):
+            prep = preparos[simbolo]
+            deste = simbolos_do_teste == simbolo
+            datas_de_teste = datas[teste[deste]]
             sinal = (
-                pd.Series(
-                    linhas["sinal"].to_numpy(), index=pd.DatetimeIndex(linhas["Date"])
-                )
-                .reindex(serie.retorno.index)
+                pd.Series(sinal_do_teste[deste], index=datas_de_teste)
+                .reindex(prep.indice)
                 .fillna(0.0)
+                .to_numpy()
             )
-            posicao = dimensionar(sinal, serie.retorno, dias_por_ano=serie.dias_por_ano)
-            datas_de_teste = pd.DatetimeIndex(linhas["Date"])
-            for mult, destino in ((1.0, retornos_x1), (2.0, retornos_x2)):
-                resultado = executar_backtest(
-                    preco_sintetico(serie.retorno),
-                    posicao,
-                    custos_do_ativo(serie.ativo, mult, taxas, serie.retorno.index),
-                    limite=TETO_PADRAO,
-                    retorno_do_ativo=serie.retorno,
-                    com_operacoes=False,
-                )
-                destino[simbolo] = resultado.retorno.reindex(datas_de_teste)
-            posicoes[simbolo] = posicao.reindex(datas_de_teste)
-        n = divisao.numero
+            posicao = prep.posicao(sinal)
+            onde = prep.indice.get_indexer(datas_de_teste)
+            retornos_x1[simbolo] = pd.Series(
+                prep.retorno_liquido(posicao, 1.0)[onde], index=datas_de_teste
+            )
+            retornos_x2[simbolo] = pd.Series(
+                prep.retorno_liquido(posicao, 2.0)[onde], index=datas_de_teste
+            )
+            posicoes[simbolo] = pd.Series(posicao[onde], index=datas_de_teste)
+        n = d.numero
         retornos_por_divisao[n] = avaliacao.retorno_da_carteira(
             avaliacao.montar_carteira(retornos_x1)
         )
@@ -174,8 +299,6 @@ def rodar(
         )
         ativos_por_divisao[n] = retornos_x1
         posicoes_por_divisao[n] = posicoes
-        if progresso:
-            print(f"  divisão {n + 1}/{cpcv.n_divisoes}", flush=True)
 
     caminhos = cpcv.montar_caminhos(uteis, retornos_por_divisao)
     caminhos_x2 = cpcv.montar_caminhos(uteis, retornos_por_divisao_x2)
@@ -210,10 +333,8 @@ def rodar(
     ).reindex(posicoes_por_caminho[0].index)
     custo_por_lado = pd.Series(
         {
-            s.ativo.simbolo: float(
-                custos_do_ativo(s.ativo).custo_por_lado(s.retorno.index[:1]).iloc[0]
-            )
-            for s in series
+            simbolo: float(prep.custo_por_lado[1.0][0])
+            for simbolo, prep in preparos.items()
         }
     )
     return ResultadoDoPipeline(

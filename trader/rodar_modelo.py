@@ -127,7 +127,10 @@ def main() -> int:
         f"Tentativa #{tentativa} registrada. Rodando o CPCV (45 divisões)...",
         flush=True,
     )
-    res = pipeline.rodar(config, painel, series, taxas, progresso=True)
+    preparos = pipeline.preparar_ativos(series, taxas)
+    res = pipeline.rodar(
+        config, painel, series, taxas, progresso=True, preparos=preparos
+    )
     m = criterio.indice_do_caminho_mediano(res.caminhos)
 
     print(
@@ -139,7 +142,9 @@ def main() -> int:
         if variante == "normal" and not primeira["usada"]:
             primeira["usada"] = True
             return res.caminhos[m]
-        outro = pipeline.rodar(config, painel, series, taxas, variante=variante)
+        outro = pipeline.rodar(
+            config, painel, series, taxas, variante=variante, preparos=preparos
+        )
         return outro.caminhos[m]
 
     vaz, vaz_det = vazamento.verificar(rodar_variante)

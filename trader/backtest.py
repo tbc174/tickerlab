@@ -144,6 +144,49 @@ def _extrair_operacoes(
     return pd.DataFrame(linhas, columns=COLUNAS_DAS_OPERACOES)
 
 
+def dias_corridos(indice: pd.Index) -> np.ndarray:
+    """Dias de calendário desde a linha anterior (0 na primeira): o swap corre em dias corridos."""
+    datas = pd.DatetimeIndex(indice)
+    passos = np.diff(datas.to_numpy()).astype("timedelta64[D]").astype(float)
+    return np.concatenate([[0.0], passos])
+
+
+def calcular_nucleo(
+    posicao_desejada: np.ndarray,
+    retorno_do_ativo: np.ndarray,
+    custo_por_lado: np.ndarray,
+    swap_comprado: np.ndarray,
+    swap_vendido: np.ndarray,
+    dias: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """A conta do backtest em numpy puro (a mesma de `executar_backtest`, sem pandas).
+
+    O pipeline da M2 chama isto milhares de vezes; o `executar_backtest` também usa, para não
+    existirem duas contas.
+    """
+    posicao = np.concatenate([[0.0], posicao_desejada[:-1]])  # NÃO olha o futuro
+    mudanca = np.abs(np.diff(posicao, prepend=0.0))  # entrar também custa
+    custos = mudanca * custo_por_lado
+    swap = (
+        (
+            np.clip(posicao, 0, None) * swap_comprado
+            - np.clip(posicao, None, 0) * swap_vendido
+        )
+        * dias
+        / DIAS_DO_ANO
+    )
+    bruto = posicao * retorno_do_ativo
+    retorno = np.maximum(bruto - custos + swap, -1.0)  # perda máxima: tudo
+    return {
+        "posicao": posicao,
+        "mudanca": mudanca,
+        "custos": custos,
+        "swap": swap,
+        "retorno_bruto": bruto,
+        "retorno": retorno,
+    }
+
+
 def executar_backtest(
     fechamento: pd.Series,
     posicao_desejada: pd.Series,
@@ -178,26 +221,22 @@ def executar_backtest(
         raise ValueError("O retorno do ativo precisa ter as mesmas datas dos preços.")
     else:
         retorno_do_ativo = retorno_do_ativo.fillna(0.0)
-    posicao = posicao_desejada.shift(1, fill_value=0.0)  # NÃO olha o futuro
-    mudanca = posicao.diff().abs().fillna(posicao.abs())  # entrar também custa
-    custo_do_dia = mudanca * custos.custo_por_lado(fechamento.index)
-
     swap_comprado, swap_vendido = custos.swaps(fechamento.index)
-    dias_corridos = (
-        pd.Series(fechamento.index, index=fechamento.index)
-        .diff()
-        .dt.days.fillna(0)
-        .astype(float)
+    nucleo = calcular_nucleo(
+        posicao_desejada.to_numpy(dtype=float),
+        retorno_do_ativo.to_numpy(dtype=float),
+        custos.custo_por_lado(fechamento.index).to_numpy(dtype=float),
+        swap_comprado.to_numpy(dtype=float),
+        swap_vendido.to_numpy(dtype=float),
+        dias_corridos(fechamento.index),
     )
-    swap = (
-        (posicao.clip(lower=0) * swap_comprado - posicao.clip(upper=0) * swap_vendido)
-        * dias_corridos
-        / DIAS_DO_ANO
-    )
-    retorno_bruto = posicao * retorno_do_ativo
-    retorno = (retorno_bruto - custo_do_dia + swap).clip(
-        lower=-1.0
-    )  # perda máxima: tudo
+    indice = fechamento.index
+    posicao = pd.Series(nucleo["posicao"], index=indice)
+    retorno = pd.Series(nucleo["retorno"], index=indice)
+    retorno_bruto = pd.Series(nucleo["retorno_bruto"], index=indice)
+    custo_do_dia = pd.Series(nucleo["custos"], index=indice)
+    swap = pd.Series(nucleo["swap"], index=indice)
+    mudanca = pd.Series(nucleo["mudanca"], index=indice)
     return ResultadoBacktest(
         posicao=posicao,
         retorno=retorno,

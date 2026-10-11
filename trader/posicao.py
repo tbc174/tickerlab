@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from numba import njit
 
 DIAS_POR_ANO = 252
 ALVO_PADRAO = 0.10  # 10% ao ano por ativo
@@ -83,6 +84,29 @@ def posicao_por_volatilidade(
     return posicao.clip(-teto, teto).fillna(0.0)
 
 
+@njit(cache=True)
+def buffer_numpy(ideal: np.ndarray, meia_faixa: np.ndarray) -> np.ndarray:
+    """O laço do buffer, compilado pelo numba (roda milhares de vezes por rodada do CPCV).
+
+    Vazio na posição ideal vira 0; vazio na faixa vira faixa 0 (negocia direto até a ideal).
+    """
+    resultado = np.empty_like(ideal)
+    atual = 0.0
+    for i in range(ideal.shape[0]):
+        alvo = ideal[i]
+        if np.isnan(alvo):
+            alvo = 0.0
+        faixa = meia_faixa[i]
+        if np.isnan(faixa):
+            faixa = 0.0
+        if atual < alvo - faixa:
+            atual = alvo - faixa
+        elif atual > alvo + faixa:
+            atual = alvo + faixa
+        resultado[i] = atual
+    return resultado
+
+
 def aplicar_buffer(
     posicao_ideal: pd.Series,
     posicao_cheia: pd.Series,
@@ -97,17 +121,7 @@ def aplicar_buffer(
         raise ValueError("A largura do buffer não pode ser negativa.")
     ideal = posicao_ideal.to_numpy(dtype=float)
     meia_faixa = largura * np.abs(posicao_cheia.to_numpy(dtype=float))
-    resultado = np.empty_like(ideal)
-    atual = 0.0
-    for i, (alvo, faixa) in enumerate(zip(ideal, meia_faixa, strict=True)):
-        if np.isnan(alvo):
-            alvo = 0.0
-        faixa = 0.0 if np.isnan(faixa) else faixa
-        if atual < alvo - faixa:
-            atual = alvo - faixa
-        elif atual > alvo + faixa:
-            atual = alvo + faixa
-        resultado[i] = atual
+    resultado = buffer_numpy(ideal, meia_faixa)
     return pd.Series(resultado, index=posicao_ideal.index)
 
 
