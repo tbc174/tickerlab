@@ -318,7 +318,7 @@ def test_parametros_grandes_demais_sao_recusados(banco):
 def test_migracao_0006_vai_e_volta_sem_perder_os_relatorios(tmp_path):
     import sqlalchemy as sa
 
-    from src.banco.conexao import criar_engine, migrar_para
+    from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 
     url = f"sqlite:///{(tmp_path / 'm.sqlite').as_posix()}"
     migrar_para("head", url=url)
@@ -326,7 +326,7 @@ def test_migracao_0006_vai_e_volta_sem_perder_os_relatorios(tmp_path):
     with motor.begin() as conexao:
         ana = _usuario(conexao, "ana")
         repo.registrar_relatorio(conexao, ana, "ativo", titulo="T", agora=AGORA)
-    migrar_para("-1", url=url)  # volta para a 0005
+    desfazer_ate("0005", url=url)
     colunas = {
         c["name"] for c in sa.inspect(criar_engine(url)).get_columns("relatorios")
     }

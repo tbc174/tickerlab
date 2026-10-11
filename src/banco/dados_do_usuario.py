@@ -16,10 +16,18 @@ from src.banco.modelo import (
     TIPOS_DE_RELATORIO,
     favoritos,
     preferencias,
+    presets,
     relatorios,
     simulacoes,
+    watchlists,
 )
-from src.planos import conferir_favoritos, conferir_relatorio, conferir_simulacoes
+from src.planos import (
+    conferir_favoritos,
+    conferir_parametros_por_ativo,
+    conferir_relatorio,
+    conferir_simulacoes,
+    conferir_watchlist,
+)
 
 TIPOS_DE_SIMULACAO = ("backtest", "carteira", "pares")
 TAMANHO_MAXIMO_DO_NOME = 120
@@ -360,3 +368,267 @@ def excluir_relatorio(
         .values(titulo=None, parametros=None, apagado_em=agora or _agora())
     )
     return resultado.rowcount == 1
+
+
+# --- presets do Research (versões; nada é sobrescrito) -----------------------------------------
+MAX_VERSOES_POR_PRESET = 500  # trava de segurança contra cliques sem fim
+
+
+@dataclass(frozen=True)
+class VersaoDePreset:
+    versao: int
+    parametros: dict
+    motivo: str
+    criado_em: datetime
+
+
+def _ultima_versao(conexao, usuario_id, escopo, alvo):  # noqa: ANN001, ANN202
+    return conexao.execute(
+        sa.select(presets)
+        .where(
+            presets.c.usuario_id == usuario_id,
+            presets.c.escopo == escopo,
+            presets.c.alvo == alvo,
+        )
+        .order_by(presets.c.versao.desc())
+        .limit(1)
+    ).first()
+
+
+def presets_atuais(conexao: sa.Connection, usuario_id: uuid.UUID) -> list:
+    """A versão mais nova de cada preset do usuário, pronta para `src.presets.resolver`.
+
+    Um preset cuja versão mais nova está vazia (tudo restaurado) não entra.
+    """
+    from src.presets import Preset  # evita importar o Pydantic só para abrir o banco
+
+    ultimas = (
+        sa.select(
+            presets.c.escopo,
+            presets.c.alvo,
+            sa.func.max(presets.c.versao).label("versao"),
+        )
+        .where(presets.c.usuario_id == usuario_id)
+        .group_by(presets.c.escopo, presets.c.alvo)
+        .subquery()
+    )
+    linhas = conexao.execute(
+        sa.select(presets)
+        .join(
+            ultimas,
+            (presets.c.escopo == ultimas.c.escopo)
+            & (presets.c.alvo == ultimas.c.alvo)
+            & (presets.c.versao == ultimas.c.versao),
+        )
+        .where(presets.c.usuario_id == usuario_id)
+    ).all()
+    return [
+        Preset(
+            escopo=l.escopo,
+            alvo=l.alvo or None,
+            nome=l.nome,
+            versao=l.versao,
+            parametros=dict(l.parametros),
+        )
+        for l in linhas
+        if l.parametros
+    ]
+
+
+def salvar_preset(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    escopo: str,
+    alvo: str | None,
+    parametros: dict,
+    plano: str | None = None,
+    nome: str = "",
+    motivo: str = "",
+    agora: datetime | None = None,
+) -> int | None:
+    """Grava os parâmetros como a versão seguinte e devolve o número dela.
+
+    Valida tudo de novo aqui (não confia na tela). Se nada mudou, não cria versão (devolve None).
+    Com `plano`, aplica o limite de ativos com parâmetros próprios. `parametros` vazio = restaurar
+    tudo neste escopo (também vira uma versão, para o histórico).
+    """
+    import pydantic
+
+    from src.presets import Preset, conferir_ao_salvar
+
+    try:
+        preset = Preset(
+            escopo=escopo, alvo=alvo or None, nome=nome, parametros=parametros
+        )
+    except pydantic.ValidationError as erro:
+        mensagens = "; ".join(
+            e["msg"].removeprefix("Value error, ") for e in erro.errors()
+        )
+        raise DadosInvalidosError(mensagens) from erro
+    alvo_salvo = preset.alvo or ""
+    # as regras entre parâmetros valem no conjunto final (este escopo e os que herdam dele)
+    try:
+        conferir_ao_salvar(presets_atuais(conexao, usuario_id), preset)
+    except ValueError as erro:
+        raise DadosInvalidosError(str(erro)) from erro
+    valores = {
+        k: list(v) if isinstance(v, tuple) else v for k, v in preset.parametros.items()
+    }
+    anterior = _ultima_versao(conexao, usuario_id, escopo, alvo_salvo)
+    if anterior is not None and dict(anterior.parametros) == valores:
+        return None
+    if anterior is None and not valores:
+        return None  # restaurar o que nunca foi mudado
+    if plano is not None and escopo == "ativo" and valores:
+        conferir_parametros_por_ativo(
+            plano,
+            len(
+                [p for p in presets_atuais(conexao, usuario_id) if p.escopo == "ativo"]
+            ),
+            ja_tem_este=anterior is not None and bool(anterior.parametros),
+        )
+    versao = (anterior.versao + 1) if anterior is not None else 1
+    if versao > MAX_VERSOES_POR_PRESET:
+        raise DadosInvalidosError("Este preset já tem versões demais.")
+    conexao.execute(
+        sa.insert(presets).values(
+            id=uuid.uuid4(),
+            usuario_id=usuario_id,
+            escopo=escopo,
+            alvo=alvo_salvo,
+            versao=versao,
+            nome=(nome or "")[:80],
+            parametros=valores,
+            motivo=(motivo or "")[:200],
+            criado_em=agora or _agora(),
+        )
+    )
+    return versao
+
+
+def historico_do_preset(
+    conexao: sa.Connection, usuario_id: uuid.UUID, escopo: str, alvo: str | None
+) -> list[VersaoDePreset]:
+    """Todas as versões de um preset, da mais nova para a mais antiga."""
+    alvo_salvo = alvo or ""
+    if escopo == "ativo" and alvo:
+        from src.dados import normalizar_ticker
+
+        alvo_salvo = normalizar_ticker(alvo)
+    return [
+        VersaoDePreset(l.versao, dict(l.parametros), l.motivo, l.criado_em)
+        for l in conexao.execute(
+            sa.select(presets)
+            .where(
+                presets.c.usuario_id == usuario_id,
+                presets.c.escopo == escopo,
+                presets.c.alvo == alvo_salvo,
+            )
+            .order_by(presets.c.versao.desc())
+        )
+    ]
+
+
+# --- watchlists do Research ----------------------------------------------------------------------
+TAMANHO_MAXIMO_DO_NOME_DA_LISTA = 60
+
+
+@dataclass(frozen=True)
+class Watchlist:
+    id: uuid.UUID
+    nome: str
+    tickers: list[str]
+
+
+def _limpar_tickers(tickers: list[str]) -> list[str]:
+    from src.dados import normalizar_ticker
+    from src.link import ticker_valido
+
+    limpos = []
+    for ticker in tickers:
+        simbolo = normalizar_ticker(ticker)
+        if not ticker_valido(simbolo):
+            raise DadosInvalidosError(f"Código de ativo inválido: {ticker}.")
+        if simbolo not in limpos:
+            limpos.append(simbolo)
+    return limpos
+
+
+def _limpar_nome(nome: str) -> str:
+    nome = " ".join((nome or "").split())
+    if not nome:
+        raise DadosInvalidosError("Dê um nome à lista.")
+    if len(nome) > TAMANHO_MAXIMO_DO_NOME_DA_LISTA:
+        raise DadosInvalidosError(
+            f"O nome da lista tem até {TAMANHO_MAXIMO_DO_NOME_DA_LISTA} letras."
+        )
+    return nome
+
+
+def listar_watchlists(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[Watchlist]:
+    return [
+        Watchlist(l.id, l.nome, list(l.tickers))
+        for l in conexao.execute(
+            sa.select(watchlists)
+            .where(watchlists.c.usuario_id == usuario_id)
+            .order_by(watchlists.c.criado_em, watchlists.c.nome)
+        )
+    ]
+
+
+def salvar_watchlist(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    nome: str,
+    tickers: list[str],
+    plano: str | None = None,
+    watchlist_id: uuid.UUID | None = None,
+    agora: datetime | None = None,
+) -> uuid.UUID:
+    """Cria a lista (sem `watchlist_id`) ou troca o nome e os ativos de uma lista sua."""
+    nome, tickers = _limpar_nome(nome), _limpar_tickers(tickers)
+    agora = agora or _agora()
+    existentes = listar_watchlists(conexao, usuario_id)
+    if plano is not None:
+        conferir_watchlist(
+            plano, len(existentes), len(tickers), e_nova=watchlist_id is None
+        )
+    repetido = [
+        w for w in existentes if w.nome.lower() == nome.lower() and w.id != watchlist_id
+    ]
+    if repetido:
+        raise DadosInvalidosError(f'Você já tem uma lista chamada "{nome}".')
+    if watchlist_id is None:
+        novo = uuid.uuid4()
+        conexao.execute(
+            sa.insert(watchlists).values(
+                id=novo,
+                usuario_id=usuario_id,
+                nome=nome,
+                tickers=tickers,
+                criado_em=agora,
+                atualizado_em=agora,
+            )
+        )
+        return novo
+    alterou = conexao.execute(
+        sa.update(watchlists)
+        .where(watchlists.c.id == watchlist_id, watchlists.c.usuario_id == usuario_id)
+        .values(nome=nome, tickers=tickers, atualizado_em=agora)
+    ).rowcount
+    if alterou != 1:
+        raise DadosInvalidosError("Lista não encontrada.")
+    return watchlist_id
+
+
+def apagar_watchlist(
+    conexao: sa.Connection, usuario_id: uuid.UUID, watchlist_id: uuid.UUID
+) -> bool:
+    return (
+        conexao.execute(
+            sa.delete(watchlists).where(
+                watchlists.c.id == watchlist_id, watchlists.c.usuario_id == usuario_id
+            )
+        ).rowcount
+        == 1
+    )

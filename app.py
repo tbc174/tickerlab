@@ -5,14 +5,17 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+from sqlalchemy import exc as sa_exc
 
 from src import administracao as adm
+from src import analise as research_analise
 from src import (
     aprendizado,
     catalogo,
@@ -21,10 +24,13 @@ from src import (
     marca,
     previa_pdf,
     relatorios,
+    research,
     trade,
     tutorial,
 )
 from src import indicadores as ind
+from src import parametros as research_parametros
+from src import presets as research_presets
 from src.acaso import (
     calcular_comprimento_minimo,
     calcular_pbo,
@@ -45,18 +51,25 @@ from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_simulacao,
+    apagar_watchlist,
     biblioteca_de_relatorios,
     carregar_preferencias,
     contar_relatorios_recentes,
     contar_simulacoes,
     excluir_relatorio,
+    historico_do_preset,
     listar_favoritos,
     listar_simulacoes,
+    listar_watchlists,
+    presets_atuais,
     registrar_relatorio,
     salvar_favoritos,
     salvar_preferencias,
+    salvar_preset,
     salvar_simulacao,
+    salvar_watchlist,
 )
+from src.banco.eventos import empresas_dos_tickers, eventos_dos_tickers, ultima_coleta
 from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
 from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
@@ -163,6 +176,7 @@ from src.planos import (
     PLANO_DO_MODO_LOCAL,
     LimiteDoPlanoError,
     conferir_favoritos,
+    conferir_parametros_por_ativo,
     descrever_limite,
     limites_do,
     pode_usar,
@@ -1018,7 +1032,38 @@ def resolver_taxa_livre_de_risco(modo, taxa_digitada, indice):
 
 
 # --- Seções -----------------------------------------------------------------
-def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
+def parametros_em_vigor(ticker):
+    """Os parâmetros do Research que valem para este ativo (padrão do sistema, seu padrão ou do
+    ativo). Se os guardados não combinarem mais, volta aos padrões (a página Parâmetros explica)."""
+    try:
+        return research_presets.resolver(
+            _presets_guardados(st.session_state.get("usuario")), ticker=ticker
+        )
+    except ValueError:
+        return research_presets.resolver([])
+
+
+def avisar_parametros(resolucao, chaves):
+    """Uma linha dizendo quais dos seus parâmetros esta tela está usando (só se houver algum)."""
+    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+    usados = [
+        f"{nomes[c]} {_formatar_parametro(c, resolucao[c])} "
+        f"({resolucao.efetivos[c].nome_da_origem.lower()})"
+        for c in chaves
+        if resolucao.origem(c) != research_presets.SISTEMA
+    ]
+    if usados:
+        st.caption("Usando os seus parâmetros: " + "; ".join(usados) + ".")
+        st.page_link(
+            PAGINAS_DO_MENU["parametros"],
+            label="Mudar na página Parâmetros",
+            icon=":material/tune:",
+        )
+
+
+def secao_painel_de_numeros(
+    fechamento, retorno, taxa_livre_de_risco, confianca_do_var=95
+):
     st.subheader("Painel de números")
     st.caption("Passe o mouse no ? de cada número para ver o que ele significa.")
 
@@ -1083,13 +1128,15 @@ def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
     )
     mostrar_metrica(
         linha2[4],
-        "Perda de um dia ruim (VaR 95%)",
-        formatar_pct(ind.calcular_var_historico(retorno)),
+        f"Perda de um dia ruim (VaR {confianca_do_var}%)",
+        formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
         "Perda de um dia ruim (VaR)",
     )
 
 
-def secao_preco(dados):
+def secao_preco(dados, medias_do_usuario=()):
+    """`medias_do_usuario`: as janelas das médias que a pessoa escolheu em Parâmetros (já vêm
+    marcadas; sem personalização, nenhuma média vem marcada, como antes)."""
     st.subheader("Preço")
     col_tipo, col_medias = st.columns([1, 2])
     tipo_do_grafico = col_tipo.radio(
@@ -1100,7 +1147,8 @@ def secao_preco(dados):
     )
     medias_escolhidas = col_medias.multiselect(
         "Médias móveis (dias)",
-        JANELAS_MEDIAS,
+        sorted({*JANELAS_MEDIAS, *medias_do_usuario}),
+        default=sorted(set(medias_do_usuario)),
         placeholder="Escolha uma ou mais médias",
         help=ajuda_do("Média móvel"),
     )
@@ -1131,11 +1179,15 @@ def secao_preco(dados):
     )
 
 
-def secao_risco(fechamento, retorno):
+def secao_risco(fechamento, retorno, janela_do_usuario=None):
     st.subheader("Risco ao longo do tempo")
+    janelas = sorted(
+        {*JANELAS_VOLATILIDADE, *([janela_do_usuario] if janela_do_usuario else [])}
+    )
     janela = st.radio(
         "Janela da volatilidade (dias)",
-        JANELAS_VOLATILIDADE,
+        janelas,
+        index=janelas.index(janela_do_usuario) if janela_do_usuario else 0,
         horizontal=True,
         help=ajuda_do("Volatilidade móvel"),
     )
@@ -2117,7 +2169,9 @@ def _lista_de_verbetes(verbetes, rotulo_da_busca, chave):
             st.markdown(proteger_cifrao(texto))
 
 
-def secao_correlacao(principal, periodo):
+def secao_correlacao(
+    principal, periodo, indice_do_usuario=None, janela_do_usuario=None
+):
     st.subheader("Correlação e beta: como os ativos se mexem juntos")
     st.caption(
         "A correlação mostra se dois ativos andam juntos; o beta mostra quanto o ativo se "
@@ -2125,8 +2179,16 @@ def secao_correlacao(principal, periodo):
         "que todos têm preço."
     )
     c1, c2 = st.columns([1, 2])
+    nomes_dos_indices = ["Ibovespa", "S&P 500"]
+    preferido = next(
+        (n for n in nomes_dos_indices if ATALHOS[n] == indice_do_usuario),
+        nomes_dos_indices[0],
+    )
     nome_do_indice = c1.selectbox(
-        "Índice de referência", ["Ibovespa", "S&P 500"], key="corr_indice"
+        "Índice de referência",
+        nomes_dos_indices,
+        index=nomes_dos_indices.index(preferido),
+        key="corr_indice",
     )
     texto = c2.text_input(
         "Outros ativos (separados por vírgula)",
@@ -2203,7 +2265,12 @@ def secao_correlacao(principal, periodo):
         "Ativo", ativos, index=0, key="corr_detalhe", format_func=nome
     )
     janela = st.slider(
-        "Janela do beta móvel (dias)", 60, 252, 126, 6, key="corr_janela"
+        "Janela do beta móvel (dias)",
+        60,
+        252,
+        min(max(int(janela_do_usuario or 126), 60), 252),
+        6,
+        key="corr_janela",
     )
     resultado = calcular_beta(retornos[escolhido], retornos[indice])
     col_dispersao, col_movel = st.columns(2)
@@ -5135,9 +5202,17 @@ def pagina_visao_geral():
     c = carregar_contexto()
     mostrar_tutorial("visao_geral", c)
     atalho_para_o_relatorio(relatorios.ATIVO)
-    secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
+    r = parametros_em_vigor(c.ticker)
+    secao_painel_de_numeros(
+        c.fechamento, c.retorno, c.taxa_livre_de_risco, int(r["quant.var_confianca"])
+    )
     st.divider()
-    secao_preco(c.dados)
+    medias = ("tecnica.media_rapida", "tecnica.media_lenta")
+    personalizou_medias = any(r.origem(k) != research_presets.SISTEMA for k in medias)
+    secao_preco(
+        c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
+    )
+    avisar_parametros(r, ("quant.var_confianca", *medias))
     st.download_button(
         "Baixar os preços (CSV)",
         converter_para_csv(montar_tabela_de_precos(c.dados)),
@@ -5150,7 +5225,14 @@ def pagina_visao_geral():
 def pagina_risco():
     cabecalho_da_pagina("risco")
     c = carregar_contexto()
-    secao_risco(c.fechamento, c.retorno)
+    r = parametros_em_vigor(c.ticker)
+    personalizou = r.origem("quant.janela_volatilidade") != research_presets.SISTEMA
+    secao_risco(
+        c.fechamento,
+        c.retorno,
+        int(r["quant.janela_volatilidade"]) if personalizou else None,
+    )
+    avisar_parametros(r, ("quant.janela_volatilidade",))
 
 
 def pagina_retorno_mensal():
@@ -5169,7 +5251,11 @@ def pagina_comparar():
 def pagina_correlacao():
     cabecalho_da_pagina("correlacao")
     c = carregar_contexto()
-    secao_correlacao(c.ticker, c.periodo)
+    r = parametros_em_vigor(c.ticker)
+    secao_correlacao(
+        c.ticker, c.periodo, r["quant.benchmark"], int(r["quant.janela_correlacao"])
+    )
+    avisar_parametros(r, ("quant.benchmark", "quant.janela_correlacao"))
 
 
 def pagina_backtest():
@@ -5569,9 +5655,744 @@ def pagina_admin():
         st.caption("Nenhum evento recebido ainda.")
 
 
+# --- Research: Parâmetros (etapa 1c) ---------------------------------------------------------
+# O rascunho fica nos campos (chaves "rp_..."); só "Salvar" grava uma versão nova. A chave de cada
+# campo leva a versão salva: depois de salvar, os campos renascem com os valores guardados.
+ROTULOS_DAS_OPCOES = {
+    "zero": "Zero",
+    "cdi": "CDI (Banco Central)",
+    "simples": "Simples",
+    "exponencial": "Exponencial",
+    "diario": "Diário",
+    "semanal": "Semanal",
+    "sob_demanda": "Sob demanda",
+    "diaria": "Diária",
+    "gatilhos": "Só quando um gatilho acontecer",
+    "web": "No site",
+    "pdf": "Em PDF",
+    "^BVSP": "Ibovespa (^BVSP)",
+    "^GSPC": "S&P 500 (^GSPC)",
+    "^IXIC": "Nasdaq (^IXIC)",
+    "resultados": "Resultados",
+    "proventos": "Proventos",
+    "eventos": "Eventos",
+    "risco": "Risco",
+    "tecnica": "Técnica",
+    "valuation": "Valuation",
+    "fundamentos": "Fundamentos",
+}
+NOMES_DOS_ESCOPOS_NA_TELA = {
+    research_presets.GLOBAL: "Seu padrão (todos os ativos)",
+    research_presets.ATIVO: "Só para o ativo do topo",
+}
+DOMINIOS_QUE_JA_MUDAM_NUMEROS = ("quant", "tecnica")
+
+
+def _presets_guardados(usuario):
+    """Os presets em vigor: da conta, ou desta sessão no modo local (sem login)."""
+    if usuario is None:
+        return list(st.session_state.get("presets_locais", []))
+    try:
+        with obter_engine().connect() as conexao:
+            return presets_atuais(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os parâmetros")
+        st.warning("Não consegui ler os seus parâmetros agora; mostrando os padrões.")
+        return []
+
+
+def _chave_do_campo(escopo, alvo, versao, chave):
+    return f"rp_{escopo}_{alvo or 'todos'}_{versao}_{chave}"
+
+
+def _valor_do_campo(parametro, valor):
+    """Converte o que o campo devolve para o tipo do catálogo (sem validar limites)."""
+    if parametro.tipo == "temas":
+        return tuple(t for t in parametro.opcoes if t in (valor or ()))
+    if parametro.tipo == "inteiro" and isinstance(valor, float) and valor.is_integer():
+        return int(valor)
+    return valor
+
+
+def _campo_do_parametro(parametro, chave_do_campo, inicial):
+    """O campo certo para cada tipo: número, lista de opções ou seleção de temas."""
+    if chave_do_campo not in st.session_state:
+        st.session_state[chave_do_campo] = (
+            list(inicial) if parametro.tipo == "temas" else inicial
+        )
+    rotulo = parametro.rotulo + (f" ({parametro.unidade})" if parametro.unidade else "")
+    if parametro.tipo == "temas":
+        st.multiselect(
+            rotulo,
+            list(parametro.opcoes),
+            format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, o),
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    elif parametro.tipo == "escolha" or parametro.opcoes:
+        st.selectbox(
+            rotulo,
+            list(parametro.opcoes),
+            format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, str(o)),
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    elif parametro.tipo == "inteiro":
+        st.number_input(
+            rotulo,
+            min_value=int(parametro.minimo),
+            max_value=int(parametro.maximo),
+            step=1,
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    else:
+        st.number_input(
+            rotulo,
+            min_value=float(parametro.minimo),
+            max_value=float(parametro.maximo),
+            step=0.1,
+            format="%.2f",
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+
+
+def _restaurar_campo(chave_do_campo, valor):
+    st.session_state[chave_do_campo] = (
+        list(valor) if isinstance(valor, tuple) else valor
+    )
+
+
+def _aplicar_pronto(campos, herdado):
+    """Põe nos campos os valores de um modo de leitura pronto (o resto volta ao herdado)."""
+    pronto = research_presets.PRESETS_PRONTOS.get(st.session_state.get("rp_pronto"))
+    if pronto is None:
+        return
+    for chave, chave_do_campo in campos.items():
+        _restaurar_campo(chave_do_campo, pronto.parametros.get(chave, herdado[chave]))
+
+
+def _descartar(campos):
+    for chave_do_campo in campos.values():
+        st.session_state.pop(chave_do_campo, None)
+
+
+def _gravar(usuario, escopo, alvo, valores, motivo):
+    """Grava uma versão nova (na conta, ou na sessão no modo local). Devolve o número ou None."""
+    if usuario is None:
+        atuais = list(st.session_state.get("presets_locais", []))
+        anterior = next(
+            (p for p in atuais if p.escopo == escopo and p.alvo == alvo), None
+        )
+        versao = (anterior.versao + 1) if anterior else 1
+        novo = research_presets.Preset(
+            escopo=escopo, alvo=alvo, versao=versao, parametros=valores
+        )
+        research_presets.conferir_ao_salvar(atuais, novo)
+        st.session_state["presets_locais"] = research_presets.substituir(atuais, novo)
+        return versao
+    with obter_engine().begin() as conexao:
+        return salvar_preset(
+            conexao,
+            usuario.id,
+            escopo,
+            alvo,
+            valores,
+            plano=usuario.plano,
+            motivo=motivo,
+        )
+
+
+def _formatar_metrica(metrica):
+    if not metrica.disponivel:
+        return "indisponível"
+    valor = metrica.valor
+    if metrica.unidade == "fração":
+        return formatar_pct(valor)
+    casas = 1 if metrica.unidade == "pontos" else 2
+    return f"{valor:,.{casas}f}".replace(",", "#").replace(".", ",").replace("#", ".")
+
+
+def _formatar_parametro(chave, valor):
+    if isinstance(valor, tuple):
+        return ", ".join(ROTULOS_DAS_OPCOES.get(v, v) for v in valor) or "—"
+    if isinstance(valor, float):
+        return f"{valor:g}".replace(".", ",")
+    return ROTULOS_DAS_OPCOES.get(valor, str(valor))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fechamento_do_indice(indice, periodo, exemplo):
+    try:
+        return carregar_dados(indice, periodo)["Close"]
+    except (DadosIndisponiveisError, ValueError):
+        return None
+
+
+def _taxa_do_cdi(c):
+    try:
+        return calcular_taxa_anual_do_cdi(
+            c.cdi_diario
+            if c.cdi_diario is not None
+            else obter_cdi(c.dados.index[0], c.dados.index[-1]),
+            c.dados.index,
+        )
+    except (
+        CDIIndisponivelError,
+        ValueError,
+    ):  # sem CDI: Sharpe e Sortino ficam indisponíveis
+        return None
+
+
+def _analisar_com(c, resolucao):
+    indice = resolucao["quant.benchmark"]
+    benchmark = _fechamento_do_indice(
+        indice, c.periodo, bool(st.session_state.get("usar_exemplo"))
+    )
+    cdi = _taxa_do_cdi(c) if resolucao["quant.taxa_livre_de_risco"] == "cdi" else None
+    return research_analise.analisar_ativo(c.ticker, c.dados, resolucao, cdi, benchmark)
+
+
+def mostrar_efeito(c, salvo, rascunho):
+    """A × B: o que muda nos parâmetros e nos números do ativo do topo, antes de salvar."""
+    st.subheader(f"Efeito em {c.ticker}")
+    diferencas = salvo.comparar(rascunho)
+    if not diferencas:
+        st.caption(
+            "Nada mudou ainda. Mexa num parâmetro e a comparação aparece aqui, antes de salvar."
+        )
+    else:
+        nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Parâmetro": nomes[d.chave],
+                        "Em vigor (A)": _formatar_parametro(d.chave, d.valor_a),
+                        "Com as mudanças (B)": _formatar_parametro(d.chave, d.valor_b),
+                    }
+                    for d in diferencas
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    a, b = _analisar_com(c, salvo), _analisar_com(c, rascunho)
+    linhas = []
+    for chave, metrica in a.metricas.items():
+        nova = b[chave]
+        linhas.append(
+            {
+                "Métrica": nova.nome,
+                "Em vigor (A)": _formatar_metrica(metrica),
+                "Com as mudanças (B)": _formatar_metrica(nova),
+                "Mudou": "●"
+                if (metrica.valor != nova.valor or metrica.nome != nova.nome)
+                else "",
+            }
+        )
+    st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
+    indisponiveis = [m for m in b.metricas.values() if not m.disponivel]
+    for m in indisponiveis:
+        st.caption(f"**{m.nome}** indisponível: {m.motivo}")
+    p = b.proveniencia
+    st.caption(
+        f"Dados: {p.fonte}, de {p.inicio:%d/%m/%Y} a {p.fim:%d/%m/%Y} ({p.pregoes} pregões), "
+        f"em {p.moeda}, {p.ajuste}. Execução {b.id_da_execucao} · parâmetros "
+        f"{p.assinatura_dos_parametros}."
+    )
+
+
+def mostrar_historico(usuario, escopo, alvo):
+    if usuario is None:
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            versoes = historico_do_preset(conexao, usuario.id, escopo, alvo)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler o histórico")
+        return
+    if not versoes:
+        return
+    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+    with st.expander(f"Histórico de versões ({len(versoes)})"):
+        for i, v in enumerate(versoes):
+            mudados = (
+                ", ".join(
+                    f"{nomes.get(k, k)} {_formatar_parametro(k, tuple(x) if isinstance(x, list) else x)}"
+                    for k, x in v.parametros.items()
+                )
+                or "tudo no padrão"
+            )
+            col_texto, col_botao = st.columns([5, 1], vertical_alignment="center")
+            col_texto.markdown(
+                f"**v{v.versao}** · {v.criado_em.astimezone(relatorios.FUSO):%d/%m/%Y %H:%M}"
+                f" · {mudados}" + (f" · _{v.motivo}_" if v.motivo else "")
+            )
+            if i > 0:
+                col_botao.button(
+                    "Voltar a esta",
+                    key=f"rpb_voltar_{escopo}_{v.versao}",
+                    on_click=_voltar_versao,
+                    args=(usuario, escopo, alvo, v),
+                )
+
+
+def _voltar_versao(usuario, escopo, alvo, versao):
+    try:
+        nova = _gravar(
+            usuario, escopo, alvo, versao.parametros, f"volta à versão {versao.versao}"
+        )
+    except (ValueError, LimiteDoPlanoError) as erro:
+        st.session_state["rp_erro"] = str(erro)
+        return
+    if nova:
+        st.toast(f"Versão {nova} criada com os valores da versão {versao.versao}.")
+
+
+def pagina_parametros():
+    cabecalho_da_pagina("parametros")
+    c = carregar_contexto()
+    usuario = st.session_state.get("usuario")
+    plano = usuario.plano if usuario is not None else None
+    if usuario is None:
+        st.info(
+            "Modo local: os parâmetros valem só nesta sessão. Entre com a sua conta para "
+            "guardá-los e ter o histórico de versões.",
+            icon=":material/info:",
+        )
+    escopo = st.segmented_control(
+        "Onde estes parâmetros valem",
+        list(NOMES_DOS_ESCOPOS_NA_TELA),
+        format_func=lambda e: (
+            f"Só para {c.ticker}"
+            if e == research_presets.ATIVO
+            else NOMES_DOS_ESCOPOS_NA_TELA[e]
+        ),
+        default=research_presets.GLOBAL,
+        required=True,
+        key="rp_escopo",
+    )
+    alvo = normalizar_ticker(c.ticker) if escopo == research_presets.ATIVO else None
+    guardados = _presets_guardados(usuario)
+    proprio = next(
+        (p for p in guardados if p.escopo == escopo and p.alvo == alvo), None
+    )
+    versao = proprio.versao if proprio else 0
+    # o que vale sem este escopo (é para onde "Restaurar" volta)
+    sem_este = [p for p in guardados if p is not proprio]
+    try:
+        herdado = research_presets.resolver(sem_este, ticker=c.ticker)
+        salvo = research_presets.resolver(guardados, ticker=c.ticker)
+    except ValueError as erro:
+        st.error(
+            f"Os parâmetros guardados não combinam mais: {erro} Restaure algum deles."
+        )
+        herdado = salvo = research_presets.resolver([])
+    pode_salvar, motivo_do_bloqueio = True, ""
+    if escopo == research_presets.ATIVO and plano is not None:
+        try:
+            conferir_parametros_por_ativo(
+                plano,
+                len([p for p in guardados if p.escopo == research_presets.ATIVO]),
+                ja_tem_este=proprio is not None,
+            )
+        except LimiteDoPlanoError as erro:
+            pode_salvar, motivo_do_bloqueio = False, str(erro)
+    if erro_anterior := st.session_state.pop("rp_erro", None):
+        st.error(erro_anterior)
+
+    campos = {
+        p.chave: _chave_do_campo(escopo, alvo, versao, p.chave)
+        for p in research_parametros.PARAMETROS
+    }
+    col_pronto, col_aplicar = st.columns([3, 1], vertical_alignment="bottom")
+    col_pronto.selectbox(
+        "Começar de um modo de leitura",
+        list(research_presets.PRESETS_PRONTOS),
+        format_func=lambda k: (
+            f"{research_presets.PRESETS_PRONTOS[k].nome}: "
+            f"{research_presets.PRESETS_PRONTOS[k].enfatiza}"
+        ),
+        index=None,
+        placeholder="Visão equilibrada, Longo prazo, Renda e proventos…",
+        key="rp_pronto",
+        help="Modos de leitura, não perfis de risco nem recomendação. Tudo continua editável.",
+    )
+    col_aplicar.button(
+        "Aplicar",
+        key="rpb_aplicar",
+        on_click=_aplicar_pronto,
+        args=(campos, herdado),
+        disabled=not st.session_state.get("rp_pronto"),
+        width="stretch",
+    )
+
+    rascunho_valores = {}
+    abas = st.tabs(
+        [research_parametros.DOMINIOS[d] for d in research_parametros.DOMINIOS]
+    )
+    for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
+        with aba:
+            if dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
+                st.caption(
+                    "Estes parâmetros serão usados pelo Research (eventos, fundamentos e "
+                    "newsletter) nas próximas etapas; por enquanto não mudam números."
+                )
+            for parametro in research_parametros.PARAMETROS:
+                if parametro.dominio != dominio:
+                    continue
+                chave_do_campo = campos[parametro.chave]
+                inicial = (proprio.parametros if proprio else {}).get(
+                    parametro.chave, herdado[parametro.chave]
+                )
+                col_campo, col_origem = st.columns([3, 2], vertical_alignment="bottom")
+                with col_campo:
+                    _campo_do_parametro(parametro, chave_do_campo, inicial)
+                valor = _valor_do_campo(parametro, st.session_state[chave_do_campo])
+                if valor != herdado[parametro.chave]:
+                    rascunho_valores[parametro.chave] = valor
+                    col_origem.button(
+                        "Restaurar",
+                        key=f"rpb_restaurar_{chave_do_campo}",
+                        icon=":material/undo:",
+                        help=f"Voltar a {_formatar_parametro(parametro.chave, herdado[parametro.chave])} "
+                        f"({herdado.efetivos[parametro.chave].nome_da_origem.lower()}).",
+                        on_click=_restaurar_campo,
+                        args=(chave_do_campo, herdado[parametro.chave]),
+                    )
+                else:
+                    col_origem.caption(
+                        f"Vem de: {herdado.efetivos[parametro.chave].nome_da_origem.lower()}"
+                    )
+
+    # valida o rascunho inteiro (tipo, limites e as regras entre parâmetros)
+    problemas = []
+    rascunho = salvo
+    try:
+        novo = research_presets.Preset(
+            escopo=escopo, alvo=alvo, versao=versao + 1, parametros=rascunho_valores
+        )
+        research_presets.conferir_ao_salvar(guardados, novo)
+        rascunho = research_presets.resolver(
+            research_presets.substituir(guardados, novo), ticker=c.ticker
+        )
+    except research_presets.CombinacaoInvalidaError as erro:
+        problemas = erro.problemas
+    except ValueError as erro:
+        problemas = [str(erro)]
+    for problema in problemas:
+        st.error(problema)
+    mudou = rascunho_valores != (proprio.parametros if proprio else {})
+
+    with st.container(key="tl-barra-parametros"):
+        col_motivo, col_salvar, col_descartar = st.columns(
+            [3, 1, 1], vertical_alignment="bottom"
+        )
+        motivo = col_motivo.text_input(
+            "Motivo da mudança (opcional)",
+            key=f"rp_motivo_{escopo}_{versao}",
+            placeholder="Ex.: testar RSI mais lento",
+            max_chars=200,
+        )
+        salvar = col_salvar.button(
+            "Salvar",
+            type="primary",
+            icon=":material/save:",
+            key="rpb_salvar",
+            disabled=not mudou or bool(problemas) or not pode_salvar,
+            width="stretch",
+        )
+        col_descartar.button(
+            "Descartar",
+            key="rpb_descartar",
+            on_click=_descartar,
+            args=(campos,),
+            disabled=not mudou,
+            width="stretch",
+        )
+    if motivo_do_bloqueio:
+        st.info(motivo_do_bloqueio, icon=":material/workspace_premium:")
+    if salvar:
+        try:
+            nova = _gravar(usuario, escopo, alvo, rascunho_valores, motivo)
+        except (ValueError, LimiteDoPlanoError) as erro:
+            st.error(f"Não salvei: {erro}")
+        except Exception:
+            logging.getLogger(__name__).exception("Falha ao salvar os parâmetros")
+            st.error("Não consegui salvar agora. Tente de novo em instantes.")
+        else:
+            if nova:
+                st.toast(f"Versão {nova} salva.", icon=":material/check_circle:")
+            st.rerun()
+    mostrar_efeito(c, salvo, rascunho)
+    mostrar_historico(usuario, escopo, alvo)
+
+
+# --- Research: Acontecimentos (etapa 2b) -----------------------------------------------------
+JANELAS_DO_RESEARCH = {7: "7 dias", 30: "30 dias", 90: "90 dias"}
+NOMES_DOS_TEMAS = {
+    "resultados": "Resultados",
+    "proventos": "Proventos",
+    "eventos": "Eventos",
+    "risco": "Risco",
+    "tecnica": "Técnica",
+    "valuation": "Valuation",
+    "fundamentos": "Fundamentos",
+}
+
+
+def _listas_do_research(usuario):
+    """(nome, tickers, id da watchlist ou None): demonstração, favoritos e as listas com nome."""
+    listas = [(research.NOME_DA_DEMONSTRACAO, list(research.DEMONSTRACAO), None)]
+    favoritos = [normalizar_ticker(t) for t in st.session_state.get("favoritos", [])]
+    if favoritos:
+        listas.append(("Favoritos", favoritos, None))
+    if usuario is not None:
+        try:
+            with obter_engine().connect() as conexao:
+                listas += [
+                    (w.nome, w.tickers, w.id)
+                    for w in listar_watchlists(conexao, usuario.id)
+                ]
+        except Exception:
+            logging.getLogger(__name__).exception("Falha ao ler as listas")
+            st.warning("Não consegui ler as suas listas agora.")
+    return listas
+
+
+def _analisar_do_research(ticker):
+    st.session_state["ticker"] = ticker
+    st.session_state["ir_para_visao_geral"] = True
+
+
+def _mostrar_item(item, chave, destaque=False):
+    e = item.evento
+    codigo = e.ticker.removesuffix(".SA")
+    with st.container(border=True, key=f"tl-evento-{chave}"):
+        col_texto, col_acoes = st.columns([5, 2], vertical_alignment="top")
+        col_texto.markdown(
+            f"**{codigo}** · {e.rotulo} · {e.publicado_em:%d/%m/%Y}"
+            + ("" if destaque else f" · relevância {item.relevancia:.0%}")
+        )
+        col_texto.markdown(
+            e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro)."
+        )
+        col_texto.caption(e.empresa)
+        col_acoes.link_button(
+            "Abrir na CVM", e.link, icon=":material/open_in_new:", width="stretch"
+        )
+        col_acoes.button(
+            f"Analisar {codigo}",
+            key=f"research_analisar_{chave}",
+            on_click=_analisar_do_research,
+            args=(e.ticker,),
+            width="stretch",
+        )
+        with st.expander("Por que isso aparece?"):
+            for razao in item.razoes:
+                st.markdown(f"- {razao}")
+            st.caption(
+                f"Relevância {item.relevancia:.0%}: soma dos componentes (0 a 1) vezes os seus "
+                "pesos da página Parâmetros. Ordena a leitura; não é nota da empresa nem "
+                "sinal de compra ou venda."
+            )
+
+
+def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
+    if usuario is None:
+        st.caption("Entre com a sua conta para criar listas com nome.")
+        return
+    nome_atual, tickers_atuais, id_atual = lista_atual
+    with st.expander("Minhas listas"):
+        aba_nova, aba_editar = st.tabs(["Nova lista", "Editar a lista aberta"])
+        with aba_nova:
+            nome = st.text_input("Nome", key="research_nova_nome", max_chars=60)
+            tickers = st.multiselect(
+                f"Ativos (até {limites.ativos_por_watchlist})",
+                catalogo.simbolos(),
+                format_func=catalogo.rotulo,
+                key="research_nova_tickers",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            if st.button(
+                "Criar lista", key="rsb_criar", icon=":material/playlist_add:"
+            ):
+                _gravar_lista(usuario, nome, tickers, None)
+        with aba_editar:
+            if id_atual is None:
+                st.caption(
+                    f'"{nome_atual}" não é uma lista sua: a demonstração é fixa e os '
+                    "favoritos mudam pela estrela no topo das páginas."
+                )
+                return
+            novos = st.multiselect(
+                "Ativos",
+                sorted({*catalogo.simbolos(), *tickers_atuais}),
+                default=tickers_atuais,
+                format_func=catalogo.rotulo,
+                key=f"research_editar_{id_atual}",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            col_salvar, col_apagar = st.columns(2)
+            if col_salvar.button(
+                "Salvar a lista", key="rsb_salvar", icon=":material/save:"
+            ):
+                _gravar_lista(usuario, nome_atual, novos, id_atual)
+            with col_apagar.popover("Apagar a lista", icon=":material/delete:"):
+                st.caption(f'Apagar "{nome_atual}"? Os eventos continuam na CVM.')
+                if st.button("Apagar de vez", key="rsb_apagar", type="primary"):
+                    try:
+                        with obter_engine().begin() as conexao:
+                            apagar_watchlist(conexao, usuario.id, id_atual)
+                    except Exception:
+                        logging.getLogger(__name__).exception("Falha ao apagar a lista")
+                        st.error("Não consegui apagar a lista agora. Tente de novo.")
+                        return
+                    st.session_state["research_lista_pendente"] = (
+                        None  # volta à primeira
+                    )
+                    st.rerun()
+
+
+def _gravar_lista(usuario, nome, tickers, watchlist_id):
+    try:
+        with obter_engine().begin() as conexao:
+            salvar_watchlist(
+                conexao, usuario.id, nome, tickers, plano=usuario.plano,
+                watchlist_id=watchlist_id,
+            )  # fmt: skip
+    except (DadosInvalidosError, LimiteDoPlanoError) as erro:
+        st.error(str(erro))
+        return
+    if watchlist_id is None:  # abre a lista nova (aplicado antes de desenhar o campo)
+        st.session_state["research_lista_pendente"] = " ".join(nome.split())
+    st.toast("Lista salva.", icon=":material/check_circle:")
+    st.rerun()
+
+
+def pagina_research():
+    cabecalho_da_pagina("research")
+    if st.session_state.pop("ir_para_visao_geral", False):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    listas = _listas_do_research(usuario)
+    nomes = [lista[0] for lista in listas]
+    if "research_lista_pendente" in st.session_state:
+        st.session_state["research_lista"] = st.session_state.pop(
+            "research_lista_pendente"
+        )
+    if st.session_state.get("research_lista") not in nomes:
+        st.session_state["research_lista"] = nomes[0]
+    col_lista, col_janela = st.columns([2, 1])
+    escolhida = col_lista.selectbox("Lista", nomes, key="research_lista")
+    lista = listas[nomes.index(escolhida)]
+    nome, tickers, _ = lista
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DO_RESEARCH),
+        format_func=JANELAS_DO_RESEARCH.get,
+        default=30,
+        required=True,
+        key="research_janela",
+    )
+    r = parametros_em_vigor(None)
+    temas_do_usuario = list(r["newsletter.temas"])
+    temas = st.pills(
+        "Temas",
+        list(NOMES_DOS_TEMAS),
+        format_func=NOMES_DOS_TEMAS.get,
+        selection_mode="multi",
+        default=temas_do_usuario,
+        key="research_temas",
+        help="Começa com os seus temas (página Parâmetros). Sem nenhum marcado, aparecem todos.",
+    )
+    if nome == research.NOME_DA_DEMONSTRACAO:
+        st.caption(
+            "Lista de demonstração: cinco empresas grandes da B3, com eventos reais e públicos. "
+            "Nada aqui é sobre a sua carteira."
+        )
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        with obter_engine().connect() as conexao:
+            ultima = ultima_coleta(conexao)
+            empresas = empresas_dos_tickers(conexao, tickers)
+            eventos_da_lista = eventos_dos_tickers(
+                conexao,
+                tickers,
+                hoje - timedelta(days=janela),
+                temas=temas or None,
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        # banco sem as tabelas do Research (modo local sem migrar): é o mesmo que não coletado
+        ultima, empresas, eventos_da_lista = None, {}, []
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os eventos")
+        st.error("Não consegui ler os eventos agora. Tente de novo em instantes.")
+        return
+    if ultima is None:
+        st.info(
+            "Os eventos da CVM ainda não foram coletados neste servidor. A coleta roda uma "
+            "vez por dia (`python -m scripts.atualizar_eventos`, que também prepara o banco).",
+            icon=":material/schedule:",
+        )
+        _mostrar_gestao_das_listas(usuario, limites, lista)
+        return
+    if (
+        ultima.tzinfo is None
+    ):  # o SQLite devolve a hora sem fuso: ela foi gravada em UTC
+        ultima = ultima.replace(tzinfo=UTC)
+    st.caption(
+        f"Fonte: dados abertos da CVM (fatos relevantes, comunicados, avisos, proventos e "
+        f"resultados), coletados em {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
+        "A ordem segue os seus pesos de relevância (página Parâmetros)."
+    )
+    sem_cobertura = [t for t in tickers if t not in empresas]
+    todos = st.toggle(
+        f"Mostrar todos (sem limite de {research.MAXIMO_POR_EMPRESA} por empresa)",
+        key="research_todos",
+        help=f"Por padrão, uma empresa não ocupa mais de {research.MAXIMO_POR_EMPRESA} lugares, "
+        "para nenhuma dominar a lista.",
+    )
+    itens = research.ordenar(
+        eventos_da_lista,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        temas_do_usuario,
+        hoje,
+        janela,
+        nome,
+        maximo_por_ativo=None if todos else research.MAXIMO_POR_EMPRESA,
+    )
+    if not itens:
+        st.info(
+            f'Nenhum evento das empresas de "{nome}" nos últimos {janela} dias'
+            + (" com esses temas." if temas else ".")
+        )
+    else:
+        st.subheader("Em destaque")
+        for i, item in enumerate(itens[:3]):
+            _mostrar_item(item, f"d{i}", destaque=True)
+        if len(itens) > 3:
+            st.subheader(f"Os outros {len(itens) - 3}")
+            for i, item in enumerate(itens[3:], start=3):
+                _mostrar_item(item, f"o{i}")
+    if sem_cobertura:
+        st.caption(
+            "Sem cobertura ainda: "
+            + ", ".join(t.removesuffix(".SA") for t in sem_cobertura)
+            + ". Hoje o Research lê a CVM (empresas da B3); ações dos EUA chegam com a SEC "
+            "numa próxima etapa, e fundos e ETFs dependem de outras fontes."
+        )
+    _mostrar_gestao_das_listas(usuario, limites, lista)
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
+    "parametros": pagina_parametros,
+    "research": pagina_research,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

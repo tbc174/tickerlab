@@ -129,3 +129,9 @@ def migrar_para(versao: str = "head", url: str | None = None) -> None:
         command.downgrade(configuracao, versao)
     else:
         command.upgrade(configuracao, versao)
+
+
+def desfazer_ate(versao: str, url: str | None = None) -> None:
+    """Desfaz as migrações até ficar exatamente na `versao` (ex.: "0006")."""
+    url = normalizar_url_do_banco(url) if url else url_do_banco()
+    command.downgrade(_configuracao_do_alembic(url), versao)
