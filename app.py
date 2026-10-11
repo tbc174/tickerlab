@@ -49,6 +49,13 @@ from src.cdi import (
     calcular_taxa_anual_do_cdi,
     curva_do_cdi,
 )
+from src.cobranca import (
+    CobrancaIndisponivelError,
+    buscar_assinatura,
+    cobranca_esta_configurada,
+    criar_pagina_de_pagamento,
+    criar_portal_da_assinatura,
+)
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -276,6 +283,10 @@ def obter_usuario_logado():
     if not st.user.get("is_logged_in", False):
         mostrar_tela_de_entrada()
         st.stop()
+    retorno = st.query_params.get("assinatura")
+    if retorno in ("ok", "cancelada"):
+        st.session_state["retorno_do_pagamento"] = retorno
+        _recarregar_o_plano()
     atual = st.session_state.get("usuario")
     if atual is not None and atual.google_sub == st.user.get("sub"):
         return _com_plano_atualizado(atual)
@@ -296,6 +307,7 @@ def obter_usuario_logado():
     st.session_state["usuario"] = usuario
     st.session_state["usuario_em"] = time.monotonic()
     st.session_state["primeira_vez"] = primeira_vez
+    _carregar_assinatura(usuario)
     return usuario
 
 
@@ -320,7 +332,22 @@ def _com_plano_atualizado(usuario):
         st.button("Sair", on_click=st.logout)
         st.stop()
     st.session_state["usuario"] = novo
+    _carregar_assinatura(novo)
     return novo
+
+
+def _carregar_assinatura(usuario):
+    """Guarda na sessão a assinatura do Stripe do usuário (ou None)."""
+    try:
+        with obter_engine().connect() as conexao:
+            st.session_state["assinatura"] = buscar_assinatura(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler a assinatura")
+        st.session_state["assinatura"] = None
+
+
+def _recarregar_o_plano():
+    st.session_state["usuario_em"] = 0  # a próxima execução relê o usuário
 
 
 def plano_atual():
@@ -333,6 +360,83 @@ def mostrar_planos():
     st.dataframe(pd.DataFrame(tabela_de_planos()).set_index("Recurso"), width="stretch")
 
 
+def _preparar_link_de_pagamento(onde):
+    """Cria a página de pagamento do Stripe e guarda o endereço para o botão de link."""
+    usuario = st.session_state["usuario"]
+    assinatura = st.session_state.get("assinatura")
+    try:
+        url = criar_pagina_de_pagamento(
+            usuario.id,
+            usuario.email,
+            assinatura.stripe_customer_id if assinatura else None,
+        )
+    except CobrancaIndisponivelError:
+        st.toast("O pagamento não está disponível agora.")
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao criar a página de pagamento")
+        st.toast("Não consegui abrir o pagamento agora. Tente de novo em instantes.")
+        return
+    st.session_state["link_de_pagamento"] = (onde, url)
+
+
+def _preparar_link_do_portal(onde):
+    assinatura = st.session_state.get("assinatura")
+    if assinatura is None:
+        return
+    try:
+        url = criar_portal_da_assinatura(assinatura.stripe_customer_id)
+    except Exception:
+        log_da_conta.exception("Falha ao criar o portal da assinatura")
+        st.toast("Não consegui abrir o portal agora. Tente de novo em instantes.")
+        return
+    st.session_state["link_de_pagamento"] = (onde, url)
+
+
+def mostrar_assinatura(onde):
+    """Botões para assinar o Pro ou gerenciar a assinatura (só com conta e Stripe ligado)."""
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        return
+    if not cobranca_esta_configurada():
+        st.caption("A assinatura do plano Pro ainda não está disponível.")
+        return
+    assinatura = st.session_state.get("assinatura")
+    if usuario.plano == "gratuito":
+        st.button(
+            "Assinar o plano Pro",
+            key=f"assinar_{onde}",
+            type="primary",
+            on_click=_preparar_link_de_pagamento,
+            args=(onde,),
+        )
+    elif assinatura is not None:
+        st.button(
+            "Gerenciar a assinatura",
+            key=f"gerenciar_{onde}",
+            on_click=_preparar_link_do_portal,
+            args=(onde,),
+        )
+    link = st.session_state.get("link_de_pagamento")
+    if link and link[0] == onde:
+        st.link_button("Continuar no Stripe", link[1], width="stretch")
+        st.caption(
+            "Modo de teste: use o cartão 4242 4242 4242 4242, qualquer data futura."
+        )
+
+
+def mostrar_retorno_do_pagamento():
+    retorno = st.session_state.pop("retorno_do_pagamento", None)
+    if retorno == "ok":
+        st.success(
+            "Pagamento recebido! O plano muda assim que o Stripe confirmar, em poucos "
+            "segundos."
+        )
+        st.button("Atualizar o meu plano", on_click=_recarregar_o_plano)
+    elif retorno == "cancelada":
+        st.info("Pagamento cancelado. Nada foi cobrado.")
+
+
 def exigir_recurso(recurso):
     """True se o plano atual pode usar o recurso; senão mostra o convite ao Pro e devolve False."""
     if pode_usar(plano_atual(), recurso):
@@ -343,10 +447,8 @@ def exigir_recurso(recurso):
     )
     with st.expander("Comparar os planos"):
         mostrar_planos()
-        st.caption(
-            "A assinatura do plano Pro chega na próxima etapa do projeto (Stripe, em modo "
-            "de teste: nenhum dinheiro real)."
-        )
+        st.caption("Pagamento em modo de teste do Stripe: nenhum dinheiro real.")
+    mostrar_assinatura(f"recurso_{recurso}")
     return False
 
 
@@ -369,6 +471,11 @@ def mostrar_conta(usuario):
             f"Perfil: **{'Administrador' if usuario.e_admin else 'Usuário'}**\n\n"
             f"Conta criada em {usuario.criado_em:%d/%m/%Y}"
         )
+        assinatura = st.session_state.get("assinatura")
+        if assinatura is not None and assinatura.periodo_fim:
+            verbo = "Termina" if assinatura.cancela_no_fim else "Renova"
+            st.caption(f"{verbo} em {assinatura.periodo_fim:%d/%m/%Y}.")
+        mostrar_assinatura("conta")
         st.button("Sair", on_click=st.logout, width="stretch")
 
 
@@ -3447,6 +3554,7 @@ if usuario_logado is not None:
             f"Bem-vindo ao TickerLab, {usuario_logado.nome or usuario_logado.email}!"
         )
     mostrar_conta(usuario_logado)
+    mostrar_retorno_do_pagamento()
 ticker, periodo, modo_da_taxa, taxa_digitada = ler_entradas()
 salvar_na_conta(usuario_logado)
 
