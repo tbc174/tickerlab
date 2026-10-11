@@ -145,9 +145,7 @@ def main() -> int:
     vaz, vaz_det = vazamento.verificar(rodar_variante)
 
     print("Teste contra o acaso...", flush=True)
-    acaso = criterio.p_valor_do_acaso_da_carteira(
-        res.posicoes[m], res.retornos_dos_ativos, res.custo_por_lado
-    )
+    acaso = criterio.p_valor_do_acaso_da_carteira(*pipeline.dados_do_acaso(res, m))
     hash_ = registro.obter(tentativa)["hash"]
     armazem.salvar(hash_, res.caminhos[m], res.caminhos_x2[m])
     indice = res.caminhos[m].index

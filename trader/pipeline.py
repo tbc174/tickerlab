@@ -224,3 +224,14 @@ def rodar(
         retornos_dos_ativos[posicoes_por_caminho[0].columns],
         custo_por_lado,
     )
+
+
+def dados_do_acaso(
+    resultado: ResultadoDoPipeline, caminho: int
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series]:
+    """Posições do caminho e retornos dos ativos nas mesmas datas e colunas (para o A10)."""
+    posicoes = resultado.posicoes[caminho].sort_index().sort_index(axis=1)
+    retornos = resultado.retornos_dos_ativos.reindex(
+        index=posicoes.index, columns=posicoes.columns
+    )
+    return posicoes, retornos, resultado.custo_por_lado.reindex(posicoes.columns)

@@ -186,3 +186,21 @@ def test_especificacao_inclui_parametros_e_familia():
     assert c.familia == "H2" and spec["parametros"]["num_leaves"] == 7
     assert spec["parametros"]["min_child_samples"] == 500
     assert pipeline.Configuracao("l", "logistica").familia == "H1"
+
+
+def test_dados_do_acaso_alinham_qualquer_caminho(mundo):
+    from trader import criterio
+
+    series, painel = mundo
+    res = pipeline.rodar(
+        pipeline.Configuracao("teste", "logistica"),
+        painel,
+        series,
+        None,
+        cpcv=CPCV_PEQUENO,
+    )
+    for caminho in range(len(res.posicoes)):
+        posicoes, retornos, custo = pipeline.dados_do_acaso(res, caminho)
+        assert posicoes.index.equals(retornos.index)
+        assert list(posicoes.columns) == list(retornos.columns) == list(custo.index)
+        criterio.p_valor_do_acaso_da_carteira(posicoes, retornos, custo, sorteios=100)
