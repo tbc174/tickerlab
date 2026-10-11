@@ -134,10 +134,7 @@ from src.metricas import (
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.momentum import montar_tabela_de_momentum
 from src.paginas import (
-    FRASE_DE_CADA_GRUPO,
-    GRUPO_ANALISAR,
-    GRUPO_AVANCADO,
-    GRUPO_ESTRATEGIAS,
+    GRUPO_MAIS,
     GRUPO_TOPO,
     GRUPOS,
     PAGINA_INICIAL,
@@ -212,11 +209,7 @@ st.set_page_config(
 )
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
 # símbolo + "TickerLab" no canto do menu (clicar volta ao Início); só o símbolo se faltar espaço
-st.logo(
-    str(marca.ARQUIVO_DA_ASSINATURA),
-    size="large",
-    icon_image=str(marca.ARQUIVO_DO_ICONE),
-)
+st.logo(str(marca.ARQUIVO_DA_ASSINATURA), size="large")
 
 
 def marca_html():
@@ -452,6 +445,8 @@ def mostrar_assinatura(onde):
         return
     assinatura = st.session_state.get("assinatura")
     if usuario.plano == "gratuito":
+        st.caption("Plano Plus: a assinatura chega em breve.")
+    if usuario.plano in ("gratuito", "plus"):
         st.button(
             "Assinar o plano Pro",
             key=f"assinar_{onde}",
@@ -837,7 +832,7 @@ def mostrar_favoritos():
     atual = normalizar_ticker(st.session_state["ticker"])
     limites = limites_do(plano_atual())
     with st.popover(
-        f"Favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
+        f"Meus favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
     ):
         st.button(
             f"Tirar {atual} dos favoritos"
@@ -3755,7 +3750,7 @@ def carregar_contexto():
 def cabecalho_da_pagina(chave):
     """O molde de toda página: grupo (olho), ícone e título, selo Pro e para que ela serve."""
     p = pagina(chave)
-    if p.grupo != GRUPO_TOPO:
+    if p.grupo not in (GRUPO_TOPO, GRUPO_MAIS):  # sem "olho" para o topo e o Mais
         grupo = p.grupo.removesuffix(" (Pro)")
         st.markdown(f'<div class="tl-olho">{grupo}</div>', unsafe_allow_html=True)
     selo = " :blue-badge[Pro]" if p.e_pro else ""
@@ -3776,7 +3771,7 @@ def mostrar_topo(usuario):
         if usuario is not None:
             mostrar_conta(usuario)
         else:
-            st.caption("Modo local, sem login")
+            st.markdown(":gray-badge[Modo local · sem login]")
 
 
 def _analisar_o_ativo_do_inicio():
@@ -3812,7 +3807,7 @@ def pagina_inicio():
         on_change=_analisar_o_ativo_do_inicio,
     )
     col_analisar.button(
-        "Analisar",
+        "Analisar ativo",
         type="primary",
         key="comecar",
         width="stretch",
@@ -3824,25 +3819,49 @@ def pagina_inicio():
 
     st.subheader("O que dá para fazer")
     cartoes = [
-        (GRUPO_ANALISAR, ":material/dashboard:", paginas_do_grupo(GRUPO_ANALISAR)),
-        (GRUPO_ESTRATEGIAS, ":material/history:", paginas_do_grupo(GRUPO_ESTRATEGIAS)),
-        (GRUPO_AVANCADO, ":material/science:", paginas_do_grupo(GRUPO_AVANCADO)),
-        ("TickerLab Trade", ":material/memory:", [pagina("trade")]),
+        (
+            ":material/dashboard:",
+            "Analisar ativo",
+            "Retorno, risco e comportamento de uma ação, índice ou cripto.",
+            "visao_geral",
+            None,
+        ),
+        (
+            ":material/history:",
+            "Testar estratégia",
+            "Repita uma regra de compra e venda no passado, com custos.",
+            "backtest",
+            None,
+        ),
+        (
+            ":material/picture_as_pdf:",
+            "Gerar relatório",
+            "Um PDF com os números, os gráficos e cada termo explicado.",
+            "relatorio",
+            None,
+        ),
+        (
+            ":material/account_balance_wallet:",
+            "Minha carteira (B3)",
+            "Envie a planilha da Área do Investidor e veja concentração e risco.",
+            "relatorio",
+            relatorios.MINHA_CARTEIRA,
+        ),
     ]
-    for coluna, (titulo, icone, itens) in zip(st.columns(4), cartoes, strict=True):
-        with coluna, st.container(border=True):
-            st.markdown(f"#### {icone} {titulo.removesuffix(' (Pro)')}")
-            if titulo == "TickerLab Trade":
-                st.caption("A pesquisa de trading quantitativo, em andamento.")
-            else:
-                st.caption(FRASE_DE_CADA_GRUPO[titulo])
-            for item in itens:
-                selo = " · Pro" if item.e_pro else ""
+    for i, (coluna, (icone, titulo, texto, destino, tipo)) in enumerate(
+        zip(st.columns(4), cartoes, strict=True)
+    ):
+        with coluna, st.container(border=True, height=196, key=f"tl-cartao-{i}"):
+            st.markdown(f"#### {icone} {titulo}")
+            st.caption(texto)
+            if tipo is None:
                 st.page_link(
-                    PAGINAS_DO_MENU[item.chave],
-                    label=f"{item.titulo}{selo}",
-                    icon=item.icone,
+                    PAGINAS_DO_MENU[destino],
+                    label="Abrir",
+                    icon=":material/arrow_forward:",
                 )
+            else:
+                atalho_para_o_relatorio(tipo, rotulo="Abrir", chave=f"inicio_{tipo}")
 
     st.subheader("Como o TickerLab trabalha")
     principios = [
@@ -3872,18 +3891,21 @@ def pagina_inicio():
 
 
 # --- Gerar relatório (PDF) -------------------------------------------------------------------
-def atalho_para_o_relatorio(tipo):
-    """Botão nas páginas de análise que abre "Gerar relatório" já no tipo certo."""
+def atalho_para_o_relatorio(tipo, rotulo="Gerar relatório desta análise", chave=None):
+    """Botão que abre "Gerar relatório" já no tipo certo (páginas de análise e Início)."""
 
     def ir():
         st.session_state["tipo_de_relatorio"] = tipo
         st.session_state["ir_para_relatorio"] = True
 
     st.button(
-        "Gerar relatório desta análise",
-        icon=":material/picture_as_pdf:",
-        key=f"atalho_relatorio_{tipo}",
+        rotulo,
+        icon=":material/picture_as_pdf:"
+        if chave is None
+        else ":material/arrow_forward:",
+        key=chave or f"atalho_relatorio_{tipo}",
         on_click=ir,
+        type="tertiary" if chave else "secondary",
     )
     if st.session_state.pop("ir_para_relatorio", False):
         st.switch_page(PAGINAS_DO_MENU["relatorio"])
@@ -4093,14 +4115,14 @@ def pagina_relatorio():
     if gerar is None:
         return
     if st.button(
-        "Gerar PDF",
+        "Gerar relatório",
         type="primary",
         icon=":material/picture_as_pdf:",
         disabled=no_limite,
         key="gerar_pdf",
     ):
         try:
-            with st.spinner("Montando o relatório..."):
+            with st.spinner("Preparando relatório…"):
                 pdf = gerar()
         except (DadosIndisponiveisError, ValueError) as erro:
             st.error(f"Não consegui montar o relatório: {erro}")
@@ -4119,9 +4141,9 @@ def pagina_relatorio():
                 )
                 return
         st.session_state["pdf_pronto"] = (nome_do_arquivo, pdf)
+        st.toast("PDF pronto para baixar", icon=":material/check_circle:")
     pronto = st.session_state.get("pdf_pronto")
     if pronto:
-        st.success("Relatório pronto.")
         st.download_button(
             "Baixar o PDF",
             data=pronto[1],
@@ -4514,11 +4536,12 @@ def pagina_admin():
         st.warning("Não consegui carregar o painel agora.")
         return
 
-    primeira = st.columns(4)
+    primeira = st.columns(5)
     primeira[0].metric("Usuários", resumo["usuarios"])
-    primeira[1].metric("Plano Pro", resumo["pro"])
-    primeira[2].metric("Novos na semana", resumo["novos_na_semana"])
-    primeira[3].metric("Ativos na semana", resumo["ativos_na_semana"])
+    primeira[1].metric("Plano Plus", resumo["plus"])
+    primeira[2].metric("Plano Pro", resumo["pro"])
+    primeira[3].metric("Novos na semana", resumo["novos_na_semana"])
+    primeira[4].metric("Ativos na semana", resumo["ativos_na_semana"])
     segunda = st.columns(4)
     segunda[0].metric("Plano Gratuito", resumo["gratuito"])
     segunda[1].metric(

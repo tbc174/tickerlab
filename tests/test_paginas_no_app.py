@@ -43,12 +43,21 @@ def test_todas_as_paginas_abrem_sem_erro_no_modo_local():
 
 def test_a_pagina_inicial_explica_e_leva_aos_proximos_passos():
     app = _app_local()
-    texto = " ".join(m.value for m in app.markdown)
+    texto = " ".join(m.value for m in app.markdown if not m.value.startswith("<style>"))
     assert "Entenda uma ação antes de investir" in texto
     for principio in ("Sem olhar o futuro", "Com custos", "Honesto", "Explicado"):
         assert principio in texto
-    assert "TickerLab Trade" in texto  # o cartão da pesquisa de trading
-    assert [b.label for b in app.button] == ["Analisar"]
+    for atalho in (
+        "Analisar ativo",
+        "Testar estratégia",
+        "Gerar relatório",
+        "Minha carteira (B3)",
+    ):
+        assert atalho in texto  # os quatro cartões de atalho
+    assert (
+        "TickerLab Trade" not in texto
+    )  # experimental: fica no menu "Mais", não no destaque
+    assert [b.label for b in app.button] == ["Analisar ativo", "Abrir"]
     assert [t.key for t in app.text_input] == ["ativo_do_inicio"]
 
 

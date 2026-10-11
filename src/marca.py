@@ -20,7 +20,10 @@ LINHA = "rgba(148, 163, 190, 0.14)"
 LINHA_FORTE = "rgba(148, 163, 190, 0.26)"
 # texto
 TEXTO = "#e8ecf4"
-TEXTO_APAGADO = "#93a0b8"
+TEXTO_APAGADO = (
+    "#a9b5c7"  # descrições: mais claro que antes, para passar no contraste WCAG AA
+)
+TEXTO_SUTIL = "#7f8ba0"  # só metadados curtos, nunca texto essencial
 # marca
 AZUL = "#2962ff"  # ações (botões, seleção) e o símbolo
 AZUL_TEXTO = "#6e95ff"  # azul legível sobre o fundo escuro (links, destaques)

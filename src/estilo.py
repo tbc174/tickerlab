@@ -10,7 +10,7 @@ CSS_DO_APP = f"""
 /* Largura e respiro da página */
 .block-container, [data-testid="stMainBlockContainer"] {{
     max-width: 1240px;
-    padding-top: 2rem;
+    padding-top: 5rem;  /* o menu do topo é fixo: com menos, o conteúdo fica embaixo dele */
     padding-bottom: 3rem;
 }}
 
@@ -220,6 +220,46 @@ hr {{
 [data-testid="stPageLink"] a {{
     font-weight: 700;
 }}
+
+/* --- microanimações (blueprint, seção 09): curtas, com função, nunca contínuas -------- */
+
+/* a página aparece uma vez, sem pular */
+[data-testid="stMainBlockContainer"] {{
+    animation: tl-entrar 260ms ease-out both;
+}}
+@keyframes tl-entrar {{
+    from {{ opacity: 0; transform: translateY(8px); }}
+    to {{ opacity: 1; transform: none; }}
+}}
+
+/* cartões clicáveis: borda azul e sobem 2 px */
+.tl-cartao [data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-tl-cartao"] {{
+    transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}}
+[class*="st-key-tl-cartao"]:hover {{
+    border-color: {marca.AZUL} !important;
+    transform: translateY(-2px);
+    background: {marca.DESTAQUE};
+}}
+
+/* botões: afundam um pouco ao clicar */
+button {{
+    transition: transform 120ms ease, background 150ms ease, border-color 150ms ease;
+}}
+button:active:not(:disabled) {{
+    transform: scale(0.98);
+}}
+
+/* foco visível para quem usa teclado (WCAG) */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible,
+[role="tab"]:focus-visible, [role="option"]:focus-visible {{
+    outline: 2px solid {marca.AZUL_TEXTO} !important;
+    outline-offset: 2px;
+}}
+
+/* metadados curtos */
+.tl-sutil {{ color: {marca.TEXTO_SUTIL}; font-size: 0.82rem; }}
 
 @media (prefers-reduced-motion: reduce) {{
     * {{ transition: none !important; animation: none !important; }}

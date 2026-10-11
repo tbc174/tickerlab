@@ -16,7 +16,7 @@ CONVENCAO_DE_NOMES = {
 }
 
 PAPEIS = ("usuario", "admin")
-PLANOS = ("gratuito", "pro")
+PLANOS = ("gratuito", "plus", "pro")
 TIPOS_DE_RELATORIO = ("ativo", "comparacao", "backtest", "carteira", "minha_carteira")
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
@@ -58,7 +58,7 @@ usuarios = sa.Table(
     sa.Column("termos_versao", sa.String(20)),
     sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
-    sa.CheckConstraint("plano IN ('gratuito', 'pro')", name="plano"),
+    sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
 
