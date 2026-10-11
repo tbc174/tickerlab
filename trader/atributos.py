@@ -29,7 +29,16 @@ from trader.universo import UNIVERSO
 
 HORIZONTE_DO_ROTULO = 5
 HORIZONTES = (1, 5, 21, 63, 126, 252)
-CLASSES = ("acoes_b3", "cambio", "cripto", "etfs", "forex", "indices", "metais")
+CLASSES = (
+    "acoes_b3",
+    "cambio",
+    "commodities",
+    "cripto",
+    "forex",
+    "indices",
+    "metais",
+    "renda_fixa",
+)
 MACRO = {  # nome do atributo: (arquivo da série, transformação)
     "vix": "IDX_VIX",
     "juro_10a": "IDX_TNX",

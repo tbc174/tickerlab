@@ -140,6 +140,9 @@ def rodar_baseline(
     }
 
 
+CARTEIRA = "risco igual por grupo de classes (criterio v0.3, secao 3)"
+
+
 def especificacao(nome: str, series: list[SerieDoAtivo]) -> dict:
     return {
         "tipo": "baseline",
@@ -170,6 +173,7 @@ def especificacao(nome: str, series: list[SerieDoAtivo]) -> dict:
             },
         },
         "universo": sorted(s.ativo.simbolo for s in series),
+        "carteira": CARTEIRA,
     }
 
 

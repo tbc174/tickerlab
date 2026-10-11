@@ -103,7 +103,7 @@ def test_hash_ignora_quebra_de_linha_do_windows(tmp_path):
 def test_criterio_alterado_impede_pontuar(ambiente):
     i = _candidato(ambiente)
     ambiente["criterio"].write_text(TEXTO + "mudei um limite\n", encoding="utf-8")
-    with pytest.raises(h.CriterioAlteradoError, match="v0.2"):
+    with pytest.raises(h.CriterioAlteradoError, match="v0.5"):
         _pontuar(ambiente, i, lambda d: {})
     assert not (ambiente["pasta"] / h.NOME_DO_LACRE).exists()  # nada queimado
 

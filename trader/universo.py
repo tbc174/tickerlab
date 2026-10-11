@@ -4,7 +4,8 @@ Duas fontes, guardadas separadas (os feriados e os fusos são diferentes; o alin
 fica para a M2):
 
 - `mt5`: forex e metais, direto da conta demo (preços do corretor);
-- `yfinance`: B3, commodities, cripto, índices e macro (preços ajustados por dividendos e desdobramentos).
+- `yfinance`: B3, commodities, cripto, índices, ETFs (renda fixa, commodities, regiões) e macro
+  (preços ajustados por dividendos e desdobramentos).
 
 `papel` diz para que a série serve: `operar` entra como candidata a estratégia; `atributo` só entra
 como informação para o modelo (VIX, juros, dólar), nunca é operada.
@@ -83,6 +84,16 @@ UNIVERSO: list[Ativo] = [
         "AUDJPY",
         "USDMXN",
         "USDZAR",
+        # universo ampliado (critério v0.2): moedas fora do bloco do dólar, só as que têm histórico
+        # diário no MT5 desde 01/01/2008
+        "EURCHF",
+        "EURAUD",
+        "AUDNZD",
+        "CADJPY",
+        "USDNOK",
+        "USDSEK",
+        "EURCAD",
+        "NZDJPY",
     ),
     *_mt5("metais", "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD"),
     *_yf(
@@ -133,12 +144,49 @@ UNIVERSO: list[Ativo] = [
         "BOVA11.SA",
     ),
     *_yf("indices", "^BVSP", "^GSPC", "^IXIC", "^DJI", "^N225", "^GDAXI"),
-    *_yf("etfs", "TLT", "GLD"),
+    # universo ampliado (critério v0.2, seção 1): classes e regiões que faltavam, escolhidas pela
+    # regra (líquidos, histórico diário desde no máximo 2008) sem olhar o desempenho
+    *_yf(
+        "indices",
+        "^FTSE",  # Reino Unido
+        "^HSI",  # Hong Kong
+        "^AXJO",  # Austrália
+        "^STOXX50E",  # zona do euro
+        "^KS11",  # Coreia do Sul
+        "EEM",  # ETF de emergentes
+        "EFA",  # ETF de desenvolvidos fora dos EUA
+        "VNQ",  # ETF de imóveis dos EUA
+    ),
+    # juros e crédito (ETFs; o TLT estava em "etfs" na v0.1)
+    *_yf("renda_fixa", "TLT", "IEF", "SHY", "TIP", "LQD", "HYG", "EMB"),
+    # commodities por ETF: preço negociável, sem o salto de rolagem dos `=F` (o GLD estava em "etfs")
+    *_yf("commodities", "GLD", "USO", "UNG", "DBA", "DBC", "DBB"),
     *_yf("macro", "^VIX", "^TNX", "DX-Y.NYB", papel="atributo"),
     *_yf(
         "cambio", "BRL=X"
     ),  # dólar em reais: opera-se pelo WDO/DOL, vale como proxy deles
 ]
+
+
+# Grupos de classes (critério v0.3, seção 3): a carteira divide o risco igualmente entre os grupos
+# e, dentro de cada grupo, entre os ativos. O modelo por classe treina um modelo por grupo.
+GRUPO_DA_CLASSE = {
+    "forex": "forex",
+    "cambio": "forex",
+    "acoes_b3": "acoes_b3",
+    "indices": "indices",
+    "renda_fixa": "renda_fixa",
+    "commodities": "commodities",
+    "metais": "commodities",
+    "cripto": "cripto",
+}
+_CLASSE_DO_SIMBOLO = {a.simbolo: a.classe for a in UNIVERSO}
+
+
+def grupo_do_simbolo(simbolo: str) -> str:
+    """O grupo do ativo; um nome fora do universo (ex.: nos testes) é um grupo sozinho."""
+    classe = _CLASSE_DO_SIMBOLO.get(simbolo)
+    return GRUPO_DA_CLASSE.get(classe, simbolo) if classe else simbolo
 
 
 def por_fonte(fonte: str) -> list[Ativo]:

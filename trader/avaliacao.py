@@ -1,9 +1,11 @@
-"""Métricas da M2 por ativo e da carteira (as que o critério v0.1 usa nas seções 5A e 5B).
+"""Métricas da M2 por ativo e da carteira (as que o critério usa nas seções 5A e 5B).
 
 Convenções:
 - retornos diários líquidos de custos, como saem de `trader.backtest`;
-- a carteira é a média, em cada dia útil, dos ativos que têm dado naquele dia (risco igual, porque
-  cada ativo já foi dimensionado para a mesma volatilidade alvo);
+- a carteira divide o risco igualmente entre os GRUPOS de classes (critério v0.3, seção 3): em cada
+  dia útil, cada grupo é a média dos seus ativos com dado e a carteira é a média dos grupos com dado
+  (cada ativo já foi dimensionado para a mesma volatilidade alvo). Até a v0.2 era a média simples
+  dos ativos; `pesos_por_grupo` é o único lugar dessa regra;
 - cripto negocia no fim de semana: os retornos de sábado e domingo são somados (compostos) na
   segunda-feira antes de entrar na carteira, para todos andarem no mesmo calendário.
 """
@@ -12,6 +14,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
+from trader.universo import grupo_do_simbolo
 
 DIAS_POR_ANO = 252
 NAN = float("nan")
@@ -82,15 +86,49 @@ def montar_carteira(retornos: dict[str, pd.Series]) -> pd.DataFrame:
     )
 
 
+def pesos_por_grupo(disponivel: np.ndarray, colunas: list[str]) -> np.ndarray:
+    """Peso de cada ativo em cada dia: 1 / (grupos com dado no dia × ativos do grupo com dado).
+
+    `disponivel` é (dias × ativos), True quando o ativo tem dado. Cada linha soma 1 (ou 0, num dia
+    sem nenhum ativo).
+    """
+    disponivel = np.asarray(disponivel, dtype=bool)
+    grupos = np.array([grupo_do_simbolo(c) for c in colunas])
+    pesos = np.zeros(disponivel.shape, dtype=float)
+    unicos = np.unique(grupos)
+    por_grupo = (
+        np.column_stack([disponivel[:, grupos == g].sum(axis=1) for g in unicos])
+        if len(unicos)
+        else np.zeros((disponivel.shape[0], 0))
+    )
+    grupos_no_dia = (por_grupo > 0).sum(axis=1)
+    for i, g in enumerate(unicos):
+        colunas_do_grupo = grupos == g
+        n = por_grupo[:, i]
+        with np.errstate(divide="ignore", invalid="ignore"):
+            peso = np.where(
+                (n > 0) & (grupos_no_dia > 0), 1.0 / (n * grupos_no_dia), 0.0
+            )
+        pesos[:, colunas_do_grupo] = disponivel[:, colunas_do_grupo] * peso[:, None]
+    return pesos
+
+
 def retorno_da_carteira(tabela: pd.DataFrame) -> pd.Series:
-    """Média dos ativos disponíveis em cada dia; dias sem nenhum ativo saem."""
-    return tabela.mean(axis=1, skipna=True).dropna()
+    """Risco igual por grupo (ver `pesos_por_grupo`); dias sem nenhum ativo saem."""
+    disponivel = tabela.notna().to_numpy()
+    pesos = pesos_por_grupo(disponivel, list(tabela.columns))
+    valores = tabela.fillna(0.0).to_numpy(dtype=float)
+    carteira = pd.Series((valores * pesos).sum(axis=1), index=tabela.index)
+    return carteira[disponivel.any(axis=1)]
 
 
 def participacao_por_ativo(tabela: pd.DataFrame) -> pd.Series:
     """Quanto do resultado da carteira veio de cada ativo (soma = 1 quando o total é positivo)."""
-    ativos_por_dia = tabela.notna().sum(axis=1).replace(0, np.nan)
-    contribuicao = tabela.div(ativos_por_dia, axis=0).sum()
+    pesos = pesos_por_grupo(tabela.notna().to_numpy(), list(tabela.columns))
+    contribuicao = pd.Series(
+        (tabela.fillna(0.0).to_numpy(dtype=float) * pesos).sum(axis=0),
+        index=tabela.columns,
+    )
     total = contribuicao.sum()
     if not total > 0:
         return contribuicao * NAN

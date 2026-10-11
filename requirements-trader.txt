@@ -8,6 +8,9 @@ statsmodels==0.15.0
 pyarrow==25.0.1
 numba==0.68.0  # acelera laços do trader (exige numpy 2.5.x; 0.62 rebaixava o numpy)
 llvmlite==0.50.0
+# H4 (deep learning, critério v0.2): no Windows o PyPI só tem a versão para CPU, que é o que o
+# critério pede; conferido antes que não muda o numpy 2.5.3
+torch==2.14.1
 # interface do trader (janela nativa); Essentials = sem o navegador embutido
 PySide6-Essentials==6.12.0
 pyqtgraph==0.14.0

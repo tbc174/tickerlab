@@ -34,7 +34,7 @@ def _evidencia(forte=True):
         p_valor_do_acaso=0.01 if forte else 0.4,
         vazamento={
             "futuro_inflou": True,
-            "rotulos_embaralhados_zero": True,
+            "embaralhado_nao_supera_a_proporcao": True,
             "reprodutivel": True,
         },
     )
@@ -87,7 +87,7 @@ def test_sem_verificacoes_de_vazamento_nao_aprova():
     e = _evidencia(forte=True)
     e.vazamento = {}
     assert "V" in c.avaliar_desenvolvimento(e).reprovados
-    e.vazamento = {"futuro_inflou": True, "rotulos_embaralhados_zero": False}
+    e.vazamento = {"futuro_inflou": True, "embaralhado_nao_supera_a_proporcao": False}
     assert "V" in c.avaliar_desenvolvimento(e).reprovados
 
 

@@ -1,6 +1,6 @@
 """Holdout lacrado da M2: o trecho final do histórico que só pode ser pontuado UMA vez.
 
-Implementa a seção 2 e a seção 7 do critério aprovado (`docs/pre-registro-m2-v0.1.md`):
+Implementa a seção 2 e a seção 7 do critério aprovado (`docs/pre-registro-m2-v0.4.md`):
 
     desenvolvimento : até 08/09/2023        (tudo o que se projeta e se escolhe usa só isto)
     expurgo         : 09/09/2023 a 09/10/2023 (~21 pregões; descartado, para os rótulos não vazarem)
@@ -40,9 +40,10 @@ FIM_DO_DESENVOLVIMENTO = pd.Timestamp("2023-09-08")
 INICIO_DA_AVALIACAO = pd.Timestamp("2000-01-03")
 INICIO_DO_HOLDOUT = pd.Timestamp("2023-10-10")
 FIM_DO_HOLDOUT = pd.Timestamp("2026-10-09")
-CAMINHO_DO_CRITERIO = RAIZ / "docs" / "pre-registro-m2-v0.1.md"
-# SHA-256 do texto aprovado pelo Tiago em 11/10/2026 (com quebras de linha normalizadas para \n)
-HASH_DO_CRITERIO = "b8074c37ae92cb4542965d1c2285f3d31f9751f5f3cb6758497d7baa07f32e98"
+CAMINHO_DO_CRITERIO = RAIZ / "docs" / "pre-registro-m2-v0.4.md"
+# SHA-256 do texto vigente (com quebras de linha normalizadas para \n). v0.4 aprovada pelo Tiago em
+# 11/10/2026; as anteriores ficam em docs/: v0.1 (b8074c37…), v0.2 (8d72f930…), v0.3 (0c10de64…).
+HASH_DO_CRITERIO = "af9bbe35805eb825f73bc1629029f38dbff28dd1593e0d2c0f72deaf351417c6"
 FRASE_DE_CONFIRMACAO = "INVALIDAR HOLDOUT"
 NOME_DO_LACRE = "holdout.lock"
 NOME_DA_INVALIDACAO = "holdout.invalidado.json"
@@ -106,7 +107,7 @@ def _conferir_criterio(caminho: Path, esperado: str) -> None:
     if hash_do_texto(caminho) != esperado:
         raise CriterioAlteradoError(
             "O texto do critério mudou depois da aprovação. Mudar é permitido, mas vira a "
-            "v0.2 (com data e +25 tentativas); o holdout não pode ser pontuado com ele alterado."
+            "v0.5 (com data e +25 tentativas); o holdout não pode ser pontuado com ele alterado."
         )
 
 

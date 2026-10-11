@@ -265,3 +265,67 @@ def test_zerar_erros_de_ajuste_so_mexe_nos_saltos_impossiveis():
     limpo, n = posicao.zerar_erros_de_ajuste(r)
     assert n == 3
     assert limpo.tolist() == pytest.approx([0.01, 0.0, 0.0, 0.39, 0.0])
+
+
+# --- carteira com risco igual por grupo (critério v0.3, seção 3) ----------------------------
+
+
+def test_cada_grupo_recebe_o_mesmo_peso_qualquer_que_seja_o_tamanho():
+    from trader import avaliacao
+
+    datas = pd.bdate_range("2020-01-06", periods=3)
+    # três ações da B3 (um grupo) e um par de moedas (outro grupo)
+    tabela = pd.DataFrame(
+        {"PETR4.SA": 0.03, "VALE3.SA": 0.03, "ITUB4.SA": 0.03, "EURUSD": -0.01},
+        index=datas,
+    )
+    carteira = avaliacao.retorno_da_carteira(tabela)
+    assert carteira.iloc[0] == pytest.approx(
+        0.5 * 0.03 + 0.5 * -0.01
+    )  # não 3/4 em ações
+    pesos = avaliacao.pesos_por_grupo(tabela.notna().to_numpy(), list(tabela.columns))
+    assert pesos[0].tolist() == pytest.approx([1 / 6, 1 / 6, 1 / 6, 1 / 2])
+    assert pesos.sum(axis=1) == pytest.approx([1, 1, 1])
+
+
+def test_grupo_sem_dado_no_dia_sai_e_o_peso_vai_para_os_outros():
+    from trader import avaliacao
+
+    datas = pd.bdate_range("2020-01-06", periods=2)
+    tabela = pd.DataFrame(
+        {
+            "BTC-USD": [np.nan, 0.10],  # a cripto só existe a partir do 2º dia
+            "EURUSD": [0.01, 0.01],
+            "TLT": [0.02, 0.02],
+        },
+        index=datas,
+    )
+    carteira = avaliacao.retorno_da_carteira(tabela)
+    assert carteira.iloc[0] == pytest.approx((0.01 + 0.02) / 2)
+    assert carteira.iloc[1] == pytest.approx((0.10 + 0.01 + 0.02) / 3)
+
+
+def test_concentracao_usa_os_pesos_por_grupo():
+    from trader import avaliacao
+
+    datas = pd.bdate_range("2020-01-06", periods=4)
+    tabela = pd.DataFrame(
+        {"PETR4.SA": 0.01, "VALE3.SA": 0.01, "EURUSD": 0.01}, index=datas
+    )
+    participacao = avaliacao.participacao_por_ativo(tabela)
+    assert participacao["EURUSD"] == pytest.approx(0.5)  # sozinho no grupo: metade
+    assert participacao["PETR4.SA"] == pytest.approx(0.25)
+
+
+def test_nomes_fora_do_universo_continuam_com_peso_igual_por_ativo():
+    from trader import avaliacao
+
+    datas = pd.bdate_range("2020-01-06", periods=1)
+    tabela = pd.DataFrame({"x1": [0.03], "x2": [0.0], "x3": [0.0]}, index=datas)
+    assert avaliacao.retorno_da_carteira(tabela).iloc[0] == pytest.approx(0.01)
+
+
+def test_todo_ativo_operavel_tem_grupo():
+    from trader.universo import GRUPO_DA_CLASSE, UNIVERSO
+
+    assert {a.classe for a in UNIVERSO if a.papel == "operar"} <= set(GRUPO_DA_CLASSE)

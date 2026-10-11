@@ -1,4 +1,4 @@
-"""O critério de aprovação da M2 em código (pré-registro v0.1, `docs/pre-registro-m2-v0.1.md`).
+"""O critério de aprovação da M2 em código (pré-registro v0.4, `docs/pre-registro-m2-v0.4.md`).
 
 Escrito ANTES de qualquer resultado de ML, para que a régua não possa ser ajustada ao que aparecer.
 Cada item devolve o valor medido, o limite e se passou. Os limiares abaixo são os do texto
@@ -23,7 +23,7 @@ from src import acaso
 from trader import avaliacao
 from trader.validacao import bootstrap_diferenca_de_sharpe
 
-# --- limiares aprovados (v0.1) -------------------------------------------------------------
+# --- limiares aprovados (v0.1, mantidos na v0.2) -------------------------------------------------------------
 DSR_MINIMO = 0.95  # A1
 PBO_MAXIMO = 0.25  # A2
 T_MINIMO = 3.0  # A3
@@ -302,13 +302,16 @@ def p_valor_do_acaso_da_carteira(
     p = posicoes.fillna(0.0).to_numpy(dtype=float)
     custo = custo_por_lado.reindex(posicoes.columns).fillna(0.0).to_numpy(dtype=float)
     n = len(p)
+    pesos = avaliacao.pesos_por_grupo(
+        disponivel, list(posicoes.columns)
+    )  # v0.3: risco por grupo
+    com_dado = disponivel.any(axis=1)
 
     def sharpe_da_carteira(desejada: np.ndarray) -> float:
         posicao = np.vstack([np.zeros((1, desejada.shape[1])), desejada[:-1]])
         giro = np.abs(np.diff(posicao, axis=0, prepend=0.0))
-        diario = np.where(disponivel, posicao * r - giro * custo, np.nan)
-        com_dado = disponivel.any(axis=1)
-        carteira = np.nanmean(diario[com_dado], axis=1)
+        diario = np.where(disponivel, posicao * r - giro * custo, 0.0)
+        carteira = (diario * pesos).sum(axis=1)[com_dado]
         desvio = carteira.std(ddof=1)
         return (
             float(carteira.mean() / desvio * np.sqrt(DIAS_POR_ANO))

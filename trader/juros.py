@@ -41,10 +41,22 @@ PAIS_PARA_MOEDA = {
     "MX": "MXN",
     "ZA": "ZAR",
     "BR": "BRL",
+    # universo ampliado (v0.2)
+    "NO": "NOK",
+    "SE": "SEK",
+    "HK": "HKD",
+    "KR": "KRW",
 }
 METAIS = {"XAU", "XAG", "XPT", "XPD"}
 # moeda em que cada ativo à vista é cotado (para o custo de financiar a posição)
-MOEDA_POR_CLASSE = {"acoes_b3": "BRL", "cripto": "USD"}
+MOEDA_POR_CLASSE = {
+    "acoes_b3": "BRL",
+    "cripto": "USD",
+    "renda_fixa": "USD",  # ETFs dos EUA
+    "commodities": "USD",  # ETFs dos EUA
+}
+# ETFs de ações dos EUA que estão na classe "indices"
+ETFS_EM_DOLAR = {"EEM", "EFA", "VNQ"}
 MOEDA_POR_SIMBOLO = {
     "^BVSP": "BRL",
     "^GSPC": "USD",
@@ -52,8 +64,11 @@ MOEDA_POR_SIMBOLO = {
     "^DJI": "USD",
     "^N225": "JPY",
     "^GDAXI": "EUR",
-    "TLT": "USD",
-    "GLD": "USD",
+    "^FTSE": "GBP",
+    "^HSI": "HKD",
+    "^AXJO": "AUD",
+    "^STOXX50E": "EUR",
+    "^KS11": "KRW",
 }
 
 
@@ -130,7 +145,11 @@ def carry_anual(
         if base in METAIS:
             return -juro_da_cotada
         return taxa(tabela, base, indice) - juro_da_cotada
-    moeda = MOEDA_POR_SIMBOLO.get(ativo.simbolo) or MOEDA_POR_CLASSE.get(ativo.classe)
+    moeda = (
+        MOEDA_POR_SIMBOLO.get(ativo.simbolo)
+        or ("USD" if ativo.simbolo in ETFS_EM_DOLAR else None)
+        or MOEDA_POR_CLASSE.get(ativo.classe)
+    )
     if moeda is None:
         raise KeyError(
             f"Não sei em que moeda {ativo.simbolo} ({ativo.classe}) é financiado."

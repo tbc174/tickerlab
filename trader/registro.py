@@ -1,6 +1,6 @@
 """Registro de tentativas da M2: toda configuração testada entra aqui, sem exceção.
 
-Existe para cumprir a seção 7 do critério aprovado (`docs/pre-registro-m2-v0.1.md`): o Sharpe
+Existe para cumprir a seção 7 do critério aprovado (`docs/pre-registro-m2-v0.4.md`): o Sharpe
 deflacionado só é honesto se contar **todas** as variações que foram experimentadas, e não só a
 que deu certo. Cada tentativa é um dicionário com a especificação completa (modelo, rótulo,
 atributos, parâmetros, custos...). O hash dessa especificação é a identidade: rodar de novo a mesma
@@ -23,9 +23,10 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 PASTA_DA_PESQUISA = RAIZ / "pesquisa_m2"
 CAMINHO_PADRAO = PASTA_DA_PESQUISA / "registro.db"
-ORCAMENTO_DE_TENTATIVAS = 300  # critério v0.1, seção 7
+ORCAMENTO_DE_TENTATIVAS = 300  # critério, seção 7
 TENTATIVAS_POR_AJUSTE = 25  # mudar o critério depois de aprovado soma isto
-FAMILIAS = ("H0", "H1", "H2", "H3")  # baselines, linear, árvores, meta-rotulagem
+# baselines, linear, árvores, meta-rotulagem, deep learning e séries temporais clássicas (v0.2)
+FAMILIAS = ("H0", "H1", "H2", "H3", "H4", "H5")
 FASES = ("desenvolvimento", "holdout")
 
 ESQUEMA = """

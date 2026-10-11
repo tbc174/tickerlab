@@ -102,6 +102,22 @@ class Tela(QWidget):
         pass
 
 
+def _texto_do_embaralhado(vaz: dict) -> str:
+    """Regra da v0.2 (contra a referência da proporção) ou, nas tentativas antigas, a da v0.1."""
+    emb = formatar(vaz.get("sharpe_embaralhado"), "num2")
+    if "sharpe_da_diferenca" in vaz:
+        return (
+            f"rótulos embaralhados {emb} contra a proporção "
+            f"{formatar(vaz.get('sharpe_proporcao'), 'num2')} (diferença "
+            f"{formatar(vaz.get('sharpe_da_diferenca'), 'num2')}, limite "
+            f"±{formatar(vaz.get('limite_da_diferenca'), 'num2')})"
+        )
+    return (
+        f"rótulos embaralhados {emb} "
+        f"(limite ±{formatar(vaz.get('limite_do_embaralhado'), 'num2')}, regra da v0.1)"
+    )
+
+
 def _limpar(layout: QVBoxLayout | QHBoxLayout | QGridLayout) -> None:
     while layout.count():
         item = layout.takeAt(0)
@@ -375,8 +391,7 @@ class TelaPesquisa(Tela):
             acaso = resultado.get("acaso", {})
             self.d_notas.setText(
                 f"Vazamento — normal {formatar(vaz.get('sharpe_normal'), 'num2')}, olhando o futuro "
-                f"{formatar(vaz.get('sharpe_futuro'), 'num2')}, rótulos embaralhados "
-                f"{formatar(vaz.get('sharpe_embaralhado'), 'num2')} (limite ±{formatar(vaz.get('limite_do_embaralhado'), 'num2')}). "
+                f"{formatar(vaz.get('sharpe_futuro'), 'num2')}, {_texto_do_embaralhado(vaz)}. "
                 f"Contra o acaso — p-valor {formatar(acaso.get('p_valor'), 'num3')}."
             )
             self.d_itens.setVisible(True)

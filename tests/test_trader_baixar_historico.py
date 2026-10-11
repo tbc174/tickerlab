@@ -117,6 +117,28 @@ def test_so_baixa_as_fontes_pedidas(tmp_path):
     assert list(relatorio["simbolo"]) == ["KC=F"]
 
 
+def test_rodada_parcial_mantem_as_linhas_da_outra_fonte(tmp_path):
+    ativos = [Ativo("EURUSD", "mt5", "forex"), Ativo("KC=F", "yfinance", "agro")]
+    baixador.baixar_tudo(
+        ("mt5", "yfinance"),
+        pasta=tmp_path,
+        ativos=ativos,
+        abrir_mt5=lambda: ConexaoMT5(MT5Falso(rates=_rates(CANDLES))),
+        baixar_yf=lambda simbolo: _candles(40),
+    )
+    relatorio = baixador.baixar_tudo(
+        ("yfinance",),
+        pasta=tmp_path,
+        ativos=ativos,
+        baixar_yf=lambda simbolo: _candles(60),
+    )
+    assert sorted(relatorio["simbolo"]) == ["EURUSD", "KC=F"]  # o MT5 não sumiu
+    assert relatorio["simbolo"].is_unique
+    assert (
+        relatorio.set_index("simbolo").loc["KC=F", "linhas"] == 60
+    )  # a nova substituiu
+
+
 def test_conta_real_e_recusada(tmp_path):
     from trader.mt5 import ContaRealRecusadaError
 

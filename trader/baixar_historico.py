@@ -166,7 +166,14 @@ def baixar_tudo(
 
     relatorio = pd.DataFrame(linhas)
     pasta.mkdir(parents=True, exist_ok=True)
-    relatorio.to_csv(pasta / "relatorio_de_qualidade.csv", index=False)
+    caminho = pasta / "relatorio_de_qualidade.csv"
+    if caminho.exists() and len(relatorio):
+        # rodada parcial (uma fonte só ou parte da lista): troca só as linhas baixadas agora e
+        # mantém as outras; antes, `--so yfinance` apagava as linhas do MT5
+        anterior = pd.read_csv(caminho)
+        mantidas = anterior[~anterior["simbolo"].isin(relatorio["simbolo"])]
+        relatorio = pd.concat([mantidas, relatorio], ignore_index=True)
+    relatorio.to_csv(caminho, index=False)
     return relatorio
 
 

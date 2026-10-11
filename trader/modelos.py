@@ -15,6 +15,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from trader import redes
+
 PADROES: dict[str, dict[str, Any]] = {
     "logistica": {"C": 0.1},
     "floresta": {
@@ -34,7 +36,23 @@ PADROES: dict[str, dict[str, Any]] = {
         "reg_lambda": 10.0,
     },
 }
-FAMILIA = {"logistica": "H1", "floresta": "H2", "lightgbm": "H2"}
+FAMILIA = {
+    "logistica": "H1",
+    "floresta": "H2",
+    "lightgbm": "H2",
+    "arima": "H5",
+    **{t: "H4" for t in redes.TIPOS},
+}
+PADROES.update(redes.PADROES)  # H4: os parâmetros fixos de cada rede
+# H5 não é um classificador: o ARIMA roda por ativo em `trader.arima` (aqui só os parâmetros)
+PADROES["arima"] = {
+    "p_max": 2,
+    "q_max": 2,
+    "d": 0,
+    "constante": True,
+    "escolha": "AIC so no treino",
+    "entrada": "retorno_1d",
+}
 
 
 def parametros(tipo: str, ajustes: dict[str, Any] | None = None) -> dict[str, Any]:

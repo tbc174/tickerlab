@@ -2,10 +2,11 @@
 
     python -m trader.rodar_modelo --modelo logistica
     python -m trader.rodar_modelo --modelo lightgbm --nome lgbm_v1
+    python -m trader.rodar_modelo --modelo lightgbm --por-classe   (um modelo por grupo de classe)
 
 1. registra a tentativa (antes de rodar: o que é tentado conta, mesmo que dê erro);
 2. CPCV com 45 divisões → 9 caminhos (custos ×1 e ×2);
-3. verificações de vazamento (normal duas vezes, futuro, embaralhado);
+3. verificações de vazamento (normal duas vezes, futuro, embaralhado, proporção);
 4. teste contra o acaso da carteira;
 5. avaliador A1–A10 e C; o veredito vai para o registro (`aprovado_em_A`) e para um relatório.
 Precisa das baselines já rodadas (a B1 é a régua do A5).
@@ -91,8 +92,10 @@ def escrever_relatorio(
         (
             f"- Sharpe normal {vaz_det['sharpe_normal']:.2f}; olhando o futuro "
             f"{vaz_det['sharpe_futuro']:.2f}; rótulos embaralhados "
-            f"{vaz_det['sharpe_embaralhado']:.2f} "
-            f"(limite ±{vaz_det['limite_do_embaralhado']:.2f})."
+            f"{vaz_det['sharpe_embaralhado']:.2f} contra a referência da proporção "
+            f"{vaz_det['sharpe_proporcao']:.2f}: Sharpe da diferença "
+            f"{vaz_det['sharpe_da_diferenca']:.2f} (limite ±{vaz_det['limite_da_diferenca']:.2f}, "
+            "regra da v0.2)."
         ),
         (
             f"- Contra o acaso: Sharpe real {acaso['sharpe_real']:.2f}, percentil 95 dos "
@@ -108,12 +111,28 @@ def escrever_relatorio(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--modelo", choices=["logistica", "floresta", "lightgbm"], required=True
+        "--modelo",
+        choices=["logistica", "floresta", "lightgbm", "arima", "mlp", "lstm", "tcn"],
+        required=True,
     )
     parser.add_argument("--nome", default=None)
+    parser.add_argument(
+        "--meta",
+        action="store_true",
+        help="meta-rotulagem (H3): a tendência da B1 decide a direção, o modelo decide se age",
+    )
+    parser.add_argument(
+        "--por-classe",
+        action="store_true",
+        help="treinar um modelo por grupo de classe (forex, ações, índices...) em cada divisão",
+    )
     args = parser.parse_args()
+    sufixo = ("_por_classe" if args.por_classe else "") + ("_meta" if args.meta else "")
     config = pipeline.Configuracao(
-        nome=args.nome or f"{args.modelo}_v1", modelo=args.modelo
+        nome=args.nome or f"{args.modelo}{sufixo}_v2",
+        modelo=args.modelo,
+        por_classe=args.por_classe,
+        meta=args.meta,
     )
     inicio = time.time()
     registro = Registro()
@@ -122,7 +141,11 @@ def main() -> int:
     series, taxas, painel = preparar()
     print(f"{len(painel):,} linhas, {painel['simbolo'].nunique()} ativos.", flush=True)
 
-    tentativa = registro.registrar(config.familia, config.nome, config.especificacao())
+    # a lista de ativos entra na especificação: o mesmo modelo noutro universo é outra tentativa
+    universo = sorted(s.ativo.simbolo for s in series)
+    tentativa = registro.registrar(
+        config.familia, config.nome, config.especificacao({"universo": universo})
+    )
     print(
         f"Tentativa #{tentativa} registrada. Rodando o CPCV (45 divisões)...",
         flush=True,
@@ -134,7 +157,8 @@ def main() -> int:
     m = criterio.indice_do_caminho_mediano(res.caminhos)
 
     print(
-        "Verificações de vazamento (normal de novo, futuro, embaralhado)...", flush=True
+        "Verificações de vazamento (normal de novo, futuro, embaralhado, proporção)...",
+        flush=True,
     )
     primeira = {"usada": False}
 

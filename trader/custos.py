@@ -1,4 +1,4 @@
-"""Custos por ativo do critério v0.1 (seção 3), em fração do valor negociado.
+"""Custos por ativo do critério (seção 3, igual na v0.1 e na v0.2), em fração do valor negociado.
 
 | Classe                                    | por lado (spread/2 + comissão + deslizamento) |
 |-------------------------------------------|-----------------------------------------------|
@@ -36,6 +36,15 @@ FOREX_G10 = {
     "GBPJPY",
     "EURGBP",
     "AUDJPY",
+    # universo ampliado (v0.2): cruzamentos e escandinavas, todos do G10
+    "EURCHF",
+    "EURAUD",
+    "AUDNZD",
+    "CADJPY",
+    "USDNOK",
+    "USDSEK",
+    "EURCAD",
+    "NZDJPY",
 }
 POR_LADO = {  # custo por lado, quando não é forex G10
     "forex": 0.0003,  # emergentes (USDMXN, USDZAR)
@@ -44,7 +53,8 @@ POR_LADO = {  # custo por lado, quando não é forex G10
     "energia": 0.0003,
     "agro": 0.0003,
     "indices": 0.0002,
-    "etfs": 0.0002,
+    "renda_fixa": 0.0002,  # ETFs (linha "Índices e ETFs")
+    "commodities": 0.0002,  # ETFs (linha "Índices e ETFs")
     "acoes_b3": 0.0005,
     "cripto": 0.0010,
 }

@@ -15,8 +15,9 @@ usa o mesmo núcleo numpy de `trader.backtest`; os treinos das 45 divisões roda
 (joblib, processos separados).
 
 Variantes (seção 8 do critério): "normal"; "futuro" (atributos de amanhã, para provar que olhar o
-futuro infla o resultado); "embaralhado" (rótulos de treino sorteados, para provar que sem relação o
-resultado some).
+futuro infla o resultado); "embaralhado" (rótulos de treino sorteados); "proporcao" (a referência da
+v0.2: prevê para todas as linhas só a frequência de "sobe" do treino). Sem vazamento, o embaralhado
+rende o mesmo que a proporção: o que ele aprende além dela é ruído.
 
 Calendário: os grupos do CPCV são de dias úteis. Uma data de fim de semana (só cripto) pertence ao
 grupo do dia útil seguinte; na carteira, o fim de semana é composto na segunda-feira.
@@ -32,8 +33,8 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 
+from trader import arima, avaliacao, modelos, redes
 from trader import atributos as atr
-from trader import avaliacao, modelos
 from trader.backtest import calcular_nucleo, dias_corridos
 from trader.custos import custos_do_ativo
 from trader.posicao import (
@@ -43,9 +44,15 @@ from trader.posicao import (
     buffer_numpy,
     volatilidade_mista,
 )
+from trader.universo import GRUPO_DA_CLASSE, UNIVERSO
 from trader.validacao import CPCV
 
 MEDIA_ABSOLUTA_DO_SINAL = 0.5
+COLUNA_DA_DIRECAO = (
+    "tendencia"  # H3: a previsão da B1 (regra de tendência) decide a direção
+)
+# Modelo por classe: um modelo para cada grupo de `universo.GRUPO_DA_CLASSE` (os mesmos grupos que
+# dividem o risco da carteira), em vez de um só para todos os ativos.
 MULTIPLICADORES = (1.0, 2.0)
 TRABALHADORES = max(1, min(8, (os.cpu_count() or 2) - 2))
 
@@ -58,16 +65,33 @@ class Configuracao:
     atributos: tuple[str, ...] = atr.ATRIBUTOS
     horizonte: int = atr.HORIZONTE_DO_ROTULO
     semente: int = 0
+    por_classe: bool = (
+        False  # True: um modelo por grupo de GRUPO_DA_CLASSE em cada divisão
+    )
+    meta: bool = False  # True: meta-rotulagem (H3), a tendência decide a direção
 
     @property
     def familia(self) -> str:
-        return modelos.FAMILIA[self.modelo]
+        return "H3" if self.meta else modelos.FAMILIA[self.modelo]
 
     def especificacao(self, extras: dict | None = None) -> dict:
         dados = asdict(self)
         dados["atributos"] = list(self.atributos)
         dados["parametros"] = modelos.parametros(self.modelo, self.ajustes)
         dados["sinal"] = {"media_absoluta": MEDIA_ABSOLUTA_DO_SINAL}
+        dados["carteira"] = "risco igual por grupo de classes (criterio v0.3, secao 3)"
+        if self.por_classe:
+            dados["grupos"] = GRUPO_DA_CLASSE
+        else:  # a especificação (e o hash) das configurações antigas não muda
+            dados.pop("por_classe")
+        if self.meta:
+            dados["meta"] = {
+                "direcao": f"sinal do atributo '{COLUNA_DA_DIRECAO}' (previsão da B1)",
+                "rotulo": "a direção acerta a soma dos próximos pregões",
+                "sinal": "direção × max(0, 2p − 1), reescalado no treino",
+            }
+        else:
+            dados.pop("meta")
         return {"tipo": "modelo", **dados, **(extras or {})}
 
 
@@ -161,8 +185,11 @@ def _dia_util_de(datas: pd.DatetimeIndex, uteis: pd.DatetimeIndex) -> pd.Datetim
     return uteis[posicoes]
 
 
+VARIANTES = ("normal", "futuro", "embaralhado", "proporcao")
+
+
 def preparar_variante(painel: pd.DataFrame, variante: str) -> pd.DataFrame:
-    if variante not in ("normal", "futuro", "embaralhado"):
+    if variante not in VARIANTES:
         raise ValueError(f"Variante desconhecida: {variante}")
     if variante != "futuro":
         return painel
@@ -174,9 +201,33 @@ def preparar_variante(painel: pd.DataFrame, variante: str) -> pd.DataFrame:
     return deslocado
 
 
-def _escala_do_sinal(p_treino: np.ndarray) -> float:
-    media = float(np.mean(np.abs(2 * p_treino - 1)))
+def _forca(p: np.ndarray, meta: bool = False) -> np.ndarray:
+    """Quanto o modelo aposta: |2p − 1| no modelo comum; na meta-rotulagem só age se p > 0,5."""
+    return np.clip(2 * p - 1, 0, 1) if meta else np.abs(2 * p - 1)
+
+
+def _escala_do_sinal(p_treino: np.ndarray, meta: bool = False) -> float:
+    media = float(np.mean(_forca(p_treino, meta)))
     return media / MEDIA_ABSOLUTA_DO_SINAL if media > 0 else 1.0
+
+
+def sinal_da_previsao(
+    p: np.ndarray, escala: float | np.ndarray, direcao: np.ndarray | None = None
+) -> np.ndarray:
+    """Probabilidade → sinal de −1 a +1. Na H3 a tendência dá a direção e o modelo, o tamanho."""
+    if direcao is not None:
+        return np.clip(direcao * _forca(p, True) / escala, -1, 1)
+    return np.clip((2 * p - 1) / escala, -1, 1)
+
+
+def direcao_e_rotulo_meta(
+    tendencia: np.ndarray, y: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """H3: a direção é o sinal da tendência; o rótulo diz se ela acertou (vazio sem direção)."""
+    direcao = np.sign(np.nan_to_num(tendencia, nan=0.0))
+    acertou = (direcao * (2 * y - 1) > 0).astype(float)
+    rotulo = np.where((direcao != 0) & ~np.isnan(y), acertou, np.nan)
+    return direcao, rotulo
 
 
 def _treinar_e_prever(
@@ -189,23 +240,121 @@ def _treinar_e_prever(
     teste: np.ndarray,
     completos: np.ndarray,
     embaralhar_com: int | None,
-) -> tuple[np.ndarray, float]:
+    so_proporcao: bool = False,
+    grupos: np.ndarray | None = None,
+    meta: bool = False,
+    contexto: dict | None = None,
+) -> tuple[np.ndarray, float | np.ndarray]:
     """Treina numa divisão e devolve (probabilidade nas linhas de teste, escala do sinal).
 
-    Função de módulo para o joblib conseguir mandá-la a outro processo. `x` e `y` são o painel
-    inteiro (o joblib grava uma vez em disco e os processos leem sem copiar).
+    Com `grupos` (o grupo de cada linha do painel), treina um modelo por grupo e devolve a escala
+    de cada linha de teste (cada grupo com a sua). Função de módulo para o joblib conseguir
+    mandá-la a outro processo. `x` e `y` são o painel inteiro (o joblib grava uma vez em disco e os
+    processos leem sem copiar).
     """
+    if grupos is None:
+        return _treinar_um(
+            tipo,
+            ajustes,
+            semente,
+            x,
+            y,
+            treino,
+            teste,
+            completos,
+            embaralhar_com,
+            so_proporcao,
+            meta,
+            contexto,
+        )
+    p = np.full(teste.shape[0], 0.5)
+    escala = np.ones(teste.shape[0])
+    for grupo in np.unique(grupos[teste]):
+        no_teste = grupos[teste] == grupo
+        treino_do_grupo = treino[grupos[treino] == grupo]
+        if treino_do_grupo.size == 0 or np.unique(y[treino_do_grupo]).size < 2:
+            continue  # grupo sem treino (ex.: começou depois): fica neutro
+        p[no_teste], escala[no_teste] = _treinar_um(
+            tipo,
+            ajustes,
+            semente,
+            x,
+            y,
+            treino_do_grupo,
+            teste[no_teste],
+            completos,
+            embaralhar_com,
+            so_proporcao,
+            meta,
+            contexto,
+        )
+    return p, escala
+
+
+def _treinar_um(
+    tipo: str,
+    ajustes: dict[str, Any],
+    semente: int,
+    x: np.ndarray,
+    y: np.ndarray,
+    treino: np.ndarray,
+    teste: np.ndarray,
+    completos: np.ndarray,
+    embaralhar_com: int | None,
+    so_proporcao: bool,
+    meta: bool = False,
+    contexto: dict | None = None,
+) -> tuple[np.ndarray, float]:
     y_treino = y[treino]
-    if embaralhar_com is not None:
-        y_treino = np.random.default_rng(embaralhar_com).permutation(y_treino)
-    modelo = modelos.criar(tipo, ajustes, semente)
-    modelo.fit(x[treino], y_treino)
-    escala = _escala_do_sinal(modelo.predict_proba(x[treino])[:, 1])
     p = np.full(teste.shape[0], 0.5)
     prever = completos[teste]
+    if (
+        so_proporcao
+    ):  # referência da v0.2: só a frequência de "sobe" do treino, em todas as linhas
+        proporcao = float(np.mean(y_treino))
+        p[prever] = proporcao
+        return p, _escala_do_sinal(np.full(y_treino.shape[0], proporcao), meta)
+    if embaralhar_com is not None:
+        y_treino = np.random.default_rng(embaralhar_com).permutation(y_treino)
+    if tipo in redes.TIPOS:  # H4: as redes precisam do dia e da janela de cada linha
+        rede = redes.Rede(tipo, ajustes, semente).ajustar(x, y_treino, treino, contexto)
+        escala = _escala_do_sinal(rede.prever(x, treino, contexto), meta)
+        if prever.any():
+            p[prever] = rede.prever(x, teste[prever], contexto)
+        return p, escala
+    modelo = modelos.criar(tipo, ajustes, semente)
+    modelo.fit(x[treino], y_treino)
+    if tipo == "floresta":
+        # a floresta soma as árvores em paralelo em ordem variável: a previsão mudava na 16ª casa e
+        # a reexecução (seção 8, item 3) falhava (tentativa #22). Prever num processo só é exato.
+        modelo.set_params(n_jobs=1)
+    escala = _escala_do_sinal(modelo.predict_proba(x[treino])[:, 1], meta)
     if prever.any():
         p[prever] = modelo.predict_proba(x[teste[prever]])[:, 1]
     return p, escala
+
+
+def _arima_divisao(
+    serie: np.ndarray,
+    linhas_por_ativo: list[np.ndarray],
+    y: np.ndarray,
+    treino: np.ndarray,
+    teste: np.ndarray,
+    completos: np.ndarray,
+    horizonte: int,
+    embaralhar_com: int | None,
+    so_proporcao: bool,
+) -> tuple[np.ndarray, float]:
+    """H5 numa divisão: um ARIMA por ativo (ver `trader.arima`); devolve (p no teste, escala)."""
+    if so_proporcao:  # a referência da proporção é a mesma dos outros modelos
+        return _treinar_um(
+            "arima", {}, 0, serie[:, None], y, treino, teste, completos, None, True
+        )
+    p_treino, p_teste = arima.prever_divisao(
+        serie, linhas_por_ativo, treino, teste, horizonte, embaralhar_com
+    )
+    p_teste = np.where(completos[teste], p_teste, 0.5)
+    return p_teste, _escala_do_sinal(p_treino)
 
 
 def rodar(
@@ -232,28 +381,69 @@ def rodar(
     dia_util = _dia_util_de(pd.DatetimeIndex(dados["Date"]), uteis)
     x = dados[colunas].to_numpy(dtype=float)
     y = dados["y"].to_numpy(dtype=float)
+    direcao = None
+    if config.meta:
+        direcao, y = direcao_e_rotulo_meta(
+            dados[COLUNA_DA_DIRECAO].to_numpy(dtype=float), y
+        )
     completos = ~np.isnan(x).any(axis=1)
     tem_rotulo = ~np.isnan(y)
+    grupos = None
+    if config.por_classe:
+        classe = {a.simbolo: a.classe for a in UNIVERSO}
+        grupos = np.array([GRUPO_DA_CLASSE[classe[s]] for s in dados["simbolo"]])
     divisoes = cpcv.divisoes(uteis)
     indices = []
     for d in divisoes:
         treino = np.flatnonzero(dia_util.isin(d.treino) & completos & tem_rotulo)
         teste = np.flatnonzero(dia_util.isin(d.teste))
         indices.append((treino, teste))
-    tarefas = [
-        delayed(_treinar_e_prever)(
-            config.modelo,
-            config.ajustes,
-            config.semente,
-            x,
-            y,
-            treino,
-            teste,
-            completos,
-            config.semente * 1000 + d.numero if variante == "embaralhado" else None,
-        )
-        for d, (treino, teste) in zip(divisoes, indices, strict=True)
-    ]
+    ordem = np.lexsort((dados["Date"].to_numpy(), dados["simbolo"].to_numpy()))
+    simbolos_ordenados = dados["simbolo"].to_numpy()[ordem]
+    cortes = np.flatnonzero(simbolos_ordenados[1:] != simbolos_ordenados[:-1]) + 1
+    linhas_por_ativo = np.split(
+        ordem, cortes
+    )  # as linhas de cada ativo, em ordem de data
+    contexto = None
+    if config.modelo in redes.TIPOS:
+        contexto = {"dias": uteis.get_indexer(dia_util)}
+        if config.modelo in redes.SEQUENCIAIS:
+            contexto["janelas"] = redes.janelas_por_linha(linhas_por_ativo, len(dados))
+    if config.modelo == "arima":
+        serie = dados["retorno_1d"].to_numpy(dtype=float)
+        tarefas = [
+            delayed(_arima_divisao)(
+                serie,
+                linhas_por_ativo,
+                y,
+                treino,
+                teste,
+                completos,
+                config.horizonte,
+                config.semente * 1000 + d.numero if variante == "embaralhado" else None,
+                variante == "proporcao",
+            )
+            for d, (treino, teste) in zip(divisoes, indices, strict=True)
+        ]
+    else:
+        tarefas = [
+            delayed(_treinar_e_prever)(
+                config.modelo,
+                config.ajustes,
+                config.semente,
+                x,
+                y,
+                treino,
+                teste,
+                completos,
+                config.semente * 1000 + d.numero if variante == "embaralhado" else None,
+                variante == "proporcao",
+                grupos,
+                config.meta,
+                contexto,
+            )
+            for d, (treino, teste) in zip(divisoes, indices, strict=True)
+        ]
     if progresso:
         print(
             f"  treinando {len(tarefas)} divisões em {trabalhadores} processos...",
@@ -268,7 +458,9 @@ def rodar(
     ativos_por_divisao: dict[int, dict[str, pd.Series]] = {}
     posicoes_por_divisao: dict[int, dict[str, pd.Series]] = {}
     for d, (_, teste), (p, escala) in zip(divisoes, indices, saidas, strict=True):
-        sinal_do_teste = np.clip((2 * p - 1) / escala, -1, 1)
+        sinal_do_teste = sinal_da_previsao(
+            p, escala, None if direcao is None else direcao[teste]
+        )
         simbolos_do_teste = simbolos[teste]
         retornos_x1, retornos_x2, posicoes = {}, {}, {}
         for simbolo in np.unique(simbolos_do_teste):
