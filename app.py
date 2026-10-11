@@ -1025,7 +1025,38 @@ def resolver_taxa_livre_de_risco(modo, taxa_digitada, indice):
 
 
 # --- Seções -----------------------------------------------------------------
-def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
+def parametros_em_vigor(ticker):
+    """Os parâmetros do Research que valem para este ativo (padrão do sistema, seu padrão ou do
+    ativo). Se os guardados não combinarem mais, volta aos padrões (a página Parâmetros explica)."""
+    try:
+        return research_presets.resolver(
+            _presets_guardados(st.session_state.get("usuario")), ticker=ticker
+        )
+    except ValueError:
+        return research_presets.resolver([])
+
+
+def avisar_parametros(resolucao, chaves):
+    """Uma linha dizendo quais dos seus parâmetros esta tela está usando (só se houver algum)."""
+    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+    usados = [
+        f"{nomes[c]} {_formatar_parametro(c, resolucao[c])} "
+        f"({resolucao.efetivos[c].nome_da_origem.lower()})"
+        for c in chaves
+        if resolucao.origem(c) != research_presets.SISTEMA
+    ]
+    if usados:
+        st.caption("Usando os seus parâmetros: " + "; ".join(usados) + ".")
+        st.page_link(
+            PAGINAS_DO_MENU["parametros"],
+            label="Mudar na página Parâmetros",
+            icon=":material/tune:",
+        )
+
+
+def secao_painel_de_numeros(
+    fechamento, retorno, taxa_livre_de_risco, confianca_do_var=95
+):
     st.subheader("Painel de números")
     st.caption("Passe o mouse no ? de cada número para ver o que ele significa.")
 
@@ -1090,13 +1121,15 @@ def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
     )
     mostrar_metrica(
         linha2[4],
-        "Perda de um dia ruim (VaR 95%)",
-        formatar_pct(ind.calcular_var_historico(retorno)),
+        f"Perda de um dia ruim (VaR {confianca_do_var}%)",
+        formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
         "Perda de um dia ruim (VaR)",
     )
 
 
-def secao_preco(dados):
+def secao_preco(dados, medias_do_usuario=()):
+    """`medias_do_usuario`: as janelas das médias que a pessoa escolheu em Parâmetros (já vêm
+    marcadas; sem personalização, nenhuma média vem marcada, como antes)."""
     st.subheader("Preço")
     col_tipo, col_medias = st.columns([1, 2])
     tipo_do_grafico = col_tipo.radio(
@@ -1107,7 +1140,8 @@ def secao_preco(dados):
     )
     medias_escolhidas = col_medias.multiselect(
         "Médias móveis (dias)",
-        JANELAS_MEDIAS,
+        sorted({*JANELAS_MEDIAS, *medias_do_usuario}),
+        default=sorted(set(medias_do_usuario)),
         placeholder="Escolha uma ou mais médias",
         help=ajuda_do("Média móvel"),
     )
@@ -1138,11 +1172,15 @@ def secao_preco(dados):
     )
 
 
-def secao_risco(fechamento, retorno):
+def secao_risco(fechamento, retorno, janela_do_usuario=None):
     st.subheader("Risco ao longo do tempo")
+    janelas = sorted(
+        {*JANELAS_VOLATILIDADE, *([janela_do_usuario] if janela_do_usuario else [])}
+    )
     janela = st.radio(
         "Janela da volatilidade (dias)",
-        JANELAS_VOLATILIDADE,
+        janelas,
+        index=janelas.index(janela_do_usuario) if janela_do_usuario else 0,
         horizontal=True,
         help=ajuda_do("Volatilidade móvel"),
     )
@@ -2124,7 +2162,9 @@ def _lista_de_verbetes(verbetes, rotulo_da_busca, chave):
             st.markdown(proteger_cifrao(texto))
 
 
-def secao_correlacao(principal, periodo):
+def secao_correlacao(
+    principal, periodo, indice_do_usuario=None, janela_do_usuario=None
+):
     st.subheader("Correlação e beta: como os ativos se mexem juntos")
     st.caption(
         "A correlação mostra se dois ativos andam juntos; o beta mostra quanto o ativo se "
@@ -2132,8 +2172,16 @@ def secao_correlacao(principal, periodo):
         "que todos têm preço."
     )
     c1, c2 = st.columns([1, 2])
+    nomes_dos_indices = ["Ibovespa", "S&P 500"]
+    preferido = next(
+        (n for n in nomes_dos_indices if ATALHOS[n] == indice_do_usuario),
+        nomes_dos_indices[0],
+    )
     nome_do_indice = c1.selectbox(
-        "Índice de referência", ["Ibovespa", "S&P 500"], key="corr_indice"
+        "Índice de referência",
+        nomes_dos_indices,
+        index=nomes_dos_indices.index(preferido),
+        key="corr_indice",
     )
     texto = c2.text_input(
         "Outros ativos (separados por vírgula)",
@@ -2210,7 +2258,12 @@ def secao_correlacao(principal, periodo):
         "Ativo", ativos, index=0, key="corr_detalhe", format_func=nome
     )
     janela = st.slider(
-        "Janela do beta móvel (dias)", 60, 252, 126, 6, key="corr_janela"
+        "Janela do beta móvel (dias)",
+        60,
+        252,
+        min(max(int(janela_do_usuario or 126), 60), 252),
+        6,
+        key="corr_janela",
     )
     resultado = calcular_beta(retornos[escolhido], retornos[indice])
     col_dispersao, col_movel = st.columns(2)
@@ -5142,9 +5195,17 @@ def pagina_visao_geral():
     c = carregar_contexto()
     mostrar_tutorial("visao_geral", c)
     atalho_para_o_relatorio(relatorios.ATIVO)
-    secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
+    r = parametros_em_vigor(c.ticker)
+    secao_painel_de_numeros(
+        c.fechamento, c.retorno, c.taxa_livre_de_risco, int(r["quant.var_confianca"])
+    )
     st.divider()
-    secao_preco(c.dados)
+    medias = ("tecnica.media_rapida", "tecnica.media_lenta")
+    personalizou_medias = any(r.origem(k) != research_presets.SISTEMA for k in medias)
+    secao_preco(
+        c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
+    )
+    avisar_parametros(r, ("quant.var_confianca", *medias))
     st.download_button(
         "Baixar os preços (CSV)",
         converter_para_csv(montar_tabela_de_precos(c.dados)),
@@ -5157,7 +5218,14 @@ def pagina_visao_geral():
 def pagina_risco():
     cabecalho_da_pagina("risco")
     c = carregar_contexto()
-    secao_risco(c.fechamento, c.retorno)
+    r = parametros_em_vigor(c.ticker)
+    personalizou = r.origem("quant.janela_volatilidade") != research_presets.SISTEMA
+    secao_risco(
+        c.fechamento,
+        c.retorno,
+        int(r["quant.janela_volatilidade"]) if personalizou else None,
+    )
+    avisar_parametros(r, ("quant.janela_volatilidade",))
 
 
 def pagina_retorno_mensal():
@@ -5176,7 +5244,11 @@ def pagina_comparar():
 def pagina_correlacao():
     cabecalho_da_pagina("correlacao")
     c = carregar_contexto()
-    secao_correlacao(c.ticker, c.periodo)
+    r = parametros_em_vigor(c.ticker)
+    secao_correlacao(
+        c.ticker, c.periodo, r["quant.benchmark"], int(r["quant.janela_correlacao"])
+    )
+    avisar_parametros(r, ("quant.benchmark", "quant.janela_correlacao"))
 
 
 def pagina_backtest():

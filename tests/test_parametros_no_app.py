@@ -259,3 +259,63 @@ def test_pro_salva_por_ativo_e_volta_a_uma_versao_antiga(banco, monkeypatch):
         (3, 21), (2, 9), (1, 21),
     ]  # fmt: skip
     assert historico[0].motivo == "volta à versão 1"
+
+
+# --- os parâmetros ligados às telas que já existiam ----------------------------------------------
+def _app_com_parametros(parametros, pagina):
+    from src.presets import Preset
+
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.session_state["presets_locais"] = [
+        Preset(escopo="global", parametros=parametros)
+    ]
+    app.run()
+    return ir_para(app, pagina)
+
+
+def _legendas(app):
+    return " ".join(c.value for c in app.caption)
+
+
+def test_sem_personalizar_as_telas_ficam_como_antes():
+    app = _app_local()
+    ir_para(app, "visao_geral")
+    assert not app.exception
+    assert any(m.label == "Perda de um dia ruim (VaR 95%)" for m in app.metric)
+    assert app.multiselect[0].value == []
+    assert "Usando os seus parâmetros" not in _legendas(app)
+
+
+def test_visao_geral_usa_o_var_e_as_medias_do_usuario():
+    app = _app_com_parametros(
+        {
+            "quant.var_confianca": 99,
+            "tecnica.media_rapida": 20,
+            "tecnica.media_lenta": 50,
+        },
+        "visao_geral",
+    )
+    assert not app.exception
+    assert any(m.label == "Perda de um dia ruim (VaR 99%)" for m in app.metric)
+    assert app.multiselect[0].value == [20, 50]
+    assert "Usando os seus parâmetros" in _legendas(app)
+    assert "Confiança do VaR 99" in _legendas(app)
+
+
+def test_risco_comeca_na_janela_do_usuario():
+    app = _app_com_parametros({"quant.janela_volatilidade": 63}, "risco")
+    assert not app.exception
+    assert (
+        app.radio[0].value == 63 and "63" in app.radio[0].options
+    )  # opções viram texto
+    assert "Janela da volatilidade 63" in _legendas(app)
+
+
+def test_correlacao_comeca_no_indice_e_na_janela_do_usuario():
+    app = _app_com_parametros(
+        {"quant.benchmark": "^GSPC", "quant.janela_correlacao": 60}, "correlacao"
+    )
+    assert not app.exception
+    assert app.selectbox(key="corr_indice").value == "S&P 500"
+    assert app.slider(key="corr_janela").value == 60
