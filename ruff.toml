@@ -1,9 +1,26 @@
+# Regras do ruff (estilo e erros comuns). O porquê de cada padrão: docs/padroes-de-codigo.md.
+
 [lint]
-extend-select = ["ANN"]  # anotações de tipo (só em src; veja per-file-ignores)
-# No modo interativo (# %%), a última expressão do bloco mostra o resultado.
-ignore = ["B018"]
+extend-select = [
+    "ANN",  # anotações de tipo (só em src; veja per-file-ignores)
+    "B",    # bugbear: erros comuns (argumento mutável como padrão, zip sem strict...)
+    "SIM",  # simplificações (if/else que vira uma linha, condições invertidas...)
+    "UP",   # Python moderno (3.12): sintaxe atual em vez da antiga
+    "I",    # imports em ordem
+    "C90",  # complexidade: função com caminhos demais precisa ser dividida
+    "PERF", # padrões lentos com alternativa igualmente clara
+]
+ignore = [
+    "B018",    # no modo interativo (# %%), a última expressão do bloco mostra o resultado
+    "PERF203", # try/except dentro do laço: aqui é de propósito (um ativo com erro não para os outros)
+]
+
+[lint.mccabe]
+max-complexity = 15
 
 [lint.per-file-ignores]
-"app.py" = ["ANN"]
+# app.py: B905 e C901 voltam a valer quando ele for dividido em telas/ (etapa 4 do plano de
+# qualidade); hoje ele está sendo alterado por outra frente de trabalho.
+"app.py" = ["ANN", "B905", "C901"]
 "tests/**" = ["ANN"]
 "estudos/**" = ["ANN"]
