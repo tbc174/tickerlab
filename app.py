@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from src import administracao as adm
-from src import aprendizado, graficos, marca, relatorios, trade
+from src import aprendizado, catalogo, graficos, marca, relatorios, trade
 from src import indicadores as ind
 from src.acaso import (
     calcular_comprimento_minimo,
@@ -877,6 +877,19 @@ def mostrar_link(ticker, periodo, modo):
     st.code("?" + urlencode(parametros), language=None)
 
 
+def _resolver_o_ticker():
+    """Um código digitado vira o símbolo do catálogo (petr4 → PETR4.SA), sem trocar de ativo."""
+    st.session_state["ticker"] = (
+        catalogo.resolver(st.session_state.get("ticker")) or "PETR4.SA"
+    )
+
+
+def lembrar_recente(ticker):
+    """Guarda os últimos ativos analisados nesta sessão (só na memória, não vai para o banco)."""
+    recentes = [t for t in st.session_state.get("recentes", []) if t != ticker]
+    st.session_state["recentes"] = [ticker, *recentes][:6]
+
+
 def mostrar_controles():
     """Campos do ativo, no topo das páginas de análise.
 
@@ -887,12 +900,16 @@ def mostrar_controles():
         col_ativo, col_periodo, col_favoritos = st.columns(
             [3, 2, 2], vertical_alignment="bottom"
         )
-        ticker = col_ativo.text_input(
-            "Ativo (ticker)",
+        ticker = col_ativo.selectbox(
+            "Ativo",
+            catalogo.opcoes(st.session_state.get("ticker")),
+            format_func=catalogo.rotulo,
             key="ticker",
-            placeholder="PETR4.SA, AAPL, BTC-USD",
-            help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm "
-            "sufixo (AAPL). Índices começam com ^ (^BVSP é o Ibovespa).",
+            placeholder="Busque código ou empresa…",
+            accept_new_options=True,  # um código fora da lista também vale
+            on_change=_resolver_o_ticker,
+            help="Digite o código (PETR4, AAPL) ou o nome da empresa (Petrobras) e escolha "
+            "na lista. Ações da B3, BDRs, FIIs, ETFs, ações dos EUA, índices e cripto.",
         )
         periodo = col_periodo.segmented_control(
             "Período",
@@ -3690,6 +3707,24 @@ class Contexto:
     cdi_diario: pd.Series | None
 
 
+def mensagem_de_dados_indisponiveis(ticker, erro):
+    """Diz a causa provável e o que fazer (blueprint, SEARCH-05): ativo existente que não
+    carregou é problema de conexão, não "ativo não encontrado"."""
+    simbolo = normalizar_ticker(ticker)
+    if st.session_state.get("usar_exemplo") or not simbolo:
+        return str(erro)
+    if catalogo.esta_no_catalogo(simbolo):
+        return (
+            f"{catalogo.rotulo(simbolo)}: o ativo existe, mas os preços não chegaram agora "
+            "(o Yahoo Finance pode estar fora do ar ou lento). Tente de novo em alguns minutos, "
+            "ou marque **Usar dados de exemplo** em Opções avançadas."
+        )
+    return (
+        f"Não encontrei **{simbolo}** no catálogo nem dados para ele no Yahoo Finance. "
+        "Confira o código ou busque pelo nome da empresa e escolha na lista."
+    )
+
+
 def carregar_contexto():
     """Mostra os campos do ativo e carrega os dados. Se algo faltar, avisa e para a página."""
     ticker, periodo, modo_da_taxa, taxa_digitada = mostrar_controles()
@@ -3697,7 +3732,7 @@ def carregar_contexto():
         # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
         dados = carregar_dados(normalizar_ticker(ticker), periodo)
     except DadosIndisponiveisError as erro:
-        st.error(str(erro))
+        st.error(mensagem_de_dados_indisponiveis(ticker, erro))
         st.stop()
     if dados.attrs.get("moeda") == "BRL":
         st.caption(
@@ -3736,6 +3771,7 @@ def carregar_contexto():
             "Tente um período mais longo."
         )
         st.stop()
+    lembrar_recente(normalizar_ticker(ticker))
     return Contexto(
         ticker=normalizar_ticker(ticker),
         periodo=periodo,
@@ -3775,9 +3811,16 @@ def mostrar_topo(usuario):
 
 
 def _analisar_o_ativo_do_inicio():
-    codigo = (st.session_state.get("ativo_do_inicio") or "").strip().upper()
-    if codigo:
-        st.session_state["ticker"] = codigo
+    simbolo = catalogo.resolver(st.session_state.get("ativo_do_inicio"))
+    if simbolo:
+        st.session_state["ticker"] = simbolo
+        st.session_state["ir_para_visao_geral"] = True
+
+
+def _analisar_o_atalho(chave):
+    simbolo = st.session_state.get(chave)
+    if simbolo:
+        st.session_state["ticker"] = simbolo
         st.session_state["ir_para_visao_geral"] = True
 
 
@@ -3798,13 +3841,16 @@ def pagina_inicio():
     col_ativo, col_analisar, col_guia = st.columns(
         [3, 1, 1], vertical_alignment="bottom"
     )
-    col_ativo.text_input(
-        "Ativo (ticker)",
+    col_ativo.selectbox(
+        "Busque código ou empresa",
+        catalogo.simbolos(),
+        index=None,
+        format_func=catalogo.rotulo,
         key="ativo_do_inicio",
-        placeholder="PETR4.SA, AAPL, BTC-USD",
-        help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm sufixo (AAPL). "
-        "Índices começam com ^ (^BVSP é o Ibovespa).",
+        placeholder="PETR4, Petrobras, AAPL, Ibovespa…",
+        accept_new_options=True,
         on_change=_analisar_o_ativo_do_inicio,
+        help="Escolha na lista para abrir a análise. Não precisa saber o sufixo .SA.",
     )
     col_analisar.button(
         "Analisar ativo",
@@ -3812,6 +3858,15 @@ def pagina_inicio():
         key="comecar",
         width="stretch",
         on_click=_analisar_o_ativo_do_inicio,
+    )
+    recentes = st.session_state.get("recentes", [])
+    st.pills(
+        "Recentes" if recentes else "Experimente",
+        recentes or list(catalogo.EXEMPLOS),
+        format_func=lambda s: catalogo.rotulo(s).split(" · ")[0],
+        key="atalho_do_inicio",
+        on_change=_analisar_o_atalho,
+        args=("atalho_do_inicio",),
     )
     col_guia.page_link(
         PAGINAS_DO_MENU["guia"], label="Ver o guia", icon=":material/menu_book:"

@@ -114,7 +114,7 @@ def _baixar_tudo(
         log.warning("Sem resposta do Yahoo para %s: usando dados de exemplo.", ticker)
         return manter_apenas_dias_uteis(exemplo)
     raise DadosIndisponiveisError(
-        f"Não encontrei dados para {ticker}. Confira o ticker (B3 termina em .SA)."
+        f"Não encontrei dados para {ticker}. Confira o código do ativo."
     )
 
 
