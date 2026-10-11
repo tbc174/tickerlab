@@ -81,6 +81,7 @@ def _linha(
             max(p.days for _, p in q.maiores_lacunas) if q.maiores_lacunas else 0
         ),
         "aviso": ativo.aviso,
+        "proxy_de": ativo.proxy_de,
         **extras,
     }
 

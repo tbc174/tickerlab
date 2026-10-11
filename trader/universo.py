@@ -22,6 +22,9 @@ class Ativo:
     classe: str
     papel: str = "operar"
     aviso: str = ""  # defeito conhecido e real da série (não é erro de download)
+    proxy_de: str = (
+        ""  # futuro da B3 que esta série representa na pesquisa (histórico longo)
+    )
 
     @property
     def arquivo(self) -> str:
@@ -38,12 +41,25 @@ AVISOS = {
 }
 
 
+# Enquanto o histórico dos futuros da B3 não existe (a B3 só guarda ~3 semanas, ver `b3.py`),
+# estas séries longas fazem o papel deles na pesquisa. Nenhuma é igual ao contrato real.
+PROXIES = {
+    "^BVSP": "WIN e IND (mini índice e índice cheio): o Ibovespa à vista, sem base nem rolagem",
+    "BRL=X": "WDO e DOL (mini dólar e dólar cheio): o dólar à vista, sem base nem rolagem",
+    "KC=F": "ICF (café arábica da B3): mesmo grão, mas em ¢/lb na ICE, não em US$/saca",
+    "LE=F": "BGI (boi gordo da B3): gado vivo da CME em US$/cwt; aproximação FRACA",
+}
+
+
 def _mt5(classe: str, *simbolos: str) -> list[Ativo]:
     return [Ativo(s, "mt5", classe) for s in simbolos]
 
 
 def _yf(classe: str, *simbolos: str, papel: str = "operar") -> list[Ativo]:
-    return [Ativo(s, "yfinance", classe, papel, AVISOS.get(s, "")) for s in simbolos]
+    return [
+        Ativo(s, "yfinance", classe, papel, AVISOS.get(s, ""), PROXIES.get(s, ""))
+        for s in simbolos
+    ]
 
 
 UNIVERSO: list[Ativo] = [
@@ -110,7 +126,10 @@ UNIVERSO: list[Ativo] = [
     ),
     *_yf("indices", "^BVSP", "^GSPC", "^IXIC", "^DJI", "^N225", "^GDAXI"),
     *_yf("etfs", "TLT", "GLD"),
-    *_yf("macro", "^VIX", "^TNX", "DX-Y.NYB", "BRL=X", papel="atributo"),
+    *_yf("macro", "^VIX", "^TNX", "DX-Y.NYB", papel="atributo"),
+    *_yf(
+        "cambio", "BRL=X"
+    ),  # dólar em reais: opera-se pelo WDO/DOL, vale como proxy deles
 ]
 
 

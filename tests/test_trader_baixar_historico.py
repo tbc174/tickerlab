@@ -175,3 +175,23 @@ def test_cl_f_tem_aviso_no_universo_e_usdbrl_do_mt5_saiu():
     assert "-37,63" in por_simbolo["CL=F"].aviso
     assert "USDBRL" not in por_simbolo  # o demo só tem 259 candles; usamos BRL=X
     assert "BRL=X" in por_simbolo
+
+
+def test_proxies_dos_futuros_da_b3_estao_no_universo_e_no_relatorio(tmp_path):
+    por_simbolo = {a.simbolo: a for a in UNIVERSO}
+    for simbolo, futuro in {
+        "^BVSP": "WIN",
+        "BRL=X": "WDO",
+        "KC=F": "ICF",
+        "LE=F": "BGI",
+    }.items():
+        assert futuro in por_simbolo[simbolo].proxy_de
+    assert "FRACA" in por_simbolo["LE=F"].proxy_de  # o boi da CME não é o da B3
+    assert por_simbolo["BRL=X"].papel == "operar"
+    relatorio = baixador.baixar_tudo(
+        ("yfinance",),
+        pasta=tmp_path,
+        ativos=[por_simbolo["KC=F"]],
+        baixar_yf=lambda simbolo: _candles(40),
+    )
+    assert "ICF" in relatorio.loc[0, "proxy_de"]
