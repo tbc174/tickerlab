@@ -167,3 +167,17 @@ López de Prado e Zhu, 2017), barreira tripla, expurgo e embargo, meta-rotulagem
 (López de Prado), variância gerida (Moreira e Muir, 2017), cointegração (Engle e Granger).
 As fórmulas foram implementadas a partir da descrição dos artigos e conferidas por testes e
 simulações; vale conferi-las nas fontes originais antes de qualquer uso sério.
+
+## Direitos autorais
+
+© 2026 Tiago Borsari Coelho. **Todos os direitos reservados.**
+
+Este repositório é público para consulta (avaliação acadêmica e portfólio), mas **não tem licença
+de código aberto**: o código, os textos e a identidade visual do TickerLab não podem ser copiados,
+modificados, redistribuídos nem usados em outro produto ou serviço sem autorização por escrito do
+autor. Ver o código no GitHub e criar um fork pela própria plataforma é permitido pelos termos de
+uso do GitHub; isso não dá direito de uso fora dele.
+
+Componentes de terceiros continuam com as próprias licenças: as bibliotecas listadas em
+`requirements.txt` e as fontes Manrope e JetBrains Mono (SIL Open Font License, textos em
+`static/fontes/`).
