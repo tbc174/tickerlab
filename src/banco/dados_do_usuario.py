@@ -255,32 +255,59 @@ def contar_relatorios_recentes(
     ).scalar_one()
 
 
+@dataclass(frozen=True)
+class RelatorioGerado:
+    id: uuid.UUID
+    tipo: str
+    titulo: str
+    parametros: dict
+    criado_em: datetime
+
+
+TAMANHO_MAXIMO_DO_TITULO = 200
+
+
 def registrar_relatorio(
     conexao: sa.Connection,
     usuario_id: uuid.UUID,
     tipo: str,
     plano: str | None = None,
     agora: datetime | None = None,
-) -> None:
-    """Anota um relatório gerado. Com `plano`, recusa (antes de anotar) o que passa do limite."""
+    titulo: str | None = None,
+    parametros: dict | None = None,
+) -> uuid.UUID:
+    """Anota um relatório gerado e devolve o id. Com `plano`, recusa (antes de anotar) o que
+    passa do limite. `titulo` e `parametros` alimentam a biblioteca (reabrir e gerar de novo)."""
     if tipo not in TIPOS_DE_RELATORIO:
         raise DadosInvalidosError(
             f"Tipo de relatório desconhecido: {tipo}. Use um destes: {TIPOS_DE_RELATORIO}."
         )
+    if parametros is not None:
+        _conferir_tamanho(parametros, "parâmetros do relatório")
     agora = agora or _agora()
     if plano is not None:
         conferir_relatorio(
             plano, tipo, contar_relatorios_recentes(conexao, usuario_id, agora)
         )
+    novo = uuid.uuid4()
     conexao.execute(
         sa.insert(relatorios).values(
-            id=uuid.uuid4(), usuario_id=usuario_id, tipo=tipo, criado_em=agora
+            id=novo,
+            usuario_id=usuario_id,
+            tipo=tipo,
+            criado_em=agora,
+            titulo=(titulo or "")[:TAMANHO_MAXIMO_DO_TITULO] or None,
+            parametros=parametros,
         )
     )
+    return novo
 
 
 def listar_relatorios(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[dict]:
-    """Os relatórios que o usuário gerou (tipo e hora), do mais novo para o mais antigo."""
+    """Os relatórios que o usuário gerou (tipo e hora), do mais novo para o mais antigo.
+
+    Inclui os excluídos da biblioteca: é o registro usado pelo limite do plano e pela exportação.
+    """
     return [
         {"tipo": l.tipo, "criado_em": l.criado_em.isoformat()}
         for l in conexao.execute(
@@ -289,3 +316,47 @@ def listar_relatorios(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[dic
             .order_by(relatorios.c.criado_em.desc())
         )
     ]
+
+
+def biblioteca_de_relatorios(
+    conexao: sa.Connection, usuario_id: uuid.UUID, limite: int = 200
+) -> list[RelatorioGerado]:
+    """A biblioteca: os relatórios não excluídos, do mais novo para o mais antigo."""
+    return [
+        RelatorioGerado(
+            id=l.id,
+            tipo=l.tipo,
+            titulo=l.titulo or "",
+            parametros=dict(l.parametros or {}),
+            criado_em=l.criado_em,
+        )
+        for l in conexao.execute(
+            sa.select(relatorios)
+            .where(
+                relatorios.c.usuario_id == usuario_id,
+                relatorios.c.apagado_em.is_(None),
+            )
+            .order_by(relatorios.c.criado_em.desc())
+            .limit(limite)
+        )
+    ]
+
+
+def excluir_relatorio(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    relatorio_id: uuid.UUID,
+    agora: datetime | None = None,
+) -> bool:
+    """Tira o relatório da biblioteca: apaga o título e os parâmetros. A linha (tipo e hora)
+    fica, para o limite do plano continuar valendo. Só mexe nos relatórios do próprio usuário."""
+    resultado = conexao.execute(
+        sa.update(relatorios)
+        .where(
+            relatorios.c.id == relatorio_id,
+            relatorios.c.usuario_id == usuario_id,
+            relatorios.c.apagado_em.is_(None),
+        )
+        .values(titulo=None, parametros=None, apagado_em=agora or _agora())
+    )
+    return resultado.rowcount == 1

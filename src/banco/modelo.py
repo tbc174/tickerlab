@@ -141,6 +141,10 @@ relatorios = sa.Table(
     _chave_do_usuario(),
     sa.Column("tipo", sa.String(20), nullable=False),
     _momento("criado_em"),
+    # biblioteca (0006): título e parâmetros para reabrir; ao excluir, só tipo e hora ficam
+    sa.Column("titulo", sa.String(200)),
+    sa.Column("parametros", JSON_PORTATIL),
+    sa.Column("apagado_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint(
         "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira')",
         name="tipo",

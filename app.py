@@ -1,5 +1,6 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import hashlib
 import json
 import logging
 import time
@@ -11,7 +12,16 @@ import pandas as pd
 import streamlit as st
 
 from src import administracao as adm
-from src import aprendizado, catalogo, graficos, marca, relatorios, trade
+from src import (
+    aprendizado,
+    catalogo,
+    estilos_pdf,
+    graficos,
+    marca,
+    previa_pdf,
+    relatorios,
+    trade,
+)
 from src import indicadores as ind
 from src.acaso import (
     calcular_comprimento_minimo,
@@ -33,9 +43,11 @@ from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_simulacao,
+    biblioteca_de_relatorios,
     carregar_preferencias,
     contar_relatorios_recentes,
     contar_simulacoes,
+    excluir_relatorio,
     listar_favoritos,
     listar_simulacoes,
     registrar_relatorio,
@@ -568,6 +580,8 @@ def carregar_da_conta(usuario):
     for chave in ("ticker", "periodo", "taxa", "em_reais", "favoritos"):
         if chave in lidos:
             st.session_state[chave] = lidos[chave]
+    if isinstance(preferencias.get("relatorio"), dict):
+        st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
 
 
 def salvar_na_conta(usuario):
@@ -598,7 +612,11 @@ def salvar_na_conta(usuario):
                     conexao, usuario.id, atual["favoritos"], plano=usuario.plano
                 )
             if atual["preferencias"] != antes["preferencias"]:
-                salvar_preferencias(conexao, usuario.id, atual["preferencias"])
+                # mescla com o que já está guardado (ex.: a configuração do Report Studio)
+                guardadas = carregar_preferencias(conexao, usuario.id)
+                salvar_preferencias(
+                    conexao, usuario.id, {**guardadas, **atual["preferencias"]}
+                )
         st.session_state["conta_snapshot"] = atual
     except Exception:
         log_da_conta.exception("Falha ao salvar os dados da conta")
@@ -3671,6 +3689,7 @@ PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA = (
     "reg_",
     "ml_",
     "ranking_",
+    "relatorio_",  # Report Studio (os botões usam "estudio_", que não pode ser reatribuído)
 )
 CAMPOS_DO_TOPO_QUE_SOBREVIVEM = (
     "ticker",
@@ -3994,8 +4013,49 @@ def _baixar_fechamentos(tickers, periodo):
     return fechamentos, falharam
 
 
+# --- Report Studio (blueprint, seção 12) ------------------------------------------------------
+# Configurar → pré-visualizar → gerar → revisar → exportar. A prévia é o próprio PDF (só a capa e
+# a primeira página) e não conta no limite do plano; só "Gerar relatório" conta.
+PERSONALIZADO = "personalizado"
+NOMES_DOS_MODELOS = {**relatorios.MODELOS, PERSONALIZADO: "Personalizado"}
+PAGINAS_DA_PREVIA = 2
+MAX_PREVIAS_GUARDADAS = 6
+
+
+@dataclass
+class PedidoDeRelatorio:
+    """O que o estúdio precisa saber do relatório escolhido, antes de gerar."""
+
+    tipo: str
+    arquivo: str
+    titulo: str
+    parametros: dict  # vão para a biblioteca (da carteira da B3, nem os ativos)
+    identidade: (
+        str  # muda quando o conteúdo muda: chave da prévia e trava de clique duplo
+    )
+    montar: object  # (config, ao_avancar) -> bytes do PDF
+
+
+def _pedido(tipo, c, arquivo, titulo, parametros, montar, extra=""):
+    exemplo = bool(st.session_state.get("usar_exemplo"))
+    identidade = json.dumps(
+        {
+            "tipo": tipo,
+            "parametros": parametros,
+            "taxa": c.taxa_livre_de_risco,
+            "reais": bool(st.session_state.get("em_reais")),
+            "exemplo": exemplo,
+            "extra": extra,
+            "dia": f"{relatorios.agora():%Y-%m-%d}",
+        },
+        sort_keys=True,
+        default=str,
+    )
+    return PedidoDeRelatorio(tipo, arquivo, titulo, parametros, identidade, montar)
+
+
 def _montar_relatorio(tipo, c):
-    """Lê os campos do tipo escolhido e devolve (nome do arquivo, função que gera o PDF)."""
+    """Mostra os campos do tipo escolhido e devolve o pedido (ou None se faltar algo)."""
     exemplo = bool(st.session_state.get("usar_exemplo"))
     rotulo = PERIODOS_DO_TOPO.get(c.periodo, c.periodo)
     base = {
@@ -4003,12 +4063,24 @@ def _montar_relatorio(tipo, c):
         "periodo": rotulo,
         "exemplo": exemplo,
     }
+    comuns = {"ticker": c.ticker, "periodo": c.periodo}
     if tipo == relatorios.MINHA_CARTEIRA:
         return _montar_minha_carteira(c, base)
     if tipo == relatorios.ATIVO:
         st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
-        return f"tickerlab-{c.ticker}.pdf", lambda: relatorios.relatorio_do_ativo(
-            c.ticker, c.dados, **base
+
+        def montar(config, ao_avancar):
+            return relatorios.relatorio_do_ativo(
+                c.ticker, c.dados, **base, config=config, ao_avancar=ao_avancar
+            )
+
+        return _pedido(
+            tipo,
+            c,
+            f"tickerlab-{c.ticker}.pdf",
+            f"{c.ticker}: retorno, risco e comportamento",
+            comuns,
+            montar,
         )
     if tipo == relatorios.COMPARACAO:
         texto = st.text_input(
@@ -4020,16 +4092,27 @@ def _montar_relatorio(tipo, c):
         outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
         if len(outros) < 2:
             st.info("Escolha pelo menos um ativo para comparar.")
-            return None, None
+            return None
 
-        def gerar():
+        def montar(config, ao_avancar):
+            if ao_avancar:
+                ao_avancar("Preparando dados")
             fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
             if falharam:
                 st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
             alinhado, _ = alinhar_fechamentos(fechamentos)
-            return relatorios.relatorio_de_comparacao(alinhado, **base)
+            return relatorios.relatorio_de_comparacao(
+                alinhado, **base, config=config, ao_avancar=ao_avancar
+            )
 
-        return "tickerlab-comparacao.pdf", gerar
+        return _pedido(
+            tipo,
+            c,
+            "tickerlab-comparacao.pdf",
+            "Comparação: " + ", ".join(outros),
+            {**comuns, "comparar_com": texto},
+            montar,
+        )
     if tipo == relatorios.BACKTEST:
         col_estrategia, col_custo = st.columns([2, 1])
         nome = col_estrategia.selectbox(
@@ -4049,11 +4132,20 @@ def _montar_relatorio(tipo, c):
             )
             / 100
         )
-        return (
+
+        def montar(config, ao_avancar):
+            return relatorios.relatorio_de_backtest(
+                c.ticker, c.dados, nome, {}, custo, **base, config=config,
+                ao_avancar=ao_avancar,
+            )  # fmt: skip
+
+        return _pedido(
+            tipo,
+            c,
             f"tickerlab-backtest-{c.ticker}.pdf",
-            lambda: relatorios.relatorio_de_backtest(
-                c.ticker, c.dados, nome, {}, custo, **base
-            ),
+            f"Backtest: {nome} em {c.ticker}",
+            {**comuns, "estrategia": nome, "custo": round(custo * 100, 4)},
+            montar,
         )
     # carteira
     limites = limites_do(plano_atual())
@@ -4073,16 +4165,27 @@ def _montar_relatorio(tipo, c):
     )
     if len(ativos) < MIN_ATIVOS_NA_CARTEIRA:
         st.info(f"Escolha pelo menos {MIN_ATIVOS_NA_CARTEIRA} ativos.")
-        return None, None
+        return None
 
-    def gerar():
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Preparando dados")
         fechamentos, falharam = _baixar_fechamentos(ativos, c.periodo)
         if falharam:
             st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
         tabela = pd.DataFrame(fechamentos).dropna()
-        return relatorios.relatorio_de_carteira(tabela, nome, {}, **base)
+        return relatorios.relatorio_de_carteira(
+            tabela, nome, {}, **base, config=config, ao_avancar=ao_avancar
+        )
 
-    return "tickerlab-carteira.pdf", gerar
+    return _pedido(
+        tipo,
+        c,
+        "tickerlab-carteira.pdf",
+        f"Carteira: {nome}",
+        {"periodo": c.periodo, "ativos": texto, "estrategia_carteira": nome},
+        montar,
+    )
 
 
 def _montar_minha_carteira(c, base):
@@ -4103,25 +4206,28 @@ def _montar_minha_carteira(c, base):
         "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_b3"
     )
     if arquivo is None:
-        return None, None
+        return None
+    conteudo = arquivo.getvalue()
     try:
-        carteira = ler_carteira(arquivo.getvalue(), arquivo.name)
+        carteira = ler_carteira(conteudo, arquivo.name)
     except ArquivoDaB3Error as erro:
         st.error(str(erro))
-        return None, None
+        return None
     for aviso in carteira.avisos:
         st.warning(aviso)
     if carteira.posicoes.empty:
         st.info(
             "O arquivo só tem Tesouro e renda fixa, sem ativos com cotação para analisar."
         )
-        return None, None
+        return None
     st.caption(
         f"{len(carteira.posicoes)} ativos com cotação e {len(carteira.sem_cotacao)} de "
         "Tesouro ou renda fixa encontrados no arquivo."
     )
 
-    def gerar():
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Preparando dados")
         fechamentos, falharam = _baixar_fechamentos(
             list(carteira.posicoes["ticker"]), c.periodo
         )
@@ -4135,17 +4241,245 @@ def _montar_minha_carteira(c, base):
             )
         ibovespa = _baixar_fechamentos(["^BVSP"], c.periodo)[0].get("^BVSP")
         return relatorios.relatorio_da_minha_carteira(
-            carteira, pd.DataFrame(fechamentos), ibovespa, **base
+            carteira, pd.DataFrame(fechamentos), ibovespa, **base, config=config,
+            ao_avancar=ao_avancar,
+        )  # fmt: skip
+
+    # a identidade usa um resumo do arquivo (não o conteúdo), só para saber se ele mudou
+    resumo_do_arquivo = hashlib.sha256(conteudo).hexdigest()[:16]
+    return _pedido(
+        relatorios.MINHA_CARTEIRA,
+        c,
+        "tickerlab-minha-carteira.pdf",
+        "Minha carteira (B3)",
+        {"periodo": c.periodo},
+        montar,
+        extra=resumo_do_arquivo,
+    )
+
+
+# estado do estúdio: o modelo e o estilo são campos; as seções, uma ordem e uma caixa por seção
+def _chave_da_secao(tipo, chave):
+    return f"relatorio_secao_{tipo}_{chave}"
+
+
+def _aplicar_secoes(tipo, ligadas):
+    """Põe as seções `ligadas` (nesta ordem) no topo da lista; as outras seguem, desligadas."""
+    todas = [s.chave for s in relatorios.SECOES[tipo]]
+    ligadas = relatorios.normalizar_secoes(tipo, ligadas)
+    st.session_state[f"relatorio_ordem_{tipo}"] = ligadas + [
+        c for c in todas if c not in ligadas
+    ]
+    for chave in todas:
+        st.session_state[_chave_da_secao(tipo, chave)] = chave in ligadas
+
+
+def secoes_escolhidas(tipo):
+    ordem = st.session_state.get(f"relatorio_ordem_{tipo}") or [
+        s.chave for s in relatorios.SECOES[tipo]
+    ]
+    return relatorios.normalizar_secoes(
+        tipo,
+        [c for c in ordem if st.session_state.get(_chave_da_secao(tipo, c), True)],
+    )
+
+
+def _iniciar_estudio(tipo):
+    """Na primeira vez de cada tipo na sessão: o modelo, o estilo e as seções salvos na conta
+    (se houver) ou os padrões."""
+    salvo = st.session_state.get("config_salva_do_relatorio") or {}
+    if "relatorio_modelo" not in st.session_state:
+        modelo = salvo.get("modelo")
+        st.session_state["relatorio_modelo"] = (
+            modelo if modelo in NOMES_DOS_MODELOS else relatorios.COMPLETO
+        )
+    if "relatorio_estilo" not in st.session_state:
+        st.session_state["relatorio_estilo"] = estilos_pdf.estilo(
+            salvo.get("estilo")
+        ).chave
+    if f"relatorio_ordem_{tipo}" not in st.session_state:
+        guardadas = (salvo.get("secoes") or {}).get(tipo)
+        modelo = st.session_state["relatorio_modelo"]
+        _aplicar_secoes(
+            tipo,
+            guardadas
+            if modelo == PERSONALIZADO and guardadas
+            else relatorios.secoes_do_modelo(tipo, modelo),
         )
 
-    return "tickerlab-minha-carteira.pdf", gerar
+
+def _ao_trocar_o_modelo(tipo):
+    modelo = st.session_state["relatorio_modelo"]
+    if modelo != PERSONALIZADO:
+        _aplicar_secoes(tipo, relatorios.secoes_do_modelo(tipo, modelo))
 
 
-def pagina_relatorio():
-    cabecalho_da_pagina("relatorio")
-    c = carregar_contexto()
-    usuario = st.session_state.get("usuario")
-    limites = limites_do(plano_atual())
+def _virou_personalizado():
+    st.session_state["relatorio_modelo"] = PERSONALIZADO
+
+
+def _mover_secao(tipo, chave, passo):
+    ordem = list(st.session_state[f"relatorio_ordem_{tipo}"])
+    i = ordem.index(chave)
+    j = i + passo
+    if 0 <= j < len(ordem):
+        ordem[i], ordem[j] = ordem[j], ordem[i]
+        st.session_state[f"relatorio_ordem_{tipo}"] = ordem
+        _virou_personalizado()
+
+
+def mostrar_secoes(tipo):
+    """Uma linha por seção: caixa para incluir e botões para subir e descer (sem arrastar:
+    botões funcionam com teclado e leitor de tela). As obrigatórias não podem sair."""
+    obrigatorias = {s.chave for s in relatorios.SECOES[tipo] if s.obrigatoria}
+    por_chave = {s.chave: s for s in relatorios.SECOES[tipo]}
+    ordem = st.session_state[f"relatorio_ordem_{tipo}"]
+    for i, chave in enumerate(ordem):
+        secao = por_chave[chave]
+        col_caixa, col_sobe, col_desce = st.columns(
+            [8, 1, 1], vertical_alignment="center"
+        )
+        col_caixa.checkbox(
+            secao.titulo + (" (obrigatória)" if chave in obrigatorias else ""),
+            key=_chave_da_secao(tipo, chave),
+            disabled=chave in obrigatorias,
+            help=secao.descricao,
+            on_change=_virou_personalizado,
+        )
+        col_sobe.button(
+            ":material/arrow_upward:",
+            key=f"estudio_sobe_{tipo}_{chave}",
+            help=f"Subir {secao.titulo}",
+            disabled=i == 0,
+            on_click=_mover_secao,
+            args=(tipo, chave, -1),
+        )
+        col_desce.button(
+            ":material/arrow_downward:",
+            key=f"estudio_desce_{tipo}_{chave}",
+            help=f"Descer {secao.titulo}",
+            disabled=i == len(ordem) - 1,
+            on_click=_mover_secao,
+            args=(tipo, chave, 1),
+        )
+
+
+def configuracao_atual(tipo):
+    return relatorios.Configuracao(
+        estilo=st.session_state.get("relatorio_estilo", "research"),
+        secoes=tuple(secoes_escolhidas(tipo)),
+        modelo=st.session_state.get("relatorio_modelo", relatorios.COMPLETO),
+    )
+
+
+def _identidade_completa(pedido, config):
+    return f"{pedido.identidade}|{config.estilo}|{','.join(config.secoes or ())}"
+
+
+def _previa(pedido, config):
+    """O PDF da prévia (guardado na sessão: mudar de volta não gera de novo)."""
+    guardadas = st.session_state.setdefault("relatorio_previas", {})
+    chave = _identidade_completa(pedido, config)
+    if chave not in guardadas:
+        pdf = pedido.montar(config, None)
+        guardadas[chave] = (
+            previa_pdf.paginas_em_png(pdf, PAGINAS_DA_PREVIA),
+            previa_pdf.contar_paginas(pdf),
+        )
+        while len(guardadas) > MAX_PREVIAS_GUARDADAS:
+            guardadas.pop(next(iter(guardadas)))
+    return guardadas[chave]
+
+
+def _salvar_configuracao(usuario, tipo):
+    config = {
+        "modelo": st.session_state.get("relatorio_modelo", relatorios.COMPLETO),
+        "estilo": st.session_state.get("relatorio_estilo", "research"),
+        "secoes": {
+            **(
+                (st.session_state.get("config_salva_do_relatorio") or {}).get("secoes")
+                or {}
+            ),
+            tipo: secoes_escolhidas(tipo),
+        },
+    }
+    try:
+        with obter_engine().begin() as conexao:
+            atuais = carregar_preferencias(conexao, usuario.id)
+            salvar_preferencias(conexao, usuario.id, {**atuais, "relatorio": config})
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao salvar a configuração")
+        st.toast("Não consegui salvar a configuração agora.", icon=":material/error:")
+        return
+    st.session_state["config_salva_do_relatorio"] = config
+    st.toast(
+        "Configuração salva: o estúdio abre assim da próxima vez.",
+        icon=":material/bookmark_added:",
+    )
+
+
+def _gerar(pedido, config, usuario):
+    """Gera de verdade, mostrando as etapas reais, e registra na biblioteca."""
+    with st.status("Gerando o relatório…", expanded=True) as status:
+
+        def ao_avancar(etapa):
+            status.write(f"{etapa}…")
+            status.update(label=f"{etapa}…")
+
+        try:
+            ao_avancar("Preparando dados")
+            pdf = pedido.montar(config, ao_avancar)
+        except (DadosIndisponiveisError, ValueError) as erro:
+            status.update(label="Não consegui montar o relatório", state="error")
+            st.error(
+                f"Não consegui montar o relatório: {erro}. Nada foi contado no seu limite; "
+                "confira os campos e tente de novo."
+            )
+            return False
+        relatorio_id = None
+        if usuario is not None:  # conta só o que deu certo (o PDF já está pronto)
+            status.write("Guardando na sua biblioteca…")
+            parametros = {
+                **pedido.parametros,
+                "modelo": config.modelo,
+                "estilo": config.estilo,
+                "secoes": list(config.secoes or ()),
+            }
+            try:
+                with obter_engine().begin() as conexao:
+                    relatorio_id = registrar_relatorio(
+                        conexao,
+                        usuario.id,
+                        pedido.tipo,
+                        plano=usuario.plano,
+                        titulo=pedido.titulo,
+                        parametros=parametros,
+                    )
+            except LimiteDoPlanoError as erro:
+                status.update(label="Limite do plano", state="error")
+                st.warning(str(erro))
+                return False
+            except Exception:
+                logging.getLogger(__name__).exception("Falha ao registrar o relatório")
+                status.update(label="Não consegui registrar o relatório", state="error")
+                st.error(
+                    "Não consegui registrar o relatório agora. Nada foi contado no seu "
+                    "limite; tente de novo em instantes."
+                )
+                return False
+        status.update(label="Concluído", state="complete", expanded=False)
+    st.session_state["relatorio_gerado"] = {
+        "identidade": _identidade_completa(pedido, config),
+        "arquivo": pedido.arquivo,
+        "pdf": pdf,
+        "id": str(relatorio_id) if relatorio_id else None,
+        "paginas": previa_pdf.contar_paginas(pdf),
+    }
+    st.toast("PDF pronto para baixar", icon=":material/check_circle:")
+    return True
+
+
+def mostrar_estudio(usuario, limites, c):
     tipo = st.segmented_control(
         "Tipo de relatório",
         list(relatorios.NOMES_DOS_RELATORIOS),
@@ -4165,51 +4499,292 @@ def pagina_relatorio():
             icon=":material/workspace_premium:",
         )
         return
-    nome_do_arquivo, gerar = _montar_relatorio(tipo, c)
-    _, no_limite = _uso_de_relatorios(usuario, limites)
-    if gerar is None:
-        return
-    if st.button(
-        "Gerar relatório",
-        type="primary",
-        icon=":material/picture_as_pdf:",
-        disabled=no_limite,
-        key="gerar_pdf",
-    ):
-        try:
-            with st.spinner("Preparando relatório…"):
-                pdf = gerar()
-        except (DadosIndisponiveisError, ValueError) as erro:
-            st.error(f"Não consegui montar o relatório: {erro}")
-            return
-        if usuario is not None:  # conta só o que deu certo (o PDF já está pronto)
-            try:
-                with obter_engine().begin() as conexao:
-                    registrar_relatorio(conexao, usuario.id, tipo, plano=usuario.plano)
-            except LimiteDoPlanoError as erro:
-                st.warning(str(erro))
-                return
-            except Exception:
-                logging.getLogger(__name__).exception("Falha ao registrar o relatório")
-                st.error(
-                    "Não consegui registrar o relatório agora. Tente de novo em instantes."
-                )
-                return
-        st.session_state["pdf_pronto"] = (nome_do_arquivo, pdf)
-        st.toast("PDF pronto para baixar", icon=":material/check_circle:")
-    pronto = st.session_state.get("pdf_pronto")
-    if pronto:
-        st.download_button(
-            "Baixar o PDF",
-            data=pronto[1],
-            file_name=pronto[0],
-            mime="application/pdf",
-            icon=":material/download:",
-            key="baixar_pdf",
+    _iniciar_estudio(tipo)
+    col_config, col_previa = st.columns([1, 1.15], gap="large")
+    with col_config:
+        st.markdown("##### 1 · Dados")
+        pedido = _montar_relatorio(tipo, c)
+        st.markdown("##### 2 · Modelo")
+        modelo = st.segmented_control(
+            "Modelo",
+            list(NOMES_DOS_MODELOS),
+            format_func=NOMES_DOS_MODELOS.get,
+            required=True,
+            key="relatorio_modelo",
+            on_change=_ao_trocar_o_modelo,
+            args=(tipo,),
+            label_visibility="collapsed",
         )
+        st.caption(
+            relatorios.DESCRICAO_DOS_MODELOS.get(
+                modelo, "As seções e a ordem que você escolheu abaixo."
+            )
+        )
+        st.markdown("##### 3 · Estilo")
+        estilo = st.segmented_control(
+            "Estilo",
+            list(estilos_pdf.ESTILOS),
+            format_func=lambda e: estilos_pdf.ESTILOS[e].nome,
+            required=True,
+            key="relatorio_estilo",
+            label_visibility="collapsed",
+        )
+        st.caption(estilos_pdf.estilo(estilo).descricao + " Muda só as cores.")
+        with st.expander("4 · Seções e ordem", expanded=modelo == PERSONALIZADO):
+            st.caption(
+                "Marque o que entra e use as setas para mudar a ordem. Mexer aqui transforma "
+                "o modelo em Personalizado. Os números não mudam, só a organização."
+            )
+            mostrar_secoes(tipo)
+    config = configuracao_atual(tipo)
+    with col_previa:
+        st.markdown("##### Prévia")
+        if pedido is None:
+            st.caption("Preencha os dados ao lado para ver a prévia.")
+        else:
+            try:
+                imagens, total = _previa(pedido, config)
+            except (DadosIndisponiveisError, ValueError) as erro:
+                st.warning(f"Ainda não dá para montar a prévia: {erro}")
+            else:
+                st.caption(
+                    f"A capa e a primeira página do PDF de verdade ({total} páginas no "
+                    "total). Atualiza a cada mudança e não conta no seu limite."
+                )
+                with st.container(key="tl-previa"):
+                    for coluna, imagem in zip(
+                        st.columns(len(imagens)), imagens, strict=True
+                    ):
+                        coluna.image(imagem, width="stretch")
+                titulos = {s.chave: s.titulo for s in relatorios.SECOES[tipo]}
+                st.markdown(
+                    "**Neste relatório:** "
+                    + " · ".join(
+                        f"{n}. {titulos[s]}" for n, s in enumerate(config.secoes, 1)
+                    )
+                )
+    if pedido is None:
+        return
+    _, no_limite = _uso_de_relatorios(usuario, limites)
+    gerado = st.session_state.get("relatorio_gerado")
+    ja_gerado = bool(gerado) and gerado["identidade"] == _identidade_completa(
+        pedido, config
+    )
+    with st.container(key="tl-barra-relatorio"):
+        col_salvar, col_gerar, col_uso = st.columns(
+            [1, 1, 2], vertical_alignment="center"
+        )
+        if usuario is not None:
+            col_salvar.button(
+                "Salvar configuração",
+                icon=":material/bookmark:",
+                key="estudio_salvar_config",
+                help="Guarda o modelo, o estilo e as seções na sua conta.",
+                on_click=_salvar_configuracao,
+                args=(usuario, tipo),
+                width="stretch",
+            )
+        if ja_gerado:
+            col_gerar.download_button(
+                "Baixar PDF",
+                data=gerado["pdf"],
+                file_name=gerado["arquivo"],
+                mime="application/pdf",
+                icon=":material/download:",
+                type="primary",
+                key="baixar_pdf",
+                width="stretch",
+            )
+        else:
+            clicou = col_gerar.button(
+                "Gerar relatório",
+                type="primary",
+                icon=":material/picture_as_pdf:",
+                disabled=no_limite,
+                key="gerar_pdf",
+                width="stretch",
+            )
+        col_uso.caption(_uso_de_relatorios(usuario, limites)[0])
+    if not ja_gerado and clicou and _gerar(pedido, config, usuario):
+        st.rerun()  # a barra volta já com "Baixar PDF" e o uso atualizado
+    if ja_gerado:
+        col_nova, _ = st.columns([1, 3])
+        if col_nova.button(
+            "Nova versão",
+            icon=":material/refresh:",
+            key="estudio_nova_versao",
+            disabled=no_limite,
+            help="Gera de novo com os dados de agora (conta no limite do plano).",
+        ):
+            st.session_state.pop("relatorio_gerado", None)
+            if _gerar(pedido, config, usuario):
+                st.rerun()
+        with st.expander(f"Revisar as {gerado['paginas']} páginas"):
+            imagens = previa_pdf.paginas_em_png(gerado["pdf"], largura_px=420)
+            for inicio in range(0, len(imagens), 3):
+                for coluna, imagem in zip(
+                    st.columns(3), imagens[inicio : inicio + 3], strict=False
+                ):
+                    coluna.image(imagem, width="stretch")
+
+
+# --- biblioteca ("Meus relatórios") ---------------------------------------------------------
+CAMPOS_PARA_REABRIR = {
+    "comparar_com": "relatorio_comparar_com",
+    "estrategia": "relatorio_estrategia",
+    "custo": "relatorio_custo",
+    "ativos": "relatorio_carteira_ativos",
+    "estrategia_carteira": "relatorio_carteira",
+}
+
+
+def _reabrir(relatorio):
+    """Põe o tipo, os dados e a configuração do relatório de volta no estúdio."""
+    p = relatorio.parametros
+    tipo = relatorio.tipo
+    st.session_state["tipo_de_relatorio"] = tipo
+    if p.get("ticker"):
+        st.session_state["ticker"] = p["ticker"]
+    if p.get("periodo") in PERIODOS_DO_TOPO:
+        st.session_state["periodo"] = p["periodo"]
+    for chave, campo in CAMPOS_PARA_REABRIR.items():
+        if chave in p:
+            st.session_state[campo] = p[chave]
+    modelo = p.get("modelo")
+    st.session_state["relatorio_modelo"] = (
+        modelo if modelo in NOMES_DOS_MODELOS else relatorios.COMPLETO
+    )
+    st.session_state["relatorio_estilo"] = estilos_pdf.estilo(p.get("estilo")).chave
+    _aplicar_secoes(tipo, p.get("secoes") or None)
+    st.session_state.pop("relatorio_gerado", None)
+    aviso = (
+        " Envie de novo a planilha da B3: ela não fica guardada."
+        if tipo == relatorios.MINHA_CARTEIRA
+        else ""
+    )
+    st.toast(
+        f"Configuração de “{relatorio.titulo}” carregada na aba Estúdio.{aviso}",
+        icon=":material/restore:",
+    )
+
+
+def _excluir(usuario, relatorio_id):
+    try:
+        with obter_engine().begin() as conexao:
+            excluiu = excluir_relatorio(conexao, usuario.id, relatorio_id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao excluir o relatório")
+        st.toast("Não consegui excluir agora.", icon=":material/error:")
+        return
+    if excluiu:
+        st.toast("Relatório excluído da biblioteca.", icon=":material/delete:")
+
+
+def _versoes(itens):
+    """O número da versão de cada relatório: 1 para o primeiro com aquele título, e assim por
+    diante (do mais antigo para o mais novo)."""
+    contagem, versoes = {}, {}
+    for item in sorted(itens, key=lambda r: r.criado_em):
+        contagem[item.titulo] = contagem.get(item.titulo, 0) + 1
+        versoes[item.id] = contagem[item.titulo]
+    return versoes
+
+
+def mostrar_biblioteca(usuario):
+    if usuario is None:
+        st.info(
+            "A biblioteca guarda os relatórios de quem entra com a conta. No modo local, "
+            "sem login, nada é guardado."
+        )
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            itens = biblioteca_de_relatorios(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler a biblioteca")
+        st.error(
+            "Não consegui abrir a sua biblioteca agora. Tente de novo em instantes."
+        )
+        return
+    if not itens:
+        st.info(
+            "Você ainda não gerou relatórios. Eles aparecem aqui com o tipo, o período e o "
+            "estilo, para gerar de novo com os mesmos parâmetros."
+        )
+        return
     st.caption(
-        _uso_de_relatorios(usuario, limites)[0]
-    )  # depois de gerar, já com o novo
+        "O PDF não fica guardado: “Reabrir” traz os mesmos parâmetros para o estúdio, e você "
+        "gera uma nova versão com os dados de hoje. Excluir não devolve o relatório ao limite."
+    )
+    col_busca, col_tipos = st.columns([1, 2])
+    busca = col_busca.text_input(
+        "Buscar", placeholder="Título ou ativo…", key="relatorio_busca"
+    )
+    tipos = col_tipos.pills(
+        "Tipo",
+        list(relatorios.NOMES_DOS_RELATORIOS),
+        format_func=relatorios.NOMES_DOS_RELATORIOS.get,
+        selection_mode="multi",
+        key="relatorio_filtro_tipos",
+    )
+    versoes = _versoes(itens)
+    visiveis = [
+        r
+        for r in itens
+        if (not tipos or r.tipo in tipos)
+        and (not busca or busca.strip().lower() in r.titulo.lower())
+    ]
+    if not visiveis:
+        st.caption("Nenhum relatório com esse filtro.")
+    for r in visiveis:
+        p = r.parametros
+        with st.container(border=True):
+            col_texto, col_reabrir, col_excluir = st.columns(
+                [6, 1.4, 1.2], vertical_alignment="center"
+            )
+            col_texto.markdown(
+                f"**{r.titulo or relatorios.NOMES_DOS_RELATORIOS[r.tipo]}**"
+            )
+            detalhes = [
+                relatorios.NOMES_DOS_RELATORIOS.get(r.tipo, r.tipo),
+                PERIODOS_DO_TOPO.get(p.get("periodo"), p.get("periodo") or "—"),
+                NOMES_DOS_MODELOS.get(p.get("modelo"), "Pesquisa completa"),
+                estilos_pdf.estilo(p.get("estilo")).nome,
+                f"versão {versoes[r.id]}",
+                f"{r.criado_em.astimezone(relatorios.FUSO):%d/%m/%Y %H:%M}",
+            ]
+            col_texto.caption(" · ".join(str(d) for d in detalhes))
+            col_reabrir.button(
+                "Reabrir",
+                icon=":material/restore:",
+                key=f"estudio_reabrir_{r.id}",
+                on_click=_reabrir,
+                args=(r,),
+                width="stretch",
+            )
+            with col_excluir.popover("Excluir", icon=":material/delete:"):
+                st.caption("Excluir da biblioteca? Os parâmetros são apagados.")
+                st.button(
+                    "Excluir de vez",
+                    type="primary",
+                    key=f"estudio_excluir_{r.id}",
+                    on_click=_excluir,
+                    args=(usuario, r.id),
+                )
+
+
+def pagina_relatorio():
+    cabecalho_da_pagina("relatorio")
+    c = carregar_contexto()
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    aba_estudio, aba_biblioteca = st.tabs(
+        [":material/edit_document: Estúdio", ":material/folder_open: Meus relatórios"]
+    )
+    with aba_estudio:
+        mostrar_estudio(usuario, limites, c)
+    with aba_biblioteca:
+        mostrar_biblioteca(usuario)
 
 
 def pagina_trade():

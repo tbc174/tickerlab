@@ -6,6 +6,7 @@ alembic==1.20.0
 Authlib==1.8.0
 fastapi==0.143.0
 fpdf2==2.8.9
+pypdfium2==5.14.0
 httpx==0.28.1
 matplotlib==3.11.2
 numpy==2.5.3

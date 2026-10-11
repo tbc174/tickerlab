@@ -1,9 +1,11 @@
 """O "papel timbrado" dos relatórios em PDF do TickerLab (fpdf2), com a identidade da marca.
 
-Versão em fundo claro (`marca.PAPEL_*`): capa com o símbolo desenhado em vetor, cabeçalho e
-rodapé em todas as páginas, cartões de números (o principal maior), tabelas com números
-alinhados, gráficos (PNG de `graficos_pdf`) e um glossário curto no fim. As fontes (Manrope e
-JetBrains Mono) vão embutidas no arquivo, então o PDF abre igual em qualquer computador.
+Capa com o símbolo desenhado em vetor e o sumário, cabeçalho e rodapé em todas as páginas,
+seções numeradas (que também viram marcadores do PDF, para navegar no leitor), cartões de números
+(o principal maior), tabelas com números alinhados, gráficos (PNG de `graficos_pdf`) e um
+glossário. As cores vêm do estilo escolhido (`estilos_pdf`: Research, Terminal ou Institucional).
+As fontes (Manrope e JetBrains Mono) vão embutidas no arquivo, então o PDF abre igual em qualquer
+computador.
 """
 
 from datetime import datetime
@@ -13,6 +15,7 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 
 from src import marca
+from src.estilos_pdf import PADRAO, Estilo
 
 MARGEM = 18  # mm
 AVISO = (
@@ -27,11 +30,19 @@ def _rgb(cor: str) -> tuple[int, int, int]:
 
 
 class RelatorioPDF(FPDF):
-    def __init__(self, titulo: str, subtitulo: str, gerado_em: datetime) -> None:
+    def __init__(
+        self,
+        titulo: str,
+        subtitulo: str,
+        gerado_em: datetime,
+        estilo: Estilo = PADRAO,
+    ) -> None:
         super().__init__(format="A4", unit="mm")
         self.titulo_do_relatorio = titulo
         self.subtitulo = subtitulo
         self.gerado_em = gerado_em
+        self.estilo = estilo
+        self.numero_da_secao = 0
         self.set_margins(MARGEM, MARGEM + 6, MARGEM)
         self.set_auto_page_break(True, margin=22)
         self.add_font("Manrope", "", str(marca.FONTE_PDF_TEXTO))
@@ -45,17 +56,29 @@ class RelatorioPDF(FPDF):
         self.set_title(f"TickerLab — {titulo}")
         self.set_author("TickerLab")
         self.set_creator("TickerLab (tickerlab.com.br)")
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self.set_text_color(*_rgb(estilo.texto))
+
+    def _cor_do_texto(self, apagado: bool = False) -> None:
+        self.set_text_color(
+            *_rgb(self.estilo.apagado if apagado else self.estilo.texto)
+        )
 
     # --- peças da marca ------------------------------------------------------------------
-    def simbolo(self, x: float, y: float, tamanho: float) -> None:
+    def simbolo(
+        self,
+        x: float,
+        y: float,
+        tamanho: float,
+        fundo: str = marca.AZUL,
+        desenho: str = "#ffffff",
+    ) -> None:
         """A "Vela T" em vetor, na mesma grade de 32 do símbolo do site."""
         e = tamanho / 32
-        self.set_fill_color(*_rgb(marca.AZUL))
+        self.set_fill_color(*_rgb(fundo))
         self.rect(
             x, y, tamanho, tamanho, style="F", round_corners=True, corner_radius=8 * e
         )
-        self.set_fill_color(255, 255, 255)
+        self.set_fill_color(*_rgb(desenho))
         for rx, ry, largura, altura, raio in (
             (7, 7, 18, 3.6, 1.8),
             (14.6, 10, 2.8, 16, 1.4),
@@ -66,50 +89,85 @@ class RelatorioPDF(FPDF):
                 round_corners=True, corner_radius=raio * e,
             )  # fmt: skip
 
-    def nome_da_marca(self, x: float, y: float, tamanho: float) -> None:
+    def nome_da_marca(
+        self, x: float, y: float, tamanho: float, sobre_a_faixa: bool = False
+    ) -> None:
+        texto = self.estilo.texto_da_faixa if sobre_a_faixa else self.estilo.texto
+        lab = self.estilo.texto_da_faixa if sobre_a_faixa else marca.AZUL
+        if self.estilo.escuro and not sobre_a_faixa:
+            lab = marca.AZUL_TEXTO  # o azul da marca some no fundo escuro
         self.set_xy(x, y)
         self.set_font("Manrope", "B", tamanho)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self.set_text_color(*_rgb(texto))
         self.cell(self.get_string_width("Ticker"), tamanho * 0.42, "Ticker")
-        self.set_text_color(*_rgb(marca.AZUL))
+        self.set_text_color(*_rgb(lab))
         self.cell(self.get_string_width("Lab"), tamanho * 0.42, "Lab")
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
+
+    def _pintar_o_fundo(self) -> None:
+        if self.estilo.escuro:
+            self.set_fill_color(*_rgb(self.estilo.fundo))
+            self.rect(0, 0, self.w, self.h, style="F")
 
     def header(self) -> None:
+        self._pintar_o_fundo()
         if self.page_no() == 1:  # a capa tem a própria marca
             return
-        self.simbolo(MARGEM, 10, 6)
-        self.nome_da_marca(MARGEM + 8, 10.2, 11)
-        self.set_font("Manrope", "", 8)
-        self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
-        self.set_xy(MARGEM, 10.5)
-        self.cell(self.epw, 5, self.titulo_do_relatorio, align="R")
-        self.set_draw_color(*_rgb(marca.PAPEL_LINHA))
-        self.line(MARGEM, 18.5, self.w - MARGEM, 18.5)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        faixa = self.estilo.faixa
+        if faixa:
+            self.set_fill_color(*_rgb(faixa))
+            self.rect(0, 0, self.w, 16, style="F")
+            self.simbolo(MARGEM, 5, 6, fundo="#ffffff", desenho=faixa)
+            self.nome_da_marca(MARGEM + 8, 5.2, 11, sobre_a_faixa=True)
+            self.set_text_color(*_rgb(self.estilo.texto_da_faixa))
+            self.set_font("Manrope", "", 8)
+            self.set_xy(MARGEM, 5.5)
+            self.cell(self.epw, 5, self.titulo_do_relatorio, align="R")
+        else:
+            self.simbolo(MARGEM, 10, 6)
+            self.nome_da_marca(MARGEM + 8, 10.2, 11)
+            self.set_font("Manrope", "", 8)
+            self._cor_do_texto(apagado=True)
+            self.set_xy(MARGEM, 10.5)
+            self.cell(self.epw, 5, self.titulo_do_relatorio, align="R")
+            self.set_draw_color(*_rgb(self.estilo.linha))
+            self.line(MARGEM, 18.5, self.w - MARGEM, 18.5)
+        self._cor_do_texto()
         self.set_y(MARGEM + 6)
 
     def footer(self) -> None:
         self.set_y(-16)
-        self.set_draw_color(*_rgb(marca.PAPEL_LINHA))
+        self.set_draw_color(*_rgb(self.estilo.linha))
         self.line(MARGEM, self.get_y() - 1, self.w - MARGEM, self.get_y() - 1)
         self.set_font("Manrope", "", 7)
-        self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+        self._cor_do_texto(apagado=True)
         self.multi_cell(self.epw - 22, 3.4, AVISO, align="L")
         self.set_xy(self.w - MARGEM - 22, -16)
         self.cell(22, 3.4, f"Página {self.page_no()} de {{nb}}", align="R")
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
 
     # --- capa e blocos -------------------------------------------------------------------
-    def capa(self, linhas_de_resumo: list[tuple[str, str]]) -> None:
+    def capa(
+        self, linhas_de_resumo: list[tuple[str, str]], sumario: list[str] | None = None
+    ) -> None:
+        """A capa: marca, título, quadro de resumo e, se houver, o que vem no relatório."""
         self.add_page()
-        self.simbolo(MARGEM, 30, 20)
-        self.nome_da_marca(MARGEM + 25, 36, 24)
+        faixa = self.estilo.faixa
+        if faixa:  # Institucional: o topo da capa é um bloco azul com a marca em branco
+            self.set_fill_color(*_rgb(faixa))
+            self.rect(0, 0, self.w, 60, style="F")
+            self.simbolo(MARGEM, 22, 20, fundo="#ffffff", desenho=faixa)
+            self.nome_da_marca(MARGEM + 25, 28, 24, sobre_a_faixa=True)
+        else:
+            self.simbolo(MARGEM, 30, 20)
+            self.nome_da_marca(MARGEM + 25, 36, 24)
         self.set_xy(MARGEM, 72)
         self.set_font("Manrope", "I", 9)
-        self.set_text_color(*_rgb(marca.AZUL))
+        self.set_text_color(
+            *_rgb(marca.AZUL_TEXTO if self.estilo.escuro else marca.AZUL)
+        )
         self.cell(0, 5, "RELATÓRIO", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
         self.set_font("Manrope", "B", 26)
         self.multi_cell(
             0,
@@ -120,13 +178,13 @@ class RelatorioPDF(FPDF):
             new_y=YPos.NEXT,
         )
         self.set_font("Manrope", "", 12)
-        self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+        self._cor_do_texto(apagado=True)
         self.multi_cell(
             0, 6.5, self.subtitulo, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT
         )
         self.ln(8)
         y = self.get_y()
-        self.set_fill_color(*_rgb(marca.PAPEL_SUPERFICIE))
+        self.set_fill_color(*_rgb(self.estilo.superficie))
         altura = 8 + 6.5 * len(linhas_de_resumo)
         self.rect(
             MARGEM, y, self.epw, altura, style="F", round_corners=True, corner_radius=3
@@ -134,33 +192,52 @@ class RelatorioPDF(FPDF):
         self.set_xy(MARGEM + 6, y + 4)
         for rotulo, valor in linhas_de_resumo:
             self.set_font("Manrope", "I", 9)
-            self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+            self._cor_do_texto(apagado=True)
             self.cell(48, 6.5, rotulo)
             self.set_font("Manrope", "B", 10)
-            self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+            self._cor_do_texto()
             self.cell(0, 6.5, valor, new_x=XPos.LEFT, new_y=YPos.NEXT)
             self.set_x(MARGEM + 6)
-        self.set_y(y + altura + 10)
+        self.set_y(y + altura + 8)
+        if sumario:
+            self.set_font("Manrope", "I", 9)
+            self._cor_do_texto(apagado=True)
+            self.cell(0, 5, "NESTE RELATÓRIO", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.set_font("Manrope", "", 10)
+            self._cor_do_texto()
+            for n, titulo in enumerate(sumario, start=1):
+                self.cell(
+                    0, 5.6, f"{n}.  {titulo}", new_x=XPos.LMARGIN, new_y=YPos.NEXT
+                )
+            self.ln(5)
         self.set_font("Manrope", "", 9)
-        self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+        self._cor_do_texto(apagado=True)
         self.multi_cell(
             0, 4.8,
-            "Como ler: cada número deste relatório tem uma explicação curta no glossário da "
-            "última página. Os cálculos são os mesmos do site, com os dados do dia em que o "
-            f"relatório foi gerado ({self.gerado_em:%d/%m/%Y às %H:%M}).",
+            "Como ler: os números saem dos mesmos cálculos do site, com os dados do dia em que "
+            f"o relatório foi gerado ({self.gerado_em:%d/%m/%Y às %H:%M}). Descreve o passado; "
+            "não é previsão nem recomendação.",
         )  # fmt: skip
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
 
     def secao(
-        self, titulo: str, texto: str | None = None, reservar: float = 70
+        self,
+        titulo: str,
+        texto: str | None = None,
+        reservar: float = 70,
+        numerada: bool = False,
     ) -> None:
         """Título de seção. `reservar` (mm): o que precisa caber embaixo, para o título não ficar
-        sozinho no pé da página."""
+        sozinho no pé da página. Numerada, ela ganha o número e um marcador no PDF."""
         if self.get_y() > self.h - 22 - reservar:
             self.add_page()
         self.ln(3)
+        if numerada:
+            self.numero_da_secao += 1
+            titulo = f"{self.numero_da_secao}. {titulo}"
+            self.start_section(titulo)
         self.set_font("Manrope", "B", 14)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
         self.multi_cell(0, 7, titulo, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         if texto:
             self.paragrafo(texto, apagado=True)
@@ -168,14 +245,47 @@ class RelatorioPDF(FPDF):
 
     def paragrafo(self, texto: str, apagado: bool = False) -> None:
         self.set_font("Manrope", "", 9.5)
-        self.set_text_color(
-            *_rgb(marca.PAPEL_APAGADO if apagado else marca.PAPEL_TEXTO)
-        )
+        self._cor_do_texto(apagado)
         texto = texto.replace("**", "").replace(
             "`", ""
         )  # Markdown do site não vale no PDF
         self.multi_cell(0, 5, texto, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
+
+    def lista(self, itens: list[str]) -> None:
+        """Uma lista com marcadores (os achados do resumo executivo)."""
+        for item in itens:
+            if self.get_y() > self.h - 34:
+                self.add_page()
+            self.set_font("Manrope", "B", 9.5)
+            self.set_text_color(
+                *_rgb(marca.AZUL_TEXTO if self.estilo.escuro else marca.AZUL)
+            )
+            self.cell(5, 5.4, "•")
+            self.set_font("Manrope", "", 9.5)
+            self._cor_do_texto()
+            self.multi_cell(
+                self.epw - 5, 5.4, item.replace("**", ""), new_x=XPos.LMARGIN,
+                new_y=YPos.NEXT,
+            )  # fmt: skip
+            self.ln(1.2)
+        self.ln(2)
+
+    def pares(self, itens: list[tuple[str, str]]) -> None:
+        """Rótulo e valor em duas colunas (metodologia e reprodutibilidade)."""
+        for rotulo, valor in itens:
+            if self.get_y() > self.h - 30:
+                self.add_page()
+            self.set_font("Manrope", "I", 8.5)
+            self._cor_do_texto(apagado=True)
+            self.cell(52, 5, rotulo)
+            self.set_font("Manrope", "", 9)
+            self._cor_do_texto()
+            self.multi_cell(
+                self.epw - 52, 5, valor, new_x=XPos.LMARGIN, new_y=YPos.NEXT
+            )
+            self.ln(0.8)
+        self.ln(2)
 
     def cartoes(
         self, itens: list[tuple[str, str, str | None]], por_linha: int = 4
@@ -210,22 +320,22 @@ class RelatorioPDF(FPDF):
                 rotulo, valor, cor = itens[i]
                 principal = i == 0
                 w = unidade * vagas
-                fundo = "#e8eefc" if principal else marca.PAPEL_SUPERFICIE
+                fundo = self.estilo.destaque if principal else self.estilo.superficie
                 self.set_fill_color(*_rgb(fundo))
                 self.rect(
                     x, y, w, altura, style="F", round_corners=True, corner_radius=2.5
                 )
                 self.set_xy(x + 3.5, y + 2.6)
                 self.set_font("Manrope", "I", 7.5)
-                self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+                self._cor_do_texto(apagado=True)
                 self.cell(w - 7, 4, rotulo)
                 self.set_xy(x + 3.5, y + 7.6)
                 self.set_font("Manrope", "B", 15 if principal else 12.5)
-                self.set_text_color(*_rgb(cor or marca.PAPEL_TEXTO))
+                self.set_text_color(*_rgb(cor or self.estilo.texto))
                 self.cell(w - 7, 7, valor)
                 x += w + espaco
             self.set_y(y + altura + espaco)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
         self.ln(2)
 
     def imagem(self, png: bytes, altura_mm: float | None = None) -> None:
@@ -255,17 +365,20 @@ class RelatorioPDF(FPDF):
         if self.get_y() + 8 * (len(linhas) + 1) > self.h - 24:
             self.add_page()
         self.set_font("Manrope", "I", 8)
-        self.set_text_color(*_rgb(marca.PAPEL_APAGADO))
+        self._cor_do_texto(apagado=True)
         for i, (texto, largura) in enumerate(zip(cabecalho, larguras, strict=True)):
             self.cell(largura, 7, texto, align="L" if i == 0 else "R")
         self.ln(7)
-        self.set_draw_color(*_rgb(marca.PAPEL_LINHA))
+        self.set_draw_color(*_rgb(self.estilo.linha))
         for n, linha in enumerate(linhas):
+            if self.get_y() + 7 > self.h - 24:
+                self.add_page()
+                self.set_draw_color(*_rgb(self.estilo.linha))
             y = self.get_y()
             self.line(MARGEM, y, self.w - MARGEM, y)
             for i, (texto, largura) in enumerate(zip(linha, larguras, strict=True)):
                 cor = cores[n][i] if cores else None
-                self.set_text_color(*_rgb(cor or marca.PAPEL_TEXTO))
+                self.set_text_color(*_rgb(cor or self.estilo.texto))
                 if i == 0:
                     self.set_font("Mono" if tickers else "Manrope", "", 9)
                 else:
@@ -273,18 +386,16 @@ class RelatorioPDF(FPDF):
                 self.cell(largura, 7, texto, align="L" if i == 0 else "R")
             self.ln(7)
         self.line(MARGEM, self.get_y(), self.w - MARGEM, self.get_y())
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
         self.ln(4)
 
     def glossario(self, termos: dict[str, str]) -> None:
         """O que cada número quer dizer (textos do glossário do site)."""
-        if not termos:
-            return
-        self.secao("Glossário", "O que cada número deste relatório quer dizer.")
         for termo, texto in termos.items():
             if self.get_y() > self.h - 40:
                 self.add_page()
             self.set_font("Manrope", "B", 9.5)
+            self._cor_do_texto()
             self.multi_cell(0, 5, termo, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.paragrafo(texto, apagado=True)
             self.ln(1.5)
@@ -299,7 +410,7 @@ class RelatorioPDF(FPDF):
         if y + altura > self.h - 24:
             self.add_page()
             y = self.get_y()
-        self.set_fill_color(253, 246, 228)
+        self.set_fill_color(*_rgb(self.estilo.aviso))
         self.rect(
             MARGEM,
             y,
@@ -310,7 +421,7 @@ class RelatorioPDF(FPDF):
             corner_radius=2.5,
         )
         self.set_xy(MARGEM + 5, y + 3)
-        self.set_text_color(*_rgb(marca.PAPEL_TEXTO))
+        self._cor_do_texto()
         self.multi_cell(self.epw - 10, 4.8, texto)
         self.set_y(y + altura + 4)
 

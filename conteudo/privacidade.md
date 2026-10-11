@@ -16,7 +16,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (veja
 | Identificador da conta Google | Login com o Google | Reconhecer você nos próximos acessos |
 | Ativo, período e opções que você escolhe | Você, no app | Lembrar as suas preferências |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
-| Relatórios em PDF gerados (só o tipo e a hora; o PDF não é guardado) | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano |
+| Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções). O PDF não é guardado | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite. Da sua carteira da B3 não guardamos nem os ativos |
 | Planilha de posição da B3, se você enviar (a sua carteira) | Você, em Gerar relatório | Montar o relatório da sua carteira. É lida **só na memória**, não é guardada e não vai para os registros (logs) |
 | Plano e situação da assinatura | O app e o Stripe | Liberar o que o seu plano inclui |
 | Versão dos termos aceita e data | Você, no aceite | Comprovar que você concordou |

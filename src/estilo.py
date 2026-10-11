@@ -261,6 +261,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* metadados curtos */
 .tl-sutil {{ color: {marca.TEXTO_SUTIL}; font-size: 0.82rem; }}
 
+/* Report Studio: as páginas da prévia parecem folhas (sombra e cantos leves) */
+.st-key-tl-previa img {{
+    border-radius: 6px;
+    border: 1px solid {marca.LINHA_FORTE};
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    animation: tl-entrar 220ms ease-out both;
+}}
+/* barra de ações presa ao pé da tela enquanto a pessoa configura (Salvar · Gerar) */
+.st-key-tl-barra-relatorio {{
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 0.6rem 0.25rem;
+    background: {marca.FUNDO};
+    border-top: 1px solid {marca.LINHA};
+}}
+
 @media (prefers-reduced-motion: reduce) {{
     * {{ transition: none !important; animation: none !important; }}
 }}

@@ -114,9 +114,21 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
             )
         ],
         "relatorios_em_pdf": [
-            {"tipo": l.tipo, "criado_em": _texto(l.criado_em)}
+            {
+                "tipo": l.tipo,
+                "criado_em": _texto(l.criado_em),
+                "titulo": l.titulo,
+                "parametros": dict(l.parametros) if l.parametros else None,
+                "excluido_da_biblioteca_em": _texto(l.apagado_em),
+            }
             for l in conexao.execute(
-                sa.select(relatorios.c.tipo, relatorios.c.criado_em)
+                sa.select(
+                    relatorios.c.tipo,
+                    relatorios.c.criado_em,
+                    relatorios.c.titulo,
+                    relatorios.c.parametros,
+                    relatorios.c.apagado_em,
+                )
                 .where(relatorios.c.usuario_id == usuario_id)
                 .order_by(relatorios.c.criado_em)
             )
