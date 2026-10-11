@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from trader import avaliacao, baselines, viabilidade
+from trader import avaliacao, baselines, juros, viabilidade
 from trader.backtest import executar_backtest
-from trader.custos import CARREGAMENTO_ANUAL, VERSAO_DA_TABELA, custos_do_ativo
+from trader.custos import MARGEM_DO_SWAP, VERSAO_DA_TABELA, custos_do_ativo
 from trader.holdout import (
     FIM_DO_DESENVOLVIMENTO,
     INICIO_DA_AVALIACAO,
@@ -80,7 +80,9 @@ def sinal(nome: str, serie: SerieDoAtivo) -> pd.Series:
     raise ValueError(f"Baseline desconhecida: {nome}")
 
 
-def rodar_baseline(nome: str, series: list[SerieDoAtivo]) -> dict:
+def rodar_baseline(
+    nome: str, series: list[SerieDoAtivo], taxas: pd.DataFrame | None = None
+) -> dict:
     """Backtest de cada ativo com custos ×1 e ×2; devolve resumo da carteira e por ativo."""
     por_multiplicador: dict[str, dict] = {}
     por_ativo: list[dict] = []
@@ -94,7 +96,7 @@ def rodar_baseline(nome: str, series: list[SerieDoAtivo]) -> dict:
             resultado = executar_backtest(
                 baselines.preco_sintetico(serie.retorno),
                 posicao,
-                custos_do_ativo(serie.ativo, mult),
+                custos_do_ativo(serie.ativo, mult, taxas, serie.retorno.index),
                 limite=TETO_PADRAO,
                 retorno_do_ativo=serie.retorno,
             )
@@ -146,7 +148,8 @@ def especificacao(nome: str, series: list[SerieDoAtivo]) -> dict:
         },
         "custos": {
             "tabela": VERSAO_DA_TABELA,
-            "carregamento_anual": CARREGAMENTO_ANUAL,
+            "swap": "carry pelas taxas basicas do BIS (dia anterior) +/- margem",
+            "margem_do_swap": MARGEM_DO_SWAP,
         },
         "dados": {
             "inicio_da_avaliacao": INICIO_DA_AVALIACAO.date().isoformat(),
@@ -296,9 +299,9 @@ def escrever_relatorio(
             f" ajuste do Yahoo ({zerados} dias no total: {detalhe_zerados or 'nenhum'})."
         ),
         (
-            "- Carregamento simétrico de 2% ao ano no lugar do swap real; o diferencial de juros"
-            " entre moedas (carry) não está modelado, o que distorce dólar/real, peso mexicano e"
-            " rand."
+            "- Swap = carry pelas taxas básicas dos bancos centrais (BIS) ± 0,5% ao ano de margem;"
+            " o swap real de cada corretora é diferente. Resultados são acima do juro da moeda"
+            " (ações da B3 e Ibovespa: acima da Selic)."
         ),
         (
             "- Ações da B3 com viés de sobrevivência; futuros contínuos sem ajuste de rolagem;"
@@ -311,6 +314,7 @@ def escrever_relatorio(
 
 def main() -> int:
     registro = Registro()
+    taxas = juros.carregar()
     print("Carregando o desenvolvimento...")
     series = carregar_series()
     print(f"{len(series)} ativos para operar.")
@@ -321,7 +325,7 @@ def main() -> int:
         tentativa = registro.registrar(
             "H0", f"baseline_{nome}", especificacao(nome, series)
         )
-        resultados[nome] = rodar_baseline(nome, series)
+        resultados[nome] = rodar_baseline(nome, series, taxas)
         registro.salvar_resultado(tentativa, {"carteira": resultados[nome]["carteira"]})
         tentativas[nome] = tentativa
     print("Viabilidade...")

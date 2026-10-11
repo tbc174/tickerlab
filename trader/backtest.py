@@ -26,6 +26,12 @@ DIAS_DO_ANO = 365  # o swap corre em dias corridos
 COLUNAS_DAS_OPERACOES = ["entrada", "saida", "dias", "lado", "retorno", "aberta"]
 
 
+def _no_tempo(valor: float | pd.Series, indice: pd.Index) -> pd.Series:
+    if isinstance(valor, pd.Series):
+        return valor.reindex(indice).ffill().bfill().fillna(0.0)
+    return pd.Series(float(valor), index=indice)
+
+
 @dataclass(frozen=True, eq=False)
 class Custos:
     """Custos de operar, todos em fração do valor negociado (0,0001 = 0,01% = 1 ponto-base).
@@ -41,8 +47,8 @@ class Custos:
     spread: float | pd.Series = 0.0
     comissao: float = 0.0
     deslizamento: float = 0.0
-    swap_comprado_anual: float = 0.0
-    swap_vendido_anual: float = 0.0
+    swap_comprado_anual: float | pd.Series = 0.0
+    swap_vendido_anual: float | pd.Series = 0.0
 
     def __post_init__(self) -> None:
         spread = (
@@ -50,6 +56,12 @@ class Custos:
         )
         if spread < 0 or self.comissao < 0 or self.deslizamento < 0:
             raise ValueError("Spread, comissão e deslizamento não podem ser negativos.")
+
+    def swaps(self, indice: pd.Index) -> tuple[pd.Series, pd.Series]:
+        """Swap anual de comprado e de vendido em cada dia (número fixo ou série no tempo)."""
+        return _no_tempo(self.swap_comprado_anual, indice), _no_tempo(
+            self.swap_vendido_anual, indice
+        )
 
     def custo_por_lado(self, indice: pd.Index) -> pd.Series:
         """Quanto custa mover uma unidade de posição, em cada dia."""
@@ -168,6 +180,7 @@ def executar_backtest(
     mudanca = posicao.diff().abs().fillna(posicao.abs())  # entrar também custa
     custo_do_dia = mudanca * custos.custo_por_lado(fechamento.index)
 
+    swap_comprado, swap_vendido = custos.swaps(fechamento.index)
     dias_corridos = (
         pd.Series(fechamento.index, index=fechamento.index)
         .diff()
@@ -175,10 +188,7 @@ def executar_backtest(
         .astype(float)
     )
     swap = (
-        (
-            posicao.clip(lower=0) * custos.swap_comprado_anual
-            - posicao.clip(upper=0) * custos.swap_vendido_anual
-        )
+        (posicao.clip(lower=0) * swap_comprado - posicao.clip(upper=0) * swap_vendido)
         * dias_corridos
         / DIAS_DO_ANO
     )
