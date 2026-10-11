@@ -190,6 +190,18 @@ def test_folha_de_estilo_usa_os_tokens():
     assert tema.FONTE in estilo
 
 
+def test_manrope_vem_do_repositorio_e_alinha_os_numeros(app):
+    from PySide6.QtGui import QFontInfo, QFontMetrics
+
+    from trader.interface.componentes import fonte_tabular
+
+    assert tema.ARQUIVO_DA_FONTE.exists()
+    assert (tema.ARQUIVO_DA_FONTE.parent / "OFL.txt").exists()  # a licença vai junto
+    assert QFontInfo(app.font()).family() == "Manrope"
+    medida = QFontMetrics(fonte_tabular())
+    assert medida.horizontalAdvance("1") == medida.horizontalAdvance("8")
+
+
 def test_ganho_e_perda_nunca_so_pela_cor():
     assert formatar(0.012, "variacao") == "▲ +1,20%"
     assert formatar(-0.008, "variacao") == "▼ -0,80%"

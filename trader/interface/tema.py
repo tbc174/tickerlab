@@ -2,10 +2,12 @@
 
 Valores do documento de design (seção 3). Regras: tema escuro sem preto puro; elevação pela cor
 (quanto mais alto, mais clara a superfície); ganho/perda em azul/vermelho SEMPRE com sinal e seta;
-cores de estado sempre com ícone e texto; grade de 8 px; Segoe UI Variable.
+cores de estado sempre com ícone e texto; grade de 8 px; fonte Manrope.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 CORES = {
     "fundo": "#121212",  # nível 0: janela
@@ -47,7 +49,11 @@ ESTADOS = {  # cor, ícone e texto andam juntos
 }
 ESPACO = {"xs": 4, "s": 8, "m": 12, "l": 16, "xl": 24, "xxl": 32, "xxxl": 48}
 RAIO = {"cartao": 8, "controle": 4}
-FONTE = "Segoe UI Variable"
+# Manrope, a mesma do app web; vai junto no repositório (OFL), não precisa estar instalada
+FONTE = "Manrope"
+ARQUIVO_DA_FONTE = (
+    Path(__file__).parent / "tipografia" / "Manrope-VariableFont_wght.ttf"
+)
 FONTE_DE_ICONES = "Segoe Fluent Icons"
 TAMANHO = {
     "rotulo": 12,
@@ -81,7 +87,7 @@ def folha_de_estilo() -> str:
     c, e, r = CORES, ESPACO, RAIO
     return f"""
 * {{
-    font-family: "{FONTE}", "Segoe UI", sans-serif;
+    font-family: "{FONTE}", "Segoe UI Variable", "Segoe UI", sans-serif;
     font-size: {TAMANHO["corpo"]}px;
     color: {c["texto"]};
 }}
