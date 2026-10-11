@@ -1,18 +1,53 @@
-# TickerLab
+<p align="center">
+  <img src="docs/imagens/banner.png" alt="TickerLab: analise ativos e teste estratégias com dados do passado" width="100%">
+</p>
 
-O TickerLab é uma plataforma educacional de **análise de ações e teste de estratégias com dados
-do passado**, para a bolsa brasileira (B3) e a americana. Começou como trabalho da matéria de
-Python e Pandas e virou um serviço web completo (SaaS), com contas, planos, relatórios em PDF, site
-público e uma linha de pesquisa em trading quantitativo com machine learning.
+<p align="center">
+  <a href="https://github.com/tbc174/tickerlab/actions/workflows/testes.yml"><img src="https://github.com/tbc174/tickerlab/actions/workflows/testes.yml/badge.svg?branch=main" alt="Testes"></a>
+  <img src="https://img.shields.io/badge/Python-3.12-2962FF?logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/Streamlit-app-2962FF?logo=streamlit&logoColor=white" alt="Streamlit">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-2962FF?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
+  <img src="https://img.shields.io/badge/testes-1.135-2EBD85" alt="1.135 testes">
+  <img src="https://img.shields.io/badge/Stripe-modo%20de%20teste-F5B83D?logo=stripe&logoColor=white" alt="Stripe em modo de teste">
+  <img src="https://img.shields.io/badge/direitos-reservados-93A0B8" alt="Todos os direitos reservados">
+</p>
 
-Digite o código de um ativo e o app busca os dados, analisa com Pandas e testa estratégias num
-motor de backtest escrito à mão, sem biblioteca pronta de backtest. Cada número vem explicado em
-português, e o app mostra também o que **não** funciona.
+<p align="center">
+  <a href="https://tickerlab.com.br"><b>Site</b></a> ·
+  <a href="https://app.tickerlab.com.br"><b>Abrir o app</b></a> ·
+  <a href="https://tickerlab.com.br/metodologia.html"><b>Metodologia</b></a> ·
+  <a href="https://tickerlab.com.br/precos.html"><b>Planos</b></a> ·
+  <a href="#tickerlab-trade-a-pesquisa-de-trading-quantitativo"><b>TickerLab Trade</b></a>
+</p>
 
+O **TickerLab** é um laboratório educacional de **análise de ações e teste de estratégias com
+dados do passado**, para a bolsa brasileira (B3) e a americana. Digite o código de um ativo e o
+app busca os dados, analisa com Pandas e testa estratégias num motor de backtest escrito à mão,
+sem biblioteca pronta de backtest. Cada número vem explicado em português, e o app mostra também
+o que **não** funciona.
+
+> [!IMPORTANT]
 > Projeto educacional. Nada aqui é recomendação de investimento. Os dados vêm do Yahoo Finance
 > e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.
 
-![Preço da PETR4 com médias móveis e volume](docs/imagens/preco.png)
+## A história
+
+O TickerLab começou como trabalho da matéria de **Python e Pandas** na faculdade: um script que
+baixava o preço de uma ação e desenhava um gráfico. Cada pergunta nova virou uma página ("e se eu
+tivesse seguido esta regra?", "isso foi sorte?", "e com vários ativos?"), e o projeto cresceu até
+virar um serviço web completo, no ar em [tickerlab.com.br](https://tickerlab.com.br), com contas,
+planos, relatórios em PDF e uma pesquisa de trading quantitativo com machine learning.
+
+O código, os textos e as explicações estão em português, e o caminho do aprendizado ficou
+registrado no próprio repositório (`notas/`, `guias/`, `estudos/`).
+A regra que atravessa tudo: **mostrar os números como eles são**, inclusive quando a resposta é
+"não funcionou".
+
+## Em números
+
+| 23 páginas | 12 estratégias | ~1.700 ativos na busca | 3 planos | 1.135 testes automatizados |
+|:---:|:---:|:---:|:---:|:---:|
+| análise, estratégias, carteiras, relatórios e conta | tendência e reversão, com custos e stops | B3, S&P 500, índices, cripto e câmbio | Gratuito, Plus e Pro | rodam a cada mudança, com PostgreSQL de verdade |
 
 ## As partes do projeto
 
@@ -69,8 +104,10 @@ português ao passar o mouse no **?**.
 - **Outros:** link compartilhável com as escolhas da tela, conversão de ativos em dólar para reais,
   dados de exemplo para usar sem internet.
 
-| Risco | Retorno mensal |
+| Preço e médias móveis | Comparar ativos |
 |---|---|
+| ![Preço da PETR4 com médias móveis e volume](docs/imagens/preco.png) | ![Comparação de ativos](docs/imagens/comparar.png) |
+| **Risco (quedas)** | **Retorno mensal** |
 | ![Drawdown](docs/imagens/drawdown.png) | ![Retorno mensal](docs/imagens/retorno-mensal.png) |
 
 ### Planos
@@ -149,6 +186,9 @@ Testes e estilo (mais de mil testes automatizados; a suíte leva alguns minutos)
 
 ## Configuração (produção)
 
+<details>
+<summary>Segredos, variáveis de ambiente e migrações do banco</summary>
+
 Segredos nunca vão para o Git: ficam em arquivos com permissão 600 no servidor.
 
 | Onde | O que |
@@ -159,7 +199,12 @@ Segredos nunca vão para o Git: ficam em arquivos com permissão 600 no servidor
 O esquema do banco é criado pelas migrações do Alembic (`migracoes/`, de 0001 a 0006), aplicadas
 sozinhas quando o contêiner sobe: `python -m alembic upgrade head`.
 
+</details>
+
 ## Publicar com Docker
+
+<details>
+<summary>Os contêineres do app e da API</summary>
 
 O `compose.yaml` sobe dois serviços com a mesma imagem: `tickerlab` (o app, `127.0.0.1:8501`) e
 `tickerlab-api` (FastAPI, `127.0.0.1:8000`: `/saude` e o webhook do Stripe). As portas ficam só em
@@ -173,6 +218,8 @@ docker compose up -d --build
 
 Veja `projeto-acoes/stripe.md` (fora deste repositório, na pasta do projeto) para ligar a
 cobrança de teste.
+
+</details>
 
 ## Operação
 
@@ -221,6 +268,9 @@ cobrança de teste.
 
 ## Estrutura
 
+<details>
+<summary>Mapa das pastas e dos módulos</summary>
+
 ```
 app.py                interface: menu, páginas e telas (só mostra; as contas ficam em src/)
 src/
@@ -255,8 +305,10 @@ migracoes/            migrações do banco (Alembic)
 scripts/              deploy automático, site público, catálogo, marca, carga leve, imagens do README
 tests/                testes automatizados (pytest)
 notas/, guias/, estudos/   caderno de estudos do autor
-docs/imagens/         figuras deste README (geradas por scripts/gerar_imagens_do_readme.py)
+docs/imagens/         figuras deste README (gráficos: scripts/gerar_imagens_do_readme.py; banner: docs/banner.html)
 ```
+
+</details>
 
 ## Referências das técnicas
 
@@ -281,3 +333,11 @@ uso do GitHub; isso não dá direito de uso fora dele.
 Componentes de terceiros continuam com as próprias licenças: as bibliotecas listadas em
 `requirements.txt` e `requirements-trader.txt` e as fontes Manrope e JetBrains Mono (SIL Open
 Font License, textos em `static/fontes/`).
+
+---
+
+<p align="center">
+  <img src="static/marca/icone.png" alt="" width="40"><br>
+  Feito por <b>Tiago Borsari Coelho</b> · começou na matéria de Python e Pandas<br>
+  <sub>Conteúdo educacional. Sem promessa de rentabilidade.</sub>
+</p>
