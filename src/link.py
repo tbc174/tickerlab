@@ -10,7 +10,7 @@ import re
 from src.dados import PERIODOS_VALIDOS
 
 MODOS_DA_TAXA = ("Zero", "CDI (Banco Central)", "Digitar")
-MAX_FAVORITOS = 8
+MAX_FAVORITOS = 20  # o maior limite entre os planos (src/planos.py)
 PADRAO_DE_TICKER = re.compile(r"[A-Z0-9.^=\-]{1,15}")
 VERDADEIROS = ("1", "true", "sim")
 
@@ -61,15 +61,15 @@ def ler_parametros(parametros: dict[str, str]) -> dict:
     return lidos
 
 
-def alternar_favorito(favoritos: list[str], ticker: str) -> list[str]:
+def alternar_favorito(
+    favoritos: list[str], ticker: str, maximo: int = MAX_FAVORITOS
+) -> list[str]:
     """Põe o ticker na lista se não estiver, ou tira se estiver. Devolve uma lista nova."""
     ticker = (ticker or "").strip().upper()
     if not ticker_valido(ticker):
         raise ValueError("Digite um ticker válido antes de favoritar.")
     if ticker in favoritos:
         return [f for f in favoritos if f != ticker]
-    if len(favoritos) >= MAX_FAVORITOS:
-        raise ValueError(
-            f"O limite é de {MAX_FAVORITOS} favoritos. Remova algum antes."
-        )
+    if len(favoritos) >= maximo:
+        raise ValueError(f"O limite é de {maximo} favoritos. Remova algum antes.")
     return [*favoritos, ticker]

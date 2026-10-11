@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 import sqlalchemy as sa
 
 from src.banco.modelo import favoritos, preferencias, simulacoes
+from src.planos import conferir_favoritos, conferir_simulacoes
 
 TIPOS_DE_SIMULACAO = ("backtest", "carteira", "pares")
 TAMANHO_MAXIMO_DO_NOME = 120
@@ -82,9 +83,15 @@ def listar_favoritos(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[str]
 
 
 def salvar_favoritos(
-    conexao: sa.Connection, usuario_id: uuid.UUID, tickers: list[str]
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    tickers: list[str],
+    plano: str | None = None,
 ) -> None:
-    """Substitui a lista de favoritos do usuário, mantendo a ordem."""
+    """Substitui a lista de favoritos do usuário, mantendo a ordem.
+
+    Com `plano`, recusa uma lista que cresça além do limite dele (`LimiteDoPlanoError`).
+    """
     limpos: list[str] = []
     for ticker in tickers:
         ticker = (ticker or "").strip().upper()
@@ -95,6 +102,10 @@ def salvar_favoritos(
     if len(limpos) > MAX_FAVORITOS_NO_BANCO:
         raise DadosInvalidosError(
             f"No máximo {MAX_FAVORITOS_NO_BANCO} favoritos por conta."
+        )
+    if plano is not None:
+        conferir_favoritos(
+            plano, len(listar_favoritos(conexao, usuario_id)), len(limpos)
         )
     conexao.execute(sa.delete(favoritos).where(favoritos.c.usuario_id == usuario_id))
     if limpos:
@@ -150,7 +161,9 @@ def salvar_simulacao(
     nome: str,
     parametros: dict,
     resultado: dict,
+    plano: str | None = None,
 ) -> Simulacao:
+    """Guarda a simulação. Com `plano`, recusa se o usuário já está no limite dele."""
     if tipo not in TIPOS_DE_SIMULACAO:
         raise DadosInvalidosError(
             f"Tipo de simulação desconhecido: {tipo}. Use um destes: {TIPOS_DE_SIMULACAO}."
@@ -164,6 +177,8 @@ def salvar_simulacao(
         )
     _conferir_tamanho(parametros, "Os parâmetros")
     _conferir_tamanho(resultado, "O resultado")
+    if plano is not None:
+        conferir_simulacoes(plano, contar_simulacoes(conexao, usuario_id))
     if contar_simulacoes(conexao, usuario_id) >= MAX_SIMULACOES_POR_USUARIO:
         raise DadosInvalidosError(
             f"Você chegou ao máximo de {MAX_SIMULACOES_POR_USUARIO} simulações salvas."
