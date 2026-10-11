@@ -19,12 +19,14 @@ from src.banco.modelo import (
     presets,
     relatorios,
     simulacoes,
+    watchlists,
 )
 from src.planos import (
     conferir_favoritos,
     conferir_parametros_por_ativo,
     conferir_relatorio,
     conferir_simulacoes,
+    conferir_watchlist,
 )
 
 TIPOS_DE_SIMULACAO = ("backtest", "carteira", "pares")
@@ -525,3 +527,108 @@ def historico_do_preset(
             .order_by(presets.c.versao.desc())
         )
     ]
+
+
+# --- watchlists do Research ----------------------------------------------------------------------
+TAMANHO_MAXIMO_DO_NOME_DA_LISTA = 60
+
+
+@dataclass(frozen=True)
+class Watchlist:
+    id: uuid.UUID
+    nome: str
+    tickers: list[str]
+
+
+def _limpar_tickers(tickers: list[str]) -> list[str]:
+    from src.dados import normalizar_ticker
+    from src.link import ticker_valido
+
+    limpos = []
+    for ticker in tickers:
+        simbolo = normalizar_ticker(ticker)
+        if not ticker_valido(simbolo):
+            raise DadosInvalidosError(f"Código de ativo inválido: {ticker}.")
+        if simbolo not in limpos:
+            limpos.append(simbolo)
+    return limpos
+
+
+def _limpar_nome(nome: str) -> str:
+    nome = " ".join((nome or "").split())
+    if not nome:
+        raise DadosInvalidosError("Dê um nome à lista.")
+    if len(nome) > TAMANHO_MAXIMO_DO_NOME_DA_LISTA:
+        raise DadosInvalidosError(
+            f"O nome da lista tem até {TAMANHO_MAXIMO_DO_NOME_DA_LISTA} letras."
+        )
+    return nome
+
+
+def listar_watchlists(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[Watchlist]:
+    return [
+        Watchlist(l.id, l.nome, list(l.tickers))
+        for l in conexao.execute(
+            sa.select(watchlists)
+            .where(watchlists.c.usuario_id == usuario_id)
+            .order_by(watchlists.c.criado_em, watchlists.c.nome)
+        )
+    ]
+
+
+def salvar_watchlist(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    nome: str,
+    tickers: list[str],
+    plano: str | None = None,
+    watchlist_id: uuid.UUID | None = None,
+    agora: datetime | None = None,
+) -> uuid.UUID:
+    """Cria a lista (sem `watchlist_id`) ou troca o nome e os ativos de uma lista sua."""
+    nome, tickers = _limpar_nome(nome), _limpar_tickers(tickers)
+    agora = agora or _agora()
+    existentes = listar_watchlists(conexao, usuario_id)
+    if plano is not None:
+        conferir_watchlist(
+            plano, len(existentes), len(tickers), e_nova=watchlist_id is None
+        )
+    repetido = [
+        w for w in existentes if w.nome.lower() == nome.lower() and w.id != watchlist_id
+    ]
+    if repetido:
+        raise DadosInvalidosError(f'Você já tem uma lista chamada "{nome}".')
+    if watchlist_id is None:
+        novo = uuid.uuid4()
+        conexao.execute(
+            sa.insert(watchlists).values(
+                id=novo,
+                usuario_id=usuario_id,
+                nome=nome,
+                tickers=tickers,
+                criado_em=agora,
+                atualizado_em=agora,
+            )
+        )
+        return novo
+    alterou = conexao.execute(
+        sa.update(watchlists)
+        .where(watchlists.c.id == watchlist_id, watchlists.c.usuario_id == usuario_id)
+        .values(nome=nome, tickers=tickers, atualizado_em=agora)
+    ).rowcount
+    if alterou != 1:
+        raise DadosInvalidosError("Lista não encontrada.")
+    return watchlist_id
+
+
+def apagar_watchlist(
+    conexao: sa.Connection, usuario_id: uuid.UUID, watchlist_id: uuid.UUID
+) -> bool:
+    return (
+        conexao.execute(
+            sa.delete(watchlists).where(
+                watchlists.c.id == watchlist_id, watchlists.c.usuario_id == usuario_id
+            )
+        ).rowcount
+        == 1
+    )

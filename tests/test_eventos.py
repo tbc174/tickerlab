@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from scripts import atualizar_eventos
 from src import eventos as ev
 from src.banco import eventos as repo
-from src.banco.conexao import criar_engine, migrar_para
+from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm"
 PETROBRAS, VALE = "33.000.167/0001-01", "33.592.510/0001-54"
@@ -250,6 +250,6 @@ def test_migracao_0008_vai_e_volta(tmp_path):
     assert {"eventos", "tickers_dos_emissores"} <= set(
         sa.inspect(criar_engine(url)).get_table_names()
     )
-    migrar_para("-1", url=url)
+    desfazer_ate("0007", url=url)
     assert "eventos" not in sa.inspect(criar_engine(url)).get_table_names()
     migrar_para("head", url=url)

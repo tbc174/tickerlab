@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest
 
 from src.banco import dados_do_usuario as repo
 from src.banco import usuarios as contas
-from src.banco.conexao import criar_engine, migrar_para
+from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 from src.banco.usuarios import mudar_plano
 from src.conformidade import apagar_conta, exportar_meus_dados
 from src.planos import LimiteDoPlanoError
@@ -152,7 +152,7 @@ def test_migracao_0007_vai_e_volta(tmp_path):
     url = f"sqlite:///{(tmp_path / 'm.sqlite').as_posix()}"
     migrar_para("head", url=url)
     assert "presets" in sa.inspect(criar_engine(url)).get_table_names()
-    migrar_para("-1", url=url)
+    desfazer_ate("0006", url=url)
     assert "presets" not in sa.inspect(criar_engine(url)).get_table_names()
     migrar_para("head", url=url)
     assert "presets" in sa.inspect(criar_engine(url)).get_table_names()

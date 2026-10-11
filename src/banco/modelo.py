@@ -112,6 +112,19 @@ presets = sa.Table(
     sa.UniqueConstraint("usuario_id", "escopo", "alvo", "versao"),
 )
 
+# Research (0009): listas com nome (watchlists) de cada usuário
+watchlists = sa.Table(
+    "watchlists",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("nome", sa.String(60), nullable=False),
+    sa.Column("tickers", JSON_PORTATIL, nullable=False),  # na ordem escolhida
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    sa.UniqueConstraint("usuario_id", "nome"),
+)
+
 # Research (0008): dados públicos da CVM, iguais para todos (nada pessoal aqui)
 tickers_dos_emissores = sa.Table(
     "tickers_dos_emissores",

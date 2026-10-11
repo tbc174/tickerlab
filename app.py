@@ -5,12 +5,14 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+from sqlalchemy import exc as sa_exc
 
 from src import administracao as adm
 from src import analise as research_analise
@@ -22,6 +24,7 @@ from src import (
     marca,
     previa_pdf,
     relatorios,
+    research,
     trade,
     tutorial,
 )
@@ -48,6 +51,7 @@ from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_simulacao,
+    apagar_watchlist,
     biblioteca_de_relatorios,
     carregar_preferencias,
     contar_relatorios_recentes,
@@ -56,13 +60,16 @@ from src.banco.dados_do_usuario import (
     historico_do_preset,
     listar_favoritos,
     listar_simulacoes,
+    listar_watchlists,
     presets_atuais,
     registrar_relatorio,
     salvar_favoritos,
     salvar_preferencias,
     salvar_preset,
     salvar_simulacao,
+    salvar_watchlist,
 )
+from src.banco.eventos import empresas_dos_tickers, eventos_dos_tickers, ultima_coleta
 from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
 from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
@@ -6123,10 +6130,263 @@ def pagina_parametros():
     mostrar_historico(usuario, escopo, alvo)
 
 
+# --- Research: Acontecimentos (etapa 2b) -----------------------------------------------------
+JANELAS_DO_RESEARCH = {7: "7 dias", 30: "30 dias", 90: "90 dias"}
+NOMES_DOS_TEMAS = {
+    "resultados": "Resultados",
+    "proventos": "Proventos",
+    "eventos": "Eventos",
+    "risco": "Risco",
+    "tecnica": "Técnica",
+    "valuation": "Valuation",
+    "fundamentos": "Fundamentos",
+}
+
+
+def _listas_do_research(usuario):
+    """(nome, tickers, id da watchlist ou None): demonstração, favoritos e as listas com nome."""
+    listas = [(research.NOME_DA_DEMONSTRACAO, list(research.DEMONSTRACAO), None)]
+    favoritos = [normalizar_ticker(t) for t in st.session_state.get("favoritos", [])]
+    if favoritos:
+        listas.append(("Favoritos", favoritos, None))
+    if usuario is not None:
+        try:
+            with obter_engine().connect() as conexao:
+                listas += [
+                    (w.nome, w.tickers, w.id)
+                    for w in listar_watchlists(conexao, usuario.id)
+                ]
+        except Exception:
+            logging.getLogger(__name__).exception("Falha ao ler as listas")
+            st.warning("Não consegui ler as suas listas agora.")
+    return listas
+
+
+def _analisar_do_research(ticker):
+    st.session_state["ticker"] = ticker
+    st.session_state["ir_para_visao_geral"] = True
+
+
+def _mostrar_item(item, chave, destaque=False):
+    e = item.evento
+    codigo = e.ticker.removesuffix(".SA")
+    with st.container(border=True, key=f"tl-evento-{chave}"):
+        col_texto, col_acoes = st.columns([5, 2], vertical_alignment="top")
+        col_texto.markdown(
+            f"**{codigo}** · {e.rotulo} · {e.publicado_em:%d/%m/%Y}"
+            + ("" if destaque else f" · relevância {item.relevancia:.0%}")
+        )
+        col_texto.markdown(
+            e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro)."
+        )
+        col_texto.caption(e.empresa)
+        col_acoes.link_button(
+            "Abrir na CVM", e.link, icon=":material/open_in_new:", width="stretch"
+        )
+        col_acoes.button(
+            f"Analisar {codigo}",
+            key=f"research_analisar_{chave}",
+            on_click=_analisar_do_research,
+            args=(e.ticker,),
+            width="stretch",
+        )
+        with st.expander("Por que isso aparece?"):
+            for razao in item.razoes:
+                st.markdown(f"- {razao}")
+            st.caption(
+                f"Relevância {item.relevancia:.0%}: soma dos componentes (0 a 1) vezes os seus "
+                "pesos da página Parâmetros. Ordena a leitura; não é nota da empresa nem "
+                "sinal de compra ou venda."
+            )
+
+
+def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
+    if usuario is None:
+        st.caption("Entre com a sua conta para criar listas com nome.")
+        return
+    nome_atual, tickers_atuais, id_atual = lista_atual
+    with st.expander("Minhas listas"):
+        aba_nova, aba_editar = st.tabs(["Nova lista", "Editar a lista aberta"])
+        with aba_nova:
+            nome = st.text_input("Nome", key="research_nova_nome", max_chars=60)
+            tickers = st.multiselect(
+                f"Ativos (até {limites.ativos_por_watchlist})",
+                catalogo.simbolos(),
+                format_func=catalogo.rotulo,
+                key="research_nova_tickers",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            if st.button(
+                "Criar lista", key="rsb_criar", icon=":material/playlist_add:"
+            ):
+                _gravar_lista(usuario, nome, tickers, None)
+        with aba_editar:
+            if id_atual is None:
+                st.caption(
+                    f'"{nome_atual}" não é uma lista sua: a demonstração é fixa e os '
+                    "favoritos mudam pela estrela no topo das páginas."
+                )
+                return
+            novos = st.multiselect(
+                "Ativos",
+                sorted({*catalogo.simbolos(), *tickers_atuais}),
+                default=tickers_atuais,
+                format_func=catalogo.rotulo,
+                key=f"research_editar_{id_atual}",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            col_salvar, col_apagar = st.columns(2)
+            if col_salvar.button(
+                "Salvar a lista", key="rsb_salvar", icon=":material/save:"
+            ):
+                _gravar_lista(usuario, nome_atual, novos, id_atual)
+            with col_apagar.popover("Apagar a lista", icon=":material/delete:"):
+                st.caption(f'Apagar "{nome_atual}"? Os eventos continuam na CVM.')
+                if st.button("Apagar de vez", key="rsb_apagar", type="primary"):
+                    with obter_engine().begin() as conexao:
+                        apagar_watchlist(conexao, usuario.id, id_atual)
+                    st.session_state["research_lista_pendente"] = (
+                        None  # volta à primeira
+                    )
+                    st.rerun()
+
+
+def _gravar_lista(usuario, nome, tickers, watchlist_id):
+    try:
+        with obter_engine().begin() as conexao:
+            salvar_watchlist(
+                conexao, usuario.id, nome, tickers, plano=usuario.plano,
+                watchlist_id=watchlist_id,
+            )  # fmt: skip
+    except (DadosInvalidosError, LimiteDoPlanoError) as erro:
+        st.error(str(erro))
+        return
+    if watchlist_id is None:  # abre a lista nova (aplicado antes de desenhar o campo)
+        st.session_state["research_lista_pendente"] = " ".join(nome.split())
+    st.toast("Lista salva.", icon=":material/check_circle:")
+    st.rerun()
+
+
+def pagina_research():
+    cabecalho_da_pagina("research")
+    if st.session_state.pop("ir_para_visao_geral", False):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    listas = _listas_do_research(usuario)
+    nomes = [lista[0] for lista in listas]
+    if "research_lista_pendente" in st.session_state:
+        st.session_state["research_lista"] = st.session_state.pop(
+            "research_lista_pendente"
+        )
+    if st.session_state.get("research_lista") not in nomes:
+        st.session_state["research_lista"] = nomes[0]
+    col_lista, col_janela = st.columns([2, 1])
+    escolhida = col_lista.selectbox("Lista", nomes, key="research_lista")
+    lista = listas[nomes.index(escolhida)]
+    nome, tickers, _ = lista
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DO_RESEARCH),
+        format_func=JANELAS_DO_RESEARCH.get,
+        default=30,
+        required=True,
+        key="research_janela",
+    )
+    r = parametros_em_vigor(None)
+    temas_do_usuario = list(r["newsletter.temas"])
+    temas = st.pills(
+        "Temas",
+        list(NOMES_DOS_TEMAS),
+        format_func=NOMES_DOS_TEMAS.get,
+        selection_mode="multi",
+        default=temas_do_usuario,
+        key="research_temas",
+        help="Começa com os seus temas (página Parâmetros). Sem nenhum marcado, aparecem todos.",
+    )
+    if nome == research.NOME_DA_DEMONSTRACAO:
+        st.caption(
+            "Lista de demonstração: cinco empresas grandes da B3, com eventos reais e públicos. "
+            "Nada aqui é sobre a sua carteira."
+        )
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        with obter_engine().connect() as conexao:
+            ultima = ultima_coleta(conexao)
+            empresas = empresas_dos_tickers(conexao, tickers)
+            eventos_da_lista = eventos_dos_tickers(
+                conexao,
+                tickers,
+                hoje - timedelta(days=janela),
+                temas=temas or None,
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        # banco sem as tabelas do Research (modo local sem migrar): é o mesmo que não coletado
+        ultima, empresas, eventos_da_lista = None, {}, []
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os eventos")
+        st.error("Não consegui ler os eventos agora. Tente de novo em instantes.")
+        return
+    if ultima is None:
+        st.info(
+            "Os eventos da CVM ainda não foram coletados neste servidor. A coleta roda uma "
+            "vez por dia (`python -m scripts.atualizar_eventos`, que também prepara o banco).",
+            icon=":material/schedule:",
+        )
+        _mostrar_gestao_das_listas(usuario, limites, lista)
+        return
+    if (
+        ultima.tzinfo is None
+    ):  # o SQLite devolve a hora sem fuso: ela foi gravada em UTC
+        ultima = ultima.replace(tzinfo=UTC)
+    st.caption(
+        f"Fonte: dados abertos da CVM (fatos relevantes, comunicados, avisos, proventos e "
+        f"resultados), coletados em {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
+        "A ordem segue os seus pesos de relevância (página Parâmetros)."
+    )
+    sem_cobertura = [t for t in tickers if t not in empresas]
+    todos = st.toggle(
+        "Mostrar todos (sem limite de 3 por empresa)",
+        key="research_todos",
+        help="Por padrão, uma empresa não ocupa mais de 3 lugares, para nenhuma dominar a lista.",
+    )
+    itens = research.ordenar(
+        eventos_da_lista,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        temas_do_usuario,
+        hoje,
+        janela,
+        nome,
+        maximo_por_ativo=10_000 if todos else 3,
+    )
+    if not itens:
+        st.info(
+            f'Nenhum evento das empresas de "{nome}" nos últimos {janela} dias'
+            + (" com esses temas." if temas else ".")
+        )
+    else:
+        st.subheader("Em destaque")
+        for i, item in enumerate(itens[:3]):
+            _mostrar_item(item, f"d{i}", destaque=True)
+        if len(itens) > 3:
+            st.subheader(f"Os outros {len(itens) - 3}")
+            for i, item in enumerate(itens[3:], start=3):
+                _mostrar_item(item, f"o{i}")
+    if sem_cobertura:
+        st.caption(
+            "Sem cobertura ainda: "
+            + ", ".join(t.removesuffix(".SA") for t in sem_cobertura)
+            + ". Hoje o Research lê a CVM (empresas da B3); ações dos EUA chegam com a SEC "
+            "numa próxima etapa, e fundos e ETFs dependem de outras fontes."
+        )
+    _mostrar_gestao_das_listas(usuario, limites, lista)
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
     "parametros": pagina_parametros,
+    "research": pagina_research,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

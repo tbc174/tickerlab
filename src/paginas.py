@@ -203,6 +203,15 @@ PAGINAS = (
         recurso=PARES,
     ),
     Pagina(
+        "research",
+        "Acontecimentos",
+        GRUPO_RESEARCH,
+        ":material/travel_explore:",
+        "O que as empresas que você acompanha publicaram na CVM, por relevância, com o "
+        "documento original de cada item.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,

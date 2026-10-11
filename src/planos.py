@@ -31,6 +31,9 @@ class Limites:
     tipos_de_relatorio: frozenset[str]
     # Research: ativos com parâmetros próprios (o "seu padrão" vale em todos os planos)
     ativos_com_parametros: int = 0
+    # Research: listas com nome e quantos ativos cabem em cada uma
+    watchlists: int = 1
+    ativos_por_watchlist: int = 10
 
 
 LIMITES_DOS_PLANOS = {
@@ -43,6 +46,8 @@ LIMITES_DOS_PLANOS = {
         relatorios_por_dia=3,
         tipos_de_relatorio=frozenset({"ativo"}),
         ativos_com_parametros=0,
+        watchlists=1,
+        ativos_por_watchlist=10,
     ),
     "plus": Limites(
         nome="Plus",
@@ -53,6 +58,8 @@ LIMITES_DOS_PLANOS = {
         relatorios_por_dia=20,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
         ativos_com_parametros=10,  # provisório: aguardando a decisão do Tiago
+        watchlists=3,  # provisório: aguardando a decisão do Tiago
+        ativos_por_watchlist=20,  # provisório: aguardando a decisão do Tiago
     ),
     "pro": Limites(
         nome="Pro",
@@ -63,6 +70,8 @@ LIMITES_DOS_PLANOS = {
         relatorios_por_dia=None,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
         ativos_com_parametros=50,
+        watchlists=10,
+        ativos_por_watchlist=50,
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -135,6 +144,23 @@ def conferir_parametros_por_ativo(
         )
 
 
+def conferir_watchlist(
+    plano: str | None, listas_ja_criadas: int, ativos: int, e_nova: bool
+) -> None:
+    """Levanta `LimiteDoPlanoError` se a lista passaria dos limites do plano."""
+    limites = limites_do(plano)
+    if e_nova and listas_ja_criadas >= limites.watchlists:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} permite {limites.watchlists} "
+            f"{'lista' if limites.watchlists == 1 else 'listas'} com nome. "
+            "Apague alguma ou conheça os planos Plus e Pro."
+        )
+    if ativos > limites.ativos_por_watchlist:
+        raise LimiteDoPlanoError(
+            f"No plano {limites.nome}, cada lista tem até {limites.ativos_por_watchlist} ativos."
+        )
+
+
 def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -> None:
     """Levanta `LimiteDoPlanoError` se a lista de favoritos CRESCERIA além do limite do plano.
 
@@ -176,5 +202,9 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
         linha("Parâmetros só para um ativo", lambda l: str(l.ativos_com_parametros)),
+        linha(
+            "Listas do Research",
+            lambda l: f"{l.watchlists} de até {l.ativos_por_watchlist} ativos",
+        ),
         linha("Exportar CSV", lambda l: "Sim"),
     ]

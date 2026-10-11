@@ -19,6 +19,7 @@ from src.banco.modelo import (
     relatorios,
     simulacoes,
     usuarios,
+    watchlists,
 )
 from src.banco.usuarios import Usuario
 
@@ -114,6 +115,19 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(simulacoes)
                 .where(simulacoes.c.usuario_id == usuario_id)
                 .order_by(simulacoes.c.criada_em)
+            )
+        ],
+        "listas_do_research": [
+            {
+                "nome": l.nome,
+                "tickers": list(l.tickers),
+                "criada_em": _texto(l.criado_em),
+                "atualizada_em": _texto(l.atualizado_em),
+            }
+            for l in conexao.execute(
+                sa.select(watchlists)
+                .where(watchlists.c.usuario_id == usuario_id)
+                .order_by(watchlists.c.criado_em)
             )
         ],
         "parametros_do_research": [
