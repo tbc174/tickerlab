@@ -60,7 +60,7 @@ def test_link_compartilhado_nao_apaga_os_favoritos_da_conta(banco, monkeypatch):
 def test_campos_sobrevivem_a_troca_de_pagina(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app("visao_geral")
-    app.text_input(key="ticker").input("VALE3.SA").run()
+    app.selectbox(key="ticker").set_value("VALE3.SA").run()
     ir_para(app, "planos")
     ir_para(app, "backtest")
     assert app.session_state["ticker"] == "VALE3.SA"

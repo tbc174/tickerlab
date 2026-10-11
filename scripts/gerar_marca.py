@@ -79,5 +79,34 @@ def gerar_arquivos() -> None:
     desenhar_assinatura_png(96).save(ARQUIVO_DA_ASSINATURA)
 
 
+FONTES_ESTATICAS = {
+    # arquivo de saída: (fonte variável de origem, peso)
+    "Manrope-Regular.ttf": ("Manrope-VariableFont_wght.ttf", 400),
+    "Manrope-SemiBold.ttf": ("Manrope-VariableFont_wght.ttf", 600),
+    "Manrope-ExtraBold.ttf": ("Manrope-VariableFont_wght.ttf", 800),
+    "JetBrainsMono-SemiBold.ttf": ("JetBrainsMono-VariableFont_wght.ttf", 600),
+}
+
+
+def gerar_fontes_estaticas() -> None:
+    """Fontes de um peso só, para os relatórios em PDF (o matplotlib não escolhe o peso de uma
+    fonte variável e ficava no padrão da Manrope, 200, fino demais)."""
+    from fontTools.ttLib import TTFont
+    from fontTools.varLib.instancer import instantiateVariableFont
+
+    pasta = ARQUIVO_DA_FONTE.parent
+    for saida, (origem, peso) in FONTES_ESTATICAS.items():
+        try:  # atualiza o nome interno ("Manrope ExtraBold"); nem toda fonte tem os dados
+            fonte = instantiateVariableFont(
+                TTFont(pasta / origem), {"wght": peso}, updateFontNames=True
+            )
+        except (
+            ValueError
+        ):  # a JetBrains Mono não tem: os arquivos são carregados pelo caminho
+            fonte = instantiateVariableFont(TTFont(pasta / origem), {"wght": peso})
+        fonte.save(pasta / saida)
+
+
 if __name__ == "__main__":
     gerar_arquivos()
+    gerar_fontes_estaticas()

@@ -15,6 +15,7 @@ GRUPO_ESTRATEGIAS = "Estratégias"
 GRUPO_AVANCADO = "Avançado (Pro)"
 GRUPO_APRENDER = "Aprender"
 GRUPO_CONTA = "Minha conta"
+GRUPO_MAIS = "Mais"  # experimental e menos usado (blueprint: TickerLab Trade fica aqui como Beta)
 GRUPO_ADMIN = "Administração"
 GRUPOS = (
     GRUPO_TOPO,
@@ -23,11 +24,13 @@ GRUPOS = (
     GRUPO_AVANCADO,
     GRUPO_APRENDER,
     GRUPO_CONTA,
+    GRUPO_MAIS,
     GRUPO_ADMIN,
 )
 
 FRASE_DE_CADA_GRUPO = {
-    GRUPO_TOPO: "O começo e a pesquisa de trading do TickerLab.",
+    GRUPO_TOPO: "O começo e os relatórios do TickerLab.",
+    GRUPO_MAIS: "Linhas experimentais, ainda em pesquisa.",
     GRUPO_APRENDER: "Como os números são calculados, os limites do app e cada termo explicado.",
     GRUPO_ANALISAR: "Entenda um ativo: preço, risco e comportamento ao longo do tempo.",
     GRUPO_ESTRATEGIAS: "Teste regras de compra e venda no passado, com custos.",
@@ -70,6 +73,13 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "relatorio",
+        "Gerar relatório",
+        GRUPO_TOPO,
+        ":material/picture_as_pdf:",
+        "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
+    ),
+    Pagina(
         "guia",
         "Guia e glossário",
         GRUPO_APRENDER,
@@ -97,8 +107,8 @@ PAGINAS = (
     ),
     Pagina(
         "trade",
-        "TickerLab Trade",
-        GRUPO_TOPO,
+        "TickerLab Trade · Beta",
+        GRUPO_MAIS,
         ":material/memory:",
         "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
         precisa_do_ativo=False,

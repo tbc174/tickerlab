@@ -16,7 +16,8 @@ CONVENCAO_DE_NOMES = {
 }
 
 PAPEIS = ("usuario", "admin")
-PLANOS = ("gratuito", "pro")
+PLANOS = ("gratuito", "plus", "pro")
+TIPOS_DE_RELATORIO = ("ativo", "comparacao", "backtest", "carteira", "minha_carteira")
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
@@ -57,7 +58,7 @@ usuarios = sa.Table(
     sa.Column("termos_versao", sa.String(20)),
     sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
-    sa.CheckConstraint("plano IN ('gratuito', 'pro')", name="plano"),
+    sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
 
@@ -129,3 +130,28 @@ auditoria = sa.Table(
     _momento("criado_em"),
 )
 sa.Index("ix_auditoria_criado_em", auditoria.c.criado_em)
+
+
+# Relatórios em PDF gerados: só o tipo e a hora, para contar o limite do plano (o PDF não é
+# guardado). Apagados junto com a conta.
+relatorios = sa.Table(
+    "relatorios",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("tipo", sa.String(20), nullable=False),
+    _momento("criado_em"),
+    # biblioteca (0006): título e parâmetros para reabrir; ao excluir, só tipo e hora ficam
+    sa.Column("titulo", sa.String(200)),
+    sa.Column("parametros", JSON_PORTATIL),
+    sa.Column("apagado_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(
+        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira')",
+        name="tipo",
+    ),
+)
+sa.Index(
+    "ix_relatorios_usuario_id_criado_em",
+    relatorios.c.usuario_id,
+    relatorios.c.criado_em,
+)

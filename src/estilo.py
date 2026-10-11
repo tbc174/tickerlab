@@ -6,11 +6,23 @@ do nosso próprio servidor: aqui não há `@import` do Google Fonts (mandaria o 
 
 from src import marca
 
+# a lupa do Material ("search"), como máscara: a cor vem do CSS (cinza; azul ao passar o mouse)
+LUPA = (
+    (
+        "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>"
+        "<path d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 "
+        "3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 "
+        "5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg>"
+    )
+    .replace("<", "%3C")
+    .replace(">", "%3E")
+)  # sem < e > crus dentro do <style>
+
 CSS_DO_APP = f"""
 /* Largura e respiro da página */
 .block-container, [data-testid="stMainBlockContainer"] {{
     max-width: 1240px;
-    padding-top: 2rem;
+    padding-top: 5rem;  /* o menu do topo é fixo: com menos, o conteúdo fica embaixo dele */
     padding-bottom: 3rem;
 }}
 
@@ -219,6 +231,83 @@ hr {{
 /* Links de página nos cartões */
 [data-testid="stPageLink"] a {{
     font-weight: 700;
+}}
+
+/* --- microanimações (blueprint, seção 09): curtas, com função, nunca contínuas -------- */
+
+/* a página aparece uma vez, sem pular */
+[data-testid="stMainBlockContainer"] {{
+    animation: tl-entrar 260ms ease-out both;
+}}
+@keyframes tl-entrar {{
+    from {{ opacity: 0; transform: translateY(8px); }}
+    to {{ opacity: 1; transform: none; }}
+}}
+
+/* cartões clicáveis: borda azul e sobem 2 px */
+.tl-cartao [data-testid="stVerticalBlockBorderWrapper"],
+[class*="st-key-tl-cartao"] {{
+    transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}}
+[class*="st-key-tl-cartao"]:hover {{
+    border-color: {marca.AZUL} !important;
+    transform: translateY(-2px);
+    background: {marca.DESTAQUE};
+}}
+
+/* botões: afundam um pouco ao clicar */
+button {{
+    transition: transform 120ms ease, background 150ms ease, border-color 150ms ease;
+}}
+button:active:not(:disabled) {{
+    transform: scale(0.98);
+}}
+
+/* foco visível para quem usa teclado (WCAG) */
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible,
+[role="tab"]:focus-visible, [role="option"]:focus-visible {{
+    outline: 2px solid {marca.AZUL_TEXTO} !important;
+    outline-offset: 2px;
+}}
+
+/* metadados curtos */
+.tl-sutil {{ color: {marca.TEXTO_SUTIL}; font-size: 0.82rem; }}
+
+/* busca de ativos: lupa no lugar da seta (é um campo de busca, não uma lista para abrir) */
+.st-key-ticker [aria-label="Open"] svg,
+.st-key-ativo_do_inicio [aria-label="Open"] svg {{
+    display: none;
+}}
+.st-key-ticker [aria-label="Open"]::before,
+.st-key-ativo_do_inicio [aria-label="Open"]::before {{
+    content: "";
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+    background-color: {marca.TEXTO_APAGADO};
+    -webkit-mask: url("{LUPA}") center / contain no-repeat;
+    mask: url("{LUPA}") center / contain no-repeat;
+}}
+.st-key-ticker [aria-label="Open"]:hover::before,
+.st-key-ativo_do_inicio [aria-label="Open"]:hover::before {{
+    background-color: {marca.AZUL_TEXTO};
+}}
+
+/* Report Studio: as páginas da prévia parecem folhas (sombra e cantos leves) */
+.st-key-tl-previa img {{
+    border-radius: 6px;
+    border: 1px solid {marca.LINHA_FORTE};
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    animation: tl-entrar 220ms ease-out both;
+}}
+/* barra de ações presa ao pé da tela enquanto a pessoa configura (Salvar · Gerar) */
+.st-key-tl-barra-relatorio {{
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: 0.6rem 0.25rem;
+    background: {marca.FUNDO};
+    border-top: 1px solid {marca.LINHA};
 }}
 
 @media (prefers-reduced-motion: reduce) {{

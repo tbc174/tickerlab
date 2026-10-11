@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tickerlab.com.br/sitemap.xml

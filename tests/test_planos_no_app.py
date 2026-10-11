@@ -61,7 +61,7 @@ def test_gratuito_nao_passa_de_3_favoritos(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app("visao_geral")
     for ticker in ("AAPL", "VALE3.SA", "PETR4.SA", "ITUB4.SA"):
-        app.text_input(key="ticker").input(ticker).run()
+        app.selectbox(key="ticker").set_value(ticker).run()
         botao(app, f"Favoritar {ticker}").click().run()
     assert len(app.session_state["favoritos"]) == 3
     assert "até 3" in app.session_state["erro_favorito"]

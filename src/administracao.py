@@ -74,6 +74,7 @@ def resumo_geral(conexao: sa.Connection, ator_id: uuid.UUID) -> dict:
     return {
         "usuarios": sum(por_plano.values()),
         "gratuito": por_plano.get("gratuito", 0),
+        "plus": por_plano.get("plus", 0),
         "pro": por_plano.get("pro", 0),
         "administradores": conexao.execute(
             sa.select(sa.func.count()).where(usuarios.c.papel == "admin")

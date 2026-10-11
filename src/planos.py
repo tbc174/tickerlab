@@ -6,7 +6,7 @@ Mudar um limite é mudar um número neste arquivo.
 
 from dataclasses import dataclass
 
-from src.banco.modelo import PLANOS
+from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
 
 PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limitar
 
@@ -25,6 +25,10 @@ class Limites:
     favoritos: int
     ativos_na_carteira: int
     recursos: frozenset[str]
+    relatorios_por_dia: (
+        int | None
+    )  # relatórios em PDF a cada 24 horas (None = sem limite)
+    tipos_de_relatorio: frozenset[str]
 
 
 LIMITES_DOS_PLANOS = {
@@ -34,6 +38,17 @@ LIMITES_DOS_PLANOS = {
         favoritos=3,
         ativos_na_carteira=4,
         recursos=frozenset(),
+        relatorios_por_dia=3,
+        tipos_de_relatorio=frozenset({"ativo"}),
+    ),
+    "plus": Limites(
+        nome="Plus",
+        simulacoes=30,
+        favoritos=10,
+        ativos_na_carteira=6,
+        recursos=frozenset(),  # Aprendizado de máquina e Pairs trading ficam no Pro
+        relatorios_por_dia=20,
+        tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
     ),
     "pro": Limites(
         nome="Pro",
@@ -41,6 +56,8 @@ LIMITES_DOS_PLANOS = {
         favoritos=20,
         ativos_na_carteira=8,
         recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES}),
+        relatorios_por_dia=None,
+        tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -75,6 +92,22 @@ def conferir_simulacoes(plano: str | None, ja_salvas: int) -> None:
         )
 
 
+def conferir_relatorio(plano: str | None, tipo: str, gerados_em_24h: int) -> None:
+    """Levanta `LimiteDoPlanoError` se o plano não gera este tipo ou já chegou ao limite do dia."""
+    limites = limites_do(plano)
+    if tipo not in limites.tipos_de_relatorio:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} gera só o relatório do ativo. "
+            "Comparação, backtest e carteira em PDF fazem parte do plano Pro."
+        )
+    maximo = limites.relatorios_por_dia
+    if maximo is not None and gerados_em_24h >= maximo:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} gera até {maximo} relatórios a cada 24 horas. "
+            "Tente mais tarde ou conheça o plano Pro."
+        )
+
+
 def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -> None:
     """Levanta `LimiteDoPlanoError` se a lista de favoritos CRESCERIA além do limite do plano.
 
@@ -89,38 +122,31 @@ def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -
         )
 
 
+COM_COBRANCA = ("pro",)  # o Plus existe, mas a assinatura dele ainda não está à venda
+
+
 def tabela_de_planos() -> list[dict[str, str]]:
-    """Linhas da tabela de comparação mostrada na tela."""
+    """Linhas da tabela de comparação mostrada na tela (uma coluna por plano)."""
+    planos = [limites_do(p) for p in PLANOS]
 
-    def sim_nao(plano: str, recurso: str) -> str:
-        return "Sim" if pode_usar(plano, recurso) else "Não"
+    def linha(recurso: str, valor) -> dict[str, str]:  # noqa: ANN001 (função de cada linha)
+        return {"Recurso": recurso, **{l.nome: valor(l) for l in planos}}
 
-    gratuito, pro = limites_do("gratuito"), limites_do("pro")
+    def sim_nao(recurso: str):  # noqa: ANN202
+        return lambda l: "Sim" if recurso in l.recursos else "Não"
+
+    def relatorios(l: Limites) -> str:
+        tipos = "todos os tipos" if len(l.tipos_de_relatorio) > 1 else "do ativo"
+        if l.relatorios_por_dia is None:
+            return f"{tipos.capitalize()}, ilimitados"
+        return f"{tipos.capitalize()}, {l.relatorios_por_dia} por dia"
+
     return [
-        {
-            "Recurso": "Simulações salvas",
-            "Gratuito": descrever_limite(gratuito.simulacoes),
-            "Pro": descrever_limite(pro.simulacoes),
-        },
-        {
-            "Recurso": "Favoritos",
-            "Gratuito": str(gratuito.favoritos),
-            "Pro": str(pro.favoritos),
-        },
-        {
-            "Recurso": "Ativos na carteira",
-            "Gratuito": str(gratuito.ativos_na_carteira),
-            "Pro": str(pro.ativos_na_carteira),
-        },
-        {
-            "Recurso": "Aprendizado de máquina",
-            "Gratuito": sim_nao("gratuito", APRENDIZADO_DE_MAQUINA),
-            "Pro": sim_nao("pro", APRENDIZADO_DE_MAQUINA),
-        },
-        {
-            "Recurso": "Pairs trading",
-            "Gratuito": sim_nao("gratuito", PARES),
-            "Pro": sim_nao("pro", PARES),
-        },
-        {"Recurso": "Exportar CSV", "Gratuito": "Sim", "Pro": "Sim"},
+        linha("Simulações salvas", lambda l: descrever_limite(l.simulacoes)),
+        linha("Favoritos", lambda l: str(l.favoritos)),
+        linha("Ativos na carteira", lambda l: str(l.ativos_na_carteira)),
+        linha("Relatórios em PDF", relatorios),
+        linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
+        linha("Pairs trading", sim_nao(PARES)),
+        linha("Exportar CSV", lambda l: "Sim"),
     ]

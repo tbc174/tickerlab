@@ -11,10 +11,19 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
-from src.banco.modelo import assinaturas, favoritos, preferencias, simulacoes, usuarios
+from src.banco.modelo import (
+    assinaturas,
+    favoritos,
+    preferencias,
+    relatorios,
+    simulacoes,
+    usuarios,
+)
 from src.banco.usuarios import Usuario
 
-VERSAO_DOS_TERMOS = "2026-10-11"
+VERSAO_DOS_TERMOS = (
+    "2026-10-11.2"  # versão 2: Plus, relatórios, acesso aberto, Cloudflare
+)
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
@@ -104,6 +113,26 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(simulacoes)
                 .where(simulacoes.c.usuario_id == usuario_id)
                 .order_by(simulacoes.c.criada_em)
+            )
+        ],
+        "relatorios_em_pdf": [
+            {
+                "tipo": l.tipo,
+                "criado_em": _texto(l.criado_em),
+                "titulo": l.titulo,
+                "parametros": dict(l.parametros) if l.parametros else None,
+                "excluido_da_biblioteca_em": _texto(l.apagado_em),
+            }
+            for l in conexao.execute(
+                sa.select(
+                    relatorios.c.tipo,
+                    relatorios.c.criado_em,
+                    relatorios.c.titulo,
+                    relatorios.c.parametros,
+                    relatorios.c.apagado_em,
+                )
+                .where(relatorios.c.usuario_id == usuario_id)
+                .order_by(relatorios.c.criado_em)
             )
         ],
         "assinatura": (
