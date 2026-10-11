@@ -90,3 +90,6 @@ jobs:
 
       - name: A API abre dentro da imagem
         run: docker run --rm tickerlab:ci python -c "from src.api import app; print(sorted(r.path for r in app.routes))"
+
+      - name: O login com o Google tem o que precisa dentro da imagem
+        run: docker run --rm tickerlab:ci python -c "from authlib.integrations.starlette_client import OAuth; print('login ok')"

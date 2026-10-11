@@ -71,3 +71,9 @@ def test_compose_tem_o_app_e_a_api_com_a_mesma_imagem():
     assert compose.count("image: tickerlab:local") == 2
     assert '"src.api:app"' in compose
     assert "service_healthy" in compose  # a API espera as migrações do app
+
+
+def test_a_imagem_de_producao_tem_o_que_o_login_do_google_exige():
+    """O st.login usa o cliente Starlette do Authlib, que importa o httpx (sem ele: erro 500)."""
+    producao = _pacotes_do_requirements("requirements-prod.txt")
+    assert "authlib" in producao and "httpx" in producao
