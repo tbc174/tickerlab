@@ -1,6 +1,7 @@
 """Confere que a imagem de produção tem tudo o que o app importa."""
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -58,7 +59,15 @@ def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
         assert dentro not in dockerignore.splitlines()
 
 
-def test_compose_publica_a_porta_so_em_localhost():
+def test_compose_publica_as_portas_so_em_localhost():
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
-    assert '"127.0.0.1:8501:8501"' in compose
-    assert "0.0.0.0" not in compose
+    portas = re.findall(r'^\s+- "([\d.]+:\d+:\d+)"\s*$', compose, flags=re.MULTILINE)
+    assert sorted(portas) == ["127.0.0.1:8000:8000", "127.0.0.1:8501:8501"]
+
+
+def test_compose_tem_o_app_e_a_api_com_a_mesma_imagem():
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    assert "  tickerlab-api:" in compose
+    assert compose.count("image: tickerlab:local") == 2
+    assert '"src.api:app"' in compose
+    assert "service_healthy" in compose  # a API espera as migrações do app

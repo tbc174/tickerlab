@@ -28,6 +28,31 @@ services:
     mem_limit: 768m
     cpus: 1.0
 
+  # API do TickerLab (FastAPI): /saude e o webhook do Stripe. Usa a mesma imagem do app.
+  # Acesso de fora (o Stripe precisa alcançar o webhook): veja projeto-acoes/stripe.md.
+  tickerlab-api:
+    image: tickerlab:local
+    container_name: tickerlab-api
+    restart: unless-stopped
+    command: ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env   # TICKERLAB_DATABASE_URL, STRIPE_WEBHOOK_SECRET (permissão 600, fora do Git)
+    networks:
+      - db
+    depends_on:
+      tickerlab:
+        condition: service_healthy   # o app aplica as migrações antes de a API subir
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/saude', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 256m
+    cpus: 0.5
+
 networks:
   db:
     external: true   # a rede onde está o PostgreSQL do servidor
