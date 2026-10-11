@@ -29,6 +29,51 @@ def _ligar_chaves_estrangeiras_no_sqlite(
     cursor.close()
 
 
+def mensagem_sem_valores(erro: BaseException) -> str | None:
+    """A mensagem de um erro do PostgreSQL montada SÓ com identificadores (tipo, código, tabela,
+    coluna, restrição). None se o erro não vier do PostgreSQL.
+
+    O texto original não serve: o servidor manda um "DETAIL" com a linha que falhou ("Failing row
+    contains (...)", "Key (email)=(...) already exists"), e nos erros de formato até a mensagem
+    principal repete o valor recebido. O `hide_parameters` não alcança esse texto.
+    """
+    diag = getattr(erro, "diag", None)
+    sqlstate = getattr(erro, "sqlstate", None)
+    if diag is None or sqlstate is None:
+        return None
+    partes = [f"{type(erro).__name__} (código {sqlstate})"]
+    for nome, rotulo in (
+        ("table_name", "tabela"),
+        ("column_name", "coluna"),
+        ("constraint_name", "restrição"),
+    ):
+        valor = getattr(diag, nome, None)
+        if valor:
+            partes.append(f"{rotulo} {valor}")
+    return "; ".join(partes)
+
+
+def _erro_sem_valores(contexto: sa.engine.ExceptionContext) -> BaseException | None:
+    """Troca o texto do erro do banco antes de ele subir (e de ir para algum log).
+
+    O erro original também é reescrito, porque o SQLAlchemy o encadeia ("from") no erro que
+    sobe, e um traceback no log mostraria os dois.
+    """
+    original = contexto.original_exception
+    mensagem = mensagem_sem_valores(original)
+    if mensagem is None or contexto.sqlalchemy_exception is None:
+        return None
+    original.args = (mensagem,)
+    erro = contexto.sqlalchemy_exception
+    return type(erro)(
+        contexto.statement,
+        None,
+        original,
+        hide_parameters=True,
+        connection_invalidated=erro.connection_invalidated,
+    )
+
+
 def criar_engine(url: str | None = None) -> sa.Engine:
     """Um motor novo para a URL (a do ambiente, se não for dada)."""
     url = normalizar_url_do_banco(url) if url else url_do_banco()
@@ -41,6 +86,8 @@ def criar_engine(url: str | None = None) -> sa.Engine:
     motor = sa.create_engine(url, pool_pre_ping=True, hide_parameters=True)
     if motor.dialect.name == "sqlite":
         sa.event.listen(motor, "connect", _ligar_chaves_estrangeiras_no_sqlite)
+    else:  # o PostgreSQL devolve a linha que falhou no texto do erro: só identificadores
+        sa.event.listen(motor, "handle_error", _erro_sem_valores)
     log.info("Banco configurado: %s", url_sem_senha(url))
     return motor
 
