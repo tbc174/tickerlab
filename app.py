@@ -1,6 +1,7 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
 import logging
+import time
 from urllib.parse import urlencode
 
 import numpy as np
@@ -35,6 +36,7 @@ from src.banco.dados_do_usuario import (
     salvar_preferencias,
     salvar_simulacao,
 )
+from src.banco.usuarios import buscar_por_id
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
@@ -105,6 +107,18 @@ from src.metricas import (
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.momentum import montar_tabela_de_momentum
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
+from src.planos import (
+    APRENDIZADO_DE_MAQUINA,
+    NOMES_DOS_RECURSOS,
+    PARES,
+    PLANO_DO_MODO_LOCAL,
+    LimiteDoPlanoError,
+    conferir_favoritos,
+    descrever_limite,
+    limites_do,
+    pode_usar,
+    tabela_de_planos,
+)
 from src.protecoes import Protecoes, aplicar_protecoes
 from src.ranking import montar_ranking
 from src.regimes import (
@@ -264,7 +278,7 @@ def obter_usuario_logado():
         st.stop()
     atual = st.session_state.get("usuario")
     if atual is not None and atual.google_sub == st.user.get("sub"):
-        return atual
+        return _com_plano_atualizado(atual)
     try:
         usuario, primeira_vez = registrar_login(
             ler_identidade(st.user.to_dict()), admins=emails_de_admin()
@@ -280,8 +294,60 @@ def obter_usuario_logado():
         )
         st.stop()
     st.session_state["usuario"] = usuario
+    st.session_state["usuario_em"] = time.monotonic()
     st.session_state["primeira_vez"] = primeira_vez
     return usuario
+
+
+SEGUNDOS_ATE_RELER_O_USUARIO = 60
+
+
+def _com_plano_atualizado(usuario):
+    """Relê o usuário do banco a cada minuto: o plano pode mudar fora desta sessão."""
+    agora = time.monotonic()
+    if agora - st.session_state.get("usuario_em", 0) < SEGUNDOS_ATE_RELER_O_USUARIO:
+        return usuario
+    st.session_state["usuario_em"] = agora
+    try:
+        with obter_engine().connect() as conexao:
+            novo = buscar_por_id(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao reler o usuário")
+        return usuario
+    if novo is None:  # a conta foi apagada
+        st.session_state.pop("usuario", None)
+        st.error("Esta conta não existe mais.")
+        st.button("Sair", on_click=st.logout)
+        st.stop()
+    st.session_state["usuario"] = novo
+    return novo
+
+
+def plano_atual():
+    """O plano de quem está usando o app (sem contas, no modo local, vale o mais amplo)."""
+    usuario = st.session_state.get("usuario")
+    return usuario.plano if usuario is not None else PLANO_DO_MODO_LOCAL
+
+
+def mostrar_planos():
+    st.dataframe(pd.DataFrame(tabela_de_planos()).set_index("Recurso"), width="stretch")
+
+
+def exigir_recurso(recurso):
+    """True se o plano atual pode usar o recurso; senão mostra o convite ao Pro e devolve False."""
+    if pode_usar(plano_atual(), recurso):
+        return True
+    st.info(
+        f"**{NOMES_DOS_RECURSOS[recurso]}** faz parte do plano **Pro**. "
+        f"Você está no plano {limites_do(plano_atual()).nome}."
+    )
+    with st.expander("Comparar os planos"):
+        mostrar_planos()
+        st.caption(
+            "A assinatura do plano Pro chega na próxima etapa do projeto (Stripe, em modo "
+            "de teste: nenhum dinheiro real)."
+        )
+    return False
 
 
 def _segredos():
@@ -364,7 +430,9 @@ def salvar_na_conta(usuario):
     try:
         with obter_engine().begin() as conexao:
             if atual["favoritos"] != antes["favoritos"]:
-                salvar_favoritos(conexao, usuario.id, atual["favoritos"])
+                salvar_favoritos(
+                    conexao, usuario.id, atual["favoritos"], plano=usuario.plano
+                )
             if atual["preferencias"] != antes["preferencias"]:
                 salvar_preferencias(conexao, usuario.id, atual["preferencias"])
         st.session_state["conta_snapshot"] = atual
@@ -412,8 +480,9 @@ def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo):
                 nome,
                 capturar_estado(st.session_state, tipo),
                 resumo,
+                plano=usuario.plano,
             )
-    except DadosInvalidosError as erro:
+    except (DadosInvalidosError, LimiteDoPlanoError) as erro:
         st.toast(str(erro))
         return
     except Exception:
@@ -496,12 +565,22 @@ def secao_minhas_simulacoes():
         st.warning("Não consegui carregar as suas simulações agora.")
         return
     if not simulacoes:
+        st.caption(
+            f"Plano {limites_do(usuario.plano).nome}: "
+            f"{descrever_limite(limites_do(usuario.plano).simulacoes).lower()} simulações."
+        )
         st.info(
             "Você ainda não salvou nenhuma simulação. Rode um Backtest, uma Carteira ou "
             'um Par e use "Salvar esta simulação na minha conta".'
         )
         return
-    st.caption(f"{len(simulacoes)} guardada(s), da mais nova para a mais antiga.")
+    limite = limites_do(usuario.plano).simulacoes
+    st.caption(
+        f"{len(simulacoes)} de {descrever_limite(limite).lower()} simulações no plano "
+        f"{limites_do(usuario.plano).nome}, da mais nova para a mais antiga."
+    )
+    with st.expander("Ver os planos"):
+        mostrar_planos()
     for simulacao in simulacoes:
         titulo = (
             f"{simulacao.nome} · {NOMES_DOS_TIPOS[simulacao.tipo]} · "
@@ -563,9 +642,11 @@ def preparar_estado_inicial():
 
 def _alternar_favorito_atual():
     try:
-        st.session_state["favoritos"] = alternar_favorito(
-            st.session_state["favoritos"], normalizar_ticker(st.session_state["ticker"])
-        )
+        favoritos = st.session_state["favoritos"]
+        ticker = normalizar_ticker(st.session_state["ticker"])
+        if ticker not in favoritos:
+            conferir_favoritos(plano_atual(), len(favoritos), len(favoritos) + 1)
+        st.session_state["favoritos"] = alternar_favorito(favoritos, ticker)
         st.session_state.pop("erro_favorito", None)
     except ValueError as erro:
         st.session_state["erro_favorito"] = str(erro)
@@ -2728,6 +2809,12 @@ def secao_pares(periodo, taxa_livre_de_risco):
 ATIVOS_PADRAO_DA_CARTEIRA = "PETR4, VALE3, ITUB4, WEGE3, ABEV3"
 
 
+def _ativos_padrao_da_carteira():
+    """A lista de exemplo, cortada para caber no limite de ativos do plano."""
+    ativos = ATIVOS_PADRAO_DA_CARTEIRA.split(", ")
+    return ", ".join(ativos[: limites_do(plano_atual()).ativos_na_carteira])
+
+
 def _controles_da_estrategia(estrategia, chave):
     """Sliders dos parâmetros de uma estratégia de carteira."""
     valores = {}
@@ -2756,7 +2843,7 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
     with st.container(border=True):
         texto = st.text_input(
             f"Ativos ({MIN_ATIVOS_NA_CARTEIRA} a {MAX_ATIVOS_NA_CARTEIRA}, separados por vírgula)",
-            value=ATIVOS_PADRAO_DA_CARTEIRA,
+            value=_ativos_padrao_da_carteira(),
             key="carteira_ativos",
             help="O primeiro ativo da lista é o canário da estratégia de mesmo nome.",
         )
@@ -2788,6 +2875,14 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         st.info(
             f"Escolha de {MIN_ATIVOS_NA_CARTEIRA} a {MAX_ATIVOS_NA_CARTEIRA} ativos "
             f"(agora são {len(tickers)})."
+        )
+        return
+    limite_de_ativos = limites_do(plano_atual()).ativos_na_carteira
+    if len(tickers) > limite_de_ativos:
+        st.info(
+            f"O plano {limites_do(plano_atual()).nome} aceita até {limite_de_ativos} ativos "
+            f"na carteira (agora são {len(tickers)}). O plano Pro aceita "
+            f"{limites_do('pro').ativos_na_carteira}."
         )
         return
     fechamentos, sem_dados = {}, []
@@ -3462,9 +3557,11 @@ with aba_experimentos:
 with aba_regimes:
     secao_regimes(dados, taxa_livre_de_risco)
 with aba_aprendizado:
-    secao_aprendizado(dados, taxa_livre_de_risco)
+    if exigir_recurso(APRENDIZADO_DE_MAQUINA):
+        secao_aprendizado(dados, taxa_livre_de_risco)
 with aba_pares:
-    secao_pares(periodo, taxa_livre_de_risco)
+    if exigir_recurso(PARES):
+        secao_pares(periodo, taxa_livre_de_risco)
 with aba_correlacao:
     secao_correlacao(normalizar_ticker(ticker), periodo)
 with aba_momentum:
