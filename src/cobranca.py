@@ -128,7 +128,7 @@ def criar_pagina_de_pagamento(
         parametros["customer"] = id_do_cliente
     else:
         parametros["customer_email"] = email
-    sessao = (cliente or _cliente(configuracao)).checkout.sessions.create(
+    sessao = (cliente or _cliente(configuracao)).v1.checkout.sessions.create(
         params=parametros
     )
     return sessao.url
@@ -141,7 +141,7 @@ def criar_portal_da_assinatura(
 ) -> str:
     """Endereço do portal onde a pessoa troca o cartão, vê faturas ou cancela."""
     configuracao = configuracao or ler_configuracao()
-    sessao = (cliente or _cliente(configuracao)).billing_portal.sessions.create(
+    sessao = (cliente or _cliente(configuracao)).v1.billing_portal.sessions.create(
         params={"customer": id_do_cliente, "return_url": f"{configuracao.url_do_app}/"}
     )
     return sessao.url

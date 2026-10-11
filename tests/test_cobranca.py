@@ -63,8 +63,10 @@ def test_preco_e_url_precisam_ter_cara_certa():
 class ClienteFalso:
     def __init__(self):
         self.chamadas = []
-        self.checkout = SimpleNamespace(sessions=self._sessoes("checkout"))
-        self.billing_portal = SimpleNamespace(sessions=self._sessoes("portal"))
+        self.v1 = SimpleNamespace(
+            checkout=SimpleNamespace(sessions=self._sessoes("checkout")),
+            billing_portal=SimpleNamespace(sessions=self._sessoes("portal")),
+        )
 
     def _sessoes(self, tipo):
         def criar(params):
