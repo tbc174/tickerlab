@@ -21,7 +21,9 @@ from src.banco.modelo import (
 )
 from src.banco.usuarios import Usuario
 
-VERSAO_DOS_TERMOS = "2026-10-11"
+VERSAO_DOS_TERMOS = (
+    "2026-10-11.2"  # versão 2: Plus, relatórios, acesso aberto, Cloudflare
+)
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 

@@ -36,8 +36,9 @@ DESTINO = RAIZ / "site"
 URL_DO_SITE = "https://tickerlab.com.br"
 URL_DO_APP = "https://app.tickerlab.com.br"
 URL_DO_CODIGO = "https://github.com/tbc174/tickerlab"
-# enquanto o login do Google estiver em "modo Teste", só e-mails convidados entram no app
-BETA_FECHADO = True
+# True enquanto o login do Google estiver em "modo Teste" (só e-mails convidados entram);
+# o acesso foi aberto em 11/10/2026 (app do Google publicado em "Em produção")
+BETA_FECHADO = False
 TICKER_DO_EXEMPLO = "PETR4.SA"
 AVISO = (
     "Projeto educacional: nada aqui é recomendação de investimento. Os dados vêm do Yahoo "
