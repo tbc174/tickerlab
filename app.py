@@ -2,6 +2,7 @@
 
 import logging
 import time
+from dataclasses import dataclass
 from urllib.parse import urlencode
 
 import numpy as np
@@ -30,6 +31,7 @@ from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_simulacao,
     carregar_preferencias,
+    contar_simulacoes,
     listar_favoritos,
     listar_simulacoes,
     salvar_favoritos,
@@ -113,6 +115,17 @@ from src.metricas import (
 )
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.momentum import montar_tabela_de_momentum
+from src.paginas import (
+    FRASE_DE_CADA_GRUPO,
+    GRUPO_ANALISAR,
+    GRUPO_AVANCADO,
+    GRUPO_CONTA,
+    GRUPO_ESTRATEGIAS,
+    GRUPOS,
+    PAGINA_INICIAL,
+    pagina,
+    paginas_do_grupo,
+)
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
@@ -265,15 +278,25 @@ def mostrar_grafico(figura):
 # --- Conta e login ----------------------------------------------------------
 def mostrar_tela_de_entrada():
     """Tela para quem ainda não entrou: o app só abre depois do login com o Google."""
-    mostrar_cabecalho()
-    st.markdown(
-        "Entre com a sua conta do Google para analisar ações, rodar backtests e guardar "
-        "o que você fizer."
-    )
-    st.button("Entrar com o Google", type="primary", on_click=st.login)
-    st.caption(
-        "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado."
-    )
+    _, centro, _ = st.columns([1, 3, 1])
+    with centro:
+        st.markdown(
+            '<div class="tl-marca">Ticker<span>Lab</span></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "Entre com a sua conta do Google para analisar ações, testar estratégias "
+            "no passado e guardar o que você fizer."
+        )
+        st.button("Entrar com o Google", type="primary", on_click=st.login)
+        st.caption(
+            "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. "
+            "Projeto educacional: não é recomendação de investimento."
+        )
 
 
 def obter_usuario_logado():
@@ -461,7 +484,10 @@ def _segredos():
 
 def mostrar_conta(usuario):
     """Botão no topo com os dados da conta e a saída."""
-    with st.popover(usuario.nome or usuario.email, icon=":material/account_circle:"):
+    with st.popover(
+        f"{usuario.nome or usuario.email} · {limites_do(usuario.plano).nome}",
+        icon=":material/account_circle:",
+    ):
         if usuario.foto_url:
             st.image(usuario.foto_url, width=56)
         st.markdown(f"**{usuario.nome or 'Sem nome'}**")
@@ -655,7 +681,6 @@ def _apagar_simulacao(usuario, simulacao):
 
 
 def secao_minhas_simulacoes():
-    st.subheader("Minhas simulações")
     usuario = st.session_state.get("usuario")
     if usuario is None:
         st.info(
@@ -719,11 +744,6 @@ def secao_minhas_simulacoes():
 
 
 # --- Cabeçalho e entradas -----------------------------------------------------
-def mostrar_cabecalho():
-    st.title("TickerLab")
-    st.caption("Análise de ações para estudo. Não é recomendação de investimento.")
-
-
 MODOS_DA_TAXA = ("Zero", "CDI (Banco Central)", "Digitar")
 
 
@@ -766,26 +786,44 @@ def _ir_para_favorito():
     st.session_state["favorito_escolhido"] = "—"
 
 
+PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
+NOMES_DOS_MODOS_DA_TAXA = {
+    "Zero": "Nenhum (zero)",
+    "CDI (Banco Central)": "CDI (Banco Central)",
+    "Digitar": "Digitar um valor",
+}
+
+
 def mostrar_favoritos():
-    """Botão de favoritar o ticker atual e atalho para ir a um favorito (vale só nesta sessão)."""
+    """Botão de favoritar o ativo atual e atalho para ir a um favorito (ficam na sua conta)."""
     favoritos = st.session_state["favoritos"]
     atual = normalizar_ticker(st.session_state["ticker"])
-    col_botao, col_lista = st.columns([1, 1])
-    col_botao.button(
-        f"Tirar {atual} dos favoritos" if atual in favoritos else f"Favoritar {atual}",
-        on_click=_alternar_favorito_atual,
-        key="botao_favorito",
-        help="Favoritos ficam guardados nesta sessão e vão junto no link compartilhável.",
-    )
-    col_lista.selectbox(
-        "Ir para um favorito",
-        ["—", *favoritos],
-        key="favorito_escolhido",
-        on_change=_ir_para_favorito,
-        label_visibility="collapsed",
-    )
-    if st.session_state.get("erro_favorito"):
-        st.warning(st.session_state["erro_favorito"])
+    limites = limites_do(plano_atual())
+    with st.popover(
+        f"Favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
+    ):
+        st.button(
+            f"Tirar {atual} dos favoritos"
+            if atual in favoritos
+            else f"Favoritar {atual}",
+            on_click=_alternar_favorito_atual,
+            key="botao_favorito",
+            width="stretch",
+        )
+        if favoritos:
+            st.selectbox(
+                "Ir para um favorito",
+                ["—", *favoritos],
+                key="favorito_escolhido",
+                on_change=_ir_para_favorito,
+            )
+        else:
+            st.caption("Você ainda não tem favoritos. Favorite o ativo que está vendo.")
+        st.caption(
+            f"{len(favoritos)} de {limites.favoritos} favoritos no plano {limites.nome}."
+        )
+        if st.session_state.get("erro_favorito"):
+            st.warning(st.session_state["erro_favorito"])
 
 
 def mostrar_link(ticker, periodo, modo):
@@ -799,58 +837,79 @@ def mostrar_link(ticker, periodo, modo):
         st.session_state["favoritos"],
     )
     st.query_params.from_dict(parametros)
-    with st.expander("Link desta tela"):
-        st.caption(
-            "O endereço na barra do navegador já guarda o ticker, o período e as opções "
-            "escolhidas aqui. Copie-o para abrir a mesma tela depois ou mandar para alguém."
-        )
-        st.code("?" + urlencode(parametros), language=None)
+    st.markdown("**Link desta tela**")
+    st.caption(
+        "O endereço na barra do navegador já guarda o ativo, o período e as opções "
+        "escolhidas aqui. Copie-o para abrir a mesma tela depois ou mandar para alguém."
+    )
+    st.code("?" + urlencode(parametros), language=None)
 
 
-def ler_entradas():
-    """Campos do topo da página. Devolve (ticker, período, modo da taxa, taxa digitada)."""
-    preparar_estado_inicial()
+def mostrar_controles():
+    """Campos do ativo, no topo das páginas de análise.
+
+    Em cima só o essencial (ativo, período, favoritos); o resto fica em "Opções avançadas".
+    Devolve (ticker, período, modo da taxa, taxa digitada).
+    """
     with st.container(border=True):
-        col_ticker, col_periodo, col_taxa = st.columns(3)
-        ticker = col_ticker.text_input("Ticker", key="ticker")
+        col_ativo, col_periodo, col_favoritos = st.columns(
+            [3, 2, 2], vertical_alignment="bottom"
+        )
+        ticker = col_ativo.text_input(
+            "Ativo (ticker)",
+            key="ticker",
+            placeholder="PETR4.SA, AAPL, BTC-USD",
+            help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm "
+            "sufixo (AAPL). Índices começam com ^ (^BVSP é o Ibovespa).",
+        )
         periodo = col_periodo.selectbox(
-            "Período", ["6mo", "1y", "2y", "5y"], key="periodo"
+            "Período",
+            list(PERIODOS_DO_TOPO),
+            format_func=PERIODOS_DO_TOPO.get,
+            key="periodo",
+            help="Quanto tempo de histórico olhar para trás.",
         )
-        modo = col_taxa.selectbox(
-            "Taxa livre de risco",
-            MODOS_DA_TAXA,
-            key="taxa",
-            help=ajuda_do("CDI"),
-        )
-        taxa_digitada = 0.0
-        if modo == "Digitar":
-            taxa_digitada = (
-                col_taxa.number_input(
-                    "Taxa (% ao ano)",
-                    min_value=0.0,
-                    max_value=50.0,
-                    value=0.0,
-                    step=0.5,
-                    help="Quanto renderia um investimento sem risco. Entra no cálculo "
-                    "do Índice de Sharpe.",
-                )
-                / 100
+        with col_favoritos:
+            mostrar_favoritos()
+        with st.expander("Opções avançadas"):
+            col_taxa, col_valor = st.columns(2)
+            modo = col_taxa.selectbox(
+                "Rendimento sem risco (taxa livre de risco)",
+                MODOS_DA_TAXA,
+                format_func=NOMES_DOS_MODOS_DA_TAXA.get,
+                key="taxa",
+                help=ajuda_do("CDI"),
             )
-        st.checkbox(
-            "Converter ativos em dólar para reais (R$)",
-            key="em_reais",
-            help="Multiplica os preços de ações americanas, do S&P 500 e do Bitcoin pelo "
-            "dólar do dia. Ações da B3 e o Ibovespa já estão em reais. Assim a comparação "
-            "inclui o efeito do câmbio, como para quem investe daqui.",
-        )
-        st.checkbox(
-            "Usar dados de exemplo (sem internet)",
-            key="usar_exemplo",
-            help="Cópias de 5 anos de 13 tickers, tiradas em 09/10/2026, guardadas no "
-            "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
-        )
-        mostrar_favoritos()
-    mostrar_link(ticker, periodo, modo)
+            taxa_digitada = 0.0
+            if modo == "Digitar":
+                taxa_digitada = (
+                    col_valor.number_input(
+                        "Taxa (% ao ano)",
+                        min_value=0.0,
+                        max_value=50.0,
+                        value=0.0,
+                        step=0.5,
+                        help="Quanto renderia um investimento sem risco. Entra no cálculo "
+                        "do Índice de Sharpe.",
+                    )
+                    / 100
+                )
+            st.checkbox(
+                "Converter ativos em dólar para reais (R$)",
+                key="em_reais",
+                help="Multiplica os preços de ações americanas, do S&P 500 e do Bitcoin pelo "
+                "dólar do dia. Ações da B3 e o Ibovespa já estão em reais. Assim a comparação "
+                "inclui o efeito do câmbio, como para quem investe daqui.",
+            )
+            st.checkbox(
+                "Usar dados de exemplo (sem internet)",
+                key="usar_exemplo",
+                help="Cópias de 5 anos de 13 tickers, tiradas em 09/10/2026, guardadas no "
+                "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
+            )
+            st.divider()
+            mostrar_link(ticker, periodo, modo)
+    salvar_na_conta(st.session_state.get("usuario"))
     return ticker, periodo, modo, taxa_digitada
 
 
@@ -3544,140 +3603,413 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
     )
 
 
-# --- Página -----------------------------------------------------------------
+# --- Páginas ----------------------------------------------------------------
+PAGINAS_DO_MENU = {}  # chave -> st.Page; preenchido por montar_navegacao()
+PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA = (
+    "backtest_",
+    "parametro_",
+    "custo_",
+    "liga_",
+    "valor_",
+    "espera_depois_do_stop",
+    "carteira_",
+    "pares_",
+    "validacao_",
+    "exp_",
+    "corr_",
+    "momentum_",
+    "reg_",
+    "ml_",
+    "ranking_",
+)
+CAMPOS_DO_TOPO_QUE_SOBREVIVEM = (
+    "ticker",
+    "periodo",
+    "taxa",
+    "em_reais",
+    "usar_exemplo",
+)
+
+
+def manter_estado():
+    """Evita que o Streamlit esqueça os campos ao trocar de página.
+
+    Ele apaga o valor de todo campo que não aparece na página atual. Reatribuir o valor a cada
+    execução o mantém (só vale para campos com `key`).
+    """
+    for chave in list(st.session_state.keys()):
+        if chave in CAMPOS_DO_TOPO_QUE_SOBREVIVEM or chave.startswith(
+            PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA
+        ):
+            st.session_state[chave] = st.session_state[chave]
+
+
+@dataclass
+class Contexto:
+    """O ativo escolhido e tudo o que as páginas de análise precisam para trabalhar."""
+
+    ticker: str
+    periodo: str
+    dados: pd.DataFrame
+    fechamento: pd.Series
+    retorno: pd.Series
+    taxa_livre_de_risco: float
+    cdi_diario: pd.Series | None
+
+
+def carregar_contexto():
+    """Mostra os campos do ativo e carrega os dados. Se algo faltar, avisa e para a página."""
+    ticker, periodo, modo_da_taxa, taxa_digitada = mostrar_controles()
+    try:
+        # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
+        dados = carregar_dados(normalizar_ticker(ticker), periodo)
+    except DadosIndisponiveisError as erro:
+        st.error(str(erro))
+        st.stop()
+    if dados.attrs.get("moeda") == "BRL":
+        st.caption(
+            "Preços convertidos para reais (R\\$) pelo dólar do dia (USDBRL=X): o retorno "
+            "inclui a variação do câmbio."
+        )
+    if dados.attrs.get("cambio_falhou"):
+        st.warning(
+            "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
+            "Tente de novo mais tarde."
+        )
+    if dados.attrs.get("origem") == "cache_antigo":
+        st.warning(
+            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
+            f"tinha guardado, até {dados.attrs['ate']}."
+        )
+    if dados.attrs.get("origem") == "exemplo":
+        st.warning(
+            f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
+            "e não os mais recentes do Yahoo Finance."
+        )
+    fechamento = dados["Close"]
+    retorno = ind.calcular_retorno_diario(fechamento)
+    taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(
+        modo_da_taxa, taxa_digitada, dados.index
+    )
+    if cdi_diario is not None:
+        st.caption(
+            f"CDI no período: {formatar_pct(taxa_livre_de_risco)} ao ano "
+            "(usado como taxa livre de risco)."
+        )
+    if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
+        st.warning(
+            f"Só há {retorno.dropna().size} dias de dados para este ticker. "
+            f"São necessários pelo menos {MIN_DIAS_PARA_ANALISE} para calcular os números. "
+            "Tente um período mais longo."
+        )
+        st.stop()
+    return Contexto(
+        ticker=normalizar_ticker(ticker),
+        periodo=periodo,
+        dados=dados,
+        fechamento=fechamento,
+        retorno=retorno,
+        taxa_livre_de_risco=taxa_livre_de_risco,
+        cdi_diario=cdi_diario,
+    )
+
+
+def cabecalho_da_pagina(chave):
+    """Título da página, selo Pro (se for o caso) e uma frase dizendo para que ela serve."""
+    p = pagina(chave)
+    selo = '<span class="tl-selo">Pro</span>' if p.e_pro else ""
+    st.markdown(f'<h2 class="tl-titulo">{p.titulo}{selo}</h2>', unsafe_allow_html=True)
+    st.caption(p.descricao)
+
+
+def mostrar_topo(usuario):
+    """Marca do app à esquerda e a conta (ou o aviso de modo local) à direita."""
+    col_marca, col_conta = st.columns([5, 2], vertical_alignment="center")
+    col_marca.markdown(
+        '<div class="tl-marca">Ticker<span>Lab</span></div>', unsafe_allow_html=True
+    )
+    with col_conta:
+        if usuario is not None:
+            mostrar_conta(usuario)
+        else:
+            st.caption("Modo local, sem login")
+
+
+def pagina_inicio():
+    st.markdown(
+        '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "O TickerLab mostra o retorno, o risco e o comportamento de ações da B3 e dos EUA, "
+        "e deixa você testar regras de compra e venda **no passado**. Cada número vem com uma "
+        "explicação em português: passe o mouse no **?**."
+    )
+    if st.button("Começar pela visão geral", type="primary", key="comecar"):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+
+    st.subheader("Como usar em 3 passos")
+    passos = [
+        (
+            "1. Escolha um ativo",
+            (
+                "Digite o código (ticker) e o período no topo das páginas de análise. "
+                "Exemplo: PETR4.SA ou AAPL."
+            ),
+        ),
+        (
+            "2. Veja os números",
+            (
+                "Retorno, risco e as maiores quedas, com cada termo explicado. "
+                "Comece pela Visão geral."
+            ),
+        ),
+        (
+            "3. Teste uma ideia",
+            (
+                "No Backtest, simule uma regra no passado, com custos, e veja se teria "
+                "funcionado. Guarde o que gostar."
+            ),
+        ),
+    ]
+    for coluna, (titulo, texto) in zip(st.columns(3), passos, strict=True):
+        with coluna, st.container(border=True, height=135):
+            st.markdown(f"**{titulo}**")
+            st.caption(texto)
+
+    st.subheader("O que você encontra aqui")
+    for grupo in (GRUPO_ANALISAR, GRUPO_ESTRATEGIAS, GRUPO_AVANCADO, GRUPO_CONTA):
+        st.markdown(f"**{grupo}**")
+        st.caption(FRASE_DE_CADA_GRUPO[grupo])
+        itens = paginas_do_grupo(grupo)
+        for inicio in range(
+            0, len(itens), 2
+        ):  # duas por linha, cartões do mesmo tamanho
+            for coluna, item in zip(st.columns(2), itens[inicio : inicio + 2]):
+                with coluna, st.container(border=True, height=150):
+                    selo = " · Pro" if item.e_pro else ""
+                    st.page_link(
+                        PAGINAS_DO_MENU[item.chave],
+                        label=f"{item.titulo}{selo}",
+                        icon=item.icone,
+                    )
+                    st.caption(item.descricao)
+
+    limites = limites_do(plano_atual())
+    st.divider()
+    if st.session_state.get("usuario") is not None:
+        st.info(
+            f"Você está no plano **{limites.nome}**. "
+            "Veja o que cada plano inclui em **Planos e assinatura**."
+        )
+        st.page_link(
+            PAGINAS_DO_MENU["planos"],
+            label="Planos e assinatura",
+            icon=":material/workspace_premium:",
+        )
+    st.caption(
+        "Projeto educacional: nada aqui é recomendação de investimento. Resultados do "
+        "passado não garantem resultados futuros."
+    )
+
+
+def pagina_guia():
+    cabecalho_da_pagina("guia")
+    secao_sobre()
+
+
+def pagina_visao_geral():
+    cabecalho_da_pagina("visao_geral")
+    c = carregar_contexto()
+    secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
+    st.divider()
+    secao_preco(c.dados)
+    st.download_button(
+        "Baixar os preços (CSV)",
+        converter_para_csv(montar_tabela_de_precos(c.dados)),
+        file_name=f"{c.ticker}_{c.periodo}.csv",
+        mime="text/csv",
+        help="Preços, volume e retorno diário, prontos para abrir no Excel (separador ponto e vírgula).",
+    )
+
+
+def pagina_risco():
+    cabecalho_da_pagina("risco")
+    c = carregar_contexto()
+    secao_risco(c.fechamento, c.retorno)
+
+
+def pagina_retorno_mensal():
+    cabecalho_da_pagina("retorno_mensal")
+    c = carregar_contexto()
+    secao_retorno_mensal(c.retorno)
+
+
+def pagina_comparar():
+    cabecalho_da_pagina("comparar")
+    c = carregar_contexto()
+    secao_comparar(c.ticker, c.periodo, c.taxa_livre_de_risco)
+
+
+def pagina_correlacao():
+    cabecalho_da_pagina("correlacao")
+    c = carregar_contexto()
+    secao_correlacao(c.ticker, c.periodo)
+
+
+def pagina_backtest():
+    cabecalho_da_pagina("backtest")
+    c = carregar_contexto()
+    secao_backtest(c.dados, c.taxa_livre_de_risco, c.cdi_diario)
+
+
+def pagina_ranking():
+    cabecalho_da_pagina("ranking")
+    c = carregar_contexto()
+    secao_ranking(c.dados, c.taxa_livre_de_risco)
+
+
+def pagina_carteira():
+    cabecalho_da_pagina("carteira")
+    c = carregar_contexto()
+    secao_carteira(c.periodo, c.taxa_livre_de_risco, c.cdi_diario)
+
+
+def pagina_experimentos():
+    cabecalho_da_pagina("experimentos")
+    c = carregar_contexto()
+    secao_experimentos(c.dados, c.periodo, c.taxa_livre_de_risco)
+
+
+def pagina_regimes():
+    cabecalho_da_pagina("regimes")
+    c = carregar_contexto()
+    secao_regimes(c.dados, c.taxa_livre_de_risco)
+
+
+def pagina_aprendizado():
+    cabecalho_da_pagina("aprendizado")
+    if not exigir_recurso(APRENDIZADO_DE_MAQUINA):
+        return
+    c = carregar_contexto()
+    secao_aprendizado(c.dados, c.taxa_livre_de_risco)
+
+
+def pagina_pares():
+    cabecalho_da_pagina("pares")
+    if not exigir_recurso(PARES):
+        return
+    c = carregar_contexto()
+    secao_pares(c.periodo, c.taxa_livre_de_risco)
+
+
+def pagina_momentum():
+    cabecalho_da_pagina("momentum")
+    c = carregar_contexto()
+    secao_momentum(c.ticker, c.periodo)
+
+
+def pagina_simulacoes():
+    cabecalho_da_pagina("simulacoes")
+    secao_minhas_simulacoes()
+
+
+def pagina_planos():
+    cabecalho_da_pagina("planos")
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        st.info(
+            "Sem login (modo local) todos os recursos estão liberados. Com uma conta, "
+            "valem os limites de cada plano."
+        )
+        mostrar_planos()
+        return
+    limites = limites_do(usuario.plano)
+    try:
+        with obter_engine().connect() as conexao:
+            simulacoes_salvas = contar_simulacoes(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao contar as simulações")
+        simulacoes_salvas = None
+    col_plano, col_simulacoes, col_favoritos = st.columns(3)
+    col_plano.metric("Seu plano", limites.nome)
+    col_simulacoes.metric(
+        "Simulações salvas",
+        "—"
+        if simulacoes_salvas is None
+        else f"{simulacoes_salvas} de {descrever_limite(limites.simulacoes).lower()}",
+    )
+    col_favoritos.metric(
+        "Favoritos",
+        f"{len(st.session_state['favoritos'])} de {limites.favoritos}",
+    )
+    assinatura = st.session_state.get("assinatura")
+    if assinatura is not None and assinatura.periodo_fim:
+        verbo = "termina" if assinatura.cancela_no_fim else "renova"
+        st.caption(f"Sua assinatura {verbo} em {assinatura.periodo_fim:%d/%m/%Y}.")
+    st.subheader("O que cada plano inclui")
+    mostrar_planos()
+    st.caption("Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado.")
+    mostrar_assinatura("planos")
+
+
+FUNCOES_DAS_PAGINAS = {
+    "inicio": pagina_inicio,
+    "guia": pagina_guia,
+    "visao_geral": pagina_visao_geral,
+    "risco": pagina_risco,
+    "retorno_mensal": pagina_retorno_mensal,
+    "comparar": pagina_comparar,
+    "correlacao": pagina_correlacao,
+    "backtest": pagina_backtest,
+    "ranking": pagina_ranking,
+    "carteira": pagina_carteira,
+    "experimentos": pagina_experimentos,
+    "regimes": pagina_regimes,
+    "aprendizado": pagina_aprendizado,
+    "pares": pagina_pares,
+    "simulacoes": pagina_simulacoes,
+    "momentum": pagina_momentum,
+    "planos": pagina_planos,
+}
+
+
+def montar_navegacao():
+    """O menu do topo: um grupo por seção; páginas do Pro ganham cadeado no plano Gratuito."""
+    plano = plano_atual()
+    estrutura = {}
+    for grupo in GRUPOS:
+        itens = []
+        for p in paginas_do_grupo(grupo):
+            bloqueada = p.recurso is not None and not pode_usar(plano, p.recurso)
+            e_a_inicial = p.chave == PAGINA_INICIAL
+            pagina_do_menu = st.Page(
+                FUNCOES_DAS_PAGINAS[p.chave],
+                title=p.titulo,
+                icon=":material/lock:" if bloqueada else p.icone,
+                url_path="" if e_a_inicial else p.url,
+                default=e_a_inicial,
+            )
+            PAGINAS_DO_MENU[p.chave] = pagina_do_menu
+            itens.append(pagina_do_menu)
+        estrutura[grupo] = itens
+    return estrutura
+
+
+# --- Programa principal --------------------------------------------------------
 usuario_logado = obter_usuario_logado()
 carregar_da_conta(usuario_logado)
-mostrar_cabecalho()
+preparar_estado_inicial()
+manter_estado()
+mostrar_topo(usuario_logado)
 if usuario_logado is not None:
     if st.session_state.pop("primeira_vez", False):
         st.toast(
             f"Bem-vindo ao TickerLab, {usuario_logado.nome or usuario_logado.email}!"
         )
-    mostrar_conta(usuario_logado)
     mostrar_retorno_do_pagamento()
-ticker, periodo, modo_da_taxa, taxa_digitada = ler_entradas()
-salvar_na_conta(usuario_logado)
-
-try:
-    # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
-    dados = carregar_dados(normalizar_ticker(ticker), periodo)
-except DadosIndisponiveisError as erro:
-    st.error(str(erro))
-    st.stop()
-if dados.attrs.get("moeda") == "BRL":
-    st.caption(
-        "Preços convertidos para reais (R\\$) pelo dólar do dia (USDBRL=X): o retorno inclui "
-        "a variação do câmbio."
-    )
-if dados.attrs.get("cambio_falhou"):
-    st.warning(
-        "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
-        "Tente de novo mais tarde."
-    )
-if dados.attrs.get("origem") == "cache_antigo":
-    st.warning(
-        "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
-        f"tinha guardado, até {dados.attrs['ate']}."
-    )
-if dados.attrs.get("origem") == "exemplo":
-    st.warning(
-        f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
-        "e não os mais recentes do Yahoo Finance."
-    )
-fechamento = dados["Close"]
-retorno = ind.calcular_retorno_diario(fechamento)
-taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(
-    modo_da_taxa, taxa_digitada, dados.index
-)
-if cdi_diario is not None:
-    st.caption(
-        f"CDI no período: {formatar_pct(taxa_livre_de_risco)} ao ano (usado como taxa livre de risco)."
-    )
-
-if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
-    st.warning(
-        f"Só há {retorno.dropna().size} dias de dados para este ticker. "
-        f"São necessários pelo menos {MIN_DIAS_PARA_ANALISE} para calcular os números. "
-        "Tente um período mais longo."
-    )
-    st.stop()
-
-(
-    aba_geral,
-    aba_risco,
-    aba_mensal,
-    aba_comparar,
-    aba_backtest,
-    aba_ranking,
-    aba_carteira,
-    aba_experimentos,
-    aba_regimes,
-    aba_aprendizado,
-    aba_pares,
-    aba_correlacao,
-    aba_momentum,
-    aba_simulacoes,
-    aba_sobre,
-) = st.tabs(
-    [
-        "Visão geral",
-        "Risco",
-        "Retorno mensal",
-        "Comparar",
-        "Backtest",
-        "Ranking",
-        "Carteira",
-        "Experimentos",
-        "Regimes",
-        "Aprendizado de máquina",
-        "Pares",
-        "Correlação e beta",
-        "Favoritos e momentum",
-        "Minhas simulações",
-        "Sobre",
-    ]
-)
-with aba_geral:
-    secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco)
-    st.divider()
-    secao_preco(dados)
-    st.download_button(
-        "Baixar os preços (CSV)",
-        converter_para_csv(montar_tabela_de_precos(dados)),
-        file_name=f"{normalizar_ticker(ticker)}_{periodo}.csv",
-        mime="text/csv",
-        help="Preços, volume e retorno diário, prontos para abrir no Excel (separador ponto e vírgula).",
-    )
-with aba_risco:
-    secao_risco(fechamento, retorno)
-with aba_mensal:
-    secao_retorno_mensal(retorno)
-with aba_comparar:
-    secao_comparar(normalizar_ticker(ticker), periodo, taxa_livre_de_risco)
-with aba_backtest:
-    secao_backtest(dados, taxa_livre_de_risco, cdi_diario)
-with aba_ranking:
-    secao_ranking(dados, taxa_livre_de_risco)
-with aba_carteira:
-    secao_carteira(periodo, taxa_livre_de_risco, cdi_diario)
-with aba_experimentos:
-    secao_experimentos(dados, periodo, taxa_livre_de_risco)
-with aba_regimes:
-    secao_regimes(dados, taxa_livre_de_risco)
-with aba_aprendizado:
-    if exigir_recurso(APRENDIZADO_DE_MAQUINA):
-        secao_aprendizado(dados, taxa_livre_de_risco)
-with aba_pares:
-    if exigir_recurso(PARES):
-        secao_pares(periodo, taxa_livre_de_risco)
-with aba_correlacao:
-    secao_correlacao(normalizar_ticker(ticker), periodo)
-with aba_momentum:
-    secao_momentum(normalizar_ticker(ticker), periodo)
-with aba_simulacoes:
-    secao_minhas_simulacoes()
-with aba_sobre:
-    secao_sobre()
+pagina_atual = st.navigation(montar_navegacao(), position="top")
+pagina_atual.run()
 
 st.divider()
 st.caption(

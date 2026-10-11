@@ -109,4 +109,50 @@ hr {{
 .stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] > div {{
     border-radius: 999px;
 }}
+
+/* Marca no topo */
+.tl-marca {{
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}}
+.tl-marca span {{
+    color: {COR_AZUL_CLARO};
+}}
+
+/* Título de cada página, com o selo Pro quando for o caso */
+.tl-titulo {{
+    margin: 0.25rem 0 0 0;
+    padding: 0;
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}}
+.tl-selo {{
+    display: inline-block;
+    margin-left: 0.7rem;
+    padding: 0.1rem 0.65rem;
+    border: 1px solid {COR_AZUL};
+    border-radius: 999px;
+    color: {COR_AZUL_CLARO};
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+}}
+
+/* Frase de abertura da página inicial e da tela de entrada */
+.tl-hero {{
+    margin: 1.25rem 0 0.75rem 0;
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}}
+
+/* Links de página dentro dos cartões da página inicial */
+[data-testid="stPageLink"] a {{
+    font-weight: 700;
+}}
 """
