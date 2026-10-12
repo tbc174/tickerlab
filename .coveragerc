@@ -1,6 +1,9 @@
 # Cobertura dos testes (pytest --cov): que parte do código os testes percorrem.
 # No CI: python -m pytest -n logical --dist loadgroup --cov. No PC, só quando quiser medir.
 [run]
+# medição leve do Python 3.12 (sys.monitoring): no PC, 3 min 40 s em vez de 5 min 39 s com a
+# mesma cobertura; sem medir, 2 min 12 s
+core = sysmon
 source =
     src
     telas
