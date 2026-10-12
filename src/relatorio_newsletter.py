@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from src import relatorios as rel
 from src.estilos_pdf import estilo as estilo_pela_chave
-from src.newsletter import Edicao, Secao
+from src.newsletter import TITULO_DOS_TRECHOS, Edicao, Item, Secao
 from src.relatorio_pdf import RelatorioPDF
 
 MAX_ATIVOS_NA_CAPA = 6
@@ -21,6 +21,18 @@ def _ativos_na_capa(edicao: Edicao) -> str:
     return ", ".join(codigos[:MAX_ATIVOS_NA_CAPA]) + (
         f" (+{resto})" if resto > 0 else ""
     )
+
+
+def _nota(item: Item) -> str:
+    """Os trechos do documento (R5) e o "por que aparece", em linhas apagadas."""
+    linhas = []
+    if item.trechos:
+        linhas.append(
+            f"{TITULO_DOS_TRECHOS}: " + " ".join(f"“{t}”" for t in item.trechos)
+        )
+    if item.razoes:
+        linhas.append("Por que aparece: " + " · ".join(item.razoes))
+    return "\n".join(linhas)
 
 
 def _secao_de_conteudo(
@@ -36,8 +48,7 @@ def _secao_de_conteudo(
             if item.sigla_da_fonte
             else ""
         )
-        nota = "Por que aparece: " + " · ".join(item.razoes) if item.razoes else ""
-        pdf.item(item.titulo, item.texto, item.link, rotulo, nota)
+        pdf.item(item.titulo, item.texto, item.link, rotulo, _nota(item))
 
 
 def relatorio_da_newsletter(

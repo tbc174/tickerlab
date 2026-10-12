@@ -245,6 +245,24 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "carteira_research",
+        "Minha carteira",
+        GRUPO_RESEARCH,
+        ":material/donut_large:",
+        "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) "
+        "para o Research e a Newsletter darem mais destaque às maiores posições.",
+        precisa_do_ativo=False,  # guardar é do Pro: a própria página explica (sem cadeado)
+    ),
+    Pagina(
+        "alertas",
+        "Alertas",
+        GRUPO_RESEARCH,
+        ":material/notifications:",
+        "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista "
+        "elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,

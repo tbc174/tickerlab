@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -15,16 +16,18 @@ import streamlit as st
 from sqlalchemy import exc as sa_exc
 
 from src import administracao as adm
-from src import analise as research_analise
 from src import (
+    alertas,
     aprendizado,
+    carteira_research,
     catalogo,
+    coleta_sec,
     detentores,
+    envio_newsletter,
     estilos_pdf,
     eventos_sec,
     fundamentos,
     fundos_cvm,
-    fundos_sec,
     graficos,
     marca,
     negociacoes,
@@ -36,6 +39,8 @@ from src import (
     trade,
     tutorial,
 )
+from src import analise as research_analise
+from src import edicao as edicao_do_banco
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
@@ -57,23 +62,31 @@ from src.autenticacao import (
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import detentores as repo_detentores
+from src.banco import leituras as repo_leituras
 from src.banco import negociacoes as repo_negociacoes
+from src.banco import newsletter_por_email
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
+    apagar_alerta,
     apagar_simulacao,
     apagar_watchlist,
     biblioteca_de_relatorios,
+    carregar_carteira,
     carregar_preferencias,
     contar_relatorios_recentes,
     contar_simulacoes,
     excluir_relatorio,
     historico_do_preset,
+    listar_alertas,
     listar_favoritos,
     listar_simulacoes,
     listar_watchlists,
     presets_atuais,
     registrar_relatorio,
+    revogar_carteira,
+    salvar_alerta,
+    salvar_carteira,
     salvar_favoritos,
     salvar_preferencias,
     salvar_preset,
@@ -121,6 +134,7 @@ from src.comparacao import (
     montar_tabela_comparativa,
     rebasear_para_100,
 )
+from src.configuracao import contato
 from src.conformidade import (
     TEXTO_PARA_CONFIRMAR_A_EXCLUSAO,
     VERSAO_DOS_TERMOS,
@@ -145,8 +159,10 @@ from src.correlacao import (
     resumir_betas,
 )
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.edicao import FONTES_DOS_DETENTORES
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.eventos import FONTE_IPE
 from src.experimentos import (
     REGRAS_DE_REBALANCEAMENTO,
     calcular_retorno_da_noite_com_custo,
@@ -188,6 +204,7 @@ from src.paginas import (
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
+    CARTEIRA_NO_RESEARCH,
     NOMES_DOS_RECURSOS,
     PARES,
     PLANO_DO_MODO_LOCAL,
@@ -1159,6 +1176,49 @@ def secao_painel_de_numeros(
         f"Perda de um dia ruim (VaR {confianca_do_var}%)",
         formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
         "Perda de um dia ruim (VaR)",
+    )
+    cvar = ind.calcular_cvar_historico(retorno, confianca_do_var / 100)
+    st.caption(
+        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(cvar)}.** "
+        "Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o "
+        "passado, não um limite de perda."
+    )
+
+
+def secao_tendencia_e_volume(dados, r):
+    """ADX (força da tendência) e OBV com volume relativo, no diário ou no semanal."""
+    st.subheader("Força da tendência e volume")
+    semanal = r["tecnica.periodicidade"] == "semanal"
+    barras = ind.para_semanal(dados) if semanal else dados
+    periodo, nivel = int(r["tecnica.adx_periodo"]), int(r["tecnica.adx_tendencia"])
+    janela = int(r["tecnica.volume_janela"])
+    tem_ohlc = {"High", "Low"} <= set(barras.columns)
+    tem_volume = "Volume" in barras.columns and (barras["Volume"].fillna(0) > 0).any()
+    col_adx, col_volume = st.columns(2)
+    with col_adx:
+        if tem_ohlc and len(barras) > 2 * periodo:
+            mostrar_grafico(
+                graficos.criar_grafico_adx(ind.calcular_adx(barras, periodo), nivel)
+            )
+        else:
+            st.info(
+                "Sem máxima e mínima, ou com poucas barras, não dá para calcular o ADX."
+            )
+    with col_volume:
+        if tem_volume:
+            mostrar_grafico(
+                graficos.criar_grafico_obv(
+                    ind.calcular_obv(barras),
+                    ind.calcular_volume_relativo(barras, janela),
+                )
+            )
+        else:
+            st.info("Este ativo não tem volume (índices e câmbio costumam não ter).")
+    st.caption(
+        f"Barras {'semanais' if semanal else 'diárias'} (mude em Parâmetros). ADX acima de "
+        f"{nivel}: há tendência, de alta se o +DI está acima do -DI. OBV subindo: mais volume "
+        f"nos dias de alta. Volume relativo: o volume do período contra a média dos {janela} "
+        "anteriores. Nenhum deles é sinal de compra ou venda."
     )
 
 
@@ -2301,6 +2361,32 @@ def secao_correlacao(
         key="corr_janela",
     )
     resultado = calcular_beta(retornos[escolhido], retornos[indice])
+    erro_de_acompanhamento = ind.calcular_tracking_error(
+        retornos[escolhido], retornos[indice]
+    )
+    razao_de_informacao = ind.calcular_information_ratio(
+        retornos[escolhido], retornos[indice]
+    )
+    with st.container(horizontal=True):
+        st.metric(
+            f"Beta contra o {nome_do_indice}",
+            formatar_metrica("Beta", resultado.beta),
+            border=True,
+        )
+        st.metric(
+            "Tracking error (ao ano)",
+            formatar_pct(erro_de_acompanhamento),
+            border=True,
+            help="O quanto o ativo se descola do índice: o desvio padrão da diferença diária, "
+            "anualizado. Zero: anda igual ao índice.",
+        )
+        st.metric(
+            "Information Ratio",
+            formatar_metrica("Sharpe", razao_de_informacao),
+            border=True,
+            help="Quanto o ativo rendeu acima do índice por unidade de tracking error. "
+            "Positivo: o descolamento rendeu mais que o índice; negativo, menos.",
+        )
     col_dispersao, col_movel = st.columns(2)
     with col_dispersao:
         mostrar_grafico(
@@ -4571,11 +4657,12 @@ def _montar_newsletter(c):
         key="relatorio_newsletter_janela",
     )
     nome, tickers, _ = listas[nomes.index(escolhida)]
+    carteira = _carteira_da_lista(nome)  # lida aqui, fora da montagem do PDF
 
     def montar(config, ao_avancar):
         if ao_avancar:
             ao_avancar("Lendo os documentos")
-        edicao = _edicao(nome, tickers, janela)
+        edicao = _edicao(nome, tickers, janela, carteira)
         if edicao is None:
             raise ValueError("Os documentos ainda não foram coletados neste servidor.")
         return relatorio_newsletter.relatorio_da_newsletter(
@@ -5283,7 +5370,19 @@ def pagina_visao_geral():
     secao_preco(
         c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
     )
-    avisar_parametros(r, ("quant.var_confianca", *medias))
+    st.divider()
+    secao_tendencia_e_volume(c.dados, r)
+    avisar_parametros(
+        r,
+        (
+            "quant.var_confianca",
+            *medias,
+            "tecnica.adx_periodo",
+            "tecnica.adx_tendencia",
+            "tecnica.volume_janela",
+            "tecnica.periodicidade",
+        ),
+    )
     st.download_button(
         "Baixar os preços (CSV)",
         converter_para_csv(montar_tabela_de_precos(c.dados)),
@@ -6226,7 +6325,10 @@ def _listas_do_research(usuario):
     listas = [(research.NOME_DA_DEMONSTRACAO, list(research.DEMONSTRACAO), None)]
     favoritos = [normalizar_ticker(t) for t in st.session_state.get("favoritos", [])]
     if favoritos:
-        listas.append(("Favoritos", favoritos, None))
+        listas.append((research.NOME_DOS_FAVORITOS, favoritos, None))
+    carteira = _carteira_do_research(usuario)
+    if carteira is not None:
+        listas.append((research.NOME_DA_CARTEIRA, list(carteira.pesos), None))
     if usuario is not None:
         try:
             with obter_engine().connect() as conexao:
@@ -6240,12 +6342,63 @@ def _listas_do_research(usuario):
     return listas
 
 
+def _carteira_do_research(usuario):
+    """A fotografia guardada (só pesos), se há conta, o plano permite e o consentimento vale."""
+    if usuario is None or not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        return None
+    try:
+        with obter_engine().connect() as conexao:
+            return carregar_carteira(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None  # banco sem a tabela (modo local sem migrar)
+
+
+def _carteira_da_lista(nome):
+    """A fotografia, quando a lista escolhida é a carteira (para pesar a exposição)."""
+    if nome != research.NOME_DA_CARTEIRA:
+        return None
+    return _carteira_do_research(st.session_state.get("usuario"))
+
+
 def _analisar_do_research(ticker):
     st.session_state["ticker"] = ticker
     st.session_state["ir_para_visao_geral"] = True
 
 
-def _mostrar_item(item, chave, destaque=False):
+def _resumos_dos_itens(itens):
+    """protocolo → resumo, para os fatos relevantes da CVM já lidos (R5)."""
+    protocolos = [i.evento.protocolo for i in itens if i.evento.fonte == FONTE_IPE]
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_leituras.resumos(conexao, FONTE_IPE, protocolos)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return {}
+
+
+def mostrar_resumo_do_documento(resumo):
+    """O resumo do algoritmo próprio (R5): frases do documento, números e assuntos."""
+    if not resumo:
+        return
+    with st.expander("Resumo automático do documento"):
+        if resumo.get("motivo"):
+            st.caption(resumo["motivo"])
+            return
+        for frase in resumo.get("frases", []):
+            st.markdown(f"- {frase}")
+        detalhes = []
+        if resumo.get("numeros"):
+            detalhes.append("Números citados: " + "; ".join(resumo["numeros"]))
+        if resumo.get("assuntos"):
+            detalhes.append("Assuntos: " + ", ".join(resumo["assuntos"]))
+        for detalhe in detalhes:
+            st.caption(detalhe)
+        st.caption(
+            "Frases tiradas do próprio documento por um algoritmo do TickerLab (sem inteligência "
+            "artificial): nada foi reescrito. Confira no original."
+        )
+
+
+def _mostrar_item(item, chave, destaque=False, resumo=None):
     e = item.evento
     codigo = e.ticker.removesuffix(".SA")
     with st.container(border=True, key=f"tl-evento-{chave}"):
@@ -6271,6 +6424,7 @@ def _mostrar_item(item, chave, destaque=False):
             args=(e.ticker,),
             width="stretch",
         )
+        mostrar_resumo_do_documento(resumo)
         with st.expander("Por que isso aparece?"):
             for razao in item.razoes:
                 st.markdown(f"- {razao}")
@@ -6398,6 +6552,12 @@ def pagina_research():
             "reais e públicos. "
             "Nada aqui é sobre a sua carteira."
         )
+    carteira = _carteira_da_lista(nome)
+    if carteira is not None:
+        st.caption(
+            f"Fotografia da sua carteira de {carteira.enviada_em:%d/%m/%Y}: as maiores "
+            "posições pesam mais na ordem (página Minha carteira)."
+        )
     hoje = datetime.now(relatorios.FUSO).date()
     try:
         with obter_engine().connect() as conexao:
@@ -6451,6 +6611,7 @@ def pagina_research():
         janela,
         nome,
         maximo_por_ativo=None if todos else research.MAXIMO_POR_EMPRESA,
+        carteira=carteira,
     )
     if not itens:
         st.info(
@@ -6458,13 +6619,14 @@ def pagina_research():
             + (" com esses temas." if temas else ".")
         )
     else:
+        resumos = _resumos_dos_itens(itens)
         st.subheader("Em destaque")
         for i, item in enumerate(itens[:3]):
-            _mostrar_item(item, f"d{i}", destaque=True)
+            _mostrar_item(item, f"d{i}", True, resumos.get(item.evento.protocolo))
         if len(itens) > 3:
             st.subheader(f"Os outros {len(itens) - 3}")
             for i, item in enumerate(itens[3:], start=3):
-                _mostrar_item(item, f"o{i}")
+                _mostrar_item(item, f"o{i}", resumo=resumos.get(item.evento.protocolo))
     if sem_cobertura:
         st.caption(
             "Sem cobertura ainda: "
@@ -6486,6 +6648,97 @@ GRUPOS_DE_FUNDAMENTOS = (
     ("Crescimento", ("crescimento_receita", "crescimento_lucro")),
     ("Por ação e múltiplos", ("lpa", "vpa", "p_l", "p_vp")),
 )
+
+
+# --- Research: busca na hora na SEC (R4) -------------------------------------------------------
+BUSCAS_NA_SEC_POR_SESSAO = 5
+ACAO_DOS_EUA = (
+    r"[A-Z][A-Z.\-]{0,9}"  # AAPL, BRK-B (sem índices ^GSPC nem cripto BTC-USD)
+)
+
+
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def _mapa_da_sec(agente):
+    """O `company_tickers.json` da SEC inteiro (ticker → CIK), guardado por um dia."""
+    cliente = coleta_sec.ClienteSec(agente)
+    return eventos_sec.ler_tickers(cliente.baixar(eventos_sec.URL_DOS_TICKERS))
+
+
+def _pode_buscar_na_sec(ticker):
+    return (
+        moeda_do_ticker(ticker) == "USD"
+        and re.fullmatch(ACAO_DOS_EUA, ticker) is not None
+        and not ticker.endswith("-USD")
+    )
+
+
+def _buscar_na_sec(ticker):
+    email = contato()
+    if email is None:
+        st.session_state["busca_na_sec_aviso"] = (
+            "A busca na SEC não está configurada neste servidor (falta o e-mail de contato)."
+        )
+        return
+    feitas = st.session_state.get("buscas_na_sec", 0)
+    if feitas >= BUSCAS_NA_SEC_POR_SESSAO:
+        st.session_state["busca_na_sec_aviso"] = (
+            f"Você já fez {feitas} buscas novas nesta visita. Tente de novo mais tarde."
+        )
+        return
+    agente = f"TickerLab {email}"
+    try:
+        empresa, eventos, lidos = coleta_sec.buscar_agora(
+            obter_engine(),
+            coleta_sec.ClienteSec(agente),
+            ticker,
+            _mapa_da_sec(agente),
+            datetime.now(relatorios.FUSO),
+        )
+    except coleta_sec.BuscaRecusada as erro:
+        st.session_state["busca_na_sec_aviso"] = str(erro)
+        return
+    except coleta_sec.ERROS_DE_UMA_EMPRESA:
+        logging.getLogger(__name__).exception("Falha na busca na SEC")
+        st.session_state["busca_na_sec_aviso"] = (
+            "A SEC não respondeu agora. Tente de novo em instantes."
+        )
+        return
+    st.session_state["buscas_na_sec"] = feitas + 1
+    st.session_state["busca_na_sec_feita"] = (
+        f"{empresa}: {eventos} eventos e {lidos} negociações de pessoas de dentro guardados. "
+        "Daqui para frente ela entra na coleta diária."
+    )
+
+
+def oferecer_busca_na_sec(ticker, o_que):
+    """Mensagem de "sem cobertura" e, para ações dos EUA fora do S&P 500, o botão da busca."""
+    if not _pode_buscar_na_sec(ticker):
+        st.info(
+            f"{ticker} não tem cadastro na CVM nem na SEC. {o_que} cobrem ações e units da B3 "
+            "e ações dos EUA; fundos, ETFs, BDRs, índices e cripto dependem de outras fontes.",
+            icon=":material/info:",
+        )
+        return
+    st.info(
+        f"{ticker} ainda não está na base do TickerLab (a coleta diária cobre o S&P 500). Dá para "
+        "buscar a empresa na SEC agora: leva alguns segundos e ela passa a entrar na coleta "
+        "diária.",
+        icon=":material/travel_explore:",
+    )
+    if aviso := st.session_state.pop("busca_na_sec_aviso", None):
+        st.warning(aviso)
+    st.button(
+        "Buscar na SEC agora",
+        icon=":material/cloud_download:",
+        key=f"buscar_na_sec_{ticker}",
+        on_click=_buscar_na_sec,
+        args=(ticker,),
+    )
+
+
+def mostrar_resultado_da_busca_na_sec():
+    if feita := st.session_state.pop("busca_na_sec_feita", None):
+        st.success(feita, icon=":material/check_circle:")
 
 
 @dataclass(frozen=True)
@@ -6605,11 +6858,7 @@ def _ler_fundamentos(ticker):
         st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
         return None
     if empresa is None:
-        st.info(
-            f"{ticker} não tem cadastro na CVM nem na SEC. Os fundamentos cobrem ações e units "
-            "da B3 e as ações do S&P 500; fundos, ETFs e BDRs dependem de outras fontes.",
-            icon=":material/info:",
-        )
+        oferecer_busca_na_sec(ticker, "Os fundamentos")
         return None
     if dados.contas.empty:
         st.info(
@@ -6647,6 +6896,53 @@ def _mostrar_documentos_usados(docs, mercado):
                 "Abrir", display_text=f"na {mercado.regulador}"
             )
         },
+    )
+
+
+def _mostrar_mudanca_nos_riscos(chave):
+    """O que mudou nos fatores de risco entre os dois últimos 10-K (R5, algoritmo próprio)."""
+    try:
+        with obter_engine().connect() as conexao:
+            achado = repo_leituras.ultima_de_riscos(conexao, chave)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        achado = None
+    if achado is None:
+        return
+    _, referencia, r = achado
+    st.markdown("##### Fatores de risco: o que mudou no 10-K")
+    if r.get("motivo"):
+        st.caption(r["motivo"])
+        return
+    antes = r.get("referencia_antes") or "o anterior"
+    with st.container(horizontal=True):
+        st.metric(
+            "Texto igual ao do ano anterior",
+            formatar_pct(r["semelhanca"]),
+            border=True,
+            help="Semelhança entre as duas seções de risco (cosseno das frequências das "
+            "palavras): 100% é o mesmo texto.",
+        )
+        st.metric("Frases novas", r["novas_no_total"], border=True)
+        st.metric(
+            "Tamanho da seção (palavras)",
+            f"{r['palavras_agora']:,}".replace(",", "."),
+            r["palavras_agora"] - r["palavras_antes"],
+            border=True,
+        )
+    if r.get("palavras_em_alta"):
+        st.caption(
+            "Palavras que mais cresceram (vezes no ano anterior → agora): "
+            + ", ".join(f"**{p}** ({a} → {b})" for p, a, b in r["palavras_em_alta"])
+        )
+    if r.get("frases_novas"):
+        with st.expander("Algumas frases novas"):
+            for frase in r["frases_novas"]:
+                st.markdown(f"- {frase}")
+    st.caption(
+        f"10-K de {referencia:%d/%m/%Y} contra o de {antes} ([atual]({r['link_agora']}), "
+        f"[anterior]({r['link_antes']})). Pesquisa: empresas que mudam muito o texto dos "
+        "relatórios tiveram, em média, retornos piores depois (Cohen, Malloy e Nguyen, 2020, "
+        '"Lazy Prices"). É um fato a conferir no texto, não uma recomendação.'
     )
 
 
@@ -6690,6 +6986,7 @@ def _metodologia_dos_fundamentos(mercado):
 
 def pagina_fundamentos():
     cabecalho_da_pagina("fundamentos")
+    mostrar_resultado_da_busca_na_sec()
     c = carregar_contexto()
     r = parametros_em_vigor(c.ticker)
     ticker = normalizar_ticker(c.ticker)
@@ -6752,6 +7049,8 @@ def pagina_fundamentos():
         )
     if not resultado.documentos.empty:
         _mostrar_documentos_usados(resultado.documentos, mercado)
+    if mercado is MERCADO_EUA:
+        _mostrar_mudanca_nos_riscos(empresa[0])
     with st.expander("Como estes números são calculados"):
         st.markdown(_metodologia_dos_fundamentos(mercado))
     avisar_parametros(
@@ -6825,11 +7124,7 @@ def _negociacoes_do_ativo(ticker, janela):
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         empresa = None
     if empresa is None:
-        st.info(
-            f"{ticker} não tem cadastro na CVM nem na SEC. As negociações cobrem ações e units "
-            "da B3 e as ações do S&P 500; fundos, ETFs, BDRs, índices e cripto não têm.",
-            icon=":material/info:",
-        )
+        oferecer_busca_na_sec(ticker, "As negociações")
         return
     desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
     tabela, erro = _ler_negociacoes(desde, [empresa[0]])
@@ -6956,6 +7251,7 @@ def _ranking_do_mercado(janela):
 
 def pagina_por_dentro():
     cabecalho_da_pagina("por_dentro")
+    mostrar_resultado_da_busca_na_sec()
     c = carregar_contexto()
     janela = st.segmented_control(
         "Período",
@@ -6992,10 +7288,6 @@ def pagina_por_dentro():
 
 
 # --- Research: Donos e fundos (R3) ------------------------------------------------------------
-FONTES_DOS_DETENTORES = {
-    "BRL": (fundos_cvm.FONTE_CDA, "fundos", "mês", "R$"),
-    "USD": (fundos_sec.FONTE_13F, "gestores", "trimestre", "US$"),
-}
 TAMANHO_DA_LISTA_DO_MERCADO = 10
 
 
@@ -7252,105 +7544,21 @@ def pagina_donos():
 JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
 
 
-def _frase_do_detentor(codigo, linha, quem, par, da_cvm, informantes):
-    variacao = (
-        ""
-        if pd.isna(linha["variacao"])
-        else f" ({linha['variacao']:+.0f} desde {par[1]:%m/%Y})"
-    )
-    vendidos = (
-        f"; {int(linha['vendidos'])} vendidos" if da_cvm and linha["vendidos"] else ""
-    )
-    return (
-        f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}, de "
-        f"{informantes} que informaram{variacao}{vendidos}."
-    )
-
-
-def _frases_dos_detentores(conexao, tickers):
-    """Uma frase por ativo da lista, com a última comparação válida (fundos ou 13F)."""
-    frases = []
-    for moeda, (fonte, quem, _, _) in FONTES_DOS_DETENTORES.items():
-        do_mercado = [t for t in tickers if moeda_do_ticker(t) == moeda]
-        cobertura = repo_detentores.cobertura(conexao, fonte)
-        par = detentores.par_comparavel(cobertura)
-        if not do_mercado or par is None:
-            continue
-        resumo = repo_detentores.resumo_do_mercado(conexao, fonte, par)
-        tabela = detentores.comparar(resumo, *par).set_index("codigo")
-        for ticker in do_mercado:
-            codigo = ticker.removesuffix(".SA")
-            if codigo in tabela.index:
-                frases.append(
-                    _frase_do_detentor(
-                        codigo,
-                        tabela.loc[codigo],
-                        quem,
-                        par,
-                        fonte == fundos_cvm.FONTE_CDA,
-                        cobertura[par[0]],
-                    )
-                )
-    return tuple(frases)
-
-
-def _quando(momento):
-    if momento is None:
-        return "ainda não coletado"
-    if momento.tzinfo is None:  # o SQLite devolve sem fuso: foi gravado em UTC
-        momento = momento.replace(tzinfo=UTC)
-    return f"coletado em {momento.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}"
-
-
-def _fontes_da_edicao(conexao):
-    fontes = [
-        ("Eventos (CVM e SEC)", _quando(ultima_coleta(conexao))),
-        (
-            "Pessoas de dentro (CVM e SEC)",
-            _quando(repo_negociacoes.ultima_coleta(conexao)),
-        ),
-    ]
-    for fonte, nome in ((fundos_cvm.FONTE_CDA, "Carteiras dos fundos (CVM)"),
-                        (fundos_sec.FONTE_13F, "Gestores, 13F (SEC)")):  # fmt: skip
-        datas = detentores.competencias_utilizaveis(
-            repo_detentores.cobertura(conexao, fonte)
-        )
-        fontes.append(
-            (nome, f"posição de {datas[0]:%m/%Y}" if datas else "ainda não coletado")
-        )
-    return tuple(fontes)
-
-
-def _edicao(nome, tickers, janela):
-    """A edição da lista, lida do banco (None se o banco ainda não tem as tabelas)."""
-    r = parametros_em_vigor(None)
-    hoje = datetime.now(relatorios.FUSO).date()
+def _edicao(nome, tickers, janela, carteira=None):
+    """A edição da lista com os seus parâmetros (None se o banco ainda não tem as tabelas)."""
     try:
         with obter_engine().connect() as conexao:
-            eventos_da_lista = eventos_dos_tickers(
-                conexao, tickers, hoje - timedelta(days=janela)
+            return edicao_do_banco.montar_edicao(
+                conexao,
+                nome,
+                tickers,
+                janela,
+                parametros_em_vigor(None),
+                relatorios.agora(),
+                carteira,
             )
-            empresas = empresas_dos_tickers(conexao, tickers)
-            frases = _frases_dos_detentores(conexao, tickers)
-            fontes = _fontes_da_edicao(conexao)
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         return None
-    return newsletter.montar(
-        newsletter.Entrada(
-            lista=nome,
-            tickers=tuple(tickers),
-            eventos=tuple(eventos_da_lista),
-            pesos=research.pesos_da_resolucao(r.valores("relevancia")),
-            temas=tuple(r["newsletter.temas"]),
-            hoje=hoje,
-            janela=janela,
-            max_itens=int(r["newsletter.max_itens"]),
-            gerada_em=relatorios.agora(),
-            detentores=frases,
-            fontes=fontes,
-            cobertos=tuple(t for t in tickers if t in empresas),
-        )
-    )
 
 
 def _mostrar_secao_da_newsletter(secao):
@@ -7363,8 +7571,82 @@ def _mostrar_secao_da_newsletter(secao):
         if item.link:
             texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
         st.markdown(texto)
+        if item.trechos:
+            st.caption(
+                f"{newsletter.TITULO_DOS_TRECHOS}:  \n"
+                + "  \n".join(f"“{trecho}”" for trecho in item.trechos)
+            )
         if item.razoes:
             st.caption("Por que aparece: " + " · ".join(item.razoes))
+
+
+def _inscrever_na_newsletter(usuario):
+    lista = st.session_state["newsletter_email_lista"]
+    cadencia = st.session_state["newsletter_email_cadencia"]
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.inscrever(
+            conexao,
+            usuario.id,
+            lista,
+            cadencia,
+            envio_newsletter.VERSAO_DO_CONSENTIMENTO,
+        )
+    st.session_state["newsletter_email_consentimento"] = False
+    st.toast(
+        f'Inscrito: "{lista}", {envio_newsletter.NOMES_DAS_CADENCIAS[cadencia].lower()}.'
+    )
+
+
+def _cancelar_a_newsletter(usuario):
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.cancelar(conexao, usuario.id)
+    st.toast("Inscrição cancelada: você não recebe mais a Newsletter por e-mail.")
+
+
+def _mostrar_inscricao_por_email(usuario, nomes):
+    """Receber por e-mail (etapa 5c). Até o parecer jurídico, só para administradores."""
+    if usuario is None or (envio_newsletter.SO_PARA_ADMINS and not usuario.e_admin):
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            atual = newsletter_por_email.inscricao(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return  # banco sem a tabela (modo local sem migrar)
+    rotulo = "Receber por e-mail" + (
+        " (em teste: só administradores)" if envio_newsletter.SO_PARA_ADMINS else ""
+    )
+    with st.expander(rotulo, icon=":material/mail:"):
+        if atual is not None:
+            st.markdown(
+                f"Inscrito na lista **{atual.lista}**, "
+                f"{envio_newsletter.NOMES_DAS_CADENCIAS[atual.cadencia].lower()}, desde "
+                f"{atual.inscrito_em.astimezone(relatorios.FUSO):%d/%m/%Y}."
+            )
+            st.button(
+                "Cancelar a inscrição", key="newsletter_email_cancelar",
+                icon=":material/unsubscribe:", on_click=_cancelar_a_newsletter, args=(usuario,),
+            )  # fmt: skip
+        col_lista, col_cadencia = st.columns(2)
+        col_lista.selectbox("Lista", nomes, key="newsletter_email_lista")
+        col_cadencia.selectbox(
+            "Frequência",
+            list(envio_newsletter.NOMES_DAS_CADENCIAS),
+            format_func=envio_newsletter.NOMES_DAS_CADENCIAS.get,
+            key="newsletter_email_cadencia",
+        )
+        consentiu = st.checkbox(
+            envio_newsletter.TEXTO_DO_CONSENTIMENTO,
+            key="newsletter_email_consentimento",
+        )
+        st.button(
+            "Trocar a inscrição" if atual else "Inscrever", type="primary",
+            key="newsletter_email_inscrever", icon=":material/mark_email_read:",
+            disabled=not consentiu, on_click=_inscrever_na_newsletter, args=(usuario,),
+        )  # fmt: skip
+        st.caption(
+            "A edição sai depois das coletas da manhã (a semanal, às segundas), uma vez por "
+            "período, pelo Resend. Cada e-mail traz o link para sair."
+        )
 
 
 def _ir_para_o_pdf(nome, janela):
@@ -7391,7 +7673,7 @@ def pagina_newsletter():
         key="newsletter_janela",
         help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
     )
-    edicao = _edicao(nome, tickers, janela)
+    edicao = _edicao(nome, tickers, janela, _carteira_da_lista(nome))
     if edicao is None:
         st.info(
             "Os documentos ainda não foram coletados neste servidor.",
@@ -7421,10 +7703,376 @@ def pagina_newsletter():
         )
     st.markdown("#### Limites")
     st.markdown("\n".join(f"- {frase}" for frase in edicao.limites))
+    _mostrar_inscricao_por_email(st.session_state.get("usuario"), nomes)
     avisar_parametros(
         parametros_em_vigor(None),
         ("newsletter.cadencia", "newsletter.max_itens", "newsletter.temas"),
     )
+
+
+# --- Research: Alertas compostos (etapa 6) -------------------------------------------------------
+PERIODO_DOS_ALERTAS = "2y"  # o bastante para médias de 200 pregões e 50 semanas
+MAX_ATIVOS_NOS_ALERTAS = 20
+NOMES_DAS_PERIODICIDADES = {alertas.DIARIO: "Diário", alertas.SEMANAL: "Semanal"}
+NOMES_DOS_MODOS = {
+    alertas.TODAS: "Todas as condições (e)",
+    alertas.QUALQUER: "Qualquer uma (ou)",
+}
+RESULTADOS = {True: "Disparou", False: "Não", None: "Sem dados"}
+
+
+def _alertas_salvos(usuario):
+    """[(id ou None, Regra)]: da conta, ou desta visita no modo local."""
+    if usuario is None:
+        return [(None, regra) for regra in st.session_state.get("alertas_locais", [])]
+    try:
+        with obter_engine().connect() as conexao:
+            return [(a.id, a.regra) for a in listar_alertas(conexao, usuario.id)]
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return []
+
+
+def _formatar_valor_do_alerta(avaliacao):
+    if avaliacao.valor is None:
+        return "—"
+    tipo, valor = avaliacao.condicao.tipo, avaliacao.valor
+    if tipo in ("preco_acima_da_media", "preco_abaixo_da_media", "media_de_alta"):
+        return f"{(valor - 1) * 100:+.1f}% da média".replace(".", ",")
+    if tipo in ("queda_do_topo", "volatilidade_acima"):
+        return f"{valor:.1f}%".replace(".", ",")
+    if tipo == "volume_relativo_acima":
+        return f"{valor:.2f}×".replace(".", ",")
+    return f"{valor:.2f}".replace(".", ",")
+
+
+def _detalhe_do_alerta(resultado):
+    marcas = {True: "✔", False: "✘", None: "—"}
+    partes = [
+        f"{marcas[a.satisfeita]} {a.condicao.descrever()}: {_formatar_valor_do_alerta(a)}"
+        + (f" ({a.motivo})" if a.motivo else "")
+        for a in resultado.avaliacoes
+    ]
+    return " · ".join(partes)
+
+
+def _mostrar_resultados_dos_alertas(salvos, tickers):
+    linhas, avisos, falharam = [], set(), []
+    for ticker in tickers[:MAX_ATIVOS_NOS_ALERTAS]:
+        try:
+            dados = carregar_dados(ticker, PERIODO_DOS_ALERTAS)
+        except (DadosIndisponiveisError, ValueError):
+            falharam.append(ticker)
+            continue
+        for _, regra in salvos:
+            resultado = alertas.avaliar(regra, dados)
+            avisos.update(a.aviso for a in resultado.avaliacoes if a.aviso)
+            linhas.append(
+                {
+                    "Ativo": ticker.removesuffix(".SA"),
+                    "Alerta": regra.nome,
+                    "Resultado": RESULTADOS[resultado.disparou],
+                    "Condições": _detalhe_do_alerta(resultado),
+                    "Fechamento usado": max(
+                        (a.barra for a in resultado.avaliacoes if a.barra), default=None
+                    ),
+                }
+            )
+    if linhas:
+        tabela = pd.DataFrame(linhas)
+        tabela["Fechamento usado"] = [
+            f"{d:%d/%m/%Y}" if d else "—" for d in tabela["Fechamento usado"]
+        ]
+        disparou = int((tabela["Resultado"] == RESULTADOS[True]).sum())
+        st.markdown(
+            f"**{disparou}** de {len(tabela)} combinações de ativo e alerta dispararam."
+        )
+        st.dataframe(tabela, hide_index=True, width="stretch")
+    st.caption(
+        "Cada alerta usa o último fechamento disponível; ele só vale a partir do pregão "
+        "seguinte. Um alerta é contexto, não ordem de compra ou venda."
+    )
+    for aviso in sorted(avisos):
+        st.caption(aviso)
+    if falharam:
+        st.caption("Sem preços agora: " + ", ".join(falharam) + ".")
+    if len(tickers) > MAX_ATIVOS_NOS_ALERTAS:
+        st.caption(f"Só os {MAX_ATIVOS_NOS_ALERTAS} primeiros ativos da lista entram.")
+
+
+def _campos_da_condicao(i):
+    col_tipo, col_per, col_janela, col_limiar = st.columns([3, 1.4, 1.2, 1.2])
+    tipo = col_tipo.selectbox(
+        f"Condição {i + 1}",
+        list(alertas.TIPOS),
+        format_func=lambda c: alertas.TIPOS[c].rotulo,
+        key=f"alerta_tipo_{i}",
+    )
+    t = alertas.TIPOS[tipo]
+    periodicidade = col_per.selectbox(
+        "Horizonte",
+        list(NOMES_DAS_PERIODICIDADES),
+        format_func=NOMES_DAS_PERIODICIDADES.get,
+        key=f"alerta_periodicidade_{i}",
+    )
+    janela = limiar = None
+    if t.janela_padrao is not None:
+        janela = col_janela.number_input(
+            "Janela" if tipo != "media_de_alta" else "Média rápida",
+            2, 500, t.janela_padrao, key=f"alerta_janela_{i}_{tipo}",
+        )  # fmt: skip
+    if t.limiar_padrao is not None:
+        limiar = col_limiar.number_input(
+            "Média lenta" if tipo == "media_de_alta" else f"Limiar {t.unidade_do_limiar}".strip(),
+            value=float(t.limiar_padrao), key=f"alerta_limiar_{i}_{tipo}",
+        )  # fmt: skip
+    st.caption(t.explicacao)
+    return alertas.Condicao(tipo, periodicidade, janela, limiar)
+
+
+def _guardar_alerta(usuario, regra):
+    try:
+        if usuario is None:
+            regra = alertas.validar(regra)
+            locais = st.session_state.setdefault("alertas_locais", [])
+            if any(r.nome.lower() == regra.nome.lower() for r in locais):
+                raise DadosInvalidosError(
+                    f'Você já tem um alerta chamado "{regra.nome}".'
+                )
+            locais.append(regra)
+        else:
+            with obter_engine().begin() as conexao:
+                salvar_alerta(conexao, usuario.id, regra, plano=usuario.plano)
+    except (
+        DadosInvalidosError,
+        LimiteDoPlanoError,
+        alertas.RegraInvalidaError,
+    ) as erro:
+        st.error(str(erro))
+        return
+    st.toast("Alerta salvo.", icon=":material/check_circle:")
+    st.rerun()
+
+
+def _montar_alerta(usuario, limites, quantos):
+    if usuario is not None and quantos >= limites.alertas:
+        st.info(
+            f"O plano {limites.nome} permite {limites.alertas} "
+            f"{'alerta' if limites.alertas == 1 else 'alertas'}. Apague um para criar outro.",
+            icon=":material/workspace_premium:",
+        )
+        return
+    nome = st.text_input("Nome do alerta", key="alerta_nome", max_chars=80)
+    col_modo, col_quantas = st.columns([2, 1])
+    modo = col_modo.radio(
+        "Dispara quando",
+        list(NOMES_DOS_MODOS),
+        format_func=NOMES_DOS_MODOS.get,
+        horizontal=True,
+        key="alerta_modo",
+    )
+    quantas = col_quantas.number_input(
+        "Condições", 1, alertas.MAXIMO_DE_CONDICOES, 2, key="alerta_quantas"
+    )
+    condicoes = tuple(_campos_da_condicao(i) for i in range(int(quantas)))
+    if st.button(
+        "Salvar alerta", icon=":material/notification_add:", key="alerta_salvar"
+    ):
+        _guardar_alerta(usuario, alertas.Regra(nome, condicoes, modo))
+
+
+def _apagar_alerta(usuario, alerta_id, nome):
+    if usuario is None:
+        st.session_state["alertas_locais"] = [
+            r for r in st.session_state.get("alertas_locais", []) if r.nome != nome
+        ]
+        return
+    with obter_engine().begin() as conexao:
+        apagar_alerta(conexao, usuario.id, alerta_id)
+
+
+def pagina_alertas():
+    cabecalho_da_pagina("alertas")
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    salvos = _alertas_salvos(usuario)
+    listas = _listas_do_research(usuario)
+    nomes = [lista[0] for lista in listas]
+    escolhida = st.selectbox("Avaliar nos ativos da lista", nomes, key="alertas_lista")
+    _, tickers, _ = listas[nomes.index(escolhida)]
+    if salvos:
+        _mostrar_resultados_dos_alertas(salvos, tickers)
+        with st.expander(f"Seus alertas ({len(salvos)})"):
+            for i, (alerta_id, regra) in enumerate(salvos):
+                col_texto, col_apagar = st.columns([5, 1], vertical_alignment="center")
+                col_texto.markdown(
+                    f"**{regra.nome}** · {NOMES_DOS_MODOS[regra.modo].lower()}  \n"
+                    + "  \n".join(c.descrever() for c in regra.condicoes)
+                )
+                col_apagar.button(
+                    "Apagar", key=f"alerta_apagar_{i}", icon=":material/delete:",
+                    on_click=_apagar_alerta, args=(usuario, alerta_id, regra.nome),
+                )  # fmt: skip
+    else:
+        st.info(
+            'Você ainda não tem alertas. Monte o primeiro abaixo; por exemplo: "média semanal '
+            'de alta" e "preço diário abaixo de um valor".',
+            icon=":material/notifications:",
+        )
+    with st.expander("Montar um alerta", expanded=not salvos):
+        _montar_alerta(usuario, limites, len(salvos))
+    if usuario is None:
+        st.caption("Sem conta, os alertas ficam só nesta visita.")
+    with st.expander("Como os alertas funcionam"):
+        st.markdown(
+            "- **Condições:** cada uma olha o **diário** ou o **semanal** (a semana termina na "
+            "sexta; enquanto ela não termina, a última barra semanal ainda pode mudar).\n"
+            '- **Todas (e) ou qualquer uma (ou):** com "todas", basta uma condição sem dados '
+            "para o alerta não disparar.\n"
+            "- **Atraso:** usa o último fechamento disponível; vale a partir do pregão seguinte.\n"
+            "- **Sem dados suficientes** (janela maior que o histórico, ativo sem volume), a "
+            'condição aparece como "—" com o motivo, nunca como "sim".\n'
+            "- Os números padrão são didáticos, não parâmetros comprovadamente bons. Um alerta "
+            "não diz que algo vai acontecer e não é recomendação."
+        )
+
+
+# --- Research: Minha carteira (etapa 5, decisão 0020) ----------------------------------------
+def guardar_fotografia(usuario, conteudo, nome_do_arquivo):
+    """Lê a planilha na memória e guarda só os pesos. Devolve a mensagem para a tela."""
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        foto = carteira_research.fotografia(
+            ler_carteira(conteudo, nome_do_arquivo), hoje
+        )
+        with obter_engine().begin() as conexao:
+            salvar_carteira(conexao, usuario.id, foto, plano_atual())
+    except (ArquivoDaB3Error, DadosInvalidosError, LimiteDoPlanoError) as erro:
+        return False, str(erro)
+    return (
+        True,
+        f"Fotografia guardada: {len(foto.pesos)} ativos, sem quantidades nem valores.",
+    )
+
+
+def _guardar_da_tela(usuario):
+    arquivo = st.session_state.get("minha_carteira_arquivo")
+    if arquivo is None:
+        return
+    st.session_state["minha_carteira_mensagem"] = guardar_fotografia(
+        usuario, arquivo.getvalue(), arquivo.name
+    )
+
+
+def _revogar_da_tela(usuario):
+    with obter_engine().begin() as conexao:
+        revogar_carteira(conexao, usuario.id)
+    st.session_state["minha_carteira_mensagem"] = (
+        True,
+        "Consentimento revogado: a fotografia da carteira foi apagada.",
+    )
+    st.session_state["minha_carteira_confirma"] = False
+
+
+def _mostrar_fotografia(foto):
+    tabela = pd.DataFrame(
+        {
+            "Ativo": [t.removesuffix(".SA") for t in foto.pesos],
+            "Peso na carteira": list(foto.pesos.values()),
+        }
+    )
+    st.dataframe(
+        tabela,
+        hide_index=True,
+        column_config={
+            "Peso na carteira": st.column_config.ProgressColumn(
+                format="percent", min_value=0.0, max_value=1.0
+            )
+        },
+    )
+    st.caption(
+        f"Fotografia de {foto.enviada_em:%d/%m/%Y}. A soma fica abaixo de 100% quando há "
+        'Tesouro ou renda fixa. Use a lista "Minha carteira" em Acontecimentos e na Newsletter.'
+    )
+
+
+def pagina_carteira_research():
+    cabecalho_da_pagina("carteira_research")
+    usuario = st.session_state.get("usuario")
+    mensagem = st.session_state.pop("minha_carteira_mensagem", None)
+    if mensagem is not None:
+        (st.success if mensagem[0] else st.error)(mensagem[1])
+    if usuario is None:
+        st.info(
+            "A fotografia da carteira fica guardada na sua conta: entre com o Google para usar "
+            "esta página.",
+            icon=":material/login:",
+        )
+    elif not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        st.info(
+            f"Guardar a carteira no Research faz parte do plano Pro (o seu é o "
+            f"{limites_do(plano_atual()).nome}). Sem ela, o Research usa as suas listas.",
+            icon=":material/workspace_premium:",
+        )
+    else:
+        foto = _carteira_do_research(usuario)
+        if foto is None:
+            st.info(
+                "Você ainda não guardou a fotografia da carteira. Sem ela, o Research usa as "
+                "suas listas, onde todo ativo pesa igual.",
+                icon=":material/donut_large:",
+            )
+        else:
+            _mostrar_fotografia(foto)
+            with st.expander("Revogar o consentimento"):
+                st.markdown(
+                    "A fotografia é **apagada na hora**. Fica só um registro técnico, sem nome "
+                    "nem e-mail, de quando o consentimento foi dado e revogado."
+                )
+                confirma = st.checkbox(
+                    "Entendi: quero apagar a fotografia",
+                    key="minha_carteira_confirma",
+                )
+                st.button(
+                    "Revogar e apagar", icon=":material/delete:", disabled=not confirma,
+                    key="minha_carteira_revogar", on_click=_revogar_da_tela, args=(usuario,),
+                )  # fmt: skip
+        with st.expander(
+            "Atualizar a fotografia" if foto else "Enviar a planilha da B3",
+            expanded=foto is None,
+        ):
+            st.markdown(
+                "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+                "2. Em **Extratos → Posição**, baixe a planilha em **Excel**.\n"
+                "3. Envie aqui. Ela é lida **só na memória**: guardamos apenas o código e o "
+                "peso de cada ativo."
+            )
+            arquivo = st.file_uploader(
+                "Planilha de posição da B3",
+                type=["xlsx", "csv"],
+                key="minha_carteira_arquivo",
+            )
+            consentiu = st.checkbox(
+                carteira_research.TEXTO_DO_CONSENTIMENTO,
+                key="minha_carteira_consentimento",
+            )
+            st.button(
+                "Guardar a fotografia", type="primary", icon=":material/save:",
+                disabled=arquivo is None or not consentiu, key="minha_carteira_guardar",
+                on_click=_guardar_da_tela, args=(usuario,),
+            )  # fmt: skip
+    with st.expander("O que é guardado e para quê"):
+        st.markdown(
+            "- **Guardado:** o código de cada ativo e o peso dele na carteira inteira (Tesouro "
+            "e renda fixa entram no total), com a data da planilha e a versão do consentimento.\n"
+            "- **Nunca guardado:** quantidades, valores em reais, preço médio e a própria "
+            "planilha.\n"
+            '- **Para quê:** no Research e na Newsletter, a lista "Minha carteira" põe na '
+            'frente o que é das maiores posições e explica: "a posição era 12,0% da sua '
+            'carteira".\n'
+            "- **Revogar:** a qualquer momento, aqui mesmo; a fotografia é apagada na hora. "
+            "Ela também sai na exportação dos seus dados e é apagada junto com a conta.\n"
+            "- A ordem é uma regra editorial para organizar a leitura, não uma recomendação."
+        )
 
 
 FUNCOES_DAS_PAGINAS = {
@@ -7436,6 +8084,8 @@ FUNCOES_DAS_PAGINAS = {
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,
+    "alertas": pagina_alertas,
+    "carteira_research": pagina_carteira_research,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

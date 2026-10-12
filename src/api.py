@@ -1,4 +1,4 @@
-"""API do TickerLab (FastAPI): saúde do serviço e webhook do Stripe.
+"""API do TickerLab (FastAPI): saúde do serviço, webhook do Stripe e saída da Newsletter.
 
 Roda ao lado do app, num contêiner próprio:
     uvicorn src.api:app --host 0.0.0.0 --port 8000
@@ -7,6 +7,7 @@ As rotas existem com e sem o prefixo `/api`, para funcionar tanto se o proxy (Ta
 caminho quanto se ele o repassar.
 """
 
+import html
 import json
 import logging
 import os
@@ -15,8 +16,9 @@ from contextlib import asynccontextmanager
 
 import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
+from src.banco import newsletter_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
 from src.logs import configurar_logs
@@ -64,6 +66,43 @@ async def receber_webhook_do_stripe(request: Request) -> dict[str, str]:
         log.exception("Falha ao processar um evento do Stripe")
         raise HTTPException(status_code=500, detail="Falha ao processar.") from None
     return {"resultado": resultado}
+
+
+def _pagina(titulo: str, corpo: str) -> HTMLResponse:
+    return HTMLResponse(
+        '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>{titulo}</title></head>"
+        '<body style="font-family:Arial,sans-serif;max-width:520px;margin:48px auto;padding:0 16px">'
+        f'<h1 style="font-size:22px">{titulo}</h1>{corpo}</body></html>'
+    )
+
+
+@router.get("/newsletter/sair")
+def confirmar_saida_da_newsletter(codigo: str = "") -> HTMLResponse:
+    """A página do link do e-mail: pede a confirmação (leitores de e-mail abrem links sozinhos;
+    só o botão, um POST, descadastra)."""
+    return _pagina(
+        "Sair da Newsletter do TickerLab",
+        "<p>Você deixa de receber a Newsletter por e-mail. Pode se inscrever de novo no app.</p>"
+        f'<form method="post" action="?codigo={html.escape(codigo, quote=True)}">'
+        '<button type="submit" style="font-size:16px;padding:10px 18px">Sair da Newsletter'
+        "</button></form>",
+    )
+
+
+@router.post("/newsletter/sair")
+def sair_da_newsletter(codigo: str = "") -> HTMLResponse:
+    """Descadastra pelo código do e-mail (também o "cancelar inscrição" de um clique do Gmail)."""
+    with obter_engine().begin() as conexao:
+        saiu = newsletter_por_email.sair_pelo_codigo(conexao, codigo)
+    if saiu:
+        return _pagina("Pronto", "<p>Você não recebe mais a Newsletter por e-mail.</p>")
+    return _pagina(
+        "Nada a fazer",
+        "<p>Este link já foi usado ou não vale mais. Se ainda recebe e-mails, cancele em "
+        "Newsletter, no app.</p>",
+    )
 
 
 @asynccontextmanager

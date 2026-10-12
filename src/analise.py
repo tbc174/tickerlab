@@ -43,8 +43,11 @@ VERSOES_DAS_FORMULAS: dict[str, str] = {
     "sharpe": "1",
     "sortino": "1",
     "var": "1",
+    "cvar": "1",
     "dias_de_alta": "1",
     "beta": "1",
+    "tracking_error": "1",
+    "information_ratio": "1",
     "correlacao_recente": "1",
     "media_rapida": "1",
     "media_lenta": "1",
@@ -53,6 +56,8 @@ VERSOES_DAS_FORMULAS: dict[str, str] = {
     "macd_sinal": "1",
     "bollinger_percentual_b": "1",
     "atr": "1",
+    "adx": "1",
+    "volume_relativo": "1",
 }
 FONTES = {
     None: "Yahoo Finance",
@@ -145,6 +150,8 @@ class _Montador:
 
     def __init__(self, pregoes: int) -> None:
         self.pregoes = pregoes
+        self.barras = pregoes  # na técnica semanal, quantas semanas há
+        self.unidade_das_barras = "pregões"
         self.metricas: dict[str, Metrica] = {}
 
     def add(
@@ -170,12 +177,16 @@ class _Montador:
         )
 
     def janela_curta(self, janela: int) -> str:
-        if self.pregoes <= janela:
+        if self.barras <= janela:
             return (
-                f"O período tem {self.pregoes} pregões e a janela pede {janela}: "
+                f"O período tem {self.barras} {self.unidade_das_barras} e a janela pede {janela}: "
                 "escolha um período maior ou uma janela menor."
             )
         return ""
+
+    def usar_barras(self, barras: int, unidade: str) -> None:
+        """A partir daqui, as janelas contam em `unidade` (semanas, na técnica semanal)."""
+        self.barras, self.unidade_das_barras = barras, unidade
 
 
 def _retorno_e_risco(
@@ -245,6 +256,13 @@ def _retorno_e_risco(
         {"quant.var_confianca": confianca},
     )
     m.add(
+        "cvar",
+        f"Perda média nos piores dias (CVaR {confianca}%)",
+        ind.calcular_cvar_historico(retorno, confianca / 100),
+        "fração",
+        {"quant.var_confianca": confianca},
+    )
+    m.add(
         "dias_de_alta",
         "Dias de alta",
         ind.calcular_percentual_dias_positivos(retorno),
@@ -263,6 +281,10 @@ def _dependencia_do_indice(
     if benchmark is None or benchmark.dropna().empty:
         motivo = f"O índice de referência ({indice}) não foi carregado."
         m.add("beta", "Beta", None, "número", p_indice, motivo)
+        m.add("tracking_error", "Tracking error", None, "fração", p_indice, motivo)
+        m.add(
+            "information_ratio", "Information Ratio", None, "número", p_indice, motivo
+        )
         m.add("correlacao_recente", "Correlação recente", None, "número",
               {**p_indice, "quant.janela_correlacao": janela_corr}, motivo)  # fmt: skip
     else:
@@ -276,6 +298,15 @@ def _dependencia_do_indice(
         except ValueError as erro:
             beta, motivo_beta = None, str(erro)
         m.add("beta", "Beta", beta, "número", p_indice, motivo_beta)
+        m.add(
+            "tracking_error", "Tracking error",
+            ind.calcular_tracking_error(retornos["ativo"], retornos["indice"]), "fração", p_indice,
+        )  # fmt: skip
+        m.add(
+            "information_ratio", "Information Ratio",
+            ind.calcular_information_ratio(retornos["ativo"], retornos["indice"]), "número",
+            p_indice,
+        )  # fmt: skip
         comuns = len(retornos)
         curta = (
             f"Há {comuns} dias em comum com o índice e a janela pede {janela_corr}."
@@ -377,6 +408,35 @@ def _macd_bollinger_e_atr(
     )  # fmt: skip
 
 
+def _adx_e_volume(m: _Montador, r: Resolucao, dados: pd.DataFrame) -> None:
+    """ADX (força da tendência) e volume relativo (volume de hoje contra o normal)."""
+    periodo_adx, nivel = int(r["tecnica.adx_periodo"]), int(r["tecnica.adx_tendencia"])
+    motivo_adx = (
+        "Os dados não têm máxima e mínima do dia."
+        if not {"High", "Low"} <= set(dados.columns)
+        else m.janela_curta(2 * periodo_adx)
+    )
+    m.add(
+        "adx", f"ADX ({periodo_adx})",
+        None if motivo_adx else _ultimo(ind.calcular_adx(dados, periodo_adx)["adx"]), "pontos",
+        {"tecnica.adx_periodo": periodo_adx, "tecnica.adx_tendencia": nivel}, motivo_adx,
+    )  # fmt: skip
+    janela_volume = int(r["tecnica.volume_janela"])
+    sem_volume = (
+        "Volume" not in dados.columns or not (dados["Volume"].fillna(0) > 0).any()
+    )
+    motivo_volume = (
+        "Os dados não têm volume (índices e câmbio costumam não ter)."
+        if sem_volume
+        else m.janela_curta(janela_volume)
+    )
+    m.add(
+        "volume_relativo", "Volume relativo",
+        None if motivo_volume else _ultimo(ind.calcular_volume_relativo(dados, janela_volume)),
+        "número", {"tecnica.volume_janela": janela_volume}, motivo_volume,
+    )  # fmt: skip
+
+
 def analisar_ativo(
     ticker: str,
     dados: pd.DataFrame,
@@ -402,8 +462,16 @@ def analisar_ativo(
     m = _Montador(pregoes)
     _retorno_e_risco(m, r, fechamento, retorno, taxa_cdi_anual)
     _dependencia_do_indice(m, r, fechamento, benchmark)
-    _medias_e_rsi(m, r, fechamento)
-    _macd_bollinger_e_atr(m, r, dados, fechamento)
+    # técnica: no diário ou no semanal (barras da semana; as janelas passam a contar semanas)
+    tecnicos = (
+        ind.para_semanal(dados) if r["tecnica.periodicidade"] == "semanal" else dados
+    )
+    fechamento_tecnico = tecnicos["Close"].dropna()
+    if tecnicos is not dados:
+        m.usar_barras(len(fechamento_tecnico), "semanas")
+    _medias_e_rsi(m, r, fechamento_tecnico)
+    _macd_bollinger_e_atr(m, r, tecnicos, fechamento_tecnico)
+    _adx_e_volume(m, r, tecnicos)
 
     proveniencia = Proveniencia(
         ticker=ticker,
