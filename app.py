@@ -66,7 +66,7 @@ from src.banco import detentores as repo_detentores
 from src.banco import leituras as repo_leituras
 from src.banco import negociacoes as repo_negociacoes
 from src.banco import newsletter_por_email
-from src.banco.conexao import obter_engine
+from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
     apagar_alerta,
@@ -6668,18 +6668,22 @@ def pagina_research():
                 hoje - timedelta(days=janela),
                 temas=temas or None,
             )
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+    except Exception as erro:
+        if not tabela_inexistente(erro):
+            logging.getLogger(__name__).exception("Falha ao ler os eventos")
+            st.error(_sem_banco_agora("os eventos"))
+            return
         # banco sem as tabelas do Research (modo local sem migrar): é o mesmo que não coletado
         ultima, empresas, eventos_da_lista = None, {}, []
-    except Exception:
-        logging.getLogger(__name__).exception("Falha ao ler os eventos")
-        st.error("Não consegui ler os eventos agora. Tente de novo em instantes.")
-        return
     if ultima is None:
         st.info(
-            "Os eventos ainda não foram coletados neste servidor. A coleta roda uma vez por "
-            "dia (`python -m scripts.atualizar_eventos` para a CVM e "
-            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
+            _ainda_nao_coletado(
+                "Os eventos ainda não foram coletados neste servidor.",
+                [
+                    "python -m scripts.atualizar_eventos",
+                    "python -m scripts.atualizar_eventos_sec",
+                ],
+            ),
             icon=":material/schedule:",
         )
         _mostrar_gestao_das_listas(usuario, limites, lista)
@@ -6938,17 +6942,43 @@ def _tabela_anual_formatada(anual, simbolo="R$"):
     return tabela
 
 
+def _sem_banco_agora(o_que):
+    """A frase de quando o banco não respondeu: nunca "vazio" nem "não coletado" (achado D-2)."""
+    return f"Não consegui ler {o_que} agora. Tente de novo em instantes."
+
+
+def _ainda_nao_coletado(frase, comandos):
+    """Base ainda vazia: para quem usa, a explicação; os comandos só para quem administra.
+
+    Antes, qualquer pessoa via `python -m scripts...` na tela (achado D-3 do Master v3).
+    """
+    usuario = st.session_state.get("usuario")
+    if (
+        usuario is None or usuario.e_admin
+    ):  # modo local (desenvolvimento) ou administrador
+        return f"{frase} ({' e '.join(f'`{c}`' for c in comandos)})."
+    return f"{frase} A coleta roda uma vez por dia."
+
+
 def _ler_fundamentos(ticker):
     """(empresa, dados) ou None quando a página já mostrou a mensagem do problema."""
     try:
         with obter_engine().connect() as conexao:
             empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
             dados = dados_da_empresa(conexao, empresa[0]) if empresa else None
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError) as erro:
+        if not tabela_inexistente(erro):
+            logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
+            st.error(_sem_banco_agora("as demonstrações"))
+            return None
         st.info(
-            "As demonstrações ainda não foram coletadas neste servidor "
-            "(`python -m scripts.atualizar_fundamentos --anos 6` para a CVM e "
-            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
+            _ainda_nao_coletado(
+                "As demonstrações ainda não foram coletadas neste servidor.",
+                [
+                    "python -m scripts.atualizar_fundamentos --anos 6",
+                    "python -m scripts.atualizar_eventos_sec",
+                ],
+            ),
             icon=":material/schedule:",
         )
         return None
@@ -7177,17 +7207,16 @@ def _ler_negociacoes(desde, cnpjs=None):
     try:
         with obter_engine().connect() as conexao:
             return repo_negociacoes.negociacoes(conexao, desde, cnpjs), None
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
-        return None, (
-            "As negociações ainda não foram coletadas neste servidor "
-            "(`python -m scripts.atualizar_negociacoes_cvm` e "
-            "`python -m scripts.atualizar_eventos_sec`)."
-        )
-    except Exception:
-        logging.getLogger(__name__).exception("Falha ao ler as negociações")
-        return (
-            None,
-            "Não consegui ler as negociações agora. Tente de novo em instantes.",
+    except Exception as erro:
+        if not tabela_inexistente(erro):
+            logging.getLogger(__name__).exception("Falha ao ler as negociações")
+            return None, _sem_banco_agora("as negociações")
+        return None, _ainda_nao_coletado(
+            "As negociações ainda não foram coletadas neste servidor.",
+            [
+                "python -m scripts.atualizar_negociacoes_cvm",
+                "python -m scripts.atualizar_eventos_sec",
+            ],
         )
 
 
@@ -7404,9 +7433,9 @@ def _ler_detentores(fonte, codigo):
                 return pd.DataFrame(), pd.DataFrame(), {}
             historico = repo_detentores.historico_do_ativo(conexao, fonte, codigo)
             maiores = repo_detentores.maiores_do_ativo(conexao, fonte, codigo, datas[0])
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
-        return pd.DataFrame(), pd.DataFrame(), {}
-    except Exception:
+    except Exception as erro:
+        if tabela_inexistente(erro):  # modo local sem migrar: o mesmo que não coletado
+            return pd.DataFrame(), pd.DataFrame(), {}
         logging.getLogger(__name__).exception("Falha ao ler os detentores")
         return None
     historico = historico[historico["competencia"].isin(datas)].copy()
@@ -7484,8 +7513,13 @@ def _detentores_do_ativo(ticker):
     historico, maiores, cobertura = lido
     if not cobertura:
         st.info(
-            "Os dados ainda não foram coletados neste servidor "
-            "(`python -m scripts.atualizar_fundos_cvm` e `python -m scripts.atualizar_fundos_sec`).",
+            _ainda_nao_coletado(
+                "Os dados ainda não foram coletados neste servidor.",
+                [
+                    "python -m scripts.atualizar_fundos_cvm",
+                    "python -m scripts.atualizar_fundos_sec",
+                ],
+            ),
             icon=":material/schedule:",
         )
         return
@@ -7643,8 +7677,16 @@ def pagina_donos():
 JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
 
 
+class BancoIndisponivelError(ValueError):
+    """O banco não respondeu (não é o mesmo que "ainda não coletado")."""
+
+
 def _edicao(nome, tickers, janela, carteira=None):
-    """A edição da lista com os seus parâmetros (None se o banco ainda não tem as tabelas)."""
+    """A edição da lista com os seus parâmetros (None se o banco ainda não tem as tabelas).
+
+    Levanta `BancoIndisponivelError` se o banco não respondeu: a tela diz isso, e não que os
+    documentos ainda não foram coletados (achado D-2 do Master v3).
+    """
     try:
         with obter_engine().connect() as conexao:
             return edicao_do_banco.montar_edicao(
@@ -7656,8 +7698,11 @@ def _edicao(nome, tickers, janela, carteira=None):
                 relatorios.agora(),
                 carteira,
             )
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
-        return None
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError) as erro:
+        if tabela_inexistente(erro):
+            return None
+        logging.getLogger(__name__).exception("Falha ao ler a edição da Newsletter")
+        raise BancoIndisponivelError(_sem_banco_agora("os documentos")) from erro
 
 
 def _mostrar_secao_da_newsletter(secao):
@@ -7772,7 +7817,11 @@ def pagina_newsletter():
         key="newsletter_janela",
         help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
     )
-    edicao = _edicao(nome, tickers, janela, _carteira_da_lista(nome))
+    try:
+        edicao = _edicao(nome, tickers, janela, _carteira_da_lista(nome))
+    except BancoIndisponivelError as erro:
+        st.error(str(erro))
+        return
     if edicao is None:
         st.info(
             "Os documentos ainda não foram coletados neste servidor.",
@@ -7821,14 +7870,19 @@ RESULTADOS = {True: "Disparou", False: "Não", None: "Sem dados"}
 
 
 def _alertas_salvos(usuario):
-    """[(id ou None, Regra)]: da conta, ou desta visita no modo local."""
+    """[(id ou None, Regra)]: da conta, ou desta visita no modo local. None se o banco falhou."""
     if usuario is None:
         return [(None, regra) for regra in st.session_state.get("alertas_locais", [])]
     try:
         with obter_engine().connect() as conexao:
             return [(a.id, a.regra) for a in listar_alertas(conexao, usuario.id)]
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
-        return []
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError) as erro:
+        if tabela_inexistente(erro):
+            return []
+        logging.getLogger(__name__).exception("Falha ao ler os alertas")
+        return (
+            None  # quem chama diz que não conseguiu ler, nunca "você não tem alertas"
+        )
 
 
 def _formatar_valor_do_alerta(avaliacao):
@@ -7994,6 +8048,9 @@ def pagina_alertas():
     usuario = st.session_state.get("usuario")
     limites = limites_do(plano_atual())
     salvos = _alertas_salvos(usuario)
+    if salvos is None:
+        st.error(_sem_banco_agora("os seus alertas"))
+        return
     listas = _listas_do_research(usuario)
     nomes = [lista[0] for lista in listas]
     escolhida = st.selectbox("Avaliar nos ativos da lista", nomes, key="alertas_lista")
