@@ -344,9 +344,9 @@ def _crescimento(lista: _Lista, tabela: pd.DataFrame, anos: int) -> None:
         (
             "crescimento_receita",
             None if tabela.empty else tabela.get("receita"),
-            "receita",
+            "da receita",
         ),
-        ("crescimento_lucro", lucro, "lucro"),
+        ("crescimento_lucro", lucro, "do lucro"),
     ):
         base = (
             ""
@@ -356,7 +356,7 @@ def _crescimento(lista: _Lista, tabela: pd.DataFrame, anos: int) -> None:
         valor, motivo = _cagr(serie, anos)
         lista.add(
             chave,
-            f"Crescimento do {nome} ({anos} anos, ao ano)",
+            f"Crescimento {nome} ({anos} anos, ao ano)",
             valor,
             FRACAO,
             base,

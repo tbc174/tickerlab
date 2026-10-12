@@ -20,6 +20,7 @@ from src import (
     aprendizado,
     catalogo,
     estilos_pdf,
+    fundamentos,
     graficos,
     marca,
     previa_pdf,
@@ -69,6 +70,7 @@ from src.banco.dados_do_usuario import (
     salvar_simulacao,
     salvar_watchlist,
 )
+from src.banco.demonstracoes import dados_da_empresa
 from src.banco.eventos import empresas_dos_tickers, eventos_dos_tickers, ultima_coleta
 from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
@@ -6035,10 +6037,15 @@ def pagina_parametros():
     )
     for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
         with aba:
-            if dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
+            if dominio == "fundamentalista":
                 st.caption(
-                    "Estes parâmetros serão usados pelo Research (eventos, fundamentos e "
-                    "newsletter) nas próximas etapas; por enquanto não mudam números."
+                    "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
+                    "janela dos proventos entra numa próxima etapa."
+                )
+            elif dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
+                st.caption(
+                    "Estes parâmetros serão usados pelo Research (eventos e newsletter) nas "
+                    "próximas etapas; por enquanto não mudam números."
                 )
             for parametro in research_parametros.PARAMETROS:
                 if parametro.dominio != dominio:
@@ -6388,11 +6395,215 @@ def pagina_research():
     _mostrar_gestao_das_listas(usuario, limites, lista)
 
 
+# --- Research: Fundamentos (etapa 3c) --------------------------------------------------------
+GRUPOS_DE_FUNDAMENTOS = (
+    (
+        "Resultado",
+        ("receita", "lucro", "margem_bruta", "margem_ebit", "margem_liquida"),
+    ),
+    ("Retorno", ("roe", "roic", "conversao_de_caixa")),
+    ("Endividamento", ("divida_bruta", "caixa", "divida_liquida", "divida_sobre_pl")),
+    ("Crescimento", ("crescimento_receita", "crescimento_lucro")),
+    ("Por ação e múltiplos", ("lpa", "vpa", "p_l", "p_vp")),
+)
+
+
+def _brl(valor):
+    """R$ em bilhões ou milhões, no formato brasileiro."""
+    for limite, sufixo in ((1e9, "bi"), (1e6, "mi")):
+        if abs(valor) >= limite:
+            texto = (
+                f"{valor / limite:,.1f}".replace(",", "#")
+                .replace(".", ",")
+                .replace("#", ".")
+            )
+            return f"R$ {texto} {sufixo}"
+    return f"R$ {valor:,.0f}".replace(",", ".")
+
+
+def _formatar_indicador(indicador):
+    if not indicador.disponivel:
+        return "—"
+    valor = indicador.valor
+    if indicador.unidade == fundamentos.FRACAO:
+        return formatar_pct(valor)
+    if indicador.unidade == fundamentos.REAIS:
+        return _brl(valor)
+    if indicador.unidade == fundamentos.REAIS_POR_ACAO:
+        return f"R$ {valor:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
+    return f"{valor:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".") + "×"
+
+
+def _mostrar_grupo(titulo, chaves, resultado):
+    st.markdown(f"##### {titulo}")
+    with st.container(horizontal=True):
+        for chave in chaves:
+            indicador = resultado[chave]
+            st.metric(
+                indicador.nome,
+                _formatar_indicador(indicador),
+                border=True,
+                help=(indicador.motivo or f"Base: {indicador.base}.")
+                + " "
+                + (ajuda_do(indicador.nome) or ""),
+            )
+    motivos = {}
+    for chave in chaves:
+        indicador = resultado[chave]
+        if not indicador.disponivel:
+            motivos.setdefault(indicador.motivo, []).append(indicador.nome)
+    for motivo, nomes in motivos.items():
+        st.caption(f"{', '.join(nomes)}: {motivo}")
+
+
+def _tabela_anual_formatada(anual):
+    tabela = pd.DataFrame(index=[str(a) for a in anual.index])
+    tabela.index.name = "Ano"
+    tabela["Receita"] = [_brl(v) if pd.notna(v) else "—" for v in anual["receita"]]
+    tabela["Lucro dos acionistas"] = [
+        _brl(v) if pd.notna(v) else "—" for v in anual["lucro"]
+    ]
+    tabela["Margem líquida"] = [formatar_pct(v) for v in anual["margem_liquida"]]
+    tabela["Patrimônio"] = [
+        _brl(v) if pd.notna(v) else "—" for v in anual["patrimonio"]
+    ]
+    if "divida_liquida" in anual:
+        tabela["Dívida líquida"] = [
+            _brl(v) if pd.notna(v) else "—" for v in anual["divida_liquida"]
+        ]
+    return tabela
+
+
+def pagina_fundamentos():
+    cabecalho_da_pagina("fundamentos")
+    c = carregar_contexto()
+    r = parametros_em_vigor(c.ticker)
+    ticker = normalizar_ticker(c.ticker)
+    try:
+        with obter_engine().connect() as conexao:
+            empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
+            dados = dados_da_empresa(conexao, empresa[0]) if empresa else None
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        st.info(
+            "As demonstrações da CVM ainda não foram coletadas neste servidor "
+            "(`python -m scripts.atualizar_fundamentos --anos 6`).",
+            icon=":material/schedule:",
+        )
+        return
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
+        st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
+        return
+    if empresa is None:
+        st.info(
+            f"{ticker} não tem cadastro de companhia aberta na CVM. Hoje os fundamentos cobrem "
+            "ações e units da B3; empresas dos EUA chegam com a SEC numa próxima etapa, e "
+            "fundos, ETFs e BDRs dependem de outras fontes.",
+            icon=":material/info:",
+        )
+        return
+    if dados.contas.empty:
+        st.info(
+            f"Ainda não há demonstrações coletadas da {empresa[1]}. A coleta roda uma vez por "
+            "dia.",
+            icon=":material/schedule:",
+        )
+        return
+    preco = float(c.fechamento.iloc[-1]) if moeda_do_ticker(ticker) == "BRL" else None
+    resultado = fundamentos.calcular(
+        dados,
+        preco,
+        anos=int(r["fundamentalista.anos"]),
+        roic_minimo=float(r["fundamentalista.roic_minimo"]),
+        pl_maximo=float(r["fundamentalista.pl_maximo"]),
+    )
+    st.markdown(
+        f"**{resultado.empresa}** · {resultado.setor or 'setor não informado'} · CNPJ {empresa[0]}"
+    )
+    if preco is not None:
+        preco_br = f"{preco:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
+        st.caption(
+            f"Múltiplos com o fechamento de {c.fechamento.index[-1]:%d/%m/%Y} (R$ {preco_br}) "
+            "aplicado a todas as classes de ação da empresa (aproximação)."
+        )
+    for nota in resultado.notas:
+        st.caption(nota)
+    if resultado.financeira:
+        st.info(
+            fundamentos.NAO_SE_APLICA_A_FINANCEIRAS, icon=":material/account_balance:"
+        )
+    for titulo, chaves in GRUPOS_DE_FUNDAMENTOS:
+        _mostrar_grupo(titulo, chaves, resultado)
+    if resultado.filtros:
+        st.markdown("##### Seus filtros educacionais")
+        for frase in resultado.filtros:
+            st.markdown(f"- {frase}")
+        st.caption(
+            "Os limites vêm da página Parâmetros. Dizem se o número passa do que você escolheu; "
+            "não dizem se a ação é boa, cara ou barata, nem são recomendação."
+        )
+    if not resultado.anual.empty:
+        st.markdown("##### Ano a ano (demonstrações anuais)")
+        mostrar_grafico(graficos.criar_grafico_fundamentos_anuais(resultado.anual))
+        st.dataframe(_tabela_anual_formatada(resultado.anual), width="stretch")
+    if not resultado.documentos.empty:
+        st.markdown("##### Documentos usados")
+        docs = resultado.documentos
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Documento": [
+                        "Anual (DFP)" if d == "DFP" else "Trimestral (ITR)"
+                        for d in docs["documento"]
+                    ],
+                    "Data do balanço": [f"{d:%d/%m/%Y}" for d in docs["referencia"]],
+                    "Entregue à CVM": [
+                        f"{d:%d/%m/%Y}" if pd.notna(d) else "—"
+                        for d in docs["recebido_em"]
+                    ],
+                    "Versão": docs["versao"].astype(int),
+                    "Abrir": docs["link"],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Abrir": st.column_config.LinkColumn("Abrir", display_text="na CVM")
+            },
+        )
+    with st.expander("Como estes números são calculados"):
+        st.markdown(
+            "- **12 meses:** o último ano do DFP + o acumulado do ano no último ITR − o mesmo "
+            "período do ano anterior.\n"
+            "- **Margens:** resultado bruto, EBIT e lucro divididos pela receita dos 12 meses.\n"
+            "- **ROE:** lucro dos acionistas (12 meses) ÷ patrimônio dos acionistas no último "
+            "balanço.\n"
+            f"- **ROIC:** EBIT × (1 − {fundamentos.ALIQUOTA_DE_IR_CS:.0%} de IR/CS) ÷ "
+            "(patrimônio + dívida bruta − caixa e aplicações).\n"
+            "- **Dívida:** empréstimos e financiamentos de curto e longo prazo; dívida líquida "
+            "desconta o caixa e as aplicações financeiras.\n"
+            "- **Crescimento:** taxa composta anual entre os DFP do horizonte escolhido.\n"
+            "- **Por ação:** ações em circulação (sem as de tesouraria), conferidas com o lucro "
+            "por ação declarado pela empresa.\n\n"
+            "Fonte: dados abertos da CVM (DFP, ITR e cadastro). Bancos e seguradoras não têm "
+            "margem bruta, EBIT nem dívida comparáveis. Nada aqui é recomendação."
+        )
+    avisar_parametros(
+        r,
+        (
+            "fundamentalista.anos",
+            "fundamentalista.roic_minimo",
+            "fundamentalista.pl_maximo",
+        ),
+    )
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
     "parametros": pagina_parametros,
     "research": pagina_research,
+    "fundamentos": pagina_fundamentos,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,
