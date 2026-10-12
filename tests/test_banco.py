@@ -5,6 +5,7 @@ TICKERLAB_TEST_DATABASE_URL com a URL de um banco de TESTE (as tabelas dele são
 """
 
 import os
+import time
 import traceback
 import uuid
 
@@ -12,7 +13,12 @@ import pytest
 import sqlalchemy as sa
 
 from src.banco import usuarios as repo
-from src.banco.conexao import banco_esta_saudavel, criar_engine, migrar_para
+from src.banco.conexao import (
+    SEGUNDOS_PARA_CONECTAR,
+    banco_esta_saudavel,
+    criar_engine,
+    migrar_para,
+)
 from src.banco.modelo import favoritos, preferencias, simulacoes, usuarios
 from src.configuracao import (
     VARIAVEL_DO_BANCO,
@@ -54,6 +60,33 @@ def test_url_do_postgres_usa_o_driver_psycopg():
         "postgresql+psycopg://"
     )
     assert normalizar_url_do_banco("sqlite:///x.db") == "sqlite:///x.db"
+
+
+def test_postgres_tem_tempo_maximo_para_conectar_e_sqlite_nao_precisa(monkeypatch):
+    # regressão do achado D-1 (Master v3): sem limite, um banco travado prendia cada página
+    recebidos = {}
+
+    def criar(url, **opcoes):
+        recebidos[str(url).split(":")[0]] = opcoes.get("connect_args")
+        return original(url, **opcoes)
+
+    original = sa.create_engine
+    monkeypatch.setattr("src.banco.conexao.sa.create_engine", criar)
+    criar_engine("postgresql://u:s@127.0.0.1:1/x")
+    criar_engine("sqlite://")
+    assert recebidos["postgresql+psycopg"] == {
+        "connect_timeout": SEGUNDOS_PARA_CONECTAR
+    }
+    assert recebidos["sqlite"] == {}
+
+
+def test_banco_que_nao_responde_falha_em_segundos_em_vez_de_travar():
+    motor = criar_engine("postgresql://ninguem:x@127.0.0.1:1/fora_do_ar")
+    inicio = time.monotonic()
+    with pytest.raises(sa.exc.OperationalError):
+        motor.connect()
+    assert time.monotonic() - inicio < SEGUNDOS_PARA_CONECTAR * 3
+    assert not banco_esta_saudavel(motor)  # o /saude responde "fora" sem travar
 
 
 def test_url_do_banco_vem_da_variavel_de_ambiente(monkeypatch):

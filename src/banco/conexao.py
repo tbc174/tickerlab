@@ -18,6 +18,7 @@ from src.configuracao import (
 log = logging.getLogger(__name__)
 ARQUIVO_DO_ALEMBIC = PASTA_RAIZ / "alembic.ini"
 PASTA_DAS_MIGRACOES = PASTA_RAIZ / "migracoes"
+SEGUNDOS_PARA_CONECTAR = 5  # o banco fica na mesma máquina: conectar leva milissegundos
 
 
 def _ligar_chaves_estrangeiras_no_sqlite(
@@ -74,6 +75,18 @@ def _erro_sem_valores(contexto: sa.engine.ExceptionContext) -> BaseException | N
     )
 
 
+def _opcoes_de_conexao(url: str) -> dict:
+    """Tempo máximo para abrir a conexão com o PostgreSQL (Master v3, achado D-1).
+
+    Sem ele, um banco travado (sem memória, contêiner pausado, rede presa) deixava cada página
+    girando por minutos; com ele, a consulta falha em segundos e a tela diz "tente de novo".
+    O SQLite (arquivo local) não precisa.
+    """
+    if url.startswith("postgresql"):
+        return {"connect_timeout": SEGUNDOS_PARA_CONECTAR}
+    return {}
+
+
 def criar_engine(url: str | None = None) -> sa.Engine:
     """Um motor novo para a URL (a do ambiente, se não for dada)."""
     url = normalizar_url_do_banco(url) if url else url_do_banco()
@@ -83,7 +96,12 @@ def criar_engine(url: str | None = None) -> sa.Engine:
             Path(caminho).parent.mkdir(parents=True, exist_ok=True)
     # hide_parameters: os erros do SQLAlchemy citariam os valores da consulta (e-mails, nomes)
     # e iriam parar nos logs
-    motor = sa.create_engine(url, pool_pre_ping=True, hide_parameters=True)
+    motor = sa.create_engine(
+        url,
+        pool_pre_ping=True,
+        hide_parameters=True,
+        connect_args=_opcoes_de_conexao(url),
+    )
     if motor.dialect.name == "sqlite":
         sa.event.listen(motor, "connect", _ligar_chaves_estrangeiras_no_sqlite)
     else:  # o PostgreSQL devolve a linha que falhou no texto do erro: só identificadores
