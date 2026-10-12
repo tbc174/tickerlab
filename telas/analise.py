@@ -29,6 +29,7 @@ from src.correlacao import (
     resumir_betas,
 )
 from src.dados import DadosIndisponiveisError
+from src.exportacao import converter_para_csv, montar_tabela_de_precos
 from src.indicadores import NOMES_DOS_MESES
 from telas.comum import (
     MIN_DIAS_PARA_ANALISE,
@@ -43,6 +44,7 @@ from telas.comum import (
     parametros_em_vigor,
 )
 from telas.relatorios.estudio import atalho_para_o_relatorio
+from telas.tutorial import mostrar_tutorial
 
 JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 
@@ -586,3 +588,40 @@ def pagina_correlacao():
         c.ticker, c.periodo, r["quant.benchmark"], int(r["quant.janela_correlacao"])
     )
     avisar_parametros(r, ("quant.benchmark", "quant.janela_correlacao"))
+
+
+def pagina_visao_geral():
+    cabecalho_da_pagina("visao_geral")
+    c = carregar_contexto()
+    mostrar_tutorial("visao_geral", c)
+    atalho_para_o_relatorio(relatorios.ATIVO)
+    r = parametros_em_vigor(c.ticker)
+    secao_painel_de_numeros(
+        c.fechamento, c.retorno, c.taxa_livre_de_risco, int(r["quant.var_confianca"])
+    )
+    st.divider()
+    medias = ("tecnica.media_rapida", "tecnica.media_lenta")
+    personalizou_medias = any(r.origem(k) != research_presets.SISTEMA for k in medias)
+    secao_preco(
+        c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
+    )
+    st.divider()
+    secao_tendencia_e_volume(c.dados, r)
+    avisar_parametros(
+        r,
+        (
+            "quant.var_confianca",
+            *medias,
+            "tecnica.adx_periodo",
+            "tecnica.adx_tendencia",
+            "tecnica.volume_janela",
+            "tecnica.periodicidade",
+        ),
+    )
+    st.download_button(
+        "Baixar os preços (CSV)",
+        converter_para_csv(montar_tabela_de_precos(c.dados)),
+        file_name=f"{c.ticker}_{c.periodo}.csv",
+        mime="text/csv",
+        help="Preços, volume e retorno diário, prontos para abrir no Excel (separador ponto e vírgula).",
+    )
