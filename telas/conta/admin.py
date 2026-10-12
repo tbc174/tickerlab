@@ -1,0 +1,171 @@
+"""Administração: planos e papéis dos usuários (só para admins).
+
+Saiu do `app.py` sem mudar comportamento. Regra de `telas/`: nenhum estado mutável no módulo
+(um módulo importado é do processo inteiro, isto é, de todos os usuários).
+"""
+
+import json
+import logging
+
+import pandas as pd
+import streamlit as st
+
+from src import administracao as adm
+from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
+from src.banco.conexao import obter_engine
+from src.banco.modelo import PAPEIS, PLANOS
+from telas.comum import cabecalho_da_pagina
+
+# o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
+log_da_conta = logging.getLogger("tickerlab.conta")
+
+
+def _admin_aplicar(usuario, tipo):
+    alvo_id = st.session_state.get("admin_alvo")
+    valor = st.session_state.get(f"admin_{tipo}")
+    try:
+        with obter_engine().begin() as conexao:
+            if tipo == "plano":
+                adm.alterar_plano(conexao, usuario.id, alvo_id, valor)
+            else:
+                adm.alterar_papel(conexao, usuario.id, alvo_id, valor)
+    except (PermissaoNegadaError, OperacaoInvalidaError) as erro:
+        st.toast(str(erro))
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao aplicar uma mudança de administrador")
+        st.toast("Não consegui aplicar agora. Tente de novo em instantes.")
+        return
+    st.toast("Pronto, mudança aplicada e registrada.")
+
+
+def _quando(momento):
+    return f"{momento:%d/%m/%Y %H:%M}" if momento else "—"
+
+
+def pagina_admin():
+    cabecalho_da_pagina("admin")
+    usuario = st.session_state.get("usuario")
+    if usuario is None or not usuario.e_admin:
+        st.error("Esta página é só para administradores.")
+        return
+    busca = st.text_input("Buscar por e-mail ou nome", key="admin_busca")
+    try:
+        with obter_engine().connect() as conexao:
+            resumo = adm.resumo_geral(conexao, usuario.id)
+            linhas = adm.listar_usuarios(conexao, usuario.id, busca)
+            registros = adm.auditoria_recente(conexao, usuario.id, 30)
+            eventos = adm.eventos_recentes_do_stripe(conexao, usuario.id, 15)
+    except PermissaoNegadaError:
+        st.error("Esta página é só para administradores.")
+        return
+    except Exception:
+        log_da_conta.exception("Falha ao carregar o painel de administração")
+        st.warning("Não consegui carregar o painel agora.")
+        return
+
+    primeira = st.columns(5)
+    primeira[0].metric("Usuários", resumo["usuarios"])
+    primeira[1].metric("Plano Plus", resumo["plus"])
+    primeira[2].metric("Plano Pro", resumo["pro"])
+    primeira[3].metric("Novos na semana", resumo["novos_na_semana"])
+    primeira[4].metric("Ativos na semana", resumo["ativos_na_semana"])
+    segunda = st.columns(4)
+    segunda[0].metric("Plano Gratuito", resumo["gratuito"])
+    segunda[1].metric(
+        "Assinaturas ativas", resumo["assinaturas_por_status"].get("active", 0)
+    )
+    segunda[2].metric("Simulações salvas", resumo["simulacoes"])
+    segunda[3].metric("Eventos do Stripe", resumo["eventos_do_stripe"])
+
+    st.subheader("Usuários")
+    if not linhas:
+        st.info("Nenhum usuário encontrado.")
+    else:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Nome": [l.nome or "—" for l in linhas],
+                    "E-mail": [l.email for l in linhas],
+                    "Plano": [l.plano for l in linhas],
+                    "Papel": [l.papel for l in linhas],
+                    "Assinatura": [l.status_da_assinatura or "—" for l in linhas],
+                    "Simulações": [l.simulacoes for l in linhas],
+                    "Criada em": [_quando(l.criado_em) for l in linhas],
+                    "Último acesso": [_quando(l.ultimo_acesso) for l in linhas],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+        st.markdown("**Alterar um usuário**")
+        por_id = {l.id: l for l in linhas}
+        st.selectbox(
+            "Usuário",
+            list(por_id),
+            format_func=lambda i: (
+                f"{por_id[i].email} ({por_id[i].plano}, {por_id[i].papel})"
+            ),
+            key="admin_alvo",
+        )
+        col_plano, col_papel = st.columns(2)
+        with col_plano:
+            st.selectbox("Plano", list(PLANOS), key="admin_plano")
+            st.button(
+                "Aplicar plano",
+                key="admin_aplicar_plano",
+                on_click=_admin_aplicar,
+                args=(usuario, "plano"),
+            )
+        with col_papel:
+            st.selectbox("Papel", list(PAPEIS), key="admin_papel")
+            st.button(
+                "Aplicar papel",
+                key="admin_aplicar_papel",
+                on_click=_admin_aplicar,
+                args=(usuario, "papel"),
+            )
+        st.caption(
+            "Mudar o plano aqui não cria nem cancela assinatura no Stripe. Toda mudança "
+            "fica no registro abaixo."
+        )
+
+    st.subheader("Registro de ações")
+    if registros:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Quando": [_quando(r.criado_em) for r in registros],
+                    "Ação": [r.acao for r in registros],
+                    "Quem fez": [
+                        str(r.ator_id)[:8] if r.ator_id else "—" for r in registros
+                    ],
+                    "Alvo": [
+                        str(r.alvo_id)[:8] if r.alvo_id else "—" for r in registros
+                    ],
+                    "Detalhes": [
+                        json.dumps(r.detalhes, ensure_ascii=False) for r in registros
+                    ],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+    else:
+        st.caption("Nada registrado ainda.")
+
+    st.subheader("Últimos eventos do Stripe")
+    if eventos:
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Quando": [_quando(e[2]) for e in eventos],
+                    "Tipo": [e[1] for e in eventos],
+                    "Evento": [e[0] for e in eventos],
+                }
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+    else:
+        st.caption("Nenhum evento recebido ainda.")

@@ -2,8 +2,8 @@
 
 import pytest
 
-from src import cobranca
 from src.banco.usuarios import mudar_plano
+from telas.conta import assinatura as assinatura_na_tela
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario
 
 STRIPE = {
@@ -27,8 +27,11 @@ def stripe_ligado(monkeypatch):
         chamadas.append(("portal", id_do_cliente))
         return "https://portal.stripe.exemplo/sessao"
 
-    monkeypatch.setattr(cobranca, "criar_pagina_de_pagamento", pagina)
-    monkeypatch.setattr(cobranca, "criar_portal_da_assinatura", portal)
+    # troca onde a tela usa: telas/conta/assinatura.py importa as funções pelo nome, e um módulo
+    # importado guarda o que recebeu na primeira vez (o app.py, que roda de novo a cada execução,
+    # pegava a troca feita em src.cobranca)
+    monkeypatch.setattr(assinatura_na_tela, "criar_pagina_de_pagamento", pagina)
+    monkeypatch.setattr(assinatura_na_tela, "criar_portal_da_assinatura", portal)
     return chamadas
 
 
