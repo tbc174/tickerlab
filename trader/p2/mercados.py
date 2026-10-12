@@ -20,7 +20,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 GRUPOS = ("moedas", "indices", "metais", "energia", "titulos")
-FONTES = ("fred", "yahoo")
+FONTES = ("fred", "yahoo", "mt5")
 
 INICIO_DO_HOLDOUT = pd.Timestamp("2023-10-10")
 ANOS_MINIMOS_ANTES_DO_HOLDOUT = 15  # com menos, o t-estatístico não tem como chegar a 3
@@ -65,9 +65,11 @@ MERCADOS: tuple[Mercado, ...] = (
     Mercado("JP225", "indices", "[JP225]-T", "yahoo", "^N225", "JPY"),
     Mercado("HK50", "indices", "[HK50]-T", "yahoo", "^HSI", "HKD"),
     Mercado("AUS200", "indices", "[AUS200]-T", "yahoo", "^AXJO", "AUD"),
-    # Metais: futuros contínuos do Yahoo (sem ajuste de rolagem; conferir saltos na qualidade).
-    Mercado("GOLD", "metais", "GOLD-T", "yahoo", "GC=F", "USD"),
-    Mercado("SILVER", "metais", "SILVER-T", "yahoo", "SI=F", "USD"),
+    # Metais (decisão 0014): ouro e prata pelo histórico do próprio CFD (à vista, sem rolagem,
+    # desde 1995 e 2002); cobre pelo futuro do Yahoo, porque o CFD só existe desde 2018 (na
+    # sobreposição de 2018 a 2023 não houve nenhum dia anômalo).
+    Mercado("GOLD", "metais", "GOLD-T", "mt5", "GOLD-T", "USD"),
+    Mercado("SILVER", "metais", "SILVER-T", "mt5", "SILVER-T", "USD"),
     Mercado("COPPER", "metais", "COPPER-T", "yahoo", "HG=F", "USD"),
     # Energia: preço à vista do FRED (o CFD embute a rolagem no custo de manter).
     Mercado("BRENT", "energia", "BRENT-T", "fred", "DCOILBRENTEU", "USD"),

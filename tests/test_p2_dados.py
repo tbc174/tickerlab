@@ -114,10 +114,15 @@ def test_baixar_tudo_grava_series_e_relatorio(tmp_path):
             raise ConnectionError("fora do ar")
         return _serie([1.0, 1.01, 1.02], inicio="1990-01-01")
 
+    def mt5_falso(simbolo):
+        return _serie([1800.0, 1810.0, 1805.0], inicio="1995-01-03")
+
     def yahoo_falso(simbolo):
         return _serie([100.0, 101.0, 102.0], inicio="2015-01-01")
 
-    relatorio = baixar.baixar_tudo({"fred": fred_falso, "yahoo": yahoo_falso}, tmp_path)
+    relatorio = baixar.baixar_tudo(
+        {"fred": fred_falso, "yahoo": yahoo_falso, "mt5": mt5_falso}, tmp_path
+    )
 
     assert (tmp_path / "relatorio_de_qualidade.csv").exists()
     assert len(relatorio) == len(MERCADOS) + len(mercados.JUROS_CURTOS)
@@ -127,3 +132,31 @@ def test_baixar_tudo_grava_series_e_relatorio(tmp_path):
     assert eur["entra_no_universo"]  # série falsa começa em 1990
     spx = relatorio[relatorio["codigo"] == "USA500"].iloc[0]
     assert not spx["entra_no_universo"]  # série falsa começa em 2015
+
+
+def test_nome_de_cfd_com_colchetes_e_aceito(tmp_path):
+    assert fontes.caminho_da_serie("mt5", "[USA500]-T", tmp_path).name.startswith(
+        "mt5_"
+    )
+
+
+def test_baixar_mt5_usa_a_conexao_demo_e_normaliza_as_datas(monkeypatch):
+    class ConexaoFalsa:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def candles(self, simbolo, timeframe, inicio):
+            assert (simbolo, timeframe) == ("GOLD-T", "D1")
+            indice = pd.to_datetime(
+                ["1995-01-03 00:00", "1995-01-04 00:00", "1995-01-04 00:00"]
+            )
+            return pd.DataFrame({"Close": [380.0, 381.0, 382.0]}, index=indice)
+
+    import trader.mt5
+
+    monkeypatch.setattr(trader.mt5, "ConexaoMT5", ConexaoFalsa)
+    serie = fontes.baixar_mt5("GOLD-T")
+    assert list(serie) == [380.0, 382.0]  # data repetida: fica a última

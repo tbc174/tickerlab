@@ -17,6 +17,7 @@ import pandas as pd
 from trader.p2.fontes import (
     PASTA_PADRAO,
     baixar_fred,
+    baixar_mt5,
     baixar_yahoo,
     medir_qualidade,
     salvar_serie,
@@ -24,7 +25,11 @@ from trader.p2.fontes import (
 from trader.p2.mercados import JUROS_CURTOS, MERCADOS, entra_no_universo
 
 Baixador = Callable[[str], pd.Series]
-BAIXADORES_PADRAO: dict[str, Baixador] = {"fred": baixar_fred, "yahoo": baixar_yahoo}
+BAIXADORES_PADRAO: dict[str, Baixador] = {
+    "fred": baixar_fred,
+    "yahoo": baixar_yahoo,
+    "mt5": baixar_mt5,
+}
 
 
 def _linha_do_relatorio(

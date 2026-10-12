@@ -10,6 +10,7 @@ import io
 import re
 import urllib.request
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +18,7 @@ import pandas as pd
 
 PASTA_PADRAO = Path(__file__).resolve().parents[2] / "dados_p2"
 URL_DO_FRED = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={serie}"
-NOME_SEGURO = re.compile(r"[A-Za-z0-9._=^\-]{1,40}")
+NOME_SEGURO = re.compile(r"[A-Za-z0-9._=^#\[\]\-]{1,40}")
 TEMPO_LIMITE_EM_SEGUNDOS = 60
 # Retorno diário maior que 10 desvios: provável erro de dado ou salto de rolagem do futuro.
 DESVIOS_DE_UM_SALTO = 10
@@ -43,6 +44,20 @@ def baixar_yahoo(simbolo: str) -> pd.Series:
     from trader.baixar_historico import baixar_yfinance
 
     return baixar_yfinance(simbolo)["Close"].rename(None)
+
+
+INICIO_DO_MT5 = datetime(1990, 1, 1, tzinfo=UTC)  # o servidor entrega o que tiver
+
+
+def baixar_mt5(simbolo: str) -> pd.Series:
+    """Fechamento diário do CFD na conta DEMO aberta no MetaTrader 5 (recusa conta real)."""
+    from trader.mt5 import ConexaoMT5
+
+    with ConexaoMT5() as conexao:
+        candles = conexao.candles(simbolo, "D1", INICIO_DO_MT5)
+    fechamento = candles["Close"].rename(None)
+    fechamento.index = pd.DatetimeIndex(fechamento.index).normalize().rename("Date")
+    return fechamento[~fechamento.index.duplicated(keep="last")]
 
 
 def caminho_da_serie(fonte: str, serie: str, pasta: Path = PASTA_PADRAO) -> Path:
