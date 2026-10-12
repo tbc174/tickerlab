@@ -6,6 +6,7 @@ temporárias.
 
 from __future__ import annotations
 
+import contextlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -128,10 +129,8 @@ class Fontes:
     def detalhe_da_tentativa(self, tentativa_id: int) -> dict:
         dados = self.registro().obter(tentativa_id)
         serie = None
-        try:
+        with contextlib.suppress(FileNotFoundError):
             serie = armazem.carregar(dados["hash"], self.pasta_series)
-        except FileNotFoundError:
-            pass
         return {**dados, "serie": serie}
 
     def contagem(self) -> dict:

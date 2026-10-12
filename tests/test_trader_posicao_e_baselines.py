@@ -239,7 +239,9 @@ def test_apostas_independentes_contam_ativos_repetidos_uma_vez():
     assert resumo["apostas_independentes"] == pytest.approx(
         1.6, abs=0.15
     )  # (3+1)²/(9+1)
-    independentes = {k: _retornos(n=1500, seed=s) for k, s in zip("ABCD", range(4))}
+    independentes = {
+        k: _retornos(n=1500, seed=s) for k, s in zip("ABCD", range(4), strict=True)
+    }
     resumo2 = viabilidade.apostas_independentes(
         viabilidade.retornos_semanais(independentes)
     )
@@ -257,7 +259,7 @@ def test_futuros_do_yahoo_sao_so_atributo_e_avaliacao_comeca_em_2000():
     futuros = [a for a in UNIVERSO if a.simbolo.endswith("=F")]
     assert len(futuros) == 14
     assert all(a.papel == "atributo" for a in futuros)
-    assert INICIO_DA_AVALIACAO == pd.Timestamp("2000-01-03")
+    assert pd.Timestamp("2000-01-03") == INICIO_DA_AVALIACAO
 
 
 def test_zerar_erros_de_ajuste_so_mexe_nos_saltos_impossiveis():

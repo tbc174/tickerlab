@@ -241,12 +241,11 @@ class Rede:
         self, z: np.ndarray, linhas: np.ndarray, contexto: dict
     ) -> torch.Tensor:
         self.modelo.eval()
-        partes = []
         with torch.no_grad():
-            for inicio in range(0, len(linhas), 4096):
-                partes.append(
-                    self.modelo(self._lote(z, linhas[inicio : inicio + 4096], contexto))
-                )
+            partes = [
+                self.modelo(self._lote(z, linhas[inicio : inicio + 4096], contexto))
+                for inicio in range(0, len(linhas), 4096)
+            ]
         return torch.cat(partes) if partes else torch.zeros(0)
 
     def prever(self, x: np.ndarray, linhas: np.ndarray, contexto: dict) -> np.ndarray:

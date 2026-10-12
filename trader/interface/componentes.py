@@ -7,6 +7,7 @@ sempre que houver 2+ séries e rótulo direto quando forem até 4, mira (crossha
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -60,10 +61,9 @@ def fonte_tabular(tamanho: int = tema.TAMANHO["corpo"], negrito: bool = False) -
     f.setPixelSize(tamanho)
     if negrito:
         f.setWeight(QFont.Weight.DemiBold)
-    try:
+    # Qt antigo não tem setFeature: a Segoe UI já usa algarismos tabulares por padrão
+    with contextlib.suppress(AttributeError):
         f.setFeature(QFont.Tag("tnum"), 1)
-    except AttributeError:  # Qt antigo: Segoe UI já usa algarismos tabulares por padrão
-        pass
     return f
 
 

@@ -57,9 +57,9 @@ def _pontuar(ambiente, i, avaliar):
 
 
 def test_datas_do_criterio_aprovado():
-    assert h.FIM_DO_DESENVOLVIMENTO == pd.Timestamp("2023-09-08")
-    assert h.INICIO_DO_HOLDOUT == pd.Timestamp("2023-10-10")
-    assert h.FIM_DO_HOLDOUT == pd.Timestamp("2026-10-09")
+    assert pd.Timestamp("2023-09-08") == h.FIM_DO_DESENVOLVIMENTO
+    assert pd.Timestamp("2023-10-10") == h.INICIO_DO_HOLDOUT
+    assert pd.Timestamp("2026-10-09") == h.FIM_DO_HOLDOUT
     expurgo = pd.bdate_range("2023-09-09", "2023-10-09")
     assert 20 <= len(expurgo) <= 22  # ~21 pregões descartados
 
