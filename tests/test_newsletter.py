@@ -184,7 +184,10 @@ def test_estudio_gera_o_pdf_da_newsletter(banco):
     app.run()
     app = ir_para(app, "relatorio")
     assert not app.exception
-    assert app.selectbox(key="relatorio_newsletter_lista").value == research.NOME_DA_DEMONSTRACAO
+    assert (
+        app.selectbox(key="relatorio_newsletter_lista").value
+        == research.NOME_DA_DEMONSTRACAO
+    )
     app.button(key="gerar_pdf").click().run()
     assert not app.exception and not app.error
     gerado = app.session_state["relatorio_gerado"]
