@@ -536,3 +536,35 @@ def _formatar_parametro(chave, valor):
     if isinstance(valor, float):
         return f"{valor:g}".replace(".", ",")
     return ROTULOS_DAS_OPCOES.get(valor, str(valor))
+
+
+METRICAS_EM_PORCENTAGEM_COM_SINAL = {
+    "Retorno total",
+    "Retorno anualizado",
+    "Expectativa por operação",
+}
+
+
+METRICAS_EM_PORCENTAGEM = {
+    "Chance de não ser sorte",
+    "Volatilidade anual",
+    "Maior queda",
+    "Exposição média",
+    "Taxa de acerto",
+}
+
+
+METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
+
+
+def formatar_metrica(nome, valor):
+    """Escolhe o formato de cada métrica do backtest (porcentagem, razão ou contagem)."""
+    if pd.isna(valor):
+        return "—"
+    if nome in METRICAS_EM_PORCENTAGEM_COM_SINAL:
+        return formatar_pct(valor, com_sinal=True)
+    if nome in METRICAS_EM_PORCENTAGEM:
+        return formatar_pct(valor)
+    if nome in METRICAS_INTEIRAS:
+        return f"{int(valor)}"
+    return f"{valor:.2f}".replace(".", ",")
