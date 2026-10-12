@@ -133,7 +133,9 @@ class Registro:
     ) -> int:
         """Anota a tentativa e devolve o id. A mesma especificação na mesma fase não conta de novo."""
         if familia not in self.familias:
-            raise ValueError(f"Família desconhecida: {familia}. Use uma de {self.familias}.")
+            raise ValueError(
+                f"Família desconhecida: {familia}. Use uma de {self.familias}."
+            )
         if fase not in FASES:
             raise ValueError(f"Fase desconhecida: {fase}. Use uma de {FASES}.")
         if not nome.strip():

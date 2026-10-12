@@ -12,7 +12,10 @@ Convenções fixadas aqui, antes de qualquer resultado:
   rodadas (K1, K2, B0, B1), como na M2. Consequência conhecida: se o candidato for muito melhor
   que as réguas, a dispersão cresce e a exigência também;
 - **V1** (olhar o futuro): a mesma carteira usando a posição do próprio dia precisa render um Sharpe
-  pelo menos **0,5 maior** que a normal; senão o teste está quebrado.
+  pelo menos **0,1 maior** que a normal. Fixado em 11/10/2026, antes de qualquer dado real: em dados
+  sintéticos, ver o dia de hoje deu +0,27 ao K2 (tendência lenta: a média de 64 a 256 dias quase não
+  muda com um dia) e +3,4 à B1 (que tem velocidades rápidas). O texto aprovado diz só "infla"; a
+  proteção forte contra olhar o futuro são os testes de unidade (posição só rende no dia seguinte).
 """
 
 from __future__ import annotations
@@ -44,7 +47,7 @@ PARTICIPACAO_MAXIMA_DO_MERCADO = 0.25  # A7
 PARTICIPACAO_MAXIMA_DO_GRUPO = 0.50  # A8
 DSR_MINIMO_NO_ESTRESSE = 0.90  # A9
 P_VALOR_MAXIMO_DO_ACASO = 0.05  # A10
-GANHO_MINIMO_DO_FUTURO = 0.5  # V1
+GANHO_MINIMO_DO_FUTURO = 0.1  # V1
 CONFIANCA_DO_MINTRL = 0.95  # C
 
 

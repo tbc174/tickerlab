@@ -151,8 +151,13 @@ def simular(
     tabelas: dict[str, pd.DataFrame],
     previsoes: dict[str, pd.Series],
     custos: Custos = CUSTOS_BASE,
+    olhar_o_futuro: bool = False,
 ) -> Resultado:
-    """Carteira inteira. `tabelas` de `retornos.montar` e `previsoes` de `regras.previsao`, por código."""
+    """Carteira inteira. `tabelas` de `retornos.montar` e `previsoes` de `regras.previsao`, por código.
+
+    `olhar_o_futuro=True` só existe para a verificação V1: a posição decidida no fechamento rende no
+    PRÓPRIO dia (vazamento proposital), o que precisa inflar o resultado.
+    """
     datas = calendario(tabelas)
     retorno_total = pd.DataFrame({c: t["total"] for c, t in tabelas.items()}).reindex(
         datas
@@ -176,7 +181,7 @@ def simular(
         previsao = previsoes[codigo].reindex(datas).ffill().fillna(0.0)
         ideal = previsao / PREVISAO_MEDIA * escala
         posicao = aplicar_buffer(ideal, escala, LARGURA_DO_BUFFER)
-        ontem = posicao.shift(1).fillna(0.0)
+        ontem = posicao if olhar_o_futuro else posicao.shift(1).fillna(0.0)
         giro = posicao.diff().abs().fillna(posicao.abs())
         resultado = (
             ontem * retorno_total[codigo].fillna(0.0)
