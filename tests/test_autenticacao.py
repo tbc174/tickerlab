@@ -7,6 +7,7 @@ from src.autenticacao import (
     IdentidadeDoGoogle,
     LoginInvalidoError,
     emails_de_admin,
+    esta_em_producao,
     ler_identidade,
     login_esta_configurado,
     registrar_login,
@@ -56,6 +57,21 @@ def test_login_nao_configurado_se_ler_os_segredos_falha():
 
 def test_chave_vazia_nao_conta():
     assert not login_esta_configurado({"auth": {**AUTH_COMPLETO, "client_id": ""}})
+
+
+# --- esta_em_producao ---
+@pytest.mark.parametrize(
+    ("ambiente", "esperado"),
+    [
+        ({"TICKERLAB_AMBIENTE": "producao"}, True),
+        ({"TICKERLAB_AMBIENTE": " Producao "}, True),
+        ({"TICKERLAB_AMBIENTE": "desenvolvimento"}, False),
+        ({"TICKERLAB_AMBIENTE": ""}, False),
+        ({}, False),
+    ],
+)
+def test_producao_so_com_a_variavel_certa(ambiente, esperado):
+    assert esta_em_producao(ambiente) is esperado
 
 
 # --- emails_de_admin ---
