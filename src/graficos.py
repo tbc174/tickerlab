@@ -3,8 +3,10 @@
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 from plotly.subplots import make_subplots
 
+from src import marca
 from src.indicadores import (
     NOMES_DOS_MESES,
     PiorDrawdown,
@@ -12,18 +14,53 @@ from src.indicadores import (
     calcular_media_por_mes,
 )
 
-COR_AZUL = "#2962ff"  # cor principal do TickerLab
-COR_AZUL_CLARO = "#7aa2ff"
-COR_ALTA = "#26a69a"  # verde só para alta
-COR_QUEDA = "#ef5350"  # vermelho só para queda
-COR_INDICE = "#9aa0a6"  # índices em cinza
-CORES_OUTROS_ATIVOS = [
-    "#a78bfa",
-    "#2dd4bf",
-    "#f472b6",
-    "#94a3b8",
-]  # violeta, verde-água, rosa, azul-cinza
-CORES_MEDIAS = ["#a78bfa", "#f472b6", "#94a3b8"]  # violeta, rosa e cinza (sem laranja)
+# Cores da identidade TickerLab (src/marca.py). A série principal usa o azul claro da marca, que
+# lê melhor sobre o fundo escuro; o azul forte fica para botões e seleção.
+COR_AZUL = marca.SERIES[0]  # série principal
+COR_AZUL_CLARO = marca.AZUL_TEXTO
+COR_BOTAO = marca.AZUL  # botão ativo do seletor de período
+COR_ALTA = marca.ALTA  # verde só para alta
+COR_QUEDA = marca.QUEDA  # vermelho só para queda
+COR_INDICE = marca.TEXTO_APAGADO  # índices em cinza
+CORES_OUTROS_ATIVOS = list(marca.SERIES[1:5])  # âmbar, verde-água, rosa, amarelo
+CORES_MEDIAS = [
+    marca.SERIES[5],
+    marca.SERIES[3],
+    marca.SERIES[2],
+]  # violeta, rosa, verde-água
+PREENCHIMENTO_AZUL = "rgba(110, 149, 255, 0.22)"
+PREENCHIMENTO_QUEDA = "rgba(240, 82, 91, 0.22)"
+# mapa de calor: queda (vermelho) → zero (superfície) → alta (verde)
+ESCALA_QUEDA_ALTA = [[0, "#b8323b"], [0.5, marca.SUPERFICIE], [1, "#1d9567"]]
+LINHA_DE_REFERENCIA = "rgba(232, 236, 244, 0.30)"
+
+# Tema Plotly "tickerlab": fonte e cores da marca em todos os gráficos de uma vez
+TEMA = "tickerlab"
+pio.templates[TEMA] = go.layout.Template(pio.templates["plotly_dark"])
+pio.templates[TEMA].layout.update(
+    font={"family": f"{marca.FONTE}, sans-serif", "color": marca.TEXTO, "size": 13},
+    colorway=list(marca.SERIES),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    hoverlabel={
+        "bgcolor": marca.DESTAQUE,
+        "bordercolor": marca.LINHA_FORTE,
+        "font": {"family": f"{marca.FONTE}, sans-serif", "color": marca.TEXTO},
+    },
+    legend={"font": {"color": marca.TEXTO_APAGADO}},
+)
+pio.templates[TEMA].layout.xaxis.update(
+    gridcolor="rgba(148, 163, 190, 0.06)",
+    linecolor=marca.LINHA,
+    zerolinecolor=marca.LINHA,
+    tickfont={"color": marca.TEXTO_APAGADO},
+)
+pio.templates[TEMA].layout.yaxis.update(
+    gridcolor="rgba(148, 163, 190, 0.10)",
+    linecolor=marca.LINHA,
+    zerolinecolor=marca.LINHA,
+    tickfont={"color": marca.TEXTO_APAGADO},
+)
 ALTURA_PADRAO = 320
 ALTURA_PRECO = 520
 TIPOS_DE_GRAFICO = ("linha", "velas")
@@ -56,7 +93,7 @@ def _estilo_base(figura: go.Figure, titulo: str | None, altura: int) -> None:
     """Visual escuro e minimalista do app, com a interação padrão (zoom e linha-guia)."""
     figura.update_layout(
         title={"text": titulo, "font": {"size": 15}} if titulo else None,
-        template="plotly_dark",
+        template=TEMA,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=altura,
@@ -66,14 +103,12 @@ def _estilo_base(figura: go.Figure, titulo: str | None, altura: int) -> None:
         showlegend=False,
     )
     figura.update_xaxes(
-        gridcolor="rgba(255,255,255,0.04)",
         showspikes=True,  # linha vertical que acompanha o cursor
         spikemode="across",
         spikesnap="cursor",
         spikethickness=1,
-        spikecolor="rgba(255,255,255,0.35)",
+        spikecolor=LINHA_DE_REFERENCIA,
     )
-    figura.update_yaxes(gridcolor="rgba(255,255,255,0.08)")
 
 
 def _seletor_de_periodo(a_direita: bool = False) -> dict:
@@ -84,8 +119,8 @@ def _seletor_de_periodo(a_direita: bool = False) -> dict:
     return {
         **posicao,
         "buttons": _BOTOES_DE_PERIODO,
-        "bgcolor": "rgba(255,255,255,0.06)",
-        "activecolor": COR_AZUL,
+        "bgcolor": marca.DESTAQUE,
+        "activecolor": COR_BOTAO,
         "font": {"size": 12},
     }
 
@@ -109,7 +144,7 @@ def _textos_das_velas(dados: pd.DataFrame, fechamento_anterior: pd.Series) -> li
     """Texto da dica do mouse em cada vela, em português, com a variação do dia."""
     variacao = dados["Close"] / fechamento_anterior - 1
     textos = []
-    for (_, linha), var in zip(dados.iterrows(), variacao):
+    for (_, linha), var in zip(dados.iterrows(), variacao, strict=True):
         texto_var = "—" if pd.isna(var) else f"{var:+.2%}".replace(".", ",")
         textos.append(
             f"Abertura: {_numero_br(linha['Open'])}<br>"
@@ -217,7 +252,7 @@ def criar_grafico_preco(
         text=_numero_br(dados["Close"].iloc[-1]),
         showarrow=False,
         xanchor="left",
-        bgcolor=COR_AZUL,
+        bgcolor=COR_BOTAO,  # texto branco: o azul forte dá mais contraste
         font={"color": "white", "size": 11},
         row=1,
         col=1,
@@ -261,7 +296,7 @@ def criar_grafico_drawdown(
             mode="lines",
             fill="tozeroy",
             line={"color": COR_QUEDA, "width": 1.5},
-            fillcolor="rgba(239, 83, 80, 0.25)",
+            fillcolor=PREENCHIMENTO_QUEDA,
             hovertemplate="%{y:.2%}",
             name="Drawdown",
         )
@@ -336,7 +371,7 @@ def criar_mapa_de_calor_mensal(tabela: pd.DataFrame) -> go.Figure:
             textfont={"size": 12},
             zmin=-limite,
             zmax=limite,
-            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            colorscale=ESCALA_QUEDA_ALTA,
             xgap=2,
             ygap=2,
             showscale=False,
@@ -344,7 +379,7 @@ def criar_mapa_de_calor_mensal(tabela: pd.DataFrame) -> go.Figure:
         )
     )
     figura.update_layout(
-        template="plotly_dark",
+        template=TEMA,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=90 + 38 * len(grade),
@@ -369,7 +404,7 @@ def criar_grafico_comparacao(
     nomes = nomes or {}
     figura = _figura_base("Desempenho (base 100 no primeiro dia em comum)")
     figura.update_yaxes(tickformat=",.0f")
-    figura.add_hline(y=100, line_dash="dot", line_color="rgba(255,255,255,0.25)")
+    figura.add_hline(y=100, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
 
     proxima_cor = 0
     for ticker in base100.columns:
@@ -433,7 +468,7 @@ def criar_mapa_de_calor_de_parametros(
             textfont={"size": 12},
             zmin=-limite,
             zmax=limite,
-            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            colorscale=ESCALA_QUEDA_ALTA,
             xgap=2,
             ygap=2,
             showscale=False,
@@ -462,7 +497,7 @@ def criar_mapa_de_calor_de_parametros(
                 )
             )
     figura.update_layout(
-        template="plotly_dark",
+        template=TEMA,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=max(150, 90 + 46 * len(linhas)),
@@ -499,8 +534,8 @@ def criar_grafico_cone_monte_carlo(
     )
     figura.update_xaxes(title="Número da operação")
     for baixo, alto, rotulo, cor in (
-        ("p5", "p95", "5% a 95%", "rgba(154,160,166,0.18)"),
-        ("p25", "p75", "25% a 75%", "rgba(154,160,166,0.32)"),
+        ("p5", "p95", "5% a 95%", "rgba(147, 160, 184, 0.18)"),
+        ("p25", "p75", "25% a 75%", "rgba(147, 160, 184, 0.32)"),
     ):
         figura.add_trace(
             go.Scatter(
@@ -605,7 +640,9 @@ def criar_grafico_risco_retorno(
             customdata=[
                 [_pct_br(v), _pct_br(r)]
                 for v, r in zip(
-                    pontos["Volatilidade anual"], pontos["Retorno anualizado"]
+                    pontos["Volatilidade anual"],
+                    pontos["Retorno anualizado"],
+                    strict=True,
                 )
             ],
             hovertemplate="%{text}<br>Risco: %{customdata[0]}<br>Retorno: %{customdata[1]}<extra></extra>",
@@ -628,16 +665,7 @@ def criar_grafico_pesos(pesos: pd.DataFrame) -> go.Figure:
     figura = _figura_base("Composição da carteira")
     figura.update_yaxes(tickformat=".0%", range=[0, 1])
     figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
-    cores = [
-        COR_AZUL,
-        "#a78bfa",
-        "#f472b6",
-        COR_ALTA,
-        "#38bdf8",
-        "#94a3b8",
-        COR_AZUL_CLARO,
-        "#facc15",
-    ]
+    cores = [*marca.SERIES, COR_INDICE, COR_AZUL_CLARO]
     for i, coluna in enumerate(pesos.columns):
         figura.add_trace(
             go.Scatter(
@@ -670,7 +698,7 @@ def criar_grafico_diferenca_das_janelas(diferenca: pd.Series) -> go.Figure:
         raise ValueError("Não há janelas para mostrar.")
     figura = _figura_base("Aporte único menos aportes parcelados (por data de início)")
     figura.update_yaxes(tickformat="+.0%")
-    figura.add_hline(y=0, line_color="rgba(255,255,255,0.35)")
+    figura.add_hline(y=0, line_color=LINHA_DE_REFERENCIA)
     figura.add_trace(
         go.Scatter(
             x=diferenca.index,
@@ -678,7 +706,7 @@ def criar_grafico_diferenca_das_janelas(diferenca: pd.Series) -> go.Figure:
             mode="lines",
             fill="tozeroy",
             line={"color": COR_AZUL, "width": 1.5},
-            fillcolor="rgba(41,98,255,0.25)",
+            fillcolor=PREENCHIMENTO_AZUL,
             hovertemplate="%{y:+.1%}",
         )
     )
@@ -693,9 +721,7 @@ def criar_grafico_curvas_de_capital(
         raise ValueError("Não há curvas para mostrar.")
     figura = _figura_base("Evolução do capital (R$)")
     figura.update_yaxes(tickformat=",.0f", tickprefix="R$ ")
-    figura.add_hline(
-        y=capital_inicial, line_dash="dot", line_color="rgba(255,255,255,0.25)"
-    )
+    figura.add_hline(y=capital_inicial, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
     for nome, curva in curvas.items():
         em_destaque = nome == destaque
         figura.add_trace(
@@ -801,9 +827,9 @@ def criar_grafico_z_do_par(
     if z.dropna().empty:
         raise ValueError("Não há z-score para mostrar.")
     figura = _figura_base("Distância do par em relação ao normal (z-score)")
-    figura.add_hline(y=0, line_color="rgba(255,255,255,0.35)")
+    figura.add_hline(y=0, line_color=LINHA_DE_REFERENCIA)
     for nivel in (entrada, -entrada):
-        figura.add_hline(y=nivel, line_dash="dot", line_color="rgba(255,255,255,0.35)")
+        figura.add_hline(y=nivel, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
     for nivel in (stop, -stop):
         figura.add_hline(y=nivel, line_dash="dash", line_color=COR_QUEDA)
     figura.add_trace(
@@ -865,7 +891,7 @@ def criar_mapa_de_calor_de_correlacao(matriz: pd.DataFrame) -> go.Figure:
             textfont={"size": 12},
             zmin=-1,
             zmax=1,
-            colorscale=[[0, "#b71c1c"], [0.5, "#161616"], [1, "#1b8f6a"]],
+            colorscale=ESCALA_QUEDA_ALTA,
             xgap=2,
             ygap=2,
             showscale=False,
@@ -873,7 +899,7 @@ def criar_mapa_de_calor_de_correlacao(matriz: pd.DataFrame) -> go.Figure:
         )
     )
     figura.update_layout(
-        template="plotly_dark",
+        template=TEMA,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=140 + 55 * len(nomes),
@@ -891,7 +917,7 @@ def criar_grafico_beta_movel(beta: pd.Series, janela: int) -> go.Figure:
         raise ValueError("Não há beta para mostrar.")
     figura = _figura_base(f"Beta móvel ({janela} dias)")
     figura.update_yaxes(tickformat=".2f")
-    figura.add_hline(y=1, line_dash="dot", line_color="rgba(255,255,255,0.35)")
+    figura.add_hline(y=1, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
     figura.add_trace(
         go.Scatter(
             x=beta.index,
@@ -1037,4 +1063,133 @@ def criar_grafico_operacoes_no_preco(
             )
         )
     figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_fundamentos_anuais(
+    anual: pd.DataFrame, simbolo: str = "R$"
+) -> go.Figure:
+    """Receita e lucro de cada exercício, em bilhões da moeda do balanço, lado a lado."""
+    if anual.empty:
+        raise ValueError("Não há demonstrações anuais para mostrar.")
+    figura = _figura_base(f"Receita e lucro por ano ({simbolo} bilhões)")
+    figura.update_yaxes(tickformat=",.0f")  # bilhões, não porcentagem
+    anos = [str(a) for a in anual.index]
+    for nome, coluna, cor in (
+        ("Receita", "receita", marca.SERIES[0]),
+        ("Lucro dos acionistas", "lucro", marca.SERIES[1]),
+    ):
+        figura.add_trace(
+            go.Bar(
+                x=anos,
+                y=anual[coluna] / 1e9,
+                name=nome,
+                marker={"color": cor},
+                hovertemplate=f"{nome}: {simbolo} %{{y:,.1f}} bi<extra></extra>",
+            )
+        )
+    figura.update_layout(barmode="group", showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
+    """Compras (para cima) e vendas (para baixo) de pessoas de dentro, por mês de entrega."""
+    if resumo.empty:
+        raise ValueError("Não há negociações para mostrar.")
+    simbolo = {"BRL": "R$", "USD": "US$"}.get(moeda, moeda)
+    figura = _figura_base(
+        f"Compras e vendas de pessoas de dentro por mês ({simbolo} milhões)"
+    )
+    figura.update_yaxes(tickformat=",.1f")  # milhões, não porcentagem
+    for nome, coluna, cor in (
+        ("Compras", "compras", marca.ALTA),
+        ("Vendas", "vendas", marca.QUEDA),
+    ):
+        figura.add_trace(
+            go.Bar(
+                x=resumo["mes"],
+                y=resumo[coluna] / 1e6,
+                name=nome,
+                marker={"color": cor},
+                hovertemplate=f"{nome}: {simbolo} %{{y:,.1f}} mi<extra></extra>",
+            )
+        )
+    figura.update_layout(barmode="relative", showlegend=True, hovermode="x unified")
+    figura.update_xaxes(tickformat="%m/%Y")
+    return figura
+
+
+def criar_grafico_detentores(historico: pd.DataFrame, quem: str) -> go.Figure:
+    """A fatia dos fundos (ou gestores) que informaram e têm a ação e, na B3, a dos vendidos."""
+    if historico.empty:
+        raise ValueError("Não há histórico para mostrar.")
+    figura = _figura_base(f"% dos {quem} que informaram e têm a ação")
+    series = [("fatia", f"{quem.capitalize()} comprados", marca.SERIES[0])]
+    if historico["vendidos"].sum() > 0:
+        series.append(("fatia_vendidos", f"{quem.capitalize()} vendidos", marca.QUEDA))
+    for coluna, nome, cor in series:
+        figura.add_trace(
+            go.Scatter(
+                x=historico["competencia"],
+                y=historico[coluna],
+                name=nome,
+                mode="lines+markers",
+                line={"color": cor},
+                hovertemplate=f"{nome}: %{{y:.1%}}<extra></extra>",
+            )
+        )
+    figura.update_layout(showlegend=True, hovermode="x unified")
+    figura.update_xaxes(tickformat="%m/%Y")
+    return figura
+
+
+def criar_grafico_adx(adx: pd.DataFrame, nivel: int) -> go.Figure:
+    """ADX (força da tendência) com +DI e -DI (direção) e a linha do nível de tendência."""
+    dados = adx.dropna(subset=["adx"])
+    if dados.empty:
+        raise ValueError("Não há ADX para mostrar.")
+    figura = _figura_base("Força da tendência (ADX)")
+    figura.update_yaxes(tickformat=".0f", range=[0, 100])
+    figura.add_hline(y=nivel, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
+    for coluna, nome, cor, largura in (
+        ("adx", "ADX", COR_AZUL, 2.5),
+        ("mais_di", "+DI (força de alta)", marca.ALTA, 1.2),
+        ("menos_di", "-DI (força de queda)", marca.QUEDA, 1.2),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=dados.index, y=dados[coluna], name=nome, mode="lines",
+                line={"color": cor, "width": largura},
+                hovertemplate=f"{nome}: %{{y:.1f}}<extra></extra>",
+            )
+        )  # fmt: skip
+    figura.update_layout(showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_obv(obv: pd.Series, volume_relativo: pd.Series) -> go.Figure:
+    """OBV (linha, eixo da esquerda) e volume relativo (barras, eixo da direita)."""
+    if obv.dropna().empty:
+        raise ValueError("Não há volume para mostrar.")
+    figura = make_subplots(specs=[[{"secondary_y": True}]])
+    _estilo_base(figura, "Saldo de volume (OBV) e volume relativo", ALTURA_PADRAO)
+    figura.update_xaxes(rangeselector=_seletor_de_periodo(a_direita=True))
+    figura.add_trace(
+        go.Bar(
+            x=volume_relativo.index, y=volume_relativo, name="Volume relativo",
+            marker={"color": LINHA_DE_REFERENCIA}, opacity=0.5,
+            hovertemplate="volume relativo %{y:.2f}×<extra></extra>",
+        ),
+        secondary_y=True,
+    )  # fmt: skip
+    figura.add_trace(
+        go.Scatter(
+            x=obv.index, y=obv, name="OBV", mode="lines",
+            line={"color": COR_AZUL, "width": 2}, hovertemplate="OBV %{y:,.0f}<extra></extra>",
+        ),
+        secondary_y=False,
+    )  # fmt: skip
+    figura.update_yaxes(tickformat="~s", secondary_y=False)
+    figura.update_yaxes(tickformat=".1f", secondary_y=True, showgrid=False)
+    figura.update_layout(showlegend=True, hovermode="x unified")
     return figura

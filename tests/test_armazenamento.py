@@ -47,12 +47,15 @@ class YahooFalso:
         self.historico = historico
         self.pedidos = []
         self.fora_do_ar = False
+        self.so_o_pedido_completo_falha = (
+            False  # o incremental responde, o completo não
+        )
 
     def __call__(self, ticker, **pedido):
         self.pedidos.append(
             {k: v for k, v in pedido.items() if k in ("period", "start")}
         )
-        if self.fora_do_ar:
+        if self.fora_do_ar or (self.so_o_pedido_completo_falha and "period" in pedido):
             raise ConnectionError("Yahoo fora do ar")
         dados = self.historico
         if "start" in pedido:
@@ -91,11 +94,25 @@ def test_salvar_de_novo_atualiza_em_vez_de_duplicar():
     assert len(lido) == 5 and (lido["Close"] == 99.0).all()
 
 
-def test_tickers_nao_se_misturam_e_apagar_so_apaga_um():
-    ar.salvar_precos("AAA", _precos("2026-01-05", "2026-01-09"))
+def test_substituir_troca_o_historico_inteiro_de_um_ticker_so():
+    ar.salvar_precos("AAA", _precos("2026-01-05", "2026-01-30"))
     ar.salvar_precos("BBB", _precos("2026-01-05", "2026-01-07"))
-    ar.apagar_precos("AAA")
-    assert ar.ler_precos("AAA").empty and len(ar.ler_precos("BBB")) == 3
+    novo = _precos("2026-01-19", "2026-02-06", nivel=50.0)
+    assert ar.substituir_precos("AAA", novo, HOJE) == len(novo)
+    pd.testing.assert_frame_equal(ar.ler_precos("AAA"), novo, check_freq=False)
+    assert len(ar.ler_precos("BBB")) == 3
+    assert ar.consulta_recente("AAA", HOJE)
+
+
+def test_substituir_com_dados_ruins_nao_apaga_o_guardado():
+    guardado = _precos("2026-01-05", "2026-01-30")
+    ar.salvar_precos("AAA", guardado)
+    sem_datas = guardado.reset_index(drop=True)  # índice de números: não vira data
+    with pytest.raises(AttributeError):
+        ar.substituir_precos("AAA", sem_datas, HOJE)
+    with pytest.raises(ValueError, match="vazio"):
+        ar.substituir_precos("AAA", guardado.iloc[:0], HOJE)
+    pd.testing.assert_frame_equal(ar.ler_precos("AAA"), guardado, check_freq=False)
 
 
 def test_volume_vazio_volta_como_vazio_e_dados_vazios_nao_gravam():
@@ -182,6 +199,38 @@ def test_preco_reajustado_apaga_o_guardado_e_baixa_tudo_de_novo(yahoo):
     assert guardado["Close"].iloc[-1] == pytest.approx(
         yahoo.historico["Close"].iloc[-1]
     )
+
+
+def test_reajuste_com_o_yahoo_caindo_no_meio_nao_apaga_o_guardado(yahoo, caplog):
+    # regressão do achado A-01 (Master v3): o guardado era apagado antes do download completo
+    baixar_dados("PETR4", "2y", agora=HOJE)
+    antes = ar.ler_precos("PETR4.SA")
+    yahoo.historico = yahoo.historico * 0.9  # dividendo: o passado inteiro mudou
+    yahoo.so_o_pedido_completo_falha = True
+    with caplog.at_level(logging.WARNING):
+        dados = baixar_dados("PETR4", "2y", agora=HOJE + timedelta(hours=5))
+    assert yahoo.pedidos[-1] == {"period": "2y"}  # tentou baixar de novo
+    pd.testing.assert_frame_equal(ar.ler_precos("PETR4.SA"), antes)  # nada misturado
+    assert dados.attrs["origem"] == "cache_antigo"
+    assert dados["Close"].iloc[-1] == pytest.approx(antes["Close"].iloc[-1])
+    assert "mantendo o guardado" in caplog.text
+    # a consulta não conta como feita: o próximo pedido tenta de novo e, com o Yahoo de volta,
+    # troca o histórico inteiro pelo reajustado
+    yahoo.so_o_pedido_completo_falha = False
+    dados = baixar_dados("PETR4", "2y", agora=HOJE + timedelta(hours=5, minutes=1))
+    assert "origem" not in dados.attrs
+    assert ar.ler_precos("PETR4.SA")["Close"].iloc[0] == pytest.approx(
+        dados["Close"].iloc[0]
+    )
+
+
+def test_reajuste_com_resposta_curta_nao_troca_o_guardado(yahoo):
+    baixar_dados("PETR4", "2y", agora=HOJE)
+    antes = ar.ler_precos("PETR4.SA")
+    yahoo.historico = (yahoo.historico * 0.9).iloc[-30:]  # o Yahoo só devolveu 30 dias
+    dados = baixar_dados("PETR4", "2y", agora=HOJE + timedelta(hours=5))
+    pd.testing.assert_frame_equal(ar.ler_precos("PETR4.SA"), antes)
+    assert dados.attrs["origem"] == "cache_antigo" and len(dados) > 450
 
 
 def test_yahoo_fora_do_ar_usa_o_historico_guardado_e_avisa(yahoo, caplog):

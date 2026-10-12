@@ -9,7 +9,8 @@ app recria tudo e baixa de novo.
 
 Cuidado com os preços ajustados: quando uma empresa paga dividendo ou desdobra ações, o Yahoo
 reajusta o passado inteiro. Por isso, ao pedir só os dias que faltam, o app compara os dias que
-se repetem; se os preços mudaram, o histórico guardado é jogado fora e baixado de novo.
+se repetem; se os preços mudaram, baixa o histórico inteiro de novo e só então troca o guardado
+(`substituir_precos`, numa transação). Se o download falhar, o guardado fica como estava.
 """
 
 import logging
@@ -67,11 +68,21 @@ def _conectar(caminho: Path | None) -> sqlite3.Connection:
     return conexao
 
 
-def salvar_precos(ticker: str, dados: pd.DataFrame, caminho: Path | None = None) -> int:
-    """Grava (ou atualiza) os dias recebidos. Devolve quantas linhas foram gravadas."""
-    if dados.empty:
-        return 0
-    linhas = [
+INSERIR_PRECOS = (
+    "INSERT OR REPLACE INTO precos "
+    "(ticker, data, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)"
+)
+REGISTRAR_CONSULTA = (
+    "INSERT OR REPLACE INTO consultas (ticker, consultado_em) VALUES (?, ?)"
+)
+
+
+def _instante(momento: datetime) -> str:
+    return momento.isoformat(timespec="seconds")
+
+
+def _linhas_do_banco(ticker: str, dados: pd.DataFrame) -> list[tuple]:
+    return [
         (
             ticker,
             data.strftime("%Y-%m-%d"),
@@ -79,12 +90,15 @@ def salvar_precos(ticker: str, dados: pd.DataFrame, caminho: Path | None = None)
         )
         for data, linha in dados.reindex(columns=COLUNAS).iterrows()
     ]
+
+
+def salvar_precos(ticker: str, dados: pd.DataFrame, caminho: Path | None = None) -> int:
+    """Grava (ou atualiza) os dias recebidos. Devolve quantas linhas foram gravadas."""
+    if dados.empty:
+        return 0
+    linhas = _linhas_do_banco(ticker, dados)
     with closing(_conectar(caminho)) as conexao, conexao:
-        conexao.executemany(
-            "INSERT OR REPLACE INTO precos "
-            "(ticker, data, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            linhas,
-        )
+        conexao.executemany(INSERIR_PRECOS, linhas)
     return len(linhas)
 
 
@@ -104,10 +118,26 @@ def ler_precos(ticker: str, caminho: Path | None = None) -> pd.DataFrame:
     return tabela
 
 
-def apagar_precos(ticker: str, caminho: Path | None = None) -> None:
+def substituir_precos(
+    ticker: str,
+    dados: pd.DataFrame,
+    agora: datetime | None = None,
+    caminho: Path | None = None,
+) -> int:
+    """Troca o histórico inteiro do ticker pelo recebido, numa transação só.
+
+    Ou o histórico novo fica inteiro no lugar do antigo, ou (se algo falhar no meio) o antigo
+    continua lá: nunca sobra um ticker sem histórico nem um histórico misturado.
+    """
+    if dados.empty:
+        raise ValueError("Histórico vazio: o guardado não pode ser trocado por nada.")
+    linhas = _linhas_do_banco(ticker, dados)  # antes da transação: dado ruim falha aqui
+    agora = agora or agora_utc()
     with closing(_conectar(caminho)) as conexao, conexao:
         conexao.execute("DELETE FROM precos WHERE ticker = ?", (ticker,))
-        conexao.execute("DELETE FROM consultas WHERE ticker = ?", (ticker,))
+        conexao.executemany(INSERIR_PRECOS, linhas)
+        conexao.execute(REGISTRAR_CONSULTA, (ticker, _instante(agora)))
+    return len(linhas)
 
 
 def registrar_consulta(
@@ -115,10 +145,7 @@ def registrar_consulta(
 ) -> None:
     agora = agora or agora_utc()
     with closing(_conectar(caminho)) as conexao, conexao:
-        conexao.execute(
-            "INSERT OR REPLACE INTO consultas (ticker, consultado_em) VALUES (?, ?)",
-            (ticker, agora.isoformat(timespec="seconds")),
-        )
+        conexao.execute(REGISTRAR_CONSULTA, (ticker, _instante(agora)))
 
 
 def consulta_recente(

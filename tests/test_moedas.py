@@ -97,4 +97,4 @@ def test_bitcoin_de_exemplo_vem_so_com_dias_uteis_e_ao_ritmo_de_252_por_ano():
 
 def test_dolar_de_exemplo_esta_em_reais_por_dolar():
     dolar = carregar_exemplo("USDBRL=X", "5y")["Close"]
-    assert 3 < dolar.min() and dolar.max() < 10
+    assert dolar.min() > 3 and dolar.max() < 10

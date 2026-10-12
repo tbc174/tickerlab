@@ -18,7 +18,7 @@ def test_favoritos_e_preferencias_voltam_na_proxima_sessao(banco, monkeypatch):
     app = abrir_app("visao_geral")
     assert not app.exception
     botao(app, "Favoritar PETR4.SA").click().run()
-    app.selectbox(key="periodo").select("5y").run()
+    app.button_group(key="periodo").set_value("5y").run()
     ana = id_do_usuario(banco, "ana")
     with banco.connect() as conexao:
         assert repo.listar_favoritos(conexao, ana) == ["PETR4.SA"]
@@ -60,7 +60,7 @@ def test_link_compartilhado_nao_apaga_os_favoritos_da_conta(banco, monkeypatch):
 def test_campos_sobrevivem_a_troca_de_pagina(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app("visao_geral")
-    app.text_input(key="ticker").input("VALE3.SA").run()
+    app.selectbox(key="ticker").set_value("VALE3.SA").run()
     ir_para(app, "planos")
     ir_para(app, "backtest")
     assert app.session_state["ticker"] == "VALE3.SA"

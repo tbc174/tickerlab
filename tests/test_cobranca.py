@@ -254,6 +254,57 @@ def test_evento_antigo_que_chega_atrasado_e_ignorado(conexao, ana):
     assert buscar_assinatura(conexao, ana.id).status == "canceled"
 
 
+def test_ativo_no_mesmo_segundo_do_cancelamento_nao_reativa_o_pro(conexao, ana):
+    # regressão do achado A-02 (Master v3): o empate no segundo deixava passar o "active"
+    processar_evento(conexao, _checkout(ana, criado=99))
+    criado = "customer.subscription.created"
+    processar_evento(conexao, _assinatura("evt_a", criado, "active", 99))
+    apagada = "customer.subscription.deleted"
+    processar_evento(conexao, _assinatura("evt_b", apagada, "canceled", 100))
+    atualizada = "customer.subscription.updated"
+    processar_evento(conexao, _assinatura("evt_c", atualizada, "active", 100))
+    assert _plano(conexao, ana) == "gratuito"
+    assert buscar_assinatura(conexao, ana.id).status == "canceled"
+
+
+def test_no_mesmo_segundo_em_qualquer_ordem_termina_cancelada(conexao, ana):
+    processar_evento(conexao, _checkout(ana, criado=99))
+    atualizada = "customer.subscription.updated"
+    processar_evento(conexao, _assinatura("evt_c", atualizada, "active", 100))
+    apagada = "customer.subscription.deleted"
+    processar_evento(conexao, _assinatura("evt_b", apagada, "canceled", 100))
+    assert _plano(conexao, ana) == "gratuito"
+
+
+def test_expirar_uma_assinatura_antiga_nao_tira_o_pro_da_nova(conexao, ana):
+    # N-01: um checkout ficou pendente (sub_ana) e a pessoa pagou outro (sub_nova); a
+    # pendente expira depois e não pode derrubar o Pro que a nova dá
+    processar_evento(conexao, _checkout(ana, criado=100, pagamento="unpaid"))
+    criado = "customer.subscription.created"
+    processar_evento(
+        conexao, _assinatura("evt_2", criado, "active", 150, id="sub_nova")
+    )
+    assert _plano(conexao, ana) == "pro"
+    atualizada = "customer.subscription.updated"
+    processar_evento(
+        conexao, _assinatura("evt_3", atualizada, "incomplete_expired", 200)
+    )
+    assert _plano(conexao, ana) == "pro"
+    assert buscar_assinatura(conexao, ana.id).stripe_subscription_id == "sub_nova"
+
+
+def test_assinar_de_novo_depois_de_cancelar_volta_ao_pro(conexao, ana):
+    processar_evento(conexao, _checkout(ana, criado=100))
+    apagada = "customer.subscription.deleted"
+    processar_evento(conexao, _assinatura("evt_2", apagada, "canceled", 200))
+    criado = "customer.subscription.created"
+    processar_evento(
+        conexao, _assinatura("evt_3", criado, "active", 300, id="sub_nova")
+    )
+    assert _plano(conexao, ana) == "pro"
+    assert buscar_assinatura(conexao, ana.id).stripe_subscription_id == "sub_nova"
+
+
 def test_fim_do_periodo_na_assinatura_ou_no_item(conexao, ana):
     processar_evento(conexao, _checkout(ana))
     processar_evento(

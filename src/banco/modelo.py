@@ -16,7 +16,15 @@ CONVENCAO_DE_NOMES = {
 }
 
 PAPEIS = ("usuario", "admin")
-PLANOS = ("gratuito", "pro")
+PLANOS = ("gratuito", "plus", "pro")
+TIPOS_DE_RELATORIO = (
+    "ativo",
+    "comparacao",
+    "backtest",
+    "carteira",
+    "minha_carteira",
+    "newsletter",
+)
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
@@ -57,7 +65,7 @@ usuarios = sa.Table(
     sa.Column("termos_versao", sa.String(20)),
     sa.Column("termos_aceitos_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint("papel IN ('usuario', 'admin')", name="papel"),
-    sa.CheckConstraint("plano IN ('gratuito', 'pro')", name="plano"),
+    sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
 
@@ -90,6 +98,215 @@ simulacoes = sa.Table(
     _momento("criada_em"),
 )
 sa.Index("ix_simulacoes_usuario_id", simulacoes.c.usuario_id)
+
+# Research (0007): cada mudança de parâmetros é uma versão nova; nada é sobrescrito.
+# alvo "" = o padrão do usuário; senão, o ticker (ou a watchlist, numa etapa futura).
+ESCOPOS_DE_PRESET = ("global", "watchlist", "ativo")
+presets = sa.Table(
+    "presets",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("escopo", sa.String(20), nullable=False),
+    sa.Column("alvo", sa.String(40), nullable=False, server_default=""),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("nome", sa.String(80), nullable=False, server_default=""),
+    sa.Column("parametros", JSON_PORTATIL, nullable=False),
+    sa.Column("motivo", sa.String(200), nullable=False, server_default=""),
+    _momento("criado_em"),
+    sa.CheckConstraint("escopo IN ('global', 'watchlist', 'ativo')", name="escopo"),
+    sa.CheckConstraint("versao >= 1", name="versao"),
+    sa.UniqueConstraint("usuario_id", "escopo", "alvo", "versao"),
+)
+
+# Research (0009): listas com nome (watchlists) de cada usuário
+watchlists = sa.Table(
+    "watchlists",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("nome", sa.String(60), nullable=False),
+    sa.Column("tickers", JSON_PORTATIL, nullable=False),  # na ordem escolhida
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    sa.UniqueConstraint("usuario_id", "nome"),
+)
+
+# Research (0017): a fotografia da carteira (só ticker → peso em %), com consentimento próprio
+carteiras_do_research = sa.Table(
+    "carteiras_do_research",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("pesos", JSON_PORTATIL, nullable=False),  # {"PETR4.SA": 0.1234, ...}
+    sa.Column("enviada_em", sa.Date, nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    _momento("consentido_em"),
+)
+
+# Research (0018): Newsletter por e-mail. Inscrição opt-in (uma por usuário) e cada envio
+# (a chave usuário + período impede mandar a mesma edição duas vezes)
+CADENCIAS_DO_EMAIL = ("diaria", "semanal")
+SITUACOES_DO_ENVIO = ("enviado", "retido", "falhou")
+inscricoes_da_newsletter = sa.Table(
+    "inscricoes_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("lista", sa.String(60), nullable=False),  # nome da lista no Research
+    sa.Column("cadencia", sa.String(20), nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    # código aleatório do link "descadastrar" (funciona sem login)
+    sa.Column("codigo_para_sair", sa.String(64), nullable=False, unique=True),
+    _momento("inscrito_em"),
+    sa.CheckConstraint("cadencia IN ('diaria', 'semanal')", name="cadencia"),
+)
+envios_da_newsletter = sa.Table(
+    "envios_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("periodo", sa.String(20), primary_key=True),  # "2026-10-12" ou "2026-W42"
+    sa.Column("situacao", sa.String(20), nullable=False),
+    sa.Column("detalhe", sa.String(200), nullable=False, server_default=""),
+    _momento("registrado_em"),
+    sa.CheckConstraint("situacao IN ('enviado', 'retido', 'falhou')", name="situacao"),
+)
+
+# Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
+alertas = sa.Table(
+    "alertas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("nome", sa.String(80), nullable=False),
+    sa.Column("regra", JSON_PORTATIL, nullable=False),
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    sa.UniqueConstraint("usuario_id", "nome"),
+)
+
+# Research (0010): demonstrações financeiras da CVM (DFP e ITR), dados públicos
+demonstracoes = sa.Table(
+    "demonstracoes",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("documento", sa.String(3), primary_key=True),  # DFP ou ITR
+    sa.Column(
+        "referencia", sa.Date, primary_key=True
+    ),  # data do balanço / fim do período
+    sa.Column(
+        "periodo", sa.String(20), primary_key=True
+    ),  # posicao, exercicio, acumulado...
+    sa.Column("fim", sa.Date, primary_key=True),
+    sa.Column(
+        "conta", sa.String(30), primary_key=True
+    ),  # receita, lucro_liquido, caixa...
+    sa.Column("inicio", sa.Date),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("valor", sa.Float, nullable=False),  # em reais (ou quantidade, nas ações)
+)
+documentos_financeiros = sa.Table(
+    "documentos_financeiros",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("documento", sa.String(3), primary_key=True),
+    sa.Column("referencia", sa.Date, primary_key=True),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("recebido_em", sa.Date),  # quando o documento ficou público na CVM
+    sa.Column("link", sa.String(500), nullable=False),
+    _momento("coletado_em"),
+)
+setores_cvm = sa.Table(
+    "setores_cvm",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("setor", sa.String(120), nullable=False),
+)
+
+# Research (0008): dados públicos da CVM, iguais para todos (nada pessoal aqui)
+tickers_dos_emissores = sa.Table(
+    "tickers_dos_emissores",
+    metadata,
+    sa.Column("ticker", sa.String(12), primary_key=True),  # PETR4.SA
+    sa.Column("codigo", sa.String(8), nullable=False),  # PETR4
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("valor_mobiliario", sa.String(80), nullable=False, server_default=""),
+    _momento("atualizado_em"),
+)
+sa.Index("ix_tickers_dos_emissores_cnpj", tickers_dos_emissores.c.cnpj)
+
+eventos = sa.Table(
+    "eventos",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("fonte", sa.String(20), nullable=False),  # cvm_ipe
+    sa.Column("protocolo", sa.String(60), nullable=False),
+    sa.Column("versao", sa.Integer, nullable=False, server_default="1"),
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("categoria", sa.String(160), nullable=False),
+    sa.Column("tipo", sa.String(300), nullable=False, server_default=""),
+    sa.Column("assunto", sa.Text, nullable=False, server_default=""),
+    sa.Column("rotulo", sa.String(60), nullable=False),
+    sa.Column("tema", sa.String(20), nullable=False),
+    sa.Column("materialidade", sa.Integer, nullable=False),
+    sa.Column("referencia", sa.Date),  # data a que o documento se refere
+    sa.Column(
+        "publicado_em", sa.Date, nullable=False
+    ),  # quando ficou público (entrega)
+    sa.Column("link", sa.String(500), nullable=False),  # documento original na fonte
+    _momento("ingerido_em"),
+    sa.UniqueConstraint("fonte", "protocolo"),
+)
+sa.Index("ix_eventos_cnpj_publicado_em", eventos.c.cnpj, eventos.c.publicado_em)
+
+# Research R2 (0011): compras e vendas de pessoas de dentro (CVM VLMO e SEC Form 4). Dados
+# públicos; guardamos só o CARGO, nunca o nome da pessoa (decisão 0018).
+negociacoes_internas = sa.Table(
+    "negociacoes_internas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("fonte", sa.String(20), nullable=False),  # cvm_vlmo ou sec_form4
+    sa.Column("documento", sa.String(60), nullable=False),  # um documento entregue
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("cnpj", sa.String(18), nullable=False),  # CNPJ ou CIK com prefixo
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("cargo", sa.String(20), nullable=False),
+    sa.Column("cargo_descricao", sa.String(120), nullable=False, server_default=""),
+    sa.Column("operacao", sa.String(10), nullable=False),  # compra ou venda
+    sa.Column("ativo", sa.String(80), nullable=False, server_default=""),
+    sa.Column("data", sa.Date),  # dia da negociação (pode faltar na CVM)
+    sa.Column(
+        "referencia", sa.Date, nullable=False
+    ),  # mês (CVM) ou data do relatório (SEC)
+    sa.Column("entregue_em", sa.Date, nullable=False),  # quando ficou público
+    sa.Column("quantidade", sa.Float, nullable=False),
+    sa.Column("preco", sa.Float),
+    sa.Column("valor", sa.Float),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("plano_10b5_1", sa.Boolean),  # EUA: venda programada com antecedência
+    sa.Column("link", sa.String(500), nullable=False),
+    _momento("ingerido_em"),
+)
+sa.Index(
+    "ix_negociacoes_internas_cnpj_data",
+    negociacoes_internas.c.cnpj,
+    negociacoes_internas.c.entregue_em,
+)
+sa.Index(
+    "ix_negociacoes_internas_documento",
+    negociacoes_internas.c.fonte,
+    negociacoes_internas.c.documento,
+)
+# documentos já lidos, mesmo os que não renderam nada (a maioria dos Form 4 não tem compra nem
+# venda em bolsa): a coleta não baixa de novo
+documentos_lidos = sa.Table(
+    "documentos_lidos",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("documento", sa.String(60), primary_key=True),
+    _momento("lido_em"),
+)
 
 assinaturas = sa.Table(
     "assinaturas",
@@ -129,3 +346,103 @@ auditoria = sa.Table(
     _momento("criado_em"),
 )
 sa.Index("ix_auditoria_criado_em", auditoria.c.criado_em)
+
+
+# Relatórios em PDF gerados: só o tipo e a hora, para contar o limite do plano (o PDF não é
+# guardado). Apagados junto com a conta.
+relatorios = sa.Table(
+    "relatorios",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("tipo", sa.String(20), nullable=False),
+    _momento("criado_em"),
+    # biblioteca (0006): título e parâmetros para reabrir; ao excluir, só tipo e hora ficam
+    sa.Column("titulo", sa.String(200)),
+    sa.Column("parametros", JSON_PORTATIL),
+    sa.Column("apagado_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(
+        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira', "
+        "'newsletter')",
+        name="tipo",
+    ),
+)
+sa.Index(
+    "ix_relatorios_usuario_id_criado_em",
+    relatorios.c.usuario_id,
+    relatorios.c.criado_em,
+)
+
+# Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
+# (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
+detentores_por_acao = sa.Table(
+    "detentores_por_acao",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),  # cvm_cda ou sec_13f
+    sa.Column("competencia", sa.Date, primary_key=True),  # fim do mês ou do trimestre
+    sa.Column("codigo", sa.String(12), primary_key=True),  # PETR4, AAPL
+    sa.Column("detentores", sa.Integer, nullable=False),
+    sa.Column("valor", sa.Float, nullable=False),
+    sa.Column("quantidade", sa.Float, nullable=False),
+    sa.Column(
+        "vendidos", sa.Integer, nullable=False
+    ),  # fundos com posição vendida (só CVM)
+    sa.Column("valor_vendido", sa.Float, nullable=False),
+    sa.Column("valor_emprestado", sa.Float, nullable=False),
+    sa.Column("compras_no_mes", sa.Float, nullable=False),
+    sa.Column("vendas_no_mes", sa.Float, nullable=False),
+    _momento("coletado_em"),
+)
+maiores_detentores = sa.Table(
+    "maiores_detentores",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("competencia", sa.Date, primary_key=True),
+    sa.Column("codigo", sa.String(12), primary_key=True),
+    sa.Column("tipo", sa.String(10), primary_key=True),  # comprado ou vendido
+    sa.Column("posicao", sa.Integer, primary_key=True),  # 1 = o maior
+    sa.Column("nome", sa.String(200), nullable=False),
+    sa.Column(
+        "documento", sa.String(20), nullable=False
+    ),  # CNPJ do fundo ou CIK do gestor
+    sa.Column("valor", sa.Float, nullable=False),
+    sa.Column("quantidade", sa.Float, nullable=False),
+)
+# quantos fundos (ou gestores) informaram posições em cada competência: a cobertura do arquivo.
+# Muda muito (sigilo de até 90 dias na CVM; mês recente ainda chegando) e decide o que comparar.
+cobertura_de_detentores = sa.Table(
+    "cobertura_de_detentores",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("competencia", sa.Date, primary_key=True),
+    sa.Column("informantes", sa.Integer, nullable=False),
+    _momento("coletado_em"),
+)
+
+# Research R4 (0014): ações dos EUA fora do S&P 500 buscadas na hora por alguém; entram na coleta
+# diária da SEC. Sem `usuario_id`: guarda só o ticker e quando foi pedido (nada pessoal).
+tickers_sob_demanda = sa.Table(
+    "tickers_sob_demanda",
+    metadata,
+    sa.Column("ticker", sa.String(12), primary_key=True),
+    sa.Column("cnpj", sa.String(18), nullable=False),  # o CIK com prefixo
+    _momento("pedido_em"),
+)
+
+# Research R5 (0016): leitura dos documentos pelo algoritmo próprio (src/leitura.py). Dados
+# públicos: o resumo de cada fato relevante e a comparação dos fatores de risco dos 10-K.
+leituras = sa.Table(
+    "leituras",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),  # cvm_ipe ou sec_edgar
+    sa.Column(
+        "documento", sa.String(60), primary_key=True
+    ),  # protocolo do documento lido
+    sa.Column("tipo", sa.String(20), primary_key=True),  # resumo ou riscos
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("referencia", sa.Date),
+    sa.Column("resultado", JSON_PORTATIL, nullable=False),
+    sa.Column("versao", sa.String(10), nullable=False),
+    _momento("lido_em"),
+)
+sa.Index("ix_leituras_cnpj", leituras.c.cnpj)

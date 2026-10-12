@@ -114,8 +114,27 @@ def _baixar_tudo(
         log.warning("Sem resposta do Yahoo para %s: usando dados de exemplo.", ticker)
         return manter_apenas_dias_uteis(exemplo)
     raise DadosIndisponiveisError(
-        f"Não encontrei dados para {ticker}. Confira o ticker (B3 termina em .SA)."
+        f"Não encontrei dados para {ticker}. Confira o código do ativo."
     )
+
+
+def _trocar_historico_reajustado(
+    ticker: str, periodo: str, guardado: pd.DataFrame, agora: datetime
+) -> pd.DataFrame:
+    """O Yahoo reajustou o passado: baixa o histórico de novo e só então troca o guardado.
+
+    O guardado só sai do banco quando o substituto chega cobrindo o período. Se o download falhar
+    ou vier curto, o guardado fica intacto e volta marcado como antigo (preços ajustados e não
+    ajustados nunca se misturam).
+    """
+    completo = _baixar_do_yahoo(ticker, period=periodo)
+    if completo is None or not _cobre_o_periodo(completo, periodo):
+        log.warning(
+            "Histórico novo de %s não chegou inteiro: mantendo o guardado.", ticker
+        )
+        return _marcar_como_antigo(_recortar_periodo(guardado, periodo))
+    armazenamento.substituir_precos(ticker, completo, agora)
+    return completo
 
 
 def _dados_com_banco(ticker: str, periodo: str, agora: datetime) -> pd.DataFrame:
@@ -140,8 +159,7 @@ def _dados_com_banco(ticker: str, periodo: str, agora: datetime) -> pd.DataFrame
             "Preços de %s foram reajustados (dividendo ou desdobramento): baixando de novo.",
             ticker,
         )
-        armazenamento.apagar_precos(ticker)
-        return _baixar_tudo(ticker, periodo, pd.DataFrame(), True, agora)
+        return _trocar_historico_reajustado(ticker, periodo, guardado, agora)
     armazenamento.salvar_precos(ticker, novo)
     armazenamento.registrar_consulta(ticker, agora)
     return _recortar_periodo(armazenamento.ler_precos(ticker), periodo)

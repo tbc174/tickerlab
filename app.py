@@ -1,18 +1,49 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import hashlib
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+from sqlalchemy import exc as sa_exc
 
 from src import administracao as adm
-from src import aprendizado, graficos
+from src import (
+    alertas,
+    aprendizado,
+    carteira_research,
+    catalogo,
+    coleta_sec,
+    detentores,
+    envio_newsletter,
+    estilos_pdf,
+    eventos_sec,
+    fundamentos,
+    fundos_cvm,
+    graficos,
+    marca,
+    negociacoes,
+    newsletter,
+    previa_pdf,
+    relatorio_newsletter,
+    relatorios,
+    research,
+    trade,
+    tutorial,
+)
+from src import analise as research_analise
+from src import edicao as edicao_do_banco
 from src import indicadores as ind
+from src import parametros as research_parametros
+from src import presets as research_presets
 from src.acaso import (
     calcular_comprimento_minimo,
     calcular_pbo,
@@ -24,25 +55,54 @@ from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
 from src.autenticacao import (
     LoginInvalidoError,
     emails_de_admin,
+    esta_em_producao,
     ler_identidade,
     login_esta_configurado,
     registrar_login,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco import detentores as repo_detentores
+from src.banco import leituras as repo_leituras
+from src.banco import negociacoes as repo_negociacoes
+from src.banco import newsletter_por_email
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
+    apagar_alerta,
     apagar_simulacao,
+    apagar_watchlist,
+    biblioteca_de_relatorios,
+    carregar_carteira,
     carregar_preferencias,
+    contar_relatorios_recentes,
     contar_simulacoes,
+    excluir_relatorio,
+    historico_do_preset,
+    listar_alertas,
     listar_favoritos,
     listar_simulacoes,
+    listar_watchlists,
+    presets_atuais,
+    registrar_relatorio,
+    revogar_carteira,
+    salvar_alerta,
+    salvar_carteira,
     salvar_favoritos,
     salvar_preferencias,
+    salvar_preset,
     salvar_simulacao,
+    salvar_watchlist,
+)
+from src.banco.demonstracoes import dados_da_empresa
+from src.banco.eventos import (
+    empresas_dos_tickers,
+    eventos_dos_tickers,
+    tickers_das_empresas,
+    ultima_coleta,
 )
 from src.banco.modelo import PAPEIS, PLANOS
 from src.banco.usuarios import buscar_por_id
+from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
@@ -74,6 +134,7 @@ from src.comparacao import (
     montar_tabela_comparativa,
     rebasear_para_100,
 )
+from src.configuracao import contato
 from src.conformidade import (
     TEXTO_PARA_CONFIRMAR_A_EXCLUSAO,
     VERSAO_DOS_TERMOS,
@@ -98,8 +159,10 @@ from src.correlacao import (
     resumir_betas,
 )
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.edicao import FONTES_DOS_DETENTORES
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.eventos import FONTE_IPE
 from src.experimentos import (
     REGRAS_DE_REBALANCEAMENTO,
     calcular_retorno_da_noite_com_custo,
@@ -131,11 +194,8 @@ from src.metricas import (
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.momentum import montar_tabela_de_momentum
 from src.paginas import (
-    FRASE_DE_CADA_GRUPO,
-    GRUPO_ANALISAR,
-    GRUPO_AVANCADO,
-    GRUPO_CONTA,
-    GRUPO_ESTRATEGIAS,
+    GRUPO_MAIS,
+    GRUPO_TOPO,
     GRUPOS,
     PAGINA_INICIAL,
     pagina,
@@ -144,11 +204,13 @@ from src.paginas import (
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
+    CARTEIRA_NO_RESEARCH,
     NOMES_DOS_RECURSOS,
     PARES,
     PLANO_DO_MODO_LOCAL,
     LimiteDoPlanoError,
     conferir_favoritos,
+    conferir_parametros_por_ativo,
     descrever_limite,
     limites_do,
     pode_usar,
@@ -204,8 +266,17 @@ METRICAS_EM_PORCENTAGEM = {
 METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
 
 configurar_logs()
-st.set_page_config(page_title="TickerLab", layout="wide")
+st.set_page_config(
+    page_title="TickerLab", page_icon=str(marca.ARQUIVO_DO_ICONE), layout="wide"
+)
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
+# símbolo + "TickerLab" no canto do menu (clicar volta ao Início); só o símbolo se faltar espaço
+st.logo(str(marca.ARQUIVO_DA_ASSINATURA), size="large")
+
+
+def marca_html():
+    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos)."""
+    return f'<div class="tl-marca">{marca.simbolo_svg()}<div>Ticker<span>Lab</span></div></div>'
 
 
 # --- Ajudantes --------------------------------------------------------------
@@ -293,10 +364,7 @@ def mostrar_tela_de_entrada():
     """Tela para quem ainda não entrou: o app só abre depois do login com o Google."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(
-            '<div class="tl-marca">Ticker<span>Lab</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(marca_html(), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
             unsafe_allow_html=True,
@@ -312,9 +380,20 @@ def mostrar_tela_de_entrada():
         )
 
 
+def _recusar_abrir_sem_login():
+    """Produção sem o `[auth]` completo: o app não abre (o modo local liberaria tudo a todos)."""
+    logging.getLogger(__name__).error(
+        "Produção sem o login configurado ([auth] do secrets.toml): o app não vai abrir"
+    )
+    st.error("O TickerLab está em manutenção. Tente de novo em alguns minutos.")
+    st.stop()
+
+
 def _usuario_da_sessao():
     """O usuário da sessão (ou None no modo local, sem contas). Para a página se não houver login."""
     if not login_esta_configurado(_segredos()):
+        if esta_em_producao():
+            _recusar_abrir_sem_login()
         return None
     if not st.user.get("is_logged_in", False):
         mostrar_tela_de_entrada()
@@ -439,6 +518,8 @@ def mostrar_assinatura(onde):
         return
     assinatura = st.session_state.get("assinatura")
     if usuario.plano == "gratuito":
+        st.caption("Plano Plus: a assinatura chega em breve.")
+    if usuario.plano in ("gratuito", "plus"):
         st.button(
             "Assinar o plano Pro",
             key=f"assinar_{onde}",
@@ -560,6 +641,10 @@ def carregar_da_conta(usuario):
     for chave in ("ticker", "periodo", "taxa", "em_reais", "favoritos"):
         if chave in lidos:
             st.session_state[chave] = lidos[chave]
+    if isinstance(preferencias.get("relatorio"), dict):
+        st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
+    if preferencias.get("tutorial_visto") is True:
+        st.session_state["tutorial_visto"] = True
 
 
 def salvar_na_conta(usuario):
@@ -590,7 +675,11 @@ def salvar_na_conta(usuario):
                     conexao, usuario.id, atual["favoritos"], plano=usuario.plano
                 )
             if atual["preferencias"] != antes["preferencias"]:
-                salvar_preferencias(conexao, usuario.id, atual["preferencias"])
+                # mescla com o que já está guardado (ex.: a configuração do Report Studio)
+                guardadas = carregar_preferencias(conexao, usuario.id)
+                salvar_preferencias(
+                    conexao, usuario.id, {**guardadas, **atual["preferencias"]}
+                )
         st.session_state["conta_snapshot"] = atual
     except Exception:
         log_da_conta.exception("Falha ao salvar os dados da conta")
@@ -810,6 +899,7 @@ def _ir_para_favorito():
 
 
 PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
+ROTULOS_CURTOS_DO_PERIODO = {"6mo": "6M", "1y": "1A", "2y": "2A", "5y": "5A"}
 NOMES_DOS_MODOS_DA_TAXA = {
     "Zero": "Nenhum (zero)",
     "CDI (Banco Central)": "CDI (Banco Central)",
@@ -823,7 +913,7 @@ def mostrar_favoritos():
     atual = normalizar_ticker(st.session_state["ticker"])
     limites = limites_do(plano_atual())
     with st.popover(
-        f"Favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
+        f"Meus favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
     ):
         st.button(
             f"Tirar {atual} dos favoritos"
@@ -868,6 +958,32 @@ def mostrar_link(ticker, periodo, modo):
     st.code("?" + urlencode(parametros), language=None)
 
 
+def marcar_feito(acao):
+    """Anota uma ação feita nesta sessão (o tutorial e a lista de tarefas leem daqui)."""
+    st.session_state.setdefault("tutorial_feitos", set()).add(acao)
+
+
+def acoes_feitas():
+    feitos = set(st.session_state.get("tutorial_feitos", set()))
+    if st.session_state.get("favoritos"):
+        feitos.add("salvou_favorito")
+    return feitos
+
+
+def _resolver_o_ticker():
+    """Um código digitado vira o símbolo do catálogo (petr4 → PETR4.SA), sem trocar de ativo."""
+    marcar_feito("escolheu_ativo")
+    st.session_state["ticker"] = (
+        catalogo.resolver(st.session_state.get("ticker")) or "PETR4.SA"
+    )
+
+
+def lembrar_recente(ticker):
+    """Guarda os últimos ativos analisados nesta sessão (só na memória, não vai para o banco)."""
+    recentes = [t for t in st.session_state.get("recentes", []) if t != ticker]
+    st.session_state["recentes"] = [ticker, *recentes][:6]
+
+
 def mostrar_controles():
     """Campos do ativo, no topo das páginas de análise.
 
@@ -878,19 +994,24 @@ def mostrar_controles():
         col_ativo, col_periodo, col_favoritos = st.columns(
             [3, 2, 2], vertical_alignment="bottom"
         )
-        ticker = col_ativo.text_input(
-            "Ativo (ticker)",
+        ticker = col_ativo.selectbox(
+            "Ativo",
+            catalogo.opcoes(st.session_state.get("ticker")),
+            format_func=catalogo.rotulo,
             key="ticker",
-            placeholder="PETR4.SA, AAPL, BTC-USD",
-            help="Ações da B3 terminam em .SA (PETR4.SA). Ações americanas não têm "
-            "sufixo (AAPL). Índices começam com ^ (^BVSP é o Ibovespa).",
+            placeholder="Busque código ou empresa…",
+            accept_new_options=True,  # um código fora da lista também vale
+            on_change=_resolver_o_ticker,
+            help="Digite o código (PETR4, AAPL) ou o nome da empresa (Petrobras) e escolha "
+            "na lista. Ações da B3, BDRs, FIIs, ETFs, ações dos EUA, índices e cripto.",
         )
-        periodo = col_periodo.selectbox(
+        periodo = col_periodo.segmented_control(
             "Período",
             list(PERIODOS_DO_TOPO),
-            format_func=PERIODOS_DO_TOPO.get,
+            format_func=ROTULOS_CURTOS_DO_PERIODO.get,
             key="periodo",
-            help="Quanto tempo de histórico olhar para trás.",
+            required=True,  # sempre um período escolhido (clicar no ativo não o desmarca)
+            help="Quanto tempo de histórico olhar para trás: 6 meses, 1 ano, 2 anos ou 5 anos.",
         )
         with col_favoritos:
             mostrar_favoritos()
@@ -956,7 +1077,38 @@ def resolver_taxa_livre_de_risco(modo, taxa_digitada, indice):
 
 
 # --- Seções -----------------------------------------------------------------
-def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
+def parametros_em_vigor(ticker):
+    """Os parâmetros do Research que valem para este ativo (padrão do sistema, seu padrão ou do
+    ativo). Se os guardados não combinarem mais, volta aos padrões (a página Parâmetros explica)."""
+    try:
+        return research_presets.resolver(
+            _presets_guardados(st.session_state.get("usuario")), ticker=ticker
+        )
+    except ValueError:
+        return research_presets.resolver([])
+
+
+def avisar_parametros(resolucao, chaves):
+    """Uma linha dizendo quais dos seus parâmetros esta tela está usando (só se houver algum)."""
+    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+    usados = [
+        f"{nomes[c]} {_formatar_parametro(c, resolucao[c])} "
+        f"({resolucao.efetivos[c].nome_da_origem.lower()})"
+        for c in chaves
+        if resolucao.origem(c) != research_presets.SISTEMA
+    ]
+    if usados:
+        st.caption("Usando os seus parâmetros: " + "; ".join(usados) + ".")
+        st.page_link(
+            PAGINAS_DO_MENU["parametros"],
+            label="Mudar na página Parâmetros",
+            icon=":material/tune:",
+        )
+
+
+def secao_painel_de_numeros(
+    fechamento, retorno, taxa_livre_de_risco, confianca_do_var=95
+):
     st.subheader("Painel de números")
     st.caption("Passe o mouse no ? de cada número para ver o que ele significa.")
 
@@ -966,13 +1118,13 @@ def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
     data_pior, pior_dia = ind.encontrar_pior_dia(retorno)
 
     st.markdown("**Retorno e risco**")
-    linha1 = st.columns(4)
-    mostrar_metrica(
-        linha1[0],
-        "Retorno total",
-        formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
-        "Retorno acumulado",
-    )
+    linha1 = st.columns([1.4, 1, 1, 1])
+    with linha1[0]:  # o número principal da página, maior e mais claro
+        mostrar_numero_principal(
+            "Retorno total",
+            formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
+            ajuda=ajuda_do("Retorno acumulado"),
+        )
     mostrar_metrica(
         linha1[1],
         "Retorno anualizado",
@@ -1021,13 +1173,58 @@ def secao_painel_de_numeros(fechamento, retorno, taxa_livre_de_risco):
     )
     mostrar_metrica(
         linha2[4],
-        "Perda de um dia ruim (VaR 95%)",
-        formatar_pct(ind.calcular_var_historico(retorno)),
+        f"Perda de um dia ruim (VaR {confianca_do_var}%)",
+        formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
         "Perda de um dia ruim (VaR)",
+    )
+    cvar = ind.calcular_cvar_historico(retorno, confianca_do_var / 100)
+    st.caption(
+        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(cvar)}.** "
+        "Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o "
+        "passado, não um limite de perda."
     )
 
 
-def secao_preco(dados):
+def secao_tendencia_e_volume(dados, r):
+    """ADX (força da tendência) e OBV com volume relativo, no diário ou no semanal."""
+    st.subheader("Força da tendência e volume")
+    semanal = r["tecnica.periodicidade"] == "semanal"
+    barras = ind.para_semanal(dados) if semanal else dados
+    periodo, nivel = int(r["tecnica.adx_periodo"]), int(r["tecnica.adx_tendencia"])
+    janela = int(r["tecnica.volume_janela"])
+    tem_ohlc = {"High", "Low"} <= set(barras.columns)
+    tem_volume = "Volume" in barras.columns and (barras["Volume"].fillna(0) > 0).any()
+    col_adx, col_volume = st.columns(2)
+    with col_adx:
+        if tem_ohlc and len(barras) > 2 * periodo:
+            mostrar_grafico(
+                graficos.criar_grafico_adx(ind.calcular_adx(barras, periodo), nivel)
+            )
+        else:
+            st.info(
+                "Sem máxima e mínima, ou com poucas barras, não dá para calcular o ADX."
+            )
+    with col_volume:
+        if tem_volume:
+            mostrar_grafico(
+                graficos.criar_grafico_obv(
+                    ind.calcular_obv(barras),
+                    ind.calcular_volume_relativo(barras, janela),
+                )
+            )
+        else:
+            st.info("Este ativo não tem volume (índices e câmbio costumam não ter).")
+    st.caption(
+        f"Barras {'semanais' if semanal else 'diárias'} (mude em Parâmetros). ADX acima de "
+        f"{nivel}: há tendência, de alta se o +DI está acima do -DI. OBV subindo: mais volume "
+        f"nos dias de alta. Volume relativo: o volume do período contra a média dos {janela} "
+        "anteriores. Nenhum deles é sinal de compra ou venda."
+    )
+
+
+def secao_preco(dados, medias_do_usuario=()):
+    """`medias_do_usuario`: as janelas das médias que a pessoa escolheu em Parâmetros (já vêm
+    marcadas; sem personalização, nenhuma média vem marcada, como antes)."""
     st.subheader("Preço")
     col_tipo, col_medias = st.columns([1, 2])
     tipo_do_grafico = col_tipo.radio(
@@ -1038,7 +1235,8 @@ def secao_preco(dados):
     )
     medias_escolhidas = col_medias.multiselect(
         "Médias móveis (dias)",
-        JANELAS_MEDIAS,
+        sorted({*JANELAS_MEDIAS, *medias_do_usuario}),
+        default=sorted(set(medias_do_usuario)),
         placeholder="Escolha uma ou mais médias",
         help=ajuda_do("Média móvel"),
     )
@@ -1069,11 +1267,15 @@ def secao_preco(dados):
     )
 
 
-def secao_risco(fechamento, retorno):
+def secao_risco(fechamento, retorno, janela_do_usuario=None):
     st.subheader("Risco ao longo do tempo")
+    janelas = sorted(
+        {*JANELAS_VOLATILIDADE, *([janela_do_usuario] if janela_do_usuario else [])}
+    )
     janela = st.radio(
         "Janela da volatilidade (dias)",
-        JANELAS_VOLATILIDADE,
+        janelas,
+        index=janelas.index(janela_do_usuario) if janela_do_usuario else 0,
         horizontal=True,
         help=ajuda_do("Volatilidade móvel"),
     )
@@ -2055,7 +2257,9 @@ def _lista_de_verbetes(verbetes, rotulo_da_busca, chave):
             st.markdown(proteger_cifrao(texto))
 
 
-def secao_correlacao(principal, periodo):
+def secao_correlacao(
+    principal, periodo, indice_do_usuario=None, janela_do_usuario=None
+):
     st.subheader("Correlação e beta: como os ativos se mexem juntos")
     st.caption(
         "A correlação mostra se dois ativos andam juntos; o beta mostra quanto o ativo se "
@@ -2063,8 +2267,16 @@ def secao_correlacao(principal, periodo):
         "que todos têm preço."
     )
     c1, c2 = st.columns([1, 2])
+    nomes_dos_indices = ["Ibovespa", "S&P 500"]
+    preferido = next(
+        (n for n in nomes_dos_indices if ATALHOS[n] == indice_do_usuario),
+        nomes_dos_indices[0],
+    )
     nome_do_indice = c1.selectbox(
-        "Índice de referência", ["Ibovespa", "S&P 500"], key="corr_indice"
+        "Índice de referência",
+        nomes_dos_indices,
+        index=nomes_dos_indices.index(preferido),
+        key="corr_indice",
     )
     texto = c2.text_input(
         "Outros ativos (separados por vírgula)",
@@ -2141,9 +2353,40 @@ def secao_correlacao(principal, periodo):
         "Ativo", ativos, index=0, key="corr_detalhe", format_func=nome
     )
     janela = st.slider(
-        "Janela do beta móvel (dias)", 60, 252, 126, 6, key="corr_janela"
+        "Janela do beta móvel (dias)",
+        60,
+        252,
+        min(max(int(janela_do_usuario or 126), 60), 252),
+        6,
+        key="corr_janela",
     )
     resultado = calcular_beta(retornos[escolhido], retornos[indice])
+    erro_de_acompanhamento = ind.calcular_tracking_error(
+        retornos[escolhido], retornos[indice]
+    )
+    razao_de_informacao = ind.calcular_information_ratio(
+        retornos[escolhido], retornos[indice]
+    )
+    with st.container(horizontal=True):
+        st.metric(
+            f"Beta contra o {nome_do_indice}",
+            formatar_metrica("Beta", resultado.beta),
+            border=True,
+        )
+        st.metric(
+            "Tracking error (ao ano)",
+            formatar_pct(erro_de_acompanhamento),
+            border=True,
+            help="O quanto o ativo se descola do índice: o desvio padrão da diferença diária, "
+            "anualizado. Zero: anda igual ao índice.",
+        )
+        st.metric(
+            "Information Ratio",
+            formatar_metrica("Sharpe", razao_de_informacao),
+            border=True,
+            help="Quanto o ativo rendeu acima do índice por unidade de tracking error. "
+            "Positivo: o descolamento rendeu mais que o índice; negativo, menos.",
+        )
     col_dispersao, col_movel = st.columns(2)
     with col_dispersao:
         mostrar_grafico(
@@ -3644,6 +3887,7 @@ PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA = (
     "reg_",
     "ml_",
     "ranking_",
+    "relatorio_",  # Report Studio (os botões usam "estudio_", que não pode ser reatribuído)
 )
 CAMPOS_DO_TOPO_QUE_SOBREVIVEM = (
     "ticker",
@@ -3680,6 +3924,24 @@ class Contexto:
     cdi_diario: pd.Series | None
 
 
+def mensagem_de_dados_indisponiveis(ticker, erro):
+    """Diz a causa provável e o que fazer (blueprint, SEARCH-05): ativo existente que não
+    carregou é problema de conexão, não "ativo não encontrado"."""
+    simbolo = normalizar_ticker(ticker)
+    if st.session_state.get("usar_exemplo") or not simbolo:
+        return str(erro)
+    if catalogo.esta_no_catalogo(simbolo):
+        return (
+            f"{catalogo.rotulo(simbolo)}: o ativo existe, mas os preços não chegaram agora "
+            "(o Yahoo Finance pode estar fora do ar ou lento). Tente de novo em alguns minutos, "
+            "ou marque **Usar dados de exemplo** em Opções avançadas."
+        )
+    return (
+        f"Não encontrei **{simbolo}** no catálogo nem dados para ele no Yahoo Finance. "
+        "Confira o código ou busque pelo nome da empresa e escolha na lista."
+    )
+
+
 def carregar_contexto():
     """Mostra os campos do ativo e carrega os dados. Se algo faltar, avisa e para a página."""
     ticker, periodo, modo_da_taxa, taxa_digitada = mostrar_controles()
@@ -3687,7 +3949,7 @@ def carregar_contexto():
         # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
         dados = carregar_dados(normalizar_ticker(ticker), periodo)
     except DadosIndisponiveisError as erro:
-        st.error(str(erro))
+        st.error(mensagem_de_dados_indisponiveis(ticker, erro))
         st.stop()
     if dados.attrs.get("moeda") == "BRL":
         st.caption(
@@ -3726,6 +3988,7 @@ def carregar_contexto():
             "Tente um período mais longo."
         )
         st.stop()
+    lembrar_recente(normalizar_ticker(ticker))
     return Contexto(
         ticker=normalizar_ticker(ticker),
         periodo=periodo,
@@ -3738,89 +4001,396 @@ def carregar_contexto():
 
 
 def cabecalho_da_pagina(chave):
-    """Título da página, selo Pro (se for o caso) e uma frase dizendo para que ela serve."""
+    """O molde de toda página: grupo (olho), ícone e título, selo Pro e para que ela serve."""
     p = pagina(chave)
-    selo = '<span class="tl-selo">Pro</span>' if p.e_pro else ""
-    st.markdown(f'<h2 class="tl-titulo">{p.titulo}{selo}</h2>', unsafe_allow_html=True)
+    if p.grupo not in (GRUPO_TOPO, GRUPO_MAIS):  # sem "olho" para o topo e o Mais
+        grupo = p.grupo.removesuffix(" (Pro)")
+        st.markdown(f'<div class="tl-olho">{grupo}</div>', unsafe_allow_html=True)
+    selo = " :blue-badge[Pro]" if p.e_pro else ""
+    st.markdown(f"## {p.icone} {p.titulo}{selo}")
     st.caption(p.descricao)
 
 
+def mostrar_numero_principal(rotulo, valor, delta=None, ajuda=None):
+    """O número mais importante da página, maior e numa superfície mais clara."""
+    with st.container(key="tl-numero-principal"):
+        st.metric(rotulo, valor, delta, help=ajuda)
+
+
 def mostrar_topo(usuario):
-    """Marca do app à esquerda e a conta (ou o aviso de modo local) à direita."""
-    col_marca, col_conta = st.columns([5, 2], vertical_alignment="center")
-    col_marca.markdown(
-        '<div class="tl-marca">Ticker<span>Lab</span></div>', unsafe_allow_html=True
-    )
+    """A conta (ou o aviso de modo local) à direita; a marca fica no canto do menu."""
+    _, col_conta = st.columns([5, 2], vertical_alignment="center")
     with col_conta:
         if usuario is not None:
             mostrar_conta(usuario)
         else:
-            st.caption("Modo local, sem login")
+            st.markdown(":gray-badge[Modo local · sem login]")
+
+
+def _analisar_o_ativo_do_inicio():
+    simbolo = catalogo.resolver(st.session_state.get("ativo_do_inicio"))
+    if simbolo:
+        st.session_state["ticker"] = simbolo
+        st.session_state["ir_para_visao_geral"] = True
+        marcar_feito("escolheu_ativo")
+
+
+def _analisar_o_atalho(chave):
+    simbolo = st.session_state.get(chave)
+    if simbolo:
+        st.session_state["ticker"] = simbolo
+        st.session_state["ir_para_visao_geral"] = True
+        marcar_feito("escolheu_ativo")
+
+
+# --- Tutorial por objetivo (blueprint, seção 4) ---------------------------------------------
+def _guardar_na_conta(chave, valor):
+    """Grava uma preferência na conta, sem apagar as outras (sem conta, fica só na sessão)."""
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        return
+    try:
+        with obter_engine().begin() as conexao:
+            atuais = carregar_preferencias(conexao, usuario.id)
+            salvar_preferencias(conexao, usuario.id, {**atuais, chave: valor})
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao salvar a preferência %s", chave)
+
+
+def _preparar_o_estudio(tipo, modelo=relatorios.EXECUTIVO):
+    st.session_state["tipo_de_relatorio"] = tipo
+    st.session_state["relatorio_modelo"] = modelo
+    _aplicar_secoes(tipo, relatorios.secoes_do_modelo(tipo, modelo))
+    st.session_state.pop("relatorio_gerado", None)
+
+
+def _comecar_tutorial(objetivo):
+    st.session_state["tutorial"] = {"objetivo": objetivo, "passo": 0}
+    if objetivo == tutorial.CARTEIRA:
+        _preparar_o_estudio(relatorios.MINHA_CARTEIRA, relatorios.COMPLETO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+    elif objetivo == tutorial.RELATORIO:
+        _preparar_o_estudio(relatorios.ATIVO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+
+
+def _encerrar_tutorial(concluiu):
+    st.session_state.pop("tutorial", None)
+    st.session_state["tutorial_visto"] = True
+    _guardar_na_conta("tutorial_visto", True)
+    if concluiu:
+        st.toast(
+            "Tutorial concluído. Dá para reabrir na página inicial.",
+            icon=":material/school:",
+        )
+
+
+def _reabrir_tutorial():
+    st.session_state["tutorial_visto"] = False
+    st.session_state.pop("tutorial", None)
+    st.session_state.pop("checklist_escondido", None)
+
+
+def _andar_no_tutorial(passo):
+    estado = st.session_state["tutorial"]
+    total = len(tutorial.passos(estado["objetivo"]))
+    novo = estado["passo"] + passo
+    if novo >= total:
+        _encerrar_tutorial(concluiu=True)
+        return
+    estado["passo"] = max(0, novo)
+    atual = tutorial.passo_atual(estado["objetivo"], estado["passo"])
+    if (
+        atual.chave == "gere"
+    ):  # o passo do relatório já abre o estúdio no modelo Executivo
+        _preparar_o_estudio(relatorios.ATIVO)
+        st.session_state["tutorial_ir_para"] = "relatorio"
+
+
+def _ir_pelo_tutorial(chave_da_pagina):
+    if (
+        chave_da_pagina == "relatorio"
+        and st.session_state.get("tutorial", {}).get("objetivo") == tutorial.ANALISAR
+    ):
+        _preparar_o_estudio(relatorios.ATIVO)
+    st.session_state["tutorial_ir_para"] = chave_da_pagina
+
+
+def _explicar_dois_numeros(c):
+    """A mini-lição do passo "Leia dois números", com os números do ativo aberto."""
+    total = float(ind.calcular_retorno_acumulado(c.retorno).iloc[-1])
+    queda = float(ind.calcular_drawdown(c.fechamento).min())
+    rotulo = PERIODOS_DO_TOPO.get(c.periodo, c.periodo)
+    st.markdown(
+        f"- **Retorno total ({formatar_pct(total, com_sinal=True)}):** quem comprou {c.ticker} no "
+        f"primeiro dia dos últimos {rotulo} e vendeu no último teria essa variação, antes de "
+        "impostos e custos.\n"
+        f"- **Maior queda ({formatar_pct(queda)}):** em algum momento, quem tinha "
+        "comprado no topo chegou a ver esse prejuízo no papel. É uma medida do susto, não "
+        "do resultado final.\n\n"
+        "Os dois descrevem o **passado**: não dizem o que vai acontecer."
+    )
+
+
+def mostrar_tutorial(pagina_atual, c=None):
+    """A faixa do tutorial: passo atual, progresso, o que falta e os botões (sem bloquear a
+    tela: a pessoa continua usando tudo normalmente)."""
+    destino = st.session_state.pop("tutorial_ir_para", None)
+    if destino and destino != pagina_atual:
+        st.switch_page(PAGINAS_DO_MENU[destino])
+    estado = st.session_state.get("tutorial")
+    if not estado:
+        return
+    objetivo = tutorial.OBJETIVOS[estado["objetivo"]]
+    roteiro = tutorial.passos(objetivo.chave)
+    passo = tutorial.passo_atual(objetivo.chave, estado["passo"])
+    feitos = acoes_feitas()
+    cumprido = tutorial.pode_continuar(passo, feitos)
+    with st.container(border=True, key="tl-tutorial"):
+        st.caption(
+            f"Tutorial · {objetivo.nome_do_roteiro} · passo {estado['passo'] + 1} de "
+            f"{len(roteiro)}"
+        )
+        st.progress((estado["passo"] + 1) / len(roteiro))
+        st.markdown(f"**{passo.titulo}**")
+        st.markdown(passo.texto)
+        if passo.chave == "explore" and c is not None and pagina_atual == "visao_geral":
+            if st.button(
+                "Mostrar como ler", icon=":material/lightbulb:", key="tut_ler"
+            ):
+                marcar_feito("leu_os_numeros")
+                cumprido = True
+            if "leu_os_numeros" in acoes_feitas():
+                _explicar_dois_numeros(c)
+        if passo.chave == "pronto" and objetivo.chave == tutorial.ANALISAR:
+            col_fav, col_outro = st.columns(2)
+            ticker = normalizar_ticker(st.session_state.get("ticker", ""))
+            if ticker not in st.session_state.get("favoritos", []):
+                col_fav.button(
+                    f"Adicionar {ticker} aos favoritos",
+                    icon=":material/star:",
+                    key="tut_favoritar",
+                    on_click=_alternar_favorito_atual,
+                )
+            col_outro.button(
+                "Analisar outro ativo",
+                icon=":material/search:",
+                key="tut_outro",
+                on_click=_ir_pelo_tutorial,
+                args=("inicio",),
+            )
+        if not cumprido:
+            st.caption(f"Falta: {passo.pendente}")
+            if passo.pagina != pagina_atual:
+                st.button(
+                    f"Ir para {pagina(passo.pagina).titulo}",
+                    icon=":material/arrow_forward:",
+                    key="tut_ir",
+                    on_click=_ir_pelo_tutorial,
+                    args=(passo.pagina,),
+                )
+        col_voltar, col_seguir, col_pular = st.columns([1, 1, 1])
+        col_voltar.button(
+            "Voltar",
+            icon=":material/arrow_back:",
+            key="tut_voltar",
+            disabled=estado["passo"] == 0,
+            on_click=_andar_no_tutorial,
+            args=(-1,),
+            width="stretch",
+        )
+        ultimo = estado["passo"] == len(roteiro) - 1
+        col_seguir.button(
+            "Concluir" if ultimo else "Continuar",
+            type="primary",
+            icon=":material/check:" if ultimo else ":material/arrow_forward:",
+            key="tut_seguir",
+            disabled=not cumprido,
+            on_click=_andar_no_tutorial,
+            args=(1,),
+            width="stretch",
+        )
+        col_pular.button(
+            "Pular tutorial",
+            key="tut_pular",
+            on_click=_encerrar_tutorial,
+            args=(False,),
+            width="stretch",
+        )
+    destino = st.session_state.pop("tutorial_ir_para", None)
+    if destino and destino != pagina_atual:
+        st.switch_page(PAGINAS_DO_MENU[destino])
+
+
+def mostrar_portas_de_entrada():
+    """'O que você quer fazer hoje?': três objetivos, não três níveis técnicos."""
+    st.subheader("O que você quer fazer hoje?")
+    for i, (coluna, objetivo) in enumerate(
+        zip(st.columns(3), tutorial.OBJETIVOS.values(), strict=True)
+    ):
+        with coluna, st.container(border=True, height=176, key=f"tl-cartao-porta-{i}"):
+            st.markdown(f"#### {objetivo.icone} {objetivo.titulo}")
+            st.caption(objetivo.descricao)
+            st.button(
+                "Começar",
+                key=f"tut_porta_{objetivo.chave}",
+                icon=":material/play_arrow:",
+                on_click=_comecar_tutorial,
+                args=(objetivo.chave,),
+            )
+    st.button(
+        "Pular: já sei usar",
+        key="tut_pular_portas",
+        on_click=_encerrar_tutorial,
+        args=(False,),
+        type="tertiary",
+    )
+
+
+def mostrar_lista_de_tarefas():
+    """Três primeiras ações, discretas; some quando tudo foi feito ou quando a pessoa esconde."""
+    if st.session_state.get("checklist_escondido"):
+        return
+    feitos = acoes_feitas()
+    if not tutorial.tarefas_pendentes(feitos):
+        return
+    with st.container(border=True, key="tl-primeiros-passos"):
+        col_titulo, col_esconder = st.columns([4, 1], vertical_alignment="center")
+        col_titulo.markdown(
+            f"**Primeiros passos** · {len(tutorial.TAREFAS) - len(tutorial.tarefas_pendentes(feitos))} "
+            f"de {len(tutorial.TAREFAS)}"
+        )
+        if col_esconder.button("Esconder", key="tut_esconder", type="tertiary"):
+            st.session_state["checklist_escondido"] = True
+            st.rerun()
+        for tarefa in tutorial.TAREFAS:
+            if tarefa.chave in feitos:
+                st.markdown(f":material/check_circle: ~~{tarefa.rotulo}~~")
+            else:
+                st.page_link(
+                    PAGINAS_DO_MENU[tarefa.pagina],
+                    label=tarefa.rotulo,
+                    icon=":material/radio_button_unchecked:",
+                )
 
 
 def pagina_inicio():
+    if st.session_state.pop("ir_para_visao_geral", False):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    mostrar_tutorial("inicio")
+    st.markdown(
+        '<div class="tl-olho">Ações da B3 e dos EUA</div>', unsafe_allow_html=True
+    )
     st.markdown(
         '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
         unsafe_allow_html=True,
     )
     st.markdown(
-        "O TickerLab mostra o retorno, o risco e o comportamento de ações da B3 e dos EUA, "
-        "e deixa você testar regras de compra e venda **no passado**. Cada número vem com uma "
-        "explicação em português: passe o mouse no **?**."
+        "Retorno, risco e testes de estratégia **no passado**, com custos e cada número "
+        "explicado em português: passe o mouse no **?**."
     )
-    if st.button("Começar pela visão geral", type="primary", key="comecar"):
-        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    col_ativo, col_analisar, col_guia = st.columns(
+        [3, 1, 1], vertical_alignment="bottom"
+    )
+    col_ativo.selectbox(
+        "Busque código ou empresa",
+        catalogo.simbolos(),
+        index=None,
+        format_func=catalogo.rotulo,
+        key="ativo_do_inicio",
+        placeholder="PETR4, Petrobras, AAPL, Ibovespa…",
+        accept_new_options=True,
+        on_change=_analisar_o_ativo_do_inicio,
+        help="Escolha na lista para abrir a análise. Não precisa saber o sufixo .SA.",
+    )
+    col_analisar.button(
+        "Analisar ativo",
+        type="primary",
+        key="comecar",
+        width="stretch",
+        on_click=_analisar_o_ativo_do_inicio,
+    )
+    recentes = st.session_state.get("recentes", [])
+    st.pills(
+        "Recentes" if recentes else "Experimente",
+        recentes or list(catalogo.EXEMPLOS),
+        format_func=lambda s: catalogo.rotulo(s).split(" · ")[0],
+        key="atalho_do_inicio",
+        on_change=_analisar_o_atalho,
+        args=("atalho_do_inicio",),
+    )
+    col_guia.page_link(
+        PAGINAS_DO_MENU["guia"], label="Ver o guia", icon=":material/menu_book:"
+    )
 
-    st.subheader("Como usar em 3 passos")
-    passos = [
+    if not st.session_state.get("tutorial") and not st.session_state.get(
+        "tutorial_visto"
+    ):
+        mostrar_portas_de_entrada()
+    mostrar_lista_de_tarefas()
+
+    st.subheader("O que dá para fazer")
+    cartoes = [
         (
-            "1. Escolha um ativo",
-            (
-                "Digite o código (ticker) e o período no topo das páginas de análise. "
-                "Exemplo: PETR4.SA ou AAPL."
-            ),
+            ":material/dashboard:",
+            "Analisar ativo",
+            "Retorno, risco e comportamento de uma ação, índice ou cripto.",
+            "visao_geral",
+            None,
         ),
         (
-            "2. Veja os números",
-            (
-                "Retorno, risco e as maiores quedas, com cada termo explicado. "
-                "Comece pela Visão geral."
-            ),
+            ":material/history:",
+            "Testar estratégia",
+            "Repita uma regra de compra e venda no passado, com custos.",
+            "backtest",
+            None,
         ),
         (
-            "3. Teste uma ideia",
-            (
-                "No Backtest, simule uma regra no passado, com custos, e veja se teria "
-                "funcionado. Guarde o que gostar."
-            ),
+            ":material/picture_as_pdf:",
+            "Gerar relatório",
+            "Um PDF com os números, os gráficos e cada termo explicado.",
+            "relatorio",
+            None,
+        ),
+        (
+            ":material/account_balance_wallet:",
+            "Minha carteira (B3)",
+            "Envie a planilha da Área do Investidor e veja concentração e risco.",
+            "relatorio",
+            relatorios.MINHA_CARTEIRA,
         ),
     ]
-    for coluna, (titulo, texto) in zip(st.columns(3), passos, strict=True):
-        with coluna, st.container(border=True, height=135):
-            st.markdown(f"**{titulo}**")
+    for i, (coluna, (icone, titulo, texto, destino, tipo)) in enumerate(
+        zip(st.columns(4), cartoes, strict=True)
+    ):
+        with coluna, st.container(border=True, height=196, key=f"tl-cartao-{i}"):
+            st.markdown(f"#### {icone} {titulo}")
             st.caption(texto)
+            if tipo is None:
+                st.page_link(
+                    PAGINAS_DO_MENU[destino],
+                    label="Abrir",
+                    icon=":material/arrow_forward:",
+                )
+            else:
+                atalho_para_o_relatorio(tipo, rotulo="Abrir", chave=f"inicio_{tipo}")
 
-    st.subheader("O que você encontra aqui")
-    for grupo in (GRUPO_ANALISAR, GRUPO_ESTRATEGIAS, GRUPO_AVANCADO, GRUPO_CONTA):
-        st.markdown(f"**{grupo}**")
-        st.caption(FRASE_DE_CADA_GRUPO[grupo])
-        itens = paginas_do_grupo(grupo)
-        for inicio in range(
-            0, len(itens), 2
-        ):  # duas por linha, cartões do mesmo tamanho
-            for coluna, item in zip(st.columns(2), itens[inicio : inicio + 2]):
-                with coluna, st.container(border=True, height=150):
-                    selo = " · Pro" if item.e_pro else ""
-                    st.page_link(
-                        PAGINAS_DO_MENU[item.chave],
-                        label=f"{item.titulo}{selo}",
-                        icon=item.icone,
-                    )
-                    st.caption(item.descricao)
+    st.subheader("Como o TickerLab trabalha")
+    principios = [
+        ("Sem olhar o futuro", "A decisão de um dia só vale no dia seguinte."),
+        ("Com custos", "Corretagem, impostos e o CDI entram em todo teste."),
+        ("Honesto", "O app mostra quando uma estratégia não funciona."),
+        ("Explicado", "Cada termo técnico vem com uma explicação em português."),
+    ]
+    for coluna, (titulo, texto) in zip(st.columns(4), principios, strict=True):
+        coluna.markdown(
+            f'<div class="tl-principio"><b>{titulo}</b>{texto}</div>',
+            unsafe_allow_html=True,
+        )
 
-    limites = limites_do(plano_atual())
-    st.divider()
     if st.session_state.get("usuario") is not None:
+        limites = limites_do(plano_atual())
+        st.divider()
         st.info(
             f"Você está no plano **{limites.nome}**. "
             "Veja o que cada plano inclui em **Planos e assinatura**."
@@ -3830,9 +4400,953 @@ def pagina_inicio():
             label="Planos e assinatura",
             icon=":material/workspace_premium:",
         )
+    if st.session_state.get("tutorial_visto") and not st.session_state.get("tutorial"):
+        st.button(
+            "Reabrir o tutorial",
+            icon=":material/school:",
+            key="tut_reabrir",
+            type="tertiary",
+            on_click=_reabrir_tutorial,
+        )
+
+
+# --- Gerar relatório (PDF) -------------------------------------------------------------------
+def atalho_para_o_relatorio(tipo, rotulo="Gerar relatório desta análise", chave=None):
+    """Botão que abre "Gerar relatório" já no tipo certo (páginas de análise e Início)."""
+
+    def ir():
+        st.session_state["tipo_de_relatorio"] = tipo
+        st.session_state["ir_para_relatorio"] = True
+
+    st.button(
+        rotulo,
+        icon=":material/picture_as_pdf:"
+        if chave is None
+        else ":material/arrow_forward:",
+        key=chave or f"atalho_relatorio_{tipo}",
+        on_click=ir,
+        type="tertiary" if chave else "secondary",
+    )
+    if st.session_state.pop("ir_para_relatorio", False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio"])
+
+
+def _uso_de_relatorios(usuario, limites):
+    """Quantos relatórios a pessoa ainda pode gerar hoje (texto) e se já chegou ao limite."""
+    if usuario is None or limites.relatorios_por_dia is None:
+        return "Relatórios sem limite no seu plano.", False
+    try:
+        with obter_engine().connect() as conexao:
+            feitos = contar_relatorios_recentes(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao contar os relatórios")
+        return "Não consegui conferir quantos relatórios você já gerou.", False
+    maximo = limites.relatorios_por_dia
+    texto = (
+        f"Você gerou {feitos} de {maximo} relatórios nas últimas 24 horas "
+        f"(plano {limites.nome})."
+    )
+    return texto, feitos >= maximo
+
+
+def _baixar_fechamentos(tickers, periodo):
+    fechamentos, falharam = {}, []
+    for ticker in tickers:
+        try:
+            fechamentos[ticker] = carregar_dados(ticker, periodo)["Close"]
+        except (DadosIndisponiveisError, ValueError):
+            falharam.append(ticker)
+    return fechamentos, falharam
+
+
+# --- Report Studio (blueprint, seção 12) ------------------------------------------------------
+# Configurar → pré-visualizar → gerar → revisar → exportar. A prévia é o próprio PDF (só a capa e
+# a primeira página) e não conta no limite do plano; só "Gerar relatório" conta.
+PERSONALIZADO = "personalizado"
+ARQUIVO_DA_CARTEIRA_DE_EXEMPLO = (
+    Path(__file__).parent / "conteudo" / "carteira_de_exemplo.xlsx"
+)
+NOMES_DOS_MODELOS = {**relatorios.MODELOS, PERSONALIZADO: "Personalizado"}
+PAGINAS_DA_PREVIA = 2
+MAX_PREVIAS_GUARDADAS = 6
+
+
+@dataclass
+class PedidoDeRelatorio:
+    """O que o estúdio precisa saber do relatório escolhido, antes de gerar."""
+
+    tipo: str
+    arquivo: str
+    titulo: str
+    parametros: dict  # vão para a biblioteca (da carteira da B3, nem os ativos)
+    identidade: (
+        str  # muda quando o conteúdo muda: chave da prévia e trava de clique duplo
+    )
+    montar: object  # (config, ao_avancar) -> bytes do PDF
+
+
+def _pedido(tipo, c, arquivo, titulo, parametros, montar, extra=""):
+    exemplo = bool(st.session_state.get("usar_exemplo"))
+    identidade = json.dumps(
+        {
+            "tipo": tipo,
+            "parametros": parametros,
+            "taxa": c.taxa_livre_de_risco,
+            "reais": bool(st.session_state.get("em_reais")),
+            "exemplo": exemplo,
+            "extra": extra,
+            "dia": f"{relatorios.agora():%Y-%m-%d}",
+        },
+        sort_keys=True,
+        default=str,
+    )
+    return PedidoDeRelatorio(tipo, arquivo, titulo, parametros, identidade, montar)
+
+
+def _montar_relatorio(tipo, c):
+    """Mostra os campos do tipo escolhido e devolve o pedido (ou None se faltar algo)."""
+    exemplo = bool(st.session_state.get("usar_exemplo"))
+    rotulo = PERIODOS_DO_TOPO.get(c.periodo, c.periodo)
+    base = {
+        "taxa_livre_de_risco": c.taxa_livre_de_risco,
+        "periodo": rotulo,
+        "exemplo": exemplo,
+    }
+    comuns = {"ticker": c.ticker, "periodo": c.periodo}
+    if tipo == relatorios.MINHA_CARTEIRA:
+        return _montar_minha_carteira(c, base)
+    if tipo == relatorios.NEWSLETTER:
+        return _montar_newsletter(c)
+    if tipo == relatorios.ATIVO:
+        st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
+
+        def montar(config, ao_avancar):
+            return relatorios.relatorio_do_ativo(
+                c.ticker, c.dados, **base, config=config, ao_avancar=ao_avancar
+            )
+
+        return _pedido(
+            tipo,
+            c,
+            f"tickerlab-{c.ticker}.pdf",
+            f"{c.ticker}: retorno, risco e comportamento",
+            comuns,
+            montar,
+        )
+    if tipo == relatorios.COMPARACAO:
+        texto = st.text_input(
+            "Comparar com (separe por vírgula)",
+            value="^BVSP, ^GSPC",
+            key="relatorio_comparar_com",
+            help="O ativo do topo entra primeiro. Exemplo: VALE3.SA, ^BVSP, AAPL.",
+        )
+        outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
+        if len(outros) < 2:
+            st.info("Escolha pelo menos um ativo para comparar.")
+            return None
+
+        def montar(config, ao_avancar):
+            if ao_avancar:
+                ao_avancar("Preparando dados")
+            fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
+            if falharam:
+                st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
+            alinhado, _ = alinhar_fechamentos(fechamentos)
+            return relatorios.relatorio_de_comparacao(
+                alinhado, **base, config=config, ao_avancar=ao_avancar
+            )
+
+        return _pedido(
+            tipo,
+            c,
+            "tickerlab-comparacao.pdf",
+            "Comparação: " + ", ".join(outros),
+            {**comuns, "comparar_com": texto},
+            montar,
+        )
+    if tipo == relatorios.BACKTEST:
+        col_estrategia, col_custo = st.columns([2, 1])
+        nome = col_estrategia.selectbox(
+            "Estratégia (com os parâmetros padrão)",
+            [n for n in ESTRATEGIAS if n != "Comprar e segurar"],
+            key="relatorio_estrategia",
+            help="Para mudar os parâmetros, use a página Backtest; o relatório usa os padrões.",
+        )
+        custo = (
+            col_custo.number_input(
+                "Custo por operação (%)",
+                min_value=0.0,
+                max_value=2.0,
+                value=CUSTO_PADRAO_POR_OPERACAO * 100,
+                step=0.05,
+                key="relatorio_custo",
+            )
+            / 100
+        )
+
+        def montar(config, ao_avancar):
+            return relatorios.relatorio_de_backtest(
+                c.ticker, c.dados, nome, {}, custo, **base, config=config,
+                ao_avancar=ao_avancar,
+            )  # fmt: skip
+
+        return _pedido(
+            tipo,
+            c,
+            f"tickerlab-backtest-{c.ticker}.pdf",
+            f"Backtest: {nome} em {c.ticker}",
+            {**comuns, "estrategia": nome, "custo": round(custo * 100, 4)},
+            montar,
+        )
+    # carteira
+    limites = limites_do(plano_atual())
+    texto = st.text_input(
+        f"Ativos da carteira (de {MIN_ATIVOS_NA_CARTEIRA} a {limites.ativos_na_carteira}, "
+        "separe por vírgula)",
+        value=f"{c.ticker}, VALE3.SA, ITUB4.SA, WEGE3.SA",
+        key="relatorio_carteira_ativos",
+    )
+    ativos = list(dict.fromkeys(interpretar_tickers(texto)))[
+        : limites.ativos_na_carteira
+    ]
+    nome = st.selectbox(
+        "Estratégia da carteira",
+        list(ESTRATEGIAS_DE_CARTEIRA),
+        key="relatorio_carteira",
+    )
+    if len(ativos) < MIN_ATIVOS_NA_CARTEIRA:
+        st.info(f"Escolha pelo menos {MIN_ATIVOS_NA_CARTEIRA} ativos.")
+        return None
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Preparando dados")
+        fechamentos, falharam = _baixar_fechamentos(ativos, c.periodo)
+        if falharam:
+            st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
+        tabela = pd.DataFrame(fechamentos).dropna()
+        return relatorios.relatorio_de_carteira(
+            tabela, nome, {}, **base, config=config, ao_avancar=ao_avancar
+        )
+
+    return _pedido(
+        tipo,
+        c,
+        "tickerlab-carteira.pdf",
+        f"Carteira: {nome}",
+        {"periodo": c.periodo, "ativos": texto, "estrategia_carteira": nome},
+        montar,
+    )
+
+
+def _montar_newsletter(c):
+    """Lista e período da edição; o PDF tem o mesmo conteúdo da página Newsletter."""
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    if st.session_state.get("relatorio_newsletter_lista") not in nomes:
+        st.session_state.pop(
+            "relatorio_newsletter_lista", None
+        )  # lista apagada ou de outra conta
+    st.session_state.setdefault("relatorio_newsletter_janela", 7)
+    col_lista, col_janela = st.columns(2)
+    escolhida = col_lista.selectbox("Lista", nomes, key="relatorio_newsletter_lista")
+    janela = col_janela.selectbox(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        key="relatorio_newsletter_janela",
+    )
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+    carteira = _carteira_da_lista(nome)  # lida aqui, fora da montagem do PDF
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Lendo os documentos")
+        edicao = _edicao(nome, tickers, janela, carteira)
+        if edicao is None:
+            raise ValueError("Os documentos ainda não foram coletados neste servidor.")
+        return relatorio_newsletter.relatorio_da_newsletter(
+            edicao, config=config, ao_avancar=ao_avancar
+        )
+
+    return _pedido(
+        relatorios.NEWSLETTER,
+        c,
+        "tickerlab-newsletter.pdf",
+        f"Newsletter: {nome}",
+        {"lista": nome, "janela": janela},
+        montar,
+    )
+
+
+def _montar_minha_carteira(c, base):
+    """A carteira real da pessoa, pelo arquivo da Área do Investidor (lido só na memória)."""
+    st.info(
+        "**Conexão direta com a B3:** a API da Área do Investidor só atende empresas "
+        "credenciadas (com CNPJ, certificado digital e contrato com a B3). Por enquanto, o "
+        "caminho é o arquivo que você mesmo baixa.",
+        icon=":material/link_off:",
+    )
+    st.markdown(
+        "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+        "2. Em **Extratos → Posição**, escolha a data e baixe a planilha em **Excel**.\n"
+        "3. Envie o arquivo aqui. Ele é lido **só na memória**, para montar o relatório, e não "
+        "fica guardado."
+    )
+    demonstracao = st.toggle(
+        "Usar a carteira de exemplo (fictícia)",
+        key="relatorio_carteira_exemplo",
+        help="Uma posição inventada, para conhecer o relatório sem enviar a sua planilha. "
+        "O PDF sai marcado como exemplo demonstrativo.",
+    )
+    if demonstracao:
+        st.warning(
+            "**Exemplo demonstrativo:** carteira fictícia, não é a sua. O PDF sai marcado "
+            "como demonstração.",
+            icon=":material/science:",
+        )
+        conteudo, nome_do_arquivo = (
+            ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.read_bytes(),
+            (ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.name),
+        )
+    else:
+        arquivo = st.file_uploader(
+            "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_b3"
+        )
+        if arquivo is None:
+            return None
+        conteudo, nome_do_arquivo = arquivo.getvalue(), arquivo.name
+    try:
+        carteira = ler_carteira(conteudo, nome_do_arquivo)
+    except ArquivoDaB3Error as erro:
+        st.error(str(erro))
+        return None
+    for aviso in carteira.avisos:
+        st.warning(aviso)
+    if carteira.posicoes.empty:
+        st.info(
+            "O arquivo só tem Tesouro e renda fixa, sem ativos com cotação para analisar."
+        )
+        return None
     st.caption(
-        "Projeto educacional: nada aqui é recomendação de investimento. Resultados do "
-        "passado não garantem resultados futuros."
+        f"{len(carteira.posicoes)} ativos com cotação e {len(carteira.sem_cotacao)} de "
+        "Tesouro ou renda fixa encontrados no arquivo."
+    )
+    marcar_feito("carregou_a_carteira")
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Preparando dados")
+        fechamentos, falharam = _baixar_fechamentos(
+            list(carteira.posicoes["ticker"]), c.periodo
+        )
+        if falharam:
+            st.warning(
+                f"Sem histórico de preço, ficaram de fora da análise: {', '.join(falharam)}."
+            )
+        if not fechamentos:
+            raise ValueError(
+                "nenhum ativo da carteira tem histórico de preço no período"
+            )
+        ibovespa = _baixar_fechamentos(["^BVSP"], c.periodo)[0].get("^BVSP")
+        return relatorios.relatorio_da_minha_carteira(
+            carteira, pd.DataFrame(fechamentos), ibovespa, **base, config=config,
+            ao_avancar=ao_avancar, demonstracao=demonstracao,
+        )  # fmt: skip
+
+    # a identidade usa um resumo do arquivo (não o conteúdo), só para saber se ele mudou
+    resumo_do_arquivo = hashlib.sha256(conteudo).hexdigest()[:16]
+    return _pedido(
+        relatorios.MINHA_CARTEIRA,
+        c,
+        "tickerlab-minha-carteira.pdf",
+        "Minha carteira (exemplo fictício)" if demonstracao else "Minha carteira (B3)",
+        {"periodo": c.periodo, "carteira_de_exemplo": demonstracao},
+        montar,
+        extra=resumo_do_arquivo,
+    )
+
+
+# estado do estúdio: o modelo e o estilo são campos; as seções, uma ordem e uma caixa por seção
+def _chave_da_secao(tipo, chave):
+    return f"relatorio_secao_{tipo}_{chave}"
+
+
+def _aplicar_secoes(tipo, ligadas):
+    """Põe as seções `ligadas` (nesta ordem) no topo da lista; as outras seguem, desligadas."""
+    todas = [s.chave for s in relatorios.SECOES[tipo]]
+    ligadas = relatorios.normalizar_secoes(tipo, ligadas)
+    st.session_state[f"relatorio_ordem_{tipo}"] = ligadas + [
+        c for c in todas if c not in ligadas
+    ]
+    for chave in todas:
+        st.session_state[_chave_da_secao(tipo, chave)] = chave in ligadas
+
+
+def secoes_escolhidas(tipo):
+    ordem = st.session_state.get(f"relatorio_ordem_{tipo}") or [
+        s.chave for s in relatorios.SECOES[tipo]
+    ]
+    return relatorios.normalizar_secoes(
+        tipo,
+        [c for c in ordem if st.session_state.get(_chave_da_secao(tipo, c), True)],
+    )
+
+
+def _iniciar_estudio(tipo):
+    """Na primeira vez de cada tipo na sessão: o modelo, o estilo e as seções salvos na conta
+    (se houver) ou os padrões."""
+    salvo = st.session_state.get("config_salva_do_relatorio") or {}
+    if "relatorio_modelo" not in st.session_state:
+        modelo = salvo.get("modelo")
+        st.session_state["relatorio_modelo"] = (
+            modelo if modelo in NOMES_DOS_MODELOS else relatorios.COMPLETO
+        )
+    if "relatorio_estilo" not in st.session_state:
+        st.session_state["relatorio_estilo"] = estilos_pdf.estilo(
+            salvo.get("estilo")
+        ).chave
+    if f"relatorio_ordem_{tipo}" not in st.session_state:
+        guardadas = (salvo.get("secoes") or {}).get(tipo)
+        modelo = st.session_state["relatorio_modelo"]
+        _aplicar_secoes(
+            tipo,
+            guardadas
+            if modelo == PERSONALIZADO and guardadas
+            else relatorios.secoes_do_modelo(tipo, modelo),
+        )
+
+
+def _ao_trocar_o_modelo(tipo):
+    modelo = st.session_state["relatorio_modelo"]
+    if modelo != PERSONALIZADO:
+        _aplicar_secoes(tipo, relatorios.secoes_do_modelo(tipo, modelo))
+
+
+def _virou_personalizado():
+    st.session_state["relatorio_modelo"] = PERSONALIZADO
+
+
+def _mover_secao(tipo, chave, passo):
+    ordem = list(st.session_state[f"relatorio_ordem_{tipo}"])
+    i = ordem.index(chave)
+    j = i + passo
+    if 0 <= j < len(ordem):
+        ordem[i], ordem[j] = ordem[j], ordem[i]
+        st.session_state[f"relatorio_ordem_{tipo}"] = ordem
+        _virou_personalizado()
+
+
+def mostrar_secoes(tipo):
+    """Uma linha por seção: caixa para incluir e botões para subir e descer (sem arrastar:
+    botões funcionam com teclado e leitor de tela). As obrigatórias não podem sair."""
+    obrigatorias = {s.chave for s in relatorios.SECOES[tipo] if s.obrigatoria}
+    por_chave = {s.chave: s for s in relatorios.SECOES[tipo]}
+    ordem = st.session_state[f"relatorio_ordem_{tipo}"]
+    for i, chave in enumerate(ordem):
+        secao = por_chave[chave]
+        col_caixa, col_sobe, col_desce = st.columns(
+            [8, 1, 1], vertical_alignment="center"
+        )
+        col_caixa.checkbox(
+            secao.titulo + (" (obrigatória)" if chave in obrigatorias else ""),
+            key=_chave_da_secao(tipo, chave),
+            disabled=chave in obrigatorias,
+            help=secao.descricao,
+            on_change=_virou_personalizado,
+        )
+        col_sobe.button(
+            ":material/arrow_upward:",
+            key=f"estudio_sobe_{tipo}_{chave}",
+            help=f"Subir {secao.titulo}",
+            disabled=i == 0,
+            on_click=_mover_secao,
+            args=(tipo, chave, -1),
+        )
+        col_desce.button(
+            ":material/arrow_downward:",
+            key=f"estudio_desce_{tipo}_{chave}",
+            help=f"Descer {secao.titulo}",
+            disabled=i == len(ordem) - 1,
+            on_click=_mover_secao,
+            args=(tipo, chave, 1),
+        )
+
+
+def configuracao_atual(tipo):
+    return relatorios.Configuracao(
+        estilo=st.session_state.get("relatorio_estilo", "research"),
+        secoes=tuple(secoes_escolhidas(tipo)),
+        modelo=st.session_state.get("relatorio_modelo", relatorios.COMPLETO),
+    )
+
+
+def _identidade_completa(pedido, config):
+    return f"{pedido.identidade}|{config.estilo}|{','.join(config.secoes or ())}"
+
+
+def _previa(pedido, config):
+    """O PDF da prévia (guardado na sessão: mudar de volta não gera de novo)."""
+    guardadas = st.session_state.setdefault("relatorio_previas", {})
+    chave = _identidade_completa(pedido, config)
+    if chave not in guardadas:
+        pdf = pedido.montar(config, None)
+        guardadas[chave] = (
+            previa_pdf.paginas_em_png(pdf, PAGINAS_DA_PREVIA),
+            previa_pdf.contar_paginas(pdf),
+        )
+        while len(guardadas) > MAX_PREVIAS_GUARDADAS:
+            guardadas.pop(next(iter(guardadas)))
+    marcar_feito("viu_a_previa")
+    return guardadas[chave]
+
+
+def _salvar_configuracao(usuario, tipo):
+    config = {
+        "modelo": st.session_state.get("relatorio_modelo", relatorios.COMPLETO),
+        "estilo": st.session_state.get("relatorio_estilo", "research"),
+        "secoes": {
+            **(
+                (st.session_state.get("config_salva_do_relatorio") or {}).get("secoes")
+                or {}
+            ),
+            tipo: secoes_escolhidas(tipo),
+        },
+    }
+    try:
+        with obter_engine().begin() as conexao:
+            atuais = carregar_preferencias(conexao, usuario.id)
+            salvar_preferencias(conexao, usuario.id, {**atuais, "relatorio": config})
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao salvar a configuração")
+        st.toast("Não consegui salvar a configuração agora.", icon=":material/error:")
+        return
+    st.session_state["config_salva_do_relatorio"] = config
+    st.toast(
+        "Configuração salva: o estúdio abre assim da próxima vez.",
+        icon=":material/bookmark_added:",
+    )
+
+
+def _gerar(pedido, config, usuario):
+    """Gera de verdade, mostrando as etapas reais, e registra na biblioteca."""
+    with st.status("Gerando o relatório…", expanded=True) as status:
+
+        def ao_avancar(etapa):
+            status.write(f"{etapa}…")
+            status.update(label=f"{etapa}…")
+
+        try:
+            ao_avancar("Preparando dados")
+            pdf = pedido.montar(config, ao_avancar)
+        except (DadosIndisponiveisError, ValueError) as erro:
+            status.update(label="Não consegui montar o relatório", state="error")
+            st.error(
+                f"Não consegui montar o relatório: {erro}. Nada foi contado no seu limite; "
+                "confira os campos e tente de novo."
+            )
+            return False
+        relatorio_id = None
+        if usuario is not None:  # conta só o que deu certo (o PDF já está pronto)
+            status.write("Guardando na sua biblioteca…")
+            parametros = {
+                **pedido.parametros,
+                "modelo": config.modelo,
+                "estilo": config.estilo,
+                "secoes": list(config.secoes or ()),
+            }
+            try:
+                with obter_engine().begin() as conexao:
+                    relatorio_id = registrar_relatorio(
+                        conexao,
+                        usuario.id,
+                        pedido.tipo,
+                        plano=usuario.plano,
+                        titulo=pedido.titulo,
+                        parametros=parametros,
+                    )
+            except LimiteDoPlanoError as erro:
+                status.update(label="Limite do plano", state="error")
+                st.warning(str(erro))
+                return False
+            except Exception:
+                logging.getLogger(__name__).exception("Falha ao registrar o relatório")
+                status.update(label="Não consegui registrar o relatório", state="error")
+                st.error(
+                    "Não consegui registrar o relatório agora. Nada foi contado no seu "
+                    "limite; tente de novo em instantes."
+                )
+                return False
+        status.update(label="Concluído", state="complete", expanded=False)
+    st.session_state["relatorio_gerado"] = {
+        "identidade": _identidade_completa(pedido, config),
+        "arquivo": pedido.arquivo,
+        "pdf": pdf,
+        "id": str(relatorio_id) if relatorio_id else None,
+        "paginas": previa_pdf.contar_paginas(pdf),
+    }
+    st.toast("PDF pronto para baixar", icon=":material/check_circle:")
+    return True
+
+
+def mostrar_estudio(usuario, limites, c):
+    tipo = st.segmented_control(
+        "Tipo de relatório",
+        list(relatorios.NOMES_DOS_RELATORIOS),
+        format_func=relatorios.NOMES_DOS_RELATORIOS.get,
+        default=relatorios.ATIVO,
+        required=True,
+        key="tipo_de_relatorio",
+    )
+    if tipo not in limites.tipos_de_relatorio:
+        st.info(
+            f"O plano {limites.nome} gera o relatório do ativo. "
+            f"{relatorios.NOMES_DOS_RELATORIOS[tipo]} em PDF faz parte do plano Pro."
+        )
+        st.page_link(
+            PAGINAS_DO_MENU["planos"],
+            label="Conhecer o plano Pro",
+            icon=":material/workspace_premium:",
+        )
+        return
+    _iniciar_estudio(tipo)
+    col_config, col_previa = st.columns([1, 1.15], gap="large")
+    with col_config:
+        st.markdown("##### 1 · Dados")
+        pedido = _montar_relatorio(tipo, c)
+        st.markdown("##### 2 · Modelo")
+        modelo = st.segmented_control(
+            "Modelo",
+            list(NOMES_DOS_MODELOS),
+            format_func=NOMES_DOS_MODELOS.get,
+            required=True,
+            key="relatorio_modelo",
+            on_change=_ao_trocar_o_modelo,
+            args=(tipo,),
+            label_visibility="collapsed",
+        )
+        st.caption(
+            relatorios.DESCRICAO_DOS_MODELOS.get(
+                modelo, "As seções e a ordem que você escolheu abaixo."
+            )
+        )
+        st.markdown("##### 3 · Estilo")
+        estilo = st.segmented_control(
+            "Estilo",
+            list(estilos_pdf.ESTILOS),
+            format_func=lambda e: estilos_pdf.ESTILOS[e].nome,
+            required=True,
+            key="relatorio_estilo",
+            label_visibility="collapsed",
+            on_change=marcar_feito,
+            args=("trocou_o_estilo",),
+        )
+        st.caption(estilos_pdf.estilo(estilo).descricao + " Muda só as cores.")
+        with st.expander("4 · Seções e ordem", expanded=modelo == PERSONALIZADO):
+            st.caption(
+                "Marque o que entra e use as setas para mudar a ordem. Mexer aqui transforma "
+                "o modelo em Personalizado. Os números não mudam, só a organização."
+            )
+            mostrar_secoes(tipo)
+    config = configuracao_atual(tipo)
+    with col_previa:
+        st.markdown("##### Prévia")
+        if pedido is None:
+            st.caption("Preencha os dados ao lado para ver a prévia.")
+        else:
+            try:
+                imagens, total = _previa(pedido, config)
+            except (DadosIndisponiveisError, ValueError) as erro:
+                st.warning(f"Ainda não dá para montar a prévia: {erro}")
+            else:
+                st.caption(
+                    f"A capa e a primeira página do PDF de verdade ({total} páginas no "
+                    "total). Atualiza a cada mudança e não conta no seu limite."
+                )
+                with st.container(key="tl-previa"):
+                    for coluna, imagem in zip(
+                        st.columns(len(imagens)), imagens, strict=True
+                    ):
+                        coluna.image(imagem, width="stretch")
+                titulos = {s.chave: s.titulo for s in relatorios.SECOES[tipo]}
+                st.markdown(
+                    "**Neste relatório:** "
+                    + " · ".join(
+                        f"{n}. {titulos[s]}" for n, s in enumerate(config.secoes, 1)
+                    )
+                )
+    if pedido is None:
+        return
+    _, no_limite = _uso_de_relatorios(usuario, limites)
+    gerado = st.session_state.get("relatorio_gerado")
+    ja_gerado = bool(gerado) and gerado["identidade"] == _identidade_completa(
+        pedido, config
+    )
+    with st.container(key="tl-barra-relatorio"):
+        col_salvar, col_gerar, col_uso = st.columns(
+            [1, 1, 2], vertical_alignment="center"
+        )
+        if usuario is not None:
+            col_salvar.button(
+                "Salvar configuração",
+                icon=":material/bookmark:",
+                key="estudio_salvar_config",
+                help="Guarda o modelo, o estilo e as seções na sua conta.",
+                on_click=_salvar_configuracao,
+                args=(usuario, tipo),
+                width="stretch",
+            )
+        if ja_gerado:
+            col_gerar.download_button(
+                "Baixar PDF",
+                data=gerado["pdf"],
+                file_name=gerado["arquivo"],
+                mime="application/pdf",
+                icon=":material/download:",
+                type="primary",
+                key="baixar_pdf",
+                width="stretch",
+            )
+        else:
+            clicou = col_gerar.button(
+                "Gerar relatório",
+                type="primary",
+                icon=":material/picture_as_pdf:",
+                disabled=no_limite,
+                key="gerar_pdf",
+                width="stretch",
+            )
+        col_uso.caption(_uso_de_relatorios(usuario, limites)[0])
+    if not ja_gerado and clicou and _gerar(pedido, config, usuario):
+        st.rerun()  # a barra volta já com "Baixar PDF" e o uso atualizado
+    if ja_gerado:
+        col_nova, _ = st.columns([1, 3])
+        if col_nova.button(
+            "Nova versão",
+            icon=":material/refresh:",
+            key="estudio_nova_versao",
+            disabled=no_limite,
+            help="Gera de novo com os dados de agora (conta no limite do plano).",
+        ):
+            st.session_state.pop("relatorio_gerado", None)
+            if _gerar(pedido, config, usuario):
+                st.rerun()
+        with st.expander(f"Revisar as {gerado['paginas']} páginas"):
+            imagens = previa_pdf.paginas_em_png(gerado["pdf"], largura_px=420)
+            for inicio in range(0, len(imagens), 3):
+                for coluna, imagem in zip(
+                    st.columns(3), imagens[inicio : inicio + 3], strict=False
+                ):
+                    coluna.image(imagem, width="stretch")
+
+
+# --- biblioteca ("Meus relatórios") ---------------------------------------------------------
+CAMPOS_PARA_REABRIR = {
+    "comparar_com": "relatorio_comparar_com",
+    "estrategia": "relatorio_estrategia",
+    "custo": "relatorio_custo",
+    "ativos": "relatorio_carteira_ativos",
+    "estrategia_carteira": "relatorio_carteira",
+    "carteira_de_exemplo": "relatorio_carteira_exemplo",
+    "lista": "relatorio_newsletter_lista",
+    "janela": "relatorio_newsletter_janela",
+}
+
+
+def _reabrir(relatorio):
+    """Põe o tipo, os dados e a configuração do relatório de volta no estúdio."""
+    p = relatorio.parametros
+    tipo = relatorio.tipo
+    st.session_state["tipo_de_relatorio"] = tipo
+    if p.get("ticker"):
+        st.session_state["ticker"] = p["ticker"]
+    if p.get("periodo") in PERIODOS_DO_TOPO:
+        st.session_state["periodo"] = p["periodo"]
+    for chave, campo in CAMPOS_PARA_REABRIR.items():
+        if chave in p:
+            st.session_state[campo] = p[chave]
+    modelo = p.get("modelo")
+    st.session_state["relatorio_modelo"] = (
+        modelo if modelo in NOMES_DOS_MODELOS else relatorios.COMPLETO
+    )
+    st.session_state["relatorio_estilo"] = estilos_pdf.estilo(p.get("estilo")).chave
+    _aplicar_secoes(tipo, p.get("secoes") or None)
+    st.session_state.pop("relatorio_gerado", None)
+    aviso = (
+        " Envie de novo a planilha da B3: ela não fica guardada."
+        if tipo == relatorios.MINHA_CARTEIRA and not p.get("carteira_de_exemplo")
+        else ""
+    )
+    st.toast(
+        f"Configuração de “{relatorio.titulo}” carregada na aba Estúdio.{aviso}",
+        icon=":material/restore:",
+    )
+
+
+def _excluir(usuario, relatorio_id):
+    try:
+        with obter_engine().begin() as conexao:
+            excluiu = excluir_relatorio(conexao, usuario.id, relatorio_id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao excluir o relatório")
+        st.toast("Não consegui excluir agora.", icon=":material/error:")
+        return
+    if excluiu:
+        st.toast("Relatório excluído da biblioteca.", icon=":material/delete:")
+
+
+def _versoes(itens):
+    """O número da versão de cada relatório: 1 para o primeiro com aquele título, e assim por
+    diante (do mais antigo para o mais novo)."""
+    contagem, versoes = {}, {}
+    for item in sorted(itens, key=lambda r: r.criado_em):
+        contagem[item.titulo] = contagem.get(item.titulo, 0) + 1
+        versoes[item.id] = contagem[item.titulo]
+    return versoes
+
+
+def mostrar_biblioteca(usuario):
+    if usuario is None:
+        st.info(
+            "A biblioteca guarda os relatórios de quem entra com a conta. No modo local, "
+            "sem login, nada é guardado."
+        )
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            itens = biblioteca_de_relatorios(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler a biblioteca")
+        st.error(
+            "Não consegui abrir a sua biblioteca agora. Tente de novo em instantes."
+        )
+        return
+    if not itens:
+        st.info(
+            "Você ainda não gerou relatórios. Eles aparecem aqui com o tipo, o período e o "
+            "estilo, para gerar de novo com os mesmos parâmetros."
+        )
+        return
+    st.caption(
+        "O PDF não fica guardado: “Reabrir” traz os mesmos parâmetros para o estúdio, e você "
+        "gera uma nova versão com os dados de hoje. Excluir não devolve o relatório ao limite."
+    )
+    col_busca, col_tipos = st.columns([1, 2])
+    busca = col_busca.text_input(
+        "Buscar", placeholder="Título ou ativo…", key="relatorio_busca"
+    )
+    tipos = col_tipos.pills(
+        "Tipo",
+        list(relatorios.NOMES_DOS_RELATORIOS),
+        format_func=relatorios.NOMES_DOS_RELATORIOS.get,
+        selection_mode="multi",
+        key="relatorio_filtro_tipos",
+    )
+    versoes = _versoes(itens)
+    visiveis = [
+        r
+        for r in itens
+        if (not tipos or r.tipo in tipos)
+        and (not busca or busca.strip().lower() in r.titulo.lower())
+    ]
+    if not visiveis:
+        st.caption("Nenhum relatório com esse filtro.")
+    for r in visiveis:
+        p = r.parametros
+        with st.container(border=True):
+            col_texto, col_reabrir, col_excluir = st.columns(
+                [6, 1.4, 1.2], vertical_alignment="center"
+            )
+            col_texto.markdown(
+                f"**{r.titulo or relatorios.NOMES_DOS_RELATORIOS[r.tipo]}**"
+            )
+            detalhes = [
+                relatorios.NOMES_DOS_RELATORIOS.get(r.tipo, r.tipo),
+                PERIODOS_DO_TOPO.get(p.get("periodo"), p.get("periodo") or "—"),
+                NOMES_DOS_MODELOS.get(p.get("modelo"), "Pesquisa completa"),
+                estilos_pdf.estilo(p.get("estilo")).nome,
+                f"versão {versoes[r.id]}",
+                f"{r.criado_em.astimezone(relatorios.FUSO):%d/%m/%Y %H:%M}",
+            ]
+            col_texto.caption(" · ".join(str(d) for d in detalhes))
+            col_reabrir.button(
+                "Reabrir",
+                icon=":material/restore:",
+                key=f"estudio_reabrir_{r.id}",
+                on_click=_reabrir,
+                args=(r,),
+                width="stretch",
+            )
+            with col_excluir.popover("Excluir", icon=":material/delete:"):
+                st.caption("Excluir da biblioteca? Os parâmetros são apagados.")
+                st.button(
+                    "Excluir de vez",
+                    type="primary",
+                    key=f"estudio_excluir_{r.id}",
+                    on_click=_excluir,
+                    args=(usuario, r.id),
+                )
+
+
+def pagina_relatorio():
+    cabecalho_da_pagina("relatorio")
+    c = carregar_contexto()
+    # o lugar da faixa fica no topo, mas ela é desenhada no fim: assim já enxerga o que o
+    # estúdio acabou de fazer (prévia pronta, carteira carregada) e libera o "Continuar"
+    lugar_do_tutorial = st.container()
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    aba_estudio, aba_biblioteca = st.tabs(
+        [":material/edit_document: Estúdio", ":material/folder_open: Meus relatórios"]
+    )
+    with aba_estudio:
+        mostrar_estudio(usuario, limites, c)
+    with aba_biblioteca:
+        mostrar_biblioteca(usuario)
+    with lugar_do_tutorial:
+        mostrar_tutorial("relatorio", c)
+
+
+def pagina_trade():
+    fase = trade.fase_atual()
+    st.markdown(
+        f'<span class="tl-estado">Em pesquisa · fase {fase.codigo}</span>',
+        unsafe_allow_html=True,
+    )
+    cabecalho_da_pagina("trade")
+    st.markdown(
+        "Uma pesquisa de **trading quantitativo**: modelos de aprendizado de máquina testados "
+        "em mais de 80 ativos (ações, índices, moedas, juros, commodities e cripto), com regras "
+        "de aprovação **escritas antes de olhar os resultados**. Só se um modelo passar, ele "
+        "vira um robô numa **conta de demonstração** do MetaTrader 5, sem dinheiro de verdade. "
+        "Resultado negativo também é publicado."
+    )
+    fases = "".join(
+        f'<div class="tl-fase {f.estado}"><b>{f.codigo}'
+        f"{' ✓' if f.estado == trade.FEITA else ' ●' if f.estado == trade.AGORA else ''}"
+        f"</b>{f.nome}</div>"
+        for f in trade.FASES
+    )
+    st.markdown(f'<div class="tl-fases">{fases}</div>', unsafe_allow_html=True)
+    st.caption(f"Agora: {fase.nome}. {fase.explicacao}")
+
+    st.subheader("Downloads")
+    for coluna, item in zip(
+        st.columns(len(trade.DOWNLOADS)), trade.DOWNLOADS, strict=True
+    ):
+        with coluna, st.container(border=True):
+            st.markdown(f"**{item.titulo}**")
+            st.caption(item.descricao)
+            st.button(
+                "Disponível no fim do projeto",
+                key=f"download_{item.titulo}",
+                disabled=not item.disponivel,
+                width="stretch",
+            )
+    st.warning(
+        "É uma pesquisa educacional. Nada aqui é recomendação de investimento, e nenhum teste "
+        "garante rentabilidade.",
+        icon=":material/info:",
     )
 
 
@@ -3844,9 +5358,31 @@ def pagina_guia():
 def pagina_visao_geral():
     cabecalho_da_pagina("visao_geral")
     c = carregar_contexto()
-    secao_painel_de_numeros(c.fechamento, c.retorno, c.taxa_livre_de_risco)
+    mostrar_tutorial("visao_geral", c)
+    atalho_para_o_relatorio(relatorios.ATIVO)
+    r = parametros_em_vigor(c.ticker)
+    secao_painel_de_numeros(
+        c.fechamento, c.retorno, c.taxa_livre_de_risco, int(r["quant.var_confianca"])
+    )
     st.divider()
-    secao_preco(c.dados)
+    medias = ("tecnica.media_rapida", "tecnica.media_lenta")
+    personalizou_medias = any(r.origem(k) != research_presets.SISTEMA for k in medias)
+    secao_preco(
+        c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
+    )
+    st.divider()
+    secao_tendencia_e_volume(c.dados, r)
+    avisar_parametros(
+        r,
+        (
+            "quant.var_confianca",
+            *medias,
+            "tecnica.adx_periodo",
+            "tecnica.adx_tendencia",
+            "tecnica.volume_janela",
+            "tecnica.periodicidade",
+        ),
+    )
     st.download_button(
         "Baixar os preços (CSV)",
         converter_para_csv(montar_tabela_de_precos(c.dados)),
@@ -3859,7 +5395,14 @@ def pagina_visao_geral():
 def pagina_risco():
     cabecalho_da_pagina("risco")
     c = carregar_contexto()
-    secao_risco(c.fechamento, c.retorno)
+    r = parametros_em_vigor(c.ticker)
+    personalizou = r.origem("quant.janela_volatilidade") != research_presets.SISTEMA
+    secao_risco(
+        c.fechamento,
+        c.retorno,
+        int(r["quant.janela_volatilidade"]) if personalizou else None,
+    )
+    avisar_parametros(r, ("quant.janela_volatilidade",))
 
 
 def pagina_retorno_mensal():
@@ -3871,18 +5414,24 @@ def pagina_retorno_mensal():
 def pagina_comparar():
     cabecalho_da_pagina("comparar")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.COMPARACAO)
     secao_comparar(c.ticker, c.periodo, c.taxa_livre_de_risco)
 
 
 def pagina_correlacao():
     cabecalho_da_pagina("correlacao")
     c = carregar_contexto()
-    secao_correlacao(c.ticker, c.periodo)
+    r = parametros_em_vigor(c.ticker)
+    secao_correlacao(
+        c.ticker, c.periodo, r["quant.benchmark"], int(r["quant.janela_correlacao"])
+    )
+    avisar_parametros(r, ("quant.benchmark", "quant.janela_correlacao"))
 
 
 def pagina_backtest():
     cabecalho_da_pagina("backtest")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.BACKTEST)
     secao_backtest(c.dados, c.taxa_livre_de_risco, c.cdi_diario)
 
 
@@ -3895,6 +5444,7 @@ def pagina_ranking():
 def pagina_carteira():
     cabecalho_da_pagina("carteira")
     c = carregar_contexto()
+    atalho_para_o_relatorio(relatorios.CARTEIRA)
     secao_carteira(c.periodo, c.taxa_livre_de_risco, c.cdi_diario)
 
 
@@ -4011,10 +5561,7 @@ def mostrar_aceite_dos_termos(usuario):
     """Tela de primeiro acesso (ou de termos novos): o app só abre depois do aceite."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(
-            '<div class="tl-marca">Ticker<span>Lab</span></div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown(marca_html(), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
         )
@@ -4171,11 +5718,12 @@ def pagina_admin():
         st.warning("Não consegui carregar o painel agora.")
         return
 
-    primeira = st.columns(4)
+    primeira = st.columns(5)
     primeira[0].metric("Usuários", resumo["usuarios"])
-    primeira[1].metric("Plano Pro", resumo["pro"])
-    primeira[2].metric("Novos na semana", resumo["novos_na_semana"])
-    primeira[3].metric("Ativos na semana", resumo["ativos_na_semana"])
+    primeira[1].metric("Plano Plus", resumo["plus"])
+    primeira[2].metric("Plano Pro", resumo["pro"])
+    primeira[3].metric("Novos na semana", resumo["novos_na_semana"])
+    primeira[4].metric("Ativos na semana", resumo["ativos_na_semana"])
     segunda = st.columns(4)
     segunda[0].metric("Plano Gratuito", resumo["gratuito"])
     segunda[1].metric(
@@ -4277,8 +5825,2268 @@ def pagina_admin():
         st.caption("Nenhum evento recebido ainda.")
 
 
+# --- Research: Parâmetros (etapa 1c) ---------------------------------------------------------
+# O rascunho fica nos campos (chaves "rp_..."); só "Salvar" grava uma versão nova. A chave de cada
+# campo leva a versão salva: depois de salvar, os campos renascem com os valores guardados.
+ROTULOS_DAS_OPCOES = {
+    "zero": "Zero",
+    "cdi": "CDI (Banco Central)",
+    "simples": "Simples",
+    "exponencial": "Exponencial",
+    "diario": "Diário",
+    "semanal": "Semanal",
+    "sob_demanda": "Sob demanda",
+    "diaria": "Diária",
+    "gatilhos": "Só quando um gatilho acontecer",
+    "web": "No site",
+    "pdf": "Em PDF",
+    "^BVSP": "Ibovespa (^BVSP)",
+    "^GSPC": "S&P 500 (^GSPC)",
+    "^IXIC": "Nasdaq (^IXIC)",
+    "resultados": "Resultados",
+    "proventos": "Proventos",
+    "eventos": "Eventos",
+    "risco": "Risco",
+    "tecnica": "Técnica",
+    "valuation": "Valuation",
+    "fundamentos": "Fundamentos",
+    "participacoes": "Participações",
+}
+NOMES_DOS_ESCOPOS_NA_TELA = {
+    research_presets.GLOBAL: "Seu padrão (todos os ativos)",
+    research_presets.ATIVO: "Só para o ativo do topo",
+}
+DOMINIOS_QUE_JA_MUDAM_NUMEROS = ("quant", "tecnica")
+
+
+def _presets_guardados(usuario):
+    """Os presets em vigor: da conta, ou desta sessão no modo local (sem login)."""
+    if usuario is None:
+        return list(st.session_state.get("presets_locais", []))
+    try:
+        with obter_engine().connect() as conexao:
+            return presets_atuais(conexao, usuario.id)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os parâmetros")
+        st.warning("Não consegui ler os seus parâmetros agora; mostrando os padrões.")
+        return []
+
+
+def _chave_do_campo(escopo, alvo, versao, chave):
+    return f"rp_{escopo}_{alvo or 'todos'}_{versao}_{chave}"
+
+
+def _valor_do_campo(parametro, valor):
+    """Converte o que o campo devolve para o tipo do catálogo (sem validar limites)."""
+    if parametro.tipo == "temas":
+        return tuple(t for t in parametro.opcoes if t in (valor or ()))
+    if parametro.tipo == "inteiro" and isinstance(valor, float) and valor.is_integer():
+        return int(valor)
+    return valor
+
+
+def _campo_do_parametro(parametro, chave_do_campo, inicial):
+    """O campo certo para cada tipo: número, lista de opções ou seleção de temas."""
+    if chave_do_campo not in st.session_state:
+        st.session_state[chave_do_campo] = (
+            list(inicial) if parametro.tipo == "temas" else inicial
+        )
+    rotulo = parametro.rotulo + (f" ({parametro.unidade})" if parametro.unidade else "")
+    if parametro.tipo == "temas":
+        st.multiselect(
+            rotulo,
+            list(parametro.opcoes),
+            format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, o),
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    elif parametro.tipo == "escolha" or parametro.opcoes:
+        st.selectbox(
+            rotulo,
+            list(parametro.opcoes),
+            format_func=lambda o: ROTULOS_DAS_OPCOES.get(o, str(o)),
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    elif parametro.tipo == "inteiro":
+        st.number_input(
+            rotulo,
+            min_value=int(parametro.minimo),
+            max_value=int(parametro.maximo),
+            step=1,
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+    else:
+        st.number_input(
+            rotulo,
+            min_value=float(parametro.minimo),
+            max_value=float(parametro.maximo),
+            step=0.1,
+            format="%.2f",
+            key=chave_do_campo,
+            help=parametro.ajuda,
+        )
+
+
+def _restaurar_campo(chave_do_campo, valor):
+    st.session_state[chave_do_campo] = (
+        list(valor) if isinstance(valor, tuple) else valor
+    )
+
+
+def _aplicar_pronto(campos, herdado):
+    """Põe nos campos os valores de um modo de leitura pronto (o resto volta ao herdado)."""
+    pronto = research_presets.PRESETS_PRONTOS.get(st.session_state.get("rp_pronto"))
+    if pronto is None:
+        return
+    for chave, chave_do_campo in campos.items():
+        _restaurar_campo(chave_do_campo, pronto.parametros.get(chave, herdado[chave]))
+
+
+def _descartar(campos):
+    for chave_do_campo in campos.values():
+        st.session_state.pop(chave_do_campo, None)
+
+
+def _gravar(usuario, escopo, alvo, valores, motivo):
+    """Grava uma versão nova (na conta, ou na sessão no modo local). Devolve o número ou None."""
+    if usuario is None:
+        atuais = list(st.session_state.get("presets_locais", []))
+        anterior = next(
+            (p for p in atuais if p.escopo == escopo and p.alvo == alvo), None
+        )
+        versao = (anterior.versao + 1) if anterior else 1
+        novo = research_presets.Preset(
+            escopo=escopo, alvo=alvo, versao=versao, parametros=valores
+        )
+        research_presets.conferir_ao_salvar(atuais, novo)
+        st.session_state["presets_locais"] = research_presets.substituir(atuais, novo)
+        return versao
+    with obter_engine().begin() as conexao:
+        return salvar_preset(
+            conexao,
+            usuario.id,
+            escopo,
+            alvo,
+            valores,
+            plano=usuario.plano,
+            motivo=motivo,
+        )
+
+
+def _formatar_metrica(metrica):
+    if not metrica.disponivel:
+        return "indisponível"
+    valor = metrica.valor
+    if metrica.unidade == "fração":
+        return formatar_pct(valor)
+    casas = 1 if metrica.unidade == "pontos" else 2
+    return f"{valor:,.{casas}f}".replace(",", "#").replace(".", ",").replace("#", ".")
+
+
+def _formatar_parametro(chave, valor):
+    if isinstance(valor, tuple):
+        return ", ".join(ROTULOS_DAS_OPCOES.get(v, v) for v in valor) or "—"
+    if isinstance(valor, float):
+        return f"{valor:g}".replace(".", ",")
+    return ROTULOS_DAS_OPCOES.get(valor, str(valor))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fechamento_do_indice(indice, periodo, exemplo):
+    try:
+        return carregar_dados(indice, periodo)["Close"]
+    except (DadosIndisponiveisError, ValueError):
+        return None
+
+
+def _taxa_do_cdi(c):
+    try:
+        return calcular_taxa_anual_do_cdi(
+            c.cdi_diario
+            if c.cdi_diario is not None
+            else obter_cdi(c.dados.index[0], c.dados.index[-1]),
+            c.dados.index,
+        )
+    except (
+        CDIIndisponivelError,
+        ValueError,
+    ):  # sem CDI: Sharpe e Sortino ficam indisponíveis
+        return None
+
+
+def _analisar_com(c, resolucao):
+    indice = resolucao["quant.benchmark"]
+    benchmark = _fechamento_do_indice(
+        indice, c.periodo, bool(st.session_state.get("usar_exemplo"))
+    )
+    cdi = _taxa_do_cdi(c) if resolucao["quant.taxa_livre_de_risco"] == "cdi" else None
+    return research_analise.analisar_ativo(c.ticker, c.dados, resolucao, cdi, benchmark)
+
+
+def mostrar_efeito(c, salvo, rascunho):
+    """A × B: o que muda nos parâmetros e nos números do ativo do topo, antes de salvar."""
+    st.subheader(f"Efeito em {c.ticker}")
+    diferencas = salvo.comparar(rascunho)
+    if not diferencas:
+        st.caption(
+            "Nada mudou ainda. Mexa num parâmetro e a comparação aparece aqui, antes de salvar."
+        )
+    else:
+        nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Parâmetro": nomes[d.chave],
+                        "Em vigor (A)": _formatar_parametro(d.chave, d.valor_a),
+                        "Com as mudanças (B)": _formatar_parametro(d.chave, d.valor_b),
+                    }
+                    for d in diferencas
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    a, b = _analisar_com(c, salvo), _analisar_com(c, rascunho)
+    linhas = []
+    for chave, metrica in a.metricas.items():
+        nova = b[chave]
+        linhas.append(
+            {
+                "Métrica": nova.nome,
+                "Em vigor (A)": _formatar_metrica(metrica),
+                "Com as mudanças (B)": _formatar_metrica(nova),
+                "Mudou": "●"
+                if (metrica.valor != nova.valor or metrica.nome != nova.nome)
+                else "",
+            }
+        )
+    st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
+    indisponiveis = [m for m in b.metricas.values() if not m.disponivel]
+    for m in indisponiveis:
+        st.caption(f"**{m.nome}** indisponível: {m.motivo}")
+    p = b.proveniencia
+    st.caption(
+        f"Dados: {p.fonte}, de {p.inicio:%d/%m/%Y} a {p.fim:%d/%m/%Y} ({p.pregoes} pregões), "
+        f"em {p.moeda}, {p.ajuste}. Execução {b.id_da_execucao} · parâmetros "
+        f"{p.assinatura_dos_parametros}."
+    )
+
+
+def mostrar_historico(usuario, escopo, alvo):
+    if usuario is None:
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            versoes = historico_do_preset(conexao, usuario.id, escopo, alvo)
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler o histórico")
+        return
+    if not versoes:
+        return
+    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
+    with st.expander(f"Histórico de versões ({len(versoes)})"):
+        for i, v in enumerate(versoes):
+            mudados = (
+                ", ".join(
+                    f"{nomes.get(k, k)} {_formatar_parametro(k, tuple(x) if isinstance(x, list) else x)}"
+                    for k, x in v.parametros.items()
+                )
+                or "tudo no padrão"
+            )
+            col_texto, col_botao = st.columns([5, 1], vertical_alignment="center")
+            col_texto.markdown(
+                f"**v{v.versao}** · {v.criado_em.astimezone(relatorios.FUSO):%d/%m/%Y %H:%M}"
+                f" · {mudados}" + (f" · _{v.motivo}_" if v.motivo else "")
+            )
+            if i > 0:
+                col_botao.button(
+                    "Voltar a esta",
+                    key=f"rpb_voltar_{escopo}_{v.versao}",
+                    on_click=_voltar_versao,
+                    args=(usuario, escopo, alvo, v),
+                )
+
+
+def _voltar_versao(usuario, escopo, alvo, versao):
+    try:
+        nova = _gravar(
+            usuario, escopo, alvo, versao.parametros, f"volta à versão {versao.versao}"
+        )
+    except (ValueError, LimiteDoPlanoError) as erro:
+        st.session_state["rp_erro"] = str(erro)
+        return
+    if nova:
+        st.toast(f"Versão {nova} criada com os valores da versão {versao.versao}.")
+
+
+def pagina_parametros():
+    cabecalho_da_pagina("parametros")
+    c = carregar_contexto()
+    usuario = st.session_state.get("usuario")
+    plano = usuario.plano if usuario is not None else None
+    if usuario is None:
+        st.info(
+            "Modo local: os parâmetros valem só nesta sessão. Entre com a sua conta para "
+            "guardá-los e ter o histórico de versões.",
+            icon=":material/info:",
+        )
+    escopo = st.segmented_control(
+        "Onde estes parâmetros valem",
+        list(NOMES_DOS_ESCOPOS_NA_TELA),
+        format_func=lambda e: (
+            f"Só para {c.ticker}"
+            if e == research_presets.ATIVO
+            else NOMES_DOS_ESCOPOS_NA_TELA[e]
+        ),
+        default=research_presets.GLOBAL,
+        required=True,
+        key="rp_escopo",
+    )
+    alvo = normalizar_ticker(c.ticker) if escopo == research_presets.ATIVO else None
+    guardados = _presets_guardados(usuario)
+    proprio = next(
+        (p for p in guardados if p.escopo == escopo and p.alvo == alvo), None
+    )
+    versao = proprio.versao if proprio else 0
+    # o que vale sem este escopo (é para onde "Restaurar" volta)
+    sem_este = [p for p in guardados if p is not proprio]
+    try:
+        herdado = research_presets.resolver(sem_este, ticker=c.ticker)
+        salvo = research_presets.resolver(guardados, ticker=c.ticker)
+    except ValueError as erro:
+        st.error(
+            f"Os parâmetros guardados não combinam mais: {erro} Restaure algum deles."
+        )
+        herdado = salvo = research_presets.resolver([])
+    pode_salvar, motivo_do_bloqueio = True, ""
+    if escopo == research_presets.ATIVO and plano is not None:
+        try:
+            conferir_parametros_por_ativo(
+                plano,
+                len([p for p in guardados if p.escopo == research_presets.ATIVO]),
+                ja_tem_este=proprio is not None,
+            )
+        except LimiteDoPlanoError as erro:
+            pode_salvar, motivo_do_bloqueio = False, str(erro)
+    if erro_anterior := st.session_state.pop("rp_erro", None):
+        st.error(erro_anterior)
+
+    campos = {
+        p.chave: _chave_do_campo(escopo, alvo, versao, p.chave)
+        for p in research_parametros.PARAMETROS
+    }
+    col_pronto, col_aplicar = st.columns([3, 1], vertical_alignment="bottom")
+    col_pronto.selectbox(
+        "Começar de um modo de leitura",
+        list(research_presets.PRESETS_PRONTOS),
+        format_func=lambda k: (
+            f"{research_presets.PRESETS_PRONTOS[k].nome}: "
+            f"{research_presets.PRESETS_PRONTOS[k].enfatiza}"
+        ),
+        index=None,
+        placeholder="Visão equilibrada, Longo prazo, Renda e proventos…",
+        key="rp_pronto",
+        help="Modos de leitura, não perfis de risco nem recomendação. Tudo continua editável.",
+    )
+    col_aplicar.button(
+        "Aplicar",
+        key="rpb_aplicar",
+        on_click=_aplicar_pronto,
+        args=(campos, herdado),
+        disabled=not st.session_state.get("rp_pronto"),
+        width="stretch",
+    )
+
+    rascunho_valores = {}
+    abas = st.tabs(
+        [research_parametros.DOMINIOS[d] for d in research_parametros.DOMINIOS]
+    )
+    for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
+        with aba:
+            if dominio == "fundamentalista":
+                st.caption(
+                    "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
+                    "janela dos proventos entra numa próxima etapa."
+                )
+            elif dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
+                st.caption(
+                    "Estes parâmetros serão usados pelo Research (eventos e newsletter) nas "
+                    "próximas etapas; por enquanto não mudam números."
+                )
+            for parametro in research_parametros.PARAMETROS:
+                if parametro.dominio != dominio:
+                    continue
+                chave_do_campo = campos[parametro.chave]
+                inicial = (proprio.parametros if proprio else {}).get(
+                    parametro.chave, herdado[parametro.chave]
+                )
+                col_campo, col_origem = st.columns([3, 2], vertical_alignment="bottom")
+                with col_campo:
+                    _campo_do_parametro(parametro, chave_do_campo, inicial)
+                valor = _valor_do_campo(parametro, st.session_state[chave_do_campo])
+                if valor != herdado[parametro.chave]:
+                    rascunho_valores[parametro.chave] = valor
+                    col_origem.button(
+                        "Restaurar",
+                        key=f"rpb_restaurar_{chave_do_campo}",
+                        icon=":material/undo:",
+                        help=f"Voltar a {_formatar_parametro(parametro.chave, herdado[parametro.chave])} "
+                        f"({herdado.efetivos[parametro.chave].nome_da_origem.lower()}).",
+                        on_click=_restaurar_campo,
+                        args=(chave_do_campo, herdado[parametro.chave]),
+                    )
+                else:
+                    col_origem.caption(
+                        f"Vem de: {herdado.efetivos[parametro.chave].nome_da_origem.lower()}"
+                    )
+
+    # valida o rascunho inteiro (tipo, limites e as regras entre parâmetros)
+    problemas = []
+    rascunho = salvo
+    try:
+        novo = research_presets.Preset(
+            escopo=escopo, alvo=alvo, versao=versao + 1, parametros=rascunho_valores
+        )
+        research_presets.conferir_ao_salvar(guardados, novo)
+        rascunho = research_presets.resolver(
+            research_presets.substituir(guardados, novo), ticker=c.ticker
+        )
+    except research_presets.CombinacaoInvalidaError as erro:
+        problemas = erro.problemas
+    except ValueError as erro:
+        problemas = [str(erro)]
+    for problema in problemas:
+        st.error(problema)
+    mudou = rascunho_valores != (proprio.parametros if proprio else {})
+
+    with st.container(key="tl-barra-parametros"):
+        col_motivo, col_salvar, col_descartar = st.columns(
+            [3, 1, 1], vertical_alignment="bottom"
+        )
+        motivo = col_motivo.text_input(
+            "Motivo da mudança (opcional)",
+            key=f"rp_motivo_{escopo}_{versao}",
+            placeholder="Ex.: testar RSI mais lento",
+            max_chars=200,
+        )
+        salvar = col_salvar.button(
+            "Salvar",
+            type="primary",
+            icon=":material/save:",
+            key="rpb_salvar",
+            disabled=not mudou or bool(problemas) or not pode_salvar,
+            width="stretch",
+        )
+        col_descartar.button(
+            "Descartar",
+            key="rpb_descartar",
+            on_click=_descartar,
+            args=(campos,),
+            disabled=not mudou,
+            width="stretch",
+        )
+    if motivo_do_bloqueio:
+        st.info(motivo_do_bloqueio, icon=":material/workspace_premium:")
+    if salvar:
+        try:
+            nova = _gravar(usuario, escopo, alvo, rascunho_valores, motivo)
+        except (ValueError, LimiteDoPlanoError) as erro:
+            st.error(f"Não salvei: {erro}")
+        except Exception:
+            logging.getLogger(__name__).exception("Falha ao salvar os parâmetros")
+            st.error("Não consegui salvar agora. Tente de novo em instantes.")
+        else:
+            if nova:
+                st.toast(f"Versão {nova} salva.", icon=":material/check_circle:")
+            st.rerun()
+    mostrar_efeito(c, salvo, rascunho)
+    mostrar_historico(usuario, escopo, alvo)
+
+
+# --- Research: Acontecimentos (etapa 2b) -----------------------------------------------------
+JANELAS_DO_RESEARCH = {7: "7 dias", 30: "30 dias", 90: "90 dias"}
+NOMES_DOS_TEMAS = {
+    "resultados": "Resultados",
+    "proventos": "Proventos",
+    "eventos": "Eventos",
+    "risco": "Risco",
+    "tecnica": "Técnica",
+    "valuation": "Valuation",
+    "fundamentos": "Fundamentos",
+    "participacoes": "Participações",
+}
+
+
+def _listas_do_research(usuario):
+    """(nome, tickers, id da watchlist ou None): demonstração, favoritos e as listas com nome."""
+    listas = [(research.NOME_DA_DEMONSTRACAO, list(research.DEMONSTRACAO), None)]
+    favoritos = [normalizar_ticker(t) for t in st.session_state.get("favoritos", [])]
+    if favoritos:
+        listas.append((research.NOME_DOS_FAVORITOS, favoritos, None))
+    carteira = _carteira_do_research(usuario)
+    if carteira is not None:
+        listas.append((research.NOME_DA_CARTEIRA, list(carteira.pesos), None))
+    if usuario is not None:
+        try:
+            with obter_engine().connect() as conexao:
+                listas += [
+                    (w.nome, w.tickers, w.id)
+                    for w in listar_watchlists(conexao, usuario.id)
+                ]
+        except Exception:
+            logging.getLogger(__name__).exception("Falha ao ler as listas")
+            st.warning("Não consegui ler as suas listas agora.")
+    return listas
+
+
+def _carteira_do_research(usuario):
+    """A fotografia guardada (só pesos), se há conta, o plano permite e o consentimento vale."""
+    if usuario is None or not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        return None
+    try:
+        with obter_engine().connect() as conexao:
+            return carregar_carteira(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None  # banco sem a tabela (modo local sem migrar)
+
+
+def _carteira_da_lista(nome):
+    """A fotografia, quando a lista escolhida é a carteira (para pesar a exposição)."""
+    if nome != research.NOME_DA_CARTEIRA:
+        return None
+    return _carteira_do_research(st.session_state.get("usuario"))
+
+
+def _analisar_do_research(ticker):
+    st.session_state["ticker"] = ticker
+    st.session_state["ir_para_visao_geral"] = True
+
+
+def _resumos_dos_itens(itens):
+    """protocolo → resumo, para os fatos relevantes da CVM já lidos (R5)."""
+    protocolos = [i.evento.protocolo for i in itens if i.evento.fonte == FONTE_IPE]
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_leituras.resumos(conexao, FONTE_IPE, protocolos)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return {}
+
+
+def mostrar_resumo_do_documento(resumo):
+    """O resumo do algoritmo próprio (R5): frases do documento, números e assuntos."""
+    if not resumo:
+        return
+    with st.expander("Resumo automático do documento"):
+        if resumo.get("motivo"):
+            st.caption(resumo["motivo"])
+            return
+        for frase in resumo.get("frases", []):
+            st.markdown(f"- {frase}")
+        detalhes = []
+        if resumo.get("numeros"):
+            detalhes.append("Números citados: " + "; ".join(resumo["numeros"]))
+        if resumo.get("assuntos"):
+            detalhes.append("Assuntos: " + ", ".join(resumo["assuntos"]))
+        for detalhe in detalhes:
+            st.caption(detalhe)
+        st.caption(
+            "Frases tiradas do próprio documento por um algoritmo do TickerLab (sem inteligência "
+            "artificial): nada foi reescrito. Confira no original."
+        )
+
+
+def _mostrar_item(item, chave, destaque=False, resumo=None):
+    e = item.evento
+    codigo = e.ticker.removesuffix(".SA")
+    with st.container(border=True, key=f"tl-evento-{chave}"):
+        col_texto, col_acoes = st.columns([5, 2], vertical_alignment="top")
+        col_texto.markdown(
+            f"**{codigo}** · {e.rotulo} · {e.publicado_em:%d/%m/%Y}"
+            + ("" if destaque else f" · relevância {item.relevancia:.0%}")
+        )
+        col_texto.markdown(
+            e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro)."
+        )
+        col_texto.caption(e.empresa)
+        col_acoes.link_button(
+            f"Abrir na {research.SIGLAS_DAS_FONTES.get(e.fonte, 'fonte')}",
+            e.link,
+            icon=":material/open_in_new:",
+            width="stretch",
+        )
+        col_acoes.button(
+            f"Analisar {codigo}",
+            key=f"research_analisar_{chave}",
+            on_click=_analisar_do_research,
+            args=(e.ticker,),
+            width="stretch",
+        )
+        mostrar_resumo_do_documento(resumo)
+        with st.expander("Por que isso aparece?"):
+            for razao in item.razoes:
+                st.markdown(f"- {razao}")
+            st.caption(
+                f"Relevância {item.relevancia:.0%}: soma dos componentes (0 a 1) vezes os seus "
+                "pesos da página Parâmetros. Ordena a leitura; não é nota da empresa nem "
+                "sinal de compra ou venda."
+            )
+
+
+def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
+    if usuario is None:
+        st.caption("Entre com a sua conta para criar listas com nome.")
+        return
+    nome_atual, tickers_atuais, id_atual = lista_atual
+    with st.expander("Minhas listas"):
+        aba_nova, aba_editar = st.tabs(["Nova lista", "Editar a lista aberta"])
+        with aba_nova:
+            nome = st.text_input("Nome", key="research_nova_nome", max_chars=60)
+            tickers = st.multiselect(
+                f"Ativos (até {limites.ativos_por_watchlist})",
+                catalogo.simbolos(),
+                format_func=catalogo.rotulo,
+                key="research_nova_tickers",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            if st.button(
+                "Criar lista", key="rsb_criar", icon=":material/playlist_add:"
+            ):
+                _gravar_lista(usuario, nome, tickers, None)
+        with aba_editar:
+            if id_atual is None:
+                st.caption(
+                    f'"{nome_atual}" não é uma lista sua: a demonstração é fixa e os '
+                    "favoritos mudam pela estrela no topo das páginas."
+                )
+                return
+            novos = st.multiselect(
+                "Ativos",
+                sorted({*catalogo.simbolos(), *tickers_atuais}),
+                default=tickers_atuais,
+                format_func=catalogo.rotulo,
+                key=f"research_editar_{id_atual}",
+                max_selections=limites.ativos_por_watchlist,
+            )
+            col_salvar, col_apagar = st.columns(2)
+            if col_salvar.button(
+                "Salvar a lista", key="rsb_salvar", icon=":material/save:"
+            ):
+                _gravar_lista(usuario, nome_atual, novos, id_atual)
+            with col_apagar.popover("Apagar a lista", icon=":material/delete:"):
+                st.caption(
+                    f'Apagar "{nome_atual}"? Os eventos continuam na CVM e na SEC.'
+                )
+                if st.button("Apagar de vez", key="rsb_apagar", type="primary"):
+                    try:
+                        with obter_engine().begin() as conexao:
+                            apagar_watchlist(conexao, usuario.id, id_atual)
+                    except Exception:
+                        logging.getLogger(__name__).exception("Falha ao apagar a lista")
+                        st.error("Não consegui apagar a lista agora. Tente de novo.")
+                        return
+                    st.session_state["research_lista_pendente"] = (
+                        None  # volta à primeira
+                    )
+                    st.rerun()
+
+
+def _gravar_lista(usuario, nome, tickers, watchlist_id):
+    try:
+        with obter_engine().begin() as conexao:
+            salvar_watchlist(
+                conexao, usuario.id, nome, tickers, plano=usuario.plano,
+                watchlist_id=watchlist_id,
+            )  # fmt: skip
+    except (DadosInvalidosError, LimiteDoPlanoError) as erro:
+        st.error(str(erro))
+        return
+    if watchlist_id is None:  # abre a lista nova (aplicado antes de desenhar o campo)
+        st.session_state["research_lista_pendente"] = " ".join(nome.split())
+    st.toast("Lista salva.", icon=":material/check_circle:")
+    st.rerun()
+
+
+def pagina_research():
+    cabecalho_da_pagina("research")
+    if st.session_state.pop("ir_para_visao_geral", False):
+        st.switch_page(PAGINAS_DO_MENU["visao_geral"])
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    listas = _listas_do_research(usuario)
+    nomes = [lista[0] for lista in listas]
+    if "research_lista_pendente" in st.session_state:
+        st.session_state["research_lista"] = st.session_state.pop(
+            "research_lista_pendente"
+        )
+    if st.session_state.get("research_lista") not in nomes:
+        st.session_state["research_lista"] = nomes[0]
+    col_lista, col_janela = st.columns([2, 1])
+    escolhida = col_lista.selectbox("Lista", nomes, key="research_lista")
+    lista = listas[nomes.index(escolhida)]
+    nome, tickers, _ = lista
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DO_RESEARCH),
+        format_func=JANELAS_DO_RESEARCH.get,
+        default=30,
+        required=True,
+        key="research_janela",
+    )
+    r = parametros_em_vigor(None)
+    temas_do_usuario = list(r["newsletter.temas"])
+    temas = st.pills(
+        "Temas",
+        list(NOMES_DOS_TEMAS),
+        format_func=NOMES_DOS_TEMAS.get,
+        selection_mode="multi",
+        default=temas_do_usuario,
+        key="research_temas",
+        help="Começa com os seus temas (página Parâmetros). Sem nenhum marcado, aparecem todos.",
+    )
+    if nome == research.NOME_DA_DEMONSTRACAO:
+        st.caption(
+            "Lista de demonstração: cinco empresas grandes da B3 e duas dos EUA, com eventos "
+            "reais e públicos. "
+            "Nada aqui é sobre a sua carteira."
+        )
+    carteira = _carteira_da_lista(nome)
+    if carteira is not None:
+        st.caption(
+            f"Fotografia da sua carteira de {carteira.enviada_em:%d/%m/%Y}: as maiores "
+            "posições pesam mais na ordem (página Minha carteira)."
+        )
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        with obter_engine().connect() as conexao:
+            ultima = ultima_coleta(conexao)
+            empresas = empresas_dos_tickers(conexao, tickers)
+            eventos_da_lista = eventos_dos_tickers(
+                conexao,
+                tickers,
+                hoje - timedelta(days=janela),
+                temas=temas or None,
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        # banco sem as tabelas do Research (modo local sem migrar): é o mesmo que não coletado
+        ultima, empresas, eventos_da_lista = None, {}, []
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os eventos")
+        st.error("Não consegui ler os eventos agora. Tente de novo em instantes.")
+        return
+    if ultima is None:
+        st.info(
+            "Os eventos ainda não foram coletados neste servidor. A coleta roda uma vez por "
+            "dia (`python -m scripts.atualizar_eventos` para a CVM e "
+            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
+            icon=":material/schedule:",
+        )
+        _mostrar_gestao_das_listas(usuario, limites, lista)
+        return
+    if (
+        ultima.tzinfo is None
+    ):  # o SQLite devolve a hora sem fuso: ela foi gravada em UTC
+        ultima = ultima.replace(tzinfo=UTC)
+    st.caption(
+        "Fontes: dados abertos da CVM (empresas da B3: fatos relevantes, comunicados, avisos, "
+        "proventos, resultados e balanços entregues fora do prazo) e da SEC (empresas dos EUA: "
+        "8-K, 10-K, 10-Q, avisos de atraso e participações de 5% ou mais), coletados em"
+        f" {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
+        "A ordem segue os seus pesos de relevância (página Parâmetros)."
+    )
+    sem_cobertura = [t for t in tickers if t not in empresas]
+    todos = st.toggle(
+        f"Mostrar todos (sem limite de {research.MAXIMO_POR_EMPRESA} por empresa)",
+        key="research_todos",
+        help=f"Por padrão, uma empresa não ocupa mais de {research.MAXIMO_POR_EMPRESA} lugares, "
+        "para nenhuma dominar a lista.",
+    )
+    itens = research.ordenar(
+        eventos_da_lista,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        temas_do_usuario,
+        hoje,
+        janela,
+        nome,
+        maximo_por_ativo=None if todos else research.MAXIMO_POR_EMPRESA,
+        carteira=carteira,
+    )
+    if not itens:
+        st.info(
+            f'Nenhum evento das empresas de "{nome}" nos últimos {janela} dias'
+            + (" com esses temas." if temas else ".")
+        )
+    else:
+        resumos = _resumos_dos_itens(itens)
+        st.subheader("Em destaque")
+        for i, item in enumerate(itens[:3]):
+            _mostrar_item(item, f"d{i}", True, resumos.get(item.evento.protocolo))
+        if len(itens) > 3:
+            st.subheader(f"Os outros {len(itens) - 3}")
+            for i, item in enumerate(itens[3:], start=3):
+                _mostrar_item(item, f"o{i}", resumo=resumos.get(item.evento.protocolo))
+    if sem_cobertura:
+        st.caption(
+            "Sem cobertura ainda: "
+            + ", ".join(t.removesuffix(".SA") for t in sem_cobertura)
+            + ". O Research lê a CVM (empresas da B3) e a SEC (ações do S&P 500); fundos, "
+            "ETFs, BDRs, índices e cripto dependem de outras fontes."
+        )
+    _mostrar_gestao_das_listas(usuario, limites, lista)
+
+
+# --- Research: Fundamentos (etapa 3c) --------------------------------------------------------
+GRUPOS_DE_FUNDAMENTOS = (
+    (
+        "Resultado",
+        ("receita", "lucro", "margem_bruta", "margem_ebit", "margem_liquida"),
+    ),
+    ("Retorno", ("roe", "roic", "conversao_de_caixa")),
+    ("Endividamento", ("divida_bruta", "caixa", "divida_liquida", "divida_sobre_pl")),
+    ("Crescimento", ("crescimento_receita", "crescimento_lucro")),
+    ("Por ação e múltiplos", ("lpa", "vpa", "p_l", "p_vp")),
+)
+
+
+# --- Research: busca na hora na SEC (R4) -------------------------------------------------------
+BUSCAS_NA_SEC_POR_SESSAO = 5
+ACAO_DOS_EUA = (
+    r"[A-Z][A-Z.\-]{0,9}"  # AAPL, BRK-B (sem índices ^GSPC nem cripto BTC-USD)
+)
+
+
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def _mapa_da_sec(agente):
+    """O `company_tickers.json` da SEC inteiro (ticker → CIK), guardado por um dia."""
+    cliente = coleta_sec.ClienteSec(agente)
+    return eventos_sec.ler_tickers(cliente.baixar(eventos_sec.URL_DOS_TICKERS))
+
+
+def _pode_buscar_na_sec(ticker):
+    return (
+        moeda_do_ticker(ticker) == "USD"
+        and re.fullmatch(ACAO_DOS_EUA, ticker) is not None
+        and not ticker.endswith("-USD")
+    )
+
+
+def _buscar_na_sec(ticker):
+    email = contato()
+    if email is None:
+        st.session_state["busca_na_sec_aviso"] = (
+            "A busca na SEC não está configurada neste servidor (falta o e-mail de contato)."
+        )
+        return
+    feitas = st.session_state.get("buscas_na_sec", 0)
+    if feitas >= BUSCAS_NA_SEC_POR_SESSAO:
+        st.session_state["busca_na_sec_aviso"] = (
+            f"Você já fez {feitas} buscas novas nesta visita. Tente de novo mais tarde."
+        )
+        return
+    agente = f"TickerLab {email}"
+    try:
+        empresa, eventos, lidos = coleta_sec.buscar_agora(
+            obter_engine(),
+            coleta_sec.ClienteSec(agente),
+            ticker,
+            _mapa_da_sec(agente),
+            datetime.now(relatorios.FUSO),
+        )
+    except coleta_sec.BuscaRecusada as erro:
+        st.session_state["busca_na_sec_aviso"] = str(erro)
+        return
+    except coleta_sec.ERROS_DE_UMA_EMPRESA:
+        logging.getLogger(__name__).exception("Falha na busca na SEC")
+        st.session_state["busca_na_sec_aviso"] = (
+            "A SEC não respondeu agora. Tente de novo em instantes."
+        )
+        return
+    st.session_state["buscas_na_sec"] = feitas + 1
+    st.session_state["busca_na_sec_feita"] = (
+        f"{empresa}: {eventos} eventos e {lidos} negociações de pessoas de dentro guardados. "
+        "Daqui para frente ela entra na coleta diária."
+    )
+
+
+def oferecer_busca_na_sec(ticker, o_que):
+    """Mensagem de "sem cobertura" e, para ações dos EUA fora do S&P 500, o botão da busca."""
+    if not _pode_buscar_na_sec(ticker):
+        st.info(
+            f"{ticker} não tem cadastro na CVM nem na SEC. {o_que} cobrem ações e units da B3 "
+            "e ações dos EUA; fundos, ETFs, BDRs, índices e cripto dependem de outras fontes.",
+            icon=":material/info:",
+        )
+        return
+    st.info(
+        f"{ticker} ainda não está na base do TickerLab (a coleta diária cobre o S&P 500). Dá para "
+        "buscar a empresa na SEC agora: leva alguns segundos e ela passa a entrar na coleta "
+        "diária.",
+        icon=":material/travel_explore:",
+    )
+    if aviso := st.session_state.pop("busca_na_sec_aviso", None):
+        st.warning(aviso)
+    st.button(
+        "Buscar na SEC agora",
+        icon=":material/cloud_download:",
+        key=f"buscar_na_sec_{ticker}",
+        on_click=_buscar_na_sec,
+        args=(ticker,),
+    )
+
+
+def mostrar_resultado_da_busca_na_sec():
+    if feita := st.session_state.pop("busca_na_sec_feita", None):
+        st.success(feita, icon=":material/check_circle:")
+
+
+@dataclass(frozen=True)
+class MercadoDosFundamentos:
+    """O que muda na página Fundamentos entre a B3 (CVM) e os EUA (SEC)."""
+
+    moeda: str
+    simbolo: str
+    regulador: str
+    anual: str  # nome do relatório anual (DFP ou 10-K)
+    trimestral: str
+    identificador: str  # CNPJ ou CIK
+    aliquota: float  # imposto usado no ROIC
+    imposto: str
+
+
+MERCADO_B3 = MercadoDosFundamentos(
+    "BRL", "R$", "CVM", "DFP", "ITR", "CNPJ", fundamentos.ALIQUOTA_DE_IR_CS, "IR/CS"
+)
+MERCADO_EUA = MercadoDosFundamentos(
+    "USD", "US$", "SEC", "10-K", "10-Q", "CIK", fundamentos.ALIQUOTA_DOS_EUA,
+    "imposto federal",
+)  # fmt: skip
+
+
+def _mercado_da_empresa(chave):
+    """CNPJ → B3; `CIK...` → EUA."""
+    return MERCADO_EUA if chave.startswith(eventos_sec.PREFIXO_DO_CIK) else MERCADO_B3
+
+
+def _numero_br(valor, casas):
+    return f"{valor:,.{casas}f}".replace(",", "#").replace(".", ",").replace("#", ".")
+
+
+def _dinheiro(valor, simbolo="R$"):
+    """Em bilhões ou milhões, no formato brasileiro (R$ 1,2 bi; US$ 350,0 mi)."""
+    for limite, sufixo in ((1e9, "bi"), (1e6, "mi")):
+        if abs(valor) >= limite:
+            return f"{simbolo} {_numero_br(valor / limite, 1)} {sufixo}"
+    return f"{simbolo} {_numero_br(valor, 0)}"
+
+
+def _nomes_dos_documentos(texto, mercado):
+    """Os textos do cálculo falam em DFP e ITR; nos EUA, viram 10-K e 10-Q."""
+    if mercado is MERCADO_B3 or not texto:
+        return texto
+    return texto.replace("DFP", mercado.anual).replace("ITR", mercado.trimestral)
+
+
+def _formatar_indicador(indicador, mercado=MERCADO_B3):
+    if not indicador.disponivel:
+        return "—"
+    valor = indicador.valor
+    if indicador.unidade == fundamentos.FRACAO:
+        return formatar_pct(valor)
+    if indicador.unidade == fundamentos.REAIS:
+        return _dinheiro(valor, mercado.simbolo)
+    if indicador.unidade == fundamentos.REAIS_POR_ACAO:
+        return f"{mercado.simbolo} {_numero_br(valor, 2)}"
+    return _numero_br(valor, 2) + "×"
+
+
+def _mostrar_grupo(titulo, chaves, resultado, mercado=MERCADO_B3):
+    st.markdown(f"##### {titulo}")
+    with st.container(horizontal=True):
+        for chave in chaves:
+            indicador = resultado[chave]
+            explicacao = indicador.motivo or f"Base: {indicador.base}."
+            st.metric(
+                indicador.nome,
+                _formatar_indicador(indicador, mercado),
+                border=True,
+                help=_nomes_dos_documentos(explicacao, mercado)
+                + " "
+                + (ajuda_do(indicador.nome) or ""),
+            )
+    motivos = {}
+    for chave in chaves:
+        indicador = resultado[chave]
+        if not indicador.disponivel:
+            motivos.setdefault(indicador.motivo, []).append(indicador.nome)
+    for motivo, nomes in motivos.items():
+        st.caption(f"{', '.join(nomes)}: {_nomes_dos_documentos(motivo, mercado)}")
+
+
+def _tabela_anual_formatada(anual, simbolo="R$"):
+    def coluna(nome):
+        return [_dinheiro(v, simbolo) if pd.notna(v) else "—" for v in anual[nome]]
+
+    tabela = pd.DataFrame(index=[str(a) for a in anual.index])
+    tabela.index.name = "Ano"
+    tabela["Receita"] = coluna("receita")
+    tabela["Lucro dos acionistas"] = coluna("lucro")
+    tabela["Margem líquida"] = [formatar_pct(v) for v in anual["margem_liquida"]]
+    tabela["Patrimônio"] = coluna("patrimonio")
+    if "divida_liquida" in anual:
+        tabela["Dívida líquida"] = coluna("divida_liquida")
+    return tabela
+
+
+def _ler_fundamentos(ticker):
+    """(empresa, dados) ou None quando a página já mostrou a mensagem do problema."""
+    try:
+        with obter_engine().connect() as conexao:
+            empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
+            dados = dados_da_empresa(conexao, empresa[0]) if empresa else None
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        st.info(
+            "As demonstrações ainda não foram coletadas neste servidor "
+            "(`python -m scripts.atualizar_fundamentos --anos 6` para a CVM e "
+            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
+            icon=":material/schedule:",
+        )
+        return None
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
+        st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
+        return None
+    if empresa is None:
+        oferecer_busca_na_sec(ticker, "Os fundamentos")
+        return None
+    if dados.contas.empty:
+        st.info(
+            f"Ainda não há demonstrações coletadas da {empresa[1]}. A coleta roda uma vez por "
+            "dia.",
+            icon=":material/schedule:",
+        )
+        return None
+    return empresa, dados
+
+
+def _mostrar_documentos_usados(docs, mercado):
+    st.markdown("##### Documentos usados")
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Documento": [
+                    f"Anual ({mercado.anual})"
+                    if d == "DFP"
+                    else f"Trimestral ({mercado.trimestral})"
+                    for d in docs["documento"]
+                ],
+                "Data do balanço": [f"{d:%d/%m/%Y}" for d in docs["referencia"]],
+                f"Entregue à {mercado.regulador}": [
+                    f"{d:%d/%m/%Y}" if pd.notna(d) else "—" for d in docs["recebido_em"]
+                ],
+                "Versão": docs["versao"].astype(int),
+                "Abrir": docs["link"],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Abrir": st.column_config.LinkColumn(
+                "Abrir", display_text=f"na {mercado.regulador}"
+            )
+        },
+    )
+
+
+def _mostrar_mudanca_nos_riscos(chave):
+    """O que mudou nos fatores de risco entre os dois últimos 10-K (R5, algoritmo próprio)."""
+    try:
+        with obter_engine().connect() as conexao:
+            achado = repo_leituras.ultima_de_riscos(conexao, chave)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        achado = None
+    if achado is None:
+        return
+    _, referencia, r = achado
+    st.markdown("##### Fatores de risco: o que mudou no 10-K")
+    if r.get("motivo"):
+        st.caption(r["motivo"])
+        return
+    antes = r.get("referencia_antes") or "o anterior"
+    with st.container(horizontal=True):
+        st.metric(
+            "Texto igual ao do ano anterior",
+            formatar_pct(r["semelhanca"]),
+            border=True,
+            help="Semelhança entre as duas seções de risco (cosseno das frequências das "
+            "palavras): 100% é o mesmo texto.",
+        )
+        st.metric("Frases novas", r["novas_no_total"], border=True)
+        st.metric(
+            "Tamanho da seção (palavras)",
+            f"{r['palavras_agora']:,}".replace(",", "."),
+            r["palavras_agora"] - r["palavras_antes"],
+            border=True,
+        )
+    if r.get("palavras_em_alta"):
+        st.caption(
+            "Palavras que mais cresceram (vezes no ano anterior → agora): "
+            + ", ".join(f"**{p}** ({a} → {b})" for p, a, b in r["palavras_em_alta"])
+        )
+    if r.get("frases_novas"):
+        with st.expander("Algumas frases novas"):
+            for frase in r["frases_novas"]:
+                st.markdown(f"- {frase}")
+    st.caption(
+        f"10-K de {referencia:%d/%m/%Y} contra o de {antes} ([atual]({r['link_agora']}), "
+        f"[anterior]({r['link_antes']})). Pesquisa: empresas que mudam muito o texto dos "
+        "relatórios tiveram, em média, retornos piores depois (Cohen, Malloy e Nguyen, 2020, "
+        '"Lazy Prices"). É um fato a conferir no texto, não uma recomendação.'
+    )
+
+
+def _metodologia_dos_fundamentos(mercado):
+    if mercado is MERCADO_EUA:
+        acoes = (
+            "ações em circulação na capa do relatório mais recente, conferidas com o lucro "
+            "por ação declarado pela empresa"
+        )
+        fonte = (
+            "Fonte: SEC (os números marcados em XBRL nos relatórios 10-K e 10-Q, "
+            "`companyfacts`). Valores em dólares. Bancos e seguradoras não têm margem bruta, EBIT "
+            "nem dívida comparáveis. O ano fiscal pode não coincidir com o do calendário (o da "
+            "Apple termina em setembro): os 12 meses usam as datas de cada relatório."
+        )
+    else:
+        acoes = (
+            "ações em circulação (sem as de tesouraria), conferidas com o lucro por ação "
+            "declarado pela empresa"
+        )
+        fonte = (
+            "Fonte: dados abertos da CVM (DFP, ITR e cadastro). Bancos e seguradoras não têm "
+            "margem bruta, EBIT nem dívida comparáveis."
+        )
+    return (
+        f"- **12 meses:** o último {mercado.anual} + o acumulado do ano no último "
+        f"{mercado.trimestral} − o mesmo período do ano anterior.\n"
+        "- **Margens:** resultado bruto, EBIT e lucro divididos pela receita dos 12 meses.\n"
+        "- **ROE:** lucro dos acionistas (12 meses) ÷ patrimônio dos acionistas no último "
+        "balanço.\n"
+        f"- **ROIC:** EBIT × (1 − {mercado.aliquota:.0%} de {mercado.imposto}) ÷ "
+        "(patrimônio + dívida bruta − caixa e aplicações).\n"
+        "- **Dívida:** empréstimos e financiamentos de curto e longo prazo; dívida líquida "
+        "desconta o caixa e as aplicações financeiras.\n"
+        f"- **Crescimento:** taxa composta anual entre os {mercado.anual} do horizonte "
+        "escolhido.\n"
+        f"- **Por ação:** {acoes}.\n\n"
+        f"{fonte} Nada aqui é recomendação."
+    )
+
+
+def pagina_fundamentos():
+    cabecalho_da_pagina("fundamentos")
+    mostrar_resultado_da_busca_na_sec()
+    c = carregar_contexto()
+    r = parametros_em_vigor(c.ticker)
+    ticker = normalizar_ticker(c.ticker)
+    lido = _ler_fundamentos(ticker)
+    if lido is None:
+        return
+    empresa, dados = lido
+    mercado = _mercado_da_empresa(empresa[0])
+    preco = (
+        float(c.fechamento.iloc[-1])
+        if moeda_do_ticker(ticker) == mercado.moeda
+        else None
+    )
+    resultado = fundamentos.calcular(
+        dados,
+        preco,
+        anos=int(r["fundamentalista.anos"]),
+        roic_minimo=float(r["fundamentalista.roic_minimo"]),
+        pl_maximo=float(r["fundamentalista.pl_maximo"]),
+        aliquota=mercado.aliquota,
+    )
+    identificador = (
+        str(int(empresa[0].removeprefix(eventos_sec.PREFIXO_DO_CIK)))
+        if mercado is MERCADO_EUA
+        else empresa[0]
+    )
+    st.markdown(
+        f"**{resultado.empresa}** · {resultado.setor or 'setor não informado'} · "
+        f"{mercado.identificador} {identificador}"
+    )
+    if preco is not None:
+        st.caption(
+            f"Múltiplos com o fechamento de {c.fechamento.index[-1]:%d/%m/%Y} "
+            f"({mercado.simbolo} {_numero_br(preco, 2)}) aplicado a todas as classes de ação "
+            "da empresa (aproximação)."
+        )
+    for nota in resultado.notas:
+        st.caption(nota)
+    if resultado.financeira:
+        st.info(
+            fundamentos.NAO_SE_APLICA_A_FINANCEIRAS, icon=":material/account_balance:"
+        )
+    for titulo, chaves in GRUPOS_DE_FUNDAMENTOS:
+        _mostrar_grupo(titulo, chaves, resultado, mercado)
+    if resultado.filtros:
+        st.markdown("##### Seus filtros educacionais")
+        for frase in resultado.filtros:
+            st.markdown(f"- {frase}")
+        st.caption(
+            "Os limites vêm da página Parâmetros. Dizem se o número passa do que você escolheu; "
+            "não dizem se a ação é boa, cara ou barata, nem são recomendação."
+        )
+    if not resultado.anual.empty:
+        st.markdown("##### Ano a ano (demonstrações anuais)")
+        mostrar_grafico(
+            graficos.criar_grafico_fundamentos_anuais(resultado.anual, mercado.simbolo)
+        )
+        st.dataframe(
+            _tabela_anual_formatada(resultado.anual, mercado.simbolo), width="stretch"
+        )
+    if not resultado.documentos.empty:
+        _mostrar_documentos_usados(resultado.documentos, mercado)
+    if mercado is MERCADO_EUA:
+        _mostrar_mudanca_nos_riscos(empresa[0])
+    with st.expander("Como estes números são calculados"):
+        st.markdown(_metodologia_dos_fundamentos(mercado))
+    avisar_parametros(
+        r,
+        (
+            "fundamentalista.anos",
+            "fundamentalista.roic_minimo",
+            "fundamentalista.pl_maximo",
+        ),
+    )
+
+
+# --- Research: Pessoas de dentro (R2) ----------------------------------------------------------
+JANELAS_DE_NEGOCIACOES = {90: "3 meses", 180: "6 meses", 365: "12 meses"}
+BOLSAS_DAS_NEGOCIACOES = {
+    negociacoes.FONTE_VLMO: "B3 (CVM)",
+    negociacoes.FONTE_FORM4: "EUA (SEC)",
+}
+CARGOS_DE_QUEM_DECIDE = ("diretoria", "conselho")  # o padrão da pesquisa acadêmica
+TAMANHO_DO_RANKING = 10
+
+
+def _ler_negociacoes(desde, cnpjs=None):
+    """(negociações, None) ou (None, mensagem) quando a base ainda não existe ou falhou."""
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_negociacoes.negociacoes(conexao, desde, cnpjs), None
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None, (
+            "As negociações ainda não foram coletadas neste servidor "
+            "(`python -m scripts.atualizar_negociacoes_cvm` e "
+            "`python -m scripts.atualizar_eventos_sec`)."
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler as negociações")
+        return (
+            None,
+            "Não consegui ler as negociações agora. Tente de novo em instantes.",
+        )
+
+
+def _tabela_de_negociacoes(tabela):
+    moeda = tabela["moeda"].iloc[0]
+    return pd.DataFrame(
+        {
+            "Entregue em": [f"{d:%d/%m/%Y}" for d in tabela["entregue_em"]],
+            "Negociação": [
+                f"{d:%d/%m/%Y}" if pd.notna(d) else f"mês de {r:%m/%Y}"
+                for d, r in zip(tabela["data"], tabela["referencia"], strict=True)
+            ],
+            "Cargo": [
+                negociacoes.CARGOS[c] + (f" ({d})" if d else "")
+                for c, d in zip(tabela["cargo"], tabela["cargo_descricao"], strict=True)
+            ],
+            "Operação": tabela["operacao"].str.capitalize(),
+            "Ações": [f"{q:,.0f}".replace(",", ".") for q in tabela["quantidade"]],
+            "Valor": [negociacoes.formatar_valor(v, moeda) for v in tabela["valor"]],
+            "Plano 10b5-1": [
+                "sim" if p is True else ("não" if p is False else "—")
+                for p in tabela["plano_10b5_1"]
+            ],
+            "Abrir": tabela["link"],
+        }
+    )
+
+
+def _negociacoes_do_ativo(ticker, janela):
+    try:
+        with obter_engine().connect() as conexao:
+            empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        empresa = None
+    if empresa is None:
+        oferecer_busca_na_sec(ticker, "As negociações")
+        return
+    desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
+    tabela, erro = _ler_negociacoes(desde, [empresa[0]])
+    if erro:
+        st.info(erro, icon=":material/schedule:")
+        return
+    st.markdown(f"**{empresa[1]}** · últimos {JANELAS_DE_NEGOCIACOES[janela]}")
+    if tabela.empty:
+        st.info(
+            "Nenhuma compra ou venda de pessoas de dentro informada nesse período. Na B3 o "
+            "formulário é mensal e sai até o dia 10 do mês seguinte.",
+            icon=":material/info:",
+        )
+        return
+    moeda = tabela["moeda"].iloc[0]
+    saldo = negociacoes.saldo_por_empresa(tabela)
+    with st.container(horizontal=True):
+        if not saldo.empty:
+            linha = saldo.iloc[0]
+            st.metric(
+                "Compras",
+                negociacoes.formatar_valor(linha["compras"], moeda),
+                border=True,
+            )
+            st.metric(
+                "Vendas",
+                negociacoes.formatar_valor(linha["vendas"], moeda),
+                border=True,
+            )
+            st.metric(
+                "Saldo (compras − vendas)",
+                negociacoes.formatar_valor(linha["saldo"], moeda),
+                border=True,
+                help="Sem a tesouraria da própria empresa. Valores não informados contam zero.",
+            )
+        st.metric("Documentos", tabela["documento"].nunique(), border=True)
+    mostrar_grafico(
+        graficos.criar_grafico_negociacoes(negociacoes.resumo_por_mes(tabela), moeda)
+    )
+    st.dataframe(
+        _tabela_de_negociacoes(tabela),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Abrir": st.column_config.LinkColumn("Abrir", display_text="documento")
+        },
+    )
+
+
+def _ranking_formatado(saldo, tickers):
+    return pd.DataFrame(
+        {
+            "Ativo": [tickers.get(c, "—").removesuffix(".SA") for c in saldo["cnpj"]],
+            "Empresa": saldo["empresa"],
+            "Compras": [
+                negociacoes.formatar_valor(v, m)
+                for v, m in zip(saldo["compras"], saldo["moeda"], strict=True)
+            ],
+            "Vendas": [
+                negociacoes.formatar_valor(v, m)
+                for v, m in zip(saldo["vendas"], saldo["moeda"], strict=True)
+            ],
+            "Saldo": [
+                negociacoes.formatar_valor(v, m)
+                for v, m in zip(saldo["saldo"], saldo["moeda"], strict=True)
+            ],
+            "Documentos": saldo["documentos"],
+        }
+    )
+
+
+def _ranking_do_mercado(janela):
+    col_bolsa, col_cargos = st.columns([1, 2])
+    fonte = col_bolsa.segmented_control(
+        "Bolsa",
+        list(BOLSAS_DAS_NEGOCIACOES),
+        format_func=BOLSAS_DAS_NEGOCIACOES.get,
+        default=negociacoes.FONTE_VLMO,
+        required=True,
+        key="dentro_bolsa",
+    )
+    cargos = col_cargos.multiselect(
+        "Cargos",
+        [c for c in negociacoes.CARGOS if c != "companhia"],
+        default=list(CARGOS_DE_QUEM_DECIDE),
+        format_func=negociacoes.CARGOS.get,
+        key="dentro_cargos",
+        help="Diretoria e conselho são o padrão dos estudos. Controladores costumam aparecer "
+        "em ofertas de ações e reorganizações, que não são decisões do dia a dia.",
+    )
+    desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
+    tabela, erro = _ler_negociacoes(desde)
+    if erro:
+        st.info(erro, icon=":material/schedule:")
+        return
+    tabela = tabela[(tabela["fonte"] == fonte) & tabela["cargo"].isin(cargos)]
+    saldo = negociacoes.saldo_por_empresa(tabela)
+    if saldo.empty:
+        st.info("Nenhuma negociação desses cargos no período.", icon=":material/info:")
+        return
+    with obter_engine().connect() as conexao:
+        tickers = tickers_das_empresas(conexao, saldo["cnpj"])
+    compradores = saldo[saldo["saldo"] > 0].head(TAMANHO_DO_RANKING)
+    vendedores = saldo[saldo["saldo"] < 0].sort_values("saldo").head(TAMANHO_DO_RANKING)
+    st.markdown("##### Mais compras do que vendas")
+    if compradores.empty:
+        st.caption("Nenhuma empresa com saldo comprador no período.")
+    else:
+        st.dataframe(
+            _ranking_formatado(compradores, tickers), hide_index=True, width="stretch"
+        )
+    st.markdown("##### Mais vendas do que compras")
+    if vendedores.empty:
+        st.caption("Nenhuma empresa com saldo vendedor no período.")
+    else:
+        st.dataframe(
+            _ranking_formatado(vendedores, tickers), hide_index=True, width="stretch"
+        )
+    st.caption(
+        "Saldo em dinheiro, só com os cargos escolhidos; valores não informados contam zero. "
+        "É uma lista de fatos, não de recomendações."
+    )
+
+
+def pagina_por_dentro():
+    cabecalho_da_pagina("por_dentro")
+    mostrar_resultado_da_busca_na_sec()
+    c = carregar_contexto()
+    janela = st.segmented_control(
+        "Período",
+        list(JANELAS_DE_NEGOCIACOES),
+        format_func=JANELAS_DE_NEGOCIACOES.get,
+        default=180,
+        required=True,
+        key="dentro_janela",
+    )
+    aba_ativo, aba_mercado = st.tabs(["Do ativo do topo", "No mercado"])
+    with aba_ativo:
+        _negociacoes_do_ativo(normalizar_ticker(c.ticker), janela)
+    with aba_mercado:
+        _ranking_do_mercado(janela)
+    with st.expander("Como ler estes dados"):
+        st.markdown(
+            "- **Quem são:** controladores, diretores e conselheiros (nos EUA, também quem tem "
+            "10% ou mais). A lei obriga essas pessoas a informar quando negociam ações da própria "
+            "empresa.\n"
+            "- **Quando ficam públicos:** na B3, o formulário da CVM é **mensal** (somado por "
+            "cargo) e sai até o dia 10 do mês seguinte; nos EUA, o Form 4 sai em até **2 dias "
+            "úteis**, um por pessoa.\n"
+            "- **O que a pesquisa diz:** nos EUA, as **compras** de pessoas de dentro costumam "
+            "carregar informação (Lakonishok e Lee, 2001; Cohen, Malloy e Pomorski, 2012); as "
+            "**vendas** dizem pouco, porque se vende para diversificar ou pagar impostos. No "
+            "Brasil o tema foi pouco estudado.\n"
+            "- **Plano 10b5-1:** venda programada com meses de antecedência; informa ainda menos.\n"
+            "- **O que fica de fora:** opções, ações recebidas como pagamento, doações e "
+            "empréstimos, que não são decisões de compra ou venda.\n"
+            "- **Privacidade:** mostramos o cargo, nunca o nome da pessoa.\n\n"
+            "Fontes: CVM (formulário de valores mobiliários negociados, art. 11 da Resolução CVM "
+            "44) e SEC (Form 4). Nada aqui é recomendação de investimento."
+        )
+
+
+# --- Research: Donos e fundos (R3) ------------------------------------------------------------
+TAMANHO_DA_LISTA_DO_MERCADO = 10
+
+
+def _ler_detentores(fonte, codigo):
+    """(histórico com a fatia, maiores, cobertura) ou None quando a leitura falhou.
+
+    O histórico só tem as competências utilizáveis (sem o mês mais novo ainda incompleto) e a
+    coluna `fatia`: detentores ÷ fundos que informaram na competência.
+    """
+    try:
+        with obter_engine().connect() as conexao:
+            cobertura = repo_detentores.cobertura(conexao, fonte)
+            datas = detentores.competencias_utilizaveis(cobertura)
+            if not datas:
+                return pd.DataFrame(), pd.DataFrame(), {}
+            historico = repo_detentores.historico_do_ativo(conexao, fonte, codigo)
+            maiores = repo_detentores.maiores_do_ativo(conexao, fonte, codigo, datas[0])
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return pd.DataFrame(), pd.DataFrame(), {}
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os detentores")
+        return None
+    historico = historico[historico["competencia"].isin(datas)].copy()
+    informantes = historico["competencia"].map(cobertura)
+    historico["fatia"] = historico["detentores"] / informantes
+    historico["fatia_vendidos"] = historico["vendidos"] / informantes
+    return historico, maiores, cobertura
+
+
+def _tabela_de_detentores(maiores, tipo, simbolo):
+    linhas = maiores[maiores["tipo"] == tipo]
+    return pd.DataFrame(
+        {
+            "#": linhas["posicao"].astype(int),
+            "Nome": linhas["nome"],
+            "Valor": [_dinheiro(v, simbolo) for v in linhas["valor"]],
+            "Ações": [_numero_br(q, 0) for q in linhas["quantidade"]],
+        }
+    )
+
+
+def _variacao_comparavel(historico, cobertura):
+    """Variação de detentores desde a competência anterior, se as duas forem comparáveis."""
+    par = detentores.par_comparavel(cobertura)
+    if par is None or historico.empty or historico["competencia"].iloc[-1] != par[0]:
+        return None
+    anterior = historico[historico["competencia"] == par[1]]
+    if anterior.empty:
+        return None
+    return int(historico["detentores"].iloc[-1] - anterior["detentores"].iloc[0])
+
+
+def _metricas_dos_detentores(atual, variacao, quem, periodo, simbolo, da_cvm):
+    with st.container(horizontal=True):
+        st.metric(
+            f"{quem.capitalize()} com a ação",
+            int(atual["detentores"]),
+            variacao,
+            border=True,
+            help=f"Variação desde o {periodo} anterior, quando os dois têm cobertura parecida.",
+        )
+        st.metric(
+            f"Fatia dos {quem} que informaram",
+            formatar_pct(atual["fatia"]),
+            border=True,
+            help="Detentores ÷ todos que informaram posições: não muda só porque a cobertura mudou.",
+        )
+        st.metric("Valor que eles têm", _dinheiro(atual["valor"], simbolo), border=True)
+        if da_cvm:
+            st.metric(
+                "Fundos vendidos (aposta na queda)",
+                int(atual["vendidos"]),
+                border=True,
+                help="Fundos que tomaram a ação emprestada e venderam.",
+            )
+            st.metric(
+                "Valor vendido", _dinheiro(atual["valor_vendido"], simbolo), border=True
+            )
+
+
+def _detentores_do_ativo(ticker):
+    escolha = FONTES_DOS_DETENTORES.get(moeda_do_ticker(ticker))
+    if escolha is None:
+        st.info(
+            f"{ticker} não é ação da B3 nem dos EUA: não há carteira de fundos para mostrar.",
+            icon=":material/info:",
+        )
+        return
+    fonte, quem, periodo, simbolo = escolha
+    codigo = ticker.removesuffix(".SA")
+    lido = _ler_detentores(fonte, codigo)
+    if lido is None:
+        st.error("Não consegui ler os dados agora. Tente de novo em instantes.")
+        return
+    historico, maiores, cobertura = lido
+    if not cobertura:
+        st.info(
+            "Os dados ainda não foram coletados neste servidor "
+            "(`python -m scripts.atualizar_fundos_cvm` e `python -m scripts.atualizar_fundos_sec`).",
+            icon=":material/schedule:",
+        )
+        return
+    ultima = detentores.competencias_utilizaveis(cobertura)[0]
+    mais_nova = max(cobertura)
+    if mais_nova != ultima:
+        st.caption(
+            f"{mais_nova:%m/%Y} ainda está chegando ({cobertura[mais_nova]} {quem} informaram, "
+            f"contra {cobertura[ultima]} em {ultima:%m/%Y}): fica de fora até completar."
+        )
+    if historico.empty or historico["competencia"].iloc[-1] != ultima:
+        st.info(
+            f"Nenhum dos {quem} informou posição em {codigo} em {ultima:%m/%Y}.",
+            icon=":material/info:",
+        )
+        return
+    st.markdown(f"**{codigo}** · posição de {ultima:%d/%m/%Y}")
+    aviso = detentores.aviso_de_cobertura(cobertura, ultima, quem)
+    if aviso:
+        st.caption(aviso)
+    _metricas_dos_detentores(
+        historico.iloc[-1],
+        _variacao_comparavel(historico, cobertura),
+        quem,
+        periodo,
+        simbolo,
+        fonte == fundos_cvm.FONTE_CDA,
+    )
+    if len(historico) > 1:
+        mostrar_grafico(graficos.criar_grafico_detentores(historico, quem))
+    st.markdown(f"##### Os maiores {quem} (comprados)")
+    st.dataframe(
+        _tabela_de_detentores(maiores, detentores.COMPRADO, simbolo),
+        hide_index=True,
+        width="stretch",
+    )
+    if fonte == fundos_cvm.FONTE_CDA and (maiores["tipo"] == detentores.VENDIDO).any():
+        st.markdown("##### Os maiores fundos vendidos")
+        st.dataframe(
+            _tabela_de_detentores(maiores, detentores.VENDIDO, simbolo),
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Um fundo pode estar comprado e vendido na mesma ação ao mesmo tempo (estratégias "
+            "long-short e de arbitragem): a posição vendida nem sempre é uma aposta isolada na "
+            "queda."
+        )
+
+
+def _lista_do_mercado(tabela, crescente):
+    escolhidas = tabela.dropna(subset=["variacao"]).sort_values(
+        "variacao", ascending=crescente
+    )
+    escolhidas = escolhidas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+    return pd.DataFrame(
+        {
+            "Ativo": escolhidas["codigo"],
+            "Agora": escolhidas["detentores"].astype(int),
+            "Antes": escolhidas["detentores_antes"].astype("Int64"),
+            "Variação": [f"{v:+.0f}" for v in escolhidas["variacao"]],
+            "Ações em carteira": [
+                formatar_pct(v) for v in escolhidas["variacao_quantidade"]
+            ],
+        }
+    )
+
+
+def _detentores_no_mercado():
+    bolsa = st.segmented_control(
+        "Bolsa",
+        ["BRL", "USD"],
+        format_func={"BRL": "B3 (fundos, CVM)", "USD": "EUA (gestores, 13F)"}.get,
+        default="BRL",
+        required=True,
+        key="donos_bolsa",
+    )
+    fonte, quem, periodo, _ = FONTES_DOS_DETENTORES[bolsa]
+    try:
+        with obter_engine().connect() as conexao:
+            cobertura = repo_detentores.cobertura(conexao, fonte)
+            par = detentores.par_comparavel(cobertura)
+            resumo = (
+                repo_detentores.resumo_do_mercado(conexao, fonte, par) if par else None
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        par = None
+    if par is None:
+        st.info(
+            f"Para comparar é preciso ter dois {periodo}s seguidos com cobertura parecida.",
+            icon=":material/schedule:",
+        )
+        return
+    atual, anterior = par
+    tabela = detentores.comparar(resumo, atual, anterior)
+    st.caption(
+        f"{anterior:%m/%Y} ({cobertura[anterior]} {quem} informaram) → {atual:%m/%Y} "
+        f'({cobertura[atual]}). "Ações em carteira" é a variação da quantidade de ações que '
+        "eles têm, sem o efeito do preço."
+    )
+    st.markdown(f"##### Mais {quem} entraram")
+    st.dataframe(_lista_do_mercado(tabela, False), hide_index=True, width="stretch")
+    st.markdown(f"##### Mais {quem} saíram")
+    st.dataframe(_lista_do_mercado(tabela, True), hide_index=True, width="stretch")
+    if fonte == fundos_cvm.FONTE_CDA:
+        st.markdown("##### Mais vendidas pelos fundos (vendido ÷ comprado)")
+        apostas = tabela[tabela["valor"] > 0].sort_values(
+            "fatia_vendida", ascending=False
+        )
+        apostas = apostas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Ativo": apostas["codigo"],
+                    "Fundos vendidos": apostas["vendidos"].astype(int),
+                    "Vendido ÷ comprado": [
+                        formatar_pct(v) for v in apostas["fatia_vendida"]
+                    ],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    st.caption("Uma lista de fatos, não de recomendações.")
+
+
+def pagina_donos():
+    cabecalho_da_pagina("donos")
+    c = carregar_contexto()
+    aba_ativo, aba_mercado = st.tabs(["Do ativo do topo", "No mercado"])
+    with aba_ativo:
+        _detentores_do_ativo(normalizar_ticker(c.ticker))
+    with aba_mercado:
+        _detentores_no_mercado()
+    with st.expander("Como ler estes dados"):
+        st.markdown(
+            "- **B3 (fundos):** todo fundo registrado na CVM informa, por mês, o que tem na "
+            "carteira. O arquivo sai cerca de **40 dias** depois do mês e vai sendo completado "
+            "depois; um fundo pode manter uma posição em **sigilo por até 90 dias**.\n"
+            "- **Cobertura:** por causa do sigilo, o número de fundos que aparecem muda muito de um "
+            "mês para o outro sem que ninguém compre ou venda. Por isso mostramos a **fatia** dos "
+            "fundos que informaram e só comparamos meses com cobertura parecida.\n"
+            "- **Vendido:** o fundo tomou a ação emprestada e vendeu, apostando na queda (ou se "
+            "protegendo de outra posição). Ações emprestadas por um fundo continuam dele.\n"
+            "- **EUA (13F):** gestores com mais de US$ 100 milhões informam as posições do fim de "
+            "cada **trimestre**, até 45 dias depois. Só posições compradas; opções ficam de fora.\n"
+            "- **O que a variação diz:** quantos fundos ou gestores entraram ou saíram. É um "
+            "retrato do passado, com atraso, e não mostra a intenção de ninguém.\n\n"
+            "Fontes: CVM (composição e diversificação das aplicações dos fundos, CDA) e SEC "
+            "(Form 13F). Nada aqui é recomendação de investimento."
+        )
+
+
+# --- Research: Newsletter (etapa 4) -----------------------------------------------------------
+JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
+
+
+def _edicao(nome, tickers, janela, carteira=None):
+    """A edição da lista com os seus parâmetros (None se o banco ainda não tem as tabelas)."""
+    try:
+        with obter_engine().connect() as conexao:
+            return edicao_do_banco.montar_edicao(
+                conexao,
+                nome,
+                tickers,
+                janela,
+                parametros_em_vigor(None),
+                relatorios.agora(),
+                carteira,
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None
+
+
+def _mostrar_secao_da_newsletter(secao):
+    st.markdown(f"#### {secao.titulo}")
+    if not secao.itens:
+        st.caption(secao.vazio)
+        return
+    for item in secao.itens:
+        texto = f"**{item.titulo}**  \n{item.texto}"
+        if item.link:
+            texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
+        st.markdown(texto)
+        if item.trechos:
+            st.caption(
+                f"{newsletter.TITULO_DOS_TRECHOS}:  \n"
+                + "  \n".join(f"“{trecho}”" for trecho in item.trechos)
+            )
+        if item.razoes:
+            st.caption("Por que aparece: " + " · ".join(item.razoes))
+
+
+def _inscrever_na_newsletter(usuario):
+    lista = st.session_state["newsletter_email_lista"]
+    cadencia = st.session_state["newsletter_email_cadencia"]
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.inscrever(
+            conexao,
+            usuario.id,
+            lista,
+            cadencia,
+            envio_newsletter.VERSAO_DO_CONSENTIMENTO,
+        )
+    st.session_state["newsletter_email_consentimento"] = False
+    st.toast(
+        f'Inscrito: "{lista}", {envio_newsletter.NOMES_DAS_CADENCIAS[cadencia].lower()}.'
+    )
+
+
+def _cancelar_a_newsletter(usuario):
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.cancelar(conexao, usuario.id)
+    st.toast("Inscrição cancelada: você não recebe mais a Newsletter por e-mail.")
+
+
+def _mostrar_inscricao_por_email(usuario, nomes):
+    """Receber por e-mail (etapa 5c). Até o parecer jurídico, só para administradores."""
+    if usuario is None or (envio_newsletter.SO_PARA_ADMINS and not usuario.e_admin):
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            atual = newsletter_por_email.inscricao(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return  # banco sem a tabela (modo local sem migrar)
+    rotulo = "Receber por e-mail" + (
+        " (em teste: só administradores)" if envio_newsletter.SO_PARA_ADMINS else ""
+    )
+    with st.expander(rotulo, icon=":material/mail:"):
+        if atual is not None:
+            st.markdown(
+                f"Inscrito na lista **{atual.lista}**, "
+                f"{envio_newsletter.NOMES_DAS_CADENCIAS[atual.cadencia].lower()}, desde "
+                f"{atual.inscrito_em.astimezone(relatorios.FUSO):%d/%m/%Y}."
+            )
+            st.button(
+                "Cancelar a inscrição", key="newsletter_email_cancelar",
+                icon=":material/unsubscribe:", on_click=_cancelar_a_newsletter, args=(usuario,),
+            )  # fmt: skip
+        col_lista, col_cadencia = st.columns(2)
+        col_lista.selectbox("Lista", nomes, key="newsletter_email_lista")
+        col_cadencia.selectbox(
+            "Frequência",
+            list(envio_newsletter.NOMES_DAS_CADENCIAS),
+            format_func=envio_newsletter.NOMES_DAS_CADENCIAS.get,
+            key="newsletter_email_cadencia",
+        )
+        consentiu = st.checkbox(
+            envio_newsletter.TEXTO_DO_CONSENTIMENTO,
+            key="newsletter_email_consentimento",
+        )
+        st.button(
+            "Trocar a inscrição" if atual else "Inscrever", type="primary",
+            key="newsletter_email_inscrever", icon=":material/mark_email_read:",
+            disabled=not consentiu, on_click=_inscrever_na_newsletter, args=(usuario,),
+        )  # fmt: skip
+        st.caption(
+            "A edição sai depois das coletas da manhã (a semanal, às segundas), uma vez por "
+            "período, pelo Resend. Cada e-mail traz o link para sair."
+        )
+
+
+def _ir_para_o_pdf(nome, janela):
+    st.session_state["tipo_de_relatorio"] = relatorios.NEWSLETTER
+    st.session_state["relatorio_newsletter_lista"] = nome
+    st.session_state["relatorio_newsletter_janela"] = janela
+    st.session_state["ir_para_relatorio"] = True
+
+
+def pagina_newsletter():
+    cabecalho_da_pagina("newsletter")
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    col_lista, col_janela = st.columns([2, 3])
+    escolhida = col_lista.selectbox("Lista", nomes, key="newsletter_lista")
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+    cadencia = parametros_em_vigor(None)["newsletter.cadencia"]
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        default=newsletter.JANELA_DA_CADENCIA.get(cadencia, 7),
+        required=True,
+        key="newsletter_janela",
+        help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
+    )
+    edicao = _edicao(nome, tickers, janela, _carteira_da_lista(nome))
+    if edicao is None:
+        st.info(
+            "Os documentos ainda não foram coletados neste servidor.",
+            icon=":material/schedule:",
+        )
+        return
+    st.caption(
+        f"Edição de **{edicao.lista}**, de {edicao.inicio:%d/%m/%Y} a {edicao.fim:%d/%m/%Y}, "
+        f"gerada em {edicao.gerada_em:%d/%m/%Y às %H:%M}. Montada só com fatos dos documentos "
+        "oficiais, em frases de modelo fixo (sem inteligência artificial)."
+    )
+    st.button(
+        "Gerar o PDF no Report Studio",
+        icon=":material/picture_as_pdf:",
+        key="newsletter_pdf",
+        on_click=_ir_para_o_pdf,
+        args=(nome, janela),
+    )
+    if st.session_state.pop("ir_para_relatorio", False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio"])
+    for secao in edicao.secoes:
+        _mostrar_secao_da_newsletter(secao)
+    with st.expander("Parâmetros e fontes desta edição"):
+        st.markdown("\n".join(f"- {frase}" for frase in edicao.parametros))
+        st.markdown(
+            "\n".join(f"- **{fonte}:** {quando}" for fonte, quando in edicao.fontes)
+        )
+    st.markdown("#### Limites")
+    st.markdown("\n".join(f"- {frase}" for frase in edicao.limites))
+    _mostrar_inscricao_por_email(st.session_state.get("usuario"), nomes)
+    avisar_parametros(
+        parametros_em_vigor(None),
+        ("newsletter.cadencia", "newsletter.max_itens", "newsletter.temas"),
+    )
+
+
+# --- Research: Alertas compostos (etapa 6) -------------------------------------------------------
+PERIODO_DOS_ALERTAS = "2y"  # o bastante para médias de 200 pregões e 50 semanas
+MAX_ATIVOS_NOS_ALERTAS = 20
+NOMES_DAS_PERIODICIDADES = {alertas.DIARIO: "Diário", alertas.SEMANAL: "Semanal"}
+NOMES_DOS_MODOS = {
+    alertas.TODAS: "Todas as condições (e)",
+    alertas.QUALQUER: "Qualquer uma (ou)",
+}
+RESULTADOS = {True: "Disparou", False: "Não", None: "Sem dados"}
+
+
+def _alertas_salvos(usuario):
+    """[(id ou None, Regra)]: da conta, ou desta visita no modo local."""
+    if usuario is None:
+        return [(None, regra) for regra in st.session_state.get("alertas_locais", [])]
+    try:
+        with obter_engine().connect() as conexao:
+            return [(a.id, a.regra) for a in listar_alertas(conexao, usuario.id)]
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return []
+
+
+def _formatar_valor_do_alerta(avaliacao):
+    if avaliacao.valor is None:
+        return "—"
+    tipo, valor = avaliacao.condicao.tipo, avaliacao.valor
+    if tipo in ("preco_acima_da_media", "preco_abaixo_da_media", "media_de_alta"):
+        return f"{(valor - 1) * 100:+.1f}% da média".replace(".", ",")
+    if tipo in ("queda_do_topo", "volatilidade_acima"):
+        return f"{valor:.1f}%".replace(".", ",")
+    if tipo == "volume_relativo_acima":
+        return f"{valor:.2f}×".replace(".", ",")
+    return f"{valor:.2f}".replace(".", ",")
+
+
+def _detalhe_do_alerta(resultado):
+    marcas = {True: "✔", False: "✘", None: "—"}
+    partes = [
+        f"{marcas[a.satisfeita]} {a.condicao.descrever()}: {_formatar_valor_do_alerta(a)}"
+        + (f" ({a.motivo})" if a.motivo else "")
+        for a in resultado.avaliacoes
+    ]
+    return " · ".join(partes)
+
+
+def _mostrar_resultados_dos_alertas(salvos, tickers):
+    linhas, avisos, falharam = [], set(), []
+    for ticker in tickers[:MAX_ATIVOS_NOS_ALERTAS]:
+        try:
+            dados = carregar_dados(ticker, PERIODO_DOS_ALERTAS)
+        except (DadosIndisponiveisError, ValueError):
+            falharam.append(ticker)
+            continue
+        for _, regra in salvos:
+            resultado = alertas.avaliar(regra, dados)
+            avisos.update(a.aviso for a in resultado.avaliacoes if a.aviso)
+            linhas.append(
+                {
+                    "Ativo": ticker.removesuffix(".SA"),
+                    "Alerta": regra.nome,
+                    "Resultado": RESULTADOS[resultado.disparou],
+                    "Condições": _detalhe_do_alerta(resultado),
+                    "Fechamento usado": max(
+                        (a.barra for a in resultado.avaliacoes if a.barra), default=None
+                    ),
+                }
+            )
+    if linhas:
+        tabela = pd.DataFrame(linhas)
+        tabela["Fechamento usado"] = [
+            f"{d:%d/%m/%Y}" if d else "—" for d in tabela["Fechamento usado"]
+        ]
+        disparou = int((tabela["Resultado"] == RESULTADOS[True]).sum())
+        st.markdown(
+            f"**{disparou}** de {len(tabela)} combinações de ativo e alerta dispararam."
+        )
+        st.dataframe(tabela, hide_index=True, width="stretch")
+    st.caption(
+        "Cada alerta usa o último fechamento disponível; ele só vale a partir do pregão "
+        "seguinte. Um alerta é contexto, não ordem de compra ou venda."
+    )
+    for aviso in sorted(avisos):
+        st.caption(aviso)
+    if falharam:
+        st.caption("Sem preços agora: " + ", ".join(falharam) + ".")
+    if len(tickers) > MAX_ATIVOS_NOS_ALERTAS:
+        st.caption(f"Só os {MAX_ATIVOS_NOS_ALERTAS} primeiros ativos da lista entram.")
+
+
+def _campos_da_condicao(i):
+    col_tipo, col_per, col_janela, col_limiar = st.columns([3, 1.4, 1.2, 1.2])
+    tipo = col_tipo.selectbox(
+        f"Condição {i + 1}",
+        list(alertas.TIPOS),
+        format_func=lambda c: alertas.TIPOS[c].rotulo,
+        key=f"alerta_tipo_{i}",
+    )
+    t = alertas.TIPOS[tipo]
+    periodicidade = col_per.selectbox(
+        "Horizonte",
+        list(NOMES_DAS_PERIODICIDADES),
+        format_func=NOMES_DAS_PERIODICIDADES.get,
+        key=f"alerta_periodicidade_{i}",
+    )
+    janela = limiar = None
+    if t.janela_padrao is not None:
+        janela = col_janela.number_input(
+            "Janela" if tipo != "media_de_alta" else "Média rápida",
+            2, 500, t.janela_padrao, key=f"alerta_janela_{i}_{tipo}",
+        )  # fmt: skip
+    if t.limiar_padrao is not None:
+        limiar = col_limiar.number_input(
+            "Média lenta" if tipo == "media_de_alta" else f"Limiar {t.unidade_do_limiar}".strip(),
+            value=float(t.limiar_padrao), key=f"alerta_limiar_{i}_{tipo}",
+        )  # fmt: skip
+    st.caption(t.explicacao)
+    return alertas.Condicao(tipo, periodicidade, janela, limiar)
+
+
+def _guardar_alerta(usuario, regra):
+    try:
+        if usuario is None:
+            regra = alertas.validar(regra)
+            locais = st.session_state.setdefault("alertas_locais", [])
+            if any(r.nome.lower() == regra.nome.lower() for r in locais):
+                raise DadosInvalidosError(
+                    f'Você já tem um alerta chamado "{regra.nome}".'
+                )
+            locais.append(regra)
+        else:
+            with obter_engine().begin() as conexao:
+                salvar_alerta(conexao, usuario.id, regra, plano=usuario.plano)
+    except (
+        DadosInvalidosError,
+        LimiteDoPlanoError,
+        alertas.RegraInvalidaError,
+    ) as erro:
+        st.error(str(erro))
+        return
+    st.toast("Alerta salvo.", icon=":material/check_circle:")
+    st.rerun()
+
+
+def _montar_alerta(usuario, limites, quantos):
+    if usuario is not None and quantos >= limites.alertas:
+        st.info(
+            f"O plano {limites.nome} permite {limites.alertas} "
+            f"{'alerta' if limites.alertas == 1 else 'alertas'}. Apague um para criar outro.",
+            icon=":material/workspace_premium:",
+        )
+        return
+    nome = st.text_input("Nome do alerta", key="alerta_nome", max_chars=80)
+    col_modo, col_quantas = st.columns([2, 1])
+    modo = col_modo.radio(
+        "Dispara quando",
+        list(NOMES_DOS_MODOS),
+        format_func=NOMES_DOS_MODOS.get,
+        horizontal=True,
+        key="alerta_modo",
+    )
+    quantas = col_quantas.number_input(
+        "Condições", 1, alertas.MAXIMO_DE_CONDICOES, 2, key="alerta_quantas"
+    )
+    condicoes = tuple(_campos_da_condicao(i) for i in range(int(quantas)))
+    if st.button(
+        "Salvar alerta", icon=":material/notification_add:", key="alerta_salvar"
+    ):
+        _guardar_alerta(usuario, alertas.Regra(nome, condicoes, modo))
+
+
+def _apagar_alerta(usuario, alerta_id, nome):
+    if usuario is None:
+        st.session_state["alertas_locais"] = [
+            r for r in st.session_state.get("alertas_locais", []) if r.nome != nome
+        ]
+        return
+    with obter_engine().begin() as conexao:
+        apagar_alerta(conexao, usuario.id, alerta_id)
+
+
+def pagina_alertas():
+    cabecalho_da_pagina("alertas")
+    usuario = st.session_state.get("usuario")
+    limites = limites_do(plano_atual())
+    salvos = _alertas_salvos(usuario)
+    listas = _listas_do_research(usuario)
+    nomes = [lista[0] for lista in listas]
+    escolhida = st.selectbox("Avaliar nos ativos da lista", nomes, key="alertas_lista")
+    _, tickers, _ = listas[nomes.index(escolhida)]
+    if salvos:
+        _mostrar_resultados_dos_alertas(salvos, tickers)
+        with st.expander(f"Seus alertas ({len(salvos)})"):
+            for i, (alerta_id, regra) in enumerate(salvos):
+                col_texto, col_apagar = st.columns([5, 1], vertical_alignment="center")
+                col_texto.markdown(
+                    f"**{regra.nome}** · {NOMES_DOS_MODOS[regra.modo].lower()}  \n"
+                    + "  \n".join(c.descrever() for c in regra.condicoes)
+                )
+                col_apagar.button(
+                    "Apagar", key=f"alerta_apagar_{i}", icon=":material/delete:",
+                    on_click=_apagar_alerta, args=(usuario, alerta_id, regra.nome),
+                )  # fmt: skip
+    else:
+        st.info(
+            'Você ainda não tem alertas. Monte o primeiro abaixo; por exemplo: "média semanal '
+            'de alta" e "preço diário abaixo de um valor".',
+            icon=":material/notifications:",
+        )
+    with st.expander("Montar um alerta", expanded=not salvos):
+        _montar_alerta(usuario, limites, len(salvos))
+    if usuario is None:
+        st.caption("Sem conta, os alertas ficam só nesta visita.")
+    with st.expander("Como os alertas funcionam"):
+        st.markdown(
+            "- **Condições:** cada uma olha o **diário** ou o **semanal** (a semana termina na "
+            "sexta; enquanto ela não termina, a última barra semanal ainda pode mudar).\n"
+            '- **Todas (e) ou qualquer uma (ou):** com "todas", basta uma condição sem dados '
+            "para o alerta não disparar.\n"
+            "- **Atraso:** usa o último fechamento disponível; vale a partir do pregão seguinte.\n"
+            "- **Sem dados suficientes** (janela maior que o histórico, ativo sem volume), a "
+            'condição aparece como "—" com o motivo, nunca como "sim".\n'
+            "- Os números padrão são didáticos, não parâmetros comprovadamente bons. Um alerta "
+            "não diz que algo vai acontecer e não é recomendação."
+        )
+
+
+# --- Research: Minha carteira (etapa 5, decisão 0020) ----------------------------------------
+def guardar_fotografia(usuario, conteudo, nome_do_arquivo):
+    """Lê a planilha na memória e guarda só os pesos. Devolve a mensagem para a tela."""
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        foto = carteira_research.fotografia(
+            ler_carteira(conteudo, nome_do_arquivo), hoje
+        )
+        with obter_engine().begin() as conexao:
+            salvar_carteira(conexao, usuario.id, foto, plano_atual())
+    except (ArquivoDaB3Error, DadosInvalidosError, LimiteDoPlanoError) as erro:
+        return False, str(erro)
+    return (
+        True,
+        f"Fotografia guardada: {len(foto.pesos)} ativos, sem quantidades nem valores.",
+    )
+
+
+def _guardar_da_tela(usuario):
+    arquivo = st.session_state.get("minha_carteira_arquivo")
+    if arquivo is None:
+        return
+    st.session_state["minha_carteira_mensagem"] = guardar_fotografia(
+        usuario, arquivo.getvalue(), arquivo.name
+    )
+
+
+def _revogar_da_tela(usuario):
+    with obter_engine().begin() as conexao:
+        revogar_carteira(conexao, usuario.id)
+    st.session_state["minha_carteira_mensagem"] = (
+        True,
+        "Consentimento revogado: a fotografia da carteira foi apagada.",
+    )
+    st.session_state["minha_carteira_confirma"] = False
+
+
+def _mostrar_fotografia(foto):
+    tabela = pd.DataFrame(
+        {
+            "Ativo": [t.removesuffix(".SA") for t in foto.pesos],
+            "Peso na carteira": list(foto.pesos.values()),
+        }
+    )
+    st.dataframe(
+        tabela,
+        hide_index=True,
+        column_config={
+            "Peso na carteira": st.column_config.ProgressColumn(
+                format="percent", min_value=0.0, max_value=1.0
+            )
+        },
+    )
+    st.caption(
+        f"Fotografia de {foto.enviada_em:%d/%m/%Y}. A soma fica abaixo de 100% quando há "
+        'Tesouro ou renda fixa. Use a lista "Minha carteira" em Acontecimentos e na Newsletter.'
+    )
+
+
+def pagina_carteira_research():
+    cabecalho_da_pagina("carteira_research")
+    usuario = st.session_state.get("usuario")
+    mensagem = st.session_state.pop("minha_carteira_mensagem", None)
+    if mensagem is not None:
+        (st.success if mensagem[0] else st.error)(mensagem[1])
+    if usuario is None:
+        st.info(
+            "A fotografia da carteira fica guardada na sua conta: entre com o Google para usar "
+            "esta página.",
+            icon=":material/login:",
+        )
+    elif not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        st.info(
+            f"Guardar a carteira no Research faz parte do plano Pro (o seu é o "
+            f"{limites_do(plano_atual()).nome}). Sem ela, o Research usa as suas listas.",
+            icon=":material/workspace_premium:",
+        )
+    else:
+        foto = _carteira_do_research(usuario)
+        if foto is None:
+            st.info(
+                "Você ainda não guardou a fotografia da carteira. Sem ela, o Research usa as "
+                "suas listas, onde todo ativo pesa igual.",
+                icon=":material/donut_large:",
+            )
+        else:
+            _mostrar_fotografia(foto)
+            with st.expander("Revogar o consentimento"):
+                st.markdown(
+                    "A fotografia é **apagada na hora**. Fica só um registro técnico, sem nome "
+                    "nem e-mail, de quando o consentimento foi dado e revogado."
+                )
+                confirma = st.checkbox(
+                    "Entendi: quero apagar a fotografia",
+                    key="minha_carteira_confirma",
+                )
+                st.button(
+                    "Revogar e apagar", icon=":material/delete:", disabled=not confirma,
+                    key="minha_carteira_revogar", on_click=_revogar_da_tela, args=(usuario,),
+                )  # fmt: skip
+        with st.expander(
+            "Atualizar a fotografia" if foto else "Enviar a planilha da B3",
+            expanded=foto is None,
+        ):
+            st.markdown(
+                "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+                "2. Em **Extratos → Posição**, baixe a planilha em **Excel**.\n"
+                "3. Envie aqui. Ela é lida **só na memória**: guardamos apenas o código e o "
+                "peso de cada ativo."
+            )
+            arquivo = st.file_uploader(
+                "Planilha de posição da B3",
+                type=["xlsx", "csv"],
+                key="minha_carteira_arquivo",
+            )
+            consentiu = st.checkbox(
+                carteira_research.TEXTO_DO_CONSENTIMENTO,
+                key="minha_carteira_consentimento",
+            )
+            st.button(
+                "Guardar a fotografia", type="primary", icon=":material/save:",
+                disabled=arquivo is None or not consentiu, key="minha_carteira_guardar",
+                on_click=_guardar_da_tela, args=(usuario,),
+            )  # fmt: skip
+    with st.expander("O que é guardado e para quê"):
+        st.markdown(
+            "- **Guardado:** o código de cada ativo e o peso dele na carteira inteira (Tesouro "
+            "e renda fixa entram no total), com a data da planilha e a versão do consentimento.\n"
+            "- **Nunca guardado:** quantidades, valores em reais, preço médio e a própria "
+            "planilha.\n"
+            '- **Para quê:** no Research e na Newsletter, a lista "Minha carteira" põe na '
+            'frente o que é das maiores posições e explica: "a posição era 12,0% da sua '
+            'carteira".\n'
+            "- **Revogar:** a qualquer momento, aqui mesmo; a fotografia é apagada na hora. "
+            "Ela também sai na exportação dos seus dados e é apagada junto com a conta.\n"
+            "- A ordem é uma regra editorial para organizar a leitura, não uma recomendação."
+        )
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
+    "relatorio": pagina_relatorio,
+    "parametros": pagina_parametros,
+    "research": pagina_research,
+    "fundamentos": pagina_fundamentos,
+    "por_dentro": pagina_por_dentro,
+    "donos": pagina_donos,
+    "newsletter": pagina_newsletter,
+    "alertas": pagina_alertas,
+    "carteira_research": pagina_carteira_research,
+    "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,
     "privacidade": pagina_privacidade,
@@ -4319,6 +8127,7 @@ def montar_navegacao(e_admin=False):
                 icon=":material/lock:" if bloqueada else p.icone,
                 url_path="" if e_a_inicial else p.url,
                 default=e_a_inicial,
+                visibility="visible" if p.no_menu else "hidden",
             )
             PAGINAS_DO_MENU[p.chave] = pagina_do_menu
             itens.append(pagina_do_menu)
@@ -4346,10 +8155,15 @@ if usuario_logado is not None:
 pagina_atual.run()
 
 st.divider()
-col_termos, col_privacidade, col_aviso = st.columns([1, 1.2, 5])
+col_aviso, col_guia, col_termos, col_privacidade = st.columns(
+    [5, 1, 1.2, 1.2], vertical_alignment="center"
+)
+col_aviso.markdown(
+    '<div class="tl-rodape"><b>Ticker<span>Lab</span></b> · projeto educacional, não é '
+    "recomendação de investimento. Dados do Yahoo Finance, que podem ter atraso ou erros. "
+    "Rentabilidade passada não garante resultado futuro.</div>",
+    unsafe_allow_html=True,
+)
+col_guia.page_link(PAGINAS_DO_MENU["guia"], label="Guia")
 col_termos.page_link(PAGINAS_DO_MENU["termos"], label="Termos de uso")
 col_privacidade.page_link(PAGINAS_DO_MENU["privacidade"], label="Privacidade")
-col_aviso.caption(
-    "TickerLab é um projeto educacional. Os dados vêm do Yahoo Finance e podem ter atraso "
-    "ou erros. Rentabilidade passada não garante resultado futuro."
-)

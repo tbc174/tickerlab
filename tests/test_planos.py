@@ -67,10 +67,28 @@ def test_tabela_de_planos_cobre_todos_os_recursos():
     assert linhas["Simulações salvas"] == {
         "Recurso": "Simulações salvas",
         "Gratuito": "5",
+        "Plus": "30",
         "Pro": "Ilimitadas",
     }
     assert linhas["Aprendizado de máquina"]["Gratuito"] == "Não"
+    assert linhas["Aprendizado de máquina"]["Plus"] == "Não"  # ML e pares só no Pro
     assert linhas["Pairs trading"]["Pro"] == "Sim"
+    assert linhas["Relatórios em PDF"]["Plus"] == "Todos os tipos, 20 por dia"
+
+
+def test_plus_fica_entre_o_gratuito_e_o_pro():
+    from src.planos import limites_do
+
+    gratuito, plus, pro = (limites_do(p) for p in ("gratuito", "plus", "pro"))
+    assert gratuito.simulacoes < plus.simulacoes and pro.simulacoes is None
+    assert gratuito.favoritos < plus.favoritos < pro.favoritos
+    assert (
+        gratuito.ativos_na_carteira < plus.ativos_na_carteira < pro.ativos_na_carteira
+    )
+    assert (
+        gratuito.tipos_de_relatorio < plus.tipos_de_relatorio == pro.tipos_de_relatorio
+    )
+    assert plus.recursos == frozenset()
 
 
 # --- no banco ---

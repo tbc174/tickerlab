@@ -40,3 +40,100 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `pct_change().fillna(0)` troca o `NaN` do primeiro dia por 0, e esse 0 entra no desvio padrão.
 - **Solução:** deixar o `NaN` (o `std()` já o ignora): `return fechamento.pct_change()`.
 - **Data:** 10/10/2026
+
+## Relatórios de proventos da CVM sumiam da coleta de eventos
+- **Sintoma:** nenhum evento do tipo "Relatório Proventos" entrava no banco, mesmo existindo no arquivo da CVM.
+- **Causa:** no arquivo IPE da CVM, essas linhas vêm com a coluna `Protocolo_Entrega` **vazia**; o coletor descartava toda linha sem protocolo.
+- **Solução:** quando o protocolo vier vazio, usar o número que está no próprio link do documento (`numProtocolo=...&numVersao=...`), como `rad-1477025`. Entraram ~1.400 relatórios de proventos que se perdiam. Lição: conferir os dados reais antes de supor que uma coluna sempre vem preenchida.
+- **Data:** 11/10/2026
+
+## `StreamlitAPIException` ao mudar o valor de um campo depois de desenhá-lo
+- **Sintoma:** ao criar uma lista no Research, o código tentava abrir a lista nova trocando `st.session_state["research_lista"]`, e o Streamlit recusa.
+- **Causa:** o valor de um campo com `key` só pode ser mudado **antes** de o campo aparecer na tela naquela execução (ou dentro de um `on_click`).
+- **Solução:** guardar um "pedido pendente" (`research_lista_pendente`) e aplicá-lo no começo da próxima execução, antes do `st.selectbox`.
+- **Data:** 11/10/2026
+
+## Testes de migração quebravam a cada migração nova
+- **Sintoma:** `test_migracao_0006_vai_e_volta` falhou depois de criar a 0007 (e de novo com a 0008).
+- **Causa:** o teste descia "uma versão" (`migrar_para("-1")`) a partir da última; com uma migração nova, "-1" passou a desfazer outra.
+- **Solução:** função `desfazer_ate("0005")` em `src/banco/conexao.py`, que desce até uma versão exata; os testes usam o número da versão, não uma contagem.
+- **Data:** 11/10/2026
+
+## Página nova acusava "não consegui ler os eventos" no modo local
+- **Sintoma:** a página Acontecimentos mostrava erro ao rodar sem conta, num banco SQLite antigo.
+- **Causa:** o app abre o banco sem aplicar as migrações (no servidor, quem aplica é o contêiner ao subir); no banco local antigo, a tabela `eventos` não existia.
+- **Solução:** tratar "tabela não existe" (`OperationalError`/`ProgrammingError`) como "eventos ainda não coletados", com a dica de rodar `python -m scripts.atualizar_eventos` (que também prepara o banco).
+- **Data:** 11/10/2026
+
+## Coleta da SEC ficava mais lenta a cada empresa (7,5 min para 500)
+- **Sintoma:** a primeira coleta dos eventos dos EUA começava rápida e ia ficando lenta; cada empresa demorava mais que a anterior.
+- **Causa:** `gravar_eventos` lia **todos** os protocolos já guardados da fonte para saber o que era novo. Gravando empresa por empresa, a leitura crescia a cada uma (500 empresas × milhares de linhas).
+- **Solução:** ler só os protocolos do lote que está sendo gravado (`protocolo IN (...)`, em pedaços de 5.000, porque o SQLite limita o número de parâmetros de uma consulta).
+- **Data:** 11/10/2026
+
+## A coleta de um mercado apagaria o mapa de tickers do outro
+- **Sintoma (evitado antes de acontecer):** `gravar_tickers` apagava a tabela inteira antes de gravar o mapa novo; com a SEC, a coleta da CVM das 7h apagaria as empresas dos EUA (e vice-versa).
+- **Solução:** cada origem apaga só as suas linhas (`origem="sec"` mexe nas que começam com `CIK`; a CVM, nas outras). Teste: `test_mapa_da_sec_e_o_da_cvm_nao_se_apagam`.
+- **Data:** 11/10/2026
+
+## 13D/13G da Berkshire apareciam como se fossem sobre a própria Berkshire
+- **Sintoma (achado antes de publicar):** a lista de documentos de uma empresa na SEC traz os 13G entregues **sobre** ela e também os que **ela** entrega sobre outras (a Berkshire tem dezenas).
+- **Causa:** a lista (`submissions`) não diz o papel da empresa no documento; nem o número do protocolo resolve (os dois tipos usam o mesmo agente de entrega).
+- **Solução:** para cada 13D/13G novo, ler o cabeçalho do documento (`.hdr.sgml`), que traz a empresa-alvo (`SUBJECT-COMPANY`), e guardar só quando ela é a própria empresa.
+- **Data:** 11/10/2026
+
+## Um Form 4 que falha travava todos os outros da mesma empresa
+- **Sintoma:** no teste, a coleta pulava a Apple inteira quando um único Form 4 não baixava.
+- **Causa:** o erro de rede de um documento subia até o laço das empresas.
+- **Solução:** cada Form 4 tem o próprio `try`; o que falha não é marcado como lido e é tentado de novo no dia seguinte, sem travar os outros.
+- **Data:** 11/10/2026
+
+## Número do NumPy no PostgreSQL (`int64`)
+- **Cuidado:** valores tirados de um DataFrame (`to_dict`) vêm como `numpy.int64`, que o psycopg não sabe gravar (o SQLite dos testes aceita, então o erro só apareceria em produção).
+- **Solução:** converter antes de gravar (`valor.item()`), como faz `_python` em `src/banco/negociacoes.py`.
+- **Data:** 11/10/2026
+
+## Os 12 meses supunham ano fiscal igual ao do calendário
+- **Sintoma (achado ao trazer os EUA):** a regra "o anual do ano anterior ao trimestre" pegaria, para o Walmart (ano fiscal termina em janeiro), o balanço anual de dois anos antes.
+- **Solução:** usar o último balanço anual **anterior** ao trimestre e a no máximo 371 dias dele (53 semanas). Para as empresas da B3 o resultado é o mesmo. Teste: `test_walmart_usa_o_anual_de_janeiro_e_os_minoritarios`.
+- **Data:** 11/10/2026
+
+## Gravar o setor de uma empresa apagava os de todas
+- **Sintoma (evitado antes de acontecer):** `gravar_setores` apagava a tabela inteira; com a SEC gravando empresa por empresa, cada uma apagaria as outras, e a coleta da CVM apagaria as dos EUA.
+- **Solução:** a CVM apaga só as suas linhas; os EUA usam `gravar_setor` (uma empresa). Mesmo cuidado já tomado com o mapa de tickers.
+- **Data:** 11/10/2026
+
+## Carteira dos fundos: o número de fundos "caía pela metade" sem ninguém vender
+- **Sintoma (achado antes de publicar):** junho de 2026 tinha 6.653 fundos com ações no arquivo da CVM; julho e agosto, ~3.400; setembro (ainda chegando), 1.966. Contar fundos crus mostraria saídas em massa que não aconteceram.
+- **Causa:** um fundo pode manter posições em **sigilo por até 90 dias** (elas aparecem depois), e o arquivo do mês mais recente ainda está sendo completado.
+- **Solução:** guardar a cobertura de cada mês (quantos fundos informaram), mostrar a **fatia** dos que informaram e comparar só meses seguidos com cobertura parecida (≥ 85%); o mês mais novo incompleto fica de fora (`src/detentores.py`).
+- **Data:** 11/10/2026
+
+## 13F estourava a memória do contêiner
+- **Sintoma:** ler a tabela de posições do 13F (400 MB descompactada) chegava a ~360 MB de memória, perto do limite do contêiner (768 MB, dividido com o app).
+- **Solução:** ler em pedaços de 200 mil linhas, filtrar só as ações do S&P 500 e guardar cada pedaço em formato compacto (categorias e números); pico caiu para ~144 MB, mesmo resultado.
+- **Data:** 11/10/2026
+
+## Regex lê "R$ 500 milhões" como "R$ 500 mil"
+- **Sintoma:** no resumo dos fatos relevantes (R5), um valor de milhões saía mil vezes menor.
+- **Causa:** numa alternativa `(?:mil|milhão|milhões)` a regex testa as opções na ordem escrita e para na primeira que casa: "mil" casa com o começo de "milhões".
+- **Solução:** pôr as palavras mais longas primeiro e exigir o fim da palavra: `(?:milhões|milhão|mil)\b`. Um teste com o valor real pegou o erro.
+- **Data:** 12/10/2026
+
+## `ORDER BY ... DESC` põe a data vazia em primeiro no PostgreSQL
+- **Sintoma:** a leitura "mais recente" de um 10-K poderia ser uma sem data.
+- **Causa:** no PostgreSQL, `NULL` conta como maior que tudo, então vem primeiro em ordem decrescente (no SQLite, vem por último; por isso os testes locais não mostram).
+- **Solução:** `coluna.desc().nulls_last()` no SQLAlchemy.
+- **Data:** 12/10/2026
+
+## Duas funções com o mesmo nome no `app.py`
+- **Sintoma:** a página Admin mostrava "Criada em: coletado em 10/10/2026 às 14:00".
+- **Causa:** havia duas `def _quando(...)`; em Python a segunda substitui a primeira no arquivo inteiro, e a da Newsletter escrevia "coletado em".
+- **Solução:** a da Newsletter foi para `src/edicao.py` com um nome próprio (`quando_foi_coletado`). Arquivos menores (a etapa 4 da qualidade) evitam isso.
+- **Data:** 12/10/2026
+
+## `StreamlitValueAssignmentNotAllowedError` num botão novo
+- **Sintoma:** a página Minha carteira quebrava ao abrir com um botão de chave `carteira_research_...`.
+- **Causa:** o `manter_estado()` do app reatribui todo campo cujo nome começa com `carteira_` (para a página de estratégia de carteiras não perder o estado); botões e envio de arquivo não podem ser reatribuídos.
+- **Solução:** usar outro prefixo (`minha_carteira_`). Antes de escolher a chave de um campo, conferir `PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA`.
+- **Data:** 12/10/2026

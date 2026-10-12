@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {}
+PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {"fpdf": "fpdf2"}
 
 
 def _importados_de_terceiros() -> set[str]:

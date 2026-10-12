@@ -1,0 +1,96 @@
+# TickerLab: regras do repositório (para o Claude e para quem programa aqui)
+
+Este arquivo fica no repositório, que é **público**: nada de senhas, IPs, e-mails ou detalhes do
+servidor aqui. O planejamento, as decisões e o histórico ficam numa pasta privada do autor; quando
+ela existir no PC, leia o `CLAUDE.md` de lá primeiro.
+
+## O que é
+
+Plataforma educacional de análise de ações (B3 e EUA) e teste de estratégias com dados do passado:
+app Streamlit (`app.tickerlab.com.br`), API FastAPI (saúde e webhook do Stripe), site público
+estático (`tickerlab.com.br`, gerado em `site/`) e a pesquisa de trading em `trader/` (roda no PC,
+fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`.
+
+## Comandos
+
+```powershell
+.venv\Scripts\python -m streamlit run app.py              # app em modo local (sem login, SQLite)
+.venv\Scripts\python -m pytest -q                         # suíte inteira (~3 min)
+.venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
+.venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m ruff format app.py src tests trader scripts
+.venv\Scripts\python -m scripts.gerar_site                # site público em site/ (há teste que confere)
+.venv\Scripts\python -m alembic upgrade head              # migrações do banco
+```
+
+- A suíte inteira demora: rode em segundo plano gravando a saída num arquivo e avise o Tiago.
+- O CI (`.github/workflows/testes.yml`) roda `ruff`, os testes com **PostgreSQL de verdade** e
+  constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
+
+## Arquitetura (onde cada coisa deve ficar)
+
+- **`src/` não importa o Streamlit.** As contas, regras e dados ficam em `src/`; a tela (cola com o
+  Streamlit) fica em `app.py`. Teste a regra em `src/` e a tela com `AppTest`.
+- **Um lugar só para cada verdade:** limites dos planos em `src/planos.py`; mapa de páginas e
+  frases em `src/paginas.py`; cores e fontes em `src/marca.py` (identidade visual oficial); textos
+  legais em `conteudo/`. O site público lê desses mesmos lugares.
+- **Banco:** SQLAlchemy 2 + Alembic. Mudou o modelo → nova migração em `migracoes/versions/`
+  (numeração seguida). **Toda consulta filtra pelo `usuario_id`**, com teste de isolamento.
+  `hide_parameters=True` (erros do banco não podem levar e-mails para os logs).
+- **Cobrança:** Stripe **só em modo de teste** (o código recusa chaves que não sejam
+  `sk_test_`/`rk_test_`). O plano só muda pelo webhook (assinatura verificada, idempotente,
+  tolerante a eventos fora de ordem).
+- **Relatórios em PDF** usam as mesmas funções que a tela; a seção "Limites e cuidados" é
+  obrigatória.
+
+## Testes
+
+- Todo comportamento novo vem com teste; todo bug corrigido ganha teste de regressão.
+- Testes de tela: `tests/ajudantes_da_conta.py` (`abrir_app`, `ir_para`, `entrar_como`).
+  No `AppTest`, `st.switch_page` só vale naquela execução: fixe a página com `ir_para`.
+- Sem internet nos testes: use `dados_de_exemplo/` e os dublês já existentes.
+- Princípio que tem teste: **sem olhar o futuro** (cortar o futuro não muda o passado).
+
+## Git e GitHub
+
+- **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
+  Trabalho em ramos `feat/...`, `fix/...`, `docs/...`, `test/...`; entra na `main` por PR com o
+  CI verde. Push, PR e merge **só com autorização do Tiago**, uma etapa de cada vez.
+- A `main` vai para produção sozinha (deploy automático só de commits com CI verde). Trate cada
+  merge como uma publicação.
+- Mensagens de commit em português, no formato `tipo: o que mudou` (`feat`, `fix`, `docs`,
+  `test`, `perf`, `ci`, `chore`).
+- **Várias sessões do Claude podem estar abertas.** Cada uma trabalha na própria cópia
+  (`git worktree add ../analise-acoes-NOME -b ramo origin/main`); não mexa num ramo ou numa pasta
+  que outra sessão esteja usando, e não use `git add -A` sem conferir o `git status`.
+
+## Segurança e privacidade
+
+- Segredos só em `.env` e `.streamlit/secrets.toml` (fora do Git). Nunca imprimir segredos.
+- Logs em JSON sem e-mail nem nome; auditoria só com ids.
+- LGPD: exportar e apagar a conta já existem (`src/conformidade.py`); não guardar dado pessoal novo
+  sem pensar em exportação e exclusão.
+- O repositório não tem licença de código aberto (todos os direitos reservados): não adicionar
+  `LICENSE` nem dependência GPL/AGPL.
+
+## Padrões de código
+
+**Leia `docs/padroes-de-codigo.md`** antes de escrever código: funções curtas com uma
+responsabilidade, nomes claros em português, sem números mágicos, tipos e docstrings em `src/`,
+comentário explica o porquê, refatoração separada de mudança de comportamento. Fique atento ao
+código em toda tarefa: deixe o trecho tocado mais limpo do que estava e aponte problemas que
+encontrar fora do pedido (sem refatorar a área de outra sessão sem combinar).
+
+## Conteúdo e estilo
+
+- Português do Brasil no código, nos textos e nas mensagens; termos técnicos em inglês quando
+  consagrados (Sharpe, backtest, drawdown). Cada conceito explicado na tela.
+- **Honestidade com os números:** mostrar o que não funciona; nunca prometer rentabilidade; nada é
+  recomendação de investimento.
+- Siga o estilo do código ao redor e o guia de padrões.
+
+## `trader/` (pesquisa de trading)
+
+Regras próprias em `trader/CLAUDE.md` (no ramo da pesquisa). Resumo: só leitura (há teste que
+impede enviar ordens), conta de demonstração, critério de aprovação escrito antes dos resultados,
+toda execução conta como tentativa, um modelo por vez.

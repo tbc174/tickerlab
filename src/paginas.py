@@ -8,26 +8,36 @@ from dataclasses import dataclass
 
 from src.planos import APRENDIZADO_DE_MAQUINA, PARES
 
-GRUPO_COMECAR = "Começar"
+# Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
+GRUPO_TOPO = ""
 GRUPO_ANALISAR = "Analisar"
 GRUPO_ESTRATEGIAS = "Estratégias"
 GRUPO_AVANCADO = "Avançado (Pro)"
+GRUPO_RESEARCH = "Research"
+GRUPO_APRENDER = "Aprender"
 GRUPO_CONTA = "Minha conta"
+GRUPO_MAIS = "Mais"  # experimental e menos usado (blueprint: TickerLab Trade fica aqui como Beta)
 GRUPO_ADMIN = "Administração"
 GRUPOS = (
-    GRUPO_COMECAR,
+    GRUPO_TOPO,
     GRUPO_ANALISAR,
     GRUPO_ESTRATEGIAS,
     GRUPO_AVANCADO,
+    GRUPO_RESEARCH,
+    GRUPO_APRENDER,
     GRUPO_CONTA,
+    GRUPO_MAIS,
     GRUPO_ADMIN,
 )
 
 FRASE_DE_CADA_GRUPO = {
-    GRUPO_COMECAR: "O que é o TickerLab e como usar.",
+    GRUPO_TOPO: "O começo e os relatórios do TickerLab.",
+    GRUPO_MAIS: "Linhas experimentais, ainda em pesquisa.",
+    GRUPO_APRENDER: "Como os números são calculados, os limites do app e cada termo explicado.",
     GRUPO_ANALISAR: "Entenda um ativo: preço, risco e comportamento ao longo do tempo.",
     GRUPO_ESTRATEGIAS: "Teste regras de compra e venda no passado, com custos.",
     GRUPO_AVANCADO: "Ferramentas mais técnicas, do plano Pro.",
+    GRUPO_RESEARCH: "Pesquisa sob medida: você escolhe como analisar, e cada número diz de onde veio.",
     GRUPO_CONTA: "O que é seu: simulações guardadas, favoritos, plano e privacidade.",
     GRUPO_ADMIN: "Só para administradores: usuários, planos e assinaturas.",
 }
@@ -43,6 +53,9 @@ class Pagina:
     recurso: str | None = None  # recurso do plano que a página exige (None = livre)
     precisa_do_ativo: bool = True  # mostra os campos de ativo e período no topo
     somente_admin: bool = False  # só aparece no menu (e só abre) para administradores
+    no_menu: bool = (
+        True  # False: fora do menu, mas com endereço (Termos e Privacidade, no rodapé)
+    )
 
     @property
     def url(self) -> str:
@@ -57,15 +70,22 @@ PAGINAS = (
     Pagina(
         "inicio",
         "Início",
-        GRUPO_COMECAR,
+        GRUPO_TOPO,
         ":material/home:",
         "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
         precisa_do_ativo=False,
     ),
     Pagina(
+        "relatorio",
+        "Gerar relatório",
+        GRUPO_TOPO,
+        ":material/picture_as_pdf:",
+        "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
+    ),
+    Pagina(
         "guia",
         "Guia e glossário",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/menu_book:",
         "Como os números são calculados, os limites do app e cada termo explicado em português.",
         precisa_do_ativo=False,
@@ -73,17 +93,27 @@ PAGINAS = (
     Pagina(
         "termos",
         "Termos de uso",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/gavel:",
         "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
         precisa_do_ativo=False,
+        no_menu=False,
     ),
     Pagina(
         "privacidade",
         "Política de privacidade",
-        GRUPO_COMECAR,
+        GRUPO_APRENDER,
         ":material/lock_person:",
         "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
+        precisa_do_ativo=False,
+        no_menu=False,
+    ),
+    Pagina(
+        "trade",
+        "TickerLab Trade · Beta",
+        GRUPO_MAIS,
+        ":material/memory:",
+        "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -171,6 +201,74 @@ PAGINAS = (
         ":material/swap_horiz:",
         "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
         recurso=PARES,
+    ),
+    Pagina(
+        "research",
+        "Acontecimentos",
+        GRUPO_RESEARCH,
+        ":material/travel_explore:",
+        "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, "
+        "com o documento original de cada item.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "fundamentos",
+        "Fundamentos",
+        GRUPO_RESEARCH,
+        ":material/account_balance:",
+        "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
+        "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
+    ),
+    Pagina(
+        "por_dentro",
+        "Pessoas de dentro",
+        GRUPO_RESEARCH,
+        ":material/badge:",
+        "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu "
+        "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
+    ),
+    Pagina(
+        "donos",
+        "Donos e fundos",
+        GRUPO_RESEARCH,
+        ":material/groups:",
+        "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto "
+        "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
+    ),
+    Pagina(
+        "newsletter",
+        "Newsletter",
+        GRUPO_RESEARCH,
+        ":material/newspaper:",
+        "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o "
+        "documento de cada item. Na tela ou em PDF.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "carteira_research",
+        "Minha carteira",
+        GRUPO_RESEARCH,
+        ":material/donut_large:",
+        "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) "
+        "para o Research e a Newsletter darem mais destaque às maiores posições.",
+        precisa_do_ativo=False,  # guardar é do Pro: a própria página explica (sem cadeado)
+    ),
+    Pagina(
+        "alertas",
+        "Alertas",
+        GRUPO_RESEARCH,
+        ":material/notifications:",
+        "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista "
+        "elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "parametros",
+        "Parâmetros",
+        GRUPO_RESEARCH,
+        ":material/tune:",
+        "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só "
+        "para um, e veja o efeito antes de salvar.",
     ),
     Pagina(
         "simulacoes",

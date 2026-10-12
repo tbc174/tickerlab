@@ -11,10 +11,25 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
-from src.banco.modelo import assinaturas, favoritos, preferencias, simulacoes, usuarios
+from src.banco.modelo import (
+    alertas,
+    assinaturas,
+    carteiras_do_research,
+    envios_da_newsletter,
+    favoritos,
+    inscricoes_da_newsletter,
+    preferencias,
+    presets,
+    relatorios,
+    simulacoes,
+    usuarios,
+    watchlists,
+)
 from src.banco.usuarios import Usuario
 
-VERSAO_DOS_TERMOS = "2026-10-11"
+VERSAO_DOS_TERMOS = (
+    "2026-10-11.2"  # versão 2: Plus, relatórios, acesso aberto, Cloudflare
+)
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
@@ -104,6 +119,106 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(simulacoes)
                 .where(simulacoes.c.usuario_id == usuario_id)
                 .order_by(simulacoes.c.criada_em)
+            )
+        ],
+        "alertas_do_research": [
+            {
+                "nome": l.nome,
+                "regra": dict(l.regra),
+                "criado_em": _texto(l.criado_em),
+                "atualizado_em": _texto(l.atualizado_em),
+            }
+            for l in conexao.execute(
+                sa.select(alertas)
+                .where(alertas.c.usuario_id == usuario_id)
+                .order_by(alertas.c.criado_em)
+            )
+        ],
+        "carteira_do_research": [
+            {
+                "pesos": dict(l.pesos),
+                "enviada_em": _texto(l.enviada_em),
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "consentido_em": _texto(l.consentido_em),
+            }
+            for l in conexao.execute(
+                sa.select(carteiras_do_research).where(
+                    carteiras_do_research.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "newsletter_por_email": [
+            {
+                "lista": l.lista,
+                "cadencia": l.cadencia,
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "inscrito_em": _texto(l.inscrito_em),
+            }
+            for l in conexao.execute(
+                sa.select(inscricoes_da_newsletter).where(
+                    inscricoes_da_newsletter.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "envios_da_newsletter": [
+            {
+                "periodo": l.periodo,
+                "situacao": l.situacao,
+                "registrado_em": _texto(l.registrado_em),
+            }
+            for l in conexao.execute(
+                sa.select(envios_da_newsletter)
+                .where(envios_da_newsletter.c.usuario_id == usuario_id)
+                .order_by(envios_da_newsletter.c.registrado_em)
+            )
+        ],
+        "listas_do_research": [
+            {
+                "nome": l.nome,
+                "tickers": list(l.tickers),
+                "criada_em": _texto(l.criado_em),
+                "atualizada_em": _texto(l.atualizado_em),
+            }
+            for l in conexao.execute(
+                sa.select(watchlists)
+                .where(watchlists.c.usuario_id == usuario_id)
+                .order_by(watchlists.c.criado_em)
+            )
+        ],
+        "parametros_do_research": [
+            {
+                "escopo": l.escopo,
+                "alvo": l.alvo,
+                "versao": l.versao,
+                "nome": l.nome,
+                "parametros": dict(l.parametros),
+                "motivo": l.motivo,
+                "criado_em": _texto(l.criado_em),
+            }
+            for l in conexao.execute(
+                sa.select(presets)
+                .where(presets.c.usuario_id == usuario_id)
+                .order_by(presets.c.escopo, presets.c.alvo, presets.c.versao)
+            )
+        ],
+        "relatorios_em_pdf": [
+            {
+                "tipo": l.tipo,
+                "criado_em": _texto(l.criado_em),
+                "titulo": l.titulo,
+                "parametros": dict(l.parametros) if l.parametros else None,
+                "excluido_da_biblioteca_em": _texto(l.apagado_em),
+            }
+            for l in conexao.execute(
+                sa.select(
+                    relatorios.c.tipo,
+                    relatorios.c.criado_em,
+                    relatorios.c.titulo,
+                    relatorios.c.parametros,
+                    relatorios.c.apagado_em,
+                )
+                .where(relatorios.c.usuario_id == usuario_id)
+                .order_by(relatorios.c.criado_em)
             )
         ],
         "assinatura": (
