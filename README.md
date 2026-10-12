@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Python-3.12-2962FF?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/Streamlit-app-2962FF?logo=streamlit&logoColor=white" alt="Streamlit">
   <img src="https://img.shields.io/badge/PostgreSQL-16-2962FF?logo=postgresql&logoColor=white" alt="PostgreSQL 16">
-  <img src="https://img.shields.io/badge/testes-1.135-2EBD85" alt="1.135 testes">
+  <img src="https://img.shields.io/badge/testes-1.200%2B-2EBD85" alt="Mais de 1.200 testes">
   <img src="https://img.shields.io/badge/Stripe-modo%20de%20teste-F5B83D?logo=stripe&logoColor=white" alt="Stripe em modo de teste">
   <img src="https://img.shields.io/badge/direitos-reservados-93A0B8" alt="Todos os direitos reservados">
 </p>
@@ -45,7 +45,7 @@ A regra que atravessa tudo: **mostrar os números como eles são**, inclusive qu
 
 ## Em números
 
-| 23 páginas | 12 estratégias | ~1.700 ativos na busca | 3 planos | 1.135 testes automatizados |
+| 26 páginas | 12 estratégias | ~1.700 ativos na busca | 3 planos | mais de 1.200 testes automatizados |
 |:---:|:---:|:---:|:---:|:---:|
 | análise, estratégias, carteiras, relatórios e conta | tendência e reversão, com custos e stops | B3, S&P 500, índices, cripto e câmbio | Gratuito, Plus e Pro | rodam a cada mudança, com PostgreSQL de verdade |
 
@@ -75,6 +75,7 @@ português ao passar o mouse no **?**.
 | Analisar | Visão geral, Risco, Retorno mensal, Comparar ativos, Correlação e beta | Como o ativo se comportou: retorno, volatilidade, quedas, calendário, comparação com Ibovespa e S&P 500, beta |
 | Estratégias | Backtest, Ranking de estratégias, Carteira, Experimentos, Fases do mercado | E se eu tivesse seguido uma regra? Qual estratégia foi melhor, descontando a sorte? E com vários ativos? |
 | Avançado (Pro) | Aprendizado de máquina, Pairs trading | Um modelo vence a previsão ingênua? Pares de ativos cointegrados |
+| Research | Parâmetros, Acontecimentos, Fundamentos | Como eu quero analisar? O que as empresas comunicaram (CVM e SEC)? Como estão os números do balanço? |
 | Aprender | Guia e glossário, Termos de uso, Política de privacidade | Como os números são calculados e o que cada termo quer dizer |
 | Minha conta | Minhas simulações, Favoritos e momentum, Meus dados e privacidade, Planos e assinatura | O que é meu: simulações guardadas, favoritos, exportar e apagar os dados, plano |
 | Mais | TickerLab Trade (Beta) | Em que fase está a pesquisa de trading quantitativo? |
@@ -96,6 +97,11 @@ português ao passar o mouse no **?**.
 - **Minha carteira (B3):** envie a planilha de posição baixada na Área do Investidor da B3 para
   analisar a sua carteira e gerar o relatório. O arquivo é lido só na memória: nada é gravado e
   nada vai para os logs.
+- **Research:** pesquisa sob medida. Em **Parâmetros** você escolhe janelas, índice de referência
+  e temas; **Acontecimentos** reúne fatos relevantes, comunicados e proventos das empresas (CVM no
+  Brasil, SEC nos EUA), com o link do documento original e o motivo de cada um aparecer;
+  **Fundamentos** calcula margens, ROE, dívida e múltiplos a partir dos balanços entregues à CVM,
+  dizendo de onde veio cada número.
 - **Busca de ativos:** campo com autocomplete por código ou nome da empresa, a partir de um
   catálogo de cerca de 1.700 ativos (B3, S&P 500, índices, criptomoedas e câmbio). Um código
   digitado nunca é trocado em silêncio.

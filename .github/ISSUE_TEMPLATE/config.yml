@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Falha de segurança
+    url: https://github.com/tbc174/tickerlab/blob/main/SECURITY.md
+    about: Não abra issue pública; veja como reportar com segurança.
+  - name: Usar o TickerLab
+    url: https://tickerlab.com.br
+    about: Site, planos e metodologia.
