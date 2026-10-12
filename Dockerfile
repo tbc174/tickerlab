@@ -16,6 +16,7 @@ COPY .streamlit ./.streamlit
 COPY static ./static
 COPY app.py ./
 COPY src ./src
+COPY telas ./telas
 COPY alembic.ini ./
 COPY migracoes ./migracoes
 COPY conteudo ./conteudo

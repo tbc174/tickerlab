@@ -84,9 +84,9 @@ jobs:
         if: steps.mudancas.outputs.so_texto != 'true'
         run: python -m ruff check .
 
-      - name: ruff (formatação do app, src e tests)
+      - name: ruff (formatação do app, telas, src e tests)
         if: steps.mudancas.outputs.so_texto != 'true'
-        run: python -m ruff format --check app.py src tests trader scripts
+        run: python -m ruff format --check app.py telas src tests trader scripts
 
       # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
       # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
