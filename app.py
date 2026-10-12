@@ -23,11 +23,11 @@ from src import (
     catalogo,
     coleta_sec,
     detentores,
+    envio_newsletter,
     estilos_pdf,
     eventos_sec,
     fundamentos,
     fundos_cvm,
-    fundos_sec,
     graficos,
     marca,
     negociacoes,
@@ -40,6 +40,7 @@ from src import (
     tutorial,
 )
 from src import analise as research_analise
+from src import edicao as edicao_do_banco
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
@@ -63,6 +64,7 @@ from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import detentores as repo_detentores
 from src.banco import leituras as repo_leituras
 from src.banco import negociacoes as repo_negociacoes
+from src.banco import newsletter_por_email
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
@@ -157,6 +159,7 @@ from src.correlacao import (
     resumir_betas,
 )
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.edicao import FONTES_DOS_DETENTORES
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
@@ -7285,10 +7288,6 @@ def pagina_por_dentro():
 
 
 # --- Research: Donos e fundos (R3) ------------------------------------------------------------
-FONTES_DOS_DETENTORES = {
-    "BRL": (fundos_cvm.FONTE_CDA, "fundos", "mês", "R$"),
-    "USD": (fundos_sec.FONTE_13F, "gestores", "trimestre", "US$"),
-}
 TAMANHO_DA_LISTA_DO_MERCADO = 10
 
 
@@ -7545,109 +7544,21 @@ def pagina_donos():
 JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
 
 
-def _frase_do_detentor(codigo, linha, quem, par, da_cvm, informantes):
-    variacao = (
-        ""
-        if pd.isna(linha["variacao"])
-        else f" ({linha['variacao']:+.0f} desde {par[1]:%m/%Y})"
-    )
-    vendidos = (
-        f"; {int(linha['vendidos'])} vendidos" if da_cvm and linha["vendidos"] else ""
-    )
-    return (
-        f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}, de "
-        f"{informantes} que informaram{variacao}{vendidos}."
-    )
-
-
-def _frases_dos_detentores(conexao, tickers):
-    """Uma frase por ativo da lista, com a última comparação válida (fundos ou 13F)."""
-    frases = []
-    for moeda, (fonte, quem, _, _) in FONTES_DOS_DETENTORES.items():
-        do_mercado = [t for t in tickers if moeda_do_ticker(t) == moeda]
-        cobertura = repo_detentores.cobertura(conexao, fonte)
-        par = detentores.par_comparavel(cobertura)
-        if not do_mercado or par is None:
-            continue
-        resumo = repo_detentores.resumo_do_mercado(conexao, fonte, par)
-        tabela = detentores.comparar(resumo, *par).set_index("codigo")
-        for ticker in do_mercado:
-            codigo = ticker.removesuffix(".SA")
-            if codigo in tabela.index:
-                frases.append(
-                    _frase_do_detentor(
-                        codigo,
-                        tabela.loc[codigo],
-                        quem,
-                        par,
-                        fonte == fundos_cvm.FONTE_CDA,
-                        cobertura[par[0]],
-                    )
-                )
-    return tuple(frases)
-
-
-def _quando(momento):
-    if momento is None:
-        return "ainda não coletado"
-    if momento.tzinfo is None:  # o SQLite devolve sem fuso: foi gravado em UTC
-        momento = momento.replace(tzinfo=UTC)
-    return f"coletado em {momento.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}"
-
-
-def _fontes_da_edicao(conexao):
-    fontes = [
-        ("Eventos (CVM e SEC)", _quando(ultima_coleta(conexao))),
-        (
-            "Pessoas de dentro (CVM e SEC)",
-            _quando(repo_negociacoes.ultima_coleta(conexao)),
-        ),
-    ]
-    for fonte, nome in ((fundos_cvm.FONTE_CDA, "Carteiras dos fundos (CVM)"),
-                        (fundos_sec.FONTE_13F, "Gestores, 13F (SEC)")):  # fmt: skip
-        datas = detentores.competencias_utilizaveis(
-            repo_detentores.cobertura(conexao, fonte)
-        )
-        fontes.append(
-            (nome, f"posição de {datas[0]:%m/%Y}" if datas else "ainda não coletado")
-        )
-    return tuple(fontes)
-
-
 def _edicao(nome, tickers, janela, carteira=None):
-    """A edição da lista, lida do banco (None se o banco ainda não tem as tabelas)."""
-    r = parametros_em_vigor(None)
-    hoje = datetime.now(relatorios.FUSO).date()
+    """A edição da lista com os seus parâmetros (None se o banco ainda não tem as tabelas)."""
     try:
         with obter_engine().connect() as conexao:
-            eventos_da_lista = eventos_dos_tickers(
-                conexao, tickers, hoje - timedelta(days=janela)
+            return edicao_do_banco.montar_edicao(
+                conexao,
+                nome,
+                tickers,
+                janela,
+                parametros_em_vigor(None),
+                relatorios.agora(),
+                carteira,
             )
-            empresas = empresas_dos_tickers(conexao, tickers)
-            frases = _frases_dos_detentores(conexao, tickers)
-            fontes = _fontes_da_edicao(conexao)
-            protocolos = [e.protocolo for e in eventos_da_lista if e.fonte == FONTE_IPE]
-            resumos = repo_leituras.resumos(conexao, FONTE_IPE, protocolos)
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         return None
-    return newsletter.montar(
-        newsletter.Entrada(
-            lista=nome,
-            tickers=tuple(tickers),
-            eventos=tuple(eventos_da_lista),
-            pesos=research.pesos_da_resolucao(r.valores("relevancia")),
-            temas=tuple(r["newsletter.temas"]),
-            hoje=hoje,
-            janela=janela,
-            max_itens=int(r["newsletter.max_itens"]),
-            gerada_em=relatorios.agora(),
-            detentores=frases,
-            fontes=fontes,
-            cobertos=tuple(t for t in tickers if t in empresas),
-            resumos=resumos,
-            carteira=carteira,
-        )
-    )
 
 
 def _mostrar_secao_da_newsletter(secao):
@@ -7667,6 +7578,75 @@ def _mostrar_secao_da_newsletter(secao):
             )
         if item.razoes:
             st.caption("Por que aparece: " + " · ".join(item.razoes))
+
+
+def _inscrever_na_newsletter(usuario):
+    lista = st.session_state["newsletter_email_lista"]
+    cadencia = st.session_state["newsletter_email_cadencia"]
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.inscrever(
+            conexao,
+            usuario.id,
+            lista,
+            cadencia,
+            envio_newsletter.VERSAO_DO_CONSENTIMENTO,
+        )
+    st.session_state["newsletter_email_consentimento"] = False
+    st.toast(
+        f'Inscrito: "{lista}", {envio_newsletter.NOMES_DAS_CADENCIAS[cadencia].lower()}.'
+    )
+
+
+def _cancelar_a_newsletter(usuario):
+    with obter_engine().begin() as conexao:
+        newsletter_por_email.cancelar(conexao, usuario.id)
+    st.toast("Inscrição cancelada: você não recebe mais a Newsletter por e-mail.")
+
+
+def _mostrar_inscricao_por_email(usuario, nomes):
+    """Receber por e-mail (etapa 5c). Até o parecer jurídico, só para administradores."""
+    if usuario is None or (envio_newsletter.SO_PARA_ADMINS and not usuario.e_admin):
+        return
+    try:
+        with obter_engine().connect() as conexao:
+            atual = newsletter_por_email.inscricao(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return  # banco sem a tabela (modo local sem migrar)
+    rotulo = "Receber por e-mail" + (
+        " (em teste: só administradores)" if envio_newsletter.SO_PARA_ADMINS else ""
+    )
+    with st.expander(rotulo, icon=":material/mail:"):
+        if atual is not None:
+            st.markdown(
+                f"Inscrito na lista **{atual.lista}**, "
+                f"{envio_newsletter.NOMES_DAS_CADENCIAS[atual.cadencia].lower()}, desde "
+                f"{atual.inscrito_em.astimezone(relatorios.FUSO):%d/%m/%Y}."
+            )
+            st.button(
+                "Cancelar a inscrição", key="newsletter_email_cancelar",
+                icon=":material/unsubscribe:", on_click=_cancelar_a_newsletter, args=(usuario,),
+            )  # fmt: skip
+        col_lista, col_cadencia = st.columns(2)
+        col_lista.selectbox("Lista", nomes, key="newsletter_email_lista")
+        col_cadencia.selectbox(
+            "Frequência",
+            list(envio_newsletter.NOMES_DAS_CADENCIAS),
+            format_func=envio_newsletter.NOMES_DAS_CADENCIAS.get,
+            key="newsletter_email_cadencia",
+        )
+        consentiu = st.checkbox(
+            envio_newsletter.TEXTO_DO_CONSENTIMENTO,
+            key="newsletter_email_consentimento",
+        )
+        st.button(
+            "Trocar a inscrição" if atual else "Inscrever", type="primary",
+            key="newsletter_email_inscrever", icon=":material/mark_email_read:",
+            disabled=not consentiu, on_click=_inscrever_na_newsletter, args=(usuario,),
+        )  # fmt: skip
+        st.caption(
+            "A edição sai depois das coletas da manhã (a semanal, às segundas), uma vez por "
+            "período, pelo Resend. Cada e-mail traz o link para sair."
+        )
 
 
 def _ir_para_o_pdf(nome, janela):
@@ -7723,6 +7703,7 @@ def pagina_newsletter():
         )
     st.markdown("#### Limites")
     st.markdown("\n".join(f"- {frase}" for frase in edicao.limites))
+    _mostrar_inscricao_por_email(st.session_state.get("usuario"), nomes)
     avisar_parametros(
         parametros_em_vigor(None),
         ("newsletter.cadencia", "newsletter.max_itens", "newsletter.temas"),

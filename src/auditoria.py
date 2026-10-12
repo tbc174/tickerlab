@@ -19,6 +19,8 @@ ACAO_CONTA_APAGADA = "conta_apagada"
 ACAO_DADOS_EXPORTADOS = "dados_exportados"
 ACAO_CARTEIRA_CONSENTIDA = "carteira_consentida"  # Research, etapa 5 (decisão 0020)
 ACAO_CARTEIRA_REVOGADA = "carteira_revogada"
+ACAO_NEWSLETTER_INSCRITA = "newsletter_inscrita"  # Research, etapa 5c (decisão 0020)
+ACAO_NEWSLETTER_CANCELADA = "newsletter_cancelada"
 
 
 @dataclass(frozen=True)

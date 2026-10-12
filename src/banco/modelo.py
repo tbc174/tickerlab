@@ -143,6 +143,33 @@ carteiras_do_research = sa.Table(
     _momento("consentido_em"),
 )
 
+# Research (0018): Newsletter por e-mail. Inscrição opt-in (uma por usuário) e cada envio
+# (a chave usuário + período impede mandar a mesma edição duas vezes)
+CADENCIAS_DO_EMAIL = ("diaria", "semanal")
+SITUACOES_DO_ENVIO = ("enviado", "retido", "falhou")
+inscricoes_da_newsletter = sa.Table(
+    "inscricoes_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("lista", sa.String(60), nullable=False),  # nome da lista no Research
+    sa.Column("cadencia", sa.String(20), nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    # código aleatório do link "descadastrar" (funciona sem login)
+    sa.Column("codigo_para_sair", sa.String(64), nullable=False, unique=True),
+    _momento("inscrito_em"),
+    sa.CheckConstraint("cadencia IN ('diaria', 'semanal')", name="cadencia"),
+)
+envios_da_newsletter = sa.Table(
+    "envios_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("periodo", sa.String(20), primary_key=True),  # "2026-10-12" ou "2026-W42"
+    sa.Column("situacao", sa.String(20), nullable=False),
+    sa.Column("detalhe", sa.String(200), nullable=False, server_default=""),
+    _momento("registrado_em"),
+    sa.CheckConstraint("situacao IN ('enviado', 'retido', 'falhou')", name="situacao"),
+)
+
 # Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
 alertas = sa.Table(
     "alertas",

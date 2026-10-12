@@ -15,7 +15,9 @@ from src.banco.modelo import (
     alertas,
     assinaturas,
     carteiras_do_research,
+    envios_da_newsletter,
     favoritos,
+    inscricoes_da_newsletter,
     preferencias,
     presets,
     relatorios,
@@ -143,6 +145,31 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(carteiras_do_research).where(
                     carteiras_do_research.c.usuario_id == usuario_id
                 )
+            )
+        ],
+        "newsletter_por_email": [
+            {
+                "lista": l.lista,
+                "cadencia": l.cadencia,
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "inscrito_em": _texto(l.inscrito_em),
+            }
+            for l in conexao.execute(
+                sa.select(inscricoes_da_newsletter).where(
+                    inscricoes_da_newsletter.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "envios_da_newsletter": [
+            {
+                "periodo": l.periodo,
+                "situacao": l.situacao,
+                "registrado_em": _texto(l.registrado_em),
+            }
+            for l in conexao.execute(
+                sa.select(envios_da_newsletter)
+                .where(envios_da_newsletter.c.usuario_id == usuario_id)
+                .order_by(envios_da_newsletter.c.registrado_em)
             )
         ],
         "listas_do_research": [
