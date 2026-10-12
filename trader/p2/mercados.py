@@ -9,6 +9,8 @@ Ficaram de fora, de propósito:
   estratégia que fica posicionada por semanas;
 - **agrícolas:** a conta de referência (Admirals, entidade SC) não tem CFDs deles;
 - **ações individuais e ETFs de ações:** o risco já está nos índices.
+- **gás natural:** o preço à vista gratuito (Henry Hub) tem picos de até +143% num dia nas ondas
+  de frio, que o CFD (que segue o futuro) não tem, e buracos de até 24 dias (decisão 0014).
 """
 
 from __future__ import annotations
@@ -70,7 +72,6 @@ MERCADOS: tuple[Mercado, ...] = (
     # Energia: preço à vista do FRED (o CFD embute a rolagem no custo de manter).
     Mercado("BRENT", "energia", "BRENT-T", "fred", "DCOILBRENTEU", "USD"),
     Mercado("WTI", "energia", "US.OIL-T", "fred", "DCOILWTICO", "USD"),
-    Mercado("NGAS", "energia", "NGAS-T", "fred", "DHHNGSP", "USD"),
     # Títulos: rendimento de 10 anos dos EUA (o retorno sai da duração); o CFD é o do ETF IEF.
     Mercado("UST10", "titulos", "#IEF-T", "fred", "DGS10", "USD", rendimento=True),
 )
