@@ -236,6 +236,15 @@ PAGINAS = (
         "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
     ),
     Pagina(
+        "newsletter",
+        "Newsletter",
+        GRUPO_RESEARCH,
+        ":material/newspaper:",
+        "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o "
+        "documento de cada item. Na tela ou em PDF.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,

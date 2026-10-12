@@ -28,7 +28,9 @@ from src import (
     graficos,
     marca,
     negociacoes,
+    newsletter,
     previa_pdf,
+    relatorio_newsletter,
     relatorios,
     research,
     trade,
@@ -4415,6 +4417,8 @@ def _montar_relatorio(tipo, c):
     comuns = {"ticker": c.ticker, "periodo": c.periodo}
     if tipo == relatorios.MINHA_CARTEIRA:
         return _montar_minha_carteira(c, base)
+    if tipo == relatorios.NEWSLETTER:
+        return _montar_newsletter(c)
     if tipo == relatorios.ATIVO:
         st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
 
@@ -4533,6 +4537,45 @@ def _montar_relatorio(tipo, c):
         "tickerlab-carteira.pdf",
         f"Carteira: {nome}",
         {"periodo": c.periodo, "ativos": texto, "estrategia_carteira": nome},
+        montar,
+    )
+
+
+def _montar_newsletter(c):
+    """Lista e período da edição; o PDF tem o mesmo conteúdo da página Newsletter."""
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    if st.session_state.get("relatorio_newsletter_lista") not in nomes:
+        st.session_state.pop(
+            "relatorio_newsletter_lista", None
+        )  # lista apagada ou de outra conta
+    st.session_state.setdefault("relatorio_newsletter_janela", 7)
+    col_lista, col_janela = st.columns(2)
+    escolhida = col_lista.selectbox("Lista", nomes, key="relatorio_newsletter_lista")
+    janela = col_janela.selectbox(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        key="relatorio_newsletter_janela",
+    )
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Lendo os documentos")
+        edicao = _edicao(nome, tickers, janela)
+        if edicao is None:
+            raise ValueError("Os documentos ainda não foram coletados neste servidor.")
+        return relatorio_newsletter.relatorio_da_newsletter(
+            edicao, config=config, ao_avancar=ao_avancar
+        )
+
+    return _pedido(
+        relatorios.NEWSLETTER,
+        c,
+        "tickerlab-newsletter.pdf",
+        f"Newsletter: {nome}",
+        {"lista": nome, "janela": janela},
         montar,
     )
 
@@ -5006,6 +5049,8 @@ CAMPOS_PARA_REABRIR = {
     "ativos": "relatorio_carteira_ativos",
     "estrategia_carteira": "relatorio_carteira",
     "carteira_de_exemplo": "relatorio_carteira_exemplo",
+    "lista": "relatorio_newsletter_lista",
+    "janela": "relatorio_newsletter_janela",
 }
 
 
@@ -7188,6 +7233,180 @@ def pagina_donos():
         )
 
 
+# --- Research: Newsletter (etapa 4) -----------------------------------------------------------
+JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
+
+
+def _frase_do_detentor(codigo, linha, quem, par, da_cvm):
+    variacao = (
+        ""
+        if pd.isna(linha["variacao"])
+        else f" ({linha['variacao']:+.0f} desde {par[1]:%m/%Y})"
+    )
+    vendidos = (
+        f"; {int(linha['vendidos'])} vendidos" if da_cvm and linha["vendidos"] else ""
+    )
+    return f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}{variacao}{vendidos}."
+
+
+def _frases_dos_detentores(conexao, tickers):
+    """Uma frase por ativo da lista, com a última comparação válida (fundos ou 13F)."""
+    frases = []
+    for moeda, (fonte, quem, _, _) in FONTES_DOS_DETENTORES.items():
+        do_mercado = [t for t in tickers if moeda_do_ticker(t) == moeda]
+        par = detentores.par_comparavel(repo_detentores.cobertura(conexao, fonte))
+        if not do_mercado or par is None:
+            continue
+        resumo = repo_detentores.resumo_do_mercado(conexao, fonte, par)
+        tabela = detentores.comparar(resumo, *par).set_index("codigo")
+        for ticker in do_mercado:
+            codigo = ticker.removesuffix(".SA")
+            if codigo in tabela.index:
+                frases.append(
+                    _frase_do_detentor(
+                        codigo,
+                        tabela.loc[codigo],
+                        quem,
+                        par,
+                        fonte == fundos_cvm.FONTE_CDA,
+                    )
+                )
+    return tuple(frases)
+
+
+def _quando(momento):
+    if momento is None:
+        return "ainda não coletado"
+    if momento.tzinfo is None:  # o SQLite devolve sem fuso: foi gravado em UTC
+        momento = momento.replace(tzinfo=UTC)
+    return f"coletado em {momento.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}"
+
+
+def _fontes_da_edicao(conexao):
+    fontes = [
+        ("Eventos (CVM e SEC)", _quando(ultima_coleta(conexao))),
+        (
+            "Pessoas de dentro (CVM e SEC)",
+            _quando(repo_negociacoes.ultima_coleta(conexao)),
+        ),
+    ]
+    for fonte, nome in ((fundos_cvm.FONTE_CDA, "Carteiras dos fundos (CVM)"),
+                        (fundos_sec.FONTE_13F, "Gestores, 13F (SEC)")):  # fmt: skip
+        datas = detentores.competencias_utilizaveis(
+            repo_detentores.cobertura(conexao, fonte)
+        )
+        fontes.append(
+            (nome, f"posição de {datas[0]:%m/%Y}" if datas else "ainda não coletado")
+        )
+    return tuple(fontes)
+
+
+def _edicao(nome, tickers, janela):
+    """A edição da lista, lida do banco (None se o banco ainda não tem as tabelas)."""
+    r = parametros_em_vigor(None)
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        with obter_engine().connect() as conexao:
+            eventos_da_lista = eventos_dos_tickers(
+                conexao, tickers, hoje - timedelta(days=janela)
+            )
+            empresas = empresas_dos_tickers(conexao, tickers)
+            frases = _frases_dos_detentores(conexao, tickers)
+            fontes = _fontes_da_edicao(conexao)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None
+    return newsletter.montar(
+        newsletter.Entrada(
+            lista=nome,
+            tickers=tuple(tickers),
+            eventos=tuple(eventos_da_lista),
+            pesos=research.pesos_da_resolucao(r.valores("relevancia")),
+            temas=tuple(r["newsletter.temas"]),
+            hoje=hoje,
+            janela=janela,
+            max_itens=int(r["newsletter.max_itens"]),
+            gerada_em=relatorios.agora(),
+            detentores=frases,
+            fontes=fontes,
+            cobertos=tuple(t for t in tickers if t in empresas),
+        )
+    )
+
+
+def _mostrar_secao_da_newsletter(secao):
+    st.markdown(f"#### {secao.titulo}")
+    if not secao.itens:
+        st.caption(secao.vazio)
+        return
+    for item in secao.itens:
+        texto = f"**{item.titulo}**  \n{item.texto}"
+        if item.link:
+            texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
+        st.markdown(texto)
+        if item.razoes:
+            st.caption("Por que aparece: " + " · ".join(item.razoes))
+
+
+def _ir_para_o_pdf(nome, janela):
+    st.session_state["tipo_de_relatorio"] = relatorios.NEWSLETTER
+    st.session_state["relatorio_newsletter_lista"] = nome
+    st.session_state["relatorio_newsletter_janela"] = janela
+    st.session_state["ir_para_relatorio"] = True
+
+
+def pagina_newsletter():
+    cabecalho_da_pagina("newsletter")
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    col_lista, col_janela = st.columns([2, 3])
+    escolhida = col_lista.selectbox("Lista", nomes, key="newsletter_lista")
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+    cadencia = parametros_em_vigor(None)["newsletter.cadencia"]
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        default=newsletter.JANELA_DA_CADENCIA.get(cadencia, 7),
+        required=True,
+        key="newsletter_janela",
+        help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
+    )
+    edicao = _edicao(nome, tickers, janela)
+    if edicao is None:
+        st.info(
+            "Os documentos ainda não foram coletados neste servidor.",
+            icon=":material/schedule:",
+        )
+        return
+    st.caption(
+        f"Edição de **{edicao.lista}**, de {edicao.inicio:%d/%m/%Y} a {edicao.fim:%d/%m/%Y}, "
+        f"gerada em {edicao.gerada_em:%d/%m/%Y às %H:%M}. Montada só com fatos dos documentos "
+        "oficiais, em frases de modelo fixo (sem inteligência artificial)."
+    )
+    st.button(
+        "Gerar o PDF no Report Studio",
+        icon=":material/picture_as_pdf:",
+        key="newsletter_pdf",
+        on_click=_ir_para_o_pdf,
+        args=(nome, janela),
+    )
+    if st.session_state.pop("ir_para_relatorio", False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio"])
+    for secao in edicao.secoes:
+        _mostrar_secao_da_newsletter(secao)
+    with st.expander("Parâmetros e fontes desta edição"):
+        st.markdown("\n".join(f"- {frase}" for frase in edicao.parametros))
+        st.markdown(
+            "\n".join(f"- **{fonte}:** {quando}" for fonte, quando in edicao.fontes)
+        )
+    st.markdown("#### Limites")
+    st.markdown("\n".join(f"- {frase}" for frase in edicao.limites))
+    avisar_parametros(
+        parametros_em_vigor(None),
+        ("newsletter.cadencia", "newsletter.max_itens", "newsletter.temas"),
+    )
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
@@ -7196,6 +7415,7 @@ FUNCOES_DAS_PAGINAS = {
     "fundamentos": pagina_fundamentos,
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
+    "newsletter": pagina_newsletter,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

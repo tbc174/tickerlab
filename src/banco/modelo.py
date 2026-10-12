@@ -17,7 +17,14 @@ CONVENCAO_DE_NOMES = {
 
 PAPEIS = ("usuario", "admin")
 PLANOS = ("gratuito", "plus", "pro")
-TIPOS_DE_RELATORIO = ("ativo", "comparacao", "backtest", "carteira", "minha_carteira")
+TIPOS_DE_RELATORIO = (
+    "ativo",
+    "comparacao",
+    "backtest",
+    "carteira",
+    "minha_carteira",
+    "newsletter",
+)
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
@@ -304,7 +311,8 @@ relatorios = sa.Table(
     sa.Column("parametros", JSON_PORTATIL),
     sa.Column("apagado_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint(
-        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira')",
+        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira', "
+        "'newsletter')",
         name="tipo",
     ),
 )

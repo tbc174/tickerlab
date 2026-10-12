@@ -43,12 +43,14 @@ COMPARACAO = "comparacao"
 BACKTEST = "backtest"
 CARTEIRA = "carteira"
 MINHA_CARTEIRA = "minha_carteira"
+NEWSLETTER = "newsletter"
 NOMES_DOS_RELATORIOS = {
     ATIVO: "Relatório do ativo",
     COMPARACAO: "Comparação de ativos",
     BACKTEST: "Relatório de backtest",
     CARTEIRA: "Relatório de carteira",
     MINHA_CARTEIRA: "Minha carteira (B3)",
+    NEWSLETTER: "Newsletter do Research",
 }
 AVISO_DA_MINHA_CARTEIRA = (
     "Esta análise mostra como a carteira de HOJE, com os pesos de hoje, teria se comportado no "
@@ -158,6 +160,31 @@ SECOES: dict[str, tuple[Secao, ...]] = {
         _GLOSSARIO,
         _LIMITES,
     ),
+    NEWSLETTER: (
+        Secao("destaques", "Destaques", "Os eventos mais relevantes pelos seus pesos."),
+        Secao(
+            "alertas",
+            "Sinais de alerta",
+            "Troca de auditor, atrasos, balanço refeito...",
+        ),
+        Secao(
+            "por_dentro",
+            "Pessoas de dentro e participações",
+            "Compras e vendas de diretores, conselheiros e controladores; fatias de 5%.",
+        ),
+        Secao(
+            "resultados", "Resultados e documentos", "Balanços e relatórios entregues."
+        ),
+        Secao(
+            "donos", "Donos e fundos", "Quantos fundos e gestores entraram ou saíram."
+        ),
+        Secao(
+            "parametros",
+            "Parâmetros e fontes",
+            "Janela, pesos, temas e quando cada fonte foi coletada.",
+        ),
+        _LIMITES,
+    ),
 }
 EXECUTIVO = "executivo"
 COMPLETO = "completo"
@@ -175,6 +202,7 @@ _SECOES_DO_EXECUTIVO = {
     BACKTEST: ("resumo", "resultado", "curva", "limites"),
     CARTEIRA: ("resumo", "resultado", "curva", "limites"),
     MINHA_CARTEIRA: ("resumo", "composicao", "comportamento", "limites"),
+    NEWSLETTER: ("destaques", "alertas", "limites"),
 }
 
 

@@ -637,6 +637,9 @@ def metodologia() -> str:
     têm cada ação dos EUA (Form 13F trimestral da SEC). Como muitos fundos mantêm posições em
     sigilo por até 90 dias, mostramos a fatia dos fundos que informaram e só comparamos meses
     com cobertura parecida.</li>
+    <li><strong>Newsletter:</strong> a edição da sua lista junta tudo isso num só lugar, na tela
+    ou em PDF. É montada só com fatos dos documentos oficiais, em frases de modelo fixo (sem
+    inteligência artificial), com o link de cada item, os parâmetros usados e os limites.</li>
     <li><strong>Relevância:</strong> a ordem da lista vem de pesos que você ajusta (tipo do
     evento, quão recente é, a fonte). É uma regra editorial para organizar a leitura, não uma
     previsão de preço.</li>
