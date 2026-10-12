@@ -1,6 +1,6 @@
 # Política de privacidade do TickerLab
 
-Última atualização: 12/10/2026 (versão 3).
+Última atualização: 12/10/2026 (versão 4: cópias de segurança).
 
 O TickerLab é um **projeto educacional**. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, por quanto tempo e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
 
@@ -34,7 +34,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 - **Google**: faz o login. Ele informa ao app o seu nome, e-mail e foto. O Google trata os seus dados segundo a política dele.
 - **Stripe**: processa pagamentos de assinatura. Os dados do cartão são digitados direto no site do Stripe e **nunca passam pelo TickerLab**. Hoje o Stripe está em modo de teste, sem cobrança real.
 - **Cloudflare**: entrega o site e o app nos endereços tickerlab.com.br e app.tickerlab.com.br (rede e proteção contra ataques). Como todo provedor de rede, ela vê o endereço IP e os dados técnicos da conexão.
-- **Hostinger**: fornece o servidor virtual alugado; os dados do app ficam no disco desse servidor, em São Paulo.
+- **Hostinger**: fornece o servidor virtual alugado; os dados do app ficam no disco desse servidor, em São Paulo. As **cópias de segurança** do banco de dados ficam no servidor próprio do responsável, também no Brasil, **cifradas** (só o responsável tem a chave que as abre).
 - **Resend**: envia a Newsletter por e-mail, **só se você se inscrever**. Recebe o seu e-mail e o conteúdo da edição: os códigos dos ativos da lista escolhida (se for a carteira, os ativos dela, sem os pesos) e os documentos públicos de cada um. Não recebe os seus parâmetros nem outros dados da conta.
 - **Yahoo Finance e Banco Central**: o app consulta preços e o CDI. Essas consultas não levam os seus dados pessoais.
 - **CVM e SEC** (a comissão de valores mobiliários dos EUA): o TickerLab baixa, uma vez por dia, os documentos públicos que as empresas entregam a elas (eventos, demonstrações e negociações de ações por diretores, conselheiros e controladores; dessas, guardamos só o cargo, nunca o nome da pessoa). A SEC exige que cada consulta traga um e-mail de contato: vai o do TickerLab, nunca o seu. Essas consultas não levam os seus dados pessoais.
@@ -48,6 +48,8 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 ## Por quanto tempo guardamos
 
 Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, a inscrição na Newsletter e o registro dos envios, o registro dos relatórios gerados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira e o da Newsletter por e-mail foram dados e revogados (para provar que existiram).
+
+**Cópias de segurança:** uma vez por dia o banco de dados é copiado, cifrado, para outro servidor, para que os dados não se percam se o servidor principal falhar. Cada cópia é apagada depois de **14 dias**. Por isso, o que você apagar (ou a conta inteira) ainda fica nessas cópias por até 14 dias, sem uso, e depois some delas também.
 
 ## Seus direitos (LGPD, art. 18)
 
@@ -64,7 +66,7 @@ Para qualquer pedido que não consiga fazer pelo app, escreva para **contato@tic
 
 ## Segurança
 
-O acesso ao servidor é restrito, as senhas e chaves ficam fora do código, a comunicação usa HTTPS e cada pessoa só consegue ver os próprios dados. Nenhum sistema é 100% seguro; se houver um incidente que afete você, avisaremos.
+O acesso ao servidor é restrito, as senhas e chaves ficam fora do código, a comunicação usa HTTPS, as cópias de segurança são cifradas e cada pessoa só consegue ver os próprios dados. Nenhum sistema é 100% seguro; se houver um incidente que afete você, avisaremos.
 
 ## Menores de idade
 
