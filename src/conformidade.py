@@ -27,9 +27,9 @@ from src.banco.modelo import (
 )
 from src.banco.usuarios import Usuario
 
-VERSAO_DOS_TERMOS = (
-    "2026-10-11.2"  # versão 2: Plus, relatórios, acesso aberto, Cloudflare
-)
+# versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
+# alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas
+VERSAO_DOS_TERMOS = "2026-10-12.4"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
