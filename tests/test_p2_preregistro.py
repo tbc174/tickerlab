@@ -28,6 +28,6 @@ def test_pesos_dos_grupos_somam_um_e_cobrem_todos_os_grupos():
 def test_numeros_do_codigo_aparecem_no_texto():
     texto = preregistro.ARQUIVO.read_text(encoding="utf-8")
     assert "moedas 30%, índices 30%, metais 15%, energia 15%, títulos 10%" in texto
-    assert "**12% ao ano**" in texto
+    assert "Volatilidade alvo da carteira: 12% ao ano" in texto
     assert "**20 tentativas**" in texto
     assert "101 + as tentativas da Pesquisa 2" in texto
