@@ -75,6 +75,19 @@ def _erro_sem_valores(contexto: sa.engine.ExceptionContext) -> BaseException | N
     )
 
 
+def tabela_inexistente(erro: BaseException) -> bool:
+    """O erro do banco quer dizer "a tabela não existe" (modo local sem migrar)?
+
+    Banco fora do ar NÃO é tabela inexistente: no PostgreSQL os dois chegam como erros parecidos
+    do SQLAlchemy, e confundir os dois fazia a tela dizer "ainda não coletado" quando, na
+    verdade, o banco tinha caído (Master v3, achado D-2).
+    """
+    original = getattr(erro, "orig", erro)
+    if type(original).__name__ == "UndefinedTable":  # PostgreSQL (psycopg)
+        return True
+    return "no such table" in str(original).lower()  # SQLite
+
+
 def _opcoes_de_conexao(url: str) -> dict:
     """Tempo máximo para abrir a conexão com o PostgreSQL (Master v3, achado D-1).
 
