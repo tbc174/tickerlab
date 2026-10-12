@@ -228,6 +228,14 @@ PAGINAS = (
         "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
     ),
     Pagina(
+        "donos",
+        "Donos e fundos",
+        GRUPO_RESEARCH,
+        ":material/groups:",
+        "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto "
+        "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,

@@ -1115,3 +1115,27 @@ def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
     figura.update_layout(barmode="relative", showlegend=True, hovermode="x unified")
     figura.update_xaxes(tickformat="%m/%Y")
     return figura
+
+
+def criar_grafico_detentores(historico: pd.DataFrame, quem: str) -> go.Figure:
+    """A fatia dos fundos (ou gestores) que informaram e têm a ação e, na B3, a dos vendidos."""
+    if historico.empty:
+        raise ValueError("Não há histórico para mostrar.")
+    figura = _figura_base(f"% dos {quem} que informaram e têm a ação")
+    series = [("fatia", f"{quem.capitalize()} comprados", marca.SERIES[0])]
+    if historico["vendidos"].sum() > 0:
+        series.append(("fatia_vendidos", f"{quem.capitalize()} vendidos", marca.QUEDA))
+    for coluna, nome, cor in series:
+        figura.add_trace(
+            go.Scatter(
+                x=historico["competencia"],
+                y=historico[coluna] * 100,
+                name=nome,
+                mode="lines+markers",
+                line={"color": cor},
+                hovertemplate=f"{nome}: %{{y:.1f}}%<extra></extra>",
+            )
+        )
+    figura.update_layout(showlegend=True, hovermode="x unified")
+    figura.update_xaxes(tickformat="%m/%Y")
+    return figura
