@@ -113,3 +113,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Sintoma:** ler a tabela de posições do 13F (400 MB descompactada) chegava a ~360 MB de memória, perto do limite do contêiner (768 MB, dividido com o app).
 - **Solução:** ler em pedaços de 200 mil linhas, filtrar só as ações do S&P 500 e guardar cada pedaço em formato compacto (categorias e números); pico caiu para ~144 MB, mesmo resultado.
 - **Data:** 11/10/2026
+
+## Regex lê "R$ 500 milhões" como "R$ 500 mil"
+- **Sintoma:** no resumo dos fatos relevantes (R5), um valor de milhões saía mil vezes menor.
+- **Causa:** numa alternativa `(?:mil|milhão|milhões)` a regex testa as opções na ordem escrita e para na primeira que casa: "mil" casa com o começo de "milhões".
+- **Solução:** pôr as palavras mais longas primeiro e exigir o fim da palavra: `(?:milhões|milhão|mil)\b`. Um teste com o valor real pegou o erro.
+- **Data:** 12/10/2026
+
+## `ORDER BY ... DESC` põe a data vazia em primeiro no PostgreSQL
+- **Sintoma:** a leitura "mais recente" de um 10-K poderia ser uma sem data.
+- **Causa:** no PostgreSQL, `NULL` conta como maior que tudo, então vem primeiro em ordem decrescente (no SQLite, vem por último; por isso os testes locais não mostram).
+- **Solução:** `coluna.desc().nulls_last()` no SQLAlchemy.
+- **Data:** 12/10/2026
+
+## Duas funções com o mesmo nome no `app.py`
+- **Sintoma:** a página Admin mostrava "Criada em: coletado em 10/10/2026 às 14:00".
+- **Causa:** havia duas `def _quando(...)`; em Python a segunda substitui a primeira no arquivo inteiro, e a da Newsletter escrevia "coletado em".
+- **Solução:** a da Newsletter foi para `src/edicao.py` com um nome próprio (`quando_foi_coletado`). Arquivos menores (a etapa 4 da qualidade) evitam isso.
+- **Data:** 12/10/2026
+
+## `StreamlitValueAssignmentNotAllowedError` num botão novo
+- **Sintoma:** a página Minha carteira quebrava ao abrir com um botão de chave `carteira_research_...`.
+- **Causa:** o `manter_estado()` do app reatribui todo campo cujo nome começa com `carteira_` (para a página de estratégia de carteiras não perder o estado); botões e envio de arquivo não podem ser reatribuídos.
+- **Solução:** usar outro prefixo (`minha_carteira_`). Antes de escolher a chave de um campo, conferir `PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA`.
+- **Data:** 12/10/2026
