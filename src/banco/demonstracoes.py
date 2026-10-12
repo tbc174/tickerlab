@@ -6,7 +6,7 @@ mais nova: nunca ficam contas de versões diferentes misturadas.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import sqlalchemy as sa
@@ -29,11 +29,19 @@ def _data(valor: object) -> object:
     return None if valor is None or pd.isna(valor) else valor
 
 
+PREFIXO_DO_CIK = "CIK"  # empresas dos EUA (SEC) guardadas no lugar do CNPJ
+
+
 def gravar_setores(conexao: sa.Connection, setores: pd.DataFrame) -> int:
-    """Substitui o mapa CNPJ → setor (um cadastro vazio não apaga o guardado)."""
+    """Substitui o mapa CNPJ → setor da CVM (um cadastro vazio não apaga o guardado).
+
+    Os setores das empresas dos EUA (`CIK...`, gravados por `gravar_setor`) ficam intactos.
+    """
     if setores.empty:
         return 0
-    conexao.execute(sa.delete(setores_cvm))
+    conexao.execute(
+        sa.delete(setores_cvm).where(~setores_cvm.c.cnpj.startswith(PREFIXO_DO_CIK))
+    )
     conexao.execute(
         sa.insert(setores_cvm),
         [
@@ -42,6 +50,25 @@ def gravar_setores(conexao: sa.Connection, setores: pd.DataFrame) -> int:
         ],
     )
     return len(setores)
+
+
+def gravar_setor(conexao: sa.Connection, chave: str, setor: str) -> None:
+    """O setor de uma empresa só (as dos EUA chegam uma por vez, pela coleta da SEC)."""
+    conexao.execute(sa.delete(setores_cvm).where(setores_cvm.c.cnpj == chave))
+    conexao.execute(
+        sa.insert(setores_cvm).values(cnpj=chave, setor=(setor or "")[:120])
+    )
+
+
+def referencias_guardadas(conexao: sa.Connection, chave: str) -> set[date]:
+    """As datas de balanço já guardadas de uma empresa."""
+    return set(
+        conexao.execute(
+            sa.select(documentos_financeiros.c.referencia).where(
+                documentos_financeiros.c.cnpj == chave
+            )
+        ).scalars()
+    )
 
 
 def _trocar_documento(
@@ -114,9 +141,9 @@ def gravar_demonstracoes(
                 documentos_financeiros.c.documento,
                 documentos_financeiros.c.referencia,
                 documentos_financeiros.c.versao,
-            )
+            ).where(documentos_financeiros.c.cnpj.in_(sorted(set(documentos["cnpj"]))))
         )
-    }
+    }  # só as empresas deste lote: a coleta da SEC grava uma empresa por vez
     mudaram = 0
     contas_por_documento = dict(
         tuple(contas.groupby(["cnpj", "documento", "referencia"]))

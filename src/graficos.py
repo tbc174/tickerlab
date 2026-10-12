@@ -1066,11 +1066,13 @@ def criar_grafico_operacoes_no_preco(
     return figura
 
 
-def criar_grafico_fundamentos_anuais(anual: pd.DataFrame) -> go.Figure:
-    """Receita e lucro de cada exercício (DFP), em bilhões de reais, lado a lado."""
+def criar_grafico_fundamentos_anuais(
+    anual: pd.DataFrame, simbolo: str = "R$"
+) -> go.Figure:
+    """Receita e lucro de cada exercício, em bilhões da moeda do balanço, lado a lado."""
     if anual.empty:
         raise ValueError("Não há demonstrações anuais para mostrar.")
-    figura = _figura_base("Receita e lucro por ano (R$ bilhões)")
+    figura = _figura_base(f"Receita e lucro por ano ({simbolo} bilhões)")
     anos = [str(a) for a in anual.index]
     for nome, coluna, cor in (
         ("Receita", "receita", marca.SERIES[0]),
@@ -1082,7 +1084,7 @@ def criar_grafico_fundamentos_anuais(anual: pd.DataFrame) -> go.Figure:
                 y=anual[coluna] / 1e9,
                 name=nome,
                 marker={"color": cor},
-                hovertemplate=f"{nome}: R$ %{{y:,.1f}} bi<extra></extra>",
+                hovertemplate=f"{nome}: {simbolo} %{{y:,.1f}} bi<extra></extra>",
             )
         )
     figura.update_layout(barmode="group", showlegend=True, hovermode="x unified")

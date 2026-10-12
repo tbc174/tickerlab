@@ -35,11 +35,15 @@ from src.demonstracoes import (
 
 VERSAO_DOS_FUNDAMENTOS = "1"  # sobe quando uma fórmula abaixo mudar
 ALIQUOTA_DE_IR_CS = 0.34  # hipótese do ROIC (alíquota nominal de IR + CSLL no Brasil)
+ALIQUOTA_DOS_EUA = (
+    0.21  # imposto federal sobre o lucro das empresas nos EUA (sem os estaduais)
+)
 FAIXA_DE_ACOES_CONFERIDAS = (
     0.8,
     1.25,
 )  # razão aceitável entre ações implícitas e informadas
 MIL = 1_000
+DIAS_DE_UM_ANO = 371  # 53 semanas: o maior exercício possível
 NAO_SE_APLICA_A_FINANCEIRAS = (
     "Não se aplica a bancos e seguradoras: o balanço deles é organizado de outro jeito "
     "(não há margem bruta, EBIT nem dívida comparáveis)."
@@ -136,9 +140,16 @@ def doze_meses(contas: pd.DataFrame) -> tuple[dict, str, list[tuple[str, date]]]
     mais_novo = max(itr["referencia"]) if not itr.empty else None
     if mais_novo is None or mais_novo <= ultimo_dfp:
         return so_o_dfp
-    base = [r for r in dfp["referencia"].unique() if r.year == mais_novo.year - 1]
+    # o último anual antes do trimestre, a no máximo um ano dele: funciona com ano fiscal fora
+    # do calendário (Apple termina em setembro; Walmart, em janeiro)
+    base = [
+        r
+        for r in dfp["referencia"].unique()
+        if r < mais_novo and (mais_novo - r).days <= DIAS_DE_UM_ANO
+    ]
     if not base:
         return so_o_dfp
+    base = [max(base)]
     anual = _contas_em(contas, "DFP", base[0], EXERCICIO)
     acumulado = _contas_em(contas, "ITR", mais_novo, ACUMULADO)
     anterior = _contas_em(contas, "ITR", mais_novo, ACUMULADO_ANTERIOR)
@@ -265,6 +276,7 @@ def _retornos_e_divida(
     base_12m: str,
     base_balanco: str,
     financeira: bool,
+    aliquota: float = ALIQUOTA_DE_IR_CS,
 ) -> None:
     pl_total = saldo.get("patrimonio_liquido")
     pl = None if pl_total is None else pl_total - saldo.get("minoritarios", 0.0)
@@ -302,7 +314,7 @@ def _retornos_e_divida(
     sem_capital = "" if _positivo(investido) else "Capital investido negativo ou zero."
     ebit = ttm.get("ebit")
     lista.add(
-        "roic", nomes[0][1], None if ebit is None or sem_capital else ebit * (1 - ALIQUOTA_DE_IR_CS) / investido,
+        "roic", nomes[0][1], None if ebit is None or sem_capital else ebit * (1 - aliquota) / investido,
         FRACAO, f"{base_12m}; {base_balanco}", sem_capital,
     )  # fmt: skip
     liquida = None if divida is None or caixa is None else divida - caixa
@@ -472,8 +484,10 @@ def calcular(
     anos: int = 5,
     roic_minimo: float | None = None,
     pl_maximo: float | None = None,
+    aliquota: float = ALIQUOTA_DE_IR_CS,
 ) -> Fundamentos:
-    """Os indicadores da companhia. `preco`: último fechamento do ticker, em reais."""
+    """Os indicadores da companhia. `preco`: último fechamento do ticker, na moeda do balanço;
+    `aliquota`: o imposto usado no ROIC (34% no Brasil, `ALIQUOTA_DOS_EUA` nos EUA)."""
     contas = dados.contas
     financeira = e_financeira(
         dados.setor, contas["conta"].unique() if not contas.empty else ()
@@ -487,7 +501,7 @@ def calcular(
     tabela = anuais(contas)
     lista = _Lista()
     _resultado(lista, ttm, base_12m, financeira)
-    _retornos_e_divida(lista, ttm, saldo, base_12m, base_balanco, financeira)
+    _retornos_e_divida(lista, ttm, saldo, base_12m, base_balanco, financeira, aliquota)
     _crescimento(lista, tabela, anos)
     _por_acao(lista, ttm, saldo, acoes, preco, (base_12m, base_balanco))
     docs = dados.documentos

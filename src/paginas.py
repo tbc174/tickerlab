@@ -217,7 +217,7 @@ PAGINAS = (
         GRUPO_RESEARCH,
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
-        "demonstrações entregues à CVM, com o documento de cada número.",
+        "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     ),
     Pagina(
         "por_dentro",
