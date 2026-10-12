@@ -51,7 +51,7 @@ def ler(conteudo: bytes) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--maximo", type=int, default=MAXIMO_POR_VEZ)
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(

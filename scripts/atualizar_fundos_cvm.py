@@ -41,7 +41,7 @@ def baixar(url: str) -> bytes | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
         "--meses", type=int, default=MESES_PADRAO, help=f"meses (1 a {MAX_MESES})"
     )

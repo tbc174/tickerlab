@@ -1,0 +1,17 @@
+# Cobertura dos testes (pytest --cov): que parte do código os testes percorrem.
+# No CI: python -m pytest -n logical --dist loadgroup --cov. No PC, só quando quiser medir.
+[run]
+source =
+    src
+    telas
+    trader
+    app
+omit =
+    # o painel do trader só roda no Windows: no CI (Linux) os testes dele são pulados
+    trader/interface/*
+
+[report]
+skip_covered = True
+show_missing = True
+# medido em 12/10/2026: ~92% no PC; o mínimo fica abaixo para o CI não quebrar à toa
+fail_under = 85

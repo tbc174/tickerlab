@@ -18,13 +18,16 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup  # suíte inteira em 4 processos (~2 min; sem -n, ~12 min)
 .venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
 .venv\Scripts\python -m ruff check .
+.venv\Scripts\python -m pyright                            # tipos (src e scripts; ver pyrightconfig.json)
+.venv\Scripts\python -m pytest -q -n 4 --dist loadgroup --cov   # suíte + cobertura (mínimo no .coveragerc)
 .venv\Scripts\python -m ruff format app.py telas src tests trader scripts
 .venv\Scripts\python -m scripts.gerar_site                # site público em site/ (há teste que confere)
 .venv\Scripts\python -m alembic upgrade head              # migrações do banco
 ```
 
 - A suíte inteira demora: rode em segundo plano gravando a saída num arquivo e avise o Tiago.
-- O CI (`.github/workflows/testes.yml`) roda `ruff`, os testes com **PostgreSQL de verdade** e
+- O CI (`.github/workflows/testes.yml`) roda `ruff`, `pyright`, os testes com **PostgreSQL de
+  verdade** e a **cobertura** (falha abaixo do mínimo do `.coveragerc`), e
   constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
   Mudança só de texto (lista em `scripts/mudou_so_texto.py`) roda só os testes do README: se um
   teste ou o app passar a ler um texto da lista, tire-o de lá.

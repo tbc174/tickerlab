@@ -30,3 +30,8 @@ dados_mt5/
 dados_b3/
 pesquisa_m2/
 dados_juros/
+
+# cobertura dos testes (pytest --cov)
+.coverage
+.coverage.*
+htmlcov/

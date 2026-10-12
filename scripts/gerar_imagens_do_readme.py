@@ -11,6 +11,7 @@ As imagens vão para `docs/imagens/`.
 
 from pathlib import Path
 
+import pandas as pd
 import plotly.graph_objects as go
 
 from src import graficos
@@ -25,6 +26,16 @@ LARGURA, ALTURA, ESCALA = 1200, 520, 2
 TICKER = "PETR4.SA"
 
 
+def _exemplo(ticker: str) -> pd.DataFrame:
+    """Os dados de exemplo do ticker; sem o arquivo, não há imagem para gerar."""
+    dados = carregar_exemplo(ticker, "2y")
+    if dados is None:
+        raise SystemExit(
+            f"Faltam os dados de exemplo de {ticker} em dados_de_exemplo/."
+        )
+    return dados
+
+
 def _salvar(figura: go.Figure, nome: str, altura: int = ALTURA) -> None:
     figura.update_layout(width=LARGURA, height=altura)
     caminho = PASTA / nome
@@ -34,7 +45,7 @@ def _salvar(figura: go.Figure, nome: str, altura: int = ALTURA) -> None:
 
 def main() -> None:
     PASTA.mkdir(parents=True, exist_ok=True)
-    dados = carregar_exemplo(TICKER, "2y")
+    dados = _exemplo(TICKER)
     fechamento = dados["Close"]
     retorno = ind.calcular_retorno_diario(fechamento)
 
@@ -60,9 +71,7 @@ def main() -> None:
         "backtest.png",
     )
 
-    fechamentos = {
-        t: carregar_exemplo(t, "2y")["Close"] for t in (TICKER, "^BVSP", "^GSPC")
-    }
+    fechamentos = {t: _exemplo(t)["Close"] for t in (TICKER, "^BVSP", "^GSPC")}
     alinhado, _ = alinhar_fechamentos(fechamentos)
     _salvar(
         graficos.criar_grafico_comparacao(rebasear_para_100(alinhado), TICKER),

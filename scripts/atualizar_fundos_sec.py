@@ -62,7 +62,7 @@ def mapa_de_cusips(agente: str) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
         "--bases", type=int, default=BASES_PADRAO, help="bases trimestrais"
     )

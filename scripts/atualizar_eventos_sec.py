@@ -48,7 +48,7 @@ def tickers_dos_eua() -> set[str]:
 
 
 def _opcoes(argv: list[str] | None) -> argparse.Namespace:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
         "--dias", type=int, default=DIAS_PADRAO, help="janela em dias"
     )
