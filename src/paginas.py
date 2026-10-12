@@ -212,6 +212,14 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "fundamentos",
+        "Fundamentos",
+        GRUPO_RESEARCH,
+        ":material/account_balance:",
+        "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
+        "demonstrações entregues à CVM, com o documento de cada número.",
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,
