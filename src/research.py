@@ -26,11 +26,22 @@ COMPONENTES = (
     "preferencias",
     "recencia",
 )
-QUALIDADE_DAS_FONTES = {
-    "cvm_ipe": 1.0
-}  # fonte primária oficial; notícias valeriam menos
-NOMES_DAS_FONTES = {"cvm_ipe": "CVM (documento entregue pela empresa)"}
-DEMONSTRACAO = ("PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA", "BBAS3.SA")
+# fontes primárias oficiais (o documento entregue pela própria empresa); notícias valeriam menos
+QUALIDADE_DAS_FONTES = {"cvm_ipe": 1.0, "sec_edgar": 1.0}
+NOMES_DAS_FONTES = {
+    "cvm_ipe": "CVM (documento entregue pela empresa)",
+    "sec_edgar": "SEC, dos EUA (documento entregue pela empresa)",
+}
+SIGLAS_DAS_FONTES = {"cvm_ipe": "CVM", "sec_edgar": "SEC"}
+DEMONSTRACAO = (
+    "PETR4.SA",
+    "VALE3.SA",
+    "ITUB4.SA",
+    "WEGE3.SA",
+    "BBAS3.SA",
+    "AAPL",
+    "MSFT",
+)
 NOME_DA_DEMONSTRACAO = "Demonstração"
 MAXIMO_POR_EMPRESA = (
     3  # supressão de ruído: nenhuma empresa ocupa mais lugares que isso

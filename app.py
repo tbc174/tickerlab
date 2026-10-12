@@ -20,6 +20,7 @@ from src import (
     aprendizado,
     catalogo,
     estilos_pdf,
+    eventos_sec,
     fundamentos,
     graficos,
     marca,
@@ -6188,7 +6189,10 @@ def _mostrar_item(item, chave, destaque=False):
         )
         col_texto.caption(e.empresa)
         col_acoes.link_button(
-            "Abrir na CVM", e.link, icon=":material/open_in_new:", width="stretch"
+            f"Abrir na {research.SIGLAS_DAS_FONTES.get(e.fonte, 'fonte')}",
+            e.link,
+            icon=":material/open_in_new:",
+            width="stretch",
         )
         col_acoes.button(
             f"Analisar {codigo}",
@@ -6248,7 +6252,9 @@ def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
             ):
                 _gravar_lista(usuario, nome_atual, novos, id_atual)
             with col_apagar.popover("Apagar a lista", icon=":material/delete:"):
-                st.caption(f'Apagar "{nome_atual}"? Os eventos continuam na CVM.')
+                st.caption(
+                    f'Apagar "{nome_atual}"? Os eventos continuam na CVM e na SEC.'
+                )
                 if st.button("Apagar de vez", key="rsb_apagar", type="primary"):
                     try:
                         with obter_engine().begin() as conexao:
@@ -6341,8 +6347,9 @@ def pagina_research():
         return
     if ultima is None:
         st.info(
-            "Os eventos da CVM ainda não foram coletados neste servidor. A coleta roda uma "
-            "vez por dia (`python -m scripts.atualizar_eventos`, que também prepara o banco).",
+            "Os eventos ainda não foram coletados neste servidor. A coleta roda uma vez por "
+            "dia (`python -m scripts.atualizar_eventos` para a CVM e "
+            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
             icon=":material/schedule:",
         )
         _mostrar_gestao_das_listas(usuario, limites, lista)
@@ -6352,8 +6359,9 @@ def pagina_research():
     ):  # o SQLite devolve a hora sem fuso: ela foi gravada em UTC
         ultima = ultima.replace(tzinfo=UTC)
     st.caption(
-        f"Fonte: dados abertos da CVM (fatos relevantes, comunicados, avisos, proventos e "
-        f"resultados), coletados em {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
+        "Fontes: dados abertos da CVM (empresas da B3: fatos relevantes, comunicados, avisos, "
+        "proventos e resultados) e da SEC (empresas dos EUA: 8-K, 10-K e 10-Q), coletados em"
+        f" {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
         "A ordem segue os seus pesos de relevância (página Parâmetros)."
     )
     sem_cobertura = [t for t in tickers if t not in empresas]
@@ -6389,8 +6397,8 @@ def pagina_research():
         st.caption(
             "Sem cobertura ainda: "
             + ", ".join(t.removesuffix(".SA") for t in sem_cobertura)
-            + ". Hoje o Research lê a CVM (empresas da B3); ações dos EUA chegam com a SEC "
-            "numa próxima etapa, e fundos e ETFs dependem de outras fontes."
+            + ". O Research lê a CVM (empresas da B3) e a SEC (ações do S&P 500); fundos, "
+            "ETFs, BDRs, índices e cripto dependem de outras fontes."
         )
     _mostrar_gestao_das_listas(usuario, limites, lista)
 
@@ -6497,9 +6505,16 @@ def pagina_fundamentos():
     if empresa is None:
         st.info(
             f"{ticker} não tem cadastro de companhia aberta na CVM. Hoje os fundamentos cobrem "
-            "ações e units da B3; empresas dos EUA chegam com a SEC numa próxima etapa, e "
-            "fundos, ETFs e BDRs dependem de outras fontes.",
+            "ações e units da B3; fundos, ETFs e BDRs dependem de outras fontes.",
             icon=":material/info:",
+        )
+        return
+    if empresa[0].startswith(eventos_sec.PREFIXO_DO_CIK):
+        st.info(
+            f"Os fundamentos das empresas dos EUA ({empresa[1]}) chegam numa próxima etapa. "
+            "Os documentos que ela entrega à SEC (8-K, 10-K, 10-Q) já aparecem em "
+            "Acontecimentos.",
+            icon=":material/schedule:",
         )
         return
     if dados.contas.empty:

@@ -64,3 +64,14 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o app abre o banco sem aplicar as migrações (no servidor, quem aplica é o contêiner ao subir); no banco local antigo, a tabela `eventos` não existia.
 - **Solução:** tratar "tabela não existe" (`OperationalError`/`ProgrammingError`) como "eventos ainda não coletados", com a dica de rodar `python -m scripts.atualizar_eventos` (que também prepara o banco).
 - **Data:** 11/10/2026
+
+## Coleta da SEC ficava mais lenta a cada empresa (7,5 min para 500)
+- **Sintoma:** a primeira coleta dos eventos dos EUA começava rápida e ia ficando lenta; cada empresa demorava mais que a anterior.
+- **Causa:** `gravar_eventos` lia **todos** os protocolos já guardados da fonte para saber o que era novo. Gravando empresa por empresa, a leitura crescia a cada uma (500 empresas × milhares de linhas).
+- **Solução:** ler só os protocolos do lote que está sendo gravado (`protocolo IN (...)`, em pedaços de 5.000, porque o SQLite limita o número de parâmetros de uma consulta).
+- **Data:** 11/10/2026
+
+## A coleta de um mercado apagaria o mapa de tickers do outro
+- **Sintoma (evitado antes de acontecer):** `gravar_tickers` apagava a tabela inteira antes de gravar o mapa novo; com a SEC, a coleta da CVM das 7h apagaria as empresas dos EUA (e vice-versa).
+- **Solução:** cada origem apaga só as suas linhas (`origem="sec"` mexe nas que começam com `CIK`; a CVM, nas outras). Teste: `test_mapa_da_sec_e_o_da_cvm_nao_se_apagam`.
+- **Data:** 11/10/2026

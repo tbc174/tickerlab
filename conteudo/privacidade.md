@@ -6,7 +6,7 @@ O TickerLab é um **projeto educacional**. Esta página explica, em linguagem si
 
 ## Quem é responsável
 
-O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (veja o contato no repositório do projeto no GitHub, tbc174/tickerlab). O app e o banco de dados rodam em servidores administrados por essa pessoa: um servidor próprio e um servidor virtual alugado no Brasil (Hostinger, em São Paulo). O banco de dados fica no Brasil.
+O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (contato: **contato@tickerlab.com.br**). O app e o banco de dados rodam em servidores administrados por essa pessoa: um servidor próprio e um servidor virtual alugado no Brasil (Hostinger, em São Paulo). O banco de dados fica no Brasil.
 
 ## Quais dados guardamos e por quê
 
@@ -33,6 +33,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (veja
 - **Cloudflare**: entrega o site e o app nos endereços tickerlab.com.br e app.tickerlab.com.br (rede e proteção contra ataques). Como todo provedor de rede, ela vê o endereço IP e os dados técnicos da conexão.
 - **Hostinger**: fornece o servidor virtual alugado; os dados do app ficam no disco desse servidor, em São Paulo.
 - **Yahoo Finance e Banco Central**: o app consulta preços e o CDI. Essas consultas não levam os seus dados pessoais.
+- **CVM e SEC** (a comissão de valores mobiliários dos EUA): o TickerLab baixa, uma vez por dia, os documentos públicos que as empresas entregam a elas (eventos e demonstrações). A SEC exige que cada consulta traga um e-mail de contato: vai o do TickerLab, nunca o seu. Essas consultas não levam os seus dados pessoais.
 
 Fora isso, os dados só são compartilhados se a lei exigir.
 
@@ -55,7 +56,7 @@ Você pode, a qualquer momento:
 - **Revogar** o consentimento, o que equivale a apagar a conta;
 - Pedir informações sobre o compartilhamento de dados.
 
-Para qualquer pedido que não consiga fazer pelo app, use o contato do repositório do projeto.
+Para qualquer pedido que não consiga fazer pelo app, escreva para **contato@tickerlab.com.br**.
 
 ## Segurança
 
