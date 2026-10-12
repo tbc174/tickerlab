@@ -42,4 +42,4 @@ Estes termos podem mudar. Quando houver mudança relevante, pediremos que você 
 
 ## Lei aplicável
 
-Estes termos seguem a lei brasileira. Dúvidas, pedidos e reclamações: use o contato divulgado no repositório do projeto no GitHub (tbc174/tickerlab).
+Estes termos seguem a lei brasileira. Dúvidas, pedidos e reclamações: **contato@tickerlab.com.br**.

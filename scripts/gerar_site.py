@@ -36,6 +36,7 @@ DESTINO = RAIZ / "site"
 URL_DO_SITE = "https://tickerlab.com.br"
 URL_DO_APP = "https://app.tickerlab.com.br"
 URL_DO_CODIGO = "https://github.com/tbc174/tickerlab"
+EMAIL_DE_CONTATO = "contato@tickerlab.com.br"
 # True enquanto o login do Google estiver em "modo Teste" (só e-mails convidados entram);
 # o acesso foi aberto em 11/10/2026 (app do Google publicado em "Em produção")
 BETA_FECHADO = False
@@ -168,6 +169,7 @@ RODAPE = f"""<footer class="rodape"><div class="faixa">
 <a href="/termos.html">Termos de uso</a>
 <a href="/privacidade.html">Privacidade</a>
 <a href="{URL_DO_CODIGO}" rel="noopener">Código no GitHub</a>
+<a href="mailto:{EMAIL_DE_CONTATO}">{EMAIL_DE_CONTATO}</a>
 </nav>
 <p class="aviso">{esc(AVISO)}</p>
 </div></footer>"""
@@ -611,6 +613,22 @@ def metodologia() -> str:
     ativos escolhidos hoje carregam viés de sobrevivência.</li>
   </ul>
 
+  <h2>Research: eventos e fundamentos</h2>
+  <ul>
+    <li><strong>Eventos:</strong> os documentos que as empresas entregam aos reguladores, lidos
+    uma vez por dia. Da <strong>CVM</strong> (empresas da B3): fatos relevantes, comunicados,
+    avisos, proventos e resultados. Da <strong>SEC</strong> (empresas do S&amp;P 500): 8-K
+    (resultados, mudanças na diretoria, aquisições...), 10-K (anual) e 10-Q (trimestral). Cada
+    evento tem o link para o documento original.</li>
+    <li><strong>Relevância:</strong> a ordem da lista vem de pesos que você ajusta (tipo do
+    evento, quão recente é, a fonte). É uma regra editorial para organizar a leitura, não uma
+    previsão de preço.</li>
+    <li><strong>Fundamentos:</strong> receita, margens, ROE, ROIC, dívida e múltiplos das
+    empresas da B3, calculados das demonstrações da CVM (DFP e ITR), nos últimos 12 meses.
+    Bancos e seguradoras aparecem como "não se aplica" onde o indicador não faz sentido. Os
+    fundamentos das empresas dos EUA ainda não estão no app.</li>
+  </ul>
+
   <h2>Carteira B3</h2>
   <p>A API da Área do Investidor da B3 só atende empresas credenciadas (com CNPJ, certificado
   digital e contrato). O TickerLab não tem essa conexão. Você baixa a planilha de posição na Área
@@ -636,6 +654,7 @@ def metodologia() -> str:
   <p>Não é corretora, não executa ordens, não é consultoria e não é recomendação de
   investimento. É um projeto educacional; o enquadramento regulatório de uma eventual oferta
   comercial ainda precisa de avaliação.</p>
+  <p>Dúvidas, correções e pedidos: <a href="mailto:{EMAIL_DE_CONTATO}">{EMAIL_DE_CONTATO}</a>.</p>
   <p class="apagado">Código aberto para conferência: <a href="{URL_DO_CODIGO}" rel="noopener">{URL_DO_CODIGO.removeprefix("https://")}</a>.</p>
 </section>"""
     return pagina(

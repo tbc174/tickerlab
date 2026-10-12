@@ -36,14 +36,30 @@ def _agora() -> datetime:
     return datetime.now(UTC)
 
 
+ORIGEM_CVM, ORIGEM_SEC = "cvm", "sec"
+TAMANHO_DO_LOTE = 5_000
+
+
 def gravar_tickers(
-    conexao: sa.Connection, tabela: pd.DataFrame, agora: datetime | None = None
+    conexao: sa.Connection,
+    tabela: pd.DataFrame,
+    agora: datetime | None = None,
+    origem: str = ORIGEM_CVM,
 ) -> int:
-    """Substitui o mapa ticker → CNPJ pelo do FCA mais recente. Devolve quantos ficaram."""
+    """Substitui o mapa ticker → empresa de uma origem (CVM: CNPJ; SEC: `CIK...`).
+
+    A outra origem fica intacta: a coleta da CVM não apaga as empresas dos EUA, nem o contrário.
+    Devolve quantos ficaram.
+    """
     if tabela.empty:
         return 0  # nunca apaga o mapa por causa de um arquivo vazio
     agora = agora or _agora()
-    conexao.execute(sa.delete(tickers_dos_emissores))
+    da_sec = tickers_dos_emissores.c.cnpj.like("CIK%")
+    conexao.execute(
+        sa.delete(tickers_dos_emissores).where(
+            da_sec if origem == ORIGEM_SEC else ~da_sec
+        )
+    )
     conexao.execute(
         sa.insert(tickers_dos_emissores),
         [
@@ -74,13 +90,20 @@ def gravar_eventos(
     if tabela.empty:
         return 0, 0
     agora = agora or _agora()
-    existentes = dict(
-        conexao.execute(
-            sa.select(eventos.c.protocolo, eventos.c.versao).where(
-                eventos.c.fonte == fonte
-            )
-        ).all()
-    )
+    # só os protocolos deste lote (em pedaços: o SQLite limita os parâmetros de uma consulta)
+    protocolos = list(tabela["protocolo"].unique())
+    existentes: dict[str, int] = {}
+    for inicio in range(0, len(protocolos), TAMANHO_DO_LOTE):
+        existentes.update(
+            conexao.execute(
+                sa.select(eventos.c.protocolo, eventos.c.versao).where(
+                    eventos.c.fonte == fonte,
+                    eventos.c.protocolo.in_(
+                        protocolos[inicio : inicio + TAMANHO_DO_LOTE]
+                    ),
+                )
+            ).all()
+        )
     novos, atualizados = [], 0
     for l in tabela.itertuples(index=False):
         valores = {
