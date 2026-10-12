@@ -9,7 +9,6 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlencode
 
 import numpy as np
 import pandas as pd
@@ -83,12 +82,10 @@ from src.banco.dados_do_usuario import (
     listar_favoritos,
     listar_simulacoes,
     listar_watchlists,
-    presets_atuais,
     registrar_relatorio,
     revogar_carteira,
     salvar_alerta,
     salvar_carteira,
-    salvar_favoritos,
     salvar_preferencias,
     salvar_preset,
     salvar_simulacao,
@@ -120,7 +117,6 @@ from src.carteiras import (
 )
 from src.cdi import (
     CDIIndisponivelError,
-    baixar_cdi,
     calcular_taxa_anual_do_cdi,
     curva_do_cdi,
 )
@@ -155,7 +151,6 @@ from src.conformidade import (
 )
 from src.conteudo import (
     carregar_estrategias,
-    carregar_glossario,
     carregar_sobre,
     descrever_pior_drawdown,
     proteger_cifrao,
@@ -167,7 +162,7 @@ from src.correlacao import (
     calcular_retornos,
     resumir_betas,
 )
-from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.edicao import FONTES_DOS_DETENTORES
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -192,7 +187,7 @@ from src.exportacao import (
 )
 from src.imposto import aplicar_imposto
 from src.indicadores import NOMES_DOS_MESES
-from src.link import alternar_favorito, ler_parametros, montar_parametros
+from src.link import ler_parametros
 from src.logs import configurar_logs
 from src.metricas import (
     calcular_intervalo_do_sharpe,
@@ -200,11 +195,9 @@ from src.metricas import (
     calcular_omega,
     resumir_desempenho,
 )
-from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
+from src.moedas import moeda_do_ticker
 from src.momentum import montar_tabela_de_momentum
 from src.paginas import (
-    GRUPO_MAIS,
-    GRUPO_TOPO,
     GRUPOS,
     PAGINA_INICIAL,
     pagina,
@@ -216,9 +209,7 @@ from src.planos import (
     CARTEIRA_NO_RESEARCH,
     NOMES_DOS_RECURSOS,
     PARES,
-    PLANO_DO_MODO_LOCAL,
     LimiteDoPlanoError,
-    conferir_favoritos,
     conferir_parametros_por_ativo,
     descrever_limite,
     limites_do,
@@ -248,8 +239,30 @@ from src.validacao import (
     montar_mapa_de_sharpe,
     parametros_numericos,
 )
+from telas.comum import (
+    MIN_DIAS_PARA_ANALISE,
+    PAGINAS_DO_MENU,
+    PERIODOS_DO_TOPO,
+    ROTULOS_DAS_OPCOES,
+    _alternar_favorito_atual,
+    _formatar_parametro,
+    _presets_guardados,
+    ajuda_do,
+    avisar_parametros,
+    cabecalho_da_pagina,
+    carregar_contexto,
+    carregar_dados,
+    formatar_pct,
+    marcar_feito,
+    mostrar_grafico,
+    obter_cdi,
+    obter_glossario,
+    parametros_em_vigor,
+    plano_atual,
+)
 
-MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
+# o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
+log_da_conta = logging.getLogger("tickerlab.conta")
 JANELAS_VOLATILIDADE = [20, 60, 120]  # dias
 JANELAS_MEDIAS = [20, 50, 200]  # dias
 ESPERAS_DEPOIS_DO_STOP = {
@@ -289,41 +302,6 @@ def marca_html():
 
 
 # --- Ajudantes --------------------------------------------------------------
-@st.cache_data(ttl=3600, show_spinner="Baixando dados...")
-def _carregar_dados_em_cache(ticker, periodo, forcar_exemplo):
-    """Guarda o download por 1 hora para não consultar o Yahoo a cada clique."""
-    return baixar_dados(ticker, periodo, forcar_exemplo)
-
-
-def carregar_dados(ticker, periodo):
-    """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados.
-
-    Com "Converter para reais", ativos cotados em dólar (EUA, S&P 500, Bitcoin) são
-    multiplicados pelo câmbio do dia. Se o câmbio falhar, o ativo segue em dólar e a marca
-    `attrs["cambio_falhou"]` avisa a tela.
-    """
-    ticker = normalizar_ticker(ticker)
-    exemplo = bool(st.session_state.get("usar_exemplo", False))
-    dados = _carregar_dados_em_cache(ticker, periodo, exemplo)
-    if st.session_state.get("em_reais") and moeda_do_ticker(ticker) == "USD":
-        try:
-            cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)[
-                "Close"
-            ]
-            return converter_para_reais(dados, cambio)
-        except (DadosIndisponiveisError, ValueError) as erro:
-            logging.getLogger(__name__).warning(
-                "Câmbio indisponível para converter %s: %s", ticker, erro
-            )
-            dados = dados.copy()
-            dados.attrs = {**dados.attrs, "cambio_falhou": True}
-    return dados
-
-
-@st.cache_data
-def obter_glossario():
-    """Lê o glossário uma vez só; o arquivo não muda enquanto o app roda."""
-    return carregar_glossario()
 
 
 @st.cache_data
@@ -345,27 +323,9 @@ def formatar_metrica(nome, valor):
     return f"{valor:.2f}".replace(".", ",")
 
 
-def formatar_pct(valor, com_sinal=False):
-    """Porcentagem no estilo brasileiro (vírgula); vazio vira um traço."""
-    if pd.isna(valor):
-        return "—"
-    texto = f"{valor:+.2%}" if com_sinal else f"{valor:.2%}"
-    return texto.replace(".", ",")
-
-
-def ajuda_do(termo):
-    """Texto do glossário para o "?" de um campo (com o cifrão protegido)."""
-    return proteger_cifrao(obter_glossario().get(termo))
-
-
 def mostrar_metrica(coluna, rotulo, valor, termo_do_glossario):
     """Um número com o "?" que explica o termo, usando o texto do glossário."""
     coluna.metric(rotulo, valor, help=ajuda_do(termo_do_glossario))
-
-
-def mostrar_grafico(figura):
-    """Gráfico do Plotly com a interação padrão do app (zoom, linha-guia, duplo clique)."""
-    st.plotly_chart(figura, width="stretch", config=graficos.CONFIG_PLOTLY)
 
 
 # --- Conta e login ----------------------------------------------------------
@@ -472,12 +432,6 @@ def _carregar_assinatura(usuario):
 
 def _recarregar_o_plano():
     st.session_state["usuario_em"] = 0  # a próxima execução relê o usuário
-
-
-def plano_atual():
-    """O plano de quem está usando o app (sem contas, no modo local, vale o mais amplo)."""
-    usuario = st.session_state.get("usuario")
-    return usuario.plano if usuario is not None else PLANO_DO_MODO_LOCAL
 
 
 def mostrar_planos():
@@ -619,7 +573,6 @@ def mostrar_conta(usuario):
 
 
 # --- Dados da conta: favoritos, preferências e simulações salvas ------------------------
-log_da_conta = logging.getLogger("tickerlab.conta")
 
 
 def carregar_da_conta(usuario):
@@ -654,45 +607,6 @@ def carregar_da_conta(usuario):
         st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
     if preferencias.get("tutorial_visto") is True:
         st.session_state["tutorial_visto"] = True
-
-
-def salvar_na_conta(usuario):
-    """Grava favoritos e preferências só quando o usuário muda alguma coisa."""
-    if usuario is None:
-        return
-    atual = {
-        "favoritos": list(st.session_state["favoritos"]),
-        "preferencias": {
-            "ticker": st.session_state["ticker"],
-            "periodo": st.session_state["periodo"],
-            "taxa": st.session_state["taxa"],
-            "em_reais": bool(st.session_state.get("em_reais")),
-        },
-    }
-    antes = st.session_state.get("conta_snapshot")
-    if (
-        antes is None
-    ):  # primeira vez na sessão: o que veio da conta ou do link não é mudança
-        st.session_state["conta_snapshot"] = atual
-        return
-    if atual == antes:
-        return
-    try:
-        with obter_engine().begin() as conexao:
-            if atual["favoritos"] != antes["favoritos"]:
-                salvar_favoritos(
-                    conexao, usuario.id, atual["favoritos"], plano=usuario.plano
-                )
-            if atual["preferencias"] != antes["preferencias"]:
-                # mescla com o que já está guardado (ex.: a configuração do Report Studio)
-                guardadas = carregar_preferencias(conexao, usuario.id)
-                salvar_preferencias(
-                    conexao, usuario.id, {**guardadas, **atual["preferencias"]}
-                )
-        st.session_state["conta_snapshot"] = atual
-    except Exception:
-        log_da_conta.exception("Falha ao salvar os dados da conta")
-        st.toast("Não consegui salvar as suas escolhas na conta agora.")
 
 
 def _campo_ainda_vale(chave, valor):
@@ -865,7 +779,6 @@ def secao_minhas_simulacoes():
 
 
 # --- Cabeçalho e entradas -----------------------------------------------------
-MODOS_DA_TAXA = ("Zero", "CDI (Banco Central)", "Digitar")
 
 
 def preparar_estado_inicial():
@@ -888,90 +801,6 @@ def preparar_estado_inicial():
                 st.session_state[chave] = lidos[chave]
 
 
-def _alternar_favorito_atual():
-    try:
-        favoritos = st.session_state["favoritos"]
-        ticker = normalizar_ticker(st.session_state["ticker"])
-        if ticker not in favoritos:
-            conferir_favoritos(plano_atual(), len(favoritos), len(favoritos) + 1)
-        st.session_state["favoritos"] = alternar_favorito(favoritos, ticker)
-        st.session_state.pop("erro_favorito", None)
-    except ValueError as erro:
-        st.session_state["erro_favorito"] = str(erro)
-
-
-def _ir_para_favorito():
-    escolhido = st.session_state.get("favorito_escolhido")
-    if escolhido and escolhido != "—":
-        st.session_state["ticker"] = escolhido
-    st.session_state["favorito_escolhido"] = "—"
-
-
-PERIODOS_DO_TOPO = {"6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos"}
-ROTULOS_CURTOS_DO_PERIODO = {"6mo": "6M", "1y": "1A", "2y": "2A", "5y": "5A"}
-NOMES_DOS_MODOS_DA_TAXA = {
-    "Zero": "Nenhum (zero)",
-    "CDI (Banco Central)": "CDI (Banco Central)",
-    "Digitar": "Digitar um valor",
-}
-
-
-def mostrar_favoritos():
-    """Botão de favoritar o ativo atual e atalho para ir a um favorito (ficam na sua conta)."""
-    favoritos = st.session_state["favoritos"]
-    atual = normalizar_ticker(st.session_state["ticker"])
-    limites = limites_do(plano_atual())
-    with st.popover(
-        f"Meus favoritos ({len(favoritos)})", icon=":material/star:", width="stretch"
-    ):
-        st.button(
-            f"Tirar {atual} dos favoritos"
-            if atual in favoritos
-            else f"Favoritar {atual}",
-            on_click=_alternar_favorito_atual,
-            key="botao_favorito",
-            width="stretch",
-        )
-        if favoritos:
-            st.selectbox(
-                "Ir para um favorito",
-                ["—", *favoritos],
-                key="favorito_escolhido",
-                on_change=_ir_para_favorito,
-            )
-        else:
-            st.caption("Você ainda não tem favoritos. Favorite o ativo que está vendo.")
-        st.caption(
-            f"{len(favoritos)} de {limites.favoritos} favoritos no plano {limites.nome}."
-        )
-        if st.session_state.get("erro_favorito"):
-            st.warning(st.session_state["erro_favorito"])
-
-
-def mostrar_link(ticker, periodo, modo):
-    """Grava a escolha atual na URL do navegador e mostra o texto do link."""
-    parametros = montar_parametros(
-        normalizar_ticker(ticker),
-        periodo,
-        modo,
-        bool(st.session_state.get("em_reais")),
-        bool(st.session_state.get("usar_exemplo")),
-        st.session_state["favoritos"],
-    )
-    st.query_params.from_dict(parametros)
-    st.markdown("**Link desta tela**")
-    st.caption(
-        "O endereço na barra do navegador já guarda o ativo, o período e as opções "
-        "escolhidas aqui. Copie-o para abrir a mesma tela depois ou mandar para alguém."
-    )
-    st.code("?" + urlencode(parametros), language=None)
-
-
-def marcar_feito(acao):
-    """Anota uma ação feita nesta sessão (o tutorial e a lista de tarefas leem daqui)."""
-    st.session_state.setdefault("tutorial_feitos", set()).add(acao)
-
-
 def acoes_feitas():
     feitos = set(st.session_state.get("tutorial_feitos", set()))
     if st.session_state.get("favoritos"):
@@ -979,140 +808,7 @@ def acoes_feitas():
     return feitos
 
 
-def _resolver_o_ticker():
-    """Um código digitado vira o símbolo do catálogo (petr4 → PETR4.SA), sem trocar de ativo."""
-    marcar_feito("escolheu_ativo")
-    st.session_state["ticker"] = (
-        catalogo.resolver(st.session_state.get("ticker")) or "PETR4.SA"
-    )
-
-
-def lembrar_recente(ticker):
-    """Guarda os últimos ativos analisados nesta sessão (só na memória, não vai para o banco)."""
-    recentes = [t for t in st.session_state.get("recentes", []) if t != ticker]
-    st.session_state["recentes"] = [ticker, *recentes][:6]
-
-
-def mostrar_controles():
-    """Campos do ativo, no topo das páginas de análise.
-
-    Em cima só o essencial (ativo, período, favoritos); o resto fica em "Opções avançadas".
-    Devolve (ticker, período, modo da taxa, taxa digitada).
-    """
-    with st.container(border=True):
-        col_ativo, col_periodo, col_favoritos = st.columns(
-            [3, 2, 2], vertical_alignment="bottom"
-        )
-        ticker = col_ativo.selectbox(
-            "Ativo",
-            catalogo.opcoes(st.session_state.get("ticker")),
-            format_func=catalogo.rotulo,
-            key="ticker",
-            placeholder="Busque código ou empresa…",
-            accept_new_options=True,  # um código fora da lista também vale
-            on_change=_resolver_o_ticker,
-            help="Digite o código (PETR4, AAPL) ou o nome da empresa (Petrobras) e escolha "
-            "na lista. Ações da B3, BDRs, FIIs, ETFs, ações dos EUA, índices e cripto.",
-        )
-        periodo = col_periodo.segmented_control(
-            "Período",
-            list(PERIODOS_DO_TOPO),
-            format_func=ROTULOS_CURTOS_DO_PERIODO.get,
-            key="periodo",
-            required=True,  # sempre um período escolhido (clicar no ativo não o desmarca)
-            help="Quanto tempo de histórico olhar para trás: 6 meses, 1 ano, 2 anos ou 5 anos.",
-        )
-        with col_favoritos:
-            mostrar_favoritos()
-        with st.expander("Opções avançadas"):
-            col_taxa, col_valor = st.columns(2)
-            modo = col_taxa.selectbox(
-                "Rendimento sem risco (taxa livre de risco)",
-                MODOS_DA_TAXA,
-                format_func=NOMES_DOS_MODOS_DA_TAXA.get,
-                key="taxa",
-                help=ajuda_do("CDI"),
-            )
-            taxa_digitada = 0.0
-            if modo == "Digitar":
-                taxa_digitada = (
-                    col_valor.number_input(
-                        "Taxa (% ao ano)",
-                        min_value=0.0,
-                        max_value=50.0,
-                        value=0.0,
-                        step=0.5,
-                        help="Quanto renderia um investimento sem risco. Entra no cálculo "
-                        "do Índice de Sharpe.",
-                    )
-                    / 100
-                )
-            st.checkbox(
-                "Converter ativos em dólar para reais (R$)",
-                key="em_reais",
-                help="Multiplica os preços de ações americanas, do S&P 500 e do Bitcoin pelo "
-                "dólar do dia. Ações da B3 e o Ibovespa já estão em reais. Assim a comparação "
-                "inclui o efeito do câmbio, como para quem investe daqui.",
-            )
-            st.checkbox(
-                "Usar dados de exemplo (sem internet)",
-                key="usar_exemplo",
-                help="Cópias de 5 anos de 13 tickers, tiradas em 09/10/2026, guardadas no "
-                "projeto. O app também as usa sozinho se o Yahoo Finance falhar.",
-            )
-            st.divider()
-            mostrar_link(ticker, periodo, modo)
-    salvar_na_conta(st.session_state.get("usuario"))
-    return ticker, periodo, modo, taxa_digitada
-
-
-@st.cache_data(ttl=86_400, show_spinner="Buscando o CDI no Banco Central...")
-def obter_cdi(inicio, fim):
-    """Guarda o CDI por um dia: ele só muda uma vez por dia útil."""
-    return baixar_cdi(inicio, fim)
-
-
-def resolver_taxa_livre_de_risco(modo, taxa_digitada, indice):
-    """Devolve (taxa anual, CDI diário ou None). Se o CDI falhar, cai para zero e avisa."""
-    if modo == "Digitar":
-        return taxa_digitada, None
-    if modo == "CDI (Banco Central)":
-        try:
-            cdi_diario = obter_cdi(indice[0], indice[-1])
-            return calcular_taxa_anual_do_cdi(cdi_diario, indice), cdi_diario
-        except (CDIIndisponivelError, ValueError) as erro:
-            st.warning(f"{erro} Usei taxa livre de risco zero.")
-    return 0.0, None
-
-
 # --- Seções -----------------------------------------------------------------
-def parametros_em_vigor(ticker):
-    """Os parâmetros do Research que valem para este ativo (padrão do sistema, seu padrão ou do
-    ativo). Se os guardados não combinarem mais, volta aos padrões (a página Parâmetros explica)."""
-    try:
-        return research_presets.resolver(
-            _presets_guardados(st.session_state.get("usuario")), ticker=ticker
-        )
-    except ValueError:
-        return research_presets.resolver([])
-
-
-def avisar_parametros(resolucao, chaves):
-    """Uma linha dizendo quais dos seus parâmetros esta tela está usando (só se houver algum)."""
-    nomes = {p.chave: p.rotulo for p in research_parametros.PARAMETROS}
-    usados = [
-        f"{nomes[c]} {_formatar_parametro(c, resolucao[c])} "
-        f"({resolucao.efetivos[c].nome_da_origem.lower()})"
-        for c in chaves
-        if resolucao.origem(c) != research_presets.SISTEMA
-    ]
-    if usados:
-        st.caption("Usando os seus parâmetros: " + "; ".join(usados) + ".")
-        st.page_link(
-            PAGINAS_DO_MENU["parametros"],
-            label="Mudar na página Parâmetros",
-            icon=":material/tune:",
-        )
 
 
 def secao_painel_de_numeros(
@@ -3879,7 +3575,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
 
 
 # --- Páginas ----------------------------------------------------------------
-PAGINAS_DO_MENU = {}  # chave -> st.Page; preenchido por montar_navegacao()
+PAGINAS_DO_MENU.recomecar()  # o menu desta sessão, refeito a cada execução (telas/comum.py)
 PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA = (
     "backtest_",
     "parametro_",
@@ -3918,106 +3614,6 @@ def manter_estado():
             PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA
         ):
             st.session_state[chave] = st.session_state[chave]
-
-
-@dataclass
-class Contexto:
-    """O ativo escolhido e tudo o que as páginas de análise precisam para trabalhar."""
-
-    ticker: str
-    periodo: str
-    dados: pd.DataFrame
-    fechamento: pd.Series
-    retorno: pd.Series
-    taxa_livre_de_risco: float
-    cdi_diario: pd.Series | None
-
-
-def mensagem_de_dados_indisponiveis(ticker, erro):
-    """Diz a causa provável e o que fazer (blueprint, SEARCH-05): ativo existente que não
-    carregou é problema de conexão, não "ativo não encontrado"."""
-    simbolo = normalizar_ticker(ticker)
-    if st.session_state.get("usar_exemplo") or not simbolo:
-        return str(erro)
-    if catalogo.esta_no_catalogo(simbolo):
-        return (
-            f"{catalogo.rotulo(simbolo)}: o ativo existe, mas os preços não chegaram agora "
-            "(o Yahoo Finance pode estar fora do ar ou lento). Tente de novo em alguns minutos, "
-            "ou marque **Usar dados de exemplo** em Opções avançadas."
-        )
-    return (
-        f"Não encontrei **{simbolo}** no catálogo nem dados para ele no Yahoo Finance. "
-        "Confira o código ou busque pelo nome da empresa e escolha na lista."
-    )
-
-
-def carregar_contexto():
-    """Mostra os campos do ativo e carrega os dados. Se algo faltar, avisa e para a página."""
-    ticker, periodo, modo_da_taxa, taxa_digitada = mostrar_controles()
-    try:
-        # normaliza antes: "petr4" e "PETR4.SA" devem usar a mesma entrada do cache
-        dados = carregar_dados(normalizar_ticker(ticker), periodo)
-    except DadosIndisponiveisError as erro:
-        st.error(mensagem_de_dados_indisponiveis(ticker, erro))
-        st.stop()
-    if dados.attrs.get("moeda") == "BRL":
-        st.caption(
-            "Preços convertidos para reais (R\\$) pelo dólar do dia (USDBRL=X): o retorno "
-            "inclui a variação do câmbio."
-        )
-    if dados.attrs.get("cambio_falhou"):
-        st.warning(
-            "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
-            "Tente de novo mais tarde."
-        )
-    if dados.attrs.get("origem") == "cache_antigo":
-        st.warning(
-            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
-            f"tinha guardado, até {dados.attrs['ate']}."
-        )
-    if dados.attrs.get("origem") == "exemplo":
-        st.warning(
-            f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
-            "e não os mais recentes do Yahoo Finance."
-        )
-    fechamento = dados["Close"]
-    retorno = ind.calcular_retorno_diario(fechamento)
-    taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(
-        modo_da_taxa, taxa_digitada, dados.index
-    )
-    if cdi_diario is not None:
-        st.caption(
-            f"CDI no período: {formatar_pct(taxa_livre_de_risco)} ao ano "
-            "(usado como taxa livre de risco)."
-        )
-    if retorno.dropna().size < MIN_DIAS_PARA_ANALISE:
-        st.warning(
-            f"Só há {retorno.dropna().size} dias de dados para este ticker. "
-            f"São necessários pelo menos {MIN_DIAS_PARA_ANALISE} para calcular os números. "
-            "Tente um período mais longo."
-        )
-        st.stop()
-    lembrar_recente(normalizar_ticker(ticker))
-    return Contexto(
-        ticker=normalizar_ticker(ticker),
-        periodo=periodo,
-        dados=dados,
-        fechamento=fechamento,
-        retorno=retorno,
-        taxa_livre_de_risco=taxa_livre_de_risco,
-        cdi_diario=cdi_diario,
-    )
-
-
-def cabecalho_da_pagina(chave):
-    """O molde de toda página: grupo (olho), ícone e título, selo Pro e para que ela serve."""
-    p = pagina(chave)
-    if p.grupo not in (GRUPO_TOPO, GRUPO_MAIS):  # sem "olho" para o topo e o Mais
-        grupo = p.grupo.removesuffix(" (Pro)")
-        st.markdown(f'<div class="tl-olho">{grupo}</div>', unsafe_allow_html=True)
-    selo = " :blue-badge[Pro]" if p.e_pro else ""
-    st.markdown(f"## {p.icone} {p.titulo}{selo}")
-    st.caption(p.descricao)
 
 
 def mostrar_numero_principal(rotulo, valor, delta=None, ajuda=None):
@@ -5925,50 +5521,11 @@ def pagina_admin():
 
 
 # --- Research: Parâmetros (etapa 1c) ---------------------------------------------------------
-# O rascunho fica nos campos (chaves "rp_..."); só "Salvar" grava uma versão nova. A chave de cada
-# campo leva a versão salva: depois de salvar, os campos renascem com os valores guardados.
-ROTULOS_DAS_OPCOES = {
-    "zero": "Zero",
-    "cdi": "CDI (Banco Central)",
-    "simples": "Simples",
-    "exponencial": "Exponencial",
-    "diario": "Diário",
-    "semanal": "Semanal",
-    "sob_demanda": "Sob demanda",
-    "diaria": "Diária",
-    "gatilhos": "Só quando um gatilho acontecer",
-    "web": "No site",
-    "pdf": "Em PDF",
-    "^BVSP": "Ibovespa (^BVSP)",
-    "^GSPC": "S&P 500 (^GSPC)",
-    "^IXIC": "Nasdaq (^IXIC)",
-    "resultados": "Resultados",
-    "proventos": "Proventos",
-    "eventos": "Eventos",
-    "risco": "Risco",
-    "tecnica": "Técnica",
-    "valuation": "Valuation",
-    "fundamentos": "Fundamentos",
-    "participacoes": "Participações",
-}
 NOMES_DOS_ESCOPOS_NA_TELA = {
     research_presets.GLOBAL: "Seu padrão (todos os ativos)",
     research_presets.ATIVO: "Só para o ativo do topo",
 }
 DOMINIOS_QUE_JA_MUDAM_NUMEROS = ("quant", "tecnica")
-
-
-def _presets_guardados(usuario):
-    """Os presets em vigor: da conta, ou desta sessão no modo local (sem login)."""
-    if usuario is None:
-        return list(st.session_state.get("presets_locais", []))
-    try:
-        with obter_engine().connect() as conexao:
-            return presets_atuais(conexao, usuario.id)
-    except Exception:
-        logging.getLogger(__name__).exception("Falha ao ler os parâmetros")
-        st.warning("Não consegui ler os seus parâmetros agora; mostrando os padrões.")
-        return []
 
 
 def _chave_do_campo(escopo, alvo, versao, chave):
@@ -6082,14 +5639,6 @@ def _formatar_metrica(metrica):
         return formatar_pct(valor)
     casas = 1 if metrica.unidade == "pontos" else 2
     return f"{valor:,.{casas}f}".replace(",", "#").replace(".", ",").replace("#", ".")
-
-
-def _formatar_parametro(chave, valor):
-    if isinstance(valor, tuple):
-        return ", ".join(ROTULOS_DAS_OPCOES.get(v, v) for v in valor) or "—"
-    if isinstance(valor, float):
-        return f"{valor:g}".replace(".", ",")
-    return ROTULOS_DAS_OPCOES.get(valor, str(valor))
 
 
 @st.cache_data(ttl=3600, show_spinner=False)

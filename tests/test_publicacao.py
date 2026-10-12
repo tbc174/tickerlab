@@ -7,10 +7,15 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {"fpdf": "fpdf2"}
+PACOTES_NOSSOS = {"src", "telas"}  # pastas do próprio repositório, não do pip
 
 
 def _importados_de_terceiros() -> set[str]:
-    arquivos = [RAIZ / "app.py", *(RAIZ / "src").glob("*.py")]
+    arquivos = [
+        RAIZ / "app.py",
+        *(RAIZ / "src").glob("*.py"),
+        *(RAIZ / "telas").rglob("*.py"),
+    ]
     nomes: set[str] = set()
     for arquivo in arquivos:
         for no in ast.walk(ast.parse(arquivo.read_text(encoding="utf-8"))):
@@ -18,7 +23,9 @@ def _importados_de_terceiros() -> set[str]:
                 nomes.update(a.name.split(".")[0] for a in no.names)
             elif isinstance(no, ast.ImportFrom) and no.level == 0 and no.module:
                 nomes.add(no.module.split(".")[0])
-    return {n for n in nomes if n not in sys.stdlib_module_names and n != "src"}
+    return {
+        n for n in nomes if n not in sys.stdlib_module_names and n not in PACOTES_NOSSOS
+    }
 
 
 def _pacotes_do_requirements(nome_do_arquivo: str) -> dict[str, str]:
@@ -47,7 +54,7 @@ def test_versoes_de_producao_sao_as_mesmas_do_requirements_completo():
 
 def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
-    for pasta in ("src", "conteudo", "dados_de_exemplo", ".streamlit"):
+    for pasta in ("src", "telas", "conteudo", "dados_de_exemplo", ".streamlit"):
         assert f"COPY {pasta} " in dockerfile or f"COPY {pasta}\n" in dockerfile, pasta
     assert "COPY app.py" in dockerfile
     assert "COPY migracoes " in dockerfile and "COPY alembic.ini" in dockerfile
@@ -55,7 +62,7 @@ def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     dockerignore = (RAIZ / ".dockerignore").read_text(encoding="utf-8")
     for fora in (".venv", "tests", "dados_locais", ".git"):
         assert fora in dockerignore.splitlines()
-    for dentro in ("conteudo", "dados_de_exemplo", "src"):
+    for dentro in ("conteudo", "dados_de_exemplo", "src", "telas"):
         assert dentro not in dockerignore.splitlines()
 
 
