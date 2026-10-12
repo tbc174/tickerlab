@@ -144,21 +144,24 @@ custos e descontando a sorte de testar muitas ideias?**
 
 - **Fases:** M0 ambiente (MetaTrader 5 em conta de demonstração) → M1 dados (histórico diário de
   mais de 80 ativos: forex, ações da B3, índices, renda fixa, commodities e cripto) → M2 pesquisa
-  com ML → M3 teste em conta demo → M4 controles de risco → M5 painel. Hoje a pesquisa está na M2.
+  com ML → M3 teste em conta demo → M4 controles de risco → M5 painel. A M2 terminou sem nenhum
+  modelo aprovado e a pesquisa está pausada.
 - **Método da M2:** critério de aprovação escrito e aprovado **antes** de ver qualquer resultado
   (Sharpe deflacionado, PBO, t-estatística ≥ 3, vitória sobre a regra de tendência com folga
   estatística, consistência entre ativos e no tempo, estresse de custos, teste contra o acaso);
   validação cruzada combinatória com expurgo (CPCV); custos por classe de ativo e carry de juros;
   testes automáticos de vazamento de informação; registro de **todas** as tentativas; os últimos
   3 anos de dados lacrados como prova final.
-- **Resultado até agora:** nenhum modelo foi aprovado (regressão logística, floresta aleatória,
-  LightGBM, meta-rotulagem, rede neural MLP e ARIMA). Resultado negativo também é publicado.
+- **Resultado da M2:** nenhum modelo foi aprovado (regressão logística, floresta aleatória,
+  LightGBM, meta-rotulagem, redes neurais MLP e LSTM e ARIMA), e os 3 anos lacrados continuam sem
+  uso. Resultado negativo também é publicado.
 - **Regras:** só leitura (há testes que impedem o código de enviar ordens), só conta de
   demonstração, nenhuma ordem com dinheiro real sem decisão escrita do autor, e nada disso roda no
   app público. O pacote `MetaTrader5` só funciona no Windows, por isso a pesquisa roda no PC.
 
-A base do pacote está em `trader/`; o código das fases M1 e M2 fica num ramo separado até a
-conclusão da pesquisa.
+O código das fases M1 e M2 (dados, critério em código, validação, modelos e um painel só de
+leitura) está em `trader/`, e os critérios pré-registrados, em `docs/pre-registro-m2-v0.1.md` a
+`v0.4.md`.
 
 ## Como rodar no seu computador
 

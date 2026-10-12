@@ -91,6 +91,6 @@ encontrar fora do pedido (sem refatorar a área de outra sessão sem combinar).
 
 ## `trader/` (pesquisa de trading)
 
-Regras próprias em `trader/CLAUDE.md` (no ramo da pesquisa). Resumo: só leitura (há teste que
+Regras próprias em `trader/CLAUDE.md`. Resumo: só leitura (há teste que
 impede enviar ordens), conta de demonstração, critério de aprovação escrito antes dos resultados,
 toda execução conta como tentativa, um modelo por vez.

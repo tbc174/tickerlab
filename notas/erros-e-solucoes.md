@@ -137,3 +137,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o `manter_estado()` do app reatribui todo campo cujo nome começa com `carteira_` (para a página de estratégia de carteiras não perder o estado); botões e envio de arquivo não podem ser reatribuídos.
 - **Solução:** usar outro prefixo (`minha_carteira_`). Antes de escolher a chave de um campo, conferir `PREFIXOS_QUE_SOBREVIVEM_A_TROCA_DE_PAGINA`.
 - **Data:** 12/10/2026
+
+## CI para antes do primeiro teste: `ImportError: libEGL.so.1`
+- **Sintoma:** no GitHub Actions, o passo dos testes termina com `INTERNALERROR` e código 3, sem rodar nenhum teste; no PC (Windows) a suíte passa.
+- **Causa:** o `pytest-qt` importa o PySide6 (Qt) assim que o pytest começa, mesmo que os testes do painel sejam pulados fora do Windows. O Qt precisa de bibliotecas gráficas do sistema (`libEGL` e outras) até no modo sem tela ("offscreen"), e o Ubuntu do GitHub não as traz.
+- **Solução:** um passo no `.github/workflows/testes.yml` antes dos testes: `sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3`. Lição: erro que só aparece no Linux do CI se vê no log do passo (`gh run view --log-failed`), não no PC.
+- **Data:** 12/10/2026
