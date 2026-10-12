@@ -50,6 +50,7 @@ from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
 from src.autenticacao import (
     LoginInvalidoError,
     emails_de_admin,
+    esta_em_producao,
     ler_identidade,
     login_esta_configurado,
     registrar_login,
@@ -362,9 +363,20 @@ def mostrar_tela_de_entrada():
         )
 
 
+def _recusar_abrir_sem_login():
+    """Produção sem o `[auth]` completo: o app não abre (o modo local liberaria tudo a todos)."""
+    logging.getLogger(__name__).error(
+        "Produção sem o login configurado ([auth] do secrets.toml): o app não vai abrir"
+    )
+    st.error("O TickerLab está em manutenção. Tente de novo em alguns minutos.")
+    st.stop()
+
+
 def _usuario_da_sessao():
     """O usuário da sessão (ou None no modo local, sem contas). Para a página se não houver login."""
     if not login_esta_configurado(_segredos()):
+        if esta_em_producao():
+            _recusar_abrir_sem_login()
         return None
     if not st.user.get("is_logged_in", False):
         mostrar_tela_de_entrada()

@@ -17,6 +17,9 @@ from src.banco.usuarios import Usuario, entrar
 log = logging.getLogger(__name__)
 
 VARIAVEL_DOS_ADMINS = "TICKERLAB_ADMINS"
+# em produção o modo local (sem contas, tudo liberado) é proibido: falta de login vira erro
+VARIAVEL_DO_AMBIENTE = "TICKERLAB_AMBIENTE"
+AMBIENTE_DE_PRODUCAO = "producao"
 CHAVES_DO_LOGIN = (
     "redirect_uri",
     "cookie_secret",
@@ -51,6 +54,18 @@ def login_esta_configurado(segredos: Mapping | None) -> bool:
         return bool(auth) and all(auth.get(chave) for chave in CHAVES_DO_LOGIN)
     except (AttributeError, FileNotFoundError, KeyError, TypeError):
         return False
+
+
+def esta_em_producao(ambiente: Mapping[str, str] | None = None) -> bool:
+    """O app roda em produção (`TICKERLAB_AMBIENTE=producao`)?
+
+    Lá, um `[auth]` ausente ou incompleto não pode abrir o app no modo local: seria o app inteiro,
+    com o Pro, aberto para qualquer pessoa. Sem a variável (desenvolvimento, testes, CI), nada muda.
+    """
+    texto = (ambiente if ambiente is not None else os.environ).get(
+        VARIAVEL_DO_AMBIENTE, ""
+    )
+    return texto.strip().lower() == AMBIENTE_DE_PRODUCAO
 
 
 def emails_de_admin(ambiente: Mapping[str, str] | None = None) -> tuple[str, ...]:
