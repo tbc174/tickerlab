@@ -40,6 +40,8 @@ class Limites:
     ativos_por_watchlist: int = 10
     # Research (etapa 6): alertas compostos salvos
     alertas: int = 1
+    # PDFs originais guardados na biblioteca (ADR 0021): o mais antigo sai quando passa daqui
+    pdfs_guardados: int = 10
 
 
 LIMITES_DOS_PLANOS = {
@@ -67,6 +69,7 @@ LIMITES_DOS_PLANOS = {
         watchlists=3,
         ativos_por_watchlist=20,
         alertas=5,
+        pdfs_guardados=50,
     ),
     "pro": Limites(
         nome="Pro",
@@ -80,6 +83,7 @@ LIMITES_DOS_PLANOS = {
         watchlists=10,
         ativos_por_watchlist=50,
         alertas=20,
+        pdfs_guardados=200,
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -227,6 +231,7 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Favoritos", lambda l: str(l.favoritos)),
         linha("Ativos na carteira", lambda l: str(l.ativos_na_carteira)),
         linha("Relatórios em PDF", relatorios),
+        linha("PDFs originais guardados (1 ano)", lambda l: str(l.pdfs_guardados)),
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
         linha("Carteira no Research", sim_nao(CARTEIRA_NO_RESEARCH)),

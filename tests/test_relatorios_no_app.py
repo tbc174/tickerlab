@@ -5,6 +5,7 @@ from streamlit.testing.v1 import AppTest
 
 from src import relatorios
 from src.banco import dados_do_usuario as repo
+from src.banco import pdfs_originais as pdfs
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
 
 
@@ -142,6 +143,22 @@ def test_biblioteca_guarda_reabre_e_exclui_sem_devolver_o_limite(banco, monkeypa
     with banco.connect() as conexao:
         assert repo.biblioteca_de_relatorios(conexao, ana) == []
         assert repo.contar_relatorios_recentes(conexao, ana) == 1  # o limite não volta
+
+
+def test_gerar_guarda_o_pdf_original_igual_ao_entregue(banco, monkeypatch):
+    # Master v3, C.4 (ADR 0021): a biblioteca guarda o PDF exato que a pessoa baixou
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("relatorio")
+    app.button(key="gerar_pdf").click().run()
+    assert not app.exception
+    entregue = app.session_state["relatorio_gerado"]["pdf"]
+    ana = id_do_usuario(banco, "ana")
+    with banco.connect() as conexao:
+        (item,) = repo.biblioteca_de_relatorios(conexao, ana)
+        assert pdfs.baixar_pdf_original(conexao, ana, item.id) == entregue
+    (original,) = [b for b in app.get("download_button") if b.proto.label == "Original"]
+    assert not original.proto.disabled
+    assert "guardado por 1 ano" in _legendas(app)
 
 
 def test_salvar_configuracao_guarda_na_conta_e_sobrevive_as_outras_preferencias(

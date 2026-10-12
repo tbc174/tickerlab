@@ -373,6 +373,34 @@ sa.Index(
     relatorios.c.criado_em,
 )
 
+# biblioteca (0019, ADR 0021): o PDF original de cada relatório, como foi entregue. Some junto com
+# a conta (cascata), ao excluir da biblioteca, depois de 1 ano e quando passa da cota do plano.
+# O relatório "Minha carteira" nunca é guardado (a planilha da B3 não fica no TickerLab).
+pdfs_originais = sa.Table(
+    "pdfs_originais",
+    metadata,
+    sa.Column(
+        "relatorio_id",
+        sa.Uuid,
+        sa.ForeignKey("relatorios.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    _chave_do_usuario(),
+    sa.Column("pdf", sa.LargeBinary, nullable=False),
+    sa.Column(
+        "sha256", sa.String(64), nullable=False
+    ),  # prova de que é o mesmo arquivo
+    sa.Column("tamanho", sa.Integer, nullable=False),  # bytes
+    # versão das fórmulas, do app e de onde vieram os dados: reproduzir o que o PDF mostrava
+    sa.Column("versoes", JSON_PORTATIL, nullable=False),
+    _momento("gerado_em"),
+)
+sa.Index(
+    "ix_pdfs_originais_usuario_id_gerado_em",
+    pdfs_originais.c.usuario_id,
+    pdfs_originais.c.gerado_em,
+)
+
 # Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
 # (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
 detentores_por_acao = sa.Table(

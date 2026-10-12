@@ -18,6 +18,7 @@ from src.banco.modelo import (
     envios_da_newsletter,
     favoritos,
     inscricoes_da_newsletter,
+    pdfs_originais,
     preferencias,
     presets,
     relatorios,
@@ -28,8 +29,9 @@ from src.banco.modelo import (
 from src.banco.usuarios import Usuario
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
-# alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas
-VERSAO_DOS_TERMOS = "2026-10-12.4"
+# alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
+# Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021)
+VERSAO_DOS_TERMOS = "2026-10-12.5"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
@@ -208,6 +210,16 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 "titulo": l.titulo,
                 "parametros": dict(l.parametros) if l.parametros else None,
                 "excluido_da_biblioteca_em": _texto(l.apagado_em),
+                # o arquivo em si vai no .zip "Baixar meus PDFs guardados"
+                "pdf_original": (
+                    {
+                        "sha256": l.sha256,
+                        "tamanho": l.tamanho,
+                        "gerado_em": _texto(l.gerado_em),
+                    }
+                    if l.sha256
+                    else None
+                ),
             }
             for l in conexao.execute(
                 sa.select(
@@ -216,6 +228,16 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                     relatorios.c.titulo,
                     relatorios.c.parametros,
                     relatorios.c.apagado_em,
+                    pdfs_originais.c.sha256,
+                    pdfs_originais.c.tamanho,
+                    pdfs_originais.c.gerado_em,
+                )
+                .select_from(
+                    relatorios.outerjoin(
+                        pdfs_originais,
+                        (pdfs_originais.c.relatorio_id == relatorios.c.id)
+                        & (pdfs_originais.c.usuario_id == usuario_id),
+                    )
                 )
                 .where(relatorios.c.usuario_id == usuario_id)
                 .order_by(relatorios.c.criado_em)

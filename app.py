@@ -1,5 +1,6 @@
 """TickerLab: interface do app. Só mostra; os cálculos ficam em src/."""
 
+import functools
 import hashlib
 import json
 import logging
@@ -101,6 +102,14 @@ from src.banco.eventos import (
     ultima_coleta,
 )
 from src.banco.modelo import PAPEIS, PLANOS
+from src.banco.pdfs_originais import (
+    DIAS_GUARDADO,
+    baixar_pdf_original,
+    guardar_pdf_original,
+    pdfs_em_zip,
+    pdfs_guardados,
+    pode_guardar,
+)
 from src.banco.usuarios import buscar_por_id
 from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
 from src.carteiras import (
@@ -4928,6 +4937,28 @@ def _salvar_configuracao(usuario, tipo):
     )
 
 
+def _guardar_original(usuario, relatorio_id, pdf, pedido):
+    """Guarda o PDF como foi entregue, com as versões das fórmulas e o pedido (ADR 0021).
+
+    Uma falha aqui não tira o PDF da pessoa: ele já está pronto para baixar; só avisa.
+    """
+    versoes = {
+        **json.loads(pedido.identidade),
+        "relatorios": relatorios.VERSAO_DOS_RELATORIOS,
+        "formulas": research_analise.VERSOES_DAS_FORMULAS,
+    }
+    try:
+        with obter_engine().begin() as conexao:
+            guardar_pdf_original(
+                conexao, usuario.id, relatorio_id, usuario.plano, pdf, versoes
+            )
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao guardar o PDF original")
+        st.warning(
+            "O PDF está pronto, mas não consegui guardar o original na biblioteca agora."
+        )
+
+
 def _gerar(pedido, config, usuario):
     """Gera de verdade, mostrando as etapas reais, e registra na biblioteca."""
     with st.status("Gerando o relatório…", expanded=True) as status:
@@ -4977,6 +5008,9 @@ def _gerar(pedido, config, usuario):
                     "limite; tente de novo em instantes."
                 )
                 return False
+        if relatorio_id is not None and pode_guardar(pedido.tipo):
+            status.write("Guardando o PDF original…")
+            _guardar_original(usuario, relatorio_id, pdf, pedido)
         status.update(label="Concluído", state="complete", expanded=False)
     st.session_state["relatorio_gerado"] = {
         "identidade": _identidade_completa(pedido, config),
@@ -5205,6 +5239,48 @@ def _versoes(itens):
     return versoes
 
 
+def _pdf_original(usuario_id, relatorio_id):
+    """Lê o PDF guardado só na hora do clique (a lista não carrega os arquivos)."""
+    with obter_engine().connect() as conexao:
+        pdf = baixar_pdf_original(conexao, usuario_id, relatorio_id)
+    if pdf is None:  # venceu entre a tela e o clique, ou o hash não conferiu
+        logging.getLogger(__name__).error("PDF original indisponível no download")
+        return b""
+    return pdf
+
+
+def _botao_do_original(coluna, usuario, relatorio, guardado):
+    if guardado is None:
+        motivo = (
+            "O relatório “Minha carteira” não é guardado."
+            if not pode_guardar(relatorio.tipo)
+            else f"Sem original: gerado antes do arquivo, há mais de {DIAS_GUARDADO} dias "
+            "ou fora da cota do plano."
+        )
+        coluna.button(
+            "Original",
+            icon=":material/download:",
+            key=f"estudio_original_{relatorio.id}",
+            disabled=True,
+            help=motivo,
+            width="stretch",
+        )
+        return
+    quando = guardado.gerado_em.astimezone(relatorios.FUSO)
+    coluna.download_button(
+        "Original",
+        data=functools.partial(_pdf_original, usuario.id, relatorio.id),
+        file_name=f"tickerlab-{relatorio.tipo}-{quando:%Y-%m-%d-%H%M}.pdf",
+        mime="application/pdf",
+        icon=":material/download:",
+        key=f"estudio_original_{relatorio.id}",
+        help=f"O PDF como foi entregue em {quando:%d/%m/%Y às %H:%M} "
+        f"(SHA-256 {guardado.sha256[:12]}…).",
+        on_click="ignore",
+        width="stretch",
+    )
+
+
 def mostrar_biblioteca(usuario):
     if usuario is None:
         st.info(
@@ -5215,6 +5291,7 @@ def mostrar_biblioteca(usuario):
     try:
         with obter_engine().connect() as conexao:
             itens = biblioteca_de_relatorios(conexao, usuario.id)
+            guardados = pdfs_guardados(conexao, usuario.id)
     except Exception:
         logging.getLogger(__name__).exception("Falha ao ler a biblioteca")
         st.error(
@@ -5228,8 +5305,11 @@ def mostrar_biblioteca(usuario):
         )
         return
     st.caption(
-        "O PDF não fica guardado: “Reabrir” traz os mesmos parâmetros para o estúdio, e você "
-        "gera uma nova versão com os dados de hoje. Excluir não devolve o relatório ao limite."
+        "“Original” baixa o PDF como foi entregue (guardado por 1 ano; o seu plano guarda "
+        f"até {limites_do(usuario.plano).pdfs_guardados}, e os mais antigos saem). “Reabrir” "
+        "traz os mesmos parâmetros para o estúdio, para gerar com os dados de hoje. O "
+        "relatório “Minha carteira” não é guardado. Excluir apaga o original e não devolve o "
+        "relatório ao limite."
     )
     col_busca, col_tipos = st.columns([1, 2])
     busca = col_busca.text_input(
@@ -5254,9 +5334,10 @@ def mostrar_biblioteca(usuario):
     for r in visiveis:
         p = r.parametros
         with st.container(border=True):
-            col_texto, col_reabrir, col_excluir = st.columns(
-                [6, 1.4, 1.2], vertical_alignment="center"
+            col_texto, col_original, col_reabrir, col_excluir = st.columns(
+                [6, 1.4, 1.4, 1.2], vertical_alignment="center"
             )
+            _botao_do_original(col_original, usuario, r, guardados.get(r.id))
             col_texto.markdown(
                 f"**{r.titulo or relatorios.NOMES_DOS_RELATORIOS[r.tipo]}**"
             )
@@ -5609,6 +5690,12 @@ def _preparar_exportacao(usuario):
     )
 
 
+def _meus_pdfs_em_zip(usuario_id):
+    """Os PDFs originais guardados, num .zip montado só na hora do clique (LGPD: portabilidade)."""
+    with obter_engine().connect() as conexao:
+        return pdfs_em_zip(conexao, usuario_id)
+
+
 def _apagar_minha_conta(usuario):
     """Encerra a cobrança, apaga tudo e sai. Se a cobrança não puder ser encerrada, não apaga."""
     try:
@@ -5653,6 +5740,18 @@ def pagina_meus_dados():
             mime="application/json",
             key="baixar_meus_dados",
         )
+    st.caption(
+        "Os PDFs originais guardados na biblioteca vêm à parte, num .zip (o JSON lista cada um "
+        "com o hash SHA-256)."
+    )
+    st.download_button(
+        "Baixar meus PDFs guardados (.zip)",
+        data=functools.partial(_meus_pdfs_em_zip, usuario.id),
+        file_name="meus-pdfs-tickerlab.zip",
+        mime="application/zip",
+        key="baixar_meus_pdfs",
+        on_click="ignore",
+    )
     st.divider()
     st.subheader("Apagar a minha conta")
     st.warning(
