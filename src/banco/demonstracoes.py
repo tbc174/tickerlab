@@ -44,6 +44,55 @@ def gravar_setores(conexao: sa.Connection, setores: pd.DataFrame) -> int:
     return len(setores)
 
 
+def _trocar_documento(
+    conexao: sa.Connection, doc: object, linhas: pd.DataFrame | None, agora: datetime
+) -> None:
+    """Apaga a versão guardada de um documento e grava a nova, inteira (contas e índice)."""
+    filtro = (
+        (demonstracoes.c.cnpj == doc.cnpj)
+        & (demonstracoes.c.documento == doc.documento)
+        & (demonstracoes.c.referencia == doc.referencia)
+    )
+    conexao.execute(sa.delete(demonstracoes).where(filtro))
+    if linhas is not None and not linhas.empty:
+        conexao.execute(
+            sa.insert(demonstracoes),
+            [
+                {
+                    "cnpj": l.cnpj,
+                    "documento": l.documento,
+                    "referencia": l.referencia,
+                    "periodo": l.periodo,
+                    "fim": l.fim,
+                    "conta": l.conta,
+                    "inicio": _data(l.inicio),
+                    "versao": int(l.versao),
+                    "valor": float(l.valor),
+                }
+                for l in linhas.itertuples(index=False)
+            ],
+        )
+    conexao.execute(
+        sa.delete(documentos_financeiros).where(
+            (documentos_financeiros.c.cnpj == doc.cnpj)
+            & (documentos_financeiros.c.documento == doc.documento)
+            & (documentos_financeiros.c.referencia == doc.referencia)
+        )
+    )
+    conexao.execute(
+        sa.insert(documentos_financeiros).values(
+            cnpj=doc.cnpj,
+            documento=doc.documento,
+            referencia=doc.referencia,
+            versao=int(doc.versao),
+            empresa=doc.empresa[:200],
+            recebido_em=_data(doc.recebido_em),
+            link=doc.link[:500],
+            coletado_em=agora,
+        )
+    )
+
+
 def gravar_demonstracoes(
     conexao: sa.Connection,
     contas: pd.DataFrame,
@@ -77,49 +126,7 @@ def gravar_demonstracoes(
         if guardadas.get(chave, 0) >= doc.versao:
             continue
         linhas = contas_por_documento.get(chave)
-        filtro = (
-            (demonstracoes.c.cnpj == doc.cnpj)
-            & (demonstracoes.c.documento == doc.documento)
-            & (demonstracoes.c.referencia == doc.referencia)
-        )
-        conexao.execute(sa.delete(demonstracoes).where(filtro))
-        if linhas is not None and not linhas.empty:
-            conexao.execute(
-                sa.insert(demonstracoes),
-                [
-                    {
-                        "cnpj": l.cnpj,
-                        "documento": l.documento,
-                        "referencia": l.referencia,
-                        "periodo": l.periodo,
-                        "fim": l.fim,
-                        "conta": l.conta,
-                        "inicio": _data(l.inicio),
-                        "versao": int(l.versao),
-                        "valor": float(l.valor),
-                    }
-                    for l in linhas.itertuples(index=False)
-                ],
-            )
-        conexao.execute(
-            sa.delete(documentos_financeiros).where(
-                (documentos_financeiros.c.cnpj == doc.cnpj)
-                & (documentos_financeiros.c.documento == doc.documento)
-                & (documentos_financeiros.c.referencia == doc.referencia)
-            )
-        )
-        conexao.execute(
-            sa.insert(documentos_financeiros).values(
-                cnpj=doc.cnpj,
-                documento=doc.documento,
-                referencia=doc.referencia,
-                versao=int(doc.versao),
-                empresa=doc.empresa[:200],
-                recebido_em=_data(doc.recebido_em),
-                link=doc.link[:500],
-                coletado_em=agora,
-            )
-        )
+        _trocar_documento(conexao, doc, linhas, agora)
         mudaram += 1
     return mudaram
 
