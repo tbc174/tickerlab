@@ -19,6 +19,7 @@ from src.banco.usuarios import mudar_plano
 from src.carteira_b3 import ArquivoDaB3Error, CarteiraB3, ler_carteira
 from src.conformidade import apagar_conta, exportar_meus_dados
 from src.planos import LimiteDoPlanoError
+from telas.research.minha_carteira import guardar_fotografia
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
 
 EXEMPLO = Path(__file__).parent.parent / "conteudo" / "carteira_de_exemplo.xlsx"
@@ -209,14 +210,11 @@ def _ana_no_plano(banco, monkeypatch, plano):
 
 
 def test_pro_guarda_pela_tela_ve_e_revoga(banco, monkeypatch):
-    import app as aplicativo  # a função que o botão chama (o AppTest não envia arquivos)
-
+    # chama direto a função do botão (o AppTest não envia arquivos)
     ana = _ana_no_plano(banco, monkeypatch, "pro")
     with banco.connect() as c:
         usuario = contas.buscar_por_id(c, ana)
-    ok, mensagem = aplicativo.guardar_fotografia(
-        usuario, EXEMPLO.read_bytes(), EXEMPLO.name
-    )
+    ok, mensagem = guardar_fotografia(usuario, EXEMPLO.read_bytes(), EXEMPLO.name)
     assert ok and "4 ativos" in mensagem
     app = abrir_app("carteira_research")
     assert not app.exception
@@ -240,12 +238,10 @@ def test_carteira_aparece_como_lista_no_research(banco, monkeypatch):
 
 
 def test_planilha_ruim_mostra_o_erro(banco, monkeypatch):
-    import app as aplicativo
-
     ana = _ana_no_plano(banco, monkeypatch, "pro")
     with banco.connect() as c:
         usuario = contas.buscar_por_id(c, ana)
-    ok, mensagem = aplicativo.guardar_fotografia(usuario, b"nada a ver", "posicao.csv")
+    ok, mensagem = guardar_fotografia(usuario, b"nada a ver", "posicao.csv")
     assert not ok and mensagem
     with banco.connect() as c:
         assert repo.carregar_carteira(c, ana) is None
