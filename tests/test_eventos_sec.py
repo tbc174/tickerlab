@@ -236,3 +236,16 @@ def test_acontecimentos_mostra_a_apple_com_link_para_a_sec(banco, mapa, apple):
     )
     assert all(b.proto.label == "Abrir na SEC" for b in botoes)
     assert "Sem cobertura ainda" not in " ".join(c.value for c in app.caption)
+
+
+def test_data_invalida_na_lista_da_sec_nao_quebra_a_leitura():
+    import json
+
+    dados = json.loads((PASTA / "CIK0000320193.json").read_text(encoding="utf-8"))
+    recentes = dados["filings"]["recent"]
+    recentes["filingDate"][0] = "0000-00-00"  # entrega com data inválida: fica de fora
+    recentes["reportDate"][1] = "xx"  # data-base inválida: vira vazia
+    tabela = sec.ler_documentos(json.dumps(dados).encode(), DESDE_2025)
+    assert recentes["accessionNumber"][0] not in set(tabela["protocolo"])
+    linha = tabela[tabela["protocolo"] == recentes["accessionNumber"][1]]
+    assert linha.empty or linha["referencia"].isna().all()

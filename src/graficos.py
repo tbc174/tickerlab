@@ -1073,6 +1073,7 @@ def criar_grafico_fundamentos_anuais(
     if anual.empty:
         raise ValueError("Não há demonstrações anuais para mostrar.")
     figura = _figura_base(f"Receita e lucro por ano ({simbolo} bilhões)")
+    figura.update_yaxes(tickformat=",.0f")  # bilhões, não porcentagem
     anos = [str(a) for a in anual.index]
     for nome, coluna, cor in (
         ("Receita", "receita", marca.SERIES[0]),
@@ -1099,6 +1100,7 @@ def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
     figura = _figura_base(
         f"Compras e vendas de pessoas de dentro por mês ({simbolo} milhões)"
     )
+    figura.update_yaxes(tickformat=",.1f")  # milhões, não porcentagem
     for nome, coluna, cor in (
         ("Compras", "compras", marca.ALTA),
         ("Vendas", "vendas", marca.QUEDA),
@@ -1129,11 +1131,11 @@ def criar_grafico_detentores(historico: pd.DataFrame, quem: str) -> go.Figure:
         figura.add_trace(
             go.Scatter(
                 x=historico["competencia"],
-                y=historico[coluna] * 100,
+                y=historico[coluna],
                 name=nome,
                 mode="lines+markers",
                 line={"color": cor},
-                hovertemplate=f"{nome}: %{{y:.1f}}%<extra></extra>",
+                hovertemplate=f"{nome}: %{{y:.1%}}<extra></extra>",
             )
         )
     figura.update_layout(showlegend=True, hovermode="x unified")

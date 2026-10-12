@@ -148,7 +148,11 @@ def empresa_alvo(cabecalho: str) -> int | None:
 
 
 def _data(texto: str) -> date | None:
-    return pd.to_datetime(texto, errors="coerce").date() if texto else None
+    """A data do texto da SEC, ou None se vazia ou inválida (nunca `NaT`, que quebra comparações)."""
+    if not texto:
+        return None
+    data = pd.to_datetime(texto, errors="coerce")
+    return None if pd.isna(data) else data.date()
 
 
 def _assunto(
