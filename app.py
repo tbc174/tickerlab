@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -19,6 +20,7 @@ from src import analise as research_analise
 from src import (
     aprendizado,
     catalogo,
+    coleta_sec,
     detentores,
     estilos_pdf,
     eventos_sec,
@@ -121,6 +123,7 @@ from src.comparacao import (
     montar_tabela_comparativa,
     rebasear_para_100,
 )
+from src.configuracao import contato
 from src.conformidade import (
     TEXTO_PARA_CONFIRMAR_A_EXCLUSAO,
     VERSAO_DOS_TERMOS,
@@ -6488,6 +6491,97 @@ GRUPOS_DE_FUNDAMENTOS = (
 )
 
 
+# --- Research: busca na hora na SEC (R4) -------------------------------------------------------
+BUSCAS_NA_SEC_POR_SESSAO = 5
+ACAO_DOS_EUA = (
+    r"[A-Z][A-Z.\-]{0,9}"  # AAPL, BRK-B (sem índices ^GSPC nem cripto BTC-USD)
+)
+
+
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def _mapa_da_sec(agente):
+    """O `company_tickers.json` da SEC inteiro (ticker → CIK), guardado por um dia."""
+    cliente = coleta_sec.ClienteSec(agente)
+    return eventos_sec.ler_tickers(cliente.baixar(eventos_sec.URL_DOS_TICKERS))
+
+
+def _pode_buscar_na_sec(ticker):
+    return (
+        moeda_do_ticker(ticker) == "USD"
+        and re.fullmatch(ACAO_DOS_EUA, ticker) is not None
+        and not ticker.endswith("-USD")
+    )
+
+
+def _buscar_na_sec(ticker):
+    email = contato()
+    if email is None:
+        st.session_state["busca_na_sec_aviso"] = (
+            "A busca na SEC não está configurada neste servidor (falta o e-mail de contato)."
+        )
+        return
+    feitas = st.session_state.get("buscas_na_sec", 0)
+    if feitas >= BUSCAS_NA_SEC_POR_SESSAO:
+        st.session_state["busca_na_sec_aviso"] = (
+            f"Você já fez {feitas} buscas novas nesta visita. Tente de novo mais tarde."
+        )
+        return
+    agente = f"TickerLab {email}"
+    try:
+        empresa, eventos, lidos = coleta_sec.buscar_agora(
+            obter_engine(),
+            coleta_sec.ClienteSec(agente),
+            ticker,
+            _mapa_da_sec(agente),
+            datetime.now(relatorios.FUSO),
+        )
+    except coleta_sec.BuscaRecusada as erro:
+        st.session_state["busca_na_sec_aviso"] = str(erro)
+        return
+    except coleta_sec.ERROS_DE_UMA_EMPRESA:
+        logging.getLogger(__name__).exception("Falha na busca na SEC")
+        st.session_state["busca_na_sec_aviso"] = (
+            "A SEC não respondeu agora. Tente de novo em instantes."
+        )
+        return
+    st.session_state["buscas_na_sec"] = feitas + 1
+    st.session_state["busca_na_sec_feita"] = (
+        f"{empresa}: {eventos} eventos e {lidos} negociações de pessoas de dentro guardados. "
+        "Daqui para frente ela entra na coleta diária."
+    )
+
+
+def oferecer_busca_na_sec(ticker, o_que):
+    """Mensagem de "sem cobertura" e, para ações dos EUA fora do S&P 500, o botão da busca."""
+    if not _pode_buscar_na_sec(ticker):
+        st.info(
+            f"{ticker} não tem cadastro na CVM nem na SEC. {o_que} cobrem ações e units da B3 "
+            "e ações dos EUA; fundos, ETFs, BDRs, índices e cripto dependem de outras fontes.",
+            icon=":material/info:",
+        )
+        return
+    st.info(
+        f"{ticker} ainda não está na base do TickerLab (a coleta diária cobre o S&P 500). Dá para "
+        "buscar a empresa na SEC agora: leva alguns segundos e ela passa a entrar na coleta "
+        "diária.",
+        icon=":material/travel_explore:",
+    )
+    if aviso := st.session_state.pop("busca_na_sec_aviso", None):
+        st.warning(aviso)
+    st.button(
+        "Buscar na SEC agora",
+        icon=":material/cloud_download:",
+        key=f"buscar_na_sec_{ticker}",
+        on_click=_buscar_na_sec,
+        args=(ticker,),
+    )
+
+
+def mostrar_resultado_da_busca_na_sec():
+    if feita := st.session_state.pop("busca_na_sec_feita", None):
+        st.success(feita, icon=":material/check_circle:")
+
+
 @dataclass(frozen=True)
 class MercadoDosFundamentos:
     """O que muda na página Fundamentos entre a B3 (CVM) e os EUA (SEC)."""
@@ -6605,11 +6699,7 @@ def _ler_fundamentos(ticker):
         st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
         return None
     if empresa is None:
-        st.info(
-            f"{ticker} não tem cadastro na CVM nem na SEC. Os fundamentos cobrem ações e units "
-            "da B3 e as ações do S&P 500; fundos, ETFs e BDRs dependem de outras fontes.",
-            icon=":material/info:",
-        )
+        oferecer_busca_na_sec(ticker, "Os fundamentos")
         return None
     if dados.contas.empty:
         st.info(
@@ -6690,6 +6780,7 @@ def _metodologia_dos_fundamentos(mercado):
 
 def pagina_fundamentos():
     cabecalho_da_pagina("fundamentos")
+    mostrar_resultado_da_busca_na_sec()
     c = carregar_contexto()
     r = parametros_em_vigor(c.ticker)
     ticker = normalizar_ticker(c.ticker)
@@ -6825,11 +6916,7 @@ def _negociacoes_do_ativo(ticker, janela):
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         empresa = None
     if empresa is None:
-        st.info(
-            f"{ticker} não tem cadastro na CVM nem na SEC. As negociações cobrem ações e units "
-            "da B3 e as ações do S&P 500; fundos, ETFs, BDRs, índices e cripto não têm.",
-            icon=":material/info:",
-        )
+        oferecer_busca_na_sec(ticker, "As negociações")
         return
     desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
     tabela, erro = _ler_negociacoes(desde, [empresa[0]])
@@ -6956,6 +7043,7 @@ def _ranking_do_mercado(janela):
 
 def pagina_por_dentro():
     cabecalho_da_pagina("por_dentro")
+    mostrar_resultado_da_busca_na_sec()
     c = carregar_contexto()
     janela = st.segmented_control(
         "Período",

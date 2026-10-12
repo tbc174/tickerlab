@@ -367,3 +367,13 @@ cobertura_de_detentores = sa.Table(
     sa.Column("informantes", sa.Integer, nullable=False),
     _momento("coletado_em"),
 )
+
+# Research R4 (0014): ações dos EUA fora do S&P 500 buscadas na hora por alguém; entram na coleta
+# diária da SEC. Sem `usuario_id`: guarda só o ticker e quando foi pedido (nada pessoal).
+tickers_sob_demanda = sa.Table(
+    "tickers_sob_demanda",
+    metadata,
+    sa.Column("ticker", sa.String(12), primary_key=True),
+    sa.Column("cnpj", sa.String(18), nullable=False),  # o CIK com prefixo
+    _momento("pedido_em"),
+)
