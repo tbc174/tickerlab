@@ -7100,6 +7100,9 @@ def _detentores_do_ativo(ticker):
         )
         return
     st.markdown(f"**{codigo}** · posição de {ultima:%d/%m/%Y}")
+    aviso = detentores.aviso_de_cobertura(cobertura, ultima, quem)
+    if aviso:
+        st.caption(aviso)
     _metricas_dos_detentores(
         historico.iloc[-1],
         _variacao_comparavel(historico, cobertura),
@@ -7237,7 +7240,7 @@ def pagina_donos():
 JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
 
 
-def _frase_do_detentor(codigo, linha, quem, par, da_cvm):
+def _frase_do_detentor(codigo, linha, quem, par, da_cvm, informantes):
     variacao = (
         ""
         if pd.isna(linha["variacao"])
@@ -7246,7 +7249,10 @@ def _frase_do_detentor(codigo, linha, quem, par, da_cvm):
     vendidos = (
         f"; {int(linha['vendidos'])} vendidos" if da_cvm and linha["vendidos"] else ""
     )
-    return f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}{variacao}{vendidos}."
+    return (
+        f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}, de "
+        f"{informantes} que informaram{variacao}{vendidos}."
+    )
 
 
 def _frases_dos_detentores(conexao, tickers):
@@ -7254,7 +7260,8 @@ def _frases_dos_detentores(conexao, tickers):
     frases = []
     for moeda, (fonte, quem, _, _) in FONTES_DOS_DETENTORES.items():
         do_mercado = [t for t in tickers if moeda_do_ticker(t) == moeda]
-        par = detentores.par_comparavel(repo_detentores.cobertura(conexao, fonte))
+        cobertura = repo_detentores.cobertura(conexao, fonte)
+        par = detentores.par_comparavel(cobertura)
         if not do_mercado or par is None:
             continue
         resumo = repo_detentores.resumo_do_mercado(conexao, fonte, par)
@@ -7269,6 +7276,7 @@ def _frases_dos_detentores(conexao, tickers):
                         quem,
                         par,
                         fonte == fundos_cvm.FONTE_CDA,
+                        cobertura[par[0]],
                     )
                 )
     return tuple(frases)
