@@ -6,6 +6,9 @@
 # serve a pasta static/ (fontes e símbolo): as fontes saem do nosso servidor, não do Google Fonts,
 # para não mandar o IP de quem visita a terceiros
 enableStaticServing = true
+# o único envio de arquivo é a planilha de posição da B3, que tem poucos KB; o padrão do
+# Streamlit (200 MB) deixaria carregar na memória arquivos enormes antes de recusar
+maxUploadSize = 5
 
 [client]
 toolbarMode = "minimal"

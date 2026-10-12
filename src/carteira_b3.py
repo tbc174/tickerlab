@@ -14,12 +14,16 @@ e nada do conteúdo vai para os logs (é a carteira real de alguém).
 
 import re
 import unicodedata
+import zipfile
 from dataclasses import dataclass, field
 from io import BytesIO
 
 import pandas as pd
 
 TAMANHO_MAXIMO = 5 * 1024 * 1024  # 5 MB: uma posição de verdade tem poucos KB
+# o .xlsx é um zip: um arquivo pequeno pode virar gigabytes ao abrir (bomba de descompressão)
+TAMANHO_MAXIMO_DESCOMPRIMIDO = 20 * 1024 * 1024
+MAXIMO_DE_LINHAS = 5_000  # por aba: uma carteira de verdade tem dezenas de linhas
 # nomes de coluna que a B3 já usou (já sem acento e em minúsculas)
 COLUNAS_DO_CODIGO = ("codigo de negociacao", "codigo", "ticker", "ativo")
 COLUNAS_DO_PRODUTO = ("produto",)
@@ -110,18 +114,63 @@ def _tipo_da_aba(nome: str) -> str | None:
     return None
 
 
+MENSAGEM_DE_ARQUIVO_INVALIDO = (
+    "Não consegui abrir o arquivo. Envie a planilha de posição baixada da Área do "
+    "Investidor da B3 (.xlsx)."
+)
+
+
+def _conferir_tamanho_descomprimido(conteudo: bytes) -> None:
+    """Recusa o .xlsx que ficaria grande demais ao abrir, antes de abri-lo.
+
+    O tamanho de cada parte vem do índice do zip; o `zipfile` do Python não deixa uma parte
+    render mais do que o índice declara, então a soma é um teto confiável.
+    """
+    try:
+        with zipfile.ZipFile(BytesIO(conteudo)) as arquivo:
+            descomprimido = sum(parte.file_size for parte in arquivo.infolist())
+    except zipfile.BadZipFile as erro:
+        raise ArquivoDaB3Error(MENSAGEM_DE_ARQUIVO_INVALIDO) from erro
+    if descomprimido > TAMANHO_MAXIMO_DESCOMPRIMIDO:
+        raise ArquivoDaB3Error(
+            "A planilha fica grande demais ao abrir; a posição da B3 tem poucas linhas."
+        )
+
+
+def _conferir_linhas(abas: dict[str, pd.DataFrame]) -> None:
+    if any(len(tabela) > MAXIMO_DE_LINHAS for tabela in abas.values()):
+        limite = f"{MAXIMO_DE_LINHAS:,}".replace(
+            ",", "."
+        )  # 5.000, como se escreve no Brasil
+        raise ArquivoDaB3Error(
+            f"A planilha tem mais de {limite} linhas numa aba; a posição da B3 tem poucas "
+            "dezenas."
+        )
+
+
 def _abas(conteudo: bytes, nome_do_arquivo: str) -> dict[str, pd.DataFrame]:
+    # lê uma linha a mais que o limite: só para saber se passou dele, sem ler o resto
     if nome_do_arquivo.lower().endswith(".csv"):
         texto = conteudo.decode("utf-8-sig", errors="replace")
         separador = ";" if texto.count(";") > texto.count(",") else ","
-        return {"acoes": pd.read_csv(BytesIO(conteudo), sep=separador, dtype=str)}
-    try:
-        return pd.read_excel(BytesIO(conteudo), sheet_name=None, dtype=object)
-    except Exception as erro:  # arquivo corrompido ou que não é Excel
-        raise ArquivoDaB3Error(
-            "Não consegui abrir o arquivo. Envie a planilha de posição baixada da Área do "
-            "Investidor da B3 (.xlsx)."
-        ) from erro
+        abas = {
+            "acoes": pd.read_csv(
+                BytesIO(conteudo), sep=separador, dtype=str, nrows=MAXIMO_DE_LINHAS + 1
+            )
+        }
+    else:
+        _conferir_tamanho_descomprimido(conteudo)
+        try:
+            abas = pd.read_excel(
+                BytesIO(conteudo),
+                sheet_name=None,
+                dtype=object,
+                nrows=MAXIMO_DE_LINHAS + 1,
+            )
+        except Exception as erro:  # arquivo corrompido ou que não é Excel
+            raise ArquivoDaB3Error(MENSAGEM_DE_ARQUIVO_INVALIDO) from erro
+    _conferir_linhas(abas)
+    return abas
 
 
 def ler_carteira(conteudo: bytes, nome_do_arquivo: str) -> CarteiraB3:
