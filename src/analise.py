@@ -374,12 +374,12 @@ def _macd_bollinger_e_atr(
         "tecnica.macd_sinal": sinal,
     }
     curta = m.janela_curta(lenta + sinal)
-    macd = None if curta else ind.calcular_macd(fechamento, rapida, lenta, sinal)
-    m.add(
-        "macd", "MACD", None if curta else _ultimo(macd["macd"]), "preço", p_macd, curta
-    )
-    m.add("macd_sinal", "MACD: linha de sinal", None if curta else _ultimo(macd["sinal"]),
-          "preço", p_macd, curta)  # fmt: skip
+    ultimo_macd = ultimo_sinal = None
+    if not curta:
+        macd = ind.calcular_macd(fechamento, rapida, lenta, sinal)
+        ultimo_macd, ultimo_sinal = _ultimo(macd["macd"]), _ultimo(macd["sinal"])
+    m.add("macd", "MACD", ultimo_macd, "preço", p_macd, curta)
+    m.add("macd_sinal", "MACD: linha de sinal", ultimo_sinal, "preço", p_macd, curta)
     periodo_bb, desvios = (
         int(r["tecnica.bollinger_periodo"]),
         float(r["tecnica.bollinger_desvios"]),

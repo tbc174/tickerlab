@@ -37,7 +37,10 @@ LINHA_DE_REFERENCIA = "rgba(232, 236, 244, 0.30)"
 # Tema Plotly "tickerlab": fonte e cores da marca em todos os gráficos de uma vez
 TEMA = "tickerlab"
 pio.templates[TEMA] = go.layout.Template(pio.templates["plotly_dark"])
-pio.templates[TEMA].layout.update(
+_LAYOUT_DO_TEMA = pio.templates[TEMA].layout
+# o plotly declara a propriedade como opcional, mas num Template ela sempre existe
+assert _LAYOUT_DO_TEMA is not None
+_LAYOUT_DO_TEMA.update(
     font={"family": f"{marca.FONTE}, sans-serif", "color": marca.TEXTO, "size": 13},
     colorway=list(marca.SERIES),
     paper_bgcolor="rgba(0,0,0,0)",
@@ -49,13 +52,13 @@ pio.templates[TEMA].layout.update(
     },
     legend={"font": {"color": marca.TEXTO_APAGADO}},
 )
-pio.templates[TEMA].layout.xaxis.update(
+_LAYOUT_DO_TEMA.xaxis.update(
     gridcolor="rgba(148, 163, 190, 0.06)",
     linecolor=marca.LINHA,
     zerolinecolor=marca.LINHA,
     tickfont={"color": marca.TEXTO_APAGADO},
 )
-pio.templates[TEMA].layout.yaxis.update(
+_LAYOUT_DO_TEMA.yaxis.update(
     gridcolor="rgba(148, 163, 190, 0.10)",
     linecolor=marca.LINHA,
     zerolinecolor=marca.LINHA,
