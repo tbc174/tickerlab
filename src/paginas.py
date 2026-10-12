@@ -245,6 +245,15 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "alertas",
+        "Alertas",
+        GRUPO_RESEARCH,
+        ":material/notifications:",
+        "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista "
+        "elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "parametros",
         "Parâmetros",
         GRUPO_RESEARCH,

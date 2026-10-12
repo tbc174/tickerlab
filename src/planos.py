@@ -34,6 +34,8 @@ class Limites:
     # Research: listas com nome e quantos ativos cabem em cada uma
     watchlists: int = 1
     ativos_por_watchlist: int = 10
+    # Research (etapa 6): alertas compostos salvos
+    alertas: int = 1
 
 
 LIMITES_DOS_PLANOS = {
@@ -60,6 +62,7 @@ LIMITES_DOS_PLANOS = {
         ativos_com_parametros=10,  # Research (confirmado pelo Tiago em 11/10/2026)
         watchlists=3,
         ativos_por_watchlist=20,
+        alertas=5,
     ),
     "pro": Limites(
         nome="Pro",
@@ -72,6 +75,7 @@ LIMITES_DOS_PLANOS = {
         ativos_com_parametros=50,
         watchlists=10,
         ativos_por_watchlist=50,
+        alertas=20,
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -161,6 +165,17 @@ def conferir_watchlist(
         )
 
 
+def conferir_alerta(plano: str | None, alertas_ja_criados: int) -> None:
+    """Levanta `LimiteDoPlanoError` se um alerta novo passaria do limite do plano."""
+    limites = limites_do(plano)
+    if alertas_ja_criados >= limites.alertas:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} permite {limites.alertas} "
+            f"{'alerta' if limites.alertas == 1 else 'alertas'}. "
+            "Apague algum ou conheça os planos Plus e Pro."
+        )
+
+
 def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -> None:
     """Levanta `LimiteDoPlanoError` se a lista de favoritos CRESCERIA além do limite do plano.
 
@@ -205,6 +220,10 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha(
             "Listas do Research",
             lambda l: f"{l.watchlists} de até {l.ativos_por_watchlist} ativos",
+        ),
+        linha(
+            "Alertas compostos",
+            lambda l: str(l.alertas),
         ),
         linha("Exportar CSV", lambda l: "Sim"),
     ]

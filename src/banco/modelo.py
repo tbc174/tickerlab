@@ -132,6 +132,19 @@ watchlists = sa.Table(
     sa.UniqueConstraint("usuario_id", "nome"),
 )
 
+# Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
+alertas = sa.Table(
+    "alertas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("nome", sa.String(80), nullable=False),
+    sa.Column("regra", JSON_PORTATIL, nullable=False),
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    sa.UniqueConstraint("usuario_id", "nome"),
+)
+
 # Research (0010): demonstrações financeiras da CVM (DFP e ITR), dados públicos
 demonstracoes = sa.Table(
     "demonstracoes",

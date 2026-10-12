@@ -12,8 +12,10 @@ from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 
+from src.alertas import Regra, RegraInvalidaError, validar
 from src.banco.modelo import (
     TIPOS_DE_RELATORIO,
+    alertas,
     favoritos,
     preferencias,
     presets,
@@ -22,6 +24,7 @@ from src.banco.modelo import (
     watchlists,
 )
 from src.planos import (
+    conferir_alerta,
     conferir_favoritos,
     conferir_parametros_por_ativo,
     conferir_relatorio,
@@ -628,6 +631,82 @@ def apagar_watchlist(
         conexao.execute(
             sa.delete(watchlists).where(
                 watchlists.c.id == watchlist_id, watchlists.c.usuario_id == usuario_id
+            )
+        ).rowcount
+        == 1
+    )
+
+
+# --- alertas compostos do Research (etapa 6) -----------------------------------------------------
+@dataclass(frozen=True)
+class AlertaSalvo:
+    id: uuid.UUID
+    regra: Regra
+
+
+def listar_alertas(conexao: sa.Connection, usuario_id: uuid.UUID) -> list[AlertaSalvo]:
+    return [
+        AlertaSalvo(l.id, Regra.de_guardada(l.nome, dict(l.regra)))
+        for l in conexao.execute(
+            sa.select(alertas)
+            .where(alertas.c.usuario_id == usuario_id)
+            .order_by(alertas.c.criado_em, alertas.c.nome)
+        )
+    ]
+
+
+def salvar_alerta(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    regra: Regra,
+    plano: str | None = None,
+    alerta_id: uuid.UUID | None = None,
+    agora: datetime | None = None,
+) -> uuid.UUID:
+    """Cria o alerta (sem `alerta_id`) ou troca um alerta seu. Confere a regra e o plano."""
+    try:
+        regra = validar(regra)
+    except RegraInvalidaError as erro:
+        raise DadosInvalidosError(str(erro)) from erro
+    agora = agora or _agora()
+    existentes = listar_alertas(conexao, usuario_id)
+    if plano is not None and alerta_id is None:
+        conferir_alerta(plano, len(existentes))
+    if any(
+        a.regra.nome.lower() == regra.nome.lower() and a.id != alerta_id
+        for a in existentes
+    ):
+        raise DadosInvalidosError(f'Você já tem um alerta chamado "{regra.nome}".')
+    valores = {
+        "nome": regra.nome,
+        "regra": regra.para_guardar(),
+        "atualizado_em": agora,
+    }
+    if alerta_id is None:
+        novo = uuid.uuid4()
+        conexao.execute(
+            sa.insert(alertas).values(
+                id=novo, usuario_id=usuario_id, criado_em=agora, **valores
+            )
+        )
+        return novo
+    alterou = conexao.execute(
+        sa.update(alertas)
+        .where(alertas.c.id == alerta_id, alertas.c.usuario_id == usuario_id)
+        .values(**valores)
+    ).rowcount
+    if alterou != 1:
+        raise DadosInvalidosError("Alerta não encontrado.")
+    return alerta_id
+
+
+def apagar_alerta(
+    conexao: sa.Connection, usuario_id: uuid.UUID, alerta_id: uuid.UUID
+) -> bool:
+    return (
+        conexao.execute(
+            sa.delete(alertas).where(
+                alertas.c.id == alerta_id, alertas.c.usuario_id == usuario_id
             )
         ).rowcount
         == 1

@@ -16,6 +16,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 | Identificador da conta Google | Login com o Google | Reconhecer você nos próximos acessos |
 | Ativo, período e opções que você escolhe (inclusive a configuração salva do estúdio de relatórios e se você já viu o tutorial) | Você, no app | Lembrar as suas preferências |
 | Parâmetros de análise do Research (o seu padrão e os de cada ativo), com o histórico de versões | Você, na página Parâmetros | Calcular as análises do jeito que você escolheu e permitir voltar a uma versão anterior |
+| Alertas do Research (nome e as condições de cada regra) | Você, na página Alertas | Avaliar as suas regras nos ativos das suas listas |
 | Listas do Research (nome e códigos dos ativos que você acompanha) | Você, na página Acontecimentos | Mostrar os eventos das empresas da lista. Não são posições nem valores da sua carteira |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
 | Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções). O PDF não é guardado | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite. Da sua carteira da B3 não guardamos nem os ativos |
@@ -43,7 +44,7 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 
 ## Por quanto tempo guardamos
 
-Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, o registro dos relatórios gerados e assinatura, e encerramos a cobrança no Stripe. Fica apenas um registro técnico de segurança, sem nome nem e-mail, que mostra que uma conta foi apagada.
+Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros e os alertas do Research, o registro dos relatórios gerados e a assinatura, e encerramos a cobrança no Stripe. Fica apenas um registro técnico de segurança, sem nome nem e-mail, que mostra que uma conta foi apagada.
 
 ## Seus direitos (LGPD, art. 18)
 

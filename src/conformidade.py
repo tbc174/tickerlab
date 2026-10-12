@@ -12,6 +12,7 @@ import sqlalchemy as sa
 
 from src import auditoria
 from src.banco.modelo import (
+    alertas,
     assinaturas,
     favoritos,
     preferencias,
@@ -115,6 +116,19 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(simulacoes)
                 .where(simulacoes.c.usuario_id == usuario_id)
                 .order_by(simulacoes.c.criada_em)
+            )
+        ],
+        "alertas_do_research": [
+            {
+                "nome": l.nome,
+                "regra": dict(l.regra),
+                "criado_em": _texto(l.criado_em),
+                "atualizado_em": _texto(l.atualizado_em),
+            }
+            for l in conexao.execute(
+                sa.select(alertas)
+                .where(alertas.c.usuario_id == usuario_id)
+                .order_by(alertas.c.criado_em)
             )
         ],
         "listas_do_research": [
