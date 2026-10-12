@@ -50,10 +50,14 @@ def upgrade() -> None:
         sa.Column("valor", sa.Float, nullable=False),
         sa.Column("quantidade", sa.Float, nullable=False),
         sa.PrimaryKeyConstraint(
-            "fonte", "competencia", "codigo", "tipo", "posicao", name="pk_maiores_detentores"
+            "fonte",
+            "competencia",
+            "codigo",
+            "tipo",
+            "posicao",
+            name="pk_maiores_detentores",
         ),
     )
-
 
     op.create_table(
         "cobertura_de_detentores",
@@ -66,7 +70,9 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.PrimaryKeyConstraint("fonte", "competencia", name="pk_cobertura_de_detentores"),
+        sa.PrimaryKeyConstraint(
+            "fonte", "competencia", name="pk_cobertura_de_detentores"
+        ),
     )
 
 
