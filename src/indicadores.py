@@ -264,3 +264,106 @@ def calcular_zscore(fechamento: pd.Series, janela: int = 20) -> pd.Series:
     media = fechamento.rolling(janela).mean()
     desvio = fechamento.rolling(janela).std(ddof=0)
     return (fechamento - media) / desvio.where(desvio > 0)
+
+
+# --- Research, etapa 6: indicadores novos -------------------------------------------------------
+def calcular_cvar_historico(retorno: pd.Series, nivel: float = 0.95) -> float:
+    """CVaR (perda média nos piores dias): a média dos retornos iguais ou piores que o VaR.
+
+    Responde "quando o dia é ruim, quanto se perde em média?". Vem negativo. Como o VaR, é uma
+    estimativa feita com o passado, não um limite de perda.
+    """
+    retorno = retorno.dropna()
+    if retorno.empty:
+        return float("nan")
+    corte = retorno.quantile(1 - nivel)
+    return float(retorno[retorno <= corte].mean())
+
+
+def _diferenca_ativa(retorno: pd.Series, referencia: pd.Series) -> pd.Series:
+    """Retorno do ativo menos o do índice, só nos dias em que os dois têm retorno."""
+    juntos = pd.concat([retorno, referencia], axis=1, join="inner").dropna()
+    return juntos.iloc[:, 0] - juntos.iloc[:, 1]
+
+
+def calcular_tracking_error(retorno: pd.Series, referencia: pd.Series) -> float:
+    """Tracking error anualizado: o quanto o ativo se descola do índice (desvio da diferença)."""
+    diferenca = _diferenca_ativa(retorno, referencia)
+    if len(diferenca) < 2:
+        return float("nan")
+    return float(diferenca.std() * np.sqrt(DIAS_POR_ANO))
+
+
+def calcular_information_ratio(retorno: pd.Series, referencia: pd.Series) -> float:
+    """Information Ratio: quanto o ativo rendeu acima do índice por unidade de tracking error.
+
+    Média anualizada da diferença diária ÷ tracking error. Positivo: rendeu mais que o índice com
+    aquele descolamento; perto de zero: o descolamento não rendeu nada a mais.
+    """
+    diferenca = _diferenca_ativa(retorno, referencia)
+    erro = calcular_tracking_error(retorno, referencia)
+    if len(diferenca) < 2 or not erro:
+        return float("nan")
+    return float(diferenca.mean() * DIAS_POR_ANO / erro)
+
+
+def calcular_adx(dados: pd.DataFrame, janela: int = 14) -> pd.DataFrame:
+    """ADX (força da tendência, de 0 a 100) e as direções +DI e -DI, com a suavização de Wilder.
+
+    O ADX não diz se a tendência é de alta ou de baixa (isso é o +DI contra o -DI), só se ela é
+    forte: abaixo de ~20 o preço anda de lado; acima de ~25, há tendência. Os primeiros dias ficam
+    vazios (o ADX precisa de duas janelas de histórico).
+    """
+    alta = dados["High"].diff()
+    baixa = -dados["Low"].diff()
+    mais = alta.where((alta > baixa) & (alta > 0), 0.0)
+    menos = baixa.where((baixa > alta) & (baixa > 0), 0.0)
+    atr = calcular_atr(dados, janela)
+    suavizar = {"alpha": 1 / janela, "adjust": False}
+    mais_di = 100 * mais.ewm(**suavizar).mean() / atr
+    menos_di = 100 * menos.ewm(**suavizar).mean() / atr
+    soma = (mais_di + menos_di).where(lambda s: s > 0)
+    dx = 100 * (mais_di - menos_di).abs() / soma
+    adx = dx.ewm(**suavizar).mean()
+    adx = adx.where(dx.expanding().count() >= janela)
+    return pd.DataFrame({"adx": adx, "mais_di": mais_di, "menos_di": menos_di})
+
+
+def calcular_obv(dados: pd.DataFrame) -> pd.Series:
+    """OBV (saldo de volume): soma o volume dos dias de alta e subtrai o dos dias de queda.
+
+    O nível em si não importa (depende de onde começa); o que se lê é a direção: OBV subindo com
+    o preço parado indica volume maior nos dias de alta.
+    """
+    variacao = np.sign(dados["Close"].diff()).fillna(0.0)
+    return (variacao * dados["Volume"]).cumsum()
+
+
+def calcular_volume_relativo(dados: pd.DataFrame, janela: int = 20) -> pd.Series:
+    """Volume do dia ÷ média dos `janela` dias anteriores (1 = normal; 2 = o dobro do normal)."""
+    media_anterior = dados["Volume"].rolling(janela).mean().shift(1)
+    return dados["Volume"] / media_anterior.where(media_anterior > 0)
+
+
+def para_semanal(dados: pd.DataFrame) -> pd.DataFrame:
+    """Barras semanais (semana terminando na sexta) a partir das diárias: abertura da primeira,
+    máxima e mínima da semana, fechamento do último pregão e volume somado.
+
+    A data de cada barra é a do **último pregão** da semana (não a sexta "de calendário"), para
+    nenhuma barra parecer existir antes de o pregão acontecer.
+    """
+    regras = {
+        "Open": "first",
+        "High": "max",
+        "Low": "min",
+        "Close": "last",
+        "Volume": "sum",
+    }
+    colunas = {c: f for c, f in regras.items() if c in dados.columns}
+    semanas = dados[list(colunas)].groupby(pd.Grouper(freq="W-FRI"))
+    barras = semanas.agg(colunas)
+    ultimo_pregao = semanas.apply(lambda g: g.index.max() if len(g) else pd.NaT)
+    barras.index = pd.DatetimeIndex(ultimo_pregao, name=dados.index.name)
+    barras = barras[barras.index.notna()].dropna(subset=["Close"])
+    barras.attrs = dict(dados.attrs)
+    return barras
