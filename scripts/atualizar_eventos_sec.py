@@ -13,16 +13,22 @@ import argparse
 import logging
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import requests
 import sqlalchemy as sa
 
 from src import catalogo
 from src import eventos_sec as sec
 from src.banco.conexao import criar_engine, migrar_para
-from src.banco.eventos import ORIGEM_SEC, gravar_eventos, gravar_tickers
+from src.banco.eventos import (
+    ORIGEM_SEC,
+    gravar_eventos,
+    gravar_tickers,
+    versoes_gravadas,
+)
 from src.configuracao import contato, url_do_banco
 
 log = logging.getLogger("tickerlab.sec")
@@ -39,6 +45,38 @@ def baixar(url: str, agente: str) -> bytes:
     )
     resposta.raise_for_status()
     return resposta.content
+
+
+def so_participacoes_na_empresa(
+    tabela: pd.DataFrame, cik: int, agente: str, ja_gravados: set[str]
+) -> pd.DataFrame:
+    """Tira os 13D/13G que a própria empresa entregou sobre outras (confere o cabeçalho de cada
+    um que ainda não está no banco)."""
+    manter = []
+    for linha in tabela.itertuples(index=False):
+        if not sec.e_participacao(linha.categoria) or linha.protocolo in ja_gravados:
+            manter.append(True)
+            continue
+        time.sleep(PAUSA_ENTRE_CONSULTAS)
+        endereco = sec.URL_DO_CABECALHO.format(
+            cik=cik, pasta=linha.protocolo.replace("-", ""), protocolo=linha.protocolo
+        )
+        cabecalho = baixar(endereco, agente).decode("latin-1")
+        manter.append(sec.empresa_alvo(cabecalho) == cik)
+    return tabela[manter]
+
+
+def coletar_empresa(motor: sa.Engine, cik: int, agente: str, desde: date) -> int:
+    """Lê os documentos de uma empresa e grava os eventos novos. Devolve quantos entraram."""
+    time.sleep(PAUSA_ENTRE_CONSULTAS)
+    tabela = sec.ler_documentos(
+        baixar(sec.URL_DOS_DOCUMENTOS.format(cik=cik), agente), desde
+    )
+    with motor.connect() as conexao:
+        ja_gravados = set(versoes_gravadas(conexao, sec.FONTE_SEC, tabela["protocolo"]))
+    tabela = so_participacoes_na_empresa(tabela, cik, agente, ja_gravados)
+    with motor.begin() as conexao:
+        return gravar_eventos(conexao, tabela, fonte=sec.FONTE_SEC)[0]
 
 
 def tickers_dos_eua() -> set[str]:
@@ -77,21 +115,13 @@ def main(argv: list[str] | None = None) -> int:
             )
         novos = falhas = 0
         for cnpj in sorted(set(mapa["cnpj"])):
-            time.sleep(PAUSA_ENTRE_CONSULTAS)
             try:
-                conteudo = baixar(
-                    sec.URL_DOS_DOCUMENTOS.format(
-                        cik=int(cnpj.removeprefix(sec.PREFIXO_DO_CIK))
-                    ),
-                    agente,
+                novos += coletar_empresa(
+                    motor, int(cnpj.removeprefix(sec.PREFIXO_DO_CIK)), agente, desde
                 )
-                tabela = sec.ler_documentos(conteudo, desde)
             except (requests.RequestException, ValueError, KeyError) as erro:
                 falhas += 1
                 log.warning("%s pulada: %s", cnpj, erro.__class__.__name__)
-                continue
-            with motor.begin() as conexao:
-                novos += gravar_eventos(conexao, tabela, fonte=sec.FONTE_SEC)[0]
         log.info(
             "SEC: %s empresas, %s eventos novos, %s falhas",
             len(set(mapa["cnpj"])),

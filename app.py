@@ -5683,6 +5683,7 @@ ROTULOS_DAS_OPCOES = {
     "tecnica": "Técnica",
     "valuation": "Valuation",
     "fundamentos": "Fundamentos",
+    "participacoes": "Participações",
 }
 NOMES_DOS_ESCOPOS_NA_TELA = {
     research_presets.GLOBAL: "Seu padrão (todos os ativos)",
@@ -6148,6 +6149,7 @@ NOMES_DOS_TEMAS = {
     "tecnica": "Técnica",
     "valuation": "Valuation",
     "fundamentos": "Fundamentos",
+    "participacoes": "Participações",
 }
 
 
@@ -6324,7 +6326,8 @@ def pagina_research():
     )
     if nome == research.NOME_DA_DEMONSTRACAO:
         st.caption(
-            "Lista de demonstração: cinco empresas grandes da B3, com eventos reais e públicos. "
+            "Lista de demonstração: cinco empresas grandes da B3 e duas dos EUA, com eventos "
+            "reais e públicos. "
             "Nada aqui é sobre a sua carteira."
         )
     hoje = datetime.now(relatorios.FUSO).date()
@@ -6360,7 +6363,8 @@ def pagina_research():
         ultima = ultima.replace(tzinfo=UTC)
     st.caption(
         "Fontes: dados abertos da CVM (empresas da B3: fatos relevantes, comunicados, avisos, "
-        "proventos e resultados) e da SEC (empresas dos EUA: 8-K, 10-K e 10-Q), coletados em"
+        "proventos, resultados e balanços entregues fora do prazo) e da SEC (empresas dos EUA: "
+        "8-K, 10-K, 10-Q, avisos de atraso e participações de 5% ou mais), coletados em"
         f" {ultima.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}. "
         "A ordem segue os seus pesos de relevância (página Parâmetros)."
     )

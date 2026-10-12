@@ -127,6 +127,7 @@ TEMAS = (
     "tecnica",
     "valuation",
     "fundamentos",
+    "participacoes",  # pessoas de dentro e grandes acionistas
 )
 
 PARAMETROS: tuple[ParametroConfiguravel, ...] = (
@@ -218,7 +219,8 @@ PARAMETROS: tuple[ParametroConfiguravel, ...] = (
        opcoes=("sob_demanda", "semanal", "diaria", "gatilhos")),
     _p("newsletter.max_itens", "Itens por edição", "inteiro", 7,
        "Mais itens dão mais cobertura e menos foco.", minimo=1, maximo=20),
-    _p("newsletter.temas", "Temas", "temas", ("resultados", "proventos", "risco"),
+    _p("newsletter.temas", "Temas", "temas",
+       ("resultados", "proventos", "risco", "participacoes"),
        "Os assuntos que entram na edição.", opcoes=TEMAS),
     _p("newsletter.canal", "Onde ler", "escolha", "web",
        "No site ou em PDF. E-mail chega numa etapa futura, com opt-in.",

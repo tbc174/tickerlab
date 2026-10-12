@@ -1,4 +1,5 @@
-"""Coleta as demonstrações financeiras da CVM (DFP e ITR) e o setor de cada companhia.
+"""Coleta as demonstrações financeiras da CVM (DFP e ITR), o setor de cada companhia e os alertas
+de entrega fora do prazo (eventos do Research, `src/prazos.py`).
 
     python -m scripts.atualizar_fundamentos            (DFP e ITR do ano atual e do anterior)
     python -m scripts.atualizar_fundamentos --anos 6   (primeira carga: 6 anos de DFP)
@@ -18,8 +19,10 @@ import requests
 import sqlalchemy as sa
 
 from src import demonstracoes as dm
+from src import prazos
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import gravar_demonstracoes, gravar_setores
+from src.banco.eventos import gravar_eventos
 from src.configuracao import url_do_banco
 
 log = logging.getLogger("tickerlab.fundamentos")
@@ -72,11 +75,15 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 continue
             contas, documentos = dm.ler_demonstracoes(conteudo, documento)
+            atrasos = prazos.eventos_de_atraso(
+                dm.ler_primeiras_entregas(conteudo, documento)
+            )
             with motor.begin() as conexao:
                 mudaram = gravar_demonstracoes(conexao, contas, documentos)
+                alertas = gravar_eventos(conexao, atrasos, fonte=prazos.FONTE_PRAZO)[0]
             log.info(
-                "%s %s: %s documentos lidos, %s novos ou atualizados",
-                documento, ano_do_arquivo, len(documentos), mudaram,
+                "%s %s: %s documentos lidos, %s novos ou atualizados, %s alertas de atraso novos",
+                documento, ano_do_arquivo, len(documentos), mudaram, alertas,
             )  # fmt: skip
     except (requests.RequestException, ValueError, sa.exc.SQLAlchemyError) as erro:
         log.error("Coleta interrompida: %s", erro)

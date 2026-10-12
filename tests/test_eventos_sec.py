@@ -64,6 +64,26 @@ def test_anexos_e_formularios_de_pouco_interesse_nao_viram_evento(formulario, it
     assert sec.classificar(formulario, itens) is None
 
 
+def test_alertas_e_participacoes():
+    assert sec.classificar("8-K", "4.01,9.01").rotulo == "Troca de auditor"
+    assert sec.classificar("NT 10-K", "").tema == "risco"
+    ativo, passivo = (
+        sec.classificar("SC 13D/A", ""),
+        sec.classificar("SCHEDULE 13G", ""),
+    )
+    assert (ativo.tema, ativo.materialidade) == ("participacoes", 70)
+    assert passivo.materialidade < ativo.materialidade
+    assert sec.e_participacao("SC 13G/A") and not sec.e_participacao("8-K")
+
+
+def test_cabecalho_diz_a_empresa_alvo():
+    cabecalho = (PASTA / "cabecalho_13g.hdr.sgml").read_text(encoding="latin-1")
+    assert (
+        sec.empresa_alvo(cabecalho) == 320193
+    )  # a Apple; quem entregou foi a Vanguard
+    assert sec.empresa_alvo("<SEC-HEADER>sem empresa-alvo") is None
+
+
 def test_mapa_de_tickers_usa_o_codigo_do_yahoo_e_o_cik_no_lugar_do_cnpj(mapa):
     linhas = mapa.set_index("ticker")
     assert linhas.loc["AAPL", "cnpj"] == APPLE
@@ -76,9 +96,12 @@ def test_mapa_de_tickers_usa_o_codigo_do_yahoo_e_o_cik_no_lugar_do_cnpj(mapa):
 
 
 def test_documentos_da_apple(apple):
-    # 16 8-K e 1 8-K/A (todos com item que interessa), 6 10-Q e 1 10-K desde 2025; formulários 4, 144 etc. ficam fora
-    assert len(apple) == 24 and apple["protocolo"].is_unique
-    assert set(apple["categoria"]) == {"8-K", "8-K/A", "10-Q", "10-K"}
+    # desde 2025: 16 8-K e 1 8-K/A (todos com item que interessa), 6 10-Q, 1 10-K e 3 13G de
+    # investidores (1 novo e 2 atualizações); formulários 4, 144 etc. ficam fora
+    assert len(apple) == 27 and apple["protocolo"].is_unique
+    assert set(apple["categoria"]) == {
+        "8-K", "8-K/A", "10-Q", "10-K", "SCHEDULE 13G", "SCHEDULE 13G/A",
+    }  # fmt: skip
     assert (apple["cnpj"] == APPLE).all() and (
         apple["publicado_em"] >= DESDE_2025
     ).all()
@@ -92,6 +115,13 @@ def test_documentos_da_apple(apple):
     assert (resultado["tema"], resultado["assunto"]) == ("resultados", "Resultados")
     reapresentado = apple[apple["categoria"] == "8-K/A"].iloc[0]
     assert reapresentado["versao"] == 2 and "reapresentação" in reapresentado["rotulo"]
+    atualizacao = apple[apple["categoria"] == "SCHEDULE 13G/A"].iloc[0]
+    assert atualizacao["versao"] == 1  # "/A" num 13G é atualização, não reapresentação
+    assert (
+        atualizacao["tema"] == "participacoes"
+        and "(atualização)" in atualizacao["rotulo"]
+    )
+    assert (apple["rotulo"].str.len() <= 60).all()  # cabe na coluna do PostgreSQL
     recentes = sec.ler_documentos(
         (PASTA / "CIK0000320193.json").read_bytes(), date(2026, 7, 1)
     )
@@ -144,7 +174,7 @@ def test_coleta_se_identifica_e_pula_a_empresa_que_falha(tmp_path, monkeypatch):
     monkeypatch.setenv("TICKERLAB_DATABASE_URL", url)
     monkeypatch.setenv("TICKERLAB_CONTATO", "contato@tickerlab.com.br")
     monkeypatch.setattr(atualizar_eventos_sec, "PAUSA_ENTRE_CONSULTAS", 0)
-    agentes = set()
+    agentes, cabecalhos = set(), []
 
     def baixar_falso(endereco: str, agente: str) -> bytes:
         agentes.add(agente)
@@ -152,17 +182,26 @@ def test_coleta_se_identifica_e_pula_a_empresa_que_falha(tmp_path, monkeypatch):
             return (PASTA / "company_tickers.json").read_bytes()
         if endereco == sec.URL_DOS_DOCUMENTOS.format(cik=320193):
             return (PASTA / "CIK0000320193.json").read_bytes()
+        if endereco.endswith(".hdr.sgml"):
+            cabecalhos.append(endereco)
+            cabecalho = (PASTA / "cabecalho_13g.hdr.sgml").read_bytes()
+            if "0000932471-25-000778" in endereco:  # este finge ser sobre outra empresa
+                cabecalho = cabecalho.replace(b"<CIK>0000320193", b"<CIK>0000789019")
+            return cabecalho
         raise requests.HTTPError("503")  # as outras empresas falham e são puladas
 
     monkeypatch.setattr(atualizar_eventos_sec, "baixar", baixar_falso)
     assert atualizar_eventos_sec.main(["--dias", "3650"]) == 0
     assert agentes == {"TickerLab contato@tickerlab.com.br"}
     with criar_engine(url).connect() as c:
-        assert c.execute(sa.text("select count(*) from eventos")).scalar() == 24
+        assert c.execute(sa.text("select count(*) from eventos")).scalar() == 26
         assert (
             c.execute(sa.text("select count(*) from tickers_dos_emissores")).scalar()
             == 6
         )
+    assert len(cabecalhos) == 3  # só os 13G pedem o cabeçalho
+    assert atualizar_eventos_sec.main(["--dias", "3650"]) == 0
+    assert len(cabecalhos) == 4  # de novo: só o recusado (não guardado) pede outra vez
 
 
 # --- telas -------------------------------------------------------------------------------------

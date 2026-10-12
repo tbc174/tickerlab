@@ -302,7 +302,16 @@ def _documentos(indice: pd.DataFrame, documento: str) -> pd.DataFrame:
     ]
     if indice.empty:
         return pd.DataFrame(columns=colunas)
-    tabela = pd.DataFrame(
+    tabela = _todas_as_versoes(indice, documento)
+    tabela = tabela.sort_values("versao").drop_duplicates(
+        ["cnpj", "referencia"], keep="last"
+    )
+    return tabela[colunas].reset_index(drop=True)
+
+
+def _todas_as_versoes(indice: pd.DataFrame, documento: str) -> pd.DataFrame:
+    """O índice da CVM com nomes nossos, uma linha por versão de cada documento."""
+    return pd.DataFrame(
         {
             "cnpj": indice["CNPJ_CIA"].str.strip(),
             "empresa": indice["DENOM_CIA"].str.strip(),
@@ -317,9 +326,22 @@ def _documentos(indice: pd.DataFrame, documento: str) -> pd.DataFrame:
             .str.replace("http://", "https://", n=1),
         }
     )
-    tabela = tabela.sort_values("versao").drop_duplicates(
-        ["cnpj", "referencia"], keep="last"
-    )
+
+
+def ler_primeiras_entregas(conteudo_do_zip: bytes, documento: str) -> pd.DataFrame:
+    """A primeira entrega de cada documento (versão 1) do índice de um arquivo de DFP ou ITR.
+
+    Colunas: cnpj, empresa, documento, referencia, primeira_entrega, link. O índice da CVM guarda
+    todas as versões; a primeira é a que conta para o prazo.
+    """
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        indice = _ler(arquivo, f"{documento.lower()}_cia_aberta_20")
+    colunas = ["cnpj", "empresa", "documento", "referencia", "primeira_entrega", "link"]
+    if indice.empty:
+        return pd.DataFrame(columns=colunas)
+    tabela = _todas_as_versoes(indice, documento)
+    tabela = tabela.sort_values("versao").drop_duplicates(["cnpj", "referencia"])
+    tabela = tabela.rename(columns={"recebido_em": "primeira_entrega"})
     return tabela[colunas].reset_index(drop=True)
 
 
