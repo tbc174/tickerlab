@@ -43,6 +43,12 @@ def tickers(conexao: sa.Connection) -> set[str]:
     return set(conexao.execute(sa.select(tickers_sob_demanda.c.ticker)).scalars())
 
 
+def total(conexao: sa.Connection) -> int:
+    """Quantas ações buscadas sob demanda estão na coleta diária (para o teto total)."""
+    consulta = sa.select(sa.func.count()).select_from(tickers_sob_demanda)
+    return int(conexao.execute(consulta).scalar() or 0)
+
+
 def pedidos_desde(conexao: sa.Connection, desde: datetime) -> int:
     """Quantas buscas novas desde `desde` (para o limite por hora, que protege a SEC)."""
     consulta = sa.select(sa.func.count()).where(

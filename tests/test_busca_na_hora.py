@@ -114,6 +114,28 @@ def test_limite_por_hora_protege_a_sec(motor, mapa):
     assert pedidos == []
 
 
+def test_teto_total_impede_a_coleta_diaria_de_crescer_sem_limite(
+    motor, mapa, monkeypatch
+):
+    """Cada ação buscada fica na coleta diária para sempre: há um teto total."""
+    monkeypatch.setattr(coleta_sec, "MAXIMO_SOB_DEMANDA", 3)
+    with motor.begin() as c:
+        for i in range(3):
+            sob_demanda.registrar(c, f"T{i}", f"CIK{i:010d}", "X")
+    pedidos = []
+    with pytest.raises(coleta_sec.BuscaRecusada, match="máximo de ações"):
+        coleta_sec.buscar_agora(
+            motor,
+            _cliente(pedidos),
+            "SOFI",
+            mapa,
+            datetime.now(UTC) + timedelta(hours=2),  # fora da janela do limite por hora
+        )
+    assert pedidos == []  # nada foi pedido à SEC
+    with motor.connect() as c:
+        assert sob_demanda.total(c) == 3
+
+
 def test_coleta_diaria_inclui_as_buscadas(tmp_path, monkeypatch, mapa):
     url = f"sqlite:///{(tmp_path / 'd.sqlite').as_posix()}"
     monkeypatch.setenv("TICKERLAB_DATABASE_URL", url)

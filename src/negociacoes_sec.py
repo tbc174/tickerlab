@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 from datetime import date
 
 import pandas as pd
+from defusedxml import ElementTree as XmlSeguro
 
 from src.negociacoes import COLUNAS, COMPRA, FONTE_FORM4, VENDA, tabela_vazia
 
@@ -94,7 +95,8 @@ def ler_form4(
 ) -> pd.DataFrame:
     """As compras (P) e vendas (S) de um Form 4, no formato comum; vazio se não houver nenhuma
     ou se o formulário for sobre outra empresa (quem é dono de 10% de outra entrega Form 4 dela)."""
-    raiz = ET.fromstring(conteudo_xml)
+    # defusedxml: o mesmo leitor, mas recusa XML malicioso (entidades que explodem de tamanho)
+    raiz = XmlSeguro.fromstring(conteudo_xml)
     emissor = raiz.find("issuer")
     if pd.to_numeric(_texto(emissor, "issuerCik"), errors="coerce") != cik:
         return tabela_vazia()

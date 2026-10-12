@@ -19,6 +19,7 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import requests
 import sqlalchemy as sa
+from defusedxml import DefusedXmlException
 
 from src import eventos_sec as sec
 from src import fundamentos_sec, leitura
@@ -117,7 +118,7 @@ def _ler_um_form4(
     link = sec.URL_DO_ARQUIVO.format(cik=cik, pasta=pasta, documento=documento)
     try:
         return form4.ler_form4(conteudo, cik, protocolo, entregue_em, link)
-    except ET.ParseError:
+    except (ET.ParseError, DefusedXmlException):  # quebrado ou malicioso
         log.warning("Form 4 %s ilegível: pulado", protocolo)
         return ng.tabela_vazia()
 
@@ -293,6 +294,9 @@ def coletar_empresa(
 
 # --- busca na hora (R4) ----------------------------------------------------------------------
 BUSCAS_POR_HORA = 30  # ações novas por hora no servidor inteiro: protege o acesso à SEC
+# cada ação buscada fica na coleta diária; sem teto, a coleta das 7h20 (500 empresas do S&P 500)
+# cresceria sem limite (revisão de 12/10/2026, achado 1)
+MAXIMO_SOB_DEMANDA = 300
 FORM4_NA_BUSCA = 10  # os mais recentes; o resto vem na coleta diária
 DIAS_DE_EVENTOS = 400
 DIAS_DO_FORM4 = 90
@@ -313,13 +317,19 @@ def buscar_agora(
     """Busca na SEC uma ação dos EUA que ainda não está na base e a põe na coleta diária.
 
     `mapa`: o `company_tickers.json` lido (`eventos_sec.ler_tickers`). Devolve (empresa, eventos
-    novos, Form 4 lidos). Levanta `BuscaRecusada` se o ticker não está na SEC ou se o servidor já
-    fez `BUSCAS_POR_HORA` buscas na última hora.
+    novos, Form 4 lidos). Levanta `BuscaRecusada` se o ticker não está na SEC, se a coleta diária
+    já tem `MAXIMO_SOB_DEMANDA` ações buscadas ou se o servidor já fez `BUSCAS_POR_HORA` buscas na
+    última hora.
     """
     linha = mapa[mapa["ticker"] == ticker]
     if linha.empty:
         raise BuscaRecusada(f"{ticker} não está na lista de empresas da SEC.")
     with motor.connect() as conexao:
+        if sob_demanda.total(conexao) >= MAXIMO_SOB_DEMANDA:
+            raise BuscaRecusada(
+                "A coleta diária já tem o máximo de ações buscadas na hora "
+                f"({MAXIMO_SOB_DEMANDA}). Esta ação ainda não pode entrar."
+            )
         if sob_demanda.pedidos_desde(conexao, agora - UMA_HORA) >= BUSCAS_POR_HORA:
             raise BuscaRecusada(
                 "Muitas buscas novas nesta hora (limite que protege o acesso à SEC). "
