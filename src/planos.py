@@ -12,9 +12,13 @@ PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limit
 
 APRENDIZADO_DE_MAQUINA = "aprendizado_de_maquina"
 PARES = "pares"
+CARTEIRA_NO_RESEARCH = (
+    "carteira_no_research"  # Research, etapa 5 (PRD, seção 15: no Pro)
+)
 NOMES_DOS_RECURSOS = {
     APRENDIZADO_DE_MAQUINA: "Aprendizado de máquina",
     PARES: "Pairs trading",
+    CARTEIRA_NO_RESEARCH: "Carteira no Research",
 }
 
 
@@ -69,7 +73,7 @@ LIMITES_DOS_PLANOS = {
         simulacoes=None,
         favoritos=20,
         ativos_na_carteira=8,
-        recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES}),
+        recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH}),
         relatorios_por_dia=None,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
         ativos_com_parametros=50,
@@ -176,6 +180,15 @@ def conferir_alerta(plano: str | None, alertas_ja_criados: int) -> None:
         )
 
 
+def conferir_carteira(plano: str | None) -> None:
+    """Levanta `LimiteDoPlanoError` se o plano não guarda a carteira no Research."""
+    if not pode_usar(plano, CARTEIRA_NO_RESEARCH):
+        raise LimiteDoPlanoError(
+            f"O plano {limites_do(plano).nome} não guarda a carteira no Research. Ela faz "
+            "parte do Pro."
+        )
+
+
 def conferir_favoritos(plano: str | None, total_antes: int, total_depois: int) -> None:
     """Levanta `LimiteDoPlanoError` se a lista de favoritos CRESCERIA além do limite do plano.
 
@@ -216,6 +229,7 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Relatórios em PDF", relatorios),
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
+        linha("Carteira no Research", sim_nao(CARTEIRA_NO_RESEARCH)),
         linha("Parâmetros só para um ativo", lambda l: str(l.ativos_com_parametros)),
         linha(
             "Listas do Research",

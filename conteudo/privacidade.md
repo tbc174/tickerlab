@@ -17,9 +17,10 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 | Ativo, período e opções que você escolhe (inclusive a configuração salva do estúdio de relatórios e se você já viu o tutorial) | Você, no app | Lembrar as suas preferências |
 | Parâmetros de análise do Research (o seu padrão e os de cada ativo), com o histórico de versões | Você, na página Parâmetros | Calcular as análises do jeito que você escolheu e permitir voltar a uma versão anterior |
 | Alertas do Research (nome e as condições de cada regra) | Você, na página Alertas | Avaliar as suas regras nos ativos das suas listas |
+| Fotografia da carteira no Research (plano Pro): o código de cada ativo e o peso dele em %. **Nunca** a quantidade nem o valor em reais. Só com o seu consentimento próprio, cuja versão e hora ficam registradas | Você, na página Carteira do Research, a partir da planilha da B3 (lida só na memória) | Ordenar o Research pelo tamanho das suas posições e montar a Newsletter da carteira. Ao revogar o consentimento, a fotografia é apagada na hora |
 | Listas do Research (nome e códigos dos ativos que você acompanha) | Você, na página Acontecimentos | Mostrar os eventos das empresas da lista. Não são posições nem valores da sua carteira |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
-| Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções). O PDF não é guardado | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite. Da sua carteira da B3 não guardamos nem os ativos |
+| Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções). O PDF não é guardado | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite. Da planilha da B3 enviada para o relatório não guardamos nem os ativos |
 | Planilha de posição da B3, se você enviar (a sua carteira). A carteira de exemplo é fictícia | Você, em Gerar relatório | Montar o relatório da sua carteira. É lida **só na memória**, não é guardada e não vai para os registros (logs) |
 | Plano e situação da assinatura | O app e o Stripe | Liberar o que o seu plano inclui |
 | Versão dos termos aceita e data | Você, no aceite | Comprovar que você concordou |
@@ -44,7 +45,7 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 
 ## Por quanto tempo guardamos
 
-Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros e os alertas do Research, o registro dos relatórios gerados e a assinatura, e encerramos a cobrança no Stripe. Fica apenas um registro técnico de segurança, sem nome nem e-mail, que mostra que uma conta foi apagada.
+Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, o registro dos relatórios gerados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira foi dado e revogado (para provar que ele existiu).
 
 ## Seus direitos (LGPD, art. 18)
 

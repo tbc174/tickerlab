@@ -19,6 +19,7 @@ from src import administracao as adm
 from src import (
     alertas,
     aprendizado,
+    carteira_research,
     catalogo,
     coleta_sec,
     detentores,
@@ -69,6 +70,7 @@ from src.banco.dados_do_usuario import (
     apagar_simulacao,
     apagar_watchlist,
     biblioteca_de_relatorios,
+    carregar_carteira,
     carregar_preferencias,
     contar_relatorios_recentes,
     contar_simulacoes,
@@ -80,7 +82,9 @@ from src.banco.dados_do_usuario import (
     listar_watchlists,
     presets_atuais,
     registrar_relatorio,
+    revogar_carteira,
     salvar_alerta,
+    salvar_carteira,
     salvar_favoritos,
     salvar_preferencias,
     salvar_preset,
@@ -197,6 +201,7 @@ from src.paginas import (
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
+    CARTEIRA_NO_RESEARCH,
     NOMES_DOS_RECURSOS,
     PARES,
     PLANO_DO_MODO_LOCAL,
@@ -4649,11 +4654,12 @@ def _montar_newsletter(c):
         key="relatorio_newsletter_janela",
     )
     nome, tickers, _ = listas[nomes.index(escolhida)]
+    carteira = _carteira_da_lista(nome)  # lida aqui, fora da montagem do PDF
 
     def montar(config, ao_avancar):
         if ao_avancar:
             ao_avancar("Lendo os documentos")
-        edicao = _edicao(nome, tickers, janela)
+        edicao = _edicao(nome, tickers, janela, carteira)
         if edicao is None:
             raise ValueError("Os documentos ainda não foram coletados neste servidor.")
         return relatorio_newsletter.relatorio_da_newsletter(
@@ -6316,7 +6322,10 @@ def _listas_do_research(usuario):
     listas = [(research.NOME_DA_DEMONSTRACAO, list(research.DEMONSTRACAO), None)]
     favoritos = [normalizar_ticker(t) for t in st.session_state.get("favoritos", [])]
     if favoritos:
-        listas.append(("Favoritos", favoritos, None))
+        listas.append((research.NOME_DOS_FAVORITOS, favoritos, None))
+    carteira = _carteira_do_research(usuario)
+    if carteira is not None:
+        listas.append((research.NOME_DA_CARTEIRA, list(carteira.pesos), None))
     if usuario is not None:
         try:
             with obter_engine().connect() as conexao:
@@ -6328,6 +6337,24 @@ def _listas_do_research(usuario):
             logging.getLogger(__name__).exception("Falha ao ler as listas")
             st.warning("Não consegui ler as suas listas agora.")
     return listas
+
+
+def _carteira_do_research(usuario):
+    """A fotografia guardada (só pesos), se há conta, o plano permite e o consentimento vale."""
+    if usuario is None or not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        return None
+    try:
+        with obter_engine().connect() as conexao:
+            return carregar_carteira(conexao, usuario.id)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None  # banco sem a tabela (modo local sem migrar)
+
+
+def _carteira_da_lista(nome):
+    """A fotografia, quando a lista escolhida é a carteira (para pesar a exposição)."""
+    if nome != research.NOME_DA_CARTEIRA:
+        return None
+    return _carteira_do_research(st.session_state.get("usuario"))
 
 
 def _analisar_do_research(ticker):
@@ -6522,6 +6549,12 @@ def pagina_research():
             "reais e públicos. "
             "Nada aqui é sobre a sua carteira."
         )
+    carteira = _carteira_da_lista(nome)
+    if carteira is not None:
+        st.caption(
+            f"Fotografia da sua carteira de {carteira.enviada_em:%d/%m/%Y}: as maiores "
+            "posições pesam mais na ordem (página Minha carteira)."
+        )
     hoje = datetime.now(relatorios.FUSO).date()
     try:
         with obter_engine().connect() as conexao:
@@ -6575,6 +6608,7 @@ def pagina_research():
         janela,
         nome,
         maximo_por_ativo=None if todos else research.MAXIMO_POR_EMPRESA,
+        carteira=carteira,
     )
     if not itens:
         st.info(
@@ -7580,7 +7614,7 @@ def _fontes_da_edicao(conexao):
     return tuple(fontes)
 
 
-def _edicao(nome, tickers, janela):
+def _edicao(nome, tickers, janela, carteira=None):
     """A edição da lista, lida do banco (None se o banco ainda não tem as tabelas)."""
     r = parametros_em_vigor(None)
     hoje = datetime.now(relatorios.FUSO).date()
@@ -7611,6 +7645,7 @@ def _edicao(nome, tickers, janela):
             fontes=fontes,
             cobertos=tuple(t for t in tickers if t in empresas),
             resumos=resumos,
+            carteira=carteira,
         )
     )
 
@@ -7658,7 +7693,7 @@ def pagina_newsletter():
         key="newsletter_janela",
         help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
     )
-    edicao = _edicao(nome, tickers, janela)
+    edicao = _edicao(nome, tickers, janela, _carteira_da_lista(nome))
     if edicao is None:
         st.info(
             "Os documentos ainda não foram coletados neste servidor.",
@@ -7920,6 +7955,145 @@ def pagina_alertas():
         )
 
 
+# --- Research: Minha carteira (etapa 5, decisão 0020) ----------------------------------------
+def guardar_fotografia(usuario, conteudo, nome_do_arquivo):
+    """Lê a planilha na memória e guarda só os pesos. Devolve a mensagem para a tela."""
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        foto = carteira_research.fotografia(
+            ler_carteira(conteudo, nome_do_arquivo), hoje
+        )
+        with obter_engine().begin() as conexao:
+            salvar_carteira(conexao, usuario.id, foto, plano_atual())
+    except (ArquivoDaB3Error, DadosInvalidosError, LimiteDoPlanoError) as erro:
+        return False, str(erro)
+    return (
+        True,
+        f"Fotografia guardada: {len(foto.pesos)} ativos, sem quantidades nem valores.",
+    )
+
+
+def _guardar_da_tela(usuario):
+    arquivo = st.session_state.get("minha_carteira_arquivo")
+    if arquivo is None:
+        return
+    st.session_state["minha_carteira_mensagem"] = guardar_fotografia(
+        usuario, arquivo.getvalue(), arquivo.name
+    )
+
+
+def _revogar_da_tela(usuario):
+    with obter_engine().begin() as conexao:
+        revogar_carteira(conexao, usuario.id)
+    st.session_state["minha_carteira_mensagem"] = (
+        True,
+        "Consentimento revogado: a fotografia da carteira foi apagada.",
+    )
+    st.session_state["minha_carteira_confirma"] = False
+
+
+def _mostrar_fotografia(foto):
+    tabela = pd.DataFrame(
+        {
+            "Ativo": [t.removesuffix(".SA") for t in foto.pesos],
+            "Peso na carteira": list(foto.pesos.values()),
+        }
+    )
+    st.dataframe(
+        tabela,
+        hide_index=True,
+        column_config={
+            "Peso na carteira": st.column_config.ProgressColumn(
+                format="percent", min_value=0.0, max_value=1.0
+            )
+        },
+    )
+    st.caption(
+        f"Fotografia de {foto.enviada_em:%d/%m/%Y}. A soma fica abaixo de 100% quando há "
+        'Tesouro ou renda fixa. Use a lista "Minha carteira" em Acontecimentos e na Newsletter.'
+    )
+
+
+def pagina_carteira_research():
+    cabecalho_da_pagina("carteira_research")
+    usuario = st.session_state.get("usuario")
+    mensagem = st.session_state.pop("minha_carteira_mensagem", None)
+    if mensagem is not None:
+        (st.success if mensagem[0] else st.error)(mensagem[1])
+    if usuario is None:
+        st.info(
+            "A fotografia da carteira fica guardada na sua conta: entre com o Google para usar "
+            "esta página.",
+            icon=":material/login:",
+        )
+    elif not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
+        st.info(
+            f"Guardar a carteira no Research faz parte do plano Pro (o seu é o "
+            f"{limites_do(plano_atual()).nome}). Sem ela, o Research usa as suas listas.",
+            icon=":material/workspace_premium:",
+        )
+    else:
+        foto = _carteira_do_research(usuario)
+        if foto is None:
+            st.info(
+                "Você ainda não guardou a fotografia da carteira. Sem ela, o Research usa as "
+                "suas listas, onde todo ativo pesa igual.",
+                icon=":material/donut_large:",
+            )
+        else:
+            _mostrar_fotografia(foto)
+            with st.expander("Revogar o consentimento"):
+                st.markdown(
+                    "A fotografia é **apagada na hora**. Fica só um registro técnico, sem nome "
+                    "nem e-mail, de quando o consentimento foi dado e revogado."
+                )
+                confirma = st.checkbox(
+                    "Entendi: quero apagar a fotografia",
+                    key="minha_carteira_confirma",
+                )
+                st.button(
+                    "Revogar e apagar", icon=":material/delete:", disabled=not confirma,
+                    key="minha_carteira_revogar", on_click=_revogar_da_tela, args=(usuario,),
+                )  # fmt: skip
+        with st.expander(
+            "Atualizar a fotografia" if foto else "Enviar a planilha da B3",
+            expanded=foto is None,
+        ):
+            st.markdown(
+                "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+                "2. Em **Extratos → Posição**, baixe a planilha em **Excel**.\n"
+                "3. Envie aqui. Ela é lida **só na memória**: guardamos apenas o código e o "
+                "peso de cada ativo."
+            )
+            arquivo = st.file_uploader(
+                "Planilha de posição da B3",
+                type=["xlsx", "csv"],
+                key="minha_carteira_arquivo",
+            )
+            consentiu = st.checkbox(
+                carteira_research.TEXTO_DO_CONSENTIMENTO,
+                key="minha_carteira_consentimento",
+            )
+            st.button(
+                "Guardar a fotografia", type="primary", icon=":material/save:",
+                disabled=arquivo is None or not consentiu, key="minha_carteira_guardar",
+                on_click=_guardar_da_tela, args=(usuario,),
+            )  # fmt: skip
+    with st.expander("O que é guardado e para quê"):
+        st.markdown(
+            "- **Guardado:** o código de cada ativo e o peso dele na carteira inteira (Tesouro "
+            "e renda fixa entram no total), com a data da planilha e a versão do consentimento.\n"
+            "- **Nunca guardado:** quantidades, valores em reais, preço médio e a própria "
+            "planilha.\n"
+            '- **Para quê:** no Research e na Newsletter, a lista "Minha carteira" põe na '
+            'frente o que é das maiores posições e explica: "a posição era 12,0% da sua '
+            'carteira".\n'
+            "- **Revogar:** a qualquer momento, aqui mesmo; a fotografia é apagada na hora. "
+            "Ela também sai na exportação dos seus dados e é apagada junto com a conta.\n"
+            "- A ordem é uma regra editorial para organizar a leitura, não uma recomendação."
+        )
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
@@ -7930,6 +8104,7 @@ FUNCOES_DAS_PAGINAS = {
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,
     "alertas": pagina_alertas,
+    "carteira_research": pagina_carteira_research,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,

@@ -12,10 +12,12 @@ from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
 
+from src import auditoria
 from src.alertas import Regra, RegraInvalidaError, validar
 from src.banco.modelo import (
     TIPOS_DE_RELATORIO,
     alertas,
+    carteiras_do_research,
     favoritos,
     preferencias,
     presets,
@@ -23,14 +25,17 @@ from src.banco.modelo import (
     simulacoes,
     watchlists,
 )
+from src.carteira_research import VERSAO_DO_CONSENTIMENTO, Fotografia
 from src.planos import (
     conferir_alerta,
+    conferir_carteira,
     conferir_favoritos,
     conferir_parametros_por_ativo,
     conferir_relatorio,
     conferir_simulacoes,
     conferir_watchlist,
 )
+from src.research import NOMES_RESERVADOS
 
 TIPOS_DE_SIMULACAO = ("backtest", "carteira", "pares")
 TAMANHO_MAXIMO_DO_NOME = 120
@@ -565,6 +570,10 @@ def _limpar_nome(nome: str) -> str:
         raise DadosInvalidosError(
             f"O nome da lista tem até {TAMANHO_MAXIMO_DO_NOME_DA_LISTA} letras."
         )
+    if nome.casefold() in {n.casefold() for n in NOMES_RESERVADOS}:
+        raise DadosInvalidosError(
+            f'"{nome}" é o nome de uma lista do app; escolha outro.'
+        )
     return nome
 
 
@@ -711,3 +720,78 @@ def apagar_alerta(
         ).rowcount
         == 1
     )
+
+
+# --- carteira do Research (etapa 5, decisão 0020) ----------------------------------------------
+def carregar_carteira(
+    conexao: sa.Connection, usuario_id: uuid.UUID
+) -> Fotografia | None:
+    """A fotografia guardada (só pesos), ou None se não há carteira ou o consentimento foi revogado."""
+    linha = conexao.execute(
+        sa.select(carteiras_do_research).where(
+            carteiras_do_research.c.usuario_id == usuario_id
+        )
+    ).first()
+    if linha is None:
+        return None
+    return Fotografia(
+        {str(t): float(p) for t, p in dict(linha.pesos).items()}, linha.enviada_em
+    )
+
+
+def salvar_carteira(
+    conexao: sa.Connection,
+    usuario_id: uuid.UUID,
+    foto: Fotografia,
+    plano: str | None = None,
+    agora: datetime | None = None,
+) -> None:
+    """Guarda (ou troca) a fotografia, com o consentimento da versão atual.
+
+    Só chame depois de a pessoa marcar o consentimento na tela: a versão e a hora ficam na linha
+    e na auditoria (só ids, para provar o consentimento mesmo depois de revogado).
+    """
+    if plano is not None:
+        conferir_carteira(plano)
+    if not foto.pesos:
+        raise DadosInvalidosError("A carteira não tem ativos com peso.")
+    _conferir_tamanho(foto.pesos, "A carteira")
+    agora = agora or _agora()
+    conexao.execute(
+        sa.delete(carteiras_do_research).where(
+            carteiras_do_research.c.usuario_id == usuario_id
+        )
+    )
+    conexao.execute(
+        sa.insert(carteiras_do_research).values(
+            usuario_id=usuario_id,
+            pesos=foto.pesos,
+            enviada_em=foto.enviada_em,
+            versao_do_consentimento=VERSAO_DO_CONSENTIMENTO,
+            consentido_em=agora,
+        )
+    )
+    auditoria.registrar(
+        conexao,
+        usuario_id,
+        auditoria.ACAO_CARTEIRA_CONSENTIDA,
+        usuario_id,
+        {"versao": VERSAO_DO_CONSENTIMENTO},
+    )
+
+
+def revogar_carteira(conexao: sa.Connection, usuario_id: uuid.UUID) -> bool:
+    """Revoga o consentimento: apaga a fotografia na hora. Devolve False se não havia carteira."""
+    apagou = (
+        conexao.execute(
+            sa.delete(carteiras_do_research).where(
+                carteiras_do_research.c.usuario_id == usuario_id
+            )
+        ).rowcount
+        == 1
+    )
+    if apagou:
+        auditoria.registrar(
+            conexao, usuario_id, auditoria.ACAO_CARTEIRA_REVOGADA, usuario_id
+        )
+    return apagou

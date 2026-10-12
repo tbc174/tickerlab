@@ -132,6 +132,17 @@ watchlists = sa.Table(
     sa.UniqueConstraint("usuario_id", "nome"),
 )
 
+# Research (0017): a fotografia da carteira (só ticker → peso em %), com consentimento próprio
+carteiras_do_research = sa.Table(
+    "carteiras_do_research",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("pesos", JSON_PORTATIL, nullable=False),  # {"PETR4.SA": 0.1234, ...}
+    sa.Column("enviada_em", sa.Date, nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    _momento("consentido_em"),
+)
+
 # Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
 alertas = sa.Table(
     "alertas",

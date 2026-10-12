@@ -21,6 +21,7 @@ from datetime import date, datetime
 
 from src import research
 from src.banco.eventos import Evento
+from src.carteira_research import Fotografia
 from src.parametros import CATALOGO
 
 JANELA_DA_CADENCIA = {"diaria": 1, "semanal": 7, "sob_demanda": 30, "gatilhos": 30}
@@ -103,9 +104,9 @@ class Entrada:
     detentores: tuple[str, ...] = ()  # uma frase por ativo, já com fonte e competência
     fontes: tuple[tuple[str, str], ...] = ()
     cobertos: tuple[str, ...] = ()
-    resumos: dict = field(
-        default_factory=dict
-    )  # protocolo → resumo da R5 (`src.leitura`)
+    # protocolo → resumo da R5 (`src.leitura`)
+    resumos: dict = field(default_factory=dict)
+    carteira: Fotografia | None = None  # com ela, a exposição é o tamanho da posição
 
 
 def _codigo(ticker: str) -> str:
@@ -155,11 +156,17 @@ def _parametros(entrada: Entrada) -> tuple[str, ...]:
         for c in research.COMPONENTES
     )
     temas = ", ".join(entrada.temas) if entrada.temas else "todos"
-    return (
+    frases = [
         f"Janela: os últimos {entrada.janela} dia(s), até {entrada.hoje:%d/%m/%Y}.",
         f"Pesos de relevância: {pesos}.",
         f"Temas preferidos: {temas}. No máximo {entrada.max_itens} destaques.",
-    )
+    ]
+    if entrada.carteira:
+        frases.append(
+            "Exposição: o peso de cada ativo na fotografia da carteira de "
+            f"{entrada.carteira.enviada_em:%d/%m/%Y}."
+        )
+    return tuple(frases)
 
 
 def montar(entrada: Entrada) -> Edicao:
@@ -174,10 +181,14 @@ def montar(entrada: Entrada) -> Edicao:
     )
     destaques = tuple(
         _item(p, entrada.resumos)
-        for p in research.ordenar(*argumentos, maximo=entrada.max_itens)
+        for p in research.ordenar(
+            *argumentos, maximo=entrada.max_itens, carteira=entrada.carteira
+        )
     )
     # nas seções por tema, o limite por empresa vale dentro de cada uma
-    pontuados = research.ordenar(*argumentos, maximo_por_ativo=None)
+    pontuados = research.ordenar(
+        *argumentos, maximo_por_ativo=None, carteira=entrada.carteira
+    )
     secoes = (
         Secao("destaques", "Destaques", destaques, "Nenhum evento das empresas da lista no período."),
         Secao(

@@ -14,6 +14,7 @@ from src import auditoria
 from src.banco.modelo import (
     alertas,
     assinaturas,
+    carteiras_do_research,
     favoritos,
     preferencias,
     presets,
@@ -129,6 +130,19 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(alertas)
                 .where(alertas.c.usuario_id == usuario_id)
                 .order_by(alertas.c.criado_em)
+            )
+        ],
+        "carteira_do_research": [
+            {
+                "pesos": dict(l.pesos),
+                "enviada_em": _texto(l.enviada_em),
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "consentido_em": _texto(l.consentido_em),
+            }
+            for l in conexao.execute(
+                sa.select(carteiras_do_research).where(
+                    carteiras_do_research.c.usuario_id == usuario_id
+                )
             )
         ],
         "listas_do_research": [

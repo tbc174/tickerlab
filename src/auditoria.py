@@ -17,6 +17,8 @@ ACAO_PAPEL_ALTERADO = "papel_alterado"
 ACAO_TERMOS_ACEITOS = "termos_aceitos"
 ACAO_CONTA_APAGADA = "conta_apagada"
 ACAO_DADOS_EXPORTADOS = "dados_exportados"
+ACAO_CARTEIRA_CONSENTIDA = "carteira_consentida"  # Research, etapa 5 (decisão 0020)
+ACAO_CARTEIRA_REVOGADA = "carteira_revogada"
 
 
 @dataclass(frozen=True)

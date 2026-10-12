@@ -23,7 +23,9 @@ def upgrade() -> None:
         sa.Column("tipo", sa.String(20), nullable=False),
         sa.Column("cnpj", sa.String(18), nullable=False),
         sa.Column("referencia", sa.Date),
-        sa.Column("resultado", sa.JSON().with_variant(JSONB(), "postgresql"), nullable=False),
+        sa.Column(
+            "resultado", sa.JSON().with_variant(JSONB(), "postgresql"), nullable=False
+        ),
         sa.Column("versao", sa.String(10), nullable=False),
         sa.Column(
             "lido_em",
