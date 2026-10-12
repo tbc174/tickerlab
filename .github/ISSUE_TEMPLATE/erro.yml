@@ -1,0 +1,37 @@
+name: Encontrei um erro
+description: Algo no app, no site ou nos números não está como deveria.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por avisar! **Falha de segurança?** Não abra issue: escreva para
+        contato@tickerlab.com.br (veja o SECURITY.md).
+  - type: textarea
+    id: o_que_aconteceu
+    attributes:
+      label: O que aconteceu
+      description: O que você viu e o que esperava ver.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Como reproduzir
+      description: Página, ativo, período e o que você clicou.
+      placeholder: |
+        1. Abri a página Backtest
+        2. Escolhi PETR4, de 2020 a 2024
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: onde
+    attributes:
+      label: Onde
+      description: Endereço da página (sem dados pessoais) e navegador.
+  - type: textarea
+    id: imagens
+    attributes:
+      label: Prints (opcional)
+      description: Esconda e-mail e qualquer dado pessoal antes de anexar.
