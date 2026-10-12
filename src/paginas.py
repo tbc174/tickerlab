@@ -207,8 +207,8 @@ PAGINAS = (
         "Acontecimentos",
         GRUPO_RESEARCH,
         ":material/travel_explore:",
-        "O que as empresas que você acompanha publicaram na CVM, por relevância, com o "
-        "documento original de cada item.",
+        "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, "
+        "com o documento original de cada item.",
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -218,6 +218,14 @@ PAGINAS = (
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
         "demonstrações entregues à CVM, com o documento de cada número.",
+    ),
+    Pagina(
+        "por_dentro",
+        "Pessoas de dentro",
+        GRUPO_RESEARCH,
+        ":material/badge:",
+        "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu "
+        "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
     ),
     Pagina(
         "parametros",

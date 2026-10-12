@@ -75,3 +75,20 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Sintoma (evitado antes de acontecer):** `gravar_tickers` apagava a tabela inteira antes de gravar o mapa novo; com a SEC, a coleta da CVM das 7h apagaria as empresas dos EUA (e vice-versa).
 - **Solução:** cada origem apaga só as suas linhas (`origem="sec"` mexe nas que começam com `CIK`; a CVM, nas outras). Teste: `test_mapa_da_sec_e_o_da_cvm_nao_se_apagam`.
 - **Data:** 11/10/2026
+
+## 13D/13G da Berkshire apareciam como se fossem sobre a própria Berkshire
+- **Sintoma (achado antes de publicar):** a lista de documentos de uma empresa na SEC traz os 13G entregues **sobre** ela e também os que **ela** entrega sobre outras (a Berkshire tem dezenas).
+- **Causa:** a lista (`submissions`) não diz o papel da empresa no documento; nem o número do protocolo resolve (os dois tipos usam o mesmo agente de entrega).
+- **Solução:** para cada 13D/13G novo, ler o cabeçalho do documento (`.hdr.sgml`), que traz a empresa-alvo (`SUBJECT-COMPANY`), e guardar só quando ela é a própria empresa.
+- **Data:** 11/10/2026
+
+## Um Form 4 que falha travava todos os outros da mesma empresa
+- **Sintoma:** no teste, a coleta pulava a Apple inteira quando um único Form 4 não baixava.
+- **Causa:** o erro de rede de um documento subia até o laço das empresas.
+- **Solução:** cada Form 4 tem o próprio `try`; o que falha não é marcado como lido e é tentado de novo no dia seguinte, sem travar os outros.
+- **Data:** 11/10/2026
+
+## Número do NumPy no PostgreSQL (`int64`)
+- **Cuidado:** valores tirados de um DataFrame (`to_dict`) vêm como `numpy.int64`, que o psycopg não sabe gravar (o SQLite dos testes aceita, então o erro só apareceria em produção).
+- **Solução:** converter antes de gravar (`valor.item()`), como faz `_python` em `src/banco/negociacoes.py`.
+- **Data:** 11/10/2026

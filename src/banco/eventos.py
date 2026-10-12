@@ -77,6 +77,27 @@ def gravar_tickers(
     return len(tabela)
 
 
+def versoes_gravadas(
+    conexao: sa.Connection, fonte: str, protocolos: Iterable[str]
+) -> dict[str, int]:
+    """protocolo → versão guardada, só para os protocolos pedidos que já estão no banco.
+
+    Consulta em pedaços: o SQLite limita o número de parâmetros de uma consulta.
+    """
+    pedidos = list(dict.fromkeys(protocolos))
+    existentes: dict[str, int] = {}
+    for inicio in range(0, len(pedidos), TAMANHO_DO_LOTE):
+        pedaco = pedidos[inicio : inicio + TAMANHO_DO_LOTE]
+        existentes.update(
+            conexao.execute(
+                sa.select(eventos.c.protocolo, eventos.c.versao).where(
+                    eventos.c.fonte == fonte, eventos.c.protocolo.in_(pedaco)
+                )
+            ).all()
+        )
+    return existentes
+
+
 def gravar_eventos(
     conexao: sa.Connection,
     tabela: pd.DataFrame,
@@ -90,20 +111,7 @@ def gravar_eventos(
     if tabela.empty:
         return 0, 0
     agora = agora or _agora()
-    # só os protocolos deste lote (em pedaços: o SQLite limita os parâmetros de uma consulta)
-    protocolos = list(tabela["protocolo"].unique())
-    existentes: dict[str, int] = {}
-    for inicio in range(0, len(protocolos), TAMANHO_DO_LOTE):
-        existentes.update(
-            conexao.execute(
-                sa.select(eventos.c.protocolo, eventos.c.versao).where(
-                    eventos.c.fonte == fonte,
-                    eventos.c.protocolo.in_(
-                        protocolos[inicio : inicio + TAMANHO_DO_LOTE]
-                    ),
-                )
-            ).all()
-        )
+    existentes = versoes_gravadas(conexao, fonte, tabela["protocolo"])
     novos, atualizados = [], 0
     for l in tabela.itertuples(index=False):
         valores = {
@@ -113,7 +121,7 @@ def gravar_eventos(
             "categoria": l.categoria[:160],
             "tipo": (l.tipo or "")[:300],
             "assunto": l.assunto or "",
-            "rotulo": l.rotulo,
+            "rotulo": l.rotulo[:60],
             "tema": l.tema,
             "materialidade": int(l.materialidade),
             "referencia": l.referencia if pd.notna(l.referencia) else None,
@@ -158,6 +166,23 @@ def empresas_dos_tickers(
         ).where(tickers_dos_emissores.c.ticker.in_(lista))
     )
     return {l.ticker: (l.cnpj, l.empresa) for l in linhas}
+
+
+def tickers_das_empresas(
+    conexao: sa.Connection, cnpjs: Iterable[str]
+) -> dict[str, str]:
+    """CNPJ (ou CIK) → um ticker da empresa (o primeiro em ordem alfabética: PETR3 antes de PETR4)."""
+    pedidos = sorted(set(cnpjs))
+    if not pedidos:
+        return {}
+    consulta = (
+        sa.select(
+            tickers_dos_emissores.c.cnpj, sa.func.min(tickers_dos_emissores.c.ticker)
+        )
+        .where(tickers_dos_emissores.c.cnpj.in_(pedidos))
+        .group_by(tickers_dos_emissores.c.cnpj)
+    )
+    return dict(conexao.execute(consulta).all())
 
 
 def eventos_dos_tickers(

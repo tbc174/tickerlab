@@ -27,12 +27,27 @@ COMPONENTES = (
     "recencia",
 )
 # fontes primárias oficiais (o documento entregue pela própria empresa); notícias valeriam menos
-QUALIDADE_DAS_FONTES = {"cvm_ipe": 1.0, "sec_edgar": 1.0}
+QUALIDADE_DAS_FONTES = {
+    "cvm_ipe": 1.0,
+    "sec_edgar": 1.0,
+    "cvm_prazo": 1.0,
+    "cvm_vlmo": 1.0,
+    "sec_form4": 1.0,
+}
 NOMES_DAS_FONTES = {
     "cvm_ipe": "CVM (documento entregue pela empresa)",
     "sec_edgar": "SEC, dos EUA (documento entregue pela empresa)",
+    "cvm_prazo": "CVM (data de entrega oficial; prazo calculado pelo TickerLab)",
+    "cvm_vlmo": "CVM (negociações de pessoas de dentro, formulário mensal)",
+    "sec_form4": "SEC, dos EUA (Form 4: negociação de pessoa de dentro)",
 }
-SIGLAS_DAS_FONTES = {"cvm_ipe": "CVM", "sec_edgar": "SEC"}
+SIGLAS_DAS_FONTES = {
+    "cvm_ipe": "CVM",
+    "sec_edgar": "SEC",
+    "cvm_prazo": "CVM",
+    "cvm_vlmo": "CVM",
+    "sec_form4": "SEC",
+}
 DEMONSTRACAO = (
     "PETR4.SA",
     "VALE3.SA",
