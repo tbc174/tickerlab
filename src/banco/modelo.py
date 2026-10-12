@@ -202,6 +202,54 @@ eventos = sa.Table(
 )
 sa.Index("ix_eventos_cnpj_publicado_em", eventos.c.cnpj, eventos.c.publicado_em)
 
+# Research R2 (0011): compras e vendas de pessoas de dentro (CVM VLMO e SEC Form 4). Dados
+# públicos; guardamos só o CARGO, nunca o nome da pessoa (decisão 0018).
+negociacoes_internas = sa.Table(
+    "negociacoes_internas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("fonte", sa.String(20), nullable=False),  # cvm_vlmo ou sec_form4
+    sa.Column("documento", sa.String(60), nullable=False),  # um documento entregue
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("cnpj", sa.String(18), nullable=False),  # CNPJ ou CIK com prefixo
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("cargo", sa.String(20), nullable=False),
+    sa.Column("cargo_descricao", sa.String(120), nullable=False, server_default=""),
+    sa.Column("operacao", sa.String(10), nullable=False),  # compra ou venda
+    sa.Column("ativo", sa.String(80), nullable=False, server_default=""),
+    sa.Column("data", sa.Date),  # dia da negociação (pode faltar na CVM)
+    sa.Column(
+        "referencia", sa.Date, nullable=False
+    ),  # mês (CVM) ou data do relatório (SEC)
+    sa.Column("entregue_em", sa.Date, nullable=False),  # quando ficou público
+    sa.Column("quantidade", sa.Float, nullable=False),
+    sa.Column("preco", sa.Float),
+    sa.Column("valor", sa.Float),
+    sa.Column("moeda", sa.String(3), nullable=False),
+    sa.Column("plano_10b5_1", sa.Boolean),  # EUA: venda programada com antecedência
+    sa.Column("link", sa.String(500), nullable=False),
+    _momento("ingerido_em"),
+)
+sa.Index(
+    "ix_negociacoes_internas_cnpj_data",
+    negociacoes_internas.c.cnpj,
+    negociacoes_internas.c.entregue_em,
+)
+sa.Index(
+    "ix_negociacoes_internas_documento",
+    negociacoes_internas.c.fonte,
+    negociacoes_internas.c.documento,
+)
+# documentos já lidos, mesmo os que não renderam nada (a maioria dos Form 4 não tem compra nem
+# venda em bolsa): a coleta não baixa de novo
+documentos_lidos = sa.Table(
+    "documentos_lidos",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("documento", sa.String(60), primary_key=True),
+    _momento("lido_em"),
+)
+
 assinaturas = sa.Table(
     "assinaturas",
     metadata,

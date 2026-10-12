@@ -1087,3 +1087,29 @@ def criar_grafico_fundamentos_anuais(anual: pd.DataFrame) -> go.Figure:
         )
     figura.update_layout(barmode="group", showlegend=True, hovermode="x unified")
     return figura
+
+
+def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
+    """Compras (para cima) e vendas (para baixo) de pessoas de dentro, por mês de entrega."""
+    if resumo.empty:
+        raise ValueError("Não há negociações para mostrar.")
+    simbolo = {"BRL": "R$", "USD": "US$"}.get(moeda, moeda)
+    figura = _figura_base(
+        f"Compras e vendas de pessoas de dentro por mês ({simbolo} milhões)"
+    )
+    for nome, coluna, cor in (
+        ("Compras", "compras", marca.ALTA),
+        ("Vendas", "vendas", marca.QUEDA),
+    ):
+        figura.add_trace(
+            go.Bar(
+                x=resumo["mes"],
+                y=resumo[coluna] / 1e6,
+                name=nome,
+                marker={"color": cor},
+                hovertemplate=f"{nome}: {simbolo} %{{y:,.1f}} mi<extra></extra>",
+            )
+        )
+    figura.update_layout(barmode="relative", showlegend=True, hovermode="x unified")
+    figura.update_xaxes(tickformat="%m/%Y")
+    return figura

@@ -168,6 +168,23 @@ def empresas_dos_tickers(
     return {l.ticker: (l.cnpj, l.empresa) for l in linhas}
 
 
+def tickers_das_empresas(
+    conexao: sa.Connection, cnpjs: Iterable[str]
+) -> dict[str, str]:
+    """CNPJ (ou CIK) → um ticker da empresa (o primeiro em ordem alfabética: PETR3 antes de PETR4)."""
+    pedidos = sorted(set(cnpjs))
+    if not pedidos:
+        return {}
+    consulta = (
+        sa.select(
+            tickers_dos_emissores.c.cnpj, sa.func.min(tickers_dos_emissores.c.ticker)
+        )
+        .where(tickers_dos_emissores.c.cnpj.in_(pedidos))
+        .group_by(tickers_dos_emissores.c.cnpj)
+    )
+    return dict(conexao.execute(consulta).all())
+
+
 def eventos_dos_tickers(
     conexao: sa.Connection,
     tickers: Iterable[str],

@@ -33,7 +33,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 - **Cloudflare**: entrega o site e o app nos endereços tickerlab.com.br e app.tickerlab.com.br (rede e proteção contra ataques). Como todo provedor de rede, ela vê o endereço IP e os dados técnicos da conexão.
 - **Hostinger**: fornece o servidor virtual alugado; os dados do app ficam no disco desse servidor, em São Paulo.
 - **Yahoo Finance e Banco Central**: o app consulta preços e o CDI. Essas consultas não levam os seus dados pessoais.
-- **CVM e SEC** (a comissão de valores mobiliários dos EUA): o TickerLab baixa, uma vez por dia, os documentos públicos que as empresas entregam a elas (eventos e demonstrações). A SEC exige que cada consulta traga um e-mail de contato: vai o do TickerLab, nunca o seu. Essas consultas não levam os seus dados pessoais.
+- **CVM e SEC** (a comissão de valores mobiliários dos EUA): o TickerLab baixa, uma vez por dia, os documentos públicos que as empresas entregam a elas (eventos, demonstrações e negociações de ações por diretores, conselheiros e controladores; dessas, guardamos só o cargo, nunca o nome da pessoa). A SEC exige que cada consulta traga um e-mail de contato: vai o do TickerLab, nunca o seu. Essas consultas não levam os seus dados pessoais.
 
 Fora isso, os dados só são compartilhados se a lei exigir.
 
