@@ -64,10 +64,11 @@ jobs:
       - name: ruff (formatação do app, src e tests)
         run: python -m ruff format --check app.py src tests trader scripts
 
-      # em paralelo, um processo por núcleo; "loadfile" deixa cada arquivo inteiro num processo só,
-      # então os testes do test_banco.py (o único que usa o PostgreSQL acima) nunca se cruzam
+      # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
+      # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
+      # usa o PostgreSQL acima), que fica todo num processo só, um teste por vez
       - name: Testes
-        run: python -m pytest -q -n auto --dist loadfile
+        run: python -m pytest -q -n logical --dist loadgroup
 
   imagem:
     name: imagem Docker

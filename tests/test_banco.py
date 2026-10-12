@@ -23,6 +23,10 @@ from src.configuracao import (
 
 URL_DE_TESTE = os.environ.get("TICKERLAB_TEST_DATABASE_URL")
 
+# No CI estes testes usam um único banco PostgreSQL (e apagam as tabelas dele): com os testes em
+# paralelo (pytest -n ... --dist loadgroup), o grupo os mantém todos no mesmo processo, um por vez.
+pytestmark = pytest.mark.xdist_group("postgres")
+
 
 @pytest.fixture
 def motor(tmp_path):

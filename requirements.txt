@@ -51,7 +51,7 @@ pycparser==3.1
 pydeck==0.9.3
 Pygments==2.21.0
 pytest==9.1.1
-pytest-xdist==3.8.0  # testes em paralelo: python -m pytest -n auto --dist loadfile
+pytest-xdist==3.8.0  # testes em paralelo: python -m pytest -n 4 --dist loadgroup
 python-dateutil==2.9.0.post0
 python-multipart==0.0.32
 pytz==2026.5
