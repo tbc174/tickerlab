@@ -277,3 +277,11 @@ def test_pagina_de_acao_dos_eua(banco, trimestre):
         and "Fundos vendidos (aposta na queda)" not in rotulos
     )
     assert any(m.value.startswith("US$ ") for m in app.metric)
+
+
+def test_aviso_de_cobertura_so_quando_o_mes_tem_bem_menos_informantes():
+    marco = date(2026, 3, 31)
+    cobertura = {marco: 3216, JULHO: 959, AGOSTO: 1082}
+    aviso = dt.aviso_de_cobertura(cobertura, AGOSTO, "fundos")
+    assert "1082 fundos informaram posições em 08/2026, contra 3216 em 03/2026" in aviso
+    assert dt.aviso_de_cobertura({marco: 3216, AGOSTO: 3100}, AGOSTO, "fundos") is None

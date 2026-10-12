@@ -94,3 +94,20 @@ def par_comparavel(cobertura: dict[date, int]) -> tuple[date, date] | None:
         if _parecidas(cobertura[atual], cobertura[anterior]):
             return atual, anterior
     return None
+
+
+def aviso_de_cobertura(
+    cobertura: dict[date, int], competencia: date, quem: str
+) -> str | None:
+    """Frase para quando a competência mostrada tem bem menos informantes que a mais completa
+    guardada (sigilo de 90 dias ainda valendo): a contagem crua fica menor sem ninguém vender."""
+    maior = max(cobertura.values())
+    if cobertura[competencia] >= COBERTURA_PARECIDA * maior:
+        return None
+    mes_da_maior = max(d for d, v in cobertura.items() if v == maior)
+    return (
+        f"Base: {cobertura[competencia]} {quem} informaram posições em {competencia:%m/%Y}, "
+        f"contra {maior} em {mes_da_maior:%m/%Y} (mês mais antigo, já sem sigilo). Muitos ainda "
+        "mantêm as posições em sigilo: a contagem fica menor sem que ninguém tenha vendido. "
+        "Compare pela fatia."
+    )
