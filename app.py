@@ -7592,6 +7592,8 @@ def _edicao(nome, tickers, janela):
             empresas = empresas_dos_tickers(conexao, tickers)
             frases = _frases_dos_detentores(conexao, tickers)
             fontes = _fontes_da_edicao(conexao)
+            protocolos = [e.protocolo for e in eventos_da_lista if e.fonte == FONTE_IPE]
+            resumos = repo_leituras.resumos(conexao, FONTE_IPE, protocolos)
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         return None
     return newsletter.montar(
@@ -7608,6 +7610,7 @@ def _edicao(nome, tickers, janela):
             detentores=frases,
             fontes=fontes,
             cobertos=tuple(t for t in tickers if t in empresas),
+            resumos=resumos,
         )
     )
 
@@ -7622,6 +7625,11 @@ def _mostrar_secao_da_newsletter(secao):
         if item.link:
             texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
         st.markdown(texto)
+        if item.trechos:
+            st.caption(
+                f"{newsletter.TITULO_DOS_TRECHOS}:  \n"
+                + "  \n".join(f"“{trecho}”" for trecho in item.trechos)
+            )
         if item.razoes:
             st.caption("Por que aparece: " + " · ".join(item.razoes))
 

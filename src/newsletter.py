@@ -6,7 +6,9 @@ negociações de pessoas de dentro, documentos de resultado e a variação de fu
 
 Regras (PRD seção 12 e decisão 0011):
 - **Modelos fixos, sem IA:** cada frase é montada a partir de um fato com fonte e data; nada é
-  inventado, resumido por modelo de linguagem ou opinado.
+  inventado, resumido por modelo de linguagem ou opinado. Os **trechos** de um fato relevante são
+  frases copiadas do próprio documento pelo algoritmo do TickerLab (R5, `src/leitura.py`), nunca
+  reescritas.
 - **Mesma edição, várias saídas:** a página e o PDF (Report Studio) mostram o mesmo conteúdo, com
   a mesma data de corte, os mesmos parâmetros e as mesmas fontes.
 - **Limites explícitos:** a seção de limites é obrigatória; nada é recomendação.
@@ -25,6 +27,7 @@ JANELA_DA_CADENCIA = {"diaria": 1, "semanal": 7, "sob_demanda": 30, "gatilhos": 
 TEMA_DOS_ALERTAS = "risco"
 TEMA_DOS_RESULTADOS = "resultados"
 TEMA_DAS_PARTICIPACOES = "participacoes"
+TITULO_DOS_TRECHOS = "Trechos do documento (escolhidos por algoritmo, sem IA)"
 LIMITES = (
     (
         "Os dados vêm de documentos públicos entregues à CVM e à SEC, coletados uma vez por dia; "
@@ -37,6 +40,10 @@ LIMITES = (
     (
         "Negociações de pessoas de dentro e carteiras de fundos mostram o passado, com atraso, e "
         "não revelam a intenção de ninguém."
+    ),
+    (
+        "Os trechos dos fatos relevantes são escolhidos por um algoritmo do TickerLab, sem IA: "
+        "copiam frases do documento, mas podem deixar de fora algo importante. Leia o original."
     ),
     (
         "Esta edição não é recomendação de investimento, não considera a sua situação e não diz "
@@ -52,6 +59,7 @@ class Item:
     link: str = ""
     sigla_da_fonte: str = ""
     razoes: tuple[str, ...] = ()
+    trechos: tuple[str, ...] = ()  # frases do próprio documento (R5), na ordem original
 
 
 @dataclass(frozen=True)
@@ -95,24 +103,31 @@ class Entrada:
     detentores: tuple[str, ...] = ()  # uma frase por ativo, já com fonte e competência
     fontes: tuple[tuple[str, str], ...] = ()
     cobertos: tuple[str, ...] = ()
+    resumos: dict = field(
+        default_factory=dict
+    )  # protocolo → resumo da R5 (`src.leitura`)
 
 
 def _codigo(ticker: str) -> str:
     return ticker.removesuffix(".SA")
 
 
-def _item(pontuado: research.ItemDoResearch) -> Item:
+def _item(pontuado: research.ItemDoResearch, resumos: dict) -> Item:
     e = pontuado.evento
+    resumo = resumos.get(e.protocolo, {})
     return Item(
         titulo=f"{_codigo(e.ticker)} · {e.rotulo} · {e.publicado_em:%d/%m/%Y}",
         texto=e.assunto or f"{e.rotulo} de {e.empresa}.",
         link=e.link,
         sigla_da_fonte=research.SIGLAS_DAS_FONTES.get(e.fonte, ""),
         razoes=tuple(pontuado.razoes),
+        trechos=tuple(resumo.get("frases", ())),
     )
 
 
-def _do_tema(pontuados: list, tema: str, quantos: int) -> tuple[Item, ...]:
+def _do_tema(
+    pontuados: list, tema: str, quantos: int, resumos: dict
+) -> tuple[Item, ...]:
     """Os itens de um tema, com o limite por empresa aplicado dentro da seção."""
     por_ativo: Counter[str] = Counter()
     itens = []
@@ -123,7 +138,7 @@ def _do_tema(pontuados: list, tema: str, quantos: int) -> tuple[Item, ...]:
         ):
             continue
         por_ativo[p.evento.ticker] += 1
-        itens.append(_item(p))
+        itens.append(_item(p, resumos))
     return tuple(itens[:quantos])
 
 
@@ -158,24 +173,25 @@ def montar(entrada: Entrada) -> Edicao:
         entrada.lista,
     )
     destaques = tuple(
-        _item(p) for p in research.ordenar(*argumentos, maximo=entrada.max_itens)
+        _item(p, entrada.resumos)
+        for p in research.ordenar(*argumentos, maximo=entrada.max_itens)
     )
     # nas seções por tema, o limite por empresa vale dentro de cada uma
     pontuados = research.ordenar(*argumentos, maximo_por_ativo=None)
     secoes = (
         Secao("destaques", "Destaques", destaques, "Nenhum evento das empresas da lista no período."),
         Secao(
-            "alertas", "Sinais de alerta", _do_tema(pontuados, TEMA_DOS_ALERTAS, entrada.max_itens),
+            "alertas", "Sinais de alerta", _do_tema(pontuados, TEMA_DOS_ALERTAS, entrada.max_itens, entrada.resumos),
             "Nenhum sinal de alerta no período (troca de auditor, atraso de balanço...).",
         ),
         Secao(
             "por_dentro", "Pessoas de dentro e participações",
-            _do_tema(pontuados, TEMA_DAS_PARTICIPACOES, entrada.max_itens),
+            _do_tema(pontuados, TEMA_DAS_PARTICIPACOES, entrada.max_itens, entrada.resumos),
             "Nenhuma negociação de pessoas de dentro nem participação de 5% informada no período.",
         ),
         Secao(
             "resultados", "Resultados e documentos",
-            _do_tema(pontuados, TEMA_DOS_RESULTADOS, entrada.max_itens),
+            _do_tema(pontuados, TEMA_DOS_RESULTADOS, entrada.max_itens, entrada.resumos),
             "Nenhum documento de resultados entregue no período.",
         ),
         Secao(
