@@ -109,8 +109,12 @@ class Registro:
         caminho: Path = CAMINHO_PADRAO,
         commit_fn: Callable[[], str] = commit_atual,
         agora_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
+        familias: tuple[str, ...] = FAMILIAS,
+        orcamento: int = ORCAMENTO_DE_TENTATIVAS,
     ) -> None:
         self.caminho = Path(caminho)
+        self.familias = familias
+        self.orcamento = orcamento
         self._commit_fn = commit_fn
         self._agora_fn = agora_fn
         self.caminho.parent.mkdir(parents=True, exist_ok=True)
@@ -128,8 +132,8 @@ class Registro:
         self, familia: str, nome: str, spec: dict, fase: str = "desenvolvimento"
     ) -> int:
         """Anota a tentativa e devolve o id. A mesma especificação na mesma fase não conta de novo."""
-        if familia not in FAMILIAS:
-            raise ValueError(f"Família desconhecida: {familia}. Use uma de {FAMILIAS}.")
+        if familia not in self.familias:
+            raise ValueError(f"Família desconhecida: {familia}. Use uma de {self.familias}.")
         if fase not in FASES:
             raise ValueError(f"Fase desconhecida: {fase}. Use uma de {FASES}.")
         if not nome.strip():
@@ -258,14 +262,14 @@ class Registro:
         return self.contar("desenvolvimento") + self.tentativas_extras()
 
     def orcamento_restante(self) -> int:
-        """Negativo quando o orçamento de 300 foi ultrapassado."""
-        return ORCAMENTO_DE_TENTATIVAS - self.total_para_o_dsr()
+        """Negativo quando o orçamento (300 na M2) foi ultrapassado."""
+        return self.orcamento - self.total_para_o_dsr()
 
     def exigir_orcamento(self) -> None:
         """Para quem quiser parar de verdade ao estourar; o padrão é só avisar e penalizar."""
         if self.orcamento_restante() < 0:
             raise OrcamentoEstouradoError(
-                f"{self.total_para_o_dsr()} tentativas, orçamento de {ORCAMENTO_DE_TENTATIVAS}."
+                f"{self.total_para_o_dsr()} tentativas, orçamento de {self.orcamento}."
             )
 
     def listar(self, fase: str | None = None) -> list[dict]:
