@@ -1,6 +1,6 @@
 # Política de privacidade do TickerLab
 
-Última atualização: 12/10/2026 (versão 4: cópias de segurança).
+Última atualização: 12/10/2026 (versão 5: PDF original dos relatórios na biblioteca).
 
 O TickerLab é um **projeto educacional**. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, por quanto tempo e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
 
@@ -21,7 +21,8 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 | Inscrição na Newsletter por e-mail (a lista, a frequência e a versão e a hora do consentimento) e o registro de cada envio (período e situação) | Você, na página Newsletter | Mandar a edição na frequência escolhida, uma vez por período. Para sair: o link em cada e-mail ou a página Newsletter |
 | Listas do Research (nome e códigos dos ativos que você acompanha) | Você, na página Acontecimentos | Mostrar os eventos das empresas da lista. Não são posições nem valores da sua carteira |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
-| Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções). O PDF não é guardado | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite. Da planilha da B3 enviada para o relatório não guardamos nem os ativos |
+| Relatórios em PDF gerados: tipo, hora, título e os parâmetros usados (ativos, período, estratégia, estilo e seções) | O app, quando você gera um relatório | Contar o limite de relatórios do seu plano e mostrar a biblioteca "Meus relatórios", para você gerar de novo com os mesmos parâmetros. Ao excluir um relatório da biblioteca, o título e os parâmetros são apagados; ficam só o tipo e a hora, que contam o limite |
+| O **PDF original** de cada relatório, como foi entregue, com o código de conferência (SHA-256) e as versões das fórmulas e dos dados. **Nunca** o do relatório "Minha carteira": da planilha da B3 enviada para o relatório não guardamos nem os ativos | O app, quando você gera um relatório | Você baixar depois o arquivo exato que recebeu ("Original", na biblioteca). Cada PDF fica guardado por **1 ano**, até o número do seu plano (os mais antigos saem); ao excluir o relatório da biblioteca, o PDF é apagado na hora |
 | Planilha de posição da B3, se você enviar (a sua carteira). A carteira de exemplo é fictícia | Você, em Gerar relatório | Montar o relatório da sua carteira. É lida **só na memória**, não é guardada e não vai para os registros (logs) |
 | Plano e situação da assinatura | O app e o Stripe | Liberar o que o seu plano inclui |
 | Versão dos termos aceita e data | Você, no aceite | Comprovar que você concordou |
@@ -47,7 +48,7 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 
 ## Por quanto tempo guardamos
 
-Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, a inscrição na Newsletter e o registro dos envios, o registro dos relatórios gerados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira e o da Newsletter por e-mail foram dados e revogados (para provar que existiram).
+Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, a inscrição na Newsletter e o registro dos envios, o registro dos relatórios gerados, os PDFs originais guardados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira e o da Newsletter por e-mail foram dados e revogados (para provar que existiram).
 
 **Cópias de segurança:** uma vez por dia o banco de dados é copiado, cifrado, para outro servidor, para que os dados não se percam se o servidor principal falhar. Cada cópia é apagada depois de **14 dias**. Por isso, o que você apagar (ou a conta inteira) ainda fica nessas cópias por até 14 dias, sem uso, e depois some delas também.
 
@@ -56,7 +57,7 @@ Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu pe
 Você pode, a qualquer momento:
 
 - **Confirmar** que tratamos seus dados e **acessá-los**;
-- **Exportar** uma cópia dos seus dados (arquivo JSON), na página "Meus dados e privacidade";
+- **Exportar** uma cópia dos seus dados (arquivo JSON) e os PDFs originais guardados (arquivo .zip), na página "Meus dados e privacidade";
 - **Corrigir** dados incorretos (o nome e a foto vêm do Google; atualize lá e entre de novo);
 - **Apagar** a sua conta e os seus dados, na mesma página;
 - **Revogar** o consentimento, o que equivale a apagar a conta;

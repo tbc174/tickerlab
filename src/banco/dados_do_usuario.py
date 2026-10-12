@@ -19,6 +19,7 @@ from src.banco.modelo import (
     alertas,
     carteiras_do_research,
     favoritos,
+    pdfs_originais,
     preferencias,
     presets,
     relatorios,
@@ -364,8 +365,15 @@ def excluir_relatorio(
     relatorio_id: uuid.UUID,
     agora: datetime | None = None,
 ) -> bool:
-    """Tira o relatório da biblioteca: apaga o título e os parâmetros. A linha (tipo e hora)
-    fica, para o limite do plano continuar valendo. Só mexe nos relatórios do próprio usuário."""
+    """Tira o relatório da biblioteca: apaga o título, os parâmetros e o PDF original guardado. A
+    linha (tipo e hora) fica, para o limite do plano continuar valendo. Só mexe nos relatórios
+    do próprio usuário."""
+    conexao.execute(
+        sa.delete(pdfs_originais).where(
+            pdfs_originais.c.relatorio_id == relatorio_id,
+            pdfs_originais.c.usuario_id == usuario_id,
+        )
+    )
     resultado = conexao.execute(
         sa.update(relatorios)
         .where(
