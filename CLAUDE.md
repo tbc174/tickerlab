@@ -15,7 +15,7 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 
 ```powershell
 .venv\Scripts\python -m streamlit run app.py              # app em modo local (sem login, SQLite)
-.venv\Scripts\python -m pytest -q                         # suíte inteira (~3 min)
+.venv\Scripts\python -m pytest -q -n 4 --dist loadfile   # suíte inteira em 4 processos (~3 min; sem -n, ~12 min)
 .venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
 .venv\Scripts\python -m ruff check .
 .venv\Scripts\python -m ruff format app.py src tests trader scripts
