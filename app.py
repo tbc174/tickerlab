@@ -1163,6 +1163,49 @@ def secao_painel_de_numeros(
         formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
         "Perda de um dia ruim (VaR)",
     )
+    cvar = ind.calcular_cvar_historico(retorno, confianca_do_var / 100)
+    st.caption(
+        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(cvar)}.** "
+        "Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o "
+        "passado, não um limite de perda."
+    )
+
+
+def secao_tendencia_e_volume(dados, r):
+    """ADX (força da tendência) e OBV com volume relativo, no diário ou no semanal."""
+    st.subheader("Força da tendência e volume")
+    semanal = r["tecnica.periodicidade"] == "semanal"
+    barras = ind.para_semanal(dados) if semanal else dados
+    periodo, nivel = int(r["tecnica.adx_periodo"]), int(r["tecnica.adx_tendencia"])
+    janela = int(r["tecnica.volume_janela"])
+    tem_ohlc = {"High", "Low"} <= set(barras.columns)
+    tem_volume = "Volume" in barras.columns and (barras["Volume"].fillna(0) > 0).any()
+    col_adx, col_volume = st.columns(2)
+    with col_adx:
+        if tem_ohlc and len(barras) > 2 * periodo:
+            mostrar_grafico(
+                graficos.criar_grafico_adx(ind.calcular_adx(barras, periodo), nivel)
+            )
+        else:
+            st.info(
+                "Sem máxima e mínima, ou com poucas barras, não dá para calcular o ADX."
+            )
+    with col_volume:
+        if tem_volume:
+            mostrar_grafico(
+                graficos.criar_grafico_obv(
+                    ind.calcular_obv(barras),
+                    ind.calcular_volume_relativo(barras, janela),
+                )
+            )
+        else:
+            st.info("Este ativo não tem volume (índices e câmbio costumam não ter).")
+    st.caption(
+        f"Barras {'semanais' if semanal else 'diárias'} (mude em Parâmetros). ADX acima de "
+        f"{nivel}: há tendência, de alta se o +DI está acima do -DI. OBV subindo: mais volume "
+        f"nos dias de alta. Volume relativo: o volume do período contra a média dos {janela} "
+        "anteriores. Nenhum deles é sinal de compra ou venda."
+    )
 
 
 def secao_preco(dados, medias_do_usuario=()):
@@ -2304,6 +2347,32 @@ def secao_correlacao(
         key="corr_janela",
     )
     resultado = calcular_beta(retornos[escolhido], retornos[indice])
+    erro_de_acompanhamento = ind.calcular_tracking_error(
+        retornos[escolhido], retornos[indice]
+    )
+    razao_de_informacao = ind.calcular_information_ratio(
+        retornos[escolhido], retornos[indice]
+    )
+    with st.container(horizontal=True):
+        st.metric(
+            f"Beta contra o {nome_do_indice}",
+            formatar_metrica("Beta", resultado.beta),
+            border=True,
+        )
+        st.metric(
+            "Tracking error (ao ano)",
+            formatar_pct(erro_de_acompanhamento),
+            border=True,
+            help="O quanto o ativo se descola do índice: o desvio padrão da diferença diária, "
+            "anualizado. Zero: anda igual ao índice.",
+        )
+        st.metric(
+            "Information Ratio",
+            formatar_metrica("Sharpe", razao_de_informacao),
+            border=True,
+            help="Quanto o ativo rendeu acima do índice por unidade de tracking error. "
+            "Positivo: o descolamento rendeu mais que o índice; negativo, menos.",
+        )
     col_dispersao, col_movel = st.columns(2)
     with col_dispersao:
         mostrar_grafico(
@@ -5286,7 +5355,19 @@ def pagina_visao_geral():
     secao_preco(
         c.dados, tuple(int(r[k]) for k in medias) if personalizou_medias else ()
     )
-    avisar_parametros(r, ("quant.var_confianca", *medias))
+    st.divider()
+    secao_tendencia_e_volume(c.dados, r)
+    avisar_parametros(
+        r,
+        (
+            "quant.var_confianca",
+            *medias,
+            "tecnica.adx_periodo",
+            "tecnica.adx_tendencia",
+            "tecnica.volume_janela",
+            "tecnica.periodicidade",
+        ),
+    )
     st.download_button(
         "Baixar os preços (CSV)",
         converter_para_csv(montar_tabela_de_precos(c.dados)),

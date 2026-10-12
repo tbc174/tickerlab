@@ -111,3 +111,67 @@ def test_tecnica_semanal_conta_em_semanas(petr4):
     assert (
         a["retorno_total"].valor == diaria["retorno_total"].valor
     )  # o risco segue diário
+
+
+# --- gráficos: eixo vertical no formato certo ---------------------------------------------------
+def test_eixos_dos_graficos_em_dinheiro_nao_viram_porcentagem():
+    from src import graficos
+
+    anual = pd.DataFrame(
+        {"receita": [1e11, 2e11], "lucro": [1e10, 2e10]}, index=[2024, 2025]
+    )
+    assert (
+        graficos.criar_grafico_fundamentos_anuais(anual).layout.yaxis.tickformat
+        != ".0%"
+    )
+    resumo = pd.DataFrame(
+        {"mes": pd.to_datetime(["2026-08-01"]), "compras": [2e6], "vendas": [-1e6]}
+    )
+    assert (
+        graficos.criar_grafico_negociacoes(resumo, "BRL").layout.yaxis.tickformat
+        != ".0%"
+    )
+    historico = pd.DataFrame(
+        {"competencia": pd.to_datetime(["2026-07-31", "2026-08-31"]), "fatia": [0.1, 0.12],
+         "fatia_vendidos": [0.01, 0.02], "vendidos": [3, 4]}
+    )  # fmt: skip
+    figura = graficos.criar_grafico_detentores(historico, "fundos")
+    assert max(figura.data[0].y) <= 1  # fração, mostrada pelo eixo em %
+
+
+def test_graficos_de_adx_e_obv(petr4):
+    from src import graficos
+
+    adx = graficos.criar_grafico_adx(ind.calcular_adx(petr4, 14), 25)
+    assert len(adx.data) == 3 and adx.layout.yaxis.tickformat == ".0f"
+    obv = graficos.criar_grafico_obv(
+        ind.calcular_obv(petr4), ind.calcular_volume_relativo(petr4)
+    )
+    assert len(obv.data) == 2
+
+
+# --- telas -------------------------------------------------------------------------------------
+def _abrir(pagina, ticker="PETR4.SA"):
+    from streamlit.testing.v1 import AppTest
+
+    from tests.ajudantes_da_conta import ir_para
+
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.session_state["ticker"] = ticker
+    app.run()
+    return ir_para(app, pagina)
+
+
+def test_visao_geral_mostra_cvar_e_tendencia_e_volume(banco):
+    app = _abrir("visao_geral")
+    assert not app.exception
+    assert any("CVaR 95%" in c.value for c in app.caption)
+    assert "Força da tendência e volume" in [s.value for s in app.subheader]
+
+
+def test_correlacao_mostra_tracking_error_e_information_ratio(banco):
+    app = _abrir("correlacao")
+    assert not app.exception
+    rotulos = {m.label for m in app.metric}
+    assert {"Tracking error (ao ano)", "Information Ratio"} <= rotulos
