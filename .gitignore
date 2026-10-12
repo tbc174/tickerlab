@@ -41,3 +41,6 @@ dados_juros/
 .hypothesis/
 htmlcov/
 registros/
+
+# Dados gratuitos da Pesquisa 2 (baixados de novo com python -m trader.p2.baixar)
+dados_p2/
