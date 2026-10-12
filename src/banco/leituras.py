@@ -93,7 +93,9 @@ def ultima_de_riscos(
     linha = conexao.execute(
         sa.select(leituras.c.documento, leituras.c.referencia, leituras.c.resultado)
         .where(leituras.c.cnpj == cnpj, leituras.c.tipo == RISCOS)
-        .order_by(leituras.c.referencia.desc())
+        .order_by(
+            leituras.c.referencia.desc().nulls_last()
+        )  # no PostgreSQL, nulo viria antes
         .limit(1)
     ).first()
     return (

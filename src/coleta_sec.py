@@ -24,6 +24,7 @@ from src import eventos_sec as sec
 from src import fundamentos_sec, leitura
 from src import negociacoes as ng
 from src import negociacoes_sec as form4
+from src.banco import leituras as repo_leituras
 from src.banco import sob_demanda
 from src.banco.demonstracoes import (
     gravar_demonstracoes,
@@ -31,12 +32,14 @@ from src.banco.demonstracoes import (
     referencias_guardadas,
 )
 from src.banco.eventos import gravar_eventos, versoes_gravadas
-from src.banco.leituras import RISCOS, gravar_leitura, lidos
 from src.banco.negociacoes import gravar_negociacoes, ja_lidos, marcar_como_lidos
 
 log = logging.getLogger("tickerlab.sec")
 PAUSA_ENTRE_CONSULTAS = 0.125  # 8 por segundo, abaixo do limite de 10 da SEC
 ERROS_DE_UMA_EMPRESA = (requests.RequestException, ValueError, KeyError)
+# páginas antigas da lista de documentos (cada uma com até ~1.000; a 001 é a mais recente)
+URL_DA_PAGINA_ANTIGA = "https://data.sec.gov/submissions/{nome}"
+MAX_PAGINAS_ANTIGAS = 2  # sem 10-K em 2 páginas, a empresa não entrega 10-K todo ano
 
 
 def baixar_da_sec(url: str, agente: str) -> bytes:
@@ -168,21 +171,36 @@ def gravar_fundamentos_da_empresa(
         return gravar_demonstracoes(conexao, contas, documentos)
 
 
-def _dois_ultimos_10k(conteudo: bytes) -> list[tuple[str, date | None, str]]:
-    """(protocolo, data-base, documento) dos dois 10-K mais recentes (sem as retificações)."""
-    recentes = json.loads(conteudo).get("filings", {}).get("recent", {})
+def _10k_da_lista(colunas: dict) -> list[tuple[str, date | None, str]]:
+    """(protocolo, data-base, documento) dos 10-K de uma lista da SEC, do mais novo ao mais velho
+    (sem as retificações, 10-K/A)."""
     anuais = []
-    for i, formulario in enumerate(recentes.get("form", [])):
-        if formulario == "10-K" and recentes["primaryDocument"][i]:
-            data = pd.to_datetime(recentes["reportDate"][i] or None, errors="coerce")
+    for i, formulario in enumerate(colunas.get("form", [])):
+        if formulario == "10-K" and colunas["primaryDocument"][i]:
+            data = pd.to_datetime(colunas["reportDate"][i] or None, errors="coerce")
             anuais.append(
                 (
-                    recentes["accessionNumber"][i],
+                    colunas["accessionNumber"][i],
                     None if pd.isna(data) else data.date(),
-                    recentes["primaryDocument"][i],
+                    colunas["primaryDocument"][i],
                 )
             )
-    return anuais[:2]
+    return anuais
+
+
+def _10k_anterior(
+    cliente: ClienteSec, paginas: list[dict]
+) -> tuple[str, date | None, str] | None:
+    """O 10-K mais recente das páginas antigas da lista (a SEC só põe ~1.000 documentos na
+    principal: num banco que entrega milhares de prospectos, o 10-K do ano anterior fica fora)."""
+    for pagina in paginas[:MAX_PAGINAS_ANTIGAS]:
+        colunas = json.loads(
+            cliente.baixar(URL_DA_PAGINA_ANTIGA.format(nome=pagina["name"]))
+        )
+        anuais = _10k_da_lista(colunas)
+        if anuais:
+            return anuais[0]
+    return None
 
 
 def gravar_leitura_do_10k(
@@ -192,13 +210,23 @@ def gravar_leitura_do_10k(
 
     Devolve True se gravou. Sem a seção nos dois, grava o motivo (para não baixar de novo).
     """
-    anuais = _dois_ultimos_10k(conteudo)
-    if len(anuais) < 2:
+    lista = json.loads(conteudo).get("filings", {})
+    anuais = _10k_da_lista(lista.get("recent", {}))
+    if not anuais:
         return False
-    (protocolo, referencia, _), (protocolo_antes, referencia_antes, _) = anuais
+    protocolo = anuais[0][0]
     with motor.connect() as conexao:
-        if lidos(conexao, sec.FONTE_SEC, RISCOS, [protocolo]):
+        if repo_leituras.lidos(
+            conexao, sec.FONTE_SEC, repo_leituras.RISCOS, [protocolo]
+        ):
             return False
+    if len(anuais) < 2:
+        anterior = _10k_anterior(cliente, lista.get("files", []))
+        if anterior is None:
+            return False
+        anuais.append(anterior)
+    anuais = anuais[:2]
+    (_, referencia, _), (protocolo_antes, referencia_antes, _) = anuais
     links, textos = [], []
     for numero, _, documento in anuais:
         link = sec.URL_DO_ARQUIVO.format(
@@ -224,11 +252,11 @@ def gravar_leitura_do_10k(
         "protocolo_antes": protocolo_antes,
     }
     with motor.begin() as conexao:
-        gravar_leitura(
+        repo_leituras.gravar_leitura(
             conexao,
             sec.FONTE_SEC,
             protocolo,
-            RISCOS,
+            repo_leituras.RISCOS,
             sec.cik_como_chave(cik),
             referencia,
             resultado,

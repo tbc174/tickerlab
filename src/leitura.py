@@ -31,9 +31,16 @@ MAX_NUMEROS = 6
 FRASES_NOVAS = 5
 PALAVRAS_EM_ALTA = 8
 MIN_OCORRENCIAS = 4  # uma palavra só "cresce" se aparece pelo menos isto no ano novo
-SEMELHANCA_DE_FRASE = (
-    0.5  # abaixo disto, a frase do ano novo não existia no ano anterior
+# abaixo disto, a frase do ano novo não existia no ano anterior
+SEMELHANCA_DE_FRASE = 0.5
+# nota das frases do fato relevante
+BONUS_POR_NUMERO = (
+    0.3  # cada número concreto (até MAX_NUMEROS_NA_NOTA) aumenta a nota em 30%
 )
+MAX_NUMEROS_NA_NOTA = 3
+PESO_DO_JURIDIQUES = 0.3  # frase de texto jurídico-padrão fica com 30% da nota
+BONUS_DO_COMECO = 1.2  # o fato costuma vir nas duas primeiras frases
+FRASES_DO_COMECO = 2
 
 
 def _palavras_do_texto(texto: str) -> frozenset[str]:
@@ -88,7 +95,9 @@ ASSUNTOS = {
 ABREVIACOES = ("S.A.", "S/A", "nº", "Nº", "Sr.", "Sra.", "Dr.", "Dra.", "art.", "arts.", "Ltda.",
                "Cia.", "Inc.", "Co.", "Corp.", "Ltd.", "U.S.", "e.g.", "i.e.", "etc.")  # fmt: skip
 NUMERO = re.compile(
-    r"(?:R\$|US\$|USD)\s?\d[\d.,]*(?:\s(?:mil|milhão|milhões|bilhão|bilhões|million|billion))?"
+    # as palavras mais longas primeiro: senão "milhões" casa como "mil" (mil vezes menos)
+    r"(?:R\$|US\$|USD)\s?\d[\d.,]*"
+    r"(?:\s(?:milhões|milhão|million|bilhões|bilhão|billion|mil)\b)?"
     r"|\d[\d.,]*\s?%"
     r"|\d{1,3}(?:\.\d{3})+(?:,\d+)?\s(?:ações|units|debêntures)",
     re.IGNORECASE,
@@ -116,11 +125,16 @@ def _palavras(texto: str, vazias: frozenset[str]) -> list[str]:
     ]
 
 
+_ABREVIACOES = [
+    re.compile(rf"(?<![\w.]){re.escape(abreviacao)}") for abreviacao in ABREVIACOES
+]  # só a abreviação inteira: "art." não casa dentro de "start."
+
+
 def dividir_em_frases(texto: str) -> list[str]:
     """Frases do texto, sem quebrar nas abreviações comuns (S.A., nº, Inc.)."""
     protegido = texto
-    for i, abreviacao in enumerate(ABREVIACOES):
-        protegido = protegido.replace(abreviacao, f"\x00{i}\x00")
+    for i, abreviacao in enumerate(_ABREVIACOES):
+        protegido = abreviacao.sub(f"\x00{i}\x00", protegido)
     partes = re.split(r"(?<=[.!?;])\s+(?=[A-ZÀ-Ü“\"(])", " ".join(protegido.split()))
     frases = []
     for parte in partes:
@@ -161,10 +175,11 @@ def _nota_da_frase(frase: str, pesos: Counter, posicao: int) -> float:
     if not palavras:
         return 0.0
     nota = sum(pesos[p] for p in set(palavras)) / math.sqrt(len(palavras))
-    nota *= 1 + 0.3 * min(len(NUMERO.findall(frase)), 3)  # números concretos ajudam
+    numeros = min(len(NUMERO.findall(frase)), MAX_NUMEROS_NA_NOTA)
+    nota *= 1 + BONUS_POR_NUMERO * numeros
     if any(trecho in frase.lower() for trecho in JURIDIQUES):
-        nota *= 0.3
-    return nota * (1.2 if posicao < 2 else 1.0)  # o fato costuma vir logo no começo
+        nota *= PESO_DO_JURIDIQUES
+    return nota * (BONUS_DO_COMECO if posicao < FRASES_DO_COMECO else 1.0)
 
 
 def _cortar(frase: str) -> str:
@@ -308,7 +323,7 @@ def comparar_riscos(antes: str, agora: str) -> MudancaNosRiscos:
             default=0.0,
         )
         if melhor < SEMELHANCA_DE_FRASE:
-            novas.append((sum(contagem_agora[p] == 0 or 1 for p in pares), frase))
+            novas.append(frase)
     total_antes, total_agora = (
         sum(contagem_antes.values()) or 1,
         sum(contagem_agora.values()) or 1,
@@ -323,12 +338,12 @@ def comparar_riscos(antes: str, agora: str) -> MudancaNosRiscos:
         for d, p in sorted(crescimento, reverse=True)[:PALAVRAS_EM_ALTA]
         if d > 0
     )
-    destaque = sorted(novas, key=lambda x: -len(x[1]))[:FRASES_NOVAS]
+    destaque = sorted(novas, key=len, reverse=True)[:FRASES_NOVAS]  # as mais longas
     return MudancaNosRiscos(
         round(_cosseno(contagem_antes, contagem_agora), 4),
         len(antes.split()),
         len(agora.split()),
-        tuple(_cortar(f) for _, f in destaque),
+        tuple(_cortar(f) for f in destaque),
         len(novas),
         em_alta,
     )
