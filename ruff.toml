@@ -19,9 +19,8 @@ ignore = [
 max-complexity = 15
 
 [lint.per-file-ignores]
-# app.py: B905 e C901 voltam a valer quando ele for dividido em telas/ (etapa 4 do plano de
-# qualidade); hoje ele está sendo alterado por outra frente de trabalho.
-"app.py" = ["ANN", "B905", "C901"]
+# app.py: dividido em telas/ (Master v3, Fase E); B905 e C901 voltaram a valer nele
+"app.py" = ["ANN"]
 # telas/: o código sai do app.py como está (Master v3, Fase E: só mover); as mesmas exceções
 # valem até as funções grandes serem divididas, depois da mudança de lugar
 "telas/**" = ["ANN", "B905", "C901"]
