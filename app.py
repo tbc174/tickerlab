@@ -60,6 +60,7 @@ from src.autenticacao import (
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import detentores as repo_detentores
+from src.banco import leituras as repo_leituras
 from src.banco import negociacoes as repo_negociacoes
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
@@ -154,6 +155,7 @@ from src.correlacao import (
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
 from src.estilo import CSS_DO_APP
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.eventos import FONTE_IPE
 from src.experimentos import (
     REGRAS_DE_REBALANCEAMENTO,
     calcular_retorno_da_noite_com_custo,
@@ -6333,7 +6335,40 @@ def _analisar_do_research(ticker):
     st.session_state["ir_para_visao_geral"] = True
 
 
-def _mostrar_item(item, chave, destaque=False):
+def _resumos_dos_itens(itens):
+    """protocolo → resumo, para os fatos relevantes da CVM já lidos (R5)."""
+    protocolos = [i.evento.protocolo for i in itens if i.evento.fonte == FONTE_IPE]
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_leituras.resumos(conexao, FONTE_IPE, protocolos)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return {}
+
+
+def mostrar_resumo_do_documento(resumo):
+    """O resumo do algoritmo próprio (R5): frases do documento, números e assuntos."""
+    if not resumo:
+        return
+    with st.expander("Resumo automático do documento"):
+        if resumo.get("motivo"):
+            st.caption(resumo["motivo"])
+            return
+        for frase in resumo.get("frases", []):
+            st.markdown(f"- {frase}")
+        detalhes = []
+        if resumo.get("numeros"):
+            detalhes.append("Números citados: " + "; ".join(resumo["numeros"]))
+        if resumo.get("assuntos"):
+            detalhes.append("Assuntos: " + ", ".join(resumo["assuntos"]))
+        for detalhe in detalhes:
+            st.caption(detalhe)
+        st.caption(
+            "Frases tiradas do próprio documento por um algoritmo do TickerLab (sem inteligência "
+            "artificial): nada foi reescrito. Confira no original."
+        )
+
+
+def _mostrar_item(item, chave, destaque=False, resumo=None):
     e = item.evento
     codigo = e.ticker.removesuffix(".SA")
     with st.container(border=True, key=f"tl-evento-{chave}"):
@@ -6359,6 +6394,7 @@ def _mostrar_item(item, chave, destaque=False):
             args=(e.ticker,),
             width="stretch",
         )
+        mostrar_resumo_do_documento(resumo)
         with st.expander("Por que isso aparece?"):
             for razao in item.razoes:
                 st.markdown(f"- {razao}")
@@ -6546,13 +6582,14 @@ def pagina_research():
             + (" com esses temas." if temas else ".")
         )
     else:
+        resumos = _resumos_dos_itens(itens)
         st.subheader("Em destaque")
         for i, item in enumerate(itens[:3]):
-            _mostrar_item(item, f"d{i}", destaque=True)
+            _mostrar_item(item, f"d{i}", True, resumos.get(item.evento.protocolo))
         if len(itens) > 3:
             st.subheader(f"Os outros {len(itens) - 3}")
             for i, item in enumerate(itens[3:], start=3):
-                _mostrar_item(item, f"o{i}")
+                _mostrar_item(item, f"o{i}", resumo=resumos.get(item.evento.protocolo))
     if sem_cobertura:
         st.caption(
             "Sem cobertura ainda: "
@@ -6825,6 +6862,53 @@ def _mostrar_documentos_usados(docs, mercado):
     )
 
 
+def _mostrar_mudanca_nos_riscos(chave):
+    """O que mudou nos fatores de risco entre os dois últimos 10-K (R5, algoritmo próprio)."""
+    try:
+        with obter_engine().connect() as conexao:
+            achado = repo_leituras.ultima_de_riscos(conexao, chave)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        achado = None
+    if achado is None:
+        return
+    _, referencia, r = achado
+    st.markdown("##### Fatores de risco: o que mudou no 10-K")
+    if r.get("motivo"):
+        st.caption(r["motivo"])
+        return
+    antes = r.get("referencia_antes") or "o anterior"
+    with st.container(horizontal=True):
+        st.metric(
+            "Texto igual ao do ano anterior",
+            formatar_pct(r["semelhanca"]),
+            border=True,
+            help="Semelhança entre as duas seções de risco (cosseno das frequências das "
+            "palavras): 100% é o mesmo texto.",
+        )
+        st.metric("Frases novas", r["novas_no_total"], border=True)
+        st.metric(
+            "Tamanho da seção (palavras)",
+            f"{r['palavras_agora']:,}".replace(",", "."),
+            r["palavras_agora"] - r["palavras_antes"],
+            border=True,
+        )
+    if r.get("palavras_em_alta"):
+        st.caption(
+            "Palavras que mais cresceram (vezes no ano anterior → agora): "
+            + ", ".join(f"**{p}** ({a} → {b})" for p, a, b in r["palavras_em_alta"])
+        )
+    if r.get("frases_novas"):
+        with st.expander("Algumas frases novas"):
+            for frase in r["frases_novas"]:
+                st.markdown(f"- {frase}")
+    st.caption(
+        f"10-K de {referencia:%d/%m/%Y} contra o de {antes} ([atual]({r['link_agora']}), "
+        f"[anterior]({r['link_antes']})). Pesquisa: empresas que mudam muito o texto dos "
+        "relatórios tiveram, em média, retornos piores depois (Cohen, Malloy e Nguyen, 2020, "
+        '"Lazy Prices"). É um fato a conferir no texto, não uma recomendação.'
+    )
+
+
 def _metodologia_dos_fundamentos(mercado):
     if mercado is MERCADO_EUA:
         acoes = (
@@ -6928,6 +7012,8 @@ def pagina_fundamentos():
         )
     if not resultado.documentos.empty:
         _mostrar_documentos_usados(resultado.documentos, mercado)
+    if mercado is MERCADO_EUA:
+        _mostrar_mudanca_nos_riscos(empresa[0])
     with st.expander("Como estes números são calculados"):
         st.markdown(_metodologia_dos_fundamentos(mercado))
     avisar_parametros(

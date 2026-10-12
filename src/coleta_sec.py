@@ -8,6 +8,7 @@ Toda consulta passa pelo `ClienteSec`, que identifica o TickerLab (nome e e-mail
 da SEC) e respeita o ritmo de no máximo ~8 consultas por segundo (o limite da SEC é 10).
 """
 
+import json
 import logging
 import time
 import xml.etree.ElementTree as ET
@@ -20,7 +21,7 @@ import requests
 import sqlalchemy as sa
 
 from src import eventos_sec as sec
-from src import fundamentos_sec
+from src import fundamentos_sec, leitura
 from src import negociacoes as ng
 from src import negociacoes_sec as form4
 from src.banco import sob_demanda
@@ -30,6 +31,7 @@ from src.banco.demonstracoes import (
     referencias_guardadas,
 )
 from src.banco.eventos import gravar_eventos, versoes_gravadas
+from src.banco.leituras import RISCOS, gravar_leitura, lidos
 from src.banco.negociacoes import gravar_negociacoes, ja_lidos, marcar_como_lidos
 
 log = logging.getLogger("tickerlab.sec")
@@ -166,6 +168,74 @@ def gravar_fundamentos_da_empresa(
         return gravar_demonstracoes(conexao, contas, documentos)
 
 
+def _dois_ultimos_10k(conteudo: bytes) -> list[tuple[str, date | None, str]]:
+    """(protocolo, data-base, documento) dos dois 10-K mais recentes (sem as retificações)."""
+    recentes = json.loads(conteudo).get("filings", {}).get("recent", {})
+    anuais = []
+    for i, formulario in enumerate(recentes.get("form", [])):
+        if formulario == "10-K" and recentes["primaryDocument"][i]:
+            data = pd.to_datetime(recentes["reportDate"][i] or None, errors="coerce")
+            anuais.append(
+                (
+                    recentes["accessionNumber"][i],
+                    None if pd.isna(data) else data.date(),
+                    recentes["primaryDocument"][i],
+                )
+            )
+    return anuais[:2]
+
+
+def gravar_leitura_do_10k(
+    motor: sa.Engine, cliente: ClienteSec, conteudo: bytes, cik: int
+) -> bool:
+    """Compara os fatores de risco dos dois últimos 10-K (R5), uma vez por 10-K novo.
+
+    Devolve True se gravou. Sem a seção nos dois, grava o motivo (para não baixar de novo).
+    """
+    anuais = _dois_ultimos_10k(conteudo)
+    if len(anuais) < 2:
+        return False
+    (protocolo, referencia, _), (protocolo_antes, referencia_antes, _) = anuais
+    with motor.connect() as conexao:
+        if lidos(conexao, sec.FONTE_SEC, RISCOS, [protocolo]):
+            return False
+    links, textos = [], []
+    for numero, _, documento in anuais:
+        link = sec.URL_DO_ARQUIVO.format(
+            cik=cik, pasta=numero.replace("-", ""), documento=documento
+        )
+        links.append(link)
+        textos.append(
+            leitura.fatores_de_risco(cliente.baixar(link).decode("utf-8", "replace"))
+        )
+    agora, antes = textos
+    resultado = (
+        leitura.comparar_riscos(antes, agora).para_guardar()
+        if agora and antes
+        else {
+            "motivo": "Não achei a seção de fatores de risco nos dois 10-K.",
+            "versao": leitura.VERSAO,
+        }
+    )
+    resultado |= {
+        "link_agora": links[0],
+        "link_antes": links[1],
+        "referencia_antes": referencia_antes.isoformat() if referencia_antes else None,
+        "protocolo_antes": protocolo_antes,
+    }
+    with motor.begin() as conexao:
+        gravar_leitura(
+            conexao,
+            sec.FONTE_SEC,
+            protocolo,
+            RISCOS,
+            sec.cik_como_chave(cik),
+            referencia,
+            resultado,
+        )
+    return True
+
+
 def coletar_empresa(
     motor: sa.Engine, cliente: ClienteSec, cik: int, janelas: Janelas, hoje: date
 ) -> tuple[int, int]:
@@ -179,6 +249,12 @@ def coletar_empresa(
         gravar_fundamentos_da_empresa(motor, cliente, conteudo, cik, hoje)
     except ERROS_DE_UMA_EMPRESA as erro:
         log.warning("Balanços de CIK %s pulados: %s", cik, erro.__class__.__name__)
+    try:
+        gravar_leitura_do_10k(motor, cliente, conteudo, cik)
+    except ERROS_DE_UMA_EMPRESA as erro:
+        log.warning(
+            "Leitura do 10-K de CIK %s pulada: %s", cik, erro.__class__.__name__
+        )
     if janelas.limite_form4 <= 0:
         return eventos, 0
     lidos = gravar_form4_da_empresa(

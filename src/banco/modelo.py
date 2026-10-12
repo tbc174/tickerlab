@@ -390,3 +390,21 @@ tickers_sob_demanda = sa.Table(
     sa.Column("cnpj", sa.String(18), nullable=False),  # o CIK com prefixo
     _momento("pedido_em"),
 )
+
+# Research R5 (0016): leitura dos documentos pelo algoritmo próprio (src/leitura.py). Dados
+# públicos: o resumo de cada fato relevante e a comparação dos fatores de risco dos 10-K.
+leituras = sa.Table(
+    "leituras",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),  # cvm_ipe ou sec_edgar
+    sa.Column(
+        "documento", sa.String(60), primary_key=True
+    ),  # protocolo do documento lido
+    sa.Column("tipo", sa.String(20), primary_key=True),  # resumo ou riscos
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("referencia", sa.Date),
+    sa.Column("resultado", JSON_PORTATIL, nullable=False),
+    sa.Column("versao", sa.String(10), nullable=False),
+    _momento("lido_em"),
+)
+sa.Index("ix_leituras_cnpj", leituras.c.cnpj)
