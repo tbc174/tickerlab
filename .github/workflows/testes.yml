@@ -34,6 +34,26 @@ jobs:
       TICKERLAB_TEST_DATABASE_URL: postgresql://postgres:senha_de_teste@localhost:5432/tickerlab_teste
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # o passo abaixo compara com o commit anterior
+
+      # mudança só de texto (a lista está em scripts/mudou_so_texto.py) não instala nada nem roda a
+      # suíte inteira: só os testes do README. O check "testes" fica verde do mesmo jeito.
+      - name: O que mudou
+        id: mudancas
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="HEAD^1" # num PR, o commit testado junta o PR à main: o 1º pai é a main
+          else
+            base="${{ github.event.before }}"
+          fi
+          if git cat-file -e "$base^{commit}" 2>/dev/null; then
+            so_texto="$(git diff --name-only "$base" HEAD | python3 scripts/mudou_so_texto.py)"
+          else
+            so_texto=false
+          fi
+          echo "so_texto=$so_texto" >> "$GITHUB_OUTPUT"
+          echo "Só texto: $so_texto"
 
       - uses: actions/setup-python@v5
         with:
@@ -46,6 +66,7 @@ jobs:
       # o painel do trader usa o Qt (PySide6): mesmo sem tela ("offscreen"), ele precisa das
       # bibliotecas gráficas do sistema, que o Ubuntu do GitHub não traz (faltava o libEGL.so.1)
       - name: Bibliotecas do Qt
+        if: steps.mudancas.outputs.so_texto != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
@@ -54,21 +75,31 @@ jobs:
       # usa CPU, então instala antes a mesma versão só para CPU (~200 MB), que satisfaz o
       # "torch==2.14.1" do requirements-trader.txt
       - name: Instalar dependências
+        if: steps.mudancas.outputs.so_texto != 'true'
         run: |
           python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
           python -m pip install -r requirements-trader.txt
 
       - name: ruff (erros de código)
+        if: steps.mudancas.outputs.so_texto != 'true'
         run: python -m ruff check .
 
       - name: ruff (formatação do app, src e tests)
+        if: steps.mudancas.outputs.so_texto != 'true'
         run: python -m ruff format --check app.py src tests trader scripts
 
       # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
       # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
       # usa o PostgreSQL acima), que fica todo num processo só, um teste por vez
       - name: Testes
+        if: steps.mudancas.outputs.so_texto != 'true'
         run: python -m pytest -q -n logical --dist loadgroup
+
+      - name: Testes do README (mudança só de texto)
+        if: steps.mudancas.outputs.so_texto == 'true'
+        run: |
+          python -m pip install pytest==9.1.1
+          python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py
 
   imagem:
     name: imagem Docker

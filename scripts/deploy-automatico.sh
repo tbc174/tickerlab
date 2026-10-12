@@ -4,7 +4,7 @@
 # versão anterior sozinho.
 #
 # O servidor só puxa (nada de fora entra nele): roda de tempos em tempos pelo cron do usuário.
-#   crontab -e  ->  */5 * * * * /opt/stacks/tickerlab/scripts/deploy-automatico.sh
+#   crontab -e  ->  * * * * * /opt/stacks/tickerlab/scripts/deploy-automatico.sh
 #
 # Log: ~/deploy-tickerlab.log
 
@@ -29,7 +29,7 @@ atual="$(git rev-parse HEAD)"
 novo="$(git rev-parse origin/main)"
 [ "$atual" = "$novo" ] && exit 0
 
-# avisa uma vez só por commit (o cron roda a cada 5 minutos)
+# avisa uma vez só por commit (o cron roda a cada minuto)
 avisar() {
   if [ "$(cat "$ULTIMO_AVISO" 2>/dev/null || true)" != "$novo:$1" ]; then
     registrar "${novo:0:8}: $1"

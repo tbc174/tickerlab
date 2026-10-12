@@ -26,6 +26,8 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 - A suíte inteira demora: rode em segundo plano gravando a saída num arquivo e avise o Tiago.
 - O CI (`.github/workflows/testes.yml`) roda `ruff`, os testes com **PostgreSQL de verdade** e
   constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
+  Mudança só de texto (lista em `scripts/mudou_so_texto.py`) roda só os testes do README: se um
+  teste ou o app passar a ler um texto da lista, tire-o de lá.
 
 ## Arquitetura (onde cada coisa deve ficar)
 

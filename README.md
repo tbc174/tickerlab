@@ -236,7 +236,7 @@ cobrança de teste.
   aberta para a internet. O tráfego chega pelo Cloudflare Tunnel: `app.tickerlab.com.br` (app),
   `api.tickerlab.com.br` (API e webhook) e `tickerlab.com.br` (site público, servido pelo nginx).
   A administração do servidor é feita só por uma rede privada (Tailscale).
-- **Deploy automático:** `scripts/deploy-automatico.sh`, no cron do servidor (a cada 5 minutos),
+- **Deploy automático:** `scripts/deploy-automatico.sh`, no cron do servidor (a cada minuto),
   puxa a `main` **só se os testes do GitHub Actions passaram** nesse commit, reconstrói os
   contêineres, espera o app e a API ficarem saudáveis e, se não ficarem, volta sozinho para a
   versão anterior. Log em `~/deploy-tickerlab.log`.
