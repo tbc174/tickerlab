@@ -43,6 +43,11 @@ SETORES_FINANCEIROS = (
     "seguradoras",
     "arrendamento mercantil",
     "intermediacao",
+    # descrições do código SIC da SEC (empresas dos EUA)
+    "banks",
+    "insurance",
+    "savings institution",
+    "security brokers",
 )
 COLUNAS = [
     "cnpj", "documento", "referencia", "versao", "periodo", "inicio", "fim", "conta", "valor",

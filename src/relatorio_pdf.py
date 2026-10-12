@@ -401,6 +401,33 @@ class RelatorioPDF(FPDF):
             self.paragrafo(texto, apagado=True)
             self.ln(1.5)
 
+    def item(
+        self,
+        titulo: str,
+        texto: str,
+        link: str = "",
+        rotulo_do_link: str = "",
+        nota: str = "",
+    ) -> None:
+        """Um item de lista longa (a Newsletter): título, texto, nota apagada e link clicável."""
+        if self.get_y() > self.h - 50:
+            self.add_page()
+        self.set_font("Manrope", "B", 10)
+        self._cor_do_texto()
+        self.multi_cell(0, 5.4, titulo, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.paragrafo(texto)
+        if nota:
+            self.paragrafo(nota, apagado=True)
+        if link:
+            self.set_font("Manrope", "I", 8.5)
+            self.set_text_color(
+                *_rgb(marca.AZUL_TEXTO if self.estilo.escuro else marca.AZUL)
+            )
+            self.cell(0, 5, rotulo_do_link or "Abrir o documento original", link=link,
+                      new_x=XPos.LMARGIN, new_y=YPos.NEXT)  # fmt: skip
+            self._cor_do_texto()
+        self.ln(2.5)
+
     def aviso_destacado(self, texto: str) -> None:
         y = self.get_y() + 2
         self.set_font("Manrope", "", 9)

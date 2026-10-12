@@ -217,7 +217,7 @@ PAGINAS = (
         GRUPO_RESEARCH,
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
-        "demonstrações entregues à CVM, com o documento de cada número.",
+        "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     ),
     Pagina(
         "por_dentro",
@@ -226,6 +226,23 @@ PAGINAS = (
         ":material/badge:",
         "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu "
         "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
+    ),
+    Pagina(
+        "donos",
+        "Donos e fundos",
+        GRUPO_RESEARCH,
+        ":material/groups:",
+        "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto "
+        "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
+    ),
+    Pagina(
+        "newsletter",
+        "Newsletter",
+        GRUPO_RESEARCH,
+        ":material/newspaper:",
+        "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o "
+        "documento de cada item. Na tela ou em PDF.",
+        precisa_do_ativo=False,
     ),
     Pagina(
         "parametros",

@@ -632,13 +632,22 @@ def metodologia() -> str:
     venda programada pelo plano 10b5-1). Mostramos o <strong>cargo</strong>, nunca o nome. Pela
     pesquisa, as compras costumam dizer mais que as vendas; ainda assim, é um fato, não uma
     recomendação.</li>
+    <li><strong>Donos e fundos:</strong> quais fundos brasileiros têm cada ação da B3 (carteira
+    mensal entregue à CVM, com as posições vendidas, a aposta na queda) e quais grandes gestores
+    têm cada ação dos EUA (Form 13F trimestral da SEC). Como muitos fundos mantêm posições em
+    sigilo por até 90 dias, mostramos a fatia dos fundos que informaram e só comparamos meses
+    com cobertura parecida.</li>
+    <li><strong>Newsletter:</strong> a edição da sua lista junta tudo isso num só lugar, na tela
+    ou em PDF. É montada só com fatos dos documentos oficiais, em frases de modelo fixo (sem
+    inteligência artificial), com o link de cada item, os parâmetros usados e os limites.</li>
     <li><strong>Relevância:</strong> a ordem da lista vem de pesos que você ajusta (tipo do
     evento, quão recente é, a fonte). É uma regra editorial para organizar a leitura, não uma
     previsão de preço.</li>
-    <li><strong>Fundamentos:</strong> receita, margens, ROE, ROIC, dívida e múltiplos das
-    empresas da B3, calculados das demonstrações da CVM (DFP e ITR), nos últimos 12 meses.
-    Bancos e seguradoras aparecem como "não se aplica" onde o indicador não faz sentido. Os
-    fundamentos das empresas dos EUA ainda não estão no app.</li>
+    <li><strong>Fundamentos:</strong> receita, margens, ROE, ROIC, dívida e múltiplos nos
+    últimos 12 meses. Na B3, das demonstrações da CVM (DFP e ITR); nos EUA, dos números que as
+    empresas marcam em XBRL nos relatórios 10-K e 10-Q entregues à SEC, respeitando o ano
+    fiscal de cada uma (o da Apple termina em setembro). Bancos e seguradoras aparecem como "não
+    se aplica" onde o indicador não faz sentido.</li>
   </ul>
 
   <h2>Carteira B3</h2>

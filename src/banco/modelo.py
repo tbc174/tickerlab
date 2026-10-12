@@ -17,7 +17,14 @@ CONVENCAO_DE_NOMES = {
 
 PAPEIS = ("usuario", "admin")
 PLANOS = ("gratuito", "plus", "pro")
-TIPOS_DE_RELATORIO = ("ativo", "comparacao", "backtest", "carteira", "minha_carteira")
+TIPOS_DE_RELATORIO = (
+    "ativo",
+    "comparacao",
+    "backtest",
+    "carteira",
+    "minha_carteira",
+    "newsletter",
+)
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
 
@@ -304,7 +311,8 @@ relatorios = sa.Table(
     sa.Column("parametros", JSON_PORTATIL),
     sa.Column("apagado_em", sa.DateTime(timezone=True)),
     sa.CheckConstraint(
-        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira')",
+        "tipo IN ('ativo', 'comparacao', 'backtest', 'carteira', 'minha_carteira', "
+        "'newsletter')",
         name="tipo",
     ),
 )
@@ -312,4 +320,50 @@ sa.Index(
     "ix_relatorios_usuario_id_criado_em",
     relatorios.c.usuario_id,
     relatorios.c.criado_em,
+)
+
+# Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
+# (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
+detentores_por_acao = sa.Table(
+    "detentores_por_acao",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),  # cvm_cda ou sec_13f
+    sa.Column("competencia", sa.Date, primary_key=True),  # fim do mês ou do trimestre
+    sa.Column("codigo", sa.String(12), primary_key=True),  # PETR4, AAPL
+    sa.Column("detentores", sa.Integer, nullable=False),
+    sa.Column("valor", sa.Float, nullable=False),
+    sa.Column("quantidade", sa.Float, nullable=False),
+    sa.Column(
+        "vendidos", sa.Integer, nullable=False
+    ),  # fundos com posição vendida (só CVM)
+    sa.Column("valor_vendido", sa.Float, nullable=False),
+    sa.Column("valor_emprestado", sa.Float, nullable=False),
+    sa.Column("compras_no_mes", sa.Float, nullable=False),
+    sa.Column("vendas_no_mes", sa.Float, nullable=False),
+    _momento("coletado_em"),
+)
+maiores_detentores = sa.Table(
+    "maiores_detentores",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("competencia", sa.Date, primary_key=True),
+    sa.Column("codigo", sa.String(12), primary_key=True),
+    sa.Column("tipo", sa.String(10), primary_key=True),  # comprado ou vendido
+    sa.Column("posicao", sa.Integer, primary_key=True),  # 1 = o maior
+    sa.Column("nome", sa.String(200), nullable=False),
+    sa.Column(
+        "documento", sa.String(20), nullable=False
+    ),  # CNPJ do fundo ou CIK do gestor
+    sa.Column("valor", sa.Float, nullable=False),
+    sa.Column("quantidade", sa.Float, nullable=False),
+)
+# quantos fundos (ou gestores) informaram posições em cada competência: a cobertura do arquivo.
+# Muda muito (sigilo de até 90 dias na CVM; mês recente ainda chegando) e decide o que comparar.
+cobertura_de_detentores = sa.Table(
+    "cobertura_de_detentores",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("competencia", sa.Date, primary_key=True),
+    sa.Column("informantes", sa.Integer, nullable=False),
+    _momento("coletado_em"),
 )

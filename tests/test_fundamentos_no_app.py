@@ -65,11 +65,9 @@ def _metricas(app):
 
 
 def test_sem_cadastro_explica_a_cobertura(banco):
-    app = _abrir("AAPL")
+    app = _abrir("BTC-USD")
     assert not app.exception
-    assert any(
-        "não tem cadastro de companhia aberta na CVM" in i.value for i in app.info
-    )
+    assert any("não tem cadastro na CVM nem na SEC" in i.value for i in app.info)
     assert not app.metric
 
 

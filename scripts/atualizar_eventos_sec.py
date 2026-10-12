@@ -1,4 +1,4 @@
-"""Coleta os eventos e as negociações de pessoas de dentro (Form 4) das empresas dos EUA na SEC.
+"""Coleta da SEC para as empresas dos EUA: eventos, balanços (fundamentos) e Form 4.
 
     python -m scripts.atualizar_eventos_sec            (eventos de 400 dias, Form 4 de 90)
     python -m scripts.atualizar_eventos_sec --dias 730 --dias-form4 400 --max-form4 0
@@ -24,11 +24,16 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from src import catalogo
+from src import catalogo, fundamentos_sec
 from src import eventos_sec as sec
 from src import negociacoes as ng
 from src import negociacoes_sec as form4
 from src.banco.conexao import criar_engine, migrar_para
+from src.banco.demonstracoes import (
+    gravar_demonstracoes,
+    gravar_setor,
+    referencias_guardadas,
+)
 from src.banco.eventos import (
     ORIGEM_SEC,
     gravar_eventos,
@@ -134,17 +139,41 @@ def gravar_form4_da_empresa(
     return len(pendentes)
 
 
+def gravar_fundamentos_da_empresa(
+    motor: sa.Engine, conteudo: bytes, cik: int, agente: str
+) -> int:
+    """Baixa os balanços (`companyfacts`) só se há 10-K ou 10-Q novo. Devolve documentos gravados."""
+    chave = sec.cik_como_chave(cik)
+    ultimo, setor = fundamentos_sec.ultimo_relatorio(conteudo)
+    with motor.connect() as conexao:
+        guardadas = referencias_guardadas(conexao, chave)
+    if ultimo is None or ultimo in guardadas:
+        return 0
+    time.sleep(PAUSA_ENTRE_CONSULTAS)
+    fatos = baixar(fundamentos_sec.URL_DOS_FATOS.format(cik=cik), agente)
+    hoje = datetime.now(ZoneInfo("America/Sao_Paulo")).date()
+    contas, documentos = fundamentos_sec.ler_companyfacts(fatos, hoje)
+    with motor.begin() as conexao:
+        gravar_setor(conexao, chave, setor)
+        return gravar_demonstracoes(conexao, contas, documentos)
+
+
 def coletar_empresa(
     motor: sa.Engine, cik: int, agente: str, janelas: tuple[date, date], limite: int
 ) -> tuple[int, int]:
     """Eventos e Form 4 de uma empresa (uma consulta à lista de documentos dela).
 
-    Devolve (eventos novos, Form 4 baixados).
+    Devolve (eventos novos, Form 4 baixados). Os balanços (fundamentos) vêm junto.
     """
     desde, desde_form4 = janelas
     time.sleep(PAUSA_ENTRE_CONSULTAS)
     conteudo = baixar(sec.URL_DOS_DOCUMENTOS.format(cik=cik), agente)
     eventos = gravar_eventos_da_empresa(motor, conteudo, cik, agente, desde)
+    try:
+        gravar_fundamentos_da_empresa(motor, conteudo, cik, agente)
+    except (requests.RequestException, ValueError, KeyError) as erro:
+        # os balanços falharem não impede os Form 4; tenta de novo na próxima coleta
+        log.warning("Balanços de CIK %s pulados: %s", cik, erro.__class__.__name__)
     if limite <= 0:
         return eventos, 0
     return eventos, gravar_form4_da_empresa(

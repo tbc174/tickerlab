@@ -236,12 +236,3 @@ def test_acontecimentos_mostra_a_apple_com_link_para_a_sec(banco, mapa, apple):
     )
     assert all(b.proto.label == "Abrir na SEC" for b in botoes)
     assert "Sem cobertura ainda" not in " ".join(c.value for c in app.caption)
-
-
-def test_fundamentos_dos_eua_explicam_que_chegam_depois(banco, mapa):
-    with banco.begin() as c:
-        repo.gravar_tickers(c, mapa, origem=repo.ORIGEM_SEC)
-    app = _abrir("fundamentos", ticker="AAPL")
-    assert not app.exception
-    assert any("chegam numa próxima etapa" in i.value for i in app.info)
-    assert not app.metric

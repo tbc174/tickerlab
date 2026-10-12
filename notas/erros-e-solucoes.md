@@ -92,3 +92,24 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Cuidado:** valores tirados de um DataFrame (`to_dict`) vêm como `numpy.int64`, que o psycopg não sabe gravar (o SQLite dos testes aceita, então o erro só apareceria em produção).
 - **Solução:** converter antes de gravar (`valor.item()`), como faz `_python` em `src/banco/negociacoes.py`.
 - **Data:** 11/10/2026
+
+## Os 12 meses supunham ano fiscal igual ao do calendário
+- **Sintoma (achado ao trazer os EUA):** a regra "o anual do ano anterior ao trimestre" pegaria, para o Walmart (ano fiscal termina em janeiro), o balanço anual de dois anos antes.
+- **Solução:** usar o último balanço anual **anterior** ao trimestre e a no máximo 371 dias dele (53 semanas). Para as empresas da B3 o resultado é o mesmo. Teste: `test_walmart_usa_o_anual_de_janeiro_e_os_minoritarios`.
+- **Data:** 11/10/2026
+
+## Gravar o setor de uma empresa apagava os de todas
+- **Sintoma (evitado antes de acontecer):** `gravar_setores` apagava a tabela inteira; com a SEC gravando empresa por empresa, cada uma apagaria as outras, e a coleta da CVM apagaria as dos EUA.
+- **Solução:** a CVM apaga só as suas linhas; os EUA usam `gravar_setor` (uma empresa). Mesmo cuidado já tomado com o mapa de tickers.
+- **Data:** 11/10/2026
+
+## Carteira dos fundos: o número de fundos "caía pela metade" sem ninguém vender
+- **Sintoma (achado antes de publicar):** junho de 2026 tinha 6.653 fundos com ações no arquivo da CVM; julho e agosto, ~3.400; setembro (ainda chegando), 1.966. Contar fundos crus mostraria saídas em massa que não aconteceram.
+- **Causa:** um fundo pode manter posições em **sigilo por até 90 dias** (elas aparecem depois), e o arquivo do mês mais recente ainda está sendo completado.
+- **Solução:** guardar a cobertura de cada mês (quantos fundos informaram), mostrar a **fatia** dos que informaram e comparar só meses seguidos com cobertura parecida (≥ 85%); o mês mais novo incompleto fica de fora (`src/detentores.py`).
+- **Data:** 11/10/2026
+
+## 13F estourava a memória do contêiner
+- **Sintoma:** ler a tabela de posições do 13F (400 MB descompactada) chegava a ~360 MB de memória, perto do limite do contêiner (768 MB, dividido com o app).
+- **Solução:** ler em pedaços de 200 mil linhas, filtrar só as ações do S&P 500 e guardar cada pedaço em formato compacto (categorias e números); pico caiu para ~144 MB, mesmo resultado.
+- **Data:** 11/10/2026

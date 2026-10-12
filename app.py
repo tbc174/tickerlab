@@ -19,13 +19,18 @@ from src import analise as research_analise
 from src import (
     aprendizado,
     catalogo,
+    detentores,
     estilos_pdf,
     eventos_sec,
     fundamentos,
+    fundos_cvm,
+    fundos_sec,
     graficos,
     marca,
     negociacoes,
+    newsletter,
     previa_pdf,
+    relatorio_newsletter,
     relatorios,
     research,
     trade,
@@ -50,6 +55,7 @@ from src.autenticacao import (
     registrar_login,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco import detentores as repo_detentores
 from src.banco import negociacoes as repo_negociacoes
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
@@ -4411,6 +4417,8 @@ def _montar_relatorio(tipo, c):
     comuns = {"ticker": c.ticker, "periodo": c.periodo}
     if tipo == relatorios.MINHA_CARTEIRA:
         return _montar_minha_carteira(c, base)
+    if tipo == relatorios.NEWSLETTER:
+        return _montar_newsletter(c)
     if tipo == relatorios.ATIVO:
         st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
 
@@ -4529,6 +4537,45 @@ def _montar_relatorio(tipo, c):
         "tickerlab-carteira.pdf",
         f"Carteira: {nome}",
         {"periodo": c.periodo, "ativos": texto, "estrategia_carteira": nome},
+        montar,
+    )
+
+
+def _montar_newsletter(c):
+    """Lista e período da edição; o PDF tem o mesmo conteúdo da página Newsletter."""
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    if st.session_state.get("relatorio_newsletter_lista") not in nomes:
+        st.session_state.pop(
+            "relatorio_newsletter_lista", None
+        )  # lista apagada ou de outra conta
+    st.session_state.setdefault("relatorio_newsletter_janela", 7)
+    col_lista, col_janela = st.columns(2)
+    escolhida = col_lista.selectbox("Lista", nomes, key="relatorio_newsletter_lista")
+    janela = col_janela.selectbox(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        key="relatorio_newsletter_janela",
+    )
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Lendo os documentos")
+        edicao = _edicao(nome, tickers, janela)
+        if edicao is None:
+            raise ValueError("Os documentos ainda não foram coletados neste servidor.")
+        return relatorio_newsletter.relatorio_da_newsletter(
+            edicao, config=config, ao_avancar=ao_avancar
+        )
+
+    return _pedido(
+        relatorios.NEWSLETTER,
+        c,
+        "tickerlab-newsletter.pdf",
+        f"Newsletter: {nome}",
+        {"lista": nome, "janela": janela},
         montar,
     )
 
@@ -5002,6 +5049,8 @@ CAMPOS_PARA_REABRIR = {
     "ativos": "relatorio_carteira_ativos",
     "estrategia_carteira": "relatorio_carteira",
     "carteira_de_exemplo": "relatorio_carteira_exemplo",
+    "lista": "relatorio_newsletter_lista",
+    "janela": "relatorio_newsletter_janela",
 }
 
 
@@ -6427,42 +6476,77 @@ GRUPOS_DE_FUNDAMENTOS = (
 )
 
 
-def _brl(valor):
-    """R$ em bilhões ou milhões, no formato brasileiro."""
+@dataclass(frozen=True)
+class MercadoDosFundamentos:
+    """O que muda na página Fundamentos entre a B3 (CVM) e os EUA (SEC)."""
+
+    moeda: str
+    simbolo: str
+    regulador: str
+    anual: str  # nome do relatório anual (DFP ou 10-K)
+    trimestral: str
+    identificador: str  # CNPJ ou CIK
+    aliquota: float  # imposto usado no ROIC
+    imposto: str
+
+
+MERCADO_B3 = MercadoDosFundamentos(
+    "BRL", "R$", "CVM", "DFP", "ITR", "CNPJ", fundamentos.ALIQUOTA_DE_IR_CS, "IR/CS"
+)
+MERCADO_EUA = MercadoDosFundamentos(
+    "USD", "US$", "SEC", "10-K", "10-Q", "CIK", fundamentos.ALIQUOTA_DOS_EUA,
+    "imposto federal",
+)  # fmt: skip
+
+
+def _mercado_da_empresa(chave):
+    """CNPJ → B3; `CIK...` → EUA."""
+    return MERCADO_EUA if chave.startswith(eventos_sec.PREFIXO_DO_CIK) else MERCADO_B3
+
+
+def _numero_br(valor, casas):
+    return f"{valor:,.{casas}f}".replace(",", "#").replace(".", ",").replace("#", ".")
+
+
+def _dinheiro(valor, simbolo="R$"):
+    """Em bilhões ou milhões, no formato brasileiro (R$ 1,2 bi; US$ 350,0 mi)."""
     for limite, sufixo in ((1e9, "bi"), (1e6, "mi")):
         if abs(valor) >= limite:
-            texto = (
-                f"{valor / limite:,.1f}".replace(",", "#")
-                .replace(".", ",")
-                .replace("#", ".")
-            )
-            return f"R$ {texto} {sufixo}"
-    return f"R$ {valor:,.0f}".replace(",", ".")
+            return f"{simbolo} {_numero_br(valor / limite, 1)} {sufixo}"
+    return f"{simbolo} {_numero_br(valor, 0)}"
 
 
-def _formatar_indicador(indicador):
+def _nomes_dos_documentos(texto, mercado):
+    """Os textos do cálculo falam em DFP e ITR; nos EUA, viram 10-K e 10-Q."""
+    if mercado is MERCADO_B3 or not texto:
+        return texto
+    return texto.replace("DFP", mercado.anual).replace("ITR", mercado.trimestral)
+
+
+def _formatar_indicador(indicador, mercado=MERCADO_B3):
     if not indicador.disponivel:
         return "—"
     valor = indicador.valor
     if indicador.unidade == fundamentos.FRACAO:
         return formatar_pct(valor)
     if indicador.unidade == fundamentos.REAIS:
-        return _brl(valor)
+        return _dinheiro(valor, mercado.simbolo)
     if indicador.unidade == fundamentos.REAIS_POR_ACAO:
-        return f"R$ {valor:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
-    return f"{valor:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".") + "×"
+        return f"{mercado.simbolo} {_numero_br(valor, 2)}"
+    return _numero_br(valor, 2) + "×"
 
 
-def _mostrar_grupo(titulo, chaves, resultado):
+def _mostrar_grupo(titulo, chaves, resultado, mercado=MERCADO_B3):
     st.markdown(f"##### {titulo}")
     with st.container(horizontal=True):
         for chave in chaves:
             indicador = resultado[chave]
+            explicacao = indicador.motivo or f"Base: {indicador.base}."
             st.metric(
                 indicador.nome,
-                _formatar_indicador(indicador),
+                _formatar_indicador(indicador, mercado),
                 border=True,
-                help=(indicador.motivo or f"Base: {indicador.base}.")
+                help=_nomes_dos_documentos(explicacao, mercado)
                 + " "
                 + (ajuda_do(indicador.nome) or ""),
             )
@@ -6472,25 +6556,124 @@ def _mostrar_grupo(titulo, chaves, resultado):
         if not indicador.disponivel:
             motivos.setdefault(indicador.motivo, []).append(indicador.nome)
     for motivo, nomes in motivos.items():
-        st.caption(f"{', '.join(nomes)}: {motivo}")
+        st.caption(f"{', '.join(nomes)}: {_nomes_dos_documentos(motivo, mercado)}")
 
 
-def _tabela_anual_formatada(anual):
+def _tabela_anual_formatada(anual, simbolo="R$"):
+    def coluna(nome):
+        return [_dinheiro(v, simbolo) if pd.notna(v) else "—" for v in anual[nome]]
+
     tabela = pd.DataFrame(index=[str(a) for a in anual.index])
     tabela.index.name = "Ano"
-    tabela["Receita"] = [_brl(v) if pd.notna(v) else "—" for v in anual["receita"]]
-    tabela["Lucro dos acionistas"] = [
-        _brl(v) if pd.notna(v) else "—" for v in anual["lucro"]
-    ]
+    tabela["Receita"] = coluna("receita")
+    tabela["Lucro dos acionistas"] = coluna("lucro")
     tabela["Margem líquida"] = [formatar_pct(v) for v in anual["margem_liquida"]]
-    tabela["Patrimônio"] = [
-        _brl(v) if pd.notna(v) else "—" for v in anual["patrimonio"]
-    ]
+    tabela["Patrimônio"] = coluna("patrimonio")
     if "divida_liquida" in anual:
-        tabela["Dívida líquida"] = [
-            _brl(v) if pd.notna(v) else "—" for v in anual["divida_liquida"]
-        ]
+        tabela["Dívida líquida"] = coluna("divida_liquida")
     return tabela
+
+
+def _ler_fundamentos(ticker):
+    """(empresa, dados) ou None quando a página já mostrou a mensagem do problema."""
+    try:
+        with obter_engine().connect() as conexao:
+            empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
+            dados = dados_da_empresa(conexao, empresa[0]) if empresa else None
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        st.info(
+            "As demonstrações ainda não foram coletadas neste servidor "
+            "(`python -m scripts.atualizar_fundamentos --anos 6` para a CVM e "
+            "`python -m scripts.atualizar_eventos_sec` para a SEC).",
+            icon=":material/schedule:",
+        )
+        return None
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
+        st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
+        return None
+    if empresa is None:
+        st.info(
+            f"{ticker} não tem cadastro na CVM nem na SEC. Os fundamentos cobrem ações e units "
+            "da B3 e as ações do S&P 500; fundos, ETFs e BDRs dependem de outras fontes.",
+            icon=":material/info:",
+        )
+        return None
+    if dados.contas.empty:
+        st.info(
+            f"Ainda não há demonstrações coletadas da {empresa[1]}. A coleta roda uma vez por "
+            "dia.",
+            icon=":material/schedule:",
+        )
+        return None
+    return empresa, dados
+
+
+def _mostrar_documentos_usados(docs, mercado):
+    st.markdown("##### Documentos usados")
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Documento": [
+                    f"Anual ({mercado.anual})"
+                    if d == "DFP"
+                    else f"Trimestral ({mercado.trimestral})"
+                    for d in docs["documento"]
+                ],
+                "Data do balanço": [f"{d:%d/%m/%Y}" for d in docs["referencia"]],
+                f"Entregue à {mercado.regulador}": [
+                    f"{d:%d/%m/%Y}" if pd.notna(d) else "—" for d in docs["recebido_em"]
+                ],
+                "Versão": docs["versao"].astype(int),
+                "Abrir": docs["link"],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Abrir": st.column_config.LinkColumn(
+                "Abrir", display_text=f"na {mercado.regulador}"
+            )
+        },
+    )
+
+
+def _metodologia_dos_fundamentos(mercado):
+    if mercado is MERCADO_EUA:
+        acoes = (
+            "ações em circulação na capa do relatório mais recente, conferidas com o lucro "
+            "por ação declarado pela empresa"
+        )
+        fonte = (
+            "Fonte: SEC (os números marcados em XBRL nos relatórios 10-K e 10-Q, "
+            "`companyfacts`). Valores em dólares. Bancos e seguradoras não têm margem bruta, EBIT "
+            "nem dívida comparáveis. O ano fiscal pode não coincidir com o do calendário (o da "
+            "Apple termina em setembro): os 12 meses usam as datas de cada relatório."
+        )
+    else:
+        acoes = (
+            "ações em circulação (sem as de tesouraria), conferidas com o lucro por ação "
+            "declarado pela empresa"
+        )
+        fonte = (
+            "Fonte: dados abertos da CVM (DFP, ITR e cadastro). Bancos e seguradoras não têm "
+            "margem bruta, EBIT nem dívida comparáveis."
+        )
+    return (
+        f"- **12 meses:** o último {mercado.anual} + o acumulado do ano no último "
+        f"{mercado.trimestral} − o mesmo período do ano anterior.\n"
+        "- **Margens:** resultado bruto, EBIT e lucro divididos pela receita dos 12 meses.\n"
+        "- **ROE:** lucro dos acionistas (12 meses) ÷ patrimônio dos acionistas no último "
+        "balanço.\n"
+        f"- **ROIC:** EBIT × (1 − {mercado.aliquota:.0%} de {mercado.imposto}) ÷ "
+        "(patrimônio + dívida bruta − caixa e aplicações).\n"
+        "- **Dívida:** empréstimos e financiamentos de curto e longo prazo; dívida líquida "
+        "desconta o caixa e as aplicações financeiras.\n"
+        f"- **Crescimento:** taxa composta anual entre os {mercado.anual} do horizonte "
+        "escolhido.\n"
+        f"- **Por ação:** {acoes}.\n\n"
+        f"{fonte} Nada aqui é recomendação."
+    )
 
 
 def pagina_fundamentos():
@@ -6498,59 +6681,38 @@ def pagina_fundamentos():
     c = carregar_contexto()
     r = parametros_em_vigor(c.ticker)
     ticker = normalizar_ticker(c.ticker)
-    try:
-        with obter_engine().connect() as conexao:
-            empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
-            dados = dados_da_empresa(conexao, empresa[0]) if empresa else None
-    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
-        st.info(
-            "As demonstrações da CVM ainda não foram coletadas neste servidor "
-            "(`python -m scripts.atualizar_fundamentos --anos 6`).",
-            icon=":material/schedule:",
-        )
+    lido = _ler_fundamentos(ticker)
+    if lido is None:
         return
-    except Exception:
-        logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
-        st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
-        return
-    if empresa is None:
-        st.info(
-            f"{ticker} não tem cadastro de companhia aberta na CVM. Hoje os fundamentos cobrem "
-            "ações e units da B3; fundos, ETFs e BDRs dependem de outras fontes.",
-            icon=":material/info:",
-        )
-        return
-    if empresa[0].startswith(eventos_sec.PREFIXO_DO_CIK):
-        st.info(
-            f"Os fundamentos das empresas dos EUA ({empresa[1]}) chegam numa próxima etapa. "
-            "Os documentos que ela entrega à SEC (8-K, 10-K, 10-Q) já aparecem em "
-            "Acontecimentos.",
-            icon=":material/schedule:",
-        )
-        return
-    if dados.contas.empty:
-        st.info(
-            f"Ainda não há demonstrações coletadas da {empresa[1]}. A coleta roda uma vez por "
-            "dia.",
-            icon=":material/schedule:",
-        )
-        return
-    preco = float(c.fechamento.iloc[-1]) if moeda_do_ticker(ticker) == "BRL" else None
+    empresa, dados = lido
+    mercado = _mercado_da_empresa(empresa[0])
+    preco = (
+        float(c.fechamento.iloc[-1])
+        if moeda_do_ticker(ticker) == mercado.moeda
+        else None
+    )
     resultado = fundamentos.calcular(
         dados,
         preco,
         anos=int(r["fundamentalista.anos"]),
         roic_minimo=float(r["fundamentalista.roic_minimo"]),
         pl_maximo=float(r["fundamentalista.pl_maximo"]),
+        aliquota=mercado.aliquota,
+    )
+    identificador = (
+        str(int(empresa[0].removeprefix(eventos_sec.PREFIXO_DO_CIK)))
+        if mercado is MERCADO_EUA
+        else empresa[0]
     )
     st.markdown(
-        f"**{resultado.empresa}** · {resultado.setor or 'setor não informado'} · CNPJ {empresa[0]}"
+        f"**{resultado.empresa}** · {resultado.setor or 'setor não informado'} · "
+        f"{mercado.identificador} {identificador}"
     )
     if preco is not None:
-        preco_br = f"{preco:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
         st.caption(
-            f"Múltiplos com o fechamento de {c.fechamento.index[-1]:%d/%m/%Y} (R$ {preco_br}) "
-            "aplicado a todas as classes de ação da empresa (aproximação)."
+            f"Múltiplos com o fechamento de {c.fechamento.index[-1]:%d/%m/%Y} "
+            f"({mercado.simbolo} {_numero_br(preco, 2)}) aplicado a todas as classes de ação "
+            "da empresa (aproximação)."
         )
     for nota in resultado.notas:
         st.caption(nota)
@@ -6559,7 +6721,7 @@ def pagina_fundamentos():
             fundamentos.NAO_SE_APLICA_A_FINANCEIRAS, icon=":material/account_balance:"
         )
     for titulo, chaves in GRUPOS_DE_FUNDAMENTOS:
-        _mostrar_grupo(titulo, chaves, resultado)
+        _mostrar_grupo(titulo, chaves, resultado, mercado)
     if resultado.filtros:
         st.markdown("##### Seus filtros educacionais")
         for frase in resultado.filtros:
@@ -6570,50 +6732,16 @@ def pagina_fundamentos():
         )
     if not resultado.anual.empty:
         st.markdown("##### Ano a ano (demonstrações anuais)")
-        mostrar_grafico(graficos.criar_grafico_fundamentos_anuais(resultado.anual))
-        st.dataframe(_tabela_anual_formatada(resultado.anual), width="stretch")
-    if not resultado.documentos.empty:
-        st.markdown("##### Documentos usados")
-        docs = resultado.documentos
+        mostrar_grafico(
+            graficos.criar_grafico_fundamentos_anuais(resultado.anual, mercado.simbolo)
+        )
         st.dataframe(
-            pd.DataFrame(
-                {
-                    "Documento": [
-                        "Anual (DFP)" if d == "DFP" else "Trimestral (ITR)"
-                        for d in docs["documento"]
-                    ],
-                    "Data do balanço": [f"{d:%d/%m/%Y}" for d in docs["referencia"]],
-                    "Entregue à CVM": [
-                        f"{d:%d/%m/%Y}" if pd.notna(d) else "—"
-                        for d in docs["recebido_em"]
-                    ],
-                    "Versão": docs["versao"].astype(int),
-                    "Abrir": docs["link"],
-                }
-            ),
-            hide_index=True,
-            width="stretch",
-            column_config={
-                "Abrir": st.column_config.LinkColumn("Abrir", display_text="na CVM")
-            },
+            _tabela_anual_formatada(resultado.anual, mercado.simbolo), width="stretch"
         )
+    if not resultado.documentos.empty:
+        _mostrar_documentos_usados(resultado.documentos, mercado)
     with st.expander("Como estes números são calculados"):
-        st.markdown(
-            "- **12 meses:** o último ano do DFP + o acumulado do ano no último ITR − o mesmo "
-            "período do ano anterior.\n"
-            "- **Margens:** resultado bruto, EBIT e lucro divididos pela receita dos 12 meses.\n"
-            "- **ROE:** lucro dos acionistas (12 meses) ÷ patrimônio dos acionistas no último "
-            "balanço.\n"
-            f"- **ROIC:** EBIT × (1 − {fundamentos.ALIQUOTA_DE_IR_CS:.0%} de IR/CS) ÷ "
-            "(patrimônio + dívida bruta − caixa e aplicações).\n"
-            "- **Dívida:** empréstimos e financiamentos de curto e longo prazo; dívida líquida "
-            "desconta o caixa e as aplicações financeiras.\n"
-            "- **Crescimento:** taxa composta anual entre os DFP do horizonte escolhido.\n"
-            "- **Por ação:** ações em circulação (sem as de tesouraria), conferidas com o lucro "
-            "por ação declarado pela empresa.\n\n"
-            "Fonte: dados abertos da CVM (DFP, ITR e cadastro). Bancos e seguradoras não têm "
-            "margem bruta, EBIT nem dívida comparáveis. Nada aqui é recomendação."
-        )
+        st.markdown(_metodologia_dos_fundamentos(mercado))
     avisar_parametros(
         r,
         (
@@ -6851,6 +6979,434 @@ def pagina_por_dentro():
         )
 
 
+# --- Research: Donos e fundos (R3) ------------------------------------------------------------
+FONTES_DOS_DETENTORES = {
+    "BRL": (fundos_cvm.FONTE_CDA, "fundos", "mês", "R$"),
+    "USD": (fundos_sec.FONTE_13F, "gestores", "trimestre", "US$"),
+}
+TAMANHO_DA_LISTA_DO_MERCADO = 10
+
+
+def _ler_detentores(fonte, codigo):
+    """(histórico com a fatia, maiores, cobertura) ou None quando a leitura falhou.
+
+    O histórico só tem as competências utilizáveis (sem o mês mais novo ainda incompleto) e a
+    coluna `fatia`: detentores ÷ fundos que informaram na competência.
+    """
+    try:
+        with obter_engine().connect() as conexao:
+            cobertura = repo_detentores.cobertura(conexao, fonte)
+            datas = detentores.competencias_utilizaveis(cobertura)
+            if not datas:
+                return pd.DataFrame(), pd.DataFrame(), {}
+            historico = repo_detentores.historico_do_ativo(conexao, fonte, codigo)
+            maiores = repo_detentores.maiores_do_ativo(conexao, fonte, codigo, datas[0])
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return pd.DataFrame(), pd.DataFrame(), {}
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao ler os detentores")
+        return None
+    historico = historico[historico["competencia"].isin(datas)].copy()
+    informantes = historico["competencia"].map(cobertura)
+    historico["fatia"] = historico["detentores"] / informantes
+    historico["fatia_vendidos"] = historico["vendidos"] / informantes
+    return historico, maiores, cobertura
+
+
+def _tabela_de_detentores(maiores, tipo, simbolo):
+    linhas = maiores[maiores["tipo"] == tipo]
+    return pd.DataFrame(
+        {
+            "#": linhas["posicao"].astype(int),
+            "Nome": linhas["nome"],
+            "Valor": [_dinheiro(v, simbolo) for v in linhas["valor"]],
+            "Ações": [_numero_br(q, 0) for q in linhas["quantidade"]],
+        }
+    )
+
+
+def _variacao_comparavel(historico, cobertura):
+    """Variação de detentores desde a competência anterior, se as duas forem comparáveis."""
+    par = detentores.par_comparavel(cobertura)
+    if par is None or historico.empty or historico["competencia"].iloc[-1] != par[0]:
+        return None
+    anterior = historico[historico["competencia"] == par[1]]
+    if anterior.empty:
+        return None
+    return int(historico["detentores"].iloc[-1] - anterior["detentores"].iloc[0])
+
+
+def _metricas_dos_detentores(atual, variacao, quem, periodo, simbolo, da_cvm):
+    with st.container(horizontal=True):
+        st.metric(
+            f"{quem.capitalize()} com a ação",
+            int(atual["detentores"]),
+            variacao,
+            border=True,
+            help=f"Variação desde o {periodo} anterior, quando os dois têm cobertura parecida.",
+        )
+        st.metric(
+            f"Fatia dos {quem} que informaram",
+            formatar_pct(atual["fatia"]),
+            border=True,
+            help="Detentores ÷ todos que informaram posições: não muda só porque a cobertura mudou.",
+        )
+        st.metric("Valor que eles têm", _dinheiro(atual["valor"], simbolo), border=True)
+        if da_cvm:
+            st.metric(
+                "Fundos vendidos (aposta na queda)",
+                int(atual["vendidos"]),
+                border=True,
+                help="Fundos que tomaram a ação emprestada e venderam.",
+            )
+            st.metric(
+                "Valor vendido", _dinheiro(atual["valor_vendido"], simbolo), border=True
+            )
+
+
+def _detentores_do_ativo(ticker):
+    escolha = FONTES_DOS_DETENTORES.get(moeda_do_ticker(ticker))
+    if escolha is None:
+        st.info(
+            f"{ticker} não é ação da B3 nem dos EUA: não há carteira de fundos para mostrar.",
+            icon=":material/info:",
+        )
+        return
+    fonte, quem, periodo, simbolo = escolha
+    codigo = ticker.removesuffix(".SA")
+    lido = _ler_detentores(fonte, codigo)
+    if lido is None:
+        st.error("Não consegui ler os dados agora. Tente de novo em instantes.")
+        return
+    historico, maiores, cobertura = lido
+    if not cobertura:
+        st.info(
+            "Os dados ainda não foram coletados neste servidor "
+            "(`python -m scripts.atualizar_fundos_cvm` e `python -m scripts.atualizar_fundos_sec`).",
+            icon=":material/schedule:",
+        )
+        return
+    ultima = detentores.competencias_utilizaveis(cobertura)[0]
+    mais_nova = max(cobertura)
+    if mais_nova != ultima:
+        st.caption(
+            f"{mais_nova:%m/%Y} ainda está chegando ({cobertura[mais_nova]} {quem} informaram, "
+            f"contra {cobertura[ultima]} em {ultima:%m/%Y}): fica de fora até completar."
+        )
+    if historico.empty or historico["competencia"].iloc[-1] != ultima:
+        st.info(
+            f"Nenhum dos {quem} informou posição em {codigo} em {ultima:%m/%Y}.",
+            icon=":material/info:",
+        )
+        return
+    st.markdown(f"**{codigo}** · posição de {ultima:%d/%m/%Y}")
+    _metricas_dos_detentores(
+        historico.iloc[-1],
+        _variacao_comparavel(historico, cobertura),
+        quem,
+        periodo,
+        simbolo,
+        fonte == fundos_cvm.FONTE_CDA,
+    )
+    if len(historico) > 1:
+        mostrar_grafico(graficos.criar_grafico_detentores(historico, quem))
+    st.markdown(f"##### Os maiores {quem} (comprados)")
+    st.dataframe(
+        _tabela_de_detentores(maiores, detentores.COMPRADO, simbolo),
+        hide_index=True,
+        width="stretch",
+    )
+    if fonte == fundos_cvm.FONTE_CDA and (maiores["tipo"] == detentores.VENDIDO).any():
+        st.markdown("##### Os maiores fundos vendidos")
+        st.dataframe(
+            _tabela_de_detentores(maiores, detentores.VENDIDO, simbolo),
+            hide_index=True,
+            width="stretch",
+        )
+        st.caption(
+            "Um fundo pode estar comprado e vendido na mesma ação ao mesmo tempo (estratégias "
+            "long-short e de arbitragem): a posição vendida nem sempre é uma aposta isolada na "
+            "queda."
+        )
+
+
+def _lista_do_mercado(tabela, crescente):
+    escolhidas = tabela.dropna(subset=["variacao"]).sort_values(
+        "variacao", ascending=crescente
+    )
+    escolhidas = escolhidas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+    return pd.DataFrame(
+        {
+            "Ativo": escolhidas["codigo"],
+            "Agora": escolhidas["detentores"].astype(int),
+            "Antes": escolhidas["detentores_antes"].astype("Int64"),
+            "Variação": [f"{v:+.0f}" for v in escolhidas["variacao"]],
+            "Ações em carteira": [
+                formatar_pct(v) for v in escolhidas["variacao_quantidade"]
+            ],
+        }
+    )
+
+
+def _detentores_no_mercado():
+    bolsa = st.segmented_control(
+        "Bolsa",
+        ["BRL", "USD"],
+        format_func={"BRL": "B3 (fundos, CVM)", "USD": "EUA (gestores, 13F)"}.get,
+        default="BRL",
+        required=True,
+        key="donos_bolsa",
+    )
+    fonte, quem, periodo, _ = FONTES_DOS_DETENTORES[bolsa]
+    try:
+        with obter_engine().connect() as conexao:
+            cobertura = repo_detentores.cobertura(conexao, fonte)
+            par = detentores.par_comparavel(cobertura)
+            resumo = (
+                repo_detentores.resumo_do_mercado(conexao, fonte, par) if par else None
+            )
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        par = None
+    if par is None:
+        st.info(
+            f"Para comparar é preciso ter dois {periodo}s seguidos com cobertura parecida.",
+            icon=":material/schedule:",
+        )
+        return
+    atual, anterior = par
+    tabela = detentores.comparar(resumo, atual, anterior)
+    st.caption(
+        f"{anterior:%m/%Y} ({cobertura[anterior]} {quem} informaram) → {atual:%m/%Y} "
+        f'({cobertura[atual]}). "Ações em carteira" é a variação da quantidade de ações que '
+        "eles têm, sem o efeito do preço."
+    )
+    st.markdown(f"##### Mais {quem} entraram")
+    st.dataframe(_lista_do_mercado(tabela, False), hide_index=True, width="stretch")
+    st.markdown(f"##### Mais {quem} saíram")
+    st.dataframe(_lista_do_mercado(tabela, True), hide_index=True, width="stretch")
+    if fonte == fundos_cvm.FONTE_CDA:
+        st.markdown("##### Mais vendidas pelos fundos (vendido ÷ comprado)")
+        apostas = tabela[tabela["valor"] > 0].sort_values(
+            "fatia_vendida", ascending=False
+        )
+        apostas = apostas.head(TAMANHO_DA_LISTA_DO_MERCADO)
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Ativo": apostas["codigo"],
+                    "Fundos vendidos": apostas["vendidos"].astype(int),
+                    "Vendido ÷ comprado": [
+                        formatar_pct(v) for v in apostas["fatia_vendida"]
+                    ],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    st.caption("Uma lista de fatos, não de recomendações.")
+
+
+def pagina_donos():
+    cabecalho_da_pagina("donos")
+    c = carregar_contexto()
+    aba_ativo, aba_mercado = st.tabs(["Do ativo do topo", "No mercado"])
+    with aba_ativo:
+        _detentores_do_ativo(normalizar_ticker(c.ticker))
+    with aba_mercado:
+        _detentores_no_mercado()
+    with st.expander("Como ler estes dados"):
+        st.markdown(
+            "- **B3 (fundos):** todo fundo registrado na CVM informa, por mês, o que tem na "
+            "carteira. O arquivo sai cerca de **40 dias** depois do mês e vai sendo completado "
+            "depois; um fundo pode manter uma posição em **sigilo por até 90 dias**.\n"
+            "- **Cobertura:** por causa do sigilo, o número de fundos que aparecem muda muito de um "
+            "mês para o outro sem que ninguém compre ou venda. Por isso mostramos a **fatia** dos "
+            "fundos que informaram e só comparamos meses com cobertura parecida.\n"
+            "- **Vendido:** o fundo tomou a ação emprestada e vendeu, apostando na queda (ou se "
+            "protegendo de outra posição). Ações emprestadas por um fundo continuam dele.\n"
+            "- **EUA (13F):** gestores com mais de US$ 100 milhões informam as posições do fim de "
+            "cada **trimestre**, até 45 dias depois. Só posições compradas; opções ficam de fora.\n"
+            "- **O que a variação diz:** quantos fundos ou gestores entraram ou saíram. É um "
+            "retrato do passado, com atraso, e não mostra a intenção de ninguém.\n\n"
+            "Fontes: CVM (composição e diversificação das aplicações dos fundos, CDA) e SEC "
+            "(Form 13F). Nada aqui é recomendação de investimento."
+        )
+
+
+# --- Research: Newsletter (etapa 4) -----------------------------------------------------------
+JANELAS_DA_NEWSLETTER = {1: "1 dia", 7: "7 dias", 30: "30 dias", 90: "90 dias"}
+
+
+def _frase_do_detentor(codigo, linha, quem, par, da_cvm):
+    variacao = (
+        ""
+        if pd.isna(linha["variacao"])
+        else f" ({linha['variacao']:+.0f} desde {par[1]:%m/%Y})"
+    )
+    vendidos = (
+        f"; {int(linha['vendidos'])} vendidos" if da_cvm and linha["vendidos"] else ""
+    )
+    return f"{codigo}: {int(linha['detentores'])} {quem} com a ação em {par[0]:%m/%Y}{variacao}{vendidos}."
+
+
+def _frases_dos_detentores(conexao, tickers):
+    """Uma frase por ativo da lista, com a última comparação válida (fundos ou 13F)."""
+    frases = []
+    for moeda, (fonte, quem, _, _) in FONTES_DOS_DETENTORES.items():
+        do_mercado = [t for t in tickers if moeda_do_ticker(t) == moeda]
+        par = detentores.par_comparavel(repo_detentores.cobertura(conexao, fonte))
+        if not do_mercado or par is None:
+            continue
+        resumo = repo_detentores.resumo_do_mercado(conexao, fonte, par)
+        tabela = detentores.comparar(resumo, *par).set_index("codigo")
+        for ticker in do_mercado:
+            codigo = ticker.removesuffix(".SA")
+            if codigo in tabela.index:
+                frases.append(
+                    _frase_do_detentor(
+                        codigo,
+                        tabela.loc[codigo],
+                        quem,
+                        par,
+                        fonte == fundos_cvm.FONTE_CDA,
+                    )
+                )
+    return tuple(frases)
+
+
+def _quando(momento):
+    if momento is None:
+        return "ainda não coletado"
+    if momento.tzinfo is None:  # o SQLite devolve sem fuso: foi gravado em UTC
+        momento = momento.replace(tzinfo=UTC)
+    return f"coletado em {momento.astimezone(relatorios.FUSO):%d/%m/%Y às %H:%M}"
+
+
+def _fontes_da_edicao(conexao):
+    fontes = [
+        ("Eventos (CVM e SEC)", _quando(ultima_coleta(conexao))),
+        (
+            "Pessoas de dentro (CVM e SEC)",
+            _quando(repo_negociacoes.ultima_coleta(conexao)),
+        ),
+    ]
+    for fonte, nome in ((fundos_cvm.FONTE_CDA, "Carteiras dos fundos (CVM)"),
+                        (fundos_sec.FONTE_13F, "Gestores, 13F (SEC)")):  # fmt: skip
+        datas = detentores.competencias_utilizaveis(
+            repo_detentores.cobertura(conexao, fonte)
+        )
+        fontes.append(
+            (nome, f"posição de {datas[0]:%m/%Y}" if datas else "ainda não coletado")
+        )
+    return tuple(fontes)
+
+
+def _edicao(nome, tickers, janela):
+    """A edição da lista, lida do banco (None se o banco ainda não tem as tabelas)."""
+    r = parametros_em_vigor(None)
+    hoje = datetime.now(relatorios.FUSO).date()
+    try:
+        with obter_engine().connect() as conexao:
+            eventos_da_lista = eventos_dos_tickers(
+                conexao, tickers, hoje - timedelta(days=janela)
+            )
+            empresas = empresas_dos_tickers(conexao, tickers)
+            frases = _frases_dos_detentores(conexao, tickers)
+            fontes = _fontes_da_edicao(conexao)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return None
+    return newsletter.montar(
+        newsletter.Entrada(
+            lista=nome,
+            tickers=tuple(tickers),
+            eventos=tuple(eventos_da_lista),
+            pesos=research.pesos_da_resolucao(r.valores("relevancia")),
+            temas=tuple(r["newsletter.temas"]),
+            hoje=hoje,
+            janela=janela,
+            max_itens=int(r["newsletter.max_itens"]),
+            gerada_em=relatorios.agora(),
+            detentores=frases,
+            fontes=fontes,
+            cobertos=tuple(t for t in tickers if t in empresas),
+        )
+    )
+
+
+def _mostrar_secao_da_newsletter(secao):
+    st.markdown(f"#### {secao.titulo}")
+    if not secao.itens:
+        st.caption(secao.vazio)
+        return
+    for item in secao.itens:
+        texto = f"**{item.titulo}**  \n{item.texto}"
+        if item.link:
+            texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
+        st.markdown(texto)
+        if item.razoes:
+            st.caption("Por que aparece: " + " · ".join(item.razoes))
+
+
+def _ir_para_o_pdf(nome, janela):
+    st.session_state["tipo_de_relatorio"] = relatorios.NEWSLETTER
+    st.session_state["relatorio_newsletter_lista"] = nome
+    st.session_state["relatorio_newsletter_janela"] = janela
+    st.session_state["ir_para_relatorio"] = True
+
+
+def pagina_newsletter():
+    cabecalho_da_pagina("newsletter")
+    listas = _listas_do_research(st.session_state.get("usuario"))
+    nomes = [lista[0] for lista in listas]
+    col_lista, col_janela = st.columns([2, 3])
+    escolhida = col_lista.selectbox("Lista", nomes, key="newsletter_lista")
+    nome, tickers, _ = listas[nomes.index(escolhida)]
+    cadencia = parametros_em_vigor(None)["newsletter.cadencia"]
+    janela = col_janela.segmented_control(
+        "Período",
+        list(JANELAS_DA_NEWSLETTER),
+        format_func=JANELAS_DA_NEWSLETTER.get,
+        default=newsletter.JANELA_DA_CADENCIA.get(cadencia, 7),
+        required=True,
+        key="newsletter_janela",
+        help="Começa na frequência escolhida em Parâmetros (diária: 1 dia; semanal: 7 dias).",
+    )
+    edicao = _edicao(nome, tickers, janela)
+    if edicao is None:
+        st.info(
+            "Os documentos ainda não foram coletados neste servidor.",
+            icon=":material/schedule:",
+        )
+        return
+    st.caption(
+        f"Edição de **{edicao.lista}**, de {edicao.inicio:%d/%m/%Y} a {edicao.fim:%d/%m/%Y}, "
+        f"gerada em {edicao.gerada_em:%d/%m/%Y às %H:%M}. Montada só com fatos dos documentos "
+        "oficiais, em frases de modelo fixo (sem inteligência artificial)."
+    )
+    st.button(
+        "Gerar o PDF no Report Studio",
+        icon=":material/picture_as_pdf:",
+        key="newsletter_pdf",
+        on_click=_ir_para_o_pdf,
+        args=(nome, janela),
+    )
+    if st.session_state.pop("ir_para_relatorio", False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio"])
+    for secao in edicao.secoes:
+        _mostrar_secao_da_newsletter(secao)
+    with st.expander("Parâmetros e fontes desta edição"):
+        st.markdown("\n".join(f"- {frase}" for frase in edicao.parametros))
+        st.markdown(
+            "\n".join(f"- **{fonte}:** {quando}" for fonte, quando in edicao.fontes)
+        )
+    st.markdown("#### Limites")
+    st.markdown("\n".join(f"- {frase}" for frase in edicao.limites))
+    avisar_parametros(
+        parametros_em_vigor(None),
+        ("newsletter.cadencia", "newsletter.max_itens", "newsletter.temas"),
+    )
+
+
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
@@ -6858,6 +7414,8 @@ FUNCOES_DAS_PAGINAS = {
     "research": pagina_research,
     "fundamentos": pagina_fundamentos,
     "por_dentro": pagina_por_dentro,
+    "donos": pagina_donos,
+    "newsletter": pagina_newsletter,
     "trade": pagina_trade,
     "guia": pagina_guia,
     "termos": pagina_termos,
