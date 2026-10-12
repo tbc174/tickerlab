@@ -21,6 +21,7 @@ from tests.test_research_no_app import _app_local, _coletar
 
 CIK = 320193
 CHAVE = sec.cik_como_chave(CIK)
+LINK_DA_CVM = "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?numProtocolo="
 RISCO_NOVO = (
     "Tariffs imposed on imported semiconductors could materially increase our costs, and "
     "further tariffs and export restrictions may disrupt our supply chain."
@@ -76,7 +77,7 @@ def _fato(
             tema="outros",
             materialidade=3,
             publicado_em=publicado,
-            link=f"https://cvm/{protocolo}",
+            link=f"{LINK_DA_CVM}{protocolo}",
         )
     )
 
@@ -93,7 +94,23 @@ def test_fatos_sem_leitura(banco):
             c, FONTE_IPE, "Fato Relevante", date(2026, 9, 12), 10
         )
     assert [p[0] for p in pendentes] == ["novo"]
-    assert pendentes[0][2:] == (date(2026, 10, 10), "https://cvm/novo")
+    assert pendentes[0][2:] == (date(2026, 10, 10), f"{LINK_DA_CVM}novo")
+
+
+def test_fato_com_link_de_fora_da_cvm_nao_e_baixado(banco):
+    # S-4 (Master v3): o servidor baixa o documento por esse link; outro endereço fica de fora
+    with banco.begin() as c:
+        _fato(c, "seguro", date(2026, 10, 10))
+        c.execute(
+            sa.update(eventos)
+            .where(eventos.c.protocolo == "seguro")
+            .values(link="http://169.254.169.254/latest/meta-data/")
+        )
+    with banco.connect() as c:
+        assert (
+            repo.fatos_sem_leitura(c, FONTE_IPE, "Fato Relevante", date(2026, 9, 1), 10)
+            == []
+        )
 
 
 # --- SEC: fatores de risco do 10-K ----------------------------------------------------------------

@@ -11,6 +11,7 @@ import sqlalchemy as sa
 
 from src.banco.modelo import eventos, leituras
 from src.leitura import VERSAO
+from src.links_das_fontes import link_da_fonte
 
 RESUMO, RISCOS = "resumo", "riscos"
 TAMANHO_DO_LOTE = 5_000
@@ -108,7 +109,11 @@ def ultima_de_riscos(
 def fatos_sem_leitura(
     conexao: sa.Connection, fonte: str, categoria: str, desde: date, limite: int
 ) -> list[tuple[str, str, date, str]]:
-    """Fatos relevantes ainda sem resumo: (protocolo, cnpj, publicado em, link), do mais novo."""
+    """Fatos relevantes ainda sem resumo: (protocolo, cnpj, publicado em, link), do mais novo.
+
+    O app baixa cada documento por esse link: um endereço que não seja da CVM ou da SEC fica de
+    fora (o servidor nunca baixa nada de outro lugar).
+    """
     ja = sa.select(leituras.c.documento).where(
         leituras.c.fonte == fonte,
         leituras.c.tipo == RESUMO,
@@ -127,4 +132,8 @@ def fatos_sem_leitura(
         .order_by(eventos.c.publicado_em.desc())
         .limit(limite)
     )
-    return [tuple(linha) for linha in conexao.execute(consulta)]
+    return [
+        (protocolo, cnpj, publicado_em, seguro)
+        for protocolo, cnpj, publicado_em, link in conexao.execute(consulta)
+        if (seguro := link_da_fonte(link))
+    ]

@@ -12,6 +12,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from src.banco.modelo import demonstracoes, documentos_financeiros, setores_cvm
+from src.links_das_fontes import link_da_fonte
 
 
 @dataclass(frozen=True)
@@ -197,6 +198,8 @@ def dados_da_empresa(conexao: sa.Connection, cnpj: str) -> DadosDaEmpresa:
         ).all(),
         columns=["documento", "referencia", "versao", "empresa", "recebido_em", "link"],
     )
+    # vazio = sem link: só endereço https da CVM ou da SEC vira link (src/links_das_fontes.py)
+    documentos["link"] = [link_da_fonte(link) or "" for link in documentos["link"]]
     setor = conexao.execute(
         sa.select(setores_cvm.c.setor).where(setores_cvm.c.cnpj == cnpj)
     ).scalar()

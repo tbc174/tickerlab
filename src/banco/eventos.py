@@ -14,6 +14,7 @@ import sqlalchemy as sa
 
 from src.banco.modelo import eventos, tickers_dos_emissores
 from src.eventos import FONTE_IPE
+from src.links_das_fontes import link_da_fonte
 
 
 @dataclass(frozen=True)
@@ -225,7 +226,7 @@ def eventos_dos_tickers(
             assunto=l.assunto,
             referencia=l.referencia,
             publicado_em=l.publicado_em,
-            link=l.link,
+            link=link_da_fonte(l.link) or "",  # vazio = sem link (endereço não seguro)
             fonte=l.fonte,
             protocolo=l.protocolo,
             versao=l.versao,
