@@ -125,6 +125,45 @@ watchlists = sa.Table(
     sa.UniqueConstraint("usuario_id", "nome"),
 )
 
+# Research (0010): demonstrações financeiras da CVM (DFP e ITR), dados públicos
+demonstracoes = sa.Table(
+    "demonstracoes",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("documento", sa.String(3), primary_key=True),  # DFP ou ITR
+    sa.Column(
+        "referencia", sa.Date, primary_key=True
+    ),  # data do balanço / fim do período
+    sa.Column(
+        "periodo", sa.String(20), primary_key=True
+    ),  # posicao, exercicio, acumulado...
+    sa.Column("fim", sa.Date, primary_key=True),
+    sa.Column(
+        "conta", sa.String(30), primary_key=True
+    ),  # receita, lucro_liquido, caixa...
+    sa.Column("inicio", sa.Date),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("valor", sa.Float, nullable=False),  # em reais (ou quantidade, nas ações)
+)
+documentos_financeiros = sa.Table(
+    "documentos_financeiros",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("documento", sa.String(3), primary_key=True),
+    sa.Column("referencia", sa.Date, primary_key=True),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("recebido_em", sa.Date),  # quando o documento ficou público na CVM
+    sa.Column("link", sa.String(500), nullable=False),
+    _momento("coletado_em"),
+)
+setores_cvm = sa.Table(
+    "setores_cvm",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("setor", sa.String(120), nullable=False),
+)
+
 # Research (0008): dados públicos da CVM, iguais para todos (nada pessoal aqui)
 tickers_dos_emissores = sa.Table(
     "tickers_dos_emissores",
