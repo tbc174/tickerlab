@@ -120,12 +120,26 @@ def test_baixar_tudo_grava_series_e_relatorio(tmp_path):
     def yahoo_falso(simbolo):
         return _serie([100.0, 101.0, 102.0], inicio="2015-01-01")
 
+    def bis_falso():
+        return pd.DataFrame(
+            {"JPY": [0.5, 0.5]}, index=pd.bdate_range("1972-01-03", periods=2)
+        )
+
+    def shiller_quebrado():
+        raise ConnectionError("Yale fora do ar")
+
     relatorio = baixar.baixar_tudo(
-        {"fred": fred_falso, "yahoo": yahoo_falso, "mt5": mt5_falso}, tmp_path
+        {"fred": fred_falso, "yahoo": yahoo_falso, "mt5": mt5_falso},
+        tmp_path,
+        baixar_bis=bis_falso,
+        baixar_dividendos=shiller_quebrado,
     )
 
     assert (tmp_path / "relatorio_de_qualidade.csv").exists()
-    assert len(relatorio) == len(MERCADOS) + len(mercados.JUROS_CURTOS)
+    assert (tmp_path / baixar.ARQUIVO_DO_BIS).exists()
+    assert len(relatorio) == len(MERCADOS) + len(mercados.JUROS_CURTOS) + 2
+    extras = relatorio.set_index("codigo").loc[["BIS", "SHILLER"]]
+    assert extras.loc["BIS", "erro"] == "" and "Yale" in extras.loc["SHILLER", "erro"]
     brl = relatorio[relatorio["codigo"] == "USDBRL"].iloc[0]
     assert "fora do ar" in brl["erro"] and not brl["entra_no_universo"]
     eur = relatorio[relatorio["codigo"] == "EURUSD"].iloc[0]

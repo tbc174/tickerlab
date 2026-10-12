@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from trader.p2.dividendos import baixar_shiller
 from trader.p2.fontes import (
     PASTA_PADRAO,
     baixar_fred,
@@ -25,6 +26,9 @@ from trader.p2.fontes import (
 from trader.p2.mercados import JUROS_CURTOS, MERCADOS, entra_no_universo
 
 Baixador = Callable[[str], pd.Series]
+INICIO_DO_BIS = "1970-01-01"
+ARQUIVO_DO_BIS = "bis_taxas_basicas.parquet"
+ARQUIVO_DE_SHILLER = "shiller_dividendos.parquet"
 BAIXADORES_PADRAO: dict[str, Baixador] = {
     "fred": baixar_fred,
     "yahoo": baixar_yahoo,
@@ -74,8 +78,53 @@ def _baixar_uma(
     return serie, ""
 
 
+def _baixar_bis() -> pd.DataFrame:
+    from trader.juros import baixar_do_bis
+
+    return baixar_do_bis(inicio=INICIO_DO_BIS)
+
+
+def _baixar_extras(
+    pasta: Path,
+    baixar_bis: Callable[[], pd.DataFrame],
+    baixar_dividendos: Callable[[], pd.Series],
+) -> list[dict[str, object]]:
+    """Taxas básicas do BIS (desde 1970) e dividendos do S&P (Shiller): uma linha de relatório cada."""
+    linhas = []
+    for codigo, baixar, arquivo in (
+        ("BIS", baixar_bis, ARQUIVO_DO_BIS),
+        ("SHILLER", baixar_dividendos, ARQUIVO_DE_SHILLER),
+    ):
+        try:
+            dados = baixar()
+        except Exception as erro:  # noqa: BLE001 (uma fonte ruim não pode parar as outras)
+            linhas.append(
+                _linha_do_relatorio(
+                    "extra",
+                    codigo,
+                    codigo.lower(),
+                    arquivo,
+                    None,
+                    False,
+                    str(erro)[:120],
+                )
+            )
+            continue
+        tabela = dados.to_frame("valor") if isinstance(dados, pd.Series) else dados
+        tabela.to_parquet(pasta / arquivo)
+        primeira = tabela.dropna(how="all")
+        serie = pd.Series(1.0, index=primeira.index)
+        linhas.append(
+            _linha_do_relatorio("extra", codigo, codigo.lower(), arquivo, serie, False)
+        )
+    return linhas
+
+
 def baixar_tudo(
-    baixadores: dict[str, Baixador] | None = None, pasta: Path = PASTA_PADRAO
+    baixadores: dict[str, Baixador] | None = None,
+    pasta: Path = PASTA_PADRAO,
+    baixar_bis: Callable[[], pd.DataFrame] | None = None,
+    baixar_dividendos: Callable[[], pd.Series] | None = None,
 ) -> pd.DataFrame:
     """Baixa os mercados e os juros curtos; devolve (e grava) o relatório de qualidade."""
     baixadores = baixadores or BAIXADORES_PADRAO
@@ -102,8 +151,11 @@ def baixar_tudo(
                 "juros", moeda, "fred", serie_id, serie, e_preco=False, erro=erro
             )
         )
-    relatorio = pd.DataFrame(linhas)
     pasta.mkdir(parents=True, exist_ok=True)
+    linhas += _baixar_extras(
+        pasta, baixar_bis or _baixar_bis, baixar_dividendos or baixar_shiller
+    )
+    relatorio = pd.DataFrame(linhas)
     relatorio.to_csv(pasta / "relatorio_de_qualidade.csv", index=False)
     return relatorio
 
