@@ -144,7 +144,7 @@ def _textos_das_velas(dados: pd.DataFrame, fechamento_anterior: pd.Series) -> li
     """Texto da dica do mouse em cada vela, em português, com a variação do dia."""
     variacao = dados["Close"] / fechamento_anterior - 1
     textos = []
-    for (_, linha), var in zip(dados.iterrows(), variacao):
+    for (_, linha), var in zip(dados.iterrows(), variacao, strict=True):
         texto_var = "—" if pd.isna(var) else f"{var:+.2%}".replace(".", ",")
         textos.append(
             f"Abertura: {_numero_br(linha['Open'])}<br>"
@@ -640,7 +640,9 @@ def criar_grafico_risco_retorno(
             customdata=[
                 [_pct_br(v), _pct_br(r)]
                 for v, r in zip(
-                    pontos["Volatilidade anual"], pontos["Retorno anualizado"]
+                    pontos["Volatilidade anual"],
+                    pontos["Retorno anualizado"],
+                    strict=True,
                 )
             ],
             hovertemplate="%{text}<br>Risco: %{customdata[0]}<br>Retorno: %{customdata[1]}<extra></extra>",

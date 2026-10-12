@@ -62,8 +62,9 @@ def calcular_adf(serie: pd.Series, defasagens: int = 1) -> float:
     n = len(delta) - defasagens
     y = delta[defasagens:]
     colunas = [np.ones(n), s[defasagens:-1]]
-    for i in range(1, defasagens + 1):
-        colunas.append(delta[defasagens - i : len(delta) - i])
+    colunas.extend(
+        delta[defasagens - i : len(delta) - i] for i in range(1, defasagens + 1)
+    )
     X = np.column_stack(colunas)
     coef, *_ = np.linalg.lstsq(X, y, rcond=None)
     residuo = y - X @ coef

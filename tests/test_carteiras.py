@@ -19,7 +19,7 @@ def _precos(n=900, ativos=("A", "B", "C", "D"), semente=1):
     deriva = np.linspace(0.0008, -0.0002, len(ativos))
     dados = {
         a: 100 * np.cumprod(1 + rng.normal(d, 0.01 + 0.004 * i, n))
-        for i, (a, d) in enumerate(zip(ativos, deriva))
+        for i, (a, d) in enumerate(zip(ativos, deriva, strict=True))
     }
     return pd.DataFrame(dados, index=pd.bdate_range("2021-01-04", periods=n))
 
