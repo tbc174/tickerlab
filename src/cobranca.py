@@ -338,9 +338,26 @@ def _gravar_assinatura(
 def _acompanhar_o_plano(
     conexao: sa.Connection, usuario_id: uuid.UUID, status: str
 ) -> None:
-    mudar_plano(
-        conexao, usuario_id, "pro" if status in STATUS_QUE_DAO_O_PRO else "gratuito"
-    )
+    """O plano segue a assinatura: com ela ativa, Pro; sem ela, o plano de antes do Pro (N-02).
+
+    Ao ganhar o Pro, guarda o plano que o usuário tinha (o Plus dado pelo administrador, por
+    exemplo); um evento repetido com o usuário já no Pro não apaga essa lembrança.
+    """
+    do_usuario = assinaturas.c.usuario_id == usuario_id
+    if status in STATUS_QUE_DAO_O_PRO:
+        atual = conexao.execute(
+            sa.select(usuarios.c.plano).where(usuarios.c.id == usuario_id)
+        ).scalar_one_or_none()
+        if atual is not None and atual != "pro":
+            conexao.execute(
+                sa.update(assinaturas).where(do_usuario).values(plano_sem_o_pro=atual)
+            )
+        mudar_plano(conexao, usuario_id, "pro")
+        return
+    anterior = conexao.execute(
+        sa.select(assinaturas.c.plano_sem_o_pro).where(do_usuario)
+    ).scalar_one_or_none()
+    mudar_plano(conexao, usuario_id, anterior or "gratuito")
 
 
 def _aplicar_checkout_concluido(
