@@ -502,3 +502,15 @@ def test_texto_no_teto_mostra_o_mais():
     assert "10.000+ variações" in ficha.texto_das_tentativas(
         10_000, "PETR4.SA", teto=10_000
     )
+
+
+def test_parametros_que_faltam_valem_os_padroes_da_estrategia():
+    completos = ficha.montar_ficha(_pedido(_tendencias_longas(n=800)))
+    vazio = ficha.PedidoDaFicha(
+        dados=_tendencias_longas(n=800),
+        estrategia="Cruzamento de médias",
+        parametros={},
+        custo_por_operacao=0.0005,
+        capital_inicial=10_000.0,
+    )
+    assert ficha.montar_ficha(vazio) == completos
