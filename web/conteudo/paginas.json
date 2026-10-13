@@ -565,6 +565,7 @@
   },
   {
     "chave": "relatorio_empresa",
+    "contrato": null,
     "descricao": "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada número.",
     "e_pro": false,
     "grupo": "Research",
