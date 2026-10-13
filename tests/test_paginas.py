@@ -61,3 +61,98 @@ def test_paginas_de_conta_e_ajuda_nao_pedem_ativo():
 def test_so_o_grupo_de_administracao_e_restrito_a_administradores():
     for p in paginas.PAGINAS:
         assert p.somente_admin == (p.grupo == paginas.GRUPO_ADMIN)
+
+
+# --- Contrato de entradas e saídas (preparação 3 da ADR 0044; ADR 0048) ---
+
+
+def _contratos():
+    from src.paginas import PAGINAS
+
+    return {p.chave: p.contrato for p in PAGINAS if p.contrato is not None}
+
+
+def _openapi():
+    from src.api_v1.rotas import openapi_v1
+
+    return openapi_v1()
+
+
+def _faixa(esquema: dict) -> dict:
+    """Junta os limites de um parâmetro, inclusive quando ele aceita null (anyOf)."""
+    partes = [esquema, *esquema.get("anyOf", [])]
+    juntos: dict = {}
+    for parte in partes:
+        for chave in ("minimum", "maximum", "enum", "default", "type"):
+            if chave in parte and parte.get("type") != "null":
+                juntos.setdefault(chave, parte[chave])
+    return juntos
+
+
+def _entradas_da_rota(operacao: dict, esquemas: dict) -> dict[str, tuple[bool, dict]]:
+    """{nome: (obrigatória?, limites)} de uma rota, pela query (GET) ou pelo corpo (POST)."""
+    if "requestBody" in operacao:
+        ref = operacao["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+        corpo = esquemas[ref.rsplit("/", 1)[-1]]
+        obrigatorias = set(corpo.get("required", []))
+        return {
+            nome: (nome in obrigatorias, _faixa(esquema))
+            for nome, esquema in corpo["properties"].items()
+        }
+    return {
+        p["name"]: (p["required"], _faixa(p["schema"]))
+        for p in operacao["parameters"]
+        if p["in"] == "query"
+    }
+
+
+def test_as_paginas_de_analise_tem_contrato():
+    assert set(_contratos()) == {
+        "visao_geral",
+        "risco",
+        "retorno_mensal",
+        "comparar",
+        "backtest",
+    }
+
+
+def test_cada_contrato_bate_com_a_rota_de_verdade():
+    """Nome, obrigatoriedade, limites, opções e padrão de cada entrada iguais aos da API."""
+    esquema = _openapi()
+    for chave, contrato in _contratos().items():
+        operacao = esquema["paths"][contrato.rota][contrato.metodo.lower()]
+        rota = _entradas_da_rota(operacao, esquema["components"]["schemas"])
+        assert set(rota) == {e.nome for e in contrato.entradas}, chave
+        for entrada in contrato.entradas:
+            obrigatoria, limites = rota[entrada.nome]
+            assert obrigatoria == entrada.obrigatoria, (chave, entrada.nome)
+            assert limites.get("minimum") == entrada.minimo, (chave, entrada.nome)
+            assert limites.get("maximum") == entrada.maximo, (chave, entrada.nome)
+            assert tuple(limites.get("enum", ())) == entrada.opcoes, (
+                chave,
+                entrada.nome,
+            )
+            assert limites.get("default") == entrada.padrao, (chave, entrada.nome)
+        resposta = operacao["responses"]["200"]["content"]["application/json"]["schema"]
+        assert resposta["$ref"].rsplit("/", 1)[-1] == contrato.resposta, chave
+
+
+def test_toda_rota_de_leitura_pertence_a_uma_pagina():
+    usadas = {c.rota for c in _contratos().values()}
+    assert set(_openapi()["paths"]) - usadas == {
+        "/v1/eu"
+    }  # /eu é da conta, não de uma página
+
+
+def test_periodos_do_contrato_sao_os_do_app():
+    from src.dados import PERIODOS_VALIDOS
+    from src.paginas import PERIODOS
+
+    assert list(PERIODOS) == PERIODOS_VALIDOS
+
+
+def test_pagina_com_contrato_nao_e_do_pro():
+    """A API v1 não confere recurso de plano: só páginas livres ganham contrato por enquanto."""
+    from src.paginas import PAGINAS
+
+    assert all(p.recurso is None for p in PAGINAS if p.contrato is not None)
