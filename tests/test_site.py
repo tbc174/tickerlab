@@ -241,7 +241,9 @@ def test_o_tema_e_decidido_no_head_antes_do_css_e_o_padrao_e_automatico():
         texto = arquivo.read_text(encoding="utf-8")
         cabeca = texto[: texto.index("</head>")]
         # o cálculo do sol carrega antes do CSS e sem defer: não pisca o tema errado
-        assert f'<script src="/tema/sol.js?v={versao}"></script>' in cabeca, arquivo.name
+        assert f'<script src="/tema/sol.js?v={versao}"></script>' in cabeca, (
+            arquivo.name
+        )
         assert cabeca.index("/tema/sol.js") < cabeca.index("/estilo.css")
         assert '|| "auto"' in cabeca  # quem nunca escolheu fica no automático
         assert "temaDoMomento" in cabeca
