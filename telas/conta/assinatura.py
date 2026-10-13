@@ -16,6 +16,7 @@ from src.cobranca import (
     cobranca_esta_configurada,
     criar_pagina_de_pagamento,
     criar_portal_da_assinatura,
+    pode_assinar,
 )
 from src.planos import (
     NOMES_DOS_RECURSOS,
@@ -29,6 +30,9 @@ from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, plano_atual
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
 log_da_conta = logging.getLogger("tickerlab.conta")
 
+# decisão 0029: até a cobrança real, só administradores assinam (`src.cobranca.pode_assinar`)
+AVISO_DE_PLANOS_EM_BREVE = "Os planos pagos chegam em breve."
+
 
 def _recarregar_o_plano():
     st.session_state["usuario_em"] = 0  # a próxima execução relê o usuário
@@ -41,6 +45,10 @@ def mostrar_planos():
 def _preparar_link_de_pagamento(onde):
     """Cria a página de pagamento do Stripe e guarda o endereço para o botão de link."""
     usuario = st.session_state["usuario"]
+    # o botão nem aparece para quem não pode assinar; esta é a segunda barreira
+    if not pode_assinar(usuario.e_admin):
+        st.toast(AVISO_DE_PLANOS_EM_BREVE)
+        return
     assinatura = st.session_state.get("assinatura")
     try:
         url = criar_pagina_de_pagamento(
@@ -78,6 +86,9 @@ def mostrar_assinatura(onde):
         return
     if not cobranca_esta_configurada():
         st.caption("A assinatura do plano Pro ainda não está disponível.")
+        return
+    if usuario.plano in ("gratuito", "plus") and not pode_assinar(usuario.e_admin):
+        st.caption(AVISO_DE_PLANOS_EM_BREVE)
         return
     assinatura = st.session_state.get("assinatura")
     if usuario.plano == "gratuito":

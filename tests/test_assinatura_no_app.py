@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.banco.usuarios import mudar_plano
+from src.banco.usuarios import mudar_papel, mudar_plano
 from telas.conta import assinatura as assinatura_na_tela
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario
 
@@ -59,6 +59,14 @@ def _textos(app):
     return " ".join([*(i.value for i in app.info), *(c.value for c in app.caption)])
 
 
+def _entrar_como_admin(monkeypatch, banco, sub, email):
+    """Enquanto o pagamento é de teste, só administrador assina (decisão 0029)."""
+    entrar_como(monkeypatch, sub, email)
+    abrir_app()
+    with banco.begin() as conexao:
+        mudar_papel(conexao, id_do_usuario(banco, sub), "admin")
+
+
 def _assinar(banco, sub, cliente="cus_1"):
     """Simula o que o webhook faz: guarda a assinatura e passa o usuário para o Pro."""
     from src.banco.modelo import assinaturas
@@ -91,7 +99,7 @@ def test_sem_stripe_configurado_nao_oferece_assinatura(banco, monkeypatch):
 def test_gratuito_assina_pelo_convite_de_um_recurso_do_pro(
     banco, stripe_ligado, monkeypatch
 ):
-    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    _entrar_como_admin(monkeypatch, banco, "ana", "ana@exemplo.com")
     app = abrir_app("pares")
     app.button(key="assinar_recurso_pares").click().run()
     assert not app.exception
@@ -102,10 +110,40 @@ def test_gratuito_assina_pelo_convite_de_um_recurso_do_pro(
 
 
 def test_gratuito_assina_pelo_botao_da_conta(banco, stripe_ligado, monkeypatch):
-    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    _entrar_como_admin(monkeypatch, banco, "ana", "ana@exemplo.com")
     app = abrir_app()
     app.button(key="assinar_conta").click().run()
     assert _links(app) == ["https://checkout.stripe.exemplo/sessao"]
+
+
+def test_conta_comum_nao_assina_enquanto_o_pagamento_e_de_teste(
+    banco, stripe_ligado, monkeypatch
+):
+    entrar_como(monkeypatch, "bia", "bia@exemplo.com")
+    for pagina in (None, "pares", "planos"):
+        app = abrir_app(pagina)
+        assert not app.exception
+        assert not [r for r in _rotulos(app) if r.startswith("Assinar")]
+        assert "4242" not in _textos(app)
+        assert "em breve" in _textos(app)
+    assert stripe_ligado == []
+
+
+def test_conta_comum_nao_cria_pagamento_mesmo_chamando_a_tela(
+    banco, stripe_ligado, monkeypatch
+):
+    """Defesa em profundidade: sem o botão e também sem a página do Stripe."""
+    entrar_como(monkeypatch, "bia", "bia@exemplo.com")
+    app = abrir_app()
+    usuario = app.session_state["usuario"]
+    toasts = []
+    monkeypatch.setattr(assinatura_na_tela.st, "toast", toasts.append)
+    monkeypatch.setattr(
+        assinatura_na_tela.st, "session_state", {"usuario": usuario, "assinatura": None}
+    )
+    assinatura_na_tela._preparar_link_de_pagamento("conta")
+    assert stripe_ligado == []
+    assert toasts
 
 
 def test_assinante_gerencia_pelo_portal_e_nao_ve_assinar(

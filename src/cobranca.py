@@ -35,6 +35,9 @@ STATUS_QUE_DAO_O_PRO = frozenset({"active", "trialing", "past_due"})
 # estados finais: o Stripe nunca reativa uma assinatura que chegou a eles
 STATUS_ENCERRADOS = frozenset({"canceled", "incomplete_expired"})
 PREFIXOS_DE_CHAVE_DE_TESTE = ("sk_test_", "rk_test_")  # secreta ou restrita (preferida)
+# decisão 0029: com o login aberto a qualquer conta Google e o pagamento ainda de teste, qualquer
+# pessoa viraria Pro com o cartão de teste; até a cobrança real, só administradores assinam
+ASSINATURA_SO_PARA_ADMINS = True
 EVENTOS_DE_CHECKOUT_PAGO = (
     "checkout.session.completed",
     "checkout.session.async_payment_succeeded",
@@ -94,6 +97,11 @@ def cobranca_esta_configurada(ambiente: Mapping[str, str] | None = None) -> bool
     except CobrancaIndisponivelError:
         return False
     return True
+
+
+def pode_assinar(e_admin: bool) -> bool:
+    """A trava da decisão 0029: enquanto o pagamento é de teste, só administradores assinam."""
+    return not ASSINATURA_SO_PARA_ADMINS or e_admin
 
 
 # --- falar com o Stripe -------------------------------------------------------------------
