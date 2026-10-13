@@ -272,3 +272,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o GDELT aceita um pedido a cada 5 segundos por endereço e conta os pedidos seguidos de quem já passou do limite.
 - **Solução:** na coleta, um dia por pedido, pausa de 6 s depois de **cada** pedido e limite de dias por rodada; resposta que não é JSON conta como **falha** (devolve 1), nunca como "dia sem notícia". Nos testes, nada de rede.
 - **Data:** 13/10/2026
+
+## Números em quadradinhos (▯▯▯) numa tabela do PDF, depois de uma seta ▲
+- **Sintoma:** no PDF da carteira ("Cada ativo sozinho") e da comparação, Volatilidade, Maior queda e Sharpe saíam como quadradinhos; o leitor de PDF extraía caracteres de controle (`\x1c#\x1a`). A coluna com a seta ▲ saía certa.
+- **Causa:** defeito do fpdf2 2.8.9. A Manrope não tem ▲ ▼ ■, então esses caracteres vêm da fonte reserva (JetBrains Mono). Numa célula com a reserva, a troca de fonte fica dentro do `q … Q` da célula, que o PDF desfaz no fim; mesmo assim o fpdf2 passa a achar que a fonte já está declarada. A célula seguinte, na mesma fonte, não declarava a fonte de novo e saía desenhada com a de antes.
+- **Solução:** `RelatorioPDF._render_styled_text_line` (`src/relatorio_pdf.py`) marca `current_font_is_set_on_page = False` depois de cada linha de texto, o que obriga o fpdf2 a declarar a fonte de novo. Teste de regressão em `tests/test_relatorios_propriedades.py`, e todo teste de PDF procura caracteres de controle no texto. Achado por um teste de propriedade com 300 exemplos (PR #126).
+- **Data:** 13/10/2026
+
+## Teste de propriedade que passa sem testar nada
+- **Sintoma:** o teste do PDF da comparação passava rápido demais.
+- **Causa:** o gerador do Hypothesis quase sempre criava ativos com poucos dias em comum, então o teste só conferia a recusa ("poucos pregões") e o PDF quase nunca era gerado (4,5% dos exemplos).
+- **Solução:** marcar cada ramo com `hypothesis.event(...)`, rodar com `pytest --hypothesis-show-statistics` e ajustar o gerador até os dois ramos aparecerem (o Hypothesis prefere números pequenos: o ramo de cima entra duas vezes no `st.one_of`).
+- **Data:** 13/10/2026

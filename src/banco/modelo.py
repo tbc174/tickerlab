@@ -663,3 +663,22 @@ sa.Index(
     achados_de_qualidade.c.documento,
     achados_de_qualidade.c.referencia,
 )
+
+# Série 2 da base de ML, PR 4 (0028; ADR 0033): os padrões por setor que as notas usam (percentis
+# de cada indicador por grupo de setores, calculados só com o que era público na data de corte).
+# É dado derivado: recalcular o mesmo corte substitui as linhas dele.
+padroes_setoriais = sa.Table(
+    "padroes_setoriais",
+    metadata,
+    sa.Column("data_de_corte", sa.Date, primary_key=True),
+    sa.Column("grupo", sa.String(30), primary_key=True),  # src/setores.py
+    sa.Column(
+        "indicador", sa.String(40), primary_key=True
+    ),  # src/padroes.py::INDICADORES
+    sa.Column("versao", sa.String(10), primary_key=True),
+    sa.Column("empresas", sa.Integer, nullable=False),
+    sa.Column(
+        "percentis", JSON_PORTATIL, nullable=False
+    ),  # {"10": 0.03, "50": 0.08, ...}
+    sa.Column("calculado_em", sa.DateTime(timezone=True), nullable=False),
+)
