@@ -219,6 +219,7 @@ def topo(atual: str) -> str:
         ("/#relatorios", "Relatórios"),
         ("/precos.html", "Planos"),
         ("/aprender.html", "Aprender"),
+        ("/sobre.html", "Sobre"),
     ]
     links = "".join(
         f'<a href="{href}"{" aria-current=page" if href == atual else ""}>{nome}</a>'
@@ -238,6 +239,7 @@ ASSINATURA = "Menos ruído. Mais inteligência para investir."
 RODAPE = f"""<footer class="rodape escura"><div class="faixa">
 <div>{LOGO}<p class="apagado">{ASSINATURA}</p></div>
 <nav aria-label="Rodapé">
+<a href="/sobre.html">Sobre</a>
 <a href="/metodologia.html">Fontes e metodologia</a>
 <a href="/precos.html">Planos</a>
 <a href="/termos.html">Termos de uso</a>
@@ -729,6 +731,115 @@ def como_funciona() -> str:
     )
 
 
+# --- Sobre: o texto das peças institucionais aprovadas (carrosséis e Reels, 13/10/2026) -------
+# Mude só junto com as peças: o teste confere as frases aprovadas.
+PILARES = ("Dados confiáveis", "Método e contexto", "Múltiplas perspectivas")
+HISTORIA = (
+    ("Tudo começou com Python e Pandas.", "A história do TickerLab."),
+    (
+        "O primeiro projeto universitário.",
+        (
+            "Usávamos dados do Yahoo Finance para fazer análises financeiras básicas, como calcular o "
+            "retorno total de ativos."
+        ),
+    ),
+    (
+        "A evolução.",
+        (
+            "Vieram a infraestrutura própria em um servidor doméstico (NAS), os backtests, o banco de "
+            "dados e análises mais elaboradas."
+        ),
+    ),
+    (
+        "O ponto de virada.",
+        (
+            "Percebemos que aquelas ferramentas poderiam facilitar a pesquisa financeira de muitas "
+            "outras pessoas. O projeto começou a crescer."
+        ),
+    ),
+    (
+        "De projeto acadêmico à construção de uma plataforma de inteligência financeira.",
+        "Nossa história continua.",
+    ),
+)
+PERSPECTIVAS = (
+    (
+        "Fundamentos.",
+        (
+            "Resultados, endividamento e geração de valor ajudam a compreender uma empresa. Mas essa "
+            "é apenas uma perspectiva."
+        ),
+    ),
+    (
+        "Comportamento e estatística.",
+        (
+            "Gráficos, tendências, volatilidade e estudos históricos revelam outros aspectos — e nem "
+            "sempre apontam na mesma direção."
+        ),
+    ),
+    (
+        "Inteligência Integrada.",
+        "Nossa visão é conectar métodos, mostrar concordâncias, divergências, riscos e limitações.",
+    ),
+)
+
+
+def sobre() -> str:
+    pilares = "".join(f"<li>{esc(p)}</li>" for p in PILARES)
+    historia = "".join(
+        f"<li><h3>{esc(titulo)}</h3><p>{esc(texto)}</p></li>"
+        for titulo, texto in HISTORIA
+    )
+    perspectivas = _lista_de_cartoes(list(PERSPECTIVAS))
+    corpo = f"""
+<div class="escura topo-da-pagina">
+<section id="quem-somos" class="faixa secao sobre-topo" aria-labelledby="titulo-sobre">
+  <p class="olho">Quem somos</p>
+  <h1 id="titulo-sobre">Uma análise não conta toda a história.</h1>
+  <div class="sobre-colunas">
+    <p class="subtitulo">O mercado financeiro oferece inúmeros dados, gráficos e indicadores.
+    Mas informações isoladas nem sempre ajudam a compreender o conjunto.</p>
+    <p class="subtitulo">Nossa visão é conectar diferentes perspectivas de análise.
+    Queremos tornar a pesquisa de investimentos mais clara, profunda e organizada.</p>
+  </div>
+  <ul class="pilares-sobre">{pilares}</ul>
+  <p class="assinatura-sobre"><strong>{esc(ASSINATURA)}</strong>
+  Uma plataforma brasileira de inteligência financeira.</p>
+</section>
+{LINHA_DO_HEROI}
+</div>
+
+<section id="nossa-historia" class="faixa secao" aria-labelledby="titulo-historia">
+  <p class="olho">Nossa história</p>
+  <h2 id="titulo-historia">De um projeto universitário a uma plataforma</h2>
+  <ol class="linha-do-tempo">{historia}</ol>
+</section>
+
+<section id="no-que-acreditamos" class="faixa secao" aria-labelledby="titulo-acreditamos">
+  <p class="olho">No que acreditamos</p>
+  <h2 id="titulo-acreditamos">Diferentes perspectivas. Uma visão mais completa.</h2>
+  <p class="subtitulo">O princípio da Inteligência Integrada: fundamentalista, técnica e
+  quantitativa.</p>
+  <div class="grade tres">{perspectivas}</div>
+  <p class="contagem">Mais contexto · Mais clareza · Mais autonomia</p>
+</section>
+
+<div class="escura"><section class="faixa secao final" aria-labelledby="titulo-decisoes">
+  <h2 id="titulo-decisoes">Não queremos substituir suas decisões.</h2>
+  <p class="subtitulo">Queremos contribuir para uma pesquisa de investimentos mais clara, fundamentada e autônoma.</p>
+  <a class="botao primario" href="{link_do_app("visao-geral", ticker=TICKER_DO_EXEMPLO)}">Comece pela sua primeira análise</a>
+</section></div>
+"""
+    return pagina(
+        "/sobre.html",
+        "Sobre",
+        "Quem somos, nossa história e no que acreditamos: o TickerLab conecta diferentes "
+        "perspectivas de análise para uma pesquisa de investimentos mais clara.",
+        corpo,
+        "/sobre.html",
+    )
+
+
 def aprender() -> str:
     corpo = (
         _cabecalho(
@@ -1102,6 +1213,23 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 .cartao.breve:hover {{ border-color: var(--linha); transform: none; }}
 .modulo-topo {{ display: flex; justify-content: space-between; align-items: end; gap: 0 1rem; flex-wrap: wrap; }}
 .contagem {{ color: var(--apagado); font-size: .92rem; }}
+/* Sobre */
+.sobre-topo h1 {{ max-width: 18ch; }}
+.sobre-colunas {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 2.5rem; margin-top: 1rem; }}
+.sobre-colunas p {{ margin: 0; }}
+.pilares-sobre {{ list-style: none; padding: 0; margin: 2rem 0 0; display: flex; flex-wrap: wrap; gap: .6rem; }}
+.pilares-sobre li {{ padding: .4rem .9rem; border: 1px solid var(--linha-forte); border-radius: 999px; font-weight: 700; }}
+.assinatura-sobre {{ margin-top: 2rem; color: var(--apagado); }}
+.assinatura-sobre strong {{ display: block; color: var(--texto); font-size: 1.15rem; }}
+.linha-do-tempo {{ list-style: none; padding: 0; margin: 2rem 0 0; position: relative; }}
+.linha-do-tempo::before {{ content: ""; position: absolute; left: 7px; top: .5rem; bottom: .5rem; width: 2px; background: var(--azul); }}
+.linha-do-tempo li {{ position: relative; padding: 0 0 1.75rem 2.5rem; max-width: 46rem; }}
+.linha-do-tempo li::before {{ content: ""; position: absolute; left: 0; top: .35rem; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--fundo); border: 3px solid var(--azul); }}
+.linha-do-tempo li:last-child::before {{ background: var(--azul); }}
+.linha-do-tempo h3 {{ margin: 0 0 .3rem; }}
+.linha-do-tempo p {{ margin: 0; color: var(--apagado); }}
+@media (max-width: 860px) {{ .sobre-colunas {{ grid-template-columns: 1fr; }} }}
 .cabecalho {{ border-top: 0; padding-bottom: 1rem; }}
 .atalhos {{ display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }}
 /* vitrine do Report Studio */
@@ -1427,6 +1555,7 @@ def gerar(destino: Path = DESTINO) -> None:
         "produto.html": produto(),
         "como-funciona.html": como_funciona(),
         "aprender.html": aprender(),
+        "sobre.html": sobre(),
         "precos.html": precos(),
         "metodologia.html": metodologia(),
         "termos.html": legal(
