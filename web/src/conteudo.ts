@@ -39,3 +39,10 @@ import siteJson from "../conteudo/site.json";
 
 // o que só o site usa e vem do app: estilos do Report Studio e ativos de exemplo
 export const site = siteJson;
+import legalJson from "../conteudo/legal.json";
+import qualidadeJson from "../conteudo/qualidade.json";
+
+// os Termos e a Política, já em HTML (convertidos do Markdown de conteudo/ pelo Python)
+export const legal = legalJson;
+// o selo "dado em conferência" e as regras fixas, com os mesmos textos do app
+export const qualidade = qualidadeJson;

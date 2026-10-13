@@ -1,7 +1,7 @@
 // O site em React sai igual ao gerado por scripts/gerar_site.py (o site/ de hoje): mesmas tags,
 // atributos e textos em cada página, mesmo CSS e mesmo site.js. Só o comentário de origem e o
 // pedaço de hash do `?v=` mudam.
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { Parser } from "htmlparser2";
 import { describe, expect, it } from "vitest";
@@ -53,6 +53,11 @@ export function canonico(html: string): string[] {
 }
 
 describe("rotas do site", () => {
+  it("toda página .html do site atual tem rota no React", () => {
+    const paginasDeHoje = readdirSync(SITE_ATUAL).filter((n) => n.endsWith(".html"));
+    expect([...arquivos].sort()).toEqual(paginasDeHoje.sort());
+  });
+
   it("cada página vira um arquivo .html diferente", () => {
     const nomes = ROTAS.map((r) => r.arquivo);
     expect(new Set(nomes).size).toBe(nomes.length);

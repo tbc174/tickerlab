@@ -9,13 +9,16 @@ Uso: python -m scripts.exportar_conteudo
 """
 
 import json
+import re
 from dataclasses import asdict
 from pathlib import Path
 
-from src import catalogo, marca, modulos, paginas, planos
+from scripts.markdown_simples import markdown_para_html
+from src import catalogo, marca, modulos, paginas, planos, qualidade_texto
 from src.estilos_pdf import ESTILOS
 
-DESTINO = Path(__file__).resolve().parent.parent / "web" / "conteudo"
+RAIZ = Path(__file__).resolve().parent.parent
+DESTINO = RAIZ / "web" / "conteudo"
 
 
 def _modulos() -> list[dict]:
@@ -103,6 +106,28 @@ def _site() -> dict:
     }
 
 
+def _legal() -> dict[str, str]:
+    """Os Termos e a Política em HTML; o título do arquivo vira o h1 da página."""
+    textos = {}
+    for nome in ("termos", "privacidade"):
+        texto = (RAIZ / "conteudo" / f"{nome}.md").read_text(encoding="utf-8")
+        textos[nome] = markdown_para_html(re.sub(r"^#\s+.*\n", "", texto, count=1))
+    return textos
+
+
+def _qualidade() -> dict:
+    """O selo "dado em conferência" e as regras fixas, com os mesmos textos do app."""
+    return {
+        "titulo_do_selo": qualidade_texto.TITULO_DO_SELO,
+        "ancora": qualidade_texto.ANCORA_NO_SITE,
+        "explicacao": qualidade_texto.EXPLICACAO_DO_SELO,
+        "regras": [
+            {"titulo": r.titulo, "o_que_confere": r.o_que_confere}
+            for r in qualidade_texto.REGRAS.values()
+        ],
+    }
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -111,6 +136,8 @@ def conteudo() -> dict[str, object]:
         "paginas": _paginas(),
         "planos": _planos(),
         "site": _site(),
+        "legal": _legal(),
+        "qualidade": _qualidade(),
     }
 
 
