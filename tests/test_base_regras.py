@@ -2,8 +2,16 @@
 
 import pandas as pd
 
-from base.contas_cvm import COLUNAS
-from base.regras import r1_ativo_passivo, r2_subtotais, r11_mae_em_branco
+from base.contas_cvm import COLUNAS, LeituraDeContas
+from base.regras import (
+    r1_ativo_passivo,
+    r2_subtotais,
+    r3_escala,
+    r4_impossivel,
+    r9_repetidas,
+    r10_lucro_em_branco,
+    r11_mae_em_branco,
+)
 
 CNPJ = "11.111.111/0001-11"
 REFERENCIA = pd.Timestamp("2024-12-31")
@@ -16,20 +24,23 @@ def _conta(
     grupo: str = "con",
     ordem: str = "ultimo",
     cnpj: str = CNPJ,
+    referencia: pd.Timestamp = REFERENCIA,
+    fim: pd.Timestamp | None = None,
+    descricao: str | None = None,
 ) -> dict:
     return {
         "cnpj": cnpj,
         "empresa": "EMPRESA TESTE S.A.",
         "documento": "DFP",
-        "referencia": REFERENCIA,
+        "referencia": referencia,
         "versao": 1,
         "demonstracao": demonstracao,
         "grupo": grupo,
         "ordem": ordem,
         "inicio": pd.NaT,
-        "fim": REFERENCIA,
+        "fim": referencia if fim is None else fim,
         "conta": conta,
-        "descricao": f"conta {conta}",
+        "descricao": descricao or f"conta {conta}",
         "conta_fixa": True,
         "valor": valor,
     }
@@ -190,3 +201,134 @@ def test_r11_nao_dispara_com_tudo_zerado_ou_mae_preenchida():
 
     assert r11_mae_em_branco(zerado) == []
     assert r11_mae_em_branco(preenchida) == []
+
+
+# --- R3: escala suspeita (salto de ~1000 vezes contra o documento anterior) ------------------------
+
+ANO_PASSADO = pd.Timestamp("2023-12-31")
+
+
+def test_r3_mesmo_periodo_mil_vezes_menor_no_documento_novo():
+    """Como na Alubar: o mesmo período vale mil vezes menos num documento que no outro."""
+    anterior = _contas(_conta("1", 134.3e6, referencia=ANO_PASSADO))
+    atual = _contas(_conta("1", 134.3e3, ordem="penultimo", fim=ANO_PASSADO))
+
+    achados = r3_escala(atual, anterior)
+
+    assert len(achados) == 1
+    assert (achados[0].regra, achados[0].conta) == ("R3", "1")
+    assert "mil vezes" in achados[0].porque
+
+
+def test_r3_salto_de_mil_vezes_entre_periodos_seguidos():
+    anterior = _contas(_conta("1", 100e6, referencia=ANO_PASSADO))
+    atual = _contas(_conta("1", 100e9))
+
+    assert [a.regra for a in r3_escala(atual, anterior)] == ["R3"]
+
+
+def test_r3_crescimento_normal_nao_dispara():
+    anterior = _contas(_conta("1", 100e6, referencia=ANO_PASSADO))
+    atual = _contas(
+        _conta("1", 130e6), _conta("1", 100e6, ordem="penultimo", fim=ANO_PASSADO)
+    )
+
+    assert r3_escala(atual, anterior) == []
+
+
+def test_r3_sem_documento_anterior_nao_dispara():
+    atual = _contas(_conta("1", 100e9))
+
+    assert r3_escala(atual, _contas()) == []
+
+
+# --- R4: valor impossível --------------------------------------------------------------------------
+
+
+def test_r4_ativo_total_negativo():
+    achados = r4_impossivel(_contas(_conta("1", -5e6)))
+
+    assert [(a.regra, a.conta) for a in achados] == [("R4", "1")]
+
+
+def test_r4_patrimonio_negativo_nao_e_impossivel():
+    contas = _contas(_conta("1", 5e6), _conta("2.03", -8e6, demonstracao="BPP"))
+
+    assert r4_impossivel(contas) == []
+
+
+# --- R9: linhas repetidas no arquivo da CVM ------------------------------------------------------
+
+
+def test_r9_um_achado_por_documento_com_repetidas():
+    repetidas = pd.DataFrame(
+        [
+            {
+                "cnpj": CNPJ,
+                "referencia": REFERENCIA,
+                "demonstracao": "DRE",
+                "grupo": "con",
+                "linhas": 3,
+            }
+        ]
+    )
+    leitura = LeituraDeContas(
+        _contas(_conta("3.11", 1e6, demonstracao="DRE")), repetidas
+    )
+
+    achados = r9_repetidas(leitura)
+
+    assert len(achados) == 1
+    assert (achados[0].regra, achados[0].valor, achados[0].documento) == (
+        "R9",
+        3.0,
+        "DFP",
+    )
+    assert "repetid" in achados[0].porque
+
+
+# --- R10: lucro em branco com receita ------------------------------------------------------------
+
+
+def _receita(valor: float) -> dict:
+    return _conta(
+        "3.01",
+        valor,
+        demonstracao="DRE",
+        descricao="Receita de Venda de Bens e/ou Serviços",
+    )
+
+
+def _lucro(valor: float, conta: str = "3.11") -> dict:
+    return _conta(
+        conta,
+        valor,
+        demonstracao="DRE",
+        descricao="Lucro/Prejuízo Consolidado do Período",
+    )
+
+
+def test_r10_lucro_zerado_com_receita():
+    """Como no Banco Alfa: lucro do período zerado numa empresa com receita."""
+    achados = r10_lucro_em_branco(_contas(_receita(900e6), _lucro(0.0)))
+
+    assert [(a.regra, a.conta) for a in achados] == [("R10", "3.11")]
+
+
+def test_r10_empresa_sem_receita_e_sem_lucro_nao_dispara():
+    assert r10_lucro_em_branco(_contas(_receita(0.0), _lucro(0.0))) == []
+
+
+def test_r10_acha_o_lucro_pela_descricao_e_nao_pelo_codigo():
+    """Em parte das empresas a 3.11 é a reversão dos juros sobre capital e o lucro fica na 3.13."""
+    reversao = _conta(
+        "3.11",
+        0.0,
+        demonstracao="DRE",
+        descricao="Reversão dos Juros sobre Capital Próprio",
+    )
+    com_lucro = _contas(_receita(900e6), reversao, _lucro(17e6, conta="3.13"))
+    sem_lucro = _contas(_receita(900e6), reversao, _lucro(0.0, conta="3.13"))
+
+    assert r10_lucro_em_branco(com_lucro) == []
+    assert [a.conta for a in r10_lucro_em_branco(sem_lucro)] == ["3.13"]

@@ -11,6 +11,12 @@ Regras desta versão:
 - **R2:** subtotal do balanço que não fecha: conta mãe e contas filhas preenchidas, e a soma das
   filhas diferente da mãe. Só BPA e BPP, onde a árvore de contas é sempre uma soma; na DRE e na
   DFC há contas que não somam (resultados intermediários), o que daria alarme falso.
+- **R3:** escala suspeita: o mesmo período ou o período seguinte vale cerca de mil vezes mais (ou
+  menos) que no documento anterior, sinal de reais e milhares trocados (5 casos na prova do ENET).
+- **R4:** valor impossível: ativo total, ativo circulante ou caixa negativos.
+- **R9:** linhas repetidas idênticas no arquivo da CVM (contadas por `base/contas_cvm.py`).
+- **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada pela descrição
+  (7 casos na DFP 2022 e 4 na de 2023).
 - **R11:** conta mãe em branco (zero) com as filhas preenchidas: quem lê a mãe vê zero onde há
   valor.
 
@@ -22,10 +28,12 @@ dispara; sobraram 29 casos de R2 (10 empresas) e 34 de R11 (9 empresas).
 `VERSAO_DAS_REGRAS` vai junto de cada achado gravado: mudou a regra, os achados podem ser refeitos.
 """
 
+import re
 from dataclasses import dataclass
 
 import pandas as pd
 
+from base.contas_cvm import LeituraDeContas
 from src.negociacoes import formatar_valor
 
 VERSAO_DAS_REGRAS = "1"
@@ -33,6 +41,23 @@ TOLERANCIA_EM_REAIS = 1000.0  # um "mil" da escala MIL: arredondamento da própr
 TOLERANCIA_R1 = 0.001  # 0,1% do maior dos dois
 TOLERANCIA_R2 = 0.005  # 0,5% da conta mãe (as filhas arredondam uma a uma)
 DEMONSTRACOES_DO_BALANCO = ("BPA", "BPP")
+CONTAS_DA_ESCALA = ("1", "3.01")  # ativo total e receita: sempre preenchidas e grandes
+FAIXA_DE_MIL_VEZES = (
+    700.0,
+    1400.0,
+)  # razão entre os dois valores que indica escala trocada
+NAO_PODEM_SER_NEGATIVAS = {
+    "1": "ativo total",
+    "1.01": "ativo circulante",
+    "1.01.01": "caixa",
+}
+RECEITA = "3.01"
+# a linha do lucro do período, achada pela descrição: em parte das empresas a 3.11 é a reversão dos
+# juros sobre capital próprio e o lucro fica na 3.13 (medido na DFP 2022)
+LINHA_DO_LUCRO = re.compile(
+    r"^lucro\s*(/|ou)\s*preju[ií]zo( l[ií]quido)?( consolidado)? do per[ií]odo$",
+    re.IGNORECASE,
+)
 CHAVE = ["cnpj", "documento", "referencia", "versao", "grupo"]
 
 
@@ -173,3 +198,140 @@ def _achado_r11(linha: tuple) -> Achado:
             f"contas abaixo dela somam {_reais(linha.soma)}."
         ),
     )
+
+
+def _mil_vezes(valor: float, outro: float) -> bool:
+    if not (_preenchido(valor) and _preenchido(outro)):
+        return False
+    razao = abs(valor / outro)
+    menor, maior = FAIXA_DE_MIL_VEZES
+    return menor <= razao <= maior or 1 / maior <= razao <= 1 / menor
+
+
+def _da_escala(contas: pd.DataFrame, ordem: str) -> pd.DataFrame:
+    return contas[(contas["ordem"] == ordem) & contas["conta"].isin(CONTAS_DA_ESCALA)]
+
+
+def r3_escala(contas: pd.DataFrame, anteriores: pd.DataFrame) -> list[Achado]:
+    """Salto de ~1000 vezes contra o documento anterior (mesmo período ou período seguinte)."""
+    if anteriores.empty:
+        return []
+    anterior = _da_escala(anteriores, "ultimo")
+    chave = ["cnpj", "grupo", "demonstracao", "conta"]
+    mesmo_periodo = _da_escala(contas, "penultimo").merge(
+        anterior, on=[*chave, "inicio", "fim"], suffixes=("", "_anterior")
+    )
+    # período seguinte: só o saldo do balanço (a DRE do ITR tem trimestre e acumulado juntos)
+    seguinte = _da_escala(contas, "ultimo")
+    seguinte = seguinte[seguinte["demonstracao"] == "BPA"].merge(
+        anterior, on=chave, suffixes=("", "_anterior")
+    )
+    achados: dict[tuple, Achado] = {}
+    for linha in pd.concat([mesmo_periodo, seguinte]).itertuples(index=False):
+        chave_do_achado = (linha.cnpj, linha.grupo, linha.conta)
+        if chave_do_achado not in achados and _mil_vezes(
+            linha.valor, linha.valor_anterior
+        ):
+            achados[chave_do_achado] = _achado_r3(linha)
+    return list(achados.values())
+
+
+def _achado_r3(linha: tuple) -> Achado:
+    sentido = "maior" if abs(linha.valor) > abs(linha.valor_anterior) else "menor"
+    return Achado(
+        regra="R3",
+        cnpj=linha.cnpj,
+        documento=linha.documento,
+        referencia=linha.referencia,
+        grupo=linha.grupo,
+        conta=linha.conta,
+        valor=float(linha.valor),
+        valor_esperado=float(linha.valor_anterior),
+        porque=(
+            f"A conta {linha.conta} ({linha.descricao}) está cerca de mil vezes {sentido} que no "
+            f"documento anterior ({_reais(linha.valor)} contra {_reais(linha.valor_anterior)}): "
+            "sinal de reais e milhares trocados."
+        ),
+    )
+
+
+def r4_impossivel(contas: pd.DataFrame) -> list[Achado]:
+    """Ativo total, ativo circulante ou caixa negativos."""
+    proprias = _do_documento(contas)
+    negativas = proprias[
+        (proprias["demonstracao"] == "BPA")
+        & proprias["conta"].isin(NAO_PODEM_SER_NEGATIVAS)
+        & (proprias["valor"] < -TOLERANCIA_EM_REAIS)
+    ]
+    return [
+        Achado(
+            regra="R4",
+            cnpj=linha.cnpj,
+            documento=linha.documento,
+            referencia=linha.referencia,
+            grupo=linha.grupo,
+            conta=linha.conta,
+            valor=float(linha.valor),
+            valor_esperado=None,
+            porque=(
+                f"O {NAO_PODEM_SER_NEGATIVAS[linha.conta]} veio negativo ({_reais(linha.valor)}), "
+                "o que não existe num balanço."
+            ),
+        )
+        for linha in negativas.itertuples(index=False)
+    ]
+
+
+def r9_repetidas(leitura: LeituraDeContas) -> list[Achado]:
+    """Um achado por demonstração com linhas repetidas idênticas no arquivo da CVM."""
+    documento = str(leitura.contas["documento"].iloc[0]) if len(leitura.contas) else ""
+    return [
+        Achado(
+            regra="R9",
+            cnpj=linha.cnpj,
+            documento=documento,
+            referencia=linha.referencia,
+            grupo=linha.grupo,
+            conta="",
+            valor=float(linha.linhas),
+            valor_esperado=0.0,
+            porque=(
+                f"O arquivo da CVM trouxe {linha.linhas} linhas repetidas nesta demonstração "
+                f"({linha.demonstracao}); o TickerLab contou cada uma só uma vez."
+            ),
+        )
+        for linha in leitura.repetidas.itertuples(index=False)
+    ]
+
+
+def r10_lucro_em_branco(contas: pd.DataFrame) -> list[Achado]:
+    """Lucro do período zerado numa empresa com receita no mesmo período.
+
+    A linha do lucro é achada pela descrição (`LINHA_DO_LUCRO`), entre as contas de 1º nível da DRE.
+    """
+    dre = _do_documento(contas)
+    dre = dre[(dre["demonstracao"] == "DRE") & (dre["conta"].str.count(r"\.") == 1)]
+    chave = [*CHAVE, "inicio", "fim"]
+    receita = dre[dre["conta"] == RECEITA]
+    lucro = dre[dre["descricao"].str.strip().str.match(LINHA_DO_LUCRO)]
+    juntos = lucro.merge(
+        receita[[*chave, "valor"]], on=chave, suffixes=("", "_receita")
+    )
+    return [
+        Achado(
+            regra="R10",
+            cnpj=linha.cnpj,
+            documento=linha.documento,
+            referencia=linha.referencia,
+            grupo=linha.grupo,
+            conta=linha.conta,
+            valor=float(linha.valor),
+            valor_esperado=None,
+            porque=(
+                f"O lucro do período veio em branco, mas a receita foi de "
+                f"{_reais(linha.valor_receita)}."
+            ),
+        )
+        for linha in juntos.itertuples(index=False)
+        if not _preenchido(linha.valor) and _preenchido(linha.valor_receita)
+    ]
