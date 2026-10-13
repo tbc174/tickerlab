@@ -212,15 +212,32 @@ def test_erro_que_nao_passa_nao_tenta_de_novo(monkeypatch):
     esperas: list = []
     monkeypatch.setattr(bcb, "esperar", esperas.append)
     pedidos: list = []
-    for resposta in (
-        RespostaFalsa(None, status=404),
-        RespostaFalsa(ValueError("html")),
-    ):
-        with pytest.raises(bcb.BcbIndisponivelError):
-            bcb.baixar_serie_sgs(
-                "ipca", date(2026, 1, 1), HOJE, HOJE, _buscar([resposta], pedidos)
-            )
-    assert esperas == [] and len(pedidos) == 2
+    with pytest.raises(bcb.BcbIndisponivelError):
+        bcb.baixar_serie_sgs(
+            "ipca",
+            date(2026, 1, 1),
+            HOJE,
+            HOJE,
+            _buscar([RespostaFalsa(None, status=404)], pedidos),
+        )
+    assert esperas == [] and len(pedidos) == 1
+
+
+def test_pagina_de_erro_com_status_200_tenta_de_novo(monkeypatch):
+    """Regressão (13/10/2026): mesmo numa janela de 3 anos, com o cache frio o servidor do BC
+    passou dos ~30 s e devolveu a página HTML "Requisição inválida!" com status 200; repetida, a
+    mesma consulta respondeu em 3,8 s. Antes essa página não era tentada de novo."""
+    esperas: list = []
+    monkeypatch.setattr(bcb, "esperar", esperas.append)
+    pedidos: list = []
+    respostas = [
+        RespostaFalsa(ValueError("Expecting value: line 1 column 1 (char 0)")),
+        RespostaFalsa([{"data": "01/09/2026", "valor": "0.48"}]),
+    ]
+    serie = bcb.baixar_serie_sgs(
+        "ipca", date(2026, 1, 1), HOJE, HOJE, _buscar(respostas, pedidos)
+    )
+    assert len(serie) == 1 and len(esperas) == 1 and len(pedidos) == 2
 
 
 def test_erro_passageiro_que_insiste_desiste_depois_de_tres_tentativas(monkeypatch):
