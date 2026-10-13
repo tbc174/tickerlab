@@ -63,6 +63,8 @@ FORA_DAS_CONTAS = {
     "cessao de direitos - solicitada",
 }
 PADRAO_DO_PRODUTO = re.compile(r"^\s*([A-Z]{4}\d{1,2}[A-Z]?)\s+-\s")
+# PETR4F é a PETR4 comprada no mercado fracionário: o mesmo ativo, o mesmo custo médio
+FRACIONARIO = re.compile(r"(?<=\d)F$")
 
 MENSAGEM_SEM_COLUNAS = (
     "Não achei as colunas da MOVIMENTAÇÃO (Entrada/Saída, Data, Movimentação, Produto, "
@@ -166,7 +168,9 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
             if valor <= 0 and "preco" in colunas:
                 valor = quantidade * numero_brasileiro(linha[colunas["preco"]])
             lancamentos.append(
-                Lancamento(dia, achado.group(1), tipo, quantidade, valor)
+                Lancamento(
+                    dia, FRACIONARIO.sub("", achado.group(1)), tipo, quantidade, valor
+                )
             )
     if not achou_colunas:
         raise ArquivoDaB3Error(MENSAGEM_SEM_COLUNAS)

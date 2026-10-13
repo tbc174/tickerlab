@@ -282,3 +282,29 @@ def test_movimentacao_de_exemplo_e_lida_sem_avisos_de_tipo_desconhecido():
     mov = ler_movimentacao(EXEMPLO.read_bytes(), EXEMPLO.name)
     assert mov.lancamentos
     assert not any("não reconhecido" in a for a in mov.avisos)
+
+
+def test_compra_no_fracionario_conta_no_mesmo_ativo():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "05/02/2025",
+                "Transferência - Liquidação",
+                PETR,
+                100,
+                30,
+                3000,
+            ),
+            _linha(
+                "Credito",
+                "06/02/2025",
+                "Transferência - Liquidação",
+                "PETR4F - PETROLEO BRASILEIRO S/A PETROBRAS",
+                5,
+                31,
+                155,
+            ),
+        ]
+    )
+    assert {x.codigo for x in mov.lancamentos} == {"PETR4"}
