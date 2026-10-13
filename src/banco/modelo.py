@@ -319,6 +319,8 @@ assinaturas = sa.Table(
     sa.Column("cancela_no_fim", sa.Boolean, nullable=False, server_default=sa.false()),
     # momento (do Stripe) do último evento aplicado: eventos mais velhos que isso são ignorados
     sa.Column("evento_em", sa.BigInteger, nullable=False, server_default="0"),
+    # o plano que o usuário tinha ao ganhar o Pro: é para ele que volta quando o Pro termina
+    sa.Column("plano_sem_o_pro", sa.String(20)),
     _momento("atualizada_em"),
 )
 

@@ -240,6 +240,36 @@ def test_assinatura_apagada_volta_ao_gratuito(conexao, ana):
     assert buscar_assinatura(conexao, ana.id).status == "canceled"
 
 
+def test_quem_era_plus_volta_ao_plus_quando_o_pro_e_apagado(conexao, ana):
+    # N-02 (Master v3; ADR 0025 do autor): ao perder o Pro, volta ao plano de antes
+    mudar_plano(conexao, ana.id, "plus")
+    processar_evento(conexao, _checkout(ana))
+    assert _plano(conexao, ana) == "pro"
+    processar_evento(
+        conexao, _assinatura("evt_2", "customer.subscription.deleted", "x", 300)
+    )
+    assert _plano(conexao, ana) == "plus"
+
+
+def test_quem_era_plus_volta_ao_plus_quando_o_pro_e_cancelado(conexao, ana):
+    mudar_plano(conexao, ana.id, "plus")
+    processar_evento(conexao, _checkout(ana))
+    processar_evento(
+        conexao,
+        _assinatura("evt_2", "customer.subscription.updated", "canceled", 200),
+    )
+    assert _plano(conexao, ana) == "plus"
+
+
+def test_evento_repetido_no_pro_nao_esquece_o_plano_de_antes(conexao, ana):
+    mudar_plano(conexao, ana.id, "plus")
+    processar_evento(conexao, _checkout(ana))
+    atualizada = "customer.subscription.updated"
+    processar_evento(conexao, _assinatura("evt_2", atualizada, "active", 200))
+    processar_evento(conexao, _assinatura("evt_3", atualizada, "canceled", 300))
+    assert _plano(conexao, ana) == "plus"
+
+
 def test_evento_antigo_que_chega_atrasado_e_ignorado(conexao, ana):
     processar_evento(conexao, _checkout(ana, criado=100))
     processar_evento(
