@@ -3,7 +3,7 @@
 Textos da aba **Backtest**, escritos para quem está começando. Cada estratégia tem: **A ideia**,
 **A regra**, **Quando costuma funcionar**, **Quando costuma falhar** e **O que olhar nos resultados**.
 
-> **Aviso:** o TickerLab é um projeto educacional. Um backtest mostra o que teria acontecido no
+> **Aviso:** um backtest mostra o que teria acontecido no
 > passado; não prevê o futuro e não é recomendação de compra ou venda.
 
 ---

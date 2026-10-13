@@ -58,7 +58,7 @@ def test_paginas_tem_titulo_descricao_idioma_e_aviso():
         assert '<html lang="pt-BR">' in texto
         assert re.search(r"<title>[^<]+</title>", texto)
         assert '<meta name="description" content="' in texto
-        assert "nada aqui é recomendação de investimento" in texto
+        assert "nada aqui é recomendação de investimento" in texto.lower()
         assert (
             'href="#conteudo"' in texto and 'id="conteudo"' in texto
         )  # pular para o conteúdo

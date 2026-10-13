@@ -19,7 +19,7 @@ from src.estilos_pdf import PADRAO, Estilo
 
 MARGEM = 18  # mm
 AVISO = (
-    "Projeto educacional: nada aqui é recomendação de investimento. Dados do Yahoo Finance, "
+    "Nada aqui é recomendação de investimento. Dados do Yahoo Finance, "
     "que podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro."
 )
 

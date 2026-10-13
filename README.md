@@ -20,14 +20,15 @@
   <a href="#tickerlab-trade-a-pesquisa-de-trading-quantitativo"><b>TickerLab Trade</b></a>
 </p>
 
-O **TickerLab** é um laboratório educacional de **análise de ações e teste de estratégias com
-dados do passado**, para a bolsa brasileira (B3) e a americana. Digite o código de um ativo e o
+O **TickerLab** é uma **plataforma brasileira de inteligência financeira**, em fase de testes, de
+**análise de ações e teste de estratégias com dados do passado**, para a bolsa brasileira (B3) e a
+americana. Digite o código de um ativo e o
 app busca os dados, analisa com Pandas e testa estratégias num motor de backtest escrito à mão,
 sem biblioteca pronta de backtest. Cada número vem explicado em português, e o app mostra também
 o que **não** funciona.
 
 > [!IMPORTANT]
-> Projeto educacional. Nada aqui é recomendação de investimento. Os dados vêm do Yahoo Finance
+> Nada aqui é recomendação de investimento. Os dados vêm do Yahoo Finance
 > e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.
 
 ## A história
@@ -260,8 +261,8 @@ cobrança de teste.
   auditoria que guarda só ids, nunca e-mail ou nome. Erros do banco não expõem dados pessoais.
 - LGPD: aceite dos termos no primeiro acesso (com versão e data), exportação dos dados em JSON e
   exclusão da conta em cascata, encerrando antes a cobrança no Stripe. A planilha da B3 nunca é
-  gravada. Os textos estão em `conteudo/termos.md` e `conteudo/privacidade.md` (modelos para um
-  projeto educacional, sem revisão de advogado).
+  gravada. Os textos estão em `conteudo/termos.md` e `conteudo/privacidade.md` (ainda sem revisão
+  de advogado; a revisão jurídica vem antes da cobrança real).
 
 ## Princípios do projeto
 
@@ -350,5 +351,5 @@ Font License, textos em `static/fontes/`).
 <p align="center">
   <img src="static/marca/icone.png" alt="" width="40"><br>
   Feito por <b>Tiago Borsari Coelho</b> · começou na matéria de Python e Pandas<br>
-  <sub>Conteúdo educacional. Sem promessa de rentabilidade.</sub>
+  <sub>Não é recomendação de investimento. Sem promessa de rentabilidade.</sub>
 </p>

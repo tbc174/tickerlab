@@ -4,7 +4,7 @@ Textos da aba **Glossário**, escritos para quem está começando na bolsa.
 Cada verbete tem: o que é, um exemplo e um cuidado. Formato pensado para virar
 dados no app (um `##` por termo).
 
-> **Aviso:** o TickerLab é um projeto educacional. Nada aqui é recomendação de
+> **Aviso:** nada no TickerLab é recomendação de
 > compra ou venda. Rentabilidade passada não garante resultado futuro.
 
 ---

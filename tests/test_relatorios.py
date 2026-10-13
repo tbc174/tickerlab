@@ -45,7 +45,7 @@ def test_relatorio_do_ativo_bate_com_os_numeros_do_site():
     total = ind.calcular_retorno_acumulado(retorno).iloc[-1]
     assert gp.pct_br(total, 1, sinal=True) in texto  # o mesmo número da Visão geral
     assert "▲" in texto or "▼" in texto  # alta e queda sempre com seta
-    assert "nada aqui é recomendação de investimento" in texto
+    assert "nada aqui é recomendação de investimento" in texto.lower()
     assert "Glossário" in texto and "Índice de Sharpe" in texto
     assert "de exemplo" in texto  # avisa que os dados são de exemplo
     assert "**" not in texto  # o Markdown do site não vaza para o PDF

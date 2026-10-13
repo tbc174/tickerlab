@@ -42,7 +42,7 @@ EMAIL_DE_CONTATO = "contato@tickerlab.com.br"
 BETA_FECHADO = False
 TICKER_DO_EXEMPLO = "PETR4.SA"
 AVISO = (
-    "Projeto educacional: nada aqui é recomendação de investimento. Os dados vêm do Yahoo "
+    "Nada aqui é recomendação de investimento. Os dados vêm do Yahoo "
     "Finance e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro."
 )
 
@@ -438,7 +438,7 @@ def landing(estilos: list[str]) -> str:
         (
             "O TickerLab recomenda o que comprar?",
             (
-                "Não. É um projeto educacional: mostra o que aconteceu no passado e explica cada "
+                "Não. O TickerLab mostra o que aconteceu no passado e explica cada "
                 "número. Nada aqui é recomendação de investimento."
             ),
         ),
@@ -572,7 +572,7 @@ def landing(estilos: list[str]) -> str:
         "/",
         "TickerLab",
         "Pesquise ativos da B3 e dos EUA, entenda retorno e risco com cada número explicado "
-        "e gere relatórios em PDF. Projeto educacional, sem recomendação de investimento.",
+        "e gere relatórios em PDF. Nada é recomendação de investimento.",
         corpo,
     )
 
@@ -710,8 +710,8 @@ def metodologia() -> str:
 
   <h2>O que o TickerLab não é</h2>
   <p>Não é corretora, não executa ordens, não é consultoria e não é recomendação de
-  investimento. É um projeto educacional; o enquadramento regulatório de uma eventual oferta
-  comercial ainda precisa de avaliação.</p>
+  investimento. É uma plataforma de informação e análise por assinatura; o enquadramento
+  regulatório da oferta comercial está em avaliação.</p>
   <p>Dúvidas, correções e pedidos: <a href="mailto:{EMAIL_DE_CONTATO}">{EMAIL_DE_CONTATO}</a>.</p>
   <p class="apagado">Código aberto para conferência: <a href="{URL_DO_CODIGO}" rel="noopener">{URL_DO_CODIGO.removeprefix("https://")}</a>.</p>
 </section>"""
@@ -1139,7 +1139,7 @@ def gerar(destino: Path = DESTINO) -> None:
             "/termos.html",
             "termos.md",
             "Termos de uso",
-            "Os termos de uso do TickerLab, projeto educacional de análise de ações.",
+            "Os termos de uso do TickerLab, plataforma de inteligência financeira para análise de ações.",
         ),
         "privacidade.html": legal(
             "/privacidade.html",
