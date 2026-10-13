@@ -64,6 +64,14 @@ def _guardar_tolerancia():
         )
 
 
+def tolerancia_escolhida() -> float:
+    """A tolerância de queda da pessoa (fração), para quem não mostra o campo (o Report Studio)."""
+    em_porcento = st.session_state.get(
+        CHAVE_DA_TOLERANCIA, ficha.TOLERANCIA_PADRAO_DE_QUEDA * 100
+    )
+    return ficha.normalizar_tolerancia(em_porcento / 100)
+
+
 def escolher_tolerancia() -> float:
     """O campo "Quanto de queda você aguentaria?"; devolve a fração (0,30 = 30%)."""
     st.session_state.setdefault(
