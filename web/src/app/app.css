@@ -29,3 +29,39 @@
 .conta-no-topo { display: inline-flex; align-items: center; gap: .6rem; font-size: .92rem; color: var(--apagado); }
 .erro-do-app { padding: .7rem 1rem; border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
 .botao-do-google { margin-top: 1.25rem; min-height: 44px; }
+/* formulário de cada tela (campos do contrato) */
+.formulario-do-app { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.25rem 0 1.5rem; }
+.formulario-do-app label { display: flex; flex-direction: column; gap: .3rem; font-size: .88rem; color: var(--apagado); }
+.formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: .5rem .65rem; border-radius: 8px;
+  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit; }
+/* painel de números */
+.painel-de-numeros h3 { margin-top: 1.25rem; font-size: .95rem; color: var(--apagado); }
+.numeros { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.numero-do-painel { display: flex; flex-direction: column; gap: .35rem; padding: .9rem 1rem; border-radius: var(--raio);
+  background: var(--superficie); border: 1px solid var(--linha); }
+.numero-do-painel.principal { border-color: var(--linha-forte); }
+.numero-rotulo { display: flex; align-items: start; gap: .4rem; font-size: .86rem; color: var(--apagado); }
+.numero-valor { font: 700 1.45rem/1.15 "JetBrains Mono", ui-monospace, monospace; color: var(--texto); }
+.principal .numero-valor { font-size: 1.9rem; }
+.ajuda { position: relative; margin-left: auto; }
+.ajuda summary { list-style: none; cursor: pointer; width: 1.25rem; height: 1.25rem; border-radius: 999px;
+  display: grid; place-items: center; font-size: .75rem; font-weight: 700; border: 1px solid var(--linha-forte); }
+.ajuda summary::-webkit-details-marker { display: none; }
+.ajuda-texto { position: absolute; right: 0; z-index: 3; width: min(22rem, 80vw); padding: .75rem .9rem; margin-top: .35rem;
+  border-radius: 10px; background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
+.ajuda-texto p { margin: 0 0 .5rem; font-size: .86rem; }
+/* gráfico de linha (src/app/graficos) */
+.grafico { position: relative; margin: .75rem 0 1.5rem; }
+.grafico svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.grafico svg:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 4px; border-radius: 6px; }
+.grafico-grade line { stroke: var(--linha); stroke-width: 1; }
+.grafico-grade text, .grafico-eixo-x { fill: var(--apagado); font-size: 11px; font-variant-numeric: tabular-nums; }
+.grafico-referencia { stroke: var(--linha-forte); stroke-width: 1; stroke-dasharray: 4 4; }
+.grafico-linha { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-mira line { stroke: var(--apagado); stroke-width: 1; }
+.grafico-mira circle { stroke: var(--fundo); stroke-width: 2; }
+.grafico-dica { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; display: flex; flex-direction: column;
+  gap: .15rem; padding: .45rem .65rem; border-radius: 8px; font-size: .82rem; white-space: nowrap;
+  background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
+.grafico-dica i { display: inline-block; width: .6rem; height: .6rem; margin-right: .35rem; border-radius: 2px; }
+.grafico figcaption { font-size: .82rem; margin-top: .35rem; }

@@ -17,7 +17,7 @@ from src import catalogo, graficos, marca
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
-from src.analises import MIN_DIAS_PARA_ANALISE
+from src.analises import MIN_DIAS_PARA_ANALISE, aviso_da_origem
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     carregar_preferencias,
@@ -28,6 +28,7 @@ from src.banco.dados_do_usuario import (
 from src.cdi import CDIIndisponivelError, baixar_cdi, calcular_taxa_anual_do_cdi
 from src.conteudo import carregar_glossario, proteger_cifrao
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.formatos import formatar_pct
 from src.link import alternar_favorito, montar_parametros
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.paginas import GRUPO_MAIS, GRUPO_TOPO, pagina
@@ -75,14 +76,6 @@ def carregar_dados(ticker, periodo):
 def obter_glossario():
     """Lê o glossário uma vez só; o arquivo não muda enquanto o app roda."""
     return carregar_glossario()
-
-
-def formatar_pct(valor, com_sinal=False):
-    """Porcentagem no estilo brasileiro (vírgula); vazio vira um traço."""
-    if pd.isna(valor):
-        return "—"
-    texto = f"{valor:+.2%}" if com_sinal else f"{valor:.2%}"
-    return texto.replace(".", ",")
 
 
 def ajuda_do(termo):
@@ -452,16 +445,11 @@ def carregar_contexto():
             "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
             "Tente de novo mais tarde."
         )
-    if dados.attrs.get("origem") == "cache_antigo":
-        st.warning(
-            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
-            f"tinha guardado, até {dados.attrs['ate']}."
-        )
-    if dados.attrs.get("origem") == "exemplo":
-        st.warning(
-            f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
-            "e não os mais recentes do Yahoo Finance."
-        )
+    aviso = aviso_da_origem(
+        dados.attrs.get("origem") or "atual", dados.attrs.get("ate")
+    )
+    if aviso:
+        st.warning(aviso)
     fechamento = dados["Close"]
     retorno = ind.calcular_retorno_diario(fechamento)
     taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(

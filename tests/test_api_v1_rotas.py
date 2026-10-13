@@ -1,5 +1,6 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
+import re
 from datetime import date
 
 import pandas as pd
@@ -248,7 +249,9 @@ def test_nenhuma_resposta_traz_a_serie_de_precos(cliente):
     precos = {f"{v}" for v in fechamento.iloc[-20:]} | {
         f"{v:.2f}" for v in fechamento.iloc[-20:]
     }
-    assert not [p for p in precos if p in texto]
+    # número inteiro da resposta, não pedaço: "48.0" dentro de "148.09" (base 100) não é preço
+    numeros = set(re.findall(r"-?\d+(?:\.\d+)?(?:e-?\d+)?", texto))
+    assert not precos & numeros
 
 
 def test_posicao_e_numeros_simples_no_backtest(cliente):
@@ -395,3 +398,35 @@ def test_linha_do_tempo_com_relevancia_fora_da_faixa_422(cliente):
         params={"ticker": "PETR4.SA", "materialidade_minima": 101},
     )
     assert resposta.status_code == 422
+
+
+# --- visão geral para o app em React (série 3, PR 3) ---
+
+
+def test_visao_geral_traz_a_curva_em_base_100_e_os_avisos(cliente):
+    dados = cliente.get(
+        "/api/v1/visao-geral",
+        params={"ticker": "PETR4.SA", "taxa": TAXA, "periodo": "6mo"},
+    ).json()
+    fechamento = _fechamento(periodo="6mo")
+    curva = dados["curva"]
+    assert curva["valores"][0] == pytest.approx(100.0)
+    assert curva["valores"][-1] == pytest.approx(
+        fechamento.iloc[-1] / fechamento.iloc[0] * 100
+    )
+    assert len(curva["datas"]) == len(fechamento)
+    # 6 meses: menos de 1 ano, o retorno não é anualizado e a API diz por quê
+    assert dados["painel"]["retorno_anualizado"] is None
+    assert dados["motivo_sem_anualizar"] == ind.MOTIVO_SEM_ANUALIZAR
+    # dados de exemplo: o mesmo aviso que a tela mostra
+    assert dados["ativo"]["aviso_da_origem"] == analises.aviso_da_origem(
+        "exemplo", fechamento.index[-1].strftime("%d/%m/%Y")
+    )
+
+
+def test_visao_geral_de_2_anos_sem_motivo(cliente):
+    dados = cliente.get(
+        "/api/v1/visao-geral", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()
+    assert dados["painel"]["retorno_anualizado"] is not None
+    assert dados["motivo_sem_anualizar"] is None

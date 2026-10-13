@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi, pedir } from "../../src/app/api";
-import type { EuV1 } from "../../src/app/tipos";
+import type { EuV1, VisaoGeralV1 } from "../../src/app/tipos";
+import exemplo from "./exemplos/visao_geral.json";
 
 function respostaJson(status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) {
   return new Response(JSON.stringify(corpo), {
@@ -130,5 +131,13 @@ describe("tipos das respostas", () => {
     };
     expect(Object.keys(eu).sort()).toEqual(campos("EuV1"));
     expect(Object.keys(eu.limites).sort()).toEqual(campos("LimitesV1"));
+  });
+
+  it("VisaoGeralV1 (a resposta de exemplo do Python) bate com o OpenAPI", () => {
+    const resposta: VisaoGeralV1 = exemplo.resposta;
+    expect(Object.keys(resposta).sort()).toEqual(campos("VisaoGeralV1"));
+    expect(Object.keys(resposta.ativo).sort()).toEqual(campos("AtivoV1"));
+    expect(Object.keys(resposta.painel).sort()).toEqual(campos("PainelDeNumerosV1"));
+    expect(Object.keys(resposta.curva).sort()).toEqual(campos("CurvaV1"));
   });
 });

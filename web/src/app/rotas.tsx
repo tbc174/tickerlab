@@ -3,11 +3,14 @@
 import type { ReactNode } from "react";
 import { type PaginaDoApp, paginasDoApp } from "../conteudo";
 import { EmConstrucao } from "./telas/EmConstrucao";
+import { VisaoGeral } from "./telas/VisaoGeral";
 
 export const TELAS_DO_APP: PaginaDoApp[] = paginasDoApp.filter((p) => p.contrato !== null);
 
 // as telas já feitas em React, pela chave da página
-const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {};
+const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
+  visao_geral: (pagina) => <VisaoGeral pagina={pagina} />,
+};
 
 export function telaDa(pagina: PaginaDoApp): ReactNode {
   const tela = TELAS_PRONTAS[pagina.chave];
