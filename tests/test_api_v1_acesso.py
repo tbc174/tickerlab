@@ -11,7 +11,7 @@ from joserfc import jwt
 from joserfc.jwk import KeySet, RSAKey
 
 from src import api
-from src.api_v1 import acesso
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, api_v1_ligada
 from src.banco.usuarios import entrar
 from src.conformidade import registrar_aceite
 
@@ -101,9 +101,9 @@ def test_limite_de_pedidos_por_conta():
 
 
 def test_api_ligada_so_com_a_chave_igual_a_1():
-    assert not acesso.api_v1_ligada({})
-    assert not acesso.api_v1_ligada({acesso.VARIAVEL_DA_CHAVE: "0"})
-    assert acesso.api_v1_ligada({acesso.VARIAVEL_DA_CHAVE: "1"})
+    assert not api_v1_ligada({})
+    assert not api_v1_ligada({VARIAVEL_DA_CHAVE: "0"})
+    assert api_v1_ligada({VARIAVEL_DA_CHAVE: "1"})
 
 
 # --- a rota /api/v1/eu, com o FastAPI de verdade ---
@@ -111,13 +111,13 @@ def test_api_ligada_so_com_a_chave_igual_a_1():
 
 @pytest.fixture
 def cliente(banco, monkeypatch, chave, chaves_publicas):
-    monkeypatch.setenv(acesso.VARIAVEL_DA_CHAVE, "1")
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     monkeypatch.setenv(acesso.VARIAVEL_DO_CLIENT_ID, CLIENT_ID)
     monkeypatch.setattr(acesso, "agora", lambda: AGORA)
-    api.app.dependency_overrides[acesso.chaves_do_google] = lambda: chaves_publicas
+    app = api.criar_app({VARIAVEL_DA_CHAVE: "1"})
+    app.dependency_overrides[acesso.chaves_do_google] = lambda: chaves_publicas
     acesso.LIMITE.zerar()
-    yield TestClient(api.app)
-    api.app.dependency_overrides.clear()
+    yield TestClient(app)
 
 
 @pytest.fixture
@@ -167,7 +167,7 @@ def test_conta_sem_os_termos_atuais_403(cliente, banco, chave):
 
 
 def test_desligada_responde_404_e_o_resto_continua(cliente, ana, chave, monkeypatch):
-    monkeypatch.setenv(acesso.VARIAVEL_DA_CHAVE, "0")
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "0")
     assert (
         cliente.get("/api/v1/eu", headers=_com_token(_token(chave))).status_code == 404
     )
@@ -203,9 +203,17 @@ def test_google_fora_do_ar_responde_503(banco, ana, chave, monkeypatch):
     def falhar(*_args, **_kwargs):
         raise httpx.ConnectError("sem rede")
 
-    monkeypatch.setenv(acesso.VARIAVEL_DA_CHAVE, "1")
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     monkeypatch.setenv(acesso.VARIAVEL_DO_CLIENT_ID, CLIENT_ID)
     monkeypatch.setattr(acesso, "_chaves_em_cache", None)
     monkeypatch.setattr(acesso.httpx, "get", falhar)
-    resposta = TestClient(api.app).get("/api/v1/eu", headers=_com_token(_token(chave)))
+    app = api.criar_app({VARIAVEL_DA_CHAVE: "1"})
+    resposta = TestClient(app).get("/api/v1/eu", headers=_com_token(_token(chave)))
     assert resposta.status_code == 503
+
+
+def test_desligada_a_api_nem_monta_a_v1_e_fica_leve():
+    """Sem a chave, as rotas da v1 não existem e nada dela é carregado (o contêiner é pequeno)."""
+    cliente = TestClient(api.criar_app({}))
+    assert cliente.get("/api/v1/eu").status_code == 404
+    assert cliente.get("/v1/eu").status_code == 404
