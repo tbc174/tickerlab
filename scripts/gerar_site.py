@@ -521,7 +521,8 @@ def _cartao_da_funcionalidade(f: modulos.Funcionalidade) -> str:
 def _contagem(modulo: modulos.Modulo) -> str:
     partes = []
     if modulo.disponiveis:
-        partes.append(f"{modulo.disponiveis} disponíveis")
+        plural = "disponível" if modulo.disponiveis == 1 else "disponíveis"
+        partes.append(f"{modulo.disponiveis} {plural}")
     if modulo.em_breve:
         partes.append(f"{modulo.em_breve} em breve")
     return " · ".join(partes)

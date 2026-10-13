@@ -18,10 +18,34 @@ def test_as_contagens_batem_com_as_funcionalidades():
         assert modulo.funcionalidades, modulo.nome
 
 
-def test_os_modulos_que_ainda_nao_existem_nao_dizem_que_existem():
-    """Mercado e Ferramentas são ideias futuras (Mestre v3, seção 09): tudo "em breve"."""
-    for chave in ("mercado", "ferramentas"):
-        assert modulos.POR_CHAVE[chave].disponiveis == 0
+def _funcionalidade(chave_do_modulo, nome):
+    (f,) = [
+        f for f in modulos.POR_CHAVE[chave_do_modulo].funcionalidades if f.nome == nome
+    ]
+    return f
+
+
+def test_o_que_ainda_nao_existe_nao_diz_que_existe():
+    """Ferramentas (as calculadoras) ainda é ideia futura; do Mercado, só a qualidade dos dados existe."""
+    assert modulos.POR_CHAVE["ferramentas"].disponiveis == 0
+    disponiveis = [
+        f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
+    ]
+    assert disponiveis == ["Qualidade dos dados"]
+
+
+def test_comparacoes_em_pdf_levam_ao_report_studio():
+    """O Report Studio já gera o relatório de comparação (até 5 ativos)."""
+    assert (
+        _funcionalidade("relatorios", "Comparações em PDF").pagina_do_app == "relatorio"
+    )
+
+
+def test_qualidade_dos_dados_leva_a_uma_acao_da_b3_nos_fundamentos():
+    """O selo "em conferência" aparece na tela Fundamentos, e só para documentos da CVM."""
+    f = _funcionalidade("mercado", "Qualidade dos dados")
+    assert f.pagina_do_app == "fundamentos"
+    assert f.ticker is not None and f.ticker.endswith(".SA")
 
 
 def test_chaves_unicas_para_as_ancoras_da_pagina_produto():

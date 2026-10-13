@@ -190,6 +190,21 @@ def test_menu_da_versao_a_em_todas_as_paginas():
             assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
 
 
+def test_contagem_do_modulo_no_singular_e_no_plural():
+    um = modulos_de_teste(1, 2)
+    assert gs._contagem(um) == "1 disponível · 2 em breve"
+    assert gs._contagem(modulos_de_teste(3, 1)) == "3 disponíveis · 1 em breve"
+
+
+def modulos_de_teste(disponiveis, em_breve):
+    from src import modulos
+
+    funcionalidades = tuple(
+        modulos.Funcionalidade(f"d{i}", "x", "visao-geral") for i in range(disponiveis)
+    ) + tuple(modulos.Funcionalidade(f"b{i}", "x") for i in range(em_breve))
+    return modulos.Modulo("teste", "Teste", "obj", "frase", funcionalidades)
+
+
 def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
     from src import modulos
 
