@@ -106,3 +106,5 @@ pypdf==6.20.0
 pypdfium2==5.14.0
 openpyxl==3.1.5
 et_xmlfile==2.0.0
+# base de cripto: lê a planilha .xls antiga da Receita (criptoativos); fora da imagem do app (BSD)
+xlrd==2.0.2
