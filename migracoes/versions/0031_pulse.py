@@ -1,6 +1,6 @@
 """Pulse: a última visita de cada pessoa (onda 3, PR E; ADR 0046, atualização 2)
 
-Revisão: 0030
+Revisão: 0031
 
 Uma linha por pessoa: quando ela abriu o Pulse pela última vez (o "desde a última visita") e o
 veredito da ficha "Foi sorte?" que ela já viu em cada estratégia salva. Dado do usuário: apagado
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = "0030"
-down_revision = "0029"
+revision = "0031"
+down_revision = "0030"
 branch_labels = None
 depends_on = None
 

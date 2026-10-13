@@ -405,6 +405,15 @@ PAGINAS = (
         "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     ),
     Pagina(
+        "relatorio_empresa",
+        "Relatório da empresa",
+        GRUPO_RESEARCH,
+        ":material/summarize:",
+        "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas "
+        "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
+        "número.",
+    ),
+    Pagina(
         "por_dentro",
         "Pessoas de dentro",
         GRUPO_RESEARCH,

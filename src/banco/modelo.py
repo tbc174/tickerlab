@@ -24,6 +24,7 @@ TIPOS_DE_RELATORIO = (
     "carteira",
     "minha_carteira",
     "newsletter",
+    "empresa",  # relatório completo de empresa (série 2 da base de ML, PR 7)
 )
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
