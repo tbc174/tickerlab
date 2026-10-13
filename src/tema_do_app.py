@@ -22,12 +22,15 @@ def normalizar(escolha: object) -> str:
     return escolha if isinstance(escolha, str) and escolha in ESCOLHAS else PADRAO
 
 
-def script(escolha: str, paginas: list[str]) -> str:
-    """O <script> que aplica a escolha no navegador (para o `st.html` com JavaScript ligado)."""
+def script(escolha: str, paginas: list[str], guardada: bool = False) -> str:
+    """O <script> que aplica a escolha no navegador (para o `st.html` com JavaScript ligado).
+
+    `guardada`: a escolha veio da conta ou a pessoa acabou de escolher. Se não, vale a que o
+    navegador guardou (sem login, a sessão do Streamlit volta ao padrão a cada recarga)."""
     sol = (PASTA_DO_TEMA / "sol.js").read_text(encoding="utf-8")
     app = (PASTA_DO_TEMA / "app.js").read_text(encoding="utf-8")
     chamada = (
         f"window.TickerLabTemaDoApp.aplicar({json.dumps(normalizar(escolha))}, "
-        f"{json.dumps(paginas)}, {VERSAO_DA_CHAVE_DO_STREAMLIT});"
+        f"{json.dumps(guardada)}, {json.dumps(paginas)}, {VERSAO_DA_CHAVE_DO_STREAMLIT});"
     )
     return f"<script>{sol}\n{app}\n{chamada}</script>"

@@ -1,4 +1,4 @@
-"""Meus dados (LGPD): exportar, baixar os PDFs e apagar a conta.
+"""Meus dados: a aparência (tema) e, pela LGPD, exportar, baixar os PDFs e apagar a conta.
 
 Saiu do `app.py` sem mudar comportamento. Regra de `telas/`: nenhum estado mutável no módulo
 (um módulo importado é do processo inteiro, isto é, de todos os usuários).
@@ -10,7 +10,9 @@ import logging
 
 import streamlit as st
 
+from src import tema_do_app
 from src.banco.conexao import obter_engine
+from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
 from src.banco.pdfs_originais import pdfs_em_zip
 from src.cobranca import buscar_assinatura, encerrar_cobranca
 from src.conformidade import (
@@ -62,9 +64,51 @@ def _apagar_minha_conta(usuario):
     st.logout()
 
 
+def _guardar_tema(usuario):
+    """A escolha vale já nesta sessão e, com login, fica nas preferências da conta (mesclada com
+    o que já estava guardado, como a configuração do Report Studio)."""
+    escolha = tema_do_app.normalizar(st.session_state.get("escolha_do_tema"))
+    st.session_state["tema_do_app"] = escolha
+    st.session_state["tema_escolhido"] = True
+    if usuario is None:
+        return
+    try:
+        with obter_engine().begin() as conexao:
+            guardadas = carregar_preferencias(conexao, usuario.id)
+            salvar_preferencias(conexao, usuario.id, {**guardadas, "tema": escolha})
+    except Exception:
+        log_da_conta.exception("Falha ao salvar o tema na conta")
+        st.toast(
+            "Não consegui guardar o tema na sua conta agora; vale só nesta visita."
+        )
+
+
+def _mostrar_aparencia(usuario):
+    st.subheader("Aparência")
+    st.caption(
+        "Automático: claro de dia e escuro à noite, pela hora do nascer e do pôr do sol na "
+        "capital do fuso do seu aparelho (sem pedir a sua localização). A troca vale ao abrir "
+        "ou recarregar uma página."
+    )
+    st.session_state.setdefault(
+        "escolha_do_tema", st.session_state.get("tema_do_app", tema_do_app.PADRAO)
+    )
+    st.segmented_control(
+        "Tema",
+        options=list(tema_do_app.ESCOLHAS),
+        format_func=tema_do_app.NOMES.get,
+        required=True,
+        key="escolha_do_tema",
+        on_change=_guardar_tema,
+        args=(usuario,),
+    )
+
+
 def pagina_meus_dados():
     cabecalho_da_pagina("meus_dados")
     usuario = st.session_state.get("usuario")
+    _mostrar_aparencia(usuario)
+    st.divider()
     if usuario is None:
         st.info("Sem login (modo local) não há conta nem dados pessoais guardados.")
         return
