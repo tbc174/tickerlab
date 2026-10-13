@@ -92,8 +92,8 @@ Regras que uma ferramenta confere estão marcadas com 🤖 (ruff ou testes, no C
 
 ## Dívida conhecida (a pagar em etapas)
 
-- Cálculos do pandas que ainda moram em telas (`telas/estrategias/backtest.py`, `carteira.py` e
-  `experimentos.py`): levar para `src/`, com teste, antes de essas telas migrarem para outra interface.
+- ~~Cálculos do pandas nas telas de backtest, carteira e experimentos~~: levados para `src/`, com
+  teste e telas idênticas antes e depois, em 13/10/2026 (#106, #107).
 - A API só tem saúde, webhook e Newsletter: as análises principais ainda não têm rota de leitura.
 
 - ~~`app.py` gigante~~: dividido em `telas/` em 12/10/2026 (229 linhas: entrada e menu); as funções

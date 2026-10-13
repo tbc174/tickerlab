@@ -14,13 +14,13 @@ from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
     MIN_ATIVOS_NA_CARTEIRA,
+    numeros_da_carteira,
     simular_carteira,
 )
-from src.cdi import CDIIndisponivelError, curva_do_cdi
+from src.cdi import CDIIndisponivelError, retorno_diario_do_caixa
 from src.comparacao import NOMES_AMIGAVEIS, alinhar_fechamentos, interpretar_tickers
 from src.conteudo import proteger_cifrao
 from src.dados import DadosIndisponiveisError
-from src.metricas import resumir_desempenho
 from src.planos import limites_do
 from telas.comum import (
     ajuda_do,
@@ -72,32 +72,10 @@ def _retorno_do_caixa(caixa_rende_cdi, cdi_diario, alinhado):
             cdi = cdi_diario
             if cdi is None:
                 cdi = obter_cdi(alinhado.index[0], alinhado.index[-1])
-            retorno_do_caixa = (
-                curva_do_cdi(cdi, alinhado.index).pct_change().fillna(0.0)
-            )
+            retorno_do_caixa = retorno_diario_do_caixa(cdi, alinhado.index)
         except CDIIndisponivelError as erro:
             st.warning(f"{erro} O dinheiro parado ficou sem render.")
     return retorno_do_caixa
-
-
-def _numeros_da_carteira(nome, principal, referencia, alinhado, taxa_livre_de_risco):
-    """(carteiras, números): a estratégia, a referência e cada ativo comprado e segurado."""
-    carteiras = {nome: principal}
-    if nome != "Pesos iguais (referência)":
-        carteiras["Pesos iguais (referência)"] = referencia
-    numeros = {
-        rotulo: resumir_desempenho(r.retorno, r.exposicao, None, taxa_livre_de_risco)
-        for rotulo, r in carteiras.items()
-    }
-    sem_estrategia = pd.Series(1.0, index=alinhado.index)
-    for ativo in alinhado.columns:
-        retorno_do_ativo = ind.calcular_retorno_diario(alinhado[ativo])
-        numeros[f"{NOMES_AMIGAVEIS.get(ativo, ativo)} (comprar e segurar)"] = (
-            resumir_desempenho(
-                retorno_do_ativo, sem_estrategia, None, taxa_livre_de_risco
-            )
-        )
-    return carteiras, numeros
 
 
 def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
@@ -191,8 +169,8 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         with st.expander("Como funciona esta estratégia", expanded=True):
             st.markdown(proteger_cifrao(explicacao))
 
-    carteiras, numeros = _numeros_da_carteira(
-        nome, principal, referencia, alinhado, taxa_livre_de_risco
+    carteiras, numeros = numeros_da_carteira(
+        nome, principal, referencia, alinhado, taxa_livre_de_risco, NOMES_AMIGAVEIS
     )
 
     cartoes = st.columns(4)

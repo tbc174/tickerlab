@@ -219,6 +219,24 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
   antes do push, ou rodar o `ruff format` sem `--check` e conferir o `git status`.
 - **Data:** 13/10/2026
 
+## O ITR inteiro da CVM não cabe no contêiner do app (741 MB na leitura)
+- **Sintoma:** medindo a tarefa das regras de qualidade no PC, ler o ITR inteiro (`ler_contas`) levou o processo a 741 MB; o contêiner do app tem 768 MB, dividido com o Streamlit.
+- **Causa:** o arquivo tem ~1,2 milhão de linhas lidas como texto, com todas as demonstrações (DFC inclusive), e a tarefa precisava de dois arquivos ao mesmo tempo.
+- **Solução:** ler só o que as regras usam (`so_as_das_regras=True`: BPA, BPP e o 1º nível da DRE), segurar um arquivo inteiro por vez (dos outros, só as contas principais) e rodar a tarefa num contêiner próprio (`docker run --rm --memory 1500m`), como a coleta do IEX. Pico: 665 MB.
+- **Data:** 13/10/2026
+
+## O SHA-256 do pacote do ENET muda a cada download
+- **Sintoma:** o mesmo documento do ENET (DFP 2022 v1 do BRB) baixado duas vezes deu dois SHA-256 diferentes.
+- **Causa:** o ENET monta o zip na hora; o PDF dentro dele leva a data e a hora do download no nome. O XML do documento sai idêntico.
+- **Solução:** registrar e guardar o **XML limpo** (sem o PDF e sem os dados de quem entregou, `base.enet.limpar_xml`), que é estável: o mesmo documento vira um arquivo só no acervo (47 a 60 KB, contra 13 a 17 MB do pacote).
+- **Data:** 13/10/2026
+
+## `gh pr merge` falhou e o comando seguinte apagou o ramo, fechando o PR
+- **Sintoma:** o merge do #102 falhou por conflito (outra sessão tinha mexido no site), mas a linha seguinte do mesmo comando apagou o ramo local e o remoto; o GitHub fechou o PR.
+- **Causa:** comandos encadeados com `;` seguem mesmo quando o anterior falha.
+- **Solução:** recriar o ramo pelo commit (`git checkout -B ramo <sha>`), resolver o conflito, mandar de novo e `gh pr reopen`. Daqui em diante, limpeza só dentro de `if gh pr merge ...; then ...; fi`.
+- **Data:** 13/10/2026
+
 ## Regra boa "falha" no teste contra o acaso com dados sintéticos de tendência
 - **Sintoma:** num teste da ficha "Foi sorte?", uma regra de tendência em dados feitos com altas e quedas de 150 dias tinha p-valor de 14% no teste contra o acaso, como se fosse sorte.
 - **Causa:** o teste contra o acaso desloca a posição no tempo. Com tendências de duração **fixa**, o deslocamento de um ciclo inteiro (300 dias) realinha a posição com as tendências, e várias versões "ao acaso" acertam tanto quanto a regra.

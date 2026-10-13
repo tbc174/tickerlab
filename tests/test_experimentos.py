@@ -261,3 +261,33 @@ def test_comparar_dentro_e_fora_separa_os_dias():
     assert r["Dias dentro"] + r["Dias fora"] == 300
     with pytest.raises(ValueError, match="suficientes"):
         ex.comparar_dentro_e_fora(retorno, pd.Series(False, index=retorno.index))
+
+
+# --- curvas e posição que saíram da tela de experimentos (13/10/2026) ----------------------------
+def test_curvas_da_noite_e_do_dia_iguais_as_que_a_tela_montava():
+    partes = ex.separar_noite_e_dia(_caminhada_ohlc())
+    liquido = ex.calcular_retorno_da_noite_com_custo(partes, 0.001)
+    curvas = ex.curvas_da_noite_e_do_dia(partes, liquido)
+    esperado = {
+        "Total (comprar e segurar)": (
+            1 + (1 + partes["Noite"]) * (1 + partes["Dia"]) - 1
+        ).cumprod(),
+        "Só a noite": (1 + partes["Noite"]).cumprod(),
+        "Só o dia": (1 + partes["Dia"]).cumprod(),
+        "Só a noite, com custos": (1 + liquido).cumprod(),
+    }
+    assert list(curvas) == list(esperado)
+    for nome, curva in esperado.items():  # idênticas, bit a bit (não só "quase iguais")
+        pd.testing.assert_series_equal(curvas[nome], curva, check_exact=True)
+
+
+def test_posicao_da_virada_e_a_marca_do_proximo_dia_do_calendario():
+    """O calendário é conhecido de antemão: hoje já se sabe se amanhã é dia da virada. A posição
+    de hoje usa só a marca de amanhã (nenhum preço do futuro)."""
+    indice = pd.bdate_range("2026-01-20", periods=40)
+    marcados = ex.marcar_virada_do_mes(indice, 1, 3)
+    posicao = ex.posicao_da_virada(marcados)
+    pd.testing.assert_series_equal(
+        posicao, marcados.shift(-1, fill_value=False).astype(float)
+    )
+    assert posicao.iloc[-1] == 0.0  # depois do último dia não há marca conhecida
