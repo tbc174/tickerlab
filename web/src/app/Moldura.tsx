@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 import { AVISO, linkDoApp } from "../site/textos";
+import { ContaNoTopo } from "./conta";
 import { Logo } from "./Logo";
 import { MenuDoTema } from "./MenuDoTema";
 import { TELAS_DO_APP } from "./rotas";
@@ -17,6 +18,7 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
           <Logo />
           <span className="selo-novo">Versão nova</span>
           <MenuDoTema />
+          <ContaNoTopo />
           <a className="botao pequeno" href={linkDoApp()}>
             App atual
           </a>

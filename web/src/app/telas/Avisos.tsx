@@ -29,6 +29,18 @@ export function ForaDoAr() {
   );
 }
 
+export function LoginNaoConfigurado() {
+  return (
+    <section className="aviso-do-app">
+      <h1>O login da versão nova ainda não foi ligado</h1>
+      <p>Enquanto isso, use o app de sempre, com os mesmos números.</p>
+      <a className="botao primario" href={linkDoApp()}>
+        Ir para o app atual
+      </a>
+    </section>
+  );
+}
+
 export function Carregando() {
   return (
     <p className="apagado" role="status">
