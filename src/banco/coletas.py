@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 
+import requests
 import sqlalchemy as sa
 
 from src import acervo
@@ -32,6 +33,7 @@ LICENCAS = {
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
+HTTP_NAO_ENCONTRADO = 404
 
 
 def licenca_da_fonte(fonte: str) -> str:
@@ -122,3 +124,33 @@ def com_registro[Conteudo: (bytes, bytes | None)](
         return conteudo
 
     return baixar_e_registrar
+
+
+def buscar_com_registro(
+    fonte: str, buscar: Callable[..., requests.Response] = requests.get
+) -> Callable[..., requests.Response]:
+    """Como `com_registro`, para os leitores que recebem um `buscar` no lugar do `requests.get`
+    (Banco Central, Tesouro dos EUA): registra o endereço completo (com a consulta) e a resposta."""
+
+    def buscar_e_registrar(
+        url: str, *args: object, **kwargs: object
+    ) -> requests.Response:
+        try:
+            resposta = buscar(url, *args, **kwargs)
+        except Exception as erro:
+            _registrar_sem_atrapalhar(fonte, url, None, "falhou", type(erro).__name__)
+            raise
+        endereco = getattr(resposta, "url", None) or url
+        if resposta.ok:
+            _registrar_sem_atrapalhar(fonte, endereco, resposta.content, "ok", None)
+        else:
+            situacao = (
+                "nao_encontrado"
+                if resposta.status_code == HTTP_NAO_ENCONTRADO
+                else "falhou"
+            )
+            detalhe = f"HTTP {resposta.status_code}"
+            _registrar_sem_atrapalhar(fonte, endereco, None, situacao, detalhe)
+        return resposta
+
+    return buscar_e_registrar

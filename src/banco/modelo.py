@@ -497,3 +497,41 @@ coletas = sa.Table(
     ),
 )
 sa.Index("ix_coletas_fonte_baixado_em", coletas.c.fonte, coletas.c.baixado_em)
+
+# Séries macro com safras (Radar, PR 5; ADR 0024 do autor): só acréscimo. Uma revisão oficial
+# acrescenta uma linha com o novo `divulgado_em`; a anterior nunca é apagada.
+series = sa.Table(
+    "series",
+    metadata,
+    sa.Column("codigo", sa.String(60), primary_key=True),  # ex.: bcb-sgs-433
+    sa.Column("nome", sa.String(120), nullable=False),
+    sa.Column("unidade", sa.String(40), nullable=False),
+    sa.Column("frequencia", sa.String(20), nullable=False),
+    sa.Column("licenca", sa.String(80), nullable=False),
+    # Yahoo: guardado só para uso interno, nunca exportado nem redistribuído (ADR 0024)
+    sa.Column("uso_interno", sa.Boolean, nullable=False, server_default=sa.false()),
+)
+
+observacoes = sa.Table(
+    "observacoes",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column(
+        "serie",
+        sa.String(60),
+        sa.ForeignKey("series.codigo", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    sa.Column(
+        "referencia", sa.Date, nullable=False
+    ),  # o período a que o valor se refere
+    sa.Column("valor", sa.Float, nullable=False),
+    sa.Column("divulgado_em", sa.Date, nullable=False),  # a safra
+    _momento("registrado_em"),
+)
+sa.Index(
+    "ix_observacoes_serie_referencia",
+    observacoes.c.serie,
+    observacoes.c.referencia,
+    observacoes.c.divulgado_em,
+)
