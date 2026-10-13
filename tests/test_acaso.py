@@ -263,3 +263,24 @@ def test_comprimento_minimo_valida_entradas():
     with pytest.raises(ValueError, match="confiança"):
         acaso.calcular_comprimento_minimo(retorno, 1.0)
     assert np.isnan(acaso.calcular_comprimento_minimo(retorno.iloc[:5]))
+
+
+# --- resumos que saíram da tela do backtest (13/10/2026) ----------------------------------------
+def test_resumo_do_monte_carlo_igual_ao_que_a_tela_calculava():
+    retornos = pd.Series(np.random.default_rng(1).normal(0.01, 0.05, 40))
+    mc = acaso.simular_monte_carlo(retornos)
+    resumo = acaso.resumir_monte_carlo(mc)
+    finais, quedas = pd.Series(mc.retornos_finais), pd.Series(mc.quedas_maximas)
+    assert resumo.retorno_mediano == pytest.approx(float(finais.median()))
+    assert resumo.retorno_p5 == pytest.approx(float(finais.quantile(0.05)))
+    assert resumo.retorno_p95 == pytest.approx(float(finais.quantile(0.95)))
+    assert resumo.queda_p5 == pytest.approx(float(quedas.quantile(0.05)))
+    assert resumo.chance_de_prejuizo == mc.probabilidade_de_prejuizo
+
+
+def test_sharpe_mediano_ao_acaso_igual_ao_que_a_tela_calculava():
+    precos = _precos()
+    posicao = pd.Series(1.0, index=precos.index)
+    teste = acaso.testar_contra_o_acaso(precos, posicao, 0.001, 0.0)
+    esperado = float(pd.Series(teste.sharpes_ao_acaso).median())
+    assert teste.sharpe_mediano_ao_acaso == pytest.approx(esperado)

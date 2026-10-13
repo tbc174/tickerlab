@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from src import indicadores as ind
 from src import validacao as val
 from src.estrategias import ESTRATEGIAS
 
@@ -242,3 +243,23 @@ def test_de_ponta_a_ponta_com_uma_estrategia_real():
     assert tt.melhor_do_treino in validos
     wf = val.executar_walk_forward(retornos, validos, 300, 100)
     assert len(wf.janelas) >= 5
+
+
+# --- resumos que saíram da tela do backtest (13/10/2026) ----------------------------------------
+def test_resumo_da_grade_igual_ao_que_a_tela_calculava():
+    mapa = pd.DataFrame([[0.5, -0.2, np.nan], [1.1, 0.0, 0.3]])
+    resumo = val.resumir_grade(mapa)
+    valores = pd.Series(mapa.to_numpy(dtype=float).ravel()).dropna()
+    assert resumo.mediana == pytest.approx(valores.median())
+    assert resumo.melhor == pytest.approx(valores.max())
+    assert resumo.fracao_positiva == pytest.approx((valores > 0).mean())
+
+
+def test_grade_vazia_nao_tem_resumo():
+    assert val.resumir_grade(pd.DataFrame([[np.nan, np.nan]])) is None
+
+
+def test_melhor_candidato_e_o_de_maior_sharpe():
+    retornos = _retornos()
+    esperado = retornos.apply(lambda r: ind.calcular_indice_sharpe(r, 0.1)).idxmax()
+    assert val.melhor_candidato(retornos, 0.1) == esperado

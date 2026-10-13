@@ -10,9 +10,9 @@ import streamlit as st
 from src import graficos, relatorios
 from src import indicadores as ind
 from src.acaso import (
-    calcular_comprimento_minimo,
     calcular_pbo,
     calcular_sharpe_deflacionado,
+    resumir_monte_carlo,
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
@@ -29,8 +29,7 @@ from src.exportacao import (
 from src.imposto import aplicar_imposto
 from src.metricas import (
     calcular_intervalo_do_sharpe,
-    calcular_kelly,
-    calcular_omega,
+    mais_numeros,
     resumir_desempenho,
 )
 from src.protecoes import Protecoes, aplicar_protecoes
@@ -39,9 +38,11 @@ from src.validacao import (
     calcular_retornos_dos_candidatos,
     data_de_corte,
     executar_walk_forward,
+    melhor_candidato,
     montar_candidatos,
     montar_mapa_de_sharpe,
     parametros_numericos,
+    resumir_grade,
 )
 from telas.comum import (
     ajuda_do,
@@ -208,10 +209,6 @@ def _texto_dos_parametros(parametros, rotulos):
     return ", ".join(f"{rotulos.get(k, k)} = {v}" for k, v in parametros.items())
 
 
-def _curva_a_partir_de(retorno):
-    return (1 + retorno).cumprod()
-
-
 def _aba_treino_e_teste(
     nome,
     retorno_do_usuario,
@@ -279,9 +276,9 @@ def _aba_treino_e_teste(
                 "alta), e não que a estratégia ficou melhor. Compare com comprar e segurar."
             )
         curvas = {
-            "Melhor do treino": _curva_a_partir_de(tt.retorno_no_teste),
-            "Sua configuração": _curva_a_partir_de(teste),
-            "Comprar e segurar": _curva_a_partir_de(referencia),
+            "Melhor do treino": ind.curva_de_capital(tt.retorno_no_teste),
+            "Sua configuração": ind.curva_de_capital(teste),
+            "Comprar e segurar": ind.curva_de_capital(referencia),
         }
         mostrar_grafico(
             graficos.criar_grafico_curvas_de_capital(
@@ -350,8 +347,8 @@ def _aba_walk_forward(
         mostrar_grafico(
             graficos.criar_grafico_curvas_de_capital(
                 {
-                    "Walk-forward (só dias de teste)": _curva_a_partir_de(fora),
-                    "Comprar e segurar": _curva_a_partir_de(referencia),
+                    "Walk-forward (só dias de teste)": ind.curva_de_capital(fora),
+                    "Comprar e segurar": ind.curva_de_capital(referencia),
                 },
                 capital_inicial,
                 destaque="Walk-forward (só dias de teste)",
@@ -392,12 +389,12 @@ def _aba_mapa_de_parametros(
             ),
         )
     )
-    valores = pd.Series(mapa.to_numpy(dtype=float).ravel()).dropna()
-    if not valores.empty:
+    resumo = resumir_grade(mapa)
+    if resumo is not None:
         st.caption(
-            f"Mediana do Sharpe na grade: {formatar_metrica('Sharpe', valores.median())}; "
-            f"melhor: {formatar_metrica('Sharpe', valores.max())}. "
-            f"{formatar_pct((valores > 0).mean())} das combinações têm Sharpe positivo. "
+            f"Mediana do Sharpe na grade: {formatar_metrica('Sharpe', resumo.mediana)}; "
+            f"melhor: {formatar_metrica('Sharpe', resumo.melhor)}. "
+            f"{formatar_pct(resumo.fracao_positiva)} das combinações têm Sharpe positivo. "
             "O quadrado azul marca a sua configuração atual (se ela estiver na grade)."
         )
 
@@ -414,20 +411,21 @@ def _aba_monte_carlo_e_acaso(
         )
     else:
         mc = simular_monte_carlo(operacoes["retorno"])
+        resumo = resumir_monte_carlo(mc)
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(
             "Retorno típico (mediana)",
-            formatar_pct(float(pd.Series(mc.retornos_finais).median()), com_sinal=True),
+            formatar_pct(resumo.retorno_mediano, com_sinal=True),
         )
         c2.metric(
             "Faixa de 90% dos casos",
-            f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.05)), com_sinal=True)} a "
-            f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.95)), com_sinal=True)}",
+            f"{formatar_pct(resumo.retorno_p5, com_sinal=True)} a "
+            f"{formatar_pct(resumo.retorno_p95, com_sinal=True)}",
         )
-        c3.metric("Chance de prejuízo", formatar_pct(mc.probabilidade_de_prejuizo))
+        c3.metric("Chance de prejuízo", formatar_pct(resumo.chance_de_prejuizo))
         c4.metric(
             "Queda máxima no pior caso comum",
-            formatar_pct(float(pd.Series(mc.quedas_maximas).quantile(0.05))),
+            formatar_pct(resumo.queda_p5),
             help="Em 95% das simulações a maior queda foi menor que esta.",
         )
         mostrar_grafico(
@@ -451,9 +449,7 @@ def _aba_monte_carlo_e_acaso(
         c1.metric("Sharpe da estratégia", formatar_metrica("Sharpe", teste.sharpe_real))
         c2.metric(
             "Sharpe mediano ao acaso",
-            formatar_metrica(
-                "Sharpe", float(pd.Series(teste.sharpes_ao_acaso).median())
-            ),
+            formatar_metrica("Sharpe", teste.sharpe_mediano_ao_acaso),
         )
         c3.metric(
             "p-valor",
@@ -487,9 +483,7 @@ def _aba_sorte_na_escolha(nome, taxa_livre_de_risco, rotulos, retornos, validos)
         help="Cada combinação testada em outras estratégias ou ativos também conta como "
         "uma tentativa. Quanto mais tentativas, maior o Sharpe que só a sorte já daria.",
     )
-    melhor_coluna = retornos.apply(
-        lambda r: ind.calcular_indice_sharpe(r, taxa_livre_de_risco)
-    ).idxmax()
+    melhor_coluna = melhor_candidato(retornos, taxa_livre_de_risco)
     try:
         dsr = calcular_sharpe_deflacionado(
             retornos[melhor_coluna], retornos, int(extras), taxa_livre_de_risco
@@ -715,28 +709,24 @@ def _comparar_com_o_cdi(cdi_diario, fechamento, resultado, curvas, mostrar_cdi):
 def _mais_numeros(taxa_livre_de_risco, resultado):
     """Ômega, meio Kelly e quanto histórico seria preciso para confiar no Sharpe."""
     retorno_principal = resultado.retorno
-    omega = calcular_omega(retorno_principal)
-    kelly = calcular_kelly(retorno_principal)
-    dias_minimos = calcular_comprimento_minimo(
-        retorno_principal, 0.95, 0.0, taxa_livre_de_risco
-    )
+    numeros = mais_numeros(retorno_principal, taxa_livre_de_risco)
     c1, c2, c3 = st.columns(3)
     c1.metric(
         "Ômega",
-        "—" if pd.isna(omega) else formatar_metrica("Sharpe", omega),
+        "—" if pd.isna(numeros.omega) else formatar_metrica("Sharpe", numeros.omega),
         help=ajuda_do("Ômega"),
     )
     c2.metric(
         "Meio Kelly (fração do capital)",
-        "—" if pd.isna(kelly) else formatar_pct(kelly / 2),
+        "—" if pd.isna(numeros.meio_kelly) else formatar_pct(numeros.meio_kelly),
         help=ajuda_do("Critério de Kelly"),
     )
-    if pd.isna(dias_minimos):
+    if pd.isna(numeros.anos_minimos):
         texto_dias = "—"
-    elif dias_minimos == float("inf"):
+    elif numeros.anos_minimos == float("inf"):
         texto_dias = "nunca (Sharpe não passa de zero)"
     else:
-        texto_dias = f"{dias_minimos / ind.DIAS_POR_ANO:.1f} anos".replace(".", ",")
+        texto_dias = f"{numeros.anos_minimos:.1f} anos".replace(".", ",")
     c3.metric(
         "Histórico para 95% de confiança",
         texto_dias,

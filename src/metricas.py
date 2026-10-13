@@ -1,9 +1,12 @@
 """Métricas de desempenho de uma estratégia, calculadas sobre o retorno diário e as operações."""
 
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 
 from src import indicadores as ind
+from src.acaso import calcular_comprimento_minimo
 
 NIVEL_DE_CONFIANCA_95 = 1.96  # z da normal para um intervalo de 95%
 NAN = float("nan")
@@ -196,3 +199,29 @@ def resumir_desempenho(
     if operacoes is not None:
         resumo.update(resumir_operacoes(operacoes))
     return resumo
+
+
+CONFIANCA_DO_HISTORICO_MINIMO = 0.95
+
+
+@dataclass(frozen=True)
+class MaisNumeros:
+    """Os números extras do backtest. `nan` quando não há como calcular; `anos_minimos` é
+    infinito quando o Sharpe não passa de zero (nenhum histórico daria confiança)."""
+
+    omega: float
+    meio_kelly: float  # metade da fração de Kelly
+    anos_minimos: float  # histórico para 95% de confiança de que o Sharpe passa de zero
+
+
+def mais_numeros(retorno: pd.Series, taxa_livre_de_risco: float) -> MaisNumeros:
+    """Ômega, meio Kelly e quanto histórico seria preciso para confiar no Sharpe."""
+    dias = calcular_comprimento_minimo(
+        retorno, CONFIANCA_DO_HISTORICO_MINIMO, 0.0, taxa_livre_de_risco
+    )
+    anos = dias if np.isnan(dias) or np.isinf(dias) else dias / ind.DIAS_POR_ANO
+    return MaisNumeros(
+        omega=calcular_omega(retorno),
+        meio_kelly=calcular_kelly(retorno) / 2,
+        anos_minimos=anos,
+    )
