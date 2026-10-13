@@ -50,7 +50,7 @@ def painel_de_numeros(
     confianca = confianca_do_var / 100
     return PainelDeNumeros(
         retorno_total=ind.calcular_retorno_acumulado(retorno).iloc[-1],
-        retorno_anualizado=ind.calcular_retorno_anualizado(retorno),
+        retorno_anualizado=ind.retorno_anualizado_para_mostrar(retorno),
         volatilidade_anual=ind.calcular_volatilidade_anual(retorno),
         maior_queda=ind.calcular_drawdown(fechamento).min(),
         sharpe=ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco),
