@@ -7,6 +7,7 @@
     python -m scripts.coletar_cripto gdelt       (notícias; um dia por vez, 6 s entre pedidos)
     python -m scripts.coletar_cripto receita     (planilha de criptoativos da Receita)
     python -m scripts.coletar_cripto no          (nó do Bitcoin; cookie em BITCOIN_COOKIE)
+    python -m scripts.coletar_cripto kraken-arquivo XBTUSD_1440.csv   (carga única do histórico)
 
 A base fica em `<TICKERLAB_ACERVO>/base/cripto/`. Cada arquivo baixado vai para o acervo do
 original e para o registro de coletas (`com_registro`). Qualquer falha devolve 1 (o Kuma avisa) e
@@ -43,6 +44,8 @@ COLETAS: dict[str, tuple[str, Callable[[Path, datetime, coleta.Baixar], int]]] =
     "gdelt": ("gdelt-cripto", coleta.coletar_gdelt),
     "receita": ("rfb-cripto", coleta.coletar_receita),
 }
+# a carga única do histórico: o CSV diário que vem dentro do zip oficial da Kraken
+ARQUIVO_DA_KRAKEN = "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full.zip/XBTUSD_1440.csv"
 FALHAS_ESPERADAS = (
     requests.RequestException,
     ValueError,
@@ -65,7 +68,14 @@ def _baixar_da_fonte(url: str) -> bytes:
     return resposta.content
 
 
-def _coletar(fonte: str, pasta: Path, agora: datetime) -> int:
+def _coletar(fonte: str, pasta: Path, agora: datetime, caminho: str | None) -> int:
+    if fonte == "kraken-arquivo":
+        if not caminho:
+            raise ValueError(
+                "Informe o caminho do XBTUSD_1440.csv extraído do arquivo da Kraken."
+            )
+        ler = com_registro("kraken-arquivo", lambda _url: Path(caminho).read_bytes())
+        return coleta.carregar_arquivo_kraken(pasta, agora, ler(ARQUIVO_DA_KRAKEN))
     if fonte == "no":
         cliente = ClienteRPC(Path(os.environ[VARIAVEL_DO_COOKIE]))
         return coleta.coletar_no(pasta, agora, cliente)
@@ -75,13 +85,18 @@ def _coletar(fonte: str, pasta: Path, agora: datetime) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
-    argumentos.add_argument("fonte", choices=[*COLETAS, "no"])
+    argumentos.add_argument("fonte", choices=[*COLETAS, "no", "kraken-arquivo"])
+    argumentos.add_argument(
+        "caminho", nargs="?", help="só para kraken-arquivo: o CSV diário"
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     try:
-        novas = _coletar(opcoes.fonte, pasta_da_base(), datetime.now(UTC))
+        novas = _coletar(
+            opcoes.fonte, pasta_da_base(), datetime.now(UTC), opcoes.caminho
+        )
     except FALHAS_ESPERADAS as erro:
         log.error("Coleta de cripto (%s) falhou: %r", opcoes.fonte, erro)
         return 1
