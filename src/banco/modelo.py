@@ -602,3 +602,38 @@ negociacoes_internas_versoes = _versoes_de(negociacoes_internas)
 detentores_por_acao_versoes = _versoes_de(detentores_por_acao)
 maiores_detentores_versoes = _versoes_de(maiores_detentores)
 cobertura_de_detentores_versoes = _versoes_de(cobertura_de_detentores)
+
+# Série 1 da base de ML, PR 3 (0026; ADRs 0027 e 0028 do autor): os achados das regras fixas do
+# selo "dado em conferência" (`base/regras.py`). Só acréscimo: o achado que some numa rodada nova
+# ganha `fechado_em` e nunca é apagado. "Como era em D" = `valido_desde` até D e não fechado até D.
+achados_de_qualidade = sa.Table(
+    "achados_de_qualidade",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("regra", sa.String(4), nullable=False),  # R1 a R11
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("documento", sa.String(3), nullable=False),  # DFP ou ITR
+    sa.Column("referencia", sa.Date, nullable=False),
+    sa.Column(
+        "grupo", sa.String(3), nullable=False, server_default=""
+    ),  # con, ind ou vazio
+    sa.Column("conta", sa.String(20), nullable=False, server_default=""),
+    sa.Column("valor", sa.Float),
+    sa.Column("valor_esperado", sa.Float),
+    sa.Column("porque", sa.Text, nullable=False),
+    sa.Column("versao_das_regras", sa.String(10), nullable=False),
+    # quando a informação passou a existir (a entrega do documento): o selo histórico não olha o futuro
+    sa.Column("valido_desde", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("calculado_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("fechado_em", sa.DateTime(timezone=True)),
+)
+sa.Index(
+    "ix_achados_de_qualidade_cnpj_referencia",
+    achados_de_qualidade.c.cnpj,
+    achados_de_qualidade.c.referencia,
+)
+sa.Index(
+    "ix_achados_de_qualidade_documento_referencia",
+    achados_de_qualidade.c.documento,
+    achados_de_qualidade.c.referencia,
+)

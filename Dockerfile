@@ -21,6 +21,8 @@ COPY static ./static
 RUN python -c "import shutil, streamlit, pathlib; shutil.copyfile('static/marca/icone.png', pathlib.Path(streamlit.__file__).parent / 'static/favicon.png')"
 COPY app.py ./
 COPY src ./src
+# as regras do selo de qualidade (base/regras.py), usadas pela tarefa diária atualizar_qualidade
+COPY base ./base
 COPY telas ./telas
 COPY alembic.ini ./
 COPY migracoes ./migracoes

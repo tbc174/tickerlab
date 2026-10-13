@@ -572,3 +572,8 @@ def test_r8_antes_do_prazo_ou_entregue_no_prazo_nao_dispara():
 
     assert antes == []
     assert no_prazo == []
+
+
+def test_r7_sem_contas_nao_quebra():
+    vazias = pd.DataFrame(columns=list(COLUNAS))
+    assert r7_salto_fora_do_padrao(vazias, _eventos()) == []
