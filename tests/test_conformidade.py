@@ -69,7 +69,8 @@ def test_o_aceite_continua_depois_de_novo_login(conexao, ana):
 def test_textos_legais_existem_e_citam_o_essencial(nome):
     texto = conformidade.carregar_texto(nome)
     assert len(texto) > 800
-    assert "inteligência financeira" in texto.lower()  # o que o TickerLab é (por assinatura)
+    # o que o TickerLab é: plataforma de inteligência financeira, por assinatura
+    assert "inteligência financeira" in texto.lower()
 
 
 def test_termos_dizem_que_nada_e_recomendacao_de_investimento():
