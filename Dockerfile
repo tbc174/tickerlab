@@ -9,8 +9,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # dependências primeiro: esta camada só é refeita quando o requirements-prod.txt muda
+# (o pip que vem na imagem do Python fica velho: o trivy acusou falha corrigida em versão nova)
 COPY requirements-prod.txt .
-RUN pip install -r requirements-prod.txt
+RUN pip install --upgrade pip==26.2.1 \
+    && pip install -r requirements-prod.txt
 
 COPY .streamlit ./.streamlit
 COPY static ./static
