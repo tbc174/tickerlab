@@ -119,6 +119,9 @@ def _cores_do_escuro_para_o_claro() -> dict[str, str]:
         PREENCHIMENTO_AZUL: "rgba(41, 98, 255, 0.14)",
         PREENCHIMENTO_QUEDA: "rgba(194, 47, 58, 0.16)",
         LINHA_DE_REFERENCIA: "rgba(10, 31, 68, 0.30)",
+        # o botão ativo do seletor de período: no claro o texto é marinho, então o fundo vira um
+        # azul claro (no escuro, o texto claro se lê sobre o azul elétrico)
+        COR_BOTAO: "#c7d6ff",
     }
     return {antes.lower(): depois for antes, depois in trocas.items()}
 

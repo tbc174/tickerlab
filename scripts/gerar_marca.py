@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 from src.marca import (
     AREA_VISIVEL,
     ARQUIVO_DA_ASSINATURA,
+    ARQUIVO_DA_ASSINATURA_CLARA,
     ARQUIVO_DA_FONTE,
     ARQUIVO_DE_COMPARTILHAMENTO,
     ARQUIVO_DO_ICONE,
@@ -105,25 +106,27 @@ def desenhar_nome(
     meio: float,
     fonte: ImageFont.FreeTypeFont,
     cor_do_lab: str = AZUL_TEXTO,
+    cor_do_ticker: str = CLARO,
 ) -> None:
     """ "Ticker" claro + "Lab" em azul, centrados na altura `meio` (versão para fundo escuro).
 
     Em tamanho de destaque o "Lab" vai no azul elétrico, como nas peças aprovadas; pequeno, no
     azul mais claro, que se lê sobre o marinho."""
-    lapis.text((x, meio), "Ticker", font=fonte, fill=CLARO, anchor="lm")
+    lapis.text((x, meio), "Ticker", font=fonte, fill=cor_do_ticker, anchor="lm")
     largura_ticker = lapis.textlength("Ticker", font=fonte)
     lapis.text(
         (x + largura_ticker, meio), "Lab", font=fonte, fill=cor_do_lab, anchor="lm"
     )
 
 
-def desenhar_assinatura_png(altura: int = 96) -> Image.Image:
-    """Símbolo + "Ticker" + "Lab" numa imagem só, para o `st.logo` do topo do app (escuro).
+def desenhar_assinatura_png(altura: int = 96, clara: bool = False) -> Image.Image:
+    """Símbolo + "Ticker" + "Lab" numa imagem só, para o `st.logo` do topo do app. `clara` é a
+    versão do tema claro (topo do símbolo e "Ticker" em marinho, "Lab" no azul elétrico).
 
     O texto é desenhado com a própria Manrope ExtraBold, então a imagem não depende de fonte
     nenhuma no navegador. Fundo transparente.
     """
-    simbolo = desenhar_simbolo_png(altura)
+    simbolo = desenhar_simbolo_png(altura, topo=MARINHO if clara else CLARO)
     fonte = _fonte(int(altura * 0.62), "ExtraBold")
     folga = int(altura * 0.28)
     rascunho = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
@@ -132,7 +135,8 @@ def desenhar_assinatura_png(altura: int = 96) -> Image.Image:
         "RGBA", (altura + folga + int(largura_nome) + 4, altura), (0, 0, 0, 0)
     )
     imagem.paste(simbolo, (0, 0), simbolo)
-    desenhar_nome(ImageDraw.Draw(imagem), altura + folga, altura / 2, fonte)
+    cores = {"cor_do_lab": AZUL, "cor_do_ticker": MARINHO} if clara else {}
+    desenhar_nome(ImageDraw.Draw(imagem), altura + folga, altura / 2, fonte, **cores)
     return imagem
 
 
@@ -171,6 +175,7 @@ def gerar_arquivos() -> None:
     ARQUIVO_DO_SIMBOLO.write_text(icone_svg() + "\n", encoding="utf-8")
     desenhar_icone_png(128).save(ARQUIVO_DO_ICONE)
     desenhar_assinatura_png(96).save(ARQUIVO_DA_ASSINATURA)
+    desenhar_assinatura_png(96, clara=True).save(ARQUIVO_DA_ASSINATURA_CLARA)
     desenhar_compartilhamento_png().save(ARQUIVO_DE_COMPARTILHAMENTO, optimize=True)
 
 

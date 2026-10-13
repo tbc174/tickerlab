@@ -136,6 +136,9 @@ ARQUIVO_DO_SIMBOLO = PASTA_ESTATICA / "marca" / "simbolo.svg"
 ARQUIVO_DO_ICONE = PASTA_ESTATICA / "marca" / "icone.png"
 # símbolo + "TickerLab", para o st.logo; os arquivos saem de `python -m scripts.gerar_marca`
 ARQUIVO_DA_ASSINATURA = PASTA_ESTATICA / "marca" / "assinatura.png"
+ARQUIVO_DA_ASSINATURA_CLARA = (
+    PASTA_ESTATICA / "marca" / "assinatura-clara.png"
+)  # tema claro
 # imagem que aparece quando alguém compartilha o link do site (1200 × 630)
 ARQUIVO_DE_COMPARTILHAMENTO = PASTA_ESTATICA / "marca" / "compartilhamento.png"
 ARQUIVO_DA_FONTE = PASTA_ESTATICA / "fontes" / "Manrope-VariableFont_wght.ttf"
@@ -185,4 +188,11 @@ def icone_svg() -> str:
         f'<path class="topo" d="{TRACO_DO_TOPO}" fill="{MARINHO}"/>'
         f'<path d="{TRACO_DA_HASTE}" fill="{AZUL}"/>'
         "</svg>"
+    )
+
+
+def arquivo_da_assinatura(paleta: Paleta) -> Path:
+    """A assinatura do topo do app (símbolo + TickerLab) no tema da paleta."""
+    return (
+        ARQUIVO_DA_ASSINATURA_CLARA if paleta.tipo == "claro" else ARQUIVO_DA_ASSINATURA
     )

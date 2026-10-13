@@ -699,7 +699,9 @@ _SO_DO_ESCURO = (
 
 
 def _cores_da_figura(figura) -> str:
-    dados = json.loads(figura.to_json())  # o JSON do Plotly sabe gravar os arrays do NumPy
+    dados = json.loads(
+        figura.to_json()
+    )  # o JSON do Plotly sabe gravar os arrays do NumPy
     dados["layout"].pop("template", None)  # o tema do Plotly é conferido à parte
     return json.dumps(dados).lower()
 
@@ -736,3 +738,13 @@ def test_mapa_de_calor_no_tema_claro_usa_a_superficie_clara_no_zero():
     )
     meio = next(c for posicao, c in clara.data[0].colorscale if posicao == 0.5)
     assert meio == marca.PALETA_CLARA.superficie
+
+
+def test_botao_ativo_do_periodo_le_bem_no_claro():
+    clara = graficos.no_tema(
+        criar_grafico_preco(_ohlcv(), tipo="linha"), marca.PALETA_CLARA
+    )
+    seletor = clara.layout.xaxis.rangeselector
+    assert (
+        seletor.activecolor == "#c7d6ff"
+    )  # texto marinho sobre azul claro (no escuro: elétrico)

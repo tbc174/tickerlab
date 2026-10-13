@@ -22,6 +22,7 @@ from src.banco.conexao import obter_engine
 from src.banco.usuarios import buscar_por_id
 from src.cobranca import buscar_assinatura
 from src.conformidade import precisa_aceitar_os_termos, registrar_aceite
+from telas.comum import paleta_da_sessao
 from telas.conta.assinatura import _recarregar_o_plano
 from telas.conta.textos_legais import _corpo_do_texto
 
@@ -29,10 +30,10 @@ from telas.conta.textos_legais import _corpo_do_texto
 log_da_conta = logging.getLogger("tickerlab.conta")
 
 
-def marca_html():
-    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos). O app é escuro:
-    o topo do símbolo vai na cor clara, como manda o manual para fundos escuros."""
-    simbolo = marca.simbolo_svg(topo=marca.CLARO)
+def marca_html(paleta=marca.PALETA_ESCURA):
+    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos). O topo do
+    símbolo segue o tema: claro no escuro, marinho no claro (o manual, seção 2)."""
+    simbolo = marca.simbolo_svg(topo=paleta.simbolo_topo)
     return f'<div class="tl-marca">{simbolo}<div>Ticker<span>Lab</span></div></div>'
 
 
@@ -40,7 +41,7 @@ def mostrar_tela_de_entrada():
     """Tela para quem ainda não entrou: o app só abre depois do login com o Google."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(marca_html(), unsafe_allow_html=True)
+        st.markdown(marca_html(paleta_da_sessao()), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Entenda uma ação antes de investir.</div>',
             unsafe_allow_html=True,
@@ -161,7 +162,7 @@ def mostrar_aceite_dos_termos(usuario):
     """Tela de primeiro acesso (ou de termos novos): o app só abre depois do aceite."""
     _, centro, _ = st.columns([1, 3, 1])
     with centro:
-        st.markdown(marca_html(), unsafe_allow_html=True)
+        st.markdown(marca_html(paleta_da_sessao()), unsafe_allow_html=True)
         st.markdown(
             '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
         )

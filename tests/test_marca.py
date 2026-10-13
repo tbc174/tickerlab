@@ -71,11 +71,19 @@ def test_em_fundo_escuro_so_o_topo_muda_de_cor():
     )
 
 
-def test_a_tela_de_entrada_usa_o_simbolo_de_fundo_escuro():
+def test_a_tela_de_entrada_usa_o_simbolo_do_tema():
     from telas.conta.entrada import marca_html
 
-    assert f'fill="{marca.CLARO}"' in marca_html()  # o app é escuro
-    assert f'fill="{marca.MARINHO}"' not in marca_html()
+    assert f'fill="{marca.CLARO}"' in marca_html(marca.PALETA_ESCURA)  # topo claro no escuro
+    assert f'fill="{marca.MARINHO}"' in marca_html(marca.PALETA_CLARA)  # topo marinho no claro
+    assert marca_html() == marca_html(marca.PALETA_ESCURA)  # sem informação: o de sempre
+
+
+def test_a_assinatura_do_topo_existe_nos_dois_temas():
+    escura = marca.arquivo_da_assinatura(marca.PALETA_ESCURA)
+    clara = marca.arquivo_da_assinatura(marca.PALETA_CLARA)
+    assert escura == marca.ARQUIVO_DA_ASSINATURA and clara != escura
+    assert clara.exists() and escura.exists()
 
 
 def test_o_icone_da_aba_se_adapta_ao_tema_do_navegador():
