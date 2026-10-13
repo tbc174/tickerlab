@@ -453,7 +453,9 @@ def secao_correlacao(
     exibicao["Beta"] = [formatar_metrica("Sharpe", v) for v in betas["Beta"]]
     exibicao["Intervalo de 95%"] = [
         f"{formatar_metrica('Sharpe', lo)} a {formatar_metrica('Sharpe', hi)}"
-        for lo, hi in zip(betas["Beta (mín. 95%)"], betas["Beta (máx. 95%)"])
+        for lo, hi in zip(
+            betas["Beta (mín. 95%)"], betas["Beta (máx. 95%)"], strict=True
+        )
     ]
     exibicao["Alfa anual"] = [
         formatar_pct(v, com_sinal=True) for v in betas["Alfa anual"]

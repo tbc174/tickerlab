@@ -150,7 +150,9 @@ def secao_pares(periodo, taxa_livre_de_risco):
     )
     cartoes = st.columns(4)
     for coluna, metrica in zip(
-        cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"]
+        cartoes,
+        ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"],
+        strict=True,
     ):
         coluna.metric(metrica, formatar_metrica(metrica, numeros[metrica]))
     oferecer_salvar_simulacao(

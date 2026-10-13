@@ -743,7 +743,9 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
 
     cartoes = st.columns(4)
     for coluna, metrica in zip(
-        cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"]
+        cartoes,
+        ["Retorno total", "Índice de Sharpe", "Maior queda", "Operações"],
+        strict=True,
     ):
         comparacao = (
             f"{formatar_metrica(metrica, numeros_referencia[metrica])} em {ESTRATEGIA_DE_REFERENCIA.lower()}"
