@@ -108,3 +108,63 @@ def test_sem_nada_a_coletar_termina_bem_sem_pedir_nada(tmp_path, monkeypatch):
     pedidos: list = []
     assert coletor.main(["--pasta", str(tmp_path)], _iex_falsa(None, pedidos)) == 0
     assert pedidos == []
+
+
+# --- carga dos 12 meses (13/10/2026) ---------------------------------------------------------------
+def test_dias_uteis_desde_uma_data_do_mais_novo_para_o_mais_antigo():
+    assert coletor.dias_uteis_desde(date(2026, 10, 7), date(2026, 10, 12)) == [
+        date(2026, 10, 9),
+        date(2026, 10, 8),
+        date(2026, 10, 7),
+    ]
+
+
+def test_carga_respeita_o_maximo_e_pula_os_dias_ja_guardados(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    hoje = coletor.datetime.now(coletor.FUSO_NY).date()
+    ontem_util = coletor.dias_uteis_desde(hoje - coletor.timedelta(days=10), hoje)[0]
+    coletor.arquivo_do_dia(ontem_util, tmp_path).write_bytes(b"x")  # já guardado
+    pedidos: list = []
+    desde = (hoje - coletor.timedelta(days=30)).isoformat()
+    codigo = coletor.main(
+        ["--desde", desde, "--maximo", "3", "--pasta", str(tmp_path)],
+        _iex_falsa(_dia_com_dois_negocios(), pedidos),
+    )
+    assert codigo == 0
+    novos = sorted(p.stem for p in tmp_path.glob("*.parquet") if p.stat().st_size > 1)
+    assert len(novos) == 3
+    assert ontem_util.isoformat() not in novos  # não baixou de novo
+    assert max(novos) < ontem_util.isoformat()  # do mais novo para trás
+
+
+def test_feriado_nao_conta_no_maximo(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    pedidos: list = []
+    codigo = coletor.main(
+        ["--desde", "2026-09-01", "--maximo", "2", "--pasta", str(tmp_path)],
+        _iex_falsa(None, pedidos),  # a IEX não tem arquivo de nenhum dia
+    )
+    assert codigo == 0
+    assert not list(tmp_path.glob("*.parquet"))
+    assert len(pedidos) > 2  # olhou todos os dias, sem parar no máximo
+
+
+def test_carga_para_quando_acaba_o_tempo(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    relogio = iter([0.0, 0.0, 61.0, 200.0, 400.0])
+    monkeypatch.setattr(coletor.time, "monotonic", lambda: next(relogio))
+    codigo = coletor.main(
+        [
+            "--desde",
+            "2026-09-01",
+            "--maximo",
+            "20",
+            "--minutos",
+            "1",
+            "--pasta",
+            str(tmp_path),
+        ],
+        _iex_falsa(_dia_com_dois_negocios()),
+    )
+    assert codigo == 0
+    assert len(list(tmp_path.glob("*.parquet"))) == 1  # o 2º dia já não começa
