@@ -378,6 +378,13 @@ def _rodape_de_dados(exemplo: bool) -> list[tuple[str, str]]:
     ]
 
 
+def _ao_ano(anual: float) -> str:
+    """O fim da frase do retorno: o equivalente ao ano, ou por que não há (período curto)."""
+    if pd.isna(anual):
+        return ". Como o período é menor que 1 ano, não anualizamos (a projeção exageraria)."
+    return f", o equivalente a {_variacao(anual)} ao ano."
+
+
 def _pontos(a: float, b: float) -> str:
     """Diferença entre dois retornos em pontos percentuais ("12,3 pontos")."""
     return f"{gp.numero_br(abs(a - b) * 100, 1)} pontos percentuais"
@@ -452,7 +459,7 @@ def achados_do_ativo(
     """3 a 5 frases do resumo executivo, só com números já calculados no relatório."""
     retorno = ind.calcular_retorno_diario(fechamento)
     total = float(ind.calcular_retorno_acumulado(retorno).iloc[-1])
-    anual = ind.calcular_retorno_anualizado(retorno)
+    anual = ind.retorno_anualizado_para_mostrar(retorno)
     vol = ind.calcular_volatilidade_anual(retorno)
     queda = float(ind.calcular_drawdown(fechamento).min())
     data_melhor, melhor = ind.encontrar_melhor_dia(retorno)
@@ -461,7 +468,7 @@ def achados_do_ativo(
     achados = [
         (
             f"De {_intervalo(fechamento.index)}, o preço de {ticker} variou {_variacao(total)} "
-            f"no total, o equivalente a {_variacao(anual)} ao ano."
+            f"no total{_ao_ano(anual)}"
         ),
         (
             f"A maior queda a partir de um topo foi de {gp.pct_br(queda)}: quem comprou no topo "
@@ -506,7 +513,7 @@ def relatorio_do_ativo(
     _exigir_pregoes(len(fechamento), MIN_PREGOES)
     retorno = ind.calcular_retorno_diario(fechamento)
     total = float(ind.calcular_retorno_acumulado(retorno).iloc[-1])
-    anual = ind.calcular_retorno_anualizado(retorno)
+    anual = ind.retorno_anualizado_para_mostrar(retorno)
     data_melhor, melhor = ind.encontrar_melhor_dia(retorno)
     data_pior, pior = ind.encontrar_pior_dia(retorno)
     queda = float(ind.calcular_drawdown(fechamento).min())
@@ -1045,8 +1052,8 @@ def achados_da_carteira(
     total = resumo["Retorno total"]
     achados = [
         (
-            f"A carteira {estrategia} com {ativos} ativos rendeu {_variacao(total)} no período "
-            f"({_variacao(resumo['Retorno anualizado'])} ao ano)."
+            f"A carteira {estrategia} com {ativos} ativos rendeu {_variacao(total)} no "
+            f"período{_ao_ano(resumo['Retorno anualizado'])}"
         ),
         (
             f"A volatilidade foi de {gp.pct_br(resumo['Volatilidade anual'])} ao ano e a maior "

@@ -181,7 +181,7 @@ def resumir_desempenho(
     """Todas as métricas principais num só dicionário, na ordem em que a tela as mostra."""
     resumo = {
         "Retorno total": calcular_retorno_total(retorno),
-        "Retorno anualizado": ind.calcular_retorno_anualizado(retorno),
+        "Retorno anualizado": ind.retorno_anualizado_para_mostrar(retorno),
         "Volatilidade anual": ind.calcular_volatilidade_anual(retorno),
         "Índice de Sharpe": ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco),
         "Índice de Sortino": calcular_sortino(retorno, taxa_livre_de_risco),

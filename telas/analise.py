@@ -100,6 +100,8 @@ def secao_painel_de_numeros(
         formatar_pct(painel.maior_queda),
         "Drawdown",
     )
+    if pd.isna(painel.retorno_anualizado):
+        st.caption(f"Retorno anualizado: {ind.MOTIVO_SEM_ANUALIZAR}")
 
     st.markdown("**Consistência e dias extremos**")
     linha2 = st.columns(5)

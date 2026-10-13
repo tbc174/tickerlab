@@ -1,10 +1,16 @@
 """Gráficos do app (Plotly). Só monta as figuras; quem mostra na tela é o app.py."""
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
+
+if TYPE_CHECKING:  # só para os tipos: o módulo de gráficos não depende do acervo
+    from src.juros_e_inflacao import PontoMensal
+    from src.linha_do_tempo import LinhaDoTempo
 
 from src import marca
 from src.indicadores import (
@@ -1283,4 +1289,66 @@ def criar_grafico_obv(obv: pd.Series, volume_relativo: pd.Series) -> go.Figure:
     figura.update_yaxes(tickformat="~s", secondary_y=False)
     figura.update_yaxes(tickformat=".1f", secondary_y=True, showgrid=False)
     figura.update_layout(showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_juros_e_inflacao(
+    historico: "tuple[PontoMensal, ...]",
+) -> go.Figure:
+    """A meta da Selic e o IPCA em 12 meses, mês a mês (`historico`: pontos de
+    `juros_e_inflacao.PontoMensal`)."""
+    if not historico:
+        raise ValueError("Não há meses para mostrar.")
+    meses = pd.to_datetime([p.mes for p in historico])
+    figura = _figura_base("Meta da Selic e IPCA em 12 meses (% ao ano)")
+    figura.update_yaxes(tickformat=".1f", ticksuffix="%")
+    for nome, valores, cor in (
+        ("Meta da Selic", [p.selic_meta for p in historico], COR_AZUL),
+        ("IPCA em 12 meses", [p.ipca_12_meses for p in historico], COR_INDICE),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=meses,
+                y=valores,
+                mode="lines",
+                line={"color": cor, "width": 2.2},
+                hovertemplate="%{y:.2f}%",
+                name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_linha_do_tempo(linha: "LinhaDoTempo") -> go.Figure:
+    """O preço em base 100 e um ponto em cada acontecimento (o texto aparece ao passar o mouse)."""
+    if not linha.curva:
+        raise ValueError("Não há preço para mostrar.")
+    figura = _figura_base("Preço (base 100) e acontecimentos")
+    figura.update_yaxes(tickformat=".0f")
+    figura.add_trace(
+        go.Scatter(
+            x=pd.to_datetime([p.dia for p in linha.curva]),
+            y=[p.valor for p in linha.curva],
+            mode="lines",
+            line={"color": COR_INDICE, "width": 1.8},
+            hovertemplate="%{y:.1f}",
+            name="Preço (base 100)",
+        )
+    )
+    if linha.marcos:
+        figura.add_trace(
+            go.Scatter(
+                x=pd.to_datetime([m.dia_no_grafico for m in linha.marcos]),
+                y=[m.valor_no_grafico for m in linha.marcos],
+                mode="markers",
+                marker={"color": COR_AZUL, "size": 9, "symbol": "diamond"},
+                text=[
+                    f"{m.data:%d/%m/%Y} · {m.rotulo}: {m.assunto}" for m in linha.marcos
+                ],
+                hovertemplate="%{text}<extra></extra>",
+                name="Acontecimentos",
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
     return figura

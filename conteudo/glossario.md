@@ -80,11 +80,11 @@ dados no app (um `##` por termo).
 **Cuidado:** depende do período e de uma taxa livre de risco; valores muito altos em períodos curtos costumam ser sorte.
 
 ## Retorno anualizado
-**O que é:** o retorno do período convertido para a escala de um ano, como se o ritmo se mantivesse. Permite comparar períodos de tamanhos diferentes, como 6 meses e 5 anos.
+**O que é:** o retorno do período convertido para a escala de um ano, como se o ritmo se mantivesse. Permite comparar períodos de tamanhos diferentes, como 2 e 5 anos.
 
-**Exemplo:** +10% em 6 meses equivale a cerca de +21% ao ano (os ganhos se acumulam, o que se chama juros compostos).
+**Exemplo:** +21% em 2 anos equivale a cerca de +10% ao ano (os ganhos se acumulam, o que se chama juros compostos).
 
-**Cuidado:** é uma projeção matemática, não uma previsão. Em períodos curtos, o número fica exagerado.
+**Cuidado:** é uma projeção matemática, não uma previsão. Em períodos curtos o número fica exagerado (1 mês de +14% viraria +438% ao ano), por isso o TickerLab só anualiza períodos de 1 ano ou mais, como manda o padrão internacional de apresentação de desempenho (GIPS); abaixo disso aparece "—".
 
 ## Dias de alta
 **O que é:** a porcentagem dos dias em que o preço fechou acima do dia anterior.
