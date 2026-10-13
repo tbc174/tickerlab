@@ -30,9 +30,9 @@ JANELA_DA_PRIMEIRA_VISITA = timedelta(days=7)
 PUBLICADOS_ATE_ANTES_DA_VISITA = timedelta(days=30)
 # a partir desta hora (São Paulo) o fechamento do dia já existe (B3 fecha às 17h, EUA às 17h)
 HORA_DO_FECHAMENTO = 18
-MAXIMO_DE_ATIVOS = (
-    30  # cada ativo é um download de preços: a página não pode ficar lenta
-)
+TAMANHO_MAXIMO_DO_TICKER = 20  # o mesmo das tabelas do banco
+# cada ativo é um download de preços: a página não pode ficar lenta
+MAXIMO_DE_ATIVOS = 30
 NOME_DOS_FAVORITOS = "favoritos"
 NOME_DA_CARTEIRA = research.NOME_DA_CARTEIRA
 NOME_DAS_ESTRATEGIAS = "estratégias salvas"
@@ -103,14 +103,14 @@ def ativos_da_pessoa(
     favoritos: Iterable[str],
     carteira: Iterable[str],
     listas: Iterable[tuple[str, Iterable[str]]],
-    estrategias: Iterable[str],
+    estrategias: Iterable[object],
     maximo: int = MAXIMO_DE_ATIVOS,
 ) -> tuple[tuple[AtivoDaPessoa, ...], int]:
     """Os ativos guardados pela pessoa, sem repetir, e quantos ficaram além do `maximo`.
 
     A ordem é a de quem ela escolheu primeiro: favoritos, carteira, listas, estratégias.
     """
-    fontes: list[tuple[str, Iterable[str]]] = [
+    fontes: list[tuple[str, Iterable[object]]] = [
         (NOME_DOS_FAVORITOS, favoritos),
         (NOME_DA_CARTEIRA, carteira),
         *((f"lista {nome}", tickers) for nome, tickers in listas),
@@ -119,6 +119,11 @@ def ativos_da_pessoa(
     origens: dict[str, list[str]] = {}
     for origem, tickers in fontes:
         for bruto in tickers:
+            if (
+                not isinstance(bruto, str)
+                or len(bruto.strip()) > TAMANHO_MAXIMO_DO_TICKER
+            ):
+                continue  # o retrato de uma simulação salva vem do banco: não confiável
             ticker = normalizar_ticker(bruto)
             if ticker and origem not in origens.setdefault(ticker, []):
                 origens[ticker].append(origem)
@@ -166,6 +171,16 @@ def variacao(ticker: str, fechamentos: pd.Series, visita: datetime) -> Variacao 
     return Variacao(
         ticker, dias[base], float(serie.iloc[base]), dias[-1], float(serie.iloc[-1])
     )
+
+
+# períodos aceitos pelo leitor de preços e quantos dias cada um cobre com folga (feriados)
+PERIODOS_DE_PRECOS = (("6mo", 170), ("1y", 350), ("2y", 715))
+
+
+def periodo_de_precos(j: Janela) -> str:
+    """O menor histórico de preços que ainda tem o fechamento de antes da visita."""
+    dias = (j.ate - j.desde).days
+    return next((p for p, cobre in PERIODOS_DE_PRECOS if dias <= cobre), "5y")
 
 
 def ordenar_variacoes(variacoes: Iterable[Variacao]) -> list[Variacao]:

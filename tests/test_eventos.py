@@ -267,7 +267,9 @@ def test_eventos_dos_tickers_filtra_pela_hora_da_coleta(motor, ipe, tickers):
         novo = todos[0].protocolo
         c.execute(sa.update(eventos).values(ingerido_em=antes))
         c.execute(
-            sa.update(eventos).where(eventos.c.protocolo == novo).values(ingerido_em=depois)
+            sa.update(eventos)
+            .where(eventos.c.protocolo == novo)
+            .values(ingerido_em=depois)
         )
         entre = repo.eventos_dos_tickers(
             c, ["PETR4.SA"], date(2000, 1, 1), coletados_entre=(antes, depois)

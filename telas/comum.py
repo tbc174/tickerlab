@@ -40,6 +40,12 @@ def _carregar_dados_em_cache(ticker, periodo, forcar_exemplo):
     return baixar_dados(ticker, periodo, forcar_exemplo)
 
 
+def carregar_dados_na_moeda(ticker, periodo):
+    """Dados do ticker na moeda dele, sem "Converter para reais" (variação sem o câmbio)."""
+    exemplo = bool(st.session_state.get("usar_exemplo", False))
+    return _carregar_dados_em_cache(normalizar_ticker(ticker), periodo, exemplo)
+
+
 def carregar_dados(ticker, periodo):
     """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados.
 

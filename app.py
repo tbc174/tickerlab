@@ -51,6 +51,7 @@ from telas.research.minha_carteira import pagina_carteira_research
 from telas.research.newsletter import pagina_newsletter
 from telas.research.parametros import pagina_parametros
 from telas.research.por_dentro import pagina_por_dentro
+from telas.research.pulse import pagina_pulse
 from telas.trade import pagina_trade
 
 configurar_logs()
@@ -152,6 +153,7 @@ FUNCOES_DAS_PAGINAS = {
     "relatorio": pagina_relatorio,
     "parametros": pagina_parametros,
     "research": pagina_research,
+    "pulse": pagina_pulse,
     "fundamentos": pagina_fundamentos,
     "carteira_b3": pagina_carteira_b3,
     "juros_e_inflacao": pagina_juros_e_inflacao,

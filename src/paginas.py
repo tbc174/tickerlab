@@ -342,6 +342,15 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "pulse",
+        "Pulse",
+        GRUPO_RESEARCH,
+        ":material/monitor_heart:",
+        "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM "
+        "e na SEC e a variação do preço.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "carteira_b3",
         "Carteira da B3",
         GRUPO_RESEARCH,

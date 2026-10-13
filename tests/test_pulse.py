@@ -218,3 +218,18 @@ def test_acontecimentos_explicam_de_onde_vem_o_ativo():
 def test_acontecimentos_vazios():
     janela = pulse.janela(None, AGORA)
     assert pulse.acontecimentos([], (), janela, PESOS_PADRAO, []) == []
+
+
+@pytest.mark.parametrize(
+    ("dias", "periodo"),
+    [(1, "6mo"), (150, "6mo"), (200, "1y"), (500, "2y"), (900, "5y"), (4000, "5y")],
+)
+def test_periodo_de_precos_cobre_a_visita_com_folga(dias, periodo):
+    janela = pulse.janela(AGORA - timedelta(days=dias), AGORA)
+    assert pulse.periodo_de_precos(janela) == periodo
+
+
+def test_ticker_estranho_de_simulacao_salva_fica_de_fora():
+    """O retrato da simulação vem do banco: não confiável (não texto ou comprido demais)."""
+    ativos, _ = pulse.ativos_da_pessoa([], [], [], ["PETR4", 42, None, "X" * 21])
+    assert [a.ticker for a in ativos] == ["PETR4.SA"]
