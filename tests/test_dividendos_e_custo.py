@@ -14,6 +14,8 @@ from hypothesis import strategies as st
 
 from src.carteira_b3 import CarteiraB3
 from src.dividendos_e_custo import (
+    NOMES_DOS_PROVENTOS,
+    NOTA_DOS_PROVENTOS,
     Lancamento,
     com_a_posicao,
     custo_medio,
@@ -154,7 +156,7 @@ def test_ativo_so_com_proventos_nao_aparece_no_custo():
 
 def test_tipo_desconhecido_e_recusado():
     with pytest.raises(ValueError, match="tipo"):
-        _l("aluguel", 1, 1)
+        _l("doacao", 1, 1)
 
 
 # propriedades: valem para qualquer sequência de compras e vendas possíveis
@@ -317,3 +319,25 @@ def test_custos_de_hoje_tira_os_vendidos_inteiros_e_mantem_os_incompletos():
         ]
     )
     assert [c.codigo for c in custos_de_hoje(custos)] == ["VALE3", "WEGE3"]
+
+
+def test_taxa_do_aluguel_entra_na_renda_do_ativo_com_nome_proprio():
+    lancamentos = [
+        Lancamento(date(2026, 8, 19), "VGIR11", "reembolso", 0, 100.0),
+        Lancamento(date(2026, 8, 28), "VGIR11", "aluguel", 0, 7.0),
+    ]
+    (ativo,) = proventos(lancamentos, hoje=date(2026, 10, 13))
+    assert ativo.total == pytest.approx(107.0)
+    assert ativo.por_tipo == {"aluguel": 7.0, "reembolso": 100.0}
+    assert "aluguel" in NOMES_DOS_PROVENTOS
+    assert "aluguel" in NOTA_DOS_PROVENTOS.lower()
+
+
+def test_taxa_do_aluguel_nao_mexe_no_custo_medio():
+    lancamentos = [
+        Lancamento(date(2026, 1, 5), "VGIR11", "compra", 100, 1000.0),
+        Lancamento(date(2026, 8, 28), "VGIR11", "aluguel", 0, 7.0),
+    ]
+    (custo,) = custo_medio(lancamentos)
+    assert custo.completo and custo.quantidade == 100
+    assert custo.custo_total == pytest.approx(1000.0)

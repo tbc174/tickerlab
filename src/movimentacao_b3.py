@@ -51,6 +51,8 @@ TIPOS = {
     ("juros sobre capital proprio", "credito"): "jcp",
     ("rendimento", "credito"): "rendimento",
     ("reembolso", "credito"): "reembolso",  # provento de ação emprestada
+    # a taxa do aluguel; a linha só com a quantidade emprestada vem sem valor e fica de fora
+    ("emprestimo", "credito"): "aluguel",
     ("desdobro", "credito"): "desdobro",
     ("grupamento", "debito"): "grupamento",
     ("bonificacao em ativos", "credito"): "bonificacao",
@@ -59,7 +61,7 @@ TIPOS = {
 # não mudam o custo médio nem são proventos: ficam fora das contas, sem aviso
 FORA_DAS_CONTAS = {
     "transferencia",  # entre corretoras: sai de uma e entra na outra
-    "emprestimo",  # aluguel de ações: a ação continua sendo da pessoa
+    "emprestimo",  # aluguel de ações sem valor: a ação continua sendo da pessoa
     "leilao de fracao",  # o dinheiro da fração já saiu como venda
     "direito de subscricao",
     "direitos de subscricao - nao exercido",
@@ -121,6 +123,16 @@ def _colunas(tabela: pd.DataFrame) -> dict[str, str] | None:
 
 def _plural(n: int, singular: str, plural: str) -> str:
     return f"{n} {singular if n == 1 else plural}"
+
+
+def _valor_da_linha(
+    linha: pd.Series, colunas: dict[str, str], quantidade: float
+) -> float:
+    """O dinheiro da linha: o "Valor da Operação" ou, sem ele, quantidade × preço (0 se não há)."""
+    valor = numero_brasileiro(linha[colunas["valor"]]) if "valor" in colunas else 0.0
+    if valor <= 0 and "preco" in colunas:
+        valor = quantidade * numero_brasileiro(linha[colunas["preco"]])
+    return valor
 
 
 def _quantidade(valor: float) -> str:
@@ -218,14 +230,11 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
                     desconhecidos[rotulo] = desconhecidos.get(rotulo, 0) + 1
                 continue
             quantidade = numero_brasileiro(linha[colunas["quantidade"]])
-            valor = (
-                numero_brasileiro(linha[colunas["valor"]])
-                if "valor" in colunas
-                else 0.0
-            )
-            if valor <= 0 and "preco" in colunas:
-                valor = quantidade * numero_brasileiro(linha[colunas["preco"]])
+            valor = _valor_da_linha(linha, colunas, quantidade)
             codigo = FRACIONARIO.sub("", achado.group(1))
+            if tipo == "aluguel" and valor <= 0:
+                fora += 1  # só a quantidade emprestada: não é renda nem muda o custo
+                continue
             if tipo_da_b3 == LIQUIDACAO and valor <= 0:
                 saida = entrada == "debito"
                 sem_dinheiro.append(_SemDinheiro(dia, codigo, saida, quantidade))
