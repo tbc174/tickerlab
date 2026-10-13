@@ -73,6 +73,13 @@ def test_banco_fora_do_ar_nao_derruba_a_coleta(monkeypatch, caplog):
         ("bcb-sgs", "ODbL"),
         ("yahoo-precos", "Uso pessoal: só interno"),
         ("iex", "Termos do IEX"),
+        ("cftc-tff", "Obra do governo dos EUA"),
+        ("rfb-cripto", "Dados abertos da Receita"),
+        ("wiki-acessos", "CC0"),
+        ("gdelt-cripto", "GDELT"),
+        ("btc-no", "Blockchain pública"),
+        ("kraken-ohlc", "Sem termo de dados de mercado"),
+        ("mb-candles", "Sem termo de dados de mercado"),
         ("desconhecida", "Desconhecida"),
     ],
 )
