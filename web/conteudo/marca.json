@@ -1,0 +1,57 @@
+{
+  "azul": "#2962ff",
+  "azul_claro": "#e8f0ff",
+  "claro": "#f6f8fb",
+  "fonte": "Manrope",
+  "fonte_mono": "JetBrains Mono",
+  "marinho": "#0a1f44",
+  "paleta_clara": {
+    "alta": "#127a4d",
+    "apagado": "#4a5a78",
+    "atencao": "#8a5c00",
+    "azul_texto": "#1f55e8",
+    "destaque": "#e8f0ff",
+    "fundo": "#f6f8fb",
+    "linha": "rgba(10, 31, 68, 0.12)",
+    "linha_forte": "rgba(10, 31, 68, 0.22)",
+    "queda": "#c22f3a",
+    "series": [
+      "#2962ff",
+      "#c77700",
+      "#11897a",
+      "#b8417f",
+      "#8a7a00",
+      "#6b4fe0"
+    ],
+    "simbolo_topo": "#0a1f44",
+    "superficie": "#ffffff",
+    "sutil": "#5f6d88",
+    "texto": "#0a1f44",
+    "tipo": "claro"
+  },
+  "paleta_escura": {
+    "alta": "#2ebd85",
+    "apagado": "#a9b8d6",
+    "atencao": "#f5b83d",
+    "azul_texto": "#6e95ff",
+    "destaque": "#102752",
+    "fundo": "#071733",
+    "linha": "rgba(232, 240, 255, 0.12)",
+    "linha_forte": "rgba(232, 240, 255, 0.24)",
+    "queda": "#f76169",
+    "series": [
+      "#6e95ff",
+      "#f5a524",
+      "#2bc4a9",
+      "#e874b6",
+      "#e8d44d",
+      "#a98bff"
+    ],
+    "simbolo_topo": "#f6f8fb",
+    "superficie": "#0a1f44",
+    "sutil": "#8796b5",
+    "texto": "#f6f8fb",
+    "tipo": "escuro"
+  },
+  "simbolo_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"9 14 60 60\" width=\"32\" height=\"32\" aria-hidden=\"true\"><path d=\"M9 14 H69 V25 C69 32 64 35 57 35 H9 Z\" fill=\"currentColor\"/><path d=\"M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z\" fill=\"#2962ff\"/></svg>"
+}
