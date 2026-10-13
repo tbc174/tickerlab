@@ -15,8 +15,8 @@ Regras desta versão:
   menos) que no documento anterior, sinal de reais e milhares trocados (5 casos na prova do ENET).
 - **R4:** valor impossível: ativo total, ativo circulante ou caixa negativos.
 - **R9:** linhas repetidas idênticas no arquivo da CVM (contadas por `base/contas_cvm.py`).
-- **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada pela descrição
-  (7 casos na DFP 2022 e 4 na de 2023).
+- **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada
+  pela descrição (7 casos na DFP 2022 e 4 na de 2023).
 - **R11:** conta mãe em branco (zero) com as filhas preenchidas: quem lê a mãe vê zero onde há
   valor.
 
