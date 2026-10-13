@@ -103,19 +103,6 @@ def _site() -> dict:
     }
 
 
-def _site() -> dict:
-    """O que só o site usa e vem do app: os estilos do Report Studio e os ativos de exemplo."""
-    return {
-        "estilos_do_relatorio": [
-            {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
-        ],
-        "exemplos": [
-            {"simbolo": s, "rotulo": catalogo.rotulo(s).split(" · ")[0]}
-            for s in catalogo.EXEMPLOS
-        ],
-    }
-
-
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
