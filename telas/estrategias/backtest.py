@@ -690,6 +690,125 @@ def escolher_custos():
     return total
 
 
+def _comparar_com_o_cdi(cdi_diario, fechamento, resultado, curvas, mostrar_cdi):
+    """Põe o CDI nas curvas (se houver) e diz se a estratégia rendeu mais ou menos que ele."""
+    if mostrar_cdi:
+        try:
+            cdi_diario = obter_cdi(fechamento.index[0], fechamento.index[-1])
+        except CDIIndisponivelError as erro:
+            st.warning(str(erro))
+    if cdi_diario is not None:
+        curva_cdi = curva_do_cdi(cdi_diario, fechamento.index)
+        curvas["CDI"] = curva_cdi
+        rendimento = float(resultado.curva_de_capital.iloc[-1] - 1)
+        st.caption(
+            f"O CDI rendeu {formatar_pct(curva_cdi.iloc[-1] - 1, com_sinal=True)} no período; "
+            f"a estratégia, {formatar_pct(rendimento, com_sinal=True)}. "
+            + (
+                "Ela ficou acima do CDI."
+                if rendimento > curva_cdi.iloc[-1] - 1
+                else "Ela não bateu o CDI."
+            )
+        )
+
+
+def _mais_numeros(taxa_livre_de_risco, resultado):
+    """Ômega, meio Kelly e quanto histórico seria preciso para confiar no Sharpe."""
+    retorno_principal = resultado.retorno
+    omega = calcular_omega(retorno_principal)
+    kelly = calcular_kelly(retorno_principal)
+    dias_minimos = calcular_comprimento_minimo(
+        retorno_principal, 0.95, 0.0, taxa_livre_de_risco
+    )
+    c1, c2, c3 = st.columns(3)
+    c1.metric(
+        "Ômega",
+        "—" if pd.isna(omega) else formatar_metrica("Sharpe", omega),
+        help=ajuda_do("Ômega"),
+    )
+    c2.metric(
+        "Meio Kelly (fração do capital)",
+        "—" if pd.isna(kelly) else formatar_pct(kelly / 2),
+        help=ajuda_do("Critério de Kelly"),
+    )
+    if pd.isna(dias_minimos):
+        texto_dias = "—"
+    elif dias_minimos == float("inf"):
+        texto_dias = "nunca (Sharpe não passa de zero)"
+    else:
+        texto_dias = f"{dias_minimos / ind.DIAS_POR_ANO:.1f} anos".replace(".", ",")
+    c3.metric(
+        "Histórico para 95% de confiança",
+        texto_dias,
+        help=ajuda_do("Comprimento mínimo do histórico"),
+    )
+    anos = f"{len(retorno_principal) / ind.DIAS_POR_ANO:.1f}".replace(".", ",")
+    st.caption(
+        f"Os dados disponíveis têm {anos} anos. O Kelly é muito sensível ao erro de "
+        "estimativa e acima de 100% pediria alavancagem: trate-o como curiosidade, "
+        "não como recomendação."
+    )
+
+
+def _mostrar_imposto(nome_principal, impostos):
+    """O imposto pago pela estratégia principal, com o detalhe mês a mês."""
+    pago = impostos[nome_principal]
+    valor = f"{pago.imposto_total:,.2f}".replace(",", "X").replace(".", ",")
+    valor = valor.replace("X", ".")
+    st.caption(
+        f"Imposto pago por {nome_principal}: R\\$ {valor}. "
+        "Regras simplificadas da B3 (15% sobre o lucro do mês, isento até R\\$ 20 mil "
+        "vendidos no mês); não é orientação tributária. Comprar e segurar só paga "
+        "imposto quando vende."
+    )
+    if not pago.meses.empty:
+        with st.expander("Ver o imposto mês a mês"):
+            mensal = pago.meses.copy()
+            for coluna in mensal.columns[1:]:
+                mensal[coluna] = [f"{v:,.2f}" for v in mensal[coluna]]
+            st.dataframe(mensal, width="stretch", hide_index=True)
+
+
+def _tabela_de_operacoes(resultado):
+    """As operações da estratégia principal, em tabela e em CSV."""
+    operacoes = resultado.operacoes.copy()
+    operacoes["entrada"] = operacoes["entrada"].dt.strftime("%d/%m/%Y")
+    operacoes["saida"] = operacoes["saida"].dt.strftime("%d/%m/%Y")
+    operacoes["retorno"] = [
+        formatar_pct(v, com_sinal=True) for v in operacoes["retorno"]
+    ]
+    operacoes["aberta"] = operacoes["aberta"].map({True: "sim", False: "não"})
+    operacoes.columns = [
+        "Primeiro dia",
+        "Último dia",
+        "Dias",
+        "Retorno",
+        "Em aberto",
+    ]
+    st.dataframe(operacoes, width="stretch", hide_index=True)
+    st.download_button(
+        "Baixar as operações (CSV)",
+        converter_para_csv(montar_tabela_de_operacoes(resultado.operacoes)),
+        file_name="operacoes.csv",
+        mime="text/csv",
+        key="baixar_operacoes_backtest",
+    )
+
+
+def _avisar_entrada_tardia(fechamento, nome, resultado):
+    """Avisa quando a estratégia demorou a entrar no mercado (a comparação fica desigual)."""
+    if nome != ESTRATEGIA_DE_REFERENCIA and not resultado.operacoes.empty:
+        primeira_entrada = resultado.operacoes.iloc[0]["entrada"]
+        dias_parada = (primeira_entrada - fechamento.index[0]).days
+        dias_totais = (fechamento.index[-1] - fechamento.index[0]).days
+        if dias_parada > 0.15 * dias_totais:
+            st.caption(
+                f"Atenção: a estratégia só entrou no mercado em {primeira_entrada:%d/%m/%Y}. "
+                "Antes disso ficou em caixa (falta de histórico ou de sinal), então ela e "
+                "comprar e segurar não ficaram expostas pelo mesmo tempo."
+            )
+
+
 def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
     st.subheader("Backtest: e se eu tivesse seguido esta regra?")
     st.caption(
@@ -783,16 +902,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
             "mais histórico (por exemplo, uma média de 200 dias): tente um período maior."
         )
 
-    if nome != ESTRATEGIA_DE_REFERENCIA and not resultado.operacoes.empty:
-        primeira_entrada = resultado.operacoes.iloc[0]["entrada"]
-        dias_parada = (primeira_entrada - fechamento.index[0]).days
-        dias_totais = (fechamento.index[-1] - fechamento.index[0]).days
-        if dias_parada > 0.15 * dias_totais:
-            st.caption(
-                f"Atenção: a estratégia só entrou no mercado em {primeira_entrada:%d/%m/%Y}. "
-                "Antes disso ficou em caixa (falta de histórico ou de sinal), então ela e "
-                "comprar e segurar não ficaram expostas pelo mesmo tempo."
-            )
+    _avisar_entrada_tardia(fechamento, nome, resultado)
 
     numeros = {
         rotulo: resumir_desempenho(
@@ -841,24 +951,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         )
 
     curvas = {rotulo: r.curva_de_capital for rotulo, r in resultados.items()}
-    if mostrar_cdi:
-        try:
-            cdi_diario = obter_cdi(fechamento.index[0], fechamento.index[-1])
-        except CDIIndisponivelError as erro:
-            st.warning(str(erro))
-    if cdi_diario is not None:
-        curva_cdi = curva_do_cdi(cdi_diario, fechamento.index)
-        curvas["CDI"] = curva_cdi
-        rendimento = float(resultado.curva_de_capital.iloc[-1] - 1)
-        st.caption(
-            f"O CDI rendeu {formatar_pct(curva_cdi.iloc[-1] - 1, com_sinal=True)} no período; "
-            f"a estratégia, {formatar_pct(rendimento, com_sinal=True)}. "
-            + (
-                "Ela ficou acima do CDI."
-                if rendimento > curva_cdi.iloc[-1] - 1
-                else "Ela não bateu o CDI."
-            )
-        )
+    _comparar_com_o_cdi(cdi_diario, fechamento, resultado, curvas, mostrar_cdi)
     mostrar_grafico(
         graficos.criar_grafico_curvas_de_capital(
             curvas, capital_inicial, destaque=nome_principal
@@ -899,82 +992,14 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
     )
 
     with st.expander("Mais números: Ômega, Kelly e quanto histórico seria preciso"):
-        retorno_principal = resultado.retorno
-        omega = calcular_omega(retorno_principal)
-        kelly = calcular_kelly(retorno_principal)
-        dias_minimos = calcular_comprimento_minimo(
-            retorno_principal, 0.95, 0.0, taxa_livre_de_risco
-        )
-        c1, c2, c3 = st.columns(3)
-        c1.metric(
-            "Ômega",
-            "—" if pd.isna(omega) else formatar_metrica("Sharpe", omega),
-            help=ajuda_do("Ômega"),
-        )
-        c2.metric(
-            "Meio Kelly (fração do capital)",
-            "—" if pd.isna(kelly) else formatar_pct(kelly / 2),
-            help=ajuda_do("Critério de Kelly"),
-        )
-        if pd.isna(dias_minimos):
-            texto_dias = "—"
-        elif dias_minimos == float("inf"):
-            texto_dias = "nunca (Sharpe não passa de zero)"
-        else:
-            texto_dias = f"{dias_minimos / ind.DIAS_POR_ANO:.1f} anos".replace(".", ",")
-        c3.metric(
-            "Histórico para 95% de confiança",
-            texto_dias,
-            help=ajuda_do("Comprimento mínimo do histórico"),
-        )
-        anos = f"{len(retorno_principal) / ind.DIAS_POR_ANO:.1f}".replace(".", ",")
-        st.caption(
-            f"Os dados disponíveis têm {anos} anos. O Kelly é muito sensível ao erro de "
-            "estimativa e acima de 100% pediria alavancagem: trate-o como curiosidade, "
-            "não como recomendação."
-        )
+        _mais_numeros(taxa_livre_de_risco, resultado)
 
     if descontar_imposto:
-        pago = impostos[nome_principal]
-        valor = f"{pago.imposto_total:,.2f}".replace(",", "X").replace(".", ",")
-        valor = valor.replace("X", ".")
-        st.caption(
-            f"Imposto pago por {nome_principal}: R\\$ {valor}. "
-            "Regras simplificadas da B3 (15% sobre o lucro do mês, isento até R\\$ 20 mil "
-            "vendidos no mês); não é orientação tributária. Comprar e segurar só paga "
-            "imposto quando vende."
-        )
-        if not pago.meses.empty:
-            with st.expander("Ver o imposto mês a mês"):
-                mensal = pago.meses.copy()
-                for coluna in mensal.columns[1:]:
-                    mensal[coluna] = [f"{v:,.2f}" for v in mensal[coluna]]
-                st.dataframe(mensal, width="stretch", hide_index=True)
+        _mostrar_imposto(nome_principal, impostos)
 
     if not resultado.operacoes.empty:
         with st.expander(f"Ver as {len(resultado.operacoes)} operações"):
-            operacoes = resultado.operacoes.copy()
-            operacoes["entrada"] = operacoes["entrada"].dt.strftime("%d/%m/%Y")
-            operacoes["saida"] = operacoes["saida"].dt.strftime("%d/%m/%Y")
-            operacoes["retorno"] = [
-                formatar_pct(v, com_sinal=True) for v in operacoes["retorno"]
-            ]
-            operacoes["aberta"] = operacoes["aberta"].map({True: "sim", False: "não"})
-            operacoes.columns = [
-                "Primeiro dia",
-                "Último dia",
-                "Dias",
-                "Retorno",
-                "Em aberto",
-            ]
-            st.dataframe(operacoes, width="stretch", hide_index=True)
-            st.download_button(
-                "Baixar as operações (CSV)",
-                converter_para_csv(montar_tabela_de_operacoes(resultado.operacoes)),
-                file_name="operacoes.csv",
-                mime="text/csv",
-                key="baixar_operacoes_backtest",
-            )
+            _tabela_de_operacoes(resultado)
 
     secao_validacao(
         dados,

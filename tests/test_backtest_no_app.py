@@ -32,6 +32,34 @@ def test_walk_forward_com_janelas_curtas_mostra_o_sharpe_fora_da_amostra():
     assert "Eficiência" in rotulos
 
 
+def _legendas(app) -> str:
+    return " ".join(c.value for c in app.caption)
+
+
+def test_descontar_o_imposto_mostra_o_valor_pago():
+    app = _backtest_local()
+    app.checkbox(key="backtest_imposto").check().run()
+    assert not app.exception and not app.error
+    assert "Imposto pago por" in _legendas(app)
+
+
+def test_cdi_como_referencia_entra_na_comparacao():
+    app = _backtest_local()
+    if any(c.key == "backtest_mostrar_cdi" for c in app.checkbox):
+        app.checkbox(key="backtest_mostrar_cdi").check().run()
+    assert not app.exception and not app.error
+    avisos = " ".join(w.value for w in app.warning)
+    assert "O CDI rendeu" in _legendas(app) or "CDI" in avisos
+
+
+def test_mais_numeros_e_operacoes_aparecem():
+    app = _backtest_local()
+    rotulos = _rotulos_das_metricas(app)
+    assert {"Ômega", "Meio Kelly (fração do capital)"} <= set(rotulos)
+    assert "Histórico para 95% de confiança" in rotulos
+    assert any(e.label.startswith("Ver as ") for e in app.expander)
+
+
 def test_validacao_mostra_treino_e_teste_e_o_sharpe_deflacionado():
     app = _backtest_local()
     rotulos = _rotulos_das_metricas(app)
