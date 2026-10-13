@@ -109,6 +109,11 @@ def _contas_da_dre(dre: pd.DataFrame) -> pd.DataFrame:
         "custo": (cd == "3.02") & ds.str.startswith("custo"),
         "despesas_financeiras": (cd == "3.06.02")
         & ds.str.startswith("despesas financeiras"),
+        # Beneish (série 2, PR 3): despesas com vendas e gerais e administrativas
+        "despesas_com_vendas": (cd == "3.04.01")
+        & ds.str.startswith("despesas com vendas"),
+        "despesas_administrativas": (cd == "3.04.02")
+        & ds.str.startswith("despesas gerais e administrativas"),
     }
     return _marcar(dre, escolhas)
 
@@ -150,6 +155,11 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
                     & ds.str.startswith("emprestimos e financiamentos"),
                     "patrimonio_liquido": (cd.map(_profundidade) == 1)
                     & ds.str.startswith("patrimonio liquido"),
+                    # Altman (série 2, PR 3): lucros retidos = reservas de lucro + acumulados
+                    "reservas_de_lucro": (cd == "2.03.04")
+                    & ds.str.startswith("reservas de lucro"),
+                    "lucros_acumulados": (cd == "2.03.05")
+                    & ds.str.startswith("lucros/prejuizos acumulados"),
                     "minoritarios": (cd.map(_profundidade) == 2)
                     & ds.str.startswith(
                         "participacao dos acionistas nao controladores"
