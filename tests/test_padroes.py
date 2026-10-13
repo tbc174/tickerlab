@@ -128,7 +128,7 @@ def test_indicadores_de_uma_empresa_pelas_funcoes_da_tela():
     assert valores["margem_liquida"] == pytest.approx(0.1)
     assert valores["roe"] == pytest.approx(0.2)
     assert valores["dupont_giro"] == pytest.approx(0.5)
-    assert set(valores) == set(pa.INDICADORES)
+    assert set(valores) == set(pa.INDICADORES) | set(pa.MULTIPLOS)
 
 
 def test_todo_indicador_com_padrao_diz_se_maior_e_melhor():
@@ -137,4 +137,27 @@ def test_todo_indicador_com_padrao_diz_se_maior_e_melhor():
 
 
 def test_todo_indicador_com_padrao_tem_unidade():
-    assert set(pa.UNIDADES) == set(pa.INDICADORES)
+    assert set(pa.UNIDADES) == set(pa.INDICADORES) | set(pa.MULTIPLOS)
+
+
+def test_com_o_preco_a_empresa_tambem_tem_os_multiplos():
+    contas = pd.DataFrame(
+        [
+            _conta("A", "receita", 1000.0),
+            _conta("A", "ebit", 150.0),
+            _conta("A", "lucro_liquido", 100.0),
+            _conta("A", "patrimonio_liquido", 500.0, periodo=dm.POSICAO),
+            _conta("A", "ativo_total", 2000.0, periodo=dm.POSICAO),
+            _conta("A", "acoes_total", 50.0, periodo=dm.POSICAO),
+        ]
+    )
+    com_preco = pa.indicadores_da_empresa(
+        contas.drop(columns="cnpj"), "Energia Elétrica", preco=40.0
+    )
+    assert com_preco["p_l"] == pytest.approx(40.0 / 2.0)  # lucro por ação de 2
+    assert com_preco["p_vp"] == pytest.approx(40.0 / 10.0)
+    sem_preco = pa.indicadores_da_empresa(
+        contas.drop(columns="cnpj"), "Energia Elétrica"
+    )
+    assert sem_preco["p_l"] is None
+    assert set(pa.MULTIPLOS) <= set(pa.UNIDADES)

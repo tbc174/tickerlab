@@ -42,6 +42,9 @@ INDICADORES: dict[str, tuple[str, bool]] = {
     "ciclo_de_caixa": ("Ciclo de caixa", False),
     "cobertura_de_juros": ("Cobertura de juros", True),
 }
+# múltiplos de preço: régua do setor do barato, justo ou caro (`src/notas.py::preco`); ficam fora
+# das notas de qualidade e precisam do preço da ação no corte
+MULTIPLOS: dict[str, str] = {"p_l": "P/L (preço / lucro por ação)", "p_vp": "P/VP"}
 # a unidade de cada indicador (para escrever o número e o padrão na nota)
 UNIDADES: dict[str, str] = {
     **{
@@ -56,6 +59,7 @@ UNIDADES: dict[str, str] = {
         for chave in ("conversao_de_caixa", "divida_sobre_pl", "dupont_giro", "cobertura_de_juros")
     },
     "ciclo_de_caixa": fundamentalista.DIAS,
+    **dict.fromkeys(MULTIPLOS, fundamentos.VEZES),
 }  # fmt: skip
 _DOCUMENTOS_VAZIOS = pd.DataFrame(
     columns=["documento", "referencia", "versao", "empresa", "recebido_em", "link"]
@@ -81,13 +85,18 @@ def contas_como_estavam(
     )
 
 
-def indicadores_da_empresa(contas: pd.DataFrame, setor: str) -> dict[str, float | None]:
-    """Os indicadores com padrão de uma empresa, pelas mesmas funções da tela."""
+def indicadores_da_empresa(
+    contas: pd.DataFrame, setor: str, preco: float | None = None
+) -> dict[str, float | None]:
+    """Os indicadores com padrão de uma empresa, pelas mesmas funções da tela.
+
+    Com o `preco` da ação no corte, vêm também os múltiplos (P/L, P/VP); sem ele, ficam vazios.
+    """
     dados = DadosDaEmpresa(contas=contas, documentos=_DOCUMENTOS_VAZIOS, setor=setor)
-    resultado = fundamentos.calcular(dados, None)
+    resultado = fundamentos.calcular(dados, preco)
     extra = fundamentalista.calcular(dados)
     valores = {}
-    for chave in INDICADORES:
+    for chave in (*INDICADORES, *MULTIPLOS):
         indicador = resultado.indicadores.get(chave) or extra.indicadores.get(chave)
         valores[chave] = indicador.valor if indicador else None
     return valores
