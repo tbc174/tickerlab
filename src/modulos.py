@@ -198,7 +198,9 @@ MODULOS = (
                 "Compartilhamento seguro", "Um link privado para quem você escolher."
             ),
             Funcionalidade(
-                "Comparações em PDF", "Dois ou mais ativos no mesmo relatório."
+                "Comparações em PDF",
+                "Dois ou mais ativos no mesmo relatório.",
+                "relatorio",
             ),
         ),
     ),
@@ -218,6 +220,8 @@ MODULOS = (
             Funcionalidade(
                 "Qualidade dos dados",
                 "De onde veio cada número, quando foi conferido e o que está faltando.",
+                "fundamentos",  # o selo "em conferência" dos documentos da CVM
+                EXEMPLO,
             ),
         ),
     ),
