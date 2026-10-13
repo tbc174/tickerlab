@@ -104,3 +104,19 @@ def test_qualidade_leva_os_mesmos_textos_do_app():
         {"titulo": r.titulo, "o_que_confere": r.o_que_confere}
         for r in q.REGRAS.values()
     ]
+
+
+def test_paginas_levam_o_contrato_para_a_tela_nova():
+    """O app em React monta as rotas e os campos a partir do contrato de cada página."""
+    from src.paginas import POR_CHAVE
+
+    paginas_em_json = json.loads(exp.em_json(exp.conteudo()["paginas"]))
+    exportadas = {p["chave"]: p for p in paginas_em_json}
+    visao = exportadas["visao_geral"]["contrato"]
+    original = POR_CHAVE["visao_geral"].contrato
+    assert original is not None
+    assert visao["rota"] == original.rota and visao["metodo"] == original.metodo
+    assert visao["resposta"] == original.resposta
+    assert [e["nome"] for e in visao["entradas"]] == [e.nome for e in original.entradas]
+    assert visao["entradas"][1]["opcoes"] == list(original.entradas[1].opcoes)
+    assert exportadas["inicio"]["contrato"] is None

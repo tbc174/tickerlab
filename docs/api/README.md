@@ -44,6 +44,7 @@ TickerLab), o emissor, a validade e o e-mail verificado. A conta precisa já exi
 
 | Página | Rota | Resposta |
 |---|---|---|
+| (antes do login) | `GET /api/v1/configuracao` (sem token) | `ConfiguracaoV1`: o client ID do Google |
 | (a conta) | `GET /api/v1/eu` | `EuV1`: plano e limites, sem e-mail |
 | Visão geral | `GET /api/v1/visao-geral?ticker=PETR4&periodo=2y` | `VisaoGeralV1` |
 | Risco | `GET /api/v1/risco?ticker=PETR4&janela=20` | `RiscoDoAtivoV1` |

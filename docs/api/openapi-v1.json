@@ -237,6 +237,27 @@
         "title": "ComparacaoV1",
         "type": "object"
       },
+      "ConfiguracaoV1": {
+        "description": "O que a tela nova precisa antes do login (sem segredo: o client ID vai no endereço do Google).",
+        "properties": {
+          "google_client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Client Id"
+          }
+        },
+        "required": [
+          "google_client_id"
+        ],
+        "title": "ConfiguracaoV1",
+        "type": "object"
+      },
       "CurvaV1": {
         "description": "Uma série ao longo do tempo: as datas e o valor em cada uma (`null` onde não há).",
         "properties": {
@@ -1066,6 +1087,25 @@
           }
         },
         "summary": "Comparacao"
+      }
+    },
+    "/v1/configuracao": {
+      "get": {
+        "description": "Pública (sem token), mas só com a API ligada, como as outras.",
+        "operationId": "configuracao_v1_configuracao_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Configuracao"
       }
     },
     "/v1/eu": {

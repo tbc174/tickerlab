@@ -1,6 +1,7 @@
 [
   {
     "chave": "inicio",
+    "contrato": null,
     "descricao": "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
     "e_pro": false,
     "grupo": "",
@@ -11,6 +12,7 @@
   },
   {
     "chave": "relatorio",
+    "contrato": null,
     "descricao": "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
     "e_pro": false,
     "grupo": "",
@@ -21,6 +23,7 @@
   },
   {
     "chave": "guia",
+    "contrato": null,
     "descricao": "Como os números são calculados, os limites do app e cada termo explicado em português.",
     "e_pro": false,
     "grupo": "Aprender",
@@ -31,6 +34,7 @@
   },
   {
     "chave": "termos",
+    "contrato": null,
     "descricao": "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
     "e_pro": false,
     "grupo": "Aprender",
@@ -41,6 +45,7 @@
   },
   {
     "chave": "privacidade",
+    "contrato": null,
     "descricao": "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
     "e_pro": false,
     "grupo": "Aprender",
@@ -51,6 +56,7 @@
   },
   {
     "chave": "trade",
+    "contrato": null,
     "descricao": "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
     "e_pro": false,
     "grupo": "Mais",
@@ -61,6 +67,58 @@
   },
   {
     "chave": "visao_geral",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Taxa livre de risco ao ano; vazia = o CDI do período.",
+          "maximo": 1,
+          "minimo": 0,
+          "nome": "taxa",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Confiança da perda de um dia ruim (VaR), em %.",
+          "maximo": 99,
+          "minimo": 90,
+          "nome": "confianca_do_var",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": 95,
+          "tipo": "inteiro"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "VisaoGeralV1",
+      "rota": "/v1/visao-geral"
+    },
     "descricao": "O preço do ativo e os números-chave: retorno, risco e os dias mais extremos.",
     "e_pro": false,
     "grupo": "Analisar",
@@ -71,6 +129,58 @@
   },
   {
     "chave": "risco",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Taxa livre de risco ao ano; vazia = o CDI do período.",
+          "maximo": 1,
+          "minimo": 0,
+          "nome": "taxa",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Dias da volatilidade móvel.",
+          "maximo": 252,
+          "minimo": 5,
+          "nome": "janela",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": 20,
+          "tipo": "inteiro"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RiscoDoAtivoV1",
+      "rota": "/v1/risco"
+    },
     "descricao": "Quanto o ativo já caiu e o quanto o preço oscila ao longo do tempo.",
     "e_pro": false,
     "grupo": "Analisar",
@@ -81,6 +191,48 @@
   },
   {
     "chave": "retorno_mensal",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Taxa livre de risco ao ano; vazia = o CDI do período.",
+          "maximo": 1,
+          "minimo": 0,
+          "nome": "taxa",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RetornoMensalDoAtivoV1",
+      "rota": "/v1/retorno-mensal"
+    },
     "descricao": "Como o ativo foi em cada mês e ano, e se existem meses melhores que outros.",
     "e_pro": false,
     "grupo": "Analisar",
@@ -91,6 +243,58 @@
   },
   {
     "chave": "comparar",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Os outros ativos (até 4); o principal entra sempre.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "com",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "lista de textos"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Taxa livre de risco ao ano; vazia = o CDI do período.",
+          "maximo": 1,
+          "minimo": 0,
+          "nome": "taxa",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "ComparacaoDoAtivoV1",
+      "rota": "/v1/comparacao"
+    },
     "descricao": "Coloque dois ou mais ativos lado a lado, com o Ibovespa e o S&P 500 de referência.",
     "e_pro": false,
     "grupo": "Analisar",
@@ -101,6 +305,7 @@
   },
   {
     "chave": "correlacao",
+    "contrato": null,
     "descricao": "Quanto o ativo anda junto com outros e com o mercado (o beta mede essa sensibilidade).",
     "e_pro": false,
     "grupo": "Analisar",
@@ -111,6 +316,78 @@
   },
   {
     "chave": "backtest",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "O nome de uma estratégia de src/estrategias.py.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "estrategia",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Os ajustes da estratégia; os que faltarem ficam no padrão.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "parametros",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "objeto"
+        },
+        {
+          "descricao": "Custo de cada compra ou venda (0,0005 = 0,05%).",
+          "maximo": 0.05,
+          "minimo": 0,
+          "nome": "custo_por_operacao",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": 0.0005,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Taxa livre de risco ao ano; vazia = o CDI do período.",
+          "maximo": 1,
+          "minimo": 0,
+          "nome": "taxa",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "BacktestDoAtivoV1",
+      "rota": "/v1/backtest"
+    },
     "descricao": "Teste no passado: e se eu tivesse seguido esta regra de compra e venda?",
     "e_pro": false,
     "grupo": "Estratégias",
@@ -121,6 +398,7 @@
   },
   {
     "chave": "ranking",
+    "contrato": null,
     "descricao": "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
     "e_pro": false,
     "grupo": "Estratégias",
@@ -131,6 +409,7 @@
   },
   {
     "chave": "carteira",
+    "contrato": null,
     "descricao": "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
     "e_pro": false,
     "grupo": "Estratégias",
@@ -141,6 +420,7 @@
   },
   {
     "chave": "experimentos",
+    "contrato": null,
     "descricao": "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
     "e_pro": false,
     "grupo": "Estratégias",
@@ -151,6 +431,7 @@
   },
   {
     "chave": "regimes",
+    "contrato": null,
     "descricao": "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
     "e_pro": false,
     "grupo": "Estratégias",
@@ -161,6 +442,7 @@
   },
   {
     "chave": "aprendizado",
+    "contrato": null,
     "descricao": "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
     "e_pro": true,
     "grupo": "Avançado (Pro)",
@@ -171,6 +453,7 @@
   },
   {
     "chave": "pares",
+    "contrato": null,
     "descricao": "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
     "e_pro": true,
     "grupo": "Avançado (Pro)",
@@ -181,6 +464,7 @@
   },
   {
     "chave": "research",
+    "contrato": null,
     "descricao": "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, com o documento original de cada item.",
     "e_pro": false,
     "grupo": "Research",
@@ -191,6 +475,7 @@
   },
   {
     "chave": "carteira_b3",
+    "contrato": null,
     "descricao": "A sua posição da B3 lida só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, e Rebalanceamento para os pesos que você escolher.",
     "e_pro": false,
     "grupo": "Research",
@@ -201,6 +486,7 @@
   },
   {
     "chave": "juros_e_inflacao",
+    "contrato": null,
     "descricao": "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada número (Banco Central).",
     "e_pro": false,
     "grupo": "Research",
@@ -211,6 +497,7 @@
   },
   {
     "chave": "linha_do_tempo",
+    "contrato": null,
     "descricao": "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no mesmo eixo, com o link de cada documento.",
     "e_pro": false,
     "grupo": "Research",
@@ -221,6 +508,7 @@
   },
   {
     "chave": "fundamentos",
+    "contrato": null,
     "descricao": "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     "e_pro": false,
     "grupo": "Research",
@@ -231,6 +519,7 @@
   },
   {
     "chave": "por_dentro",
+    "contrato": null,
     "descricao": "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
     "e_pro": false,
     "grupo": "Research",
@@ -241,6 +530,7 @@
   },
   {
     "chave": "donos",
+    "contrato": null,
     "descricao": "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto está vendido. Carteiras oficiais entregues à CVM e à SEC.",
     "e_pro": false,
     "grupo": "Research",
@@ -251,6 +541,7 @@
   },
   {
     "chave": "newsletter",
+    "contrato": null,
     "descricao": "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o documento de cada item. Na tela ou em PDF.",
     "e_pro": false,
     "grupo": "Research",
@@ -261,6 +552,7 @@
   },
   {
     "chave": "carteira_research",
+    "contrato": null,
     "descricao": "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) para o Research e a Newsletter darem mais destaque às maiores posições.",
     "e_pro": false,
     "grupo": "Research",
@@ -271,6 +563,7 @@
   },
   {
     "chave": "alertas",
+    "contrato": null,
     "descricao": "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
     "e_pro": false,
     "grupo": "Research",
@@ -281,6 +574,7 @@
   },
   {
     "chave": "parametros",
+    "contrato": null,
     "descricao": "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só para um, e veja o efeito antes de salvar.",
     "e_pro": false,
     "grupo": "Research",
@@ -291,6 +585,7 @@
   },
   {
     "chave": "simulacoes",
+    "contrato": null,
     "descricao": "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
     "e_pro": false,
     "grupo": "Minha conta",
@@ -301,6 +596,7 @@
   },
   {
     "chave": "momentum",
+    "contrato": null,
     "descricao": "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
     "e_pro": false,
     "grupo": "Minha conta",
@@ -311,6 +607,7 @@
   },
   {
     "chave": "meus_dados",
+    "contrato": null,
     "descricao": "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
     "e_pro": false,
     "grupo": "Minha conta",
@@ -321,6 +618,7 @@
   },
   {
     "chave": "planos",
+    "contrato": null,
     "descricao": "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
     "e_pro": false,
     "grupo": "Minha conta",
@@ -331,6 +629,7 @@
   },
   {
     "chave": "admin",
+    "contrato": null,
     "descricao": "Usuários, planos, assinaturas e o registro de ações de administrador.",
     "e_pro": false,
     "grupo": "Administração",
