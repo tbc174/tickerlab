@@ -78,6 +78,18 @@ def test_dfp_traz_as_contas_do_relatorio_completo():
     assert fluxos["dividendos_pagos"] == -5_384_769 * MIL
 
 
+def test_dfp_traz_as_contas_das_notas_classicas():
+    """Série 2, PR 3: lucros retidos (Altman) e despesas com vendas e administrativas (Beneish)."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    weg = contas[contas["cnpj"] == WEG]
+    saldos = weg[weg["periodo"] == dm.POSICAO].set_index("conta")["valor"]
+    fluxos = weg[weg["periodo"] == dm.EXERCICIO].set_index("conta")["valor"]
+    assert saldos["reservas_de_lucro"] == 2_575_748 * MIL
+    assert saldos["lucros_acumulados"] == 0
+    assert fluxos["despesas_com_vendas"] == -3_353_431 * MIL
+    assert fluxos["despesas_administrativas"] == -1_513_882 * MIL
+
+
 def test_banco_nao_ganha_estoques_nem_fornecedores():
     contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
     do_banco = set(contas.loc[contas["cnpj"] == BB, "conta"])
