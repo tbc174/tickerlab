@@ -26,25 +26,45 @@ weight = "100 800"
 style = "normal"
 
 [theme]
-base = "dark"
+# o que vale para os dois temas; as cores ficam em [theme.light] e [theme.dark] (src/marca.py,
+# PALETA_CLARA e PALETA_ESCURA). Com os dois definidos, a pessoa pode trocar de tema.
 font = "Manrope, sans-serif"
 headingFont = "Manrope, sans-serif"
 codeFont = "'JetBrains Mono', monospace"
 headingFontWeights = [800, 800, 700, 700, 600, 600]
 metricValueFontWeight = 800
-# cores (src/marca.py)
+linkUnderline = false
+showWidgetBorder = true
+baseRadius = "0.625rem"
+buttonRadius = "0.625rem"
+
+[theme.light]
+primaryColor = "#2962ff"
+backgroundColor = "#f6f8fb"
+secondaryBackgroundColor = "#e8f0ff"
+textColor = "#0a1f44"
+linkColor = "#1f55e8"
+borderColor = "rgba(10, 31, 68, 0.18)"
+dataframeBorderColor = "rgba(10, 31, 68, 0.12)"
+dataframeHeaderBackgroundColor = "#e8f0ff"
+blueColor = "#1f55e8"
+greenColor = "#127a4d"
+redColor = "#c22f3a"
+orangeColor = "#c77700"
+yellowColor = "#8a5c00"
+violetColor = "#6b4fe0"
+grayColor = "#4a5a78"
+chartCategoricalColors = ["#2962ff", "#c77700", "#11897a", "#b8417f", "#8a7a00", "#6b4fe0"]
+
+[theme.dark]
 primaryColor = "#2962ff"
 backgroundColor = "#071733"
 secondaryBackgroundColor = "#102752"
 textColor = "#f6f8fb"
 linkColor = "#6e95ff"
-linkUnderline = false
 borderColor = "rgba(232, 240, 255, 0.18)"
 dataframeBorderColor = "rgba(232, 240, 255, 0.12)"
 dataframeHeaderBackgroundColor = "#0a1f44"
-showWidgetBorder = true
-baseRadius = "0.625rem"
-buttonRadius = "0.625rem"
 blueColor = "#6e95ff"
 greenColor = "#2ebd85"
 redColor = "#f76169"

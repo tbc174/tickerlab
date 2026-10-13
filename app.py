@@ -18,7 +18,7 @@ from telas.analise import (
     pagina_risco,
     pagina_visao_geral,
 )
-from telas.comum import PAGINAS_DO_MENU, plano_atual
+from telas.comum import PAGINAS_DO_MENU, paleta_da_sessao, plano_atual
 from telas.conta.admin import pagina_admin
 from telas.conta.assinatura import (
     mostrar_conta,
@@ -55,8 +55,9 @@ st.set_page_config(
     page_title="TickerLab", page_icon=str(marca.ARQUIVO_DO_ICONE), layout="wide"
 )
 st.markdown(f"<style>{CSS_DO_APP}</style>", unsafe_allow_html=True)
-# símbolo + "TickerLab" no canto do menu (clicar volta ao Início); só o símbolo se faltar espaço
-st.logo(str(marca.ARQUIVO_DA_ASSINATURA), size="large")
+# símbolo + "TickerLab" no canto do menu (clicar volta ao Início), na versão do tema de quem vê;
+# só o símbolo se faltar espaço
+st.logo(str(marca.arquivo_da_assinatura(paleta_da_sessao())), size="large")
 
 
 # --- Cabeçalho e entradas -----------------------------------------------------

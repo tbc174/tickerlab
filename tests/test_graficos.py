@@ -1,10 +1,12 @@
 """Testes de src/graficos.py: conferem o que vai dentro da figura, sem abrir navegador."""
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
 
-from src import graficos
+from src import graficos, marca
 from src.graficos import (
     CONFIG_PLOTLY,
     ZOOM_COM_A_RODA_DO_MOUSE,
@@ -33,6 +35,7 @@ from src.graficos import (
     criar_mapa_de_calor_mensal,
 )
 from src.indicadores import (
+    NOMES_DOS_MESES,
     calcular_drawdown,
     encontrar_pior_drawdown,
     montar_tabela_retornos,
@@ -682,3 +685,66 @@ def test_eixos_dos_graficos_em_dinheiro_nao_viram_porcentagem():
          "fatia_vendidos": [0.01, 0.02], "vendidos": [3, 4]}
     )  # fmt: skip
     assert max(graficos.criar_grafico_detentores(historico, "fundos").data[0].y) <= 1
+
+
+# --- tema claro (13/10/2026): o mesmo gráfico, com as cores da paleta clara -------------------
+_SO_DO_ESCURO = (
+    marca.FUNDO,
+    marca.SUPERFICIE,
+    marca.DESTAQUE,
+    marca.TEXTO,
+    marca.TEXTO_APAGADO,
+    *marca.SERIES,
+)
+
+
+def _cores_da_figura(figura) -> str:
+    dados = json.loads(
+        figura.to_json()
+    )  # o JSON do Plotly sabe gravar os arrays do NumPy
+    dados["layout"].pop("template", None)  # o tema do Plotly é conferido à parte
+    return json.dumps(dados).lower()
+
+
+@pytest.mark.parametrize("tipo", ["linha", "velas"])
+def test_grafico_no_tema_claro_nao_leva_cor_do_escuro(tipo):
+    figura = criar_grafico_preco(_ohlcv(), tipo=tipo)
+    clara = graficos.no_tema(figura, marca.PALETA_CLARA)
+    cores = _cores_da_figura(clara)
+    for cor in _SO_DO_ESCURO:
+        assert cor.lower() not in cores, cor
+    assert clara.layout.template.layout.paper_bgcolor == "rgba(0,0,0,0)"
+    assert clara.layout.template.layout.font.color == marca.PALETA_CLARA.texto
+
+
+def test_no_tema_nao_muda_a_figura_original_nem_vaza_para_outra_sessao():
+    """Função pura: uma pessoa no claro não muda o gráfico de quem está no escuro."""
+    figura = criar_grafico_preco(_ohlcv(), tipo="linha")
+    antes = figura.to_json()
+    graficos.no_tema(figura, marca.PALETA_CLARA)
+    assert figura.to_json() == antes
+    escura = graficos.no_tema(
+        criar_grafico_preco(_ohlcv(), tipo="linha"), marca.PALETA_ESCURA
+    )
+    assert escura.to_json() == antes  # no escuro, nada muda
+
+
+def test_mapa_de_calor_no_tema_claro_usa_a_superficie_clara_no_zero():
+    tabela = pd.DataFrame(
+        [[0.01] * 12 + [0.12]], index=[2025], columns=[*NOMES_DOS_MESES, "Ano"]
+    )
+    clara = graficos.no_tema(
+        graficos.criar_mapa_de_calor_mensal(tabela), marca.PALETA_CLARA
+    )
+    meio = next(c for posicao, c in clara.data[0].colorscale if posicao == 0.5)
+    assert meio == marca.PALETA_CLARA.superficie
+
+
+def test_botao_ativo_do_periodo_le_bem_no_claro():
+    clara = graficos.no_tema(
+        criar_grafico_preco(_ohlcv(), tipo="linha"), marca.PALETA_CLARA
+    )
+    seletor = clara.layout.xaxis.rangeselector
+    assert (
+        seletor.activecolor == "#c7d6ff"
+    )  # texto marinho sobre azul claro (no escuro: elétrico)

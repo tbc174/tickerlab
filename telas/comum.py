@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 import pandas as pd
 import streamlit as st
 
-from src import catalogo, graficos
+from src import catalogo, graficos, marca
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
@@ -85,8 +85,16 @@ def ajuda_do(termo):
     return proteger_cifrao(obter_glossario().get(termo))
 
 
+def paleta_da_sessao():
+    """A paleta do tema que o navegador desta pessoa está usando (claro ou escuro). Lida a cada
+    execução, nunca guardada no módulo: cada sessão tem o próprio tema."""
+    return marca.paleta_do_tema(st.context.theme.type)
+
+
 def mostrar_grafico(figura):
-    """Gráfico do Plotly com a interação padrão do app (zoom, linha-guia, duplo clique)."""
+    """Gráfico do Plotly com a interação padrão do app (zoom, linha-guia, duplo clique), nas cores
+    do tema de quem está vendo."""
+    figura = graficos.no_tema(figura, paleta_da_sessao())
     st.plotly_chart(figura, width="stretch", config=graficos.CONFIG_PLOTLY)
 
 
