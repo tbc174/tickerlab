@@ -90,4 +90,6 @@ export interface ParteDaAjuda {
 export const conteudoDoApp: {
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
+  juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
+  linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
 } = appJson;

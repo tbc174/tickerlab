@@ -58,3 +58,64 @@ export interface VisaoGeralV1 {
   curva: CurvaV1; // o fechamento em base 100
   motivo_sem_anualizar: string | null;
 }
+
+/** Um número de Juros e inflação, com o texto e a legenda prontos (src/juros_e_inflacao.py). */
+export interface NumeroDeJurosV1 {
+  nome: string;
+  valor: number | null;
+  texto: string; // como a tela mostra ("15,00% ao ano", "—")
+  unidade: string;
+  referencia: string | null;
+  referencia_mensal: boolean;
+  divulgado_em: string | null;
+  fonte: string;
+  legenda: string; // referência, divulgação e fonte
+}
+
+export interface ExpectativaV1 {
+  indicador: string; // "IPCA" ou "Selic"
+  ano: number;
+  mediana: number; // %
+  pesquisa: string | null;
+}
+
+export interface PontoMensalV1 {
+  mes: string; // primeiro dia do mês
+  selic_meta: number | null; // % ao ano
+  ipca_12_meses: number | null; // %
+}
+
+export interface JurosEInflacaoV1 {
+  dia: string;
+  numeros: NumeroDeJurosV1[];
+  expectativas: ExpectativaV1[];
+  historico: PontoMensalV1[];
+  avisos: string[];
+}
+
+/** Um documento na linha do tempo e o ponto da curva (base 100) onde ele fica. */
+export interface MarcoV1 {
+  data: string;
+  dia_no_grafico: string;
+  valor_no_grafico: number;
+  rotulo: string;
+  tema: string;
+  materialidade: number;
+  assunto: string;
+  descricao: string; // "dd/mm/aaaa · tipo: assunto"
+  link: string; // vazio: sem link seguro
+}
+
+export interface LinhaDoTempoV1 {
+  curva: CurvaV1;
+  marcos: MarcoV1[];
+  fora_do_grafico: number;
+  aviso: string;
+  sem_acontecimentos: string | null;
+  texto_fora_do_grafico: string | null;
+}
+
+export interface LinhaDoTempoDoAtivoV1 {
+  ativo: AtivoV1;
+  linha_do_tempo: LinhaDoTempoV1;
+}

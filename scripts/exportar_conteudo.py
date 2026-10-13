@@ -24,6 +24,8 @@ from src import (
     planos,
     qualidade_texto,
 )
+from src import juros_e_inflacao as ji
+from src import linha_do_tempo as ldt
 from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
 
@@ -157,7 +159,13 @@ def _partes_da_ajuda(texto: str) -> list[dict[str, str | None]]:
 def _app() -> dict[str, object]:
     """O que o app em React mostra e vem do Python: o painel da visão geral e o "?" de cada número."""
     glossario = carregar_glossario()
-    termos = dict.fromkeys(i.termo for i in analises.ITENS_DO_PAINEL)
+    termos = dict.fromkeys(
+        [
+            *(i.termo for i in analises.ITENS_DO_PAINEL),
+            *ji.TERMO_DO_GLOSSARIO.values(),
+            "Boletim Focus",
+        ]
+    )
     return {
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
@@ -165,6 +173,18 @@ def _app() -> dict[str, object]:
             "frase_do_cvar": analises.FRASE_DO_CVAR,
         },
         "glossario": {t: _partes_da_ajuda(glossario[t]) for t in termos},
+        "juros": {
+            "termos": ji.TERMO_DO_GLOSSARIO,
+            "fonte_focus": ji.FONTE_FOCUS,
+            "nota_do_focus": ji.NOTA_DO_FOCUS,
+        },
+        "linha_do_tempo": {
+            "relevancias": [
+                {"nome": nome, "valor": valor}
+                for nome, valor in ldt.RELEVANCIAS.items()
+            ],
+            "padrao": ldt.MATERIALIDADE_PADRAO,
+        },
     }
 
 

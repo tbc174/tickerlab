@@ -80,7 +80,7 @@ def _mostrar_expectativas(painel):
     pesquisa = painel.expectativas[0].pesquisa
     if pesquisa is not None:
         st.caption(
-            f"Pesquisa de {pesquisa:%d/%m/%Y} · {ji.FONTE_FOCUS}. É a mediana das projeções, não uma previsão do TickerLab."
+            f"Pesquisa de {pesquisa:%d/%m/%Y} · {ji.FONTE_FOCUS}. {ji.NOTA_DO_FOCUS}"
         )
 
 

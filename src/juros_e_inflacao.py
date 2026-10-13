@@ -47,6 +47,7 @@ TERMO_DO_GLOSSARIO = {
 }
 FONTE_SGS = "Banco Central, SGS {}"
 FONTE_FOCUS = "Banco Central, boletim Focus (mediana)"
+NOTA_DO_FOCUS = "É a mediana das projeções, não uma previsão do TickerLab."
 
 MESES_ABREVIADOS = (
     "jan",

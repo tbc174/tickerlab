@@ -50,3 +50,11 @@ export function formatarData(iso: string): string {
   const [ano, mes, dia] = iso.slice(0, 10).split("-");
   return `${dia}/${mes}/${ano}`;
 }
+
+const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+/** "2026-09-01" → "set/2026" (os meses do Juros e inflação, como no Streamlit). */
+export function formatarMes(iso: string): string {
+  const [ano, mes] = iso.slice(0, 7).split("-");
+  return `${MESES[Number(mes) - 1]}/${ano}`;
+}

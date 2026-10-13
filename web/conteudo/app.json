@@ -1,5 +1,43 @@
 {
   "glossario": {
+    "Boletim Focus": [
+      {
+        "rotulo": "O que é",
+        "texto": "a pesquisa semanal do Banco Central com as projeções de cerca de cem bancos, gestoras e consultorias para a inflação, a Selic, o câmbio e o PIB. O app mostra a mediana das respostas (o valor do meio)."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se a mediana do IPCA para este ano é 4,8%, metade das instituições espera menos que isso e metade espera mais."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "é o que o mercado espera, não uma previsão do TickerLab, e as projeções mudam toda semana. O app mostra a data da pesquisa."
+      }
+    ],
+    "CDI": [
+      {
+        "rotulo": "O que é",
+        "texto": "a taxa dos empréstimos entre bancos, que acompanha de perto a Selic. É a \"régua\" do investimento sem risco no Brasil: a renda fixa e a poupança dos fundos são comparadas a ela. O app busca o CDI de cada dia no Banco Central."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se a estratégia rendeu 12% no ano e o CDI rendeu 14%, ela não valeu o risco: era melhor ter deixado o dinheiro parado no CDI."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "o CDI é em reais. Para ações de fora (como a AAPL), a comparação mistura moedas. O Sharpe usa o CDI do período como taxa livre de risco."
+      }
+    ],
+    "Câmbio e moeda": [
+      {
+        "rotulo": "O que é",
+        "texto": "ações da B3 são em reais (R$); as americanas e o Bitcoin (`BTC-USD`), em dólares (US$)."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "comparar o retorno percentual é mais justo que comparar preços. Mesmo assim, a variação do dólar afeta quem investe de fora do país."
+      }
+    ],
     "Dias de alta": [
       {
         "rotulo": "O que é",
@@ -26,6 +64,34 @@
       {
         "rotulo": "Cuidado",
         "texto": "mostra o pior susto que quem comprou no topo teria passado. É útil para saber se você aguentaria segurar a ação."
+      }
+    ],
+    "IPCA": [
+      {
+        "rotulo": "O que é",
+        "texto": "o índice oficial de inflação do Brasil, calculado pelo IBGE todo mês a partir dos preços que as famílias pagam. A meta de inflação do governo é de 3% ao ano."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se o IPCA foi de 0,5% em cada um dos últimos 12 meses, a inflação em 12 meses não é 6%: os meses se acumulam (1,005 multiplicado 12 vezes), e o resultado é 6,17%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "cada mês sai só no mês seguinte, e o número de um mês pode ser revisto depois. O app mostra a data de divulgação ao lado de cada valor."
+      }
+    ],
+    "Juro real": [
+      {
+        "rotulo": "O que é",
+        "texto": "quanto o dinheiro rendeu acima da inflação. A conta é feita dividindo, não subtraindo: (1 + juro) ÷ (1 + inflação) − 1."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "com o CDI em 14% e o IPCA em 5% no mesmo período, o juro real é 8,6%, e não 9%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "o juro real dos últimos 12 meses olha para trás. O que vale para quem investe hoje é o juro real esperado, que depende da inflação futura (veja o Boletim Focus)."
       }
     ],
     "Melhor e pior dia": [
@@ -84,6 +150,20 @@
         "texto": "é uma projeção matemática, não uma previsão. Em períodos curtos o número fica exagerado (1 mês de +14% viraria +438% ao ano), por isso o TickerLab só anualiza períodos de 1 ano ou mais, como manda o padrão internacional de apresentação de desempenho (GIPS); abaixo disso aparece \"—\"."
       }
     ],
+    "Selic": [
+      {
+        "rotulo": "O que é",
+        "texto": "a taxa básica de juros da economia brasileira. O Copom, comitê do Banco Central, define a meta da Selic em oito reuniões por ano; ela serve de referência para todos os outros juros, do CDI ao crédito."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "com a meta da Selic em 15% ao ano, um título que acompanha a Selic rende perto disso no ano, antes do imposto."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "a meta é um alvo: a taxa praticada no dia a dia (a \"Selic diária\") fica muito perto dela, mas não é igual. Mudanças da meta valem a partir do dia seguinte à reunião."
+      }
+    ],
     "Volatilidade": [
       {
         "rotulo": "O que é",
@@ -110,6 +190,35 @@
       {
         "rotulo": "Cuidado",
         "texto": "depende do período e de uma taxa livre de risco; valores muito altos em períodos curtos costumam ser sorte."
+      }
+    ]
+  },
+  "juros": {
+    "fonte_focus": "Banco Central, boletim Focus (mediana)",
+    "nota_do_focus": "É a mediana das projeções, não uma previsão do TickerLab.",
+    "termos": {
+      "CDI em 12 meses": "CDI",
+      "Dólar comercial": "Câmbio e moeda",
+      "IPCA em 12 meses": "IPCA",
+      "IPCA no mês": "IPCA",
+      "Juro real em 12 meses": "Juro real",
+      "Meta da Selic": "Selic"
+    }
+  },
+  "linha_do_tempo": {
+    "padrao": 50,
+    "relevancias": [
+      {
+        "nome": "Os mais relevantes",
+        "valor": 70
+      },
+      {
+        "nome": "Relevantes",
+        "valor": 50
+      },
+      {
+        "nome": "Todos",
+        "valor": 0
       }
     ]
   },

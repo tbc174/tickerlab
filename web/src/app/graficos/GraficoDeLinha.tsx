@@ -11,12 +11,21 @@ export interface Serie {
   valores: (number | null)[];
 }
 
+/** Um acontecimento marcado sobre a curva (a linha do tempo): o dia, a altura e o texto da dica. */
+export interface Marco {
+  dia: string; // "AAAA-MM-DD", um dos dias de `datas`
+  valor: number;
+  descricao: string;
+}
+
 interface Propriedades {
   titulo: string; // nomeia o gráfico para leitores de tela (e a série, quando é uma só)
   datas: string[]; // "AAAA-MM-DD", uma por ponto
   series: Serie[];
   referencia?: number; // a linha de base (100)
+  marcos?: Marco[];
   formatarValor?: (valor: number) => string;
+  formatarDia?: (iso: string) => string;
 }
 
 const LARGURA = 720;
@@ -50,7 +59,9 @@ export function GraficoDeLinha({
   datas,
   series,
   referencia,
+  marcos = [],
   formatarValor = arredondar,
+  formatarDia = formatarData,
 }: Propriedades) {
   const [indice, setIndice] = useState<number | null>(null);
   const idDoResumo = useId();
@@ -98,7 +109,7 @@ export function GraficoDeLinha({
   const resumo = series
     .map((s) => {
       const fim = ultimo(s);
-      return `${s.nome}: de ${formatarData(datas[0])} a ${formatarData(datas[datas.length - 1])}, termina em ${fim === null ? "—" : formatarValor(fim)}`;
+      return `${s.nome}: de ${formatarDia(datas[0])} a ${formatarDia(datas[datas.length - 1])}, termina em ${fim === null ? "—" : formatarValor(fim)}`;
     })
     .join(". ");
 
@@ -141,12 +152,18 @@ export function GraficoDeLinha({
             y={ALTURA - 8}
             textAnchor={i === 0 ? "start" : i === datas.length - 1 ? "end" : "middle"}
           >
-            {formatarData(datas[i])}
+            {formatarDia(datas[i])}
           </text>
         ))}
         {series.map((s) => (
           <path key={s.nome} className="grafico-linha" d={caminho(s)} stroke={s.cor} data-serie={s.nome} />
         ))}
+        {marcos.map((m) => {
+          const i = datas.indexOf(m.dia);
+          return i < 0 ? null : (
+            <circle key={`${m.dia}-${m.descricao}`} className="grafico-marco" cx={x(i)} cy={y(m.valor)} r={5} />
+          );
+        })}
         {indice !== null ? (
           <g className="grafico-mira">
             <line x1={x(indice)} x2={x(indice)} y1={MARGEM.topo} y2={ALTURA - MARGEM.baixo} />
@@ -165,7 +182,7 @@ export function GraficoDeLinha({
           role="status"
           style={{ left: `${(x(indice) / LARGURA) * 100}%` }}
         >
-          <strong>{formatarData(datas[indice])}</strong>
+          <strong>{formatarDia(datas[indice])}</strong>
           {series.map((s) => {
             const v = s.valores[indice];
             return (
@@ -175,7 +192,24 @@ export function GraficoDeLinha({
               </span>
             );
           })}
+          {marcos
+            .filter((m) => m.dia === datas[indice])
+            .map((m) => (
+              <span key={m.descricao} className="grafico-dica-marco">
+                {m.descricao}
+              </span>
+            ))}
         </div>
+      ) : null}
+      {series.length > 1 ? (
+        <ul className="grafico-legenda" aria-label="Legenda">
+          {series.map((s) => (
+            <li key={s.nome}>
+              <i style={{ background: s.cor }} aria-hidden="true" />
+              {s.nome}
+            </li>
+          ))}
+        </ul>
       ) : null}
       <figcaption id={idDoResumo} className="apagado">
         {resumo}.

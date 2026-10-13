@@ -154,3 +154,36 @@ def test_curva_guarda_as_datas_como_data():
     curva = esquemas.curva(serie)
     assert curva.datas == [date(2024, 1, 2), date(2024, 1, 3)]
     assert curva.valores == [1.0, None]
+
+
+def test_linha_do_tempo_so_entrega_link_da_cvm_ou_da_sec():
+    """Só https da CVM ou da SEC (src/links_das_fontes.py); javascript:, data: e outros sites saem
+    vazios: a tela nunca recebe um link perigoso."""
+    from datetime import date
+
+    from src import linha_do_tempo as ldt
+
+    def marco(link):
+        return ldt.Marco(
+            date(2026, 1, 2), date(2026, 1, 2), 100.0, "Fato", "eventos", 80, "A", link
+        )
+
+    linha = ldt.LinhaDoTempo(
+        curva=(ldt.PontoDaCurva(date(2026, 1, 2), 100.0),),
+        marcos=tuple(
+            marco(link)
+            for link in (
+                "https://www.rad.cvm.gov.br/x",
+                "http://www.sec.gov/y",
+                "javascript:alert(1)",
+                " JavaScript:alert(1)",
+                "data:text/html,oi",
+                "https://outro.site/x",
+                "",
+            )
+        ),
+        fora_do_grafico=0,
+    )
+    links = [m.link for m in esquemas.de_linha_do_tempo(linha).marcos]
+    # http da CVM ou da SEC vira https; o resto (outro site inclusive) sai vazio
+    assert links == ["https://www.rad.cvm.gov.br/x", "https://www.sec.gov/y"] + [""] * 5

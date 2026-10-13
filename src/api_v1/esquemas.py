@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
+from src.links_das_fontes import link_da_fonte
 
 BASE = 100.0  # as curvas de valor começam aqui
 
@@ -254,7 +255,11 @@ def de_linha_do_tempo(linha: linha_do_tempo.LinhaDoTempo) -> LinhaDoTempoV1:
             valores=[numero(p.valor) for p in linha.curva],
         ),
         marcos=[
-            MarcoV1(**asdict(m), descricao=linha_do_tempo.descricao_do_marco(m))
+            MarcoV1(
+                # só https da CVM ou da SEC (a coleta já filtra; aqui é a segunda trava)
+                **{**asdict(m), "link": link_da_fonte(m.link) or ""},
+                descricao=linha_do_tempo.descricao_do_marco(m),
+            )
             for m in linha.marcos
         ],
         fora_do_grafico=linha.fora_do_grafico,

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { type Plugin, defineConfig } from "vite";
 import { RAIZ_DO_REPOSITORIO, SOL_JS, lerTexto, versao } from "./src/arquivos";
+import { marca } from "./src/conteudo";
 import { css } from "./src/estilo";
 import { TEMA_SALVO } from "./src/site/tema";
 
@@ -18,8 +19,14 @@ const FONTES = [
   "OFL-Manrope.txt",
   "OFL-JetBrainsMono.txt",
 ];
+// as cores das séries dos gráficos, uma paleta por tema (src/marca.py, as mesmas dos gráficos do
+// Streamlit): --serie-1, --serie-2...
+const series = (cores: string[]) => cores.map((cor, i) => `--serie-${i + 1}: ${cor};`).join(" ");
+const CORES_DAS_SERIES =
+  `:root { ${series(marca.paleta_clara.series)} }\n` +
+  `:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} }\n`;
 // o CSS do site, com as fontes dentro de /novo/ (o app fica em outro endereço que o site)
-const ESTILO = css().replaceAll('url("/fontes/', `url("${BASE}fontes/`);
+const ESTILO = css().replaceAll('url("/fontes/', `url("${BASE}fontes/`) + CORES_DAS_SERIES;
 
 /** Põe no <head> o tema (antes de pintar) e o CSS da marca, e grava os arquivos fixos. */
 function arquivosDaMarca(): Plugin {
