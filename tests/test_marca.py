@@ -1,6 +1,8 @@
 """A identidade visual do TickerLab não se desfaz sem ninguém perceber (manual de identidade v1,
 13/10/2026)."""
 
+import itertools
+import math
 from pathlib import Path
 
 import pytest
@@ -207,3 +209,53 @@ def test_a_paleta_escura_e_a_do_app_de_antes():
     assert (
         marca.paleta_do_tema(None) is marca.PALETA_ESCURA
     )  # sem informação: o de sempre
+
+
+# --- a paleta das séries dos gráficos (conferida com o validador de cores, 13/10/2026) ---
+
+
+def _oklab(cor):
+    """#rrggbb → (L, a, b) do OKLab (a mesma conta do validador)."""
+
+    def linear(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (linear(int(cor[i : i + 2], 16)) for i in (1, 3, 5))
+    l_ = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    m_ = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    s_ = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (
+        0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+        1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+        0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_,
+    )
+
+
+def _distancia(cor1, cor2):
+    return (
+        math.dist(_oklab(cor1), _oklab(cor2)) * 100
+    )  # ΔE em OKLab ×100, como o validador
+
+
+@pytest.mark.parametrize(
+    ("series", "faixa", "alta", "queda"),
+    [
+        (marca.PAPEL_SERIES, (0.43, 0.77), marca.PAPEL_ALTA, marca.PAPEL_QUEDA),
+        (marca.SERIES, (0.48, 0.67), marca.ALTA, marca.QUEDA),
+    ],
+)
+def test_series_na_faixa_do_tema_e_longe_de_alta_e_queda(series, faixa, alta, queda):
+    """Luminosidade na faixa do tema (no escuro, nada claro demais) e nenhuma série parecida com o
+    verde de alta ou o vermelho de queda, que têm significado (ΔE >= 12)."""
+    for cor in series:
+        assert faixa[0] <= _oklab(cor)[0] <= faixa[1], cor
+        assert _distancia(cor, alta) >= 12, (cor, "alta")
+        assert _distancia(cor, queda) >= 12, (cor, "queda")
+
+
+def test_series_vizinhas_bem_diferentes():
+    """Vizinhas na ordem (a ordem das linhas num gráfico) bem diferentes à vista (ΔE >= 15)."""
+    for series in (marca.PAPEL_SERIES, marca.SERIES):
+        for cor, vizinha in itertools.pairwise(series):
+            assert _distancia(cor, vizinha) >= 15, (cor, vizinha)
