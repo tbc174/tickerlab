@@ -221,3 +221,23 @@ def test_no_le_os_blocos_e_grava_o_resumo_diario(tmp_path):
     diario = ler_tabela(tmp_path / "rede_diaria", "dia")
     assert not diario.empty
     assert diario["dia"].is_unique
+
+
+def test_no_confere_a_oferta_ao_fim_da_leitura(tmp_path):
+    no = NoFalso(_cadeia(30))
+    no.ajuste_do_total = 1  # o nó diz 1 satoshi a mais do que a base somou
+
+    with pytest.raises(ValueError, match="C7"):
+        coleta.coletar_no(tmp_path, AGORA, no)
+
+
+def test_no_com_indice_sincronizando_deixa_a_conferencia_para_depois(tmp_path):
+    from base.cripto.no_bitcoin import ErroDoNo
+
+    class NoSincronizando(NoFalso):
+        def total_nao_gasto(self, altura):
+            raise ErroDoNo(
+                "gettxoutsetinfo: Unable to get data because coinstatsindex is still syncing."
+            )
+
+    assert coleta.coletar_no(tmp_path, AGORA, NoSincronizando(_cadeia(30))) == 25
