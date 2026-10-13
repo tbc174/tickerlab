@@ -251,14 +251,14 @@ def curvas_da_noite_e_do_dia(
 ) -> dict[str, pd.Series]:
     """As quatro curvas de capital do experimento (R$ 1 no começo): o dia inteiro, só a noite,
     só o dia e só a noite pagando os custos de entrar e sair todo dia."""
-    # a mesma ordem de contas de antes: muda o arredondamento na 16ª casa, não o número
+    # o total na mesma ordem de contas de antes: outra ordem muda o arredondamento na 16ª casa
     return {
         "Total (comprar e segurar)": (
             1 + (1 + partes["Noite"]) * (1 + partes["Dia"]) - 1
         ).cumprod(),
-        "Só a noite": (1 + partes["Noite"]).cumprod(),
-        "Só o dia": (1 + partes["Dia"]).cumprod(),
-        "Só a noite, com custos": (1 + noite_com_custos).cumprod(),
+        "Só a noite": ind.curva_de_capital(partes["Noite"]),
+        "Só o dia": ind.curva_de_capital(partes["Dia"]),
+        "Só a noite, com custos": ind.curva_de_capital(noite_com_custos),
     }
 
 
