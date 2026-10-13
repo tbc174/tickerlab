@@ -144,27 +144,71 @@ LOGO = (
 )
 
 
-# ícones do Material ("dark_mode" e "light_mode"); o rótulo muda pelo site.js
-BOTAO_DO_TEMA = (
-    '<button class="tema" type="button" data-tema-botao aria-label="Usar o tema escuro">'
-    '<svg class="lua" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
-    '<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1'
-    '-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>'
-    '<svg class="sol" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+# ícones do Material ("light_mode", "dark_mode" e "contrast"); o botão mostra o da escolha atual
+ICONE_SOL = (
     '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2zm18 0h2a1'
     " 1 0 0 0 0-2h-2a1 1 0 0 0 0 2zM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0zm0 18v2a1 1 0 0 0 2 0v-2a1"
     " 1 0 0 0-2 0zM5.99 4.58a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41L5.99 4.58zm12.37"
     " 12.37a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41l-1.06-1.06zm1.06-10.96a1 1 0 0 0-1.41"
     "-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41l1.06-1.06zM7.05 18.36a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1"
-    ' 0 0 0 1.41 1.41l1.06-1.06z"/></svg>'
-    "</button>"
+    ' 0 0 0 1.41 1.41l1.06-1.06z"/>'
 )
-# Roda no <head>, antes de pintar a página: aplica o tema escolhido da última vez (sem piscar o
-# claro) e avisa o CSS que há JavaScript. O site abre claro; o escuro é escolha de quem visita.
+ICONE_LUA = (
+    '<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1'
+    '-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>'
+)
+ICONE_AUTOMATICO = (
+    '<path d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm1-17.93c3.94.49'
+    ' 7 3.85 7 7.93s-3.06 7.44-7 7.93V4.07z"/>'
+)
+# (valor guardado, nome, ícone, explicação curta)
+OPCOES_DO_TEMA = (
+    ("claro", "Claro", ICONE_SOL, ""),
+    ("escuro", "Escuro", ICONE_LUA, ""),
+    ("auto", "Automático", ICONE_AUTOMATICO, "Claro de dia, escuro à noite"),
+)
+
+
+def _icone(classe: str, desenho: str) -> str:
+    return (
+        f'<svg class="{classe}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+        f"{desenho}</svg>"
+    )
+
+
+def _menu_do_tema() -> str:
+    """O botão do topo abre as três opções (o site.js cuida do teclado e de marcar a escolhida)."""
+    icones = "".join(_icone(valor, desenho) for valor, _, desenho, _ in OPCOES_DO_TEMA)
+    opcoes = "".join(
+        f'<button type="button" role="menuitemradio" aria-checked="false" '
+        f'data-tema-escolha="{valor}">{_icone("", desenho)}<span>{nome}'
+        + (f"<small>{dica}</small>" if dica else "")
+        + "</span></button>"
+        for valor, nome, desenho, dica in OPCOES_DO_TEMA
+    )
+    return (
+        '<div class="tema-menu">'
+        '<button class="tema" type="button" data-tema-botao aria-haspopup="menu" '
+        'aria-expanded="false" aria-controls="opcoes-do-tema" aria-label="Tema: Automático">'
+        f"{icones}</button>"
+        f'<div class="tema-opcoes" id="opcoes-do-tema" role="menu" aria-label="Tema" hidden>'
+        f"{opcoes}</div></div>"
+    )
+
+
+SOL_JS = (RAIZ / "static" / "tema" / "sol.js").read_text(encoding="utf-8")
+# Roda no <head>, antes de pintar a página (o sol.js vem antes, sem defer): decide o tema pela
+# escolha guardada; quem nunca escolheu fica no Automático (claro de dia, escuro à noite, pelo
+# fuso do aparelho). Também avisa o CSS que há JavaScript.
 TEMA_SALVO = (
-    '<script>document.documentElement.classList.add("com-js");'
-    'try { if (localStorage.getItem("tema") === "escuro") '
-    'document.documentElement.dataset.tema = "escuro"; } catch (e) {}</script>'
+    '<script>(function () { var raiz = document.documentElement, escolha = "auto";'
+    ' raiz.classList.add("com-js");'
+    ' try { escolha = localStorage.getItem("tema") || "auto"; } catch (e) {}'
+    " var sol = window.TickerLabSol;"
+    ' var tema = escolha !== "auto" ? escolha'
+    ' : sol ? sol.temaDoMomento(new Date(), sol.fusoDoAparelho()) : "claro";'
+    " raiz.dataset.escolha = escolha;"
+    ' if (tema === "escuro") raiz.dataset.tema = "escuro"; })();</script>'
 )
 
 
@@ -183,7 +227,7 @@ def topo(atual: str) -> str:
     return (
         '<header class="topo"><div class="faixa">'
         f'{LOGO}<nav aria-label="Principal">{links}</nav>'
-        f"{BOTAO_DO_TEMA}"
+        f"{_menu_do_tema()}"
         f'<a class="botao primario pequeno" href="{link_do_app()}">Abrir o app</a>'
         "</div></header>"
     )
@@ -233,6 +277,7 @@ def pagina(
 <meta property="og:image:alt" content="TickerLab: {esc(ASSINATURA)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="{marca.CLARO}">
+<script src="/tema/sol.js?v={_versao(SOL_JS)}"></script>
 {TEMA_SALVO}
 <link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">
 <link rel="icon" href="/marca/icone.png" type="image/png">
@@ -969,8 +1014,25 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 .com-js .tema {{ display: inline-flex; }}
 .tema:hover {{ border-color: var(--azul); }}
 .tema svg {{ width: 1.15rem; height: 1.15rem; }}
-.tema .sol, [data-tema="escuro"] .tema .lua {{ display: none; }}
-[data-tema="escuro"] .tema .sol {{ display: block; }}
+/* o botão mostra o ícone da escolha atual (claro, escuro ou automático) */
+.tema svg.claro, .tema svg.escuro, .tema svg.auto {{ display: none; }}
+[data-escolha="claro"] .tema svg.claro, [data-escolha="escuro"] .tema svg.escuro,
+[data-escolha="auto"] .tema svg.auto {{ display: block; }}
+.tema-menu {{ position: relative; }}
+.tema-opcoes {{ position: absolute; right: 0; top: calc(100% + .45rem); z-index: 6; min-width: 17rem; padding: .35rem;
+  background: var(--destaque); border: 1px solid var(--linha-forte); border-radius: 12px; box-shadow: 0 16px 40px var(--sombra);
+  transform-origin: top right; transition: opacity 160ms ease, transform 160ms ease; }}
+@starting-style {{ .tema-opcoes {{ opacity: 0; transform: scale(.98) translateY(-4px); }} }}
+.tema-opcoes button {{ display: flex; align-items: center; gap: .65rem; width: 100%; padding: .55rem .7rem; border: 0;
+  border-radius: 8px; background: transparent; color: var(--texto); font: 600 .95rem "Manrope", sans-serif;
+  text-align: left; cursor: pointer; }}
+.tema-opcoes button:hover, .tema-opcoes button:focus-visible {{ background: var(--superficie); }}
+.tema-opcoes svg {{ width: 1.1rem; height: 1.1rem; flex: none; color: var(--apagado); }}
+.tema-opcoes span {{ display: grid; }}
+.tema-opcoes small {{ color: var(--apagado); font-weight: 500; font-size: .8rem; }}
+.tema-opcoes [aria-checked="true"] {{ color: var(--azul-texto); }}
+.tema-opcoes [aria-checked="true"] svg {{ color: var(--azul-texto); }}
+.tema-opcoes [aria-checked="true"]::after {{ content: "✓"; margin-left: auto; font-weight: 800; }}
 /* botões */
 .botao {{ display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
@@ -1142,27 +1204,74 @@ JS = r"""// gerado por scripts/gerar_site.py — tema, busca de ativos e vitrine
 (() => {
   "use strict";
 
-  // --- tema: o site abre claro; a escolha do escuro fica guardada neste navegador -----------
+  // --- tema: claro, escuro ou automático (claro de dia, escuro à noite, pelo fuso do aparelho) --
+  // A escolha fica neste navegador ("tema" no localStorage); o <head> já aplicou a da última vez.
   const raiz = document.documentElement;
   const corDaBarra = document.querySelector('meta[name="theme-color"]');
-  const aplicarTema = (escuro) => {
-    if (escuro) raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
+  const NOMES = { claro: "Claro", escuro: "Escuro", auto: "Automático" };
+  const temaDaEscolha = (escolha) => {
+    if (escolha !== "auto") return escolha;
+    const sol = window.TickerLabSol;
+    return sol ? sol.temaDoMomento(new Date(), sol.fusoDoAparelho()) : "claro";
+  };
+  const pintar = (tema) => {
+    if (tema === "escuro") raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
     // a barra do navegador no celular acompanha o fundo (a cor vem do próprio CSS)
     if (corDaBarra) corDaBarra.content = getComputedStyle(raiz).getPropertyValue("--fundo").trim();
+  };
+  const aplicarTema = (escolha, comTransicao) => {
+    raiz.dataset.escolha = escolha;
+    const tema = temaDaEscolha(escolha);
+    const mudou = (raiz.dataset.tema === "escuro") !== (tema === "escuro");
+    const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (mudou && comTransicao && document.startViewTransition && !calmo) {
+      document.startViewTransition(() => pintar(tema));
+    } else {
+      pintar(tema);
+    }
+    for (const opcao of document.querySelectorAll("[data-tema-escolha]")) {
+      opcao.setAttribute("aria-checked", String(opcao.dataset.temaEscolha === escolha));
+    }
     for (const botao of document.querySelectorAll("[data-tema-botao]")) {
-      botao.setAttribute("aria-label", escuro ? "Usar o tema claro" : "Usar o tema escuro");
-      botao.title = escuro ? "Tema claro" : "Tema escuro";
+      botao.setAttribute("aria-label", "Tema: " + NOMES[escolha]);
+      botao.title = "Tema: " + NOMES[escolha];
     }
   };
-  aplicarTema(raiz.dataset.tema === "escuro");
-  for (const botao of document.querySelectorAll("[data-tema-botao]")) {
-    botao.addEventListener("click", () => {
-      const escuro = raiz.dataset.tema !== "escuro";
-      const trocar = () => aplicarTema(escuro);
-      const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (document.startViewTransition && !calmo) document.startViewTransition(trocar); else trocar();
-      try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
+  aplicarTema(raiz.dataset.escolha || "auto", false);
+  // no automático, confere a cada minuto: troca sozinho no nascer e no pôr do sol
+  setInterval(() => { if (raiz.dataset.escolha === "auto") aplicarTema("auto", true); }, 60000);
+
+  for (const menu of document.querySelectorAll(".tema-menu")) {
+    const botao = menu.querySelector("[data-tema-botao]");
+    const lista = menu.querySelector(".tema-opcoes");
+    const opcoes = [...lista.querySelectorAll("[data-tema-escolha]")];
+    const fechar = (devolverFoco) => {
+      lista.hidden = true;
+      botao.setAttribute("aria-expanded", "false");
+      if (devolverFoco) botao.focus();
+    };
+    const abrir = () => {
+      lista.hidden = false;
+      botao.setAttribute("aria-expanded", "true");
+      (opcoes.find((o) => o.getAttribute("aria-checked") === "true") || opcoes[0]).focus();
+    };
+    botao.addEventListener("click", () => (lista.hidden ? abrir() : fechar(true)));
+    for (const opcao of opcoes) {
+      opcao.addEventListener("click", () => {
+        const escolha = opcao.dataset.temaEscolha;
+        try { localStorage.setItem("tema", escolha); } catch (e) {}
+        aplicarTema(escolha, true);
+        fechar(true);
+      });
+    }
+    lista.addEventListener("keydown", (e) => {
+      const atual = opcoes.indexOf(document.activeElement);
+      if (e.key === "Escape") { fechar(true); }
+      else if (e.key === "ArrowDown") { opcoes[(atual + 1) % opcoes.length].focus(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { opcoes[(atual - 1 + opcoes.length) % opcoes.length].focus(); e.preventDefault(); }
+      else if (e.key === "Tab") { fechar(false); }
     });
+    document.addEventListener("click", (e) => { if (!menu.contains(e.target)) fechar(false); });
   }
   const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -1298,6 +1407,7 @@ def gerar(destino: Path = DESTINO) -> None:
             ),
         ),
         ("marca", ("simbolo.svg", "icone.png", "compartilhamento.png")),
+        ("tema", ("sol.js",)),
     ):
         (destino / pasta).mkdir()
         for nome in nomes:
