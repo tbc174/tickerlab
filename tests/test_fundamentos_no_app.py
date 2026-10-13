@@ -2,14 +2,18 @@
 
 import io
 import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
 from streamlit.testing.v1 import AppTest
 
+from base.regras import Achado
 from src import demonstracoes as dm
 from src import eventos as ev
 from src.banco import demonstracoes as repo
 from src.banco import eventos as repo_eventos
+from src.banco.qualidade import gravar_achados
 from src.presets import Preset
 from tests.ajudantes_da_conta import ir_para
 
@@ -129,3 +133,57 @@ def test_parametros_do_usuario_mudam_o_horizonte_e_os_filtros(banco):
         and "dentro do seu filtro de até 100" in texto
     )
     assert "Usando os seus parâmetros" in " ".join(c.value for c in app.caption)
+
+
+PETROBRAS = "33.000.167/0001-01"
+NEGATIVO = "O ativo total veio negativo (R$ -1,0 bi), o que não existe num balanço."
+
+
+def _achado_na_dfp_de_2025(banco):
+    achado = Achado(
+        regra="R4",
+        cnpj=PETROBRAS,
+        documento="DFP",
+        referencia=pd.Timestamp("2025-12-31"),
+        grupo="con",
+        conta="1",
+        valor=-1e9,
+        valor_esperado=0.0,
+        porque=NEGATIVO,
+        valido_desde=pd.Timestamp("2026-03-05"),
+    )
+    with banco.begin() as c:
+        gravar_achados(
+            c,
+            [achado],
+            regras=["R4"],
+            documento="DFP",
+            referencias=[achado.referencia],
+            agora=datetime(2026, 10, 13, 8, 15, tzinfo=UTC),
+        )
+
+
+def test_documento_com_achado_mostra_o_selo_e_o_porque(banco):
+    _coletar(banco)
+    _achado_na_dfp_de_2025(banco)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    documentos = next(t.value for t in app.dataframe if "Abrir" in t.value.columns)
+    dfp_2025 = documentos[documentos["Data do balanço"] == "31/12/2025"]
+    assert dfp_2025["Conferência"].tolist() == ["Em conferência (1)"]
+    assert any(
+        "1 número dos documentos usados está em conferência" in w.value
+        for w in app.warning
+    )
+    textos = " ".join(m.value for m in app.markdown)
+    assert "##### Dados em conferência" in textos
+    assert "Valor impossível (DFP de 31/12/2025): " + NEGATIVO in textos
+
+
+def test_sem_achado_sem_selo(banco):
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    documentos = next(t.value for t in app.dataframe if "Abrir" in t.value.columns)
+    assert set(documentos["Conferência"]) == {""}
+    assert not [w for w in app.warning if "em conferência" in w.value]
