@@ -1,4 +1,4 @@
-// gerado por scripts/gerar_site.py — tema, busca de ativos e vitrine do Report Studio
+// web/publico/site.js — tema, busca de ativos e vitrine do Report Studio (era gerado por scripts/gerar_site.py)
 (() => {
   "use strict";
 

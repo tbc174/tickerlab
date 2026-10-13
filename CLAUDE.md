@@ -8,7 +8,7 @@ ela existir no PC, leia o `CLAUDE.md` de lá primeiro.
 
 Plataforma de inteligência financeira, por assinatura, de análise de ações (B3 e EUA) e teste de estratégias com dados do passado:
 app Streamlit (`app.tickerlab.com.br`), API FastAPI (saúde e webhook do Stripe), site público
-estático (`tickerlab.com.br`, gerado em `site/`) e a pesquisa de trading em `trader/` (roda no PC,
+estático (`tickerlab.com.br`, gerado em `site/` pelo React de `web/` e por `scripts/gerar_site.py`) e a pesquisa de trading em `trader/` (roda no PC,
 fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`.
 
 ## Comandos
@@ -21,7 +21,9 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 .venv\Scripts\python -m pyright                            # tipos (src, scripts e telas; ver pyrightconfig.json)
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup --cov   # suíte + cobertura (mínimo no .coveragerc)
 .venv\Scripts\python -m ruff format app.py telas src base tests trader scripts
-.venv\Scripts\python -m scripts.gerar_site                # site público em site/ (há teste que confere)
+.venv\Scripts\python -m scripts.gerar_site                # parte do Python do site (fontes, marca, relatório de exemplo, catálogo)
+.venv\Scripts\python -m scripts.exportar_conteudo         # conteúdo do Python para o React (web/conteudo/*.json)
+cd web; npm run site                                        # páginas, CSS e JS do site em site/ (React; há teste que confere)
 .venv\Scripts\python -m alembic upgrade head              # migrações do banco
 ```
 

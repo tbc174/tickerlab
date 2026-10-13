@@ -1,6 +1,10 @@
-"""O site público (pasta `site/`, gerada por `scripts/gerar_site.py`): em dia, sem links
-quebrados, sem recursos de terceiros e sem promessas que o produto não cumpre."""
+"""O site público (pasta `site/`): em dia, sem links quebrados, sem recursos de terceiros e sem
+promessas que o produto não cumpre.
 
+As páginas, o CSS e o JS vêm do React (`web/`, ADR 0048; o teste de que estão em dia é do Vitest);
+fontes, marca, relatório de exemplo e catálogo vêm de `scripts/gerar_site.py` (testados aqui)."""
+
+import html
 import json
 import re
 from pathlib import Path
@@ -8,11 +12,13 @@ from pathlib import Path
 import pytest
 
 from scripts import gerar_site as gs
+from scripts.markdown_simples import markdown_para_html
 from src import marca, planos
 from src.paginas import PAGINAS
 
 SITE = Path(__file__).resolve().parent.parent / "site"
 PAGINAS_HTML = sorted(SITE.glob("*.html"))
+URL_DO_APP = "https://app.tickerlab.com.br"
 PROIBIDAS = (
     "lucro certo",
     "ganhe do mercado",
@@ -33,10 +39,14 @@ def regerado(tmp_path_factory):
     return destino
 
 
-def test_site_esta_em_dia_com_o_gerador(regerado):
-    """Mudou a marca, os planos, os termos ou o catálogo? Rode `python -m scripts.gerar_site`."""
-    novos = {p.relative_to(regerado) for p in regerado.rglob("*") if p.is_file()}
-    atuais = {p.relative_to(SITE) for p in SITE.rglob("*") if p.is_file()}
+def esc(texto: str) -> str:
+    return html.escape(texto, quote=True)
+
+
+def test_parte_do_python_esta_em_dia(regerado):
+    """Mudou a marca, o relatório de exemplo ou o catálogo? Rode `python -m scripts.gerar_site`."""
+    novos = gs.arquivos_do_python(regerado)
+    atuais = gs.arquivos_do_python(SITE)
     assert novos == atuais
     diferentes = [
         str(c) for c in novos if (regerado / c).read_bytes() != (SITE / c).read_bytes()
@@ -86,7 +96,7 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
     urls = {p.url for p in PAGINAS} | {""}
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
-        for pagina in re.findall(re.escape(gs.URL_DO_APP) + r"/([a-z\-]*)", texto):
+        for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z\-]*)", texto):
             assert pagina in urls, (arquivo.name, pagina)
 
 
@@ -105,7 +115,7 @@ def test_planos_do_site_sao_os_do_app():
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
     for linha in planos.tabela_de_planos():
         for nome in ("Gratuito", "Plus", "Pro"):
-            assert f"<td>{gs.esc(linha[nome])}</td>" in texto
+            assert f"<td>{esc(linha[nome])}</td>" in texto
     assert "R$" not in texto  # sem preço enquanto não houver cobrança real
     assert "modo de teste" in texto
 
@@ -133,7 +143,7 @@ def test_relatorio_de_exemplo_e_um_pdf_de_verdade_marcado_como_exemplo():
 
 
 def test_markdown_simples_vira_html():
-    html = gs.markdown_para_html(
+    html = markdown_para_html(
         "## Título\n\nTexto com **negrito** e *ênfase*.\n\n- um\n- dois\n\n"
         "| A | B |\n|---|---|\n| 1 | <x> |\n"
     )
@@ -190,21 +200,6 @@ def test_menu_da_versao_a_em_todas_as_paginas():
             assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
 
 
-def test_contagem_do_modulo_no_singular_e_no_plural():
-    um = modulos_de_teste(1, 2)
-    assert gs._contagem(um) == "1 disponível · 2 em breve"
-    assert gs._contagem(modulos_de_teste(3, 1)) == "3 disponíveis · 1 em breve"
-
-
-def modulos_de_teste(disponiveis, em_breve):
-    from src import modulos
-
-    funcionalidades = tuple(
-        modulos.Funcionalidade(f"d{i}", "x", "visao-geral") for i in range(disponiveis)
-    ) + tuple(modulos.Funcionalidade(f"b{i}", "x") for i in range(em_breve))
-    return modulos.Modulo("teste", "Teste", "obj", "frase", funcionalidades)
-
-
 def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
     from src import modulos
 
@@ -212,7 +207,7 @@ def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
     for modulo in modulos.MODULOS[:6]:
         assert f'id="{modulo.chave}"' in texto
         for f in modulo.funcionalidades:
-            assert gs.esc(f.nome) in texto
+            assert esc(f.nome) in texto
     total_breve = sum(m.em_breve for m in modulos.MODULOS[:6])
     assert texto.count('class="selo breve"') == total_breve
     # o que ainda não existe não leva a lugar nenhum
@@ -290,7 +285,7 @@ FRASES_APROVADAS = (
 def test_pagina_sobre_usa_o_texto_aprovado():
     texto = (SITE / "sobre.html").read_text(encoding="utf-8")
     for frase in FRASES_APROVADAS:
-        assert gs.esc(frase) in texto, frase
+        assert esc(frase) in texto, frase
     for pilar in ("Dados confiáveis", "Método e contexto", "Múltiplas perspectivas"):
         assert pilar in texto
     for secao in ("quem-somos", "nossa-historia", "no-que-acreditamos"):
@@ -314,7 +309,7 @@ def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
 
     texto = (SITE / "metodologia.html").read_text(encoding="utf-8")
     assert f'id="{ANCORA_NO_SITE}"' in texto
-    assert gs.esc(EXPLICACAO_DO_SELO) in texto
+    assert esc(EXPLICACAO_DO_SELO) in texto
     for regra in REGRAS.values():
-        assert gs.esc(regra.titulo) in texto
-        assert gs.esc(regra.o_que_confere) in texto
+        assert esc(regra.titulo) in texto
+        assert esc(regra.o_que_confere) in texto

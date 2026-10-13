@@ -5,6 +5,7 @@ import { css } from "./estilo";
 import { ROTAS, rotaDoArquivo } from "./rotas";
 import { expandirBruto } from "./site/Bruto";
 import { Documento, SITE_JS } from "./site/Moldura";
+import { URL_DO_SITE } from "./site/textos";
 
 export const arquivos = ROTAS.map((r) => r.arquivo);
 
@@ -14,7 +15,25 @@ export function renderizar(arquivo: string): string {
   return `<!doctype html>\n${expandirBruto(html)}\n`;
 }
 
-/** Os arquivos que acompanham as páginas: o CSS e o JavaScript do site. */
+/** Os arquivos que acompanham as páginas: CSS, JavaScript, robots.txt e o mapa do site. */
 export function arquivosFixos(): Record<string, string> {
-  return { "estilo.css": css(), "site.js": SITE_JS };
+  return {
+    "estilo.css": css(),
+    "site.js": SITE_JS,
+    "robots.txt": `User-agent: *\nAllow: /\nSitemap: ${URL_DO_SITE}/sitemap.xml\n`,
+    "sitemap.xml": mapaDoSite(),
+  };
+}
+
+/** Todas as páginas menos a 404, na ordem das rotas. */
+function mapaDoSite(): string {
+  const enderecos = arquivos
+    .filter((a) => a !== "404.html")
+    .map((a) => `  <url><loc>${URL_DO_SITE}/${a === "index.html" ? "" : a}</loc></url>\n`);
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    enderecos.join("") +
+    "</urlset>\n"
+  );
 }
