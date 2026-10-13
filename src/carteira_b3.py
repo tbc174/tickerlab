@@ -72,26 +72,31 @@ class CarteiraB3:
         return valores / valores.sum()
 
 
-def _sem_acento(texto: object) -> str:
+def sem_acento(texto: object) -> str:
+    """Minúsculas, sem acento e com um espaço só: para achar colunas e textos pelo nome."""
     texto = unicodedata.normalize("NFKD", str(texto)).encode("ascii", "ignore").decode()
     return " ".join(texto.lower().replace("_", " ").split())
 
 
-def _achar(colunas: dict[str, str], candidatos: tuple[str, ...]) -> str | None:
+def achar_coluna(colunas: dict[str, str], candidatos: tuple[str, ...]) -> str | None:
+    """A primeira coluna da planilha cujo nome (já sem acento) está entre os candidatos."""
     for candidato in candidatos:
         if candidato in colunas:
             return colunas[candidato]
     return None
 
 
-def _numero(valor: object) -> float:
+_SO_MILHARES = re.compile(r"-?\d{1,3}(\.\d{3})+")  # 1.000 e 12.345.678
+
+
+def numero_brasileiro(valor: object) -> float:
     """Aceita número ou texto brasileiro ("1.234,56", "R$ 10,00", "-")."""
     if isinstance(valor, int | float):
         return float(valor)
     texto = str(valor).replace("R$", "").replace(" ", "").strip()
     if texto in ("", "-", "nan", "None"):
         return 0.0
-    if "," in texto:
+    if "," in texto or _SO_MILHARES.fullmatch(texto):  # "1.234,56" ou "1.000"
         texto = texto.replace(".", "").replace(",", ".")
     try:
         return float(texto)
@@ -99,28 +104,29 @@ def _numero(valor: object) -> float:
         return 0.0
 
 
-def _e_linha_de_total(linha: pd.Series) -> bool:
+def e_linha_de_total(linha: pd.Series) -> bool:
     """A planilha da B3 pode terminar com uma linha "Total" que soma as outras."""
     return any(
-        _sem_acento(v).startswith("total") for v in linha.dropna() if isinstance(v, str)
+        sem_acento(v).startswith("total") for v in linha.dropna() if isinstance(v, str)
     )
 
 
 def _tipo_da_aba(nome: str) -> str | None:
-    nome = _sem_acento(nome)
+    nome = sem_acento(nome)
     for chave, tipo in TIPOS_DAS_ABAS.items():
         if nome.startswith(chave):
             return tipo
     return None
 
 
-MENSAGEM_DE_ARQUIVO_INVALIDO = (
-    "Não consegui abrir o arquivo. Envie a planilha de posição baixada da Área do "
-    "Investidor da B3 (.xlsx)."
-)
+def _arquivo_invalido(planilha: str) -> str:
+    return (
+        f"Não consegui abrir o arquivo. Envie a planilha de {planilha} baixada da Área do "
+        "Investidor da B3 (.xlsx)."
+    )
 
 
-def _conferir_tamanho_descomprimido(conteudo: bytes) -> None:
+def _conferir_tamanho_descomprimido(conteudo: bytes, planilha: str) -> None:
     """Recusa o .xlsx que ficaria grande demais ao abrir, antes de abri-lo.
 
     O tamanho de cada parte vem do índice do zip; o `zipfile` do Python não deixa uma parte
@@ -130,65 +136,76 @@ def _conferir_tamanho_descomprimido(conteudo: bytes) -> None:
         with zipfile.ZipFile(BytesIO(conteudo)) as arquivo:
             descomprimido = sum(parte.file_size for parte in arquivo.infolist())
     except zipfile.BadZipFile as erro:
-        raise ArquivoDaB3Error(MENSAGEM_DE_ARQUIVO_INVALIDO) from erro
+        raise ArquivoDaB3Error(_arquivo_invalido(planilha)) from erro
     if descomprimido > TAMANHO_MAXIMO_DESCOMPRIMIDO:
         raise ArquivoDaB3Error(
-            "A planilha fica grande demais ao abrir; a posição da B3 tem poucas linhas."
+            f"A planilha fica grande demais ao abrir; a de {planilha} da B3 é bem menor."
         )
 
 
-def _conferir_linhas(abas: dict[str, pd.DataFrame]) -> None:
-    if any(len(tabela) > MAXIMO_DE_LINHAS for tabela in abas.values()):
-        limite = f"{MAXIMO_DE_LINHAS:,}".replace(
-            ",", "."
-        )  # 5.000, como se escreve no Brasil
+def _conferir_linhas(
+    abas: dict[str, pd.DataFrame], planilha: str, maximo_de_linhas: int
+) -> None:
+    if any(len(tabela) > maximo_de_linhas for tabela in abas.values()):
+        limite = f"{maximo_de_linhas:,}".replace(",", ".")  # 5.000, como no Brasil
         raise ArquivoDaB3Error(
-            f"A planilha tem mais de {limite} linhas numa aba; a posição da B3 tem poucas "
-            "dezenas."
+            f"A planilha tem mais de {limite} linhas numa aba; a de {planilha} da B3 tem "
+            "bem menos."
         )
 
 
-def _abas(conteudo: bytes, nome_do_arquivo: str) -> dict[str, pd.DataFrame]:
+def ler_abas(
+    conteudo: bytes,
+    nome_do_arquivo: str,
+    *,
+    planilha: str = "posição",
+    maximo_de_linhas: int = MAXIMO_DE_LINHAS,
+) -> dict[str, pd.DataFrame]:
+    """Abre a planilha da Área do Investidor (.xlsx ou .csv), aba por aba, com as travas.
+
+    Recusa arquivo grande demais, zip que explode ao abrir e aba com linhas demais, com uma
+    mensagem que fala da `planilha` esperada ("posição", "movimentação").
+    """
+    if len(conteudo) > TAMANHO_MAXIMO:
+        raise ArquivoDaB3Error(
+            f"O arquivo passa de 5 MB; a planilha de {planilha} da B3 é bem menor."
+        )
     # lê uma linha a mais que o limite: só para saber se passou dele, sem ler o resto
     if nome_do_arquivo.lower().endswith(".csv"):
         texto = conteudo.decode("utf-8-sig", errors="replace")
         separador = ";" if texto.count(";") > texto.count(",") else ","
         abas = {
             "acoes": pd.read_csv(
-                BytesIO(conteudo), sep=separador, dtype=str, nrows=MAXIMO_DE_LINHAS + 1
+                BytesIO(conteudo), sep=separador, dtype=str, nrows=maximo_de_linhas + 1
             )
         }
     else:
-        _conferir_tamanho_descomprimido(conteudo)
+        _conferir_tamanho_descomprimido(conteudo, planilha)
         try:
             abas = pd.read_excel(
                 BytesIO(conteudo),
                 sheet_name=None,
                 dtype=object,
-                nrows=MAXIMO_DE_LINHAS + 1,
+                nrows=maximo_de_linhas + 1,
             )
         except Exception as erro:  # arquivo corrompido ou que não é Excel
-            raise ArquivoDaB3Error(MENSAGEM_DE_ARQUIVO_INVALIDO) from erro
-    _conferir_linhas(abas)
+            raise ArquivoDaB3Error(_arquivo_invalido(planilha)) from erro
+    _conferir_linhas(abas, planilha, maximo_de_linhas)
     return abas
 
 
 def ler_carteira(conteudo: bytes, nome_do_arquivo: str) -> CarteiraB3:
     """Lê a planilha de posição da B3 e devolve as posições somadas por ativo."""
-    if len(conteudo) > TAMANHO_MAXIMO:
-        raise ArquivoDaB3Error(
-            "O arquivo passa de 5 MB; a posição da B3 tem poucos KB."
-        )
     com_cotacao, sem_cotacao, avisos = [], [], []
-    for nome_da_aba, tabela in _abas(conteudo, nome_do_arquivo).items():
+    for nome_da_aba, tabela in ler_abas(conteudo, nome_do_arquivo).items():
         if tabela is None or tabela.empty:
             continue
-        colunas = {_sem_acento(c): c for c in tabela.columns}
+        colunas = {sem_acento(c): c for c in tabela.columns}
         tipo = _tipo_da_aba(nome_da_aba) or "Ações"
-        c_codigo = _achar(colunas, COLUNAS_DO_CODIGO)
-        c_produto = _achar(colunas, COLUNAS_DO_PRODUTO)
-        c_qtd = _achar(colunas, COLUNAS_DA_QUANTIDADE)
-        c_valor = _achar(colunas, COLUNAS_DO_VALOR)
+        c_codigo = achar_coluna(colunas, COLUNAS_DO_CODIGO)
+        c_produto = achar_coluna(colunas, COLUNAS_DO_PRODUTO)
+        c_qtd = achar_coluna(colunas, COLUNAS_DA_QUANTIDADE)
+        c_valor = achar_coluna(colunas, COLUNAS_DO_VALOR)
         if c_valor is None:
             if _tipo_da_aba(nome_da_aba) is not None:
                 avisos.append(
@@ -196,8 +213,8 @@ def ler_carteira(conteudo: bytes, nome_do_arquivo: str) -> CarteiraB3:
                 )
             continue
         for _, linha in tabela.iterrows():
-            valor = _numero(linha[c_valor])
-            if valor <= 0 or _e_linha_de_total(linha):
+            valor = numero_brasileiro(linha[c_valor])
+            if valor <= 0 or e_linha_de_total(linha):
                 continue  # linhas de total (contariam o dinheiro duas vezes), vazias ou zeradas
             if tipo in SEM_COTACAO:
                 produto = str(linha[c_produto]) if c_produto else tipo
@@ -217,7 +234,7 @@ def ler_carteira(conteudo: bytes, nome_do_arquivo: str) -> CarteiraB3:
                 )
                 sem_cotacao.append({"tipo": tipo, "produto": produto, "valor": valor})
                 continue
-            quantidade = _numero(linha[c_qtd]) if c_qtd else 0.0
+            quantidade = numero_brasileiro(linha[c_qtd]) if c_qtd else 0.0
             com_cotacao.append(
                 {
                     "codigo": codigo,
