@@ -35,9 +35,11 @@ def test_css_so_usa_cores_da_marca():
     (A direção anterior proibia laranja e amarelo; a nova usa âmbar só para "atenção" e nas
     séries dos gráficos, e verde e vermelho só para alta e queda.)
     """
+    paletas = [vars(marca.PALETA_CLARA), vars(marca.PALETA_ESCURA)]
+    valores = [*vars(marca).values(), *(v for p in paletas for v in p.values())]
     da_marca = {
         v.lower()
-        for v in vars(marca).values()
+        for v in valores
         if isinstance(v, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", v)
     }
     usadas = {c.lower() for c in re.findall(r"#[0-9a-fA-F]{6}\b", CSS_DO_APP)}
@@ -66,3 +68,23 @@ def test_quem_pede_menos_movimento_nao_ve_animacao():
         "animation: none !important" in reduzir
         and "transition: none !important" in reduzir
     )
+
+
+def test_cada_cor_do_css_vale_para_os_dois_temas():
+    """O .stApp declara color-scheme pelo tema ativo; light-dark() escolhe a cor certa sozinho."""
+    clara, escura = marca.PALETA_CLARA, marca.PALETA_ESCURA
+    for papel in (
+        "texto",
+        "apagado",
+        "superficie",
+        "destaque",
+        "linha",
+        "azul_texto",
+        "alta",
+    ):
+        par = f"light-dark({getattr(clara, papel)}, {getattr(escura, papel)})"
+        assert par in CSS_DO_APP, papel
+    # fora dos pares light-dark(), nenhuma cor de superfície ou de texto ficou presa a um tema
+    solto = re.sub(r"light-dark\([^)]*\)", "", CSS_DO_APP)
+    for cor in (marca.SUPERFICIE, marca.TEXTO_APAGADO, marca.DESTAQUE, marca.TEXTO):
+        assert cor not in solto, cor

@@ -1,6 +1,7 @@
 """CSS do TickerLab: só o que o tema oficial do Streamlit (`.streamlit/config.toml`) não cobre.
 
-As cores vêm de `src/marca.py` (manual de identidade v1, 13/10/2026). A fonte é carregada pelo tema,
+As cores vêm de `src/marca.py` (manual de identidade v1, 13/10/2026), nos dois temas do app (claro e
+escuro). A fonte é carregada pelo tema,
 do nosso próprio servidor: aqui não há `@import` do Google Fonts (mandaria o IP de quem visita).
 """
 
@@ -17,6 +18,20 @@ LUPA = (
     .replace("<", "%3C")
     .replace(">", "%3E")
 )  # sem < e > crus dentro do <style>
+
+
+class _CorDosDoisTemas:
+    """`COR.texto` vira `light-dark(<claro>, <escuro>)`: o .stApp declara `color-scheme` pelo tema
+    ativo do Streamlit, e o navegador escolhe a cor sozinho, sem depender do Python saber o tema
+    (o `st.context.theme` pode vir errado na primeira execução da sessão)."""
+
+    def __getattr__(self, papel: str) -> str:
+        clara = getattr(marca.PALETA_CLARA, papel)
+        escura = getattr(marca.PALETA_ESCURA, papel)
+        return f"light-dark({clara}, {escura})"
+
+
+COR = _CorDosDoisTemas()
 
 CSS_DO_APP = f"""
 /* Largura e respiro da página */
@@ -44,13 +59,13 @@ h2, h3 {{
 /* Linhas divisórias discretas */
 hr {{
     margin: 2rem 0 1.25rem 0;
-    border-color: {marca.LINHA};
+    border-color: {COR.linha};
 }}
 
 /* Métricas como cartões na superfície intermediária */
 [data-testid="stMetric"] {{
-    background: {marca.SUPERFICIE};
-    border: 1px solid {marca.LINHA};
+    background: {COR.superficie};
+    border: 1px solid {COR.linha};
     border-radius: 12px;
     padding: 0.85rem 1rem;
     min-height: 6.2rem;
@@ -60,7 +75,7 @@ hr {{
     letter-spacing: -0.02em;
 }}
 [data-testid="stMetricLabel"] {{
-    color: {marca.TEXTO_APAGADO};
+    color: {COR.apagado};
 }}
 /* rótulos longos quebram a linha em vez de virar "Maior queda (drawdo..." */
 [data-testid="stMetricLabel"] *, [data-testid="stMetricLabel"] p {{
@@ -71,8 +86,8 @@ hr {{
 }}
 /* o número principal da página (o primeiro cartão de .tl-heroi) fica maior e mais claro */
 .st-key-tl-numero-principal [data-testid="stMetric"] {{
-    background: {marca.DESTAQUE};
-    border-color: {marca.LINHA_FORTE};
+    background: {COR.destaque};
+    border-color: {COR.linha_forte};
 }}
 .st-key-tl-numero-principal [data-testid="stMetricValue"] {{
     font-size: 2.2rem;
@@ -86,7 +101,7 @@ hr {{
 /* Abas: a ativa em azul */
 .stTabs [data-baseweb="tab-list"] {{
     gap: 0.25rem;
-    border-bottom: 1px solid {marca.LINHA};
+    border-bottom: 1px solid {COR.linha};
 }}
 .stTabs [data-baseweb="tab"] {{
     height: 2.75rem;
@@ -94,7 +109,7 @@ hr {{
     font-weight: 600;
 }}
 .stTabs [aria-selected="true"] {{
-    color: {marca.AZUL_TEXTO};
+    color: {COR.azul_texto};
 }}
 .stTabs [data-baseweb="tab-highlight"] {{
     background-color: {marca.AZUL};
@@ -106,12 +121,12 @@ hr {{
 
 /* Caixas com borda (controles, cartões): superfície intermediária */
 [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"]) {{
-    background: {marca.SUPERFICIE};
+    background: {COR.superficie};
 }}
 
 /* Legendas mais claras */
 [data-testid="stCaptionContainer"] {{
-    color: {marca.TEXTO_APAGADO};
+    color: {COR.apagado};
 }}
 
 /* --- peças da marca ------------------------------------------------------------------- */
@@ -131,7 +146,7 @@ hr {{
     height: 28px;
 }}
 .tl-marca span {{
-    color: {marca.AZUL_TEXTO};
+    color: {COR.azul_texto};
 }}
 
 /* "Olho": o grupo da página, acima do título */
@@ -141,7 +156,7 @@ hr {{
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: {marca.AZUL_TEXTO};
+    color: {COR.azul_texto};
 }}
 
 /* Código de ativo em fonte monoespaçada, como numa tela de cotações */
@@ -150,9 +165,9 @@ hr {{
     font-weight: 600;
     letter-spacing: 0.02em;
 }}
-.tl-alta {{ color: {marca.ALTA}; }}
-.tl-queda {{ color: {marca.QUEDA}; }}
-.tl-apagado {{ color: {marca.TEXTO_APAGADO}; }}
+.tl-alta {{ color: {COR.alta}; }}
+.tl-queda {{ color: {COR.queda}; }}
+.tl-apagado {{ color: {COR.apagado}; }}
 
 /* Frase de abertura da página inicial e da tela de entrada */
 .tl-hero {{
@@ -168,12 +183,12 @@ hr {{
 .tl-principio {{
     border-left: 2px solid {marca.AZUL};
     padding: 0.1rem 0 0.1rem 0.8rem;
-    color: {marca.TEXTO_APAGADO};
+    color: {COR.apagado};
     font-size: 0.92rem;
 }}
 .tl-principio b {{
     display: block;
-    color: {marca.TEXTO};
+    color: {COR.texto};
 }}
 
 /* TickerLab Trade: o estado da pesquisa e as fases */
@@ -183,14 +198,14 @@ hr {{
     gap: 0.5rem;
     font-size: 0.82rem;
     font-weight: 700;
-    color: {marca.ATENCAO};
+    color: {COR.atencao};
 }}
 .tl-estado::before {{
     content: "";
     width: 0.5rem;
     height: 0.5rem;
     border-radius: 50%;
-    background: {marca.ATENCAO};
+    background: {COR.atencao};
 }}
 .tl-fases {{
     display: grid;
@@ -199,8 +214,8 @@ hr {{
     margin: 0.5rem 0 1rem 0;
 }}
 .tl-fase {{
-    background: {marca.SUPERFICIE};
-    border: 1px solid {marca.LINHA};
+    background: {COR.superficie};
+    border: 1px solid {COR.linha};
     border-radius: 12px;
     padding: 0.6rem 0.8rem;
     font-size: 0.88rem;
@@ -209,23 +224,23 @@ hr {{
     display: block;
     font-family: '{marca.FONTE_MONO}', monospace;
     font-size: 0.8rem;
-    color: {marca.TEXTO_APAGADO};
+    color: {COR.apagado};
 }}
-.tl-fase.feita b {{ color: {marca.ALTA}; }}
-.tl-fase.agora {{ border-color: {marca.ATENCAO}; }}
-.tl-fase.agora b {{ color: {marca.ATENCAO}; }}
+.tl-fase.feita b {{ color: {COR.alta}; }}
+.tl-fase.agora {{ border-color: {COR.atencao}; }}
+.tl-fase.agora b {{ color: {COR.atencao}; }}
 
 /* Rodapé */
 .tl-rodape {{
-    color: {marca.TEXTO_APAGADO};
+    color: {COR.apagado};
     font-size: 0.82rem;
 }}
 .tl-rodape b {{
-    color: {marca.TEXTO};
+    color: {COR.texto};
     font-weight: 800;
 }}
 .tl-rodape b span {{
-    color: {marca.AZUL_TEXTO};
+    color: {COR.azul_texto};
 }}
 
 /* Links de página nos cartões */
@@ -252,7 +267,7 @@ hr {{
 [class*="st-key-tl-cartao"]:hover {{
     border-color: {marca.AZUL} !important;
     transform: translateY(-2px);
-    background: {marca.DESTAQUE};
+    background: {COR.destaque};
 }}
 
 /* botões: afundam um pouco ao clicar */
@@ -266,12 +281,12 @@ button:active:not(:disabled) {{
 /* foco visível para quem usa teclado (WCAG) */
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible,
 [role="tab"]:focus-visible, [role="option"]:focus-visible {{
-    outline: 2px solid {marca.AZUL_TEXTO} !important;
+    outline: 2px solid {COR.azul_texto} !important;
     outline-offset: 2px;
 }}
 
 /* metadados curtos */
-.tl-sutil {{ color: {marca.TEXTO_SUTIL}; font-size: 0.82rem; }}
+.tl-sutil {{ color: {COR.sutil}; font-size: 0.82rem; }}
 
 /* busca de ativos: lupa no lugar da seta (é um campo de busca, não uma lista para abrir) */
 .st-key-ticker [aria-label="Open"] svg,
@@ -284,19 +299,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     display: block;
     width: 1.15rem;
     height: 1.15rem;
-    background-color: {marca.TEXTO_APAGADO};
+    background-color: {COR.apagado};
     -webkit-mask: url("{LUPA}") center / contain no-repeat;
     mask: url("{LUPA}") center / contain no-repeat;
 }}
 .st-key-ticker [aria-label="Open"]:hover::before,
 .st-key-ativo_do_inicio [aria-label="Open"]:hover::before {{
-    background-color: {marca.AZUL_TEXTO};
+    background-color: {COR.azul_texto};
 }}
 
 /* Report Studio: as páginas da prévia parecem folhas (sombra e cantos leves) */
 .st-key-tl-previa img {{
     border-radius: 6px;
-    border: 1px solid {marca.LINHA_FORTE};
+    border: 1px solid {COR.linha_forte};
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     animation: tl-entrar 220ms ease-out both;
 }}
@@ -306,8 +321,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     bottom: 0;
     z-index: 5;
     padding: 0.6rem 0.25rem;
-    background: {marca.FUNDO};
-    border-top: 1px solid {marca.LINHA};
+    background: {COR.fundo};
+    border-top: 1px solid {COR.linha};
 }}
 
 /* menus do topo e listas de escolha surgem do gatilho (blueprint 04). Anima o conteúdo, não a

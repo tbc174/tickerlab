@@ -16,6 +16,7 @@ mais importante, mais clara); verde e vermelho só para alta e queda, sempre com
 cores dos gráficos sempre nesta ordem.
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 
 # as quatro cores institucionais do manual
@@ -61,6 +62,71 @@ PAPEL_ALTA = "#178a5d"
 PAPEL_QUEDA = "#cf3540"
 PAPEL_ATENCAO = "#9a6700"  # o âmbar escurecido, para texto sobre o claro
 PAPEL_SERIES = ("#2962ff", "#c77700", "#11897a", "#b8417f", "#8a7a00", "#6b4fe0")
+
+
+@dataclass(frozen=True)
+class Paleta:
+    """As cores de um tema do app (claro ou escuro), com os mesmos papéis nos dois."""
+
+    tipo: str  # "escuro" ou "claro"
+    fundo: str
+    superficie: str  # cartões
+    destaque: str  # o número principal, campos e o fundo secundário do Streamlit
+    linha: str
+    linha_forte: str
+    texto: str
+    apagado: str
+    sutil: str
+    azul_texto: str  # links e destaques em texto
+    alta: str
+    queda: str
+    atencao: str
+    series: tuple[str, ...]
+    simbolo_topo: str  # a parte de cima do símbolo (a haste é sempre azul elétrico)
+
+
+PALETA_ESCURA = Paleta(
+    tipo="escuro",
+    fundo=FUNDO,
+    superficie=SUPERFICIE,
+    destaque=DESTAQUE,
+    linha=LINHA,
+    linha_forte=LINHA_FORTE,
+    texto=TEXTO,
+    apagado=TEXTO_APAGADO,
+    sutil=TEXTO_SUTIL,
+    azul_texto=AZUL_TEXTO,
+    alta=ALTA,
+    queda=QUEDA,
+    atencao=ATENCAO,
+    series=SERIES,
+    simbolo_topo=CLARO,
+)
+# Tema claro do app (13/10/2026): marinho sobre claro, cartões brancos e campos em azul claro.
+# Verde, vermelho e âmbar mais escuros que os do papel, para passar no AA também sobre o azul claro.
+PALETA_CLARA = Paleta(
+    tipo="claro",
+    fundo=CLARO,
+    superficie="#ffffff",
+    destaque=AZUL_CLARO,
+    linha="rgba(10, 31, 68, 0.12)",
+    linha_forte="rgba(10, 31, 68, 0.22)",
+    texto=MARINHO,
+    apagado=PAPEL_APAGADO,
+    sutil=PAPEL_SUTIL,
+    azul_texto=PAPEL_AZUL_TEXTO,
+    alta="#127a4d",
+    queda="#c22f3a",
+    atencao="#8a5c00",
+    series=PAPEL_SERIES,
+    simbolo_topo=MARINHO,
+)
+
+
+def paleta_do_tema(tipo_do_streamlit: str | None) -> Paleta:
+    """A paleta pelo tema que o Streamlit informa ("light" ou "dark"); sem informação, a escura."""
+    return PALETA_CLARA if tipo_do_streamlit == "light" else PALETA_ESCURA
+
 
 FONTE = "Manrope"
 FONTE_MONO = "JetBrains Mono"

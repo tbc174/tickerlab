@@ -3,6 +3,7 @@
 
 from pathlib import Path
 
+import pytest
 import tomllib
 from streamlit.testing.v1 import AppTest
 
@@ -13,16 +14,21 @@ RAIZ = Path(__file__).resolve().parent.parent
 TEMA = tomllib.loads((RAIZ / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
 
 
-def test_o_tema_do_streamlit_usa_as_cores_da_marca():
-    tema = TEMA["theme"]
-    assert tema["base"] == "dark"
+@pytest.mark.parametrize(
+    ("secao", "paleta"),
+    [("light", marca.PALETA_CLARA), ("dark", marca.PALETA_ESCURA)],
+)
+def test_o_tema_do_streamlit_usa_as_cores_da_marca(secao, paleta):
+    """Os dois temas do app: o Streamlit só deixa trocar se os dois estiverem definidos."""
+    assert "base" not in TEMA["theme"]  # sem base fixa: claro e escuro valem
+    tema = TEMA["theme"][secao]
     assert tema["primaryColor"] == marca.AZUL
-    assert tema["backgroundColor"] == marca.FUNDO
-    assert tema["secondaryBackgroundColor"] == marca.DESTAQUE
-    assert tema["textColor"] == marca.TEXTO
-    assert tema["linkColor"] == marca.AZUL_TEXTO
-    assert tema["greenColor"] == marca.ALTA and tema["redColor"] == marca.QUEDA
-    assert tuple(tema["chartCategoricalColors"]) == marca.SERIES
+    assert tema["backgroundColor"] == paleta.fundo
+    assert tema["secondaryBackgroundColor"] == paleta.destaque
+    assert tema["textColor"] == paleta.texto
+    assert tema["linkColor"] == paleta.azul_texto
+    assert tema["greenColor"] == paleta.alta and tema["redColor"] == paleta.queda
+    assert tuple(tema["chartCategoricalColors"]) == paleta.series
 
 
 def test_as_fontes_vem_do_proprio_site_e_nao_do_google():
@@ -143,3 +149,47 @@ def test_o_periodo_nunca_fica_sem_escolha():
     ir_para(app, "visao_geral")
     periodo = app.button_group(key="periodo")  # o segmented_control
     assert periodo.value == "2y"
+
+
+def _contraste(cor: str, fundo: str) -> float:
+    def luminancia(hexa: str) -> float:
+        canais = [int(hexa.lstrip("#")[i : i + 2], 16) / 255 for i in (0, 2, 4)]
+        lineares = [
+            c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in canais
+        ]
+        return 0.2126 * lineares[0] + 0.7152 * lineares[1] + 0.0722 * lineares[2]
+
+    claro, escuro = sorted((luminancia(cor), luminancia(fundo)), reverse=True)
+    return (claro + 0.05) / (escuro + 0.05)
+
+
+@pytest.mark.parametrize("paleta", [marca.PALETA_CLARA, marca.PALETA_ESCURA])
+def test_texto_e_cores_de_significado_passam_no_contraste_aa(paleta):
+    """WCAG AA (4,5:1) para texto sobre as três superfícies, nos dois temas do app."""
+    for fundo in (paleta.fundo, paleta.superficie, paleta.destaque):
+        for nome in (
+            "texto",
+            "apagado",
+            "sutil",
+            "azul_texto",
+            "alta",
+            "queda",
+            "atencao",
+        ):
+            cor = getattr(paleta, nome)
+            assert _contraste(cor, fundo) >= 4.5, (paleta.tipo, nome, cor, fundo)
+
+
+def test_a_paleta_escura_e_a_do_app_de_antes():
+    p = marca.PALETA_ESCURA
+    assert (p.fundo, p.superficie, p.texto, p.series) == (
+        marca.FUNDO,
+        marca.SUPERFICIE,
+        marca.TEXTO,
+        marca.SERIES,
+    )
+    assert marca.paleta_do_tema("light") is marca.PALETA_CLARA
+    assert marca.paleta_do_tema("dark") is marca.PALETA_ESCURA
+    assert (
+        marca.paleta_do_tema(None) is marca.PALETA_ESCURA
+    )  # sem informação: o de sempre
