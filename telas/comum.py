@@ -17,6 +17,7 @@ from src import catalogo, graficos, marca
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
+from src.analises import MIN_DIAS_PARA_ANALISE
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     carregar_preferencias,
@@ -31,8 +32,6 @@ from src.link import alternar_favorito, montar_parametros
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.paginas import GRUPO_MAIS, GRUPO_TOPO, pagina
 from src.planos import PLANO_DO_MODO_LOCAL, conferir_favoritos, limites_do
-
-MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
 
 
 @st.cache_data(ttl=3600, show_spinner="Baixando dados...")

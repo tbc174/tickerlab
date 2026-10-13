@@ -10,6 +10,13 @@ from dataclasses import dataclass
 import pandas as pd
 
 from src import indicadores as ind
+from src.comparacao import (
+    alinhar_fechamentos,
+    montar_tabela_comparativa,
+    rebasear_para_100,
+)
+
+MIN_DIAS_PARA_ANALISE = 20  # com menos retornos que isso, os números não dizem nada
 
 
 @dataclass(frozen=True)
@@ -105,4 +112,33 @@ def retorno_mensal(retorno: pd.Series) -> RetornoMensal:
         mes_pior=mes_pior,
         pior=pior,
         meses_de_alta=ind.calcular_percentual_dias_positivos(retornos),
+    )
+
+
+@dataclass(frozen=True)
+class Comparacao:
+    """Ativos lado a lado nos dias em que todos têm preço (sem preencher nem estimar nada)."""
+
+    dias_em_comum: int
+    dias_descartados: int  # feriados diferentes: algum ativo sem preço no dia
+    base_100: pd.DataFrame | None  # todos começando em 100; None se o período for curto
+    tabela: pd.DataFrame | None  # os números de cada ativo; None se o período for curto
+
+    @property
+    def suficiente(self) -> bool:
+        return self.base_100 is not None
+
+
+def comparacao_de_ativos(
+    fechamentos: dict[str, pd.Series], taxa_livre_de_risco: float
+) -> Comparacao:
+    """O que a página Comparar mostra. Com até MIN_DIAS_PARA_ANALISE dias em comum, só as contagens."""
+    alinhado, descartados = alinhar_fechamentos(fechamentos)
+    if len(alinhado) <= MIN_DIAS_PARA_ANALISE:
+        return Comparacao(len(alinhado), descartados, None, None)
+    return Comparacao(
+        dias_em_comum=len(alinhado),
+        dias_descartados=descartados,
+        base_100=rebasear_para_100(alinhado),
+        tabela=montar_tabela_comparativa(alinhado, taxa_livre_de_risco),
     )

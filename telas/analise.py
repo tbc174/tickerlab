@@ -11,6 +11,7 @@ from src import graficos, relatorios
 from src import indicadores as ind
 from src import presets as research_presets
 from src.analises import (
+    comparacao_de_ativos,
     painel_de_numeros,
     retorno_mensal,
     risco_ao_longo_do_tempo,
@@ -22,8 +23,6 @@ from src.comparacao import (
     NOMES_AMIGAVEIS,
     alinhar_fechamentos,
     escolher_ativos,
-    montar_tabela_comparativa,
-    rebasear_para_100,
 )
 from src.conteudo import descrever_pior_drawdown
 from src.correlacao import (
@@ -345,29 +344,24 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
         st.info("Não há ativos suficientes com dados para comparar.")
         return
 
-    alinhado, descartados = alinhar_fechamentos(fechamentos)
-    if len(alinhado) <= MIN_DIAS_PARA_ANALISE:
+    comparacao = comparacao_de_ativos(fechamentos, taxa_livre_de_risco)
+    if comparacao.base_100 is None or comparacao.tabela is None:
         st.warning(
-            f"Só há {len(alinhado)} dias em comum entre esses ativos, e são necessários "
+            f"Só há {comparacao.dias_em_comum} dias em comum entre esses ativos, e são necessários "
             f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
         )
         return
 
     mostrar_grafico(
         graficos.criar_grafico_comparacao(
-            rebasear_para_100(alinhado), principal, NOMES_AMIGAVEIS
+            comparacao.base_100, principal, NOMES_AMIGAVEIS
         )
     )
     st.markdown("**Números no mesmo período**")
-    st.dataframe(
-        formatar_tabela_comparativa(
-            montar_tabela_comparativa(alinhado, taxa_livre_de_risco)
-        ),
-        width="stretch",
-    )
+    st.dataframe(formatar_tabela_comparativa(comparacao.tabela), width="stretch")
     st.caption(
-        f"Comparação feita em {len(alinhado)} dias em comum. "
-        f"{descartados} dias foram descartados porque algum ativo não tinha preço neles "
+        f"Comparação feita em {comparacao.dias_em_comum} dias em comum. "
+        f"{comparacao.dias_descartados} dias foram descartados porque algum ativo não tinha preço neles "
         "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
         "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
         "As moedas diferentes "

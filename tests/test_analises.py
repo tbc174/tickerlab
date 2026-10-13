@@ -6,6 +6,11 @@ from pandas.testing import assert_frame_equal, assert_series_equal
 
 from src import analises
 from src import indicadores as ind
+from src.comparacao import (
+    alinhar_fechamentos,
+    montar_tabela_comparativa,
+    rebasear_para_100,
+)
 from src.exemplos import carregar_exemplo
 
 TAXA = 0.10
@@ -73,3 +78,30 @@ def test_retorno_mensal_igual_as_contas_da_tela(petr4):
     assert (mensal.mes_melhor, mensal.melhor) == (mes_melhor, melhor)
     assert (mensal.mes_pior, mensal.pior) == (mes_pior, pior)
     assert mensal.meses_de_alta == ind.calcular_percentual_dias_positivos(esperado)
+
+
+def _fechamentos(*tickers):
+    return {t: carregar_exemplo(t, "2y")["Close"] for t in tickers}
+
+
+def test_comparacao_igual_as_contas_da_tela():
+    fechamentos = _fechamentos("PETR4.SA", "VALE3.SA", "AAPL")
+    comparacao = analises.comparacao_de_ativos(fechamentos, TAXA)
+    alinhado, descartados = alinhar_fechamentos(fechamentos)
+    assert comparacao.dias_em_comum == len(alinhado)
+    assert comparacao.dias_descartados == descartados
+    assert comparacao.suficiente
+    assert_frame_equal(comparacao.base_100, rebasear_para_100(alinhado))
+    assert_frame_equal(comparacao.tabela, montar_tabela_comparativa(alinhado, TAXA))
+
+
+def test_comparacao_curta_demais_nao_calcula_nada():
+    """Com até MIN_DIAS_PARA_ANALISE dias em comum, os números não dizem nada."""
+    fechamentos = {
+        t: s.iloc[-analises.MIN_DIAS_PARA_ANALISE :]
+        for t, s in _fechamentos("PETR4.SA", "VALE3.SA").items()
+    }
+    comparacao = analises.comparacao_de_ativos(fechamentos, TAXA)
+    assert comparacao.dias_em_comum <= analises.MIN_DIAS_PARA_ANALISE
+    assert not comparacao.suficiente
+    assert comparacao.base_100 is None and comparacao.tabela is None
