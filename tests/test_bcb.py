@@ -49,9 +49,8 @@ def test_sgs_le_data_e_valor_e_corta_o_futuro():
 
 def test_sgs_divide_consultas_longas_e_junta_tudo():
     pedidos: list = []
-    respostas = [
-        RespostaFalsa([{"data": "02/01/2006", "valor": "0.06"}]),
-        RespostaFalsa([{"data": "02/01/2020", "valor": "0.02"}]),
+    respostas = [RespostaFalsa([{"data": "02/01/2006", "valor": "0.06"}])] + [
+        RespostaFalsa([{"data": "02/01/2020", "valor": "0.02"}]) for _ in range(4)
     ]
     serie = bcb.baixar_serie_sgs(
         "selic_diaria",
@@ -60,10 +59,26 @@ def test_sgs_divide_consultas_longas_e_junta_tudo():
         HOJE,
         _buscar(respostas, pedidos),
     )
-    assert len(pedidos) == 2  # 14 anos em consultas de até 9
+    assert len(pedidos) == 5  # 14,5 anos em consultas de até 3
     assert pedidos[0][0].endswith("bcdata.sgs.11/dados")
     assert pedidos[0][1]["dataInicial"] == "01/01/2006"
     assert len(serie) == 2
+
+
+def test_sgs_nunca_pede_janela_que_o_bc_nao_responde():
+    """Regressão (13/10/2026): sem cache, o SGS levou 30 s numa janela de 8 anos da série 432 e
+    devolveu uma página HTML "Requisição inválida!" com status 200; em janelas de 3 anos, de 2 a 5 s."""
+    pedidos: list = []
+
+    def buscar(url, params=None, timeout=None):
+        pedidos.append(params)
+        return RespostaFalsa([{"data": "01/09/2026", "valor": "0.48"}])
+
+    bcb.baixar_serie_sgs("selic_meta", date(2010, 1, 1), HOJE, HOJE, buscar)
+    for params in pedidos:
+        inicio = pd.to_datetime(params["dataInicial"], format="%d/%m/%Y")
+        fim = pd.to_datetime(params["dataFinal"], format="%d/%m/%Y")
+        assert fim - inicio <= pd.Timedelta(days=3 * 366)
 
 
 def test_sgs_sem_dados_ou_resposta_estranha_da_erro_claro():

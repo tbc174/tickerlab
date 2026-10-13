@@ -32,7 +32,9 @@ URL_DO_FOCUS = (
     "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/"
     "ExpectativasMercadoAnuais"
 )
-ANOS_POR_CONSULTA = 9  # o SGS limita o tamanho da consulta (10 anos desde 2025)
+# o SGS aceita até 10 anos por consulta, mas sem cache uma janela longa passa dos ~30 s do
+# servidor do BC, que devolve uma página "Requisição inválida!" com status 200 (13/10/2026)
+ANOS_POR_CONSULTA = 3
 TEMPO_LIMITE = 60  # segundos: sem cache, o SGS leva até ~30 s numa janela de 9 anos
 FUSO = ZoneInfo("America/Sao_Paulo")  # "hoje" é o do Brasil, não o do servidor (UTC)
 

@@ -171,7 +171,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 ## Primeira carga das séries macro: `ReadTimeout` no SGS do Banco Central
 - **Sintoma:** a etapa `bcb-sgs` do `scripts/atualizar_series_macro.py` falhou na primeira rodada (desde 2010), no PC e no servidor, com `Read timed out. (read timeout=20)` na série 432; numa segunda rodada passou.
 - **Causa:** sem cache, o SGS demora numa consulta longa: 26 s para 7 anos da série 432 e 18 s para 9 anos da série 11. Repetida, a mesma consulta volta em menos de 1 s (por isso a segunda rodada passava). O leitor desistia em 20 s.
-- **Solução:** `bcb.TEMPO_LIMITE` em 60 s (#77), com teste de regressão. O leitor só roda no coletor, fora do app.
+- **Primeira tentativa:** `bcb.TEMPO_LIMITE` em 60 s (#77), com teste de regressão. Não bastou: com 60 s apareceu o erro de baixo.
+- **Causa de verdade:** o próprio servidor do BC corta em ~30 s e devolve uma página HTML "Requisição inválida!" **com status 200** (o `json()` falha com `Expecting value`). Visto pelo acervo: o original guardado daquela coleta era o HTML. A janela de 9 anos (`ANOS_POR_CONSULTA`) é que era longa demais sem cache.
+- **Solução:** janelas de 3 anos (#81): a mesma série 432 volta em 2 a 5 s por janela. O CDI do app (`src/cdi.py`) usa o mesmo desenho (9 anos, 20 s) e pode falhar igual num período longo: ficou para o Tiago decidir.
 - **Data:** 13/10/2026
 
 ## `pwsh -File script.ps1 -Prs 72,73` virou o PR "7273"
