@@ -146,3 +146,38 @@ def test_le_o_zip_real_de_teste():
     assert contas["valor"].notna().all()
     ativo = contas[(contas["conta"] == "1") & (contas["ordem"] == "ultimo")]
     assert (ativo["valor"] > 1e9).all()  # bancos e grandes empresas, em reais
+
+
+def _dre_na_conta(conta: str) -> str:
+    return _dre().replace(";3.11;", f";{conta};")
+
+
+def test_so_as_contas_das_regras_deixa_a_dfc_e_o_detalhe_da_dre_de_fora():
+    zip_bytes = _zip(
+        {
+            "dfp_cia_aberta_DRE_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("3.01"),
+                _dre_na_conta("3.04.02"),
+                _dre_na_conta("3.11"),
+            ],
+            "dfp_cia_aberta_BPA_ind_2022.csv": [CABECALHO_BPA, _bpa()],
+            "dfp_cia_aberta_DFC_MI_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("6.01"),
+            ],
+        }
+    )
+    completa = ler_contas(zip_bytes, "DFP").contas
+    das_regras = ler_contas(zip_bytes, "DFP", so_as_das_regras=True).contas
+    assert len(completa) == 5
+    assert sorted(das_regras["conta"]) == ["1", "3.01", "3.11"]
+    assert list(das_regras.columns) == list(completa.columns)
+
+
+def test_so_as_contas_das_regras_ainda_conta_as_repetidas():
+    linha = _dre_na_conta("3.04.02")
+    zip_bytes = _zip({"dfp_cia_aberta_DRE_con_2022.csv": [CABECALHO_DRE, linha, linha]})
+    leitura = ler_contas(zip_bytes, "DFP", so_as_das_regras=True)
+    assert leitura.contas.empty
+    assert leitura.repetidas["linhas"].tolist() == [1]

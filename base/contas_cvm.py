@@ -10,6 +10,10 @@ inteiro e das duas colunas ("último" e "penúltimo" exercício), por isso leem 
   mas são contadas por documento: viram a regra R9 do selo.
 - **Nada é escolhido aqui:** todas as versões que o arquivo trouxer ficam; escolher a versão é
   trabalho de quem chama.
+- **Só as contas das regras** (`so_as_das_regras=True`, PR 3): BPA e BPP inteiros e o primeiro nível
+  da DRE (receita, lucro); a DFC e o detalhe da DRE ficam de fora. O ITR inteiro ocupava 741 MB
+  na leitura, mais que o contêiner do VPS (768 MB, dividido com o app). As repetidas continuam
+  contadas em todas as demonstrações.
 """
 
 import io
@@ -43,6 +47,23 @@ COLUNAS = (
     "valor",
 )
 CHAVE_DO_DOCUMENTO = ["cnpj", "referencia", "demonstracao", "grupo"]
+# as colunas do CSV que a leitura usa (o resto, como CD_CVM e MOEDA, nem entra na memória)
+COLUNAS_DO_CSV = {
+    "CNPJ_CIA",
+    "DENOM_CIA",
+    "DT_REFER",
+    "VERSAO",
+    "ESCALA_MOEDA",
+    "ORDEM_EXERC",
+    "DT_INI_EXERC",
+    "DT_FIM_EXERC",
+    "CD_CONTA",
+    "DS_CONTA",
+    "VL_CONTA",
+    "ST_CONTA_FIXA",
+}
+BALANCO = ("BPA", "BPP")
+DRE = "DRE"
 
 
 @dataclass(frozen=True)
@@ -56,7 +77,9 @@ def _sem_acento(texto: str) -> str:
     return "".join(c for c in texto if unicodedata.category(c) != "Mn").lower().strip()
 
 
-def _ler_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
+def _ler_csv(
+    arquivo: zipfile.ZipFile, nome: str, colunas: set[str] | None = COLUNAS_DO_CSV
+) -> pd.DataFrame:
     return pd.read_csv(
         arquivo.open(nome),
         sep=";",
@@ -64,6 +87,7 @@ def _ler_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
         encoding_errors="replace",
         dtype=str,
         keep_default_na=False,
+        usecols=None if colunas is None else lambda coluna: coluna in colunas,
     )
 
 
@@ -101,30 +125,99 @@ def _normalizar(
     )
 
 
-def ler_contas(zip_bytes: bytes, documento: str) -> LeituraDeContas:
+def _usadas_pelas_regras(contas: pd.DataFrame, demonstracao: str) -> pd.DataFrame:
+    """BPA e BPP inteiros (subtotais da R2 e da R11) e o primeiro nível da DRE."""
+    if demonstracao in BALANCO:
+        return contas
+    if demonstracao == DRE:
+        return contas[contas["conta"].str.count(r"\.") <= 1]
+    return contas.iloc[0:0]
+
+
+def _contar_repetidas(contas: pd.DataFrame) -> pd.DataFrame:
+    return contas.groupby(CHAVE_DO_DOCUMENTO).size().rename("linhas").reset_index()
+
+
+def ler_contas(
+    zip_bytes: bytes, documento: str, so_as_das_regras: bool = False
+) -> LeituraDeContas:
     """Todas as contas de BPA, BPP, DRE e DFC (individual e consolidado) de um zip da CVM.
 
-    `documento` é "DFP" ou "ITR". As linhas repetidas idênticas saem e são contadas por documento.
+    `documento` é "DFP" ou "ITR". As linhas repetidas idênticas saem e são contadas por documento
+    (cada CSV é uma demonstração, então as repetidas são procuradas dentro dele).
+    `so_as_das_regras`: só as contas que `base/regras.py` usa, para caber na memória do VPS.
     """
     partes: list[pd.DataFrame] = []
+    repetidas: list[pd.DataFrame] = []
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as arquivo:
         for nome in sorted(arquivo.namelist()):
             achado = ARQUIVO_DE_DEMONSTRACAO.search(nome)
-            if achado:
-                bruto = _ler_csv(arquivo, nome)
-                partes.append(_normalizar(bruto, documento, *achado.groups()))
+            if not achado:
+                continue
+            parte = _normalizar(_ler_csv(arquivo, nome), documento, *achado.groups())
+            repetida = parte.duplicated(keep="first")
+            repetidas.append(_contar_repetidas(parte[repetida]))
+            parte = parte[~repetida]
+            if so_as_das_regras:
+                parte = _usadas_pelas_regras(parte, achado.group(1))
+            partes.append(parte)
     if not partes:
         vazio = pd.DataFrame(columns=list(COLUNAS))
-        return LeituraDeContas(
-            vazio, pd.DataFrame(columns=[*CHAVE_DO_DOCUMENTO, "linhas"])
-        )
+        return LeituraDeContas(vazio, _contar_repetidas(vazio))
     contas = pd.concat(partes, ignore_index=True)
-    repetida = contas.duplicated(keep="first")
-    repetidas = (
-        contas[repetida]
-        .groupby(CHAVE_DO_DOCUMENTO)
-        .size()
-        .rename("linhas")
-        .reset_index()
+    return LeituraDeContas(contas, pd.concat(repetidas, ignore_index=True))
+
+
+def ler_indice(zip_bytes: bytes, documento: str) -> pd.DataFrame:
+    """Todas as entregas (versões) do índice de um zip de DFP ou ITR, com a data de entrega.
+
+    Colunas: cnpj, empresa, documento, referencia, versao, recebido_em.
+    """
+    colunas = ["cnpj", "empresa", "documento", "referencia", "versao", "recebido_em"]
+    nome_do_indice = re.compile(rf"^{documento.lower()}_cia_aberta_\d{{4}}\.csv$")
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as arquivo:
+        nomes = [n for n in arquivo.namelist() if nome_do_indice.match(n)]
+        if not nomes:
+            return pd.DataFrame(columns=colunas)
+        bruto = _ler_csv(arquivo, nomes[0], colunas=None)
+    return pd.DataFrame(
+        {
+            "cnpj": bruto["CNPJ_CIA"],
+            "empresa": bruto["DENOM_CIA"],
+            "documento": documento,
+            "referencia": pd.to_datetime(bruto["DT_REFER"], errors="coerce"),
+            "versao": pd.to_numeric(bruto["VERSAO"], errors="coerce").astype("Int64"),
+            "recebido_em": pd.to_datetime(bruto["DT_RECEB"], errors="coerce"),
+        },
+        columns=colunas,
     )
-    return LeituraDeContas(contas[~repetida].reset_index(drop=True), repetidas)
+
+
+def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
+    """Cada registro de companhia aberta, com as datas de registro e de cancelamento.
+
+    Colunas: cnpj, empresa, registro, cancelamento (vazio = ativa). Uma empresa pode ter mais de
+    um registro. Sem as colunas de data (arquivo antigo ou recortado), vale a situação: cancelada
+    conta como cancelada desde sempre.
+    """
+    bruto = pd.read_csv(
+        io.BytesIO(conteudo_csv),
+        sep=";",
+        encoding=CODIFICACAO_DA_CVM,
+        encoding_errors="replace",
+        dtype=str,
+        keep_default_na=False,
+    )
+    vazio = pd.Series("", index=bruto.index)
+    cancelamento = pd.to_datetime(bruto.get("DT_CANCEL", vazio), errors="coerce")
+    if "DT_CANCEL" not in bruto:
+        cancelada = bruto["SIT"].str.upper().str.strip().ne("ATIVO")
+        cancelamento = cancelamento.mask(cancelada, pd.Timestamp.min)
+    return pd.DataFrame(
+        {
+            "cnpj": bruto["CNPJ_CIA"],
+            "empresa": bruto["DENOM_SOCIAL"],
+            "registro": pd.to_datetime(bruto.get("DT_REG", vazio), errors="coerce"),
+            "cancelamento": cancelamento,
+        }
+    )

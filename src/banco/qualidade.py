@@ -24,6 +24,7 @@ from base.regras import VERSAO_DAS_REGRAS, Achado
 from src.banco.modelo import achados_de_qualidade as tabela
 
 CHAVE = ("regra", "cnpj", "documento", "referencia", "grupo", "conta")
+FUSO_DA_CVM = "America/Sao_Paulo"  # as datas de entrega da CVM vêm sem horário nem fuso
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,14 @@ class ResumoDaGravacao:
 
 def _data(valor: object) -> date:
     return pd.Timestamp(valor).date()  # type: ignore[arg-type]
+
+
+def _momento(valor: object) -> datetime:
+    """Em UTC; data sem fuso é a de Brasília (assim o SQLite e o PostgreSQL guardam igual)."""
+    momento = pd.Timestamp(valor)  # type: ignore[arg-type]
+    if momento.tzinfo is None:
+        momento = momento.tz_localize(FUSO_DA_CVM)
+    return momento.tz_convert("UTC").to_pydatetime()
 
 
 def _numero(valor: float | None) -> float | None:
@@ -113,7 +122,7 @@ def gravar_achados(
                 sa.insert(tabela).values(
                     id=uuid.uuid4(),
                     **dict(zip(CHAVE, chave, strict=True)),
-                    valido_desde=pd.Timestamp(achado.valido_desde).to_pydatetime(),
+                    valido_desde=_momento(achado.valido_desde),
                     **_campos(achado, agora),
                 )
             )

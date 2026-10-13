@@ -163,3 +163,11 @@ def test_achados_de_le_os_abertos_e_como_era_na_data(motor):
     assert antes_da_entrega == []  # o achado não existia antes da DFP ser entregue
     assert [a.regra for a in entre_as_rodadas] == ["R1"]
     assert entre_as_rodadas[0].referencia == date(2023, 12, 31)
+
+
+def test_data_sem_fuso_e_a_de_brasilia(motor):
+    """A CVM informa só o dia da entrega (horário de Brasília): 20/03 0h = 20/03 3h UTC."""
+    with motor.begin() as c:
+        _gravar(c, [_achado(valido_desde=pd.Timestamp("2026-03-20"))], PRIMEIRA_RODADA)
+        guardado = _todas(c)[0].valido_desde
+    assert guardado.replace(tzinfo=UTC) == datetime(2026, 3, 20, 3, tzinfo=UTC)

@@ -367,7 +367,7 @@ def _primeiro_nivel(contas: pd.DataFrame) -> pd.Series:
     return contas["conta"].str.count(r"\.") == 1
 
 
-def _contas_principais(contas: pd.DataFrame) -> pd.DataFrame:
+def contas_principais(contas: pd.DataFrame) -> pd.DataFrame:
     """Ativo total, receita, lucro do período e patrimônio líquido (os dois últimos pela descrição)."""
     demonstracao, conta = contas["demonstracao"], contas["conta"]
     descricao = contas["descricao"].str.strip()
@@ -399,8 +399,8 @@ def r6_refeito_no_seguinte(
     mesmas empresas; `recebido_em_seguinte`, a data de entrega dele por CNPJ (o achado só passa a
     existir nessa data).
     """
-    original = _contas_principais(contas[contas["ordem"] == "ultimo"])
-    refeito = _contas_principais(seguintes[seguintes["ordem"] == "penultimo"])
+    original = contas_principais(contas[contas["ordem"] == "ultimo"])
+    refeito = contas_principais(seguintes[seguintes["ordem"] == "penultimo"])
     chave = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
     juntos = original.merge(
         refeito[[*chave, "valor"]], on=chave, suffixes=("", "_refeito")
@@ -456,8 +456,8 @@ def r5_reapresentado(
 ) -> list[Achado]:
     """Conta principal que mudou entre duas versões do mesmo documento."""
     chave = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
-    antes = _contas_principais(antiga[antiga["ordem"] == "ultimo"])
-    depois = _contas_principais(nova[nova["ordem"] == "ultimo"])
+    antes = contas_principais(antiga[antiga["ordem"] == "ultimo"])
+    depois = contas_principais(nova[nova["ordem"] == "ultimo"])
     juntos = antes.merge(
         depois[[*chave, "valor", "versao"]], on=chave, suffixes=("", "_nova")
     )
@@ -529,6 +529,8 @@ def r7_salto_fora_do_padrao(
     comunicados) que podem explicar o salto.
     """
     escolhidas = _receita_e_ativo(contas)
+    if escolhidas.empty:  # sem datas, as colunas de data nem são datas e o merge recusa
+        return []
     atual = escolhidas[escolhidas["ordem"] == "ultimo"].copy()
     um_ano = pd.DateOffset(years=1)
     atual["inicio_anterior"] = atual["inicio"] - um_ano
