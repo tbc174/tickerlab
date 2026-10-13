@@ -117,6 +117,17 @@ def test_migracao_cria_todas_as_tabelas(motor):
     } <= tabelas
 
 
+def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("tentativas")}
+    assert colunas == {"usuario_id", "ticker", "impressao", "criada_em"}
+    chave = inspecao.get_pk_constraint("tentativas")["constrained_columns"]
+    assert set(chave) == {"usuario_id", "ticker", "impressao"}
+    (estrangeira,) = inspecao.get_foreign_keys("tentativas")
+    assert estrangeira["referred_table"] == "usuarios"
+    assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
     url = motor.url.render_as_string(hide_password=False)
     migrar_para("base", url)
@@ -342,3 +353,22 @@ def test_mensagem_sem_valores_usa_so_identificadores():
         "UniqueViolation (código 23505); tabela usuarios; restrição usuarios_email_key"
     )
     assert mensagem_sem_valores(ValueError("não é do banco")) is None
+
+
+def test_tentativas_no_banco_de_verdade_nao_repetem_e_somem_com_a_conta(motor):
+    """No CI roda no PostgreSQL: confere o ON CONFLICT DO NOTHING e a cascata reais."""
+    from src.banco import tentativas
+
+    with motor.begin() as conexao:
+        ana, _ = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
+        bia, _ = repo.entrar(conexao, "g-bia", "bia@exemplo.com")
+        for marca in ("a" * 64, "a" * 64, "b" * 64):
+            tentativas.registrar_tentativa(conexao, ana.id, "PETR4.SA", marca)
+        tentativas.registrar_tentativa(conexao, bia.id, "PETR4.SA", "a" * 64)
+    with motor.begin() as conexao:
+        assert tentativas.contar_tentativas(conexao, ana.id, "PETR4.SA") == 2
+        assert tentativas.contar_tentativas(conexao, bia.id, "PETR4.SA") == 1
+        repo.apagar_conta(conexao, ana.id)
+    with motor.connect() as conexao:
+        assert tentativas.contar_por_ativo(conexao, ana.id) == {}
+        assert tentativas.contar_por_ativo(conexao, bia.id) == {"PETR4.SA": 1}

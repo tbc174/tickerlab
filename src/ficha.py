@@ -360,6 +360,24 @@ def total_de_tentativas(combinacoes_da_grade: int, tentativas_da_pessoa: int) ->
     return max(combinacoes_da_grade, 1) + max(tentativas_da_pessoa - 1, 0)
 
 
+def texto_das_tentativas(tentativas_da_pessoa: int, ticker: str, teto: int) -> str:
+    """A frase do contador: quantas variações a pessoa já testou neste ativo (D2)."""
+    if tentativas_da_pessoa <= 1:
+        return (
+            f"Esta é a primeira variação que você testa em {ticker}. Cada parâmetro, período ou "
+            "custo diferente conta como uma tentativa nova."
+        )
+    quantas = (
+        f"{teto:,}+".replace(",", ".")
+        if tentativas_da_pessoa >= teto
+        else str(tentativas_da_pessoa)
+    )
+    return (
+        f"Você testou {quantas} variações em {ticker}. Com tantas tentativas, a chance de um "
+        "resultado bonito por acaso sobe: a pergunta do acaso já desconta isso."
+    )
+
+
 def chance_de_nao_ser_sorte(
     retorno: pd.Series,
     variancia_dos_sharpes_diarios: float,

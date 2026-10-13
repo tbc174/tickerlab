@@ -26,13 +26,15 @@ from src.banco.modelo import (
     usuarios,
     watchlists,
 )
+from src.banco.tentativas import contar_por_ativo
 from src.banco.usuarios import Usuario
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
 # alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
 # Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021). Versão 6: o
-# TickerLab se apresenta como produto por assinatura, não mais como projeto educacional
-VERSAO_DOS_TERMOS = "2026-10-13.6"
+# TickerLab se apresenta como produto por assinatura, não mais como projeto educacional. Versão 7:
+# a contagem das tentativas do backtest (ficha "Foi sorte?", só a impressão SHA-256)
+VERSAO_DOS_TERMOS = "2026-10-13.7"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
@@ -102,6 +104,7 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
             },
         },
         "preferencias": dict(prefs.dados) if prefs else {},
+        "tentativas_por_ativo": contar_por_ativo(conexao, usuario_id),
         "favoritos": [
             l.ticker
             for l in conexao.execute(

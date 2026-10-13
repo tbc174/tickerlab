@@ -86,6 +86,17 @@ favoritos = sa.Table(
     _momento("criado_em"),
 )
 
+# Ficha "Foi sorte?" (0027): cada configuração diferente do backtest que a pessoa rodou num ativo,
+# guardada só pela impressão (SHA-256); serve para contar as tentativas (ADR 0037, D2)
+tentativas = sa.Table(
+    "tentativas",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("ticker", sa.String(20), primary_key=True),
+    sa.Column("impressao", sa.String(64), primary_key=True),
+    _momento("criada_em"),
+)
+
 simulacoes = sa.Table(
     "simulacoes",
     metadata,

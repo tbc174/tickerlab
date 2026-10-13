@@ -133,3 +133,37 @@ def test_tolerancia_entra_na_checagem_de_quedas():
     app.number_input(key="ficha_tolerancia").set_value(5).run()
     assert not app.exception
     assert "você disse aguentar até 5%" in _textos(app.markdown)
+
+
+# --- Contador de tentativas ---------------------------------------------------------------
+
+
+def test_ficha_mostra_quantas_variacoes():
+    app = _backtest_local()  # a estratégia de abertura e o Cruzamento de médias
+    assert "Você testou 2 variações em PETR4.SA" in _textos(app.markdown)
+
+
+def test_trocar_um_parametro_soma_uma_tentativa():
+    app = _backtest_local()
+    app.slider(key=f"parametro_{ESTRATEGIA}_curta").set_value(21).run()
+    assert not app.exception
+    assert "Você testou 3 variações" in _textos(app.markdown)
+    app.slider(key=f"parametro_{ESTRATEGIA}_curta").set_value(20).run()
+    assert "Você testou 3 variações" in _textos(
+        app.markdown
+    )  # voltar não conta de novo
+
+
+def test_com_login_as_tentativas_ficam_na_conta(banco, monkeypatch):
+    from src.banco import tentativas
+    from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario
+
+    entrar_como(monkeypatch, "duda", "duda@exemplo.com")
+    app = abrir_app("backtest")  # 1ª configuração: a estratégia que a página abre
+    app.selectbox(key="backtest_estrategia").select(ESTRATEGIA).run()  # 2ª
+    assert not app.exception
+    with banco.connect() as conexao:
+        por_ativo = tentativas.contar_por_ativo(conexao, id_do_usuario(banco, "duda"))
+    assert list(por_ativo.values()) == [2]
+    volta = abrir_app("backtest")  # sessão nova, só a 1ª configuração de novo
+    assert "Você testou 2 variações" in _textos(volta.markdown)  # veio da conta

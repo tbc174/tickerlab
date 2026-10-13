@@ -17,6 +17,7 @@ from src.acaso import (
     testar_contra_o_acaso,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco.tentativas import TETO_POR_PESSOA
 from src.cdi import CDIIndisponivelError, curva_do_cdi
 from src.conteudo import proteger_cifrao
 from src.dados import normalizar_ticker
@@ -26,7 +27,7 @@ from src.exportacao import (
     montar_tabela_de_curvas,
     montar_tabela_de_operacoes,
 )
-from src.ficha import PedidoDaFicha
+from src.ficha import PedidoDaFicha, texto_das_tentativas
 from src.imposto import aplicar_imposto
 from src.metricas import (
     calcular_intervalo_do_sharpe,
@@ -56,7 +57,12 @@ from telas.comum import (
 )
 from telas.dados_da_conta import ESPERAS_DEPOIS_DO_STOP, oferecer_salvar_simulacao
 from telas.estrategias.comum import ESTRATEGIA_DE_REFERENCIA, obter_estrategias
-from telas.estrategias.ficha import calcular_ficha, escolher_tolerancia, mostrar_ficha
+from telas.estrategias.ficha import (
+    calcular_ficha,
+    contar_esta_tentativa,
+    escolher_tolerancia,
+    mostrar_ficha,
+)
 from telas.relatorios.estudio import atalho_para_o_relatorio
 
 
@@ -662,6 +668,9 @@ def secao_validacao(
         livres = _escolher_livres(nome, parametros_numericos(nome))
     with col_tolerancia:
         tolerancia = escolher_tolerancia()
+    ticker, tentativas_da_pessoa = contar_esta_tentativa(
+        nome, parametros, protecoes, custo
+    )
     pedido = PedidoDaFicha(
         dados=dados,
         estrategia=nome,
@@ -673,9 +682,13 @@ def secao_validacao(
         taxa_livre_de_risco=taxa_livre_de_risco,
         cdi_diario=cdi_diario,
         tolerancia_de_queda=tolerancia,
+        tentativas_da_pessoa=tentativas_da_pessoa,
     )
     try:
-        mostrar_ficha(calcular_ficha(pedido))
+        mostrar_ficha(
+            calcular_ficha(pedido),
+            texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA),
+        )
     except ValueError as erro:
         st.info(str(erro))
     with st.expander("Ver o detalhe técnico"):
