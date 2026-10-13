@@ -39,6 +39,20 @@ NOMES_DAS_SERIES = {
 FONTE_SGS = "Banco Central, SGS {}"
 FONTE_FOCUS = "Banco Central, boletim Focus (mediana)"
 
+MESES_ABREVIADOS = (
+    "jan",
+    "fev",
+    "mar",
+    "abr",
+    "mai",
+    "jun",
+    "jul",
+    "ago",
+    "set",
+    "out",
+    "nov",
+    "dez",
+)
 MESES_NO_ANO = 12
 DIAS_UTEIS_NO_ANO = 252
 ANOS_DE_HISTORICO = 10
@@ -60,6 +74,7 @@ class Numero:
     referencia: date | None  # o dia ou o mês a que o número se refere
     divulgado_em: date | None
     fonte: str
+    referencia_mensal: bool = False  # True: o número vale para o mês inteiro (IPCA)
 
 
 @dataclass(frozen=True)
@@ -136,7 +151,11 @@ def _ultimo(lida: SerieLida | None) -> tuple[float | None, date | None]:
 
 
 def _numero_da_serie(
-    lidas: dict[str, SerieLida], codigo: str, nome: str, unidade: str
+    lidas: dict[str, SerieLida],
+    codigo: str,
+    nome: str,
+    unidade: str,
+    referencia_mensal: bool = False,
 ) -> Numero:
     lida = lidas.get(codigo)
     valor, referencia = _ultimo(lida)
@@ -147,6 +166,7 @@ def _numero_da_serie(
         referencia,
         lida.divulgado_em if lida else None,
         FONTE_SGS.format(codigo.removeprefix("bcb-sgs-")),
+        referencia_mensal,
     )
 
 
@@ -170,9 +190,9 @@ def _numeros(
         _numero_da_serie(lidas, SELIC_META, NOME_SELIC, "% ao ano"),
         Numero(NOME_CDI_12M, cdi_12m, "% em 12 meses", referencia_cdi, None,
                FONTE_SGS.format(12)),
-        _numero_da_serie(lidas, IPCA, NOME_IPCA_MES, "% no mês"),
+        _numero_da_serie(lidas, IPCA, NOME_IPCA_MES, "% no mês", referencia_mensal=True),
         Numero(NOME_IPCA_12M, ipca_12m, "% em 12 meses", referencia_ipca,
-               ipca.divulgado_em if ipca else None, FONTE_SGS.format(433)),
+               ipca.divulgado_em if ipca else None, FONTE_SGS.format(433), True),
         Numero(NOME_JURO_REAL, juro_real, "% em 12 meses (CDI descontado o IPCA)",
                referencia_cdi, None, "Conta do TickerLab com o CDI e o IPCA acima"),
         _numero_da_serie(lidas, DOLAR, NOME_DOLAR, "R$ por US$"),
@@ -245,3 +265,40 @@ def montar_painel(
         historico=_historico(lidas, hoje),
         avisos=_avisos(lidas, cdi_diario),
     )
+
+
+# --- textos --------------------------------------------------------------------------------
+
+
+def _decimal(valor: float) -> str:
+    return f"{valor:,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
+
+
+def formatar_valor(numero: Numero) -> str:
+    """O valor como a tela mostra: "15,00% ao ano", "0,44%", "R$ 5,40" ou "—" sem dado."""
+    if numero.valor is None:
+        return "—"
+    if numero.unidade.startswith("R$"):
+        return f"R$ {_decimal(numero.valor)}"
+    if numero.unidade == "% ao ano":
+        return f"{_decimal(numero.valor)}% ao ano"
+    return f"{_decimal(numero.valor)}%"
+
+
+def _data(dia: date, mensal: bool) -> str:
+    if mensal:
+        return f"{MESES_ABREVIADOS[dia.month - 1]}/{dia.year}"
+    return f"{dia:%d/%m/%Y}"
+
+
+def legenda(numero: Numero) -> str:
+    """De onde veio o número: a referência, a divulgação (quando houver) e a fonte."""
+    partes = []
+    if numero.referencia is not None:
+        partes.append(
+            f"Referência: {_data(numero.referencia, numero.referencia_mensal)}"
+        )
+    if numero.divulgado_em is not None:
+        partes.append(f"divulgado em {numero.divulgado_em:%d/%m/%Y}")
+    partes.append(numero.fonte)
+    return " · ".join(partes)

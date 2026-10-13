@@ -212,6 +212,15 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "juros_e_inflacao",
+        "Juros e inflação",
+        GRUPO_RESEARCH,
+        ":material/percent:",
+        "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada "
+        "número (Banco Central).",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "fundamentos",
         "Fundamentos",
         GRUPO_RESEARCH,

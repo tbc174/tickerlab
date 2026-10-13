@@ -146,3 +146,38 @@ def test_valor_revisto_mostra_a_safra_mais_nova_e_a_data(conexao):
 
 def test_serie_sem_dados_nao_aparece_na_leitura(conexao):
     assert ji.ler_series(conexao, HOJE) == {}
+
+
+# --- textos para a tela (e para a API) ----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("valor", "unidade", "esperado"),
+    [
+        (15.0, "% ao ano", "15,00% ao ano"),
+        (0.44, "% no mês", "0,44%"),
+        (6.1678, "% em 12 meses", "6,17%"),
+        (5.4, "R$ por US$", "R$ 5,40"),
+        (None, "% ao ano", "—"),
+    ],
+)
+def test_valor_formatado_em_portugues(valor, unidade, esperado):
+    numero = ji.Numero("X", valor, unidade, None, None, "fonte")
+    assert ji.formatar_valor(numero) == esperado
+
+
+def test_legenda_diz_a_referencia_a_divulgacao_e_a_fonte():
+    painel = ji.montar_painel(_lidas(), None, HOJE)
+    assert ji.legenda(_numero(painel, ji.NOME_SELIC)) == (
+        "Referência: 10/10/2026 · divulgado em 10/10/2026 · Banco Central, SGS 432"
+    )
+    assert ji.legenda(_numero(painel, ji.NOME_IPCA_MES)).startswith(
+        "Referência: set/2026"
+    )
+
+
+def test_legenda_sem_divulgacao_nao_inventa_data():
+    numero = ji.Numero(
+        "CDI", 13.4, "% em 12 meses", date(2026, 10, 9), None, "Banco Central, SGS 12"
+    )
+    assert ji.legenda(numero) == "Referência: 09/10/2026 · Banco Central, SGS 12"
