@@ -5,7 +5,8 @@ lista de `Lancamento` (compra, venda, desdobro, provento...). Aqui ficam as cont
 (prontas para a API e para outra interface, ADR 0044):
 
 - **Proventos:** dividendos, juros sobre capital próprio (JCP) e rendimentos de fundos, por ativo,
-  por ano e nos últimos 12 meses.
+  por ano e nos últimos 12 meses; junto, a taxa do aluguel de ações (não é provento, mas é renda
+  do ativo e cai na mesma conta).
 - **Custo médio pela regra da Receita:** a compra soma ao custo o que se pagou; a venda baixa a
   quantidade pelo preço médio, que não muda; desdobro e grupamento mudam a quantidade sem mudar o
   custo total. Se a movimentação começa depois da primeira compra (vendeu mais do que comprou),
@@ -24,8 +25,9 @@ TIPOS_DE_PROVENTO = (
     "dividendo",
     "jcp",
     "rendimento",
-    "reembolso",
-)  # reembolso: de ação emprestada
+    "reembolso",  # o provento da ação enquanto ela está emprestada
+    "aluguel",  # a taxa paga por quem tomou as ações emprestadas
+)
 # entram ou saem ações sem dinheiro: o custo total não muda
 ENTRAM_SEM_CUSTO = ("desdobro", "bonificacao")
 SAEM_SEM_CUSTO = ("grupamento",)
@@ -62,10 +64,12 @@ NOMES_DOS_PROVENTOS = {
     "jcp": "JCP (líquido)",
     "rendimento": "Rendimentos",
     "reembolso": "Reembolsos",
+    "aluguel": "Aluguel",
 }
 NOTA_DOS_PROVENTOS = (
     "O que caiu na conta, como a B3 registra. O JCP já vem com os 15% de imposto retidos na "
-    "fonte. Reembolso é o provento pago enquanto a ação estava emprestada (aluguel). Os últimos "
+    "fonte. Reembolso é o provento pago enquanto a ação estava emprestada; Aluguel é a taxa que "
+    "quem tomou as ações emprestadas paga (não é provento, mas é renda do ativo). Os últimos "
     "12 meses contam só o que já foi pago até hoje."
 )
 NOTA_DO_CUSTO = (

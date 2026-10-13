@@ -174,7 +174,7 @@ def test_tipos_que_nao_mudam_custo_nem_sao_proventos_ficam_de_fora_sem_alarde():
         [
             _linha("Debito", "01/02/2025", "Transferência", PETR, 10, "-", "-"),
             _linha("Credito", "01/02/2025", "Transferência", PETR, 10, "-", "-"),
-            _linha("Credito", "01/02/2025", "Empréstimo", PETR, 10, "-", 3),
+            _linha("Credito", "01/02/2025", "Empréstimo", PETR, 10, "-", "-"),
             _linha(
                 "Credito",
                 "01/02/2025",
@@ -421,3 +421,18 @@ def test_entrada_sem_valor_que_nao_e_volta_continua_sem_custo_conhecido():
     )
     (custo,) = custo_medio(list(mov.lancamentos))
     assert not custo.completo
+
+
+def test_taxa_do_aluguel_vira_renda_e_a_linha_so_de_quantidade_fica_de_fora():
+    """A B3 escreve o aluguel de ações em duas linhas "Empréstimo" (planilha real, 13/10/2026):
+    uma com a quantidade emprestada e sem valor, outra sem quantidade e com a taxa recebida."""
+    mov = _ler(
+        [
+            _linha("Credito", "25/09/2026", "Empréstimo", VGIR, 0, "-", 7.61),
+            _linha("Credito", "25/09/2026", "Empréstimo", VGIR, 800, "-", "-"),
+        ]
+    )
+    assert mov.lancamentos == (
+        Lancamento(date(2026, 9, 25), "VGIR11", "aluguel", 0, 7.61),
+    )
+    assert mov.fora_das_contas == 1
