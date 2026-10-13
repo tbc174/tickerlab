@@ -21,6 +21,7 @@ from src.banco.eventos import empresas_dos_tickers
 from src.dados import normalizar_ticker
 from src.moedas import moeda_do_ticker
 from telas.comum import (
+    PAGINAS_DO_MENU,
     ajuda_do,
     avisar_parametros,
     cabecalho_da_pagina,
@@ -429,6 +430,12 @@ def pagina_fundamentos():
         _mostrar_mudanca_nos_riscos(empresa[0])
     with st.expander("Como estes números são calculados"):
         st.markdown(_metodologia_dos_fundamentos(mercado))
+    if mercado is MERCADO_B3:
+        st.page_link(
+            PAGINAS_DO_MENU["relatorio_empresa"],
+            label="Relatório da empresa: notas, comparação com o setor e valuation",
+            icon=":material/summarize:",
+        )
     avisar_parametros(
         r,
         (

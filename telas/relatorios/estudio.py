@@ -681,7 +681,7 @@ def _gerar(pedido, config, usuario):
 def mostrar_estudio(usuario, limites, c):
     tipo = st.segmented_control(
         "Tipo de relatório",
-        list(relatorios.NOMES_DOS_RELATORIOS),
+        list(relatorios.TIPOS_DO_ESTUDIO),
         format_func=relatorios.NOMES_DOS_RELATORIOS.get,
         default=relatorios.ATIVO,
         required=True,

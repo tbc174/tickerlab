@@ -564,6 +564,17 @@
     "url": "fundamentos"
   },
   {
+    "chave": "relatorio_empresa",
+    "contrato": null,
+    "descricao": "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Relatório da empresa",
+    "url": "relatorio-empresa"
+  },
+  {
     "chave": "por_dentro",
     "contrato": null,
     "descricao": "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
