@@ -175,3 +175,54 @@ def test_fatias_saem_da_maior_para_a_menor():
     r = ac.raio_x(_misturada(), {})
     pesos = [f.peso for f in r.por_tipo]
     assert pesos == sorted(pesos, reverse=True)
+
+
+# --- Rebalanceamento -----------------------------------------------------------------------
+
+
+def _com_quantidades():
+    carteira = _carteira({"PETR4": 300.0, "VALE3": 100.0})
+    carteira.posicoes["quantidade"] = [10.0, 2.0]  # PETR4 a R$ 30, VALE3 a R$ 50
+    return carteira
+
+
+def test_rebalancear_chega_nos_pesos_alvo():
+    ajustes = {
+        a.codigo: a
+        for a in ac.rebalancear(_com_quantidades(), {"PETR4": 0.5, "VALE3": 0.5})
+    }
+    assert ajustes["PETR4"].diferenca == pytest.approx(-100.0)  # vender R$ 100
+    assert ajustes["VALE3"].diferenca == pytest.approx(100.0)  # comprar R$ 100
+    assert ajustes["PETR4"].peso_atual == pytest.approx(0.75)
+    assert ajustes["VALE3"].valor_alvo == pytest.approx(200.0)
+
+
+def test_quantidade_aproximada_arredonda_para_baixo():
+    ajustes = {
+        a.codigo: a
+        for a in ac.rebalancear(_com_quantidades(), {"PETR4": 0.5, "VALE3": 0.5})
+    }
+    assert ajustes["PETR4"].quantidade == -3  # R$ 100 ÷ R$ 30 = 3,3 ações
+    assert ajustes["VALE3"].quantidade == 2  # R$ 100 ÷ R$ 50
+
+
+def test_peso_zero_vende_tudo():
+    ajustes = {
+        a.codigo: a
+        for a in ac.rebalancear(_com_quantidades(), {"PETR4": 1.0, "VALE3": 0.0})
+    }
+    assert ajustes["VALE3"].diferenca == pytest.approx(-100.0)
+
+
+def test_pesos_que_nao_somam_100_sao_recusados():
+    with pytest.raises(ValueError, match="somam 90"):
+        ac.rebalancear(_com_quantidades(), {"PETR4": 0.5, "VALE3": 0.4})
+
+
+def test_faltar_o_peso_de_um_ativo_e_recusado():
+    with pytest.raises(ValueError, match="VALE3"):
+        ac.rebalancear(_com_quantidades(), {"PETR4": 1.0})
+
+
+def test_aviso_do_rebalanceamento_diz_que_nao_e_recomendacao():
+    assert "Não é recomendação" in ac.AVISO_DO_REBALANCEAMENTO

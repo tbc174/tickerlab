@@ -170,3 +170,61 @@ def raio_x(carteira: CarteiraB3, setores: dict[str, str]) -> RaioX:
     return RaioX(
         _fatias(por_tipo, total), _fatias(por_setor, total), _fatias(por_moeda, total)
     )
+
+
+# --- Rebalanceamento -----------------------------------------------------------------------
+
+AVISO_DO_REBALANCEAMENTO = (
+    "A conta usa os pesos que você escolheu e os valores da planilha da B3. Não é recomendação: "
+    "custos, imposto e o preço na hora da ordem mudam o resultado. Tesouro e renda fixa ficam fora "
+    "da conta."
+)
+TOLERANCIA_DA_SOMA = 0.001  # 0,1 ponto: arredondamento de quem digita os pesos
+
+
+@dataclass(frozen=True)
+class Ajuste:
+    codigo: str
+    valor_atual: float  # R$
+    peso_atual: float
+    peso_alvo: float
+    valor_alvo: float  # R$
+    diferenca: float  # R$: positivo = comprar, negativo = vender
+    quantidade: (
+        int  # ações a comprar (+) ou vender (−), pelo preço da planilha, para baixo
+    )
+
+
+def rebalancear(
+    carteira: CarteiraB3, pesos_alvo: dict[str, float]
+) -> tuple[Ajuste, ...]:
+    """Quanto comprar ou vender de cada ativo com cotação para chegar aos pesos escolhidos.
+
+    `pesos_alvo`: código (sem .SA) → fração (0,25 = 25%). Precisa trazer todos os ativos da
+    carteira e somar 100%: um ativo esquecido não vira "vender tudo" sem a pessoa pedir.
+    """
+    posicoes = carteira.posicoes
+    faltando = [c for c in posicoes["codigo"] if c not in pesos_alvo]
+    if faltando:
+        raise ValueError(f"Falta o peso de: {', '.join(faltando)}.")
+    soma = sum(pesos_alvo.get(c, 0.0) for c in posicoes["codigo"])
+    if abs(soma - 1) > TOLERANCIA_DA_SOMA:
+        raise ValueError(
+            f"Os pesos escolhidos somam {soma * 100:.0f}%: precisam somar 100%.".replace(
+                ".", ","
+            )
+        )
+    total = float(posicoes["valor"].sum())
+    ajustes = []
+    for _, p in posicoes.iterrows():
+        alvo = pesos_alvo[p["codigo"]]
+        diferenca = alvo * total - float(p["valor"])
+        preco = float(p["valor"]) / float(p["quantidade"]) if p["quantidade"] else 0.0
+        quantidade = (
+            int(diferenca / preco) if preco else 0
+        )  # int() corta em direção ao zero
+        ajustes.append(
+            Ajuste(p["codigo"], float(p["valor"]), float(p["valor"]) / total, alvo,
+                   alvo * total, diferenca, quantidade)
+        )  # fmt: skip
+    return tuple(ajustes)
