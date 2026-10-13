@@ -1,0 +1,312 @@
+[
+  {
+    "chave": "inicio",
+    "descricao": "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Início",
+    "url": "inicio"
+  },
+  {
+    "chave": "relatorio",
+    "descricao": "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
+    "e_pro": false,
+    "grupo": "",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Gerar relatório",
+    "url": "relatorio"
+  },
+  {
+    "chave": "guia",
+    "descricao": "Como os números são calculados, os limites do app e cada termo explicado em português.",
+    "e_pro": false,
+    "grupo": "Aprender",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Guia e glossário",
+    "url": "guia"
+  },
+  {
+    "chave": "termos",
+    "descricao": "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
+    "e_pro": false,
+    "grupo": "Aprender",
+    "no_menu": false,
+    "somente_admin": false,
+    "titulo": "Termos de uso",
+    "url": "termos"
+  },
+  {
+    "chave": "privacidade",
+    "descricao": "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
+    "e_pro": false,
+    "grupo": "Aprender",
+    "no_menu": false,
+    "somente_admin": false,
+    "titulo": "Política de privacidade",
+    "url": "privacidade"
+  },
+  {
+    "chave": "trade",
+    "descricao": "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
+    "e_pro": false,
+    "grupo": "Mais",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "TickerLab Trade · Beta",
+    "url": "trade"
+  },
+  {
+    "chave": "visao_geral",
+    "descricao": "O preço do ativo e os números-chave: retorno, risco e os dias mais extremos.",
+    "e_pro": false,
+    "grupo": "Analisar",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Visão geral",
+    "url": "visao-geral"
+  },
+  {
+    "chave": "risco",
+    "descricao": "Quanto o ativo já caiu e o quanto o preço oscila ao longo do tempo.",
+    "e_pro": false,
+    "grupo": "Analisar",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Risco",
+    "url": "risco"
+  },
+  {
+    "chave": "retorno_mensal",
+    "descricao": "Como o ativo foi em cada mês e ano, e se existem meses melhores que outros.",
+    "e_pro": false,
+    "grupo": "Analisar",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Retorno mensal",
+    "url": "retorno-mensal"
+  },
+  {
+    "chave": "comparar",
+    "descricao": "Coloque dois ou mais ativos lado a lado, com o Ibovespa e o S&P 500 de referência.",
+    "e_pro": false,
+    "grupo": "Analisar",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Comparar ativos",
+    "url": "comparar"
+  },
+  {
+    "chave": "correlacao",
+    "descricao": "Quanto o ativo anda junto com outros e com o mercado (o beta mede essa sensibilidade).",
+    "e_pro": false,
+    "grupo": "Analisar",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Correlação e beta",
+    "url": "correlacao"
+  },
+  {
+    "chave": "backtest",
+    "descricao": "Teste no passado: e se eu tivesse seguido esta regra de compra e venda?",
+    "e_pro": false,
+    "grupo": "Estratégias",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Backtest",
+    "url": "backtest"
+  },
+  {
+    "chave": "ranking",
+    "descricao": "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
+    "e_pro": false,
+    "grupo": "Estratégias",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Ranking de estratégias",
+    "url": "ranking"
+  },
+  {
+    "chave": "carteira",
+    "descricao": "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
+    "e_pro": false,
+    "grupo": "Estratégias",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Carteira",
+    "url": "carteira"
+  },
+  {
+    "chave": "experimentos",
+    "descricao": "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
+    "e_pro": false,
+    "grupo": "Estratégias",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Experimentos",
+    "url": "experimentos"
+  },
+  {
+    "chave": "regimes",
+    "descricao": "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
+    "e_pro": false,
+    "grupo": "Estratégias",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Fases do mercado",
+    "url": "regimes"
+  },
+  {
+    "chave": "aprendizado",
+    "descricao": "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
+    "e_pro": true,
+    "grupo": "Avançado (Pro)",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Aprendizado de máquina",
+    "url": "aprendizado"
+  },
+  {
+    "chave": "pares",
+    "descricao": "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
+    "e_pro": true,
+    "grupo": "Avançado (Pro)",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Pairs trading",
+    "url": "pares"
+  },
+  {
+    "chave": "research",
+    "descricao": "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, com o documento original de cada item.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Acontecimentos",
+    "url": "research"
+  },
+  {
+    "chave": "fundamentos",
+    "descricao": "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Fundamentos",
+    "url": "fundamentos"
+  },
+  {
+    "chave": "por_dentro",
+    "descricao": "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Pessoas de dentro",
+    "url": "por-dentro"
+  },
+  {
+    "chave": "donos",
+    "descricao": "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto está vendido. Carteiras oficiais entregues à CVM e à SEC.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Donos e fundos",
+    "url": "donos"
+  },
+  {
+    "chave": "newsletter",
+    "descricao": "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o documento de cada item. Na tela ou em PDF.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Newsletter",
+    "url": "newsletter"
+  },
+  {
+    "chave": "carteira_research",
+    "descricao": "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) para o Research e a Newsletter darem mais destaque às maiores posições.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Minha carteira",
+    "url": "carteira-research"
+  },
+  {
+    "chave": "alertas",
+    "descricao": "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Alertas",
+    "url": "alertas"
+  },
+  {
+    "chave": "parametros",
+    "descricao": "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só para um, e veja o efeito antes de salvar.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Parâmetros",
+    "url": "parametros"
+  },
+  {
+    "chave": "simulacoes",
+    "descricao": "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Minhas simulações",
+    "url": "simulacoes"
+  },
+  {
+    "chave": "momentum",
+    "descricao": "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Favoritos e momentum",
+    "url": "momentum"
+  },
+  {
+    "chave": "meus_dados",
+    "descricao": "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Meus dados e privacidade",
+    "url": "meus-dados"
+  },
+  {
+    "chave": "planos",
+    "descricao": "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
+    "e_pro": false,
+    "grupo": "Minha conta",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Planos e assinatura",
+    "url": "planos"
+  },
+  {
+    "chave": "admin",
+    "descricao": "Usuários, planos, assinaturas e o registro de ações de administrador.",
+    "e_pro": false,
+    "grupo": "Administração",
+    "no_menu": true,
+    "somente_admin": true,
+    "titulo": "Administração",
+    "url": "admin"
+  }
+]

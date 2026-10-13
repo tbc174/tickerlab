@@ -1,0 +1,79 @@
+{
+  "com_cobranca": [
+    "pro"
+  ],
+  "tabela": [
+    {
+      "Gratuito": "5",
+      "Plus": "30",
+      "Pro": "Ilimitadas",
+      "Recurso": "Simulações salvas"
+    },
+    {
+      "Gratuito": "3",
+      "Plus": "10",
+      "Pro": "20",
+      "Recurso": "Favoritos"
+    },
+    {
+      "Gratuito": "4",
+      "Plus": "6",
+      "Pro": "8",
+      "Recurso": "Ativos na carteira"
+    },
+    {
+      "Gratuito": "Do ativo, 3 por dia",
+      "Plus": "Todos os tipos, 20 por dia",
+      "Pro": "Todos os tipos, ilimitados",
+      "Recurso": "Relatórios em PDF"
+    },
+    {
+      "Gratuito": "10",
+      "Plus": "50",
+      "Pro": "200",
+      "Recurso": "PDFs originais guardados (1 ano)"
+    },
+    {
+      "Gratuito": "Não",
+      "Plus": "Não",
+      "Pro": "Sim",
+      "Recurso": "Aprendizado de máquina"
+    },
+    {
+      "Gratuito": "Não",
+      "Plus": "Não",
+      "Pro": "Sim",
+      "Recurso": "Pairs trading"
+    },
+    {
+      "Gratuito": "Não",
+      "Plus": "Não",
+      "Pro": "Sim",
+      "Recurso": "Carteira no Research"
+    },
+    {
+      "Gratuito": "0",
+      "Plus": "10",
+      "Pro": "50",
+      "Recurso": "Parâmetros só para um ativo"
+    },
+    {
+      "Gratuito": "1 de até 10 ativos",
+      "Plus": "3 de até 20 ativos",
+      "Pro": "10 de até 50 ativos",
+      "Recurso": "Listas do Research"
+    },
+    {
+      "Gratuito": "1",
+      "Plus": "5",
+      "Pro": "20",
+      "Recurso": "Alertas compostos"
+    },
+    {
+      "Gratuito": "Sim",
+      "Plus": "Sim",
+      "Pro": "Sim",
+      "Recurso": "Exportar CSV"
+    }
+  ]
+}
