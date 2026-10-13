@@ -79,6 +79,14 @@ def _planos() -> dict:
     return {
         "tabela": planos.tabela_de_planos(),
         "com_cobranca": list(planos.COM_COBRANCA),
+        "nomes": [planos.limites_do(p).nome for p in planos.PLANOS],
+        "nomes_com_cobranca": [planos.limites_do(p).nome for p in planos.COM_COBRANCA],
+        # pagos que ainda não estão à venda (os limites já valem)
+        "nomes_em_breve": [
+            planos.limites_do(p).nome
+            for p in planos.PLANOS
+            if p != "gratuito" and p not in planos.COM_COBRANCA
+        ],
     }
 
 

@@ -68,3 +68,16 @@ def test_site_leva_os_estilos_do_relatorio_e_os_exemplos():
     assert site["estilos_do_relatorio"][0]["nome"] == next(iter(ESTILOS.values())).nome
     assert [e["simbolo"] for e in site["exemplos"]] == list(catalogo.EXEMPLOS)
     assert site["exemplos"][0]["rotulo"] == catalogo.rotulo("PETR4.SA").split(" · ")[0]
+
+
+def test_planos_levam_os_nomes_para_a_tabela_e_a_cobranca():
+    p = exp.conteudo()["planos"]
+    assert p["nomes"] == [planos.limites_do(x).nome for x in planos.PLANOS]
+    assert p["nomes_com_cobranca"] == [
+        planos.limites_do(x).nome for x in planos.COM_COBRANCA
+    ]
+    assert p["nomes_em_breve"] == [
+        planos.limites_do(x).nome
+        for x in planos.PLANOS
+        if x != "gratuito" and x not in planos.COM_COBRANCA
+    ]
