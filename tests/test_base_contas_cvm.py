@@ -181,3 +181,25 @@ def test_so_as_contas_das_regras_ainda_conta_as_repetidas():
     leitura = ler_contas(zip_bytes, "DFP", so_as_das_regras=True)
     assert leitura.contas.empty
     assert leitura.repetidas["linhas"].tolist() == [1]
+
+
+def test_so_as_contas_das_regras_tambem_filtra_contas_ja_lidas():
+    """O ENET traz o plano inteiro: a base usa o mesmo recorte dos dados abertos."""
+    from base.contas_cvm import so_as_contas_das_regras
+
+    zip_bytes = _zip(
+        {
+            "dfp_cia_aberta_DRE_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("3.01"),
+                _dre_na_conta("3.04.02"),
+            ],
+            "dfp_cia_aberta_BPA_ind_2022.csv": [CABECALHO_BPA, _bpa()],
+            "dfp_cia_aberta_DFC_MI_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("6.01"),
+            ],
+        }
+    )
+    completa = ler_contas(zip_bytes, "DFP").contas
+    assert sorted(so_as_contas_das_regras(completa)["conta"]) == ["1", "3.01"]
