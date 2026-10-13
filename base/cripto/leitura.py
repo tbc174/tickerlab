@@ -18,7 +18,8 @@ fração parada do dia é calculada.
 
 **O nó é podado** (ADR 0031): depois de gravar, o leitor diz ao nó até onde ele pode apagar os
 blocos (`liberar_ate`), sempre deixando os que um ponto guardado ainda precisaria para refazer a
-leitura depois de uma reorganização.
+leitura depois de uma reorganização. Se o nó correr demais à frente da leitura (blocos acima de
+`TAMANHO_PARA_FREAR` no disco), a leitura desliga a rede dele até alcançá-lo.
 """
 
 import os
@@ -47,6 +48,11 @@ BLOCOS_POR_PONTO = 1_000
 PONTOS_GUARDADOS = 24
 # o Bitcoin Core nunca apaga os 288 blocos mais novos (cerca de 2 dias)
 BLOCOS_QUE_O_NO_GUARDA = 288
+# freio de disco: com a poda manual, os blocos que a leitura ainda não alcançou ficam no HD; acima
+# de 150 GB o nó para de baixar, abaixo de 50 GB volta (a folga evita ligar e desligar sem parar)
+GIGABYTE = 1024**3
+TAMANHO_PARA_FREAR = 150 * GIGABYTE
+TAMANHO_PARA_SOLTAR = 50 * GIGABYTE
 DIAS_PARA_ESTAR_PARADO = 365
 SEGUNDOS_POR_DIA = 86_400
 MOTIVO_DA_REORGANIZACAO = "reorganização da cadeia: a rede trocou este bloco por outro"
@@ -65,6 +71,8 @@ class FonteDeBlocos(Protocol):
     def bloco(self, hash_do_bloco: str) -> dict: ...
     def liberar_ate(self, altura: int) -> None: ...
     def total_nao_gasto(self, altura: int) -> int: ...
+    def tamanho_dos_blocos(self) -> int: ...
+    def ligar_rede(self, ligada: bool) -> None: ...
 
 
 class CadeiaInconsistente(RuntimeError):
@@ -223,6 +231,15 @@ def _gravar(pasta: Path, lote: _Lote, estado: Estado, no: FonteDeBlocos) -> None
     for velho in pontos[:-PONTOS_GUARDADOS]:
         velho.unlink()
     _liberar_no_no(no, pasta, estado)
+    _frear_se_preciso(no)
+
+
+def _frear_se_preciso(no: FonteDeBlocos) -> None:
+    tamanho = no.tamanho_dos_blocos()
+    if tamanho > TAMANHO_PARA_FREAR:
+        no.ligar_rede(False)
+    elif tamanho < TAMANHO_PARA_SOLTAR:
+        no.ligar_rede(True)
 
 
 def _liberar_no_no(no: FonteDeBlocos, pasta: Path, estado: Estado) -> None:
