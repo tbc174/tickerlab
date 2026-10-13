@@ -187,3 +187,12 @@ def backtest(_conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAt
         custo_por_operacao=pedido.custo_por_operacao,
         backtest=esquemas.de_backtest(resultado, metricas),
     )
+
+
+def openapi_v1() -> dict:
+    """O esquema OpenAPI só da v1 (o contrato publicado em `docs/api/openapi-v1.json`)."""
+    from fastapi import FastAPI
+
+    app = FastAPI(title="TickerLab API (leitura)", version="1")
+    app.include_router(router)
+    return app.openapi()
