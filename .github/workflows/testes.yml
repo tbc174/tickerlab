@@ -33,7 +33,7 @@ jobs:
       # os testes do banco rodam no PostgreSQL de verdade (no PC rodam em SQLite)
       TICKERLAB_TEST_DATABASE_URL: postgresql://postgres:senha_de_teste@localhost:5432/tickerlab_teste
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           fetch-depth: 0 # o passo abaixo compara com o commit anterior
 
@@ -55,7 +55,7 @@ jobs:
           echo "so_texto=$so_texto" >> "$GITHUB_OUTPUT"
           echo "Só texto: $so_texto"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: "3.12"
           cache: pip
@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Construir a imagem
         run: docker build -t tickerlab:ci .
