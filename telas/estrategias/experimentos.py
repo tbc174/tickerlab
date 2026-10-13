@@ -262,7 +262,9 @@ def _experimento_virada_do_mes(dados, taxa_livre_de_risco):
     )
     cartoes = st.columns(4)
     for coluna, metrica in zip(
-        cartoes, ["Retorno total", "Índice de Sharpe", "Maior queda", "Exposição média"]
+        cartoes,
+        ["Retorno total", "Índice de Sharpe", "Maior queda", "Exposição média"],
+        strict=True,
     ):
         coluna.metric(
             metrica,
