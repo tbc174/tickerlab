@@ -12,9 +12,13 @@ import sqlalchemy as sa
 
 from src.banco.modelo import (
     cobertura_de_detentores,
+    cobertura_de_detentores_versoes,
     detentores_por_acao,
+    detentores_por_acao_versoes,
     maiores_detentores,
+    maiores_detentores_versoes,
 )
+from src.banco.versoes import versionar
 from src.detentores import COLUNAS_DO_RESUMO, COLUNAS_DOS_MAIORES
 
 
@@ -35,7 +39,8 @@ def gravar_competencia(
 ) -> int:
     """Troca os dados de uma competência inteira (resumo, maiores e cobertura).
 
-    Devolve quantas ações entraram.
+    Devolve quantas ações entraram. Se algo mudou, a versão anterior continua nas tabelas
+    `*_versoes` (Radar, PR 4); refazer com o mesmo arquivo não cria versão.
     """
     if resumo.empty:
         return 0
@@ -50,25 +55,22 @@ def gravar_competencia(
                 tabela.c.fonte == fonte, tabela.c.competencia == competencia
             )
         )
+    chave = {"fonte": fonte, "competencia": competencia}
+    cobertura = {**chave, "informantes": int(informantes)}
     conexao.execute(
-        sa.insert(cobertura_de_detentores).values(
-            fonte=fonte,
-            competencia=competencia,
-            informantes=int(informantes),
-            coletado_em=agora,
-        )
+        sa.insert(cobertura_de_detentores).values(**cobertura, coletado_em=agora)
     )
+    por_acao = _registros(resumo, COLUNAS_DO_RESUMO)
     conexao.execute(
         sa.insert(detentores_por_acao),
-        [
-            {**linha, "coletado_em": agora}
-            for linha in _registros(resumo, COLUNAS_DO_RESUMO)
-        ],
+        [{**linha, "coletado_em": agora} for linha in por_acao],
     )
-    if not maiores.empty:
-        conexao.execute(
-            sa.insert(maiores_detentores), _registros(maiores, COLUNAS_DOS_MAIORES)
-        )
+    os_maiores = [] if maiores.empty else _registros(maiores, COLUNAS_DOS_MAIORES)
+    if os_maiores:
+        conexao.execute(sa.insert(maiores_detentores), os_maiores)
+    versionar(conexao, cobertura_de_detentores_versoes, chave, [cobertura], agora)
+    versionar(conexao, detentores_por_acao_versoes, chave, por_acao, agora)
+    versionar(conexao, maiores_detentores_versoes, chave, os_maiores, agora)
     return len(resumo)
 
 

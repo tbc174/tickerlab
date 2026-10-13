@@ -11,7 +11,12 @@ from datetime import UTC, date, datetime
 import pandas as pd
 import sqlalchemy as sa
 
-from src.banco.modelo import documentos_lidos, negociacoes_internas
+from src.banco.modelo import (
+    documentos_lidos,
+    negociacoes_internas,
+    negociacoes_internas_versoes,
+)
+from src.banco.versoes import versionar
 from src.links_das_fontes import link_da_fonte
 from src.negociacoes import COLUNAS
 
@@ -89,7 +94,10 @@ def gravar_negociacoes(
                 atualizados += 1
             else:
                 novos += 1
-            inserir += _linhas(linhas, agora)
+            do_documento = _linhas(linhas, agora)
+            chave = {"fonte": fonte, "documento": documento}
+            versionar(conexao, negociacoes_internas_versoes, chave, do_documento, agora)
+            inserir += do_documento
         if inserir:
             conexao.execute(sa.insert(negociacoes_internas), inserir)
     return novos, atualizados

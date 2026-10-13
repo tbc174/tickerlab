@@ -558,3 +558,47 @@ sa.Index(
     observacoes.c.referencia,
     observacoes.c.divulgado_em,
 )
+
+# Radar PR 4 (0025): toda versão das demonstrações, negociações e detentores, só acréscimo. As
+# tabelas de cima continuam sendo as vigentes (o app não muda); aqui a versão substituída ganha
+# `substituido_em` e nunca é apagada. As colunas são as da original, menos as de controle.
+CHAVES_DAS_VERSOES = {
+    "demonstracoes": ("cnpj", "documento", "referencia"),
+    "documentos_financeiros": ("cnpj", "documento", "referencia"),
+    "negociacoes_internas": ("fonte", "documento"),
+    "detentores_por_acao": ("fonte", "competencia"),
+    "maiores_detentores": ("fonte", "competencia"),
+    "cobertura_de_detentores": ("fonte", "competencia"),
+}
+COLUNAS_DE_CONTROLE = ("id", "ingerido_em", "coletado_em")
+
+
+def _versoes_de(original: sa.Table) -> sa.Table:
+    versoes = sa.Table(
+        f"{original.name}_versoes",
+        metadata,
+        sa.Column(
+            "id_da_versao",
+            sa.BigInteger().with_variant(sa.Integer(), "sqlite"),
+            primary_key=True,
+            autoincrement=True,
+        ),
+        *[
+            sa.Column(c.name, c.type, nullable=c.nullable)
+            for c in original.columns
+            if c.name not in COLUNAS_DE_CONTROLE
+        ],
+        _momento("registrado_em"),
+        sa.Column("substituido_em", sa.DateTime(timezone=True)),
+    )
+    chave = CHAVES_DAS_VERSOES[original.name]
+    sa.Index(f"ix_{versoes.name}_chave", *[versoes.c[c] for c in chave])
+    return versoes
+
+
+demonstracoes_versoes = _versoes_de(demonstracoes)
+documentos_financeiros_versoes = _versoes_de(documentos_financeiros)
+negociacoes_internas_versoes = _versoes_de(negociacoes_internas)
+detentores_por_acao_versoes = _versoes_de(detentores_por_acao)
+maiores_detentores_versoes = _versoes_de(maiores_detentores)
+cobertura_de_detentores_versoes = _versoes_de(cobertura_de_detentores)

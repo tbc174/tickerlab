@@ -11,7 +11,14 @@ from datetime import UTC, date, datetime
 import pandas as pd
 import sqlalchemy as sa
 
-from src.banco.modelo import demonstracoes, documentos_financeiros, setores_cvm
+from src.banco.modelo import (
+    demonstracoes,
+    demonstracoes_versoes,
+    documentos_financeiros,
+    documentos_financeiros_versoes,
+    setores_cvm,
+)
+from src.banco.versoes import versionar
 from src.links_das_fontes import link_da_fonte
 
 
@@ -75,31 +82,33 @@ def referencias_guardadas(conexao: sa.Connection, chave: str) -> set[date]:
 def _trocar_documento(
     conexao: sa.Connection, doc: object, linhas: pd.DataFrame | None, agora: datetime
 ) -> None:
-    """Apaga a versão guardada de um documento e grava a nova, inteira (contas e índice)."""
+    """Apaga a versão guardada de um documento e grava a nova, inteira (contas e índice).
+
+    A versão anterior continua em `demonstracoes_versoes` (Radar, PR 4)."""
     filtro = (
         (demonstracoes.c.cnpj == doc.cnpj)
         & (demonstracoes.c.documento == doc.documento)
         & (demonstracoes.c.referencia == doc.referencia)
     )
     conexao.execute(sa.delete(demonstracoes).where(filtro))
-    if linhas is not None and not linhas.empty:
-        conexao.execute(
-            sa.insert(demonstracoes),
-            [
-                {
-                    "cnpj": l.cnpj,
-                    "documento": l.documento,
-                    "referencia": l.referencia,
-                    "periodo": l.periodo,
-                    "fim": l.fim,
-                    "conta": l.conta,
-                    "inicio": _data(l.inicio),
-                    "versao": int(l.versao),
-                    "valor": float(l.valor),
-                }
-                for l in linhas.itertuples(index=False)
-            ],
-        )
+    contas = [
+        {
+            "cnpj": l.cnpj,
+            "documento": l.documento,
+            "referencia": l.referencia,
+            "periodo": l.periodo,
+            "fim": l.fim,
+            "conta": l.conta,
+            "inicio": _data(l.inicio),
+            "versao": int(l.versao),
+            "valor": float(l.valor),
+        }
+        for l in (linhas.itertuples(index=False) if linhas is not None else [])
+    ]
+    if contas:
+        conexao.execute(sa.insert(demonstracoes), contas)
+    chave = {"cnpj": doc.cnpj, "documento": doc.documento, "referencia": doc.referencia}
+    versionar(conexao, demonstracoes_versoes, chave, contas, agora)
     conexao.execute(
         sa.delete(documentos_financeiros).where(
             (documentos_financeiros.c.cnpj == doc.cnpj)
@@ -107,18 +116,17 @@ def _trocar_documento(
             & (documentos_financeiros.c.referencia == doc.referencia)
         )
     )
+    indice = {
+        **chave,
+        "versao": int(doc.versao),
+        "empresa": doc.empresa[:200],
+        "recebido_em": _data(doc.recebido_em),
+        "link": doc.link[:500],
+    }
     conexao.execute(
-        sa.insert(documentos_financeiros).values(
-            cnpj=doc.cnpj,
-            documento=doc.documento,
-            referencia=doc.referencia,
-            versao=int(doc.versao),
-            empresa=doc.empresa[:200],
-            recebido_em=_data(doc.recebido_em),
-            link=doc.link[:500],
-            coletado_em=agora,
-        )
+        sa.insert(documentos_financeiros).values(**indice, coletado_em=agora)
     )
+    versionar(conexao, documentos_financeiros_versoes, chave, [indice], agora)
 
 
 def gravar_demonstracoes(
