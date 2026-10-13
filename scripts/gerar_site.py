@@ -16,6 +16,7 @@ mostra vem do próprio projeto, para não haver duas versões da verdade:
 Rodar de novo sempre que esses conteúdos mudarem; um teste confere que `site/` está em dia.
 """
 
+import hashlib
 import html
 import json
 import re
@@ -203,6 +204,12 @@ RODAPE = f"""<footer class="rodape escura"><div class="faixa">
 </div></footer>"""
 
 
+def _versao(conteudo: str) -> str:
+    """Um pedaço do hash do arquivo, para pôr no endereço: a Cloudflare e o navegador guardam o CSS
+    e o JS por horas, e um endereço novo a cada mudança faz todos buscarem a versão nova na hora."""
+    return hashlib.sha256(conteudo.encode("utf-8")).hexdigest()[:12]
+
+
 def pagina(
     caminho: str, titulo: str, descricao: str, corpo: str, atual: str = ""
 ) -> str:
@@ -229,8 +236,8 @@ def pagina(
 <link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">
 <link rel="icon" href="/marca/icone.png" type="image/png">
 <link rel="preload" href="/fontes/Manrope-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="/estilo.css">
-<script src="/site.js" defer></script>
+<link rel="stylesheet" href="/estilo.css?v={_versao(css())}">
+<script src="/site.js?v={_versao(JS)}" defer></script>
 </head>
 <body>
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>

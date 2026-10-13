@@ -160,3 +160,20 @@ def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
     assert "Menos ruído. Mais inteligência para investir." in inicio
     assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
     assert (SITE / "marca" / "compartilhamento.png").exists()
+
+
+def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
+    """A Cloudflare guarda o CSS e o JS por horas: sem a versão no endereço, quem visita depois de
+    um deploy recebe o HTML novo com o estilo antigo."""
+    import hashlib
+
+    for nome in ("estilo.css", "site.js"):
+        conteudo = (SITE / nome).read_text(
+            encoding="utf-8"
+        )  # quebras de linha iguais em todo SO
+        versao = hashlib.sha256(conteudo.encode("utf-8")).hexdigest()[:12]
+        for arquivo in PAGINAS_HTML:
+            assert f'"/{nome}?v={versao}"' in arquivo.read_text(encoding="utf-8"), (
+                arquivo.name,
+                nome,
+            )
