@@ -136,10 +136,26 @@ def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
     assert "drawdown máximo" in ajuda[0]["texto"]  # *itálico* sem os asteriscos
     textos = json.dumps(app["glossario"], ensure_ascii=False)
     assert "*" not in textos
-    assert set(app["glossario"]) == {i.termo for i in analises.ITENS_DO_PAINEL}
+    assert {i.termo for i in analises.ITENS_DO_PAINEL} <= set(app["glossario"])
 
 
 def test_formatacao_leva_os_casos_do_python():
     from src import formatos
 
     assert exp.conteudo()["formatacao"] == formatos.casos_de_formatacao()
+
+
+def test_app_leva_os_textos_de_juros_e_da_linha_do_tempo():
+    from src import juros_e_inflacao as ji
+    from src import linha_do_tempo as ldt
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert app["juros"]["termos"] == ji.TERMO_DO_GLOSSARIO
+    assert app["juros"]["nota_do_focus"] == ji.NOTA_DO_FOCUS
+    assert set(ji.TERMO_DO_GLOSSARIO.values()) | {"Boletim Focus"} <= set(
+        app["glossario"]
+    )
+    assert app["linha_do_tempo"]["relevancias"] == [
+        {"nome": n, "valor": v} for n, v in ldt.RELEVANCIAS.items()
+    ]
+    assert app["linha_do_tempo"]["padrao"] == ldt.MATERIALIDADE_PADRAO

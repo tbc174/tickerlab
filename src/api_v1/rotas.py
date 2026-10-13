@@ -289,6 +289,13 @@ def linha_do_tempo(
     """A curva em base 100 (nunca o preço bruto) e os documentos da CVM ou da SEC do período."""
     c = _com_o_ativo(ticker, periodo, SEM_TAXA)
     eventos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
+    return montar_linha_do_tempo(c, eventos, materialidade_minima)
+
+
+def montar_linha_do_tempo(
+    c: ContextoDoAtivo, eventos: list[Evento], materialidade_minima: int
+) -> esquemas.LinhaDoTempoDoAtivoV1:
+    """A resposta da linha do tempo de um ativo já carregado (a rota e os testes do React usam)."""
     linha = ldt.montar_linha_do_tempo(c.fechamento, eventos, materialidade_minima)
     return esquemas.LinhaDoTempoDoAtivoV1(
         ativo=esquemas.de_ativo(c), linha_do_tempo=esquemas.de_linha_do_tempo(linha)

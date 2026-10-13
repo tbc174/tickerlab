@@ -286,6 +286,30 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Solução:** marcar cada ramo com `hypothesis.event(...)`, rodar com `pytest --hypothesis-show-statistics` e ajustar o gerador até os dois ramos aparecerem (o Hypothesis prefere números pequenos: o ramo de cima entra duas vezes no `st.one_of`).
 - **Data:** 13/10/2026
 
+## `novo/` "está velho" no CI, mas igual no PC (uma linha em branco a mais)
+- **Sintoma:** o passo "App em React (novo/ igual ao build)" do CI falhava só no `novo/index.html`; no PC, o build saía igual ao que estava no Git.
+- **Causa:** o Git no Windows tirou o `web/app/index.html` com CRLF. O Vite tira a tag `<script>` da página antes da nossa normalização e, com CRLF, sobrava uma linha em branco; no CI (Linux, LF) não sobra.
+- **Solução:** a normalização para LF roda com `transformIndexHtml: { order: "pre" }` (antes do Vite), e o `.gitattributes` tira `web/**` sempre com LF (`novo/**` fica `-text`). Para reproduzir o CI no PC: uma cópia com `core.autocrlf=false` e `npm run app` nela.
+- **Data:** 13/10/2026
+
+## O JavaScript arredonda diferente do Python (12,125 → "12,13" contra "12,12")
+- **Sintoma:** o mesmo número saía com a última casa diferente na tela nova (React) e no Streamlit.
+- **Causa:** no empate exato, o Python arredonda para o par e o `toFixed` do JS, para cima. E nem todo "…5" é empate: 2,675 vale 2,67499999… em binário (os dois mostram 2,67), mas `2.675 * 1000` dá 2675 e parecia empate.
+- **Solução:** `web/src/app/formatar.ts` só trata como empate o número que é múltiplo exato de 1/8 (para 2 casas; multiplicar por potência de 2 é exato em binário) e arredonda para o par. Os casos vêm do Python (`src/formatos.py`, `web/conteudo/formatacao.json`) e o teste confere cada um.
+- **Data:** 13/10/2026
+
+## Teste acusa "preço na resposta da API" sem haver preço
+- **Sintoma:** `test_nenhuma_resposta_traz_a_serie_de_precos` falhou ao entrar a curva em base 100 na visão geral.
+- **Causa:** o teste procurava o preço como pedaço de texto: "48.0" (um fechamento) aparecia dentro de "148.0920..." (um valor em base 100).
+- **Solução:** comparar números inteiros da resposta (`re.findall` de números) com os preços. Um preço vazado de verdade continua sendo pego.
+- **Data:** 13/10/2026
+
+## Teste do React não acha o que está na tela (Testing Library)
+- **Sintoma:** `within(main).findByRole(...)` esgotava o tempo, mas a tela estava certa.
+- **Causa:** o teste guardou o `<main>` do aviso "Carregando"; quando a configuração da API chega, o React troca a moldura inteira e aquele `<main>` sai da página.
+- **Solução:** esperar algo da tela final (o menu "Telas") e só então pegar o `<main>`. Aumentar o tempo de espera não resolve.
+- **Data:** 13/10/2026
+
 ## Planilha da B3 com "1.000" em texto vira 1, e não mil
 - **Sintoma:** um teste da movimentação com a quantidade `"1.000"` (texto) leu 1 ação.
 - **Causa:** `numero_brasileiro` (`src/carteira_b3.py`) só tratava o ponto como milhar quando havia vírgula (`"1.234,56"`); sem vírgula, `float("1.000")` é 1,0. Afetava também a planilha de posição enviada em CSV.

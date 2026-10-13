@@ -65,3 +65,12 @@
   background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
 .grafico-dica i { display: inline-block; width: .6rem; height: .6rem; margin-right: .35rem; border-radius: 2px; }
 .grafico figcaption { font-size: .82rem; margin-top: .35rem; }
+.grafico-marco { fill: var(--azul); stroke: var(--fundo); stroke-width: 2; }
+.grafico-dica-marco { max-width: 22rem; white-space: normal; color: var(--apagado); }
+.grafico-legenda { display: flex; flex-wrap: wrap; gap: .4rem 1rem; list-style: none; padding: 0; margin: .5rem 0 0; font-size: .86rem; color: var(--texto); }
+.grafico-legenda i { display: inline-block; width: .8rem; height: .2rem; margin-right: .4rem; vertical-align: middle; border-radius: 2px; }
+.tabela-do-app { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .5rem 0 1rem; }
+.tabela-do-app caption { text-align: left; font-weight: 700; padding-bottom: .4rem; }
+.tabela-do-app th, .tabela-do-app td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--linha); }
+.tabela-do-app td.numero { font-variant-numeric: tabular-nums; }
+.legenda-do-numero { font-size: .78rem; color: var(--apagado); }

@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi, pedir } from "../../src/app/api";
-import type { EuV1, VisaoGeralV1 } from "../../src/app/tipos";
+import type {
+  EuV1,
+  JurosEInflacaoV1,
+  LinhaDoTempoDoAtivoV1,
+  VisaoGeralV1,
+} from "../../src/app/tipos";
+import juros from "./exemplos/juros_e_inflacao.json";
+import linha from "./exemplos/linha_do_tempo.json";
 import exemplo from "./exemplos/visao_geral.json";
 
 function respostaJson(status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) {
@@ -139,5 +146,17 @@ describe("tipos das respostas", () => {
     expect(Object.keys(resposta.ativo).sort()).toEqual(campos("AtivoV1"));
     expect(Object.keys(resposta.painel).sort()).toEqual(campos("PainelDeNumerosV1"));
     expect(Object.keys(resposta.curva).sort()).toEqual(campos("CurvaV1"));
+  });
+
+  it("Juros e inflação e Linha do tempo (exemplos do Python) batem com o OpenAPI", () => {
+    const j: JurosEInflacaoV1 = juros.resposta;
+    expect(Object.keys(j).sort()).toEqual(campos("JurosEInflacaoV1"));
+    expect(Object.keys(j.numeros[0]).sort()).toEqual(campos("NumeroDeJurosV1"));
+    expect(Object.keys(j.expectativas[0]).sort()).toEqual(campos("ExpectativaV1"));
+    expect(Object.keys(j.historico[0]).sort()).toEqual(campos("PontoMensalV1"));
+    const l: LinhaDoTempoDoAtivoV1 = linha.resposta;
+    expect(Object.keys(l).sort()).toEqual(campos("LinhaDoTempoDoAtivoV1"));
+    expect(Object.keys(l.linha_do_tempo).sort()).toEqual(campos("LinhaDoTempoV1"));
+    expect(Object.keys(l.linha_do_tempo.marcos[0]).sort()).toEqual(campos("MarcoV1"));
   });
 });

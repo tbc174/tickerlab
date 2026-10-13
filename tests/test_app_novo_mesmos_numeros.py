@@ -10,24 +10,25 @@ dia. Mudou a tela, a API ou os dados de exemplo? Regrave:
 """
 
 import json
+from datetime import date
 from pathlib import Path
 
+import pandas as pd
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from src import indicadores as ind
+from src import juros_e_inflacao as ji
+from src import linha_do_tempo as ldt
+from src.api_v1 import esquemas
 from src.api_v1.contexto import ContextoDoAtivo
-from src.api_v1.rotas import montar_visao_geral
+from src.api_v1.rotas import montar_linha_do_tempo, montar_visao_geral
+from src.banco.eventos import Evento
 from src.dados import baixar_dados
 from tests.ajudantes_da_conta import ir_para
 
-ARQUIVO = (
-    Path(__file__).resolve().parent.parent
-    / "web"
-    / "testes"
-    / "app"
-    / "exemplos"
-    / "visao_geral.json"
-)
+PASTA = Path(__file__).resolve().parent.parent / "web" / "testes" / "app" / "exemplos"
+ARQUIVO = PASTA / "visao_geral.json"
 CONFIANCA_DO_VAR = 95  # o padrão da tela e da API
 
 
@@ -45,29 +46,92 @@ def _tela_da_visao_geral() -> tuple[str, str, dict[str, str]]:
 def exemplo_da_visao_geral() -> dict:
     """{"resposta": a API com os dados de exemplo, "na_tela": o que o Streamlit mostra}."""
     ticker, periodo, na_tela = _tela_da_visao_geral()
-    dados = baixar_dados(ticker, periodo, forcar_exemplo=True)
-    fechamento = dados["Close"]
-    contexto = ContextoDoAtivo(
-        ticker,
-        periodo,
-        dados,
-        fechamento,
-        ind.calcular_retorno_diario(fechamento),
-        0.0,
-        False,
-    )
+    contexto = _contexto_de_exemplo(ticker, periodo)
     resposta = montar_visao_geral(contexto, CONFIANCA_DO_VAR).model_dump(mode="json")
     return {"resposta": resposta, "na_tela": na_tela}
+
+
+def _contexto_de_exemplo(ticker: str, periodo: str) -> ContextoDoAtivo:
+    dados = baixar_dados(ticker, periodo, forcar_exemplo=True)
+    fechamento = dados["Close"]
+    retorno = ind.calcular_retorno_diario(fechamento)
+    return ContextoDoAtivo(ticker, periodo, dados, fechamento, retorno, 0.0, False)
+
+
+def exemplo_de_juros() -> dict:
+    """O painel de juros com séries feitas à mão (a tela mostra `texto` e `legenda` da API)."""
+    hoje = date(2026, 10, 13)
+    meses = pd.date_range(end="2026-09-01", periods=24, freq="MS")
+    lidas = {
+        ji.SELIC_META: ji.SerieLida(
+            pd.Series([10.5, 15.0], index=pd.to_datetime(["2025-01-02", "2026-10-10"])),
+            date(2026, 10, 10),
+        ),
+        ji.IPCA: ji.SerieLida(pd.Series([0.4] * 24, index=meses), date(2026, 10, 10)),
+        ji.FOCUS_IPCA: ji.SerieLida(
+            pd.Series([4.8, 4.2], index=pd.to_datetime(["2026-12-31", "2027-12-31"])),
+            date(2026, 10, 9),
+        ),
+        ji.FOCUS_SELIC: ji.SerieLida(
+            pd.Series([15.0, 12.5], index=pd.to_datetime(["2026-12-31", "2027-12-31"])),
+            date(2026, 10, 9),
+        ),
+    }  # sem o dólar: a tela mostra o traço e o aviso
+    cdi = pd.Series(0.0005, index=pd.bdate_range(end=hoje, periods=300))
+    painel = ji.montar_painel(lidas, cdi, hoje)
+    resposta = esquemas.de_juros_e_inflacao(painel, hoje).model_dump(mode="json")
+    na_tela = {n.nome: ji.formatar_valor(n) for n in painel.numeros}
+    return {"resposta": resposta, "na_tela": na_tela}
+
+
+def exemplo_da_linha_do_tempo() -> dict:
+    """A linha do tempo de PETR4 (dados de exemplo) com três documentos feitos à mão; um deles com
+    um link perigoso, que a tela não pode transformar em link."""
+    contexto = _contexto_de_exemplo("PETR4.SA", "2y")
+    dias = contexto.fechamento.index
+    documentos = (
+        (40, 90, "Fato relevante", "Plano de investimentos", "https://www.rad.cvm.gov.br/exemplo-1"),
+        (300, 60, "Comunicado ao mercado", "Produção do trimestre", "javascript:alert(1)"),
+        (450, 20, "Aviso aos acionistas", "Data do pagamento", "https://www.rad.cvm.gov.br/exemplo-3"),
+    )  # fmt: skip
+    eventos = [
+        Evento(
+            ticker="PETR4.SA",
+            empresa="Petrobras",
+            rotulo=rotulo,
+            tema="eventos",
+            materialidade=materialidade,
+            assunto=assunto,
+            referencia=None,
+            publicado_em=dias[posicao].date(),
+            link=link,
+            fonte="cvm_ipe",
+            protocolo=f"exemplo-{posicao}",
+            versao=1,
+        )
+        for posicao, materialidade, rotulo, assunto, link in documentos
+    ]
+    resposta = montar_linha_do_tempo(contexto, eventos, ldt.MATERIALIDADE_PADRAO)
+    return {"resposta": resposta.model_dump(mode="json")}
+
+
+EXEMPLOS = {
+    "visao_geral": exemplo_da_visao_geral,
+    "juros_e_inflacao": exemplo_de_juros,
+    "linha_do_tempo": exemplo_da_linha_do_tempo,
+}
 
 
 def _em_json(dados: dict) -> str:
     return json.dumps(dados, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
 
 
-def test_o_exemplo_do_react_esta_em_dia():
-    assert ARQUIVO.exists(), "rode: python -m tests.test_app_novo_mesmos_numeros"
-    gravado = json.loads(ARQUIVO.read_text(encoding="utf-8"))
-    assert gravado == json.loads(_em_json(exemplo_da_visao_geral())), (
+@pytest.mark.parametrize("nome", list(EXEMPLOS))
+def test_o_exemplo_do_react_esta_em_dia(nome):
+    arquivo = PASTA / f"{nome}.json"
+    assert arquivo.exists(), "rode: python -m tests.test_app_novo_mesmos_numeros"
+    gravado = json.loads(arquivo.read_text(encoding="utf-8"))
+    assert gravado == json.loads(_em_json(EXEMPLOS[nome]())), (
         "o exemplo do React está velho: python -m tests.test_app_novo_mesmos_numeros"
     )
 
@@ -80,6 +144,8 @@ def test_o_exemplo_tem_os_numeros_do_painel():
 
 
 if __name__ == "__main__":
-    ARQUIVO.parent.mkdir(parents=True, exist_ok=True)
-    ARQUIVO.write_text(_em_json(exemplo_da_visao_geral()), encoding="utf-8")
-    print(f"Gravado: {ARQUIVO}")
+    PASTA.mkdir(parents=True, exist_ok=True)
+    for nome, exemplo in EXEMPLOS.items():
+        arquivo = PASTA / f"{nome}.json"
+        arquivo.write_text(_em_json(exemplo()), encoding="utf-8")
+        print(f"Gravado: {arquivo}")

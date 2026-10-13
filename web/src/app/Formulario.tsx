@@ -2,7 +2,7 @@
 // limites e padrão vêm de lá, e os valores ficam no endereço (?ticker=PETR4.SA&periodo=1y), como no
 // app atual. A taxa livre de risco aparece em "% ao ano" e vai para a API como fração.
 import { type FormEvent, useState } from "react";
-import type { EntradaDoContrato } from "../conteudo";
+import { type EntradaDoContrato, conteudoDoApp } from "../conteudo";
 import { TICKER_DO_EXEMPLO } from "../site/textos";
 import type { Parametros } from "./api";
 
@@ -12,10 +12,18 @@ const NOMES: Record<string, string> = {
   taxa: "Taxa livre de risco (% ao ano)",
   confianca_do_var: "Confiança do VaR (%)",
   janela: "Janela (dias)",
-  materialidade_minima: "Relevância mínima (0 a 100)",
+  materialidade_minima: "Quais acontecimentos mostrar",
 };
 const PERIODOS: Record<string, string> = { "6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos" };
 const CEM = 100;
+
+/** As escolhas de um campo de opção: os períodos, ou as relevâncias da linha do tempo pelo nome. */
+function escolhas(e: EntradaDoContrato): { valor: string; nome: string }[] {
+  if (e.nome === "materialidade_minima") {
+    return conteudoDoApp.linha_do_tempo.relevancias.map((r) => ({ valor: String(r.valor), nome: r.nome }));
+  }
+  return e.opcoes.map((o) => ({ valor: o, nome: PERIODOS[o] ?? o }));
+}
 
 /** O valor de cada campo como texto (o do endereço ou o padrão do contrato). */
 export function valoresIniciais(
@@ -76,11 +84,11 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
       {entradas.map((e) => (
         <label key={e.nome} title={e.descricao}>
           <span>{NOMES[e.nome] ?? e.nome}</span>
-          {e.tipo === "opcao" ? (
+          {e.tipo === "opcao" || e.nome === "materialidade_minima" ? (
             <select value={rascunho[e.nome]} onChange={(ev) => mudar(e.nome, ev.target.value)}>
-              {e.opcoes.map((o) => (
-                <option key={o} value={o}>
-                  {PERIODOS[o] ?? o}
+              {escolhas(e).map((o) => (
+                <option key={o.valor} value={o.valor}>
+                  {o.nome}
                 </option>
               ))}
             </select>
