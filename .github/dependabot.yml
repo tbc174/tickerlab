@@ -1,0 +1,10 @@
+# Atualiza as ações do CI (fixadas pelo SHA do commit em .github/workflows/) uma vez por mês.
+# Só as ações: as bibliotecas Python são conferidas pelo pip-audit e pelos alertas do Dependabot.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
