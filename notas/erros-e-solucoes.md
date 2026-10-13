@@ -174,6 +174,7 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Primeira tentativa:** `bcb.TEMPO_LIMITE` em 60 s (#77), com teste de regressão. Não bastou: com 60 s apareceu o erro de baixo.
 - **Causa de verdade:** o próprio servidor do BC corta em ~30 s e devolve uma página HTML "Requisição inválida!" **com status 200** (o `json()` falha com `Expecting value`). Visto pelo acervo: o original guardado daquela coleta era o HTML. A janela de 9 anos (`ANOS_POR_CONSULTA`) é que era longa demais sem cache.
 - **Solução:** janelas de 3 anos (#83): a mesma série 432 volta em 2 a 5 s por janela. O CDI do app (`src/cdi.py`) usa o mesmo desenho (9 anos, 20 s) e pode falhar igual num período longo: ficou para o Tiago decidir.
+- **E um 502 isolado:** na carga seguinte, 1 de 35 consultas voltou 502 (repetida, respondeu em 2,6 s) e derrubou as séries que vinham depois. O leitor do BC agora tenta de novo até 2 vezes (5 s e 15 s) só em erro passageiro (5xx, timeout, conexão); 4xx e página que não é JSON não repetem (#84).
 - **Data:** 13/10/2026
 
 ## `pwsh -File script.ps1 -Prs 72,73` virou o PR "7273"

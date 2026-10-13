@@ -14,11 +14,11 @@ HOJE = date(2026, 10, 12)
 class RespostaFalsa:
     def __init__(self, conteudo: object, status: int = 200) -> None:
         self.conteudo = conteudo
-        self.status = status
+        self.status = self.status_code = status
 
     def raise_for_status(self) -> None:
         if self.status >= 400:
-            raise requests.HTTPError(f"{self.status}")
+            raise requests.HTTPError(f"{self.status}", response=self)  # type: ignore[arg-type]
 
     def json(self) -> object:
         if isinstance(self.conteudo, Exception):
@@ -81,7 +81,8 @@ def test_sgs_nunca_pede_janela_que_o_bc_nao_responde():
         assert fim - inicio <= pd.Timedelta(days=3 * 366)
 
 
-def test_sgs_sem_dados_ou_resposta_estranha_da_erro_claro():
+def test_sgs_sem_dados_ou_resposta_estranha_da_erro_claro(monkeypatch):
+    monkeypatch.setattr(bcb, "esperar", lambda _: None)  # o 503 é tentado 3 vezes
     with pytest.raises(bcb.BcbIndisponivelError, match="não devolveu"):
         bcb.montar_serie_sgs([], "IPCA", HOJE)
     with pytest.raises(bcb.BcbIndisponivelError, match="inesperada"):
@@ -89,7 +90,7 @@ def test_sgs_sem_dados_ou_resposta_estranha_da_erro_claro():
     with pytest.raises(bcb.BcbIndisponivelError):
         bcb.baixar_serie_sgs(
             "ipca", date(2026, 1, 1), date(2026, 2, 1), HOJE,
-            _buscar([RespostaFalsa(None, status=503)], []),
+            _buscar([RespostaFalsa(None, status=503) for _ in range(3)], []),
         )  # fmt: skip
 
 
@@ -184,3 +185,53 @@ def test_consulta_longa_do_sgs_tem_tempo_para_responder():
 
     bcb.baixar_serie_sgs("ipca", date(2010, 1, 1), HOJE, HOJE, buscar)
     assert pedidos and min(pedidos) >= 60
+
+
+def test_erro_passageiro_do_bc_tenta_de_novo(monkeypatch):
+    """Regressão (13/10/2026): um 502 isolado do SGS (34 de 35 consultas certas; repetida, a mesma
+    respondeu em 2,6 s) derrubava as séries que vinham depois e disparava o alarme do dia."""
+    esperas: list = []
+    monkeypatch.setattr(bcb, "esperar", esperas.append)
+    respostas = [
+        RespostaFalsa(None, status=502),
+        requests.ReadTimeout("lento"),
+        RespostaFalsa([{"data": "01/09/2026", "valor": "0.48"}]),
+    ]
+
+    def buscar(url, params=None, timeout=None):
+        resposta = respostas.pop(0)
+        if isinstance(resposta, Exception):
+            raise resposta
+        return resposta
+
+    serie = bcb.baixar_serie_sgs("ipca", date(2026, 1, 1), HOJE, HOJE, buscar)
+    assert len(serie) == 1 and len(esperas) == 2
+
+
+def test_erro_que_nao_passa_nao_tenta_de_novo(monkeypatch):
+    esperas: list = []
+    monkeypatch.setattr(bcb, "esperar", esperas.append)
+    pedidos: list = []
+    for resposta in (
+        RespostaFalsa(None, status=404),
+        RespostaFalsa(ValueError("html")),
+    ):
+        with pytest.raises(bcb.BcbIndisponivelError):
+            bcb.baixar_serie_sgs(
+                "ipca", date(2026, 1, 1), HOJE, HOJE, _buscar([resposta], pedidos)
+            )
+    assert esperas == [] and len(pedidos) == 2
+
+
+def test_erro_passageiro_que_insiste_desiste_depois_de_tres_tentativas(monkeypatch):
+    monkeypatch.setattr(bcb, "esperar", lambda _: None)
+    pedidos: list = []
+    with pytest.raises(bcb.BcbIndisponivelError):
+        bcb.baixar_serie_sgs(
+            "ipca",
+            date(2026, 1, 1),
+            HOJE,
+            HOJE,
+            _buscar([RespostaFalsa(None, status=503) for _ in range(3)], pedidos),
+        )
+    assert len(pedidos) == 3
