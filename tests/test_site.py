@@ -221,3 +221,28 @@ def test_a_linha_do_heroi_e_decorativa():
     inicio = (SITE / "index.html").read_text(encoding="utf-8")
     linha = re.search(r'<svg class="linha-heroi"[^>]*>', inicio)
     assert linha and 'aria-hidden="true"' in linha.group(0)
+
+
+def test_menu_do_tema_tem_claro_escuro_e_automatico():
+    """Pedido do Tiago (13/10/2026): escolher claro, escuro ou automático (pelo pôr do sol)."""
+    for arquivo in PAGINAS_HTML:
+        topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
+        opcoes = re.findall(r'role="menuitemradio"[^>]*data-tema-escolha="(\w+)"', topo)
+        assert opcoes == ["claro", "escuro", "auto"], arquivo.name
+        assert 'aria-haspopup="menu"' in topo
+
+
+def test_o_tema_e_decidido_no_head_antes_do_css_e_o_padrao_e_automatico():
+    import hashlib
+
+    sol = (SITE / "tema" / "sol.js").read_text(encoding="utf-8")
+    versao = hashlib.sha256(sol.encode("utf-8")).hexdigest()[:12]
+    for arquivo in PAGINAS_HTML:
+        texto = arquivo.read_text(encoding="utf-8")
+        cabeca = texto[: texto.index("</head>")]
+        # o cálculo do sol carrega antes do CSS e sem defer: não pisca o tema errado
+        assert f'<script src="/tema/sol.js?v={versao}"></script>' in cabeca, arquivo.name
+        assert cabeca.index("/tema/sol.js") < cabeca.index("/estilo.css")
+        assert '|| "auto"' in cabeca  # quem nunca escolheu fica no automático
+        assert "temaDoMomento" in cabeca
+    assert sol == (gs.RAIZ / "static" / "tema" / "sol.js").read_text(encoding="utf-8")

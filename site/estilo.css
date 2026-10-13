@@ -45,8 +45,25 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .com-js .tema { display: inline-flex; }
 .tema:hover { border-color: var(--azul); }
 .tema svg { width: 1.15rem; height: 1.15rem; }
-.tema .sol, [data-tema="escuro"] .tema .lua { display: none; }
-[data-tema="escuro"] .tema .sol { display: block; }
+/* o botão mostra o ícone da escolha atual (claro, escuro ou automático) */
+.tema svg.claro, .tema svg.escuro, .tema svg.auto { display: none; }
+[data-escolha="claro"] .tema svg.claro, [data-escolha="escuro"] .tema svg.escuro,
+[data-escolha="auto"] .tema svg.auto { display: block; }
+.tema-menu { position: relative; }
+.tema-opcoes { position: absolute; right: 0; top: calc(100% + .45rem); z-index: 6; min-width: 17rem; padding: .35rem;
+  background: var(--destaque); border: 1px solid var(--linha-forte); border-radius: 12px; box-shadow: 0 16px 40px var(--sombra);
+  transform-origin: top right; transition: opacity 160ms ease, transform 160ms ease; }
+@starting-style { .tema-opcoes { opacity: 0; transform: scale(.98) translateY(-4px); } }
+.tema-opcoes button { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .55rem .7rem; border: 0;
+  border-radius: 8px; background: transparent; color: var(--texto); font: 600 .95rem "Manrope", sans-serif;
+  text-align: left; cursor: pointer; }
+.tema-opcoes button:hover, .tema-opcoes button:focus-visible { background: var(--superficie); }
+.tema-opcoes svg { width: 1.1rem; height: 1.1rem; flex: none; color: var(--apagado); }
+.tema-opcoes span { display: grid; }
+.tema-opcoes small { color: var(--apagado); font-weight: 500; font-size: .8rem; }
+.tema-opcoes [aria-checked="true"] { color: var(--azul-texto); }
+.tema-opcoes [aria-checked="true"] svg { color: var(--azul-texto); }
+.tema-opcoes [aria-checked="true"]::after { content: "✓"; margin-left: auto; font-weight: 800; }
 /* botões */
 .botao { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
