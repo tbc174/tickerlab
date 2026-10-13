@@ -342,6 +342,15 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "carteira_b3",
+        "Carteira da B3",
+        GRUPO_RESEARCH,
+        ":material/donut_large:",
+        "A sua posição da B3 lida só na memória: concentração, a carteira no passado, Raio-X "
+        "por tipo, setor e moeda, e Rebalanceamento para os pesos que você escolher.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "juros_e_inflacao",
         "Juros e inflação",
         GRUPO_RESEARCH,

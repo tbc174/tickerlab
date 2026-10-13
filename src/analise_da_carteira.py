@@ -19,6 +19,13 @@ from src.carteira_b3 import (
 from src.metricas import resumir_desempenho
 
 MAIORES = 3  # "as 3 maiores juntas"
+COMO_BAIXAR_A_PLANILHA = (
+    "1. Entre na **Área do Investidor** da B3 (investidor.b3.com.br).\n"
+    "2. Em **Extratos → Posição**, escolha a data e baixe a planilha em **Excel**.\n"
+    "3. Envie o arquivo aqui. Ele é lido **só na memória** e não fica guardado: nem o arquivo, "
+    "nem os ativos, nem os valores."
+)
+AVISO_DO_EXEMPLO = "**Exemplo demonstrativo:** carteira fictícia, não é a sua."
 SEM_SETOR = "Sem setor conhecido"  # FII, ETF, BDR e empresas sem setor na CVM
 SETOR_DA_RENDA_FIXA = "Tesouro e renda fixa"
 REAL = "Real"

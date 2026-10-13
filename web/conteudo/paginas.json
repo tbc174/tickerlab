@@ -190,6 +190,16 @@
     "url": "research"
   },
   {
+    "chave": "carteira_b3",
+    "descricao": "A sua posição da B3 lida só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, e Rebalanceamento para os pesos que você escolher.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Carteira da B3",
+    "url": "carteira-b3"
+  },
+  {
     "chave": "juros_e_inflacao",
     "descricao": "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada número (Banco Central).",
     "e_pro": false,
