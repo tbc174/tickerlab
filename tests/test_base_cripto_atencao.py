@@ -20,8 +20,18 @@ from base.cripto.atencao import (
 WIKIPEDIA = json.dumps(
     {
         "items": [
-            {"article": "Bitcoin", "timestamp": "2015070100", "views": 12957},
-            {"article": "Bitcoin", "timestamp": "2015070200", "views": 9802},
+            {
+                "project": "en.wikipedia",
+                "article": "Bitcoin",
+                "timestamp": "2015070100",
+                "views": 12957,
+            },
+            {
+                "project": "en.wikipedia",
+                "article": "Bitcoin",
+                "timestamp": "2015070200",
+                "views": 9802,
+            },
         ]
     }
 ).encode()
@@ -120,4 +130,17 @@ def test_endereco_gdelt_de_um_dia():
     assert endereco_gdelt("bitcoin", "timelinevolraw", date(2017, 1, 1)) == (
         "https://api.gdeltproject.org/api/v2/doc/doc?query=bitcoin&mode=timelinevolraw"
         "&format=json&timelinesmooth=0&startdatetime=20170101000000&enddatetime=20170102000000"
+    )
+
+
+def test_wikipedia_guarda_o_projeto():
+    assert (ler_wikipedia(WIKIPEDIA)["projeto"] == "en.wikipedia").all()
+
+
+def test_endereco_wikipedia_em_portugues():
+    assert endereco_wikipedia(
+        "Bitcoin", date(2015, 7, 1), date(2015, 7, 31), "pt.wikipedia"
+    ) == (
+        "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/pt.wikipedia/"
+        "all-access/user/Bitcoin/daily/20150701/20150731"
     )

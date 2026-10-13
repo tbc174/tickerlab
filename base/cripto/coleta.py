@@ -47,6 +47,8 @@ ENDERECO_DA_KRAKEN = "https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=
 PRIMEIRO_ANO_DA_CFTC = 2017
 INICIO_DA_WIKIPEDIA = date(2015, 7, 1)
 ARTIGO_DA_WIKIPEDIA = "Bitcoin"
+# inglês: a atenção do mundo; português: a do Brasil (bem menos acessos)
+PROJETOS_DA_WIKIPEDIA = ("en.wikipedia", "pt.wikipedia")
 INICIO_DO_GDELT = date(2017, 1, 1)
 TERMO_DO_GDELT = "bitcoin"
 # o GDELT pede um pedido a cada 5 segundos; um a mais de folga
@@ -57,7 +59,9 @@ PAGINA_DA_RECEITA = (
     "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/"
     "declaracoes-e-demonstrativos/criptoativos"
 )
-CRIPTOATIVOS_DA_RECEITA = ("BTC",)
+# os de maior volume declarado (ago/2019 a jun/2026): as stablecoins mostram o cripto usado como
+# "dólar digital"; BRZ é a stablecoin em reais
+CRIPTOATIVOS_DA_RECEITA = ("BTC", "ETH", "USDT", "USDC", "BRZ")
 LINK_DA_PLANILHA = re.compile(rb'href="([^"]+criptoativos_dados_abertos_\d{8}\.xls)"')
 
 
@@ -111,14 +115,27 @@ def coletar_cftc(pasta: Path, agora: datetime, baixar: Baixar) -> int:
 
 
 def coletar_wikipedia(pasta: Path, agora: datetime, baixar: Baixar) -> int:
-    """Acessos diários ao artigo, do dia seguinte ao último guardado até o último que já vale."""
+    """Acessos diários ao artigo em cada projeto, do dia seguinte ao último guardado daquele
+    projeto até o último dia que já vale."""
     destino = pasta / "wikipedia"
-    inicio = _dia_seguinte_ao_ultimo(destino, "dia", INICIO_DA_WIKIPEDIA)
+    guardado = ler_tabela(destino, ["projeto", "dia"])
     fim = agora.astimezone(UTC).date() - timedelta(days=2)
-    if inicio > fim:
-        return 0
-    tabela = ler_wikipedia(baixar(endereco_wikipedia(ARTIGO_DA_WIKIPEDIA, inicio, fim)))
-    return _gravar_por_ano(destino, _ja_valem(tabela, agora), "dia")
+    novas = 0
+    for projeto in PROJETOS_DA_WIKIPEDIA:
+        do_projeto = (
+            guardado[guardado["projeto"] == projeto] if not guardado.empty else guardado
+        )
+        inicio = (
+            do_projeto["dia"].max() + timedelta(days=1)
+            if not do_projeto.empty
+            else INICIO_DA_WIKIPEDIA
+        )
+        if inicio > fim:
+            continue
+        url = endereco_wikipedia(ARTIGO_DA_WIKIPEDIA, inicio, fim, projeto)
+        tabela = _ja_valem(ler_wikipedia(baixar(url)), agora)
+        novas += _gravar_por_ano(destino, tabela, "dia", ["projeto", "dia"])
+    return novas
 
 
 def coletar_gdelt(

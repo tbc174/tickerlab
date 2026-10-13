@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 ENDERECO_WIKIPEDIA = (
-    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/"
+    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/{projeto}/"
     "all-access/user/{artigo}/daily/{inicio:%Y%m%d}/{fim:%Y%m%d}"
 )
 ENDERECO_GDELT = (
@@ -30,9 +30,13 @@ MARGEM_DA_WIKIPEDIA = pd.Timedelta(days=2)  # o dia inteiro e mais o seguinte
 MARGEM_DO_GDELT = pd.Timedelta(days=1, hours=1)  # o dia inteiro e mais uma hora
 
 
-def endereco_wikipedia(artigo: str, inicio: date, fim: date) -> str:
-    """Pedido dos acessos diários de um artigo da Wikipedia em inglês, de `inicio` a `fim`."""
-    return ENDERECO_WIKIPEDIA.format(artigo=artigo, inicio=inicio, fim=fim)
+def endereco_wikipedia(
+    artigo: str, inicio: date, fim: date, projeto: str = "en.wikipedia"
+) -> str:
+    """Pedido dos acessos diários de um artigo de `inicio` a `fim` (`pt.wikipedia` = português)."""
+    return ENDERECO_WIKIPEDIA.format(
+        projeto=projeto, artigo=artigo, inicio=inicio, fim=fim
+    )
 
 
 def endereco_gdelt(termo: str, modo: str, dia: date) -> str:
@@ -43,12 +47,13 @@ def endereco_gdelt(termo: str, modo: str, dia: date) -> str:
 
 
 def ler_wikipedia(conteudo: bytes) -> pd.DataFrame:
-    """Uma linha por dia: `dia`, `artigo`, `acessos` e `divulgado_em`."""
+    """Uma linha por dia: `dia`, `projeto`, `artigo`, `acessos` e `divulgado_em`."""
     itens = pd.DataFrame(json.loads(conteudo)["items"])
     inicio_do_dia = pd.to_datetime(itens["timestamp"], format="%Y%m%d%H", utc=True)
     return pd.DataFrame(
         {
             "dia": inicio_do_dia.dt.date,
+            "projeto": itens["project"],
             "artigo": itens["article"],
             "acessos": itens["views"].astype(int),
             "divulgado_em": inicio_do_dia + MARGEM_DA_WIKIPEDIA,

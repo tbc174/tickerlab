@@ -103,7 +103,8 @@ DICIONARIO: dict[str, Tabela] = {
         "o dia vale no fim do dia seguinte",
         {
             "dia": "dia UTC",
-            "artigo": "artigo da Wikipedia em inglês",
+            "projeto": "en.wikipedia (inglês: o mundo) ou pt.wikipedia (português: o Brasil)",
+            "artigo": "título do artigo",
             "acessos": "acessos de pessoas (sem robôs)",
             "divulgado_em": _DIVULGADO,
         },
@@ -143,7 +144,7 @@ DICIONARIO: dict[str, Tabela] = {
         "o mesmo do Relatório nº 1",
         {
             "mes": "primeiro dia do mês declarado",
-            "criptoativo": "código como a Receita agrupou (ex.: BTC)",
+            "criptoativo": "código como a Receita agrupou: BTC, ETH, USDT, USDC ou BRZ",
             "operacoes": "número de operações declaradas",
             "valor_total_reais": "valor total das operações, em reais",
             "divulgado_em": _DIVULGADO,
