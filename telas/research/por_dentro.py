@@ -92,7 +92,7 @@ def _negociacoes_do_ativo(ticker, janela):
         return
     desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
     tabela, erro = _ler_negociacoes(desde, [empresa[0]])
-    if erro:
+    if tabela is None:
         st.info(erro, icon=":material/schedule:")
         return
     st.markdown(f"**{empresa[1]}** · últimos {JANELAS_DE_NEGOCIACOES[janela]}")
@@ -181,7 +181,7 @@ def _ranking_do_mercado(janela):
     )
     desde = datetime.now(relatorios.FUSO).date() - timedelta(days=janela)
     tabela, erro = _ler_negociacoes(desde)
-    if erro:
+    if tabela is None:
         st.info(erro, icon=":material/schedule:")
         return
     tabela = tabela[(tabela["fonte"] == fonte) & tabela["cargo"].isin(cargos)]

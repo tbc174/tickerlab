@@ -760,6 +760,8 @@ def mostrar_estudio(usuario, limites, c):
                 width="stretch",
             )
         if ja_gerado:
+            # ja_gerado só é verdadeiro com o relatório guardado
+            assert gerado is not None
             col_gerar.download_button(
                 "Baixar PDF",
                 data=gerado["pdf"],
@@ -783,6 +785,7 @@ def mostrar_estudio(usuario, limites, c):
     if not ja_gerado and clicou and _gerar(pedido, config, usuario):
         st.rerun()  # a barra volta já com "Baixar PDF" e o uso atualizado
     if ja_gerado:
+        assert gerado is not None  # idem
         col_nova, _ = st.columns([1, 3])
         if col_nova.button(
             "Nova versão",

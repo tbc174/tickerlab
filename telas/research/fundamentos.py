@@ -164,7 +164,7 @@ def _ler_fundamentos(ticker):
         logging.getLogger(__name__).exception("Falha ao ler as demonstrações")
         st.error("Não consegui ler as demonstrações agora. Tente de novo em instantes.")
         return None
-    if empresa is None:
+    if empresa is None or dados is None:  # com a empresa, os dados sempre vêm
         oferecer_busca_na_sec(ticker, "Os fundamentos")
         return None
     if dados.contas.empty:
