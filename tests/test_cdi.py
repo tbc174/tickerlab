@@ -96,3 +96,11 @@ def test_falha_de_rede_vira_erro_do_app(monkeypatch):
     monkeypatch.setattr(cdi.requests, "get", quebra)
     with pytest.raises(cdi.CDIIndisponivelError):
         cdi.baixar_cdi(pd.Timestamp("2026-01-02"), pd.Timestamp("2026-02-02"))
+
+
+# --- saiu da tela da carteira (preparação para outra interface, 13/10/2026) ---------------------
+def test_retorno_diario_do_caixa_e_o_da_curva_do_cdi():
+    serie = _cdi()
+    indice = pd.bdate_range("2025-02-03", periods=120)
+    esperado = cdi.curva_do_cdi(serie, indice).pct_change().fillna(0.0)
+    pd.testing.assert_series_equal(cdi.retorno_diario_do_caixa(serie, indice), esperado)

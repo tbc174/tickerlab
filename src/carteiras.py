@@ -18,6 +18,7 @@ from src import indicadores as ind
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.estrategias import Parametro, _conferir_parametro
 from src.hrp import calcular_pesos_hrp
+from src.metricas import resumir_desempenho
 
 MAX_ATIVOS_NA_CARTEIRA = 8
 MIN_ATIVOS_NA_CARTEIRA = 2
@@ -342,3 +343,36 @@ def simular_carteira(
     return executar_backtest_de_carteira(
         fechamentos, pesos, custo_por_operacao, retorno_do_caixa
     )
+
+
+CARTEIRA_DE_REFERENCIA = "Pesos iguais (referência)"
+
+
+def numeros_da_carteira(
+    nome: str,
+    principal: ResultadoCarteira,
+    referencia: ResultadoCarteira,
+    fechamentos: pd.DataFrame,
+    taxa_livre_de_risco: float,
+    nomes_dos_ativos: dict[str, str],
+) -> tuple[dict[str, ResultadoCarteira], dict[str, dict[str, float]]]:
+    """(carteiras, números): a estratégia, a referência e cada ativo comprado e segurado.
+
+    `nomes_dos_ativos` dá o nome amigável de cada código (sem nome, fica o código).
+    """
+    carteiras = {nome: principal}
+    if nome != CARTEIRA_DE_REFERENCIA:
+        carteiras[CARTEIRA_DE_REFERENCIA] = referencia
+    numeros = {
+        rotulo: resumir_desempenho(r.retorno, r.exposicao, None, taxa_livre_de_risco)
+        for rotulo, r in carteiras.items()
+    }
+    sem_estrategia = pd.Series(1.0, index=fechamentos.index)
+    for ativo in fechamentos.columns:
+        retorno_do_ativo = ind.calcular_retorno_diario(fechamentos[ativo])
+        numeros[f"{nomes_dos_ativos.get(ativo, ativo)} (comprar e segurar)"] = (
+            resumir_desempenho(
+                retorno_do_ativo, sem_estrategia, None, taxa_livre_de_risco
+            )
+        )
+    return carteiras, numeros

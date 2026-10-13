@@ -246,6 +246,22 @@ def calcular_retorno_da_noite_com_custo(
 # --- Virada do mês ------------------------------------------------------------------------
 
 
+def curvas_da_noite_e_do_dia(
+    partes: pd.DataFrame, noite_com_custos: pd.Series
+) -> dict[str, pd.Series]:
+    """As quatro curvas de capital do experimento (R$ 1 no começo): o dia inteiro, só a noite,
+    só o dia e só a noite pagando os custos de entrar e sair todo dia."""
+    # a mesma ordem de contas de antes: muda o arredondamento na 16ª casa, não o número
+    return {
+        "Total (comprar e segurar)": (
+            1 + (1 + partes["Noite"]) * (1 + partes["Dia"]) - 1
+        ).cumprod(),
+        "Só a noite": (1 + partes["Noite"]).cumprod(),
+        "Só o dia": (1 + partes["Dia"]).cumprod(),
+        "Só a noite, com custos": (1 + noite_com_custos).cumprod(),
+    }
+
+
 def marcar_virada_do_mes(
     indice: pd.DatetimeIndex, dias_antes: int = 1, dias_depois: int = 3
 ) -> pd.Series:
@@ -280,8 +296,17 @@ def simular_virada_do_mes(
     O calendário é conhecido de antemão, então a posição de amanhã pode ser decidida hoje.
     """
     marcados = marcar_virada_do_mes(fechamento.index, dias_antes, dias_depois)
-    desejada = marcados.shift(-1, fill_value=False).astype(float)
+    desejada = posicao_da_virada(marcados)
     return executar_backtest(fechamento, desejada, custo_por_operacao), marcados
+
+
+def posicao_da_virada(marcados: pd.Series) -> pd.Series:
+    """A posição de cada dia (1 comprado, 0 fora): comprado hoje se amanhã é dia da virada.
+
+    O calendário é conhecido de antemão, então a marca de amanhã já se sabe hoje (nenhum preço
+    do futuro entra). Depois do último dia não há marca: fora.
+    """
+    return marcados.shift(-1, fill_value=False).astype(float)
 
 
 def comparar_dentro_e_fora(
