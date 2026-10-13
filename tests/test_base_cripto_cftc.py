@@ -10,7 +10,12 @@ import zipfile
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from base.cripto.cftc import divulgado_em, endereco_do_ano, ler_tff
+from base.cripto.cftc import (
+    EXCECOES_DE_DIVULGACAO,
+    divulgado_em,
+    endereco_do_ano,
+    ler_tff,
+)
 
 AMOSTRA = (
     Path(__file__).parent / "arquivos" / "cripto" / "cftc" / "FinFutYY_amostra.txt"
@@ -66,3 +71,20 @@ def test_endereco_do_arquivo_anual():
         endereco_do_ano(2026)
         == "https://www.cftc.gov/files/dea/history/fut_fin_txt_2026.zip"
     )
+
+
+def test_excecoes_nunca_valem_antes_da_regra_normal():
+    # uma exceção só pode atrasar o dado (paralisação), nunca adiantar
+    for relatorio, quando in EXCECOES_DE_DIVULGACAO.items():
+        assert quando >= divulgado_em(relatorio, {})
+
+
+def test_paralisacao_de_2025_usa_o_calendario_da_cftc_com_um_dia_de_folga():
+    # dado de 30/09/2025 publicado em 19/11/2025 (comunicado 9147-25): vale em 20/11, 15h30 de NY
+    assert divulgado_em(date(2025, 9, 30)) == datetime(2025, 11, 20, 20, 30, tzinfo=UTC)
+    # dado de 23/12/2025 saiu em 31/12/2025 (atualização de 19/12/2025)
+    assert divulgado_em(date(2025, 12, 23)) == datetime(2026, 1, 1, 20, 30, tzinfo=UTC)
+
+
+def test_paralisacao_de_2019_vale_so_depois_de_a_cftc_ficar_em_dia():
+    assert divulgado_em(date(2019, 1, 15)) == datetime(2019, 3, 15, 19, 30, tzinfo=UTC)
