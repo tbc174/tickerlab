@@ -30,6 +30,7 @@ dispara; sobraram 29 casos de R2 (10 empresas) e 34 de R11 (9 empresas).
 
 import re
 from dataclasses import dataclass
+from typing import Any
 
 import pandas as pd
 
@@ -59,6 +60,8 @@ LINHA_DO_LUCRO = re.compile(
     re.IGNORECASE,
 )
 CHAVE = ["cnpj", "documento", "referencia", "versao", "grupo"]
+# uma linha de `DataFrame.itertuples()`: tupla com nome, com as colunas da tabela como atributos
+Linha = Any
 
 
 @dataclass(frozen=True)
@@ -104,7 +107,7 @@ def r1_ativo_passivo(contas: pd.DataFrame) -> list[Achado]:
     ]
 
 
-def _achado_r1(linha: tuple) -> Achado:
+def _achado_r1(linha: Linha) -> Achado:
     return Achado(
         regra="R1",
         cnpj=linha.cnpj,
@@ -157,7 +160,7 @@ def r2_subtotais(contas: pd.DataFrame) -> list[Achado]:
     ]
 
 
-def _achado_r2(linha: tuple) -> Achado:
+def _achado_r2(linha: Linha) -> Achado:
     return Achado(
         regra="R2",
         cnpj=linha.cnpj,
@@ -183,7 +186,7 @@ def r11_mae_em_branco(contas: pd.DataFrame) -> list[Achado]:
     ]
 
 
-def _achado_r11(linha: tuple) -> Achado:
+def _achado_r11(linha: Linha) -> Achado:
     return Achado(
         regra="R11",
         cnpj=linha.cnpj,
@@ -213,7 +216,11 @@ def _da_escala(contas: pd.DataFrame, ordem: str) -> pd.DataFrame:
 
 
 def r3_escala(contas: pd.DataFrame, anteriores: pd.DataFrame) -> list[Achado]:
-    """Salto de ~1000 vezes contra o documento anterior (mesmo período ou período seguinte)."""
+    """Salto de ~1000 vezes contra o documento anterior (mesmo período ou período seguinte).
+
+    `anteriores` são as contas do documento anterior das mesmas empresas (a DFP do ano passado, ou o
+    ITR anterior); sem ele, a regra não tem com o que comparar e não diz nada.
+    """
     if anteriores.empty:
         return []
     anterior = _da_escala(anteriores, "ultimo")
@@ -236,7 +243,7 @@ def r3_escala(contas: pd.DataFrame, anteriores: pd.DataFrame) -> list[Achado]:
     return list(achados.values())
 
 
-def _achado_r3(linha: tuple) -> Achado:
+def _achado_r3(linha: Linha) -> Achado:
     sentido = "maior" if abs(linha.valor) > abs(linha.valor_anterior) else "menor"
     return Achado(
         regra="R3",
