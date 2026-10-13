@@ -193,14 +193,23 @@ def montar_focus(resposta: object) -> pd.DataFrame:
 
 
 def baixar_focus(
-    indicador: str, desde: date, buscar: Buscar = requests.get
+    indicador: str,
+    desde: date,
+    buscar: Buscar = requests.get,
+    base_de_calculo: int | None = None,
 ) -> pd.DataFrame:
     """O que o mercado espera para `indicador` ("IPCA", "Selic", "Câmbio", "PIB Total"...)
-    em cada ano, nas pesquisas publicadas desde `desde`."""
+    em cada ano, nas pesquisas publicadas desde `desde`.
+
+    O Focus publica duas contas por pesquisa: `base_de_calculo` 0 (respostas dos últimos 30 dias,
+    a divulgada no boletim) e 1 (só dos últimos 4 dias úteis). None traz as duas."""
     if "'" in indicador:
         raise ValueError("Indicador inválido.")
+    filtro = f"Indicador eq '{indicador}' and Data ge '{desde:%Y-%m-%d}'"
+    if base_de_calculo is not None:
+        filtro += f" and baseCalculo eq {int(base_de_calculo)}"
     params = {
-        "$filter": f"Indicador eq '{indicador}' and Data ge '{desde:%Y-%m-%d}'",
+        "$filter": filtro,
         "$orderby": "Data desc",
         "$format": "json",
     }
