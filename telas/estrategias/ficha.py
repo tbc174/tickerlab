@@ -23,6 +23,9 @@ log = logging.getLogger("tickerlab.conta")
 CHAVE_DA_TOLERANCIA = "ficha_tolerancia"  # em %, como a pessoa digita
 # sem login: {ticker: impressões} só nesta sessão
 CHAVE_DAS_TENTATIVAS_DA_SESSAO = "tentativas_da_sessao"
+# o pedido e o veredito da ficha desta execução: o botão "Salvar" do backtest os guarda junto
+# (o Pulse recalcula a ficha das estratégias salvas; onda 3, PR E2)
+CHAVE_DA_FICHA_PARA_SALVAR = "ficha_para_salvar"
 
 # sem verde nem vermelho (a marca reserva os dois para alta e queda): o ícone diz o resultado
 ICONE_DO_VEREDITO = {
@@ -41,6 +44,18 @@ ICONE_DA_CHECAGEM = {
 @st.cache_data(show_spinner="Conferindo se o resultado foi sorte...")
 def calcular_ficha(pedido: PedidoDaFicha) -> Ficha:
     return ficha.montar_ficha(pedido)
+
+
+def lembrar_para_salvar(pedido: PedidoDaFicha, resultado: Ficha) -> None:
+    st.session_state[CHAVE_DA_FICHA_PARA_SALVAR] = {
+        "pedido": ficha.pedido_para_guardar(pedido),
+        "veredito": resultado.veredito.resultado.value,
+    }
+
+
+def esquecer_a_ficha_para_salvar() -> None:
+    """Começo de cada execução da aba: o botão só guarda a ficha que a tela acabou de mostrar."""
+    st.session_state.pop(CHAVE_DA_FICHA_PARA_SALVAR, None)
 
 
 def _guardar_tolerancia():
