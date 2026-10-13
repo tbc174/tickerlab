@@ -16,8 +16,10 @@ PC (ADR 0031): no ano inteiro, a memória passa de 1 GB.
 """
 
 import argparse
+import hashlib
 import logging
 import sys
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -30,6 +32,7 @@ from base.enet import DocumentoEnet, ler_xml_enet
 from base.enet_coleta import Baixador, baixar_em_fila, guardar, ja_guardados
 from base.ponto_no_tempo import (
     com_divulgacao,
+    conferir_pasta,
     gravar_parquet,
     montar_ano,
     publicadas_do_enet,
@@ -67,18 +70,24 @@ def _conteudo(motor: sa.Engine, url: str) -> bytes | None:
     return guardado if guardado is not None else baixar(url)
 
 
+def _origem(url: str, conteudo: bytes) -> dict[str, str]:
+    return {"url": url, "sha256": hashlib.sha256(conteudo).hexdigest()}
+
+
 def documentos_do_enet(
     conexao: sa.Connection, indice: pd.DataFrame
-) -> tuple[list[DocumentoEnet], list[str]]:
-    """As versões antigas do índice que estão no acervo, lidas; e os links das que faltam."""
-    documentos, faltando = [], []
+) -> tuple[list[DocumentoEnet], list[str], list[dict[str, str]]]:
+    """As versões antigas do índice que estão no acervo, lidas; os links das que faltam; e a
+    origem (endereço e SHA-256 do XML) de cada uma lida."""
+    documentos, faltando, origens = [], [], []
     for link in versoes_antigas(indice)["link"]:
         xml = original_mais_recente(conexao, link)
         if xml is None:
             faltando.append(link)
         else:
             documentos.append(ler_xml_enet(xml))
-    return documentos, faltando
+            origens.append(_origem(link, xml))
+    return documentos, faltando, origens
 
 
 def _baixar_versoes_antigas(motor: sa.Engine, indice: pd.DataFrame, limite: int) -> int:
@@ -97,17 +106,29 @@ def _baixar_versoes_antigas(motor: sa.Engine, indice: pd.DataFrame, limite: int)
     return len(resultado.baixados)
 
 
-def _publicadas_do_arquivo(
-    motor: sa.Engine, documento: str, ano_do_arquivo: int, ano: int, limite_enet: int
-) -> tuple[pd.DataFrame | None, int]:
-    """As contas publicadas num arquivo anual (dados abertos + ENET) com fim em `ano`.
+@dataclass
+class Lido:
+    """O que um arquivo anual deu para o ano: as contas, o que faltou e de onde veio cada coisa."""
 
-    Devolve também quantas versões antigas faltaram no acervo.
-    """
-    conteudo = _conteudo(motor, URLS[documento].format(ano=ano_do_arquivo))
+    publicadas: list[pd.DataFrame] = field(default_factory=list)
+    faltando: int = 0
+    origens: list[dict[str, str]] = field(default_factory=list)
+
+
+def _ler_arquivo(
+    motor: sa.Engine,
+    documento: str,
+    ano_do_arquivo: int,
+    ano: int,
+    limite_enet: int,
+    lido: Lido,
+) -> None:
+    """Junta em `lido` as contas publicadas num arquivo anual (dados abertos + ENET) com fim em `ano`."""
+    url = URLS[documento].format(ano=ano_do_arquivo)
+    conteudo = _conteudo(motor, url)
     if conteudo is None:
         log.info("%s %s ainda não existe na CVM: pulado", documento, ano_do_arquivo)
-        return None, 0
+        return
     indice = ler_indice(conteudo, documento)
     contas = ler_contas(conteudo, documento, so_as_das_regras=True).contas
     if limite_enet:
@@ -116,40 +137,48 @@ def _publicadas_do_arquivo(
             "%s %s: %s versões antigas baixadas", documento, ano_do_arquivo, baixadas
         )
     with motor.connect() as conexao:
-        documentos, faltando = documentos_do_enet(conexao, indice)
+        documentos, faltando, origens_do_enet = documentos_do_enet(conexao, indice)
     partes = [com_divulgacao(contas, indice, "dados_abertos")]
     if documentos:  # tabela vazia na junção estragaria o tipo das datas
         partes.append(publicadas_do_enet(documentos, indice))
     publicadas = pd.concat(partes, ignore_index=True)
-    return publicadas[publicadas["fim"].dt.year == ano], len(faltando)
+    lido.publicadas.append(publicadas[publicadas["fim"].dt.year == ano])
+    lido.faltando += len(faltando)
+    lido.origens += [_origem(url, conteudo), *origens_do_enet]
 
 
 def montar(motor: sa.Engine, ano: int, pasta: Path, limite_enet: int) -> pd.DataFrame:
-    """A base dos fatos de `ano`, gravada em `<pasta>/<ano>.parquet`."""
-    partes, faltando = [], 0
+    """A base dos fatos de `ano`, gravada em `<pasta>/<ano>.parquet` com o `<ano>.json`."""
+    lido = Lido()
     for documento in URLS:
         for ano_do_arquivo in (ano, ano + 1):
-            publicadas, faltas = _publicadas_do_arquivo(
-                motor, documento, ano_do_arquivo, ano, limite_enet
-            )
-            faltando += faltas
-            if publicadas is not None:
-                partes.append(publicadas)
-    if not partes:
+            _ler_arquivo(motor, documento, ano_do_arquivo, ano, limite_enet, lido)
+    if not lido.publicadas:
         log.warning("%s: nenhum arquivo da CVM; nada gravado", ano)
         return pd.DataFrame()
-    base = montar_ano(pd.concat(partes, ignore_index=True), ano)
-    gravar_parquet(base, pasta)
+    base = montar_ano(pd.concat(lido.publicadas, ignore_index=True), ano)
+    gravar_parquet(base, pasta, origens=lido.origens)
     log.info(
         "%s: %s linhas, %s versões antigas ainda fora do acervo (rode com --baixar-enet)",
-        ano, len(base), faltando,
+        ano, len(base), lido.faltando,
     )  # fmt: skip
     return base
 
 
+def conferir(pasta: Path) -> int:
+    """Confere o hash de cada ano gravado (exigência 9 da ADR 0027). 1 se algum não bate."""
+    resultado = conferir_pasta(pasta)
+    for ano, igual in resultado.items():
+        print(f"{ano}: {'ok' if igual else 'DIFERENTE do anotado'}")
+    return 0 if all(resultado.values()) else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
-    argumentos.add_argument("--anos", type=int, nargs="+", required=True)
+    argumentos.add_argument("--anos", type=int, nargs="+")
+    argumentos.add_argument(
+        "--conferir", action="store_true", help="só confere os hashes da pasta e sai"
+    )
     argumentos.add_argument("--pasta", type=Path, default=PASTA_PADRAO)
     argumentos.add_argument(
         "--baixar-enet",
@@ -158,6 +187,10 @@ def main(argv: list[str] | None = None) -> int:
         help="máximo de versões antigas a baixar por arquivo",
     )
     opcoes = argumentos.parse_args(argv)
+    if opcoes.conferir:
+        return conferir(opcoes.pasta)
+    if not opcoes.anos:
+        argumentos.error("informe --anos (ou --conferir)")
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
