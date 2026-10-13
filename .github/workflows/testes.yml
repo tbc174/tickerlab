@@ -10,7 +10,10 @@ permissions:
 
 concurrency:
   group: testes-${{ github.ref }}
-  cancel-in-progress: true
+  # Só os testes de PR são cancelados por um push novo. Na main, o que está rodando vai até o fim
+  # (o GitHub ainda descarta os que estão na fila): o deploy implanta o commit mais novo já testado,
+  # e com o cancelamento nenhum terminava quando várias sessões mesclavam (13/10/2026).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   testes:

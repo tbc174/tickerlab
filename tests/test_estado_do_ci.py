@@ -93,3 +93,93 @@ def test_script_de_deploy_espera_as_tarefas_agendadas():
         "flock -n 8" in texto
     )  # exclusiva e sem esperar: tenta de novo no próximo minuto
     assert texto.index("flock -n 8") < texto.index("git merge --ff-only")
+
+
+# --- escolher o commit a implantar (13/10/2026: com várias sessões mesclando, o último commit da
+# main quase nunca tinha o teste terminado, e o deploy ficava parado) --------------------------
+
+
+def _execucoes_do_workflow(*trios):
+    return {
+        "workflow_runs": [
+            {"head_sha": sha, "status": status, "conclusion": conclusao}
+            for sha, status, conclusao in trios
+        ]
+    }
+
+
+def test_implanta_o_mais_novo_com_teste_verde_quando_o_ultimo_ainda_roda():
+    resposta = _execucoes_do_workflow(
+        ("ccc", "in_progress", None),
+        ("bbb", "completed", "success"),
+        ("aaa", "completed", "success"),
+    )
+    assert estado_do_ci.escolher(resposta, ["ccc", "bbb", "aaa"]) == (
+        "bbb",
+        "aguardando",
+    )
+
+
+def test_o_ultimo_verde_e_o_escolhido():
+    resposta = _execucoes_do_workflow(
+        ("ccc", "completed", "success"), ("bbb", "completed", "success")
+    )
+    assert estado_do_ci.escolher(resposta, ["ccc", "bbb"]) == ("ccc", "ok")
+
+
+def test_cancelado_ou_falho_no_meio_nao_impede_o_verde_mais_velho():
+    resposta = _execucoes_do_workflow(
+        ("ccc", "completed", "cancelled"),
+        ("bbb", "completed", "failure"),
+        ("aaa", "completed", "success"),
+    )
+    assert estado_do_ci.escolher(resposta, ["ccc", "bbb", "aaa"]) == ("aaa", "falhou")
+
+
+def test_nenhum_verde_nao_implanta_e_diz_o_estado_do_mais_novo():
+    rodando = _execucoes_do_workflow(("ccc", "queued", None))
+    assert estado_do_ci.escolher(rodando, ["ccc"]) == (None, "aguardando")
+    falhou = _execucoes_do_workflow(("ccc", "completed", "failure"))
+    assert estado_do_ci.escolher(falhou, ["ccc"]) == (None, "falhou")
+
+
+def test_commit_sem_execucao_ainda_espera():
+    assert estado_do_ci.escolher(_execucoes_do_workflow(), ["ccc"]) == (
+        None,
+        "aguardando",
+    )
+
+
+def test_rodar_de_novo_um_teste_que_falhou_e_passou_vale_o_verde():
+    resposta = _execucoes_do_workflow(
+        ("ccc", "completed", "failure"), ("ccc", "completed", "success")
+    )
+    assert estado_do_ci.escolher(resposta, ["ccc"]) == ("ccc", "ok")
+
+
+def test_commit_fora_dos_candidatos_nunca_e_escolhido():
+    """Verde, mas mais velho que o que está no ar (não está entre os candidatos): não volta atrás."""
+    resposta = _execucoes_do_workflow(
+        ("velho", "completed", "success"), ("ccc", "in_progress", None)
+    )
+    assert estado_do_ci.escolher(resposta, ["ccc"]) == (None, "aguardando")
+
+
+def test_resposta_ilegivel():
+    assert estado_do_ci.escolher({"erro": 1}, ["ccc"]) == (None, "sem-dados")
+
+
+def test_linha_de_comando_do_escolher():
+    resposta = json.dumps(
+        _execucoes_do_workflow(
+            ("ccc", "in_progress", None), ("bbb", "completed", "success")
+        )
+    )
+    saida = subprocess.run(
+        [sys.executable, str(SCRIPT), "--escolher", "ccc", "bbb"],
+        input=resposta,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    assert saida == "bbb aguardando"
