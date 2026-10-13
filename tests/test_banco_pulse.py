@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy as sa
 
 from src.banco import pulse as repo
-from src.banco.modelo import metadata
+from src.banco.modelo import metadata, pulse
 from src.banco.usuarios import apagar_conta, entrar
 
 AGORA = datetime(2026, 10, 13, 18, 0, tzinfo=UTC)
@@ -69,3 +69,53 @@ def test_apagar_a_conta_apaga_a_visita(conexao, ana, bia):
 def test_visita_sem_fuso_e_recusada(conexao, ana):
     with pytest.raises(ValueError, match="fuso"):
         repo.marcar_visita(conexao, ana.id, datetime(2026, 10, 13, 18, 0))  # noqa: DTZ001
+
+
+# --- vereditos da ficha vistos no Pulse (PR E2) ---------------------------------------------
+
+
+def test_sem_visita_nao_ha_vereditos_vistos(conexao, ana):
+    assert repo.vereditos_vistos(conexao, ana.id) == {}
+
+
+def test_marcar_a_visita_com_os_vereditos_guarda_os_dois(conexao, ana):
+    repo.marcar_visita(conexao, ana.id, AGORA, {"sim-1": "passou"})
+    repo.marcar_visita(
+        conexao, ana.id, AGORA + timedelta(days=1), {"sim-1": "não passou"}
+    )
+    assert repo.vereditos_vistos(conexao, ana.id) == {"sim-1": "não passou"}
+    assert repo.ultima_visita(conexao, ana.id) == AGORA + timedelta(days=1)
+
+
+def test_marcar_sem_vereditos_nao_apaga_os_guardados(conexao, ana):
+    repo.marcar_visita(conexao, ana.id, AGORA, {"sim-1": "passou"})
+    repo.marcar_visita(conexao, ana.id, AGORA + timedelta(days=1))
+    assert repo.vereditos_vistos(conexao, ana.id) == {"sim-1": "passou"}
+
+
+def test_visita_mais_velha_nao_volta_os_vereditos(conexao, ana):
+    repo.marcar_visita(conexao, ana.id, AGORA, {"sim-1": "passou"})
+    repo.marcar_visita(
+        conexao, ana.id, AGORA - timedelta(hours=1), {"sim-1": "não passou"}
+    )
+    assert repo.vereditos_vistos(conexao, ana.id) == {"sim-1": "passou"}
+
+
+def test_vereditos_estranhos_no_banco_ficam_de_fora(conexao, ana):
+    repo.marcar_visita(conexao, ana.id, AGORA)
+    conexao.execute(
+        sa.update(pulse).values(
+            vereditos={
+                "sim-1": "passou",
+                "sim-2": 3,
+                "sim-3": None,
+                "x" * 100: "passou",
+            }
+        )
+    )
+    assert repo.vereditos_vistos(conexao, ana.id) == {"sim-1": "passou"}
+
+
+def test_vereditos_de_uma_conta_nao_aparecem_na_outra(conexao, ana, bia):
+    repo.marcar_visita(conexao, ana.id, AGORA, {"sim-ana": "passou"})
+    assert repo.vereditos_vistos(conexao, bia.id) == {}
