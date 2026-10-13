@@ -25,6 +25,7 @@ from src.acaso import (
     MIN_OPERACOES_PARA_MONTE_CARLO,
     calcular_sharpe_maximo_esperado,
     calcular_sharpe_probabilistico,
+    resumir_monte_carlo,
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
@@ -77,8 +78,6 @@ TOLERANCIA_PADRAO_DE_QUEDA = 0.30
 TOLERANCIA_MINIMA = 0.05
 TOLERANCIA_MAXIMA = 0.90
 PREFERENCIA_DA_TOLERANCIA = "tolerancia_de_queda"
-# quantil das quedas do Monte Carlo: 95% das simulações caíram menos que o pior caso comum
-PIOR_CASO_COMUM = 0.05
 
 
 class Situacao(Enum):
@@ -324,9 +323,8 @@ def queda_no_pior_caso_comum(
     com poucas, a maior queda que de fato aconteceu.
     """
     if len(retornos_das_operacoes.dropna()) >= MIN_OPERACOES_PARA_MONTE_CARLO:
-        simulado = simular_monte_carlo(retornos_das_operacoes)
-        queda = float(np.quantile(simulado.quedas_maximas, PIOR_CASO_COMUM))
-        return queda, "no pior caso comum do Monte Carlo"
+        resumo = resumir_monte_carlo(simular_monte_carlo(retornos_das_operacoes))
+        return resumo.queda_p5, "no pior caso comum do Monte Carlo"
     real = float((curva_de_capital / curva_de_capital.cummax() - 1).min())
     return real, "na maior queda real (poucas operações para o Monte Carlo)"
 
