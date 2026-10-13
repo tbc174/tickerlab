@@ -43,3 +43,26 @@ def test_css_so_usa_cores_da_marca():
     usadas = {c.lower() for c in re.findall(r"#[0-9a-fA-F]{6}\b", CSS_DO_APP)}
     assert usadas <= da_marca, usadas - da_marca
     assert "orange" not in CSS_DO_APP.lower() and "yellow" not in CSS_DO_APP.lower()
+
+
+@pytest.mark.parametrize(
+    "trecho",
+    [
+        '[data-testid="stTopNavPopoverBody"] > *',  # menus do topo surgem do gatilho
+        '[data-baseweb="popover"] > div',  # listas de escolha também
+        '[data-baseweb="tab-highlight"]',  # o traço azul desliza entre as abas
+        '[data-baseweb="tab-panel"]',  # o conteúdo da aba entra suave
+    ],
+)
+def test_microanimacoes_do_blueprint(trecho):
+    """Catálogo de animações do blueprint (seção 09): 04, 05 e 07 (a 06, abrir os expansores, o
+    próprio Streamlit já anima)."""
+    assert trecho in CSS_DO_APP
+
+
+def test_quem_pede_menos_movimento_nao_ve_animacao():
+    reduzir = CSS_DO_APP[CSS_DO_APP.index("@media (prefers-reduced-motion: reduce)") :]
+    assert (
+        "animation: none !important" in reduzir
+        and "transition: none !important" in reduzir
+    )
