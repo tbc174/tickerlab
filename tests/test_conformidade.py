@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -10,7 +11,7 @@ import stripe
 
 from src import auditoria, conformidade
 from src.banco import dados_do_usuario as repo
-from src.banco import tentativas
+from src.banco import pulse, tentativas
 from src.banco.modelo import assinaturas, metadata
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
@@ -102,7 +103,10 @@ def test_exportar_traz_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
     repo.salvar_simulacao(conexao, bia.id, "backtest", "Da Bia", {}, {})
     tentativas.registrar_tentativa(conexao, ana.id, "PETR4.SA", "a" * 64)
     tentativas.registrar_tentativa(conexao, bia.id, "VALE3.SA", "b" * 64)
+    pulse.marcar_visita(conexao, ana.id, datetime(2026, 10, 13, 18, 0, tzinfo=UTC))
+    pulse.marcar_visita(conexao, bia.id, datetime(2026, 10, 14, 9, 0, tzinfo=UTC))
     dados = conformidade.exportar_meus_dados(conexao, ana.id)
+    assert dados["pulse"] == {"visto_em": "2026-10-13T18:00:00+00:00", "vereditos": {}}
     assert dados["tentativas_por_ativo"] == {"PETR4.SA": 1}
     assert dados["perfil"]["email"] == "ana@exemplo.com"
     assert dados["preferencias"] == {"periodo": "5y"}
@@ -119,6 +123,15 @@ def test_exportar_traz_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
 def test_politica_de_privacidade_cita_as_tentativas_do_backtest():
     texto = conformidade.carregar_texto("privacidade")
     assert "tentativas" in texto and "SHA-256" in texto
+
+
+def test_politica_de_privacidade_cita_o_pulse():
+    texto = conformidade.carregar_texto("privacidade")
+    assert "Pulse" in texto
+
+
+def test_exportar_sem_pulse_aberto_traz_vazio(conexao, ana):
+    assert conformidade.exportar_meus_dados(conexao, ana.id)["pulse"] is None
 
 
 def test_exportar_vira_json_e_registra_na_auditoria(conexao, ana):

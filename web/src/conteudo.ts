@@ -63,11 +63,22 @@ import siteJson from "../conteudo/site.json";
 export const site = siteJson;
 import legalJson from "../conteudo/legal.json";
 import qualidadeJson from "../conteudo/qualidade.json";
+import novidadesJson from "../conteudo/novidades.json";
 
 // os Termos e a Política, já em HTML (convertidos do Markdown de conteudo/ pelo Python)
 export const legal = legalJson;
 // o selo "dado em conferência" e as regras fixas, com os mesmos textos do app
 export const qualidade = qualidadeJson;
+
+/** Uma atualização do TickerLab (`Atualizacao` de src/novidades.py), da mais nova à mais velha. */
+export interface Atualizacao {
+  data: string; // AAAA-MM-DD
+  titulo: string;
+  resumo: string;
+  novidades: string[];
+  correcoes: string[];
+}
+export const novidades: Atualizacao[] = novidadesJson;
 
 // --- o que só o app em React usa (scripts/exportar_conteudo.py, função _app) ---
 

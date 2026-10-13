@@ -333,3 +333,10 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** ao emprestar as ações, a B3 escreve uma "Transferência - Liquidação" de **saída sem valor** (mais um par "Transferência" e uma linha "Empréstimo" no mesmo dia). O leitor tratava toda liquidação de saída como venda; vendendo "tudo", o médio recomeçava na compra seguinte.
 - **Solução:** toda venda traz dinheiro. Liquidação sem valor não é compra nem venda: a saída fica fora das contas, com aviso na tela, e uma entrada sem valor depois de uma saída do mesmo ativo é a volta. Entrada sem valor sem saída antes continua como compra sem valor (custo incompleto). Teste de regressão com as 4 linhas copiadas da planilha real e valores inventados.
 - **Data:** 13/10/2026
+
+## PR vira "conflito" no GitHub sem que o código conflite (`novo/` e `site/`)
+- **Sintoma:** o PR do relatório da empresa ficou `CONFLICTING` duas vezes em uma hora, sem nenhum arquivo de código em comum com os PRs da `main`; o CI nem dispara num PR em conflito.
+- **Causa:** `novo/` (app em React) é um pacote minificado gerado e guardado no Git (o VPS não tem Node), com nome de arquivo que muda a cada build, e ele empacota `web/conteudo/paginas.json`. Todo PR que mexe numa página ou no React regrava os mesmos arquivos; o primeiro a entrar deixa os outros em conflito. Rebase não resolve: reescreve o ramo e exige push forçado (proibido pela trava).
+- **Solução:** `python -m scripts.juntar_main`: merge da `main` no ramo; conflito só em pasta gerada (`site/`, `novo/`, `web/conteudo/`) é resolvido partindo da versão da `main` e rodando todos os geradores por cima; conflito em código desfaz o merge e para. Depois, `git push` comum. Regra no `CLAUDE.md` (Git e GitHub).
+- **Detalhe:** numa cópia criada antes da regra `web/** eol=lf` do `.gitattributes`, o `web/app/index.html` tinha CRLF e o build do Windows punha uma linha em branco a mais no `novo/index.html` (o CI recusaria). Cópia nova (`git worktree add`) já sai com LF.
+- **Data:** 13/10/2026

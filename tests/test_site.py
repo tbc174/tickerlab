@@ -65,6 +65,7 @@ def test_paginas_tem_titulo_descricao_idioma_e_aviso():
         "produto.html",
         "como-funciona.html",
         "aprender.html",
+        "novidades.html",
     }
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
@@ -313,3 +314,12 @@ def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
     for regra in REGRAS.values():
         assert esc(regra.titulo) in texto
         assert esc(regra.o_que_confere) in texto
+
+
+def test_novidades_no_rodape_de_todas_as_paginas_e_no_mapa_do_site():
+    for arquivo in PAGINAS_HTML:
+        rodape = arquivo.read_text(encoding="utf-8").split("<footer", 1)[1]
+        assert '<a href="/novidades.html">Novidades</a>' in rodape, arquivo.name
+    assert "https://tickerlab.com.br/novidades.html" in (
+        SITE / "sitemap.xml"
+    ).read_text(encoding="utf-8")

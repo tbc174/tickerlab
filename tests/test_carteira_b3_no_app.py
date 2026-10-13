@@ -83,7 +83,9 @@ def test_movimentacao_de_exemplo_mostra_proventos_e_custo_medio():
     assert "começa depois" in custo.loc["WEGE3", "Observação"]
     assert "HGLG11" not in custo.index  # vendido inteiro: não tem custo hoje
     proventos = _tabela_com(app, "Total (R$)")
-    assert proventos.loc["PETR4", "Total (R$)"] == 505.0
+    # 505 de proventos + 3,50 da taxa do aluguel (linha "Empréstimo" com valor)
+    assert proventos.loc["PETR4", "Total (R$)"] == 508.5
+    assert proventos.loc["PETR4", "Aluguel (R$)"] == 3.5
 
 
 def test_movimentacao_com_a_posicao_mostra_o_ganho_ou_a_perda():

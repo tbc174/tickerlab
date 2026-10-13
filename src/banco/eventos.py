@@ -267,10 +267,14 @@ def eventos_dos_tickers(
     desde: date,
     temas: Iterable[str] | None = None,
     limite: int = 300,
+    coletados_entre: tuple[datetime, datetime] | None = None,
 ) -> list[Evento]:
     """Os eventos das companhias desses tickers publicados desde `desde`, do mais novo ao mais
     velho. Um evento de empresa com dois tickers (PETR3 e PETR4) aparece uma vez, com o primeiro
-    deles na ordem pedida."""
+    deles na ordem pedida.
+
+    `coletados_entre` (início, fim): só os coletados (ou reapresentados) depois do início e até o
+    fim, como o Pulse pede ("desde a sua última visita")."""
     pedidos = list(dict.fromkeys(tickers))
     empresas = empresas_dos_tickers(conexao, pedidos)
     if not empresas:
@@ -291,6 +295,11 @@ def eventos_dos_tickers(
     )
     if temas is not None:
         consulta = consulta.where(eventos.c.tema.in_(list(temas)))
+    if coletados_entre is not None:
+        inicio, fim = coletados_entre
+        consulta = consulta.where(
+            eventos.c.ingerido_em > inicio, eventos.c.ingerido_em <= fim
+        )
     return [
         Evento(
             ticker=ticker_do_cnpj[l.cnpj],

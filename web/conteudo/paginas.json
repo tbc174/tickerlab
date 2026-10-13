@@ -474,6 +474,17 @@
     "url": "research"
   },
   {
+    "chave": "pulse",
+    "contrato": null,
+    "descricao": "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM e na SEC e a variação do preço.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Pulse",
+    "url": "pulse"
+  },
+  {
     "chave": "carteira_b3",
     "contrato": null,
     "descricao": "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos que você escolher, proventos recebidos e custo médio.",
