@@ -1,5 +1,7 @@
 """Testes de src/ficha.py: a ficha "Foi sorte?" (ADR 0037, D1 e D2)."""
 
+from itertools import pairwise
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -257,3 +259,63 @@ def test_com_operacoes_suficientes_usa_o_monte_carlo():
     assert (
         queda < (curva / curva.cummax() - 1).min()
     )  # o pior caso comum é pior que o real
+
+
+# --- Checagem 3: acaso com as tentativas --------------------------------------------------
+
+
+def _retorno_bom(n=750, semente=3):
+    rng = np.random.default_rng(semente)
+    return pd.Series(
+        rng.normal(0.0008, 0.01, n), index=pd.bdate_range("2021-01-04", periods=n)
+    )
+
+
+def test_mais_tentativas_nunca_melhora_a_checagem_3():
+    retorno = _retorno_bom()
+    for variancia in (1e-5, 1e-4, 1e-3):
+        chances = [
+            ficha.chance_de_nao_ser_sorte(retorno, variancia, n)
+            for n in (1, 2, 5, 10, 37, 100, 1_000, 10_000)
+        ]
+        assert all(a >= b for a, b in pairwise(chances))
+
+
+def test_tentativas_somam_a_grade_e_as_da_pessoa():
+    assert ficha.total_de_tentativas(49, 1) == 49
+    assert (
+        ficha.total_de_tentativas(49, 37) == 85
+    )  # a configuração atual já está na grade
+    assert ficha.total_de_tentativas(0, 1) == 1
+
+
+def test_acaso_passa_com_p_baixo_e_chance_alta():
+    c = ficha.checar_acaso(0.01, 0.97, 85)
+    assert c.situacao is Situacao.PASSOU
+    assert "85" in c.explicacao
+
+
+def test_p_valor_alto_nao_passa_mesmo_com_chance_alta():
+    assert ficha.checar_acaso(0.20, 0.99, 10).situacao is Situacao.NAO_PASSOU
+
+
+def test_chance_baixa_nao_passa_mesmo_com_p_baixo():
+    assert ficha.checar_acaso(0.01, 0.80, 10).situacao is Situacao.NAO_PASSOU
+
+
+def test_sem_grade_usa_a_variancia_do_acaso():
+    dados = pd.DataFrame({"Close": 100 * (1 + _retorno_bom()).cumprod()})
+    posicao = pd.Series(1.0, index=dados.index)
+    posicao.iloc[::40] = 0.0  # opera de vez em quando, para o deslocamento mudar algo
+    c = ficha.medir_acaso(dados["Close"], posicao, 0.0005, 0.0, None, 5)
+    assert c.situacao in (Situacao.PASSOU, Situacao.NAO_PASSOU)
+    assert "5 tentativas" in c.explicacao
+
+
+def test_poucos_dados_no_acaso_nao_deu_para_medir():
+    fechamento = pd.Series(
+        np.linspace(100, 110, 40), index=pd.bdate_range("2024-01-02", periods=40)
+    )
+    posicao = pd.Series(1.0, index=fechamento.index)
+    c = ficha.medir_acaso(fechamento, posicao, 0.0005, 0.0, None, 1)
+    assert c.situacao is Situacao.SEM_MEDIDA

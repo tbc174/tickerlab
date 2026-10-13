@@ -19,9 +19,17 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
-from src.acaso import MIN_OPERACOES_PARA_MONTE_CARLO, simular_monte_carlo
+from src.acaso import (
+    MIN_OPERACOES_PARA_MONTE_CARLO,
+    calcular_sharpe_deflacionado,
+    calcular_sharpe_maximo_esperado,
+    calcular_sharpe_probabilistico,
+    simular_monte_carlo,
+    testar_contra_o_acaso,
+)
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.imposto import aplicar_imposto
+from src.indicadores import DIAS_POR_ANO
 
 AVISO = "Vale para os dados do passado. Não é promessa de resultado nem recomendação."
 
@@ -29,9 +37,14 @@ PERGUNTA_FORA_DO_PERIODO = "Funcionou fora do período usado para escolher?"
 PERGUNTA_VIZINHOS = "Funciona com parâmetros vizinhos?"
 PERGUNTA_CUSTOS = "Sobrevive aos custos e ao imposto?"
 PERGUNTA_QUEDAS = "As quedas cabem no que você aguenta?"
+PERGUNTA_ACASO = "Bate o acaso, contando as suas tentativas?"
 
 # Checagem 1: o Sharpe de fora precisa guardar pelo menos metade do de dentro
 EFICIENCIA_MINIMA = 0.5
+# Checagem 3: poucas versões ao acaso fazem igual (p-valor) e, descontadas as tentativas, o
+# Sharpe deflacionado convence (chance de não ser sorte)
+P_VALOR_MAXIMO = 0.05
+CHANCE_MINIMA_DE_NAO_SER_SORTE = 0.95
 # Checagem 4: 2 de cada 3 vizinhos com Sharpe positivo, e a mediana deles com pelo menos metade
 # do Sharpe da configuração escolhida (um pico isolado cercado de resultados fracos é sorte)
 FRACAO_MINIMA_DE_VIZINHOS_POSITIVOS = 2 / 3
@@ -131,6 +144,10 @@ def _numero(valor: float) -> str:
 
 def _porcentagem(valor: float) -> str:
     return f"{valor * 100:+.1f}%".replace(".", ",")
+
+
+def _percentual(valor: float) -> str:
+    return f"{valor * 100:.1f}%".replace(".", ",")
 
 
 def _queda(valor: float) -> str:
@@ -288,3 +305,82 @@ def checar_quedas(queda: float, tolerancia: float, fonte: str) -> Checagem:
         f"A queda chegou a {_queda(queda)} {fonte}; você disse aguentar até "
         f"{_queda(tolerancia)}.",
     )
+
+
+# --- Checagem 3: acaso com as tentativas -------------------------------------------------
+
+
+def total_de_tentativas(combinacoes_da_grade: int, tentativas_da_pessoa: int) -> int:
+    """Variações que entram no desconto: as da grade da validação mais as que a pessoa testou.
+
+    A configuração de agora já está entre as da pessoa e (na grade ou perto dela) entre as da
+    grade; por isso conta uma vez só.
+    """
+    return max(combinacoes_da_grade, 1) + max(tentativas_da_pessoa - 1, 0)
+
+
+def chance_de_nao_ser_sorte(
+    retorno: pd.Series,
+    variancia_dos_sharpes_diarios: float,
+    tentativas: int,
+    taxa_livre_de_risco: float = 0.0,
+) -> float:
+    """Chance de o Sharpe verdadeiro passar do melhor que `tentativas` regras sem valor dariam
+    (o Sharpe deflacionado de Bailey e López de Prado, com a variância dada)."""
+    referencia = calcular_sharpe_maximo_esperado(
+        variancia_dos_sharpes_diarios, tentativas
+    )
+    return calcular_sharpe_probabilistico(retorno, referencia, taxa_livre_de_risco)
+
+
+def checar_acaso(p_valor: float, chance: float, tentativas: int) -> Checagem:
+    """Passa se o p-valor do teste contra o acaso é baixo e a chance de não ser sorte, com as
+    tentativas descontadas, é alta (as duas em fração)."""
+    passou = p_valor < P_VALOR_MAXIMO and chance >= CHANCE_MINIMA_DE_NAO_SER_SORTE
+    return Checagem(
+        PERGUNTA_ACASO,
+        _situacao(passou),
+        f"{_percentual(p_valor)} das versões ao acaso fizeram igual ou melhor. Contando "
+        f"{tentativas} tentativas, a chance de não ser sorte é {_percentual(chance)}.",
+    )
+
+
+def medir_acaso(
+    fechamento: pd.Series,
+    posicao_desejada: pd.Series,
+    custo_por_operacao: float,
+    taxa_livre_de_risco: float,
+    retornos_da_grade: pd.DataFrame | None,
+    tentativas_da_pessoa: int,
+) -> Checagem:
+    """Roda o teste contra o acaso e o Sharpe deflacionado e devolve a checagem 3.
+
+    Com a grade da validação (2 ou mais combinações), a dispersão dos Sharpes vem dela; sem
+    grade (regra sem números para ajustar), vem das próprias versões ao acaso.
+    """
+    try:
+        acaso = testar_contra_o_acaso(
+            fechamento, posicao_desejada, custo_por_operacao, taxa_livre_de_risco
+        )
+    except ValueError as erro:
+        return sem_medida(PERGUNTA_ACASO, str(erro))
+    retorno = executar_backtest(
+        fechamento, posicao_desejada, custo_por_operacao
+    ).retorno
+    combinacoes = 0 if retornos_da_grade is None else retornos_da_grade.shape[1]
+    tentativas = total_de_tentativas(combinacoes, tentativas_da_pessoa)
+    if retornos_da_grade is not None and combinacoes >= 2:
+        chance = calcular_sharpe_deflacionado(
+            retorno, retornos_da_grade, tentativas - combinacoes, taxa_livre_de_risco
+        ).probabilidade
+    else:
+        # os Sharpes do acaso são anuais: Sharpe anual ≈ diário × √252, variância ÷ 252
+        variancia = float(np.var(acaso.sharpes_ao_acaso, ddof=1)) / DIAS_POR_ANO
+        chance = chance_de_nao_ser_sorte(
+            retorno, variancia, tentativas, taxa_livre_de_risco
+        )
+    if np.isnan(chance):
+        return sem_medida(
+            PERGUNTA_ACASO, "Os retornos não deixaram calcular o Sharpe deflacionado."
+        )
+    return checar_acaso(acaso.p_valor, chance, tentativas)
