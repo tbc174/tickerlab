@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 import sqlalchemy as sa
 
@@ -54,6 +55,35 @@ def _empresa(banco, cnpj):
 
 
 # --- leitura ---------------------------------------------------------------------------------------
+MIL = 1_000
+
+
+def test_dfp_traz_as_contas_do_relatorio_completo():
+    """Série 2 da base de ML, PR 1: as contas do relatório completo de empresa (WEG, DFP 2025,
+    números do arquivo da CVM em milhares). As que a empresa divide em várias linhas são somadas."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    weg = contas[contas["cnpj"] == WEG]
+    saldos = weg[weg["periodo"] == dm.POSICAO].set_index("conta")["valor"]
+    fluxos = weg[weg["periodo"] == dm.EXERCICIO].set_index("conta")["valor"]
+    assert saldos["contas_a_receber"] == 7_837_018 * MIL
+    assert saldos["estoques"] == 9_911_053 * MIL
+    assert saldos["imobilizado"] == 11_511_802 * MIL
+    assert saldos["intangivel"] == 2_784_989 * MIL
+    assert saldos["fornecedores"] == 2_789_346 * MIL
+    assert {"ativo_circulante", "passivo_circulante"} <= set(saldos.index)
+    assert fluxos["custo"] == -27_122_477 * MIL
+    assert fluxos["despesas_financeiras"] == -2_173_378 * MIL
+    assert fluxos["depreciacao"] == 1_001_296 * MIL
+    assert fluxos["capex"] == -(2_563_450 + 127_871) * MIL  # imobilizado + intangível
+    assert fluxos["dividendos_pagos"] == -5_384_769 * MIL
+
+
+def test_banco_nao_ganha_estoques_nem_fornecedores():
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    do_banco = set(contas.loc[contas["cnpj"] == BB, "conta"])
+    assert not {"estoques", "fornecedores", "custo"} & do_banco
+
+
 def test_dfp_traz_as_contas_chave_em_reais():
     contas, documentos = _ler("dfp_cia_aberta_2025.zip", "DFP")
     petr = contas[(contas["cnpj"] == PETROBRAS) & (contas["periodo"] == dm.EXERCICIO)]
@@ -227,3 +257,26 @@ def test_migracao_0010_vai_e_volta(tmp_path):
     desfazer_ate("0009", url=url)
     assert "demonstracoes" not in sa.inspect(criar_engine(url)).get_table_names()
     migrar_para("head", url=url)
+
+
+@pytest.mark.parametrize(
+    ("descricao", "capex"),
+    [
+        ("Imobilizado", True),
+        ("Intangível", True),
+        ("Aquisição de ativo imobilizado", True),
+        ("Aquisição de bens do ativo imobilizado", True),
+        ("Aquisições de bens do ativo imobilizado e intangível", True),
+        ("Compras de imobilizado", True),
+        ("Adições ao ativo imobilizado", True),
+        ("No intangível", True),
+        ("Venda de imobilizado", False),
+        ("Recebimento pela venda de ativo imobilizado", False),
+        ("Alienação de imobilizado e intangível", False),
+        ("Baixa de imobilizado", False),
+        ("Aplicação financeira de longo prazo", False),
+    ],
+)
+def test_capex_pela_descricao_real_das_empresas(descricao, capex):
+    """Descrições do DFP 2025 real: a mesma compra de imobilizado aparece escrita de vários jeitos."""
+    assert dm.e_capex(pd.Series([dm._sem_acento(descricao)])).iloc[0] == capex

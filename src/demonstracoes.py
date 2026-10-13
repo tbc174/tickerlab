@@ -59,11 +59,15 @@ def _sem_acento(texto: str) -> str:
     return "".join(c for c in texto if unicodedata.category(c) != "Mn").lower().strip()
 
 
+# contas que a empresa divide em várias linhas do fluxo de caixa (somadas por documento e período)
+CONTAS_SOMADAS = ("depreciacao", "capex", "dividendos_pagos")
+
+
 def _ler(arquivo: zipfile.ZipFile, contem: str) -> pd.DataFrame:
     nomes = [n for n in arquivo.namelist() if contem in n]
     if not nomes:
         return pd.DataFrame()
-    return pd.read_csv(
+    tabela = pd.read_csv(
         arquivo.open(nomes[0]),
         sep=";",
         encoding=CODIFICACAO_DA_CVM,
@@ -71,6 +75,9 @@ def _ler(arquivo: zipfile.ZipFile, contem: str) -> pd.DataFrame:
         dtype=str,
         keep_default_na=False,
     )
+    # a CVM às vezes repete a mesma linha (1,7% da DFP 2022): somar contas divididas em várias
+    # linhas contaria a repetida duas vezes
+    return tabela.drop_duplicates(ignore_index=True)
 
 
 def _profundidade(codigo: str) -> int:
@@ -98,6 +105,10 @@ def _contas_da_dre(dre: pd.DataFrame) -> pd.DataFrame:
         # lucro básico por ação da 1ª classe (em reais por ação, sem a escala "MIL"): serve
         # para conferir se a quantidade de ações foi informada em milhares
         "lpa_basico": cd == "3.99.01.01",
+        # relatório completo de empresa (série 2 da base de ML, PR 1)
+        "custo": (cd == "3.02") & ds.str.startswith("custo"),
+        "despesas_financeiras": (cd == "3.06.02")
+        & ds.str.startswith("despesas financeiras"),
     }
     return _marcar(dre, escolhas)
 
@@ -113,6 +124,13 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
                     "ativo_total": cd == "1",
                     "caixa": (cd == "1.01.01") & ds.str.startswith("caixa"),
                     "aplicacoes": (cd == "1.01.02") & ds.str.startswith("aplicacoes"),
+                    "ativo_circulante": (cd == "1.01")
+                    & ds.str.startswith("ativo circulante"),
+                    "contas_a_receber": (cd == "1.01.03")
+                    & ds.str.startswith("contas a receber"),
+                    "estoques": (cd == "1.01.04") & ds.str.startswith("estoques"),
+                    "imobilizado": (cd == "1.02.03") & ds.str.startswith("imobilizado"),
+                    "intangivel": (cd == "1.02.04") & ds.str.startswith("intangivel"),
                 },
             )
         )
@@ -122,6 +140,10 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
             _marcar(
                 bpp,
                 {
+                    "passivo_circulante": (cd == "2.01")
+                    & ds.str.startswith("passivo circulante"),
+                    "fornecedores": (cd == "2.01.02")
+                    & ds.str.startswith("fornecedores"),
                     "divida_cp": (cd == "2.01.04")
                     & ds.str.startswith("emprestimos e financiamentos"),
                     "divida_lp": (cd == "2.02.01")
@@ -138,12 +160,41 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
 
 
+# capex no fluxo de investimento: a mesma compra aparece escrita de vários jeitos ("Imobilizado",
+# "Aquisição de bens do ativo imobilizado", "Adições ao intangível", "No intangível"...); a venda,
+# a baixa e o recebimento ficam de fora (medido no DFP 2025 real)
+_COMPRA_DE_ATIVO = (
+    r"^(?:aquisic|compra|adic|investiment|aplicac|no |em |imobilizado|intangivel|ativo "
+    r"imobilizado|ativo intangivel)"
+)
+_SAIDA_DE_ATIVO = r"venda|alienac|baixa|recebi"
+
+
+def e_capex(descricoes: pd.Series) -> pd.Series:
+    """Quais linhas (descrições sem acento, em minúsculas) do fluxo de investimento são capex."""
+    ativo = descricoes.str.contains(r"imobiliz|intangiv", regex=True)
+    compra = descricoes.str.match(_COMPRA_DE_ATIVO)
+    saida = descricoes.str.contains(_SAIDA_DE_ATIVO, regex=True)
+    return ativo & compra & ~saida
+
+
 def _contas_do_fluxo(dfc: pd.DataFrame) -> pd.DataFrame:
     if dfc.empty:
         return dfc
-    ds = dfc["DS_CONTA"].map(_sem_acento)
+    ds, cd = dfc["DS_CONTA"].map(_sem_acento), dfc["CD_CONTA"]
     return _marcar(
-        dfc, {"fco": (dfc["CD_CONTA"] == "6.01") & ds.str.startswith("caixa liquido")}
+        dfc,
+        {
+            "fco": (cd == "6.01") & ds.str.startswith("caixa liquido"),
+            # as três abaixo vêm em várias linhas e são somadas (CONTAS_SOMADAS)
+            "depreciacao": cd.str.startswith("6.01.01.")
+            & ds.str.contains(r"deprecia|amortiza|exaust", regex=True),
+            "capex": cd.str.startswith("6.02.") & e_capex(ds),
+            "dividendos_pagos": cd.str.startswith("6.03.")
+            & ds.str.contains(
+                r"dividendo|juros s(?:obre|/) ?(?:o )?capital", regex=True
+            ),
+        },
     )
 
 
@@ -213,6 +264,7 @@ def ler_demonstracoes(
     contas = _normalizar(
         pd.concat(partes, ignore_index=True) if partes else pd.DataFrame(), documento
     )
+    contas = _somar_as_divididas(contas)
     contas = pd.concat([contas, _acoes(capital, documento)], ignore_index=True)
     contas = _so_a_versao_mais_nova(contas)
     return contas[COLUNAS].reset_index(drop=True), _documentos(indice, documento)
@@ -250,6 +302,21 @@ def _normalizar(contas: pd.DataFrame, documento: str) -> pd.DataFrame:
             "tipo": contas["tipo"],
         }
     ).dropna(subset=["valor"])
+
+
+def _somar_as_divididas(contas: pd.DataFrame) -> pd.DataFrame:
+    """Depreciação, capex e dividendos pagos vêm em várias linhas do fluxo de caixa: uma por conta."""
+    divididas = contas["conta"].isin(CONTAS_SOMADAS)
+    if not divididas.any():
+        return contas
+    chave = [c for c in contas.columns if c != "valor"]
+    somadas = (
+        contas[divididas]
+        .groupby(chave, dropna=False, sort=False)["valor"]
+        .sum()
+        .reset_index()
+    )
+    return pd.concat([contas[~divididas], somadas], ignore_index=True)
 
 
 def _acoes(capital: pd.DataFrame, documento: str) -> pd.DataFrame:
