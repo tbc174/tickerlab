@@ -12,7 +12,9 @@ from dataclasses import dataclass
 import sqlalchemy as sa
 
 from src.banco.conexao import obter_engine
+from src.banco.origens import gravar_origem
 from src.banco.usuarios import Usuario, entrar
+from src.origem import Origem
 
 log = logging.getLogger(__name__)
 
@@ -105,11 +107,16 @@ def registrar_login(
     identidade: IdentidadeDoGoogle,
     admins: tuple[str, ...] = (),
     motor: sa.Engine | None = None,
+    origem: Origem | None = None,
 ) -> tuple[Usuario, bool]:
-    """Cria o usuário no primeiro login ou atualiza o acesso. Devolve (usuário, primeira vez?)."""
+    """Cria o usuário no primeiro login ou atualiza o acesso. Devolve (usuário, primeira vez?).
+
+    No primeiro login guarda também a `origem` do cadastro (cookie `tl_origem`), na mesma
+    transação; nos seguintes ela é ignorada: quem já tinha conta não é atribuído à campanha.
+    """
     try:
         with (motor or obter_engine()).begin() as conexao:
-            return entrar(
+            usuario, primeira_vez = entrar(
                 conexao,
                 google_sub=identidade.sub,
                 email=identidade.email,
@@ -118,5 +125,8 @@ def registrar_login(
                 # o e-mail só dá o papel de administrador se o Google o confirmou
                 emails_de_admin=admins if identidade.email_verificado else (),
             )
+            if primeira_vez and origem is not None:
+                gravar_origem(conexao, usuario.id, origem)
+            return usuario, primeira_vez
     except ValueError as erro:
         raise LoginInvalidoError(str(erro)) from erro

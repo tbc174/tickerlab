@@ -22,6 +22,7 @@ from src.banco.conexao import obter_engine
 from src.banco.usuarios import buscar_por_id
 from src.cobranca import buscar_assinatura
 from src.conformidade import precisa_aceitar_os_termos, registrar_aceite
+from src.origem import NOME_DO_COOKIE, ler_origem
 from telas.comum import paleta_da_sessao
 from telas.conta.assinatura import _recarregar_o_plano
 from telas.conta.textos_legais import _corpo_do_texto
@@ -84,7 +85,10 @@ def _usuario_da_sessao():
         return _com_plano_atualizado(atual)
     try:
         usuario, primeira_vez = registrar_login(
-            ler_identidade(st.user.to_dict()), admins=emails_de_admin()
+            ler_identidade(st.user.to_dict()),
+            admins=emails_de_admin(),
+            # gravado pelo site: o Google apaga as UTMs da URL no caminho do login
+            origem=ler_origem(st.context.cookies.get(NOME_DO_COOKIE)),
         )
     except LoginInvalidoError as erro:
         st.error(f"Não foi possível entrar: {erro}")

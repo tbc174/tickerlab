@@ -13,7 +13,9 @@ from src.autenticacao import (
     registrar_login,
 )
 from src.banco import modelo
+from src.banco.origens import buscar_origem
 from src.banco.usuarios import buscar_por_google_sub
+from src.origem import Origem
 
 AUTH_COMPLETO = {
     "redirect_uri": "https://exemplo.ts.net:8443/oauth2callback",
@@ -148,6 +150,26 @@ def test_primeiro_login_cria_e_o_segundo_so_atualiza(motor):
             conexao.execute(sa.select(sa.func.count(modelo.usuarios.c.id))).scalar()
             == 1
         )
+
+
+def test_primeiro_login_grava_a_origem_do_cadastro(motor):
+    ana = IdentidadeDoGoogle("123", "ana@exemplo.com", "Ana", None)
+    origem = Origem(source="google", medium="cpc", ref="clube-do-robo")
+
+    usuario, _ = registrar_login(ana, origem=origem, motor=motor)
+
+    with motor.connect() as conexao:
+        assert buscar_origem(conexao, usuario.id) == origem
+
+
+def test_login_de_quem_ja_tem_conta_nao_grava_origem(motor):
+    ana = IdentidadeDoGoogle("123", "ana@exemplo.com", "Ana", None)
+    usuario, _ = registrar_login(ana, motor=motor)
+
+    registrar_login(ana, origem=Origem(source="instagram"), motor=motor)
+
+    with motor.connect() as conexao:
+        assert buscar_origem(conexao, usuario.id) is None
 
 
 def test_email_de_admin_vira_administrador(motor):
