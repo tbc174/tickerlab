@@ -254,6 +254,20 @@ dados no app (um `##` por termo).
 
 **Cuidado:** o app só conhece as combinações da grade. Se você testou outras antes (em outros ativos, em outras estratégias), some-as em "outras tentativas".
 
+## Foi sorte?
+**O que é:** a ficha que confere, em cinco perguntas, se o resultado de um backtest se sustenta ou se pode ter sido sorte: (1) funcionou fora do período usado para escolher os parâmetros? (2) depois dos custos e do imposto, rendeu mais que o CDI? (3) bate versões da mesma regra feitas ao acaso, contando quantas variações foram testadas? (4) parâmetros vizinhos também funcionam? (5) as quedas cabem no que você aguenta? Só passa quando todas as perguntas que se aplicam passam.
+
+**Exemplo:** uma regra que rendeu 80% no período, mas que perde para o CDI depois do imposto e que só funciona com uma média de exatamente 23 dias, não passa: o resultado bonito veio de ajustar a regra ao passado.
+
+**Cuidado:** passar no teste vale para os dados do passado. Não é promessa de resultado nem recomendação, e o teste é exigente de propósito: muitas regras boas de verdade não passam com poucos anos de dados.
+
+## Tolerância de queda
+**O que é:** a maior queda da carteira, a partir do pico, que você aguentaria sem desistir da regra. A ficha "Foi sorte?" compara com ela a queda no pior caso comum do Monte Carlo (as operações em outra ordem).
+
+**Exemplo:** com tolerância de 30%, uma regra cujo pior caso comum cai 42% não passa nesta pergunta, mesmo que tenha rendido bem.
+
+**Cuidado:** na hora da queda, quase todo mundo aguenta menos do que imaginava. Na dúvida, escolha um número menor.
+
 ## PBO (probabilidade de overfitting)
 **O que é:** o histórico é cortado em blocos e o app testa muitas divisões treino/teste. Em cada uma, pega a melhor combinação do treino e vê onde ela cai no teste. PBO é a fatia das vezes em que ela caiu abaixo da mediana.
 

@@ -26,6 +26,7 @@ from src.exportacao import (
     montar_tabela_de_curvas,
     montar_tabela_de_operacoes,
 )
+from src.ficha import PedidoDaFicha
 from src.imposto import aplicar_imposto
 from src.metricas import (
     calcular_intervalo_do_sharpe,
@@ -55,6 +56,7 @@ from telas.comum import (
 )
 from telas.dados_da_conta import ESPERAS_DEPOIS_DO_STOP, oferecer_salvar_simulacao
 from telas.estrategias.comum import ESTRATEGIA_DE_REFERENCIA, obter_estrategias
+from telas.estrategias.ficha import calcular_ficha, escolher_tolerancia, mostrar_ficha
 from telas.relatorios.estudio import atalho_para_o_relatorio
 
 
@@ -530,7 +532,24 @@ def _aba_sorte_na_escolha(nome, taxa_livre_de_risco, rotulos, retornos, validos)
         )
 
 
-def secao_validacao(
+def _escolher_livres(nome, numericos):
+    """Os parâmetros que variam na ficha e na validação (até 2); vazio se a regra não tem números."""
+    if not numericos:
+        return []
+    rotulos = {p.nome: p.rotulo for p in numericos}
+    return st.multiselect(
+        "Parâmetros que podem variar na validação (até 2)",
+        [p.nome for p in numericos],
+        default=[p.nome for p in numericos][:2],
+        format_func=lambda n: rotulos[n],
+        max_selections=2,
+        key=f"validacao_livres_{nome}",
+        help="O app testa vários valores destes parâmetros. Os outros ficam como você "
+        "configurou acima.",
+    )
+
+
+def _detalhe_tecnico(
     dados,
     nome,
     parametros,
@@ -542,34 +561,19 @@ def secao_validacao(
     capital_inicial,
     operacoes,
     posicao_desejada,
+    livres,
 ):
-    """Treino/teste, walk-forward e mapa de parâmetros: o resultado se sustenta fora do passado?"""
-    st.divider()
-    st.subheader("Isto se sustenta? Validação fora da amostra")
-    st.caption(
-        "Um backtest sempre parece bom quando os parâmetros foram escolhidos olhando os "
-        "mesmos dados. Aqui a escolha é feita num pedaço do histórico e conferida em outro."
-    )
+    """Treino/teste, walk-forward, mapa de parâmetros, acaso e sorte na escolha, em abas."""
     numericos = parametros_numericos(nome)
     if not numericos:
         st.info(
             "Esta estratégia não tem números para ajustar, então não há o que validar."
         )
         return
-    rotulos = {p.nome: p.rotulo for p in numericos}
-    livres = st.multiselect(
-        "Parâmetros que podem variar na validação (até 2)",
-        [p.nome for p in numericos],
-        default=[p.nome for p in numericos][:2],
-        format_func=lambda n: rotulos[n],
-        max_selections=2,
-        key=f"validacao_livres_{nome}",
-        help="O app testa vários valores destes parâmetros. Os outros ficam como você "
-        "configurou acima.",
-    )
     if not livres:
         st.info("Escolha pelo menos um parâmetro para variar.")
         return
+    rotulos = {p.nome: p.rotulo for p in numericos}
     candidatos = montar_candidatos(nome, parametros, livres)
     try:
         retornos, validos = calcular_candidatos(
@@ -630,6 +634,65 @@ def secao_validacao(
 
     with aba_sorte:
         _aba_sorte_na_escolha(nome, taxa_livre_de_risco, rotulos, retornos, validos)
+
+
+def secao_validacao(
+    dados,
+    nome,
+    parametros,
+    custo,
+    protecoes,
+    taxa_livre_de_risco,
+    retorno_do_usuario,
+    retorno_de_referencia,
+    capital_inicial,
+    operacoes,
+    posicao_desejada,
+    cdi_diario=None,
+):
+    """A ficha "Foi sorte?" em destaque e, um clique abaixo, a validação técnica completa."""
+    st.divider()
+    st.subheader("Foi sorte?", help=ajuda_do("Foi sorte?"))
+    st.caption(
+        "Um backtest sempre parece bom quando os parâmetros foram escolhidos olhando os "
+        "mesmos dados. A ficha confere, em cinco perguntas, se o resultado se sustenta."
+    )
+    col_livres, col_tolerancia = st.columns([2, 1])
+    with col_livres:
+        livres = _escolher_livres(nome, parametros_numericos(nome))
+    with col_tolerancia:
+        tolerancia = escolher_tolerancia()
+    pedido = PedidoDaFicha(
+        dados=dados,
+        estrategia=nome,
+        parametros=dict(parametros),
+        custo_por_operacao=custo,
+        capital_inicial=capital_inicial,
+        protecoes=protecoes,
+        livres=tuple(livres),
+        taxa_livre_de_risco=taxa_livre_de_risco,
+        cdi_diario=cdi_diario,
+        tolerancia_de_queda=tolerancia,
+    )
+    try:
+        mostrar_ficha(calcular_ficha(pedido))
+    except ValueError as erro:
+        st.info(str(erro))
+    with st.expander("Ver o detalhe técnico"):
+        _detalhe_tecnico(
+            dados,
+            nome,
+            parametros,
+            custo,
+            protecoes,
+            taxa_livre_de_risco,
+            retorno_do_usuario,
+            retorno_de_referencia,
+            capital_inicial,
+            operacoes,
+            posicao_desejada,
+            livres,
+        )
 
 
 def escolher_custos():
@@ -1003,6 +1066,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         capital_inicial,
         resultado.operacoes,
         posicao_protegida,
+        cdi_diario,
     )
 
     st.warning(
