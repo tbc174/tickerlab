@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 import sqlalchemy as sa
 
+from src import acervo
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
 
@@ -46,6 +47,7 @@ def registrar(
     situacao: str,
     detalhe: str | None = None,
     agora: datetime | None = None,
+    caminho_do_original: str | None = None,
 ) -> None:
     """Grava uma linha do registro. `conteudo` None = nada foi baixado (404 ou falha)."""
     conexao.execute(
@@ -58,6 +60,7 @@ def registrar(
             sha256=None if conteudo is None else hashlib.sha256(conteudo).hexdigest(),
             licenca=licenca_da_fonte(fonte),
             detalhe=None if detalhe is None else detalhe[:LIMITE_DO_DETALHE],
+            caminho_do_original=caminho_do_original,
             baixado_em=agora or datetime.now(UTC),
         )
     )
@@ -73,12 +76,27 @@ def ultimas(
     return list(conexao.execute(consulta))
 
 
+def _guardar_sem_atrapalhar(
+    fonte: str, url: str, conteudo: bytes, agora: datetime
+) -> str | None:
+    try:
+        return acervo.guardar_original(fonte, url, conteudo, agora)
+    except OSError:
+        # disco cheio ou sem permissão: a coleta segue; o registro fica sem o caminho
+        log.exception("Falha ao guardar o original da coleta de %s", fonte)
+        return None
+
+
 def _registrar_sem_atrapalhar(
     fonte: str, url: str, conteudo: bytes | None, situacao: str, detalhe: str | None
 ) -> None:
+    agora = datetime.now(UTC)
+    caminho = None
+    if conteudo is not None:
+        caminho = _guardar_sem_atrapalhar(fonte, url, conteudo, agora)
     try:
         with obter_engine().begin() as conexao:
-            registrar(conexao, fonte, url, conteudo, situacao, detalhe)
+            registrar(conexao, fonte, url, conteudo, situacao, detalhe, agora, caminho)
     except Exception:
         # o registro é para auditoria; a coleta segue mesmo sem ele
         log.exception("Falha ao registrar a coleta de %s", fonte)
@@ -89,7 +107,7 @@ def com_registro[Conteudo: (bytes, bytes | None)](
 ) -> Callable[..., Conteudo]:
     """Embrulha a função `baixar(url, ...)` de uma coleta para registrar cada arquivo.
 
-    Arquivo baixado → "ok" com tamanho e SHA-256; `None` (a fonte respondeu 404) →
+    Arquivo baixado → guardado no acervo e "ok" com tamanho e SHA-256; `None` (a fonte respondeu 404) →
     "nao_encontrado"; erro → "falhou" e o erro segue para a coleta, como antes.
     """
 
