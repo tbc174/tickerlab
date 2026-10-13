@@ -1,0 +1,47 @@
+{
+  "ancora": "qualidade-dos-dados",
+  "explicacao": "Uma regra automática e fixa pediu uma segunda olhada neste número. Não quer dizer que ele esteja errado: quer dizer que vale conferir no documento original antes de tirar conclusões. O TickerLab nunca corrige nem apaga o número que a empresa entregou; só aponta.",
+  "regras": [
+    {
+      "o_que_confere": "O ativo total precisa ser igual ao passivo total mais o patrimônio líquido (tolerância de 0,1% ou R$ 1 mil, o arredondamento da CVM).",
+      "titulo": "Ativo diferente do passivo"
+    },
+    {
+      "o_que_confere": "No balanço, as contas de baixo precisam somar a conta de cima (tolerância de 0,5%). Contas de baixo zeradas não disparam: é hábito comum de preenchimento.",
+      "titulo": "Subtotal que não fecha"
+    },
+    {
+      "o_que_confere": "O mesmo número vale cerca de mil vezes mais (ou menos) que no documento anterior: sinal de reais e milhares trocados.",
+      "titulo": "Escala suspeita"
+    },
+    {
+      "o_que_confere": "Ativo total, ativo circulante ou caixa negativos.",
+      "titulo": "Valor impossível"
+    },
+    {
+      "o_que_confere": "O balanço seguinte traz, na coluna do ano anterior, um ativo total, receita, lucro ou patrimônio diferente do que a empresa tinha publicado. Vale a partir da entrega do balanço seguinte.",
+      "titulo": "Refeito pela empresa no balanço seguinte"
+    },
+    {
+      "o_que_confere": "Receita ou ativo total que subiu ou caiu 5 vezes ou mais em um ano, sem fato relevante ou comunicado da empresa no período que explique.",
+      "titulo": "Salto fora do padrão"
+    },
+    {
+      "o_que_confere": "DFP ou ITR entregue depois do prazo da CVM, ou ainda não entregue. Esperamos o balanço de quem entregou o do ano anterior e continuava registrada na data do prazo. O prazo é calculado sem feriados: 1 ou 2 dias podem ser só um feriado.",
+      "titulo": "Balanço atrasado"
+    },
+    {
+      "o_que_confere": "O arquivo da CVM trouxe a mesma linha mais de uma vez; o TickerLab conta cada uma só uma vez.",
+      "titulo": "Linhas repetidas no arquivo"
+    },
+    {
+      "o_que_confere": "O lucro do período veio zerado numa empresa que teve receita no mesmo período.",
+      "titulo": "Lucro em branco"
+    },
+    {
+      "o_que_confere": "Uma conta veio zerada, mas as contas abaixo dela têm valor: quem lê a conta de cima vê zero onde há dinheiro.",
+      "titulo": "Conta de cima em branco"
+    }
+  ],
+  "titulo_do_selo": "Dado em conferência"
+}

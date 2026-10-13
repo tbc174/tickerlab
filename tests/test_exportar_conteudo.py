@@ -81,3 +81,26 @@ def test_planos_levam_os_nomes_para_a_tabela_e_a_cobranca():
         for x in planos.PLANOS
         if x != "gratuito" and x not in planos.COM_COBRANCA
     ]
+
+
+def test_textos_legais_vao_em_html_sem_o_titulo_do_arquivo():
+    from scripts.markdown_simples import markdown_para_html
+
+    legais = exp.conteudo()["legal"]
+    assert set(legais) == {"termos", "privacidade"}
+    bruto = (exp.RAIZ / "conteudo" / "termos.md").read_text(encoding="utf-8")
+    sem_titulo = bruto.split("\n", 1)[1]  # o título do arquivo vira o h1 da página
+    assert legais["termos"] == markdown_para_html(sem_titulo)
+
+
+def test_qualidade_leva_os_mesmos_textos_do_app():
+    from src import qualidade_texto as q
+
+    exportado = exp.conteudo()["qualidade"]
+    assert exportado["titulo_do_selo"] == q.TITULO_DO_SELO
+    assert exportado["ancora"] == q.ANCORA_NO_SITE
+    assert exportado["explicacao"] == q.EXPLICACAO_DO_SELO
+    assert exportado["regras"] == [
+        {"titulo": r.titulo, "o_que_confere": r.o_que_confere}
+        for r in q.REGRAS.values()
+    ]

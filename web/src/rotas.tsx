@@ -4,6 +4,9 @@ import type { ReactElement } from "react";
 import { Aprender, DADOS as DADOS_DO_APRENDER } from "./paginas/Aprender";
 import { ComoFunciona, DADOS as DADOS_DO_COMO_FUNCIONA } from "./paginas/ComoFunciona";
 import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
+import { DADOS_DA_PRIVACIDADE, DADOS_DOS_TERMOS, Legal } from "./paginas/Legal";
+import { DADOS as DADOS_DA_METODOLOGIA, Metodologia } from "./paginas/Metodologia";
+import { DADOS as DADOS_DA_404, NaoEncontrada } from "./paginas/NaoEncontrada";
 import { DADOS as DADOS_DOS_PLANOS, Precos } from "./paginas/Precos";
 import { DADOS as DADOS_DO_PRODUTO, Produto } from "./paginas/Produto";
 import { DADOS as DADOS_DO_SOBRE, Sobre } from "./paginas/Sobre";
@@ -26,6 +29,18 @@ export const ROTAS: Rota[] = [
   { arquivo: "aprender.html", dados: DADOS_DO_APRENDER, conteudo: () => <Aprender /> },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
+  { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },
+  {
+    arquivo: "termos.html",
+    dados: DADOS_DOS_TERMOS,
+    conteudo: () => <Legal titulo="Termos de uso" texto="termos" />,
+  },
+  {
+    arquivo: "privacidade.html",
+    dados: DADOS_DA_PRIVACIDADE,
+    conteudo: () => <Legal titulo="Política de privacidade" texto="privacidade" />,
+  },
+  { arquivo: "404.html", dados: DADOS_DA_404, conteudo: () => <NaoEncontrada /> },
 ];
 
 export function rotaDoArquivo(arquivo: string): Rota {
