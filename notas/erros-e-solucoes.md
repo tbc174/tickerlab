@@ -167,3 +167,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `pgrep -f "rodar-tarefa.sh eventos-sec"` também encontrava o próprio comando de busca, porque o texto procurado estava na linha de comando do SSH que rodava o `pgrep`.
 - **Solução:** usar um colchete no padrão (`pgrep -f "[r]odar-tarefa.sh eventos-sec"`), que acha o processo mas não a si mesmo, ou olhar o resultado (a marca `.ok`/`.falha`) em vez do processo.
 - **Data:** 12/10/2026
+
+## Primeira carga das séries macro: `ReadTimeout` no SGS do Banco Central
+- **Sintoma:** a etapa `bcb-sgs` do `scripts/atualizar_series_macro.py` falhou na primeira rodada (desde 2010), no PC e no servidor, com `Read timed out. (read timeout=20)` na série 432; numa segunda rodada passou.
+- **Causa:** sem cache, o SGS demora numa consulta longa: 26 s para 7 anos da série 432 e 18 s para 9 anos da série 11. Repetida, a mesma consulta volta em menos de 1 s (por isso a segunda rodada passava). O leitor desistia em 20 s.
+- **Solução:** `bcb.TEMPO_LIMITE` em 60 s (#77), com teste de regressão. O leitor só roda no coletor, fora do app.
+- **Data:** 13/10/2026
+
+## `pwsh -File script.ps1 -Prs 72,73` virou o PR "7273"
+- **Sintoma:** o script de merge em lote parou com `Could not resolve to a PullRequest with the number of 7273`.
+- **Causa:** com `-File`, os argumentos chegam como texto; `"72,73"` convertido para `int[]` vira um número só (a vírgula é lida como separador de milhar).
+- **Solução:** chamar com `pwsh -Command "& script.ps1 -Prs 72,73"`, que interpreta a lista do jeito do PowerShell. Nada tinha sido publicado.
+- **Data:** 13/10/2026
+
+## Script bash termina com erro depois de dar certo: `parcial: unbound variable`
+- **Sintoma:** o recebedor do backup gravava o arquivo e mesmo assim saía com erro.
+- **Causa:** o `trap ... EXIT` usava uma variável `local` da função; quando o script termina, a função já acabou, a variável não existe e o `set -u` derruba a saída.
+- **Solução:** a variável do arquivo pela metade é global, criada vazia no começo, e o `trap` é armado uma vez só. Pego no teste numa pasta temporária, antes de instalar.
+- **Data:** 13/10/2026
