@@ -1,4 +1,5 @@
-"""API do TickerLab (FastAPI): saúde do serviço, webhook do Stripe e saída da Newsletter.
+"""API do TickerLab (FastAPI): saúde do serviço, webhook do Stripe, saída da Newsletter e a API
+de leitura v1 (`src/api_v1/`, desligada até a primeira tela nova).
 
 Roda ao lado do app, num contêiner próprio:
     uvicorn src.api:app --host 0.0.0.0 --port 8000
@@ -18,6 +19,7 @@ import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from src.api_v1.rotas import router as router_v1
 from src.banco import newsletter_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
@@ -120,3 +122,5 @@ app = FastAPI(
 )
 app.include_router(router)
 app.include_router(router, prefix="/api")
+app.include_router(router_v1)  # API de leitura (ADR 0048), desligada até a 1ª tela nova
+app.include_router(router_v1, prefix="/api")
