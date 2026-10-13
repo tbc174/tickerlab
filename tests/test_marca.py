@@ -74,9 +74,15 @@ def test_em_fundo_escuro_so_o_topo_muda_de_cor():
 def test_a_tela_de_entrada_usa_o_simbolo_do_tema():
     from telas.conta.entrada import marca_html
 
-    assert f'fill="{marca.CLARO}"' in marca_html(marca.PALETA_ESCURA)  # topo claro no escuro
-    assert f'fill="{marca.MARINHO}"' in marca_html(marca.PALETA_CLARA)  # topo marinho no claro
-    assert marca_html() == marca_html(marca.PALETA_ESCURA)  # sem informação: o de sempre
+    assert f'fill="{marca.CLARO}"' in marca_html(
+        marca.PALETA_ESCURA
+    )  # topo claro no escuro
+    assert f'fill="{marca.MARINHO}"' in marca_html(
+        marca.PALETA_CLARA
+    )  # topo marinho no claro
+    assert marca_html() == marca_html(
+        marca.PALETA_ESCURA
+    )  # sem informação: o de sempre
 
 
 def test_a_assinatura_do_topo_existe_nos_dois_temas():
