@@ -280,6 +280,73 @@ def _voltar_versao(usuario, escopo, alvo, versao):
         st.toast(f"Versão {nova} criada com os valores da versão {versao.versao}.")
 
 
+def _campos_por_dominio(campos, proprio, herdado):
+    """Uma aba por domínio com os campos; devolve o que difere do herdado (o rascunho)."""
+    rascunho_valores = {}
+    abas = st.tabs(
+        [research_parametros.DOMINIOS[d] for d in research_parametros.DOMINIOS]
+    )
+    for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
+        with aba:
+            if dominio == "fundamentalista":
+                st.caption(
+                    "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
+                    "janela dos proventos entra numa próxima etapa."
+                )
+            elif dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
+                st.caption(
+                    "Estes parâmetros serão usados pelo Research (eventos e newsletter) nas "
+                    "próximas etapas; por enquanto não mudam números."
+                )
+            for parametro in research_parametros.PARAMETROS:
+                if parametro.dominio != dominio:
+                    continue
+                chave_do_campo = campos[parametro.chave]
+                inicial = (proprio.parametros if proprio else {}).get(
+                    parametro.chave, herdado[parametro.chave]
+                )
+                col_campo, col_origem = st.columns([3, 2], vertical_alignment="bottom")
+                with col_campo:
+                    _campo_do_parametro(parametro, chave_do_campo, inicial)
+                valor = _valor_do_campo(parametro, st.session_state[chave_do_campo])
+                if valor != herdado[parametro.chave]:
+                    rascunho_valores[parametro.chave] = valor
+                    col_origem.button(
+                        "Restaurar",
+                        key=f"rpb_restaurar_{chave_do_campo}",
+                        icon=":material/undo:",
+                        help=f"Voltar a {_formatar_parametro(parametro.chave, herdado[parametro.chave])} "
+                        f"({herdado.efetivos[parametro.chave].nome_da_origem.lower()}).",
+                        on_click=_restaurar_campo,
+                        args=(chave_do_campo, herdado[parametro.chave]),
+                    )
+                else:
+                    col_origem.caption(
+                        f"Vem de: {herdado.efetivos[parametro.chave].nome_da_origem.lower()}"
+                    )
+    return rascunho_valores
+
+
+def _validar_rascunho(guardados, escopo, alvo, versao, rascunho_valores, salvo, ticker):
+    """(rascunho resolvido, problemas): confere o rascunho como se fosse salvo."""
+    # valida o rascunho inteiro (tipo, limites e as regras entre parâmetros)
+    problemas = []
+    rascunho = salvo
+    try:
+        novo = research_presets.Preset(
+            escopo=escopo, alvo=alvo, versao=versao + 1, parametros=rascunho_valores
+        )
+        research_presets.conferir_ao_salvar(guardados, novo)
+        rascunho = research_presets.resolver(
+            research_presets.substituir(guardados, novo), ticker=ticker
+        )
+    except research_presets.CombinacaoInvalidaError as erro:
+        problemas = erro.problemas
+    except ValueError as erro:
+        problemas = [str(erro)]
+    return rascunho, problemas
+
+
 def pagina_parametros():
     cabecalho_da_pagina("parametros")
     c = carregar_contexto()
@@ -358,64 +425,11 @@ def pagina_parametros():
         width="stretch",
     )
 
-    rascunho_valores = {}
-    abas = st.tabs(
-        [research_parametros.DOMINIOS[d] for d in research_parametros.DOMINIOS]
-    )
-    for aba, dominio in zip(abas, research_parametros.DOMINIOS, strict=True):
-        with aba:
-            if dominio == "fundamentalista":
-                st.caption(
-                    "Usados na página Fundamentos (horizonte, ROIC mínimo e P/L máximo). A "
-                    "janela dos proventos entra numa próxima etapa."
-                )
-            elif dominio not in DOMINIOS_QUE_JA_MUDAM_NUMEROS:
-                st.caption(
-                    "Estes parâmetros serão usados pelo Research (eventos e newsletter) nas "
-                    "próximas etapas; por enquanto não mudam números."
-                )
-            for parametro in research_parametros.PARAMETROS:
-                if parametro.dominio != dominio:
-                    continue
-                chave_do_campo = campos[parametro.chave]
-                inicial = (proprio.parametros if proprio else {}).get(
-                    parametro.chave, herdado[parametro.chave]
-                )
-                col_campo, col_origem = st.columns([3, 2], vertical_alignment="bottom")
-                with col_campo:
-                    _campo_do_parametro(parametro, chave_do_campo, inicial)
-                valor = _valor_do_campo(parametro, st.session_state[chave_do_campo])
-                if valor != herdado[parametro.chave]:
-                    rascunho_valores[parametro.chave] = valor
-                    col_origem.button(
-                        "Restaurar",
-                        key=f"rpb_restaurar_{chave_do_campo}",
-                        icon=":material/undo:",
-                        help=f"Voltar a {_formatar_parametro(parametro.chave, herdado[parametro.chave])} "
-                        f"({herdado.efetivos[parametro.chave].nome_da_origem.lower()}).",
-                        on_click=_restaurar_campo,
-                        args=(chave_do_campo, herdado[parametro.chave]),
-                    )
-                else:
-                    col_origem.caption(
-                        f"Vem de: {herdado.efetivos[parametro.chave].nome_da_origem.lower()}"
-                    )
+    rascunho_valores = _campos_por_dominio(campos, proprio, herdado)
 
-    # valida o rascunho inteiro (tipo, limites e as regras entre parâmetros)
-    problemas = []
-    rascunho = salvo
-    try:
-        novo = research_presets.Preset(
-            escopo=escopo, alvo=alvo, versao=versao + 1, parametros=rascunho_valores
-        )
-        research_presets.conferir_ao_salvar(guardados, novo)
-        rascunho = research_presets.resolver(
-            research_presets.substituir(guardados, novo), ticker=c.ticker
-        )
-    except research_presets.CombinacaoInvalidaError as erro:
-        problemas = erro.problemas
-    except ValueError as erro:
-        problemas = [str(erro)]
+    rascunho, problemas = _validar_rascunho(
+        guardados, escopo, alvo, versao, rascunho_valores, salvo, c.ticker
+    )
     for problema in problemas:
         st.error(problema)
     mudou = rascunho_valores != (proprio.parametros if proprio else {})
