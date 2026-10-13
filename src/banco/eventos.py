@@ -164,7 +164,6 @@ def _linha_da_versao(
     copia = {k: v for k, v in valores.items() if k not in ("id", "ingerido_em")}
     return {
         **copia,
-        "id": uuid.uuid4(),
         "fonte": fonte,
         "protocolo": protocolo,
         "registrado_em": agora,

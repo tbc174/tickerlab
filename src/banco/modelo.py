@@ -265,10 +265,9 @@ sa.Index("ix_eventos_cnpj_publicado_em", eventos.c.cnpj, eventos.c.publicado_em)
 eventos_versoes = sa.Table(
     "eventos_versoes",
     metadata,
-    sa.Column("id", sa.Uuid, primary_key=True),
-    sa.Column("fonte", sa.String(20), nullable=False),
-    sa.Column("protocolo", sa.String(60), nullable=False),
-    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("protocolo", sa.String(60), primary_key=True),
+    sa.Column("versao", sa.Integer, primary_key=True),
     sa.Column("cnpj", sa.String(18), nullable=False),
     sa.Column("empresa", sa.String(200), nullable=False),
     sa.Column("categoria", sa.String(160), nullable=False),
@@ -282,7 +281,6 @@ eventos_versoes = sa.Table(
     sa.Column("link", sa.String(500), nullable=False),
     _momento("registrado_em"),
     sa.Column("substituido_em", sa.DateTime(timezone=True)),
-    sa.UniqueConstraint("fonte", "protocolo", "versao", name="uq_eventos_versoes"),
 )
 
 # Research R2 (0011): compras e vendas de pessoas de dentro (CVM VLMO e SEC Form 4). Dados
