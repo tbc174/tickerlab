@@ -12,7 +12,7 @@ from datetime import UTC, date, datetime
 import pandas as pd
 import sqlalchemy as sa
 
-from src.banco.modelo import eventos, tickers_dos_emissores
+from src.banco.modelo import eventos, eventos_versoes, tickers_dos_emissores
 from src.eventos import FONTE_IPE
 from src.links_das_fontes import link_da_fonte
 
@@ -107,7 +107,8 @@ def gravar_eventos(
 ) -> tuple[int, int]:
     """Acrescenta os eventos novos e atualiza os que ganharam versão nova.
 
-    Devolve (novos, atualizados). Rodar duas vezes com o mesmo arquivo não muda nada.
+    Devolve (novos, atualizados). Rodar duas vezes com o mesmo arquivo não muda nada. Cada
+    versão também entra em `eventos_versoes` (Radar, PR 3): a substituída fica lá, marcada.
     """
     if tabela.empty:
         return 0, 0
@@ -146,10 +147,85 @@ def gravar_eventos(
                 .where(eventos.c.fonte == fonte, eventos.c.protocolo == l.protocolo)
                 .values(**valores)
             )
+            _guardar_versao(conexao, fonte, l.protocolo, valores, agora)
             atualizados += 1
     if novos:
         conexao.execute(sa.insert(eventos), novos)
+        conexao.execute(
+            sa.insert(eventos_versoes),
+            [_linha_da_versao(n["fonte"], n["protocolo"], n, agora) for n in novos],
+        )
     return len(novos), atualizados
+
+
+def _linha_da_versao(
+    fonte: str, protocolo: str, valores: dict, agora: datetime
+) -> dict:
+    copia = {k: v for k, v in valores.items() if k not in ("id", "ingerido_em")}
+    return {
+        **copia,
+        "id": uuid.uuid4(),
+        "fonte": fonte,
+        "protocolo": protocolo,
+        "registrado_em": agora,
+    }
+
+
+def _guardar_versao(
+    conexao: sa.Connection, fonte: str, protocolo: str, valores: dict, agora: datetime
+) -> None:
+    """Marca a versão aberta como substituída e acrescenta a nova (nada é apagado)."""
+    do_evento = (eventos_versoes.c.fonte == fonte) & (
+        eventos_versoes.c.protocolo == protocolo
+    )
+    conexao.execute(
+        sa.update(eventos_versoes)
+        .where(do_evento, eventos_versoes.c.substituido_em.is_(None))
+        .values(substituido_em=agora)
+    )
+    conexao.execute(
+        sa.insert(eventos_versoes).values(
+            **_linha_da_versao(fonte, protocolo, valores, agora)
+        )
+    )
+
+
+def versoes_do_evento(
+    conexao: sa.Connection, fonte: str, protocolo: str
+) -> list[sa.Row]:
+    """Todas as versões guardadas de um evento, da primeira para a mais nova."""
+    return list(
+        conexao.execute(
+            sa.select(eventos_versoes)
+            .where(
+                eventos_versoes.c.fonte == fonte,
+                eventos_versoes.c.protocolo == protocolo,
+            )
+            .order_by(eventos_versoes.c.versao)
+        )
+    )
+
+
+def eventos_como_estavam_em(
+    conexao: sa.Connection, momento: datetime, cnpj: str | None = None
+) -> list[sa.Row]:
+    """Os eventos como o TickerLab os conhecia em `momento` (a versão vigente naquela hora)."""
+    consulta = sa.select(eventos_versoes).where(
+        eventos_versoes.c.registrado_em <= momento,
+        sa.or_(
+            eventos_versoes.c.substituido_em.is_(None),
+            eventos_versoes.c.substituido_em > momento,
+        ),
+    )
+    if cnpj is not None:
+        consulta = consulta.where(eventos_versoes.c.cnpj == cnpj)
+    return list(
+        conexao.execute(
+            consulta.order_by(
+                eventos_versoes.c.publicado_em.desc(), eventos_versoes.c.protocolo
+            )
+        )
+    )
 
 
 def empresas_dos_tickers(
