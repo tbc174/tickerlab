@@ -285,3 +285,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o gerador do Hypothesis quase sempre criava ativos com poucos dias em comum, então o teste só conferia a recusa ("poucos pregões") e o PDF quase nunca era gerado (4,5% dos exemplos).
 - **Solução:** marcar cada ramo com `hypothesis.event(...)`, rodar com `pytest --hypothesis-show-statistics` e ajustar o gerador até os dois ramos aparecerem (o Hypothesis prefere números pequenos: o ramo de cima entra duas vezes no `st.one_of`).
 - **Data:** 13/10/2026
+
+## Planilha da B3 com "1.000" em texto vira 1, e não mil
+- **Sintoma:** um teste da movimentação com a quantidade `"1.000"` (texto) leu 1 ação.
+- **Causa:** `numero_brasileiro` (`src/carteira_b3.py`) só tratava o ponto como milhar quando havia vírgula (`"1.234,56"`); sem vírgula, `float("1.000")` é 1,0. Afetava também a planilha de posição enviada em CSV.
+- **Solução:** ponto seguido de grupos de exatamente três dígitos (`1.000`, `12.345.678`) é milhar; `"30.5"` continua 30,5. Teste com a tabela de casos em `tests/test_carteira_b3.py`.
+- **Data:** 13/10/2026
+
+## AppTest: "`st.session_state['...']` is read-only" com dois `st.file_uploader` na página
+- **Sintoma:** depois de pôr um segundo campo de arquivo na Carteira da B3, os testes que ligavam o exemplo com `app.toggle(...).set_value(True).run()` passaram a falhar com essa mensagem, apontando para o `st.file_uploader`.
+- **Causa:** o AppTest reenvia o estado de todos os campos que já apareceram; o campo de arquivo não aceita valor vindo de fora. Com um campo só, ligar o exemplo o tirava da tela; com dois, um deles continuava lá.
+- **Solução:** nos testes, ligar o exemplo **antes** de abrir a página (`app.session_state["carteira_b3_exemplo"] = True` e depois `ir_para`), para que ninguém interaja depois que os campos aparecem. Em uso real, os dois campos funcionam normalmente.
+- **Data:** 13/10/2026
+
+## `sed` troca `\U`, `\t` e `\a` num caminho do Windows por outra coisa
+- **Sintoma:** uma substituição com `sed` gravou `C:SERS<tab>IAGOPROJETOS...` no lugar de `C:\Users\tiago\projetos\...`.
+- **Causa:** no texto de substituição do GNU sed, `\U` deixa o resto em maiúsculas, `\t` vira tabulação e `\a` vira um caractere de controle. O mesmo acontece dentro de `"..."` no Python (`\U` é escape de Unicode).
+- **Solução:** para trocar texto com barras invertidas, usar um script Python que monta a barra com `chr(92)` (ou string crua `r"..."`), e conferir o resultado depois.
+- **Data:** 13/10/2026
