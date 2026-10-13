@@ -52,7 +52,7 @@ def mostrar_tela_de_entrada():
         st.button("Entrar com o Google", type="primary", on_click=st.login)
         st.caption(
             "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. "
-            "Projeto educacional: não é recomendação de investimento."
+            "Nada aqui é recomendação de investimento."
         )
 
 
@@ -166,7 +166,7 @@ def mostrar_aceite_dos_termos(usuario):
             '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
         )
         st.markdown(
-            "O TickerLab é um projeto educacional: **nada aqui é recomendação de "
+            "O TickerLab é uma plataforma de inteligência financeira: **nada aqui é recomendação de "
             "investimento**. Leia os termos e a política de privacidade e confirme."
         )
         with st.expander("Termos de uso"):

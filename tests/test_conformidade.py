@@ -69,7 +69,14 @@ def test_o_aceite_continua_depois_de_novo_login(conexao, ana):
 def test_textos_legais_existem_e_citam_o_essencial(nome):
     texto = conformidade.carregar_texto(nome)
     assert len(texto) > 800
-    assert "educacional" in texto.lower() or "não é recomendação" in texto.lower()
+    # o que o TickerLab é: plataforma de inteligência financeira, por assinatura
+    assert "inteligência financeira" in texto.lower()
+
+
+def test_termos_dizem_que_nada_e_recomendacao_de_investimento():
+    termos = conformidade.carregar_texto("termos").lower()
+    assert "nada aqui é recomendação de investimento" in termos
+    assert "projeto educacional" not in termos  # produto comercial desde 13/10/2026
 
 
 def test_texto_desconhecido():

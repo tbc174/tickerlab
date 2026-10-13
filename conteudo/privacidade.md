@@ -1,8 +1,8 @@
 # Política de privacidade do TickerLab
 
-Última atualização: 12/10/2026 (versão 5: PDF original dos relatórios na biblioteca).
+Última atualização: 13/10/2026 (versão 6: o TickerLab se apresenta como produto por assinatura).
 
-O TickerLab é um **projeto educacional**. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, por quanto tempo e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
+O TickerLab é uma **plataforma de inteligência financeira** para análise de ações. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, por quanto tempo e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
 
 ## Quem é responsável
 

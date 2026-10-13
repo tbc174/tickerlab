@@ -30,8 +30,9 @@ from src.banco.usuarios import Usuario
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
 # alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
-# Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021)
-VERSAO_DOS_TERMOS = "2026-10-12.5"
+# Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021). Versão 6: o
+# TickerLab se apresenta como produto por assinatura, não mais como projeto educacional
+VERSAO_DOS_TERMOS = "2026-10-13.6"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 

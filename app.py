@@ -219,7 +219,7 @@ col_aviso, col_guia, col_termos, col_privacidade = st.columns(
     [5, 1, 1.2, 1.2], vertical_alignment="center"
 )
 col_aviso.markdown(
-    '<div class="tl-rodape"><b>Ticker<span>Lab</span></b> · projeto educacional, não é '
+    '<div class="tl-rodape"><b>Ticker<span>Lab</span></b> · plataforma de inteligência financeira; não é '
     "recomendação de investimento. Dados do Yahoo Finance, que podem ter atraso ou erros. "
     "Rentabilidade passada não garante resultado futuro.</div>",
     unsafe_allow_html=True,

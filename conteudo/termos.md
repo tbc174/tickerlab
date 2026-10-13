@@ -1,10 +1,10 @@
 # Termos de uso do TickerLab
 
-Última atualização: 11/10/2026 (versão 2).
+Última atualização: 13/10/2026 (versão 6: produto por assinatura).
 
 ## O que é o TickerLab
 
-O TickerLab é um **projeto educacional** de análise de ações e de teste de estratégias com dados do passado, formado pelo site público (tickerlab.com.br) e pelo app (app.tickerlab.com.br). Foi feito para estudo e demonstração. **Nada aqui é recomendação de investimento**, de compra ou de venda de qualquer ativo, nem consultoria financeira.
+O TickerLab é uma **plataforma de inteligência financeira**, por assinatura, de análise de ações e de teste de estratégias com dados do passado, formada pelo site público (tickerlab.com.br) e pelo app (app.tickerlab.com.br). **Nada aqui é recomendação de investimento**, de compra ou de venda de qualquer ativo, nem consultoria financeira.
 
 ## O que você precisa saber
 
@@ -30,7 +30,7 @@ Enquanto o projeto estiver em fase de demonstração, os pagamentos acontecem em
 - O limite de relatórios do seu plano conta os relatórios **gerados** nas últimas 24 horas. A prévia não conta; excluir um relatório da biblioteca não devolve o limite.
 - O PDF não fica guardado no TickerLab: a biblioteca guarda o título e os parâmetros, para você gerar de novo com os dados do dia.
 - O TickerLab **não tem conexão com a B3**. A planilha de posição que você envia é lida só na memória para montar o relatório e não fica guardada. A "carteira de exemplo" é **fictícia** e sai marcada como demonstração.
-- Os relatórios são para o seu uso pessoal e educacional. Se compartilhar, mantenha os avisos e as seções de limites.
+- Os relatórios são para o seu uso pessoal. Se compartilhar, mantenha os avisos e as seções de limites.
 
 ## Disponibilidade e responsabilidade
 
