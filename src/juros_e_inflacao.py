@@ -65,6 +65,7 @@ MESES_ABREVIADOS = (
 MESES_NO_ANO = 12
 DIAS_UTEIS_NO_ANO = 252
 ANOS_DE_HISTORICO = 10
+DIAS_DE_CDI = 400  # um pouco mais que um ano de dias corridos: cobre 252 dias úteis
 
 
 @dataclass(frozen=True)
