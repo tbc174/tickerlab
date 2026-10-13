@@ -5,6 +5,7 @@ versões guardadas das demonstrações da CVM e a data de entrega de cada versã
 empresa e os achados de qualidade que tiram uma empresa do padrão.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -18,6 +19,7 @@ from src.banco.modelo import (
     documentos_financeiros_versoes,
     padroes_setoriais,
     setores_cvm,
+    tickers_dos_emissores,
 )
 from src.padroes import (
     REGRAS_QUE_TIRAM_DO_PADRAO,
@@ -28,6 +30,7 @@ from src.padroes import (
 )
 from src.setores import SEM_GRUPO, grupo_do_setor
 
+log = logging.getLogger(__name__)
 FUSO = ZoneInfo("America/Sao_Paulo")
 PREFIXO_DA_SEC = "CIK"  # empresas dos EUA: fora dos padrões (Brasil primeiro, ADR 0028)
 
@@ -57,6 +60,17 @@ class Entradas:
 def _tabela(conexao: sa.Connection, consulta: sa.Select) -> pd.DataFrame:
     resultado = conexao.execute(consulta)
     return pd.DataFrame(resultado.fetchall(), columns=list(resultado.keys()))
+
+
+def tickers_por_empresa(conexao: sa.Connection) -> dict[str, list[str]]:
+    """cnpj → tickers da B3 (para o preço da ação no corte)."""
+    t = tickers_dos_emissores
+    tickers: dict[str, list[str]] = {}
+    for cnpj, ticker in conexao.execute(
+        sa.select(t.c.cnpj, t.c.ticker).order_by(t.c.ticker)
+    ):
+        tickers.setdefault(cnpj, []).append(ticker)
+    return tickers
 
 
 def entradas_para_padroes(conexao: sa.Connection) -> Entradas:
@@ -141,8 +155,13 @@ def padroes_em(
     return corte, tabela
 
 
-def calcular_corte(entradas: Entradas, data_de_corte: date) -> pd.DataFrame:
-    """Os padrões de um corte: indicadores de cada empresa como estavam no fim de `data_de_corte`."""
+def calcular_corte(
+    entradas: Entradas, data_de_corte: date, precos: dict[str, float] | None = None
+) -> pd.DataFrame:
+    """Os padrões de um corte: indicadores de cada empresa como estavam no fim de `data_de_corte`.
+
+    `precos`: cnpj → preço da ação no corte; com ele, entram também os múltiplos (P/L, P/VP).
+    """
     fim_do_dia = datetime.combine(
         data_de_corte + timedelta(days=1), datetime.min.time(), FUSO
     )
@@ -155,7 +174,13 @@ def calcular_corte(entradas: Entradas, data_de_corte: date) -> pd.DataFrame:
         grupo = grupo_do_setor(setor)
         if grupo == SEM_GRUPO:
             continue
-        valores = indicadores_da_empresa(parte.drop(columns="cnpj"), setor)
+        preco = (precos or {}).get(str(cnpj))
+        try:
+            valores = indicadores_da_empresa(parte.drop(columns="cnpj"), setor, preco)
+        except (ArithmeticError, ValueError, KeyError, TypeError) as erro:
+            # um documento estranho não pode derrubar o padrão das outras empresas
+            log.warning("Corte %s: %s fora do padrão (%r)", data_de_corte, cnpj, erro)
+            continue
         linhas += [
             {"cnpj": cnpj, "grupo": grupo, "indicador": indicador, "valor": valor}
             for indicador, valor in valores.items()
@@ -163,3 +188,14 @@ def calcular_corte(entradas: Entradas, data_de_corte: date) -> pd.DataFrame:
     if not linhas:
         return pd.DataFrame(columns=["grupo", "indicador", "empresas", "percentis"])
     return calcular_padroes(pd.DataFrame(linhas), entradas.em_conferencia(fim_do_dia))
+
+
+def cortes_gravados(
+    conexao: sa.Connection, versao: str = VERSAO_DOS_PADROES
+) -> set[date]:
+    t = padroes_setoriais
+    return set(
+        conexao.execute(
+            sa.select(t.c.data_de_corte).where(t.c.versao == versao).distinct()
+        ).scalars()
+    )
