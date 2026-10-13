@@ -128,7 +128,7 @@ def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
     assert estrangeira["options"].get("ondelete") == "CASCADE"
 
 
-def test_migracao_0028_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
+def test_migracao_0029_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
     inspecao = sa.inspect(motor)
     colunas = {c["name"] for c in inspecao.get_columns("origens_do_cadastro")}
     assert colunas == {

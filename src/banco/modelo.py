@@ -97,7 +97,7 @@ tentativas = sa.Table(
     _momento("criada_em"),
 )
 
-# Campanha (0028): de onde veio cada cadastro, lido do cookie próprio `tl_origem` no primeiro
+# Campanha (0029): de onde veio cada cadastro, lido do cookie próprio `tl_origem` no primeiro
 # login (src/origem.py). Só a primeira origem fica; nada vai para Google ou Meta
 origens_do_cadastro = sa.Table(
     "origens_do_cadastro",
