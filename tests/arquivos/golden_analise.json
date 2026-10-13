@@ -1,11 +1,14 @@
 {
   "cenarios": {
     "AAPL_contra_SP500": {
+      "adx": 15.557168481279431,
       "atr": 6.745888492351815,
       "beta": 1.180759396868851,
       "bollinger_percentual_b": 0.5947601151827951,
       "correlacao_recente": 0.1756410820461694,
+      "cvar": -0.03979523021210759,
       "dias_de_alta": 0.5318979266347688,
+      "information_ratio": 0.4283323787688662,
       "macd": 3.4367186953268174,
       "macd_sinal": 3.883141883087764,
       "maior_queda": -0.3336050254750269,
@@ -16,16 +19,21 @@
       "rsi": 56.13814134655719,
       "sharpe": 0.6919956899094323,
       "sortino": 1.0236760079286134,
+      "tracking_error": 0.19837211265326155,
       "var": -0.027192416916401833,
       "volatilidade_anual": 0.2803878197278382,
-      "volatilidade_recente": 0.2469010658069591
+      "volatilidade_recente": 0.2469010658069591,
+      "volume_relativo": 0.9854076113659629
     },
     "PETR4_padrao": {
+      "adx": 42.741693964095234,
       "atr": 1.5493279204971995,
       "beta": 0.9032207375296237,
       "bollinger_percentual_b": 1.0046840760985327,
       "correlacao_recente": 0.39103053048783376,
+      "cvar": -0.046357073463948496,
       "dias_de_alta": 0.5429029671210907,
+      "information_ratio": 1.0500785969641984,
       "macd": 2.4476935245490594,
       "macd_sinal": 1.9682181282793256,
       "maior_queda": -0.39103992324502956,
@@ -36,16 +44,21 @@
       "rsi": 75.04315778763115,
       "sharpe": 1.453336367719692,
       "sortino": 2.1342698241284075,
+      "tracking_error": 0.2718498878329205,
       "var": -0.02957919497491056,
       "volatilidade_anual": 0.31503848631584014,
-      "volatilidade_recente": 0.2805396406481176
+      "volatilidade_recente": 0.2805396406481176,
+      "volume_relativo": 1.0917516413733486
     },
     "PETR4_personalizado": {
+      "adx": 42.741693964095234,
       "atr": 1.4421861896632955,
       "beta": 0.9032207375296237,
       "bollinger_percentual_b": 0.956754191851998,
       "correlacao_recente": 0.5790744078228398,
+      "cvar": -0.0712729418828966,
       "dias_de_alta": 0.5429029671210907,
+      "information_ratio": 1.0500785969641984,
       "macd": 2.4476935245490594,
       "macd_sinal": 1.9682181282793256,
       "maior_queda": -0.39103992324502956,
@@ -56,17 +69,22 @@
       "rsi": 72.66681957754224,
       "sharpe": 1.1359148324354427,
       "sortino": 1.6681263907616124,
+      "tracking_error": 0.2718498878329205,
       "var": -0.060665658413653595,
       "volatilidade_anual": 0.31503848631584014,
-      "volatilidade_recente": 0.3188043315342463
+      "volatilidade_recente": 0.3188043315342463,
+      "volume_relativo": 1.0917516413733486
     }
   },
   "versoes": {
+    "adx": "1",
     "atr": "1",
     "beta": "1",
     "bollinger_percentual_b": "1",
     "correlacao_recente": "1",
+    "cvar": "1",
     "dias_de_alta": "1",
+    "information_ratio": "1",
     "macd": "1",
     "macd_sinal": "1",
     "maior_queda": "1",
@@ -77,8 +95,10 @@
     "rsi": "1",
     "sharpe": "1",
     "sortino": "1",
+    "tracking_error": "1",
     "var": "1",
     "volatilidade_anual": "1",
-    "volatilidade_recente": "1"
+    "volatilidade_recente": "1",
+    "volume_relativo": "1"
   }
 }

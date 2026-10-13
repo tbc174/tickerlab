@@ -37,7 +37,10 @@ LINHA_DE_REFERENCIA = "rgba(232, 236, 244, 0.30)"
 # Tema Plotly "tickerlab": fonte e cores da marca em todos os gráficos de uma vez
 TEMA = "tickerlab"
 pio.templates[TEMA] = go.layout.Template(pio.templates["plotly_dark"])
-pio.templates[TEMA].layout.update(
+_LAYOUT_DO_TEMA = pio.templates[TEMA].layout
+# o plotly declara a propriedade como opcional, mas num Template ela sempre existe
+assert _LAYOUT_DO_TEMA is not None
+_LAYOUT_DO_TEMA.update(
     font={"family": f"{marca.FONTE}, sans-serif", "color": marca.TEXTO, "size": 13},
     colorway=list(marca.SERIES),
     paper_bgcolor="rgba(0,0,0,0)",
@@ -49,13 +52,13 @@ pio.templates[TEMA].layout.update(
     },
     legend={"font": {"color": marca.TEXTO_APAGADO}},
 )
-pio.templates[TEMA].layout.xaxis.update(
+_LAYOUT_DO_TEMA.xaxis.update(
     gridcolor="rgba(148, 163, 190, 0.06)",
     linecolor=marca.LINHA,
     zerolinecolor=marca.LINHA,
     tickfont={"color": marca.TEXTO_APAGADO},
 )
-pio.templates[TEMA].layout.yaxis.update(
+_LAYOUT_DO_TEMA.yaxis.update(
     gridcolor="rgba(148, 163, 190, 0.10)",
     linecolor=marca.LINHA,
     zerolinecolor=marca.LINHA,
@@ -1073,6 +1076,7 @@ def criar_grafico_fundamentos_anuais(
     if anual.empty:
         raise ValueError("Não há demonstrações anuais para mostrar.")
     figura = _figura_base(f"Receita e lucro por ano ({simbolo} bilhões)")
+    figura.update_yaxes(tickformat=",.0f")  # bilhões, não porcentagem
     anos = [str(a) for a in anual.index]
     for nome, coluna, cor in (
         ("Receita", "receita", marca.SERIES[0]),
@@ -1099,6 +1103,7 @@ def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
     figura = _figura_base(
         f"Compras e vendas de pessoas de dentro por mês ({simbolo} milhões)"
     )
+    figura.update_yaxes(tickformat=",.1f")  # milhões, não porcentagem
     for nome, coluna, cor in (
         ("Compras", "compras", marca.ALTA),
         ("Vendas", "vendas", marca.QUEDA),
@@ -1129,13 +1134,65 @@ def criar_grafico_detentores(historico: pd.DataFrame, quem: str) -> go.Figure:
         figura.add_trace(
             go.Scatter(
                 x=historico["competencia"],
-                y=historico[coluna] * 100,
+                y=historico[coluna],
                 name=nome,
                 mode="lines+markers",
                 line={"color": cor},
-                hovertemplate=f"{nome}: %{{y:.1f}}%<extra></extra>",
+                hovertemplate=f"{nome}: %{{y:.1%}}<extra></extra>",
             )
         )
     figura.update_layout(showlegend=True, hovermode="x unified")
     figura.update_xaxes(tickformat="%m/%Y")
+    return figura
+
+
+def criar_grafico_adx(adx: pd.DataFrame, nivel: int) -> go.Figure:
+    """ADX (força da tendência) com +DI e -DI (direção) e a linha do nível de tendência."""
+    dados = adx.dropna(subset=["adx"])
+    if dados.empty:
+        raise ValueError("Não há ADX para mostrar.")
+    figura = _figura_base("Força da tendência (ADX)")
+    figura.update_yaxes(tickformat=".0f", range=[0, 100])
+    figura.add_hline(y=nivel, line_dash="dot", line_color=LINHA_DE_REFERENCIA)
+    for coluna, nome, cor, largura in (
+        ("adx", "ADX", COR_AZUL, 2.5),
+        ("mais_di", "+DI (força de alta)", marca.ALTA, 1.2),
+        ("menos_di", "-DI (força de queda)", marca.QUEDA, 1.2),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=dados.index, y=dados[coluna], name=nome, mode="lines",
+                line={"color": cor, "width": largura},
+                hovertemplate=f"{nome}: %{{y:.1f}}<extra></extra>",
+            )
+        )  # fmt: skip
+    figura.update_layout(showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_obv(obv: pd.Series, volume_relativo: pd.Series) -> go.Figure:
+    """OBV (linha, eixo da esquerda) e volume relativo (barras, eixo da direita)."""
+    if obv.dropna().empty:
+        raise ValueError("Não há volume para mostrar.")
+    figura = make_subplots(specs=[[{"secondary_y": True}]])
+    _estilo_base(figura, "Saldo de volume (OBV) e volume relativo", ALTURA_PADRAO)
+    figura.update_xaxes(rangeselector=_seletor_de_periodo(a_direita=True))
+    figura.add_trace(
+        go.Bar(
+            x=volume_relativo.index, y=volume_relativo, name="Volume relativo",
+            marker={"color": LINHA_DE_REFERENCIA}, opacity=0.5,
+            hovertemplate="volume relativo %{y:.2f}×<extra></extra>",
+        ),
+        secondary_y=True,
+    )  # fmt: skip
+    figura.add_trace(
+        go.Scatter(
+            x=obv.index, y=obv, name="OBV", mode="lines",
+            line={"color": COR_AZUL, "width": 2}, hovertemplate="OBV %{y:,.0f}<extra></extra>",
+        ),
+        secondary_y=False,
+    )  # fmt: skip
+    figura.update_yaxes(tickformat="~s", secondary_y=False)
+    figura.update_yaxes(tickformat=".1f", secondary_y=True, showgrid=False)
+    figura.update_layout(showlegend=True, hovermode="x unified")
     return figura

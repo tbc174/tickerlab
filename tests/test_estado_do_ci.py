@@ -83,3 +83,13 @@ def test_script_de_deploy_nao_implanta_sem_o_ok_do_ci():
     assert "git reset -q --hard" in texto  # reversão automática
     assert "flock -n 9" in texto  # uma execução por vez
     assert "--force" not in texto
+
+
+def test_script_de_deploy_espera_as_tarefas_agendadas():
+    """O deploy recria o contêiner onde as coletas rodam: só segue sem nenhuma tarefa rodando."""
+    texto = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
+    assert "/tmp/tickerlab-tarefas.lock" in texto  # a mesma trava do ~/rodar-tarefa.sh
+    assert (
+        "flock -n 8" in texto
+    )  # exclusiva e sem esperar: tenta de novo no próximo minuto
+    assert texto.index("flock -n 8") < texto.index("git merge --ff-only")

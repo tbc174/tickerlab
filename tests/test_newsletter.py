@@ -30,7 +30,7 @@ def _evento(ticker, tema, dias, rotulo="Comunicado", materialidade=40, fonte="cv
     )  # fmt: skip
 
 
-def _edicao(eventos, max_itens=5, detentores=()):
+def _edicao(eventos, max_itens=5, detentores=(), resumos=None):
     return nl.montar(
         nl.Entrada(
             lista="Minha lista",
@@ -44,6 +44,7 @@ def _edicao(eventos, max_itens=5, detentores=()):
             gerada_em=datetime(2026, 10, 11, 20, 0, tzinfo=UTC),
             detentores=detentores,
             fontes=(("Eventos (CVM e SEC)", "coletado em 11/10/2026 às 07:00"),),
+            resumos=resumos or {},
         )
     )
 
@@ -97,6 +98,33 @@ def test_parametros_e_limites_explicitos():
     assert "exposição 25%" in texto and "No máximo 3 destaques" in texto
     assert any("não é recomendação" in limite for limite in edicao.limites)
     assert (edicao.inicio, edicao.fim) == (date(2026, 9, 11), HOJE)
+
+
+TRECHO = "A Companhia aprovou a aquisição de 100% da Fábrica Modelo por R$ 1,2 bilhão."
+RESUMOS = {"VALE3.SAresultados2": {"frases": [TRECHO], "numeros": [], "assuntos": []}}
+
+
+def test_fato_lido_traz_os_trechos_do_documento():
+    edicao = _edicao(EVENTOS, resumos=RESUMOS)
+    vale = next(
+        i for i in edicao.secao("resultados").itens if i.titulo.startswith("VALE3")
+    )
+    assert vale.trechos == (TRECHO,)
+    assert all(
+        not i.trechos for i in edicao.secao("alertas").itens
+    )  # sem leitura, sem trecho
+    assert any("algoritmo do TickerLab, sem IA" in limite for limite in edicao.limites)
+
+
+def test_resumo_so_com_o_motivo_nao_vira_trecho():
+    resumos = {"VALE3.SAresultados2": {"motivo": "O PDF é só imagem (escaneado)."}}
+    itens = _edicao(EVENTOS, resumos=resumos).secao("resultados").itens
+    assert all(i.trechos == () for i in itens)
+
+
+def test_pdf_mostra_os_trechos():
+    texto = _texto(relatorio_da_newsletter(_edicao(EVENTOS, resumos=RESUMOS)))
+    assert "Trechos do documento" in texto and "Fábrica Modelo" in texto
 
 
 # --- o PDF -------------------------------------------------------------------------------------

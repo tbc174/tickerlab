@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -113,3 +114,85 @@ def test_baixar_guarda_cada_simbolo_e_um_ruim_nao_derruba_os_outros(tmp_path):
         "EURUSD_D1.parquet",
         "USDJPY_D1.parquet",
     ]
+
+
+# --- reparo, "limpo desde" e saltos suspeitos ------------------------------------------------
+
+
+def test_reparar_conserta_maxima_minima_e_abertura_sem_mexer_no_fechamento():
+    candles = _candles(5)
+    candles.iloc[1, candles.columns.get_loc("High")] = (
+        candles["Close"].iloc[1] - 1
+    )  # máxima abaixo do fechamento
+    candles.iloc[2, candles.columns.get_loc("Open")] = 0.0  # abertura zerada
+    reparado, quantos = dados.reparar_candles(candles)
+    assert quantos == 2
+    assert not dados.marcar_incoerentes(reparado).any()
+    pd.testing.assert_series_equal(reparado["Close"], candles["Close"])
+    assert reparado["Open"].iloc[2] == candles["Close"].iloc[2]
+    assert (reparado["High"] >= reparado["Close"]).all()
+
+
+def test_reparar_nao_mexe_em_serie_boa_nem_em_preco_negativo_real():
+    boa = _candles(10)
+    reparado, quantos = dados.reparar_candles(boa)
+    assert quantos == 0
+    pd.testing.assert_frame_equal(reparado, boa)
+    negativa = _candles(3)
+    negativa.iloc[1, negativa.columns.get_loc("Close")] = -37.63
+    negativa.iloc[1, negativa.columns.get_loc("Low")] = -40.0
+    reparado, _ = dados.reparar_candles(negativa)
+    assert reparado["Close"].iloc[1] == -37.63 and reparado["Low"].iloc[1] == -40.0
+
+
+def test_limpo_desde_serie_sempre_boa_e_o_primeiro_dia():
+    candles = _candles(600)
+    assert dados.limpo_desde(candles) == candles.index[0]
+
+
+def test_limpo_desde_acha_o_fim_do_trecho_ruim():
+    candles = _candles(900)
+    ruim = candles.index[:300]
+    candles.loc[ruim, "High"] = candles.loc[ruim, "Low"] - 1  # 300 candles incoerentes
+    desde = dados.limpo_desde(candles)
+    assert desde is not None and desde > candles.index[299]
+    assert desde < candles.index[899]
+
+
+def test_limpo_desde_nunca_quando_a_serie_continua_ruim():
+    candles = _candles(600)
+    candles["High"] = candles["Low"] - 1
+    assert dados.limpo_desde(candles) is None
+    assert dados.limpo_desde(candles.iloc[0:0]) is None
+
+
+def _caminhada(n=400, seed=5):
+    rng = np.random.default_rng(seed)
+    indice = pd.date_range("2022-01-03", periods=n, freq="B")
+    return pd.Series(100 * np.cumprod(1 + rng.normal(0, 0.01, n)), index=indice)
+
+
+def test_detectar_saltos_acha_o_salto_grande_e_so_ele():
+    p = _caminhada()
+    p.iloc[200:] = p.iloc[200:] * 1.3  # +30% de um dia para o outro
+    saltos = dados.detectar_saltos(p)
+    assert list(saltos.index) == [p.index[200]]
+    assert saltos.iloc[0] == pytest.approx(np.log(1.3), abs=0.03)
+
+
+def test_detectar_saltos_nao_marca_serie_calma():
+    assert dados.detectar_saltos(_caminhada()).empty
+
+
+def test_detectar_saltos_nao_olha_o_futuro_nem_marca_sem_historico():
+    p = _caminhada()
+    p.iloc[3:] = (
+        p.iloc[3:] * 1.5
+    )  # salto logo no começo: ainda não há escala para julgar
+    assert p.index[3] not in dados.detectar_saltos(p).index
+
+
+def test_detectar_saltos_tolera_preco_negativo():
+    p = _caminhada()
+    p.iloc[100] = -5.0
+    dados.detectar_saltos(p)  # não pode quebrar

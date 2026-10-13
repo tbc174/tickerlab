@@ -4,7 +4,7 @@
 # versão anterior sozinho.
 #
 # O servidor só puxa (nada de fora entra nele): roda de tempos em tempos pelo cron do usuário.
-#   crontab -e  ->  */5 * * * * /opt/stacks/tickerlab/scripts/deploy-automatico.sh
+#   crontab -e  ->  * * * * * /opt/stacks/tickerlab/scripts/deploy-automatico.sh
 #
 # Log: ~/deploy-tickerlab.log
 
@@ -29,7 +29,7 @@ atual="$(git rev-parse HEAD)"
 novo="$(git rev-parse origin/main)"
 [ "$atual" = "$novo" ] && exit 0
 
-# avisa uma vez só por commit (o cron roda a cada 5 minutos)
+# avisa uma vez só por commit (o cron roda a cada minuto)
 avisar() {
   if [ "$(cat "$ULTIMO_AVISO" 2>/dev/null || true)" != "$novo:$1" ]; then
     registrar "${novo:0:8}: $1"
@@ -47,6 +47,14 @@ case "$estado" in
   falhou) avisar "testes do GitHub falharam: não implantei"; exit 0 ;;
   *) avisar "não consegui ler o estado dos testes (GitHub fora do ar?)"; exit 0 ;;
 esac
+
+# As tarefas agendadas (coletas, backup) rodam dentro do contêiner que o deploy recria: cada uma
+# segura esta trava em modo compartilhado (~/rodar-tarefa.sh). Se alguma estiver rodando, o deploy
+# não a mata: espera e tenta de novo no próximo minuto. Enquanto ele implanta, as tarefas que
+# começarem esperam por ele. (Em 12/10/2026 um deploy às 7h23 matou a coleta da SEC.)
+TRAVA_DAS_TAREFAS="${TICKERLAB_TRAVA_DAS_TAREFAS:-/tmp/tickerlab-tarefas.lock}"
+exec 8>"$TRAVA_DAS_TAREFAS"
+flock -n 8 || { avisar "esperando as tarefas agendadas terminarem"; exit 0; }
 
 registrar "${atual:0:8} -> ${novo:0:8}: testes passaram, implantando"
 git merge --ff-only -q origin/main

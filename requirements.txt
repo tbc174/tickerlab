@@ -9,8 +9,10 @@ charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
 comm==0.2.3
+coverage==7.16.2
 curl_cffi==0.16.3
 debugpy==1.8.22
+execnet==2.1.2
 executing==2.2.1
 h11==0.16.0
 httptools==0.8.0
@@ -32,6 +34,7 @@ matplotlib-inline==0.2.2
 multitasking==0.0.13
 narwhals==2.26.0
 nest-asyncio2==1.7.4
+nodeenv==1.11.0
 numpy==2.5.3
 packaging==26.3
 pandas==3.0.6
@@ -49,7 +52,10 @@ pyarrow==25.0.1
 pycparser==3.1
 pydeck==0.9.3
 Pygments==2.21.0
+pyright==1.1.414  # tipos: python -m pyright (configuração no pyrightconfig.json)
 pytest==9.1.1
+pytest-cov==7.1.0  # cobertura dos testes (configuração no .coveragerc)
+pytest-xdist==3.8.0  # testes em paralelo: python -m pytest -n 4 --dist loadgroup
 python-dateutil==2.9.0.post0
 python-multipart==0.0.32
 pytz==2026.5

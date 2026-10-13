@@ -12,6 +12,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from src.banco.modelo import documentos_lidos, negociacoes_internas
+from src.links_das_fontes import link_da_fonte
 from src.negociacoes import COLUNAS
 
 TAMANHO_DO_LOTE = 5_000  # o SQLite limita o número de parâmetros de uma consulta
@@ -138,7 +139,10 @@ def negociacoes(
             negociacoes_internas.c.data.desc(),
         )
     ).all()
-    return pd.DataFrame(linhas, columns=COLUNAS)
+    tabela = pd.DataFrame(linhas, columns=COLUNAS)
+    # vazio = sem link: só endereço https da CVM ou da SEC vira link (src/links_das_fontes.py)
+    tabela["link"] = [link_da_fonte(link) or "" for link in tabela["link"]]
+    return tabela
 
 
 def ultima_coleta(conexao: sa.Connection) -> datetime | None:

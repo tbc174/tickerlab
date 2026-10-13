@@ -132,6 +132,57 @@ watchlists = sa.Table(
     sa.UniqueConstraint("usuario_id", "nome"),
 )
 
+# Research (0017): a fotografia da carteira (só ticker → peso em %), com consentimento próprio
+carteiras_do_research = sa.Table(
+    "carteiras_do_research",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("pesos", JSON_PORTATIL, nullable=False),  # {"PETR4.SA": 0.1234, ...}
+    sa.Column("enviada_em", sa.Date, nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    _momento("consentido_em"),
+)
+
+# Research (0018): Newsletter por e-mail. Inscrição opt-in (uma por usuário) e cada envio
+# (a chave usuário + período impede mandar a mesma edição duas vezes)
+CADENCIAS_DO_EMAIL = ("diaria", "semanal")
+SITUACOES_DO_ENVIO = ("enviado", "retido", "falhou")
+inscricoes_da_newsletter = sa.Table(
+    "inscricoes_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("lista", sa.String(60), nullable=False),  # nome da lista no Research
+    sa.Column("cadencia", sa.String(20), nullable=False),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    # código aleatório do link "descadastrar" (funciona sem login)
+    sa.Column("codigo_para_sair", sa.String(64), nullable=False, unique=True),
+    _momento("inscrito_em"),
+    sa.CheckConstraint("cadencia IN ('diaria', 'semanal')", name="cadencia"),
+)
+envios_da_newsletter = sa.Table(
+    "envios_da_newsletter",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("periodo", sa.String(20), primary_key=True),  # "2026-10-12" ou "2026-W42"
+    sa.Column("situacao", sa.String(20), nullable=False),
+    sa.Column("detalhe", sa.String(200), nullable=False, server_default=""),
+    _momento("registrado_em"),
+    sa.CheckConstraint("situacao IN ('enviado', 'retido', 'falhou')", name="situacao"),
+)
+
+# Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
+alertas = sa.Table(
+    "alertas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("nome", sa.String(80), nullable=False),
+    sa.Column("regra", JSON_PORTATIL, nullable=False),
+    _momento("criado_em"),
+    _momento("atualizado_em"),
+    sa.UniqueConstraint("usuario_id", "nome"),
+)
+
 # Research (0010): demonstrações financeiras da CVM (DFP e ITR), dados públicos
 demonstracoes = sa.Table(
     "demonstracoes",
@@ -322,6 +373,34 @@ sa.Index(
     relatorios.c.criado_em,
 )
 
+# biblioteca (0019, ADR 0021): o PDF original de cada relatório, como foi entregue. Some junto com
+# a conta (cascata), ao excluir da biblioteca, depois de 1 ano e quando passa da cota do plano.
+# O relatório "Minha carteira" nunca é guardado (a planilha da B3 não fica no TickerLab).
+pdfs_originais = sa.Table(
+    "pdfs_originais",
+    metadata,
+    sa.Column(
+        "relatorio_id",
+        sa.Uuid,
+        sa.ForeignKey("relatorios.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    _chave_do_usuario(),
+    sa.Column("pdf", sa.LargeBinary, nullable=False),
+    sa.Column(
+        "sha256", sa.String(64), nullable=False
+    ),  # prova de que é o mesmo arquivo
+    sa.Column("tamanho", sa.Integer, nullable=False),  # bytes
+    # versão das fórmulas, do app e de onde vieram os dados: reproduzir o que o PDF mostrava
+    sa.Column("versoes", JSON_PORTATIL, nullable=False),
+    _momento("gerado_em"),
+)
+sa.Index(
+    "ix_pdfs_originais_usuario_id_gerado_em",
+    pdfs_originais.c.usuario_id,
+    pdfs_originais.c.gerado_em,
+)
+
 # Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
 # (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
 detentores_por_acao = sa.Table(
@@ -367,3 +446,31 @@ cobertura_de_detentores = sa.Table(
     sa.Column("informantes", sa.Integer, nullable=False),
     _momento("coletado_em"),
 )
+
+# Research R4 (0014): ações dos EUA fora do S&P 500 buscadas na hora por alguém; entram na coleta
+# diária da SEC. Sem `usuario_id`: guarda só o ticker e quando foi pedido (nada pessoal).
+tickers_sob_demanda = sa.Table(
+    "tickers_sob_demanda",
+    metadata,
+    sa.Column("ticker", sa.String(12), primary_key=True),
+    sa.Column("cnpj", sa.String(18), nullable=False),  # o CIK com prefixo
+    _momento("pedido_em"),
+)
+
+# Research R5 (0016): leitura dos documentos pelo algoritmo próprio (src/leitura.py). Dados
+# públicos: o resumo de cada fato relevante e a comparação dos fatores de risco dos 10-K.
+leituras = sa.Table(
+    "leituras",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),  # cvm_ipe ou sec_edgar
+    sa.Column(
+        "documento", sa.String(60), primary_key=True
+    ),  # protocolo do documento lido
+    sa.Column("tipo", sa.String(20), primary_key=True),  # resumo ou riscos
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("referencia", sa.Date),
+    sa.Column("resultado", JSON_PORTATIL, nullable=False),
+    sa.Column("versao", sa.String(10), nullable=False),
+    _momento("lido_em"),
+)
+sa.Index("ix_leituras_cnpj", leituras.c.cnpj)

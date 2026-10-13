@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from src.banco.eventos import Evento
+from src.carteira_research import Fotografia, exposicao
 
 COMPONENTES = (
     "exposicao",
@@ -58,6 +59,9 @@ DEMONSTRACAO = (
     "MSFT",
 )
 NOME_DA_DEMONSTRACAO = "Demonstração"
+NOME_DOS_FAVORITOS = "Favoritos"
+NOME_DA_CARTEIRA = "Minha carteira"  # a fotografia guardada (etapa 5)
+NOMES_RESERVADOS = (NOME_DA_DEMONSTRACAO, NOME_DOS_FAVORITOS, NOME_DA_CARTEIRA)
 MAXIMO_POR_EMPRESA = (
     3  # supressão de ruído: nenhuma empresa ocupa mais lugares que isso
 )
@@ -78,12 +82,19 @@ def pontuar(
     hoje: date,
     janela_em_dias: int,
     nome_da_lista: str,
+    carteira: Fotografia | None = None,
 ) -> ItemDoResearch:
-    """A relevância de um evento e as razões, a partir dos pesos (`relevancia.*`, somando 100)."""
+    """A relevância de um evento e as razões, a partir dos pesos (`relevancia.*`, somando 100).
+
+    Com a `carteira` (fotografia dos pesos), a exposição é o tamanho da posição (a maior vale 1);
+    sem ela, numa lista, todo ativo pesa igual.
+    """
     temas = set(temas)
     idade = max((hoje - evento.publicado_em).days, 0)
     componentes = {
-        "exposicao": 1.0,  # numa watchlist, todo ativo pesa igual (sem tamanho de posição)
+        "exposicao": 1.0
+        if carteira is None
+        else exposicao(carteira.pesos).get(evento.ticker, 0.0),
         "materialidade": evento.materialidade / 100,
         "novidade": 1.0 if evento.versao == 1 else 0.5,  # reapresentação vale menos
         "qualidade_da_fonte": QUALIDADE_DAS_FONTES.get(evento.fonte, 0.5),
@@ -93,7 +104,7 @@ def pontuar(
     total = sum(pesos[c] * componentes[c] for c in COMPONENTES) / 100
     codigo = evento.ticker.removesuffix(".SA")
     razoes = [
-        f"Você acompanha {codigo} na lista {nome_da_lista}.",
+        _razao_da_exposicao(codigo, evento.ticker, nome_da_lista, carteira),
         f"{evento.rotulo}: materialidade {evento.materialidade} de 100 para este tipo de documento.",
         (
             f'O tema "{evento.tema}" está entre os seus temas.'
@@ -106,6 +117,18 @@ def pontuar(
         + ".",
     ]
     return ItemDoResearch(evento, round(total, 4), componentes, razoes)
+
+
+def _razao_da_exposicao(
+    codigo: str, ticker: str, nome_da_lista: str, carteira: Fotografia | None
+) -> str:
+    if carteira is None:
+        return f"Você acompanha {codigo} na lista {nome_da_lista}."
+    peso = f"{carteira.pesos.get(ticker, 0.0) * 100:.1f}".replace(".", ",")
+    return (
+        f"A posição em {codigo} era {peso}% da sua carteira na fotografia de "
+        f"{carteira.enviada_em:%d/%m/%Y}."
+    )
 
 
 def _ha(dias: int) -> str:
@@ -123,6 +146,7 @@ def ordenar(
     nome_da_lista: str,
     maximo_por_ativo: int | None = MAXIMO_POR_EMPRESA,
     maximo: int | None = None,
+    carteira: Fotografia | None = None,
 ) -> list[ItemDoResearch]:
     """Os eventos por relevância (empate: o mais recente), sem que uma empresa domine a lista.
 
@@ -131,7 +155,7 @@ def ordenar(
     """
     pontuados = sorted(
         (
-            pontuar(e, pesos, temas, hoje, janela_em_dias, nome_da_lista)
+            pontuar(e, pesos, temas, hoje, janela_em_dias, nome_da_lista, carteira)
             for e in eventos
         ),
         key=lambda i: (i.relevancia, i.evento.publicado_em),

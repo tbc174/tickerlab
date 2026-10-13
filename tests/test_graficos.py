@@ -659,3 +659,26 @@ def test_grafico_do_momentum_pinta_positivos_de_verde_e_negativos_de_vermelho():
     ]
     with pytest.raises(ValueError, match="momentum"):
         criar_grafico_momentum(momentum.iloc[:0])
+
+
+def test_eixos_dos_graficos_em_dinheiro_nao_viram_porcentagem():
+    """A base dos gráficos formata o eixo como porcentagem; os de dinheiro e de fatia trocam."""
+    anual = pd.DataFrame(
+        {"receita": [1e11, 2e11], "lucro": [1e10, 2e10]}, index=[2024, 2025]
+    )
+    assert (
+        graficos.criar_grafico_fundamentos_anuais(anual).layout.yaxis.tickformat
+        != ".0%"
+    )
+    resumo = pd.DataFrame(
+        {"mes": pd.to_datetime(["2026-08-01"]), "compras": [2e6], "vendas": [-1e6]}
+    )
+    assert (
+        graficos.criar_grafico_negociacoes(resumo, "BRL").layout.yaxis.tickformat
+        != ".0%"
+    )
+    historico = pd.DataFrame(
+        {"competencia": pd.to_datetime(["2026-07-31", "2026-08-31"]), "fatia": [0.1, 0.12],
+         "fatia_vendidos": [0.01, 0.02], "vendidos": [3, 4]}
+    )  # fmt: skip
+    assert max(graficos.criar_grafico_detentores(historico, "fundos").data[0].y) <= 1

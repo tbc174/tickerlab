@@ -310,7 +310,11 @@ def _retornos_e_divida(
         if "caixa" in saldo or "aplicacoes" in saldo
         else None
     )
-    investido = None if None in (pl_total, divida, caixa) else pl_total + divida - caixa
+    investido = (
+        None
+        if pl_total is None or divida is None or caixa is None
+        else pl_total + divida - caixa
+    )
     sem_capital = "" if _positivo(investido) else "Capital investido negativo ou zero."
     ebit = ttm.get("ebit")
     lista.add(
@@ -461,7 +465,9 @@ def _filtros(
     """Frases neutras: o número passa ou não do limite escolhido na página Parâmetros."""
     frases = []
     roic, pl = itens["roic"], itens["p_l"]
-    if roic_minimo is not None and roic.disponivel:
+    if (
+        roic_minimo is not None and roic.valor is not None
+    ):  # o mesmo que roic.disponivel
         lado = "acima" if roic.valor * 100 >= roic_minimo else "abaixo"
         valor = f"{roic.valor:.1%}".replace(".", ",")
         frases.append(
@@ -469,7 +475,7 @@ def _filtros(
                 ".0%", "%"
             )
         )
-    if pl_maximo is not None and pl.disponivel:
+    if pl_maximo is not None and pl.valor is not None:
         lado = "dentro" if pl.valor <= pl_maximo else "fora"
         frases.append(
             f"P/L de {pl.valor:.1f}".replace(".", ",")

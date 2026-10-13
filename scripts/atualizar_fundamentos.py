@@ -43,7 +43,7 @@ def baixar(url: str) -> bytes | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
         "--anos", type=int, default=2, help=f"anos de DFP (1 a {MAX_ANOS})"
     )

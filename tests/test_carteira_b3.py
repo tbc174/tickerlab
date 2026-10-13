@@ -4,15 +4,20 @@
 Fundo de Investimento e Tesouro Direto, a PETR4 em duas corretoras e uma linha de Total.
 """
 
+import zipfile
 from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
 import pytest
+import tomllib
 from pypdf import PdfReader
 
 from src import relatorios
 from src.carteira_b3 import (
+    MAXIMO_DE_LINHAS,
+    TAMANHO_MAXIMO,
+    TAMANHO_MAXIMO_DESCOMPRIMIDO,
     ArquivoDaB3Error,
     ler_carteira,
     numero_efetivo_de_ativos,
@@ -85,6 +90,66 @@ def test_arquivo_errado_tem_mensagem_que_ajuda():
 def test_arquivo_grande_demais_e_recusado():
     with pytest.raises(ArquivoDaB3Error, match="5 MB"):
         ler_carteira(b"0" * (5 * 1024 * 1024 + 1), "grande.xlsx")
+
+
+def test_planilha_que_incha_ao_abrir_e_recusada_antes_de_ser_aberta(monkeypatch):
+    # regressão do achado S-2 (Master v3): um .xlsx pequeno podia virar gigabytes na memória
+    arquivo = BytesIO()
+    with zipfile.ZipFile(arquivo, "w", zipfile.ZIP_DEFLATED) as zip_:
+        zip_.writestr(
+            "xl/worksheets/sheet1.xml", b" " * (TAMANHO_MAXIMO_DESCOMPRIMIDO + 1)
+        )
+    conteudo = arquivo.getvalue()
+    assert len(conteudo) < 100_000  # comprimido, é pequeno
+
+    def nao_pode_abrir(*_a, **_k):
+        raise AssertionError("a planilha foi aberta antes de ser recusada")
+
+    monkeypatch.setattr("src.carteira_b3.pd.read_excel", nao_pode_abrir)
+    with pytest.raises(ArquivoDaB3Error, match="grande demais ao abrir"):
+        ler_carteira(conteudo, "bomba.xlsx")
+
+
+def _posicao_com_linhas(quantas):
+    return pd.DataFrame(
+        {
+            "Código de Negociação": ["PETR4"] * quantas,
+            "Valor Atualizado": [1.0] * quantas,
+        }
+    )
+
+
+def test_planilha_com_linhas_demais_e_recusada():
+    arquivo = BytesIO()
+    _posicao_com_linhas(MAXIMO_DE_LINHAS + 1).to_excel(
+        arquivo, sheet_name="Acoes", index=False
+    )
+    with pytest.raises(ArquivoDaB3Error, match="mais de 5.000 linhas"):
+        ler_carteira(arquivo.getvalue(), "posicao.xlsx")
+
+
+def test_planilha_no_limite_de_linhas_ainda_e_lida():
+    arquivo = BytesIO()
+    _posicao_com_linhas(MAXIMO_DE_LINHAS).to_excel(
+        arquivo, sheet_name="Acoes", index=False
+    )
+    carteira = ler_carteira(arquivo.getvalue(), "posicao.xlsx")
+    assert (
+        carteira.posicoes.set_index("codigo").loc["PETR4", "valor"] == MAXIMO_DE_LINHAS
+    )
+
+
+def test_csv_com_linhas_demais_e_recusado():
+    texto = _posicao_com_linhas(MAXIMO_DE_LINHAS + 1).to_csv(sep=";", index=False)
+    with pytest.raises(ArquivoDaB3Error, match="mais de 5.000 linhas"):
+        ler_carteira(texto.encode("utf-8"), "posicao.csv")
+
+
+def test_o_app_limita_o_envio_de_arquivos_a_5_mb():
+    configuracao = tomllib.loads(
+        (Path(__file__).parent.parent / ".streamlit" / "config.toml").read_text("utf-8")
+    )
+    assert configuracao["server"]["maxUploadSize"] == TAMANHO_MAXIMO // (1024 * 1024)
 
 
 def test_numero_efetivo_de_ativos():

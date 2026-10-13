@@ -12,8 +12,13 @@ import sqlalchemy as sa
 
 from src import auditoria
 from src.banco.modelo import (
+    alertas,
     assinaturas,
+    carteiras_do_research,
+    envios_da_newsletter,
     favoritos,
+    inscricoes_da_newsletter,
+    pdfs_originais,
     preferencias,
     presets,
     relatorios,
@@ -23,9 +28,10 @@ from src.banco.modelo import (
 )
 from src.banco.usuarios import Usuario
 
-VERSAO_DOS_TERMOS = (
-    "2026-10-11.2"  # versão 2: Plus, relatórios, acesso aberto, Cloudflare
-)
+# versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
+# alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
+# Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021)
+VERSAO_DOS_TERMOS = "2026-10-12.5"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
 
@@ -117,6 +123,57 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 .order_by(simulacoes.c.criada_em)
             )
         ],
+        "alertas_do_research": [
+            {
+                "nome": l.nome,
+                "regra": dict(l.regra),
+                "criado_em": _texto(l.criado_em),
+                "atualizado_em": _texto(l.atualizado_em),
+            }
+            for l in conexao.execute(
+                sa.select(alertas)
+                .where(alertas.c.usuario_id == usuario_id)
+                .order_by(alertas.c.criado_em)
+            )
+        ],
+        "carteira_do_research": [
+            {
+                "pesos": dict(l.pesos),
+                "enviada_em": _texto(l.enviada_em),
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "consentido_em": _texto(l.consentido_em),
+            }
+            for l in conexao.execute(
+                sa.select(carteiras_do_research).where(
+                    carteiras_do_research.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "newsletter_por_email": [
+            {
+                "lista": l.lista,
+                "cadencia": l.cadencia,
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "inscrito_em": _texto(l.inscrito_em),
+            }
+            for l in conexao.execute(
+                sa.select(inscricoes_da_newsletter).where(
+                    inscricoes_da_newsletter.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "envios_da_newsletter": [
+            {
+                "periodo": l.periodo,
+                "situacao": l.situacao,
+                "registrado_em": _texto(l.registrado_em),
+            }
+            for l in conexao.execute(
+                sa.select(envios_da_newsletter)
+                .where(envios_da_newsletter.c.usuario_id == usuario_id)
+                .order_by(envios_da_newsletter.c.registrado_em)
+            )
+        ],
         "listas_do_research": [
             {
                 "nome": l.nome,
@@ -153,6 +210,16 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 "titulo": l.titulo,
                 "parametros": dict(l.parametros) if l.parametros else None,
                 "excluido_da_biblioteca_em": _texto(l.apagado_em),
+                # o arquivo em si vai no .zip "Baixar meus PDFs guardados"
+                "pdf_original": (
+                    {
+                        "sha256": l.sha256,
+                        "tamanho": l.tamanho,
+                        "gerado_em": _texto(l.gerado_em),
+                    }
+                    if l.sha256
+                    else None
+                ),
             }
             for l in conexao.execute(
                 sa.select(
@@ -161,6 +228,16 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                     relatorios.c.titulo,
                     relatorios.c.parametros,
                     relatorios.c.apagado_em,
+                    pdfs_originais.c.sha256,
+                    pdfs_originais.c.tamanho,
+                    pdfs_originais.c.gerado_em,
+                )
+                .select_from(
+                    relatorios.outerjoin(
+                        pdfs_originais,
+                        (pdfs_originais.c.relatorio_id == relatorios.c.id)
+                        & (pdfs_originais.c.usuario_id == usuario_id),
+                    )
                 )
                 .where(relatorios.c.usuario_id == usuario_id)
                 .order_by(relatorios.c.criado_em)

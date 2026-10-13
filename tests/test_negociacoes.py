@@ -123,6 +123,31 @@ def test_form4_compra_e_de_outra_empresa(tmp_path):
     assert _form4(cik=789019).empty  # o formulário é da Apple, não da Microsoft
 
 
+BOMBA_DE_ENTIDADES = b"""<?xml version="1.0"?>
+<!DOCTYPE bomba [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>
+<ownershipDocument><issuer><issuerCik>&b;</issuerCik></issuer></ownershipDocument>"""
+
+
+def test_form4_malicioso_e_recusado_e_vira_documento_pulado():
+    """XML com entidades (o ataque que "explode" de tamanho) não é lido; na coleta, só aquele
+    Form 4 é pulado, como um arquivo ilegível (a empresa continua)."""
+    from defusedxml import DefusedXmlException
+
+    from src import coleta_sec
+
+    with pytest.raises(DefusedXmlException):
+        form4.ler_form4(BOMBA_DE_ENTIDADES, APPLE, "p", date(2026, 10, 8), "https://x")
+
+    class ClienteFalso:
+        def baixar(self, endereco: str) -> bytes:
+            return BOMBA_DE_ENTIDADES
+
+    tabela = coleta_sec._ler_um_form4(
+        ClienteFalso(), APPLE, "0000-00-000001", date(2026, 10, 8), "f.xml"
+    )
+    assert tabela.empty
+
+
 def test_lista_de_form4_da_empresa():
     lista = form4.formularios_4(
         (SEC / "CIK0000320193.json").read_bytes(), date(2025, 1, 1)

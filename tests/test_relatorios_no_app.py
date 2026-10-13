@@ -5,6 +5,7 @@ from streamlit.testing.v1 import AppTest
 
 from src import relatorios
 from src.banco import dados_do_usuario as repo
+from src.banco import pdfs_originais as pdfs
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
 
 
@@ -49,6 +50,43 @@ def test_no_modo_local_mostra_a_previa_gera_o_pdf_e_oferece_o_download():
     assert gerado["pdf"].startswith(b"%PDF")
     assert _baixar(app)
     assert not any(b.key == "gerar_pdf" for b in app.button)  # virou "Baixar PDF"
+
+
+def _gerar_no_tipo(tipo):
+    app = _app_local()
+    app.button_group(key="tipo_de_relatorio").set_value(tipo).run()
+    assert not app.exception
+    assert app.session_state["relatorio_previas"]  # a prévia foi montada
+    app.button(key="gerar_pdf").click().run()
+    assert not app.exception and not app.error
+    return app.session_state["relatorio_gerado"]
+
+
+def test_comparacao_gera_o_pdf_com_os_ativos_escolhidos():
+    gerado = _gerar_no_tipo(relatorios.COMPARACAO)
+    assert gerado["arquivo"] == "tickerlab-comparacao.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
+
+
+def test_comparacao_sem_outro_ativo_pede_um_e_nao_gera():
+    app = _app_local()
+    app.button_group(key="tipo_de_relatorio").set_value(relatorios.COMPARACAO).run()
+    app.text_input(key="relatorio_comparar_com").set_value("").run()
+    assert not app.exception
+    assert "Escolha pelo menos um ativo" in " ".join(i.value for i in app.info)
+    assert not any(b.key == "gerar_pdf" for b in app.button)
+
+
+def test_backtest_gera_o_pdf_da_estrategia_escolhida():
+    gerado = _gerar_no_tipo(relatorios.BACKTEST)
+    assert gerado["arquivo"] == "tickerlab-backtest-PETR4.SA.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
+
+
+def test_carteira_gera_o_pdf_com_os_ativos_da_lista():
+    gerado = _gerar_no_tipo(relatorios.CARTEIRA)
+    assert gerado["arquivo"] == "tickerlab-carteira.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
 
 
 def test_modelo_executivo_escolhe_menos_secoes_e_mexer_vira_personalizado():
@@ -142,6 +180,22 @@ def test_biblioteca_guarda_reabre_e_exclui_sem_devolver_o_limite(banco, monkeypa
     with banco.connect() as conexao:
         assert repo.biblioteca_de_relatorios(conexao, ana) == []
         assert repo.contar_relatorios_recentes(conexao, ana) == 1  # o limite não volta
+
+
+def test_gerar_guarda_o_pdf_original_igual_ao_entregue(banco, monkeypatch):
+    # Master v3, C.4 (ADR 0021): a biblioteca guarda o PDF exato que a pessoa baixou
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("relatorio")
+    app.button(key="gerar_pdf").click().run()
+    assert not app.exception
+    entregue = app.session_state["relatorio_gerado"]["pdf"]
+    ana = id_do_usuario(banco, "ana")
+    with banco.connect() as conexao:
+        (item,) = repo.biblioteca_de_relatorios(conexao, ana)
+        assert pdfs.baixar_pdf_original(conexao, ana, item.id) == entregue
+    (original,) = [b for b in app.get("download_button") if b.proto.label == "Original"]
+    assert not original.proto.disabled
+    assert "guardado por 1 ano" in _legendas(app)
 
 
 def test_salvar_configuracao_guarda_na_conta_e_sobrevive_as_outras_preferencias(

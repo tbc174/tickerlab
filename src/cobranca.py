@@ -3,7 +3,7 @@
 Duas metades:
 - falar com o Stripe: criar a página de pagamento (Checkout) e o portal da assinatura;
 - reagir ao que o Stripe conta (webhook): trocar o plano do usuário. Esta parte é idempotente
-  (o Stripe repete entregas) e tolera eventos fora de ordem.
+  (o Stripe repete entregas) e tolera eventos fora de ordem, inclusive no mesmo segundo.
 
 Nenhuma chave fica no código: tudo vem de variáveis de ambiente. A chave secreta precisa ser de
 teste (`sk_test_...`); uma chave de produção é recusada de propósito.
@@ -32,6 +32,8 @@ VARIAVEL_DO_PRECO = "STRIPE_PRICE_ID"
 VARIAVEL_DA_URL = "TICKERLAB_URL_PUBLICA"
 
 STATUS_QUE_DAO_O_PRO = frozenset({"active", "trialing", "past_due"})
+# estados finais: o Stripe nunca reativa uma assinatura que chegou a eles
+STATUS_ENCERRADOS = frozenset({"canceled", "incomplete_expired"})
 PREFIXOS_DE_CHAVE_DE_TESTE = ("sk_test_", "rk_test_")  # secreta ou restrita (preferida)
 EVENTOS_DE_CHECKOUT_PAGO = (
     "checkout.session.completed",
@@ -253,6 +255,36 @@ def _usuario_da_assinatura(
     return None
 
 
+def _motivo_para_ignorar(
+    existente: sa.Row, id_da_assinatura: str | None, status: str, criado_em: int
+) -> str | None:
+    """Por que um evento não deve mudar a assinatura guardada (None = pode aplicar).
+
+    O Stripe não garante a ordem de entrega e o horário do evento vem em segundos: eventos
+    diferentes no mesmo segundo podem chegar em qualquer ordem. Por isso o horário sozinho não
+    basta: uma assinatura encerrada não volta, e o fim de uma assinatura antiga não tira o Pro
+    que a assinatura atual dá.
+    """
+    if criado_em < existente.evento_em:
+        return "mais velho que o último aplicado"
+    guardada = existente.stripe_subscription_id
+    mesma = id_da_assinatura is not None and id_da_assinatura == guardada
+    if (
+        mesma
+        and existente.status in STATUS_ENCERRADOS
+        and status not in STATUS_ENCERRADOS
+    ):
+        return "a assinatura já foi encerrada e o Stripe não a reativa"
+    outra = id_da_assinatura is not None and guardada is not None and not mesma
+    if (
+        outra
+        and existente.status in STATUS_QUE_DAO_O_PRO
+        and status not in STATUS_QUE_DAO_O_PRO
+    ):
+        return "é de outra assinatura e tiraria o Pro que a atual dá"
+    return None
+
+
 def _gravar_assinatura(
     conexao: sa.Connection,
     usuario_id: uuid.UUID,
@@ -263,12 +295,16 @@ def _gravar_assinatura(
     cancela_no_fim: bool | None,
     criado_em: int,
 ) -> bool:
-    """Grava a assinatura se o evento não for mais velho que o último aplicado.
+    """Grava a assinatura se o evento puder mudar a guardada (veja `_motivo_para_ignorar`).
 
     Devolve se o evento foi aplicado (e, portanto, se o plano deve acompanhar o status).
     """
     existente = conexao.execute(
-        sa.select(assinaturas.c.evento_em).where(assinaturas.c.usuario_id == usuario_id)
+        sa.select(
+            assinaturas.c.evento_em,
+            assinaturas.c.status,
+            assinaturas.c.stripe_subscription_id,
+        ).where(assinaturas.c.usuario_id == usuario_id)
     ).first()
     valores = {
         "stripe_customer_id": id_do_cliente,
@@ -287,8 +323,9 @@ def _gravar_assinatura(
         valores.setdefault("cancela_no_fim", False)
         conexao.execute(sa.insert(assinaturas).values(usuario_id=usuario_id, **valores))
         return True
-    if criado_em < existente.evento_em:
-        log.info("Evento do Stripe mais velho que o último aplicado: ignorado")
+    motivo = _motivo_para_ignorar(existente, id_da_assinatura, status, criado_em)
+    if motivo:
+        log.info("Evento do Stripe ignorado: %s", motivo)
         return False
     conexao.execute(
         sa.update(assinaturas)
