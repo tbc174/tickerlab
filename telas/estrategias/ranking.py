@@ -8,6 +8,7 @@ import streamlit as st
 
 from src import graficos
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
+from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.ranking import montar_ranking
 from telas.comum import (
     ajuda_do,
@@ -66,9 +67,14 @@ def secao_ranking(dados, taxa_livre_de_risco):
         "melhor (abaixo de 5% é convincente)."
     )
 
-    mostrar_grafico(
-        graficos.criar_grafico_risco_retorno(tabela, destaque=ESTRATEGIA_DE_REFERENCIA)
-    )
+    if tabela["Retorno anualizado"].notna().any():
+        mostrar_grafico(
+            graficos.criar_grafico_risco_retorno(
+                tabela, destaque=ESTRATEGIA_DE_REFERENCIA
+            )
+        )
+    else:  # o gráfico é de retorno ao ano, que não existe com menos de ~1 ano
+        st.info(f"Gráfico de risco e retorno: {MOTIVO_SEM_ANUALIZAR}")
     padrao = [ESTRATEGIA_DE_REFERENCIA] + [
         n for n in tabela.index if n != ESTRATEGIA_DE_REFERENCIA
     ][:2]

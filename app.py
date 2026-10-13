@@ -44,6 +44,8 @@ from telas.research.acontecimentos import pagina_research
 from telas.research.alertas import pagina_alertas
 from telas.research.donos import pagina_donos
 from telas.research.fundamentos import pagina_fundamentos
+from telas.research.juros_e_inflacao import pagina_juros_e_inflacao
+from telas.research.linha_do_tempo import pagina_linha_do_tempo
 from telas.research.minha_carteira import pagina_carteira_research
 from telas.research.newsletter import pagina_newsletter
 from telas.research.parametros import pagina_parametros
@@ -150,6 +152,8 @@ FUNCOES_DAS_PAGINAS = {
     "parametros": pagina_parametros,
     "research": pagina_research,
     "fundamentos": pagina_fundamentos,
+    "juros_e_inflacao": pagina_juros_e_inflacao,
+    "linha_do_tempo": pagina_linha_do_tempo,
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,
