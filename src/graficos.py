@@ -64,6 +64,91 @@ _LAYOUT_DO_TEMA.yaxis.update(
     zerolinecolor=marca.LINHA,
     tickfont={"color": marca.TEXTO_APAGADO},
 )
+
+# --- tema claro do app (13/10/2026) -------------------------------------------------------------
+# Os gráficos são montados com as cores do tema escuro; quem está no claro recebe uma cópia com cada
+# cor trocada pela do mesmo papel na paleta clara (`no_tema`). É uma função pura: nada fica guardado
+# no módulo, então uma sessão nunca muda o gráfico de outra.
+TEMA_CLARO = "tickerlab_claro"
+pio.templates[TEMA_CLARO] = go.layout.Template(pio.templates["plotly_white"])
+_LAYOUT_CLARO = pio.templates[TEMA_CLARO].layout
+assert _LAYOUT_CLARO is not None
+_CLARA = marca.PALETA_CLARA
+_LAYOUT_CLARO.update(
+    font={"family": f"{marca.FONTE}, sans-serif", "color": _CLARA.texto, "size": 13},
+    colorway=list(_CLARA.series),
+    paper_bgcolor="rgba(0,0,0,0)",
+    plot_bgcolor="rgba(0,0,0,0)",
+    hoverlabel={
+        "bgcolor": _CLARA.superficie,
+        "bordercolor": _CLARA.linha_forte,
+        "font": {"family": f"{marca.FONTE}, sans-serif", "color": _CLARA.texto},
+    },
+    legend={"font": {"color": _CLARA.apagado}},
+)
+for _eixo, _grade in ((_LAYOUT_CLARO.xaxis, 0.06), (_LAYOUT_CLARO.yaxis, 0.10)):
+    _eixo.update(
+        gridcolor=f"rgba(10, 31, 68, {_grade})",
+        linecolor=_CLARA.linha,
+        zerolinecolor=_CLARA.linha,
+        tickfont={"color": _CLARA.apagado},
+    )
+
+
+def _cores_do_escuro_para_o_claro() -> dict[str, str]:
+    """Cada cor do tema escuro usada nos gráficos e a do mesmo papel no claro."""
+    escura, clara = marca.PALETA_ESCURA, marca.PALETA_CLARA
+    papeis = (
+        "fundo",
+        "superficie",
+        "destaque",
+        "linha",
+        "linha_forte",
+        "texto",
+        "apagado",
+    )
+    trocas = {getattr(escura, p): getattr(clara, p) for p in papeis}
+    trocas |= {
+        escura.alta: clara.alta,
+        escura.queda: clara.queda,
+        escura.azul_texto: clara.azul_texto,
+    }
+    # as séries por último: a primeira (azul) vale mais que o azul de texto, que é a mesma cor
+    trocas |= dict(zip(escura.series, clara.series, strict=True))
+    trocas |= {
+        PREENCHIMENTO_AZUL: "rgba(41, 98, 255, 0.14)",
+        PREENCHIMENTO_QUEDA: "rgba(194, 47, 58, 0.16)",
+        LINHA_DE_REFERENCIA: "rgba(10, 31, 68, 0.30)",
+    }
+    return {antes.lower(): depois for antes, depois in trocas.items()}
+
+
+_DO_ESCURO_PARA_O_CLARO = _cores_do_escuro_para_o_claro()
+
+
+def _trocar_cores(valor: object, trocas: dict[str, str]) -> object:
+    """Troca as cores de uma estrutura do Plotly (dicionários e listas), sem mudar o resto."""
+    if isinstance(valor, str):
+        return trocas.get(valor.lower(), valor)
+    if isinstance(valor, dict):
+        return {chave: _trocar_cores(v, trocas) for chave, v in valor.items()}
+    if isinstance(valor, list | tuple):
+        return [_trocar_cores(v, trocas) for v in valor]
+    return valor
+
+
+def no_tema(figura: go.Figure, paleta: marca.Paleta) -> go.Figure:
+    """O gráfico nas cores do tema da pessoa. No escuro, a própria figura; no claro, uma cópia
+    com cada cor trocada pela do mesmo papel (a figura original não muda)."""
+    if paleta.tipo == "escuro":
+        return figura
+    dados = figura.to_dict()
+    dados["layout"].pop("template", None)
+    clara = go.Figure(_trocar_cores(dados, _DO_ESCURO_PARA_O_CLARO))
+    clara.update_layout(template=TEMA_CLARO)
+    return clara
+
+
 ALTURA_PADRAO = 320
 ALTURA_PRECO = 520
 TIPOS_DE_GRAFICO = ("linha", "velas")
