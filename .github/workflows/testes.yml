@@ -106,6 +106,41 @@ jobs:
           python -m pip install pytest==9.1.1
           python -m pytest -q --noconftest -p no:cacheprovider tests/test_publicacao.py tests/test_mudou_so_texto.py
 
+  web:
+    # o front-end em React (ADR 0048): tipos, testes, build, licenças e vulnerabilidades dos pacotes
+    name: web (React)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Instalar os pacotes (versões do package-lock, sem scripts de instalação)
+        run: npm ci --ignore-scripts
+
+      - name: Licenças permitidas
+        run: npm run licencas
+
+      - name: Vulnerabilidades altas ou críticas
+        run: npm audit --audit-level=high
+
+      - name: Tipos
+        run: npm run tipos
+
+      - name: Testes
+        run: npm test
+
+      - name: Build (HTML pronto de cada página)
+        run: npm run build
+
   imagem:
     name: imagem Docker
     runs-on: ubuntu-latest
