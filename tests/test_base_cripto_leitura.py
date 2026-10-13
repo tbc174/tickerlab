@@ -66,6 +66,8 @@ class NoFalso:
         self.blocos = blocos
         self.liberados: list[int] = []
         self.ajuste_do_total = 0
+        self.tamanho = 0  # bytes dos arquivos de blocos no disco
+        self.rede: list[bool] = []  # cada vez que a leitura ligou ou desligou a rede
 
     def altura_do_topo(self) -> int:
         return len(self.blocos) - 1
@@ -82,6 +84,12 @@ class NoFalso:
     def total_nao_gasto(self, altura: int) -> int:
         # só coinbases de 50 BTC, e a do bloco 0 nunca entra
         return altura * para_satoshis(50) + self.ajuste_do_total
+
+    def tamanho_dos_blocos(self) -> int:
+        return self.tamanho
+
+    def ligar_rede(self, ligada: bool) -> None:
+        self.rede.append(ligada)
 
 
 def _sem_coleta(tabela):
@@ -207,3 +215,23 @@ def test_conferencia_com_o_no(tmp_path):
     assert conferir_com_o_no(tmp_path, no) == 0
     no.ajuste_do_total = para_satoshis(1)
     assert conferir_com_o_no(tmp_path, no) == -para_satoshis(1)
+
+
+GIGABYTE = 1024**3
+
+
+@pytest.mark.parametrize(
+    ("tamanho_em_gb", "esperado"),
+    [(200, [False]), (40, [True]), (100, [])],
+)
+def test_freio_de_disco_desliga_e_religa_a_rede_do_no(
+    tmp_path, tamanho_em_gb, esperado
+):
+    # acima de 150 GB de blocos ainda não lidos, o nó para de baixar; abaixo de 50 GB, volta;
+    # no meio, fica como está (para não ligar e desligar a cada ponto)
+    no = NoFalso(_cadeia(10))
+    no.tamanho = tamanho_em_gb * GIGABYTE
+
+    ler_ate_o_topo(no, tmp_path, AGORA)
+
+    assert no.rede == esperado
