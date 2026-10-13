@@ -260,6 +260,29 @@ eventos = sa.Table(
 )
 sa.Index("ix_eventos_cnpj_publicado_em", eventos.c.cnpj, eventos.c.publicado_em)
 
+# Radar PR 3 (0024): toda versão de cada evento, só acréscimo. A tabela `eventos` continua sendo a
+# vigente (o app não muda); aqui a versão substituída ganha `substituido_em` e nunca é apagada.
+eventos_versoes = sa.Table(
+    "eventos_versoes",
+    metadata,
+    sa.Column("fonte", sa.String(20), primary_key=True),
+    sa.Column("protocolo", sa.String(60), primary_key=True),
+    sa.Column("versao", sa.Integer, primary_key=True),
+    sa.Column("cnpj", sa.String(18), nullable=False),
+    sa.Column("empresa", sa.String(200), nullable=False),
+    sa.Column("categoria", sa.String(160), nullable=False),
+    sa.Column("tipo", sa.String(300), nullable=False, server_default=""),
+    sa.Column("assunto", sa.Text, nullable=False, server_default=""),
+    sa.Column("rotulo", sa.String(60), nullable=False),
+    sa.Column("tema", sa.String(20), nullable=False),
+    sa.Column("materialidade", sa.Integer, nullable=False),
+    sa.Column("referencia", sa.Date),
+    sa.Column("publicado_em", sa.Date, nullable=False),
+    sa.Column("link", sa.String(500), nullable=False),
+    _momento("registrado_em"),
+    sa.Column("substituido_em", sa.DateTime(timezone=True)),
+)
+
 # Research R2 (0011): compras e vendas de pessoas de dentro (CVM VLMO e SEC Form 4). Dados
 # públicos; guardamos só o CARGO, nunca o nome da pessoa (decisão 0018).
 negociacoes_internas = sa.Table(
