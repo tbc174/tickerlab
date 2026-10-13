@@ -248,3 +248,15 @@ def test_o_tema_e_decidido_no_head_antes_do_css_e_o_padrao_e_automatico():
         assert '|| "auto"' in cabeca  # quem nunca escolheu fica no automático
         assert "temaDoMomento" in cabeca
     assert sol == (gs.RAIZ / "static" / "tema" / "sol.js").read_text(encoding="utf-8")
+
+
+def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
+    """Selo de qualidade (série 1 da base de ML, PR 4): as regras são públicas e as mesmas do app."""
+    from src.qualidade_texto import ANCORA_NO_SITE, EXPLICACAO_DO_SELO, REGRAS
+
+    texto = (SITE / "metodologia.html").read_text(encoding="utf-8")
+    assert f'id="{ANCORA_NO_SITE}"' in texto
+    assert gs.esc(EXPLICACAO_DO_SELO) in texto
+    for regra in REGRAS.values():
+        assert gs.esc(regra.titulo) in texto
+        assert gs.esc(regra.o_que_confere) in texto

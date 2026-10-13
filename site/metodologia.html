@@ -104,6 +104,27 @@
     se aplica" onde o indicador não faz sentido.</li>
   </ul>
 
+  <h2 id="qualidade-dos-dados">Qualidade dos dados: o selo "Dado em conferência"</h2>
+  <p>Uma regra automática e fixa pediu uma segunda olhada neste número. Não quer dizer que ele esteja errado: quer dizer que vale conferir no documento original antes de tirar conclusões. O TickerLab nunca corrige nem apaga o número que a empresa entregou; só aponta.</p>
+  <p>Todo dia, depois da coleta, regras fixas conferem as demonstrações da CVM (DFP e ITR). Na
+  página Fundamentos, o documento com achado ganha o selo, e cada achado traz o porquê, com os
+  números. As regras são as mesmas para todas as empresas; mudou uma regra, muda a versão e os
+  achados são refeitos. Regras em uso:</p>
+  <ul>
+    <li><strong>Ativo diferente do passivo:</strong> O ativo total precisa ser igual ao passivo total mais o patrimônio líquido (tolerância de 0,1% ou R$ 1 mil, o arredondamento da CVM).</li>
+    <li><strong>Subtotal que não fecha:</strong> No balanço, as contas de baixo precisam somar a conta de cima (tolerância de 0,5%). Contas de baixo zeradas não disparam: é hábito comum de preenchimento.</li>
+    <li><strong>Escala suspeita:</strong> O mesmo número vale cerca de mil vezes mais (ou menos) que no documento anterior: sinal de reais e milhares trocados.</li>
+    <li><strong>Valor impossível:</strong> Ativo total, ativo circulante ou caixa negativos.</li>
+    <li><strong>Refeito pela empresa no balanço seguinte:</strong> O balanço seguinte traz, na coluna do ano anterior, um ativo total, receita, lucro ou patrimônio diferente do que a empresa tinha publicado. Vale a partir da entrega do balanço seguinte.</li>
+    <li><strong>Salto fora do padrão:</strong> Receita ou ativo total que subiu ou caiu 5 vezes ou mais em um ano, sem fato relevante ou comunicado da empresa no período que explique.</li>
+    <li><strong>Balanço atrasado:</strong> DFP ou ITR entregue depois do prazo da CVM, ou ainda não entregue. Esperamos o balanço de quem entregou o do ano anterior e continuava registrada na data do prazo. O prazo é calculado sem feriados: 1 ou 2 dias podem ser só um feriado.</li>
+    <li><strong>Linhas repetidas no arquivo:</strong> O arquivo da CVM trouxe a mesma linha mais de uma vez; o TickerLab conta cada uma só uma vez.</li>
+    <li><strong>Lucro em branco:</strong> O lucro do período veio zerado numa empresa que teve receita no mesmo período.</li>
+    <li><strong>Conta de cima em branco:</strong> Uma conta veio zerada, mas as contas abaixo dela têm valor: quem lê a conta de cima vê zero onde há dinheiro.</li>
+  </ul>
+  <p>Cada achado vale a partir do dia em que a informação ficou pública (a entrega do documento):
+  ao olhar o passado, o selo mostra só o que se podia saber naquela data.</p>
+
   <h2>Carteira B3</h2>
   <p>A API da Área do Investidor da B3 só atende empresas credenciadas (com CNPJ, certificado
   digital e contrato). O TickerLab não tem essa conexão. Você baixa a planilha de posição na Área
