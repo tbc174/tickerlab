@@ -14,6 +14,10 @@ Regras desta versão:
 - **R3:** escala suspeita: o mesmo período ou o período seguinte vale cerca de mil vezes mais (ou
   menos) que no documento anterior, sinal de reais e milhares trocados (5 casos na prova do ENET).
 - **R4:** valor impossível: ativo total, ativo circulante ou caixa negativos.
+- **R6:** número refeito pela própria empresa no balanço seguinte (a coluna "penúltimo" do documento
+  seguinte diferente do "último" deste), só nas contas principais (ativo total, receita, lucro e
+  patrimônio líquido): 3,9% de todas as contas mudam de um ano para o outro, quase tudo
+  reclassificação pequena. O achado vale a partir da entrega do documento seguinte.
 - **R9:** linhas repetidas idênticas no arquivo da CVM (contadas por `base/contas_cvm.py`).
 - **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada
   pela descrição (7 casos na DFP 2022 e 4 na de 2023).
@@ -53,6 +57,7 @@ NAO_PODEM_SER_NEGATIVAS = {
     "1.01.01": "caixa",
 }
 RECEITA = "3.01"
+PATRIMONIO_LIQUIDO = re.compile(r"^patrim[oô]nio l[ií]quido", re.IGNORECASE)
 # a linha do lucro do período, achada pela descrição: em parte das empresas a 3.11 é a reversão dos
 # juros sobre capital próprio e o lucro fica na 3.13 (medido na DFP 2022)
 LINHA_DO_LUCRO = re.compile(
@@ -75,6 +80,9 @@ class Achado:
     valor: float | None  # o número publicado
     valor_esperado: float | None  # o que a regra esperava encontrar
     porque: str  # frase para o selo
+    valido_desde: pd.Timestamp | None = (
+        None  # quando o achado passou a existir (sem olhar o futuro)
+    )
 
 
 def _reais(valor: float) -> str:
@@ -317,7 +325,7 @@ def r10_lucro_em_branco(contas: pd.DataFrame) -> list[Achado]:
     A linha do lucro é achada pela descrição (`LINHA_DO_LUCRO`), entre as contas de 1º nível da DRE.
     """
     dre = _do_documento(contas)
-    dre = dre[(dre["demonstracao"] == "DRE") & (dre["conta"].str.count(r"\.") == 1)]
+    dre = dre[(dre["demonstracao"] == "DRE") & _primeiro_nivel(dre)]
     chave = [*CHAVE, "inicio", "fim"]
     receita = dre[dre["conta"] == RECEITA]
     lucro = dre[dre["descricao"].str.strip().str.match(LINHA_DO_LUCRO)]
@@ -342,3 +350,84 @@ def r10_lucro_em_branco(contas: pd.DataFrame) -> list[Achado]:
         for linha in juntos.itertuples(index=False)
         if not _preenchido(linha.valor) and _preenchido(linha.valor_receita)
     ]
+
+
+def _primeiro_nivel(contas: pd.DataFrame) -> pd.Series:
+    return contas["conta"].str.count(r"\.") == 1
+
+
+def _contas_principais(contas: pd.DataFrame) -> pd.DataFrame:
+    """Ativo total, receita, lucro do período e patrimônio líquido (os dois últimos pela descrição)."""
+    demonstracao, conta = contas["demonstracao"], contas["conta"]
+    descricao = contas["descricao"].str.strip()
+    principal = (
+        ((demonstracao == "BPA") & (conta == "1"))
+        | ((demonstracao == "DRE") & (conta == RECEITA))
+        | (
+            (demonstracao == "DRE")
+            & _primeiro_nivel(contas)
+            & descricao.str.match(LINHA_DO_LUCRO)
+        )
+        | (
+            (demonstracao == "BPP")
+            & _primeiro_nivel(contas)
+            & descricao.str.match(PATRIMONIO_LIQUIDO)
+        )
+    )
+    return contas[principal]
+
+
+def r6_refeito_no_seguinte(
+    contas: pd.DataFrame,
+    seguintes: pd.DataFrame,
+    recebido_em_seguinte: dict[str, pd.Timestamp],
+) -> list[Achado]:
+    """Conta principal que a empresa refez no documento seguinte.
+
+    `contas` é o documento com o número original; `seguintes`, o documento do período seguinte das
+    mesmas empresas; `recebido_em_seguinte`, a data de entrega dele por CNPJ (o achado só passa a
+    existir nessa data).
+    """
+    original = _contas_principais(contas[contas["ordem"] == "ultimo"])
+    refeito = _contas_principais(seguintes[seguintes["ordem"] == "penultimo"])
+    chave = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
+    juntos = original.merge(
+        refeito[[*chave, "valor"]], on=chave, suffixes=("", "_refeito")
+    )
+    return [
+        _achado_r6(linha, recebido_em_seguinte.get(linha.cnpj))
+        for linha in juntos.itertuples(index=False)
+        if _diferente(linha.valor, linha.valor_refeito, TOLERANCIA_R1)
+    ]
+
+
+def _troca_de_sinal(linha: Linha) -> str:
+    if not LINHA_DO_LUCRO.match(str(linha.descricao).strip()):
+        return ""
+    if linha.valor > 0 > linha.valor_refeito:
+        return " (de lucro para prejuízo)"
+    if linha.valor < 0 < linha.valor_refeito:
+        return " (de prejuízo para lucro)"
+    return ""
+
+
+def _achado_r6(linha: Linha, valido_desde: pd.Timestamp | None) -> Achado:
+    quando = (
+        f", no documento entregue em {valido_desde:%d/%m/%Y}" if valido_desde else ""
+    )
+    return Achado(
+        regra="R6",
+        cnpj=linha.cnpj,
+        documento=linha.documento,
+        referencia=linha.referencia,
+        grupo=linha.grupo,
+        conta=linha.conta,
+        valor=float(linha.valor),
+        valor_esperado=float(linha.valor_refeito),
+        porque=(
+            f"A empresa refez este número no balanço seguinte{quando}: {linha.descricao} era "
+            f"{_reais(linha.valor)} e passou a {_reais(linha.valor_refeito)}"
+            f"{_troca_de_sinal(linha)}."
+        ),
+        valido_desde=valido_desde,
+    )
