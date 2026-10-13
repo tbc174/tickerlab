@@ -15,6 +15,7 @@ para os logs.
 """
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -39,7 +40,10 @@ COLUNAS_DA_QUANTIDADE = ("quantidade",)
 COLUNAS_DO_PRECO = ("preco unitario", "preco")
 COLUNAS_DO_VALOR = ("valor da operacao", "valor")
 
-# (tipo da B3 sem acento, entrada ou saída) → tipo do lançamento
+LIQUIDACAO = "transferencia - liquidacao"
+_QUASE_ZERO = 1e-9
+# (tipo da B3 sem acento, entrada ou saída) → tipo do lançamento. Liquidação SEM dinheiro não é
+# compra nem venda (ver `_movimentos_sem_dinheiro`)
 TIPOS = {
     ("transferencia - liquidacao", "credito"): "compra",
     ("transferencia - liquidacao", "debito"): "venda",
@@ -119,6 +123,59 @@ def _plural(n: int, singular: str, plural: str) -> str:
     return f"{n} {singular if n == 1 else plural}"
 
 
+def _quantidade(valor: float) -> str:
+    """9205 → "9.205"; 0,5 → "0,5" (até 2 casas, sem zeros à direita)."""
+    texto = f"{valor:,.2f}".rstrip("0").rstrip(".")
+    return texto.replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+@dataclass(frozen=True)
+class _SemDinheiro:
+    """Uma liquidação sem valor: ações que saíram ou entraram sem dinheiro."""
+
+    data: date
+    codigo: str
+    saida: bool
+    quantidade: float
+
+
+def _movimentos_sem_dinheiro(
+    movimentos: list[_SemDinheiro],
+) -> tuple[list[Lancamento], list[_SemDinheiro]]:
+    """Separa as liquidações sem valor em (entradas que viram compra sem valor, saídas).
+
+    Toda venda traz dinheiro: uma saída sem valor não é venda (no aluguel de ações a B3 escreve
+    assim a ida das ações para quem tomou emprestado, e elas continuam sendo da pessoa). Uma
+    entrada sem valor é a volta de uma saída anterior do mesmo ativo; sem saída antes, são ações
+    recebidas sem custo conhecido e continuam como compra sem valor (custo médio incompleto).
+    """
+    fora_de_casa: dict[str, float] = defaultdict(float)
+    compras: list[Lancamento] = []
+    saidas: list[_SemDinheiro] = []
+    # no mesmo dia, a saída vem antes da volta
+    for mov in sorted(movimentos, key=lambda m: (m.data, not m.saida)):
+        if mov.saida:
+            fora_de_casa[mov.codigo] += mov.quantidade
+            saidas.append(mov)
+        elif fora_de_casa[mov.codigo] >= mov.quantidade - _QUASE_ZERO:
+            fora_de_casa[mov.codigo] -= mov.quantidade
+        else:
+            compras.append(
+                Lancamento(mov.data, mov.codigo, "compra", mov.quantidade, 0.0)
+            )
+    return compras, saidas
+
+
+def _aviso_das_saidas(saidas: list[_SemDinheiro]) -> str:
+    lista = "; ".join(
+        f"{s.codigo} ({_quantidade(s.quantidade)} em {s.data:%d/%m/%Y})" for s in saidas
+    )
+    return (
+        "Saídas de ações sem dinheiro (aluguel de ações ou transferência) não contam como "
+        f"venda: {lista}. Essas ações continuam no custo médio."
+    )
+
+
 def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
     """Lê a movimentação da B3 e devolve os lançamentos que entram nas contas."""
     abas = ler_abas(
@@ -128,6 +185,7 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
         maximo_de_linhas=MAXIMO_DE_LINHAS_DA_MOVIMENTACAO,
     )
     lancamentos: list[Lancamento] = []
+    sem_dinheiro: list[_SemDinheiro] = []
     datas: list[date] = []
     fora = renda_fixa = 0
     desconhecidos: dict[str, int] = {}
@@ -167,14 +225,20 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
             )
             if valor <= 0 and "preco" in colunas:
                 valor = quantidade * numero_brasileiro(linha[colunas["preco"]])
-            lancamentos.append(
-                Lancamento(
-                    dia, FRACIONARIO.sub("", achado.group(1)), tipo, quantidade, valor
-                )
-            )
+            codigo = FRACIONARIO.sub("", achado.group(1))
+            if tipo_da_b3 == LIQUIDACAO and valor <= 0:
+                saida = entrada == "debito"
+                sem_dinheiro.append(_SemDinheiro(dia, codigo, saida, quantidade))
+                continue
+            lancamentos.append(Lancamento(dia, codigo, tipo, quantidade, valor))
     if not achou_colunas:
         raise ArquivoDaB3Error(MENSAGEM_SEM_COLUNAS)
+    compras_sem_valor, saidas_sem_valor = _movimentos_sem_dinheiro(sem_dinheiro)
+    lancamentos += compras_sem_valor
+    fora += len(sem_dinheiro) - len(compras_sem_valor)
     avisos = []
+    if saidas_sem_valor:
+        avisos.append(_aviso_das_saidas(saidas_sem_valor))
     if renda_fixa:
         ficou = "ficou" if renda_fixa == 1 else "ficaram"
         avisos.append(

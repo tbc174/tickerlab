@@ -303,3 +303,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** no texto de substituição do GNU sed, `\U` deixa o resto em maiúsculas, `\t` vira tabulação e `\a` vira um caractere de controle. O mesmo acontece dentro de `"..."` no Python (`\U` é escape de Unicode).
 - **Solução:** para trocar texto com barras invertidas, usar um script Python que monta a barra com `chr(92)` (ou string crua `r"..."`), e conferir o resultado depois.
 - **Data:** 13/10/2026
+
+## Ações emprestadas (aluguel) viravam venda no custo médio
+- **Sintoma:** com a movimentação real, o custo médio de um FII mostrava só as cotas compradas depois de julho (1.300), quando a pessoa tinha 10.505; o custo total caía de ~R$ 100 mil para ~R$ 12,8 mil.
+- **Causa:** ao emprestar as ações, a B3 escreve uma "Transferência - Liquidação" de **saída sem valor** (mais um par "Transferência" e uma linha "Empréstimo" no mesmo dia). O leitor tratava toda liquidação de saída como venda; vendendo "tudo", o médio recomeçava na compra seguinte.
+- **Solução:** toda venda traz dinheiro. Liquidação sem valor não é compra nem venda: a saída fica fora das contas, com aviso na tela, e uma entrada sem valor depois de uma saída do mesmo ativo é a volta. Entrada sem valor sem saída antes continua como compra sem valor (custo incompleto). Teste de regressão com as 4 linhas copiadas da planilha real e valores inventados.
+- **Data:** 13/10/2026

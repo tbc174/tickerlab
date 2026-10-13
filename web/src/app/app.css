@@ -26,3 +26,6 @@
   .app-corpo { grid-template-columns: 1fr; gap: 1rem; }
   .app-menu { position: static; flex-direction: row; flex-wrap: wrap; }
 }
+.conta-no-topo { display: inline-flex; align-items: center; gap: .6rem; font-size: .92rem; color: var(--apagado); }
+.erro-do-app { padding: .7rem 1rem; border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
+.botao-do-google { margin-top: 1.25rem; min-height: 44px; }
