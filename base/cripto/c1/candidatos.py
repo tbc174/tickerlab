@@ -105,7 +105,6 @@ class ArvoresComReforco(_ComMediana):
     def probabilidades(self, quadro: pd.DataFrame) -> np.ndarray:
         # uma faixa que não apareceu no treino fica com probabilidade 0
         saida = np.zeros((len(quadro), FAIXAS))
-        saida[:, self.modelo.classes_.astype(int)] = self.modelo.predict_proba(
-            self._previsao(quadro)
-        )
+        faixas_do_treino = np.asarray(self.modelo.classes_, dtype=int)
+        saida[:, faixas_do_treino] = self.modelo.predict_proba(self._previsao(quadro))
         return saida
