@@ -2,6 +2,7 @@
 
 import pytest
 
+from src.acervo import VARIAVEL_DA_PASTA
 from src.armazenamento import VARIAVEL_DO_CAMINHO
 from src.banco.conexao import criar_engine, migrar_para
 
@@ -10,6 +11,8 @@ from src.banco.conexao import criar_engine, migrar_para
 def banco_de_precos_isolado(tmp_path, monkeypatch):
     """Cada teste usa um banco SQLite novo: nenhum teste lê ou escreve o banco de verdade."""
     monkeypatch.setenv(VARIAVEL_DO_CAMINHO, str(tmp_path / "precos_de_teste.sqlite"))
+    # o acervo do arquivo original (src/acervo.py) também fica na pasta do teste
+    monkeypatch.setenv(VARIAVEL_DA_PASTA, str(tmp_path / "acervo"))
 
 
 @pytest.fixture

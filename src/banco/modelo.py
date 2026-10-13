@@ -490,6 +490,7 @@ coletas = sa.Table(
     sa.Column("sha256", sa.String(64)),
     sa.Column("licenca", sa.String(80), nullable=False),
     sa.Column("detalhe", sa.String(300)),
+    sa.Column("caminho_do_original", sa.String(200)),  # no acervo (src/acervo.py)
     _momento("baixado_em"),
     sa.CheckConstraint(
         "situacao IN ('ok', 'nao_encontrado', 'falhou')", name="ck_coletas_situacao"
