@@ -8,6 +8,7 @@ import pytest
 
 from src import ficha
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.estrategias import ESTRATEGIAS
 from src.ficha import Checagem, Situacao
 
 PALAVRAS_PROIBIDAS = (
@@ -303,13 +304,13 @@ def test_chance_baixa_nao_passa_mesmo_com_p_baixo():
     assert ficha.checar_acaso(0.01, 0.80, 10).situacao is Situacao.NAO_PASSOU
 
 
-def test_sem_grade_usa_a_variancia_do_acaso():
+def test_acaso_conta_a_grade_e_as_tentativas_da_pessoa():
     dados = pd.DataFrame({"Close": 100 * (1 + _retorno_bom()).cumprod()})
     posicao = pd.Series(1.0, index=dados.index)
     posicao.iloc[::40] = 0.0  # opera de vez em quando, para o deslocamento mudar algo
-    c = ficha.medir_acaso(dados["Close"], posicao, 0.0005, 0.0, None, 5)
+    c = ficha.medir_acaso(dados["Close"], posicao, 0.0005, 0.0, 49, 5)
     assert c.situacao in (Situacao.PASSOU, Situacao.NAO_PASSOU)
-    assert "5 tentativas" in c.explicacao
+    assert "53 tentativas" in c.explicacao
 
 
 def test_poucos_dados_no_acaso_nao_deu_para_medir():
@@ -317,5 +318,117 @@ def test_poucos_dados_no_acaso_nao_deu_para_medir():
         np.linspace(100, 110, 40), index=pd.bdate_range("2024-01-02", periods=40)
     )
     posicao = pd.Series(1.0, index=fechamento.index)
-    c = ficha.medir_acaso(fechamento, posicao, 0.0005, 0.0, None, 1)
+    c = ficha.medir_acaso(fechamento, posicao, 0.0005, 0.0, 0, 1)
     assert c.situacao is Situacao.SEM_MEDIDA
+
+
+# --- A ficha inteira e a honestidade dela -------------------------------------------------
+
+
+def _dados_de(fechamento):
+    return pd.DataFrame(
+        {
+            "Open": fechamento,
+            "High": fechamento * 1.005,
+            "Low": fechamento * 0.995,
+            "Close": fechamento,
+            "Volume": 1_000,
+        }
+    )
+
+
+def _passeio_aleatorio(semente, n=1000, deriva=0.0004):
+    rng = np.random.default_rng(semente)
+    return _dados_de(
+        pd.Series(
+            100 * np.cumprod(1 + rng.normal(deriva, 0.012, n)),
+            index=pd.bdate_range("2019-01-02", periods=n),
+        )
+    )
+
+
+def _tendencias_longas(semente=1, n=2000, deriva=0.0025):
+    """Altas e quedas longas, de duração sorteada, que se alternam: uma regra de tendência tem o
+    que pegar. (Com duração fixa, a posição deslocada no tempo realinharia com as tendências.)"""
+    rng = np.random.default_rng(semente)
+    direcoes, direcao = [], 1
+    while len(direcoes) < n:
+        direcoes += [direcao] * int(rng.integers(80, 260))
+        direcao = -direcao
+    retorno = np.array(direcoes[:n]) * deriva + rng.normal(0, 0.008, n)
+    return _dados_de(
+        pd.Series(
+            100 * np.cumprod(1 + retorno),
+            index=pd.bdate_range("2017-01-02", periods=n),
+        )
+    )
+
+
+def _pedido(dados, estrategia="Cruzamento de médias", **extras):
+    parametros = {p.nome: p.padrao for p in ESTRATEGIAS[estrategia].parametros}
+    return ficha.PedidoDaFicha(
+        dados=dados,
+        estrategia=estrategia,
+        parametros=parametros,
+        custo_por_operacao=0.0005,
+        capital_inicial=10_000.0,
+        **extras,
+    )
+
+
+def test_ficha_tem_as_cinco_perguntas_na_ordem():
+    f = ficha.montar_ficha(_pedido(_tendencias_longas()))
+    assert [c.pergunta for c in f.checagens] == [
+        ficha.PERGUNTA_FORA_DO_PERIODO,
+        ficha.PERGUNTA_CUSTOS,
+        ficha.PERGUNTA_ACASO,
+        ficha.PERGUNTA_VIZINHOS,
+        ficha.PERGUNTA_QUEDAS,
+    ]
+
+
+def test_regra_de_tendencia_com_tendencia_de_verdade_passa_na_maioria():
+    passaram = sum(
+        ficha.montar_ficha(_pedido(_tendencias_longas(semente))).veredito.resultado
+        is ficha.Resultado.PASSOU
+        for semente in range(6)
+    )
+    assert passaram >= 3  # a ficha é exigente, mas não reprova tudo
+
+
+def test_comprar_e_segurar_em_alta_nao_passa_no_acaso():
+    f = ficha.montar_ficha(_pedido(_passeio_aleatorio(1), "Comprar e segurar"))
+    por_pergunta = {c.pergunta: c.situacao for c in f.checagens}
+    assert por_pergunta[ficha.PERGUNTA_ACASO] is not Situacao.PASSOU
+    assert f.veredito.resultado is not ficha.Resultado.PASSOU
+
+
+def test_sem_parametro_numerico_nao_se_aplica():
+    f = ficha.montar_ficha(_pedido(_passeio_aleatorio(1), "Comprar e segurar"))
+    por_pergunta = {c.pergunta: c.situacao for c in f.checagens}
+    assert por_pergunta[ficha.PERGUNTA_FORA_DO_PERIODO] is Situacao.NAO_SE_APLICA
+    assert por_pergunta[ficha.PERGUNTA_VIZINHOS] is Situacao.NAO_SE_APLICA
+
+
+def test_tentativas_da_pessoa_entram_na_ficha():
+    um = ficha.montar_ficha(_pedido(_tendencias_longas()))
+    muitas = ficha.montar_ficha(_pedido(_tendencias_longas(), tentativas_da_pessoa=40))
+    assert muitas.tentativas == um.tentativas + 39
+
+
+def test_poucos_dados_para_o_walk_forward_usa_treino_e_teste():
+    f = ficha.montar_ficha(_pedido(_tendencias_longas(n=400)))
+    fora = f.checagens[0]
+    assert fora.situacao is not Situacao.NAO_SE_APLICA
+    assert "treino e teste" in fora.explicacao
+
+
+def test_regra_sem_valor_em_passeio_aleatorio_quase_nunca_passa():
+    passaram = sum(
+        ficha.montar_ficha(
+            _pedido(_passeio_aleatorio(semente, n=750))
+        ).veredito.resultado
+        is ficha.Resultado.PASSOU
+        for semente in range(20)
+    )
+    assert passaram <= 1

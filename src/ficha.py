@@ -1,7 +1,9 @@
 """A ficha "Foi sorte?": cinco checagens "passou / não passou" e um veredito (ADR 0037, D1 e D2).
 
 A ficha junta, em linguagem simples, a validação que o backtest já faz (`validacao.py` e
-`acaso.py`); nenhuma conta nova de estatística nasce aqui. Cada checagem responde uma pergunta:
+`acaso.py`). A única escolha nova está na checagem 3: a dispersão dos Sharpes "sem habilidade",
+que o Sharpe deflacionado usa, vem das versões ao acaso da própria regra, e não da grade de
+parâmetros (ver `medir_acaso`). Cada checagem responde uma pergunta:
 
 1. Funcionou fora do período usado para escolher os parâmetros?
 2. Sobrevive aos custos e ao imposto (rende mais que o CDI)?
@@ -21,15 +23,31 @@ import pandas as pd
 
 from src.acaso import (
     MIN_OPERACOES_PARA_MONTE_CARLO,
-    calcular_sharpe_deflacionado,
     calcular_sharpe_maximo_esperado,
     calcular_sharpe_probabilistico,
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
-from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.backtest import (
+    CUSTO_PADRAO_POR_OPERACAO,
+    ResultadoBacktest,
+    executar_backtest,
+)
+from src.cdi import curva_do_cdi
+from src.estrategias import gerar_posicao
 from src.imposto import aplicar_imposto
-from src.indicadores import DIAS_POR_ANO
+from src.indicadores import DIAS_POR_ANO, calcular_indice_sharpe
+from src.protecoes import Protecoes, aplicar_protecoes
+from src.validacao import (
+    FRACAO_DE_TREINO_PADRAO,
+    avaliar_treino_e_teste,
+    calcular_retornos_dos_candidatos,
+    data_de_corte,
+    executar_walk_forward,
+    montar_candidatos,
+    montar_mapa_de_sharpe,
+    parametros_numericos,
+)
 
 AVISO = "Vale para os dados do passado. Não é promessa de resultado nem recomendação."
 
@@ -39,6 +57,10 @@ PERGUNTA_CUSTOS = "Sobrevive aos custos e ao imposto?"
 PERGUNTA_QUEDAS = "As quedas cabem no que você aguenta?"
 PERGUNTA_ACASO = "Bate o acaso, contando as suas tentativas?"
 
+# Checagem 1: as janelas do walk-forward (dias úteis), as mesmas que a tela abre por padrão;
+# com menos histórico que treino + teste, vale um corte só (treino e teste)
+DIAS_DE_TREINO = 504
+DIAS_DE_TESTE = 126
 # Checagem 1: o Sharpe de fora precisa guardar pelo menos metade do de dentro
 EFICIENCIA_MINIMA = 0.5
 # Checagem 3: poucas versões ao acaso fazem igual (p-valor) e, descontadas as tentativas, o
@@ -51,9 +73,8 @@ FRACAO_MINIMA_DE_VIZINHOS_POSITIVOS = 2 / 3
 FRACAO_MINIMA_DA_MEDIANA = 0.5
 # Checagem 5: a maior queda que a pessoa aguentaria, se ela não disser outra (fração)
 TOLERANCIA_PADRAO_DE_QUEDA = 0.30
-PIOR_CASO_COMUM = (
-    0.05  # quantil das quedas do Monte Carlo: 95% das simulações caíram menos
-)
+# quantil das quedas do Monte Carlo: 95% das simulações caíram menos que o pior caso comum
+PIOR_CASO_COMUM = 0.05
 
 
 class Situacao(Enum):
@@ -350,13 +371,14 @@ def medir_acaso(
     posicao_desejada: pd.Series,
     custo_por_operacao: float,
     taxa_livre_de_risco: float,
-    retornos_da_grade: pd.DataFrame | None,
+    combinacoes_da_grade: int,
     tentativas_da_pessoa: int,
 ) -> Checagem:
     """Roda o teste contra o acaso e o Sharpe deflacionado e devolve a checagem 3.
 
-    Com a grade da validação (2 ou mais combinações), a dispersão dos Sharpes vem dela; sem
-    grade (regra sem números para ajustar), vem das próprias versões ao acaso.
+    A dispersão dos Sharpes "sem habilidade" vem das versões ao acaso da própria regra (a
+    posição deslocada no tempo). Não vem da grade de parâmetros: quando várias combinações
+    são boas de verdade, a dispersão entre elas não é sorte e puniria a regra boa.
     """
     try:
         acaso = testar_contra_o_acaso(
@@ -367,20 +389,160 @@ def medir_acaso(
     retorno = executar_backtest(
         fechamento, posicao_desejada, custo_por_operacao
     ).retorno
-    combinacoes = 0 if retornos_da_grade is None else retornos_da_grade.shape[1]
-    tentativas = total_de_tentativas(combinacoes, tentativas_da_pessoa)
-    if retornos_da_grade is not None and combinacoes >= 2:
-        chance = calcular_sharpe_deflacionado(
-            retorno, retornos_da_grade, tentativas - combinacoes, taxa_livre_de_risco
-        ).probabilidade
-    else:
-        # os Sharpes do acaso são anuais: Sharpe anual ≈ diário × √252, variância ÷ 252
-        variancia = float(np.var(acaso.sharpes_ao_acaso, ddof=1)) / DIAS_POR_ANO
-        chance = chance_de_nao_ser_sorte(
-            retorno, variancia, tentativas, taxa_livre_de_risco
-        )
+    tentativas = total_de_tentativas(combinacoes_da_grade, tentativas_da_pessoa)
+    # os Sharpes do acaso são anuais: Sharpe anual ≈ diário × √252, variância ÷ 252
+    variancia = float(np.var(acaso.sharpes_ao_acaso, ddof=1)) / DIAS_POR_ANO
+    chance = chance_de_nao_ser_sorte(
+        retorno, variancia, tentativas, taxa_livre_de_risco
+    )
     if np.isnan(chance):
         return sem_medida(
             PERGUNTA_ACASO, "Os retornos não deixaram calcular o Sharpe deflacionado."
         )
     return checar_acaso(acaso.p_valor, chance, tentativas)
+
+
+# --- A ficha inteira ---------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PedidoDaFicha:
+    """Tudo o que a ficha precisa saber sobre o teste da pessoa."""
+
+    dados: pd.DataFrame  # preços do ativo (Open, High, Low, Close, Volume)
+    estrategia: str  # nome em `estrategias.ESTRATEGIAS`
+    parametros: dict  # os valores escolhidos pela pessoa
+    custo_por_operacao: float  # fração; a ficha nunca usa menos que o padrão
+    capital_inicial: float  # R$, para a isenção do imposto
+    protecoes: Protecoes | None = None
+    livres: tuple[
+        str, ...
+    ] = ()  # parâmetros que variam na grade; vazio = os 2 primeiros
+    taxa_livre_de_risco: float = 0.0
+    cdi_diario: pd.Series | None = None
+    tolerancia_de_queda: float = TOLERANCIA_PADRAO_DE_QUEDA
+    tentativas_da_pessoa: int = 1  # configurações diferentes já testadas neste ativo
+
+
+@dataclass(frozen=True)
+class _Grade:
+    retornos: pd.DataFrame  # retorno diário de cada combinação (uma coluna cada)
+    combinacoes: list[dict]
+    livres: tuple[str, ...]
+
+
+SEM_NUMEROS = "Esta regra não tem números para ajustar: não houve escolha a conferir."
+
+
+def _montar_grade(pedido: PedidoDaFicha, custo: float) -> _Grade:
+    """As combinações dos parâmetros livres, como na validação da tela (pode dar ValueError)."""
+    livres = pedido.livres or tuple(
+        p.nome for p in parametros_numericos(pedido.estrategia)[:2]
+    )
+    candidatos = montar_candidatos(pedido.estrategia, pedido.parametros, list(livres))
+    retornos, validos = calcular_retornos_dos_candidatos(
+        pedido.dados, pedido.estrategia, candidatos, custo, pedido.protecoes
+    )
+    return _Grade(retornos, validos, livres)
+
+
+def _checar_fora(grade: _Grade, taxa: float) -> Checagem:
+    try:
+        wf = executar_walk_forward(
+            grade.retornos, grade.combinacoes, DIAS_DE_TREINO, DIAS_DE_TESTE, taxa
+        )
+        return checar_fora_do_periodo(
+            wf.sharpe_fora_da_amostra, wf.sharpe_medio_no_treino, "walk-forward"
+        )
+    except ValueError:
+        pass  # pouco histórico para as janelas: tenta um corte só
+    try:
+        corte = data_de_corte(grade.retornos.index, FRACAO_DE_TREINO_PADRAO)
+        tt = avaliar_treino_e_teste(grade.retornos, grade.combinacoes, corte, taxa)
+    except ValueError as erro:
+        return sem_medida(PERGUNTA_FORA_DO_PERIODO, str(erro))
+    return checar_fora_do_periodo(
+        tt.sharpe_no_teste, tt.sharpe_no_treino, "treino e teste"
+    )
+
+
+def _checar_vizinhos_da_grade(
+    grade: _Grade, pedido: PedidoDaFicha, sharpe_da_pessoa: float
+) -> Checagem:
+    eixo_x = grade.livres[0]
+    eixo_y = grade.livres[1] if len(grade.livres) > 1 else None
+    mapa = montar_mapa_de_sharpe(
+        grade.retornos,
+        grade.combinacoes,
+        eixo_x,
+        eixo_y,
+        pedido.taxa_livre_de_risco,
+    )
+    escolhido = (
+        pedido.parametros[eixo_x],
+        pedido.parametros[eixo_y] if eixo_y else "",
+    )
+    return checar_vizinhos(mapa, escolhido, sharpe_da_pessoa)
+
+
+def _checar_custos(pedido: PedidoDaFicha, posicao: pd.Series, custo: float) -> Checagem:
+    fechamento = pedido.dados["Close"]
+    liquido = retorno_liquido(fechamento, posicao, custo, pedido.capital_inicial)
+    cdi = None
+    if pedido.cdi_diario is not None:
+        cdi = float(curva_do_cdi(pedido.cdi_diario, fechamento.index).iloc[-1] - 1)
+    return checar_custos_e_imposto(liquido, cdi)
+
+
+def _checar_quedas_do(resultado: ResultadoBacktest, tolerancia: float) -> Checagem:
+    if resultado.operacoes.empty:
+        return sem_medida(PERGUNTA_QUEDAS, "A regra não fez nenhuma operação.")
+    queda, fonte = queda_no_pior_caso_comum(
+        resultado.operacoes["retorno"], resultado.curva_de_capital
+    )
+    return checar_quedas(queda, tolerancia, fonte)
+
+
+def montar_ficha(pedido: PedidoDaFicha) -> Ficha:
+    """As cinco checagens do teste da pessoa, com o custo nunca abaixo do padrão do app."""
+    custo = custo_da_checagem(pedido.custo_por_operacao)
+    fechamento = pedido.dados["Close"]
+    posicao = gerar_posicao(pedido.estrategia, pedido.dados, **pedido.parametros)
+    if pedido.protecoes is not None:
+        posicao = aplicar_protecoes(pedido.dados, posicao, pedido.protecoes)
+    resultado = executar_backtest(fechamento, posicao, custo)
+    sharpe = calcular_indice_sharpe(resultado.retorno, pedido.taxa_livre_de_risco)
+
+    grade: _Grade | None = None
+    if not parametros_numericos(pedido.estrategia):
+        fora = nao_se_aplica(PERGUNTA_FORA_DO_PERIODO, SEM_NUMEROS)
+        vizinhanca = nao_se_aplica(PERGUNTA_VIZINHOS, SEM_NUMEROS)
+    else:
+        try:
+            grade = _montar_grade(pedido, custo)
+        except ValueError as erro:
+            fora = sem_medida(PERGUNTA_FORA_DO_PERIODO, str(erro))
+            vizinhanca = sem_medida(PERGUNTA_VIZINHOS, str(erro))
+        else:
+            fora = _checar_fora(grade, pedido.taxa_livre_de_risco)
+            vizinhanca = _checar_vizinhos_da_grade(grade, pedido, sharpe)
+
+    combinacoes = 0 if grade is None else len(grade.combinacoes)
+    acaso = medir_acaso(
+        fechamento,
+        posicao,
+        custo,
+        pedido.taxa_livre_de_risco,
+        combinacoes,
+        pedido.tentativas_da_pessoa,
+    )
+    return Ficha(
+        (
+            fora,
+            _checar_custos(pedido, posicao, custo),
+            acaso,
+            vizinhanca,
+            _checar_quedas_do(resultado, pedido.tolerancia_de_queda),
+        ),
+        tentativas=total_de_tentativas(combinacoes, pedido.tentativas_da_pessoa),
+    )
