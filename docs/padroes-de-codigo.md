@@ -49,8 +49,8 @@ Regras que uma ferramenta confere estão marcadas com 🤖 (ruff ou testes, no C
 
 ## 5. Arquitetura
 
-- **`src/` não importa o Streamlit.** Regra de negócio em `src/`; a tela em `app.py` (futuro
-  `telas/`) só lê, chama e mostra. Assim a regra é testável sem abrir o navegador.
+- **`src/` não importa o Streamlit.** Regra de negócio em `src/`; a tela em `telas/` (o `app.py`
+  só monta o menu) só lê, chama e mostra. Assim a regra é testável sem abrir o navegador.
 - Dados entram validados na borda (o que vem do usuário ou da URL é texto não confiável) e o
   resto do código confia neles.
 - **Erros:** capture só a exceção que você sabe tratar (`except ValueError`), nunca `except:`
@@ -90,7 +90,10 @@ Regras que uma ferramenta confere estão marcadas com 🤖 (ruff ou testes, no C
 
 ## Dívida conhecida (a pagar em etapas)
 
-- `app.py` com ~5.700 linhas e funções de até 362 linhas: será dividido em `telas/` (um arquivo
-  por grupo de páginas), sem mudar comportamento. Até lá, C901 e B905 ficam suspensos só nele.
+- ~~`app.py` gigante~~: dividido em `telas/` em 12/10/2026 (229 linhas: entrada e menu); as funções
+  acima da complexidade 15 foram divididas e o C901 e o B905 valem em todo o código.
 - `src/relatorios.py` com funções de 125 a 200 linhas: quebrar por seção do relatório.
-- Checagem de tipos (`pyright`) e medida de cobertura de testes no CI: próxima etapa.
+- Funções de tela ainda longas (mais de ~100 linhas, mas abaixo da complexidade 15): dividir quando
+  forem tocadas.
+- ~~Checagem de tipos e cobertura no CI~~: no CI desde 12/10/2026 (`pyright` em `src/`, `scripts/` e
+  `telas/`; cobertura mínima no `.coveragerc`).
