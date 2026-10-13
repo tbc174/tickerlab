@@ -5,11 +5,11 @@ As telas ficam em telas/ (uma pasta ou um arquivo por grupo de páginas) e os c�
 
 import streamlit as st
 
-from src import marca
+from src import marca, tema_do_app
 from src.estilo import CSS_DO_APP
 from src.link import ler_parametros
 from src.logs import configurar_logs
-from src.paginas import GRUPOS, PAGINA_INICIAL, paginas_do_grupo
+from src.paginas import GRUPOS, PAGINA_INICIAL, PAGINAS, paginas_do_grupo
 from src.planos import pode_usar
 from telas.analise import (
     pagina_comparar,
@@ -65,7 +65,13 @@ st.logo(str(marca.arquivo_da_assinatura(paleta_da_sessao())), size="large")
 
 def preparar_estado_inicial():
     """Valores iniciais dos campos do topo; na primeira visita, lê os da URL (link compartilhado)."""
-    padroes = {"ticker": "PETR4.SA", "periodo": "2y", "taxa": "Zero", "favoritos": []}
+    padroes = {
+        "ticker": "PETR4.SA",
+        "periodo": "2y",
+        "taxa": "Zero",
+        "favoritos": [],
+        "tema_do_app": tema_do_app.PADRAO,
+    }
     for chave, valor in padroes.items():
         st.session_state.setdefault(chave, valor)
     if not st.session_state.get("url_lida"):
@@ -136,6 +142,8 @@ def mostrar_topo(usuario):
 
 
 # --- Menu: a função de cada página ----------------------------------------------------------
+# endereço de cada página no navegador (o Streamlit guarda o tema por endereço)
+ENDERECOS_DAS_PAGINAS = ["/", *(f"/{p.url}" for p in PAGINAS)]
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
@@ -202,6 +210,16 @@ usuario_logado = obter_usuario_logado()
 carregar_da_conta(usuario_logado)
 preparar_estado_inicial()
 manter_estado()
+# o tema escolhido (claro, escuro ou automático pelo sol): o script grava a escolha onde o
+# Streamlit lê o tema e recarrega uma vez se a página abriu no tema errado (src/tema_do_app.py)
+st.html(
+    tema_do_app.script(
+        st.session_state["tema_do_app"],
+        ENDERECOS_DAS_PAGINAS,
+        guardada=st.session_state.get("tema_escolhido", False),
+    ),
+    unsafe_allow_javascript=True,
+)
 pagina_atual = st.navigation(
     montar_navegacao(e_admin=bool(usuario_logado and usuario_logado.e_admin)),
     position="top",

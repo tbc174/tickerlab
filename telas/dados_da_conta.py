@@ -9,6 +9,7 @@ import logging
 import pandas as pd
 import streamlit as st
 
+from src import tema_do_app
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
@@ -66,6 +67,9 @@ def carregar_da_conta(usuario):
     for chave in ("ticker", "periodo", "taxa", "em_reais", "favoritos"):
         if chave in lidos:
             st.session_state[chave] = lidos[chave]
+    if "tema" in preferencias:  # a escolha da conta manda sobre a guardada no navegador
+        st.session_state["tema_do_app"] = tema_do_app.normalizar(preferencias["tema"])
+        st.session_state["tema_escolhido"] = True
     if isinstance(preferencias.get("relatorio"), dict):
         st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
     if preferencias.get("tutorial_visto") is True:
