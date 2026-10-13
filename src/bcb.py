@@ -34,10 +34,11 @@ URL_DO_FOCUS = (
     "ExpectativasMercadoAnuais"
 )
 # o SGS aceita até 10 anos por consulta, mas sem cache uma janela longa passa dos ~30 s do
-# servidor do BC, que devolve uma página "Requisição inválida!" com status 200 (13/10/2026)
+# servidor do BC, que devolve uma página "Requisição inválida!" com status 200 (13/10/2026).
+# Com 3 anos isso fica raro, mas ainda acontece com o cache frio: a página conta como passageira
 ANOS_POR_CONSULTA = 3
 TEMPO_LIMITE = 60  # segundos: sem cache, o SGS leva até ~30 s numa janela de 9 anos
-# um 502 ou um timeout isolado do BC some em segundos (13/10/2026): tenta mais 2 vezes
+# um 502, um timeout ou a página de erro do BC somem em segundos (13/10/2026): tenta mais 2 vezes
 ESPERAS_ENTRE_TENTATIVAS = (5, 15)  # segundos
 HTTP_ERRO_DO_SERVIDOR = 500
 esperar = time.sleep  # os testes trocam
@@ -83,8 +84,12 @@ class BcbIndisponivelError(Exception):
 
 
 def _passageiro(erro: Exception) -> bool:
-    """Erro que costuma sumir sozinho: o BC demorou, caiu a conexão ou respondeu 5xx."""
-    if isinstance(erro, (requests.Timeout, requests.ConnectionError)):
+    """Erro que costuma sumir sozinho: o BC demorou, caiu a conexão ou respondeu 5xx.
+
+    Resposta que não é JSON também: é a página "Requisição inválida!" que o servidor do BC devolve,
+    com status 200, quando a consulta passa do tempo dele; repetida, já vem do cache.
+    """
+    if isinstance(erro, (requests.Timeout, requests.ConnectionError, ValueError)):
         return True
     resposta = getattr(erro, "response", None)
     return (
@@ -143,8 +148,22 @@ def baixar_serie_sgs(
     hoje: date | None = None,
     buscar: Buscar = requests.get,
 ) -> pd.Series:
-    """A série `chave` de `SERIES` entre `inicio` e `fim`, em consultas de até 9 anos."""
-    serie = SERIES[chave]
+    """A série `chave` de `SERIES` entre `inicio` e `fim` (ver `baixar_sgs`)."""
+    return baixar_sgs(SERIES[chave], inicio, fim, hoje, buscar)
+
+
+def baixar_sgs(
+    serie: Serie,
+    inicio: date,
+    fim: date,
+    hoje: date | None = None,
+    buscar: Buscar = requests.get,
+) -> pd.Series:
+    """Uma série do SGS entre `inicio` e `fim`, em consultas de até `ANOS_POR_CONSULTA` anos.
+
+    Serve também para séries fora de `SERIES` (o CDI do backtest), que a coleta do acervo não
+    percorre.
+    """
     hoje = hoje or _hoje()
     comeco, final = pd.Timestamp(inicio), pd.Timestamp(fim)
     if final < comeco:

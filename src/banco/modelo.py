@@ -667,3 +667,39 @@ padroes_setoriais = sa.Table(
     ),  # {"10": 0.03, "50": 0.08, ...}
     sa.Column("calculado_em", sa.DateTime(timezone=True), nullable=False),
 )
+
+# Série 2 da base de ML, PR 6 (0029): proventos e eventos de capital do FRE (até o FRE de 2022,
+# quando a CVM tirou essas tabelas do FRE aberto). O mesmo exercício aparece no FRE de vários anos:
+# fica o documento mais novo.
+fre_proventos = sa.Table(
+    "fre_proventos",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("exercicio", sa.Date, primary_key=True),  # fim do exercício social
+    sa.Column("referencia", sa.Date, nullable=False),  # o FRE de onde veio
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("lucro_ajustado", sa.Float),
+    sa.Column("dividendo_total", sa.Float),
+    sa.Column("payout", sa.Float),  # fração do lucro ajustado (0,5 = 50%)
+    sa.Column("dividendos", sa.Float),
+    sa.Column("jcp", sa.Float),
+    _momento("coletado_em"),
+)
+fre_eventos_de_capital = sa.Table(
+    "fre_eventos_de_capital",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    # desdobramento, grupamento, bonificação ou aumento
+    sa.Column("tipo", sa.String(30), primary_key=True),
+    sa.Column("data", sa.Date, primary_key=True),  # aprovação ou deliberação
+    # ações depois do evento (ou as novas, no aumento)
+    sa.Column("quantidade", sa.BigInteger, primary_key=True),
+    sa.Column("referencia", sa.Date, nullable=False),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("acoes_antes", sa.Float),
+    sa.Column("acoes_depois", sa.Float),
+    sa.Column("fator", sa.Float),  # depois / antes (desdobramento de 1 para 10 = 10)
+    sa.Column("acoes_novas", sa.Float),
+    sa.Column("valor", sa.Float),
+    _momento("coletado_em"),
+)

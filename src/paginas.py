@@ -359,6 +359,7 @@ PAGINAS = (
         "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada "
         "número (Banco Central).",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/juros-e-inflacao", (), "JurosEInflacaoV1"),
     ),
     Pagina(
         "linha_do_tempo",
@@ -367,6 +368,24 @@ PAGINAS = (
         ":material/timeline:",
         "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no "
         "mesmo eixo, com o link de cada documento.",
+        contrato=Contrato(
+            "GET",
+            "/v1/linha-do-tempo",
+            (
+                ATIVO,
+                PERIODO,
+                Entrada(
+                    "materialidade_minima",
+                    "inteiro",
+                    "Quais acontecimentos mostrar: 70 = os mais relevantes, 50 = relevantes, "
+                    "0 = todos.",
+                    padrao=50,  # MATERIALIDADE_PADRAO de src/linha_do_tempo.py (há teste)
+                    minimo=0,
+                    maximo=100,
+                ),
+            ),
+            "LinhaDoTempoDoAtivoV1",
+        ),
     ),
     Pagina(
         "fundamentos",

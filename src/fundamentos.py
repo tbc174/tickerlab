@@ -183,6 +183,8 @@ def acoes_em_circulacao(
     if "acoes_total" not in saldo:
         return None, "", "Sem a quantidade de ações no documento."
     acoes = saldo["acoes_total"] - saldo.get("acoes_tesouraria", 0.0)
+    if acoes <= 0:  # visto em documentos reais: dividir por zero derrubava a página
+        return None, "", "Quantidade de ações zerada ou negativa no documento."
     tabela = anuais(contas)
     if tabela.empty or "lpa_basico" not in tabela or "acoes_total" not in tabela:
         return (

@@ -26,12 +26,39 @@ def _funcionalidade(chave_do_modulo, nome):
 
 
 def test_o_que_ainda_nao_existe_nao_diz_que_existe():
-    """Ferramentas (as calculadoras) ainda é ideia futura; do Mercado, só a qualidade dos dados existe."""
+    """Ferramentas (as calculadoras) ainda é ideia futura; do Mercado, as Cotações também."""
     assert modulos.POR_CHAVE["ferramentas"].disponiveis == 0
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]
-    assert disponiveis == ["Qualidade dos dados"]
+    assert disponiveis == ["Juros e inflação", "Qualidade dos dados"]
+    assert not _funcionalidade("carteira", "Dividendos e custo médio").disponivel
+
+
+def test_juros_e_inflacao_e_linha_do_tempo_levam_as_paginas_da_onda_2():
+    assert (
+        _funcionalidade("mercado", "Juros e inflação").pagina_do_app
+        == "juros-e-inflacao"
+    )
+    linha = _funcionalidade("research", "Linha do tempo")
+    assert linha.pagina_do_app == "linha-do-tempo"
+    assert linha.ticker == modulos.EXEMPLO  # a página precisa de um ativo no topo
+
+
+def test_cuidar_da_carteira_leva_a_carteira_da_b3_e_nao_a_de_estrategias():
+    """A página "carteira" é a Carteira de Estratégias (backtest); a da planilha é "carteira-b3"."""
+    da_planilha = (
+        "Importar a planilha da B3",
+        "Concentração e número efetivo",
+        "A carteira no passado",
+        "Raio-X",
+        "Rebalanceamento",
+    )
+    for nome in da_planilha:
+        assert _funcionalidade("carteira", nome).pagina_do_app == "carteira-b3", nome
+    for modulo in modulos.MODULOS:
+        for f in modulo.funcionalidades:
+            assert f.pagina_do_app != "carteira", (modulo.nome, f.nome)
 
 
 def test_comparacoes_em_pdf_levam_ao_report_studio():
