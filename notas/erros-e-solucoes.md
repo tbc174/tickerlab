@@ -236,3 +236,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** comandos encadeados com `;` seguem mesmo quando o anterior falha.
 - **Solução:** recriar o ramo pelo commit (`git checkout -B ramo <sha>`), resolver o conflito, mandar de novo e `gh pr reopen`. Daqui em diante, limpeza só dentro de `if gh pr merge ...; then ...; fi`.
 - **Data:** 13/10/2026
+
+## Regra boa "falha" no teste contra o acaso com dados sintéticos de tendência
+- **Sintoma:** num teste da ficha "Foi sorte?", uma regra de tendência em dados feitos com altas e quedas de 150 dias tinha p-valor de 14% no teste contra o acaso, como se fosse sorte.
+- **Causa:** o teste contra o acaso desloca a posição no tempo. Com tendências de duração **fixa**, o deslocamento de um ciclo inteiro (300 dias) realinha a posição com as tendências, e várias versões "ao acaso" acertam tanto quanto a regra.
+- **Solução:** sortear a duração de cada tendência (`rng.integers(80, 260)`). Dado sintético periódico engana testes que deslocam no tempo.
+- **Data:** 13/10/2026
+
+## Duas sessões criam a mesma ADR (dois arquivos `0044-...`)
+- **Sintoma:** a pasta de decisões ficou com dois arquivos 0044 diferentes, de sessões abertas ao mesmo tempo.
+- **Causa:** cada sessão conferiu o último número livre e criou a sua antes de ver a da outra.
+- **Solução:** conferir a pasta logo antes de criar; havendo repetição, renumerar a ADR que ninguém cita ainda para o próximo número livre e corrigir as referências dela.
+- **Data:** 13/10/2026
+
+## `git worktree remove` falha com "Invalid argument" depois da suíte
+- **Sintoma:** ao apagar a cópia de trabalho, o Git solta a cópia mas a pasta fica com `trader/interface/tipografia/Manrope-VariableFont_wght.ttf`; `rm` diz "Device or resource busy".
+- **Causa:** um processo da suíte (a interface do Trader carrega essa fonte) ainda segura o arquivo no Windows.
+- **Solução:** `git worktree prune` para o Git esquecer a cópia; a pasta sai depois de reiniciar o PC (só tem arquivos que já estão no Git).
+- **Data:** 13/10/2026

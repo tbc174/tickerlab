@@ -25,6 +25,7 @@ from src.acaso import (
     MIN_OPERACOES_PARA_MONTE_CARLO,
     calcular_sharpe_maximo_esperado,
     calcular_sharpe_probabilistico,
+    resumir_monte_carlo,
     simular_monte_carlo,
     testar_contra_o_acaso,
 )
@@ -71,10 +72,12 @@ CHANCE_MINIMA_DE_NAO_SER_SORTE = 0.95
 # do Sharpe da configuração escolhida (um pico isolado cercado de resultados fracos é sorte)
 FRACAO_MINIMA_DE_VIZINHOS_POSITIVOS = 2 / 3
 FRACAO_MINIMA_DA_MEDIANA = 0.5
-# Checagem 5: a maior queda que a pessoa aguentaria, se ela não disser outra (fração)
+# Checagem 5: a maior queda que a pessoa aguentaria, se ela não disser outra (fração), e a faixa
+# aceita; a escolha fica nas preferências da conta com esta chave
 TOLERANCIA_PADRAO_DE_QUEDA = 0.30
-# quantil das quedas do Monte Carlo: 95% das simulações caíram menos que o pior caso comum
-PIOR_CASO_COMUM = 0.05
+TOLERANCIA_MINIMA = 0.05
+TOLERANCIA_MAXIMA = 0.90
+PREFERENCIA_DA_TOLERANCIA = "tolerancia_de_queda"
 
 
 class Situacao(Enum):
@@ -320,11 +323,19 @@ def queda_no_pior_caso_comum(
     com poucas, a maior queda que de fato aconteceu.
     """
     if len(retornos_das_operacoes.dropna()) >= MIN_OPERACOES_PARA_MONTE_CARLO:
-        simulado = simular_monte_carlo(retornos_das_operacoes)
-        queda = float(np.quantile(simulado.quedas_maximas, PIOR_CASO_COMUM))
-        return queda, "no pior caso comum do Monte Carlo"
+        resumo = resumir_monte_carlo(simular_monte_carlo(retornos_das_operacoes))
+        return resumo.queda_p5, "no pior caso comum do Monte Carlo"
     real = float((curva_de_capital / curva_de_capital.cummax() - 1).min())
     return real, "na maior queda real (poucas operações para o Monte Carlo)"
+
+
+def normalizar_tolerancia(guardada: object) -> float:
+    """A tolerância de queda guardada na conta, ou o padrão se ela não for um número da faixa."""
+    if isinstance(guardada, bool) or not isinstance(guardada, int | float):
+        return TOLERANCIA_PADRAO_DE_QUEDA
+    if not TOLERANCIA_MINIMA <= guardada <= TOLERANCIA_MAXIMA:
+        return TOLERANCIA_PADRAO_DE_QUEDA
+    return float(guardada)
 
 
 def checar_quedas(queda: float, tolerancia: float, fonte: str) -> Checagem:
@@ -371,8 +382,15 @@ def checar_acaso(p_valor: float, chance: float, tentativas: int) -> Checagem:
         PERGUNTA_ACASO,
         _situacao(passou),
         f"{_percentual(p_valor)} das versões ao acaso fizeram igual ou melhor. Contando "
-        f"{tentativas} tentativas, a chance de não ser sorte é {_percentual(chance)}.",
+        f"{tentativas} {'tentativa' if tentativas == 1 else 'tentativas'}, a chance de não "
+        f"ser sorte é {_percentual(chance)}.",
     )
+
+
+SEM_MOMENTO = (
+    "A regra fica sempre na mesma posição (entra uma vez e não sai): não há momento de "
+    "entrar e sair para comparar com o acaso."
+)
 
 
 def medir_acaso(
@@ -389,6 +407,8 @@ def medir_acaso(
     posição deslocada no tempo). Não vem da grade de parâmetros: quando várias combinações
     são boas de verdade, a dispersão entre elas não é sorte e puniria a regra boa.
     """
+    if posicao_desejada.diff().abs().gt(0).sum() <= 1:
+        return sem_medida(PERGUNTA_ACASO, SEM_MOMENTO)
     try:
         acaso = testar_contra_o_acaso(
             fechamento, posicao_desejada, custo_por_operacao, taxa_livre_de_risco

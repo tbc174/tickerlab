@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 import streamlit as st
 
-from src import tema_do_app
+from src import ficha, tema_do_app
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     DadosInvalidosError,
@@ -74,6 +74,11 @@ def carregar_da_conta(usuario):
         st.session_state["config_salva_do_relatorio"] = preferencias["relatorio"]
     if preferencias.get("tutorial_visto") is True:
         st.session_state["tutorial_visto"] = True
+    if ficha.PREFERENCIA_DA_TOLERANCIA in preferencias:
+        tolerancia = ficha.normalizar_tolerancia(
+            preferencias[ficha.PREFERENCIA_DA_TOLERANCIA]
+        )
+        st.session_state["ficha_tolerancia"] = round(tolerancia * 100)
 
 
 def _campo_ainda_vale(chave, valor):

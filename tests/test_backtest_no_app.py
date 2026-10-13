@@ -65,3 +65,71 @@ def test_validacao_mostra_treino_e_teste_e_o_sharpe_deflacionado():
     rotulos = _rotulos_das_metricas(app)
     assert "Sharpe da melhor, no treino" in rotulos
     assert "Tentativas contadas" in rotulos
+
+
+# --- A ficha "Foi sorte?" -----------------------------------------------------------------
+
+DETALHE_TECNICO = "Ver o detalhe técnico"
+TITULOS_DO_VEREDITO = (
+    "Passou no teste contra a sorte",
+    "Não passou no teste contra a sorte",
+    "Inconclusivo",
+)
+
+
+def _textos(elementos) -> str:
+    return " ".join(m.value for m in elementos)
+
+
+def _detalhe(app):
+    return next(e for e in app.expander if e.label == DETALHE_TECNICO)
+
+
+def test_backtest_mostra_a_ficha_com_cinco_checagens():
+    from src import ficha
+
+    app = _backtest_local()
+    textos = _textos(app.markdown)
+    for pergunta in (
+        ficha.PERGUNTA_FORA_DO_PERIODO,
+        ficha.PERGUNTA_CUSTOS,
+        ficha.PERGUNTA_ACASO,
+        ficha.PERGUNTA_VIZINHOS,
+        ficha.PERGUNTA_QUEDAS,
+    ):
+        assert pergunta in textos
+    assert ficha.AVISO in textos
+
+
+def test_veredito_aparece_antes_do_detalhe():
+    app = _backtest_local()
+    assert any(t in _textos(app.markdown) for t in TITULOS_DO_VEREDITO)
+    assert not any(t in _textos(_detalhe(app).markdown) for t in TITULOS_DO_VEREDITO)
+
+
+def test_detalhe_tecnico_continua_disponivel():
+    app = _backtest_local()
+    abas = {t.label for t in _detalhe(app).tabs}
+    assert {
+        "Treino e teste",
+        "Walk-forward",
+        "Mapa de parâmetros",
+        "Monte Carlo e acaso",
+        "Sorte na escolha",
+    } <= abas
+
+
+def test_estrategia_sem_parametro_mostra_nao_se_aplica():
+    from src import ficha
+
+    app = _backtest_local()
+    app.selectbox(key="backtest_estrategia").select("Comprar e segurar").run()
+    assert not app.exception
+    assert ficha.SEM_NUMEROS in _textos(app.markdown)
+
+
+def test_tolerancia_entra_na_checagem_de_quedas():
+    app = _backtest_local()
+    app.number_input(key="ficha_tolerancia").set_value(5).run()
+    assert not app.exception
+    assert "você disse aguentar até 5%" in _textos(app.markdown)

@@ -177,3 +177,18 @@ def test_sem_login_tambem_da_para_escolher(monkeypatch):
     app.button_group(key="escolha_do_tema").set_value("claro").run()
     assert not app.exception
     assert 'aplicar("claro"' in _script_do_tema(app)
+
+
+def test_tolerancia_da_ficha_fica_guardada_na_conta(banco, monkeypatch):
+    from src.banco import dados_do_usuario as repo
+    from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario
+
+    entrar_como(monkeypatch, "caio", "caio@exemplo.com")
+    app = abrir_app("backtest")
+    app.number_input(key="ficha_tolerancia").set_value(20).run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        guardadas = repo.carregar_preferencias(conexao, id_do_usuario(banco, "caio"))
+    assert guardadas["tolerancia_de_queda"] == 0.2
+    volta = abrir_app("backtest")  # sessão nova
+    assert volta.number_input(key="ficha_tolerancia").value == 20

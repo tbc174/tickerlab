@@ -450,3 +450,35 @@ def test_custos_dizem_que_o_imposto_e_simplificado_da_b3():
         "regras simplificadas da B3"
         in ficha.checar_custos_e_imposto(0.1, None).explicacao
     )
+
+
+# --- Tolerância guardada na conta ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("guardada", "esperada"),
+    [
+        (0.2, 0.2),
+        (0.05, 0.05),
+        (0.9, 0.9),
+        (0.0, 0.3),
+        (1.5, 0.3),
+        ("x", 0.3),
+        (None, 0.3),
+    ],
+)
+def test_tolerancia_guardada_invalida_volta_ao_padrao(guardada, esperada):
+    assert ficha.normalizar_tolerancia(guardada) == esperada
+
+
+def test_uma_tentativa_no_singular():
+    assert "Contando 1 tentativa," in ficha.checar_acaso(0.5, 0.5, 1).explicacao
+
+
+def test_regra_que_entra_uma_vez_e_nunca_sai_nao_tem_o_que_comparar_com_o_acaso():
+    dados = pd.DataFrame({"Close": 100 * (1 + _retorno_bom()).cumprod()})
+    posicao = pd.Series(1.0, index=dados.index)
+    posicao.iloc[:5] = 0.0  # espera alguns dias e entra para sempre
+    c = ficha.medir_acaso(dados["Close"], posicao, 0.0005, 0.0, 0, 1)
+    assert c.situacao is Situacao.SEM_MEDIDA
+    assert "mesma posição" in c.explicacao
