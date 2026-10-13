@@ -178,3 +178,16 @@ def test_falha_fica_registrada_e_nao_conta_como_guardada(banco):
         linha = c.execute(sa.select(coletas)).one()
         assert ja_guardados(c) == set()
     assert (linha.situacao, linha.detalhe) == ("falhou", "ConnectionError")
+
+
+def test_fila_para_quando_a_janela_acaba_e_diz_que_parou():
+    feitos = []
+    resultado = baixar_em_fila(
+        ["a", "b", "c"],
+        lambda link: b"x",
+        set(),
+        lambda link, pacote: feitos.append(link),
+        continuar=lambda: len(feitos) < 2,
+    )
+    assert feitos == ["a", "b"]
+    assert resultado.interrompida and resultado.baixados == ["a", "b"]

@@ -17,7 +17,6 @@ from src.acaso import (
     testar_contra_o_acaso,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
-from src.banco.tentativas import TETO_POR_PESSOA
 from src.cdi import CDIIndisponivelError, curva_do_cdi
 from src.conteudo import proteger_cifrao
 from src.dados import normalizar_ticker
@@ -35,6 +34,7 @@ from src.metricas import (
     resumir_desempenho,
 )
 from src.protecoes import Protecoes, aplicar_protecoes
+from src.tentativas import TETO_POR_PESSOA
 from src.validacao import (
     avaliar_treino_e_teste,
     calcular_retornos_dos_candidatos,

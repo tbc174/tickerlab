@@ -15,7 +15,7 @@ Os limites de cada checagem são constantes deste módulo, escritos antes de qua
 (o espírito da ADR 0006) e publicados na metodologia.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 import numpy as np
@@ -35,7 +35,7 @@ from src.backtest import (
     executar_backtest,
 )
 from src.cdi import curva_do_cdi
-from src.estrategias import gerar_posicao
+from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.imposto import aplicar_imposto
 from src.indicadores import DIAS_POR_ANO, calcular_indice_sharpe
 from src.protecoes import Protecoes, aplicar_protecoes
@@ -550,7 +550,12 @@ def _checar_quedas_do(resultado: ResultadoBacktest, tolerancia: float) -> Checag
 
 
 def montar_ficha(pedido: PedidoDaFicha) -> Ficha:
-    """As cinco checagens do teste da pessoa, com o custo nunca abaixo do padrão do app."""
+    """As cinco checagens do teste da pessoa, com o custo nunca abaixo do padrão do app.
+
+    Parâmetro que não veio vale o padrão da estratégia (o relatório manda só os que mudaram).
+    """
+    padroes = {p.nome: p.padrao for p in ESTRATEGIAS[pedido.estrategia].parametros}
+    pedido = replace(pedido, parametros={**padroes, **pedido.parametros})
     custo = custo_da_checagem(pedido.custo_por_operacao)
     fechamento = pedido.dados["Close"]
     posicao = gerar_posicao(pedido.estrategia, pedido.dados, **pedido.parametros)

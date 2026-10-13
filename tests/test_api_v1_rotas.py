@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from src import analises, api
 from src import indicadores as ind
-from src.api_v1 import acesso, contexto, esquemas
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas
 from src.backtest import executar_backtest
 from src.banco.usuarios import entrar
 from src.conformidade import registrar_aceite
@@ -33,7 +33,7 @@ def chave():
 
 @pytest.fixture
 def cliente(banco, monkeypatch, chave):
-    monkeypatch.setenv(acesso.VARIAVEL_DA_CHAVE, "1")
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     monkeypatch.setenv(acesso.VARIAVEL_DO_CLIENT_ID, CLIENT_ID)
     monkeypatch.setattr(acesso, "agora", lambda: AGORA)
     monkeypatch.setattr(
@@ -41,16 +41,14 @@ def cliente(banco, monkeypatch, chave):
         "carregar_dados",
         lambda ticker, periodo: baixar_dados(ticker, periodo, forcar_exemplo=True),
     )
-    api.app.dependency_overrides[acesso.chaves_do_google] = lambda: chaves_publicas(
-        chave
-    )
+    app = api.criar_app({VARIAVEL_DA_CHAVE: "1"})
+    app.dependency_overrides[acesso.chaves_do_google] = lambda: chaves_publicas(chave)
     acesso.LIMITE.zerar()
     with banco.begin() as conexao:
         ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
         registrar_aceite(conexao, ana.id)
-    cliente = TestClient(api.app, headers=com_token(token(chave)))
+    cliente = TestClient(app, headers=com_token(token(chave)))
     yield cliente
-    api.app.dependency_overrides.clear()
 
 
 def _fechamento(ticker="PETR4.SA", periodo="2y"):
@@ -223,9 +221,12 @@ def test_dados_fora_do_ar_404_com_a_mensagem(cliente, monkeypatch):
     ],
 )
 def test_toda_rota_exige_login(banco, rota, monkeypatch):
-    monkeypatch.setenv(acesso.VARIAVEL_DA_CHAVE, "1")
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     assert (
-        TestClient(api.app).get(rota, params={"ticker": "PETR4.SA"}).status_code == 401
+        TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+        .get(rota, params={"ticker": "PETR4.SA"})
+        .status_code
+        == 401
     )
 
 

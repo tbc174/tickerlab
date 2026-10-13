@@ -335,3 +335,64 @@ def test_migracao_0006_vai_e_volta_sem_perder_os_relatorios(tmp_path):
     with criar_engine(url).connect() as conexao:
         assert repo.contar_relatorios_recentes(conexao, ana, AGORA) == 1
     motor.dispose()
+
+
+# --- a ficha "Foi sorte?" no PDF do backtest --------------------------------------------------
+def _pdf_do_backtest(**extras):
+    return relatorios.relatorio_de_backtest(
+        "PETR4.SA", _dados("PETR4.SA"), "Cruzamento de médias", **extras
+    )
+
+
+def test_pdf_do_backtest_traz_o_veredito_e_as_cinco_checagens():
+    from src import ficha
+
+    texto = _texto(_pdf_do_backtest())
+    assert "Foi sorte?" in texto
+    for pergunta in (
+        ficha.PERGUNTA_FORA_DO_PERIODO,
+        ficha.PERGUNTA_CUSTOS,
+        ficha.PERGUNTA_ACASO,
+        ficha.PERGUNTA_VIZINHOS,
+        ficha.PERGUNTA_QUEDAS,
+    ):
+        assert pergunta in texto
+    assert ficha.AVISO in texto
+
+
+def test_pdf_traz_o_numero_de_tentativas_e_a_tolerancia():
+    texto = _texto(_pdf_do_backtest(tentativas_da_pessoa=37, tolerancia_de_queda=0.2))
+    assert "Você testou 37 variações em PETR4.SA" in texto
+    assert "você disse aguentar até 20%" in texto
+
+
+def test_veredito_do_pdf_e_o_mesmo_da_tela():
+    from src import ficha
+    from src.estrategias import ESTRATEGIAS
+
+    nome = "Cruzamento de médias"
+    padroes = {p.nome: p.padrao for p in ESTRATEGIAS[nome].parametros}
+    na_tela = ficha.montar_ficha(
+        ficha.PedidoDaFicha(
+            _dados("PETR4.SA"),
+            nome,
+            padroes,
+            relatorios.CUSTO_PADRAO_POR_OPERACAO,
+            relatorios.CAPITAL_DO_RELATORIO,
+        )
+    )
+    assert na_tela.veredito.titulo in _texto(_pdf_do_backtest(parametros=padroes))
+
+
+def test_ficha_esta_no_relatorio_executivo_do_backtest():
+    assert "foi_sorte" in relatorios.secoes_do_modelo(
+        relatorios.BACKTEST, relatorios.EXECUTIVO
+    )
+
+
+@pytest.mark.parametrize("estilo", ["research", "terminal", "institucional"])
+def test_ficha_aparece_nos_tres_estilos(estilo):
+    config = relatorios.Configuracao(estilo=estilo, secoes=("foi_sorte",))
+    assert "Funciona com parâmetros vizinhos?" in _texto(
+        _pdf_do_backtest(config=config)
+    )
