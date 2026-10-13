@@ -2,8 +2,10 @@
 
 import io
 import struct
+import threading
 
 import pandas as pd
+import pytest
 
 from src import iex_tops
 
@@ -131,3 +133,102 @@ def test_bloco_partido_entre_duas_leituras_nao_se_perde(monkeypatch):
 
 def test_atribuicao_tem_a_frase_exigida_pelos_termos_da_iex():
     assert iex_tops.ATRIBUICAO.startswith("Data provided for free by IEX.")
+
+
+# --- arquivos malformados (A-03 e A-04 do Master v3): falham rápido, sem resultado parcial ---
+
+
+def _com_limite(funcao, segundos=5):
+    """Roda `funcao` numa thread: um laço infinito vira falha do teste, não um CI travado."""
+    resultado = {}
+
+    def alvo():
+        try:
+            resultado["valor"] = funcao()
+        except Exception as erro:  # noqa: BLE001 - o teste confere o tipo logo abaixo
+            resultado["erro"] = erro
+
+    thread = threading.Thread(target=alvo, daemon=True)
+    thread.start()
+    thread.join(segundos)
+    assert not thread.is_alive(), f"não terminou em {segundos} s (laço infinito)"
+    return resultado
+
+
+def _deve_recusar(arquivo: bytes):
+    resultado = _com_limite(lambda: ler(arquivo))
+    assert isinstance(resultado.get("erro"), iex_tops.ArquivoIexInvalidoError), (
+        resultado
+    )
+
+
+def _pacote_cru(corpo_iex: bytes, quantidade: int) -> bytes:
+    cabecalho = bytearray(14 + 20 + 8 + 40)
+    cabecalho[14] = 0x45
+    struct.pack_into("<H", cabecalho, 14 + 20 + 8 + 14, quantidade)
+    return bytes(cabecalho) + corpo_iex
+
+
+@pytest.mark.parametrize(
+    "arquivo",
+    [
+        pytest.param(struct.pack("<II", 6, 0), id="bloco de pacote com tamanho 0"),
+        pytest.param(struct.pack("<II", 0, 0), id="bloco de outro tipo com tamanho 0"),
+        pytest.param(
+            struct.pack("<II", 6, 0) + b"\0" * 32, id="tamanho 0 seguido de dados"
+        ),
+        pytest.param(
+            struct.pack("<II", 6, 4) + b"x" * 8, id="tamanho menor que o cabeçalho"
+        ),
+        pytest.param(
+            struct.pack("<II", 1, 14) + b"x" * 6, id="tamanho que não é múltiplo de 4"
+        ),
+        pytest.param(
+            struct.pack("<II", 6, 1 << 30) + b"x" * 64, id="tamanho absurdo (1 GiB)"
+        ),
+    ],
+)
+def test_bloco_com_tamanho_impossivel_e_recusado(arquivo):
+    _deve_recusar(arquivo)
+
+
+def test_arquivo_que_acaba_no_meio_de_um_bloco_e_recusado():
+    _deve_recusar(struct.pack("<II", 6, 64) + b"x" * 20)
+
+
+def test_tamanho_capturado_maior_que_o_bloco_e_recusado():
+    bloco_mentiroso = struct.pack("<II", 6, 32) + b"\0" * 12 + struct.pack("<I", 1000)
+    bloco_mentiroso += b"\0" * 8
+    _deve_recusar(bloco_mentiroso + bloco(1, b"ZZZZ"))
+
+
+@pytest.mark.parametrize(
+    ("corpo", "quantidade"),
+    [
+        pytest.param(b"", 3, id="mais mensagens do que cabem no pacote"),
+        pytest.param(struct.pack("<H", 0), 1, id="mensagem de tamanho 0"),
+        pytest.param(
+            struct.pack("<H", 10) + b"T" + b"\0" * 9, 1, id="negócio com 10 bytes"
+        ),
+        pytest.param(
+            struct.pack("<H", 50) + b"T" + b"\0" * 9,
+            1,
+            id="mensagem maior que o pacote",
+        ),
+    ],
+)
+def test_pacote_iex_malformado_e_recusado(corpo, quantidade):
+    _deve_recusar(pcapng([_pacote_cru(corpo, quantidade)]))
+
+
+def test_simbolo_que_nao_e_ascii_e_recusado():
+    negocio = struct.pack(
+        "<BBq8sIqq", iex_tops.NEGOCIO, 0, 1, b"\xff" * 8, 1, 10_000, 1
+    )
+    _deve_recusar(pcapng([pacote([negocio])]))
+
+
+def test_arquivo_bom_continua_sendo_lido_igual():
+    arquivo = pcapng([pacote([mensagem_de_negocio("AAPL", 227.5, 30)])])
+    resultado = _com_limite(lambda: ler(arquivo))
+    assert resultado["valor"].preco == [227.5]

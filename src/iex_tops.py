@@ -50,6 +50,17 @@ PRECO_POR_UNIDADE = 10_000  # o preço vem em inteiros de 1/10.000 de dólar
 
 TAMANHO_DA_LEITURA = 16 * 1024 * 1024
 
+# Limites de sanidade: um bloco pcapng tem pelo menos tipo, tamanho e o tamanho repetido no fim
+# (12 bytes), é múltiplo de 4 e, num feed de pacotes UDP, nunca chega perto de 1 MiB. Um tamanho
+# fora disso é arquivo corrompido: parar na hora em vez de travar ou ler o arquivo inteiro.
+MENOR_BLOCO = 12
+MAIOR_BLOCO = 1024 * 1024
+FIM_DO_BLOCO = 4  # o tamanho total repetido no fim de todo bloco
+
+
+class ArquivoIexInvalidoError(ValueError):
+    """O arquivo do IEX está corrompido ou fora do formato: nada dele deve ser usado."""
+
 
 @dataclass
 class NegociosDoDia:
@@ -69,28 +80,57 @@ class NegociosDoDia:
 def pacotes_do_pcapng(fluxo: BinaryIO) -> Iterator[memoryview]:
     """Os dados de cada pacote (Ethernet em diante) de um pcapng já descomprimido.
 
-    Lê em pedaços grandes porque ler bloco a bloco de um gzip é muito mais lento.
+    Lê em pedaços grandes porque ler bloco a bloco de um gzip é muito mais lento. Levanta
+    `ArquivoIexInvalidoError` se um bloco tiver tamanho impossível ou se o arquivo acabar no meio
+    de um bloco (achados A-03 e A-04 do Master v3: antes, travava ou perdia dados em silêncio).
     """
     sobra = b""
     while True:
         lido = fluxo.read(TAMANHO_DA_LEITURA)
         if not lido:
+            if sobra:
+                raise ArquivoIexInvalidoError(
+                    f"O arquivo terminou no meio de um bloco ({len(sobra)} bytes sobrando)."
+                )
             return
         dados = sobra + lido
         visao = memoryview(dados)
         posicao = 0
         while posicao + CABECALHO_DO_BLOCO <= len(dados):
             tipo, total = struct.unpack_from("<II", dados, posicao)
+            _conferir_tamanho_do_bloco(tipo, total, posicao)
             if posicao + total > len(dados):
                 break
             if tipo == BLOCO_PACOTE_APRIMORADO:
-                capturado = struct.unpack_from(
-                    "<I", dados, posicao + POSICAO_DO_TAMANHO_CAPTURADO
-                )[0]
-                inicio = posicao + INICIO_DOS_DADOS_DO_PACOTE
-                yield visao[inicio : inicio + capturado]
+                yield _dados_do_pacote(visao, dados, posicao, total)
             posicao += total
         sobra = dados[posicao:]
+
+
+def _conferir_tamanho_do_bloco(tipo: int, total: int, posicao: int) -> None:
+    menor = (
+        INICIO_DOS_DADOS_DO_PACOTE + FIM_DO_BLOCO
+        if tipo == BLOCO_PACOTE_APRIMORADO
+        else MENOR_BLOCO
+    )
+    if total < menor or total % 4 or total > MAIOR_BLOCO:
+        raise ArquivoIexInvalidoError(
+            f"Bloco do tipo {tipo} com tamanho impossível ({total} bytes) na posição {posicao}."
+        )
+
+
+def _dados_do_pacote(
+    visao: memoryview, dados: bytes, posicao: int, total: int
+) -> memoryview:
+    capturado = struct.unpack_from("<I", dados, posicao + POSICAO_DO_TAMANHO_CAPTURADO)[
+        0
+    ]
+    if INICIO_DOS_DADOS_DO_PACOTE + capturado + FIM_DO_BLOCO > total:
+        raise ArquivoIexInvalidoError(
+            f"Pacote diz ter {capturado} bytes, mas o bloco só tem {total} (posição {posicao})."
+        )
+    inicio = posicao + INICIO_DOS_DADOS_DO_PACOTE
+    return visao[inicio : inicio + capturado]
 
 
 def mensagens_iex_tp(pacote: memoryview) -> Iterator[memoryview]:
@@ -103,8 +143,16 @@ def mensagens_iex_tp(pacote: memoryview) -> Iterator[memoryview]:
         "<H", pacote, inicio + POSICAO_QUANTIDADE_DE_MENSAGENS
     )[0]
     posicao = inicio + TAMANHO_CABECALHO_IEX_TP
-    for _ in range(quantidade):
+    for numero in range(quantidade):
+        if posicao + 2 > len(pacote):
+            raise ArquivoIexInvalidoError(
+                f"O pacote anuncia {quantidade} mensagens, mas acaba na {numero + 1}ª."
+            )
         tamanho = pacote[posicao] | (pacote[posicao + 1] << 8)
+        if tamanho == 0 or posicao + 2 + tamanho > len(pacote):
+            raise ArquivoIexInvalidoError(
+                f"Mensagem {numero + 1} com tamanho {tamanho} não cabe no pacote."
+            )
         yield pacote[posicao + 2 : posicao + 2 + tamanho]
         posicao += 2 + tamanho
 
@@ -130,10 +178,17 @@ def coletar_negocios(
 def _anotar_negocio(
     dia: NegociosDoDia, mensagem: memoryview, simbolos: set[str] | None
 ) -> None:
+    if len(mensagem) != FORMATO_DO_NEGOCIO.size:
+        raise ArquivoIexInvalidoError(
+            f"Negócio com {len(mensagem)} bytes; o TOPS 1.6 usa {FORMATO_DO_NEGOCIO.size}."
+        )
     tipo, indicadores, instante, simbolo_bruto, quantidade, preco, id_negocio = (
         FORMATO_DO_NEGOCIO.unpack(mensagem)
     )
-    simbolo = bytes(simbolo_bruto).decode("ascii").rstrip()
+    try:
+        simbolo = bytes(simbolo_bruto).decode("ascii").rstrip()
+    except UnicodeDecodeError as erro:
+        raise ArquivoIexInvalidoError("Símbolo de negócio que não é ASCII.") from erro
     if simbolos is not None and simbolo not in simbolos:
         return
     if tipo == CANCELAMENTO:
