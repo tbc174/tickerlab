@@ -14,6 +14,7 @@ próxima reunião do Copom). Tudo depois de `hoje` é cortado.
 """
 
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -36,6 +37,10 @@ URL_DO_FOCUS = (
 # servidor do BC, que devolve uma página "Requisição inválida!" com status 200 (13/10/2026)
 ANOS_POR_CONSULTA = 3
 TEMPO_LIMITE = 60  # segundos: sem cache, o SGS leva até ~30 s numa janela de 9 anos
+# um 502 ou um timeout isolado do BC some em segundos (13/10/2026): tenta mais 2 vezes
+ESPERAS_ENTRE_TENTATIVAS = (5, 15)  # segundos
+HTTP_ERRO_DO_SERVIDOR = 500
+esperar = time.sleep  # os testes trocam
 FUSO = ZoneInfo("America/Sao_Paulo")  # "hoje" é o do Brasil, não o do servidor (UTC)
 
 log = logging.getLogger(__name__)
@@ -77,16 +82,34 @@ class BcbIndisponivelError(Exception):
     """O Banco Central não respondeu ou respondeu algo inesperado."""
 
 
+def _passageiro(erro: Exception) -> bool:
+    """Erro que costuma sumir sozinho: o BC demorou, caiu a conexão ou respondeu 5xx."""
+    if isinstance(erro, (requests.Timeout, requests.ConnectionError)):
+        return True
+    resposta = getattr(erro, "response", None)
+    return (
+        isinstance(erro, requests.HTTPError)
+        and resposta is not None
+        and (resposta.status_code >= HTTP_ERRO_DO_SERVIDOR)
+    )
+
+
 def _pedir(buscar: Buscar, url: str, params: dict | None) -> object:
-    try:
-        resposta = buscar(url, params=params, timeout=TEMPO_LIMITE)
-        resposta.raise_for_status()
-        return resposta.json()
-    except (requests.RequestException, ValueError) as erro:
-        log.warning("Falha ao consultar o Banco Central: %s", erro)
-        raise BcbIndisponivelError(
-            "Não consegui consultar o Banco Central agora."
-        ) from erro
+    for tentativa, espera in enumerate([*ESPERAS_ENTRE_TENTATIVAS, None], start=1):
+        try:
+            resposta = buscar(url, params=params, timeout=TEMPO_LIMITE)
+            resposta.raise_for_status()
+            return resposta.json()
+        except (requests.RequestException, ValueError) as erro:
+            log.warning(
+                "Falha ao consultar o Banco Central (tentativa %s): %s", tentativa, erro
+            )
+            if espera is None or not _passageiro(erro):
+                raise BcbIndisponivelError(
+                    "Não consegui consultar o Banco Central agora."
+                ) from erro
+            esperar(espera)
+    raise AssertionError("inalcançável")  # o laço sempre devolve ou levanta
 
 
 def _hoje() -> date:
