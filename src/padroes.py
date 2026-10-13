@@ -42,6 +42,21 @@ INDICADORES: dict[str, tuple[str, bool]] = {
     "ciclo_de_caixa": ("Ciclo de caixa", False),
     "cobertura_de_juros": ("Cobertura de juros", True),
 }
+# a unidade de cada indicador (para escrever o número e o padrão na nota)
+UNIDADES: dict[str, str] = {
+    **{
+        chave: fundamentos.FRACAO
+        for chave in (
+            "margem_bruta", "margem_ebit", "margem_liquida", "roe", "roic",
+            "crescimento_receita", "crescimento_lucro",
+        )
+    },
+    **{
+        chave: fundamentos.VEZES
+        for chave in ("conversao_de_caixa", "divida_sobre_pl", "dupont_giro", "cobertura_de_juros")
+    },
+    "ciclo_de_caixa": fundamentalista.DIAS,
+}  # fmt: skip
 _DOCUMENTOS_VAZIOS = pd.DataFrame(
     columns=["documento", "referencia", "versao", "empresa", "recebido_em", "link"]
 )

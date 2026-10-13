@@ -134,3 +134,7 @@ def test_indicadores_de_uma_empresa_pelas_funcoes_da_tela():
 def test_todo_indicador_com_padrao_diz_se_maior_e_melhor():
     for chave, (nome, maior_e_melhor) in pa.INDICADORES.items():
         assert nome and isinstance(maior_e_melhor, bool), chave
+
+
+def test_todo_indicador_com_padrao_tem_unidade():
+    assert set(pa.UNIDADES) == set(pa.INDICADORES)
