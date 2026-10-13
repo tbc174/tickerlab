@@ -2,7 +2,8 @@
 
 O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.py`), páginas do app
 (`src/paginas.py`), planos (`src/planos.py`), marca e cores do site (`src/marca.py`), estilos do
-Report Studio e ativos de exemplo (`src/catalogo.py`). O React lê estes JSON no build;
+Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
+(`src/metodologia_das_notas.py`). O React lê estes JSON no build;
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
@@ -19,6 +20,7 @@ from src import (
     catalogo,
     formatos,
     marca,
+    metodologia_das_notas,
     modulos,
     novidades,
     paginas,
@@ -199,6 +201,7 @@ def conteudo() -> dict[str, object]:
         "site": _site(),
         "legal": _legal(),
         "qualidade": _qualidade(),
+        "metodologia": metodologia_das_notas.como_dicionario(),
         "app": _app(),
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),

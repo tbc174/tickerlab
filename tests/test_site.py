@@ -316,6 +316,22 @@ def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
         assert esc(regra.o_que_confere) in texto
 
 
+def test_metodologia_explica_padroes_notas_e_formulas():
+    """Relatório da empresa (série 2 da base de ML, PR 8): as regras das notas e dos padrões e as
+    fórmulas são públicas, com os mesmos textos (e os mesmos limites) do app."""
+    from src import metodologia_das_notas as m
+
+    texto = (SITE / "metodologia.html").read_text(encoding="utf-8")
+    assert f'id="{m.ANCORA_NO_SITE}"' in texto
+    for paragrafo in (*m.PADROES, *m.NOTAS):
+        assert esc(paragrafo) in texto
+    for item in (*m.GRUPOS, *m.INDICADORES_DAS_NOTAS):
+        assert esc(item.nome) in texto
+    for formula in m.FORMULAS:
+        assert esc(formula.formula) in texto
+        assert esc(formula.leitura) in texto
+
+
 def test_novidades_no_rodape_de_todas_as_paginas_e_no_mapa_do_site():
     for arquivo in PAGINAS_HTML:
         rodape = arquivo.read_text(encoding="utf-8").split("<footer", 1)[1]

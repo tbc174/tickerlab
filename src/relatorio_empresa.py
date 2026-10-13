@@ -18,6 +18,7 @@ import pandas as pd
 
 from src import fundamentalista, fundamentos, notas, notas_classicas, valuation
 from src.banco.demonstracoes import DadosDaEmpresa
+from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.padroes import INDICADORES, MULTIPLOS
 from src.qualidade_texto import texto_do_selo
@@ -669,7 +670,8 @@ def _pares(e: Entradas, c: _Calculos) -> Secao:
 def _metodologia() -> Secao:
     return Secao("metodologia", SECOES["metodologia"], paragrafos=[
         ("Indicadores de 12 meses: o último DFP mais o acumulado do ano no último ITR, menos o mesmo "
-        "período do ano anterior. Fórmulas, padrões e notas na página de metodologia."),
+        "período do ano anterior."),
+        f"Fórmulas, padrões e notas na página de metodologia: {URL_DA_METODOLOGIA}.",
         *FONTES,
     ])  # fmt: skip
 
