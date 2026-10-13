@@ -7,12 +7,15 @@ sem mudar o custo total.
 
 from datetime import date
 
+import pandas as pd
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from src.carteira_b3 import CarteiraB3
 from src.dividendos_e_custo import (
     Lancamento,
+    com_a_posicao,
     custo_medio,
     proventos,
     total_por_ano,
@@ -238,3 +241,52 @@ def test_compra_e_venda_nao_sao_proventos():
         proventos([_l("compra", 1, 10), _l("venda", 1, 12)], hoje=date(2024, 12, 31))
         == ()
     )
+
+
+# ---- com a posição de hoje ----
+
+
+def _carteira(*linhas):
+    """Posição da B3 com (código, quantidade, valor de hoje)."""
+    posicoes = pd.DataFrame(linhas, columns=["codigo", "quantidade", "valor"])
+    posicoes.insert(1, "ticker", posicoes["codigo"] + ".SA")
+    posicoes.insert(2, "tipo", "Ações")
+    return CarteiraB3(posicoes, pd.DataFrame(columns=["tipo", "produto", "valor"]))
+
+
+def test_ganho_ou_perda_ainda_nao_realizados():
+    custos = custo_medio([_l("compra", 100, 1000)])
+    (petr,) = com_a_posicao(custos, _carteira(("PETR4", 100, 1500)))
+    assert petr.custo_total == pytest.approx(1000)
+    assert petr.resultado == pytest.approx(500)
+    assert petr.resultado_percentual == pytest.approx(0.5)
+    assert petr.motivo is None
+
+
+def test_quantidade_diferente_da_posicao_fica_sem_resultado():
+    custos = custo_medio([_l("compra", 100, 1000)])
+    (petr,) = com_a_posicao(custos, _carteira(("PETR4", 150, 1500)))
+    assert petr.resultado is None
+    assert petr.quantidade_na_movimentacao == 100
+    assert "não bate" in petr.motivo
+
+
+def test_ativo_sem_compra_na_movimentacao():
+    (vale,) = com_a_posicao((), _carteira(("VALE3", 10, 600)))
+    assert vale.resultado is None
+    assert "antes do período" in vale.motivo
+
+
+def test_custo_incompleto_passa_o_motivo_adiante():
+    custos = custo_medio([_l("venda", 10, 100)])
+    (petr,) = com_a_posicao(custos, _carteira(("PETR4", 10, 150)))
+    assert petr.resultado is None
+    assert petr.motivo == custos[0].motivo
+
+
+def test_so_os_ativos_da_posicao_na_ordem_dela():
+    custos = custo_medio(
+        [_l("compra", 1, 10, codigo="BBAS3"), _l("compra", 1, 10, codigo="VALE3")]
+    )
+    resultado = com_a_posicao(custos, _carteira(("VALE3", 1, 20), ("ITUB4", 1, 5)))
+    assert [r.codigo for r in resultado] == ["VALE3", "ITUB4"]

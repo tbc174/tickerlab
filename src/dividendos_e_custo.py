@@ -18,6 +18,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
+from src.carteira_b3 import CarteiraB3
+
 TIPOS_DE_PROVENTO = (
     "dividendo",
     "jcp",
@@ -84,6 +86,32 @@ class CustoDoAtivo:
     completo: bool
     motivo: str | None = None  # por que ficou incompleto
     avisos: tuple[str, ...] = ()
+
+
+MOTIVO_SEM_COMPRA = (
+    "Não aparece compra na movimentação: o ativo foi comprado antes do período baixado."
+)
+MOTIVO_QUANTIDADE_DIFERENTE = (
+    "A quantidade da posição não bate com a da movimentação (compra fora do período, "
+    "transferência de outra pessoa ou um tipo de movimentação que o TickerLab não conhece)."
+)
+
+
+@dataclass(frozen=True)
+class ResultadoDoAtivo:
+    """Um ativo da posição de hoje com o custo dele: o ganho ou a perda ainda não realizados."""
+
+    codigo: str
+    quantidade: float  # da posição
+    valor_hoje: float
+    quantidade_na_movimentacao: float | None
+    preco_medio: float | None
+    custo_total: float | None
+    resultado: (
+        float | None
+    )  # valor de hoje menos o custo; None quando não dá para saber
+    resultado_percentual: float | None  # 0,5 = +50%
+    motivo: str | None = None
 
 
 @dataclass(frozen=True)
@@ -186,3 +214,54 @@ def total_por_ano(
         for ano, valor in ativo.por_ano.items():
             soma[ano] += valor
     return dict(sorted(soma.items()))
+
+
+def _por_que_sem_resultado(custo: CustoDoAtivo | None, quantidade: float) -> str | None:
+    if custo is None:
+        return MOTIVO_SEM_COMPRA
+    if not custo.completo:
+        return custo.motivo
+    if abs((custo.quantidade or 0.0) - quantidade) > _QUASE_ZERO:
+        return MOTIVO_QUANTIDADE_DIFERENTE
+    return None
+
+
+def com_a_posicao(
+    custos: tuple[CustoDoAtivo, ...], carteira: CarteiraB3
+) -> tuple[ResultadoDoAtivo, ...]:
+    """Cada ativo da posição com o custo da movimentação, na ordem da posição.
+
+    O resultado só aparece quando a quantidade da posição é a mesma que a movimentação explica:
+    com quantidades diferentes, o custo seria de outra quantidade de ações.
+    """
+    por_codigo = {custo.codigo: custo for custo in custos}
+    resultados = []
+    for linha in carteira.posicoes.itertuples(index=False):
+        codigo, quantidade, valor = (
+            str(linha.codigo),
+            float(linha.quantidade),
+            float(linha.valor),
+        )
+        custo = por_codigo.get(codigo)
+        motivo = _por_que_sem_resultado(custo, quantidade)
+        # só usa o custo quando ele explica exatamente a quantidade de hoje
+        usado = custo if motivo is None else None
+        custo_total = usado.custo_total if usado else None
+        resultado = percentual = None
+        if custo_total is not None:
+            resultado = valor - custo_total
+            percentual = resultado / custo_total if custo_total else None
+        resultados.append(
+            ResultadoDoAtivo(
+                codigo=codigo,
+                quantidade=quantidade,
+                valor_hoje=valor,
+                quantidade_na_movimentacao=custo.quantidade if custo else None,
+                preco_medio=usado.preco_medio if usado else None,
+                custo_total=custo_total,
+                resultado=resultado,
+                resultado_percentual=percentual,
+                motivo=motivo,
+            )
+        )
+    return tuple(resultados)
