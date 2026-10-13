@@ -14,7 +14,17 @@ from dataclasses import asdict
 from pathlib import Path
 
 from scripts.markdown_simples import markdown_para_html
-from src import catalogo, marca, modulos, paginas, planos, qualidade_texto
+from src import (
+    analises,
+    catalogo,
+    formatos,
+    marca,
+    modulos,
+    paginas,
+    planos,
+    qualidade_texto,
+)
+from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -129,6 +139,35 @@ def _qualidade() -> dict:
     }
 
 
+_ROTULO = re.compile(r"^\*\*(.+?):\*\*\s*(.*)$", re.DOTALL)
+_ENFASE = re.compile(r"\*+([^*]+)\*+")
+
+
+def _partes_da_ajuda(texto: str) -> list[dict[str, str | None]]:
+    """Um termo do glossário em partes ({rotulo: "O que é", texto}), sem Markdown: o React só mostra
+    texto (nada de HTML pronto vindo daqui)."""
+    partes: list[dict[str, str | None]] = []
+    for paragrafo in texto.split("\n\n"):
+        achado = _ROTULO.match(paragrafo.strip())
+        rotulo, corpo = achado.groups() if achado else (None, paragrafo.strip())
+        partes.append({"rotulo": rotulo, "texto": _ENFASE.sub(r"\1", corpo).strip()})
+    return partes
+
+
+def _app() -> dict[str, object]:
+    """O que o app em React mostra e vem do Python: o painel da visão geral e o "?" de cada número."""
+    glossario = carregar_glossario()
+    termos = dict.fromkeys(i.termo for i in analises.ITENS_DO_PAINEL)
+    return {
+        "painel": {
+            "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
+            "legenda": analises.LEGENDA_DO_PAINEL,
+            "frase_do_cvar": analises.FRASE_DO_CVAR,
+        },
+        "glossario": {t: _partes_da_ajuda(glossario[t]) for t in termos},
+    }
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -139,6 +178,8 @@ def conteudo() -> dict[str, object]:
         "site": _site(),
         "legal": _legal(),
         "qualidade": _qualidade(),
+        "app": _app(),
+        "formatacao": formatos.casos_de_formatacao(),
     }
 
 

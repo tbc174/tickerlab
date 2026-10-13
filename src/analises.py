@@ -65,6 +65,59 @@ def painel_de_numeros(
     )
 
 
+# --- como a visão geral mostra o painel (o app em React lê daqui; há teste contra a tela) ---
+
+
+@dataclass(frozen=True)
+class ItemDoPainel:
+    """Um número do painel: o campo de `PainelDeNumeros`, o rótulo, o "?" e o formato."""
+
+    campo: str
+    rotulo: (
+        str  # pode ter {data} (o `campo_da_data` em dd/mm/aaaa) e {confianca} (do VaR)
+    )
+    termo: str  # o termo do glossário que explica o número
+    formato: str  # "pct", "pct_com_sinal" ou "decimal" (src/formatos.py)
+    grupo: str
+    campo_da_data: str | None = None
+
+
+RETORNO_E_RISCO = "Retorno e risco"
+CONSISTENCIA = "Consistência e dias extremos"
+ITENS_DO_PAINEL = (
+    ItemDoPainel("retorno_total", "Retorno total", "Retorno acumulado", "pct_com_sinal", RETORNO_E_RISCO),
+    ItemDoPainel("retorno_anualizado", "Retorno anualizado", "Retorno anualizado", "pct_com_sinal", RETORNO_E_RISCO),
+    ItemDoPainel("volatilidade_anual", "Volatilidade anual", "Volatilidade", "pct", RETORNO_E_RISCO),
+    ItemDoPainel("maior_queda", "Maior queda (drawdown)", "Drawdown", "pct", RETORNO_E_RISCO),
+    ItemDoPainel("sharpe", "Índice de Sharpe", "Índice de Sharpe", "decimal", CONSISTENCIA),
+    ItemDoPainel("melhor_dia", "Melhor dia ({data})", "Melhor e pior dia", "pct_com_sinal", CONSISTENCIA, "data_do_melhor_dia"),
+    ItemDoPainel("pior_dia", "Pior dia ({data})", "Melhor e pior dia", "pct_com_sinal", CONSISTENCIA, "data_do_pior_dia"),
+    ItemDoPainel("dias_de_alta", "Dias de alta", "Dias de alta", "pct", CONSISTENCIA),
+    ItemDoPainel("var", "Perda de um dia ruim (VaR {confianca}%)", "Perda de um dia ruim (VaR)", "pct", CONSISTENCIA),
+)  # fmt: skip
+LEGENDA_DO_PAINEL = "Passe o mouse no ? de cada número para ver o que ele significa."
+# a frase do CVaR, embaixo do painel ({confianca} e {cvar} já formatado)
+FRASE_DO_CVAR = (
+    "Perda média nos piores dias (CVaR {confianca}%): {cvar}. Quando o dia foi pior que o VaR, "
+    "esta foi a perda média. Estimativa feita com o passado, não um limite de perda."
+)
+
+
+def aviso_da_origem(origem: str, ate: str | None) -> str | None:
+    """O aviso quando os preços não são os mais recentes do Yahoo ("cache_antigo" ou "exemplo")."""
+    if origem == "cache_antigo":
+        return (
+            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
+            f"tinha guardado, até {ate}."
+        )
+    if origem == "exemplo":
+        return (
+            f"Estes são dados de exemplo guardados no projeto, até {ate}, "
+            "e não os mais recentes do Yahoo Finance."
+        )
+    return None
+
+
 @dataclass(frozen=True)
 class RiscoAoLongoDoTempo:
     """A queda desde o topo dia a dia, a pior delas e a volatilidade numa janela móvel."""

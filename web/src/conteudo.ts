@@ -1,4 +1,5 @@
 // O conteúdo que vem do Python (scripts/exportar_conteudo.py): o Python é a fonte da verdade.
+import appJson from "../conteudo/app.json";
 import marcaJson from "../conteudo/marca.json";
 import modulosJson from "../conteudo/modulos.json";
 import paginasJson from "../conteudo/paginas.json";
@@ -67,3 +68,26 @@ import qualidadeJson from "../conteudo/qualidade.json";
 export const legal = legalJson;
 // o selo "dado em conferência" e as regras fixas, com os mesmos textos do app
 export const qualidade = qualidadeJson;
+
+// --- o que só o app em React usa (scripts/exportar_conteudo.py, função _app) ---
+
+/** Um número do painel da visão geral (`ItemDoPainel` de src/analises.py). */
+export interface ItemDoPainel {
+  campo: string;
+  rotulo: string; // pode ter {data} e {confianca}
+  termo: string; // do glossário
+  formato: string; // "pct", "pct_com_sinal" ou "decimal"
+  grupo: string;
+  campo_da_data: string | null;
+}
+
+/** Um parágrafo do "?" de um termo: "O que é", "Exemplo", "Cuidado"... (sem Markdown). */
+export interface ParteDaAjuda {
+  rotulo: string | null;
+  texto: string;
+}
+
+export const conteudoDoApp: {
+  painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
+  glossario: Record<string, ParteDaAjuda[]>;
+} = appJson;

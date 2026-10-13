@@ -43,6 +43,12 @@ class CurvaV1(BaseModel):
     valores: list[float | None]
 
 
+def em_base_100(fechamento: pd.Series) -> CurvaV1:
+    """O fechamento dividido pelo primeiro dia, vezes 100: a forma da curva sem o preço."""
+    precos = fechamento.dropna()
+    return curva(precos / precos.iloc[0] * BASE)
+
+
 def curva(serie: pd.Series) -> CurvaV1:
     return CurvaV1(
         datas=[d.date() for d in pd.DatetimeIndex(serie.index)],
@@ -338,6 +344,9 @@ class AtivoV1(BaseModel):
     origem: str  # "atual", "cache_antigo" (o Yahoo falhou) ou "exemplo"
     taxa_livre_de_risco: float
     taxa_do_cdi: bool  # true: a taxa é o CDI do período
+    aviso_da_origem: (
+        str | None
+    )  # o aviso da tela quando os preços não são os mais recentes
 
 
 def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
@@ -350,12 +359,17 @@ def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
         origem=contexto.origem,
         taxa_livre_de_risco=contexto.taxa_livre_de_risco,
         taxa_do_cdi=contexto.taxa_do_cdi,
+        aviso_da_origem=analises.aviso_da_origem(
+            contexto.origem, contexto.dados.attrs.get("ate")
+        ),
     )
 
 
 class VisaoGeralV1(BaseModel):
     ativo: AtivoV1
     painel: PainelDeNumerosV1
+    curva: CurvaV1  # o fechamento em base 100 (nunca o preço bruto)
+    motivo_sem_anualizar: str | None  # por que o retorno anualizado veio vazio
 
 
 class RiscoDoAtivoV1(BaseModel):
