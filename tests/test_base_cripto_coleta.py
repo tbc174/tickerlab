@@ -109,7 +109,12 @@ def _acessos_wikipedia(url: str) -> bytes:
     )
     dias = pd.date_range(inicio, fim, freq="D")
     itens = [
-        {"article": "Bitcoin", "timestamp": d.strftime("%Y%m%d00"), "views": 10}
+        {
+            "project": url.split("/per-article/")[1].split("/")[0],
+            "article": "Bitcoin",
+            "timestamp": d.strftime("%Y%m%d00"),
+            "views": 10,
+        }
         for d in dias
     ]
     return json.dumps({"items": itens}).encode()
@@ -120,10 +125,26 @@ def test_wikipedia_so_os_dias_que_ja_valem(tmp_path):
 
     coleta.coletar_wikipedia(tmp_path, AGORA, fonte)
 
-    acessos = ler_tabela(tmp_path / "wikipedia", "dia")
-    assert acessos["dia"].min() == date(2015, 7, 1)
-    # o dia 11 vale no fim do dia 12 (antes de agora); o dia 12 só no fim do dia 13
-    assert acessos["dia"].max() == date(2026, 10, 11)
+    acessos = ler_tabela(tmp_path / "wikipedia", ["projeto", "dia"])
+    assert set(acessos["projeto"]) == {"en.wikipedia", "pt.wikipedia"}
+    for _, do_projeto in acessos.groupby("projeto"):
+        assert do_projeto["dia"].min() == date(2015, 7, 1)
+        # o dia 11 vale no fim do dia 12 (antes de agora); o dia 12 só no fim do dia 13
+        assert do_projeto["dia"].max() == date(2026, 10, 11)
+        assert do_projeto["dia"].is_unique
+
+
+def test_cada_projeto_da_wikipedia_pede_so_o_que_falta(tmp_path):
+    fonte = Fonte(_acessos_wikipedia)
+    coleta.coletar_wikipedia(tmp_path, AGORA, fonte)
+    fonte.pedidos.clear()
+
+    coleta.coletar_wikipedia(tmp_path, AGORA + timedelta(days=1), fonte)
+
+    # cada projeto pede só o dia que falta dele
+    assert [url.rsplit("/", 2)[-2:] for url in fonte.pedidos] == [
+        ["20261012", "20261012"]
+    ] * 2
 
 
 def _gdelt_do_dia(url: str) -> bytes:
@@ -178,8 +199,12 @@ def test_receita_acha_a_planilha_na_pagina_e_guarda_cada_versao(
     assert sum(url.endswith(".xls") for url in fonte.pedidos) == 1
     totais = ler_tabela(tmp_path / "receita" / "totais", ["mes", "divulgado_em"])
     assert len(totais) == 2
-    btc = ler_tabela(tmp_path / "receita" / "criptoativo", ["mes", "divulgado_em"])
-    assert set(btc["criptoativo"]) == {"BTC"}
+    por_criptoativo = ler_tabela(
+        tmp_path / "receita" / "criptoativo", ["mes", "divulgado_em"]
+    )
+    # a amostra tem AAVE e BTC; só os da lista entram
+    assert set(por_criptoativo["criptoativo"]) == {"BTC"}
+    assert set(coleta.CRIPTOATIVOS_DA_RECEITA) == {"BTC", "ETH", "USDT", "USDC", "BRZ"}
 
 
 def test_abrir_planilha_e_a_da_receita():
