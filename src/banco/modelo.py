@@ -476,3 +476,23 @@ leituras = sa.Table(
     _momento("lido_em"),
 )
 sa.Index("ix_leituras_cnpj", leituras.c.cnpj)
+# Radar, PR 1 (ADR 0024 do autor): uma linha por arquivo baixado das fontes oficiais, com de onde
+# veio, quando, o tamanho, o SHA-256 e a licença. Só dado público: nada de usuário aqui.
+SITUACOES_DA_COLETA = ("ok", "nao_encontrado", "falhou")
+coletas = sa.Table(
+    "coletas",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("fonte", sa.String(40), nullable=False),  # ex.: cvm-ipe, sec-13f
+    sa.Column("url", sa.String(1000), nullable=False),
+    sa.Column("situacao", sa.String(20), nullable=False),
+    sa.Column("bytes", sa.BigInteger),
+    sa.Column("sha256", sa.String(64)),
+    sa.Column("licenca", sa.String(80), nullable=False),
+    sa.Column("detalhe", sa.String(300)),
+    _momento("baixado_em"),
+    sa.CheckConstraint(
+        "situacao IN ('ok', 'nao_encontrado', 'falhou')", name="ck_coletas_situacao"
+    ),
+)
+sa.Index("ix_coletas_fonte_baixado_em", coletas.c.fonte, coletas.c.baixado_em)

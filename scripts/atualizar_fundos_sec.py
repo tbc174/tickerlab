@@ -18,6 +18,7 @@ import sqlalchemy as sa
 
 from src import catalogo
 from src import fundos_sec as f13
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.detentores import gravar_competencia
 from src.banco.negociacoes import ja_lidos, marcar_como_lidos
@@ -32,7 +33,7 @@ LIDAS = "sec_13f_base"  # marca das bases já lidas em `documentos_lidos`
 SEM_CONTATO = 2
 
 
-def baixar(url: str, agente: str) -> bytes:
+def _baixar_da_fonte(url: str, agente: str) -> bytes:
     time.sleep(PAUSA_ENTRE_CONSULTAS)
     resposta = requests.get(
         url,
@@ -41,6 +42,10 @@ def baixar(url: str, agente: str) -> bytes:
     )
     resposta.raise_for_status()
     return resposta.content
+
+
+# cada arquivo baixado fica no registro de coletas (Radar, PR 1)
+baixar = com_registro("sec-13f", _baixar_da_fonte)
 
 
 def nome_da_base(link: str) -> str:
