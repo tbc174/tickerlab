@@ -36,7 +36,7 @@ VERSAO_DA_FACHADA = "1"
 # sobe a versão de uma métrica quando o cálculo dela mudar (os testes "golden" cobram isso)
 VERSOES_DAS_FORMULAS: dict[str, str] = {
     "retorno_total": "1",
-    "retorno_anualizado": "1",
+    "retorno_anualizado": "2",  # 2: vazio com menos de ~1 ano (padrão GIPS)
     "volatilidade_anual": "1",
     "volatilidade_recente": "1",
     "maior_queda": "1",
@@ -212,11 +212,13 @@ def _retorno_e_risco(
         ind.calcular_retorno_acumulado(retorno).iloc[-1],
         "fração",
     )
+    anualizado = ind.retorno_anualizado_para_mostrar(retorno)
     m.add(
         "retorno_anualizado",
         "Retorno anualizado",
-        ind.calcular_retorno_anualizado(retorno),
+        anualizado,
         "fração",
+        motivo=ind.MOTIVO_SEM_ANUALIZAR if np.isnan(anualizado) else "",
     )
     m.add(
         "volatilidade_anual",

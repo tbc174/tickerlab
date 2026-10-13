@@ -70,6 +70,27 @@ def calcular_retorno_anualizado(retorno: pd.Series) -> float:
     return (1 + retorno_total) ** (DIAS_POR_ANO / len(retorno)) - 1
 
 
+# Com menos de ~1 ano, "ao ano" vira uma projeção que exagera (1 mês de +14% vira +438% ao ano), e o
+# padrão internacional de apresentação de desempenho (GIPS, do CFA Institute) proíbe anualizar
+# períodos menores que 1 ano. A folga cobre os feriados: o período "1 ano" do app tem de 246 a 253
+# retornos diários; o de 6 meses, uns 123.
+MIN_RETORNOS_PARA_ANUALIZAR = 240
+MOTIVO_SEM_ANUALIZAR = (
+    "Período menor que 1 ano: o retorno não é anualizado, porque a projeção exageraria."
+)
+
+
+def retorno_anualizado_para_mostrar(retorno: pd.Series) -> float:
+    """O retorno anualizado da tela, do PDF e da API: NaN com menos de ~1 ano (padrão GIPS).
+
+    As contas internas que precisam da escala anual (Sharpe, Sortino, Calmar) seguem com
+    `calcular_retorno_anualizado`.
+    """
+    if retorno.dropna().size < MIN_RETORNOS_PARA_ANUALIZAR:
+        return float("nan")
+    return calcular_retorno_anualizado(retorno)
+
+
 def calcular_indice_sharpe(
     retorno: pd.Series, taxa_livre_de_risco: float = 0.0
 ) -> float:

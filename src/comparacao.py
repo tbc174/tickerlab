@@ -102,7 +102,7 @@ def montar_tabela_comparativa(
         retorno = ind.calcular_retorno_diario(fechamento)
         linhas[ticker] = {
             "Retorno total": fechamento.iloc[-1] / fechamento.iloc[0] - 1,
-            "Retorno anualizado": ind.calcular_retorno_anualizado(retorno),
+            "Retorno anualizado": ind.retorno_anualizado_para_mostrar(retorno),
             "Volatilidade anual": ind.calcular_volatilidade_anual(retorno),
             "Maior queda": ind.calcular_drawdown(fechamento).min(),
             "Índice de Sharpe": ind.calcular_indice_sharpe(
