@@ -20,7 +20,7 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 .venv\Scripts\python -m ruff check .
 .venv\Scripts\python -m pyright                            # tipos (src, scripts e telas; ver pyrightconfig.json)
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup --cov   # suíte + cobertura (mínimo no .coveragerc)
-.venv\Scripts\python -m ruff format app.py telas src tests trader scripts
+.venv\Scripts\python -m ruff format app.py telas src base tests trader scripts
 .venv\Scripts\python -m scripts.gerar_site                # site público em site/ (há teste que confere)
 .venv\Scripts\python -m alembic upgrade head              # migrações do banco
 ```

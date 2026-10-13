@@ -84,9 +84,9 @@ jobs:
         if: steps.mudancas.outputs.so_texto != 'true'
         run: python -m ruff check .
 
-      - name: ruff (formatação do app, telas, src e tests)
+      - name: ruff (formatação do app, telas, src, base e tests)
         if: steps.mudancas.outputs.so_texto != 'true'
-        run: python -m ruff format --check app.py telas src tests trader scripts
+        run: python -m ruff format --check app.py telas src base tests trader scripts
 
       # tipos: só src/ e scripts/ por enquanto (regras e porquês no pyrightconfig.json)
       - name: pyright (tipos)

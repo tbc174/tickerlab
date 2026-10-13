@@ -6,6 +6,7 @@
 core = sysmon
 source =
     src
+    base
     telas
     trader
     app

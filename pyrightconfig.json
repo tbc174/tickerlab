@@ -2,7 +2,8 @@
   // Checagem de tipos (python -m pyright), etapa 3 do plano de qualidade (12/10/2026).
   // src/, scripts/ e telas/ (desde o fim da Fase E, 12/10/2026). O trader entra depois: é o código
   // da pesquisa (critério pré-registrado).
-  "include": ["src", "scripts", "telas"],
+  // base/ (série 1 da base de ML, 13/10/2026) entra desde o começo.
+  "include": ["src", "scripts", "telas", "base"],
   "typeCheckingMode": "basic",
   "pythonVersion": "3.12",
   // Desligadas porque quase tudo que acusam é engano com os tipos do pandas (centenas de casos
