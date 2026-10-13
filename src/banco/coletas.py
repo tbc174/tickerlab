@@ -29,6 +29,14 @@ LICENCAS = {
     "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
+    # base de cripto (ADRs 0041 e 0045 do autor)
+    "cftc": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+    "rfb": "Dados abertos da Receita Federal (Decreto 8.777/2016; citar a Receita)",
+    "wiki": "CC0 (acessos às páginas da Wikimedia)",
+    "gdelt": "GDELT (uso livre com citação; só contagem e tom, sem texto)",
+    "btc": "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)",
+    "kraken": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
+    "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 LIMITE_DO_DETALHE = 300
