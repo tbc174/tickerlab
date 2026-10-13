@@ -3,7 +3,7 @@
 
 import io
 import zipfile
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -13,6 +13,7 @@ from scripts import atualizar_eventos
 from src import eventos as ev
 from src.banco import eventos as repo
 from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
+from src.banco.modelo import eventos
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm"
 PETROBRAS, VALE = "33.000.167/0001-01", "33.592.510/0001-54"
@@ -253,3 +254,29 @@ def test_migracao_0008_vai_e_volta(tmp_path):
     desfazer_ate("0007", url=url)
     assert "eventos" not in sa.inspect(criar_engine(url)).get_table_names()
     migrar_para("head", url=url)
+
+
+def test_eventos_dos_tickers_filtra_pela_hora_da_coleta(motor, ipe, tickers):
+    """O Pulse pede só o que foi coletado depois da visita (intervalo aberto à esquerda)."""
+    antes = datetime(2026, 10, 12, 10, 0, tzinfo=UTC)
+    depois = antes + timedelta(days=1)
+    with motor.begin() as c:
+        repo.gravar_tickers(c, tickers)
+        repo.gravar_eventos(c, ipe)
+        todos = repo.eventos_dos_tickers(c, ["PETR4.SA"], date(2000, 1, 1))
+        novo = todos[0].protocolo
+        c.execute(sa.update(eventos).values(ingerido_em=antes))
+        c.execute(
+            sa.update(eventos).where(eventos.c.protocolo == novo).values(ingerido_em=depois)
+        )
+        entre = repo.eventos_dos_tickers(
+            c, ["PETR4.SA"], date(2000, 1, 1), coletados_entre=(antes, depois)
+        )
+        assert [e.protocolo for e in entre] == [novo]
+        mais_tarde = (depois, depois + timedelta(hours=1))
+        assert (
+            repo.eventos_dos_tickers(
+                c, ["PETR4.SA"], date(2000, 1, 1), coletados_entre=mais_tarde
+            )
+            == []
+        )
