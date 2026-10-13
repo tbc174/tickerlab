@@ -10,6 +10,7 @@ import streamlit as st
 from src import graficos, relatorios
 from src import indicadores as ind
 from src import presets as research_presets
+from src.analises import painel_de_numeros
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -66,74 +67,71 @@ def secao_painel_de_numeros(
     st.subheader("Painel de números")
     st.caption("Passe o mouse no ? de cada número para ver o que ele significa.")
 
-    retorno_acumulado = ind.calcular_retorno_acumulado(retorno)
-    drawdown = ind.calcular_drawdown(fechamento)
-    data_melhor, melhor_dia = ind.encontrar_melhor_dia(retorno)
-    data_pior, pior_dia = ind.encontrar_pior_dia(retorno)
+    painel = painel_de_numeros(
+        fechamento, retorno, taxa_livre_de_risco, confianca_do_var
+    )
 
     st.markdown("**Retorno e risco**")
     linha1 = st.columns([1.4, 1, 1, 1])
     with linha1[0]:  # o número principal da página, maior e mais claro
         mostrar_numero_principal(
             "Retorno total",
-            formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
+            formatar_pct(painel.retorno_total, com_sinal=True),
             ajuda=ajuda_do("Retorno acumulado"),
         )
     mostrar_metrica(
         linha1[1],
         "Retorno anualizado",
-        formatar_pct(ind.calcular_retorno_anualizado(retorno), com_sinal=True),
+        formatar_pct(painel.retorno_anualizado, com_sinal=True),
         "Retorno anualizado",
     )
     mostrar_metrica(
         linha1[2],
         "Volatilidade anual",
-        formatar_pct(ind.calcular_volatilidade_anual(retorno)),
+        formatar_pct(painel.volatilidade_anual),
         "Volatilidade",
     )
     mostrar_metrica(
         linha1[3],
         "Maior queda (drawdown)",
-        formatar_pct(drawdown.min()),
+        formatar_pct(painel.maior_queda),
         "Drawdown",
     )
 
     st.markdown("**Consistência e dias extremos**")
     linha2 = st.columns(5)
-    sharpe = ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco)
     mostrar_metrica(
         linha2[0],
         "Índice de Sharpe",
-        "—" if pd.isna(sharpe) else f"{sharpe:.2f}".replace(".", ","),
+        "—" if pd.isna(painel.sharpe) else f"{painel.sharpe:.2f}".replace(".", ","),
         "Índice de Sharpe",
     )
     mostrar_metrica(
         linha2[1],
-        f"Melhor dia ({data_melhor:%d/%m/%Y})",
-        formatar_pct(melhor_dia, com_sinal=True),
+        f"Melhor dia ({painel.data_do_melhor_dia:%d/%m/%Y})",
+        formatar_pct(painel.melhor_dia, com_sinal=True),
         "Melhor e pior dia",
     )
     mostrar_metrica(
         linha2[2],
-        f"Pior dia ({data_pior:%d/%m/%Y})",
-        formatar_pct(pior_dia, com_sinal=True),
+        f"Pior dia ({painel.data_do_pior_dia:%d/%m/%Y})",
+        formatar_pct(painel.pior_dia, com_sinal=True),
         "Melhor e pior dia",
     )
     mostrar_metrica(
         linha2[3],
         "Dias de alta",
-        formatar_pct(ind.calcular_percentual_dias_positivos(retorno)),
+        formatar_pct(painel.dias_de_alta),
         "Dias de alta",
     )
     mostrar_metrica(
         linha2[4],
         f"Perda de um dia ruim (VaR {confianca_do_var}%)",
-        formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
+        formatar_pct(painel.var),
         "Perda de um dia ruim (VaR)",
     )
-    cvar = ind.calcular_cvar_historico(retorno, confianca_do_var / 100)
     st.caption(
-        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(cvar)}.** "
+        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(painel.cvar)}.** "
         "Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o "
         "passado, não um limite de perda."
     )
