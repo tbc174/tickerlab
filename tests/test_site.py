@@ -96,7 +96,7 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
     urls = {p.url for p in PAGINAS} | {""}
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
-        for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z\-]*)", texto):
+        for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z0-9\-]*)", texto):
             assert pagina in urls, (arquivo.name, pagina)
 
 
