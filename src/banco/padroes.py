@@ -66,8 +66,9 @@ def tickers_por_empresa(conexao: sa.Connection) -> dict[str, list[str]]:
     """cnpj → tickers da B3 (para o preço da ação no corte)."""
     t = tickers_dos_emissores
     tickers: dict[str, list[str]] = {}
+    so_cvm = ~t.c.cnpj.startswith(PREFIXO_DA_SEC)  # os padrões são só da B3
     for cnpj, ticker in conexao.execute(
-        sa.select(t.c.cnpj, t.c.ticker).order_by(t.c.ticker)
+        sa.select(t.c.cnpj, t.c.ticker).where(so_cvm).order_by(t.c.ticker)
     ):
         tickers.setdefault(cnpj, []).append(ticker)
     return tickers
