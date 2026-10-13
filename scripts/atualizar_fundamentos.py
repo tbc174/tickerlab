@@ -22,7 +22,11 @@ from src import demonstracoes as dm
 from src import prazos
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
-from src.banco.demonstracoes import gravar_demonstracoes, gravar_setores
+from src.banco.demonstracoes import (
+    acrescentar_contas_novas,
+    gravar_demonstracoes,
+    gravar_setores,
+)
 from src.banco.eventos import gravar_eventos
 from src.configuracao import url_do_banco
 
@@ -85,10 +89,14 @@ def main(argv: list[str] | None = None) -> int:
             )
             with motor.begin() as conexao:
                 mudaram = gravar_demonstracoes(conexao, contas, documentos)
+                # documentos já guardados ganham as contas que o leitor passou a ler (sem
+                # virar reapresentação; série 2 da base de ML, PR 1)
+                acrescentadas = acrescentar_contas_novas(conexao, contas, documentos)
                 alertas = gravar_eventos(conexao, atrasos, fonte=prazos.FONTE_PRAZO)[0]
             log.info(
-                "%s %s: %s documentos lidos, %s novos ou atualizados, %s alertas de atraso novos",
-                documento, ano_do_arquivo, len(documentos), mudaram, alertas,
+                "%s %s: %s documentos lidos, %s novos ou atualizados, %s contas acrescentadas, "
+                "%s alertas de atraso novos",
+                documento, ano_do_arquivo, len(documentos), mudaram, acrescentadas, alertas,
             )  # fmt: skip
     except (requests.RequestException, ValueError, sa.exc.SQLAlchemyError) as erro:
         log.error("Coleta interrompida: %s", erro)
