@@ -18,7 +18,7 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup  # suíte inteira em 4 processos (~2 min; sem -n, ~12 min)
 .venv\Scripts\python -m pytest -q tests/test_planos.py    # um arquivo (prefira durante o trabalho)
 .venv\Scripts\python -m ruff check .
-.venv\Scripts\python -m pyright                            # tipos (src e scripts; ver pyrightconfig.json)
+.venv\Scripts\python -m pyright                            # tipos (src, scripts e telas; ver pyrightconfig.json)
 .venv\Scripts\python -m pytest -q -n 4 --dist loadgroup --cov   # suíte + cobertura (mínimo no .coveragerc)
 .venv\Scripts\python -m ruff format app.py telas src tests trader scripts
 .venv\Scripts\python -m scripts.gerar_site                # site público em site/ (há teste que confere)
@@ -35,7 +35,11 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 ## Arquitetura (onde cada coisa deve ficar)
 
 - **`src/` não importa o Streamlit.** As contas, regras e dados ficam em `src/`; a tela (cola com o
-  Streamlit) fica em `app.py`. Teste a regra em `src/` e a tela com `AppTest`.
+  Streamlit) fica em `telas/`, um arquivo ou pasta por grupo de páginas; o `app.py` só configura,
+  monta o menu e roda a página. Teste a regra em `src/` e a tela com `AppTest`.
+- **Nenhum estado mutável num módulo de `telas/`:** o `app.py` roda de novo a cada clique (as
+  variáveis dele são de cada sessão), mas um módulo importado roda uma vez por processo (as variáveis
+  dele seriam de todos os usuários). Estado de usuário vai no `st.session_state`.
 - **Um lugar só para cada verdade:** limites dos planos em `src/planos.py`; mapa de páginas e
   frases em `src/paginas.py`; cores e fontes em `src/marca.py` (identidade visual oficial); textos
   legais em `conteudo/`. O site público lê desses mesmos lugares.
@@ -53,6 +57,8 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 - Todo comportamento novo vem com teste; todo bug corrigido ganha teste de regressão.
 - Testes de tela: `tests/ajudantes_da_conta.py` (`abrir_app`, `ir_para`, `entrar_como`).
   No `AppTest`, `st.switch_page` só vale naquela execução: fixe a página com `ir_para`.
+- `monkeypatch` numa função que `telas/` importa pelo nome (`from src.x import f`): troque onde a
+  tela usa (`telas.y.f`), não só em `src.x`; o módulo da tela guarda o que recebeu na 1ª importação.
 - Sem internet nos testes: use `dados_de_exemplo/` e os dublês já existentes.
 - Princípio que tem teste: **sem olhar o futuro** (cortar o futuro não muda o passado).
 
