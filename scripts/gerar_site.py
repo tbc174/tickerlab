@@ -502,6 +502,29 @@ def _chamada_final() -> str:
 </section></div>"""
 
 
+# A linha do topo: ilustração no estilo das artes do manual (linhas e pontos sugerem perspectivas
+# e conexões), não dados de mercado. Fica numa faixa própria, abaixo do conteúdo do topo, para nada
+# passar por cima: uma linha clara apagada, a linha azul e o ponto onde ela termina.
+LARGURA_DA_LINHA, ALTURA_DA_LINHA = 1200, 160
+PONTOS_DE_APOIO = (
+    "0,120 140,108 260,116 400,82 520,94 660,64 800,74 960,50 1140,60 1200,56"
+)
+PONTOS_DA_LINHA = "0,140 150,128 280,96 410,112 540,74 680,90 820,58 980,70 1140,36"
+FIM_DA_LINHA = (1140, 36)
+LINHA_DO_HEROI = (
+    '<div class="linha-do-topo" aria-hidden="true">'
+    f'<svg class="linha-heroi" viewBox="0 0 {LARGURA_DA_LINHA} {ALTURA_DA_LINHA}" '
+    'preserveAspectRatio="none" aria-hidden="true" focusable="false">'
+    f'<polyline class="apoio" points="{PONTOS_DE_APOIO}"/>'
+    f'<path class="principal" pathLength="1" d="M{PONTOS_DA_LINHA.replace(" ", " L")}"/>'
+    "</svg>"
+    # o ponto fica fora do SVG (que estica na horizontal) para continuar redondo
+    '<span class="ponto-heroi" style="left: '
+    f"{FIM_DA_LINHA[0] / LARGURA_DA_LINHA:.1%}; top: {FIM_DA_LINHA[1] / ALTURA_DA_LINHA:.1%}"
+    '"></span></div>'
+)
+
+
 def _heroi(estilos: list[str]) -> str:
     exemplos = "".join(
         f'<a class="ticker" href="{link_do_app("visao-geral", ticker=s)}">'
@@ -509,7 +532,7 @@ def _heroi(estilos: list[str]) -> str:
         for s in catalogo.EXEMPLOS
     )
     return f"""
-<div class="escura">
+<div class="escura topo-da-pagina">
 <section class="heroi faixa" aria-labelledby="titulo-heroi">
   <div class="heroi-texto">
     <p class="olho">Inteligência financeira · B3 e EUA</p>
@@ -538,6 +561,7 @@ def _heroi(estilos: list[str]) -> str:
     <img src="/relatorio/{estilos[0]}-2.webp" width="560" height="792" alt="">
   </div>
 </section>
+{LINHA_DO_HEROI}
 </div>"""
 
 
@@ -958,7 +982,8 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 .botao.secundario:hover {{ border-color: var(--azul); }}
 .botao.pequeno {{ padding: .5rem .9rem; font-size: .92rem; }}
 .seta {{ font-weight: 700; text-decoration: none; }}
-.seta::after {{ content: " →"; }}
+.seta::after {{ content: " →"; display: inline-block; transition: transform 160ms ease; }}
+.seta:hover::after, .cartao:hover .seta::after {{ transform: translateX(3px); }}
 /* herói */
 .heroi {{ display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(2rem, 5vw, 4rem); align-items: center;
   padding-block: clamp(3rem, 8vw, 6rem); }}
@@ -971,6 +996,7 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 .busca input {{ flex: 1; min-width: 0; padding: .8rem 1rem .8rem 2.6rem; border-radius: 10px; font: 500 1rem "Manrope", sans-serif;
   background: var(--superficie) url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a9b5c7'%3E%3Cpath d='M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/%3E%3C/svg%3E") no-repeat .8rem center / 1.2rem;
   color: var(--texto); border: 1px solid var(--linha-forte); }}
+.busca input {{ transition: border-color 160ms ease, box-shadow 160ms ease; }}
 .busca input:focus {{ border-color: var(--azul); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 35%, transparent); }}
 #sugestoes {{ position: absolute; left: 0; right: 0; top: 100%; margin: .35rem 0 0; padding: .35rem; list-style: none; z-index: 4;
   background: var(--destaque); border: 1px solid var(--linha-forte); border-radius: 10px; box-shadow: 0 16px 40px var(--sombra); }}
@@ -1039,8 +1065,13 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
 .faq details {{ border-bottom: 1px solid var(--linha); padding: 1rem 0; max-width: 52rem; }}
 .faq summary {{ cursor: pointer; font-weight: 700; font-size: 1.05rem; list-style: none; }}
 .faq summary::-webkit-details-marker {{ display: none; }}
-.faq summary::after {{ content: "+"; float: right; color: var(--azul-texto); font-weight: 800; }}
-.faq details[open] summary::after {{ content: "−"; }}
+.faq summary::after {{ content: "+"; float: right; color: var(--azul-texto); font-weight: 800;
+  transition: transform 220ms ease; }}
+.faq details[open] summary::after {{ transform: rotate(45deg); }}
+/* a resposta abre com a altura animada (navegadores sem suporte só abrem, sem animar) */
+.faq details::details-content {{ block-size: 0; overflow-y: clip;
+  transition: block-size 240ms ease, content-visibility 240ms allow-discrete; }}
+.faq details[open]::details-content {{ block-size: auto; }}
 .faq p {{ color: var(--apagado); margin: .6rem 0 0; }}
 .final {{ text-align: center; }}
 .final p {{ margin-inline: auto; }}
@@ -1056,6 +1087,36 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
 .rodape nav a {{ color: var(--apagado); text-decoration: none; }}
 .rodape nav a:hover {{ color: var(--texto); }}
 .rodape .aviso {{ grid-column: 1 / -1; color: var(--sutil); font-size: .86rem; max-width: none; margin: 0; }}
+/* --- movimento (blueprint, seção 09): curto, com função, uma vez; nunca em laço ------------ */
+:root {{ interpolate-size: allow-keywords; }}
+/* troca de página: o conteúdo cruza suavemente e o topo fica parado */
+@view-transition {{ navigation: auto; }}
+.topo {{ view-transition-name: topo; }}
+::view-transition-old(root), ::view-transition-new(root) {{ animation-duration: 220ms; }}
+/* as sugestões da busca surgem do campo */
+#sugestoes {{ transition: opacity 160ms ease, transform 160ms ease; }}
+@starting-style {{ #sugestoes {{ opacity: 0; transform: translateY(-4px); }} }}
+/* o momento da página inicial: a linha se desenha, o ponto aparece, o texto e o relatório chegam */
+.topo-da-pagina {{ overflow: hidden; }}
+.topo-da-pagina > .heroi {{ padding-bottom: 1rem; }}
+.linha-do-topo {{ position: relative; height: clamp(80px, 11vw, 150px); }}
+.linha-heroi {{ position: absolute; inset: 0; width: 100%; height: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 45%); mask-image: linear-gradient(90deg, transparent 0%, #000 45%); }}
+.linha-heroi polyline, .linha-heroi path {{ fill: none; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }}
+.linha-heroi .apoio {{ stroke: var(--texto); stroke-width: 2; opacity: .2; }}
+.linha-heroi .principal {{ stroke: var(--azul); stroke-width: 4; stroke-dasharray: 1; stroke-dashoffset: 0;
+  animation: tl-desenhar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }}
+.ponto-heroi {{ position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+  background: var(--texto); animation: tl-ponto 260ms ease-out 1200ms both; }}
+.heroi-texto > * {{ animation: tl-chegar 420ms cubic-bezier(.2, .7, .2, 1) both; }}
+.heroi-texto > :nth-child(2) {{ animation-delay: 60ms; }}
+.heroi-texto > :nth-child(3) {{ animation-delay: 120ms; }}
+.heroi-texto > :nth-child(n+4) {{ animation-delay: 180ms; }}
+.heroi-visual img {{ animation: tl-folha 700ms cubic-bezier(.2, .7, .2, 1) 200ms both; }}
+@keyframes tl-desenhar {{ from {{ stroke-dashoffset: 1; }} to {{ stroke-dashoffset: 0; }} }}
+@keyframes tl-ponto {{ from {{ opacity: 0; transform: scale(.4); }} to {{ opacity: 1; transform: none; }} }}
+@keyframes tl-chegar {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: none; }} }}
+@keyframes tl-folha {{ from {{ opacity: 0; transform: translateY(24px) rotate(4deg); }} to {{ opacity: 1; transform: rotate(1.5deg); }} }}
 /* celular */
 @media (max-width: 860px) {{
   .heroi {{ grid-template-columns: 1fr; }}
@@ -1070,7 +1131,9 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
   #sugestoes .tipo {{ display: none; }}
 }}
 @media (prefers-reduced-motion: reduce) {{
-  * {{ transition: none !important; animation: none !important; scroll-behavior: auto !important; }}
+  *, *::before, *::after, *::details-content {{ transition: none !important; animation: none !important;
+    scroll-behavior: auto !important; }}
+  @view-transition {{ navigation: none; }}
 }}
 """
 
@@ -1095,7 +1158,9 @@ JS = r"""// gerado por scripts/gerar_site.py — tema, busca de ativos e vitrine
   for (const botao of document.querySelectorAll("[data-tema-botao]")) {
     botao.addEventListener("click", () => {
       const escuro = raiz.dataset.tema !== "escuro";
-      aplicarTema(escuro);
+      const trocar = () => aplicarTema(escuro);
+      const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (document.startViewTransition && !calmo) document.startViewTransition(trocar); else trocar();
       try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
     });
   }

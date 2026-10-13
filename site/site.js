@@ -18,7 +18,9 @@
   for (const botao of document.querySelectorAll("[data-tema-botao]")) {
     botao.addEventListener("click", () => {
       const escuro = raiz.dataset.tema !== "escuro";
-      aplicarTema(escuro);
+      const trocar = () => aplicarTema(escuro);
+      const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (document.startViewTransition && !calmo) document.startViewTransition(trocar); else trocar();
       try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
     });
   }

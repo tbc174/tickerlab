@@ -203,3 +203,21 @@ def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
     # o que ainda não existe não leva a lugar nenhum
     for cartao in re.findall(r'<article class="cartao breve">.*?</article>', texto):
         assert "href=" not in cartao
+
+
+def test_animacoes_do_site_respeitam_quem_pede_menos_movimento():
+    """Catálogo de animações do blueprint (seção 09), só com CSS e JS próprios."""
+    css = (SITE / "estilo.css").read_text(encoding="utf-8")
+    assert "@view-transition { navigation: auto; }" in css  # troca suave entre páginas
+    reduzir = css[css.index("@media (prefers-reduced-motion: reduce)") :]
+    assert "animation: none !important" in reduzir
+    assert "@view-transition { navigation: none; }" in reduzir
+    js = (SITE / "site.js").read_text(encoding="utf-8")
+    assert "startViewTransition" in js and "prefers-reduced-motion" in js
+
+
+def test_a_linha_do_heroi_e_decorativa():
+    """O desenho do topo é ilustração (manual, seção 5): escondido dos leitores de tela."""
+    inicio = (SITE / "index.html").read_text(encoding="utf-8")
+    linha = re.search(r'<svg class="linha-heroi"[^>]*>', inicio)
+    assert linha and 'aria-hidden="true"' in linha.group(0)
