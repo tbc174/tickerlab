@@ -1,4 +1,5 @@
-"""A identidade visual do TickerLab não se desfaz sem ninguém perceber (aprovada em 11/10/2026)."""
+"""A identidade visual do TickerLab não se desfaz sem ninguém perceber (manual de identidade v1,
+13/10/2026)."""
 
 from pathlib import Path
 
@@ -38,12 +39,52 @@ def test_as_fontes_vem_do_proprio_site_e_nao_do_google():
         assert (marca.PASTA_ESTATICA / "fontes" / licenca).exists()
 
 
+def test_as_cores_institucionais_sao_as_do_manual():
+    assert (marca.MARINHO, marca.AZUL, marca.CLARO, marca.AZUL_CLARO) == (
+        "#0a1f44",
+        "#2962ff",
+        "#f6f8fb",
+        "#e8f0ff",
+    )
+
+
+def test_o_simbolo_preserva_os_dois_tracos_do_manual():
+    """Os dois traçados do SVG original, sem redesenhar (manual, seção 2)."""
+    svg = marca.simbolo_svg()
+    assert 'd="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z"' in svg
+    assert 'd="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z"' in svg
+    assert 'viewBox="9 14 60 60"' in svg  # só a área visível, quadrada
+
+
+def test_em_fundo_escuro_so_o_topo_muda_de_cor():
+    claro = marca.simbolo_svg()
+    escuro = marca.simbolo_svg(topo=marca.CLARO)
+    assert f'fill="{marca.MARINHO}"' in claro and f'fill="{marca.CLARO}"' in escuro
+    assert (
+        claro.count(f'fill="{marca.AZUL}"') == escuro.count(f'fill="{marca.AZUL}"') == 1
+    )
+
+
+def test_a_tela_de_entrada_usa_o_simbolo_de_fundo_escuro():
+    from telas.conta.entrada import marca_html
+
+    assert f'fill="{marca.CLARO}"' in marca_html()  # o app é escuro
+    assert f'fill="{marca.MARINHO}"' not in marca_html()
+
+
+def test_o_icone_da_aba_se_adapta_ao_tema_do_navegador():
+    svg = marca.icone_svg()
+    assert "prefers-color-scheme: dark" in svg
+    assert marca.MARINHO in svg and marca.CLARO in svg
+
+
 def test_os_arquivos_do_simbolo_existem_e_batem_com_o_desenho():
     assert (
         marca.ARQUIVO_DO_SIMBOLO.read_text(encoding="utf-8").strip()
-        == marca.simbolo_svg()
+        == marca.icone_svg()
     )
     assert marca.ARQUIVO_DO_ICONE.exists() and marca.ARQUIVO_DA_ASSINATURA.exists()
+    assert marca.ARQUIVO_DE_COMPARTILHAMENTO.exists()
 
 
 def test_a_imagem_docker_leva_a_pasta_static():

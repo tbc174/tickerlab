@@ -7,29 +7,28 @@
 <style>
 @font-face { font-family: M; src: url("../static/fontes/Manrope-VariableFont_wght.ttf"); font-weight: 200 800; }
 @font-face { font-family: J; src: url("../static/fontes/JetBrainsMono-SemiBold.ttf"); }
-html, body { margin: 0; width: 1280px; height: 400px; overflow: hidden; background: #0a0d13; }
-.c { position: relative; width: 1280px; height: 400px; font-family: M, sans-serif; color: #e8ecf4;
-  background: radial-gradient(900px 420px at 85% 30%, rgba(41,98,255,.20), transparent 60%), #0a0d13; }
-.grade { position: absolute; inset: 0; background-image: linear-gradient(rgba(148,163,190,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,190,.07) 1px, transparent 1px); background-size: 40px 40px; mask-image: linear-gradient(90deg, transparent 0%, #000 55%); }
+html, body { margin: 0; width: 1280px; height: 400px; overflow: hidden; background: #0a1f44; }
+.c { position: relative; width: 1280px; height: 400px; font-family: M, sans-serif; color: #f6f8fb; background: #0a1f44; }
+.grade { position: absolute; inset: 0; background-image: linear-gradient(rgba(232,240,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(232,240,255,.07) 1px, transparent 1px); background-size: 40px 40px; mask-image: linear-gradient(90deg, transparent 0%, #000 55%); }
 svg.graf { position: absolute; right: 0; top: 0; }
 .txt { position: absolute; left: 72px; top: 60px; }
 .marca { display: flex; align-items: center; gap: 22px; }
 .nome { font-weight: 800; font-size: 76px; letter-spacing: -0.03em; line-height: 1; }
-.nome b { color: #6e95ff; font-weight: 800; }
+.nome b { color: #2962ff; font-weight: 800; }
 .olho { margin-top: 30px; color: #6e95ff; font-weight: 800; font-size: 15px; letter-spacing: .16em; text-transform: uppercase; }
 .frase { margin-top: 10px; font-size: 27px; font-weight: 600; line-height: 1.3; max-width: 600px; }
-.frase span { color: #93a0b8; font-weight: 500; }
+.frase span { color: #a9b8d6; font-weight: 500; }
 .pilulas { margin-top: 30px; display: flex; gap: 10px; }
-.p { border: 1px solid rgba(148,163,190,.22); background: #10141c; border-radius: 999px; padding: 7px 14px; font-size: 15px; font-weight: 600; color: #c9d2e3; }
-.tk { position: absolute; right: 64px; bottom: 34px; font-family: J, monospace; font-size: 14px; color: #93a0b8; display: flex; gap: 22px; }
-.tk .a { color: #2ebd85; } .tk .q { color: #f0525b; }
+.p { border: 1px solid rgba(232,240,255,.22); background: #102752; border-radius: 999px; padding: 7px 14px; font-size: 15px; font-weight: 600; color: #e8f0ff; }
+.tk { position: absolute; right: 64px; bottom: 34px; font-family: J, monospace; font-size: 14px; color: #a9b8d6; display: flex; gap: 22px; }
+.tk .a { color: #2ebd85; } .tk .q { color: #f76169; }
 </style></head>
 <body><div class="c">
 <div class="grade"></div>
 <svg class="graf" width="760" height="400" viewBox="0 0 760 400" id="g"></svg>
 <div class="txt">
   <div class="marca">
-    <svg width="84" height="84" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2962ff"/><rect x="7" y="7" width="18" height="3.6" rx="1.8" fill="#fff"/><rect x="14.6" y="10" width="2.8" height="16" rx="1.4" fill="#fff"/><rect x="11.6" y="13.5" width="8.8" height="9" rx="2" fill="#fff"/></svg>
+    <svg width="84" height="84" viewBox="9 14 60 60"><path d="M9 14 H69 V25 C69 32 64 35 57 35 H9 Z" fill="#f6f8fb"/><path d="M32 35 L51 26 V59 C51 64 48 67 43 70 L32 74 Z" fill="#2962ff"/></svg>
     <div class="nome">Ticker<b>Lab</b></div>
   </div>
   <div class="olho">Laboratório de ações · B3 e EUA</div>
@@ -47,7 +46,7 @@ const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFix
 g.innerHTML = `<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2962ff" stop-opacity=".35"/><stop offset="1" stop-color="#2962ff" stop-opacity="0"/></linearGradient>
 <linearGradient id="f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".45" stop-color="#fff" stop-opacity="1"/></linearGradient>
 <mask id="m"><rect width="760" height="400" fill="url(#f)"/></mask></defs>
-<g mask="url(#m)"><path d="${d} L${pts[n-1][0]} 400 L0 400 Z" fill="url(#a)"/><path d="${d}" fill="none" stroke="#6e95ff" stroke-width="3" stroke-linejoin="round"/>
-<circle cx="${pts[n-1][0]}" cy="${pts[n-1][1]}" r="7" fill="#6e95ff"/><circle cx="${pts[n-1][0]}" cy="${pts[n-1][1]}" r="14" fill="#6e95ff" opacity=".25"/></g>`;
+<g mask="url(#m)"><path d="${d} L${pts[n-1][0]} 400 L0 400 Z" fill="url(#a)"/><path d="${d}" fill="none" stroke="#2962ff" stroke-width="4" stroke-linejoin="round"/>
+<circle cx="${pts[n-1][0]}" cy="${pts[n-1][1]}" r="7" fill="#f6f8fb"/></g>`;
 </script>
 </body></html>

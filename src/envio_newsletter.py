@@ -81,7 +81,7 @@ def _item_em_html(item: Item) -> str:
     if item.trechos:
         citacoes = " ".join(f"“{_e(t)}”" for t in item.trechos)
         partes.append(
-            f'<p style="margin:0 0 4px;color:{marca.TEXTO_SUTIL};font-size:13px">'
+            f'<p style="margin:0 0 4px;color:{marca.PAPEL_SUTIL};font-size:13px">'
             f"{_e(TITULO_DOS_TRECHOS)}: {citacoes}</p>"
         )
     if item.link:
@@ -114,7 +114,7 @@ def montar_email(edicao: Edicao, link_de_saida: str) -> Email:
         corpo_texto.append(f"\n== {secao.titulo} ==")
         if not secao.itens:
             corpo_html.append(
-                f'<p style="color:{marca.TEXTO_SUTIL}">{_e(secao.vazio)}</p>'
+                f'<p style="color:{marca.PAPEL_SUTIL}">{_e(secao.vazio)}</p>'
             )
             corpo_texto.append(secao.vazio)
         for item in secao.itens:
@@ -128,11 +128,13 @@ def montar_email(edicao: Edicao, link_de_saida: str) -> Email:
     html_final = (
         f'<div style="font-family:{marca.FONTE},Arial,sans-serif;color:{marca.PAPEL_TEXTO};'
         f'max-width:640px;margin:0 auto;padding:16px">'
-        f'<p style="font-size:13px;color:{marca.TEXTO_SUTIL}">{_e(assunto)}</p>'
+        f'<p style="margin:0 0 4px;font-size:22px;font-weight:800;color:{marca.MARINHO}">'
+        f'Ticker<span style="color:{marca.AZUL}">Lab</span></p>'
+        f'<p style="font-size:13px;color:{marca.PAPEL_SUTIL}">{_e(assunto)}</p>'
         + "".join(corpo_html)
         + '<h2 style="font-size:17px;margin:28px 0 0">Limites</h2>'
         f"<ul>{limites_html}</ul>"
-        f'<p style="font-size:12px;color:{marca.TEXTO_SUTIL};margin-top:32px">{_e(rodape)} '
+        f'<p style="font-size:12px;color:{marca.PAPEL_SUTIL};margin-top:32px">{_e(rodape)} '
         f'<a href="{_e(link_de_saida)}" style="color:{marca.AZUL}">sair da Newsletter</a>.</p>'
         "</div>"
     )

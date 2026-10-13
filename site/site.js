@@ -1,6 +1,27 @@
-// gerado por scripts/gerar_site.py — busca de ativos e vitrine do Report Studio
+// gerado por scripts/gerar_site.py — tema, busca de ativos e vitrine do Report Studio
 (() => {
   "use strict";
+
+  // --- tema: o site abre claro; a escolha do escuro fica guardada neste navegador -----------
+  const raiz = document.documentElement;
+  const corDaBarra = document.querySelector('meta[name="theme-color"]');
+  const aplicarTema = (escuro) => {
+    if (escuro) raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
+    // a barra do navegador no celular acompanha o fundo (a cor vem do próprio CSS)
+    if (corDaBarra) corDaBarra.content = getComputedStyle(raiz).getPropertyValue("--fundo").trim();
+    for (const botao of document.querySelectorAll("[data-tema-botao]")) {
+      botao.setAttribute("aria-label", escuro ? "Usar o tema claro" : "Usar o tema escuro");
+      botao.title = escuro ? "Tema claro" : "Tema escuro";
+    }
+  };
+  aplicarTema(raiz.dataset.tema === "escuro");
+  for (const botao of document.querySelectorAll("[data-tema-botao]")) {
+    botao.addEventListener("click", () => {
+      const escuro = raiz.dataset.tema !== "escuro";
+      aplicarTema(escuro);
+      try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
+    });
+  }
   const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
   // --- busca: filtra o catálogo enquanto a pessoa digita e abre a análise no app -----------

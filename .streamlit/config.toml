@@ -1,6 +1,6 @@
-# Tema do TickerLab (identidade aprovada em 11/10/2026; as cores vêm de src/marca.py e um teste
-# confere que batem). Quase todo o visual sai daqui, do tema oficial do Streamlit; o CSS próprio
-# (src/estilo.py) fica só para o que o tema não cobre.
+# Tema do TickerLab (manual de identidade v1, 13/10/2026: escuro em marinho; as cores vêm de
+# src/marca.py e um teste confere que batem). Quase todo o visual sai daqui, do tema oficial do
+# Streamlit; o CSS próprio (src/estilo.py) fica só para o que o tema não cobre.
 
 [server]
 # serve a pasta static/ (fontes e símbolo): as fontes saem do nosso servidor, não do Google Fonts,
@@ -34,22 +34,22 @@ headingFontWeights = [800, 800, 700, 700, 600, 600]
 metricValueFontWeight = 800
 # cores (src/marca.py)
 primaryColor = "#2962ff"
-backgroundColor = "#0a0d13"
-secondaryBackgroundColor = "#161b26"
-textColor = "#e8ecf4"
+backgroundColor = "#071733"
+secondaryBackgroundColor = "#102752"
+textColor = "#f6f8fb"
 linkColor = "#6e95ff"
 linkUnderline = false
-borderColor = "rgba(148, 163, 190, 0.18)"
-dataframeBorderColor = "rgba(148, 163, 190, 0.14)"
-dataframeHeaderBackgroundColor = "#10141c"
+borderColor = "rgba(232, 240, 255, 0.18)"
+dataframeBorderColor = "rgba(232, 240, 255, 0.12)"
+dataframeHeaderBackgroundColor = "#0a1f44"
 showWidgetBorder = true
 baseRadius = "0.625rem"
 buttonRadius = "0.625rem"
 blueColor = "#6e95ff"
 greenColor = "#2ebd85"
-redColor = "#f0525b"
+redColor = "#f76169"
 orangeColor = "#f5a524"
 yellowColor = "#f5b83d"
 violetColor = "#a98bff"
-grayColor = "#93a0b8"
+grayColor = "#a9b8d6"
 chartCategoricalColors = ["#6e95ff", "#f5a524", "#2bc4a9", "#e874b6", "#e8d44d", "#a98bff"]

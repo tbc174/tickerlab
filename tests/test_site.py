@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from scripts import gerar_site as gs
-from src import planos
+from src import marca, planos
 from src.paginas import PAGINAS
 
 SITE = Path(__file__).resolve().parent.parent / "site"
@@ -138,3 +138,25 @@ def test_markdown_simples_vira_html():
     assert "<strong>negrito</strong>" in html and "<em>ênfase</em>" in html
     assert "<ul><li>um</li><li>dois</li></ul>" in html
     assert "<td>&lt;x&gt;</td>" in html  # o texto é escapado
+
+
+def test_o_site_abre_claro_e_tem_o_botao_do_tema_escuro():
+    """Manual de identidade v1: site claro com faixas em marinho; o escuro é uma opção."""
+    css = (SITE / "estilo.css").read_text(encoding="utf-8")
+    raiz = css[css.index(":root {") : css.index("}", css.index(":root {"))]
+    assert "color-scheme: light" in raiz and marca.CLARO in raiz
+    assert ':root[data-tema="escuro"]' in css and ".escura" in css
+    for arquivo in PAGINAS_HTML:
+        texto = arquivo.read_text(encoding="utf-8")
+        assert "data-tema-botao" in texto, arquivo.name
+        # a escolha guardada vale antes de pintar a página (sem piscar o tema claro)
+        assert texto.index('localStorage.getItem("tema")') < texto.index("<body>")
+    assert "data-tema-botao" in (SITE / "site.js").read_text(encoding="utf-8")
+
+
+def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
+    inicio = (SITE / "index.html").read_text(encoding="utf-8")
+    assert marca.TRACO_DO_TOPO in inicio and marca.TRACO_DA_HASTE in inicio
+    assert "Menos ruído. Mais inteligência para investir." in inicio
+    assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
+    assert (SITE / "marca" / "compartilhamento.png").exists()

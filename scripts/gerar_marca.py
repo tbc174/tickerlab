@@ -6,77 +6,172 @@ Rodar só quando a marca mudar. Fica fora de src/ porque usa a biblioteca de ima
 que o site no ar não precisa: ele só serve os arquivos já gerados.
 """
 
+import re
+
 from PIL import Image, ImageDraw, ImageFont
 
 from src.marca import (
+    AREA_VISIVEL,
     ARQUIVO_DA_ASSINATURA,
     ARQUIVO_DA_FONTE,
+    ARQUIVO_DE_COMPARTILHAMENTO,
     ARQUIVO_DO_ICONE,
     ARQUIVO_DO_SIMBOLO,
     AZUL,
     AZUL_TEXTO,
-    TEXTO,
-    simbolo_svg,
+    CLARO,
+    MARINHO,
+    TEXTO_APAGADO,
+    TRACO_DA_HASTE,
+    TRACO_DO_TOPO,
+    icone_svg,
 )
 
+SUPERAMOSTRA = (
+    4  # desenha 4× maior e reduz: bordas suaves (o Pillow não suaviza polígonos)
+)
+PONTOS_POR_CURVA = 24
+ASSINATURA_INSTITUCIONAL = "Menos ruído. Mais inteligência para investir."
 
-def desenhar_icone_png(tamanho: int = 256) -> Image.Image:
-    """O símbolo como imagem (Pillow), para o ícone da aba do navegador."""
-    escala = tamanho / 32
-    imagem = Image.new("RGBA", (tamanho, tamanho), (0, 0, 0, 0))
+
+def pontos_do_traco(caminho: str) -> list[tuple[float, float]]:
+    """O contorno de um traço do SVG (só os comandos absolutos M, H, V, L, C e Z, os únicos que o
+    símbolo usa), com as curvas trocadas por segmentos curtos."""
+    pontos: list[tuple[float, float]] = []
+    for comando, numeros in re.findall(r"([MHVLCZ])([^MHVLCZ]*)", caminho):
+        valores = [float(n) for n in numeros.split()]
+        x, y = pontos[-1] if pontos else (0.0, 0.0)
+        if comando in "ML":
+            pontos.append((valores[0], valores[1]))
+        elif comando == "H":
+            pontos.append((valores[0], y))
+        elif comando == "V":
+            pontos.append((x, valores[0]))
+        elif comando == "C":
+            x1, y1, x2, y2, x3, y3 = valores
+            for passo in range(1, PONTOS_POR_CURVA + 1):
+                t = passo / PONTOS_POR_CURVA
+                u = 1 - t
+                pontos.append(
+                    (
+                        u**3 * x + 3 * u**2 * t * x1 + 3 * u * t**2 * x2 + t**3 * x3,
+                        u**3 * y + 3 * u**2 * t * y1 + 3 * u * t**2 * y2 + t**3 * y3,
+                    )
+                )
+    return pontos
+
+
+def desenhar_simbolo_png(tamanho: int, topo: str = CLARO) -> Image.Image:
+    """O símbolo (só a área visível, quadrada) em fundo transparente. O padrão é a versão para
+    fundo escuro (topo claro), a do topo do app e da imagem de compartilhamento."""
+    grande = tamanho * SUPERAMOSTRA
+    x0, y0, lado, _ = AREA_VISIVEL
+    escala = grande / lado
+    imagem = Image.new("RGBA", (grande, grande), (0, 0, 0, 0))
     lapis = ImageDraw.Draw(imagem)
-
-    def retangulo(
-        x: float, y: float, largura: float, altura: float, raio: float, cor: str
-    ) -> None:
-        lapis.rounded_rectangle(
-            [x * escala, y * escala, (x + largura) * escala, (y + altura) * escala],
-            radius=raio * escala,
+    for traco, cor in ((TRACO_DO_TOPO, topo), (TRACO_DA_HASTE, AZUL)):
+        lapis.polygon(
+            [((x - x0) * escala, (y - y0) * escala) for x, y in pontos_do_traco(traco)],
             fill=cor,
         )
+    return imagem.resize((tamanho, tamanho), Image.Resampling.LANCZOS)
 
-    retangulo(0, 0, 32, 32, 8, AZUL)
-    retangulo(7, 7, 18, 3.6, 1.8, "#ffffff")
-    retangulo(14.6, 10, 2.8, 16, 1.4, "#ffffff")
-    retangulo(11.6, 13.5, 8.8, 9, 2, "#ffffff")
+
+def desenhar_icone_png(tamanho: int = 128) -> Image.Image:
+    """O ícone do app (aba do navegador e atalhos): o símbolo de fundo escuro num quadrado
+    marinho de cantos arredondados, para aparecer em qualquer cor de aba."""
+    grande = tamanho * SUPERAMOSTRA
+    imagem = Image.new("RGBA", (grande, grande), (0, 0, 0, 0))
+    ImageDraw.Draw(imagem).rounded_rectangle(
+        [0, 0, grande - 1, grande - 1], radius=grande * 0.22, fill=MARINHO
+    )
+    imagem = imagem.resize((tamanho, tamanho), Image.Resampling.LANCZOS)
+    lado = round(tamanho * 0.64)
+    margem = (tamanho - lado) // 2
+    simbolo = desenhar_simbolo_png(lado)
+    imagem.paste(simbolo, (margem, margem), simbolo)
     return imagem
 
 
+def _fonte(tamanho: int, peso: str) -> ImageFont.FreeTypeFont:
+    fonte = ImageFont.truetype(str(ARQUIVO_DA_FONTE), tamanho)
+    fonte.set_variation_by_name(peso)
+    return fonte
+
+
+def desenhar_nome(
+    lapis: ImageDraw.ImageDraw,
+    x: float,
+    meio: float,
+    fonte: ImageFont.FreeTypeFont,
+    cor_do_lab: str = AZUL_TEXTO,
+) -> None:
+    """ "Ticker" claro + "Lab" em azul, centrados na altura `meio` (versão para fundo escuro).
+
+    Em tamanho de destaque o "Lab" vai no azul elétrico, como nas peças aprovadas; pequeno, no
+    azul mais claro, que se lê sobre o marinho."""
+    lapis.text((x, meio), "Ticker", font=fonte, fill=CLARO, anchor="lm")
+    largura_ticker = lapis.textlength("Ticker", font=fonte)
+    lapis.text(
+        (x + largura_ticker, meio), "Lab", font=fonte, fill=cor_do_lab, anchor="lm"
+    )
+
+
 def desenhar_assinatura_png(altura: int = 96) -> Image.Image:
-    """Símbolo + "Ticker" + "Lab" (azul claro) numa imagem só, para o `st.logo` do topo.
+    """Símbolo + "Ticker" + "Lab" numa imagem só, para o `st.logo` do topo do app (escuro).
 
     O texto é desenhado com a própria Manrope ExtraBold, então a imagem não depende de fonte
     nenhuma no navegador. Fundo transparente.
     """
-    simbolo = desenhar_icone_png(altura)
-    fonte = ImageFont.truetype(str(ARQUIVO_DA_FONTE), int(altura * 0.62))
-    fonte.set_variation_by_name("ExtraBold")
+    simbolo = desenhar_simbolo_png(altura)
+    fonte = _fonte(int(altura * 0.62), "ExtraBold")
     folga = int(altura * 0.28)
     rascunho = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    largura_ticker = rascunho.textlength("Ticker", font=fonte)
-    largura_lab = rascunho.textlength("Lab", font=fonte)
-    largura = altura + folga + int(largura_ticker + largura_lab) + 4
-    imagem = Image.new("RGBA", (largura, altura), (0, 0, 0, 0))
+    largura_nome = rascunho.textlength("TickerLab", font=fonte)
+    imagem = Image.new(
+        "RGBA", (altura + folga + int(largura_nome) + 4, altura), (0, 0, 0, 0)
+    )
     imagem.paste(simbolo, (0, 0), simbolo)
+    desenhar_nome(ImageDraw.Draw(imagem), altura + folga, altura / 2, fonte)
+    return imagem
+
+
+def desenhar_compartilhamento_png(
+    largura: int = 1200, altura: int = 630
+) -> Image.Image:
+    """A imagem dos links compartilhados (WhatsApp, LinkedIn): fundo marinho, a assinatura e a
+    frase institucional do manual, alinhadas à esquerda com margem ampla."""
+    imagem = Image.new("RGB", (largura, altura), MARINHO)
     lapis = ImageDraw.Draw(imagem)
-    meio = altura / 2
-    lapis.text((altura + folga, meio), "Ticker", font=fonte, fill=TEXTO, anchor="lm")
+    margem = 96
+    lado = 120
+    simbolo = desenhar_simbolo_png(lado)
+    topo = 150
+    imagem.paste(simbolo, (margem, topo), simbolo)
+    desenhar_nome(
+        lapis, margem + lado + 34, topo + lado / 2, _fonte(96, "ExtraBold"), AZUL
+    )
+    frase = _fonte(46, "Bold")
+    linha_1, linha_2 = ASSINATURA_INSTITUCIONAL.split(". ", 1)
+    lapis.text((margem, 360), linha_1 + ".", font=frase, fill=CLARO)
+    lapis.text((margem, 418), linha_2, font=frase, fill=CLARO)
+    lapis.rectangle([margem, 520, margem + 64, 524], fill=AZUL)
     lapis.text(
-        (altura + folga + largura_ticker, meio),
-        "Lab",
-        font=fonte,
-        fill=AZUL_TEXTO,
-        anchor="lm",
+        (margem, 548),
+        "tickerlab.com.br",
+        font=_fonte(26, "SemiBold"),
+        fill=TEXTO_APAGADO,
     )
     return imagem
 
 
 def gerar_arquivos() -> None:
-    """Grava o símbolo (SVG), o ícone da aba e a assinatura do topo (depois de mudar a marca)."""
+    """Grava o ícone da aba (SVG e PNG), a assinatura do topo e a imagem de compartilhamento."""
     ARQUIVO_DO_SIMBOLO.parent.mkdir(parents=True, exist_ok=True)
-    ARQUIVO_DO_SIMBOLO.write_text(simbolo_svg() + "\n", encoding="utf-8")
-    desenhar_icone_png(256).resize((128, 128)).save(ARQUIVO_DO_ICONE)
+    ARQUIVO_DO_SIMBOLO.write_text(icone_svg() + "\n", encoding="utf-8")
+    desenhar_icone_png(128).save(ARQUIVO_DO_ICONE)
     desenhar_assinatura_png(96).save(ARQUIVO_DA_ASSINATURA)
+    desenhar_compartilhamento_png().save(ARQUIVO_DE_COMPARTILHAMENTO, optimize=True)
 
 
 FONTES_ESTATICAS = {

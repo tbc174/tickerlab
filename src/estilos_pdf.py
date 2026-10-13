@@ -2,9 +2,10 @@
 
 - **Research / Claro:** o papel timbrado padrão, fundo branco com superfícies cinza-azuladas.
   Gasta pouca tinta e é o melhor para imprimir.
-- **Terminal / Escuro:** o mesmo visual do site (`marca.FUNDO`, `marca.SERIES`), para ler na tela.
-- **Institucional / Branco e azul:** faixa azul da marca no topo de cada página e na capa, para
-  mandar para alguém (professor, banca, cliente).
+- **Terminal / Escuro:** o mesmo visual do app, em marinho (`marca.FUNDO`, `marca.SERIES`), para
+  ler na tela.
+- **Institucional / Branco e marinho:** faixa marinha da marca no topo de cada página e na capa,
+  para mandar para alguém (professor, banca, cliente).
 
 O estilo muda só as cores, nunca os números nem a ordem das seções. Para os gráficos lerem bem
 impressos em preto e branco, cada série também tem um traço diferente (`TRACOS`), não só a cor.
@@ -33,7 +34,7 @@ class Estilo:
     queda: str
     aviso: str  # fundo dos avisos importantes
     series: tuple[str, ...]
-    faixa: str | None = None  # faixa azul do Institucional
+    faixa: str | None = None  # faixa marinha do Institucional
     texto_da_faixa: str = "#ffffff"
 
     @property
@@ -47,7 +48,7 @@ RESEARCH = Estilo(
     descricao="Fundo branco, ótimo para imprimir e ler com calma.",
     fundo=marca.PAPEL_FUNDO,
     superficie=marca.PAPEL_SUPERFICIE,
-    destaque="#e8eefc",
+    destaque="#d9e5ff",
     linha=marca.PAPEL_LINHA,
     texto=marca.PAPEL_TEXTO,
     apagado=marca.PAPEL_APAGADO,
@@ -62,8 +63,8 @@ TERMINAL = Estilo(
     descricao="O visual do site, para ler na tela. Gasta muita tinta se imprimir.",
     fundo=marca.FUNDO,
     superficie=marca.SUPERFICIE,
-    destaque="#17213a",
-    linha="#273042",
+    destaque="#163160",
+    linha="#1f3766",
     texto=marca.TEXTO,
     apagado=marca.TEXTO_APAGADO,
     alta=marca.ALTA,
@@ -73,19 +74,20 @@ TERMINAL = Estilo(
 )
 INSTITUCIONAL = Estilo(
     chave="institucional",
-    nome="Institucional · Branco e azul",
-    descricao="Faixa azul da marca em cada página, para apresentar ou enviar.",
+    nome="Institucional · Branco e marinho",
+    descricao="Faixa marinha da marca em cada página, para apresentar ou enviar.",
     fundo="#ffffff",
-    superficie="#eef3ff",
-    destaque="#dce6ff",
-    linha="#d3dcef",
-    texto="#0b1733",
-    apagado="#4f5d78",
+    superficie=marca.AZUL_CLARO,
+    destaque="#d9e5ff",
+    linha=marca.PAPEL_LINHA,
+    texto=marca.MARINHO,
+    apagado=marca.PAPEL_APAGADO,
     alta=marca.PAPEL_ALTA,
     queda=marca.PAPEL_QUEDA,
     aviso="#fdf6e4",
-    series=("#2962ff", "#0b1733", "#11897a", "#c77700", "#b8417f", "#6b4fe0"),
-    faixa=marca.AZUL,
+    series=(marca.AZUL, marca.MARINHO, "#11897a", "#c77700", "#b8417f", "#6b4fe0"),
+    faixa=marca.MARINHO,
+    texto_da_faixa=marca.CLARO,
 )
 ESTILOS = {e.chave: e for e in (RESEARCH, TERMINAL, INSTITUCIONAL)}
 PADRAO = RESEARCH

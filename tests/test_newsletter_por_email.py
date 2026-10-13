@@ -89,6 +89,16 @@ def test_email_tem_os_itens_os_limites_e_o_link_para_sair():
         assert "newsletter/sair?codigo=abc" in corpo
 
 
+def test_email_abre_com_a_assinatura_da_marca_em_cores_legiveis_no_branco():
+    from src import marca
+
+    email = envio.montar_email(_edicao(), "https://x/sair?codigo=abc")
+    assert email.html.index("Ticker") < email.html.index("Fábrica Modelo")
+    assert f'color:{marca.AZUL}">Lab</span>' in email.html
+    # as cores do tema escuro somem no fundo branco do e-mail
+    assert marca.TEXTO_SUTIL not in email.html and marca.TEXTO_APAGADO not in email.html
+
+
 def test_email_escapa_o_html_e_nao_leva_os_pesos_da_carteira():
     email = envio.montar_email(_edicao(), "https://x/sair?codigo=abc")
     assert "<b>anunciada</b>" not in email.html and "&lt;b&gt;anunciada" in email.html

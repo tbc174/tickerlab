@@ -231,7 +231,7 @@ def test_estilo_muda_as_cores_mas_nao_os_numeros():
             _texto(pdf)
             .replace("Research · Claro", "X")
             .replace("Terminal · Escuro", "X")
-            .replace("Institucional · Branco e azul", "X")
+            .replace("Institucional · Branco e marinho", "X")
         )
     assert textos["research"] == textos["terminal"] == textos["institucional"]
 

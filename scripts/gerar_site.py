@@ -135,10 +135,35 @@ def markdown_para_html(texto: str) -> str:
 
 
 # --- peças comuns ---------------------------------------------------------------------------
-SIMBOLO = marca.simbolo_svg()
+# o topo do símbolo segue o tema (marinho no claro, claro no escuro); a haste é sempre elétrica
+SIMBOLO = marca.simbolo_svg(topo="currentColor")
 LOGO = (
     f'<a class="marca" href="/" aria-label="TickerLab, página inicial">{SIMBOLO}'
     "<span>Ticker<b>Lab</b></span></a>"
+)
+
+
+# ícones do Material ("dark_mode" e "light_mode"); o rótulo muda pelo site.js
+BOTAO_DO_TEMA = (
+    '<button class="tema" type="button" data-tema-botao aria-label="Usar o tema escuro">'
+    '<svg class="lua" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+    '<path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1'
+    '-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>'
+    '<svg class="sol" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+    '<path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2zm18 0h2a1'
+    " 1 0 0 0 0-2h-2a1 1 0 0 0 0 2zM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0zm0 18v2a1 1 0 0 0 2 0v-2a1"
+    " 1 0 0 0-2 0zM5.99 4.58a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41L5.99 4.58zm12.37"
+    " 12.37a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41l-1.06-1.06zm1.06-10.96a1 1 0 0 0-1.41"
+    "-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41l1.06-1.06zM7.05 18.36a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1"
+    ' 0 0 0 1.41 1.41l1.06-1.06z"/></svg>'
+    "</button>"
+)
+# Roda no <head>, antes de pintar a página: aplica o tema escolhido da última vez (sem piscar o
+# claro) e avisa o CSS que há JavaScript. O site abre claro; o escuro é escolha de quem visita.
+TEMA_SALVO = (
+    '<script>document.documentElement.classList.add("com-js");'
+    'try { if (localStorage.getItem("tema") === "escuro") '
+    'document.documentElement.dataset.tema = "escuro"; } catch (e) {}</script>'
 )
 
 
@@ -156,13 +181,16 @@ def topo(atual: str) -> str:
     return (
         '<header class="topo"><div class="faixa">'
         f'{LOGO}<nav aria-label="Principal">{links}</nav>'
+        f"{BOTAO_DO_TEMA}"
         f'<a class="botao primario pequeno" href="{link_do_app()}">Abrir o app</a>'
         "</div></header>"
     )
 
 
-RODAPE = f"""<footer class="rodape"><div class="faixa">
-<div>{LOGO}<p class="apagado">Entenda os dados. Decida com clareza.</p></div>
+# a assinatura institucional do manual de identidade
+ASSINATURA = "Menos ruído. Mais inteligência para investir."
+RODAPE = f"""<footer class="rodape escura"><div class="faixa">
+<div>{LOGO}<p class="apagado">{ASSINATURA}</p></div>
 <nav aria-label="Rodapé">
 <a href="/metodologia.html">Fontes e metodologia</a>
 <a href="/precos.html">Planos</a>
@@ -191,8 +219,13 @@ def pagina(
 <meta property="og:description" content="{esc(descricao)}">
 <meta property="og:type" content="website">
 <meta property="og:url" content="{URL_DO_SITE}{caminho}">
-<meta property="og:image" content="{URL_DO_SITE}/marca/icone.png">
-<meta name="theme-color" content="{marca.FUNDO}">
+<meta property="og:image" content="{URL_DO_SITE}/marca/compartilhamento.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TickerLab: {esc(ASSINATURA)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="{marca.CLARO}">
+{TEMA_SALVO}
 <link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">
 <link rel="icon" href="/marca/icone.png" type="image/png">
 <link rel="preload" href="/fontes/Manrope-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>
@@ -450,6 +483,7 @@ def landing(estilos: list[str]) -> str:
         for p, r in perguntas
     )
     corpo = f"""
+<div class="escura">
 <section class="heroi faixa" aria-labelledby="titulo-heroi">
   <div class="heroi-texto">
     <p class="olho">Pesquisa quantitativa · B3 e EUA</p>
@@ -477,6 +511,7 @@ def landing(estilos: list[str]) -> str:
     <img src="/relatorio/{estilos[0]}-2.webp" width="560" height="792" alt="">
   </div>
 </section>
+</div>
 
 <section id="produto" class="faixa secao" aria-labelledby="titulo-resultados">
   <p class="olho">O que você leva</p>
@@ -505,12 +540,14 @@ def landing(estilos: list[str]) -> str:
   <div class="grade tres">{para_quem}</div>
 </section>
 
+<div class="escura">
 <section class="faixa secao" aria-labelledby="titulo-confianca">
   <p class="olho">Confiança</p>
   <h2 id="titulo-confianca">De onde vêm os números e o que eles não dizem</h2>
   <div class="grade quatro">{pilares}</div>
   <p><a class="seta" href="/metodologia.html">Fontes e metodologia em detalhe</a></p>
 </section>
+</div>
 
 <section class="faixa secao" aria-labelledby="titulo-planos">
   <p class="olho">Planos</p>
@@ -710,19 +747,63 @@ def nao_encontrada() -> str:
 
 
 # --- arquivos que não são páginas -----------------------------------------------------------
+TEMA_CLARO = {
+    "fundo": marca.CLARO,
+    "superficie": marca.AZUL_CLARO,
+    "destaque": "#ffffff",
+    "linha": "rgba(10, 31, 68, 0.12)",
+    "linha-forte": "rgba(10, 31, 68, 0.22)",
+    "texto": marca.MARINHO,
+    "apagado": marca.PAPEL_APAGADO,
+    "sutil": marca.PAPEL_SUTIL,
+    "azul": marca.AZUL,
+    "azul-texto": marca.PAPEL_AZUL_TEXTO,
+    "lab": marca.AZUL,
+    "simbolo-topo": marca.MARINHO,
+    "atencao": marca.PAPEL_ATENCAO,
+    "sombra": "rgba(10, 31, 68, 0.18)",
+}
+TEMA_ESCURO = {
+    "fundo": marca.FUNDO,
+    "superficie": marca.SUPERFICIE,
+    "destaque": marca.DESTAQUE,
+    "linha": marca.LINHA,
+    "linha-forte": marca.LINHA_FORTE,
+    "texto": marca.TEXTO,
+    "apagado": marca.TEXTO_APAGADO,
+    "sutil": marca.TEXTO_SUTIL,
+    "azul": marca.AZUL,
+    "azul-texto": marca.AZUL_TEXTO,
+    "lab": marca.AZUL_TEXTO,  # o elétrico some no marinho em texto deste tamanho
+    "simbolo-topo": marca.CLARO,
+    "atencao": marca.ATENCAO,
+    "sombra": "rgba(0, 0, 0, 0.5)",
+}
+# As faixas marinhas (início, confiança, chamada final e rodapé) são escuras nos dois temas, como
+# as peças do manual que alternam fundo escuro e claro; dentro delas, tudo sobe um degrau.
+FAIXA_MARINHA = {
+    **TEMA_ESCURO,
+    "fundo": marca.MARINHO,
+    "superficie": marca.DESTAQUE,
+    "destaque": "#163160",
+}
+
+
+def _variaveis(tema: dict[str, str]) -> str:
+    return " ".join(f"--{nome}: {valor};" for nome, valor in tema.items())
+
+
 def css() -> str:
-    m = marca
     return f"""/* gerado por scripts/gerar_site.py a partir de src/marca.py — não editar à mão */
 @font-face {{ font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }}
 @font-face {{ font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }}
 :root {{
-  --fundo: {m.FUNDO}; --superficie: {m.SUPERFICIE}; --destaque: {m.DESTAQUE};
-  --linha: {m.LINHA}; --linha-forte: {m.LINHA_FORTE};
-  --texto: {m.TEXTO}; --apagado: {m.TEXTO_APAGADO}; --sutil: {m.TEXTO_SUTIL};
-  --azul: {m.AZUL}; --azul-texto: {m.AZUL_TEXTO}; --atencao: {m.ATENCAO};
+  {_variaveis(TEMA_CLARO)}
   --largura: 72rem; --raio: 14px;
-  color-scheme: dark;
+  color-scheme: light;
 }}
+:root[data-tema="escuro"] {{ {_variaveis(TEMA_ESCURO)} color-scheme: dark; }}
+.escura {{ {_variaveis(FAIXA_MARINHA)} color-scheme: dark; background: var(--fundo); color: var(--texto); }}
 *, *::before, *::after {{ box-sizing: border-box; }}
 html {{ scroll-behavior: smooth; }}
 body {{ margin: 0; background: var(--fundo); color: var(--texto);
@@ -746,14 +827,22 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 /* topo */
 .topo {{ position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--fundo) 88%, transparent);
   backdrop-filter: blur(10px); border-bottom: 1px solid var(--linha); }}
-.topo .faixa {{ display: flex; align-items: center; gap: 1.5rem; min-height: 4rem; }}
+.topo .faixa {{ display: flex; align-items: center; gap: 1rem 1.5rem; min-height: 4rem; }}
 .topo nav {{ display: flex; gap: 1.25rem; margin-left: auto; flex-wrap: wrap; }}
 .topo nav a {{ color: var(--apagado); text-decoration: none; font-weight: 600; font-size: .95rem; }}
 .topo nav a:hover, .topo nav a[aria-current] {{ color: var(--texto); }}
 .marca {{ display: inline-flex; align-items: center; gap: .55rem; color: var(--texto); text-decoration: none;
   font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }}
-.marca svg {{ width: 28px; height: 28px; }}
-.marca b {{ color: var(--azul-texto); font-weight: 800; }}
+.marca svg {{ width: 28px; height: 28px; color: var(--simbolo-topo); }}
+.marca b {{ color: var(--lab); font-weight: 800; }}
+/* botão do tema: só aparece com JavaScript (sem ele, o botão não faria nada) */
+.tema {{ display: none; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; padding: 0;
+  border-radius: 10px; border: 1px solid var(--linha-forte); background: transparent; color: var(--texto); cursor: pointer; }}
+.com-js .tema {{ display: inline-flex; }}
+.tema:hover {{ border-color: var(--azul); }}
+.tema svg {{ width: 1.15rem; height: 1.15rem; }}
+.tema .sol, [data-tema="escuro"] .tema .lua {{ display: none; }}
+[data-tema="escuro"] .tema .sol {{ display: block; }}
 /* botões */
 .botao {{ display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px;
   padding: .75rem 1.2rem; font: 700 1rem "Manrope", sans-serif; text-decoration: none; cursor: pointer;
@@ -771,7 +860,7 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
   padding-block: clamp(3rem, 8vw, 6rem); }}
 .heroi-texto {{ min-width: 0; }}
 .heroi-visual img {{ border-radius: 10px; border: 1px solid var(--linha-forte);
-  box-shadow: 0 30px 80px rgba(0,0,0,.55); transform: rotate(1.5deg); }}
+  box-shadow: 0 30px 80px var(--sombra); transform: rotate(1.5deg); }}
 .busca {{ position: relative; margin: 1.75rem 0 .75rem; }}
 .busca label {{ display: block; font-weight: 700; font-size: .9rem; margin-bottom: .4rem; color: var(--apagado); }}
 .busca .campo {{ display: flex; gap: .5rem; }}
@@ -780,7 +869,7 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
   color: var(--texto); border: 1px solid var(--linha-forte); }}
 .busca input:focus {{ border-color: var(--azul); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 35%, transparent); }}
 #sugestoes {{ position: absolute; left: 0; right: 0; top: 100%; margin: .35rem 0 0; padding: .35rem; list-style: none; z-index: 4;
-  background: var(--destaque); border: 1px solid var(--linha-forte); border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }}
+  background: var(--destaque); border: 1px solid var(--linha-forte); border-radius: 10px; box-shadow: 0 16px 40px var(--sombra); }}
 #sugestoes li {{ max-width: none; padding: .55rem .7rem; border-radius: 8px; cursor: pointer; display: flex; gap: .6rem; align-items: baseline; }}
 #sugestoes li[aria-selected="true"], #sugestoes li:hover {{ background: var(--superficie); }}
 #sugestoes .codigo {{ font-family: "JetBrains Mono", monospace; font-weight: 700; color: var(--azul-texto); min-width: 6.5rem; }}
@@ -797,6 +886,8 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 /* seções */
 .secao {{ padding-block: clamp(2.5rem, 6vw, 4.5rem); border-top: 1px solid var(--linha); }}
 .estreita {{ max-width: 52rem; border-top: 0; }}
+/* faixas de largura total; a seção logo depois de uma faixa não precisa de linha em cima */
+.escura > .secao, .escura + .secao {{ border-top: 0; }}
 .grade {{ display: grid; gap: 1rem; margin-top: 1.5rem; }}
 .grade.tres {{ grid-template-columns: repeat(3, minmax(0, 1fr)); }}
 .grade.quatro {{ grid-template-columns: repeat(4, minmax(0, 1fr)); }}
@@ -816,7 +907,7 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
   border: 0; border-radius: 9px; padding: .5rem .9rem; cursor: pointer; }}
 .vitrine .controles button[aria-pressed="true"] {{ background: var(--azul); color: #fff; }}
 .vitrine .folhas {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; max-width: 56rem; }}
-.vitrine img {{ border-radius: 8px; border: 1px solid var(--linha-forte); box-shadow: 0 18px 50px rgba(0,0,0,.45);
+.vitrine img {{ border-radius: 8px; border: 1px solid var(--linha-forte); box-shadow: 0 18px 50px var(--sombra);
   transition: opacity 200ms ease; }}
 .vitrine img.trocando {{ opacity: .35; }}
 .legenda {{ color: var(--sutil); font-size: .88rem; margin-top: 1rem; }}
@@ -843,7 +934,7 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
 .texto-longo li {{ margin-bottom: .45rem; }}
 .texto-longo li, .texto-longo p {{ color: color-mix(in srgb, var(--texto) 88%, var(--apagado)); }}
 /* rodapé */
-.rodape {{ border-top: 1px solid var(--linha); padding-block: 2.5rem; margin-top: 2rem; background: var(--superficie); }}
+.rodape {{ padding-block: 2.5rem; margin-top: 2rem; }}
 .rodape .faixa {{ display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem 2rem; }}
 .rodape nav {{ display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-content: start; }}
 .rodape nav a {{ color: var(--apagado); text-decoration: none; }}
@@ -868,9 +959,30 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
 """
 
 
-JS = r"""// gerado por scripts/gerar_site.py — busca de ativos e vitrine do Report Studio
+JS = r"""// gerado por scripts/gerar_site.py — tema, busca de ativos e vitrine do Report Studio
 (() => {
   "use strict";
+
+  // --- tema: o site abre claro; a escolha do escuro fica guardada neste navegador -----------
+  const raiz = document.documentElement;
+  const corDaBarra = document.querySelector('meta[name="theme-color"]');
+  const aplicarTema = (escuro) => {
+    if (escuro) raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
+    // a barra do navegador no celular acompanha o fundo (a cor vem do próprio CSS)
+    if (corDaBarra) corDaBarra.content = getComputedStyle(raiz).getPropertyValue("--fundo").trim();
+    for (const botao of document.querySelectorAll("[data-tema-botao]")) {
+      botao.setAttribute("aria-label", escuro ? "Usar o tema claro" : "Usar o tema escuro");
+      botao.title = escuro ? "Tema claro" : "Tema escuro";
+    }
+  };
+  aplicarTema(raiz.dataset.tema === "escuro");
+  for (const botao of document.querySelectorAll("[data-tema-botao]")) {
+    botao.addEventListener("click", () => {
+      const escuro = raiz.dataset.tema !== "escuro";
+      aplicarTema(escuro);
+      try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
+    });
+  }
   const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
   // --- busca: filtra o catálogo enquanto a pessoa digita e abre a análise no app -----------
@@ -1004,7 +1116,7 @@ def gerar(destino: Path = DESTINO) -> None:
                 "OFL-JetBrainsMono.txt",
             ),
         ),
-        ("marca", ("simbolo.svg", "icone.png")),
+        ("marca", ("simbolo.svg", "icone.png", "compartilhamento.png")),
     ):
         (destino / pasta).mkdir()
         for nome in nomes:

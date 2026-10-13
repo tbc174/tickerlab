@@ -66,37 +66,22 @@ class RelatorioPDF(FPDF):
 
     # --- peças da marca ------------------------------------------------------------------
     def simbolo(
-        self,
-        x: float,
-        y: float,
-        tamanho: float,
-        fundo: str = marca.AZUL,
-        desenho: str = "#ffffff",
+        self, x: float, y: float, tamanho: float, topo: str | None = None
     ) -> None:
-        """A "Vela T" em vetor, na mesma grade de 32 do símbolo do site."""
-        e = tamanho / 32
-        self.set_fill_color(*_rgb(fundo))
-        self.rect(
-            x, y, tamanho, tamanho, style="F", round_corners=True, corner_radius=8 * e
-        )
-        self.set_fill_color(*_rgb(desenho))
-        for rx, ry, largura, altura, raio in (
-            (7, 7, 18, 3.6, 1.8),
-            (14.6, 10, 2.8, 16, 1.4),
-            (11.6, 13.5, 8.8, 9, 2),
-        ):
-            self.rect(
-                x + rx * e, y + ry * e, largura * e, altura * e, style="F",
-                round_corners=True, corner_radius=raio * e,
-            )  # fmt: skip
+        """O símbolo T geométrico em vetor (o mesmo SVG do site). O topo é marinho no papel e
+        claro no fundo escuro e na faixa marinha; a haste é sempre azul elétrico."""
+        if topo is None:
+            topo = marca.CLARO if self.estilo.escuro else marca.MARINHO
+        svg = marca.simbolo_svg(topo=topo).encode("utf-8")
+        self.image(BytesIO(svg), x=x, y=y, w=tamanho, h=tamanho)
 
     def nome_da_marca(
         self, x: float, y: float, tamanho: float, sobre_a_faixa: bool = False
     ) -> None:
         texto = self.estilo.texto_da_faixa if sobre_a_faixa else self.estilo.texto
-        lab = self.estilo.texto_da_faixa if sobre_a_faixa else marca.AZUL
-        if self.estilo.escuro and not sobre_a_faixa:
-            lab = marca.AZUL_TEXTO  # o azul da marca some no fundo escuro
+        # o azul elétrico perde contraste no escuro e na faixa marinha: lá vai o azul mais claro
+        no_escuro = sobre_a_faixa or self.estilo.escuro
+        lab = marca.AZUL_TEXTO if no_escuro else marca.AZUL
         self.set_xy(x, y)
         self.set_font("Manrope", "B", tamanho)
         self.set_text_color(*_rgb(texto))
@@ -118,7 +103,7 @@ class RelatorioPDF(FPDF):
         if faixa:
             self.set_fill_color(*_rgb(faixa))
             self.rect(0, 0, self.w, 16, style="F")
-            self.simbolo(MARGEM, 5, 6, fundo="#ffffff", desenho=faixa)
+            self.simbolo(MARGEM, 5, 6, topo=marca.CLARO)
             self.nome_da_marca(MARGEM + 8, 5.2, 11, sobre_a_faixa=True)
             self.set_text_color(*_rgb(self.estilo.texto_da_faixa))
             self.set_font("Manrope", "", 8)
@@ -154,14 +139,14 @@ class RelatorioPDF(FPDF):
         """A capa: marca, título, quadro de resumo e, se houver, o que vem no relatório."""
         self.add_page()
         faixa = self.estilo.faixa
-        if faixa:  # Institucional: o topo da capa é um bloco azul com a marca em branco
+        if faixa:  # Institucional: o topo da capa é um bloco marinho com a marca clara
             self.set_fill_color(*_rgb(faixa))
             self.rect(0, 0, self.w, 60, style="F")
-            self.simbolo(MARGEM, 22, 20, fundo="#ffffff", desenho=faixa)
-            self.nome_da_marca(MARGEM + 25, 28, 24, sobre_a_faixa=True)
+            self.simbolo(MARGEM, 26.5, 13, topo=marca.CLARO)
+            self.nome_da_marca(MARGEM + 17, 28, 24, sobre_a_faixa=True)
         else:
-            self.simbolo(MARGEM, 30, 20)
-            self.nome_da_marca(MARGEM + 25, 36, 24)
+            self.simbolo(MARGEM, 34.5, 13)
+            self.nome_da_marca(MARGEM + 17, 36, 24)
         self.set_xy(MARGEM, 72)
         self.set_font("Manrope", "I", 9)
         self.set_text_color(
