@@ -30,6 +30,12 @@ from typing import Protocol
 import numpy as np
 import pandas as pd
 
+from base.cripto.arquivos import (
+    acrescentar,
+    arquivos_da_tabela,
+    gravar_parquet,
+    ler_tabela,
+)
 from base.cripto.blocos import (
     FOLGA_DO_HISTOGRAMA,
     atualizar_histograma,
@@ -106,17 +112,17 @@ def ler_ate_o_topo(
 
 def ler_blocos(pasta: Path) -> pd.DataFrame:
     """Todas as linhas de blocos gravadas, em ordem de altura."""
-    return _ler_tudo(pasta / PASTA_DOS_BLOCOS, "altura")
+    return ler_tabela(pasta / PASTA_DOS_BLOCOS, "altura")
 
 
 def ler_parado(pasta: Path) -> pd.DataFrame:
     """A fração parada há mais de um ano, por dia UTC, em ordem de dia."""
-    return _ler_tudo(pasta / PASTA_DO_PARADO, "dia")
+    return ler_tabela(pasta / PASTA_DO_PARADO, "dia")
 
 
 def ler_reorganizacoes(pasta: Path) -> pd.DataFrame:
     """Os blocos que a rede trocou, como estavam gravados, com `desfeito_em` e `motivo`."""
-    return _ler_tudo(pasta / PASTA_DAS_REORGANIZACOES, "altura")
+    return ler_tabela(pasta / PASTA_DAS_REORGANIZACOES, "altura")
 
 
 def conferir_com_o_no(pasta: Path, no: FonteDeBlocos) -> int:
@@ -198,7 +204,7 @@ def _gravar(pasta: Path, lote: _Lote, estado: Estado, no: FonteDeBlocos) -> None
     """Linhas primeiro, ponto depois: se cair no meio, a leitura refaz do ponto anterior e as
     linhas repetidas são trocadas (chave única por altura e por dia)."""
     blocos = pd.DataFrame(lote.blocos)
-    _acrescentar(
+    acrescentar(
         pasta / PASTA_DOS_BLOCOS,
         blocos,
         blocos["hora"].dt.strftime("%Y/%Y-%m"),
@@ -206,7 +212,7 @@ def _gravar(pasta: Path, lote: _Lote, estado: Estado, no: FonteDeBlocos) -> None
     )
     if lote.parado:
         parado = pd.DataFrame(lote.parado)
-        _acrescentar(
+        acrescentar(
             pasta / PASTA_DO_PARADO,
             parado,
             parado["dia"].map(lambda d: f"{d.year}"),
@@ -217,26 +223,6 @@ def _gravar(pasta: Path, lote: _Lote, estado: Estado, no: FonteDeBlocos) -> None
     for velho in pontos[:-PONTOS_GUARDADOS]:
         velho.unlink()
     _liberar_no_no(no, pasta, estado)
-
-
-def _acrescentar(
-    pasta: Path, novas: pd.DataFrame, arquivo_de: pd.Series, chave: str
-) -> None:
-    for nome, grupo in novas.groupby(arquivo_de):
-        arquivo = pasta / f"{nome}.parquet"
-        juntas = (
-            pd.concat([pd.read_parquet(arquivo), grupo]) if arquivo.exists() else grupo
-        )
-        juntas = juntas.drop_duplicates(chave, keep="last").sort_values(chave)
-        _gravar_parquet(arquivo, juntas)
-
-
-def _gravar_parquet(arquivo: Path, tabela: pd.DataFrame) -> None:
-    """Grava inteiro ou nada: escreve ao lado e troca de nome no fim."""
-    arquivo.parent.mkdir(parents=True, exist_ok=True)
-    provisorio = arquivo.with_name(arquivo.name + ".provisorio")
-    tabela.to_parquet(provisorio, index=False)
-    os.replace(provisorio, arquivo)
 
 
 def _liberar_no_no(no: FonteDeBlocos, pasta: Path, estado: Estado) -> None:
@@ -321,9 +307,10 @@ def _desfazer_acima(pasta: Path, corte: int, agora: datetime) -> None:
     """Tira dos arquivos o que está acima do `corte`: os blocos vão para `reorganizacoes/` (com o
     motivo); a fração parada é recalculada na leitura seguinte."""
     desfeitos = [
-        _tirar_acima(arquivo, corte) for arquivo in _arquivos(pasta / PASTA_DOS_BLOCOS)
+        _tirar_acima(arquivo, corte)
+        for arquivo in arquivos_da_tabela(pasta / PASTA_DOS_BLOCOS)
     ]
-    for arquivo in _arquivos(pasta / PASTA_DO_PARADO):
+    for arquivo in arquivos_da_tabela(pasta / PASTA_DO_PARADO):
         _tirar_acima(arquivo, corte)
     desfeitos = [tabela for tabela in desfeitos if not tabela.empty]
     if desfeitos:
@@ -331,7 +318,7 @@ def _desfazer_acima(pasta: Path, corte: int, agora: datetime) -> None:
             desfeito_em=agora, motivo=MOTIVO_DA_REORGANIZACAO
         )
         nome = f"{agora:%Y%m%dT%H%M%S}.parquet"
-        _gravar_parquet(pasta / PASTA_DAS_REORGANIZACOES / nome, tabela)
+        gravar_parquet(pasta / PASTA_DAS_REORGANIZACOES / nome, tabela)
 
 
 def _tirar_acima(arquivo: Path, corte: int) -> pd.DataFrame:
@@ -339,17 +326,5 @@ def _tirar_acima(arquivo: Path, corte: int) -> pd.DataFrame:
     tabela = pd.read_parquet(arquivo)
     acima = tabela["altura"] > corte
     if acima.any():
-        _gravar_parquet(arquivo, tabela[~acima])
+        gravar_parquet(arquivo, tabela[~acima])
     return tabela[acima]
-
-
-def _arquivos(pasta: Path) -> list[Path]:
-    return sorted(pasta.rglob("*.parquet")) if pasta.exists() else []
-
-
-def _ler_tudo(pasta: Path, ordem: str) -> pd.DataFrame:
-    arquivos = _arquivos(pasta)
-    if not arquivos:
-        return pd.DataFrame()
-    tabela = pd.concat(pd.read_parquet(arquivo) for arquivo in arquivos)
-    return tabela.sort_values(ordem).reset_index(drop=True)
