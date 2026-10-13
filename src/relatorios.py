@@ -32,8 +32,16 @@ from src.conteudo import carregar_glossario, descrever_pior_drawdown
 from src.estilos_pdf import Estilo
 from src.estilos_pdf import estilo as estilo_pela_chave
 from src.estrategias import ESTRATEGIAS, gerar_posicao, posicao_comprar_e_segurar
+from src.ficha import (
+    TOLERANCIA_PADRAO_DE_QUEDA,
+    Ficha,
+    PedidoDaFicha,
+    montar_ficha,
+    texto_das_tentativas,
+)
 from src.metricas import resumir_desempenho
 from src.relatorio_pdf import RelatorioPDF
+from src.tentativas import TETO_POR_PESSOA
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 # sobe quando o conteúdo ou a organização dos relatórios mudar (vai no anexo de reprodutibilidade)
@@ -59,9 +67,13 @@ AVISO_DA_MINHA_CARTEIRA = (
 )
 AVISO_DO_BACKTEST = (
     "Um bom resultado no passado pode ser sorte: com muitas estratégias e parâmetros, alguma "
-    "sempre parece ótima. No site, a página Backtest tem a validação (treino e teste, "
-    "walk-forward, teste contra o acaso e Sharpe deflacionado) para separar sorte de padrão."
+    'sempre parece ótima. A seção "Foi sorte?" confere isso em cinco perguntas; o detalhe '
+    "técnico (treino e teste, walk-forward, teste contra o acaso e Sharpe deflacionado) está na "
+    "página Backtest do site."
 )
+# o relatório não pergunta o capital: o imposto da ficha é calculado sobre o mesmo valor que a
+# página Backtest abre por padrão
+CAPITAL_DO_RELATORIO = 10_000.0
 FONTE_DOS_DADOS = (
     "Yahoo Finance, preços de fechamento ajustados por dividendos e desdobramentos"
 )
@@ -118,6 +130,11 @@ SECOES: dict[str, tuple[Secao, ...]] = {
             "resultado",
             "Resultado",
             "Retorno, queda, Sharpe, tempo comprado, operações.",
+        ),
+        Secao(
+            "foi_sorte",
+            "Foi sorte?",
+            "O veredito e as cinco perguntas que separam padrão de sorte.",
         ),
         Secao(
             "curva", "Curva de capital", "Quanto R$ 1 virou, contra comprar e segurar."
@@ -199,7 +216,7 @@ DESCRICAO_DOS_MODELOS = {
 _SECOES_DO_EXECUTIVO = {
     ATIVO: ("resumo", "numeros", "preco", "limites"),
     COMPARACAO: ("resumo", "tabela", "base100", "limites"),
-    BACKTEST: ("resumo", "resultado", "curva", "limites"),
+    BACKTEST: ("resumo", "resultado", "foi_sorte", "curva", "limites"),
     CARTEIRA: ("resumo", "resultado", "curva", "limites"),
     MINHA_CARTEIRA: ("resumo", "composicao", "comportamento", "limites"),
     NEWSLETTER: ("destaques", "alertas", "limites"),
@@ -764,6 +781,29 @@ def achados_do_backtest(
     return achados
 
 
+def _secao_foi_sorte(
+    pdf: RelatorioPDF,
+    secao: Callable[..., None],
+    resultado: Ficha,
+    texto_do_contador: str,
+) -> None:
+    """A ficha "Foi sorte?" (ADR 0037, D1): o veredito em destaque e as cinco perguntas."""
+    secao(
+        "foi_sorte",
+        "Cinco perguntas que separam um padrão de um resultado de sorte. A ficha nunca usa custo "
+        "menor que o padrão do app e calcula o imposto simplificado da B3 sobre R$ 10.000.",
+        reservar=90,
+    )
+    veredito = resultado.veredito
+    pdf.aviso_destacado(f"{veredito.titulo}. {veredito.texto}")
+    for checagem in resultado.checagens:
+        pdf.item(
+            f"{checagem.situacao.value.capitalize()}: {checagem.pergunta}",
+            checagem.explicacao,
+        )
+    pdf.paragrafo(texto_do_contador, apagado=True)
+
+
 def relatorio_de_backtest(
     ticker: str,
     dados: pd.DataFrame,
@@ -776,12 +816,25 @@ def relatorio_de_backtest(
     exemplo: bool = False,
     config: Configuracao | None = None,
     ao_avancar: AoAvancar = None,
+    tentativas_da_pessoa: int = 1,
+    tolerancia_de_queda: float = TOLERANCIA_PADRAO_DE_QUEDA,
 ) -> bytes:
+    """O PDF do backtest; `tentativas_da_pessoa` e `tolerancia_de_queda` alimentam a ficha."""
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
     parametros = parametros or {}
     fechamento = dados["Close"]
+    pedido_da_ficha = PedidoDaFicha(
+        dados=dados,
+        estrategia=estrategia,
+        parametros=parametros,
+        custo_por_operacao=custo_por_operacao,
+        capital_inicial=CAPITAL_DO_RELATORIO,
+        taxa_livre_de_risco=taxa_livre_de_risco,
+        tolerancia_de_queda=tolerancia_de_queda,
+        tentativas_da_pessoa=tentativas_da_pessoa,
+    )
     resultado = executar_backtest(
         fechamento, gerar_posicao(estrategia, dados, **parametros), custo_por_operacao
     )
@@ -886,6 +939,13 @@ def relatorio_de_backtest(
     partes = {
         "resumo": achados,
         "resultado": resultado_,
+        # só calculada se a seção foi escolhida
+        "foi_sorte": lambda: _secao_foi_sorte(
+            pdf,
+            secao,
+            montar_ficha(pedido_da_ficha),
+            texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA),
+        ),
         "curva": curva,
         "tabela": tabela,
         "metodologia": lambda: _metodologia(
@@ -916,6 +976,7 @@ def relatorio_de_backtest(
             secao,
             [
                 "Backtest",
+                "Foi sorte?",
                 "Comprar e segurar (buy and hold)",
                 "Custo de operação",
                 "Look-ahead bias",

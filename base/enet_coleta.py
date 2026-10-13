@@ -84,6 +84,7 @@ class ResultadoDaFila:
     baixados: list[str] = field(default_factory=list)
     falhas: dict[str, str] = field(default_factory=dict)  # link → erro
     pulados: int = 0
+    interrompida: bool = False  # parou porque `continuar` disse não (a janela acabou)
 
 
 def baixar_em_fila(
@@ -91,16 +92,21 @@ def baixar_em_fila(
     baixar: Callable[[str], bytes],
     ja_feitos: set[str],
     ao_baixar: Callable[[str, bytes], object],
+    continuar: Callable[[], bool] = lambda: True,
 ) -> ResultadoDaFila:
     """Baixa e entrega a `ao_baixar` cada link que ainda não está em `ja_feitos`.
 
-    Um link que falha (no download ou ao guardar) vai para `falhas` e a fila segue.
+    Um link que falha (no download ou ao guardar) vai para `falhas` e a fila segue. Antes de cada
+    download pergunta a `continuar` (a janela da madrugada); se não, para e marca `interrompida`.
     """
     resultado = ResultadoDaFila()
     for link in links:
         if link in ja_feitos:
             resultado.pulados += 1
             continue
+        if not continuar():
+            resultado.interrompida = True
+            break
         try:
             ao_baixar(link, baixar(link))
         except ERROS_DE_UM_PACOTE as erro:  # um pacote ruim não pode parar os outros
