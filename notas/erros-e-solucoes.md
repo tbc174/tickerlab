@@ -254,3 +254,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** um processo da suíte (a interface do Trader carrega essa fonte) ainda segura o arquivo no Windows.
 - **Solução:** `git worktree prune` para o Git esquecer a cópia; a pasta sai depois de reiniciar o PC (só tem arquivos que já estão no Git).
 - **Data:** 13/10/2026
+
+## Regra "salto de mais de 30%" disparava num salto de exatamente 30%
+- **Sintoma:** de 200 para 140 é uma queda de exatamente 30%, mas a regra de qualidade da base de cripto a apontava como "mais de 30%".
+- **Causa:** em ponto flutuante, `1 - 140/200` dá `0.30000000000000004`, um pouco acima de `0.30`. O mesmo com `510/500 - 1` contra 2%.
+- **Solução:** comparar sem dividir: `abs(novo - velho) > LIMITE * velho` (`60 > 60.0` é falso). Limite de porcentagem em ponto flutuante merece um teste no valor exato do limite.
+- **Data:** 13/10/2026
+
+## `pd.to_datetime` falha com horas em formatos misturados
+- **Sintoma:** `ValueError` do `strptime` ao converter uma lista com `"2024-01-01 08:00"` e `"2024-01-01 23:59:59"`.
+- **Causa:** o pandas deduz o formato pelo primeiro texto (sem segundos) e recusa os que não seguem esse formato.
+- **Solução:** `pd.to_datetime(textos, utc=True, format="mixed")`, ou escrever todos no mesmo formato.
+- **Data:** 13/10/2026
+
+## GDELT responde texto em vez de JSON
+- **Sintoma:** o pedido ao GDELT devolve "Please limit requests to one every 5 seconds..." no lugar do JSON, e voltou a bloquear mesmo com 6 s entre dois pedidos de teste.
+- **Causa:** o GDELT aceita um pedido a cada 5 segundos por endereço e conta os pedidos seguidos de quem já passou do limite.
+- **Solução:** na coleta, um dia por pedido, pausa de 6 s depois de **cada** pedido e limite de dias por rodada; resposta que não é JSON conta como **falha** (devolve 1), nunca como "dia sem notícia". Nos testes, nada de rede.
+- **Data:** 13/10/2026
