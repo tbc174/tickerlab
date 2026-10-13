@@ -1,10 +1,17 @@
 // Peças que aparecem em mais de uma página do site.
-import type { Modulo } from "../conteudo";
+import type { ReactNode } from "react";
+import type { Funcionalidade, Modulo } from "../conteudo";
 import { modulos } from "../conteudo";
-import { TICKER_DO_EXEMPLO, linkDoApp } from "./textos";
+import { BETA_FECHADO, TICKER_DO_EXEMPLO, linkDoApp } from "./textos";
 
 // os seis módulos da página Produto; o Aprender tem página própria
 export const MODULOS_DO_PRODUTO: Modulo[] = modulos.slice(0, 6);
+
+export function moduloPelaChave(chave: string): Modulo {
+  const modulo = modulos.find((m) => m.chave === chave);
+  if (!modulo) throw new Error(`Módulo desconhecido: ${chave}`);
+  return modulo;
+}
 
 export function disponiveis(modulo: Modulo): number {
   return modulo.funcionalidades.filter((f) => f.disponivel).length;
@@ -18,6 +25,151 @@ export function contagem(modulo: Modulo): string {
   if (prontas) partes.push(`${prontas} ${prontas === 1 ? "disponível" : "disponíveis"}`);
   if (emBreve) partes.push(`${emBreve} em breve`);
   return partes.join(" · ");
+}
+
+export function Cabecalho({
+  olho,
+  titulo,
+  subtitulo,
+  children,
+}: {
+  olho: string;
+  titulo: string;
+  subtitulo: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section className="faixa secao cabecalho">
+      <p className="olho">{olho}</p>
+      <h1>{titulo}</h1>
+      <p className="subtitulo">{subtitulo}</p>
+      {children}
+    </section>
+  );
+}
+
+function Selo({ funcionalidade }: { funcionalidade: Funcionalidade }) {
+  return funcionalidade.disponivel ? (
+    <span className="selo disponivel">Disponível</span>
+  ) : (
+    <span className="selo breve">Em breve</span>
+  );
+}
+
+/** Cartão com o selo; só o que já existe leva ao app (o resto não tem link). */
+function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
+  if (!f.disponivel) {
+    return (
+      <article className="cartao breve">
+        <h3>
+          {f.nome} <Selo funcionalidade={f} />
+        </h3>
+        <p>{f.descricao}</p>
+      </article>
+    );
+  }
+  const parametros: Record<string, string> = f.ticker ? { ticker: f.ticker } : {};
+  return (
+    <article className="cartao">
+      <h3>
+        {f.nome} <Selo funcionalidade={f} />
+      </h3>
+      <p>{f.descricao}</p>
+      <a className="seta" href={linkDoApp(f.pagina_do_app ?? "", parametros)}>
+        Abrir no app
+      </a>
+    </article>
+  );
+}
+
+export function SecaoDoModulo({ modulo }: { modulo: Modulo }) {
+  const titulo = `titulo-${modulo.chave}`;
+  return (
+    <section className="faixa secao" id={modulo.chave} aria-labelledby={titulo}>
+      <div className="modulo-topo">
+        <div>
+          <p className="olho">{modulo.objetivo}</p>
+          <h2 id={titulo}>{modulo.nome}</h2>
+        </div>
+        <p className="contagem">{contagem(modulo)}</p>
+      </div>
+      <p className="subtitulo">{modulo.frase}</p>
+      <div className="grade tres">
+        {modulo.funcionalidades.map((f) => (
+          <CartaoDaFuncionalidade key={f.nome} f={f} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function ListaDeCartoes({
+  itens,
+  classe = "cartao",
+}: {
+  itens: [string, string][];
+  classe?: string;
+}) {
+  return (
+    <>
+      {itens.map(([titulo, descricao]) => (
+        <article key={titulo} className={classe}>
+          <h3>{titulo}</h3>
+          <p>{descricao}</p>
+        </article>
+      ))}
+    </>
+  );
+}
+
+export function AvisoDeAcesso() {
+  if (!BETA_FECHADO) return null;
+  return (
+    <p className="selo-beta">
+      <span>Beta fechado</span> O app está em fase de testes: por enquanto, só contas
+      convidadas entram com o Google.
+    </p>
+  );
+}
+
+// A linha do topo: ilustração no estilo das artes do manual (linhas e pontos sugerem perspectivas e
+// conexões), não dados de mercado. Fica numa faixa própria, abaixo do conteúdo do topo.
+const LARGURA_DA_LINHA = 1200;
+const ALTURA_DA_LINHA = 160;
+const PONTOS_DE_APOIO =
+  "0,120 140,108 260,116 400,82 520,94 660,64 800,74 960,50 1140,60 1200,56";
+const PONTOS_DA_LINHA = "0,140 150,128 280,96 410,112 540,74 680,90 820,58 980,70 1140,36";
+const FIM_DA_LINHA = [1140, 36];
+
+const porcento = (fracao: number) => `${(fracao * 100).toFixed(1)}%`;
+
+export function LinhaDoHeroi() {
+  return (
+    <div className="linha-do-topo" aria-hidden="true">
+      <svg
+        className="linha-heroi"
+        viewBox={`0 0 ${LARGURA_DA_LINHA} ${ALTURA_DA_LINHA}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <polyline className="apoio" points={PONTOS_DE_APOIO} />
+        <path
+          className="principal"
+          pathLength={1}
+          d={`M${PONTOS_DA_LINHA.replaceAll(" ", " L")}`}
+        />
+      </svg>
+      {/* o ponto fica fora do SVG (que estica na horizontal) para continuar redondo */}
+      <span
+        className="ponto-heroi"
+        style={{
+          left: porcento(FIM_DA_LINHA[0] / LARGURA_DA_LINHA),
+          top: porcento(FIM_DA_LINHA[1] / ALTURA_DA_LINHA),
+        }}
+      />
+    </div>
+  );
 }
 
 export function ChamadaFinal() {

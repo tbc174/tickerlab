@@ -2,10 +2,15 @@
 // o Report Studio e a chamada final. Era `landing()` de scripts/gerar_site.py.
 import { site } from "../conteudo";
 import { Bruto } from "../site/Bruto";
-import { ChamadaFinal, MODULOS_DO_PRODUTO, contagem } from "../site/comum";
+import {
+  AvisoDeAcesso,
+  ChamadaFinal,
+  LinhaDoHeroi,
+  MODULOS_DO_PRODUTO,
+  contagem,
+} from "../site/comum";
 import {
   ASSINATURA,
-  BETA_FECHADO,
   TICKER_DO_EXEMPLO,
   URL_DO_APP,
   linkDoApp,
@@ -20,56 +25,6 @@ export const DADOS = {
 };
 
 const ESTILOS = site.estilos_do_relatorio;
-
-// A linha do topo: ilustração no estilo das artes do manual (linhas e pontos sugerem perspectivas e
-// conexões), não dados de mercado. Fica numa faixa própria, abaixo do conteúdo do topo.
-const LARGURA_DA_LINHA = 1200;
-const ALTURA_DA_LINHA = 160;
-const PONTOS_DE_APOIO =
-  "0,120 140,108 260,116 400,82 520,94 660,64 800,74 960,50 1140,60 1200,56";
-const PONTOS_DA_LINHA = "0,140 150,128 280,96 410,112 540,74 680,90 820,58 980,70 1140,36";
-const FIM_DA_LINHA = [1140, 36];
-
-const porcento = (fracao: number) => `${(fracao * 100).toFixed(1)}%`;
-
-function LinhaDoHeroi() {
-  return (
-    <div className="linha-do-topo" aria-hidden="true">
-      <svg
-        className="linha-heroi"
-        viewBox={`0 0 ${LARGURA_DA_LINHA} ${ALTURA_DA_LINHA}`}
-        preserveAspectRatio="none"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <polyline className="apoio" points={PONTOS_DE_APOIO} />
-        <path
-          className="principal"
-          pathLength={1}
-          d={`M${PONTOS_DA_LINHA.replaceAll(" ", " L")}`}
-        />
-      </svg>
-      {/* o ponto fica fora do SVG (que estica na horizontal) para continuar redondo */}
-      <span
-        className="ponto-heroi"
-        style={{
-          left: porcento(FIM_DA_LINHA[0] / LARGURA_DA_LINHA),
-          top: porcento(FIM_DA_LINHA[1] / ALTURA_DA_LINHA),
-        }}
-      />
-    </div>
-  );
-}
-
-function AvisoDeAcesso() {
-  if (!BETA_FECHADO) return null;
-  return (
-    <p className="selo-beta">
-      <span>Beta fechado</span> O app está em fase de testes: por enquanto, só contas
-      convidadas entram com o Google.
-    </p>
-  );
-}
 
 function Heroi() {
   return (

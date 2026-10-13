@@ -2,6 +2,17 @@
   "com_cobranca": [
     "pro"
   ],
+  "nomes": [
+    "Gratuito",
+    "Plus",
+    "Pro"
+  ],
+  "nomes_com_cobranca": [
+    "Pro"
+  ],
+  "nomes_em_breve": [
+    "Plus"
+  ],
   "tabela": [
     {
       "Gratuito": "5",
