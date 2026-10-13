@@ -43,7 +43,8 @@ TIPOS_IMPOSSIVEIS_DE_GASTAR = frozenset({"nulldata"})
 # com o `gettxoutsetinfo` do nó: a coinbase do bloco 0 nunca entrou no conjunto, e em 2010 duas
 # coinbases repetiram a transação de uma anterior ainda não gasta e a apagaram (BIP30).
 ALTURA_DA_GENESE = 0
-COINBASES_APAGADAS_PELA_BIP30 = {91_842: 91_812, 91_880: 91_722}  # altura nova: altura apagada
+# altura da coinbase repetida: altura da que ela apagou
+COINBASES_APAGADAS_PELA_BIP30 = {91_842: 91_812, 91_880: 91_722}
 # o histograma cresce de 100 mil em 100 mil alturas (~2 anos de blocos), para não copiar a cada bloco
 FOLGA_DO_HISTOGRAMA = 100_000
 
@@ -57,14 +58,16 @@ class MetricasDoBloco:
     altura: int
     hash: str
     hora: datetime  # hora que o minerador escreveu no bloco, em UTC
-    hora_mediana: datetime  # mediana das 11 últimas horas: só cresce, ao contrário da `hora`
+    # mediana das horas dos 11 blocos anteriores: só cresce, ao contrário da `hora`
+    hora_mediana: datetime
     n_transacoes: int
     taxas_total: int
     taxa_mediana_por_vbyte: float | None
     valor_movimentado: int
     dias_moeda_destruidos: float  # em BTC-dias
     emissao: int
-    dificuldade: float  # quanto custa achar um bloco (1 = a dificuldade inicial de 2009)
+    # quanto custa achar um bloco (1 = a dificuldade inicial de 2009)
+    dificuldade: float
 
 
 def para_satoshis(valor_btc: float | Decimal) -> int:
