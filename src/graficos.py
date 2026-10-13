@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 
 if TYPE_CHECKING:  # só para os tipos: o módulo de gráficos não depende do acervo
     from src.juros_e_inflacao import PontoMensal
+    from src.linha_do_tempo import LinhaDoTempo
 
 from src import marca
 from src.indicadores import (
@@ -1313,6 +1314,40 @@ def criar_grafico_juros_e_inflacao(
                 line={"color": cor, "width": 2.2},
                 hovertemplate="%{y:.2f}%",
                 name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_linha_do_tempo(linha: "LinhaDoTempo") -> go.Figure:
+    """O preço em base 100 e um ponto em cada acontecimento (o texto aparece ao passar o mouse)."""
+    if not linha.curva:
+        raise ValueError("Não há preço para mostrar.")
+    figura = _figura_base("Preço (base 100) e acontecimentos")
+    figura.update_yaxes(tickformat=".0f")
+    figura.add_trace(
+        go.Scatter(
+            x=pd.to_datetime([p.dia for p in linha.curva]),
+            y=[p.valor for p in linha.curva],
+            mode="lines",
+            line={"color": COR_INDICE, "width": 1.8},
+            hovertemplate="%{y:.1f}",
+            name="Preço (base 100)",
+        )
+    )
+    if linha.marcos:
+        figura.add_trace(
+            go.Scatter(
+                x=pd.to_datetime([m.dia_no_grafico for m in linha.marcos]),
+                y=[m.valor_no_grafico for m in linha.marcos],
+                mode="markers",
+                marker={"color": COR_AZUL, "size": 9, "symbol": "diamond"},
+                text=[
+                    f"{m.data:%d/%m/%Y} · {m.rotulo}: {m.assunto}" for m in linha.marcos
+                ],
+                hovertemplate="%{text}<extra></extra>",
+                name="Acontecimentos",
             )
         )
     figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})

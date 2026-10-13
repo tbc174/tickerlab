@@ -20,6 +20,12 @@ MATERIALIDADE_PADRAO = (
     50  # 0 a 100 (`src.eventos.Classe`): abaixo disso, documento de rotina
 )
 MAXIMO_DE_MARCOS = 60  # mais que isso vira ruído no gráfico; os mais relevantes ficam
+# o que a pessoa escolhe ver: nome do nível → materialidade mínima
+RELEVANCIAS = {"Os mais relevantes": 70, "Relevantes": MATERIALIDADE_PADRAO, "Todos": 0}
+SEM_ACONTECIMENTOS = (
+    "Nenhum acontecimento deste ativo no período. A linha do tempo mostra os documentos das "
+    "empresas da CVM e da SEC (ETFs, índices e cripto não têm)."
+)
 AVISO_DA_LINHA = (
     "Cada fato aparece no dia em que foi publicado. A linha do tempo não diz se um fato fez o "
     "preço subir ou cair: o preço muda por muitos motivos ao mesmo tempo."
@@ -97,3 +103,11 @@ def montar_linha_do_tempo(
 def descricao_do_marco(marco: Marco) -> str:
     """Uma linha para a tabela e para o gráfico: data, tipo do documento e assunto."""
     return f"{marco.data:%d/%m/%Y} · {marco.rotulo}: {marco.assunto}"
+
+
+def texto_fora_do_grafico(quantos: int) -> str:
+    """Quantos documentos do período ficaram de fora do gráfico, e como ver todos."""
+    return (
+        f"{quantos} documentos de rotina ou de menor relevância ficaram de fora; escolha "
+        '"Todos" para ver mais.'
+    )
