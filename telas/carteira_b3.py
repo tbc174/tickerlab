@@ -261,7 +261,7 @@ def _mostrar_proventos(lancamentos):
     proventos = dc.proventos(lancamentos, hoje=datetime.now(FUSO).date())
     st.markdown("**Proventos recebidos**")
     if not proventos:
-        st.info("A movimentação não tem proventos no período.")
+        st.info(dc.SEM_PROVENTOS)
         return
     c1, c2 = st.columns(2)
     c1.metric(
@@ -304,8 +304,7 @@ def _mostrar_proventos(lancamentos):
 
 
 def _mostrar_custo_sem_a_posicao(custos):
-    # vendidos inteiros não têm custo hoje; os incompletos aparecem com o motivo
-    custos = [c for c in custos if not c.completo or c.quantidade]
+    custos = dc.custos_de_hoje(custos)
     st.dataframe(
         pd.DataFrame(
             {

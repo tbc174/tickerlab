@@ -74,6 +74,7 @@ NOTA_DO_CUSTO = (
     "traz corretagem nem emolumentos, que a Receita manda somar ao custo: confira com as notas "
     "de corretagem. Não é cálculo de imposto nem recomendação."
 )
+SEM_PROVENTOS = "A movimentação não tem proventos no período."
 SEM_A_POSICAO = (
     "Envie também a planilha de posição, no começo da página, para ver o ganho ou a perda de "
     "hoje de cada ativo."
@@ -208,6 +209,11 @@ def _um_ano_antes(dia: date) -> date:
         return dia.replace(year=dia.year - 1)
     except ValueError:  # 29 de fevereiro
         return dia.replace(year=dia.year - 1, day=28)
+
+
+def custos_de_hoje(custos: tuple[CustoDoAtivo, ...]) -> tuple[CustoDoAtivo, ...]:
+    """Os ativos que ainda estão na carteira (ou que não dá para saber): sem os vendidos inteiros."""
+    return tuple(c for c in custos if not c.completo or c.quantidade)
 
 
 def proventos(

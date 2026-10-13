@@ -17,6 +17,7 @@ from src.dividendos_e_custo import (
     Lancamento,
     com_a_posicao,
     custo_medio,
+    custos_de_hoje,
     formatar_reais,
     proventos,
     total_por_ano,
@@ -304,3 +305,15 @@ def test_so_os_ativos_da_posicao_na_ordem_dela():
 )
 def test_formatar_reais(valor, texto):
     assert formatar_reais(valor) == texto
+
+
+def test_custos_de_hoje_tira_os_vendidos_inteiros_e_mantem_os_incompletos():
+    custos = custo_medio(
+        [
+            _l("compra", 10, 100, codigo="HGLG11"),
+            _l("venda", 10, 120, codigo="HGLG11", data=date(2024, 2, 1)),
+            _l("venda", 5, 60, codigo="WEGE3"),
+            _l("compra", 1, 10, codigo="VALE3"),
+        ]
+    )
+    assert [c.codigo for c in custos_de_hoje(custos)] == ["VALE3", "WEGE3"]
