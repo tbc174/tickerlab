@@ -327,3 +327,32 @@ def test_coleta_acrescenta_contas_novas_sem_reapresentacao(tmp_path, monkeypatch
         ).scalar()
     assert {"estoques", "capex"} <= contas
     assert substituidas == 0
+
+
+def test_acoes_zeradas_no_documento_nao_derrubam_o_calculo():
+    """Regressão (13/10/2026): ações em circulação iguais a zero davam divisão por zero no LPA."""
+    from src.banco.demonstracoes import DadosDaEmpresa
+
+    referencia = date(2025, 12, 31)
+    comum = {
+        "documento": "DFP",
+        "referencia": referencia,
+        "versao": 1,
+        "fim": referencia,
+    }
+    linhas = [
+        {
+            **comum,
+            "periodo": dm.EXERCICIO,
+            "inicio": date(2025, 1, 1),
+            "conta": c,
+            "valor": v,
+        }
+        for c, v in (("receita", 1000.0), ("ebit", 150.0), ("lucro_liquido", 100.0))
+    ] + [
+        {**comum, "periodo": dm.POSICAO, "inicio": None, "conta": c, "valor": v}
+        for c, v in (("patrimonio_liquido", 500.0), ("acoes_total", 0.0))
+    ]
+    dados = DadosDaEmpresa(pd.DataFrame(linhas), pd.DataFrame(), "Energia Elétrica")
+    resultado = fu.calcular(dados, 10.0)
+    assert resultado["lpa"].valor is None and "zerada" in resultado["lpa"].motivo
