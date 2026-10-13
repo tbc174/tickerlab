@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 from src import analises
 from src import indicadores as ind
@@ -49,3 +50,26 @@ def test_painel_so_com_tipos_simples(petr4):
     painel = analises.painel_de_numeros(*petr4, TAXA, 95)
     for valor in vars(painel).values():
         assert isinstance(valor, (int, float, pd.Timestamp)), type(valor)
+
+
+def test_risco_ao_longo_do_tempo_igual_as_contas_da_tela(petr4):
+    fechamento, retorno = petr4
+    risco = analises.risco_ao_longo_do_tempo(fechamento, retorno, 63)
+    assert_series_equal(risco.drawdown, ind.calcular_drawdown(fechamento))
+    assert risco.pior_drawdown == ind.encontrar_pior_drawdown(fechamento)
+    assert risco.janela == 63
+    assert_series_equal(
+        risco.volatilidade_movel, ind.calcular_volatilidade_movel(retorno, 63)
+    )
+
+
+def test_retorno_mensal_igual_as_contas_da_tela(petr4):
+    _, retorno = petr4
+    mensal = analises.retorno_mensal(retorno)
+    esperado = ind.calcular_retorno_mensal(retorno)
+    assert_series_equal(mensal.retornos, esperado)
+    assert_frame_equal(mensal.tabela, ind.montar_tabela_retornos(esperado))
+    (mes_melhor, melhor), (mes_pior, pior) = ind.encontrar_melhor_e_pior_mes(esperado)
+    assert (mensal.mes_melhor, mensal.melhor) == (mes_melhor, melhor)
+    assert (mensal.mes_pior, mensal.pior) == (mes_pior, pior)
+    assert mensal.meses_de_alta == ind.calcular_percentual_dias_positivos(esperado)

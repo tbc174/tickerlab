@@ -10,7 +10,11 @@ import streamlit as st
 from src import graficos, relatorios
 from src import indicadores as ind
 from src import presets as research_presets
-from src.analises import painel_de_numeros
+from src.analises import (
+    painel_de_numeros,
+    retorno_mensal,
+    risco_ao_longo_do_tempo,
+)
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -231,55 +235,51 @@ def secao_risco(fechamento, retorno, janela_do_usuario=None):
         horizontal=True,
         help=ajuda_do("Volatilidade móvel"),
     )
-    drawdown = ind.calcular_drawdown(fechamento)
-    pior_drawdown = ind.encontrar_pior_drawdown(fechamento)
-    st.markdown(descrever_pior_drawdown(pior_drawdown))
+    risco = risco_ao_longo_do_tempo(fechamento, retorno, janela)
+    st.markdown(descrever_pior_drawdown(risco.pior_drawdown))
 
     col_drawdown, col_volatilidade = st.columns(2)
     with col_drawdown:
-        mostrar_grafico(graficos.criar_grafico_drawdown(drawdown, pior_drawdown))
-    volatilidade_movel = ind.calcular_volatilidade_movel(retorno, janela)
+        mostrar_grafico(
+            graficos.criar_grafico_drawdown(risco.drawdown, risco.pior_drawdown)
+        )
     with col_volatilidade:
-        if volatilidade_movel.dropna().empty:
+        if risco.volatilidade_movel.dropna().empty:
             st.info(
                 f"O período é curto demais para uma janela de {janela} dias. "
                 "Escolha uma janela menor ou um período maior."
             )
         else:
             mostrar_grafico(
-                graficos.criar_grafico_volatilidade(volatilidade_movel, janela)
+                graficos.criar_grafico_volatilidade(risco.volatilidade_movel, janela)
             )
 
 
 def secao_retorno_mensal(retorno):
     st.subheader("Retorno por mês e ano", help=ajuda_do("Sazonalidade"))
-    retorno_mensal = ind.calcular_retorno_mensal(retorno)
-    tabela_mensal = ind.montar_tabela_retornos(retorno_mensal)
-    (mes_melhor, valor_melhor), (mes_pior, valor_pior) = (
-        ind.encontrar_melhor_e_pior_mes(retorno_mensal)
-    )
+    mensal = retorno_mensal(retorno)
 
     colunas = st.columns(3)
     mostrar_metrica(
         colunas[0],
-        f"Melhor mês ({NOMES_DOS_MESES[mes_melhor.month - 1]}/{mes_melhor.year})",
-        formatar_pct(valor_melhor, com_sinal=True),
+        f"Melhor mês ({NOMES_DOS_MESES[mensal.mes_melhor.month - 1]}/{mensal.mes_melhor.year})",
+        formatar_pct(mensal.melhor, com_sinal=True),
         "Retorno mensal",
     )
     mostrar_metrica(
         colunas[1],
-        f"Pior mês ({NOMES_DOS_MESES[mes_pior.month - 1]}/{mes_pior.year})",
-        formatar_pct(valor_pior, com_sinal=True),
+        f"Pior mês ({NOMES_DOS_MESES[mensal.mes_pior.month - 1]}/{mensal.mes_pior.year})",
+        formatar_pct(mensal.pior, com_sinal=True),
         "Retorno mensal",
     )
     mostrar_metrica(
         colunas[2],
         "Meses de alta",
-        formatar_pct(ind.calcular_percentual_dias_positivos(retorno_mensal)),
+        formatar_pct(mensal.meses_de_alta),
         "Retorno mensal",
     )
     st.write("")  # respiro entre os cartões e o mapa
-    mostrar_grafico(graficos.criar_mapa_de_calor_mensal(tabela_mensal))
+    mostrar_grafico(graficos.criar_mapa_de_calor_mensal(mensal.tabela))
     st.caption(
         "O primeiro e o último mês do período podem estar incompletos. "
         "A última linha mostra a média de cada mês ao longo dos anos "

@@ -56,3 +56,53 @@ def painel_de_numeros(
         var=ind.calcular_var_historico(retorno, confianca),
         cvar=ind.calcular_cvar_historico(retorno, confianca),
     )
+
+
+@dataclass(frozen=True)
+class RiscoAoLongoDoTempo:
+    """A queda desde o topo dia a dia, a pior delas e a volatilidade numa janela móvel."""
+
+    drawdown: pd.Series
+    pior_drawdown: ind.PiorDrawdown
+    janela: int  # dias da volatilidade móvel
+    volatilidade_movel: pd.Series
+
+
+def risco_ao_longo_do_tempo(
+    fechamento: pd.Series, retorno: pd.Series, janela: int
+) -> RiscoAoLongoDoTempo:
+    """O que a página Risco mostra; a volatilidade móvel fica vazia se o período for curto."""
+    return RiscoAoLongoDoTempo(
+        drawdown=ind.calcular_drawdown(fechamento),
+        pior_drawdown=ind.encontrar_pior_drawdown(fechamento),
+        janela=janela,
+        volatilidade_movel=ind.calcular_volatilidade_movel(retorno, janela),
+    )
+
+
+@dataclass(frozen=True)
+class RetornoMensal:
+    """O retorno de cada mês, a tabela ano × mês, o melhor e o pior mês e os meses de alta."""
+
+    retornos: pd.Series
+    tabela: pd.DataFrame
+    mes_melhor: pd.Period
+    melhor: float
+    mes_pior: pd.Period
+    pior: float
+    meses_de_alta: float  # fração dos meses que fecharam no positivo
+
+
+def retorno_mensal(retorno: pd.Series) -> RetornoMensal:
+    """O que a página Retorno mensal mostra."""
+    retornos = ind.calcular_retorno_mensal(retorno)
+    (mes_melhor, melhor), (mes_pior, pior) = ind.encontrar_melhor_e_pior_mes(retornos)
+    return RetornoMensal(
+        retornos=retornos,
+        tabela=ind.montar_tabela_retornos(retornos),
+        mes_melhor=mes_melhor,
+        melhor=melhor,
+        mes_pior=mes_pior,
+        pior=pior,
+        meses_de_alta=ind.calcular_percentual_dias_positivos(retornos),
+    )
