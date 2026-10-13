@@ -37,6 +37,14 @@ fora do app e da imagem Docker). Visão geral e estrutura de pastas: `README.md`
 - **`src/` não importa o Streamlit.** As contas, regras e dados ficam em `src/`; a tela (cola com o
   Streamlit) fica em `telas/`, um arquivo ou pasta por grupo de páginas; o `app.py` só configura,
   monta o menu e roda a página. Teste a regra em `src/` e a tela com `AppTest`.
+- **Pronto para trocar de interface:** o app fica em Streamlit por enquanto, mas um dia as telas vão
+  migrar, uma por vez, para uma interface JavaScript que consome a API. Então tudo o que for construído
+  já nasce assim: cálculo, regra, consulta e texto em `src/` (ou `conteudo/`), com entradas e saídas em
+  tipos simples (fáceis de virar JSON); gráfico como figura Plotly em `src/graficos.py`; estado que
+  importa no banco (preferências da conta), não só no `st.session_state`; endereços de `src/paginas.py`
+  estáveis; truque que depende do Streamlit (chave interna, `data-testid`, JS no `st.html`) só quando não
+  houver outro jeito, num lugar só e com teste que quebre se o Streamlit mudar. Pense qual rota da API
+  exporia a função nova.
 - **Nenhum estado mutável num módulo de `telas/`:** o `app.py` roda de novo a cada clique (as
   variáveis dele são de cada sessão), mas um módulo importado roda uma vez por processo (as variáveis
   dele seriam de todos os usuários). Estado de usuário vai no `st.session_state`.

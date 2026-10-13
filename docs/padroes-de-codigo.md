@@ -86,9 +86,15 @@ Regras que uma ferramenta confere estão marcadas com 🤖 (ruff ou testes, no C
 - [ ] Nenhum número mágico novo; nenhum segredo, e-mail ou IP no código.
 - [ ] Testes do que mudou passando; `ruff check` e `ruff format --check` limpos.
 - [ ] O trecho que você tocou ficou mais claro do que estava ("regra do escoteiro").
+- [ ] Pronto para trocar de interface: nenhum cálculo, regra ou texto novo em `telas/` (só ler, chamar
+      `src/` e mostrar); estado que importa no banco; truque do Streamlit isolado e testado.
 - [ ] O PR explica o que muda, o que não muda e como foi testado.
 
 ## Dívida conhecida (a pagar em etapas)
+
+- Cálculos do pandas que ainda moram em telas (`telas/estrategias/backtest.py`, `carteira.py` e
+  `experimentos.py`): levar para `src/`, com teste, antes de essas telas migrarem para outra interface.
+- A API só tem saúde, webhook e Newsletter: as análises principais ainda não têm rota de leitura.
 
 - ~~`app.py` gigante~~: dividido em `telas/` em 12/10/2026 (229 linhas: entrada e menu); as funções
   acima da complexidade 15 foram divididas e o C901 e o B905 valem em todo o código.
