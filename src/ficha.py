@@ -238,6 +238,11 @@ def checar_vizinhos(
     mapa: pd.DataFrame, escolhido: tuple[Valor, Valor], sharpe_da_pessoa: float
 ) -> Checagem:
     """Passa se a configuração está numa região boa do mapa, não num pico isolado."""
+    if np.isnan(sharpe_da_pessoa):
+        return sem_medida(
+            PERGUNTA_VIZINHOS,
+            "A sua configuração não operou: não há Sharpe para comparar.",
+        )
     em_volta = vizinhos(mapa, escolhido)
     if not em_volta:
         return sem_medida(
@@ -259,6 +264,9 @@ def checar_vizinhos(
 
 
 # --- Checagem 2: custos e imposto --------------------------------------------------------
+
+
+IMPOSTO = "regras simplificadas da B3"  # `src/imposto.py`, usado em qualquer ativo
 
 
 def custo_da_checagem(custo_por_operacao: float) -> float:
@@ -287,14 +295,15 @@ def checar_custos_e_imposto(
         return Checagem(
             PERGUNTA_CUSTOS,
             _situacao(retorno_liquido_total > 0),
-            f"Depois dos custos e do imposto, a regra rendeu "
+            f"Depois dos custos e do imposto ({IMPOSTO}), a regra rendeu "
             f"{_porcentagem(retorno_liquido_total)}. Ficou sem o CDI para comparar, então a "
             "conta foi contra zero.",
         )
     return Checagem(
         PERGUNTA_CUSTOS,
         _situacao(retorno_liquido_total > retorno_do_cdi),
-        f"Depois dos custos e do imposto, a regra rendeu {_porcentagem(retorno_liquido_total)}; "
+        f"Depois dos custos e do imposto ({IMPOSTO}), a regra rendeu "
+        f"{_porcentagem(retorno_liquido_total)}; "
         f"o CDI rendeu {_porcentagem(retorno_do_cdi)} no mesmo período.",
     )
 
@@ -415,9 +424,8 @@ class PedidoDaFicha:
     custo_por_operacao: float  # fração; a ficha nunca usa menos que o padrão
     capital_inicial: float  # R$, para a isenção do imposto
     protecoes: Protecoes | None = None
-    livres: tuple[
-        str, ...
-    ] = ()  # parâmetros que variam na grade; vazio = os 2 primeiros
+    # parâmetros que variam na grade; vazio = os 2 primeiros numéricos, como na tela
+    livres: tuple[str, ...] = ()
     taxa_livre_de_risco: float = 0.0
     cdi_diario: pd.Series | None = None
     tolerancia_de_queda: float = TOLERANCIA_PADRAO_DE_QUEDA

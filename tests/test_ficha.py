@@ -432,3 +432,21 @@ def test_regra_sem_valor_em_passeio_aleatorio_quase_nunca_passa():
         for semente in range(20)
     )
     assert passaram <= 1
+
+
+def test_configuracao_que_nao_operou_nao_deu_para_medir_os_vizinhos():
+    mapa = _mapa([[0.9, 1.0, 0.8], [1.0, 1.1, 0.9], [0.8, 0.9, 1.0]])
+    c = ficha.checar_vizinhos(mapa, (20, 100), float("nan"))
+    assert c.situacao is Situacao.SEM_MEDIDA
+    assert "nan" not in c.explicacao
+
+
+def test_custos_dizem_que_o_imposto_e_simplificado_da_b3():
+    assert (
+        "regras simplificadas da B3"
+        in ficha.checar_custos_e_imposto(0.1, 0.05).explicacao
+    )
+    assert (
+        "regras simplificadas da B3"
+        in ficha.checar_custos_e_imposto(0.1, None).explicacao
+    )
