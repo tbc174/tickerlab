@@ -64,6 +64,42 @@ def _controles_da_estrategia(estrategia, chave):
     return valores
 
 
+def _retorno_do_caixa(caixa_rende_cdi, cdi_diario, alinhado):
+    """O retorno diário do dinheiro parado: o CDI, se pedido; senão None (não rende)."""
+    retorno_do_caixa = None
+    if caixa_rende_cdi:
+        try:
+            cdi = cdi_diario
+            if cdi is None:
+                cdi = obter_cdi(alinhado.index[0], alinhado.index[-1])
+            retorno_do_caixa = (
+                curva_do_cdi(cdi, alinhado.index).pct_change().fillna(0.0)
+            )
+        except CDIIndisponivelError as erro:
+            st.warning(f"{erro} O dinheiro parado ficou sem render.")
+    return retorno_do_caixa
+
+
+def _numeros_da_carteira(nome, principal, referencia, alinhado, taxa_livre_de_risco):
+    """(carteiras, números): a estratégia, a referência e cada ativo comprado e segurado."""
+    carteiras = {nome: principal}
+    if nome != "Pesos iguais (referência)":
+        carteiras["Pesos iguais (referência)"] = referencia
+    numeros = {
+        rotulo: resumir_desempenho(r.retorno, r.exposicao, None, taxa_livre_de_risco)
+        for rotulo, r in carteiras.items()
+    }
+    sem_estrategia = pd.Series(1.0, index=alinhado.index)
+    for ativo in alinhado.columns:
+        retorno_do_ativo = ind.calcular_retorno_diario(alinhado[ativo])
+        numeros[f"{NOMES_AMIGAVEIS.get(ativo, ativo)} (comprar e segurar)"] = (
+            resumir_desempenho(
+                retorno_do_ativo, sem_estrategia, None, taxa_livre_de_risco
+            )
+        )
+    return carteiras, numeros
+
+
 def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
     st.subheader("Carteira: várias ações ao mesmo tempo")
     st.caption(
@@ -136,17 +172,7 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         )
         return
 
-    retorno_do_caixa = None
-    if caixa_rende_cdi:
-        try:
-            cdi = cdi_diario
-            if cdi is None:
-                cdi = obter_cdi(alinhado.index[0], alinhado.index[-1])
-            retorno_do_caixa = (
-                curva_do_cdi(cdi, alinhado.index).pct_change().fillna(0.0)
-            )
-        except CDIIndisponivelError as erro:
-            st.warning(f"{erro} O dinheiro parado ficou sem render.")
+    retorno_do_caixa = _retorno_do_caixa(caixa_rende_cdi, cdi_diario, alinhado)
 
     custo = custo_percentual / 100
     try:
@@ -165,21 +191,9 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         with st.expander("Como funciona esta estratégia", expanded=True):
             st.markdown(proteger_cifrao(explicacao))
 
-    carteiras = {nome: principal}
-    if nome != "Pesos iguais (referência)":
-        carteiras["Pesos iguais (referência)"] = referencia
-    numeros = {
-        rotulo: resumir_desempenho(r.retorno, r.exposicao, None, taxa_livre_de_risco)
-        for rotulo, r in carteiras.items()
-    }
-    sem_estrategia = pd.Series(1.0, index=alinhado.index)
-    for ativo in alinhado.columns:
-        retorno_do_ativo = ind.calcular_retorno_diario(alinhado[ativo])
-        numeros[f"{NOMES_AMIGAVEIS.get(ativo, ativo)} (comprar e segurar)"] = (
-            resumir_desempenho(
-                retorno_do_ativo, sem_estrategia, None, taxa_livre_de_risco
-            )
-        )
+    carteiras, numeros = _numeros_da_carteira(
+        nome, principal, referencia, alinhado, taxa_livre_de_risco
+    )
 
     cartoes = st.columns(4)
     for coluna, metrica in zip(
