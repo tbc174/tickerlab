@@ -5,7 +5,8 @@
 # As versões são as mesmas do requirements.txt; o pip resolve o resto.
 alembic==1.20.0
 Authlib==1.8.0
-joserfc==1.7.5  # tokens do Google na API v1 (já vinha com a Authlib)
+# joserfc: confere os tokens do Google na API v1 (já vinha junto com a Authlib).
+joserfc==1.7.5
 defusedxml==0.7.1
 fastapi==0.143.0
 fpdf2==2.8.9
