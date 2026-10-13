@@ -1,0 +1,194 @@
+{
+  "glossario": {
+    "Dias de alta": [
+      {
+        "rotulo": "O que é",
+        "texto": "a porcentagem dos dias em que o preço fechou acima do dia anterior."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "55% de dias de alta quer dizer que, em cada 100 dias, 55 fecharam em alta e 45 em queda ou parados."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "acertar muitos dias não basta. Uma ação pode subir na maioria dos dias e ainda assim perder dinheiro se as quedas forem grandes."
+      }
+    ],
+    "Drawdown": [
+      {
+        "rotulo": "O que é",
+        "texto": "a queda desde o ponto mais alto já atingido até o ponto mais baixo seguinte. O drawdown máximo é a pior queda do período."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se a ação chegou a R$ 50 e caiu para R$ 30, o drawdown foi de -40%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "mostra o pior susto que quem comprou no topo teria passado. É útil para saber se você aguentaria segurar a ação."
+      }
+    ],
+    "Melhor e pior dia": [
+      {
+        "rotulo": "O que é",
+        "texto": "o maior ganho e a maior perda em um único dia no período."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "\"pior dia: -12% em 16/03/2020\"."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "um ou dois dias extremos podem pesar muito no resultado total."
+      }
+    ],
+    "Perda de um dia ruim (VaR)": [
+      {
+        "rotulo": "O que é",
+        "texto": "uma medida de risco que responde: \"em um dia ruim, qual perda eu devo esperar?\". Aqui, olhamos o pior dia em cada 20 (nível de 95%) na história do período."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "VaR de -2,6% quer dizer que, em 95% dos dias, a perda não passou de 2,6%. Nos outros 5%, passou."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "é calculado com o passado e não diz o tamanho da perda nos dias realmente extremos."
+      }
+    ],
+    "Retorno acumulado": [
+      {
+        "rotulo": "O que é",
+        "texto": "quanto o investimento rendeu do início ao fim do período escolhido."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "R$ 1.000 que viraram R$ 1.300 deram retorno acumulado de +30%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "compare sempre períodos iguais. +30% em 5 anos é bem diferente de +30% em 1 ano."
+      }
+    ],
+    "Retorno anualizado": [
+      {
+        "rotulo": "O que é",
+        "texto": "o retorno do período convertido para a escala de um ano, como se o ritmo se mantivesse. Permite comparar períodos de tamanhos diferentes, como 2 e 5 anos."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "+21% em 2 anos equivale a cerca de +10% ao ano (os ganhos se acumulam, o que se chama juros compostos)."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "é uma projeção matemática, não uma previsão. Em períodos curtos o número fica exagerado (1 mês de +14% viraria +438% ao ano), por isso o TickerLab só anualiza períodos de 1 ano ou mais, como manda o padrão internacional de apresentação de desempenho (GIPS); abaixo disso aparece \"—\"."
+      }
+    ],
+    "Volatilidade": [
+      {
+        "rotulo": "O que é",
+        "texto": "o quanto o preço oscila. Quanto maior, mais \"montanha-russa\". Aqui é calculada como o desvio padrão dos retornos diários, anualizado."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "uma ação com volatilidade de 40% ao ano sobe e desce muito mais que uma de 15%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "volatilidade não é perda. Ela mede a incerteza, para os dois lados."
+      }
+    ],
+    "Índice de Sharpe": [
+      {
+        "rotulo": "O que é",
+        "texto": "mede quanto de retorno você recebeu para cada unidade de risco (volatilidade). Quanto maior, melhor a relação retorno/risco."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "duas ações rendem 20% ao ano, mas a de menor volatilidade tem Sharpe maior."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "depende do período e de uma taxa livre de risco; valores muito altos em períodos curtos costumam ser sorte."
+      }
+    ]
+  },
+  "painel": {
+    "frase_do_cvar": "Perda média nos piores dias (CVaR {confianca}%): {cvar}. Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o passado, não um limite de perda.",
+    "itens": [
+      {
+        "campo": "retorno_total",
+        "campo_da_data": null,
+        "formato": "pct_com_sinal",
+        "grupo": "Retorno e risco",
+        "rotulo": "Retorno total",
+        "termo": "Retorno acumulado"
+      },
+      {
+        "campo": "retorno_anualizado",
+        "campo_da_data": null,
+        "formato": "pct_com_sinal",
+        "grupo": "Retorno e risco",
+        "rotulo": "Retorno anualizado",
+        "termo": "Retorno anualizado"
+      },
+      {
+        "campo": "volatilidade_anual",
+        "campo_da_data": null,
+        "formato": "pct",
+        "grupo": "Retorno e risco",
+        "rotulo": "Volatilidade anual",
+        "termo": "Volatilidade"
+      },
+      {
+        "campo": "maior_queda",
+        "campo_da_data": null,
+        "formato": "pct",
+        "grupo": "Retorno e risco",
+        "rotulo": "Maior queda (drawdown)",
+        "termo": "Drawdown"
+      },
+      {
+        "campo": "sharpe",
+        "campo_da_data": null,
+        "formato": "decimal",
+        "grupo": "Consistência e dias extremos",
+        "rotulo": "Índice de Sharpe",
+        "termo": "Índice de Sharpe"
+      },
+      {
+        "campo": "melhor_dia",
+        "campo_da_data": "data_do_melhor_dia",
+        "formato": "pct_com_sinal",
+        "grupo": "Consistência e dias extremos",
+        "rotulo": "Melhor dia ({data})",
+        "termo": "Melhor e pior dia"
+      },
+      {
+        "campo": "pior_dia",
+        "campo_da_data": "data_do_pior_dia",
+        "formato": "pct_com_sinal",
+        "grupo": "Consistência e dias extremos",
+        "rotulo": "Pior dia ({data})",
+        "termo": "Melhor e pior dia"
+      },
+      {
+        "campo": "dias_de_alta",
+        "campo_da_data": null,
+        "formato": "pct",
+        "grupo": "Consistência e dias extremos",
+        "rotulo": "Dias de alta",
+        "termo": "Dias de alta"
+      },
+      {
+        "campo": "var",
+        "campo_da_data": null,
+        "formato": "pct",
+        "grupo": "Consistência e dias extremos",
+        "rotulo": "Perda de um dia ruim (VaR {confianca}%)",
+        "termo": "Perda de um dia ruim (VaR)"
+      }
+    ],
+    "legenda": "Passe o mouse no ? de cada número para ver o que ele significa."
+  }
+}

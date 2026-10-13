@@ -29,6 +29,7 @@ from src.cdi import CDIIndisponivelError
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
 from src.planos import limites_do
 
@@ -121,12 +122,23 @@ def visao_geral(
     taxa: Taxa = None,
     confianca_do_var: Annotated[int, Query(ge=90, le=99)] = 95,
 ) -> esquemas.VisaoGeralV1:
-    c = _com_o_ativo(ticker, periodo, taxa)
+    return montar_visao_geral(_com_o_ativo(ticker, periodo, taxa), confianca_do_var)
+
+
+def montar_visao_geral(
+    c: ContextoDoAtivo, confianca_do_var: int
+) -> esquemas.VisaoGeralV1:
+    """A resposta da visão geral de um ativo já carregado (a rota e os testes do React usam)."""
     painel = analises.painel_de_numeros(
         c.fechamento, c.retorno, c.taxa_livre_de_risco, confianca_do_var
     )
     return esquemas.VisaoGeralV1(
-        ativo=esquemas.de_ativo(c), painel=esquemas.de_painel(painel)
+        ativo=esquemas.de_ativo(c),
+        painel=esquemas.de_painel(painel),
+        curva=esquemas.em_base_100(c.fechamento),
+        motivo_sem_anualizar=(
+            MOTIVO_SEM_ANUALIZAR if pd.isna(painel.retorno_anualizado) else None
+        ),
     )
 
 
