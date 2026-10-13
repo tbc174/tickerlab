@@ -56,6 +56,7 @@ pyright==1.1.414  # tipos: python -m pyright (configuração no pyrightconfig.js
 pytest==9.1.1
 pytest-cov==7.1.0  # cobertura dos testes (configuração no .coveragerc)
 pytest-xdist==3.8.0  # testes em paralelo: python -m pytest -n 4 --dist loadgroup
+hypothesis==6.169.0  # testes de propriedade: o gerador procura a entrada que quebra a regra
 python-dateutil==2.9.0.post0
 python-multipart==0.0.32
 pytz==2026.5
