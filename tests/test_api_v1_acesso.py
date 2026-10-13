@@ -215,3 +215,26 @@ def test_configuracao_sem_client_id_devolve_null(cliente, monkeypatch):
 def test_configuracao_com_a_api_desligada_404(cliente, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "0")
     assert cliente.get("/api/v1/configuracao").status_code == 404
+
+
+# --- o motivo do 401/403 num cabeçalho: a tela nova mostra o caminho certo para cada um ---
+
+
+@pytest.mark.parametrize(
+    ("cabecalho", "motivo"),
+    [({}, "sem-token"), ({"Authorization": "Bearer lixo"}, "token-invalido")],
+)
+def test_401_diz_o_motivo(cliente, ana, cabecalho, motivo):
+    resposta = cliente.get("/api/v1/eu", headers=cabecalho)
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == motivo
+
+
+def test_conta_nova_e_termos_dizem_o_motivo(cliente, banco, chave):
+    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave, sub="bia")))
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "conta-nova"
+    with banco.begin() as conexao:
+        entrar(conexao, "ana", "ana@exemplo.com")
+    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+    assert resposta.status_code == 403
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "termos"

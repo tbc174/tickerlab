@@ -2,29 +2,14 @@
 // O esqueleto do app em React (série 3 da ADR 0048): rotas, moldura e a API ligada ou não.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "../../src/app/App";
 import { TELAS_DO_APP } from "../../src/app/rotas";
 import { paginasDoApp } from "../../src/conteudo";
+import { abrirApp, respostaJson } from "./ajudantes";
 
-function respostaJson(status: number, corpo: unknown): Response {
-  return new Response(JSON.stringify(corpo), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function abrir(caminho: string, resposta = respostaJson(200, { google_client_id: "id-de-teste" })) {
-  const buscar = vi.fn(async () => resposta);
-  vi.stubGlobal("fetch", buscar);
-  render(
-    <MemoryRouter initialEntries={[caminho]}>
-      <App />
-    </MemoryRouter>,
-  );
-  return buscar;
+function abrir(caminho: string, resposta?: Response) {
+  return abrirApp(caminho, resposta ? { configuracao: resposta } : {}).buscar;
 }
 
 afterEach(() => {
@@ -42,7 +27,9 @@ describe("rotas do app novo", () => {
 
   it("a página inicial lista as telas novas", async () => {
     abrir("/");
-    const principal = await screen.findByRole("main");
+    // o <main> do aviso "Carregando" é trocado quando a configuração chega: pegar o de depois
+    await screen.findByRole("navigation", { name: "Telas" });
+    const principal = screen.getByRole("main");
     expect(await within(principal).findByRole("link", { name: "Visão geral" })).toBeTruthy();
   });
 
@@ -59,10 +46,15 @@ describe("rotas do app novo", () => {
 });
 
 describe("a API de leitura", () => {
-  it("é consultada sem token, só no próprio endereço", async () => {
+  it("a configuração é pedida sem token, no próprio endereço", async () => {
     const buscar = abrir("/");
     await screen.findByRole("navigation", { name: "Telas" });
-    expect(buscar).toHaveBeenCalledWith("/api/v1/configuracao");
+    expect(buscar).toHaveBeenNthCalledWith(1, "/api/v1/configuracao");
+  });
+
+  it("ligada mas sem o client ID do Google: avisa que o login ainda não foi ligado", async () => {
+    abrir("/", respostaJson(200, { google_client_id: null }));
+    expect(await screen.findByText(/login da versão nova ainda não foi ligado/)).toBeTruthy();
   });
 
   it("desligada: o app novo avisa que está em preparação e leva ao app atual", async () => {
