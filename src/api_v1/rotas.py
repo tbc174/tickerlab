@@ -1,6 +1,5 @@
 """As rotas da API de leitura (v1). Todas exigem a API ligada e uma conta logada (src/api_v1/acesso.py)."""
 
-<<<<<<< HEAD
 from collections.abc import Callable
 from typing import Annotated, Literal, TypeVar
 
@@ -26,17 +25,6 @@ Ticker = Annotated[str, Query(pattern=FORMATO_DO_TICKER, max_length=20)]
 Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 
-=======
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel
-
-from src.api_v1.acesso import conta_logada, exigir_api_ligada
-from src.banco.usuarios import Usuario
-from src.planos import limites_do
-
->>>>>>> origin/main
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
 Conta = Annotated[Usuario, Depends(conta_logada)]
@@ -74,7 +62,6 @@ def eu(conta: Conta) -> EuV1:
             recursos=sorted(limites.recursos),
         ),
     )
-<<<<<<< HEAD
 
 
 T = TypeVar("T")
@@ -209,5 +196,3 @@ def openapi_v1() -> dict:
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
     return app.openapi()
-=======
->>>>>>> origin/main
