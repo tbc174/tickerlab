@@ -30,8 +30,10 @@ log_da_conta = logging.getLogger("tickerlab.conta")
 
 
 def marca_html():
-    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos)."""
-    return f'<div class="tl-marca">{marca.simbolo_svg()}<div>Ticker<span>Lab</span></div></div>'
+    """O símbolo com o nome, para as telas sem menu (entrada e aceite dos termos). O app é escuro:
+    o topo do símbolo vai na cor clara, como manda o manual para fundos escuros."""
+    simbolo = marca.simbolo_svg(topo=marca.CLARO)
+    return f'<div class="tl-marca">{simbolo}<div>Ticker<span>Lab</span></div></div>'
 
 
 def mostrar_tela_de_entrada():

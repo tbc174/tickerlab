@@ -1,6 +1,6 @@
 """CSS do TickerLab: só o que o tema oficial do Streamlit (`.streamlit/config.toml`) não cobre.
 
-As cores vêm de `src/marca.py` (identidade aprovada em 11/10/2026). A fonte é carregada pelo tema,
+As cores vêm de `src/marca.py` (manual de identidade v1, 13/10/2026). A fonte é carregada pelo tema,
 do nosso próprio servidor: aqui não há `@import` do Google Fonts (mandaria o IP de quem visita).
 """
 
