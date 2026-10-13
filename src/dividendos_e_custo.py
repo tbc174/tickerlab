@@ -18,7 +18,12 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 
-TIPOS_DE_PROVENTO = ("dividendo", "jcp", "rendimento")
+TIPOS_DE_PROVENTO = (
+    "dividendo",
+    "jcp",
+    "rendimento",
+    "reembolso",
+)  # reembolso: de ação emprestada
 # entram ou saem ações sem dinheiro: o custo total não muda
 ENTRAM_SEM_CUSTO = ("desdobro", "bonificacao")
 SAEM_SEM_CUSTO = ("grupamento",)
@@ -73,7 +78,7 @@ class Lancamento:
 @dataclass(frozen=True)
 class CustoDoAtivo:
     codigo: str
-    quantidade: float
+    quantidade: float | None  # None quando incompleto
     custo_total: float | None  # None quando incompleto
     preco_medio: float | None  # None quando incompleto ou sem ações
     completo: bool
@@ -90,6 +95,10 @@ class ProventosDoAtivo:
     por_tipo: dict[str, float] = field(default_factory=dict)
 
 
+def _incompleto(codigo: str, motivo: str) -> CustoDoAtivo:
+    return CustoDoAtivo(codigo, None, None, None, False, motivo)
+
+
 def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAtivo:
     quantidade = custo = 0.0
     avisos: list[str] = []
@@ -99,9 +108,7 @@ def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAti
         q = lancamento.quantidade
         if lancamento.tipo == "compra":
             if lancamento.valor <= 0:
-                return CustoDoAtivo(
-                    codigo, quantidade, None, None, False, MOTIVO_COMPRA_SEM_VALOR
-                )
+                return _incompleto(codigo, MOTIVO_COMPRA_SEM_VALOR)
             quantidade, custo = quantidade + q, custo + lancamento.valor
         elif lancamento.tipo in ENTRAM_SEM_CUSTO:
             quantidade += q
@@ -109,16 +116,13 @@ def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAti
                 avisos.append(AVISO_DA_BONIFICACAO)
         else:  # venda ou grupamento: saem ações
             if q > quantidade + _QUASE_ZERO:
-                return CustoDoAtivo(
-                    codigo, quantidade, None, None, False, MOTIVO_HISTORICO_INCOMPLETO
-                )
+                return _incompleto(codigo, MOTIVO_HISTORICO_INCOMPLETO)
             if lancamento.tipo == "venda":
                 custo -= custo / quantidade * q  # pelo preço médio, que não muda
             quantidade -= q
             if quantidade <= _QUASE_ZERO:
-                quantidade = custo = (
-                    0.0  # vendeu tudo: a próxima compra recomeça o médio
-                )
+                # vendeu tudo: a próxima compra recomeça o médio
+                quantidade = custo = 0.0
     medio = custo / quantidade if quantidade > 0 else None
     return CustoDoAtivo(codigo, quantidade, custo, medio, True, None, tuple(avisos))
 

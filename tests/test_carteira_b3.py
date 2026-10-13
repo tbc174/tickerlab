@@ -21,6 +21,7 @@ from src.carteira_b3 import (
     ArquivoDaB3Error,
     ler_abas,
     ler_carteira,
+    numero_brasileiro,
     numero_efetivo_de_ativos,
     retorno_com_os_pesos_de_hoje,
 )
@@ -138,6 +139,22 @@ def test_planilha_no_limite_de_linhas_ainda_e_lida():
     assert (
         carteira.posicoes.set_index("codigo").loc["PETR4", "valor"] == MAXIMO_DE_LINHAS
     )
+
+
+@pytest.mark.parametrize(
+    ("texto", "numero"),
+    [
+        ("1.234,56", 1234.56),
+        ("R$ 10,00", 10.0),
+        ("1.000", 1000.0),  # ponto com três dígitos depois: milhar
+        ("12.345.678", 12345678.0),
+        ("30.5", 30.5),  # ponto com um dígito: decimal
+        ("-", 0.0),
+        (7, 7.0),
+    ],
+)
+def test_numero_brasileiro(texto, numero):
+    assert numero_brasileiro(texto) == numero
 
 
 def test_ler_abas_fala_da_planilha_esperada_e_usa_o_limite_pedido():

@@ -86,6 +86,9 @@ def achar_coluna(colunas: dict[str, str], candidatos: tuple[str, ...]) -> str | 
     return None
 
 
+_SO_MILHARES = re.compile(r"-?\d{1,3}(\.\d{3})+")  # 1.000 e 12.345.678
+
+
 def numero_brasileiro(valor: object) -> float:
     """Aceita número ou texto brasileiro ("1.234,56", "R$ 10,00", "-")."""
     if isinstance(valor, int | float):
@@ -93,7 +96,7 @@ def numero_brasileiro(valor: object) -> float:
     texto = str(valor).replace("R$", "").replace(" ", "").strip()
     if texto in ("", "-", "nan", "None"):
         return 0.0
-    if "," in texto:
+    if "," in texto or _SO_MILHARES.fullmatch(texto):  # "1.234,56" ou "1.000"
         texto = texto.replace(".", "").replace(",", ".")
     try:
         return float(texto)
