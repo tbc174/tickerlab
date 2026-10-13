@@ -61,10 +61,10 @@
       },
       {
         "descricao": "Preço e acontecimentos da empresa num só eixo.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Linha do tempo",
-        "pagina_do_app": null,
-        "ticker": null
+        "pagina_do_app": "linha-do-tempo",
+        "ticker": "PETR4.SA"
       },
       {
         "descricao": "Escreva por que acompanha um ativo e revisite a ideia depois.",
@@ -85,21 +85,21 @@
         "descricao": "A posição da Área do Investidor, sem guardar o arquivo.",
         "disponivel": true,
         "nome": "Importar a planilha da B3",
-        "pagina_do_app": "carteira",
+        "pagina_do_app": "carteira-b3",
         "ticker": null
       },
       {
         "descricao": "Quanto da carteira depende de poucos ativos.",
         "disponivel": true,
         "nome": "Concentração e número efetivo",
-        "pagina_do_app": "carteira",
+        "pagina_do_app": "carteira-b3",
         "ticker": null
       },
       {
         "descricao": "Como a carteira de hoje teria se comportado, comparada ao Ibovespa.",
         "disponivel": true,
         "nome": "A carteira no passado",
-        "pagina_do_app": "carteira",
+        "pagina_do_app": "carteira-b3",
         "ticker": null
       },
       {
@@ -111,16 +111,16 @@
       },
       {
         "descricao": "Exposição por setor, moeda e tipo de ativo.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Raio-X",
-        "pagina_do_app": null,
+        "pagina_do_app": "carteira-b3",
         "ticker": null
       },
       {
         "descricao": "Quanto comprar ou vender para voltar ao peso que você escolheu.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Rebalanceamento",
-        "pagina_do_app": null,
+        "pagina_do_app": "carteira-b3",
         "ticker": null
       },
       {
@@ -247,9 +247,9 @@
     "funcionalidades": [
       {
         "descricao": "CDI, Selic e IPCA com as séries oficiais do Banco Central.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Juros e inflação",
-        "pagina_do_app": null,
+        "pagina_do_app": "juros-e-inflacao",
         "ticker": null
       },
       {
