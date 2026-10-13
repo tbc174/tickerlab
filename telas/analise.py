@@ -10,6 +10,12 @@ import streamlit as st
 from src import graficos, relatorios
 from src import indicadores as ind
 from src import presets as research_presets
+from src.analises import (
+    comparacao_de_ativos,
+    painel_de_numeros,
+    retorno_mensal,
+    risco_ao_longo_do_tempo,
+)
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
@@ -17,8 +23,6 @@ from src.comparacao import (
     NOMES_AMIGAVEIS,
     alinhar_fechamentos,
     escolher_ativos,
-    montar_tabela_comparativa,
-    rebasear_para_100,
 )
 from src.conteudo import descrever_pior_drawdown
 from src.correlacao import (
@@ -66,74 +70,71 @@ def secao_painel_de_numeros(
     st.subheader("Painel de números")
     st.caption("Passe o mouse no ? de cada número para ver o que ele significa.")
 
-    retorno_acumulado = ind.calcular_retorno_acumulado(retorno)
-    drawdown = ind.calcular_drawdown(fechamento)
-    data_melhor, melhor_dia = ind.encontrar_melhor_dia(retorno)
-    data_pior, pior_dia = ind.encontrar_pior_dia(retorno)
+    painel = painel_de_numeros(
+        fechamento, retorno, taxa_livre_de_risco, confianca_do_var
+    )
 
     st.markdown("**Retorno e risco**")
     linha1 = st.columns([1.4, 1, 1, 1])
     with linha1[0]:  # o número principal da página, maior e mais claro
         mostrar_numero_principal(
             "Retorno total",
-            formatar_pct(retorno_acumulado.iloc[-1], com_sinal=True),
+            formatar_pct(painel.retorno_total, com_sinal=True),
             ajuda=ajuda_do("Retorno acumulado"),
         )
     mostrar_metrica(
         linha1[1],
         "Retorno anualizado",
-        formatar_pct(ind.calcular_retorno_anualizado(retorno), com_sinal=True),
+        formatar_pct(painel.retorno_anualizado, com_sinal=True),
         "Retorno anualizado",
     )
     mostrar_metrica(
         linha1[2],
         "Volatilidade anual",
-        formatar_pct(ind.calcular_volatilidade_anual(retorno)),
+        formatar_pct(painel.volatilidade_anual),
         "Volatilidade",
     )
     mostrar_metrica(
         linha1[3],
         "Maior queda (drawdown)",
-        formatar_pct(drawdown.min()),
+        formatar_pct(painel.maior_queda),
         "Drawdown",
     )
 
     st.markdown("**Consistência e dias extremos**")
     linha2 = st.columns(5)
-    sharpe = ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco)
     mostrar_metrica(
         linha2[0],
         "Índice de Sharpe",
-        "—" if pd.isna(sharpe) else f"{sharpe:.2f}".replace(".", ","),
+        "—" if pd.isna(painel.sharpe) else f"{painel.sharpe:.2f}".replace(".", ","),
         "Índice de Sharpe",
     )
     mostrar_metrica(
         linha2[1],
-        f"Melhor dia ({data_melhor:%d/%m/%Y})",
-        formatar_pct(melhor_dia, com_sinal=True),
+        f"Melhor dia ({painel.data_do_melhor_dia:%d/%m/%Y})",
+        formatar_pct(painel.melhor_dia, com_sinal=True),
         "Melhor e pior dia",
     )
     mostrar_metrica(
         linha2[2],
-        f"Pior dia ({data_pior:%d/%m/%Y})",
-        formatar_pct(pior_dia, com_sinal=True),
+        f"Pior dia ({painel.data_do_pior_dia:%d/%m/%Y})",
+        formatar_pct(painel.pior_dia, com_sinal=True),
         "Melhor e pior dia",
     )
     mostrar_metrica(
         linha2[3],
         "Dias de alta",
-        formatar_pct(ind.calcular_percentual_dias_positivos(retorno)),
+        formatar_pct(painel.dias_de_alta),
         "Dias de alta",
     )
     mostrar_metrica(
         linha2[4],
         f"Perda de um dia ruim (VaR {confianca_do_var}%)",
-        formatar_pct(ind.calcular_var_historico(retorno, confianca_do_var / 100)),
+        formatar_pct(painel.var),
         "Perda de um dia ruim (VaR)",
     )
-    cvar = ind.calcular_cvar_historico(retorno, confianca_do_var / 100)
     st.caption(
-        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(cvar)}.** "
+        f"**Perda média nos piores dias (CVaR {confianca_do_var}%): {formatar_pct(painel.cvar)}.** "
         "Quando o dia foi pior que o VaR, esta foi a perda média. Estimativa feita com o "
         "passado, não um limite de perda."
     )
@@ -233,55 +234,51 @@ def secao_risco(fechamento, retorno, janela_do_usuario=None):
         horizontal=True,
         help=ajuda_do("Volatilidade móvel"),
     )
-    drawdown = ind.calcular_drawdown(fechamento)
-    pior_drawdown = ind.encontrar_pior_drawdown(fechamento)
-    st.markdown(descrever_pior_drawdown(pior_drawdown))
+    risco = risco_ao_longo_do_tempo(fechamento, retorno, janela)
+    st.markdown(descrever_pior_drawdown(risco.pior_drawdown))
 
     col_drawdown, col_volatilidade = st.columns(2)
     with col_drawdown:
-        mostrar_grafico(graficos.criar_grafico_drawdown(drawdown, pior_drawdown))
-    volatilidade_movel = ind.calcular_volatilidade_movel(retorno, janela)
+        mostrar_grafico(
+            graficos.criar_grafico_drawdown(risco.drawdown, risco.pior_drawdown)
+        )
     with col_volatilidade:
-        if volatilidade_movel.dropna().empty:
+        if risco.volatilidade_movel.dropna().empty:
             st.info(
                 f"O período é curto demais para uma janela de {janela} dias. "
                 "Escolha uma janela menor ou um período maior."
             )
         else:
             mostrar_grafico(
-                graficos.criar_grafico_volatilidade(volatilidade_movel, janela)
+                graficos.criar_grafico_volatilidade(risco.volatilidade_movel, janela)
             )
 
 
 def secao_retorno_mensal(retorno):
     st.subheader("Retorno por mês e ano", help=ajuda_do("Sazonalidade"))
-    retorno_mensal = ind.calcular_retorno_mensal(retorno)
-    tabela_mensal = ind.montar_tabela_retornos(retorno_mensal)
-    (mes_melhor, valor_melhor), (mes_pior, valor_pior) = (
-        ind.encontrar_melhor_e_pior_mes(retorno_mensal)
-    )
+    mensal = retorno_mensal(retorno)
 
     colunas = st.columns(3)
     mostrar_metrica(
         colunas[0],
-        f"Melhor mês ({NOMES_DOS_MESES[mes_melhor.month - 1]}/{mes_melhor.year})",
-        formatar_pct(valor_melhor, com_sinal=True),
+        f"Melhor mês ({NOMES_DOS_MESES[mensal.mes_melhor.month - 1]}/{mensal.mes_melhor.year})",
+        formatar_pct(mensal.melhor, com_sinal=True),
         "Retorno mensal",
     )
     mostrar_metrica(
         colunas[1],
-        f"Pior mês ({NOMES_DOS_MESES[mes_pior.month - 1]}/{mes_pior.year})",
-        formatar_pct(valor_pior, com_sinal=True),
+        f"Pior mês ({NOMES_DOS_MESES[mensal.mes_pior.month - 1]}/{mensal.mes_pior.year})",
+        formatar_pct(mensal.pior, com_sinal=True),
         "Retorno mensal",
     )
     mostrar_metrica(
         colunas[2],
         "Meses de alta",
-        formatar_pct(ind.calcular_percentual_dias_positivos(retorno_mensal)),
+        formatar_pct(mensal.meses_de_alta),
         "Retorno mensal",
     )
     st.write("")  # respiro entre os cartões e o mapa
-    mostrar_grafico(graficos.criar_mapa_de_calor_mensal(tabela_mensal))
+    mostrar_grafico(graficos.criar_mapa_de_calor_mensal(mensal.tabela))
     st.caption(
         "O primeiro e o último mês do período podem estar incompletos. "
         "A última linha mostra a média de cada mês ao longo dos anos "
@@ -347,29 +344,24 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
         st.info("Não há ativos suficientes com dados para comparar.")
         return
 
-    alinhado, descartados = alinhar_fechamentos(fechamentos)
-    if len(alinhado) <= MIN_DIAS_PARA_ANALISE:
+    comparacao = comparacao_de_ativos(fechamentos, taxa_livre_de_risco)
+    if comparacao.base_100 is None or comparacao.tabela is None:
         st.warning(
-            f"Só há {len(alinhado)} dias em comum entre esses ativos, e são necessários "
+            f"Só há {comparacao.dias_em_comum} dias em comum entre esses ativos, e são necessários "
             f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
         )
         return
 
     mostrar_grafico(
         graficos.criar_grafico_comparacao(
-            rebasear_para_100(alinhado), principal, NOMES_AMIGAVEIS
+            comparacao.base_100, principal, NOMES_AMIGAVEIS
         )
     )
     st.markdown("**Números no mesmo período**")
-    st.dataframe(
-        formatar_tabela_comparativa(
-            montar_tabela_comparativa(alinhado, taxa_livre_de_risco)
-        ),
-        width="stretch",
-    )
+    st.dataframe(formatar_tabela_comparativa(comparacao.tabela), width="stretch")
     st.caption(
-        f"Comparação feita em {len(alinhado)} dias em comum. "
-        f"{descartados} dias foram descartados porque algum ativo não tinha preço neles "
+        f"Comparação feita em {comparacao.dias_em_comum} dias em comum. "
+        f"{comparacao.dias_descartados} dias foram descartados porque algum ativo não tinha preço neles "
         "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
         "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
         "As moedas diferentes "
