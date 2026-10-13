@@ -55,7 +55,7 @@ A regra que atravessa tudo: **mostrar os números como eles são**, inclusive qu
 | Parte | O que é | Onde fica |
 |---|---|---|
 | **App** (`app.tickerlab.com.br`) | o serviço web: análises, estratégias, carteiras, relatórios em PDF, contas e planos | `app.py`, `src/` |
-| **Site público** (`tickerlab.com.br`) | páginas estáticas que apresentam o produto, os planos e a metodologia, e levam ao app | `site/`, gerado por `scripts/gerar_site.py` |
+| **Site público** (`tickerlab.com.br`) | páginas estáticas que apresentam o produto, os planos e a metodologia, e levam ao app | `site/`, gerado pelo React (`web/`, páginas pré-renderizadas) e por `scripts/gerar_site.py` (relatório de exemplo, catálogo) |
 | **API** | saúde do serviço e webhook do Stripe | `src/api.py` (FastAPI) |
 | **TickerLab Trade** | pesquisa de trading quantitativo com machine learning e MetaTrader 5, em conta de demonstração | `trader/` (roda no PC, fora do app) |
 | **Caderno de estudos** | anotações do aprendizado: Python, Pandas, Git, Streamlit, finanças e os erros resolvidos | `notas/`, `guias/`, `estudos/` |
@@ -184,7 +184,9 @@ o Yahoo Finance falhar), marque "Usar dados de exemplo" em "Opções avançadas"
 Site público e pesquisa:
 
 ```powershell
-.venv\Scripts\python -m scripts.gerar_site                     # gera site/
+.venv\Scripts\python -m scripts.gerar_site                     # parte do Python de site/
+.venv\Scripts\python -m scripts.exportar_conteudo              # conteúdo para o React
+cd web; npm ci; npm run site                                     # páginas de site/ (React)
 .venv\Scripts\python -m pip install -r requirements-trader.txt  # só para a pesquisa (Windows)
 ```
 
@@ -311,6 +313,7 @@ src/
   graficos.py         gráficos Plotly
 trader/               TickerLab Trade: conexão de só leitura com o MetaTrader 5 e dados
 site/                 site público estático (gerado)
+web/                  front-end em React + TypeScript (o site; o app depois, ADR 0048)
 static/               fontes e símbolo servidos pelo próprio site
 conteudo/             glossário, estratégias, catálogo de ativos, termos e privacidade
 migracoes/            migrações do banco (Alembic)
