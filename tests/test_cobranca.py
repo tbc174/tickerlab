@@ -16,6 +16,7 @@ from src.cobranca import (
     criar_pagina_de_pagamento,
     criar_portal_da_assinatura,
     ler_configuracao,
+    pode_assinar,
     processar_evento,
 )
 
@@ -127,6 +128,17 @@ def test_sem_configuracao_nao_cria_pagina(monkeypatch):
         monkeypatch.delenv(chave, raising=False)
     with pytest.raises(CobrancaIndisponivelError):
         criar_pagina_de_pagamento(uuid.uuid4(), "a@b.com")
+
+
+# --- quem pode assinar (decisão 0029) ---
+def test_enquanto_o_pagamento_e_de_teste_so_administrador_assina():
+    assert pode_assinar(e_admin=True)
+    assert not pode_assinar(e_admin=False)
+
+
+def test_sem_a_trava_qualquer_conta_assina(monkeypatch):
+    monkeypatch.setattr(cobranca, "ASSINATURA_SO_PARA_ADMINS", False)
+    assert pode_assinar(e_admin=False)
 
 
 # --- eventos do webhook ---
