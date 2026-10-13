@@ -33,7 +33,7 @@ URL_DO_FOCUS = (
     "ExpectativasMercadoAnuais"
 )
 ANOS_POR_CONSULTA = 9  # o SGS limita o tamanho da consulta (10 anos desde 2025)
-TEMPO_LIMITE = 20  # segundos
+TEMPO_LIMITE = 60  # segundos: sem cache, o SGS leva até ~30 s numa janela de 9 anos
 FUSO = ZoneInfo("America/Sao_Paulo")  # "hoje" é o do Brasil, não o do servidor (UTC)
 
 log = logging.getLogger(__name__)

@@ -156,3 +156,16 @@ def test_focus_sem_pesquisas_devolve_tabela_vazia_e_recusa_aspas():
     assert bcb.montar_focus({"value": []}).empty
     with pytest.raises(ValueError, match="Indicador"):
         bcb.baixar_focus("IPCA' or 1 eq 1", date(2026, 1, 1))
+
+
+def test_consulta_longa_do_sgs_tem_tempo_para_responder():
+    """Regressão (13/10/2026): sem cache, o SGS levou 18 a 26 s numa janela de 9 anos, e o limite
+    de 20 s derrubava a primeira carga das séries. Repetida, a mesma consulta volta em 1 s."""
+    pedidos: list = []
+
+    def buscar(url, params=None, timeout=None):
+        pedidos.append(timeout)
+        return RespostaFalsa([{"data": "01/09/2026", "valor": "0.48"}])
+
+    bcb.baixar_serie_sgs("ipca", date(2010, 1, 1), HOJE, HOJE, buscar)
+    assert pedidos and min(pedidos) >= 60
