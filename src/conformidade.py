@@ -26,6 +26,7 @@ from src.banco.modelo import (
     usuarios,
     watchlists,
 )
+from src.banco.pulse import dados_para_exportar as pulse_para_exportar
 from src.banco.tentativas import contar_por_ativo
 from src.banco.usuarios import Usuario
 
@@ -105,6 +106,7 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         },
         "preferencias": dict(prefs.dados) if prefs else {},
         "tentativas_por_ativo": contar_por_ativo(conexao, usuario_id),
+        "pulse": pulse_para_exportar(conexao, usuario_id),
         "favoritos": [
             l.ticker
             for l in conexao.execute(
