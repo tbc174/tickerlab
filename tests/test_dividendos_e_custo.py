@@ -17,6 +17,7 @@ from src.dividendos_e_custo import (
     Lancamento,
     com_a_posicao,
     custo_medio,
+    formatar_reais,
     proventos,
     total_por_ano,
 )
@@ -290,3 +291,16 @@ def test_so_os_ativos_da_posicao_na_ordem_dela():
     )
     resultado = com_a_posicao(custos, _carteira(("VALE3", 1, 20), ("ITUB4", 1, 5)))
     assert [r.codigo for r in resultado] == ["VALE3", "ITUB4"]
+
+
+@pytest.mark.parametrize(
+    ("valor", "texto"),
+    [
+        (1234.56, "R$ 1.234,56"),
+        (0, "R$ 0,00"),
+        (-1500, "-R$ 1.500,00"),
+        (0.005, "R$ 0,01"),
+    ],
+)
+def test_formatar_reais(valor, texto):
+    assert formatar_reais(valor) == texto

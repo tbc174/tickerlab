@@ -346,8 +346,9 @@ PAGINAS = (
         "Carteira da B3",
         GRUPO_RESEARCH,
         ":material/donut_large:",
-        "A sua posição da B3 lida só na memória: concentração, a carteira no passado, Raio-X "
-        "por tipo, setor e moeda, e Rebalanceamento para os pesos que você escolher.",
+        "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a "
+        "carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos "
+        "que você escolher, proventos recebidos e custo médio.",
         precisa_do_ativo=False,
     ),
     Pagina(

@@ -47,6 +47,45 @@ _ORDEM_NO_DIA = {
 }
 _QUASE_ZERO = 1e-9
 
+# ---- textos da tela (aqui, para a API e outra interface usarem os mesmos) ----
+COMO_BAIXAR_A_MOVIMENTACAO = (
+    "1. Na **Área do Investidor** da B3, abra **Extratos → Movimentação**.\n"
+    "2. Escolha o período (desde a primeira compra, se der: o custo médio precisa dela) e "
+    "baixe em **Excel**.\n"
+    "3. Envie o arquivo aqui. Como a posição, ele é lido **só na memória** e não fica guardado."
+)
+AVISO_DA_MOVIMENTACAO_DE_EXEMPLO = (
+    "**Exemplo demonstrativo:** movimentação fictícia, não é a sua."
+)
+NOMES_DOS_PROVENTOS = {
+    "dividendo": "Dividendos",
+    "jcp": "JCP (líquido)",
+    "rendimento": "Rendimentos",
+    "reembolso": "Reembolsos",
+}
+NOTA_DOS_PROVENTOS = (
+    "O que caiu na conta, como a B3 registra. O JCP já vem com os 15% de imposto retidos na "
+    "fonte. Reembolso é o provento pago enquanto a ação estava emprestada (aluguel). Os últimos "
+    "12 meses contam só o que já foi pago até hoje."
+)
+NOTA_DO_CUSTO = (
+    "Custo médio pela regra da Receita: a compra soma ao custo o que se pagou, a venda não muda "
+    "o médio, desdobro e grupamento mudam a quantidade sem mudar o custo. A planilha da B3 não "
+    "traz corretagem nem emolumentos, que a Receita manda somar ao custo: confira com as notas "
+    "de corretagem. Não é cálculo de imposto nem recomendação."
+)
+SEM_A_POSICAO = (
+    "Envie também a planilha de posição, no começo da página, para ver o ganho ou a perda de "
+    "hoje de cada ativo."
+)
+
+
+def formatar_reais(valor: float) -> str:
+    """R$ 1.234,56, como se escreve no Brasil."""
+    texto = f"{abs(valor):,.2f}".replace(",", "#").replace(".", ",").replace("#", ".")
+    return f"{'-' if valor < 0 else ''}R$ {texto}"
+
+
 AVISO_DA_BONIFICACAO = (
     "Recebeu bonificação: a Receita manda somar ao custo o valor que a empresa atribuiu a cada "
     "ação nova, e esse valor não vem na planilha da B3. O custo médio aqui fica um pouco menor "
