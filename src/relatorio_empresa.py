@@ -58,6 +58,21 @@ INDICADORES_DO_QUE_MUDOU = (
     "divida_sobre_pl",
 )
 QUANTOS_PARES = 5
+NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
+    "cascata": "Da receita ao lucro (último ano)",
+    "ponte": "Da dívida líquida do ano anterior à de agora",
+    "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
+    "historico": "Ano a ano",
+    "contas": "Contas ano a ano",
+    "vertical": "Análise vertical (cada conta sobre a receita ou o ativo)",
+    "eventos": "Acontecimentos recentes",
+    "indicadores": "Antes e agora",
+    "pares": "Empresas parecidas",
+    "piotroski": "Parcelas do Piotroski",
+    "altman": "Parcelas do Altman Z''",
+    "beneish": "Parcelas do Beneish",
+}
+MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
 FONTES = (
     "CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",
@@ -172,6 +187,33 @@ def escrever(valor: float | None, unidade: str) -> str:
     if unidade == fundamentalista.DIAS:
         return f"{valor:.0f} dias"
     return f"{valor:.2f}×".replace(".", ",")
+
+
+def nome_da_tabela(chave: str) -> str:
+    return NOMES_DAS_TABELAS.get(chave, rotulo_da_coluna(chave))
+
+
+def rotulo_da_coluna(coluna: str) -> str:
+    """`dividendo_total` → "Dividendo total" (cabeçalho das tabelas)."""
+    return str(coluna).replace("_", " ").capitalize()
+
+
+def escrever_celula(valor: object) -> str:
+    """Uma célula das tabelas do relatório, igual na página e no PDF (valores em reais acima de
+    mil viram "R$ 1,2 bi"; frações e contagens ficam com duas casas)."""
+    if valor is None or (isinstance(valor, float) and not math.isfinite(valor)):
+        return "—"
+    if isinstance(valor, bool):
+        return "sim" if valor else "não"
+    if isinstance(valor, int | float):
+        if abs(valor) >= MIL:
+            return formatar_valor(float(valor), "BRL")
+        return f"{valor:.2f}".replace(".", ",")
+    return str(valor)
+
+
+def _pct(fracao: float) -> str:
+    return escrever(fracao, fundamentos.FRACAO)
 
 
 def _item(indicador: fundamentos.Indicador, nota: notas.Nota | None = None) -> Item:
@@ -358,11 +400,16 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
         _item_de_preco(c, e, m, historico) for m in MULTIPLOS if m in c.indicadores
     ]
     p = e.premissas
+    origem = (
+        "Premissas padrão (dá para trocar na página)"
+        if p == Premissas()
+        else "Premissas escolhidas por você"
+    )
     paragrafos = [
         (
-            f"Premissas padrão (troque na página): desconto de {p.desconto:.0%} ao ano, perpetuidade "
-            f"de {p.perpetuidade:.0%}, {p.anos} anos e crescimento de {p.crescimento:.0%} no DCF. "
-            "São um ponto de partida declarado, não uma opinião sobre a empresa."
+            f"{origem}: desconto de {_pct(p.desconto)} ao ano, perpetuidade de "
+            f"{_pct(p.perpetuidade)}, {p.anos} anos e crescimento de {_pct(p.crescimento)} "
+            "no DCF. São um ponto de partida declarado, não uma opinião sobre a empresa."
         )
     ]
     tabelas: dict[str, list[dict]] = {}
@@ -387,9 +434,8 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
                 e.preco, desconto=p.desconto, **args
             )
             paragrafos.append(
-                f"O preço de hoje supõe o caixa livre crescendo {implicito:.1%} ao ano por {p.anos} anos.".replace(
-                    ".", ","
-                )
+                f"O preço de hoje supõe o caixa livre crescendo {_pct(implicito)} ao ano "
+                f"por {p.anos} anos."
                 if implicito is not None
                 else "Nenhum crescimento razoável explica o preço de hoje com essas premissas."
             )
@@ -468,6 +514,93 @@ def _qualidade(e: Entradas) -> Secao:
         SECOES["qualidade"],
         paragrafos=[texto_do_selo(a) for a in e.achados],
     )
+
+
+Passo = tuple[str, float]
+
+
+def _conta(contas: dict, nome: str) -> float | None:
+    valor = contas.get(nome)
+    if valor is None or (isinstance(valor, float) and math.isnan(valor)):
+        return None
+    return float(valor)
+
+
+def cascata_do_lucro(contas: dict) -> list[Passo]:
+    """Da receita ao lucro de um ano, passo a passo (o último é o total; os outros somam a ele).
+
+    O que não tem conta própria entra num passo de "outros", para a cascata sempre fechar.
+    """
+    receita = _conta(contas, "receita")
+    lucro = _conta(contas, "lucro_liquido")
+    if receita is None or lucro is None:
+        return []
+    custo = _conta(contas, "custo")
+    bruto = _conta(contas, "resultado_bruto")
+    if bruto is None:
+        bruto = receita + (custo or 0.0)
+    ebit = _conta(contas, "ebit")
+    if ebit is None:
+        ebit = bruto
+    vendas = _conta(contas, "despesas_com_vendas") or 0.0
+    administrativas = _conta(contas, "despesas_administrativas") or 0.0
+    passos = [
+        ("Receita", receita),
+        ("Custo", bruto - receita),
+        ("Despesas com vendas", vendas),
+        ("Despesas administrativas", administrativas),
+        ("Outras operacionais", ebit - bruto - vendas - administrativas),
+        ("Resultado financeiro, impostos e outros", lucro - ebit),
+    ]
+    return [p for p in passos if p[1] != 0 or p[0] == "Receita"] + [
+        ("Lucro consolidado", lucro)
+    ]
+
+
+def _divida_liquida(contas: dict) -> float | None:
+    if _conta(contas, "divida_liquida") is not None:
+        return _conta(contas, "divida_liquida")
+    if _conta(contas, "divida_cp") is None and _conta(contas, "divida_lp") is None:
+        return None
+    divida = (_conta(contas, "divida_cp") or 0.0) + (_conta(contas, "divida_lp") or 0.0)
+    caixa = (_conta(contas, "caixa") or 0.0) + (_conta(contas, "aplicacoes") or 0.0)
+    return divida - caixa
+
+
+def ponte_da_divida(anterior: dict, atual: dict) -> list[Passo]:
+    """Da dívida líquida de um ano à do seguinte: o caixa gerado reduz, capex e dividendos
+    aumentam; o resto (aquisições, juros, câmbio) fica em "outros", para a ponte fechar."""
+    comeco, fim = _divida_liquida(anterior), _divida_liquida(atual)
+    if comeco is None or fim is None:
+        return []
+    fluxos = [
+        ("Caixa operacional", -(_conta(atual, "fco") or 0.0)),
+        ("Capex", abs(_conta(atual, "capex") or 0.0)),
+        ("Dividendos pagos", abs(_conta(atual, "dividendos_pagos") or 0.0)),
+    ]
+    outros = fim - comeco - sum(v for _, v in fluxos)
+    passos = [("Dívida líquida no começo", comeco), *fluxos, ("Outros", outros)]
+    return [p for p in passos if p[1] != 0 or p[0].startswith("Dívida")] + [
+        ("Dívida líquida no fim", fim)
+    ]
+
+
+def _passos_em_tabela(passos: list[Passo]) -> list[dict]:
+    return [{"passo": nome, "valor": valor} for nome, valor in passos]
+
+
+def _graficos_de_contas(c: _Calculos, secoes: list[Secao]) -> None:
+    """A cascata do lucro (último ano) no Resultado e a ponte da dívida no Endividamento."""
+    anos = c.historico.contas.dropna(how="all")
+    if anos.empty:
+        return
+    por_chave = {s.chave: s for s in secoes}
+    ultimo = anos.iloc[-1].to_dict()
+    por_chave["resultado"].tabelas["cascata"] = _passos_em_tabela(
+        cascata_do_lucro(ultimo)
+    )
+    ponte = ponte_da_divida(anos.iloc[-2].to_dict(), ultimo) if len(anos) > 1 else []
+    por_chave["endividamento"].tabelas["ponte"] = _passos_em_tabela(ponte)
 
 
 def _o_que_mudou(e: Entradas, c: _Calculos) -> Secao:
@@ -562,6 +695,7 @@ def montar(entradas: Entradas) -> Relatorio:
         _metodologia(),
         Secao("limites", SECOES["limites"], paragrafos=list(LIMITES)),
     ]
+    _graficos_de_contas(c, secoes)
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,

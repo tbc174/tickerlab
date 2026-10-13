@@ -28,6 +28,7 @@ from src.estilos_pdf import PADRAO, TRACOS, Estilo
 
 LARGURA_POLEGADAS = 7.2
 DPI = 200
+FOLGA_DOS_ROTULOS = 0.12  # espaço acima da barra mais alta, para o número dela
 NOMES_CURTOS_DOS_MESES = (
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez",
 )  # fmt: skip
@@ -254,4 +255,40 @@ def grafico_de_composicao(
     eixo.set_xlim(0, max(pesos.max() * 1.18, 0.05))
     eixo.grid(axis="y", visible=False)
     _titulo(eixo, estilo, "Quanto do dinheiro está em cada ativo")
+    return _png(figura)
+
+
+def grafico_de_cascata(
+    passos: list[tuple[str, float]],
+    titulo: str,
+    estilo: Estilo = PADRAO,
+    subir_e_bom: bool = True,
+) -> bytes:
+    """Cascata em bilhões: barra cheia no começo e no total, flutuantes no meio."""
+    figura, eixo = _figura(
+        estilo, 2.8, {"left": 0.08, "right": 0.98, "top": 0.86, "bottom": 0.28}
+    )
+    subida, descida = (
+        (estilo.alta, estilo.queda) if subir_e_bom else (estilo.queda, estilo.alta)
+    )
+    nivel, ultimo = 0.0, len(passos) - 1
+    for i, (nome, valor) in enumerate(passos):
+        bilhoes = valor / 1e9
+        if i in (0, ultimo):
+            base, altura, cor = 0.0, bilhoes, estilo.series[0]
+            nivel = bilhoes
+        else:
+            base, altura = nivel, bilhoes
+            cor = subida if bilhoes >= 0 else descida
+            nivel += bilhoes
+        eixo.bar(nome, altura, bottom=base, color=cor, width=0.6)
+        eixo.annotate(numero_br(bilhoes, 1), (i, base + altura), ha="center",
+                      va="bottom" if altura >= 0 else "top", fontsize=7, color=estilo.texto)  # fmt: skip
+    eixo.tick_params(axis="x", labelrotation=20, labelsize=7)
+    baixo, alto = eixo.get_ylim()
+    eixo.set_ylim(
+        baixo, alto + (alto - baixo) * FOLGA_DOS_ROTULOS
+    )  # o rótulo não bate no título
+    eixo.yaxis.set_major_formatter(FuncFormatter(lambda v, _: numero_br(v, 0)))
+    _titulo(eixo, estilo, f"{titulo} (R$ bilhões)")
     return _png(figura)

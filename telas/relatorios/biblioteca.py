@@ -19,9 +19,10 @@ from src.banco.pdfs_originais import (
     pode_guardar,
 )
 from src.planos import limites_do
-from telas.comum import PERIODOS_DO_TOPO
+from telas.comum import PAGINAS_DO_MENU, PERIODOS_DO_TOPO
 from telas.relatorios.estudio import NOMES_DOS_MODELOS, _aplicar_secoes
 
+ABRIR_O_RELATORIO_DA_EMPRESA = "biblioteca_abrir_relatorio_empresa"
 CAMPOS_PARA_REABRIR = {
     "comparar_com": "relatorio_comparar_com",
     "estrategia": "relatorio_estrategia",
@@ -35,9 +36,14 @@ CAMPOS_PARA_REABRIR = {
 
 
 def _reabrir(relatorio):
-    """Põe o tipo, os dados e a configuração do relatório de volta no estúdio."""
+    """Põe o tipo, os dados e a configuração do relatório de volta no estúdio (o da empresa
+    volta para a página dele, com o mesmo ticker)."""
     p = relatorio.parametros
     tipo = relatorio.tipo
+    if tipo == relatorios.EMPRESA:
+        st.session_state["ticker"] = p.get("ticker", st.session_state.get("ticker"))
+        st.session_state[ABRIR_O_RELATORIO_DA_EMPRESA] = True
+        return
     st.session_state["tipo_de_relatorio"] = tipo
     if p.get("ticker"):
         st.session_state["ticker"] = p["ticker"]
@@ -129,6 +135,8 @@ def _botao_do_original(coluna, usuario, relatorio, guardado):
 
 
 def mostrar_biblioteca(usuario):
+    if st.session_state.pop(ABRIR_O_RELATORIO_DA_EMPRESA, False):
+        st.switch_page(PAGINAS_DO_MENU["relatorio_empresa"])
     if usuario is None:
         st.info(
             "A biblioteca guarda os relatórios de quem entra com a conta. No modo local, "
@@ -154,7 +162,8 @@ def mostrar_biblioteca(usuario):
     st.caption(
         "“Original” baixa o PDF como foi entregue (guardado por 1 ano; o seu plano guarda "
         f"até {limites_do(usuario.plano).pdfs_guardados}, e os mais antigos saem). “Reabrir” "
-        "traz os mesmos parâmetros para o estúdio, para gerar com os dados de hoje. O "
+        "traz os mesmos parâmetros para o estúdio, para gerar com os dados de hoje (o relatório "
+        "da empresa volta para a página dele). O "
         "relatório “Minha carteira” não é guardado. Excluir apaga o original e não devolve o "
         "relatório ao limite."
     )

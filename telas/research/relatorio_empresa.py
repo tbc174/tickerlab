@@ -5,33 +5,44 @@ mesma ordem do PDF e da futura API. Por enquanto só as empresas da B3 (os padr�
 """
 
 import logging
+from dataclasses import replace
 
 import pandas as pd
 import streamlit as st
 from sqlalchemy import exc as sa_exc
 
-from src import eventos_sec
+from src import eventos_sec, graficos, relatorios
 from src.banco.conexao import obter_engine, tabela_inexistente
+from src.banco.dados_do_usuario import registrar_relatorio
+from src.banco.pdfs_originais import guardar_pdf_original
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.dados import normalizar_ticker
+from src.fundamentos import VERSAO_DOS_FUNDAMENTOS
 from src.moedas import moeda_do_ticker
-from src.relatorio_empresa import Item, Relatorio, Secao, montar
-from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, carregar_contexto
+from src.padroes import VERSAO_DOS_PADROES
+from src.planos import LimiteDoPlanoError
+from src.relatorio_empresa import (
+    Item,
+    Premissas,
+    Relatorio,
+    Secao,
+    escrever_celula,
+    montar,
+    nome_da_tabela,
+    rotulo_da_coluna,
+)
+from src.relatorio_empresa_pdf import relatorio_da_empresa
+from telas.comum import (
+    PAGINAS_DO_MENU,
+    cabecalho_da_pagina,
+    carregar_contexto,
+    mostrar_grafico,
+)
 from telas.research.comum import _ainda_nao_coletado, _sem_banco_agora
 
 ITENS_POR_LINHA = 3
-NOMES_DAS_TABELAS = {
-    "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
-    "historico": "Ano a ano",
-    "contas": "Contas ano a ano",
-    "vertical": "Análise vertical (cada conta sobre a receita)",
-    "eventos": "Acontecimentos recentes",
-    "indicadores": "Antes e agora",
-    "pares": "Empresas parecidas",
-    "piotroski": "Parcelas do Piotroski",
-    "altman": "Parcelas do Altman Z''",
-    "beneish": "Parcelas do Beneish",
-}
+GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
+CHAVE_DO_PDF = "relatorio_empresa_pdf"
 SO_B3 = (
     "O relatório completo por enquanto é só das empresas da B3 (os padrões por setor e os "
     "proventos do FRE vêm da CVM). Escolha um ticker da B3 no topo; para empresas dos EUA, "
@@ -94,11 +105,58 @@ def _mostrar_secao(secao: Secao) -> None:
     for paragrafo in secao.paragrafos:
         st.markdown(paragrafo)
     for chave, linhas in secao.tabelas.items():
-        if linhas:
-            with st.expander(
-                NOMES_DAS_TABELAS.get(chave, chave.replace("_", " ").capitalize())
-            ):
-                st.dataframe(pd.DataFrame(linhas), hide_index=True, width="stretch")
+        if not linhas:
+            continue
+        if chave in GRAFICOS:
+            passos = [(linha["passo"], float(linha["valor"])) for linha in linhas]
+            mostrar_grafico(
+                graficos.criar_grafico_cascata(
+                    passos, nome_da_tabela(chave), subir_e_bom=GRAFICOS[chave]
+                )
+            )
+            continue
+        with st.expander(nome_da_tabela(chave)):
+            st.dataframe(_tabela_escrita(linhas), hide_index=True, width="stretch")
+
+
+def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
+    """A tabela com as células escritas como no PDF (R$ 1,2 bi; 0,35; sim/não)."""
+    tabela = pd.DataFrame(linhas)
+    return pd.DataFrame(
+        {rotulo_da_coluna(c): [escrever_celula(v) for v in tabela[c]] for c in tabela}
+    )
+
+
+def _premissas() -> Premissas:
+    """As premissas do DCF, que a pessoa pode trocar (o texto do valuation diz quais valeram)."""
+    padrao = Premissas()
+    with st.expander("Premissas do valuation (DCF)"):
+        colunas = st.columns(4)
+        desconto = colunas[0].number_input(
+            "Desconto ao ano (%)", 1.0, 40.0, padrao.desconto * 100, 0.5,
+            key="relatorio_empresa_desconto",
+        )  # fmt: skip
+        crescimento = colunas[1].number_input(
+            "Crescimento ao ano (%)", -20.0, 40.0, padrao.crescimento * 100, 0.5,
+            key="relatorio_empresa_crescimento",
+        )  # fmt: skip
+        perpetuidade = colunas[2].number_input(
+            "Perpetuidade (%)", 0.0, 10.0, padrao.perpetuidade * 100, 0.5,
+            key="relatorio_empresa_perpetuidade",
+        )  # fmt: skip
+        anos = colunas[3].number_input(
+            "Anos", 3, 20, padrao.anos, 1, key="relatorio_empresa_anos"
+        )
+        st.caption(
+            "O desconto precisa ser maior que a perpetuidade. São hipóteses suas, não "
+            "previsões; a tabela de sensibilidade mostra quanto o valor muda com elas."
+        )
+    return Premissas(
+        desconto=desconto / 100,
+        perpetuidade=perpetuidade / 100,
+        anos=int(anos),
+        crescimento=crescimento / 100,
+    )
 
 
 def _mostrar(relatorio: Relatorio) -> None:
@@ -117,6 +175,75 @@ def _mostrar(relatorio: Relatorio) -> None:
     st.caption("Fontes: " + "; ".join(relatorio.fontes) + ". Nada aqui é recomendação.")
 
 
+def _registrar(usuario, relatorio: Relatorio, pdf: bytes) -> bool:
+    """Conta o PDF no limite do plano e guarda o original (ADR 0021). False se o plano recusou
+    ou o registro falhou (a página já explicou)."""
+    try:
+        with obter_engine().begin() as conexao:
+            relatorio_id = registrar_relatorio(
+                conexao,
+                usuario.id,
+                relatorios.EMPRESA,
+                plano=usuario.plano,
+                titulo=f"Relatório da empresa: {relatorio.empresa}",
+                parametros={"ticker": relatorio.ticker},
+            )
+    except LimiteDoPlanoError as erro:
+        st.warning(str(erro), icon=":material/workspace_premium:")
+        st.page_link(PAGINAS_DO_MENU["planos"], label="Conhecer os planos")
+        return False
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Falha ao registrar o relatório da empresa"
+        )
+        st.error(
+            "Não consegui registrar o relatório agora. Nada foi contado no seu limite."
+        )
+        return False
+    versoes = {
+        "relatorio": relatorios.EMPRESA,
+        "ticker": relatorio.ticker,
+        "relatorios": relatorios.VERSAO_DOS_RELATORIOS,
+        "fundamentos": VERSAO_DOS_FUNDAMENTOS,
+        "padroes": VERSAO_DOS_PADROES,
+    }
+    try:
+        with obter_engine().begin() as conexao:
+            guardar_pdf_original(
+                conexao, usuario.id, relatorio_id, usuario.plano, pdf, versoes
+            )
+    except Exception:
+        logging.getLogger(__name__).exception("Falha ao guardar o PDF original")
+        st.warning(
+            "O PDF está pronto, mas não consegui guardar o original na biblioteca."
+        )
+    return True
+
+
+def _oferecer_o_pdf(relatorio: Relatorio) -> None:
+    """Gera o PDF (as mesmas seções da página) e oferece o download; com conta, conta no limite."""
+    if st.button(
+        "Gerar o PDF",
+        icon=":material/picture_as_pdf:",
+        key="empresa_gerar_pdf",
+    ):
+        with st.spinner("Gerando o PDF…"):
+            pdf = relatorio_da_empresa(relatorio)
+        usuario = st.session_state.get("usuario")
+        if usuario is None or _registrar(usuario, relatorio, pdf):
+            st.session_state[CHAVE_DO_PDF] = {"ticker": relatorio.ticker, "pdf": pdf}
+    gerado = st.session_state.get(CHAVE_DO_PDF)
+    if gerado and gerado["ticker"] == relatorio.ticker:
+        st.download_button(
+            "Baixar o PDF",
+            data=gerado["pdf"],
+            file_name=f"tickerlab-empresa-{relatorio.ticker.removesuffix('.SA')}.pdf",
+            mime="application/pdf",
+            icon=":material/download:",
+            on_click="ignore",
+        )
+
+
 def pagina_relatorio_empresa():
     cabecalho_da_pagina("relatorio_empresa")
     c = carregar_contexto()
@@ -125,7 +252,9 @@ def pagina_relatorio_empresa():
     entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
     if entradas is None:
         return
-    _mostrar(montar(entradas))
+    relatorio = montar(replace(entradas, premissas=_premissas()))
+    _oferecer_o_pdf(relatorio)
+    _mostrar(relatorio)
     st.page_link(
         PAGINAS_DO_MENU["fundamentos"],
         label="Ver os fundamentos com os seus parâmetros",

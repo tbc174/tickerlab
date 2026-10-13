@@ -1189,6 +1189,39 @@ def criar_grafico_fundamentos_anuais(
     return figura
 
 
+def criar_grafico_cascata(
+    passos: list[tuple[str, float]],
+    titulo: str,
+    simbolo: str = "R$",
+    subir_e_bom: bool = True,
+) -> go.Figure:
+    """Cascata (o primeiro passo é o ponto de partida; o último, o total), em bilhões.
+
+    `subir_e_bom`: na ponte da dívida, um passo para cima (mais dívida) é ruim e fica vermelho.
+    """
+    if not passos:
+        raise ValueError("Não há passos para a cascata.")
+    figura = _figura_base(f"{titulo} ({simbolo} bilhões)")
+    figura.update_yaxes(tickformat=",.1f")
+    medidas = ["absolute"] + ["relative"] * (len(passos) - 2) + ["total"]
+    subida, descida = (COR_ALTA, COR_QUEDA) if subir_e_bom else (COR_QUEDA, COR_ALTA)
+    figura.add_trace(
+        go.Waterfall(
+            x=[nome for nome, _ in passos],
+            y=[valor / 1e9 for _, valor in passos],
+            measure=medidas,
+            text=[f"{_numero_br(v / 1e9, 1)}" for _, v in passos],
+            hovertemplate=f"%{{x}}: {simbolo} %{{text}} bi<extra></extra>",
+            increasing={"marker": {"color": subida}},
+            decreasing={"marker": {"color": descida}},
+            totals={"marker": {"color": COR_AZUL}},
+            connector={"line": {"color": COR_INDICE, "width": 1}},
+        )
+    )
+    figura.update_layout(showlegend=False)
+    return figura
+
+
 def criar_grafico_negociacoes(resumo: pd.DataFrame, moeda: str) -> go.Figure:
     """Compras (para cima) e vendas (para baixo) de pessoas de dentro, por mês de entrega."""
     if resumo.empty:

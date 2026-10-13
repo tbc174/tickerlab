@@ -11,12 +11,14 @@ import pytest
 import sqlalchemy as sa
 
 from src import demonstracoes as dm
+from src import relatorios
 from src.banco import relatorio_empresa as repo
-from src.banco.conexao import criar_engine, migrar_para
+from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 from src.banco.demonstracoes import gravar_demonstracoes, gravar_setor
 from src.banco.eventos import gravar_tickers
 from src.banco.modelo import eventos, fre_proventos
 from src.banco.padroes import gravar_padroes
+from src.planos import LimiteDoPlanoError, conferir_relatorio
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
 WEG, PETROBRAS, BB = "84.429.695/0001-11", "33.000.167/0001-01", "00.000.000/0001-91"
@@ -103,3 +105,29 @@ def test_sem_padrao_gravado_fica_sem_padroes(conexao):
 
 def test_ticker_sem_empresa_na_cvm_devolve_none(conexao):
     assert repo.entradas_do_relatorio(conexao, "AAPL") is None
+
+
+def test_migracao_0030_aceita_o_relatorio_da_empresa_e_volta(tmp_path):
+    url = f"sqlite:///{(tmp_path / 'm.sqlite').as_posix()}"
+    migrar_para("head", url=url)
+
+    def regras() -> str:
+        motor = criar_engine(url)
+        try:
+            return " ".join(
+                c["sqltext"]
+                for c in sa.inspect(motor).get_check_constraints("relatorios")
+            )
+        finally:
+            motor.dispose()
+
+    assert "empresa" in regras()
+    desfazer_ate("0029", url=url)
+    assert "empresa" not in regras() and "newsletter" in regras()
+    migrar_para("head", url=url)
+
+
+def test_gratuito_nao_gera_o_pdf_da_empresa_e_o_plus_gera():
+    with pytest.raises(LimiteDoPlanoError):
+        conferir_relatorio("gratuito", relatorios.EMPRESA, 0)
+    conferir_relatorio("plus", relatorios.EMPRESA, 0)

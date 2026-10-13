@@ -133,3 +133,52 @@ def test_banco_mostra_nao_se_aplica(dados_da_weg):
     banco = DadosDaEmpresa(dados_da_weg.contas, dados_da_weg.documentos, "Bancos")
     caixa = re_.montar(_entradas(banco)).secao("caixa")
     assert any("Não se aplica" in i.motivo for i in caixa.itens)
+
+
+def test_cascata_do_lucro_fecha():
+    ano = {"receita": 1000.0, "resultado_bruto": 400.0, "despesas_com_vendas": -80.0,
+           "despesas_administrativas": -50.0, "ebit": 230.0, "lucro_liquido": 150.0}  # fmt: skip
+    passos = re_.cascata_do_lucro(ano)
+    assert passos[0] == ("Receita", 1000.0)
+    assert passos[-1] == ("Lucro consolidado", 150.0)  # com a parte dos minoritários
+    assert sum(v for _, v in passos[:-1]) == pytest.approx(150.0)  # a cascata fecha
+    assert ("Custo", -600.0) in passos
+    assert ("Outras operacionais", -40.0) in passos  # 400 − 80 − 50 − 230
+
+
+def test_cascata_sem_receita_ou_lucro_fica_vazia():
+    assert re_.cascata_do_lucro({"receita": 10.0}) == []
+
+
+def test_ponte_da_divida_fecha():
+    anterior = {"divida_liquida": 500.0}
+    atual = {"divida_liquida": 420.0, "fco": 300.0, "capex": -120.0,
+             "dividendos_pagos": -60.0}  # fmt: skip
+    passos = re_.ponte_da_divida(anterior, atual)
+    assert passos[0] == ("Dívida líquida no começo", 500.0)
+    assert passos[-1] == ("Dívida líquida no fim", 420.0)
+    assert sum(v for _, v in passos[:-1]) == pytest.approx(420.0)
+    assert ("Caixa operacional", -300.0) in passos  # caixa gerado reduz a dívida
+    assert ("Capex", 120.0) in passos and ("Dividendos pagos", 60.0) in passos
+
+
+def test_relatorio_traz_cascata_e_ponte(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    assert relatorio.secao("resultado").tabelas["cascata"]
+    assert "ponte" in relatorio.secao("endividamento").tabelas
+
+
+def test_frases_do_valuation_terminam_com_ponto(dados_da_weg):
+    valuation = re_.montar(_entradas(dados_da_weg)).secao("valuation")
+    assert all(p.endswith(".") for p in valuation.paragrafos)
+
+
+def test_premissas_escolhidas_aparecem_no_texto(dados_da_weg):
+    premissas = re_.Premissas(
+        desconto=0.15, perpetuidade=0.02, anos=10, crescimento=0.04
+    )
+    valuation = re_.montar(_entradas(dados_da_weg, premissas=premissas)).secao(
+        "valuation"
+    )
+    texto = " ".join(valuation.paragrafos)
+    assert "escolhidas por você" in texto and "15,0%" in texto
