@@ -18,6 +18,8 @@ from src.experimentos import (
     calcular_retorno_da_noite_com_custo,
     comparar_dentro_e_fora,
     comparar_janelas,
+    curvas_da_noite_e_do_dia,
+    posicao_da_virada,
     resumir_janelas,
     resumir_noite_e_dia,
     separar_noite_e_dia,
@@ -202,14 +204,7 @@ def _experimento_noite_e_dia(dados, taxa_livre_de_risco):
     )
     st.dataframe(tabela, width="stretch")
     liquido = calcular_retorno_da_noite_com_custo(partes, custo_percentual / 100)
-    curvas = {
-        "Total (comprar e segurar)": (
-            1 + (1 + partes["Noite"]) * (1 + partes["Dia"]) - 1
-        ).cumprod(),
-        "Só a noite": (1 + partes["Noite"]).cumprod(),
-        "Só o dia": (1 + partes["Dia"]).cumprod(),
-        "Só a noite, com custos": (1 + liquido).cumprod(),
-    }
+    curvas = curvas_da_noite_e_do_dia(partes, liquido)
     mostrar_grafico(
         graficos.criar_grafico_curvas_de_capital(
             curvas, 10_000.0, destaque="Total (comprar e segurar)"
@@ -273,7 +268,7 @@ def _experimento_virada_do_mes(dados, taxa_livre_de_risco):
             delta_color="off",
             delta_arrow="off",
         )
-    desejada = marcados.shift(-1, fill_value=False).astype(float)
+    desejada = posicao_da_virada(marcados)
     try:
         acaso = testar_contra_o_acaso(
             fechamento, desejada, custo_percentual / 100, taxa_livre_de_risco

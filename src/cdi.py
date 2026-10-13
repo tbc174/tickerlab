@@ -85,6 +85,13 @@ def curva_do_cdi(cdi_diario: pd.Series, indice: pd.DatetimeIndex) -> pd.Series:
     return curva / curva.iloc[0]
 
 
+def retorno_diario_do_caixa(
+    cdi_diario: pd.Series, indice: pd.DatetimeIndex
+) -> pd.Series:
+    """Quanto o dinheiro parado rende em cada dia de `indice` aplicado no CDI (o primeiro dia é 0)."""
+    return curva_do_cdi(cdi_diario, indice).pct_change().fillna(0.0)
+
+
 def calcular_taxa_anual_do_cdi(
     cdi_diario: pd.Series, indice: pd.DatetimeIndex
 ) -> float:

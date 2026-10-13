@@ -232,3 +232,38 @@ def test_hrp_comeca_com_60_dias_de_historico_e_nao_um_ano():
     primeiro = pesos.index[(pesos.sum(axis=1) > 0).to_numpy()][0]
     assert (primeiro - pesos.index[0]).days < 130
     assert pesos.loc[primeiro].sum() == pytest.approx(1.0)
+
+
+# --- números da carteira, que saíram da tela (13/10/2026) ---------------------------------------
+def test_numeros_da_carteira_iguais_ao_que_a_tela_calculava():
+    from src import indicadores as ind
+    from src.carteiras import numeros_da_carteira
+    from src.metricas import resumir_desempenho
+
+    precos = _precos()
+    principal = simular_carteira("Pesos iguais (referência)", precos)
+    outra = simular_carteira("Rotação por momentum", precos)
+    nomes = {"A": "Ativo A"}
+    carteiras, numeros = numeros_da_carteira(
+        "Rotação por momentum", outra, principal, precos, 0.1, nomes
+    )
+    assert list(carteiras) == ["Rotação por momentum", "Pesos iguais (referência)"]
+    assert numeros["Rotação por momentum"] == resumir_desempenho(
+        outra.retorno, outra.exposicao, None, 0.1
+    )
+    sem_estrategia = pd.Series(1.0, index=precos.index)
+    assert numeros["Ativo A (comprar e segurar)"] == resumir_desempenho(
+        ind.calcular_retorno_diario(precos["A"]), sem_estrategia, None, 0.1
+    )
+    assert "B (comprar e segurar)" in numeros  # sem nome amigável, fica o código
+
+
+def test_carteira_de_referencia_nao_aparece_duas_vezes():
+    from src.carteiras import numeros_da_carteira
+
+    precos = _precos()
+    referencia = simular_carteira("Pesos iguais (referência)", precos)
+    carteiras, _ = numeros_da_carteira(
+        "Pesos iguais (referência)", referencia, referencia, precos, 0.1, {}
+    )
+    assert list(carteiras) == ["Pesos iguais (referência)"]
