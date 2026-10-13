@@ -309,3 +309,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o teste guardou o `<main>` do aviso "Carregando"; quando a configuração da API chega, o React troca a moldura inteira e aquele `<main>` sai da página.
 - **Solução:** esperar algo da tela final (o menu "Telas") e só então pegar o `<main>`. Aumentar o tempo de espera não resolve.
 - **Data:** 13/10/2026
+
+## Planilha da B3 com "1.000" em texto vira 1, e não mil
+- **Sintoma:** um teste da movimentação com a quantidade `"1.000"` (texto) leu 1 ação.
+- **Causa:** `numero_brasileiro` (`src/carteira_b3.py`) só tratava o ponto como milhar quando havia vírgula (`"1.234,56"`); sem vírgula, `float("1.000")` é 1,0. Afetava também a planilha de posição enviada em CSV.
+- **Solução:** ponto seguido de grupos de exatamente três dígitos (`1.000`, `12.345.678`) é milhar; `"30.5"` continua 30,5. Teste com a tabela de casos em `tests/test_carteira_b3.py`.
+- **Data:** 13/10/2026
+
+## AppTest: "`st.session_state['...']` is read-only" com dois `st.file_uploader` na página
+- **Sintoma:** depois de pôr um segundo campo de arquivo na Carteira da B3, os testes que ligavam o exemplo com `app.toggle(...).set_value(True).run()` passaram a falhar com essa mensagem, apontando para o `st.file_uploader`.
+- **Causa:** o AppTest reenvia o estado de todos os campos que já apareceram; o campo de arquivo não aceita valor vindo de fora. Com um campo só, ligar o exemplo o tirava da tela; com dois, um deles continuava lá.
+- **Solução:** nos testes, ligar o exemplo **antes** de abrir a página (`app.session_state["carteira_b3_exemplo"] = True` e depois `ir_para`), para que ninguém interaja depois que os campos aparecem. Em uso real, os dois campos funcionam normalmente.
+- **Data:** 13/10/2026
+
+## `sed` troca `\U`, `\t` e `\a` num caminho do Windows por outra coisa
+- **Sintoma:** uma substituição com `sed` gravou `C:SERS<tab>IAGOPROJETOS...` no lugar de `C:\Users\tiago\projetos\...`.
+- **Causa:** no texto de substituição do GNU sed, `\U` deixa o resto em maiúsculas, `\t` vira tabulação e `\a` vira um caractere de controle. O mesmo acontece dentro de `"..."` no Python (`\U` é escape de Unicode).
+- **Solução:** para trocar texto com barras invertidas, usar um script Python que monta a barra com `chr(92)` (ou string crua `r"..."`), e conferir o resultado depois.
+- **Data:** 13/10/2026
+
+## Ações emprestadas (aluguel) viravam venda no custo médio
+- **Sintoma:** com a movimentação real, o custo médio de um FII mostrava só as cotas compradas depois de julho (1.300), quando a pessoa tinha 10.505; o custo total caía de ~R$ 100 mil para ~R$ 12,8 mil.
+- **Causa:** ao emprestar as ações, a B3 escreve uma "Transferência - Liquidação" de **saída sem valor** (mais um par "Transferência" e uma linha "Empréstimo" no mesmo dia). O leitor tratava toda liquidação de saída como venda; vendendo "tudo", o médio recomeçava na compra seguinte.
+- **Solução:** toda venda traz dinheiro. Liquidação sem valor não é compra nem venda: a saída fica fora das contas, com aviso na tela, e uma entrada sem valor depois de uma saída do mesmo ativo é a volta. Entrada sem valor sem saída antes continua como compra sem valor (custo incompleto). Teste de regressão com as 4 linhas copiadas da planilha real e valores inventados.
+- **Data:** 13/10/2026

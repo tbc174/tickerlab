@@ -28,20 +28,25 @@ const CORES_DAS_SERIES =
 // o CSS do site, com as fontes dentro de /novo/ (o app fica em outro endereço que o site)
 const ESTILO = css().replaceAll('url("/fontes/', `url("${BASE}fontes/`) + CORES_DAS_SERIES;
 
-/** Põe no <head> o tema (antes de pintar) e o CSS da marca, e grava os arquivos fixos. */
+/** O <head> da página: o tema (antes de pintar) e o CSS da marca. LF sempre: o Git no Windows pode
+ * tirar o app/index.html com CRLF, e o CI compara o build byte a byte. */
+function transformarPagina(html: string): string {
+  const semCrlf = html.replace(/\r\n?/g, "\n");
+  const cabeca =
+    `<script src="${BASE}tema/sol.js?v=${versao(SOL_JS)}"></script>\n    ` +
+    `${TEMA_SALVO}\n    ` +
+    `<link rel="icon" href="${BASE}simbolo.svg" type="image/svg+xml">\n    ` +
+    `<link rel="stylesheet" href="${BASE}estilo.css?v=${versao(ESTILO)}">`;
+  return semCrlf.replace("<!--tema-e-estilo-->", cabeca);
+}
+
+/** Põe no <head> o tema e o CSS da marca, e grava os arquivos fixos. */
 function arquivosDaMarca(): Plugin {
   return {
     name: "tickerlab-arquivos-da-marca",
-    transformIndexHtml(html) {
-      // LF sempre: o Git no Windows pode tirar o app/index.html com CRLF, e o CI compara byte a byte
-      const semCrlf = html.replace(/\r\n?/g, "\n");
-      const cabeca =
-        `<script src="${BASE}tema/sol.js?v=${versao(SOL_JS)}"></script>\n    ` +
-        `${TEMA_SALVO}\n    ` +
-        `<link rel="icon" href="${BASE}simbolo.svg" type="image/svg+xml">\n    ` +
-        `<link rel="stylesheet" href="${BASE}estilo.css?v=${versao(ESTILO)}">`;
-      return semCrlf.replace("<!--tema-e-estilo-->", cabeca);
-    },
+    // "pre": antes de o Vite mexer no HTML. Ele tira a tag <script> da página e, com CRLF, sobrava
+    // uma linha em branco que o build do CI (LF) não tem
+    transformIndexHtml: { order: "pre", handler: transformarPagina },
     generateBundle() {
       const emitir = (fileName: string, source: string | Uint8Array) =>
         this.emitFile({ type: "asset", fileName, source });
