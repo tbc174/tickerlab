@@ -26,6 +26,7 @@ from src import catalogo
 from src import coleta_sec as coleta
 from src import eventos_sec as sec
 from src.banco import sob_demanda
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.eventos import ORIGEM_SEC, gravar_tickers
 from src.configuracao import contato, url_do_banco
@@ -38,8 +39,12 @@ MAX_FORM4 = 3_000  # por execução: ~6 min a 8 consultas por segundo
 SEM_CONTATO = 2  # código de saída: falta configurar o e-mail
 
 
-def baixar(url: str, agente: str) -> bytes:
+def _baixar_da_fonte(url: str, agente: str) -> bytes:
     return coleta.baixar_da_sec(url, agente)
+
+
+# cada arquivo baixado fica no registro de coletas (Radar, PR 1)
+baixar = com_registro("sec-eventos", _baixar_da_fonte)
 
 
 def tickers_dos_eua() -> set[str]:

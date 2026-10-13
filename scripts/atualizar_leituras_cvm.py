@@ -18,6 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from src import leitura
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.leituras import RESUMO, fatos_sem_leitura, gravar_leitura
 from src.configuracao import url_do_banco
@@ -30,12 +31,16 @@ PAUSA_ENTRE_DOWNLOADS = 60  # segundos: a CVM limita os downloads por endereço
 DIAS = 30
 
 
-def baixar(url: str) -> bytes:
+def _baixar_da_fonte(url: str) -> bytes:
     resposta = requests.get(
         url, timeout=120, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()
     return resposta.content
+
+
+# cada arquivo baixado fica no registro de coletas (Radar, PR 1)
+baixar = com_registro("cvm-documentos", _baixar_da_fonte)
 
 
 def ler(conteudo: bytes) -> dict:

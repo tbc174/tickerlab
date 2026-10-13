@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from src import eventos as ev
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.eventos import gravar_eventos, gravar_tickers
 from src.configuracao import url_do_banco
@@ -26,12 +27,16 @@ ANOS_DE_FCA = 4  # o FCA só é reenviado quando algo muda: junta os últimos an
 MAX_ANOS_DE_EVENTOS = 5  # mais que isso pesa no banco sem ajudar o Research
 
 
-def baixar(url: str) -> bytes:
+def _baixar_da_fonte(url: str) -> bytes:
     resposta = requests.get(
         url, timeout=180, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()
     return resposta.content
+
+
+# cada arquivo baixado fica no registro de coletas (Radar, PR 1)
+baixar = com_registro("cvm-eventos", _baixar_da_fonte)
 
 
 def main(argv: list[str] | None = None) -> int:

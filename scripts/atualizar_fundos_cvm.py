@@ -18,6 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from src import fundos_cvm as cda
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.detentores import gravar_competencia
 from src.configuracao import url_do_banco
@@ -29,7 +30,7 @@ MAX_MESES = 24
 NAO_ENCONTRADO = 404
 
 
-def baixar(url: str) -> bytes | None:
+def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
     resposta = requests.get(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
@@ -38,6 +39,10 @@ def baixar(url: str) -> bytes | None:
         return None
     resposta.raise_for_status()
     return resposta.content
+
+
+# cada arquivo baixado fica no registro de coletas (Radar, PR 1)
+baixar = com_registro("cvm-cda", _baixar_da_fonte)
 
 
 def main(argv: list[str] | None = None) -> int:

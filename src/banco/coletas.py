@@ -1,0 +1,106 @@
+"""Registro de coletas: uma linha por arquivo baixado das fontes oficiais (Radar, PR 1).
+
+É o primeiro passo da base histórica (ADR 0024 do autor): saber de onde veio cada arquivo, quando,
+o tamanho, o SHA-256 e sob qual licença. As coletas não mudam o que gravam; só passam a deixar
+este registro. Um problema no registro nunca derruba a coleta (fica no log).
+"""
+
+import hashlib
+import logging
+import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime
+
+import sqlalchemy as sa
+
+from src.banco.conexao import obter_engine
+from src.banco.modelo import coletas
+
+log = logging.getLogger(__name__)
+
+# a licença de cada família de fontes (licencas-por-fonte.md do autor); a fonte é "família-detalhe"
+LICENCAS = {
+    "cvm": "ODbL (dados abertos da CVM; citar a fonte)",
+    "sec": "Acesso público (EDGAR, SEC)",
+    "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
+    "ibge": "Domínio público (citar o IBGE)",
+    "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
+    "iex": "Termos do IEX HIST (com atribuição)",
+    "yahoo": "Uso pessoal: só interno, nunca exportar",
+}
+SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
+LIMITE_DO_DETALHE = 300
+LIMITE_DA_URL = 1000
+
+
+def licenca_da_fonte(fonte: str) -> str:
+    """A licença pela família da fonte ("cvm-ipe" → a da CVM)."""
+    return LICENCAS.get(fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA)
+
+
+def registrar(
+    conexao: sa.Connection,
+    fonte: str,
+    url: str,
+    conteudo: bytes | None,
+    situacao: str,
+    detalhe: str | None = None,
+    agora: datetime | None = None,
+) -> None:
+    """Grava uma linha do registro. `conteudo` None = nada foi baixado (404 ou falha)."""
+    conexao.execute(
+        sa.insert(coletas).values(
+            id=uuid.uuid4(),
+            fonte=fonte,
+            url=url[:LIMITE_DA_URL],
+            situacao=situacao,
+            bytes=None if conteudo is None else len(conteudo),
+            sha256=None if conteudo is None else hashlib.sha256(conteudo).hexdigest(),
+            licenca=licenca_da_fonte(fonte),
+            detalhe=None if detalhe is None else detalhe[:LIMITE_DO_DETALHE],
+            baixado_em=agora or datetime.now(UTC),
+        )
+    )
+
+
+def ultimas(
+    conexao: sa.Connection, fonte: str | None = None, quantas: int = 50
+) -> list[sa.Row]:
+    """As coletas mais recentes (de uma fonte, ou de todas), da mais nova para a mais velha."""
+    consulta = sa.select(coletas).order_by(coletas.c.baixado_em.desc()).limit(quantas)
+    if fonte is not None:
+        consulta = consulta.where(coletas.c.fonte == fonte)
+    return list(conexao.execute(consulta))
+
+
+def _registrar_sem_atrapalhar(
+    fonte: str, url: str, conteudo: bytes | None, situacao: str, detalhe: str | None
+) -> None:
+    try:
+        with obter_engine().begin() as conexao:
+            registrar(conexao, fonte, url, conteudo, situacao, detalhe)
+    except Exception:
+        # o registro é para auditoria; a coleta segue mesmo sem ele
+        log.exception("Falha ao registrar a coleta de %s", fonte)
+
+
+def com_registro[Conteudo: (bytes, bytes | None)](
+    fonte: str, baixar: Callable[..., Conteudo]
+) -> Callable[..., Conteudo]:
+    """Embrulha a função `baixar(url, ...)` de uma coleta para registrar cada arquivo.
+
+    Arquivo baixado → "ok" com tamanho e SHA-256; `None` (a fonte respondeu 404) →
+    "nao_encontrado"; erro → "falhou" e o erro segue para a coleta, como antes.
+    """
+
+    def baixar_e_registrar(url: str, *args: object, **kwargs: object) -> Conteudo:
+        try:
+            conteudo = baixar(url, *args, **kwargs)
+        except Exception as erro:
+            _registrar_sem_atrapalhar(fonte, url, None, "falhou", type(erro).__name__)
+            raise
+        situacao = "nao_encontrado" if conteudo is None else "ok"
+        _registrar_sem_atrapalhar(fonte, url, conteudo, situacao, None)
+        return conteudo
+
+    return baixar_e_registrar
