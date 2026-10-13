@@ -310,7 +310,35 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
     border-top: 1px solid {marca.LINHA};
 }}
 
+/* menus do topo e listas de escolha surgem do gatilho (blueprint 04). Anima o conteúdo, não a
+   caixa: a caixa se posiciona com transform, e animá-la tiraria o menu do lugar. (Os expansores,
+   como "Opções avançadas", o próprio Streamlit já anima.) */
+[data-testid="stTopNavPopoverBody"] > *, [data-baseweb="popover"] > div {{
+    transform-origin: top center;
+    animation: tl-surgir 180ms ease-out both;
+}}
+@keyframes tl-surgir {{
+    from {{ opacity: 0; transform: scale(0.98) translateY(-4px); }}
+    to {{ opacity: 1; transform: none; }}
+}}
+
+/* abas: o traço azul desliza até a aba nova e o conteúdo entra suave (blueprint 05) */
+.stTabs [data-baseweb="tab-highlight"] {{
+    transition: transform 220ms ease, width 220ms ease;
+}}
+.stTabs [data-baseweb="tab-panel"] {{
+    animation: tl-entrar 200ms ease-out both;
+}}
+
+/* campos: a borda e o brilho do foco chegam suaves (blueprint 07) */
+[data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="textarea"] {{
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}}
+
 @media (prefers-reduced-motion: reduce) {{
-    * {{ transition: none !important; animation: none !important; }}
+    *, *::before, *::after {{
+        transition: none !important;
+        animation: none !important;
+    }}
 }}
 """
