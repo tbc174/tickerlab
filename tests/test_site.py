@@ -52,6 +52,9 @@ def test_paginas_tem_titulo_descricao_idioma_e_aviso():
         "termos.html",
         "privacidade.html",
         "404.html",
+        "produto.html",
+        "como-funciona.html",
+        "aprender.html",
     }
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
@@ -177,3 +180,26 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
                 arquivo.name,
                 nome,
             )
+
+
+def test_menu_da_versao_a_em_todas_as_paginas():
+    """Organização escolhida pelo Tiago em 13/10/2026 (protótipo A, por assunto)."""
+    for arquivo in PAGINAS_HTML:
+        topo = arquivo.read_text(encoding="utf-8").split("</header>")[0]
+        for rotulo in ("Produto", "Como funciona", "Relatórios", "Planos", "Aprender"):
+            assert f">{rotulo}</a>" in topo, (arquivo.name, rotulo)
+
+
+def test_pagina_produto_mostra_o_que_existe_e_o_que_vem():
+    from src import modulos
+
+    texto = (SITE / "produto.html").read_text(encoding="utf-8")
+    for modulo in modulos.MODULOS[:6]:
+        assert f'id="{modulo.chave}"' in texto
+        for f in modulo.funcionalidades:
+            assert gs.esc(f.nome) in texto
+    total_breve = sum(m.em_breve for m in modulos.MODULOS[:6])
+    assert texto.count('class="selo breve"') == total_breve
+    # o que ainda não existe não leva a lugar nenhum
+    for cartao in re.findall(r'<article class="cartao breve">.*?</article>', texto):
+        assert "href=" not in cartao

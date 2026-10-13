@@ -104,6 +104,18 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .passos li { padding: 1.4rem; border-left: 2px solid var(--azul); background: var(--superficie); border-radius: 0 var(--raio) var(--raio) 0; }
 .passos p { color: var(--apagado); margin: 0; }
 .numero { display: inline-block; font-family: "JetBrains Mono", monospace; color: var(--azul-texto); font-weight: 700; margin-bottom: .4rem; }
+/* módulos: o selo diz o que já está no app e o que está em construção */
+.selo { display: inline-block; padding: .08rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700;
+  letter-spacing: .02em; white-space: nowrap; }
+.selo.disponivel { color: var(--azul-texto); border: 1px solid color-mix(in srgb, var(--azul-texto) 45%, transparent); }
+.selo.breve { color: var(--atencao); border: 1px solid color-mix(in srgb, var(--atencao) 45%, transparent); }
+.cartao h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; }
+.cartao.breve { background: transparent; border-style: dashed; }
+.cartao.breve:hover { border-color: var(--linha); transform: none; }
+.modulo-topo { display: flex; justify-content: space-between; align-items: end; gap: 0 1rem; flex-wrap: wrap; }
+.contagem { color: var(--apagado); font-size: .92rem; }
+.cabecalho { border-top: 0; padding-bottom: 1rem; }
+.atalhos { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }
 /* vitrine do Report Studio */
 .vitrine .controles { display: inline-flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; margin: 1rem 0 1.25rem;
   background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; }
@@ -138,7 +150,7 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 .texto-longo li { margin-bottom: .45rem; }
 .texto-longo li, .texto-longo p { color: color-mix(in srgb, var(--texto) 88%, var(--apagado)); }
 /* rodapé */
-.rodape { padding-block: 2.5rem; margin-top: 2rem; }
+.rodape { padding-block: 2.5rem; border-top: 1px solid var(--linha); }
 .rodape .faixa { display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem 2rem; }
 .rodape nav { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-content: start; }
 .rodape nav a { color: var(--apagado); text-decoration: none; }
