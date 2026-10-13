@@ -202,33 +202,3 @@ def ler_indice(zip_bytes: bytes, documento: str) -> pd.DataFrame:
         },
         columns=colunas,
     )
-
-
-def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
-    """Cada registro de companhia aberta, com as datas de registro e de cancelamento.
-
-    Colunas: cnpj, empresa, registro, cancelamento (vazio = ativa). Uma empresa pode ter mais de
-    um registro. Sem as colunas de data (arquivo antigo ou recortado), vale a situação: cancelada
-    conta como cancelada desde sempre.
-    """
-    bruto = pd.read_csv(
-        io.BytesIO(conteudo_csv),
-        sep=";",
-        encoding=CODIFICACAO_DA_CVM,
-        encoding_errors="replace",
-        dtype=str,
-        keep_default_na=False,
-    )
-    vazio = pd.Series("", index=bruto.index)
-    cancelamento = pd.to_datetime(bruto.get("DT_CANCEL", vazio), errors="coerce")
-    if "DT_CANCEL" not in bruto:
-        cancelada = bruto["SIT"].str.upper().str.strip().ne("ATIVO")
-        cancelamento = cancelamento.mask(cancelada, pd.Timestamp.min)
-    return pd.DataFrame(
-        {
-            "cnpj": bruto["CNPJ_CIA"],
-            "empresa": bruto["DENOM_SOCIAL"],
-            "registro": pd.to_datetime(bruto.get("DT_REG", vazio), errors="coerce"),
-            "cancelamento": cancelamento,
-        }
-    )

@@ -70,8 +70,11 @@ def test_mercado_bitcoin_primeira_vez_desde_2014_e_depois_so_o_que_falta(tmp_pat
 def test_kraken_pela_api_nao_duplica(tmp_path):
     fonte = Fonte(lambda _: KRAKEN_REST)
 
-    coleta.coletar_kraken(tmp_path, AGORA, fonte)
-    coleta.coletar_kraken(tmp_path, AGORA, fonte)
+    primeira = coleta.coletar_kraken(tmp_path, AGORA, fonte)
+    segunda = coleta.coletar_kraken(tmp_path, AGORA, fonte)
+
+    # a segunda vez regrava os mesmos dias: nenhuma linha nova
+    assert (primeira, segunda) == (2, 0)
 
     precos = ler_tabela(tmp_path / "precos" / "kraken", "dia")
     assert precos["dia"].tolist() == [date(2026, 10, 11), date(2026, 10, 12)]

@@ -23,6 +23,8 @@ from src.metricas import resumir_desempenho
 MAX_ATIVOS_NA_CARTEIRA = 8
 MIN_ATIVOS_NA_CARTEIRA = 2
 DIAS_MINIMOS_DA_COVARIANCIA = 60
+# dias em comum entre os ativos: com menos, a tela e o PDF da carteira recusam
+MIN_DIAS_NA_CARTEIRA = 60
 
 
 @dataclass(frozen=True)

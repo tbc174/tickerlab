@@ -87,7 +87,27 @@ def test_versao_antiga_que_esta_no_acervo_entra_e_a_que_falta_e_contada(url):
     with motor.begin() as c:
         guardar(c, "http://enet/1", _pacote(_dfp(versao=1)), COLETADO_EM)
     with motor.connect() as c:
-        documentos, faltando = montar.documentos_do_enet(c, indice)
+        documentos, faltando, origens = montar.documentos_do_enet(c, indice)
     motor.dispose()
     assert [d.versao for d in documentos] == [1]
     assert faltando == ["http://enet/2"]
+    assert [o["url"] for o in origens] == ["http://enet/1"] and len(
+        origens[0]["sha256"]
+    ) == 64
+
+
+def test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma(
+    url, sem_internet, tmp_path, capsys
+):
+    import json
+
+    saida = tmp_path / "base"
+    assert montar.main(["--anos", "2024", "--pasta", str(saida)]) == 0
+    primeiro = json.loads((saida / "2024.json").read_text(encoding="utf-8"))
+    assert montar.main(["--anos", "2024", "--pasta", str(saida)]) == 0
+    segundo = json.loads((saida / "2024.json").read_text(encoding="utf-8"))
+    assert primeiro["sha256_da_base"] == segundo["sha256_da_base"]
+    urls = {o["url"] for o in primeiro["origens"]}
+    assert {dm.URL_DO_DFP.format(ano=2024), dm.URL_DO_DFP.format(ano=2025)} <= urls
+    assert montar.main(["--conferir", "--pasta", str(saida)]) == 0
+    assert "2024: ok" in capsys.readouterr().out

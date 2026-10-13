@@ -209,8 +209,7 @@ def _gravar_por_ano(
     if tabela.empty:
         return 0
     ano = tabela[coluna_do_dia].map(lambda dia: str(dia.year))
-    acrescentar(destino, tabela, ano, chave or [coluna_do_dia])
-    return len(tabela)
+    return acrescentar(destino, tabela, ano, chave or [coluna_do_dia])
 
 
 def _dia_seguinte_ao_ultimo(destino: Path, coluna: str, primeiro: date) -> date:

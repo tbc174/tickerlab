@@ -14,6 +14,7 @@ from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
     MAX_ATIVOS_NA_CARTEIRA,
     MIN_ATIVOS_NA_CARTEIRA,
+    MIN_DIAS_NA_CARTEIRA,
     numeros_da_carteira,
     simular_carteira,
 )
@@ -144,7 +145,7 @@ def secao_carteira(periodo, taxa_livre_de_risco, cdi_diario):
         st.info("Não há ativos suficientes com dados.")
         return
     alinhado, descartados = alinhar_fechamentos(fechamentos)
-    if len(alinhado) < 60:
+    if len(alinhado) < MIN_DIAS_NA_CARTEIRA:
         st.warning(
             f"Só há {len(alinhado)} dias em comum entre os ativos. Tente um período mais longo."
         )

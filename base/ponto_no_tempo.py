@@ -18,6 +18,8 @@ mais novo e a versão maior; valor que some numa versão nova vira uma linha em 
 `como_era_em(base, data)` devolve um valor por fato, só com o que era público naquela data.
 """
 
+import hashlib
+import json
 import os
 from collections.abc import Iterable
 from pathlib import Path
@@ -137,21 +139,73 @@ def como_era_em(base: pd.DataFrame, data: object) -> pd.DataFrame:
     return base[valia].reset_index(drop=True)
 
 
-def gravar_parquet(base: pd.DataFrame, pasta: Path) -> list[Path]:
+def hash_da_base(base: pd.DataFrame) -> str:
+    """SHA-256 do conteúdo da base, sem depender da ordem das linhas (exigência 9 da ADR 0027).
+
+    As linhas são ordenadas pelo fato e pela data, e cada valor vira texto num formato fixo
+    (números com 17 algarismos significativos, datas ISO), antes de calcular o hash.
+    """
+    canonica = (
+        base.reindex(columns=list(COLUNAS_DA_BASE))
+        .sort_values(
+            [*FATO, "divulgado_em", "referencia", "versao"], na_position="first"
+        )
+        .reset_index(drop=True)
+    )
+    texto = canonica.to_csv(index=False, float_format="%.17g", date_format="%Y-%m-%d")
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+def _gravar_atomico(destino: Path, gravar: object) -> None:
+    temporario = destino.with_name(destino.name + ".parcial")
+    gravar(temporario)  # type: ignore[operator]
+    os.replace(temporario, destino)
+
+
+def gravar_parquet(
+    base: pd.DataFrame, pasta: Path, origens: list[dict[str, str]] | None = None
+) -> list[Path]:
     """Um arquivo por ano do fim do período (`<pasta>/2022.parquet`), gravado sem ficar pela metade.
 
-    Cada arquivo é a base inteira daquele ano: gravar de novo substitui o ano.
+    Ao lado de cada um, `<ano>.json`: linhas, `sha256_da_base` e as `origens` (endereço e SHA-256 de
+    cada original usado), para refazer e conferir. Gravar de novo substitui o ano.
     """
     pasta.mkdir(parents=True, exist_ok=True)
     anos = base["fim"].dt.year.astype("Int64").astype(str).replace("<NA>", SEM_DATA)
     arquivos = []
     for ano, parte in base.groupby(anos):
         destino = pasta / f"{ano}.parquet"
-        temporario = destino.with_name(destino.name + ".parcial")
-        parte.to_parquet(temporario, index=False)
-        os.replace(temporario, destino)
+        _gravar_atomico(
+            destino, lambda caminho, p=parte: p.to_parquet(caminho, index=False)
+        )
+        manifesto = {
+            "ano": ano,
+            "linhas": len(parte),
+            "sha256_da_base": hash_da_base(parte),
+            "origens": origens or [],
+        }
+        texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
+        _gravar_atomico(
+            pasta / f"{ano}.json",
+            lambda caminho, t=texto: Path(caminho).write_text(t, encoding="utf-8"),
+        )
         arquivos.append(destino)
     return arquivos
+
+
+def conferir_pasta(pasta: Path) -> dict[str, bool]:
+    """Para cada ano, se o Parquet ainda tem o hash anotado no `<ano>.json`."""
+    resultado = {}
+    for arquivo in sorted(pasta.glob("*.parquet")):
+        manifesto = pasta / f"{arquivo.stem}.json"
+        anotado = (
+            json.loads(manifesto.read_text(encoding="utf-8"))
+            if manifesto.exists()
+            else {}
+        )
+        atual = hash_da_base(pd.read_parquet(arquivo))
+        resultado[arquivo.stem] = anotado.get("sha256_da_base") == atual
+    return resultado
 
 
 def ler_parquet(pasta: Path) -> pd.DataFrame:

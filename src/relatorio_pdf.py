@@ -59,6 +59,20 @@ class RelatorioPDF(FPDF):
         self.creation_date = gerado_em  # a data dos dados, não a do computador
         self.set_text_color(*_rgb(estilo.texto))
 
+    def _render_styled_text_line(self, *args, **kwargs) -> bool:  # noqa: ANN002, ANN003
+        """Depois de cada linha de texto, obriga o fpdf2 a declarar a fonte de novo.
+
+        Defeito do fpdf2 2.8.9: numa célula com a fonte reserva (as setas ▲ ▼ ■ vêm da JetBrains
+        Mono), a troca de fonte fica dentro do `q … Q` da célula, que o PDF desfaz no fim; mesmo
+        assim o fpdf2 passa a achar que a fonte já está declarada na página. A célula seguinte,
+        na mesma fonte, saía desenhada com a fonte de antes: quadradinhos no lugar dos números
+        (tabela "Cada ativo sozinho" da carteira e a tabela da comparação).
+        """
+        try:
+            return super()._render_styled_text_line(*args, **kwargs)
+        finally:
+            self.current_font_is_set_on_page = False
+
     def _cor_do_texto(self, apagado: bool = False) -> None:
         self.set_text_color(
             *_rgb(self.estilo.apagado if apagado else self.estilo.texto)

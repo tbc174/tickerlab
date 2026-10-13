@@ -13,18 +13,24 @@ import pandas as pd
 
 def acrescentar(
     pasta: Path, novas: pd.DataFrame, arquivo_de: pd.Series, chave: str | Sequence[str]
-) -> None:
-    """Junta `novas` aos arquivos da pasta (nome do arquivo por linha em `arquivo_de`)."""
+) -> int:
+    """Junta `novas` aos arquivos da pasta (nome do arquivo por linha em `arquivo_de`) e devolve
+    quantas chaves não existiam (as que já existiam são regravadas, não contam)."""
     colunas_da_chave = [chave] if isinstance(chave, str) else list(chave)
+    chaves_novas = 0
     for nome, grupo in novas.groupby(arquivo_de):
         arquivo = pasta / f"{nome}.parquet"
-        juntas = (
-            pd.concat([pd.read_parquet(arquivo), grupo]) if arquivo.exists() else grupo
+        guardadas = pd.read_parquet(arquivo) if arquivo.exists() else grupo.iloc[0:0]
+        ja_existiam = grupo.set_index(colunas_da_chave).index.isin(
+            guardadas.set_index(colunas_da_chave).index
         )
+        chaves_novas += int((~ja_existiam).sum())
+        juntas = pd.concat([guardadas, grupo]) if arquivo.exists() else grupo
         juntas = juntas.drop_duplicates(colunas_da_chave, keep="last").sort_values(
             colunas_da_chave
         )
         gravar_parquet(arquivo, juntas)
+    return chaves_novas
 
 
 def gravar_parquet(arquivo: Path, tabela: pd.DataFrame) -> None:

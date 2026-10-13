@@ -56,3 +56,20 @@ def test_cada_fonte_registra_numa_familia_com_licenca():
 def test_fonte_desconhecida_e_recusada():
     with pytest.raises(SystemExit):
         coletar_cripto.main(["binance"])
+
+
+def test_carga_do_arquivo_historico_da_kraken(acervo, tmp_path):
+    csv = tmp_path / "XBTUSD_1440.csv"
+    linhas = [
+        b"1381017600,122.0,122.0,122.0,122.0,0.1,1",
+        b"1381104000,123.6,123.6,122.0,123.0,2.5,7",
+    ]
+    csv.write_bytes(b"\n".join(linhas) + b"\n")
+
+    assert coletar_cripto.main(["kraken-arquivo", str(csv)]) == 0
+    precos = ler_tabela(acervo / "base" / "cripto" / "precos" / "kraken", "dia")
+    assert len(precos) == 2
+
+
+def test_carga_do_arquivo_sem_caminho_e_recusada(acervo):
+    assert coletar_cripto.main(["kraken-arquivo"]) == 1

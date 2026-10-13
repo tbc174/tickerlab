@@ -14,6 +14,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from src import analises
+from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 
 BASE = 100.0  # as curvas de valor começam aqui
@@ -210,3 +211,60 @@ def de_backtest(resultado: ResultadoBacktest, metricas: dict[str, float]) -> Bac
         curva_de_capital=curva(resultado.curva_de_capital * BASE),
         operacoes=len(resultado.operacoes),
     )
+
+
+# --- As respostas das rotas: o ativo analisado e o resultado ---
+
+
+class AtivoV1(BaseModel):
+    """O ativo e o período analisados, de onde vieram os preços e a taxa livre de risco usada."""
+
+    ticker: str
+    periodo: str
+    inicio: date
+    fim: date
+    origem: str  # "atual", "cache_antigo" (o Yahoo falhou) ou "exemplo"
+    taxa_livre_de_risco: float
+    taxa_do_cdi: bool  # true: a taxa é o CDI do período
+
+
+def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
+    indice = pd.DatetimeIndex(contexto.dados.index)
+    return AtivoV1(
+        ticker=contexto.ticker,
+        periodo=contexto.periodo,
+        inicio=indice[0].date(),
+        fim=indice[-1].date(),
+        origem=contexto.origem,
+        taxa_livre_de_risco=contexto.taxa_livre_de_risco,
+        taxa_do_cdi=contexto.taxa_do_cdi,
+    )
+
+
+class VisaoGeralV1(BaseModel):
+    ativo: AtivoV1
+    painel: PainelDeNumerosV1
+
+
+class RiscoDoAtivoV1(BaseModel):
+    ativo: AtivoV1
+    risco: RiscoV1
+
+
+class RetornoMensalDoAtivoV1(BaseModel):
+    ativo: AtivoV1
+    retorno_mensal: RetornoMensalV1
+
+
+class ComparacaoDoAtivoV1(BaseModel):
+    ativo: AtivoV1  # o ativo principal
+    comparacao: ComparacaoV1
+    sem_dados: list[str]  # pedidos que ficaram de fora por falta de dados
+
+
+class BacktestDoAtivoV1(BaseModel):
+    ativo: AtivoV1
+    estrategia: str
+    parametros: dict[str, int | float | str]
+    custo_por_operacao: float
+    backtest: BacktestV1

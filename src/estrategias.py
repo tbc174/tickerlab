@@ -378,6 +378,9 @@ def _conferir_parametro(parametro: Parametro, valor: float | str) -> None:
                 f"{parametro.rotulo} deve ser uma destas opções: {', '.join(parametro.opcoes)}."
             )
         return
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        # ValueError de propósito: é validação do pedido, como os limites logo abaixo
+        raise ValueError(f"{parametro.rotulo} deve ser um número.")  # noqa: TRY004
     if not parametro.minimo <= valor <= parametro.maximo:
         raise ValueError(
             f"{parametro.rotulo} deve ficar entre {parametro.minimo} e {parametro.maximo}."

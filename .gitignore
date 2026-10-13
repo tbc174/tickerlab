@@ -34,4 +34,5 @@ dados_juros/
 # cobertura dos testes (pytest --cov)
 .coverage
 .coverage.*
+.hypothesis/
 htmlcov/

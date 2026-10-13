@@ -30,7 +30,8 @@ services:
     mem_limit: 768m
     cpus: 1.0
 
-  # API do TickerLab (FastAPI): /saude e o webhook do Stripe. Usa a mesma imagem do app.
+  # API do TickerLab (FastAPI): /saude, o webhook do Stripe e a API de leitura v1 (desligada até
+  # TICKERLAB_API_V1=1 no .env). Usa a mesma imagem do app.
   # Acesso de fora (o Stripe precisa alcançar o webhook): veja projeto-acoes/stripe.md.
   tickerlab-api:
     image: tickerlab:local
@@ -43,6 +44,9 @@ services:
       - .env   # TICKERLAB_DATABASE_URL, STRIPE_WEBHOOK_SECRET (permissão 600, fora do Git)
     environment:
       TICKERLAB_LOG_FORMATO: json
+    volumes:
+      # a API v1 (leitura, desligada até a 1ª tela nova) calcula com o mesmo cache de preços do app
+      - ./dados_locais:/app/dados_locais
     networks:
       - db
     depends_on:
@@ -54,7 +58,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    mem_limit: 256m
+    mem_limit: 512m   # a API v1 usa o pandas nas contas
     cpus: 0.5
 
 networks:

@@ -1,0 +1,1415 @@
+{
+  "components": {
+    "schemas": {
+      "AnoV1": {
+        "properties": {
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          },
+          "meses": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Meses",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "ano",
+          "meses",
+          "total"
+        ],
+        "title": "AnoV1",
+        "type": "object"
+      },
+      "AtivoV1": {
+        "description": "O ativo e o período analisados, de onde vieram os preços e a taxa livre de risco usada.",
+        "properties": {
+          "fim": {
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "periodo": {
+            "title": "Periodo",
+            "type": "string"
+          },
+          "taxa_do_cdi": {
+            "title": "Taxa Do Cdi",
+            "type": "boolean"
+          },
+          "taxa_livre_de_risco": {
+            "title": "Taxa Livre De Risco",
+            "type": "number"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "periodo",
+          "inicio",
+          "fim",
+          "origem",
+          "taxa_livre_de_risco",
+          "taxa_do_cdi"
+        ],
+        "title": "AtivoV1",
+        "type": "object"
+      },
+      "BacktestDoAtivoV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "backtest": {
+            "$ref": "#/components/schemas/BacktestV1"
+          },
+          "custo_por_operacao": {
+            "title": "Custo Por Operacao",
+            "type": "number"
+          },
+          "estrategia": {
+            "title": "Estrategia",
+            "type": "string"
+          },
+          "parametros": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "title": "Parametros",
+            "type": "object"
+          }
+        },
+        "required": [
+          "ativo",
+          "estrategia",
+          "parametros",
+          "custo_por_operacao",
+          "backtest"
+        ],
+        "title": "BacktestDoAtivoV1",
+        "type": "object"
+      },
+      "BacktestV1": {
+        "description": "As métricas (na ordem da tela), a curva de capital em base 100 e quantas operações houve.",
+        "properties": {
+          "curva_de_capital": {
+            "$ref": "#/components/schemas/CurvaV1"
+          },
+          "metricas": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Metricas",
+            "type": "object"
+          },
+          "operacoes": {
+            "title": "Operacoes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metricas",
+          "curva_de_capital",
+          "operacoes"
+        ],
+        "title": "BacktestV1",
+        "type": "object"
+      },
+      "ComparacaoDoAtivoV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "comparacao": {
+            "$ref": "#/components/schemas/ComparacaoV1"
+          },
+          "sem_dados": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sem Dados",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ativo",
+          "comparacao",
+          "sem_dados"
+        ],
+        "title": "ComparacaoDoAtivoV1",
+        "type": "object"
+      },
+      "ComparacaoV1": {
+        "description": "Ativos nos dias em que todos têm preço; curvas e tabela vêm `null` se o período for curto.",
+        "properties": {
+          "curvas": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/CurvaV1"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Curvas"
+          },
+          "dias_descartados": {
+            "title": "Dias Descartados",
+            "type": "integer"
+          },
+          "dias_em_comum": {
+            "title": "Dias Em Comum",
+            "type": "integer"
+          },
+          "tabela": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LinhaDaComparacaoV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tabela"
+          }
+        },
+        "required": [
+          "dias_em_comum",
+          "dias_descartados",
+          "curvas",
+          "tabela"
+        ],
+        "title": "ComparacaoV1",
+        "type": "object"
+      },
+      "CurvaV1": {
+        "description": "Uma série ao longo do tempo: as datas e o valor em cada uma (`null` onde não há).",
+        "properties": {
+          "datas": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Datas",
+            "type": "array"
+          },
+          "valores": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Valores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "datas",
+          "valores"
+        ],
+        "title": "CurvaV1",
+        "type": "object"
+      },
+      "EuV1": {
+        "description": "Quem está logado: só o necessário para a tela (sem e-mail).",
+        "properties": {
+          "administrador": {
+            "title": "Administrador",
+            "type": "boolean"
+          },
+          "limites": {
+            "$ref": "#/components/schemas/LimitesV1"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "plano": {
+            "title": "Plano",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nome",
+          "plano",
+          "administrador",
+          "limites"
+        ],
+        "title": "EuV1",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LimitesV1": {
+        "properties": {
+          "ativos_na_carteira": {
+            "title": "Ativos Na Carteira",
+            "type": "integer"
+          },
+          "favoritos": {
+            "title": "Favoritos",
+            "type": "integer"
+          },
+          "recursos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recursos",
+            "type": "array"
+          },
+          "relatorios_por_dia": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relatorios Por Dia"
+          },
+          "simulacoes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulacoes"
+          }
+        },
+        "required": [
+          "simulacoes",
+          "favoritos",
+          "ativos_na_carteira",
+          "relatorios_por_dia",
+          "recursos"
+        ],
+        "title": "LimitesV1",
+        "type": "object"
+      },
+      "LinhaDaComparacaoV1": {
+        "properties": {
+          "maior_queda": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maior Queda"
+          },
+          "retorno_anualizado": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retorno Anualizado"
+          },
+          "retorno_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retorno Total"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "volatilidade_anual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volatilidade Anual"
+          }
+        },
+        "required": [
+          "ticker",
+          "retorno_total",
+          "retorno_anualizado",
+          "volatilidade_anual",
+          "maior_queda",
+          "sharpe"
+        ],
+        "title": "LinhaDaComparacaoV1",
+        "type": "object"
+      },
+      "MesV1": {
+        "properties": {
+          "mes": {
+            "title": "Mes",
+            "type": "string"
+          },
+          "retorno": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retorno"
+          }
+        },
+        "required": [
+          "mes",
+          "retorno"
+        ],
+        "title": "MesV1",
+        "type": "object"
+      },
+      "PainelDeNumerosV1": {
+        "description": "Os números da visão geral (frações: 0.12 = 12%).",
+        "properties": {
+          "confianca_do_var": {
+            "title": "Confianca Do Var",
+            "type": "integer"
+          },
+          "cvar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cvar"
+          },
+          "data_do_melhor_dia": {
+            "format": "date",
+            "title": "Data Do Melhor Dia",
+            "type": "string"
+          },
+          "data_do_pior_dia": {
+            "format": "date",
+            "title": "Data Do Pior Dia",
+            "type": "string"
+          },
+          "dias_de_alta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias De Alta"
+          },
+          "maior_queda": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maior Queda"
+          },
+          "melhor_dia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Melhor Dia"
+          },
+          "pior_dia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pior Dia"
+          },
+          "retorno_anualizado": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retorno Anualizado"
+          },
+          "retorno_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retorno Total"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe"
+          },
+          "var": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Var"
+          },
+          "volatilidade_anual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volatilidade Anual"
+          }
+        },
+        "required": [
+          "retorno_total",
+          "retorno_anualizado",
+          "volatilidade_anual",
+          "maior_queda",
+          "sharpe",
+          "data_do_melhor_dia",
+          "melhor_dia",
+          "data_do_pior_dia",
+          "pior_dia",
+          "dias_de_alta",
+          "confianca_do_var",
+          "var",
+          "cvar"
+        ],
+        "title": "PainelDeNumerosV1",
+        "type": "object"
+      },
+      "PedidoDeBacktestV1": {
+        "properties": {
+          "custo_por_operacao": {
+            "default": 0.0005,
+            "maximum": 0.05,
+            "minimum": 0.0,
+            "title": "Custo Por Operacao",
+            "type": "number"
+          },
+          "estrategia": {
+            "title": "Estrategia",
+            "type": "string"
+          },
+          "parametros": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "maxProperties": 10,
+            "title": "Parametros",
+            "type": "object"
+          },
+          "periodo": {
+            "default": "2y",
+            "enum": [
+              "6mo",
+              "1y",
+              "2y",
+              "5y"
+            ],
+            "title": "Periodo",
+            "type": "string"
+          },
+          "taxa": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Taxa"
+          },
+          "ticker": {
+            "maxLength": 20,
+            "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticker",
+          "estrategia"
+        ],
+        "title": "PedidoDeBacktestV1",
+        "type": "object"
+      },
+      "PiorQuedaV1": {
+        "properties": {
+          "data_fundo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Fundo"
+          },
+          "data_recuperacao": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Recuperacao"
+          },
+          "data_topo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Topo"
+          },
+          "queda": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queda"
+          }
+        },
+        "required": [
+          "queda",
+          "data_topo",
+          "data_fundo",
+          "data_recuperacao"
+        ],
+        "title": "PiorQuedaV1",
+        "type": "object"
+      },
+      "RetornoMensalDoAtivoV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "retorno_mensal": {
+            "$ref": "#/components/schemas/RetornoMensalV1"
+          }
+        },
+        "required": [
+          "ativo",
+          "retorno_mensal"
+        ],
+        "title": "RetornoMensalDoAtivoV1",
+        "type": "object"
+      },
+      "RetornoMensalV1": {
+        "properties": {
+          "melhor": {
+            "$ref": "#/components/schemas/MesV1"
+          },
+          "meses": {
+            "items": {
+              "$ref": "#/components/schemas/MesV1"
+            },
+            "title": "Meses",
+            "type": "array"
+          },
+          "meses_de_alta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meses De Alta"
+          },
+          "pior": {
+            "$ref": "#/components/schemas/MesV1"
+          },
+          "tabela": {
+            "items": {
+              "$ref": "#/components/schemas/AnoV1"
+            },
+            "title": "Tabela",
+            "type": "array"
+          }
+        },
+        "required": [
+          "meses",
+          "tabela",
+          "melhor",
+          "pior",
+          "meses_de_alta"
+        ],
+        "title": "RetornoMensalV1",
+        "type": "object"
+      },
+      "RiscoDoAtivoV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "risco": {
+            "$ref": "#/components/schemas/RiscoV1"
+          }
+        },
+        "required": [
+          "ativo",
+          "risco"
+        ],
+        "title": "RiscoDoAtivoV1",
+        "type": "object"
+      },
+      "RiscoV1": {
+        "description": "A queda desde o topo dia a dia (frações, nunca positivas), a pior queda e a volatilidade móvel.",
+        "properties": {
+          "drawdown": {
+            "$ref": "#/components/schemas/CurvaV1"
+          },
+          "janela": {
+            "title": "Janela",
+            "type": "integer"
+          },
+          "pior_queda": {
+            "$ref": "#/components/schemas/PiorQuedaV1"
+          },
+          "volatilidade_movel": {
+            "$ref": "#/components/schemas/CurvaV1"
+          }
+        },
+        "required": [
+          "drawdown",
+          "pior_queda",
+          "janela",
+          "volatilidade_movel"
+        ],
+        "title": "RiscoV1",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VisaoGeralV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "painel": {
+            "$ref": "#/components/schemas/PainelDeNumerosV1"
+          }
+        },
+        "required": [
+          "ativo",
+          "painel"
+        ],
+        "title": "VisaoGeralV1",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "TickerLab API (leitura)",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/backtest": {
+      "post": {
+        "description": "O backtest simples (sem proteções, Monte Carlo nem grade): a estratégia com os custos.",
+        "operationId": "backtest_v1_backtest_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBacktestV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestDoAtivoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backtest"
+      }
+    },
+    "/v1/comparacao": {
+      "get": {
+        "description": "O ativo contra até MAX_ATIVOS - 1 outros, nos dias em que todos têm preço.",
+        "operationId": "comparacao_v1_comparacao_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "com",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 4,
+              "title": "Com",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "default": "2y",
+              "enum": [
+                "6mo",
+                "1y",
+                "2y",
+                "5y"
+              ],
+              "title": "Periodo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "taxa",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Taxa"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparacaoDoAtivoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparacao"
+      }
+    },
+    "/v1/eu": {
+      "get": {
+        "operationId": "eu_v1_eu_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Eu"
+      }
+    },
+    "/v1/retorno-mensal": {
+      "get": {
+        "operationId": "retorno_mensal_v1_retorno_mensal_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "default": "2y",
+              "enum": [
+                "6mo",
+                "1y",
+                "2y",
+                "5y"
+              ],
+              "title": "Periodo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "taxa",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Taxa"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetornoMensalDoAtivoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retorno Mensal"
+      }
+    },
+    "/v1/risco": {
+      "get": {
+        "operationId": "risco_v1_risco_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "default": "2y",
+              "enum": [
+                "6mo",
+                "1y",
+                "2y",
+                "5y"
+              ],
+              "title": "Periodo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "taxa",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Taxa"
+            }
+          },
+          {
+            "in": "query",
+            "name": "janela",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 252,
+              "minimum": 5,
+              "title": "Janela",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiscoDoAtivoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Risco"
+      }
+    },
+    "/v1/visao-geral": {
+      "get": {
+        "operationId": "visao_geral_v1_visao_geral_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "default": "2y",
+              "enum": [
+                "6mo",
+                "1y",
+                "2y",
+                "5y"
+              ],
+              "title": "Periodo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "taxa",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Taxa"
+            }
+          },
+          {
+            "in": "query",
+            "name": "confianca_do_var",
+            "required": false,
+            "schema": {
+              "default": 95,
+              "maximum": 99,
+              "minimum": 90,
+              "title": "Confianca Do Var",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisaoGeralV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Visao Geral"
+      }
+    }
+  }
+}

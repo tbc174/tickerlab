@@ -20,13 +20,18 @@ import pandas as pd
 
 from src import graficos_pdf as gp
 from src import indicadores as ind
+from src.analises import MIN_DIAS_PARA_ANALISE
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.carteira_b3 import (
     CarteiraB3,
     numero_efetivo_de_ativos,
     retorno_com_os_pesos_de_hoje,
 )
-from src.carteiras import ESTRATEGIAS_DE_CARTEIRA, simular_carteira
+from src.carteiras import (
+    ESTRATEGIAS_DE_CARTEIRA,
+    MIN_DIAS_NA_CARTEIRA,
+    simular_carteira,
+)
 from src.comparacao import montar_tabela_comparativa, rebasear_para_100
 from src.conteudo import carregar_glossario, descrever_pior_drawdown
 from src.estilos_pdf import Estilo
@@ -80,6 +85,28 @@ FONTE_DOS_DADOS = (
 
 
 # --- seções e modelos (Report Studio) -------------------------------------------------------
+class DadosInsuficientesError(ValueError):
+    """Poucos pregões para os números dizerem algo: o relatório não sai (a tela faz o mesmo).
+
+    É um ValueError porque a tela do estúdio já mostra esse erro e não conta no limite do plano.
+    """
+
+
+def _exigir_pregoes(pregoes: int, minimo: int, onde: str = "") -> None:
+    """Recusa com poucos pregões: o mesmo mínimo da tela, numa frase que a tela mostra inteira."""
+    if pregoes < minimo:
+        palavra = "pregão" if pregoes == 1 else "pregões"
+        raise DadosInsuficientesError(
+            f"só há {pregoes} {palavra}{onde}, e são necessários pelo menos {minimo}. "
+            "Escolha um período mais longo"
+        )
+
+
+# um pregão a mais que o mínimo de retornos (cada retorno liga dois pregões)
+MIN_PREGOES = MIN_DIAS_PARA_ANALISE + 1
+EM_COMUM = " em comum entre os ativos"
+
+
 @dataclass(frozen=True)
 class Secao:
     chave: str
@@ -476,6 +503,7 @@ def relatorio_do_ativo(
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
     fechamento = dados["Close"].dropna()
+    _exigir_pregoes(len(fechamento), MIN_PREGOES)
     retorno = ind.calcular_retorno_diario(fechamento)
     total = float(ind.calcular_retorno_acumulado(retorno).iloc[-1])
     anual = ind.calcular_retorno_anualizado(retorno)
@@ -632,6 +660,7 @@ def relatorio_de_comparacao(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    _exigir_pregoes(len(alinhado), MIN_PREGOES, EM_COMUM)
     tickers = list(alinhado.columns)
     tabela = montar_tabela_comparativa(alinhado, taxa_livre_de_risco)
     pdf = RelatorioPDF(
@@ -825,6 +854,7 @@ def relatorio_de_backtest(
     gerado_em = gerado_em or agora()
     parametros = parametros or {}
     fechamento = dados["Close"]
+    _exigir_pregoes(int(fechamento.notna().sum()), MIN_PREGOES)
     pedido_da_ficha = PedidoDaFicha(
         dados=dados,
         estrategia=estrategia,
@@ -1053,6 +1083,7 @@ def relatorio_de_carteira(
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
     parametros = parametros or {}
+    _exigir_pregoes(len(fechamentos.dropna()), MIN_DIAS_NA_CARTEIRA, EM_COMUM)
     tickers = list(fechamentos.columns)
     resultado = simular_carteira(
         estrategia, fechamentos, custo_por_operacao, **parametros
@@ -1247,6 +1278,7 @@ def relatorio_da_minha_carteira(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    _exigir_pregoes(len(fechamentos.dropna(how="all")), MIN_PREGOES)
     pesos = carteira.pesos()
     total = carteira.valor_total
     efetivo = numero_efetivo_de_ativos(pesos)
