@@ -20,6 +20,7 @@ from src.estrategias import (
     posicao_rsi_curto_com_filtro,
     posicao_zscore,
 )
+from src.exemplos import carregar_exemplo
 
 
 def _dados(fechamentos):
@@ -326,3 +327,11 @@ def test_bollinger_reversao_e_zscore_sao_a_mesma_regra_escrita_de_duas_formas():
         bollinger = posicao_bandas_de_bollinger(dados, janela, k, "Reversão")
         zscore = posicao_zscore(dados, janela, -k, 0.0)
         assert bollinger.equals(zscore)
+
+
+@pytest.mark.parametrize("valor", ["abc", None, True])
+def test_parametro_numerico_recusa_o_que_nao_e_numero(valor):
+    """Vindo da API, o valor pode chegar com o tipo errado: recusa com a mensagem, sem quebrar."""
+    dados = carregar_exemplo("PETR4.SA", "2y")
+    with pytest.raises(ValueError, match="número"):
+        gerar_posicao("Cruzamento de médias", dados, curta=valor)

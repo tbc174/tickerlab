@@ -100,3 +100,9 @@ def test_toda_imagem_do_readme_existe():
 def test_compose_manda_os_logs_em_json_nos_dois_servicos():
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
     assert compose.count("TICKERLAB_LOG_FORMATO: json") == 2
+
+
+def test_a_api_le_o_mesmo_cache_de_precos_do_app():
+    """A API v1 calcula com os mesmos preços do app (ADR 0048): a pasta montada nos dois serviços."""
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    assert compose.count("- ./dados_locais:/app/dados_locais") == 2
