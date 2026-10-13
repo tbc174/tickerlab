@@ -482,3 +482,23 @@ def test_regra_que_entra_uma_vez_e_nunca_sai_nao_tem_o_que_comparar_com_o_acaso(
     c = ficha.medir_acaso(dados["Close"], posicao, 0.0005, 0.0, 0, 1)
     assert c.situacao is Situacao.SEM_MEDIDA
     assert "mesma posição" in c.explicacao
+
+
+# --- Texto do contador de tentativas ------------------------------------------------------
+
+
+def test_texto_da_primeira_tentativa():
+    texto = ficha.texto_das_tentativas(1, "PETR4.SA", teto=10_000)
+    assert "primeira variação" in texto and "PETR4.SA" in texto
+
+
+def test_texto_de_muitas_tentativas_avisa_do_desconto():
+    texto = ficha.texto_das_tentativas(37, "PETR4.SA", teto=10_000)
+    assert "Você testou 37 variações em PETR4.SA" in texto
+    assert "desconta" in texto
+
+
+def test_texto_no_teto_mostra_o_mais():
+    assert "10.000+ variações" in ficha.texto_das_tentativas(
+        10_000, "PETR4.SA", teto=10_000
+    )

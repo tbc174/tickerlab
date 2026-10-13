@@ -9,14 +9,20 @@ import logging
 import streamlit as st
 
 from src import ficha
+from src.banco import tentativas
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
+from src.dados import normalizar_ticker
 from src.ficha import Ficha, PedidoDaFicha, Resultado, Situacao
+from src.protecoes import Protecoes
+from src.tentativas import impressao
 from telas.comum import ajuda_do
 
 log = logging.getLogger("tickerlab.conta")
 
 CHAVE_DA_TOLERANCIA = "ficha_tolerancia"  # em %, como a pessoa digita
+# sem login: {ticker: impressões} só nesta sessão
+CHAVE_DAS_TENTATIVAS_DA_SESSAO = "tentativas_da_sessao"
 
 # sem verde nem vermelho (a marca reserva os dois para alta e queda): o ícone diz o resultado
 ICONE_DO_VEREDITO = {
@@ -75,7 +81,43 @@ def escolher_tolerancia() -> float:
     return em_porcento / 100
 
 
-def mostrar_ficha(resultado: Ficha):
+def _contar_na_sessao(ticker: str, marca: str) -> int:
+    por_ativo = st.session_state.setdefault(CHAVE_DAS_TENTATIVAS_DA_SESSAO, {})
+    vistas = por_ativo.setdefault(ticker, set())
+    if len(vistas) < tentativas.TETO_POR_PESSOA:
+        vistas.add(marca)
+    return len(vistas)
+
+
+def contar_esta_tentativa(
+    estrategia: str, parametros: dict, protecoes: Protecoes | None, custo: float
+) -> tuple[str, int]:
+    """Registra a configuração que está na tela e devolve o ativo e quantas a pessoa já testou nele.
+
+    Com login, a contagem fica na conta; sem login (ou se o banco falhar), só nesta sessão.
+    """
+    ticker = normalizar_ticker(st.session_state["ticker"])
+    marca = impressao(
+        ticker,
+        estrategia,
+        parametros,
+        protecoes,
+        custo,
+        str(st.session_state["periodo"]),
+    )
+    usuario = st.session_state.get("usuario")
+    if usuario is None:
+        return ticker, _contar_na_sessao(ticker, marca)
+    try:
+        with obter_engine().begin() as conexao:
+            tentativas.registrar_tentativa(conexao, usuario.id, ticker, marca)
+            return ticker, tentativas.contar_tentativas(conexao, usuario.id, ticker)
+    except Exception:
+        log.exception("Falha ao registrar a tentativa do backtest na conta")
+        return ticker, _contar_na_sessao(ticker, marca)
+
+
+def mostrar_ficha(resultado: Ficha, texto_das_tentativas: str):
     """O veredito em destaque e as cinco checagens, cada uma com a frase que a explica."""
     veredito = resultado.veredito
     with st.container(border=True):
@@ -86,7 +128,8 @@ def mostrar_ficha(resultado: Ficha):
                 f"{ICONE_DA_CHECAGEM[checagem.situacao]} **{checagem.pergunta}** "
                 f"({checagem.situacao.value})  \n{checagem.explicacao}"
             )
+        st.markdown(texto_das_tentativas)
         st.caption(
-            f"Tentativas contadas na checagem do acaso: {resultado.tentativas}. "
-            "A ficha usa o custo padrão do app quando o seu é menor."
+            f"Tentativas contadas na pergunta do acaso (com as combinações da grade): "
+            f"{resultado.tentativas}. A ficha usa o custo padrão do app quando o seu é menor."
         )
