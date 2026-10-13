@@ -39,3 +39,13 @@ def test_nota_da_versao_em_markdown():
 def test_nota_de_um_dia_sem_atualizacao_falha():
     assert nota_da_versao.main(["1999-01-01"]) == 1
     assert nota_da_versao.main([date(2026, 10, 13).isoformat()]) == 0
+
+
+def test_nota_da_versao_grava_em_utf8_com_saida(tmp_path):
+    """No Windows a saída padrão não é UTF-8: `--saida` grava o arquivo sem depender do terminal."""
+    arquivo = tmp_path / "nota.md"
+    dia = novidades.ATUALIZACOES[0].data
+    assert nota_da_versao.main([dia.isoformat(), "--saida", str(arquivo)]) == 0
+    texto = arquivo.read_bytes().decode("utf-8")
+    assert texto == nota_da_versao.nota(novidades.ATUALIZACOES[0])
+    assert "\r\n" not in texto
