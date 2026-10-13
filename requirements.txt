@@ -82,6 +82,7 @@ websockets==17.2
 yfinance==1.7.0
 alembic==1.20.0
 Authlib==1.8.0
+joserfc==1.7.5
 Mako==1.4.3
 psycopg==3.3.6
 psycopg-binary==3.3.6
