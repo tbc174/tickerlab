@@ -2,39 +2,13 @@
 
 import pandas as pd
 import pytest
+import requests
 
-from src import cdi
+from src import bcb, cdi
 
 
 def _cdi(dias=300, taxa=0.0005, inicio="2025-01-02"):
     return pd.Series(taxa, index=pd.bdate_range(inicio, periods=dias), name="CDI")
-
-
-def test_serie_do_banco_central_vira_fracao_diaria():
-    registros = [
-        {"data": "02/01/2026", "valor": "0.055131"},
-        {"data": "05/01/2026", "valor": "0.055131"},
-    ]
-    serie = cdi.montar_serie_do_cdi(registros)
-    assert serie.iloc[0] == pytest.approx(0.00055131)
-    assert list(serie.index) == [pd.Timestamp("2026-01-02"), pd.Timestamp("2026-01-05")]
-
-
-def test_serie_ordena_e_tira_datas_repetidas():
-    registros = [
-        {"data": "05/01/2026", "valor": "0.05"},
-        {"data": "02/01/2026", "valor": "0.04"},
-        {"data": "02/01/2026", "valor": "0.04"},
-    ]
-    assert len(cdi.montar_serie_do_cdi(registros)) == 2
-
-
-@pytest.mark.parametrize(
-    "registros", [[], [{"data": "x", "valor": "1"}], [{"outra": 1}]]
-)
-def test_resposta_ruim_vira_erro_claro(registros):
-    with pytest.raises(cdi.CDIIndisponivelError):
-        cdi.montar_serie_do_cdi(registros)
 
 
 def test_curva_comeca_em_um_e_cresce_com_o_cdi():
@@ -66,20 +40,123 @@ def test_taxa_anual_com_periodo_de_um_dia_da_erro():
         cdi.calcular_taxa_anual_do_cdi(serie, serie.index[:1])
 
 
-def test_baixar_cdi_divide_periodos_longos_e_junta_tudo(monkeypatch):
-    chamadas = []
+class RespostaFalsa:
+    def __init__(self, conteudo: object, status: int = 200) -> None:
+        self.conteudo = conteudo
+        self.status_code = status
 
-    def falso(inicio, fim):
-        chamadas.append((inicio, fim))
-        dias = pd.bdate_range(inicio, fim)
-        return [{"data": d.strftime("%d/%m/%Y"), "valor": "0.05"} for d in dias]
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise requests.HTTPError(str(self.status_code), response=self)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(cdi, "_consultar", falso)
-    serie = cdi.baixar_cdi(pd.Timestamp("2005-01-03"), pd.Timestamp("2026-01-02"))
-    assert len(chamadas) >= 3
-    assert all((fim - inicio).days <= 365 * 9 + 3 for inicio, fim in chamadas)
+    def json(self) -> object:
+        if isinstance(self.conteudo, Exception):
+            raise self.conteudo
+        return self.conteudo
+
+
+def _registros(inicio: str, fim: str, valor: str = "0.05") -> list[dict]:
+    dias = pd.bdate_range(_data(inicio), _data(fim))
+    return [{"data": d.strftime("%d/%m/%Y"), "valor": valor} for d in dias]
+
+
+def _data(texto: str) -> pd.Timestamp:
+    return pd.to_datetime(texto, format="%d/%m/%Y")
+
+
+@pytest.fixture
+def sem_espera(monkeypatch):
+    """As novas tentativas do leitor do Banco Central esperam segundos: nos testes, não."""
+    esperas: list = []
+    monkeypatch.setattr(bcb, "esperar", esperas.append)
+    return esperas
+
+
+def test_serie_do_banco_central_vira_fracao_diaria(sem_espera):
+    registros = [
+        {"data": "02/01/2026", "valor": "0.055131"},
+        {"data": "05/01/2026", "valor": "0.055131"},
+    ]
+    serie = cdi.baixar_cdi(
+        pd.Timestamp("2026-01-02"),
+        pd.Timestamp("2026-01-05"),
+        buscar=lambda *a, **k: RespostaFalsa(registros),
+    )
+    assert serie.name == "CDI"
+    assert serie.iloc[0] == pytest.approx(0.00055131)
+    assert list(serie.index) == [pd.Timestamp("2026-01-02"), pd.Timestamp("2026-01-05")]
+
+
+@pytest.mark.parametrize(
+    "registros", [[], [{"data": "x", "valor": "1"}], [{"outra": 1}]]
+)
+def test_resposta_ruim_vira_erro_claro(registros, sem_espera):
+    with pytest.raises(cdi.CDIIndisponivelError):
+        cdi.baixar_cdi(
+            pd.Timestamp("2026-01-02"),
+            pd.Timestamp("2026-01-05"),
+            buscar=lambda *a, **k: RespostaFalsa(registros),
+        )
+
+
+def test_baixar_cdi_pede_janelas_curtas_e_junta_tudo(sem_espera):
+    """Regressão (13/10/2026): o CDI pedia 9 anos por consulta. Sem cache, o Banco Central passa
+    dos ~30 s numa janela longa e devolve uma página "Requisição inválida!" com status 200; um
+    backtest longo ficava sem o CDI. Agora são janelas de até 3 anos, como nas séries do SGS."""
+    pedidos: list = []
+
+    def buscar(url, params=None, timeout=None):
+        pedidos.append(params)
+        return RespostaFalsa(_registros(params["dataInicial"], params["dataFinal"]))
+
+    serie = cdi.baixar_cdi(
+        pd.Timestamp("2005-01-03"), pd.Timestamp("2026-01-02"), buscar=buscar
+    )
+    janelas = [(_data(p["dataInicial"]), _data(p["dataFinal"])) for p in pedidos]
+    assert len(janelas) >= 7
+    assert all((fim - inicio).days <= 365 * 3 + 1 for inicio, fim in janelas)
     assert serie.index.is_unique and serie.index.is_monotonic_increasing
     assert serie.index[0] == pd.Timestamp("2005-01-03")
+    assert serie.index[-1] == pd.Timestamp("2026-01-02")
+
+
+def test_falha_passageira_do_banco_central_tenta_de_novo(sem_espera):
+    """Um 502 isolado do Banco Central não pode deixar o backtest sem o CDI."""
+    respostas = [
+        RespostaFalsa(None, status=502),
+        RespostaFalsa([{"data": "02/01/2026", "valor": "0.05"}]),
+    ]
+    serie = cdi.baixar_cdi(
+        pd.Timestamp("2026-01-02"),
+        pd.Timestamp("2026-01-02"),
+        buscar=lambda *a, **k: respostas.pop(0),
+    )
+    assert len(serie) == 1 and len(sem_espera) == 1
+
+
+def test_pagina_de_erro_do_banco_central_tenta_de_novo(sem_espera):
+    """A página "Requisição inválida!" (status 200) some quando a consulta é repetida."""
+    respostas = [
+        RespostaFalsa(ValueError("Requisição inválida!")),
+        RespostaFalsa([{"data": "02/01/2026", "valor": "0.05"}]),
+    ]
+    serie = cdi.baixar_cdi(
+        pd.Timestamp("2026-01-02"),
+        pd.Timestamp("2026-01-02"),
+        buscar=lambda *a, **k: respostas.pop(0),
+    )
+    assert len(serie) == 1 and len(sem_espera) == 1
+
+
+def test_pagina_de_erro_que_insiste_vira_erro_do_app(sem_espera):
+    pagina = RespostaFalsa(ValueError("Requisição inválida!"))
+    with pytest.raises(cdi.CDIIndisponivelError):
+        cdi.baixar_cdi(
+            pd.Timestamp("2026-01-02"),
+            pd.Timestamp("2026-02-02"),
+            buscar=lambda *a, **k: pagina,
+        )
+    assert len(sem_espera) == 2
 
 
 def test_baixar_cdi_recusa_datas_invertidas():
@@ -87,9 +164,7 @@ def test_baixar_cdi_recusa_datas_invertidas():
         cdi.baixar_cdi(pd.Timestamp("2026-01-02"), pd.Timestamp("2025-01-02"))
 
 
-def test_falha_de_rede_vira_erro_do_app(monkeypatch):
-    import requests
-
+def test_falha_de_rede_vira_erro_do_app(monkeypatch, sem_espera):
     def quebra(*a, **k):
         raise requests.ConnectionError("sem rede")
 
