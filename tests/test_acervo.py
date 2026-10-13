@@ -96,3 +96,12 @@ def test_disco_com_problema_nao_derruba_a_coleta(banco, monkeypatch, caplog):
     with banco.connect() as conexao:
         [linha] = ultimas(conexao)
     assert (linha.situacao, linha.caminho_do_original) == ("ok", None)
+
+
+def test_extensao_informada_vale_mais_que_a_do_endereco(tmp_path):
+    """O ENET entrega o XML por um endereço .aspx: quem guarda informa que é XML."""
+    url = "https://www.rad.cvm.gov.br/ENETCONSULTA/frmDownloadDocumento.aspx?Numero=1"
+    xml = b"<?xml version='1.0'?><Doc>" + b"x" * 3000 + b"</Doc>"
+    relativo = acervo.guardar_original("cvm-enet", url, xml, QUANDO, extensao=".xml")
+    assert relativo.endswith(f"{hashlib.sha256(xml).hexdigest()}.xml.gz")
+    assert acervo.ler_original(relativo) == xml
