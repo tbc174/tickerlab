@@ -62,6 +62,21 @@ def _gerar_no_tipo(tipo):
     return app.session_state["relatorio_gerado"]
 
 
+def test_comparacao_gera_o_pdf_com_os_ativos_escolhidos():
+    gerado = _gerar_no_tipo(relatorios.COMPARACAO)
+    assert gerado["arquivo"] == "tickerlab-comparacao.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
+
+
+def test_comparacao_sem_outro_ativo_pede_um_e_nao_gera():
+    app = _app_local()
+    app.button_group(key="tipo_de_relatorio").set_value(relatorios.COMPARACAO).run()
+    app.text_input(key="relatorio_comparar_com").set_value("").run()
+    assert not app.exception
+    assert "Escolha pelo menos um ativo" in " ".join(i.value for i in app.info)
+    assert not any(b.key == "gerar_pdf" for b in app.button)
+
+
 def test_backtest_gera_o_pdf_da_estrategia_escolhida():
     gerado = _gerar_no_tipo(relatorios.BACKTEST)
     assert gerado["arquivo"] == "tickerlab-backtest-PETR4.SA.pdf"
