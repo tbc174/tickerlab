@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 
 from base import rodada
-from base.contas_cvm import COLUNAS, LeituraDeContas, ler_cadastro, ler_indice
+from base.cadastro import ler_cadastro
+from base.contas_cvm import COLUNAS, LeituraDeContas, ler_indice
 from base.rodada import (
     REGRAS_DE_UM_DOCUMENTO,
     Arquivo,

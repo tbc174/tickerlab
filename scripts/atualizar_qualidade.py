@@ -22,7 +22,8 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from base.contas_cvm import ler_cadastro, ler_contas, ler_indice
+from base.cadastro import ler_cadastro
+from base.contas_cvm import ler_contas, ler_indice
 from base.rodada import (
     Arquivo,
     Rodada,
