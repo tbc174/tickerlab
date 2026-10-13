@@ -195,3 +195,23 @@ def test_desligada_a_api_nem_monta_a_v1_e_fica_leve():
     cliente = TestClient(api.criar_app({}))
     assert cliente.get("/api/v1/eu").status_code == 404
     assert cliente.get("/v1/eu").status_code == 404
+
+
+# --- /api/v1/configuracao: o que a tela nova precisa antes do login (série 3) ---
+
+
+def test_configuracao_responde_sem_login_e_so_com_o_client_id(cliente):
+    """O client ID do Google não é segredo (vai no endereço do login): a tela precisa dele antes."""
+    resposta = cliente.get("/api/v1/configuracao")
+    assert resposta.status_code == 200
+    assert resposta.json() == {"google_client_id": CLIENT_ID}
+
+
+def test_configuracao_sem_client_id_devolve_null(cliente, monkeypatch):
+    monkeypatch.delenv(acesso.VARIAVEL_DO_CLIENT_ID)
+    assert cliente.get("/api/v1/configuracao").json() == {"google_client_id": None}
+
+
+def test_configuracao_com_a_api_desligada_404(cliente, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "0")
+    assert cliente.get("/api/v1/configuracao").status_code == 404

@@ -54,6 +54,7 @@ def _paginas() -> list[dict]:
             "e_pro": p.e_pro,
             "no_menu": p.no_menu,
             "somente_admin": p.somente_admin,
+            "contrato": asdict(p.contrato) if p.contrato else None,
         }
         for p in paginas.PAGINAS
     ]

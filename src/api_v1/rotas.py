@@ -1,5 +1,6 @@
 """As rotas da API de leitura (v1). Todas exigem a API ligada e uma conta logada (src/api_v1/acesso.py)."""
 
+import os
 from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Annotated, Literal, TypeVar
@@ -12,7 +13,7 @@ from src import analises
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
-from src.api_v1.acesso import conta_logada, exigir_api_ligada
+from src.api_v1.acesso import VARIAVEL_DO_CLIENT_ID, conta_logada, exigir_api_ligada
 from src.api_v1.contexto import (
     ContextoDoAtivo,
     PoucosDadosError,
@@ -59,6 +60,20 @@ class EuV1(BaseModel):
     plano: str
     administrador: bool
     limites: LimitesV1
+
+
+class ConfiguracaoV1(BaseModel):
+    """O que a tela nova precisa antes do login (sem segredo: o client ID vai no endereço do Google)."""
+
+    google_client_id: str | None  # null: login da API não configurado neste servidor
+
+
+@router.get("/configuracao")
+def configuracao() -> ConfiguracaoV1:
+    """Pública (sem token), mas só com a API ligada, como as outras."""
+    return ConfiguracaoV1(
+        google_client_id=os.environ.get(VARIAVEL_DO_CLIENT_ID, "").strip() or None
+    )
 
 
 @router.get("/eu")

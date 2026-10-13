@@ -1,0 +1,28 @@
+/* O que só o app novo usa. Cores, fontes, botões e cartões vêm do CSS do site (estilo.css), que
+   sai de src/marca.py: o app e o site têm a mesma cara. */
+.marca .simbolo { display: inline-flex; }
+.marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
+.selo-novo { padding: .1rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 700;
+  color: var(--azul-texto); border: 1px solid var(--linha-forte); }
+.tema-escolha { display: inline-flex; gap: .15rem; margin-left: auto; padding: .15rem;
+  border: 1px solid var(--linha); border-radius: 10px; }
+.tema-escolha button { display: inline-flex; padding: .35rem; border: 0; border-radius: 8px;
+  background: transparent; color: var(--apagado); cursor: pointer; }
+.tema-escolha button[aria-checked="true"] { background: var(--superficie); color: var(--texto); }
+.tema-escolha svg { width: 18px; height: 18px; }
+.pular-leitura { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-corpo { display: grid; grid-template-columns: 13rem 1fr; gap: 2rem; padding-block: 2rem; }
+.app-menu { display: flex; flex-direction: column; gap: .2rem; position: sticky; top: 5rem; align-self: start; }
+.app-menu a { padding: .45rem .7rem; border-radius: 8px; color: var(--apagado); text-decoration: none; font-weight: 600; }
+.app-menu a:hover { color: var(--texto); }
+.app-menu a.active { background: var(--superficie); color: var(--texto); }
+.app-corpo main { min-width: 0; }
+.telas-do-app { list-style: none; padding: 0; display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.telas-do-app a { font-weight: 700; }
+.aviso-do-app { max-width: 40rem; }
+.rodape-do-app { padding-block: 1.5rem 2.5rem; border-top: 1px solid var(--linha); font-size: .88rem; }
+@media (max-width: 760px) {
+  .app-corpo { grid-template-columns: 1fr; gap: 1rem; }
+  .app-menu { position: static; flex-direction: row; flex-wrap: wrap; }
+}

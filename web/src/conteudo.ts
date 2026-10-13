@@ -20,6 +20,26 @@ export interface Modulo {
   funcionalidades: Funcionalidade[];
 }
 
+/** Um campo da tela, com os limites que a rota da API aceita (`Entrada` de src/paginas.py). */
+export interface EntradaDoContrato {
+  nome: string;
+  tipo: string; // "texto", "inteiro", "numero", "opcao", "lista de textos" ou "objeto"
+  descricao: string;
+  obrigatoria: boolean;
+  padrao: number | string | null;
+  minimo: number | null;
+  maximo: number | null;
+  opcoes: string[];
+}
+
+/** O que a tela recebe e qual rota devolve o que ela mostra (`Contrato` de src/paginas.py). */
+export interface Contrato {
+  metodo: string; // "GET" ou "POST"
+  rota: string; // sem o prefixo /api: "/v1/visao-geral"
+  entradas: EntradaDoContrato[];
+  resposta: string; // o esquema da resposta em src/api_v1/esquemas.py
+}
+
 export interface PaginaDoApp {
   chave: string;
   titulo: string;
@@ -29,6 +49,7 @@ export interface PaginaDoApp {
   e_pro: boolean;
   no_menu: boolean;
   somente_admin: boolean;
+  contrato: Contrato | null; // as páginas que já têm rota na API de leitura
 }
 
 export const marca = marcaJson;
