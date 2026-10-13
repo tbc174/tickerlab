@@ -45,8 +45,10 @@ def _ler_csv(arquivo: io.BytesIO | bytes) -> pd.DataFrame:
 
 
 def _texto(bruto: pd.DataFrame, coluna: str) -> pd.Series:
-    vazio = pd.Series("", index=bruto.index)
-    return bruto.get(coluna, vazio).str.strip()
+    """A coluna sem espaços nas pontas, ou vazia se o arquivo não a tem (cadastro antigo)."""
+    if coluna not in bruto:
+        return pd.Series("", index=bruto.index)
+    return bruto[coluna].str.strip()
 
 
 def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
