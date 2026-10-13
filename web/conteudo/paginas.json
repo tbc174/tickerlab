@@ -190,6 +190,16 @@
     "url": "research"
   },
   {
+    "chave": "juros_e_inflacao",
+    "descricao": "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada número (Banco Central).",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Juros e inflação",
+    "url": "juros-e-inflacao"
+  },
+  {
     "chave": "fundamentos",
     "descricao": "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     "e_pro": false,

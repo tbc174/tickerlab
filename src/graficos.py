@@ -1,10 +1,15 @@
 """Gráficos do app (Plotly). Só monta as figuras; quem mostra na tela é o app.py."""
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
+
+if TYPE_CHECKING:  # só para os tipos: o módulo de gráficos não depende do acervo
+    from src.juros_e_inflacao import PontoMensal
 
 from src import marca
 from src.indicadores import (
@@ -1283,4 +1288,32 @@ def criar_grafico_obv(obv: pd.Series, volume_relativo: pd.Series) -> go.Figure:
     figura.update_yaxes(tickformat="~s", secondary_y=False)
     figura.update_yaxes(tickformat=".1f", secondary_y=True, showgrid=False)
     figura.update_layout(showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_juros_e_inflacao(
+    historico: "tuple[PontoMensal, ...]",
+) -> go.Figure:
+    """A meta da Selic e o IPCA em 12 meses, mês a mês (`historico`: pontos de
+    `juros_e_inflacao.PontoMensal`)."""
+    if not historico:
+        raise ValueError("Não há meses para mostrar.")
+    meses = pd.to_datetime([p.mes for p in historico])
+    figura = _figura_base("Meta da Selic e IPCA em 12 meses (% ao ano)")
+    figura.update_yaxes(tickformat=".1f", ticksuffix="%")
+    for nome, valores, cor in (
+        ("Meta da Selic", [p.selic_meta for p in historico], COR_AZUL),
+        ("IPCA em 12 meses", [p.ipca_12_meses for p in historico], COR_INDICE),
+    ):
+        figura.add_trace(
+            go.Scatter(
+                x=meses,
+                y=valores,
+                mode="lines",
+                line={"color": cor, "width": 2.2},
+                hovertemplate="%{y:.2f}%",
+                name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
     return figura
