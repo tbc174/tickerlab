@@ -29,7 +29,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src import catalogo, marca, planos, previa_pdf, relatorios
+from src import catalogo, marca, modulos, planos, previa_pdf, relatorios
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -170,10 +170,11 @@ TEMA_SALVO = (
 
 def topo(atual: str) -> str:
     itens = [
-        ("/#produto", "Produto"),
+        ("/produto.html", "Produto"),
+        ("/como-funciona.html", "Como funciona"),
         ("/#relatorios", "Relatórios"),
-        ("/metodologia.html", "Metodologia"),
         ("/precos.html", "Planos"),
+        ("/aprender.html", "Aprender"),
     ]
     links = "".join(
         f'<a href="{href}"{" aria-current=page" if href == atual else ""}>{nome}</a>'
@@ -325,178 +326,197 @@ def _vitrine(estilos_disponiveis: list[str]) -> str:
 </div>"""
 
 
-def landing(estilos: list[str]) -> str:
+# --- textos que aparecem em mais de uma página ---------------------------------------------
+PASSOS = [
+    (
+        "Escolha o que investigar",
+        "Busque por código ou empresa: B3, EUA, índices e cripto.",
+    ),
+    (
+        "Explore os dados",
+        "Gráficos, risco e testes de estratégia no passado, com custos.",
+    ),
+    ("Guarde e compartilhe", "Monte um PDF com as seções que importam e baixe."),
+]
+PUBLICOS = [
+    (
+        "Quem está começando",
+        (
+            "Quer entender uma ação antes de investir, sem jargão. O tutorial guia a primeira "
+            "análise em 2 minutos."
+        ),
+    ),
+    (
+        "Quem estuda estratégias",
+        (
+            "Testa regras de compra e venda com custos, validação fora da amostra e teste "
+            "contra o acaso, e vê quando a estratégia não funciona."
+        ),
+    ),
+    (
+        "Quem quer organizar a carteira",
+        (
+            "Vê concentração, número efetivo de ativos e o comportamento da carteira de hoje no "
+            "passado, comparada ao Ibovespa."
+        ),
+    ),
+]
+CONFIANCA = [
+    (
+        "Dados",
+        (
+            "Preços diários do Yahoo Finance, ajustados por dividendos e desdobramentos. Não é "
+            "tempo real: os dados podem ter atraso, falhas e ajustes posteriores."
+        ),
+    ),
+    (
+        "Carteira B3",
+        (
+            "A API da Área do Investidor só atende empresas credenciadas. Por isso o caminho é "
+            "a planilha que você mesmo baixa; ela é lida só na memória."
+        ),
+    ),
+    (
+        "Privacidade",
+        (
+            "Login com o Google; você exporta ou apaga a sua conta quando quiser. O site não usa "
+            "Google Fonts nem ferramentas de rastreamento."
+        ),
+    ),
+    (
+        "Método",
+        (
+            "A decisão de um dia só vale no dia seguinte (sem olhar o futuro), custos entram em "
+            "todo teste e o app mostra quando algo não funciona."
+        ),
+    ),
+]
+PERGUNTAS = [
+    (
+        "O TickerLab recomenda o que comprar?",
+        (
+            "Não. O TickerLab mostra o que aconteceu no passado e explica cada "
+            "número. Nada aqui é recomendação de investimento."
+        ),
+    ),
+    (
+        "Os preços são em tempo real?",
+        (
+            "Não. O app usa o histórico diário do Yahoo Finance, que pode ter atraso. Cada "
+            "relatório diz a data e a hora dos dados usados."
+        ),
+    ),
+    (
+        "Vocês se conectam à minha conta na B3?",
+        (
+            "Não. A API da B3 é só para empresas credenciadas. Você envia a planilha de posição "
+            "que baixa na Área do Investidor; ela não fica guardada."
+        ),
+    ),
+    (
+        "O que fica guardado sobre mim?",
+        (
+            "Seu perfil do Google (nome, e-mail), preferências, favoritos, simulações salvas e o "
+            "registro dos relatórios gerados (não o PDF). Detalhes na Política de privacidade."
+        ),
+    ),
+    (
+        "Preciso pagar?",
+        (
+            "Não para começar: o plano Gratuito não pede cartão. Hoje a cobrança dos planos "
+            "pagos está em modo de teste, sem dinheiro real."
+        ),
+    ),
+    (
+        "Como apago a minha conta?",
+        (
+            "Em Minha conta → Meus dados e privacidade: dá para exportar tudo em JSON e apagar a "
+            "conta, o que também encerra a assinatura."
+        ),
+    ),
+]
+
+
+# --- módulos (src/modulos.py): o que existe e o que vem por aí ---------------------------------
+# os seis módulos da página Produto; o Aprender tem página própria
+MODULOS_DO_PRODUTO = modulos.MODULOS[:6]
+
+
+def _selo(funcionalidade: modulos.Funcionalidade) -> str:
+    if funcionalidade.disponivel:
+        return '<span class="selo disponivel">Disponível</span>'
+    return '<span class="selo breve">Em breve</span>'
+
+
+def _cartao_da_funcionalidade(f: modulos.Funcionalidade) -> str:
+    """Cartão com o selo; só o que já existe leva ao app (o resto não tem link)."""
+    if not f.disponivel:
+        return (
+            f'<article class="cartao breve"><h3>{esc(f.nome)} {_selo(f)}</h3>'
+            f"<p>{esc(f.descricao)}</p></article>"
+        )
+    parametros = {"ticker": f.ticker} if f.ticker else {}
+    href = link_do_app(f.pagina_do_app or "", **parametros)
+    return (
+        f'<article class="cartao"><h3>{esc(f.nome)} {_selo(f)}</h3><p>{esc(f.descricao)}</p>'
+        f'<a class="seta" href="{href}">Abrir no app</a></article>'
+    )
+
+
+def _contagem(modulo: modulos.Modulo) -> str:
+    partes = []
+    if modulo.disponiveis:
+        partes.append(f"{modulo.disponiveis} disponíveis")
+    if modulo.em_breve:
+        partes.append(f"{modulo.em_breve} em breve")
+    return " · ".join(partes)
+
+
+def _secao_do_modulo(modulo: modulos.Modulo) -> str:
+    cartoes = "".join(_cartao_da_funcionalidade(f) for f in modulo.funcionalidades)
+    titulo = f"titulo-{modulo.chave}"
+    return f"""
+<section class="faixa secao" id="{modulo.chave}" aria-labelledby="{titulo}">
+  <div class="modulo-topo">
+    <div><p class="olho">{esc(modulo.objetivo)}</p><h2 id="{titulo}">{esc(modulo.nome)}</h2></div>
+    <p class="contagem">{_contagem(modulo)}</p>
+  </div>
+  <p class="subtitulo">{esc(modulo.frase)}</p>
+  <div class="grade tres">{cartoes}</div>
+</section>"""
+
+
+def _cabecalho(olho: str, titulo: str, subtitulo: str, extra: str = "") -> str:
+    return (
+        f'<section class="faixa secao cabecalho"><p class="olho">{esc(olho)}</p>'
+        f'<h1>{esc(titulo)}</h1><p class="subtitulo">{esc(subtitulo)}</p>{extra}</section>'
+    )
+
+
+def _chamada_final() -> str:
+    return f"""
+<div class="escura"><section class="faixa secao final" aria-labelledby="titulo-final">
+  <h2 id="titulo-final">Comece pela sua primeira análise</h2>
+  <p class="subtitulo">O tutorial do app guia você em 2 minutos, com dados de verdade.</p>
+  <a class="botao primario" href="{link_do_app("visao-geral", ticker=TICKER_DO_EXEMPLO)}">Experimentar com PETR4</a>
+</section></div>"""
+
+
+def _heroi(estilos: list[str]) -> str:
     exemplos = "".join(
         f'<a class="ticker" href="{link_do_app("visao-geral", ticker=s)}">'
         f"{esc(catalogo.rotulo(s).split(' · ')[0])}</a>"
         for s in catalogo.EXEMPLOS
     )
-    cartoes_resultado = [
-        (
-            "Entender um ativo",
-            (
-                "Retorno, risco, maiores quedas e meses bons e ruins de uma ação, ETF, índice ou "
-                "cripto, cada número explicado em português."
-            ),
-            link_do_app("visao-geral", ticker=TICKER_DO_EXEMPLO),
-            "Analisar PETR4",
-        ),
-        (
-            "Organizar a carteira",
-            (
-                "Envie a planilha de posição da Área do Investidor da B3 e veja concentração e "
-                "risco. O arquivo é lido só na memória e não fica guardado."
-            ),
-            link_do_app("relatorio"),
-            "Ver a minha carteira",
-        ),
-        (
-            "Criar um relatório",
-            (
-                "Escolha modelo, seções e estilo, veja a prévia do PDF de verdade e gere um "
-                "relatório para ler, imprimir ou enviar."
-            ),
-            link_do_app("relatorio"),
-            "Abrir o estúdio",
-        ),
-    ]
-    resultados = "".join(
-        f'<article class="cartao"><h3>{esc(t)}</h3><p>{esc(d)}</p>'
-        f'<a class="seta" href="{href}">{esc(rotulo)}</a></article>'
-        for t, d, href, rotulo in cartoes_resultado
-    )
-    passos = [
-        (
-            "Escolha o que investigar",
-            "Busque por código ou empresa: B3, EUA, índices e cripto.",
-        ),
-        (
-            "Explore os dados",
-            "Gráficos, risco e testes de estratégia no passado, com custos.",
-        ),
-        ("Guarde e compartilhe", "Monte um PDF com as seções que importam e baixe."),
-    ]
-    como = "".join(
-        f'<li><span class="numero">{i}</span><h3>{esc(t)}</h3><p>{esc(d)}</p></li>'
-        for i, (t, d) in enumerate(passos, 1)
-    )
-    publicos = [
-        (
-            "Quem está começando",
-            (
-                "Quer entender uma ação antes de investir, sem jargão. O tutorial guia a primeira "
-                "análise em 2 minutos."
-            ),
-        ),
-        (
-            "Quem estuda estratégias",
-            (
-                "Testa regras de compra e venda com custos, validação fora da amostra e teste "
-                "contra o acaso, e vê quando a estratégia não funciona."
-            ),
-        ),
-        (
-            "Quem quer organizar a carteira",
-            (
-                "Vê concentração, número efetivo de ativos e o comportamento da carteira de hoje no "
-                "passado, comparada ao Ibovespa."
-            ),
-        ),
-    ]
-    para_quem = "".join(
-        f'<article class="cartao"><h3>{esc(t)}</h3><p>{esc(d)}</p></article>'
-        for t, d in publicos
-    )
-    confianca = [
-        (
-            "Dados",
-            (
-                "Preços diários do Yahoo Finance, ajustados por dividendos e desdobramentos. Não é "
-                "tempo real: os dados podem ter atraso, falhas e ajustes posteriores."
-            ),
-        ),
-        (
-            "Carteira B3",
-            (
-                "A API da Área do Investidor só atende empresas credenciadas. Por isso o caminho é "
-                "a planilha que você mesmo baixa; ela é lida só na memória."
-            ),
-        ),
-        (
-            "Privacidade",
-            (
-                "Login com o Google; você exporta ou apaga a sua conta quando quiser. O site não usa "
-                "Google Fonts nem ferramentas de rastreamento."
-            ),
-        ),
-        (
-            "Método",
-            (
-                "A decisão de um dia só vale no dia seguinte (sem olhar o futuro), custos entram em "
-                "todo teste e o app mostra quando algo não funciona."
-            ),
-        ),
-    ]
-    pilares = "".join(
-        f'<article class="pilar"><h3>{esc(t)}</h3><p>{esc(d)}</p></article>'
-        for t, d in confianca
-    )
-    perguntas = [
-        (
-            "O TickerLab recomenda o que comprar?",
-            (
-                "Não. O TickerLab mostra o que aconteceu no passado e explica cada "
-                "número. Nada aqui é recomendação de investimento."
-            ),
-        ),
-        (
-            "Os preços são em tempo real?",
-            (
-                "Não. O app usa o histórico diário do Yahoo Finance, que pode ter atraso. Cada "
-                "relatório diz a data e a hora dos dados usados."
-            ),
-        ),
-        (
-            "Vocês se conectam à minha conta na B3?",
-            (
-                "Não. A API da B3 é só para empresas credenciadas. Você envia a planilha de posição "
-                "que baixa na Área do Investidor; ela não fica guardada."
-            ),
-        ),
-        (
-            "O que fica guardado sobre mim?",
-            (
-                "Seu perfil do Google (nome, e-mail), preferências, favoritos, simulações salvas e o "
-                "registro dos relatórios gerados (não o PDF). Detalhes na Política de privacidade."
-            ),
-        ),
-        (
-            "Preciso pagar?",
-            (
-                "Não para começar: o plano Gratuito não pede cartão. Hoje a cobrança dos planos "
-                "pagos está em modo de teste, sem dinheiro real."
-            ),
-        ),
-        (
-            "Como apago a minha conta?",
-            (
-                "Em Minha conta → Meus dados e privacidade: dá para exportar tudo em JSON e apagar a "
-                "conta, o que também encerra a assinatura."
-            ),
-        ),
-    ]
-    faq = "".join(
-        f"<details><summary>{esc(p)}</summary><p>{esc(r)}</p></details>"
-        for p, r in perguntas
-    )
-    corpo = f"""
+    return f"""
 <div class="escura">
 <section class="heroi faixa" aria-labelledby="titulo-heroi">
   <div class="heroi-texto">
-    <p class="olho">Pesquisa quantitativa · B3 e EUA</p>
-    <h1 id="titulo-heroi">Vá além do preço. Entenda o ativo por trás do ticker.</h1>
-    <p class="subtitulo">Pesquise ativos, explore análises quantitativas e transforme o seu
-    estudo em relatórios claros, com cada número explicado em português.</p>
+    <p class="olho">Inteligência financeira · B3 e EUA</p>
+    <h1 id="titulo-heroi">{esc(ASSINATURA)}</h1>
+    <p class="subtitulo">Pesquise ativos, entenda retorno, risco e os documentos oficiais das
+    empresas, teste estratégias no passado e transforme o estudo em relatórios, com cada número
+    explicado em português.</p>
     <form class="busca" action="{URL_DO_APP}/visao-geral" method="get" role="search"
           data-busca data-app="{URL_DO_APP}">
       <label for="busca-ticker">Busque um ativo</label>
@@ -518,12 +538,25 @@ def landing(estilos: list[str]) -> str:
     <img src="/relatorio/{estilos[0]}-2.webp" width="560" height="792" alt="">
   </div>
 </section>
-</div>
+</div>"""
 
-<section id="produto" class="faixa secao" aria-labelledby="titulo-resultados">
+
+def landing(estilos: list[str]) -> str:
+    """Versão A (por assunto), escolhida em 13/10/2026: herói com busca, as seis frentes, o
+    Report Studio e a chamada final; o resto foi para Produto, Como funciona e Aprender."""
+    frentes = "".join(
+        f'<article class="cartao"><p class="olho">{esc(m.objetivo)}</p><h3>{esc(m.nome)}</h3>'
+        f'<p>{esc(m.frase)}</p><p class="contagem">{_contagem(m)}</p>'
+        f'<a class="seta" href="/produto.html#{m.chave}">Ver o que tem</a></article>'
+        for m in MODULOS_DO_PRODUTO
+    )
+    corpo = f"""{_heroi(estilos)}
+
+<section class="faixa secao" aria-labelledby="titulo-frentes">
   <p class="olho">O que você leva</p>
-  <h2 id="titulo-resultados">Três resultados, uma jornada</h2>
-  <div class="grade tres">{resultados}</div>
+  <h2 id="titulo-frentes">Seis frentes, uma plataforma</h2>
+  <div class="grade tres">{frentes}</div>
+  <p><a class="seta" href="/produto.html">Tudo o que o TickerLab faz, e o que vem por aí</a></p>
 </section>
 
 <section id="relatorios" class="faixa secao" aria-labelledby="titulo-estudio">
@@ -534,46 +567,7 @@ def landing(estilos: list[str]) -> str:
   metodologia e os limites da análise.</p>
   {_vitrine(estilos)}
 </section>
-
-<section class="faixa secao" aria-labelledby="titulo-como">
-  <p class="olho">Como funciona</p>
-  <h2 id="titulo-como">Em três passos</h2>
-  <ol class="passos">{como}</ol>
-</section>
-
-<section class="faixa secao" aria-labelledby="titulo-quem">
-  <p class="olho">Para quem é</p>
-  <h2 id="titulo-quem">Feito para quem quer entender, não para quem quer palpite</h2>
-  <div class="grade tres">{para_quem}</div>
-</section>
-
-<div class="escura">
-<section class="faixa secao" aria-labelledby="titulo-confianca">
-  <p class="olho">Confiança</p>
-  <h2 id="titulo-confianca">De onde vêm os números e o que eles não dizem</h2>
-  <div class="grade quatro">{pilares}</div>
-  <p><a class="seta" href="/metodologia.html">Fontes e metodologia em detalhe</a></p>
-</section>
-</div>
-
-<section class="faixa secao" aria-labelledby="titulo-planos">
-  <p class="olho">Planos</p>
-  <h2 id="titulo-planos">Escolha o nível de pesquisa que faz sentido para você</h2>
-  {_tabela_de_planos()}
-  <p class="apagado">{_cobranca()}</p>
-</section>
-
-<section class="faixa secao" aria-labelledby="titulo-faq">
-  <p class="olho">Perguntas</p>
-  <h2 id="titulo-faq">Perguntas frequentes</h2>
-  <div class="faq">{faq}</div>
-</section>
-
-<section class="faixa secao final" aria-labelledby="titulo-final">
-  <h2 id="titulo-final">Comece pela sua primeira análise</h2>
-  <p class="subtitulo">O tutorial do app guia você em 2 minutos, com dados de verdade.</p>
-  <a class="botao primario" href="{link_do_app("visao-geral", ticker=TICKER_DO_EXEMPLO)}">Experimentar com PETR4</a>
-</section>
+{_chamada_final()}
 """
     return pagina(
         "/",
@@ -581,6 +575,109 @@ def landing(estilos: list[str]) -> str:
         "Pesquise ativos da B3 e dos EUA, entenda retorno e risco com cada número explicado "
         "e gere relatórios em PDF. Nada é recomendação de investimento.",
         corpo,
+    )
+
+
+def produto() -> str:
+    atalhos = " ".join(
+        f'<a class="botao secundario pequeno" href="#{m.chave}">{esc(m.nome)}</a>'
+        for m in MODULOS_DO_PRODUTO
+    )
+    corpo = (
+        _cabecalho(
+            "Produto",
+            "Tudo o que o TickerLab faz, e o que vem por aí",
+            "O selo mostra o que já está no app e o que ainda está em construção. "
+            "O que está em breve não tem data marcada.",
+            f'<p class="atalhos">{atalhos}</p>',
+        )
+        + "".join(_secao_do_modulo(m) for m in MODULOS_DO_PRODUTO)
+        + _chamada_final()
+    )
+    return pagina(
+        "/produto.html",
+        "Produto",
+        "Research, Carteira, Estratégias, Relatórios, Mercado e Ferramentas: o que o TickerLab "
+        "já faz e o que está em construção.",
+        corpo,
+        "/produto.html",
+    )
+
+
+def _lista_de_cartoes(itens: list[tuple[str, str]], classe: str = "cartao") -> str:
+    return "".join(
+        f'<article class="{classe}"><h3>{esc(t)}</h3><p>{esc(d)}</p></article>'
+        for t, d in itens
+    )
+
+
+def como_funciona() -> str:
+    passos = "".join(
+        f'<li><span class="numero">{i}</span><h3>{esc(t)}</h3><p>{esc(d)}</p></li>'
+        for i, (t, d) in enumerate(PASSOS, 1)
+    )
+    faq = "".join(
+        f"<details><summary>{esc(p)}</summary><p>{esc(r)}</p></details>"
+        for p, r in PERGUNTAS
+    )
+    cabecalho = _cabecalho(
+        "Como funciona",
+        "Em três passos",
+        "Da primeira busca ao relatório em PDF, com cada número explicado.",
+    )
+    corpo = f"""{cabecalho}
+<section class="faixa secao" aria-label="Os três passos"><ol class="passos">{passos}</ol></section>
+
+<section class="faixa secao" aria-labelledby="titulo-quem">
+  <p class="olho">Para quem é</p>
+  <h2 id="titulo-quem">Feito para quem quer entender, não para quem quer palpite</h2>
+  <div class="grade tres">{_lista_de_cartoes(PUBLICOS)}</div>
+</section>
+
+<div class="escura">
+<section class="faixa secao" aria-labelledby="titulo-confianca">
+  <p class="olho">Confiança</p>
+  <h2 id="titulo-confianca">De onde vêm os números e o que eles não dizem</h2>
+  <div class="grade quatro">{_lista_de_cartoes(CONFIANCA, "pilar")}</div>
+  <p><a class="seta" href="/metodologia.html">Fontes e metodologia em detalhe</a></p>
+</section>
+</div>
+
+<section class="faixa secao" aria-labelledby="titulo-faq">
+  <p class="olho">Perguntas</p>
+  <h2 id="titulo-faq">Perguntas frequentes</h2>
+  <div class="faq">{faq}</div>
+</section>
+{_chamada_final()}
+"""
+    return pagina(
+        "/como-funciona.html",
+        "Como funciona",
+        "Como o TickerLab funciona, para quem é, de onde vêm os números e as perguntas "
+        "frequentes.",
+        corpo,
+        "/como-funciona.html",
+    )
+
+
+def aprender() -> str:
+    corpo = (
+        _cabecalho(
+            "Aprender",
+            "Do primeiro ativo ao primeiro relatório",
+            "Cada explicação leva a uma ação no produto. As calculadoras abertas ficam aqui "
+            "também.",
+        )
+        + _secao_do_modulo(modulos.POR_CHAVE["aprender"])
+        + _secao_do_modulo(modulos.POR_CHAVE["ferramentas"])
+        + _chamada_final()
+    )
+    return pagina(
+        "/aprender.html",
+        "Aprender",
+        "Tutorial, guia e glossário do TickerLab, e as calculadoras que vêm por aí.",
+        corpo,
+        "/aprender.html",
     )
 
 
@@ -907,6 +1004,18 @@ code, .ticker {{ font-family: "JetBrains Mono", ui-monospace, monospace; font-si
 .passos li {{ padding: 1.4rem; border-left: 2px solid var(--azul); background: var(--superficie); border-radius: 0 var(--raio) var(--raio) 0; }}
 .passos p {{ color: var(--apagado); margin: 0; }}
 .numero {{ display: inline-block; font-family: "JetBrains Mono", monospace; color: var(--azul-texto); font-weight: 700; margin-bottom: .4rem; }}
+/* módulos: o selo diz o que já está no app e o que está em construção */
+.selo {{ display: inline-block; padding: .08rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700;
+  letter-spacing: .02em; white-space: nowrap; }}
+.selo.disponivel {{ color: var(--azul-texto); border: 1px solid color-mix(in srgb, var(--azul-texto) 45%, transparent); }}
+.selo.breve {{ color: var(--atencao); border: 1px solid color-mix(in srgb, var(--atencao) 45%, transparent); }}
+.cartao h3 {{ display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem; }}
+.cartao.breve {{ background: transparent; border-style: dashed; }}
+.cartao.breve:hover {{ border-color: var(--linha); transform: none; }}
+.modulo-topo {{ display: flex; justify-content: space-between; align-items: end; gap: 0 1rem; flex-wrap: wrap; }}
+.contagem {{ color: var(--apagado); font-size: .92rem; }}
+.cabecalho {{ border-top: 0; padding-bottom: 1rem; }}
+.atalhos {{ display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }}
 /* vitrine do Report Studio */
 .vitrine .controles {{ display: inline-flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; margin: 1rem 0 1.25rem;
   background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; }}
@@ -941,7 +1050,7 @@ table.planos thead th:not(:first-child) {{ text-align: center; color: var(--text
 .texto-longo li {{ margin-bottom: .45rem; }}
 .texto-longo li, .texto-longo p {{ color: color-mix(in srgb, var(--texto) 88%, var(--apagado)); }}
 /* rodapé */
-.rodape {{ padding-block: 2.5rem; margin-top: 2rem; }}
+.rodape {{ padding-block: 2.5rem; border-top: 1px solid var(--linha); }}
 .rodape .faixa {{ display: grid; grid-template-columns: 1fr 2fr; gap: 1.5rem 2rem; }}
 .rodape nav {{ display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; align-content: start; }}
 .rodape nav a {{ color: var(--apagado); text-decoration: none; }}
@@ -1140,6 +1249,9 @@ def gerar(destino: Path = DESTINO) -> None:
     )
     paginas = {
         "index.html": landing(estilos),
+        "produto.html": produto(),
+        "como-funciona.html": como_funciona(),
+        "aprender.html": aprender(),
         "precos.html": precos(),
         "metodologia.html": metodologia(),
         "termos.html": legal(
