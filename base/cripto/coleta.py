@@ -9,6 +9,7 @@ então rodar duas vezes não duplica. As fontes que refazem números antigos gua
 (a chave inclui `divulgado_em`): a Receita.
 """
 
+import logging
 import re
 import time
 from collections.abc import Callable
@@ -27,7 +28,14 @@ from base.cripto.atencao import (
 )
 from base.cripto.cftc import endereco_do_ano, ler_tff
 from base.cripto.diario import resumo_diario
-from base.cripto.leitura import FonteDeBlocos, ler_ate_o_topo, ler_blocos, ler_parado
+from base.cripto.leitura import (
+    FonteDeBlocos,
+    conferir_com_o_no,
+    ler_ate_o_topo,
+    ler_blocos,
+    ler_parado,
+)
+from base.cripto.no_bitcoin import ErroDoNo
 from base.cripto.precos import ler_kraken_arquivo, ler_kraken_rest, ler_mercado_bitcoin
 from base.cripto.receita import (
     abrir_planilha,
@@ -36,6 +44,8 @@ from base.cripto.receita import (
     ler_por_criptoativo,
     ler_totais,
 )
+
+log = logging.getLogger(__name__)
 
 Baixar = Callable[[str], bytes]
 
@@ -201,12 +211,30 @@ def coletar_receita(pasta: Path, agora: datetime, baixar: Baixar) -> int:
 
 
 def coletar_no(pasta: Path, agora: datetime, no: FonteDeBlocos) -> int:
-    """Lê o nó até o topo com 6 confirmações e refaz o resumo diário dos dias novos."""
+    """Lê o nó até o topo com 6 confirmações, refaz o resumo diário dos dias novos e confere a
+    soma das moedas não gastas com a do nó (regra C7): diferença para a coleta com erro."""
     lidos = ler_ate_o_topo(no, pasta / "no", agora)
     if lidos:
         diario = resumo_diario(ler_blocos(pasta / "no"), ler_parado(pasta / "no"))
         _gravar_por_ano(pasta / "rede_diaria", diario, "dia")
+    diferenca = _conferir_oferta(pasta / "no", no)
+    if diferenca:
+        raise ValueError(
+            f"C7: a soma das moedas não gastas da base difere da do nó em {diferenca} satoshis."
+        )
     return lidos
+
+
+def _conferir_oferta(pasta_do_no: Path, no: FonteDeBlocos) -> int | None:
+    """A diferença da regra C7, ou None se ainda não dá para conferir."""
+    if not (pasta_do_no / "pontos").exists():
+        return None
+    try:
+        return conferir_com_o_no(pasta_do_no, no)
+    except ErroDoNo as erro:
+        # o índice de moedas do nó (coinstatsindex) anda atrás na sincronização: fica para depois
+        log.warning("Conferência C7 adiada: %s", erro)
+        return None
 
 
 def _pedir_com_pausa(

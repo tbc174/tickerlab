@@ -100,3 +100,50 @@ def test_rodada_de_qualidade_grava_os_achados(acervo, monkeypatch):
     achados = ler_tabela(base / "qualidade", "regra")
     assert achados["regra"].tolist() == ["C1"]
     assert achados["chave"].tolist() == ["2024-01-02"]
+
+
+def _originais_da_kraken():
+    from datetime import UTC, datetime
+
+    from base.cripto.reprodutivel import Original
+
+    quando = datetime(2026, 10, 13, 12, tzinfo=UTC)
+    return [
+        Original(
+            "kraken-ohlc", "https://api.kraken.com/0/public/OHLC", quando, KRAKEN_REST
+        )
+    ]
+
+
+def test_verificar_refaz_dos_originais_e_grava_o_relatorio(acervo, monkeypatch):
+    import json
+
+    monkeypatch.setattr(coletar_cripto, "_baixar_da_fonte", lambda _url: KRAKEN_REST)
+    assert coletar_cripto.main(["kraken"]) == 0
+    monkeypatch.setattr(coletar_cripto, "_originais_do_registro", _originais_da_kraken)
+
+    assert coletar_cripto.main(["verificar"]) == 0
+    relatorios = list((acervo / "base" / "cripto" / "verificacao").glob("*.json"))
+    relatorio = json.loads(relatorios[0].read_text(encoding="utf-8"))
+    assert relatorio["iguais"] == {"precos/kraken": True}
+    assert relatorio["nada_depois_do_corte"]["precos/kraken"] is True
+
+
+def test_verificar_acusa_tabela_que_nao_se_refaz(acervo, monkeypatch):
+    import pandas as pd
+
+    from base.cripto import arquivos
+
+    monkeypatch.setattr(coletar_cripto, "_baixar_da_fonte", lambda _url: KRAKEN_REST)
+    coletar_cripto.main(["kraken"])
+    tabela = ler_tabela(acervo / "base" / "cripto" / "precos" / "kraken", "dia")
+    tabela.loc[0, "fechamento"] = 1.0  # alguém mexeu na base sem passar pelo original
+    for arquivo in (acervo / "base" / "cripto" / "precos" / "kraken").glob("*.parquet"):
+        arquivo.unlink()
+    arquivos.gravar_parquet(
+        acervo / "base" / "cripto" / "precos" / "kraken" / "2026.parquet",
+        pd.DataFrame(tabela),
+    )
+    monkeypatch.setattr(coletar_cripto, "_originais_do_registro", _originais_da_kraken)
+
+    assert coletar_cripto.main(["verificar"]) == 1
