@@ -73,3 +73,30 @@ def test_carga_do_arquivo_historico_da_kraken(acervo, tmp_path):
 
 def test_carga_do_arquivo_sem_caminho_e_recusada(acervo):
     assert coletar_cripto.main(["kraken-arquivo"]) == 1
+
+
+def test_rodada_de_qualidade_grava_os_achados(acervo, monkeypatch):
+    from datetime import date
+
+    import pandas as pd
+
+    from base.cripto import arquivos
+
+    base = acervo / "base" / "cripto"
+    precos = pd.DataFrame(
+        {
+            "dia": [date(2024, 1, 1), date(2024, 1, 3)],  # falta o dia 2: achado C1
+            "abertura": [1.0, 1.0],
+            "maxima": [1.0, 1.0],
+            "minima": [1.0, 1.0],
+            "fechamento": [1.0, 1.0],
+            "volume": [1.0, 1.0],
+        }
+    )
+    arquivos.gravar_parquet(base / "precos" / "kraken" / "2024.parquet", precos)
+    monkeypatch.setattr(coletar_cripto, "_ptax", lambda: None)
+
+    assert coletar_cripto.main(["qualidade"]) == 0
+    achados = ler_tabela(base / "qualidade", "regra")
+    assert achados["regra"].tolist() == ["C1"]
+    assert achados["chave"].tolist() == ["2024-01-02"]
