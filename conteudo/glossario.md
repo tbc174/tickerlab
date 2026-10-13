@@ -289,6 +289,34 @@ dados no app (um `##` por termo).
 
 **Cuidado:** o CDI é em reais. Para ações de fora (como a AAPL), a comparação mistura moedas. O Sharpe usa o CDI do período como taxa livre de risco.
 
+## Selic
+**O que é:** a taxa básica de juros da economia brasileira. O Copom, comitê do Banco Central, define a **meta da Selic** em oito reuniões por ano; ela serve de referência para todos os outros juros, do CDI ao crédito.
+
+**Exemplo:** com a meta da Selic em 15% ao ano, um título que acompanha a Selic rende perto disso no ano, antes do imposto.
+
+**Cuidado:** a meta é um alvo: a taxa praticada no dia a dia (a "Selic diária") fica muito perto dela, mas não é igual. Mudanças da meta valem a partir do dia seguinte à reunião.
+
+## IPCA
+**O que é:** o índice oficial de inflação do Brasil, calculado pelo IBGE todo mês a partir dos preços que as famílias pagam. A meta de inflação do governo é de 3% ao ano.
+
+**Exemplo:** se o IPCA foi de 0,5% em cada um dos últimos 12 meses, a inflação em 12 meses não é 6%: os meses se acumulam (1,005 multiplicado 12 vezes), e o resultado é 6,17%.
+
+**Cuidado:** cada mês sai só no mês seguinte, e o número de um mês pode ser revisto depois. O app mostra a data de divulgação ao lado de cada valor.
+
+## Juro real
+**O que é:** quanto o dinheiro rendeu acima da inflação. A conta é feita dividindo, não subtraindo: (1 + juro) ÷ (1 + inflação) − 1.
+
+**Exemplo:** com o CDI em 14% e o IPCA em 5% no mesmo período, o juro real é 8,6%, e não 9%.
+
+**Cuidado:** o juro real dos últimos 12 meses olha para trás. O que vale para quem investe hoje é o juro real esperado, que depende da inflação futura (veja o Boletim Focus).
+
+## Boletim Focus
+**O que é:** a pesquisa semanal do Banco Central com as projeções de cerca de cem bancos, gestoras e consultorias para a inflação, a Selic, o câmbio e o PIB. O app mostra a **mediana** das respostas (o valor do meio).
+
+**Exemplo:** se a mediana do IPCA para este ano é 4,8%, metade das instituições espera menos que isso e metade espera mais.
+
+**Cuidado:** é o que o mercado espera, não uma previsão do TickerLab, e as projeções mudam toda semana. O app mostra a data da pesquisa.
+
 ## Imposto de renda (simplificado)
 **O que é:** uma estimativa do imposto sobre as operações do backtest, com as regras de ações na B3 em operações normais (*swing trade*): 15% sobre o lucro do mês, isento se o total vendido no mês é de até R$ 20 mil, e o prejuízo de um mês abate o lucro dos seguintes.
 
