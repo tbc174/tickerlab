@@ -84,6 +84,11 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **Várias sessões do Claude podem estar abertas.** Cada uma trabalha na própria cópia
   (`git worktree add ../analise-acoes-NOME -b ramo origin/main`); não mexa num ramo ou numa pasta
   que outra sessão esteja usando, e não use `git add -A` sem conferir o `git status`.
+- **Pastas geradas (`site/`, `novo/`, `web/conteudo/`) não se juntam à mão: se refazem.** Ramo atrás da
+  `main` ou PR com conflito: `python -m scripts.juntar_main` (merge da `main`, conflito em pasta gerada
+  resolvido rodando os geradores; conflito em código para e pede uma pessoa) e `git push` comum. Rode
+  também antes de pedir o merge. Mudou `src/paginas.py`, `src/modulos.py` ou `web/`: rode os geradores
+  (`exportar_conteudo`, `gerar_site`, `npm run site`, `npm run app`) e faça o commit junto.
 
 ## Segurança e privacidade
 
