@@ -152,14 +152,18 @@ def checar_fora_do_periodo(
 # --- Checagem 4: parâmetros vizinhos -----------------------------------------------------
 
 
-def _posicao_mais_proxima(rotulos: pd.Index, valor: object) -> int:
-    if valor in rotulos:
-        return int(rotulos.get_loc(valor))
+Valor = float | str  # valor de um parâmetro no mapa ("" quando só um parâmetro varia)
+
+
+def _posicao_mais_proxima(rotulos: pd.Index, valor: Valor) -> int:
+    exata = int(rotulos.get_indexer([valor])[0])  # -1 quando o valor não está na grade
+    if exata >= 0:
+        return exata
     distancias = np.abs(np.asarray(rotulos, dtype=float) - float(valor))
     return int(distancias.argmin())
 
 
-def vizinhos(mapa: pd.DataFrame, escolhido: tuple) -> list[float]:
+def vizinhos(mapa: pd.DataFrame, escolhido: tuple[Valor, Valor]) -> list[float]:
     """Sharpes das casas em volta da escolhida no mapa de parâmetros (até 8; as inválidas saem).
 
     `mapa` vem de `validacao.montar_mapa_de_sharpe` (colunas = 1º parâmetro, linhas = 2º);
@@ -174,7 +178,7 @@ def vizinhos(mapa: pd.DataFrame, escolhido: tuple) -> list[float]:
 
 
 def checar_vizinhos(
-    mapa: pd.DataFrame, escolhido: tuple, sharpe_da_pessoa: float
+    mapa: pd.DataFrame, escolhido: tuple[Valor, Valor], sharpe_da_pessoa: float
 ) -> Checagem:
     """Passa se a configuração está numa região boa do mapa, não num pico isolado."""
     em_volta = vizinhos(mapa, escolhido)
