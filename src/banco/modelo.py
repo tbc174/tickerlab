@@ -97,6 +97,21 @@ tentativas = sa.Table(
     _momento("criada_em"),
 )
 
+# Campanha (0028): de onde veio cada cadastro, lido do cookie próprio `tl_origem` no primeiro
+# login (src/origem.py). Só a primeira origem fica; nada vai para Google ou Meta
+origens_do_cadastro = sa.Table(
+    "origens_do_cadastro",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("utm_source", sa.String(60)),
+    sa.Column("utm_medium", sa.String(60)),
+    sa.Column("utm_campaign", sa.String(60)),
+    sa.Column("utm_content", sa.String(60)),
+    sa.Column("ref", sa.String(60)),
+    sa.Column("primeira_visita", sa.Date),
+    _momento("gravada_em"),
+)
+
 simulacoes = sa.Table(
     "simulacoes",
     metadata,

@@ -10,10 +10,11 @@ import stripe
 
 from src import auditoria, conformidade
 from src.banco import dados_do_usuario as repo
-from src.banco import tentativas
+from src.banco import origens, tentativas
 from src.banco.modelo import assinaturas, metadata
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
+from src.origem import Origem
 
 
 @pytest.fixture
@@ -113,6 +114,26 @@ def test_exportar_traz_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
         "bia@exemplo.com" not in texto
         and "Da Bia" not in texto
         and "VALE3" not in texto
+    )
+
+
+def test_exportar_traz_a_origem_do_cadastro(conexao, ana, bia):
+    origens.gravar_origem(
+        conexao, ana.id, Origem(source="google", medium="cpc", ref="clube-do-robo")
+    )
+    origens.gravar_origem(conexao, bia.id, Origem(source="instagram"))
+
+    origem = conformidade.exportar_meus_dados(conexao, ana.id)["origem_do_cadastro"]
+
+    assert origem["utm_source"] == "google"
+    assert origem["utm_medium"] == "cpc"
+    assert origem["ref"] == "clube-do-robo"
+    assert origem["gravada_em"]
+
+
+def test_exportar_sem_origem_traz_none(conexao, ana):
+    assert (
+        conformidade.exportar_meus_dados(conexao, ana.id)["origem_do_cadastro"] is None
     )
 
 

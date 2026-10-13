@@ -128,6 +128,26 @@ def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
     assert estrangeira["options"].get("ondelete") == "CASCADE"
 
 
+def test_migracao_0028_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("origens_do_cadastro")}
+    assert colunas == {
+        "usuario_id",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content",
+        "ref",
+        "primeira_visita",
+        "gravada_em",
+    }
+    chave = inspecao.get_pk_constraint("origens_do_cadastro")["constrained_columns"]
+    assert chave == ["usuario_id"]
+    (estrangeira,) = inspecao.get_foreign_keys("origens_do_cadastro")
+    assert estrangeira["referred_table"] == "usuarios"
+    assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
     url = motor.url.render_as_string(hide_password=False)
     migrar_para("base", url)
