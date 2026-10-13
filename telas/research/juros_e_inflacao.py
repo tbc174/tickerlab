@@ -14,7 +14,7 @@ from src import graficos, relatorios
 from src import juros_e_inflacao as ji
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.cdi import CDIIndisponivelError
-from telas.comum import cabecalho_da_pagina, mostrar_grafico, obter_cdi
+from telas.comum import ajuda_do, cabecalho_da_pagina, mostrar_grafico, obter_cdi
 
 log = logging.getLogger(__name__)
 DIAS_DE_CDI = 400  # um pouco mais que um ano de dias corridos: cobre 252 dias úteis
@@ -51,14 +51,20 @@ def _mostrar_numeros(painel):
     colunas = st.columns(3)
     for posicao, numero in enumerate(painel.numeros):
         with colunas[posicao % 3]:
-            st.metric(numero.nome, ji.formatar_valor(numero))
+            st.metric(
+                numero.nome,
+                ji.formatar_valor(numero),
+                help=ajuda_do(ji.TERMO_DO_GLOSSARIO[numero.nome]),
+            )
             st.caption(ji.legenda(numero))
 
 
 def _mostrar_expectativas(painel):
     if not painel.expectativas:
         return
-    st.markdown("**O que o mercado espera (boletim Focus)**")
+    st.markdown(
+        "**O que o mercado espera (boletim Focus)**", help=ajuda_do("Boletim Focus")
+    )
     st.dataframe(
         pd.DataFrame(
             {

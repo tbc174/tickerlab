@@ -181,3 +181,13 @@ def test_legenda_sem_divulgacao_nao_inventa_data():
         "CDI", 13.4, "% em 12 meses", date(2026, 10, 9), None, "Banco Central, SGS 12"
     )
     assert ji.legenda(numero) == "Referência: 09/10/2026 · Banco Central, SGS 12"
+
+
+def test_cada_numero_tem_um_verbete_no_glossario():
+    from src.conteudo import carregar_glossario
+
+    glossario = carregar_glossario()
+    painel = ji.montar_painel(_lidas(), None, HOJE)
+    for numero in painel.numeros:
+        assert ji.TERMO_DO_GLOSSARIO[numero.nome] in glossario, numero.nome
+    assert "Boletim Focus" in glossario

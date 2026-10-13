@@ -36,6 +36,15 @@ NOMES_DAS_SERIES = {
     FOCUS_IPCA: "expectativa do IPCA (Focus)",
     FOCUS_SELIC: "expectativa da Selic (Focus)",
 }
+# o verbete do glossário que explica cada número (o "?" ao lado dele na tela)
+TERMO_DO_GLOSSARIO = {
+    NOME_SELIC: "Selic",
+    NOME_CDI_12M: "CDI",
+    NOME_IPCA_MES: "IPCA",
+    NOME_IPCA_12M: "IPCA",
+    NOME_JURO_REAL: "Juro real",
+    NOME_DOLAR: "Câmbio e moeda",
+}
 FONTE_SGS = "Banco Central, SGS {}"
 FONTE_FOCUS = "Banco Central, boletim Focus (mediana)"
 
