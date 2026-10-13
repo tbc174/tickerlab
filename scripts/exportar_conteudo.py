@@ -20,6 +20,7 @@ from src import (
     formatos,
     marca,
     modulos,
+    novidades,
     paginas,
     planos,
     qualidade_texto,
@@ -180,6 +181,7 @@ def conteudo() -> dict[str, object]:
         "qualidade": _qualidade(),
         "app": _app(),
         "formatacao": formatos.casos_de_formatacao(),
+        "novidades": novidades.como_lista(),
     }
 
 
