@@ -17,6 +17,7 @@ from src.banco.modelo import (
     documentos_financeiros,
     documentos_financeiros_versoes,
     setores_cvm,
+    tickers_dos_emissores,
 )
 from src.banco.versoes import versionar
 from src.links_das_fontes import link_da_fonte
@@ -302,3 +303,18 @@ def ultima_coleta_de_demonstracoes(conexao: sa.Connection) -> datetime | None:
     return conexao.execute(
         sa.select(sa.func.max(documentos_financeiros.c.coletado_em))
     ).scalar()
+
+
+def setores_dos_tickers(conexao: sa.Connection, tickers: list[str]) -> dict[str, str]:
+    """O setor da CVM de cada ticker (com .SA) que tem empresa e setor cadastrados.
+
+    Ticker sem empresa na CVM (FII, ETF, BDR) ou empresa sem setor fica de fora do dicionário.
+    """
+    if not tickers:
+        return {}
+    linhas = conexao.execute(
+        sa.select(tickers_dos_emissores.c.ticker, setores_cvm.c.setor)
+        .join(setores_cvm, setores_cvm.c.cnpj == tickers_dos_emissores.c.cnpj)
+        .where(tickers_dos_emissores.c.ticker.in_(tickers), setores_cvm.c.setor != "")
+    )
+    return {ticker: setor for ticker, setor in linhas}

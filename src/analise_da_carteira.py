@@ -19,6 +19,14 @@ from src.carteira_b3 import (
 from src.metricas import resumir_desempenho
 
 MAIORES = 3  # "as 3 maiores juntas"
+SEM_SETOR = "Sem setor conhecido"  # FII, ETF, BDR e empresas sem setor na CVM
+SETOR_DA_RENDA_FIXA = "Tesouro e renda fixa"
+REAL = "Real"
+DOLAR_BDR = "Dólar (BDR)"
+NOTA_DA_MOEDA = (
+    "BDR conta como dólar (é uma empresa de fora); o resto conta como real. ETFs de índices de "
+    "fora (como o IVVB11) também têm exposição ao dólar, mas aqui contam como real."
+)
 
 
 def _sem_sufixo(ticker: str) -> str:
@@ -104,4 +112,61 @@ def comportamento(
         curva=_pontos((1 + retorno).cumprod() * 100),
         curva_ibovespa=curva_ibovespa,
         retorno_ibovespa=retorno_ibovespa,
+    )
+
+
+# --- Raio-X --------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Fatia:
+    grupo: str
+    valor: float  # R$
+    peso: float  # sobre o total da posição, com Tesouro e renda fixa
+
+
+@dataclass(frozen=True)
+class RaioX:
+    por_tipo: tuple[Fatia, ...]
+    por_setor: tuple[Fatia, ...]
+    por_moeda: tuple[Fatia, ...]
+
+
+def _fatias(valores: pd.Series, total: float) -> tuple[Fatia, ...]:
+    somados = valores.groupby(level=0).sum().sort_values(ascending=False)
+    return tuple(Fatia(str(g), float(v), float(v / total)) for g, v in somados.items())
+
+
+def raio_x(carteira: CarteiraB3, setores: dict[str, str]) -> RaioX:
+    """A posição inteira por tipo de ativo, por setor da CVM e por moeda.
+
+    `setores`: o setor de cada ticker (com .SA); quem não está nele vai para "Sem setor conhecido".
+    """
+    total = carteira.valor_total
+    if not total:
+        return RaioX((), (), ())
+    ativos, fixa = carteira.posicoes, carteira.sem_cotacao
+    por_tipo = pd.concat(
+        [ativos.set_index("tipo")["valor"], fixa.set_index("tipo")["valor"]]
+    )
+    por_setor = pd.concat(
+        [
+            pd.Series(
+                ativos["valor"].to_numpy(),
+                index=[setores.get(t, SEM_SETOR) for t in ativos["ticker"]],
+            ),
+            pd.Series(
+                fixa["valor"].to_numpy(), index=[SETOR_DA_RENDA_FIXA] * len(fixa)
+            ),
+        ]
+    )
+    moedas = [DOLAR_BDR if tipo == "BDR" else REAL for tipo in ativos["tipo"]]
+    por_moeda = pd.concat(
+        [
+            pd.Series(ativos["valor"].to_numpy(), index=moedas),
+            pd.Series(fixa["valor"].to_numpy(), index=[REAL] * len(fixa)),
+        ]
+    )
+    return RaioX(
+        _fatias(por_tipo, total), _fatias(por_setor, total), _fatias(por_moeda, total)
     )

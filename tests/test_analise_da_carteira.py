@@ -129,3 +129,49 @@ def test_pdf_da_minha_carteira_mostra_os_numeros_desta_analise():
         gp.pct_br(ac.comportamento(carteira, fechamentos, ibov, 0.0).maior_queda)
         in texto
     )
+
+
+# --- Raio-X --------------------------------------------------------------------------------
+
+
+def _misturada():
+    return _carteira(
+        {"PETR4": 300, "AAPL34": 200, "HGLG11": 100},
+        renda_fixa=400,
+        tipos=["Ações", "BDR", "Fundos imobiliários e outros"],
+    )
+
+
+def _fatias(fatias):
+    return {f.grupo: round(f.peso, 4) for f in fatias}
+
+
+def test_raio_x_por_tipo_inclui_a_renda_fixa_e_soma_100():
+    r = ac.raio_x(_misturada(), {})
+    assert _fatias(r.por_tipo) == {
+        "Tesouro Direto": 0.4,
+        "Ações": 0.3,
+        "BDR": 0.2,
+        "Fundos imobiliários e outros": 0.1,
+    }
+    assert sum(f.peso for f in r.por_tipo) == pytest.approx(1.0)
+
+
+def test_bdr_conta_como_dolar_e_o_resto_como_real():
+    r = ac.raio_x(_misturada(), {})
+    assert _fatias(r.por_moeda) == {"Real": 0.8, "Dólar (BDR)": 0.2}
+
+
+def test_ativo_sem_setor_vai_para_sem_setor_conhecido():
+    r = ac.raio_x(_misturada(), {"PETR4.SA": "Petróleo e Gás"})
+    assert _fatias(r.por_setor) == {
+        "Tesouro e renda fixa": 0.4,
+        "Petróleo e Gás": 0.3,
+        f"{ac.SEM_SETOR}": 0.3,
+    }
+
+
+def test_fatias_saem_da_maior_para_a_menor():
+    r = ac.raio_x(_misturada(), {})
+    pesos = [f.peso for f in r.por_tipo]
+    assert pesos == sorted(pesos, reverse=True)
