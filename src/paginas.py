@@ -43,6 +43,48 @@ FRASE_DE_CADA_GRUPO = {
 }
 
 
+# --- Contrato de cada página (preparação 3 da ADR 0044; ADR 0048) ---------------------------
+# O que a tela recebe (entradas) e qual rota da API devolve o que ela mostra (resposta). Uma tela nova
+# (React) é montada a partir daqui; há teste que confere cada contrato contra a API de verdade.
+
+PERIODOS = ("6mo", "1y", "2y", "5y")  # os mesmos de src/dados.py (há teste)
+
+
+@dataclass(frozen=True)
+class Entrada:
+    """Um campo que a pessoa preenche (ou que tem padrão) e vai para a rota."""
+
+    nome: str  # nome do parâmetro na rota
+    tipo: str  # "texto", "inteiro", "numero", "opcao", "lista de textos" ou "objeto"
+    descricao: str
+    obrigatoria: bool = False
+    padrao: int | float | str | None = None
+    minimo: int | float | None = None
+    maximo: int | float | None = None
+    opcoes: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Contrato:
+    metodo: str  # "GET" ou "POST"
+    rota: str  # na API, sem o prefixo /api: "/v1/visao-geral"
+    entradas: tuple[Entrada, ...]
+    resposta: str  # o esquema da resposta em src/api_v1/esquemas.py
+
+
+ATIVO = Entrada("ticker", "texto", "O ativo: PETR4, AAPL, ^BVSP...", obrigatoria=True)
+PERIODO = Entrada(
+    "periodo", "opcao", "Quanto do passado olhar.", padrao="2y", opcoes=PERIODOS
+)
+TAXA = Entrada(
+    "taxa",
+    "numero",
+    "Taxa livre de risco ao ano; vazia = o CDI do período.",
+    minimo=0,
+    maximo=1,
+)
+
+
 @dataclass(frozen=True)
 class Pagina:
     chave: str
@@ -56,6 +98,7 @@ class Pagina:
     no_menu: bool = (
         True  # False: fora do menu, mas com endereço (Termos e Privacidade, no rodapé)
     )
+    contrato: Contrato | None = None  # páginas que já têm rota na API de leitura
 
     @property
     def url(self) -> str:
@@ -122,6 +165,24 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/dashboard:",
         "O preço do ativo e os números-chave: retorno, risco e os dias mais extremos.",
+        contrato=Contrato(
+            "GET",
+            "/v1/visao-geral",
+            (
+                ATIVO,
+                PERIODO,
+                TAXA,
+                Entrada(
+                    "confianca_do_var",
+                    "inteiro",
+                    "Confiança da perda de um dia ruim (VaR), em %.",
+                    padrao=95,
+                    minimo=90,
+                    maximo=99,
+                ),
+            ),
+            "VisaoGeralV1",
+        ),
     ),
     Pagina(
         "risco",
@@ -129,6 +190,24 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/shield:",
         "Quanto o ativo já caiu e o quanto o preço oscila ao longo do tempo.",
+        contrato=Contrato(
+            "GET",
+            "/v1/risco",
+            (
+                ATIVO,
+                PERIODO,
+                TAXA,
+                Entrada(
+                    "janela",
+                    "inteiro",
+                    "Dias da volatilidade móvel.",
+                    padrao=20,
+                    minimo=5,
+                    maximo=252,
+                ),
+            ),
+            "RiscoDoAtivoV1",
+        ),
     ),
     Pagina(
         "retorno_mensal",
@@ -136,6 +215,12 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/calendar_month:",
         "Como o ativo foi em cada mês e ano, e se existem meses melhores que outros.",
+        contrato=Contrato(
+            "GET",
+            "/v1/retorno-mensal",
+            (ATIVO, PERIODO, TAXA),
+            "RetornoMensalDoAtivoV1",
+        ),
     ),
     Pagina(
         "comparar",
@@ -143,6 +228,22 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/compare_arrows:",
         "Coloque dois ou mais ativos lado a lado, com o Ibovespa e o S&P 500 de referência.",
+        contrato=Contrato(
+            "GET",
+            "/v1/comparacao",
+            (
+                ATIVO,
+                Entrada(
+                    "com",
+                    "lista de textos",
+                    "Os outros ativos (até 4); o principal entra sempre.",
+                    obrigatoria=True,
+                ),
+                PERIODO,
+                TAXA,
+            ),
+            "ComparacaoDoAtivoV1",
+        ),
     ),
     Pagina(
         "correlacao",
@@ -157,6 +258,35 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/history:",
         "Teste no passado: e se eu tivesse seguido esta regra de compra e venda?",
+        contrato=Contrato(
+            "POST",
+            "/v1/backtest",
+            (
+                ATIVO,
+                PERIODO,
+                Entrada(
+                    "estrategia",
+                    "texto",
+                    "O nome de uma estratégia de src/estrategias.py.",
+                    obrigatoria=True,
+                ),
+                Entrada(
+                    "parametros",
+                    "objeto",
+                    "Os ajustes da estratégia; os que faltarem ficam no padrão.",
+                ),
+                Entrada(
+                    "custo_por_operacao",
+                    "numero",
+                    "Custo de cada compra ou venda (0,0005 = 0,05%).",
+                    padrao=0.0005,  # CUSTO_PADRAO_POR_OPERACAO de src/backtest.py (há teste)
+                    minimo=0,
+                    maximo=0.05,
+                ),
+                TAXA,
+            ),
+            "BacktestDoAtivoV1",
+        ),
     ),
     Pagina(
         "ranking",

@@ -284,3 +284,48 @@ def test_montar_ano_fica_so_com_os_fatos_daquele_ano():
     base = montar_ano(publicadas, 2022)
     assert set(base["fim"].dt.year) == {2022}
     assert base["valor"].tolist() == [512.0, 80.0]
+
+
+# --- reprodutibilidade (ADR 0027, exigência 9) ----------------------------------------------------
+def _tres_publicacoes():
+    return _publicadas(
+        _conta(100.0, "2022-03-20", referencia=pd.Timestamp("2021-12-31")),
+        _conta(512.0, "2023-03-17"),
+        _conta(80.0, "2024-03-25", referencia=DFP_2023, ordem="penultimo"),
+    )
+
+
+def test_refazer_a_base_dos_originais_da_os_mesmos_hashes(tmp_path):
+    from base.ponto_no_tempo import conferir_pasta, hash_da_base
+
+    publicadas = _tres_publicacoes()
+    uma = montar_base(publicadas)
+    outra = montar_base(
+        publicadas.sample(frac=1, random_state=7)
+    )  # outra ordem de chegada
+    assert hash_da_base(uma) == hash_da_base(outra)
+    origens = [{"url": "https://dados.cvm.gov.br/x.zip", "sha256": "ab" * 32}]
+    gravar_parquet(uma, tmp_path / "base", origens=origens)
+    import json
+
+    manifesto = json.loads(
+        (tmp_path / "base" / "2022.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["linhas"] == 2 and manifesto["origens"] == origens
+    assert manifesto["sha256_da_base"] == hash_da_base(uma[uma["fim"].dt.year == 2022])
+    assert conferir_pasta(tmp_path / "base") == {"2021": True, "2022": True}
+
+
+def test_hash_muda_quando_um_numero_muda(tmp_path):
+    from base.ponto_no_tempo import conferir_pasta, hash_da_base
+
+    base = montar_base(_tres_publicacoes())
+    mexida = base.copy()
+    de_2021 = mexida["fim"].dt.year == 2021
+    mexida.loc[de_2021, "valor"] = mexida.loc[de_2021, "valor"] + 0.01  # um centavo
+    assert hash_da_base(base) != hash_da_base(mexida)
+    gravar_parquet(base, tmp_path / "base")
+    mexida[mexida["fim"].dt.year == 2021].to_parquet(
+        tmp_path / "base" / "2021.parquet", index=False
+    )
+    assert conferir_pasta(tmp_path / "base")["2021"] is False
