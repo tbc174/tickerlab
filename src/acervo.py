@@ -48,10 +48,15 @@ def extensao_da_url(url: str) -> str:
     return extensao if extensao in EXTENSOES_CONHECIDAS else SEM_EXTENSAO
 
 
-def caminho_relativo(fonte: str, url: str, conteudo: bytes, quando: datetime) -> str:
-    """`bruto/<fonte>/<ano>/<sha256>.<ext>[.gz]`, com barras normais (vai para o registro)."""
+def caminho_relativo(
+    fonte: str, url: str, conteudo: bytes, quando: datetime, extensao: str | None = None
+) -> str:
+    """`bruto/<fonte>/<ano>/<sha256>.<ext>[.gz]`, com barras normais (vai para o registro).
+
+    `extensao` vale mais que a do endereço (o ENET entrega XML por um endereço `.aspx`).
+    """
     sha256 = hashlib.sha256(conteudo).hexdigest()
-    extensao = extensao_da_url(url)
+    extensao = extensao or extensao_da_url(url)
     if extensao not in JA_COMPRIMIDOS:
         extensao += ".gz"
     return f"bruto/{fonte}/{quando.year}/{sha256}{extensao}"
@@ -67,7 +72,11 @@ def ler_original(relativo: str) -> bytes | None:
 
 
 def guardar_original(
-    fonte: str, url: str, conteudo: bytes, quando: datetime
+    fonte: str,
+    url: str,
+    conteudo: bytes,
+    quando: datetime,
+    extensao: str | None = None,
 ) -> str | None:
     """Guarda o arquivo como veio e devolve o caminho relativo ao acervo (None se desligado).
 
@@ -76,7 +85,7 @@ def guardar_original(
     pasta = pasta_do_acervo()
     if pasta is None:
         return None
-    relativo = caminho_relativo(fonte, url, conteudo, quando)
+    relativo = caminho_relativo(fonte, url, conteudo, quando, extensao)
     destino = pasta / relativo
     if not destino.exists():
         destino.parent.mkdir(parents=True, exist_ok=True)
