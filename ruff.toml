@@ -21,8 +21,8 @@ max-complexity = 15
 [lint.per-file-ignores]
 # app.py: dividido em telas/ (Master v3, Fase E); B905 e C901 voltaram a valer nele
 "app.py" = ["ANN"]
-# telas/: saiu do app.py como estava (Master v3, Fase E); B905 voltou a valer (12/10). C901 volta
-# quando as funções grandes forem divididas (uma por PR)
-"telas/**" = ["ANN", "C901"]
+# telas/: saiu do app.py (Master v3, Fase E); B905 e C901 voltaram a valer (12/10/2026, depois de
+# dividir as 5 funções grandes)
+"telas/**" = ["ANN"]
 "tests/**" = ["ANN"]
 "estudos/**" = ["ANN"]
