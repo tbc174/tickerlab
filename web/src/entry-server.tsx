@@ -1,32 +1,20 @@
-// Monta o HTML de uma página no build (sem navegador): é o que a busca do Google lê.
-import { renderToString } from "react-dom/server";
+// Monta o HTML pronto de cada página no build (sem navegador): é o que a busca do Google lê. O site
+// é estático: nada de React no navegador; o site.js cuida do tema, da busca e da vitrine.
+import { renderToStaticMarkup } from "react-dom/server";
+import { css } from "./estilo";
 import { ROTAS, rotaDoArquivo } from "./rotas";
+import { expandirBruto } from "./site/Bruto";
+import { Documento, SITE_JS } from "./site/Moldura";
 
 export const arquivos = ROTAS.map((r) => r.arquivo);
 
-export function renderizar(arquivo: string, script: string): string {
+export function renderizar(arquivo: string): string {
   const rota = rotaDoArquivo(arquivo);
-  const corpo = renderToString(rota.pagina());
-  return `<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapar(rota.titulo)}</title>
-<meta name="description" content="${escapar(rota.descricao)}">
-</head>
-<body data-pagina="${escapar(arquivo)}">
-<div id="raiz">${corpo}</div>
-<script type="module" src="${escapar(script)}"></script>
-</body>
-</html>
-`;
+  const html = renderToStaticMarkup(<Documento {...rota.dados}>{rota.conteudo()}</Documento>);
+  return `<!doctype html>\n${expandirBruto(html)}\n`;
 }
 
-function escapar(texto: string): string {
-  return texto
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+/** Os arquivos que acompanham as páginas: o CSS e o JavaScript do site. */
+export function arquivosFixos(): Record<string, string> {
+  return { "estilo.css": css(), "site.js": SITE_JS };
 }

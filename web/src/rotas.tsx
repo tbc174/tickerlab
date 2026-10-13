@@ -1,22 +1,16 @@
-// Cada página do site: o arquivo que ela vira (os mesmos endereços de hoje) e o componente.
+// Cada página do site: o arquivo que ela vira (os mesmos endereços de hoje), os dados do <head> e
+// o conteúdo. A moldura (topo, rodapé) é a mesma para todas.
 import type { ReactElement } from "react";
-import { Inicio } from "./paginas/Inicio";
+import type { DadosDaPagina } from "./site/Moldura";
+import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
 
 export interface Rota {
   arquivo: string; // "index.html", "produto.html"...
-  titulo: string;
-  descricao: string;
-  pagina: () => ReactElement;
+  dados: DadosDaPagina;
+  conteudo: () => ReactElement;
 }
 
-export const ROTAS: Rota[] = [
-  {
-    arquivo: "index.html",
-    titulo: "TickerLab",
-    descricao: "Plataforma de inteligência financeira.",
-    pagina: () => <Inicio />,
-  },
-];
+export const ROTAS: Rota[] = [{ arquivo: "index.html", dados: DADOS_DO_INICIO, conteudo: () => <Inicio /> }];
 
 export function rotaDoArquivo(arquivo: string): Rota {
   const rota = ROTAS.find((r) => r.arquivo === arquivo);

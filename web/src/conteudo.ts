@@ -35,3 +35,7 @@ export const marca = marcaJson;
 export const modulos: Modulo[] = modulosJson;
 export const paginasDoApp: PaginaDoApp[] = paginasJson;
 export const planos = planosJson;
+import siteJson from "../conteudo/site.json";
+
+// o que só o site usa e vem do app: estilos do Report Studio e ativos de exemplo
+export const site = siteJson;
