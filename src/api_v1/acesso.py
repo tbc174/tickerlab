@@ -27,6 +27,18 @@ from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario, buscar_por_google_sub
 from src.conformidade import precisa_aceitar_os_termos
 
+# o motivo de um 401 ou 403, para a tela mostrar o caminho certo (entrar de novo, entrar pelo app
+# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova" ou "termos"
+CABECALHO_DO_MOTIVO = "X-TickerLab-Motivo"
+
+
+def _recusa(status: int, detalhe: str, motivo: str) -> HTTPException:
+    cabecalhos = {CABECALHO_DO_MOTIVO: motivo}
+    if status == 401:
+        cabecalhos["WWW-Authenticate"] = "Bearer"
+    return HTTPException(status_code=status, detail=detalhe, headers=cabecalhos)
+
+
 VARIAVEL_DO_CLIENT_ID = (
     "TICKERLAB_GOOGLE_CLIENT_ID"  # o mesmo client_id do login do app
 )
@@ -129,10 +141,10 @@ def exigir_api_ligada() -> None:
 def _token_do_cabecalho(authorization: str | None) -> str:
     tipo, _, token = (authorization or "").partition(" ")
     if tipo.lower() != "bearer" or not token.strip():
-        raise HTTPException(
-            status_code=401,
-            detail="Faça o login com o Google e mande o token (Authorization: Bearer).",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise _recusa(
+            401,
+            "Faça o login com o Google e mande o token (Authorization: Bearer).",
+            "sem-token",
         )
     return token.strip()
 
@@ -149,17 +161,15 @@ def conta_logada(
     try:
         identidade = verificar_token(token, chaves, client_id, agora())
     except TokenInvalidoError as erro:
-        raise HTTPException(status_code=401, detail=str(erro)) from erro
+        raise _recusa(401, str(erro), "token-invalido") from erro
     with obter_engine().connect() as conexao:
         usuario = buscar_por_google_sub(conexao, identidade.sub)
     if usuario is None:
-        raise HTTPException(
-            status_code=401, detail="Conta não encontrada: entre uma vez pelo app."
+        raise _recusa(
+            401, "Conta não encontrada: entre uma vez pelo app.", "conta-nova"
         )
     if precisa_aceitar_os_termos(usuario):
-        raise HTTPException(
-            status_code=403, detail="Aceite os termos atuais no app para continuar."
-        )
+        raise _recusa(403, "Aceite os termos atuais no app para continuar.", "termos")
     if not LIMITE.permitir(str(usuario.id), agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     return usuario

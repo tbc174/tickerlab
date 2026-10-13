@@ -1,10 +1,18 @@
 // O app em React (série 3 da ADR 0048), servido em app.tickerlab.com.br/novo/ ao lado do Streamlit.
-// Sem a API de leitura ligada, só mostra o aviso e o caminho para o app atual.
+// Sem a API de leitura ligada, só mostra o aviso e o caminho para o app atual; com ela, tudo
+// fica atrás do login com o Google (src/app/conta.tsx).
 import { Route, Routes } from "react-router";
 import { useConfiguracao } from "./configuracao";
+import { ExigeLogin, ProvedorDaConta } from "./conta";
 import { Moldura } from "./Moldura";
 import { TELAS_DO_APP, telaDa } from "./rotas";
-import { Carregando, EmPreparacao, ForaDoAr, NaoEncontrada } from "./telas/Avisos";
+import {
+  Carregando,
+  EmPreparacao,
+  ForaDoAr,
+  LoginNaoConfigurado,
+  NaoEncontrada,
+} from "./telas/Avisos";
 import { Inicio } from "./telas/Inicio";
 
 export function App() {
@@ -17,15 +25,26 @@ export function App() {
     }[api.estado];
     return <Moldura comMenu={false}>{aviso}</Moldura>;
   }
+  if (!api.googleClientId) {
+    return (
+      <Moldura comMenu={false}>
+        <LoginNaoConfigurado />
+      </Moldura>
+    );
+  }
   return (
-    <Moldura comMenu>
-      <Routes>
-        <Route index element={<Inicio />} />
-        {TELAS_DO_APP.map((pagina) => (
-          <Route key={pagina.chave} path={pagina.url} element={telaDa(pagina)} />
-        ))}
-        <Route path="*" element={<NaoEncontrada />} />
-      </Routes>
-    </Moldura>
+    <ProvedorDaConta clientId={api.googleClientId}>
+      <Moldura comMenu>
+        <ExigeLogin>
+          <Routes>
+            <Route index element={<Inicio />} />
+            {TELAS_DO_APP.map((pagina) => (
+              <Route key={pagina.chave} path={pagina.url} element={telaDa(pagina)} />
+            ))}
+            <Route path="*" element={<NaoEncontrada />} />
+          </Routes>
+        </ExigeLogin>
+      </Moldura>
+    </ProvedorDaConta>
   );
 }

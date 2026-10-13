@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { type Plugin, defineConfig } from "vite";
-import { RAIZ_DO_REPOSITORIO, SOL_JS, versao } from "./src/arquivos";
+import { RAIZ_DO_REPOSITORIO, SOL_JS, lerTexto, versao } from "./src/arquivos";
 import { css } from "./src/estilo";
 import { TEMA_SALVO } from "./src/site/tema";
 
@@ -26,22 +26,27 @@ function arquivosDaMarca(): Plugin {
   return {
     name: "tickerlab-arquivos-da-marca",
     transformIndexHtml(html) {
+      // LF sempre: o Git no Windows pode tirar o app/index.html com CRLF, e o CI compara byte a byte
+      const semCrlf = html.replace(/\r\n?/g, "\n");
       const cabeca =
         `<script src="${BASE}tema/sol.js?v=${versao(SOL_JS)}"></script>\n    ` +
         `${TEMA_SALVO}\n    ` +
         `<link rel="icon" href="${BASE}simbolo.svg" type="image/svg+xml">\n    ` +
         `<link rel="stylesheet" href="${BASE}estilo.css?v=${versao(ESTILO)}">`;
-      return html.replace("<!--tema-e-estilo-->", cabeca);
+      return semCrlf.replace("<!--tema-e-estilo-->", cabeca);
     },
     generateBundle() {
       const emitir = (fileName: string, source: string | Uint8Array) =>
         this.emitFile({ type: "asset", fileName, source });
       emitir("estilo.css", ESTILO);
       emitir("tema/sol.js", SOL_JS);
-      emitir("simbolo.svg", readFileSync(join(RAIZ_DO_REPOSITORIO, "site", "marca", "simbolo.svg")));
-      for (const nome of FONTES) {
-        emitir(`fontes/${nome}`, readFileSync(join(RAIZ_DO_REPOSITORIO, "site", "fontes", nome)));
-      }
+      // texto com LF (a cópia do Windows pode ter CRLF); fonte é binária e vai como está
+      const copiar = (destino: string, ...origem: string[]) => {
+        const caminho = join(RAIZ_DO_REPOSITORIO, "site", ...origem);
+        emitir(destino, /\.(svg|txt)$/.test(destino) ? lerTexto(caminho) : readFileSync(caminho));
+      };
+      copiar("simbolo.svg", "marca", "simbolo.svg");
+      for (const nome of FONTES) copiar(`fontes/${nome}`, "fontes", nome);
     },
   };
 }
