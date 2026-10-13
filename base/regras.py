@@ -14,10 +14,17 @@ Regras desta versão:
 - **R3:** escala suspeita: o mesmo período ou o período seguinte vale cerca de mil vezes mais (ou
   menos) que no documento anterior, sinal de reais e milhares trocados (5 casos na prova do ENET).
 - **R4:** valor impossível: ativo total, ativo circulante ou caixa negativos.
+- **R5:** documento reapresentado (versão nova) que mudou uma conta principal, com o motivo informado
+  pela empresa; só mudar de versão não dispara (74% das reapresentações da DFP 2022 não mudaram
+  número nenhum, prova do ENET).
 - **R6:** número refeito pela própria empresa no balanço seguinte (a coluna "penúltimo" do documento
   seguinte diferente do "último" deste), só nas contas principais (ativo total, receita, lucro e
   patrimônio líquido): 3,9% de todas as contas mudam de um ano para o outro, quase tudo
   reclassificação pequena. O achado vale a partir da entrega do documento seguinte.
+- **R7:** receita ou ativo total que subiu ou caiu 5 vezes ou mais em um ano, sem fato relevante ou
+  comunicado da empresa no período (saltos de ~1000 vezes ficam para a R3).
+- **R8:** DFP ou ITR não entregue depois do prazo da CVM, ou entregue com atraso (prazos de
+  `src/prazos.py`; 1 ou 2 dias podem ser só um feriado).
 - **R9:** linhas repetidas idênticas no arquivo da CVM (contadas por `base/contas_cvm.py`).
 - **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada
   pela descrição (7 casos na DFP 2022 e 4 na de 2023).
@@ -40,6 +47,8 @@ import pandas as pd
 
 from base.contas_cvm import LeituraDeContas
 from src.negociacoes import formatar_valor
+from src.prazos import NOMES as NOMES_DOS_DOCUMENTOS
+from src.prazos import prazo
 
 VERSAO_DAS_REGRAS = "1"
 TOLERANCIA_EM_REAIS = 1000.0  # um "mil" da escala MIL: arredondamento da própria CVM
@@ -57,6 +66,8 @@ NAO_PODEM_SER_NEGATIVAS = {
     "1.01.01": "caixa",
 }
 RECEITA = "3.01"
+FATOR_DE_SALTO = 5.0  # R7: subir ou cair 5 vezes num ano pede explicação
+ATRASO_QUE_PODE_SER_FERIADO = 2  # dias (src/prazos.py não considera feriados)
 PATRIMONIO_LIQUIDO = re.compile(r"^patrim[oô]nio l[ií]quido", re.IGNORECASE)
 # a linha do lucro do período, achada pela descrição: em parte das empresas a 3.11 é a reversão dos
 # juros sobre capital próprio e o lucro fica na 3.13 (medido na DFP 2022)
@@ -429,5 +440,206 @@ def _achado_r6(linha: Linha, valido_desde: pd.Timestamp | None) -> Achado:
             f"{_reais(linha.valor)} e passou a {_reais(linha.valor_refeito)}"
             f"{_troca_de_sinal(linha)}."
         ),
+        valido_desde=valido_desde,
+    )
+
+
+def _versao_numerica(valor: object) -> str:
+    return "?" if pd.isna(valor) else str(int(valor))
+
+
+def r5_reapresentado(
+    antiga: pd.DataFrame,
+    nova: pd.DataFrame,
+    motivo: str,
+    recebido_em_nova: pd.Timestamp | None,
+) -> list[Achado]:
+    """Conta principal que mudou entre duas versões do mesmo documento."""
+    chave = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
+    antes = _contas_principais(antiga[antiga["ordem"] == "ultimo"])
+    depois = _contas_principais(nova[nova["ordem"] == "ultimo"])
+    juntos = antes.merge(
+        depois[[*chave, "valor", "versao"]], on=chave, suffixes=("", "_nova")
+    )
+    return [
+        _achado_r5(linha, motivo, recebido_em_nova)
+        for linha in juntos.itertuples(index=False)
+        if _diferente(linha.valor, linha.valor_nova, TOLERANCIA_R1)
+    ]
+
+
+def _achado_r5(
+    linha: Linha, motivo: str, recebido_em_nova: pd.Timestamp | None
+) -> Achado:
+    quando = f" em {recebido_em_nova:%d/%m/%Y}" if recebido_em_nova else ""
+    return Achado(
+        regra="R5",
+        cnpj=linha.cnpj,
+        documento=linha.documento,
+        referencia=linha.referencia,
+        grupo=linha.grupo,
+        conta=linha.conta,
+        valor=float(linha.valor),
+        valor_esperado=float(linha.valor_nova),
+        porque=(
+            f"A empresa reapresentou o documento{quando} e mudou este número: {linha.descricao} "
+            f"era {_reais(linha.valor)} na versão {_versao_numerica(linha.versao)} e passou a "
+            f"{_reais(linha.valor_nova)} na versão {_versao_numerica(linha.versao_nova)}. "
+            f"Motivo: {motivo.strip() or 'motivo não informado'}."
+        ),
+        valido_desde=recebido_em_nova,
+    )
+
+
+def _salto(valor: float, anterior: float) -> float | None:
+    """Quantas vezes o valor subiu ou caiu, se passar de FATOR_DE_SALTO (e não for a R3)."""
+    if not (_preenchido(valor) and _preenchido(anterior)) or _mil_vezes(
+        valor, anterior
+    ):
+        return None
+    razao = abs(valor / anterior)
+    fator = max(razao, 1 / razao)
+    return fator if fator >= FATOR_DE_SALTO else None
+
+
+def _houve_evento(
+    eventos: pd.DataFrame, cnpj: str, depois_de: pd.Timestamp, ate: pd.Timestamp
+) -> bool:
+    da_empresa = eventos[eventos["cnpj"] == cnpj]
+    no_periodo = (da_empresa["publicado_em"] > depois_de) & (
+        da_empresa["publicado_em"] <= ate
+    )
+    return bool(no_periodo.any())
+
+
+def _receita_e_ativo(contas: pd.DataFrame) -> pd.DataFrame:
+    return contas[
+        ((contas["demonstracao"] == "BPA") & (contas["conta"] == "1"))
+        | ((contas["demonstracao"] == "DRE") & (contas["conta"] == RECEITA))
+    ]
+
+
+def r7_salto_fora_do_padrao(
+    contas: pd.DataFrame, eventos: pd.DataFrame
+) -> list[Achado]:
+    """Receita ou ativo total que subiu ou caiu 5 vezes ou mais em um ano, sem evento no IPE.
+
+    Compara o período do documento com o mesmo período um ano antes (as duas colunas do próprio
+    documento). `eventos` traz `cnpj` e `publicado_em` dos documentos do IPE (fatos relevantes,
+    comunicados) que podem explicar o salto.
+    """
+    escolhidas = _receita_e_ativo(contas)
+    atual = escolhidas[escolhidas["ordem"] == "ultimo"].copy()
+    um_ano = pd.DateOffset(years=1)
+    atual["inicio_anterior"] = atual["inicio"] - um_ano
+    atual["fim_anterior"] = atual["fim"] - um_ano
+    colunas = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim", "valor"]
+    anterior = escolhidas[escolhidas["ordem"] == "penultimo"][colunas].rename(
+        columns={
+            "inicio": "inicio_anterior",
+            "fim": "fim_anterior",
+            "valor": "valor_anterior",
+        }
+    )
+    chave = [
+        "cnpj",
+        "grupo",
+        "demonstracao",
+        "conta",
+        "inicio_anterior",
+        "fim_anterior",
+    ]
+    juntos = atual.merge(anterior, on=chave)
+    achados = []
+    for linha in juntos.itertuples(index=False):
+        fator = _salto(linha.valor, linha.valor_anterior)
+        if fator and not _houve_evento(
+            eventos, linha.cnpj, linha.fim_anterior, linha.referencia
+        ):
+            achados.append(_achado_r7(linha, fator))
+    return achados
+
+
+def _achado_r7(linha: Linha, fator: float) -> Achado:
+    sentido = "subiu" if abs(linha.valor) > abs(linha.valor_anterior) else "caiu"
+    vezes = f"{fator:.1f}".replace(".", ",")
+    return Achado(
+        regra="R7",
+        cnpj=linha.cnpj,
+        documento=linha.documento,
+        referencia=linha.referencia,
+        grupo=linha.grupo,
+        conta=linha.conta,
+        valor=float(linha.valor),
+        valor_esperado=float(linha.valor_anterior),
+        porque=(
+            f"{linha.descricao} {sentido} {vezes} vezes em um ano ({_reais(linha.valor_anterior)} "
+            f"para {_reais(linha.valor)}), sem fato relevante ou comunicado da empresa no período "
+            "que explique."
+        ),
+    )
+
+
+def r8_atraso(
+    esperadas: pd.DataFrame,
+    entregas: pd.DataFrame,
+    documento: str,
+    referencia: pd.Timestamp,
+    hoje: pd.Timestamp,
+) -> list[Achado]:
+    """DFP ou ITR não entregue com o prazo vencido, ou entregue depois do prazo.
+
+    `esperadas`: empresas que deviam entregar (`cnpj`, `empresa`), **registradas e ativas na data do
+    prazo** (quem se registrou depois ou foi cancelado antes não deve o documento). `entregas`:
+    `cnpj`, `documento`, `referencia`, `recebido_em` (vale a primeira entrega). `hoje` corta o
+    futuro.
+    """
+    limite = pd.Timestamp(prazo(documento, referencia.date()))
+    do_documento = entregas[
+        (entregas["documento"] == documento) & (entregas["referencia"] == referencia)
+    ]
+    primeira = do_documento.groupby("cnpj")["recebido_em"].min()
+    achados = []
+    for cnpj in esperadas["cnpj"]:
+        recebido = primeira.get(cnpj)
+        if recebido is not None and recebido > limite:
+            dias = (recebido - limite).days
+            texto = (
+                f"foi entregue em {recebido:%d/%m/%Y}, {dias} dias depois do prazo da CVM "
+                f"({limite:%d/%m/%Y})."
+            )
+            achados.append(
+                _achado_r8(cnpj, documento, referencia, dias, texto, recebido)
+            )
+        elif recebido is None and hoje > limite:
+            dias = (hoje - limite).days
+            texto = f"não foi entregue: o prazo da CVM venceu em {limite:%d/%m/%Y}, há {dias} dias."
+            desde = limite + pd.Timedelta(days=1)
+            achados.append(_achado_r8(cnpj, documento, referencia, dias, texto, desde))
+    return achados
+
+
+def _achado_r8(
+    cnpj: str,
+    documento: str,
+    referencia: pd.Timestamp,
+    dias: int,
+    texto: str,
+    valido_desde: pd.Timestamp,
+) -> Achado:
+    nome = NOMES_DOS_DOCUMENTOS.get(documento, documento)
+    porque = f"A {nome} de {referencia:%d/%m/%Y} {texto}"
+    if dias <= ATRASO_QUE_PODE_SER_FERIADO:
+        porque += " Um atraso de 1 ou 2 dias pode ser só um feriado."
+    return Achado(
+        regra="R8",
+        cnpj=cnpj,
+        documento=documento,
+        referencia=referencia,
+        grupo="",
+        conta="",
+        valor=float(dias),
+        valor_esperado=0.0,
+        porque=porque,
         valido_desde=valido_desde,
     )
