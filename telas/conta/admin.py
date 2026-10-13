@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from src import administracao as adm
+from src import exportacao_do_acervo as exp
 from src.administracao import OperacaoInvalidaError, PermissaoNegadaError
 from src.banco.conexao import obter_engine
 from src.banco.modelo import PAPEIS, PLANOS
@@ -37,6 +38,52 @@ def _admin_aplicar(usuario, tipo):
         st.toast("Não consegui aplicar agora. Tente de novo em instantes.")
         return
     st.toast("Pronto, mudança aplicada e registrada.")
+
+
+def _preparar_exportacao(usuario):
+    base = st.session_state.get("admin_exportar_base")
+    formato = st.session_state.get("admin_exportar_formato")
+    try:
+        with obter_engine().begin() as conexao:
+            st.session_state["admin_exportacao"] = exp.exportar(
+                conexao, usuario.id, base, formato
+            )
+    except (PermissaoNegadaError, exp.ExportacaoInvalidaError) as erro:
+        st.toast(str(erro))
+    except Exception:
+        log_da_conta.exception("Falha ao exportar o acervo")
+        st.toast("Não consegui preparar o arquivo agora. Tente de novo em instantes.")
+
+
+def _secao_de_exportacao(usuario):
+    st.subheader("Exportar o acervo")
+    st.caption(
+        "Só fontes com licença que permite (CVM, SEC, Banco Central e Tesouro dos EUA), com "
+        "todas as versões guardadas. Os preços do Yahoo nunca saem. O zip leva um LEIA-ME com "
+        "a fonte e a licença de cada parte, e o pedido fica no registro de ações."
+    )
+    colunas = st.columns(2)
+    colunas[0].selectbox(
+        "Base",
+        list(exp.BASES),
+        format_func=lambda b: f"{exp.BASES[b].nome}: {exp.BASES[b].descricao}",
+        key="admin_exportar_base",
+    )
+    colunas[1].radio(
+        "Formato", exp.FORMATOS, horizontal=True, key="admin_exportar_formato"
+    )
+    st.button(
+        "Preparar arquivo",
+        key="admin_exportar",
+        on_click=_preparar_exportacao,
+        args=(usuario,),
+    )
+    pronto = st.session_state.get("admin_exportacao")
+    if pronto:
+        nome, conteudo = pronto
+        st.download_button(
+            f"Baixar {nome}", conteudo, file_name=nome, mime="application/zip"
+        )
 
 
 def _quando(momento):
@@ -169,3 +216,5 @@ def pagina_admin():
         )
     else:
         st.caption("Nenhum evento recebido ainda.")
+
+    _secao_de_exportacao(usuario)
