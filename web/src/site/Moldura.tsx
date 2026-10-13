@@ -123,6 +123,7 @@ function Rodape() {
         <nav aria-label="Rodapé">
           <a href="/sobre.html">Sobre</a>
           <a href="/metodologia.html">Fontes e metodologia</a>
+          <a href="/novidades.html">Novidades</a>
           <a href="/precos.html">Planos</a>
           <a href="/termos.html">Termos de uso</a>
           <a href="/privacidade.html">Privacidade</a>

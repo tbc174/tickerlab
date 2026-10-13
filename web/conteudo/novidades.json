@@ -1,0 +1,28 @@
+[
+  {
+    "correcoes": [
+      "CDI nos backtests longos: a consulta ao Banco Central passou a ser feita em janelas menores e é repetida quando o servidor do BC devolve uma página de erro.",
+      "Carteira da B3: ações emprestadas (aluguel) não contam mais como venda no custo médio.",
+      "Carteira da B3: números como \"1.000\" na planilha eram lidos como 1.",
+      "A aba do app abre com o ícone do TickerLab.",
+      "O site sempre carrega a versão mais nova do estilo, sem precisar limpar o cache.",
+      "As atualizações chegam ao ar mesmo quando várias são publicadas em seguida."
+    ],
+    "data": "2026-10-13",
+    "novidades": [
+      "Relatório da empresa (Research, empresas da B3): resultado, retorno, dívida, caixa, notas clássicas (Piotroski, Altman Z'' e Beneish), comparação com as empresas do mesmo grupo de setores, valuation com as premissas que você escolhe, dividendos, o que mudou desde o balanço anterior e os limites de cada número, com a fonte e a data de cada um. Também em PDF nos planos Plus e Pro.",
+      "Notas contra o setor: cada indicador mostra onde a empresa fica entre as do mesmo grupo de setores, por regras fixas e públicas. Dizem como o número está em relação aos pares, não o que vai acontecer.",
+      "Selo de qualidade dos dados: números da CVM que não passam em regras fixas (balanço que não fecha, resultado refeito no documento seguinte, entre outras) aparecem marcados \"em conferência\" na tela Fundamentos, com o motivo.",
+      "Fundamentos mais completos: DuPont, ciclo de caixa, caixa livre, capex, cobertura de juros e histórico de até 10 anos.",
+      "Juros e inflação: Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada número (Banco Central).",
+      "Linha do tempo: o preço do ativo e os documentos que a empresa publicou na CVM ou na SEC no mesmo eixo, com o link de cada documento.",
+      "Carteira da B3 para todos os planos: concentração, a carteira no passado, Raio-X e Rebalanceamento a partir da planilha da Área do Investidor; agora também os proventos recebidos e o custo médio pela regra da Receita. A planilha é lida só na memória e não fica guardada.",
+      "Ficha \"Foi sorte?\" nos backtests, na tela e no PDF: compara o resultado com o que o acaso faria e conta quantas tentativas foram feitas até chegar nele.",
+      "Retorno \"ao ano\" só aparece com pelo menos um ano de dados (padrão GIPS).",
+      "Tema claro, escuro ou automático (muda com o pôr do sol) no site e no app; no app, a escolha fica guardada na sua conta.",
+      "Marca nova (manual de identidade v1) e site reconstruído, com as páginas Produto, Como funciona, Aprender, Sobre e esta página de Novidades."
+    ],
+    "resumo": "Um dia grande: o relatório completo de cada empresa da B3, o selo de qualidade dos dados, três telas novas no Research, a ficha \"Foi sorte?\" nos backtests, tema claro e escuro e o site reconstruído com a marca nova.",
+    "titulo": "Relatório da empresa, novas telas de pesquisa e site novo"
+  }
+]

@@ -7,6 +7,7 @@ import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
 import { DADOS_DA_PRIVACIDADE, DADOS_DOS_TERMOS, Legal } from "./paginas/Legal";
 import { DADOS as DADOS_DA_METODOLOGIA, Metodologia } from "./paginas/Metodologia";
 import { DADOS as DADOS_DA_404, NaoEncontrada } from "./paginas/NaoEncontrada";
+import { DADOS as DADOS_DAS_NOVIDADES, Novidades } from "./paginas/Novidades";
 import { DADOS as DADOS_DOS_PLANOS, Precos } from "./paginas/Precos";
 import { DADOS as DADOS_DO_PRODUTO, Produto } from "./paginas/Produto";
 import { DADOS as DADOS_DO_SOBRE, Sobre } from "./paginas/Sobre";
@@ -30,6 +31,7 @@ export const ROTAS: Rota[] = [
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },
+  { arquivo: "novidades.html", dados: DADOS_DAS_NOVIDADES, conteudo: () => <Novidades /> },
   {
     arquivo: "termos.html",
     dados: DADOS_DOS_TERMOS,
