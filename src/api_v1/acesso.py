@@ -6,15 +6,13 @@ públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`)
 com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
 aceitado os termos atuais.
 
-A API v1 fica **desligada** até a primeira tela nova (ADR 0048): sem `TICKERLAB_API_V1=1`, todas as
-rotas dela respondem 404, como se não existissem.
+A chave liga/desliga fica em `src/api_v1/__init__.py`; aqui ela é conferida de novo a cada pedido.
 """
 
 import os
 import threading
 import time
 from collections import deque
-from collections.abc import Mapping
 from typing import Annotated
 
 import httpx
@@ -23,12 +21,12 @@ from joserfc import jwt
 from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
 
+from src.api_v1 import api_v1_ligada
 from src.autenticacao import IdentidadeDoGoogle, LoginInvalidoError, ler_identidade
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario, buscar_por_google_sub
 from src.conformidade import precisa_aceitar_os_termos
 
-VARIAVEL_DA_CHAVE = "TICKERLAB_API_V1"
 VARIAVEL_DO_CLIENT_ID = (
     "TICKERLAB_GOOGLE_CLIENT_ID"  # o mesmo client_id do login do app
 )
@@ -50,13 +48,6 @@ class TokenInvalidoError(ValueError):
 def agora() -> int:
     """Segundos desde 1970 (os testes trocam esta função)."""
     return int(time.time())
-
-
-def api_v1_ligada(ambiente: Mapping[str, str] | None = None) -> bool:
-    texto = (ambiente if ambiente is not None else os.environ).get(
-        VARIAVEL_DA_CHAVE, ""
-    )
-    return texto.strip() == "1"
 
 
 def verificar_token(

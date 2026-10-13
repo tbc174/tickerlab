@@ -10,9 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql, sqlite
 
 from src.banco.modelo import tentativas
-
-# a partir daqui a contagem para de crescer (e o app mostra "10.000+"): segura o tamanho da tabela
-TETO_POR_PESSOA = 10_000
+from src.tentativas import TETO_POR_PESSOA
 
 _INSERT_DO_BANCO = {"postgresql": postgresql.insert, "sqlite": sqlite.insert}
 

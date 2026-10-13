@@ -13,6 +13,9 @@ from dataclasses import asdict
 
 from src.protecoes import Protecoes
 
+# a partir daqui a contagem para de crescer (e o app mostra "10.000+"): segura o tamanho da tabela
+TETO_POR_PESSOA = 10_000
+
 
 def impressao(
     ticker: str,

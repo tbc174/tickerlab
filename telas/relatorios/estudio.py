@@ -37,6 +37,7 @@ from telas.comum import (
     marcar_feito,
     plano_atual,
 )
+from telas.estrategias.ficha import contar_esta_tentativa, tolerancia_escolhida
 from telas.research.comum import _carteira_da_lista, _listas_do_research
 from telas.research.newsletter import JANELAS_DA_NEWSLETTER, _edicao
 
@@ -238,10 +239,16 @@ def _montar_backtest(tipo, c, base, comuns):
         / 100
     )
 
+    # os padrões por extenso: a mesma configuração do Backtest não conta como tentativa nova
+    padroes = {p.nome: p.padrao for p in ESTRATEGIAS[nome].parametros}
+    _, tentativas_da_pessoa = contar_esta_tentativa(nome, padroes, None, custo)
+    tolerancia = tolerancia_escolhida()
+
     def montar(config, ao_avancar):
         return relatorios.relatorio_de_backtest(
-            c.ticker, c.dados, nome, {}, custo, **base, config=config,
-            ao_avancar=ao_avancar,
+            c.ticker, c.dados, nome, padroes, custo, **base, config=config,
+            ao_avancar=ao_avancar, tentativas_da_pessoa=tentativas_da_pessoa,
+            tolerancia_de_queda=tolerancia,
         )  # fmt: skip
 
     return _pedido(

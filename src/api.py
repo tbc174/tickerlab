@@ -12,14 +12,14 @@ import html
 import json
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 
 import stripe
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.api_v1.rotas import router as router_v1
+from src.api_v1 import api_v1_ligada
 from src.banco import newsletter_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
@@ -113,14 +113,24 @@ async def _ciclo_de_vida(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(
-    title="TickerLab API",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
-    lifespan=_ciclo_de_vida,
-)
-app.include_router(router)
-app.include_router(router, prefix="/api")
-app.include_router(router_v1)  # API de leitura (ADR 0048), desligada até a 1ª tela nova
-app.include_router(router_v1, prefix="/api")
+def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
+    """A API; as rotas de leitura (v1) só entram com `TICKERLAB_API_V1=1` (ADR 0048)."""
+    nova = FastAPI(
+        title="TickerLab API",
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=_ciclo_de_vida,
+    )
+    nova.include_router(router)
+    nova.include_router(router, prefix="/api")
+    if api_v1_ligada(ambiente):
+        # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
+        from src.api_v1.rotas import router as router_v1
+
+        nova.include_router(router_v1)
+        nova.include_router(router_v1, prefix="/api")
+    return nova
+
+
+app = criar_app()

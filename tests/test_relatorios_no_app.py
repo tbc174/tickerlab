@@ -225,3 +225,21 @@ def test_salvar_configuracao_guarda_na_conta_e_sobrevive_as_outras_preferencias(
 def test_biblioteca_no_modo_local_explica_que_nada_e_guardado():
     app = _app_local()
     assert "nada é guardado" in " ".join(i.value for i in app.info)
+
+
+def test_pdf_do_backtest_no_estudio_usa_a_tolerancia_e_o_contador_da_pessoa():
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    app = _app_local()
+    app.session_state["ficha_tolerancia"] = 20  # o que a pessoa escolheu no Backtest
+    app.button_group(key="tipo_de_relatorio").set_value(relatorios.BACKTEST).run()
+    app.button(key="gerar_pdf").click().run()
+    assert not app.exception and not app.error
+    pdf = app.session_state["relatorio_gerado"]["pdf"]
+    texto = " ".join(
+        " ".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages).split()
+    )
+    assert "você disse aguentar até 20%" in texto
+    assert "variação que você testa em PETR4.SA" in texto
