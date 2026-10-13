@@ -1,7 +1,10 @@
 {
+  "_nota": "Bloco 170 (12/01/2009): hashes, hora e valores do bloco real; mediantime e vsize montados. Conferir contra o nó no PR 6.",
   "hash": "00000000d1145790a8694403d4063f323d499e655c83426834d4ce2f8dd4a2ee",
   "height": 170,
   "time": 1231731025,
+  "mediantime": 1231729500,
+  "difficulty": 1.0,
   "tx": [
     {
       "txid": "b1fea52486ce0c62bb442b530a3f0132b826c74e473d1f2c220bfa78111c5082",

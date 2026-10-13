@@ -39,6 +39,11 @@ ULTIMO_HALVING = 64
 SEGUNDOS_POR_DIA = 86_400
 # saídas que ninguém consegue gastar (OP_RETURN) não entram nas moedas não gastas
 TIPOS_IMPOSSIVEIS_DE_GASTAR = frozenset({"nulldata"})
+# Regras do conjunto de moedas não gastas do Bitcoin Core que o histograma segue, para a soma bater
+# com o `gettxoutsetinfo` do nó: a coinbase do bloco 0 nunca entrou no conjunto, e em 2010 duas
+# coinbases repetiram a transação de uma anterior ainda não gasta e a apagaram (BIP30).
+ALTURA_DA_GENESE = 0
+COINBASES_APAGADAS_PELA_BIP30 = {91_842: 91_812, 91_880: 91_722}  # altura nova: altura apagada
 # o histograma cresce de 100 mil em 100 mil alturas (~2 anos de blocos), para não copiar a cada bloco
 FOLGA_DO_HISTOGRAMA = 100_000
 
@@ -52,12 +57,14 @@ class MetricasDoBloco:
     altura: int
     hash: str
     hora: datetime  # hora que o minerador escreveu no bloco, em UTC
+    hora_mediana: datetime  # mediana das 11 últimas horas: só cresce, ao contrário da `hora`
     n_transacoes: int
     taxas_total: int
     taxa_mediana_por_vbyte: float | None
     valor_movimentado: int
     dias_moeda_destruidos: float  # em BTC-dias
     emissao: int
+    dificuldade: float  # quanto custa achar um bloco (1 = a dificuldade inicial de 2009)
 
 
 def para_satoshis(valor_btc: float | Decimal) -> int:
@@ -85,6 +92,7 @@ def metricas_do_bloco(bloco: dict, hora_por_altura: HoraPorAltura) -> MetricasDo
         altura=bloco["height"],
         hash=bloco["hash"],
         hora=datetime.fromtimestamp(bloco["time"], tz=UTC),
+        hora_mediana=datetime.fromtimestamp(bloco["mediantime"], tz=UTC),
         n_transacoes=len(bloco["tx"]),
         taxas_total=sum(taxas),
         taxa_mediana_por_vbyte=_mediana_por_vbyte(comuns, taxas),
@@ -93,6 +101,7 @@ def metricas_do_bloco(bloco: dict, hora_por_altura: HoraPorAltura) -> MetricasDo
             comuns, bloco["time"], hora_por_altura
         ),
         emissao=emissao(bloco["height"]),
+        dificuldade=float(bloco["difficulty"]),
     )
 
 
@@ -113,6 +122,11 @@ def atualizar_histograma(histograma: np.ndarray, bloco: dict) -> np.ndarray:
                 np.zeros(altura - len(histograma) + FOLGA_DO_HISTOGRAMA, np.int64),
             ]
         )
+    if altura == ALTURA_DA_GENESE:
+        return histograma
+    if altura in COINBASES_APAGADAS_PELA_BIP30:
+        coinbase = next(tx for tx in bloco["tx"] if _e_coinbase(tx))
+        histograma[COINBASES_APAGADAS_PELA_BIP30[altura]] -= _soma_das_saidas(coinbase)
     for tx in bloco["tx"]:
         histograma[altura] += sum(
             para_satoshis(saida["value"])
