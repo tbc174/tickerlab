@@ -129,13 +129,16 @@ def ler_o_dia(link: str, simbolos: set[str], limite_gb: float | None) -> tuple:
 
 def fechamentos_do_yahoo(data: date, para_yahoo: dict[str, str]) -> pd.Series:
     """Fechamento oficial (não ajustado) do dia, com o símbolo da IEX no índice."""
-    precos = yf.download(
+    baixado = yf.download(
         list(para_yahoo.values()),
         start=data.isoformat(),
         end=(data + timedelta(days=1)).isoformat(),
         auto_adjust=False,
         progress=False,
-    )["Close"]
+    )
+    if baixado is None:  # o yfinance devolve None quando nada foi baixado
+        return pd.Series(dtype=float)
+    precos = baixado["Close"]
     linha = precos.iloc[0] if not precos.empty else pd.Series(dtype=float)
     para_iex = {yahoo: iex for iex, yahoo in para_yahoo.items()}
     return linha.rename(index=para_iex).dropna()
@@ -165,7 +168,7 @@ def relatorio(
 
 
 def main() -> None:
-    argumentos = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--data", type=date.fromisoformat, required=True)
     argumentos.add_argument("--limite-gb", type=float, default=None)
     opcoes = argumentos.parse_args()
