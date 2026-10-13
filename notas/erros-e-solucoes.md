@@ -188,3 +188,33 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o `trap ... EXIT` usava uma variável `local` da função; quando o script termina, a função já acabou, a variável não existe e o `set -u` derruba a saída.
 - **Solução:** a variável do arquivo pela metade é global, criada vazia no começo, e o `trap` é armado uma vez só. Pego no teste numa pasta temporária, antes de instalar.
 - **Data:** 13/10/2026
+
+## Site no ar com o visual "desmontado" logo depois do deploy
+- **Sintoma:** HTML novo com o estilo antigo (fundo errado, botão do tema virou um quadrado cinza).
+- **Causa:** a Cloudflare guarda `estilo.css`, `site.js` e as imagens por 4 horas (`cf-cache-status: HIT`,
+  `max-age=14400`); o HTML vem novo, o CSS vem velho.
+- **Solução:** o gerador do site põe `?v=<hash do conteúdo>` no endereço do CSS e do JS (há teste). Para
+  imagens trocadas com o mesmo nome: "Purge Everything" no painel da Cloudflare (Caching → Configuration).
+- **Data:** 13/10/2026
+
+## `st.html(..., unsafe_allow_javascript=True)` não executa o script
+- **Sintoma:** o `<script>` não aparece na página e nada roda, sem erro no console.
+- **Causa:** o Streamlit passa o HTML pelo DOMPurify, que apaga o elemento inteiro se o texto tiver `<`
+  seguido de letra, `/` ou `!`, até num comentário (ex.: `stActiveTheme-<página>-v2`).
+- **Solução:** nada de "menor que" colado em letra no JavaScript enviado ao `st.html` (há teste em
+  `tests/test_tema_do_app.py`).
+- **Data:** 13/10/2026
+
+## Streamlit local roda o código antigo de `src/` depois de editar
+- **Sintoma:** `TypeError: script() got an unexpected keyword argument` na tela, embora os testes passem.
+- **Causa:** o `streamlit run` recarrega o `app.py` a cada execução, mas guarda os módulos de `src/` já
+  importados.
+- **Solução:** reiniciar o `streamlit run` depois de mudar a assinatura de uma função em `src/`.
+- **Data:** 13/10/2026
+
+## Conferência "verde" que estava vermelha: `ruff format --check | tail -1`
+- **Sintoma:** "1 file would be reformatted" e o comando seguinte rodou mesmo assim; o CI quebrou depois.
+- **Causa:** num encadeamento com `&&`, o código de saída de um `| tail` é o do `tail`, não o do `ruff`.
+- **Solução:** guardar a saída num arquivo e testar o código (`ruff format --check ... > f.txt; echo $?`)
+  antes do push, ou rodar o `ruff format` sem `--check` e conferir o `git status`.
+- **Data:** 13/10/2026
