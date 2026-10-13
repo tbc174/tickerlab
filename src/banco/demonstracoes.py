@@ -79,6 +79,36 @@ def referencias_guardadas(conexao: sa.Connection, chave: str) -> set[date]:
     )
 
 
+def _linha_da_conta(l: object) -> dict:
+    """Uma conta lida (linha de `ler_demonstracoes`) no formato da tabela `demonstracoes`."""
+    return {
+        "cnpj": l.cnpj,  # type: ignore[attr-defined]
+        "documento": l.documento,  # type: ignore[attr-defined]
+        "referencia": l.referencia,  # type: ignore[attr-defined]
+        "periodo": l.periodo,  # type: ignore[attr-defined]
+        "fim": l.fim,  # type: ignore[attr-defined]
+        "conta": l.conta,  # type: ignore[attr-defined]
+        "inicio": _data(l.inicio),  # type: ignore[attr-defined]
+        "versao": int(l.versao),  # type: ignore[attr-defined]
+        "valor": float(l.valor),  # type: ignore[attr-defined]
+    }
+
+
+def _versoes_guardadas(conexao: sa.Connection, cnpjs: list[str]) -> dict[tuple, int]:
+    """(cnpj, documento, referencia) → versão guardada, só das empresas pedidas."""
+    return {
+        (l.cnpj, l.documento, l.referencia): l.versao
+        for l in conexao.execute(
+            sa.select(
+                documentos_financeiros.c.cnpj,
+                documentos_financeiros.c.documento,
+                documentos_financeiros.c.referencia,
+                documentos_financeiros.c.versao,
+            ).where(documentos_financeiros.c.cnpj.in_(cnpjs))
+        )
+    }
+
+
 def _trocar_documento(
     conexao: sa.Connection, doc: object, linhas: pd.DataFrame | None, agora: datetime
 ) -> None:
@@ -92,17 +122,7 @@ def _trocar_documento(
     )
     conexao.execute(sa.delete(demonstracoes).where(filtro))
     contas = [
-        {
-            "cnpj": l.cnpj,
-            "documento": l.documento,
-            "referencia": l.referencia,
-            "periodo": l.periodo,
-            "fim": l.fim,
-            "conta": l.conta,
-            "inicio": _data(l.inicio),
-            "versao": int(l.versao),
-            "valor": float(l.valor),
-        }
+        _linha_da_conta(l)
         for l in (linhas.itertuples(index=False) if linhas is not None else [])
     ]
     if contas:
@@ -142,17 +162,8 @@ def gravar_demonstracoes(
     if documentos.empty:
         return 0
     agora = agora or datetime.now(UTC)
-    guardadas = {
-        (l.cnpj, l.documento, l.referencia): l.versao
-        for l in conexao.execute(
-            sa.select(
-                documentos_financeiros.c.cnpj,
-                documentos_financeiros.c.documento,
-                documentos_financeiros.c.referencia,
-                documentos_financeiros.c.versao,
-            ).where(documentos_financeiros.c.cnpj.in_(sorted(set(documentos["cnpj"]))))
-        )
-    }  # só as empresas deste lote: a coleta da SEC grava uma empresa por vez
+    # só as empresas deste lote: a coleta da SEC grava uma empresa por vez
+    guardadas = _versoes_guardadas(conexao, sorted(set(documentos["cnpj"])))
     mudaram = 0
     contas_por_documento = dict(
         tuple(contas.groupby(["cnpj", "documento", "referencia"]))
@@ -165,6 +176,79 @@ def gravar_demonstracoes(
         _trocar_documento(conexao, doc, linhas, agora)
         mudaram += 1
     return mudaram
+
+
+def acrescentar_contas_novas(
+    conexao: sa.Connection,
+    contas: pd.DataFrame,
+    documentos: pd.DataFrame,
+    agora: datetime | None = None,
+) -> int:
+    """Grava as contas que o leitor passou a ler em documentos já guardados **na mesma versão**.
+
+    Não é reapresentação: os valores sempre estiveram naquela versão do documento, o TickerLab só
+    passou a lê-los (série 2 da base de ML, PR 1). Por isso entram na versão aberta de
+    `demonstracoes_versoes` com o `registrado_em` dela, sem fechar nada, e "como estava em D"
+    continua verdadeiro. Conta que já existe no documento não é tocada (mudança de valor é
+    reapresentação, de `gravar_demonstracoes`). Devolve quantas contas gravou.
+    """
+    if documentos.empty or contas.empty:
+        return 0
+    agora = agora or datetime.now(UTC)
+    cnpjs = sorted(set(documentos["cnpj"]))
+    guardadas = _versoes_guardadas(conexao, cnpjs)
+    mesma_versao = {
+        (d.cnpj, d.documento, d.referencia)
+        for d in documentos.itertuples(index=False)
+        if guardadas.get((d.cnpj, d.documento, d.referencia)) == d.versao
+    }
+    existentes = {
+        tuple(linha)
+        for linha in conexao.execute(
+            sa.select(
+                demonstracoes.c.cnpj,
+                demonstracoes.c.documento,
+                demonstracoes.c.referencia,
+                demonstracoes.c.conta,
+            ).where(demonstracoes.c.cnpj.in_(cnpjs))
+        )
+    }
+    v = demonstracoes_versoes
+    registrada_em = {
+        (l.cnpj, l.documento, l.referencia): l.desde
+        for l in conexao.execute(
+            sa.select(
+                v.c.cnpj,
+                v.c.documento,
+                v.c.referencia,
+                sa.func.min(v.c.registrado_em).label("desde"),
+            )
+            .where(v.c.cnpj.in_(cnpjs), v.c.substituido_em.is_(None))
+            .group_by(v.c.cnpj, v.c.documento, v.c.referencia)
+        )
+    }
+    novas = [
+        _linha_da_conta(l)
+        for l in contas.itertuples(index=False)
+        if (l.cnpj, l.documento, l.referencia) in mesma_versao
+        and (l.cnpj, l.documento, l.referencia, l.conta) not in existentes
+    ]
+    if not novas:
+        return 0
+    conexao.execute(sa.insert(demonstracoes), novas)
+    conexao.execute(
+        sa.insert(v),
+        [
+            {
+                **n,
+                "registrado_em": registrada_em.get(
+                    (n["cnpj"], n["documento"], n["referencia"]), agora
+                ),
+            }
+            for n in novas
+        ],
+    )
+    return len(novas)
 
 
 def dados_da_empresa(conexao: sa.Connection, cnpj: str) -> DadosDaEmpresa:

@@ -280,3 +280,38 @@ def test_migracao_0010_vai_e_volta(tmp_path):
 def test_capex_pela_descricao_real_das_empresas(descricao, capex):
     """Descrições do DFP 2025 real: a mesma compra de imobilizado aparece escrita de vários jeitos."""
     assert dm.e_capex(pd.Series([dm._sem_acento(descricao)])).iloc[0] == capex
+
+
+def test_coleta_acrescenta_contas_novas_sem_reapresentacao(tmp_path, monkeypatch):
+    """Documento guardado antes das contas novas: a coleta seguinte acrescenta, sem versão falsa."""
+    from src.banco.modelo import demonstracoes_versoes
+
+    url = f"sqlite:///{(tmp_path / 'n.sqlite').as_posix()}"
+    monkeypatch.setenv("TICKERLAB_DATABASE_URL", url)
+
+    def baixar_falso(endereco: str) -> bytes | None:
+        nome = endereco.rsplit("/", 1)[-1]
+        return (PASTA / nome).read_bytes() if (PASTA / nome).exists() else None
+
+    monkeypatch.setattr(atualizar_fundamentos, "baixar", baixar_falso)
+    ler_de_verdade = dm.ler_demonstracoes
+
+    def leitor_antigo(conteudo, documento):
+        contas, documentos = ler_de_verdade(conteudo, documento)
+        return contas[~contas["conta"].isin({"estoques", "capex"})], documentos
+
+    monkeypatch.setattr(dm, "ler_demonstracoes", leitor_antigo)
+    assert atualizar_fundamentos.main(["--anos", "2"]) == 0
+    monkeypatch.setattr(dm, "ler_demonstracoes", ler_de_verdade)
+    assert atualizar_fundamentos.main(["--anos", "2"]) == 0
+    with criar_engine(url).connect() as c:
+        contas = {
+            r[0] for r in c.execute(sa.text("select distinct conta from demonstracoes"))
+        }
+        substituidas = c.execute(
+            sa.select(sa.func.count()).where(
+                demonstracoes_versoes.c.substituido_em.is_not(None)
+            )
+        ).scalar()
+    assert {"estoques", "capex"} <= contas
+    assert substituidas == 0

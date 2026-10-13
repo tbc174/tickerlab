@@ -173,3 +173,53 @@ def test_migracao_copia_o_que_ja_existia_e_volta(url, itr):
             assert _contar(c, demonstracoes) == len(contas)
     finally:
         motor.dispose()
+
+
+# --- contas novas no leitor (série 2 da base de ML, PR 1) -------------------------------------------
+CONTAS_NOVAS = {"contas_a_receber", "estoques", "custo", "capex", "depreciacao"}
+
+
+def test_contas_novas_nao_criam_versao_falsa(motor):
+    contas, documentos = dm.ler_demonstracoes(
+        (CVM / "fundamentos" / "dfp_cia_aberta_2025.zip").read_bytes(), "DFP"
+    )
+    antigas = contas[~contas["conta"].isin(CONTAS_NOVAS)]  # o que o leitor lia antes
+    with motor.begin() as c:
+        repo_dm.gravar_demonstracoes(c, antigas, documentos, agora=ANTES)
+        linhas_antes = _contar(c, demonstracoes_versoes)
+    with motor.begin() as c:
+        acrescentadas = repo_dm.acrescentar_contas_novas(
+            c, contas, documentos, agora=DEPOIS
+        )
+        assert (
+            repo_dm.acrescentar_contas_novas(c, contas, documentos, agora=DEPOIS) == 0
+        )
+    novas = contas["conta"].isin(CONTAS_NOVAS).sum()
+    assert acrescentadas == novas > 0
+    with motor.connect() as c:
+        versoes = c.execute(sa.select(demonstracoes_versoes)).all()
+        assert len(versoes) == linhas_antes + novas
+        assert all(
+            v.substituido_em is None for v in versoes
+        )  # nada virou reapresentação
+        logo_depois = ANTES + timedelta(seconds=1)
+        foto = como_estava_em(c, demonstracoes_versoes, logo_depois)
+        assert {
+            l.conta for l in foto
+        } >= CONTAS_NOVAS  # valem desde a versão, não desde hoje
+        vigentes = {l.conta for l in c.execute(sa.select(demonstracoes.c.conta))}
+        assert vigentes >= CONTAS_NOVAS
+
+
+def test_acrescentar_nao_mexe_em_documento_de_outra_versao(motor):
+    contas, documentos = dm.ler_demonstracoes(
+        (CVM / "fundamentos" / "dfp_cia_aberta_2025.zip").read_bytes(), "DFP"
+    )
+    with motor.begin() as c:
+        repo_dm.gravar_demonstracoes(
+            c, contas[~contas["conta"].isin(CONTAS_NOVAS)], documentos, agora=ANTES
+        )
+    mais_nova = documentos.assign(versao=documentos["versao"] + 1)
+    with motor.begin() as c:
+        # versão nova é reapresentação: quem grava é gravar_demonstracoes, não o acréscimo
+        assert repo_dm.acrescentar_contas_novas(c, contas, mais_nova, agora=DEPOIS) == 0
