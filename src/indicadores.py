@@ -367,3 +367,8 @@ def para_semanal(dados: pd.DataFrame) -> pd.DataFrame:
     barras = barras[barras.index.notna()].dropna(subset=["Close"])
     barras.attrs = dict(dados.attrs)
     return barras
+
+
+def curva_de_capital(retorno: pd.Series) -> pd.Series:
+    """Quanto vale cada R$ 1 investido no começo, dia a dia (os retornos compostos)."""
+    return (1 + retorno).cumprod()

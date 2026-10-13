@@ -11,6 +11,7 @@ Os sinais são calculados UMA vez sobre todos os dados: como nenhuma estratégia
 datas depois é seguro. Assim os indicadores já chegam "aquecidos" ao começo do teste.
 """
 
+from collections.abc import Hashable
 from dataclasses import dataclass
 
 import numpy as np
@@ -275,3 +276,29 @@ def montar_mapa_de_sharpe(
         }
     )
     return tabela.pivot_table(index="y", columns="x", values="sharpe")
+
+
+@dataclass(frozen=True)
+class ResumoDaGrade:
+    mediana: float
+    melhor: float
+    fracao_positiva: float  # fatia das combinações com Sharpe acima de zero
+
+
+def resumir_grade(mapa: pd.DataFrame) -> ResumoDaGrade | None:
+    """Mediana, melhor e fatia positiva do Sharpe nas combinações da grade (None se vazia)."""
+    valores = pd.Series(mapa.to_numpy(dtype=float).ravel()).dropna()
+    if valores.empty:
+        return None
+    return ResumoDaGrade(
+        mediana=float(valores.median()),
+        melhor=float(valores.max()),
+        fracao_positiva=float((valores > 0).mean()),
+    )
+
+
+def melhor_candidato(retornos: pd.DataFrame, taxa_livre_de_risco: float) -> Hashable:
+    """A coluna (candidato) com o maior Sharpe."""
+    return retornos.apply(
+        lambda r: ind.calcular_indice_sharpe(r, taxa_livre_de_risco)
+    ).idxmax()

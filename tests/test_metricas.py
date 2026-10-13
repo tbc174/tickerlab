@@ -220,3 +220,35 @@ def test_kelly_e_media_sobre_variancia():
     assert 5 < calcular_kelly(retorno) < 15  # 0,001 / 0,0001
     assert np.isnan(calcular_kelly(pd.Series([0.01] * 40)))  # sem variância
     assert np.isnan(calcular_kelly(pd.Series([0.01, 0.02])))  # poucos dias
+
+
+# --- "mais números" do backtest, que saíram da tela (13/10/2026) --------------------------------
+def _como_a_tela_calculava(retorno, taxa):
+    from src.acaso import calcular_comprimento_minimo
+    from src.metricas import calcular_kelly, calcular_omega
+
+    dias = calcular_comprimento_minimo(retorno, 0.95, 0.0, taxa)
+    anos = dias if np.isnan(dias) or dias == float("inf") else dias / ind.DIAS_POR_ANO
+    return calcular_omega(retorno), calcular_kelly(retorno) / 2, anos
+
+
+@pytest.mark.parametrize("deriva", [0.0008, -0.0008])
+def test_mais_numeros_igual_ao_que_a_tela_calculava(deriva):
+    from src.metricas import mais_numeros
+
+    gerador = np.random.default_rng(3)
+    retorno = pd.Series(gerador.normal(deriva, 0.01, 800))
+    numeros = mais_numeros(retorno, 0.10)
+    omega, meio_kelly, anos = _como_a_tela_calculava(retorno, 0.10)
+    assert numeros.omega == pytest.approx(omega)
+    assert numeros.meio_kelly == pytest.approx(meio_kelly)
+    assert numeros.anos_minimos == pytest.approx(anos)  # inclui o infinito ("nunca")
+
+
+def test_mais_numeros_sem_valor_nos_casos_especiais():
+    from src.metricas import mais_numeros
+
+    curta = mais_numeros(pd.Series([0.01] * 10), 0.0)  # Kelly pede 30 dias
+    assert np.isnan(curta.meio_kelly)
+    sem_perdas = mais_numeros(pd.Series([0.0] * 50), 0.0)  # nem ganho nem perda
+    assert np.isnan(sem_perdas.omega)

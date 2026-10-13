@@ -90,6 +90,10 @@ class ResultadoAcaso:
         float  # fatia das versões ao acaso que fez igual ou melhor (com a correção +1)
     )
 
+    @property
+    def sharpe_mediano_ao_acaso(self) -> float:
+        return float(np.median(self.sharpes_ao_acaso))
+
 
 def testar_contra_o_acaso(
     fechamento: pd.Series,
@@ -324,4 +328,26 @@ def calcular_pbo(
         probabilidade=float((logits_array <= 0).mean()),
         logits=logits_array,
         combinacoes=len(logits_array),
+    )
+
+
+@dataclass(frozen=True)
+class ResumoDoMonteCarlo:
+    """O que a tela mostra do Monte Carlo: o caso típico, a faixa de 90% e o pior caso comum."""
+
+    retorno_mediano: float
+    retorno_p5: float
+    retorno_p95: float
+    queda_p5: float  # em 95% das simulações a maior queda foi menor que esta
+    chance_de_prejuizo: float
+
+
+def resumir_monte_carlo(mc: ResultadoMonteCarlo) -> ResumoDoMonteCarlo:
+    finais = pd.Series(mc.retornos_finais)
+    return ResumoDoMonteCarlo(
+        retorno_mediano=float(finais.median()),
+        retorno_p5=float(finais.quantile(0.05)),
+        retorno_p95=float(finais.quantile(0.95)),
+        queda_p5=float(pd.Series(mc.quedas_maximas).quantile(0.05)),
+        chance_de_prejuizo=mc.probabilidade_de_prejuizo,
     )

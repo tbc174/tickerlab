@@ -453,3 +453,11 @@ def test_zscore_de_preco_parado_nao_existe():
     from src.indicadores import calcular_zscore
 
     assert calcular_zscore(pd.Series([4.0] * 10), janela=3).dropna().empty
+
+
+# --- saiu da tela do backtest (preparação para outra interface, 13/10/2026) ---------------------
+def test_curva_de_capital_e_a_composicao_dos_retornos():
+    from src import indicadores as ind
+
+    retorno = pd.Series([0.01, -0.02, 0.03, np.nan, 0.0])
+    assert_series_equal(ind.curva_de_capital(retorno), (1 + retorno).cumprod())
