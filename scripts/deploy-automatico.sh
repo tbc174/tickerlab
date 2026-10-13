@@ -26,8 +26,9 @@ cd "$PASTA"
 git fetch -q origin main
 
 atual="$(git rev-parse HEAD)"
-novo="$(git rev-parse origin/main)"
-[ "$atual" = "$novo" ] && exit 0
+ultimo="$(git rev-parse origin/main)"
+[ "$atual" = "$ultimo" ] && exit 0
+novo="$ultimo"  # até a escolha abaixo, os avisos falam do último commit da main
 
 # avisa uma vez só por commit (o cron roda a cada minuto)
 avisar() {
@@ -37,16 +38,28 @@ avisar() {
   fi
 }
 
+# Implanta o commit MAIS NOVO cujos testes já passaram, entre o que está no ar e o último da main.
+# Esperar só o último travava o deploy: com várias sessões mesclando, o teste dele quase nunca
+# tinha terminado (13/10/2026). Uma consulta só à API (sem token, o limite é 60 por hora).
+candidatos="$(git rev-list --first-parent --max-count=100 "$atual..$ultimo")"
 resposta="$(curl -fsS --max-time 20 \
-  "https://api.github.com/repos/$REPOSITORIO/commits/$novo/check-runs?per_page=100" || true)"
-estado="$(printf '%s' "$resposta" | python3 "$PASTA/scripts/estado_do_ci.py")"
+  "https://api.github.com/repos/$REPOSITORIO/actions/workflows/testes.yml/runs?branch=main&event=push&per_page=100" \
+  || true)"
+# shellcheck disable=SC2086  # um argumento por commit
+read -r alvo estado <<< "$(printf '%s' "$resposta" \
+  | python3 "$PASTA/scripts/estado_do_ci.py" --escolher $candidatos)"
 
-case "$estado" in
-  ok) ;;
-  aguardando) exit 0 ;;                      # tenta de novo no próximo ciclo
-  falhou) avisar "testes do GitHub falharam: não implantei"; exit 0 ;;
-  *) avisar "não consegui ler o estado dos testes (GitHub fora do ar?)"; exit 0 ;;
-esac
+if [ "$alvo" = "-" ]; then
+  case "$estado" in
+    aguardando) exit 0 ;;                    # tenta de novo no próximo ciclo
+    falhou) avisar "testes do GitHub falharam: não implantei"; exit 0 ;;
+    *) avisar "não consegui ler o estado dos testes (GitHub fora do ar?)"; exit 0 ;;
+  esac
+fi
+novo="$alvo"
+
+# um commit que já foi revertido (não ficou saudável) não é tentado de novo
+[ "$(cat "$ULTIMO_AVISO" 2>/dev/null || true)" = "$novo:revertido" ] && exit 0
 
 # As tarefas agendadas (coletas, backup) rodam dentro do contêiner que o deploy recria: cada uma
 # segura esta trava em modo compartilhado (~/rodar-tarefa.sh). Se alguma estiver rodando, o deploy
@@ -57,7 +70,7 @@ exec 8>"$TRAVA_DAS_TAREFAS"
 flock -n 8 || { avisar "esperando as tarefas agendadas terminarem"; exit 0; }
 
 registrar "${atual:0:8} -> ${novo:0:8}: testes passaram, implantando"
-git merge --ff-only -q origin/main
+git merge --ff-only -q "$novo"
 
 saudavel() {
   curl -fsS --max-time 5 http://127.0.0.1:8501/_stcore/health >/dev/null 2>&1 \
