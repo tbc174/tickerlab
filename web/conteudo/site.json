@@ -1,0 +1,42 @@
+{
+  "estilos_do_relatorio": [
+    {
+      "chave": "research",
+      "nome": "Research · Claro"
+    },
+    {
+      "chave": "terminal",
+      "nome": "Terminal · Escuro"
+    },
+    {
+      "chave": "institucional",
+      "nome": "Institucional · Branco e marinho"
+    }
+  ],
+  "exemplos": [
+    {
+      "rotulo": "PETR4",
+      "simbolo": "PETR4.SA"
+    },
+    {
+      "rotulo": "VALE3",
+      "simbolo": "VALE3.SA"
+    },
+    {
+      "rotulo": "ITUB4",
+      "simbolo": "ITUB4.SA"
+    },
+    {
+      "rotulo": "AAPL",
+      "simbolo": "AAPL"
+    },
+    {
+      "rotulo": "^BVSP",
+      "simbolo": "^BVSP"
+    },
+    {
+      "rotulo": "BTC-USD",
+      "simbolo": "BTC-USD"
+    }
+  ]
+}

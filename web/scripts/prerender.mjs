@@ -1,16 +1,21 @@
-// Escreve o HTML pronto de cada página em dist/, com o nome de hoje (index.html, produto.html...).
-// Roda depois do `vite build` (JavaScript do navegador) e do `vite build --ssr` (o renderizador).
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+// Escreve o site pronto em dist/: o HTML de cada página (index.html, produto.html...), o CSS e o
+// JavaScript. Roda depois do `vite build --ssr` (que monta o renderizador em dist-servidor/).
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
-const manifesto = JSON.parse(readFileSync(join(raiz, "dist", ".vite", "manifest.json"), "utf8"));
-const script = "/" + manifesto["src/entry-client.tsx"].file;
+const raiz = process.cwd(); // o npm roda os scripts dentro de web/
+const destino = join(raiz, "dist");
 const servidor = await import(pathToFileURL(join(raiz, "dist-servidor", "entry-server.js")).href);
 
+rmSync(destino, { recursive: true, force: true });
+mkdirSync(destino, { recursive: true });
 for (const arquivo of servidor.arquivos) {
-  writeFileSync(join(raiz, "dist", arquivo), servidor.renderizar(arquivo, script), "utf8");
+  writeFileSync(join(destino, arquivo), servidor.renderizar(arquivo), "utf8");
   console.log(`dist/${arquivo}`);
+}
+for (const [nome, conteudo] of Object.entries(servidor.arquivosFixos())) {
+  writeFileSync(join(destino, nome), conteudo, "utf8");
+  console.log(`dist/${nome}`);
 }
 rmSync(join(raiz, "dist-servidor"), { recursive: true, force: true });

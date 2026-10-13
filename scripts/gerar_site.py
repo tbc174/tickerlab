@@ -1061,46 +1061,9 @@ def nao_encontrada() -> str:
 
 
 # --- arquivos que não são páginas -----------------------------------------------------------
-TEMA_CLARO = {
-    "fundo": marca.CLARO,
-    "superficie": marca.AZUL_CLARO,
-    "destaque": "#ffffff",
-    "linha": "rgba(10, 31, 68, 0.12)",
-    "linha-forte": "rgba(10, 31, 68, 0.22)",
-    "texto": marca.MARINHO,
-    "apagado": marca.PAPEL_APAGADO,
-    "sutil": marca.PAPEL_SUTIL,
-    "azul": marca.AZUL,
-    "azul-texto": marca.PAPEL_AZUL_TEXTO,
-    "lab": marca.AZUL,
-    "simbolo-topo": marca.MARINHO,
-    "atencao": marca.PAPEL_ATENCAO,
-    "sombra": "rgba(10, 31, 68, 0.18)",
-}
-TEMA_ESCURO = {
-    "fundo": marca.FUNDO,
-    "superficie": marca.SUPERFICIE,
-    "destaque": marca.DESTAQUE,
-    "linha": marca.LINHA,
-    "linha-forte": marca.LINHA_FORTE,
-    "texto": marca.TEXTO,
-    "apagado": marca.TEXTO_APAGADO,
-    "sutil": marca.TEXTO_SUTIL,
-    "azul": marca.AZUL,
-    "azul-texto": marca.AZUL_TEXTO,
-    "lab": marca.AZUL_TEXTO,  # o elétrico some no marinho em texto deste tamanho
-    "simbolo-topo": marca.CLARO,
-    "atencao": marca.ATENCAO,
-    "sombra": "rgba(0, 0, 0, 0.5)",
-}
-# As faixas marinhas (início, confiança, chamada final e rodapé) são escuras nos dois temas, como
-# as peças do manual que alternam fundo escuro e claro; dentro delas, tudo sobe um degrau.
-FAIXA_MARINHA = {
-    **TEMA_ESCURO,
-    "fundo": marca.MARINHO,
-    "superficie": marca.DESTAQUE,
-    "destaque": "#163160",
-}
+TEMA_CLARO = marca.SITE_CLARO
+TEMA_ESCURO = marca.SITE_ESCURO
+FAIXA_MARINHA = marca.SITE_FAIXA_MARINHA
 
 
 def _variaveis(tema: dict[str, str]) -> str:

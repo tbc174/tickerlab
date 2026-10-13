@@ -48,3 +48,23 @@ def test_json_estavel_para_o_diff_ficar_limpo():
     """Mesma entrada, mesmo texto: chaves em ordem fixa e acentos legíveis."""
     texto = exp.em_json({"b": "ação", "a": 1})
     assert texto == '{\n  "a": 1,\n  "b": "ação"\n}\n'
+
+
+def test_marca_leva_as_cores_do_site_nos_dois_temas():
+    m = exp.conteudo()["marca"]
+    assert m["site_claro"] == [list(par) for par in marca.SITE_CLARO.items()]
+    assert m["site_escuro"] == [list(par) for par in marca.SITE_ESCURO.items()]
+    assert m["site_faixa_marinha"] == [
+        list(par) for par in marca.SITE_FAIXA_MARINHA.items()
+    ]
+
+
+def test_site_leva_os_estilos_do_relatorio_e_os_exemplos():
+    from src import catalogo
+    from src.estilos_pdf import ESTILOS
+
+    site = exp.conteudo()["site"]
+    assert [e["chave"] for e in site["estilos_do_relatorio"]] == list(ESTILOS)
+    assert site["estilos_do_relatorio"][0]["nome"] == next(iter(ESTILOS.values())).nome
+    assert [e["simbolo"] for e in site["exemplos"]] == list(catalogo.EXEMPLOS)
+    assert site["exemplos"][0]["rotulo"] == catalogo.rotulo("PETR4.SA").split(" · ")[0]

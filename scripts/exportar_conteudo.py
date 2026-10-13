@@ -1,7 +1,8 @@
 """Exporta o conteúdo do Python para o site em React (web/conteudo/*.json).
 
 O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.py`), páginas do app
-(`src/paginas.py`), planos (`src/planos.py`) e marca (`src/marca.py`). O React lê estes JSON no build;
+(`src/paginas.py`), planos (`src/planos.py`), marca e cores do site (`src/marca.py`), estilos do
+Report Studio e ativos de exemplo (`src/catalogo.py`). O React lê estes JSON no build;
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
@@ -11,7 +12,8 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from src import marca, modulos, paginas, planos
+from src import catalogo, marca, modulos, paginas, planos
+from src.estilos_pdf import ESTILOS
 
 DESTINO = Path(__file__).resolve().parent.parent / "web" / "conteudo"
 
@@ -65,6 +67,11 @@ def _marca() -> dict:
         "paleta_clara": asdict(marca.PALETA_CLARA),
         "paleta_escura": asdict(marca.PALETA_ESCURA),
         "simbolo_svg": marca.simbolo_svg(topo="currentColor"),
+        "site_claro": [
+            list(p) for p in marca.SITE_CLARO.items()
+        ],  # lista: a ordem vira a do CSS
+        "site_escuro": [list(p) for p in marca.SITE_ESCURO.items()],
+        "site_faixa_marinha": [list(p) for p in marca.SITE_FAIXA_MARINHA.items()],
     }
 
 
@@ -75,6 +82,19 @@ def _planos() -> dict:
     }
 
 
+def _site() -> dict:
+    """O que só o site usa e vem do app: os estilos do Report Studio e os ativos de exemplo."""
+    return {
+        "estilos_do_relatorio": [
+            {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
+        ],
+        "exemplos": [
+            {"simbolo": s, "rotulo": catalogo.rotulo(s).split(" · ")[0]}
+            for s in catalogo.EXEMPLOS
+        ],
+    }
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -82,6 +102,7 @@ def conteudo() -> dict[str, object]:
         "modulos": _modulos(),
         "paginas": _paginas(),
         "planos": _planos(),
+        "site": _site(),
     }
 
 

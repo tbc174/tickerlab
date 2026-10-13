@@ -123,6 +123,49 @@ PALETA_CLARA = Paleta(
 )
 
 
+# --- Cores do site público (tickerlab.com.br): as variáveis do CSS de cada tema ---------------
+SITE_CLARO = {
+    "fundo": CLARO,
+    "superficie": AZUL_CLARO,
+    "destaque": "#ffffff",
+    "linha": "rgba(10, 31, 68, 0.12)",
+    "linha-forte": "rgba(10, 31, 68, 0.22)",
+    "texto": MARINHO,
+    "apagado": PAPEL_APAGADO,
+    "sutil": PAPEL_SUTIL,
+    "azul": AZUL,
+    "azul-texto": PAPEL_AZUL_TEXTO,
+    "lab": AZUL,
+    "simbolo-topo": MARINHO,
+    "atencao": PAPEL_ATENCAO,
+    "sombra": "rgba(10, 31, 68, 0.18)",
+}
+SITE_ESCURO = {
+    "fundo": FUNDO,
+    "superficie": SUPERFICIE,
+    "destaque": DESTAQUE,
+    "linha": LINHA,
+    "linha-forte": LINHA_FORTE,
+    "texto": TEXTO,
+    "apagado": TEXTO_APAGADO,
+    "sutil": TEXTO_SUTIL,
+    "azul": AZUL,
+    "azul-texto": AZUL_TEXTO,
+    "lab": AZUL_TEXTO,  # o elétrico some no marinho em texto deste tamanho
+    "simbolo-topo": CLARO,
+    "atencao": ATENCAO,
+    "sombra": "rgba(0, 0, 0, 0.5)",
+}
+# As faixas marinhas (início, confiança, chamada final e rodapé) são escuras nos dois temas, como
+# as peças do manual que alternam fundo escuro e claro; dentro delas, tudo sobe um degrau.
+SITE_FAIXA_MARINHA = {
+    **SITE_ESCURO,
+    "fundo": MARINHO,
+    "superficie": DESTAQUE,
+    "destaque": "#163160",
+}
+
+
 def paleta_do_tema(tipo_do_streamlit: str | None) -> Paleta:
     """A paleta pelo tema que o Streamlit informa ("light" ou "dark"); sem informação, a escura."""
     return PALETA_CLARA if tipo_do_streamlit == "light" else PALETA_ESCURA
