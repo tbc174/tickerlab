@@ -117,6 +117,17 @@ def test_migracao_cria_todas_as_tabelas(motor):
     } <= tabelas
 
 
+def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("tentativas")}
+    assert colunas == {"usuario_id", "ticker", "impressao", "criada_em"}
+    chave = inspecao.get_pk_constraint("tentativas")["constrained_columns"]
+    assert set(chave) == {"usuario_id", "ticker", "impressao"}
+    (estrangeira,) = inspecao.get_foreign_keys("tentativas")
+    assert estrangeira["referred_table"] == "usuarios"
+    assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
     url = motor.url.render_as_string(hide_password=False)
     migrar_para("base", url)
