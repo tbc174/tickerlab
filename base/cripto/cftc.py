@@ -36,8 +36,52 @@ NOVA_YORK = ZoneInfo("America/New_York")
 HORA_DA_DIVULGACAO = time(15, 30)
 # da terça do relatório até a segunda seguinte
 DIAS_ATE_VALER = 6
-# relatório de terça: quando saiu de fato, nas semanas de paralisação do governo dos EUA
-EXCECOES_DE_DIVULGACAO: dict[date, datetime] = {}
+
+
+def _as_15h30_de_nova_york(dia: date) -> datetime:
+    return datetime.combine(dia, HORA_DA_DIVULGACAO, tzinfo=NOVA_YORK).astimezone(UTC)
+
+
+# Paralisação de out–nov/2025: calendário de recuperação da CFTC (comunicado 9147-25, de
+# 09/12/2025, e a atualização de 19/12/2025, que levou o dado de 23/12 para 31/12). Data do dado:
+# data em que saiu. Vale no dia seguinte (um dia de folga, caso a publicação tenha escorregado).
+_PARALISACAO_2025 = {
+    date(2025, 9, 30): date(2025, 11, 19),
+    date(2025, 10, 7): date(2025, 11, 21),
+    date(2025, 10, 14): date(2025, 11, 25),
+    date(2025, 10, 21): date(2025, 12, 2),
+    date(2025, 10, 28): date(2025, 12, 5),
+    date(2025, 11, 4): date(2025, 12, 9),
+    date(2025, 11, 10): date(2025, 12, 10),
+    date(2025, 11, 18): date(2025, 12, 12),
+    date(2025, 11, 25): date(2025, 12, 15),
+    date(2025, 12, 2): date(2025, 12, 17),
+    date(2025, 12, 9): date(2025, 12, 19),
+    date(2025, 12, 16): date(2025, 12, 23),
+    date(2025, 12, 23): date(2025, 12, 31),
+}
+# Paralisação de dez/2018–jan/2019: a CFTC só publicou a regra ("um relatório na terça e outro na
+# sexta até ficar em dia", comunicado 7864-19) e previu ficar em dia em 08/03/2019. Sem a data de
+# cada relatório, todos os atrasados valem a partir de 15/03/2019: perde semanas, nunca adianta.
+_INICIO_DA_PARALISACAO_2019 = date(2018, 12, 19)
+_FIM_DA_PARALISACAO_2019 = date(2019, 3, 5)
+_VALE_DEPOIS_DA_PARALISACAO_2019 = date(2019, 3, 15)
+
+
+def _excecoes() -> dict[date, datetime]:
+    excecoes = {
+        dado: _as_15h30_de_nova_york(saiu + timedelta(days=1))
+        for dado, saiu in _PARALISACAO_2025.items()
+    }
+    dia = _INICIO_DA_PARALISACAO_2019
+    while dia <= _FIM_DA_PARALISACAO_2019:
+        excecoes[dia] = _as_15h30_de_nova_york(_VALE_DEPOIS_DA_PARALISACAO_2019)
+        dia += timedelta(days=1)
+    return excecoes
+
+
+# relatório (data do dado): desde quando vale, nas paralisações do governo dos EUA
+EXCECOES_DE_DIVULGACAO: dict[date, datetime] = _excecoes()
 
 
 def endereco_do_ano(ano: int) -> str:
@@ -51,10 +95,7 @@ def divulgado_em(
     """Desde quando o relatório desta terça pode ser usado (em UTC)."""
     if relatorio in excecoes:
         return excecoes[relatorio]
-    segunda = relatorio + timedelta(days=DIAS_ATE_VALER)
-    return datetime.combine(segunda, HORA_DA_DIVULGACAO, tzinfo=NOVA_YORK).astimezone(
-        UTC
-    )
+    return _as_15h30_de_nova_york(relatorio + timedelta(days=DIAS_ATE_VALER))
 
 
 def ler_tff(conteudo_zip: bytes) -> pd.DataFrame:
