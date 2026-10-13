@@ -212,6 +212,330 @@ def _curva_a_partir_de(retorno):
     return (1 + retorno).cumprod()
 
 
+def _aba_treino_e_teste(
+    nome,
+    retorno_do_usuario,
+    capital_inicial,
+    retorno_de_referencia,
+    taxa_livre_de_risco,
+    rotulos,
+    retornos,
+    validos,
+    sharpe,
+):
+    """Treino e teste: escolhe no começo do histórico e confere no fim, que a escolha não viu."""
+    fracao = st.slider(
+        "Parte do histórico usada para escolher (treino)",
+        50,
+        90,
+        70,
+        5,
+        format="%d%%",
+        key=f"validacao_fracao_{nome}",
+        help=ajuda_do("Treino e teste"),
+    )
+    try:
+        corte = data_de_corte(retornos.index, fracao / 100)
+        tt = avaliar_treino_e_teste(retornos, validos, corte, taxa_livre_de_risco)
+    except ValueError as erro:
+        st.info(str(erro))
+    else:
+        teste = retorno_do_usuario.loc[retorno_do_usuario.index >= corte]
+        referencia = retorno_de_referencia.loc[retorno_de_referencia.index >= corte]
+        st.markdown(
+            f"Treino até **{(corte - pd.Timedelta(days=1)):%d/%m/%Y}**; teste a partir de "
+            f"**{corte:%d/%m/%Y}**. Melhor combinação no treino: "
+            f"**{_texto_dos_parametros(tt.melhor_do_treino, rotulos)}**."
+        )
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(
+            "Sharpe da melhor, no treino",
+            formatar_metrica("Sharpe", tt.sharpe_no_treino),
+            help="O número bonito: foi escolhido justamente por ser o maior.",
+        )
+        c2.metric(
+            "Esta mesma, no teste",
+            formatar_metrica("Sharpe", tt.sharpe_no_teste),
+            help="O número de verdade: período que a escolha nunca viu.",
+        )
+        c3.metric(
+            "Sua configuração, no teste",
+            formatar_metrica("Sharpe", sharpe(teste)),
+        )
+        c4.metric(
+            "Comprar e segurar, no teste",
+            formatar_metrica("Sharpe", sharpe(referencia)),
+        )
+        if tt.sharpe_no_teste < tt.sharpe_no_treino:
+            st.caption(
+                "O Sharpe caiu do treino para o teste. Uma queda é normal: parte do "
+                "resultado do treino foi sorte. Quanto maior a queda, mais a escolha "
+                "estava ajustada ao passado."
+            )
+        else:
+            st.caption(
+                "O Sharpe subiu do treino para o teste. Isso quase sempre quer dizer que "
+                "o período de teste foi mais favorável (por exemplo, uma tendência de "
+                "alta), e não que a estratégia ficou melhor. Compare com comprar e segurar."
+            )
+        curvas = {
+            "Melhor do treino": _curva_a_partir_de(tt.retorno_no_teste),
+            "Sua configuração": _curva_a_partir_de(teste),
+            "Comprar e segurar": _curva_a_partir_de(referencia),
+        }
+        mostrar_grafico(
+            graficos.criar_grafico_curvas_de_capital(
+                curvas, capital_inicial, destaque="Melhor do treino"
+            )
+        )
+
+
+def _aba_walk_forward(
+    nome,
+    capital_inicial,
+    retorno_de_referencia,
+    taxa_livre_de_risco,
+    rotulos,
+    retornos,
+    validos,
+    sharpe,
+):
+    """Walk-forward: escolhe e confere em janelas que andam pelo histórico."""
+    col_a, col_b = st.columns(2)
+    dias_treino = col_a.slider(
+        "Janela de treino (dias úteis)",
+        126,
+        1008,
+        504,
+        21,
+        key=f"validacao_treino_{nome}",
+        help=ajuda_do("Walk-forward"),
+    )
+    dias_teste = col_b.slider(
+        "Janela de teste (dias úteis)",
+        21,
+        252,
+        126,
+        21,
+        key=f"validacao_teste_{nome}",
+    )
+    try:
+        wf = executar_walk_forward(
+            retornos, validos, dias_treino, dias_teste, taxa_livre_de_risco
+        )
+    except ValueError as erro:
+        st.info(str(erro))
+    else:
+        fora = wf.retorno_fora_da_amostra
+        referencia = retorno_de_referencia.loc[fora.index]
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(
+            "Sharpe fora da amostra",
+            formatar_metrica("Sharpe", wf.sharpe_fora_da_amostra),
+        )
+        c2.metric(
+            "Sharpe médio no treino",
+            formatar_metrica("Sharpe", wf.sharpe_medio_no_treino),
+        )
+        c3.metric(
+            "Eficiência",
+            formatar_metrica("Sharpe", wf.eficiencia),
+            help="Sharpe de fora dividido pelo Sharpe médio de treino. Perto de 1: o "
+            "ajuste se sustentou. Perto de 0 ou negativo: era sorte.",
+        )
+        c4.metric(
+            "Comprar e segurar, no mesmo período",
+            formatar_metrica("Sharpe", sharpe(referencia)),
+        )
+        mostrar_grafico(
+            graficos.criar_grafico_curvas_de_capital(
+                {
+                    "Walk-forward (só dias de teste)": _curva_a_partir_de(fora),
+                    "Comprar e segurar": _curva_a_partir_de(referencia),
+                },
+                capital_inicial,
+                destaque="Walk-forward (só dias de teste)",
+            )
+        )
+        janelas = wf.janelas.copy()
+        for coluna in ("Começo do treino", "Começo do teste", "Fim do teste"):
+            janelas[coluna] = janelas[coluna].dt.strftime("%d/%m/%Y")
+        janelas["Parâmetros escolhidos"] = [
+            _texto_dos_parametros(p, rotulos) for p in janelas["Parâmetros escolhidos"]
+        ]
+        for coluna in ("Sharpe no treino", "Sharpe no teste"):
+            janelas[coluna] = [formatar_metrica("Sharpe", v) for v in janelas[coluna]]
+        with st.expander(f"Ver as {len(janelas)} janelas"):
+            st.dataframe(janelas, width="stretch", hide_index=True)
+
+
+def _aba_mapa_de_parametros(
+    parametros, taxa_livre_de_risco, rotulos, livres, retornos, validos
+):
+    """Mapa de parâmetros: o Sharpe de cada combinação no período inteiro."""
+    st.caption(
+        "Sharpe de cada combinação no período inteiro. Procure uma região grande e "
+        "verde, não um quadradinho isolado."
+    )
+    segundo = livres[1] if len(livres) > 1 else None
+    mapa = montar_mapa_de_sharpe(
+        retornos, validos, livres[0], segundo, taxa_livre_de_risco
+    )
+    mostrar_grafico(
+        graficos.criar_mapa_de_calor_de_parametros(
+            mapa,
+            rotulos[livres[0]],
+            rotulos[segundo] if segundo else None,
+            escolhido=(
+                parametros[livres[0]],
+                parametros[segundo] if segundo else "",
+            ),
+        )
+    )
+    valores = pd.Series(mapa.to_numpy(dtype=float).ravel()).dropna()
+    if not valores.empty:
+        st.caption(
+            f"Mediana do Sharpe na grade: {formatar_metrica('Sharpe', valores.median())}; "
+            f"melhor: {formatar_metrica('Sharpe', valores.max())}. "
+            f"{formatar_pct((valores > 0).mean())} das combinações têm Sharpe positivo. "
+            "O quadrado azul marca a sua configuração atual (se ela estiver na grade)."
+        )
+
+
+def _aba_monte_carlo_e_acaso(
+    dados, operacoes, taxa_livre_de_risco, custo, posicao_desejada
+):
+    """Monte Carlo das operações e o teste contra posições ao acaso."""
+    st.markdown("**Monte Carlo: e se as operações tivessem vindo em outra ordem?**")
+    st.caption(ajuda_do("Monte Carlo (das operações)"))
+    if len(operacoes) < 5:
+        st.info(
+            "Com menos de 5 operações, o Monte Carlo não diz nada. Tente um período maior ou outros parâmetros."
+        )
+    else:
+        mc = simular_monte_carlo(operacoes["retorno"])
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric(
+            "Retorno típico (mediana)",
+            formatar_pct(float(pd.Series(mc.retornos_finais).median()), com_sinal=True),
+        )
+        c2.metric(
+            "Faixa de 90% dos casos",
+            f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.05)), com_sinal=True)} a "
+            f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.95)), com_sinal=True)}",
+        )
+        c3.metric("Chance de prejuízo", formatar_pct(mc.probabilidade_de_prejuizo))
+        c4.metric(
+            "Queda máxima no pior caso comum",
+            formatar_pct(float(pd.Series(mc.quedas_maximas).quantile(0.05))),
+            help="Em 95% das simulações a maior queda foi menor que esta.",
+        )
+        mostrar_grafico(
+            graficos.criar_grafico_cone_monte_carlo(
+                mc.percentis_da_curva, mc.curva_observada
+            )
+        )
+    st.divider()
+    st.markdown(
+        "**Teste contra o acaso: a regra bate posições sem relação com o preço?**"
+    )
+    st.caption(ajuda_do("Teste contra o acaso"))
+    try:
+        teste = testar_contra_o_acaso(
+            dados["Close"], posicao_desejada, custo, taxa_livre_de_risco
+        )
+    except ValueError as erro:
+        st.info(str(erro))
+    else:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Sharpe da estratégia", formatar_metrica("Sharpe", teste.sharpe_real))
+        c2.metric(
+            "Sharpe mediano ao acaso",
+            formatar_metrica(
+                "Sharpe", float(pd.Series(teste.sharpes_ao_acaso).median())
+            ),
+        )
+        c3.metric(
+            "p-valor",
+            formatar_metrica("Sharpe", teste.p_valor),
+            help="Fatia das versões ao acaso que fez igual ou melhor. Abaixo de 0,05 "
+            "é difícil atribuir o resultado só ao acaso.",
+        )
+        mostrar_grafico(
+            graficos.criar_histograma_do_acaso(
+                teste.sharpes_ao_acaso, teste.sharpe_real
+            )
+        )
+        if teste.p_valor >= 0.05:
+            st.caption(
+                "Muitas versões ao acaso fizeram igual ou melhor. Em ativos que subiram "
+                "bastante, quase qualquer posição comprada ganha, e a regra não se destaca."
+            )
+
+
+def _aba_sorte_na_escolha(nome, taxa_livre_de_risco, rotulos, retornos, validos):
+    """Sharpe deflacionado e PBO: quanto do melhor resultado pode ser sorte de escolha."""
+    st.markdown("**Sharpe deflacionado: o melhor de muitas tentativas vale quanto?**")
+    st.caption(ajuda_do("Sharpe deflacionado"))
+    extras = st.number_input(
+        "Outras combinações que você já testou antes (opcional)",
+        min_value=0,
+        max_value=10_000,
+        value=0,
+        step=10,
+        key=f"validacao_extras_{nome}",
+        help="Cada combinação testada em outras estratégias ou ativos também conta como "
+        "uma tentativa. Quanto mais tentativas, maior o Sharpe que só a sorte já daria.",
+    )
+    melhor_coluna = retornos.apply(
+        lambda r: ind.calcular_indice_sharpe(r, taxa_livre_de_risco)
+    ).idxmax()
+    try:
+        dsr = calcular_sharpe_deflacionado(
+            retornos[melhor_coluna], retornos, int(extras), taxa_livre_de_risco
+        )
+    except ValueError as erro:
+        st.info(str(erro))
+    else:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Tentativas contadas", f"{dsr.tentativas}")
+        c2.metric(
+            "Sharpe do melhor candidato",
+            formatar_metrica("Sharpe", dsr.sharpe_anual),
+        )
+        c3.metric(
+            "Sharpe que a sorte já daria",
+            formatar_metrica("Sharpe", dsr.sharpe_anual_por_sorte),
+        )
+        c4.metric(
+            "Chance de não ser sorte",
+            formatar_pct(dsr.probabilidade),
+            help="Probabilidade do Sharpe deflacionado. Acima de 95%: convincente.",
+        )
+        st.caption(
+            f"Melhor candidato: {_texto_dos_parametros(validos[int(melhor_coluna)], rotulos)}. "
+            "Este Sharpe usa a média dos retornos diários, por isso pode diferir um pouco "
+            "do Sharpe mostrado nas outras telas."
+        )
+    st.divider()
+    st.markdown("**PBO: escolher a melhor do treino costuma funcionar?**")
+    st.caption(ajuda_do("PBO (probabilidade de overfitting)"))
+    try:
+        pbo = calcular_pbo(retornos)
+    except ValueError as erro:
+        st.info(str(erro))
+    else:
+        c1, c2 = st.columns(2)
+        c1.metric("PBO", formatar_pct(pbo.probabilidade))
+        c2.metric("Divisões treino/teste testadas", f"{pbo.combinacoes}")
+        st.caption(
+            "Abaixo de 50%, a melhor do treino tende a continuar acima da mediana "
+            "fora dele. Perto ou acima de 50%, a escolha vira sorte. Combinações da "
+            "mesma estratégia são parecidas, então o PBO costuma ser baixo: ele mede a "
+            "escolha entre variações, não se a estratégia vale a pena."
+        )
+
+
 def secao_validacao(
     dados,
     nome,
@@ -276,304 +600,42 @@ def secao_validacao(
     )
 
     with aba_tt:
-        fracao = st.slider(
-            "Parte do histórico usada para escolher (treino)",
-            50,
-            90,
-            70,
-            5,
-            format="%d%%",
-            key=f"validacao_fracao_{nome}",
-            help=ajuda_do("Treino e teste"),
+        _aba_treino_e_teste(
+            nome,
+            retorno_do_usuario,
+            capital_inicial,
+            retorno_de_referencia,
+            taxa_livre_de_risco,
+            rotulos,
+            retornos,
+            validos,
+            sharpe,
         )
-        try:
-            corte = data_de_corte(retornos.index, fracao / 100)
-            tt = avaliar_treino_e_teste(retornos, validos, corte, taxa_livre_de_risco)
-        except ValueError as erro:
-            st.info(str(erro))
-        else:
-            teste = retorno_do_usuario.loc[retorno_do_usuario.index >= corte]
-            referencia = retorno_de_referencia.loc[retorno_de_referencia.index >= corte]
-            st.markdown(
-                f"Treino até **{(corte - pd.Timedelta(days=1)):%d/%m/%Y}**; teste a partir de "
-                f"**{corte:%d/%m/%Y}**. Melhor combinação no treino: "
-                f"**{_texto_dos_parametros(tt.melhor_do_treino, rotulos)}**."
-            )
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric(
-                "Sharpe da melhor, no treino",
-                formatar_metrica("Sharpe", tt.sharpe_no_treino),
-                help="O número bonito: foi escolhido justamente por ser o maior.",
-            )
-            c2.metric(
-                "Esta mesma, no teste",
-                formatar_metrica("Sharpe", tt.sharpe_no_teste),
-                help="O número de verdade: período que a escolha nunca viu.",
-            )
-            c3.metric(
-                "Sua configuração, no teste",
-                formatar_metrica("Sharpe", sharpe(teste)),
-            )
-            c4.metric(
-                "Comprar e segurar, no teste",
-                formatar_metrica("Sharpe", sharpe(referencia)),
-            )
-            if tt.sharpe_no_teste < tt.sharpe_no_treino:
-                st.caption(
-                    "O Sharpe caiu do treino para o teste. Uma queda é normal: parte do "
-                    "resultado do treino foi sorte. Quanto maior a queda, mais a escolha "
-                    "estava ajustada ao passado."
-                )
-            else:
-                st.caption(
-                    "O Sharpe subiu do treino para o teste. Isso quase sempre quer dizer que "
-                    "o período de teste foi mais favorável (por exemplo, uma tendência de "
-                    "alta), e não que a estratégia ficou melhor. Compare com comprar e segurar."
-                )
-            curvas = {
-                "Melhor do treino": _curva_a_partir_de(tt.retorno_no_teste),
-                "Sua configuração": _curva_a_partir_de(teste),
-                "Comprar e segurar": _curva_a_partir_de(referencia),
-            }
-            mostrar_grafico(
-                graficos.criar_grafico_curvas_de_capital(
-                    curvas, capital_inicial, destaque="Melhor do treino"
-                )
-            )
 
     with aba_wf:
-        col_a, col_b = st.columns(2)
-        dias_treino = col_a.slider(
-            "Janela de treino (dias úteis)",
-            126,
-            1008,
-            504,
-            21,
-            key=f"validacao_treino_{nome}",
-            help=ajuda_do("Walk-forward"),
+        _aba_walk_forward(
+            nome,
+            capital_inicial,
+            retorno_de_referencia,
+            taxa_livre_de_risco,
+            rotulos,
+            retornos,
+            validos,
+            sharpe,
         )
-        dias_teste = col_b.slider(
-            "Janela de teste (dias úteis)",
-            21,
-            252,
-            126,
-            21,
-            key=f"validacao_teste_{nome}",
-        )
-        try:
-            wf = executar_walk_forward(
-                retornos, validos, dias_treino, dias_teste, taxa_livre_de_risco
-            )
-        except ValueError as erro:
-            st.info(str(erro))
-        else:
-            fora = wf.retorno_fora_da_amostra
-            referencia = retorno_de_referencia.loc[fora.index]
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric(
-                "Sharpe fora da amostra",
-                formatar_metrica("Sharpe", wf.sharpe_fora_da_amostra),
-            )
-            c2.metric(
-                "Sharpe médio no treino",
-                formatar_metrica("Sharpe", wf.sharpe_medio_no_treino),
-            )
-            c3.metric(
-                "Eficiência",
-                formatar_metrica("Sharpe", wf.eficiencia),
-                help="Sharpe de fora dividido pelo Sharpe médio de treino. Perto de 1: o "
-                "ajuste se sustentou. Perto de 0 ou negativo: era sorte.",
-            )
-            c4.metric(
-                "Comprar e segurar, no mesmo período",
-                formatar_metrica("Sharpe", sharpe(referencia)),
-            )
-            mostrar_grafico(
-                graficos.criar_grafico_curvas_de_capital(
-                    {
-                        "Walk-forward (só dias de teste)": _curva_a_partir_de(fora),
-                        "Comprar e segurar": _curva_a_partir_de(referencia),
-                    },
-                    capital_inicial,
-                    destaque="Walk-forward (só dias de teste)",
-                )
-            )
-            janelas = wf.janelas.copy()
-            for coluna in ("Começo do treino", "Começo do teste", "Fim do teste"):
-                janelas[coluna] = janelas[coluna].dt.strftime("%d/%m/%Y")
-            janelas["Parâmetros escolhidos"] = [
-                _texto_dos_parametros(p, rotulos)
-                for p in janelas["Parâmetros escolhidos"]
-            ]
-            for coluna in ("Sharpe no treino", "Sharpe no teste"):
-                janelas[coluna] = [
-                    formatar_metrica("Sharpe", v) for v in janelas[coluna]
-                ]
-            with st.expander(f"Ver as {len(janelas)} janelas"):
-                st.dataframe(janelas, width="stretch", hide_index=True)
 
     with aba_mapa:
-        st.caption(
-            "Sharpe de cada combinação no período inteiro. Procure uma região grande e "
-            "verde, não um quadradinho isolado."
+        _aba_mapa_de_parametros(
+            parametros, taxa_livre_de_risco, rotulos, livres, retornos, validos
         )
-        segundo = livres[1] if len(livres) > 1 else None
-        mapa = montar_mapa_de_sharpe(
-            retornos, validos, livres[0], segundo, taxa_livre_de_risco
-        )
-        mostrar_grafico(
-            graficos.criar_mapa_de_calor_de_parametros(
-                mapa,
-                rotulos[livres[0]],
-                rotulos[segundo] if segundo else None,
-                escolhido=(
-                    parametros[livres[0]],
-                    parametros[segundo] if segundo else "",
-                ),
-            )
-        )
-        valores = pd.Series(mapa.to_numpy(dtype=float).ravel()).dropna()
-        if not valores.empty:
-            st.caption(
-                f"Mediana do Sharpe na grade: {formatar_metrica('Sharpe', valores.median())}; "
-                f"melhor: {formatar_metrica('Sharpe', valores.max())}. "
-                f"{formatar_pct((valores > 0).mean())} das combinações têm Sharpe positivo. "
-                "O quadrado azul marca a sua configuração atual (se ela estiver na grade)."
-            )
 
     with aba_acaso:
-        st.markdown("**Monte Carlo: e se as operações tivessem vindo em outra ordem?**")
-        st.caption(ajuda_do("Monte Carlo (das operações)"))
-        if len(operacoes) < 5:
-            st.info(
-                "Com menos de 5 operações, o Monte Carlo não diz nada. Tente um período maior ou outros parâmetros."
-            )
-        else:
-            mc = simular_monte_carlo(operacoes["retorno"])
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric(
-                "Retorno típico (mediana)",
-                formatar_pct(
-                    float(pd.Series(mc.retornos_finais).median()), com_sinal=True
-                ),
-            )
-            c2.metric(
-                "Faixa de 90% dos casos",
-                f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.05)), com_sinal=True)} a "
-                f"{formatar_pct(float(pd.Series(mc.retornos_finais).quantile(0.95)), com_sinal=True)}",
-            )
-            c3.metric("Chance de prejuízo", formatar_pct(mc.probabilidade_de_prejuizo))
-            c4.metric(
-                "Queda máxima no pior caso comum",
-                formatar_pct(float(pd.Series(mc.quedas_maximas).quantile(0.05))),
-                help="Em 95% das simulações a maior queda foi menor que esta.",
-            )
-            mostrar_grafico(
-                graficos.criar_grafico_cone_monte_carlo(
-                    mc.percentis_da_curva, mc.curva_observada
-                )
-            )
-        st.divider()
-        st.markdown(
-            "**Teste contra o acaso: a regra bate posições sem relação com o preço?**"
+        _aba_monte_carlo_e_acaso(
+            dados, operacoes, taxa_livre_de_risco, custo, posicao_desejada
         )
-        st.caption(ajuda_do("Teste contra o acaso"))
-        try:
-            teste = testar_contra_o_acaso(
-                dados["Close"], posicao_desejada, custo, taxa_livre_de_risco
-            )
-        except ValueError as erro:
-            st.info(str(erro))
-        else:
-            c1, c2, c3 = st.columns(3)
-            c1.metric(
-                "Sharpe da estratégia", formatar_metrica("Sharpe", teste.sharpe_real)
-            )
-            c2.metric(
-                "Sharpe mediano ao acaso",
-                formatar_metrica(
-                    "Sharpe", float(pd.Series(teste.sharpes_ao_acaso).median())
-                ),
-            )
-            c3.metric(
-                "p-valor",
-                formatar_metrica("Sharpe", teste.p_valor),
-                help="Fatia das versões ao acaso que fez igual ou melhor. Abaixo de 0,05 "
-                "é difícil atribuir o resultado só ao acaso.",
-            )
-            mostrar_grafico(
-                graficos.criar_histograma_do_acaso(
-                    teste.sharpes_ao_acaso, teste.sharpe_real
-                )
-            )
-            if teste.p_valor >= 0.05:
-                st.caption(
-                    "Muitas versões ao acaso fizeram igual ou melhor. Em ativos que subiram "
-                    "bastante, quase qualquer posição comprada ganha, e a regra não se destaca."
-                )
 
     with aba_sorte:
-        st.markdown(
-            "**Sharpe deflacionado: o melhor de muitas tentativas vale quanto?**"
-        )
-        st.caption(ajuda_do("Sharpe deflacionado"))
-        extras = st.number_input(
-            "Outras combinações que você já testou antes (opcional)",
-            min_value=0,
-            max_value=10_000,
-            value=0,
-            step=10,
-            key=f"validacao_extras_{nome}",
-            help="Cada combinação testada em outras estratégias ou ativos também conta como "
-            "uma tentativa. Quanto mais tentativas, maior o Sharpe que só a sorte já daria.",
-        )
-        melhor_coluna = retornos.apply(
-            lambda r: ind.calcular_indice_sharpe(r, taxa_livre_de_risco)
-        ).idxmax()
-        try:
-            dsr = calcular_sharpe_deflacionado(
-                retornos[melhor_coluna], retornos, int(extras), taxa_livre_de_risco
-            )
-        except ValueError as erro:
-            st.info(str(erro))
-        else:
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Tentativas contadas", f"{dsr.tentativas}")
-            c2.metric(
-                "Sharpe do melhor candidato",
-                formatar_metrica("Sharpe", dsr.sharpe_anual),
-            )
-            c3.metric(
-                "Sharpe que a sorte já daria",
-                formatar_metrica("Sharpe", dsr.sharpe_anual_por_sorte),
-            )
-            c4.metric(
-                "Chance de não ser sorte",
-                formatar_pct(dsr.probabilidade),
-                help="Probabilidade do Sharpe deflacionado. Acima de 95%: convincente.",
-            )
-            st.caption(
-                f"Melhor candidato: {_texto_dos_parametros(validos[int(melhor_coluna)], rotulos)}. "
-                "Este Sharpe usa a média dos retornos diários, por isso pode diferir um pouco "
-                "do Sharpe mostrado nas outras telas."
-            )
-        st.divider()
-        st.markdown("**PBO: escolher a melhor do treino costuma funcionar?**")
-        st.caption(ajuda_do("PBO (probabilidade de overfitting)"))
-        try:
-            pbo = calcular_pbo(retornos)
-        except ValueError as erro:
-            st.info(str(erro))
-        else:
-            c1, c2 = st.columns(2)
-            c1.metric("PBO", formatar_pct(pbo.probabilidade))
-            c2.metric("Divisões treino/teste testadas", f"{pbo.combinacoes}")
-            st.caption(
-                "Abaixo de 50%, a melhor do treino tende a continuar acima da mediana "
-                "fora dele. Perto ou acima de 50%, a escolha vira sorte. Combinações da "
-                "mesma estratégia são parecidas, então o PBO costuma ser baixo: ele mede a "
-                "escolha entre variações, não se a estratégia vale a pena."
-            )
+        _aba_sorte_na_escolha(nome, taxa_livre_de_risco, rotulos, retornos, validos)
 
 
 def escolher_custos():
