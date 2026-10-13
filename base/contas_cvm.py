@@ -125,13 +125,15 @@ def _normalizar(
     )
 
 
-def _usadas_pelas_regras(contas: pd.DataFrame, demonstracao: str) -> pd.DataFrame:
-    """BPA e BPP inteiros (subtotais da R2 e da R11) e o primeiro nível da DRE."""
-    if demonstracao in BALANCO:
-        return contas
-    if demonstracao == DRE:
-        return contas[contas["conta"].str.count(r"\.") <= 1]
-    return contas.iloc[0:0]
+def so_as_contas_das_regras(contas: pd.DataFrame) -> pd.DataFrame:
+    """BPA e BPP inteiros (subtotais da R2 e da R11) e o primeiro nível da DRE.
+
+    Vale para contas de qualquer fonte (os CSVs ou o ENET): a base "como era na data" precisa do
+    mesmo recorte em todas, senão uma conta que só uma fonte traz nunca seria substituída.
+    """
+    demonstracao = contas["demonstracao"]
+    primeiro_nivel = contas["conta"].str.count(r"\.") <= 1
+    return contas[demonstracao.isin(BALANCO) | ((demonstracao == DRE) & primeiro_nivel)]
 
 
 def _contar_repetidas(contas: pd.DataFrame) -> pd.DataFrame:
@@ -159,7 +161,7 @@ def ler_contas(
             repetidas.append(_contar_repetidas(parte[repetida]))
             parte = parte[~repetida]
             if so_as_das_regras:
-                parte = _usadas_pelas_regras(parte, achado.group(1))
+                parte = so_as_contas_das_regras(parte)
             partes.append(parte)
     if not partes:
         vazio = pd.DataFrame(columns=list(COLUNAS))
@@ -171,9 +173,17 @@ def ler_contas(
 def ler_indice(zip_bytes: bytes, documento: str) -> pd.DataFrame:
     """Todas as entregas (versões) do índice de um zip de DFP ou ITR, com a data de entrega.
 
-    Colunas: cnpj, empresa, documento, referencia, versao, recebido_em.
+    Colunas: cnpj, empresa, documento, referencia, versao, recebido_em, link (o pacote no ENET).
     """
-    colunas = ["cnpj", "empresa", "documento", "referencia", "versao", "recebido_em"]
+    colunas = [
+        "cnpj",
+        "empresa",
+        "documento",
+        "referencia",
+        "versao",
+        "recebido_em",
+        "link",
+    ]
     nome_do_indice = re.compile(rf"^{documento.lower()}_cia_aberta_\d{{4}}\.csv$")
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as arquivo:
         nomes = [n for n in arquivo.namelist() if nome_do_indice.match(n)]
@@ -188,6 +198,7 @@ def ler_indice(zip_bytes: bytes, documento: str) -> pd.DataFrame:
             "referencia": pd.to_datetime(bruto["DT_REFER"], errors="coerce"),
             "versao": pd.to_numeric(bruto["VERSAO"], errors="coerce").astype("Int64"),
             "recebido_em": pd.to_datetime(bruto["DT_RECEB"], errors="coerce"),
+            "link": bruto["LINK_DOC"],
         },
         columns=colunas,
     )

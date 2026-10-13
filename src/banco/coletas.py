@@ -76,6 +76,24 @@ def registrar(
     )
 
 
+def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
+    """A cópia mais recente de `url` guardada no acervo (None se nenhuma coleta guardou).
+
+    Serve para reler um arquivo sem baixar de novo (regras de qualidade, base "como era na data").
+    """
+    caminho = conexao.execute(
+        sa.select(coletas.c.caminho_do_original)
+        .where(
+            coletas.c.url == url[:LIMITE_DA_URL],
+            coletas.c.situacao == "ok",
+            coletas.c.caminho_do_original.is_not(None),
+        )
+        .order_by(coletas.c.baixado_em.desc())
+        .limit(1)
+    ).scalar()
+    return acervo.ler_original(caminho) if caminho else None
+
+
 def ultimas(
     conexao: sa.Connection, fonte: str | None = None, quantas: int = 50
 ) -> list[sa.Row]:

@@ -274,3 +274,14 @@ def test_rodada_vazia_nao_quebra(documento):
     )
     resultado = regras_de_um_documento(leitura, documento, _indice(), HOJE)
     assert resultado.achados == [] and resultado.falhas == ()
+
+
+def test_ler_indice_traz_o_link_de_cada_versao():
+    zip_bytes = _zip_do_indice(
+        f"{A};2025-12-31;1;EMPRESA A;001;DFP;1;2026-03-20;http://enet/1",
+        f"{A};2025-12-31;2;EMPRESA A;001;DFP;2;2026-05-02;http://enet/2",
+    )
+    assert ler_indice(zip_bytes, "DFP")["link"].tolist() == [
+        "http://enet/1",
+        "http://enet/2",
+    ]

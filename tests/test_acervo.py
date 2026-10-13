@@ -105,3 +105,38 @@ def test_extensao_informada_vale_mais_que_a_do_endereco(tmp_path):
     relativo = acervo.guardar_original("cvm-enet", url, xml, QUANDO, extensao=".xml")
     assert relativo.endswith(f"{hashlib.sha256(xml).hexdigest()}.xml.gz")
     assert acervo.ler_original(relativo) == xml
+
+
+def test_original_mais_recente_le_a_ultima_copia_guardada(banco, tmp_path):
+    from datetime import timedelta
+
+    from src.banco.coletas import original_mais_recente, registrar
+
+    with banco.begin() as conexao:
+        for conteudo, quando in (
+            (b"velho", QUANDO),
+            (b"novo", QUANDO + timedelta(days=1)),
+        ):
+            caminho = acervo.guardar_original("cvm-dfp-itr", URL, conteudo, quando)
+            registrar(
+                conexao,
+                "cvm-dfp-itr",
+                URL,
+                conteudo,
+                "ok",
+                agora=quando,
+                caminho_do_original=caminho,
+            )
+        registrar(
+            conexao,
+            "cvm-dfp-itr",
+            URL,
+            None,
+            "falhou",
+            agora=QUANDO + timedelta(days=2),
+        )
+    with banco.connect() as conexao:
+        assert (
+            original_mais_recente(conexao, URL) == b"novo"
+        )  # a falha depois não conta
+        assert original_mais_recente(conexao, URL + "?outro") is None

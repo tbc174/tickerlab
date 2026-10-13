@@ -30,11 +30,10 @@ from base.rodada import (
     regras_de_um_documento,
     regras_entre_documentos,
 )
-from src import acervo
 from src import demonstracoes as dm
-from src.banco.coletas import com_registro
+from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
-from src.banco.modelo import coletas, eventos
+from src.banco.modelo import eventos
 from src.banco.qualidade import gravar_achados
 from src.configuracao import url_do_banco
 
@@ -63,24 +62,9 @@ def _baixar_da_fonte(url: str) -> bytes | None:
 baixar = com_registro(FONTE, _baixar_da_fonte)
 
 
-def _do_acervo(conexao: sa.Connection, url: str) -> bytes | None:
-    """A cópia mais recente do arquivo no acervo, se a coleta já guardou."""
-    caminho = conexao.execute(
-        sa.select(coletas.c.caminho_do_original)
-        .where(
-            coletas.c.url == url,
-            coletas.c.situacao == "ok",
-            coletas.c.caminho_do_original.is_not(None),
-        )
-        .order_by(coletas.c.baixado_em.desc())
-        .limit(1)
-    ).scalar()
-    return acervo.ler_original(caminho) if caminho else None
-
-
 def _conteudo(motor: sa.Engine, url: str) -> bytes | None:
     with motor.connect() as conexao:
-        guardado = _do_acervo(conexao, url)
+        guardado = original_mais_recente(conexao, url)
     return guardado if guardado is not None else baixar(url)
 
 
