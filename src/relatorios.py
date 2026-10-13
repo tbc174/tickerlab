@@ -18,14 +18,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from src import analise_da_carteira
 from src import graficos_pdf as gp
 from src import indicadores as ind
 from src.analises import MIN_DIAS_PARA_ANALISE
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.carteira_b3 import (
     CarteiraB3,
-    numero_efetivo_de_ativos,
-    retorno_com_os_pesos_de_hoje,
 )
 from src.carteiras import (
     ESTRATEGIAS_DE_CARTEIRA,
@@ -1235,6 +1234,13 @@ def relatorio_de_carteira(
 
 
 # --- 5. minha carteira (arquivo da Área do Investidor da B3) ---------------------------------
+def _serie_dos_pontos(pontos: tuple) -> pd.Series:
+    """Os pontos de `analise_da_carteira` de volta numa série, para os gráficos do PDF."""
+    return pd.Series(
+        [p.valor for p in pontos], index=pd.to_datetime([p.dia for p in pontos])
+    )
+
+
 def achados_da_minha_carteira(
     pesos: pd.Series, efetivo: float, resumo: dict, retorno_ibov: float | None
 ) -> list[str]:
@@ -1288,16 +1294,22 @@ def relatorio_da_minha_carteira(
     _exigir_pregoes(len(fechamentos.dropna(how="all")), MIN_PREGOES)
     pesos = carteira.pesos()
     total = carteira.valor_total
-    efetivo = numero_efetivo_de_ativos(pesos)
-    retorno = retorno_com_os_pesos_de_hoje(fechamentos, pesos)
-    resumo = resumir_desempenho(retorno, taxa_livre_de_risco=taxa_livre_de_risco)
-    curvas = {"Minha carteira": (1 + retorno).cumprod() * 100}
-    retorno_ibov = None
-    if referencia is not None and not referencia.dropna().empty:
-        ref = referencia.reindex(retorno.index).ffill().dropna()
-        if len(ref) > 1:
-            curvas["Ibovespa"] = ref / ref.iloc[0] * 100
-            retorno_ibov = float(ref.iloc[-1] / ref.iloc[0] - 1)
+    conc = analise_da_carteira.concentracao(carteira)
+    efetivo = conc.numero_efetivo
+    comp = analise_da_carteira.comportamento(
+        carteira, fechamentos, referencia, taxa_livre_de_risco
+    )
+    resumo = {
+        "Retorno total": comp.retorno_total,
+        "Retorno anualizado": comp.retorno_anualizado,
+        "Volatilidade anual": comp.volatilidade_anual,
+        "Maior queda": comp.maior_queda,
+        "Índice de Sharpe": comp.sharpe,
+    }
+    curvas = {"Minha carteira": _serie_dos_pontos(comp.curva)}
+    if comp.curva_ibovespa is not None:
+        curvas["Ibovespa"] = _serie_dos_pontos(comp.curva_ibovespa)
+    retorno_ibov = comp.retorno_ibovespa
     indice = fechamentos.dropna(how="all").index
 
     pdf = RelatorioPDF(
@@ -1319,17 +1331,16 @@ def relatorio_da_minha_carteira(
             "composicao",
             "Pelo valor de hoje de cada posição (ativos com cotação na bolsa).",
         )
-        maior = pesos.max() if len(pesos) else float("nan")
-        tres = pesos.nlargest(3).sum() if len(pesos) else float("nan")
+        tres = conc.tres_maiores if conc.tres_maiores is not None else float("nan")
         pdf.cartoes(
             [
-                ("Maior posição", f"{pesos.idxmax().removesuffix('.SA')}: {gp.pct_br(maior)}"
-                 if len(pesos) else "—", None),
+                ("Maior posição", f"{conc.maior[0]}: {gp.pct_br(conc.maior[1])}"
+                 if conc.maior else "—", None),
                 ("3 maiores juntas", gp.pct_br(tres), None),
                 ("Número efetivo de ativos", gp.numero_br(efetivo, 1), None),
                 ("Tesouro e renda fixa",
-                 gp.pct_br(carteira.sem_cotacao["valor"].sum() / total) if total else "—",
-                 None),
+                 gp.pct_br(conc.fracao_renda_fixa)
+                 if conc.fracao_renda_fixa is not None else "—", None),
             ]
         )  # fmt: skip
         if len(pesos):

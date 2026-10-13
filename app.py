@@ -18,6 +18,7 @@ from telas.analise import (
     pagina_risco,
     pagina_visao_geral,
 )
+from telas.carteira_b3 import pagina_carteira_b3
 from telas.comum import PAGINAS_DO_MENU, paleta_da_sessao, plano_atual
 from telas.conta.admin import pagina_admin
 from telas.conta.assinatura import (
@@ -152,6 +153,7 @@ FUNCOES_DAS_PAGINAS = {
     "parametros": pagina_parametros,
     "research": pagina_research,
     "fundamentos": pagina_fundamentos,
+    "carteira_b3": pagina_carteira_b3,
     "juros_e_inflacao": pagina_juros_e_inflacao,
     "linha_do_tempo": pagina_linha_do_tempo,
     "por_dentro": pagina_por_dentro,
