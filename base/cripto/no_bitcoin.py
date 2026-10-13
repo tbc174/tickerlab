@@ -57,6 +57,14 @@ class ClienteRPC:
         resumo = self._chamar("gettxoutsetinfo", "none", altura)
         return para_satoshis(resumo["total_amount"])
 
+    def tamanho_dos_blocos(self) -> int:
+        """Quanto os arquivos de blocos ocupam no disco agora, em bytes."""
+        return self._chamar("getblockchaininfo")["size_on_disk"]
+
+    def ligar_rede(self, ligada: bool) -> None:
+        """Liga ou desliga a rede do nó (o freio de disco da leitura)."""
+        self._chamar("setnetworkactive", ligada)
+
     def _chamar(self, metodo: str, *parametros: object) -> Any:  # noqa: ANN401 (JSON do nó)
         usuario, senha = (
             self.arquivo_do_cookie.read_text(encoding="utf-8").strip().split(":", 1)
