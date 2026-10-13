@@ -16,9 +16,6 @@ from src.banco.eventos import eventos_dos_tickers
 from telas.comum import cabecalho_da_pagina, carregar_contexto, mostrar_grafico
 
 log = logging.getLogger(__name__)
-LIMITE_DE_EVENTOS = (
-    500  # o período mais longo do app tem centenas de documentos, não milhares
-)
 
 
 def _ler_eventos(ticker, desde):
@@ -26,7 +23,7 @@ def _ler_eventos(ticker, desde):
     try:
         with obter_engine().connect() as conexao:
             return eventos_dos_tickers(
-                conexao, [ticker], desde, limite=LIMITE_DE_EVENTOS
+                conexao, [ticker], desde, limite=ldt.LIMITE_DE_EVENTOS
             )
     except Exception as erro:
         if not tabela_inexistente(erro):

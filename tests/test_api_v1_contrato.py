@@ -27,6 +27,8 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/retorno-mensal",
         "/v1/comparacao",
         "/v1/backtest",
+        "/v1/juros-e-inflacao",
+        "/v1/linha-do-tempo",
     }
 
 

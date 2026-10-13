@@ -8,12 +8,13 @@ JSON. Duas regras valem para todos:
 """
 
 import math
+from dataclasses import asdict
 from datetime import date
 
 import pandas as pd
 from pydantic import BaseModel
 
-from src import analises
+from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 
@@ -213,6 +214,117 @@ def de_backtest(resultado: ResultadoBacktest, metricas: dict[str, float]) -> Bac
     )
 
 
+class MarcoV1(BaseModel):
+    """Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica."""
+
+    data: date  # quando o documento foi publicado
+    dia_no_grafico: date  # o pregão em que o ponto fica (o mesmo dia ou o seguinte)
+    valor_no_grafico: float  # a curva em base 100 nesse pregão
+    rotulo: str
+    tema: str
+    materialidade: int
+    assunto: str
+    descricao: str  # "dd/mm/aaaa · tipo: assunto", como na tela
+    link: str  # vazio: sem link seguro
+
+
+class LinhaDoTempoV1(BaseModel):
+    """A curva do ativo em base 100 e os acontecimentos do período, com os textos da tela."""
+
+    curva: CurvaV1
+    marcos: list[MarcoV1]
+    fora_do_grafico: (
+        int  # acontecimentos do período que ficaram de fora (rotina ou excesso)
+    )
+    aviso: str  # a linha do tempo não diz que um fato causou o preço
+    sem_acontecimentos: str | None  # texto para quando não há marcos
+    texto_fora_do_grafico: str | None
+
+
+def de_linha_do_tempo(linha: linha_do_tempo.LinhaDoTempo) -> LinhaDoTempoV1:
+    return LinhaDoTempoV1(
+        curva=CurvaV1(
+            datas=[p.dia for p in linha.curva],
+            valores=[numero(p.valor) for p in linha.curva],
+        ),
+        marcos=[
+            MarcoV1(**asdict(m), descricao=linha_do_tempo.descricao_do_marco(m))
+            for m in linha.marcos
+        ],
+        fora_do_grafico=linha.fora_do_grafico,
+        aviso=linha_do_tempo.AVISO_DA_LINHA,
+        sem_acontecimentos=None if linha.marcos else linha_do_tempo.SEM_ACONTECIMENTOS,
+        texto_fora_do_grafico=(
+            linha_do_tempo.texto_fora_do_grafico(linha.fora_do_grafico)
+            if linha.fora_do_grafico
+            else None
+        ),
+    )
+
+
+class NumeroDeJurosV1(BaseModel):
+    """Um número do painel (em %, como o Banco Central publica), com a data e a fonte."""
+
+    nome: str
+    valor: float | None  # null: faltou dado (o motivo está nos avisos)
+    texto: str  # o valor como a tela mostra ("15,00% ao ano", "—")
+    unidade: str
+    referencia: date | None
+    referencia_mensal: bool  # true: vale para o mês inteiro (IPCA)
+    divulgado_em: date | None
+    fonte: str
+    legenda: str  # referência, divulgação e fonte numa linha, como na tela
+
+
+class ExpectativaV1(BaseModel):
+    indicador: str  # "IPCA" ou "Selic"
+    ano: int
+    mediana: float  # % (como no boletim Focus)
+    pesquisa: date | None
+
+
+class PontoMensalV1(BaseModel):
+    mes: date  # o primeiro dia do mês
+    selic_meta: float | None  # % ao ano no fim do mês
+    ipca_12_meses: float | None  # %
+
+
+class JurosEInflacaoV1(BaseModel):
+    """O painel de juros e inflação como era conhecido em `dia` (fonte: Banco Central)."""
+
+    dia: date
+    numeros: list[NumeroDeJurosV1]
+    expectativas: list[ExpectativaV1]
+    historico: list[PontoMensalV1]
+    avisos: list[str]
+
+
+def de_juros_e_inflacao(
+    painel: juros_e_inflacao.PainelDeJuros, dia: date
+) -> JurosEInflacaoV1:
+    return JurosEInflacaoV1(
+        dia=dia,
+        numeros=[
+            NumeroDeJurosV1(
+                **{**asdict(n), "valor": numero(n.valor)},
+                texto=juros_e_inflacao.formatar_valor(n),
+                legenda=juros_e_inflacao.legenda(n),
+            )
+            for n in painel.numeros
+        ],
+        expectativas=[ExpectativaV1(**asdict(e)) for e in painel.expectativas],
+        historico=[
+            PontoMensalV1(
+                mes=p.mes,
+                selic_meta=numero(p.selic_meta),
+                ipca_12_meses=numero(p.ipca_12_meses),
+            )
+            for p in painel.historico
+        ],
+        avisos=list(painel.avisos),
+    )
+
+
 # --- As respostas das rotas: o ativo analisado e o resultado ---
 
 
@@ -268,3 +380,8 @@ class BacktestDoAtivoV1(BaseModel):
     parametros: dict[str, int | float | str]
     custo_por_operacao: float
     backtest: BacktestV1
+
+
+class LinhaDoTempoDoAtivoV1(BaseModel):
+    ativo: AtivoV1  # a linha do tempo não usa taxa livre de risco: vem zerada
+    linha_do_tempo: LinhaDoTempoV1

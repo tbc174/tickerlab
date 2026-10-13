@@ -20,6 +20,9 @@ MATERIALIDADE_PADRAO = (
     50  # 0 a 100 (`src.eventos.Classe`): abaixo disso, documento de rotina
 )
 MAXIMO_DE_MARCOS = 60  # mais que isso vira ruído no gráfico; os mais relevantes ficam
+LIMITE_DE_EVENTOS = (
+    500  # o período mais longo do app tem centenas de documentos, não milhares
+)
 # o que a pessoa escolhe ver: nome do nível → materialidade mínima
 RELEVANCIAS = {"Os mais relevantes": 70, "Relevantes": MATERIALIDADE_PADRAO, "Todos": 0}
 SEM_ACONTECIMENTOS = (

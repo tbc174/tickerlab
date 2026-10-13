@@ -214,3 +214,34 @@ def test_so_o_que_falta_pula_o_corte_ja_gravado(url, monkeypatch):
         assert calculados == [date(2026, 5, 31)]
     finally:
         motor.dispose()
+
+
+def test_tickers_so_das_empresas_da_cvm(url):
+    from src.banco.modelo import tickers_dos_emissores
+
+    motor = criar_engine(url)
+    try:
+        with motor.begin() as c:
+            c.execute(
+                sa.insert(tickers_dos_emissores),
+                [
+                    {
+                        "ticker": "PETR4.SA",
+                        "codigo": "PETR4",
+                        "cnpj": "33.000.167/0001-01",
+                        "empresa": "P",
+                    },
+                    {
+                        "ticker": "AAPL",
+                        "codigo": "AAPL",
+                        "cnpj": "CIK0000320193",
+                        "empresa": "Apple",
+                    },
+                ],
+            )
+        with motor.connect() as c:
+            assert repo_padroes.tickers_por_empresa(c) == {
+                "33.000.167/0001-01": ["PETR4.SA"]
+            }
+    finally:
+        motor.dispose()

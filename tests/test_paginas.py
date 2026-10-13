@@ -113,6 +113,8 @@ def test_as_paginas_de_analise_tem_contrato():
         "retorno_mensal",
         "comparar",
         "backtest",
+        "juros_e_inflacao",
+        "linha_do_tempo",
     }
 
 

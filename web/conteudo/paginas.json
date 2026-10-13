@@ -486,7 +486,12 @@
   },
   {
     "chave": "juros_e_inflacao",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "JurosEInflacaoV1",
+      "rota": "/v1/juros-e-inflacao"
+    },
     "descricao": "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada número (Banco Central).",
     "e_pro": false,
     "grupo": "Research",
@@ -497,7 +502,48 @@
   },
   {
     "chave": "linha_do_tempo",
-    "contrato": null,
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O ativo: PETR4, AAPL, ^BVSP...",
+          "maximo": null,
+          "minimo": null,
+          "nome": "ticker",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        },
+        {
+          "descricao": "Quanto do passado olhar.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "periodo",
+          "obrigatoria": false,
+          "opcoes": [
+            "6mo",
+            "1y",
+            "2y",
+            "5y"
+          ],
+          "padrao": "2y",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "Quais acontecimentos mostrar: 70 = os mais relevantes, 50 = relevantes, 0 = todos.",
+          "maximo": 100,
+          "minimo": 0,
+          "nome": "materialidade_minima",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": 50,
+          "tipo": "inteiro"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "LinhaDoTempoDoAtivoV1",
+      "rota": "/v1/linha-do-tempo"
+    },
     "descricao": "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no mesmo eixo, com o link de cada documento.",
     "e_pro": false,
     "grupo": "Research",

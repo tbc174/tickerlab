@@ -17,7 +17,6 @@ from src.cdi import CDIIndisponivelError
 from telas.comum import ajuda_do, cabecalho_da_pagina, mostrar_grafico, obter_cdi
 
 log = logging.getLogger(__name__)
-DIAS_DE_CDI = 400  # um pouco mais que um ano de dias corridos: cobre 252 dias úteis
 
 
 def _ler_painel(hoje):
@@ -40,7 +39,7 @@ def _ler_painel(hoje):
         )
         return None
     try:
-        inicio = pd.Timestamp(hoje - timedelta(days=DIAS_DE_CDI))
+        inicio = pd.Timestamp(hoje - timedelta(days=ji.DIAS_DE_CDI))
         cdi = obter_cdi(inicio, pd.Timestamp(hoje))
     except CDIIndisponivelError:
         cdi = None

@@ -48,7 +48,8 @@ _cdi_em_cache: dict[tuple[str, str], tuple[float, pd.Series]] = {}
 _trava_do_cdi = threading.Lock()
 
 
-def _cdi(inicio: pd.Timestamp, fim: pd.Timestamp) -> pd.Series:
+def cdi_entre(inicio: pd.Timestamp, fim: pd.Timestamp) -> pd.Series:
+    """O CDI diário (fração ao dia) do período, guardado por um dia (`CDIIndisponivelError`)."""
     chave = (inicio.date().isoformat(), fim.date().isoformat())
     with _trava_do_cdi:
         guardado = _cdi_em_cache.get(chave)
@@ -67,7 +68,9 @@ def taxa_livre_de_risco(
     if taxa_informada is not None:
         return taxa_informada, False
     try:
-        return calcular_taxa_anual_do_cdi(_cdi(indice[0], indice[-1]), indice), True
+        return calcular_taxa_anual_do_cdi(
+            cdi_entre(indice[0], indice[-1]), indice
+        ), True
     except (CDIIndisponivelError, ValueError):
         return 0.0, False
 

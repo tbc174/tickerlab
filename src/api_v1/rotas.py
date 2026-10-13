@@ -2,17 +2,30 @@
 
 import os
 from collections.abc import Callable
+from datetime import date, timedelta
 from typing import Annotated, Literal, TypeVar
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from src import analises
+from src import juros_e_inflacao as ji
+from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
 from src.api_v1.acesso import VARIAVEL_DO_CLIENT_ID, conta_logada, exigir_api_ligada
-from src.api_v1.contexto import ContextoDoAtivo, PoucosDadosError, carregar_ativo
+from src.api_v1.contexto import (
+    ContextoDoAtivo,
+    PoucosDadosError,
+    carregar_ativo,
+    cdi_entre,
+)
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco.conexao import obter_engine, tabela_inexistente
+from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.usuarios import Usuario
+from src.bcb import FUSO
+from src.cdi import CDIIndisponivelError
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -25,6 +38,7 @@ CUSTO_MAXIMO = 0.05  # 5% por operação: acima disso é erro de digitação
 Ticker = Annotated[str, Query(pattern=FORMATO_DO_TICKER, max_length=20)]
 Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
+SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
@@ -201,6 +215,71 @@ def backtest(_conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAt
         parametros=usados,
         custo_por_operacao=pedido.custo_por_operacao,
         backtest=esquemas.de_backtest(resultado, metricas),
+    )
+
+
+def hoje_no_brasil() -> date:
+    """O dia de hoje em Brasília (o servidor roda em UTC); os testes fixam o dia."""
+    return pd.Timestamp.now(tz=FUSO).date()
+
+
+def _series_de_juros(dia: date) -> dict[str, ji.SerieLida]:
+    """As séries do Banco Central no acervo; vazio se o banco ainda não tem a tabela."""
+    try:
+        with obter_engine().connect() as conexao:
+            return ji.ler_series(conexao, dia)
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return {}
+        raise
+
+
+@router.get("/juros-e-inflacao")
+def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
+    """Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas."""
+    hoje = hoje_no_brasil()
+    lidas = _series_de_juros(hoje)
+    if not lidas:
+        raise HTTPException(
+            status_code=503,
+            detail="As séries do Banco Central ainda não foram coletadas neste servidor.",
+        )
+    try:
+        inicio = pd.Timestamp(hoje - timedelta(days=ji.DIAS_DE_CDI))
+        cdi = cdi_entre(inicio, pd.Timestamp(hoje))
+    except CDIIndisponivelError:
+        cdi = None  # o painel deixa o CDI e o juro real em branco e avisa
+    return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
+
+
+def _eventos_do_ativo(ticker: str, desde: date) -> list[Evento]:
+    """Os acontecimentos do ativo desde `desde`; vazio se o banco não tem o Research."""
+    try:
+        with obter_engine().connect() as conexao:
+            return eventos_dos_tickers(
+                conexao, [ticker], desde, limite=ldt.LIMITE_DE_EVENTOS
+            )
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return []
+        raise
+
+
+@router.get("/linha-do-tempo")
+def linha_do_tempo(
+    _conta: Conta,
+    ticker: Ticker,
+    periodo: Periodo = "2y",
+    materialidade_minima: Annotated[
+        int, Query(ge=0, le=100)
+    ] = ldt.MATERIALIDADE_PADRAO,
+) -> esquemas.LinhaDoTempoDoAtivoV1:
+    """A curva em base 100 (nunca o preço bruto) e os documentos da CVM ou da SEC do período."""
+    c = _com_o_ativo(ticker, periodo, SEM_TAXA)
+    eventos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
+    linha = ldt.montar_linha_do_tempo(c.fechamento, eventos, materialidade_minima)
+    return esquemas.LinhaDoTempoDoAtivoV1(
+        ativo=esquemas.de_ativo(c), linha_do_tempo=esquemas.de_linha_do_tempo(linha)
     )
 
 

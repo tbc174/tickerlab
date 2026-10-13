@@ -38,7 +38,7 @@ TickerLab), o emissor, a validade e o e-mail verificado. A conta precisa já exi
 | 404 | API desligada, ou ativo sem dados |
 | 422 | pedido fora dos limites (período, janela, custo, parâmetros) ou período curto demais |
 | 429 | mais de 60 pedidos por minuto da mesma conta |
-| 503 | login não configurado, ou o Google fora do ar |
+| 503 | login não configurado, o Google fora do ar, ou séries de juros ainda não coletadas |
 
 ## Rotas
 
@@ -51,10 +51,19 @@ TickerLab), o emissor, a validade e o e-mail verificado. A conta precisa já exi
 | Retorno mensal | `GET /api/v1/retorno-mensal?ticker=PETR4` | `RetornoMensalDoAtivoV1` |
 | Comparar ativos | `GET /api/v1/comparacao?ticker=PETR4&com=VALE3&com=AAPL` | `ComparacaoDoAtivoV1` |
 | Backtest | `POST /api/v1/backtest` (corpo `PedidoDeBacktestV1`) | `BacktestDoAtivoV1` |
+| Juros e inflação | `GET /api/v1/juros-e-inflacao` | `JurosEInflacaoV1` |
+| Linha do tempo | `GET /api/v1/linha-do-tempo?ticker=PETR4&materialidade_minima=50` | `LinhaDoTempoDoAtivoV1` |
 
 Sem `taxa`, a taxa livre de risco é o CDI do período (zero se o Banco Central não responder), como
 na tela. Toda resposta traz `ativo` com o período real, a origem dos preços (`atual`,
 `cache_antigo` ou `exemplo`) e a taxa usada, para a tela mostrar os mesmos avisos.
+
+**Juros e inflação** não tem ativo: devolve o painel de hoje (Brasília) lido do acervo de séries do
+Banco Central, com a referência, a divulgação e a fonte de cada número, e os textos prontos da tela
+(`texto`, `legenda`, `avisos`). Responde 503 se as séries ainda não foram coletadas no servidor.
+**Linha do tempo** devolve a curva **em base 100** e os documentos da CVM ou da SEC do período
+(`materialidade_minima`: 70 = os mais relevantes, 50 = relevantes, 0 = todos); a taxa vem zerada,
+porque a página não usa taxa livre de risco.
 
 **Sem preço bruto:** pela licença dos preços (ADR 0008), a API entrega só números calculados,
 quedas, volatilidades e curvas em base 100. Há teste que recusa campos de preço nos esquemas.
