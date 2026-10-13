@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from src import ficha
+from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.ficha import Checagem, Situacao
 
 PALAVRAS_PROIBIDAS = (
@@ -186,3 +187,73 @@ def test_combinacoes_invalidas_sao_ignoradas():
 def test_sem_vizinho_valido_nao_deu_para_medir():
     mapa = pd.DataFrame([[np.nan, 1.0, np.nan]], index=[""], columns=[10, 20, 30])
     assert ficha.checar_vizinhos(mapa, (20, ""), 1.0).situacao is Situacao.SEM_MEDIDA
+
+
+# --- Checagem 2: custos e imposto ---------------------------------------------------------
+
+
+def test_custo_abaixo_do_padrao_sobe_para_o_padrao():
+    assert ficha.custo_da_checagem(0.0) == CUSTO_PADRAO_POR_OPERACAO
+    assert ficha.custo_da_checagem(0.002) == 0.002
+
+
+def test_liquido_abaixo_do_cdi_nao_passa():
+    c = ficha.checar_custos_e_imposto(0.08, 0.10)
+    assert c.situacao is Situacao.NAO_PASSOU
+    assert "+8,0%" in c.explicacao and "+10,0%" in c.explicacao
+
+
+def test_liquido_acima_do_cdi_passa():
+    assert ficha.checar_custos_e_imposto(0.15, 0.10).situacao is Situacao.PASSOU
+
+
+def test_sem_cdi_compara_com_zero_e_avisa():
+    c = ficha.checar_custos_e_imposto(0.03, None)
+    assert c.situacao is Situacao.PASSOU
+    assert "sem o CDI" in c.explicacao
+    assert ficha.checar_custos_e_imposto(-0.01, None).situacao is Situacao.NAO_PASSOU
+
+
+def test_imposto_reduz_o_retorno_liquido():
+    fechamento = pd.Series(
+        np.linspace(100, 200, 300), index=pd.bdate_range("2022-01-03", periods=300)
+    )
+    posicao = pd.Series(1.0, index=fechamento.index)
+    posicao.iloc[150:] = 0.0  # vende no meio, com lucro: paga imposto
+    sem_imposto = (
+        executar_backtest(fechamento, posicao, 0.0).curva_de_capital.iloc[-1] - 1
+    )
+    liquido = ficha.retorno_liquido(fechamento, posicao, 0.0, 100_000.0)
+    assert liquido < sem_imposto
+
+
+# --- Checagem 5: quedas -------------------------------------------------------------------
+
+
+def test_queda_acima_da_tolerancia_nao_passa():
+    c = ficha.checar_quedas(-0.35, 0.30, "no Monte Carlo")
+    assert c.situacao is Situacao.NAO_PASSOU
+    assert "35%" in c.explicacao and "30%" in c.explicacao
+
+
+def test_queda_dentro_da_tolerancia_passa():
+    assert (
+        ficha.checar_quedas(-0.20, 0.30, "no Monte Carlo").situacao is Situacao.PASSOU
+    )
+
+
+def test_poucas_operacoes_usa_a_queda_real():
+    curva = pd.Series([1.0, 1.2, 0.9, 1.1])
+    queda, fonte = ficha.queda_no_pior_caso_comum(pd.Series([0.2, -0.1]), curva)
+    assert queda == pytest.approx(0.9 / 1.2 - 1)
+    assert "real" in fonte
+
+
+def test_com_operacoes_suficientes_usa_o_monte_carlo():
+    operacoes = pd.Series([0.1, -0.15, 0.1, -0.15, 0.1, -0.15, 0.1])
+    curva = (1 + operacoes).cumprod()
+    queda, fonte = ficha.queda_no_pior_caso_comum(operacoes, curva)
+    assert "Monte Carlo" in fonte
+    assert (
+        queda < (curva / curva.cummax() - 1).min()
+    )  # o pior caso comum é pior que o real

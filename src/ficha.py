@@ -19,10 +19,16 @@ from enum import Enum
 import numpy as np
 import pandas as pd
 
+from src.acaso import MIN_OPERACOES_PARA_MONTE_CARLO, simular_monte_carlo
+from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.imposto import aplicar_imposto
+
 AVISO = "Vale para os dados do passado. Não é promessa de resultado nem recomendação."
 
 PERGUNTA_FORA_DO_PERIODO = "Funcionou fora do período usado para escolher?"
 PERGUNTA_VIZINHOS = "Funciona com parâmetros vizinhos?"
+PERGUNTA_CUSTOS = "Sobrevive aos custos e ao imposto?"
+PERGUNTA_QUEDAS = "As quedas cabem no que você aguenta?"
 
 # Checagem 1: o Sharpe de fora precisa guardar pelo menos metade do de dentro
 EFICIENCIA_MINIMA = 0.5
@@ -30,6 +36,11 @@ EFICIENCIA_MINIMA = 0.5
 # do Sharpe da configuração escolhida (um pico isolado cercado de resultados fracos é sorte)
 FRACAO_MINIMA_DE_VIZINHOS_POSITIVOS = 2 / 3
 FRACAO_MINIMA_DA_MEDIANA = 0.5
+# Checagem 5: a maior queda que a pessoa aguentaria, se ela não disser outra (fração)
+TOLERANCIA_PADRAO_DE_QUEDA = 0.30
+PIOR_CASO_COMUM = (
+    0.05  # quantil das quedas do Monte Carlo: 95% das simulações caíram menos
+)
 
 
 class Situacao(Enum):
@@ -118,6 +129,14 @@ def _numero(valor: float) -> str:
     return f"{valor:.2f}".replace(".", ",")
 
 
+def _porcentagem(valor: float) -> str:
+    return f"{valor * 100:+.1f}%".replace(".", ",")
+
+
+def _queda(valor: float) -> str:
+    return f"{abs(valor) * 100:.0f}%"
+
+
 def _situacao(passou: bool) -> Situacao:
     return Situacao.PASSOU if passou else Situacao.NAO_PASSOU
 
@@ -198,4 +217,74 @@ def checar_vizinhos(
         f"{positivos} de {len(em_volta)} combinações vizinhas têm Sharpe "
         f"positivo; a mediana delas é {_numero(mediana)}, contra {_numero(sharpe_da_pessoa)} "
         "da sua configuração.",
+    )
+
+
+# --- Checagem 2: custos e imposto --------------------------------------------------------
+
+
+def custo_da_checagem(custo_por_operacao: float) -> float:
+    """O custo usado pela ficha: o da pessoa, mas nunca abaixo do padrão do app (fração)."""
+    return max(custo_por_operacao, CUSTO_PADRAO_POR_OPERACAO)
+
+
+def retorno_liquido(
+    fechamento: pd.Series,
+    posicao_desejada: pd.Series,
+    custo_por_operacao: float,
+    capital_inicial: float,
+) -> float:
+    """Retorno total da regra depois dos custos e do imposto simplificado da B3 (fração)."""
+    bruto = executar_backtest(fechamento, posicao_desejada, custo_por_operacao)
+    liquido = aplicar_imposto(bruto, capital_inicial).resultado
+    return float(liquido.curva_de_capital.iloc[-1] - 1)
+
+
+def checar_custos_e_imposto(
+    retorno_liquido_total: float, retorno_do_cdi: float | None
+) -> Checagem:
+    """Passa se, depois dos custos e do imposto, a regra rende mais que o CDI do mesmo período
+    (sem o CDI, mais que zero). Os dois retornos são totais do período, em fração."""
+    if retorno_do_cdi is None:
+        return Checagem(
+            PERGUNTA_CUSTOS,
+            _situacao(retorno_liquido_total > 0),
+            f"Depois dos custos e do imposto, a regra rendeu "
+            f"{_porcentagem(retorno_liquido_total)}. Ficou sem o CDI para comparar, então a "
+            "conta foi contra zero.",
+        )
+    return Checagem(
+        PERGUNTA_CUSTOS,
+        _situacao(retorno_liquido_total > retorno_do_cdi),
+        f"Depois dos custos e do imposto, a regra rendeu {_porcentagem(retorno_liquido_total)}; "
+        f"o CDI rendeu {_porcentagem(retorno_do_cdi)} no mesmo período.",
+    )
+
+
+# --- Checagem 5: quedas ------------------------------------------------------------------
+
+
+def queda_no_pior_caso_comum(
+    retornos_das_operacoes: pd.Series, curva_de_capital: pd.Series
+) -> tuple[float, str]:
+    """A maior queda (negativa) que se deve esperar e de onde ela veio.
+
+    Com operações suficientes, o pior caso comum do Monte Carlo (as operações em outra ordem);
+    com poucas, a maior queda que de fato aconteceu.
+    """
+    if len(retornos_das_operacoes.dropna()) >= MIN_OPERACOES_PARA_MONTE_CARLO:
+        simulado = simular_monte_carlo(retornos_das_operacoes)
+        queda = float(np.quantile(simulado.quedas_maximas, PIOR_CASO_COMUM))
+        return queda, "no pior caso comum do Monte Carlo"
+    real = float((curva_de_capital / curva_de_capital.cummax() - 1).min())
+    return real, "na maior queda real (poucas operações para o Monte Carlo)"
+
+
+def checar_quedas(queda: float, tolerancia: float, fonte: str) -> Checagem:
+    """Passa se a queda (negativa) não passa da tolerância da pessoa (fração positiva)."""
+    return Checagem(
+        PERGUNTA_QUEDAS,
+        _situacao(abs(queda) <= tolerancia),
+        f"A queda chegou a {_queda(queda)} {fonte}; você disse aguentar até "
+        f"{_queda(tolerancia)}.",
     )
