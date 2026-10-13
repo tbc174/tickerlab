@@ -8,6 +8,7 @@
     python -m scripts.coletar_cripto receita     (planilha de criptoativos da Receita)
     python -m scripts.coletar_cripto no          (nó do Bitcoin; cookie em BITCOIN_COOKIE)
     python -m scripts.coletar_cripto kraken-arquivo XBTUSD_1440.csv   (carga única do histórico)
+    python -m scripts.coletar_cripto qualidade   (regras C1 a C8 sobre a base; achados em qualidade/)
 
 A base fica em `<TICKERLAB_ACERVO>/base/cripto/`. Cada arquivo baixado vai para o acervo do
 original e para o registro de coletas (`com_registro`). Qualquer falha devolve 1 (o Kuma avisa) e
@@ -19,16 +20,21 @@ import logging
 import os
 import sys
 from collections.abc import Callable
-from datetime import UTC, datetime
+from dataclasses import asdict, fields
+from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pandas as pd
 import requests
 
 from base.cripto import coleta
+from base.cripto.arquivos import gravar_parquet, ler_tabela
 from base.cripto.leitura import CadeiaInconsistente
 from base.cripto.no_bitcoin import ClienteRPC, ErroDoNo
+from base.cripto.qualidade import VERSAO_DAS_REGRAS, AchadoCripto, rodar
 from src import acervo
 from src.banco.coletas import com_registro
+from src.bcb import baixar_ptax
 
 log = logging.getLogger("coletar_cripto")
 
@@ -46,6 +52,7 @@ COLETAS: dict[str, tuple[str, Callable[[Path, datetime, coleta.Baixar], int]]] =
 }
 # a carga única do histórico: o CSV diário que vem dentro do zip oficial da Kraken
 ARQUIVO_DA_KRAKEN = "https://assets.kraken.com/marketing/institutions/Kraken_OHLCVT_Full.zip/XBTUSD_1440.csv"
+INICIO_DA_PTAX = date(2014, 1, 1)
 FALHAS_ESPERADAS = (
     requests.RequestException,
     ValueError,
@@ -68,7 +75,35 @@ def _baixar_da_fonte(url: str) -> bytes:
     return resposta.content
 
 
+def _ptax() -> pd.DataFrame | None:
+    """A PTAX de venda por dia, do Banco Central (para a conferência Kraken x Mercado Bitcoin)."""
+    tabela = baixar_ptax(INICIO_DA_PTAX, datetime.now(UTC).date())
+    return pd.DataFrame({"dia": tabela.index.date, "ptax": tabela["venda"].to_numpy()})
+
+
+def _rodar_qualidade(pasta: Path, agora: datetime) -> int:
+    """Roda as regras sobre a base e grava os achados do dia em `qualidade/AAAA-MM-DD.parquet`."""
+    precos = {
+        nome: tabela
+        for nome in ("kraken", "mb")
+        if not (tabela := ler_tabela(pasta / "precos" / nome, "dia")).empty
+    }
+    cot = ler_tabela(pasta / "cftc", ["relatorio", "contrato"])
+    rodada = rodar(precos=precos, ptax=_ptax(), cot=None if cot.empty else cot)
+    colunas = [campo.name for campo in fields(AchadoCripto)]
+    achados = pd.DataFrame(
+        [asdict(achado) for achado in rodada.achados], columns=colunas
+    )
+    achados = achados.assign(versao_das_regras=VERSAO_DAS_REGRAS, rodado_em=agora)
+    gravar_parquet(pasta / "qualidade" / f"{agora:%Y-%m-%d}.parquet", achados)
+    if rodada.falhas:
+        raise ValueError(f"Regras de qualidade quebradas: {', '.join(rodada.falhas)}")
+    return len(achados)
+
+
 def _coletar(fonte: str, pasta: Path, agora: datetime, caminho: str | None) -> int:
+    if fonte == "qualidade":
+        return _rodar_qualidade(pasta, agora)
     if fonte == "kraken-arquivo":
         if not caminho:
             raise ValueError(
@@ -85,7 +120,9 @@ def _coletar(fonte: str, pasta: Path, agora: datetime, caminho: str | None) -> i
 
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
-    argumentos.add_argument("fonte", choices=[*COLETAS, "no", "kraken-arquivo"])
+    argumentos.add_argument(
+        "fonte", choices=[*COLETAS, "no", "kraken-arquivo", "qualidade"]
+    )
     argumentos.add_argument(
         "caminho", nargs="?", help="só para kraken-arquivo: o CSV diário"
     )
