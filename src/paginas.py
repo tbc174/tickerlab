@@ -351,6 +351,14 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "linha_do_tempo",
+        "Linha do tempo",
+        GRUPO_RESEARCH,
+        ":material/timeline:",
+        "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no "
+        "mesmo eixo, com o link de cada documento.",
+    ),
+    Pagina(
         "fundamentos",
         "Fundamentos",
         GRUPO_RESEARCH,

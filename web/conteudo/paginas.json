@@ -200,6 +200,16 @@
     "url": "juros-e-inflacao"
   },
   {
+    "chave": "linha_do_tempo",
+    "descricao": "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no mesmo eixo, com o link de cada documento.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Linha do tempo",
+    "url": "linha-do-tempo"
+  },
+  {
     "chave": "fundamentos",
     "descricao": "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
     "e_pro": false,
