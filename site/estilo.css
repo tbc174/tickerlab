@@ -133,6 +133,23 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 .cartao.breve:hover { border-color: var(--linha); transform: none; }
 .modulo-topo { display: flex; justify-content: space-between; align-items: end; gap: 0 1rem; flex-wrap: wrap; }
 .contagem { color: var(--apagado); font-size: .92rem; }
+/* Sobre */
+.sobre-topo h1 { max-width: 18ch; }
+.sobre-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 2.5rem; margin-top: 1rem; }
+.sobre-colunas p { margin: 0; }
+.pilares-sobre { list-style: none; padding: 0; margin: 2rem 0 0; display: flex; flex-wrap: wrap; gap: .6rem; }
+.pilares-sobre li { padding: .4rem .9rem; border: 1px solid var(--linha-forte); border-radius: 999px; font-weight: 700; }
+.assinatura-sobre { margin-top: 2rem; color: var(--apagado); }
+.assinatura-sobre strong { display: block; color: var(--texto); font-size: 1.15rem; }
+.linha-do-tempo { list-style: none; padding: 0; margin: 2rem 0 0; position: relative; }
+.linha-do-tempo::before { content: ""; position: absolute; left: 7px; top: .5rem; bottom: .5rem; width: 2px; background: var(--azul); }
+.linha-do-tempo li { position: relative; padding: 0 0 1.75rem 2.5rem; max-width: 46rem; }
+.linha-do-tempo li::before { content: ""; position: absolute; left: 0; top: .35rem; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--fundo); border: 3px solid var(--azul); }
+.linha-do-tempo li:last-child::before { background: var(--azul); }
+.linha-do-tempo h3 { margin: 0 0 .3rem; }
+.linha-do-tempo p { margin: 0; color: var(--apagado); }
+@media (max-width: 860px) { .sobre-colunas { grid-template-columns: 1fr; } }
 .cabecalho { border-top: 0; padding-bottom: 1rem; }
 .atalhos { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.25rem; }
 /* vitrine do Report Studio */

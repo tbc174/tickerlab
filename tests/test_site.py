@@ -248,3 +248,46 @@ def test_o_tema_e_decidido_no_head_antes_do_css_e_o_padrao_e_automatico():
         assert '|| "auto"' in cabeca  # quem nunca escolheu fica no automático
         assert "temaDoMomento" in cabeca
     assert sol == (gs.RAIZ / "static" / "tema" / "sol.js").read_text(encoding="utf-8")
+
+
+# frases das peças institucionais aprovadas (carrosséis "Quem somos", "Nossa história" e "No que
+# acreditamos", 13/10/2026): a página Sobre usa o texto aprovado, sem reescrever
+FRASES_APROVADAS = (
+    "Uma análise não conta toda a história.",
+    "O mercado financeiro oferece inúmeros dados, gráficos e indicadores.",
+    "Mas informações isoladas nem sempre ajudam a compreender o conjunto.",
+    "Nossa visão é conectar diferentes perspectivas de análise.",
+    "Queremos tornar a pesquisa de investimentos mais clara, profunda e organizada.",
+    "Uma plataforma brasileira de inteligência financeira.",
+    "Tudo começou com Python e Pandas.",
+    "O primeiro projeto universitário.",
+    "A evolução.",
+    "O ponto de virada.",
+    "Nossa história continua.",
+    "Diferentes perspectivas. Uma visão mais completa.",
+    "Resultados, endividamento e geração de valor ajudam a compreender uma empresa.",
+    "Nossa visão é conectar métodos, mostrar concordâncias, divergências, riscos e limitações.",
+    "Não queremos substituir suas decisões.",
+    "Queremos contribuir para uma pesquisa de investimentos mais clara, fundamentada e autônoma.",
+)
+
+
+def test_pagina_sobre_usa_o_texto_aprovado():
+    texto = (SITE / "sobre.html").read_text(encoding="utf-8")
+    for frase in FRASES_APROVADAS:
+        assert gs.esc(frase) in texto, frase
+    for pilar in ("Dados confiáveis", "Método e contexto", "Múltiplas perspectivas"):
+        assert pilar in texto
+    for secao in ("quem-somos", "nossa-historia", "no-que-acreditamos"):
+        assert f'id="{secao}"' in texto
+    assert "https://tickerlab.com.br/sobre.html" in (SITE / "sitemap.xml").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_sobre_no_menu_e_no_rodape_de_todas_as_paginas():
+    for arquivo in PAGINAS_HTML:
+        texto = arquivo.read_text(encoding="utf-8")
+        topo, rodape = texto.split("</header>")[0], texto.split("<footer")[1]
+        assert '<a href="/sobre.html"' in topo, arquivo.name
+        assert '<a href="/sobre.html">' in rodape, arquivo.name
