@@ -51,7 +51,14 @@ def _transacao(entradas: list[dict], saidas: list[dict], vsize: int) -> dict:
 
 
 def _bloco(altura: int, transacoes: list[dict], hora: int = HORA_DO_BLOCO) -> dict:
-    return {"hash": "00" * 32, "height": altura, "time": hora, "tx": transacoes}
+    return {
+        "hash": "00" * 32,
+        "height": altura,
+        "time": hora,
+        "mediantime": hora - 3_600,
+        "difficulty": 1.5,
+        "tx": transacoes,
+    }
 
 
 def _hora_fixa(horas: dict[int, int]):
@@ -190,6 +197,38 @@ def test_histograma_ignora_saida_impossivel_de_gastar():
     histograma = atualizar_histograma(np.zeros(10, dtype=np.int64), bloco)
 
     assert histograma[5] == para_satoshis(50)
+
+
+def test_metricas_trazem_dificuldade_e_hora_mediana():
+    metricas = metricas_do_bloco(
+        _bloco(100, [_coinbase(50)], hora=7_200), _hora_fixa({})
+    )
+
+    assert metricas.dificuldade == 1.5
+    assert metricas.hora_mediana == datetime(1970, 1, 1, 1, tzinfo=UTC)
+
+
+def test_histograma_deixa_de_fora_a_coinbase_do_bloco_zero():
+    # os 50 BTC do bloco 0 nunca entraram no conjunto de moedas não gastas do Bitcoin Core
+    histograma = atualizar_histograma(
+        np.zeros(10, dtype=np.int64), _bloco(0, [_coinbase(50)])
+    )
+
+    assert histograma.sum() == 0
+
+
+@pytest.mark.parametrize(
+    ("altura", "altura_apagada"), [(91_842, 91_812), (91_880, 91_722)]
+)
+def test_histograma_segue_a_bip30(altura, altura_apagada):
+    # em 2010 duas coinbases repetiram a transação de uma anterior e a apagaram (BIP30)
+    histograma = np.zeros(100_000, dtype=np.int64)
+    histograma[altura_apagada] = para_satoshis(50)
+
+    histograma = atualizar_histograma(histograma, _bloco(altura, [_coinbase(50)]))
+
+    assert histograma[altura_apagada] == 0
+    assert histograma[altura] == para_satoshis(50)
 
 
 def test_histograma_cresce_quando_a_altura_passa_do_tamanho():
