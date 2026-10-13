@@ -91,6 +91,17 @@ def test_a_imagem_docker_leva_a_pasta_static():
     assert "COPY static ./static" in (RAIZ / "Dockerfile").read_text(encoding="utf-8")
 
 
+def test_a_imagem_docker_troca_o_icone_padrao_do_streamlit_pelo_nosso():
+    """O Streamlit manda o HTML com o ícone dele (um barco que parece uma coroa) e só troca pelo
+    page_icon depois que o script roda: a cada recarga a aba mostrava a coroa."""
+    dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
+    troca = dockerfile.index("static/favicon.png")
+    passo = dockerfile[dockerfile.rindex("RUN", 0, troca) : troca]
+    assert "static/marca/icone.png" in passo
+    # a pasta do Streamlit só aceita escrita do root
+    assert troca < dockerfile.index("USER app")
+
+
 def test_os_graficos_usam_o_tema_da_marca():
     figura = graficos.go.Figure()
     graficos._estilo_base(figura, None, 300)

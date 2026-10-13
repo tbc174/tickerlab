@@ -16,6 +16,9 @@ RUN pip install --upgrade pip==26.2.1 \
 
 COPY .streamlit ./.streamlit
 COPY static ./static
+# o Streamlit manda o HTML com o ícone dele (um barco que parece uma coroa) e só troca pelo nosso
+# depois que o script roda; com o arquivo trocado, a aba já abre com o ícone do TickerLab
+RUN python -c "import shutil, streamlit, pathlib; shutil.copyfile('static/marca/icone.png', pathlib.Path(streamlit.__file__).parent / 'static/favicon.png')"
 COPY app.py ./
 COPY src ./src
 COPY telas ./telas
