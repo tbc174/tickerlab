@@ -7,7 +7,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 PACOTES_QUE_O_PIP_CHAMA_DIFERENTE: dict[str, str] = {"fpdf": "fpdf2"}
-PACOTES_NOSSOS = {"src", "telas"}  # pastas do próprio repositório, não do pip
+PACOTES_NOSSOS = {"src", "telas", "base"}  # pastas do próprio repositório, não do pip
 
 
 def _importados_de_terceiros() -> set[str]:
@@ -15,6 +15,9 @@ def _importados_de_terceiros() -> set[str]:
         RAIZ / "app.py",
         *(RAIZ / "src").glob("*.py"),
         *(RAIZ / "telas").rglob("*.py"),
+        *(RAIZ / "base").glob(
+            "*.py"
+        ),  # as regras de qualidade, que a tela Fundamentos usa
     ]
     nomes: set[str] = set()
     for arquivo in arquivos:
@@ -54,7 +57,7 @@ def test_versoes_de_producao_sao_as_mesmas_do_requirements_completo():
 
 def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
-    for pasta in ("src", "telas", "conteudo", "dados_de_exemplo", ".streamlit"):
+    for pasta in ("src", "telas", "base", "conteudo", "dados_de_exemplo", ".streamlit"):
         assert f"COPY {pasta} " in dockerfile or f"COPY {pasta}\n" in dockerfile, pasta
     assert "COPY app.py" in dockerfile
     assert "COPY migracoes " in dockerfile and "COPY alembic.ini" in dockerfile
@@ -62,7 +65,7 @@ def test_dockerfile_copia_o_que_o_app_le_em_tempo_de_execucao():
     dockerignore = (RAIZ / ".dockerignore").read_text(encoding="utf-8")
     for fora in (".venv", "tests", "dados_locais", ".git"):
         assert fora in dockerignore.splitlines()
-    for dentro in ("conteudo", "dados_de_exemplo", "src", "telas"):
+    for dentro in ("conteudo", "dados_de_exemplo", "src", "telas", "base"):
         assert dentro not in dockerignore.splitlines()
 
 

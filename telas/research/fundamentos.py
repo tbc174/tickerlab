@@ -12,7 +12,9 @@ import streamlit as st
 from sqlalchemy import exc as sa_exc
 
 from src import eventos_sec, fundamentos, graficos
+from src import qualidade_texto as selo
 from src.banco import leituras as repo_leituras
+from src.banco import qualidade as repo_qualidade
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.eventos import empresas_dos_tickers
@@ -38,6 +40,7 @@ from telas.research.comum import (
     _sem_banco_agora,
 )
 
+ACHADOS_A_MOSTRAR = 10  # os mais recentes; o resto fica num expansor
 GRUPOS_DE_FUNDAMENTOS = (
     (
         "Resultado",
@@ -177,8 +180,66 @@ def _ler_fundamentos(ticker):
     return empresa, dados
 
 
-def _mostrar_documentos_usados(docs, mercado):
+def _dia(data):
+    """A data do balanço como `date` (o banco devolve `date`; o pandas, `Timestamp`)."""
+    return pd.Timestamp(data).date()
+
+
+def _ler_achados(chave, mercado):
+    """Os achados abertos das regras de qualidade (só B3); sem a tabela ou sem banco, nenhum."""
+    if mercado is not MERCADO_B3:
+        return []
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_qualidade.achados_de(conexao, chave)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        logging.getLogger(__name__).warning("Achados de qualidade indisponíveis")
+        return []
+
+
+def _dos_documentos_usados(achados, docs):
+    usados = {
+        (d, _dia(r)) for d, r in zip(docs["documento"], docs["referencia"], strict=True)
+    }
+    return [a for a in achados if (a.documento, a.referencia) in usados]
+
+
+def _avisar_conferencia(usados):
+    """O selo no topo: quantos números dos documentos usados nas contas estão em conferência."""
+    if not usados:
+        return
+    n = len(usados)
+    quantos = (
+        "1 número dos documentos usados está"
+        if n == 1
+        else (f"{n} números dos documentos usados estão")
+    )
+    st.warning(
+        f"{quantos} em conferência: uma regra automática pediu uma segunda olhada. Veja "
+        f'"{selo.TITULO_DA_LISTA}" mais abaixo.',
+        icon=":material/fact_check:",
+    )
+
+
+def _mostrar_dados_em_conferencia(achados):
+    if not achados:
+        return
+    st.markdown(f"##### {selo.TITULO_DA_LISTA}")
+    for achado in achados[:ACHADOS_A_MOSTRAR]:
+        st.markdown(f"- {selo.texto_do_selo(achado)}")
+    resto = achados[ACHADOS_A_MOSTRAR:]
+    if resto:
+        with st.expander(f"Mais {len(resto)} em conferência"):
+            for achado in resto:
+                st.markdown(f"- {selo.texto_do_selo(achado)}")
+    st.caption(
+        f"{selo.EXPLICACAO_DO_SELO} [As regras]({selo.URL_DAS_REGRAS}) são fixas e públicas."
+    )
+
+
+def _mostrar_documentos_usados(docs, mercado, achados=()):
     st.markdown("##### Documentos usados")
+    contagem = selo.contagem_por_documento(achados)
     st.dataframe(
         pd.DataFrame(
             {
@@ -193,6 +254,10 @@ def _mostrar_documentos_usados(docs, mercado):
                     f"{d:%d/%m/%Y}" if pd.notna(d) else "—" for d in docs["recebido_em"]
                 ],
                 "Versão": docs["versao"].astype(int),
+                "Conferência": [
+                    selo.selo_do_documento(contagem, d, _dia(r))
+                    for d, r in zip(docs["documento"], docs["referencia"], strict=True)
+                ],
                 "Abrir": docs["link"],
             }
         ),
@@ -330,6 +395,9 @@ def pagina_fundamentos():
             f"({mercado.simbolo} {_numero_br(preco, 2)}) aplicado a todas as classes de ação "
             "da empresa (aproximação)."
         )
+    achados = _ler_achados(empresa[0], mercado)
+    usados = _dos_documentos_usados(achados, resultado.documentos)
+    _avisar_conferencia(usados)
     for nota in resultado.notas:
         st.caption(nota)
     if resultado.financeira:
@@ -355,7 +423,8 @@ def pagina_fundamentos():
             _tabela_anual_formatada(resultado.anual, mercado.simbolo), width="stretch"
         )
     if not resultado.documentos.empty:
-        _mostrar_documentos_usados(resultado.documentos, mercado)
+        _mostrar_documentos_usados(resultado.documentos, mercado, achados)
+    _mostrar_dados_em_conferencia(achados)
     if mercado is MERCADO_EUA:
         _mostrar_mudanca_nos_riscos(empresa[0])
     with st.expander("Como estes números são calculados"):

@@ -29,7 +29,15 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src import catalogo, marca, modulos, planos, previa_pdf, relatorios
+from src import (
+    catalogo,
+    marca,
+    modulos,
+    planos,
+    previa_pdf,
+    qualidade_texto,
+    relatorios,
+)
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -894,6 +902,27 @@ def precos() -> str:
     )
 
 
+def _qualidade_dos_dados() -> str:
+    """O selo "dado em conferência" e as regras fixas, com os mesmos textos do app."""
+    regras = "\n".join(
+        f"    <li><strong>{esc(r.titulo)}:</strong> {esc(r.o_que_confere)}</li>"
+        for r in qualidade_texto.REGRAS.values()
+    )
+    return f"""
+  <h2 id="{qualidade_texto.ANCORA_NO_SITE}">Qualidade dos dados: o selo "{esc(qualidade_texto.TITULO_DO_SELO)}"</h2>
+  <p>{esc(qualidade_texto.EXPLICACAO_DO_SELO)}</p>
+  <p>Todo dia, depois da coleta, regras fixas conferem as demonstrações da CVM (DFP e ITR). Na
+  página Fundamentos, o documento com achado ganha o selo, e cada achado traz o porquê, com os
+  números. As regras são as mesmas para todas as empresas; mudou uma regra, muda a versão e os
+  achados são refeitos. Regras em uso:</p>
+  <ul>
+{regras}
+  </ul>
+  <p>Cada achado vale a partir do dia em que a informação ficou pública (a entrega do documento):
+  ao olhar o passado, o selo mostra só o que se podia saber naquela data.</p>
+"""
+
+
 def metodologia() -> str:
     corpo = f"""
 <section class="faixa secao estreita texto-longo">
@@ -970,7 +999,7 @@ def metodologia() -> str:
     fiscal de cada uma (o da Apple termina em setembro). Bancos e seguradoras aparecem como "não
     se aplica" onde o indicador não faz sentido.</li>
   </ul>
-
+{_qualidade_dos_dados()}
   <h2>Carteira B3</h2>
   <p>A API da Área do Investidor da B3 só atende empresas credenciadas (com CNPJ, certificado
   digital e contrato). O TickerLab não tem essa conexão. Você baixa a planilha de posição na Área

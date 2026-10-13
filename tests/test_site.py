@@ -291,3 +291,15 @@ def test_sobre_no_menu_e_no_rodape_de_todas_as_paginas():
         topo, rodape = texto.split("</header>")[0], texto.split("<footer")[1]
         assert '<a href="/sobre.html"' in topo, arquivo.name
         assert '<a href="/sobre.html">' in rodape, arquivo.name
+
+
+def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
+    """Selo de qualidade (série 1 da base de ML, PR 4): as regras são públicas e as mesmas do app."""
+    from src.qualidade_texto import ANCORA_NO_SITE, EXPLICACAO_DO_SELO, REGRAS
+
+    texto = (SITE / "metodologia.html").read_text(encoding="utf-8")
+    assert f'id="{ANCORA_NO_SITE}"' in texto
+    assert gs.esc(EXPLICACAO_DO_SELO) in texto
+    for regra in REGRAS.values():
+        assert gs.esc(regra.titulo) in texto
+        assert gs.esc(regra.o_que_confere) in texto
