@@ -128,6 +128,9 @@ jobs:
           print('app abriu sem erro')
           "
 
+      - name: A aba do app mostra o ícone do TickerLab, não o do Streamlit
+        run: docker run --rm tickerlab:ci python -c "import pathlib, streamlit; padrao = pathlib.Path(streamlit.__file__).parent / 'static/favicon.png'; assert padrao.read_bytes() == pathlib.Path('static/marca/icone.png').read_bytes(); print('ícone ok')"
+
       - name: As migrações do banco rodam dentro da imagem
         run: docker run --rm tickerlab:ci python -m alembic upgrade head
 
