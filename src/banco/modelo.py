@@ -97,6 +97,16 @@ tentativas = sa.Table(
     _momento("criada_em"),
 )
 
+# Pulse (onda 3, PR E): a última vez que a pessoa abriu o Pulse (o "desde a última visita") e o
+# veredito da ficha "Foi sorte?" que ela já viu em cada estratégia salva (id da simulação → resultado)
+pulse = sa.Table(
+    "pulse",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("visto_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("vereditos", JSON_PORTATIL, nullable=False),
+)
+
 simulacoes = sa.Table(
     "simulacoes",
     metadata,

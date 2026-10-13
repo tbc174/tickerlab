@@ -128,6 +128,16 @@ def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
     assert estrangeira["options"].get("ondelete") == "CASCADE"
 
 
+def test_migracao_0030_cria_o_pulse_ligado_ao_usuario(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("pulse")}
+    assert colunas == {"usuario_id", "visto_em", "vereditos"}
+    assert inspecao.get_pk_constraint("pulse")["constrained_columns"] == ["usuario_id"]
+    (estrangeira,) = inspecao.get_foreign_keys("pulse")
+    assert estrangeira["referred_table"] == "usuarios"
+    assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
     url = motor.url.render_as_string(hide_password=False)
     migrar_para("base", url)
@@ -372,3 +382,24 @@ def test_tentativas_no_banco_de_verdade_nao_repetem_e_somem_com_a_conta(motor):
     with motor.connect() as conexao:
         assert tentativas.contar_por_ativo(conexao, ana.id) == {}
         assert tentativas.contar_por_ativo(conexao, bia.id) == {"PETR4.SA": 1}
+
+
+def test_pulse_no_banco_de_verdade_nao_volta_o_relogio_e_some_com_a_conta(motor):
+    """No CI roda no PostgreSQL: confere o ON CONFLICT DO UPDATE ... WHERE e a cascata reais."""
+    from datetime import UTC, datetime, timedelta
+
+    from src.banco import pulse
+
+    agora = datetime(2026, 10, 13, 18, 0, tzinfo=UTC)
+    with motor.begin() as conexao:
+        ana, _ = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
+        bia, _ = repo.entrar(conexao, "g-bia", "bia@exemplo.com")
+        pulse.marcar_visita(conexao, ana.id, agora)
+        pulse.marcar_visita(conexao, ana.id, agora - timedelta(hours=1))
+        pulse.marcar_visita(conexao, bia.id, agora + timedelta(days=1))
+    with motor.begin() as conexao:
+        assert pulse.ultima_visita(conexao, ana.id) == agora
+        repo.apagar_conta(conexao, ana.id)
+    with motor.connect() as conexao:
+        assert pulse.ultima_visita(conexao, ana.id) is None
+        assert pulse.ultima_visita(conexao, bia.id) == agora + timedelta(days=1)
