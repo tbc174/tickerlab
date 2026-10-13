@@ -22,6 +22,17 @@ def test_original_fica_com_o_sha256_como_nome(tmp_path):
     assert acervo.confere_com_o_registro(relativo, sha256)
 
 
+def test_texto_fica_em_gzip_e_volta_igual(tmp_path):
+    json_ = b'{"filings": "' + b"x" * 5000 + b'"}'
+    url = "https://data.sec.gov/submissions/CIK0000320193.json"
+    relativo = acervo.guardar_original("sec-eventos", url, json_, QUANDO)
+    assert relativo.endswith(f"{hashlib.sha256(json_).hexdigest()}.json.gz")
+    assert (tmp_path / "acervo" / relativo).stat().st_size < len(json_) / 10
+    assert acervo.ler_original(relativo) == json_
+    assert acervo.confere_com_o_registro(relativo, hashlib.sha256(json_).hexdigest())
+    assert acervo.ler_original("bruto/nao/existe.json.gz") is None
+
+
 def test_mesmo_arquivo_duas_vezes_e_um_arquivo_so(tmp_path):
     primeiro = acervo.guardar_original("cvm-eventos", URL, b"zip", QUANDO)
     segundo = acervo.guardar_original("cvm-eventos", URL, b"zip", QUANDO)

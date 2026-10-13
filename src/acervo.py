@@ -2,12 +2,14 @@
 
 Fica em `<acervo>/bruto/<fonte>/<ano>/<sha256>.<ext>`, fora da imagem (no VPS, a pasta
 `dados_locais/` montada no contêiner). O nome é o próprio SHA-256: o mesmo arquivo baixado de novo
-não ocupa mais espaço, e qualquer cópia pode ser conferida contra o registro de coletas. Gravação
-atômica: o arquivo só aparece completo.
+não ocupa mais espaço, e qualquer cópia pode ser conferida contra o registro de coletas. Texto
+(JSON, XML, CSV, HTML) é guardado em gzip (`.json.gz`; o SHA-256 é sempre o do original); zip e PDF
+já vêm comprimidos. Gravação atômica: o arquivo só aparece completo.
 
 `TICKERLAB_ACERVO` escolhe a pasta; `desligado` para de guardar (o registro de coletas continua).
 """
 
+import gzip
 import hashlib
 import os
 from datetime import datetime
@@ -29,6 +31,7 @@ EXTENSOES_CONHECIDAS = {
     ".pdf",
 }
 SEM_EXTENSAO = ".bin"
+JA_COMPRIMIDOS = {".zip", ".pdf"}  # o resto é texto (ou desconhecido) e vai em gzip
 
 
 def pasta_do_acervo() -> Path | None:
@@ -46,9 +49,21 @@ def extensao_da_url(url: str) -> str:
 
 
 def caminho_relativo(fonte: str, url: str, conteudo: bytes, quando: datetime) -> str:
-    """`bruto/<fonte>/<ano>/<sha256>.<ext>`, com barras normais (é o que vai para o registro)."""
+    """`bruto/<fonte>/<ano>/<sha256>.<ext>[.gz]`, com barras normais (vai para o registro)."""
     sha256 = hashlib.sha256(conteudo).hexdigest()
-    return f"bruto/{fonte}/{quando.year}/{sha256}{extensao_da_url(url)}"
+    extensao = extensao_da_url(url)
+    if extensao not in JA_COMPRIMIDOS:
+        extensao += ".gz"
+    return f"bruto/{fonte}/{quando.year}/{sha256}{extensao}"
+
+
+def ler_original(relativo: str) -> bytes | None:
+    """O arquivo como veio da fonte (descomprime o `.gz`), ou None se não está no acervo."""
+    pasta = pasta_do_acervo()
+    if pasta is None or not (pasta / relativo).is_file():
+        return None
+    guardado = (pasta / relativo).read_bytes()
+    return gzip.decompress(guardado) if relativo.endswith(".gz") else guardado
 
 
 def guardar_original(
@@ -66,14 +81,15 @@ def guardar_original(
     if not destino.exists():
         destino.parent.mkdir(parents=True, exist_ok=True)
         temporario = destino.with_name(destino.name + ".parcial")
-        temporario.write_bytes(conteudo)
+        temporario.write_bytes(
+            # mtime=0: o mesmo original dá sempre o mesmo .gz
+            gzip.compress(conteudo, mtime=0) if relativo.endswith(".gz") else conteudo
+        )
         os.replace(temporario, destino)
     return relativo
 
 
 def confere_com_o_registro(relativo: str, sha256: str) -> bool:
     """O arquivo guardado ainda tem o SHA-256 do registro? (para o teste mensal do backup)"""
-    pasta = pasta_do_acervo()
-    if pasta is None or not (pasta / relativo).is_file():
-        return False
-    return hashlib.sha256((pasta / relativo).read_bytes()).hexdigest() == sha256
+    original = ler_original(relativo)
+    return original is not None and hashlib.sha256(original).hexdigest() == sha256
