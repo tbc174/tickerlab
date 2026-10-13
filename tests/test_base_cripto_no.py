@@ -109,3 +109,19 @@ def test_no_que_recusa_o_acesso(cookie, pedidos):
 
     with pytest.raises(ErroDoNo, match="401"):
         ClienteRPC(arquivo_do_cookie=cookie).altura_do_topo()
+
+
+def test_tamanho_dos_blocos_no_disco(cookie, pedidos):
+    pedidos.respostas = [_resultado({"blocks": 900_000, "size_on_disk": 12_345})]
+
+    assert ClienteRPC(arquivo_do_cookie=cookie).tamanho_dos_blocos() == 12_345
+    assert pedidos[0]["json"]["method"] == "getblockchaininfo"
+
+
+def test_ligar_e_desligar_a_rede_do_no(cookie, pedidos):
+    pedidos.respostas = [_resultado(False)]
+
+    ClienteRPC(arquivo_do_cookie=cookie).ligar_rede(False)
+
+    assert pedidos[0]["json"]["method"] == "setnetworkactive"
+    assert pedidos[0]["json"]["params"] == [False]
