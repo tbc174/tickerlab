@@ -52,6 +52,28 @@ def test_no_modo_local_mostra_a_previa_gera_o_pdf_e_oferece_o_download():
     assert not any(b.key == "gerar_pdf" for b in app.button)  # virou "Baixar PDF"
 
 
+def _gerar_no_tipo(tipo):
+    app = _app_local()
+    app.button_group(key="tipo_de_relatorio").set_value(tipo).run()
+    assert not app.exception
+    assert app.session_state["relatorio_previas"]  # a prévia foi montada
+    app.button(key="gerar_pdf").click().run()
+    assert not app.exception and not app.error
+    return app.session_state["relatorio_gerado"]
+
+
+def test_backtest_gera_o_pdf_da_estrategia_escolhida():
+    gerado = _gerar_no_tipo(relatorios.BACKTEST)
+    assert gerado["arquivo"] == "tickerlab-backtest-PETR4.SA.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
+
+
+def test_carteira_gera_o_pdf_com_os_ativos_da_lista():
+    gerado = _gerar_no_tipo(relatorios.CARTEIRA)
+    assert gerado["arquivo"] == "tickerlab-carteira.pdf"
+    assert gerado["pdf"].startswith(b"%PDF")
+
+
 def test_modelo_executivo_escolhe_menos_secoes_e_mexer_vira_personalizado():
     app = _app_local()
     assert _secoes(app) == relatorios.secoes_do_modelo("ativo", "completo")

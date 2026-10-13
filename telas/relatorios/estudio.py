@@ -156,87 +156,106 @@ def _montar_relatorio(tipo, c):
     if tipo == relatorios.NEWSLETTER:
         return _montar_newsletter(c)
     if tipo == relatorios.ATIVO:
-        st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
-
-        def montar(config, ao_avancar):
-            return relatorios.relatorio_do_ativo(
-                c.ticker, c.dados, **base, config=config, ao_avancar=ao_avancar
-            )
-
-        return _pedido(
-            tipo,
-            c,
-            f"tickerlab-{c.ticker}.pdf",
-            f"{c.ticker}: retorno, risco e comportamento",
-            comuns,
-            montar,
-        )
+        return _montar_ativo(tipo, c, base, comuns, rotulo)
     if tipo == relatorios.COMPARACAO:
-        texto = st.text_input(
-            "Comparar com (separe por vírgula)",
-            value="^BVSP, ^GSPC",
-            key="relatorio_comparar_com",
-            help="O ativo do topo entra primeiro. Exemplo: VALE3.SA, ^BVSP, AAPL.",
-        )
-        outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
-        if len(outros) < 2:
-            st.info("Escolha pelo menos um ativo para comparar.")
-            return None
-
-        def montar(config, ao_avancar):
-            if ao_avancar:
-                ao_avancar("Preparando dados")
-            fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
-            if falharam:
-                st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
-            alinhado, _ = alinhar_fechamentos(fechamentos)
-            return relatorios.relatorio_de_comparacao(
-                alinhado, **base, config=config, ao_avancar=ao_avancar
-            )
-
-        return _pedido(
-            tipo,
-            c,
-            "tickerlab-comparacao.pdf",
-            "Comparação: " + ", ".join(outros),
-            {**comuns, "comparar_com": texto},
-            montar,
-        )
+        return _montar_comparacao(tipo, c, base, comuns)
     if tipo == relatorios.BACKTEST:
-        col_estrategia, col_custo = st.columns([2, 1])
-        nome = col_estrategia.selectbox(
-            "Estratégia (com os parâmetros padrão)",
-            [n for n in ESTRATEGIAS if n != "Comprar e segurar"],
-            key="relatorio_estrategia",
-            help="Para mudar os parâmetros, use a página Backtest; o relatório usa os padrões.",
-        )
-        custo = (
-            col_custo.number_input(
-                "Custo por operação (%)",
-                min_value=0.0,
-                max_value=2.0,
-                value=CUSTO_PADRAO_POR_OPERACAO * 100,
-                step=0.05,
-                key="relatorio_custo",
-            )
-            / 100
+        return _montar_backtest(tipo, c, base, comuns)
+    return _montar_carteira(tipo, c, base)
+
+
+def _montar_ativo(tipo, c, base, comuns, rotulo):
+    """Relatório do ativo do topo: o ativo e o período vêm da página."""
+    st.caption(f"Ativo e período do topo da página: **{c.ticker}**, {rotulo}.")
+
+    def montar(config, ao_avancar):
+        return relatorios.relatorio_do_ativo(
+            c.ticker, c.dados, **base, config=config, ao_avancar=ao_avancar
         )
 
-        def montar(config, ao_avancar):
-            return relatorios.relatorio_de_backtest(
-                c.ticker, c.dados, nome, {}, custo, **base, config=config,
-                ao_avancar=ao_avancar,
-            )  # fmt: skip
+    return _pedido(
+        tipo,
+        c,
+        f"tickerlab-{c.ticker}.pdf",
+        f"{c.ticker}: retorno, risco e comportamento",
+        comuns,
+        montar,
+    )
 
-        return _pedido(
-            tipo,
-            c,
-            f"tickerlab-backtest-{c.ticker}.pdf",
-            f"Backtest: {nome} em {c.ticker}",
-            {**comuns, "estrategia": nome, "custo": round(custo * 100, 4)},
-            montar,
+
+def _montar_comparacao(tipo, c, base, comuns):
+    """Comparação do ativo do topo com outros (pelo menos um)."""
+    texto = st.text_input(
+        "Comparar com (separe por vírgula)",
+        value="^BVSP, ^GSPC",
+        key="relatorio_comparar_com",
+        help="O ativo do topo entra primeiro. Exemplo: VALE3.SA, ^BVSP, AAPL.",
+    )
+    outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
+    if len(outros) < 2:
+        st.info("Escolha pelo menos um ativo para comparar.")
+        return None
+
+    def montar(config, ao_avancar):
+        if ao_avancar:
+            ao_avancar("Preparando dados")
+        fechamentos, falharam = _baixar_fechamentos(outros, c.periodo)
+        if falharam:
+            st.warning(f"Sem dados, ficaram de fora: {', '.join(falharam)}.")
+        alinhado, _ = alinhar_fechamentos(fechamentos)
+        return relatorios.relatorio_de_comparacao(
+            alinhado, **base, config=config, ao_avancar=ao_avancar
         )
-    # carteira
+
+    return _pedido(
+        tipo,
+        c,
+        "tickerlab-comparacao.pdf",
+        "Comparação: " + ", ".join(outros),
+        {**comuns, "comparar_com": texto},
+        montar,
+    )
+
+
+def _montar_backtest(tipo, c, base, comuns):
+    """Backtest de uma estratégia com os parâmetros padrão e o custo escolhido."""
+    col_estrategia, col_custo = st.columns([2, 1])
+    nome = col_estrategia.selectbox(
+        "Estratégia (com os parâmetros padrão)",
+        [n for n in ESTRATEGIAS if n != "Comprar e segurar"],
+        key="relatorio_estrategia",
+        help="Para mudar os parâmetros, use a página Backtest; o relatório usa os padrões.",
+    )
+    custo = (
+        col_custo.number_input(
+            "Custo por operação (%)",
+            min_value=0.0,
+            max_value=2.0,
+            value=CUSTO_PADRAO_POR_OPERACAO * 100,
+            step=0.05,
+            key="relatorio_custo",
+        )
+        / 100
+    )
+
+    def montar(config, ao_avancar):
+        return relatorios.relatorio_de_backtest(
+            c.ticker, c.dados, nome, {}, custo, **base, config=config,
+            ao_avancar=ao_avancar,
+        )  # fmt: skip
+
+    return _pedido(
+        tipo,
+        c,
+        f"tickerlab-backtest-{c.ticker}.pdf",
+        f"Backtest: {nome} em {c.ticker}",
+        {**comuns, "estrategia": nome, "custo": round(custo * 100, 4)},
+        montar,
+    )
+
+
+def _montar_carteira(tipo, c, base):
+    """Carteira com vários ativos e uma estratégia de carteira."""
     limites = limites_do(plano_atual())
     texto = st.text_input(
         f"Ativos da carteira (de {MIN_ATIVOS_NA_CARTEIRA} a {limites.ativos_na_carteira}, "
