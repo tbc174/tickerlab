@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from src.carteira_b3 import ArquivoDaB3Error
-from src.dividendos_e_custo import Lancamento
+from src.dividendos_e_custo import Lancamento, custo_medio
 from src.movimentacao_b3 import (
     MAXIMO_DE_LINHAS_DA_MOVIMENTACAO,
     ler_movimentacao,
@@ -308,3 +308,116 @@ def test_compra_no_fracionario_conta_no_mesmo_ativo():
         ]
     )
     assert {x.codigo for x in mov.lancamentos} == {"PETR4"}
+
+
+# --- aluguel de ações: saída sem dinheiro não é venda (13/10/2026) -----------------------------
+VGIR = "VGIR11 - VALORA CRI CDI FUNDO DE INVESTIMENTO IMOBILIARIO"
+
+
+def _aluguel_de(quantidade, data):
+    """As 4 linhas que a B3 escreve quando a pessoa empresta as ações (copiadas da planilha real)."""
+    return [
+        _linha("Credito", data, "Empréstimo", VGIR, quantidade, "-", "-"),
+        _linha("Credito", data, "Transferência", VGIR, quantidade, "-", "-"),
+        _linha(
+            "Debito", data, "Transferência - Liquidação", VGIR, quantidade, "-", "-"
+        ),
+        _linha("Debito", data, "Transferência", VGIR, quantidade, "-", "-"),
+    ]
+
+
+def test_acoes_emprestadas_nao_viram_venda():
+    """Regressão (13/10/2026, planilha real do Tiago): ao emprestar 9.205 cotas, a B3 escreveu uma
+    "Transferência - Liquidação" de saída sem valor; o leitor contava como venda de tudo, e o
+    custo médio recomeçava na compra seguinte (1.300 cotas em vez de 10.505)."""
+    mov = _ler(
+        [
+            _linha("Credito", "18/07/2026", "Reembolso", VGIR, 0, "-", 104),
+            _linha(
+                "Credito",
+                "13/07/2026",
+                "Transferência - Liquidação",
+                VGIR,
+                100,
+                11,
+                1100,
+            ),
+            *_aluguel_de(800, "03/07/2026"),
+            _linha(
+                "Credito",
+                "04/12/2025",
+                "Transferência - Liquidação",
+                VGIR,
+                1000,
+                10,
+                10000,
+            ),
+        ]
+    )
+    assert [lanc.tipo for lanc in mov.lancamentos] == ["compra", "compra", "reembolso"]
+    (custo,) = custo_medio(list(mov.lancamentos))
+    assert custo.completo
+    assert custo.quantidade == 1100
+    assert custo.custo_total == pytest.approx(11100)
+    assert any(
+        "VGIR11" in aviso and "não" in aviso and "venda" in aviso
+        for aviso in mov.avisos
+    )
+
+
+def test_acoes_que_voltam_do_aluguel_nao_viram_compra():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "05/09/2026",
+                "Transferência - Liquidação",
+                VGIR,
+                800,
+                "-",
+                "-",
+            ),
+            *_aluguel_de(800, "03/07/2026"),
+            _linha(
+                "Credito",
+                "04/12/2025",
+                "Transferência - Liquidação",
+                VGIR,
+                1000,
+                10,
+                10000,
+            ),
+        ]
+    )
+    (custo,) = custo_medio(list(mov.lancamentos))
+    assert custo.completo and custo.quantidade == 1000
+    assert custo.custo_total == pytest.approx(10000)
+
+
+def test_entrada_sem_valor_que_nao_e_volta_continua_sem_custo_conhecido():
+    """Ações recebidas sem valor sem uma saída antes (de outra pessoa, por exemplo): o custo
+    delas não está na planilha, então o ativo fica com o custo médio incompleto."""
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "05/09/2026",
+                "Transferência - Liquidação",
+                VGIR,
+                300,
+                "-",
+                "-",
+            ),
+            _linha(
+                "Credito",
+                "04/12/2025",
+                "Transferência - Liquidação",
+                VGIR,
+                1000,
+                10,
+                10000,
+            ),
+        ]
+    )
+    (custo,) = custo_medio(list(mov.lancamentos))
+    assert not custo.completo
