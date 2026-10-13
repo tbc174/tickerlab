@@ -191,7 +191,7 @@ def _montar_comparacao(tipo, c, base, comuns):
         key="relatorio_comparar_com",
         help="O ativo do topo entra primeiro. Exemplo: VALE3.SA, ^BVSP, AAPL.",
     )
-    outros, _ = escolher_ativos([c.ticker], interpretar_tickers(texto))
+    outros, _ = escolher_ativos(c.ticker, interpretar_tickers(texto))
     if len(outros) < 2:
         st.info("Escolha pelo menos um ativo para comparar.")
         return None
