@@ -105,3 +105,32 @@ def test_comparacao_curta_demais_nao_calcula_nada():
     assert comparacao.dias_em_comum <= analises.MIN_DIAS_PARA_ANALISE
     assert not comparacao.suficiente
     assert comparacao.base_100 is None and comparacao.tabela is None
+
+
+# --- textos da visão geral que a tela nova (React) recebe prontos (série 3 da ADR 0048) ---
+
+
+def test_aviso_da_origem_dos_precos():
+    assert analises.aviso_da_origem("atual", "2026-10-10") is None
+    antigo = analises.aviso_da_origem("cache_antigo", "2026-10-10")
+    assert antigo is not None and "2026-10-10" in antigo and "Yahoo" in antigo
+    exemplo = analises.aviso_da_origem("exemplo", "2025-12-30")
+    assert exemplo is not None and "dados de exemplo" in exemplo
+
+
+def test_itens_do_painel_cobrem_os_numeros_da_visao_geral():
+    from dataclasses import fields
+
+    from src.conteudo import carregar_glossario
+
+    campos = {f.name for f in fields(analises.PainelDeNumeros)}
+    glossario = carregar_glossario()
+    for item in analises.ITENS_DO_PAINEL:
+        assert item.campo in campos, item.campo
+        assert item.termo in glossario, item.termo
+        assert item.formato in ("pct", "pct_com_sinal", "decimal")
+        assert item.campo_da_data is None or item.campo_da_data in campos
+    numeros = {i.campo for i in analises.ITENS_DO_PAINEL}
+    datas = {i.campo_da_data for i in analises.ITENS_DO_PAINEL}
+    # tudo do painel aparece: como número, como data de um número, ou o CVaR na frase de baixo
+    assert campos - numeros - datas == {"cvar", "confianca_do_var"}

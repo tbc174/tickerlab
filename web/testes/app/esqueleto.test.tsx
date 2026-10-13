@@ -39,9 +39,9 @@ describe("rotas do app novo", () => {
   });
 
   it("tela ainda sem versão nova leva à mesma página no app atual", async () => {
-    abrir("/visao-geral");
+    abrir("/risco");
     const link = await screen.findByRole("link", { name: /Abrir no app atual/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/visao-geral");
+    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/risco");
   });
 });
 

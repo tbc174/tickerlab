@@ -120,3 +120,26 @@ def test_paginas_levam_o_contrato_para_a_tela_nova():
     assert [e["nome"] for e in visao["entradas"]] == [e.nome for e in original.entradas]
     assert visao["entradas"][1]["opcoes"] == list(original.entradas[1].opcoes)
     assert exportadas["inicio"]["contrato"] is None
+
+
+def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
+    """A visão geral em React: os itens do painel, na ordem da tela, e o "?" de cada um em partes."""
+    from src import analises
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert [i["campo"] for i in app["painel"]["itens"]] == [
+        i.campo for i in analises.ITENS_DO_PAINEL
+    ]
+    ajuda = app["glossario"]["Drawdown"]
+    assert ajuda[0]["rotulo"] == "O que é"
+    assert ajuda[0]["texto"].startswith("a queda desde o ponto mais alto")
+    assert "drawdown máximo" in ajuda[0]["texto"]  # *itálico* sem os asteriscos
+    textos = json.dumps(app["glossario"], ensure_ascii=False)
+    assert "*" not in textos
+    assert set(app["glossario"]) == {i.termo for i in analises.ITENS_DO_PAINEL}
+
+
+def test_formatacao_leva_os_casos_do_python():
+    from src import formatos
+
+    assert exp.conteudo()["formatacao"] == formatos.casos_de_formatacao()

@@ -44,6 +44,17 @@
       "AtivoV1": {
         "description": "O ativo e o período analisados, de onde vieram os preços e a taxa livre de risco usada.",
         "properties": {
+          "aviso_da_origem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Da Origem"
+          },
           "fim": {
             "format": "date",
             "title": "Fim",
@@ -82,7 +93,8 @@
           "fim",
           "origem",
           "taxa_livre_de_risco",
-          "taxa_do_cdi"
+          "taxa_do_cdi",
+          "aviso_da_origem"
         ],
         "title": "AtivoV1",
         "type": "object"
@@ -1233,13 +1245,29 @@
           "ativo": {
             "$ref": "#/components/schemas/AtivoV1"
           },
+          "curva": {
+            "$ref": "#/components/schemas/CurvaV1"
+          },
+          "motivo_sem_anualizar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Anualizar"
+          },
           "painel": {
             "$ref": "#/components/schemas/PainelDeNumerosV1"
           }
         },
         "required": [
           "ativo",
-          "painel"
+          "painel",
+          "curva",
+          "motivo_sem_anualizar"
         ],
         "title": "VisaoGeralV1",
         "type": "object"
