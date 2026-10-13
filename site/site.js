@@ -2,27 +2,74 @@
 (() => {
   "use strict";
 
-  // --- tema: o site abre claro; a escolha do escuro fica guardada neste navegador -----------
+  // --- tema: claro, escuro ou automático (claro de dia, escuro à noite, pelo fuso do aparelho) --
+  // A escolha fica neste navegador ("tema" no localStorage); o <head> já aplicou a da última vez.
   const raiz = document.documentElement;
   const corDaBarra = document.querySelector('meta[name="theme-color"]');
-  const aplicarTema = (escuro) => {
-    if (escuro) raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
+  const NOMES = { claro: "Claro", escuro: "Escuro", auto: "Automático" };
+  const temaDaEscolha = (escolha) => {
+    if (escolha !== "auto") return escolha;
+    const sol = window.TickerLabSol;
+    return sol ? sol.temaDoMomento(new Date(), sol.fusoDoAparelho()) : "claro";
+  };
+  const pintar = (tema) => {
+    if (tema === "escuro") raiz.dataset.tema = "escuro"; else delete raiz.dataset.tema;
     // a barra do navegador no celular acompanha o fundo (a cor vem do próprio CSS)
     if (corDaBarra) corDaBarra.content = getComputedStyle(raiz).getPropertyValue("--fundo").trim();
+  };
+  const aplicarTema = (escolha, comTransicao) => {
+    raiz.dataset.escolha = escolha;
+    const tema = temaDaEscolha(escolha);
+    const mudou = (raiz.dataset.tema === "escuro") !== (tema === "escuro");
+    const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (mudou && comTransicao && document.startViewTransition && !calmo) {
+      document.startViewTransition(() => pintar(tema));
+    } else {
+      pintar(tema);
+    }
+    for (const opcao of document.querySelectorAll("[data-tema-escolha]")) {
+      opcao.setAttribute("aria-checked", String(opcao.dataset.temaEscolha === escolha));
+    }
     for (const botao of document.querySelectorAll("[data-tema-botao]")) {
-      botao.setAttribute("aria-label", escuro ? "Usar o tema claro" : "Usar o tema escuro");
-      botao.title = escuro ? "Tema claro" : "Tema escuro";
+      botao.setAttribute("aria-label", "Tema: " + NOMES[escolha]);
+      botao.title = "Tema: " + NOMES[escolha];
     }
   };
-  aplicarTema(raiz.dataset.tema === "escuro");
-  for (const botao of document.querySelectorAll("[data-tema-botao]")) {
-    botao.addEventListener("click", () => {
-      const escuro = raiz.dataset.tema !== "escuro";
-      const trocar = () => aplicarTema(escuro);
-      const calmo = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (document.startViewTransition && !calmo) document.startViewTransition(trocar); else trocar();
-      try { localStorage.setItem("tema", escuro ? "escuro" : "claro"); } catch (e) {}
+  aplicarTema(raiz.dataset.escolha || "auto", false);
+  // no automático, confere a cada minuto: troca sozinho no nascer e no pôr do sol
+  setInterval(() => { if (raiz.dataset.escolha === "auto") aplicarTema("auto", true); }, 60000);
+
+  for (const menu of document.querySelectorAll(".tema-menu")) {
+    const botao = menu.querySelector("[data-tema-botao]");
+    const lista = menu.querySelector(".tema-opcoes");
+    const opcoes = [...lista.querySelectorAll("[data-tema-escolha]")];
+    const fechar = (devolverFoco) => {
+      lista.hidden = true;
+      botao.setAttribute("aria-expanded", "false");
+      if (devolverFoco) botao.focus();
+    };
+    const abrir = () => {
+      lista.hidden = false;
+      botao.setAttribute("aria-expanded", "true");
+      (opcoes.find((o) => o.getAttribute("aria-checked") === "true") || opcoes[0]).focus();
+    };
+    botao.addEventListener("click", () => (lista.hidden ? abrir() : fechar(true)));
+    for (const opcao of opcoes) {
+      opcao.addEventListener("click", () => {
+        const escolha = opcao.dataset.temaEscolha;
+        try { localStorage.setItem("tema", escolha); } catch (e) {}
+        aplicarTema(escolha, true);
+        fechar(true);
+      });
+    }
+    lista.addEventListener("keydown", (e) => {
+      const atual = opcoes.indexOf(document.activeElement);
+      if (e.key === "Escape") { fechar(true); }
+      else if (e.key === "ArrowDown") { opcoes[(atual + 1) % opcoes.length].focus(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { opcoes[(atual - 1 + opcoes.length) % opcoes.length].focus(); e.preventDefault(); }
+      else if (e.key === "Tab") { fechar(false); }
     });
+    document.addEventListener("click", (e) => { if (!menu.contains(e.target)) fechar(false); });
   }
   const semAcento = (t) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
