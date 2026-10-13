@@ -8,6 +8,10 @@ from base.regras import (
     r2_subtotais,
     r3_escala,
     r4_impossivel,
+    r5_reapresentado,
+    r6_refeito_no_seguinte,
+    r7_salto_fora_do_padrao,
+    r8_atraso,
     r9_repetidas,
     r10_lucro_em_branco,
     r11_mae_em_branco,
@@ -27,6 +31,7 @@ def _conta(
     referencia: pd.Timestamp = REFERENCIA,
     fim: pd.Timestamp | None = None,
     descricao: str | None = None,
+    inicio: pd.Timestamp | None = None,
 ) -> dict:
     return {
         "cnpj": cnpj,
@@ -37,7 +42,7 @@ def _conta(
         "demonstracao": demonstracao,
         "grupo": grupo,
         "ordem": ordem,
-        "inicio": pd.NaT,
+        "inicio": pd.NaT if inicio is None else inicio,
         "fim": referencia if fim is None else fim,
         "conta": conta,
         "descricao": descricao or f"conta {conta}",
@@ -332,3 +337,238 @@ def test_r10_acha_o_lucro_pela_descricao_e_nao_pelo_codigo():
 
     assert r10_lucro_em_branco(com_lucro) == []
     assert [a.conta for a in r10_lucro_em_branco(sem_lucro)] == ["3.13"]
+
+
+# --- R6: número refeito pela empresa no balanço seguinte ------------------------------------------
+
+DFP_2023 = pd.Timestamp("2023-12-31")
+ENTREGA_DA_DFP_2023 = pd.Timestamp("2024-03-28")
+
+
+def _lucro_de_2023(valor: float, referencia: pd.Timestamp, ordem: str) -> dict:
+    """O lucro do ano de 2023: "último" na DFP 2023, "penúltimo" na DFP 2024."""
+    return _conta(
+        "3.11",
+        valor,
+        demonstracao="DRE",
+        descricao="Lucro/Prejuízo Consolidado do Período",
+        referencia=referencia,
+        ordem=ordem,
+        inicio=pd.Timestamp("2023-01-01"),
+        fim=DFP_2023,
+    )
+
+
+def test_r6_compara_ultimo_de_um_ano_com_penultimo_do_seguinte():
+    """Como na CLI Sul: lucro de R$ 24,2 mi refeito para prejuízo de R$ 11,0 mi."""
+    do_ano = _contas(_lucro_de_2023(24.2e6, DFP_2023, "ultimo"))
+    seguinte = _contas(_lucro_de_2023(-11.0e6, REFERENCIA, "penultimo"))
+
+    achados = r6_refeito_no_seguinte(do_ano, seguinte, {CNPJ: ENTREGA_DA_DFP_2023})
+
+    assert len(achados) == 1
+    achado = achados[0]
+    assert (achado.regra, achado.conta, achado.valor, achado.valor_esperado) == (
+        "R6",
+        "3.11",
+        24.2e6,
+        -11.0e6,
+    )
+    assert "de lucro para prejuízo" in achado.porque
+
+
+def test_r6_data_do_achado_e_a_da_dfp_seguinte():
+    """O número só passa a ser "refeito" quando a DFP seguinte fica pública: nada de olhar o futuro."""
+    do_ano = _contas(_conta("1", 100e6, referencia=DFP_2023))
+    seguinte = _contas(_conta("1", 90e6, ordem="penultimo", fim=DFP_2023))
+
+    achado = r6_refeito_no_seguinte(do_ano, seguinte, {CNPJ: ENTREGA_DA_DFP_2023})[0]
+
+    assert achado.valido_desde == ENTREGA_DA_DFP_2023
+    assert (
+        achado.referencia == DFP_2023
+    )  # o achado é do documento que tinha o número original
+
+
+def test_r6_ignora_diferenca_abaixo_de_0_1_pct():
+    do_ano = _contas(_conta("1", 1e9, referencia=DFP_2023))
+    seguinte = _contas(_conta("1", 1e9 + 500_000, ordem="penultimo", fim=DFP_2023))
+
+    assert r6_refeito_no_seguinte(do_ano, seguinte, {CNPJ: ENTREGA_DA_DFP_2023}) == []
+
+
+def test_r6_olha_so_as_contas_principais():
+    """3,9% das contas mudam de um ano para o outro, quase tudo reclassificação pequena."""
+    do_ano = _contas(_conta("1.01.02", 10e6, referencia=DFP_2023))
+    seguinte = _contas(_conta("1.01.02", 15e6, ordem="penultimo", fim=DFP_2023))
+
+    assert r6_refeito_no_seguinte(do_ano, seguinte, {CNPJ: ENTREGA_DA_DFP_2023}) == []
+
+
+def test_r6_patrimonio_liquido_achado_pela_descricao():
+    pl = {"demonstracao": "BPP", "descricao": "Patrimônio Líquido Consolidado"}
+    do_ano = _contas(_conta("2.07", 500e6, referencia=DFP_2023) | pl)
+    seguinte = _contas(_conta("2.07", 450e6, ordem="penultimo", fim=DFP_2023) | pl)
+
+    achados = r6_refeito_no_seguinte(do_ano, seguinte, {CNPJ: ENTREGA_DA_DFP_2023})
+
+    assert [a.conta for a in achados] == ["2.07"]
+
+
+# --- R5: reapresentado com número diferente ------------------------------------------------------
+
+ENTREGA_DA_V2 = pd.Timestamp("2025-03-30")
+
+
+def _versao(valor: float, versao: int) -> dict:
+    return _lucro(valor) | {"versao": versao}
+
+
+def test_r5_nao_dispara_quando_so_a_versao_muda():
+    """74% das reapresentações da DFP 2022 não mudaram nenhum número (prova do ENET)."""
+    antiga = _contas(_receita(900e6) | {"versao": 1}, _versao(50e6, 1))
+    nova = _contas(_receita(900e6) | {"versao": 2}, _versao(50e6, 2))
+
+    assert r5_reapresentado(antiga, nova, "Inclusão de anexo", ENTREGA_DA_V2) == []
+
+
+def test_r5_dispara_com_numero_diferente_e_traz_o_motivo():
+    """Como na Allos: lucro de R$ 842,1 mi na versão 1 e R$ 222,1 mi na última."""
+    antiga = _contas(_versao(842.1e6, 1))
+    nova = _contas(_versao(222.1e6, 2))
+
+    achados = r5_reapresentado(
+        antiga, nova, "Ajuste na mensuração de investimentos", ENTREGA_DA_V2
+    )
+
+    assert len(achados) == 1
+    achado = achados[0]
+    assert (achado.regra, achado.valor, achado.valor_esperado) == (
+        "R5",
+        842.1e6,
+        222.1e6,
+    )
+    assert achado.valido_desde == ENTREGA_DA_V2
+    assert "Ajuste na mensuração de investimentos" in achado.porque
+
+
+def test_r5_sem_motivo_diz_que_nao_foi_informado():
+    achado = r5_reapresentado(
+        _contas(_versao(10e6, 1)), _contas(_versao(12e6, 2)), "", None
+    )[0]
+
+    assert "motivo não informado" in achado.porque
+
+
+# --- R7: salto fora do padrão sem evento que explique ---------------------------------------------
+
+UM_ANO_ANTES = {"inicio": pd.Timestamp("2023-01-01"), "fim": DFP_2023}
+DO_ANO = {"inicio": pd.Timestamp("2024-01-01"), "fim": REFERENCIA}
+
+
+def _receitas(atual: float, anterior: float) -> pd.DataFrame:
+    return _contas(
+        _receita(atual) | DO_ANO,
+        _receita(anterior) | UM_ANO_ANTES | {"ordem": "penultimo"},
+    )
+
+
+def _eventos(*linhas: tuple[str, str]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [{"cnpj": cnpj, "publicado_em": pd.Timestamp(dia)} for cnpj, dia in linhas],
+        columns=["cnpj", "publicado_em"],
+    )
+
+
+def test_r7_salto_sem_evento_no_ipe():
+    achados = r7_salto_fora_do_padrao(_receitas(600e6, 100e6), _eventos())
+
+    assert [(a.regra, a.conta) for a in achados] == [("R7", "3.01")]
+    assert "6,0 vezes" in achados[0].porque
+
+
+def test_r7_com_fato_relevante_no_periodo_nao_dispara():
+    eventos = _eventos((CNPJ, "2024-06-01"))
+
+    assert r7_salto_fora_do_padrao(_receitas(600e6, 100e6), eventos) == []
+
+
+def test_r7_evento_de_outra_empresa_ou_fora_do_periodo_nao_conta():
+    eventos = _eventos(("99.999.999/0001-99", "2024-06-01"), (CNPJ, "2022-06-01"))
+
+    assert len(r7_salto_fora_do_padrao(_receitas(600e6, 100e6), eventos)) == 1
+
+
+def test_r7_crescimento_comum_nao_dispara():
+    assert r7_salto_fora_do_padrao(_receitas(200e6, 100e6), _eventos()) == []
+
+
+def test_r7_mil_vezes_fica_para_a_r3():
+    assert r7_salto_fora_do_padrao(_receitas(100e9, 100e6), _eventos()) == []
+
+
+# --- R8: balanço atrasado ---------------------------------------------------------------------------
+
+
+def _esperadas() -> pd.DataFrame:
+    return pd.DataFrame([{"cnpj": CNPJ, "empresa": "EMPRESA TESTE S.A."}])
+
+
+def _entregas(recebido_em: str | None) -> pd.DataFrame:
+    linhas = (
+        []
+        if recebido_em is None
+        else [
+            {
+                "cnpj": CNPJ,
+                "documento": "DFP",
+                "referencia": REFERENCIA,
+                "recebido_em": pd.Timestamp(recebido_em),
+            }
+        ]
+    )
+    return pd.DataFrame(
+        linhas, columns=["cnpj", "documento", "referencia", "recebido_em"]
+    )
+
+
+def test_r8_prazo_vencido_sem_documento():
+    """DFP de 2024: prazo em 31/03/2025 (segunda-feira); em 15/04 ainda não entregue."""
+    achados = r8_atraso(
+        _esperadas(), _entregas(None), "DFP", REFERENCIA, pd.Timestamp("2025-04-15")
+    )
+
+    assert len(achados) == 1
+    achado = achados[0]
+    assert (achado.regra, achado.valor) == ("R8", 15.0)
+    assert achado.valido_desde == pd.Timestamp("2025-04-01")
+    assert "não foi entregue" in achado.porque
+
+
+def test_r8_entregue_com_atraso():
+    achados = r8_atraso(
+        _esperadas(),
+        _entregas("2025-04-10"),
+        "DFP",
+        REFERENCIA,
+        pd.Timestamp("2025-05-01"),
+    )
+
+    assert [(a.regra, a.valor) for a in achados] == [("R8", 10.0)]
+    assert achados[0].valido_desde == pd.Timestamp("2025-04-10")
+
+
+def test_r8_antes_do_prazo_ou_entregue_no_prazo_nao_dispara():
+    antes = r8_atraso(
+        _esperadas(), _entregas(None), "DFP", REFERENCIA, pd.Timestamp("2025-03-20")
+    )
+    no_prazo = r8_atraso(
+        _esperadas(),
+        _entregas("2025-03-28"),
+        "DFP",
+        REFERENCIA,
+        pd.Timestamp("2025-05-01"),
+    )
+
+    assert antes == []
+    assert no_prazo == []
