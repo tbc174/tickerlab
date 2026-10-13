@@ -75,11 +75,13 @@ def test_como_programa_le_o_json_da_entrada_padrao():
 
 
 def test_script_de_deploy_nao_implanta_sem_o_ok_do_ci():
-    """O script só segue quando o estado é `ok`; os outros casos saem sem tocar no servidor."""
+    """O script só implanta um commit com o teste verde; sem nenhum, sai sem tocar no servidor."""
     texto = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
     assert "set -euo pipefail" in texto
     assert 'case "$estado" in' in texto
-    assert texto.index("ok) ;;") < texto.index("git merge --ff-only")
+    sem_alvo = texto.index('if [ "$alvo" = "-" ]; then')
+    assert sem_alvo < texto.index('novo="$alvo"') < texto.index("git merge --ff-only")
+    assert texto.index("exit 0", sem_alvo) < texto.index('novo="$alvo"')
     assert "git reset -q --hard" in texto  # reversão automática
     assert "flock -n 9" in texto  # uma execução por vez
     assert "--force" not in texto
