@@ -379,3 +379,23 @@ def test_piloto_so_com_eventos_prontos_pela_regra(pasta):
     rc.piloto(cliente, eventos, pasta, n=10, teto=60, so_fatos=True)
     assert EVENTOS[0]["id"] in rc.ler_rotulos(pasta)  # aviso só pelo assunto
     assert FATO["id"] not in rc.ler_rotulos(pasta)  # fato sem texto continua esperando
+
+
+def test_enviar_so_os_prontos_e_o_resto_no_proximo_lote(pasta):
+    eventos = [FATO, *EVENTOS]  # o fato ainda não tem texto
+    cliente = ClienteDeMentira()
+    rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True, so_prontos=True)
+    assert [p["custom_id"] for p in cliente.lotes[0]] == [
+        rc.chave(e["id"]) for e in EVENTOS
+    ]
+    cliente.estado = "ended"
+    rc.buscar(cliente, eventos, pasta)
+    assert (
+        rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True, so_prontos=True)
+        is None
+    )
+    (pasta / "textos" / f"{FATO['id']}.txt").write_text(
+        "A empresa anuncia a aquisição.", encoding="utf-8"
+    )
+    rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True, so_prontos=True)
+    assert [p["custom_id"] for p in cliente.lotes[1]] == [rc.chave(FATO["id"])]

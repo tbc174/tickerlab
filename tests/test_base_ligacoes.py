@@ -58,6 +58,21 @@ def test_fca_vem_primeiro_e_a_tabela_completa(emissores_do_fca):
     assert not ligacao["conflito"].any()
 
 
+def test_emissor_dos_codigos_conferidos_diz_a_origem(emissores_do_fca):
+    """Série 3, PR 8: o BTG entra pela tabela de códigos conferidos da `carga_fca`, e a ligação diz isso."""
+    tickers = pd.DataFrame(columns=["codigo", "cnpj"])
+    _, emissores = fca.com_codigos_conferidos(
+        tickers, emissores_do_fca, fca.codigos_conferidos()
+    )
+    ligacao = ligacoes.ligacao_dos_emissores(emissores, ligacoes.tabela_conferida())
+    por_emissor = ligacao.set_index("emissor")
+    assert por_emissor.loc["BPAC", ["cnpj", "origem"]].tolist() == [
+        "30.306.294/0001-45",
+        fca.PELOS_CODIGOS_CONFERIDOS,
+    ]
+    assert por_emissor.loc["ITUB", "origem"] == ligacoes.PELO_FCA
+
+
 def test_emissor_com_cnpj_diferente_no_fca_e_na_tabela_e_conflito(emissores_do_fca):
     """Nada é casado no escuro: se as duas fontes discordam, o emissor fica sem CNPJ e é listado."""
     errada = pd.DataFrame({"emissor": ["PETR"], "cnpj": ["11.111.111/0001-11"]})

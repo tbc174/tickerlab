@@ -218,3 +218,11 @@ def test_identificacao_le_o_mesmo_documento_anonimizado():
 )
 def test_palpite_da_identificacao(parada, resposta, esperado):
     assert ri.palpite_da_identificacao(parada, resposta) == esperado
+
+
+def test_cliente_manda_o_workspace_quando_configurado(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-teste-sem-valor")
+    monkeypatch.setenv(ri.VARIAVEL_DO_WORKSPACE, " wrkspc_teste ")
+    assert ri.cliente().default_headers["anthropic-workspace-id"] == "wrkspc_teste"
+    monkeypatch.delenv(ri.VARIAVEL_DO_WORKSPACE)
+    assert "anthropic-workspace-id" not in ri.cliente().default_headers

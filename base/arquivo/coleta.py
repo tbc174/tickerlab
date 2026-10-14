@@ -363,3 +363,36 @@ def arquivar(
             detalhe = f"{type(erro).__name__}: {erro}"
             _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
     return resultado
+
+
+def guardar_copia(
+    fonte: str,
+    url: str,
+    arquivo: Path,
+    sha256: str,
+    agora: datetime,
+    *,
+    origem: str,
+    extensao: str | None = None,
+) -> str | None:
+    """Guarda no acervo um arquivo que outra máquina baixou (a cópia da B3 no VPS, ADR 0073) e o
+    registra como coleta "ok", com a origem no detalhe e no manifesto. `arquivo` some (é movido).
+
+    `extensao`, como no `Alvo`: quando o endereço não diz (".zip" da B3)."""
+    tamanho = arquivo.stat().st_size
+    caminho = acervo.guardar_arquivo(fonte, url, arquivo, sha256, agora, extensao)
+    _registrar(fonte, url, sha256, tamanho, "ok", f"cópia do {origem}", agora, caminho)
+    _escrever_manifesto(
+        agora,
+        {
+            "fonte": fonte,
+            "url": url,
+            "sha256": sha256,
+            "bytes": tamanho,
+            "caminho": caminho,
+            "origem": origem,
+            "hora": agora.isoformat(),
+            "versao_do_arquivista": VERSAO_DO_ARQUIVISTA,
+        },
+    )
+    return caminho

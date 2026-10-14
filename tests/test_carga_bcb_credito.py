@@ -128,3 +128,38 @@ def test_recusa_rodar_sem_a_versao_do_codigo(ambiente, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):
         _rodar(pasta, "--so", "scr")
     assert not pasta.exists()
+
+
+def test_linhagem_do_ifdata_e_do_scr_e_completa(ambiente):
+    """Exigência 13 da ADR 0055 (série 3, PR 8): de cada tabela do BC, chegar à resposta original,
+    à data da coleta e à versão do código."""
+    from base.linhagem import linhagem_da_tabela
+    from src.banco.conexao import criar_engine
+
+    pasta, _, _ = ambiente
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    motor = criar_engine()
+    try:
+        with motor.connect() as c:
+            for arquivo in (
+                pasta / "ifdata" / "valores" / "tipo_1" / "202506.parquet",
+                pasta / "ifdata" / "cadastro" / "202506.parquet",
+                pasta / "scr" / "2012.parquet",
+            ):
+                caminho = linhagem_da_tabela(c, arquivo)
+                assert caminho.completa, arquivo
+                assert caminho.versao_do_codigo == VERSAO
+    finally:
+        motor.dispose()
+
+
+def test_scr_repetido_da_o_mesmo_resultado(ambiente):
+    """Exigência 9 da ADR 0027 (série 3, PR 8): os mesmos originais dão a mesma tabela."""
+    pasta, _, _ = ambiente
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    manifesto = pasta / "scr" / "2012.json"
+    antes = json.loads(manifesto.read_text(encoding="utf-8"))
+    _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
+    assert json.loads(manifesto.read_text(encoding="utf-8")) == antes
+    assert not list((pasta / "scr").glob("2012.v*"))

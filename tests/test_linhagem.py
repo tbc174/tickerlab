@@ -4,6 +4,7 @@ da base, chegar ao arquivo original, à data da coleta e à versão do código q
 import hashlib
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -104,3 +105,55 @@ def test_manifesto_antigo_sem_versao_nao_e_linhagem_completa(ambiente):
     with motor.connect() as c:
         caminho = linhagem_da_linha(c, pasta, linha)
     assert caminho.versao_do_codigo is None and not caminho.completa
+
+
+def _com_a_tabela_conferida(pasta, sha256: str) -> None:
+    manifesto = pasta / "2022.json"
+    dados = json.loads(manifesto.read_text(encoding="utf-8"))
+    dados["origens"].append(
+        {"url": "base/conferidas/codigos_fora_do_fca.csv", "sha256": sha256}
+    )
+    manifesto.write_text(json.dumps(dados), encoding="utf-8")
+
+
+def test_tabela_conferida_do_repositorio_e_origem_valida(ambiente):
+    """Série 3, PR 8: a tabela conferida à mão não tem coleta; o elo é o arquivo no repositório com
+    o mesmo SHA-256 (cada linha dela diz a fonte e quando foi conferida)."""
+    from base.fca import CODIGOS_CONFERIDOS
+
+    motor, pasta = ambiente
+    _com_a_tabela_conferida(
+        pasta, hashlib.sha256(CODIGOS_CONFERIDOS.read_bytes()).hexdigest()
+    )
+    linha = pd.read_parquet(pasta / "2022.parquet").iloc[0]
+    with motor.connect() as c:
+        caminho = linhagem_da_linha(c, pasta, linha)
+    conferida = caminho.origens[-1]
+    assert conferida.no_repositorio and conferida.original_confere
+    assert caminho.completa
+
+
+def test_tabela_conferida_mudada_depois_quebra_a_linhagem(ambiente):
+    """A tabela mudou depois da carga: a base precisa ser remontada (a versão antiga está no Git)."""
+    motor, pasta = ambiente
+    _com_a_tabela_conferida(pasta, "0" * 64)
+    linha = pd.read_parquet(pasta / "2022.parquet").iloc[0]
+    with motor.connect() as c:
+        caminho = linhagem_da_linha(c, pasta, linha)
+    assert not caminho.origens[-1].original_confere and not caminho.completa
+
+
+def test_endereco_que_sai_da_pasta_das_conferidas_nao_confere(ambiente):
+    motor, pasta = ambiente
+    manifesto = pasta / "2022.json"
+    dados = json.loads(manifesto.read_text(encoding="utf-8"))
+    alvo = "base/conferidas/../../README.md"
+    conteudo = (Path(__file__).resolve().parent.parent / "README.md").read_bytes()
+    dados["origens"].append(
+        {"url": alvo, "sha256": hashlib.sha256(conteudo).hexdigest()}
+    )
+    manifesto.write_text(json.dumps(dados), encoding="utf-8")
+    linha = pd.read_parquet(pasta / "2022.parquet").iloc[0]
+    with motor.connect() as c:
+        caminho = linhagem_da_linha(c, pasta, linha)
+    assert not caminho.origens[-1].original_confere and not caminho.completa

@@ -49,6 +49,17 @@ NOTA_DO_RESULTADO = (
     "de imposto nem recomendação; para declarar, confira com as notas de corretagem ou um "
     "contador."
 )
+COMO_BAIXAR_A_NEGOCIACAO = (
+    "1. Na **Área do Investidor** da B3, abra **Extratos → Negociação**.\n"
+    "2. Escolha o período (desde a primeira compra, se der: o resultado de uma venda precisa do "
+    "custo das ações vendidas) e baixe em **Excel**.\n"
+    "3. Envie o arquivo aqui. Ele é lido **só na memória** e não fica guardado. Com a "
+    "movimentação enviada acima, os desdobros entram nas contas e os FIIs são reconhecidos."
+)
+AVISO_DA_NEGOCIACAO_DE_EXEMPLO = (
+    "**Exemplo demonstrativo:** negociação fictícia, não é a sua."
+)
+SEM_NEGOCIOS = "A negociação não tem compras nem vendas que entrem no resultado."
 
 
 @dataclass(frozen=True)

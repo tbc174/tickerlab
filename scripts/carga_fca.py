@@ -8,7 +8,9 @@ Cada arquivo anual vem do acervo (`src/acervo.py`) e só é baixado da CVM se n�
 `cvm-fca`, com registro e SHA-256). Grava quatro tabelas com manifesto (`base/parquet.py`):
 `valores_mobiliarios` (todas as linhas, versão mais nova de cada documento), `emissores` (emissor →
 CNPJ, com conflitos marcados), `tickers` (`base/cadastro.py::tickers_no_tempo`, da série 1) e `codigos_invalidos` (código de
-negociação fora do formato, para o relatório de buracos). Ano que não existe na CVM é pulado. Feita
+negociação fora do formato, para o relatório de buracos). Os tickers e os emissores levam também a
+tabela conferida `base/conferidas/codigos_fora_do_fca.csv` (o BTG informa "000000"; série 3, PR 8),
+com a coluna `origem`. Ano que não existe na CVM é pulado. Feita
 para o servidor de casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 """
 
@@ -41,6 +43,8 @@ URL_DO_FCA = (
 PRIMEIRO_ANO = 2010  # o 1º FCA aberto
 NAO_ENCONTRADO = 404
 SUBPASTA = Path("base") / "fca"
+# a tabela conferida entra nas origens dos tickers e dos emissores pelo caminho no repositório
+URL_DOS_CODIGOS_CONFERIDOS = "base/conferidas/codigos_fora_do_fca.csv"
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
@@ -80,14 +84,29 @@ def gravar(
     origens: list[dict[str, str]],
     pasta: Path,
 ) -> None:
-    tabelas = {
-        "valores_mobiliarios": (valores, ["cnpj", "referencia", "valor_mobiliario"]),
-        "emissores": (fca.emissores(valores), ["emissor", "cnpj"]),
-        "tickers": (tickers_no_tempo(conteudos), ["codigo", "cnpj"]),
-        "codigos_invalidos": (fca.codigos_invalidos(valores), ["cnpj", "referencia"]),
+    tickers, emissores = fca.com_codigos_conferidos(
+        tickers_no_tempo(conteudos), fca.emissores(valores), fca.codigos_conferidos()
+    )
+    conferida = {
+        "url": URL_DOS_CODIGOS_CONFERIDOS,
+        "sha256": hashlib.sha256(fca.CODIGOS_CONFERIDOS.read_bytes()).hexdigest(),
     }
-    for nome, (tabela, ordem) in tabelas.items():
-        gravar_tabela(tabela, pasta / nome, origens, ordem)
+    tabelas = {
+        "valores_mobiliarios": (
+            valores,
+            ["cnpj", "referencia", "valor_mobiliario"],
+            origens,
+        ),
+        "emissores": (emissores, ["emissor", "cnpj"], [*origens, conferida]),
+        "tickers": (tickers, ["codigo", "cnpj"], [*origens, conferida]),
+        "codigos_invalidos": (
+            fca.codigos_invalidos(valores),
+            ["cnpj", "referencia"],
+            origens,
+        ),
+    }
+    for nome, (tabela, ordem, de_onde) in tabelas.items():
+        gravar_tabela(tabela, pasta / nome, de_onde, ordem)
         log.info("%s: %s linhas", nome, len(tabela))
 
 

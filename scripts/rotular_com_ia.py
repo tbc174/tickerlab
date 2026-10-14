@@ -361,8 +361,11 @@ def enviar(
     teto: float,
     permitir_sem_texto: bool = False,
     so_fatos: bool = False,
+    so_prontos: bool = False,
 ) -> str | None:
-    """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote."""
+    """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote. Com
+    `so_prontos`, vão só os que já têm o texto pela regra; os outros esperam o próximo lote (a CVM
+    libera poucos textos por dia)."""
     manifesto = ler_manifesto(pasta)
     if any(lote.get("estado") != "gravado" for lote in manifesto.get("lotes", [])):
         raise RuntimeError(
@@ -375,7 +378,13 @@ def enviar(
     sem_baixar = [
         e["id"] for e in faltam if texto_do_pedido(e, pasta, so_fatos) is None
     ]
-    if sem_baixar and not permitir_sem_texto:
+    if sem_baixar and so_prontos:
+        faltam = [e for e in faltam if e["id"] not in set(sem_baixar)]
+        log.info("%s eventos esperam o texto para o próximo lote.", len(sem_baixar))
+        if not faltam:
+            log.info("Nenhum evento pronto.")
+            return None
+    elif sem_baixar and not permitir_sem_texto:
         raise RuntimeError(
             f"{len(sem_baixar)} eventos sem o texto baixado: rode `baixar` (ou use --permitir-sem-texto)."
         )
@@ -563,6 +572,11 @@ def main(argv: list[str] | None = None) -> int:
         help="enviar mesmo sem o texto de todos",
     )
     argumentos.add_argument(
+        "--so-prontos",
+        action="store_true",
+        help="enviar só os que já têm o texto; os outros vão num próximo lote",
+    )
+    argumentos.add_argument(
         "--texto-so-nos-fatos",
         action="store_true",
         help="só os fatos relevantes vão com texto; os outros, só com o assunto",
@@ -594,7 +608,7 @@ def main(argv: list[str] | None = None) -> int:
             "Diga o teto com --teto-dolares (o Tiago combinou US$ 60 em 14/10/2026)."
         )
         return 2
-    cliente = anthropic.Anthropic()  # a chave vem de ANTHROPIC_API_KEY
+    cliente = ri.cliente()  # chave e workspace vêm do .env
     try:
         if opcoes.passo == "estimar":
             faltam = pendentes(eventos, opcoes.pasta)
@@ -634,6 +648,7 @@ def main(argv: list[str] | None = None) -> int:
                 opcoes.teto_dolares,
                 opcoes.permitir_sem_texto,
                 opcoes.texto_so_nos_fatos,
+                opcoes.so_prontos,
             )
         else:
             buscar(cliente, eventos, opcoes.pasta)

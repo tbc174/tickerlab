@@ -15,13 +15,18 @@ de modelo ou de prompt depois de ver a auditoria conta como uma tentativa nova (
 
 import hashlib
 import json
+import os
 import re
 import unicodedata
 from dataclasses import asdict, dataclass
 
+import anthropic
+
 from src import topicos
 
 MODELO = "claude-sonnet-5-5"
+# chave criada fora de um workspace: a API pede o id do workspace em cada pedido (não é segredo)
+VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
 VERSAO_DO_PROMPT = "1"
 GUIA = "v2"
 MAX_CARACTERES_DO_TEXTO = 6_000  # o começo do documento, como no leitor (ADR 0069)
@@ -352,3 +357,14 @@ def palpite_da_identificacao(stop_reason: str | None, resposta: str) -> str:
         return NAO_SEI
     palpite = str(dados.get("empresa") or "").strip() if isinstance(dados, dict) else ""
     return palpite or NAO_SEI
+
+
+def cliente() -> anthropic.Anthropic:
+    """O cliente da API (a chave vem de ANTHROPIC_API_KEY), com o cabeçalho do workspace quando a
+    chave não é de um workspace (ANTHROPIC_WORKSPACE_ID no `.env`)."""
+    workspace = os.environ.get(VARIAVEL_DO_WORKSPACE, "").strip()
+    if workspace:
+        return anthropic.Anthropic(
+            default_headers={"anthropic-workspace-id": workspace}
+        )
+    return anthropic.Anthropic()

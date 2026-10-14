@@ -5,8 +5,13 @@ o `<ano>.json` ao lado do Parquet dá o hash da base, a versão do código e as 
 SHA-256 de cada original); o registro de coletas dá a data da coleta e onde o original está no acervo;
 o acervo confirma que o arquivo guardado ainda tem aquele SHA-256. A linhagem é "completa" só se
 todos os elos existem e conferem.
+
+Uma tabela conferida à mão (`base/conferidas/`, série 3, PR 8) não tem coleta: o elo é o arquivo no
+repositório com o SHA-256 anotado (cada linha dela diz a fonte e quando foi conferida). Se a tabela
+mudar depois, a base que a usou deixa de conferir até ser remontada (a versão antiga fica no Git).
 """
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -20,6 +25,9 @@ from base.ponto_no_tempo import SEM_DATA, conferir_pasta
 from src import acervo
 from src.banco.modelo import coletas
 
+RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
+TABELAS_CONFERIDAS = "base/conferidas/"
+
 
 @dataclass(frozen=True)
 class Origem:
@@ -27,7 +35,10 @@ class Origem:
     sha256: str
     baixado_em: datetime | None  # None: nenhuma coleta registrada com este arquivo
     caminho_do_original: str | None
-    original_confere: bool  # o arquivo do acervo ainda tem o SHA-256
+    original_confere: (
+        bool  # o arquivo do acervo (ou do repositório) ainda tem o SHA-256
+    )
+    no_repositorio: bool = False  # tabela conferida à mão, sem coleta
 
 
 @dataclass(frozen=True)
@@ -44,7 +55,8 @@ class Linhagem:
             and self.base_confere
             and bool(self.origens)
             and all(
-                o.baixado_em is not None and o.original_confere for o in self.origens
+                (o.baixado_em is not None or o.no_repositorio) and o.original_confere
+                for o in self.origens
             )
         )
 
@@ -54,7 +66,22 @@ def _ano_da_linha(linha: pd.Series) -> str:
     return SEM_DATA if fim is None or pd.isna(fim) else str(pd.Timestamp(fim).year)
 
 
+def _origem_no_repositorio(url: str, sha256: str) -> Origem:
+    arquivo = (RAIZ_DO_REPOSITORIO / url).resolve()
+    dentro = arquivo.is_relative_to(
+        RAIZ_DO_REPOSITORIO / TABELAS_CONFERIDAS
+    )  # nada de "../"
+    confere = (
+        dentro
+        and arquivo.is_file()
+        and hashlib.sha256(arquivo.read_bytes()).hexdigest() == sha256
+    )
+    return Origem(url, sha256, None, url, confere, no_repositorio=True)
+
+
 def _origem(conexao: sa.Connection, url: str, sha256: str) -> Origem:
+    if url.startswith(TABELAS_CONFERIDAS):
+        return _origem_no_repositorio(url, sha256)
     coleta = conexao.execute(
         sa.select(coletas.c.baixado_em, coletas.c.caminho_do_original)
         .where(coletas.c.sha256 == sha256, coletas.c.situacao == "ok")
