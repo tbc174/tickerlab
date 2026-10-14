@@ -3,7 +3,8 @@
 A posição de cada fundo (CDA, `base/cda.py`) traz o ISIN, e o ISIN dá o **emissor** (4 posições: PETR,
 B3SA). O emissor vira CNPJ por duas fontes, nesta ordem:
 
-1. **FCA** (`base/fca.py::emissores`): o que a empresa informa à CVM, de 2018 em diante;
+1. **FCA** (`base/fca.py::emissores`): o que a empresa informa à CVM, de 2018 em diante, mais os
+   códigos que ela informa fora do formato, conferidos um a um (o BTG põe "000000"; série 3, PR 8);
 2. **tabela conferida** (`base/conferidas/emissores_antigos.csv`): os emissores que saíram da bolsa ou
    mudaram de código antes de 2018, ligados um a um pelo cadastro de companhias da CVM (inclusive as
    canceladas), com a fonte e a observação de cada linha. Decisão do Tiago em 14/10/2026: conferir pelos
@@ -17,11 +18,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.fca import PELOS_CODIGOS_CONFERIDOS
+
 TABELA_CONFERIDA = (
     Path(__file__).resolve().parent / "conferidas" / "emissores_antigos.csv"
 )
 PELO_FCA, PELA_TABELA = "fca", "tabela conferida"
-PRIORIDADE = {PELO_FCA: "0", PELA_TABELA: "1"}  # na ordenação, o FCA vem antes
+# na ordenação, as tabelas da `carga_fca` vêm antes
+PRIORIDADE = {PELO_FCA: "0", PELOS_CODIGOS_CONFERIDOS: "0", PELA_TABELA: "1"}
 COMPRADO = "comprado"
 COLUNAS_DA_LIGACAO = ["emissor", "cnpj", "origem", "conflito"]
 SOMAS = {"valor": "sum", "quantidade": "sum", "compras": "sum", "vendas": "sum"}
@@ -38,10 +42,12 @@ def ligacao_dos_emissores(
     emissores_do_fca: pd.DataFrame, conferida: pd.DataFrame
 ) -> pd.DataFrame:
     """Emissor → CNPJ: o FCA primeiro, a tabela conferida no que faltar; conflito marcado."""
-    fca = emissores_do_fca.loc[~emissores_do_fca["conflito"], ["emissor", "cnpj"]]
+    fca = emissores_do_fca.loc[~emissores_do_fca["conflito"]]
+    # tabelas gravadas antes do PR 8 não têm a coluna
+    origem = fca.get("origem", PELO_FCA)
     juntas = pd.concat(
         [
-            fca.assign(origem=PELO_FCA),
+            fca[["emissor", "cnpj"]].assign(origem=origem),
             conferida[["emissor", "cnpj"]].assign(origem=PELA_TABELA),
         ],
         ignore_index=True,
