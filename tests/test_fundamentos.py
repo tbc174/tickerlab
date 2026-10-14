@@ -1,6 +1,8 @@
 """Fundamentos da CVM (Research, etapa 3): leitura das demonstrações, cálculo dos indicadores,
 banco e coleta, sem internet (amostras reais de 4 empresas em `tests/arquivos/cvm/fundamentos/`)."""
 
+import io
+import zipfile
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -88,6 +90,78 @@ def test_dfp_traz_as_contas_das_notas_classicas():
     assert saldos["lucros_acumulados"] == 0
     assert fluxos["despesas_com_vendas"] == -3_353_431 * MIL
     assert fluxos["despesas_administrativas"] == -1_513_882 * MIL
+
+
+def test_depreciacao_do_banco_nao_soma_juros_ao_custo_amortizado():
+    """Regressão (fim da série 2): no Itaú, "Resultado de Juros ... ao Custo Amortizado" (−39,1 bi)
+    entrava na depreciação, que saía −31,7 bi em vez dos 7,4 bi do PDF da DFP 2025."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    itau = contas[(contas["cnpj"] == ITAU) & (contas["periodo"] == dm.EXERCICIO)]
+    assert itau.set_index("conta")["valor"]["depreciacao"] == 7_386_000 * MIL
+
+
+@pytest.mark.parametrize(
+    ("descricao", "e_depreciacao"),
+    [
+        ("Depreciação, Amortização e Exaustão", True),
+        ("Amortização de ativos de direito de uso", True),
+        ("Amortização de arrendamentos", True),
+        ("Amortização de ágio", True),
+        ("Amortização de custos com captação de novos clientes", True),
+        (
+            "Resultado de Juros e Variação Cambial de Ativos Financeiros ao Custo Amortizado",
+            False,
+        ),
+        ("Atualização dos ativos financeiros ao custo amortizado", False),
+        (
+            "Encargos fin. sobre empréstimos, financiamentos, debêntures e amortização de custos",
+            False,
+        ),
+        ("Juros, amortização de captação e variações cambiais líquidas", False),
+        ("Amortização dos custos de transação sobre debêntures", False),
+        ("Receitas diferidas amortizadas", False),
+        ("Linearização de receitas amortizadas", False),
+    ],
+)
+def test_depreciacao_pela_descricao_da_linha(descricao, e_depreciacao):
+    """Linhas reais da DFP 2025 (Serena, PetroRecôncavo, BB Seguridade, Vulcabras, Iguatemi...)."""
+    descricoes = pd.Series([descricao]).map(dm._sem_acento)
+    assert dm.e_depreciacao(descricoes).iloc[0] == e_depreciacao
+
+
+# linhas reais da DRE consolidada da Vale na DFP 2025 (v2): a 1ª classe do lucro por ação é a PNA,
+# que a Vale não tem (0); o da ON está na 3.99.01.02
+DRE_DA_VALE = """CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.01;Receita de Venda de Bens e/ou Serviços;213595000.0000000000;S
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.11;Lucro/Prejuízo Consolidado do Período;11811000.0000000000;S
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.11.01;Atribuído a Sócios da Empresa Controladora;13814000.0000000000;S
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.99.01;Lucro Básico por Ação;0.0000000000;N
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.99.01.01;PNA;0.0000000000;N
+33.592.510/0001-54;2025-12-31;2;VALE S.A.;004170;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2025-01-01;2025-12-31;3.99.01.02;ON;3.2400000000;N
+"""
+
+
+def _zip_so_com_a_dre(csv: str) -> bytes:
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        arquivo.writestr(
+            "dfp_cia_aberta_DRE_con_2025.csv", csv.encode(dm.CODIFICACAO_DA_CVM)
+        )
+    return conteudo.getvalue()
+
+
+def test_lpa_e_o_da_primeira_classe_com_valor():
+    """Regressão (fim da série 2): com o LPA 0 da PNA, a escala das ações da Vale não era corrigida
+    e o P/L saía 0,03×. O LPA passa a ser o da 1ª classe diferente de zero (ON, R$ 3,24)."""
+    contas, _ = dm.ler_demonstracoes(_zip_so_com_a_dre(DRE_DA_VALE), "DFP")
+    lpa = contas[contas["conta"] == "lpa_basico"]
+    assert lpa["valor"].tolist() == [pytest.approx(3.24)]
+
+
+def test_lpa_todo_zerado_fica_uma_linha_com_zero():
+    so_zeros = DRE_DA_VALE.replace(";3.2400000000;", ";0.0000000000;")
+    contas, _ = dm.ler_demonstracoes(_zip_so_com_a_dre(so_zeros), "DFP")
+    assert contas.loc[contas["conta"] == "lpa_basico", "valor"].tolist() == [0]
 
 
 def test_banco_nao_ganha_estoques_nem_fornecedores():

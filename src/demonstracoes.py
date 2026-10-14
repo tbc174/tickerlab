@@ -84,6 +84,33 @@ def _profundidade(codigo: str) -> int:
     return codigo.count(".")
 
 
+# o que separa um período de outro na DRE (uma escolha de LPA por empresa, documento e período)
+_CHAVE_DO_PERIODO = (
+    "CNPJ_CIA", "DT_REFER", "VERSAO", "ORDEM_EXERC", "DT_INI_EXERC", "DT_FIM_EXERC",
+)  # fmt: skip
+
+
+def _lpa_da_primeira_classe_com_valor(dre: pd.DataFrame) -> pd.Series:
+    """Qual linha `3.99.01.*` é o lucro básico por ação: a 1ª classe com valor diferente de zero.
+
+    A 1ª classe nem sempre é a que a empresa tem: na DFP 2025 da Vale a `3.99.01.01` é "PNA" com 0
+    e o LPA da ON (3,24) está na `3.99.01.02`. Com o LPA 0, a quantidade de ações em milhares não era
+    corrigida e o P/L saía 0,03× (relatório de fim da série 2). Tudo zerado: fica a 1ª classe.
+    """
+    candidatas = dre["CD_CONTA"].str.fullmatch(r"3\.99\.01\.\d+")
+    linhas = dre[candidatas]
+    if linhas.empty:
+        return candidatas
+    zerada = pd.to_numeric(linhas["VL_CONTA"], errors="coerce").fillna(0).eq(0)
+    ordem = linhas.assign(
+        _zerada=zerada, _classe=linhas["CD_CONTA"].str.split(".").str[-1].astype(int)
+    )
+    ordem = ordem.sort_values(["_zerada", "_classe"], kind="stable")
+    chave = [c for c in _CHAVE_DO_PERIODO if c in dre]
+    escolhidas = ordem.groupby(chave, sort=False, dropna=False).head(1).index
+    return pd.Series(dre.index.isin(escolhidas), index=dre.index)
+
+
 def _contas_da_dre(dre: pd.DataFrame) -> pd.DataFrame:
     """Receita, resultado bruto, EBIT, lucro e lucro dos controladores, pelo código e descrição."""
     ds = dre["DS_CONTA"].map(_sem_acento)
@@ -102,9 +129,9 @@ def _contas_da_dre(dre: pd.DataFrame) -> pd.DataFrame:
         ),
         "lucro_controladores": (cd.map(_profundidade) == 2)
         & ds.str.match(r"atribuido (a|aos) socios da empresa controladora"),
-        # lucro básico por ação da 1ª classe (em reais por ação, sem a escala "MIL"): serve
-        # para conferir se a quantidade de ações foi informada em milhares
-        "lpa_basico": cd == "3.99.01.01",
+        # lucro básico por ação (em reais por ação, sem a escala "MIL"): serve para conferir se a
+        # quantidade de ações foi informada em milhares
+        "lpa_basico": _lpa_da_primeira_classe_com_valor(dre),
         # relatório completo de empresa (série 2 da base de ML, PR 1)
         "custo": (cd == "3.02") & ds.str.startswith("custo"),
         "despesas_financeiras": (cd == "3.06.02")
@@ -188,6 +215,25 @@ def e_capex(descricoes: pd.Series) -> pd.Series:
     return ativo & compra & ~saida
 
 
+# depreciação no fluxo operacional: "amortiza" também aparece em linhas de juros e de custos da dívida
+# ("ao custo amortizado", "encargos ... e amortização de custos", "custos de transação sobre
+# debêntures") e de receitas diferidas; essas não são depreciação (no Itaú, −39,1 bi a mais na DFP
+# 2025; na JHSF, 444 de 495 mi). Amortização de intangível, direito de uso, arrendamento, ágio e
+# "custos com captação de novos clientes" (custo de contrato, não de dívida) continua entrando.
+_DEPRECIACAO = r"deprecia|amortiza|exaust"
+_NAO_E_DEPRECIACAO = (
+    r"custo amortizado|juros|encargos|captac(?!ao de (?:novos )?clientes)|transac|debentur"
+    r"|emprestim|financiament|receitas? (?:diferidas? )?amortizad|lineariz"
+)
+
+
+def e_depreciacao(descricoes: pd.Series) -> pd.Series:
+    """Quais linhas (descrições sem acento, em minúsculas) do fluxo operacional são depreciação."""
+    return descricoes.str.contains(_DEPRECIACAO, regex=True) & ~descricoes.str.contains(
+        _NAO_E_DEPRECIACAO, regex=True
+    )
+
+
 def _contas_do_fluxo(dfc: pd.DataFrame) -> pd.DataFrame:
     if dfc.empty:
         return dfc
@@ -197,8 +243,7 @@ def _contas_do_fluxo(dfc: pd.DataFrame) -> pd.DataFrame:
         {
             "fco": (cd == "6.01") & ds.str.startswith("caixa liquido"),
             # as três abaixo vêm em várias linhas e são somadas (CONTAS_SOMADAS)
-            "depreciacao": cd.str.startswith("6.01.01.")
-            & ds.str.contains(r"deprecia|amortiza|exaust", regex=True),
+            "depreciacao": cd.str.startswith("6.01.01.") & e_depreciacao(ds),
             "capex": cd.str.startswith("6.02.") & e_capex(ds),
             "dividendos_pagos": cd.str.startswith("6.03.")
             & ds.str.contains(
