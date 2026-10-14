@@ -4,6 +4,7 @@ da base, chegar ao arquivo original, à data da coleta e à versão do código q
 import hashlib
 import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -136,6 +137,22 @@ def test_tabela_conferida_mudada_depois_quebra_a_linhagem(ambiente):
     """A tabela mudou depois da carga: a base precisa ser remontada (a versão antiga está no Git)."""
     motor, pasta = ambiente
     _com_a_tabela_conferida(pasta, "0" * 64)
+    linha = pd.read_parquet(pasta / "2022.parquet").iloc[0]
+    with motor.connect() as c:
+        caminho = linhagem_da_linha(c, pasta, linha)
+    assert not caminho.origens[-1].original_confere and not caminho.completa
+
+
+def test_endereco_que_sai_da_pasta_das_conferidas_nao_confere(ambiente):
+    motor, pasta = ambiente
+    manifesto = pasta / "2022.json"
+    dados = json.loads(manifesto.read_text(encoding="utf-8"))
+    alvo = "base/conferidas/../../README.md"
+    conteudo = (Path(__file__).resolve().parent.parent / "README.md").read_bytes()
+    dados["origens"].append(
+        {"url": alvo, "sha256": hashlib.sha256(conteudo).hexdigest()}
+    )
+    manifesto.write_text(json.dumps(dados), encoding="utf-8")
     linha = pd.read_parquet(pasta / "2022.parquet").iloc[0]
     with motor.connect() as c:
         caminho = linhagem_da_linha(c, pasta, linha)

@@ -67,9 +67,14 @@ def _ano_da_linha(linha: pd.Series) -> str:
 
 
 def _origem_no_repositorio(url: str, sha256: str) -> Origem:
-    arquivo = RAIZ_DO_REPOSITORIO / url
+    arquivo = (RAIZ_DO_REPOSITORIO / url).resolve()
+    dentro = arquivo.is_relative_to(
+        RAIZ_DO_REPOSITORIO / TABELAS_CONFERIDAS
+    )  # nada de "../"
     confere = (
-        arquivo.is_file() and hashlib.sha256(arquivo.read_bytes()).hexdigest() == sha256
+        dentro
+        and arquivo.is_file()
+        and hashlib.sha256(arquivo.read_bytes()).hexdigest() == sha256
     )
     return Origem(url, sha256, None, url, confere, no_repositorio=True)
 
