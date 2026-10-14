@@ -19,7 +19,7 @@ from src.banco.conexao import (
     criar_engine,
     migrar_para,
 )
-from src.banco.modelo import favoritos, preferencias, simulacoes, usuarios
+from src.banco.modelo import favoritos, preferencias, simulacoes, teses, usuarios
 from src.configuracao import (
     VARIAVEL_DO_BANCO,
     normalizar_url_do_banco,
@@ -136,6 +136,36 @@ def test_migracao_0031_cria_o_pulse_ligado_ao_usuario(motor):
     (estrangeira,) = inspecao.get_foreign_keys("pulse")
     assert estrangeira["referred_table"] == "usuarios"
     assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
+def test_migracao_0033_cria_o_diario_ligado_ao_usuario_e_as_simulacoes(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("teses")}
+    assert colunas == {"id", "usuario_id", "ticker", "texto", "criada_em"}
+    (do_usuario,) = inspecao.get_foreign_keys("teses")
+    assert do_usuario["referred_table"] == "usuarios"
+    assert do_usuario["options"].get("ondelete") == "CASCADE"
+    ligacoes = inspecao.get_foreign_keys("teses_estrategias")
+    assert {e["referred_table"] for e in ligacoes} == {"teses", "simulacoes"}
+    assert all(e["options"].get("ondelete") == "CASCADE" for e in ligacoes)
+    chave = inspecao.get_pk_constraint("teses_estrategias")["constrained_columns"]
+    assert set(chave) == {"tese_id", "simulacao_id"}
+
+
+def test_banco_recusa_tese_vazia_ou_longa_demais(motor):
+    """A trava do tamanho também vale no banco, não só no código."""
+    with motor.begin() as conexao:
+        usuario = repo.entrar(conexao, "sub-teses", "teses@exemplo.com", "Teses")[0]
+    for texto in ("", "x" * 2001):
+        with pytest.raises(sa.exc.IntegrityError), motor.begin() as conexao:
+            conexao.execute(
+                sa.insert(teses).values(
+                    id=uuid.uuid4(),
+                    usuario_id=usuario.id,
+                    ticker="PETR4.SA",
+                    texto=texto,
+                )
+            )
 
 
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
