@@ -19,7 +19,17 @@ from src.banco.conexao import (
     criar_engine,
     migrar_para,
 )
-from src.banco.modelo import favoritos, preferencias, simulacoes, teses, usuarios
+from src.banco.dados_do_usuario import apagar_simulacao, salvar_simulacao
+from src.banco.modelo import (
+    favoritos,
+    preferencias,
+    simulacoes,
+    teses,
+    teses_estrategias,
+    usuarios,
+)
+from src.banco.teses import escrever as escrever_tese
+from src.banco.teses import listar as listar_teses
 from src.configuracao import (
     VARIAVEL_DO_BANCO,
     normalizar_url_do_banco,
@@ -166,6 +176,25 @@ def test_banco_recusa_tese_vazia_ou_longa_demais(motor):
                     texto=texto,
                 )
             )
+
+
+def test_diario_sai_com_a_conta_e_o_backtest_so_leva_a_ligacao(motor):
+    """A cascata das duas tabelas do Diário no banco migrado (PostgreSQL no CI)."""
+    with motor.begin() as conexao:
+        ana = repo.entrar(conexao, "sub-ana-d", "ana-d@exemplo.com", "Ana")[0]
+        bia = repo.entrar(conexao, "sub-bia-d", "bia-d@exemplo.com", "Bia")[0]
+        backtest = salvar_simulacao(
+            conexao, ana.id, "backtest", "Cruzamento", {"ticker": "PETR4.SA"}, {}
+        )
+        escrever_tese(conexao, ana.id, "PETR4", "Tese da Ana", [backtest.id])
+        escrever_tese(conexao, bia.id, "PETR4", "Tese da Bia")
+    with motor.begin() as conexao:
+        apagar_simulacao(conexao, ana.id, backtest.id)
+        assert conexao.execute(sa.select(teses_estrategias)).all() == []
+        assert len(listar_teses(conexao, ana.id)) == 1
+        repo.apagar_conta(conexao, ana.id)
+        assert listar_teses(conexao, ana.id) == []
+        assert [t.texto for t in listar_teses(conexao, bia.id)] == ["Tese da Bia"]
 
 
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
