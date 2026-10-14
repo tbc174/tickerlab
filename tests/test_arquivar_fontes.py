@@ -1,5 +1,7 @@
 """Linha de comando do arquivista (scripts/arquivar_fontes.py)."""
 
+import pytest
+
 from scripts import arquivar_fontes
 
 
@@ -91,3 +93,34 @@ def test_resumo_longo_e_cortado():
     linha = arquivar_fontes.resumo_das_falhas(["x" * 1000])
     assert len(linha) == arquivar_fontes.TAMANHO_MAXIMO_DO_RESUMO
     assert linha.endswith("...")
+
+
+class _RespostaFalsa:
+    def __init__(self, status: int):
+        self.status_code = status
+        self.content = b"x" * 10
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *erro):
+        return False
+
+    def raise_for_status(self):
+        return None
+
+
+def test_trecho_recusa_servidor_que_manda_o_arquivo_inteiro(monkeypatch):
+    """Se o servidor ignora o Range (HTTP 200), para antes de ler: seriam GBs na memória."""
+    cliente = arquivar_fontes.ClienteHttp()
+    pedidos = []
+
+    def get(url, **opcoes):
+        pedidos.append(opcoes["headers"]["Range"])
+        return _RespostaFalsa(200 if "ignora" in url else 206)
+
+    monkeypatch.setattr(cliente.sessao, "get", get)
+    assert cliente.ler_trecho("https://x/ok.zip", 10, 19) == b"x" * 10
+    with pytest.raises(ValueError, match="ignorou o pedido de trecho"):
+        cliente.ler_trecho("https://x/ignora.zip", 0, 9)
+    assert pedidos == ["bytes=10-19", "bytes=0-9"]

@@ -9,10 +9,15 @@ import base64
 import json
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
+from base.arquivo.obter import (
+    extrair_do_zip_remoto,
+    membros_do_zip_remoto,
+    parquet_sem_colunas,
+)
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
 PORTAL_DO_IBAMA = "https://dadosabertos.ibama.gov.br"
@@ -106,6 +111,28 @@ ESTATISTICO_DA_ANAC = "https://sistemas.anac.gov.br/dadosabertos/" + quote(
 BENEFICIARIOS_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/informacoes_consolidadas_de_beneficiarios-024/"
 PASTA_DO_MES = re.compile(rb'href="(\d{6})/"')
 SAFRAS_DA_ANS = 2
+# 2ª leva (14/10/2026)
+# Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
+# dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
+ZIPS_DA_ANATEL = tuple(
+    f"https://www.anatel.gov.br/dadosabertos/paineis_de_dados/acessos/{nome}.zip"
+    for nome in (
+        "acessos_telefonia_movel",
+        "acessos_banda_larga_fixa",
+        "acessos_tv_por_assinatura",
+    )
+)
+CSV_DA_ANATEL = re.compile(r"(_Colunas|_Total)\.csv$", re.IGNORECASE)
+# Pix: chaves por participante no fim de cada mês (API Olinda do BC); as três últimas datas cobrem o
+# atraso de publicação (o fim de setembro já estava lá em 14/10)
+CHAVES_PIX = (
+    "https://olinda.bcb.gov.br/olinda/servico/Pix_DadosAbertos/versao/v1/odata/"
+    "ChavesPix(Data=@Data)?@Data='{data}'&$format=json"
+)
+MESES_DO_PIX = 3
+# SAMP (mercado por distribuidora): CPF e nome de quem compra energia saem antes de guardar (LGPD)
+PORTAL_DA_ANEEL = "https://dadosabertos.aneel.gov.br"
+COLUNAS_PESSOAIS_DO_SAMP = ("NumCNPJAgenteAcessante", "NomAgenteAcessante")
 
 
 def _json(cliente: Cliente, url: str) -> dict:
@@ -322,6 +349,55 @@ def descobrir_producao_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return descobrir_links(cliente, PAGINA_DA_PRODUCAO_DA_ANP, PRODUCAO_POR_POCO)
 
 
+def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os CSVs "_Colunas" e "_Total" de cada ZIP de acessos (o endereço guarda `zip#arquivo`)."""
+    alvos: list[Alvo] = []
+    for url in ZIPS_DA_ANATEL:
+        membros = [
+            m for m in membros_do_zip_remoto(cliente, url) if CSV_DA_ANATEL.search(m)
+        ]
+        if not membros:
+            raise ErroDeDescoberta(f"Anatel: nenhum CSV de acessos em {url}")
+        alvos += [
+            Alvo(f"{url}#{membro}", ".csv", extrair_do_zip_remoto(url, membro))
+            for membro in membros
+        ]
+    return alvos
+
+
+def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
+    """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
+    dias: list[date] = []
+    primeiro = agora.date().replace(day=1)
+    for _ in range(quantos):
+        fim = primeiro - timedelta(days=1)
+        dias.append(fim)
+        primeiro = fim.replace(day=1)
+    return sorted(dias)
+
+
+def descobrir_pix(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    return [
+        Alvo(CHAVES_PIX.format(data=dia.isoformat()), ".json")
+        for dia in _fim_dos_meses(agora, MESES_DO_PIX)
+    ]
+
+
+def descobrir_samp(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Um Parquet por ano desde 2003 (o CSV é o mesmo dado, 30 vezes maior), sem as colunas
+    pessoais."""
+    return [
+        Alvo(
+            alvo.url,
+            ".parquet",
+            parquet_sem_colunas(alvo.url, COLUNAS_PESSOAIS_DO_SAMP),
+        )
+        for alvo in descobrir_ckan(
+            cliente, PORTAL_DA_ANEEL, "samp", formatos=("parquet",)
+        )
+    ]
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -492,6 +568,10 @@ FONTES: list[Fonte] = [
     Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
     Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
     Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),
+    # 2ª leva: formas especiais de obter (`base/arquivo/obter.py`)
+    Fonte("anatel-acessos", "mensal", descobrir_anatel, pesada=True),
+    Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),
+    Fonte("aneel-samp", "mensal", descobrir_samp, pesada=True),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

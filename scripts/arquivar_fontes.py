@@ -31,6 +31,7 @@ from base.arquivo.coleta import (
     Resposta,
     Resultado,
     arquivar,
+    pacote_de_certificados,
 )
 from base.arquivo.fontes import FONTES, GRUPOS, POR_ID
 from src import acervo
@@ -43,6 +44,7 @@ ESPERA_PARA_TENTAR_DE_NOVO = 300
 
 AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
+HTTP_TRECHO = 206  # resposta a um pedido de trecho (Range)
 OK, FALHA, AVISO = 0, 1, 2
 # o resumo vai na mensagem do Kuma (no endereço do push e no assunto do e-mail): curto
 TAMANHO_MAXIMO_DO_RESUMO = 300
@@ -54,6 +56,7 @@ class ClienteHttp:
     def __init__(self) -> None:
         self.sessao = requests.Session()
         self.sessao.headers["User-Agent"] = AGENTE
+        self.sessao.verify = pacote_de_certificados()
 
     def ler(
         self,
@@ -87,6 +90,21 @@ class ClienteHttp:
                 for parte in resposta.iter_content(chunk_size=1024 * 1024):
                     arquivo.write(parte)
             return dict(resposta.headers)
+
+    def ler_trecho(self, url: str, inicio: int, fim: int) -> bytes:
+        with self.sessao.get(
+            url,
+            headers={"Range": f"bytes={inicio}-{fim}"},
+            stream=True,
+            timeout=TEMPO_LIMITE_EM_SEGUNDOS,
+        ) as resposta:
+            resposta.raise_for_status()
+            if resposta.status_code != HTTP_TRECHO:
+                # o servidor mandaria o arquivo inteiro (GBs): para antes de ler o corpo
+                raise ValueError(
+                    f"o servidor ignorou o pedido de trecho (HTTP {resposta.status_code})"
+                )
+            return resposta.content
 
 
 def _motivo(erro: Exception) -> str:
