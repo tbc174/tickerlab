@@ -517,6 +517,7 @@ PAGINAS = (
         ":material/shield_person:",
         "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/links-compartilhados", (), "MeusLinksV1"),
     ),
     Pagina(
         "planos",

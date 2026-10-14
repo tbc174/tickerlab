@@ -116,6 +116,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "juros_e_inflacao",
         "linha_do_tempo",
         "planos",
+        "meus_dados",
     }
 
 
@@ -147,6 +148,8 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/eu",
         "/v1/conta",
         "/v1/aceite-dos-termos",
+        "/v1/revogar-link",
+        "/v1/meus-dados",
         "/v1/configuracao",
     }
 

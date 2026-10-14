@@ -8,12 +8,13 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, ficha, paginas, planos
+from src import analises, api, compartilhamentos, ficha, paginas, planos
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
+from src.banco import compartilhamentos as links
 from src.banco import series as acervo
 from src.banco import tentativas
 from src.banco.dados_do_usuario import (
@@ -26,7 +27,7 @@ from src.banco.dados_do_usuario import (
 from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
-from src.conformidade import registrar_aceite
+from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
 from src.exemplos import carregar_exemplo
@@ -40,6 +41,7 @@ from tests.ajudantes_da_api import (
     gerar_chave,
     token,
 )
+from tests.test_compartilhamentos import _congelada
 
 TAXA = 0.10
 
@@ -780,3 +782,73 @@ def test_meu_plano_e_so_da_conta_do_token(cliente, banco):
         bia = entrar(conexao, "bia2", "bia2@exemplo.com")[0]
         salvar_favoritos(conexao, bia.id, ["PETR4.SA", "VALE3.SA", "ITUB4.SA"])
     assert cliente.get("/api/v1/meu-plano").json()["favoritos"] == "0 de 3"
+
+
+# --- Meus dados no app novo (conta e planos, PR 5) --------------------------------------------
+
+
+def _link_da_ana(banco):
+    with banco.begin() as conexao:
+        links.criar_link_da_ficha(
+            conexao, _id_da_ana_no(banco), "gratuito", _congelada(), 30
+        )
+        return links.listar_links(conexao, _id_da_ana_no(banco))[0]
+
+
+def test_meus_links_lista_os_links_da_conta(cliente, banco):
+    link = _link_da_ana(banco)
+    dados = cliente.get("/api/v1/links-compartilhados").json()
+    assert dados["explicacao"] == compartilhamentos.EXPLICACAO_DOS_LINKS
+    assert dados["sem_links"] == compartilhamentos.SEM_LINKS
+    [recebido] = dados["links"]
+    assert recebido["id"] == str(link.id)
+    assert recebido["titulo"] == link.titulo
+    assert recebido["situacao"] == "ativo"
+    assert recebido["descricao"] == compartilhamentos.descrever_link(
+        link.tipo, link.situacao, link.criado_em, link.expira_em, link.visitas
+    )
+    assert "codigo" not in recebido and "hash" not in str(
+        recebido
+    )  # o código nunca volta
+
+
+def test_meus_links_nao_mostra_os_de_outra_conta(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia3", "bia3@exemplo.com")[0]
+        links.criar_link_da_ficha(conexao, bia.id, "gratuito", _congelada(), 30)
+    assert cliente.get("/api/v1/links-compartilhados").json()["links"] == []
+
+
+def test_revogar_um_link_da_conta(cliente, banco):
+    link = _link_da_ana(banco)
+    resposta = cliente.post("/api/v1/revogar-link", json={"id": str(link.id)})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["links"][0]["situacao"] == "revogado"
+
+
+def test_revogar_link_de_outra_conta_404(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia4", "bia4@exemplo.com")[0]
+        links.criar_link_da_ficha(conexao, bia.id, "gratuito", _congelada(), 30)
+        dela = links.listar_links(conexao, bia.id)[0]
+    resposta = cliente.post("/api/v1/revogar-link", json={"id": str(dela.id)})
+    assert resposta.status_code == 404
+    with banco.connect() as conexao:
+        assert links.listar_links(conexao, bia.id)[0].situacao == "ativo"
+
+
+@pytest.mark.parametrize("corpo", [{}, {"id": "nao-e-uuid"}, {"id": 3}])
+def test_revogar_sem_id_valido_422(cliente, corpo):
+    assert cliente.post("/api/v1/revogar-link", json=corpo).status_code == 422
+
+
+def test_baixar_meus_dados(cliente, banco):
+    resposta = cliente.get("/api/v1/meus-dados")
+    assert resposta.status_code == 200, resposta.text
+    assert "attachment" in resposta.headers["content-disposition"]
+    assert resposta.headers["cache-control"] == "no-store"
+    with banco.begin() as conexao:
+        esperado = exportar_meus_dados(conexao, _id_da_ana_no(banco))
+    recebido = resposta.json()
+    assert recebido.keys() == esperado.keys()
+    assert recebido["perfil"]["email"] == "ana@exemplo.com"

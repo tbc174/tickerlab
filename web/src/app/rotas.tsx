@@ -7,6 +7,7 @@ import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
+import { MeusDados } from "./telas/MeusDados";
 import { Planos } from "./telas/Planos";
 import { RetornoMensal } from "./telas/RetornoMensal";
 import { Risco } from "./telas/Risco";
@@ -24,6 +25,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   comparar: (pagina) => <Comparar pagina={pagina} />,
   backtest: (pagina) => <Backtest pagina={pagina} />,
   planos: (pagina) => <Planos pagina={pagina} />,
+  meus_dados: (pagina) => <MeusDados pagina={pagina} />,
 };
 
 /** A página já tem tela em React? (Sem tela, leva à mesma página no app atual.) */
