@@ -71,19 +71,31 @@ CATALOGOS = {
 }
 
 
+PAINEIS = ("powerbi.com", "app.powerbi", "lookerstudio.google", "datastudio.google")
+
+
 def _json(cliente: Cliente, url: str) -> dict:
     return json.loads(cliente.ler(url).conteudo)
 
 
+def _e_arquivo(recurso: dict) -> bool:
+    """Recurso que é arquivo de dados (não painel nem página: a ANTT lista um Power BI)."""
+    url = recurso.get("url") or ""
+    formato = (recurso.get("format") or "").lower()
+    return bool(url) and formato != "html" and not any(p in url for p in PAINEIS)
+
+
 def descobrir_ckan(cliente: Cliente, portal: str, *pacotes: str) -> list[Alvo]:
-    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA)."""
+    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA, CCEE, ANTT...)."""
     alvos: list[Alvo] = []
     for pacote in pacotes:
         resposta = _json(cliente, f"{portal}/api/3/action/package_show?id={pacote}")
-        recursos = resposta.get("result", {}).get("resources", [])
+        recursos = [
+            r for r in resposta.get("result", {}).get("resources", []) if _e_arquivo(r)
+        ]
         if not recursos:
             raise ErroDeDescoberta(f"{pacote}: pacote sem arquivos em {portal}")
-        alvos += [Alvo(r["url"]) for r in recursos if r.get("url")]
+        alvos += [Alvo(r["url"]) for r in recursos]
     return alvos
 
 
