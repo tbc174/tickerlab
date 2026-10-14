@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, conformidade, ficha
+from src import analises, cobranca, conformidade, ficha
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -43,7 +43,7 @@ from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
-from src.cobranca import buscar_assinatura
+from src.cobranca import Assinatura, buscar_assinatura
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -111,6 +111,17 @@ class MeuPlanoV1(BaseModel):
     )  # "Sua assinatura renova em dd/mm/aaaa."; nada do Stripe
     aviso: str
     tabela: list[dict[str, str]]  # uma linha por recurso, uma coluna por plano
+    acao: (
+        str | None
+    )  # o botão: "assinar", "gerenciar" ou None (src/cobranca.acao_da_assinatura)
+    texto_da_acao: str | None  # a frase que acompanha o botão (ou explica a falta dele)
+    nota_do_cartao: str  # o cartão de teste do Stripe (só modo de teste, ADR 0003)
+
+
+class EnderecoDoStripeV1(BaseModel):
+    """A página de pagamento ou o portal do Stripe: a tela leva a pessoa até lá."""
+
+    url: str
 
 
 class LinkV1(BaseModel):
@@ -159,6 +170,9 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
         simulacoes = contar_simulacoes(conexao, conta.id)
         favoritos = len(listar_favoritos(conexao, conta.id))
         assinatura = buscar_assinatura(conexao, conta.id)
+    acao = cobranca.acao_da_assinatura(
+        conta.plano, conta.e_admin, assinatura, cobranca.cobranca_esta_configurada()
+    )
     return MeuPlanoV1(
         plano=conta.plano,
         nome_do_plano=limites.nome,
@@ -169,7 +183,68 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
         else frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim),
         aviso=AVISO_DO_MODO_DE_TESTE,
         tabela=tabela_de_planos(),
+        acao=acao.tipo,
+        texto_da_acao=acao.texto,
+        nota_do_cartao=cobranca.NOTA_DO_CARTAO_DE_TESTE,
     )
+
+
+# o Stripe devolve a pessoa para a página de planos do app novo (o app atual volta para "/")
+CAMINHO_DE_VOLTA_DO_APP_NOVO = "/novo/planos"
+STRIPE_FORA_DO_AR = "O pagamento não está disponível agora. Tente de novo em instantes."
+
+
+def _acao_da_conta(
+    conta: Usuario,
+) -> tuple[cobranca.AcaoDaAssinatura, Assinatura | None]:
+    """O botão que a conta pode usar agora (a mesma regra da tela) e a assinatura dela."""
+    if not cobranca.cobranca_esta_configurada():
+        raise HTTPException(status_code=503, detail=cobranca.AVISO_SEM_COBRANCA)
+    with obter_engine().connect() as conexao:
+        assinatura = buscar_assinatura(conexao, conta.id)
+    return cobranca.acao_da_assinatura(
+        conta.plano, conta.e_admin, assinatura, True
+    ), assinatura
+
+
+@router.post("/pagamento-da-assinatura")
+def pagamento_da_assinatura(conta: Conta) -> EnderecoDoStripeV1:
+    """A página de pagamento do Stripe para assinar o Pro (só modo de teste; só admins, ADR 0029).
+
+    A rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.
+    """
+    acao, assinatura = _acao_da_conta(conta)
+    if acao.tipo != "assinar":
+        raise HTTPException(
+            status_code=409, detail=acao.texto or "Você já está no plano Pro."
+        )
+    try:
+        url = cobranca.criar_pagina_de_pagamento(
+            conta.id,
+            conta.email,
+            assinatura.stripe_customer_id if assinatura else None,
+            caminho_de_volta=CAMINHO_DE_VOLTA_DO_APP_NOVO,
+        )
+    except Exception as erro:
+        log.exception("Falha ao criar a página de pagamento do Stripe")
+        raise HTTPException(status_code=503, detail=STRIPE_FORA_DO_AR) from erro
+    return EnderecoDoStripeV1(url=url)
+
+
+@router.post("/portal-da-assinatura")
+def portal_da_assinatura(conta: Conta) -> EnderecoDoStripeV1:
+    """O portal do Stripe para trocar o cartão, ver faturas ou cancelar a própria assinatura."""
+    acao, assinatura = _acao_da_conta(conta)
+    if acao.tipo != "gerenciar" or assinatura is None:
+        raise HTTPException(status_code=404, detail="Não há assinatura para gerenciar.")
+    try:
+        url = cobranca.criar_portal_da_assinatura(
+            assinatura.stripe_customer_id, caminho_de_volta=CAMINHO_DE_VOLTA_DO_APP_NOVO
+        )
+    except Exception as erro:
+        log.exception("Falha ao criar o portal da assinatura")
+        raise HTTPException(status_code=503, detail=STRIPE_FORA_DO_AR) from erro
+    return EnderecoDoStripeV1(url=url)
 
 
 def _meus_links(conexao: sa.Connection, usuario_id: uuid.UUID) -> MeusLinksV1:

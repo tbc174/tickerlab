@@ -221,6 +221,9 @@ export interface MeuPlanoV1 {
   frase_da_assinatura: string | null;
   aviso: string;
   tabela: Record<string, string>[]; // uma linha por recurso: {Recurso, Gratuito, Plus, Pro}
+  acao: string | null; // "assinar", "gerenciar" ou null (nenhum botão)
+  texto_da_acao: string | null;
+  nota_do_cartao: string;
 }
 
 export interface ChecagemV1 {

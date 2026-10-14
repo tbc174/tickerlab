@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-// Planos e assinatura no app novo (conta e planos, PR 3): o plano da conta, quanto já usou, a tabela
-// dos planos (a mesma do Streamlit, src/planos.py) e o caminho para assinar, que ainda é no app atual.
-import { cleanup, screen, within } from "@testing-library/react";
+// Planos e assinatura no app novo (conta e planos, PRs 3 e 4): o plano da conta, quanto já usou, a
+// tabela dos planos (a mesma do Streamlit, src/planos.py) e assinar ou gerenciar pelo Stripe (modo de
+// teste). O botão vem da API (src/cobranca.acao_da_assinatura): a tela só mostra.
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { planos } from "../../src/conteudo";
+import { navegador } from "../../src/app/navegador";
+import { conteudoDoApp, planos } from "../../src/conteudo";
 import { abrirApp, respostaJson } from "./ajudantes";
 
 const MEU_PLANO = {
@@ -14,11 +16,21 @@ const MEU_PLANO = {
   frase_da_assinatura: null,
   aviso: "Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado.",
   tabela: planos.tabela,
+  acao: null as string | null,
+  texto_da_acao: "Os planos pagos chegam em breve." as string | null,
+  nota_do_cartao: "Modo de teste: use o cartão 4242 4242 4242 4242, qualquer data futura.",
 };
+const CHECKOUT = "https://checkout.stripe.com/c/pay/cs_test_1";
+const PORTAL = "https://billing.stripe.com/p/session/test_1";
 
-function abrir(resposta: unknown = MEU_PLANO) {
-  return abrirApp("/planos", {
-    rotas: (endereco) => (endereco === "/api/v1/meu-plano" ? respostaJson(200, resposta) : undefined),
+function abrir(resposta: unknown = MEU_PLANO, caminho = "/planos", stripe = CHECKOUT) {
+  return abrirApp(caminho, {
+    rotas: (endereco) => {
+      if (endereco === "/api/v1/meu-plano") return respostaJson(200, resposta);
+      if (endereco === "/api/v1/pagamento-da-assinatura") return respostaJson(200, { url: stripe });
+      if (endereco === "/api/v1/portal-da-assinatura") return respostaJson(200, { url: PORTAL });
+      return undefined;
+    },
   });
 }
 
@@ -52,11 +64,51 @@ describe("planos", () => {
     expect(within(tabela).getByText("Simulações salvas")).toBeTruthy();
   });
 
-  it("assinar e gerenciar ainda são no app atual", async () => {
+  it("conta comum: sem botão, com a frase que explica (só admins assinam, ADR 0029)", async () => {
     abrir();
-    const link = await screen.findByRole("link", { name: /Assinar ou gerenciar a assinatura/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/planos");
+    expect(await screen.findByText("Os planos pagos chegam em breve.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Assinar|Gerenciar/ })).toBeNull();
     expect(screen.getByText(MEU_PLANO.aviso)).toBeTruthy();
+  });
+
+  it("assinar leva à página de pagamento do Stripe, com o cartão de teste à vista", async () => {
+    const ir = vi.spyOn(navegador, "ir").mockImplementation(() => undefined);
+    const { buscar } = abrir({ ...MEU_PLANO, acao: "assinar", texto_da_acao: null });
+    expect(await screen.findByText(MEU_PLANO.nota_do_cartao)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Assinar o plano Pro" }));
+    await waitFor(() => expect(ir).toHaveBeenCalledWith(CHECKOUT));
+    const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/pagamento-da-assinatura");
+    expect(pedido?.[1]?.method).toBe("POST");
+  });
+
+  it("assinante gerencia pelo portal do Stripe", async () => {
+    const ir = vi.spyOn(navegador, "ir").mockImplementation(() => undefined);
+    abrir({ ...MEU_PLANO, plano: "pro", nome_do_plano: "Pro", acao: "gerenciar", texto_da_acao: null });
+    fireEvent.click(await screen.findByRole("button", { name: "Gerenciar a assinatura" }));
+    await waitFor(() => expect(ir).toHaveBeenCalledWith(PORTAL));
+  });
+
+  it("endereço que não é do Stripe não abre (segunda barreira)", async () => {
+    const ir = vi.spyOn(navegador, "ir").mockImplementation(() => undefined);
+    abrir({ ...MEU_PLANO, acao: "assinar", texto_da_acao: null }, "/planos", "https://outro-site.com/pagar");
+    fireEvent.click(await screen.findByRole("button", { name: "Assinar o plano Pro" }));
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(ir).not.toHaveBeenCalled();
+  });
+
+  it("a volta do pagamento avisa e deixa atualizar o plano", async () => {
+    const { buscar } = abrir(MEU_PLANO, "/planos?assinatura=ok");
+    expect(await screen.findByText(conteudoDoApp.assinatura.retorno_ok)).toBeTruthy();
+    const antes = buscar.mock.calls.filter(([e]) => e === "/api/v1/meu-plano").length;
+    fireEvent.click(screen.getByRole("button", { name: "Atualizar o meu plano" }));
+    await waitFor(() =>
+      expect(buscar.mock.calls.filter(([e]) => e === "/api/v1/meu-plano").length).toBe(antes + 1),
+    );
+  });
+
+  it("pagamento cancelado: nada foi cobrado", async () => {
+    abrir(MEU_PLANO, "/planos?assinatura=cancelada");
+    expect(await screen.findByText(conteudoDoApp.assinatura.retorno_cancelado)).toBeTruthy();
   });
 
   it("com assinatura, diz quando renova", async () => {

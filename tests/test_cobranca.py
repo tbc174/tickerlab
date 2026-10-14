@@ -502,3 +502,68 @@ def test_checkout_primeiro_e_assinatura_depois_completa_os_dados(conexao, ana):
         ),
     )
     assert buscar_assinatura(conexao, ana.id).periodo_fim.year == 2030
+
+
+# --- o que a página de planos oferece (o Streamlit e o app novo decidem por aqui) ----------
+
+
+def _assinatura_ativa(cliente="cus_1"):
+    return cobranca.Assinatura(uuid.uuid4(), cliente, "sub_1", "active", None, False)
+
+
+@pytest.mark.parametrize(
+    ("plano", "admin", "assinatura", "configurada", "esperado"),
+    [
+        ("gratuito", True, None, False, (None, cobranca.AVISO_SEM_COBRANCA)),
+        ("gratuito", False, None, True, (None, cobranca.AVISO_DE_PLANOS_EM_BREVE)),
+        ("plus", False, None, True, (None, cobranca.AVISO_DE_PLANOS_EM_BREVE)),
+        ("gratuito", True, None, True, ("assinar", cobranca.AVISO_DO_PLUS)),
+        ("plus", True, None, True, ("assinar", None)),
+        ("pro", False, "sim", True, ("gerenciar", None)),
+        (
+            "pro",
+            True,
+            None,
+            True,
+            (None, None),
+        ),  # Pro dado por administrador: sem portal
+    ],
+)
+def test_acao_da_assinatura(plano, admin, assinatura, configurada, esperado):
+    acao = cobranca.acao_da_assinatura(
+        plano, admin, _assinatura_ativa() if assinatura else None, configurada
+    )
+    assert (acao.tipo, acao.texto) == esperado
+
+
+def test_pagina_de_pagamento_volta_para_o_caminho_pedido():
+    cliente = ClienteFalso()
+    criar_pagina_de_pagamento(
+        uuid.uuid4(),
+        "ana@exemplo.com",
+        configuracao=ler_configuracao(AMBIENTE),
+        cliente=cliente,
+        caminho_de_volta="/novo/planos",
+    )
+    _, p = cliente.chamadas[0]
+    assert (
+        p["success_url"]
+        == "https://servidor.exemplo.ts.net:8443/novo/planos?assinatura=ok"
+    )
+    assert (
+        p["cancel_url"]
+        == "https://servidor.exemplo.ts.net:8443/novo/planos?assinatura=cancelada"
+    )
+
+
+def test_portal_volta_para_o_caminho_pedido():
+    cliente = ClienteFalso()
+    criar_portal_da_assinatura(
+        "cus_1",
+        configuracao=ler_configuracao(AMBIENTE),
+        cliente=cliente,
+        caminho_de_volta="/novo/planos",
+    )
+    assert cliente.chamadas[0][1]["return_url"] == (
+        "https://servidor.exemplo.ts.net:8443/novo/planos"
+    )

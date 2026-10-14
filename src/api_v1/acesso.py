@@ -214,7 +214,15 @@ def conta_logada(
 
 
 # rotas da v1 que falam só da própria conta, não de uma página: pedem login, mas nenhum plano
-ROTAS_DA_CONTA = frozenset({"/v1/eu", "/v1/revogar-link", "/v1/meus-dados"})
+ROTAS_DA_CONTA = frozenset(
+    {
+        "/v1/eu",
+        "/v1/revogar-link",
+        "/v1/meus-dados",
+        "/v1/pagamento-da-assinatura",
+        "/v1/portal-da-assinatura",
+    }
+)
 
 
 def conta_com_acesso(
