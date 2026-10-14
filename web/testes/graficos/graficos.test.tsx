@@ -4,7 +4,7 @@
 // de tela ouve o começo e o fim, e as cores vêm só das variáveis da marca.
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { GraficoDeBarras } from "../../src/graficos/GraficoDeBarras";
+import { GraficoDeBarras, geometriaDasBarras } from "../../src/graficos/GraficoDeBarras";
 import { faixas } from "../../src/graficos/GraficoDeHistograma";
 import { GraficoDoTempo, empilhar } from "../../src/graficos/GraficoDoTempo";
 import { SERIES } from "../../src/graficos/cores";
@@ -199,5 +199,22 @@ describe("faixas do histograma", () => {
 
   it("todos iguais cabem numa faixa só", () => {
     expect(faixas([0.2, 0.2], 4).map((x) => x.quantas)).toEqual([2]);
+  });
+});
+
+describe("geometria das barras", () => {
+  it.each([
+    [248, true],
+    [290, false],
+    [461, true],
+    [1030, true],
+  ])("com %i px (negativos: %s), as barras ficam com pelo menos 40 por cento da largura", (largura, negativos) => {
+    const g = geometriaDasBarras(largura, negativos);
+    expect(g.fim - g.inicio).toBeGreaterThanOrEqual(0.4 * largura);
+  });
+
+  it("em tela estreita, o nome vai para cima da barra", () => {
+    expect(geometriaDasBarras(300, true).compacto).toBe(true);
+    expect(geometriaDasBarras(700, true).compacto).toBe(false);
   });
 });
