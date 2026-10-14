@@ -6,15 +6,20 @@ Até aqui, quem nunca tinha entrado recebia 401 "conta-nova" e precisava passar 
 """
 
 import pytest
+import sqlalchemy as sa
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from src import api
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, conta
+from src.auditoria import ACAO_TERMOS_ACEITOS
 from src.autenticacao import VARIAVEL_DOS_ADMINS
+from src.banco import novidades_por_email
+from src.banco.modelo import auditoria as auditoria_tabela
 from src.banco.origens import buscar_origem
-from src.banco.usuarios import buscar_por_google_sub
-from src.conformidade import registrar_aceite
+from src.banco.usuarios import buscar_por_google_sub, entrar
+from src.conformidade import VERSAO_DOS_TERMOS, registrar_aceite
+from src.envio_novidades import VERSAO_DO_CONSENTIMENTO
 from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
@@ -176,3 +181,129 @@ def test_api_desligada_404(banco, monkeypatch, chave):
         "/api/v1/conta", headers=com_token(token(chave, **DA_CARLA))
     )
     assert resposta.status_code == 404
+
+
+# --- O aceite dos termos pela API (conta e planos, PR 2) --------------------------------------
+
+
+def _aceitar(cliente, chave, versao=VERSAO_DOS_TERMOS):
+    return cliente.post(
+        "/api/v1/aceite-dos-termos",
+        headers=com_token(token(chave, **DA_CARLA)),
+        json={"versao": versao},
+    )
+
+
+def test_aceitar_os_termos_libera_a_conta(cliente, banco, chave):
+    _criar(cliente, chave)
+    resposta = _aceitar(cliente, chave)
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["plano"] == "gratuito"
+    carla = _da_carla(banco)
+    assert carla is not None and carla.termos_versao == VERSAO_DOS_TERMOS
+    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    assert eu.status_code == 200
+
+
+def test_o_aceite_fica_na_auditoria(cliente, banco, chave):
+    _criar(cliente, chave)
+    _aceitar(cliente, chave)
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.connect() as conexao:
+        acoes = conexao.execute(
+            sa.select(auditoria_tabela.c.acao).where(
+                auditoria_tabela.c.ator_id == carla.id
+            )
+        ).scalars()
+        assert ACAO_TERMOS_ACEITOS in list(acoes)
+
+
+def test_versao_velha_dos_termos_e_recusada(cliente, banco, chave):
+    """Uma aba aberta antes da troca dos termos mostra o texto velho: não vale como aceite do novo."""
+    _criar(cliente, chave)
+    resposta = _aceitar(cliente, chave, versao="2020-01-01.1")
+    assert resposta.status_code == 409
+    carla = _da_carla(banco)
+    assert carla is not None and carla.termos_versao != VERSAO_DOS_TERMOS
+
+
+@pytest.mark.parametrize("corpo", [{}, {"versao": 7}, {"versao": "x" * 100}])
+def test_aceite_sem_versao_valida_422(cliente, banco, chave, corpo):
+    _criar(cliente, chave)
+    resposta = cliente.post(
+        "/api/v1/aceite-dos-termos",
+        headers=com_token(token(chave, **DA_CARLA)),
+        json=corpo,
+    )
+    assert resposta.status_code == 422
+
+
+def test_aceite_sem_conta_401_conta_nova(cliente, banco, chave):
+    resposta = _aceitar(cliente, chave)
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "conta-nova"
+
+
+def test_aceite_sem_token_401(cliente, banco):
+    resposta = cliente.post(
+        "/api/v1/aceite-dos-termos", json={"versao": VERSAO_DOS_TERMOS}
+    )
+    assert resposta.status_code == 401
+
+
+def test_o_aceite_vale_so_para_a_conta_do_token(cliente, banco, chave):
+    _criar(cliente, chave)
+    with banco.begin() as conexao:
+        entrar(conexao, "davi", "davi@exemplo.com")
+    _aceitar(cliente, chave)
+    with banco.connect() as conexao:
+        davi = buscar_por_google_sub(conexao, "davi")
+    assert davi is not None and davi.termos_versao != VERSAO_DOS_TERMOS
+
+
+def test_novidades_por_email_so_com_a_caixa_marcada(cliente, banco, chave):
+    _criar(cliente, chave)
+    _aceitar(cliente, chave)
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.connect() as conexao:
+        assert novidades_por_email.inscricao(conexao, carla.id) is None
+
+
+def test_caixa_das_novidades_marcada_inscreve(cliente, banco, chave):
+    _criar(cliente, chave)
+    resposta = cliente.post(
+        "/api/v1/aceite-dos-termos",
+        headers=com_token(token(chave, **DA_CARLA)),
+        json={
+            "versao": VERSAO_DOS_TERMOS,
+            "novidades": True,
+            "versao_das_novidades": VERSAO_DO_CONSENTIMENTO,
+        },
+    )
+    assert resposta.status_code == 200, resposta.text
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.connect() as conexao:
+        inscrita = novidades_por_email.inscricao(conexao, carla.id)
+    assert inscrita is not None
+    assert inscrita.versao_do_consentimento == VERSAO_DO_CONSENTIMENTO
+
+
+def test_texto_velho_das_novidades_nao_vale_como_consentimento(cliente, banco, chave):
+    _criar(cliente, chave)
+    resposta = cliente.post(
+        "/api/v1/aceite-dos-termos",
+        headers=com_token(token(chave, **DA_CARLA)),
+        json={
+            "versao": VERSAO_DOS_TERMOS,
+            "novidades": True,
+            "versao_das_novidades": "2000-01-01",
+        },
+    )
+    assert resposta.status_code == 409
+    carla = _da_carla(banco)
+    assert carla is not None and carla.termos_versao != VERSAO_DOS_TERMOS
+    with banco.connect() as conexao:
+        assert novidades_por_email.inscricao(conexao, carla.id) is None

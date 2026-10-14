@@ -22,6 +22,7 @@ from src import (
     analises,
     catalogo,
     comparacao,
+    conformidade,
     ficha,
     formatos,
     marca,
@@ -38,6 +39,8 @@ from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.autenticacao import AVISO_DA_ENTRADA
 from src.conteudo import carregar_glossario
+from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
+from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from src.estilos_pdf import ESTILOS
 from src.estrategias import ESTRATEGIAS
 
@@ -303,6 +306,16 @@ def _app() -> dict[str, object]:
             },
         },
         "entrada": {"aviso": AVISO_DA_ENTRADA},
+        "aceite": {
+            "versao": conformidade.VERSAO_DOS_TERMOS,
+            "titulo": conformidade.TITULO_DO_ACEITE,
+            "introducao": conformidade.INTRODUCAO_DO_ACEITE,
+            "caixa": conformidade.CAIXA_DO_ACEITE,
+            "novidades": {
+                "texto": f"Opcional: {TEXTO_DAS_NOVIDADES}",
+                "versao": VERSAO_DAS_NOVIDADES,
+            },
+        },
         "linha_do_tempo": {
             "relevancias": [
                 {"nome": nome, "valor": valor}

@@ -11,6 +11,7 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
+from src.banco import novidades_por_email
 from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
 from src.banco.modelo import (
     alertas,
@@ -34,6 +35,7 @@ from src.banco.pulse import dados_para_exportar as pulse_para_exportar
 from src.banco.tentativas import contar_por_ativo
 from src.banco.teses import dados_para_exportar as diario_para_exportar
 from src.banco.usuarios import Usuario
+from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 
 # versão 2: Plus, relatórios, acesso aberto, Cloudflare. Versão 4: Research completo (carteira,
 # alertas, Newsletter por e-mail; o texto 3 entrou sem novo aceite) e cópias de segurança cifradas.
@@ -44,6 +46,13 @@ from src.banco.usuarios import Usuario
 VERSAO_DOS_TERMOS = "2026-10-13.7"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
+# a tela do aceite (o Streamlit e o app novo mostram as mesmas frases)
+TITULO_DO_ACEITE = "Antes de começar"
+INTRODUCAO_DO_ACEITE = (
+    "O TickerLab é uma plataforma de inteligência financeira: nada aqui é recomendação de "
+    "investimento. Leia os termos e a política de privacidade e confirme."
+)
+CAIXA_DO_ACEITE = "Li e aceito os Termos de uso e a Política de privacidade"
 
 
 def carregar_texto(nome: str) -> str:
@@ -70,6 +79,17 @@ def registrar_aceite(conexao: sa.Connection, usuario_id: uuid.UUID) -> None:
         usuario_id,
         {"versao": VERSAO_DOS_TERMOS},
     )
+
+
+def aceitar_os_termos(
+    conexao: sa.Connection, usuario_id: uuid.UUID, quer_novidades: bool
+) -> None:
+    """O aceite dos termos e, se a caixa opcional foi marcada, a inscrição nas Novidades por
+    e-mail, na mesma transação (o Streamlit e o app novo chamam esta). A caixa desmarcada não
+    tira ninguém: quem já recebe sai pelo link do e-mail ou em Meus dados."""
+    registrar_aceite(conexao, usuario_id)
+    if quer_novidades and not novidades_por_email.inscricao(conexao, usuario_id):
+        novidades_por_email.inscrever(conexao, usuario_id, VERSAO_DAS_NOVIDADES)
 
 
 def _texto(valor: object) -> object:

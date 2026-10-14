@@ -1,6 +1,38 @@
 {
   "components": {
     "schemas": {
+      "AceiteV1": {
+        "description": "A versão dos termos que a tela mostrou (uma aba velha não aceita os termos novos).",
+        "properties": {
+          "novidades": {
+            "default": false,
+            "title": "Novidades",
+            "type": "boolean"
+          },
+          "versao": {
+            "maxLength": 40,
+            "title": "Versao",
+            "type": "string"
+          },
+          "versao_das_novidades": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Versao Das Novidades"
+          }
+        },
+        "required": [
+          "versao"
+        ],
+        "title": "AceiteV1",
+        "type": "object"
+      },
       "AnoV1": {
         "properties": {
           "ano": {
@@ -1537,6 +1569,63 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/v1/aceite-dos-termos": {
+      "post": {
+        "description": "Grava o aceite dos termos atuais para a conta do token (como o botão do Streamlit).",
+        "operationId": "registrar_o_aceite_v1_aceite_dos_termos_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AceiteV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Registrar O Aceite"
+      }
+    },
     "/v1/backtest": {
       "post": {
         "description": "O backtest simples (sem proteções, Monte Carlo nem grade) e, embaixo, a ficha \"Foi sorte?\".\n\nComo no Streamlit, todo backtest é uma tentativa: a configuração fica contada na conta (a mesma\nconfiguração não conta duas vezes) e entra na checagem do acaso.",

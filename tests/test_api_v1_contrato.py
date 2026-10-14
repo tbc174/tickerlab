@@ -22,6 +22,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
     assert caminhos == {
         "/v1/configuracao",
         "/v1/conta",
+        "/v1/aceite-dos-termos",
         "/v1/eu",
         "/v1/visao-geral",
         "/v1/risco",
