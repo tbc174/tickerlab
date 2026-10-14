@@ -168,3 +168,53 @@ def test_carga_para_quando_acaba_o_tempo(tmp_path, monkeypatch):
     )
     assert codigo == 0
     assert len(list(tmp_path.glob("*.parquet"))) == 1  # o 2º dia já não começa
+
+
+# --- feriados dos EUA (14/10/2026: a carga travou no 404 do Labor Day, 07/09) ----------------------
+class _Resposta404(_Resposta):
+    def raise_for_status(self):
+        raise coletor.requests.HTTPError("404 Client Error: Not Found")
+
+
+def test_dias_uteis_desde_pulam_os_feriados_da_nyse():
+    assert coletor.dias_uteis_desde(date(2026, 9, 4), date(2026, 9, 10)) == [
+        date(2026, 9, 9),
+        date(2026, 9, 8),
+        date(2026, 9, 4),  # 07/09 (Labor Day) fora
+    ]
+
+
+def test_dias_uteis_recentes_pulam_os_feriados_da_nyse():
+    assert coletor.dias_uteis_recentes(date(2026, 9, 9), 3) == [
+        date(2026, 9, 3),
+        date(2026, 9, 4),
+        date(2026, 9, 8),
+    ]
+
+
+def test_carga_nao_pede_o_dia_de_feriado_que_a_iex_responde_com_404(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    pedidos: list = []
+
+    def buscar(url, stream=False, timeout=None):
+        pedidos.append(url)
+        if url.endswith("date=20260907"):
+            return _Resposta404()
+        return _Resposta(json_=[])  # nenhum outro dia tem arquivo (não baixa nada)
+
+    codigo = coletor.main(["--desde", "2026-09-01", "--pasta", str(tmp_path)], buscar)
+    assert codigo == 0
+    assert not any(url.endswith("date=20260907") for url in pedidos)
+    assert any(url.endswith("date=20260908") for url in pedidos)
+
+
+def test_404_num_dia_de_pregao_continua_sendo_falha(tmp_path, monkeypatch):
+    # Um fechamento extra que o calendário não conhece aparece no alarme, em vez de sumir calado.
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    codigo = coletor.main(
+        ["--data", "2026-09-08", "--pasta", str(tmp_path)],
+        lambda url, stream=False, timeout=None: _Resposta404(),
+    )
+    assert codigo == 1
