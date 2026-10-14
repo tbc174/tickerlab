@@ -275,7 +275,9 @@ def test_banco_recusa_link_incoerente(motor):
     with motor.begin() as conexao:
         conexao.execute(
             sa.insert(compartilhamentos).values(
-                _link(usuario.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id)
+                _link(
+                    usuario.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id
+                )
             )
         )
 
@@ -301,7 +303,9 @@ def test_links_saem_com_a_conta_e_com_o_pdf(motor):
         conexao.execute(
             sa.insert(compartilhamentos).values(
                 [
-                    _link(ana.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id),
+                    _link(
+                        ana.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id
+                    ),
                     _link(ana.id),
                     _link(bia.id),
                 ]
