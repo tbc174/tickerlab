@@ -15,13 +15,20 @@ from dataclasses import asdict
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import anthropic
 import requests
 import sqlalchemy as sa
 
-from src import leitura, topicos
+from src import leitura, topicos, topicos_modelo
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
-from src.banco.leituras import RESUMO, TOPICO, fatos_sem_leitura, gravar_leitura
+from src.banco.leituras import (
+    RESUMO,
+    TOPICO,
+    TOPICO_MODELO,
+    fatos_sem_leitura,
+    gravar_leitura,
+)
 from src.configuracao import url_do_banco
 from src.eventos import FONTE_IPE
 
@@ -63,10 +70,16 @@ def ler(conteudo: bytes) -> dict:
     return leitura.resumir_fato_relevante(texto).para_guardar()
 
 
-def assunto(conteudo: bytes, titulo: str) -> dict:
-    """O assunto do fato (leitor v2): o título decide; se for genérico, o texto."""
+def assunto(
+    conteudo: bytes, titulo: str, cliente: anthropic.Anthropic | None
+) -> tuple[dict, dict | None]:
+    """O assunto do fato (leitor v2) pelas regras e, se elas deixam "Outros" e há chave, pelo modelo."""
     texto, _ = _texto(conteudo)
-    return asdict(topicos.topico_do_documento(titulo, texto))
+    pelas_regras = topicos.topico_do_documento(titulo, texto)
+    pelo_modelo = None
+    if cliente is not None and texto and pelas_regras.principal == topicos.OUTROS:
+        pelo_modelo = topicos_modelo.ler_com_modelo(cliente, titulo, texto)
+    return asdict(pelas_regras), asdict(pelo_modelo) if pelo_modelo else None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -80,6 +93,9 @@ def main(argv: list[str] | None = None) -> int:
     url = url_do_banco()
     migrar_para("head", url=url)
     motor = criar_engine(url)
+    cliente = (
+        topicos_modelo.cliente_da_chave()
+    )  # sem a chave, a camada do modelo fica desligada
     lidos = 0
     try:
         with motor.connect() as conexao:
@@ -109,16 +125,16 @@ def main(argv: list[str] | None = None) -> int:
                     publicado,
                     ler(conteudo),
                 )
-                gravar_leitura(
-                    conexao,
-                    FONTE_IPE,
-                    protocolo,
-                    TOPICO,
-                    cnpj,
-                    publicado,
-                    assunto(conteudo, titulo),
-                    versao=topicos.VERSAO,
-                )
+                pelas_regras, pelo_modelo = assunto(conteudo, titulo, cliente)
+                for tipo, resultado in (
+                    (TOPICO, pelas_regras),
+                    (TOPICO_MODELO, pelo_modelo),
+                ):
+                    if resultado is not None:
+                        gravar_leitura(
+                            conexao, FONTE_IPE, protocolo, tipo, cnpj, publicado,
+                            resultado, versao=topicos.VERSAO,
+                        )  # fmt: skip
             lidos += 1
         log.info("Fatos relevantes lidos: %s de %s pendentes", lidos, len(pendentes))
     except (requests.RequestException, sa.exc.SQLAlchemyError) as erro:
