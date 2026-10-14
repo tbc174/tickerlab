@@ -8,7 +8,7 @@ export const DADOS = {
   titulo: "Planos",
   descricao:
     "Gratuito, Plus e Pro: o que cada plano do TickerLab inclui, com os mesmos limites do " +
-    "app. Cobrança em modo de teste.",
+    "app. Assinatura mensal de verdade, sem fidelidade. Cobrança em modo de teste.",
   atual: "/precos.html",
 };
 
@@ -56,6 +56,18 @@ function Cobranca() {
   );
 }
 
+// Diferencial da ADR 0054: muita plataforma anuncia "mensal" e cobra o ano inteiro parcelado.
+function MensalDeVerdade() {
+  return (
+    <p>
+      <strong>Mensal de verdade:</strong> cancele quando quiser, sem fidelidade e sem prender o
+      limite do seu cartão. A assinatura cobra um mês por vez, e não o ano inteiro parcelado em
+      12 vezes. O cancelamento é feito no próprio app (Minha conta → Planos e assinatura), sem
+      precisar falar com ninguém, e o acesso continua até o fim do mês já pago.
+    </p>
+  );
+}
+
 export function Precos() {
   return (
     <section className="faixa secao estreita">
@@ -67,11 +79,11 @@ export function Precos() {
       </p>
       <TabelaDePlanos />
       <h2>Cobrança</h2>
+      <MensalDeVerdade />
       <Cobranca />
       <p>
-        Quando houver cobrança real, os valores, a renovação e a forma de cancelar aparecem aqui
-        e nos Termos de uso antes de qualquer mudança. Você pode cancelar a assinatura no
-        próprio app (Minha conta → Planos e assinatura).
+        Quando houver cobrança real, os valores e a renovação aparecem aqui e nos Termos de uso
+        antes de qualquer mudança.
       </p>
       <h2>Os números que contam</h2>
       <ul>
