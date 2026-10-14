@@ -382,3 +382,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** as linhas da lista não tinham as mesmas chaves (uma tinha `relatorio_id`, as outras não). Num `insert` de várias linhas, todas precisam das mesmas colunas.
 - **Solução:** pôr todas as colunas em todas as linhas (com `None` onde não há valor).
 - **Data:** 13/10/2026
+
+## Teste de ordem "mais novo primeiro" falha às vezes no Windows (passa sozinho)
+- **Sintoma:** `test_lista_vem_da_mais_nova_para_a_mais_antiga` (Diário de Teses) falhou uma vez na suíte inteira com a máquina carregada e passava sozinho.
+- **Causa:** no Python 3.12 do Windows, `datetime.now()` usa `GetSystemTimeAsFileTime`, que anda de 15,6 em 15,6 ms (`time.get_clock_info("time").resolution`). Duas teses gravadas em seguida saíam com a mesma hora; a consulta desempata pelo `id`, que é um `uuid4` aleatório, então a ordem virava cara ou coroa (com o relógio parado, 10 de 20 rodadas falharam). Em produção (PostgreSQL no Linux, microssegundos) o empate não acontece.
+- **Solução:** teste de ordem não depende do relógio: fixe as horas (aqui com `sa.update(...).values(criada_em=...)`; em `compartilhamentos` a função já recebe `agora=`). Para conferir que um teste aguenta o empate, rode-o com o `datetime` do módulo trocado por um relógio parado (`monkeypatch.setattr(modulo, "datetime", RelogioParado)`).
+- **Data:** 14/10/2026
