@@ -3544,5 +3544,368 @@
   ],
   "conta": "sorte_em_serie.simular",
   "erro": true
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 2000,
+    "vendas_comuns": 15000
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 0.0,
+   "base_day_trade": 0,
+   "darf": 0.0,
+   "imposto_comum": 0.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 0.0,
+   "isento": true,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0.0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 2000,
+    "vendas_comuns": 20000
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 0.0,
+   "base_day_trade": 0,
+   "darf": 0.0,
+   "imposto_comum": 0.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 0.0,
+   "isento": true,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0.0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 2000,
+    "vendas_comuns": 20000.01
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 2000,
+   "base_day_trade": 0,
+   "darf": 300.0,
+   "imposto_comum": 300.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 0,
+   "isento": false,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "irrf_comum": 1.5,
+    "resultado_comum": 3000,
+    "vendas_comuns": 30000
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 3000,
+   "base_day_trade": 0,
+   "darf": 448.5,
+   "imposto_comum": 450.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 1.5,
+   "isento": false,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0.0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 2000,
+    "vendas_comuns": 15000
+   },
+   {
+    "prejuizo_comum": 800
+   }
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 0.0,
+   "base_day_trade": 0,
+   "darf": 0.0,
+   "imposto_comum": 0.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 0.0,
+   "isento": true,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0.0,
+    "prejuizo_comum": 800,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "irrf_day_trade": 10,
+    "resultado_day_trade": 1000
+   },
+   {
+    "prejuizo_day_trade": 300
+   }
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 0,
+   "base_day_trade": 700,
+   "darf": 130.0,
+   "imposto_comum": 0.0,
+   "imposto_day_trade": 140.0,
+   "irrf_usado": 10,
+   "isento": false,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 1000,
+    "resultado_day_trade": -1000,
+    "vendas_comuns": 50000
+   },
+   {
+    "imposto_abaixo_do_minimo": 4,
+    "irrf_a_compensar": 3
+   }
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 1000,
+   "base_day_trade": 0.0,
+   "darf": 151.0,
+   "imposto_comum": 150.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 3,
+   "isento": false,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 0.0,
+    "irrf_a_compensar": 0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 1000
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "resultado_comum": 40,
+    "vendas_comuns": 30000
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "valor": {
+   "base_comum": 40,
+   "base_day_trade": 0,
+   "darf": 0.0,
+   "imposto_comum": 6.0,
+   "imposto_day_trade": 0.0,
+   "irrf_usado": 0,
+   "isento": false,
+   "saldos_seguintes": {
+    "imposto_abaixo_do_minimo": 6.0,
+    "irrf_a_compensar": 0,
+    "prejuizo_comum": 0,
+    "prejuizo_day_trade": 0
+   }
+  }
+ },
+ {
+  "argumentos": [
+   {
+    "vendas_comuns": -1
+   },
+   {}
+  ],
+  "conta": "darf.apurar_mes",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   {},
+   {
+    "imposto_abaixo_do_minimo": 10
+   }
+  ],
+  "conta": "darf.apurar_mes",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   {},
+   {
+    "prejuizo_comum": -5
+   }
+  ],
+  "conta": "darf.apurar_mes",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "irrf_comum": 1.25,
+     "resultado_comum": -2000,
+     "vendas_comuns": 25000
+    },
+    {
+     "irrf_comum": 2,
+     "resultado_comum": 3000,
+     "vendas_comuns": 40000
+    },
+    {
+     "resultado_comum": 900,
+     "vendas_comuns": 18000
+    },
+    {
+     "resultado_comum": 40,
+     "vendas_comuns": 30000
+    },
+    {
+     "resultado_comum": 40,
+     "resultado_day_trade": 500,
+     "vendas_comuns": 30000
+    }
+   ],
+   {}
+  ],
+  "conta": "darf.apurar_meses",
+  "valor": [
+   {
+    "base_comum": 0.0,
+    "base_day_trade": 0,
+    "darf": 0.0,
+    "imposto_comum": 0.0,
+    "imposto_day_trade": 0.0,
+    "irrf_usado": 0.0,
+    "isento": false,
+    "saldos_seguintes": {
+     "imposto_abaixo_do_minimo": 0.0,
+     "irrf_a_compensar": 1.25,
+     "prejuizo_comum": 2000,
+     "prejuizo_day_trade": 0
+    }
+   },
+   {
+    "base_comum": 1000,
+    "base_day_trade": 0,
+    "darf": 146.75,
+    "imposto_comum": 150.0,
+    "imposto_day_trade": 0.0,
+    "irrf_usado": 3.25,
+    "isento": false,
+    "saldos_seguintes": {
+     "imposto_abaixo_do_minimo": 0.0,
+     "irrf_a_compensar": 0.0,
+     "prejuizo_comum": 0,
+     "prejuizo_day_trade": 0
+    }
+   },
+   {
+    "base_comum": 0.0,
+    "base_day_trade": 0,
+    "darf": 0.0,
+    "imposto_comum": 0.0,
+    "imposto_day_trade": 0.0,
+    "irrf_usado": 0.0,
+    "isento": true,
+    "saldos_seguintes": {
+     "imposto_abaixo_do_minimo": 0.0,
+     "irrf_a_compensar": 0.0,
+     "prejuizo_comum": 0,
+     "prejuizo_day_trade": 0
+    }
+   },
+   {
+    "base_comum": 40,
+    "base_day_trade": 0,
+    "darf": 0.0,
+    "imposto_comum": 6.0,
+    "imposto_day_trade": 0.0,
+    "irrf_usado": 0.0,
+    "isento": false,
+    "saldos_seguintes": {
+     "imposto_abaixo_do_minimo": 6.0,
+     "irrf_a_compensar": 0.0,
+     "prejuizo_comum": 0,
+     "prejuizo_day_trade": 0
+    }
+   },
+   {
+    "base_comum": 40,
+    "base_day_trade": 500,
+    "darf": 112.0,
+    "imposto_comum": 6.0,
+    "imposto_day_trade": 100.0,
+    "irrf_usado": 0.0,
+    "isento": false,
+    "saldos_seguintes": {
+     "imposto_abaixo_do_minimo": 0.0,
+     "irrf_a_compensar": 0.0,
+     "prejuizo_comum": 0,
+     "prejuizo_day_trade": 0
+    }
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   2026,
+   10
+  ],
+  "conta": "darf.vencimento",
+  "valor": "último dia útil de novembro de 2026"
+ },
+ {
+  "argumentos": [
+   2026,
+   12
+  ],
+  "conta": "darf.vencimento",
+  "valor": "último dia útil de janeiro de 2027"
  }
 ]

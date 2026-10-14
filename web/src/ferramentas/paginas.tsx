@@ -1,5 +1,6 @@
 // As páginas das ferramentas grátis e a vitrine delas. Os números dos exemplos do texto saem das
 // mesmas contas da calculadora (nada digitado à mão que possa ficar diferente).
+import { regrasDeImposto } from "../conteudo";
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
 import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
@@ -44,6 +45,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "sorte-em-serie.html",
     nome: "Sorte em série",
     descricao: "Cem estratégias de cara ou coroa: a melhor parece genial, e é só sorte.",
+  },
+  {
+    arquivo: "calculadora-de-darf.html",
+    nome: "Imposto sobre ações (DARF)",
+    descricao: "O imposto do mês, a isenção de R$ 20 mil, o prejuízo a compensar e o código do DARF.",
   },
 ];
 
@@ -328,6 +334,86 @@ export function PaginaDaSorte() {
       <p>
         Ganhar 1% e depois perder 1% não volta ao começo: R$ 100 viram R$ 101 e depois R$ 99,99. Com
         altas e baixas do mesmo tamanho, o vaivém sozinho corrói o resultado.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Imposto sobre ações (DARF) -------------------------------------------------------------
+const DARF = "calculadora-de-darf.html";
+const REGRAS_DO_DARF = [
+  "aliquota_comum",
+  "aliquota_day_trade",
+  "isencao_vendas_no_mes",
+  "irrf_comum",
+  "irrf_day_trade",
+  "codigo_do_darf",
+  "darf_minimo",
+];
+
+export const DADOS_DO_DARF = {
+  caminho: `/${DARF}`,
+  titulo: "Calculadora de DARF de ações",
+  descricao:
+    "Calcule o imposto sobre ações do mês: swing trade e day trade, isenção de R$ 20 mil, " +
+    "prejuízo a compensar, IR retido e o DARF 6015. Regras da Receita, grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+/** "15%", "R$ 20.000", "6015": o valor de uma regra como a pessoa lê. */
+function valorDaRegra(valor: number | string, chave: string): string {
+  if (typeof valor === "string") return valor;
+  return chave.startsWith("aliquota") || chave.startsWith("irrf")
+    ? formatarPorcentagem(valor, 3)
+    : formatarReais(valor);
+}
+
+export function PaginaDoDarf() {
+  const regras = REGRAS_DO_DARF.map((chave) => regrasDeImposto.regras.find((r) => r.chave === chave)!);
+  const conferida = regras[0].conferida_em.split("-").reverse().join("/");
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de DARF de ações"
+      subtitulo="O imposto de um mês de operações com ações na B3, com as regras da Receita Federal. Grátis e sem cadastro."
+      ilha="darf"
+      codigo={codigo(DARF)}
+      anuncio="ficha"
+      foraDaConta={[
+        "FII, ETF, BDR, opções, termo e futuros, que têm regras próprias",
+        "o cálculo do preço médio: o resultado de cada mês entra pronto, com corretagem e taxas descontadas",
+        "a declaração anual: o prejuízo e o IR retido também vão para o Demonstrativo de Renda Variável",
+      ]}
+      fonte={`Receita Federal, Perguntas e Respostas IRPF 2026, e Lei 9.430/1996; regras conferidas em ${conferida}`}
+    >
+      <h2>As regras que a calculadora usa</h2>
+      <ul>
+        {regras.map((r) => (
+          <li key={r.chave}>
+            {r.descricao}: <strong>{valorDaRegra(r.valor, r.chave)}</strong> (
+            <a href={r.fonte} rel="noopener">
+              {r.onde}
+            </a>
+            )
+          </li>
+        ))}
+      </ul>
+      <h2>A isenção de R$ 20 mil</h2>
+      <p>
+        Vale para quem vendeu até R$ 20.000 em ações no mês, somando todas as vendas comuns (não o
+        lucro). Não vale para day trade, ETF, FII nem fundos. O lucro isento não gasta o prejuízo
+        que você tem para compensar: ele continua guardado para um mês com imposto.
+      </p>
+      <h2>Prejuízo, IR retido e DARF pequeno</h2>
+      <p>
+        O prejuízo de um mês abate o lucro dos meses seguintes, sem prazo, mas só do mesmo tipo:
+        day trade com day trade, operações comuns com comuns. O IR retido na fonte (o “dedo-duro”)
+        abate o imposto do mês, e o que sobra fica para depois. Se o DARF der menos de R$ 10, não
+        se paga: o valor soma ao imposto do mês seguinte.
+      </p>
+      <p>
+        A calculadora ajuda a conferir a conta e não substitui um contador nem a orientação da
+        Receita Federal.
       </p>
     </PaginaDeFerramenta>
   );

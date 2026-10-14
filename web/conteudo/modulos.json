@@ -354,6 +354,14 @@
         "pagina_do_app": null,
         "pagina_do_site": "sorte-em-serie.html",
         "ticker": null
+      },
+      {
+        "descricao": "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
+        "disponivel": true,
+        "nome": "Imposto sobre ações (DARF)",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-darf.html",
+        "ticker": null
       }
     ],
     "nome": "Ferramentas",

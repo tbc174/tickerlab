@@ -16,7 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from src.ferramentas import aleatorio, aportes, custos, juros
+from src.ferramentas import aleatorio, aportes, custos, darf, juros
 from src.ferramentas import sorte_em_serie as sorte
 from src.ferramentas import viver_de_renda as vr
 
@@ -44,6 +44,14 @@ CONTAS: dict[str, Conta] = {
     "aleatorio.sequencia": aleatorio.sequencia,
     "sorte_em_serie.sharpe": sorte.sharpe,
     "sorte_em_serie.simular": sorte.simular,
+    # o DARF recebe o mês e os saldos como dicionários (os campos que faltam ficam em zero)
+    "darf.apurar_mes": lambda mes, saldos: darf.apurar_mes(
+        darf.Mes(**mes), darf.Saldos(**saldos)
+    ),
+    "darf.apurar_meses": lambda meses, saldos: darf.apurar_meses(
+        [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
+    ),
+    "darf.vencimento": darf.vencimento,
 }
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
@@ -143,6 +151,58 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("sorte_em_serie.simular", [500, 30, 123456]),
     ("sorte_em_serie.simular", [1, 250, 42]),
     ("sorte_em_serie.simular", [100, 1, 42]),
+    ("darf.apurar_mes", [{"vendas_comuns": 15000, "resultado_comum": 2000}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": 20000, "resultado_comum": 2000}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": 20000.01, "resultado_comum": 2000}, {}]),
+    (
+        "darf.apurar_mes",
+        [{"vendas_comuns": 30000, "resultado_comum": 3000, "irrf_comum": 1.5}, {}],
+    ),
+    (
+        "darf.apurar_mes",
+        [{"vendas_comuns": 15000, "resultado_comum": 2000}, {"prejuizo_comum": 800}],
+    ),
+    (
+        "darf.apurar_mes",
+        [
+            {"resultado_day_trade": 1000, "irrf_day_trade": 10},
+            {"prejuizo_day_trade": 300},
+        ],
+    ),
+    (
+        "darf.apurar_mes",
+        [
+            {
+                "vendas_comuns": 50000,
+                "resultado_comum": 1000,
+                "resultado_day_trade": -1000,
+            },
+            {"irrf_a_compensar": 3, "imposto_abaixo_do_minimo": 4},
+        ],
+    ),
+    ("darf.apurar_mes", [{"vendas_comuns": 30000, "resultado_comum": 40}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": -1}, {}]),
+    ("darf.apurar_mes", [{}, {"imposto_abaixo_do_minimo": 10}]),
+    ("darf.apurar_mes", [{}, {"prejuizo_comum": -5}]),
+    (
+        "darf.apurar_meses",
+        [
+            [
+                {"vendas_comuns": 25000, "resultado_comum": -2000, "irrf_comum": 1.25},
+                {"vendas_comuns": 40000, "resultado_comum": 3000, "irrf_comum": 2},
+                {"vendas_comuns": 18000, "resultado_comum": 900},
+                {"vendas_comuns": 30000, "resultado_comum": 40},
+                {
+                    "vendas_comuns": 30000,
+                    "resultado_comum": 40,
+                    "resultado_day_trade": 500,
+                },
+            ],
+            {},
+        ],
+    ),
+    ("darf.vencimento", [2026, 10]),
+    ("darf.vencimento", [2026, 12]),
 ]
 
 

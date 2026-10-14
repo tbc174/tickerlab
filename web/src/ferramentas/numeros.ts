@@ -27,7 +27,8 @@ export function formatarNumero(valor: number): string {
   return DECIMAL.format(valor);
 }
 
-/** 0.0125 → "1,25%". */
-export function formatarPorcentagem(fracao: number): string {
-  return `${DECIMAL.format(fracao * 100)}%`;
+/** 0.0125 → "1,25%"; com `casas` = 3, 0.00005 → "0,005%". */
+export function formatarPorcentagem(fracao: number, casas = 2): string {
+  const formato = casas === 2 ? DECIMAL : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: casas });
+  return `${formato.format(fracao * 100)}%`;
 }

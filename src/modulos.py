@@ -273,6 +273,11 @@ MODULOS = (
                 "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
                 pagina_do_site="sorte-em-serie.html",
             ),
+            Funcionalidade(
+                "Imposto sobre ações (DARF)",
+                "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
+                pagina_do_site="calculadora-de-darf.html",
+            ),
         ),
     ),
     Modulo(

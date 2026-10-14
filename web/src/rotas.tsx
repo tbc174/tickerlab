@@ -5,6 +5,7 @@ import {
   DADOS_DA_VITRINE,
   DADOS_DOS_APORTES,
   DADOS_DOS_CUSTOS,
+  DADOS_DO_DARF,
   DADOS_DA_RENDA,
   DADOS_DA_SORTE,
   DADOS_DOS_JUROS,
@@ -12,6 +13,7 @@ import {
   PaginaDaSorte,
   PaginaDosAportes,
   PaginaDosCustos,
+  PaginaDoDarf,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
@@ -64,6 +66,7 @@ export const ROTAS: Rota[] = [
     conteudo: () => <PaginaDaRenda />,
   },
   { arquivo: "sorte-em-serie.html", dados: DADOS_DA_SORTE, conteudo: () => <PaginaDaSorte /> },
+  { arquivo: "calculadora-de-darf.html", dados: DADOS_DO_DARF, conteudo: () => <PaginaDoDarf /> },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },

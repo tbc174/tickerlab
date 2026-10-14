@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import * as aleatorio from "../../src/ferramentas/contas/aleatorio";
 import * as aportes from "../../src/ferramentas/contas/aportes";
 import * as custos from "../../src/ferramentas/contas/custos";
+import * as darf from "../../src/ferramentas/contas/darf";
 import * as juros from "../../src/ferramentas/contas/juros";
 import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
 import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
@@ -30,6 +31,9 @@ const CONTAS: Record<string, Conta> = {
   "aleatorio.sequencia": aleatorio.sequencia,
   "sorte_em_serie.sharpe": sorte.sharpe,
   "sorte_em_serie.simular": sorte.simular,
+  "darf.apurar_mes": darf.apurarMes,
+  "darf.apurar_meses": darf.apurarMeses,
+  "darf.vencimento": darf.vencimento,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;
