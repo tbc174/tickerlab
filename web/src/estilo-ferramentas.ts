@@ -91,6 +91,11 @@ export function cssFerramentas(): string {
 .ferramenta-velho { color: var(--atencao); }
 .ferramenta-comparacao { font-variant-numeric: tabular-nums; }
 .ferramenta-comparacao td { text-align: right; }
+.ferramenta-compartilhar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
+.ferramenta-compartilhar [role="status"] { font-size: .85rem; }
+.ferramenta-link-manual { display: grid; gap: .25rem; width: 100%; font-size: .85rem; }
+.ferramenta-link-manual input { width: 100%; padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 500 .85rem "JetBrains Mono", monospace; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }
