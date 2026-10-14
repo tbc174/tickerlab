@@ -3,7 +3,10 @@
 // pregão mais próximo (mouse, toque ou setas do teclado) e uma dica com o dia e o valor de cada série.
 // O eixo x é por pregão (sem buracos nos fins de semana). Textos vêm como texto do React (nada de HTML).
 import { type KeyboardEvent, type PointerEvent, useId, useMemo, useState } from "react";
+import { limitesDoEixo } from "../../graficos/escala";
 import { formatarData } from "../formatar";
+
+export { limitesDoEixo };
 
 export interface Serie {
   nome: string;
@@ -31,27 +34,10 @@ interface Propriedades {
 const LARGURA = 720;
 const ALTURA = 260;
 const MARGEM = { topo: 12, direita: 16, baixo: 28, esquerda: 48 };
-const LINHAS_DA_GRADE = 4;
 const MARCAS_DE_DATA = 5;
 
 function arredondar(valor: number): string {
   return valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-}
-
-/** Um passo "redondo" (1, 2, 2,5 ou 5 × 10^n) que divide a faixa em ~`partes`. */
-function passoRedondo(faixa: number, partes: number): number {
-  const bruto = faixa / partes;
-  const potencia = 10 ** Math.floor(Math.log10(bruto));
-  const fator = [1, 2, 2.5, 5, 10].find((f) => f * potencia >= bruto) ?? 10;
-  return fator * potencia;
-}
-
-export function limitesDoEixo(valores: number[], referencia?: number): [number, number, number] {
-  const todos = referencia === undefined ? valores : [...valores, referencia];
-  const minimo = Math.min(...todos);
-  const maximo = Math.max(...todos);
-  const passo = passoRedondo(maximo - minimo || 1, LINHAS_DA_GRADE);
-  return [Math.floor(minimo / passo) * passo, Math.ceil(maximo / passo) * passo, passo];
 }
 
 export function GraficoDeLinha({

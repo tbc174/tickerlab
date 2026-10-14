@@ -131,6 +131,13 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
 
 
+def test_b3_cita_a_politica_de_consumo_e_e_so_uso_interno():
+    # negócios do pregão: só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
+    assert "Política de Consumo" in licenca_da_fonte("b3-negocios")
+    assert coletas.revenda_da_fonte("b3-negocios") == coletas.SO_USO_INTERNO
+    assert coletas.revenda_da_fonte("b3-boletim-pr") == coletas.SO_USO_INTERNO
+
+
 def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
     agora = datetime(2026, 10, 14, 2, tzinfo=UTC)
     with banco.begin() as conexao:

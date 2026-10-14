@@ -1,6 +1,10 @@
 """Linha de comando do arquivista (scripts/arquivar_fontes.py)."""
 
+import socket
+import threading
+
 import pytest
+import requests
 
 from scripts import arquivar_fontes
 
@@ -124,3 +128,83 @@ def test_trecho_recusa_servidor_que_manda_o_arquivo_inteiro(monkeypatch):
     with pytest.raises(ValueError, match="ignorou o pedido de trecho"):
         cliente.ler_trecho("https://x/ignora.zip", 0, 9)
     assert pedidos == ["bytes=10-19", "bytes=0-9"]
+
+
+class _ServidorQueDerruba:
+    """Servidor HTTP local: as `derrubar` primeiras conexões recebem o pedido e fecham sem
+    responder (o `RemoteDisconnected` da Receita, 14/10/2026); as outras respondem `status`."""
+
+    def __init__(self, derrubar: int, status: int = 200) -> None:
+        self.derrubar = derrubar
+        self.status = status
+        self.pedidos: list[str] = []
+        self.soquete = socket.create_server(("127.0.0.1", 0))
+        self.url = f"http://127.0.0.1:{self.soquete.getsockname()[1]}/Qualificacoes.zip"
+        threading.Thread(target=self._atender, daemon=True).start()
+
+    def _atender(self) -> None:
+        while True:
+            try:
+                conexao, _ = self.soquete.accept()
+            except OSError:
+                return
+            with conexao:
+                pedido = b""
+                while b"\r\n\r\n" not in pedido:
+                    pedido += conexao.recv(4096)
+                self.pedidos.append(pedido.split(b" ", 1)[0].decode())
+                if len(self.pedidos) <= self.derrubar:
+                    continue  # fecha sem responder
+                corpo = b"PK\x03\x04dados"
+                conexao.sendall(
+                    f"HTTP/1.1 {self.status} X\r\nContent-Length: {len(corpo)}\r\n"
+                    "Connection: close\r\n\r\n".encode()
+                    + corpo
+                )
+
+    def fechar(self) -> None:
+        self.soquete.close()
+
+
+@pytest.fixture
+def servidor_que_derruba():
+    servidores: list[_ServidorQueDerruba] = []
+
+    def criar(derrubar: int, status: int = 200) -> _ServidorQueDerruba:
+        servidores.append(_ServidorQueDerruba(derrubar, status))
+        return servidores[-1]
+
+    yield criar
+    for servidor in servidores:
+        servidor.fechar()
+
+
+def test_conexao_que_cai_antes_da_resposta_tenta_de_novo(
+    servidor_que_derruba, tmp_path
+):
+    cliente = arquivar_fontes.ClienteHttp()
+    baixar = servidor_que_derruba(derrubar=2)
+    cliente.baixar(baixar.url, tmp_path / "q.zip")
+    assert (tmp_path / "q.zip").read_bytes() == b"PK\x03\x04dados"
+    assert baixar.pedidos == ["GET"] * 3
+    cabecalhos = servidor_que_derruba(derrubar=1)
+    assert cliente.cabecalhos(cabecalhos.url)["Content-Length"] == "9"
+    propfind = servidor_que_derruba(derrubar=1)
+    assert cliente.ler(propfind.url, metodo="PROPFIND").conteudo.startswith(b"PK")
+
+
+def test_conexao_que_sempre_cai_desiste_depois_de_algumas_tentativas(
+    servidor_que_derruba, tmp_path
+):
+    servidor = servidor_que_derruba(derrubar=99)
+    with pytest.raises(requests.ConnectionError):
+        arquivar_fontes.ClienteHttp().baixar(servidor.url, tmp_path / "q.zip")
+    assert len(servidor.pedidos) == 1 + arquivar_fontes.TENTATIVAS_SE_A_CONEXAO_CAI
+
+
+def test_resposta_de_erro_nao_e_repetida(servidor_que_derruba, tmp_path):
+    # o 404 da B3 quer dizer "sem arquivo": perguntar de novo só gastaria tempo
+    servidor = servidor_que_derruba(derrubar=0, status=404)
+    with pytest.raises(requests.HTTPError):
+        arquivar_fontes.ClienteHttp().baixar(servidor.url, tmp_path / "q.zip")
+    assert servidor.pedidos == ["GET"]

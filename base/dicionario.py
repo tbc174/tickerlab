@@ -61,6 +61,41 @@ LINHAGEM_DO_FRE = (
     "registro de coletas (fonte `cvm-fre`, com SHA-256 e data da coleta); `coletado_em` diz quando "
     "a linha foi gravada. " + SEM_VERSAO_DO_CODIGO
 )
+PONTOS_PERCENTUAIS = "pontos percentuais (66,25 = 66,25%)"
+# série B: a base histórica no servidor de casa, lida dos originais guardados pelo arquivista
+_FREQUENCIA_DA_HISTORICA = (
+    "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais "
+    "guardados"
+)
+_SO_ATE_2022 = (
+    "; a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59): os anos "
+    "novos vêm vazios ou quase"
+)
+LINHAGEM_DA_HISTORICA_SEM_ANO = (
+    "Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de "
+    "coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela "
+    "foi montada. " + SEM_VERSAO_DO_CODIGO
+)
+LINHAGEM_DA_HISTORICA = (
+    LINHAGEM_DA_HISTORICA_SEM_ANO
+    + " `ano_do_arquivo` diz de que arquivo anual veio a linha."
+)
+_ORIGEM_SEM_ANO = {
+    "origem_sha256": ("SHA-256 do arquivo original no acervo", TEXTO),
+    "origem_coletada_em": ("Quando o arquivista baixou esse original", MOMENTO),
+    "montado_em": ("Quando a tabela foi montada", MOMENTO),
+}
+_ORIGEM_DA_LINHA = {
+    "ano_do_arquivo": ("Ano do arquivo da CVM de onde a linha veio", "ano"),
+    **_ORIGEM_SEM_ANO,
+}
+
+
+def _onde_da_historica(tabela: str) -> str:
+    return (
+        f"Parquet em `<acervo>/base/{tabela}/<ano>.parquet` (servidor de casa, "
+        "`scripts/montar_base_historica.py`)"
+    )
 
 
 @dataclass(frozen=True)
@@ -954,6 +989,405 @@ TABELAS: dict[str, Tabela] = {
             "acoes_novas": ("Ações emitidas no aumento de capital", ACOES),
             "valor": ("Valor do aumento de capital", REAIS),
             "coletado_em": ("Quando a carga gravou a linha", MOMENTO),
+        },
+    ),
+    # --- série B: base histórica no servidor de casa (`scripts/montar_base_historica.py`) ---------
+    "eventos": Tabela(
+        descricao=(
+            "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, "
+            "resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega "
+            "reapresentada fica só na versão mais nova."
+        ),
+        fonte="CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA + " (o IPE da CVM muda todo dia)",
+        atraso="Nenhum além da entrega: o documento vale a partir de `publicado_em`",
+        onde=_onde_da_historica("eventos"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "protocolo": ("Protocolo de entrega na CVM", TEXTO),
+            "versao": ("Versão da entrega (fica a mais nova)", NUMERO),
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "categoria": ("Categoria do documento, como a CVM publica", TEXTO),
+            "tipo": ("Tipo do documento, como a CVM publica (pode vir vazio)", TEXTO),
+            "assunto": ("Assunto escrito pela empresa", TEXTO),
+            "rotulo": ("Nome curto do tipo de documento (`src/eventos.py`)", TEXTO),
+            "tema": ("resultados, proventos, eventos ou risco", TEXTO),
+            "materialidade": (
+                "Quanto o tipo de documento costuma importar (escolha editorial)",
+                "0 a 100",
+            ),
+            "referencia": ("Data a que o documento se refere", DATA),
+            "publicado_em": ("Data de entrega à CVM", DATA),
+            "link": ("Endereço do documento original no sistema da CVM", TEXTO),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "negociacoes": Tabela(
+        descricao=(
+            "Compras e vendas de ações e units por controladores, diretores, conselheiros e pela "
+            "própria companhia (tesouraria), declaradas à CVM no VLMO desde 2018"
+        ),
+        fonte="CVM: dados abertos do VLMO (valores mobiliários negociados e detidos)",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA + " (o VLMO é mensal)",
+        atraso=(
+            "Até 10 dias depois do fim do mês da negociação (Resolução CVM 44); a linha vale a "
+            "partir de `entregue_em`"
+        ),
+        onde=_onde_da_historica("negociacoes"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "fonte": ("De onde veio a declaração (`cvm-vlmo`)", TEXTO),
+            "documento": (
+                "CNPJ e mês de referência do formulário (`cnpj|AAAA-MM`)",
+                TEXTO,
+            ),
+            "versao": ("Versão do formulário (fica a mais nova)", NUMERO),
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "cargo": (
+                (
+                    "controlador, diretoria, conselho, conselho_fiscal, outros_orgaos ou "
+                    "companhia (tesouraria)"
+                ),
+                TEXTO,
+            ),
+            "cargo_descricao": ("Cargo por extenso (vazio no VLMO)", TEXTO),
+            "operacao": ("compra ou venda", TEXTO),
+            "ativo": (
+                "Tipo e característica do valor mobiliário (até 80 letras)",
+                TEXTO,
+            ),
+            "data": ("Data da negociação", DATA),
+            "referencia": ("Mês de referência do formulário (1º dia)", DATA),
+            "entregue_em": ("Data de entrega do formulário à CVM", DATA),
+            "quantidade": ("Quantidade negociada", ACOES),
+            "preco": ("Preço unitário informado", "reais (R$) por ação"),
+            "valor": ("Volume informado ou, sem ele, quantidade × preço", "reais (R$)"),
+            "moeda": ("Moeda (sempre BRL)", TEXTO),
+            "plano_10b5_1": ("Plano de negociação da SEC (vazio na CVM)", SIM_OU_NAO),
+            "link": ("Endereço do formulário original no sistema da CVM", TEXTO),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "proventos": Tabela(
+        descricao=(
+            "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados (a versão de "
+            "longo prazo de `fre_proventos`, do app)"
+        ),
+        fonte="CVM: dados abertos do Formulário de Referência (FRE), tabela de distribuição",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA + _SO_ATE_2022,
+        atraso=ATRASO_DO_FRE,
+        onde=_onde_da_historica("proventos"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "referencia": ("Data de referência do FRE de onde a linha veio", DATA),
+            "versao": ("Versão desse FRE (1, 2, 3...)", NUMERO),
+            "exercicio": ("Fim do exercício social", DATA),
+            "lucro_ajustado": ("Lucro líquido ajustado, base da distribuição", REAIS),
+            "dividendo_total": ("Total distribuído (dividendos e JCP)", REAIS),
+            "payout": ("Parte do lucro ajustado distribuída", FRACAO),
+            "dividendos": ("Dividendos declarados", REAIS),
+            "jcp": ("Juros sobre capital próprio declarados", REAIS),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "eventos_de_capital": Tabela(
+        descricao=(
+            "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os "
+            "anos guardados (a versão de longo prazo de `fre_eventos_de_capital`, do app)"
+        ),
+        fonte=(
+            "CVM: dados abertos do Formulário de Referência (FRE), tabelas de desdobramentos, "
+            "grupamentos, bonificações e aumentos de capital"
+        ),
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA + _SO_ATE_2022,
+        atraso=ATRASO_DO_FRE,
+        onde=_onde_da_historica("eventos_de_capital"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "referencia": ("Data de referência do FRE de onde a linha veio", DATA),
+            "versao": ("Versão desse FRE (1, 2, 3...)", NUMERO),
+            "tipo": ("desdobramento, grupamento, bonificação ou aumento", TEXTO),
+            "data": ("Data da aprovação ou da deliberação", DATA),
+            "acoes_antes": ("Ações antes do evento", ACOES),
+            "acoes_depois": ("Ações depois do evento", ACOES),
+            "fator": ("Depois ÷ antes (desdobramento de 1 para 10 = 10)", "vezes"),
+            "acoes_novas": ("Ações emitidas no aumento de capital", ACOES),
+            "valor": ("Valor do aumento de capital", REAIS),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "insolvencia": Tabela(
+        descricao=(
+            "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e "
+            "liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria "
+            "própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido "
+            "(`fato_relevante`, costuma ser o primeiro sinal público)"
+        ),
+        fonte="CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA,
+        atraso="O rótulo vale a partir de `conhecido_em` (entrega à CVM)",
+        onde=_onde_da_historica("insolvencia"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "rotulo": (
+                (
+                    "recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia "
+                    "ou liquidacao"
+                ),
+                TEXTO,
+            ),
+            "evidencia": ("categoria_ipe ou fato_relevante", TEXTO),
+            "categoria": ("Categoria do documento, como a CVM publica", TEXTO),
+            "tipo": ("Tipo do documento, como a CVM publica (pode vir vazio)", TEXTO),
+            "assunto": ("Assunto escrito pela empresa", TEXTO),
+            "conhecido_em": ("Data de entrega à CVM (quando ficou público)", DATA),
+            "referencia": ("Data a que o documento se refere", DATA),
+            "protocolo": ("Protocolo de entrega na CVM", TEXTO),
+            "versao": ("Versão da entrega", NUMERO),
+            "link": ("Endereço do documento original no sistema da CVM", TEXTO),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "cnpj_situacao_especial": Tabela(
+        descricao=(
+            'Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, '
+            'em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na '
+            'data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram '
+            "(LGPD)."
+        ),
+        fonte="Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos",
+        familia_da_fonte="rfb-cnpj",
+        frequencia="Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
+        atraso=(
+            "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita "
+            "informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+        ),
+        onde="Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)",
+        linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "cnpj_basico": ("Raiz do CNPJ (8 dígitos): a empresa", TEXTO),
+            "matriz": ("Verdadeiro na matriz, falso na filial", SIM_OU_NAO),
+            "situacao_especial": ("Situação especial, como a Receita escreve", TEXTO),
+            "rotulo": (
+                (
+                    "falencia, recuperacao_judicial, recuperacao_extrajudicial, liquidacao, "
+                    "liquidacao_judicial, liquidacao_extrajudicial ou intervencao (vazio nas outras "
+                    "situações, como espólio)"
+                ),
+                TEXTO,
+            ),
+            "data_situacao_especial": ("Data da situação especial informada", DATA),
+            "mes_do_retrato": (
+                "Mês do arquivo da Receita de onde a linha veio",
+                "AAAA-MM",
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
+    "auditores": Tabela(
+        descricao=(
+            "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início "
+            "e fim). A firma é identificada pela rede, lida do nome (KPMG, EY, PwC, Deloitte...), "
+            "porque CNPJ e código da CVM vêm errados em parte das linhas. O sócio responsável (nome "
+            "e CPF) nunca entra (LGPD)."
+        ),
+        fonte="CVM: dados abertos do FCA, tabela de auditores (`base/auditores.py`)",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DO_FCA,
+        atraso=(
+            "Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser "
+            "mais tarde que a primeira notícia, nunca mais cedo"
+        ),
+        onde=_onde_da_historica("auditores"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data de referência do FCA", DATA),
+            "versao": ("Versão do FCA", NUMERO),
+            "id_documento": ("Número do documento na CVM", TEXTO),
+            "conhecido_em": ("Data em que a CVM recebeu essa versão do FCA", DATA),
+            "auditor_id": (
+                (
+                    "Identificador da firma: `rede:<nome>` nas redes; senão código da CVM, raiz do "
+                    "CNPJ ou nome"
+                ),
+                TEXTO,
+            ),
+            "auditor": ("Nome da firma, como a empresa escreveu", TEXTO),
+            "auditor_cnpj": (
+                "CNPJ da firma informado (14 dígitos; pode estar errado)",
+                TEXTO,
+            ),
+            "codigo_cvm_auditor": ("Código da firma na CVM informado", TEXTO),
+            "origem": ("Nacional ou estrangeiro, como a CVM publica", TEXTO),
+            "inicio": ("Início do mandato", DATA),
+            "fim": ("Fim do mandato (vazio: em curso)", DATA),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "trocas_de_auditor": Tabela(
+        descricao=(
+            'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
+            "`auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)"
+        ),
+        fonte="CVM: dados abertos do FCA, pela tabela `auditores`",
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem de `auditores`",
+        atraso="A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)",
+        onde="Parquet em `<acervo>/base/trocas_de_auditor/trocas.parquet` (servidor de casa)",
+        linhagem=(
+            "`id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do "
+            "original); `montado_em` diz quando a tabela foi montada. "
+            + SEM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "conhecido_em": ("Data de entrega do FCA que mostrou a troca", DATA),
+            "efetiva_em": ("Início do mandato da firma nova", DATA),
+            "anterior_id": ("Identificador da firma anterior (ver `auditores`)", TEXTO),
+            "anterior": ("Nome da firma anterior", TEXTO),
+            "novo_id": ("Identificador da firma nova", TEXTO),
+            "novo": ("Nome da firma nova", TEXTO),
+            "anos_com_o_anterior": ("Tempo com a firma anterior", "anos"),
+            "id_documento": ("Número na CVM do FCA que mostrou a troca", TEXTO),
+            "montado_em": ("Quando a tabela foi montada", MOMENTO),
+        },
+    ),
+    "curva_juros": Tabela(
+        descricao=(
+            "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro "
+            "IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem "
+            "cupom, interpolação flat-forward e sem extrapolar (nominal desde 2004, real desde "
+            "2005). A taxa do Tesouro Direto tem um spread sobre o mercado secundário."
+        ),
+        fonte="Tesouro Nacional: taxas diárias do Tesouro Direto (Tesouro Transparente)",
+        familia_da_fonte="tesouro-br-direto",
+        frequencia="Diária (dias úteis)",
+        atraso="Um dia útil: o arquivo do Tesouro sai na manhã seguinte (`disponivel_em`)",
+        onde=_onde_da_historica("curva_juros"),
+        linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        colunas={
+            "data_base": ("Dia das taxas", DATA),
+            "curva": ("nominal, real ou implicita", TEXTO),
+            "prazo_anos": ("Vértice da curva (0,5 a 20)", "anos (base 252)"),
+            "taxa": ("Taxa ao ano no vértice", FRACAO),
+            "titulos": ("Títulos usados na curva do dia", NUMERO),
+            "maior_prazo_anos": (
+                "Prazo do título mais longo do dia",
+                "anos (base 252)",
+            ),
+            "disponivel_em": ("Dia útil seguinte: quando a taxa ficou pública", DATA),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
+    "controladas": Tabela(
+        descricao=(
+            "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a "
+            "participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco "
+            "em muitas linhas, e o FRE guarda ligações antigas."
+        ),
+        fonte="CVM: dados abertos do FRE, tabela de participação em sociedades",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DA_HISTORICA,
+        atraso=ATRASO_DO_FRE + "; a ligação vale a partir de `conhecido_em`",
+        onde=_onde_da_historica("controladas"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj_companhia": ("CNPJ da companhia que informou (14 dígitos)", TEXTO),
+            "companhia": ("Nome da companhia", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE (fica a mais nova)", NUMERO),
+            "id_documento": ("Número do documento na CVM", TEXTO),
+            "conhecido_em": ("Data em que a CVM recebeu essa versão do FRE", DATA),
+            "cnpj": ("CNPJ da sociedade (14 dígitos; vazio nas estrangeiras)", TEXTO),
+            "razao_social": ("Razão social da sociedade", TEXTO),
+            "tipo": ("controlada, coligada ou vazio (não informado)", TEXTO),
+            "participacao": (
+                "Participação da companhia na sociedade",
+                PONTOS_PERCENTUAIS,
+            ),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
+    "empresa_serie": Tabela(
+        descricao=(
+            "De que companhia listada é cada entidade que os reguladores enxergam (operadora de "
+            "saúde, distribuidora, banco no Pix, prestadora de telecomunicações, usina, "
+            "concessionária de ferrovia, companhia aérea): pelo CNPJ, pelo nome exato ou pela "
+            "tabela conferida (`base/conferidas/empresa_serie.csv`), e daí pelas `controladas`. "
+            "Os capítulos do NCM do Comex Stat ligam às companhias expostas ao produto "
+            "(`via` = `produto`: exposição, não posse). Toda entidade aparece, ligada ou não."
+        ),
+        fonte=(
+            "ANS, ANEEL (SAMP), Banco Central (Pix), Anatel, ANP, ONS, ANTT, ANAC e Comex Stat, "
+            "ligados pelo FRE da CVM e pelo FCA (tickers)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem, com a safra mais recente de cada fonte",
+        atraso=(
+            "A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os "
+            "do FCA mais recente"
+        ),
+        onde="Parquet em `<acervo>/base/empresa_serie/empresa_serie.parquet` (servidor de casa)",
+        linhagem=(
+            "`origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no "
+            "Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda "
+            "o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. "
+            + SEM_VERSAO_DO_CODIGO
+        ),
+        ressalva_de_revenda=(
+            "Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, "
+            "Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e Comex Stat a "
+            "confirmar com o MDIC."
+        ),
+        colunas={
+            "fonte": ("Fonte do arquivista de onde veio a entidade", TEXTO),
+            "chave": (
+                (
+                    "Como a fonte identifica a entidade: registro ANS, CNPJ, ISPB, nome, sigla ou "
+                    "capítulo do NCM"
+                ),
+                TEXTO,
+            ),
+            "nome": ("Nome da entidade na fonte (ou na tabela conferida)", TEXTO),
+            "raiz": ("Raiz do CNPJ da entidade (8 dígitos), quando há", TEXTO),
+            "cnpj_companhia": ("CNPJ da companhia ligada (14 dígitos)", TEXTO),
+            "companhia": ("Nome da companhia ligada", TEXTO),
+            "via": ("propria, controlada, coligada, sem_tipo ou produto", TEXTO),
+            "por": ("cnpj, nome ou tabela (conferida à mão)", TEXTO),
+            "participacao": (
+                "Participação informada no FRE (vazia no produto)",
+                PONTOS_PERCENTUAIS,
+            ),
+            "desde": ("1ª entrega à CVM de um FRE que mostrava a ligação", DATA),
+            "ultima_referencia": (
+                "Referência do FRE mais novo que mostra a ligação",
+                DATA,
+            ),
+            "principal": (
+                (
+                    "A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no "
+                    "produto)"
+                ),
+                SIM_OU_NAO,
+            ),
+            "tickers": ("Tickers da companhia no FCA mais recente", TEXTO),
+            "origem_sha256": ("SHA-256 do arquivo de onde a entidade saiu", TEXTO),
+            "montado_em": ("Quando a tabela foi montada", MOMENTO),
         },
     ),
 }

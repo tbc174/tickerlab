@@ -9,8 +9,11 @@ com `taxa_por_mes`, que usa a taxa equivalente composta (12,68% ao ano = 1% ao m
 
 from dataclasses import dataclass
 
+from src.regras_de_imposto import aliquota_da_renda_fixa
+
 PRAZO_MAXIMO = 1200  # períodos: 100 anos em meses; a tabela mês a mês não passa disso
 UNIDADES = ("mes", "ano")
+DIAS_POR_ANO = 365
 
 
 @dataclass(frozen=True)
@@ -79,3 +82,22 @@ def taxa_por_mes(taxa: float, unidade: str) -> float:
     if unidade == "ano":
         return taxa_equivalente(taxa, de_meses=12, para_meses=1)
     raise ValueError(f"A unidade da taxa precisa ser uma de {UNIDADES}.")
+
+
+def em_reais_de_hoje(valor: float, inflacao_ao_ano: float, meses: int) -> float:
+    """Quanto `valor`, recebido daqui a `meses`, compra em dinheiro de hoje (descontada a inflação)."""
+    if inflacao_ao_ano <= -1:
+        raise ValueError("A inflação precisa ser maior que -100%.")
+    return valor / (1 + inflacao_ao_ano) ** (meses / 12)
+
+
+def liquido_de_ir(capital: float, montante_bruto: float, meses: int) -> float:
+    """O montante depois do IR da tabela regressiva da renda fixa, sobre o ganho. Os meses viram
+    dias corridos (365/12 por mês): 6 meses são ~183 dias, já na faixa de 20%."""
+    ganho = montante_bruto - capital
+    if meses < 1 or ganho <= 0:
+        return montante_bruto
+    dias = int(
+        meses * DIAS_POR_ANO / 12 + 0.5
+    )  # metade para cima, como o Math.round do site
+    return montante_bruto - ganho * aliquota_da_renda_fixa(dias)

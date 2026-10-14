@@ -386,3 +386,65 @@ def test_amortizacao_sem_compra_no_periodo_deixa_o_ativo_incompleto():
     custo = _um([_l("amortizacao", 0, 100)])
     assert not custo.completo
     assert "antes do período" in custo.motivo
+
+
+# ---- resultado de cada venda: valor da venda − preço médio × quantidade ----
+
+
+def test_venda_anota_o_resultado_pelo_preco_medio():
+    custo = _um(
+        [
+            _l("compra", 100, 1000),
+            _l("venda", 50, 600, data=date(2024, 3, 1)),
+        ]
+    )
+    (venda,) = custo.vendas
+    assert (venda.data, venda.codigo, venda.quantidade) == (
+        date(2024, 3, 1),
+        "PETR4",
+        50,
+    )
+    assert venda.valor == pytest.approx(600)
+    assert venda.custo == pytest.approx(500)
+    assert venda.resultado == pytest.approx(100)
+
+
+def test_venda_com_prejuizo_tem_resultado_negativo():
+    custo = _um([_l("compra", 10, 300), _l("venda", 10, 250, data=date(2024, 3, 1))])
+    assert custo.vendas[0].resultado == pytest.approx(-50)
+
+
+def test_venda_depois_da_amortizacao_usa_o_medio_reduzido_no_resultado():
+    custo = _um(
+        [
+            _l("compra", 100, 1000),
+            _l("amortizacao", 0, 200, data=date(2024, 2, 1)),
+            _l("venda", 50, 500, data=date(2024, 3, 1)),
+        ]
+    )
+    assert custo.vendas[0].custo == pytest.approx(400)
+    assert custo.vendas[0].resultado == pytest.approx(100)
+
+
+def test_desdobro_muda_o_medio_da_venda_seguinte():
+    custo = _um(
+        [
+            _l("compra", 100, 1000),
+            _l("desdobro", 100, 0, data=date(2024, 2, 1)),
+            _l("venda", 100, 700, data=date(2024, 3, 1)),
+        ]
+    )
+    assert custo.vendas[0].custo == pytest.approx(500)
+
+
+def test_ativo_incompleto_nao_tem_vendas():
+    custo = _um([_l("venda", 10, 300)])
+    assert not custo.completo
+    assert custo.vendas == ()
+
+
+def test_grupamento_nao_e_venda():
+    custo = _um(
+        [_l("compra", 100, 1000), _l("grupamento", 90, 0, data=date(2024, 2, 1))]
+    )
+    assert custo.vendas == ()

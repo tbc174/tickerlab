@@ -5,6 +5,7 @@
     python -m scripts.arquivar_fontes semanal         (FIAGRO, FIDC, CRI/CRA, IBAMA, lista suja, GLEIF)
     python -m scripts.arquivar_fontes mensal          (CNPJ e PGFN, pesadas)
     python -m scripts.arquivar_fontes cvm-fiagro      (uma fonte só)
+    python -m scripts.arquivar_fontes b3-negocios     (negócios do pregão da B3; também às 22h)
 
 Cada arquivo vai para o acervo (`TICKERLAB_ACERVO`), para o registro de coletas e para o manifesto do
 dia. Saída: 0 tudo certo; 1 alguma falha (o Kuma avisa); 2 nada falhou, mas um termo de uso ou um
@@ -23,6 +24,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from base.arquivo.coleta import (
     ErroDeDescoberta,
@@ -45,6 +48,12 @@ ESPERA_PARA_TENTAR_DE_NOVO = 300
 AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
 HTTP_TRECHO = 206  # resposta a um pedido de trecho (Range)
+# a Receita derruba a conexão antes de responder num arquivo diferente a cada rodada do CNPJ
+# (`RemoteDisconnected`, 14/10/2026): o pedido é repetido na hora, com espera crescente (0, 4 e 8 s).
+# Só quando a conexão cai ou não abre; resposta de erro (404, 500) nunca é repetida aqui
+TENTATIVAS_SE_A_CONEXAO_CAI = 3
+ESPERA_ENTRE_AS_TENTATIVAS = 2.0
+METODOS_QUE_PODEM_REPETIR = frozenset({"GET", "HEAD", "PROPFIND"})
 OK, FALHA, AVISO = 0, 1, 2
 # o resumo vai na mensagem do Kuma (no endereço do push e no assunto do e-mail): curto
 TAMANHO_MAXIMO_DO_RESUMO = 300
@@ -57,6 +66,18 @@ class ClienteHttp:
         self.sessao = requests.Session()
         self.sessao.headers["User-Agent"] = AGENTE
         self.sessao.verify = pacote_de_certificados()
+        tentativas = Retry(
+            total=TENTATIVAS_SE_A_CONEXAO_CAI,
+            connect=TENTATIVAS_SE_A_CONEXAO_CAI,
+            read=TENTATIVAS_SE_A_CONEXAO_CAI,
+            status=0,
+            redirect=None,
+            backoff_factor=ESPERA_ENTRE_AS_TENTATIVAS,
+            allowed_methods=METODOS_QUE_PODEM_REPETIR,
+            raise_on_status=False,
+        )
+        for prefixo in ("https://", "http://"):
+            self.sessao.mount(prefixo, HTTPAdapter(max_retries=tentativas))
 
     def ler(
         self,
@@ -192,11 +213,12 @@ def main(argv: list[str] | None = None) -> int:
             problemas.append(f"{fonte.id} ({resultado})")
             continue
         log.info(
-            "%s: %d novos, %d iguais, %d sem mudança nos cabeçalhos, %d falhas",
+            "%s: %d novos, %d iguais, %d já guardados sem mudança, %d sem arquivo, %d falhas",
             fonte.id,
             resultado.novos,
             resultado.iguais,
             resultado.pulados,
+            resultado.sem_arquivo,
             len(resultado.falhas),
         )
         if resultado.falhas:
