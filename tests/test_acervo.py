@@ -140,3 +140,30 @@ def test_original_mais_recente_le_a_ultima_copia_guardada(banco, tmp_path):
             original_mais_recente(conexao, URL) == b"novo"
         )  # a falha depois não conta
         assert original_mais_recente(conexao, URL + "?outro") is None
+
+
+def test_arquivo_grande_vai_para_o_acervo_sem_passar_pela_memoria(tmp_path):
+    temporario = tmp_path / "baixando.parcial"
+    temporario.write_bytes(b"PK" + b"x" * 1000)
+    sha256 = hashlib.sha256(temporario.read_bytes()).hexdigest()
+    relativo = acervo.guardar_arquivo("rfb-cnpj", URL, temporario, sha256, QUANDO)
+    assert relativo == f"bruto/rfb-cnpj/2026/{sha256}.zip"
+    assert acervo.confere_com_o_registro(relativo, sha256)
+    assert not temporario.exists()
+    # o mesmo arquivo de novo: não duplica e o temporário some
+    temporario.write_bytes(b"PK" + b"x" * 1000)
+    assert (
+        acervo.guardar_arquivo("rfb-cnpj", URL, temporario, sha256, QUANDO) == relativo
+    )
+    assert not temporario.exists()
+    assert len(list((tmp_path / "acervo").rglob("*.zip"))) == 1
+
+
+def test_arquivo_grande_de_texto_fica_em_gzip(tmp_path):
+    temporario = tmp_path / "lista.parcial"
+    temporario.write_bytes(b"cnpj;nome\n" * 500)
+    sha256 = hashlib.sha256(temporario.read_bytes()).hexdigest()
+    url = "https://www.gov.br/x/cadastro_de_empregadores.csv"
+    relativo = acervo.guardar_arquivo("mte-lista-suja", url, temporario, sha256, QUANDO)
+    assert relativo is not None and relativo.endswith(".csv.gz")
+    assert acervo.ler_original(relativo) == b"cnpj;nome\n" * 500

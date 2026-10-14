@@ -12,6 +12,7 @@ já vêm comprimidos. Gravação atômica: o arquivo só aparece completo.
 import gzip
 import hashlib
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
@@ -56,6 +57,12 @@ def caminho_relativo(
     `extensao` vale mais que a do endereço (o ENET entrega XML por um endereço `.aspx`).
     """
     sha256 = hashlib.sha256(conteudo).hexdigest()
+    return _relativo_pelo_sha(fonte, url, sha256, quando, extensao)
+
+
+def _relativo_pelo_sha(
+    fonte: str, url: str, sha256: str, quando: datetime, extensao: str | None
+) -> str:
     extensao = extensao or extensao_da_url(url)
     if extensao not in JA_COMPRIMIDOS:
         extensao += ".gz"
@@ -102,3 +109,40 @@ def confere_com_o_registro(relativo: str, sha256: str) -> bool:
     """O arquivo guardado ainda tem o SHA-256 do registro? (para o teste mensal do backup)"""
     original = ler_original(relativo)
     return original is not None and hashlib.sha256(original).hexdigest() == sha256
+
+
+def guardar_arquivo(
+    fonte: str,
+    url: str,
+    temporario: Path,
+    sha256: str,
+    quando: datetime,
+    extensao: str | None = None,
+) -> str | None:
+    """Como `guardar_original`, para um arquivo já baixado em disco (o CNPJ tem GBs): move o
+    temporário para o acervo sem carregá-lo na memória. O temporário sempre some.
+
+    `sha256` é o do arquivo como veio (calculado em partes por quem baixou).
+    """
+    pasta = pasta_do_acervo()
+    if pasta is None:
+        temporario.unlink(missing_ok=True)
+        return None
+    relativo = _relativo_pelo_sha(fonte, url, sha256, quando, extensao)
+    destino = pasta / relativo
+    if destino.exists():
+        temporario.unlink(missing_ok=True)
+        return relativo
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    if relativo.endswith(".gz"):
+        parcial = destino.with_name(destino.name + ".parcial")
+        with (
+            temporario.open("rb") as entrada,
+            gzip.GzipFile(parcial, "wb", mtime=0) as saida,
+        ):
+            shutil.copyfileobj(entrada, saida, length=1024 * 1024)
+        os.replace(parcial, destino)
+        temporario.unlink()
+    else:
+        shutil.move(temporario, destino)
+    return relativo
