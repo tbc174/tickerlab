@@ -182,6 +182,36 @@ Códigos de negociação informados fora do formato de ticker (a CSN informa "40
 | `valor_mobiliario` | Tipo do papel, como a empresa informa | texto |
 | `codigo_informado` | O código como a empresa escreveu | texto |
 
+## `carteiras_dos_fundos`
+
+As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor. Fundos e posições que saíram continuam (sem viés de sobrevivência). Um Parquet por ano; quando a CVM regrava um ano, a versão anterior fica como `<ano>.v<N>`
+
+- **Fonte:** CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 4
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
+- **Atraso de divulgação:** O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois
+- **Onde fica:** Parquet por ano em `<acervo>/base/cda/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`)
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (no acervo e no registro de coletas, com a data da coleta e a versão do código que baixou) e a versão do código que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira (último dia) | data (dia) |
+| `cnpj_fundo` | CNPJ do fundo (ou da classe, depois da CVM 175) | texto |
+| `tipo_do_fundo` | Tipo do fundo como a CVM informa | texto |
+| `fundo` | Nome do fundo (pessoa jurídica) | texto |
+| `tipo` | comprado, emprestado ou vendido | texto |
+| `codigo` | Código do ativo informado (ticker) | texto |
+| `isin` | ISIN do ativo: o código permanente | texto |
+| `emissor` | As 4 letras do emissor, tiradas do ISIN | texto |
+| `descricao` | Descrição do ativo informada | texto |
+| `quantidade` | Quantidade no fim do mês | ações |
+| `valor` | Valor de mercado no fim do mês | reais (R$), já multiplicado pela escala informada |
+| `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
+| `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
+| `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
+
 ## `padroes_setoriais`
 
 Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as empresas de cada grupo de setores (`src/setores.py`), calculados só com os balanços que eram públicos na data de corte. Dado derivado: recalcular o mesmo corte substitui as linhas dele.
