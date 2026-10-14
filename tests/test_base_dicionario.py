@@ -119,3 +119,9 @@ def test_base_como_era_na_data_guarda_a_versao_do_codigo():
     """Exigência 13 da ADR 0055: a linhagem da base diz qual commit a montou."""
     linhagem = TABELAS["demonstracoes_como_era"].linhagem
     assert "versao_do_codigo" in linhagem and "ainda não é guardada" not in linhagem
+
+
+def test_fidc_e_cadastro_de_fundos_dizem_o_que_fica_fora_por_lgpd():
+    """Série 3, PR 6: as tabelas do Capital dizem, no dicionário, o dado pessoal que não entra."""
+    assert "CPF vira vazio" in TABELAS["fidc_informe"].descricao
+    assert "diretor" in TABELAS["cadastro_de_fundos"].descricao

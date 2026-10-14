@@ -1,6 +1,6 @@
 # Política de privacidade do TickerLab
 
-Última atualização: 13/10/2026 (versão 7: a contagem das tentativas do backtest, para a ficha "Foi sorte?").
+Última atualização: 14/10/2026 (novidades e ofertas do TickerLab por e-mail, só para quem pedir).
 
 O TickerLab é uma **plataforma de inteligência financeira** para análise de ações. Esta página explica, em linguagem simples, quais dados pessoais ele guarda, para quê, por quanto tempo e quais são os seus direitos, de acordo com a **LGPD** (Lei Geral de Proteção de Dados, Lei 13.709/2018).
 
@@ -19,6 +19,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 | Alertas do Research (nome e as condições de cada regra) | Você, na página Alertas | Avaliar as suas regras nos ativos das suas listas |
 | Fotografia da carteira no Research (plano Pro): o código de cada ativo e o peso dele em %. **Nunca** a quantidade nem o valor em reais. Só com o seu consentimento próprio, cuja versão e hora ficam registradas | Você, na página Minha carteira (Research), a partir da planilha da B3 (lida só na memória) | Ordenar o Research pelo tamanho das suas posições e montar a Newsletter da carteira. Ao revogar o consentimento, a fotografia é apagada na hora |
 | Inscrição na Newsletter por e-mail (a lista, a frequência e a versão e a hora do consentimento) e o registro de cada envio (período e situação) | Você, na página Newsletter | Mandar a edição na frequência escolhida, uma vez por período. Para sair: o link em cada e-mail ou a página Newsletter |
+| Inscrição nas Novidades e ofertas por e-mail (a versão e a hora do consentimento) e o registro de cada envio (a campanha e a situação). **Só se você marcar** a caixa própria, que começa desmarcada e não é condição para usar o app | Você, no primeiro acesso ou em Meus dados | Mandar por e-mail novidades e ofertas **do próprio TickerLab** (lançamentos, recursos novos e promoções dos planos), cada campanha uma vez só. Para sair: o link em cada e-mail ou Meus dados |
 | Listas do Research (nome e códigos dos ativos que você acompanha) | Você, na página Acontecimentos | Mostrar os eventos das empresas da lista. Não são posições nem valores da sua carteira |
 | Favoritos e simulações salvas | Você, no app | Guardar o que você pediu para guardar |
 | Tentativas do backtest: para cada ativo, uma impressão (SHA-256) de cada configuração diferente que você rodou (estratégia, parâmetros, proteções, custo e período) e a hora da primeira vez. **Nunca** a configuração em si, os resultados ou valores | O app, quando você roda um backtest | Contar quantas variações você testou e descontar isso no teste contra a sorte da ficha "Foi sorte?" |
@@ -32,7 +33,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 | Versão dos termos aceita e data | Você, no aceite | Comprovar que você concordou |
 | Registro de ações importantes (ids, sem nome nem e-mail) | O app | Segurança e prestação de contas |
 
-**Não coletamos** a sua senha do Google, nem dados de cartão. Não vendemos dados e não os usamos para publicidade.
+**Não coletamos** a sua senha do Google, nem dados de cartão. Não vendemos dados e não os usamos para publicidade de terceiros. O seu e-mail só recebe propaganda do próprio TickerLab se você pedir (Novidades e ofertas, acima).
 
 ## Com quem os dados são compartilhados
 
@@ -40,7 +41,7 @@ O responsável pelo tratamento dos dados é a pessoa que mantém o projeto (cont
 - **Stripe**: processa pagamentos de assinatura. Os dados do cartão são digitados direto no site do Stripe e **nunca passam pelo TickerLab**. Hoje o Stripe está em modo de teste, sem cobrança real.
 - **Cloudflare**: entrega o site e o app nos endereços tickerlab.com.br e app.tickerlab.com.br (rede e proteção contra ataques). Como todo provedor de rede, ela vê o endereço IP e os dados técnicos da conexão.
 - **Hostinger**: fornece o servidor virtual alugado; os dados do app ficam no disco desse servidor, em São Paulo. As **cópias de segurança** do banco de dados ficam no servidor próprio do responsável, também no Brasil, **cifradas** (só o responsável tem a chave que as abre).
-- **Resend**: envia a Newsletter por e-mail, **só se você se inscrever**. Recebe o seu e-mail e o conteúdo da edição: os códigos dos ativos da lista escolhida (se for a carteira, os ativos dela, sem os pesos) e os documentos públicos de cada um. Não recebe os seus parâmetros nem outros dados da conta.
+- **Resend**: envia a Newsletter e as Novidades e ofertas por e-mail, **só se você se inscrever**. Nas Novidades, recebe o seu e-mail e o texto da campanha, igual para todos. Recebe o seu e-mail e o conteúdo da edição: os códigos dos ativos da lista escolhida (se for a carteira, os ativos dela, sem os pesos) e os documentos públicos de cada um. Não recebe os seus parâmetros nem outros dados da conta.
 - **Yahoo Finance e Banco Central**: o app consulta preços e o CDI. Essas consultas não levam os seus dados pessoais.
 - **CVM e SEC** (a comissão de valores mobiliários dos EUA): o TickerLab baixa, uma vez por dia, os documentos públicos que as empresas entregam a elas (eventos, demonstrações e negociações de ações por diretores, conselheiros e controladores; dessas, guardamos só o cargo, nunca o nome da pessoa). A SEC exige que cada consulta traga um e-mail de contato: vai o do TickerLab, nunca o seu. Essas consultas não levam os seus dados pessoais.
 
@@ -54,7 +55,7 @@ O app usa um **cookie** de sessão, necessário para manter você logado depois 
 
 ## Por quanto tempo guardamos
 
-Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, a inscrição na Newsletter e o registro dos envios, o registro dos relatórios gerados, os PDFs originais guardados, as tentativas do backtest, o registro do Pulse, as anotações do Diário de Teses, os links compartilhados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira e o da Newsletter por e-mail foram dados e revogados (para provar que existiram).
+Enquanto a sua conta existir. Quando você apaga a conta, **removemos** o seu perfil, preferências, favoritos, simulações, as listas, os parâmetros, os alertas e a fotografia da carteira do Research, a inscrição na Newsletter e nas Novidades e o registro dos envios, o registro dos relatórios gerados, os PDFs originais guardados, as tentativas do backtest, o registro do Pulse, as anotações do Diário de Teses, os links compartilhados e a assinatura, e encerramos a cobrança no Stripe. Ficam apenas registros técnicos de segurança, sem nome nem e-mail: que uma conta foi apagada e, se for o caso, quando o consentimento da carteira, o da Newsletter e o das Novidades por e-mail foram dados e revogados (para provar que existiram).
 
 **Cópias de segurança:** uma vez por dia o banco de dados é copiado, cifrado, para outro servidor, para que os dados não se percam se o servidor principal falhar. Cada cópia é apagada depois de **14 dias**. Por isso, o que você apagar (ou a conta inteira) ainda fica nessas cópias por até 14 dias, sem uso, e depois some delas também.
 
@@ -66,7 +67,7 @@ Você pode, a qualquer momento:
 - **Exportar** uma cópia dos seus dados (arquivo JSON) e os PDFs originais guardados (arquivo .zip), na página "Meus dados e privacidade";
 - **Corrigir** dados incorretos (o nome e a foto vêm do Google; atualize lá e entre de novo);
 - **Apagar** a sua conta e os seus dados, na mesma página;
-- **Revogar** o consentimento, o que equivale a apagar a conta;
+- **Revogar** o consentimento: o da carteira, o da Newsletter e o das Novidades, a qualquer momento, sem perder a conta; o do uso da conta em si equivale a apagá-la;
 - Pedir informações sobre o compartilhamento de dados.
 
 Para qualquer pedido que não consiga fazer pelo app, escreva para **contato@tickerlab.com.br**.

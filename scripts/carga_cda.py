@@ -19,7 +19,6 @@ pedido por vez.
 
 import argparse
 import hashlib
-import json
 import logging
 import sys
 from datetime import datetime
@@ -31,7 +30,7 @@ import requests
 import sqlalchemy as sa
 
 from base import cda
-from base.parquet import gravar_tabela
+from base.parquet import gravar_com_versoes
 from src import acervo
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
@@ -82,23 +81,6 @@ def _origens(lidos: list[tuple[str, bytes]]) -> list[dict[str, str]]:
     return [{"url": u, "sha256": hashlib.sha256(c).hexdigest()} for u, c in lidos]
 
 
-def _origens_gravadas(pasta: Path, ano: int) -> list[dict[str, str]] | None:
-    manifesto = pasta / f"{ano}.json"
-    if not manifesto.exists():
-        return None
-    return json.loads(manifesto.read_text(encoding="utf-8")).get("origens")
-
-
-def _guardar_versao_anterior(pasta: Path, ano: int) -> None:
-    """`<ano>.parquet` e `.json` viram `<ano>.v<N>`, com o primeiro N livre."""
-    n = 1
-    while (pasta / f"{ano}.v{n}.parquet").exists():
-        n += 1
-    for extensao in (".parquet", ".json"):
-        (pasta / f"{ano}{extensao}").rename(pasta / f"{ano}.v{n}{extensao}")
-    log.info("CDA de %s mudou na CVM: a versão anterior ficou como %s.v%s", ano, ano, n)
-
-
 def montar_ano(lidos: list[tuple[str, bytes]]) -> pd.DataFrame:
     partes = [p for _, c in lidos for p in cda.ler_posicoes_historicas(c)]
     tabela = pd.concat(partes, ignore_index=True)
@@ -110,21 +92,14 @@ def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
     lidos = ler_ano(conexao, ano)
     if not lidos:
         return "sem arquivo"
-    origens = _origens(lidos)
-    anteriores = _origens_gravadas(pasta, ano)
-    if anteriores == origens:
-        return "igual"
-    if anteriores is not None:
-        _guardar_versao_anterior(pasta, ano)
-    tabela = montar_ano(lidos)
-    gravar_tabela(tabela, pasta / str(ano), origens, ORDEM)
-    log.info(
-        "CDA de %s: %s posições de %s fundos",
-        ano,
-        len(tabela),
-        tabela["cnpj_fundo"].nunique(),
-    )
-    return "gravado"
+
+    def montar() -> pd.DataFrame:
+        tabela = montar_ano(lidos)
+        fundos = tabela["cnpj_fundo"].nunique()
+        log.info("CDA de %s: %s posições de %s fundos", ano, len(tabela), fundos)
+        return tabela
+
+    return gravar_com_versoes(montar, pasta / str(ano), _origens(lidos), ORDEM)
 
 
 def main(argv: list[str] | None = None) -> int:

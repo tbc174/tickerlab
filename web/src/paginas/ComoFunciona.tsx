@@ -1,5 +1,6 @@
 // Como funciona: os três passos, para quem é, confiança e perguntas. Era `como_funciona()`.
-import { Cabecalho, ChamadaFinal, ListaDeCartoes } from "../site/comum";
+import { ChamadaFinal, ListaDeCartoes } from "../site/comum";
+import { TopoDaPagina } from "../site/Fundo";
 import { CONFIANCA, PASSOS, PERGUNTAS, PUBLICOS } from "../site/textos";
 
 export const DADOS = {
@@ -14,7 +15,7 @@ export const DADOS = {
 export function ComoFunciona() {
   return (
     <>
-      <Cabecalho
+      <TopoDaPagina
         olho="Como funciona"
         titulo="Em três passos"
         subtitulo="Da primeira busca ao relatório em PDF, com cada número explicado."

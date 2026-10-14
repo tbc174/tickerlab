@@ -22,7 +22,7 @@ export function BotaoDePausa() {
 
 export function Fundo({ classe = "", children }: { classe?: string; children: ReactNode }) {
   return (
-    <div className={`escura topo-da-pagina v2-heroi-fundo ${classe}`.trim()}>
+    <div className={["escura topo-da-pagina v2-heroi-fundo", classe].filter(Boolean).join(" ")}>
       <div className="v2-aurora" aria-hidden="true">
         <span />
         <span />
@@ -34,5 +34,34 @@ export function Fundo({ classe = "", children }: { classe?: string; children: Re
       <BotaoDePausa />
       <LinhaDoHeroi />
     </div>
+  );
+}
+
+/** O topo das outras páginas: o mesmo fundo da inicial, mais baixo ("curto" nas de leitura). */
+export function TopoDaPagina({
+  olho,
+  titulo,
+  subtitulo,
+  classe = "",
+  antesDoTitulo,
+  children,
+}: {
+  olho?: string;
+  titulo: string;
+  subtitulo?: string;
+  classe?: string;
+  antesDoTitulo?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <Fundo classe={["v2-heroi-pagina", classe].filter(Boolean).join(" ")}>
+      <section className="faixa secao v2-pagina-topo">
+        {olho ? <p className="olho">{olho}</p> : null}
+        {antesDoTitulo}
+        <h1>{titulo}</h1>
+        {subtitulo ? <p className="subtitulo">{subtitulo}</p> : null}
+        {children}
+      </section>
+    </Fundo>
   );
 }

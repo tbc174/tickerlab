@@ -1,5 +1,5 @@
-"""API do TickerLab (FastAPI): saúde do serviço, webhook do Stripe, saída da Newsletter e a API
-de leitura v1 (`src/api_v1/`, desligada até a primeira tela nova).
+"""API do TickerLab (FastAPI): saúde do serviço, webhook do Stripe, saída da Newsletter e das
+Novidades por e-mail e a API de leitura v1 (`src/api_v1/`, desligada até a primeira tela nova).
 
 Roda ao lado do app, num contêiner próprio:
     uvicorn src.api:app --host 0.0.0.0 --port 8000
@@ -20,7 +20,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.api_v1 import api_v1_ligada
-from src.banco import newsletter_por_email
+from src.banco import newsletter_por_email, novidades_por_email
 from src.banco.conexao import banco_esta_saudavel, obter_engine
 from src.cobranca import VARIAVEL_DO_SEGREDO_DO_WEBHOOK, processar_evento
 from src.logs import configurar_logs
@@ -104,6 +104,35 @@ def sair_da_newsletter(codigo: str = "") -> HTMLResponse:
         "Nada a fazer",
         "<p>Este link já foi usado ou não vale mais. Se ainda recebe e-mails, cancele em "
         "Newsletter, no app.</p>",
+    )
+
+
+@router.get("/novidades/sair")
+def confirmar_saida_das_novidades(codigo: str = "") -> HTMLResponse:
+    """A página do link do e-mail de Novidades: pede a confirmação (como a da Newsletter)."""
+    return _pagina(
+        "Sair das Novidades do TickerLab",
+        "<p>Você deixa de receber novidades e ofertas por e-mail. Pode pedir de novo em Meus "
+        "dados, no app.</p>"
+        f'<form method="post" action="?codigo={html.escape(codigo, quote=True)}">'
+        '<button type="submit" style="font-size:16px;padding:10px 18px">Sair das Novidades'
+        "</button></form>",
+    )
+
+
+@router.post("/novidades/sair")
+def sair_das_novidades(codigo: str = "") -> HTMLResponse:
+    """Tira das Novidades pelo código do e-mail (também a saída de um clique do Gmail)."""
+    with obter_engine().begin() as conexao:
+        saiu = novidades_por_email.sair_pelo_codigo(conexao, codigo)
+    if saiu:
+        return _pagina(
+            "Pronto", "<p>Você não recebe mais novidades e ofertas por e-mail.</p>"
+        )
+    return _pagina(
+        "Nada a fazer",
+        "<p>Este link já foi usado ou não vale mais. Se ainda recebe e-mails, saia em Meus "
+        "dados, no app.</p>",
     )
 
 

@@ -1,5 +1,5 @@
 // Peças que aparecem em mais de uma página do site.
-import type { ReactNode } from "react";
+import type { CSSProperties } from "react";
 import type { Funcionalidade, Modulo } from "../conteudo";
 import { modulos } from "../conteudo";
 import { BETA_FECHADO, TICKER_DO_EXEMPLO, linkDoApp } from "./textos";
@@ -25,27 +25,6 @@ export function contagem(modulo: Modulo): string {
   if (prontas) partes.push(`${prontas} ${prontas === 1 ? "disponível" : "disponíveis"}`);
   if (emBreve) partes.push(`${emBreve} em breve`);
   return partes.join(" · ");
-}
-
-export function Cabecalho({
-  olho,
-  titulo,
-  subtitulo,
-  children,
-}: {
-  olho: string;
-  titulo: string;
-  subtitulo: string;
-  children?: ReactNode;
-}) {
-  return (
-    <section className="faixa secao cabecalho">
-      <p className="olho">{olho}</p>
-      <h1>{titulo}</h1>
-      <p className="subtitulo">{subtitulo}</p>
-      {children}
-    </section>
-  );
 }
 
 function Selo({ funcionalidade }: { funcionalidade: Funcionalidade }) {
@@ -82,6 +61,16 @@ function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
   );
 }
 
+/** A fração do módulo que já está no app, desenhada (o número fica no texto ao lado). */
+function BarraDoModulo({ modulo }: { modulo: Modulo }) {
+  const fracao = disponiveis(modulo) / modulo.funcionalidades.length;
+  return (
+    <span className="v2-barra" aria-hidden="true">
+      <i style={{ "--p": fracao.toFixed(3) } as CSSProperties} />
+    </span>
+  );
+}
+
 export function SecaoDoModulo({ modulo }: { modulo: Modulo }) {
   const titulo = `titulo-${modulo.chave}`;
   return (
@@ -91,7 +80,10 @@ export function SecaoDoModulo({ modulo }: { modulo: Modulo }) {
           <p className="olho">{modulo.objetivo}</p>
           <h2 id={titulo}>{modulo.nome}</h2>
         </div>
-        <p className="contagem">{contagem(modulo)}</p>
+        <p className="contagem">
+          {contagem(modulo)}
+          <BarraDoModulo modulo={modulo} />
+        </p>
       </div>
       <p className="subtitulo">{modulo.frase}</p>
       <div className="grade tres">
