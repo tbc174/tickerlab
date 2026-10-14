@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
+from base.parquet import conferir_tabela
 from base.ponto_no_tempo import SEM_DATA, conferir_pasta
 from src import acervo
 from src.banco.modelo import coletas
@@ -31,7 +32,7 @@ class Origem:
 
 @dataclass(frozen=True)
 class Linhagem:
-    ano: str
+    ano: str  # o ano do Parquet, ou o nome da tabela
     versao_do_codigo: str | None  # None: manifesto gravado antes da exigência 13
     base_confere: bool  # o Parquet do ano ainda tem o hash anotado no manifesto
     origens: list[Origem]
@@ -67,18 +68,32 @@ def _origem(conexao: sa.Connection, url: str, sha256: str) -> Origem:
     return Origem(url, sha256, coleta.baixado_em, caminho, confere)
 
 
+def _linhagem(
+    conexao: sa.Connection, nome: str, manifesto: Path, confere: bool
+) -> Linhagem:
+    anotado = json.loads(manifesto.read_text(encoding="utf-8"))
+    return Linhagem(
+        ano=nome,
+        versao_do_codigo=anotado.get("versao_do_codigo"),
+        base_confere=confere,
+        origens=[
+            _origem(conexao, o["url"], o["sha256"]) for o in anotado.get("origens", [])
+        ],
+    )
+
+
 def linhagem_da_linha(
     conexao: sa.Connection, pasta: Path, linha: pd.Series
 ) -> Linhagem:
-    """O caminho de uma linha da base até os originais, a data da coleta e a versão do código."""
+    """O caminho de uma linha da base "por ano" até os originais, a coleta e a versão do código."""
     ano = _ano_da_linha(linha)
-    manifesto = json.loads((pasta / f"{ano}.json").read_text(encoding="utf-8"))
-    return Linhagem(
-        ano=ano,
-        versao_do_codigo=manifesto.get("versao_do_codigo"),
-        base_confere=conferir_pasta(pasta).get(ano, False),
-        origens=[
-            _origem(conexao, o["url"], o["sha256"])
-            for o in manifesto.get("origens", [])
-        ],
+    return _linhagem(
+        conexao, ano, pasta / f"{ano}.json", conferir_pasta(pasta).get(ano, False)
+    )
+
+
+def linhagem_da_tabela(conexao: sa.Connection, arquivo: Path) -> Linhagem:
+    """O mesmo para uma tabela gravada por `base/parquet.py::gravar_tabela` (todas as linhas)."""
+    return _linhagem(
+        conexao, arquivo.stem, arquivo.with_suffix(".json"), conferir_tabela(arquivo)
     )
