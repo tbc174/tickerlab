@@ -67,7 +67,15 @@ FORA_DAS_CONTAS = {
     "direitos de subscricao - nao exercido",
     "cessao de direitos",
     "cessao de direitos - solicitada",
+    # o provento que passou de uma corretora para outra: vem em par Crédito + Débito, mesma data,
+    # produto e valor (conferido numa movimentação real de 12 meses), e o par soma zero
+    "dividendo - transferido",
+    "juros sobre capital proprio - transferido",
 }
+# futuros e opções: o Produto vem como "Futuro - WINV26" ou "Opção de Compra - BOVAE133 - ..."
+DERIVATIVO = re.compile(
+    r"^\s*(Futuro|Op[cç][aã]o de (Compra|Venda))\s+-\s", re.IGNORECASE
+)
 PADRAO_DO_PRODUTO = re.compile(r"^\s*([A-Z]{4}\d{1,2}[A-Z]?)\s+-\s")
 # PETR4F é a PETR4 comprada no mercado fracionário: o mesmo ativo, o mesmo custo médio
 FRACIONARIO = re.compile(r"(?<=\d)F$")
@@ -188,6 +196,34 @@ def _aviso_das_saidas(saidas: list[_SemDinheiro]) -> str:
     )
 
 
+def _avisos_do_que_ficou_de_fora(
+    renda_fixa: int, derivativos: int, desconhecidos: dict[str, int]
+) -> list[str]:
+    avisos: list[str] = []
+    if derivativos:
+        avisos.append(
+            f"{_plural(derivativos, 'linha', 'linhas')} de futuros e opções "
+            f"{'ficou' if derivativos == 1 else 'ficaram'} de fora: aqui entram só ativos com "
+            "código de negociação em custódia (ações, FIIs, ETFs, BDRs)."
+        )
+    if renda_fixa:
+        ficou = "ficou" if renda_fixa == 1 else "ficaram"
+        avisos.append(
+            f"{_plural(renda_fixa, 'linha', 'linhas')} de Tesouro e renda fixa {ficou} de "
+            "fora: aqui entram só ativos com código de negociação (ações, FIIs, ETFs, BDRs)."
+        )
+    if desconhecidos:
+        lista = "; ".join(
+            f"{rotulo}: {_plural(n, 'linha', 'linhas')}"
+            for rotulo, n in desconhecidos.items()
+        )
+        avisos.append(
+            f"Tipos de movimentação não reconhecidos ficaram de fora das contas ({lista}). "
+            "Se algum muda a quantidade de ações, o custo médio desse ativo pode não bater."
+        )
+    return avisos
+
+
 def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
     """Lê a movimentação da B3 e devolve os lançamentos que entram nas contas."""
     abas = ler_abas(
@@ -199,7 +235,7 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
     lancamentos: list[Lancamento] = []
     sem_dinheiro: list[_SemDinheiro] = []
     datas: list[date] = []
-    fora = renda_fixa = 0
+    fora = renda_fixa = derivativos = 0
     desconhecidos: dict[str, int] = {}
     achou_colunas = False
     for tabela in abas.values():
@@ -217,8 +253,14 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
             nome_do_tipo = str(linha[colunas["tipo"]]).strip()
             tipo_da_b3 = sem_acento(nome_do_tipo)
             entrada = sem_acento(linha[colunas["entrada"]])
-            achado = PADRAO_DO_PRODUTO.match(str(linha[colunas["produto"]]))
+            produto = str(linha[colunas["produto"]])
+            achado = PADRAO_DO_PRODUTO.match(produto)
             if achado is None:
+                if DERIVATIVO.match(produto):
+                    derivativos += (
+                        1  # contrato, não ativo em custódia: não tem custo médio
+                    )
+                    continue
                 renda_fixa += 1  # Tesouro, CDB, debênture: não têm código de negociação
                 continue
             tipo = TIPOS.get((tipo_da_b3, entrada))
@@ -248,21 +290,7 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
     avisos = []
     if saidas_sem_valor:
         avisos.append(_aviso_das_saidas(saidas_sem_valor))
-    if renda_fixa:
-        ficou = "ficou" if renda_fixa == 1 else "ficaram"
-        avisos.append(
-            f"{_plural(renda_fixa, 'linha', 'linhas')} de Tesouro e renda fixa {ficou} de "
-            "fora: aqui entram só ativos com código de negociação (ações, FIIs, ETFs, BDRs)."
-        )
-    if desconhecidos:
-        lista = "; ".join(
-            f"{rotulo}: {_plural(n, 'linha', 'linhas')}"
-            for rotulo, n in desconhecidos.items()
-        )
-        avisos.append(
-            f"Tipos de movimentação não reconhecidos ficaram de fora das contas ({lista}). "
-            "Se algum muda a quantidade de ações, o custo médio desse ativo pode não bater."
-        )
+    avisos += _avisos_do_que_ficou_de_fora(renda_fixa, derivativos, desconhecidos)
     lancamentos.sort(
         key=lambda lanc: lanc.data
     )  # a B3 manda do mais novo ao mais velho
