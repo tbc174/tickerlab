@@ -1,7 +1,7 @@
 // Meus dados no app novo: baixar a cópia de tudo o que o TickerLab guarda (LGPD, a mesma exportação do
 // Streamlit) e os links compartilhados, com revogar. Apagar a conta, o tema, as Novidades por e-mail e
 // os PDFs guardados continuam no app atual por enquanto (apagar a conta não tem volta: tela própria).
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
 import { linkDoApp } from "../../site/textos";
 import { ErroDaApi, baixar, pedir } from "../api";
@@ -55,9 +55,10 @@ function BaixarMeusDados() {
 
 function Links({ inicial }: { inicial: MeusLinksV1 }) {
   const token = useConta()?.token ?? null;
+  // uma fonte só: a lista começa com a resposta da API e só muda pelo revogar (um efeito que copiasse
+  // `inicial` de novo podia rodar depois da resposta do revogar e trazer a lista velha de volta)
   const [dados, setDados] = useState(inicial);
   const [falha, setFalha] = useState<string | null>(null);
-  useEffect(() => setDados(inicial), [inicial]);
   const revogar = (id: string) => {
     if (token === null) return;
     setFalha(null);
