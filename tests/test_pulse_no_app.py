@@ -14,6 +14,7 @@ from src import ficha, pulse
 from src.banco import dados_do_usuario as repo
 from src.banco import eventos as repo_eventos
 from src.banco import pulse as repo_pulse
+from src.banco import teses as repo_teses
 from src.banco.modelo import eventos
 from src.dados import baixar_dados
 from src.estrategias import ESTRATEGIAS
@@ -200,6 +201,34 @@ def test_veredito_que_mudou_aparece_fica_no_rerun_e_e_guardado(banco, ana):
     assert _vistos(banco, ana_id) == {str(sim_id): hoje}
     app.run()  # o rerun não apaga o que mudou
     assert esperado in _textos(app)
+
+
+def test_pulse_mostra_a_tese_ligada_ao_veredito_que_mudou(banco, ana):
+    app, ana_id = ana
+    hoje = _veredito_de_hoje()
+    sim_id = _salvar_backtest(banco, ana_id, _outro(hoje))
+    with banco.begin() as c:
+        repo_teses.escrever(c, ana_id, "PETR4", "**Antiga**", [sim_id])
+        repo_teses.escrever(c, ana_id, "PETR4", "Tese <b>nova</b> com $x$", [sim_id])
+        repo_teses.escrever(c, ana_id, "PETR4", "Sem ligação")
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    textos = [
+        t.value for t in app.text
+    ]  # st.text: o texto da pessoa sem Markdown nem HTML
+    assert len(textos) == 1
+    assert textos[0].startswith("Sua tese sobre PETR4 em ")
+    assert textos[0].endswith(": “Tese <b>nova</b> com $x$”")
+
+
+def test_veredito_que_nao_mudou_nao_mostra_a_tese(banco, ana):
+    app, ana_id = ana
+    sim_id = _salvar_backtest(banco, ana_id, _veredito_de_hoje())
+    with banco.begin() as c:
+        repo_teses.escrever(c, ana_id, "PETR4", "Tese", [sim_id])
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    assert list(app.text) == []
 
 
 def test_veredito_igual_nao_aparece_como_mudanca(banco, ana):
