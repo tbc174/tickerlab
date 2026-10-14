@@ -48,6 +48,11 @@ export function cssFerramentas(): string {
 .ferramenta input[type="text"] { flex: 1; font-variant-numeric: tabular-nums; }
 .ferramenta input[type="text"]:focus, .ferramenta select:focus { border-color: var(--azul); outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul) 35%, transparent); }
+.ferramenta-deslizante { width: 100%; margin: .35rem 0 0; accent-color: var(--azul); cursor: pointer; }
+.ferramenta-atalhos { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .3rem; }
+.ferramenta-atalhos button { padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 600 .8rem "Manrope", sans-serif; cursor: pointer; }
+.ferramenta-atalhos button:hover, .ferramenta-atalhos button:focus-visible { border-color: var(--azul); color: var(--azul-texto); }
 .ferramenta-alternativas { display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
 .ferramenta-alternativas legend { width: 100%; margin-bottom: .35rem; }
 .ferramenta-alternativas label { display: inline-flex; align-items: center; gap: .35rem; cursor: pointer; }
