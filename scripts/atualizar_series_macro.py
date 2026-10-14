@@ -45,10 +45,21 @@ YAHOO = {
 BuscarYahoo = Callable[[str, date], pd.Series | None]
 
 
+# séries de terceiros que o SGS só repassa: a licença continua a do dono (o IGP-M é da FGV IBRE,
+# cujos termos pedem autorização para uso comercial; licencas-por-fonte.md, 14/10/2026)
+SGS_DE_TERCEIROS = {"igpm"}
+
+
 def serie_sgs(chave: str) -> SerieDoAcervo:
     s = bcb.SERIES[chave]
     frequencia = "mensal" if s.unidade == "% no mês" or chave == "ibc_br" else "diária"
-    return SerieDoAcervo(f"bcb-sgs-{s.codigo}", s.nome, s.unidade, frequencia)
+    return SerieDoAcervo(
+        f"bcb-sgs-{s.codigo}",
+        s.nome,
+        s.unidade,
+        frequencia,
+        uso_interno=chave in SGS_DE_TERCEIROS,
+    )
 
 
 def serie_ptax(lado: str) -> SerieDoAcervo:

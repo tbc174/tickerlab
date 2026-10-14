@@ -110,3 +110,50 @@ def test_url_e_detalhe_longos_sao_cortados(banco):
     [linha] = _todas(banco)
     assert len(linha.url) == coletas.LIMITE_DA_URL
     assert len(linha.detalhe) == coletas.LIMITE_DO_DETALHE
+
+
+def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas():
+    assert "CGU" in licenca_da_fonte("cgu-ceis")
+    assert "CNPJ" in licenca_da_fonte("rfb-cnpj")
+    assert (
+        licenca_da_fonte("rfb-cripto") == coletas.LICENCAS["rfb"]
+    )  # a planilha de cripto não muda
+    assert licenca_da_fonte("gleif-br").startswith("CC0")
+    for fonte in (
+        "cgu-ceis",
+        "pgfn-divida",
+        "ibama-autos",
+        "mte-lista-suja",
+        "rfb-cnpj",
+    ):
+        assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
+    assert coletas.revenda_da_fonte("gleif-br") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
+
+
+def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
+    agora = datetime(2026, 10, 14, 2, tzinfo=UTC)
+    with banco.begin() as conexao:
+        coletas.registrar_arquivo(
+            conexao,
+            "rfb-cnpj",
+            URL,
+            "a" * 64,
+            6_000_000_000,
+            "ok",
+            "lm=x",
+            agora,
+            "bruto/x.zip",
+        )
+        coletas.registrar_arquivo(
+            conexao, "rfb-cnpj", URL, None, None, "falhou", "Timeout", agora
+        )
+    with banco.connect() as conexao:
+        ultima = coletas.ultima_coleta_ok(conexao, URL)
+        assert coletas.ultima_coleta_ok(conexao, "https://outra") is None
+    assert ultima is not None
+    assert (ultima.sha256, ultima.bytes, ultima.detalhe) == (
+        "a" * 64,
+        6_000_000_000,
+        "lm=x",
+    )

@@ -37,6 +37,17 @@ LICENCAS = {
     "btc": "Blockchain pública lida por nó próprio (Bitcoin Core, MIT)",
     "kraken": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
+    # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
+    "rfb-cnpj": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
+    "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
+    "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
+    "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
+    "mte": "Cadastro de empregadores do MTE (dado público; citar o MTE)",
+    "gleif": "CC0 (GLEIF, Global LEI Index)",
+    "termos": "Termos de uso de terceiros: só prova interna da versão lida",
+    "catalogo": "Lista de conjuntos de portais de dados abertos (metadados)",
+    # o SGS do BC repassa o IGP-M, mas a série é da FGV (termos do IBRE: comercial pede autorização)
+    "bcb-sgs-189": "IGP-M da FGV IBRE (repassado pelo BC): uso comercial pede autorização da FGV",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -66,6 +77,16 @@ REVENDA = {
     "yahoo": SO_USO_INTERNO,
     "kraken": SO_USO_INTERNO,
     "mb": SO_USO_INTERNO,
+    # dado pessoal (sócios, autuados, empregadores pessoa física) ou licença a perguntar: só interno
+    "rfb-cnpj": SO_USO_INTERNO,
+    "cgu": SO_USO_INTERNO,
+    "pgfn": SO_USO_INTERNO,
+    "ibama": SO_USO_INTERNO,
+    "mte": SO_USO_INTERNO,
+    "gleif": VENDAVEL_COM_ATRIBUICAO,
+    "termos": SO_USO_INTERNO,
+    "catalogo": SO_USO_INTERNO,
+    "bcb-sgs-189": SO_USO_INTERNO,
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
@@ -73,13 +94,15 @@ HTTP_NAO_ENCONTRADO = 404
 
 
 def licenca_da_fonte(fonte: str) -> str:
-    """A licença pela família da fonte ("cvm-ipe" → a da CVM)."""
-    return LICENCAS.get(fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA)
+    """A licença da fonte ("rfb-cnpj") ou da sua família ("cvm-ipe" → a da CVM)."""
+    return LICENCAS.get(fonte) or LICENCAS.get(
+        fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA
+    )
 
 
 def revenda_da_fonte(fonte: str) -> str:
     """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, nunca."""
-    return REVENDA.get(fonte.split("-", 1)[0], SO_USO_INTERNO)
+    return REVENDA.get(fonte) or REVENDA.get(fonte.split("-", 1)[0], SO_USO_INTERNO)
 
 
 def registrar(
@@ -93,20 +116,55 @@ def registrar(
     caminho_do_original: str | None = None,
 ) -> None:
     """Grava uma linha do registro. `conteudo` None = nada foi baixado (404 ou falha)."""
+    registrar_arquivo(
+        conexao,
+        fonte,
+        url,
+        None if conteudo is None else hashlib.sha256(conteudo).hexdigest(),
+        None if conteudo is None else len(conteudo),
+        situacao,
+        detalhe,
+        agora,
+        caminho_do_original,
+    )
+
+
+def registrar_arquivo(
+    conexao: sa.Connection,
+    fonte: str,
+    url: str,
+    sha256: str | None,
+    tamanho: int | None,
+    situacao: str,
+    detalhe: str | None = None,
+    agora: datetime | None = None,
+    caminho_do_original: str | None = None,
+) -> None:
+    """Como `registrar`, para arquivos grandes: o SHA-256 e o tamanho já vêm calculados (em partes)."""
     conexao.execute(
         sa.insert(coletas).values(
             id=uuid.uuid4(),
             fonte=fonte,
             url=url[:LIMITE_DA_URL],
             situacao=situacao,
-            bytes=None if conteudo is None else len(conteudo),
-            sha256=None if conteudo is None else hashlib.sha256(conteudo).hexdigest(),
+            bytes=tamanho,
+            sha256=sha256,
             licenca=licenca_da_fonte(fonte),
             detalhe=None if detalhe is None else detalhe[:LIMITE_DO_DETALHE],
             caminho_do_original=caminho_do_original,
             baixado_em=agora or datetime.now(UTC),
         )
     )
+
+
+def ultima_coleta_ok(conexao: sa.Connection, url: str) -> sa.Row | None:
+    """A coleta "ok" mais recente de `url` (para saber se o arquivo mudou), ou None."""
+    return conexao.execute(
+        sa.select(coletas)
+        .where(coletas.c.url == url[:LIMITE_DA_URL], coletas.c.situacao == "ok")
+        .order_by(coletas.c.baixado_em.desc())
+        .limit(1)
+    ).first()
 
 
 def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:

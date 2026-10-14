@@ -11,7 +11,7 @@ import requests
 from scripts import atualizar_series_macro as coletor
 from src import bcb
 from src.banco import series as acervo_de_series
-from src.banco.coletas import buscar_com_registro, ultimas
+from src.banco.coletas import buscar_com_registro, licenca_da_fonte, ultimas
 from src.banco.series import SerieDoAcervo
 
 HOJE = date(2026, 10, 13)
@@ -66,6 +66,18 @@ def test_yahoo_fica_so_para_uso_interno(banco):
         acervo_de_series.garantir_serie(conexao, IPCA)
         acervo_de_series.garantir_serie(conexao, coletor.serie_yahoo("bvsp"))
         acervo_de_series.garantir_serie(conexao, IPCA)  # de novo: atualiza, não duplica
+        assert acervo_de_series.series_para_exportar(conexao) == ["bcb-sgs-433"]
+
+
+def test_igpm_da_fgv_fica_so_para_uso_interno(banco):
+    # o IGP-M é da FGV IBRE (uso comercial pede autorização), mesmo vindo pelo SGS do BC
+    igpm = coletor.serie_sgs("igpm")
+    assert igpm.uso_interno
+    assert not coletor.serie_sgs("ipca").uso_interno
+    assert "FGV" in licenca_da_fonte(igpm.codigo)
+    with banco.begin() as conexao:
+        acervo_de_series.garantir_serie(conexao, IPCA)
+        acervo_de_series.garantir_serie(conexao, igpm)
         assert acervo_de_series.series_para_exportar(conexao) == ["bcb-sgs-433"]
 
 
