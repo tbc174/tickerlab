@@ -5,12 +5,14 @@ import type { ComponentType } from "react";
 import { AportesEMetas } from "./AportesEMetas";
 import { CalculadoraDeJuros } from "./CalculadoraDeJuros";
 import { CustoDaTaxa, RecuperarAQueda } from "./CustoDasTaxas";
+import { ViverDeRenda } from "./ViverDeRenda";
 
 export const FERRAMENTAS = {
   juros: CalculadoraDeJuros,
   aportes: AportesEMetas,
   taxa: CustoDaTaxa,
   queda: RecuperarAQueda,
+  renda: ViverDeRenda,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

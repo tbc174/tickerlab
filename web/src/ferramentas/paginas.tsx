@@ -4,6 +4,8 @@ import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
 import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
 import { montante, taxaEquivalente } from "./contas/juros";
+import { duracaoEmMeses, patrimonioNecessario } from "./contas/viver_de_renda";
+import { duracaoPorExtenso } from "./ViverDeRenda";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
 
@@ -29,6 +31,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "custo-das-taxas-e-da-queda.html",
     nome: "Custo das taxas e da queda",
     descricao: "Quanto 1% ao ano leva em 20 anos, e quanto é preciso subir depois de cair.",
+  },
+  {
+    arquivo: "calculadora-viver-de-renda.html",
+    nome: "Viver de renda",
+    descricao: "Quanto juntar para tirar um valor por mês, e o risco de começar num ano ruim.",
   },
 ];
 
@@ -199,6 +206,64 @@ export function PaginaDosCustos() {
           ))}
         </tbody>
       </table>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Viver de renda ------------------------------------------------------------------------
+const RENDA = "calculadora-viver-de-renda.html";
+
+export const DADOS_DA_RENDA = {
+  caminho: `/${RENDA}`,
+  titulo: "Calculadora para viver de renda",
+  descricao:
+    "Quanto juntar para viver de renda, em dinheiro de hoje: só com os juros ou gastando o " +
+    "principal, e o que muda se o primeiro ano for ruim. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDaRenda() {
+  const em30 = patrimonioNecessario(5000, 0.04, 30);
+  const comQueda = duracaoEmMeses(em30, 5000, [-0.3, 0.04]);
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora para viver de renda"
+      subtitulo="Quanto juntar para tirar um valor por mês, em dinheiro de hoje, e o risco que a média esconde. Grátis e sem cadastro."
+      ilha="renda"
+      codigo={codigo(RENDA)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda e taxas",
+        "inflação diferente da sua: a conta usa um rendimento acima da inflação e uma renda sempre com o mesmo poder de compra",
+        "anos bons e ruins de verdade: além do exemplo da queda no primeiro ano, a conta usa o mesmo rendimento todo ano",
+      ]}
+    >
+      <h2>Em dinheiro de hoje</h2>
+      <p>
+        Daqui a 30 anos, R$ 5.000 vão comprar bem menos. Por isso a calculadora trabalha com o
+        rendimento <strong>acima da inflação</strong> (o juro real): o patrimônio e a renda saem no
+        poder de compra de hoje, e a renda acompanha a inflação o tempo todo.
+      </p>
+      <h2>Só com os juros ou gastando o principal</h2>
+      <p>
+        Só com os juros, o patrimônio nunca acaba, mas é preciso juntar mais. Gastando também o
+        que juntou, precisa de menos: com R$ 5.000 por mês e 4% ao ano acima da inflação, por 30
+        anos, são {formatarReais(em30)}.
+      </p>
+      <h2>O risco que a média esconde</h2>
+      <p>
+        O mesmo rendimento médio pode dar resultados bem diferentes conforme a ordem dos anos. Se o
+        primeiro ano cair 30%, quem está retirando todo mês vende na baixa, e o dinheiro planejado
+        para 30 anos dura {duracaoPorExtenso(comQueda)}. A mesma queda perto do fim quase não faz
+        diferença. É o chamado risco de sequência.
+      </p>
+      <h2>E a “regra dos 4%”?</h2>
+      <p>
+        A regra diz que dá para retirar 4% do patrimônio do primeiro ano, corrigidos pela inflação,
+        por cerca de 30 anos. Ela veio de estudos com ações e títulos dos Estados Unidos no século
+        20; aqui ela aparece só como comparação, não como garantia.
+      </p>
     </PaginaDeFerramenta>
   );
 }

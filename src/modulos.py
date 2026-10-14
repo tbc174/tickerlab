@@ -263,6 +263,11 @@ MODULOS = (
                 "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
                 pagina_do_site="custo-das-taxas-e-da-queda.html",
             ),
+            Funcionalidade(
+                "Viver de renda",
+                "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
+                pagina_do_site="calculadora-viver-de-renda.html",
+            ),
         ),
     ),
     Modulo(

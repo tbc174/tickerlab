@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import * as aportes from "../../src/ferramentas/contas/aportes";
 import * as custos from "../../src/ferramentas/contas/custos";
 import * as juros from "../../src/ferramentas/contas/juros";
+import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
 import casos from "../golden_ferramentas.json";
 
 type Conta = (...argumentos: never[]) => unknown;
@@ -21,6 +22,9 @@ const CONTAS: Record<string, Conta> = {
   "custos.custo_da_taxa": custos.custoDaTaxa,
   "custos.evolucao_da_taxa": custos.evolucaoDaTaxa,
   "custos.alta_para_recuperar": custos.altaParaRecuperar,
+  "viver_de_renda.patrimonio_necessario": viverDeRenda.patrimonioNecessario,
+  "viver_de_renda.duracao_em_meses": viverDeRenda.duracaoEmMeses,
+  "viver_de_renda.renda_da_regra_dos_4": viverDeRenda.rendaDaRegraDos4,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from src.ferramentas import aportes, custos, juros
+from src.ferramentas import viver_de_renda as vr
 
 ARQUIVO = (
     Path(__file__).resolve().parents[1] / "web" / "testes" / "golden_ferramentas.json"
@@ -36,6 +37,9 @@ CONTAS: dict[str, Conta] = {
     "custos.custo_da_taxa": custos.custo_da_taxa,
     "custos.evolucao_da_taxa": custos.evolucao_da_taxa,
     "custos.alta_para_recuperar": custos.alta_para_recuperar,
+    "viver_de_renda.patrimonio_necessario": vr.patrimonio_necessario,
+    "viver_de_renda.duracao_em_meses": vr.duracao_em_meses,
+    "viver_de_renda.renda_da_regra_dos_4": vr.renda_da_regra_dos_4,
 }
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
@@ -109,6 +113,22 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("custos.alta_para_recuperar", [0]),
     ("custos.alta_para_recuperar", [-1]),
     ("custos.alta_para_recuperar", [0.2]),
+    ("viver_de_renda.patrimonio_necessario", [5000, 0.04, None]),
+    ("viver_de_renda.patrimonio_necessario", [5000, 0.04, 30]),
+    ("viver_de_renda.patrimonio_necessario", [10000, 0.035, 25]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0, 10]),
+    ("viver_de_renda.patrimonio_necessario", [3000, -0.01, 20]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0, None]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0.04, 0]),
+    ("viver_de_renda.patrimonio_necessario", [-5, 0.04, 30]),
+    ("viver_de_renda.duracao_em_meses", [1_000_000, 5000, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1_000_000, 5000, [-0.3, 0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1_500_000, 5000, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [120_000, 1000, [0]]),
+    ("viver_de_renda.duracao_em_meses", [500_000, 4000, [0.1, -0.2, 0.05, 0.03]]),
+    ("viver_de_renda.duracao_em_meses", [1000, 0, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1000, 100, []]),
+    ("viver_de_renda.renda_da_regra_dos_4", [1_200_000]),
 ]
 
 

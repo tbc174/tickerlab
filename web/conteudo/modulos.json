@@ -338,6 +338,14 @@
         "pagina_do_app": null,
         "pagina_do_site": "custo-das-taxas-e-da-queda.html",
         "ticker": null
+      },
+      {
+        "descricao": "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
+        "disponivel": true,
+        "nome": "Viver de renda",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-viver-de-renda.html",
+        "ticker": null
       }
     ],
     "nome": "Ferramentas",
