@@ -322,7 +322,8 @@ def abrir_link(
             return None
         guardado = conexao.execute(
             sa.select(pdfs_originais.c.sha256, pdfs_originais.c.gerado_em).where(
-                pdfs_originais.c.relatorio_id == linha.relatorio_id
+                pdfs_originais.c.relatorio_id == linha.relatorio_id,
+                pdfs_originais.c.usuario_id == linha.usuario_id,
             )
         ).one()
         pdf = PdfDoLink(
