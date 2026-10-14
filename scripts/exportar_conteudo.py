@@ -14,6 +14,9 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 
+import numpy as np
+
+from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
     analises,
@@ -29,6 +32,7 @@ from src import (
     planos,
     qualidade_texto,
 )
+from src import graficos_pdf as gp
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -38,6 +42,28 @@ from src.estrategias import ESTRATEGIAS
 
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
+# pontos do desenho do painel da página inicial (cinco anos: um ponto a cada ~4 semanas)
+PONTOS_DO_PAINEL = 64
+# a fita da página inicial: só o código (do catálogo) e um nome curto, nenhum preço
+ATIVOS_DA_FITA = (
+    ("PETR4.SA", "Petrobras"),
+    ("VALE3.SA", "Vale"),
+    ("ITUB4.SA", "Itaú Unibanco"),
+    ("WEGE3.SA", "WEG"),
+    ("BBAS3.SA", "Banco do Brasil"),
+    ("TAEE11.SA", "Taesa"),
+    ("HGLG11.SA", "Pátria Log · FII"),
+    ("IVVB11.SA", "iShares S&P 500 · ETF"),
+    ("^BVSP", "Ibovespa"),
+    ("^GSPC", "S&P 500"),
+    ("AAPL", "Apple"),
+    ("MSFT", "Microsoft"),
+    ("NVDA", "Nvidia"),
+    ("GOOGL", "Alphabet"),
+    ("BTC-USD", "Bitcoin"),
+    ("ETH-USD", "Ethereum"),
+    ("BRL=X", "Dólar em reais"),
+)
 
 
 def _modulos() -> list[dict]:
@@ -114,8 +140,15 @@ def _planos() -> dict:
 
 
 def _site() -> dict:
-    """O que só o site usa e vem do app: os estilos do Report Studio e os ativos de exemplo."""
+    """O que só o site usa e vem do app: os estilos do Report Studio, os ativos de exemplo e a fita
+    e o total de ativos da busca da página inicial."""
+    tabela = catalogo.carregar()
     return {
+        "total_de_ativos": len(tabela),
+        "fita": [
+            {"simbolo": s, "codigo": tabela.loc[s, "codigo"], "nome": nome}
+            for s, nome in ATIVOS_DA_FITA
+        ],
         "estilos_do_relatorio": [
             {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
         ],
@@ -123,6 +156,46 @@ def _site() -> dict:
             {"simbolo": s, "rotulo": catalogo.rotulo(s).split(" · ")[0]}
             for s in catalogo.EXEMPLOS
         ],
+    }
+
+
+def _variacao(valor: float) -> dict[str, float | str]:
+    """Um retorno como o PDF mostra: com sinal e a seta (a cor sozinha não basta)."""
+    return {
+        "valor": round(valor, 4),
+        "texto": f"{marca.seta(valor)} {gp.pct_br(valor, 1, sinal=True)}",
+    }
+
+
+def painel_de_exemplo() -> dict[str, object]:
+    """O painel da página inicial do site: os números do PDF de exemplo, calculados pelas mesmas
+    funções do relatório (ADR 0065, item 4: nunca escritos à mão), e o preço em base 100."""
+    ticker = gerar_site.TICKER_DO_EXEMPLO
+    fechamento = gerar_site.dados_de_exemplo(ticker)["Close"].dropna()
+    retorno = ind.calcular_retorno_diario(fechamento)
+    queda = float(ind.calcular_drawdown(fechamento).min())
+    volatilidade = ind.calcular_volatilidade_anual(retorno)
+    sharpe = ind.calcular_indice_sharpe(
+        retorno
+    )  # sem taxa livre de risco, como no PDF de exemplo
+    pontos = np.linspace(0, len(fechamento) - 1, PONTOS_DO_PAINEL).round().astype(int)
+    base_100 = fechamento.iloc[pontos] / fechamento.iloc[0] * 100
+    return {
+        "ticker": ticker,
+        "codigo": catalogo.rotulo(ticker).split(" · ")[0],
+        "inicio": f"{fechamento.index[0]:%Y-%m-%d}",
+        "fim": f"{fechamento.index[-1]:%Y-%m-%d}",
+        "retorno_total": _variacao(
+            float(ind.calcular_retorno_acumulado(retorno).iloc[-1])
+        ),
+        "retorno_ao_ano": _variacao(ind.retorno_anualizado_para_mostrar(retorno)),
+        "maior_queda": {"valor": round(queda, 4), "texto": gp.pct_br(queda)},
+        "volatilidade": {
+            "valor": round(volatilidade, 4),
+            "texto": gp.pct_br(volatilidade),
+        },
+        "sharpe": {"valor": round(sharpe, 4), "texto": gp.numero_br(sharpe, 2)},
+        "serie": [round(float(v), 1) for v in base_100],
     }
 
 
@@ -252,6 +325,7 @@ def conteudo() -> dict[str, object]:
         "app": _app(),
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),
+        "exemplo": painel_de_exemplo(),
     }
 
 

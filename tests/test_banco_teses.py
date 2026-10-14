@@ -1,6 +1,7 @@
 """Testes de src/banco/teses.py: as anotações do Diário de Teses de cada pessoa."""
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -45,9 +46,19 @@ def test_escrever_e_listar(conexao, ana):
     assert repo.listar(conexao, ana.id) == [anotacao]
 
 
+def _mudar_hora(conexao, anotacao, hora):
+    conexao.execute(
+        sa.update(teses).where(teses.c.id == anotacao.id).values(criada_em=hora)
+    )
+
+
 def test_lista_vem_da_mais_nova_para_a_mais_antiga(conexao, ana):
     primeira = repo.escrever(conexao, ana.id, "PETR4", "primeira")
     segunda = repo.escrever(conexao, ana.id, "VALE3", "segunda")
+    # horas fixas: no Windows o relógio anda de 15,6 em 15,6 ms e as duas podiam sair com a
+    # mesma hora; aí quem desempata é o id (aleatório) e a ordem virava cara ou coroa
+    _mudar_hora(conexao, primeira, datetime(2026, 10, 13, 9, tzinfo=UTC))
+    _mudar_hora(conexao, segunda, datetime(2026, 10, 14, 9, tzinfo=UTC))
     assert [a.id for a in repo.listar(conexao, ana.id)] == [segunda.id, primeira.id]
 
 

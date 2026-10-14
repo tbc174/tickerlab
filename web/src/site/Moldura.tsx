@@ -18,6 +18,8 @@ import { OPCOES_DO_TEMA, TEMA_SALVO } from "./tema";
 
 export { SOL_JS, versao };
 export const SITE_JS = lerTexto(join(process.cwd(), "publico", "site.js"));
+// as animações do visual v2 (ADR 0065), com pausa e "reduzir movimento"
+export const MOVIMENTO_JS = lerTexto(join(process.cwd(), "publico", "movimento.js"));
 
 const ICONES_E_FONTE =
   '<link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">' +
@@ -178,6 +180,7 @@ export function Documento({
         <Bruto html={ICONES_E_FONTE} />
         <link rel="stylesheet" href={`/estilo.css?v=${versao(css())}`} />
         <script src={`/site.js?v=${versao(SITE_JS)}`} defer />
+        <script src={`/movimento.js?v=${versao(MOVIMENTO_JS)}`} defer />
       </head>
       <body>
         <a className="pular" href="#conteudo">

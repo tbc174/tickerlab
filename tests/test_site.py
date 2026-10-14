@@ -103,7 +103,10 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
 
 def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
-    for arquivo in [*PAGINAS_HTML, SITE / "estilo.css", SITE / "site.js"]:
+    for arquivo in [
+        *PAGINAS_HTML,
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+    ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
         externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', texto)
@@ -114,9 +117,24 @@ def test_nada_vem_de_terceiros():
 
 def test_planos_do_site_sao_os_do_app():
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    tabela = texto[texto.index('<table class="planos') : texto.index("</table>")]
+    # Sim e Não aparecem como ✓ e — (a palavra fica no aria-label, para o leitor de tela)
+    icones = {"✓": "Sim", "—": "Não"}
+    no_site = {
+        recurso: [
+            icones.get(c, c)
+            for c in (
+                re.sub(r"<[^>]+>", "", c)
+                for c in re.findall(r"<td>(.*?)</td>", celulas)
+            )
+        ]
+        for recurso, celulas in re.findall(
+            r'<tr><th scope="row">(.*?)</th>(.*?)</tr>', tabela
+        )
+    }
     for linha in planos.tabela_de_planos():
-        for nome in ("Gratuito", "Plus", "Pro"):
-            assert f"<td>{esc(linha[nome])}</td>" in texto
+        esperado = [esc(linha[nome]) for nome in ("Gratuito", "Plus", "Pro")]
+        assert no_site[esc(linha["Recurso"])] == esperado, linha["Recurso"]
     assert "R$" not in texto  # sem preço enquanto não houver cobrança real
     assert "modo de teste" in texto
 
@@ -124,10 +142,13 @@ def test_planos_do_site_sao_os_do_app():
 def test_precos_anunciam_mensal_de_verdade():
     """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
-    assert "Mensal de verdade:" in texto
-    assert "sem fidelidade" in texto
-    assert "cobra um mês por vez" in texto
-    assert "Planos e assinatura" in texto
+    for frase in (
+        "Mensal de verdade",
+        "Sem fidelidade",
+        "cobra um mês por vez",
+        "Planos e assinatura",
+    ):
+        assert frase in texto, frase
 
 
 def test_catalogo_da_busca_e_o_do_app():
@@ -190,7 +211,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
@@ -308,7 +329,11 @@ def test_pagina_sobre_usa_o_texto_aprovado():
 def test_sobre_no_menu_e_no_rodape_de_todas_as_paginas():
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
-        topo, rodape = texto.split("</header>")[0], texto.split("<footer")[1]
+        # o rodapé do site (um cartão pode ter o próprio <footer>, como o painel da inicial)
+        topo, rodape = (
+            texto.split("</header>")[0],
+            texto.split('<footer class="rodape')[1],
+        )
         assert '<a href="/sobre.html"' in topo, arquivo.name
         assert '<a href="/sobre.html">' in rodape, arquivo.name
 

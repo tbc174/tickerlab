@@ -382,3 +382,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** as linhas da lista não tinham as mesmas chaves (uma tinha `relatorio_id`, as outras não). Num `insert` de várias linhas, todas precisam das mesmas colunas.
 - **Solução:** pôr todas as colunas em todas as linhas (com `None` onde não há valor).
 - **Data:** 13/10/2026
+
+## PR empilhado em outro dá conflito em tudo depois do merge do primeiro com "squash"
+- **Sintoma:** o PR 2 saiu do ramo do PR 1. Depois do merge do PR 1 na `main` (`gh pr merge --squash`), juntar a `main` no ramo do PR 2 deu conflito em todos os arquivos que os dois PRs mexiam (`rotas.py`, `esquemas.py`, o `openapi-v1.json`, o `novo/index.html`).
+- **Causa:** o "squash" junta os commits do PR 1 num commit **novo**, com outro código (hash). O Git não sabe que é a mesma mudança que o ramo do PR 2 já tem, e vê as duas versões como edições diferentes das mesmas linhas.
+- **Solução:** primeiro conferir que só o PR 1 mexeu nesses arquivos na `main` (`git log --oneline <commit do PR 1 no ramo>..origin/main -- ARQUIVO`) e que o conteúdo é igual (`git diff <commit do PR 1 no ramo> <commit do squash> -- ARQUIVOS` vazio). Aí a versão do ramo do PR 2 já contém o PR 1 inteiro: `git checkout --ours ARQUIVOS`, `git add`, regerar os arquivos gerados (`npm run app`, `python -m scripts.gerar_openapi`) e rodar os testes antes do commit do merge.
+- **Data:** 14/10/2026
+
+## `SyntaxError: (unicode error) 'unicodeescape' ... truncated \UXXXXXXXX escape`
+- **Sintoma:** um script Python curto (para editar um arquivo de texto) parou antes de rodar, apontando para um texto com `C:\Users\tiago\...`.
+- **Causa:** num texto Python comum, `\U` começa um código Unicode (`\U0001F600`); `\Users` não é um código válido. Caminhos do Windows dentro de aspas normais caem nisso (e também `\n`, `\t`).
+- **Solução:** usar barras normais (`C:/Users/tiago/...`, o Python e o Windows aceitam), ou texto cru (`r"C:\Users\..."`), ou `pathlib.Path`.
+- **Data:** 14/10/2026
+
+## Teste de ordem "mais novo primeiro" falha às vezes no Windows (passa sozinho)
+- **Sintoma:** `test_lista_vem_da_mais_nova_para_a_mais_antiga` (Diário de Teses) falhou uma vez na suíte inteira com a máquina carregada e passava sozinho.
+- **Causa:** no Python 3.12 do Windows, `datetime.now()` usa `GetSystemTimeAsFileTime`, que anda de 15,6 em 15,6 ms (`time.get_clock_info("time").resolution`). Duas teses gravadas em seguida saíam com a mesma hora; a consulta desempata pelo `id`, que é um `uuid4` aleatório, então a ordem virava cara ou coroa (com o relógio parado, 10 de 20 rodadas falharam). Em produção (PostgreSQL no Linux, microssegundos) o empate não acontece.
+- **Solução:** teste de ordem não depende do relógio: fixe as horas (aqui com `sa.update(...).values(criada_em=...)`; em `compartilhamentos` a função já recebe `agora=`). Para conferir que um teste aguenta o empate, rode-o com o `datetime` do módulo trocado por um relógio parado (`monkeypatch.setattr(modulo, "datetime", RelogioParado)`).
+- **Data:** 14/10/2026

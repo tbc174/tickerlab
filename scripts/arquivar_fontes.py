@@ -9,6 +9,9 @@
 Cada arquivo vai para o acervo (`TICKERLAB_ACERVO`), para o registro de coletas e para o manifesto do
 dia. Saída: 0 tudo certo; 1 alguma falha (o Kuma avisa); 2 nada falhou, mas um termo de uso ou um
 catálogo mudou (aviso para alguém ler). Fonte desconhecida também sai com 2.
+
+Quando algo falha, a última linha da saída padrão é `FALHAS: fonte (motivo); ...`, curta, para o
+aviso do Kuma dizer o porquê (quem lê o e-mail nem sempre alcança o log do servidor).
 """
 
 import argparse
@@ -41,6 +44,8 @@ ESPERA_PARA_TENTAR_DE_NOVO = 300
 AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
 OK, FALHA, AVISO = 0, 1, 2
+# o resumo vai na mensagem do Kuma (no endereço do push e no assunto do e-mail): curto
+TAMANHO_MAXIMO_DO_RESUMO = 300
 
 
 class ClienteHttp:
@@ -84,25 +89,29 @@ class ClienteHttp:
             return dict(resposta.headers)
 
 
+def _motivo(erro: Exception) -> str:
+    return f"{type(erro).__name__}: {erro}"
+
+
 def _uma_rodada(
     fonte: Fonte, cliente: ClienteHttp, temporaria: Path
-) -> Resultado | None:
-    """Arquiva a fonte; None quando a fonte inteira falhou (descoberta, rede)."""
+) -> Resultado | str:
+    """Arquiva a fonte; o motivo (texto) quando a fonte inteira falhou (descoberta, rede)."""
     try:
         return arquivar(fonte, cliente, datetime.now(UTC), temporaria)
     except (ErroDeDescoberta, requests.RequestException) as erro:
         log.error("%s: %s", fonte.id, erro)
-        return None
+        return _motivo(erro)
 
 
 def _arquivar_com_nova_tentativa(
     fonte: Fonte, cliente: ClienteHttp, temporaria: Path
-) -> Resultado | None:
+) -> Resultado | str:
     """Uma rodada; se falhou (toda ou em parte), espera e tenta mais uma vez. Freio de disco não
     tenta de novo (vira falha na hora)."""
     try:
         resultado = _uma_rodada(fonte, cliente, temporaria)
-        if resultado is not None and not resultado.falhas:
+        if isinstance(resultado, Resultado) and not resultado.falhas:
             return resultado
         log.warning(
             "%s: falhou; nova tentativa em %d s", fonte.id, ESPERA_PARA_TENTAR_DE_NOVO
@@ -111,7 +120,15 @@ def _arquivar_com_nova_tentativa(
         return _uma_rodada(fonte, cliente, temporaria)
     except FreioDeDisco as erro:
         log.error("%s: %s", fonte.id, erro)
-        return None
+        return _motivo(erro)
+
+
+def resumo_das_falhas(problemas: list[str]) -> str:
+    """A linha `FALHAS: ...` que vai para o aviso do Kuma, cortada em `TAMANHO_MAXIMO_DO_RESUMO`."""
+    linha = "FALHAS: " + "; ".join(problemas)
+    if len(linha) <= TAMANHO_MAXIMO_DO_RESUMO:
+        return linha
+    return linha[: TAMANHO_MAXIMO_DO_RESUMO - 3] + "..."
 
 
 def escolher(alvo: str) -> list[Fonte]:
@@ -149,11 +166,12 @@ def main(argv: list[str] | None = None) -> int:
     pasta = acervo.pasta_do_acervo()
     temporaria = (pasta or Path.cwd()) / ".temporario"
     cliente = ClienteHttp()
-    falhou = mudou = False
+    problemas: list[str] = []
+    mudou = False
     for fonte in fontes:
         resultado = _arquivar_com_nova_tentativa(fonte, cliente, temporaria)
-        if resultado is None:
-            falhou = True
+        if isinstance(resultado, str):
+            problemas.append(f"{fonte.id} ({resultado})")
             continue
         log.info(
             "%s: %d novos, %d iguais, %d sem mudança nos cabeçalhos, %d falhas",
@@ -163,11 +181,15 @@ def main(argv: list[str] | None = None) -> int:
             resultado.pulados,
             len(resultado.falhas),
         )
-        falhou = falhou or bool(resultado.falhas)
+        if resultado.falhas:
+            problemas.append(
+                f"{fonte.id} ({len(resultado.falhas)} arquivos; 1º: {resultado.falhas[0]})"
+            )
         for url in resultado.mudaram:
             log.warning("%s: o texto mudou em %s (ler de novo)", fonte.id, url)
             mudou = True
-    if falhou:
+    if problemas:
+        print(resumo_das_falhas(problemas))
         return FALHA
     return AVISO if mudou else OK
 

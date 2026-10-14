@@ -1,6 +1,7 @@
 // Produto: os seis módulos, o que já está no app e o que vem por aí. Era `produto()`.
 import { Fragment } from "react";
-import { ChamadaFinal, Cabecalho, MODULOS_DO_PRODUTO, SecaoDoModulo } from "../site/comum";
+import { ChamadaFinal, MODULOS_DO_PRODUTO, SecaoDoModulo } from "../site/comum";
+import { TopoDaPagina } from "../site/Fundo";
 
 export const DADOS = {
   caminho: "/produto.html",
@@ -14,7 +15,7 @@ export const DADOS = {
 export function Produto() {
   return (
     <>
-      <Cabecalho
+      <TopoDaPagina
         olho="Produto"
         titulo="Tudo o que o TickerLab faz, e o que vem por aí"
         subtitulo={
@@ -32,7 +33,7 @@ export function Produto() {
             </Fragment>
           ))}
         </p>
-      </Cabecalho>
+      </TopoDaPagina>
       {MODULOS_DO_PRODUTO.map((m) => (
         <SecaoDoModulo key={m.chave} modulo={m} />
       ))}

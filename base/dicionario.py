@@ -332,6 +332,50 @@ TABELAS: dict[str, Tabela] = {
             "codigo_informado": ("O código como a empresa escreveu", TEXTO),
         },
     ),
+    "carteiras_dos_fundos": Tabela(
+        descricao=(
+            "As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, "
+            "bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor. Fundos e "
+            "posições que saíram continuam (sem viés de sobrevivência). Um Parquet por ano; quando a "
+            "CVM regrava um ano, a versão anterior fica como `<ano>.v<N>`"
+        ),
+        fonte="CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 4",
+        familia_da_fonte="cvm",
+        frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+        atraso=(
+            "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por "
+            "até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+        ),
+        onde="Parquet por ano em `<acervo>/base/cda/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA "
+            "usado (no acervo e no registro de coletas, com a data da coleta e a versão do código que "
+            "baixou) e a versão do código que gravou."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira (último dia)", DATA),
+            "cnpj_fundo": ("CNPJ do fundo (ou da classe, depois da CVM 175)", TEXTO),
+            "tipo_do_fundo": ("Tipo do fundo como a CVM informa", TEXTO),
+            "fundo": ("Nome do fundo (pessoa jurídica)", TEXTO),
+            "tipo": ("comprado, emprestado ou vendido", TEXTO),
+            "codigo": ("Código do ativo informado (ticker)", TEXTO),
+            "isin": ("ISIN do ativo: o código permanente", TEXTO),
+            "emissor": ("As 4 letras do emissor, tiradas do ISIN", TEXTO),
+            "descricao": ("Descrição do ativo informada", TEXTO),
+            "quantidade": ("Quantidade no fim do mês", ACOES),
+            "valor": ("Valor de mercado no fim do mês", REAIS),
+            "compras": ("Valor comprado no mês", REAIS),
+            "vendas": ("Valor vendido no mês", REAIS),
+            "confidencial_ate": (
+                "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando a posição era pública (como era na data)",
+                DATA,
+            ),
+        },
+    ),
     "padroes_setoriais": Tabela(
         descricao=(
             "Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as "
