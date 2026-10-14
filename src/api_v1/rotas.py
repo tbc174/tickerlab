@@ -1,5 +1,6 @@
 """As rotas da API de leitura (v1). Todas exigem a API ligada e uma conta logada (src/api_v1/acesso.py)."""
 
+import json
 import logging
 import os
 import uuid
@@ -9,10 +10,11 @@ from typing import Annotated, Literal, TypeVar
 
 import pandas as pd
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, ficha
+from src import analises, conformidade, ficha
+from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
@@ -28,6 +30,7 @@ from src.api_v1.contexto import (
     cdi_entre,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco import compartilhamentos as links
 from src.banco import tentativas
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
@@ -110,6 +113,25 @@ class MeuPlanoV1(BaseModel):
     tabela: list[dict[str, str]]  # uma linha por recurso, uma coluna por plano
 
 
+class LinkV1(BaseModel):
+    """Um link compartilhado da conta (o código nunca volta: o banco só guarda a impressão)."""
+
+    id: uuid.UUID
+    titulo: str
+    situacao: str  # "ativo", "vencido" ou "revogado"
+    descricao: str  # "Ficha ... · ativo · criado em ... · vale até ... · 2 visita(s)"
+
+
+class MeusLinksV1(BaseModel):
+    explicacao: str
+    sem_links: str  # a frase de quando a lista está vazia
+    links: list[LinkV1]
+
+
+class PedidoDeRevogarV1(BaseModel):
+    id: uuid.UUID
+
+
 class ConfiguracaoV1(BaseModel):
     """O que a tela nova precisa antes do login (sem segredo: o client ID vai no endereço do Google)."""
 
@@ -147,6 +169,62 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
         else frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim),
         aviso=AVISO_DO_MODO_DE_TESTE,
         tabela=tabela_de_planos(),
+    )
+
+
+def _meus_links(conexao: sa.Connection, usuario_id: uuid.UUID) -> MeusLinksV1:
+    return MeusLinksV1(
+        explicacao=comp.EXPLICACAO_DOS_LINKS,
+        sem_links=comp.SEM_LINKS,
+        links=[
+            LinkV1(
+                id=l.id,
+                titulo=l.titulo,
+                situacao=l.situacao,
+                descricao=comp.descrever_link(
+                    l.tipo, l.situacao, l.criado_em, l.expira_em, l.visitas
+                ),
+            )
+            for l in links.listar_links(conexao, usuario_id)
+        ],
+    )
+
+
+@router.get("/links-compartilhados")
+def links_compartilhados(conta: Conta) -> MeusLinksV1:
+    """Meus dados › Links compartilhados: só os da conta do token."""
+    with obter_engine().connect() as conexao:
+        return _meus_links(conexao, conta.id)
+
+
+@router.post("/revogar-link")
+def revogar_link(conta: Conta, pedido: PedidoDeRevogarV1) -> MeusLinksV1:
+    """Revoga um link da própria conta; o de outra conta (ou já revogado) dá 404, sem dizer qual."""
+    with obter_engine().begin() as conexao:
+        if not links.revogar_link(conexao, conta.id, pedido.id):
+            raise HTTPException(
+                status_code=404, detail="Este link não existe ou já foi revogado."
+            )
+        return _meus_links(conexao, conta.id)
+
+
+NOME_DA_EXPORTACAO = (
+    "meus-dados-tickerlab.json"  # o mesmo arquivo do botão do Streamlit
+)
+
+
+@router.get("/meus-dados")
+def meus_dados(conta: Conta) -> Response:
+    """Tudo o que o TickerLab guarda sobre a conta (LGPD), a mesma exportação do Streamlit."""
+    with obter_engine().begin() as conexao:
+        dados = conformidade.exportar_meus_dados(conexao, conta.id)
+    return Response(
+        content=json.dumps(dados, ensure_ascii=False, indent=2, default=str),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DA_EXPORTACAO}"',
+            "Cache-Control": "no-store",
+        },
     )
 
 

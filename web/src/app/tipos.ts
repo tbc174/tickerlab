@@ -198,6 +198,19 @@ export interface BacktestV1 {
   operacoes: number;
 }
 
+export interface LinkV1 {
+  id: string;
+  titulo: string;
+  situacao: string; // "ativo", "vencido" ou "revogado"
+  descricao: string;
+}
+
+export interface MeusLinksV1 {
+  explicacao: string;
+  sem_links: string;
+  links: LinkV1[];
+}
+
 export interface MeuPlanoV1 {
   plano: string;
   nome_do_plano: string;

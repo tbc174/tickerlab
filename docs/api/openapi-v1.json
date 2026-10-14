@@ -826,6 +826,36 @@
         "title": "LinhaDoTempoV1",
         "type": "object"
       },
+      "LinkV1": {
+        "description": "Um link compartilhado da conta (o código nunca volta: o banco só guarda a impressão).",
+        "properties": {
+          "descricao": {
+            "title": "Descricao",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "situacao": {
+            "title": "Situacao",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "titulo",
+          "situacao",
+          "descricao"
+        ],
+        "title": "LinkV1",
+        "type": "object"
+      },
       "MarcoV1": {
         "description": "Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica.",
         "properties": {
@@ -962,6 +992,32 @@
           "tabela"
         ],
         "title": "MeuPlanoV1",
+        "type": "object"
+      },
+      "MeusLinksV1": {
+        "properties": {
+          "explicacao": {
+            "title": "Explicacao",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkV1"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "sem_links": {
+            "title": "Sem Links",
+            "type": "string"
+          }
+        },
+        "required": [
+          "explicacao",
+          "sem_links",
+          "links"
+        ],
+        "title": "MeusLinksV1",
         "type": "object"
       },
       "NumeroDeJurosV1": {
@@ -1290,6 +1346,20 @@
           "estrategia"
         ],
         "title": "PedidoDeBacktestV1",
+        "type": "object"
+      },
+      "PedidoDeRevogarV1": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "PedidoDeRevogarV1",
         "type": "object"
       },
       "PiorQuedaV1": {
@@ -2106,6 +2176,53 @@
         "summary": "Linha Do Tempo"
       }
     },
+    "/v1/links-compartilhados": {
+      "get": {
+        "description": "Meus dados › Links compartilhados: só os da conta do token.",
+        "operationId": "links_compartilhados_v1_links_compartilhados_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeusLinksV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Links Compartilhados"
+      }
+    },
     "/v1/meu-plano": {
       "get": {
         "description": "Só leitura do banco: nenhuma chamada ao Stripe (assinar continua no app atual).",
@@ -2151,6 +2268,51 @@
           }
         },
         "summary": "Meu Plano"
+      }
+    },
+    "/v1/meus-dados": {
+      "get": {
+        "description": "Tudo o que o TickerLab guarda sobre a conta (LGPD), a mesma exportação do Streamlit.",
+        "operationId": "meus_dados_v1_meus_dados_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Meus Dados"
       }
     },
     "/v1/retorno-mensal": {
@@ -2242,6 +2404,63 @@
           }
         },
         "summary": "Retorno Mensal"
+      }
+    },
+    "/v1/revogar-link": {
+      "post": {
+        "description": "Revoga um link da própria conta; o de outra conta (ou já revogado) dá 404, sem dizer qual.",
+        "operationId": "revogar_link_v1_revogar_link_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeRevogarV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeusLinksV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revogar Link"
       }
     },
     "/v1/risco": {

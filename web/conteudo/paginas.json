@@ -716,7 +716,12 @@
   },
   {
     "chave": "meus_dados",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "MeusLinksV1",
+      "rota": "/v1/links-compartilhados"
+    },
     "descricao": "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
     "e_pro": false,
     "grupo": "Minha conta",

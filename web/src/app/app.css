@@ -85,6 +85,11 @@
 .cartao-do-veredito { margin: 1.25rem 0; padding: 1rem 1.25rem; border-radius: var(--raio);
   border: 1px solid var(--linha-forte); background: var(--superficie); }
 .cartao-do-veredito :is(h2, h3) { margin: 0 0 .4rem; font-size: 1.2rem; }
+/* Meus dados: os links compartilhados, cada um com o botão de revogar ao lado */
+.links-da-conta { list-style: none; padding: 0; display: grid; gap: .6rem; }
+.links-da-conta li { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: .6rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); }
+.links-da-conta li p { margin: .2rem 0 0; }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
 .textos-legais { display: flex; gap: 1.2rem; flex-wrap: wrap; }
 .texto-legal { font-weight: 600; }

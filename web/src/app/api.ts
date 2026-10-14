@@ -67,6 +67,22 @@ async function erroDaResposta(resposta: Response): Promise<ErroDaApi> {
   return new ErroDaApi(tipo, mensagem);
 }
 
+/** Um arquivo de uma rota da v1 (a exportação dos dados), com o token do Google. */
+export async function baixar(rota: string, token: string): Promise<Blob> {
+  if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ErroDaApi("rede", SEM_CONEXAO);
+  }
+  if (!resposta.ok) throw await erroDaResposta(resposta);
+  return resposta.blob();
+}
+
 /** GET (ou POST, com `corpo`) numa rota da v1 (`/v1/visao-geral`), com o token do Google. */
 export async function pedir<T>(
   rota: string,
