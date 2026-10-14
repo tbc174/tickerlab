@@ -376,6 +376,54 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fidc_informe": Tabela(
+        descricao=(
+            "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e "
+            "por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, "
+            "recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são "
+            "as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as três abaixo. "
+            "Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)"
+        ),
+        fonte="CVM: informe mensal de FIDC",
+        familia_da_fonte="cvm",
+        frequencia="Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
+        atraso=(
+            "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão "
+            "`<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+        ),
+        onde="Parquet em `<acervo>/base/fidc/informe/<quadro>/<ano>.parquet` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do "
+            "informe usado (no acervo e no registro de coletas, com a data da coleta e a versão do "
+            "código que baixou) e a versão do código que gravou."
+        ),
+        colunas={
+            "competencia": ("Mês do informe (último dia)", DATA),
+            "cnpj_fundo": ("CNPJ do fundo (ou da classe, depois da CVM 175)", TEXTO),
+            "disponivel_em": (
+                "Desde quando o informe era público (como era na data)",
+                DATA,
+            ),
+        },
+    ),
+    "cadastro_de_fundos": Tabela(
+        descricao=(
+            "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o "
+            "registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes "
+            "possíveis do Capital. Fundos cancelados continuam. Sem dado pessoal: o diretor "
+            "responsável e o histórico dele ficam fora; o gestor pessoa física fica só com a marca PF"
+        ),
+        fonte="CVM: cadastro de fundos (`cad_fi.csv`, `cad_fi_hist.zip`, `registro_fundo_classe.zip`)",
+        familia_da_fonte="cvm",
+        frequencia="Diária na CVM; a base guarda um retrato a cada carga (versões `<nome>.v<N>`)",
+        atraso="Do dia: é um retrato do cadastro na data da coleta; o histórico vem de `cad_fi_hist`",
+        onde="Parquet em `<acervo>/base/fidc/cadastro/` (servidor de casa, `scripts/carga_fidc.py`)",
+        linhagem=(
+            "O `.json` de cada tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
+            "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
+        ),
+        colunas={},
+    ),
     "padroes_setoriais": Tabela(
         descricao=(
             "Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as "
