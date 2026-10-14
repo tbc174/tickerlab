@@ -117,9 +117,24 @@ def test_nada_vem_de_terceiros():
 
 def test_planos_do_site_sao_os_do_app():
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    tabela = texto[texto.index('<table class="planos') : texto.index("</table>")]
+    # Sim e Não aparecem como ✓ e — (a palavra fica no aria-label, para o leitor de tela)
+    icones = {"✓": "Sim", "—": "Não"}
+    no_site = {
+        recurso: [
+            icones.get(c, c)
+            for c in (
+                re.sub(r"<[^>]+>", "", c)
+                for c in re.findall(r"<td>(.*?)</td>", celulas)
+            )
+        ]
+        for recurso, celulas in re.findall(
+            r'<tr><th scope="row">(.*?)</th>(.*?)</tr>', tabela
+        )
+    }
     for linha in planos.tabela_de_planos():
-        for nome in ("Gratuito", "Plus", "Pro"):
-            assert f"<td>{esc(linha[nome])}</td>" in texto
+        esperado = [esc(linha[nome]) for nome in ("Gratuito", "Plus", "Pro")]
+        assert no_site[esc(linha["Recurso"])] == esperado, linha["Recurso"]
     assert "R$" not in texto  # sem preço enquanto não houver cobrança real
     assert "modo de teste" in texto
 
@@ -127,10 +142,13 @@ def test_planos_do_site_sao_os_do_app():
 def test_precos_anunciam_mensal_de_verdade():
     """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
     texto = (SITE / "precos.html").read_text(encoding="utf-8")
-    assert "Mensal de verdade:" in texto
-    assert "sem fidelidade" in texto
-    assert "cobra um mês por vez" in texto
-    assert "Planos e assinatura" in texto
+    for frase in (
+        "Mensal de verdade",
+        "Sem fidelidade",
+        "cobra um mês por vez",
+        "Planos e assinatura",
+    ):
+        assert frase in texto, frase
 
 
 def test_catalogo_da_busca_e_o_do_app():

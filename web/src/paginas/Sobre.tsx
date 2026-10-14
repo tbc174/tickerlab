@@ -1,6 +1,7 @@
 // Sobre: o texto das peças institucionais aprovadas (carrosséis e Reels, 13/10/2026). Era `sobre()`.
 // Mude só junto com as peças: há teste no Python que confere as frases aprovadas.
-import { LinhaDoHeroi, ListaDeCartoes } from "../site/comum";
+import { ListaDeCartoes } from "../site/comum";
+import { Fundo } from "../site/Fundo";
 import { ASSINATURA, TICKER_DO_EXEMPLO, linkDoApp } from "../site/textos";
 
 export const DADOS = {
@@ -54,10 +55,31 @@ const PERSPECTIVAS: [string, string][] = [
   ],
 ];
 
+/** A Inteligência Integrada: três círculos que se juntam quando a seção aparece (movimento.js). */
+function TresPerspectivas() {
+  return (
+    <figure
+      className="v2-venn"
+      aria-label="Três perspectivas que se juntam: fundamentalista, técnica e quantitativa"
+    >
+      <svg viewBox="0 0 420 340" aria-hidden="true">
+        <circle className="c1" cx="160" cy="130" r="105" />
+        <circle className="c2" cx="260" cy="130" r="105" />
+        <circle className="c3" cx="210" cy="215" r="105" />
+        <text className="t1" x="112" y="104">Fundamentalista</text>
+        <text className="t2" x="308" y="104">Técnica</text>
+        <text className="t3" x="210" y="292">Quantitativa</text>
+        <text className="centro" x="210" y="156">Inteligência</text>
+        <text className="centro" x="210" y="176">Integrada</text>
+      </svg>
+    </figure>
+  );
+}
+
 export function Sobre() {
   return (
     <>
-      <div className="escura topo-da-pagina">
+      <Fundo classe="v2-heroi-pagina v2-heroi-sobre">
         <section id="quem-somos" className="faixa secao sobre-topo" aria-labelledby="titulo-sobre">
           <p className="olho">Quem somos</p>
           <h1 id="titulo-sobre">Uma análise não conta toda a história.</h1>
@@ -80,8 +102,7 @@ export function Sobre() {
             <strong>{ASSINATURA}</strong> Uma plataforma brasileira de inteligência financeira.
           </p>
         </section>
-        <LinhaDoHeroi />
-      </div>
+      </Fundo>
 
       <section id="nossa-historia" className="faixa secao" aria-labelledby="titulo-historia">
         <p className="olho">Nossa história</p>
@@ -106,13 +127,17 @@ export function Sobre() {
         <p className="subtitulo">
           O princípio da Inteligência Integrada: fundamentalista, técnica e quantitativa.
         </p>
-        <div className="grade tres">
-          <ListaDeCartoes itens={PERSPECTIVAS} />
+        <div className="v2-acreditamos">
+          <TresPerspectivas />
+          <div className="grade tres v2-tres-um">
+            <ListaDeCartoes itens={PERSPECTIVAS} />
+          </div>
         </div>
-        <p className="contagem">Mais contexto · Mais clareza · Mais autonomia</p>
+        <p className="contagem v2-lema">Mais contexto · Mais clareza · Mais autonomia</p>
       </section>
 
-      <div className="escura">
+      <div className="escura v2-final-fundo">
+        <div className="v2-horizonte v2-horizonte-alto" aria-hidden="true" />
         <section className="faixa secao final" aria-labelledby="titulo-decisoes">
           <h2 id="titulo-decisoes">Não queremos substituir suas decisões.</h2>
           <p className="subtitulo">

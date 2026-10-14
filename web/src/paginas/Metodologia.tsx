@@ -1,6 +1,7 @@
 // Fontes e metodologia: de onde vêm os números, como são calculados e o que eles não dizem.
 // Era `metodologia()` de scripts/gerar_site.py.
 import { metodologia, qualidade } from "../conteudo";
+import { PaginaDeLeitura, ancora } from "../site/Leitura";
 import { EMAIL_DE_CONTATO, URL_DO_CODIGO } from "../site/textos";
 
 export const DADOS = {
@@ -11,6 +12,20 @@ export const DADOS = {
     "do relatório de empresa, os limites dos testes de estratégia e a privacidade.",
   atual: "/metodologia.html",
 };
+
+// as seções, na ordem da página (o teste confere que nenhum h2 fica de fora)
+const SUMARIO = [
+  { id: ancora("Dados de mercado"), texto: "Dados de mercado" },
+  { id: ancora("Como os números são calculados"), texto: "Como os números são calculados" },
+  { id: ancora("Testes de estratégia (backtest)"), texto: "Testes de estratégia (backtest)" },
+  { id: ancora("Research: eventos e fundamentos"), texto: "Research: eventos e fundamentos" },
+  { id: qualidade.ancora, texto: "Qualidade dos dados" },
+  { id: metodologia.ancora, texto: "Relatório da empresa" },
+  { id: ancora("Carteira B3"), texto: "Carteira B3" },
+  { id: ancora("Relatórios em PDF"), texto: "Relatórios em PDF" },
+  { id: ancora("Privacidade e segurança"), texto: "Privacidade e segurança" },
+  { id: ancora("O que o TickerLab não é"), texto: "O que o TickerLab não é" },
+];
 
 /** O selo "dado em conferência" e as regras fixas, com os mesmos textos do app. */
 function QualidadeDosDados() {
@@ -82,12 +97,13 @@ function PadroesNotasEFormulas() {
 
 export function Metodologia() {
   return (
-    <section className="faixa secao estreita texto-longo">
-      <p className="olho">Confiança</p>
-      <h1>Fontes e metodologia</h1>
-      <p className="subtitulo">De onde vêm os números, como são calculados e o que eles não dizem.</p>
-
-      <h2>Dados de mercado</h2>
+    <PaginaDeLeitura
+      olho="Confiança"
+      titulo="Fontes e metodologia"
+      subtitulo="De onde vêm os números, como são calculados e o que eles não dizem."
+      sumario={SUMARIO}
+    >
+      <h2 id="dados-de-mercado">Dados de mercado</h2>
       <ul>
         <li>
           <strong>Fonte:</strong> Yahoo Finance, histórico diário de preços de fechamento,
@@ -105,7 +121,7 @@ export function Metodologia() {
         </li>
       </ul>
 
-      <h2>Como os números são calculados</h2>
+      <h2 id="como-os-numeros-sao-calculados">Como os números são calculados</h2>
       <ul>
         <li>Retornos diários a partir do fechamento; ano de 252 pregões.</li>
         <li>Volatilidade: desvio padrão dos retornos diários, anualizado.</li>
@@ -116,7 +132,7 @@ export function Metodologia() {
         <li>Maior queda (drawdown): a pior queda a partir de um topo anterior.</li>
       </ul>
 
-      <h2>Testes de estratégia (backtest)</h2>
+      <h2 id="testes-de-estrategia-backtest">Testes de estratégia (backtest)</h2>
       <ul>
         <li>
           <strong>Sem olhar o futuro:</strong> a decisão tomada com o fechamento de um dia só vale
@@ -136,7 +152,7 @@ export function Metodologia() {
         </li>
       </ul>
 
-      <h2>Research: eventos e fundamentos</h2>
+      <h2 id="research-eventos-e-fundamentos">Research: eventos e fundamentos</h2>
       <ul>
         <li>
           <strong>Eventos:</strong> os documentos que as empresas entregam aos reguladores, lidos
@@ -191,7 +207,7 @@ export function Metodologia() {
       </ul>
       <QualidadeDosDados />
       <PadroesNotasEFormulas />
-      <h2>Carteira B3</h2>
+      <h2 id="carteira-b3">Carteira B3</h2>
       <p>
         A API da Área do Investidor da B3 só atende empresas credenciadas (com CNPJ, certificado
         digital e contrato). O TickerLab não tem essa conexão. Você baixa a planilha de posição
@@ -200,7 +216,7 @@ export function Metodologia() {
         mostra risco e concentração, não o seu resultado real.
       </p>
 
-      <h2>Relatórios em PDF</h2>
+      <h2 id="relatorios-em-pdf">Relatórios em PDF</h2>
       <p>
         Os relatórios usam os mesmos cálculos do app. Cada um traz a data e a hora da coleta dos
         dados, os parâmetros, a seção "Metodologia e reprodutibilidade" e a seção obrigatória
@@ -208,7 +224,7 @@ export function Metodologia() {
         relatório.
       </p>
 
-      <h2>Privacidade e segurança</h2>
+      <h2 id="privacidade-e-seguranca">Privacidade e segurança</h2>
       <ul>
         <li>Login com o Google; o app não vê nem guarda a sua senha.</li>
         <li>Você exporta os seus dados (JSON) e apaga a conta quando quiser.</li>
@@ -219,7 +235,7 @@ export function Metodologia() {
         Detalhes na <a href="/privacidade.html">Política de privacidade</a>.
       </p>
 
-      <h2>O que o TickerLab não é</h2>
+      <h2 id="o-que-o-tickerlab-nao-e">O que o TickerLab não é</h2>
       <p>
         Não é corretora, não executa ordens, não é consultoria e não é recomendação de
         investimento. É uma plataforma de informação e análise por assinatura; o enquadramento
@@ -236,6 +252,6 @@ export function Metodologia() {
         </a>
         .
       </p>
-    </section>
+    </PaginaDeLeitura>
   );
 }
