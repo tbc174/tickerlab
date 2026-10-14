@@ -130,6 +130,23 @@ class Lancamento:
 
 
 @dataclass(frozen=True)
+class VendaRealizada:
+    """Uma venda com o resultado dela: o que entrou menos o custo das ações vendidas."""
+
+    data: date
+    codigo: str
+    quantidade: float
+    valor: float  # o que entrou com a venda
+    custo: float  # preço médio do momento × quantidade vendida
+
+    @property
+    def resultado(self) -> float:
+        return (
+            self.valor - self.custo
+        )  # lucro (+) ou prejuízo (−), sem corretagem e taxas
+
+
+@dataclass(frozen=True)
 class CustoDoAtivo:
     codigo: str
     quantidade: float | None  # None quando incompleto
@@ -138,6 +155,7 @@ class CustoDoAtivo:
     completo: bool
     motivo: str | None = None  # por que ficou incompleto
     avisos: tuple[str, ...] = ()
+    vendas: tuple[VendaRealizada, ...] = ()  # vazio quando incompleto
 
 
 MOTIVO_SEM_COMPRA = (
@@ -182,6 +200,7 @@ def _incompleto(codigo: str, motivo: str) -> CustoDoAtivo:
 def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAtivo:
     quantidade = custo = 0.0
     avisos: list[str] = []
+    vendas: list[VendaRealizada] = []
     for lancamento in sorted(
         lancamentos, key=lambda lanc: (lanc.data, _ORDEM_NO_DIA[lanc.tipo])
     ):
@@ -207,13 +226,23 @@ def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAti
             if q > quantidade + _QUASE_ZERO:
                 return _incompleto(codigo, MOTIVO_HISTORICO_INCOMPLETO)
             if lancamento.tipo == "venda":
-                custo -= custo / quantidade * q  # pelo preço médio, que não muda
+                custo_da_venda = (
+                    custo / quantidade * q
+                )  # pelo preço médio, que não muda
+                custo -= custo_da_venda
+                vendas.append(
+                    VendaRealizada(
+                        lancamento.data, codigo, q, lancamento.valor, custo_da_venda
+                    )
+                )
             quantidade -= q
             if quantidade <= _QUASE_ZERO:
                 # vendeu tudo: a próxima compra recomeça o médio
                 quantidade = custo = 0.0
     medio = custo / quantidade if quantidade > 0 else None
-    return CustoDoAtivo(codigo, quantidade, custo, medio, True, None, tuple(avisos))
+    return CustoDoAtivo(
+        codigo, quantidade, custo, medio, True, None, tuple(avisos), tuple(vendas)
+    )
 
 
 def custo_medio(lancamentos: list[Lancamento]) -> tuple[CustoDoAtivo, ...]:

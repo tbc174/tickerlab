@@ -540,3 +540,21 @@ def test_atualizacao_continua_fora_das_contas_com_aviso():
     mov = _ler([_linha("Credito", "02/02/2025", "Atualização", PETR, 1900, "-", "-")])
     assert mov.lancamentos == ()
     assert any("não reconhecido" in a and "Atualização" in a for a in mov.avisos)
+
+
+def test_guarda_o_nome_de_cada_ativo():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "02/02/2025",
+                "Transferência - Liquidação",
+                HGLG,
+                10,
+                100,
+                1000,
+            ),
+            _linha("Credito", "01/03/2025", "Rendimento", "HGLG11F - CGHG", 1, 1, 1),
+        ]
+    )
+    assert mov.nomes == {"HGLG11": "CGHG LOGISTICA FDO INV IMOB - FII"}

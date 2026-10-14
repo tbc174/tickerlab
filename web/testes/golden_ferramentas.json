@@ -441,6 +441,141 @@
  },
  {
   "argumentos": [
+   25937.424601,
+   0.04,
+   120
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "valor": 17522.394692056387
+ },
+ {
+  "argumentos": [
+   5000,
+   0,
+   120
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "valor": 5000.0
+ },
+ {
+  "argumentos": [
+   5000,
+   0.1,
+   0
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "valor": 5000.0
+ },
+ {
+  "argumentos": [
+   1000000.0,
+   0.0456,
+   7
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "valor": 974324.0323245701
+ },
+ {
+  "argumentos": [
+   1000,
+   -0.02,
+   36
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "valor": 1062.4824690392609
+ },
+ {
+  "argumentos": [
+   1000,
+   -1,
+   12
+  ],
+  "conta": "juros.em_reais_de_hoje",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   10000,
+   12697.346485319147,
+   24
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 12292.744512521274
+ },
+ {
+  "argumentos": [
+   10000,
+   10615.201506010002,
+   6
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 10492.161204808002
+ },
+ {
+  "argumentos": [
+   10000,
+   10500,
+   5
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 10387.5
+ },
+ {
+  "argumentos": [
+   10000,
+   11500,
+   12
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 11237.5
+ },
+ {
+  "argumentos": [
+   10000,
+   11500,
+   13
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 11237.5
+ },
+ {
+  "argumentos": [
+   10000,
+   9000,
+   12
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 9000
+ },
+ {
+  "argumentos": [
+   10000,
+   10000,
+   0
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 10000
+ },
+ {
+  "argumentos": [
+   10000,
+   10100,
+   0
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 10100
+ },
+ {
+  "argumentos": [
+   1000000.0,
+   3000000.0,
+   600
+  ],
+  "conta": "juros.liquido_de_ir",
+  "valor": 2700000.0
+ },
+ {
+  "argumentos": [
    0.01,
    "semana"
   ],
