@@ -89,7 +89,7 @@ Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e
 
 ## `tickers_no_tempo`
 
-Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui
+Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Os códigos que a empresa informa fora do formato (o BTG põe "000000" nas units) entram pela tabela conferida, válidos do 1º ao último mês em que aparecem nas carteiras dos fundos
 
 - **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -97,7 +97,7 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração
 - **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo
 - **Onde fica:** Parquet em `<acervo>/base/fca/tickers.parquet` (servidor de casa, `scripts/carga_fca.py`); a função é `base/cadastro.py::tickers_no_tempo`
-- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de qual FCA veio cada código. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de qual FCA veio cada código. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela. As linhas com `origem` = códigos conferidos vêm da tabela conferida, que entra nas origens do `.json` pelo caminho no repositório e o SHA-256 (`base/linhagem.py` confere o arquivo).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -109,6 +109,7 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 | `ultimo_visto` | Data do último FCA em que o código apareceu | data (dia) |
 | `inicio_negociacao` | Início da negociação informado pela empresa | data (dia) |
 | `fim_negociacao` | Fim da negociação informado (vazio: ainda negociado) | data (dia) |
+| `origem` | fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA) | texto |
 
 ## `valores_mobiliarios`
 
@@ -151,7 +152,7 @@ Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o úl
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
 - **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
-- **Linhagem:** Derivada de `valores_mobiliarios` na mesma carga. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+- **Linhagem:** Derivada de `valores_mobiliarios` na mesma carga. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela. As linhas com `origem` = códigos conferidos vêm da tabela conferida, que entra nas origens do `.json` pelo caminho no repositório e o SHA-256 (`base/linhagem.py` confere o arquivo).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -161,10 +162,11 @@ Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o úl
 | `primeiro_ano` | Ano do primeiro FCA com o emissor | número inteiro |
 | `ultimo_ano` | Ano do último FCA com o emissor | número inteiro |
 | `conflito` | Verdadeiro se o emissor aparece com mais de um CNPJ | verdadeiro ou falso |
+| `origem` | fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA) | texto |
 
 ## `codigos_invalidos`
 
-Códigos de negociação informados fora do formato de ticker (a CSN informa "4030"): não viram ligação e vão para o relatório de buracos
+Códigos de negociação informados fora do formato de ticker (a CSN informa "4030"): não viram ligação e vão para o relatório de buracos; os da bolsa que aparecem nas carteiras dos fundos são conferidos um a um e entram em `codigos_fora_do_fca`
 
 - **Fonte:** CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -244,6 +246,46 @@ O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe
 
 | Coluna | O que é | Unidade |
 |---|---|---|
+| `TP_FUNDO` | Tipo do fundo (FIDC, FI, FII...) | texto |
+| `CNPJ_FUNDO` | CNPJ do fundo | texto |
+| `DENOM_SOCIAL` | Nome do fundo | texto |
+| `DT_REG` | Data do registro na CVM | data (dia) |
+| `DT_CONST` | Data de constituição | data (dia) |
+| `CD_CVM` | Código do fundo na CVM | texto |
+| `DT_CANCEL` | Data do cancelamento (vazio: ativo) | data (dia) |
+| `SIT` | Situação (em funcionamento normal, cancelado...) | texto |
+| `DT_INI_SIT` | Início da situação | data (dia) |
+| `DT_INI_ATIV` | Início das atividades | data (dia) |
+| `DT_INI_EXERC` | Início do exercício social | data (dia) |
+| `DT_FIM_EXERC` | Fim do exercício social | data (dia) |
+| `CLASSE` | Classe do fundo (Ações, Renda Fixa, FIDC...) | texto |
+| `DT_INI_CLASSE` | Início da classe | data (dia) |
+| `RENTAB_FUNDO` | Indicador de desempenho informado (CDI, Ibovespa...) | texto |
+| `CONDOM` | Condomínio aberto ou fechado | texto |
+| `FUNDO_COTAS` | S se é fundo de cotas | texto |
+| `FUNDO_EXCLUSIVO` | S se é fundo exclusivo | texto |
+| `TRIB_LPRAZO` | S se tem tributação de longo prazo | texto |
+| `PUBLICO_ALVO` | Público-alvo (geral, qualificado, profissional) | texto |
+| `ENTID_INVEST` | S se é entidade de investimento | texto |
+| `TAXA_PERFM` | Taxa de performance | percentual, como a CVM informa |
+| `INF_TAXA_PERFM` | Texto sobre a taxa de performance | texto |
+| `TAXA_ADM` | Taxa de administração | percentual ao ano, como a CVM informa |
+| `INF_TAXA_ADM` | Texto sobre a taxa de administração | texto |
+| `VL_PATRIM_LIQ` | Patrimônio líquido | reais (R$) |
+| `DT_PATRIM_LIQ` | Data do patrimônio líquido | data (dia) |
+| `CNPJ_ADMIN` | CNPJ do administrador | texto |
+| `ADMIN` | Nome do administrador (empresa) | texto |
+| `PF_PJ_GESTOR` | PF ou PJ: o gestor é pessoa física ou jurídica | texto |
+| `CPF_CNPJ_GESTOR` | CNPJ do gestor; vazio quando o gestor é pessoa física | texto |
+| `GESTOR` | Nome do gestor; vazio quando é pessoa física | texto |
+| `CNPJ_AUDITOR` | CNPJ do auditor | texto |
+| `AUDITOR` | Nome do auditor | texto |
+| `CNPJ_CUSTODIANTE` | CNPJ do custodiante | texto |
+| `CUSTODIANTE` | Nome do custodiante | texto |
+| `CNPJ_CONTROLADOR` | CNPJ do controlador | texto |
+| `CONTROLADOR` | Nome do controlador | texto |
+| `INVEST_CEMPR_EXTER` | S se pode aplicar 100% no exterior | texto |
+| `CLASSE_ANBIMA` | Classificação da Anbima | texto |
 
 ## `painel_dos_fundos`
 
@@ -269,6 +311,97 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 | `compras` | Valor comprado no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `vendas` | Valor vendido no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o total era público (como era na data) | data (dia) |
+
+## `cobertura_dos_fundos`
+
+Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela ligação do painel (a meta da tabela conferida é 95% em cada ano)
+
+- **Fonte:** Derivado: CVM, CDA (posições) e FCA (emissores), mais as tabelas conferidas
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal, montada junto com o painel dos fundos
+- **Atraso de divulgação:** O do CDA (os meses mais novos ainda crescem enquanto os fundos entregam)
+- **Onde fica:** Parquet em `<acervo>/base/fundos/cobertura.parquet` (`scripts/montar_painel_dos_fundos.py`)
+- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira | data (dia) |
+| `valor_comprado` | Valor comprado por todos os fundos | reais (R$), já multiplicado pela escala informada |
+| `valor_com_cnpj` | A parte desse valor cujo emissor tem CNPJ | reais (R$), já multiplicado pela escala informada |
+| `fracao_com_cnpj` | valor_com_cnpj ÷ valor_comprado | fração (0,25 = 25%) |
+
+## `buracos_dos_fundos`
+
+Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor: a lista de trabalho para a próxima conferência (nada some calado)
+
+- **Fonte:** Derivado: CVM, CDA (posições) e FCA (emissores), mais as tabelas conferidas
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal, montada junto com o painel dos fundos
+- **Atraso de divulgação:** O do CDA
+- **Onde fica:** Parquet em `<acervo>/base/fundos/buracos.parquet` (`scripts/montar_painel_dos_fundos.py`)
+- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `emissor` | As 4 posições do emissor sem CNPJ | texto |
+| `valor` | Valor comprado somado em todos os meses | reais (R$), já multiplicado pela escala informada |
+| `primeira` | Primeiro mês em que aparece | data (dia) |
+| `ultima` | Último mês em que aparece | data (dia) |
+| `descricao` | Descrição do ativo no CDA (a pista para a conferência) | texto |
+
+## `emissores_antigos`
+
+Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa "4030"), ligados ao CNPJ pelo cadastro de companhias da CVM, um a um, sem casar nome aproximado
+
+- **Fonte:** CVM: cadastro de companhias (`cad_cia_aberta.csv`) e descrição do ativo no CDA
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Quando a conferência anda (pelos buracos de maior valor)
+- **Atraso de divulgação:** Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras
+- **Onde fica:** `base/conferidas/emissores_antigos.csv` no repositório (Git)
+- **Linhagem:** Cada linha diz a fonte e quando foi conferida (`fonte`, `conferido_em`); o histórico de cada mudança fica no Git, e quem usa a tabela anota o SHA-256 dela no próprio `.json`.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `emissor` | As 4 posições do emissor | texto |
+| `cnpj` | CNPJ da companhia no cadastro da CVM | texto |
+| `empresa_no_cadastro` | Nome no cadastro de companhias da CVM | texto |
+| `cd_cvm` | Código da companhia na CVM | texto |
+| `registro` | Data do registro na CVM | data (dia) |
+| `cancelamento` | Data do cancelamento do registro (vazio: ativa) | data (dia) |
+| `descricao_no_cda` | Descrição do ativo nas carteiras dos fundos | texto |
+| `no_cda` | Primeiro e último mês nas carteiras (AAAA-MM–AAAA-MM) | texto |
+| `observacao` | O que aconteceu com a empresa (incorporação, troca de nome) | texto |
+| `fonte` | De onde veio a ligação | texto |
+| `conferido_em` | Dia da conferência | data (dia) |
+
+## `codigos_fora_do_fca`
+
+Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do formato (o BTG informa "000000" nas units, a Marisa "022055"). O CNPJ vem do próprio FCA e o código e o ISIN, das carteiras dos fundos; a `carga_fca` junta a tabela aos tickers e aos emissores
+
+- **Fonte:** CVM: formulário cadastral (FCA) e carteiras dos fundos (CDA)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Quando a conferência anda (pelos buracos de maior valor)
+- **Atraso de divulgação:** Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras
+- **Onde fica:** `base/conferidas/codigos_fora_do_fca.csv` no repositório (Git)
+- **Linhagem:** Cada linha diz a fonte e quando foi conferida; o histórico fica no Git e a `carga_fca` anota o SHA-256 da tabela no `.json` dos tickers e dos emissores.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo` | Código de negociação na B3 (BPAC11) | texto |
+| `cnpj` | CNPJ da companhia, como no FCA | texto |
+| `empresa` | Nome da companhia no FCA | texto |
+| `valor_mobiliario` | Tipo do papel (units, ações ordinárias...) | texto |
+| `isin` | ISIN do papel nas carteiras dos fundos (a prova do emissor) | texto |
+| `primeiro_no_cda` | Primeiro mês em que o código aparece nas carteiras | data (dia) |
+| `ultimo_no_cda` | Último mês em que o código aparece nas carteiras | data (dia) |
+| `codigo_no_fca` | O que a empresa escreveu no lugar do código | texto |
+| `observacao` | Nota da conferência | texto |
+| `fonte` | De onde veio cada parte da ligação | texto |
+| `conferido_em` | Dia da conferência | data (dia) |
 
 ## `ifdata_valores`
 
@@ -330,7 +463,7 @@ O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidad
 
 ## `ligacao_dos_bancos`
 
-Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base. A raiz do CNPJ do líder liga ao CNPJ do FCA; antes de 2010 (sem FCA) a ligação chega ao CNPJ, mas não à ação. Instituição sem ação (Caixa, BNDES) fica sem CNPJ
+Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base. A instituição cujo código é o CNPJ de uma empresa do FCA liga por ele (o Banco PAN, do conglomerado do BTG, tem ação própria); as outras, pela raiz do CNPJ do líder do conglomerado. Antes de 2010 (sem FCA) a ligação chega ao CNPJ, mas não à ação. Instituição sem ação (Caixa, BNDES) fica sem CNPJ
 
 - **Fonte:** Derivado: IF.data (cadastro) e CVM, FCA (emissores e tickers)
 - **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
@@ -348,6 +481,7 @@ Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no 
 | `cnpj_raiz` | Raiz do CNPJ (8 dígitos) | texto |
 | `cnpj` | CNPJ da empresa da bolsa (vazio se não tem ação) | texto |
 | `tickers` | Códigos que valiam no ano, separados por vírgula | texto |
+| `ligado_por` | próprio CNPJ (a instituição é a empresa da bolsa, como o Banco PAN) ou líder do conglomerado; vazio sem ligação | texto |
 
 ## `scr_credito`
 
@@ -474,7 +608,7 @@ Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias,
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados (o IPE da CVM muda todo dia)
 - **Atraso de divulgação:** Nenhum além da entrega: o documento vale a partir de `publicado_em`
 - **Onde fica:** Parquet em `<acervo>/base/eventos/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -495,6 +629,7 @@ Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias,
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `negociacoes`
 
@@ -506,7 +641,7 @@ Compras e vendas de ações e units por controladores, diretores, conselheiros e
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados (o VLMO é mensal)
 - **Atraso de divulgação:** Até 10 dias depois do fim do mês da negociação (Resolução CVM 44); a linha vale a partir de `entregue_em`
 - **Onde fica:** Parquet em `<acervo>/base/negociacoes/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -532,6 +667,7 @@ Compras e vendas de ações e units por controladores, diretores, conselheiros e
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `proventos`
 
@@ -543,7 +679,7 @@ Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados (a vers�
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados; a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59): os anos novos vêm vazios ou quase
 - **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança
 - **Onde fica:** Parquet em `<acervo>/base/proventos/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -560,6 +696,7 @@ Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados (a vers�
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `eventos_de_capital`
 
@@ -571,7 +708,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de to
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados; a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59): os anos novos vêm vazios ou quase
 - **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança
 - **Onde fica:** Parquet em `<acervo>/base/eventos_de_capital/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -589,6 +726,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de to
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `insolvencia`
 
@@ -600,7 +738,7 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados
 - **Atraso de divulgação:** O rótulo vale a partir de `conhecido_em` (entrega à CVM)
 - **Onde fica:** Parquet em `<acervo>/base/insolvencia/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -620,6 +758,7 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `cnpj_situacao_especial`
 
@@ -631,7 +770,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 - **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
 - **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -645,6 +784,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `auditores`
 
@@ -656,7 +796,7 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
 - **Atraso de divulgação:** Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo
 - **Onde fica:** Parquet em `<acervo>/base/auditores/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -677,6 +817,7 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `trocas_de_auditor`
 
@@ -688,7 +829,7 @@ Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `a
 - **Frequência:** Refeita a cada montagem de `auditores`
 - **Atraso de divulgação:** A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)
 - **Onde fica:** Parquet em `<acervo>/base/trocas_de_auditor/trocas.parquet` (servidor de casa)
-- **Linhagem:** `id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do original); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+- **Linhagem:** `id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do original); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -703,6 +844,7 @@ Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `a
 | `anos_com_o_anterior` | Tempo com a firma anterior | anos |
 | `id_documento` | Número na CVM do FCA que mostrou a troca | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `curva_juros`
 
@@ -714,7 +856,7 @@ Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (T
 - **Frequência:** Diária (dias úteis)
 - **Atraso de divulgação:** Um dia útil: o arquivo do Tesouro sai na manhã seguinte (`disponivel_em`)
 - **Onde fica:** Parquet em `<acervo>/base/curva_juros/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -728,6 +870,7 @@ Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (T
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `controladas`
 
@@ -739,7 +882,7 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 - **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados
 - **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`
 - **Onde fica:** Parquet em `<acervo>/base/controladas/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -757,6 +900,7 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `empresa_serie`
 
@@ -769,7 +913,7 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 - **Frequência:** Refeita a cada montagem, com a safra mais recente de cada fonte
 - **Atraso de divulgação:** A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente
 - **Onde fica:** Parquet em `<acervo>/base/empresa_serie/empresa_serie.parquet` (servidor de casa)
-- **Linhagem:** `origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+- **Linhagem:** `origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -788,3 +932,4 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 | `tickers` | Tickers da companhia no FCA mais recente | texto |
 | `origem_sha256` | SHA-256 do arquivo de onde a entidade saiu | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |

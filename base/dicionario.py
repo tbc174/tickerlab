@@ -26,10 +26,25 @@ SIM_OU_NAO = "verdadeiro ou falso"
 # tabelas do banco do app que ainda não guardam o commit por linha (exigência 13 da ADR 0055); as
 # da base em Parquet guardam no manifesto (série 3, PR 1) e o registro de coletas, por arquivo (PR 3)
 SEM_VERSAO_DO_CODIGO = "A versão do código que processou a linha ainda não é guardada."
+COM_VERSAO_DO_CODIGO = (
+    "`versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit "
+    "ou com mudanças não salvas)."
+)
 LINHAGEM_DO_FCA = (
     "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA "
     "usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do "
     "código que baixou) e a versão do código que gravou a tabela."
+)
+ORIGEM_DO_FCA = (
+    (
+        "fca (informado no formulário) ou códigos conferidos (tabela "
+        "`base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA)"
+    ),
+    TEXTO,
+)
+LINHAGEM_DA_CONFERIDA = (
+    " As linhas com `origem` = códigos conferidos vêm da tabela conferida, que entra nas origens do "
+    "`.json` pelo caminho no repositório e o SHA-256 (`base/linhagem.py` confere o arquivo)."
 )
 _ONDE_DO_FCA = (
     "Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)"
@@ -63,7 +78,7 @@ _SO_ATE_2022 = (
 LINHAGEM_DA_HISTORICA_SEM_ANO = (
     "Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de "
     "coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela "
-    "foi montada. " + SEM_VERSAO_DO_CODIGO
+    "foi montada. " + COM_VERSAO_DO_CODIGO
 )
 LINHAGEM_DA_HISTORICA = (
     LINHAGEM_DA_HISTORICA_SEM_ANO
@@ -73,6 +88,7 @@ _ORIGEM_SEM_ANO = {
     "origem_sha256": ("SHA-256 do arquivo original no acervo", TEXTO),
     "origem_coletada_em": ("Quando o arquivista baixou esse original", MOMENTO),
     "montado_em": ("Quando a tabela foi montada", MOMENTO),
+    "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
 }
 _ORIGEM_DA_LINHA = {
     "ano_do_arquivo": ("Ano do arquivo da CVM de onde a linha veio", "ano"),
@@ -252,7 +268,9 @@ TABELAS: dict[str, Tabela] = {
     "tickers_no_tempo": Tabela(
         descricao=(
             "Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, juntando "
-            "todos os anos do formulário cadastral (FCA): código que sumiu continua aqui"
+            "todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Os códigos "
+            'que a empresa informa fora do formato (o BTG põe "000000" nas units) entram pela tabela '
+            "conferida, válidos do 1º ao último mês em que aparecem nas carteiras dos fundos"
         ),
         fonte="CVM: formulário cadastral (FCA), valores mobiliários",
         familia_da_fonte="cvm",
@@ -265,7 +283,7 @@ TABELAS: dict[str, Tabela] = {
         linhagem=(
             "Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de "
             "coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de "
-            "qual FCA veio cada código. " + LINHAGEM_DO_FCA
+            "qual FCA veio cada código. " + LINHAGEM_DO_FCA + LINHAGEM_DA_CONFERIDA
         ),
         colunas={
             "codigo": ("Código de negociação na B3 (PETR4, TAEE11)", TEXTO),
@@ -281,6 +299,7 @@ TABELAS: dict[str, Tabela] = {
                 "Fim da negociação informado (vazio: ainda negociado)",
                 DATA,
             ),
+            "origem": ORIGEM_DO_FCA,
         },
     ),
     "valores_mobiliarios": Tabela(
@@ -337,7 +356,9 @@ TABELAS: dict[str, Tabela] = {
         frequencia=_FREQUENCIA_DO_FCA,
         atraso=_ATRASO_DO_FCA,
         onde=_ONDE_DO_FCA,
-        linhagem="Derivada de `valores_mobiliarios` na mesma carga. " + LINHAGEM_DO_FCA,
+        linhagem="Derivada de `valores_mobiliarios` na mesma carga. "
+        + LINHAGEM_DO_FCA
+        + LINHAGEM_DA_CONFERIDA,
         colunas={
             "emissor": ("As 4 letras do emissor", TEXTO),
             **_EMPRESA,
@@ -347,12 +368,14 @@ TABELAS: dict[str, Tabela] = {
                 "Verdadeiro se o emissor aparece com mais de um CNPJ",
                 SIM_OU_NAO,
             ),
+            "origem": ORIGEM_DO_FCA,
         },
     ),
     "codigos_invalidos": Tabela(
         descricao=(
             'Códigos de negociação informados fora do formato de ticker (a CSN informa "4030"): não '
-            "viram ligação e vão para o relatório de buracos"
+            "viram ligação e vão para o relatório de buracos; os da bolsa que aparecem nas carteiras "
+            "dos fundos são conferidos um a um e entram em `codigos_fora_do_fca`"
         ),
         fonte="CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`",
         familia_da_fonte="cvm",
@@ -457,7 +480,59 @@ TABELAS: dict[str, Tabela] = {
             "O `.json` de cada tabela guarda o SHA-256, o endereço e o SHA-256 do arquivo da CVM (no "
             "acervo e no registro de coletas, com a data e a versão do código) e a versão que gravou."
         ),
-        colunas={},
+        # `cad_fi`; as tabelas `hist_<campo>` repetem um campo com início e fim (`DT_INI_<campo>`,
+        # `DT_FIM_<campo>`) e as `registro_*` usam os nomes da CVM 175 (`meta_registro_fundo_classe.txt`)
+        colunas={
+            "TP_FUNDO": ("Tipo do fundo (FIDC, FI, FII...)", TEXTO),
+            "CNPJ_FUNDO": ("CNPJ do fundo", TEXTO),
+            "DENOM_SOCIAL": ("Nome do fundo", TEXTO),
+            "DT_REG": ("Data do registro na CVM", DATA),
+            "DT_CONST": ("Data de constituição", DATA),
+            "CD_CVM": ("Código do fundo na CVM", TEXTO),
+            "DT_CANCEL": ("Data do cancelamento (vazio: ativo)", DATA),
+            "SIT": ("Situação (em funcionamento normal, cancelado...)", TEXTO),
+            "DT_INI_SIT": ("Início da situação", DATA),
+            "DT_INI_ATIV": ("Início das atividades", DATA),
+            "DT_INI_EXERC": ("Início do exercício social", DATA),
+            "DT_FIM_EXERC": ("Fim do exercício social", DATA),
+            "CLASSE": ("Classe do fundo (Ações, Renda Fixa, FIDC...)", TEXTO),
+            "DT_INI_CLASSE": ("Início da classe", DATA),
+            "RENTAB_FUNDO": (
+                "Indicador de desempenho informado (CDI, Ibovespa...)",
+                TEXTO,
+            ),
+            "CONDOM": ("Condomínio aberto ou fechado", TEXTO),
+            "FUNDO_COTAS": ("S se é fundo de cotas", TEXTO),
+            "FUNDO_EXCLUSIVO": ("S se é fundo exclusivo", TEXTO),
+            "TRIB_LPRAZO": ("S se tem tributação de longo prazo", TEXTO),
+            "PUBLICO_ALVO": ("Público-alvo (geral, qualificado, profissional)", TEXTO),
+            "ENTID_INVEST": ("S se é entidade de investimento", TEXTO),
+            "TAXA_PERFM": ("Taxa de performance", "percentual, como a CVM informa"),
+            "INF_TAXA_PERFM": ("Texto sobre a taxa de performance", TEXTO),
+            "TAXA_ADM": (
+                "Taxa de administração",
+                "percentual ao ano, como a CVM informa",
+            ),
+            "INF_TAXA_ADM": ("Texto sobre a taxa de administração", TEXTO),
+            "VL_PATRIM_LIQ": ("Patrimônio líquido", "reais (R$)"),
+            "DT_PATRIM_LIQ": ("Data do patrimônio líquido", DATA),
+            "CNPJ_ADMIN": ("CNPJ do administrador", TEXTO),
+            "ADMIN": ("Nome do administrador (empresa)", TEXTO),
+            "PF_PJ_GESTOR": ("PF ou PJ: o gestor é pessoa física ou jurídica", TEXTO),
+            "CPF_CNPJ_GESTOR": (
+                "CNPJ do gestor; vazio quando o gestor é pessoa física",
+                TEXTO,
+            ),
+            "GESTOR": ("Nome do gestor; vazio quando é pessoa física", TEXTO),
+            "CNPJ_AUDITOR": ("CNPJ do auditor", TEXTO),
+            "AUDITOR": ("Nome do auditor", TEXTO),
+            "CNPJ_CUSTODIANTE": ("CNPJ do custodiante", TEXTO),
+            "CUSTODIANTE": ("Nome do custodiante", TEXTO),
+            "CNPJ_CONTROLADOR": ("CNPJ do controlador", TEXTO),
+            "CONTROLADOR": ("Nome do controlador", TEXTO),
+            "INVEST_CEMPR_EXTER": ("S se pode aplicar 100% no exterior", TEXTO),
+            "CLASSE_ANBIMA": ("Classificação da Anbima", TEXTO),
+        },
     ),
     "painel_dos_fundos": Tabela(
         descricao=(
@@ -501,6 +576,119 @@ TABELAS: dict[str, Tabela] = {
                 "Desde quando o total era público (como era na data)",
                 DATA,
             ),
+        },
+    ),
+    "cobertura_dos_fundos": Tabela(
+        descricao=(
+            "Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela "
+            "ligação do painel (a meta da tabela conferida é 95% em cada ano)"
+        ),
+        fonte="Derivado: CVM, CDA (posições) e FCA (emissores), mais as tabelas conferidas",
+        familia_da_fonte="cvm",
+        frequencia="Mensal, montada junto com o painel dos fundos",
+        atraso="O do CDA (os meses mais novos ainda crescem enquanto os fundos entregam)",
+        onde="Parquet em `<acervo>/base/fundos/cobertura.parquet` (`scripts/montar_painel_dos_fundos.py`)",
+        linhagem=(
+            "O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o "
+            "SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira", DATA),
+            "valor_comprado": ("Valor comprado por todos os fundos", REAIS),
+            "valor_com_cnpj": ("A parte desse valor cujo emissor tem CNPJ", REAIS),
+            "fracao_com_cnpj": ("valor_com_cnpj ÷ valor_comprado", FRACAO),
+        },
+    ),
+    "buracos_dos_fundos": Tabela(
+        descricao=(
+            "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o "
+            "menor: a lista de trabalho para a próxima conferência (nada some calado)"
+        ),
+        fonte="Derivado: CVM, CDA (posições) e FCA (emissores), mais as tabelas conferidas",
+        familia_da_fonte="cvm",
+        frequencia="Mensal, montada junto com o painel dos fundos",
+        atraso="O do CDA",
+        onde="Parquet em `<acervo>/base/fundos/buracos.parquet` (`scripts/montar_painel_dos_fundos.py`)",
+        linhagem=(
+            "O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o "
+            "SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código."
+        ),
+        colunas={
+            "emissor": ("As 4 posições do emissor sem CNPJ", TEXTO),
+            "valor": ("Valor comprado somado em todos os meses", REAIS),
+            "primeira": ("Primeiro mês em que aparece", DATA),
+            "ultima": ("Último mês em que aparece", DATA),
+            "descricao": (
+                "Descrição do ativo no CDA (a pista para a conferência)",
+                TEXTO,
+            ),
+        },
+    ),
+    "emissores_antigos": Tabela(
+        descricao=(
+            "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram "
+            'de código antes de 2018 (e a CSN, que informa "4030"), ligados ao CNPJ pelo cadastro de '
+            "companhias da CVM, um a um, sem casar nome aproximado"
+        ),
+        fonte="CVM: cadastro de companhias (`cad_cia_aberta.csv`) e descrição do ativo no CDA",
+        familia_da_fonte="cvm",
+        frequencia="Quando a conferência anda (pelos buracos de maior valor)",
+        atraso="Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras",
+        onde="`base/conferidas/emissores_antigos.csv` no repositório (Git)",
+        linhagem=(
+            "Cada linha diz a fonte e quando foi conferida (`fonte`, `conferido_em`); o histórico de "
+            "cada mudança fica no Git, e quem usa a tabela anota o SHA-256 dela no próprio `.json`."
+        ),
+        colunas={
+            "emissor": ("As 4 posições do emissor", TEXTO),
+            "cnpj": ("CNPJ da companhia no cadastro da CVM", TEXTO),
+            "empresa_no_cadastro": ("Nome no cadastro de companhias da CVM", TEXTO),
+            "cd_cvm": ("Código da companhia na CVM", TEXTO),
+            "registro": ("Data do registro na CVM", DATA),
+            "cancelamento": ("Data do cancelamento do registro (vazio: ativa)", DATA),
+            "descricao_no_cda": ("Descrição do ativo nas carteiras dos fundos", TEXTO),
+            "no_cda": ("Primeiro e último mês nas carteiras (AAAA-MM–AAAA-MM)", TEXTO),
+            "observacao": (
+                "O que aconteceu com a empresa (incorporação, troca de nome)",
+                TEXTO,
+            ),
+            "fonte": ("De onde veio a ligação", TEXTO),
+            "conferido_em": ("Dia da conferência", DATA),
+        },
+    ),
+    "codigos_fora_do_fca": Tabela(
+        descricao=(
+            "Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do formato (o BTG "
+            'informa "000000" nas units, a Marisa "022055"). O CNPJ vem do próprio FCA e o código e o '
+            "ISIN, das carteiras dos fundos; a `carga_fca` junta a tabela aos tickers e aos emissores"
+        ),
+        fonte="CVM: formulário cadastral (FCA) e carteiras dos fundos (CDA)",
+        familia_da_fonte="cvm",
+        frequencia="Quando a conferência anda (pelos buracos de maior valor)",
+        atraso="Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras",
+        onde="`base/conferidas/codigos_fora_do_fca.csv` no repositório (Git)",
+        linhagem=(
+            "Cada linha diz a fonte e quando foi conferida; o histórico fica no Git e a `carga_fca` "
+            "anota o SHA-256 da tabela no `.json` dos tickers e dos emissores."
+        ),
+        colunas={
+            "codigo": ("Código de negociação na B3 (BPAC11)", TEXTO),
+            "cnpj": ("CNPJ da companhia, como no FCA", TEXTO),
+            "empresa": ("Nome da companhia no FCA", TEXTO),
+            "valor_mobiliario": ("Tipo do papel (units, ações ordinárias...)", TEXTO),
+            "isin": (
+                "ISIN do papel nas carteiras dos fundos (a prova do emissor)",
+                TEXTO,
+            ),
+            "primeiro_no_cda": (
+                "Primeiro mês em que o código aparece nas carteiras",
+                DATA,
+            ),
+            "ultimo_no_cda": ("Último mês em que o código aparece nas carteiras", DATA),
+            "codigo_no_fca": ("O que a empresa escreveu no lugar do código", TEXTO),
+            "observacao": ("Nota da conferência", TEXTO),
+            "fonte": ("De onde veio cada parte da ligação", TEXTO),
+            "conferido_em": ("Dia da conferência", DATA),
         },
     ),
     "ifdata_valores": Tabela(
@@ -601,7 +789,9 @@ TABELAS: dict[str, Tabela] = {
     "ligacao_dos_bancos": Tabela(
         descricao=(
             "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por "
-            "data-base. A raiz do CNPJ do líder liga ao CNPJ do FCA; antes de 2010 (sem FCA) a "
+            "data-base. A instituição cujo código é o CNPJ de uma empresa do FCA liga por ele (o Banco "
+            "PAN, do conglomerado do BTG, tem ação própria); as outras, pela raiz do CNPJ do líder do "
+            "conglomerado. Antes de 2010 (sem FCA) a "
             "ligação chega ao CNPJ, mas não à ação. Instituição sem ação (Caixa, BNDES) fica sem CNPJ"
         ),
         fonte="Derivado: IF.data (cadastro) e CVM, FCA (emissores e tickers)",
@@ -620,6 +810,13 @@ TABELAS: dict[str, Tabela] = {
             "cnpj_raiz": ("Raiz do CNPJ (8 dígitos)", TEXTO),
             "cnpj": ("CNPJ da empresa da bolsa (vazio se não tem ação)", TEXTO),
             "tickers": ("Códigos que valiam no ano, separados por vírgula", TEXTO),
+            "ligado_por": (
+                (
+                    "próprio CNPJ (a instituição é a empresa da bolsa, como o Banco PAN) ou líder "
+                    "do conglomerado; vazio sem ligação"
+                ),
+                TEXTO,
+            ),
         },
     ),
     "scr_credito": Tabela(
@@ -1059,7 +1256,7 @@ TABELAS: dict[str, Tabela] = {
         linhagem=(
             "`id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do "
             "original); `montado_em` diz quando a tabela foi montada. "
-            + SEM_VERSAO_DO_CODIGO
+            + COM_VERSAO_DO_CODIGO
         ),
         colunas={
             "cnpj": _EMPRESA["cnpj"],
@@ -1073,6 +1270,7 @@ TABELAS: dict[str, Tabela] = {
             "anos_com_o_anterior": ("Tempo com a firma anterior", "anos"),
             "id_documento": ("Número na CVM do FCA que mostrou a troca", TEXTO),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
     "curva_juros": Tabela(
@@ -1155,7 +1353,7 @@ TABELAS: dict[str, Tabela] = {
             "`origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no "
             "Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda "
             "o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. "
-            + SEM_VERSAO_DO_CODIGO
+            + COM_VERSAO_DO_CODIGO
         ),
         ressalva_de_revenda=(
             "Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, "
@@ -1196,6 +1394,7 @@ TABELAS: dict[str, Tabela] = {
             "tickers": ("Tickers da companhia no FCA mais recente", TEXTO),
             "origem_sha256": ("SHA-256 do arquivo de onde a entidade saiu", TEXTO),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
 }

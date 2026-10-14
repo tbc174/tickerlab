@@ -135,3 +135,97 @@ def test_fica_a_versao_mais_nova_de_cada_documento():
 def test_ticker_e_emissor_pelo_codigo_informado(codigo, ticker, emissor):
     assert fca.ticker_do_codigo(codigo) == ticker
     assert fca.emissor_do_codigo(codigo) == emissor
+
+
+# --- códigos fora do formato no FCA, conferidos um a um (série 3, PR 8): o BTG informa "000000" nas
+# units e por isso ficava sem ticker, sem emissor e sem ligação com o IF.data e com os fundos
+BTG = "30.306.294/0001-45"
+
+
+def test_tabela_de_codigos_conferidos_e_valida():
+    from base.fidc import documento_de_empresa
+
+    tabela = fca.codigos_conferidos()
+    assert tabela["codigo"].is_unique
+    assert tabela["codigo"].map(fca.ticker_do_codigo).eq(tabela["codigo"]).all()
+    assert (tabela["cnpj"].map(documento_de_empresa) == tabela["cnpj"]).all()
+    # o ISIN do CDA é a prova: o emissor dele é o mesmo do código
+    assert (
+        tabela["isin"].map(fca.emissor_do_isin)
+        == tabela["codigo"].map(fca.emissor_do_codigo)
+    ).all()
+    assert (tabela["primeiro_no_cda"] <= tabela["ultimo_no_cda"]).all()
+    for coluna in (
+        "empresa",
+        "valor_mobiliario",
+        "codigo_no_fca",
+        "observacao",
+        "fonte",
+    ):
+        assert tabela[coluna].str.len().gt(0).all(), coluna
+    assert tabela["conferido_em"].notna().all()
+
+
+def test_btg_entra_pelos_codigos_conferidos(valores):
+    tickers, emissores = fca.com_codigos_conferidos(
+        tickers_no_tempo([(PASTA / "fca_cia_aberta_2026.zip").read_bytes()]),
+        fca.emissores(valores),
+        fca.codigos_conferidos(),
+    )
+    assert fca.resolver_ticker(tickers, "BPAC11", date(2025, 6, 30)) == BTG
+    assert (
+        fca.resolver_ticker(tickers, "BPAC11", date(2018, 6, 30)) is None
+    )  # antes do 1º no CDA
+    assert fca.resolver_emissor(emissores, "BPAC") == BTG
+    origem = emissores.set_index("emissor")["origem"]
+    assert origem["BPAC"] == fca.PELOS_CODIGOS_CONFERIDOS
+    assert origem["PETR"] == fca.PELO_FCA
+    assert set(tickers.loc[tickers["cnpj"] == BTG, "codigo"]) == {
+        "BPAC11",
+        "BPAC3",
+        "BPAC5",
+    }
+    # o que o FCA já trazia não muda
+    assert fca.resolver_emissor(emissores, "PETR") == PETROBRAS
+
+
+def test_codigo_conferido_que_o_fca_ja_tem_fica_uma_linha_so(valores):
+    tickers = tickers_no_tempo([(PASTA / "fca_cia_aberta_2026.zip").read_bytes()])
+    petr4 = tickers[tickers["codigo"] == "PETR4"].iloc[0]
+    repetido = pd.DataFrame(
+        [
+            {
+                "codigo": "PETR4", "cnpj": PETROBRAS, "empresa": "PETROBRAS",
+                "valor_mobiliario": "Ações Preferenciais",
+                "primeiro_no_cda": pd.Timestamp("2005-01-31"),
+                "ultimo_no_cda": pd.Timestamp("2026-09-30"),
+            }
+        ]
+    )  # fmt: skip
+    juntos, emissores = fca.com_codigos_conferidos(
+        tickers, fca.emissores(valores), repetido
+    )
+    linhas = juntos[juntos["codigo"] == "PETR4"]
+    assert len(linhas) == 1 and linhas["origem"].iloc[0] == fca.PELO_FCA
+    assert linhas["primeiro_visto"].iloc[0] == petr4["primeiro_visto"]
+    assert len(emissores[emissores["emissor"] == "PETR"]) == 1
+
+
+def test_codigo_conferido_com_outro_cnpj_no_fca_e_conflito(valores):
+    """Nada é casado no escuro: se a tabela conferida e o FCA discordam, ninguém fica com o código."""
+    tickers = tickers_no_tempo([(PASTA / "fca_cia_aberta_2026.zip").read_bytes()])
+    errado = pd.DataFrame(
+        [
+            {
+                "codigo": "PETR4", "cnpj": "11.111.111/0001-11", "empresa": "OUTRA",
+                "valor_mobiliario": "Ações Preferenciais",
+                "primeiro_no_cda": pd.Timestamp("2025-01-31"),
+                "ultimo_no_cda": pd.Timestamp("2026-09-30"),
+            }
+        ]
+    )  # fmt: skip
+    juntos, emissores = fca.com_codigos_conferidos(
+        tickers, fca.emissores(valores), errado
+    )
+    assert fca.resolver_ticker(juntos, "PETR4", date(2026, 6, 30)) is None
+    assert fca.resolver_emissor(emissores, "PETR") is None

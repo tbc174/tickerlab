@@ -89,7 +89,8 @@ def test_curva_de_um_dia_nao_muda_com_os_outros_dias():
     pd.testing.assert_frame_equal(sozinho, dia_13)
 
 
-def test_montagem_grava_por_ano_com_a_origem(banco, tmp_path):
+def test_montagem_grava_por_ano_com_a_origem(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     com_registro("tesouro-br-direto", lambda _url: EXEMPLO)(URL)
     with banco.connect() as conexao:
         linhas = curva.montar(conexao, tmp_path / "base", AGORA)
@@ -97,6 +98,7 @@ def test_montagem_grava_por_ano_com_a_origem(banco, tmp_path):
     tabela = pd.read_parquet(tmp_path / "base" / "curva_juros" / "2026.parquet")
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
+    assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
 
 
 def test_montagem_ignora_o_pdf_de_metadados(banco, tmp_path):
@@ -107,7 +109,8 @@ def test_montagem_ignora_o_pdf_de_metadados(banco, tmp_path):
         assert curva.montar(conexao, tmp_path / "base", AGORA) == {}
 
 
-def test_comando_monta_a_curva(banco, tmp_path):
+def test_comando_monta_a_curva(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     com_registro("tesouro-br-direto", lambda _url: EXEMPLO)(URL)

@@ -346,7 +346,8 @@ def test_trocas_conhecidas_ate_uma_data_nao_dependem_do_futuro(tabela, corte):
     )
 
 
-def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path):
+def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     for ano, tabela in {
         2019: _ano(2019, "2019-05-10", (KPMG, "2014-01-01")),
         2020: _ano(2020, "2020-06-15", (EY, "2020-04-01")),
@@ -361,6 +362,7 @@ def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path):
     assert gravada["novo_id"].tolist() == ["rede:ey"]
     assert str(gravada["conhecido_em"].iloc[0])[:10] == "2020-06-15"
     assert gravada["montado_em"].iloc[0] == agora.isoformat()
+    assert gravada["versao_do_codigo"].iloc[0] == "0123abc"
 
 
 def test_sem_auditores_gravados_nao_monta_trocas(tmp_path):
@@ -368,7 +370,8 @@ def test_sem_auditores_gravados_nao_monta_trocas(tmp_path):
     assert not (tmp_path / "trocas_de_auditor").exists()
 
 
-def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path):
+def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
     from src.banco.coletas import com_registro
 

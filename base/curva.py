@@ -31,6 +31,7 @@ import sqlalchemy as sa
 from base.dias_uteis import DIAS_POR_ANO, dias_uteis, proximo_dia_util
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
+from src.versao_do_codigo import versao_do_codigo
 
 FONTE = "tesouro-br-direto"
 TITULOS_DAS_CURVAS = {"nominal": "Tesouro Prefixado", "real": "Tesouro IPCA+"}
@@ -152,6 +153,7 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[int, in
             origem_sha256=original.sha256,
             origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
             montado_em=agora.isoformat(),
+            versao_do_codigo=versao_do_codigo(),
         )
         linhas: dict[int, int] = {}
         for ano, do_ano in curvas.groupby(curvas["data_base"].dt.year):

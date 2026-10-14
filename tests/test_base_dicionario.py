@@ -4,8 +4,10 @@ divulgação. O documento para o Tiago revisar é gerado daqui e precisa estar e
 
 from pathlib import Path
 
-from base import cda, fca
-from base.cadastro import COLUNAS_DOS_TICKERS, ler_cadastro
+import pandas as pd
+
+from base import cda, fca, ligacoes
+from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.ponto_no_tempo import COLUNAS_DA_BASE
 from src.banco.coletas import (
@@ -25,25 +27,40 @@ from src.banco.modelo import (
 from src.padroes import MULTIPLOS
 
 RAIZ = Path(__file__).resolve().parent.parent
+PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
+# as tabelas da série 3 da base de ML (fundos e crédito), com a função ou a carga que as grava
+SERIE_3 = (
+    "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
+    "codigos_fora_do_fca", "emissores_antigos", "carteiras_dos_fundos", "painel_dos_fundos",
+    "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
+    "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
+)  # fmt: skip
+
+
+def _tickers_e_emissores_da_carga() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Como a `carga_fca` grava (série 3, PR 8: com a tabela de códigos conferidos e a origem)."""
+    zips = [p.read_bytes() for p in sorted(PASTA_DO_FCA.glob("*.zip"))]
+    valores = pd.concat(
+        [fca.ler_valores_mobiliarios(z) for z in zips], ignore_index=True
+    )
+    return fca.com_codigos_conferidos(
+        tickers_no_tempo(zips), fca.emissores(valores), fca.codigos_conferidos()
+    )
 
 
 def _colunas_de_verdade() -> dict[str, list[str]]:
     cadastro = ler_cadastro(b"CNPJ_CIA;DENOM_SOCIAL;SIT\n1;A;ATIVO\n")
+    tickers, emissores = _tickers_e_emissores_da_carga()
     return {
         "demonstracoes_como_era": list(COLUNAS_DA_BASE),
         "achados_de_qualidade": [c.name for c in achados_de_qualidade.columns],
         "cadastro_das_companhias": list(cadastro.columns),
-        "tickers_no_tempo": list(COLUNAS_DOS_TICKERS),
+        "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
         "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
-        "emissores": [
-            "emissor",
-            "cnpj",
-            "empresa",
-            "primeiro_ano",
-            "ultimo_ano",
-            "conflito",
-        ],
+        "emissores": list(emissores.columns),
+        "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
+        "emissores_antigos": list(ligacoes.tabela_conferida().columns),
         "codigos_invalidos": [
             "cnpj",
             "empresa",
@@ -162,6 +179,45 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
         assert set(TABELAS[tabela].colunas) == set(esperadas), tabela
 
 
+def test_dicionario_cobre_as_tabelas_da_serie_3():
+    """Série 3, PR 8 (ADR 0027, exigência 8; ADR 0055, 11 e 13): cada tabela nova tem colunas com
+    unidade, frequência, atraso, fonte, licença, revenda e a linhagem com a versão do código."""
+    documento = documento_em_markdown()
+    for nome in SERIE_3:
+        tabela = TABELAS[nome]
+        assert tabela.colunas, f"{nome}: sem colunas"
+        for coluna, (descricao, unidade) in tabela.colunas.items():
+            assert descricao and unidade, f"{nome}.{coluna}"
+        for campo in ("descricao", "fonte", "frequencia", "atraso", "onde", "linhagem"):
+            assert getattr(tabela, campo), f"{nome}: falta {campo}"
+        assert licenca_da_fonte(tabela.familia_da_fonte) != SEM_LICENCA_CONHECIDA, nome
+        assert revenda_da_fonte(tabela.familia_da_fonte) in REVENDA.values(), nome
+        assert "ainda não é guardada" not in tabela.linhagem, nome
+        assert "versão do código" in tabela.linhagem or "SHA-256" in tabela.linhagem, (
+            nome
+        )
+        assert f"## `{nome}`" in documento, nome
+
+
+def test_cobertura_e_buracos_dos_fundos_cobrem_as_colunas():
+    from tests.test_base_ligacoes import _ligacao, _posicoes
+
+    assert set(ligacoes.cobertura(_posicoes(), _ligacao()).columns) == set(
+        TABELAS["cobertura_dos_fundos"].colunas
+    )
+    assert set(ligacoes.buracos(_posicoes(), _ligacao()).columns) == set(
+        TABELAS["buracos_dos_fundos"].colunas
+    )
+
+
+def test_cadastro_de_fundos_diz_como_fica_o_gestor_pessoa_fisica():
+    """LGPD: o dicionário diz que o documento e o nome do gestor PF ficam vazios."""
+    colunas = TABELAS["cadastro_de_fundos"].colunas
+    assert "pessoa física" in colunas["CPF_CNPJ_GESTOR"][0]
+    assert "pessoa física" in colunas["GESTOR"][0]
+    assert "DIRETOR" not in colunas
+
+
 def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     """B13, parte 2: as tabelas da base histórica (servidor de casa) entram no dicionário. Onde o
     código não tem a lista de colunas numa constante, a lista é a das tabelas reais montadas em
@@ -169,7 +225,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     from base import auditores, controladas, empresa_serie, fre, rotulos
     from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
 
-    origem = ["origem_sha256", "origem_coletada_em", "montado_em"]
+    origem = ["origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo"]
     da_historica = ["ano_do_arquivo", *origem]
     eventos = [
         "protocolo", "versao", "cnpj", "empresa", "categoria", "tipo", "assunto", "rotulo",
@@ -191,11 +247,18 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
         "auditores": [*auditores.COLUNAS, *da_historica],
-        "trocas_de_auditor": [*auditores.COLUNAS_DAS_TROCAS, "montado_em"],
+        "trocas_de_auditor": [
+            *auditores.COLUNAS_DAS_TROCAS,
+            "montado_em",
+            "versao_do_codigo",
+        ],
         "curva_juros": [*curva, *origem],
         "controladas": [*controladas.COLUNAS, *da_historica],
-        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em"],
+        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em", "versao_do_codigo"],
     }
     for tabela, colunas in esperadas.items():
         assert set(TABELAS[tabela].colunas) == set(colunas), tabela
+        # exigência 13 da ADR 0055: toda linha da série B diz o commit que a montou
+        assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
+        assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
     assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda

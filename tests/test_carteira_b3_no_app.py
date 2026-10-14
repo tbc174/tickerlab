@@ -6,6 +6,7 @@ from streamlit.testing.v1 import AppTest
 from src import analise_da_carteira as ac
 from src import dividendos_e_custo as dc
 from src import proventos_a_receber as par
+from src import resultado_por_mes as rpm
 from src.banco.modelo import metadata
 from tests.ajudantes_da_conta import ir_para
 
@@ -146,3 +147,69 @@ def test_pagina_nao_guarda_nada_dos_proventos_a_receber(banco):
     app = _abrir_com_os_proventos_de_exemplo()
     assert not app.exception
     assert _linhas_no_banco(banco) == antes
+
+
+def _abrir_com_a_negociacao_de_exemplo(com_a_movimentacao: bool) -> AppTest:
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    app.session_state["carteira_b3_movimentacao_exemplo"] = com_a_movimentacao
+    app.session_state["carteira_b3_negociacao_exemplo"] = True
+    return ir_para(app, "carteira_b3")
+
+
+def test_negociacao_de_exemplo_mostra_o_resultado_por_mes():
+    app = _abrir_com_a_negociacao_de_exemplo(com_a_movimentacao=True)
+    assert not app.exception and not app.error
+    assert "Resultado no período" in {m.label for m in app.metric}
+    (tabela,) = [d.value for d in app.dataframe if "Mês" in d.value.columns]
+    assert list(tabela["Mês"]) == ["04/2026", "03/2026", "02/2026", "01/2026"]
+    assert {
+        "Ações (R$)",
+        "Day trade (R$)",
+        "FIIs (R$)",
+        "Futuros (R$)",
+        "Total (R$)",
+        "Vendas de ações (R$)",
+    } <= set(tabela.columns)
+    assert rpm.NOTA_DO_RESULTADO in " ".join(c.value for c in app.caption)
+    (sem,) = [d.value for d in app.dataframe if "Por quê" in d.value.columns]
+    assert list(sem["Ativo"]) == ["WEGE3"]
+
+
+def test_negociacao_sem_a_movimentacao_avisa_e_poe_o_fii_em_outros():
+    app = _abrir_com_a_negociacao_de_exemplo(com_a_movimentacao=False)
+    assert not app.exception
+    avisos = " ".join(w.value for w in app.warning)
+    assert rpm.AVISO_SEM_A_MOVIMENTACAO in avisos
+    assert "HGLG11" in avisos  # sem o nome, não dá para saber se é FII
+
+
+def test_pagina_nao_guarda_nada_da_negociacao(banco):
+    antes = _linhas_no_banco(banco)
+    app = _abrir_com_a_negociacao_de_exemplo(com_a_movimentacao=True)
+    assert not app.exception
+    assert _linhas_no_banco(banco) == antes
+
+
+def test_ligar_um_exemplo_depois_de_abrir_a_pagina_nao_quebra():
+    # na primeira visita os campos de arquivo aparecem; o clique seguinte roda o app de novo e
+    # o `manter_estado` não pode tentar reescrever o valor deles (o Streamlit proíbe)
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    ir_para(app, "carteira_b3")
+    assert not app.exception
+    app.toggle(key="carteira_b3_movimentacao_exemplo").set_value(True).run()
+    assert not app.exception
+    assert dc.NOTA_DO_CUSTO in " ".join(c.value for c in app.caption)
+
+
+def test_quantidade_dos_proventos_vazia_quando_a_b3_nao_informa():
+    app = _abrir_com_os_proventos_de_exemplo()
+    tabela = _tabela_com(app, "Data prevista")
+    assert tabela.loc["PETR4", "Quantidade"].iloc[0] == "150"
+    assert (
+        tabela.loc[tabela["Provento"] == "Leilão de frações", "Quantidade"].iloc[0]
+        == ""
+    )
