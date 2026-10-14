@@ -605,8 +605,9 @@ def test_a_ficha_do_backtest_e_a_mesma_de_src_ficha(cliente):
     ]
     assert recebida["tentativas"] == esperada.tentativas
     assert recebida["tentativas_da_pessoa"] == 1
+    # o texto leva o código da tela (PETR4), não o símbolo do Yahoo
     assert recebida["texto_das_tentativas"] == ficha.texto_das_tentativas(
-        1, "PETR4.SA", TETO_POR_PESSOA
+        1, "PETR4", TETO_POR_PESSOA
     )
     assert recebida["tolerancia_de_queda"] == ficha.TOLERANCIA_PADRAO_DE_QUEDA
     assert recebida["livres"] == ["curta", "longa"]

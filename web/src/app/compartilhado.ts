@@ -15,7 +15,8 @@ export interface ChecagemV1 {
 }
 
 export interface FichaCompartilhadaV1 {
-  ticker: string;
+  ticker: string; // o símbolo dos dados (^BVSP)
+  codigo: string; // o que a página mostra (IBOV, PETR4)
   estrategia: string;
   parametros: Record<string, number | string | boolean>;
   protecoes: Record<string, number>;

@@ -17,6 +17,7 @@ const FICHA = {
   aviso: AVISO,
   ficha: {
     ticker: "PETR4.SA",
+    codigo: "PETR4",
     estrategia: "Cruzamento de médias",
     parametros: { curta: 20, longa: 50, tipo: "Simples" },
     protecoes: { stop_loss: 0.1 },
@@ -92,6 +93,14 @@ describe("link compartilhado", () => {
     expect(screen.getByText(/02\/01\/2024 a 30\/12\/2025/)).toBeTruthy();
     expect(screen.getByText("Você testou 3 configurações em PETR4.")).toBeTruthy();
     expect(screen.getAllByText(new RegExp(AVISO.slice(0, 30))).length).toBeGreaterThan(0);
+  });
+
+  it("mostra o código da tela do ativo, sem o ^ do Yahoo (ADR 0065)", async () => {
+    const doIbovespa = { ...FICHA, ficha: { ...FICHA.ficha, ticker: "^BVSP", codigo: "IBOV" } };
+    abrirApp(`/c#${CODIGO}`, { rotas: rotasCom(() => respostaJson(200, doIbovespa)) });
+    const ativo = (await screen.findByText("Ativo")).nextElementSibling;
+    expect(ativo?.textContent).toBe("IBOV");
+    expect(screen.queryByText("^BVSP")).toBeNull();
   });
 
   it("sem código ou com código inválido, avisa sem chamar a API", async () => {

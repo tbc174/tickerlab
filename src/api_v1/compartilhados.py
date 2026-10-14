@@ -17,6 +17,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from src import catalogo
 from src.api_v1.acesso import LimiteDePedidos, agora, exigir_api_ligada
 from src.banco import compartilhamentos as links
 from src.banco.conexao import obter_engine
@@ -74,7 +75,8 @@ class ChecagemV1(BaseModel):
 
 
 class FichaCompartilhadaV1(BaseModel):
-    ticker: str
+    ticker: str  # o símbolo dos dados (^BVSP)
+    codigo: str  # o que a página mostra (IBOV, PETR4)
     estrategia: str
     parametros: dict[str, int | float | str | bool]
     protecoes: dict[str, int | float]
@@ -116,6 +118,7 @@ def _ficha_v1(aberto: links.LinkAberto) -> FichaCompartilhadaV1 | None:
         return None
     return FichaCompartilhadaV1(
         ticker=f.ticker,
+        codigo=catalogo.codigo(f.ticker),
         estrategia=f.estrategia,
         parametros=f.parametros,
         protecoes=f.protecoes,

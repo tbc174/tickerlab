@@ -40,7 +40,7 @@ function Ficha({ ficha }: { ficha: FichaCompartilhadaV1 }) {
       <p>{ficha.texto_das_tentativas}</p>
       <dl className="ficha-tecnica">
         <dt>Ativo</dt>
-        <dd>{ficha.ticker.replace(/\.SA$/, "")}</dd>
+        <dd>{ficha.codigo}</dd>
         <dt>Estratégia</dt>
         <dd>
           {ficha.estrategia}

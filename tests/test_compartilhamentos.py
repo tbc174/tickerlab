@@ -136,6 +136,10 @@ def test_titulo_da_ficha():
     assert comp.titulo_da_ficha("AAPL", "Comprar e segurar") == (
         "Foi sorte? Comprar e segurar em AAPL"
     )
+    # índice com o código da tela, sem o ^ do Yahoo (ADR 0065)
+    assert comp.titulo_da_ficha("^BVSP", "Comprar e segurar") == (
+        "Foi sorte? Comprar e segurar em IBOV"
+    )
 
 
 def _estragar(chave: str, valor: object) -> dict:
