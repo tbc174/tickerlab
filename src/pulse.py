@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from src import research
+from src import diario_de_teses, research
 from src.banco.eventos import Evento
 from src.dados import normalizar_ticker
 from src.ficha import Resultado
@@ -335,6 +335,26 @@ def texto_do_veredito(v: VereditoDaEstrategia) -> str:
     return (
         f'**{v.estrategia.nome}**: o veredito da ficha "Foi sorte?" mudou de **{v.antes}** para '
         f"**{v.agora}** com os dados de hoje."
+    )
+
+
+def teses_por_estrategia(
+    anotacoes: Iterable[diario_de_teses.Anotacao],
+) -> dict[str, diario_de_teses.Anotacao]:
+    """Para cada backtest salvo (id em texto), a anotação mais nova do Diário ligada a ele."""
+    ligadas: dict[str, diario_de_teses.Anotacao] = {}
+    for anotacao in sorted(anotacoes, key=lambda a: a.criada_em):
+        for simulacao_id in anotacao.estrategias:
+            ligadas[str(simulacao_id)] = anotacao  # a mais nova sobrescreve
+    return ligadas
+
+
+def texto_da_tese_ligada(anotacao: diario_de_teses.Anotacao) -> str:
+    """Uma linha com a data e o começo da tese (texto da pessoa: mostrar como texto puro)."""
+    return (
+        f"Sua tese sobre {_codigo(anotacao.ticker)} em "
+        f"{diario_de_teses.texto_da_data(anotacao.criada_em)}: "
+        f"“{diario_de_teses.trecho(anotacao.texto)}”"
     )
 
 

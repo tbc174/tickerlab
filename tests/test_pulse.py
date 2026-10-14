@@ -1,5 +1,6 @@
 """Testes de src/pulse.py: o que mudou nos ativos da pessoa desde a última visita."""
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 
@@ -10,6 +11,7 @@ from hypothesis import strategies as st
 
 from src import pulse
 from src.banco.eventos import Evento
+from src.diario_de_teses import Anotacao
 from src.research import COMPONENTES
 
 PESOS_PADRAO = {c: 100 / len(COMPONENTES) for c in COMPONENTES}
@@ -325,3 +327,29 @@ def test_texto_do_veredito_que_mudou():
 )
 def test_precisa_do_cdi_so_com_o_sim_de_verdade(pedido, precisa):
     assert pulse.precisa_do_cdi(pedido) is precisa
+
+
+# --- a tese do Diário ligada à estratégia (PR F2) ---------------------------------------------
+
+
+def _tese(dia, estrategias, texto="Comprei pelo dividendo."):
+    return Anotacao(
+        uuid.uuid4(), "PETR4.SA", texto, AGORA.replace(day=dia), tuple(estrategias)
+    )
+
+
+def test_cada_estrategia_fica_com_a_tese_ligada_mais_nova():
+    a, b = uuid.uuid4(), uuid.uuid4()
+    velha, nova, so_b = _tese(1, [a]), _tese(10, [a]), _tese(5, [b])
+    assert pulse.teses_por_estrategia([velha, so_b, nova]) == {
+        str(a): nova,
+        str(b): so_b,
+    }
+    assert pulse.teses_por_estrategia([]) == {}
+
+
+def test_texto_da_tese_ligada_traz_a_data_e_um_trecho_curto():
+    tese = _tese(10, [], "palavra " * 100)
+    texto = pulse.texto_da_tese_ligada(tese)
+    assert texto.startswith("Sua tese sobre PETR4 em 10/10/2026 às 18h00: “palavra")
+    assert texto.endswith("…”") and len(texto) < 280

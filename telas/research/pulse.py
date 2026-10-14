@@ -13,6 +13,7 @@ import streamlit as st
 
 from src import ficha, pulse, research
 from src.banco import pulse as repo_pulse
+from src.banco import teses as repo_teses
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
     listar_favoritos,
@@ -72,11 +73,12 @@ def _marcar_visita(usuario, janela, vereditos=None):
 
 
 def _guardados(usuario):
-    """Os ativos da pessoa (e quantos ficaram de fora) e as simulações salvas."""
+    """Os ativos da pessoa (e quantos ficaram de fora), as simulações salvas e o Diário."""
     with obter_engine().connect() as conexao:
         favoritos = listar_favoritos(conexao, usuario.id)
         listas = [(w.nome, w.tickers) for w in listar_watchlists(conexao, usuario.id)]
         simulacoes = listar_simulacoes(conexao, usuario.id)
+        teses = repo_teses.listar(conexao, usuario.id)
     carteira = _carteira_do_research(usuario)
     ativos, fora = pulse.ativos_da_pessoa(
         favoritos,
@@ -84,7 +86,7 @@ def _guardados(usuario):
         listas,
         [s.parametros.get("ticker") for s in simulacoes],
     )
-    return ativos, fora, simulacoes
+    return ativos, fora, simulacoes, teses
 
 
 def _eventos_novos(ativos, janela):
@@ -193,7 +195,7 @@ def _veredito_de_hoje(estrategia):
         return None
 
 
-def _mostrar_estrategias(simulacoes, vistos):
+def _mostrar_estrategias(simulacoes, vistos, teses):
     """Os vereditos que mudaram; devolve os vistos agora (None: nenhum backtest salvo)."""
     salvas, sem_ficha, fora = pulse.estrategias_salvas(simulacoes)
     if not salvas and not sem_ficha:
@@ -201,9 +203,12 @@ def _mostrar_estrategias(simulacoes, vistos):
     st.subheader("Estratégias salvas")
     conferidas = [pulse.comparar(e, vistos, _veredito_de_hoje(e)) for e in salvas]
     mudaram = [v for v in conferidas if v.mudou]
+    ligadas = pulse.teses_por_estrategia(teses)
     for v in mudaram:
         icone = ICONE_DO_VEREDITO[Resultado(v.agora)]
         st.markdown(f"{icone} {pulse.texto_do_veredito(v)}")
+        if v.estrategia.id in ligadas:  # o texto é da pessoa: sem Markdown nem HTML
+            st.text(pulse.texto_da_tese_ligada(ligadas[v.estrategia.id]))
     sem_conferir = [v.estrategia.nome for v in conferidas if v.agora is None]
     feitas = len(conferidas) - len(sem_conferir)
     if feitas and not mudaram:
@@ -240,7 +245,7 @@ def pagina_pulse():
         return
     try:
         janela, vistos = _janela_da_sessao(usuario)
-        ativos, fora, simulacoes = _guardados(usuario)
+        ativos, fora, simulacoes, teses = _guardados(usuario)
     except Exception as erro:
         if not tabela_inexistente(erro):
             log.exception("Falha ao abrir o Pulse")
@@ -263,7 +268,7 @@ def pagina_pulse():
     if eventos is not None:
         _mostrar_acontecimentos(ativos, janela, eventos)
     _mostrar_variacoes(ativos, janela)
-    vereditos = _mostrar_estrategias(simulacoes, vistos)
+    vereditos = _mostrar_estrategias(simulacoes, vistos, teses)
     with st.expander("Limites do Pulse"):
         for limite in pulse.LIMITES:
             st.markdown(f"- {limite}")
