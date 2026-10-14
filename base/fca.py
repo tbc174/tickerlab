@@ -13,12 +13,19 @@ mudou o desenho:
 Por isso o código permanente é o **ISIN** (o CDA o traz desde 2005), e a ligação ao CNPJ passa pelo
 **emissor** (as 4 letras depois de "BR"). Um emissor com mais de um CNPJ é conflito e fica sem
 resposta: nada é casado no escuro.
+
+Algumas empresas da bolsa informam o código fora do formato (o BTG põe "000000" nas units): sem
+ticker, ficavam sem emissor e sem ligação com os fundos e com o IF.data. A **tabela conferida**
+`base/conferidas/codigos_fora_do_fca.csv` (série 3, PR 8) traz esses códigos, um a um: o CNPJ vem do
+próprio FCA e o código e o ISIN, das carteiras dos fundos (CDA). `com_codigos_conferidos` junta a
+tabela aos tickers e aos emissores do FCA, com a origem de cada linha.
 """
 
 import io
 import re
 import zipfile
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 
@@ -36,6 +43,10 @@ COLUNAS = (
     "segmento", "inicio_listagem", "fim_listagem",
 )  # fmt: skip
 DOCUMENTO = ["cnpj", "referencia"]
+CODIGOS_CONFERIDOS = (
+    Path(__file__).resolve().parent / "conferidas" / "codigos_fora_do_fca.csv"
+)
+PELO_FCA, PELOS_CODIGOS_CONFERIDOS = "fca", "códigos conferidos"
 
 
 def _texto(serie: pd.Series) -> pd.Series:
@@ -134,8 +145,7 @@ def emissores(valores: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
-    tabela["conflito"] = tabela.groupby("emissor")["cnpj"].transform("nunique") > 1
-    return tabela
+    return _com_conflito(tabela)
 
 
 def resolver_emissor(tabela_de_emissores: pd.DataFrame, emissor: str) -> str | None:
@@ -158,3 +168,73 @@ def resolver_ticker(tickers: pd.DataFrame, ticker: str, data: date) -> str | Non
         & (tickers["ultimo_visto"].dt.year >= data.year)
     ]
     return str(vigentes["cnpj"].iloc[0]) if vigentes["cnpj"].nunique() == 1 else None
+
+
+def codigos_conferidos(caminho: Path = CODIGOS_CONFERIDOS) -> pd.DataFrame:
+    """A tabela de códigos que o FCA traz fora do formato, conferida linha a linha (com a fonte)."""
+    tabela = pd.read_csv(
+        caminho, sep=";", dtype=str, keep_default_na=False, encoding="utf-8"
+    )
+    for coluna in ("primeiro_no_cda", "ultimo_no_cda", "conferido_em"):
+        tabela[coluna] = pd.to_datetime(tabela[coluna])
+    return tabela
+
+
+def _com_conflito(emissores: pd.DataFrame) -> pd.DataFrame:
+    conflito = emissores.groupby("emissor")["cnpj"].transform("nunique") > 1
+    return emissores.assign(conflito=conflito).reset_index(drop=True)
+
+
+def com_codigos_conferidos(
+    tickers: pd.DataFrame, emissores: pd.DataFrame, conferidos: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Os tickers e os emissores do FCA mais os da tabela conferida, com a coluna `origem`.
+
+    O código conferido vale do 1º ao último mês em que aparece nas carteiras dos fundos. O que o FCA
+    já traz com o mesmo CNPJ fica como está; com outro CNPJ, vira conflito (ninguém fica com ele).
+    """
+    novos = pd.DataFrame(
+        {
+            "codigo": conferidos["codigo"],
+            "cnpj": conferidos["cnpj"],
+            "empresa": conferidos["empresa"],
+            "valor_mobiliario": conferidos["valor_mobiliario"],
+            "primeiro_visto": conferidos["primeiro_no_cda"],
+            "ultimo_visto": conferidos["ultimo_no_cda"],
+            "inicio_negociacao": pd.NaT,
+            "fim_negociacao": pd.NaT,
+            "origem": PELOS_CODIGOS_CONFERIDOS,
+        }
+    )
+    do_fca = set(zip(tickers["codigo"], tickers["cnpj"], strict=True))
+    novos = novos[
+        [par not in do_fca for par in zip(novos["codigo"], novos["cnpj"], strict=True)]
+    ]
+    todos_os_tickers = pd.concat(
+        [tickers.assign(origem=PELO_FCA), novos], ignore_index=True
+    )
+    emissores_novos = (
+        novos.assign(emissor=novos["codigo"].map(emissor_do_codigo))
+        .groupby(["emissor", "cnpj"])
+        .agg(
+            empresa=("empresa", "last"),
+            primeiro_ano=("primeiro_visto", lambda d: d.dt.year.min()),
+            ultimo_ano=("ultimo_visto", lambda d: d.dt.year.max()),
+        )
+        .reset_index()
+        .assign(origem=PELOS_CODIGOS_CONFERIDOS)
+    )
+    ja_tem = set(zip(emissores["emissor"], emissores["cnpj"], strict=True))
+    emissores_novos = emissores_novos[
+        [
+            par not in ja_tem
+            for par in zip(
+                emissores_novos["emissor"], emissores_novos["cnpj"], strict=True
+            )
+        ]
+    ]
+    todos_os_emissores = pd.concat(
+        [emissores.drop(columns="conflito").assign(origem=PELO_FCA), emissores_novos],
+        ignore_index=True,
+    )
+    return todos_os_tickers, _com_conflito(todos_os_emissores)

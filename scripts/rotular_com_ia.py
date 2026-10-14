@@ -324,8 +324,14 @@ def piloto(
     teto: float,
     so_fatos: bool = False,
 ) -> int:
-    """Rotula `n` eventos na hora (preço normal), para conferir formato, erros e custo real."""
-    escolhidos = pendentes(eventos, pasta)[:n]
+    """Rotula `n` eventos na hora (preço normal), para conferir formato, erros e custo real. Só
+    entram eventos prontos pela regra de texto (o texto baixado, ou só o assunto com `so_fatos`)."""
+    prontos = [
+        e
+        for e in pendentes(eventos, pasta)
+        if texto_do_pedido(e, pasta, so_fatos) is not None
+    ]
+    escolhidos = prontos[:n]
     manifesto = ler_manifesto(pasta)
     conferir_teto(
         manifesto,
@@ -588,7 +594,7 @@ def main(argv: list[str] | None = None) -> int:
             "Diga o teto com --teto-dolares (o Tiago combinou US$ 60 em 14/10/2026)."
         )
         return 2
-    cliente = anthropic.Anthropic()  # a chave vem de ANTHROPIC_API_KEY
+    cliente = ri.cliente()  # chave e workspace vêm do .env
     try:
         if opcoes.passo == "estimar":
             faltam = pendentes(eventos, opcoes.pasta)

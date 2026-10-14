@@ -86,3 +86,39 @@ def test_sem_a_versao_do_codigo_nao_grava(ambiente, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):
         carga_fidc.main(["--pasta", str(ambiente)])
     assert not ambiente.exists()
+
+
+def test_carga_repetida_da_o_mesmo_resultado(ambiente):
+    """Exigência 9 da ADR 0027 (série 3, PR 8): refazer a partir dos mesmos originais não muda nada."""
+    import json
+
+    pasta = ambiente
+    carga_fidc.main(["--pasta", str(pasta), "--desde", "2019", "--ate", "2019"])
+    manifesto = pasta / "informe" / "tab_I" / "2019.json"
+    antes = json.loads(manifesto.read_text(encoding="utf-8"))
+    carga_fidc.main(["--pasta", str(pasta), "--desde", "2019", "--ate", "2019"])
+    assert json.loads(manifesto.read_text(encoding="utf-8")) == antes
+    assert not list((pasta / "informe" / "tab_I").glob("2019.v*"))
+
+
+def test_linhagem_do_informe_e_do_cadastro_e_completa(ambiente):
+    """Exigência 13 da ADR 0055 (série 3, PR 8): de cada tabela, chegar ao original, à coleta e à
+    versão do código."""
+    from base.linhagem import linhagem_da_tabela
+    from src.banco.conexao import criar_engine
+
+    pasta = ambiente
+    carga_fidc.main(["--pasta", str(pasta), "--desde", "2013", "--ate", "2013"])
+    motor = criar_engine()
+    try:
+        with motor.connect() as c:
+            for arquivo in (
+                pasta / "informe" / "tab_I" / "2013.parquet",
+                pasta / "cadastro" / "cad_fi.parquet",
+                pasta / "cadastro" / "hist_admin.parquet",
+            ):
+                caminho = linhagem_da_tabela(c, arquivo)
+                assert caminho.completa, arquivo
+                assert caminho.versao_do_codigo == VERSAO
+    finally:
+        motor.dispose()
