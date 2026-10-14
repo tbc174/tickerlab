@@ -3,6 +3,7 @@
 // `python -m scripts.gerar_golden_ferramentas`; o pytest confere que o arquivo está em dia.
 import { describe, expect, it } from "vitest";
 import * as aportes from "../../src/ferramentas/contas/aportes";
+import * as custos from "../../src/ferramentas/contas/custos";
 import * as juros from "../../src/ferramentas/contas/juros";
 import casos from "../golden_ferramentas.json";
 
@@ -17,6 +18,9 @@ const CONTAS: Record<string, Conta> = {
   "aportes.aporte_para_meta": aportes.aporteParaMeta,
   "aportes.meses_ate_meta": aportes.mesesAteMeta,
   "aportes.evolucao": aportes.evolucao,
+  "custos.custo_da_taxa": custos.custoDaTaxa,
+  "custos.evolucao_da_taxa": custos.evolucaoDaTaxa,
+  "custos.alta_para_recuperar": custos.altaParaRecuperar,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

@@ -258,6 +258,11 @@ MODULOS = (
                 "Conversores",
                 "Taxa anual em mensal, percentual do CDI em taxa e outros.",
             ),
+            Funcionalidade(
+                "Custo das taxas e da queda",
+                "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
+                pagina_do_site="custo-das-taxas-e-da-queda.html",
+            ),
         ),
     ),
     Modulo(

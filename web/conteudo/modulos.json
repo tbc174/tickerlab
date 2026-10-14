@@ -330,6 +330,14 @@
         "pagina_do_app": null,
         "pagina_do_site": null,
         "ticker": null
+      },
+      {
+        "descricao": "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
+        "disponivel": true,
+        "nome": "Custo das taxas e da queda",
+        "pagina_do_app": null,
+        "pagina_do_site": "custo-das-taxas-e-da-queda.html",
+        "ticker": null
       }
     ],
     "nome": "Ferramentas",

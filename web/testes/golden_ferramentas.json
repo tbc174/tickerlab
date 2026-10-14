@@ -832,5 +832,286 @@
     "saldo": 750
    }
   ]
+ },
+ {
+  "argumentos": [
+   100000,
+   0.08,
+   0.01,
+   20
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 381222.9183797729,
+   "ficou_com_a_taxa": 84872.79600515793,
+   "fracao_do_resultado": 0.18209306240276796,
+   "sem_taxa": 466095.71438493085
+  }
+ },
+ {
+  "argumentos": [
+   100000,
+   0.08,
+   0.02,
+   30
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 548902.1544315213,
+   "ficou_com_a_taxa": 457363.53447582375,
+   "fracao_do_resultado": 0.45451568061756387,
+   "sem_taxa": 1006265.6889073451
+  }
+ },
+ {
+  "argumentos": [
+   50000,
+   0.1065,
+   0.005,
+   10
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 130832.30547512068,
+   "ficou_com_a_taxa": 6725.166876740594,
+   "fracao_do_resultado": 0.04888986953422742,
+   "sem_taxa": 137557.47235186127
+  }
+ },
+ {
+  "argumentos": [
+   1000,
+   0.1,
+   0,
+   10
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 2593.7424601000025,
+   "ficou_com_a_taxa": 0.0,
+   "fracao_do_resultado": 0.0,
+   "sem_taxa": 2593.7424601000025
+  }
+ },
+ {
+  "argumentos": [
+   0,
+   0.1,
+   0.01,
+   10
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 0.0,
+   "ficou_com_a_taxa": 0.0,
+   "fracao_do_resultado": 0.0,
+   "sem_taxa": 0.0
+  }
+ },
+ {
+  "argumentos": [
+   1000,
+   -0.05,
+   0.01,
+   5
+  ],
+  "conta": "custos.custo_da_taxa",
+  "valor": {
+   "com_taxa": 735.8579723647938,
+   "ficou_com_a_taxa": 37.922965135205914,
+   "fracao_do_resultado": 0.04900995009999962,
+   "sem_taxa": 773.7809374999997
+  }
+ },
+ {
+  "argumentos": [
+   1000,
+   0.08,
+   1,
+   5
+  ],
+  "conta": "custos.custo_da_taxa",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   0.08,
+   0.01,
+   101
+  ],
+  "conta": "custos.custo_da_taxa",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   0.1,
+   0.02,
+   3
+  ],
+  "conta": "custos.evolucao_da_taxa",
+  "valor": [
+   {
+    "ano": 0,
+    "com_taxa": 1000.0,
+    "sem_taxa": 1000.0
+   },
+   {
+    "ano": 1,
+    "com_taxa": 1078.0,
+    "sem_taxa": 1100.0
+   },
+   {
+    "ano": 2,
+    "com_taxa": 1162.084,
+    "sem_taxa": 1210.0000000000002
+   },
+   {
+    "ano": 3,
+    "com_taxa": 1252.726552,
+    "sem_taxa": 1331.0000000000005
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   10000,
+   0.07,
+   0.015,
+   15
+  ],
+  "conta": "custos.evolucao_da_taxa",
+  "valor": [
+   {
+    "ano": 0,
+    "com_taxa": 10000.0,
+    "sem_taxa": 10000.0
+   },
+   {
+    "ano": 1,
+    "com_taxa": 10539.5,
+    "sem_taxa": 10700.0
+   },
+   {
+    "ano": 2,
+    "com_taxa": 11108.106025,
+    "sem_taxa": 11449.0
+   },
+   {
+    "ano": 3,
+    "com_taxa": 11707.388345048748,
+    "sem_taxa": 12250.43
+   },
+   {
+    "ano": 4,
+    "com_taxa": 12339.001946264128,
+    "sem_taxa": 13107.960100000002
+   },
+   {
+    "ano": 5,
+    "com_taxa": 13004.691101265076,
+    "sem_taxa": 14025.517307000004
+   },
+   {
+    "ano": 6,
+    "com_taxa": 13706.294186178327,
+    "sem_taxa": 15007.303518490005
+   },
+   {
+    "ano": 7,
+    "com_taxa": 14445.748757522648,
+    "sem_taxa": 16057.814764784307
+   },
+   {
+    "ano": 8,
+    "com_taxa": 15225.096902990994,
+    "sem_taxa": 17181.86179831921
+   },
+   {
+    "ano": 9,
+    "com_taxa": 16046.490880907357,
+    "sem_taxa": 18384.592124201554
+   },
+   {
+    "ano": 10,
+    "com_taxa": 16912.19906393231,
+    "sem_taxa": 19671.513572895663
+   },
+   {
+    "ano": 11,
+    "com_taxa": 17824.612203431454,
+    "sem_taxa": 21048.519522998362
+   },
+   {
+    "ano": 12,
+    "com_taxa": 18786.25003180658,
+    "sem_taxa": 22521.915889608248
+   },
+   {
+    "ano": 13,
+    "com_taxa": 19799.768221022543,
+    "sem_taxa": 24098.45000188083
+   },
+   {
+    "ano": 14,
+    "com_taxa": 20867.965716546707,
+    "sem_taxa": 25785.341502012485
+   },
+   {
+    "ano": 15,
+    "com_taxa": 21993.7924669544,
+    "sem_taxa": 27590.315407153365
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   -0.1
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "valor": 0.11111111111111116
+ },
+ {
+  "argumentos": [
+   -0.5
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "valor": 1.0
+ },
+ {
+  "argumentos": [
+   -0.8
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "valor": 4.000000000000001
+ },
+ {
+  "argumentos": [
+   -0.333
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "valor": 0.4992503748125936
+ },
+ {
+  "argumentos": [
+   0
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "valor": 0.0
+ },
+ {
+  "argumentos": [
+   -1
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0.2
+  ],
+  "conta": "custos.alta_para_recuperar",
+  "erro": true
  }
 ]

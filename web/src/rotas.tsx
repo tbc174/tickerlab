@@ -4,8 +4,10 @@ import type { ReactElement } from "react";
 import {
   DADOS_DA_VITRINE,
   DADOS_DOS_APORTES,
+  DADOS_DOS_CUSTOS,
   DADOS_DOS_JUROS,
   PaginaDosAportes,
+  PaginaDosCustos,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
@@ -46,6 +48,11 @@ export const ROTAS: Rota[] = [
     arquivo: "calculadora-de-aportes-e-metas.html",
     dados: DADOS_DOS_APORTES,
     conteudo: () => <PaginaDosAportes />,
+  },
+  {
+    arquivo: "custo-das-taxas-e-da-queda.html",
+    dados: DADOS_DOS_CUSTOS,
+    conteudo: () => <PaginaDosCustos />,
   },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },

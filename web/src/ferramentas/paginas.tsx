@@ -2,6 +2,7 @@
 // mesmas contas da calculadora (nada digitado à mão que possa ficar diferente).
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
+import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
 import { montante, taxaEquivalente } from "./contas/juros";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
@@ -23,6 +24,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "calculadora-de-aportes-e-metas.html",
     nome: "Aportes e metas",
     descricao: "Quanto você vai ter, quanto guardar por mês e em quanto tempo chega lá.",
+  },
+  {
+    arquivo: "custo-das-taxas-e-da-queda.html",
+    nome: "Custo das taxas e da queda",
+    descricao: "Quanto 1% ao ano leva em 20 anos, e quanto é preciso subir depois de cair.",
   },
 ];
 
@@ -132,13 +138,78 @@ export function PaginaDosAportes() {
   );
 }
 
+// --- Custo das taxas e da queda ------------------------------------------------------------
+const CUSTOS = "custo-das-taxas-e-da-queda.html";
+const QUEDAS_COMUNS = [-0.1, -0.2, -0.3, -0.5, -0.8];
+
+export const DADOS_DOS_CUSTOS = {
+  caminho: `/${CUSTOS}`,
+  titulo: "Custo das taxas e da queda",
+  descricao:
+    "Calcule quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto um " +
+    "investimento precisa subir para recuperar uma queda. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDosCustos() {
+  const exemplo = custoDaTaxa(100000, 0.08, 0.01, 20);
+  return (
+    <PaginaDeFerramenta
+      titulo="Custo das taxas e da queda"
+      subtitulo="Duas contas que parecem pequenas e não são: a taxa cobrada todo ano e a alta que uma queda pede. Grátis e sem cadastro."
+      ilha={[
+        ["taxa", "Quanto a taxa leva"],
+        ["queda", "Quanto subir depois de cair"],
+      ]}
+      codigo={codigo(CUSTOS)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda",
+        "taxa de performance e outros custos além da taxa anual",
+        "rendimento que muda de um ano para outro: a conta usa o mesmo todo ano",
+      ]}
+    >
+      <h2>Por que 1% ao ano não é pouco</h2>
+      <p>
+        A taxa de administração é cobrada todo ano sobre todo o patrimônio, inclusive sobre o que
+        ela já deixou de render. Com R$ 100.000 rendendo 8% ao ano por 20 anos, uma taxa de 1% ao ano
+        leva {formatarReais(exemplo.ficou_com_a_taxa)}: {formatarPorcentagem(exemplo.fracao_do_resultado)}{" "}
+        do que você teria sem ela.
+      </p>
+      <h2>Quedas e recuperações</h2>
+      <p>
+        Uma queda e uma alta do mesmo tamanho não se anulam: depois de cair 50%, R$ 100 viram R$ 50,
+        e para voltar a R$ 100 é preciso subir 100%. Por isso o tamanho da maior queda importa tanto
+        quanto o retorno médio de um investimento ou de uma estratégia.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Queda</th>
+            <th scope="col">Alta para voltar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {QUEDAS_COMUNS.map((queda) => (
+            <tr key={queda}>
+              <td>{formatarPorcentagem(queda)}</td>
+              <td>+{formatarPorcentagem(altaParaRecuperar(queda))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </PaginaDeFerramenta>
+  );
+}
+
 // --- Vitrine -------------------------------------------------------------------------------
 export const DADOS_DA_VITRINE = {
   caminho: "/ferramentas.html",
   titulo: "Ferramentas grátis",
   descricao:
-    "Calculadoras grátis e sem cadastro do TickerLab: juros compostos, aportes e metas, com cada " +
-    "conta explicada em português.",
+    "Calculadoras grátis e sem cadastro do TickerLab: juros compostos, aportes e metas, custo das " +
+    "taxas e mais, com cada conta explicada em português.",
   atual: "/ferramentas.html",
 };
 

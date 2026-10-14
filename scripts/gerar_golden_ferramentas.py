@@ -16,7 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from src.ferramentas import aportes, juros
+from src.ferramentas import aportes, custos, juros
 
 ARQUIVO = (
     Path(__file__).resolve().parents[1] / "web" / "testes" / "golden_ferramentas.json"
@@ -33,6 +33,9 @@ CONTAS: dict[str, Conta] = {
     "aportes.aporte_para_meta": aportes.aporte_para_meta,
     "aportes.meses_ate_meta": aportes.meses_ate_meta,
     "aportes.evolucao": aportes.evolucao,
+    "custos.custo_da_taxa": custos.custo_da_taxa,
+    "custos.evolucao_da_taxa": custos.evolucao_da_taxa,
+    "custos.alta_para_recuperar": custos.alta_para_recuperar,
 }
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
@@ -89,6 +92,23 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("aportes.evolucao", [1000, 100, 0.01, 6, False]),
     ("aportes.evolucao", [1000, 100, 0.01, 6, True]),
     ("aportes.evolucao", [0, 250, 0, 3, False]),
+    ("custos.custo_da_taxa", [100000, 0.08, 0.01, 20]),
+    ("custos.custo_da_taxa", [100000, 0.08, 0.02, 30]),
+    ("custos.custo_da_taxa", [50000, 0.1065, 0.005, 10]),
+    ("custos.custo_da_taxa", [1000, 0.1, 0, 10]),
+    ("custos.custo_da_taxa", [0, 0.1, 0.01, 10]),
+    ("custos.custo_da_taxa", [1000, -0.05, 0.01, 5]),
+    ("custos.custo_da_taxa", [1000, 0.08, 1, 5]),
+    ("custos.custo_da_taxa", [1000, 0.08, 0.01, 101]),
+    ("custos.evolucao_da_taxa", [1000, 0.1, 0.02, 3]),
+    ("custos.evolucao_da_taxa", [10000, 0.07, 0.015, 15]),
+    ("custos.alta_para_recuperar", [-0.1]),
+    ("custos.alta_para_recuperar", [-0.5]),
+    ("custos.alta_para_recuperar", [-0.8]),
+    ("custos.alta_para_recuperar", [-0.333]),
+    ("custos.alta_para_recuperar", [0]),
+    ("custos.alta_para_recuperar", [-1]),
+    ("custos.alta_para_recuperar", [0.2]),
 ]
 
 
