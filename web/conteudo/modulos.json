@@ -324,11 +324,35 @@
         "ticker": null
       },
       {
-        "descricao": "Taxa anual em mensal, percentual do CDI em taxa e outros.",
-        "disponivel": false,
-        "nome": "Conversores",
+        "descricao": "Dólar, euro, libra e mais 7 moedas pela PTAX do Banco Central.",
+        "disponivel": true,
+        "nome": "Conversor de moedas",
         "pagina_do_app": null,
-        "pagina_do_site": null,
+        "pagina_do_site": "conversor-de-moedas.html",
+        "ticker": null
+      },
+      {
+        "descricao": "CDB, LCI/LCA, Tesouro Selic e poupança pelo mesmo prazo, sem o imposto.",
+        "disponivel": true,
+        "nome": "Renda fixa com IR",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-renda-fixa.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto rende acima da inflação, e taxa ao mês ou ao ano.",
+        "disponivel": true,
+        "nome": "Juro real e taxas",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-juro-real.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto um valor do passado vale hoje, pelo IPCA.",
+        "disponivel": true,
+        "nome": "Correção pela inflação",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-correcao-pela-inflacao.html",
         "ticker": null
       },
       {

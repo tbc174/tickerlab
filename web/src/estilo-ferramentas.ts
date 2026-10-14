@@ -51,6 +51,11 @@ export function cssFerramentas(): string {
 .ferramenta-anteriores { display: grid; gap: 1rem; padding: .8rem 1rem; border: 1px dashed var(--linha-forte); border-radius: 10px; }
 .ferramenta-anteriores summary { cursor: pointer; font-weight: 700; color: var(--azul-texto); }
 .ferramenta-depois { margin-top: 1.25rem; }
+.ferramenta-espera { margin: 0; padding: 1.5rem; }
+.ferramenta-data { margin: .75rem 0 0; font-size: .85rem; }
+.ferramenta-velho { color: var(--atencao); }
+.ferramenta-comparacao { font-variant-numeric: tabular-nums; }
+.ferramenta-comparacao td { text-align: right; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }
