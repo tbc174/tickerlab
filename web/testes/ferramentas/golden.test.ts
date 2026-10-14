@@ -28,6 +28,7 @@ const CONTAS: Record<string, Conta> = {
   "aportes.aporte_para_meta": aportes.aporteParaMeta,
   "aportes.meses_ate_meta": aportes.mesesAteMeta,
   "aportes.evolucao": aportes.evolucao,
+  "aportes.mes_da_virada": aportes.mesDaVirada,
   "custos.custo_da_taxa": custos.custoDaTaxa,
   "custos.evolucao_da_taxa": custos.evolucaoDaTaxa,
   "custos.alta_para_recuperar": custos.altaParaRecuperar,
