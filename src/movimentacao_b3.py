@@ -53,6 +53,8 @@ TIPOS = {
     ("reembolso", "credito"): "reembolso",  # provento de ação emprestada
     # a taxa do aluguel; a linha só com a quantidade emprestada vem sem valor e fica de fora
     ("emprestimo", "credito"): "aluguel",
+    # devolução de capital de FII: reduz o custo médio (não é provento)
+    ("amortizacao", "credito"): "amortizacao",
     ("desdobro", "credito"): "desdobro",
     ("grupamento", "debito"): "grupamento",
     ("bonificacao em ativos", "credito"): "bonificacao",

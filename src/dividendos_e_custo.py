@@ -31,11 +31,14 @@ TIPOS_DE_PROVENTO = (
 # entram ou saem ações sem dinheiro: o custo total não muda
 ENTRAM_SEM_CUSTO = ("desdobro", "bonificacao")
 SAEM_SEM_CUSTO = ("grupamento",)
+# devolução de capital de FII: não é provento, reduz o custo de aquisição e não mexe na quantidade
+TIPOS_QUE_ABATEM_O_CUSTO = ("amortizacao",)
 TIPOS_DE_LANCAMENTO = (
     "compra",
     "venda",
     *ENTRAM_SEM_CUSTO,
     *SAEM_SEM_CUSTO,
+    *TIPOS_QUE_ABATEM_O_CUSTO,
     *TIPOS_DE_PROVENTO,
 )
 # a ordem dentro de um mesmo dia: o que entra antes do que sai (uma compra e uma venda liquidadas
@@ -44,6 +47,7 @@ _ORDEM_NO_DIA = {
     "compra": 0,
     "desdobro": 0,
     "bonificacao": 0,
+    "amortizacao": 1,
     "grupamento": 1,
     "venda": 1,
 }
@@ -95,6 +99,10 @@ AVISO_DA_BONIFICACAO = (
     "Recebeu bonificação: a Receita manda somar ao custo o valor que a empresa atribuiu a cada "
     "ação nova, e esse valor não vem na planilha da B3. O custo médio aqui fica um pouco menor "
     "que o oficial; confira no informe da empresa."
+)
+AVISO_DA_AMORTIZACAO_ACIMA_DO_CUSTO = (
+    "Uma amortização passou do custo que sobrava: o custo ficou em zero e o que passou é ganho "
+    "de capital (pode haver imposto retido pelo administrador). Confira no informe do fundo."
 )
 MOTIVO_HISTORICO_INCOMPLETO = (
     "A movimentação começa depois da primeira compra (saíram mais ações do que entraram). "
@@ -186,6 +194,15 @@ def _custo_de_um_ativo(codigo: str, lancamentos: list[Lancamento]) -> CustoDoAti
             quantidade += q
             if lancamento.tipo == "bonificacao" and AVISO_DA_BONIFICACAO not in avisos:
                 avisos.append(AVISO_DA_BONIFICACAO)
+        elif lancamento.tipo in TIPOS_QUE_ABATEM_O_CUSTO:
+            if quantidade <= _QUASE_ZERO:
+                return _incompleto(codigo, MOTIVO_SEM_COMPRA)
+            if lancamento.valor > custo + _QUASE_ZERO:
+                if AVISO_DA_AMORTIZACAO_ACIMA_DO_CUSTO not in avisos:
+                    avisos.append(AVISO_DA_AMORTIZACAO_ACIMA_DO_CUSTO)
+                custo = 0.0
+            else:
+                custo -= lancamento.valor
         else:  # venda ou grupamento: saem ações
             if q > quantidade + _QUASE_ZERO:
                 return _incompleto(codigo, MOTIVO_HISTORICO_INCOMPLETO)
