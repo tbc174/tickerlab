@@ -97,10 +97,14 @@ code, .ticker { font-family: "JetBrains Mono", ui-monospace, monospace; font-siz
 /* herói */
 .heroi { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(2rem, 5vw, 4rem); align-items: center;
   padding-block: clamp(3rem, 8vw, 6rem); }
-.heroi-texto { min-width: 0; }
+/* com z-index: o movimento.js põe translate na coluna (paralaxe), o que já a torna um contexto de
+   empilhamento; sem z-index ela ficaria atrás da linha decorativa e do painel, e a busca junto.
+   Acima do botão de pausa (2), que a lista de sugestões aberta alcança no celular */
+.heroi-texto { min-width: 0; position: relative; z-index: 3; }
 .heroi-visual img { border-radius: 10px; border: 1px solid var(--linha-forte);
   box-shadow: 0 30px 80px var(--sombra); transform: rotate(1.5deg); }
-.busca { position: relative; margin: 1.75rem 0 .75rem; }
+/* acima dos irmãos do herói: as sugestões (z-index 4 aqui dentro) não podem ficar atrás do "Experimente" */
+.busca { position: relative; z-index: 2; margin: 1.75rem 0 .75rem; }
 .busca label { display: block; font-weight: 700; font-size: .9rem; margin-bottom: .4rem; color: var(--apagado); }
 .busca .campo { display: flex; gap: .5rem; }
 .busca input { flex: 1; min-width: 0; padding: .8rem 1rem .8rem 2.6rem; border-radius: 10px; font: 500 1rem "Manrope", sans-serif;
@@ -225,7 +229,9 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 #sugestoes { transition: opacity 160ms ease, transform 160ms ease; }
 @starting-style { #sugestoes { opacity: 0; transform: translateY(-4px); } }
 /* o momento da página inicial: a linha se desenha, o ponto aparece, o texto e o relatório chegam */
-.topo-da-pagina { overflow: hidden; }
+/* sem overflow no topo: o que vaza é só o fundo, cortado em .v2-camadas; a lista da busca pode descer
+   do herói e, com z-index, passar por cima do que vem depois (a fita de ativos é posicionada) */
+.topo-da-pagina { z-index: 1; }
 .topo-da-pagina > .heroi { padding-bottom: 1rem; }
 .linha-do-topo { position: relative; height: clamp(80px, 11vw, 150px); }
 .linha-heroi { position: absolute; inset: 0; width: 100%; height: 100%;
@@ -236,7 +242,9 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
   animation: tl-desenhar 1100ms cubic-bezier(.3, .7, .2, 1) 150ms both; }
 .ponto-heroi { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
   background: var(--texto); animation: tl-ponto 260ms ease-out 1200ms both; }
-.heroi-texto > * { animation: tl-chegar 420ms cubic-bezier(.2, .7, .2, 1) both; }
+/* "backwards", não "both": com "both" o transform da chegada fica para sempre, cada filho vira um
+   contexto de empilhamento e as sugestões da busca ficam atrás do que vem depois */
+.heroi-texto > * { animation: tl-chegar 420ms cubic-bezier(.2, .7, .2, 1) backwards; }
 .heroi-texto > :nth-child(2) { animation-delay: 60ms; }
 .heroi-texto > :nth-child(3) { animation-delay: 120ms; }
 .heroi-texto > :nth-child(n+4) { animation-delay: 180ms; }

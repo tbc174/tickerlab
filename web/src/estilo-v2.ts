@@ -33,6 +33,9 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 /* hero: fundo marinho com grade fina e horizonte azul (Sora), linha de preço desenhada uma vez */
 .v2-heroi-fundo { position: relative; isolation: isolate; margin-top: -4.2rem; padding-top: 4.2rem;
   background: linear-gradient(180deg, #061430 0%, ${marca.marinho} 70%, ${marca.marinho} 100%); }
+/* as camadas do fundo ficam numa caixa só, cortada nela: o topo não precisa de overflow hidden
+   (que cortava a lista de sugestões da busca) */
+.v2-camadas { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .v2-grade { position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background-image: linear-gradient(rgba(232, 240, 255, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(232, 240, 255, .05) 1px, transparent 1px);
   background-size: 56px 56px;
@@ -90,7 +93,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5); backdrop-filter: blur(12px);
   animation: tl-chegar 600ms cubic-bezier(.2, .7, .2, 1) 1100ms both; }
 .v2-flutuante p { margin: .5rem 0 0; color: var(--texto); font-size: .88rem; line-height: 1.45; }
-.v2-nota { position: absolute; right: 0; bottom: -1.3rem; margin: 0; color: var(--sutil); font-size: .75rem; text-align: right; max-width: 22rem; }
+/* abaixo da pilha inteira, para não encostar na ficha "Foi sorte?" quando quebra em duas linhas */
+.v2-nota { position: absolute; right: 0; top: calc(100% + .3rem); margin: 0; color: var(--sutil); font-size: .75rem; text-align: right; max-width: 22rem; }
 
 /* faixa das fontes (o que aprendemos com o Fundamentei e o Fiscal.ai: mostrar de onde vem cada dado) */
 .v2-fontes { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 2rem; padding-block: 1.6rem; }
@@ -302,7 +306,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 /* topo das páginas: mesmo fundo do hero da inicial, mais baixo */
 .v2-heroi-pagina { overflow: hidden; }
 .v2-pagina-topo { position: relative; border-top: 0; padding-block: clamp(3.5rem, 9vw, 6.5rem) 1rem; }
-.v2-pagina-topo > * { animation: tl-chegar 520ms cubic-bezier(.2, .7, .2, 1) both; }
+.v2-pagina-topo > * { animation: tl-chegar 520ms cubic-bezier(.2, .7, .2, 1) backwards; }
 .v2-pagina-topo > :nth-child(2) { animation-delay: 70ms; }
 .v2-pagina-topo > :nth-child(3) { animation-delay: 140ms; }
 .v2-pagina-topo > :nth-child(n+4) { animation-delay: 210ms; }

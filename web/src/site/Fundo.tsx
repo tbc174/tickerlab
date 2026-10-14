@@ -38,13 +38,16 @@ export function BotaoDePausa({
 export function Fundo({ classe = "", children }: { classe?: string; children: ReactNode }) {
   return (
     <div className={["escura topo-da-pagina v2-heroi-fundo", classe].filter(Boolean).join(" ")}>
-      <div className="v2-aurora" aria-hidden="true">
-        <span />
-        <span />
+      {/* numa caixa só, cortada nela, para o topo não precisar de overflow hidden (ADR 0065) */}
+      <div className="v2-camadas" aria-hidden="true">
+        <div className="v2-aurora">
+          <span />
+          <span />
+        </div>
+        <canvas className="v2-mercado" data-fundo-mercado="" />
+        <div className="v2-grade" />
+        <div className="v2-horizonte" />
       </div>
-      <canvas className="v2-mercado" data-fundo-mercado="" aria-hidden="true" />
-      <div className="v2-grade" aria-hidden="true" />
-      <div className="v2-horizonte" aria-hidden="true" />
       {children}
       <BotaoDePausa />
       <LinhaDoHeroi />
