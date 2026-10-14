@@ -1,0 +1,81 @@
+/* O que só o app novo usa. Cores, fontes, botões e cartões vêm do CSS do site (estilo.css), que
+   sai de src/marca.py: o app e o site têm a mesma cara. */
+.marca .simbolo { display: inline-flex; }
+.marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
+.selo-novo { padding: .1rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 700;
+  color: var(--azul-texto); border: 1px solid var(--linha-forte); }
+.tema-escolha { display: inline-flex; gap: .15rem; margin-left: auto; padding: .15rem;
+  border: 1px solid var(--linha); border-radius: 10px; }
+.tema-escolha button { display: inline-flex; padding: .35rem; border: 0; border-radius: 8px;
+  background: transparent; color: var(--apagado); cursor: pointer; }
+.tema-escolha button[aria-checked="true"] { background: var(--superficie); color: var(--texto); }
+.tema-escolha svg { width: 18px; height: 18px; }
+.pular-leitura { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.app-corpo { display: grid; grid-template-columns: 13rem 1fr; gap: 2rem; padding-block: 2rem; }
+.app-menu { display: flex; flex-direction: column; gap: .2rem; position: sticky; top: 5rem; align-self: start; }
+.app-menu a { padding: .45rem .7rem; border-radius: 8px; color: var(--apagado); text-decoration: none; font-weight: 600; }
+.app-menu a:hover { color: var(--texto); }
+.app-menu a.active { background: var(--superficie); color: var(--texto); }
+.app-corpo main { min-width: 0; }
+.telas-do-app { list-style: none; padding: 0; display: grid; gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.telas-do-app a { font-weight: 700; }
+.aviso-do-app { max-width: 40rem; }
+.rodape-do-app { padding-block: 1.5rem 2.5rem; border-top: 1px solid var(--linha); font-size: .88rem; }
+@media (max-width: 760px) {
+  .app-corpo { grid-template-columns: 1fr; gap: 1rem; }
+  .app-menu { position: static; flex-direction: row; flex-wrap: wrap; }
+}
+.conta-no-topo { display: inline-flex; align-items: center; gap: .6rem; font-size: .92rem; color: var(--apagado); }
+.erro-do-app { padding: .7rem 1rem; border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
+.botao-do-google { margin-top: 1.25rem; min-height: 44px; }
+/* formulário de cada tela (campos do contrato) */
+.formulario-do-app { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.25rem 0 1.5rem; }
+.formulario-do-app label { display: flex; flex-direction: column; gap: .3rem; font-size: .88rem; color: var(--apagado); }
+.formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: .5rem .65rem; border-radius: 8px;
+  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit; }
+/* painel de números */
+.painel-de-numeros h3 { margin-top: 1.25rem; font-size: .95rem; color: var(--apagado); }
+.numeros { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.numero-do-painel { display: flex; flex-direction: column; gap: .35rem; padding: .9rem 1rem; border-radius: var(--raio);
+  background: var(--superficie); border: 1px solid var(--linha); }
+.numero-do-painel.principal { border-color: var(--linha-forte); }
+.numero-rotulo { display: flex; align-items: start; gap: .4rem; font-size: .86rem; color: var(--apagado); }
+.numero-valor { font: 700 1.45rem/1.15 "JetBrains Mono", ui-monospace, monospace; color: var(--texto); }
+.principal .numero-valor { font-size: 1.9rem; }
+.ajuda { position: relative; margin-left: auto; }
+.ajuda summary { list-style: none; cursor: pointer; width: 1.25rem; height: 1.25rem; border-radius: 999px;
+  display: grid; place-items: center; font-size: .75rem; font-weight: 700; border: 1px solid var(--linha-forte); }
+.ajuda summary::-webkit-details-marker { display: none; }
+.ajuda-texto { position: absolute; right: 0; z-index: 3; width: min(22rem, 80vw); padding: .75rem .9rem; margin-top: .35rem;
+  border-radius: 10px; background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
+.ajuda-texto p { margin: 0 0 .5rem; font-size: .86rem; }
+/* gráfico de linha (src/app/graficos) */
+.grafico { position: relative; margin: .75rem 0 1.5rem; }
+.grafico svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
+.grafico svg:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 4px; border-radius: 6px; }
+.grafico-grade line { stroke: var(--linha); stroke-width: 1; }
+.grafico-grade text, .grafico-eixo-x { fill: var(--apagado); font-size: 11px; font-variant-numeric: tabular-nums; }
+.grafico-referencia { stroke: var(--linha-forte); stroke-width: 1; stroke-dasharray: 4 4; }
+.grafico-linha { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-mira line { stroke: var(--apagado); stroke-width: 1; }
+.grafico-mira circle { stroke: var(--fundo); stroke-width: 2; }
+.grafico-dica { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; display: flex; flex-direction: column;
+  gap: .15rem; padding: .45rem .65rem; border-radius: 8px; font-size: .82rem; white-space: nowrap;
+  background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
+.grafico-dica i { display: inline-block; width: .6rem; height: .6rem; margin-right: .35rem; border-radius: 2px; }
+.grafico figcaption { font-size: .82rem; margin-top: .35rem; }
+.grafico-marco { fill: var(--azul); stroke: var(--fundo); stroke-width: 2; }
+.grafico-dica-marco { max-width: 22rem; white-space: normal; color: var(--apagado); }
+.grafico-legenda { display: flex; flex-wrap: wrap; gap: .4rem 1rem; list-style: none; padding: 0; margin: .5rem 0 0; font-size: .86rem; color: var(--texto); }
+.grafico-legenda i { display: inline-block; width: .8rem; height: .2rem; margin-right: .4rem; vertical-align: middle; border-radius: 2px; }
+.tabela-do-app { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .5rem 0 1rem; }
+.tabela-do-app caption { text-align: left; font-weight: 700; padding-bottom: .4rem; }
+.tabela-do-app th, .tabela-do-app td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--linha); }
+.tabela-do-app td.numero { font-variant-numeric: tabular-nums; }
+.legenda-do-numero { font-size: .78rem; color: var(--apagado); }
+.tabela-rolavel { overflow-x: auto; }
+.mapa-mensal td, .mapa-mensal th { white-space: nowrap; font-size: .84rem; padding: .4rem .5rem; }
+.campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; border: 0; padding: 0; margin: 0; }
+.campo-de-ativos legend { font-size: .88rem; color: var(--apagado); margin-bottom: .3rem; }
+.campo-de-ativos .marcar { flex-direction: row; align-items: center; gap: .35rem; color: var(--texto); }

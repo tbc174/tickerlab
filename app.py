@@ -9,8 +9,13 @@ from src import marca, tema_do_app
 from src.estilo import CSS_DO_APP
 from src.link import ler_parametros
 from src.logs import configurar_logs
-from src.paginas import GRUPOS, PAGINA_INICIAL, PAGINAS, paginas_do_grupo
-from src.planos import pode_usar
+from src.paginas import (
+    GRUPOS,
+    PAGINA_INICIAL,
+    PAGINAS,
+    motivo_da_pagina,
+    paginas_do_grupo,
+)
 from telas.analise import (
     pagina_comparar,
     pagina_correlacao,
@@ -43,6 +48,7 @@ from telas.momentum import pagina_momentum
 from telas.relatorios.pagina import pagina_relatorio
 from telas.research.acontecimentos import pagina_research
 from telas.research.alertas import pagina_alertas
+from telas.research.diario_de_teses import pagina_diario_de_teses
 from telas.research.donos import pagina_donos
 from telas.research.fundamentos import pagina_fundamentos
 from telas.research.juros_e_inflacao import pagina_juros_e_inflacao
@@ -51,6 +57,8 @@ from telas.research.minha_carteira import pagina_carteira_research
 from telas.research.newsletter import pagina_newsletter
 from telas.research.parametros import pagina_parametros
 from telas.research.por_dentro import pagina_por_dentro
+from telas.research.pulse import pagina_pulse
+from telas.research.relatorio_empresa import pagina_relatorio_empresa
 from telas.trade import pagina_trade
 
 configurar_logs()
@@ -152,7 +160,10 @@ FUNCOES_DAS_PAGINAS = {
     "relatorio": pagina_relatorio,
     "parametros": pagina_parametros,
     "research": pagina_research,
+    "pulse": pagina_pulse,
+    "diario_de_teses": pagina_diario_de_teses,
     "fundamentos": pagina_fundamentos,
+    "relatorio_empresa": pagina_relatorio_empresa,
     "carteira_b3": pagina_carteira_b3,
     "juros_e_inflacao": pagina_juros_e_inflacao,
     "linha_do_tempo": pagina_linha_do_tempo,
@@ -194,7 +205,7 @@ def montar_navegacao(e_admin=False):
         for p in paginas_do_grupo(grupo):
             if p.somente_admin and not e_admin:
                 continue
-            bloqueada = p.recurso is not None and not pode_usar(plano, p.recurso)
+            bloqueada = motivo_da_pagina(plano, p.chave) is not None
             e_a_inicial = p.chave == PAGINA_INICIAL
             pagina_do_menu = st.Page(
                 FUNCOES_DAS_PAGINAS[p.chave],

@@ -104,3 +104,90 @@ def test_qualidade_leva_os_mesmos_textos_do_app():
         {"titulo": r.titulo, "o_que_confere": r.o_que_confere}
         for r in q.REGRAS.values()
     ]
+
+
+def test_paginas_levam_o_contrato_para_a_tela_nova():
+    """O app em React monta as rotas e os campos a partir do contrato de cada página."""
+    from src.paginas import POR_CHAVE
+
+    paginas_em_json = json.loads(exp.em_json(exp.conteudo()["paginas"]))
+    exportadas = {p["chave"]: p for p in paginas_em_json}
+    visao = exportadas["visao_geral"]["contrato"]
+    original = POR_CHAVE["visao_geral"].contrato
+    assert original is not None
+    assert visao["rota"] == original.rota and visao["metodo"] == original.metodo
+    assert visao["resposta"] == original.resposta
+    assert [e["nome"] for e in visao["entradas"]] == [e.nome for e in original.entradas]
+    assert visao["entradas"][1]["opcoes"] == list(original.entradas[1].opcoes)
+    assert exportadas["inicio"]["contrato"] is None
+
+
+def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
+    """A visão geral em React: os itens do painel, na ordem da tela, e o "?" de cada um em partes."""
+    from src import analises
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert [i["campo"] for i in app["painel"]["itens"]] == [
+        i.campo for i in analises.ITENS_DO_PAINEL
+    ]
+    ajuda = app["glossario"]["Drawdown"]
+    assert ajuda[0]["rotulo"] == "O que é"
+    assert ajuda[0]["texto"].startswith("a queda desde o ponto mais alto")
+    assert "drawdown máximo" in ajuda[0]["texto"]  # *itálico* sem os asteriscos
+    textos = json.dumps(app["glossario"], ensure_ascii=False)
+    assert "*" not in textos
+    assert {i.termo for i in analises.ITENS_DO_PAINEL} <= set(app["glossario"])
+
+
+def test_app_leva_risco_retorno_mensal_e_comparacao():
+    from src import analises, comparacao
+    from src import indicadores as ind
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert app["retorno_mensal"]["meses"] == list(ind.NOMES_DOS_MESES)
+    assert app["retorno_mensal"]["legenda"] == analises.LEGENDA_DO_MAPA_MENSAL
+    atalhos = {a["nome"]: a["ticker"] for a in app["comparacao"]["atalhos"]}
+    assert atalhos == comparacao.ATALHOS
+    assert app["comparacao"]["max_ativos"] == comparacao.MAX_ATIVOS
+    assert {"Volatilidade móvel", "Sazonalidade", "Base 100"} <= set(app["glossario"])
+
+
+def test_app_leva_as_estrategias_e_os_formatos_das_metricas():
+    from src import formatos
+    from src.estrategias import ESTRATEGIAS
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    estrategias = app["backtest"]["estrategias"]
+    assert [e["nome"] for e in estrategias] == list(ESTRATEGIAS)
+    medias = next(e for e in estrategias if e["nome"] == "Cruzamento de médias")
+    curta = medias["parametros"][0]
+    assert (curta["nome"], curta["padrao"], curta["minimo"], curta["maximo"]) == (
+        "curta",
+        20,
+        5,
+        100,
+    )
+    por_formato = app["backtest"]["metricas_por_formato"]
+    assert set(por_formato["inteiro"]) == formatos.METRICAS_INTEIRAS
+
+
+def test_formatacao_leva_os_casos_do_python():
+    from src import formatos
+
+    assert exp.conteudo()["formatacao"] == formatos.casos_de_formatacao()
+
+
+def test_app_leva_os_textos_de_juros_e_da_linha_do_tempo():
+    from src import juros_e_inflacao as ji
+    from src import linha_do_tempo as ldt
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert app["juros"]["termos"] == ji.TERMO_DO_GLOSSARIO
+    assert app["juros"]["nota_do_focus"] == ji.NOTA_DO_FOCUS
+    assert set(ji.TERMO_DO_GLOSSARIO.values()) | {"Boletim Focus"} <= set(
+        app["glossario"]
+    )
+    assert app["linha_do_tempo"]["relevancias"] == [
+        {"nome": n, "valor": v} for n, v in ldt.RELEVANCIAS.items()
+    ]
+    assert app["linha_do_tempo"]["padrao"] == ldt.MATERIALIDADE_PADRAO

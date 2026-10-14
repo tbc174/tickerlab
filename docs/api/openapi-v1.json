@@ -44,6 +44,17 @@
       "AtivoV1": {
         "description": "O ativo e o período analisados, de onde vieram os preços e a taxa livre de risco usada.",
         "properties": {
+          "aviso_da_origem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Da Origem"
+          },
           "fim": {
             "format": "date",
             "title": "Fim",
@@ -82,7 +93,8 @@
           "fim",
           "origem",
           "taxa_livre_de_risco",
-          "taxa_do_cdi"
+          "taxa_do_cdi",
+          "aviso_da_origem"
         ],
         "title": "AtivoV1",
         "type": "object"
@@ -191,6 +203,17 @@
       "ComparacaoV1": {
         "description": "Ativos nos dias em que todos têm preço; curvas e tabela vêm `null` se o período for curto.",
         "properties": {
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          },
           "curvas": {
             "anyOf": [
               {
@@ -213,6 +236,17 @@
             "title": "Dias Em Comum",
             "type": "integer"
           },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
           "tabela": {
             "anyOf": [
               {
@@ -232,9 +266,32 @@
           "dias_em_comum",
           "dias_descartados",
           "curvas",
-          "tabela"
+          "tabela",
+          "nota",
+          "aviso"
         ],
         "title": "ComparacaoV1",
+        "type": "object"
+      },
+      "ConfiguracaoV1": {
+        "description": "O que a tela nova precisa antes do login (sem segredo: o client ID vai no endereço do Google).",
+        "properties": {
+          "google_client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Google Client Id"
+          }
+        },
+        "required": [
+          "google_client_id"
+        ],
+        "title": "ConfiguracaoV1",
         "type": "object"
       },
       "CurvaV1": {
@@ -305,6 +362,42 @@
         "title": "EuV1",
         "type": "object"
       },
+      "ExpectativaV1": {
+        "properties": {
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          },
+          "indicador": {
+            "title": "Indicador",
+            "type": "string"
+          },
+          "mediana": {
+            "title": "Mediana",
+            "type": "number"
+          },
+          "pesquisa": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pesquisa"
+          }
+        },
+        "required": [
+          "indicador",
+          "ano",
+          "mediana",
+          "pesquisa"
+        ],
+        "title": "ExpectativaV1",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -316,6 +409,53 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JurosEInflacaoV1": {
+        "description": "O painel de juros e inflação como era conhecido em `dia` (fonte: Banco Central).",
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "expectativas": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectativaV1"
+            },
+            "title": "Expectativas",
+            "type": "array"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoMensalV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "numeros": {
+            "items": {
+              "$ref": "#/components/schemas/NumeroDeJurosV1"
+            },
+            "title": "Numeros",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dia",
+          "numeros",
+          "expectativas",
+          "historico",
+          "avisos"
+        ],
+        "title": "JurosEInflacaoV1",
         "type": "object"
       },
       "LimitesV1": {
@@ -441,6 +581,133 @@
         "title": "LinhaDaComparacaoV1",
         "type": "object"
       },
+      "LinhaDoTempoDoAtivoV1": {
+        "properties": {
+          "ativo": {
+            "$ref": "#/components/schemas/AtivoV1"
+          },
+          "linha_do_tempo": {
+            "$ref": "#/components/schemas/LinhaDoTempoV1"
+          }
+        },
+        "required": [
+          "ativo",
+          "linha_do_tempo"
+        ],
+        "title": "LinhaDoTempoDoAtivoV1",
+        "type": "object"
+      },
+      "LinhaDoTempoV1": {
+        "description": "A curva do ativo em base 100 e os acontecimentos do período, com os textos da tela.",
+        "properties": {
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "curva": {
+            "$ref": "#/components/schemas/CurvaV1"
+          },
+          "fora_do_grafico": {
+            "title": "Fora Do Grafico",
+            "type": "integer"
+          },
+          "marcos": {
+            "items": {
+              "$ref": "#/components/schemas/MarcoV1"
+            },
+            "title": "Marcos",
+            "type": "array"
+          },
+          "sem_acontecimentos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sem Acontecimentos"
+          },
+          "texto_fora_do_grafico": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Fora Do Grafico"
+          }
+        },
+        "required": [
+          "curva",
+          "marcos",
+          "fora_do_grafico",
+          "aviso",
+          "sem_acontecimentos",
+          "texto_fora_do_grafico"
+        ],
+        "title": "LinhaDoTempoV1",
+        "type": "object"
+      },
+      "MarcoV1": {
+        "description": "Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica.",
+        "properties": {
+          "assunto": {
+            "title": "Assunto",
+            "type": "string"
+          },
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "descricao": {
+            "title": "Descricao",
+            "type": "string"
+          },
+          "dia_no_grafico": {
+            "format": "date",
+            "title": "Dia No Grafico",
+            "type": "string"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "materialidade": {
+            "title": "Materialidade",
+            "type": "integer"
+          },
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "tema": {
+            "title": "Tema",
+            "type": "string"
+          },
+          "valor_no_grafico": {
+            "title": "Valor No Grafico",
+            "type": "number"
+          }
+        },
+        "required": [
+          "data",
+          "dia_no_grafico",
+          "valor_no_grafico",
+          "rotulo",
+          "tema",
+          "materialidade",
+          "assunto",
+          "descricao",
+          "link"
+        ],
+        "title": "MarcoV1",
+        "type": "object"
+      },
       "MesV1": {
         "properties": {
           "mes": {
@@ -464,6 +731,83 @@
           "retorno"
         ],
         "title": "MesV1",
+        "type": "object"
+      },
+      "NumeroDeJurosV1": {
+        "description": "Um número do painel (em %, como o Banco Central publica), com a data e a fonte.",
+        "properties": {
+          "divulgado_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Divulgado Em"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "legenda": {
+            "title": "Legenda",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "referencia": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referencia"
+          },
+          "referencia_mensal": {
+            "title": "Referencia Mensal",
+            "type": "boolean"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "nome",
+          "valor",
+          "texto",
+          "unidade",
+          "referencia",
+          "referencia_mensal",
+          "divulgado_em",
+          "fonte",
+          "legenda"
+        ],
+        "title": "NumeroDeJurosV1",
         "type": "object"
       },
       "PainelDeNumerosV1": {
@@ -740,6 +1084,44 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontoMensalV1": {
+        "properties": {
+          "ipca_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ipca 12 Meses"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "selic_meta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selic Meta"
+          }
+        },
+        "required": [
+          "mes",
+          "selic_meta",
+          "ipca_12_meses"
+        ],
+        "title": "PontoMensalV1",
+        "type": "object"
+      },
       "RetornoMensalDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -758,6 +1140,20 @@
       },
       "RetornoMensalV1": {
         "properties": {
+          "media_por_mes": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Media Por Mes",
+            "type": "array"
+          },
           "melhor": {
             "$ref": "#/components/schemas/MesV1"
           },
@@ -795,7 +1191,8 @@
           "tabela",
           "melhor",
           "pior",
-          "meses_de_alta"
+          "meses_de_alta",
+          "media_por_mes"
         ],
         "title": "RetornoMensalV1",
         "type": "object"
@@ -819,8 +1216,23 @@
       "RiscoV1": {
         "description": "A queda desde o topo dia a dia (frações, nunca positivas), a pior queda e a volatilidade móvel.",
         "properties": {
+          "aviso_da_janela": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Da Janela"
+          },
           "drawdown": {
             "$ref": "#/components/schemas/CurvaV1"
+          },
+          "frase_da_pior_queda": {
+            "title": "Frase Da Pior Queda",
+            "type": "string"
           },
           "janela": {
             "title": "Janela",
@@ -837,7 +1249,9 @@
           "drawdown",
           "pior_queda",
           "janela",
-          "volatilidade_movel"
+          "volatilidade_movel",
+          "frase_da_pior_queda",
+          "aviso_da_janela"
         ],
         "title": "RiscoV1",
         "type": "object"
@@ -887,13 +1301,29 @@
           "ativo": {
             "$ref": "#/components/schemas/AtivoV1"
           },
+          "curva": {
+            "$ref": "#/components/schemas/CurvaV1"
+          },
+          "motivo_sem_anualizar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Anualizar"
+          },
           "painel": {
             "$ref": "#/components/schemas/PainelDeNumerosV1"
           }
         },
         "required": [
           "ativo",
-          "painel"
+          "painel",
+          "curva",
+          "motivo_sem_anualizar"
         ],
         "title": "VisaoGeralV1",
         "type": "object"
@@ -1068,6 +1498,25 @@
         "summary": "Comparacao"
       }
     },
+    "/v1/configuracao": {
+      "get": {
+        "description": "Pública (sem token), mas só com a API ligada, como as outras.",
+        "operationId": "configuracao_v1_configuracao_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfiguracaoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Configuracao"
+      }
+    },
     "/v1/eu": {
       "get": {
         "operationId": "eu_v1_eu_get",
@@ -1112,6 +1561,139 @@
           }
         },
         "summary": "Eu"
+      }
+    },
+    "/v1/juros-e-inflacao": {
+      "get": {
+        "description": "Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas.",
+        "operationId": "juros_e_inflacao_v1_juros_e_inflacao_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JurosEInflacaoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Juros E Inflacao"
+      }
+    },
+    "/v1/linha-do-tempo": {
+      "get": {
+        "description": "A curva em base 100 (nunca o preço bruto) e os documentos da CVM ou da SEC do período.",
+        "operationId": "linha_do_tempo_v1_linha_do_tempo_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "periodo",
+            "required": false,
+            "schema": {
+              "default": "2y",
+              "enum": [
+                "6mo",
+                "1y",
+                "2y",
+                "5y"
+              ],
+              "title": "Periodo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "materialidade_minima",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Materialidade Minima",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinhaDoTempoDoAtivoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Linha Do Tempo"
       }
     },
     "/v1/retorno-mensal": {

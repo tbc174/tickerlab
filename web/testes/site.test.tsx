@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Modulo } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
+import { dataPorExtenso } from "../src/paginas/Novidades";
 import { ROTAS } from "../src/rotas";
 import { contagem } from "../src/site/comum";
 
@@ -53,6 +54,7 @@ describe("HTML pronto", () => {
     const mapa = arquivosFixos()["sitemap.xml"];
     expect(mapa).toContain("<loc>https://tickerlab.com.br/</loc>");
     expect(mapa).toContain("<loc>https://tickerlab.com.br/sobre.html</loc>");
+    expect(mapa).toContain("<loc>https://tickerlab.com.br/novidades.html</loc>");
     expect(mapa).not.toContain("404");
   });
 });
@@ -84,3 +86,18 @@ describe("contagem do módulo", () => {
     expect(contagem(moduloDeTeste(0, 3))).toBe("3 em breve");
   });
 });
+
+describe("Novidades", () => {
+  it("mostra a atualização mais nova com a data por extenso e as correções", () => {
+    const html = renderizar("novidades.html");
+    expect(html).toContain("13 de outubro de 2026");
+    expect(html).toContain("Relatório da empresa");
+    expect(html).toContain("<h3>Correções</h3>");
+    expect(html).toContain("Nada aqui é recomendação");
+  });
+
+  it("escreve a data sem fuso (o dia 1º não vira o último dia do mês anterior)", () => {
+    expect(dataPorExtenso("2026-11-01")).toBe("1 de novembro de 2026");
+  });
+});
+

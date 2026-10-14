@@ -1,0 +1,382 @@
+[
+  {
+    "formato": "pct",
+    "texto": "12,34%",
+    "valor": 0.1234
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+12,34%",
+    "valor": 0.1234
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,12",
+    "valor": 0.1234
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.1234
+  },
+  {
+    "formato": "pct",
+    "texto": "-5,67%",
+    "valor": -0.0567
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "-5,67%",
+    "valor": -0.0567
+  },
+  {
+    "formato": "decimal",
+    "texto": "-0,06",
+    "valor": -0.0567
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -0.0567
+  },
+  {
+    "formato": "pct",
+    "texto": "0,00%",
+    "valor": 0.0
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+0,00%",
+    "valor": 0.0
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,00",
+    "valor": 0.0
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.0
+  },
+  {
+    "formato": "pct",
+    "texto": "-0,00%",
+    "valor": -0.0
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "-0,00%",
+    "valor": -0.0
+  },
+  {
+    "formato": "decimal",
+    "texto": "-0,00",
+    "valor": -0.0
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -0.0
+  },
+  {
+    "formato": "pct",
+    "texto": "12,12%",
+    "valor": 0.12125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+12,12%",
+    "valor": 0.12125
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,12",
+    "valor": 0.12125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.12125
+  },
+  {
+    "formato": "pct",
+    "texto": "12,38%",
+    "valor": 0.12375
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+12,38%",
+    "valor": 0.12375
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,12",
+    "valor": 0.12375
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.12375
+  },
+  {
+    "formato": "pct",
+    "texto": "-12,12%",
+    "valor": -0.12125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "-12,12%",
+    "valor": -0.12125
+  },
+  {
+    "formato": "decimal",
+    "texto": "-0,12",
+    "valor": -0.12125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -0.12125
+  },
+  {
+    "formato": "pct",
+    "texto": "0,12%",
+    "valor": 0.00125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+0,12%",
+    "valor": 0.00125
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,00",
+    "valor": 0.00125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.00125
+  },
+  {
+    "formato": "pct",
+    "texto": "10,62%",
+    "valor": 0.10625
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+10,62%",
+    "valor": 0.10625
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,11",
+    "valor": 0.10625
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.10625
+  },
+  {
+    "formato": "pct",
+    "texto": "2,38%",
+    "valor": 0.02375
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+2,38%",
+    "valor": 0.02375
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,02",
+    "valor": 0.02375
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.02375
+  },
+  {
+    "formato": "pct",
+    "texto": "1250,00%",
+    "valor": 12.5
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+1250,00%",
+    "valor": 12.5
+  },
+  {
+    "formato": "decimal",
+    "texto": "12,50",
+    "valor": 12.5
+  },
+  {
+    "formato": "inteiro",
+    "texto": "12",
+    "valor": 12.5
+  },
+  {
+    "formato": "pct",
+    "texto": "112,50%",
+    "valor": 1.125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+112,50%",
+    "valor": 1.125
+  },
+  {
+    "formato": "decimal",
+    "texto": "1,12",
+    "valor": 1.125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "1",
+    "valor": 1.125
+  },
+  {
+    "formato": "pct",
+    "texto": "267,50%",
+    "valor": 2.675
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+267,50%",
+    "valor": 2.675
+  },
+  {
+    "formato": "decimal",
+    "texto": "2,67",
+    "valor": 2.675
+  },
+  {
+    "formato": "inteiro",
+    "texto": "2",
+    "valor": 2.675
+  },
+  {
+    "formato": "pct",
+    "texto": "-112,50%",
+    "valor": -1.125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "-112,50%",
+    "valor": -1.125
+  },
+  {
+    "formato": "decimal",
+    "texto": "-1,12",
+    "valor": -1.125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "-1",
+    "valor": -1.125
+  },
+  {
+    "formato": "pct",
+    "texto": "12,50%",
+    "valor": 0.125
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+12,50%",
+    "valor": 0.125
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,12",
+    "valor": 0.125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.125
+  },
+  {
+    "formato": "pct",
+    "texto": "0,00%",
+    "valor": 1e-09
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+0,00%",
+    "valor": 1e-09
+  },
+  {
+    "formato": "decimal",
+    "texto": "0,00",
+    "valor": 1e-09
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 1e-09
+  },
+  {
+    "formato": "pct",
+    "texto": "-0,00%",
+    "valor": -1e-09
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "-0,00%",
+    "valor": -1e-09
+  },
+  {
+    "formato": "decimal",
+    "texto": "-0,00",
+    "valor": -1e-09
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -1e-09
+  },
+  {
+    "formato": "pct",
+    "texto": "12345,68%",
+    "valor": 123.456789
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "+12345,68%",
+    "valor": 123.456789
+  },
+  {
+    "formato": "decimal",
+    "texto": "123,46",
+    "valor": 123.456789
+  },
+  {
+    "formato": "inteiro",
+    "texto": "123",
+    "valor": 123.456789
+  },
+  {
+    "formato": "pct",
+    "texto": "—",
+    "valor": null
+  },
+  {
+    "formato": "pct_com_sinal",
+    "texto": "—",
+    "valor": null
+  },
+  {
+    "formato": "decimal",
+    "texto": "—",
+    "valor": null
+  },
+  {
+    "formato": "inteiro",
+    "texto": "—",
+    "valor": null
+  }
+]

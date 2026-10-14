@@ -13,11 +13,11 @@ from urllib.parse import urlencode
 import pandas as pd
 import streamlit as st
 
-from src import catalogo, graficos, marca
+from src import catalogo, formatos, graficos, marca
 from src import indicadores as ind
 from src import parametros as research_parametros
 from src import presets as research_presets
-from src.analises import MIN_DIAS_PARA_ANALISE
+from src.analises import MIN_DIAS_PARA_ANALISE, aviso_da_origem
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import (
     carregar_preferencias,
@@ -28,6 +28,7 @@ from src.banco.dados_do_usuario import (
 from src.cdi import CDIIndisponivelError, baixar_cdi, calcular_taxa_anual_do_cdi
 from src.conteudo import carregar_glossario, proteger_cifrao
 from src.dados import DadosIndisponiveisError, baixar_dados, normalizar_ticker
+from src.formatos import formatar_pct
 from src.link import alternar_favorito, montar_parametros
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.paginas import GRUPO_MAIS, GRUPO_TOPO, pagina
@@ -40,6 +41,12 @@ def _carregar_dados_em_cache(ticker, periodo, forcar_exemplo):
     return baixar_dados(ticker, periodo, forcar_exemplo)
 
 
+def carregar_dados_na_moeda(ticker, periodo):
+    """Dados do ticker na moeda dele, sem "Converter para reais" (variação sem o câmbio)."""
+    exemplo = bool(st.session_state.get("usar_exemplo", False))
+    return _carregar_dados_em_cache(normalizar_ticker(ticker), periodo, exemplo)
+
+
 def carregar_dados(ticker, periodo):
     """Dados do ticker; com a opção do topo marcada, usa os dados de exemplo guardados.
 
@@ -47,10 +54,15 @@ def carregar_dados(ticker, periodo):
     multiplicados pelo câmbio do dia. Se o câmbio falhar, o ativo segue em dólar e a marca
     `attrs["cambio_falhou"]` avisa a tela.
     """
+    return carregar_dados_de(ticker, periodo, bool(st.session_state.get("em_reais")))
+
+
+def carregar_dados_de(ticker, periodo, em_reais):
+    """Como `carregar_dados`, com o "Converter para reais" dado (o de uma simulação salva)."""
     ticker = normalizar_ticker(ticker)
     exemplo = bool(st.session_state.get("usar_exemplo", False))
     dados = _carregar_dados_em_cache(ticker, periodo, exemplo)
-    if st.session_state.get("em_reais") and moeda_do_ticker(ticker) == "USD":
+    if em_reais and moeda_do_ticker(ticker) == "USD":
         try:
             cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)[
                 "Close"
@@ -69,14 +81,6 @@ def carregar_dados(ticker, periodo):
 def obter_glossario():
     """Lê o glossário uma vez só; o arquivo não muda enquanto o app roda."""
     return carregar_glossario()
-
-
-def formatar_pct(valor, com_sinal=False):
-    """Porcentagem no estilo brasileiro (vírgula); vazio vira um traço."""
-    if pd.isna(valor):
-        return "—"
-    texto = f"{valor:+.2%}" if com_sinal else f"{valor:.2%}"
-    return texto.replace(".", ",")
 
 
 def ajuda_do(termo):
@@ -446,16 +450,11 @@ def carregar_contexto():
             "Não consegui o câmbio para converter este ativo: os preços seguem em dólar. "
             "Tente de novo mais tarde."
         )
-    if dados.attrs.get("origem") == "cache_antigo":
-        st.warning(
-            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
-            f"tinha guardado, até {dados.attrs['ate']}."
-        )
-    if dados.attrs.get("origem") == "exemplo":
-        st.warning(
-            f"Estes são dados de exemplo guardados no projeto, até {dados.attrs['ate']}, "
-            "e não os mais recentes do Yahoo Finance."
-        )
+    aviso = aviso_da_origem(
+        dados.attrs.get("origem") or "atual", dados.attrs.get("ate")
+    )
+    if aviso:
+        st.warning(aviso)
     fechamento = dados["Close"]
     retorno = ind.calcular_retorno_diario(fechamento)
     taxa_livre_de_risco, cdi_diario = resolver_taxa_livre_de_risco(
@@ -545,33 +544,6 @@ def _formatar_parametro(chave, valor):
     return ROTULOS_DAS_OPCOES.get(valor, str(valor))
 
 
-METRICAS_EM_PORCENTAGEM_COM_SINAL = {
-    "Retorno total",
-    "Retorno anualizado",
-    "Expectativa por operação",
-}
-
-
-METRICAS_EM_PORCENTAGEM = {
-    "Chance de não ser sorte",
-    "Volatilidade anual",
-    "Maior queda",
-    "Exposição média",
-    "Taxa de acerto",
-}
-
-
-METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
-
-
 def formatar_metrica(nome, valor):
     """Escolhe o formato de cada métrica do backtest (porcentagem, razão ou contagem)."""
-    if pd.isna(valor):
-        return "—"
-    if nome in METRICAS_EM_PORCENTAGEM_COM_SINAL:
-        return formatar_pct(valor, com_sinal=True)
-    if nome in METRICAS_EM_PORCENTAGEM:
-        return formatar_pct(valor)
-    if nome in METRICAS_INTEIRAS:
-        return f"{int(valor)}"
-    return f"{valor:.2f}".replace(".", ",")
+    return formatos.formatar(valor, formatos.formato_da_metrica(nome))

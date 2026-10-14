@@ -158,3 +158,88 @@ def test_historico_de_10_anos_com_falta_vertical_horizontal_e_consistencia():
 def test_historico_fica_nos_ultimos_10_anos():
     historico = fa.calcular(_empresa(anos=tuple(range(2010, 2026)))).historico
     assert list(historico.contas.index) == list(range(2016, 2026))
+
+
+# --- dividendos e diluição (série 2, PR 6) -----------------------------------------------------------
+def _com_acoes(
+    acoes_por_ano: dict[int, float], dividendos: float = -50.0
+) -> DadosDaEmpresa:
+    linhas = []
+    for ano, acoes in acoes_por_ano.items():
+        fluxos = {**FLUXOS, "lucro_liquido": 100.0, "dividendos_pagos": dividendos}
+        linhas += _linhas(ano, fluxos, {**SALDOS, "acoes_total": acoes})
+    return DadosDaEmpresa(
+        contas=pd.DataFrame(linhas), documentos=pd.DataFrame(), setor="Máquinas"
+    )
+
+
+def test_payout_pelo_caixa_e_proventos_do_fre_lado_a_lado():
+    proventos = pd.DataFrame(
+        {
+            "exercicio": [pd.Timestamp("2021-12-31")],
+            "dividendo_total": [40.0],
+            "payout": [0.4],
+        }
+    )
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2021: 100.0, 2022: 100.0}), proventos
+    )
+    tabela = resultado.historico
+    assert tabela.loc[2022, "payout_caixa"] == pytest.approx(
+        0.5
+    )  # 50 pagos sobre 100 de lucro
+    assert tabela.loc[2021, "payout_fre"] == pytest.approx(0.4)
+    assert resultado.anos_pagando == 2
+
+
+def test_desdobramento_do_fre_nao_conta_como_diluicao():
+    eventos = pd.DataFrame(
+        {
+            "tipo": ["desdobramento"],
+            "data": [pd.Timestamp("2020-08-03")],
+            "fator": [10.0],
+        }
+    )
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2019: 100.0, 2020: 1000.0, 2021: 1000.0}), eventos=eventos
+    )
+    assert resultado.historico.loc[2019, "acoes_ajustadas"] == pytest.approx(1000.0)
+    assert resultado.diluicao_anual == pytest.approx(0.0)
+
+
+def test_salto_exato_sem_evento_vira_provavel_desdobramento_e_avisa():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 300.0}))
+    assert resultado.diluicao_anual == pytest.approx(0.0)
+    assert any("provável desdobramento" in aviso for aviso in resultado.avisos)
+
+
+def test_aviso_do_salto_escreve_o_numero_em_portugues():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 301.0}))
+    assert resultado.avisos == [
+        (
+            "Entre 2023 e 2024 as ações mudaram 3,01 vezes sem evento no FRE: tratado como "
+            "provável desdobramento, não como diluição."
+        )
+    ]
+
+
+def test_salto_de_mil_vezes_e_troca_de_unidade_na_cvm():
+    """Regressão (fim da série 2): a Petrobras passou de 13.044.201 (milhares) a 13.044.201.261
+    ações entre 2020 e 2021, e o aviso dizia "1000.00 vezes ... provável desdobramento"."""
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2020: 13_044_201.0, 2021: 13_044_201_261.0})
+    )
+    assert resultado.diluicao_anual == pytest.approx(0.0, abs=1e-4)
+    assert resultado.avisos == [
+        (
+            "Entre 2020 e 2021 a quantidade de ações passou de milhares para unidades na CVM "
+            "(mil vezes maior, sem evento no FRE): tratado como troca de unidade, não como "
+            "diluição."
+        )
+    ]
+
+
+def test_emissao_de_acoes_conta_como_diluicao():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 110.0}))
+    assert resultado.diluicao_anual == pytest.approx(0.10)
+    assert resultado.avisos == []

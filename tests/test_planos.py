@@ -10,12 +10,16 @@ from src.banco.modelo import PLANOS
 from src.banco.usuarios import buscar_por_email, entrar
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
+    CARTEIRA_NO_RESEARCH,
     LIMITES_DOS_PLANOS,
     PARES,
     LimiteDoPlanoError,
     conferir_favoritos,
+    conferir_links,
     conferir_simulacoes,
     limites_do,
+    motivo_sem_acesso,
+    plano_que_libera,
     pode_usar,
     tabela_de_planos,
 )
@@ -44,11 +48,53 @@ def test_recursos_do_pro():
     assert not pode_usar("gratuito", PARES)
 
 
+@pytest.mark.parametrize(
+    "recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH]
+)
+def test_plano_que_libera_e_o_primeiro_que_tem_o_recurso(recurso):
+    assert plano_que_libera(recurso) == "pro"
+
+
+def test_plano_que_libera_recusa_recurso_inexistente():
+    with pytest.raises(ValueError):
+        plano_que_libera("voar")
+
+
+def test_motivo_sem_acesso_explica_o_plano_que_libera():
+    assert motivo_sem_acesso("gratuito", PARES) == (
+        "Pairs trading faz parte do plano Pro. Você está no plano Gratuito."
+    )
+    assert motivo_sem_acesso("plus", APRENDIZADO_DE_MAQUINA) == (
+        "Aprendizado de máquina faz parte do plano Pro. Você está no plano Plus."
+    )
+
+
+@pytest.mark.parametrize("plano", [None, "", "PRO", "empresa"])
+def test_motivo_sem_acesso_trata_plano_estranho_como_gratuito(plano):
+    assert motivo_sem_acesso(plano, PARES) == motivo_sem_acesso("gratuito", PARES)
+
+
+def test_motivo_sem_acesso_e_vazio_quando_o_plano_tem_o_recurso():
+    assert motivo_sem_acesso("pro", PARES) is None
+
+
 def test_limite_de_simulacoes():
     conferir_simulacoes("gratuito", 4)
     with pytest.raises(LimiteDoPlanoError, match="até 5"):
         conferir_simulacoes("gratuito", 5)
     conferir_simulacoes("pro", 10_000)
+
+
+def test_limite_de_links_compartilhados():
+    assert [limites_do(p).links_ativos for p in ("gratuito", "plus", "pro")] == [
+        3,
+        20,
+        100,
+    ]
+    conferir_links("gratuito", 2)
+    with pytest.raises(LimiteDoPlanoError, match="até 3 links ativos"):
+        conferir_links("gratuito", 3)
+    conferir_links("pro", 99)
 
 
 def test_favoritos_so_barram_o_que_cresce_alem_do_limite():

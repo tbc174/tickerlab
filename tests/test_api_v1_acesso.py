@@ -6,13 +6,15 @@ Os tokens são assinados aqui com chaves geradas no teste, no formato do Google:
 import time
 
 import pytest
+from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from joserfc.jwk import RSAKey
 
-from src import api
-from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, api_v1_ligada
-from src.banco.usuarios import entrar
+from src import api, paginas
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, api_v1_ligada, rotas
+from src.banco.usuarios import entrar, mudar_plano
 from src.conformidade import registrar_aceite
+from src.planos import PARES
 from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
@@ -195,3 +197,136 @@ def test_desligada_a_api_nem_monta_a_v1_e_fica_leve():
     cliente = TestClient(api.criar_app({}))
     assert cliente.get("/api/v1/eu").status_code == 404
     assert cliente.get("/v1/eu").status_code == 404
+
+
+# --- /api/v1/configuracao: o que a tela nova precisa antes do login (série 3) ---
+
+
+def test_configuracao_responde_sem_login_e_so_com_o_client_id(cliente):
+    """O client ID do Google não é segredo (vai no endereço do login): a tela precisa dele antes."""
+    resposta = cliente.get("/api/v1/configuracao")
+    assert resposta.status_code == 200
+    assert resposta.json() == {"google_client_id": CLIENT_ID}
+
+
+def test_configuracao_sem_client_id_devolve_null(cliente, monkeypatch):
+    monkeypatch.delenv(acesso.VARIAVEL_DO_CLIENT_ID)
+    assert cliente.get("/api/v1/configuracao").json() == {"google_client_id": None}
+
+
+def test_configuracao_com_a_api_desligada_404(cliente, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "0")
+    assert cliente.get("/api/v1/configuracao").status_code == 404
+
+
+# --- o motivo do 401/403 num cabeçalho: a tela nova mostra o caminho certo para cada um ---
+
+
+@pytest.mark.parametrize(
+    ("cabecalho", "motivo"),
+    [({}, "sem-token"), ({"Authorization": "Bearer lixo"}, "token-invalido")],
+)
+def test_401_diz_o_motivo(cliente, ana, cabecalho, motivo):
+    resposta = cliente.get("/api/v1/eu", headers=cabecalho)
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == motivo
+
+
+def test_conta_nova_e_termos_dizem_o_motivo(cliente, banco, chave):
+    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave, sub="bia")))
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "conta-nova"
+    with banco.begin() as conexao:
+        entrar(conexao, "ana", "ana@exemplo.com")
+    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+    assert resposta.status_code == 403
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "termos"
+
+
+# --- O plano da conta abre a página da rota? (ADR 0062) -------------------------------------
+# Nenhuma página com contrato é paga hoje: uma página paga de mentira, com rota só no teste.
+
+ROTA_PAGA = "/v1/pago-de-teste"
+PAGINA_PAGA = paginas.Pagina(
+    "pago_de_teste",
+    "Pago de teste",
+    paginas.GRUPO_AVANCADO,
+    ":material/lock:",
+    "Só existe no teste.",
+    recurso=PARES,
+    contrato=paginas.Contrato("GET", ROTA_PAGA, (), "PagoDeTesteV1"),
+)
+
+
+@pytest.fixture
+def chamadas(cliente, monkeypatch):
+    """Monta a rota paga e uma rota sem contrato; a lista guarda cada vez que uma delas calculou."""
+    feitas = []
+    teste = APIRouter(prefix="/v1")
+
+    @teste.get("/pago-de-teste")
+    def pago(_conta: rotas.Conta) -> dict:
+        feitas.append("pago")
+        return {"ok": True}
+
+    @teste.get("/sem-contrato")
+    def sem_contrato(_conta: rotas.Conta) -> dict:
+        feitas.append("sem-contrato")
+        return {"ok": True}
+
+    cliente.app.include_router(teste)
+    cliente.app.include_router(teste, prefix="/api")
+    monkeypatch.setitem(paginas.POR_ROTA, ROTA_PAGA, PAGINA_PAGA)
+    monkeypatch.setitem(paginas.POR_CHAVE, PAGINA_PAGA.chave, PAGINA_PAGA)
+    return feitas
+
+
+def _virar(banco, usuario, plano):
+    with banco.begin() as conexao:
+        mudar_plano(conexao, usuario.id, plano)
+
+
+@pytest.mark.parametrize("caminho", ["/api/v1/pago-de-teste", "/v1/pago-de-teste"])
+def test_rota_paga_recusa_quem_nao_tem_o_plano_com_o_motivo(
+    cliente, ana, chave, chamadas, caminho
+):
+    resposta = cliente.get(caminho, headers=com_token(token(chave)))
+    assert resposta.status_code == 403
+    assert resposta.json()["detail"] == paginas.motivo_da_pagina(
+        "gratuito", "pago_de_teste"
+    )
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "plano"
+
+
+@pytest.mark.parametrize("plano", ["gratuito", "plus"])
+def test_rota_paga_nao_calcula_quando_recusa(
+    cliente, banco, ana, chave, chamadas, plano
+):
+    _virar(banco, ana, plano)
+    assert (
+        cliente.get(
+            "/api/v1/pago-de-teste", headers=com_token(token(chave))
+        ).status_code
+        == 403
+    )
+    assert chamadas == []
+
+
+def test_rota_paga_responde_a_quem_tem_o_plano(cliente, banco, ana, chave, chamadas):
+    _virar(banco, ana, "pro")
+    resposta = cliente.get("/api/v1/pago-de-teste", headers=com_token(token(chave)))
+    assert resposta.status_code == 200
+    assert chamadas == ["pago"]
+
+
+def test_rota_paga_confere_o_login_antes_do_plano(cliente, ana, chamadas):
+    resposta = cliente.get("/api/v1/pago-de-teste")
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "sem-token"
+
+
+def test_rota_sem_contrato_fecha(cliente, banco, ana, chave, chamadas):
+    """Rota nova sem contrato de página nunca fica livre por esquecimento, nem para o Pro."""
+    _virar(banco, ana, "pro")
+    resposta = cliente.get("/api/v1/sem-contrato", headers=com_token(token(chave)))
+    assert resposta.status_code == 500
+    assert chamadas == []

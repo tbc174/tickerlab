@@ -144,6 +144,13 @@ jobs:
       - name: Build (HTML pronto de cada página)
         run: npm run build
 
+      # o app novo fica pronto no repositório (novo/), como o site: o VPS não tem Node
+      - name: App em React (novo/ igual ao build)
+        run: |
+          npm run app
+          git status --porcelain -- ../novo
+          test -z "$(git status --porcelain -- ../novo)" || { echo "novo/ está velho: rode 'npm run app' em web/ e faça o commit"; exit 1; }
+
   imagem:
     name: imagem Docker
     runs-on: ubuntu-latest

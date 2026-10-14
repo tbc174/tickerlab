@@ -56,6 +56,7 @@ BACKTEST = "backtest"
 CARTEIRA = "carteira"
 MINHA_CARTEIRA = "minha_carteira"
 NEWSLETTER = "newsletter"
+EMPRESA = "empresa"  # gerado na página Relatório da empresa, não no estúdio
 NOMES_DOS_RELATORIOS = {
     ATIVO: "Relatório do ativo",
     COMPARACAO: "Comparação de ativos",
@@ -63,7 +64,9 @@ NOMES_DOS_RELATORIOS = {
     CARTEIRA: "Relatório de carteira",
     MINHA_CARTEIRA: "Minha carteira (B3)",
     NEWSLETTER: "Newsletter do Research",
+    EMPRESA: "Relatório da empresa",
 }
+TIPOS_DO_ESTUDIO = tuple(t for t in NOMES_DOS_RELATORIOS if t != EMPRESA)
 AVISO_DA_MINHA_CARTEIRA = (
     "Esta análise mostra como a carteira de HOJE, com os pesos de hoje, teria se comportado no "
     "passado. Não é o seu resultado real: você comprou em outras datas e preços, e pode ter "

@@ -1,14 +1,22 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
+import re
+from datetime import date
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from src import analises, api
+from src import analises, api, paginas
 from src import indicadores as ind
-from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas
+from src import juros_e_inflacao as ji
+from src import linha_do_tempo as ldt
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
-from src.banco.usuarios import entrar
+from src.banco import series as acervo
+from src.banco.eventos import Evento
+from src.banco.modelo import PLANOS
+from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
 from src.conformidade import registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -242,7 +250,9 @@ def test_nenhuma_resposta_traz_a_serie_de_precos(cliente):
     precos = {f"{v}" for v in fechamento.iloc[-20:]} | {
         f"{v:.2f}" for v in fechamento.iloc[-20:]
     }
-    assert not [p for p in precos if p in texto]
+    # número inteiro da resposta, não pedaço: "48.0" dentro de "148.09" (base 100) não é preço
+    numeros = set(re.findall(r"-?\d+(?:\.\d+)?(?:e-?\d+)?", texto))
+    assert not precos & numeros
 
 
 def test_posicao_e_numeros_simples_no_backtest(cliente):
@@ -253,3 +263,260 @@ def test_posicao_e_numeros_simples_no_backtest(cliente):
     assert dados["backtest"]["curva_de_capital"]["valores"][0] == pytest.approx(100)
     assert isinstance(dados["backtest"]["operacoes"], int)
     assert pd.Timestamp(dados["ativo"]["fim"]) == _fechamento().index[-1]
+
+
+# --- Juros e inflação e Linha do tempo (pedido da sessão "Funcionalidades", onda 2) ---------
+
+HOJE = date(2026, 10, 13)
+
+
+def _cdi_de_exemplo(*_):
+    return pd.Series(0.0005, index=pd.bdate_range(end=HOJE, periods=300))
+
+
+def _gravar_series_de_juros(banco):
+    with banco.begin() as conexao:
+        for codigo, nome, unidade, valores in (
+            (ji.SELIC_META, "Selic", "% ao ano", pd.Series([15.0], index=pd.to_datetime(["2026-10-10"]))),
+            (ji.IPCA, "IPCA", "% no mês", pd.Series([0.4] * 12, index=pd.date_range(end="2026-09-01", periods=12, freq="MS"))),
+        ):  # fmt: skip
+            acervo.garantir_serie(
+                conexao, acervo.SerieDoAcervo(codigo, nome, unidade, "mensal")
+            )
+            acervo.gravar(conexao, codigo, valores, date(2026, 10, 10))
+
+
+@pytest.fixture
+def no_dia(monkeypatch):
+    monkeypatch.setattr(rotas, "hoje_no_brasil", lambda: HOJE)
+    monkeypatch.setattr(contexto, "baixar_cdi", _cdi_de_exemplo)
+    monkeypatch.setattr(contexto, "_cdi_em_cache", {})
+
+
+def test_juros_e_inflacao_igual_a_tela(cliente, banco, no_dia):
+    _gravar_series_de_juros(banco)
+    resposta = cliente.get("/api/v1/juros-e-inflacao")
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lidas = ji.ler_series(conexao, HOJE)
+    painel = ji.montar_painel(lidas, _cdi_de_exemplo(), HOJE)
+    assert resposta.json() == _json(esquemas.de_juros_e_inflacao(painel, HOJE))
+    numeros = {n["nome"]: n for n in resposta.json()["numeros"]}
+    assert numeros[ji.NOME_SELIC]["texto"] == "15,00% ao ano"
+    assert numeros[ji.NOME_SELIC]["fonte"].startswith("Banco Central")
+
+
+def test_juros_e_inflacao_sem_cdi_avisa_e_nao_quebra(
+    cliente, banco, no_dia, monkeypatch
+):
+    def falhar(*_):
+        raise contexto.CDIIndisponivelError("Banco Central fora do ar.")
+
+    monkeypatch.setattr(contexto, "baixar_cdi", falhar)
+    _gravar_series_de_juros(banco)
+    dados = cliente.get("/api/v1/juros-e-inflacao").json()
+    numeros = {n["nome"]: n for n in dados["numeros"]}
+    assert numeros[ji.NOME_JURO_REAL]["valor"] is None
+    assert any("CDI" in aviso for aviso in dados["avisos"])
+
+
+def test_juros_e_inflacao_sem_series_coletadas_503(cliente, no_dia):
+    resposta = cliente.get("/api/v1/juros-e-inflacao")
+    assert resposta.status_code == 503
+    assert "coletadas" in resposta.json()["detail"]
+
+
+def _eventos_no_periodo(fechamento):
+    dias = fechamento.index
+    return [
+        Evento(
+            ticker="PETR4.SA",
+            empresa="Petrobras",
+            rotulo="Fato relevante",
+            tema="eventos",
+            materialidade=materialidade,
+            assunto=f"Assunto {posicao}",
+            referencia=None,
+            publicado_em=dias[posicao].date(),
+            link="https://www.rad.cvm.gov.br/doc",
+            fonte="cvm_ipe",
+            protocolo=f"p-{posicao}",
+            versao=1,
+        )
+        for posicao, materialidade in ((10, 90), (200, 60), (300, 20))
+    ]
+
+
+def test_linha_do_tempo_igual_a_tela(cliente, monkeypatch):
+    fechamento = _fechamento()
+    eventos = _eventos_no_periodo(fechamento)
+    pedidos = []
+
+    def ler(_conexao, tickers, desde, limite):
+        pedidos.append((tickers, desde, limite))
+        return eventos
+
+    monkeypatch.setattr(rotas, "eventos_dos_tickers", ler)
+    resposta = cliente.get(
+        "/api/v1/linha-do-tempo", params={"ticker": "petr4", "materialidade_minima": 50}
+    )
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()["linha_do_tempo"]
+    linha = ldt.montar_linha_do_tempo(fechamento, eventos, 50)
+    assert dados == _json(esquemas.de_linha_do_tempo(linha))
+    assert resposta.json()["ativo"]["ticker"] == "PETR4.SA"
+    assert pedidos == [
+        (["PETR4.SA"], fechamento.index[0].date(), ldt.LIMITE_DE_EVENTOS)
+    ]
+    assert len(dados["marcos"]) == 2 and dados["fora_do_grafico"] == 1
+    assert dados["aviso"] == ldt.AVISO_DA_LINHA
+    assert dados["texto_fora_do_grafico"] == ldt.texto_fora_do_grafico(1)
+
+
+def test_linha_do_tempo_so_em_base_100(cliente, monkeypatch):
+    """Nada de preço bruto pela API (ADR 0048, item 6): a curva começa em 100."""
+    monkeypatch.setattr(rotas, "eventos_dos_tickers", lambda *_a, **_k: [])
+    resposta = cliente.get("/api/v1/linha-do-tempo", params={"ticker": "PETR4.SA"})
+    dados = resposta.json()["linha_do_tempo"]
+    assert dados["curva"]["valores"][0] == pytest.approx(100.0)
+    fechamento = _fechamento()
+    assert dados["curva"]["valores"][-1] == pytest.approx(
+        fechamento.iloc[-1] / fechamento.iloc[0] * 100
+    )
+
+
+def test_linha_do_tempo_com_o_banco_sem_acontecimentos(cliente):
+    resposta = cliente.get("/api/v1/linha-do-tempo", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()["linha_do_tempo"]
+    assert dados["marcos"] == [] and dados["fora_do_grafico"] == 0
+    assert dados["sem_acontecimentos"] == ldt.SEM_ACONTECIMENTOS
+
+
+def test_linha_do_tempo_com_relevancia_fora_da_faixa_422(cliente):
+    resposta = cliente.get(
+        "/api/v1/linha-do-tempo",
+        params={"ticker": "PETR4.SA", "materialidade_minima": 101},
+    )
+    assert resposta.status_code == 422
+
+
+# --- visão geral para o app em React (série 3, PR 3) ---
+
+
+def test_visao_geral_traz_a_curva_em_base_100_e_os_avisos(cliente):
+    dados = cliente.get(
+        "/api/v1/visao-geral",
+        params={"ticker": "PETR4.SA", "taxa": TAXA, "periodo": "6mo"},
+    ).json()
+    fechamento = _fechamento(periodo="6mo")
+    curva = dados["curva"]
+    assert curva["valores"][0] == pytest.approx(100.0)
+    assert curva["valores"][-1] == pytest.approx(
+        fechamento.iloc[-1] / fechamento.iloc[0] * 100
+    )
+    assert len(curva["datas"]) == len(fechamento)
+    # 6 meses: menos de 1 ano, o retorno não é anualizado e a API diz por quê
+    assert dados["painel"]["retorno_anualizado"] is None
+    assert dados["motivo_sem_anualizar"] == ind.MOTIVO_SEM_ANUALIZAR
+    # dados de exemplo: o mesmo aviso que a tela mostra
+    assert dados["ativo"]["aviso_da_origem"] == analises.aviso_da_origem(
+        "exemplo", fechamento.index[-1].strftime("%d/%m/%Y")
+    )
+
+
+def test_visao_geral_de_2_anos_sem_motivo(cliente):
+    dados = cliente.get(
+        "/api/v1/visao-geral", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()
+    assert dados["painel"]["retorno_anualizado"] is not None
+    assert dados["motivo_sem_anualizar"] is None
+
+
+# --- textos prontos de Risco, Retorno mensal e Comparar (série 3, PR 5) ---
+
+
+def test_risco_traz_a_frase_da_pior_queda_e_o_aviso_da_janela(cliente):
+    from src.conteudo import descrever_pior_drawdown
+
+    dados = cliente.get(
+        "/api/v1/risco", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()
+    fechamento = _fechamento()
+    risco = analises.risco_ao_longo_do_tempo(
+        fechamento, ind.calcular_retorno_diario(fechamento), 20
+    )
+    assert dados["risco"]["frase_da_pior_queda"] == descrever_pior_drawdown(
+        risco.pior_drawdown, negrito=False
+    )
+    assert dados["risco"]["aviso_da_janela"] is None
+    curto = cliente.get(
+        "/api/v1/risco",
+        params={"ticker": "PETR4.SA", "taxa": TAXA, "periodo": "6mo", "janela": 252},
+    ).json()
+    assert curto["risco"]["aviso_da_janela"] == analises.aviso_janela_curta(252)
+
+
+def test_retorno_mensal_traz_a_media_de_cada_mes(cliente):
+    dados = cliente.get(
+        "/api/v1/retorno-mensal", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()["retorno_mensal"]
+    mensal = analises.retorno_mensal(ind.calcular_retorno_diario(_fechamento()))
+    media = ind.calcular_media_por_mes(mensal.tabela)
+    assert dados["media_por_mes"] == pytest.approx(list(media.to_numpy()), nan_ok=True)
+    assert len(dados["media_por_mes"]) == 12
+
+
+def test_comparacao_traz_a_nota_e_avisa_poucos_dias():
+    curta = analises.Comparacao(
+        dias_em_comum=8, dias_descartados=0, base_100=None, tabela=None
+    )
+    assert esquemas.de_comparacao(curta).aviso == analises.aviso_poucos_dias_em_comum(8)
+    assert esquemas.de_comparacao(curta).nota is None
+
+
+def test_comparacao_com_dados_traz_a_nota(cliente):
+    dados = cliente.get(
+        "/api/v1/comparacao",
+        params={"ticker": "PETR4.SA", "com": ["^BVSP"], "taxa": TAXA},
+    ).json()["comparacao"]
+    assert dados["aviso"] is None
+    assert dados["nota"] == analises.nota_da_comparacao(
+        dados["dias_em_comum"], dados["dias_descartados"]
+    )
+
+
+# --- Plano de cada rota (ADR 0062) ----------------------------------------------------------
+
+ROTAS_PUBLICAS = frozenset({"/v1/configuracao"})  # sem login (o client ID do Google)
+
+
+def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
+    """Rota nova precisa de contrato de página (que diz o plano) ou entrar em ROTAS_DA_CONTA."""
+    for rota in rotas.router.routes:
+        caminho = rota.path  # type: ignore[attr-defined]
+        if caminho in ROTAS_PUBLICAS:
+            continue
+        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
+        assert acesso.conta_com_acesso in dependencias, caminho
+
+
+@pytest.mark.parametrize("plano", PLANOS)
+def test_rotas_reais_seguem_o_contrato(cliente, banco, plano):
+    """403 de plano se e só se a página da rota não abre no plano (hoje, nenhuma é paga).
+
+    Sem os campos da rota: a conferência do plano vem antes, então a página fechada responde 403 e
+    a aberta passa dela (e para no 422 dos campos que faltam, sem calcular nada).
+    """
+    with banco.begin() as conexao:
+        ana = buscar_por_google_sub(conexao, "ana")
+        assert ana is not None
+        mudar_plano(conexao, ana.id, plano)
+    for rota, pagina in paginas.POR_ROTA.items():
+        metodo = pagina.contrato.metodo  # type: ignore[union-attr]
+        resposta = cliente.request(metodo, "/api" + rota)
+        fechada = paginas.motivo_da_pagina(plano, pagina.chave) is not None
+        recusou = resposta.headers.get(acesso.CABECALHO_DO_MOTIVO) == "plano"
+        assert recusou == fechada, (rota, resposta.status_code)
+        assert (resposta.status_code == 403) == fechada, (rota, resposta.status_code)

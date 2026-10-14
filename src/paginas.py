@@ -6,7 +6,7 @@ mudar o texto de ajuda ou trocar de grupo, é só mexer aqui.
 
 from dataclasses import dataclass
 
-from src.planos import APRENDIZADO_DE_MAQUINA, PARES
+from src.planos import APRENDIZADO_DE_MAQUINA, PARES, motivo_sem_acesso
 
 # Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
 GRUPO_TOPO = ""
@@ -342,12 +342,31 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "pulse",
+        "Pulse",
+        GRUPO_RESEARCH,
+        ":material/monitor_heart:",
+        "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM "
+        "e na SEC e a variação do preço.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
+        "diario_de_teses",
+        "Diário de Teses",
+        GRUPO_RESEARCH,
+        ":material/edit_note:",
+        "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que "
+        "você salvou.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "carteira_b3",
         "Carteira da B3",
         GRUPO_RESEARCH,
         ":material/donut_large:",
-        "A sua posição da B3 lida só na memória: concentração, a carteira no passado, Raio-X "
-        "por tipo, setor e moeda, e Rebalanceamento para os pesos que você escolher.",
+        "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a "
+        "carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos "
+        "que você escolher, proventos recebidos e custo médio.",
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -358,6 +377,7 @@ PAGINAS = (
         "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada "
         "número (Banco Central).",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/juros-e-inflacao", (), "JurosEInflacaoV1"),
     ),
     Pagina(
         "linha_do_tempo",
@@ -366,6 +386,24 @@ PAGINAS = (
         ":material/timeline:",
         "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no "
         "mesmo eixo, com o link de cada documento.",
+        contrato=Contrato(
+            "GET",
+            "/v1/linha-do-tempo",
+            (
+                ATIVO,
+                PERIODO,
+                Entrada(
+                    "materialidade_minima",
+                    "inteiro",
+                    "Quais acontecimentos mostrar: 70 = os mais relevantes, 50 = relevantes, "
+                    "0 = todos.",
+                    padrao=50,  # MATERIALIDADE_PADRAO de src/linha_do_tempo.py (há teste)
+                    minimo=0,
+                    maximo=100,
+                ),
+            ),
+            "LinhaDoTempoDoAtivoV1",
+        ),
     ),
     Pagina(
         "fundamentos",
@@ -374,6 +412,15 @@ PAGINAS = (
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
         "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
+    ),
+    Pagina(
+        "relatorio_empresa",
+        "Relatório da empresa",
+        GRUPO_RESEARCH,
+        ":material/summarize:",
+        "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas "
+        "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
+        "número.",
     ),
     Pagina(
         "por_dentro",
@@ -478,3 +525,21 @@ def paginas_do_grupo(grupo: str) -> list[Pagina]:
 
 def pagina(chave: str) -> Pagina:
     return POR_CHAVE[chave]
+
+
+def motivo_da_pagina(plano: str | None, chave: str) -> str | None:
+    """Por que o plano não abre a página (o Streamlit e a API mostram este texto), ou None se abre."""
+    recurso = POR_CHAVE[chave].recurso
+    return None if recurso is None else motivo_sem_acesso(plano, recurso)
+
+
+# a API acha a página de cada rota pelo contrato (src/api_v1/acesso.py confere o plano por aqui)
+POR_ROTA = {p.contrato.rota: p for p in PAGINAS if p.contrato is not None}
+PREFIXO_DA_API = "/api"  # a API v1 responde em /v1/... e em /api/v1/... (src/api.py)
+
+
+def pagina_da_rota(rota: str) -> Pagina | None:
+    """A página cujo contrato usa esta rota da API (com ou sem o /api na frente), ou None."""
+    if rota.startswith(PREFIXO_DA_API + "/"):
+        rota = rota[len(PREFIXO_DA_API) :]
+    return POR_ROTA.get(rota)

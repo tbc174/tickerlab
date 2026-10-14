@@ -173,8 +173,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** sem cache, o SGS demora numa consulta longa: 26 s para 7 anos da série 432 e 18 s para 9 anos da série 11. Repetida, a mesma consulta volta em menos de 1 s (por isso a segunda rodada passava). O leitor desistia em 20 s.
 - **Primeira tentativa:** `bcb.TEMPO_LIMITE` em 60 s (#77), com teste de regressão. Não bastou: com 60 s apareceu o erro de baixo.
 - **Causa de verdade:** o próprio servidor do BC corta em ~30 s e devolve uma página HTML "Requisição inválida!" **com status 200** (o `json()` falha com `Expecting value`). Visto pelo acervo: o original guardado daquela coleta era o HTML. A janela de 9 anos (`ANOS_POR_CONSULTA`) é que era longa demais sem cache.
-- **Solução:** janelas de 3 anos (#83): a mesma série 432 volta em 2 a 5 s por janela. O CDI do app (`src/cdi.py`) usa o mesmo desenho (9 anos, 20 s) e pode falhar igual num período longo: ficou para o Tiago decidir.
+- **Solução:** janelas de 3 anos (#83): a mesma série 432 volta em 2 a 5 s por janela. O CDI do app (`src/cdi.py`) usa o mesmo desenho (9 anos, 20 s) e podia falhar igual num período longo (corrigido no fim da tarde, ver abaixo).
 - **E um 502 isolado:** na carga seguinte, 1 de 35 consultas voltou 502 (repetida, respondeu em 2,6 s) e derrubou as séries que vinham depois. O leitor do BC agora tenta de novo até 2 vezes (5 s e 15 s) só em erro passageiro (5xx, timeout, conexão); 4xx e página que não é JSON não repetem (#84).
+- **Nem 3 anos bastam com o cache frio (13/10, tarde):** ao corrigir o CDI, a janela 2020–2023 da série 12 levou 30,9 s e voltou com a mesma página HTML; repetida, respondeu em 3,8 s (numa segunda conferência, 2021–2024: 31,9 s e depois 1,4 s). Agora a página que não é JSON também conta como passageira e é tentada de novo; 4xx continua sem repetir. O CDI do app passou a usar o mesmo leitor (`bcb.baixar_sgs`, fora de `bcb.SERIES` para a coleta do acervo não pegá-lo): janelas de 3 anos, 60 s e as novas tentativas.
 - **Data:** 13/10/2026
 
 ## `pwsh -File script.ps1 -Prs 72,73` virou o PR "7273"
@@ -284,3 +285,88 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o gerador do Hypothesis quase sempre criava ativos com poucos dias em comum, então o teste só conferia a recusa ("poucos pregões") e o PDF quase nunca era gerado (4,5% dos exemplos).
 - **Solução:** marcar cada ramo com `hypothesis.event(...)`, rodar com `pytest --hypothesis-show-statistics` e ajustar o gerador até os dois ramos aparecerem (o Hypothesis prefere números pequenos: o ramo de cima entra duas vezes no `st.one_of`).
 - **Data:** 13/10/2026
+
+## `novo/` "está velho" no CI, mas igual no PC (uma linha em branco a mais)
+- **Sintoma:** o passo "App em React (novo/ igual ao build)" do CI falhava só no `novo/index.html`; no PC, o build saía igual ao que estava no Git.
+- **Causa:** o Git no Windows tirou o `web/app/index.html` com CRLF. O Vite tira a tag `<script>` da página antes da nossa normalização e, com CRLF, sobrava uma linha em branco; no CI (Linux, LF) não sobra.
+- **Solução:** a normalização para LF roda com `transformIndexHtml: { order: "pre" }` (antes do Vite), e o `.gitattributes` tira `web/**` sempre com LF (`novo/**` fica `-text`). Para reproduzir o CI no PC: uma cópia com `core.autocrlf=false` e `npm run app` nela.
+- **Data:** 13/10/2026
+
+## O JavaScript arredonda diferente do Python (12,125 → "12,13" contra "12,12")
+- **Sintoma:** o mesmo número saía com a última casa diferente na tela nova (React) e no Streamlit.
+- **Causa:** no empate exato, o Python arredonda para o par e o `toFixed` do JS, para cima. E nem todo "…5" é empate: 2,675 vale 2,67499999… em binário (os dois mostram 2,67), mas `2.675 * 1000` dá 2675 e parecia empate.
+- **Solução:** `web/src/app/formatar.ts` só trata como empate o número que é múltiplo exato de 1/8 (para 2 casas; multiplicar por potência de 2 é exato em binário) e arredonda para o par. Os casos vêm do Python (`src/formatos.py`, `web/conteudo/formatacao.json`) e o teste confere cada um.
+- **Data:** 13/10/2026
+
+## Teste acusa "preço na resposta da API" sem haver preço
+- **Sintoma:** `test_nenhuma_resposta_traz_a_serie_de_precos` falhou ao entrar a curva em base 100 na visão geral.
+- **Causa:** o teste procurava o preço como pedaço de texto: "48.0" (um fechamento) aparecia dentro de "148.0920..." (um valor em base 100).
+- **Solução:** comparar números inteiros da resposta (`re.findall` de números) com os preços. Um preço vazado de verdade continua sendo pego.
+- **Data:** 13/10/2026
+
+## Teste do React não acha o que está na tela (Testing Library)
+- **Sintoma:** `within(main).findByRole(...)` esgotava o tempo, mas a tela estava certa.
+- **Causa:** o teste guardou o `<main>` do aviso "Carregando"; quando a configuração da API chega, o React troca a moldura inteira e aquele `<main>` sai da página.
+- **Solução:** esperar algo da tela final (o menu "Telas") e só então pegar o `<main>`. Aumentar o tempo de espera não resolve.
+- **Data:** 13/10/2026
+
+## Planilha da B3 com "1.000" em texto vira 1, e não mil
+- **Sintoma:** um teste da movimentação com a quantidade `"1.000"` (texto) leu 1 ação.
+- **Causa:** `numero_brasileiro` (`src/carteira_b3.py`) só tratava o ponto como milhar quando havia vírgula (`"1.234,56"`); sem vírgula, `float("1.000")` é 1,0. Afetava também a planilha de posição enviada em CSV.
+- **Solução:** ponto seguido de grupos de exatamente três dígitos (`1.000`, `12.345.678`) é milhar; `"30.5"` continua 30,5. Teste com a tabela de casos em `tests/test_carteira_b3.py`.
+- **Data:** 13/10/2026
+
+## AppTest: "`st.session_state['...']` is read-only" com dois `st.file_uploader` na página
+- **Sintoma:** depois de pôr um segundo campo de arquivo na Carteira da B3, os testes que ligavam o exemplo com `app.toggle(...).set_value(True).run()` passaram a falhar com essa mensagem, apontando para o `st.file_uploader`.
+- **Causa:** o AppTest reenvia o estado de todos os campos que já apareceram; o campo de arquivo não aceita valor vindo de fora. Com um campo só, ligar o exemplo o tirava da tela; com dois, um deles continuava lá.
+- **Solução:** nos testes, ligar o exemplo **antes** de abrir a página (`app.session_state["carteira_b3_exemplo"] = True` e depois `ir_para`), para que ninguém interaja depois que os campos aparecem. Em uso real, os dois campos funcionam normalmente.
+- **Data:** 13/10/2026
+
+## `sed` troca `\U`, `\t` e `\a` num caminho do Windows por outra coisa
+- **Sintoma:** uma substituição com `sed` gravou `C:SERS<tab>IAGOPROJETOS...` no lugar de `C:\Users\tiago\projetos\...`.
+- **Causa:** no texto de substituição do GNU sed, `\U` deixa o resto em maiúsculas, `\t` vira tabulação e `\a` vira um caractere de controle. O mesmo acontece dentro de `"..."` no Python (`\U` é escape de Unicode).
+- **Solução:** para trocar texto com barras invertidas, usar um script Python que monta a barra com `chr(92)` (ou string crua `r"..."`), e conferir o resultado depois.
+- **Data:** 13/10/2026
+
+## Ações emprestadas (aluguel) viravam venda no custo médio
+- **Sintoma:** com a movimentação real, o custo médio de um FII mostrava só as cotas compradas depois de julho (1.300), quando a pessoa tinha 10.505; o custo total caía de ~R$ 100 mil para ~R$ 12,8 mil.
+- **Causa:** ao emprestar as ações, a B3 escreve uma "Transferência - Liquidação" de **saída sem valor** (mais um par "Transferência" e uma linha "Empréstimo" no mesmo dia). O leitor tratava toda liquidação de saída como venda; vendendo "tudo", o médio recomeçava na compra seguinte.
+- **Solução:** toda venda traz dinheiro. Liquidação sem valor não é compra nem venda: a saída fica fora das contas, com aviso na tela, e uma entrada sem valor depois de uma saída do mesmo ativo é a volta. Entrada sem valor sem saída antes continua como compra sem valor (custo incompleto). Teste de regressão com as 4 linhas copiadas da planilha real e valores inventados.
+- **Data:** 13/10/2026
+
+## PR vira "conflito" no GitHub sem que o código conflite (`novo/` e `site/`)
+- **Sintoma:** o PR do relatório da empresa ficou `CONFLICTING` duas vezes em uma hora, sem nenhum arquivo de código em comum com os PRs da `main`; o CI nem dispara num PR em conflito.
+- **Causa:** `novo/` (app em React) é um pacote minificado gerado e guardado no Git (o VPS não tem Node), com nome de arquivo que muda a cada build, e ele empacota `web/conteudo/paginas.json`. Todo PR que mexe numa página ou no React regrava os mesmos arquivos; o primeiro a entrar deixa os outros em conflito. Rebase não resolve: reescreve o ramo e exige push forçado (proibido pela trava).
+- **Solução:** `python -m scripts.juntar_main`: merge da `main` no ramo; conflito só em pasta gerada (`site/`, `novo/`, `web/conteudo/`) é resolvido partindo da versão da `main` e rodando todos os geradores por cima; conflito em código desfaz o merge e para. Depois, `git push` comum. Regra no `CLAUDE.md` (Git e GitHub).
+- **Detalhe:** numa cópia criada antes da regra `web/** eol=lf` do `.gitattributes`, o `web/app/index.html` tinha CRLF e o build do Windows punha uma linha em branco a mais no `novo/index.html` (o CI recusaria). Cópia nova (`git worktree add`) já sai com LF.
+- **Data:** 13/10/2026
+
+## Duas sessões criam a migração com o mesmo número
+- **Sintoma:** depois de mesclar a `main` no ramo do Pulse, o Alembic acusou duas "cabeças" (`alembic heads` com duas revisões): a `0030_pulse.py` do ramo e a `0030_relatorio_empresa.py` que outra sessão tinha acabado de mesclar.
+- **Causa:** cada sessão escolhe o próximo número olhando a `main` do momento em que começa; duas sessões em paralelo escolhem o mesmo.
+- **Solução:** quem entra por último renumera: o arquivo, `revision` e `down_revision` (a do Pulse virou `0031`, apontando para a `0030`), e o nome do teste da migração. Conferir com `alembic heads` (uma linha só) e avisar no quadro de sessões o número usado, para a próxima sessão já pegar o seguinte.
+- **Data:** 13/10/2026
+
+## pyright numa cópia de trabalho não acha os pacotes
+- **Sintoma:** numa cópia criada com `git worktree add` (`analise-acoes-NOME`), o pyright acusava `Import "streamlit" could not be resolved` em todo arquivo.
+- **Causa:** a cópia não tem `.venv` própria; o pyright procura o ambiente dentro da pasta.
+- **Solução:** apontar para o Python da cópia principal: `pyright --pythonpath "C:/Users/tiago/projetos/analise-acoes/.venv/Scripts/python.exe" src telas scripts`.
+- **Data:** 13/10/2026
+
+## Página nova no app deixa o `novo/` (React) velho
+- **Sintoma:** no PR do Diário de Teses (#177), o job "web (React)" do CI falhou com `novo/ está velho: rode 'npm run app' em web/ e faça o commit`, embora o PR não mexesse no React.
+- **Causa:** o app em React lê `web/conteudo/paginas.json`. Uma página nova em `src/paginas.py` muda esse arquivo (a trava do commit regenera), e o build guardado em `novo/` muda junto (outro nome do `assets/index-*.js`). A trava regenera o `web/conteudo/` e o `site/`, mas não o `novo/`.
+- **Solução:** depois de mudar `src/paginas.py`, rodar `npm run app` em `web/` (e `npm ci` antes, numa cópia nova) e fazer o commit do `novo/` (`git add -A novo`, porque o arquivo antigo sai e entra um novo).
+- **Data:** 13/10/2026
+
+## Teste com Hypothesis passa mesmo com o código estragado (combinação rara)
+- **Sintoma:** no teste de que o Streamlit e a API decidem igual (#182), estraguei o código de propósito (o Streamlit liberava plano vazio) e o teste com `@given(plano=..., chave=...)` continuou verde.
+- **Causa:** o Hypothesis **sorteia** exemplos (100 por padrão). Só 4 das 184 combinações de plano × página mostravam o estrago (2 planos vazios × 2 páginas pagas); o sorteio não caiu em nenhuma.
+- **Solução:** quando as combinações são poucas, **conferir todas** (`@pytest.mark.parametrize` ou um laço), sem sorteio; o Hypothesis fica para o que é grande de verdade (aqui, textos de plano quaisquer, cada um conferido em todas as páginas). E sempre fazer a conferência ao contrário: estragar o código e ver o teste falhar.
+- **Data:** 14/10/2026
+
+## `git status` mostra `web/conteudo/*.json` modificados, mas o `git diff` vem vazio
+- **Sintoma:** depois de rodar a suíte ou o `exportar_conteudo`, todos os `web/conteudo/*.json` aparecem como `M`, e o `git diff` não mostra nada.
+- **Causa:** alguns testes regravam o conteúdo (igual) e o `.gitattributes` (`web/** text=auto eol=lf`) faz o Git desconfiar da data do arquivo. O conteúdo é o mesmo: `git hash-object ARQUIVO` bate com `git rev-parse HEAD:ARQUIVO`.
+- **Solução:** `git checkout -- web/conteudo` (ou só não adicionar esses arquivos; nunca `git add -A` sem olhar). Atrapalha o `git rebase`, que recusa "unstaged changes" até isso.
+- **Data:** 14/10/2026

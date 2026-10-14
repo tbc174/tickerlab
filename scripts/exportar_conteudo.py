@@ -2,7 +2,8 @@
 
 O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.py`), páginas do app
 (`src/paginas.py`), planos (`src/planos.py`), marca e cores do site (`src/marca.py`), estilos do
-Report Studio e ativos de exemplo (`src/catalogo.py`). O React lê estes JSON no build;
+Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
+(`src/metodologia_das_notas.py`). O React lê estes JSON no build;
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
@@ -14,8 +15,25 @@ from dataclasses import asdict
 from pathlib import Path
 
 from scripts.markdown_simples import markdown_para_html
-from src import catalogo, marca, modulos, paginas, planos, qualidade_texto
+from src import (
+    analises,
+    catalogo,
+    comparacao,
+    formatos,
+    marca,
+    metodologia_das_notas,
+    modulos,
+    novidades,
+    paginas,
+    planos,
+    qualidade_texto,
+)
+from src import indicadores as ind
+from src import juros_e_inflacao as ji
+from src import linha_do_tempo as ldt
+from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
+from src.estrategias import ESTRATEGIAS
 
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
@@ -54,6 +72,7 @@ def _paginas() -> list[dict]:
             "e_pro": p.e_pro,
             "no_menu": p.no_menu,
             "somente_admin": p.somente_admin,
+            "contrato": asdict(p.contrato) if p.contrato else None,
         }
         for p in paginas.PAGINAS
     ]
@@ -128,6 +147,89 @@ def _qualidade() -> dict:
     }
 
 
+_ROTULO = re.compile(r"^\*\*(.+?):\*\*\s*(.*)$", re.DOTALL)
+_ENFASE = re.compile(r"\*+([^*]+)\*+")
+
+
+def _partes_da_ajuda(texto: str) -> list[dict[str, str | None]]:
+    """Um termo do glossário em partes ({rotulo: "O que é", texto}), sem Markdown: o React só mostra
+    texto (nada de HTML pronto vindo daqui)."""
+    partes: list[dict[str, str | None]] = []
+    for paragrafo in texto.split("\n\n"):
+        achado = _ROTULO.match(paragrafo.strip())
+        rotulo, corpo = achado.groups() if achado else (None, paragrafo.strip())
+        partes.append({"rotulo": rotulo, "texto": _ENFASE.sub(r"\1", corpo).strip()})
+    return partes
+
+
+def _app() -> dict[str, object]:
+    """O que o app em React mostra e vem do Python: o painel da visão geral e o "?" de cada número."""
+    glossario = carregar_glossario()
+    termos = dict.fromkeys(
+        [
+            *(i.termo for i in analises.ITENS_DO_PAINEL),
+            *ji.TERMO_DO_GLOSSARIO.values(),
+            "Boletim Focus",
+            "Volatilidade móvel",
+            "Sazonalidade",
+            "Retorno mensal",
+            "Base 100",
+        ]
+    )
+    return {
+        "painel": {
+            "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
+            "legenda": analises.LEGENDA_DO_PAINEL,
+            "frase_do_cvar": analises.FRASE_DO_CVAR,
+        },
+        "glossario": {t: _partes_da_ajuda(glossario[t]) for t in termos},
+        "juros": {
+            "termos": ji.TERMO_DO_GLOSSARIO,
+            "fonte_focus": ji.FONTE_FOCUS,
+            "nota_do_focus": ji.NOTA_DO_FOCUS,
+        },
+        "retorno_mensal": {
+            "meses": list(ind.NOMES_DOS_MESES),
+            "legenda": analises.LEGENDA_DO_MAPA_MENSAL,
+        },
+        "comparacao": {
+            "atalhos": [
+                {"nome": n, "ticker": t} for n, t in comparacao.ATALHOS.items()
+            ],
+            "padrao": list(comparacao.ATALHOS_PADRAO),
+            "max_ativos": comparacao.MAX_ATIVOS,
+            "colunas": [
+                {"rotulo": rotulo, "formato": formato}
+                for rotulo, formato in comparacao.FORMATO_DAS_COLUNAS.items()
+            ],
+            "aviso_do_limite": comparacao.AVISO_DO_LIMITE,
+            "aviso_sem_dados": comparacao.AVISO_SEM_DADOS,
+        },
+        "backtest": {
+            "estrategias": [
+                {
+                    "nome": e.nome,
+                    "grupo": e.grupo,
+                    "parametros": [asdict(p) for p in e.parametros],
+                }
+                for e in ESTRATEGIAS.values()
+            ],
+            "metricas_por_formato": {
+                "pct_com_sinal": sorted(formatos.METRICAS_EM_PORCENTAGEM_COM_SINAL),
+                "pct": sorted(formatos.METRICAS_EM_PORCENTAGEM),
+                "inteiro": sorted(formatos.METRICAS_INTEIRAS),
+            },
+        },
+        "linha_do_tempo": {
+            "relevancias": [
+                {"nome": nome, "valor": valor}
+                for nome, valor in ldt.RELEVANCIAS.items()
+            ],
+            "padrao": ldt.MATERIALIDADE_PADRAO,
+        },
+    }
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -138,6 +240,10 @@ def conteudo() -> dict[str, object]:
         "site": _site(),
         "legal": _legal(),
         "qualidade": _qualidade(),
+        "metodologia": metodologia_das_notas.como_dicionario(),
+        "app": _app(),
+        "formatacao": formatos.casos_de_formatacao(),
+        "novidades": novidades.como_lista(),
     }
 
 

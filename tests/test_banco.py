@@ -8,6 +8,7 @@ import os
 import time
 import traceback
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
@@ -19,7 +20,20 @@ from src.banco.conexao import (
     criar_engine,
     migrar_para,
 )
-from src.banco.modelo import favoritos, preferencias, simulacoes, usuarios
+from src.banco.dados_do_usuario import apagar_simulacao, salvar_simulacao
+from src.banco.modelo import (
+    compartilhamentos,
+    favoritos,
+    pdfs_originais,
+    preferencias,
+    relatorios,
+    simulacoes,
+    teses,
+    teses_estrategias,
+    usuarios,
+)
+from src.banco.teses import escrever as escrever_tese
+from src.banco.teses import listar as listar_teses
 from src.configuracao import (
     VARIAVEL_DO_BANCO,
     normalizar_url_do_banco,
@@ -128,7 +142,17 @@ def test_migracao_0027_cria_as_tentativas_ligadas_ao_usuario(motor):
     assert estrangeira["options"].get("ondelete") == "CASCADE"
 
 
-def test_migracao_0029_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
+def test_migracao_0031_cria_o_pulse_ligado_ao_usuario(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("pulse")}
+    assert colunas == {"usuario_id", "visto_em", "vereditos"}
+    assert inspecao.get_pk_constraint("pulse")["constrained_columns"] == ["usuario_id"]
+    (estrangeira,) = inspecao.get_foreign_keys("pulse")
+    assert estrangeira["referred_table"] == "usuarios"
+    assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
+def test_migracao_0035_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
     inspecao = sa.inspect(motor)
     colunas = {c["name"] for c in inspecao.get_columns("origens_do_cadastro")}
     assert colunas == {
@@ -146,6 +170,182 @@ def test_migracao_0029_cria_a_origem_do_cadastro_ligada_ao_usuario(motor):
     (estrangeira,) = inspecao.get_foreign_keys("origens_do_cadastro")
     assert estrangeira["referred_table"] == "usuarios"
     assert estrangeira["options"].get("ondelete") == "CASCADE"
+
+
+def test_migracao_0032_cria_o_diario_ligado_ao_usuario_e_as_simulacoes(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("teses")}
+    assert colunas == {"id", "usuario_id", "ticker", "texto", "criada_em"}
+    (do_usuario,) = inspecao.get_foreign_keys("teses")
+    assert do_usuario["referred_table"] == "usuarios"
+    assert do_usuario["options"].get("ondelete") == "CASCADE"
+    ligacoes = inspecao.get_foreign_keys("teses_estrategias")
+    assert {e["referred_table"] for e in ligacoes} == {"teses", "simulacoes"}
+    assert all(e["options"].get("ondelete") == "CASCADE" for e in ligacoes)
+    chave = inspecao.get_pk_constraint("teses_estrategias")["constrained_columns"]
+    assert set(chave) == {"tese_id", "simulacao_id"}
+
+
+def test_banco_recusa_tese_vazia_ou_longa_demais(motor):
+    """A trava do tamanho também vale no banco, não só no código."""
+    with motor.begin() as conexao:
+        usuario = repo.entrar(conexao, "sub-teses", "teses@exemplo.com", "Teses")[0]
+    for texto in ("", "x" * 2001):
+        with pytest.raises(sa.exc.IntegrityError), motor.begin() as conexao:
+            conexao.execute(
+                sa.insert(teses).values(
+                    id=uuid.uuid4(),
+                    usuario_id=usuario.id,
+                    ticker="PETR4.SA",
+                    texto=texto,
+                )
+            )
+
+
+def test_diario_sai_com_a_conta_e_o_backtest_so_leva_a_ligacao(motor):
+    """A cascata das duas tabelas do Diário no banco migrado (PostgreSQL no CI)."""
+    with motor.begin() as conexao:
+        ana = repo.entrar(conexao, "sub-ana-d", "ana-d@exemplo.com", "Ana")[0]
+        bia = repo.entrar(conexao, "sub-bia-d", "bia-d@exemplo.com", "Bia")[0]
+        backtest = salvar_simulacao(
+            conexao, ana.id, "backtest", "Cruzamento", {"ticker": "PETR4.SA"}, {}
+        )
+        escrever_tese(conexao, ana.id, "PETR4", "Tese da Ana", [backtest.id])
+        escrever_tese(conexao, bia.id, "PETR4", "Tese da Bia")
+    with motor.begin() as conexao:
+        apagar_simulacao(conexao, ana.id, backtest.id)
+        assert conexao.execute(sa.select(teses_estrategias)).all() == []
+        assert len(listar_teses(conexao, ana.id)) == 1
+        repo.apagar_conta(conexao, ana.id)
+        assert listar_teses(conexao, ana.id) == []
+        assert [t.texto for t in listar_teses(conexao, bia.id)] == ["Tese da Bia"]
+
+
+def test_migracao_0034_cria_os_links_ligados_ao_usuario_e_ao_pdf(motor):
+    inspecao = sa.inspect(motor)
+    colunas = {c["name"] for c in inspecao.get_columns("compartilhamentos")}
+    assert colunas == {
+        "id", "usuario_id", "codigo_hash", "tipo", "relatorio_id", "ficha", "titulo",
+        "criado_em", "expira_em", "revogado_em", "visitas", "ultima_visita_em",
+    }  # fmt: skip
+    estrangeiras = inspecao.get_foreign_keys("compartilhamentos")
+    assert {e["referred_table"] for e in estrangeiras} == {"usuarios", "pdfs_originais"}
+    assert all(e["options"].get("ondelete") == "CASCADE" for e in estrangeiras)
+    unicas = inspecao.get_unique_constraints("compartilhamentos")
+    assert [u["column_names"] for u in unicas] == [["codigo_hash"]]
+
+
+def _link(usuario_id, **mudar):
+    agora = datetime(2026, 10, 13, tzinfo=UTC)
+    return {
+        "id": uuid.uuid4(),
+        "usuario_id": usuario_id,
+        "codigo_hash": uuid.uuid4().hex * 2,
+        "tipo": "ficha",
+        "relatorio_id": None,
+        "ficha": {"versao": 1},
+        "titulo": "Foi sorte? Teste",
+        "criado_em": agora,
+        "expira_em": agora + timedelta(days=30),
+        **mudar,
+    }
+
+
+def _pdf_guardado(conexao, usuario_id):
+    relatorio_id = uuid.uuid4()
+    conexao.execute(
+        sa.insert(relatorios).values(
+            id=relatorio_id, usuario_id=usuario_id, tipo="ativo"
+        )
+    )
+    conexao.execute(
+        sa.insert(pdfs_originais).values(
+            relatorio_id=relatorio_id,
+            usuario_id=usuario_id,
+            pdf=b"%PDF-1.4",
+            sha256="0" * 64,
+            tamanho=8,
+            versoes={},
+        )
+    )
+    return relatorio_id
+
+
+def test_banco_recusa_link_incoerente(motor):
+    """As travas do tipo, do prazo e do contador também valem no banco, não só no código."""
+    with motor.begin() as conexao:
+        usuario = repo.entrar(conexao, "sub-links", "links@exemplo.com", "Links")[0]
+        relatorio_id = _pdf_guardado(conexao, usuario.id)
+    agora = datetime(2026, 10, 13, tzinfo=UTC)
+    incoerentes = [
+        {"tipo": "carteira"},
+        {"tipo": "ficha", "ficha": sa.null()},
+        {"tipo": "ficha", "relatorio_id": relatorio_id},
+        {"tipo": "pdf", "ficha": sa.null()},
+        {"tipo": "pdf", "relatorio_id": relatorio_id},  # com a ficha também
+        {"expira_em": agora},
+        {"visitas": -1},
+        {"titulo": ""},
+    ]
+    for mudar in incoerentes:
+        with pytest.raises(sa.exc.IntegrityError), motor.begin() as conexao:
+            conexao.execute(
+                sa.insert(compartilhamentos).values(_link(usuario.id, **mudar))
+            )
+    with motor.begin() as conexao:
+        conexao.execute(
+            sa.insert(compartilhamentos).values(
+                _link(
+                    usuario.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id
+                )
+            )
+        )
+
+
+def test_codigo_repetido_e_recusado_no_banco(motor):
+    with motor.begin() as conexao:
+        usuario = repo.entrar(conexao, "sub-rep", "rep@exemplo.com", "Rep")[0]
+        conexao.execute(
+            sa.insert(compartilhamentos).values(_link(usuario.id, codigo_hash="a" * 64))
+        )
+    with pytest.raises(sa.exc.IntegrityError), motor.begin() as conexao:
+        conexao.execute(
+            sa.insert(compartilhamentos).values(_link(usuario.id, codigo_hash="a" * 64))
+        )
+
+
+def test_links_saem_com_a_conta_e_com_o_pdf(motor):
+    """A cascata no banco migrado (PostgreSQL no CI): sem a conta ou sem o PDF, o link some."""
+    with motor.begin() as conexao:
+        ana = repo.entrar(conexao, "sub-ana-l", "ana-l@exemplo.com", "Ana")[0]
+        bia = repo.entrar(conexao, "sub-bia-l", "bia-l@exemplo.com", "Bia")[0]
+        relatorio_id = _pdf_guardado(conexao, ana.id)
+        conexao.execute(
+            sa.insert(compartilhamentos).values(
+                [
+                    _link(
+                        ana.id, tipo="pdf", ficha=sa.null(), relatorio_id=relatorio_id
+                    ),
+                    _link(ana.id),
+                    _link(bia.id),
+                ]
+            )
+        )
+    with motor.begin() as conexao:
+        conexao.execute(
+            sa.delete(pdfs_originais).where(
+                pdfs_originais.c.relatorio_id == relatorio_id
+            )
+        )
+        donos = (
+            conexao.execute(sa.select(compartilhamentos.c.usuario_id)).scalars().all()
+        )
+        assert sorted(map(str, donos)) == sorted([str(ana.id), str(bia.id)])
+        repo.apagar_conta(conexao, ana.id)
+        donos = (
+            conexao.execute(sa.select(compartilhamentos.c.usuario_id)).scalars().all()
+        )
+        assert donos == [bia.id]
 
 
 def test_migracao_pode_ser_desfeita_e_refeita(motor):
@@ -392,3 +592,27 @@ def test_tentativas_no_banco_de_verdade_nao_repetem_e_somem_com_a_conta(motor):
     with motor.connect() as conexao:
         assert tentativas.contar_por_ativo(conexao, ana.id) == {}
         assert tentativas.contar_por_ativo(conexao, bia.id) == {"PETR4.SA": 1}
+
+
+def test_pulse_no_banco_de_verdade_nao_volta_o_relogio_e_some_com_a_conta(motor):
+    """No CI roda no PostgreSQL: confere o ON CONFLICT DO UPDATE ... WHERE e a cascata reais."""
+    from datetime import UTC, datetime, timedelta
+
+    from src.banco import pulse
+
+    agora = datetime(2026, 10, 13, 18, 0, tzinfo=UTC)
+    with motor.begin() as conexao:
+        ana, _ = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
+        bia, _ = repo.entrar(conexao, "g-bia", "bia@exemplo.com")
+        pulse.marcar_visita(conexao, ana.id, agora, {"s1": "passou"})
+        pulse.marcar_visita(
+            conexao, ana.id, agora - timedelta(hours=1), {"s1": "não passou"}
+        )
+        pulse.marcar_visita(conexao, bia.id, agora + timedelta(days=1))
+    with motor.begin() as conexao:
+        assert pulse.ultima_visita(conexao, ana.id) == agora
+        assert pulse.vereditos_vistos(conexao, ana.id) == {"s1": "passou"}
+        repo.apagar_conta(conexao, ana.id)
+    with motor.connect() as conexao:
+        assert pulse.ultima_visita(conexao, ana.id) is None
+        assert pulse.ultima_visita(conexao, bia.id) == agora + timedelta(days=1)

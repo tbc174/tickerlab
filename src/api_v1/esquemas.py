@@ -8,14 +8,18 @@ JSON. Duas regras valem para todos:
 """
 
 import math
+from dataclasses import asdict
 from datetime import date
 
 import pandas as pd
 from pydantic import BaseModel
 
-from src import analises
+from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
+from src.conteudo import descrever_pior_drawdown
+from src.indicadores import calcular_media_por_mes
+from src.links_das_fontes import link_da_fonte
 
 BASE = 100.0  # as curvas de valor começam aqui
 
@@ -40,6 +44,12 @@ class CurvaV1(BaseModel):
 
     datas: list[date]
     valores: list[float | None]
+
+
+def em_base_100(fechamento: pd.Series) -> CurvaV1:
+    """O fechamento dividido pelo primeiro dia, vezes 100: a forma da curva sem o preço."""
+    precos = fechamento.dropna()
+    return curva(precos / precos.iloc[0] * BASE)
 
 
 def curva(serie: pd.Series) -> CurvaV1:
@@ -99,6 +109,8 @@ class RiscoV1(BaseModel):
     pior_queda: PiorQuedaV1
     janela: int
     volatilidade_movel: CurvaV1
+    frase_da_pior_queda: str  # a mesma frase da tela, sem Markdown
+    aviso_da_janela: str | None  # o período não tem dias para a janela escolhida
 
 
 def de_risco(risco: analises.RiscoAoLongoDoTempo) -> RiscoV1:
@@ -113,6 +125,12 @@ def de_risco(risco: analises.RiscoAoLongoDoTempo) -> RiscoV1:
         ),
         janela=risco.janela,
         volatilidade_movel=curva(risco.volatilidade_movel),
+        frase_da_pior_queda=descrever_pior_drawdown(pior, negrito=False),
+        aviso_da_janela=(
+            analises.aviso_janela_curta(risco.janela)
+            if risco.volatilidade_movel.dropna().empty
+            else None
+        ),
     )
 
 
@@ -133,6 +151,9 @@ class RetornoMensalV1(BaseModel):
     melhor: MesV1
     pior: MesV1
     meses_de_alta: float | None
+    media_por_mes: list[
+        float | None
+    ]  # janeiro a dezembro: a média de cada mês ao longo dos anos
 
 
 def de_retorno_mensal(mensal: analises.RetornoMensal) -> RetornoMensalV1:
@@ -153,6 +174,7 @@ def de_retorno_mensal(mensal: analises.RetornoMensal) -> RetornoMensalV1:
         melhor=MesV1(mes=_mes(mensal.mes_melhor), retorno=numero(mensal.melhor)),
         pior=MesV1(mes=_mes(mensal.mes_pior), retorno=numero(mensal.pior)),
         meses_de_alta=numero(mensal.meses_de_alta),
+        media_por_mes=[numero(v) for v in calcular_media_por_mes(tabela).to_numpy()],
     )
 
 
@@ -172,6 +194,8 @@ class ComparacaoV1(BaseModel):
     dias_descartados: int
     curvas: dict[str, CurvaV1] | None  # cada ativo começando em 100
     tabela: list[LinhaDaComparacaoV1] | None
+    nota: str | None  # como a comparação foi feita (com dados)
+    aviso: str | None  # poucos dias em comum (sem curvas nem tabela)
 
 
 def de_comparacao(comparacao: analises.Comparacao) -> ComparacaoV1:
@@ -194,6 +218,18 @@ def de_comparacao(comparacao: analises.Comparacao) -> ComparacaoV1:
         dias_descartados=comparacao.dias_descartados,
         curvas=curvas,
         tabela=tabela,
+        nota=(
+            analises.nota_da_comparacao(
+                comparacao.dias_em_comum, comparacao.dias_descartados
+            )
+            if tabela is not None
+            else None
+        ),
+        aviso=(
+            None
+            if tabela is not None
+            else analises.aviso_poucos_dias_em_comum(comparacao.dias_em_comum)
+        ),
     )
 
 
@@ -213,6 +249,121 @@ def de_backtest(resultado: ResultadoBacktest, metricas: dict[str, float]) -> Bac
     )
 
 
+class MarcoV1(BaseModel):
+    """Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica."""
+
+    data: date  # quando o documento foi publicado
+    dia_no_grafico: date  # o pregão em que o ponto fica (o mesmo dia ou o seguinte)
+    valor_no_grafico: float  # a curva em base 100 nesse pregão
+    rotulo: str
+    tema: str
+    materialidade: int
+    assunto: str
+    descricao: str  # "dd/mm/aaaa · tipo: assunto", como na tela
+    link: str  # vazio: sem link seguro
+
+
+class LinhaDoTempoV1(BaseModel):
+    """A curva do ativo em base 100 e os acontecimentos do período, com os textos da tela."""
+
+    curva: CurvaV1
+    marcos: list[MarcoV1]
+    fora_do_grafico: (
+        int  # acontecimentos do período que ficaram de fora (rotina ou excesso)
+    )
+    aviso: str  # a linha do tempo não diz que um fato causou o preço
+    sem_acontecimentos: str | None  # texto para quando não há marcos
+    texto_fora_do_grafico: str | None
+
+
+def de_linha_do_tempo(linha: linha_do_tempo.LinhaDoTempo) -> LinhaDoTempoV1:
+    return LinhaDoTempoV1(
+        curva=CurvaV1(
+            datas=[p.dia for p in linha.curva],
+            valores=[numero(p.valor) for p in linha.curva],
+        ),
+        marcos=[
+            MarcoV1(
+                # só https da CVM ou da SEC (a coleta já filtra; aqui é a segunda trava)
+                **{**asdict(m), "link": link_da_fonte(m.link) or ""},
+                descricao=linha_do_tempo.descricao_do_marco(m),
+            )
+            for m in linha.marcos
+        ],
+        fora_do_grafico=linha.fora_do_grafico,
+        aviso=linha_do_tempo.AVISO_DA_LINHA,
+        sem_acontecimentos=None if linha.marcos else linha_do_tempo.SEM_ACONTECIMENTOS,
+        texto_fora_do_grafico=(
+            linha_do_tempo.texto_fora_do_grafico(linha.fora_do_grafico)
+            if linha.fora_do_grafico
+            else None
+        ),
+    )
+
+
+class NumeroDeJurosV1(BaseModel):
+    """Um número do painel (em %, como o Banco Central publica), com a data e a fonte."""
+
+    nome: str
+    valor: float | None  # null: faltou dado (o motivo está nos avisos)
+    texto: str  # o valor como a tela mostra ("15,00% ao ano", "—")
+    unidade: str
+    referencia: date | None
+    referencia_mensal: bool  # true: vale para o mês inteiro (IPCA)
+    divulgado_em: date | None
+    fonte: str
+    legenda: str  # referência, divulgação e fonte numa linha, como na tela
+
+
+class ExpectativaV1(BaseModel):
+    indicador: str  # "IPCA" ou "Selic"
+    ano: int
+    mediana: float  # % (como no boletim Focus)
+    pesquisa: date | None
+
+
+class PontoMensalV1(BaseModel):
+    mes: date  # o primeiro dia do mês
+    selic_meta: float | None  # % ao ano no fim do mês
+    ipca_12_meses: float | None  # %
+
+
+class JurosEInflacaoV1(BaseModel):
+    """O painel de juros e inflação como era conhecido em `dia` (fonte: Banco Central)."""
+
+    dia: date
+    numeros: list[NumeroDeJurosV1]
+    expectativas: list[ExpectativaV1]
+    historico: list[PontoMensalV1]
+    avisos: list[str]
+
+
+def de_juros_e_inflacao(
+    painel: juros_e_inflacao.PainelDeJuros, dia: date
+) -> JurosEInflacaoV1:
+    return JurosEInflacaoV1(
+        dia=dia,
+        numeros=[
+            NumeroDeJurosV1(
+                **{**asdict(n), "valor": numero(n.valor)},
+                texto=juros_e_inflacao.formatar_valor(n),
+                legenda=juros_e_inflacao.legenda(n),
+            )
+            for n in painel.numeros
+        ],
+        expectativas=[ExpectativaV1(**asdict(e)) for e in painel.expectativas],
+        historico=[
+            PontoMensalV1(
+                mes=p.mes,
+                selic_meta=numero(p.selic_meta),
+                ipca_12_meses=numero(p.ipca_12_meses),
+            )
+            for p in painel.historico
+        ],
+        avisos=list(painel.avisos),
+    )
+
+
 # --- As respostas das rotas: o ativo analisado e o resultado ---
 
 
@@ -226,6 +377,9 @@ class AtivoV1(BaseModel):
     origem: str  # "atual", "cache_antigo" (o Yahoo falhou) ou "exemplo"
     taxa_livre_de_risco: float
     taxa_do_cdi: bool  # true: a taxa é o CDI do período
+    aviso_da_origem: (
+        str | None
+    )  # o aviso da tela quando os preços não são os mais recentes
 
 
 def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
@@ -238,12 +392,17 @@ def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
         origem=contexto.origem,
         taxa_livre_de_risco=contexto.taxa_livre_de_risco,
         taxa_do_cdi=contexto.taxa_do_cdi,
+        aviso_da_origem=analises.aviso_da_origem(
+            contexto.origem, contexto.dados.attrs.get("ate")
+        ),
     )
 
 
 class VisaoGeralV1(BaseModel):
     ativo: AtivoV1
     painel: PainelDeNumerosV1
+    curva: CurvaV1  # o fechamento em base 100 (nunca o preço bruto)
+    motivo_sem_anualizar: str | None  # por que o retorno anualizado veio vazio
 
 
 class RiscoDoAtivoV1(BaseModel):
@@ -268,3 +427,8 @@ class BacktestDoAtivoV1(BaseModel):
     parametros: dict[str, int | float | str]
     custo_por_operacao: float
     backtest: BacktestV1
+
+
+class LinhaDoTempoDoAtivoV1(BaseModel):
+    ativo: AtivoV1  # a linha do tempo não usa taxa livre de risco: vem zerada
+    linha_do_tempo: LinhaDoTempoV1

@@ -65,6 +65,94 @@ def painel_de_numeros(
     )
 
 
+# --- como a visão geral mostra o painel (o app em React lê daqui; há teste contra a tela) ---
+
+
+@dataclass(frozen=True)
+class ItemDoPainel:
+    """Um número do painel: o campo de `PainelDeNumeros`, o rótulo, o "?" e o formato."""
+
+    campo: str
+    rotulo: (
+        str  # pode ter {data} (o `campo_da_data` em dd/mm/aaaa) e {confianca} (do VaR)
+    )
+    termo: str  # o termo do glossário que explica o número
+    formato: str  # "pct", "pct_com_sinal" ou "decimal" (src/formatos.py)
+    grupo: str
+    campo_da_data: str | None = None
+
+
+RETORNO_E_RISCO = "Retorno e risco"
+CONSISTENCIA = "Consistência e dias extremos"
+ITENS_DO_PAINEL = (
+    ItemDoPainel("retorno_total", "Retorno total", "Retorno acumulado", "pct_com_sinal", RETORNO_E_RISCO),
+    ItemDoPainel("retorno_anualizado", "Retorno anualizado", "Retorno anualizado", "pct_com_sinal", RETORNO_E_RISCO),
+    ItemDoPainel("volatilidade_anual", "Volatilidade anual", "Volatilidade", "pct", RETORNO_E_RISCO),
+    ItemDoPainel("maior_queda", "Maior queda (drawdown)", "Drawdown", "pct", RETORNO_E_RISCO),
+    ItemDoPainel("sharpe", "Índice de Sharpe", "Índice de Sharpe", "decimal", CONSISTENCIA),
+    ItemDoPainel("melhor_dia", "Melhor dia ({data})", "Melhor e pior dia", "pct_com_sinal", CONSISTENCIA, "data_do_melhor_dia"),
+    ItemDoPainel("pior_dia", "Pior dia ({data})", "Melhor e pior dia", "pct_com_sinal", CONSISTENCIA, "data_do_pior_dia"),
+    ItemDoPainel("dias_de_alta", "Dias de alta", "Dias de alta", "pct", CONSISTENCIA),
+    ItemDoPainel("var", "Perda de um dia ruim (VaR {confianca}%)", "Perda de um dia ruim (VaR)", "pct", CONSISTENCIA),
+)  # fmt: skip
+LEGENDA_DO_PAINEL = "Passe o mouse no ? de cada número para ver o que ele significa."
+# a frase do CVaR, embaixo do painel ({confianca} e {cvar} já formatado)
+FRASE_DO_CVAR = (
+    "Perda média nos piores dias (CVaR {confianca}%): {cvar}. Quando o dia foi pior que o VaR, "
+    "esta foi a perda média. Estimativa feita com o passado, não um limite de perda."
+)
+
+
+def aviso_janela_curta(janela: int) -> str:
+    """Quando o período não tem dias para a volatilidade móvel da janela escolhida."""
+    return (
+        f"O período é curto demais para uma janela de {janela} dias. "
+        "Escolha uma janela menor ou um período maior."
+    )
+
+
+LEGENDA_DO_MAPA_MENSAL = (
+    "O primeiro e o último mês do período podem estar incompletos. "
+    "A última linha mostra a média de cada mês ao longo dos anos "
+    "(com poucos anos de dados, isso pode ser só coincidência)."
+)
+
+
+def aviso_poucos_dias_em_comum(dias_em_comum: int) -> str:
+    """Quando os ativos comparados têm poucos pregões em comum."""
+    return (
+        f"Só há {dias_em_comum} dias em comum entre esses ativos, e são necessários "
+        f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
+    )
+
+
+def nota_da_comparacao(dias_em_comum: int, dias_descartados: int) -> str:
+    """Como a comparação foi feita (dias em comum, nada inventado, moedas diferentes)."""
+    return (
+        f"Comparação feita em {dias_em_comum} dias em comum. "
+        f"{dias_descartados} dias foram descartados porque algum ativo não tinha preço neles "
+        "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
+        "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
+        "As moedas diferentes (R$ e US$) não atrapalham, porque comparamos a variação "
+        "percentual, não os preços."
+    )
+
+
+def aviso_da_origem(origem: str, ate: str | None) -> str | None:
+    """O aviso quando os preços não são os mais recentes do Yahoo ("cache_antigo" ou "exemplo")."""
+    if origem == "cache_antigo":
+        return (
+            "Não consegui atualizar com o Yahoo Finance agora. Estes são os preços que o app "
+            f"tinha guardado, até {ate}."
+        )
+    if origem == "exemplo":
+        return (
+            f"Estes são dados de exemplo guardados no projeto, até {ate}, "
+            "e não os mais recentes do Yahoo Finance."
+        )
+    return None
+
+
 @dataclass(frozen=True)
 class RiscoAoLongoDoTempo:
     """A queda desde o topo dia a dia, a pior delas e a volatilidade numa janela móvel."""

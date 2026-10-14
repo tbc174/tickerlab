@@ -1,0 +1,232 @@
+{
+ "na_tela": {
+  "CDI em 12 meses": "13,42%",
+  "Dólar comercial": "—",
+  "IPCA em 12 meses": "4,91%",
+  "IPCA no mês": "0,40%",
+  "Juro real em 12 meses": "8,12%",
+  "Meta da Selic": "15,00% ao ano"
+ },
+ "resposta": {
+  "avisos": [
+   "Sem dados de dólar comercial no acervo do TickerLab: este número fica em branco."
+  ],
+  "dia": "2026-10-13",
+  "expectativas": [
+   {
+    "ano": 2026,
+    "indicador": "IPCA",
+    "mediana": 4.8,
+    "pesquisa": "2026-10-09"
+   },
+   {
+    "ano": 2027,
+    "indicador": "IPCA",
+    "mediana": 4.2,
+    "pesquisa": "2026-10-09"
+   },
+   {
+    "ano": 2026,
+    "indicador": "Selic",
+    "mediana": 15.0,
+    "pesquisa": "2026-10-09"
+   },
+   {
+    "ano": 2027,
+    "indicador": "Selic",
+    "mediana": 12.5,
+    "pesquisa": "2026-10-09"
+   }
+  ],
+  "historico": [
+   {
+    "ipca_12_meses": null,
+    "mes": "2024-10-01",
+    "selic_meta": null
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2024-11-01",
+    "selic_meta": null
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2024-12-01",
+    "selic_meta": null
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-01-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-02-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-03-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-04-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-05-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-06-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-07-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": null,
+    "mes": "2025-08-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2025-09-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2025-10-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2025-11-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2025-12-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-01-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-02-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-03-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-04-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-05-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-06-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-07-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-08-01",
+    "selic_meta": 10.5
+   },
+   {
+    "ipca_12_meses": 4.907020753480573,
+    "mes": "2026-09-01",
+    "selic_meta": 10.5
+   }
+  ],
+  "numeros": [
+   {
+    "divulgado_em": "2026-10-10",
+    "fonte": "Banco Central, SGS 432",
+    "legenda": "Referência: 10/10/2026 · divulgado em 10/10/2026 · Banco Central, SGS 432",
+    "nome": "Meta da Selic",
+    "referencia": "2026-10-10",
+    "referencia_mensal": false,
+    "texto": "15,00% ao ano",
+    "unidade": "% ao ano",
+    "valor": 15.0
+   },
+   {
+    "divulgado_em": null,
+    "fonte": "Banco Central, SGS 12",
+    "legenda": "Referência: 13/10/2026 · Banco Central, SGS 12",
+    "nome": "CDI em 12 meses",
+    "referencia": "2026-10-13",
+    "referencia_mensal": false,
+    "texto": "13,42%",
+    "unidade": "% em 12 meses",
+    "valor": 13.424645086257069
+   },
+   {
+    "divulgado_em": "2026-10-10",
+    "fonte": "Banco Central, SGS 433",
+    "legenda": "Referência: set/2026 · divulgado em 10/10/2026 · Banco Central, SGS 433",
+    "nome": "IPCA no mês",
+    "referencia": "2026-09-01",
+    "referencia_mensal": true,
+    "texto": "0,40%",
+    "unidade": "% no mês",
+    "valor": 0.4
+   },
+   {
+    "divulgado_em": "2026-10-10",
+    "fonte": "Banco Central, SGS 433",
+    "legenda": "Referência: set/2026 · divulgado em 10/10/2026 · Banco Central, SGS 433",
+    "nome": "IPCA em 12 meses",
+    "referencia": "2026-09-01",
+    "referencia_mensal": true,
+    "texto": "4,91%",
+    "unidade": "% em 12 meses",
+    "valor": 4.907020753480573
+   },
+   {
+    "divulgado_em": null,
+    "fonte": "Conta do TickerLab com o CDI e o IPCA acima",
+    "legenda": "Referência: 13/10/2026 · Conta do TickerLab com o CDI e o IPCA acima",
+    "nome": "Juro real em 12 meses",
+    "referencia": "2026-10-13",
+    "referencia_mensal": false,
+    "texto": "8,12%",
+    "unidade": "% em 12 meses (CDI descontado o IPCA)",
+    "valor": 8.119212872122183
+   },
+   {
+    "divulgado_em": null,
+    "fonte": "Banco Central, SGS 1",
+    "legenda": "Banco Central, SGS 1",
+    "nome": "Dólar comercial",
+    "referencia": null,
+    "referencia_mensal": false,
+    "texto": "—",
+    "unidade": "R$ por US$",
+    "valor": null
+   }
+  ]
+ }
+}

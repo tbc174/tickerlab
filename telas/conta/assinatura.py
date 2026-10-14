@@ -18,11 +18,10 @@ from src.cobranca import (
     criar_portal_da_assinatura,
     pode_assinar,
 )
+from src.paginas import motivo_da_pagina, pagina
 from src.planos import (
-    NOMES_DOS_RECURSOS,
     descrever_limite,
     limites_do,
-    pode_usar,
     tabela_de_planos,
 )
 from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, plano_atual
@@ -128,18 +127,19 @@ def mostrar_retorno_do_pagamento():
         st.info("Pagamento cancelado. Nada foi cobrado.")
 
 
-def exigir_recurso(recurso):
-    """True se o plano atual pode usar o recurso; senão mostra o convite ao Pro e devolve False."""
-    if pode_usar(plano_atual(), recurso):
+def exigir_pagina(chave):
+    """True se o plano atual abre a página; senão mostra o motivo e o convite ao Pro e devolve False.
+
+    A regra e o texto são os mesmos da API v1 (`src.paginas.motivo_da_pagina`, ADR 0062).
+    """
+    motivo = motivo_da_pagina(plano_atual(), chave)
+    if motivo is None:
         return True
-    st.info(
-        f"**{NOMES_DOS_RECURSOS[recurso]}** faz parte do plano **Pro**. "
-        f"Você está no plano {limites_do(plano_atual()).nome}."
-    )
+    st.info(motivo)
     with st.expander("Comparar os planos"):
         mostrar_planos()
         st.caption("Pagamento em modo de teste do Stripe: nenhum dinheiro real.")
-    mostrar_assinatura(f"recurso_{recurso}")
+    mostrar_assinatura(f"recurso_{pagina(chave).recurso}")
     return False
 
 

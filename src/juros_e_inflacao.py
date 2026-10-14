@@ -47,6 +47,7 @@ TERMO_DO_GLOSSARIO = {
 }
 FONTE_SGS = "Banco Central, SGS {}"
 FONTE_FOCUS = "Banco Central, boletim Focus (mediana)"
+NOTA_DO_FOCUS = "É a mediana das projeções, não uma previsão do TickerLab."
 
 MESES_ABREVIADOS = (
     "jan",
@@ -65,6 +66,7 @@ MESES_ABREVIADOS = (
 MESES_NO_ANO = 12
 DIAS_UTEIS_NO_ANO = 252
 ANOS_DE_HISTORICO = 10
+DIAS_DE_CDI = 400  # um pouco mais que um ano de dias corridos: cobre 252 dias úteis
 
 
 @dataclass(frozen=True)

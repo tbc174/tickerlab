@@ -1,2 +1,7 @@
 # scripts de shell precisam de fim de linha LF (rodam no Linux do servidor)
 *.sh text eol=lf
+
+# o front-end sai sempre com LF: o build do app no Windows tem de ficar igual ao do CI (Linux), que
+# confere a pasta novo/ byte a byte. novo/ é gerado: o Git não converte nada nele.
+web/** text=auto eol=lf
+novo/** -text

@@ -65,6 +65,7 @@ def test_paginas_tem_titulo_descricao_idioma_e_aviso():
         "produto.html",
         "como-funciona.html",
         "aprender.html",
+        "novidades.html",
     }
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
@@ -96,7 +97,7 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
     urls = {p.url for p in PAGINAS} | {""}
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
-        for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z\-]*)", texto):
+        for pagina in re.findall(re.escape(URL_DO_APP) + r"/([a-z0-9\-]*)", texto):
             assert pagina in urls, (arquivo.name, pagina)
 
 
@@ -118,6 +119,15 @@ def test_planos_do_site_sao_os_do_app():
             assert f"<td>{esc(linha[nome])}</td>" in texto
     assert "R$" not in texto  # sem preço enquanto não houver cobrança real
     assert "modo de teste" in texto
+
+
+def test_precos_anunciam_mensal_de_verdade():
+    """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
+    texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    assert "Mensal de verdade:" in texto
+    assert "sem fidelidade" in texto
+    assert "cobra um mês por vez" in texto
+    assert "Planos e assinatura" in texto
 
 
 def test_catalogo_da_busca_e_o_do_app():
@@ -313,3 +323,28 @@ def test_metodologia_explica_o_selo_e_lista_todas_as_regras():
     for regra in REGRAS.values():
         assert esc(regra.titulo) in texto
         assert esc(regra.o_que_confere) in texto
+
+
+def test_metodologia_explica_padroes_notas_e_formulas():
+    """Relatório da empresa (série 2 da base de ML, PR 8): as regras das notas e dos padrões e as
+    fórmulas são públicas, com os mesmos textos (e os mesmos limites) do app."""
+    from src import metodologia_das_notas as m
+
+    texto = (SITE / "metodologia.html").read_text(encoding="utf-8")
+    assert f'id="{m.ANCORA_NO_SITE}"' in texto
+    for paragrafo in (*m.PADROES, *m.NOTAS):
+        assert esc(paragrafo) in texto
+    for item in (*m.GRUPOS, *m.INDICADORES_DAS_NOTAS):
+        assert esc(item.nome) in texto
+    for formula in m.FORMULAS:
+        assert esc(formula.formula) in texto
+        assert esc(formula.leitura) in texto
+
+
+def test_novidades_no_rodape_de_todas_as_paginas_e_no_mapa_do_site():
+    for arquivo in PAGINAS_HTML:
+        rodape = arquivo.read_text(encoding="utf-8").split("<footer", 1)[1]
+        assert '<a href="/novidades.html">Novidades</a>' in rodape, arquivo.name
+    assert "https://tickerlab.com.br/novidades.html" in (
+        SITE / "sitemap.xml"
+    ).read_text(encoding="utf-8")

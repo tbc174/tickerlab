@@ -20,12 +20,15 @@ def test_o_esquema_publicado_esta_em_dia():
 def test_o_esquema_tem_as_rotas_de_leitura():
     caminhos = set(openapi_v1()["paths"])
     assert caminhos == {
+        "/v1/configuracao",
         "/v1/eu",
         "/v1/visao-geral",
         "/v1/risco",
         "/v1/retorno-mensal",
         "/v1/comparacao",
         "/v1/backtest",
+        "/v1/juros-e-inflacao",
+        "/v1/linha-do-tempo",
     }
 
 

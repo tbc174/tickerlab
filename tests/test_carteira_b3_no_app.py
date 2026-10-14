@@ -4,6 +4,7 @@ import sqlalchemy as sa
 from streamlit.testing.v1 import AppTest
 
 from src import analise_da_carteira as ac
+from src import dividendos_e_custo as dc
 from src.banco.modelo import metadata
 from tests.ajudantes_da_conta import ir_para
 
@@ -12,9 +13,10 @@ def _abrir_com_o_exemplo() -> AppTest:
     app = AppTest.from_file("../app.py", default_timeout=120)
     app.session_state["usar_exemplo"] = True
     app.run()
-    ir_para(app, "carteira_b3")
-    app.toggle(key="carteira_b3_exemplo").set_value(True).run()
-    return app
+    # o exemplo já ligado na primeira vez: o AppTest não aceita reenviar um campo de arquivo
+    # que já apareceu (e a página tem dois)
+    app.session_state["carteira_b3_exemplo"] = True
+    return ir_para(app, "carteira_b3")
 
 
 def _linhas_no_banco(banco) -> int:
@@ -51,5 +53,55 @@ def test_carteira_de_exemplo_mostra_concentracao_raio_x_e_rebalanceamento():
 def test_pagina_nao_guarda_nada_da_planilha(banco):
     antes = _linhas_no_banco(banco)
     app = _abrir_com_o_exemplo()
+    assert not app.exception
+    assert _linhas_no_banco(banco) == antes
+
+
+def _abrir_com_a_movimentacao_de_exemplo(com_a_posicao: bool) -> AppTest:
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    app.session_state["carteira_b3_exemplo"] = com_a_posicao
+    app.session_state["carteira_b3_movimentacao_exemplo"] = True
+    return ir_para(app, "carteira_b3")
+
+
+def _tabela_com(app: AppTest, coluna: str):
+    (tabela,) = [d.value for d in app.dataframe if coluna in d.value.columns]
+    return tabela.set_index("Ativo")
+
+
+def test_movimentacao_de_exemplo_mostra_proventos_e_custo_medio():
+    app = _abrir_com_a_movimentacao_de_exemplo(com_a_posicao=False)
+    assert not app.exception and not app.error
+    assert {"Proventos no período", "Últimos 12 meses"} <= {m.label for m in app.metric}
+    textos = " ".join(c.value for c in app.caption)
+    assert dc.NOTA_DOS_PROVENTOS in textos and dc.NOTA_DO_CUSTO in textos
+    assert dc.SEM_A_POSICAO in " ".join(i.value for i in app.info)
+    custo = _tabela_com(app, "Preço médio (R$)")
+    assert custo.loc["PETR4", "Preço médio (R$)"] == 33.0
+    assert "começa depois" in custo.loc["WEGE3", "Observação"]
+    assert "HGLG11" not in custo.index  # vendido inteiro: não tem custo hoje
+    proventos = _tabela_com(app, "Total (R$)")
+    # 505 de proventos + 3,50 da taxa do aluguel (linha "Empréstimo" com valor)
+    assert proventos.loc["PETR4", "Total (R$)"] == 508.5
+    assert proventos.loc["PETR4", "Aluguel (R$)"] == 3.5
+
+
+def test_movimentacao_com_a_posicao_mostra_o_ganho_ou_a_perda():
+    app = _abrir_com_a_movimentacao_de_exemplo(com_a_posicao=True)
+    assert not app.exception and not app.error
+    tabela = _tabela_com(app, "Ganho ou perda (R$)")
+    # PETR4: 150 ações valem R$ 8.400 na posição de exemplo; custaram 150 × R$ 33
+    assert tabela.loc["PETR4", "Ganho ou perda (R$)"] == 8400 - 150 * 33
+    assert tabela.loc["WEGE3", "Ganho ou perda (R$)"] is None or (
+        tabela.loc["WEGE3", "Ganho ou perda (R$)"]
+        != tabela.loc["WEGE3", "Ganho ou perda (R$)"]
+    )  # sem número (None ou NaN)
+
+
+def test_pagina_nao_guarda_nada_da_movimentacao(banco):
+    antes = _linhas_no_banco(banco)
+    app = _abrir_com_a_movimentacao_de_exemplo(com_a_posicao=True)
     assert not app.exception
     assert _linhas_no_banco(banco) == antes

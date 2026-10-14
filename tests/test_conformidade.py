@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -9,12 +10,15 @@ import sqlalchemy as sa
 import stripe
 
 from src import auditoria, conformidade
+from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
-from src.banco import origens, tentativas
+from src.banco import origens, pulse, tentativas
+from src.banco import teses as diario
 from src.banco.modelo import assinaturas, metadata
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
 from src.origem import Origem
+from tests.test_compartilhamentos import _congelada
 
 
 @pytest.fixture
@@ -103,7 +107,10 @@ def test_exportar_traz_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
     repo.salvar_simulacao(conexao, bia.id, "backtest", "Da Bia", {}, {})
     tentativas.registrar_tentativa(conexao, ana.id, "PETR4.SA", "a" * 64)
     tentativas.registrar_tentativa(conexao, bia.id, "VALE3.SA", "b" * 64)
+    pulse.marcar_visita(conexao, ana.id, datetime(2026, 10, 13, 18, 0, tzinfo=UTC))
+    pulse.marcar_visita(conexao, bia.id, datetime(2026, 10, 14, 9, 0, tzinfo=UTC))
     dados = conformidade.exportar_meus_dados(conexao, ana.id)
+    assert dados["pulse"] == {"visto_em": "2026-10-13T18:00:00+00:00", "vereditos": {}}
     assert dados["tentativas_por_ativo"] == {"PETR4.SA": 1}
     assert dados["perfil"]["email"] == "ana@exemplo.com"
     assert dados["preferencias"] == {"periodo": "5y"}
@@ -137,9 +144,52 @@ def test_exportar_sem_origem_traz_none(conexao, ana):
     )
 
 
+def test_exportar_traz_os_links_compartilhados_so_da_pessoa(conexao, ana, bia):
+    links.criar_link_da_ficha(conexao, ana.id, "gratuito", _congelada(), 30)
+    outra = {**_congelada(), "ticker": "VALE3.SA"}
+    links.criar_link_da_ficha(conexao, bia.id, "gratuito", outra, 30)
+    (exportado,) = conformidade.exportar_meus_dados(conexao, ana.id)[
+        "links_compartilhados"
+    ]
+    assert exportado["situacao"] == "ativo"
+    assert exportado["ficha"]["ticker"] == "PETR4.SA"
+    assert "VALE3" not in json.dumps(exportado)
+
+
 def test_politica_de_privacidade_cita_as_tentativas_do_backtest():
     texto = conformidade.carregar_texto("privacidade")
     assert "tentativas" in texto and "SHA-256" in texto
+
+
+def test_politica_de_privacidade_cita_o_pulse():
+    texto = conformidade.carregar_texto("privacidade")
+    assert "Pulse" in texto
+
+
+def test_exportar_sem_pulse_aberto_traz_vazio(conexao, ana):
+    assert conformidade.exportar_meus_dados(conexao, ana.id)["pulse"] is None
+
+
+def test_politica_de_privacidade_cita_o_diario_de_teses():
+    texto = conformidade.carregar_texto("privacidade")
+    assert "Diário de Teses" in texto and "anotações do Diário de Teses" in texto
+
+
+def test_exportar_meus_dados_inclui_o_diario(conexao, ana, bia):
+    diario.escrever(conexao, ana.id, "PETR4", "Tese da Ana")
+    diario.escrever(conexao, bia.id, "VALE3", "Tese da Bia")
+    exportado = conformidade.exportar_meus_dados(conexao, ana.id)["diario_de_teses"]
+    assert [(t["ticker"], t["texto"]) for t in exportado] == [
+        ("PETR4.SA", "Tese da Ana")
+    ]
+
+
+def test_apagar_a_conta_apaga_o_diario(conexao, ana, bia):
+    diario.escrever(conexao, ana.id, "PETR4", "Tese da Ana")
+    diario.escrever(conexao, bia.id, "PETR4", "Tese da Bia")
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    assert diario.listar(conexao, ana.id) == []
+    assert len(diario.listar(conexao, bia.id)) == 1
 
 
 def test_exportar_vira_json_e_registra_na_auditoria(conexao, ana):

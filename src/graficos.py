@@ -28,13 +28,13 @@ COR_BOTAO = marca.AZUL  # botão ativo do seletor de período
 COR_ALTA = marca.ALTA  # verde só para alta
 COR_QUEDA = marca.QUEDA  # vermelho só para queda
 COR_INDICE = marca.TEXTO_APAGADO  # índices em cinza
-CORES_OUTROS_ATIVOS = list(marca.SERIES[1:5])  # âmbar, verde-água, rosa, amarelo
+CORES_OUTROS_ATIVOS = list(marca.SERIES[1:5])  # âmbar, ciano, roxo, oliva
 CORES_MEDIAS = [
     marca.SERIES[5],
     marca.SERIES[3],
     marca.SERIES[2],
-]  # violeta, rosa, verde-água
-PREENCHIMENTO_AZUL = "rgba(110, 149, 255, 0.22)"
+]  # magenta, roxo, ciano
+PREENCHIMENTO_AZUL = "rgba(90, 146, 248, 0.22)"  # marca.SERIES[0]
 PREENCHIMENTO_QUEDA = "rgba(240, 82, 91, 0.22)"
 # mapa de calor: queda (vermelho) → zero (superfície) → alta (verde)
 ESCALA_QUEDA_ALTA = [[0, "#b8323b"], [0.5, marca.SUPERFICIE], [1, "#1d9567"]]
@@ -1186,6 +1186,39 @@ def criar_grafico_fundamentos_anuais(
             )
         )
     figura.update_layout(barmode="group", showlegend=True, hovermode="x unified")
+    return figura
+
+
+def criar_grafico_cascata(
+    passos: list[tuple[str, float]],
+    titulo: str,
+    simbolo: str = "R$",
+    subir_e_bom: bool = True,
+) -> go.Figure:
+    """Cascata (o primeiro passo é o ponto de partida; o último, o total), em bilhões.
+
+    `subir_e_bom`: na ponte da dívida, um passo para cima (mais dívida) é ruim e fica vermelho.
+    """
+    if not passos:
+        raise ValueError("Não há passos para a cascata.")
+    figura = _figura_base(f"{titulo} ({simbolo} bilhões)")
+    figura.update_yaxes(tickformat=",.1f")
+    medidas = ["absolute"] + ["relative"] * (len(passos) - 2) + ["total"]
+    subida, descida = (COR_ALTA, COR_QUEDA) if subir_e_bom else (COR_QUEDA, COR_ALTA)
+    figura.add_trace(
+        go.Waterfall(
+            x=[nome for nome, _ in passos],
+            y=[valor / 1e9 for _, valor in passos],
+            measure=medidas,
+            text=[f"{_numero_br(v / 1e9, 1)}" for _, v in passos],
+            hovertemplate=f"%{{x}}: {simbolo} %{{text}} bi<extra></extra>",
+            increasing={"marker": {"color": subida}},
+            decreasing={"marker": {"color": descida}},
+            totals={"marker": {"color": COR_AZUL}},
+            connector={"line": {"color": COR_INDICE, "width": 1}},
+        )
+    )
+    figura.update_layout(showlegend=False)
     return figura
 
 

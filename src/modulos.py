@@ -41,6 +41,8 @@ class Modulo:
 
 
 EXEMPLO = "PETR4.SA"
+# A planilha da B3 (aberta a todos); "carteira" é a Carteira de Estratégias (backtest)
+CARTEIRA_B3 = "carteira-b3"
 
 MODULOS = (
     Modulo(
@@ -86,7 +88,10 @@ MODULOS = (
                 "Calendário", "Resultados, assembleias e proventos que vêm pela frente."
             ),
             Funcionalidade(
-                "Linha do tempo", "Preço e acontecimentos da empresa num só eixo."
+                "Linha do tempo",
+                "Preço e acontecimentos da empresa num só eixo.",
+                "linha-do-tempo",
+                EXEMPLO,
             ),
             Funcionalidade(
                 "Diário de Teses",
@@ -103,27 +108,30 @@ MODULOS = (
             Funcionalidade(
                 "Importar a planilha da B3",
                 "A posição da Área do Investidor, sem guardar o arquivo.",
-                "carteira",
+                CARTEIRA_B3,
             ),
             Funcionalidade(
                 "Concentração e número efetivo",
                 "Quanto da carteira depende de poucos ativos.",
-                "carteira",
+                CARTEIRA_B3,
             ),
             Funcionalidade(
                 "A carteira no passado",
                 "Como a carteira de hoje teria se comportado, comparada ao Ibovespa.",
-                "carteira",
+                CARTEIRA_B3,
             ),
             Funcionalidade(
                 "Alertas",
                 "Avisos quando uma condição combinada acontece com os seus ativos.",
                 "alertas",
             ),
-            Funcionalidade("Raio-X", "Exposição por setor, moeda e tipo de ativo."),
+            Funcionalidade(
+                "Raio-X", "Exposição por setor, moeda e tipo de ativo.", CARTEIRA_B3
+            ),
             Funcionalidade(
                 "Rebalanceamento",
                 "Quanto comprar ou vender para voltar ao peso que você escolheu.",
+                CARTEIRA_B3,
             ),
             Funcionalidade(
                 "Dividendos e custo médio",
@@ -213,6 +221,7 @@ MODULOS = (
             Funcionalidade(
                 "Juros e inflação",
                 "CDI, Selic e IPCA com as séries oficiais do Banco Central.",
+                "juros-e-inflacao",
             ),
             Funcionalidade(
                 "Cotações", "B3, EUA, câmbio e cripto, com o atraso de cada fonte."

@@ -105,3 +105,58 @@ def test_comparacao_curta_demais_nao_calcula_nada():
     assert comparacao.dias_em_comum <= analises.MIN_DIAS_PARA_ANALISE
     assert not comparacao.suficiente
     assert comparacao.base_100 is None and comparacao.tabela is None
+
+
+# --- textos da visão geral que a tela nova (React) recebe prontos (série 3 da ADR 0048) ---
+
+
+def test_aviso_da_origem_dos_precos():
+    assert analises.aviso_da_origem("atual", "2026-10-10") is None
+    antigo = analises.aviso_da_origem("cache_antigo", "2026-10-10")
+    assert antigo is not None and "2026-10-10" in antigo and "Yahoo" in antigo
+    exemplo = analises.aviso_da_origem("exemplo", "2025-12-30")
+    assert exemplo is not None and "dados de exemplo" in exemplo
+
+
+def test_itens_do_painel_cobrem_os_numeros_da_visao_geral():
+    from dataclasses import fields
+
+    from src.conteudo import carregar_glossario
+
+    campos = {f.name for f in fields(analises.PainelDeNumeros)}
+    glossario = carregar_glossario()
+    for item in analises.ITENS_DO_PAINEL:
+        assert item.campo in campos, item.campo
+        assert item.termo in glossario, item.termo
+        assert item.formato in ("pct", "pct_com_sinal", "decimal")
+        assert item.campo_da_data is None or item.campo_da_data in campos
+    numeros = {i.campo for i in analises.ITENS_DO_PAINEL}
+    datas = {i.campo_da_data for i in analises.ITENS_DO_PAINEL}
+    # tudo do painel aparece: como número, como data de um número, ou o CVaR na frase de baixo
+    assert campos - numeros - datas == {"cvar", "confianca_do_var"}
+
+
+# --- textos de Risco, Retorno mensal e Comparar para o app em React (série 3, PR 5) ---
+
+
+def test_frase_da_pior_queda_sem_negrito_para_a_api():
+    from src.conteudo import descrever_pior_drawdown
+    from src.indicadores import PiorDrawdown
+
+    pior = PiorDrawdown(
+        -0.25, pd.Timestamp("2025-01-02"), pd.Timestamp("2025-03-03"), None
+    )
+    com = descrever_pior_drawdown(pior)
+    sem = descrever_pior_drawdown(pior, negrito=False)
+    assert "**" in com and "**" not in sem
+    assert sem == com.replace("**", "")
+    assert "-25,0%" in sem and "não voltou" in sem
+
+
+def test_avisos_da_comparacao_e_da_janela():
+    assert "60 dias" in analises.aviso_janela_curta(60)
+    aviso = analises.aviso_poucos_dias_em_comum(12)
+    assert "12 dias em comum" in aviso and str(analises.MIN_DIAS_PARA_ANALISE) in aviso
+    nota = analises.nota_da_comparacao(480, 7)
+    assert "480 dias em comum" in nota and "7 dias foram descartados" in nota
+    assert "câmbio" not in nota  # a opção de converter o dólar é só do app atual

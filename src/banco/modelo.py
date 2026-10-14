@@ -24,6 +24,7 @@ TIPOS_DE_RELATORIO = (
     "carteira",
     "minha_carteira",
     "newsletter",
+    "empresa",  # relatório completo de empresa (série 2 da base de ML, PR 7)
 )
 
 metadata = sa.MetaData(naming_convention=CONVENCAO_DE_NOMES)
@@ -97,7 +98,17 @@ tentativas = sa.Table(
     _momento("criada_em"),
 )
 
-# Campanha (0029): de onde veio cada cadastro, lido do cookie próprio `tl_origem` no primeiro
+# Pulse (onda 3, PR E): a última vez que a pessoa abriu o Pulse (o "desde a última visita") e o
+# veredito da ficha "Foi sorte?" que ela já viu em cada estratégia salva (id da simulação → resultado)
+pulse = sa.Table(
+    "pulse",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("visto_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("vereditos", JSON_PORTATIL, nullable=False),
+)
+
+# Campanha (0035): de onde veio cada cadastro, lido do cookie próprio `tl_origem` no primeiro
 # login (src/origem.py). Só a primeira origem fica; nada vai para Google ou Meta
 origens_do_cadastro = sa.Table(
     "origens_do_cadastro",
@@ -124,6 +135,42 @@ simulacoes = sa.Table(
     _momento("criada_em"),
 )
 sa.Index("ix_simulacoes_usuario_id", simulacoes.c.usuario_id)
+
+# Diário de Teses (onda 3, PR F): anotações datadas da pessoa sobre um ativo. Não se editam (só se
+# apagam), para o diário mostrar o que ela pensava naquele dia.
+TAMANHO_MAXIMO_DA_TESE = 2000  # caracteres
+teses = sa.Table(
+    "teses",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("ticker", sa.String(20), nullable=False),
+    sa.Column("texto", sa.Text, nullable=False),
+    _momento("criada_em"),
+    sa.CheckConstraint(
+        f"length(texto) BETWEEN 1 AND {TAMANHO_MAXIMO_DA_TESE}", name="texto"
+    ),
+)
+sa.Index("ix_teses_usuario_id_ticker", teses.c.usuario_id, teses.c.ticker)
+
+# Os backtests salvos que sustentam cada anotação: apagar um dos dois apaga só a ligação
+teses_estrategias = sa.Table(
+    "teses_estrategias",
+    metadata,
+    sa.Column(
+        "tese_id",
+        sa.Uuid,
+        sa.ForeignKey("teses.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    sa.Column(
+        "simulacao_id",
+        sa.Uuid,
+        sa.ForeignKey("simulacoes.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+sa.Index("ix_teses_estrategias_simulacao_id", teses_estrategias.c.simulacao_id)
 
 # Research (0007): cada mudança de parâmetros é uma versão nova; nada é sobrescrito.
 # alvo "" = o padrão do usuário; senão, o ticker (ou a watchlist, numa etapa futura).
@@ -452,6 +499,44 @@ sa.Index(
     pdfs_originais.c.gerado_em,
 )
 
+# Compartilhamento seguro (0034, onda 4 da ADR 0046): links secretos, com prazo e revogáveis,
+# para a ficha "Foi sorte?" congelada ou um PDF original da biblioteca. Só o hash do código fica
+# aqui (src/compartilhamentos.py). Somem com a conta e, os de PDF, junto com o PDF guardado.
+compartilhamentos = sa.Table(
+    "compartilhamentos",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("codigo_hash", sa.String(64), nullable=False, unique=True),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column(
+        "relatorio_id",
+        sa.Uuid,
+        sa.ForeignKey("pdfs_originais.relatorio_id", ondelete="CASCADE"),
+    ),
+    sa.Column("ficha", JSON_PORTATIL),
+    sa.Column("titulo", sa.String(200), nullable=False),
+    _momento("criado_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("revogado_em", sa.DateTime(timezone=True)),
+    sa.Column("visitas", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("ultima_visita_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(
+        "(tipo = 'ficha' AND ficha IS NOT NULL AND relatorio_id IS NULL) OR "
+        "(tipo = 'pdf' AND relatorio_id IS NOT NULL AND ficha IS NULL)",
+        name="tipo",
+    ),
+    sa.CheckConstraint("expira_em > criado_em", name="prazo"),
+    sa.CheckConstraint("visitas >= 0", name="visitas"),
+    sa.CheckConstraint("length(titulo) >= 1", name="titulo"),
+)
+sa.Index(
+    "ix_compartilhamentos_usuario_id_criado_em",
+    compartilhamentos.c.usuario_id,
+    compartilhamentos.c.criado_em,
+)
+sa.Index("ix_compartilhamentos_relatorio_id", compartilhamentos.c.relatorio_id)
+
 # Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
 # (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
 detentores_por_acao = sa.Table(
@@ -681,4 +766,40 @@ padroes_setoriais = sa.Table(
         "percentis", JSON_PORTATIL, nullable=False
     ),  # {"10": 0.03, "50": 0.08, ...}
     sa.Column("calculado_em", sa.DateTime(timezone=True), nullable=False),
+)
+
+# Série 2 da base de ML, PR 6 (0029): proventos e eventos de capital do FRE (até o FRE de 2022,
+# quando a CVM tirou essas tabelas do FRE aberto). O mesmo exercício aparece no FRE de vários anos:
+# fica o documento mais novo.
+fre_proventos = sa.Table(
+    "fre_proventos",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    sa.Column("exercicio", sa.Date, primary_key=True),  # fim do exercício social
+    sa.Column("referencia", sa.Date, nullable=False),  # o FRE de onde veio
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("lucro_ajustado", sa.Float),
+    sa.Column("dividendo_total", sa.Float),
+    sa.Column("payout", sa.Float),  # fração do lucro ajustado (0,5 = 50%)
+    sa.Column("dividendos", sa.Float),
+    sa.Column("jcp", sa.Float),
+    _momento("coletado_em"),
+)
+fre_eventos_de_capital = sa.Table(
+    "fre_eventos_de_capital",
+    metadata,
+    sa.Column("cnpj", sa.String(18), primary_key=True),
+    # desdobramento, grupamento, bonificação ou aumento
+    sa.Column("tipo", sa.String(30), primary_key=True),
+    sa.Column("data", sa.Date, primary_key=True),  # aprovação ou deliberação
+    # ações depois do evento (ou as novas, no aumento)
+    sa.Column("quantidade", sa.BigInteger, primary_key=True),
+    sa.Column("referencia", sa.Date, nullable=False),
+    sa.Column("versao", sa.Integer, nullable=False),
+    sa.Column("acoes_antes", sa.Float),
+    sa.Column("acoes_depois", sa.Float),
+    sa.Column("fator", sa.Float),  # depois / antes (desdobramento de 1 para 10 = 10)
+    sa.Column("acoes_novas", sa.Float),
+    sa.Column("valor", sa.Float),
+    _momento("coletado_em"),
 )

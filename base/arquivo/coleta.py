@@ -1,0 +1,299 @@
+"""Arquivista: guarda o retrato de cada fonte como veio, para existir o "como era na data".
+
+Várias fontes oficiais só mostram o dia de hoje (CNPJ, sanções da CGU, dívida ativa, cadastros da
+CVM) ou reescrevem o passado em silêncio (FIAGRO, FIDC). Se ninguém guardar, o histórico some. Aqui
+nada é lido nem tratado: cada arquivo é **baixado, conferido, guardado no acervo** (`src/acervo.py`,
+nome = SHA-256) e **registrado** (`src/banco/coletas.py`), com uma linha a mais no manifesto do dia
+(`<acervo>/manifesto/AAAA-MM-DD.jsonl`), que é a cópia do registro fora do banco.
+
+Regras (testes em `tests/test_base_arquivo.py`):
+- arquivos grandes vão para o disco em partes, nunca inteiros na memória;
+- fonte **leve**: sempre baixa e compara pelo SHA-256 (a CVM sobrescreve sem mudar os cabeçalhos);
+  fonte **pesada** (GBs): se `ETag`, `Last-Modified` e tamanho são os da última coleta, nem baixa;
+- **freio de disco** antes das pesadas: menos de 50 GB livres ou mais de 70% usado (ADR 0031);
+- descoberta sem nenhum arquivo, ou HTML no lugar do arquivo, é **falha**, nunca "nada novo";
+- fonte **vigia** (termos de uso, catálogos): avisa quando o texto visível muda.
+"""
+
+import hashlib
+import json
+import logging
+import re
+import shutil
+import time
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Protocol
+
+from src import acervo
+from src.banco.coletas import registrar_arquivo, ultima_coleta_ok
+from src.banco.conexao import obter_engine
+
+log = logging.getLogger(__name__)
+
+VERSAO_DO_ARQUIVISTA = "1"
+LIVRE_MINIMO_EM_BYTES = 50 * 1024**3
+USO_MAXIMO_DO_DISCO = 0.70
+PAUSA_ENTRE_PEDIDOS_EM_SEGUNDOS = 1.0
+TAMANHO_DA_PARTE = 1024 * 1024
+CABECALHOS_GUARDADOS = ("Last-Modified", "ETag", "Content-Length", "Content-Type")
+SEPARADOR_DO_DETALHE = " | "
+IGUAL_A_ANTERIOR = "igual à coleta anterior"
+ASSINATURAS = {"pdf": (b"%PDF",), "json": (b"{", b"[")}
+# a página de bloqueio do BC começa com "<?xml ...>" antes do "<!DOCTYPE html"
+COMECO_DE_HTML = re.compile(
+    rb"^\s*(<\?xml[^>]*>\s*)?(<!doctype html|<html)", re.IGNORECASE
+)
+SCRIPTS_E_ESTILOS = re.compile(r"<(script|style)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
+ETIQUETAS = re.compile(r"<[^>]+>")
+ESPACOS = re.compile(r"\s+")
+
+
+@dataclass(frozen=True)
+class Resposta:
+    url: str  # o endereço final, depois dos redirecionamentos
+    conteudo: bytes
+    cabecalhos: Mapping[str, str]
+
+
+class Cliente(Protocol):
+    """Quem fala com as fontes (no script, `requests`; nos testes, um dublê)."""
+
+    def ler(
+        self,
+        url: str,
+        *,
+        metodo: str = "GET",
+        cabecalhos: Mapping[str, str] | None = None,
+    ) -> Resposta:
+        """Uma página ou um JSON pequeno (descoberta)."""
+        ...
+
+    def cabecalhos(self, url: str) -> Mapping[str, str]:
+        """Só os cabeçalhos (HEAD), para as pesadas decidirem se baixam."""
+        ...
+
+    def baixar(self, url: str, destino: Path) -> Mapping[str, str]:
+        """Grava o arquivo em `destino`, em partes, e devolve os cabeçalhos da resposta."""
+        ...
+
+
+@dataclass(frozen=True)
+class Alvo:
+    url: str
+    extensao: str | None = None  # quando o endereço não diz (".zip" da CGU)
+
+
+Descobrir = Callable[[Cliente, datetime], list[Alvo]]
+
+
+@dataclass(frozen=True)
+class Fonte:
+    id: str  # nome no registro de coletas, "família-detalhe" (`licenca_da_fonte`)
+    grupo: str  # "diaria", "semanal" ou "mensal" (a hora em que roda)
+    descobrir: Descobrir
+    tipo: str = "arquivo"  # "arquivo" (qualquer coisa que não seja HTML), "pdf", "json" ou "html"
+    pesada: bool = False
+    vigia: bool = False
+
+
+@dataclass
+class Resultado:
+    fonte: str
+    novos: int = 0
+    iguais: int = 0
+    pulados: int = 0
+    falhas: list[str] = field(default_factory=list)
+    mudaram: list[str] = field(default_factory=list)
+
+
+class ErroDeDescoberta(Exception):
+    """A fonte não mostrou nenhum arquivo, ou mudou de formato: tratar como falha."""
+
+
+class FreioDeDisco(Exception):
+    """Pouco espaço para uma fonte pesada."""
+
+
+def espaco_do_disco(pasta: Path) -> tuple[int, int]:
+    """(total, livre) em bytes do disco onde fica `pasta` (ou do primeiro pai que existe)."""
+    while not pasta.exists() and pasta != pasta.parent:
+        pasta = pasta.parent
+    uso = shutil.disk_usage(pasta)
+    return uso.total, uso.free
+
+
+def conferir_freio(total: int, livre: int) -> None:
+    if livre < LIVRE_MINIMO_EM_BYTES or (total - livre) / total > USO_MAXIMO_DO_DISCO:
+        raise FreioDeDisco(
+            f"livre {livre / 1024**3:.0f} GB de {total / 1024**3:.0f} GB"
+        )
+
+
+def texto_visivel(html: bytes) -> str:
+    """O texto que uma pessoa lê na página (sem scripts, estilos e etiquetas), para a vigia:
+    uma página que só troca um código de sessão não conta como "termo mudou"."""
+    texto = SCRIPTS_E_ESTILOS.sub(" ", html.decode("utf-8", errors="replace"))
+    return ESPACOS.sub(" ", ETIQUETAS.sub(" ", texto)).strip()
+
+
+def conferir_tipo(tipo: str, comeco: bytes) -> str | None:
+    """O motivo da recusa, ou None se o começo do arquivo combina com o tipo esperado."""
+    if tipo != "html" and COMECO_DE_HTML.match(comeco):
+        return f"veio HTML no lugar de {tipo}"
+    assinaturas = ASSINATURAS.get(tipo)
+    if assinaturas and not comeco.lstrip().startswith(assinaturas):
+        return f"não parece {tipo}"
+    return None
+
+
+def assinatura(cabecalhos: Mapping[str, str]) -> str:
+    """Os cabeçalhos que dizem a versão do arquivo na fonte, numa linha (vai para o detalhe)."""
+    minusculos = {k.lower(): v for k, v in cabecalhos.items()}
+    partes = [
+        f"{nome}={minusculos.get(nome.lower(), '')}"
+        for nome in CABECALHOS_GUARDADOS[:3]
+    ]
+    return "; ".join(partes)
+
+
+def _sha256_do_arquivo(caminho: Path) -> tuple[str, int, bytes]:
+    soma, tamanho, comeco = hashlib.sha256(), 0, b""
+    with caminho.open("rb") as arquivo:
+        while parte := arquivo.read(TAMANHO_DA_PARTE):
+            if not comeco:
+                comeco = parte[:512]
+            soma.update(parte)
+            tamanho += len(parte)
+    return soma.hexdigest(), tamanho, comeco
+
+
+def _escrever_manifesto(agora: datetime, linha: dict[str, object]) -> None:
+    pasta = acervo.pasta_do_acervo()
+    if pasta is None:
+        return
+    destino = pasta / "manifesto" / f"{agora:%Y-%m-%d}.jsonl"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    with destino.open("a", encoding="utf-8") as arquivo:
+        arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
+
+
+def _registrar(
+    fonte: str,
+    url: str,
+    sha256: str | None,
+    tamanho: int | None,
+    situacao: str,
+    detalhe: str,
+    agora: datetime,
+    caminho: str | None = None,
+) -> None:
+    with obter_engine().begin() as conexao:
+        registrar_arquivo(
+            conexao, fonte, url, sha256, tamanho, situacao, detalhe, agora, caminho
+        )
+
+
+def _ultima(url: str):  # noqa: ANN202 (linha do banco ou None)
+    with obter_engine().connect() as conexao:
+        return ultima_coleta_ok(conexao, url)
+
+
+def _assinatura_registrada(detalhe: str | None) -> str:
+    return (detalhe or "").split(SEPARADOR_DO_DETALHE)[0]
+
+
+def _arquivar_um(
+    fonte: Fonte,
+    alvo: Alvo,
+    cliente: Cliente,
+    agora: datetime,
+    temporario: Path,
+    resultado: Resultado,
+) -> None:
+    anterior = _ultima(alvo.url)
+    if fonte.pesada and anterior is not None:
+        cab = assinatura(cliente.cabecalhos(alvo.url))
+        if cab != assinatura({}) and cab == _assinatura_registrada(anterior.detalhe):
+            resultado.pulados += 1
+            log.info("%s: %s sem mudança nos cabeçalhos; não baixa", fonte.id, alvo.url)
+            return
+    cabecalhos = cliente.baixar(alvo.url, temporario)
+    sha256, tamanho, comeco = _sha256_do_arquivo(temporario)
+    detalhe = assinatura(cabecalhos)
+    motivo = conferir_tipo(fonte.tipo, comeco)
+    if motivo:
+        temporario.unlink(missing_ok=True)
+        raise ValueError(motivo)
+    if fonte.vigia:
+        texto = hashlib.sha256(
+            texto_visivel(temporario.read_bytes()).encode()
+        ).hexdigest()[:16]
+        detalhe += f"; texto={texto}"
+        if anterior is not None and f"texto={texto}" not in (anterior.detalhe or ""):
+            resultado.mudaram.append(alvo.url)
+    igual = anterior is not None and anterior.sha256 == sha256
+    if igual:
+        detalhe += SEPARADOR_DO_DETALHE + IGUAL_A_ANTERIOR
+    caminho = acervo.guardar_arquivo(
+        fonte.id, alvo.url, temporario, sha256, agora, alvo.extensao
+    )
+    _registrar(fonte.id, alvo.url, sha256, tamanho, "ok", detalhe, agora, caminho)
+    _escrever_manifesto(
+        agora,
+        {
+            "fonte": fonte.id,
+            "url": alvo.url,
+            "sha256": sha256,
+            "bytes": tamanho,
+            "caminho": caminho,
+            "igual_a_anterior": igual,
+            "cabecalhos": {
+                k: v for k, v in cabecalhos.items() if k in CABECALHOS_GUARDADOS
+            },
+            "hora": agora.isoformat(),
+            "versao_do_arquivista": VERSAO_DO_ARQUIVISTA,
+        },
+    )
+    if igual:
+        resultado.iguais += 1
+    else:
+        resultado.novos += 1
+
+
+def arquivar(
+    fonte: Fonte,
+    cliente: Cliente,
+    agora: datetime,
+    pasta_temporaria: Path,
+    *,
+    pausa: float = PAUSA_ENTRE_PEDIDOS_EM_SEGUNDOS,
+    espaco: Callable[[Path], tuple[int, int]] = espaco_do_disco,
+) -> Resultado:
+    """Baixa, confere, guarda e registra cada arquivo da fonte, um pedido por vez.
+
+    Levanta `ErroDeDescoberta` (a fonte não mostrou arquivo) e `FreioDeDisco`; falha num arquivo
+    fica registrada como "falhou" e não impede os outros.
+    """
+    if fonte.pesada:
+        conferir_freio(*espaco(acervo.pasta_do_acervo() or pasta_temporaria))
+    alvos = fonte.descobrir(cliente, agora)
+    if not alvos:
+        raise ErroDeDescoberta(f"{fonte.id}: nenhum arquivo encontrado")
+    pasta_temporaria.mkdir(parents=True, exist_ok=True)
+    resultado = Resultado(fonte.id)
+    for numero, alvo in enumerate(alvos):
+        if numero and pausa:
+            time.sleep(pausa)
+        temporario = pasta_temporaria / f"{fonte.id}-{numero}.parcial"
+        try:
+            _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado)
+        except Exception as erro:  # noqa: BLE001 (cada arquivo falha sozinho, com registro)
+            temporario.unlink(missing_ok=True)
+            log.warning("%s: falhou %s (%s)", fonte.id, alvo.url, erro)
+            resultado.falhas.append(alvo.url)
+            detalhe = f"{type(erro).__name__}: {erro}"
+            _registrar(fonte.id, alvo.url, None, None, "falhou", detalhe, agora)
+    return resultado

@@ -4,7 +4,8 @@ A interface nova faz o login com o Google no navegador e manda o token (um "ID t
 Google) no cabeçalho `Authorization: Bearer ...`. Aqui ele é conferido: assinatura com as chaves
 públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`), dentro da validade e
 com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
-aceitado os termos atuais.
+aceitado os termos atuais. Por último, o plano da conta precisa abrir a página da rota (o contrato da
+página em src/paginas.py diz qual é; a regra é a mesma do Streamlit, ADR 0062).
 
 A chave liga/desliga fica em `src/api_v1/__init__.py`; aqui ela é conferida de novo a cada pedido.
 """
@@ -16,7 +17,7 @@ from collections import deque
 from typing import Annotated
 
 import httpx
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 from joserfc import jwt
 from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
@@ -26,6 +27,19 @@ from src.autenticacao import IdentidadeDoGoogle, LoginInvalidoError, ler_identid
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import Usuario, buscar_por_google_sub
 from src.conformidade import precisa_aceitar_os_termos
+from src.paginas import PREFIXO_DA_API, motivo_da_pagina, pagina_da_rota
+
+# o motivo de um 401 ou 403, para a tela mostrar o caminho certo (entrar de novo, entrar pelo app
+# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova" ou "termos"
+CABECALHO_DO_MOTIVO = "X-TickerLab-Motivo"
+
+
+def _recusa(status: int, detalhe: str, motivo: str) -> HTTPException:
+    cabecalhos = {CABECALHO_DO_MOTIVO: motivo}
+    if status == 401:
+        cabecalhos["WWW-Authenticate"] = "Bearer"
+    return HTTPException(status_code=status, detail=detalhe, headers=cabecalhos)
+
 
 VARIAVEL_DO_CLIENT_ID = (
     "TICKERLAB_GOOGLE_CLIENT_ID"  # o mesmo client_id do login do app
@@ -129,10 +143,10 @@ def exigir_api_ligada() -> None:
 def _token_do_cabecalho(authorization: str | None) -> str:
     tipo, _, token = (authorization or "").partition(" ")
     if tipo.lower() != "bearer" or not token.strip():
-        raise HTTPException(
-            status_code=401,
-            detail="Faça o login com o Google e mande o token (Authorization: Bearer).",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise _recusa(
+            401,
+            "Faça o login com o Google e mande o token (Authorization: Bearer).",
+            "sem-token",
         )
     return token.strip()
 
@@ -149,17 +163,39 @@ def conta_logada(
     try:
         identidade = verificar_token(token, chaves, client_id, agora())
     except TokenInvalidoError as erro:
-        raise HTTPException(status_code=401, detail=str(erro)) from erro
+        raise _recusa(401, str(erro), "token-invalido") from erro
     with obter_engine().connect() as conexao:
         usuario = buscar_por_google_sub(conexao, identidade.sub)
     if usuario is None:
-        raise HTTPException(
-            status_code=401, detail="Conta não encontrada: entre uma vez pelo app."
+        raise _recusa(
+            401, "Conta não encontrada: entre uma vez pelo app.", "conta-nova"
         )
     if precisa_aceitar_os_termos(usuario):
-        raise HTTPException(
-            status_code=403, detail="Aceite os termos atuais no app para continuar."
-        )
+        raise _recusa(403, "Aceite os termos atuais no app para continuar.", "termos")
     if not LIMITE.permitir(str(usuario.id), agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     return usuario
+
+
+# rotas da v1 que falam só da própria conta, não de uma página: pedem login, mas nenhum plano
+ROTAS_DA_CONTA = frozenset({"/v1/eu"})
+
+
+def conta_com_acesso(
+    request: Request, conta: Annotated[Usuario, Depends(conta_logada)]
+) -> Usuario:
+    """A conta logada, se o plano dela abre a página da rota; senão 403 com o motivo.
+
+    Fecha por padrão: rota que não é da conta nem tem contrato de página responde 500 (e o teste
+    `test_toda_rota_da_v1_tem_contrato_ou_e_da_conta` falha antes de chegar à produção).
+    """
+    rota: str = request.scope["route"].path
+    if rota.removeprefix(PREFIXO_DA_API) in ROTAS_DA_CONTA:
+        return conta
+    pagina = pagina_da_rota(rota)
+    if pagina is None:
+        raise HTTPException(status_code=500, detail="Rota sem contrato de página.")
+    motivo = motivo_da_pagina(conta.plano, pagina.chave)
+    if motivo is not None:
+        raise _recusa(403, motivo, "plano")
+    return conta

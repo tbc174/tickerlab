@@ -21,11 +21,13 @@ Bancos e seguradoras: "não se aplica" onde o indicador não faz sentido, como n
 
 from dataclasses import dataclass, field
 from datetime import date
+from itertools import pairwise
 
 import pandas as pd
 
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import EXERCICIO, POSICAO, e_financeira
+from src.formatos import formatar_decimal
 from src.fundamentos import (
     FRACAO,
     NAO_SE_APLICA_A_FINANCEIRAS,
@@ -295,3 +297,155 @@ def calcular(dados: DadosDaEmpresa) -> Fundamentalista:
     return Fundamentalista(
         indicadores={i.chave: i for i in indicadores}, historico=historico(contas)
     )
+
+
+# --- dividendos e diluição (série 2, PR 6) -------------------------------------------------------
+FATORES_DE_CAPITAL = ("desdobramento", "grupamento", "bonificação")
+SALTO_MINIMO = (
+    1.9  # razão entre as ações de dois anos que já pode ser desdobramento (2 para 1)
+)
+TOLERANCIA_DO_SALTO = 0.02  # a razão precisa estar a 2% de um número inteiro
+# salto de exatamente mil vezes: a quantidade veio em milhares num ano e em unidades no outro
+# (Petrobras, 2020 → 2021), não um desdobramento de 1.000 para 1
+TROCA_DE_UNIDADE = 1_000.0
+
+
+@dataclass(frozen=True)
+class DividendosEDiluicao:
+    historico: (
+        pd.DataFrame
+    )  # por ano: ações, ajustadas, dividendos pagos, lucro, payouts
+    diluicao_anual: (
+        float | None
+    )  # crescimento composto das ações ajustadas (0,1 = 10% ao ano)
+    anos_pagando: int
+    avisos: list[str] = field(default_factory=list)
+
+
+def _salto_redondo(razao: float) -> float | None:
+    """2, 3, 10... (desdobramento) ou 1/2, 1/10... (grupamento), se a razão estiver perto."""
+    if (
+        razao >= SALTO_MINIMO
+        and abs(razao - round(razao)) <= TOLERANCIA_DO_SALTO * razao
+    ):
+        return float(round(razao))
+    inversa = 1 / razao if razao > 0 else 0
+    if (
+        inversa >= SALTO_MINIMO
+        and abs(inversa - round(inversa)) <= TOLERANCIA_DO_SALTO * inversa
+    ):
+        return 1 / round(inversa)
+    return None
+
+
+def _fatores_por_ano(
+    acoes: pd.Series, eventos: pd.DataFrame | None
+) -> tuple[dict[int, float], list[str]]:
+    """Ano → fator do evento entre aquele balanço e o seguinte (FRE ou salto redondo, avisado)."""
+    conhecidos: dict[int, float] = {}
+    if eventos is not None and not eventos.empty:
+        de_capital = eventos[
+            eventos["tipo"].isin(FATORES_DE_CAPITAL) & eventos["fator"].notna()
+        ]
+        for evento in de_capital.itertuples(index=False):
+            ano_anterior = (
+                pd.Timestamp(evento.data).year - 1
+            )  # balanço de 31/12 antes do evento
+            conhecidos[ano_anterior] = conhecidos.get(ano_anterior, 1.0) * float(
+                evento.fator
+            )
+    avisos = []
+    anos = list(acoes.dropna().index)
+    for ano, seguinte in pairwise(anos):
+        if ano in conhecidos or seguinte != ano + 1 or acoes[ano] <= 0:
+            continue
+        fator = _salto_redondo(acoes[seguinte] / acoes[ano])
+        if fator:
+            conhecidos[ano] = fator
+            avisos.append(
+                _aviso_do_salto(ano, seguinte, acoes[seguinte] / acoes[ano], fator)
+            )
+    return conhecidos, avisos
+
+
+def _aviso_do_salto(ano: int, seguinte: int, razao: float, fator: float) -> str:
+    if fator == TROCA_DE_UNIDADE:  # a CVM passou a receber a quantidade em unidades
+        return (
+            f"Entre {ano} e {seguinte} a quantidade de ações passou de milhares para unidades na "
+            "CVM (mil vezes maior, sem evento no FRE): tratado como troca de unidade, não como "
+            "diluição."
+        )
+    tipo = "desdobramento" if fator > 1 else "grupamento"
+    return (
+        f"Entre {ano} e {seguinte} as ações mudaram {formatar_decimal(razao)} vezes sem evento no "
+        f"FRE: tratado como provável {tipo}, não como diluição."
+    )
+
+
+def _ajustadas(acoes: pd.Series, fatores: dict[int, float]) -> pd.Series:
+    """As ações de cada ano na unidade de hoje: multiplicadas pelos eventos que vieram depois."""
+    ajustadas = acoes.copy()
+    for ano in acoes.index:
+        multiplicador = 1.0
+        for ano_do_evento, fator in fatores.items():
+            if ano_do_evento >= ano:
+                multiplicador *= fator
+        ajustadas[ano] = acoes[ano] * multiplicador
+    return ajustadas
+
+
+def _coluna_anual(tabela: pd.DataFrame, nome: str) -> pd.Series:
+    if nome not in tabela:
+        return pd.Series(float("nan"), index=tabela.index)
+    return tabela[nome].astype(float)
+
+
+def dividendos_e_diluicao(
+    dados: DadosDaEmpresa,
+    proventos: pd.DataFrame | None = None,
+    eventos: pd.DataFrame | None = None,
+) -> DividendosEDiluicao:
+    """Payout pelos dividendos pagos (fluxo de caixa), proventos do FRE (até 2022) e diluição.
+
+    A diluição é o crescimento composto das ações em circulação ajustadas por desdobramentos,
+    grupamentos e bonificações (do FRE; depois de 2022, um salto redondo é tratado como provável
+    desdobramento, com aviso), para que trocar 1 ação por 10 não pareça emissão.
+    """
+    tabela = anuais(dados.contas)
+    if tabela.empty:
+        return DividendosEDiluicao(pd.DataFrame(), None, 0)
+    lucro = _coluna_anual(tabela, "lucro_controladores")
+    if lucro.isna().all():
+        lucro = _coluna_anual(tabela, "lucro_liquido")
+    pagos = _coluna_anual(tabela, "dividendos_pagos").abs()
+    acoes = _coluna_anual(tabela, "acoes_total") - _coluna_anual(
+        tabela, "acoes_tesouraria"
+    ).fillna(0)
+    fatores, avisos = _fatores_por_ano(acoes, eventos)
+    historico = pd.DataFrame(
+        {
+            "acoes": acoes,
+            "acoes_ajustadas": _ajustadas(acoes, fatores),
+            "dividendos_pagos": pagos,
+            "lucro": lucro,
+            "payout_caixa": pagos / lucro.where(lucro > 0),
+        }
+    )
+    if proventos is not None and not proventos.empty:
+        do_fre = proventos.assign(
+            ano=pd.to_datetime(proventos["exercicio"]).dt.year
+        ).set_index("ano")
+        historico["dividendo_fre"] = do_fre["dividendo_total"].reindex(historico.index)
+        historico["payout_fre"] = do_fre["payout"].reindex(historico.index)
+    ajustadas = historico["acoes_ajustadas"].dropna()
+    ajustadas = ajustadas[ajustadas > 0]
+    diluicao = (
+        float(
+            (ajustadas.iloc[-1] / ajustadas.iloc[0])
+            ** (1 / (ajustadas.index[-1] - ajustadas.index[0]))
+            - 1
+        )
+        if len(ajustadas) >= 2
+        else None
+    )
+    return DividendosEDiluicao(historico, diluicao, int((pagos > 0).sum()), avisos)
