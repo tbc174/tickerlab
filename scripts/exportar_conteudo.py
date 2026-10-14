@@ -32,6 +32,7 @@ from src import (
     paginas,
     planos,
     qualidade_texto,
+    regras_de_imposto,
 )
 from src import graficos_pdf as gp
 from src import indicadores as ind
@@ -341,6 +342,7 @@ def conteudo() -> dict[str, object]:
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),
         "exemplo": painel_de_exemplo(),
+        "regras_de_imposto": regras_de_imposto.para_o_site(),
     }
 
 

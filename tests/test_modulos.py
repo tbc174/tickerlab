@@ -26,6 +26,10 @@ def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_que_existe():
     [
         ("Juros simples e compostos", "calculadora-de-juros-compostos.html"),
         ("Aportes e metas", "calculadora-de-aportes-e-metas.html"),
+        ("Custo das taxas e da queda", "custo-das-taxas-e-da-queda.html"),
+        ("Viver de renda", "calculadora-viver-de-renda.html"),
+        ("Sorte em série", "sorte-em-serie.html"),
+        ("Imposto sobre ações (DARF)", "calculadora-de-darf.html"),
     ],
 )
 def test_calculadoras_levam_as_paginas_do_site(nome, pagina):

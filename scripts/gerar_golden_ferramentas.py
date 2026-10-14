@@ -16,7 +16,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from src.ferramentas import aportes, juros
+from src.ferramentas import aleatorio, aportes, custos, darf, juros
+from src.ferramentas import sorte_em_serie as sorte
+from src.ferramentas import viver_de_renda as vr
 
 ARQUIVO = (
     Path(__file__).resolve().parents[1] / "web" / "testes" / "golden_ferramentas.json"
@@ -33,6 +35,23 @@ CONTAS: dict[str, Conta] = {
     "aportes.aporte_para_meta": aportes.aporte_para_meta,
     "aportes.meses_ate_meta": aportes.meses_ate_meta,
     "aportes.evolucao": aportes.evolucao,
+    "custos.custo_da_taxa": custos.custo_da_taxa,
+    "custos.evolucao_da_taxa": custos.evolucao_da_taxa,
+    "custos.alta_para_recuperar": custos.alta_para_recuperar,
+    "viver_de_renda.patrimonio_necessario": vr.patrimonio_necessario,
+    "viver_de_renda.duracao_em_meses": vr.duracao_em_meses,
+    "viver_de_renda.renda_da_regra_dos_4": vr.renda_da_regra_dos_4,
+    "aleatorio.sequencia": aleatorio.sequencia,
+    "sorte_em_serie.sharpe": sorte.sharpe,
+    "sorte_em_serie.simular": sorte.simular,
+    # o DARF recebe o mês e os saldos como dicionários (os campos que faltam ficam em zero)
+    "darf.apurar_mes": lambda mes, saldos: darf.apurar_mes(
+        darf.Mes(**mes), darf.Saldos(**saldos)
+    ),
+    "darf.apurar_meses": lambda meses, saldos: darf.apurar_meses(
+        [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
+    ),
+    "darf.vencimento": darf.vencimento,
 }
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
@@ -89,6 +108,101 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("aportes.evolucao", [1000, 100, 0.01, 6, False]),
     ("aportes.evolucao", [1000, 100, 0.01, 6, True]),
     ("aportes.evolucao", [0, 250, 0, 3, False]),
+    ("custos.custo_da_taxa", [100000, 0.08, 0.01, 20]),
+    ("custos.custo_da_taxa", [100000, 0.08, 0.02, 30]),
+    ("custos.custo_da_taxa", [50000, 0.1065, 0.005, 10]),
+    ("custos.custo_da_taxa", [1000, 0.1, 0, 10]),
+    ("custos.custo_da_taxa", [0, 0.1, 0.01, 10]),
+    ("custos.custo_da_taxa", [1000, -0.05, 0.01, 5]),
+    ("custos.custo_da_taxa", [1000, 0.08, 1, 5]),
+    ("custos.custo_da_taxa", [1000, 0.08, 0.01, 101]),
+    ("custos.evolucao_da_taxa", [1000, 0.1, 0.02, 3]),
+    ("custos.evolucao_da_taxa", [10000, 0.07, 0.015, 15]),
+    ("custos.alta_para_recuperar", [-0.1]),
+    ("custos.alta_para_recuperar", [-0.5]),
+    ("custos.alta_para_recuperar", [-0.8]),
+    ("custos.alta_para_recuperar", [-0.333]),
+    ("custos.alta_para_recuperar", [0]),
+    ("custos.alta_para_recuperar", [-1]),
+    ("custos.alta_para_recuperar", [0.2]),
+    ("viver_de_renda.patrimonio_necessario", [5000, 0.04, None]),
+    ("viver_de_renda.patrimonio_necessario", [5000, 0.04, 30]),
+    ("viver_de_renda.patrimonio_necessario", [10000, 0.035, 25]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0, 10]),
+    ("viver_de_renda.patrimonio_necessario", [3000, -0.01, 20]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0, None]),
+    ("viver_de_renda.patrimonio_necessario", [1000, 0.04, 0]),
+    ("viver_de_renda.patrimonio_necessario", [-5, 0.04, 30]),
+    ("viver_de_renda.duracao_em_meses", [1_000_000, 5000, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1_000_000, 5000, [-0.3, 0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1_500_000, 5000, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [120_000, 1000, [0]]),
+    ("viver_de_renda.duracao_em_meses", [500_000, 4000, [0.1, -0.2, 0.05, 0.03]]),
+    ("viver_de_renda.duracao_em_meses", [1000, 0, [0.04]]),
+    ("viver_de_renda.duracao_em_meses", [1000, 100, []]),
+    ("viver_de_renda.renda_da_regra_dos_4", [1_200_000]),
+    ("aleatorio.sequencia", [42, 1000]),
+    ("aleatorio.sequencia", [0, 50]),
+    ("aleatorio.sequencia", [2**32 - 1, 50]),
+    ("sorte_em_serie.sharpe", [[0.01, 0.01, -0.01, 0.01]]),
+    ("sorte_em_serie.sharpe", [[0.01, -0.01, 0.01, -0.01]]),
+    ("sorte_em_serie.simular", [100, 250, 42]),
+    ("sorte_em_serie.simular", [20, 60, 7]),
+    ("sorte_em_serie.simular", [500, 30, 123456]),
+    ("sorte_em_serie.simular", [1, 250, 42]),
+    ("sorte_em_serie.simular", [100, 1, 42]),
+    ("darf.apurar_mes", [{"vendas_comuns": 15000, "resultado_comum": 2000}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": 20000, "resultado_comum": 2000}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": 20000.01, "resultado_comum": 2000}, {}]),
+    (
+        "darf.apurar_mes",
+        [{"vendas_comuns": 30000, "resultado_comum": 3000, "irrf_comum": 1.5}, {}],
+    ),
+    (
+        "darf.apurar_mes",
+        [{"vendas_comuns": 15000, "resultado_comum": 2000}, {"prejuizo_comum": 800}],
+    ),
+    (
+        "darf.apurar_mes",
+        [
+            {"resultado_day_trade": 1000, "irrf_day_trade": 10},
+            {"prejuizo_day_trade": 300},
+        ],
+    ),
+    (
+        "darf.apurar_mes",
+        [
+            {
+                "vendas_comuns": 50000,
+                "resultado_comum": 1000,
+                "resultado_day_trade": -1000,
+            },
+            {"irrf_a_compensar": 3, "imposto_abaixo_do_minimo": 4},
+        ],
+    ),
+    ("darf.apurar_mes", [{"vendas_comuns": 30000, "resultado_comum": 40}, {}]),
+    ("darf.apurar_mes", [{"vendas_comuns": -1}, {}]),
+    ("darf.apurar_mes", [{}, {"imposto_abaixo_do_minimo": 10}]),
+    ("darf.apurar_mes", [{}, {"prejuizo_comum": -5}]),
+    (
+        "darf.apurar_meses",
+        [
+            [
+                {"vendas_comuns": 25000, "resultado_comum": -2000, "irrf_comum": 1.25},
+                {"vendas_comuns": 40000, "resultado_comum": 3000, "irrf_comum": 2},
+                {"vendas_comuns": 18000, "resultado_comum": 900},
+                {"vendas_comuns": 30000, "resultado_comum": 40},
+                {
+                    "vendas_comuns": 30000,
+                    "resultado_comum": 40,
+                    "resultado_day_trade": 500,
+                },
+            ],
+            {},
+        ],
+    ),
+    ("darf.vencimento", [2026, 10]),
+    ("darf.vencimento", [2026, 12]),
 ]
 
 

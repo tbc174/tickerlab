@@ -2,8 +2,13 @@
 // Os casos e os resultados do Python ficam em testes/golden_ferramentas.json, gerado por
 // `python -m scripts.gerar_golden_ferramentas`; o pytest confere que o arquivo está em dia.
 import { describe, expect, it } from "vitest";
+import * as aleatorio from "../../src/ferramentas/contas/aleatorio";
 import * as aportes from "../../src/ferramentas/contas/aportes";
+import * as custos from "../../src/ferramentas/contas/custos";
+import * as darf from "../../src/ferramentas/contas/darf";
 import * as juros from "../../src/ferramentas/contas/juros";
+import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
+import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
 import casos from "../golden_ferramentas.json";
 
 type Conta = (...argumentos: never[]) => unknown;
@@ -17,6 +22,18 @@ const CONTAS: Record<string, Conta> = {
   "aportes.aporte_para_meta": aportes.aporteParaMeta,
   "aportes.meses_ate_meta": aportes.mesesAteMeta,
   "aportes.evolucao": aportes.evolucao,
+  "custos.custo_da_taxa": custos.custoDaTaxa,
+  "custos.evolucao_da_taxa": custos.evolucaoDaTaxa,
+  "custos.alta_para_recuperar": custos.altaParaRecuperar,
+  "viver_de_renda.patrimonio_necessario": viverDeRenda.patrimonioNecessario,
+  "viver_de_renda.duracao_em_meses": viverDeRenda.duracaoEmMeses,
+  "viver_de_renda.renda_da_regra_dos_4": viverDeRenda.rendaDaRegraDos4,
+  "aleatorio.sequencia": aleatorio.sequencia,
+  "sorte_em_serie.sharpe": sorte.sharpe,
+  "sorte_em_serie.simular": sorte.simular,
+  "darf.apurar_mes": darf.apurarMes,
+  "darf.apurar_meses": darf.apurarMeses,
+  "darf.vencimento": darf.vencimento,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

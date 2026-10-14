@@ -1,8 +1,15 @@
 // As páginas das ferramentas grátis e a vitrine delas. Os números dos exemplos do texto saem das
 // mesmas contas da calculadora (nada digitado à mão que possa ficar diferente).
+import { regrasDeImposto } from "../conteudo";
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa } from "./AnuncioDaCasa";
+import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
 import { montante, taxaEquivalente } from "./contas/juros";
+import { duracaoEmMeses, patrimonioNecessario } from "./contas/viver_de_renda";
+import { duracaoPorExtenso } from "./ViverDeRenda";
+import { simular } from "./contas/sorte_em_serie";
+import { SEMENTE_INICIAL } from "./SorteEmSerie";
+import { formatarDecimal } from "../app/formatar";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
 
@@ -23,6 +30,26 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "calculadora-de-aportes-e-metas.html",
     nome: "Aportes e metas",
     descricao: "Quanto você vai ter, quanto guardar por mês e em quanto tempo chega lá.",
+  },
+  {
+    arquivo: "custo-das-taxas-e-da-queda.html",
+    nome: "Custo das taxas e da queda",
+    descricao: "Quanto 1% ao ano leva em 20 anos, e quanto é preciso subir depois de cair.",
+  },
+  {
+    arquivo: "calculadora-viver-de-renda.html",
+    nome: "Viver de renda",
+    descricao: "Quanto juntar para tirar um valor por mês, e o risco de começar num ano ruim.",
+  },
+  {
+    arquivo: "sorte-em-serie.html",
+    nome: "Sorte em série",
+    descricao: "Cem estratégias de cara ou coroa: a melhor parece genial, e é só sorte.",
+  },
+  {
+    arquivo: "calculadora-de-darf.html",
+    nome: "Imposto sobre ações (DARF)",
+    descricao: "O imposto do mês, a isenção de R$ 20 mil, o prejuízo a compensar e o código do DARF.",
   },
 ];
 
@@ -132,13 +159,273 @@ export function PaginaDosAportes() {
   );
 }
 
+// --- Custo das taxas e da queda ------------------------------------------------------------
+const CUSTOS = "custo-das-taxas-e-da-queda.html";
+const QUEDAS_COMUNS = [-0.1, -0.2, -0.3, -0.5, -0.8];
+
+export const DADOS_DOS_CUSTOS = {
+  caminho: `/${CUSTOS}`,
+  titulo: "Custo das taxas e da queda",
+  descricao:
+    "Calcule quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto um " +
+    "investimento precisa subir para recuperar uma queda. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDosCustos() {
+  const exemplo = custoDaTaxa(100000, 0.08, 0.01, 20);
+  return (
+    <PaginaDeFerramenta
+      titulo="Custo das taxas e da queda"
+      subtitulo="Duas contas que parecem pequenas e não são: a taxa cobrada todo ano e a alta que uma queda pede. Grátis e sem cadastro."
+      ilha={[
+        ["taxa", "Quanto a taxa leva"],
+        ["queda", "Quanto subir depois de cair"],
+      ]}
+      codigo={codigo(CUSTOS)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda",
+        "taxa de performance e outros custos além da taxa anual",
+        "rendimento que muda de um ano para outro: a conta usa o mesmo todo ano",
+      ]}
+    >
+      <h2>Por que 1% ao ano não é pouco</h2>
+      <p>
+        A taxa de administração é cobrada todo ano sobre todo o patrimônio, inclusive sobre o que
+        ela já deixou de render. Com R$ 100.000 rendendo 8% ao ano por 20 anos, uma taxa de 1% ao ano
+        leva {formatarReais(exemplo.ficou_com_a_taxa)}: {formatarPorcentagem(exemplo.fracao_do_resultado)}{" "}
+        do que você teria sem ela.
+      </p>
+      <h2>Quedas e recuperações</h2>
+      <p>
+        Uma queda e uma alta do mesmo tamanho não se anulam: depois de cair 50%, R$ 100 viram R$ 50,
+        e para voltar a R$ 100 é preciso subir 100%. Por isso o tamanho da maior queda importa tanto
+        quanto o retorno médio de um investimento ou de uma estratégia.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Queda</th>
+            <th scope="col">Alta para voltar</th>
+          </tr>
+        </thead>
+        <tbody>
+          {QUEDAS_COMUNS.map((queda) => (
+            <tr key={queda}>
+              <td>{formatarPorcentagem(queda)}</td>
+              <td>+{formatarPorcentagem(altaParaRecuperar(queda))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Viver de renda ------------------------------------------------------------------------
+const RENDA = "calculadora-viver-de-renda.html";
+
+export const DADOS_DA_RENDA = {
+  caminho: `/${RENDA}`,
+  titulo: "Calculadora para viver de renda",
+  descricao:
+    "Quanto juntar para viver de renda, em dinheiro de hoje: só com os juros ou gastando o " +
+    "principal, e o que muda se o primeiro ano for ruim. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDaRenda() {
+  const em30 = patrimonioNecessario(5000, 0.04, 30);
+  const comQueda = duracaoEmMeses(em30, 5000, [-0.3, 0.04]);
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora para viver de renda"
+      subtitulo="Quanto juntar para tirar um valor por mês, em dinheiro de hoje, e o risco que a média esconde. Grátis e sem cadastro."
+      ilha="renda"
+      codigo={codigo(RENDA)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda e taxas",
+        "inflação diferente da sua: a conta usa um rendimento acima da inflação e uma renda sempre com o mesmo poder de compra",
+        "anos bons e ruins de verdade: além do exemplo da queda no primeiro ano, a conta usa o mesmo rendimento todo ano",
+      ]}
+    >
+      <h2>Em dinheiro de hoje</h2>
+      <p>
+        Daqui a 30 anos, R$ 5.000 vão comprar bem menos. Por isso a calculadora trabalha com o
+        rendimento <strong>acima da inflação</strong> (o juro real): o patrimônio e a renda saem no
+        poder de compra de hoje, e a renda acompanha a inflação o tempo todo.
+      </p>
+      <h2>Só com os juros ou gastando o principal</h2>
+      <p>
+        Só com os juros, o patrimônio nunca acaba, mas é preciso juntar mais. Gastando também o
+        que juntou, precisa de menos: com R$ 5.000 por mês e 4% ao ano acima da inflação, por 30
+        anos, são {formatarReais(em30)}.
+      </p>
+      <h2>O risco que a média esconde</h2>
+      <p>
+        O mesmo rendimento médio pode dar resultados bem diferentes conforme a ordem dos anos. Se o
+        primeiro ano cair 30%, quem está retirando todo mês vende na baixa, e o dinheiro planejado
+        para 30 anos dura {duracaoPorExtenso(comQueda)}. A mesma queda perto do fim quase não faz
+        diferença. É o chamado risco de sequência.
+      </p>
+      <h2>E a “regra dos 4%”?</h2>
+      <p>
+        A regra diz que dá para retirar 4% do patrimônio do primeiro ano, corrigidos pela inflação,
+        por cerca de 30 anos. Ela veio de estudos com ações e títulos dos Estados Unidos no século
+        20; aqui ela aparece só como comparação, não como garantia.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Sorte em série ------------------------------------------------------------------------
+const SORTE = "sorte-em-serie.html";
+
+export const DADOS_DA_SORTE = {
+  caminho: `/${SORTE}`,
+  titulo: "Sorte em série",
+  descricao:
+    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o " +
+    "problema de testar muitas ideias e mostrar só a melhor. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDaSorte() {
+  const exemplo = simular(100, 250, SEMENTE_INICIAL);
+  return (
+    <PaginaDeFerramenta
+      titulo="Sorte em série"
+      subtitulo="Cem estratégias que decidem no cara ou coroa. Nenhuma tem vantagem, e mesmo assim a melhor parece genial."
+      ilha="sorte"
+      codigo={codigo(SORTE)}
+      anuncio="ficha"
+      foraDaConta={[
+        "custos e impostos: com eles, as estratégias de moeda ficariam ainda pior",
+        "mercados de verdade, que têm tendência, quedas fortes e dias parados; aqui todo dia é +1% ou -1%",
+      ]}
+    >
+      <h2>O que a simulação mostra</h2>
+      <p>
+        No exemplo da página, com 100 estratégias de moeda por um ano, a melhor rendeu{" "}
+        {formatarPorcentagem(exemplo.retorno_da_melhor)} com Sharpe de{" "}
+        {formatarDecimal(exemplo.sharpe_da_melhor)}, e {exemplo.com_sharpe_acima_de_1} delas passaram
+        de Sharpe 1, um número que muita gente chama de estratégia boa. Nenhuma tinha vantagem
+        nenhuma: era tudo sorte.
+      </p>
+      <h2>Por que isso importa</h2>
+      <p>
+        Quem testa muitas regras de compra e venda, ou muitos ajustes da mesma regra, e mostra só a
+        melhor, está fazendo a mesma coisa que esta página: escolhendo a moeda que deu mais caras.
+        Quanto mais tentativas, melhor parece a campeã, mesmo sem vantagem nenhuma. Na estatística,
+        isso se chama problema das comparações múltiplas.
+      </p>
+      <h2>Como o TickerLab desconta a sorte</h2>
+      <p>
+        A ficha “Foi sorte?” do TickerLab conta quantas tentativas você fez e testa o resultado
+        contra estratégias sorteadas como estas, com custos e fora do período em que a regra foi
+        ajustada. Só passa o que resiste quando a sorte sai da conta.
+      </p>
+      <h2>E por que menos da metade terminou no lucro?</h2>
+      <p>
+        Ganhar 1% e depois perder 1% não volta ao começo: R$ 100 viram R$ 101 e depois R$ 99,99. Com
+        altas e baixas do mesmo tamanho, o vaivém sozinho corrói o resultado.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Imposto sobre ações (DARF) -------------------------------------------------------------
+const DARF = "calculadora-de-darf.html";
+const REGRAS_DO_DARF = [
+  "aliquota_comum",
+  "aliquota_day_trade",
+  "isencao_vendas_no_mes",
+  "irrf_comum",
+  "irrf_day_trade",
+  "codigo_do_darf",
+  "darf_minimo",
+];
+
+export const DADOS_DO_DARF = {
+  caminho: `/${DARF}`,
+  titulo: "Calculadora de DARF de ações",
+  descricao:
+    "Calcule o imposto sobre ações do mês: swing trade e day trade, isenção de R$ 20 mil, " +
+    "prejuízo a compensar, IR retido e o DARF 6015. Regras da Receita, grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+/** "15%", "R$ 20.000", "6015": o valor de uma regra como a pessoa lê. */
+function valorDaRegra(valor: number | string, chave: string): string {
+  if (typeof valor === "string") return valor;
+  return chave.startsWith("aliquota") || chave.startsWith("irrf")
+    ? formatarPorcentagem(valor, 3)
+    : formatarReais(valor);
+}
+
+export function PaginaDoDarf() {
+  const regras = REGRAS_DO_DARF.map((chave) => regrasDeImposto.regras.find((r) => r.chave === chave)!);
+  const conferida = regras[0].conferida_em.split("-").reverse().join("/");
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de DARF de ações"
+      subtitulo="O imposto de um mês de operações com ações na B3, com as regras da Receita Federal. Grátis e sem cadastro."
+      ilha="darf"
+      codigo={codigo(DARF)}
+      anuncio="ficha"
+      foraDaConta={[
+        "FII, ETF, BDR, opções, termo e futuros, que têm regras próprias",
+        "o cálculo do preço médio: o resultado de cada mês entra pronto, com corretagem e taxas descontadas",
+        "a declaração anual: o prejuízo e o IR retido também vão para o Demonstrativo de Renda Variável",
+      ]}
+      fonte={`Receita Federal, Perguntas e Respostas IRPF 2026, e Lei 9.430/1996; regras conferidas em ${conferida}`}
+    >
+      <h2>As regras que a calculadora usa</h2>
+      <ul>
+        {regras.map((r) => (
+          <li key={r.chave}>
+            {r.descricao}: <strong>{valorDaRegra(r.valor, r.chave)}</strong> (
+            <a href={r.fonte} rel="noopener">
+              {r.onde}
+            </a>
+            )
+          </li>
+        ))}
+      </ul>
+      <h2>A isenção de R$ 20 mil</h2>
+      <p>
+        Vale para quem vendeu até R$ 20.000 em ações no mês, somando todas as vendas comuns (não o
+        lucro). Não vale para day trade, ETF, FII nem fundos. O lucro isento não gasta o prejuízo
+        que você tem para compensar: ele continua guardado para um mês com imposto.
+      </p>
+      <h2>Prejuízo, IR retido e DARF pequeno</h2>
+      <p>
+        O prejuízo de um mês abate o lucro dos meses seguintes, sem prazo, mas só do mesmo tipo:
+        day trade com day trade, operações comuns com comuns. O IR retido na fonte (o “dedo-duro”)
+        abate o imposto do mês, e o que sobra fica para depois. Se o DARF der menos de R$ 10, não
+        se paga: o valor soma ao imposto do mês seguinte.
+      </p>
+      <p>
+        A calculadora ajuda a conferir a conta e não substitui um contador nem a orientação da
+        Receita Federal.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
 // --- Vitrine -------------------------------------------------------------------------------
 export const DADOS_DA_VITRINE = {
   caminho: "/ferramentas.html",
   titulo: "Ferramentas grátis",
   descricao:
-    "Calculadoras grátis e sem cadastro do TickerLab: juros compostos, aportes e metas, com cada " +
-    "conta explicada em português.",
+    "Calculadoras grátis e sem cadastro do TickerLab: juros compostos, aportes e metas, custo das " +
+    "taxas e mais, com cada conta explicada em português.",
   atual: "/ferramentas.html",
 };
 
