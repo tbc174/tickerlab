@@ -83,6 +83,21 @@ describe("gráfico do tempo", () => {
     expect(screen.getByRole("status").textContent).toContain("início");
   });
 
+  it("se o prazo encurta com a mira no fim, a dica não mostra NaN", async () => {
+    const serie = (n: number) => [{ nome: "Valor", cor: SERIES[0], valores: aportado.slice(0, n) }];
+    const { rerender } = render(
+      <GraficoDoTempo titulo="Evolução" meses={meses} series={serie(13)} formatarValor={formatarReais} />,
+    );
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole("img", { name: "Evolução" }), { key: "End" });
+    });
+    await act(async () => {
+      rerender(<GraficoDoTempo titulo="Evolução" meses={meses.slice(0, 7)} series={serie(7)} formatarValor={formatarReais} />);
+    });
+    expect(document.body.textContent).not.toContain("NaN");
+    expect(document.querySelector("svg")?.innerHTML).not.toContain("NaN");
+  });
+
   it("o leitor de tela ouve o começo e o fim de cada série", () => {
     render(
       <GraficoDoTempo

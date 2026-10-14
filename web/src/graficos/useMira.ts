@@ -6,7 +6,8 @@ export function useMira(total: number, indiceDoX: (xNoDesenho: number) => number
   const [indice, setIndice] = useState<number | null>(null);
   const limitar = (i: number) => Math.min(total - 1, Math.max(0, i));
   return {
-    indice,
+    // se os dados encurtarem com a mira no fim (a pessoa digitou um prazo menor), ela fica no último ponto
+    indice: indice === null || total < 1 ? null : Math.min(indice, total - 1),
     sair: () => setIndice(null),
     apontar: (evento: PointerEvent<SVGSVGElement>) => {
       const caixa = evento.currentTarget.getBoundingClientRect();
