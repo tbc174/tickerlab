@@ -3,13 +3,14 @@ fatos relevantes da CVM. Sem internet: a SEC e a CVM são simuladas."""
 
 import json
 import uuid
+from dataclasses import asdict
 from datetime import date, datetime
 
 import pytest
 import sqlalchemy as sa
 
 from scripts import atualizar_leituras_cvm
-from src import coleta_sec, leitura
+from src import coleta_sec, leitura, topicos
 from src import eventos_sec as sec
 from src.banco import leituras as repo
 from src.banco.modelo import eventos
@@ -47,6 +48,40 @@ def test_versao_antiga_conta_como_nao_lida(banco, monkeypatch):
         assert repo.lidos(c, FONTE_IPE, repo.RESUMO, ["p1"]) == set()
 
 
+def test_topico_lido_vale_mais_que_o_titulo(banco):
+    lido = topicos.topico_do_texto(FATO)
+    with banco.begin() as c:
+        repo.gravar_leitura(
+            c,
+            FONTE_IPE,
+            "p1",
+            repo.TOPICO,
+            "cnpj",
+            None,
+            asdict(lido),
+            versao=topicos.VERSAO,
+        )
+    with banco.connect() as c:
+        achados = repo.topicos_dos_fatos(
+            c, FONTE_IPE, [("p1", "Fato Relevante"), ("p2", "JCP 2T23")]
+        )
+    assert achados["p1"] == lido  # do texto
+    assert achados["p2"] == topicos.topico_do_titulo(
+        "JCP 2T23"
+    )  # sem leitura: do título
+
+
+def test_topico_de_versao_antiga_volta_para_o_titulo(banco, monkeypatch):
+    with banco.begin() as c:
+        repo.gravar_leitura(
+            c, FONTE_IPE, "p1", repo.TOPICO, "cnpj", None,
+            asdict(topicos.topico_do_texto(FATO)), versao="0",
+        )  # fmt: skip
+    with banco.connect() as c:
+        achados = repo.topicos_dos_fatos(c, FONTE_IPE, [("p1", "Fato Relevante")])
+    assert achados["p1"].metodo == "regra_titulo"
+
+
 def test_ultima_de_riscos_e_a_mais_recente_mesmo_com_data_vazia(banco):
     with banco.begin() as c:
         for protocolo, referencia in (
@@ -63,7 +98,11 @@ def test_ultima_de_riscos_e_a_mais_recente_mesmo_com_data_vazia(banco):
 
 
 def _fato(
-    c, protocolo: str, publicado: date, categoria: str = "Fato Relevante"
+    c,
+    protocolo: str,
+    publicado: date,
+    categoria: str = "Fato Relevante",
+    assunto: str = "Fato Relevante",
 ) -> None:
     c.execute(
         sa.insert(eventos).values(
@@ -76,6 +115,7 @@ def _fato(
             rotulo="Fato relevante",
             tema="outros",
             materialidade=3,
+            assunto=assunto,
             publicado_em=publicado,
             link=f"{LINK_DA_CVM}{protocolo}",
         )
@@ -94,7 +134,11 @@ def test_fatos_sem_leitura(banco):
             c, FONTE_IPE, "Fato Relevante", date(2026, 9, 12), 10
         )
     assert [p[0] for p in pendentes] == ["novo"]
-    assert pendentes[0][2:] == (date(2026, 10, 10), f"{LINK_DA_CVM}novo")
+    assert pendentes[0][2:] == (
+        date(2026, 10, 10),
+        f"{LINK_DA_CVM}novo",
+        "Fato Relevante",
+    )
 
 
 def test_fato_com_link_de_fora_da_cvm_nao_e_baixado(banco):
@@ -238,6 +282,21 @@ def test_coleta_da_cvm_grava_os_resumos(banco, cvm):
         "motivo" in r for r in guardados.values()
     )  # o PDF sem texto guarda o motivo
     assert any("frases" in r for r in guardados.values())
+
+
+def test_coleta_da_cvm_grava_o_assunto_pelo_texto(banco, cvm):
+    """Leitor v2 (ADR 0069): título genérico, o texto decide; PDF sem texto, fica o título."""
+    cvm.extend([_pdf(" ".join(FATO.split())), _pdf("Curto.")])
+    assert atualizar_leituras_cvm.main([]) == 0
+    with banco.connect() as c:
+        lidos = repo.topicos_dos_fatos(
+            c, FONTE_IPE, [("f1", "Fato Relevante"), ("f2", "Fato Relevante")]
+        )
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"]) == {"f1", "f2"}
+    assert {(t.principal, t.metodo) for t in lidos.values()} == {
+        ("AQUISICAO", "regra_texto"),
+        ("OUTROS", "regra_titulo"),
+    }
 
 
 def test_coleta_da_cvm_para_no_limite_de_downloads(banco, cvm):
