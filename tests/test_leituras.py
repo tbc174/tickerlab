@@ -10,7 +10,7 @@ import pytest
 import sqlalchemy as sa
 
 from scripts import atualizar_leituras_cvm
-from src import coleta_sec, leitura, topicos
+from src import coleta_sec, leitura, topicos, topicos_modelo
 from src import eventos_sec as sec
 from src.banco import leituras as repo
 from src.banco.modelo import eventos
@@ -19,6 +19,8 @@ from src.relatorios import FUSO
 from tests.test_fundamentos_sec import _abrir, _coletar_apple
 from tests.test_leitura import FATO, RISCOS_ANTES, _10k, _pdf
 from tests.test_research_no_app import _app_local, _coletar
+from tests.test_topicos_modelo import TEXTO as TEXTO_DE_PARCERIA
+from tests.test_topicos_modelo import ClienteDeMentira
 
 CIK = 320193
 CHAVE = sec.cik_como_chave(CIK)
@@ -297,6 +299,32 @@ def test_coleta_da_cvm_grava_o_assunto_pelo_texto(banco, cvm):
         ("AQUISICAO", "regra_texto"),
         ("OUTROS", "regra_titulo"),
     }
+
+
+def test_modelo_so_le_o_que_as_regras_deixam_em_outros(banco, cvm, monkeypatch):
+    """Camada 3 (ADR 0069): só os fatos em "Outros" vão ao modelo; guardado à parte das regras."""
+    cliente = ClienteDeMentira(
+        {"principal": "JV", "secundarios": [], "trecho": "um acordo de parceria"}
+    )
+    monkeypatch.setattr(topicos_modelo, "cliente_da_chave", lambda: cliente)
+    cvm.extend([_pdf(" ".join(FATO.split())), _pdf(TEXTO_DE_PARCERIA)])
+    assert atualizar_leituras_cvm.main([]) == 0
+    assert len(cliente.pedidos) == 1  # o fato de aquisição as regras resolveram
+    fatos = [("f1", "Fato Relevante"), ("f2", "Fato Relevante")]
+    with banco.connect() as c:
+        so_regras = repo.topicos_dos_fatos(c, FONTE_IPE, fatos)
+        com_modelo = repo.topicos_dos_fatos(c, FONTE_IPE, fatos, com_modelo=True)
+    assert sorted(t.principal for t in so_regras.values()) == ["AQUISICAO", "OUTROS"]
+    assert sorted(t.principal for t in com_modelo.values()) == ["AQUISICAO", "JV"]
+    assert any(t.metodo == "modelo" and t.modelo for t in com_modelo.values())
+
+
+def test_sem_chave_nada_vai_ao_modelo(banco, cvm, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    cvm.extend([_pdf(TEXTO_DE_PARCERIA), _pdf(TEXTO_DE_PARCERIA)])
+    assert atualizar_leituras_cvm.main([]) == 0
+    with banco.connect() as c:
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO_MODELO, ["f1", "f2"]) == set()
 
 
 def test_coleta_da_cvm_para_no_limite_de_downloads(banco, cvm):

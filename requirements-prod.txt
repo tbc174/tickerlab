@@ -4,6 +4,9 @@
 # defusedxml: lê o XML dos Form 4 da SEC sem aceitar XML malicioso.
 # As versões são as mesmas do requirements.txt; o pip resolve o resto.
 alembic==1.20.0
+# anthropic: o SDK oficial da API do Claude, para o leitor de fatos relevantes (ADR 0069); só é
+# usado com a chave configurada no servidor.
+anthropic==1.13.0
 Authlib==1.8.0
 # joserfc: confere os tokens do Google na API v1 (já vinha junto com a Authlib).
 joserfc==1.7.5
