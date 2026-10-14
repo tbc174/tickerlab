@@ -13,7 +13,11 @@ from src import analises
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
-from src.api_v1.acesso import VARIAVEL_DO_CLIENT_ID, conta_logada, exigir_api_ligada
+from src.api_v1.acesso import (
+    VARIAVEL_DO_CLIENT_ID,
+    conta_com_acesso,
+    exigir_api_ligada,
+)
 from src.api_v1.contexto import (
     ContextoDoAtivo,
     PoucosDadosError,
@@ -43,7 +47,8 @@ SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o 
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
-Conta = Annotated[Usuario, Depends(conta_logada)]
+# a conta logada cujo plano abre a página da rota (403 com o motivo, se não abre)
+Conta = Annotated[Usuario, Depends(conta_com_acesso)]
 
 
 class LimitesV1(BaseModel):

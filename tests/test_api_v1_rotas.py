@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from src import analises, api
+from src import analises, api, paginas
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -15,7 +15,8 @@ from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
 from src.banco import series as acervo
 from src.banco.eventos import Evento
-from src.banco.usuarios import entrar
+from src.banco.modelo import PLANOS
+from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
 from src.conformidade import registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -483,3 +484,39 @@ def test_comparacao_com_dados_traz_a_nota(cliente):
     assert dados["nota"] == analises.nota_da_comparacao(
         dados["dias_em_comum"], dados["dias_descartados"]
     )
+
+
+# --- Plano de cada rota (ADR 0062) ----------------------------------------------------------
+
+ROTAS_PUBLICAS = frozenset({"/v1/configuracao"})  # sem login (o client ID do Google)
+
+
+def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
+    """Rota nova precisa de contrato de página (que diz o plano) ou entrar em ROTAS_DA_CONTA."""
+    for rota in rotas.router.routes:
+        caminho = rota.path  # type: ignore[attr-defined]
+        if caminho in ROTAS_PUBLICAS:
+            continue
+        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
+        assert acesso.conta_com_acesso in dependencias, caminho
+
+
+@pytest.mark.parametrize("plano", PLANOS)
+def test_rotas_reais_seguem_o_contrato(cliente, banco, plano):
+    """403 de plano se e só se a página da rota não abre no plano (hoje, nenhuma é paga).
+
+    Sem os campos da rota: a conferência do plano vem antes, então a página fechada responde 403 e
+    a aberta passa dela (e para no 422 dos campos que faltam, sem calcular nada).
+    """
+    with banco.begin() as conexao:
+        ana = buscar_por_google_sub(conexao, "ana")
+        assert ana is not None
+        mudar_plano(conexao, ana.id, plano)
+    for rota, pagina in paginas.POR_ROTA.items():
+        metodo = pagina.contrato.metodo  # type: ignore[union-attr]
+        resposta = cliente.request(metodo, "/api" + rota)
+        fechada = paginas.motivo_da_pagina(plano, pagina.chave) is not None
+        recusou = resposta.headers.get(acesso.CABECALHO_DO_MOTIVO) == "plano"
+        assert recusou == fechada, (rota, resposta.status_code)
+        assert (resposta.status_code == 403) == fechada, (rota, resposta.status_code)
