@@ -104,6 +104,46 @@ def pode_assinar(e_admin: bool) -> bool:
     return not ASSINATURA_SO_PARA_ADMINS or e_admin
 
 
+# --- o que a página de planos oferece (o Streamlit e o app novo mostram o mesmo) -----------
+AVISO_SEM_COBRANCA = "A assinatura do plano Pro ainda não está disponível."
+AVISO_DE_PLANOS_EM_BREVE = "Os planos pagos chegam em breve."
+AVISO_DO_PLUS = "Plano Plus: a assinatura chega em breve."
+NOTA_DO_CARTAO_DE_TESTE = (
+    "Modo de teste: use o cartão 4242 4242 4242 4242, qualquer data futura."
+)
+RETORNO_DO_PAGAMENTO_OK = (
+    "Pagamento recebido! O plano muda assim que o Stripe confirmar, em poucos segundos."
+)
+RETORNO_DO_PAGAMENTO_CANCELADO = "Pagamento cancelado. Nada foi cobrado."
+PLANOS_QUE_ASSINAM_O_PRO = ("gratuito", "plus")
+
+
+@dataclass(frozen=True)
+class AcaoDaAssinatura:
+    tipo: str | None  # "assinar", "gerenciar" ou None (nenhum botão)
+    texto: str | None  # a frase que acompanha (ou explica a falta do botão)
+
+
+def acao_da_assinatura(
+    plano: str,
+    e_admin: bool,
+    assinatura: "Assinatura | None",
+    configurada: bool,
+) -> AcaoDaAssinatura:
+    """Qual botão a página de planos mostra: assinar o Pro, gerenciar no portal ou nenhum."""
+    if not configurada:
+        return AcaoDaAssinatura(None, AVISO_SEM_COBRANCA)
+    if plano in PLANOS_QUE_ASSINAM_O_PRO:
+        if not pode_assinar(e_admin):
+            return AcaoDaAssinatura(None, AVISO_DE_PLANOS_EM_BREVE)
+        return AcaoDaAssinatura(
+            "assinar", AVISO_DO_PLUS if plano == "gratuito" else None
+        )
+    if assinatura is not None:
+        return AcaoDaAssinatura("gerenciar", None)
+    return AcaoDaAssinatura(None, None)
+
+
 # --- falar com o Stripe -------------------------------------------------------------------
 def _cliente(configuracao: ConfiguracaoDaCobranca) -> stripe.StripeClient:
     return stripe.StripeClient(configuracao.chave_secreta)
@@ -121,15 +161,21 @@ def criar_pagina_de_pagamento(
     id_do_cliente: str | None = None,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
+    caminho_de_volta: str = "/",
 ) -> str:
-    """Cria a sessão do Checkout para assinar o Pro e devolve o endereço dela."""
+    """Cria a sessão do Checkout para assinar o Pro e devolve o endereço dela.
+
+    `caminho_de_volta` é escolhido pelo código (o app atual volta para "/", o app novo para a página
+    de planos), nunca por quem chama a API: assim o Stripe nunca devolve a pessoa para outro site.
+    """
     configuracao = configuracao or ler_configuracao()
+    volta = f"{configuracao.url_do_app}{caminho_de_volta}"
     parametros: dict = {
         "mode": "subscription",
         "line_items": [{"price": configuracao.id_do_preco, "quantity": 1}],
         "client_reference_id": str(usuario_id),
-        "success_url": f"{configuracao.url_do_app}/?assinatura=ok",
-        "cancel_url": f"{configuracao.url_do_app}/?assinatura=cancelada",
+        "success_url": f"{volta}?assinatura=ok",
+        "cancel_url": f"{volta}?assinatura=cancelada",
         "subscription_data": {"metadata": {"usuario_id": str(usuario_id)}},
         "allow_promotion_codes": False,
         "integration_identifier": _identificador_da_integracao(),
@@ -148,11 +194,15 @@ def criar_portal_da_assinatura(
     id_do_cliente: str,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
+    caminho_de_volta: str = "/",
 ) -> str:
     """Endereço do portal onde a pessoa troca o cartão, vê faturas ou cancela."""
     configuracao = configuracao or ler_configuracao()
     sessao = (cliente or _cliente(configuracao)).v1.billing_portal.sessions.create(
-        params={"customer": id_do_cliente, "return_url": f"{configuracao.url_do_app}/"}
+        params={
+            "customer": id_do_cliente,
+            "return_url": f"{configuracao.url_do_app}{caminho_de_volta}",
+        }
     )
     return sessao.url
 

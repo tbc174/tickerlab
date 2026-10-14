@@ -12,7 +12,12 @@ import streamlit as st
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import contar_simulacoes
 from src.cobranca import (
+    AVISO_DE_PLANOS_EM_BREVE,
+    NOTA_DO_CARTAO_DE_TESTE,
+    RETORNO_DO_PAGAMENTO_CANCELADO,
+    RETORNO_DO_PAGAMENTO_OK,
     CobrancaIndisponivelError,
+    acao_da_assinatura,
     cobranca_esta_configurada,
     criar_pagina_de_pagamento,
     criar_portal_da_assinatura,
@@ -32,7 +37,6 @@ from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, plano_atual
 log_da_conta = logging.getLogger("tickerlab.conta")
 
 # decisão 0029: até a cobrança real, só administradores assinam (`src.cobranca.pode_assinar`)
-AVISO_DE_PLANOS_EM_BREVE = "Os planos pagos chegam em breve."
 
 
 def _recarregar_o_plano():
@@ -85,16 +89,13 @@ def mostrar_assinatura(onde):
     usuario = st.session_state.get("usuario")
     if usuario is None:
         return
-    if not cobranca_esta_configurada():
-        st.caption("A assinatura do plano Pro ainda não está disponível.")
-        return
-    if usuario.plano in ("gratuito", "plus") and not pode_assinar(usuario.e_admin):
-        st.caption(AVISO_DE_PLANOS_EM_BREVE)
-        return
     assinatura = st.session_state.get("assinatura")
-    if usuario.plano == "gratuito":
-        st.caption("Plano Plus: a assinatura chega em breve.")
-    if usuario.plano in ("gratuito", "plus"):
+    acao = acao_da_assinatura(
+        usuario.plano, usuario.e_admin, assinatura, cobranca_esta_configurada()
+    )
+    if acao.texto:
+        st.caption(acao.texto)
+    if acao.tipo == "assinar":
         st.button(
             "Assinar o plano Pro",
             key=f"assinar_{onde}",
@@ -102,7 +103,7 @@ def mostrar_assinatura(onde):
             on_click=_preparar_link_de_pagamento,
             args=(onde,),
         )
-    elif assinatura is not None:
+    elif acao.tipo == "gerenciar":
         st.button(
             "Gerenciar a assinatura",
             key=f"gerenciar_{onde}",
@@ -112,21 +113,16 @@ def mostrar_assinatura(onde):
     link = st.session_state.get("link_de_pagamento")
     if link and link[0] == onde:
         st.link_button("Continuar no Stripe", link[1], width="stretch")
-        st.caption(
-            "Modo de teste: use o cartão 4242 4242 4242 4242, qualquer data futura."
-        )
+        st.caption(NOTA_DO_CARTAO_DE_TESTE)
 
 
 def mostrar_retorno_do_pagamento():
     retorno = st.session_state.pop("retorno_do_pagamento", None)
     if retorno == "ok":
-        st.success(
-            "Pagamento recebido! O plano muda assim que o Stripe confirmar, em poucos "
-            "segundos."
-        )
+        st.success(RETORNO_DO_PAGAMENTO_OK)
         st.button("Atualizar o meu plano", on_click=_recarregar_o_plano)
     elif retorno == "cancelada":
-        st.info("Pagamento cancelado. Nada foi cobrado.")
+        st.info(RETORNO_DO_PAGAMENTO_CANCELADO)
 
 
 def exigir_pagina(chave):

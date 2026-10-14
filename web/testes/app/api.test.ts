@@ -199,6 +199,9 @@ describe("tipos das respostas", () => {
       frase_da_assinatura: null,
       aviso: "",
       tabela: [],
+      acao: null,
+      texto_da_acao: null,
+      nota_do_cartao: "",
     };
     expect(Object.keys(p).sort()).toEqual(campos("MeuPlanoV1"));
   });
