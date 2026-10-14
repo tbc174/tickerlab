@@ -366,3 +366,16 @@ def test_buscar_confere_o_trecho_pela_mesma_regra(pasta):
     registro = rc.ler_rotulos(pasta)[EVENTOS[1]["id"]]
     assert "erro" not in registro
     assert registro["tinha_texto"] is False and registro["texto_so_nos_fatos"] is True
+
+
+def test_piloto_so_com_eventos_prontos_pela_regra(pasta):
+    eventos = [FATO, *EVENTOS]  # o fato vem primeiro, mas não tem o texto baixado
+    (pasta / "textos" / f"{EVENTOS[0]['id']}.txt").unlink()
+    cliente = ClienteDeMentira()
+    rc.piloto(cliente, eventos, pasta, n=10, teto=60)
+    assert set(rc.ler_rotulos(pasta)) == {
+        e["id"] for e in EVENTOS[1:]
+    }  # sem regra: só os com texto
+    rc.piloto(cliente, eventos, pasta, n=10, teto=60, so_fatos=True)
+    assert EVENTOS[0]["id"] in rc.ler_rotulos(pasta)  # aviso só pelo assunto
+    assert FATO["id"] not in rc.ler_rotulos(pasta)  # fato sem texto continua esperando
