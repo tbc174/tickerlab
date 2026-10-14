@@ -54,7 +54,7 @@ def test_nota_da_empresa_traz_o_padrao_a_fonte_e_o_grupo():
     )
     assert nota.nota == "ótimo"
     texto = nota.texto
-    assert "Margem líquida 8,5%: ótimo" in texto
+    assert "Margem líquida (lucro consolidado) 8,5%: ótimo" in texto
     assert "Energia elétrica" in texto and "40 empresas" in texto
     assert "31/12/2025" in texto and "CVM" in texto
     assert "2,5%" in texto and "7,5%" in texto  # metade do grupo fica entre p25 e p75
@@ -119,3 +119,39 @@ def test_barato_justo_caro_pelo_setor_e_pelo_proprio_historico(
 def test_multiplo_negativo_nao_tem_nota_de_preco():
     resultado = notas.preco(-3.0, {"33": 8.0, "67": 12.0}, None)
     assert resultado.nota is None and "prejuízo" in resultado.motivo
+
+
+# --- faixa fixa (série 3, PR 2; decisão do Tiago em 14/10/2026) -----------------------------------
+@pytest.mark.parametrize(
+    ("valor", "esperada"),
+    [
+        (0.7, "atenção"),
+        (0.8, "saudável"),  # os limites entram na faixa do meio
+        (1.0, "saudável"),
+        (1.5, "saudável"),
+        (1.6, "conferir o lucro"),  # Petrobras no relatório de fim da série 2
+    ],
+)
+def test_caixa_operacional_sobre_lucro_por_faixa_fixa(valor, esperada):
+    nota = notas.nota_por_faixa("conversao_de_caixa", valor)
+    assert nota.nota == esperada
+    assert "não compara com o setor" in nota.texto
+    assert "0,80×" in nota.texto and "1,50×" in nota.texto
+
+
+def test_caixa_operacional_sobre_lucro_sai_dos_padroes_por_setor():
+    """Um número alto costuma ser lucro pequeno, não caixa bom: o percentil do setor enganava."""
+    from src.padroes import INDICADORES
+
+    assert "conversao_de_caixa" not in INDICADORES
+    nada = notas.notas_da_empresa(
+        {"conversao_de_caixa": 1.6},
+        "energia",
+        _padroes(indicador="conversao_de_caixa"),
+        CORTE,
+    )
+    assert nada == []
+
+
+def test_indicador_sem_faixa_fixa_nao_tem_nota_por_faixa():
+    assert notas.nota_por_faixa("margem_liquida", 0.1) is None

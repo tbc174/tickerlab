@@ -25,9 +25,10 @@ from itertools import pairwise
 
 import pandas as pd
 
+from base.fre import ULTIMO_ANO_COM_AS_TABELAS
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import EXERCICIO, POSICAO, e_financeira
-from src.formatos import formatar_decimal
+from src.formatos import formatar_decimal, formatar_pct
 from src.fundamentos import (
     FRACAO,
     NAO_SE_APLICA_A_FINANCEIRAS,
@@ -112,7 +113,7 @@ def _dupont(ttm: dict, saldo: dict, base: str) -> list[Indicador]:
         return [
             _indicador(c, n, None, u, base, motivo)
             for c, n, u in (
-                ("dupont_margem", "Margem líquida (DuPont)", FRACAO),
+                ("dupont_margem", "Margem líquida dos acionistas (DuPont)", FRACAO),
                 ("dupont_giro", "Giro do ativo", VEZES),
                 ("dupont_alavancagem", "Alavancagem (ativo / patrimônio)", VEZES),
                 ("dupont_roe", "ROE pelo DuPont", FRACAO),
@@ -120,7 +121,13 @@ def _dupont(ttm: dict, saldo: dict, base: str) -> list[Indicador]:
         ]
     margem, giro, alavancagem = lucro / receita, receita / ativo, ativo / pl  # type: ignore[operator]
     return [
-        _indicador("dupont_margem", "Margem líquida (DuPont)", margem, FRACAO, base),
+        _indicador(
+            "dupont_margem",
+            "Margem líquida dos acionistas (DuPont)",
+            margem,
+            FRACAO,
+            base,
+        ),
         _indicador("dupont_giro", "Giro do ativo", giro, VEZES, base),
         _indicador(
             "dupont_alavancagem",
@@ -308,6 +315,9 @@ TOLERANCIA_DO_SALTO = 0.02  # a razão precisa estar a 2% de um número inteiro
 # salto de exatamente mil vezes: a quantidade veio em milhares num ano e em unidades no outro
 # (Petrobras, 2020 → 2021), não um desdobramento de 1.000 para 1
 TROCA_DE_UNIDADE = 1_000.0
+# depois do último FRE com eventos, mudança nas ações a partir disto, sem evento, pode ser bonificação
+# (que não dilui) ou emissão: sem como saber, a diluição fica sem número (fim da série 2: Itaú, +13%)
+SALTO_SEM_EVENTO = 0.05
 
 
 @dataclass(frozen=True)
@@ -382,6 +392,28 @@ def _aviso_do_salto(ano: int, seguinte: int, razao: float, fator: float) -> str:
     )
 
 
+def _saltos_sem_evento(acoes: pd.Series, conhecidos: dict[int, float]) -> list[str]:
+    """Avisos dos saltos nas ações depois do último FRE com eventos, sem evento que os explique."""
+    avisos = []
+    serie = acoes.dropna()
+    for ano, seguinte in pairwise(serie.index):
+        if (
+            seguinte <= ULTIMO_ANO_COM_AS_TABELAS
+            or ano in conhecidos
+            or serie[ano] <= 0
+        ):
+            continue
+        mudanca = serie[seguinte] / serie[ano] - 1
+        if abs(mudanca) >= SALTO_SEM_EVENTO:
+            avisos.append(
+                f"Entre {ano} e {seguinte} as ações mudaram {formatar_pct(mudanca)} "
+                f"sem evento conhecido: o FRE aberto não traz eventos de capital depois de "
+                f"{ULTIMO_ANO_COM_AS_TABELAS}, e pode ter sido bonificação (que não dilui) ou emissão. "
+                "A diluição fica sem número até a conferência nos fatos relevantes."
+            )
+    return avisos
+
+
 def _ajustadas(acoes: pd.Series, fatores: dict[int, float]) -> pd.Series:
     """As ações de cada ano na unidade de hoje: multiplicadas pelos eventos que vieram depois."""
     ajustadas = acoes.copy()
@@ -422,6 +454,7 @@ def dividendos_e_diluicao(
         tabela, "acoes_tesouraria"
     ).fillna(0)
     fatores, avisos = _fatores_por_ano(acoes, eventos)
+    sem_evento = _saltos_sem_evento(acoes, fatores)
     historico = pd.DataFrame(
         {
             "acoes": acoes,
@@ -445,7 +478,9 @@ def dividendos_e_diluicao(
             ** (1 / (ajustadas.index[-1] - ajustadas.index[0]))
             - 1
         )
-        if len(ajustadas) >= 2
+        if len(ajustadas) >= 2 and not sem_evento
         else None
     )
-    return DividendosEDiluicao(historico, diluicao, int((pagos > 0).sum()), avisos)
+    return DividendosEDiluicao(
+        historico, diluicao, int((pagos > 0).sum()), [*avisos, *sem_evento]
+    )

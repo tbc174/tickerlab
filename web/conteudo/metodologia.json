@@ -135,7 +135,7 @@
     },
     {
       "direcao": "quanto maior, melhor",
-      "nome": "Margem líquida"
+      "nome": "Margem líquida (lucro consolidado)"
     },
     {
       "direcao": "quanto maior, melhor",
@@ -144,10 +144,6 @@
     {
       "direcao": "quanto maior, melhor",
       "nome": "ROIC"
-    },
-    {
-      "direcao": "quanto maior, melhor",
-      "nome": "Caixa operacional / lucro"
     },
     {
       "direcao": "quanto menor, melhor",
@@ -178,6 +174,7 @@
     "Qualidade, de ótimo a péssimo: pelos quintis do grupo (20%, 40%, 60% e 80%), na direção do indicador. Numa margem, ficar acima de 80% das empresas do grupo é ótimo; na dívida e no ciclo de caixa, ótimo é ficar abaixo de 80% delas.",
     "Preço, barato, justo ou caro: P/L e P/VP por duas réguas. A do setor: abaixo do percentil 33% do grupo é barato, acima do 67% é caro. A do próprio histórico da empresa: os mesmos tercis, com o múltiplo de cada ano (o preço do último pregão do ano), pedindo pelo menos 3 anos. Se as duas réguas concordam, vale a nota delas; se discordam, a nota é justo e as duas aparecem. Sem histórico, vale o setor. Com prejuízo (múltiplo negativo), não há nota.",
     "Toda nota aparece com o número, o padrão (onde fica a metade do meio do grupo), o grupo, a quantidade de empresas, a data do corte e a fonte. Número com selo de qualidade mostra o aviso ao lado da nota.",
+    "Caixa operacional / lucro: nota por faixa fixa e pública, sem comparar com o setor, porque um número alto costuma vir de lucro pequeno, não de caixa bom. Abaixo de 0,8×, atenção; de 0,8× a 1,5×, saudável; acima de 1,5×, conferir o lucro. Com prejuízo, não há nota.",
     "As notas comparam o número da empresa com o das empresas do mesmo grupo de setores, por regras fixas e públicas (página de metodologia). Dizem como o número está em relação aos pares, não o que vai acontecer: não é recomendação de compra ou venda."
   ],
   "padroes": [

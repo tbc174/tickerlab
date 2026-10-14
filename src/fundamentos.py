@@ -266,7 +266,7 @@ def _resultado(lista: _Lista, ttm: dict, base: str, financeira: bool) -> None:
             motivo,
         )
     lista.add(
-        "margem_liquida", "Margem líquida",
+        "margem_liquida", "Margem líquida (lucro consolidado)",
         None if lucro_total is None or sem_receita else lucro_total / receita, FRACAO, base, sem_receita,
     )  # fmt: skip
 
