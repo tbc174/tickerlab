@@ -5,12 +5,16 @@
     python -m scripts.rotular_com_ia piloto   --eventos eventos.json --pasta ... --teto-dolares 60 --n 30
     python -m scripts.rotular_com_ia enviar   --eventos eventos.json --pasta ... --teto-dolares 60
     python -m scripts.rotular_com_ia buscar   --eventos eventos.json --pasta ...
+    python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --humanos tiago.json --teto-dolares 60
+    python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
 
 `baixar` guarda o texto de cada documento em `<pasta>/textos/` (um pedido por vez à CVM, com um minuto
 de pausa, e para no primeiro sinal de limite, como o leitor; roda de novo no dia seguinte). `estimar`
 conta os tokens de uma amostra pela API (não gasta) e projeta o custo da fila. `piloto` rotula poucos
 eventos na hora, para conferir formato e erros. `enviar` manda o resto num lote da Batch API (metade do
 preço; até 24 h) e `buscar` grava o resultado quando o lote termina.
+`identificar` pergunta à IA qual é a empresa de cada evento de prova (teste de vazamento) e `auditar`
+dá o veredito da ADR 0072 contra os rótulos do Tiago, em `<pasta>/auditoria.json`.
 
 **O teto vale para tudo:** nenhum passo gasta se o gasto já feito mais a estimativa passar do teto.
 Os rótulos vão para `<pasta>/rotulos.jsonl` (um por linha, com `por: "ia"`, a entrada em hash e a
@@ -27,6 +31,7 @@ import re
 import sys
 import time
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -34,6 +39,7 @@ from zoneinfo import ZoneInfo
 import anthropic
 import requests
 
+from src import auditoria_rotulos as ar
 from src import leitura
 from src import rotulos_ia as ri
 
@@ -46,6 +52,7 @@ SEMENTE = 20261014
 # cache: escrever custa 1,25x a entrada; ler custa 0,1x
 PESO_DA_ESCRITA_NO_CACHE, PESO_DA_LEITURA_DO_CACHE = 1.25, 0.1
 _CUSTOM_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+_FORA_DA_CHAVE = re.compile(r"[^A-Za-z0-9_-]")
 FUSO = ZoneInfo("America/Sao_Paulo")
 
 
@@ -56,8 +63,29 @@ class TetoPassado(Exception):
 # --- arquivos ---------------------------------------------------------------------------------
 
 
+def chave(evento_id: str) -> str:
+    """O id como nome de arquivo e `custom_id` do lote: o que não for letra, número, `-` ou `_` vira `_`
+    (um id do lote do leitor tem espaço). O id original continua em cada rótulo."""
+    return _FORA_DA_CHAVE.sub("_", evento_id)
+
+
 def ler_eventos(caminho: Path) -> list[dict]:
-    return json.loads(caminho.read_text(encoding="utf-8"))["eventos"]
+    """A fila da página. Evento sem id ou com chave repetida fica de fora, com aviso (a fila v1 tem um
+    sem id, na posição 3.120)."""
+    eventos = json.loads(caminho.read_text(encoding="utf-8"))["eventos"]
+    validos, chaves = [], set()
+    for posicao, evento in enumerate(eventos):
+        k = chave(str(evento.get("id") or ""))
+        if not _CUSTOM_ID.fullmatch(k) or k in chaves:
+            log.warning(
+                "Evento na posição %s sem id válido (%r): fica de fora.",
+                posicao,
+                evento.get("id"),
+            )
+            continue
+        chaves.add(k)
+        validos.append(evento)
+    return validos
 
 
 def _textos(pasta: Path) -> Path:
@@ -66,10 +94,10 @@ def _textos(pasta: Path) -> Path:
 
 def texto_guardado(pasta: Path, evento_id: str) -> str | None:
     """O texto baixado, "" se o documento não tem texto, None se ainda não foi baixado."""
-    arquivo = _textos(pasta) / f"{evento_id}.txt"
+    arquivo = _textos(pasta) / f"{chave(evento_id)}.txt"
     if arquivo.exists():
         return arquivo.read_text(encoding="utf-8")
-    if (_textos(pasta) / f"{evento_id}.sem_texto").exists():
+    if (_textos(pasta) / f"{chave(evento_id)}.sem_texto").exists():
         return ""
     return None
 
@@ -169,7 +197,11 @@ def baixar(
             )
             break
         texto = texto_do_conteudo(conteudo, evento)
-        nome = f"{evento['id']}.txt" if texto else f"{evento['id']}.sem_texto"
+        nome = (
+            f"{chave(evento['id'])}.txt"
+            if texto
+            else f"{chave(evento['id'])}.sem_texto"
+        )
         (_textos(pasta) / nome).write_text(texto, encoding="utf-8")
         baixados += 1
     log.info("Textos baixados: %s; faltam %s", baixados, len(faltam) - baixados)
@@ -306,12 +338,10 @@ def enviar(
         )
     estimativa = estimar(cliente, faltam, pasta)
     conferir_teto(manifesto, estimativa, teto)
-    for evento in faltam:
-        if not _CUSTOM_ID.fullmatch(evento["id"]):
-            raise ValueError(f"Id fora do formato da Batch API: {evento['id']!r}")
     lote = cliente.messages.batches.create(
         requests=[
-            {"custom_id": e["id"], "params": _parametros(e, pasta)} for e in faltam
+            {"custom_id": chave(e["id"]), "params": _parametros(e, pasta)}
+            for e in faltam
         ]
     )
     manifesto["lotes"] = [
@@ -332,7 +362,7 @@ def enviar(
 def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> int:
     """Grava os resultados dos lotes que terminaram. Devolve quantos registros gravou."""
     manifesto = ler_manifesto(pasta)
-    por_id = {e["id"]: e for e in eventos}
+    por_chave = {chave(e["id"]): e for e in eventos}
     gravados = 0
     for lote in manifesto.get("lotes", []):
         if lote.get("estado") == "gravado":
@@ -342,7 +372,7 @@ def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> in
             continue
         registros, gasto = [], 0.0
         for resultado in cliente.messages.batches.results(lote["id"]):
-            evento = por_id[resultado.custom_id]
+            evento = por_chave[resultado.custom_id]
             if resultado.result.type == "succeeded":
                 mensagem = resultado.result.message
                 registros.append(
@@ -360,10 +390,105 @@ def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> in
     return gravados
 
 
+# --- auditoria: identificação da empresa e veredito (ADR 0072, item 3) -----------------------
+
+TOKENS_POR_IDENTIFICACAO = (4_500, 200)  # entrada e saída, para conferir o teto antes
+
+
+def ler_humanos(caminho: Path) -> dict[str, dict]:
+    """Os rótulos do Tiago exportados da página (lista, ou {"rotulos": [...]}), pelo id do evento."""
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    rotulos = dados["rotulos"] if isinstance(dados, dict) else dados
+    return {r["evento_id"]: r for r in rotulos}
+
+
+def _prova(humanos: dict[str, dict]) -> list[str]:
+    return sorted(
+        i for i, h in humanos.items() if not h.get("pulado") and h.get("nota")
+    )
+
+
+def ler_identificacoes(pasta: Path) -> dict[str, bool] | None:
+    arquivo = pasta / "identificacoes.jsonl"
+    if not arquivo.exists():
+        return None
+    linhas = (
+        json.loads(linha)
+        for linha in arquivo.read_text(encoding="utf-8").splitlines()
+        if linha
+    )
+    return {r["evento_id"]: r["identificou"] for r in linhas}
+
+
+def identificar(
+    cliente: anthropic.Anthropic,
+    eventos: list[dict],
+    pasta: Path,
+    humanos: dict[str, dict],
+    teto: float,
+) -> int:
+    """Pergunta à IA qual é a empresa de cada evento de prova, lendo o documento anonimizado."""
+    por_id = {e["id"]: e for e in eventos}
+    feitos = ler_identificacoes(pasta) or {}
+    faltam = [por_id[i] for i in _prova(humanos) if i in por_id and i not in feitos]
+    manifesto = ler_manifesto(pasta)
+    entrada, saida = TOKENS_POR_IDENTIFICACAO
+    conferir_teto(
+        manifesto,
+        ri.custo_em_dolares(entrada * len(faltam), saida * len(faltam), lote=False),
+        teto,
+    )
+    gasto = 0.0
+    with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
+        for evento in faltam:
+            mensagem = cliente.messages.create(
+                **ri.pedido_de_identificacao(
+                    evento, texto_guardado(pasta, evento["id"]) or ""
+                )
+            )
+            bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
+            palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
+            linha = {
+                "evento_id": evento["id"],
+                "palpite": palpite,
+                "identificou": ar.identificou(palpite, evento.get("empresa") or ""),
+            }
+            arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
+            gasto += _custo_da_resposta(mensagem.usage, lote=False)
+    manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
+    manifesto["identificacao"] = {"eventos": len(faltam) + len(feitos), "gasto": gasto}
+    gravar_manifesto(pasta, manifesto, eventos)
+    return len(faltam)
+
+
+def auditar(pasta: Path, humanos: dict[str, dict]) -> ar.Veredito:
+    """O veredito da ADR 0072, gravado em `<pasta>/auditoria.json` (passe ou não, conta como tentativa)."""
+    veredito = ar.auditar(humanos, ler_rotulos(pasta), ler_identificacoes(pasta))
+    (pasta / "auditoria.json").write_text(
+        json.dumps(
+            asdict(veredito) | {"passou": veredito.passou, "limites": ar.LIMITES,
+                                "modelo": ri.MODELO, "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+                                "auditado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return veredito
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
-        "passo", choices=("baixar", "estimar", "piloto", "enviar", "buscar")
+        "passo",
+        choices=(
+            "baixar",
+            "estimar",
+            "piloto",
+            "enviar",
+            "buscar",
+            "identificar",
+            "auditar",
+        ),
     )
     argumentos.add_argument(
         "--eventos", type=Path, required=True, help="eventos.json da página"
@@ -373,6 +498,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     argumentos.add_argument(
         "--teto-dolares", type=float, help="obrigatório em estimar, piloto e enviar"
+    )
+    argumentos.add_argument(
+        "--humanos",
+        type=Path,
+        help="rótulos do Tiago exportados (identificar e auditar)",
     )
     argumentos.add_argument("--n", type=int, default=30, help="eventos do piloto")
     argumentos.add_argument(
@@ -390,7 +520,19 @@ def main(argv: list[str] | None = None) -> int:
     if opcoes.passo == "baixar":
         baixar(eventos, opcoes.pasta, opcoes.maximo)
         return 0
-    if opcoes.passo in ("estimar", "piloto", "enviar") and opcoes.teto_dolares is None:
+    if opcoes.passo in ("identificar", "auditar") and opcoes.humanos is None:
+        log.error("Diga o arquivo dos rótulos do Tiago com --humanos.")
+        return 2
+    if opcoes.passo == "auditar":
+        veredito = auditar(opcoes.pasta, ler_humanos(opcoes.humanos))
+        print(
+            "PASSOU" if veredito.passou else "NÃO PASSOU", *veredito.motivos, sep="\n- "
+        )
+        return 0
+    if (
+        opcoes.passo in ("estimar", "piloto", "enviar", "identificar")
+        and opcoes.teto_dolares is None
+    ):
         log.error(
             "Diga o teto com --teto-dolares (o Tiago combinou US$ 60 em 14/10/2026)."
         )
@@ -407,6 +549,14 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Pendentes: {len(faltam)} ({sem_texto} sem texto baixado)")
             print(
                 f"Estimativa pela Batch API: US$ {estimativa:.2f}; já gasto: US$ {gasto:.2f}; teto: US$ {opcoes.teto_dolares:.2f}"
+            )
+        elif opcoes.passo == "identificar":
+            identificar(
+                cliente,
+                eventos,
+                opcoes.pasta,
+                ler_humanos(opcoes.humanos),
+                opcoes.teto_dolares,
             )
         elif opcoes.passo == "piloto":
             piloto(cliente, eventos, opcoes.pasta, opcoes.n, opcoes.teto_dolares)
