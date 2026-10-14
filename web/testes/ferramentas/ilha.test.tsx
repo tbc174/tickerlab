@@ -58,6 +58,15 @@ describe("ilha da calculadora de juros", () => {
   });
 });
 
+describe("resultado para leitor de tela", () => {
+  it("só o número principal é anunciado, não a tabela da evolução", () => {
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="juros" />);
+    const anunciado = document.querySelector('[aria-live="polite"]');
+    expect(anunciado?.querySelector("[data-resultado]")).not.toBeNull();
+    expect(anunciado?.querySelector("table")).toBeNull();
+  });
+});
+
 describe("números no jeito brasileiro", () => {
   it.each([
     ["1.234,56", 1234.56],
@@ -69,6 +78,8 @@ describe("números no jeito brasileiro", () => {
     ["7%", 7],
     ["-0,5", -0.5],
     ["  42 ", 42],
+    ["0.500", 0.5], // começa com zero: é decimal, não milhar
+    ["0.5", 0.5],
   ])("lerNumero(%s) = %s", (texto, numero) => {
     expect(lerNumero(texto)).toBe(numero);
   });

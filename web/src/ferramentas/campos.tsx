@@ -92,7 +92,8 @@ export function Alternativas<T extends string>({
   );
 }
 
-/** O resultado principal e os números de apoio; anuncia as mudanças para quem usa leitor de tela. */
+/** O resultado principal e os números de apoio. Só o número principal (ou o erro) é anunciado a quem
+ * usa leitor de tela: a tabela da evolução seria lida inteira a cada tecla. */
 export function Resultado({
   rotulo,
   principal,
@@ -105,20 +106,20 @@ export function Resultado({
   children?: ReactNode;
 }) {
   return (
-    <div className="ferramenta-resultado" aria-live="polite">
-      {erro ? (
-        <p className="ferramenta-erro" role="alert">
-          {erro}
-        </p>
-      ) : (
-        <>
-          <p className="olho">{rotulo}</p>
-          <p className="ferramenta-principal" data-resultado="">
-            {principal}
-          </p>
-          {children}
-        </>
-      )}
+    <div className="ferramenta-resultado">
+      <div aria-live="polite">
+        {erro ? (
+          <p className="ferramenta-erro">{erro}</p>
+        ) : (
+          <>
+            <p className="olho">{rotulo}</p>
+            <p className="ferramenta-principal" data-resultado="">
+              {principal}
+            </p>
+          </>
+        )}
+      </div>
+      {erro ? null : children}
     </div>
   );
 }

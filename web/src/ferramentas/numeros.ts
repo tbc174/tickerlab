@@ -10,8 +10,8 @@ export function lerNumero(texto: string): number | null {
   if (limpo === "") return null;
   if (limpo.includes(",")) {
     limpo = limpo.replace(/\./g, "").replace(",", "."); // 1.234,56: o ponto é de milhar
-  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(limpo)) {
-    limpo = limpo.replace(/\./g, ""); // 1.000 e 10.000.000 são milhares, não decimais
+  } else if (/^-?[1-9]\d{0,2}(\.\d{3})+$/.test(limpo)) {
+    limpo = limpo.replace(/\./g, ""); // 1.000 e 10.000.000 são milhares; 0.500 é decimal
   }
   if (!/^-?\d+(\.\d+)?$/.test(limpo)) return null;
   return Number(limpo);
