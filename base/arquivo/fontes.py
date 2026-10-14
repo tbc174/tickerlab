@@ -49,6 +49,11 @@ DOWNLOAD_DA_RECEITA = (
 PASTA_DO_CNPJ = "Dados/Cadastros/CNPJ"
 TOKEN_DO_COMPARTILHAMENTO = re.compile(r"/s/([A-Za-z0-9]+)")
 MES = re.compile(r"^\d{4}-\d{2}$")
+# SCR.data versão 2, um zip por ano desde 2012 (o mesmo de `base/bcb_scr.py`): o firewall do BC
+# recusa a API do CKAN, os arquivos baixam; janeiro sai no fim de fevereiro
+SCR_DO_ANO = "https://www.bcb.gov.br/pda/desig/scrdata_{ano}.zip"
+PRIMEIRO_ANO_DO_SCR = 2012
+MES_DO_PRIMEIRO_ARQUIVO_DO_SCR = 3
 
 # termos de uso que decidem o que o TickerLab pode fazer (vigia: avisa quando o texto muda)
 TERMOS = {
@@ -208,6 +213,16 @@ def descobrir_cnpj(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_scr(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    ultimo = (
+        agora.year if agora.month >= MES_DO_PRIMEIRO_ARQUIVO_DO_SCR else agora.year - 1
+    )
+    return [
+        Alvo(SCR_DO_ANO.format(ano=ano))
+        for ano in range(PRIMEIRO_ANO_DO_SCR, ultimo + 1)
+    ]
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -303,7 +318,7 @@ FONTES: list[Fonte] = [
         )
     ),
     # fontes abertas novas (pesquisa de 13–14/10/2026)
-    Fonte("bcb-scr", "semanal", _ckan(PORTAL_DO_BC, "scr_data")),
+    Fonte("bcb-scr", "semanal", descobrir_scr, pesada=True),
     Fonte(
         "ccee-pld",
         "semanal",
