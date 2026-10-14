@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { limitesDoEixo, marcasDeMeses, passoRedondo, rotuloDoMes } from "../../src/graficos/escala";
+import { limitesDoEixo, marcasDeMeses, passoRedondo, rotuloDaDica, rotuloDoMes } from "../../src/graficos/escala";
 
 describe("escala dos gráficos", () => {
   it("o passo é sempre 1, 2, 2,5, 5 ou 10 vezes uma potência de 10", () => {
@@ -38,5 +38,14 @@ describe("escala dos gráficos", () => {
     expect(rotuloDoMes(0, 120)).toBe("início");
     expect(rotuloDoMes(48, 120)).toBe("ano 4");
     expect(rotuloDoMes(30, 120)).toBe("ano 2,5");
+  });
+
+  it("a dica diz o prazo por extenso", () => {
+    expect(rotuloDaDica(0, 120)).toBe("início");
+    expect(rotuloDaDica(8, 12)).toBe("mês 8");
+    expect(rotuloDaDica(80, 120)).toBe("6 anos e 8 meses");
+    expect(rotuloDaDica(120, 120)).toBe("10 anos");
+    expect(rotuloDaDica(12, 120)).toBe("1 ano");
+    expect(rotuloDaDica(13, 120)).toBe("1 ano e 1 mês");
   });
 });

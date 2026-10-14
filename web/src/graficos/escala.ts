@@ -50,3 +50,15 @@ export function rotuloDoMes(mes: number, totalDeMeses: number): string {
   if (totalDeMeses <= MESES_ATE_VIRAR_ANOS) return `mês ${mes}`;
   return `ano ${(mes / 12).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}`;
 }
+
+/** O ponto apontado, por extenso, para a dica: "mês 8", "6 anos e 8 meses", "10 anos". */
+export function rotuloDaDica(mes: number, totalDeMeses: number): string {
+  if (mes === 0) return "início";
+  if (totalDeMeses <= MESES_ATE_VIRAR_ANOS) return `mês ${mes}`;
+  const anos = Math.floor(mes / 12);
+  const resto = mes % 12;
+  const textoDosAnos = anos === 1 ? "1 ano" : `${anos} anos`;
+  if (resto === 0) return textoDosAnos;
+  const textoDosMeses = resto === 1 ? "1 mês" : `${resto} meses`;
+  return anos === 0 ? textoDosMeses : `${textoDosAnos} e ${textoDosMeses}`;
+}

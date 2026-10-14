@@ -96,6 +96,14 @@ export function cssFerramentas(): string {
 .ferramenta-link-manual { display: grid; gap: .25rem; width: 100%; font-size: .85rem; }
 .ferramenta-link-manual input { width: 100%; padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--linha-forte);
   background: var(--fundo); color: var(--texto); font: 500 .85rem "JetBrains Mono", monospace; }
+/* com gráfico embaixo, o resultado não gruda (passaria por cima do gráfico ao rolar) */
+.ferramenta:has(> .ferramenta-largo) > .ferramenta-resultado { position: static; }
+.ferramenta-largo { grid-column: 1 / -1; min-width: 0; border-top: 1px solid var(--linha); padding-top: .25rem; }
+.ferramenta-interruptor { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .92rem; cursor: pointer; }
+.ferramenta-interruptor input { width: 1.1rem; height: 1.1rem; accent-color: var(--azul); }
+.ferramenta-cenario-b { display: grid; gap: .75rem; margin: 0; padding: .9rem 1rem; border: 1px dashed var(--linha-forte);
+  border-radius: 10px; }
+.ferramenta-cenario-b legend { padding: 0 .35rem; font-weight: 700; font-size: .88rem; color: var(--apagado); }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }

@@ -3,7 +3,7 @@
 // eixos redondos (escala.ts), mira com mouse, toque e teclado, dica, legenda a partir de duas séries
 // e um resumo para leitor de tela. Cores só das variáveis da marca; texto nunca na cor da série.
 import { useId } from "react";
-import { limitesDoEixo, marcasDeMeses, rotuloDoMes } from "./escala";
+import { limitesDoEixo, marcasDeMeses, rotuloDaDica, rotuloDoMes } from "./escala";
 import { useLargura } from "./useLargura";
 import { useMira } from "./useMira";
 
@@ -146,7 +146,7 @@ export function GraficoDoTempo({
           role="status"
           style={{ left: `${Math.min(85, Math.max(15, (x(meses[i]) / largura) * 100))}%` }}
         >
-          <strong>{rotuloDoMes(meses[i], ultimoMes)}</strong>
+          <strong>{rotuloDaDica(meses[i], ultimoMes)}</strong>
           {[...series].reverse().map((s) => (
             <span key={s.nome}>
               <i style={{ background: s.cor }} aria-hidden="true" />
