@@ -139,7 +139,9 @@ def ler_insolvencia_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
                 "assunto": _texto(linha, "Assunto"),
                 "conhecido_em": linha["Data_Entrega"],
                 "referencia": linha["Data_Referencia"],
-                "protocolo": _texto(linha, "Protocolo_Entrega"),
+                # de 2003 a 2014 o protocolo vem vazio: o link identifica o documento
+                "protocolo": _texto(linha, "Protocolo_Entrega")
+                or _texto(linha, "Link_Download"),
                 "versao": pd.to_numeric(linha["Versao"], errors="coerce"),
                 "link": _texto(linha, "Link_Download"),
             }

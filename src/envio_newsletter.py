@@ -164,9 +164,12 @@ def enviar_pelo_resend(
     idempotencia: str,
     chave: str,
     transporte: Transporte = requests.post,
+    remetente: str | None = None,
 ) -> str:
-    """Envia pelo Resend e devolve o id da mensagem. A chave de idempotência evita duplicar."""
-    remetente = os.environ.get(VARIAVEL_DO_REMETENTE) or REMETENTE_PADRAO
+    """Envia pelo Resend e devolve o id da mensagem. A chave de idempotência evita duplicar.
+
+    Sem `remetente`, vale o da Newsletter (as Novidades passam o delas)."""
+    remetente = remetente or os.environ.get(VARIAVEL_DO_REMETENTE) or REMETENTE_PADRAO
     try:
         resposta = transporte(
             URL_DO_RESEND,

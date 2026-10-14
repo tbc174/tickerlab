@@ -59,3 +59,42 @@ def test_sem_manifesto_nao_confere(tabela, tmp_path):
     destino = tmp_path / "solta.parquet"
     tabela.to_parquet(destino, index=False)
     assert not conferir_tabela(destino)
+
+
+# --- versões (o que a CVM regrava não é apagado) -------------------------------------------------
+OUTRAS = [{"url": "https://dados.cvm.gov.br/x.zip", "sha256": "cd" * 32}]
+
+
+def test_mesmas_origens_nao_regravam(tabela, tmp_path, monkeypatch):
+    from base.parquet import GRAVADO, IGUAL, gravar_com_versoes
+
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "2005"
+    assert (
+        gravar_com_versoes(lambda: tabela, destino, ORIGENS, ["cnpj", "ano"]) == GRAVADO
+    )
+    montou = []
+    assert (
+        gravar_com_versoes(lambda: montou.append(1), destino, ORIGENS, ["cnpj"])
+        == IGUAL
+    )
+    assert montou == []  # nem monta a tabela de novo
+
+
+def test_origens_novas_guardam_a_versao_anterior(tabela, tmp_path, monkeypatch):
+    from base.parquet import gravar_com_versoes
+
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "2005"
+    gravar_com_versoes(lambda: tabela, destino, ORIGENS, ["cnpj", "ano"])
+    nova = tabela.assign(valor=9.0)
+    gravar_com_versoes(lambda: nova, destino, OUTRAS, ["cnpj", "ano"])
+    gravar_com_versoes(lambda: tabela, destino, ORIGENS, ["cnpj", "ano"])
+    assert conferir_tabela(tmp_path / "2005.v1.parquet")
+    assert conferir_tabela(tmp_path / "2005.v2.parquet")
+    pd.testing.assert_frame_equal(
+        ler_tabela(tmp_path / "2005.v2.parquet"), nova, check_dtype=False
+    )
+    pd.testing.assert_frame_equal(
+        ler_tabela(tmp_path / "2005.parquet"), tabela, check_dtype=False
+    )
