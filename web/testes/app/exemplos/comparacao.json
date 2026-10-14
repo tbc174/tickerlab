@@ -29,6 +29,7 @@
  "resposta": {
   "ativo": {
    "aviso_da_origem": "Estes são dados de exemplo guardados no projeto, até 09/10/2026, e não os mais recentes do Yahoo Finance.",
+   "codigo": "PETR4",
    "fim": "2026-10-09",
    "inicio": "2024-10-10",
    "origem": "exemplo",
@@ -2980,6 +2981,7 @@
    "nota": "Comparação feita em 486 dias em comum. 27 dias foram descartados porque algum ativo não tinha preço neles (feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem diferir um pouco dos das outras abas, que usam todos os dias do ativo. As moedas diferentes (R$ e US$) não atrapalham, porque comparamos a variação percentual, não os preços.",
    "tabela": [
     {
+     "codigo": "PETR4",
      "maior_queda": -0.2216166811911492,
      "retorno_anualizado": 0.39648887760810636,
      "retorno_total": 0.9016894473215042,
@@ -2988,6 +2990,7 @@
      "volatilidade_anual": 0.2588367795032925
     },
     {
+     "codigo": "IBOV",
      "maior_queda": -0.16270254760718228,
      "retorno_anualizado": 0.27820618180099865,
      "retorno_total": 0.6038526155899748,
@@ -2996,6 +2999,7 @@
      "volatilidade_anual": 0.1759787205653348
     },
     {
+     "codigo": "SPX",
      "maior_queda": -0.18902206471232086,
      "retorno_anualizado": 0.16940434117427827,
      "retorno_total": 0.35146586453286277,

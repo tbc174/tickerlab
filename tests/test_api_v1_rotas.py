@@ -489,6 +489,22 @@ def test_comparacao_com_dados_traz_a_nota(cliente):
     )
 
 
+def test_a_resposta_traz_o_codigo_para_mostrar(cliente):
+    """Índice sem o ^ do Yahoo na tela (ADR 0065); `ticker` continua o símbolo dos dados."""
+    ativo = cliente.get(
+        "/api/v1/visao-geral", params={"ticker": "^BVSP", "taxa": TAXA}
+    ).json()["ativo"]
+    assert (ativo["ticker"], ativo["codigo"]) == ("^BVSP", "IBOV")
+    tabela = cliente.get(
+        "/api/v1/comparacao",
+        params={"ticker": "PETR4.SA", "com": ["^BVSP"], "taxa": TAXA},
+    ).json()["comparacao"]["tabela"]
+    assert {(linha["ticker"], linha["codigo"]) for linha in tabela} == {
+        ("PETR4.SA", "PETR4"),
+        ("^BVSP", "IBOV"),
+    }
+
+
 # --- Plano de cada rota (ADR 0062) ----------------------------------------------------------
 
 ROTAS_PUBLICAS = frozenset({"/v1/configuracao"})  # sem login (o client ID do Google)

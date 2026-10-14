@@ -23,7 +23,7 @@ function Resultado({ dados }: { dados: RiscoDoAtivoV1 }) {
         Queda desde o topo <Ajuda termo="Drawdown" rotulo="queda desde o topo (drawdown)" />
       </h2>
       <GraficoDeLinha
-        titulo={`Queda desde o topo de ${ativo.ticker}`}
+        titulo={`Queda desde o topo de ${ativo.codigo}`}
         datas={risco.drawdown.datas}
         series={[{ nome: "Queda desde o topo", cor: "var(--serie-1)", valores: risco.drawdown.valores }]}
         referencia={0}
@@ -36,7 +36,7 @@ function Resultado({ dados }: { dados: RiscoDoAtivoV1 }) {
         <p className="apagado">{risco.aviso_da_janela}</p>
       ) : (
         <GraficoDeLinha
-          titulo={`Volatilidade móvel de ${risco.janela} dias (ao ano) de ${ativo.ticker}`}
+          titulo={`Volatilidade móvel de ${risco.janela} dias (ao ano) de ${ativo.codigo}`}
           datas={risco.volatilidade_movel.datas}
           series={[
             { nome: `Volatilidade (${risco.janela} dias)`, cor: "var(--serie-1)", valores: risco.volatilidade_movel.valores },
