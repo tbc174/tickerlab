@@ -193,3 +193,27 @@ def test_ler_ficha_recusa_veredito_que_as_checagens_nao_dao():
     """Um "passou" com uma checagem que não passou seria uma ficha adulterada."""
     with pytest.raises(ValueError):
         comp.ler_ficha_congelada(_estragar("resultado", Resultado.PASSOU.value))
+
+
+# --- o que a tela usa (onda 4, PR 4) -------------------------------------------------------
+
+
+def test_endereco_do_link_leva_o_codigo_depois_do_jogo_da_velha():
+    codigo = comp.novo_codigo()
+    assert comp.endereco_do_link(codigo) == (
+        f"https://app.tickerlab.com.br/novo/c#{codigo}"
+    )
+
+
+def test_fonte_dos_precos_pela_origem_dos_dados():
+    assert comp.fonte_dos_precos(None) == "Yahoo Finance"
+    assert comp.fonte_dos_precos("exemplo") == "dados de exemplo guardados no projeto"
+    assert "Yahoo não respondeu" in comp.fonte_dos_precos("cache_antigo")
+
+
+def test_textos_da_tela():
+    assert comp.rotulo_do_prazo(30) == "30 dias"
+    assert "não aparece de novo" in comp.AVISO_DO_LINK_CRIADO
+    for texto in (comp.O_QUE_FICA_VISIVEL["ficha"], comp.O_QUE_FICA_VISIVEL["pdf"]):
+        assert "nome" in texto and "e-mail" in texto
+    assert set(comp.NOMES_DOS_TIPOS) == set(comp.TIPOS)

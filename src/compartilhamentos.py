@@ -44,6 +44,39 @@ CUSTO_MAXIMO = 0.2  # 20% por operação: acima disso não é um custo, é um er
 TENTATIVAS_MAXIMAS = 10_000_000
 
 
+ENDERECO_DA_PAGINA = (
+    "https://app.tickerlab.com.br/novo/c"  # a página pública (web/, PR 3)
+)
+NOMES_DOS_TIPOS = {"ficha": 'Ficha "Foi sorte?"', "pdf": "PDF original"}
+O_QUE_FICA_VISIVEL = {
+    "ficha": "Quem tiver o link vê esta ficha como está agora, com a data de hoje, sem o seu nome "
+    "nem o seu e-mail. Nada é recalculado depois.",
+    "pdf": "Quem tiver o link baixa este PDF como foi gerado, sem ver o seu nome nem o seu e-mail.",
+}
+AVISO_DO_LINK_CRIADO = (
+    "Copie agora: o TickerLab guarda só uma impressão do link, então ele não aparece de novo. "
+    "Se perder, revogue em Meus dados e crie outro."
+)
+
+
+def endereco_do_link(codigo: str) -> str:
+    """O código vai depois do "#": o navegador não o manda a servidor nenhum nem ao Referer."""
+    return f"{ENDERECO_DA_PAGINA}#{codigo}"
+
+
+def rotulo_do_prazo(dias: int) -> str:
+    return f"{dias} dias"
+
+
+def fonte_dos_precos(origem: object) -> str:
+    """De onde vieram os preços da ficha, pela `dados.attrs["origem"]` (como na Visão geral)."""
+    from src.analise import (
+        FONTES,
+    )  # aqui: o módulo da análise é pesado e só a tela precisa
+
+    return FONTES.get(origem, str(origem))  # type: ignore[arg-type]
+
+
 # --- o código e o prazo --------------------------------------------------------------------
 
 

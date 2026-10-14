@@ -159,6 +159,15 @@ def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
     )
 
 
+def test_licencas_das_fontes_abertas_novas():
+    assert "CCEE" in licenca_da_fonte("ccee-pld")
+    assert "ANTT" in licenca_da_fonte("antt-pedagio")
+    assert "Tesouro Nacional" in licenca_da_fonte("tesouro-br-divida")
+    assert licenca_da_fonte("tesouro-eua-10a") == coletas.LICENCAS["tesouro"]
+    assert coletas.revenda_da_fonte("ccee-pld") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.revenda_da_fonte("tesouro-br-divida") == coletas.VENDAVEL_ODBL
+
+
 def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):
     """Série 3, PR 3 (exigência 13 da ADR 0055): cada arquivo registrado diz qual commit o baixou."""
     from src import versao_do_codigo as vc
