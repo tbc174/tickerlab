@@ -210,22 +210,32 @@ def backtest(_conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAt
     if pedido.estrategia not in ESTRATEGIAS:
         raise HTTPException(status_code=422, detail="Estratégia desconhecida.")
     c = _com_o_ativo(pedido.ticker, pedido.periodo, pedido.taxa)
-    posicao = _ou_422(
-        lambda: gerar_posicao(pedido.estrategia, c.dados, **pedido.parametros)
+    return _ou_422(
+        lambda: montar_backtest(
+            c, pedido.estrategia, pedido.parametros, pedido.custo_por_operacao
+        )
     )
-    resultado = executar_backtest(c.fechamento, posicao, pedido.custo_por_operacao)
+
+
+def montar_backtest(
+    c: ContextoDoAtivo,
+    estrategia: str,
+    parametros: dict[str, int | float | str],
+    custo_por_operacao: float,
+) -> esquemas.BacktestDoAtivoV1:
+    """O backtest de um ativo já carregado (a rota e os testes do React usam). `ValueError` se um
+    parâmetro não servir à estratégia."""
+    posicao = gerar_posicao(estrategia, c.dados, **parametros)
+    resultado = executar_backtest(c.fechamento, posicao, custo_por_operacao)
     metricas = resumir_desempenho(
         resultado.retorno, resultado.posicao, None, c.taxa_livre_de_risco
     )
-    usados = {
-        **ESTRATEGIAS[pedido.estrategia].parametros_padrao(),
-        **pedido.parametros,
-    }
+    usados = {**ESTRATEGIAS[estrategia].parametros_padrao(), **parametros}
     return esquemas.BacktestDoAtivoV1(
         ativo=esquemas.de_ativo(c),
-        estrategia=pedido.estrategia,
+        estrategia=estrategia,
         parametros=usados,
-        custo_por_operacao=pedido.custo_por_operacao,
+        custo_por_operacao=custo_por_operacao,
         backtest=esquemas.de_backtest(resultado, metricas),
     )
 

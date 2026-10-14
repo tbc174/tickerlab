@@ -33,6 +33,7 @@ from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
+from src.estrategias import ESTRATEGIAS
 
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
@@ -203,6 +204,21 @@ def _app() -> dict[str, object]:
             ],
             "aviso_do_limite": comparacao.AVISO_DO_LIMITE,
             "aviso_sem_dados": comparacao.AVISO_SEM_DADOS,
+        },
+        "backtest": {
+            "estrategias": [
+                {
+                    "nome": e.nome,
+                    "grupo": e.grupo,
+                    "parametros": [asdict(p) for p in e.parametros],
+                }
+                for e in ESTRATEGIAS.values()
+            ],
+            "metricas_por_formato": {
+                "pct_com_sinal": sorted(formatos.METRICAS_EM_PORCENTAGEM_COM_SINAL),
+                "pct": sorted(formatos.METRICAS_EM_PORCENTAGEM),
+                "inteiro": sorted(formatos.METRICAS_INTEIRAS),
+            },
         },
         "linha_do_tempo": {
             "relevancias": [

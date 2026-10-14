@@ -2,9 +2,10 @@
 // O esqueleto do app em React (série 3 da ADR 0048): rotas, moldura e a API ligada ou não.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TELAS_DO_APP } from "../../src/app/rotas";
+import { TELAS_DO_APP, temTelaPronta } from "../../src/app/rotas";
+import { EmConstrucao } from "../../src/app/telas/EmConstrucao";
 import { paginasDoApp } from "../../src/conteudo";
 import { abrirApp, respostaJson } from "./ajudantes";
 
@@ -38,10 +39,15 @@ describe("rotas do app novo", () => {
     expect(await screen.findByText(/Página não encontrada/)).toBeTruthy();
   });
 
-  it("tela ainda sem versão nova leva à mesma página no app atual", async () => {
-    abrir("/backtest");
-    const link = await screen.findByRole("link", { name: /Abrir no app atual/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/backtest");
+  it("toda página com contrato já tem a tela em React", () => {
+    expect(TELAS_DO_APP.filter((p) => !temTelaPronta(p.chave)).map((p) => p.chave)).toEqual([]);
+  });
+
+  it("página com contrato e sem tela nova leva à mesma página no app atual", () => {
+    const pagina = { ...TELAS_DO_APP[0], titulo: "Tela futura", url: "tela-futura" };
+    render(<EmConstrucao pagina={pagina} />);
+    const link = screen.getByRole("link", { name: /Abrir no app atual/ });
+    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/tela-futura");
   });
 });
 
