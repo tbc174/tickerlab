@@ -358,3 +358,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o app em React lê `web/conteudo/paginas.json`. Uma página nova em `src/paginas.py` muda esse arquivo (a trava do commit regenera), e o build guardado em `novo/` muda junto (outro nome do `assets/index-*.js`). A trava regenera o `web/conteudo/` e o `site/`, mas não o `novo/`.
 - **Solução:** depois de mudar `src/paginas.py`, rodar `npm run app` em `web/` (e `npm ci` antes, numa cópia nova) e fazer o commit do `novo/` (`git add -A novo`, porque o arquivo antigo sai e entra um novo).
 - **Data:** 13/10/2026
+
+## Teste com Hypothesis passa mesmo com o código estragado (combinação rara)
+- **Sintoma:** no teste de que o Streamlit e a API decidem igual (#182), estraguei o código de propósito (o Streamlit liberava plano vazio) e o teste com `@given(plano=..., chave=...)` continuou verde.
+- **Causa:** o Hypothesis **sorteia** exemplos (100 por padrão). Só 4 das 184 combinações de plano × página mostravam o estrago (2 planos vazios × 2 páginas pagas); o sorteio não caiu em nenhuma.
+- **Solução:** quando as combinações são poucas, **conferir todas** (`@pytest.mark.parametrize` ou um laço), sem sorteio; o Hypothesis fica para o que é grande de verdade (aqui, textos de plano quaisquer, cada um conferido em todas as páginas). E sempre fazer a conferência ao contrário: estragar o código e ver o teste falhar.
+- **Data:** 14/10/2026
+
+## `git status` mostra `web/conteudo/*.json` modificados, mas o `git diff` vem vazio
+- **Sintoma:** depois de rodar a suíte ou o `exportar_conteudo`, todos os `web/conteudo/*.json` aparecem como `M`, e o `git diff` não mostra nada.
+- **Causa:** alguns testes regravam o conteúdo (igual) e o `.gitattributes` (`web/** text=auto eol=lf`) faz o Git desconfiar da data do arquivo. O conteúdo é o mesmo: `git hash-object ARQUIVO` bate com `git rev-parse HEAD:ARQUIVO`.
+- **Solução:** `git checkout -- web/conteudo` (ou só não adicionar esses arquivos; nunca `git add -A` sem olhar). Atrapalha o `git rebase`, que recusa "unstaged changes" até isso.
+- **Data:** 14/10/2026
