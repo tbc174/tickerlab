@@ -8,6 +8,7 @@ ainda não saiu respondem **404**; `HEAD` responde 405 (sem ETag nem Last-Modifi
 
 import dataclasses
 import io
+import json
 import zipfile
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -15,6 +16,7 @@ from pathlib import Path
 import pytest
 import requests
 
+from base import intradiario_b3
 from base.arquivo import coleta, fontes
 from src.banco import coletas
 
@@ -198,3 +200,116 @@ def test_sem_arquivo_nao_conta_como_falha_nem_apaga_o_que_ja_foi_guardado(
     with banco.connect() as conexao:
         assert coletas.ultima_coleta_ok(conexao, URL) is not None
     assert len(list((tmp_path / "acervo").rglob("*.zip"))) == 1
+
+
+# --- PR 2: o selo decide se o dia guardado vale (no lugar dos 40 MB) ------------------------------
+
+
+def _gravar_selo(tmp_path, sha256: str, selo: str, dia: date = DIA) -> None:
+    caminho = intradiario_b3.caminho_do_resumo(dia, tmp_path / "acervo")
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text(
+        json.dumps({"sha256_do_arquivo": sha256, "selo_do_dia": selo}), "utf-8"
+    )
+
+
+def test_dia_pequeno_com_selo_completo_nao_e_baixado_de_novo(banco, tmp_path):
+    cliente = B3Falsa({URL: _zip(2000)})  # menor que 40 MB, mas o selo diz que bate
+    _rodar(cliente, tmp_path)
+    _gravar_selo(tmp_path, _linhas(banco)[0].sha256, "completo")
+    assert _rodar(cliente, tmp_path, rodada=1).pulados == 1
+    assert cliente.baixados == [URL]
+
+
+def test_dia_grande_com_selo_incompleto_e_baixado_de_novo(banco, tmp_path, monkeypatch):
+    """O 15/09 tem 84 MB e veio quebrado: só o selo percebe."""
+    monkeypatch.setattr(fontes, "TAMANHO_MINIMO_DE_UM_DIA_BOM", 500)
+    cliente = B3Falsa({URL: _zip(2000)})
+    _rodar(cliente, tmp_path)
+    _gravar_selo(tmp_path, _linhas(banco)[0].sha256, "incompleto")
+    assert _rodar(cliente, tmp_path, rodada=1).iguais == 1
+    assert len(cliente.baixados) == 2
+
+
+def test_selo_de_outra_versao_do_arquivo_nao_vale(banco, tmp_path, monkeypatch):
+    monkeypatch.setattr(fontes, "TAMANHO_MINIMO_DE_UM_DIA_BOM", 10_000)
+    cliente = B3Falsa({URL: _zip(2000)})
+    _rodar(cliente, tmp_path)
+    _gravar_selo(tmp_path, "outro-sha", "completo")
+    assert _rodar(cliente, tmp_path, rodada=1).iguais == 1  # volta à regra do tamanho
+
+
+# --- boletins oficiais do dia: PR (BVBG.086) e COTAHIST -------------------------------------------
+
+URL_DO_PR = "https://www.b3.com.br/pesquisapregao/download?filelist=PR261013.zip"
+URL_DO_COTAHIST = (
+    "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D13102026.ZIP"
+)
+
+
+def _zip_vazio() -> bytes:
+    memoria = io.BytesIO()
+    zipfile.ZipFile(memoria, "w").close()
+    return memoria.getvalue()  # 22 bytes, como o PR de 12/10/2026 (feriado)
+
+
+@pytest.mark.parametrize(
+    ("fonte", "primeiro", "ultimo"),
+    [
+        ("b3-boletim-pr", "filelist=PR260915.zip", "filelist=PR261014.zip"),
+        ("b3-cotahist-dia", "COTAHIST_D15092026.ZIP", "COTAHIST_D14102026.ZIP"),
+    ],
+)
+def test_boletins_da_janela(fonte, primeiro, ultimo):
+    alvos = fontes.POR_ID[fonte].descobrir(None, AGORA)
+    assert alvos[0].url.endswith(primeiro)
+    assert alvos[-1].url.endswith(ultimo)
+    assert len(alvos) == 22
+    assert {a.extensao for a in alvos} == {".zip"}
+    assert fontes.POR_ID[fonte].grupo == "diaria"
+
+
+def _fonte_do_boletim(fonte_id: str, url: str) -> coleta.Fonte:
+    alvo = next(
+        a for a in fontes.POR_ID[fonte_id].descobrir(None, AGORA) if a.url == url
+    )
+    return dataclasses.replace(
+        fontes.POR_ID[fonte_id], descobrir=lambda cliente, agora: [alvo]
+    )
+
+
+def test_pr_vazio_no_feriado_nao_e_arquivo(banco, tmp_path):
+    fonte = _fonte_do_boletim("b3-boletim-pr", URL_DO_PR)
+    resultado = _rodar(B3Falsa({URL_DO_PR: _zip_vazio()}), tmp_path, fonte)
+    assert (resultado.novos, resultado.sem_arquivo, resultado.falhas) == (0, 1, [])
+
+
+def test_cotahist_404_no_feriado_nao_e_arquivo(banco, tmp_path):
+    fonte = _fonte_do_boletim("b3-cotahist-dia", URL_DO_COTAHIST)
+    resultado = _rodar(B3Falsa({URL_DO_COTAHIST: None}), tmp_path, fonte)
+    assert (resultado.novos, resultado.sem_arquivo, resultado.falhas) == (0, 1, [])
+
+
+def test_boletim_baixado_na_noite_do_pregao_e_baixado_de_novo_no_dia_seguinte(
+    banco, tmp_path
+):
+    """O PR sai em várias versões até ~21h: o das 22h pode não ser o último; o das 2h é."""
+    fonte = _fonte_do_boletim("b3-boletim-pr", URL_DO_PR)
+    cliente = B3Falsa({URL_DO_PR: _zip()})
+    noite = datetime(2026, 10, 14, 0, 30, tzinfo=UTC)  # 13/10 às 21h30 em Brasília
+    madrugada = datetime(2026, 10, 14, 5, tzinfo=UTC)  # 14/10 às 2h
+
+    def rodar(agora):
+        return coleta.arquivar(
+            fonte,
+            cliente,
+            agora,
+            tmp_path / "temporario",
+            pausa=0,
+            espaco=lambda pasta: (900 * 1024**3, 800 * 1024**3),
+        )
+
+    rodar(noite)
+    assert rodar(madrugada).iguais == 1
+    assert rodar(madrugada + timedelta(hours=20)).pulados == 1
+    assert len(cliente.baixados) == 2
