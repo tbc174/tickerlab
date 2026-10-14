@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 import requests
 import sqlalchemy as sa
 
-from base.fre import ler_eventos_de_capital, ler_proventos
+from base.fre import ULTIMO_ANO_COM_AS_TABELAS, ler_eventos_de_capital, ler_proventos
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.fre import gravar_eventos, gravar_proventos
@@ -26,7 +26,7 @@ log = logging.getLogger("tickerlab.fre")
 URL_DO_FRE = (
     "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_{ano}.zip"
 )
-PRIMEIRO_ANO, ULTIMO_ANO_COM_AS_TABELAS = 2010, 2022
+PRIMEIRO_ANO = 2010
 NAO_ENCONTRADO = 404
 
 

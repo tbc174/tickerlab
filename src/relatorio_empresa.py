@@ -217,7 +217,10 @@ def _pct(fracao: float) -> str:
     return escrever(fracao, fundamentos.FRACAO)
 
 
-def _item(indicador: fundamentos.Indicador, nota: notas.Nota | None = None) -> Item:
+def _item(
+    indicador: fundamentos.Indicador,
+    nota: notas.Nota | notas.NotaPorFaixa | None = None,
+) -> Item:
     return Item(
         indicador.chave,
         indicador.nome,
@@ -244,7 +247,7 @@ def _tabela(tabela: pd.DataFrame, indice: str = "ano") -> list[dict]:
 @dataclass(frozen=True)
 class _Calculos:
     indicadores: dict[str, fundamentos.Indicador]
-    notas_por_indicador: dict[str, notas.Nota]
+    notas_por_indicador: dict[str, notas.Nota | notas.NotaPorFaixa]
     classicas: dict[str, notas_classicas.NotaClassica]
     historico: fundamentalista.Historico
     dividendos: fundamentalista.DividendosEDiluicao
@@ -265,9 +268,16 @@ def _calcular(e: Entradas) -> _Calculos:
             if chave in indicadores
         }
         lista = notas.notas_da_empresa(valores, grupo, padroes, corte, bool(e.achados))
+    por_faixa = [
+        nota
+        for chave in notas.FAIXAS_FIXAS
+        if chave in indicadores
+        and indicadores[chave].valor is not None
+        and (nota := notas.nota_por_faixa(chave, indicadores[chave].valor)) is not None
+    ]
     return _Calculos(
         indicadores,
-        {n.indicador: n for n in lista},
+        {n.indicador: n for n in [*lista, *por_faixa]},
         notas_classicas.calcular(e.dados),
         extra.historico,
         fundamentalista.dividendos_e_diluicao(
@@ -343,7 +353,10 @@ def _padroes_e_notas(c: _Calculos, e: Entradas) -> Secao:
         return Secao("padroes_e_notas", SECOES["padroes_e_notas"], paragrafos=[
             "Ainda não há padrões do setor calculados para comparar.", notas.AVISO,
         ])  # fmt: skip
-    textos = [n.texto for n in c.notas_por_indicador.values()]
+    # as de faixa fixa não comparam com o setor: ficam só ao lado do número
+    textos = [
+        n.texto for n in c.notas_por_indicador.values() if isinstance(n, notas.Nota)
+    ]
     if not textos:
         textos = [f"Sem padrão para o grupo {NOMES.get(c.grupo, c.grupo)} nesta data."]
     return Secao(

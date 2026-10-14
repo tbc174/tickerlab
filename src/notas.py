@@ -85,6 +85,61 @@ class Nota:
         return " ".join(partes)
 
 
+# --- faixa fixa e pública (série 3, PR 2; decisão do Tiago em 14/10/2026) -----------------------
+# Indicadores em que o percentil do setor engana: no "caixa operacional / lucro", um número alto
+# costuma vir de lucro pequeno, não de caixa bom (a Petrobras, com 1,6×, saía "péssimo"). A nota é
+# por faixa fixa, sem comparar com o setor.
+@dataclass(frozen=True)
+class FaixaFixa:
+    nome: str
+    unidade: str
+    abaixo_de: float  # menor que isto: a 1ª nota
+    ate: float  # daqui até isto (inclusive): a 2ª; acima: a 3ª
+    notas: tuple[str, str, str]
+    porque: str
+
+
+FAIXAS_FIXAS: dict[str, FaixaFixa] = {
+    "conversao_de_caixa": FaixaFixa(
+        "Caixa operacional / lucro", fundamentos.VEZES, 0.8, 1.5,
+        ("atenção", "saudável", "conferir o lucro"),
+        "um número alto costuma vir de lucro pequeno, não de caixa bom",
+    ),
+}  # fmt: skip
+
+
+@dataclass(frozen=True)
+class NotaPorFaixa:
+    indicador: str
+    nome: str
+    valor: float
+    nota: str
+
+    @property
+    def texto(self) -> str:
+        f = FAIXAS_FIXAS[self.indicador]
+        baixo, alto = _numero(f.abaixo_de, f.unidade), _numero(f.ate, f.unidade)
+        return (
+            f"{self.nome} {_numero(self.valor, f.unidade)}: {self.nota}. Faixa fixa e pública (não "
+            f"compara com o setor): abaixo de {baixo} {f.notas[0]}; de {baixo} a {alto} "
+            f"{f.notas[1]}; acima de {alto} {f.notas[2]} ({f.porque})."
+        )
+
+
+def nota_por_faixa(indicador: str, valor: float) -> NotaPorFaixa | None:
+    """A nota de um indicador de faixa fixa (`FAIXAS_FIXAS`); None para os outros."""
+    faixa = FAIXAS_FIXAS.get(indicador)
+    if faixa is None:
+        return None
+    if valor < faixa.abaixo_de:
+        nota = faixa.notas[0]
+    elif valor <= faixa.ate:
+        nota = faixa.notas[1]
+    else:
+        nota = faixa.notas[2]
+    return NotaPorFaixa(indicador, faixa.nome, valor, nota)
+
+
 def _padrao(padroes: pd.DataFrame, grupo: str, indicador: str) -> pd.Series | None:
     linha = padroes[(padroes["grupo"] == grupo) & (padroes["indicador"] == indicador)]
     return None if linha.empty else linha.iloc[0]

@@ -18,6 +18,9 @@ import zipfile
 import pandas as pd
 
 CODIFICACAO_DA_CVM = "latin-1"
+# o último FRE com as tabelas de eventos de capital (Resolução CVM 59): depois dele, um salto nas
+# ações não tem evento para explicar (`src/fundamentalista.py`) e a carga para (`scripts/atualizar_fre.py`)
+ULTIMO_ANO_COM_AS_TABELAS = 2022
 DOCUMENTO = ["CNPJ_Companhia", "Data_Referencia"]
 COLUNAS_DOS_PROVENTOS = (
     "cnpj", "referencia", "versao", "exercicio", "lucro_ajustado", "dividendo_total", "payout",

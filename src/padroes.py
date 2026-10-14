@@ -27,14 +27,15 @@ PERCENTIS = (10, 20, 25, 33, 40, 50, 60, 67, 75, 80, 90)
 REGRAS_QUE_TIRAM_DO_PADRAO = ("R1", "R3", "R4", "R10")
 CHAVE_DO_DOCUMENTO = ["cnpj", "documento", "referencia"]
 
-# indicador → (nome, maior é melhor?)
+# indicador → (nome, maior é melhor?). O "caixa operacional / lucro" saiu na série 3, PR 2: a nota
+# dele é por faixa fixa (`src/notas.py::FAIXAS_FIXAS`); os percentis dos outros não mudam, então a
+# versão do método continua a mesma e as linhas antigas dele ficam sem uso.
 INDICADORES: dict[str, tuple[str, bool]] = {
     "margem_bruta": ("Margem bruta", True),
     "margem_ebit": ("Margem EBIT", True),
-    "margem_liquida": ("Margem líquida", True),
+    "margem_liquida": ("Margem líquida (lucro consolidado)", True),
     "roe": ("ROE", True),
     "roic": ("ROIC", True),
-    "conversao_de_caixa": ("Caixa operacional / lucro", True),
     "divida_sobre_pl": ("Dívida líquida / patrimônio", False),
     "crescimento_receita": ("Crescimento da receita", True),
     "crescimento_lucro": ("Crescimento do lucro", True),
@@ -56,7 +57,7 @@ UNIDADES: dict[str, str] = {
     },
     **{
         chave: fundamentos.VEZES
-        for chave in ("conversao_de_caixa", "divida_sobre_pl", "dupont_giro", "cobertura_de_juros")
+        for chave in ("divida_sobre_pl", "dupont_giro", "cobertura_de_juros")
     },
     "ciclo_de_caixa": fundamentalista.DIAS,
     **dict.fromkeys(MULTIPLOS, fundamentos.VEZES),

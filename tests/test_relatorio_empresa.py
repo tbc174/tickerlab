@@ -182,3 +182,29 @@ def test_premissas_escolhidas_aparecem_no_texto(dados_da_weg):
     )
     texto = " ".join(valuation.paragrafos)
     assert "escolhidas por você" in texto and "15,0%" in texto
+
+
+def test_caixa_operacional_tem_nota_por_faixa_fora_das_notas_contra_o_setor(
+    dados_da_weg,
+):
+    """Série 3, PR 2: a nota do caixa operacional / lucro é por faixa fixa, mesmo sem padrões, e não
+    aparece entre as "notas contra o setor"."""
+    relatorio = re_.montar(_entradas(dados_da_weg, padroes=None))
+    item = next(
+        i for i in relatorio.secao("caixa").itens if i.chave == "conversao_de_caixa"
+    )
+    assert item.nota in {"atenção", "saudável", "conferir o lucro"}
+    assert "não compara com o setor" in item.nota_texto
+    contra_o_setor = " ".join(
+        re_.montar(_entradas(dados_da_weg)).secao("padroes_e_notas").paragrafos
+    )
+    assert "Caixa operacional" not in contra_o_setor
+
+
+def test_margens_liquidas_tem_nomes_e_bases_diferentes(dados_da_weg):
+    """Fim da série 2: a WEG mostrava "Margem líquida" 16,6% e 15,6% na mesma página."""
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    resultado = {i.chave: i.nome for i in relatorio.secao("resultado").itens}
+    retorno = {i.chave: i.nome for i in relatorio.secao("retorno").itens}
+    assert resultado["margem_liquida"] == "Margem líquida (lucro consolidado)"
+    assert retorno["dupont_margem"] == "Margem líquida dos acionistas (DuPont)"

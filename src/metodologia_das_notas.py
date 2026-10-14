@@ -94,6 +94,7 @@ INDICADORES_DAS_NOTAS: tuple[IndicadorDaNota, ...] = tuple(
 )
 
 _QUINTIS = _lista([f"{q}%" for q in notas.LIMITES_DOS_QUINTIS])
+_FAIXA = notas.FAIXAS_FIXAS["conversao_de_caixa"]
 
 NOTAS: tuple[str, ...] = (
     (
@@ -113,6 +114,13 @@ NOTAS: tuple[str, ...] = (
         "Toda nota aparece com o número, o padrão (onde fica a metade do meio do grupo), o grupo, "
         "a quantidade de empresas, a data do corte e a fonte. Número com selo de qualidade mostra "
         "o aviso ao lado da nota."
+    ),
+    (
+        f"{_FAIXA.nome}: nota por faixa fixa e pública, sem comparar com o setor, porque um número "
+        f"alto costuma vir de lucro pequeno, não de caixa bom. Abaixo de {_numero(_FAIXA.abaixo_de)}×, "
+        f"{_FAIXA.notas[0]}; de {_numero(_FAIXA.abaixo_de)}× a {_numero(_FAIXA.ate)}×, "
+        f"{_FAIXA.notas[1]}; acima de {_numero(_FAIXA.ate)}×, {_FAIXA.notas[2]}. Com prejuízo, não "
+        "há nota."
     ),
     notas.AVISO,
 )
