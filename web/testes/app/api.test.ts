@@ -4,13 +4,19 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi, pedir } from "../../src/app/api";
 import type {
+  ComparacaoDoAtivoV1,
   EuV1,
+  RetornoMensalDoAtivoV1,
+  RiscoDoAtivoV1,
   JurosEInflacaoV1,
   LinhaDoTempoDoAtivoV1,
   VisaoGeralV1,
 } from "../../src/app/tipos";
+import comparacao from "./exemplos/comparacao.json";
 import juros from "./exemplos/juros_e_inflacao.json";
 import linha from "./exemplos/linha_do_tempo.json";
+import mensal from "./exemplos/retorno_mensal.json";
+import risco from "./exemplos/risco.json";
 import exemplo from "./exemplos/visao_geral.json";
 
 function respostaJson(status: number, corpo: unknown, cabecalhos: Record<string, string> = {}) {
@@ -158,5 +164,18 @@ describe("tipos das respostas", () => {
     expect(Object.keys(l).sort()).toEqual(campos("LinhaDoTempoDoAtivoV1"));
     expect(Object.keys(l.linha_do_tempo).sort()).toEqual(campos("LinhaDoTempoV1"));
     expect(Object.keys(l.linha_do_tempo.marcos[0]).sort()).toEqual(campos("MarcoV1"));
+  });
+
+  it("Risco, Retorno mensal e Comparação (exemplos do Python) batem com o OpenAPI", () => {
+    const r: RiscoDoAtivoV1 = risco.resposta;
+    expect(Object.keys(r.risco).sort()).toEqual(campos("RiscoV1"));
+    expect(Object.keys(r.risco.pior_queda).sort()).toEqual(campos("PiorQuedaV1"));
+    const m: RetornoMensalDoAtivoV1 = mensal.resposta;
+    expect(Object.keys(m.retorno_mensal).sort()).toEqual(campos("RetornoMensalV1"));
+    expect(Object.keys(m.retorno_mensal.tabela[0]).sort()).toEqual(campos("AnoV1"));
+    const c: ComparacaoDoAtivoV1 = comparacao.resposta;
+    expect(Object.keys(c).sort()).toEqual(campos("ComparacaoDoAtivoV1"));
+    expect(Object.keys(c.comparacao).sort()).toEqual(campos("ComparacaoV1"));
+    expect(Object.keys(c.comparacao.tabela?.[0] ?? {}).sort()).toEqual(campos("LinhaDaComparacaoV1"));
   });
 });

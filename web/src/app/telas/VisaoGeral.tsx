@@ -1,14 +1,11 @@
 // Visão geral de um ativo no app novo: o painel de números (os mesmos do Streamlit, pelos itens de
 // src/analises.py) e a curva em base 100. A API não entrega o preço (licença dos preços, ADR 0008).
-import { useSearchParams } from "react-router";
 import { type ItemDoPainel, type PaginaDoApp, conteudoDoApp } from "../../conteudo";
 import { Ajuda } from "../Ajuda";
-import { Formulario, parametrosDoPedido, valoresIniciais } from "../Formulario";
 import { formatar, formatarData, formatarPct } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
 import type { PainelDeNumerosV1, VisaoGeralV1 } from "../tipos";
-import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { TelaDoContrato } from "./TelaDoContrato";
 
 const { itens, legenda, frase_do_cvar } = conteudoDoApp.painel;
 const GRUPOS = [...new Set(itens.map((i) => i.grupo))];
@@ -86,30 +83,11 @@ function Resultado({ dados }: { dados: VisaoGeralV1 }) {
 }
 
 export function VisaoGeral({ pagina }: { pagina: PaginaDoApp }) {
-  const contrato = pagina.contrato;
-  const [busca, setBusca] = useSearchParams();
-  const entradas = contrato?.entradas ?? [];
-  const valores = valoresIniciais(entradas, busca);
-  const pedido = usarPedido<VisaoGeralV1>(contrato?.rota ?? "", parametrosDoPedido(entradas, valores));
   return (
-    <section>
-      <h1>{pagina.titulo}</h1>
-      <p className="apagado">{pagina.descricao}</p>
-      <Formulario
-        key={busca.toString()}
-        entradas={entradas}
-        valores={valores}
-        aoAnalisar={(novos) => setBusca(new URLSearchParams(Object.entries(novos).filter(([, v]) => v !== "")))}
-      />
-      {pedido.estado === "carregando" ? (
-        <p className="apagado" role="status">
-          Calculando…
-        </p>
-      ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
-      ) : (
-        <Resultado dados={pedido.dados} />
-      )}
-    </section>
+    <TelaDoContrato<VisaoGeralV1>
+      pagina={pagina}
+      carregando="Calculando…"
+      resultado={(dados) => <Resultado dados={dados} />}
+    />
   );
 }

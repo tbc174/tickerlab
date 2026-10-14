@@ -23,6 +23,20 @@ COLUNAS_DA_TABELA = [
     "Maior queda",
     "Índice de Sharpe",
 ]
+# como cada coluna aparece (src/formatos.py): a tela do Streamlit e o app em React
+FORMATO_DAS_COLUNAS = {
+    "Retorno total": "pct_com_sinal",
+    "Retorno anualizado": "pct_com_sinal",
+    "Volatilidade anual": "pct",
+    "Maior queda": "pct",
+    "Índice de Sharpe": "decimal",
+}
+AVISO_DO_LIMITE = (
+    "O limite é de {maximo} ativos por comparação. Ficaram de fora: {fora}."
+)
+AVISO_SEM_DADOS = (
+    "Não encontrei dados para: {sem_dados}. Eles ficaram de fora da comparação."
+)
 _SEPARADORES = re.compile(r"[,;\s]+")
 
 

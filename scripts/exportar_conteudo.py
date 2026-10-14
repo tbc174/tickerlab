@@ -17,6 +17,7 @@ from scripts.markdown_simples import markdown_para_html
 from src import (
     analises,
     catalogo,
+    comparacao,
     formatos,
     marca,
     modulos,
@@ -25,6 +26,7 @@ from src import (
     planos,
     qualidade_texto,
 )
+from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.conteudo import carregar_glossario
@@ -165,6 +167,10 @@ def _app() -> dict[str, object]:
             *(i.termo for i in analises.ITENS_DO_PAINEL),
             *ji.TERMO_DO_GLOSSARIO.values(),
             "Boletim Focus",
+            "Volatilidade móvel",
+            "Sazonalidade",
+            "Retorno mensal",
+            "Base 100",
         ]
     )
     return {
@@ -178,6 +184,23 @@ def _app() -> dict[str, object]:
             "termos": ji.TERMO_DO_GLOSSARIO,
             "fonte_focus": ji.FONTE_FOCUS,
             "nota_do_focus": ji.NOTA_DO_FOCUS,
+        },
+        "retorno_mensal": {
+            "meses": list(ind.NOMES_DOS_MESES),
+            "legenda": analises.LEGENDA_DO_MAPA_MENSAL,
+        },
+        "comparacao": {
+            "atalhos": [
+                {"nome": n, "ticker": t} for n, t in comparacao.ATALHOS.items()
+            ],
+            "padrao": list(comparacao.ATALHOS_PADRAO),
+            "max_ativos": comparacao.MAX_ATIVOS,
+            "colunas": [
+                {"rotulo": rotulo, "formato": formato}
+                for rotulo, formato in comparacao.FORMATO_DAS_COLUNAS.items()
+            ],
+            "aviso_do_limite": comparacao.AVISO_DO_LIMITE,
+            "aviso_sem_dados": comparacao.AVISO_SEM_DADOS,
         },
         "linha_do_tempo": {
             "relevancias": [
