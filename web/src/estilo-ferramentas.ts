@@ -1,8 +1,38 @@
 // O CSS das ferramentas grátis do site (calculadoras), por cima de estilo.ts e estilo-v2.ts. Usa só as
 // variáveis da marca (--fundo, --superficie, --linha, --azul...), então segue o tema claro e o escuro.
+import { marca } from "./conteudo";
+
+// as cores das séries dos gráficos (marca.json, `series`), uma lista por tema; validadas para
+// daltonismo e contraste sobre o fundo e a superfície do site (ferramentas v2, 14/10/2026)
+const series = (cores: string[]) => cores.map((cor, i) => `--serie-${i + 1}: ${cor};`).join(" ");
 
 export function cssFerramentas(): string {
   return `/* --- ferramentas grátis (plano de 14/10/2026) ---------------------------------------------- */
+:root { ${series(marca.paleta_clara.series)} }
+:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} }
+.so-para-leitor { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* gráficos das ferramentas (web/src/graficos/) */
+.grafico-ferramenta { position: relative; margin: 1.25rem 0 0; min-width: 0; }
+.grafico-ferramenta svg { display: block; max-width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.grafico-ferramenta svg:focus-visible { outline: 2px solid var(--azul); outline-offset: 4px; border-radius: 6px; }
+.grafico-ferramenta text { fill: var(--apagado); font: 500 12px "Manrope", sans-serif; font-variant-numeric: tabular-nums; }
+.grafico-ferramenta-grade line { stroke: var(--linha); stroke-width: 1; }
+.grafico-ferramenta-zero { stroke: var(--linha-forte); stroke-width: 1; }
+.grafico-ferramenta-linha { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-ferramenta-area { opacity: .16; }
+.grafico-ferramenta-ponta, .grafico-ferramenta-mira circle { stroke: var(--fundo); stroke-width: 2; }
+.grafico-ferramenta-mira line { stroke: var(--linha-forte); stroke-width: 1; }
+.grafico-ferramenta .grafico-ferramenta-nome { fill: var(--texto); font-weight: 600; font-size: 13px; }
+.grafico-ferramenta .grafico-ferramenta-valor { fill: var(--texto); font-weight: 700; font-size: 13px; }
+.grafico-ferramenta-dica { position: absolute; top: 0; transform: translateX(-50%); display: grid; gap: .15rem;
+  padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--linha-forte); background: var(--destaque);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--sombra) 60%, transparent); font-size: .82rem; white-space: nowrap;
+  pointer-events: none; font-variant-numeric: tabular-nums; }
+.grafico-ferramenta-dica i, .grafico-ferramenta-legenda i { display: inline-block; width: .7rem; height: .7rem;
+  border-radius: 3px; margin-right: .4rem; vertical-align: -.05rem; }
+.grafico-ferramenta-legenda { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .5rem 0 0; padding: 0;
+  list-style: none; font-size: .85rem; color: var(--apagado); }
 .ferramenta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start;
   padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--linha); border-radius: var(--raio);
   background: var(--superficie); box-shadow: 0 12px 40px color-mix(in srgb, var(--sombra) 35%, transparent); }
