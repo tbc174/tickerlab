@@ -2,7 +2,7 @@
 // A tela de aportes e metas: as três perguntas usam a mesma conta (conferida no golden.test.ts).
 import { act, fireEvent, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EXEMPLO_DE_APORTES, prazoPorExtenso, responder } from "../../src/ferramentas/AportesEMetas";
 import { ligarFerramentas } from "../../src/ferramentas/cliente";
 import { aporteParaMeta, mesDaVirada, valorFuturo } from "../../src/ferramentas/contas/aportes";
@@ -116,5 +116,30 @@ describe("aportes e metas v2", () => {
     await abrir();
     expect(screen.getByLabelText("Aporte por mês (deslizante)")).toBeTruthy();
     expect(screen.getByLabelText("Prazo (deslizante)")).toBeTruthy();
+  });
+});
+
+describe("aportes e metas v2: textos da revisão", () => {
+  const abrir = async (busca = "") => {
+    window.history.replaceState(null, "", `/calculadora-de-aportes-e-metas.html${busca}`);
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="aportes" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+  };
+
+  it("sem aporte, não fala em juros que ainda não chegam ao aporte", async () => {
+    await abrir("?aporte=0");
+    expect(document.body.textContent).not.toContain("ainda não chegam ao aporte");
+  });
+
+  it("o texto de copiar diz que o aporte sobe a cada ano", async () => {
+    const escrever = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: escrever }, configurable: true });
+    await abrir("?pergunta=quanto-guardar&reajuste=5");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copiar resultado" }));
+    });
+    expect(escrever.mock.calls[0][0]).toContain("no 1º ano, subindo 5% a cada ano");
   });
 });

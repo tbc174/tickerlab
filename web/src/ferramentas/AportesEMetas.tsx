@@ -120,13 +120,17 @@ function pontosDoGrafico(linhas: Linha[]): Linha[] {
 
 function textoParaCopiar(campos: Campos, resposta: Resposta): string {
   const fim = resposta.linhas.at(-1)!;
+  // com reajuste, o aporte informado é só o do 1º ano: o texto copiado precisa dizer isso
+  const porMes = resposta.reajuste
+    ? `${formatarReais(resposta.aporte)} por mês no 1º ano, subindo ${formatarNumero(resposta.reajuste * 100)}% a cada ano`
+    : `${formatarReais(resposta.aporte)} por mês`;
   if (campos.pergunta === "quanto-tempo") {
-    return `Com ${formatarReais(lerNumero(campos.inicial) ?? 0)} e ${formatarReais(resposta.aporte)} por mês, a meta de ${formatarReais(lerNumero(campos.meta) ?? 0)} chega em ${resposta.principal}`;
+    return `Com ${formatarReais(lerNumero(campos.inicial) ?? 0)} e ${porMes}, a meta de ${formatarReais(lerNumero(campos.meta) ?? 0)} chega em ${resposta.principal}`;
   }
   if (campos.pergunta === "quanto-guardar") {
-    return `Para ter ${formatarReais(lerNumero(campos.meta) ?? 0)} em ${campos.anos} anos, guardar ${resposta.principal} por mês`;
+    return `Para ter ${formatarReais(lerNumero(campos.meta) ?? 0)} em ${campos.anos} anos, guardar ${porMes}`;
   }
-  return `${formatarReais(resposta.aporte)} por mês por ${campos.anos} anos viram ${formatarReais(fim.saldo)}`;
+  return `${porMes} por ${campos.anos} anos viram ${formatarReais(fim.saldo)}`;
 }
 
 export function AportesEMetas() {
@@ -222,7 +226,7 @@ export function AportesEMetas() {
             </div>
           </dl>
         ) : null}
-        {certa ? (
+        {certa && certa.aporte > 0 ? (
           <p className="ferramenta-destaque">
             {virada
               ? `A partir do mês ${formatarNumero(virada)}, os juros do mês passam o aporte (${prazoPorExtenso(virada)}): daí em diante, o dinheiro trabalha mais que você.`
