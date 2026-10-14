@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from base.cripto.arquivos import acrescentar, ler_tabela
 from base.cripto.atencao import (
@@ -61,10 +62,14 @@ ARTIGO_DA_WIKIPEDIA = "Bitcoin"
 PROJETOS_DA_WIKIPEDIA = ("en.wikipedia", "pt.wikipedia")
 INICIO_DO_GDELT = date(2017, 1, 1)
 TERMO_DO_GDELT = "bitcoin"
-# o GDELT pede um pedido a cada 5 segundos; um a mais de folga
-PAUSA_DO_GDELT_EM_SEGUNDOS = 6.0
-# ~2 horas por noite (2 pedidos por dia, 6 s cada): a carga desde 2017 leva umas 6 noites
-DIAS_DO_GDELT_POR_RODADA = 600
+# o GDELT pede um pedido a cada 5 segundos, mas com 6 s respondeu 429 (14/10/2026): o dobro de folga
+PAUSA_DO_GDELT_EM_SEGUNDOS = 10.0
+# ~2,5 horas por noite (2 pedidos por dia, 10 s cada): a carga desde 2017 leva umas 8 noites
+DIAS_DO_GDELT_POR_RODADA = 450
+# 429 (pedidos demais) ou 503 (fora do ar um instante): espera cada vez mais e tenta de novo
+CODIGOS_PARA_ESPERAR = {429, 503}
+ESPERAS_DO_GDELT_EM_SEGUNDOS = (30.0, 60.0, 120.0, 240.0, 480.0)
+ESPERA_MAXIMA_EM_SEGUNDOS = 900.0
 PAGINA_DA_RECEITA = (
     "https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/"
     "declaracoes-e-demonstrativos/criptoativos"
@@ -154,7 +159,12 @@ def coletar_gdelt(
     baixar: Baixar,
     esperar: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Notícias sobre o Bitcoin, um dia por vez, com pausa entre os pedidos (limite do GDELT)."""
+    """Notícias sobre o Bitcoin, um dia por vez, com pausa entre os pedidos (limite do GDELT).
+
+    Se o GDELT continua limitando depois de todas as esperas, a rodada para: com algum dia novo
+    guardado, termina bem (o resto fica para a noite seguinte); sem nenhum, falha, para o alarme
+    avisar que a coleta não anda.
+    """
     destino = pasta / "gdelt"
     dia = _dia_seguinte_ao_ultimo(destino, "dia", INICIO_DO_GDELT)
     ultimo_que_vale = (agora.astimezone(UTC) - timedelta(days=1, hours=1)).date()
@@ -162,12 +172,24 @@ def coletar_gdelt(
     for _ in range(DIAS_DO_GDELT_POR_RODADA):
         if dia > ultimo_que_vale:
             break
-        volume = _pedir_com_pausa(
-            baixar, endereco_gdelt(TERMO_DO_GDELT, "timelinevolraw", dia), esperar
-        )
-        tom = _pedir_com_pausa(
-            baixar, endereco_gdelt(TERMO_DO_GDELT, "timelinetone", dia), esperar
-        )
+        try:
+            volume = _pedir_com_pausa(
+                baixar, endereco_gdelt(TERMO_DO_GDELT, "timelinevolraw", dia), esperar
+            )
+            tom = _pedir_com_pausa(
+                baixar, endereco_gdelt(TERMO_DO_GDELT, "timelinetone", dia), esperar
+            )
+        except requests.HTTPError as erro:
+            if novas == 0 or _codigo(erro) not in CODIGOS_PARA_ESPERAR:
+                raise
+            log.warning(
+                "GDELT segue limitando em %s (%s); %d dias novos guardados, o resto fica "
+                "para a próxima rodada",
+                dia,
+                erro,
+                novas,
+            )
+            break
         novas += _gravar_por_ano(
             destino, juntar_gdelt(ler_gdelt(volume), ler_gdelt(tom)), "dia"
         )
@@ -240,9 +262,38 @@ def _conferir_oferta(pasta_do_no: Path, no: FonteDeBlocos) -> int | None:
 def _pedir_com_pausa(
     baixar: Baixar, url: str, esperar: Callable[[float], None]
 ) -> bytes:
-    conteudo = baixar(url)
-    esperar(PAUSA_DO_GDELT_EM_SEGUNDOS)
-    return conteudo
+    """Pede e pausa; com 429 ou 503, espera (o `Retry-After` da resposta, se vier) e tenta de
+    novo, até acabarem as `ESPERAS_DO_GDELT_EM_SEGUNDOS`. Outros erros sobem na hora."""
+    esperas = iter(ESPERAS_DO_GDELT_EM_SEGUNDOS)
+    while True:
+        try:
+            conteudo = baixar(url)
+        except requests.HTTPError as erro:
+            espera = next(esperas, None)
+            if espera is None or _codigo(erro) not in CODIGOS_PARA_ESPERAR:
+                raise
+            espera = _retry_after(erro) or espera
+            log.info(
+                "GDELT respondeu %s; nova tentativa em %.0f s", _codigo(erro), espera
+            )
+            esperar(espera)
+            continue
+        esperar(PAUSA_DO_GDELT_EM_SEGUNDOS)
+        return conteudo
+
+
+def _codigo(erro: requests.HTTPError) -> int | None:
+    return erro.response.status_code if erro.response is not None else None
+
+
+def _retry_after(erro: requests.HTTPError) -> float | None:
+    """Os segundos do cabeçalho `Retry-After` (até `ESPERA_MAXIMA_EM_SEGUNDOS`), se vierem."""
+    valor = (
+        erro.response.headers.get("Retry-After") if erro.response is not None else None
+    )
+    if valor is None or not valor.strip().isdigit():
+        return None
+    return min(float(valor), ESPERA_MAXIMA_EM_SEGUNDOS)
 
 
 def _gravar_por_ano(
