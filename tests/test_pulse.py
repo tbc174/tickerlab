@@ -1,5 +1,6 @@
 """Testes de src/pulse.py: o que mudou nos ativos da pessoa desde a última visita."""
 
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
@@ -233,3 +234,94 @@ def test_ticker_estranho_de_simulacao_salva_fica_de_fora():
     """O retrato da simulação vem do banco: não confiável (não texto ou comprido demais)."""
     ativos, _ = pulse.ativos_da_pessoa([], [], [], ["PETR4", 42, None, "X" * 21])
     assert [a.ticker for a in ativos] == ["PETR4.SA"]
+
+
+# --- vereditos das estratégias salvas (PR E2) ---------------------------------------------
+
+
+@dataclass
+class _Simulacao:
+    id: str
+    tipo: str = "backtest"
+    nome: str = "Minha estratégia"
+    parametros: dict = field(default_factory=lambda: {"ticker": "PETR4.SA"})
+    resultado: dict = field(
+        default_factory=lambda: {
+            "ficha": {"pedido": {"versao": 1}, "veredito": "passou"}
+        }
+    )
+
+
+def test_estrategias_salvas_so_backtests_com_ficha_ate_o_limite():
+    simulacoes = [
+        _Simulacao("a"),
+        _Simulacao("carteira", tipo="carteira"),
+        _Simulacao("antiga", resultado={"numeros": {}}),
+        _Simulacao("b"),
+        _Simulacao("c"),
+    ]
+    salvas, sem_ficha, fora = pulse.estrategias_salvas(simulacoes, maximo=2)
+    assert [e.id for e in salvas] == ["a", "b"]
+    assert (sem_ficha, fora) == (1, 1)
+    assert salvas[0].veredito_ao_salvar == "passou"
+
+
+def test_estrategia_salva_com_ficha_estranha_conta_como_sem_ficha():
+    simulacoes = [
+        _Simulacao("x", resultado={"ficha": "texto"}),
+        _Simulacao("y", resultado=None),  # type: ignore[arg-type]
+    ]
+    assert pulse.estrategias_salvas(simulacoes) == ((), 2, 0)
+
+
+def test_veredito_ao_salvar_estranho_vira_desconhecido():
+    sim = _Simulacao("a", resultado={"ficha": {"pedido": {}, "veredito": "ótimo"}})
+    (salva,), _, _ = pulse.estrategias_salvas([sim])
+    assert salva.veredito_ao_salvar is None
+
+
+def test_antes_e_o_visto_no_pulse_ou_o_da_hora_de_salvar():
+    (salva,), _, _ = pulse.estrategias_salvas([_Simulacao("a")])
+    assert pulse.comparar(salva, {}, "não passou").antes == "passou"
+    assert (
+        pulse.comparar(salva, {"a": "inconclusivo"}, "passou").antes == "inconclusivo"
+    )
+    assert pulse.comparar(salva, {"a": "estranho"}, "passou").antes == "passou"
+
+
+def test_mudou_so_quando_os_dois_vereditos_existem_e_diferem():
+    (salva,), _, _ = pulse.estrategias_salvas([_Simulacao("a")])
+    assert pulse.comparar(salva, {}, "não passou").mudou
+    assert not pulse.comparar(salva, {}, "passou").mudou
+    assert not pulse.comparar(salva, {}, None).mudou  # não deu para conferir agora
+
+
+def test_vereditos_para_guardar_juntam_os_novos_e_esquecem_as_apagadas():
+    (a, b), _, _ = pulse.estrategias_salvas([_Simulacao("a"), _Simulacao("b")])
+    conferidos = [pulse.comparar(a, {}, "não passou"), pulse.comparar(b, {}, None)]
+    vistos = {"b": "passou", "apagada": "passou"}
+    assert pulse.vereditos_para_guardar(vistos, conferidos, {"a", "b"}) == {
+        "a": "não passou",
+        "b": "passou",  # não deu para conferir: fica o que ela já tinha visto
+    }
+
+
+def test_texto_do_veredito_que_mudou():
+    (salva,), _, _ = pulse.estrategias_salvas([_Simulacao("a")])
+    assert pulse.texto_do_veredito(pulse.comparar(salva, {}, "não passou")) == (
+        '**Minha estratégia**: o veredito da ficha "Foi sorte?" mudou de **passou** para '
+        "**não passou** com os dados de hoje."
+    )
+
+
+@pytest.mark.parametrize(
+    ("pedido", "precisa"),
+    [
+        ({"usa_cdi": True}, True),
+        ({"usa_cdi": False}, False),
+        ({"usa_cdi": "sim"}, False),
+        (None, False),
+    ],
+)
+def test_precisa_do_cdi_so_com_o_sim_de_verdade(pedido, precisa):
+    assert pulse.precisa_do_cdi(pedido) is precisa

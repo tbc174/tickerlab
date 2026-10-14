@@ -245,5 +245,5 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
     scroll-behavior: auto !important; }
   @view-transition { navigation: none; }
 }
-:root { --serie-1: #2962ff; --serie-2: #c77700; --serie-3: #11897a; --serie-4: #b8417f; --serie-5: #8a7a00; --serie-6: #6b4fe0; --alta: #127a4d; --queda: #c22f3a; }
-:root[data-tema="escuro"] { --serie-1: #6e95ff; --serie-2: #f5a524; --serie-3: #2bc4a9; --serie-4: #e874b6; --serie-5: #e8d44d; --serie-6: #a98bff; --alta: #2ebd85; --queda: #f76169; }
+:root { --serie-1: #2962ff; --serie-2: #c77700; --serie-3: #0a7aa0; --serie-4: #6b4fe0; --serie-5: #7e6a00; --serie-6: #a83a90; --alta: #127a4d; --queda: #c22f3a; }
+:root[data-tema="escuro"] { --serie-1: #5a92f8; --serie-2: #c6830e; --serie-3: #1f8fa8; --serie-4: #9778ea; --serie-5: #a08a1a; --serie-6: #c25fc0; --alta: #2ebd85; --queda: #f76169; }

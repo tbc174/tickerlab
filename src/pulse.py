@@ -7,6 +7,9 @@ Junta, numa janela "desde a última visita", o que outras partes do app já calc
   último fechamento de hoje (sem olhar o futuro: um preço que ainda não existia na hora da visita
   nunca vira a base).
 
+Nas estratégias salvas (backtests salvos com o pedido da ficha, PR E2), mostra o **veredito da
+ficha "Foi sorte?" que mudou** com os dados de hoje.
+
 Os ativos da pessoa são tudo o que ela guardou: favoritos, a carteira do Research (Pro), as listas
 e os ativos das estratégias salvas. Tudo aqui é função pura em tipos simples (ADR 0044): a tela só
 lê do banco, chama e mostra. Nada é recomendação.
@@ -22,6 +25,7 @@ import pandas as pd
 from src import research
 from src.banco.eventos import Evento
 from src.dados import normalizar_ticker
+from src.ficha import Resultado
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 JANELA_DA_PRIMEIRA_VISITA = timedelta(days=7)
@@ -44,6 +48,10 @@ LIMITES = (
     (
         "A variação usa o fechamento do Yahoo Finance, que pode ter atraso ou erros, e não "
         "inclui proventos."
+    ),
+    (
+        'O veredito das estratégias salvas é a ficha "Foi sorte?" refeita com os preços de '
+        "hoje, como no Backtest; a cada visita, só as 10 salvas mais recentemente são conferidas."
     ),
     "O Pulse mostra o que mudou, não o que fazer: nada aqui é recomendação de investimento.",
 )
@@ -228,6 +236,106 @@ def _com_a_origem(
         else (f"Você acompanha {codigo}.")
     )
     return replace(item, razoes=[razao, *item.razoes[1:]])
+
+
+# --- vereditos das estratégias salvas (PR E2) -----------------------------------------------
+
+# cada ficha recalcula a validação inteira: a página não pode ficar lenta
+MAXIMO_DE_FICHAS = 10
+VEREDITOS = frozenset(r.value for r in Resultado)
+
+
+@dataclass(frozen=True)
+class EstrategiaSalva:
+    id: str
+    nome: str
+    retrato: Mapping  # os campos da tela guardados (ticker, período, em reais...)
+    pedido: object  # o pedido da ficha guardado: validado só na hora de usar
+    veredito_ao_salvar: str | None
+
+
+def _ficha_guardada(resultado: object) -> Mapping | None:
+    if not isinstance(resultado, Mapping):
+        return None
+    guardada = resultado.get("ficha")
+    if not isinstance(guardada, Mapping) or "pedido" not in guardada:
+        return None
+    return guardada
+
+
+def _veredito(valor: object) -> str | None:
+    return valor if isinstance(valor, str) and valor in VEREDITOS else None
+
+
+def estrategias_salvas(
+    simulacoes: Iterable, maximo: int = MAXIMO_DE_FICHAS
+) -> tuple[tuple[EstrategiaSalva, ...], int, int]:
+    """Os backtests salvos com a ficha (os mais novos primeiro, até `maximo`).
+
+    Devolve também quantos foram salvos antes do Pulse guardar a ficha e quantos passaram do
+    limite. As simulações vêm na ordem do banco (a mais nova primeiro).
+    """
+    salvas, sem_ficha = [], 0
+    for simulacao in simulacoes:
+        if simulacao.tipo != "backtest":
+            continue
+        guardada = _ficha_guardada(simulacao.resultado)
+        if guardada is None:
+            sem_ficha += 1
+            continue
+        retrato = simulacao.parametros
+        salvas.append(
+            EstrategiaSalva(
+                str(simulacao.id),
+                simulacao.nome,
+                retrato if isinstance(retrato, Mapping) else {},
+                guardada["pedido"],
+                _veredito(guardada.get("veredito")),
+            )
+        )
+    return tuple(salvas[:maximo]), sem_ficha, max(len(salvas) - maximo, 0)
+
+
+def precisa_do_cdi(pedido: object) -> bool:
+    return isinstance(pedido, Mapping) and pedido.get("usa_cdi") is True
+
+
+@dataclass(frozen=True)
+class VereditoDaEstrategia:
+    estrategia: EstrategiaSalva
+    antes: str | None  # o visto no último Pulse (ou o da hora de salvar)
+    agora: str | None  # None: não deu para conferir agora
+
+    @property
+    def mudou(self) -> bool:
+        return None not in (self.antes, self.agora) and self.antes != self.agora
+
+
+def comparar(
+    estrategia: EstrategiaSalva, vistos: Mapping[str, str], agora: str | None
+) -> VereditoDaEstrategia:
+    antes = _veredito(vistos.get(estrategia.id)) or estrategia.veredito_ao_salvar
+    return VereditoDaEstrategia(estrategia, antes, _veredito(agora))
+
+
+def vereditos_para_guardar(
+    vistos: Mapping[str, str],
+    conferidos: Iterable[VereditoDaEstrategia],
+    ids_salvos: set[str],
+) -> dict[str, str]:
+    """Os vistos de agora; o que não deu para conferir fica com o visto antes (se ainda existe)."""
+    novos = {i: v for i, v in vistos.items() if i in ids_salvos and _veredito(v)}
+    for conferido in conferidos:
+        if conferido.agora is not None:
+            novos[conferido.estrategia.id] = conferido.agora
+    return novos
+
+
+def texto_do_veredito(v: VereditoDaEstrategia) -> str:
+    return (
+        f'**{v.estrategia.nome}**: o veredito da ficha "Foi sorte?" mudou de **{v.antes}** para '
+        f"**{v.agora}** com os dados de hoje."
+    )
 
 
 def agora() -> datetime:

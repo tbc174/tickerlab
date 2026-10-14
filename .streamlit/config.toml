@@ -54,7 +54,7 @@ orangeColor = "#c77700"
 yellowColor = "#8a5c00"
 violetColor = "#6b4fe0"
 grayColor = "#4a5a78"
-chartCategoricalColors = ["#2962ff", "#c77700", "#11897a", "#b8417f", "#8a7a00", "#6b4fe0"]
+chartCategoricalColors = ["#2962ff", "#c77700", "#0a7aa0", "#6b4fe0", "#7e6a00", "#a83a90"]
 
 [theme.dark]
 primaryColor = "#2962ff"
@@ -72,4 +72,4 @@ orangeColor = "#f5a524"
 yellowColor = "#f5b83d"
 violetColor = "#a98bff"
 grayColor = "#a9b8d6"
-chartCategoricalColors = ["#6e95ff", "#f5a524", "#2bc4a9", "#e874b6", "#e8d44d", "#a98bff"]
+chartCategoricalColors = ["#5a92f8", "#c6830e", "#1f8fa8", "#9778ea", "#a08a1a", "#c25fc0"]
