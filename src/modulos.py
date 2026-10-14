@@ -258,6 +258,26 @@ MODULOS = (
                 "Conversores",
                 "Taxa anual em mensal, percentual do CDI em taxa e outros.",
             ),
+            Funcionalidade(
+                "Custo das taxas e da queda",
+                "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
+                pagina_do_site="custo-das-taxas-e-da-queda.html",
+            ),
+            Funcionalidade(
+                "Viver de renda",
+                "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
+                pagina_do_site="calculadora-viver-de-renda.html",
+            ),
+            Funcionalidade(
+                "Sorte em série",
+                "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
+                pagina_do_site="sorte-em-serie.html",
+            ),
+            Funcionalidade(
+                "Imposto sobre ações (DARF)",
+                "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
+                pagina_do_site="calculadora-de-darf.html",
+            ),
         ),
     ),
     Modulo(
