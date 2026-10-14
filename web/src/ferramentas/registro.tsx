@@ -5,7 +5,11 @@ import type { ComponentType } from "react";
 import { AportesEMetas } from "./AportesEMetas";
 import { CalculadoraDeDarf } from "./CalculadoraDeDarf";
 import { CalculadoraDeJuros } from "./CalculadoraDeJuros";
+import { ConversorDeMoedas } from "./ConversorDeMoedas";
+import { CorrecaoPelaInflacao } from "./CorrecaoPelaInflacao";
 import { CustoDaTaxa, RecuperarAQueda } from "./CustoDasTaxas";
+import { JuroReal, TaxaEquivalente } from "./JuroReal";
+import { RendaFixa } from "./RendaFixa";
 import { SorteEmSerie } from "./SorteEmSerie";
 import { ViverDeRenda } from "./ViverDeRenda";
 
@@ -17,6 +21,11 @@ export const FERRAMENTAS = {
   renda: ViverDeRenda,
   sorte: SorteEmSerie,
   darf: CalculadoraDeDarf,
+  moedas: ConversorDeMoedas,
+  rendaFixa: RendaFixa,
+  juroReal: JuroReal,
+  equivalente: TaxaEquivalente,
+  inflacao: CorrecaoPelaInflacao,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

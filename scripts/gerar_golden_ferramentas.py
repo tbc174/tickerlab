@@ -16,7 +16,17 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from src.ferramentas import aleatorio, aportes, custos, darf, juros
+from src.ferramentas import (
+    aleatorio,
+    aportes,
+    custos,
+    darf,
+    inflacao,
+    juros,
+    moedas,
+    renda_fixa,
+    taxas,
+)
 from src.ferramentas import sorte_em_serie as sorte
 from src.ferramentas import viver_de_renda as vr
 
@@ -52,7 +62,22 @@ CONTAS: dict[str, Conta] = {
         [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
     ),
     "darf.vencimento": darf.vencimento,
+    "moedas.converter": moedas.converter,
+    "taxas.juro_real": taxas.juro_real,
+    "taxas.taxa_nominal": taxas.taxa_nominal,
+    "inflacao.corrigir": inflacao.corrigir,
+    "inflacao.em_12_meses": inflacao.em_12_meses,
+    "renda_fixa.comparar": renda_fixa.comparar,
 }
+
+IPCA_DE_EXEMPLO = [
+    ["2024-11", 0.0039],
+    ["2024-12", 0.0052],
+    ["2025-01", 0.0016],
+    ["2025-02", 0.0131],
+]
+COTACOES_DE_EXEMPLO = {"USD": 5.0096, "EUR": 5.6092, "JPY": 0.03163, "GBP": 6.6387}
+DOZE_MESES = [[f"2025-{m:02d}", 0.003 + m / 10000] for m in range(1, 13)]
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
 CASOS: list[tuple[str, list[Any]]] = [
@@ -203,6 +228,33 @@ CASOS: list[tuple[str, list[Any]]] = [
     ),
     ("darf.vencimento", [2026, 10]),
     ("darf.vencimento", [2026, 12]),
+    ("moedas.converter", [100, "USD", "BRL", COTACOES_DE_EXEMPLO]),
+    ("moedas.converter", [1000, "BRL", "EUR", COTACOES_DE_EXEMPLO]),
+    ("moedas.converter", [250, "GBP", "JPY", COTACOES_DE_EXEMPLO]),
+    ("moedas.converter", [1, "BRL", "BRL", COTACOES_DE_EXEMPLO]),
+    ("moedas.converter", [1, "ARS", "BRL", COTACOES_DE_EXEMPLO]),
+    ("taxas.juro_real", [0.1375, 0.05]),
+    ("taxas.juro_real", [0.06, 0.08]),
+    ("taxas.juro_real", [0.1, -1]),
+    ("taxas.taxa_nominal", [0.05, 0.045]),
+    ("taxas.taxa_nominal", [-1, 0.045]),
+    ("inflacao.corrigir", [100, "2024-12", "2025-02", IPCA_DE_EXEMPLO]),
+    ("inflacao.corrigir", [2500.5, "2024-11", "2024-11", IPCA_DE_EXEMPLO]),
+    ("inflacao.corrigir", [100, "2025-02", "2024-12", IPCA_DE_EXEMPLO]),
+    ("inflacao.corrigir", [100, "2024-10", "2024-12", IPCA_DE_EXEMPLO]),
+    ("inflacao.corrigir", [100, "2024-12", "2025-03", IPCA_DE_EXEMPLO]),
+    ("inflacao.corrigir", [100, "2024-13", "2025-01", IPCA_DE_EXEMPLO]),
+    ("inflacao.em_12_meses", [DOZE_MESES]),
+    ("inflacao.em_12_meses", [DOZE_MESES[:11]]),
+    ("renda_fixa.comparar", [10000, 365, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [10000, 90, 0.1365, 1.1, 0.92, 0.006704]),
+    ("renda_fixa.comparar", [5000, 180, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [5000, 181, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [50000, 721, 0.105, 1.15, 0.95, 0.005]),
+    ("renda_fixa.comparar", [1000, 29, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [1000, 3650, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [1000, 0, 0.1365, 1.0, 0.9, 0.006704]),
+    ("renda_fixa.comparar", [1000, 365, 0.1365, -0.1, 0.9, 0.006704]),
 ]
 
 

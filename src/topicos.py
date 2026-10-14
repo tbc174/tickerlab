@@ -123,6 +123,7 @@ class LeituraDoTopico:
     trecho: str  # o pedaço do documento que decidiu; vazio em "Outros"
     metodo: str  # regra_titulo, regra_texto ou modelo
     versao: str
+    modelo: str = ""  # só na camada do modelo: qual modelo e qual versão do prompt
 
 
 def _sem_acento(texto: str) -> str:

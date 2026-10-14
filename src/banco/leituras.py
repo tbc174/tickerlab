@@ -16,6 +16,10 @@ from src.links_das_fontes import link_da_fonte
 
 RESUMO, RISCOS = "resumo", "riscos"
 TOPICO = "topico"  # o assunto do fato relevante (leitor v2, ADR 0069), com a versão de topicos
+TOPICO_MODELO = (
+    "topico_modelo"  # o mesmo, pela camada do modelo (à parte: a tela só usa depois
+)
+# da medição, ADR 0069)
 TAMANHO_DO_LOTE = 5_000
 
 
@@ -90,20 +94,14 @@ def resumos(
     }
 
 
-def topicos_dos_fatos(
-    conexao: sa.Connection, fonte: str, fatos: Iterable[tuple[str, str]]
+def _topicos_lidos(
+    conexao: sa.Connection, fonte: str, tipo: str, pedidos: list[str]
 ) -> dict[str, topicos.LeituraDoTopico]:
-    """protocolo → assunto, para cada (protocolo, título do IPE).
-
-    Vale o lido do texto (ou do modelo) na versão atual do leitor; sem ele, o do título.
-    """
-    titulos = dict(fatos)
     lidos: dict[str, topicos.LeituraDoTopico] = {}
-    pedidos = list(titulos)
     for inicio in range(0, len(pedidos), TAMANHO_DO_LOTE):
         consulta = sa.select(leituras.c.documento, leituras.c.resultado).where(
             leituras.c.fonte == fonte,
-            leituras.c.tipo == TOPICO,
+            leituras.c.tipo == tipo,
             leituras.c.versao == topicos.VERSAO,
             leituras.c.documento.in_(pedidos[inicio : inicio + TAMANHO_DO_LOTE]),
         )
@@ -112,10 +110,34 @@ def topicos_dos_fatos(
             lidos[documento] = topicos.LeituraDoTopico(
                 **{**dados, "secundarios": tuple(dados["secundarios"])}
             )
-    return {
-        protocolo: lidos.get(protocolo) or topicos.topico_do_titulo(titulo)
-        for protocolo, titulo in titulos.items()
-    }
+    return lidos
+
+
+def topicos_dos_fatos(
+    conexao: sa.Connection,
+    fonte: str,
+    fatos: Iterable[tuple[str, str]],
+    com_modelo: bool = False,
+) -> dict[str, topicos.LeituraDoTopico]:
+    """protocolo → assunto, para cada (protocolo, título do IPE).
+
+    Vale o lido do texto na versão atual do leitor; sem ele, o do título. Com `com_modelo`, onde as
+    regras deixaram "Outros" e o modelo leu, vale o do modelo (a tela só liga isso depois da medição
+    da ADR 0069).
+    """
+    titulos = dict(fatos)
+    pedidos = list(titulos)
+    pelas_regras = _topicos_lidos(conexao, fonte, TOPICO, pedidos)
+    pelo_modelo = (
+        _topicos_lidos(conexao, fonte, TOPICO_MODELO, pedidos) if com_modelo else {}
+    )
+    achados = {}
+    for protocolo, titulo in titulos.items():
+        leitura = pelas_regras.get(protocolo) or topicos.topico_do_titulo(titulo)
+        if leitura.principal == topicos.OUTROS and protocolo in pelo_modelo:
+            leitura = pelo_modelo[protocolo]
+        achados[protocolo] = leitura
+    return achados
 
 
 def ultima_de_riscos(

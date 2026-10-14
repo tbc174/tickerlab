@@ -6,8 +6,12 @@ import * as aleatorio from "../../src/ferramentas/contas/aleatorio";
 import * as aportes from "../../src/ferramentas/contas/aportes";
 import * as custos from "../../src/ferramentas/contas/custos";
 import * as darf from "../../src/ferramentas/contas/darf";
+import * as inflacao from "../../src/ferramentas/contas/inflacao";
 import * as juros from "../../src/ferramentas/contas/juros";
+import * as moedas from "../../src/ferramentas/contas/moedas";
+import * as rendaFixa from "../../src/ferramentas/contas/renda_fixa";
 import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
+import * as taxas from "../../src/ferramentas/contas/taxas";
 import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
 import casos from "../golden_ferramentas.json";
 
@@ -34,6 +38,12 @@ const CONTAS: Record<string, Conta> = {
   "darf.apurar_mes": darf.apurarMes,
   "darf.apurar_meses": darf.apurarMeses,
   "darf.vencimento": darf.vencimento,
+  "moedas.converter": moedas.converter,
+  "taxas.juro_real": taxas.juroReal,
+  "taxas.taxa_nominal": taxas.taxaNominal,
+  "inflacao.corrigir": inflacao.corrigir,
+  "inflacao.em_12_meses": inflacao.em12Meses,
+  "renda_fixa.comparar": rendaFixa.comparar,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

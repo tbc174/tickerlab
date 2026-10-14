@@ -29,6 +29,12 @@ URL_DA_PTAX = (
     "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
     "CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)"
 )
+URL_DA_PTAX_DA_MOEDA = (
+    "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/"
+    "CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)"
+)
+URL_DAS_MOEDAS = "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/Moedas"
+BOLETIM_DE_FECHAMENTO = "Fechamento"  # a PTAX do dia; os outros boletins são parciais
 URL_DO_FOCUS = (
     "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/"
     "ExpectativasMercadoAnuais"
@@ -217,6 +223,59 @@ def baixar_ptax(
         "$format": "json",
     }
     return montar_ptax(_pedir(buscar, URL_DA_PTAX, params), hoje or _hoje())
+
+
+@dataclass(frozen=True)
+class Moeda:
+    codigo: str  # "EUR"
+    nome: str  # "Euro"
+
+
+def montar_moedas(resposta: object) -> list[Moeda]:
+    """As moedas que têm PTAX (em 14/10/2026 eram 10, do dólar à coroa sueca)."""
+    if not isinstance(resposta, dict) or not resposta.get("value"):
+        raise BcbIndisponivelError(
+            "O Banco Central não devolveu a lista de moedas da PTAX."
+        )
+    try:
+        return [Moeda(m["simbolo"], m["nomeFormatado"]) for m in resposta["value"]]
+    except (KeyError, TypeError) as erro:
+        raise BcbIndisponivelError("Resposta inesperada da lista de moedas.") from erro
+
+
+def baixar_moedas(buscar: Buscar = requests.get) -> list[Moeda]:
+    """A lista de moedas da PTAX."""
+    return montar_moedas(_pedir(buscar, URL_DAS_MOEDAS, {"$format": "json"}))
+
+
+def montar_ptax_da_moeda(resposta: object, hoje: date) -> pd.DataFrame:
+    """Compra e venda (em reais) por dia, só do boletim de fechamento: a PTAX daquele dia."""
+    if not isinstance(resposta, dict) or not isinstance(resposta.get("value"), list):
+        raise BcbIndisponivelError("Resposta inesperada da PTAX.")
+    fechamentos = [
+        cotacao
+        for cotacao in resposta["value"]
+        if cotacao.get("tipoBoletim") == BOLETIM_DE_FECHAMENTO
+    ]
+    return montar_ptax({"value": fechamentos}, hoje)
+
+
+def baixar_ptax_da_moeda(
+    moeda: str,
+    inicio: date,
+    fim: date,
+    hoje: date | None = None,
+    buscar: Buscar = requests.get,
+) -> pd.DataFrame:
+    """A PTAX de `moeda` ("EUR", "GBP"...) entre `inicio` e `fim`, em reais."""
+    params = {
+        "@moeda": f"'{moeda}'",
+        "@dataInicial": f"'{inicio:%m-%d-%Y}'",
+        "@dataFinalCotacao": f"'{fim:%m-%d-%Y}'",
+        "$format": "json",
+    }
+    resposta = _pedir(buscar, URL_DA_PTAX_DA_MOEDA, params)
+    return montar_ptax_da_moeda(resposta, hoje or _hoje())
 
 
 # --- Focus --------------------------------------------------------------------------------------

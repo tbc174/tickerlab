@@ -51,6 +51,26 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     nome: "Imposto sobre ações (DARF)",
     descricao: "O imposto do mês, a isenção de R$ 20 mil, o prejuízo a compensar e o código do DARF.",
   },
+  {
+    arquivo: "conversor-de-moedas.html",
+    nome: "Conversor de moedas",
+    descricao: "Dólar, euro, libra e mais 7 moedas pela PTAX, a cotação oficial do Banco Central.",
+  },
+  {
+    arquivo: "calculadora-de-renda-fixa.html",
+    nome: "Renda fixa com IR",
+    descricao: "CDB, LCI/LCA, Tesouro Selic e poupança pelo mesmo prazo, já sem o imposto.",
+  },
+  {
+    arquivo: "calculadora-de-juro-real.html",
+    nome: "Juro real e taxas",
+    descricao: "Quanto rende acima da inflação, e a taxa ao mês ou ao ano equivalente.",
+  },
+  {
+    arquivo: "calculadora-de-correcao-pela-inflacao.html",
+    nome: "Correção pela inflação",
+    descricao: "Quanto um valor do passado vale hoje, corrigido pelo IPCA.",
+  },
 ];
 
 const codigo = (arquivo: string) => arquivo.replace(/\.html$/, "");
@@ -414,6 +434,181 @@ export function PaginaDoDarf() {
       <p>
         A calculadora ajuda a conferir a conta e não substitui um contador nem a orientação da
         Receita Federal.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Ferramentas com dados do Banco Central --------------------------------------------------
+const FONTE_DO_BC = "Banco Central do Brasil (dados abertos), atualizados uma vez por dia útil";
+const pagina = (arquivo: string, titulo: string, descricao: string) => ({
+  caminho: `/${arquivo}`,
+  titulo,
+  descricao,
+  atual: "/ferramentas.html",
+  ferramenta: true,
+});
+
+const MOEDAS = "conversor-de-moedas.html";
+export const DADOS_DO_CONVERSOR = pagina(
+  MOEDAS,
+  "Conversor de moedas pela PTAX",
+  "Converta real, dólar, euro, libra, iene e mais moedas pela PTAX, a cotação oficial do Banco " +
+    "Central. Grátis e sem cadastro.",
+);
+
+export function PaginaDoConversor() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Conversor de moedas pela PTAX"
+      subtitulo="Real, dólar, euro, libra, iene e mais 6 moedas, pela cotação oficial do Banco Central. Grátis e sem cadastro."
+      ilha="moedas"
+      codigo={codigo(MOEDAS)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o spread e o IOF que bancos e casas de câmbio cobram: o valor que você paga é maior",
+        "a cotação de agora: a PTAX é a oficial de fechamento de um dia útil, divulgada por volta das 13h",
+      ]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>O que é a PTAX</h2>
+      <p>
+        É a cotação oficial que o Banco Central calcula a cada dia útil, pela média do que os bancos
+        negociaram em quatro momentos do dia, e divulga por volta das 13h. É a usada em contratos e
+        na declaração do Imposto de Renda. Antes do fechamento do dia, vale a do dia útil anterior.
+      </p>
+      <h2>Por que o cartão e a casa de câmbio cobram mais</h2>
+      <p>
+        Quem vende moeda cobra uma margem (o spread) e há o IOF. Por isso o valor de uma compra no
+        exterior ou de uma troca em espécie fica acima do que o conversor mostra.
+      </p>
+      <h2>Entre duas moedas estrangeiras</h2>
+      <p>
+        A conta passa pelo real: euro para dólar usa a PTAX do euro e a do dólar, a chamada
+        cotação cruzada.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+const RENDA_FIXA = "calculadora-de-renda-fixa.html";
+export const DADOS_DA_RENDA_FIXA = pagina(
+  RENDA_FIXA,
+  "Calculadora de renda fixa com IR",
+  "Compare CDB, LCI/LCA, Tesouro Selic e poupança pelo mesmo prazo, com o CDI de hoje e o imposto " +
+    "de renda pela tabela regressiva. Grátis e sem cadastro.",
+);
+
+export function PaginaDaRendaFixa() {
+  const tabela = regrasDeImposto.renda_fixa;
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de renda fixa com IR"
+      subtitulo="CDB, LCI/LCA, Tesouro Selic e poupança pelo mesmo prazo, com o CDI de hoje e já sem o imposto. Grátis e sem cadastro."
+      ilha="rendaFixa"
+      codigo={codigo(RENDA_FIXA)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o CDI de amanhã: a conta usa o de hoje durante todo o prazo",
+        "a taxa de custódia da B3 no Tesouro e o IOF dos resgates em menos de 30 dias",
+        "o risco de cada emissor e a garantia do FGC",
+      ]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>Como a conta é feita</h2>
+      <p>
+        O CDB e a LCI rendem um percentual do CDI, aplicado à taxa de cada dia útil. O Tesouro Selic
+        rende a Selic de cada dia, que na prática anda junto com o CDI. A poupança rende só no
+        aniversário, a cada 30 dias. Os dias corridos viram dias úteis pela proporção de 252 em 365.
+      </p>
+      <h2>A tabela regressiva do IR</h2>
+      <ul>
+        {tabela.map((faixa, i) => (
+          <li key={i}>
+            {faixa.ate_dias === null
+              ? `acima de ${tabela[i - 1].ate_dias} dias`
+              : `até ${faixa.ate_dias} dias`}
+            : {formatarPorcentagem(faixa.aliquota)} sobre o rendimento
+          </li>
+        ))}
+      </ul>
+      <p>
+        LCI, LCA e poupança são isentas para pessoa física. O imposto é sobre o rendimento, não
+        sobre o valor aplicado.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+const JURO_REAL = "calculadora-de-juro-real.html";
+export const DADOS_DO_JURO_REAL = pagina(
+  JURO_REAL,
+  "Calculadora de juro real",
+  "Calcule o juro real (acima da inflação) pela fórmula de Fisher, com o IPCA de 12 meses, e " +
+    "converta taxas ao mês e ao ano. Grátis e sem cadastro.",
+);
+
+export function PaginaDoJuroReal() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de juro real"
+      subtitulo="Quanto um investimento rende acima da inflação, e a taxa ao mês ou ao ano equivalente. Grátis e sem cadastro."
+      ilha={[
+        ["juroReal", "Juro real"],
+        ["equivalente", "Taxa ao mês ou ao ano"],
+      ]}
+      codigo={codigo(JURO_REAL)}
+      anuncio="ficha"
+      foraDaConta={["imposto de renda e taxas", "a inflação de cada pessoa, que pode ser diferente do IPCA"]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>Por que não é só subtrair</h2>
+      <p>
+        O juro real sai da divisão, não da subtração: (1 + taxa) ÷ (1 + inflação) − 1. Com 13,75% de
+        rendimento e 5% de inflação, o ganho real é de 8,33%, não de 8,75%. A diferença cresce
+        quanto maiores as taxas.
+      </p>
+      <h2>Taxa ao mês e ao ano</h2>
+      <p>
+        1% ao mês, composto, dá 12,68% ao ano, não 12%. Para comparar duas taxas, ponha as duas no
+        mesmo prazo pela taxa equivalente.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+const INFLACAO = "calculadora-de-correcao-pela-inflacao.html";
+export const DADOS_DA_INFLACAO = pagina(
+  INFLACAO,
+  "Correção pela inflação (IPCA)",
+  "Corrija um valor pelo IPCA, mês a mês desde o Plano Real, com os números do Banco Central. " +
+    "Grátis e sem cadastro.",
+);
+
+export function PaginaDaInflacao() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Correção pela inflação (IPCA)"
+      subtitulo="Quanto um valor do passado vale hoje em poder de compra, corrigido pelo IPCA. Grátis e sem cadastro."
+      ilha="inflacao"
+      codigo={codigo(INFLACAO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "outros índices, como o IGP-M (a FGV não permite o uso comercial)",
+        "valores de antes de julho de 1994, em outra moeda",
+      ]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>Como a correção é feita</h2>
+      <p>
+        O valor é multiplicado pela inflação de cada mês do período, do mês inicial ao final, os
+        dois incluídos, como na Calculadora do Cidadão do Banco Central. O IPCA de um mês sai por
+        volta do dia 10 do mês seguinte.
+      </p>
+      <h2>Para que serve</h2>
+      <p>
+        Para comparar valores de épocas diferentes no mesmo poder de compra: um salário, um aluguel,
+        o preço de compra de um imóvel ou o resultado de um investimento.
       </p>
     </PaginaDeFerramenta>
   );
