@@ -14,7 +14,9 @@ def test_toda_regra_tem_fonte_oficial_e_data():
         assert regra.fonte.startswith("https://"), regra.chave
         assert "gov.br" in regra.fonte, regra.chave
         assert regra.onde, regra.chave  # a pergunta ou o artigo
-        assert date.fromisoformat(regra.conferida_em) <= datetime.now(UTC).date(), regra.chave
+        assert date.fromisoformat(regra.conferida_em) <= datetime.now(UTC).date(), (
+            regra.chave
+        )
 
 
 def test_chaves_unicas():
