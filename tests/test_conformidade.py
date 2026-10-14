@@ -12,6 +12,7 @@ import stripe
 from src import auditoria, conformidade
 from src.banco import dados_do_usuario as repo
 from src.banco import pulse, tentativas
+from src.banco import teses as diario
 from src.banco.modelo import assinaturas, metadata
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
@@ -132,6 +133,28 @@ def test_politica_de_privacidade_cita_o_pulse():
 
 def test_exportar_sem_pulse_aberto_traz_vazio(conexao, ana):
     assert conformidade.exportar_meus_dados(conexao, ana.id)["pulse"] is None
+
+
+def test_politica_de_privacidade_cita_o_diario_de_teses():
+    texto = conformidade.carregar_texto("privacidade")
+    assert "Diário de Teses" in texto and "anotações do Diário de Teses" in texto
+
+
+def test_exportar_meus_dados_inclui_o_diario(conexao, ana, bia):
+    diario.escrever(conexao, ana.id, "PETR4", "Tese da Ana")
+    diario.escrever(conexao, bia.id, "VALE3", "Tese da Bia")
+    exportado = conformidade.exportar_meus_dados(conexao, ana.id)["diario_de_teses"]
+    assert [(t["ticker"], t["texto"]) for t in exportado] == [
+        ("PETR4.SA", "Tese da Ana")
+    ]
+
+
+def test_apagar_a_conta_apaga_o_diario(conexao, ana, bia):
+    diario.escrever(conexao, ana.id, "PETR4", "Tese da Ana")
+    diario.escrever(conexao, bia.id, "PETR4", "Tese da Bia")
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    assert diario.listar(conexao, ana.id) == []
+    assert len(diario.listar(conexao, bia.id)) == 1
 
 
 def test_exportar_vira_json_e_registra_na_auditoria(conexao, ana):
