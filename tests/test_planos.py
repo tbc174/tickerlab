@@ -47,7 +47,9 @@ def test_recursos_do_pro():
     assert not pode_usar("gratuito", PARES)
 
 
-@pytest.mark.parametrize("recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH])
+@pytest.mark.parametrize(
+    "recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH]
+)
 def test_plano_que_libera_e_o_primeiro_que_tem_o_recurso(recurso):
     assert plano_que_libera(recurso) == "pro"
 

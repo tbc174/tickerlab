@@ -157,3 +157,36 @@ def test_pagina_com_contrato_nao_e_do_pro():
     from src.paginas import PAGINAS
 
     assert all(p.recurso is None for p in PAGINAS if p.contrato is not None)
+
+
+# --- Quem pode abrir cada página (ADR 0062): a mesma regra no Streamlit e na API ---
+
+
+def test_motivo_da_pagina_paga_e_o_do_recurso():
+    assert paginas.motivo_da_pagina("gratuito", "aprendizado") == (
+        "Aprendizado de máquina faz parte do plano Pro. Você está no plano Gratuito."
+    )
+    assert paginas.motivo_da_pagina("pro", "aprendizado") is None
+
+
+@pytest.mark.parametrize("plano", [None, "", "gratuito", "plus", "pro", "empresa"])
+def test_pagina_livre_abre_em_qualquer_plano(plano):
+    assert paginas.motivo_da_pagina(plano, "visao_geral") is None
+
+
+@pytest.mark.parametrize("rota", ["/v1/risco", "/api/v1/risco"])
+def test_pagina_da_rota_acha_pelo_contrato(rota):
+    assert paginas.pagina_da_rota(rota) is paginas.pagina("risco")
+
+
+@pytest.mark.parametrize(
+    "rota", ["/v1/nada", "/v1/eu", "/api/risco", "/apiv1/risco", ""]
+)
+def test_pagina_da_rota_sem_contrato_e_none(rota):
+    assert paginas.pagina_da_rota(rota) is None
+
+
+def test_cada_rota_de_contrato_e_unica():
+    rotas = [p.contrato.rota for p in paginas.PAGINAS if p.contrato is not None]
+    assert len(rotas) == len(set(rotas))
+    assert set(paginas.POR_ROTA) == set(rotas)
