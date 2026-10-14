@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { EXEMPLO_DE_RENDA, calcularRenda, duracaoPorExtenso } from "../../src/ferramentas/ViverDeRenda";
 import { ligarFerramentas } from "../../src/ferramentas/cliente";
+import { formatarReais } from "../../src/ferramentas/numeros";
 import { Ilha } from "../../src/ferramentas/registro";
 
 afterEach(() => {
@@ -44,5 +45,37 @@ describe("viver de renda", () => {
       fireEvent.click(screen.getByLabelText("Gastando também o que juntei"));
     });
     expect(screen.getByLabelText("Por quantos anos")).toBeTruthy();
+  });
+});
+
+// --- ferramentas v2: a trajetória no gráfico e a simulação no endereço --------------------------
+describe("viver de renda v2", () => {
+  const abrir = async (busca = "") => {
+    window.history.replaceState(null, "", `/calculadora-viver-de-renda.html${busca}`);
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="renda" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+  };
+  const pontas = () => [...document.querySelectorAll("[data-fim]")].map((el) => Number(el.getAttribute("data-fim")));
+
+  it("só com os juros, a linha normal fica reta e a do ano ruim chega a zero", async () => {
+    await abrir();
+    const r = calcularRenda(EXEMPLO_DE_RENDA);
+    if (typeof r === "string") throw new Error(r);
+    const [normal, comQueda] = pontas();
+    expect(normal).toBeCloseTo(r.patrimonio, 2);
+    expect(comQueda).toBe(0);
+    const legenda = document.querySelector(".grafico-ferramenta-legenda")?.textContent ?? "";
+    expect(legenda).toContain("Rendendo");
+    expect(legenda).toContain("30%");
+  });
+
+  it("gastando o que juntou, abre a simulação do endereço e as duas linhas acabam em zero", async () => {
+    await abrir("?forma=gastando&anos=25");
+    const r = calcularRenda({ ...EXEMPLO_DE_RENDA, forma: "gastando", anos: "25" });
+    if (typeof r === "string") throw new Error(r);
+    expect(document.querySelector("[data-resultado]")?.textContent).toBe(formatarReais(r.patrimonio));
+    expect(pontas()).toEqual([0, 0]);
   });
 });

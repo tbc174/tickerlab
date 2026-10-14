@@ -80,3 +80,34 @@ def test_duracao_recusa_lista_vazia_e_retirada_zero():
 def test_o_patrimonio_calculado_dura_exatamente_o_prazo(renda, taxa, anos):
     p = vr.patrimonio_necessario(renda, taxa, anos)
     assert vr.duracao_em_meses(p, renda, [taxa]) == anos * 12
+
+
+# --- ferramentas v2: a trajetória do patrimônio mês a mês ---------------------------------------
+def test_trajetoria_so_com_os_juros_fica_reta():
+    patrimonio = vr.patrimonio_necessario(5000, 0.04, None)
+    saldos = vr.trajetoria(patrimonio, 5000, [0.04], 360)
+    assert len(saldos) == 361
+    assert saldos[0] == patrimonio
+    assert saldos[-1] == pytest.approx(patrimonio, rel=1e-9)
+
+
+def test_trajetoria_com_queda_no_comeco_acaba_quando_a_duracao_diz():
+    patrimonio = vr.patrimonio_necessario(5000, 0.04, None)
+    retornos = [-0.3, 0.04]
+    saldos = vr.trajetoria(patrimonio, 5000, retornos, 1200)
+    duracao = vr.duracao_em_meses(patrimonio, 5000, retornos)
+    assert duracao is not None
+    assert len(saldos) == duracao + 1
+    assert saldos[-1] < 5000  # no último mês não dá mais para tirar a renda inteira
+
+
+def test_trajetoria_gastando_o_principal_chega_perto_de_zero_no_prazo():
+    patrimonio = vr.patrimonio_necessario(5000, 0.04, 30)
+    saldos = vr.trajetoria(patrimonio, 5000, [0.04], 1200)
+    assert len(saldos) - 1 == 360
+    assert saldos[-1] == pytest.approx(0, abs=1e-6)
+
+
+def test_trajetoria_recusa_horizonte_fora_da_faixa():
+    with pytest.raises(ValueError, match="horizonte"):
+        vr.trajetoria(1000, 10, [0.04], 0)

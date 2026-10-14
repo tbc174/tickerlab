@@ -35,6 +35,7 @@ const CONTAS: Record<string, Conta> = {
   "viver_de_renda.patrimonio_necessario": viverDeRenda.patrimonioNecessario,
   "viver_de_renda.duracao_em_meses": viverDeRenda.duracaoEmMeses,
   "viver_de_renda.renda_da_regra_dos_4": viverDeRenda.rendaDaRegraDos4,
+  "viver_de_renda.trajetoria": viverDeRenda.trajetoria,
   "aleatorio.sequencia": aleatorio.sequencia,
   "sorte_em_serie.sharpe": sorte.sharpe,
   "sorte_em_serie.simular": sorte.simular,
