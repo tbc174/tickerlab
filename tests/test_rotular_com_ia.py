@@ -48,6 +48,7 @@ class ClienteDeMentira:
         self.contagens = 0
         self.lotes: list[list] = []
         self.estado = "in_progress"
+        self.palpite = "NAO_SEI"
         self._tokens, self._resposta = tokens_por_evento, resposta
         self.messages = SimpleNamespace(
             create=self._criar,
@@ -59,6 +60,8 @@ class ClienteDeMentira:
 
     def _criar(self, **params):
         self.criados.append(params)
+        if "empresa" in params["output_config"]["format"]["schema"]["properties"]:
+            return _mensagem(json.dumps({"empresa": self.palpite}))
         return _mensagem(self._resposta or _resposta_para(params))
 
     def _contar(self, **_):
@@ -223,3 +226,85 @@ def test_main_exige_o_teto(pasta, tmp_path):
     caminho = tmp_path / "eventos.json"
     caminho.write_text(json.dumps({"eventos": EVENTOS}), encoding="utf-8")
     assert rc.main(["estimar", "--eventos", str(caminho), "--pasta", str(pasta)]) == 2
+
+
+# --- identificar e auditar ---------------------------------------------------------------------
+
+
+def _humanos(n=None):
+    return {e["id"]: {"evento_id": e["id"], "nota": 3, "tema": "dividendos", "assunto": None}
+            for e in EVENTOS[:n]}  # fmt: skip
+
+
+def test_identificar_grava_o_palpite_e_respeita_o_teto(pasta):
+    cliente = ClienteDeMentira()
+    cliente.palpite = "Alfa Beta"
+    with pytest.raises(rc.TetoPassado):
+        rc.identificar(cliente, EVENTOS, pasta, _humanos(), teto=0.0001)
+    assert rc.identificar(cliente, EVENTOS, pasta, _humanos(2), teto=60) == 2
+    assert rc.ler_identificacoes(pasta) == {
+        EVENTOS[0]["id"]: True,
+        EVENTOS[1]["id"]: True,
+    }
+    assert "Alfa Beta" not in json.dumps(
+        cliente.criados, ensure_ascii=False
+    )  # o pedido segue anonimizado
+    assert (
+        rc.identificar(cliente, EVENTOS, pasta, _humanos(2), teto=60) == 0
+    )  # não repete
+
+
+def test_auditar_grava_o_veredito(pasta, monkeypatch):
+    cliente = ClienteDeMentira()
+    rc.piloto(cliente, EVENTOS, pasta, n=4, teto=60)
+    rc.identificar(cliente, EVENTOS, pasta, _humanos(), teto=60)
+    veredito = rc.auditar(pasta, _humanos())
+    assert veredito.incompleto  # só 4 eventos de prova: não decide
+    salvo = json.loads((pasta / "auditoria.json").read_text(encoding="utf-8"))
+    assert (
+        salvo["passou"] is False
+        and salvo["n"] == 4
+        and salvo["limites"]["min_eventos"] == 300
+    )
+
+
+def test_ler_humanos_aceita_lista_ou_objeto(tmp_path):
+    rotulos = list(_humanos().values())
+    (tmp_path / "a.json").write_text(json.dumps(rotulos), encoding="utf-8")
+    (tmp_path / "b.json").write_text(json.dumps({"rotulos": rotulos}), encoding="utf-8")
+    assert (
+        rc.ler_humanos(tmp_path / "a.json")
+        == rc.ler_humanos(tmp_path / "b.json")
+        == _humanos()
+    )
+
+
+def test_main_auditar_exige_os_rotulos_humanos(pasta, tmp_path):
+    caminho = tmp_path / "eventos.json"
+    caminho.write_text(json.dumps({"eventos": EVENTOS}), encoding="utf-8")
+    assert rc.main(["auditar", "--eventos", str(caminho), "--pasta", str(pasta)]) == 2
+
+
+def test_id_fora_do_formato_nao_vira_caminho(tmp_path):
+    ruins = [
+        {**EVENTOS[0], "id": ""},
+        {**EVENTOS[1], "id": EVENTOS[2]["id"]},
+    ]  # sem id e repetido
+    caminho = tmp_path / "eventos.json"
+    caminho.write_text(json.dumps({"eventos": [EVENTOS[2], *ruins]}), encoding="utf-8")
+    assert rc.ler_eventos(caminho) == [EVENTOS[2]]
+    assert rc.chave("../../fora") == "______fora"
+    assert rc.chave("22616 IPE1401-54") == "22616_IPE1401-54"
+
+
+def test_id_com_espaco_vai_e_volta_do_lote(pasta):
+    eventos = [{**EVENTOS[0], "id": "0001 IPE00-1"}]
+    (pasta / "textos" / "0001_IPE00-1.txt").write_text(
+        "A Alfa Beta paga dividendos.", encoding="utf-8"
+    )
+    cliente = ClienteDeMentira()
+    rc.enviar(cliente, eventos, pasta, teto=60)
+    assert cliente.lotes[0][0]["custom_id"] == "0001_IPE00-1"
+    cliente.estado = "ended"
+    rc.buscar(cliente, eventos, pasta)
+    assert "0001 IPE00-1" in rc.ler_rotulos(pasta)

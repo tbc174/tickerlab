@@ -196,3 +196,25 @@ def test_estimativa_da_fila_inteira_fica_perto_do_plano():
         3_196 * 4_500, 3_196 * ri.SAIDA_ESTIMADA_POR_EVENTO
     )
     assert 15 < estimativa < 30
+
+
+# --- identificação ---------------------------------------------------------------------------
+
+
+def test_identificacao_le_o_mesmo_documento_anonimizado():
+    pedido = ri.pedido_de_identificacao(FATO, TEXTO)
+    assert pedido["messages"][0]["content"] == ri.documento(FATO, TEXTO)
+    assert "Viver" not in json.dumps(pedido, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    ("parada", "resposta", "esperado"),
+    [
+        ("end_turn", '{"empresa": "Viver"}', "Viver"),
+        ("end_turn", '{"empresa": ""}', ri.NAO_SEI),
+        ("end_turn", "não é json", ri.NAO_SEI),
+        ("refusal", '{"empresa": "Viver"}', ri.NAO_SEI),
+    ],
+)
+def test_palpite_da_identificacao(parada, resposta, esperado):
+    assert ri.palpite_da_identificacao(parada, resposta) == esperado

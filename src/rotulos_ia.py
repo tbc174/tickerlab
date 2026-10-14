@@ -304,3 +304,51 @@ def custo_em_dolares(
     """O custo pelos preços do modelo; pela Batch API, a metade."""
     custo = (tokens_entrada * PRECO_ENTRADA + tokens_saida * PRECO_SAIDA) / 1_000_000
     return custo * (DESCONTO_DO_LOTE if lote else 1.0)
+
+
+# --- teste de identificação (auditoria, ADR 0072): a IA reconhece a empresa pelo texto? ----------
+
+SISTEMA_DA_IDENTIFICACAO = f"""O documento abaixo é de uma companhia aberta brasileira e foi \
+anonimizado ({EMPRESA}, {CODIGO}, {CNPJ}). Diga qual companhia você acha que é, pelo nome. Se não \
+tiver um bom palpite, responda NAO_SEI. Responda só o nome."""
+NAO_SEI = "NAO_SEI"
+
+
+def pedido_de_identificacao(evento: dict, texto: str) -> dict:
+    """O mesmo documento que o rotulador lê, perguntando qual é a empresa."""
+    return {
+        "model": MODELO,
+        "max_tokens": 1_000,
+        "system": [
+            {
+                "type": "text",
+                "text": SISTEMA_DA_IDENTIFICACAO,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        "output_config": {
+            "effort": "low",
+            "format": {
+                "type": "json_schema",
+                "schema": {
+                    "type": "object",
+                    "properties": {"empresa": {"type": "string"}},
+                    "required": ["empresa"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "messages": [{"role": "user", "content": documento(evento, texto)}],
+    }
+
+
+def palpite_da_identificacao(stop_reason: str | None, resposta: str) -> str:
+    """O nome que a IA chutou (NAO_SEI se recusou, cortou ou respondeu fora do formato)."""
+    if stop_reason != "end_turn":
+        return NAO_SEI
+    try:
+        dados = json.loads(resposta)
+    except json.JSONDecodeError:
+        return NAO_SEI
+    palpite = str(dados.get("empresa") or "").strip() if isinstance(dados, dict) else ""
+    return palpite or NAO_SEI
