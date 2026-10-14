@@ -133,7 +133,8 @@ def manter_estado():
     """Evita que o Streamlit esqueça os campos ao trocar de página.
 
     Ele apaga o valor de todo campo que não aparece na página atual. Reatribuir o valor a cada
-    execução o mantém (só vale para campos com `key`).
+    execução o mantém (só vale para campos com `key`). Campo de arquivo fica de fora: o
+    Streamlit não deixa reatribuir o valor dele, então a chave começa com `arquivo_`.
     """
     for chave in list(st.session_state.keys()):
         if chave in CAMPOS_DO_TOPO_QUE_SOBREVIVEM or chave.startswith(

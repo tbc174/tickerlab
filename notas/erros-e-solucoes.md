@@ -431,6 +431,12 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Solução:** `backwards` em vez de `both` nas animações de chegada (o estado final é o natural, então nada muda na tela); `z-index` explícito em quem precisa ficar por cima (`.busca`, `.heroi-texto`, `.topo-da-pagina`); as camadas de fundo que precisam de corte numa caixa própria (`.v2-camadas`, com `overflow: hidden`) em vez de cortar o topo inteiro. Para achar o culpado: no console, `getComputedStyle(el).transform`, `translate`, `filter`, `backdropFilter`, `opacity` e `isolation` de cada ancestral, e `document.elementsFromPoint(x, y)` para ver quem está por cima.
 - **Data:** 14/10/2026 (PR #244)
 
+## `StreamlitValueAssignmentNotAllowedError` ao clicar na Carteira da B3
+- **Sintoma:** na página Carteira da B3, o primeiro clique depois de abrir a página (ligar um exemplo, por exemplo) mostrava `st.session_state['carteira_b3_arquivo'] is read-only and cannot be assigned through session state`.
+- **Causa:** o `manter_estado` do `app.py` reatribui, a cada execução, toda chave com um dos prefixos que sobrevivem à troca de página (`carteira_`, `backtest_`...), para o Streamlit não esquecer os campos. As chaves dos campos de arquivo também começavam com `carteira_`, e o Streamlit proíbe escrever no valor de um `st.file_uploader`. Na primeira execução o campo aparece (com valor `None`); na seguinte, o `manter_estado` escreve `None` nele e o campo quebra. Os testes não pegavam porque ligavam o exemplo **antes** de abrir a página, então o campo de arquivo nunca chegava a aparecer.
+- **Solução:** a chave de todo campo de arquivo começa com `arquivo_` (fora dos prefixos do `manter_estado`), como o `arquivo_b3` já fazia. Teste de regressão: abrir a página, **depois** ligar o exemplo e rodar de novo (`test_ligar_um_exemplo_depois_de_abrir_a_pagina_nao_quebra`). Achado conferindo a tela no navegador.
+- **Data:** 14/10/2026 (PR #260)
+
 ## Acento "errado" ao olhar um CSV do Banco Central no terminal (parecia latin-1)
 - **Sintoma:** ao abrir o `scrdata_AAAAMM.csv` do SCR.data, "Médio" e "salários mínimos" saíam com acento quebrado, e a primeira coluna vinha como `﻿data_base`; parecia que o arquivo era latin-1.
 - **Causa:** o arquivo é UTF-8 com BOM; quem quebrava o acento era a saída do terminal do Windows (cp1252), não a leitura.

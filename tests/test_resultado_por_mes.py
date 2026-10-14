@@ -222,3 +222,26 @@ def test_soma_dos_resultados_e_vendas_menos_compras(dias, preco_final):
     )
     assert not resultado.sem_resultado
     assert total == pytest.approx(esperado, abs=1e-6, rel=1e-9)
+
+
+def test_exemplo_da_pasta_conteudo_da_os_valores_feitos_a_mao():
+    from pathlib import Path
+
+    from src.movimentacao_b3 import ler_movimentacao
+    from src.negociacao_b3 import ler_negociacao
+
+    pasta = Path(__file__).parent.parent / "conteudo"
+    mov_exemplo = pasta / "movimentacao_de_exemplo.xlsx"
+    neg_exemplo = pasta / "negociacao_de_exemplo.xlsx"
+    mov = ler_movimentacao(mov_exemplo.read_bytes(), mov_exemplo.name)
+    neg = ler_negociacao(neg_exemplo.read_bytes(), neg_exemplo.name, mov.nomes)
+    resultado = resultado_por_mes(neg, mov.lancamentos)
+    fevereiro, marco, abril = (_mes(resultado, mes=m) for m in (2, 3, 4))
+    assert fevereiro.acoes_comum == pytest.approx(200)  # PETR4: 1.700 − 50 × 30
+    assert fevereiro.vendas_de_acoes == pytest.approx(2150)  # com a WEGE3 sem custo
+    assert marco.acoes_day_trade == pytest.approx(150)  # VALE3: 100 × (61,5 − 60)
+    assert marco.fiis == pytest.approx(60)  # HGLG11: 1.660 − 1.600
+    assert abril.acoes_comum == pytest.approx(-200)  # VALE3: 5.800 − 100 × 60
+    assert abril.futuros == pytest.approx(160)  # WINM26: 51.360 − 51.200
+    assert [c for c, _ in resultado.sem_resultado] == ["WEGE3"]
+    assert len(neg.avisos) == 1  # a opção de fora
