@@ -20,12 +20,15 @@ import json
 import logging
 import re
 import shutil
+import tempfile
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
+
+import certifi
 
 from src import acervo
 from src.banco.coletas import registrar_arquivo, ultima_coleta_ok
@@ -49,6 +52,25 @@ COMECO_DE_HTML = re.compile(
 SCRIPTS_E_ESTILOS = re.compile(r"<(script|style)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
 ETIQUETAS = re.compile(r"<[^>]+>")
 ESPACOS = re.compile(r"\s+")
+
+
+# intermediários que alguns servidores do governo esquecem de mandar (o MDIC, 14/10/2026: só a
+# folha; o Windows completa sozinho, o Python não). São públicos e fecham em raízes do `certifi`
+CERTIFICADOS_EXTRAS = Path(__file__).resolve().parent / "certificados"
+
+
+def pacote_de_certificados(pasta: Path = CERTIFICADOS_EXTRAS) -> str:
+    """As raízes do `certifi` mais os intermediários de `pasta`, num arquivo temporário."""
+    extras = sorted(pasta.glob("*.pem")) if pasta.is_dir() else []
+    if not extras:
+        return certifi.where()
+    texto = Path(certifi.where()).read_text(encoding="ascii")
+    texto += "".join("\n" + p.read_text(encoding="ascii") for p in extras)
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".pem", delete=False, encoding="ascii"
+    ) as pacote:
+        pacote.write(texto)
+    return pacote.name
 
 
 @dataclass(frozen=True)
@@ -79,11 +101,24 @@ class Cliente(Protocol):
         """Grava o arquivo em `destino`, em partes, e devolve os cabeçalhos da resposta."""
         ...
 
+    def ler_trecho(self, url: str, inicio: int, fim: int) -> bytes:
+        """Os bytes de `inicio` a `fim` (inclusive), por pedido de trecho (HTTP Range); falha se o
+        servidor ignorar o trecho (nunca baixa o arquivo inteiro sem querer)."""
+        ...
+
+
+# quando baixar inteiro não serve (ZIP de GBs, coluna com CPF): grava em `destino` e devolve os
+# cabeçalhos da origem (`base/arquivo/obter.py`)
+Obter = Callable[[Cliente, Path], Mapping[str, str]]
+
 
 @dataclass(frozen=True)
 class Alvo:
     url: str
     extensao: str | None = None  # quando o endereço não diz (".zip" da CGU)
+    obter: Obter | None = field(
+        default=None, compare=False
+    )  # None: `cliente.baixar(url)`
 
 
 Descobrir = Callable[[Cliente, datetime], list[Alvo]]
@@ -220,7 +255,10 @@ def _arquivar_um(
             resultado.pulados += 1
             log.info("%s: %s sem mudança nos cabeçalhos; não baixa", fonte.id, alvo.url)
             return
-    cabecalhos = cliente.baixar(alvo.url, temporario)
+    if alvo.obter is not None:
+        cabecalhos = alvo.obter(cliente, temporario)
+    else:
+        cabecalhos = cliente.baixar(alvo.url, temporario)
     sha256, tamanho, comeco = _sha256_do_arquivo(temporario)
     detalhe = assinatura(cabecalhos)
     motivo = conferir_tipo(fonte.tipo, comeco)

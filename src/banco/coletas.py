@@ -60,8 +60,10 @@ LICENCAS = {
     "anac": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
     "ans": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
     "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
-    "comexstat": "Licença aberta sem nome ('Other (Open)') no dados.gov.br (Comex Stat, MDIC); "
-    "confirmação pedida pelo Fala.BR em 14/10/2026",
+    "anatel": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+    "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
+    "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -110,6 +112,8 @@ REVENDA = {
     "anac": VENDAVEL_COM_ATRIBUICAO,
     "ans": VENDAVEL_COM_ATRIBUICAO,
     "ons": VENDAVEL_COM_ATRIBUICAO,
+    "anatel": VENDAVEL_COM_ATRIBUICAO,
+    "aneel": VENDAVEL_ODBL,
     "comexstat": A_CONFIRMAR,
 }
 LIMITE_DO_DETALHE = 300

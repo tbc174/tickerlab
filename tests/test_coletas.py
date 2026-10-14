@@ -187,6 +187,16 @@ def test_licencas_da_previa_do_balanco():
     assert coletas.revenda_da_fonte("comexstat") == coletas.A_CONFIRMAR
 
 
+def test_toda_licenca_cabe_na_coluna_do_registro():
+    """A coluna `licenca` tem 80 caracteres: um texto maior derruba o registro (Comex, 14/10/2026)."""
+    limite = coletas.coletas.c.licenca.type.length
+    assert all(len(texto) <= limite for texto in coletas.LICENCAS.values())
+    assert len(coletas.SEM_LICENCA_CONHECIDA) <= limite
+    assert "SAMP sem CPF" in licenca_da_fonte("aneel-samp")
+    assert coletas.revenda_da_fonte("anatel-acessos") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.revenda_da_fonte("bcb-pix-chaves") == coletas.VENDAVEL_ODBL
+
+
 def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):
     """Série 3, PR 3 (exigência 13 da ADR 0055): cada arquivo registrado diz qual commit o baixou."""
     from src import versao_do_codigo as vc
