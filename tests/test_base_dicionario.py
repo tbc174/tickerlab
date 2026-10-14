@@ -4,7 +4,7 @@ divulgação. O documento para o Tiago revisar é gerado daqui e precisa estar e
 
 from pathlib import Path
 
-from base import fca
+from base import cda, fca
 from base.cadastro import COLUNAS_DOS_TICKERS, ler_cadastro
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.ponto_no_tempo import COLUNAS_DA_BASE
@@ -35,6 +35,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "cadastro_das_companhias": list(cadastro.columns),
         "tickers_no_tempo": list(COLUNAS_DOS_TICKERS),
         "valores_mobiliarios": list(fca.COLUNAS),
+        "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
         "emissores": [
             "emissor",
             "cnpj",
