@@ -35,8 +35,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function abrir(nome: NomeDaFerramenta, resposta: Promise<Response>) {
-  const buscar = vi.fn(() => resposta);
+/** Liga a ferramenta com um fetch falso; a resposta só é criada se ele for chamado (uma promessa
+ * rejeitada criada antes, e nunca usada, vira erro "não tratado" no fim do teste). */
+async function abrir(nome: NomeDaFerramenta, resposta: () => Promise<Response>) {
+  const buscar = vi.fn(resposta);
   vi.stubGlobal("fetch", buscar);
   document.body.innerHTML = renderToStaticMarkup(<Ilha nome={nome} />);
   await act(async () => {
@@ -46,20 +48,21 @@ async function abrir(nome: NomeDaFerramenta, resposta: Promise<Response>) {
 }
 
 const ok = () => Promise.resolve(new Response(JSON.stringify(DADOS), { status: 200 }));
+const falha = () => Promise.reject(new Error("sem rede"));
 const resultado = () => document.querySelector("[data-resultado]")?.textContent;
 
 describe("dados do Banco Central", () => {
   it("o HTML pronto diz que está carregando, e o navegador busca o arquivo uma vez", async () => {
     expect(renderToStaticMarkup(<Ilha nome="moedas" />)).toContain("Carregando os dados do Banco Central");
-    const buscar = await abrir("moedas", ok());
+    const buscar = await abrir("moedas", ok);
     expect(buscar).toHaveBeenCalledTimes(1);
     expect(buscar).toHaveBeenCalledWith(ENDERECO_DOS_DADOS);
   });
 
   it("sem o arquivo, a ferramenta diz que está indisponível", async () => {
-    await abrir("moedas", Promise.resolve(new Response("", { status: 404 })));
+    await abrir("moedas", () => Promise.resolve(new Response("", { status: 404 })));
     expect(document.body.textContent).toContain("indisponíveis agora");
-    await abrir("rendaFixa", Promise.reject(new Error("sem rede")));
+    await abrir("rendaFixa", falha);
     expect(document.body.textContent).toContain("indisponíveis agora");
   });
 
@@ -74,7 +77,7 @@ describe("dados do Banco Central", () => {
 
 describe("conversor de moedas", () => {
   it("converte pela PTAX de venda e mostra a data da cotação", async () => {
-    await abrir("moedas", ok());
+    await abrir("moedas", ok);
     expect(resultado()).toBe(formatarNaMoeda(100 * 5.0096, "BRL"));
     expect(document.body.textContent).toContain("PTAX de fechamento de");
     expect(document.body.textContent).not.toContain("Atenção");
@@ -91,28 +94,28 @@ describe("conversor de moedas", () => {
 
   it("cotação de vários dias atrás leva o aviso", async () => {
     const velhos = { ...DADOS, moedas: DADOS.moedas!.map((m) => ({ ...m, data: "2026-01-02" })) };
-    await abrir("moedas", Promise.resolve(new Response(JSON.stringify(velhos))));
+    await abrir("moedas", () => Promise.resolve(new Response(JSON.stringify(velhos))));
     expect(document.body.textContent).toContain("Atenção: dado de vários dias atrás");
   });
 });
 
 describe("renda fixa, juro real e inflação", () => {
   it("a renda fixa mostra as quatro opções em ordem fixa e o CDI de hoje", async () => {
-    await abrir("rendaFixa", ok());
+    await abrir("rendaFixa", ok);
     const linhas = [...document.querySelectorAll(".ferramenta-comparacao tbody th")].map((th) => th.textContent);
     expect(linhas).toEqual(["CDB", "LCI ou LCA", "Tesouro Selic", "Poupança"]);
     expect(resultado()).toBe("13,65% ao ano");
   });
 
   it("o juro real já vem com o IPCA dos últimos 12 meses", async () => {
-    await abrir("juroReal", ok());
+    await abrir("juroReal", ok);
     const inflacao = screen.getByLabelText("Inflação") as HTMLInputElement;
     expect(inflacao.value).toBe(formatarNumero(em12Meses(IPCA) * 100));
     expect(document.body.textContent).toContain("IPCA até dez/2025");
   });
 
   it("a correção vai até o último IPCA divulgado, começando 10 anos antes", async () => {
-    await abrir("inflacao", ok());
+    await abrir("inflacao", ok);
     expect((screen.getByLabelText("Até: ano") as HTMLInputElement).value).toBe("2025");
     expect((screen.getByLabelText("A partir de: ano") as HTMLInputElement).value).toBe("2015");
     // o IPCA do exemplo só começa em 2024: a conta avisa, em vez de quebrar
@@ -128,7 +131,8 @@ describe("renda fixa, juro real e inflação", () => {
   });
 
   it("a taxa equivalente não precisa de dado nenhum", async () => {
-    await abrir("equivalente", Promise.reject(new Error("não deveria buscar")));
+    const buscar = await abrir("equivalente", falha);
     expect(resultado()).toBe("12,68% ao ano");
+    expect(buscar).not.toHaveBeenCalled();
   });
 });
