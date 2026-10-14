@@ -5,6 +5,7 @@
     python -m scripts.arquivar_fontes semanal         (FIAGRO, FIDC, CRI/CRA, IBAMA, lista suja, GLEIF)
     python -m scripts.arquivar_fontes mensal          (CNPJ e PGFN, pesadas)
     python -m scripts.arquivar_fontes cvm-fiagro      (uma fonte só)
+    python -m scripts.arquivar_fontes b3-negocios     (negócios do pregão da B3; também às 22h)
 
 Cada arquivo vai para o acervo (`TICKERLAB_ACERVO`), para o registro de coletas e para o manifesto do
 dia. Saída: 0 tudo certo; 1 alguma falha (o Kuma avisa); 2 nada falhou, mas um termo de uso ou um
@@ -192,11 +193,12 @@ def main(argv: list[str] | None = None) -> int:
             problemas.append(f"{fonte.id} ({resultado})")
             continue
         log.info(
-            "%s: %d novos, %d iguais, %d sem mudança nos cabeçalhos, %d falhas",
+            "%s: %d novos, %d iguais, %d já guardados sem mudança, %d sem arquivo, %d falhas",
             fonte.id,
             resultado.novos,
             resultado.iguais,
             resultado.pulados,
+            resultado.sem_arquivo,
             len(resultado.falhas),
         )
         if resultado.falhas:
