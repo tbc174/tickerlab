@@ -274,6 +274,51 @@ def cvm(banco, monkeypatch):
     return respostas
 
 
+def _lote(tmp_path, *protocolos):
+    """O arquivo do lote de medição do leitor (o mesmo formato do IPE da CVM, separado por ;)."""
+    linhas = ["Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto"]
+    linhas += [
+        f"{p};22.222.222/0001-22;2019-05-10;{LINK_DA_CVM}{p};Fato Relevante"
+        for p in protocolos
+    ]
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text("\n".join(linhas), encoding="utf-8")
+    return caminho
+
+
+def test_lote_de_medicao_completa_o_dia_depois_dos_recentes(banco, cvm, tmp_path):
+    """Plano do leitor: os fatos antigos do lote (que não estão no banco) entram até o máximo."""
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 3)
+    lote = _lote(tmp_path, "l1", "l2", "l3")
+    assert atualizar_leituras_cvm.main(["--maximo", "3", "--lote", str(lote)]) == 0
+    assert cvm == []  # f1 e f2 (recentes) + 1 do lote
+    with banco.connect() as c:
+        lidos = repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2", "l1", "l2", "l3"])
+    assert lidos == {"f1", "f2", "l1"}
+
+
+def test_lote_ja_lido_nao_e_baixado_de_novo(banco, cvm, tmp_path):
+    lote = _lote(tmp_path, "l1")
+    with banco.begin() as c:
+        repo.gravar_leitura(
+            c, FONTE_IPE, "l1", repo.TOPICO, "x", None,
+            asdict(topicos.topico_do_titulo("Fato Relevante")), versao=topicos.VERSAO,
+        )  # fmt: skip
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 2)
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0
+    assert cvm == []  # só os dois recentes
+
+
+def test_lote_com_link_de_fora_da_cvm_e_ignorado(tmp_path):
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text(
+        "Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto\n"
+        "l1;x;2019-05-10;https://exemplo.com/l1;Fato Relevante\n",
+        encoding="utf-8",
+    )
+    assert atualizar_leituras_cvm.ler_lote(caminho) == []
+
+
 def test_coleta_da_cvm_grava_os_resumos(banco, cvm):
     cvm.extend([_pdf(" ".join(FATO.split())), _pdf("Curto.")])
     assert atualizar_leituras_cvm.main([]) == 0

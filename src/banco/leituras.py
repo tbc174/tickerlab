@@ -56,9 +56,14 @@ def gravar_leitura(
 
 
 def lidos(
-    conexao: sa.Connection, fonte: str, tipo: str, documentos: Iterable[str]
+    conexao: sa.Connection,
+    fonte: str,
+    tipo: str,
+    documentos: Iterable[str],
+    versao: str | None = None,
 ) -> set[str]:
-    """Quais destes documentos já têm leitura (na versão atual do algoritmo)."""
+    """Quais destes documentos já têm leitura (na versão atual do algoritmo, ou em `versao`)."""
+    versao = versao or VERSAO
     pedidos = list(dict.fromkeys(documentos))
     achados: set[str] = set()
     for inicio in range(0, len(pedidos), TAMANHO_DO_LOTE):
@@ -67,7 +72,7 @@ def lidos(
                 sa.select(leituras.c.documento).where(
                     leituras.c.fonte == fonte,
                     leituras.c.tipo == tipo,
-                    leituras.c.versao == VERSAO,
+                    leituras.c.versao == versao,
                     leituras.c.documento.in_(
                         pedidos[inicio : inicio + TAMANHO_DO_LOTE]
                     ),

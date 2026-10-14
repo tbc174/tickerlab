@@ -1,6 +1,10 @@
 """Lê os fatos relevantes da CVM e guarda o resumo e o assunto (Research R5 e leitor v2, ADR 0069).
 
     python -m scripts.atualizar_leituras_cvm             (até 20 fatos dos últimos 30 dias)
+    python -m scripts.atualizar_leituras_cvm --lote base/leitor/lote_medicao_v1.csv
+
+Com `--lote`, depois dos fatos recentes o dia é completado com os do lote de medição do leitor v2
+(fatos antigos, que não estão no banco; plano do leitor de fatos relevantes), até o máximo.
 
 O texto vem do PDF original no sistema da CVM (RAD). A CVM limita os downloads por endereço: a
 coleta baixa poucos documentos, com intervalo de um minuto, e para no primeiro sinal de limite
@@ -8,11 +12,13 @@ coleta baixa poucos documentos, com intervalo de um minuto, e para no primeiro s
 """
 
 import argparse
+import csv
 import logging
 import sys
 import time
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -29,8 +35,10 @@ from src.banco.leituras import (
     fatos_sem_leitura,
     gravar_leitura,
 )
+from src.banco.leituras import lidos as lidos_no_banco
 from src.configuracao import url_do_banco
 from src.eventos import FONTE_IPE
+from src.links_das_fontes import link_da_fonte
 
 log = logging.getLogger("tickerlab.leituras")
 CATEGORIA = "Fato Relevante"
@@ -82,9 +90,41 @@ def assunto(
     return asdict(pelas_regras), asdict(pelo_modelo) if pelo_modelo else None
 
 
+Pendente = tuple[
+    str, str, date, str, str
+]  # (protocolo, cnpj, data, link, título do IPE)
+
+
+def ler_lote(caminho: Path) -> list[Pendente]:
+    """O lote de medição (colunas do IPE da CVM, separado por ;); só links da CVM ou da SEC."""
+    with caminho.open(encoding="utf-8") as arquivo:
+        return [
+            (linha["Protocolo_Entrega"], linha["CNPJ_Companhia"],
+             date.fromisoformat(linha["Data_Entrega"]), seguro, linha["Assunto"])
+            for linha in csv.DictReader(arquivo, delimiter=";")
+            if (seguro := link_da_fonte(linha["Link_Download"]))
+        ]  # fmt: skip
+
+
+def _do_lote(conexao: sa.Connection, caminho: Path, vagas: int) -> list[Pendente]:
+    """Os primeiros do lote ainda sem assunto lido, até preencher as vagas do dia."""
+    if vagas <= 0:
+        return []
+    lote = ler_lote(caminho)
+    feitos = lidos_no_banco(
+        conexao, FONTE_IPE, TOPICO, [p[0] for p in lote], versao=topicos.VERSAO
+    )
+    return [p for p in lote if p[0] not in feitos][:vagas]
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--maximo", type=int, default=MAXIMO_POR_VEZ)
+    argumentos.add_argument(
+        "--lote",
+        type=Path,
+        help="lote de medição do leitor v2 (CSV do IPE, separado por ;)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -106,6 +146,10 @@ def main(argv: list[str] | None = None) -> int:
                 hoje - timedelta(days=DIAS),
                 opcoes.maximo,
             )
+            if opcoes.lote:
+                pendentes += _do_lote(
+                    conexao, opcoes.lote, opcoes.maximo - len(pendentes)
+                )
         for i, (protocolo, cnpj, publicado, link, titulo) in enumerate(pendentes):
             if i:
                 time.sleep(PAUSA_ENTRE_DOWNLOADS)
