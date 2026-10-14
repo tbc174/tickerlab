@@ -352,3 +352,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a cópia não tem `.venv` própria; o pyright procura o ambiente dentro da pasta.
 - **Solução:** apontar para o Python da cópia principal: `pyright --pythonpath "C:/Users/tiago/projetos/analise-acoes/.venv/Scripts/python.exe" src telas scripts`.
 - **Data:** 13/10/2026
+
+## Página nova no app deixa o `novo/` (React) velho
+- **Sintoma:** no PR do Diário de Teses (#177), o job "web (React)" do CI falhou com `novo/ está velho: rode 'npm run app' em web/ e faça o commit`, embora o PR não mexesse no React.
+- **Causa:** o app em React lê `web/conteudo/paginas.json`. Uma página nova em `src/paginas.py` muda esse arquivo (a trava do commit regenera), e o build guardado em `novo/` muda junto (outro nome do `assets/index-*.js`). A trava regenera o `web/conteudo/` e o `site/`, mas não o `novo/`.
+- **Solução:** depois de mudar `src/paginas.py`, rodar `npm run app` em `web/` (e `npm ci` antes, numa cópia nova) e fazer o commit do `novo/` (`git add -A novo`, porque o arquivo antigo sai e entra um novo).
+- **Data:** 13/10/2026
