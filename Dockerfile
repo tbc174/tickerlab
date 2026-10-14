@@ -29,6 +29,12 @@ COPY migracoes ./migracoes
 COPY conteudo ./conteudo
 COPY dados_de_exemplo ./dados_de_exemplo
 
+# o commit deste código, para a linhagem dos números (ADR 0055, exigência 13):
+#   docker build --build-arg TICKERLAB_VERSAO="$(git rev-parse HEAD)" .
+# Fica no fim para não refazer as camadas de cima a cada commit. Vazio = versão desconhecida.
+ARG TICKERLAB_VERSAO=""
+ENV TICKERLAB_VERSAO=${TICKERLAB_VERSAO}
+
 # o cache de preços (SQLite) grava em dados_locais; no compose, essa pasta vem de fora
 RUN useradd --create-home --uid 1000 app \
     && mkdir -p /app/dados_locais \

@@ -9,7 +9,11 @@
 #   mkdir -p dados_locais && sudo chown 1000:1000 dados_locais
 services:
   tickerlab:
-    build: .
+    build:
+      context: .
+      args:
+        # o commit implantado (scripts/deploy-automatico.sh); vazio = versão desconhecida
+        TICKERLAB_VERSAO: ${TICKERLAB_VERSAO:-}
     image: tickerlab:local
     container_name: tickerlab
     restart: unless-stopped
