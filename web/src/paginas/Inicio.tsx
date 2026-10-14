@@ -54,7 +54,7 @@ const LARGURA_DO_GRAFICO = 320;
 const ALTURA_DO_GRAFICO = 96;
 const FOLGA_DO_GRAFICO = 4;
 
-export function pontosDoGrafico(serie: number[]): string {
+function pontosDoGrafico(serie: number[]): string {
   const menor = Math.min(...serie);
   const faixa = Math.max(...serie) - menor || 1;
   const util = ALTURA_DO_GRAFICO - 2 * FOLGA_DO_GRAFICO;
