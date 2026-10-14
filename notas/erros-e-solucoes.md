@@ -431,6 +431,23 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Solução:** `backwards` em vez de `both` nas animações de chegada (o estado final é o natural, então nada muda na tela); `z-index` explícito em quem precisa ficar por cima (`.busca`, `.heroi-texto`, `.topo-da-pagina`); as camadas de fundo que precisam de corte numa caixa própria (`.v2-camadas`, com `overflow: hidden`) em vez de cortar o topo inteiro. Para achar o culpado: no console, `getComputedStyle(el).transform`, `translate`, `filter`, `backdropFilter`, `opacity` e `isolation` de cada ancestral, e `document.elementsFromPoint(x, y)` para ver quem está por cima.
 - **Data:** 14/10/2026 (PR #244)
 
+## Acento "errado" ao olhar um CSV do Banco Central no terminal (parecia latin-1)
+- **Sintoma:** ao abrir o `scrdata_AAAAMM.csv` do SCR.data, "Médio" e "salários mínimos" saíam com acento quebrado, e a primeira coluna vinha como `﻿data_base`; parecia que o arquivo era latin-1.
+- **Causa:** o arquivo é UTF-8 com BOM; quem quebrava o acento era a saída do terminal do Windows (cp1252), não a leitura.
+- **Solução:** ler com `encoding="utf-8-sig"` (tira a BOM) e conferir rodando o Python com `python -X utf8`. Teste com acento de verdade (`tests/test_base_bcb.py`).
+- **Data:** 14/10/2026 (PR #226)
+
+## SSH pelo nome do Tailscale: "Host key verification failed"
+- **Sintoma:** fora da rede de casa, `ssh granserver@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
+- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`192.168.15.5`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
+- **Solução:** `ssh -o HostKeyAlias=192.168.15.5 granserver@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
+- **Data:** 14/10/2026
+
+## Sessão SSH presa ao disparar uma carga longa com `setsid ... &`
+- **Sintoma:** o comando que disparava a carga no servidor de casa não voltava; a sessão SSH só terminou pelo limite de tempo.
+- **Causa:** não confirmada: a saída já estava redirecionada (`> ~/logs/x.log 2>&1 < /dev/null`) dentro do `setsid`; a suspeita é o `docker run -i` ou o `sleep 60; tail` na mesma chamada.
+- **Solução:** disparar numa chamada e conferir o log numa chamada separada. Mesmo com a sessão presa, a carga segue viva (o `setsid` a solta da sessão): conferir com `pgrep -af <script>` e o log.
+
 ## Arquivista mensal falha no CNPJ com `RemoteDisconnected`, cada vez num arquivo diferente
 - **Sintoma:** `FALHAS: rfb-cnpj (1 arquivos; ...)` com `('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))`; em 14/10/2026 foram `Empresas4`, `Estabelecimentos0` e `Socios0` de manhã e `Qualificacoes` à noite. Baixado na mão com `curl`, o mesmo arquivo vinha inteiro.
 - **Causa:** o servidor da Receita fecha a conexão antes de responder de vez em quando. O `requests` tenta **zero** vezes de novo por padrão, e a única nova tentativa do arquivista era a da fonte inteira, 5 minutos depois. Com 37 arquivos no mês, quase sempre algum caía.
