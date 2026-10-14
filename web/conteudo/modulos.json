@@ -346,6 +346,14 @@
         "pagina_do_app": null,
         "pagina_do_site": "calculadora-viver-de-renda.html",
         "ticker": null
+      },
+      {
+        "descricao": "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
+        "disponivel": true,
+        "nome": "Sorte em série",
+        "pagina_do_app": null,
+        "pagina_do_site": "sorte-em-serie.html",
+        "ticker": null
       }
     ],
     "nome": "Ferramentas",

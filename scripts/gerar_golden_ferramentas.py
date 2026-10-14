@@ -16,7 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from src.ferramentas import aportes, custos, juros
+from src.ferramentas import aleatorio, aportes, custos, juros
+from src.ferramentas import sorte_em_serie as sorte
 from src.ferramentas import viver_de_renda as vr
 
 ARQUIVO = (
@@ -40,6 +41,9 @@ CONTAS: dict[str, Conta] = {
     "viver_de_renda.patrimonio_necessario": vr.patrimonio_necessario,
     "viver_de_renda.duracao_em_meses": vr.duracao_em_meses,
     "viver_de_renda.renda_da_regra_dos_4": vr.renda_da_regra_dos_4,
+    "aleatorio.sequencia": aleatorio.sequencia,
+    "sorte_em_serie.sharpe": sorte.sharpe,
+    "sorte_em_serie.simular": sorte.simular,
 }
 
 # (conta, argumentos na ordem da função); entram também entradas que devem ser recusadas
@@ -129,6 +133,16 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("viver_de_renda.duracao_em_meses", [1000, 0, [0.04]]),
     ("viver_de_renda.duracao_em_meses", [1000, 100, []]),
     ("viver_de_renda.renda_da_regra_dos_4", [1_200_000]),
+    ("aleatorio.sequencia", [42, 1000]),
+    ("aleatorio.sequencia", [0, 50]),
+    ("aleatorio.sequencia", [2**32 - 1, 50]),
+    ("sorte_em_serie.sharpe", [[0.01, 0.01, -0.01, 0.01]]),
+    ("sorte_em_serie.sharpe", [[0.01, -0.01, 0.01, -0.01]]),
+    ("sorte_em_serie.simular", [100, 250, 42]),
+    ("sorte_em_serie.simular", [20, 60, 7]),
+    ("sorte_em_serie.simular", [500, 30, 123456]),
+    ("sorte_em_serie.simular", [1, 250, 42]),
+    ("sorte_em_serie.simular", [100, 1, 42]),
 ]
 
 

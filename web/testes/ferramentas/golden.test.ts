@@ -2,9 +2,11 @@
 // Os casos e os resultados do Python ficam em testes/golden_ferramentas.json, gerado por
 // `python -m scripts.gerar_golden_ferramentas`; o pytest confere que o arquivo está em dia.
 import { describe, expect, it } from "vitest";
+import * as aleatorio from "../../src/ferramentas/contas/aleatorio";
 import * as aportes from "../../src/ferramentas/contas/aportes";
 import * as custos from "../../src/ferramentas/contas/custos";
 import * as juros from "../../src/ferramentas/contas/juros";
+import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
 import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
 import casos from "../golden_ferramentas.json";
 
@@ -25,6 +27,9 @@ const CONTAS: Record<string, Conta> = {
   "viver_de_renda.patrimonio_necessario": viverDeRenda.patrimonioNecessario,
   "viver_de_renda.duracao_em_meses": viverDeRenda.duracaoEmMeses,
   "viver_de_renda.renda_da_regra_dos_4": viverDeRenda.rendaDaRegraDos4,
+  "aleatorio.sequencia": aleatorio.sequencia,
+  "sorte_em_serie.sharpe": sorte.sharpe,
+  "sorte_em_serie.simular": sorte.simular,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

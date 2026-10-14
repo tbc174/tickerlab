@@ -268,6 +268,11 @@ MODULOS = (
                 "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
                 pagina_do_site="calculadora-viver-de-renda.html",
             ),
+            Funcionalidade(
+                "Sorte em série",
+                "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
+                pagina_do_site="sorte-em-serie.html",
+            ),
         ),
     ),
     Modulo(

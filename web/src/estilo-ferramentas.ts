@@ -41,6 +41,13 @@ export function cssFerramentas(): string {
 .ferramenta-texto h2 { font-size: 1.4rem; margin-top: 1.5rem; }
 .ferramenta-texto h2:first-child { margin-top: 0; }
 .ferramenta-nome { font-size: 1.12rem; }
+.ferramenta-rotulo { font-weight: 700; font-size: .92rem; }
+.ferramenta-bloco + .ferramenta-bloco { margin-top: 2.5rem; }
+.ferramenta-grafico { margin: 1.25rem 0 0; }
+.ferramenta-grafico svg { width: 100%; height: auto; display: block; }
+.ferramenta-grafico-base { stroke: var(--linha-forte); stroke-width: 1; stroke-dasharray: 4 4; }
+.ferramenta-grafico figcaption { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .5rem; font-size: .85rem; }
+.ferramenta-grafico figcaption i { display: inline-block; width: .9rem; height: .2rem; border-radius: 2px; vertical-align: middle; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }

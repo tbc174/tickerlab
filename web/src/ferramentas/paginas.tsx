@@ -6,6 +6,9 @@ import { altaParaRecuperar, custoDaTaxa } from "./contas/custos";
 import { montante, taxaEquivalente } from "./contas/juros";
 import { duracaoEmMeses, patrimonioNecessario } from "./contas/viver_de_renda";
 import { duracaoPorExtenso } from "./ViverDeRenda";
+import { simular } from "./contas/sorte_em_serie";
+import { SEMENTE_INICIAL } from "./SorteEmSerie";
+import { formatarDecimal } from "../app/formatar";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
 
@@ -36,6 +39,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "calculadora-viver-de-renda.html",
     nome: "Viver de renda",
     descricao: "Quanto juntar para tirar um valor por mês, e o risco de começar num ano ruim.",
+  },
+  {
+    arquivo: "sorte-em-serie.html",
+    nome: "Sorte em série",
+    descricao: "Cem estratégias de cara ou coroa: a melhor parece genial, e é só sorte.",
   },
 ];
 
@@ -263,6 +271,63 @@ export function PaginaDaRenda() {
         A regra diz que dá para retirar 4% do patrimônio do primeiro ano, corrigidos pela inflação,
         por cerca de 30 anos. Ela veio de estudos com ações e títulos dos Estados Unidos no século
         20; aqui ela aparece só como comparação, não como garantia.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Sorte em série ------------------------------------------------------------------------
+const SORTE = "sorte-em-serie.html";
+
+export const DADOS_DA_SORTE = {
+  caminho: `/${SORTE}`,
+  titulo: "Sorte em série",
+  descricao:
+    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o " +
+    "problema de testar muitas ideias e mostrar só a melhor. Grátis e sem cadastro.",
+  atual: "/ferramentas.html",
+  ferramenta: true,
+};
+
+export function PaginaDaSorte() {
+  const exemplo = simular(100, 250, SEMENTE_INICIAL);
+  return (
+    <PaginaDeFerramenta
+      titulo="Sorte em série"
+      subtitulo="Cem estratégias que decidem no cara ou coroa. Nenhuma tem vantagem, e mesmo assim a melhor parece genial."
+      ilha="sorte"
+      codigo={codigo(SORTE)}
+      anuncio="ficha"
+      foraDaConta={[
+        "custos e impostos: com eles, as estratégias de moeda ficariam ainda pior",
+        "mercados de verdade, que têm tendência, quedas fortes e dias parados; aqui todo dia é +1% ou -1%",
+      ]}
+    >
+      <h2>O que a simulação mostra</h2>
+      <p>
+        No exemplo da página, com 100 estratégias de moeda por um ano, a melhor rendeu{" "}
+        {formatarPorcentagem(exemplo.retorno_da_melhor)} com Sharpe de{" "}
+        {formatarDecimal(exemplo.sharpe_da_melhor)}, e {exemplo.com_sharpe_acima_de_1} delas passaram
+        de Sharpe 1, um número que muita gente chama de estratégia boa. Nenhuma tinha vantagem
+        nenhuma: era tudo sorte.
+      </p>
+      <h2>Por que isso importa</h2>
+      <p>
+        Quem testa muitas regras de compra e venda, ou muitos ajustes da mesma regra, e mostra só a
+        melhor, está fazendo a mesma coisa que esta página: escolhendo a moeda que deu mais caras.
+        Quanto mais tentativas, melhor parece a campeã, mesmo sem vantagem nenhuma. Na estatística,
+        isso se chama problema das comparações múltiplas.
+      </p>
+      <h2>Como o TickerLab desconta a sorte</h2>
+      <p>
+        A ficha “Foi sorte?” do TickerLab conta quantas tentativas você fez e testa o resultado
+        contra estratégias sorteadas como estas, com custos e fora do período em que a regra foi
+        ajustada. Só passa o que resiste quando a sorte sai da conta.
+      </p>
+      <h2>E por que menos da metade terminou no lucro?</h2>
+      <p>
+        Ganhar 1% e depois perder 1% não volta ao começo: R$ 100 viram R$ 101 e depois R$ 99,99. Com
+        altas e baixas do mesmo tamanho, o vaivém sozinho corrói o resultado.
       </p>
     </PaginaDeFerramenta>
   );
