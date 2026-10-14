@@ -190,3 +190,26 @@ def test_pagina_nao_guarda_nada_da_negociacao(banco):
     app = _abrir_com_a_negociacao_de_exemplo(com_a_movimentacao=True)
     assert not app.exception
     assert _linhas_no_banco(banco) == antes
+
+
+def test_ligar_um_exemplo_depois_de_abrir_a_pagina_nao_quebra():
+    # na primeira visita os campos de arquivo aparecem; o clique seguinte roda o app de novo e
+    # o `manter_estado` não pode tentar reescrever o valor deles (o Streamlit proíbe)
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    ir_para(app, "carteira_b3")
+    assert not app.exception
+    app.toggle(key="carteira_b3_movimentacao_exemplo").set_value(True).run()
+    assert not app.exception
+    assert dc.NOTA_DO_CUSTO in " ".join(c.value for c in app.caption)
+
+
+def test_quantidade_dos_proventos_vazia_quando_a_b3_nao_informa():
+    app = _abrir_com_os_proventos_de_exemplo()
+    tabela = _tabela_com(app, "Data prevista")
+    assert tabela.loc["PETR4", "Quantidade"].iloc[0] == "150"
+    assert (
+        tabela.loc[tabela["Provento"] == "Leilão de frações", "Quantidade"].iloc[0]
+        == ""
+    )

@@ -63,7 +63,7 @@ def _pedir_carteira() -> CarteiraB3 | None:
         )
     else:
         arquivo = st.file_uploader(
-            "Planilha de posição da B3", type=["xlsx", "csv"], key="carteira_b3_arquivo"
+            "Planilha de posição da B3", type=["xlsx", "csv"], key="arquivo_carteira_b3"
         )
         if arquivo is None:
             return None
@@ -251,7 +251,10 @@ class _Planilha:
     aviso_do_exemplo: str
     arquivo_de_exemplo: Path
     rotulo_do_campo: str
-    chave: str  # do campo de arquivo; o botão do exemplo usa a chave + "_exemplo"
+    # o botão do exemplo usa a chave + "_exemplo"; o campo de arquivo, "arquivo_" + a chave
+    # (fora dos prefixos do `manter_estado` do app.py: o Streamlit não deixa reatribuir
+    # o valor de um campo de arquivo)
+    chave: str
 
 
 _MOVIMENTACAO = _Planilha(
@@ -291,7 +294,9 @@ def _pedir_planilha[T: _ComAvisos](
         nome = planilha.arquivo_de_exemplo.name
     else:
         arquivo = st.file_uploader(
-            planilha.rotulo_do_campo, type=["xlsx", "csv"], key=planilha.chave
+            planilha.rotulo_do_campo,
+            type=["xlsx", "csv"],
+            key=f"arquivo_{planilha.chave}",
         )
         if arquivo is None:
             return None
@@ -452,7 +457,10 @@ def _mostrar_proventos_a_receber() -> ProventosAReceber | None:
                     f"{i.data:%d/%m/%Y}" if i.data else "sem data"
                     for i in proventos.itens
                 ],
-                "Quantidade": [i.quantidade or None for i in proventos.itens],
+                "Quantidade": [
+                    f"{i.quantidade:g}".replace(".", ",") if i.quantidade else ""
+                    for i in proventos.itens
+                ],  # vazio quando a B3 não informa (leilão de frações)
                 "Valor (R$)": [i.valor for i in proventos.itens],
             }
         ),
