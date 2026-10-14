@@ -147,6 +147,25 @@
   // barra de leitura (Termos, Privacidade, Metodologia, Novidades)
   var progresso = document.querySelector("[data-progresso]");
 
+  // marca o link da seção na tela; aria-current="" valeria "falso" para o leitor de tela
+  function marcarAtual(menu, id) {
+    menu.querySelectorAll("a").forEach(function (a) {
+      if (a.hash === "#" + id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+    });
+  }
+
+  // sumário das páginas de leitura: os links já vêm no HTML; aqui só a seção que está na tela
+  var sumario = document.querySelector("[data-sumario]");
+  if (sumario && "IntersectionObserver" in window) {
+    var espiaLeitura = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) marcarAtual(sumario, e.target.id); });
+    }, { rootMargin: "-15% 0px -75% 0px" });
+    sumario.querySelectorAll("a").forEach(function (a) {
+      var alvo = document.getElementById(a.hash.slice(1));
+      if (alvo) espiaLeitura.observe(alvo);
+    });
+  }
+
   // menu de atalhos que gruda no topo (Produto)
   var atalhos = document.querySelector(".v2-pagina-topo .atalhos");
   var subnav = null;
@@ -162,7 +181,7 @@
       var espiaSecao = new IntersectionObserver(function (es) {
         es.forEach(function (e) {
           if (!e.isIntersecting) return;
-          subnav.querySelectorAll("a").forEach(function (a) { a.toggleAttribute("aria-current", a.hash === "#" + e.target.id); });
+          marcarAtual(subnav, e.target.id);
         });
       }, { rootMargin: "-30% 0px -60% 0px" });
       secoes.forEach(function (s) { espiaSecao.observe(s); });

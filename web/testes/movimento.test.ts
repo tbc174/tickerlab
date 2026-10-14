@@ -16,8 +16,8 @@ const HEROI = `
   </div>`;
 
 /** Abre a página com o hero e roda o movimento.js, com ou sem "reduzir movimento". */
-function abrir({ reduzirMovimento }: { reduzirMovimento: boolean }) {
-  document.body.innerHTML = HEROI;
+function abrir({ reduzirMovimento, resto = "" }: { reduzirMovimento: boolean; resto?: string }) {
+  document.body.innerHTML = HEROI + resto;
   // o jsdom não tem matchMedia nem desenho em canvas: um falso de cada
   window.matchMedia = ((consulta: string) => ({
     matches: consulta.includes("prefers-reduced-motion") ? reduzirMovimento : false,
@@ -40,6 +40,31 @@ afterEach(() => {
 });
 
 describe("movimento.js", () => {
+  it("o sumário marca a seção que está na tela (páginas de leitura)", () => {
+    // um IntersectionObserver falso: o teste diz quando cada seção aparece
+    const observados = new Map<Element, (es: unknown[]) => void>();
+    window.IntersectionObserver = class {
+      constructor(private aoVer: (es: unknown[]) => void) {}
+      observe(el: Element) { observados.set(el, this.aoVer); }
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof IntersectionObserver;
+    abrir({
+      reduzirMovimento: true,
+      resto: `
+        <nav class="v2-sumario" data-sumario><ol>
+          <li><a href="#um">Um</a></li><li><a href="#dois">Dois</a></li>
+        </ol></nav>
+        <section class="v2-texto"><h2 id="um">Um</h2><h2 id="dois">Dois</h2></section>`,
+    });
+    const dois = document.getElementById("dois")!;
+    observados.get(dois)!([{ isIntersecting: true, target: dois }]);
+    const [linkUm, linkDois] = document.querySelectorAll(".v2-sumario a");
+    expect(linkDois.getAttribute("aria-current")).toBe("true");
+    expect(linkUm.hasAttribute("aria-current")).toBe(false);
+    delete (window as { IntersectionObserver?: unknown }).IntersectionObserver;
+  });
+
   it("sem 'reduzir movimento', o fundo começa a se mexer (controle do teste abaixo)", () => {
     const { quadros, botao } = abrir({ reduzirMovimento: false });
     expect(quadros).toHaveBeenCalled();

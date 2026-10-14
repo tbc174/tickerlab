@@ -3,12 +3,12 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type Modulo, exemplo, marca, site } from "../src/conteudo";
+import { type Modulo, exemplo, marca, planos, site } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
 import { ROTAS } from "../src/rotas";
-import { MODULOS_DO_PRODUTO, contagem } from "../src/site/comum";
+import { MODULOS_DO_PRODUTO, contagem, disponiveis } from "../src/site/comum";
 import { ASSINATURA } from "../src/site/textos";
 
 const SITE = join(process.cwd(), "..", "site");
@@ -176,6 +176,102 @@ describe("página inicial v2", () => {
 
   it("o relatório de exemplo também está a um toque no celular (o painel some lá)", () => {
     expect(html).toContain(`href="/relatorio/exemplo-${exemplo.ticker}.pdf">Ver um relatório de exemplo (PDF)`);
+  });
+});
+
+describe("outras páginas v2 (série site e app v2, PR 2)", () => {
+  const outras = arquivos.filter((a) => a !== "index.html");
+
+  it("toda página abre com o mesmo topo escuro da inicial, com o título dentro dele", () => {
+    for (const arquivo of outras) {
+      const html = renderizar(arquivo);
+      const topo = trecho(html, '<div class="escura topo-da-pagina v2-heroi-fundo v2-heroi-pagina', "</section>");
+      expect(topo, arquivo).toContain("data-fundo-mercado");
+      expect(topo, arquivo).toMatch(/<h1[ >]/);
+    }
+  });
+
+  it("toda chamada final tem o horizonte que sobe", () => {
+    for (const arquivo of outras) {
+      const html = renderizar(arquivo);
+      expect(html, arquivo).not.toContain('<div class="escura"><section class="faixa secao final"');
+    }
+  });
+
+  it("Produto: a barra de cada módulo mostra a fração já disponível, sem depender do JS", () => {
+    const html = renderizar("produto.html");
+    for (const modulo of MODULOS_DO_PRODUTO) {
+      const topo = trecho(html, `<h2 id="titulo-${modulo.chave}">`, "</p></div>");
+      const fracao = disponiveis(modulo) / modulo.funcionalidades.length;
+      expect(topo).toContain(
+        `<span class="v2-barra" aria-hidden="true"><i style="--p:${fracao.toFixed(3)}"></i></span>`,
+      );
+    }
+  });
+
+  it("Produto: os atalhos ficam no topo (o movimento.js copia para o menu que gruda)", () => {
+    const topo = trecho(renderizar("produto.html"), '<section class="faixa secao v2-pagina-topo">', "</section>");
+    for (const modulo of MODULOS_DO_PRODUTO) expect(topo).toContain(`href="#${modulo.chave}"`);
+  });
+
+  for (const arquivo of ["metodologia.html", "termos.html", "privacidade.html", "novidades.html"]) {
+    it(`${arquivo}: sumário feito no build, um link para cada seção, e a barra de leitura`, () => {
+      const html = renderizar(arquivo);
+      expect(html).toContain('<div class="v2-progresso" data-progresso="" aria-hidden="true">');
+      const sumario = trecho(html, '<nav class="v2-sumario"', "</nav>");
+      const links = [...sumario.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+      expect(links.length).toBeGreaterThanOrEqual(2);
+      expect(new Set(links).size).toBe(links.length);
+      const texto = trecho(html, '<section class="secao texto-longo v2-texto"', "</main>");
+      for (const id of links) expect(texto, id).toContain(`id="${id}"`);
+      // nenhuma seção fica de fora do sumário
+      const nivel = arquivo === "termos.html" || arquivo === "privacidade.html" ? "h3" : "h2";
+      const secoes = arquivo === "novidades.html" ? texto.match(/<article /g) : texto.match(new RegExp(`<${nivel}[ >]`, "g"));
+      expect(links).toHaveLength(secoes!.length);
+    });
+  }
+
+  it("Sobre: a Inteligência Integrada em três círculos, com as três perspectivas", () => {
+    const html = renderizar("sobre.html");
+    const venn = trecho(html, '<figure class="v2-venn"', "</figure>");
+    for (const nome of ["Fundamentalista", "Técnica", "Quantitativa", "Inteligência", "Integrada"])
+      expect(venn).toContain(`>${nome}</text>`);
+    expect(trecho(html, '<div class="v2-acreditamos">', '<p class="contagem v2-lema">')).toContain(
+      "Inteligência Integrada.",
+    );
+  });
+
+  it("Planos: um cartão por plano, com os limites da mesma tabela do app", () => {
+    const html = renderizar("precos.html");
+    const cartoes = trecho(html, '<div class="v2-planos">', "</div></section>");
+    expect(cartoes.match(/<article class="v2-plano/g)).toHaveLength(planos.nomes.length);
+    const ultimo = planos.nomes[planos.nomes.length - 1];
+    expect(cartoes).toContain(`<article class="v2-plano v2-plano-destaque"><header><h3>${ultimo}</h3>`);
+    const linhas = planos.tabela as Record<string, string>[];
+    for (const nome of planos.nomes)
+      for (const recurso of ["Simulações salvas", "Favoritos", "Ativos na carteira"]) {
+        const linha = linhas.find((l) => l.Recurso === recurso)!;
+        expect(cartoes).toContain(`${esc(recurso)}: <b>${esc(linha[nome])}</b>`);
+      }
+    // o plano em breve não tem botão que leve a lugar nenhum
+    const emBreve = trecho(cartoes, `<h3>${planos.nomes_em_breve[0]}</h3>`, "</article>");
+    expect(emBreve).not.toContain("href=");
+    expect(emBreve).toContain('aria-disabled="true"');
+  });
+
+  it("Planos: ✓ e — na tabela, com Sim e Não para quem usa leitor de tela", () => {
+    const tabela = trecho(renderizar("precos.html"), '<table class="planos v2-comparativo">', "</table>");
+    expect(tabela).toContain('<span class="v2-sim" role="img" aria-label="Sim">✓</span>');
+    expect(tabela).toContain('<span class="v2-nao" role="img" aria-label="Não">—</span>');
+    expect(tabela).not.toContain("<td>Sim</td>");
+  });
+
+  it("404: o número grande, a linha que despenca e os dois caminhos", () => {
+    const html = renderizar("404.html");
+    expect(html).toContain('<p class="v2-quatro-zero-quatro" aria-hidden="true">404</p>');
+    expect(html).toContain('<svg class="v2-queda"');
+    expect(html).toContain('href="/">Ir para o início</a>');
+    expect(html).toContain(">Abrir o app</a>");
   });
 });
 

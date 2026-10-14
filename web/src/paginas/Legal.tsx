@@ -2,6 +2,7 @@
 // Era `legal()` de scripts/gerar_site.py.
 import { legal } from "../conteudo";
 import { Bruto } from "../site/Bruto";
+import { PaginaDeLeitura, ancorarTitulos } from "../site/Leitura";
 
 export const DADOS_DOS_TERMOS = {
   caminho: "/termos.html",
@@ -20,10 +21,11 @@ export const DADOS_DA_PRIVACIDADE = {
 };
 
 export function Legal({ titulo, texto }: { titulo: string; texto: keyof typeof legal }) {
+  // as seções dos dois textos são h3 (o h2 do Markdown ficou para o título da página)
+  const { html, itens } = ancorarTitulos(legal[texto], "h3");
   return (
-    <section className="faixa secao estreita texto-longo">
-      <h1>{titulo}</h1>
-      <Bruto html={legal[texto]} />
-    </section>
+    <PaginaDeLeitura titulo={titulo} sumario={itens}>
+      <Bruto html={html} />
+    </PaginaDeLeitura>
   );
 }

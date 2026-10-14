@@ -1,6 +1,7 @@
 // Novidades: o que entrou e o que foi corrigido em cada atualização. O texto vem de src/novidades.py
 // (o mesmo da nota da versão no GitHub); a mais nova fica no topo.
 import { novidades } from "../conteudo";
+import { PaginaDeLeitura } from "../site/Leitura";
 
 export const DADOS = {
   caminho: "/novidades.html",
@@ -24,12 +25,12 @@ export function dataPorExtenso(iso: string): string {
 
 export function Novidades() {
   return (
-    <section className="faixa secao estreita texto-longo">
-      <p className="olho">Atualizações</p>
-      <h1>Novidades</h1>
-      <p className="subtitulo">
-        O que entrou e o que foi corrigido em cada atualização do TickerLab.
-      </p>
+    <PaginaDeLeitura
+      olho="Atualizações"
+      titulo="Novidades"
+      subtitulo="O que entrou e o que foi corrigido em cada atualização do TickerLab."
+      sumario={novidades.map((a) => ({ id: a.data, texto: dataPorExtenso(a.data) }))}
+    >
       {novidades.map((a) => (
         <article key={a.data} id={a.data}>
           <h2>
@@ -57,6 +58,6 @@ export function Novidades() {
       <p className="apagado">
         Nada aqui é recomendação de investimento. Os números do TickerLab descrevem o passado.
       </p>
-    </section>
+    </PaginaDeLeitura>
   );
 }
