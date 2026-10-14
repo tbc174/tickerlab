@@ -4,6 +4,7 @@ from streamlit.testing.v1 import AppTest
 
 from src.banco import dados_do_usuario as repo
 from src.banco.usuarios import mudar_plano
+from src.paginas import motivo_da_pagina
 from tests.ajudantes_da_conta import (
     abrir_app,
     botao,
@@ -18,6 +19,10 @@ def _virar_pro(banco, sub):
         mudar_plano(conexao, id_do_usuario(banco, sub), "pro")
 
 
+# o mesmo texto da API v1 (src/paginas.py, ADR 0062): sem negrito
+FORA_DO_PLANO = "faz parte do plano Pro"
+
+
 def _textos(app):
     return " ".join(i.value for i in app.info)
 
@@ -26,10 +31,10 @@ def test_gratuito_nao_ve_aprendizado_de_maquina_nem_pares(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app("aprendizado")
     assert not app.exception
-    assert "Aprendizado de máquina** faz parte do plano **Pro" in _textos(app)
+    assert motivo_da_pagina("gratuito", "aprendizado") in _textos(app)
     ir_para(app, "pares")
     assert not app.exception
-    assert "Pairs trading** faz parte do plano **Pro" in _textos(app)
+    assert motivo_da_pagina("gratuito", "pares") in _textos(app)
 
 
 def test_pro_ve_os_recursos(banco, monkeypatch):
@@ -38,23 +43,23 @@ def test_pro_ve_os_recursos(banco, monkeypatch):
     _virar_pro(banco, "ana")
     app = abrir_app("aprendizado")
     assert not app.exception
-    assert "faz parte do plano **Pro" not in _textos(app)
+    assert FORA_DO_PLANO not in _textos(app)
     ir_para(app, "pares")
     assert not app.exception
-    assert "faz parte do plano **Pro" not in _textos(app)
+    assert FORA_DO_PLANO not in _textos(app)
 
 
 def test_plano_muda_no_meio_da_sessao_depois_de_um_minuto(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app("aprendizado")
-    assert "faz parte do plano **Pro" in _textos(app)
+    assert FORA_DO_PLANO in _textos(app)
     _virar_pro(banco, "ana")
     app.run()  # ainda dentro do minuto: segue no plano antigo
-    assert "faz parte do plano **Pro" in _textos(app)
+    assert FORA_DO_PLANO in _textos(app)
     app.session_state["usuario_em"] = 0  # como se já tivesse passado o minuto
     app.run()
     assert app.session_state["usuario"].plano == "pro"
-    assert "faz parte do plano **Pro" not in _textos(app)
+    assert FORA_DO_PLANO not in _textos(app)
 
 
 def test_gratuito_nao_passa_de_3_favoritos(banco, monkeypatch):
@@ -117,7 +122,7 @@ def test_modo_local_nao_tem_limites():
     app.run()
     ir_para(app, "aprendizado")
     assert not app.exception
-    assert "faz parte do plano **Pro" not in _textos(app)
+    assert FORA_DO_PLANO not in _textos(app)
 
 
 def test_menu_marca_com_cadeado_as_paginas_do_pro_so_no_plano_gratuito(

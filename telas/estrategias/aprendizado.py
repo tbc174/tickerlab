@@ -12,7 +12,6 @@ from src import aprendizado, graficos
 from src.acaso import testar_contra_o_acaso
 from src.backtest import executar_backtest
 from src.estrategias import gerar_posicao
-from src.planos import APRENDIZADO_DE_MAQUINA
 from telas.comum import (
     ajuda_do,
     cabecalho_da_pagina,
@@ -21,7 +20,7 @@ from telas.comum import (
     formatar_pct,
     mostrar_grafico,
 )
-from telas.conta.assinatura import exigir_recurso
+from telas.conta.assinatura import exigir_pagina
 from telas.estrategias.comum import (
     ESTRATEGIA_DE_REFERENCIA,
     _custo_do_experimento,
@@ -341,7 +340,7 @@ def secao_aprendizado(dados, taxa_livre_de_risco):
 
 def pagina_aprendizado():
     cabecalho_da_pagina("aprendizado")
-    if not exigir_recurso(APRENDIZADO_DE_MAQUINA):
+    if not exigir_pagina("aprendizado"):
         return
     c = carregar_contexto()
     secao_aprendizado(c.dados, c.taxa_livre_de_risco)

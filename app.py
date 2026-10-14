@@ -9,8 +9,13 @@ from src import marca, tema_do_app
 from src.estilo import CSS_DO_APP
 from src.link import ler_parametros
 from src.logs import configurar_logs
-from src.paginas import GRUPOS, PAGINA_INICIAL, PAGINAS, paginas_do_grupo
-from src.planos import pode_usar
+from src.paginas import (
+    GRUPOS,
+    PAGINA_INICIAL,
+    PAGINAS,
+    motivo_da_pagina,
+    paginas_do_grupo,
+)
 from telas.analise import (
     pagina_comparar,
     pagina_correlacao,
@@ -200,7 +205,7 @@ def montar_navegacao(e_admin=False):
         for p in paginas_do_grupo(grupo):
             if p.somente_admin and not e_admin:
                 continue
-            bloqueada = p.recurso is not None and not pode_usar(plano, p.recurso)
+            bloqueada = motivo_da_pagina(plano, p.chave) is not None
             e_a_inicial = p.chave == PAGINA_INICIAL
             pagina_do_menu = st.Page(
                 FUNCOES_DAS_PAGINAS[p.chave],
