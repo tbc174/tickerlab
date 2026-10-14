@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import fre
+from base import fre, rotulos
 from src import acervo
 from src.banco.modelo import coletas
 from src.eventos import ler_ipe
@@ -40,6 +40,8 @@ TABELAS = {
         "cvm-hist-fre", fre.ler_proventos
     ),  # 2010 a 2022 (o FRE novo não tem a tabela)
     "eventos_de_capital": Tabela("cvm-hist-fre", fre.ler_eventos_de_capital),
+    # série B2: rótulos de recuperação judicial, falência e liquidação (base/rotulos.py)
+    "insolvencia": Tabela("cvm-hist-ipe", rotulos.ler_insolvencia_do_ipe),
 }
 
 
