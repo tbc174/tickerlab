@@ -120,7 +120,11 @@ def test_icones_do_app_para_instalar_no_celular():
     mascaravel = Image.open(marca.ARQUIVO_DO_ICONE_MASCARAVEL).convert("RGBA")
     lado = mascaravel.width
     # fundo marinho até a borda: nada transparente para o celular recortar
-    assert all(mascaravel.getpixel((x, y))[3] == 255 for x in (0, lado - 1) for y in (0, lado - 1))
+    assert all(
+        mascaravel.getpixel((x, y))[3] == 255
+        for x in (0, lado - 1)
+        for y in (0, lado - 1)
+    )
     marinho = tuple(int(marca.MARINHO[i : i + 2], 16) for i in (1, 3, 5))
     raio_seguro = 0.4 * lado
     for x in range(0, lado, 4):
