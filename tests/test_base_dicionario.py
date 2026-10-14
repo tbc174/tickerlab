@@ -160,3 +160,42 @@ def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
     }
     for tabela, esperadas in colunas.items():
         assert set(TABELAS[tabela].colunas) == set(esperadas), tabela
+
+
+def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
+    """B13, parte 2: as tabelas da base histórica (servidor de casa) entram no dicionário. Onde o
+    código não tem a lista de colunas numa constante, a lista é a das tabelas reais montadas em
+    14/10/2026 (esquema lido dos Parquets)."""
+    from base import auditores, controladas, empresa_serie, fre, rotulos
+    from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
+
+    origem = ["origem_sha256", "origem_coletada_em", "montado_em"]
+    da_historica = ["ano_do_arquivo", *origem]
+    eventos = [
+        "protocolo", "versao", "cnpj", "empresa", "categoria", "tipo", "assunto", "rotulo",
+        "tema", "materialidade", "referencia", "publicado_em", "link",
+    ]  # fmt: skip
+    situacao = [
+        "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
+        "data_situacao_especial", "mes_do_retrato",
+    ]  # fmt: skip
+    curva = [
+        "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",
+        "disponivel_em",
+    ]  # fmt: skip
+    esperadas = {
+        "eventos": [*eventos, *da_historica],
+        "negociacoes": [*COLUNAS_DAS_NEGOCIACOES, *da_historica],
+        "proventos": [*fre.COLUNAS_DOS_PROVENTOS, *da_historica],
+        "eventos_de_capital": [*fre.COLUNAS_DOS_EVENTOS, *da_historica],
+        "insolvencia": [*rotulos.COLUNAS, *da_historica],
+        "cnpj_situacao_especial": [*situacao, *origem],
+        "auditores": [*auditores.COLUNAS, *da_historica],
+        "trocas_de_auditor": [*auditores.COLUNAS_DAS_TROCAS, "montado_em"],
+        "curva_juros": [*curva, *origem],
+        "controladas": [*controladas.COLUNAS, *da_historica],
+        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em"],
+    }
+    for tabela, colunas in esperadas.items():
+        assert set(TABELAS[tabela].colunas) == set(colunas), tabela
+    assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda

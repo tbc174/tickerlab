@@ -9,15 +9,23 @@ e quem opera muitas vezes é uma controlada da companhia listada. A ligação us
    do CNPJ) e Anatel;
 2. **nome** igual, depois de normalizar (sem acento, pontuação nem "S.A."/"LTDA" no fim), ao nome da
    companhia ou à razão social de uma sociedade dela: ANP e ONS, que só trazem o nome. Nada de semelhança
-   aproximada: um nome parecido não liga (ligar errado é pior que não ligar).
+   aproximada: um nome parecido não liga (ligar errado é pior que não ligar);
+3. **tabela conferida** (`base/conferidas/empresa_serie.csv`, `por` = `tabela`): as siglas sem CNPJ nem
+   razão social (ferrovias da ANTT, companhias aéreas da ANAC) ganham o CNPJ de quem opera, conferido no
+   FRE e no CNPJ da Receita, e daí ligam pelo FRE como no item 1 (as datas vêm da CVM, não da tabela).
+   Uma sigla pode ter mais de um CNPJ: a concessionária e a dona dela (a FCA e a VLI);
+4. **produtos do Comex Stat** (`via` = `produto`): o Comex não diz quem exportou, então a tabela liga o
+   capítulo do NCM (4 dígitos: 2601, minério de ferro) às companhias expostas a ele. É exposição, não
+   posse: sem participação e nunca `principal`.
 
 Uma entidade pode ligar a várias companhias (o FRE guarda ligações antigas e participações sem tipo
-informado, `sem_tipo`): `principal` marca a que usar (`_principal`). Siglas sem CNPJ nem razão social (ferrovias da ANTT, companhias aéreas da ANAC) e os produtos do
-Comex Stat ficam para uma tabela conferida à mão (próximo PR, em `base/conferidas/`). Toda entidade
-aparece no resultado, com ou sem ligação, para a revisão ver o que faltou. `desde` = primeira entrega
-à CVM de um FRE que informava a ligação: ela não vale antes disso (sem olhar o futuro).
+informado, `sem_tipo`): `principal` marca a que usar (`_principal`). Toda entidade aparece no resultado,
+com ou sem ligação, para a revisão ver o que faltou. `desde` = primeira entrega à CVM de um FRE que
+informava a ligação: ela não vale antes disso (sem olhar o futuro). `origem_sha256` leva ao arquivo de
+onde a entidade saiu (no Comex, à versão da tabela conferida).
 """
 
+import hashlib
 import io
 import json
 import re
@@ -37,12 +45,16 @@ from src import acervo
 from src.banco.coletas import originais_mais_recentes
 
 TABELA = "empresa_serie"
+TABELA_CONFERIDA = Path(__file__).resolve().parent / "conferidas" / "empresa_serie.csv"
 COLUNAS_DAS_ENTIDADES = ("fonte", "chave", "nome", "raiz")
 COLUNAS = (
     "fonte", "chave", "nome", "raiz", "cnpj_companhia", "companhia", "via", "por",
-    "participacao", "desde", "ultima_referencia", "principal", "tickers",
+    "participacao", "desde", "ultima_referencia", "principal", "tickers", "origem_sha256",
 )  # fmt: skip
 ORDEM_DAS_VIAS = {"propria": 0, "controlada": 1, "coligada": 2, "sem_tipo": 3}
+PRODUTO = "produto"  # via do Comex: exposição ao produto, não posse
+PELA_TABELA = "tabela"
+COMEX = "comexstat"
 SUFIXOS = {"S", "A", "SA", "LTDA", "EIRELI", "ME", "EPP"}
 NAO_ALFANUMERICO = re.compile(r"[^A-Z0-9]+")
 ANO = re.compile(r"(?<!\d)(\d{4})(?!\d)")
@@ -165,6 +177,34 @@ def entidades_ons(conteudo: bytes) -> pd.DataFrame:
     return _entidades("ons-capacidade-geracao", nomes, nomes, [None] * len(nomes))
 
 
+def entidades_antt(conteudo: bytes) -> pd.DataFrame:
+    """Ferrovias de um CSV anual de produção do SIADE da ANTT (só a sigla: EFC, MRS, RMS...)."""
+    tabela = _csv_em_pedacos(io.BytesIO(conteudo), ["Ferrovia"], "latin-1")
+    siglas = tabela["Ferrovia"].dropna().str.strip().tolist()
+    return _entidades("antt-siade", siglas, siglas, [None] * len(siglas))
+
+
+def entidades_anac(conteudo: bytes) -> pd.DataFrame:
+    """Companhias aéreas brasileiras do arquivo estatístico da ANAC (sigla e nome; sem CNPJ).
+
+    A 1ª linha é "Atualizado em: ..." (pulada). A mesma sigla já foi de mais de uma empresa (ABJ): os
+    nomes vão juntos, separados por " / ".
+    """
+    arquivo = io.BytesIO(conteudo)
+    arquivo.readline()
+    colunas = ["EMPRESA_SIGLA", "EMPRESA_NOME", "EMPRESA_NACIONALIDADE"]
+    tabela = _csv_em_pedacos(arquivo, colunas, "utf-8")
+    brasileiras = tabela[tabela["EMPRESA_NACIONALIDADE"] == "BRASILEIRA"]
+    nomes = (
+        brasileiras.dropna(subset=["EMPRESA_SIGLA", "EMPRESA_NOME"])
+        .groupby("EMPRESA_SIGLA")["EMPRESA_NOME"]
+        .agg(lambda serie: " / ".join(sorted(set(serie.str.strip()))))
+    )
+    return _entidades(
+        "anac-estatistico", nomes.index, nomes.tolist(), [None] * len(nomes)
+    )
+
+
 def _periodo(url: str) -> str:
     return max(PERIODO.findall(url.rsplit("/", 1)[-1]), default="")
 
@@ -185,9 +225,10 @@ def _anatel_mais_recente(urls: Iterable[str]) -> set[str]:
 
 
 def escolher(fonte: str, urls: list[str]) -> set[str]:
-    """Que arquivos da safra mais recente ler: todos os ZIPs da ANP, o "_Colunas" mais novo de cada
+    """Que arquivos da safra mais recente ler: todos os ZIPs da ANP e os anos da ANTT (ferrovia que
+    parou, como a Malha Oeste em 2026, só aparece nos anos antigos), o "_Colunas" mais novo de cada
     ZIP da Anatel e, nas outras, os de maior período no nome (ano, ano-mês ou data)."""
-    if fonte == "anp-vendas-distribuidora":
+    if fonte in ("anp-vendas-distribuidora", "antt-siade"):
         return set(urls)
     if fonte == "anatel-acessos":
         return _anatel_mais_recente(urls)
@@ -203,6 +244,8 @@ LEITORES: dict[str, tuple[Callable[[str], bool], Callable[[bytes], pd.DataFrame]
     "anatel-acessos": (lambda url: url.endswith("_Colunas.csv"), entidades_anatel),
     "anp-vendas-distribuidora": (lambda url: url.endswith(".zip"), entidades_anp),
     "ons-capacidade-geracao": (lambda url: url.endswith(".parquet"), entidades_ons),
+    "antt-siade": (lambda url: url.endswith(".csv"), entidades_antt),
+    "anac-estatistico": (lambda url: url.endswith(".csv"), entidades_anac),
 }
 
 
@@ -215,11 +258,59 @@ def entidades_das_fontes(conexao: sa.Connection) -> pd.DataFrame:
         for original in (o for o in originais if o.url in urls):
             conteudo = acervo.ler_original(original.caminho_do_original)
             if conteudo is not None:
-                partes.append(ler(conteudo))
+                partes.append(ler(conteudo).assign(origem_sha256=original.sha256))
     if not partes:
-        return pd.DataFrame(columns=list(COLUNAS_DAS_ENTIDADES))
+        return pd.DataFrame(columns=[*COLUNAS_DAS_ENTIDADES, "origem_sha256"])
     juntas = pd.concat(partes, ignore_index=True)
     return juntas.drop_duplicates(subset=["fonte", "chave"]).reset_index(drop=True)
+
+
+def tabela_conferida(caminho: Path = TABELA_CONFERIDA) -> pd.DataFrame:
+    """Siglas e produtos ligados à mão a um CNPJ, linha a linha, com observação e conferência."""
+    return pd.read_csv(
+        caminho, sep=";", dtype=str, keep_default_na=False, encoding="utf-8"
+    )
+
+
+def com_a_tabela_conferida(
+    entidades: pd.DataFrame, conferida: pd.DataFrame
+) -> pd.DataFrame:
+    """As entidades sem CNPJ que estão na tabela ganham a raiz (uma linha por CNPJ) e o nome dela;
+    `raiz_conferida` marca essas linhas, para `ligar` dizer `por` = `tabela`."""
+    siglas = conferida.loc[
+        conferida["fonte"] != COMEX, ["fonte", "chave", "nome_na_fonte", "cnpj"]
+    ]
+    juntas = entidades.merge(siglas, on=["fonte", "chave"], how="left")
+    achou = juntas["raiz"].isna() & (juntas["cnpj"].fillna("") != "")
+    juntas["raiz"] = juntas["raiz"].where(~achou, juntas["cnpj"].map(_raiz))
+    juntas["nome"] = juntas["nome"].where(~achou, juntas["nome_na_fonte"])
+    juntas["raiz_conferida"] = achou
+    return juntas.drop(columns=["nome_na_fonte", "cnpj"])
+
+
+def ligacoes_de_produto(
+    conferida: pd.DataFrame, caminho: Path = TABELA_CONFERIDA
+) -> pd.DataFrame:
+    """Capítulo do NCM → companhias expostas a ele (`via` = `produto`), direto da tabela conferida.
+
+    `origem_sha256` é o da tabela conferida: diz que versão dela fez a ligação.
+    """
+    produtos = conferida[conferida["fonte"] == COMEX]
+    tabela = pd.DataFrame(
+        {
+            "fonte": COMEX,
+            "chave": produtos["chave"],
+            "nome": produtos["nome_na_fonte"],
+            "cnpj_companhia": produtos["cnpj"].map(cnpj14),
+            "companhia": produtos["razao_social"],
+            "via": PRODUTO,
+            "por": PELA_TABELA,
+            "participacao": float("nan"),
+            "principal": False,
+            "origem_sha256": hashlib.sha256(caminho.read_bytes()).hexdigest(),
+        }
+    )
+    return tabela.reindex(columns=list(COLUNAS)).reset_index(drop=True)
 
 
 def _donos(controladas: pd.DataFrame) -> pd.DataFrame:
@@ -267,7 +358,12 @@ def ligar(entidades: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
     ]
     com_raiz = donos.dropna(subset=["raiz"])[["raiz", *campos]].drop_duplicates()
     por_cnpj = entidades.dropna(subset=["raiz"]).merge(com_raiz, on="raiz")
-    por_cnpj["por"] = "cnpj"
+    pela_tabela = (
+        por_cnpj["raiz_conferida"].fillna(False).astype(bool)
+        if "raiz_conferida" in por_cnpj
+        else pd.Series(False, index=por_cnpj.index)
+    )
+    por_cnpj["por"] = pela_tabela.map({True: PELA_TABELA, False: "cnpj"})
     sem_cnpj = entidades[entidades["raiz"].isna()].copy()
     sem_cnpj["nome_normalizado"] = sem_cnpj["nome"].map(nome_normalizado)
     com_nome = donos.dropna(subset=["nome_normalizado"])
@@ -277,12 +373,12 @@ def ligar(entidades: pd.DataFrame, controladas: pd.DataFrame) -> pd.DataFrame:
     por_nome["por"] = "nome"
     ligadas = pd.concat([por_cnpj, por_nome], ignore_index=True)
     chaves_ligadas = set(zip(ligadas["fonte"], ligadas["chave"], strict=True))
-    sobra = entidades[
-        [
-            (f, c) not in chaves_ligadas
-            for f, c in zip(entidades["fonte"], entidades["chave"], strict=True)
-        ]
+    sem_ligacao = [
+        (f, c) not in chaves_ligadas
+        for f, c in zip(entidades["fonte"], entidades["chave"], strict=True)
     ]
+    # uma sigla com dois CNPJs na tabela e nenhum ligado fica numa linha só
+    sobra = entidades.loc[sem_ligacao].drop_duplicates(subset=["fonte", "chave"])
     tudo = pd.concat([ligadas, sobra], ignore_index=True)
     tudo["principal"] = _principal(tudo)
     tudo = tudo.reindex(columns=list(COLUNAS))
@@ -321,7 +417,8 @@ def _principal(ligacoes: pd.DataFrame) -> pd.Series:
         na_position="last",
     )
     primeira = ~ordem.duplicated(subset=["fonte", "chave"])
-    return (primeira & ordem["cnpj_companhia"].notna()).reindex(ligacoes.index)
+    valida = ordem["cnpj_companhia"].notna() & (ordem["via"] != PRODUTO)
+    return (primeira & valida).reindex(ligacoes.index)
 
 
 def tickers_por_cnpj(conteudo_do_fca: bytes) -> dict[str, str]:
@@ -350,14 +447,22 @@ def _tickers_do_fca_mais_recente(conexao: sa.Connection) -> dict[str, str]:
 def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     """`<pasta>/empresa_serie/empresa_serie.parquet` (precisa de `<pasta>/controladas/`).
 
-    Devolve quantas linhas ligaram a uma companhia (0 e nada gravado sem controladas ou entidades).
+    Devolve quantas linhas ligaram a uma companhia, sem contar a exposição a produto do Comex (0 e
+    nada gravado sem controladas ou entidades).
     """
     anos = sorted((pasta / "controladas").glob("*.parquet"))
     entidades = entidades_das_fontes(conexao)
     if not anos or entidades.empty:
         return 0
     controladas = pd.concat([pd.read_parquet(a) for a in anos], ignore_index=True)
-    tabela = ligar(entidades, controladas)
+    conferida = tabela_conferida()
+    tabela = pd.concat(
+        [
+            ligar(com_a_tabela_conferida(entidades, conferida), controladas),
+            ligacoes_de_produto(conferida),
+        ],
+        ignore_index=True,
+    )
     tabela["tickers"] = tabela["cnpj_companhia"].map(
         _tickers_do_fca_mais_recente(conexao)
     )
@@ -370,4 +475,4 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     parcial = destino.with_name(destino.name + ".parcial")
     tabela.to_parquet(parcial, index=False)
     parcial.replace(destino)
-    return int(tabela["cnpj_companhia"].notna().sum())
+    return int((tabela["cnpj_companhia"].notna() & (tabela["via"] != PRODUTO)).sum())
