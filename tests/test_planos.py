@@ -10,12 +10,15 @@ from src.banco.modelo import PLANOS
 from src.banco.usuarios import buscar_por_email, entrar
 from src.planos import (
     APRENDIZADO_DE_MAQUINA,
+    CARTEIRA_NO_RESEARCH,
     LIMITES_DOS_PLANOS,
     PARES,
     LimiteDoPlanoError,
     conferir_favoritos,
     conferir_simulacoes,
     limites_do,
+    motivo_sem_acesso,
+    plano_que_libera,
     pode_usar,
     tabela_de_planos,
 )
@@ -42,6 +45,34 @@ def test_plano_desconhecido_vale_como_gratuito(plano):
 def test_recursos_do_pro():
     assert pode_usar("pro", APRENDIZADO_DE_MAQUINA) and pode_usar("pro", PARES)
     assert not pode_usar("gratuito", PARES)
+
+
+@pytest.mark.parametrize("recurso", [APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH])
+def test_plano_que_libera_e_o_primeiro_que_tem_o_recurso(recurso):
+    assert plano_que_libera(recurso) == "pro"
+
+
+def test_plano_que_libera_recusa_recurso_inexistente():
+    with pytest.raises(ValueError):
+        plano_que_libera("voar")
+
+
+def test_motivo_sem_acesso_explica_o_plano_que_libera():
+    assert motivo_sem_acesso("gratuito", PARES) == (
+        "Pairs trading faz parte do plano Pro. Você está no plano Gratuito."
+    )
+    assert motivo_sem_acesso("plus", APRENDIZADO_DE_MAQUINA) == (
+        "Aprendizado de máquina faz parte do plano Pro. Você está no plano Plus."
+    )
+
+
+@pytest.mark.parametrize("plano", [None, "", "PRO", "empresa"])
+def test_motivo_sem_acesso_trata_plano_estranho_como_gratuito(plano):
+    assert motivo_sem_acesso(plano, PARES) == motivo_sem_acesso("gratuito", PARES)
+
+
+def test_motivo_sem_acesso_e_vazio_quando_o_plano_tem_o_recurso():
+    assert motivo_sem_acesso("pro", PARES) is None
 
 
 def test_limite_de_simulacoes():
