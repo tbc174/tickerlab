@@ -8,15 +8,22 @@ import { lerNumero } from "./numeros";
 
 export const EXEMPLO_DO_CONVERSOR = { valor: "100", de: "USD", para: REAL };
 
-/** "US$ 100,00", "€ 89,30", "R$ 500,00": o valor com o símbolo da moeda. */
+/** "US$ 100,00", "€ 89,30", "R$ 500,00": o valor com o símbolo da moeda. Código que o navegador
+ * não conhece (o BC pode acrescentar uma moeda) sai como "1.234,56 XYZ", sem quebrar a página. */
 export function formatarNaMoeda(valor: number, codigo: string): string {
   const casas = codigo === "JPY" ? 0 : 2;
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: codigo,
-    minimumFractionDigits: casas,
-    maximumFractionDigits: casas,
-  }).format(valor);
+  try {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: codigo,
+      minimumFractionDigits: casas,
+      maximumFractionDigits: casas,
+    }).format(valor);
+  } catch (erro) {
+    if (!(erro instanceof RangeError)) throw erro;
+    const numero = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas });
+    return `${numero.format(valor)} ${codigo}`;
+  }
 }
 
 export function cotacoesDeVenda(moedas: Moeda[]): Record<string, number> {

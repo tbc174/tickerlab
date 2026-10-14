@@ -84,6 +84,10 @@ describe("conversor de moedas", () => {
     expect(resultado()).toBe(formatarNaMoeda((100 * 5.0096) / 5.6092, "EUR"));
   });
 
+  it("código de moeda que o navegador não conhece não quebra a página", () => {
+    expect(formatarNaMoeda(1234.5, "ZZZ")).toBe("1.234,50 ZZZ");
+  });
+
   it("cotação de vários dias atrás leva o aviso", async () => {
     const velhos = { ...DADOS, moedas: DADOS.moedas!.map((m) => ({ ...m, data: "2026-01-02" })) };
     await abrir("moedas", Promise.resolve(new Response(JSON.stringify(velhos))));
