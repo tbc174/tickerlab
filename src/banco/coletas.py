@@ -17,6 +17,7 @@ import sqlalchemy as sa
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
+from src.versao_do_codigo import versao_do_codigo
 
 log = logging.getLogger(__name__)
 
@@ -153,6 +154,7 @@ def registrar_arquivo(
             detalhe=None if detalhe is None else detalhe[:LIMITE_DO_DETALHE],
             caminho_do_original=caminho_do_original,
             baixado_em=agora or datetime.now(UTC),
+            versao_do_codigo=versao_do_codigo(),
         )
     )
 

@@ -626,6 +626,8 @@ coletas = sa.Table(
     sa.Column("detalhe", sa.String(300)),
     sa.Column("caminho_do_original", sa.String(200)),  # no acervo (src/acervo.py)
     _momento("baixado_em"),
+    # o commit que baixou (migração 0036; vazio nas linhas de antes da exigência 13 da ADR 0055)
+    sa.Column("versao_do_codigo", sa.String(60)),
     sa.CheckConstraint(
         "situacao IN ('ok', 'nao_encontrado', 'falhou')", name="ck_coletas_situacao"
     ),

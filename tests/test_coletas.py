@@ -157,3 +157,35 @@ def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
         6_000_000_000,
         "lm=x",
     )
+
+
+def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):
+    """Série 3, PR 3 (exigência 13 da ADR 0055): cada arquivo registrado diz qual commit o baixou."""
+    from src import versao_do_codigo as vc
+
+    monkeypatch.setenv(vc.VARIAVEL, "587cb6c4d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7")
+    com_registro("cvm-eventos", lambda url: b"conteudo")(URL)
+    [linha] = _todas(banco)
+    assert linha.versao_do_codigo == "587cb6c4d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7"
+
+
+def test_migracao_da_versao_do_codigo_sobe_e_desce(tmp_path):
+    import sqlalchemy as sa
+
+    from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
+
+    url = f"sqlite:///{(tmp_path / 'm.sqlite').as_posix()}"
+    migrar_para("head", url=url)
+    motor = criar_engine(url)
+
+    def colunas() -> set[str]:
+        return {c["name"] for c in sa.inspect(motor).get_columns("coletas")}
+
+    try:
+        assert "versao_do_codigo" in colunas()
+        desfazer_ate("0035", url=url)
+        assert "versao_do_codigo" not in colunas()
+        migrar_para("head", url=url)
+        assert "versao_do_codigo" in colunas()
+    finally:
+        motor.dispose()
