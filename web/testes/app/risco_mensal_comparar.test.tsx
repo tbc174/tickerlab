@@ -110,8 +110,11 @@ describe("comparar", () => {
   it("mais de 5 ativos: avisa quem ficou de fora e pede só os 4 primeiros", async () => {
     const { buscar } = abrir("/comparar?com=%5EBVSP&com=%5EGSPC&com=VALE3&com=AAPL&com=ITUB4");
     expect(await screen.findByText(/Ficaram de fora: ITUB4/)).toBeTruthy();
-    expect(enderecos(buscar)).toContain(
-      "/api/v1/comparacao?ticker=PETR4.SA&com=%5EBVSP&com=%5EGSPC&com=VALE3&com=AAPL&periodo=2y",
+    // o aviso sai da URL antes do pedido à API: espere o pedido (sem isso o teste falha às vezes)
+    await waitFor(() =>
+      expect(enderecos(buscar)).toContain(
+        "/api/v1/comparacao?ticker=PETR4.SA&com=%5EBVSP&com=%5EGSPC&com=VALE3&com=AAPL&periodo=2y",
+      ),
     );
   });
 
