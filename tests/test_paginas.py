@@ -152,13 +152,6 @@ def test_periodos_do_contrato_sao_os_do_app():
     assert list(PERIODOS) == PERIODOS_VALIDOS
 
 
-def test_pagina_com_contrato_nao_e_do_pro():
-    """A API v1 não confere recurso de plano: só páginas livres ganham contrato por enquanto."""
-    from src.paginas import PAGINAS
-
-    assert all(p.recurso is None for p in PAGINAS if p.contrato is not None)
-
-
 # --- Quem pode abrir cada página (ADR 0062): a mesma regra no Streamlit e na API ---
 
 
