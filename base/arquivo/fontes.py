@@ -345,6 +345,14 @@ FONTES: list[Fonte] = [
             "divida-consolidada-estados",
         ),
     ),
+    # curva de juros própria sem B3 nem ANBIMA (série B12, 14/10/2026): taxas e PUs de todos os
+    # títulos do Tesouro Direto desde 2004 (CSV republicado todo dia útil) e os leilões desde 2000
+    Fonte(
+        "tesouro-br-direto",
+        "diaria",
+        _ckan(PORTAL_DO_TESOURO, "taxas-dos-titulos-ofertados-pelo-tesouro-direto"),
+    ),
+    Fonte("tesouro-br-leiloes", "semanal", _ckan(PORTAL_DO_TESOURO, "ds013")),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

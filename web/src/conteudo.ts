@@ -128,6 +128,7 @@ export const conteudoDoApp: {
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
   entrada: { aviso: string };
+  assinatura: { retorno_ok: string; retorno_cancelado: string };
   aceite: {
     versao: string;
     titulo: string;

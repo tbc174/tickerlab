@@ -447,6 +447,20 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "EnderecoDoStripeV1": {
+        "description": "A página de pagamento ou o portal do Stripe: a tela leva a pessoa até lá.",
+        "properties": {
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "EnderecoDoStripeV1",
+        "type": "object"
+      },
       "EuV1": {
         "description": "Quem está logado: só o necessário para a tela (sem e-mail).",
         "properties": {
@@ -950,6 +964,17 @@
       "MeuPlanoV1": {
         "description": "A página de planos: o plano da conta, quanto já usou e a tabela (os textos do Streamlit).",
         "properties": {
+          "acao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acao"
+          },
           "aviso": {
             "title": "Aviso",
             "type": "string"
@@ -973,6 +998,10 @@
             "title": "Nome Do Plano",
             "type": "string"
           },
+          "nota_do_cartao": {
+            "title": "Nota Do Cartao",
+            "type": "string"
+          },
           "plano": {
             "title": "Plano",
             "type": "string"
@@ -990,6 +1019,17 @@
             },
             "title": "Tabela",
             "type": "array"
+          },
+          "texto_da_acao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Da Acao"
           }
         },
         "required": [
@@ -999,7 +1039,10 @@
           "favoritos",
           "frase_da_assinatura",
           "aviso",
-          "tabela"
+          "tabela",
+          "acao",
+          "texto_da_acao",
+          "nota_do_cartao"
         ],
         "title": "MeuPlanoV1",
         "type": "object"
@@ -2323,6 +2366,100 @@
           }
         },
         "summary": "Meus Dados"
+      }
+    },
+    "/v1/pagamento-da-assinatura": {
+      "post": {
+        "description": "A página de pagamento do Stripe para assinar o Pro (só modo de teste; só admins, ADR 0029).\n\nA rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.",
+        "operationId": "pagamento_da_assinatura_v1_pagamento_da_assinatura_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pagamento Da Assinatura"
+      }
+    },
+    "/v1/portal-da-assinatura": {
+      "post": {
+        "description": "O portal do Stripe para trocar o cartão, ver faturas ou cancelar a própria assinatura.",
+        "operationId": "portal_da_assinatura_v1_portal_da_assinatura_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnderecoDoStripeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Portal Da Assinatura"
       }
     },
     "/v1/retorno-mensal": {

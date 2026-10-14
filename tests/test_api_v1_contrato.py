@@ -35,6 +35,8 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/links-compartilhados",
         "/v1/revogar-link",
         "/v1/meus-dados",
+        "/v1/pagamento-da-assinatura",
+        "/v1/portal-da-assinatura",
     }
 
 

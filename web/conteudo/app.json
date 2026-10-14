@@ -9,6 +9,10 @@
     "titulo": "Antes de começar",
     "versao": "2026-10-13.7"
   },
+  "assinatura": {
+    "retorno_cancelado": "Pagamento cancelado. Nada foi cobrado.",
+    "retorno_ok": "Pagamento recebido! O plano muda assim que o Stripe confirmar, em poucos segundos."
+  },
   "backtest": {
     "estrategias": [
       {
