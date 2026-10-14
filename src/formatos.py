@@ -37,13 +37,41 @@ _VALORES_DE_TESTE = (
     0.1234, -0.0567, 0.0, -0.0, 0.12125, 0.12375, -0.12125, 0.00125, 0.10625, 0.02375,
     12.5, 1.125, 2.675, -1.125, 0.125, 1e-9, -1e-9, 123.456789, None,
 )  # fmt: skip
-FORMATOS = ("pct", "pct_com_sinal", "decimal")
+FORMATOS = ("pct", "pct_com_sinal", "decimal", "inteiro")
+
+# o formato de cada métrica do backtest (o resto sai com duas casas: Sharpe, Sortino, Calmar...)
+METRICAS_EM_PORCENTAGEM_COM_SINAL = {
+    "Retorno total",
+    "Retorno anualizado",
+    "Expectativa por operação",
+}
+METRICAS_EM_PORCENTAGEM = {
+    "Chance de não ser sorte",
+    "Volatilidade anual",
+    "Maior queda",
+    "Exposição média",
+    "Taxa de acerto",
+}
+METRICAS_INTEIRAS = {"Dias debaixo d'água (máx.)", "Operações"}
+
+
+def formato_da_metrica(nome: str) -> str:
+    """ "pct_com_sinal", "pct", "inteiro" ou "decimal", conforme a métrica."""
+    if nome in METRICAS_EM_PORCENTAGEM_COM_SINAL:
+        return "pct_com_sinal"
+    if nome in METRICAS_EM_PORCENTAGEM:
+        return "pct"
+    if nome in METRICAS_INTEIRAS:
+        return "inteiro"
+    return "decimal"
 
 
 def formatar(valor: float | None, formato: str) -> str:
-    """O número no formato de um item de painel: "pct", "pct_com_sinal" ou "decimal"."""
+    """O número num formato: "pct", "pct_com_sinal", "decimal" ou "inteiro" (parte inteira)."""
     if formato == "decimal":
         return formatar_decimal(valor)
+    if formato == "inteiro":
+        return SEM_NUMERO if valor is None or _sem_numero(valor) else f"{int(valor)}"
     return formatar_pct(valor, com_sinal=formato == "pct_com_sinal")
 
 

@@ -104,6 +104,23 @@ export const conteudoDoApp: {
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
   retorno_mensal: { meses: string[]; legenda: string };
+  backtest: {
+    estrategias: {
+      nome: string;
+      grupo: string;
+      parametros: {
+        nome: string;
+        rotulo: string;
+        padrao: number | string;
+        minimo: number | null;
+        maximo: number | null;
+        passo: number;
+        ajuda: string;
+        opcoes: string[];
+      }[];
+    }[];
+    metricas_por_formato: Record<string, string[]>;
+  };
   comparacao: {
     atalhos: { nome: string; ticker: string }[];
     padrao: string[];

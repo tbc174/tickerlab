@@ -190,3 +190,18 @@ export interface ComparacaoDoAtivoV1 {
   comparacao: ComparacaoV1;
   sem_dados: string[];
 }
+
+/** As métricas (na ordem da tela), a curva de capital em base 100 e quantas operações houve. */
+export interface BacktestV1 {
+  metricas: Record<string, number | null>;
+  curva_de_capital: CurvaV1;
+  operacoes: number;
+}
+
+export interface BacktestDoAtivoV1 {
+  ativo: AtivoV1;
+  estrategia: string;
+  parametros: Record<string, number | string>;
+  custo_por_operacao: number;
+  backtest: BacktestV1;
+}

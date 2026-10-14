@@ -15,6 +15,11 @@
     "valor": 0.1234
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.1234
+  },
+  {
     "formato": "pct",
     "texto": "-5,67%",
     "valor": -0.0567
@@ -27,6 +32,11 @@
   {
     "formato": "decimal",
     "texto": "-0,06",
+    "valor": -0.0567
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": -0.0567
   },
   {
@@ -45,6 +55,11 @@
     "valor": 0.0
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.0
+  },
+  {
     "formato": "pct",
     "texto": "-0,00%",
     "valor": -0.0
@@ -57,6 +72,11 @@
   {
     "formato": "decimal",
     "texto": "-0,00",
+    "valor": -0.0
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": -0.0
   },
   {
@@ -75,6 +95,11 @@
     "valor": 0.12125
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.12125
+  },
+  {
     "formato": "pct",
     "texto": "12,38%",
     "valor": 0.12375
@@ -87,6 +112,11 @@
   {
     "formato": "decimal",
     "texto": "0,12",
+    "valor": 0.12375
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": 0.12375
   },
   {
@@ -105,6 +135,11 @@
     "valor": -0.12125
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -0.12125
+  },
+  {
     "formato": "pct",
     "texto": "0,12%",
     "valor": 0.00125
@@ -117,6 +152,11 @@
   {
     "formato": "decimal",
     "texto": "0,00",
+    "valor": 0.00125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": 0.00125
   },
   {
@@ -135,6 +175,11 @@
     "valor": 0.10625
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.10625
+  },
+  {
     "formato": "pct",
     "texto": "2,38%",
     "valor": 0.02375
@@ -147,6 +192,11 @@
   {
     "formato": "decimal",
     "texto": "0,02",
+    "valor": 0.02375
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": 0.02375
   },
   {
@@ -165,6 +215,11 @@
     "valor": 12.5
   },
   {
+    "formato": "inteiro",
+    "texto": "12",
+    "valor": 12.5
+  },
+  {
     "formato": "pct",
     "texto": "112,50%",
     "valor": 1.125
@@ -177,6 +232,11 @@
   {
     "formato": "decimal",
     "texto": "1,12",
+    "valor": 1.125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "1",
     "valor": 1.125
   },
   {
@@ -195,6 +255,11 @@
     "valor": 2.675
   },
   {
+    "formato": "inteiro",
+    "texto": "2",
+    "valor": 2.675
+  },
+  {
     "formato": "pct",
     "texto": "-112,50%",
     "valor": -1.125
@@ -207,6 +272,11 @@
   {
     "formato": "decimal",
     "texto": "-1,12",
+    "valor": -1.125
+  },
+  {
+    "formato": "inteiro",
+    "texto": "-1",
     "valor": -1.125
   },
   {
@@ -225,6 +295,11 @@
     "valor": 0.125
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": 0.125
+  },
+  {
     "formato": "pct",
     "texto": "0,00%",
     "valor": 1e-09
@@ -237,6 +312,11 @@
   {
     "formato": "decimal",
     "texto": "0,00",
+    "valor": 1e-09
+  },
+  {
+    "formato": "inteiro",
+    "texto": "0",
     "valor": 1e-09
   },
   {
@@ -255,6 +335,11 @@
     "valor": -1e-09
   },
   {
+    "formato": "inteiro",
+    "texto": "0",
+    "valor": -1e-09
+  },
+  {
     "formato": "pct",
     "texto": "12345,68%",
     "valor": 123.456789
@@ -270,6 +355,11 @@
     "valor": 123.456789
   },
   {
+    "formato": "inteiro",
+    "texto": "123",
+    "valor": 123.456789
+  },
+  {
     "formato": "pct",
     "texto": "—",
     "valor": null
@@ -281,6 +371,11 @@
   },
   {
     "formato": "decimal",
+    "texto": "—",
+    "valor": null
+  },
+  {
+    "formato": "inteiro",
     "texto": "—",
     "valor": null
   }

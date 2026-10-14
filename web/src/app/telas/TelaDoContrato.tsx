@@ -3,7 +3,13 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { Formulario, buscaDosValores, parametrosDoPedido, valoresIniciais } from "../Formulario";
+import {
+  Formulario,
+  buscaDosValores,
+  corpoDoPedido,
+  parametrosDoPedido,
+  valoresIniciais,
+} from "../Formulario";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 
@@ -20,7 +26,12 @@ export function TelaDoContrato<T>({ pagina, carregando, resultado, ajustar }: Pr
   const entradas = pagina.contrato?.entradas ?? [];
   const iniciais = valoresIniciais(entradas, busca);
   const { valores, aviso } = ajustar ? ajustar(iniciais) : { valores: iniciais, aviso: null };
-  const pedido = usarPedido<T>(pagina.contrato?.rota ?? "", parametrosDoPedido(entradas, valores));
+  const post = pagina.contrato?.metodo === "POST";
+  const pedido = usarPedido<T>(
+    pagina.contrato?.rota ?? "",
+    post ? {} : parametrosDoPedido(entradas, valores),
+    post ? corpoDoPedido(entradas, valores) : undefined,
+  );
   return (
     <section>
       <h1>{pagina.titulo}</h1>

@@ -152,6 +152,25 @@ def test_app_leva_risco_retorno_mensal_e_comparacao():
     assert {"Volatilidade móvel", "Sazonalidade", "Base 100"} <= set(app["glossario"])
 
 
+def test_app_leva_as_estrategias_e_os_formatos_das_metricas():
+    from src import formatos
+    from src.estrategias import ESTRATEGIAS
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    estrategias = app["backtest"]["estrategias"]
+    assert [e["nome"] for e in estrategias] == list(ESTRATEGIAS)
+    medias = next(e for e in estrategias if e["nome"] == "Cruzamento de médias")
+    curta = medias["parametros"][0]
+    assert (curta["nome"], curta["padrao"], curta["minimo"], curta["maximo"]) == (
+        "curta",
+        20,
+        5,
+        100,
+    )
+    por_formato = app["backtest"]["metricas_por_formato"]
+    assert set(por_formato["inteiro"]) == formatos.METRICAS_INTEIRAS
+
+
 def test_formatacao_leva_os_casos_do_python():
     from src import formatos
 
