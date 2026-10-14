@@ -45,10 +45,11 @@ jobs:
           echo "so_texto=$so_texto" >> "$GITHUB_OUTPUT"
           echo "Só texto: $so_texto"
 
-  # A suíte em 4 máquinas ao mesmo tempo (era uma só, ~8 min e meio de testes; 14/10/2026). Cada
+  # A suíte em 5 máquinas ao mesmo tempo (era uma só, ~8 min e meio de testes; 14/10/2026). Cada
   # parte roda arquivos inteiros, repartidos por tempo (scripts/repartir_testes.py): 3 partes do app,
-  # só com o requirements.txt, e a parte do trader, a única que instala o requirements-trader.txt
-  # (torch, Qt...). A cobertura de cada parte é juntada no job "testes".
+  # só com o requirements.txt, e 2 do trader, as únicas que instalam o requirements-trader.txt
+  # (torch, Qt...); com uma só, o trader era a parte mais lenta. A cobertura de cada parte é
+  # juntada no job "testes".
   partes:
     name: testes (${{ matrix.nome }})
     needs: mudancas
@@ -62,7 +63,10 @@ jobs:
           - { nome: app-1, parte: 1/3, dependencias: requirements.txt }
           - { nome: app-2, parte: 2/3, dependencias: requirements.txt }
           - { nome: app-3, parte: 3/3, dependencias: requirements.txt }
-          - { nome: trader, parte: trader, dependencias: requirements-trader.txt }
+          # o ruff e o pyright (~30 s) vão na trader-2: a trader-1 tem só o test_c1_avaliacao, cujos
+          # 2 testes de mais de 1 min seguram a parte mesmo com os outros núcleos livres
+          - { nome: trader-1, parte: trader-1/2, dependencias: requirements-trader.txt }
+          - { nome: trader-2, parte: trader-2/2, dependencias: requirements-trader.txt, qualidade: true }
     services:
       postgres:
         image: postgres:16
@@ -95,12 +99,12 @@ jobs:
           version: "0.11.32"
           enable-cache: true
           cache-dependency-glob: requirements*.txt
-          cache-suffix: ${{ matrix.nome == 'trader' && 'trader' || 'app' }}
+          cache-suffix: ${{ matrix.dependencias == 'requirements-trader.txt' && 'trader' || 'app' }}
 
       # o painel do trader usa o Qt (PySide6): mesmo sem tela ("offscreen"), ele precisa das
       # bibliotecas gráficas do sistema, que o Ubuntu do GitHub não traz (faltava o libEGL.so.1)
       - name: Bibliotecas do Qt
-        if: matrix.parte == 'trader'
+        if: matrix.dependencias == 'requirements-trader.txt'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
@@ -110,28 +114,29 @@ jobs:
       - name: Instalar dependências
         run: uv pip install -r ${{ matrix.dependencias }} --torch-backend cpu
 
-      # a parte do trader é a mais curta e a única com tudo instalado (o pyright olha o base/, que
-      # usa o scikit-learn): o ruff e o pyright rodam nela
+      # numa parte do trader, as únicas com tudo instalado (o pyright olha o base/, que usa o
+      # scikit-learn)
       - name: ruff (erros de código)
-        if: matrix.parte == 'trader'
+        if: matrix.qualidade
         run: python -m ruff check .
 
       - name: ruff (formatação do app, telas, src, base e tests)
-        if: matrix.parte == 'trader'
+        if: matrix.qualidade
         run: python -m ruff format --check app.py telas src base tests trader scripts
 
       # tipos: só src/ e scripts/ por enquanto (regras e porquês no pyrightconfig.json)
       - name: pyright (tipos)
-        if: matrix.parte == 'trader'
+        if: matrix.qualidade
         run: python -m pyright
 
       # em paralelo, um processo por núcleo lógico ("auto" contaria só os físicos: 2 no GitHub);
       # "loadgroup" reparte teste a teste, menos o grupo "postgres" do test_banco.py (o único que
       # usa o PostgreSQL acima), que fica todo num processo só, um teste por vez. O mínimo da
-      # cobertura só vale para a soma das partes (no job "testes"), não para cada uma.
+      # cobertura só vale para a soma das partes (no job "testes"), não para cada uma. Os 15 testes
+      # mais lentos aparecem no fim, para ver por que uma parte demorou (e refazer os tempos).
       - name: Testes
         run: |
-          python -m pytest -q -n logical --dist loadgroup --parte=${{ matrix.parte }} --cov --cov-report= --cov-fail-under=0
+          python -m pytest -q -n logical --dist loadgroup --parte=${{ matrix.parte }} --durations=15 --cov --cov-report= --cov-fail-under=0
           mv .coverage .coverage.${{ matrix.nome }}
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
