@@ -55,6 +55,10 @@
             ],
             "title": "Aviso Da Origem"
           },
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
           "fim": {
             "format": "date",
             "title": "Fim",
@@ -88,6 +92,7 @@
         },
         "required": [
           "ticker",
+          "codigo",
           "periodo",
           "inicio",
           "fim",
@@ -652,6 +657,10 @@
       },
       "LinhaDaComparacaoV1": {
         "properties": {
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
           "maior_queda": {
             "anyOf": [
               {
@@ -714,6 +723,7 @@
         },
         "required": [
           "ticker",
+          "codigo",
           "retorno_total",
           "retorno_anualizado",
           "volatilidade_anual",

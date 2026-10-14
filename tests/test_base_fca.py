@@ -115,3 +115,23 @@ def test_fica_a_versao_mais_nova_de_cada_documento():
         ignore_index=True,
     )
     assert "antigo" not in set(fca.mais_novas(repetida)["segmento"])
+
+
+# --- formato do código (série 3, PR 5): o emissor pode ter número (B3SA) e o código pode vir sem
+# o número da classe (NEOE) ou com o sufixo de balcão (LTEL3B), como no FCA real
+@pytest.mark.parametrize(
+    ("codigo", "ticker", "emissor"),
+    [
+        ("PETR4", "PETR4", "PETR"),
+        ("TAEE11", "TAEE11", "TAEE"),
+        ("B3SA3", "B3SA3", "B3SA"),  # a própria B3 ficava de fora
+        ("NEOE", None, "NEOE"),  # Neoenergia, FCA de 2019
+        ("LTEL3B", None, "LTEL"),  # Litel, balcão
+        ("4030", None, None),  # CSN
+        ("NÃO HÁ", None, None),
+        ("007424", None, None),
+    ],
+)
+def test_ticker_e_emissor_pelo_codigo_informado(codigo, ticker, emissor):
+    assert fca.ticker_do_codigo(codigo) == ticker
+    assert fca.emissor_do_codigo(codigo) == emissor

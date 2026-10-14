@@ -14,7 +14,7 @@ from datetime import date
 import pandas as pd
 from pydantic import BaseModel
 
-from src import analises, juros_e_inflacao, linha_do_tempo
+from src import analises, catalogo, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.conteudo import descrever_pior_drawdown
@@ -180,7 +180,8 @@ def de_retorno_mensal(mensal: analises.RetornoMensal) -> RetornoMensalV1:
 
 
 class LinhaDaComparacaoV1(BaseModel):
-    ticker: str
+    ticker: str  # o símbolo dos dados (^BVSP)
+    codigo: str  # o que a tela mostra (IBOV)
     retorno_total: float | None
     retorno_anualizado: float | None
     volatilidade_anual: float | None
@@ -206,6 +207,7 @@ def de_comparacao(comparacao: analises.Comparacao) -> ComparacaoV1:
         tabela = [
             LinhaDaComparacaoV1(
                 ticker=str(ticker),
+                codigo=catalogo.codigo(str(ticker)),
                 retorno_total=numero(linha["Retorno total"]),
                 retorno_anualizado=numero(linha["Retorno anualizado"]),
                 volatilidade_anual=numero(linha["Volatilidade anual"]),
@@ -371,7 +373,8 @@ def de_juros_e_inflacao(
 class AtivoV1(BaseModel):
     """O ativo e o período analisados, de onde vieram os preços e a taxa livre de risco usada."""
 
-    ticker: str
+    ticker: str  # o símbolo dos dados (^BVSP); é o que se manda de volta à API
+    codigo: str  # o que a tela mostra (IBOV, PETR4)
     periodo: str
     inicio: date
     fim: date
@@ -387,6 +390,7 @@ def de_ativo(contexto: ContextoDoAtivo) -> AtivoV1:
     indice = pd.DatetimeIndex(contexto.dados.index)
     return AtivoV1(
         ticker=contexto.ticker,
+        codigo=catalogo.codigo(contexto.ticker),
         periodo=contexto.periodo,
         inicio=indice[0].date(),
         fim=indice[-1].date(),

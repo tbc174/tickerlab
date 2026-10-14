@@ -25,7 +25,8 @@ export interface CurvaV1 {
 
 /** O ativo e o período analisados, de onde vieram os preços e a taxa usada. */
 export interface AtivoV1 {
-  ticker: string;
+  ticker: string; // o símbolo dos dados (^BVSP): é o que volta para a API
+  codigo: string; // o que a tela mostra (IBOV, PETR4)
   periodo: string;
   inicio: string;
   fim: string;
@@ -169,6 +170,7 @@ export interface RetornoMensalDoAtivoV1 {
 
 export interface LinhaDaComparacaoV1 {
   ticker: string;
+  codigo: string;
   retorno_total: number | null;
   retorno_anualizado: number | null;
   volatilidade_anual: number | null;

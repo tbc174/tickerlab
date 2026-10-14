@@ -59,9 +59,9 @@ function Resultado({ dados }: { dados: LinhaDoTempoDoAtivoV1 }) {
         </p>
       ) : null}
       <GraficoDeLinha
-        titulo={`${dados.ativo.ticker} em base 100, com os acontecimentos`}
+        titulo={`${dados.ativo.codigo} em base 100, com os acontecimentos`}
         datas={linha.curva.datas}
-        series={[{ nome: dados.ativo.ticker, cor: "var(--serie-1)", valores: linha.curva.valores }]}
+        series={[{ nome: dados.ativo.codigo, cor: "var(--serie-1)", valores: linha.curva.valores }]}
         referencia={100}
         marcos={linha.marcos.map((m) => ({ dia: m.dia_no_grafico, valor: m.valor_no_grafico, descricao: m.descricao }))}
       />

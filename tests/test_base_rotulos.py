@@ -212,3 +212,24 @@ def test_nome_de_tribunal_ou_lei_nao_vira_falencia():
         "33.333.333/0001-33": "falencia",
         "44.444.444/0001-44": "pedido_de_falencia",
     }
+
+
+def test_arquivos_antigos_sem_protocolo_usam_o_link_do_documento():
+    # o IPE de 2003 a 2014 vem com Protocolo_Entrega vazio em todas as linhas
+    def sem_protocolo(cnpj, entrega, numero):
+        return (
+            f"{cnpj};EMPRESA;1;{entrega};{RJ};Petição Inicial;;;{entrega};AP;;1;"
+            f"https://www.rad.cvm.gov.br/x?n={numero}"
+        )
+
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            sem_protocolo("11.111.111/0001-11", "2010-03-01", "900"),
+            sem_protocolo("22.222.222/0001-22", "2010-04-01", "901"),
+        )
+    )
+    assert len(tabela) == 2
+    assert set(tabela["protocolo"]) == {
+        "https://www.rad.cvm.gov.br/x?n=900",
+        "https://www.rad.cvm.gov.br/x?n=901",
+    }
