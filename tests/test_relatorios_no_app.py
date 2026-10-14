@@ -242,4 +242,4 @@ def test_pdf_do_backtest_no_estudio_usa_a_tolerancia_e_o_contador_da_pessoa():
         " ".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages).split()
     )
     assert "você disse aguentar até 20%" in texto
-    assert "variação que você testa em PETR4.SA" in texto
+    assert "variação que você testa em PETR4" in texto

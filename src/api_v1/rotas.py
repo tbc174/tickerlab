@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, conformidade, ficha
+from src import analises, catalogo, conformidade, ficha
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -495,7 +495,9 @@ def montar_ficha_do_backtest(
         tentativas_da_pessoa=tentativas_da_pessoa,
     )
     resultado = ficha.montar_ficha(pedido)
-    texto = ficha.texto_das_tentativas(tentativas_da_pessoa, c.ticker, TETO_POR_PESSOA)
+    texto = ficha.texto_das_tentativas(
+        tentativas_da_pessoa, catalogo.codigo(c.ticker), TETO_POR_PESSOA
+    )
     return esquemas.de_ficha(resultado, pedido, texto)
 
 

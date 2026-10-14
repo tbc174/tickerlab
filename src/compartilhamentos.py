@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timedelta
 
-from src import ficha
+from src import catalogo, ficha
 from src.ficha import Checagem, Ficha, PedidoDaFicha, Resultado, Situacao, Veredito
 from src.link import ticker_valido
 from src.protecoes import Protecoes
@@ -150,7 +150,7 @@ class FichaCongelada:
 
 
 def titulo_da_ficha(ticker: str, estrategia: str) -> str:
-    return f"Foi sorte? {estrategia} em {ticker.removesuffix('.SA')}"
+    return f"Foi sorte? {estrategia} em {catalogo.codigo(ticker)}"
 
 
 def congelar_ficha(
