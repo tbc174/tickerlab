@@ -21,6 +21,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
     caminhos = set(openapi_v1()["paths"])
     assert caminhos == {
         "/v1/configuracao",
+        "/v1/conta",
         "/v1/eu",
         "/v1/visao-geral",
         "/v1/risco",

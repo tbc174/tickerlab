@@ -11,6 +11,7 @@ import streamlit as st
 
 from src import marca
 from src.autenticacao import (
+    AVISO_DA_ENTRADA,
     LoginInvalidoError,
     emails_de_admin,
     esta_em_producao,
@@ -55,10 +56,7 @@ def mostrar_tela_de_entrada():
             "no passado e guardar o que você fizer."
         )
         st.button("Entrar com o Google", type="primary", on_click=st.login)
-        st.caption(
-            "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. "
-            "Nada aqui é recomendação de investimento."
-        )
+        st.caption(AVISO_DA_ENTRADA)
 
 
 def _recusar_abrir_sem_login():

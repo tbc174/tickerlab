@@ -343,6 +343,45 @@
         "title": "ConfiguracaoV1",
         "type": "object"
       },
+      "ContaV1": {
+        "properties": {
+          "administrador": {
+            "title": "Administrador",
+            "type": "boolean"
+          },
+          "limites": {
+            "$ref": "#/components/schemas/LimitesV1"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "plano": {
+            "title": "Plano",
+            "type": "string"
+          },
+          "primeira_vez": {
+            "title": "Primeira Vez",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nome",
+          "plano",
+          "administrador",
+          "limites",
+          "primeira_vez"
+        ],
+        "title": "ContaV1",
+        "type": "object"
+      },
       "CurvaV1": {
         "description": "Uma série ao longo do tempo: as datas e o valor em cada uma (`null` onde não há).",
         "properties": {
@@ -1687,6 +1726,69 @@
           }
         },
         "summary": "Configuracao"
+      }
+    },
+    "/v1/conta": {
+      "post": {
+        "description": "Cria a conta de quem o token prova ser (ou só registra o acesso, se ela já existe).",
+        "operationId": "entrar_v1_conta_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "tl_origem",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tl Origem"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Entrar"
       }
     },
     "/v1/eu": {
