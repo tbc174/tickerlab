@@ -63,12 +63,15 @@ import siteJson from "../conteudo/site.json";
 export const site = siteJson;
 import legalJson from "../conteudo/legal.json";
 import qualidadeJson from "../conteudo/qualidade.json";
+import metodologiaJson from "../conteudo/metodologia.json";
 import novidadesJson from "../conteudo/novidades.json";
 
 // os Termos e a Política, já em HTML (convertidos do Markdown de conteudo/ pelo Python)
 export const legal = legalJson;
 // o selo "dado em conferência" e as regras fixas, com os mesmos textos do app
 export const qualidade = qualidadeJson;
+// padrões por setor, notas e fórmulas do relatório de empresa (src/metodologia_das_notas.py)
+export const metodologia = metodologiaJson;
 
 /** Uma atualização do TickerLab (`Atualizacao` de src/novidades.py), da mais nova à mais velha. */
 export interface Atualizacao {
@@ -103,4 +106,30 @@ export const conteudoDoApp: {
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
+  retorno_mensal: { meses: string[]; legenda: string };
+  backtest: {
+    estrategias: {
+      nome: string;
+      grupo: string;
+      parametros: {
+        nome: string;
+        rotulo: string;
+        padrao: number | string;
+        minimo: number | null;
+        maximo: number | null;
+        passo: number;
+        ajuda: string;
+        opcoes: string[];
+      }[];
+    }[];
+    metricas_por_formato: Record<string, string[]>;
+  };
+  comparacao: {
+    atalhos: { nome: string; ticker: string }[];
+    padrao: string[];
+    max_ativos: number;
+    colunas: { rotulo: string; formato: string }[];
+    aviso_do_limite: string;
+    aviso_sem_dados: string;
+  };
 } = appJson;

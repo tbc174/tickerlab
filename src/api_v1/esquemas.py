@@ -17,6 +17,8 @@ from pydantic import BaseModel
 from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
+from src.conteudo import descrever_pior_drawdown
+from src.indicadores import calcular_media_por_mes
 from src.links_das_fontes import link_da_fonte
 
 BASE = 100.0  # as curvas de valor começam aqui
@@ -107,6 +109,8 @@ class RiscoV1(BaseModel):
     pior_queda: PiorQuedaV1
     janela: int
     volatilidade_movel: CurvaV1
+    frase_da_pior_queda: str  # a mesma frase da tela, sem Markdown
+    aviso_da_janela: str | None  # o período não tem dias para a janela escolhida
 
 
 def de_risco(risco: analises.RiscoAoLongoDoTempo) -> RiscoV1:
@@ -121,6 +125,12 @@ def de_risco(risco: analises.RiscoAoLongoDoTempo) -> RiscoV1:
         ),
         janela=risco.janela,
         volatilidade_movel=curva(risco.volatilidade_movel),
+        frase_da_pior_queda=descrever_pior_drawdown(pior, negrito=False),
+        aviso_da_janela=(
+            analises.aviso_janela_curta(risco.janela)
+            if risco.volatilidade_movel.dropna().empty
+            else None
+        ),
     )
 
 
@@ -141,6 +151,9 @@ class RetornoMensalV1(BaseModel):
     melhor: MesV1
     pior: MesV1
     meses_de_alta: float | None
+    media_por_mes: list[
+        float | None
+    ]  # janeiro a dezembro: a média de cada mês ao longo dos anos
 
 
 def de_retorno_mensal(mensal: analises.RetornoMensal) -> RetornoMensalV1:
@@ -161,6 +174,7 @@ def de_retorno_mensal(mensal: analises.RetornoMensal) -> RetornoMensalV1:
         melhor=MesV1(mes=_mes(mensal.mes_melhor), retorno=numero(mensal.melhor)),
         pior=MesV1(mes=_mes(mensal.mes_pior), retorno=numero(mensal.pior)),
         meses_de_alta=numero(mensal.meses_de_alta),
+        media_por_mes=[numero(v) for v in calcular_media_por_mes(tabela).to_numpy()],
     )
 
 
@@ -180,6 +194,8 @@ class ComparacaoV1(BaseModel):
     dias_descartados: int
     curvas: dict[str, CurvaV1] | None  # cada ativo começando em 100
     tabela: list[LinhaDaComparacaoV1] | None
+    nota: str | None  # como a comparação foi feita (com dados)
+    aviso: str | None  # poucos dias em comum (sem curvas nem tabela)
 
 
 def de_comparacao(comparacao: analises.Comparacao) -> ComparacaoV1:
@@ -202,6 +218,18 @@ def de_comparacao(comparacao: analises.Comparacao) -> ComparacaoV1:
         dias_descartados=comparacao.dias_descartados,
         curvas=curvas,
         tabela=tabela,
+        nota=(
+            analises.nota_da_comparacao(
+                comparacao.dias_em_comum, comparacao.dias_descartados
+            )
+            if tabela is not None
+            else None
+        ),
+        aviso=(
+            None
+            if tabela is not None
+            else analises.aviso_poucos_dias_em_comum(comparacao.dias_em_comum)
+        ),
     )
 
 

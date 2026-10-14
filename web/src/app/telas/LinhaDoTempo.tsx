@@ -1,13 +1,10 @@
 // Linha do tempo no app novo: a curva do ativo em base 100 (nunca o preço) com um ponto em cada
 // documento que a empresa publicou na CVM ou na SEC, e a tabela dos documentos com o link original.
-import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import { Formulario, parametrosDoPedido, valoresIniciais } from "../Formulario";
 import { formatarData } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
 import type { LinhaDoTempoDoAtivoV1, MarcoV1 } from "../tipos";
-import { usarPedido } from "../usarPedido";
-import { ErroDaTela } from "./ErroDaTela";
+import { TelaDoContrato } from "./TelaDoContrato";
 
 /** Só vira link o que é http(s): a API já limpa, e a tela confere de novo (um link "javascript:"
  * rodaria código no navegador de quem clicasse). */
@@ -80,30 +77,11 @@ function Resultado({ dados }: { dados: LinhaDoTempoDoAtivoV1 }) {
 }
 
 export function LinhaDoTempo({ pagina }: { pagina: PaginaDoApp }) {
-  const contrato = pagina.contrato;
-  const [busca, setBusca] = useSearchParams();
-  const entradas = contrato?.entradas ?? [];
-  const valores = valoresIniciais(entradas, busca);
-  const pedido = usarPedido<LinhaDoTempoDoAtivoV1>(contrato?.rota ?? "", parametrosDoPedido(entradas, valores));
   return (
-    <section>
-      <h1>{pagina.titulo}</h1>
-      <p className="apagado">{pagina.descricao}</p>
-      <Formulario
-        key={busca.toString()}
-        entradas={entradas}
-        valores={valores}
-        aoAnalisar={(novos) => setBusca(new URLSearchParams(Object.entries(novos).filter(([, v]) => v !== "")))}
-      />
-      {pedido.estado === "carregando" ? (
-        <p className="apagado" role="status">
-          Montando a linha do tempo…
-        </p>
-      ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
-      ) : (
-        <Resultado dados={pedido.dados} />
-      )}
-    </section>
+    <TelaDoContrato<LinhaDoTempoDoAtivoV1>
+      pagina={pagina}
+      carregando="Montando a linha do tempo…"
+      resultado={(dados) => <Resultado dados={dados} />}
+    />
   );
 }

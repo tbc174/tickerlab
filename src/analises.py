@@ -103,6 +103,41 @@ FRASE_DO_CVAR = (
 )
 
 
+def aviso_janela_curta(janela: int) -> str:
+    """Quando o período não tem dias para a volatilidade móvel da janela escolhida."""
+    return (
+        f"O período é curto demais para uma janela de {janela} dias. "
+        "Escolha uma janela menor ou um período maior."
+    )
+
+
+LEGENDA_DO_MAPA_MENSAL = (
+    "O primeiro e o último mês do período podem estar incompletos. "
+    "A última linha mostra a média de cada mês ao longo dos anos "
+    "(com poucos anos de dados, isso pode ser só coincidência)."
+)
+
+
+def aviso_poucos_dias_em_comum(dias_em_comum: int) -> str:
+    """Quando os ativos comparados têm poucos pregões em comum."""
+    return (
+        f"Só há {dias_em_comum} dias em comum entre esses ativos, e são necessários "
+        f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
+    )
+
+
+def nota_da_comparacao(dias_em_comum: int, dias_descartados: int) -> str:
+    """Como a comparação foi feita (dias em comum, nada inventado, moedas diferentes)."""
+    return (
+        f"Comparação feita em {dias_em_comum} dias em comum. "
+        f"{dias_descartados} dias foram descartados porque algum ativo não tinha preço neles "
+        "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
+        "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
+        "As moedas diferentes (R$ e US$) não atrapalham, porque comparamos a variação "
+        "percentual, não os preços."
+    )
+
+
 def aviso_da_origem(origem: str, ate: str | None) -> str | None:
     """O aviso quando os preços não são os mais recentes do Yahoo ("cache_antigo" ou "exemplo")."""
     if origem == "cache_antigo":

@@ -1,5 +1,447 @@
 {
+  "backtest": {
+    "estrategias": [
+      {
+        "grupo": "Referência",
+        "nome": "Comprar e segurar",
+        "parametros": []
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Cruzamento de médias",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 100,
+            "minimo": 5,
+            "nome": "curta",
+            "opcoes": [],
+            "padrao": 20,
+            "passo": 1,
+            "rotulo": "Média curta (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 300,
+            "minimo": 10,
+            "nome": "longa",
+            "opcoes": [],
+            "padrao": 50,
+            "passo": 5,
+            "rotulo": "Média longa (dias)"
+          },
+          {
+            "ajuda": "A exponencial dá mais peso aos dias recentes e reage mais rápido.",
+            "maximo": null,
+            "minimo": null,
+            "nome": "tipo",
+            "opcoes": [
+              "Simples",
+              "Exponencial"
+            ],
+            "padrao": "Simples",
+            "passo": 1,
+            "rotulo": "Tipo de média"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Filtro de tendência",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 300,
+            "minimo": 20,
+            "nome": "janela",
+            "opcoes": [],
+            "padrao": 200,
+            "passo": 5,
+            "rotulo": "Média de referência (dias)"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Filtro mensal de 10 meses",
+        "parametros": [
+          {
+            "ajuda": "Decide só no fim de cada mês: poucas operações.",
+            "maximo": 24,
+            "minimo": 3,
+            "nome": "meses",
+            "opcoes": [],
+            "padrao": 10,
+            "passo": 1,
+            "rotulo": "Média de (meses)"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Rompimento de canal (Donchian)",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 100,
+            "minimo": 10,
+            "nome": "entrada",
+            "opcoes": [],
+            "padrao": 20,
+            "passo": 5,
+            "rotulo": "Entrada: máxima de (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 50,
+            "minimo": 5,
+            "nome": "saida",
+            "opcoes": [],
+            "padrao": 10,
+            "passo": 5,
+            "rotulo": "Saída: mínima de (dias)"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "MACD",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 30,
+            "minimo": 5,
+            "nome": "rapida",
+            "opcoes": [],
+            "padrao": 12,
+            "passo": 1,
+            "rotulo": "Média rápida"
+          },
+          {
+            "ajuda": "",
+            "maximo": 60,
+            "minimo": 10,
+            "nome": "lenta",
+            "opcoes": [],
+            "padrao": 26,
+            "passo": 1,
+            "rotulo": "Média lenta"
+          },
+          {
+            "ajuda": "",
+            "maximo": 20,
+            "minimo": 3,
+            "nome": "sinal",
+            "opcoes": [],
+            "padrao": 9,
+            "passo": 1,
+            "rotulo": "Linha de sinal"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Momentum 12-1",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 504,
+            "minimo": 21,
+            "nome": "janela",
+            "opcoes": [],
+            "padrao": 252,
+            "passo": 21,
+            "rotulo": "Janela do retorno (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 63,
+            "minimo": 0,
+            "nome": "pulo",
+            "opcoes": [],
+            "padrao": 21,
+            "passo": 1,
+            "rotulo": "Pular os últimos (dias)"
+          }
+        ]
+      },
+      {
+        "grupo": "Tendência",
+        "nome": "Canal de Keltner",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 60,
+            "minimo": 5,
+            "nome": "janela_media",
+            "opcoes": [],
+            "padrao": 20,
+            "passo": 1,
+            "rotulo": "Média exponencial (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 30,
+            "minimo": 5,
+            "nome": "janela_atr",
+            "opcoes": [],
+            "padrao": 10,
+            "passo": 1,
+            "rotulo": "ATR (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 4.0,
+            "minimo": 0.5,
+            "nome": "multiplicador",
+            "opcoes": [],
+            "padrao": 2.0,
+            "passo": 0.5,
+            "rotulo": "Multiplicador do ATR"
+          }
+        ]
+      },
+      {
+        "grupo": "Reversão à média",
+        "nome": "RSI clássico",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 30,
+            "minimo": 2,
+            "nome": "periodo",
+            "opcoes": [],
+            "padrao": 14,
+            "passo": 1,
+            "rotulo": "Período do RSI (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 50,
+            "minimo": 5,
+            "nome": "nivel_de_compra",
+            "opcoes": [],
+            "padrao": 30,
+            "passo": 5,
+            "rotulo": "Comprar abaixo de"
+          },
+          {
+            "ajuda": "",
+            "maximo": 95,
+            "minimo": 50,
+            "nome": "nivel_de_venda",
+            "opcoes": [],
+            "padrao": 70,
+            "passo": 5,
+            "rotulo": "Vender acima de"
+          }
+        ]
+      },
+      {
+        "grupo": "Reversão à média",
+        "nome": "RSI curto com filtro de tendência",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 5,
+            "minimo": 2,
+            "nome": "periodo",
+            "opcoes": [],
+            "padrao": 2,
+            "passo": 1,
+            "rotulo": "Período do RSI (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 30,
+            "minimo": 5,
+            "nome": "nivel_de_compra",
+            "opcoes": [],
+            "padrao": 10,
+            "passo": 5,
+            "rotulo": "Comprar abaixo de"
+          },
+          {
+            "ajuda": "",
+            "maximo": 95,
+            "minimo": 50,
+            "nome": "nivel_de_venda",
+            "opcoes": [],
+            "padrao": 70,
+            "passo": 5,
+            "rotulo": "Vender acima de"
+          },
+          {
+            "ajuda": "Evita comprar quedas quando a tendência geral é de baixa.",
+            "maximo": 300,
+            "minimo": 50,
+            "nome": "filtro",
+            "opcoes": [],
+            "padrao": 200,
+            "passo": 10,
+            "rotulo": "Só comprar acima da média de (dias)"
+          }
+        ]
+      },
+      {
+        "grupo": "Reversão à média",
+        "nome": "Bandas de Bollinger",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 100,
+            "minimo": 5,
+            "nome": "janela",
+            "opcoes": [],
+            "padrao": 20,
+            "passo": 1,
+            "rotulo": "Janela da média (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 3.0,
+            "minimo": 1.0,
+            "nome": "desvios",
+            "opcoes": [],
+            "padrao": 2.0,
+            "passo": 0.5,
+            "rotulo": "Desvios-padrão"
+          },
+          {
+            "ajuda": "Reversão compra quedas fortes; rompimento compra arrancadas.",
+            "maximo": null,
+            "minimo": null,
+            "nome": "modo",
+            "opcoes": [
+              "Reversão",
+              "Rompimento"
+            ],
+            "padrao": "Reversão",
+            "passo": 1,
+            "rotulo": "Modo"
+          }
+        ]
+      },
+      {
+        "grupo": "Reversão à média",
+        "nome": "Z-score do preço",
+        "parametros": [
+          {
+            "ajuda": "",
+            "maximo": 100,
+            "minimo": 5,
+            "nome": "janela",
+            "opcoes": [],
+            "padrao": 20,
+            "passo": 1,
+            "rotulo": "Janela da média (dias)"
+          },
+          {
+            "ajuda": "",
+            "maximo": -0.5,
+            "minimo": -4.0,
+            "nome": "zscore_de_compra",
+            "opcoes": [],
+            "padrao": -2.0,
+            "passo": 0.5,
+            "rotulo": "Comprar abaixo de (z)"
+          },
+          {
+            "ajuda": "",
+            "maximo": 2.0,
+            "minimo": -1.0,
+            "nome": "zscore_de_venda",
+            "opcoes": [],
+            "padrao": 0.0,
+            "passo": 0.5,
+            "rotulo": "Vender acima de (z)"
+          }
+        ]
+      }
+    ],
+    "metricas_por_formato": {
+      "inteiro": [
+        "Dias debaixo d'água (máx.)",
+        "Operações"
+      ],
+      "pct": [
+        "Chance de não ser sorte",
+        "Exposição média",
+        "Maior queda",
+        "Taxa de acerto",
+        "Volatilidade anual"
+      ],
+      "pct_com_sinal": [
+        "Expectativa por operação",
+        "Retorno anualizado",
+        "Retorno total"
+      ]
+    }
+  },
+  "comparacao": {
+    "atalhos": [
+      {
+        "nome": "Ibovespa",
+        "ticker": "^BVSP"
+      },
+      {
+        "nome": "S&P 500",
+        "ticker": "^GSPC"
+      },
+      {
+        "nome": "Bitcoin",
+        "ticker": "BTC-USD"
+      },
+      {
+        "nome": "Dólar (em reais)",
+        "ticker": "USDBRL=X"
+      }
+    ],
+    "aviso_do_limite": "O limite é de {maximo} ativos por comparação. Ficaram de fora: {fora}.",
+    "aviso_sem_dados": "Não encontrei dados para: {sem_dados}. Eles ficaram de fora da comparação.",
+    "colunas": [
+      {
+        "formato": "pct_com_sinal",
+        "rotulo": "Retorno total"
+      },
+      {
+        "formato": "pct_com_sinal",
+        "rotulo": "Retorno anualizado"
+      },
+      {
+        "formato": "pct",
+        "rotulo": "Volatilidade anual"
+      },
+      {
+        "formato": "pct",
+        "rotulo": "Maior queda"
+      },
+      {
+        "formato": "decimal",
+        "rotulo": "Índice de Sharpe"
+      }
+    ],
+    "max_ativos": 5,
+    "padrao": [
+      "Ibovespa",
+      "S&P 500"
+    ]
+  },
   "glossario": {
+    "Base 100": [
+      {
+        "rotulo": "O que é",
+        "texto": "um jeito de comparar ativos de preços e moedas diferentes. Todos começam valendo 100 no primeiro dia em comum, e a linha mostra quanto aquele \"100\" virou depois."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se a linha da Petrobras termina em 150 e a do Ibovespa em 120, quem comprou a Petrobras no começo ganhou +50% e quem comprou o índice ganhou +20%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "só entram os dias em que todos os ativos negociaram. Feriados diferentes (B3 e bolsas dos EUA) fazem alguns dias serem descartados, e o app avisa quantos. Os preços não são preenchidos nem estimados."
+      }
+    ],
     "Boletim Focus": [
       {
         "rotulo": "O que é",
@@ -150,6 +592,34 @@
         "texto": "é uma projeção matemática, não uma previsão. Em períodos curtos o número fica exagerado (1 mês de +14% viraria +438% ao ano), por isso o TickerLab só anualiza períodos de 1 ano ou mais, como manda o padrão internacional de apresentação de desempenho (GIPS); abaixo disso aparece \"—\"."
       }
     ],
+    "Retorno mensal": [
+      {
+        "rotulo": "O que é",
+        "texto": "quanto o preço subiu ou caiu em cada mês do calendário, juntando os retornos de todos os dias do mês. O app mostra uma grade com um ano por linha e um mês por coluna: verde é alta e vermelho é queda."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "+10% em janeiro e -1% em fevereiro dão +8,9% no acumulado dos dois meses, porque os ganhos se acumulam (juros compostos) em vez de simplesmente se somarem."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "o primeiro e o último mês do período podem estar incompletos, então não são comparáveis com os meses inteiros."
+      }
+    ],
+    "Sazonalidade": [
+      {
+        "rotulo": "O que é",
+        "texto": "a ideia de que certos meses costumam ser melhores ou piores que outros, ano após ano. A última linha da grade mostra a média de cada mês ao longo dos anos."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se janeiro teve média de +4% nos últimos cinco anos, dizemos que janeiro foi historicamente bom para aquela ação."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "com poucos anos de dados, a média é só coincidência. Um padrão do passado não garante que se repita."
+      }
+    ],
     "Selic": [
       {
         "rotulo": "O que é",
@@ -176,6 +646,20 @@
       {
         "rotulo": "Cuidado",
         "texto": "volatilidade não é perda. Ela mede a incerteza, para os dois lados."
+      }
+    ],
+    "Volatilidade móvel": [
+      {
+        "rotulo": "O que é",
+        "texto": "a volatilidade calculada só com os últimos N dias (a \"janela\"), recalculada a cada dia. Mostra como o nível de oscilação muda ao longo do tempo."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "uma linha que sobe de 20% para 50% em março de 2020 mostra que o mercado ficou muito mais agitado naquele mês."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "janelas curtas (20 dias) reagem rápido, mas são \"nervosas\"; janelas longas (120 dias) são suaves, mas demoram a perceber mudanças."
       }
     ],
     "Índice de Sharpe": [
@@ -299,5 +783,22 @@
       }
     ],
     "legenda": "Passe o mouse no ? de cada número para ver o que ele significa."
+  },
+  "retorno_mensal": {
+    "legenda": "O primeiro e o último mês do período podem estar incompletos. A última linha mostra a média de cada mês ao longo dos anos (com poucos anos de dados, isso pode ser só coincidência).",
+    "meses": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez"
+    ]
   }
 }

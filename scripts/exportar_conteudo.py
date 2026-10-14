@@ -2,7 +2,8 @@
 
 O Python continua a fonte da verdade (ADR 0048, item 3): módulos (`src/modulos.py`), páginas do app
 (`src/paginas.py`), planos (`src/planos.py`), marca e cores do site (`src/marca.py`), estilos do
-Report Studio e ativos de exemplo (`src/catalogo.py`). O React lê estes JSON no build;
+Report Studio, ativos de exemplo (`src/catalogo.py`) e a metodologia das notas
+(`src/metodologia_das_notas.py`). O React lê estes JSON no build;
 há teste que acusa quando um deles fica velho.
 
 Uso: python -m scripts.exportar_conteudo
@@ -17,18 +18,22 @@ from scripts.markdown_simples import markdown_para_html
 from src import (
     analises,
     catalogo,
+    comparacao,
     formatos,
     marca,
+    metodologia_das_notas,
     modulos,
     novidades,
     paginas,
     planos,
     qualidade_texto,
 )
+from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
+from src.estrategias import ESTRATEGIAS
 
 RAIZ = Path(__file__).resolve().parent.parent
 DESTINO = RAIZ / "web" / "conteudo"
@@ -165,6 +170,10 @@ def _app() -> dict[str, object]:
             *(i.termo for i in analises.ITENS_DO_PAINEL),
             *ji.TERMO_DO_GLOSSARIO.values(),
             "Boletim Focus",
+            "Volatilidade móvel",
+            "Sazonalidade",
+            "Retorno mensal",
+            "Base 100",
         ]
     )
     return {
@@ -178,6 +187,38 @@ def _app() -> dict[str, object]:
             "termos": ji.TERMO_DO_GLOSSARIO,
             "fonte_focus": ji.FONTE_FOCUS,
             "nota_do_focus": ji.NOTA_DO_FOCUS,
+        },
+        "retorno_mensal": {
+            "meses": list(ind.NOMES_DOS_MESES),
+            "legenda": analises.LEGENDA_DO_MAPA_MENSAL,
+        },
+        "comparacao": {
+            "atalhos": [
+                {"nome": n, "ticker": t} for n, t in comparacao.ATALHOS.items()
+            ],
+            "padrao": list(comparacao.ATALHOS_PADRAO),
+            "max_ativos": comparacao.MAX_ATIVOS,
+            "colunas": [
+                {"rotulo": rotulo, "formato": formato}
+                for rotulo, formato in comparacao.FORMATO_DAS_COLUNAS.items()
+            ],
+            "aviso_do_limite": comparacao.AVISO_DO_LIMITE,
+            "aviso_sem_dados": comparacao.AVISO_SEM_DADOS,
+        },
+        "backtest": {
+            "estrategias": [
+                {
+                    "nome": e.nome,
+                    "grupo": e.grupo,
+                    "parametros": [asdict(p) for p in e.parametros],
+                }
+                for e in ESTRATEGIAS.values()
+            ],
+            "metricas_por_formato": {
+                "pct_com_sinal": sorted(formatos.METRICAS_EM_PORCENTAGEM_COM_SINAL),
+                "pct": sorted(formatos.METRICAS_EM_PORCENTAGEM),
+                "inteiro": sorted(formatos.METRICAS_INTEIRAS),
+            },
         },
         "linha_do_tempo": {
             "relevancias": [
@@ -199,6 +240,7 @@ def conteudo() -> dict[str, object]:
         "site": _site(),
         "legal": _legal(),
         "qualidade": _qualidade(),
+        "metodologia": metodologia_das_notas.como_dicionario(),
         "app": _app(),
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),

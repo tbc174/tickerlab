@@ -1,0 +1,191 @@
+{
+  "ancora": "padroes-notas-e-formulas",
+  "formulas": [
+    {
+      "formula": "ROE = margem líquida × giro do ativo × alavancagem",
+      "leitura": "Margem = lucro / receita; giro = receita / ativo; alavancagem = ativo / patrimônio. Fecha com o ROE da tela: lucro de 12 meses e patrimônio do balanço mais recente, os dois dos controladores.",
+      "nome": "DuPont"
+    },
+    {
+      "formula": "dias a receber + dias de estoque − dias a pagar",
+      "leitura": "Receber = contas a receber / receita × 365; estoque e pagar = estoques e fornecedores / custo das vendas × 365, com o saldo médio do último ano quando houver.",
+      "nome": "Ciclo de caixa"
+    },
+    {
+      "formula": "caixa operacional − capex",
+      "leitura": "Capex = compras de imobilizado e intangível na demonstração dos fluxos de caixa.",
+      "nome": "Caixa livre"
+    },
+    {
+      "formula": "capex / depreciação e amortização",
+      "leitura": "Acima de 1, a empresa investe mais do que o desgaste dos ativos.",
+      "nome": "Capex / depreciação"
+    },
+    {
+      "formula": "EBIT / despesas financeiras",
+      "leitura": "Sem despesa financeira no período, não se aplica.",
+      "nome": "Cobertura de juros"
+    },
+    {
+      "formula": "(último ano / primeiro ano)^(1 / anos) − 1",
+      "leitura": "Histórico de até 10 DFPs; ano que falta aparece como falta, nunca como zero, e a variação de um ano para o outro só é calculada entre anos seguidos.",
+      "nome": "Crescimento composto"
+    },
+    {
+      "formula": "um ponto por critério cumprido, de 0 a 9",
+      "leitura": "Piotroski (2000), Value Investing: The Use of Historical Financial Statement Information. Os 9 critérios: ROA positivo, caixa operacional positivo, ROA subiu, caixa operacional maior que o lucro, alavancagem caiu, liquidez corrente subiu, não emitiu ações, margem bruta subiu, giro do ativo subiu. Critério sem dado não conta ponto e aparece como sem dado.",
+      "nome": "Piotroski F"
+    },
+    {
+      "formula": "Z'' = 6,56·X1 + 3,26·X2 + 6,72·X3 + 1,05·X4",
+      "leitura": "Altman (2005), Z'' para empresas não industriais e mercados emergentes. X1 = capital de giro / ativo; X2 = lucros retidos / ativo; X3 = EBIT / ativo; X4 = patrimônio / passivo. Faixas do artigo: acima de 2,6, segura; abaixo de 1,1, de aflição; no meio, cinzenta. A faixa diz onde o número cai na amostra do artigo, não que a empresa vai quebrar.",
+      "nome": "Altman Z''"
+    },
+    {
+      "formula": "M = −4,84 + 0,920·DSRI + 0,528·GMI + 0,404·AQI + 0,892·SGI + 0,115·DEPI − 0,172·SGAI + 4,679·TATA − 0,327·LVGI",
+      "leitura": "Beneish (1999), The Detection of Earnings Manipulation (8 índices). Cada índice compara o ano com o anterior (prazo de receber, margem bruta, qualidade do ativo, crescimento da receita, depreciação, despesas, accruals e alavancagem). Acima de −1,78, o número fica acima do limite que o artigo usou para separar as empresas da amostra: pede uma leitura atenta das demonstrações, não é acusação de manipulação.",
+      "nome": "Beneish M"
+    },
+    {
+      "formula": "preço / lucro por ação; preço / patrimônio por ação",
+      "leitura": "Lucro e patrimônio dos controladores, ações em circulação (sem as de tesouraria). O preço vem do Yahoo Finance e é usado só para o múltiplo.",
+      "nome": "P/L e P/VP"
+    },
+    {
+      "formula": "valor por ação = (caixa livre descontado + perpetuidade descontada − dívida líquida) / ações",
+      "leitura": "O caixa livre de hoje cresce à taxa escolhida pela pessoa por N anos, depois à taxa da perpetuidade, tudo trazido a valor presente pela taxa de desconto. As premissas são de quem usa; o TickerLab só faz a conta e mostra a tabela de sensibilidade. O desconto precisa ser maior que o crescimento na perpetuidade. Não é preço-alvo.",
+      "nome": "DCF"
+    },
+    {
+      "formula": "o crescimento anual que faz o DCF dar o preço de hoje",
+      "leitura": "Com as mesmas premissas do DCF, procura (por bissecção) o crescimento que o preço atual supõe. Sem resposta numa faixa razoável, não mostra número.",
+      "nome": "Valuation reverso"
+    }
+  ],
+  "grupos": [
+    {
+      "nome": "Energia elétrica",
+      "setores_da_cvm": "energia eletrica"
+    },
+    {
+      "nome": "Saneamento, água e gás",
+      "setores_da_cvm": "saneamento"
+    },
+    {
+      "nome": "Transporte e logística",
+      "setores_da_cvm": "transporte"
+    },
+    {
+      "nome": "Construção e materiais",
+      "setores_da_cvm": "const"
+    },
+    {
+      "nome": "Comércio",
+      "setores_da_cvm": "comercio"
+    },
+    {
+      "nome": "Máquinas, veículos e peças",
+      "setores_da_cvm": "maq"
+    },
+    {
+      "nome": "Materiais básicos",
+      "setores_da_cvm": "metalurgia, petroquimicos, papel e celulose, embalagens, reflorestamento e extracao mineral"
+    },
+    {
+      "nome": "Petróleo e gás",
+      "setores_da_cvm": "petroleo"
+    },
+    {
+      "nome": "Alimentos, bebidas e agro",
+      "setores_da_cvm": "alimentos, bebidas e agricultura"
+    },
+    {
+      "nome": "Vestuário, lazer e turismo",
+      "setores_da_cvm": "textil, brinquedos e hospedagem"
+    },
+    {
+      "nome": "Saúde",
+      "setores_da_cvm": "servicos medicos e farmaceutico"
+    },
+    {
+      "nome": "Telecomunicações e tecnologia",
+      "setores_da_cvm": "telecomunicacoes e comunicacao e informatica"
+    },
+    {
+      "nome": "Educação",
+      "setores_da_cvm": "educacao"
+    },
+    {
+      "nome": "Financeiro",
+      "setores_da_cvm": "bancos, intermediacao financeira, seguradoras, arrendamento, credito imobiliario, bolsas de valores e securitizacao"
+    },
+    {
+      "nome": "Holdings sem setor principal",
+      "setores_da_cvm": "sem setor principal"
+    }
+  ],
+  "indicadores": [
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Margem bruta"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Margem EBIT"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Margem líquida"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "ROE"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "ROIC"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Caixa operacional / lucro"
+    },
+    {
+      "direcao": "quanto menor, melhor",
+      "nome": "Dívida líquida / patrimônio"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Crescimento da receita"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Crescimento do lucro"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Giro do ativo"
+    },
+    {
+      "direcao": "quanto menor, melhor",
+      "nome": "Ciclo de caixa"
+    },
+    {
+      "direcao": "quanto maior, melhor",
+      "nome": "Cobertura de juros"
+    }
+  ],
+  "notas": [
+    "Qualidade, de ótimo a péssimo: pelos quintis do grupo (20%, 40%, 60% e 80%), na direção do indicador. Numa margem, ficar acima de 80% das empresas do grupo é ótimo; na dívida e no ciclo de caixa, ótimo é ficar abaixo de 80% delas.",
+    "Preço, barato, justo ou caro: P/L e P/VP por duas réguas. A do setor: abaixo do percentil 33% do grupo é barato, acima do 67% é caro. A do próprio histórico da empresa: os mesmos tercis, com o múltiplo de cada ano (o preço do último pregão do ano), pedindo pelo menos 3 anos. Se as duas réguas concordam, vale a nota delas; se discordam, a nota é justo e as duas aparecem. Sem histórico, vale o setor. Com prejuízo (múltiplo negativo), não há nota.",
+    "Toda nota aparece com o número, o padrão (onde fica a metade do meio do grupo), o grupo, a quantidade de empresas, a data do corte e a fonte. Número com selo de qualidade mostra o aviso ao lado da nota.",
+    "As notas comparam o número da empresa com o das empresas do mesmo grupo de setores, por regras fixas e públicas (página de metodologia). Dizem como o número está em relação aos pares, não o que vai acontecer: não é recomendação de compra ou venda."
+  ],
+  "padroes": [
+    "Cada nota compara o número da empresa com o padrão do grupo de setores dela: os percentis do mesmo indicador entre as empresas do grupo, calculados pelo TickerLab com as demonstrações entregues à CVM (DFP e ITR) e com os mesmos cálculos da tela Fundamentos.",
+    "Só entra o que era público na data de corte: de cada balanço vale a versão entregue à CVM até aquele dia. Uma reapresentação feita depois não muda o padrão de uma data antiga; por isso o padrão de qualquer data passada pode ser refeito e dá o mesmo resultado.",
+    "Os cortes são o fim de cada mês; os padrões que o relatório mostra são os do corte mais recente, com o número de empresas e a data ao lado.",
+    "Grupo com menos de 8 empresas com o indicador é pequeno demais para um percentil: a empresa é comparada com o mercado inteiro (as não financeiras), e o texto avisa. O grupo financeiro nunca é comparado com as não financeiras: sem empresas suficientes, fica sem padrão.",
+    "Empresa com achado aberto do selo de qualidade que afeta o balanço inteiro (ativo diferente do passivo, escala suspeita, valor impossível e lucro em branco) fica fora do padrão daquele corte, para um número em conferência não mudar a régua dos outros.",
+    "Método na versão 1: mudou um indicador ou a regra, a versão sobe e os padrões são recalculados."
+  ]
+}

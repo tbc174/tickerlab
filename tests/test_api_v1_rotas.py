@@ -430,3 +430,56 @@ def test_visao_geral_de_2_anos_sem_motivo(cliente):
     ).json()
     assert dados["painel"]["retorno_anualizado"] is not None
     assert dados["motivo_sem_anualizar"] is None
+
+
+# --- textos prontos de Risco, Retorno mensal e Comparar (série 3, PR 5) ---
+
+
+def test_risco_traz_a_frase_da_pior_queda_e_o_aviso_da_janela(cliente):
+    from src.conteudo import descrever_pior_drawdown
+
+    dados = cliente.get(
+        "/api/v1/risco", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()
+    fechamento = _fechamento()
+    risco = analises.risco_ao_longo_do_tempo(
+        fechamento, ind.calcular_retorno_diario(fechamento), 20
+    )
+    assert dados["risco"]["frase_da_pior_queda"] == descrever_pior_drawdown(
+        risco.pior_drawdown, negrito=False
+    )
+    assert dados["risco"]["aviso_da_janela"] is None
+    curto = cliente.get(
+        "/api/v1/risco",
+        params={"ticker": "PETR4.SA", "taxa": TAXA, "periodo": "6mo", "janela": 252},
+    ).json()
+    assert curto["risco"]["aviso_da_janela"] == analises.aviso_janela_curta(252)
+
+
+def test_retorno_mensal_traz_a_media_de_cada_mes(cliente):
+    dados = cliente.get(
+        "/api/v1/retorno-mensal", params={"ticker": "PETR4.SA", "taxa": TAXA}
+    ).json()["retorno_mensal"]
+    mensal = analises.retorno_mensal(ind.calcular_retorno_diario(_fechamento()))
+    media = ind.calcular_media_por_mes(mensal.tabela)
+    assert dados["media_por_mes"] == pytest.approx(list(media.to_numpy()), nan_ok=True)
+    assert len(dados["media_por_mes"]) == 12
+
+
+def test_comparacao_traz_a_nota_e_avisa_poucos_dias():
+    curta = analises.Comparacao(
+        dias_em_comum=8, dias_descartados=0, base_100=None, tabela=None
+    )
+    assert esquemas.de_comparacao(curta).aviso == analises.aviso_poucos_dias_em_comum(8)
+    assert esquemas.de_comparacao(curta).nota is None
+
+
+def test_comparacao_com_dados_traz_a_nota(cliente):
+    dados = cliente.get(
+        "/api/v1/comparacao",
+        params={"ticker": "PETR4.SA", "com": ["^BVSP"], "taxa": TAXA},
+    ).json()["comparacao"]
+    assert dados["aviso"] is None
+    assert dados["nota"] == analises.nota_da_comparacao(
+        dados["dias_em_comum"], dados["dias_descartados"]
+    )

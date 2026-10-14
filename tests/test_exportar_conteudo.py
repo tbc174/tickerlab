@@ -139,6 +139,38 @@ def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
     assert {i.termo for i in analises.ITENS_DO_PAINEL} <= set(app["glossario"])
 
 
+def test_app_leva_risco_retorno_mensal_e_comparacao():
+    from src import analises, comparacao
+    from src import indicadores as ind
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    assert app["retorno_mensal"]["meses"] == list(ind.NOMES_DOS_MESES)
+    assert app["retorno_mensal"]["legenda"] == analises.LEGENDA_DO_MAPA_MENSAL
+    atalhos = {a["nome"]: a["ticker"] for a in app["comparacao"]["atalhos"]}
+    assert atalhos == comparacao.ATALHOS
+    assert app["comparacao"]["max_ativos"] == comparacao.MAX_ATIVOS
+    assert {"Volatilidade móvel", "Sazonalidade", "Base 100"} <= set(app["glossario"])
+
+
+def test_app_leva_as_estrategias_e_os_formatos_das_metricas():
+    from src import formatos
+    from src.estrategias import ESTRATEGIAS
+
+    app = json.loads(exp.em_json(exp.conteudo()["app"]))
+    estrategias = app["backtest"]["estrategias"]
+    assert [e["nome"] for e in estrategias] == list(ESTRATEGIAS)
+    medias = next(e for e in estrategias if e["nome"] == "Cruzamento de médias")
+    curta = medias["parametros"][0]
+    assert (curta["nome"], curta["padrao"], curta["minimo"], curta["maximo"]) == (
+        "curta",
+        20,
+        5,
+        100,
+    )
+    por_formato = app["backtest"]["metricas_por_formato"]
+    assert set(por_formato["inteiro"]) == formatos.METRICAS_INTEIRAS
+
+
 def test_formatacao_leva_os_casos_do_python():
     from src import formatos
 

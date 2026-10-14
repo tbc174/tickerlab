@@ -74,3 +74,8 @@
 .tabela-do-app th, .tabela-do-app td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--linha); }
 .tabela-do-app td.numero { font-variant-numeric: tabular-nums; }
 .legenda-do-numero { font-size: .78rem; color: var(--apagado); }
+.tabela-rolavel { overflow-x: auto; }
+.mapa-mensal td, .mapa-mensal th { white-space: nowrap; font-size: .84rem; padding: .4rem .5rem; }
+.campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; border: 0; padding: 0; margin: 0; }
+.campo-de-ativos legend { font-size: .88rem; color: var(--apagado); margin-bottom: .3rem; }
+.campo-de-ativos .marcar { flex-direction: row; align-items: center; gap: .35rem; color: var(--texto); }
