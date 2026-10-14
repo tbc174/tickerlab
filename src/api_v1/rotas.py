@@ -324,24 +324,49 @@ def _ficha_da_conta(
         # sem a conta das tentativas, contar "1" deixaria a checagem do acaso mais branda
         log.exception("Falha ao contar a tentativa do backtest na conta")
         return {"motivo_sem_ficha": MOTIVO_SEM_CONTAGEM}
-    pedido_da_ficha = ficha.PedidoDaFicha(
+    try:
+        montada = montar_ficha_do_backtest(
+            c,
+            pedido.estrategia,
+            parametros,
+            pedido.custo_por_operacao,
+            pedido.capital_inicial,
+            livres,
+            tolerancia,
+            da_pessoa,
+        )
+    except ValueError as erro:
+        return {"motivo_sem_ficha": str(erro)}
+    return {"ficha": montada}
+
+
+def montar_ficha_do_backtest(
+    c: ContextoDoAtivo,
+    estrategia: str,
+    parametros: dict[str, int | float | str],
+    custo_por_operacao: float,
+    capital_inicial: float,
+    livres: tuple[str, ...],
+    tolerancia_de_queda: float,
+    tentativas_da_pessoa: int,
+) -> esquemas.FichaV1:
+    """A ficha de um ativo já carregado, com as tentativas já contadas (a rota e os testes do React
+    usam). `ValueError` se não der para montar (pouco histórico, por exemplo)."""
+    pedido = ficha.PedidoDaFicha(
         dados=c.dados,
-        estrategia=pedido.estrategia,
+        estrategia=estrategia,
         parametros=dict(parametros),
-        custo_por_operacao=pedido.custo_por_operacao,
-        capital_inicial=pedido.capital_inicial,
+        custo_por_operacao=custo_por_operacao,
+        capital_inicial=capital_inicial,
         livres=livres,
         taxa_livre_de_risco=c.taxa_livre_de_risco,
         cdi_diario=_cdi_da_ficha(c),
-        tolerancia_de_queda=tolerancia,
-        tentativas_da_pessoa=da_pessoa,
+        tolerancia_de_queda=tolerancia_de_queda,
+        tentativas_da_pessoa=tentativas_da_pessoa,
     )
-    try:
-        resultado = ficha.montar_ficha(pedido_da_ficha)
-    except ValueError as erro:
-        return {"motivo_sem_ficha": str(erro)}
-    texto = ficha.texto_das_tentativas(da_pessoa, c.ticker, TETO_POR_PESSOA)
-    return {"ficha": esquemas.de_ficha(resultado, pedido_da_ficha, texto)}
+    resultado = ficha.montar_ficha(pedido)
+    texto = ficha.texto_das_tentativas(tentativas_da_pessoa, c.ticker, TETO_POR_PESSOA)
+    return esquemas.de_ficha(resultado, pedido, texto)
 
 
 def montar_backtest(

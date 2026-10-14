@@ -22,6 +22,7 @@ from src import (
     analises,
     catalogo,
     comparacao,
+    ficha,
     formatos,
     marca,
     metodologia_das_notas,
@@ -247,6 +248,8 @@ def _app() -> dict[str, object]:
             "Sazonalidade",
             "Retorno mensal",
             "Base 100",
+            ficha.TERMO_DO_GLOSSARIO,
+            ficha.TERMO_DA_TOLERANCIA,
         ]
     )
     return {
@@ -291,6 +294,11 @@ def _app() -> dict[str, object]:
                 "pct_com_sinal": sorted(formatos.METRICAS_EM_PORCENTAGEM_COM_SINAL),
                 "pct": sorted(formatos.METRICAS_EM_PORCENTAGEM),
                 "inteiro": sorted(formatos.METRICAS_INTEIRAS),
+            },
+            "ficha": {
+                "termo": ficha.TERMO_DO_GLOSSARIO,
+                "termo_da_tolerancia": ficha.TERMO_DA_TOLERANCIA,
+                "explicacao": ficha.EXPLICACAO,
             },
         },
         "linha_do_tempo": {

@@ -144,6 +144,7 @@ export const conteudoDoApp: {
       }[];
     }[];
     metricas_por_formato: Record<string, string[]>;
+    ficha: { termo: string; termo_da_tolerancia: string; explicacao: string };
   };
   comparacao: {
     atalhos: { nome: string; ticker: string }[];
