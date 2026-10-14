@@ -203,6 +203,17 @@
       "ComparacaoV1": {
         "description": "Ativos nos dias em que todos têm preço; curvas e tabela vêm `null` se o período for curto.",
         "properties": {
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          },
           "curvas": {
             "anyOf": [
               {
@@ -225,6 +236,17 @@
             "title": "Dias Em Comum",
             "type": "integer"
           },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
           "tabela": {
             "anyOf": [
               {
@@ -244,7 +266,9 @@
           "dias_em_comum",
           "dias_descartados",
           "curvas",
-          "tabela"
+          "tabela",
+          "nota",
+          "aviso"
         ],
         "title": "ComparacaoV1",
         "type": "object"
@@ -1116,6 +1140,20 @@
       },
       "RetornoMensalV1": {
         "properties": {
+          "media_por_mes": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Media Por Mes",
+            "type": "array"
+          },
           "melhor": {
             "$ref": "#/components/schemas/MesV1"
           },
@@ -1153,7 +1191,8 @@
           "tabela",
           "melhor",
           "pior",
-          "meses_de_alta"
+          "meses_de_alta",
+          "media_por_mes"
         ],
         "title": "RetornoMensalV1",
         "type": "object"
@@ -1177,8 +1216,23 @@
       "RiscoV1": {
         "description": "A queda desde o topo dia a dia (frações, nunca positivas), a pior queda e a volatilidade móvel.",
         "properties": {
+          "aviso_da_janela": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Da Janela"
+          },
           "drawdown": {
             "$ref": "#/components/schemas/CurvaV1"
+          },
+          "frase_da_pior_queda": {
+            "title": "Frase Da Pior Queda",
+            "type": "string"
           },
           "janela": {
             "title": "Janela",
@@ -1195,7 +1249,9 @@
           "drawdown",
           "pior_queda",
           "janela",
-          "volatilidade_movel"
+          "volatilidade_movel",
+          "frase_da_pior_queda",
+          "aviso_da_janela"
         ],
         "title": "RiscoV1",
         "type": "object"

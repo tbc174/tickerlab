@@ -106,4 +106,13 @@ export const conteudoDoApp: {
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
+  retorno_mensal: { meses: string[]; legenda: string };
+  comparacao: {
+    atalhos: { nome: string; ticker: string }[];
+    padrao: string[];
+    max_ativos: number;
+    colunas: { rotulo: string; formato: string }[];
+    aviso_do_limite: string;
+    aviso_sem_dados: string;
+  };
 } = appJson;

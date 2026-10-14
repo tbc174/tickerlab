@@ -119,3 +119,74 @@ export interface LinhaDoTempoDoAtivoV1 {
   ativo: AtivoV1;
   linha_do_tempo: LinhaDoTempoV1;
 }
+
+export interface PiorQuedaV1 {
+  queda: number | null;
+  data_topo: string | null;
+  data_fundo: string | null;
+  data_recuperacao: string | null;
+}
+
+/** A queda desde o topo dia a dia (frações, nunca positivas) e a volatilidade móvel. */
+export interface RiscoV1 {
+  drawdown: CurvaV1;
+  pior_queda: PiorQuedaV1;
+  janela: number;
+  volatilidade_movel: CurvaV1;
+  frase_da_pior_queda: string;
+  aviso_da_janela: string | null;
+}
+
+export interface RiscoDoAtivoV1 {
+  ativo: AtivoV1;
+  risco: RiscoV1;
+}
+
+export interface MesV1 {
+  mes: string; // "2024-03"
+  retorno: number | null;
+}
+
+export interface AnoV1 {
+  ano: number;
+  meses: (number | null)[]; // janeiro a dezembro
+  total: number | null;
+}
+
+export interface RetornoMensalV1 {
+  meses: MesV1[];
+  tabela: AnoV1[];
+  melhor: MesV1;
+  pior: MesV1;
+  meses_de_alta: number | null;
+  media_por_mes: (number | null)[];
+}
+
+export interface RetornoMensalDoAtivoV1 {
+  ativo: AtivoV1;
+  retorno_mensal: RetornoMensalV1;
+}
+
+export interface LinhaDaComparacaoV1 {
+  ticker: string;
+  retorno_total: number | null;
+  retorno_anualizado: number | null;
+  volatilidade_anual: number | null;
+  maior_queda: number | null;
+  sharpe: number | null;
+}
+
+export interface ComparacaoV1 {
+  dias_em_comum: number;
+  dias_descartados: number;
+  curvas: Record<string, CurvaV1> | null;
+  tabela: LinhaDaComparacaoV1[] | null;
+  nota: string | null;
+  aviso: string | null;
+}
+
+export interface ComparacaoDoAtivoV1 {
+  ativo: AtivoV1;
+  comparacao: ComparacaoV1;
+  sem_dados: string[];
+}

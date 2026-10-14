@@ -1,5 +1,68 @@
 {
+  "comparacao": {
+    "atalhos": [
+      {
+        "nome": "Ibovespa",
+        "ticker": "^BVSP"
+      },
+      {
+        "nome": "S&P 500",
+        "ticker": "^GSPC"
+      },
+      {
+        "nome": "Bitcoin",
+        "ticker": "BTC-USD"
+      },
+      {
+        "nome": "Dólar (em reais)",
+        "ticker": "USDBRL=X"
+      }
+    ],
+    "aviso_do_limite": "O limite é de {maximo} ativos por comparação. Ficaram de fora: {fora}.",
+    "aviso_sem_dados": "Não encontrei dados para: {sem_dados}. Eles ficaram de fora da comparação.",
+    "colunas": [
+      {
+        "formato": "pct_com_sinal",
+        "rotulo": "Retorno total"
+      },
+      {
+        "formato": "pct_com_sinal",
+        "rotulo": "Retorno anualizado"
+      },
+      {
+        "formato": "pct",
+        "rotulo": "Volatilidade anual"
+      },
+      {
+        "formato": "pct",
+        "rotulo": "Maior queda"
+      },
+      {
+        "formato": "decimal",
+        "rotulo": "Índice de Sharpe"
+      }
+    ],
+    "max_ativos": 5,
+    "padrao": [
+      "Ibovespa",
+      "S&P 500"
+    ]
+  },
   "glossario": {
+    "Base 100": [
+      {
+        "rotulo": "O que é",
+        "texto": "um jeito de comparar ativos de preços e moedas diferentes. Todos começam valendo 100 no primeiro dia em comum, e a linha mostra quanto aquele \"100\" virou depois."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se a linha da Petrobras termina em 150 e a do Ibovespa em 120, quem comprou a Petrobras no começo ganhou +50% e quem comprou o índice ganhou +20%."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "só entram os dias em que todos os ativos negociaram. Feriados diferentes (B3 e bolsas dos EUA) fazem alguns dias serem descartados, e o app avisa quantos. Os preços não são preenchidos nem estimados."
+      }
+    ],
     "Boletim Focus": [
       {
         "rotulo": "O que é",
@@ -150,6 +213,34 @@
         "texto": "é uma projeção matemática, não uma previsão. Em períodos curtos o número fica exagerado (1 mês de +14% viraria +438% ao ano), por isso o TickerLab só anualiza períodos de 1 ano ou mais, como manda o padrão internacional de apresentação de desempenho (GIPS); abaixo disso aparece \"—\"."
       }
     ],
+    "Retorno mensal": [
+      {
+        "rotulo": "O que é",
+        "texto": "quanto o preço subiu ou caiu em cada mês do calendário, juntando os retornos de todos os dias do mês. O app mostra uma grade com um ano por linha e um mês por coluna: verde é alta e vermelho é queda."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "+10% em janeiro e -1% em fevereiro dão +8,9% no acumulado dos dois meses, porque os ganhos se acumulam (juros compostos) em vez de simplesmente se somarem."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "o primeiro e o último mês do período podem estar incompletos, então não são comparáveis com os meses inteiros."
+      }
+    ],
+    "Sazonalidade": [
+      {
+        "rotulo": "O que é",
+        "texto": "a ideia de que certos meses costumam ser melhores ou piores que outros, ano após ano. A última linha da grade mostra a média de cada mês ao longo dos anos."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "se janeiro teve média de +4% nos últimos cinco anos, dizemos que janeiro foi historicamente bom para aquela ação."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "com poucos anos de dados, a média é só coincidência. Um padrão do passado não garante que se repita."
+      }
+    ],
     "Selic": [
       {
         "rotulo": "O que é",
@@ -176,6 +267,20 @@
       {
         "rotulo": "Cuidado",
         "texto": "volatilidade não é perda. Ela mede a incerteza, para os dois lados."
+      }
+    ],
+    "Volatilidade móvel": [
+      {
+        "rotulo": "O que é",
+        "texto": "a volatilidade calculada só com os últimos N dias (a \"janela\"), recalculada a cada dia. Mostra como o nível de oscilação muda ao longo do tempo."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "uma linha que sobe de 20% para 50% em março de 2020 mostra que o mercado ficou muito mais agitado naquele mês."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "janelas curtas (20 dias) reagem rápido, mas são \"nervosas\"; janelas longas (120 dias) são suaves, mas demoram a perceber mudanças."
       }
     ],
     "Índice de Sharpe": [
@@ -299,5 +404,22 @@
       }
     ],
     "legenda": "Passe o mouse no ? de cada número para ver o que ele significa."
+  },
+  "retorno_mensal": {
+    "legenda": "O primeiro e o último mês do período podem estar incompletos. A última linha mostra a média de cada mês ao longo dos anos (com poucos anos de dados, isso pode ser só coincidência).",
+    "meses": [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez"
+    ]
   }
 }

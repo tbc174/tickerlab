@@ -22,9 +22,11 @@ const FONTES = [
 // as cores das séries dos gráficos, uma paleta por tema (src/marca.py, as mesmas dos gráficos do
 // Streamlit): --serie-1, --serie-2...
 const series = (cores: string[]) => cores.map((cor, i) => `--serie-${i + 1}: ${cor};`).join(" ");
+// alta e queda (verde e vermelho só com esse significado), para o mapa do retorno mensal
+const sinal = (p: { alta: string; queda: string }) => `--alta: ${p.alta}; --queda: ${p.queda};`;
 const CORES_DAS_SERIES =
-  `:root { ${series(marca.paleta_clara.series)} }\n` +
-  `:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} }\n`;
+  `:root { ${series(marca.paleta_clara.series)} ${sinal(marca.paleta_clara)} }\n` +
+  `:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} ${sinal(marca.paleta_escura)} }\n`;
 // o CSS do site, com as fontes dentro de /novo/ (o app fica em outro endereço que o site)
 const ESTILO = css().replaceAll('url("/fontes/', `url("${BASE}fontes/`) + CORES_DAS_SERIES;
 
