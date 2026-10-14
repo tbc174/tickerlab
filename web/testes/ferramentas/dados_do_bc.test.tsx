@@ -85,7 +85,8 @@ describe("conversor de moedas", () => {
   });
 
   it("código de moeda que o navegador não conhece não quebra a página", () => {
-    expect(formatarNaMoeda(1234.5, "ZZZ")).toBe("1.234,50 ZZZ");
+    expect(formatarNaMoeda(1234.5, "ZZZ")).toBe("ZZZ 1.234,50"); // 3 letras: o Intl aceita
+    expect(formatarNaMoeda(1234.5, "EURO")).toBe("1.234,50 EURO"); // malformado: plano B
   });
 
   it("cotação de vários dias atrás leva o aviso", async () => {
