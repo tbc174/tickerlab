@@ -513,3 +513,30 @@ def test_provento_transferido_entre_corretoras_fica_de_fora_sem_aviso():
     assert [x.tipo for x in mov.lancamentos] == ["dividendo"]
     assert mov.fora_das_contas == 4
     assert not any("não reconhecido" in a for a in mov.avisos)
+
+
+def test_amortizacao_de_fii_vira_lancamento_que_reduz_o_custo():
+    mov = _ler(
+        [
+            _linha(
+                "Credito",
+                "02/02/2025",
+                "Transferência - Liquidação",
+                HGLG,
+                10,
+                100,
+                1000,
+            ),
+            _linha("Credito", "01/03/2025", "Amortização", HGLG, 10, 10, 100),
+        ]
+    )
+    assert [x.tipo for x in mov.lancamentos] == ["compra", "amortizacao"]
+    (custo,) = custo_medio(list(mov.lancamentos))
+    assert custo.custo_total == pytest.approx(900)
+    assert not any("não reconhecido" in a for a in mov.avisos)
+
+
+def test_atualizacao_continua_fora_das_contas_com_aviso():
+    mov = _ler([_linha("Credito", "02/02/2025", "Atualização", PETR, 1900, "-", "-")])
+    assert mov.lancamentos == ()
+    assert any("não reconhecido" in a and "Atualização" in a for a in mov.avisos)

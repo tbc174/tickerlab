@@ -341,3 +341,48 @@ def test_taxa_do_aluguel_nao_mexe_no_custo_medio():
     (custo,) = custo_medio(lancamentos)
     assert custo.completo and custo.quantidade == 100
     assert custo.custo_total == pytest.approx(1000.0)
+
+
+# ---- amortização de FII: devolução de capital, reduz o custo e não muda a quantidade ----
+
+
+def test_amortizacao_reduz_o_custo_total_e_o_medio_sem_mudar_a_quantidade():
+    custo = _um(
+        [_l("compra", 100, 1000), _l("amortizacao", 0, 100, data=date(2024, 3, 1))]
+    )
+    assert custo.quantidade == 100
+    assert custo.custo_total == pytest.approx(900)
+    assert custo.preco_medio == pytest.approx(9)
+    assert custo.completo
+
+
+def test_amortizacao_nao_conta_como_provento():
+    lancamentos = [_l("compra", 100, 1000), _l("amortizacao", 0, 100)]
+    assert proventos(lancamentos, hoje=date(2024, 6, 1)) == ()
+
+
+def test_amortizacao_maior_que_o_custo_zera_o_custo_e_avisa():
+    custo = _um(
+        [_l("compra", 10, 100), _l("amortizacao", 0, 130, data=date(2024, 3, 1))]
+    )
+    assert custo.custo_total == 0
+    assert custo.completo
+    assert any("ganho de capital" in aviso for aviso in custo.avisos)
+
+
+def test_venda_depois_da_amortizacao_baixa_pelo_medio_ja_reduzido():
+    custo = _um(
+        [
+            _l("compra", 100, 1000),
+            _l("amortizacao", 0, 200, data=date(2024, 2, 1)),
+            _l("venda", 50, 900, data=date(2024, 3, 1)),
+        ]
+    )
+    assert custo.quantidade == 50
+    assert custo.custo_total == pytest.approx(400)  # médio de R$ 8
+
+
+def test_amortizacao_sem_compra_no_periodo_deixa_o_ativo_incompleto():
+    custo = _um([_l("amortizacao", 0, 100)])
+    assert not custo.completo
+    assert "antes do período" in custo.motivo
