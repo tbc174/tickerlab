@@ -5,7 +5,7 @@ import { PREFIXO_DA_API } from "./configuracao";
 
 export type TipoDeErro =
   | "sessao-vencida" // 401: sem token ou token vencido/inválido → entrar de novo
-  | "conta-nova" // 401: a conta nunca entrou pelo app → criar a conta no app atual
+  | "conta-nova" // 401: a conta ainda não existe → criar pela API (POST /v1/conta)
   | "termos" // 403: termos novos → aceitar no app atual
   | "plano" // 403: a página não abre no plano da conta → conhecer os planos (ADR 0062)
   | "nao-encontrado" // 404: ativo sem dados (ou a API desligou)

@@ -36,6 +36,7 @@ from src import graficos_pdf as gp
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
+from src.autenticacao import AVISO_DA_ENTRADA
 from src.conteudo import carregar_glossario
 from src.estilos_pdf import ESTILOS
 from src.estrategias import ESTRATEGIAS
@@ -301,6 +302,7 @@ def _app() -> dict[str, object]:
                 "explicacao": ficha.EXPLICACAO,
             },
         },
+        "entrada": {"aviso": AVISO_DA_ENTRADA},
         "linha_do_tempo": {
             "relevancias": [
                 {"nome": nome, "valor": valor}

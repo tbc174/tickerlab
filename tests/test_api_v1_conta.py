@@ -1,0 +1,178 @@
+"""A conta nova pela API v1 (ADR 0062, tela 2, PR 1): o primeiro login pelo app novo.
+
+Até aqui, quem nunca tinha entrado recebia 401 "conta-nova" e precisava passar pelo Streamlit. Agora
+`POST /v1/conta` cria a conta com o mesmo token do Google e as mesmas regras do Streamlit
+(`src/autenticacao.registrar_login`): admin só pelo e-mail confirmado, origem do cookie só na primeira vez.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+
+from src import api
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, conta
+from src.autenticacao import VARIAVEL_DOS_ADMINS
+from src.banco.origens import buscar_origem
+from src.banco.usuarios import buscar_por_google_sub
+from src.conformidade import registrar_aceite
+from tests.ajudantes_da_api import (
+    AGORA,
+    CLIENT_ID,
+    chaves_publicas,
+    com_token,
+    gerar_chave,
+    token,
+)
+
+DA_CARLA = {"sub": "carla", "email": "carla@exemplo.com", "name": "Carla"}
+
+
+@pytest.fixture(scope="module")
+def chave():
+    return gerar_chave()
+
+
+@pytest.fixture
+def cliente(banco, monkeypatch, chave):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    monkeypatch.setenv(acesso.VARIAVEL_DO_CLIENT_ID, CLIENT_ID)
+    monkeypatch.delenv(VARIAVEL_DOS_ADMINS, raising=False)
+    monkeypatch.setattr(acesso, "agora", lambda: AGORA)
+    app = api.criar_app({VARIAVEL_DA_CHAVE: "1"})
+    app.dependency_overrides[acesso.chaves_do_google] = lambda: chaves_publicas(chave)
+    acesso.LIMITE.zerar()
+    return TestClient(app)
+
+
+def _criar(cliente, chave, cookies=None, **claims):
+    cliente.cookies.clear()
+    for nome, valor in (cookies or {}).items():
+        cliente.cookies.set(nome, valor)
+    return cliente.post(
+        "/api/v1/conta", headers=com_token(token(chave, **{**DA_CARLA, **claims}))
+    )
+
+
+def _da_carla(banco):
+    with banco.connect() as conexao:
+        return buscar_por_google_sub(conexao, "carla")
+
+
+def test_o_primeiro_login_cria_a_conta(cliente, banco, chave):
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert dados["primeira_vez"] is True
+    assert dados["plano"] == "gratuito"
+    assert dados["administrador"] is False
+    assert dados["nome"] == "Carla"
+    assert "email" not in dados  # como no /v1/eu: nada de e-mail na resposta
+    carla = _da_carla(banco)
+    assert carla is not None and carla.email == "carla@exemplo.com"
+
+
+def test_entrar_de_novo_nao_cria_outra_conta(cliente, banco, chave):
+    _criar(cliente, chave)
+    primeira = _da_carla(banco)
+    resposta = _criar(cliente, chave, name="Carla Souza")
+    assert resposta.status_code == 200
+    assert resposta.json()["primeira_vez"] is False
+    depois = _da_carla(banco)
+    assert depois is not None and primeira is not None
+    assert depois.id == primeira.id
+    assert depois.nome == "Carla Souza"  # o login atualiza o nome, como no Streamlit
+
+
+def test_admin_pelo_email_da_lista(cliente, banco, chave, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DOS_ADMINS, "outra@exemplo.com, CARLA@exemplo.com")
+    assert _criar(cliente, chave).json()["administrador"] is True
+
+
+def test_email_nao_confirmado_nao_cria_conta(cliente, banco, chave, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DOS_ADMINS, "carla@exemplo.com")
+    resposta = _criar(cliente, chave, email_verified=False)
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "token-invalido"
+    assert _da_carla(banco) is None
+
+
+@pytest.mark.parametrize("cabecalho", [{}, {"Authorization": "Bearer lixo"}])
+def test_sem_token_valido_401(cliente, banco, cabecalho):
+    resposta = cliente.post("/api/v1/conta", headers=cabecalho)
+    assert resposta.status_code == 401
+    assert _da_carla(banco) is None
+
+
+def test_token_de_outro_aplicativo_401(cliente, banco, chave):
+    assert _criar(cliente, chave, aud="outro-app").status_code == 401
+
+
+def test_conta_nova_ainda_precisa_aceitar_os_termos(cliente, banco, chave):
+    _criar(cliente, chave)
+    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    assert eu.status_code == 403
+    assert eu.headers[acesso.CABECALHO_DO_MOTIVO] == "termos"
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.begin() as conexao:
+        registrar_aceite(conexao, carla.id)
+    eu = cliente.get("/api/v1/eu", headers=com_token(token(chave, **DA_CARLA)))
+    assert eu.status_code == 200
+
+
+def test_a_origem_do_cookie_fica_so_na_primeira_vez(cliente, banco, chave):
+    _criar(cliente, chave, cookies={"tl_origem": "s=instagram|m=publi|r=clube"})
+    _criar(cliente, chave, cookies={"tl_origem": "s=google|m=cpc"})
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.connect() as conexao:
+        origem = buscar_origem(conexao, carla.id)
+    assert origem is not None
+    assert (origem.source, origem.medium, origem.ref) == ("instagram", "publi", "clube")
+
+
+def test_cookie_de_origem_estragado_e_ignorado(cliente, banco, chave):
+    assert _criar(cliente, chave, cookies={"tl_origem": "x" * 900}).status_code == 200
+    carla = _da_carla(banco)
+    assert carla is not None
+    with banco.connect() as conexao:
+        assert buscar_origem(conexao, carla.id) is None
+
+
+def test_criar_conta_respeita_o_limite_de_pedidos(cliente, chave, monkeypatch):
+    monkeypatch.setattr(acesso.LIMITE, "por_minuto", 2)
+    assert _criar(cliente, chave).status_code == 200
+    assert _criar(cliente, chave).status_code == 200
+    assert _criar(cliente, chave).status_code == 429
+
+
+def test_dois_pedidos_ao_mesmo_tempo_criam_uma_conta_so(
+    cliente, banco, chave, monkeypatch
+):
+    """Duas abas abrindo juntas: a segunda bate na chave única e entra na conta que a primeira criou."""
+    original = conta.registrar_login
+    chamadas = []
+
+    def concorrente(identidade, **kwargs):
+        chamadas.append(1)
+        if len(chamadas) == 1:
+            original(
+                identidade, **kwargs
+            )  # a outra aba criou a conta antes desta gravar
+            raise IntegrityError("INSERT INTO usuarios", {}, Exception("chave única"))
+        return original(identidade, **kwargs)
+
+    monkeypatch.setattr(conta, "registrar_login", concorrente)
+    resposta = _criar(cliente, chave)
+    assert resposta.status_code == 200
+    assert resposta.json()["primeira_vez"] is False
+    assert len(chamadas) == 2
+
+
+def test_api_desligada_404(banco, monkeypatch, chave):
+    monkeypatch.delenv(VARIAVEL_DA_CHAVE, raising=False)
+    app = api.criar_app({})
+    resposta = TestClient(app).post(
+        "/api/v1/conta", headers=com_token(token(chave, **DA_CARLA))
+    )
+    assert resposta.status_code == 404

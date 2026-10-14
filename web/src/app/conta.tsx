@@ -2,7 +2,7 @@
 // nada em localStorage, sessionStorage ou cookie. Recarregar a página pede o login de novo (o Google
 // entra sozinho se a pessoa já autorizou: auto_select).
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { planos } from "../conteudo";
+import { conteudoDoApp, planos } from "../conteudo";
 import { linkDoApp } from "../site/textos";
 import { ErroDaApi, pedir } from "./api";
 import { type GoogleId, carregarGoogle } from "./login";
@@ -61,6 +61,11 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
     if (token === null) return;
     let valendo = true;
     pedir<EuV1>("/v1/eu", token)
+      .catch((falha: unknown) => {
+        // primeiro login: a API cria a conta com o mesmo token (as regras do app atual) e lê de novo
+        if (!(falha instanceof ErroDaApi) || falha.tipo !== "conta-nova") throw falha;
+        return pedir<EuV1>("/v1/conta", token, {}, {}).then(() => pedir<EuV1>("/v1/eu", token));
+      })
       .then((lida) => {
         if (valendo) setEu(lida);
       })
@@ -89,10 +94,7 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
 
 const SAIDA_DE_CADA_ERRO: Partial<Record<ErroDaApi["tipo"], [string, string]>> = {
   "sessao-vencida": ["Sua sessão terminou. Entre de novo para continuar.", ""],
-  "conta-nova": [
-    "Esta conta ainda não existe no TickerLab. Crie a conta no app atual (é o mesmo login) e volte aqui.",
-    "Criar a conta no app",
-  ],
+  "conta-nova": ["Não deu para criar a sua conta agora. Tente entrar de novo em instantes.", ""],
   termos: ["Os termos de uso mudaram. Aceite os termos no app atual e volte aqui.", "Aceitar os termos no app"],
 };
 
@@ -126,6 +128,7 @@ function Entrada({ erro }: { erro: ErroDaApi | null }) {
         </a>
       ) : null}
       <div ref={botao} className="botao-do-google" />
+      <p className="apagado">{conteudoDoApp.entrada.aviso}</p>
     </section>
   );
 }
