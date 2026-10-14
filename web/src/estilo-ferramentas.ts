@@ -82,11 +82,6 @@ export function cssFerramentas(): string {
 .ferramenta-nome { font-size: 1.12rem; }
 .ferramenta-rotulo { font-weight: 700; font-size: .92rem; }
 .ferramenta-bloco + .ferramenta-bloco { margin-top: 2.5rem; }
-.ferramenta-grafico { margin: 1.25rem 0 0; }
-.ferramenta-grafico svg { width: 100%; height: auto; display: block; }
-.ferramenta-grafico-base { stroke: var(--linha-forte); stroke-width: 1; stroke-dasharray: 4 4; }
-.ferramenta-grafico figcaption { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin-top: .5rem; font-size: .85rem; }
-.ferramenta-grafico figcaption i { display: inline-block; width: .9rem; height: .2rem; border-radius: 2px; vertical-align: middle; }
 .ferramenta-anteriores { display: grid; gap: 1rem; padding: .8rem 1rem; border: 1px dashed var(--linha-forte); border-radius: 10px; }
 .ferramenta-anteriores summary { cursor: pointer; font-weight: 700; color: var(--azul-texto); }
 .ferramenta-depois { margin-top: 1.25rem; }

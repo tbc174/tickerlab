@@ -32,6 +32,7 @@ export function GraficoDoTempo({
   empilhado = false,
   zeroNaBase = empilhado,
   referencia,
+  eixoX,
 }: {
   titulo: string; // nomeia o gráfico para leitores de tela
   meses: number[]; // o mês de cada ponto, desde o início (0, 1, 2... ou 0, 12, 24...)
@@ -41,6 +42,8 @@ export function GraficoDoTempo({
   empilhado?: boolean;
   zeroNaBase?: boolean;
   referencia?: { valor: number; rotulo: string }; // uma linha horizontal com nome (a meta)
+  // outro eixo x que não o de meses (ex.: dias de pregão): as marcas e os rótulos do eixo e da dica
+  eixoX?: { marcas: number[]; rotulo: (x: number) => string; dica: (x: number) => string };
 }) {
   const [largura, medir] = useLargura(640);
   const idDoResumo = useId();
@@ -73,7 +76,9 @@ export function GraficoDoTempo({
 
   const grade: number[] = [];
   for (let v = baixo; v <= alto + passo / 2; v += passo) grade.push(v);
-  const marcas = marcasDeMeses(ultimoMes, celular ? 4 : 6);
+  const marcas = eixoX ? eixoX.marcas : marcasDeMeses(ultimoMes, celular ? 4 : 6);
+  const rotuloDoEixo = (x: number) => (eixoX ? eixoX.rotulo(x) : rotuloDoMes(x, ultimoMes));
+  const rotuloDoPonto = (x: number) => (eixoX ? eixoX.dica(x) : rotuloDaDica(x, ultimoMes));
   const i = mira.indice;
   const resumo = series
     .map((s) => `${s.nome}: começa em ${formatarValor(s.valores[0])} e termina em ${formatarValor(s.valores[s.valores.length - 1])}`)
@@ -111,7 +116,7 @@ export function GraficoDoTempo({
             y={altura - 8}
             textAnchor={m === 0 ? "start" : m === ultimoMes ? "end" : "middle"}
           >
-            {rotuloDoMes(m, ultimoMes)}
+            {rotuloDoEixo(m)}
           </text>
         ))}
         {referencia ? (
@@ -157,7 +162,7 @@ export function GraficoDoTempo({
           role="status"
           style={{ left: `${Math.min(85, Math.max(15, (x(meses[i]) / largura) * 100))}%` }}
         >
-          <strong>{rotuloDaDica(meses[i], ultimoMes)}</strong>
+          <strong>{rotuloDoPonto(meses[i])}</strong>
           {[...series].reverse().map((s) => (
             <span key={s.nome}>
               <i style={{ background: s.cor }} aria-hidden="true" />
