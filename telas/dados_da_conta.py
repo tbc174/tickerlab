@@ -109,8 +109,11 @@ def _campo_ainda_vale(chave, valor):
     return not chave.startswith("parametro_")  # parâmetro desconhecido: não volta
 
 
-def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo):
+def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo, chave_da_ficha=None):
     nome = st.session_state.get(f"salvar_nome_{tipo}", "").strip() or nome_sugerido
+    guardada = st.session_state.get(chave_da_ficha) if chave_da_ficha else None
+    if guardada is not None:  # a ficha que a tela mostrou: o Pulse a recalcula depois
+        resumo = {**resumo, "ficha": guardada}
     try:
         with obter_engine().begin() as conexao:
             salvar_simulacao(
@@ -133,8 +136,14 @@ def _salvar_simulacao(usuario, tipo, nome_sugerido, resumo):
     st.toast(f"Simulação salva: {nome}. Veja em Minhas simulações.")
 
 
-def oferecer_salvar_simulacao(tipo, nome_sugerido, numeros, dados_ate):
-    """Caixa para guardar a simulação da tela na conta do usuário."""
+def oferecer_salvar_simulacao(
+    tipo, nome_sugerido, numeros, dados_ate, chave_da_ficha=None
+):
+    """Caixa para guardar a simulação da tela na conta do usuário.
+
+    `chave_da_ficha`: onde a tela deixa o pedido e o veredito da ficha "Foi sorte?"; lida na
+    hora do clique, porque a ficha aparece abaixo do botão.
+    """
     usuario = st.session_state.get("usuario")
     nome_sugerido = nome_sugerido[:120]
     resumo = {
@@ -156,7 +165,7 @@ def oferecer_salvar_simulacao(tipo, nome_sugerido, numeros, dados_ate):
             "Salvar",
             key=f"salvar_{tipo}",
             on_click=_salvar_simulacao,
-            args=(usuario, tipo, nome_sugerido, resumo),
+            args=(usuario, tipo, nome_sugerido, resumo, chave_da_ficha),
         )
         st.caption(
             "Guardo as escolhas desta aba e um resumo dos números. Ao reabrir, "
