@@ -18,7 +18,7 @@ from src.banco.modelo import auditoria as tabela_da_auditoria
 from src.banco.usuarios import mudar_plano
 from src.carteira_b3 import ArquivoDaB3Error, CarteiraB3, ler_carteira
 from src.conformidade import apagar_conta, exportar_meus_dados
-from src.planos import LimiteDoPlanoError
+from src.planos import CARTEIRA_NO_RESEARCH, LimiteDoPlanoError, motivo_sem_acesso
 from telas.research.minha_carteira import guardar_fotografia
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
 
@@ -251,7 +251,13 @@ def test_gratuito_ve_que_e_do_pro_e_nao_ve_o_envio(banco, monkeypatch):
     _ana_no_plano(banco, monkeypatch, "gratuito")
     app = abrir_app("carteira_research")
     assert not app.exception
-    assert any("faz parte do plano Pro" in i.value for i in app.info)
+    motivo = motivo_sem_acesso(
+        "gratuito", CARTEIRA_NO_RESEARCH
+    )  # o mesmo texto da API v1
+    assert any(
+        motivo in i.value and "Sem ela, o Research usa as suas listas." in i.value
+        for i in app.info
+    )
     assert not any(b.key == "minha_carteira_guardar" for b in app.button)
 
 

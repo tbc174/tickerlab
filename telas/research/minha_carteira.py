@@ -17,7 +17,7 @@ from src.banco.dados_do_usuario import (
     salvar_carteira,
 )
 from src.carteira_b3 import ArquivoDaB3Error, ler_carteira
-from src.planos import CARTEIRA_NO_RESEARCH, LimiteDoPlanoError, limites_do, pode_usar
+from src.planos import CARTEIRA_NO_RESEARCH, LimiteDoPlanoError, motivo_sem_acesso
 from telas.comum import cabecalho_da_pagina, plano_atual
 from telas.research.comum import _carteira_do_research
 
@@ -92,10 +92,9 @@ def pagina_carteira_research():
             "esta página.",
             icon=":material/login:",
         )
-    elif not pode_usar(plano_atual(), CARTEIRA_NO_RESEARCH):
-        st.info(
-            f"Guardar a carteira no Research faz parte do plano Pro (o seu é o "
-            f"{limites_do(plano_atual()).nome}). Sem ela, o Research usa as suas listas.",
+    elif (motivo := motivo_sem_acesso(plano_atual(), CARTEIRA_NO_RESEARCH)) is not None:
+        st.info(  # o mesmo texto da API v1 (src/planos.py, ADR 0062)
+            f"{motivo} Sem ela, o Research usa as suas listas.",
             icon=":material/workspace_premium:",
         )
     else:
