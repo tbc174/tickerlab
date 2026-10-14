@@ -222,6 +222,12 @@ jobs:
       - name: Build (HTML pronto de cada página)
         run: npm run build
 
+      # o script das calculadoras do site (site/ferramentas.js) também fica pronto no repositório
+      - name: Ferramentas do site (site/ferramentas.js igual ao build)
+        run: |
+          npm run ferramentas
+          test -z "$(git status --porcelain -- ../site/ferramentas.js)" || { echo "site/ferramentas.js está velho: rode 'npm run site' em web/ e faça o commit"; exit 1; }
+
       # o app novo fica pronto no repositório (novo/), como o site: o VPS não tem Node
       - name: App em React (novo/ igual ao build)
         run: |
