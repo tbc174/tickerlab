@@ -99,6 +99,8 @@ describe("planos", () => {
   it("a volta do pagamento avisa e deixa atualizar o plano", async () => {
     const { buscar } = abrir(MEU_PLANO, "/planos?assinatura=ok");
     expect(await screen.findByText(conteudoDoApp.assinatura.retorno_ok)).toBeTruthy();
+    // o aviso aparece antes do primeiro pedido: só conta depois de o plano carregar
+    await screen.findByRole("region", { name: "Seu plano" });
     const antes = buscar.mock.calls.filter(([e]) => e === "/api/v1/meu-plano").length;
     fireEvent.click(screen.getByRole("button", { name: "Atualizar o meu plano" }));
     await waitFor(() =>
