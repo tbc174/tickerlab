@@ -459,3 +459,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o servidor da Receita fecha a conexão antes de responder de vez em quando. O `requests` tenta **zero** vezes de novo por padrão, e a única nova tentativa do arquivista era a da fonte inteira, 5 minutos depois. Com 37 arquivos no mês, quase sempre algum caía.
 - **Solução:** `HTTPAdapter(max_retries=Retry(...))` na sessão do `scripts/arquivar_fontes.py` (#257): repete o pedido na hora, até 3 vezes (0, 4 e 8 s), só quando a conexão cai ou não abre; resposta de erro (404, 500) não é repetida. O teste usa um servidor HTTP local que fecha a conexão sem responder. Lição: falha que muda de arquivo a cada rodada é da rede ou do servidor, não do arquivo; repetir a tarefa inteira à mão só esconde.
 - **Data:** 14/10/2026
+
+## CI vermelho: "novo/ está velho" depois de mexer só no site
+- **Sintoma:** no PR #254 (ferramentas v2), o job `web (React)` falhou com `novo/ está velho: rode 'npm run app' em web/ e faça o commit`, mesmo o PR sendo das ferramentas do site.
+- **Causa:** o app em React (`novo/`) usa o mesmo CSS (`web/src/estilo*.ts`) e alguns módulos comuns (a escala dos gráficos saiu de `web/src/app/graficos/` para `web/src/graficos/`). Mudou o CSS ou um módulo que o app importa, o build do app muda também. Rodei só o `npm run site`.
+- **Solução:** mexeu em `web/`, rode os dois: `npm run site` **e** `npm run app`, e faça o commit de `site/` e `novo/` juntos. O mesmo PR também caiu no `ruff format` (linhas longas num teste): rodar `ruff format` nos arquivos Python mudados antes do push.
+- **Data:** 14/10/2026 (PR #254)

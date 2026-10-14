@@ -1,57 +1,39 @@
 // Sorte em série (contas/sorte_em_serie.ts, a mesma conta do Python): estratégias de cara ou coroa,
-// e a melhor parece genial. Leva à ficha "Foi sorte?", que desconta as tentativas.
+// e a melhor parece genial. v2: as curvas com eixos e mira (em dias de pregão), o histograma do
+// retorno final de todas e quantas "passariam" num teste ingênuo, com e sem a correção pelas
+// tentativas. Leva à ficha "Foi sorte?", que desconta as tentativas.
 import { useState } from "react";
 import { Escolha, Resultado } from "./campos";
-import { type ResultadoDaSorte, simular } from "./contas/sorte_em_serie";
+import { simular } from "./contas/sorte_em_serie";
 import { formatarDecimal } from "../app/formatar";
-import { formatarNumero, formatarPorcentagem } from "./numeros";
+import { formatarNumero, formatarPorcentagem, formatarReais } from "./numeros";
+import { SERIES } from "../graficos/cores";
+import { GraficoDeHistograma } from "../graficos/GraficoDeHistograma";
+import { GraficoDoTempo } from "../graficos/GraficoDoTempo";
 
 export const SEMENTE_INICIAL = 42;
 const DIAS_POR_ANO_DE_PREGAO = 250; // dias de pregão num ano, para o prazo da simulação
+const DIAS_POR_TRIMESTRE = 63;
+const VALOR_INICIAL = 100; // as curvas em reais: "R$ 100 viraram..."
 
 type Quantidade = "10" | "100" | "1000";
 type Anos = "1" | "3" | "5";
 
-const LARGURA = 600;
-const ALTURA = 220;
-const CURVAS: [keyof ResultadoDaSorte, string, string][] = [
-  ["curva_da_melhor", "A melhor", "var(--azul)"],
-  ["curva_da_mediana", "A do meio", "var(--apagado)"],
-  ["curva_da_pior", "A pior", "var(--queda)"],
-];
-
-/** A altura no desenho de um valor, com a escala comum às três curvas (o maior fica no alto). */
-const alturaNoDesenho = (minimo: number, maximo: number) => (valor: number) =>
-  ALTURA - ((valor - minimo) / (maximo - minimo || 1)) * ALTURA;
-
-function pontos(curva: number[], altura: (valor: number) => number): string {
-  const passo = LARGURA / (curva.length - 1);
-  return curva.map((v, i) => `${(i * passo).toFixed(1)},${altura(v).toFixed(1)}`).join(" ");
+/** As marcas do eixo em dias de pregão: trimestres no 1º ano, anos depois. */
+function eixoEmDiasDePregao(dias: number) {
+  const umAno = dias <= DIAS_POR_ANO_DE_PREGAO;
+  const passo = umAno ? DIAS_POR_TRIMESTRE : DIAS_POR_ANO_DE_PREGAO;
+  const marcas: number[] = [];
+  for (let d = 0; d <= dias; d += passo) marcas.push(d);
+  return {
+    marcas,
+    rotulo: (d: number) =>
+      d === 0 ? "início" : umAno ? `${Math.round(d / DIAS_POR_TRIMESTRE) * 3} meses` : `ano ${Math.round(d / DIAS_POR_ANO_DE_PREGAO)}`,
+    dica: (d: number) => (d === 0 ? "início" : `dia ${formatarNumero(d)} de pregão`),
+  };
 }
 
-export function GraficoDaSorte({ resultado }: { resultado: ResultadoDaSorte }) {
-  const todas = CURVAS.flatMap(([chave]) => resultado[chave] as number[]);
-  const altura = alturaNoDesenho(Math.min(...todas), Math.max(...todas));
-  const base = altura(1).toFixed(1); // o valor do começo
-  return (
-    <figure className="ferramenta-grafico">
-      <svg viewBox={`0 0 ${LARGURA} ${ALTURA}`} role="img" aria-label="Patrimônio da melhor, da do meio e da pior estratégia, dia a dia">
-        <line x1="0" x2={LARGURA} y1={base} y2={base} className="ferramenta-grafico-base" />
-        {CURVAS.map(([chave, , cor]) => (
-          <polyline key={chave} points={pontos(resultado[chave] as number[], altura)} fill="none" stroke={cor} strokeWidth="2" />
-        ))}
-      </svg>
-      <figcaption>
-        {CURVAS.map(([chave, nome, cor]) => (
-          <span key={chave}>
-            <i style={{ background: cor }} aria-hidden="true" /> {nome}
-          </span>
-        ))}
-        <span className="apagado">linha fina: o valor do começo</span>
-      </figcaption>
-    </figure>
-  );
-}
+const sinal = (fracao: number) => `${fracao > 0 ? "+" : ""}${formatarPorcentagem(fracao, 0)}`;
 
 export function SorteEmSerie() {
   const [quantidade, setQuantidade] = useState<Quantidade>("100");
@@ -59,6 +41,8 @@ export function SorteEmSerie() {
   const [semente, setSemente] = useState(SEMENTE_INICIAL);
   const r = simular(Number(quantidade), Number(anos) * DIAS_POR_ANO_DE_PREGAO, semente);
   const total = formatarNumero(r.estrategias);
+  const dias = Array.from({ length: r.dias + 1 }, (_, d) => d);
+  const emReais = (curva: number[]) => curva.map((v) => v * VALOR_INICIAL);
   return (
     <div className="ferramenta">
       <form className="ferramenta-campos" onSubmit={(evento) => evento.preventDefault()}>
@@ -119,8 +103,37 @@ export function SorteEmSerie() {
             <dd>{formatarPorcentagem(r.retorno_da_mediana)}</dd>
           </div>
         </dl>
-        <GraficoDaSorte resultado={r} />
+        <p className="ferramenta-destaque">
+          Num teste ingênuo (a média é maior que zero, com 5% de chance de erro), {formatarNumero(r.passam_sem_correcao)} de{" "}
+          {total} passariam como "estratégias que funcionam". Mas, corrigindo pelas {total} tentativas,{" "}
+          {formatarNumero(r.passam_com_correcao)}. Todas são moeda.
+        </p>
       </Resultado>
+      <div className="ferramenta-largo">
+        <GraficoDoTempo
+          titulo="R$ 100 na melhor, na do meio e na pior estratégia, dia a dia"
+          meses={dias}
+          series={[
+            { nome: "A melhor", cor: SERIES[0], valores: emReais(r.curva_da_melhor) },
+            { nome: "A do meio", cor: SERIES[2], valores: emReais(r.curva_da_mediana) },
+            { nome: "A pior", cor: SERIES[1], valores: emReais(r.curva_da_pior) },
+          ]}
+          referencia={{ valor: VALOR_INICIAL, rotulo: "Começo" }}
+          eixoX={eixoEmDiasDePregao(r.dias)}
+          formatarValor={formatarReais}
+          formatarEixo={(v) => `R$ ${formatarNumero(v)}`}
+        />
+        <GraficoDeHistograma
+          titulo={`Onde as ${total} estratégias terminaram`}
+          valores={r.retornos_finais}
+          formatarFaixa={sinal}
+          nomeDaContagem="estratégias"
+        />
+        <p className="apagado">
+          Cada barra conta quantas estratégias terminaram naquela faixa de retorno. A maioria fica perto de zero; a
+          "genial" é só a ponta da direita.
+        </p>
+      </div>
     </div>
   );
 }

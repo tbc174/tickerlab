@@ -4,7 +4,8 @@
 // de tela ouve o começo e o fim, e as cores vêm só das variáveis da marca.
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { GraficoDeBarras } from "../../src/graficos/GraficoDeBarras";
+import { GraficoDeBarras, geometriaDasBarras } from "../../src/graficos/GraficoDeBarras";
+import { faixas } from "../../src/graficos/GraficoDeHistograma";
 import { GraficoDoTempo, empilhar } from "../../src/graficos/GraficoDoTempo";
 import { SERIES } from "../../src/graficos/cores";
 import { formatarReais, formatarReaisCurto } from "../../src/ferramentas/numeros";
@@ -185,5 +186,35 @@ describe("reais no eixo", () => {
     expect(formatarReaisCurto(2500)).toBe("R$ 2,5 mil");
     expect(formatarReaisCurto(1500000)).toBe("R$ 1,5 mi");
     expect(formatarReaisCurto(-20000)).toBe("−R$ 20 mil");
+  });
+});
+
+describe("faixas do histograma", () => {
+  it("divide do menor ao maior em faixas iguais e conta cada valor uma vez", () => {
+    const f = faixas([0, 0.1, 0.25, 0.3, 0.3], 3);
+    expect(f.map((x) => x.quantas)).toEqual([1, 1, 3]);
+    expect(f[0].de).toBe(0);
+    expect(f[2].ate).toBeCloseTo(0.3, 12);
+  });
+
+  it("todos iguais cabem numa faixa só", () => {
+    expect(faixas([0.2, 0.2], 4).map((x) => x.quantas)).toEqual([2]);
+  });
+});
+
+describe("geometria das barras", () => {
+  it.each([
+    [248, true],
+    [290, false],
+    [461, true],
+    [1030, true],
+  ])("com %i px (negativos: %s), as barras ficam com pelo menos 40 por cento da largura", (largura, negativos) => {
+    const g = geometriaDasBarras(largura, negativos);
+    expect(g.fim - g.inicio).toBeGreaterThanOrEqual(0.4 * largura);
+  });
+
+  it("em tela estreita, o nome vai para cima da barra", () => {
+    expect(geometriaDasBarras(300, true).compacto).toBe(true);
+    expect(geometriaDasBarras(700, true).compacto).toBe(false);
   });
 });

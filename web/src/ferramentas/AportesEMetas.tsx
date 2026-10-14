@@ -1,9 +1,14 @@
-// Aportes e metas: três perguntas com a mesma conta (contas/aportes.ts, a mesma do Python).
-import { useState } from "react";
-import { Alternativas, CampoDeNumero, Escolha, Resultado } from "./campos";
-import { type Linha, aporteParaMeta, evolucao, mesesAteMeta, valorFuturo } from "./contas/aportes";
+// Aportes e metas: três perguntas com a mesma conta (contas/aportes.ts, a mesma do Python), v2:
+// gráfico do que saiu do bolso e dos juros (com a meta), aporte que sobe a cada ano, o mês em que
+// os juros passam o aporte, deslizantes e a simulação no endereço.
+import { Compartilhar } from "./Compartilhar";
+import { Alternativas, CampoComDeslizante, CampoDeNumero, Escolha, Resultado } from "./campos";
+import { type Linha, aporteParaMeta, evolucao, mesDaVirada, mesesAteMeta, valorFuturo } from "./contas/aportes";
 import { PRAZO_MAXIMO, type Unidade, taxaPorMes } from "./contas/juros";
-import { formatarNumero, formatarReais, lerNumero } from "./numeros";
+import { useCamposNoEndereco } from "./endereco";
+import { formatarNumero, formatarPorcentagem, formatarReais, formatarReaisCurto, lerNumero } from "./numeros";
+import { SERIES } from "../graficos/cores";
+import { GraficoDoTempo } from "../graficos/GraficoDoTempo";
 
 export type Pergunta = "quanto-terei" | "quanto-guardar" | "quanto-tempo";
 
@@ -21,7 +26,13 @@ export const EXEMPLO_DE_APORTES = {
   taxa: "8",
   unidadeDaTaxa: "ano" as Unidade,
   anos: "20",
+  reajuste: "0", // % ao ano que o aporte sobe
 };
+
+const OPCOES = {
+  pergunta: ["quanto-terei", "quanto-guardar", "quanto-tempo"],
+  unidadeDaTaxa: ["mes", "ano"],
+} as const;
 
 type Campos = typeof EXEMPLO_DE_APORTES;
 
@@ -29,6 +40,9 @@ export interface Resposta {
   principal: string;
   rotulo: string;
   linhas: Linha[];
+  aporte: number; // o aporte do 1º mês (o achado, em "quanto guardar")
+  porMes: number; // a taxa ao mês
+  reajuste: number;
 }
 
 /** "1 ano e 3 meses", "8 meses", "12 anos". */
@@ -48,39 +62,49 @@ export function responder(campos: Campos): Resposta | string {
   const aporte = lerNumero(campos.aporte);
   const meta = lerNumero(campos.meta);
   const anos = lerNumero(campos.anos);
+  const reajusteEmPct = lerNumero(campos.reajuste ?? "0");
   const pergunta = campos.pergunta;
   const faltando =
     inicial === null ||
     taxa === null ||
+    reajusteEmPct === null ||
     (pergunta !== "quanto-guardar" && aporte === null) ||
     (pergunta !== "quanto-terei" && meta === null) ||
     (pergunta !== "quanto-tempo" && anos === null);
   if (faltando) return "Preencha os campos com números (por exemplo, 1.000,50).";
+  const reajuste = reajusteEmPct / 100;
   try {
     const porMes = taxaPorMes(taxa / 100, campos.unidadeDaTaxa);
+    const comum = { porMes, reajuste };
     if (pergunta === "quanto-tempo") {
-      const meses = mesesAteMeta(meta!, inicial, aporte!, porMes);
+      const meses = mesesAteMeta(meta!, inicial, aporte!, porMes, false, reajuste);
       if (meses === null) return `Com esses números, a meta não chega em ${PRAZO_MAXIMO / 12} anos.`;
       return {
+        ...comum,
         rotulo: "Tempo até a meta",
         principal: prazoPorExtenso(meses),
-        linhas: evolucao(inicial, aporte!, porMes, meses),
+        linhas: evolucao(inicial, aporte!, porMes, meses, false, reajuste),
+        aporte: aporte!,
       };
     }
     const meses = anos! * 12;
     if (!Number.isInteger(meses)) return "Use um prazo em meses inteiros (por exemplo, 1,5 ano).";
     if (pergunta === "quanto-guardar") {
-      const porMesParaMeta = aporteParaMeta(meta!, inicial, porMes, meses);
+      const achado = aporteParaMeta(meta!, inicial, porMes, meses, false, reajuste);
       return {
-        rotulo: "Guardar por mês",
-        principal: formatarReais(porMesParaMeta),
-        linhas: evolucao(inicial, porMesParaMeta, porMes, meses),
+        ...comum,
+        rotulo: reajuste ? "Guardar por mês no 1º ano" : "Guardar por mês",
+        principal: formatarReais(achado),
+        linhas: evolucao(inicial, achado, porMes, meses, false, reajuste),
+        aporte: achado,
       };
     }
     return {
+      ...comum,
       rotulo: "Valor no fim do prazo",
-      principal: formatarReais(valorFuturo(inicial, aporte!, porMes, meses)),
-      linhas: evolucao(inicial, aporte!, porMes, meses),
+      principal: formatarReais(valorFuturo(inicial, aporte!, porMes, meses, false, reajuste)),
+      linhas: evolucao(inicial, aporte!, porMes, meses, false, reajuste),
+      aporte: aporte!,
     };
   } catch (erro) {
     if (erro instanceof RangeError) return erro.message;
@@ -88,14 +112,38 @@ export function responder(campos: Campos): Resposta | string {
   }
 }
 
+/** Os pontos do gráfico: todo mês até 10 anos; depois, um por ano (e o último mês). */
+function pontosDoGrafico(linhas: Linha[]): Linha[] {
+  if (linhas.length <= 121) return linhas;
+  return linhas.filter((l, i) => l.mes % 12 === 0 || i === linhas.length - 1);
+}
+
+function textoParaCopiar(campos: Campos, resposta: Resposta): string {
+  const fim = resposta.linhas.at(-1)!;
+  // com reajuste, o aporte informado é só o do 1º ano: o texto copiado precisa dizer isso
+  const porMes = resposta.reajuste
+    ? `${formatarReais(resposta.aporte)} por mês no 1º ano, subindo ${formatarNumero(resposta.reajuste * 100)}% a cada ano`
+    : `${formatarReais(resposta.aporte)} por mês`;
+  if (campos.pergunta === "quanto-tempo") {
+    return `Com ${formatarReais(lerNumero(campos.inicial) ?? 0)} e ${porMes}, a meta de ${formatarReais(lerNumero(campos.meta) ?? 0)} chega em ${resposta.principal}`;
+  }
+  if (campos.pergunta === "quanto-guardar") {
+    return `Para ter ${formatarReais(lerNumero(campos.meta) ?? 0)} em ${campos.anos} anos, guardar ${porMes}`;
+  }
+  return `${porMes} por ${campos.anos} anos viram ${formatarReais(fim.saldo)}`;
+}
+
 export function AportesEMetas() {
-  const [campos, setCampos] = useState(EXEMPLO_DE_APORTES);
-  const mudar = <K extends keyof Campos>(chave: K) => (valor: Campos[K]) =>
-    setCampos((antes) => ({ ...antes, [chave]: valor }));
+  const [campos, mudar] = useCamposNoEndereco(EXEMPLO_DE_APORTES, OPCOES);
   const resposta = responder(campos);
   const erro = typeof resposta === "string" ? resposta : null;
-  const fim = erro ? null : (resposta as Resposta).linhas.at(-1)!;
+  const certa = erro ? null : (resposta as Resposta);
+  const fim = certa ? certa.linhas.at(-1)! : null;
   const pergunta = campos.pergunta;
+  const virada = certa
+    ? mesDaVirada(certa.linhas[0].saldo, certa.aporte, certa.porMes, certa.linhas.length - 1, false, certa.reajuste)
+    : null;
+  const meta = lerNumero(campos.meta);
 
   return (
     <div className="ferramenta">
@@ -103,15 +151,26 @@ export function AportesEMetas() {
         <Alternativas rotulo="Pergunta" valor={pergunta} opcoes={PERGUNTAS} aoMudar={mudar("pergunta")} />
         <CampoDeNumero rotulo="Valor que já tenho" antes="R$" valor={campos.inicial} aoMudar={mudar("inicial")} />
         {pergunta !== "quanto-guardar" ? (
-          <CampoDeNumero rotulo="Aporte por mês" antes="R$" valor={campos.aporte} aoMudar={mudar("aporte")} />
+          <CampoComDeslizante
+            rotulo="Aporte por mês"
+            antes="R$"
+            valor={campos.aporte}
+            aoMudar={mudar("aporte")}
+            min={0}
+            max={10000}
+            passo={50}
+          />
         ) : null}
         {pergunta !== "quanto-terei" ? (
           <CampoDeNumero rotulo="Meta" antes="R$" valor={campos.meta} aoMudar={mudar("meta")} />
         ) : null}
-        <CampoDeNumero
+        <CampoComDeslizante
           rotulo="Rendimento"
           valor={campos.taxa}
           aoMudar={mudar("taxa")}
+          min={0}
+          max={campos.unidadeDaTaxa === "ano" ? 20 : 2}
+          passo={campos.unidadeDaTaxa === "ano" ? 0.5 : 0.05}
           dica="Use o rendimento depois da inflação para ver o resultado em dinheiro de hoje."
           depois={
             <>
@@ -129,15 +188,25 @@ export function AportesEMetas() {
           }
         />
         {pergunta !== "quanto-tempo" ? (
-          <CampoDeNumero
+          <CampoComDeslizante
             rotulo="Prazo"
             valor={campos.anos}
             aoMudar={mudar("anos")}
+            min={1}
+            max={50}
+            passo={1}
             depois={<span>anos</span>}
           />
         ) : null}
+        <CampoDeNumero
+          rotulo="Aumento do aporte a cada ano"
+          valor={campos.reajuste}
+          aoMudar={mudar("reajuste")}
+          depois={<span>%</span>}
+          dica="Quem guarda mais quando o salário sobe. Zero: o mesmo aporte o tempo todo."
+        />
       </form>
-      <Resultado rotulo={erro ? "" : (resposta as Resposta).rotulo} principal={erro ? "" : (resposta as Resposta).principal} erro={erro}>
+      <Resultado rotulo={certa?.rotulo ?? ""} principal={certa?.principal ?? ""} erro={erro}>
         {fim ? (
           <dl className="ferramenta-numeros">
             <div>
@@ -146,7 +215,10 @@ export function AportesEMetas() {
             </div>
             <div>
               <dt>Veio dos juros</dt>
-              <dd>{formatarReais(fim.juros)}</dd>
+              <dd>
+                {formatarReais(fim.juros)}
+                {fim.saldo > 0 ? <small className="apagado"> ({formatarPorcentagem(fim.juros / fim.saldo, 0)} do saldo)</small> : null}
+              </dd>
             </div>
             <div>
               <dt>Saldo no fim</dt>
@@ -154,7 +226,31 @@ export function AportesEMetas() {
             </div>
           </dl>
         ) : null}
+        {certa && certa.aporte > 0 ? (
+          <p className="ferramenta-destaque">
+            {virada
+              ? `A partir do mês ${formatarNumero(virada)}, os juros do mês passam o aporte (${prazoPorExtenso(virada)}): daí em diante, o dinheiro trabalha mais que você.`
+              : "No prazo escolhido, os juros de um mês ainda não chegam ao aporte do mês."}
+          </p>
+        ) : null}
       </Resultado>
+      {certa ? (
+        <div className="ferramenta-largo">
+          <GraficoDoTempo
+            titulo="O que saiu do bolso e o que veio dos juros, mês a mês"
+            meses={pontosDoGrafico(certa.linhas).map((l) => l.mes)}
+            series={[
+              { nome: "Saiu do bolso", cor: SERIES[2], valores: pontosDoGrafico(certa.linhas).map((l) => l.aportado) },
+              { nome: "Juros", cor: SERIES[0], valores: pontosDoGrafico(certa.linhas).map((l) => l.juros) },
+            ]}
+            empilhado
+            referencia={pergunta !== "quanto-terei" && meta !== null ? { valor: meta, rotulo: "Meta" } : undefined}
+            formatarValor={formatarReais}
+            formatarEixo={formatarReaisCurto}
+          />
+          <Compartilhar resultado={textoParaCopiar(campos, certa)} />
+        </div>
+      ) : null}
     </div>
   );
 }
