@@ -370,3 +370,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** alguns testes regravam o conteúdo (igual) e o `.gitattributes` (`web/** text=auto eol=lf`) faz o Git desconfiar da data do arquivo. O conteúdo é o mesmo: `git hash-object ARQUIVO` bate com `git rev-parse HEAD:ARQUIVO`.
 - **Solução:** `git checkout -- web/conteudo` (ou só não adicionar esses arquivos; nunca `git add -A` sem olhar). Atrapalha o `git rebase`, que recusa "unstaged changes" até isso.
 - **Data:** 14/10/2026
+
+## `CHECK (... ficha IS NULL)` não barra a linha: `None` numa coluna JSON vira o texto `null`
+- **Sintoma:** o teste que esperava `IntegrityError` ao gravar `ficha=None` num link do tipo "ficha" passou direto (`DID NOT RAISE`): o banco aceitou a linha.
+- **Causa:** numa coluna `sa.JSON` (ou `JSONB`), o SQLAlchemy grava o `None` do Python como o **valor JSON** `null`, que para o banco não é `NULL`. A trava `ficha IS NOT NULL` vê um valor e deixa passar.
+- **Solução:** para gravar o `NULL` do banco, usar `sa.null()` (ou simplesmente não mandar a coluna no `insert`). Outra opção é criar a coluna com `sa.JSON(none_as_null=True)`.
+- **Data:** 13/10/2026
+
+## `insert(...).values([lista])` falha com `CompileError ... explicitly rendered as a bound parameter`
+- **Sintoma:** inserir várias linhas de uma vez quebrou com `INSERT value for column ... is explicitly rendered as a bound parameter`.
+- **Causa:** as linhas da lista não tinham as mesmas chaves (uma tinha `relatorio_id`, as outras não). Num `insert` de várias linhas, todas precisam das mesmas colunas.
+- **Solução:** pôr todas as colunas em todas as linhas (com `None` onde não há valor).
+- **Data:** 13/10/2026
