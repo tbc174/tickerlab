@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
 import pytest
+import requests
 
 from base.cripto import coleta
 from base.cripto.arquivos import ler_tabela
@@ -170,6 +171,89 @@ def test_gdelt_um_dia_por_vez_com_pausa_e_limite_por_rodada(tmp_path, monkeypatc
     assert len(fonte.pedidos) == 12  # 6 dias, contagem e tom
     assert all(pausa >= coleta.PAUSA_DO_GDELT_EM_SEGUNDOS for pausa in pausas)
     assert len(pausas) == len(fonte.pedidos)
+
+
+# --- GDELT limitando (14/10/2026: a coleta falhou com 429 Too Many Requests) ------------------------
+def _erro_http(codigo: int, espere: str | None = None) -> requests.HTTPError:
+    resposta = requests.Response()
+    resposta.status_code = codigo
+    if espere is not None:
+        resposta.headers["Retry-After"] = espere
+    return requests.HTTPError(f"{codigo} Client Error", response=resposta)
+
+
+class GdeltLimitando(Fonte):
+    """Responde 429 nos pedidos de número `limitados` (contando de 1) e o dia certo nos outros."""
+
+    def __init__(self, limitados, espere: str | None = None):
+        super().__init__(_gdelt_do_dia)
+        self.limitados = limitados
+        self.espere = espere
+
+    def __call__(self, url: str) -> bytes:
+        self.pedidos.append(url)
+        if len(self.pedidos) in self.limitados:
+            raise _erro_http(429, self.espere)
+        return self.responder(url)
+
+
+def test_gdelt_espera_e_tenta_de_novo_quando_responde_429(tmp_path, monkeypatch):
+    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 1)
+    pausas: list[float] = []
+    fonte = GdeltLimitando(limitados={2, 3})  # o tom do 1º dia leva dois 429
+
+    coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=pausas.append)
+
+    assert ler_tabela(tmp_path / "gdelt", "dia")["dia"].tolist() == [date(2017, 1, 1)]
+    assert len(fonte.pedidos) == 4
+    esperas_do_429 = [p for p in pausas if p > coleta.PAUSA_DO_GDELT_EM_SEGUNDOS]
+    assert esperas_do_429 == list(coleta.ESPERAS_DO_GDELT_EM_SEGUNDOS[:2])
+
+
+def test_gdelt_respeita_o_retry_after_da_resposta(tmp_path, monkeypatch):
+    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 1)
+    pausas: list[float] = []
+    fonte = GdeltLimitando(limitados={1}, espere="90")
+
+    coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=pausas.append)
+
+    assert pausas[0] == 90
+
+
+def test_gdelt_sempre_limitando_sem_nenhum_dia_novo_falha(tmp_path):
+    fonte = GdeltLimitando(limitados=range(1, 1000))
+
+    with pytest.raises(requests.HTTPError):
+        coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=lambda _: None)
+
+    assert len(fonte.pedidos) == len(coleta.ESPERAS_DO_GDELT_EM_SEGUNDOS) + 1
+    assert not (tmp_path / "gdelt").exists()
+
+
+def test_gdelt_limitando_depois_de_dias_novos_guarda_o_que_veio_e_para(
+    tmp_path, monkeypatch
+):
+    # 2 dias inteiros (4 pedidos); do 5º em diante, só 429: a rodada termina bem, o resto amanhã.
+    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 10)
+    fonte = GdeltLimitando(limitados=range(5, 1000))
+
+    novas = coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=lambda _: None)
+
+    assert novas == 2
+    assert ler_tabela(tmp_path / "gdelt", "dia")["dia"].tolist() == [
+        date(2017, 1, 1),
+        date(2017, 1, 2),
+    ]
+
+
+def test_gdelt_outro_erro_nao_e_tentado_de_novo(tmp_path):
+    def quebrado(url: str) -> bytes:
+        raise _erro_http(500)
+
+    fonte = Fonte(quebrado)
+    with pytest.raises(requests.HTTPError):
+        coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=lambda _: None)
+    assert len(fonte.pedidos) == 1
 
 
 PAGINA_DA_RECEITA = (
