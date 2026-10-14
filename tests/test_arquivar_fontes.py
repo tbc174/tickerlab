@@ -6,6 +6,7 @@ import threading
 import pytest
 import requests
 
+from base.arquivo import cliente_http
 from scripts import arquivar_fontes
 
 
@@ -199,7 +200,7 @@ def test_conexao_que_sempre_cai_desiste_depois_de_algumas_tentativas(
     servidor = servidor_que_derruba(derrubar=99)
     with pytest.raises(requests.ConnectionError):
         arquivar_fontes.ClienteHttp().baixar(servidor.url, tmp_path / "q.zip")
-    assert len(servidor.pedidos) == 1 + arquivar_fontes.TENTATIVAS_SE_A_CONEXAO_CAI
+    assert len(servidor.pedidos) == 1 + cliente_http.TENTATIVAS_SE_A_CONEXAO_CAI
 
 
 def test_resposta_de_erro_nao_e_repetida(servidor_que_derruba, tmp_path):
