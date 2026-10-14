@@ -308,3 +308,61 @@ def test_id_com_espaco_vai_e_volta_do_lote(pasta):
     cliente.estado = "ended"
     rc.buscar(cliente, eventos, pasta)
     assert "0001 IPE00-1" in rc.ler_rotulos(pasta)
+
+
+# --- texto só nos fatos relevantes (Tiago, 14/10/2026) ------------------------------------------
+
+FATO = {
+    **EVENTOS[0],
+    "id": "0001IPE99-1",
+    "categoria": "Fato Relevante",
+    "assunto": "Aquisição",
+}
+
+
+def test_baixar_fatos_relevantes_primeiro(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        leitura,
+        "texto_do_pdf",
+        lambda _: "Texto do documento com várias palavras para ler aqui.",
+    )
+    pedidos = []
+    rc.baixar(
+        [*EVENTOS, FATO],
+        tmp_path,
+        maximo=1,
+        obter=lambda url: pedidos.append(url) or b"%PDF-%%EOF",
+        pausa=0,
+    )
+    assert pedidos == [FATO["link"]]
+
+
+def test_texto_so_nos_fatos_manda_os_outros_so_com_o_assunto(pasta):
+    eventos = [*EVENTOS, FATO]
+    (pasta / "textos" / f"{EVENTOS[0]['id']}.txt").unlink()  # aviso sem texto baixado
+    (pasta / "textos" / f"{FATO['id']}.txt").write_text(
+        "A empresa anuncia a aquisição.", encoding="utf-8"
+    )
+    cliente = ClienteDeMentira()
+    with pytest.raises(RuntimeError, match="baixar"):
+        rc.enviar(cliente, eventos, pasta, teto=60)  # sem a regra, falta texto
+    rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True)
+    conteudos = {
+        p["custom_id"]: p["params"]["messages"][0]["content"] for p in cliente.lotes[0]
+    }
+    assert (
+        ri.SEM_TEXTO in conteudos[rc.chave(EVENTOS[1]["id"])]
+    )  # o aviso foi só com o assunto
+    assert "aquisição" in conteudos[rc.chave(FATO["id"])]  # o fato foi com o texto
+    assert rc.ler_manifesto(pasta)["lotes"][0]["texto_so_nos_fatos"] is True
+
+
+def test_buscar_confere_o_trecho_pela_mesma_regra(pasta):
+    eventos = [EVENTOS[1]]
+    cliente = ClienteDeMentira()
+    rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True)
+    cliente.estado = "ended"
+    rc.buscar(cliente, eventos, pasta)
+    registro = rc.ler_rotulos(pasta)[EVENTOS[1]["id"]]
+    assert "erro" not in registro
+    assert registro["tinha_texto"] is False and registro["texto_so_nos_fatos"] is True

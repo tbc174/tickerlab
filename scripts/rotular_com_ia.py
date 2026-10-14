@@ -8,6 +8,10 @@
     python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --humanos tiago.json --teto-dolares 60
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
 
+Com `--texto-so-nos-fatos` (estimar, piloto, enviar, identificar), só os fatos relevantes vão com
+texto; os outros vão só com o assunto, como o guia manda a pessoa fazer (Tiago, 14/10/2026: vale se a
+CVM liberar menos de 100 documentos por dia). Cada rótulo e cada lote guardam a regra usada.
+
 `baixar` guarda o texto de cada documento em `<pasta>/textos/` (um pedido por vez à CVM, com um minuto
 de pausa, e para no primeiro sinal de limite, como o leitor; roda de novo no dia seguinte). `estimar`
 conta os tokens de uma amostra pela API (não gasta) e projeta o custo da fila. `piloto` rotula poucos
@@ -183,9 +187,12 @@ def baixar(
     obter: Callable[[str], bytes] = _baixar_da_cvm,
     pausa: float = PAUSA_ENTRE_DOWNLOADS,
 ) -> int:
-    """Baixa os textos que faltam; para no primeiro sinal de limite da CVM. Devolve quantos baixou."""
+    """Baixa os textos que faltam, **fatos relevantes primeiro** (são os que mais dependem do texto;
+    a CVM limita os downloads e a fila inteira pode levar semanas); para no primeiro sinal de limite.
+    Devolve quantos baixou."""
     _textos(pasta).mkdir(parents=True, exist_ok=True)
-    faltam = [e for e in eventos if texto_guardado(pasta, e["id"]) is None][:maximo]
+    faltam = [e for e in eventos if texto_guardado(pasta, e["id"]) is None]
+    faltam = sorted(faltam, key=lambda e: not ri.e_fato_relevante(e))[:maximo]
     baixados = 0
     for i, evento in enumerate(faltam):
         if i:
@@ -217,11 +224,25 @@ def pendentes(eventos: list[dict], pasta: Path) -> list[dict]:
     return [e for e in eventos if e["id"] not in feitos]
 
 
-def _parametros(evento: dict, pasta: Path) -> dict:
-    return ri.pedido(evento, texto_guardado(pasta, evento["id"]) or "")
+def texto_do_pedido(evento: dict, pasta: Path, so_fatos: bool = False) -> str | None:
+    """O texto que vai para o modelo. Com `so_fatos` (Tiago, 14/10/2026: se a CVM liberar menos de
+    100 documentos por dia), quem não é fato relevante vai só com o assunto (""), como o guia manda a
+    pessoa fazer. None: o texto ainda não foi baixado."""
+    if so_fatos and not ri.e_fato_relevante(evento):
+        return ""
+    return texto_guardado(pasta, evento["id"])
 
 
-def estimar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> float:
+def _parametros(evento: dict, pasta: Path, so_fatos: bool = False) -> dict:
+    return ri.pedido(evento, texto_do_pedido(evento, pasta, so_fatos) or "")
+
+
+def estimar(
+    cliente: anthropic.Anthropic,
+    eventos: list[dict],
+    pasta: Path,
+    so_fatos: bool = False,
+) -> float:
     """O custo projetado em US$ pela Batch API: tokens de entrada contados numa amostra (a contagem
     não gasta) e a saída estimada por evento."""
     if not eventos:
@@ -231,7 +252,7 @@ def estimar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> f
     )
     contados = []
     for evento in amostra:
-        p = _parametros(evento, pasta)
+        p = _parametros(evento, pasta, so_fatos)
         contados.append(
             cliente.messages.count_tokens(
                 model=p["model"], system=p["system"], messages=p["messages"]
@@ -265,10 +286,15 @@ def _custo_da_resposta(usage: anthropic.types.Usage, lote: bool) -> float:
 
 
 def registro(
-    evento: dict, pasta: Path, mensagem: anthropic.types.Message, origem: str
+    evento: dict,
+    pasta: Path,
+    mensagem: anthropic.types.Message,
+    origem: str,
+    so_fatos: bool = False,
 ) -> dict:
-    """O que fica guardado de uma resposta: rótulo ou erro, sempre com a entrada e a resposta bruta."""
-    texto_do_documento = texto_guardado(pasta, evento["id"]) or ""
+    """O que fica guardado de uma resposta: rótulo ou erro, sempre com a entrada e a resposta bruta
+    (o texto conferido é o mesmo que foi no pedido, pela mesma regra)."""
+    texto_do_documento = texto_do_pedido(evento, pasta, so_fatos) or ""
     bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
     resultado = ri.de_mensagem(mensagem.stop_reason, bruta, evento, texto_do_documento)
     base = {
@@ -276,6 +302,7 @@ def registro(
         "origem": origem,
         "rotulado_em": datetime.now(FUSO).isoformat(timespec="seconds"),
         "tinha_texto": bool(texto_do_documento),
+        "texto_so_nos_fatos": so_fatos,
         "hash_da_entrada": ri.hash_da_entrada(ri.pedido(evento, texto_do_documento)),
         "resposta_bruta": bruta,
         "tokens_entrada": mensagem.usage.input_tokens,
@@ -290,18 +317,25 @@ def registro(
 
 
 def piloto(
-    cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path, n: int, teto: float
+    cliente: anthropic.Anthropic,
+    eventos: list[dict],
+    pasta: Path,
+    n: int,
+    teto: float,
+    so_fatos: bool = False,
 ) -> int:
     """Rotula `n` eventos na hora (preço normal), para conferir formato, erros e custo real."""
     escolhidos = pendentes(eventos, pasta)[:n]
     manifesto = ler_manifesto(pasta)
     conferir_teto(
-        manifesto, estimar(cliente, escolhidos, pasta) / ri.DESCONTO_DO_LOTE, teto
+        manifesto,
+        estimar(cliente, escolhidos, pasta, so_fatos) / ri.DESCONTO_DO_LOTE,
+        teto,
     )
     registros, gasto = [], 0.0
     for evento in escolhidos:
-        mensagem = cliente.messages.create(**_parametros(evento, pasta))
-        registros.append(registro(evento, pasta, mensagem, "piloto"))
+        mensagem = cliente.messages.create(**_parametros(evento, pasta, so_fatos))
+        registros.append(registro(evento, pasta, mensagem, "piloto", so_fatos))
         gasto += _custo_da_resposta(mensagem.usage, lote=False)
     _acrescentar(pasta, registros)
     manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
@@ -320,6 +354,7 @@ def enviar(
     pasta: Path,
     teto: float,
     permitir_sem_texto: bool = False,
+    so_fatos: bool = False,
 ) -> str | None:
     """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote."""
     manifesto = ler_manifesto(pasta)
@@ -331,22 +366,25 @@ def enviar(
     if not faltam:
         log.info("Nada pendente.")
         return None
-    sem_baixar = [e["id"] for e in faltam if texto_guardado(pasta, e["id"]) is None]
+    sem_baixar = [
+        e["id"] for e in faltam if texto_do_pedido(e, pasta, so_fatos) is None
+    ]
     if sem_baixar and not permitir_sem_texto:
         raise RuntimeError(
             f"{len(sem_baixar)} eventos sem o texto baixado: rode `baixar` (ou use --permitir-sem-texto)."
         )
-    estimativa = estimar(cliente, faltam, pasta)
+    estimativa = estimar(cliente, faltam, pasta, so_fatos)
     conferir_teto(manifesto, estimativa, teto)
     lote = cliente.messages.batches.create(
         requests=[
-            {"custom_id": chave(e["id"]), "params": _parametros(e, pasta)}
+            {"custom_id": chave(e["id"]), "params": _parametros(e, pasta, so_fatos)}
             for e in faltam
         ]
     )
     manifesto["lotes"] = [
         *manifesto.get("lotes", []),
         {"id": lote.id, "eventos": len(faltam), "estimativa": estimativa, "estado": "enviado",
+         "texto_so_nos_fatos": so_fatos,
          "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
     ]  # fmt: skip
     gravar_manifesto(pasta, manifesto, eventos)
@@ -376,7 +414,13 @@ def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> in
             if resultado.result.type == "succeeded":
                 mensagem = resultado.result.message
                 registros.append(
-                    registro(evento, pasta, mensagem, f"lote {lote['id']}")
+                    registro(
+                        evento,
+                        pasta,
+                        mensagem,
+                        f"lote {lote['id']}",
+                        lote.get("texto_so_nos_fatos", False),
+                    )
                 )
                 gasto += _custo_da_resposta(mensagem.usage, lote=True)
             else:
@@ -426,8 +470,10 @@ def identificar(
     pasta: Path,
     humanos: dict[str, dict],
     teto: float,
+    so_fatos: bool = False,
 ) -> int:
-    """Pergunta à IA qual é a empresa de cada evento de prova, lendo o documento anonimizado."""
+    """Pergunta à IA qual é a empresa de cada evento de prova, lendo o mesmo documento anonimizado
+    que o rotulador leu (use a mesma regra de texto do lote)."""
     por_id = {e["id"]: e for e in eventos}
     feitos = ler_identificacoes(pasta) or {}
     faltam = [por_id[i] for i in _prova(humanos) if i in por_id and i not in feitos]
@@ -443,7 +489,7 @@ def identificar(
         for evento in faltam:
             mensagem = cliente.messages.create(
                 **ri.pedido_de_identificacao(
-                    evento, texto_guardado(pasta, evento["id"]) or ""
+                    evento, texto_do_pedido(evento, pasta, so_fatos) or ""
                 )
             )
             bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
@@ -510,6 +556,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="enviar mesmo sem o texto de todos",
     )
+    argumentos.add_argument(
+        "--texto-so-nos-fatos",
+        action="store_true",
+        help="só os fatos relevantes vão com texto; os outros, só com o assunto",
+    )
     argumentos.add_argument("--maximo", type=int, default=500, help="downloads por vez")
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
@@ -541,10 +592,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if opcoes.passo == "estimar":
             faltam = pendentes(eventos, opcoes.pasta)
-            estimativa = estimar(cliente, faltam, opcoes.pasta)
+            so_fatos = opcoes.texto_so_nos_fatos
+            estimativa = estimar(cliente, faltam, opcoes.pasta, so_fatos)
             gasto = ler_manifesto(opcoes.pasta).get("gasto_em_dolares", 0.0)
             sem_texto = sum(
-                texto_guardado(opcoes.pasta, e["id"]) is None for e in faltam
+                texto_do_pedido(e, opcoes.pasta, so_fatos) is None for e in faltam
             )
             print(f"Pendentes: {len(faltam)} ({sem_texto} sem texto baixado)")
             print(
@@ -557,9 +609,17 @@ def main(argv: list[str] | None = None) -> int:
                 opcoes.pasta,
                 ler_humanos(opcoes.humanos),
                 opcoes.teto_dolares,
+                opcoes.texto_so_nos_fatos,
             )
         elif opcoes.passo == "piloto":
-            piloto(cliente, eventos, opcoes.pasta, opcoes.n, opcoes.teto_dolares)
+            piloto(
+                cliente,
+                eventos,
+                opcoes.pasta,
+                opcoes.n,
+                opcoes.teto_dolares,
+                opcoes.texto_so_nos_fatos,
+            )
         elif opcoes.passo == "enviar":
             enviar(
                 cliente,
@@ -567,6 +627,7 @@ def main(argv: list[str] | None = None) -> int:
                 opcoes.pasta,
                 opcoes.teto_dolares,
                 opcoes.permitir_sem_texto,
+                opcoes.texto_so_nos_fatos,
             )
         else:
             buscar(cliente, eventos, opcoes.pasta)
