@@ -243,3 +243,16 @@ def test_painel_do_site_leva_o_periodo_e_a_serie_em_base_100():
 
 def test_painel_vai_para_o_site_no_exemplo_json():
     assert exp.conteudo()["exemplo"] == exp.painel_de_exemplo()
+
+
+def test_site_leva_a_fita_e_o_total_de_ativos_da_busca():
+    """A fita da página inicial: código do catálogo e um nome curto, nenhum preço (ADR 0065)."""
+    from src import catalogo
+
+    site = exp.conteudo()["site"]
+    tabela = catalogo.carregar()
+    assert site["total_de_ativos"] == len(tabela)
+    assert len(site["fita"]) >= 10
+    for item in site["fita"]:
+        assert set(item) == {"simbolo", "codigo", "nome"}
+        assert item["codigo"] == tabela.loc[item["simbolo"], "codigo"]

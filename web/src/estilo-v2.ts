@@ -137,8 +137,12 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-horizonte-alto { bottom: -70%; animation: none; opacity: .9; }
 .v2-final-fundo .final h2 { font-size: clamp(1.9rem, 4vw, 2.8rem); }
 
+/* no celular o painel some; o botão do PDF de exemplo aparece no lugar dele */
+.acoes.v2-so-no-celular { display: none; }
 @media (max-width: 860px) {
   .v2-painel-pilha { display: none; }
+  .heroi { grid-template-columns: 1fr; }
+  .acoes.v2-so-no-celular { display: flex; }
   .v2-bento { grid-template-columns: 1fr; }
   .v2-bento .cartao, .v2-bento .v2-larga, .v2-bento .v2-faixa-cartao { grid-column: auto; }
   .v2-bento .v2-larga { grid-template-columns: 1fr; }
@@ -173,6 +177,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   color: var(--apagado); font: 600 .78rem "Manrope", sans-serif; cursor: pointer; backdrop-filter: blur(8px); }
 .v2-pausa:hover { color: var(--texto); border-color: var(--azul-texto); }
 .v2-pausa svg { width: .9rem; height: .9rem; }
+/* no toque, a área do botão chega aos 44 px (ADR 0066); o desenho continua pequeno */
+@media (pointer: coarse) { .v2-pausa { min-height: 44px; padding-inline: .9rem; } }
 .v2-pausa .retomar { display: none; }
 .v2-pausado .v2-pausa .pausar { display: none; }
 .v2-pausado .v2-pausa .retomar { display: block; }

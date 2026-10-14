@@ -104,3 +104,35 @@ export const PERGUNTAS: [string, string][] = [
       "conta, o que também encerra a assinatura.",
   ],
 ];
+
+// --- página inicial v2 (ADR 0065) ----------------------------------------------------------
+// de onde vem cada dado, como nas Fontes e metodologia (o nome e o que vem de lá)
+export const FONTES_DOS_DADOS: [string, string][] = [
+  ["CVM", "documentos e demonstrações"],
+  ["SEC", "empresas dos EUA"],
+  ["Banco Central", "juros, inflação e câmbio"],
+  ["Tesouro dos EUA", "curva de juros"],
+  ["Yahoo Finance", "preços, com atraso possível"],
+];
+
+// a frase da diferença, em duas partes (a segunda em destaque); o texto final é do Tiago
+// (tarefa marketing-frase-diferenca na Central)
+export const FRASE_DA_DIFERENCA: [string, string] = [
+  "Outros sites mostram os números.",
+  "O TickerLab testa se a ideia funciona.",
+];
+
+export const PRINCIPIOS: [string, string][] = [
+  [
+    "Sem olhar o futuro",
+    "Cada teste usa só o que se sabia naquele dia, com custos de operação na conta.",
+  ],
+  [
+    "Desconta a sorte",
+    "A ficha “Foi sorte?” mostra se um bom resultado resiste quando tiramos o acaso da conta.",
+  ],
+  [
+    "Cada número explicado",
+    "Em português, com a fonte, a data e os limites de cada análise. Nada é recomendação.",
+  ],
+];

@@ -174,7 +174,9 @@ export function LinhaDoHeroi() {
 
 export function ChamadaFinal() {
   return (
-    <div className="escura">
+    <div className="escura v2-final-fundo">
+      {/* o horizonte azul do topo, que sobe quando a chamada aparece (movimento.js) */}
+      <div className="v2-horizonte v2-horizonte-alto" aria-hidden="true" />
       <section className="faixa secao final" aria-labelledby="titulo-final">
         <h2 id="titulo-final">Comece pela sua primeira análise</h2>
         <p className="subtitulo">
