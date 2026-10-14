@@ -74,7 +74,7 @@ def pagina_inicio():
     st.pills(
         "Recentes" if recentes else "Experimente",
         recentes or list(catalogo.EXEMPLOS),
-        format_func=lambda s: catalogo.rotulo(s).split(" · ")[0],
+        format_func=catalogo.codigo,
         key="atalho_do_inicio",
         on_change=_analisar_o_atalho,
         args=("atalho_do_inicio",),

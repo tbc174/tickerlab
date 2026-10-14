@@ -85,7 +85,7 @@ function Resultado({ dados }: { dados: BacktestDoAtivoV1 }) {
       </div>
       <h2>Curva de capital</h2>
       <GraficoDeLinha
-        titulo={`Curva de capital de ${dados.estrategia} em ${ativo.ticker} (base 100)`}
+        titulo={`Curva de capital de ${dados.estrategia} em ${ativo.codigo} (base 100)`}
         datas={backtest.curva_de_capital.datas}
         series={[{ nome: dados.estrategia, cor: "var(--serie-1)", valores: backtest.curva_de_capital.valores }]}
         referencia={100}

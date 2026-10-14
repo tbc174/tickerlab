@@ -47,6 +47,16 @@ def rotulo(simbolo: str) -> str:
     return f"{linha['codigo']} · {linha['nome']} · {linha['bolsa']}{tipo}"
 
 
+def codigo(simbolo: str) -> str:
+    """O código que a tela mostra: "IBOV" para "^BVSP", "PETR4" para "PETR4.SA".
+
+    Só para mostrar: os dados sempre são pedidos pelo símbolo (`resolver` faz a volta).
+    Fora do catálogo, o próprio símbolo.
+    """
+    catalogo = carregar()
+    return catalogo.loc[simbolo, "codigo"] if simbolo in catalogo.index else simbolo
+
+
 def resolver(texto: str | None) -> str | None:
     """O símbolo do Yahoo para o que foi escolhido ou digitado (None se vazio).
 
