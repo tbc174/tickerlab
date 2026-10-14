@@ -156,9 +156,10 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
         from src.api_v1.compartilhados import router as router_compartilhados
+        from src.api_v1.conta import router as router_da_conta
         from src.api_v1.rotas import router as router_v1
 
-        for rotas in (router_v1, router_compartilhados):
+        for rotas in (router_v1, router_compartilhados, router_da_conta):
             nova.include_router(rotas)
             nova.include_router(rotas, prefix="/api")
     return nova

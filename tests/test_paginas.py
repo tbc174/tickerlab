@@ -141,8 +141,12 @@ def test_cada_contrato_bate_com_a_rota_de_verdade():
 
 def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     usadas = {c.rota for c in _contratos().values()}
-    # /eu é da conta e /configuracao é do login, não de uma página
-    assert set(_openapi()["paths"]) - usadas == {"/v1/eu", "/v1/configuracao"}
+    # /eu e /conta são da conta e /configuracao é do login, não de uma página
+    assert set(_openapi()["paths"]) - usadas == {
+        "/v1/eu",
+        "/v1/conta",
+        "/v1/configuracao",
+    }
 
 
 def test_periodos_do_contrato_sao_os_do_app():

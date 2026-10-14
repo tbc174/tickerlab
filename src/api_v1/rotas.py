@@ -100,6 +100,11 @@ def configuracao() -> ConfiguracaoV1:
 
 @router.get("/eu")
 def eu(conta: Conta) -> EuV1:
+    return eu_da_conta(conta)
+
+
+def eu_da_conta(conta: Usuario) -> EuV1:
+    """O que a tela mostra da conta (o `/v1/eu` e a criação da conta respondem igual)."""
     limites = limites_do(conta.plano)
     return EuV1(
         nome=conta.nome,
@@ -468,6 +473,9 @@ def openapi_v1() -> dict:
     """O esquema OpenAPI só da v1 (o contrato publicado em `docs/api/openapi-v1.json`)."""
     from fastapi import FastAPI
 
+    from src.api_v1.conta import router as router_da_conta
+
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
+    app.include_router(router_da_conta)
     return app.openapi()

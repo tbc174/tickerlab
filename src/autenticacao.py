@@ -70,6 +70,13 @@ def esta_em_producao(ambiente: Mapping[str, str] | None = None) -> bool:
     return texto.strip().lower() == AMBIENTE_DE_PRODUCAO
 
 
+# a frase embaixo do botão de entrar (o Streamlit e o app novo mostram a mesma)
+AVISO_DA_ENTRADA = (
+    "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. "
+    "Nada aqui é recomendação de investimento."
+)
+
+
 def emails_de_admin(ambiente: Mapping[str, str] | None = None) -> tuple[str, ...]:
     """E-mails que viram administradores no primeiro login (`TICKERLAB_ADMINS`, separados por vírgula)."""
     texto = (ambiente if ambiente is not None else os.environ).get(

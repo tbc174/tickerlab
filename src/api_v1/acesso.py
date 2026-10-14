@@ -176,19 +176,25 @@ def _token_do_cabecalho(authorization: str | None) -> str:
     return token.strip()
 
 
-def conta_logada(
+def identidade_logada(
     chaves: Annotated[KeySet, Depends(chaves_do_google)],
     authorization: Annotated[str | None, Header()] = None,
-) -> Usuario:
-    """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
+) -> IdentidadeDoGoogle:
+    """Quem o token do Google prova ser (ainda sem procurar a conta), ou 401 ou 503."""
     token = _token_do_cabecalho(authorization)
     client_id = os.environ.get(VARIAVEL_DO_CLIENT_ID, "").strip()
     if not client_id:
         raise HTTPException(status_code=503, detail="Login da API não configurado.")
     try:
-        identidade = verificar_token(token, chaves, client_id, agora())
+        return verificar_token(token, chaves, client_id, agora())
     except TokenInvalidoError as erro:
         raise _recusa(401, str(erro), "token-invalido") from erro
+
+
+def conta_logada(
+    identidade: Annotated[IdentidadeDoGoogle, Depends(identidade_logada)],
+) -> Usuario:
+    """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
     with obter_engine().connect() as conexao:
         usuario = buscar_por_google_sub(conexao, identidade.sub)
     if usuario is None:

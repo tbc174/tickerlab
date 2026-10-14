@@ -85,13 +85,48 @@ describe("conta recusada pela API", () => {
     expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
   });
 
-  it("conta que nunca entrou pelo app: leva ao app atual para criar a conta", async () => {
-    abrir(() =>
-      respostaJson(401, { detail: "Conta não encontrada." }, { "X-TickerLab-Motivo": "conta-nova" }),
-    );
+  it("primeiro login: cria a conta pela API e entra (sem passar pelo app atual)", async () => {
+    let criada = false;
+    const aberto = abrirApp("/", {
+      entraSozinho: false,
+      eu: () =>
+        criada
+          ? respostaJson(200, ANA)
+          : respostaJson(401, { detail: "Conta não encontrada." }, { "X-TickerLab-Motivo": "conta-nova" }),
+      rotas: (endereco) => {
+        if (endereco !== "/api/v1/conta") return undefined;
+        criada = true;
+        return respostaJson(200, { ...ANA, primeira_vez: true });
+      },
+    });
+    google = aberto.google;
     await entrar();
-    const link = await screen.findByRole("link", { name: /Criar a conta no app/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/");
+    expect(await screen.findByText(/Ana · Gratuito/)).toBeTruthy();
+    expect(aberto.buscar).toHaveBeenCalledWith("/api/v1/conta", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+      body: "{}",
+    });
+  });
+
+  it("se não der para criar a conta, explica e deixa tentar de novo", async () => {
+    const aberto = abrirApp("/", {
+      entraSozinho: false,
+      eu: () => respostaJson(401, { detail: "Conta não encontrada." }, { "X-TickerLab-Motivo": "conta-nova" }),
+      rotas: (endereco) =>
+        endereco === "/api/v1/conta" ? respostaJson(503, { detail: "Fora do ar." }) : undefined,
+    });
+    google = aberto.google;
+    await entrar();
+    expect(await screen.findByText(/Fora do ar/)).toBeTruthy();
+    expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Criar a conta no app/ })).toBeNull();
+  });
+
+  it("a tela de entrada diz o que a conta guarda", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    expect(screen.getByText(/Usamos só o seu nome, e-mail e foto para criar a sua conta/)).toBeTruthy();
   });
 
   it("termos novos: leva ao app atual para aceitar", async () => {
