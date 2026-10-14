@@ -243,6 +243,29 @@ envios_da_newsletter = sa.Table(
     sa.CheckConstraint("situacao IN ('enviado', 'retido', 'falhou')", name="situacao"),
 )
 
+# Novidades e ofertas do TickerLab por e-mail (0037): opt-in próprio, separado da Newsletter e dos
+# termos (o e-mail do login serve só para a conta). Uma inscrição por usuário e cada envio (a chave
+# usuário + campanha impede mandar a mesma campanha duas vezes)
+inscricoes_de_novidades = sa.Table(
+    "inscricoes_de_novidades",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("versao_do_consentimento", sa.String(20), nullable=False),
+    # código aleatório do link "sair" (funciona sem login)
+    sa.Column("codigo_para_sair", sa.String(64), nullable=False, unique=True),
+    _momento("inscrito_em"),
+)
+envios_de_novidades = sa.Table(
+    "envios_de_novidades",
+    metadata,
+    _chave_do_usuario(primaria=True),
+    sa.Column("campanha", sa.String(80), primary_key=True),  # "2026-11-lancamento"
+    sa.Column("situacao", sa.String(20), nullable=False),
+    sa.Column("detalhe", sa.String(200), nullable=False, server_default=""),
+    _momento("registrado_em"),
+    sa.CheckConstraint("situacao IN ('enviado', 'retido', 'falhou')", name="situacao"),
+)
+
 # Research (0015): alertas compostos de cada usuário (a regra em JSON; ver src/alertas.py)
 alertas = sa.Table(
     "alertas",
