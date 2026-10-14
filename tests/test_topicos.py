@@ -230,3 +230,40 @@ def test_qualquer_texto_da_um_topico_da_lista(texto):
     assert leitura.principal in topicos.TOPICOS
     assert leitura.principal not in leitura.secundarios
     assert len(leitura.secundarios) <= 2
+
+
+# --- achados da primeira rodada em produção (14/10/2026) ---------------------------------------
+
+
+def test_sigla_do_estado_do_rio_nao_e_recuperacao_judicial():
+    """O endereço no cabeçalho ("Rio de Janeiro – RJ") virava recuperação judicial."""
+    texto = (
+        "AXIA Energia S.A. CNPJ 00.001.180/0001-26 Avenida Graça Aranha, 26, Centro, Rio de "
+        "Janeiro, RJ. A Companhia comunica a quinta operação de conversão das ações preferenciais "
+        "classe C em ações ordinárias, conforme aprovado pelos acionistas."
+    )
+    assert topicos.topico_do_texto(texto).principal != "RJ_INSOLVENCIA"
+    assert topicos.topico_do_titulo("Unidade RJ").principal == "OUTROS"
+    assert (
+        topicos.topico_do_titulo("Pedido de recuperação judicial").principal
+        == "RJ_INSOLVENCIA"
+    )
+
+
+def test_frase_de_encerramento_nao_decide_o_assunto():
+    """ "A Companhia manterá o mercado informado" vem em quase todo fato e não diz o assunto."""
+    texto = (
+        "A Companhia recebeu de acionistas um pedido de convocação de assembleia geral "
+        "extraordinária para deliberar sobre a eleição de membros do conselho. A Companhia "
+        "manterá seus acionistas e o mercado em geral devidamente informados sobre o aumento de "
+        "capital e demais assuntos."
+    )
+    leitura = topicos.topico_do_texto(texto)
+    assert (
+        leitura.principal == "ADMINISTRACAO"
+    )  # a eleição de conselheiros, não o aumento de capital
+    assert "OFERTA_ACOES" not in leitura.secundarios
+
+
+def test_mudou_a_regra_mudou_a_versao():
+    assert topicos.VERSAO == "2"

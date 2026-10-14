@@ -293,7 +293,9 @@ def test_lote_de_medicao_completa_o_dia_depois_dos_recentes(banco, cvm, tmp_path
     assert atualizar_leituras_cvm.main(["--maximo", "3", "--lote", str(lote)]) == 0
     assert cvm == []  # f1 e f2 (recentes) + 1 do lote
     with banco.connect() as c:
-        lidos = repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2", "l1", "l2", "l3"])
+        lidos = repo.lidos(
+            c, FONTE_IPE, repo.TOPICO, ["f1", "f2", "l1", "l2", "l3"], topicos.VERSAO
+        )
     assert lidos == {"f1", "f2", "l1"}
 
 
@@ -339,7 +341,10 @@ def test_coleta_da_cvm_grava_o_assunto_pelo_texto(banco, cvm):
         lidos = repo.topicos_dos_fatos(
             c, FONTE_IPE, [("f1", "Fato Relevante"), ("f2", "Fato Relevante")]
         )
-        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"]) == {"f1", "f2"}
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"], topicos.VERSAO) == {
+            "f1",
+            "f2",
+        }
     assert {(t.principal, t.metodo) for t in lidos.values()} == {
         ("AQUISICAO", "regra_texto"),
         ("OUTROS", "regra_titulo"),

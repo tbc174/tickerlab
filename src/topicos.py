@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from src import leitura
 
-VERSAO = "1"
+VERSAO = "2"  # 2 (14/10/2026): sem a sigla "RJ" (o estado do Rio) e sem a frase de encerramento
 REGRA_DO_TITULO = "regra_titulo"
 MAX_SECUNDARIOS = 2
 
@@ -84,7 +84,7 @@ REGRAS: tuple[tuple[str, str], ...] = (
     ("AQUISICAO", r"aquisic|\badquir|\bcompra d"),
     ("REORG", r"reorganizacao societaria|reestruturacao societaria"),
     ("RJ_INSOLVENCIA", (r"recuperacao (judicial|extrajudicial)|falencia"
-                        r"|liquidacao extrajudicial|\brj\b|assembleia geral (de|dos) credores")),
+                        r"|liquidacao extrajudicial|assembleia geral (de|dos) credores")),
     ("DIVIDENDOS", r"di?vidend|juros sobre (o )?capital|\bjcp\b|provento|bonificac"),
     ("OFERTA_ACOES", (r"oferta publica|follow[- ]?on|\bipo\b|oferta restrita"
                       r"|oferta (primaria|secundaria)|aumento de capital|reducao de capital"
@@ -164,6 +164,9 @@ REGRA_DO_TEXTO = "regra_texto"
 MIN_FRASES_LIDAS = (
     5  # o assunto está no começo: lê o primeiro terço, e pelo menos 5 frases
 )
+# a frase-padrão de encerramento ("a Companhia manterá o mercado informado sobre...") vem em quase
+# todo fato e não diz o assunto (achado da 1ª rodada em produção, 14/10/2026)
+ENCERRAMENTO = re.compile(r"\bmantera\b.*\binformad|\bmanter (os |seus )?acionistas\b")
 
 
 def topico_do_texto(texto: str) -> LeituraDoTopico:
@@ -176,6 +179,8 @@ def topico_do_texto(texto: str) -> LeituraDoTopico:
     janela = frases[: max(MIN_FRASES_LIDAS, math.ceil(len(frases) / 3))]
     principal, trecho, vistos = OUTROS, "", []
     for frase in janela:
+        if ENCERRAMENTO.search(_sem_acento(frase)):
+            continue
         achados = sorted(
             _topicos_da_parte(frase, _COMPILADAS_DO_TEXTO), key=_PRIORIDADE.__getitem__
         )
