@@ -203,7 +203,9 @@ MODULOS = (
             ),
             Funcionalidade("Newsletter", "Os acontecimentos da sua lista por e-mail."),
             Funcionalidade(
-                "Compartilhamento seguro", "Um link privado para quem você escolher."
+                "Compartilhamento seguro",
+                'Um link privado, com prazo e revogável, para a ficha "Foi sorte?" ou um PDF.',
+                "relatorio",
             ),
             Funcionalidade(
                 "Comparações em PDF",

@@ -78,3 +78,9 @@ def test_qualidade_dos_dados_leva_a_uma_acao_da_b3_nos_fundamentos():
 def test_chaves_unicas_para_as_ancoras_da_pagina_produto():
     chaves = [m.chave for m in modulos.MODULOS]
     assert len(chaves) == len(set(chaves))
+
+
+def test_compartilhamento_seguro_disponivel_na_biblioteca():
+    """Onda 4: o link da ficha (backtest) e do PDF (biblioteca do Report Studio)."""
+    f = _funcionalidade("relatorios", "Compartilhamento seguro")
+    assert f.disponivel and f.pagina_do_app == "relatorio"

@@ -224,10 +224,10 @@
         "ticker": null
       },
       {
-        "descricao": "Um link privado para quem você escolher.",
-        "disponivel": false,
+        "descricao": "Um link privado, com prazo e revogável, para a ficha \"Foi sorte?\" ou um PDF.",
+        "disponivel": true,
         "nome": "Compartilhamento seguro",
-        "pagina_do_app": null,
+        "pagina_do_app": "relatorio",
         "ticker": null
       },
       {
