@@ -56,6 +56,9 @@ OPERACOES = frozenset(
      "FECHAMENTO_CAPITAL", "REORG"}
 )  # fmt: skip
 OUTROS = "OUTROS"
+ROTULO_DO_FATO_RELEVANTE = (
+    "Fato relevante"  # o rótulo dos fatos relevantes da CVM (src/eventos.py)
+)
 
 # (tópico, frases) em ordem de prioridade; as frases valem sobre o título sem acento e minúsculo.
 # Cisão com "incorporação do acervo cindido" é cisão; incorporação com deslistagem é incorporação;

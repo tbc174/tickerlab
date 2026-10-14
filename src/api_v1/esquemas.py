@@ -14,7 +14,7 @@ from datetime import date
 import pandas as pd
 from pydantic import BaseModel
 
-from src import analises, catalogo, juros_e_inflacao, linha_do_tempo
+from src import analises, catalogo, juros_e_inflacao, linha_do_tempo, topicos
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.conteudo import descrever_pior_drawdown
@@ -264,6 +264,8 @@ class MarcoV1(BaseModel):
     assunto: str
     descricao: str  # "dd/mm/aaaa · tipo: assunto", como na tela
     link: str  # vazio: sem link seguro
+    topico: str  # o assunto do fato relevante (leitor v2): código; vazio se não há
+    topico_nome: str  # o mesmo, em português ("Aquisição"); vazio se não há
 
 
 class LinhaDoTempoV1(BaseModel):
@@ -290,6 +292,7 @@ def de_linha_do_tempo(linha: linha_do_tempo.LinhaDoTempo) -> LinhaDoTempoV1:
                 # só https da CVM ou da SEC (a coleta já filtra; aqui é a segunda trava)
                 **{**asdict(m), "link": link_da_fonte(m.link) or ""},
                 descricao=linha_do_tempo.descricao_do_marco(m),
+                topico_nome=topicos.TOPICOS.get(m.topico, ""),
             )
             for m in linha.marcos
         ],

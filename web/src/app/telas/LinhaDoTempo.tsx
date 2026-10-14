@@ -32,7 +32,10 @@ function Tabela({ marcos }: { marcos: MarcoV1[] }) {
               <tr key={`${m.data}-${m.descricao}`}>
                 <td className="numero">{formatarData(m.data)}</td>
                 <td>{m.rotulo}</td>
-                <td>{m.assunto}</td>
+                <td>
+                  {m.topico_nome ? <span className="selo-do-assunto">{m.topico_nome}</span> : null}
+                  {m.assunto}
+                </td>
                 <td>
                   {link ? (
                     <a href={link} target="_blank" rel="noopener noreferrer">

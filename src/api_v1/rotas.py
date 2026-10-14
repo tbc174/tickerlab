@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, catalogo, cobranca, conformidade, ficha
+from src import analises, catalogo, cobranca, conformidade, ficha, topicos
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -31,6 +31,7 @@ from src.api_v1.contexto import (
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import compartilhamentos as links
+from src.banco import leituras as repo_leituras
 from src.banco import tentativas
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
@@ -47,6 +48,7 @@ from src.cobranca import Assinatura, buscar_assinatura
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
+from src.eventos import FONTE_IPE
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
 from src.planos import (
@@ -633,16 +635,25 @@ def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
     return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
 
 
-def _eventos_do_ativo(ticker: str, desde: date) -> list[Evento]:
-    """Os acontecimentos do ativo desde `desde`; vazio se o banco não tem o Research."""
+def _eventos_do_ativo(
+    ticker: str, desde: date
+) -> tuple[list[Evento], dict[str, topicos.LeituraDoTopico]]:
+    """Os acontecimentos do ativo desde `desde` e o assunto lido de cada fato relevante (leitor
+    v2, só regras); vazios se o banco não tem o Research."""
     try:
         with obter_engine().connect() as conexao:
-            return eventos_dos_tickers(
+            eventos = eventos_dos_tickers(
                 conexao, [ticker], desde, limite=ldt.LIMITE_DE_EVENTOS
             )
+            fatos = [
+                (e.protocolo, e.assunto)
+                for e in eventos
+                if e.fonte == FONTE_IPE and e.rotulo == topicos.ROTULO_DO_FATO_RELEVANTE
+            ]
+            return eventos, repo_leituras.topicos_dos_fatos(conexao, FONTE_IPE, fatos)
     except Exception as erro:
         if tabela_inexistente(erro):
-            return []
+            return [], {}
         raise
 
 
@@ -657,15 +668,20 @@ def linha_do_tempo(
 ) -> esquemas.LinhaDoTempoDoAtivoV1:
     """A curva em base 100 (nunca o preço bruto) e os documentos da CVM ou da SEC do período."""
     c = _com_o_ativo(ticker, periodo, SEM_TAXA)
-    eventos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
-    return montar_linha_do_tempo(c, eventos, materialidade_minima)
+    eventos, assuntos = _eventos_do_ativo(c.ticker, c.fechamento.index[0].date())
+    return montar_linha_do_tempo(c, eventos, materialidade_minima, assuntos)
 
 
 def montar_linha_do_tempo(
-    c: ContextoDoAtivo, eventos: list[Evento], materialidade_minima: int
+    c: ContextoDoAtivo,
+    eventos: list[Evento],
+    materialidade_minima: int,
+    assuntos: dict[str, topicos.LeituraDoTopico] | None = None,
 ) -> esquemas.LinhaDoTempoDoAtivoV1:
     """A resposta da linha do tempo de um ativo já carregado (a rota e os testes do React usam)."""
-    linha = ldt.montar_linha_do_tempo(c.fechamento, eventos, materialidade_minima)
+    linha = ldt.montar_linha_do_tempo(
+        c.fechamento, eventos, materialidade_minima, assuntos=assuntos
+    )
     return esquemas.LinhaDoTempoDoAtivoV1(
         ativo=esquemas.de_ativo(c), linha_do_tempo=esquemas.de_linha_do_tempo(linha)
     )

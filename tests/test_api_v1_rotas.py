@@ -1,6 +1,7 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
 import re
+from dataclasses import asdict
 from datetime import UTC, date, datetime
 
 import pandas as pd
@@ -8,13 +9,23 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, cobranca, compartilhamentos, ficha, paginas, planos
+from src import (
+    analises,
+    api,
+    cobranca,
+    compartilhamentos,
+    ficha,
+    paginas,
+    planos,
+    topicos,
+)
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
 from src.banco import compartilhamentos as links
+from src.banco import leituras as repo_leituras
 from src.banco import series as acervo
 from src.banco import tentativas
 from src.banco.dados_do_usuario import (
@@ -383,6 +394,30 @@ def test_linha_do_tempo_igual_a_tela(cliente, monkeypatch):
     assert len(dados["marcos"]) == 2 and dados["fora_do_grafico"] == 1
     assert dados["aviso"] == ldt.AVISO_DA_LINHA
     assert dados["texto_fora_do_grafico"] == ldt.texto_fora_do_grafico(1)
+
+
+def test_linha_do_tempo_usa_o_assunto_lido_do_texto(cliente, banco, monkeypatch):
+    """Leitor v2: o fato de título genérico ganha o assunto que a leitura diária achou no texto."""
+    eventos = _eventos_no_periodo(
+        _fechamento()
+    )  # títulos "Assunto 10"...: sem assunto pelo título
+    monkeypatch.setattr(rotas, "eventos_dos_tickers", lambda *_a, **_k: eventos)
+    lido = topicos.LeituraDoTopico(
+        "AQUISICAO", (), "adquiriu a Empresa X", "regra_texto", "1"
+    )
+    with banco.begin() as c:
+        repo_leituras.gravar_leitura(
+            c, "cvm_ipe", "p-10", repo_leituras.TOPICO, "cnpj", None, asdict(lido),
+            versao=topicos.VERSAO,
+        )  # fmt: skip
+    marcos = cliente.get(
+        "/api/v1/linha-do-tempo",
+        params={"ticker": "PETR4.SA", "materialidade_minima": 50},
+    ).json()["linha_do_tempo"]["marcos"]
+    assert [(m["topico"], m["topico_nome"]) for m in marcos] == [
+        ("AQUISICAO", "Aquisição"),
+        ("", ""),
+    ]
 
 
 def test_linha_do_tempo_so_em_base_100(cliente, monkeypatch):

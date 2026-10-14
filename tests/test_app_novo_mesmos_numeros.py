@@ -100,7 +100,7 @@ def exemplo_da_linha_do_tempo() -> dict:
     contexto = _contexto_de_exemplo("PETR4.SA", "2y")
     dias = contexto.fechamento.index
     documentos = (
-        (40, 90, "Fato relevante", "Plano de investimentos", "https://www.rad.cvm.gov.br/exemplo-1"),
+        (40, 90, "Fato relevante", "Aquisição da Refinaria Exemplo", "https://www.rad.cvm.gov.br/exemplo-1"),
         (300, 60, "Comunicado ao mercado", "Produção do trimestre", "javascript:alert(1)"),
         (450, 20, "Aviso aos acionistas", "Data do pagamento", "https://www.rad.cvm.gov.br/exemplo-3"),
     )  # fmt: skip
