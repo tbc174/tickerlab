@@ -157,6 +157,60 @@ def test_banco_da_bolsa_liga_ao_cnpj_e_a_acao():
     assert (ligacao["data_base"] == pd.Timestamp("2025-06-30")).all()
 
 
+def test_instituicao_listada_liga_pelo_proprio_cnpj_e_nao_pelo_do_lider():
+    """Série 3, PR 8: o Banco PAN está no conglomerado do BTG (o líder é o BTG), mas tem ação própria
+    (BPAN4): a instituição individual liga pelo próprio CNPJ; o resto do conglomerado, pelo líder."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2025-06-30")] * 3,
+            "cod_inst": ["59285411", "30306294", BTG],
+            "instituicao": [
+                "BANCO PAN S.A.",
+                "BANCO BTG PACTUAL S.A.",
+                "BTG PACTUAL - PRUDENCIAL",
+            ],
+            "cnpj_raiz": ["30306294"] * 3,  # o IF.data dá o CNPJ do líder a todos
+        }
+    )
+    empresas, tickers = _empresas_e_tickers()
+    pan = "59.285.411/0001-13"
+    empresas = pd.concat(
+        [
+            empresas,
+            pd.DataFrame({"emissor": ["BPAN"], "cnpj": [pan], "conflito": [False]}),
+        ],
+        ignore_index=True,
+    )
+    tickers = pd.concat(
+        [
+            tickers,
+            pd.DataFrame(
+                {
+                    "codigo": ["BPAN4"],
+                    "cnpj": [pan],
+                    "primeiro_visto": [pd.Timestamp("2019-01-01")],
+                    "ultimo_visto": [pd.Timestamp("2026-01-01")],
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, empresas, tickers).set_index(
+        "cod_inst"
+    )
+    assert ligacao.loc["59285411", ["cnpj", "tickers", "ligado_por"]].tolist() == [
+        pan,
+        "BPAN4",
+        bcb_ifdata.PELO_PROPRIO_CNPJ,
+    ]
+    assert ligacao.loc["30306294", "ligado_por"] == bcb_ifdata.PELO_PROPRIO_CNPJ
+    assert ligacao.loc[BTG, ["cnpj", "tickers", "ligado_por"]].tolist() == [
+        "30.306.294/0001-45",
+        "BPAC11",
+        bcb_ifdata.PELO_LIDER,
+    ]
+
+
 def test_ligacao_antes_do_fca_chega_ao_cnpj_mas_nao_a_acao():
     cadastro = bcb_ifdata.ler_cadastro(_ifdata("cadastro_200012.json"))
     empresas, tickers = _empresas_e_tickers()

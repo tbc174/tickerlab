@@ -47,6 +47,8 @@ RELATORIOS = (
 MESES_DA_DATA_BASE = (3, 6, 9, 12)
 DIAS_ATE_FICAR_PUBLICO = 120
 DIGITOS_DA_RAIZ = 8
+# por onde a instituição chegou à empresa da bolsa (série 3, PR 8)
+PELO_PROPRIO_CNPJ, PELO_LIDER = "próprio CNPJ", "líder do conglomerado"
 COLUNAS_DOS_VALORES = {
     "TipoInstituicao": "tipo_instituicao",
     "CodInst": "cod_inst",
@@ -161,8 +163,10 @@ def ligacao_dos_bancos(
 ) -> pd.DataFrame:
     """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano da data-base.
 
-    `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. Uma raiz com mais de um CNPJ
-    no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA.
+    `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. A instituição individual cujo
+    código é o próprio CNPJ de uma empresa da bolsa liga por ele (o Banco PAN, do conglomerado do
+    BTG, tem a BPAN4); as outras, pela raiz do CNPJ do líder do conglomerado. Uma raiz com mais de um
+    CNPJ no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA.
     """
     empresas = (
         emissores.loc[~emissores["conflito"], ["cnpj"]]
@@ -170,8 +174,16 @@ def ligacao_dos_bancos(
         .assign(cnpj_raiz=lambda t: _raiz(t["cnpj"]))
     )
     unicas = empresas[~empresas["cnpj_raiz"].duplicated(keep=False)]
-    ligacao = cadastro[["data_base", "cod_inst", "instituicao", "cnpj_raiz"]].merge(
-        unicas, on="cnpj_raiz", how="left"
+    cnpj_da_raiz = unicas.set_index("cnpj_raiz")["cnpj"]
+    ligacao = cadastro[["data_base", "cod_inst", "instituicao", "cnpj_raiz"]].copy()
+    proprio = ligacao["cod_inst"].where(ligacao["cod_inst"].str.fullmatch(r"\d{8}"))
+    pelo_proprio = proprio.map(cnpj_da_raiz)
+    pelo_lider = ligacao["cnpj_raiz"].map(cnpj_da_raiz)
+    ligacao["cnpj"] = pelo_proprio.fillna(pelo_lider)
+    ligacao["ligado_por"] = (
+        pd.Series(PELO_LIDER, index=ligacao.index)
+        .where(pelo_lider.notna())
+        .mask(pelo_proprio.notna(), PELO_PROPRIO_CNPJ)
     )
     ano = ligacao["data_base"].dt.year
     vigentes = (
