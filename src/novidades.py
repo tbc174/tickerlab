@@ -21,6 +21,46 @@ class Atualizacao:
 
 ATUALIZACOES: tuple[Atualizacao, ...] = (
     Atualizacao(
+        data=date(2026, 10, 14),
+        titulo="Relatório da empresa mais claro e números conferidos com o PDF da CVM",
+        resumo=(
+            "Conferimos à mão, com o PDF oficial das demonstrações, o relatório de cinco empresas "
+            "de setores diferentes. As contas bateram; os ajustes abaixo vieram dessa conferência."
+        ),
+        novidades=(
+            (
+                "Metodologia pública das notas, dos padrões por setor e das fórmulas (DuPont, "
+                "Piotroski, Altman Z'', Beneish, valuation) na página de metodologia."
+            ),
+            (
+                '"Caixa operacional / lucro" agora tem nota por faixa fixa e pública (atenção, '
+                "saudável ou conferir o lucro), sem comparar com o setor: um número alto costuma "
+                "vir de lucro pequeno, não de caixa bom."
+            ),
+            (
+                "Bancos: caixa, imobilizado e intangível passam a aparecer no histórico de contas."
+            ),
+        ),
+        correcoes=(
+            (
+                "P/L e P/VP de empresas cuja primeira classe de ação não existe (como a Vale) saíam "
+                "muito errados: o lucro por ação agora é o da classe que a empresa tem."
+            ),
+            (
+                "A depreciação deixou de somar juros e custos de empréstimos que alguns balanços "
+                "escrevem com a palavra amortização."
+            ),
+            (
+                'As duas margens líquidas do relatório têm nomes diferentes ("lucro consolidado" e '
+                '"dos acionistas"), porque usam lucros diferentes.'
+            ),
+            (
+                "Quando as ações mudam depois de 2022 sem evento conhecido, o relatório avisa que "
+                "pode ter sido bonificação e não mostra a diluição como certa."
+            ),
+        ),
+    ),
+    Atualizacao(
         data=date(2026, 10, 13),
         titulo="Relatório da empresa, novas telas de pesquisa e site novo",
         resumo=(

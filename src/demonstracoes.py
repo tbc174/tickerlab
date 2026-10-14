@@ -154,15 +154,19 @@ def _contas_do_balanco(bpa: pd.DataFrame, bpp: pd.DataFrame) -> pd.DataFrame:
                 bpa,
                 {
                     "ativo_total": cd == "1",
-                    "caixa": (cd == "1.01.01") & ds.str.startswith("caixa"),
+                    # plano das empresas: 1.01.01; plano dos bancos: 1.01, 1.06 e 1.07
+                    "caixa": ((cd == "1.01.01") & ds.str.startswith("caixa"))
+                    | ((cd == "1.01") & ds.str.startswith("caixa e equivalentes")),
                     "aplicacoes": (cd == "1.01.02") & ds.str.startswith("aplicacoes"),
                     "ativo_circulante": (cd == "1.01")
                     & ds.str.startswith("ativo circulante"),
                     "contas_a_receber": (cd == "1.01.03")
                     & ds.str.startswith("contas a receber"),
                     "estoques": (cd == "1.01.04") & ds.str.startswith("estoques"),
-                    "imobilizado": (cd == "1.02.03") & ds.str.startswith("imobilizado"),
-                    "intangivel": (cd == "1.02.04") & ds.str.startswith("intangivel"),
+                    "imobilizado": cd.isin(["1.02.03", "1.06"])
+                    & ds.str.startswith("imobilizado"),
+                    "intangivel": cd.isin(["1.02.04", "1.07"])
+                    & ds.str.startswith("intangivel"),
                 },
             )
         )

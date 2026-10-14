@@ -164,6 +164,17 @@ def test_lpa_todo_zerado_fica_uma_linha_com_zero():
     assert contas.loc[contas["conta"] == "lpa_basico", "valor"].tolist() == [0]
 
 
+def test_banco_le_caixa_imobilizado_e_intangivel():
+    """Fim da série 2: no plano dos bancos o caixa é a 1.01 e o imobilizado e o intangível são a 1.06
+    e a 1.07 (Itaú, DFP 2025, conferidos no PDF)."""
+    contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
+    itau = contas[(contas["cnpj"] == ITAU) & (contas["periodo"] == dm.POSICAO)]
+    saldos = itau.set_index("conta")["valor"]
+    assert saldos["caixa"] == 37_144_000 * MIL
+    assert saldos["imobilizado"] == 12_635_000 * MIL
+    assert saldos["intangivel"] == 24_099_000 * MIL
+
+
 def test_banco_nao_ganha_estoques_nem_fornecedores():
     contas, _ = _ler("dfp_cia_aberta_2025.zip", "DFP")
     do_banco = set(contas.loc[contas["cnpj"] == BB, "conta"])

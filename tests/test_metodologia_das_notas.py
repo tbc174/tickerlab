@@ -97,3 +97,11 @@ def test_relatorio_da_empresa_aponta_para_a_secao_da_metodologia():
     from src.relatorio_empresa import _metodologia
 
     assert any(m.URL_NO_SITE in p for p in _metodologia().paragrafos)
+
+
+def test_metodologia_explica_a_faixa_fixa_do_caixa_operacional():
+    from src import metodologia_das_notas as m
+
+    texto = " ".join(m.NOTAS)
+    assert "Caixa operacional / lucro" in texto and "0,8×" in texto and "1,5×" in texto
+    assert all(i.nome != "Caixa operacional / lucro" for i in m.INDICADORES_DAS_NOTAS)

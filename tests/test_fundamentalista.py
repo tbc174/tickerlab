@@ -240,6 +240,25 @@ def test_salto_de_mil_vezes_e_troca_de_unidade_na_cvm():
 
 
 def test_emissao_de_acoes_conta_como_diluicao():
-    resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 110.0}))
+    # antes do fim das tabelas do FRE (2022): emissão sem evento é diluição
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2020: 100.0, 2021: 110.0}))
     assert resultado.diluicao_anual == pytest.approx(0.10)
+    assert resultado.avisos == []
+
+
+def test_salto_nas_acoes_depois_de_2022_avisa_sem_fre():
+    """Fim da série 2: as ações do Itaú subiram 13% de 2024 para 2025 sem evento (o FRE aberto parou
+    em 2022) e o relatório mostrava "diluição de 2,5% ao ano"; pode ter sido bonificação."""
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2023: 9_803_699.0, 2024: 9_748_073.0, 2025: 11_026_524.0})
+    )
+    assert resultado.diluicao_anual is None
+    [aviso] = resultado.avisos
+    assert "Entre 2024 e 2025" in aviso and "13,11%" in aviso
+    assert "depois de 2022" in aviso and "bonificação" in aviso
+
+
+def test_mudanca_pequena_depois_de_2022_continua_diluicao():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2024: 100.0, 2025: 103.0}))
+    assert resultado.diluicao_anual == pytest.approx(0.03)
     assert resultado.avisos == []
