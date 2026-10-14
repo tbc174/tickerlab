@@ -80,6 +80,23 @@ def test_lixo_no_lugar_do_token_recusado(chaves_publicas):
         acesso.verificar_token("nao-e-um-token", chaves_publicas, CLIENT_ID, AGORA)
 
 
+def test_limite_esquece_quem_parou_de_pedir():
+    """Com rota pública (chave por IP), quem só passou não pode ficar na memória para sempre."""
+    limite = acesso.LimiteDePedidos(por_minuto=3, maximo_de_chaves=5)
+    for i in range(5):
+        assert limite.permitir(f"ip:{i}", 0)
+    assert limite.chaves() == 5
+    assert limite.permitir(
+        "ip:novo", 61
+    )  # passou do máximo: as que não pedem há 1 min saem
+    assert limite.chaves() == 1
+    for _ in range(2):
+        assert limite.permitir("ip:novo", 62)
+    assert not limite.permitir(
+        "ip:novo", 62
+    )  # a limpeza não zera quem ainda está pedindo
+
+
 def test_limite_de_pedidos_por_conta():
     limite = acesso.LimiteDePedidos(por_minuto=3)
     assert all(limite.permitir("ana", AGORA + i) for i in range(3))
