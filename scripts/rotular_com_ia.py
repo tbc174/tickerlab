@@ -594,7 +594,7 @@ def main(argv: list[str] | None = None) -> int:
             "Diga o teto com --teto-dolares (o Tiago combinou US$ 60 em 14/10/2026)."
         )
         return 2
-    cliente = anthropic.Anthropic()  # a chave vem de ANTHROPIC_API_KEY
+    cliente = ri.cliente()  # chave e workspace vêm do .env
     try:
         if opcoes.passo == "estimar":
             faltam = pendentes(eventos, opcoes.pasta)
