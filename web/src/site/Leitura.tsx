@@ -2,24 +2,16 @@
 // do texto e a barra de leitura no alto. O sumário sai pronto no HTML (funciona sem JavaScript e o
 // Google lê os links); o movimento.js só marca a seção que está na tela.
 import type { ReactNode } from "react";
+import { desfazerEntidades } from "./Bruto";
 import { TopoDaPagina } from "./Fundo";
 
 export type ItemDoSumario = { id: string; texto: string };
-
-const ENTIDADES: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&#x27;": "'",
-  "&#39;": "'",
-};
 
 /** "Seus direitos (LGPD, art. 18)" → "seus-direitos-lgpd-art-18" */
 export function ancora(texto: string): string {
   return texto
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
@@ -35,10 +27,7 @@ export function ancorarTitulos(
 ): { html: string; itens: ItemDoSumario[] } {
   const itens: ItemDoSumario[] = [];
   const comIds = html.replace(new RegExp(`<${nivel}>(.*?)</${nivel}>`, "gs"), (_, dentro: string) => {
-    const texto = dentro
-      .replace(/<[^>]+>/g, "")
-      .replace(/&[#a-z0-9]+;/g, (e) => ENTIDADES[e] ?? e)
-      .trim();
+    const texto = desfazerEntidades(dentro.replace(/<[^>]+>/g, "")).trim();
     let id = ancora(texto);
     while (itens.some((i) => i.id === id)) id += "-2";
     itens.push({ id, texto });

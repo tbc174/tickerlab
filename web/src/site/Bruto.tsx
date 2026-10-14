@@ -14,9 +14,14 @@ const ENTIDADES: Record<string, string> = {
   "&#x27;": "'",
 };
 
+/** "S&amp;P" → "S&P": desfaz as entidades que o React (e o Markdown) escrevem. */
+export function desfazerEntidades(texto: string): string {
+  return texto.replace(/&amp;|&lt;|&gt;|&quot;|&#x27;/g, (e) => ENTIDADES[e]);
+}
+
 export function expandirBruto(html: string): string {
   return html.replace(/<tl-bruto data-html="([^"]*)"><\/tl-bruto>/g, (_, codificado: string) =>
-    codificado.replace(/&amp;|&lt;|&gt;|&quot;|&#x27;/g, (e) => ENTIDADES[e]),
+    desfazerEntidades(codificado),
   );
 }
 
