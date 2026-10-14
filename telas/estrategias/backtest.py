@@ -26,6 +26,8 @@ from src.exportacao import (
     montar_tabela_de_curvas,
     montar_tabela_de_operacoes,
 )
+from src.ficha import EXPLICACAO as EXPLICACAO_DA_FICHA
+from src.ficha import TERMO_DO_GLOSSARIO as TERMO_DA_FICHA
 from src.ficha import PedidoDaFicha, texto_das_tentativas
 from src.imposto import aplicar_imposto
 from src.metricas import (
@@ -662,11 +664,8 @@ def secao_validacao(
 ):
     """A ficha "Foi sorte?" em destaque e, um clique abaixo, a validação técnica completa."""
     st.divider()
-    st.subheader("Foi sorte?", help=ajuda_do("Foi sorte?"))
-    st.caption(
-        "Um backtest sempre parece bom quando os parâmetros foram escolhidos olhando os "
-        "mesmos dados. A ficha confere, em cinco perguntas, se o resultado se sustenta."
-    )
+    st.subheader(TERMO_DA_FICHA, help=ajuda_do(TERMO_DA_FICHA))
+    st.caption(EXPLICACAO_DA_FICHA)
     col_livres, col_tolerancia = st.columns([2, 1])
     with col_livres:
         livres = _escolher_livres(nome, parametros_numericos(nome))

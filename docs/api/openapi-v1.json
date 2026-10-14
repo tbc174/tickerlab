@@ -115,6 +115,27 @@
             "title": "Estrategia",
             "type": "string"
           },
+          "ficha": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FichaV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_sem_ficha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Ficha"
+          },
           "parametros": {
             "additionalProperties": {
               "anyOf": [
@@ -174,6 +195,29 @@
           "operacoes"
         ],
         "title": "BacktestV1",
+        "type": "object"
+      },
+      "ChecagemV1": {
+        "properties": {
+          "explicacao": {
+            "title": "Explicacao",
+            "type": "string"
+          },
+          "pergunta": {
+            "title": "Pergunta",
+            "type": "string"
+          },
+          "situacao": {
+            "title": "Situacao",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pergunta",
+          "situacao",
+          "explicacao"
+        ],
+        "title": "ChecagemV1",
         "type": "object"
       },
       "ComparacaoDoAtivoV1": {
@@ -396,6 +440,65 @@
           "pesquisa"
         ],
         "title": "ExpectativaV1",
+        "type": "object"
+      },
+      "FichaV1": {
+        "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
+        "properties": {
+          "capital_inicial": {
+            "title": "Capital Inicial",
+            "type": "number"
+          },
+          "checagens": {
+            "items": {
+              "$ref": "#/components/schemas/ChecagemV1"
+            },
+            "title": "Checagens",
+            "type": "array"
+          },
+          "livres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Livres",
+            "type": "array"
+          },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
+          "tentativas": {
+            "title": "Tentativas",
+            "type": "integer"
+          },
+          "tentativas_da_pessoa": {
+            "title": "Tentativas Da Pessoa",
+            "type": "integer"
+          },
+          "texto_das_tentativas": {
+            "title": "Texto Das Tentativas",
+            "type": "string"
+          },
+          "tolerancia_de_queda": {
+            "title": "Tolerancia De Queda",
+            "type": "number"
+          },
+          "veredito": {
+            "$ref": "#/components/schemas/VereditoV1"
+          }
+        },
+        "required": [
+          "veredito",
+          "checagens",
+          "tentativas",
+          "tentativas_da_pessoa",
+          "texto_das_tentativas",
+          "tolerancia_de_queda",
+          "livres",
+          "capital_inicial",
+          "nota"
+        ],
+        "title": "FichaV1",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -958,6 +1061,13 @@
       },
       "PedidoDeBacktestV1": {
         "properties": {
+          "capital_inicial": {
+            "default": 10000.0,
+            "maximum": 1000000000000.0,
+            "minimum": 100.0,
+            "title": "Capital Inicial",
+            "type": "number"
+          },
           "custo_por_operacao": {
             "default": 0.0005,
             "maximum": 0.05,
@@ -968,6 +1078,22 @@
           "estrategia": {
             "title": "Estrategia",
             "type": "string"
+          },
+          "livres": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                "maxItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Livres"
           },
           "parametros": {
             "additionalProperties": {
@@ -1016,6 +1142,19 @@
             "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
             "title": "Ticker",
             "type": "string"
+          },
+          "tolerancia_de_queda": {
+            "anyOf": [
+              {
+                "maximum": 0.9,
+                "minimum": 0.05,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tolerancia De Queda"
           }
         },
         "required": [
@@ -1296,6 +1435,29 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VereditoV1": {
+        "properties": {
+          "resultado": {
+            "title": "Resultado",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resultado",
+          "titulo",
+          "texto"
+        ],
+        "title": "VereditoV1",
+        "type": "object"
+      },
       "VisaoGeralV1": {
         "properties": {
           "ativo": {
@@ -1338,7 +1500,7 @@
   "paths": {
     "/v1/backtest": {
       "post": {
-        "description": "O backtest simples (sem proteções, Monte Carlo nem grade): a estratégia com os custos.",
+        "description": "O backtest simples (sem proteções, Monte Carlo nem grade) e, embaixo, a ficha \"Foi sorte?\".\n\nComo no Streamlit, todo backtest é uma tentativa: a configuração fica contada na conta (a mesma\nconfiguração não conta duas vezes) e entra na checagem do acaso.",
         "operationId": "backtest_v1_backtest_post",
         "parameters": [
           {

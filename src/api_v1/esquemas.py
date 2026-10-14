@@ -18,6 +18,7 @@ from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.conteudo import descrever_pior_drawdown
+from src.ficha import Ficha, PedidoDaFicha, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
 from src.links_das_fontes import link_da_fonte
 
@@ -421,12 +422,66 @@ class ComparacaoDoAtivoV1(BaseModel):
     sem_dados: list[str]  # pedidos que ficaram de fora por falta de dados
 
 
+class ChecagemV1(BaseModel):
+    pergunta: str
+    situacao: str  # "passou", "não passou", "não se aplica" ou "não deu para medir"
+    explicacao: str  # a frase com os números que decidiram
+
+
+class VereditoV1(BaseModel):
+    resultado: str  # "passou", "não passou" ou "inconclusivo"
+    titulo: str
+    texto: str  # sempre termina com o aviso de src/ficha.py
+
+
+class FichaV1(BaseModel):
+    """A ficha "Foi sorte?" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`."""
+
+    veredito: VereditoV1
+    checagens: list[ChecagemV1]  # sempre as cinco, na ordem da ficha
+    tentativas: int  # variações na conta do acaso (as da grade e as da pessoa)
+    tentativas_da_pessoa: int  # configurações que a pessoa já rodou neste ativo
+    texto_das_tentativas: str
+    tolerancia_de_queda: float  # fração (0,30 = 30%) usada na checagem das quedas
+    livres: list[str]  # os parâmetros que variaram na grade
+    capital_inicial: float  # R$, para a isenção do imposto
+    nota: str  # quantas variações entraram na conta e o custo usado (embaixo da ficha)
+
+
+def de_ficha(
+    resultado: Ficha, pedido: PedidoDaFicha, texto_das_tentativas: str
+) -> FichaV1:
+    veredito = resultado.veredito
+    return FichaV1(
+        veredito=VereditoV1(
+            resultado=veredito.resultado.value,
+            titulo=veredito.titulo,
+            texto=veredito.texto,
+        ),
+        checagens=[
+            ChecagemV1(
+                pergunta=c.pergunta, situacao=c.situacao.value, explicacao=c.explicacao
+            )
+            for c in resultado.checagens
+        ],
+        tentativas=resultado.tentativas,
+        tentativas_da_pessoa=pedido.tentativas_da_pessoa,
+        texto_das_tentativas=texto_das_tentativas,
+        tolerancia_de_queda=pedido.tolerancia_de_queda,
+        livres=list(pedido.livres),
+        capital_inicial=pedido.capital_inicial,
+        nota=nota_das_tentativas(resultado.tentativas),
+    )
+
+
 class BacktestDoAtivoV1(BaseModel):
     ativo: AtivoV1
     estrategia: str
     parametros: dict[str, int | float | str]
     custo_por_operacao: float
     backtest: BacktestV1
+    ficha: FichaV1 | None = None  # null: não deu para montar (o motivo diz por quê)
+    motivo_sem_ficha: str | None = None
 
 
 class LinhaDoTempoDoAtivoV1(BaseModel):

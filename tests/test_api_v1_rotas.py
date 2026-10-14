@@ -7,13 +7,15 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from src import analises, api, paginas
+from src import analises, api, ficha, paginas
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
 from src.banco import series as acervo
+from src.banco import tentativas
+from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
 from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
@@ -22,6 +24,7 @@ from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
 from src.exemplos import carregar_exemplo
 from src.metricas import resumir_desempenho
+from src.tentativas import TETO_POR_PESSOA
 from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
@@ -520,3 +523,180 @@ def test_rotas_reais_seguem_o_contrato(cliente, banco, plano):
         recusou = resposta.headers.get(acesso.CABECALHO_DO_MOTIVO) == "plano"
         assert recusou == fechada, (rota, resposta.status_code)
         assert (resposta.status_code == 403) == fechada, (rota, resposta.status_code)
+
+
+# --- A ficha "Foi sorte?" na resposta do backtest (ADR 0062, tela 1) -------------------------
+
+PEDIDO_DA_FICHA = {
+    "ticker": "PETR4.SA",
+    "periodo": "2y",
+    "estrategia": "Cruzamento de médias",
+    "parametros": {"curta": 10, "longa": 40},
+    "custo_por_operacao": 0.001,
+    "taxa": TAXA,
+}
+
+
+def _ficha(cliente, **mudancas):
+    resposta = cliente.post("/api/v1/backtest", json={**PEDIDO_DA_FICHA, **mudancas})
+    assert resposta.status_code == 200, resposta.text
+    return resposta.json()
+
+
+def _id_da_ana(banco):
+    with banco.connect() as conexao:
+        return buscar_por_google_sub(conexao, "ana").id
+
+
+def test_a_ficha_do_backtest_e_a_mesma_de_src_ficha(cliente):
+    dados = _ficha(cliente)
+    precos = carregar_exemplo("PETR4.SA", "2y")
+    esperada = ficha.montar_ficha(
+        ficha.PedidoDaFicha(
+            dados=precos,
+            estrategia="Cruzamento de médias",
+            parametros={"curta": 10, "longa": 40, "tipo": "Simples"},
+            custo_por_operacao=0.001,
+            capital_inicial=rotas.CAPITAL_PADRAO,
+            livres=("curta", "longa"),  # os dois primeiros numéricos, como no Streamlit
+            taxa_livre_de_risco=TAXA,
+            tentativas_da_pessoa=1,
+        )
+    )
+    recebida = dados["ficha"]
+    assert dados["motivo_sem_ficha"] is None
+    assert recebida["veredito"] == {
+        "resultado": esperada.veredito.resultado.value,
+        "titulo": esperada.veredito.titulo,
+        "texto": esperada.veredito.texto,
+    }
+    assert recebida["checagens"] == [
+        {
+            "pergunta": c.pergunta,
+            "situacao": c.situacao.value,
+            "explicacao": c.explicacao,
+        }
+        for c in esperada.checagens
+    ]
+    assert recebida["tentativas"] == esperada.tentativas
+    assert recebida["tentativas_da_pessoa"] == 1
+    assert recebida["texto_das_tentativas"] == ficha.texto_das_tentativas(
+        1, "PETR4.SA", TETO_POR_PESSOA
+    )
+    assert recebida["tolerancia_de_queda"] == ficha.TOLERANCIA_PADRAO_DE_QUEDA
+    assert recebida["livres"] == ["curta", "longa"]
+    assert recebida["capital_inicial"] == rotas.CAPITAL_PADRAO
+    assert recebida["nota"] == ficha.nota_das_tentativas(esperada.tentativas)
+
+
+def test_a_mesma_configuracao_conta_uma_vez_so(cliente, banco):
+    assert _ficha(cliente)["ficha"]["tentativas_da_pessoa"] == 1
+    assert _ficha(cliente)["ficha"]["tentativas_da_pessoa"] == 1  # recarregar não conta
+    outra = _ficha(cliente, parametros={"curta": 12, "longa": 40})
+    assert outra["ficha"]["tentativas_da_pessoa"] == 2
+    with banco.connect() as conexao:
+        assert tentativas.contar_tentativas(conexao, _id_da_ana(banco), "PETR4.SA") == 2
+
+
+def test_as_tentativas_de_uma_conta_nao_contam_na_outra(cliente, banco, chave):
+    _ficha(cliente)
+    _ficha(cliente, parametros={"curta": 12, "longa": 40})
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia", "bia@exemplo.com")[0]
+        registrar_aceite(conexao, bia.id)
+    da_bia = cliente.post(
+        "/api/v1/backtest",
+        json=PEDIDO_DA_FICHA,
+        headers=com_token(token(chave, sub="bia", email="bia@exemplo.com")),
+    )
+    assert da_bia.status_code == 200, da_bia.text
+    assert da_bia.json()["ficha"]["tentativas_da_pessoa"] == 1
+
+
+def test_a_tolerancia_informada_fica_guardada_na_conta(cliente, banco):
+    assert (
+        _ficha(cliente, tolerancia_de_queda=0.5)["ficha"]["tolerancia_de_queda"] == 0.5
+    )
+    with banco.connect() as conexao:
+        guardadas = carregar_preferencias(conexao, _id_da_ana(banco))
+    assert guardadas[ficha.PREFERENCIA_DA_TOLERANCIA] == 0.5
+    # sem o campo: a guardada
+    assert _ficha(cliente)["ficha"]["tolerancia_de_queda"] == 0.5
+
+
+def test_guardar_a_tolerancia_mantem_as_outras_preferencias(cliente, banco):
+    with banco.begin() as conexao:
+        salvar_preferencias(conexao, _id_da_ana(banco), {"tema": "escuro"})
+    _ficha(cliente, tolerancia_de_queda=0.4)
+    with banco.connect() as conexao:
+        guardadas = carregar_preferencias(conexao, _id_da_ana(banco))
+    assert guardadas == {"tema": "escuro", ficha.PREFERENCIA_DA_TOLERANCIA: 0.4}
+
+
+def test_os_parametros_que_variam_vem_do_pedido(cliente):
+    dados = _ficha(cliente, livres=["longa"])
+    assert dados["ficha"]["livres"] == ["longa"]
+
+
+@pytest.mark.parametrize(
+    "mudanca",
+    [
+        {"livres": ["inventado"]},
+        {"livres": ["tipo"]},  # opção, não número: não varia na grade
+        {"livres": ["curta", "curta"]},
+        {"livres": ["curta", "longa", "curta"]},
+        {"tolerancia_de_queda": 0.01},
+        {"tolerancia_de_queda": 0.95},
+        {"capital_inicial": 0},
+        {"capital_inicial": 1e13},
+    ],
+)
+def test_a_ficha_recusa_pedido_fora_dos_limites(cliente, mudanca):
+    resposta = cliente.post("/api/v1/backtest", json={**PEDIDO_DA_FICHA, **mudanca})
+    assert resposta.status_code == 422
+
+
+def test_sem_o_banco_para_contar_nao_sai_ficha(cliente, monkeypatch):
+    """Contar "1" por engano deixaria a checagem do acaso mais branda: melhor não mostrar."""
+
+    def falhar(*_):
+        raise RuntimeError("banco fora do ar")
+
+    monkeypatch.setattr(tentativas, "registrar_tentativa", falhar)
+    dados = _ficha(cliente)
+    assert dados["ficha"] is None
+    assert "tentativas" in dados["motivo_sem_ficha"]
+    assert dados["backtest"]["operacoes"] > 0  # o backtest sai do mesmo jeito
+
+
+def test_erro_do_calculo_da_ficha_vira_o_motivo(cliente, monkeypatch):
+    def falhar(_pedido):
+        raise ValueError("Histórico curto demais para a ficha.")
+
+    monkeypatch.setattr(ficha, "montar_ficha", falhar)
+    dados = _ficha(cliente)
+    assert dados["ficha"] is None
+    assert dados["motivo_sem_ficha"] == "Histórico curto demais para a ficha."
+
+
+def test_com_o_cdi_a_ficha_compara_com_o_cdi(cliente, no_dia):
+    dados = _ficha(cliente, taxa=None)
+    custos = dados["ficha"]["checagens"][1]
+    assert custos["pergunta"] == ficha.PERGUNTA_CUSTOS
+    assert "o CDI rendeu" in custos["explicacao"]
+
+
+def test_com_taxa_informada_a_ficha_nao_usa_o_cdi(cliente):
+    custos = _ficha(cliente)["ficha"]["checagens"][1]
+    assert "sem o CDI" in custos["explicacao"]
+
+
+def test_se_o_cdi_sumir_a_ficha_compara_com_zero(cliente, no_dia, monkeypatch):
+    def falhar(*_):
+        raise contexto.CDIIndisponivelError("Banco Central fora do ar.")
+
+    monkeypatch.setattr(
+        rotas, "cdi_entre", falhar
+    )  # a taxa já veio do CDI; a ficha não acha
+    custos = _ficha(cliente, taxa=None)["ficha"]["checagens"][1]
+    assert "sem o CDI" in custos["explicacao"]
