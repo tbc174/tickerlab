@@ -1,15 +1,41 @@
-"""O catálogo de módulos (src/modulos.py): só diz "disponível" o que existe no app."""
+"""O catálogo de módulos (src/modulos.py): só diz "disponível" o que existe no app ou no site."""
+
+from pathlib import Path
+
+import pytest
 
 from src import modulos
 from src.paginas import PAGINAS
 
+SITE = Path(__file__).resolve().parents[1] / "site"
 
-def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_do_app():
+
+def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_que_existe():
     urls = {p.url for p in PAGINAS}
     for modulo in modulos.MODULOS:
         for f in modulo.funcionalidades:
-            if f.disponivel:
+            if f.pagina_do_site is not None:
+                assert (SITE / f.pagina_do_site).is_file(), (modulo.nome, f.nome)
+                assert f.pagina_do_app is None, (modulo.nome, f.nome)  # um lugar só
+            elif f.disponivel:
                 assert f.pagina_do_app in urls, (modulo.nome, f.nome)
+
+
+@pytest.mark.parametrize(
+    ("nome", "pagina"),
+    [
+        ("Juros simples e compostos", "calculadora-de-juros-compostos.html"),
+        ("Aportes e metas", "calculadora-de-aportes-e-metas.html"),
+        ("Custo das taxas e da queda", "custo-das-taxas-e-da-queda.html"),
+        ("Viver de renda", "calculadora-viver-de-renda.html"),
+        ("Sorte em série", "sorte-em-serie.html"),
+        ("Imposto sobre ações (DARF)", "calculadora-de-darf.html"),
+    ],
+)
+def test_calculadoras_levam_as_paginas_do_site(nome, pagina):
+    f = _funcionalidade("ferramentas", nome)
+    assert f.disponivel
+    assert f.pagina_do_site == pagina
 
 
 def test_as_contagens_batem_com_as_funcionalidades():
@@ -26,8 +52,8 @@ def _funcionalidade(chave_do_modulo, nome):
 
 
 def test_o_que_ainda_nao_existe_nao_diz_que_existe():
-    """Ferramentas (as calculadoras) ainda é ideia futura; do Mercado, as Cotações também."""
-    assert modulos.POR_CHAVE["ferramentas"].disponiveis == 0
+    """Os conversores ainda são ideia futura; do Mercado, as Cotações também."""
+    assert not _funcionalidade("ferramentas", "Conversores").disponivel
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]

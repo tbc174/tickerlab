@@ -8,6 +8,7 @@
         "disponivel": true,
         "nome": "Visão geral do ativo",
         "pagina_do_app": "visao-geral",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       },
       {
@@ -15,6 +16,7 @@
         "disponivel": true,
         "nome": "Risco e retorno mês a mês",
         "pagina_do_app": "risco",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       },
       {
@@ -22,6 +24,7 @@
         "disponivel": true,
         "nome": "Comparar ativos",
         "pagina_do_app": "comparar",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -29,6 +32,7 @@
         "disponivel": true,
         "nome": "Fundamentos",
         "pagina_do_app": "fundamentos",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -36,6 +40,7 @@
         "disponivel": true,
         "nome": "Acontecimentos",
         "pagina_do_app": "research",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -43,6 +48,7 @@
         "disponivel": true,
         "nome": "Pessoas de dentro e donos",
         "pagina_do_app": "por-dentro",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -50,6 +56,7 @@
         "disponivel": false,
         "nome": "Pulse",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -57,6 +64,7 @@
         "disponivel": false,
         "nome": "Calendário",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -64,6 +72,7 @@
         "disponivel": true,
         "nome": "Linha do tempo",
         "pagina_do_app": "linha-do-tempo",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       },
       {
@@ -71,6 +80,7 @@
         "disponivel": false,
         "nome": "Diário de Teses",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       }
     ],
@@ -86,6 +96,7 @@
         "disponivel": true,
         "nome": "Importar a planilha da B3",
         "pagina_do_app": "carteira-b3",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -93,6 +104,7 @@
         "disponivel": true,
         "nome": "Concentração e número efetivo",
         "pagina_do_app": "carteira-b3",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -100,6 +112,7 @@
         "disponivel": true,
         "nome": "A carteira no passado",
         "pagina_do_app": "carteira-b3",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -107,6 +120,7 @@
         "disponivel": true,
         "nome": "Alertas",
         "pagina_do_app": "alertas",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -114,6 +128,7 @@
         "disponivel": true,
         "nome": "Raio-X",
         "pagina_do_app": "carteira-b3",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -121,6 +136,7 @@
         "disponivel": true,
         "nome": "Rebalanceamento",
         "pagina_do_app": "carteira-b3",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -128,6 +144,7 @@
         "disponivel": false,
         "nome": "Dividendos e custo médio",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       }
     ],
@@ -143,6 +160,7 @@
         "disponivel": true,
         "nome": "Backtest",
         "pagina_do_app": "backtest",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       },
       {
@@ -150,6 +168,7 @@
         "disponivel": true,
         "nome": "Ranking de estratégias",
         "pagina_do_app": "ranking",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -157,6 +176,7 @@
         "disponivel": true,
         "nome": "Validação honesta",
         "pagina_do_app": "experimentos",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -164,6 +184,7 @@
         "disponivel": true,
         "nome": "Fases do mercado",
         "pagina_do_app": "regimes",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -171,6 +192,7 @@
         "disponivel": true,
         "nome": "Aprendizado de máquina e pairs trading",
         "pagina_do_app": "aprendizado",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -178,6 +200,7 @@
         "disponivel": false,
         "nome": "Replay",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -185,6 +208,7 @@
         "disponivel": false,
         "nome": "Testes de robustez",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       }
     ],
@@ -200,6 +224,7 @@
         "disponivel": true,
         "nome": "Report Studio",
         "pagina_do_app": "relatorio",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -207,6 +232,7 @@
         "disponivel": true,
         "nome": "Três estilos",
         "pagina_do_app": "relatorio",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -214,6 +240,7 @@
         "disponivel": true,
         "nome": "PDFs originais guardados",
         "pagina_do_app": "relatorio",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -221,6 +248,7 @@
         "disponivel": false,
         "nome": "Newsletter",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -228,6 +256,7 @@
         "disponivel": true,
         "nome": "Compartilhamento seguro",
         "pagina_do_app": "relatorio",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -235,6 +264,7 @@
         "disponivel": true,
         "nome": "Comparações em PDF",
         "pagina_do_app": "relatorio",
+        "pagina_do_site": null,
         "ticker": null
       }
     ],
@@ -250,6 +280,7 @@
         "disponivel": true,
         "nome": "Juros e inflação",
         "pagina_do_app": "juros-e-inflacao",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -257,6 +288,7 @@
         "disponivel": false,
         "nome": "Cotações",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -264,6 +296,7 @@
         "disponivel": true,
         "nome": "Qualidade dos dados",
         "pagina_do_app": "fundamentos",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       }
     ],
@@ -276,16 +309,18 @@
     "funcionalidades": [
       {
         "descricao": "Quanto um valor rende ao longo do tempo.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Juros simples e compostos",
         "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-juros-compostos.html",
         "ticker": null
       },
       {
         "descricao": "Quanto guardar por mês para chegar a um objetivo.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Aportes e metas",
         "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-aportes-e-metas.html",
         "ticker": null
       },
       {
@@ -293,6 +328,39 @@
         "disponivel": false,
         "nome": "Conversores",
         "pagina_do_app": null,
+        "pagina_do_site": null,
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
+        "disponivel": true,
+        "nome": "Custo das taxas e da queda",
+        "pagina_do_app": null,
+        "pagina_do_site": "custo-das-taxas-e-da-queda.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
+        "disponivel": true,
+        "nome": "Viver de renda",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-viver-de-renda.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
+        "disponivel": true,
+        "nome": "Sorte em série",
+        "pagina_do_app": null,
+        "pagina_do_site": "sorte-em-serie.html",
+        "ticker": null
+      },
+      {
+        "descricao": "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
+        "disponivel": true,
+        "nome": "Imposto sobre ações (DARF)",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-darf.html",
         "ticker": null
       }
     ],
@@ -308,6 +376,7 @@
         "disponivel": true,
         "nome": "Tutorial de 2 minutos",
         "pagina_do_app": "visao-geral",
+        "pagina_do_site": null,
         "ticker": "PETR4.SA"
       },
       {
@@ -315,6 +384,7 @@
         "disponivel": true,
         "nome": "Guia e glossário",
         "pagina_do_app": "guia",
+        "pagina_do_site": null,
         "ticker": null
       },
       {
@@ -322,6 +392,7 @@
         "disponivel": false,
         "nome": "Trilhas",
         "pagina_do_app": null,
+        "pagina_do_site": null,
         "ticker": null
       }
     ],

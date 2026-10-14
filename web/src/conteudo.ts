@@ -9,6 +9,7 @@ export interface Funcionalidade {
   nome: string;
   descricao: string;
   pagina_do_app: string | null;
+  pagina_do_site: string | null; // as ferramentas grátis ficam no site, não no app
   ticker: string | null;
   disponivel: boolean;
 }
@@ -164,3 +165,21 @@ export const conteudoDoApp: {
     aviso_sem_dados: string;
   };
 } = appJson;
+
+import regrasDeImpostoJson from "../conteudo/regras_de_imposto.json";
+
+/** Uma regra de imposto com a fonte oficial (src/regras_de_imposto.py). */
+export interface RegraDeImposto {
+  chave: string;
+  descricao: string;
+  valor: number | string;
+  fonte: string;
+  onde: string;
+  conferida_em: string;
+}
+
+// as regras de imposto das ferramentas (DARF, renda fixa), com fonte e data
+export const regrasDeImposto: {
+  regras: RegraDeImposto[];
+  renda_fixa: { ate_dias: number | null; aliquota: number }[];
+} = regrasDeImpostoJson;

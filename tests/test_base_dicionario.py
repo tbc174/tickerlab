@@ -136,3 +136,27 @@ def test_painel_dos_fundos_cobre_as_colunas_dos_dois_paineis():
         ligacoes.painel_por_empresa(_posicoes(), _ligacao()).columns
     )
     assert colunas == set(TABELAS["painel_dos_fundos"].colunas)
+
+
+def test_tabelas_do_banco_central_cobrem_as_colunas_dos_leitores():
+    """Série 3, PR 7: IF.data, ligação dos bancos e SCR.data, conferidos com as amostras reais."""
+    from base import bcb_ifdata, bcb_scr
+    from tests.test_base_bcb import _empresas_e_tickers, _ifdata, _scr
+
+    cadastro = bcb_ifdata.ler_cadastro(_ifdata("cadastro_202506.json"))
+    colunas = {
+        "ifdata_valores": [
+            *bcb_ifdata.ler_valores(_ifdata("valores_202506_t1_r1.json")).columns,
+            "disponivel_em",
+        ],
+        "ifdata_cadastro": list(cadastro.columns),
+        "ligacao_dos_bancos": list(
+            bcb_ifdata.ligacao_dos_bancos(cadastro, *_empresas_e_tickers()).columns
+        ),
+        "scr_credito": [
+            *bcb_scr.ler_ano(_scr("scrdata_2012.zip")).columns,
+            "disponivel_em",
+        ],
+    }
+    for tabela, esperadas in colunas.items():
+        assert set(TABELAS[tabela].colunas) == set(esperadas), tabela

@@ -76,6 +76,7 @@ function moduloDeTeste(prontas: number, emBreve: number): Modulo {
     nome: `f${i}`,
     descricao: "x",
     pagina_do_app: disponivel ? "visao-geral" : null,
+    pagina_do_site: null,
     ticker: null,
     disponivel,
   });
@@ -164,8 +165,15 @@ describe("página inicial v2", () => {
       expect(bento).toContain(`<h3>${esc(modulo.nome)}`);
       expect(bento).toContain(`href="/produto.html#${modulo.chave}"`);
     }
-    // a frente sem nada pronto aparece como "em breve", com o tracejado
-    expect(bento).toMatch(/class="cartao v2-faixa-cartao breve"[^]*?<span class="selo breve">em breve<\/span>/);
+    // a frente sem nada pronto aparece como "em breve", com o tracejado; as outras, com a contagem
+    for (const modulo of MODULOS_DO_PRODUTO) {
+      const vazia = new RegExp(
+        `class="cartao v2-faixa-cartao breve"><div><p class="olho">[^<]*</p><h3>${esc(modulo.nome)} ` +
+          '<span class="selo breve">em breve</span>',
+      );
+      if (disponiveis(modulo) === 0) expect(bento).toMatch(vazia);
+      else expect(bento).toContain(`<p class="contagem">${contagem(modulo)}</p>`);
+    }
   });
 
   it("a faixa 'Por que o TickerLab' com a frase da diferença", () => {

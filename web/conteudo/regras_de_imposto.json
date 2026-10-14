@@ -1,0 +1,94 @@
+{
+  "regras": [
+    {
+      "chave": "aliquota_comum",
+      "conferida_em": "2026-10-14",
+      "descricao": "Ações, operações comuns (swing trade)",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 706",
+      "valor": 0.15
+    },
+    {
+      "chave": "aliquota_day_trade",
+      "conferida_em": "2026-10-14",
+      "descricao": "Ações, day trade",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 706",
+      "valor": 0.2
+    },
+    {
+      "chave": "isencao_vendas_no_mes",
+      "conferida_em": "2026-10-14",
+      "descricao": "Isento quando o total vendido de ações no mês (mercado à vista, sem day trade) não passa de",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 707",
+      "valor": 20000
+    },
+    {
+      "chave": "irrf_comum",
+      "conferida_em": "2026-10-14",
+      "descricao": "Imposto retido na fonte nas vendas comuns",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 706",
+      "valor": 5e-05
+    },
+    {
+      "chave": "irrf_day_trade",
+      "conferida_em": "2026-10-14",
+      "descricao": "Imposto retido na fonte sobre o ganho do day trade",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 712",
+      "valor": 0.01
+    },
+    {
+      "chave": "codigo_do_darf",
+      "conferida_em": "2026-10-14",
+      "descricao": "Código do DARF de ganhos em bolsa",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 730",
+      "valor": "6015"
+    },
+    {
+      "chave": "darf_minimo",
+      "conferida_em": "2026-10-14",
+      "descricao": "DARF abaixo deste valor não se paga: soma ao imposto dos meses seguintes",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/leis/l9430.htm",
+      "onde": "art. 68",
+      "valor": 10
+    },
+    {
+      "chave": "tabela_regressiva",
+      "conferida_em": "2026-10-14",
+      "descricao": "Renda fixa: 22,5% até 180 dias, 20% até 360, 17,5% até 720, 15% acima",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 734",
+      "valor": "22,5% / 20% / 17,5% / 15%"
+    },
+    {
+      "chave": "isentos_na_renda_fixa",
+      "conferida_em": "2026-10-14",
+      "descricao": "Isentos para pessoa física: poupança, LCI, LCA, CRI e CRA",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 738",
+      "valor": "poupança, LCI, LCA, CRI, CRA"
+    }
+  ],
+  "renda_fixa": [
+    {
+      "aliquota": 0.225,
+      "ate_dias": 180
+    },
+    {
+      "aliquota": 0.2,
+      "ate_dias": 360
+    },
+    {
+      "aliquota": 0.175,
+      "ate_dias": 720
+    },
+    {
+      "aliquota": 0.15,
+      "ate_dias": null
+    }
+  ]
+}

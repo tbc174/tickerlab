@@ -270,6 +270,125 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 | `vendas` | Valor vendido no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o total era público (como era na data) | data (dia) |
 
+## `ifdata_valores`
+
+Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por instituição, relatório, conta e coluna). Tipo 1 = conglomerado prudencial (desde mar/2014), 2 = conglomerado financeiro, 3 = instituição individual. Ficam fora o relatório 15 (câmbio) e as linhas de total sem código de instituição
+
+- **Fonte:** Banco Central: IF.data (API Olinda, `IfDataValores`)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Trimestral (data-base em mar, jun, set e dez)
+- **Atraso de divulgação:** Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada revisão vira versão `<AAAAMM>.v<N>`
+- **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
+- **Linhagem:** O `<AAAAMM>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada resposta da API (no acervo e no registro de coletas, fonte `bcb-ifdata`, com a data da coleta) e a versão do código que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `data_base` | Fim do trimestre a que o número se refere | data (dia) |
+| `tipo_instituicao` | 1 prudencial, 2 financeiro, 3 individual | número inteiro |
+| `cod_inst` | Código da instituição no BC (raiz do CNPJ ou C00... do conglomerado) | texto |
+| `relatorio` | Número do relatório (1 Resumo, 2 Ativo, 3 Passivo...) | número inteiro |
+| `nome_relatorio` | Nome do relatório | texto |
+| `grupo` | Grupo da linha, quando o relatório tem | texto |
+| `conta` | Código da conta no relatório | texto |
+| `coluna` | Nome da coluna, com a letra da nota ("Disponibilidades (a)") | texto |
+| `descricao` | Fórmula da coluna nas contas do Cosif | texto |
+| `saldo` | Valor da linha | reais (R$), já multiplicado pela escala informada |
+| `disponivel_em` | Desde quando o número era público (como era na data) | data (dia) |
+
+## `ifdata_cadastro`
+
+O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa
+
+- **Fonte:** Banco Central: IF.data (API Olinda, `IfDataCadastro`)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Trimestral, junto com os valores
+- **Atraso de divulgação:** O dos valores (o cadastro sai com a data-base)
+- **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/cadastro/<AAAAMM>.parquet` (servidor de casa)
+- **Linhagem:** Como `ifdata_valores`: o manifesto guarda o endereço e o SHA-256 da resposta.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `data_base` | Data-base do cadastro | data (dia) |
+| `cod_inst` | Código da instituição no BC | texto |
+| `instituicao` | Nome da instituição | texto |
+| `tipo_controle` | Tc: 1 público, 2 privado nacional, 3 estrangeiro | texto |
+| `tipo_consolidado` | Tcb: tipo de consolidado bancário (b1, b2...) | texto |
+| `tipo_documento` | Td: tipo de documento contábil | texto |
+| `segmento_prudencial` | Sr: segmento da regulação prudencial (S1 a S5) | texto |
+| `segmento` | Segmento da instituição, quando informado | texto |
+| `atividade` | Atividade principal, quando informada | texto |
+| `uf` | UF da sede | texto |
+| `municipio` | Município da sede | texto |
+| `conglomerado_financeiro` | Código do conglomerado financeiro | texto |
+| `conglomerado_prudencial` | Código do conglomerado prudencial | texto |
+| `cnpj_lider` | Raiz do CNPJ da instituição líder (8 dígitos) | texto |
+| `inicio_atividade` | Mês de início da atividade (AAAAMM) | número inteiro |
+| `situacao` | A = ativa | texto |
+| `cnpj_raiz` | Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ | texto |
+
+## `ligacao_dos_bancos`
+
+Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base. A raiz do CNPJ do líder liga ao CNPJ do FCA; antes de 2010 (sem FCA) a ligação chega ao CNPJ, mas não à ação. Instituição sem ação (Caixa, BNDES) fica sem CNPJ
+
+- **Fonte:** Derivado: IF.data (cadastro) e CVM, FCA (emissores e tickers)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Trimestral, montada de novo a cada carga
+- **Atraso de divulgação:** O do cadastro do IF.data
+- **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/ligacao_dos_bancos.parquet` (servidor de casa)
+- **Linhagem:** O `.json` lista cada cadastro e as tabelas do FCA usados, com o SHA-256 de cada arquivo, e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `data_base` | Data-base do cadastro | data (dia) |
+| `cod_inst` | Código da instituição no BC | texto |
+| `instituicao` | Nome da instituição | texto |
+| `cnpj_raiz` | Raiz do CNPJ (8 dígitos) | texto |
+| `cnpj` | CNPJ da empresa da bolsa (vazio se não tem ação) | texto |
+| `tickers` | Códigos que valiam no ano, separados por vírgula | texto |
+
+## `scr_credito`
+
+Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade, origem dos recursos e indexador, com prazos a vencer, atraso, inadimplência e ativo problemático. Agregado, sem pessoa nem instituição. A versão 1 (parou em jun/2025) fica fora
+
+- **Fonte:** Banco Central: SCR.data (`scrdata_<ano>.zip`)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal, um arquivo por ano
+- **Atraso de divulgação:** Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); `disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`
+- **Onde fica:** Parquet em `<acervo>/base/bcb/scr/<ano>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 do arquivo do BC (no acervo e no registro de coletas, fonte `bcb-scr-base`) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `data_base` | Fim do mês | data (dia) |
+| `uf` | UF do cliente | texto |
+| `segmento` | Segmento da instituição (Banco, Cooperativa, Financeira...) | texto |
+| `cliente` | PF ou PJ | texto |
+| `cnae_ocupacao` | Seção do CNAE (PJ) ou natureza da ocupação (PF) | texto |
+| `porte` | Porte da empresa (PJ) ou faixa de renda (PF) | texto |
+| `modalidade` | Modalidade do crédito | texto |
+| `submodalidade` | Submodalidade do crédito | texto |
+| `origem` | Origem dos recursos (livres ou direcionados) | texto |
+| `indexador` | Indexador (prefixado, pós-fixado...) | texto |
+| `numero_de_operacoes` | Número de operações (vazio quando o BC não informa) | número inteiro |
+| `a_vencer_ate_90_dias` | Carteira a vencer em até 90 dias | reais (R$), já multiplicado pela escala informada |
+| `a_vencer_de_91_ate_360_dias` | A vencer de 91 a 360 dias | reais (R$), já multiplicado pela escala informada |
+| `a_vencer_de_361_ate_1080_dias` | A vencer de 361 a 1080 dias | reais (R$), já multiplicado pela escala informada |
+| `a_vencer_de_1081_ate_1800_dias` | A vencer de 1081 a 1800 dias | reais (R$), já multiplicado pela escala informada |
+| `a_vencer_de_1801_ate_5400_dias` | A vencer de 1801 a 5400 dias | reais (R$), já multiplicado pela escala informada |
+| `a_vencer_acima_de_5400_dias` | A vencer acima de 5400 dias | reais (R$), já multiplicado pela escala informada |
+| `carteira_a_vencer` | Total a vencer | reais (R$), já multiplicado pela escala informada |
+| `vencido_de_15_ate_90_dias` | Vencido de 15 a 90 dias | reais (R$), já multiplicado pela escala informada |
+| `vencido_acima_de_90_dias` | Vencido há mais de 90 dias | reais (R$), já multiplicado pela escala informada |
+| `carteira_vencida` | Total vencido (a partir de 15 dias) | reais (R$), já multiplicado pela escala informada |
+| `carteira_ativa` | Carteira ativa, como o BC informa | reais (R$), já multiplicado pela escala informada |
+| `carteira_inadimplencia` | Carteira em inadimplência (atraso acima de 90 dias) | reais (R$), já multiplicado pela escala informada |
+| `ativo_problematico` | Ativo problemático (atraso ou reestruturação) | reais (R$), já multiplicado pela escala informada |
+| `disponivel_em` | Desde quando o mês era público (como era na data) | data (dia) |
+
 ## `padroes_setoriais`
 
 Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as empresas de cada grupo de setores (`src/setores.py`), calculados só com os balanços que eram públicos na data de corte. Dado derivado: recalcular o mesmo corte substitui as linhas dele.
