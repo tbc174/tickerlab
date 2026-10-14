@@ -14,7 +14,6 @@ from src.comparacao import alinhar_fechamentos, interpretar_tickers
 from src.dados import DadosIndisponiveisError
 from src.metricas import resumir_desempenho
 from src.pares import MAX_ATIVOS_PARA_PARES, procurar_pares, simular_par
-from src.planos import PARES
 from telas.comum import (
     ajuda_do,
     cabecalho_da_pagina,
@@ -23,7 +22,7 @@ from telas.comum import (
     formatar_metrica,
     mostrar_grafico,
 )
-from telas.conta.assinatura import exigir_recurso
+from telas.conta.assinatura import exigir_pagina
 from telas.dados_da_conta import oferecer_salvar_simulacao
 
 PARES_PADRAO = "ITUB4, BBDC4, BBAS3, PETR4, PETR3"
@@ -194,7 +193,7 @@ def secao_pares(periodo, taxa_livre_de_risco):
 
 def pagina_pares():
     cabecalho_da_pagina("pares")
-    if not exigir_recurso(PARES):
+    if not exigir_pagina("pares"):
         return
     c = carregar_contexto()
     secao_pares(c.periodo, c.taxa_livre_de_risco)
