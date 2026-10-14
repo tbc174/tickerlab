@@ -140,7 +140,7 @@ def test_tolerancia_entra_na_checagem_de_quedas():
 
 def test_ficha_mostra_quantas_variacoes():
     app = _backtest_local()  # a estratégia de abertura e o Cruzamento de médias
-    assert "Você testou 2 variações em PETR4.SA" in _textos(app.markdown)
+    assert "Você testou 2 variações em PETR4" in _textos(app.markdown)
 
 
 def test_trocar_um_parametro_soma_uma_tentativa():

@@ -509,9 +509,10 @@ ROTULOS_DAS_OPCOES = {
     "gatilhos": "Só quando um gatilho acontecer",
     "web": "No site",
     "pdf": "Em PDF",
-    "^BVSP": "Ibovespa (^BVSP)",
-    "^GSPC": "S&P 500 (^GSPC)",
-    "^IXIC": "Nasdaq (^IXIC)",
+    # índices com o código da tela, sem o ^ do Yahoo (ADR 0065)
+    "^BVSP": "Ibovespa (IBOV)",
+    "^GSPC": "S&P 500 (SPX)",
+    "^IXIC": "Nasdaq (IXIC)",
     "resultados": "Resultados",
     "proventos": "Proventos",
     "eventos": "Eventos",

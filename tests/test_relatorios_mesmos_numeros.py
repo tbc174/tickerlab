@@ -14,7 +14,7 @@ import pytest
 from pypdf import PdfReader
 from streamlit.testing.v1 import AppTest
 
-from src import relatorios
+from src import catalogo, relatorios
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.carteiras import ESTRATEGIAS_DE_CARTEIRA, numeros_da_carteira, simular_carteira
 from src.comparacao import alinhar_fechamentos, montar_tabela_comparativa
@@ -149,7 +149,8 @@ def test_tabela_do_pdf_da_comparacao_e_a_da_pagina_comparar():
         "Ativo Retorno total Ao ano Volatilidade Maior queda Sharpe"
     )[1]
     for ticker, linha in tabela.iterrows():
-        numeros = _depois(tabela_do_pdf, f"{ticker} ", 5)
+        # a página mostra o símbolo (PETR4.SA); o PDF, o código da tela (PETR4)
+        numeros = _depois(tabela_do_pdf, f"{catalogo.codigo(ticker)} ", 5)
         esperado = [
             _pct(linha["Retorno total"]),
             _pct(linha["Retorno anualizado"]),
@@ -192,7 +193,9 @@ def test_pdf_da_carteira_e_a_pagina_carteira(estrategia):
     sozinhos = _secao(texto, "Cada ativo sozinho")
     for ticker in tickers:
         tela = numeros[f"{ticker} (comprar e segurar)"]
-        retorno, vol, queda, sharpe = _depois(sozinhos, f"{ticker} ", 4)
+        retorno, vol, queda, sharpe = _depois(
+            sozinhos, f"{catalogo.codigo(ticker)} ", 4
+        )
         _bate(_pct(tela["Retorno total"]), retorno, f"{ticker} / retorno")
         _bate(_pct(tela["Volatilidade anual"]), vol, f"{ticker} / volatilidade")
         _bate(_pct(tela["Maior queda"]), queda, f"{ticker} / maior queda")
