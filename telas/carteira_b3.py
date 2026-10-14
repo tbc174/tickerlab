@@ -15,12 +15,14 @@ import streamlit as st
 from src import analise_da_carteira as ac
 from src import dividendos_e_custo as dc
 from src import graficos, relatorios
+from src import proventos_a_receber as par
 from src.analise import FUSO  # "hoje" é o do Brasil, não o do servidor
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.demonstracoes import setores_dos_tickers
 from src.carteira_b3 import ArquivoDaB3Error, CarteiraB3, ler_carteira
 from src.dados import DadosIndisponiveisError
 from src.movimentacao_b3 import MovimentacaoB3, ler_movimentacao
+from src.proventos_a_receber import ProventosAReceber, ler_proventos_a_receber
 from telas.comum import (
     PERIODOS_DO_TOPO,
     cabecalho_da_pagina,
@@ -32,6 +34,9 @@ from telas.relatorios.estudio import ARQUIVO_DA_CARTEIRA_DE_EXEMPLO
 
 ARQUIVO_DA_MOVIMENTACAO_DE_EXEMPLO = (
     ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.parent / "movimentacao_de_exemplo.xlsx"
+)
+ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO = (
+    ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.parent / "proventos_a_receber_de_exemplo.xlsx"
 )
 
 log = logging.getLogger(__name__)
@@ -380,6 +385,65 @@ def _mostrar_dividendos_e_custo(carteira: CarteiraB3 | None):
     st.caption(dc.NOTA_DO_CUSTO)
 
 
+def _pedir_proventos_a_receber() -> ProventosAReceber | None:
+    st.markdown(par.COMO_BAIXAR_OS_PROVENTOS)
+    if st.toggle(
+        "Usar os proventos a receber de exemplo (fictícios)",
+        key="carteira_b3_proventos_exemplo",
+    ):
+        st.warning(par.AVISO_DOS_PROVENTOS_DE_EXEMPLO, icon=":material/science:")
+        conteudo, nome = (
+            ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO.read_bytes(),
+            ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO.name,
+        )
+    else:
+        arquivo = st.file_uploader(
+            "Planilha de proventos a receber da B3",
+            type=["xlsx", "csv"],
+            key="carteira_b3_proventos",
+        )
+        if arquivo is None:
+            return None
+        conteudo, nome = arquivo.getvalue(), arquivo.name
+    try:
+        proventos = ler_proventos_a_receber(conteudo, nome)
+    except ArquivoDaB3Error as erro:
+        st.error(str(erro))
+        return None
+    for aviso in proventos.avisos:
+        st.warning(aviso)
+    return proventos
+
+
+def _mostrar_proventos_a_receber():
+    st.subheader("Proventos a receber")
+    proventos = _pedir_proventos_a_receber()
+    if proventos is None:
+        return
+    if not proventos.itens:
+        st.info(par.SEM_PROVENTOS_A_RECEBER)
+        return
+    st.metric("Total a receber", dc.formatar_reais(proventos.total))
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Ativo": [i.codigo for i in proventos.itens],
+                "Provento": [i.tipo for i in proventos.itens],
+                "Data prevista": [
+                    f"{i.data:%d/%m/%Y}" if i.data else "sem data"
+                    for i in proventos.itens
+                ],
+                "Quantidade": [i.quantidade or None for i in proventos.itens],
+                "Valor (R$)": [i.valor for i in proventos.itens],
+            }
+        ),
+        column_config=_dinheiro(["Valor (R$)"]),
+        hide_index=True,
+        width="stretch",
+    )
+    st.caption(par.NOTA_DOS_PROVENTOS_A_RECEBER)
+
+
 def pagina_carteira_b3():
     cabecalho_da_pagina("carteira_b3")
     carteira = _pedir_carteira()
@@ -394,3 +458,4 @@ def pagina_carteira_b3():
         _mostrar_comportamento(carteira)
         _mostrar_rebalanceamento(carteira)
     _mostrar_dividendos_e_custo(carteira)
+    _mostrar_proventos_a_receber()
