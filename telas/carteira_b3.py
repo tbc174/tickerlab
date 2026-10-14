@@ -7,7 +7,11 @@ Regra de `telas/`: nenhum estado mutável no módulo.
 """
 
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+from typing import Protocol
 
 import pandas as pd
 import streamlit as st
@@ -16,12 +20,14 @@ from src import analise_da_carteira as ac
 from src import dividendos_e_custo as dc
 from src import graficos, relatorios
 from src import proventos_a_receber as par
+from src import resultado_por_mes as rpm
 from src.analise import FUSO  # "hoje" é o do Brasil, não o do servidor
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.demonstracoes import setores_dos_tickers
 from src.carteira_b3 import ArquivoDaB3Error, CarteiraB3, ler_carteira
 from src.dados import DadosIndisponiveisError
 from src.movimentacao_b3 import MovimentacaoB3, ler_movimentacao
+from src.negociacao_b3 import ler_negociacao
 from src.proventos_a_receber import ProventosAReceber, ler_proventos_a_receber
 from telas.comum import (
     PERIODOS_DO_TOPO,
@@ -37,6 +43,9 @@ ARQUIVO_DA_MOVIMENTACAO_DE_EXEMPLO = (
 )
 ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO = (
     ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.parent / "proventos_a_receber_de_exemplo.xlsx"
+)
+ARQUIVO_DA_NEGOCIACAO_DE_EXEMPLO = (
+    ARQUIVO_DA_CARTEIRA_DE_EXEMPLO.parent / "negociacao_de_exemplo.xlsx"
 )
 
 log = logging.getLogger(__name__)
@@ -228,34 +237,73 @@ def _mostrar_rebalanceamento(carteira):
     st.caption(ac.AVISO_DO_REBALANCEAMENTO)
 
 
-def _pedir_movimentacao() -> MovimentacaoB3 | None:
-    st.markdown(dc.COMO_BAIXAR_A_MOVIMENTACAO)
-    if st.toggle(
-        "Usar a movimentação de exemplo (fictícia)",
-        key="carteira_b3_movimentacao_exemplo",
-    ):
-        st.warning(dc.AVISO_DA_MOVIMENTACAO_DE_EXEMPLO, icon=":material/science:")
-        conteudo, nome = (
-            ARQUIVO_DA_MOVIMENTACAO_DE_EXEMPLO.read_bytes(),
-            ARQUIVO_DA_MOVIMENTACAO_DE_EXEMPLO.name,
-        )
+class _ComAvisos(Protocol):
+    @property
+    def avisos(self) -> tuple[str, ...]: ...
+
+
+@dataclass(frozen=True)
+class _Planilha:
+    """Como pedir uma planilha da B3: o passo a passo, o exemplo fictício e o campo de arquivo."""
+
+    como_baixar: str
+    rotulo_do_exemplo: str
+    aviso_do_exemplo: str
+    arquivo_de_exemplo: Path
+    rotulo_do_campo: str
+    chave: str  # do campo de arquivo; o botão do exemplo usa a chave + "_exemplo"
+
+
+_MOVIMENTACAO = _Planilha(
+    dc.COMO_BAIXAR_A_MOVIMENTACAO,
+    "Usar a movimentação de exemplo (fictícia)",
+    dc.AVISO_DA_MOVIMENTACAO_DE_EXEMPLO,
+    ARQUIVO_DA_MOVIMENTACAO_DE_EXEMPLO,
+    "Planilha de movimentação da B3",
+    "carteira_b3_movimentacao",
+)
+_PROVENTOS_A_RECEBER = _Planilha(
+    par.COMO_BAIXAR_OS_PROVENTOS,
+    "Usar os proventos a receber de exemplo (fictícios)",
+    par.AVISO_DOS_PROVENTOS_DE_EXEMPLO,
+    ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO,
+    "Planilha de proventos a receber da B3",
+    "carteira_b3_proventos",
+)
+_NEGOCIACAO = _Planilha(
+    rpm.COMO_BAIXAR_A_NEGOCIACAO,
+    "Usar a negociação de exemplo (fictícia)",
+    rpm.AVISO_DA_NEGOCIACAO_DE_EXEMPLO,
+    ARQUIVO_DA_NEGOCIACAO_DE_EXEMPLO,
+    "Planilha de negociação da B3",
+    "carteira_b3_negociacao",
+)
+
+
+def _pedir_planilha[T: _ComAvisos](
+    planilha: _Planilha, ler: Callable[[bytes, str], T]
+) -> T | None:
+    """Pede a planilha (ou liga o exemplo), lê com `ler` e mostra os avisos; None sem arquivo."""
+    st.markdown(planilha.como_baixar)
+    if st.toggle(planilha.rotulo_do_exemplo, key=f"{planilha.chave}_exemplo"):
+        st.warning(planilha.aviso_do_exemplo, icon=":material/science:")
+        conteudo = planilha.arquivo_de_exemplo.read_bytes()
+        nome = planilha.arquivo_de_exemplo.name
     else:
         arquivo = st.file_uploader(
-            "Planilha de movimentação da B3",
-            type=["xlsx", "csv"],
-            key="carteira_b3_movimentacao",
+            planilha.rotulo_do_campo, type=["xlsx", "csv"], key=planilha.chave
         )
         if arquivo is None:
             return None
         conteudo, nome = arquivo.getvalue(), arquivo.name
     try:
-        movimentacao = ler_movimentacao(conteudo, nome)
+        lido = ler(conteudo, nome)
     except ArquivoDaB3Error as erro:
         st.error(str(erro))
         return None
-    for aviso in movimentacao.avisos:
+    for aviso in lido.avisos:
         st.warning(aviso)
-    return movimentacao
+    return lido
 
 
 def _dinheiro(colunas):
@@ -362,11 +410,11 @@ def _mostrar_custo_com_a_posicao(resultados):
     )
 
 
-def _mostrar_dividendos_e_custo(carteira: CarteiraB3 | None):
+def _mostrar_dividendos_e_custo(carteira: CarteiraB3 | None) -> MovimentacaoB3 | None:
     st.subheader("Dividendos e custo médio")
-    movimentacao = _pedir_movimentacao()
+    movimentacao = _pedir_planilha(_MOVIMENTACAO, ler_movimentacao)
     if movimentacao is None:
-        return
+        return None
     if movimentacao.primeira_data and movimentacao.ultima_data:
         st.caption(
             f"Movimentação de {movimentacao.primeira_data:%d/%m/%Y} a "
@@ -383,46 +431,17 @@ def _mostrar_dividendos_e_custo(carteira: CarteiraB3 | None):
     for aviso in dict.fromkeys(a for c in custos for a in c.avisos):
         st.caption(aviso)
     st.caption(dc.NOTA_DO_CUSTO)
+    return movimentacao
 
 
-def _pedir_proventos_a_receber() -> ProventosAReceber | None:
-    st.markdown(par.COMO_BAIXAR_OS_PROVENTOS)
-    if st.toggle(
-        "Usar os proventos a receber de exemplo (fictícios)",
-        key="carteira_b3_proventos_exemplo",
-    ):
-        st.warning(par.AVISO_DOS_PROVENTOS_DE_EXEMPLO, icon=":material/science:")
-        conteudo, nome = (
-            ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO.read_bytes(),
-            ARQUIVO_DOS_PROVENTOS_DE_EXEMPLO.name,
-        )
-    else:
-        arquivo = st.file_uploader(
-            "Planilha de proventos a receber da B3",
-            type=["xlsx", "csv"],
-            key="carteira_b3_proventos",
-        )
-        if arquivo is None:
-            return None
-        conteudo, nome = arquivo.getvalue(), arquivo.name
-    try:
-        proventos = ler_proventos_a_receber(conteudo, nome)
-    except ArquivoDaB3Error as erro:
-        st.error(str(erro))
-        return None
-    for aviso in proventos.avisos:
-        st.warning(aviso)
-    return proventos
-
-
-def _mostrar_proventos_a_receber():
+def _mostrar_proventos_a_receber() -> ProventosAReceber | None:
     st.subheader("Proventos a receber")
-    proventos = _pedir_proventos_a_receber()
+    proventos = _pedir_planilha(_PROVENTOS_A_RECEBER, ler_proventos_a_receber)
     if proventos is None:
-        return
+        return None
     if not proventos.itens:
         st.info(par.SEM_PROVENTOS_A_RECEBER)
-        return
+        return proventos
     st.metric("Total a receber", dc.formatar_reais(proventos.total))
     st.dataframe(
         pd.DataFrame(
@@ -442,6 +461,84 @@ def _mostrar_proventos_a_receber():
         width="stretch",
     )
     st.caption(par.NOTA_DOS_PROVENTOS_A_RECEBER)
+    return proventos
+
+
+# campo de `rpm.Mes` → coluna da tabela (só aparecem as que têm algum valor)
+_COLUNAS_DO_RESULTADO = {
+    "acoes_comum": "Ações (R$)",
+    "acoes_day_trade": "Day trade (R$)",
+    "fiis": "FIIs (R$)",
+    "futuros": "Futuros (R$)",
+    "outros": "Outros (R$)",
+}
+
+
+def _mostrar_resultado_por_mes(
+    movimentacao: MovimentacaoB3 | None, proventos: ProventosAReceber | None
+):
+    st.subheader("Resultado por mês")
+    # o nome de cada ativo diz se um código terminado em 11 é FII
+    nomes = {
+        **(proventos.nomes if proventos else {}),
+        **(movimentacao.nomes if movimentacao else {}),
+    }
+    negociacao = _pedir_planilha(
+        _NEGOCIACAO, lambda conteudo, nome: ler_negociacao(conteudo, nome, nomes)
+    )
+    if negociacao is None:
+        return
+    if not negociacao.negocios:
+        st.info(rpm.SEM_NEGOCIOS)
+        return
+    if negociacao.primeira_data and negociacao.ultima_data:
+        st.caption(
+            f"Negociação de {negociacao.primeira_data:%d/%m/%Y} a "
+            f"{negociacao.ultima_data:%d/%m/%Y}."
+        )
+    resultado = rpm.resultado_por_mes(
+        negociacao, movimentacao.lancamentos if movimentacao else None
+    )
+    for aviso in resultado.avisos:
+        st.warning(aviso)
+    meses = list(reversed(resultado.meses))  # do mais novo ao mais velho
+    st.metric("Resultado no período", dc.formatar_reais(sum(m.total for m in meses)))
+    colunas = {
+        campo: coluna
+        for campo, coluna in _COLUNAS_DO_RESULTADO.items()
+        if any(getattr(m, campo) for m in meses)
+    }
+    st.dataframe(
+        pd.DataFrame(
+            {
+                "Mês": [f"{m.mes:02d}/{m.ano}" for m in meses],
+                **{
+                    coluna: [getattr(m, campo) for m in meses]
+                    for campo, coluna in colunas.items()
+                },
+                "Total (R$)": [m.total for m in meses],
+                "Vendas de ações (R$)": [m.vendas_de_acoes for m in meses],
+            }
+        ),
+        column_config=_dinheiro(
+            [*colunas.values(), "Total (R$)", "Vendas de ações (R$)"]
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    if resultado.sem_resultado:
+        st.markdown("**Ativos sem resultado**")
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Ativo": [codigo for codigo, _ in resultado.sem_resultado],
+                    "Por quê": [motivo for _, motivo in resultado.sem_resultado],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    st.caption(rpm.NOTA_DO_RESULTADO)
 
 
 def pagina_carteira_b3():
@@ -457,5 +554,6 @@ def pagina_carteira_b3():
         _mostrar_raio_x(carteira)
         _mostrar_comportamento(carteira)
         _mostrar_rebalanceamento(carteira)
-    _mostrar_dividendos_e_custo(carteira)
-    _mostrar_proventos_a_receber()
+    movimentacao = _mostrar_dividendos_e_custo(carteira)
+    proventos = _mostrar_proventos_a_receber()
+    _mostrar_resultado_por_mes(movimentacao, proventos)
