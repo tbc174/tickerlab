@@ -4,7 +4,7 @@ Três camadas, nesta ordem; a primeira que decide vale:
 
 1. **Regras sobre o título** que a empresa dá ao fato no IPE da CVM (o campo "Assunto"). Vale para todo o
    histórico, desde 2003, sem baixar nenhum documento. Este módulo.
-2. **Regras sobre o texto**, quando o PDF foi lido (próximo PR).
+2. **Regras sobre o texto**, quando o PDF foi lido e o título é genérico ("Fato Relevante").
 3. **Modelo de linguagem**, só para o que as regras deixam em "Outros" (ADR 0069: lista fechada e trecho
    literal do documento).
 
@@ -18,9 +18,12 @@ Os tópicos de operação usam os códigos do dicionário da base de M&A (ADR 00
 É uma classificação editorial, explicável e versionada; não é opinião sobre a empresa.
 """
 
+import math
 import re
 import unicodedata
 from dataclasses import dataclass
+
+from src import leitura
 
 VERSAO = "1"
 REGRA_DO_TITULO = "regra_titulo"
@@ -92,8 +95,19 @@ REGRAS: tuple[tuple[str, str], ...] = (
                               r"|\b[1-4]t\d{2}\b|\b[1-4]itr\b|\bitr\b|\bdfp\b|producao e vendas"
                               r"|previa operacional")),
 )  # fmt: skip
-_COMPILADAS = tuple((topico, re.compile(frase)) for topico, frase in REGRAS)
+Regras = tuple[tuple[str, re.Pattern[str]], ...]
+_COMPILADAS: Regras = tuple((topico, re.compile(frase)) for topico, frase in REGRAS)
 _PRIORIDADE = {topico: i for i, (topico, _) in enumerate(REGRAS)}
+# No texto, "Conselho de Administração aprovou" e "Diretor de Relações com Investidores" aparecem
+# em quase todo fato relevante: lá, administração só conta com um acontecimento.
+ADMINISTRACAO_NO_TEXTO = (
+    r"renuncia|\beleic|\beleit|nomeac|\bposse\b|sucessao|desligamento"
+    r"|nov[oa] (diretor|presidente|ceo|cfo|conselheir)"
+)
+_COMPILADAS_DO_TEXTO: Regras = tuple(
+    (t, re.compile(ADMINISTRACAO_NO_TEXTO) if t == "ADMINISTRACAO" else regra)
+    for t, regra in _COMPILADAS
+)
 
 # notícia negada ou boato sem operação: "não há negociação", "desconhece"
 NEGACAO = re.compile(r"\bnao (ha|existe|houve|ter)\b|\bdesconhece|\bdesmente|\bnega\b")
@@ -106,9 +120,7 @@ class LeituraDoTopico:
 
     principal: str  # um código de TOPICOS
     secundarios: tuple[str, ...]  # até 2, sem repetir o principal
-    trecho: (
-        str  # o pedaço do documento que decidiu (aqui, do título); vazio em "Outros"
-    )
+    trecho: str  # o pedaço do documento que decidiu; vazio em "Outros"
     metodo: str  # regra_titulo, regra_texto ou modelo
     versao: str
 
@@ -119,11 +131,11 @@ def _sem_acento(texto: str) -> str:
     return "".join(c for c in decomposto if not unicodedata.combining(c)).lower()
 
 
-def _topicos_da_parte(parte: str) -> list[str]:
+def _topicos_da_parte(parte: str, regras: Regras = _COMPILADAS) -> list[str]:
     limpo = _sem_acento(parte)
     if NEGACAO.search(limpo):
         return []
-    return [topico for topico, regra in _COMPILADAS if regra.search(limpo)]
+    return [topico for topico, regra in regras if regra.search(limpo)]
 
 
 def topico_do_titulo(titulo: str) -> LeituraDoTopico:
@@ -140,3 +152,40 @@ def topico_do_titulo(titulo: str) -> LeituraDoTopico:
     return LeituraDoTopico(
         principal, secundarios[:MAX_SECUNDARIOS], trecho, REGRA_DO_TITULO, VERSAO
     )
+
+
+# --- camada 2: o texto (quando o PDF foi lido) ----------------------------------------------------
+
+REGRA_DO_TEXTO = "regra_texto"
+MIN_FRASES_LIDAS = (
+    5  # o assunto está no começo: lê o primeiro terço, e pelo menos 5 frases
+)
+
+
+def topico_do_texto(texto: str) -> LeituraDoTopico:
+    """O tópico pelo texto do fato relevante (camada 2): a primeira frase que trata de um assunto.
+
+    Sem o cabeçalho e a assinatura; só o começo do documento (o fim costuma ter ressalvas e histórico).
+    Na frase que decide, vale a regra de maior prioridade; os secundários vêm dela e das seguintes.
+    """
+    frases = leitura.dividir_em_frases(leitura.sem_cabecalho_e_assinatura(texto or ""))
+    janela = frases[: max(MIN_FRASES_LIDAS, math.ceil(len(frases) / 3))]
+    principal, trecho, vistos = OUTROS, "", []
+    for frase in janela:
+        achados = sorted(
+            _topicos_da_parte(frase, _COMPILADAS_DO_TEXTO), key=_PRIORIDADE.__getitem__
+        )
+        if achados and principal == OUTROS:
+            principal, trecho = achados[0], frase
+        vistos += [t for t in achados if t != principal and t not in vistos]
+    return LeituraDoTopico(
+        principal, tuple(vistos[:MAX_SECUNDARIOS]), trecho, REGRA_DO_TEXTO, VERSAO
+    )
+
+
+def topico_do_documento(titulo: str, texto: str) -> LeituraDoTopico:
+    """O título decide quando é claro; o texto, quando o título é genérico ("Fato Relevante")."""
+    pelo_titulo = topico_do_titulo(titulo)
+    if pelo_titulo.principal != OUTROS or not (texto or "").strip():
+        return pelo_titulo
+    return topico_do_texto(texto)

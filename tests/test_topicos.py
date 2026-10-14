@@ -155,3 +155,78 @@ def test_qualquer_titulo_da_um_topico_da_lista(titulo):
     assert leitura.principal not in leitura.secundarios
     assert len(leitura.secundarios) <= 2
     assert leitura.trecho in titulo
+
+
+# --- camada 2: o texto do fato relevante (quando o PDF foi lido) ---------------------------------
+
+FATO_DE_AQUISICAO = """
+COMPANHIA EXEMPLO S.A.
+CNPJ nº 00.000.000/0001-00
+FATO RELEVANTE
+A Companhia Exemplo S.A., em atendimento ao disposto na Resolução CVM nº 44, comunica aos seus
+acionistas e ao mercado em geral o que segue. O Conselho de Administração aprovou hoje a aquisição
+de 100% da Fábrica Modelo Ltda. por R$ 1,2 bilhão, pagos em dinheiro na data do fechamento. A
+operação será paga com caixa próprio e com a emissão de debêntures no valor de R$ 500 milhões. A
+Companhia manterá o mercado informado sobre o andamento da operação, nos termos da regulamentação.
+São Paulo, 12 de outubro de 2026.
+Maria Exemplo
+Diretora Financeira e de Relações com Investidores
+"""
+
+
+def test_topico_pelo_texto_com_a_frase_que_decidiu():
+    leitura = topicos.topico_do_texto(FATO_DE_AQUISICAO)
+    assert (
+        leitura.principal == "AQUISICAO"
+    )  # não "Mudança na administração" (o Conselho aprovou)
+    assert leitura.secundarios == ("DIVIDA",)  # as debêntures da frase seguinte
+    assert leitura.trecho.startswith(
+        "O Conselho de Administração aprovou hoje a aquisição"
+    )
+    assert leitura.trecho in FATO_DE_AQUISICAO.replace("\n", " ")
+    assert leitura.metodo == "regra_texto"
+
+
+def test_texto_ignora_o_cabecalho_e_a_assinatura():
+    # "Diretora Financeira" na assinatura não é mudança na administração
+    so_juridiques = (
+        "FATO RELEVANTE\nA Companhia, em atendimento ao disposto na Resolução CVM nº 44, comunica aos "
+        "seus acionistas e ao mercado em geral que recebeu correspondência de um acionista.\n"
+        "São Paulo, 1 de outubro de 2026.\nJoão Exemplo\nDiretor de Relações com Investidores\n"
+    )
+    assert topicos.topico_do_texto(so_juridiques).principal == "OUTROS"
+
+
+def test_o_assunto_esta_no_comeco_do_documento():
+    """O que vem no fim (as ressalvas e o histórico) não decide o assunto."""
+    frases = [
+        "A Companhia comunica que o Conselho aprovou o pagamento de dividendos de R$ 1,00."
+    ]
+    frases += [
+        "Esta frase de enchimento tem palavras suficientes para contar aqui."
+    ] * 12
+    frases += [
+        "No passado, a Companhia concluiu a aquisição da Empresa Antiga em 2010."
+    ]
+    leitura = topicos.topico_do_texto(" ".join(frases))
+    assert leitura.principal == "DIVIDENDOS"
+    assert "AQUISICAO" not in leitura.secundarios
+
+
+def test_documento_junta_titulo_e_texto():
+    # título genérico: decide o texto
+    leitura = topicos.topico_do_documento("Fato Relevante", FATO_DE_AQUISICAO)
+    assert (leitura.principal, leitura.metodo) == ("AQUISICAO", "regra_texto")
+    # título claro: vale o título (o texto não muda o assunto)
+    leitura = topicos.topico_do_documento("JCP 2T23", FATO_DE_AQUISICAO)
+    assert (leitura.principal, leitura.metodo) == ("DIVIDENDOS", "regra_titulo")
+    # sem texto (PDF escaneado): fica o título
+    assert topicos.topico_do_documento("Fato Relevante", "").principal == "OUTROS"
+
+
+@given(st.text())
+def test_qualquer_texto_da_um_topico_da_lista(texto):
+    leitura = topicos.topico_do_texto(texto)
+    assert leitura.principal in topicos.TOPICOS
+    assert leitura.principal not in leitura.secundarios
+    assert len(leitura.secundarios) <= 2
