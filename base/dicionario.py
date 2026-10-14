@@ -88,8 +88,10 @@ TABELAS: dict[str, Tabela] = {
             "`cnpj`, `documento`, `referencia` e `versao` dizem qual entrega à CVM publicou o "
             "valor; `origem` diz se veio dos dados abertos ou do XML do ENET. Ao lado de cada "
             "Parquet, `<ano>.json` guarda o SHA-256 da base e o endereço e o SHA-256 de cada "
-            "original, que está no acervo e no registro de coletas (com a data da coleta). "
-            + SEM_VERSAO_DO_CODIGO
+            "original, que está no acervo e no registro de coletas (com a data da coleta), e a "
+            "`versao_do_codigo` (o commit que montou o ano; os anos montados antes da série 3 "
+            "ficam sem ela até serem remontados). `base/linhagem.py` refaz o caminho de qualquer "
+            "linha e diz se está completo."
         ),
         colunas={
             **_EMPRESA,

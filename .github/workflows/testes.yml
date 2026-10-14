@@ -159,7 +159,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Construir a imagem
-        run: docker build -t tickerlab:ci .
+        run: docker build --build-arg TICKERLAB_VERSAO="${GITHUB_SHA}" -t tickerlab:ci .
+
+      - name: A imagem sabe a versão do código (ADR 0055, exigência 13)
+        run: docker run --rm tickerlab:ci python -c "from src.versao_do_codigo import exigir_versao_do_codigo as v; assert v() == '${GITHUB_SHA}', v(); print('versão', v())"
 
       - name: O app abre sem erro dentro da imagem (dados de exemplo, sem internet)
         run: |

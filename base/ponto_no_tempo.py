@@ -28,6 +28,7 @@ import pandas as pd
 
 from base.contas_cvm import COLUNAS, so_as_contas_das_regras
 from base.enet import DocumentoEnet
+from src.versao_do_codigo import versao_do_codigo
 
 FATO = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
 COLUNAS_DA_BASE = (
@@ -167,10 +168,12 @@ def gravar_parquet(
 ) -> list[Path]:
     """Um arquivo por ano do fim do período (`<pasta>/2022.parquet`), gravado sem ficar pela metade.
 
-    Ao lado de cada um, `<ano>.json`: linhas, `sha256_da_base` e as `origens` (endereço e SHA-256 de
-    cada original usado), para refazer e conferir. Gravar de novo substitui o ano.
+    Ao lado de cada um, `<ano>.json`: linhas, `sha256_da_base`, as `origens` (endereço e SHA-256 de
+    cada original usado) e a `versao_do_codigo` que montou a base (exigência 13 da ADR 0055), para
+    refazer e conferir. Gravar de novo substitui o ano.
     """
     pasta.mkdir(parents=True, exist_ok=True)
+    versao = versao_do_codigo()
     anos = base["fim"].dt.year.astype("Int64").astype(str).replace("<NA>", SEM_DATA)
     arquivos = []
     for ano, parte in base.groupby(anos):
@@ -183,6 +186,7 @@ def gravar_parquet(
             "linhas": len(parte),
             "sha256_da_base": hash_da_base(parte),
             "origens": origens or [],
+            "versao_do_codigo": versao,
         }
         texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
         _gravar_atomico(

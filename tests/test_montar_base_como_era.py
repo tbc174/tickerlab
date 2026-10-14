@@ -12,6 +12,7 @@ from base.ponto_no_tempo import como_era_em, ler_parquet
 from scripts import montar_base_como_era as montar
 from src import acervo
 from src import demonstracoes as dm
+from src import versao_do_codigo as vc
 from src.banco.coletas import registrar
 from src.banco.conexao import criar_engine, migrar_para
 from tests.test_base_enet import _dfp
@@ -21,10 +22,14 @@ PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
 COLETADO_EM = datetime(2026, 10, 12, 7, tzinfo=UTC)
 
 
+VERSAO = "7ddaf09c1e6b0b5a9c1d2e3f4a5b6c7d8e9f0a1b"
+
+
 @pytest.fixture
 def url(tmp_path, monkeypatch):
     url = f"sqlite:///{(tmp_path / 'b.sqlite').as_posix()}"
     monkeypatch.setenv("TICKERLAB_DATABASE_URL", url)
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)  # a carga da base exige a versão do código
     monkeypatch.setenv(acervo.VARIAVEL_DA_PASTA, str(tmp_path / "acervo"))
     migrar_para("head", url=url)
     motor = criar_engine(url)
@@ -111,3 +116,23 @@ def test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma(
     assert {dm.URL_DO_DFP.format(ano=2024), dm.URL_DO_DFP.format(ano=2025)} <= urls
     assert montar.main(["--conferir", "--pasta", str(saida)]) == 0
     assert "2024: ok" in capsys.readouterr().out
+
+
+def test_sem_a_versao_do_codigo_a_base_nao_e_gravada(
+    url, sem_internet, tmp_path, monkeypatch
+):
+    """Exigência 13 da ADR 0055: número sem a versão do código que o fez não entra na base."""
+    monkeypatch.delenv(vc.VARIAVEL)
+    monkeypatch.setattr(vc, "_perguntar_ao_git", lambda: None)
+    with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):  # desconhecida
+        montar.main(["--anos", "2024", "--pasta", str(tmp_path / "base")])
+    assert not (tmp_path / "base").exists()
+
+
+def test_manifesto_leva_a_versao_do_codigo(url, sem_internet, tmp_path):
+    import json
+
+    saida = tmp_path / "base"
+    assert montar.main(["--anos", "2024", "--pasta", str(saida)]) == 0
+    manifesto = json.loads((saida / "2024.json").read_text(encoding="utf-8"))
+    assert manifesto["versao_do_codigo"] == VERSAO

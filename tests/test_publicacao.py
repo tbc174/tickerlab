@@ -106,3 +106,17 @@ def test_a_api_le_o_mesmo_cache_de_precos_do_app():
     """A API v1 calcula com os mesmos preços do app (ADR 0048): a pasta montada nos dois serviços."""
     compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
     assert compose.count("- ./dados_locais:/app/dados_locais") == 2
+
+
+def test_imagem_leva_a_versao_do_codigo():
+    """Exigência 13 da ADR 0055: o build grava o commit, o compose o repassa e o deploy o informa
+    (inclusive na volta para a versão anterior, porque o commit é lido na hora de subir)."""
+    dockerfile = (RAIZ / "Dockerfile").read_text(encoding="utf-8")
+    assert 'ARG TICKERLAB_VERSAO=""' in dockerfile
+    assert "ENV TICKERLAB_VERSAO=${TICKERLAB_VERSAO}" in dockerfile
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    assert "TICKERLAB_VERSAO: ${TICKERLAB_VERSAO:-}" in compose
+    deploy = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
+    assert (
+        'subir() { TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up' in deploy
+    )

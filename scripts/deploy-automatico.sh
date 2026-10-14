@@ -77,7 +77,9 @@ saudavel() {
     && curl -fsS --max-time 5 http://127.0.0.1:8000/saude >/dev/null 2>&1
 }
 
-subir() { docker compose up -d --build >> "$LOG" 2>&1; }
+# a imagem leva o commit que está implantado (versão do código; ADR 0055, exigência 13). Vale
+# também na volta para a versão anterior: o commit é lido na hora de subir.
+subir() { TICKERLAB_VERSAO="$(git rev-parse HEAD)" docker compose up -d --build >> "$LOG" 2>&1; }
 
 esperar() {
   local ate=$((SECONDS + ESPERA_MAXIMA))
