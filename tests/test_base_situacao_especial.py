@@ -65,7 +65,8 @@ def test_so_estabelecimentos_com_situacao_especial_e_sem_dado_pessoal():
     assert "email.pessoal@exemplo.com" not in tabela.to_csv()
 
 
-def test_retrato_do_mes_vira_parquet_com_a_origem(banco, tmp_path):
+def test_retrato_do_mes_vira_parquet_com_a_origem(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     conteudo = _zip(
         _estabelecimento(
             "11111111", "0001", "11", "1", "RECUPERACAO JUDICIAL", "20230119"
@@ -80,6 +81,7 @@ def test_retrato_do_mes_vira_parquet_com_a_origem(banco, tmp_path):
     )
     assert tabela["mes_do_retrato"].iloc[0] == "2026-10"
     assert len(tabela["origem_sha256"].iloc[0]) == 64
+    assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
 
 
 def test_arquivos_que_nao_sao_de_estabelecimentos_ficam_de_fora(banco, tmp_path):
@@ -94,7 +96,8 @@ def test_historico_usa_a_mesma_busca_de_originais():
     assert historico.originais_mais_recentes is coletas.originais_mais_recentes
 
 
-def test_comando_monta_o_retrato_do_cnpj(banco, tmp_path):
+def test_comando_monta_o_retrato_do_cnpj(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     conteudo = _zip(

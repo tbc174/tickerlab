@@ -35,7 +35,10 @@ def _guardar(fonte: str, url: str, conteudo: bytes) -> None:
     com_registro(fonte, lambda _url: conteudo)(url)
 
 
-def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(banco, tmp_path):
+def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     conteudo = _zip_do_ipe()
     _guardar("cvm-hist-ipe", URL_IPE, conteudo)
     with banco.connect() as conexao:
@@ -47,6 +50,7 @@ def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(banco, tmp_path):
     assert set(tabela["origem_sha256"]) == {hashlib.sha256(conteudo).hexdigest()}
     assert set(tabela["ano_do_arquivo"]) == {2024}
     assert set(tabela["montado_em"]) == {AGORA.isoformat()}
+    assert set(tabela["versao_do_codigo"]) == {"0123abc"}  # exigência 13 (ADR 0055)
 
 
 def test_usa_a_copia_mais_recente_do_mesmo_arquivo(banco, tmp_path):
@@ -89,7 +93,8 @@ def test_ano_vem_do_nome_do_arquivo():
     assert historico.ano_do_arquivo("https://x/cda_fi_202609.zip") is None
 
 
-def test_comando_monta_as_tabelas_pedidas(banco, tmp_path):
+def test_comando_monta_as_tabelas_pedidas(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
@@ -99,7 +104,22 @@ def test_comando_monta_as_tabelas_pedidas(banco, tmp_path):
     assert not (tmp_path / "b" / "negociacoes").exists()
 
 
-def test_comando_sai_com_1_se_um_original_nao_abre(banco, tmp_path):
+def test_comando_recusa_codigo_modificado(banco, tmp_path, monkeypatch):
+    """Como as outras cargas da base: sem saber o commit, nada é montado."""
+    import pytest
+
+    from scripts import montar_base_historica
+    from src.versao_do_codigo import VersaoDesconhecidaError
+
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc-modificado")
+    _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
+    with pytest.raises(VersaoDesconhecidaError):
+        montar_base_historica.main(["eventos", "--pasta", str(tmp_path / "b")])
+    assert not (tmp_path / "b").exists()
+
+
+def test_comando_sai_com_1_se_um_original_nao_abre(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
 
     _guardar("cvm-hist-ipe", URL_IPE, b"PK quebrado")

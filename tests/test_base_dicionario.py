@@ -225,7 +225,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     from base import auditores, controladas, empresa_serie, fre, rotulos
     from src.negociacoes import COLUNAS as COLUNAS_DAS_NEGOCIACOES
 
-    origem = ["origem_sha256", "origem_coletada_em", "montado_em"]
+    origem = ["origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo"]
     da_historica = ["ano_do_arquivo", *origem]
     eventos = [
         "protocolo", "versao", "cnpj", "empresa", "categoria", "tipo", "assunto", "rotulo",
@@ -247,11 +247,18 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         "insolvencia": [*rotulos.COLUNAS, *da_historica],
         "cnpj_situacao_especial": [*situacao, *origem],
         "auditores": [*auditores.COLUNAS, *da_historica],
-        "trocas_de_auditor": [*auditores.COLUNAS_DAS_TROCAS, "montado_em"],
+        "trocas_de_auditor": [
+            *auditores.COLUNAS_DAS_TROCAS,
+            "montado_em",
+            "versao_do_codigo",
+        ],
         "curva_juros": [*curva, *origem],
         "controladas": [*controladas.COLUNAS, *da_historica],
-        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em"],
+        "empresa_serie": [*empresa_serie.COLUNAS, "montado_em", "versao_do_codigo"],
     }
     for tabela, colunas in esperadas.items():
         assert set(TABELAS[tabela].colunas) == set(colunas), tabela
+        # exigência 13 da ADR 0055: toda linha da série B diz o commit que a montou
+        assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
+        assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
     assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda

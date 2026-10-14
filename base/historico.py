@@ -23,6 +23,7 @@ from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.eventos import ler_ipe
 from src.negociacoes_cvm import ler_vlmo
+from src.versao_do_codigo import versao_do_codigo
 
 ANO_NO_NOME = re.compile(r"_(\d{4})\.(?:zip|csv)$")
 
@@ -95,6 +96,7 @@ def montar(
             origem_sha256=original.sha256,
             origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
             montado_em=agora.isoformat(),
+            versao_do_codigo=versao_do_codigo(),
         )
         _gravar(dados, pasta / nome / f"{ano}.parquet")
         linhas_por_ano[ano] = len(dados)
