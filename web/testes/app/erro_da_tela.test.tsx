@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // Página fora do plano (ADR 0062): a tela mostra o motivo da API e o caminho para os planos.
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi } from "../../src/app/api";
 import { ErroDaTela } from "../../src/app/telas/ErroDaTela";
@@ -14,17 +15,25 @@ afterEach(() => {
 });
 
 describe("erro da tela", () => {
-  it("fora do plano: o motivo e o link para os planos no app atual", () => {
-    render(<ErroDaTela erro={new ErroDaApi("plano", MOTIVO)} />);
+  it("fora do plano: o motivo e o link para os planos", () => {
+    render(
+      <MemoryRouter>
+        <ErroDaTela erro={new ErroDaApi("plano", MOTIVO)} />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole("alert").textContent).toContain(MOTIVO);
     const link = screen.getByRole("link", { name: "Conhecer os planos" });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/planos");
+    expect(link.getAttribute("href")).toBe("/planos");
   });
 
   it.each(["pedido-invalido", "nao-encontrado", "termos", "indisponivel"] as const)(
     "%s: só a mensagem, sem o link dos planos",
     (tipo) => {
-      render(<ErroDaTela erro={new ErroDaApi(tipo, "Mensagem da API.")} />);
+      render(
+        <MemoryRouter>
+          <ErroDaTela erro={new ErroDaApi(tipo, "Mensagem da API.")} />
+        </MemoryRouter>,
+      );
       expect(screen.getByRole("alert").textContent).toContain("Mensagem da API.");
       expect(screen.queryByRole("link", { name: "Conhecer os planos" })).toBeNull();
     },

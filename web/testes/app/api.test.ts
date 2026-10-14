@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi, pedir } from "../../src/app/api";
 import type {
   BacktestDoAtivoV1,
+  MeuPlanoV1,
   ComparacaoDoAtivoV1,
   EuV1,
   RetornoMensalDoAtivoV1,
@@ -187,6 +188,19 @@ describe("tipos das respostas", () => {
     const b: BacktestDoAtivoV1 = backtest.resposta;
     expect(Object.keys(b).sort()).toEqual(campos("BacktestDoAtivoV1"));
     expect(Object.keys(b.backtest).sort()).toEqual(campos("BacktestV1"));
+  });
+
+  it("Meu plano bate com o OpenAPI", () => {
+    const p: MeuPlanoV1 = {
+      plano: "gratuito",
+      nome_do_plano: "Gratuito",
+      simulacoes: "0 de 5",
+      favoritos: "0 de 3",
+      frase_da_assinatura: null,
+      aviso: "",
+      tabela: [],
+    };
+    expect(Object.keys(p).sort()).toEqual(campos("MeuPlanoV1"));
   });
 
   it("Ficha do backtest (exemplo do Python) bate com o OpenAPI", () => {

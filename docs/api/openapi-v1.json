@@ -907,6 +907,63 @@
         "title": "MesV1",
         "type": "object"
       },
+      "MeuPlanoV1": {
+        "description": "A página de planos: o plano da conta, quanto já usou e a tabela (os textos do Streamlit).",
+        "properties": {
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "favoritos": {
+            "title": "Favoritos",
+            "type": "string"
+          },
+          "frase_da_assinatura": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frase Da Assinatura"
+          },
+          "nome_do_plano": {
+            "title": "Nome Do Plano",
+            "type": "string"
+          },
+          "plano": {
+            "title": "Plano",
+            "type": "string"
+          },
+          "simulacoes": {
+            "title": "Simulacoes",
+            "type": "string"
+          },
+          "tabela": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Tabela",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plano",
+          "nome_do_plano",
+          "simulacoes",
+          "favoritos",
+          "frase_da_assinatura",
+          "aviso",
+          "tabela"
+        ],
+        "title": "MeuPlanoV1",
+        "type": "object"
+      },
       "NumeroDeJurosV1": {
         "description": "Um número do painel (em %, como o Banco Central publica), com a data e a fonte.",
         "properties": {
@@ -2047,6 +2104,53 @@
           }
         },
         "summary": "Linha Do Tempo"
+      }
+    },
+    "/v1/meu-plano": {
+      "get": {
+        "description": "Só leitura do banco: nenhuma chamada ao Stripe (assinar continua no app atual).",
+        "operationId": "meu_plano_v1_meu_plano_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeuPlanoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Meu Plano"
       }
     },
     "/v1/retorno-mensal": {

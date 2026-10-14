@@ -198,6 +198,16 @@ export interface BacktestV1 {
   operacoes: number;
 }
 
+export interface MeuPlanoV1 {
+  plano: string;
+  nome_do_plano: string;
+  simulacoes: string; // "1 de 5", "0 de ilimitadas" ou "—"
+  favoritos: string;
+  frase_da_assinatura: string | null;
+  aviso: string;
+  tabela: Record<string, string>[]; // uma linha por recurso: {Recurso, Gratuito, Plus, Pro}
+}
+
 export interface ChecagemV1 {
   pergunta: string;
   situacao: string; // "passou", "não passou", "não se aplica" ou "não deu para medir"

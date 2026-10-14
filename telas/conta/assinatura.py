@@ -20,9 +20,11 @@ from src.cobranca import (
 )
 from src.paginas import motivo_da_pagina, pagina
 from src.planos import (
-    descrever_limite,
+    AVISO_DO_MODO_DE_TESTE,
+    frase_da_assinatura,
     limites_do,
     tabela_de_planos,
+    texto_do_uso,
 )
 from telas.comum import PAGINAS_DO_MENU, cabecalho_da_pagina, plano_atual
 
@@ -196,20 +198,17 @@ def pagina_planos():
     col_plano, col_simulacoes, col_favoritos = st.columns(3)
     col_plano.metric("Seu plano", limites.nome)
     col_simulacoes.metric(
-        "Simulações salvas",
-        "—"
-        if simulacoes_salvas is None
-        else f"{simulacoes_salvas} de {descrever_limite(limites.simulacoes).lower()}",
+        "Simulações salvas", texto_do_uso(simulacoes_salvas, limites.simulacoes)
     )
     col_favoritos.metric(
-        "Favoritos",
-        f"{len(st.session_state['favoritos'])} de {limites.favoritos}",
+        "Favoritos", texto_do_uso(len(st.session_state["favoritos"]), limites.favoritos)
     )
     assinatura = st.session_state.get("assinatura")
-    if assinatura is not None and assinatura.periodo_fim:
-        verbo = "termina" if assinatura.cancela_no_fim else "renova"
-        st.caption(f"Sua assinatura {verbo} em {assinatura.periodo_fim:%d/%m/%Y}.")
+    if assinatura is not None:
+        frase = frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim)
+        if frase:
+            st.caption(frase)
     st.subheader("O que cada plano inclui")
     mostrar_planos()
-    st.caption("Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado.")
+    st.caption(AVISO_DO_MODO_DE_TESTE)
     mostrar_assinatura("planos")

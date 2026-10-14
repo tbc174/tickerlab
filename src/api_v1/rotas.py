@@ -30,17 +30,29 @@ from src.api_v1.contexto import (
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import tentativas
 from src.banco.conexao import obter_engine, tabela_inexistente
-from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
+from src.banco.dados_do_usuario import (
+    carregar_preferencias,
+    contar_simulacoes,
+    listar_favoritos,
+    salvar_preferencias,
+)
 from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
+from src.cobranca import buscar_assinatura
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
-from src.planos import limites_do
+from src.planos import (
+    AVISO_DO_MODO_DE_TESTE,
+    frase_da_assinatura,
+    limites_do,
+    tabela_de_planos,
+    texto_do_uso,
+)
 from src.tentativas import TETO_POR_PESSOA, impressao
 from src.validacao import parametros_numericos
 
@@ -84,6 +96,20 @@ class EuV1(BaseModel):
     limites: LimitesV1
 
 
+class MeuPlanoV1(BaseModel):
+    """A página de planos: o plano da conta, quanto já usou e a tabela (os textos do Streamlit)."""
+
+    plano: str
+    nome_do_plano: str
+    simulacoes: str  # "1 de 5", "0 de ilimitadas" ou "—"
+    favoritos: str
+    frase_da_assinatura: (
+        str | None
+    )  # "Sua assinatura renova em dd/mm/aaaa."; nada do Stripe
+    aviso: str
+    tabela: list[dict[str, str]]  # uma linha por recurso, uma coluna por plano
+
+
 class ConfiguracaoV1(BaseModel):
     """O que a tela nova precisa antes do login (sem segredo: o client ID vai no endereço do Google)."""
 
@@ -101,6 +127,27 @@ def configuracao() -> ConfiguracaoV1:
 @router.get("/eu")
 def eu(conta: Conta) -> EuV1:
     return eu_da_conta(conta)
+
+
+@router.get("/meu-plano")
+def meu_plano(conta: Conta) -> MeuPlanoV1:
+    """Só leitura do banco: nenhuma chamada ao Stripe (assinar continua no app atual)."""
+    limites = limites_do(conta.plano)
+    with obter_engine().connect() as conexao:
+        simulacoes = contar_simulacoes(conexao, conta.id)
+        favoritos = len(listar_favoritos(conexao, conta.id))
+        assinatura = buscar_assinatura(conexao, conta.id)
+    return MeuPlanoV1(
+        plano=conta.plano,
+        nome_do_plano=limites.nome,
+        simulacoes=texto_do_uso(simulacoes, limites.simulacoes),
+        favoritos=texto_do_uso(favoritos, limites.favoritos),
+        frase_da_assinatura=None
+        if assinatura is None
+        else frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim),
+        aviso=AVISO_DO_MODO_DE_TESTE,
+        tabela=tabela_de_planos(),
+    )
 
 
 def eu_da_conta(conta: Usuario) -> EuV1:

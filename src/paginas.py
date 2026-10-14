@@ -525,6 +525,7 @@ PAGINAS = (
         ":material/workspace_premium:",
         "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/meu-plano", (), "MeuPlanoV1"),
     ),
     Pagina(
         "admin",
