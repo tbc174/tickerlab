@@ -6,11 +6,12 @@ Saiu do `app.py` sem mudar comportamento. Regra de `telas/`: nenhum estado mutá
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import TypeGuard
 
 import streamlit as st
 from sqlalchemy import exc as sa_exc
 
-from src import catalogo, relatorios, research
+from src import catalogo, relatorios, research, topicos
 from src.banco import leituras as repo_leituras
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
@@ -19,6 +20,7 @@ from src.banco.dados_do_usuario import (
     salvar_watchlist,
 )
 from src.banco.eventos import empresas_dos_tickers, eventos_dos_tickers, ultima_coleta
+from src.conteudo import proteger_cifrao
 from src.eventos import FONTE_IPE
 from src.planos import LimiteDoPlanoError, limites_do
 from telas.comum import (
@@ -64,6 +66,39 @@ def _resumos_dos_itens(itens):
         return {}
 
 
+FATO_RELEVANTE = (
+    "Fato relevante"  # o rótulo dos fatos relevantes da CVM (src/eventos.py)
+)
+ORIGEM_DO_TOPICO = {
+    topicos.REGRA_DO_TITULO: "pelo título",
+    topicos.REGRA_DO_TEXTO: "pelo texto",
+    "modelo": "pelo modelo de linguagem",
+}
+
+
+def _topicos_dos_itens(itens):
+    """protocolo → assunto dos fatos relevantes da CVM (leitor v2, ADR 0069; só as regras)."""
+    fatos = [
+        (i.evento.protocolo, i.evento.assunto)
+        for i in itens
+        if i.evento.fonte == FONTE_IPE and i.evento.rotulo == FATO_RELEVANTE
+    ]
+    try:
+        with obter_engine().connect() as conexao:
+            return repo_leituras.topicos_dos_fatos(conexao, FONTE_IPE, fatos)
+    except (sa_exc.OperationalError, sa_exc.ProgrammingError):
+        return {
+            protocolo: topicos.topico_do_titulo(titulo) for protocolo, titulo in fatos
+        }
+
+
+def _com_assunto(
+    topico: topicos.LeituraDoTopico | None,
+) -> TypeGuard[topicos.LeituraDoTopico]:
+    """O assunto só aparece quando o leitor achou um (em "Outros" não há selo)."""
+    return topico is not None and topico.principal != topicos.OUTROS
+
+
 def mostrar_resumo_do_documento(resumo):
     """O resumo do algoritmo próprio (R5): frases do documento, números e assuntos."""
     if not resumo:
@@ -87,7 +122,7 @@ def mostrar_resumo_do_documento(resumo):
         )
 
 
-def _mostrar_item(item, chave, destaque=False, resumo=None):
+def _mostrar_item(item, chave, destaque=False, resumo=None, topico=None):
     e = item.evento
     codigo = e.ticker.removesuffix(".SA")
     with st.container(border=True, key=f"tl-evento-{chave}"):
@@ -95,6 +130,11 @@ def _mostrar_item(item, chave, destaque=False, resumo=None):
         col_texto.markdown(
             f"**{codigo}** · {e.rotulo} · {e.publicado_em:%d/%m/%Y}"
             + ("" if destaque else f" · relevância {item.relevancia:.0%}")
+            + (
+                f" :blue-badge[{topicos.TOPICOS[topico.principal]}]"
+                if _com_assunto(topico)
+                else ""
+            )
         )
         col_texto.markdown(
             e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro)."
@@ -117,11 +157,36 @@ def _mostrar_item(item, chave, destaque=False, resumo=None):
         with st.expander("Por que isso aparece?"):
             for razao in item.razoes:
                 st.markdown(f"- {razao}")
+            if _com_assunto(topico):
+                origem = ORIGEM_DO_TOPICO.get(topico.metodo, "")
+                st.markdown(f"- Assunto ({origem}): “{proteger_cifrao(topico.trecho)}”")
             st.caption(
                 f"Relevância {item.relevancia:.0%}: soma dos componentes (0 a 1) vezes os seus "
                 "pesos da página Parâmetros. Ordena a leitura; não é nota da empresa nem "
                 "sinal de compra ou venda."
             )
+
+
+def _filtrar_pelo_assunto(itens, assuntos):
+    """Filtro pelo assunto dos fatos relevantes; só oferece os assuntos que aparecem na lista."""
+    presentes = {t.principal for t in assuntos.values() if _com_assunto(t)}
+    opcoes = [nome for codigo, nome in topicos.TOPICOS.items() if codigo in presentes]
+    if not opcoes:
+        return itens
+    escolhidos = st.multiselect(
+        "Assunto dos fatos relevantes",
+        opcoes,
+        key="research_topicos",
+        placeholder="Todos os assuntos",
+        help="Lido do título e do texto de cada fato relevante, por regras fixas (leitor do "
+        "TickerLab). Com algum assunto marcado, só aparecem os fatos relevantes com ele.",
+    )
+    if not escolhidos:
+        return itens
+    return [
+        i for i in itens
+        if (t := assuntos.get(i.evento.protocolo)) and topicos.TOPICOS[t.principal] in escolhidos
+    ]  # fmt: skip
 
 
 def _mostrar_gestao_das_listas(usuario, limites, lista_atual):
@@ -312,14 +377,20 @@ def pagina_research():
             + (" com esses temas." if temas else ".")
         )
     else:
+        assuntos = _topicos_dos_itens(itens)
+        itens = _filtrar_pelo_assunto(itens, assuntos)
         resumos = _resumos_dos_itens(itens)
         st.subheader("Em destaque")
         for i, item in enumerate(itens[:3]):
-            _mostrar_item(item, f"d{i}", True, resumos.get(item.evento.protocolo))
+            p = item.evento.protocolo
+            _mostrar_item(item, f"d{i}", True, resumos.get(p), assuntos.get(p))
         if len(itens) > 3:
             st.subheader(f"Os outros {len(itens) - 3}")
             for i, item in enumerate(itens[3:], start=3):
-                _mostrar_item(item, f"o{i}", resumo=resumos.get(item.evento.protocolo))
+                p = item.evento.protocolo
+                _mostrar_item(
+                    item, f"o{i}", resumo=resumos.get(p), topico=assuntos.get(p)
+                )
     if sem_cobertura:
         st.caption(
             "Sem cobertura ainda: "

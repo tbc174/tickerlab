@@ -248,3 +248,45 @@ def test_gratuito_nao_cria_a_segunda_lista(banco, monkeypatch):
     app.multiselect(key="research_nova_tickers").set_value(["VALE3.SA"])
     app.button(key="rsb_criar").click().run()
     assert any("1 lista" in e.value for e in app.error)
+
+
+# --- leitor v2: o assunto dos fatos relevantes (ADR 0069, PR 4) ----------------------------------
+
+
+def _textos_da_pagina(app) -> str:
+    return " ".join(m.value for m in app.markdown)
+
+
+def _com_todos_os_eventos(app):
+    """Sem tema marcado aparecem todos, e sem o limite por empresa (os fatos são tema "eventos")."""
+    app.button_group(key="research_temas").set_value([]).run()
+    return app.toggle(key="research_todos").set_value(True).run()
+
+
+def test_fato_relevante_mostra_o_assunto_e_o_por_que(banco):
+    _coletar(banco)
+    app = _com_todos_os_eventos(_app_local())
+    assert not app.exception
+    # "Relatório de Produção e Vendas 4T25": o assunto sai do título, com o selo
+    assert ":blue-badge[Resultados e projeções]" in _textos_da_pagina(app)
+    porques = [e for e in app.expander if e.label == "Por que isso aparece?"]
+    textos = " ".join(m.value for e in porques for m in e.markdown)
+    assert "Assunto (pelo título): “Relatório de Produção e Vendas 4T25”" in textos
+    # os que ficam em "Outros" não ganham selo
+    assert ":blue-badge[Outros]" not in _textos_da_pagina(app)
+
+
+def test_filtro_pelo_assunto_dos_fatos_relevantes(banco):
+    _coletar(banco)
+    app = _com_todos_os_eventos(_app_local())
+    filtro = app.multiselect(key="research_topicos")
+    assert filtro.options == [
+        "Resultados e projeções"
+    ]  # só os assuntos que aparecem na lista
+    app = filtro.select("Resultados e projeções").run()
+    assert not app.exception
+    titulos = [
+        m.value for m in app.markdown if "Relatório de Produção e Vendas" in m.value
+    ]
+    assert titulos
+    assert "Reservas Provadas" not in _textos_da_pagina(app)
