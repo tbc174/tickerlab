@@ -13,7 +13,7 @@ from src.banco.conexao import criar_engine, migrar_para
 def pytest_addoption(parser):
     parser.addoption(
         "--parte",
-        help="roda só uma parte da suíte, como no CI: --parte=trader ou --parte=K/N (scripts/repartir_testes.py)",
+        help="roda só uma parte da suíte, como no CI: --parte=K/N ou --parte=trader-K/N (scripts/repartir_testes.py)",
     )
     parser.addoption(
         "--gravar-duracoes",

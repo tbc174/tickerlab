@@ -5,17 +5,32 @@
 import type { ReactNode } from "react";
 import { LinhaDoHeroi } from "./comum";
 
-/** Pausa tudo o que roda sem parar na página; o movimento.js troca o rótulo e guarda a escolha. */
-export function BotaoDePausa() {
+/**
+ * Pausa tudo o que roda sem parar na página. No site (HTML pronto), o movimento.js troca o rótulo e
+ * guarda a escolha; no app (React), quem usa passa `pausado` e `aoClicar`.
+ */
+export function BotaoDePausa({
+  pausado = false,
+  aoClicar,
+}: {
+  pausado?: boolean;
+  aoClicar?: () => void;
+}) {
   return (
-    <button className="v2-pausa" type="button" data-pausa="" aria-pressed="false">
+    <button
+      className="v2-pausa"
+      type="button"
+      data-pausa=""
+      aria-pressed={pausado ? "true" : "false"}
+      onClick={aoClicar}
+    >
       <svg className="pausar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
       </svg>
       <svg className="retomar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M8 5v14l11-7z" />
       </svg>
-      <span>Pausar animação</span>
+      <span>{pausado ? "Retomar animação" : "Pausar animação"}</span>
     </button>
   );
 }

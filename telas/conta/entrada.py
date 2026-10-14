@@ -11,6 +11,7 @@ import streamlit as st
 
 from src import marca
 from src.autenticacao import (
+    AVISO_DA_ENTRADA,
     LoginInvalidoError,
     emails_de_admin,
     esta_em_producao,
@@ -18,13 +19,17 @@ from src.autenticacao import (
     login_esta_configurado,
     registrar_login,
 )
-from src.banco import novidades_por_email
 from src.banco.conexao import obter_engine
 from src.banco.usuarios import buscar_por_id
 from src.cobranca import buscar_assinatura
-from src.conformidade import precisa_aceitar_os_termos, registrar_aceite
+from src.conformidade import (
+    CAIXA_DO_ACEITE,
+    INTRODUCAO_DO_ACEITE,
+    TITULO_DO_ACEITE,
+    aceitar_os_termos,
+    precisa_aceitar_os_termos,
+)
 from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
-from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from src.origem import NOME_DO_COOKIE, ler_origem
 from telas.comum import paleta_da_sessao
 from telas.conta.assinatura import _recarregar_o_plano
@@ -55,10 +60,7 @@ def mostrar_tela_de_entrada():
             "no passado e guardar o que você fizer."
         )
         st.button("Entrar com o Google", type="primary", on_click=st.login)
-        st.caption(
-            "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. "
-            "Nada aqui é recomendação de investimento."
-        )
+        st.caption(AVISO_DA_ENTRADA)
 
 
 def _recusar_abrir_sem_login():
@@ -158,11 +160,7 @@ def _registrar_aceite(usuario):
     quer_novidades = bool(st.session_state.get("aceite_das_novidades"))
     try:
         with obter_engine().begin() as conexao:
-            registrar_aceite(conexao, usuario.id)
-            if quer_novidades and not novidades_por_email.inscricao(
-                conexao, usuario.id
-            ):
-                novidades_por_email.inscrever(conexao, usuario.id, VERSAO_DAS_NOVIDADES)
+            aceitar_os_termos(conexao, usuario.id, quer_novidades)
     except Exception:
         log_da_conta.exception("Falha ao registrar o aceite dos termos")
         st.toast("Não consegui registrar o aceite agora. Tente de novo em instantes.")
@@ -178,18 +176,15 @@ def mostrar_aceite_dos_termos(usuario):
     with centro:
         st.markdown(marca_html(paleta_da_sessao()), unsafe_allow_html=True)
         st.markdown(
-            '<div class="tl-hero">Antes de começar</div>', unsafe_allow_html=True
+            f'<div class="tl-hero">{TITULO_DO_ACEITE}</div>', unsafe_allow_html=True
         )
-        st.markdown(
-            "O TickerLab é uma plataforma de inteligência financeira: **nada aqui é recomendação de "
-            "investimento**. Leia os termos e a política de privacidade e confirme."
-        )
+        st.markdown(INTRODUCAO_DO_ACEITE)
         with st.expander("Termos de uso"):
             st.markdown(_corpo_do_texto("termos"))
         with st.expander("Política de privacidade"):
             st.markdown(_corpo_do_texto("privacidade"))
         aceitou = st.checkbox(
-            "Li e aceito os Termos de uso e a Política de privacidade",
+            CAIXA_DO_ACEITE,
             key="aceite_dos_termos",
         )
         st.checkbox(

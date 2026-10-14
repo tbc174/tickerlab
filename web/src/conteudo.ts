@@ -126,6 +126,14 @@ export const conteudoDoApp: {
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
+  entrada: { aviso: string };
+  aceite: {
+    versao: string;
+    titulo: string;
+    introducao: string;
+    caixa: string;
+    novidades: { texto: string; versao: string };
+  };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };
   retorno_mensal: { meses: string[]; legenda: string };
   backtest: {

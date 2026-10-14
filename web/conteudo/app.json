@@ -1,4 +1,14 @@
 {
+  "aceite": {
+    "caixa": "Li e aceito os Termos de uso e a Política de privacidade",
+    "introducao": "O TickerLab é uma plataforma de inteligência financeira: nada aqui é recomendação de investimento. Leia os termos e a política de privacidade e confirme.",
+    "novidades": {
+      "texto": "Opcional: Quero receber por e-mail novidades e ofertas do TickerLab (lançamentos, recursos novos e promoções dos planos). Posso sair a qualquer momento pelo link em cada e-mail ou em Meus dados.",
+      "versao": "2026-10-14"
+    },
+    "titulo": "Antes de começar",
+    "versao": "2026-10-13.7"
+  },
   "backtest": {
     "estrategias": [
       {
@@ -431,6 +441,9 @@
       "Ibovespa",
       "S&P 500"
     ]
+  },
+  "entrada": {
+    "aviso": "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. Nada aqui é recomendação de investimento."
   },
   "glossario": {
     "Base 100": [
