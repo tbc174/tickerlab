@@ -279,3 +279,25 @@ def buscar_com_registro(
         return resposta
 
     return buscar_e_registrar
+
+
+def originais_mais_recentes(conexao: sa.Connection, fonte: str) -> list[sa.Row]:
+    """A coleta mais recente de cada endereço da fonte que tem o original guardado."""
+    linhas = conexao.execute(
+        sa.select(
+            coletas.c.url,
+            coletas.c.sha256,
+            coletas.c.caminho_do_original,
+            coletas.c.baixado_em,
+        )
+        .where(
+            coletas.c.fonte == fonte,
+            coletas.c.situacao == "ok",
+            coletas.c.caminho_do_original.is_not(None),
+        )
+        .order_by(coletas.c.url, coletas.c.baixado_em)
+    ).all()
+    mais_recente: dict[str, sa.Row] = {}
+    for linha in linhas:
+        mais_recente[linha.url] = linha  # a ordem por data deixa a última
+    return list(mais_recente.values())

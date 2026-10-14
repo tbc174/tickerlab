@@ -20,7 +20,7 @@ import sqlalchemy as sa
 
 from base import fre, rotulos
 from src import acervo
-from src.banco.modelo import coletas
+from src.banco.coletas import originais_mais_recentes
 from src.eventos import ler_ipe
 from src.negociacoes_cvm import ler_vlmo
 
@@ -55,28 +55,6 @@ def ano_do_arquivo(url: str) -> int | None:
     return int(achado.group(1)) if achado else None
 
 
-def _originais(conexao: sa.Connection, fonte: str) -> list[sa.Row]:
-    """A coleta mais recente de cada endereço da fonte que tem o original guardado."""
-    linhas = conexao.execute(
-        sa.select(
-            coletas.c.url,
-            coletas.c.sha256,
-            coletas.c.caminho_do_original,
-            coletas.c.baixado_em,
-        )
-        .where(
-            coletas.c.fonte == fonte,
-            coletas.c.situacao == "ok",
-            coletas.c.caminho_do_original.is_not(None),
-        )
-        .order_by(coletas.c.url, coletas.c.baixado_em)
-    ).all()
-    mais_recente: dict[str, sa.Row] = {}
-    for linha in linhas:
-        mais_recente[linha.url] = linha  # a ordem por data deixa a última
-    return list(mais_recente.values())
-
-
 def _gravar(tabela: pd.DataFrame, destino: Path) -> None:
     destino.parent.mkdir(parents=True, exist_ok=True)
     parcial = destino.with_name(destino.name + ".parcial")
@@ -94,7 +72,7 @@ def montar(
     """
     tabela = TABELAS[nome]
     linhas_por_ano: dict[int, int] = {}
-    for original in _originais(conexao, tabela.fonte):
+    for original in originais_mais_recentes(conexao, tabela.fonte):
         ano = ano_do_arquivo(original.url)
         conteudo = acervo.ler_original(original.caminho_do_original)
         if ano is None or conteudo is None:

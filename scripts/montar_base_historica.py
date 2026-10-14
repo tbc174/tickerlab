@@ -2,6 +2,7 @@
 
     python -m scripts.montar_base_historica                       (todas as tabelas)
     python -m scripts.montar_base_historica eventos negociacoes   (só estas)
+    python -m scripts.montar_base_historica cnpj_situacao_especial (retratos do CNPJ, B2)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
 
 Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<ano>.parquet`. Roda no servidor de casa (ADR 0031),
@@ -15,18 +16,20 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import historico
+from base import historico, rotulos
 from src import acervo
 from src.banco.conexao import obter_engine
 
 log = logging.getLogger("montar_base_historica")
 
+# retratos mensais da "situação especial" do CNPJ (B2, parte 2): não são arquivos anuais
+CNPJ = "cnpj_situacao_especial"
+TODAS = [*historico.TABELAS, CNPJ]
+
 
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
-    argumentos.add_argument(
-        "tabelas", nargs="*", choices=[*historico.TABELAS, []], default=[]
-    )
+    argumentos.add_argument("tabelas", nargs="*", choices=[*TODAS, []], default=[])
     argumentos.add_argument("--pasta", type=Path, default=None)
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
@@ -40,7 +43,11 @@ def main(argv: list[str] | None = None) -> int:
     agora = datetime.now(UTC)
     falhou = False
     with obter_engine().connect() as conexao:
-        for nome in opcoes.tabelas or list(historico.TABELAS):
+        for nome in opcoes.tabelas or TODAS:
+            if nome == CNPJ:
+                meses = rotulos.montar_situacao_especial(conexao, pasta, agora)
+                log.info("%s: %s", CNPJ, meses or "nenhum mês do CNPJ guardado")
+                continue
             try:
                 linhas = historico.montar(nome, conexao, pasta, agora)
             except historico.ArquivoIlegivel as erro:
