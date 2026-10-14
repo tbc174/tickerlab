@@ -157,8 +157,7 @@ def _site() -> dict:
             {"chave": chave, "nome": estilo.nome} for chave, estilo in ESTILOS.items()
         ],
         "exemplos": [
-            {"simbolo": s, "rotulo": catalogo.rotulo(s).split(" · ")[0]}
-            for s in catalogo.EXEMPLOS
+            {"simbolo": s, "rotulo": catalogo.codigo(s)} for s in catalogo.EXEMPLOS
         ],
     }
 
@@ -186,7 +185,7 @@ def painel_de_exemplo() -> dict[str, object]:
     base_100 = fechamento.iloc[pontos] / fechamento.iloc[0] * 100
     return {
         "ticker": ticker,
-        "codigo": catalogo.rotulo(ticker).split(" · ")[0],
+        "codigo": catalogo.codigo(ticker),
         "inicio": f"{fechamento.index[0]:%Y-%m-%d}",
         "fim": f"{fechamento.index[-1]:%Y-%m-%d}",
         "retorno_total": _variacao(

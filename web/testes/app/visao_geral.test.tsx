@@ -59,7 +59,8 @@ describe("visão geral", () => {
     abrirVisaoGeral();
     expect(await screen.findByText(exemplo.resposta.ativo.aviso_da_origem)).toBeTruthy();
     expect(screen.getByText(/Perda média nos piores dias \(CVaR 95%\): -3,65%/)).toBeTruthy();
-    const grafico = screen.getByRole("img", { name: /PETR4\.SA em base 100/ });
+    // o código da tela, sem o .SA do Yahoo (ADR 0065)
+    const grafico = screen.getByRole("img", { name: /^PETR4 em base 100/ });
     expect(grafico.querySelector("path.grafico-linha")).not.toBeNull();
   });
 

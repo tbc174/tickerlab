@@ -245,6 +245,31 @@ O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe
 | Coluna | O que é | Unidade |
 |---|---|---|
 
+## `painel_dos_fundos`
+
+Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ). O emissor vira CNPJ pelo FCA e, no que falta (empresas que saíram antes de 2018), pela tabela conferida `base/conferidas/emissores_antigos.csv`; cada ano tem pelo menos 95% do valor comprado com CNPJ (`cobertura`), e o resto está em `buracos`. Inclui empresas que saíram da bolsa (sem viés de sobrevivência)
+
+- **Fonte:** Derivado: CVM, CDA (posições) e FCA (emissores), mais a tabela conferida
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal, montado de novo quando o CDA ou o FCA mudam
+- **Atraso de divulgação:** O do CDA: `disponivel_em` é a maior data das posições somadas (o total só era público quando a última posição dele ficou pública)
+- **Onde fica:** Parquet em `<acervo>/base/fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, `cobertura` e `buracos` (servidor de casa, `scripts/montar_painel_dos_fundos.py`)
+- **Linhagem:** O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira | data (dia) |
+| `emissor` | As 4 posições do emissor (só no painel por emissor) | texto |
+| `cnpj` | CNPJ da empresa (só no painel por empresa) | texto |
+| `tipo` | comprado, emprestado ou vendido | texto |
+| `fundos` | Quantos fundos tinham a posição (cada fundo uma vez por empresa) | número inteiro |
+| `valor` | Valor de mercado somado | reais (R$), já multiplicado pela escala informada |
+| `quantidade` | Quantidade somada | ações |
+| `compras` | Valor comprado no mês, somado | reais (R$), já multiplicado pela escala informada |
+| `vendas` | Valor vendido no mês, somado | reais (R$), já multiplicado pela escala informada |
+| `disponivel_em` | Desde quando o total era público (como era na data) | data (dia) |
+
 ## `padroes_setoriais`
 
 Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as empresas de cada grupo de setores (`src/setores.py`), calculados só com os balanços que eram públicos na data de corte. Dado derivado: recalcular o mesmo corte substitui as linhas dele.

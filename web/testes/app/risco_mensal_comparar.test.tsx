@@ -25,7 +25,7 @@ describe("risco", () => {
   it("a frase da pior queda e os dois gráficos (queda desde o topo e volatilidade móvel)", async () => {
     const { buscar } = abrirCom("/risco", "risco", () => respostaJson(200, risco.resposta));
     expect(await screen.findByText(risco.resposta.risco.frase_da_pior_queda)).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Queda desde o topo/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Queda desde o topo de PETR4$/ })).toBeTruthy();
     expect(screen.getByRole("img", { name: /Volatilidade móvel de 20 dias/ })).toBeTruthy();
     expect(enderecos(buscar)).toContain("/api/v1/risco?ticker=PETR4.SA&periodo=2y&janela=20");
   });
@@ -77,8 +77,12 @@ describe("comparar", () => {
   it("a tabela mostra cada ativo com os números do Streamlit", async () => {
     abrir();
     const tabela = await screen.findByRole("table", { name: "Números no mesmo período" });
+    // o Streamlit ainda mostra "PETR4.SA"; o app novo mostra o código (PETR4)
+    const codigos = Object.fromEntries(
+      (comparacao.resposta.comparacao.tabela ?? []).map((l) => [l.ticker, l.codigo]),
+    );
     for (const [nome, colunas] of Object.entries(comparacao.na_tela)) {
-      const linha = within(tabela).getByText(nome, { exact: true }).closest("tr") as HTMLElement;
+      const linha = within(tabela).getByText(codigos[nome] ?? nome, { exact: true }).closest("tr") as HTMLElement;
       for (const [coluna, valor] of Object.entries(colunas)) {
         expect(within(linha).getByText(valor, { exact: true }), `${nome} ${coluna}`).toBeTruthy();
       }
@@ -91,7 +95,7 @@ describe("comparar", () => {
     const grafico = await screen.findByRole("img", { name: /em base 100/ });
     expect(grafico.querySelectorAll("path.grafico-linha")).toHaveLength(3);
     const legenda = screen.getByRole("list", { name: "Legenda" }).textContent ?? "";
-    for (const nome of ["PETR4.SA", "Ibovespa", "S&P 500"]) expect(legenda).toContain(nome);
+    for (const nome of ["PETR4", "Ibovespa", "S&P 500"]) expect(legenda).toContain(nome);
   });
 
   it("desmarcar um atalho e digitar outro ativo muda o pedido", async () => {

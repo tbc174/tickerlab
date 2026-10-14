@@ -40,6 +40,45 @@ def test_fora_do_catalogo_segue_a_regra_antiga_sem_inventar():
     assert catalogo.resolver("") is None
 
 
+def test_indices_aparecem_sem_circunflexo():
+    """Na tela o Ibovespa é IBOV (ADR 0065); o ^ é detalhe do Yahoo e só fica no símbolo."""
+    assert catalogo.codigo("^BVSP") == "IBOV"
+    assert catalogo.rotulo("^BVSP").startswith("IBOV · Ibovespa")
+    tabela = catalogo.carregar()
+    indices = tabela[tabela["tipo"] == "Índice"]
+    assert not indices["codigo"].str.startswith("^").any()
+
+
+def test_codigo_de_exibicao_nunca_vira_o_pedido_ao_yahoo():
+    # o código mostrado volta como o símbolo (ninguém pede "IBOV" ao Yahoo)
+    assert catalogo.resolver("IBOV") == "^BVSP"
+    assert catalogo.resolver("ibov") == "^BVSP"
+    # links e favoritos antigos, com o ^, continuam valendo
+    assert catalogo.resolver("^BVSP") == "^BVSP"
+    assert catalogo.resolver("SPX") == "^GSPC"
+
+
+def test_codigo_de_cada_ativo_para_mostrar():
+    assert catalogo.codigo("PETR4.SA") == "PETR4"
+    assert catalogo.codigo("BRL=X") == "USD/BRL"
+    # fora do catálogo: o próprio símbolo
+    assert catalogo.codigo("ABCD3.SA") == "ABCD3.SA"
+
+
+def test_codigos_nao_se_repetem():
+    """Um código digitado leva a um ativo só."""
+    codigos = catalogo.carregar()["codigo"].str.upper()
+    assert codigos.is_unique, codigos[codigos.duplicated()].tolist()
+
+
+def test_lista_fixa_do_gerador_e_a_do_arquivo():
+    from scripts.gerar_catalogo import FIXOS
+
+    tabela = catalogo.carregar()
+    for simbolo, codigo, nome, bolsa, tipo in FIXOS:
+        assert tabela.loc[simbolo].tolist() == [codigo, nome, bolsa, tipo], simbolo
+
+
 def test_ativo_atual_fora_do_catalogo_continua_nas_opcoes():
     assert catalogo.opcoes("ABCD3.SA")[0] == "ABCD3.SA"
     assert catalogo.rotulo("ABCD3.SA") == "ABCD3.SA · fora do catálogo"

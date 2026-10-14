@@ -36,7 +36,7 @@ describe("backtest", () => {
       expect(within(numero as HTMLElement).getByText(valor, { exact: true }), rotulo).toBeTruthy();
     }
     expect(within(painel).getByText("Operações")).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Curva de capital/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Curva de capital de .* em PETR4 \(base 100\)/ })).toBeTruthy();
   });
 
   it("o pedido padrão vai por POST, com a estratégia e o custo do contrato", async () => {

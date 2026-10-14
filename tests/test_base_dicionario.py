@@ -125,3 +125,14 @@ def test_fidc_e_cadastro_de_fundos_dizem_o_que_fica_fora_por_lgpd():
     """Série 3, PR 6: as tabelas do Capital dizem, no dicionário, o dado pessoal que não entra."""
     assert "CPF vira vazio" in TABELAS["fidc_informe"].descricao
     assert "diretor" in TABELAS["cadastro_de_fundos"].descricao
+
+
+def test_painel_dos_fundos_cobre_as_colunas_dos_dois_paineis():
+    """Série 3, PR 5: as colunas do painel por emissor e por empresa estão no dicionário."""
+    from base import ligacoes
+    from tests.test_base_ligacoes import _ligacao, _posicoes
+
+    colunas = set(ligacoes.painel_por_emissor(_posicoes()).columns) | set(
+        ligacoes.painel_por_empresa(_posicoes(), _ligacao()).columns
+    )
+    assert colunas == set(TABELAS["painel_dos_fundos"].colunas)

@@ -61,7 +61,7 @@ describe("linha do tempo", () => {
 
   it("pede a relevância padrão e mostra a curva com um ponto por documento", async () => {
     const { buscar } = abrir();
-    const grafico = await screen.findByRole("img", { name: /PETR4\.SA em base 100/ });
+    const grafico = await screen.findByRole("img", { name: /^PETR4 em base 100/ });
     expect(grafico.querySelectorAll("circle.grafico-marco")).toHaveLength(linha.resposta.linha_do_tempo.marcos.length);
     expect(buscar.mock.calls.map(([e]) => String(e))).toContain(
       "/api/v1/linha-do-tempo?ticker=PETR4.SA&periodo=2y&materialidade_minima=50",
