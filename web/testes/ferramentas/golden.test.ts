@@ -22,6 +22,8 @@ const CONTAS: Record<string, Conta> = {
   "juros.evolucao": juros.evolucao,
   "juros.taxa_equivalente": juros.taxaEquivalente,
   "juros.taxa_por_mes": juros.taxaPorMes,
+  "juros.em_reais_de_hoje": juros.emReaisDeHoje,
+  "juros.liquido_de_ir": juros.liquidoDeIr,
   "aportes.valor_futuro": aportes.valorFuturo,
   "aportes.aporte_para_meta": aportes.aporteParaMeta,
   "aportes.meses_ate_meta": aportes.mesesAteMeta,

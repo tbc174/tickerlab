@@ -1,6 +1,7 @@
 // Juros simples e compostos: cópia em TypeScript de src/ferramentas/juros.py (a referência).
 // Mudou aqui? Mude lá também; o testes/ferramentas/golden.test.ts compara as duas.
 // Taxas são frações (0.01 = 1%) por período; entrada inválida lança RangeError.
+import { aliquotaDaRendaFixa } from "./renda_fixa";
 
 export const PRAZO_MAXIMO = 1200; // períodos: 100 anos em meses
 export type Unidade = "mes" | "ano";
@@ -57,4 +58,20 @@ export function taxaPorMes(taxa: number, unidade: Unidade): number {
   if (unidade === "mes") return taxa;
   if (unidade === "ano") return taxaEquivalente(taxa, 12, 1);
   throw new RangeError('A unidade da taxa precisa ser "mes" ou "ano".');
+}
+
+const DIAS_POR_ANO = 365;
+
+/** Quanto `valor`, recebido daqui a `meses`, compra em dinheiro de hoje (descontada a inflação). */
+export function emReaisDeHoje(valor: number, inflacaoAoAno: number, meses: number): number {
+  if (inflacaoAoAno <= -1) throw new RangeError("A inflação precisa ser maior que -100%.");
+  return valor / (1 + inflacaoAoAno) ** (meses / 12);
+}
+
+/** O montante depois do IR da tabela regressiva da renda fixa, sobre o ganho. Os meses viram dias
+ * corridos (365/12 por mês): 6 meses são ~183 dias, já na faixa de 20%. */
+export function liquidoDeIr(capital: number, montanteBruto: number, meses: number): number {
+  const ganho = montanteBruto - capital;
+  if (meses < 1 || ganho <= 0) return montanteBruto;
+  return montanteBruto - ganho * aliquotaDaRendaFixa(Math.round((meses * DIAS_POR_ANO) / 12));
 }

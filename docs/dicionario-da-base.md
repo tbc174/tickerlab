@@ -463,3 +463,328 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital informados no 
 | `acoes_novas` | Ações emitidas no aumento de capital | ações |
 | `valor` | Valor do aumento de capital | reais (R$), já multiplicado pela escala informada |
 | `coletado_em` | Quando a carga gravou a linha | data e hora (UTC) |
+
+## `eventos`
+
+Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento. A mesma entrega reapresentada fica só na versão mais nova.
+
+- **Fonte:** CVM: dados abertos do IPE (documentos periódicos e eventuais), um arquivo por ano
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados (o IPE da CVM muda todo dia)
+- **Atraso de divulgação:** Nenhum além da entrega: o documento vale a partir de `publicado_em`
+- **Onde fica:** Parquet em `<acervo>/base/eventos/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `protocolo` | Protocolo de entrega na CVM | texto |
+| `versao` | Versão da entrega (fica a mais nova) | número inteiro |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `categoria` | Categoria do documento, como a CVM publica | texto |
+| `tipo` | Tipo do documento, como a CVM publica (pode vir vazio) | texto |
+| `assunto` | Assunto escrito pela empresa | texto |
+| `rotulo` | Nome curto do tipo de documento (`src/eventos.py`) | texto |
+| `tema` | resultados, proventos, eventos ou risco | texto |
+| `materialidade` | Quanto o tipo de documento costuma importar (escolha editorial) | 0 a 100 |
+| `referencia` | Data a que o documento se refere | data (dia) |
+| `publicado_em` | Data de entrega à CVM | data (dia) |
+| `link` | Endereço do documento original no sistema da CVM | texto |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `negociacoes`
+
+Compras e vendas de ações e units por controladores, diretores, conselheiros e pela própria companhia (tesouraria), declaradas à CVM no VLMO desde 2018
+
+- **Fonte:** CVM: dados abertos do VLMO (valores mobiliários negociados e detidos)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados (o VLMO é mensal)
+- **Atraso de divulgação:** Até 10 dias depois do fim do mês da negociação (Resolução CVM 44); a linha vale a partir de `entregue_em`
+- **Onde fica:** Parquet em `<acervo>/base/negociacoes/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `fonte` | De onde veio a declaração (`cvm-vlmo`) | texto |
+| `documento` | CNPJ e mês de referência do formulário (`cnpj|AAAA-MM`) | texto |
+| `versao` | Versão do formulário (fica a mais nova) | número inteiro |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `cargo` | controlador, diretoria, conselho, conselho_fiscal, outros_orgaos ou companhia (tesouraria) | texto |
+| `cargo_descricao` | Cargo por extenso (vazio no VLMO) | texto |
+| `operacao` | compra ou venda | texto |
+| `ativo` | Tipo e característica do valor mobiliário (até 80 letras) | texto |
+| `data` | Data da negociação | data (dia) |
+| `referencia` | Mês de referência do formulário (1º dia) | data (dia) |
+| `entregue_em` | Data de entrega do formulário à CVM | data (dia) |
+| `quantidade` | Quantidade negociada | ações |
+| `preco` | Preço unitário informado | reais (R$) por ação |
+| `valor` | Volume informado ou, sem ele, quantidade × preço | reais (R$) |
+| `moeda` | Moeda (sempre BRL) | texto |
+| `plano_10b5_1` | Plano de negociação da SEC (vazio na CVM) | verdadeiro ou falso |
+| `link` | Endereço do formulário original no sistema da CVM | texto |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `proventos`
+
+Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados (a versão de longo prazo de `fre_proventos`, do app)
+
+- **Fonte:** CVM: dados abertos do Formulário de Referência (FRE), tabela de distribuição
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados; a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59): os anos novos vêm vazios ou quase
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança
+- **Onde fica:** Parquet em `<acervo>/base/proventos/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `referencia` | Data de referência do FRE de onde a linha veio | data (dia) |
+| `versao` | Versão desse FRE (1, 2, 3...) | número inteiro |
+| `exercicio` | Fim do exercício social | data (dia) |
+| `lucro_ajustado` | Lucro líquido ajustado, base da distribuição | reais (R$), já multiplicado pela escala informada |
+| `dividendo_total` | Total distribuído (dividendos e JCP) | reais (R$), já multiplicado pela escala informada |
+| `payout` | Parte do lucro ajustado distribuída | fração (0,25 = 25%) |
+| `dividendos` | Dividendos declarados | reais (R$), já multiplicado pela escala informada |
+| `jcp` | Juros sobre capital próprio declarados | reais (R$), já multiplicado pela escala informada |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `eventos_de_capital`
+
+Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados (a versão de longo prazo de `fre_eventos_de_capital`, do app)
+
+- **Fonte:** CVM: dados abertos do Formulário de Referência (FRE), tabelas de desdobramentos, grupamentos, bonificações e aumentos de capital
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados; a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59): os anos novos vêm vazios ou quase
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança
+- **Onde fica:** Parquet em `<acervo>/base/eventos_de_capital/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `referencia` | Data de referência do FRE de onde a linha veio | data (dia) |
+| `versao` | Versão desse FRE (1, 2, 3...) | número inteiro |
+| `tipo` | desdobramento, grupamento, bonificação ou aumento | texto |
+| `data` | Data da aprovação ou da deliberação | data (dia) |
+| `acoes_antes` | Ações antes do evento | ações |
+| `acoes_depois` | Ações depois do evento | ações |
+| `fator` | Depois ÷ antes (desdobramento de 1 para 10 = 10) | vezes |
+| `acoes_novas` | Ações emitidas no aumento de capital | ações |
+| `valor` | Valor do aumento de capital | reais (R$), já multiplicado pela escala informada |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `insolvencia`
+
+Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido (`fato_relevante`, costuma ser o primeiro sinal público)
+
+- **Fonte:** CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados
+- **Atraso de divulgação:** O rótulo vale a partir de `conhecido_em` (entrega à CVM)
+- **Onde fica:** Parquet em `<acervo>/base/insolvencia/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `rotulo` | recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia ou liquidacao | texto |
+| `evidencia` | categoria_ipe ou fato_relevante | texto |
+| `categoria` | Categoria do documento, como a CVM publica | texto |
+| `tipo` | Tipo do documento, como a CVM publica (pode vir vazio) | texto |
+| `assunto` | Assunto escrito pela empresa | texto |
+| `conhecido_em` | Data de entrega à CVM (quando ficou público) | data (dia) |
+| `referencia` | Data a que o documento se refere | data (dia) |
+| `protocolo` | Protocolo de entrega na CVM | texto |
+| `versao` | Versão da entrega | número inteiro |
+| `link` | Endereço do documento original no sistema da CVM | texto |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `cnpj_situacao_especial`
+
+Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado: o histórico "como era na data" nasce da sequência dos retratos. Nome, endereço, telefone e e-mail nunca entram (LGPD).
+
+- **Fonte:** Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos
+- **Licença:** Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)
+- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
+- **Atraso de divulgação:** O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
+- **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 dígitos): a empresa | texto |
+| `matriz` | Verdadeiro na matriz, falso na filial | verdadeiro ou falso |
+| `situacao_especial` | Situação especial, como a Receita escreve | texto |
+| `rotulo` | falencia, recuperacao_judicial, recuperacao_extrajudicial, liquidacao, liquidacao_judicial, liquidacao_extrajudicial ou intervencao (vazio nas outras situações, como espólio) | texto |
+| `data_situacao_especial` | Data da situação especial informada | data (dia) |
+| `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `auditores`
+
+Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim). A firma é identificada pela rede, lida do nome (KPMG, EY, PwC, Deloitte...), porque CNPJ e código da CVM vêm errados em parte das linhas. O sócio responsável (nome e CPF) nunca entra (LGPD).
+
+- **Fonte:** CVM: dados abertos do FCA, tabela de auditores (`base/auditores.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
+- **Atraso de divulgação:** Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo
+- **Onde fica:** Parquet em `<acervo>/base/auditores/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data de referência do FCA | data (dia) |
+| `versao` | Versão do FCA | número inteiro |
+| `id_documento` | Número do documento na CVM | texto |
+| `conhecido_em` | Data em que a CVM recebeu essa versão do FCA | data (dia) |
+| `auditor_id` | Identificador da firma: `rede:<nome>` nas redes; senão código da CVM, raiz do CNPJ ou nome | texto |
+| `auditor` | Nome da firma, como a empresa escreveu | texto |
+| `auditor_cnpj` | CNPJ da firma informado (14 dígitos; pode estar errado) | texto |
+| `codigo_cvm_auditor` | Código da firma na CVM informado | texto |
+| `origem` | Nacional ou estrangeiro, como a CVM publica | texto |
+| `inicio` | Início do mandato | data (dia) |
+| `fim` | Fim do mandato (vazio: em curso) | data (dia) |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `trocas_de_auditor`
+
+Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)
+
+- **Fonte:** CVM: dados abertos do FCA, pela tabela `auditores`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Refeita a cada montagem de `auditores`
+- **Atraso de divulgação:** A troca vale a partir de `conhecido_em` (entrega do FCA que a mostrou)
+- **Onde fica:** Parquet em `<acervo>/base/trocas_de_auditor/trocas.parquet` (servidor de casa)
+- **Linhagem:** `id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do original); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `conhecido_em` | Data de entrega do FCA que mostrou a troca | data (dia) |
+| `efetiva_em` | Início do mandato da firma nova | data (dia) |
+| `anterior_id` | Identificador da firma anterior (ver `auditores`) | texto |
+| `anterior` | Nome da firma anterior | texto |
+| `novo_id` | Identificador da firma nova | texto |
+| `novo` | Nome da firma nova | texto |
+| `anos_com_o_anterior` | Tempo com a firma anterior | anos |
+| `id_documento` | Número na CVM do FCA que mostrou a troca | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `curva_juros`
+
+Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom, interpolação flat-forward e sem extrapolar (nominal desde 2004, real desde 2005). A taxa do Tesouro Direto tem um spread sobre o mercado secundário.
+
+- **Fonte:** Tesouro Nacional: taxas diárias do Tesouro Direto (Tesouro Transparente)
+- **Licença:** ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária (dias úteis)
+- **Atraso de divulgação:** Um dia útil: o arquivo do Tesouro sai na manhã seguinte (`disponivel_em`)
+- **Onde fica:** Parquet em `<acervo>/base/curva_juros/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `data_base` | Dia das taxas | data (dia) |
+| `curva` | nominal, real ou implicita | texto |
+| `prazo_anos` | Vértice da curva (0,5 a 20) | anos (base 252) |
+| `taxa` | Taxa ao ano no vértice | fração (0,25 = 25%) |
+| `titulos` | Títulos usados na curva do dia | número inteiro |
+| `maior_prazo_anos` | Prazo do título mais longo do dia | anos (base 252) |
+| `disponivel_em` | Dia útil seguinte: quando a taxa ficou pública | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `controladas`
+
+Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco em muitas linhas, e o FRE guarda ligações antigas.
+
+- **Fonte:** CVM: dados abertos do FRE, tabela de participação em sociedades
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados
+- **Atraso de divulgação:** O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`
+- **Onde fica:** Parquet em `<acervo>/base/controladas/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada. `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj_companhia` | CNPJ da companhia que informou (14 dígitos) | texto |
+| `companhia` | Nome da companhia | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE (fica a mais nova) | número inteiro |
+| `id_documento` | Número do documento na CVM | texto |
+| `conhecido_em` | Data em que a CVM recebeu essa versão do FRE | data (dia) |
+| `cnpj` | CNPJ da sociedade (14 dígitos; vazio nas estrangeiras) | texto |
+| `razao_social` | Razão social da sociedade | texto |
+| `tipo` | controlada, coligada ou vazio (não informado) | texto |
+| `participacao` | Participação da companhia na sociedade | pontos percentuais (66,25 = 66,25%) |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+
+## `empresa_serie`
+
+De que companhia listada é cada entidade que os reguladores enxergam (operadora de saúde, distribuidora, banco no Pix, prestadora de telecomunicações, usina, concessionária de ferrovia, companhia aérea): pelo CNPJ, pelo nome exato ou pela tabela conferida (`base/conferidas/empresa_serie.csv`), e daí pelas `controladas`. Os capítulos do NCM do Comex Stat ligam às companhias expostas ao produto (`via` = `produto`: exposição, não posse). Toda entidade aparece, ligada ou não.
+
+- **Fonte:** ANS, ANEEL (SAMP), Banco Central (Pix), Anatel, ANP, ONS, ANTT, ANAC e Comex Stat, ligados pelo FRE da CVM e pelo FCA (tickers)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Ressalva de revenda:** Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, Anatel, ANP, ONS, ANTT, ANAC; citar), ODbL (ANEEL, Banco Central) e Comex Stat a confirmar com o MDIC.
+- **Frequência:** Refeita a cada montagem, com a safra mais recente de cada fonte
+- **Atraso de divulgação:** A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente
+- **Onde fica:** Parquet em `<acervo>/base/empresa_serie/empresa_serie.parquet` (servidor de casa)
+- **Linhagem:** `origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. A versão do código que processou a linha ainda não é guardada.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `fonte` | Fonte do arquivista de onde veio a entidade | texto |
+| `chave` | Como a fonte identifica a entidade: registro ANS, CNPJ, ISPB, nome, sigla ou capítulo do NCM | texto |
+| `nome` | Nome da entidade na fonte (ou na tabela conferida) | texto |
+| `raiz` | Raiz do CNPJ da entidade (8 dígitos), quando há | texto |
+| `cnpj_companhia` | CNPJ da companhia ligada (14 dígitos) | texto |
+| `companhia` | Nome da companhia ligada | texto |
+| `via` | propria, controlada, coligada, sem_tipo ou produto | texto |
+| `por` | cnpj, nome ou tabela (conferida à mão) | texto |
+| `participacao` | Participação informada no FRE (vazia no produto) | pontos percentuais (66,25 = 66,25%) |
+| `desde` | 1ª entrega à CVM de um FRE que mostrava a ligação | data (dia) |
+| `ultima_referencia` | Referência do FRE mais novo que mostra a ligação | data (dia) |
+| `principal` | A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no produto) | verdadeiro ou falso |
+| `tickers` | Tickers da companhia no FCA mais recente | texto |
+| `origem_sha256` | SHA-256 do arquivo de onde a entidade saiu | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

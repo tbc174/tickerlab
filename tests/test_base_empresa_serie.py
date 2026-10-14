@@ -255,7 +255,8 @@ def test_montagem_grava_a_tabela_com_as_ligacoes(banco, tmp_path):
     with banco.connect() as conexao:
         assert empresa_serie.montar(conexao, pasta, AGORA) == 1
     tabela = pd.read_parquet(pasta / "empresa_serie" / "empresa_serie.parquet")
-    assert tabela["cnpj_companhia"].tolist() == ["05197443000138"]
+    ligadas = tabela[tabela["via"] != "produto"]  # os produtos do Comex vêm sempre
+    assert ligadas["cnpj_companhia"].tolist() == ["05197443000138"]
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
 
 
@@ -311,3 +312,114 @@ def test_principal_prefere_a_companhia_que_tem_ticker_hoje():
         }
     )
     assert empresa_serie._principal(ligacoes).tolist() == [False, True]
+
+
+# --- parte 2: tabela conferida (ferrovias, siglas aéreas, produtos do Comex) ---------------------
+VALE = "33.592.510/0001-54"
+FCA_CONCESSIONARIA = "00924429000175"
+VLI = "12563794000180"
+
+
+def _controladas_da_vale() -> pd.DataFrame:
+    """A FCA controlada da Vale até 2014; depois a VLI (dona da FCA) coligada."""
+    return pd.DataFrame(
+        {
+            "cnpj_companhia": ["33592510000154"] * 2,
+            "companhia": ["VALE S.A."] * 2,
+            "referencia": [date(2014, 1, 1), date(2026, 1, 1)],
+            "versao": ["1", "1"],
+            "id_documento": ["1", "2"],
+            "conhecido_em": [date(2014, 5, 30), date(2026, 5, 29)],
+            "cnpj": [FCA_CONCESSIONARIA, VLI],
+            "razao_social": ["Ferrovia Centro - Atlântica S.A.", "VLI S.A."],
+            "tipo": ["controlada", "coligada"],
+            "participacao": [100.0, 29.6],
+        }
+    )
+
+
+def test_tabela_conferida_tem_cnpj_valido_fonte_e_data_em_toda_linha():
+    conferida = empresa_serie.tabela_conferida()
+    assert set(conferida["fonte"]) == {"antt-siade", "anac-estatistico", "comexstat"}
+    assert conferida["cnpj"].map(controladas.cnpj14).notna().all()
+    for coluna in ("razao_social", "observacao", "conferido_com", "conferido_em"):
+        assert (conferida[coluna].str.strip() != "").all(), coluna
+    assert not conferida.duplicated(["fonte", "chave", "cnpj"]).any()
+
+
+def test_leitores_da_antt_e_da_anac():
+    antt = (
+        "Mes_Ano;Ferrovia;Mercadoria_ANTT;TU\n01/2026;EFC;Minério;1\n02/2026;EFC;Minério;2\n"
+        "01/2026;MRS;Carvão;3\n"
+    ).encode("latin-1")
+    assert sorted(empresa_serie.entidades_antt(antt)["chave"]) == ["EFC", "MRS"]
+    anac = (
+        "Atualizado em: 2026-10-14\n"
+        '"EMPRESA_SIGLA";"EMPRESA_NOME";"EMPRESA_NACIONALIDADE";"ANO"\n'
+        '"GLO";"GOL LINHAS AÉREAS S.A.";"BRASILEIRA";"2026"\n'
+        '"ABJ";"ABAETÉ LINHAS AÉREAS S.A.";"BRASILEIRA";"2010"\n'
+        '"ABJ";"ATA - AEROTÁXI ABAETÉ LTDA.";"BRASILEIRA";"2022"\n'
+        '"AAL";"AMERICAN AIRLINES, INC.";"ESTRANGEIRA";"2026"\n'
+    ).encode("utf-8-sig")
+    tabela = empresa_serie.entidades_anac(anac).set_index("chave")
+    assert sorted(tabela.index) == ["ABJ", "GLO"]  # só as brasileiras
+    # a mesma sigla com dois nomes no tempo: os dois aparecem
+    assert tabela.loc["ABJ", "nome"] == (
+        "ABAETÉ LINHAS AÉREAS S.A. / ATA - AEROTÁXI ABAETÉ LTDA."
+    )
+    assert tabela["raiz"].isna().all()
+
+
+def test_a_antt_le_todos_os_anos():
+    anos = [f"https://d/producao_origem_destino_{ano}.csv" for ano in (2006, 2026)]
+    assert empresa_serie.escolher("antt-siade", anos) == set(anos)
+
+
+def test_sigla_ganha_o_cnpj_da_tabela_e_liga_pelo_fre():
+    entidades = pd.DataFrame(
+        [
+            ("antt-siade", "FCA", "FCA", None),
+            ("antt-siade", "EFPO", "EFPO", None),  # Ferroeste: fora da tabela
+        ],
+        columns=["fonte", "chave", "nome", "raiz"],
+    )
+    com_cnpj = empresa_serie.com_a_tabela_conferida(
+        entidades, empresa_serie.tabela_conferida()
+    )
+    fca = com_cnpj[com_cnpj["chave"] == "FCA"]
+    assert set(fca["raiz"]) == {"00924429", "12563794"}  # concessionária e dona
+    assert set(fca["nome"]) == {"Ferrovia Centro-Atlântica"}
+    tabela = empresa_serie.ligar(com_cnpj, _controladas_da_vale())
+    ligadas = tabela[tabela["chave"] == "FCA"].set_index("via")
+    assert set(ligadas["por"]) == {"tabela"}
+    assert ligadas.loc["controlada", "ultima_referencia"] == date(2014, 1, 1)
+    assert ligadas.loc["coligada", "desde"] == date(2026, 5, 29)
+    assert ligadas.loc["coligada", "principal"]  # a ligação mais recente
+    efpo = tabela[tabela["chave"] == "EFPO"]
+    assert len(efpo) == 1 and pd.isna(efpo["cnpj_companhia"].iloc[0])
+
+
+def test_produto_do_comex_e_exposicao_sem_principal():
+    produtos = empresa_serie.ligacoes_de_produto(empresa_serie.tabela_conferida())
+    minerio = produtos[produtos["chave"] == "2601"]
+    assert set(minerio["cnpj_companhia"]) == {"33592510000154", "08902291000115"}
+    assert set(produtos["via"]) == {"produto"} and set(produtos["por"]) == {"tabela"}
+    assert produtos["participacao"].isna().all()  # o Comex não diz quanto é de cada uma
+    assert not produtos["principal"].any()
+    assert produtos["origem_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
+
+
+def test_montagem_inclui_os_produtos_e_a_origem_de_cada_entidade(banco, tmp_path):
+    pasta = tmp_path / "base"
+    (pasta / "controladas").mkdir(parents=True)
+    _controladas_da_vale().to_parquet(pasta / "controladas" / "2026.parquet")
+    antt = "Mes_Ano;Ferrovia;TU\n01/2026;FCA;1\n".encode("latin-1")
+    url = "https://dados.antt.gov.br/d/producao_origem_destino_2026.csv"
+    com_registro("antt-siade", lambda _url: antt)(url)
+    with banco.connect() as conexao:
+        assert empresa_serie.montar(conexao, pasta, AGORA) == 2  # controlada e coligada
+    tabela = pd.read_parquet(pasta / "empresa_serie" / "empresa_serie.parquet")
+    fca = tabela[tabela["chave"] == "FCA"]
+    assert set(fca["via"]) == {"controlada", "coligada"}
+    assert fca["origem_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
+    assert (tabela["fonte"] == "comexstat").any()

@@ -5,6 +5,7 @@ from streamlit.testing.v1 import AppTest
 
 from src import analise_da_carteira as ac
 from src import dividendos_e_custo as dc
+from src import proventos_a_receber as par
 from src.banco.modelo import metadata
 from tests.ajudantes_da_conta import ir_para
 
@@ -103,5 +104,45 @@ def test_movimentacao_com_a_posicao_mostra_o_ganho_ou_a_perda():
 def test_pagina_nao_guarda_nada_da_movimentacao(banco):
     antes = _linhas_no_banco(banco)
     app = _abrir_com_a_movimentacao_de_exemplo(com_a_posicao=True)
+    assert not app.exception
+    assert _linhas_no_banco(banco) == antes
+
+
+def _abrir_com_os_proventos_de_exemplo() -> AppTest:
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    app.session_state["carteira_b3_proventos_exemplo"] = True
+    return ir_para(app, "carteira_b3")
+
+
+def test_proventos_a_receber_de_exemplo_mostram_data_valor_e_total():
+    app = _abrir_com_os_proventos_de_exemplo()
+    assert not app.exception and not app.error
+    assert "Total a receber" in {m.label for m in app.metric}
+    tabela = _tabela_com(app, "Data prevista")
+    assert list(tabela.columns) == [
+        "Provento",
+        "Data prevista",
+        "Quantidade",
+        "Valor (R$)",
+    ]
+    assert "sem data" in set(tabela["Data prevista"])  # o JCP da PETR4 ainda sem dia
+    assert par.NOTA_DOS_PROVENTOS_A_RECEBER in " ".join(c.value for c in app.caption)
+
+
+def test_sem_os_proventos_a_receber_explica_como_baixar():
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.run()
+    ir_para(app, "carteira_b3")
+    assert not app.exception
+    textos = " ".join(m.value for m in app.markdown)
+    assert "Proventos a receber" in textos
+
+
+def test_pagina_nao_guarda_nada_dos_proventos_a_receber(banco):
+    antes = _linhas_no_banco(banco)
+    app = _abrir_com_os_proventos_de_exemplo()
     assert not app.exception
     assert _linhas_no_banco(banco) == antes
