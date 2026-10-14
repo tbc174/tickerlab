@@ -191,25 +191,30 @@ def identidade_logada(
         raise _recusa(401, str(erro), "token-invalido") from erro
 
 
-def conta_logada(
+def conta_sem_o_aceite(
     identidade: Annotated[IdentidadeDoGoogle, Depends(identidade_logada)],
 ) -> Usuario:
-    """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
+    """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa)."""
     with obter_engine().connect() as conexao:
         usuario = buscar_por_google_sub(conexao, identidade.sub)
     if usuario is None:
-        raise _recusa(
-            401, "Conta não encontrada: entre uma vez pelo app.", "conta-nova"
-        )
-    if precisa_aceitar_os_termos(usuario):
-        raise _recusa(403, "Aceite os termos atuais no app para continuar.", "termos")
+        raise _recusa(401, "Conta não encontrada: entre de novo.", "conta-nova")
     if not LIMITE.permitir(str(usuario.id), agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     return usuario
 
 
+def conta_logada(
+    usuario: Annotated[Usuario, Depends(conta_sem_o_aceite)],
+) -> Usuario:
+    """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
+    if precisa_aceitar_os_termos(usuario):
+        raise _recusa(403, "Aceite os termos atuais para continuar.", "termos")
+    return usuario
+
+
 # rotas da v1 que falam só da própria conta, não de uma página: pedem login, mas nenhum plano
-ROTAS_DA_CONTA = frozenset({"/v1/eu"})
+ROTAS_DA_CONTA = frozenset({"/v1/eu", "/v1/revogar-link", "/v1/meus-dados"})
 
 
 def conta_com_acesso(

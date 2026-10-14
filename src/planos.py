@@ -5,6 +5,7 @@ Mudar um limite é mudar um número neste arquivo.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
 
@@ -129,6 +130,27 @@ def motivo_sem_acesso(plano: str | None, recurso: str) -> str | None:
 
 def descrever_limite(limite: int | None) -> str:
     return "Ilimitadas" if limite is None else str(limite)
+
+
+# a página de planos (o Streamlit e o app novo mostram as mesmas frases)
+AVISO_DO_MODO_DE_TESTE = (
+    "Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado."
+)
+
+
+def texto_do_uso(usados: int | None, limite: int | None) -> str:
+    """ "2 de 5", "3 de ilimitadas" ou "—" (não deu para contar)."""
+    return "—" if usados is None else f"{usados} de {descrever_limite(limite).lower()}"
+
+
+def frase_da_assinatura(
+    periodo_fim: datetime | None, cancela_no_fim: bool
+) -> str | None:
+    """ "Sua assinatura renova (ou termina) em dd/mm/aaaa."; None sem data."""
+    if periodo_fim is None:
+        return None
+    verbo = "termina" if cancela_no_fim else "renova"
+    return f"Sua assinatura {verbo} em {periodo_fim:%d/%m/%Y}."
 
 
 def conferir_simulacoes(plano: str | None, ja_salvas: int) -> None:

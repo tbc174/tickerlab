@@ -517,6 +517,7 @@ PAGINAS = (
         ":material/shield_person:",
         "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/links-compartilhados", (), "MeusLinksV1"),
     ),
     Pagina(
         "planos",
@@ -525,6 +526,7 @@ PAGINAS = (
         ":material/workspace_premium:",
         "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/meu-plano", (), "MeuPlanoV1"),
     ),
     Pagina(
         "admin",

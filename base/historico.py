@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import fre, rotulos
+from base import auditores, fre, rotulos
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.eventos import ler_ipe
@@ -42,6 +42,8 @@ TABELAS = {
     "eventos_de_capital": Tabela("cvm-hist-fre", fre.ler_eventos_de_capital),
     # série B2: rótulos de recuperação judicial, falência e liquidação (base/rotulos.py)
     "insolvencia": Tabela("cvm-hist-ipe", rotulos.ler_insolvencia_do_ipe),
+    # série B3: mandatos de auditor por empresa (base/auditores.py); as trocas saem deles
+    "auditores": Tabela("cvm-hist-fca", auditores.ler_auditores_do_fca),  # desde 2010
 }
 
 

@@ -59,6 +59,32 @@ AVISO_DO_LINK_CRIADO = (
 )
 
 
+# Meus dados › Links compartilhados (o Streamlit e o app novo mostram as mesmas frases)
+SEM_LINKS = (
+    'Você ainda não compartilhou nada. A ficha "Foi sorte?" do backtest e os PDFs '
+    'guardados na biblioteca têm o botão "Compartilhar".'
+)
+EXPLICACAO_DOS_LINKS = (
+    "Quem tem o link vê o que você compartilhou, sem o seu nome nem o seu e-mail. "
+    "Revogar tira o acesso na hora."
+)
+
+
+def descrever_link(
+    tipo: str, situacao: str, criado_em: datetime, expira_em: datetime, visitas: int
+) -> str:
+    """ "Ficha "Foi sorte?" · ativo · criado em 14/10/2026 · vale até 13/11/2026 · 2 visita(s)"."""
+    return " · ".join(
+        [
+            NOMES_DOS_TIPOS[tipo],
+            situacao,
+            f"criado em {criado_em:%d/%m/%Y}",
+            f"vale até {expira_em:%d/%m/%Y}",
+            f"{visitas} visita(s)",
+        ]
+    )
+
+
 def endereco_do_link(codigo: str) -> str:
     """O código vai depois do "#": o navegador não o manda a servidor nenhum nem ao Referer."""
     return f"{ENDERECO_DA_PAGINA}#{codigo}"
