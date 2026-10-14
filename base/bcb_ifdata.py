@@ -5,6 +5,9 @@ conglomerado, por trimestre (série 3 da base de ML, PR 7).
   da fonte: uma linha por instituição, relatório, conta e coluna. O inventário de 14/10/2026 achou:
   - tipo 1 (conglomerado prudencial) desde mar/2014; tipos 2 (conglomerado financeiro) e 3
     (instituição individual) desde mar/2000; o tipo 4 (câmbio) e o relatório 15 (câmbio) ficam fora;
+  - só o prudencial tem as carteiras de crédito (relatórios 5 a 16); o financeiro e o individual têm
+    os relatórios 1 a 4 (o 5 até 2005) e respondem vazio aos outros. Medido em 14/10/2026: ~193 MB de
+    JSON por trimestre no prudencial e ~58 MB nos outros dois; ~50× menor em gzip no acervo;
   - em 2000, 34 linhas de total sem código de instituição (somas da fonte): ficam fora;
   - o nome da coluna vem com a letra da nota numa linha nova ("Disponibilidades \\n(a)"): vira um
     espaço só.
