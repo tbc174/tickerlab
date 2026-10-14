@@ -146,28 +146,20 @@ def mostrar_links_da_conta(usuario: Usuario) -> None:
         st.error("Não consegui ler os seus links agora. Tente de novo em instantes.")
         return
     if not lista:
-        st.caption(
-            'Você ainda não compartilhou nada. A ficha "Foi sorte?" do backtest e os PDFs '
-            'guardados na biblioteca têm o botão "Compartilhar".'
-        )
+        st.caption(comp.SEM_LINKS)
         return
-    st.caption(
-        "Quem tem o link vê o que você compartilhou, sem o seu nome nem o seu e-mail. "
-        "Revogar tira o acesso na hora."
-    )
+    st.caption(comp.EXPLICACAO_DOS_LINKS)
     for link in lista:
         with st.container(border=True):
             col_texto, col_acao = st.columns([5, 1.4], vertical_alignment="center")
             col_texto.markdown(f"**{link.titulo}**")
             col_texto.caption(
-                " · ".join(
-                    [
-                        comp.NOMES_DOS_TIPOS[link.tipo],
-                        link.situacao,
-                        f"criado em {link.criado_em:%d/%m/%Y}",
-                        f"vale até {link.expira_em:%d/%m/%Y}",
-                        f"{link.visitas} visita(s)",
-                    ]
+                comp.descrever_link(
+                    link.tipo,
+                    link.situacao,
+                    link.criado_em,
+                    link.expira_em,
+                    link.visitas,
                 )
             )
             if link.situacao == "ativo":

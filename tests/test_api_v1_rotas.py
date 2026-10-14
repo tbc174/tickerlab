@@ -1,25 +1,33 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
+import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, ficha, paginas
+from src import analises, api, compartilhamentos, ficha, paginas, planos
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
+from src.banco import compartilhamentos as links
 from src.banco import series as acervo
 from src.banco import tentativas
-from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
+from src.banco.dados_do_usuario import (
+    TIPOS_DE_SIMULACAO,
+    carregar_preferencias,
+    salvar_favoritos,
+    salvar_preferencias,
+    salvar_simulacao,
+)
 from src.banco.eventos import Evento
-from src.banco.modelo import PLANOS
+from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
-from src.conformidade import registrar_aceite
+from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
 from src.exemplos import carregar_exemplo
@@ -33,6 +41,7 @@ from tests.ajudantes_da_api import (
     gerar_chave,
     token,
 )
+from tests.test_compartilhamentos import _congelada
 
 TAXA = 0.10
 
@@ -716,3 +725,130 @@ def test_se_o_cdi_sumir_a_ficha_compara_com_zero(cliente, no_dia, monkeypatch):
     )  # a taxa já veio do CDI; a ficha não acha
     custos = _ficha(cliente, taxa=None)["ficha"]["checagens"][1]
     assert "sem o CDI" in custos["explicacao"]
+
+
+# --- Planos e assinatura no app novo (conta e planos, PR 3) -----------------------------------
+
+
+def _id_da_ana_no(banco):
+    with banco.connect() as conexao:
+        ana = buscar_por_google_sub(conexao, "ana")
+    assert ana is not None
+    return ana.id
+
+
+def test_meu_plano_mostra_o_plano_e_o_uso(cliente, banco):
+    ana = _id_da_ana_no(banco)
+    with banco.begin() as conexao:
+        salvar_favoritos(conexao, ana, ["PETR4.SA", "VALE3.SA"])
+        salvar_simulacao(conexao, ana, TIPOS_DE_SIMULACAO[0], "minha", {}, {})
+    resposta = cliente.get("/api/v1/meu-plano")
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert dados["plano"] == "gratuito"
+    assert dados["nome_do_plano"] == "Gratuito"
+    assert dados["simulacoes"] == "1 de 5"  # como as métricas do Streamlit
+    assert dados["favoritos"] == "2 de 3"
+    assert dados["frase_da_assinatura"] is None
+    assert dados["aviso"] == planos.AVISO_DO_MODO_DE_TESTE
+    assert dados["tabela"] == planos.tabela_de_planos()
+
+
+def test_meu_plano_pro_sem_limite_de_simulacoes(cliente, banco):
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    assert cliente.get("/api/v1/meu-plano").json()["simulacoes"] == "0 de ilimitadas"
+
+
+@pytest.mark.parametrize(("cancela", "verbo"), [(False, "renova"), (True, "termina")])
+def test_meu_plano_diz_quando_a_assinatura_renova(cliente, banco, cancela, verbo):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.insert(assinaturas).values(
+                usuario_id=_id_da_ana_no(banco),
+                stripe_customer_id="cus_teste",
+                status="active",
+                periodo_fim=datetime(2026, 11, 14, 12, tzinfo=UTC),
+                cancela_no_fim=cancela,
+            )
+        )
+    dados = cliente.get("/api/v1/meu-plano").json()
+    assert dados["frase_da_assinatura"] == f"Sua assinatura {verbo} em 14/11/2026."
+    assert "cus_teste" not in str(dados)  # nada do Stripe na resposta
+
+
+def test_meu_plano_e_so_da_conta_do_token(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia2", "bia2@exemplo.com")[0]
+        salvar_favoritos(conexao, bia.id, ["PETR4.SA", "VALE3.SA", "ITUB4.SA"])
+    assert cliente.get("/api/v1/meu-plano").json()["favoritos"] == "0 de 3"
+
+
+# --- Meus dados no app novo (conta e planos, PR 5) --------------------------------------------
+
+
+def _link_da_ana(banco):
+    with banco.begin() as conexao:
+        links.criar_link_da_ficha(
+            conexao, _id_da_ana_no(banco), "gratuito", _congelada(), 30
+        )
+        return links.listar_links(conexao, _id_da_ana_no(banco))[0]
+
+
+def test_meus_links_lista_os_links_da_conta(cliente, banco):
+    link = _link_da_ana(banco)
+    dados = cliente.get("/api/v1/links-compartilhados").json()
+    assert dados["explicacao"] == compartilhamentos.EXPLICACAO_DOS_LINKS
+    assert dados["sem_links"] == compartilhamentos.SEM_LINKS
+    [recebido] = dados["links"]
+    assert recebido["id"] == str(link.id)
+    assert recebido["titulo"] == link.titulo
+    assert recebido["situacao"] == "ativo"
+    assert recebido["descricao"] == compartilhamentos.descrever_link(
+        link.tipo, link.situacao, link.criado_em, link.expira_em, link.visitas
+    )
+    assert "codigo" not in recebido and "hash" not in str(
+        recebido
+    )  # o código nunca volta
+
+
+def test_meus_links_nao_mostra_os_de_outra_conta(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia3", "bia3@exemplo.com")[0]
+        links.criar_link_da_ficha(conexao, bia.id, "gratuito", _congelada(), 30)
+    assert cliente.get("/api/v1/links-compartilhados").json()["links"] == []
+
+
+def test_revogar_um_link_da_conta(cliente, banco):
+    link = _link_da_ana(banco)
+    resposta = cliente.post("/api/v1/revogar-link", json={"id": str(link.id)})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["links"][0]["situacao"] == "revogado"
+
+
+def test_revogar_link_de_outra_conta_404(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia4", "bia4@exemplo.com")[0]
+        links.criar_link_da_ficha(conexao, bia.id, "gratuito", _congelada(), 30)
+        dela = links.listar_links(conexao, bia.id)[0]
+    resposta = cliente.post("/api/v1/revogar-link", json={"id": str(dela.id)})
+    assert resposta.status_code == 404
+    with banco.connect() as conexao:
+        assert links.listar_links(conexao, bia.id)[0].situacao == "ativo"
+
+
+@pytest.mark.parametrize("corpo", [{}, {"id": "nao-e-uuid"}, {"id": 3}])
+def test_revogar_sem_id_valido_422(cliente, corpo):
+    assert cliente.post("/api/v1/revogar-link", json=corpo).status_code == 422
+
+
+def test_baixar_meus_dados(cliente, banco):
+    resposta = cliente.get("/api/v1/meus-dados")
+    assert resposta.status_code == 200, resposta.text
+    assert "attachment" in resposta.headers["content-disposition"]
+    assert resposta.headers["cache-control"] == "no-store"
+    with banco.begin() as conexao:
+        esperado = exportar_meus_dados(conexao, _id_da_ana_no(banco))
+    recebido = resposta.json()
+    assert recebido.keys() == esperado.keys()
+    assert recebido["perfil"]["email"] == "ana@exemplo.com"

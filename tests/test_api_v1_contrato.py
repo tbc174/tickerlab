@@ -31,6 +31,10 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/backtest",
         "/v1/juros-e-inflacao",
         "/v1/linha-do-tempo",
+        "/v1/meu-plano",
+        "/v1/links-compartilhados",
+        "/v1/revogar-link",
+        "/v1/meus-dados",
     }
 
 
