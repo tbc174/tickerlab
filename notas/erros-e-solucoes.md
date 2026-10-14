@@ -447,4 +447,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Sintoma:** o comando que disparava a carga no servidor de casa não voltava; a sessão SSH só terminou pelo limite de tempo.
 - **Causa:** não confirmada: a saída já estava redirecionada (`> ~/logs/x.log 2>&1 < /dev/null`) dentro do `setsid`; a suspeita é o `docker run -i` ou o `sleep 60; tail` na mesma chamada.
 - **Solução:** disparar numa chamada e conferir o log numa chamada separada. Mesmo com a sessão presa, a carga segue viva (o `setsid` a solta da sessão): conferir com `pgrep -af <script>` e o log.
+
+## Arquivista mensal falha no CNPJ com `RemoteDisconnected`, cada vez num arquivo diferente
+- **Sintoma:** `FALHAS: rfb-cnpj (1 arquivos; ...)` com `('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))`; em 14/10/2026 foram `Empresas4`, `Estabelecimentos0` e `Socios0` de manhã e `Qualificacoes` à noite. Baixado na mão com `curl`, o mesmo arquivo vinha inteiro.
+- **Causa:** o servidor da Receita fecha a conexão antes de responder de vez em quando. O `requests` tenta **zero** vezes de novo por padrão, e a única nova tentativa do arquivista era a da fonte inteira, 5 minutos depois. Com 37 arquivos no mês, quase sempre algum caía.
+- **Solução:** `HTTPAdapter(max_retries=Retry(...))` na sessão do `scripts/arquivar_fontes.py` (#257): repete o pedido na hora, até 3 vezes (0, 4 e 8 s), só quando a conexão cai ou não abre; resposta de erro (404, 500) não é repetida. O teste usa um servidor HTTP local que fecha a conexão sem responder. Lição: falha que muda de arquivo a cada rodada é da rede ou do servidor, não do arquivo; repetir a tarefa inteira à mão só esconde.
 - **Data:** 14/10/2026
