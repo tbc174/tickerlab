@@ -23,9 +23,31 @@
 .telas-do-app a { font-weight: 700; }
 .aviso-do-app { max-width: 40rem; }
 .rodape-do-app { padding-block: 1.5rem 2.5rem; border-top: 1px solid var(--linha); font-size: .88rem; }
+/* abas embaixo, só no celular (ADR 0066): ao alcance do polegar, toque de 44 px, acima da barra do iPhone */
+.app-abas { display: none; }
 @media (max-width: 760px) {
-  .app-corpo { grid-template-columns: 1fr; gap: 1rem; }
-  .app-menu { position: static; flex-direction: row; flex-wrap: wrap; }
+  .app-corpo { grid-template-columns: 1fr; gap: 1rem; padding-block: 1.25rem; }
+  .app-menu { display: none; }
+  .app-abas { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: .2rem;
+    padding: .3rem .4rem calc(.3rem + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--fundo) 92%, transparent); backdrop-filter: blur(14px);
+    border-top: 1px solid var(--linha-forte); }
+  .app-abas :is(a, summary) { flex: 1; display: grid; place-items: center; min-height: 44px; padding: .25rem .3rem;
+    border-radius: 10px; color: var(--apagado); font-size: .78rem; font-weight: 700; line-height: 1.15;
+    text-align: center; text-decoration: none; list-style: none; cursor: pointer; }
+  .app-abas a.active, .app-abas-mais:has(a.active) > summary { color: var(--azul-texto); background: var(--superficie); }
+  .app-abas-mais { flex: 1; display: flex; }
+  .app-abas-mais summary::-webkit-details-marker { display: none; }
+  .app-abas-lista { position: absolute; right: .5rem; bottom: calc(100% + .4rem); display: grid; gap: .15rem;
+    min-width: 14rem; padding: .4rem; border-radius: 14px; background: var(--fundo);
+    border: 1px solid var(--linha-forte); box-shadow: var(--sombra); }
+  .app-abas-lista a { justify-items: start; padding-inline: .8rem; font-size: .95rem; }
+  /* o fim da página não fica escondido atrás das abas */
+  body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  /* topo compacto: sem o selo e sem o nome (o botão Sair continua) */
+  .selo-novo { display: none; }
+  .conta-no-topo > span { display: none; }
+  .topo .faixa { gap: .5rem; }
 }
 .conta-no-topo { display: inline-flex; align-items: center; gap: .6rem; font-size: .92rem; color: var(--apagado); }
 .erro-do-app { padding: .7rem 1rem; border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
@@ -34,7 +56,8 @@
 .formulario-do-app { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.25rem 0 1.5rem; }
 .formulario-do-app label { display: flex; flex-direction: column; gap: .3rem; font-size: .88rem; color: var(--apagado); }
 .formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: .5rem .65rem; border-radius: 8px;
-  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit; }
+  border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit;
+  font-size: 16px; } /* menos que 16 px, o iPhone dá zoom na página ao tocar no campo */
 /* painel de números */
 .painel-de-numeros h3 { margin-top: 1.25rem; font-size: .95rem; color: var(--apagado); }
 .numeros { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
@@ -96,3 +119,8 @@
 .ficha-tecnica dt { color: var(--apagado); }
 .ficha-tecnica dd { margin: 0; }
 .compartilhado code { overflow-wrap: anywhere; }
+/* o fundo do site, contido (ADR 0065 item 2): só no login e no início, sem o canvas */
+/* margem zerada: o hero do site sobe por baixo do topo (margin-top negativo), o cartão do app não */
+.app-fundo { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 1.5rem;
+  padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem) 4rem; border-radius: var(--raio); }
+.app-fundo-conteudo { position: relative; max-width: 40rem; }

@@ -5,6 +5,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useR
 import { planos } from "../conteudo";
 import { linkDoApp } from "../site/textos";
 import { ErroDaApi, pedir } from "./api";
+import { FundoDoApp } from "./FundoDoApp";
 import { type GoogleId, carregarGoogle } from "./login";
 import type { EuV1 } from "./tipos";
 
@@ -135,7 +136,11 @@ export function ExigeLogin({ children }: { children: ReactNode }) {
   const conta = useConta();
   if (conta?.eu) return <>{children}</>;
   if (conta?.token) return <p className="apagado" role="status">Entrando…</p>;
-  return <Entrada erro={conta?.erro ?? null} />;
+  return (
+    <FundoDoApp>
+      <Entrada erro={conta?.erro ?? null} />
+    </FundoDoApp>
+  );
 }
 
 /** O nome e o plano no topo, com o botão de sair. */
