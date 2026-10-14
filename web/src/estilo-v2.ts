@@ -29,6 +29,19 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .topo nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px;
   background: var(--azul); transform: scaleX(0); transition: transform 180ms ease; }
 .topo nav a:hover::after { transform: scaleX(1); }
+/* o menu fica numa linha só: entre o celular e a tela larga, os itens se apertam em vez de quebrar */
+.topo nav { flex-wrap: nowrap; }
+.topo nav a, .topo .botao { white-space: nowrap; }
+@media (max-width: 1180px) {
+  .topo .faixa { gap: 1rem; }
+  .topo nav { gap: .85rem; }
+  .topo nav a { font-size: .88rem; }
+}
+@media (max-width: 1000px) {
+  .topo .faixa { gap: .75rem; }
+  .topo nav { gap: .6rem; }
+  .topo nav a { font-size: .82rem; }
+}
 
 /* hero: fundo marinho com grade fina e horizonte azul (Sora), linha de preço desenhada uma vez */
 .v2-heroi-fundo { position: relative; isolation: isolate; margin-top: -4.2rem; padding-top: 4.2rem;
