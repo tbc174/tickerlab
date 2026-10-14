@@ -5,3 +5,5 @@
 # confere a pasta novo/ byte a byte. novo/ é gerado: o Git não converte nada nele.
 web/** text=auto eol=lf
 novo/** -text
+# o script das ferramentas do site sai do build do vite: o CI confere byte a byte, como o novo/
+site/ferramentas.js -text

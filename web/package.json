@@ -13,7 +13,8 @@
     "tipos": "tsc --noEmit",
     "test": "vitest run",
     "licencas": "node scripts/licencas.mjs",
-    "site": "vite build --ssr src/entry-server.tsx --outDir dist-servidor && node scripts/prerender.mjs ../site",
+    "site": "npm run ferramentas && vite build --ssr src/entry-server.tsx --outDir dist-servidor && node scripts/prerender.mjs ../site",
+    "ferramentas": "vite build --config vite.ferramentas.config.ts",
     "app": "vite build --config vite.app.config.ts",
     "app:dev": "vite --config vite.app.config.ts"
   },

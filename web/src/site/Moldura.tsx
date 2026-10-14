@@ -2,7 +2,7 @@
 // Era a função `pagina()` de scripts/gerar_site.py; o HTML sai com a mesma estrutura.
 import { join } from "node:path";
 import type { ReactNode } from "react";
-import { SOL_JS, lerTexto, versao } from "../arquivos";
+import { RAIZ_DO_REPOSITORIO, SOL_JS, lerTexto, versao } from "../arquivos";
 import { marca } from "../conteudo";
 import { css } from "../estilo";
 import { Bruto } from "./Bruto";
@@ -20,6 +20,9 @@ export { SOL_JS, versao };
 export const SITE_JS = lerTexto(join(process.cwd(), "publico", "site.js"));
 // as animações do visual v2 (ADR 0065), com pausa e "reduzir movimento"
 export const MOVIMENTO_JS = lerTexto(join(process.cwd(), "publico", "movimento.js"));
+// o script das calculadoras (vite.ferramentas.config.ts): só as páginas de ferramentas carregam;
+// lido na hora (o `npm run site` gera o arquivo antes das páginas)
+export const FERRAMENTAS_JS = () => lerTexto(join(RAIZ_DO_REPOSITORIO, "site", "ferramentas.js"));
 
 const ICONES_E_FONTE =
   '<link rel="icon" href="/marca/simbolo.svg" type="image/svg+xml">' +
@@ -89,6 +92,7 @@ const ITENS_DO_TOPO: [string, string][] = [
   ["/como-funciona.html", "Como funciona"],
   ["/#relatorios", "Relatórios"],
   ["/precos.html", "Planos"],
+  ["/ferramentas.html", "Ferramentas"],
   ["/aprender.html", "Aprender"],
   ["/sobre.html", "Sobre"],
 ];
@@ -126,6 +130,7 @@ function Rodape() {
           <a href="/sobre.html">Sobre</a>
           <a href="/metodologia.html">Fontes e metodologia</a>
           <a href="/novidades.html">Novidades</a>
+          <a href="/ferramentas.html">Ferramentas grátis</a>
           <a href="/precos.html">Planos</a>
           <a href="/termos.html">Termos de uso</a>
           <a href="/privacidade.html">Privacidade</a>
@@ -145,6 +150,7 @@ export interface DadosDaPagina {
   titulo: string;
   descricao: string;
   atual?: string; // o item do topo marcado como página atual
+  ferramenta?: boolean; // a página tem uma calculadora: carrega o ferramentas.js
 }
 
 export function Documento({
@@ -152,6 +158,7 @@ export function Documento({
   titulo,
   descricao,
   atual = "",
+  ferramenta = false,
   children,
 }: DadosDaPagina & { children: ReactNode }) {
   const tituloCompleto = caminho === "/" ? "TickerLab" : `${titulo} · TickerLab`;
@@ -181,6 +188,7 @@ export function Documento({
         <link rel="stylesheet" href={`/estilo.css?v=${versao(css())}`} />
         <script src={`/site.js?v=${versao(SITE_JS)}`} defer />
         <script src={`/movimento.js?v=${versao(MOVIMENTO_JS)}`} defer />
+        {ferramenta ? <script src={`/ferramentas.js?v=${versao(FERRAMENTAS_JS())}`} defer /> : null}
       </head>
       <body>
         <a className="pular" href="#conteudo">

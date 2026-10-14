@@ -25,6 +25,7 @@ def test_modulos_levam_o_que_o_site_mostra():
         "nome": original.nome,
         "descricao": original.descricao,
         "pagina_do_app": original.pagina_do_app,
+        "pagina_do_site": original.pagina_do_site,
         "ticker": original.ticker,
         "disponivel": original.disponivel,
     }

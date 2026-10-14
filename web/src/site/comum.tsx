@@ -35,7 +35,7 @@ function Selo({ funcionalidade }: { funcionalidade: Funcionalidade }) {
   );
 }
 
-/** Cartão com o selo; só o que já existe leva ao app (o resto não tem link). */
+/** Cartão com o selo; só o que já existe leva ao app ou à ferramenta do site (o resto não tem link). */
 function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
   if (!f.disponivel) {
     return (
@@ -54,9 +54,15 @@ function CartaoDaFuncionalidade({ f }: { f: Funcionalidade }) {
         {f.nome} <Selo funcionalidade={f} />
       </h3>
       <p>{f.descricao}</p>
-      <a className="seta" href={linkDoApp(f.pagina_do_app ?? "", parametros)}>
-        Abrir no app
-      </a>
+      {f.pagina_do_site ? (
+        <a className="seta" href={`/${f.pagina_do_site}`}>
+          Abrir a ferramenta
+        </a>
+      ) : (
+        <a className="seta" href={linkDoApp(f.pagina_do_app ?? "", parametros)}>
+          Abrir no app
+        </a>
+      )}
     </article>
   );
 }
