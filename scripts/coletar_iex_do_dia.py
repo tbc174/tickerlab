@@ -9,11 +9,12 @@ TOPS do dia (~9 GB comprimido) é lido enquanto baixa e não fica no disco; só 
 `dados_locais/intradiario/iex/AAAA-MM-DD.parquet`, com um resumo `.json` ao lado (conferências e
 o SHA-256 do Parquet). Gravação atômica: o arquivo só aparece completo. Um arquivo da IEX
 malformado (`ArquivoIexInvalidoError`) não grava nada e faz a tarefa falhar, para o alarme
-avisar. Olha os últimos dias úteis e coleta só os que faltam: um dia perdido é recuperado na
-madrugada seguinte, e feriados (sem arquivo na IEX) são pulados.
+avisar. Olha os últimos pregões e coleta só os que faltam: um dia perdido é recuperado na
+madrugada seguinte. Fins de semana e feriados da NYSE (`src.calendario_nyse`) nem são pedidos: a
+IEX responde 404 neles, e um 404 num dia de pregão continua sendo falha, para o alarme avisar.
 
-Carga do passado (`--desde`): os dias úteis que faltam desde a data, do mais novo para o mais
-antigo, até `--maximo` dias coletados (feriados não contam) ou até acabar o tempo (`--minutos`),
+Carga do passado (`--desde`): os pregões que faltam desde a data, do mais novo para o mais
+antigo, até `--maximo` dias coletados (dia ainda sem arquivo não conta) ou até acabar o tempo (`--minutos`),
 para a rodada da madrugada não encostar no backup. Cada dia baixa ~9 GB (cabe com folga nos 8 TB
 mensais do VPS, conferido em 13/10/2026).
 
@@ -35,7 +36,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from src import catalogo, iex_tops
+from src import calendario_nyse, catalogo, iex_tops
 from src.barras_intradiarias import cobertura_por_simbolo, montar_barras
 
 LISTA_DO_HIST = "https://iextrading.com/api/1.0/hist?date={data}"
@@ -44,27 +45,27 @@ FUSO_NY = ZoneInfo("America/New_York")
 DIAS_UTEIS_OLHADOS = 5
 MAXIMO_DE_DIAS_POR_RODADA = 2  # ~12 min; o resto fica para a madrugada seguinte
 TEMPO_LIMITE_S = 120
-SEM_ARQUIVO = "sem arquivo"  # fim de semana, feriado ou ainda não publicado
+SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
 
 log = logging.getLogger(__name__)
 
 
 def dias_uteis_recentes(hoje: date, quantos: int = DIAS_UTEIS_OLHADOS) -> list[date]:
-    """Os `quantos` dias de segunda a sexta antes de `hoje` (o de hoje ainda não saiu), do mais
-    antigo para o mais novo. Feriados entram e são pulados por não terem arquivo na IEX."""
+    """Os `quantos` pregões da NYSE antes de `hoje` (o de hoje ainda não saiu), do mais antigo
+    para o mais novo."""
     dias, dia = [], hoje - timedelta(days=1)
     while len(dias) < quantos:
-        if dia.weekday() < 5:
+        if calendario_nyse.eh_pregao(dia):
             dias.append(dia)
         dia -= timedelta(days=1)
     return sorted(dias)
 
 
 def dias_uteis_desde(inicio: date, hoje: date) -> list[date]:
-    """Os dias de segunda a sexta de `inicio` até ontem, do mais novo para o mais antigo."""
+    """Os pregões da NYSE de `inicio` até ontem, do mais novo para o mais antigo."""
     dias, dia = [], hoje - timedelta(days=1)
     while dia >= inicio:
-        if dia.weekday() < 5:
+        if calendario_nyse.eh_pregao(dia):
             dias.append(dia)
         dia -= timedelta(days=1)
     return dias
@@ -187,7 +188,7 @@ def _coletar_e_contar(
         print(f"{dia}: FALHOU, nada gravado ({type(erro).__name__}: {erro})")
         return True, True
     if resultado == SEM_ARQUIVO:
-        print(f"{dia}: a IEX não tem arquivo (feriado ou ainda não publicado)")
+        print(f"{dia}: a IEX ainda não tem arquivo (não publicado)")
         return False, False
     print(
         f"{dia}: {resultado['barras']:,} barras de {resultado['simbolos_com_barras']} ações, "
@@ -202,7 +203,7 @@ def main(argumentos: list[str] | None = None, buscar: Callable = requests.get) -
     inicio = time.monotonic()
     dias = _dias_da_rodada(opcoes, datetime.now(FUSO_NY).date())
     if not dias:
-        print("Nada a coletar: os dias úteis pedidos já estão guardados.")
+        print("Nada a coletar: os pregões pedidos já estão guardados.")
         return 0
     simbolos = simbolos_do_sp500()
     coletados, falhou = 0, False
@@ -217,7 +218,7 @@ def main(argumentos: list[str] | None = None, buscar: Callable = requests.get) -
         contou, deu_erro = _coletar_e_contar(dia, simbolos, opcoes.pasta, buscar)
         coletados += contou
         falhou = falhou or deu_erro
-    print(f"Faltam {len(dias) - coletados} dias úteis (feriados incluídos).")
+    print(f"Faltam {len(dias) - coletados} pregões.")
     return 1 if falhou else 0
 
 
