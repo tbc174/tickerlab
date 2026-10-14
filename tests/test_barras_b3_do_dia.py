@@ -24,6 +24,7 @@ from tests.test_base_intradiario_b3 import (
 )
 
 DIA = date(2026, 10, 13)
+HOJE = ["--hoje", "2026-10-14"]  # o alarme do COTAHIST parado depende da data
 URL_DOS_NEGOCIOS = "https://arquivos.b3.com.br/rapinegocios/tickercsv/2026-10-13"
 URL_DO_PR = "https://www.b3.com.br/pesquisapregao/download?filelist=PR261013.zip"
 URL_DO_COTAHIST = (
@@ -105,7 +106,7 @@ def resumo(pasta: Path) -> dict:
 
 def test_dia_bom_vira_barras_selo_e_resumo(acervo, capsys):
     guardar_negocios(acervo, NEGOCIOS_BONS)
-    assert script.main([]) == 0
+    assert script.main(HOJE) == 0
     pasta = acervo[0]
     barras = pd.read_parquet(pasta / "intradiario/b3/barras/2026-10-13.parquet")
     assert barras["negocios"].sum() + barras["negocios_after"].sum() == 3
@@ -120,7 +121,7 @@ def test_dia_bom_vira_barras_selo_e_resumo(acervo, capsys):
 
 def test_dia_quebrado_imprime_falhas_e_sai_com_1(acervo, capsys):
     guardar_negocios(acervo, NEGOCIOS_BONS[:1])  # faltam negócios do PETR4
-    assert script.main([]) == 1
+    assert script.main(HOJE) == 1
     saida = capsys.readouterr().out.strip().splitlines()
     assert saida[-1].startswith("FALHAS: b3-barras 2026-10-13 incompleto")
     assert resumo(acervo[0])["selo_do_dia"] == "incompleto"
@@ -128,19 +129,19 @@ def test_dia_quebrado_imprime_falhas_e_sai_com_1(acervo, capsys):
 
 def test_dia_ja_processado_nao_e_refeito(acervo, capsys):
     guardar_negocios(acervo, NEGOCIOS_BONS[:1])
-    script.main([])
+    script.main(HOJE)
     capsys.readouterr()
     assert (
-        script.main([]) == 0
+        script.main(HOJE) == 0
     )  # o quebrado já avisou; só avisa de novo se o arquivo mudar
     assert "Nada a processar" in capsys.readouterr().out
 
 
 def test_versao_nova_do_arquivo_e_processada_de_novo(acervo):
     guardar_negocios(acervo, NEGOCIOS_BONS[:1])
-    script.main([])
+    script.main(HOJE)
     guardar_negocios(acervo, NEGOCIOS_BONS, hora="2026-10-15T01:00:00+00:00")
-    assert script.main([]) == 0
+    assert script.main(HOJE) == 0
     assert resumo(acervo[0])["selo_do_dia"] == "completo"
 
 
@@ -150,7 +151,14 @@ def test_sem_boletim_ainda_nao_e_falha(tmp_path, monkeypatch, capsys):
     originais = tmp_path / "originais"
     originais.mkdir()
     guardar_negocios((pasta, originais), NEGOCIOS_BONS)
-    assert script.main([]) == 0
+    guardar(  # o COTAHIST do pregão anterior (o arquivista está rodando)
+        pasta,
+        "b3-cotahist-dia",
+        URL_DO_COTAHIST.replace("13102026", "09102026"),
+        zip_do_cotahist(originais, [registro_do_cotahist("PETR4", "010")]),
+        "2026-10-10T05:00:00+00:00",
+    )
+    assert script.main(HOJE) == 0
     assert resumo(pasta)["selo_do_dia"] == "sem_boletim"
     assert "FALHAS" not in capsys.readouterr().out
 
@@ -167,9 +175,64 @@ def test_usa_a_versao_mais_nova_de_cada_arquivo(acervo):
 
 def test_regra_nova_refaz_os_pregoes(acervo, capsys, monkeypatch):
     guardar_negocios(acervo, NEGOCIOS_BONS)
-    script.main([])
+    script.main(HOJE)
     assert resumo(acervo[0])["versao_da_regra"] == script.b3.VERSAO_DA_REGRA
     monkeypatch.setattr(script.b3, "VERSAO_DA_REGRA", script.b3.VERSAO_DA_REGRA + 1)
     capsys.readouterr()
-    script.main([])
+    script.main(HOJE)
     assert "2026-10-13: completo" in capsys.readouterr().out
+
+
+# --- PR 3: alarme da janela e do COTAHIST parado -----------------------------------------------
+
+
+def guardados(dias: list[date]) -> dict[date, script.Guardado]:
+    return {
+        d: script.Guardado(Path(f"{d}.zip"), f"sha-{d}", "2026-10-14T05:00")
+        for d in dias
+    }
+
+
+PREGOES = [
+    d.date()
+    for d in pd.bdate_range("2026-09-15", "2026-10-13")
+    if d.date() != date(2026, 10, 12)
+]
+
+
+def arquivos_de(negocios: list[date], cotahist: list[date]) -> dict:
+    return {
+        script.FONTE_DOS_NEGOCIOS: guardados(negocios),
+        script.FONTE_DO_PR: guardados(cotahist),
+        script.FONTE_DO_COTAHIST: guardados(cotahist),
+    }
+
+
+def test_sem_alarme_com_a_janela_inteira_salva():
+    arquivos = arquivos_de(PREGOES, PREGOES)
+    assert script.alarmes_da_janela(arquivos, date(2026, 10, 14)) == []
+
+
+def test_alarme_do_pregao_que_vai_sumir_sem_estar_salvo():
+    arquivos = arquivos_de(PREGOES[1:], PREGOES)
+    [alarme] = script.alarmes_da_janela(arquivos, date(2026, 10, 14))
+    assert alarme == "b3-negocios 2026-09-15 não está salvo e some da B3 em 1 pregão"
+
+
+def test_alarme_do_cotahist_parado():
+    arquivos = arquivos_de(PREGOES, PREGOES)
+    [alarme] = script.alarmes_da_janela(arquivos, date(2026, 10, 25))
+    assert alarme.startswith("b3-cotahist-dia sem pregão novo desde 2026-10-13")
+
+
+def test_alarme_sai_em_falhas_mesmo_sem_nada_a_processar(acervo, capsys, monkeypatch):
+    guardar_negocios(acervo, NEGOCIOS_BONS)
+    script.main(HOJE)
+    capsys.readouterr()
+    assert script.main(["--hoje", "2026-10-25"]) == 1
+    assert (
+        capsys.readouterr()
+        .out.strip()
+        .splitlines()[-1]
+        .startswith("FALHAS: b3-cotahist-dia sem pregão novo")
+    )

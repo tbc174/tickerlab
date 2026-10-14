@@ -27,6 +27,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -170,24 +171,64 @@ def _motivo(resumo: dict) -> str:
     )
 
 
+def alarmes_da_janela(
+    arquivos: dict[str, dict[date, Guardado]], hoje: date
+) -> list[str]:
+    """Pregões que vão sumir da B3 sem estar salvos, e o COTAHIST parado (PR 3 do plano).
+
+    Pregão = dia com COTAHIST ou com o arquivo de negócios guardado. A cópia do VPS entra no
+    acervo de casa pela reconciliação diária (PR 4), então "salvo" é "no acervo de casa".
+    """
+    salvos = set(arquivos[FONTE_DOS_NEGOCIOS])
+    pregoes = sorted(set(arquivos[FONTE_DO_COTAHIST]) | salvos)
+    alarmes = [
+        f"{FONTE_DOS_NEGOCIOS} {pregao} não está salvo e some da B3 em {faltam} "
+        + ("pregão" if faltam == 1 else "pregões")
+        for pregao, faltam in b3.dias_em_risco(pregoes, salvos)
+    ]
+    com_cotahist = sorted(arquivos[FONTE_DO_COTAHIST])
+    if b3.cotahist_atrasado(com_cotahist, hoje):
+        ultimo = com_cotahist[-1].isoformat() if com_cotahist else "sempre"
+        alarmes.append(
+            f"{FONTE_DO_COTAHIST} sem pregão novo desde {ultimo} (o arquivista parou?)"
+        )
+    return alarmes
+
+
 def _opcoes(argumentos: list[str] | None) -> argparse.Namespace:
     leitor = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     leitor.add_argument("--pregao", type=date.fromisoformat, default=None)
+    leitor.add_argument(
+        "--hoje", type=date.fromisoformat, default=None, help="para testes"
+    )
     return leitor.parse_args(argumentos)
 
 
 def main(argumentos: list[str] | None = None) -> int:
-    """0 = tudo certo (inclusive nada a fazer ou boletim ainda não chegou); 1 = pregão incompleto."""
+    """0 = tudo certo (inclusive nada a fazer ou boletim ainda não chegou); 1 = pregão incompleto,
+    pregão perto de sumir sem estar salvo ou COTAHIST parado."""
     opcoes = _opcoes(argumentos)
     pasta = acervo.pasta_do_acervo()
     if pasta is None:
         print("Acervo desligado: nada a processar.")
         return 0
+    hoje = opcoes.hoje or datetime.now(ZoneInfo(b3.FUSO_DA_B3)).date()
     arquivos = arquivos_no_acervo(pasta)
-    pregoes = pregoes_a_processar(arquivos, opcoes.pregao)
+    falhas = _processar(pregoes_a_processar(arquivos, opcoes.pregao), arquivos, pasta)
+    falhas += alarmes_da_janela(arquivos, hoje)
+    if falhas:
+        print("FALHAS: " + "; ".join(falhas))
+        return 1
+    return 0
+
+
+def _processar(
+    pregoes: list[date], arquivos: dict[str, dict[date, Guardado]], pasta: Path
+) -> list[str]:
+    """Processa os pregões e devolve os motivos dos que saíram incompletos."""
     if not pregoes:
         print("Nada a processar: todo pregão guardado já tem barras e selo.")
-        return 0
+        return []
     falhas = []
     for pregao in pregoes:
         resumo = processar_pregao(pregao, arquivos, pasta)
@@ -199,10 +240,7 @@ def main(argumentos: list[str] | None = None) -> int:
         )
         if resumo["selo_do_dia"] == b3.SELO_INCOMPLETO:
             falhas.append(_motivo(resumo))
-    if falhas:
-        print("FALHAS: " + "; ".join(falhas))
-        return 1
-    return 0
+    return falhas
 
 
 if __name__ == "__main__":
