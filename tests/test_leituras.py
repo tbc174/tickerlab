@@ -321,6 +321,47 @@ def test_lote_com_link_de_fora_da_cvm_e_ignorado(tmp_path):
     assert atualizar_leituras_cvm.ler_lote(caminho) == []
 
 
+# o IPE de 2003 da CVM vem sem Protocolo_Entrega (linha 125 do lote v1: Banco do Brasil, 25/06/2003)
+LINK_SEM_PROTOCOLO = (
+    "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE"
+    "&CodigoInstituicao=1&numProtocolo=11836&numSequencia=0&numVersao=0"
+)
+
+
+def _lote_sem_protocolo(tmp_path, link=LINK_SEM_PROTOCOLO):
+    caminho = tmp_path / "lote.csv"
+    caminho.write_text(
+        "Protocolo_Entrega;CNPJ_Companhia;Data_Entrega;Link_Download;Assunto\n"
+        f";00.000.000/0001-91;2003-06-25;{link};Fato Relevante\n",
+        encoding="utf-8",
+    )
+    return caminho
+
+
+def test_lote_sem_protocolo_usa_o_numero_do_link(tmp_path):
+    """A mesma chave dos eventos do banco (src.eventos.identificador): "rad-<numProtocolo>"."""
+    [(protocolo, *_)] = atualizar_leituras_cvm.ler_lote(_lote_sem_protocolo(tmp_path))
+    assert protocolo == "rad-11836"
+
+
+def test_lote_sem_protocolo_nem_numero_no_link_e_ignorado(tmp_path):
+    """Sem chave nenhuma a leitura não teria como ser achada depois: fica de fora."""
+    link = "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext"
+    assert atualizar_leituras_cvm.ler_lote(_lote_sem_protocolo(tmp_path, link)) == []
+
+
+def test_lote_sem_protocolo_lido_nao_e_baixado_de_novo(banco, cvm, tmp_path):
+    lote = _lote_sem_protocolo(tmp_path)
+    cvm.extend([_pdf(" ".join(FATO.split()))] * 3)
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0
+    assert cvm == []  # os dois recentes + o do lote
+    with banco.connect() as c:
+        assert repo.lidos(
+            c, FONTE_IPE, repo.TOPICO, ["rad-11836", ""], topicos.VERSAO
+        ) == {"rad-11836"}
+    assert atualizar_leituras_cvm.main(["--lote", str(lote)]) == 0  # nada novo a baixar
+
+
 def test_coleta_da_cvm_grava_os_resumos(banco, cvm):
     cvm.extend([_pdf(" ".join(FATO.split())), _pdf("Curto.")])
     assert atualizar_leituras_cvm.main([]) == 0

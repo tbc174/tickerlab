@@ -37,7 +37,7 @@ from src.banco.leituras import (
 )
 from src.banco.leituras import lidos as lidos_no_banco
 from src.configuracao import url_do_banco
-from src.eventos import FONTE_IPE
+from src.eventos import FONTE_IPE, identificador
 from src.links_das_fontes import link_da_fonte
 
 log = logging.getLogger("tickerlab.leituras")
@@ -96,13 +96,18 @@ Pendente = tuple[
 
 
 def ler_lote(caminho: Path) -> list[Pendente]:
-    """O lote de medição (colunas do IPE da CVM, separado por ;); só links da CVM ou da SEC."""
+    """O lote de medição (colunas do IPE da CVM, separado por ;); só links da CVM ou da SEC.
+
+    A chave é a mesma dos eventos do banco: o protocolo, ou "rad-<número do link>" quando a CVM
+    não o informa (o IPE de 2003 vem sem protocolo); sem nenhum dos dois, a linha fica de fora.
+    """
     with caminho.open(encoding="utf-8") as arquivo:
         return [
-            (linha["Protocolo_Entrega"], linha["CNPJ_Companhia"],
+            (chave[0], linha["CNPJ_Companhia"],
              date.fromisoformat(linha["Data_Entrega"]), seguro, linha["Assunto"])
             for linha in csv.DictReader(arquivo, delimiter=";")
             if (seguro := link_da_fonte(linha["Link_Download"]))
+            and (chave := identificador(linha["Protocolo_Entrega"], "", seguro))
         ]  # fmt: skip
 
 
