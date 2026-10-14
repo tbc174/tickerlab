@@ -1,15 +1,18 @@
 """As rotas da API de leitura (v1). Todas exigem a API ligada e uma conta logada (src/api_v1/acesso.py)."""
 
+import logging
 import os
+import uuid
 from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Annotated, Literal, TypeVar
 
 import pandas as pd
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from src import analises
+from src import analises, ficha
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
@@ -25,7 +28,9 @@ from src.api_v1.contexto import (
     cdi_entre,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
+from src.banco import tentativas
 from src.banco.conexao import obter_engine, tabela_inexistente
+from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
 from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
@@ -36,6 +41,8 @@ from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
 from src.planos import limites_do
+from src.tentativas import TETO_POR_PESSOA, impressao
+from src.validacao import parametros_numericos
 
 # o que a tela aceita: letras, números e os símbolos de índices e moedas (^BVSP, BTC-USD, USDBRL=X)
 FORMATO_DO_TICKER = r"^[A-Za-z0-9^][A-Za-z0-9.^=\-]{0,19}$"
@@ -44,6 +51,15 @@ Ticker = Annotated[str, Query(pattern=FORMATO_DO_TICKER, max_length=20)]
 Periodo = Literal["6mo", "1y", "2y", "5y"]  # os PERIODOS_VALIDOS de src/dados.py
 Taxa = Annotated[float | None, Query(ge=0, le=1)]  # sem taxa: o CDI do período
 SEM_TAXA = 0.0  # para páginas que não usam taxa livre de risco (não baixa o CDI à toa)
+# a ficha "Foi sorte?": o capital entra só no imposto da checagem 2 (o mesmo padrão do Streamlit)
+CAPITAL_PADRAO = 10_000.0
+CAPITAL_MINIMO = 100.0
+MOTIVO_SEM_CONTAGEM = (
+    "Não deu para contar as suas tentativas agora, e a ficha depende dessa conta. "
+    "Tente de novo em instantes."
+)
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
@@ -207,19 +223,150 @@ class PedidoDeBacktestV1(BaseModel):
     )
     custo_por_operacao: float = Field(CUSTO_PADRAO_POR_OPERACAO, ge=0, le=CUSTO_MAXIMO)
     taxa: float | None = Field(None, ge=0, le=1)
+    # a ficha "Foi sorte?" (vazios: o capital padrão, a tolerância guardada na conta e os dois
+    # primeiros parâmetros numéricos da estratégia, como no Streamlit)
+    capital_inicial: float = Field(
+        CAPITAL_PADRAO, ge=CAPITAL_MINIMO, le=ficha.CAPITAL_MAXIMO_GUARDADO
+    )
+    tolerancia_de_queda: float | None = Field(
+        None, ge=ficha.TOLERANCIA_MINIMA, le=ficha.TOLERANCIA_MAXIMA
+    )
+    livres: list[Annotated[str, Field(max_length=40)]] | None = Field(
+        None, max_length=2
+    )
 
 
 @router.post("/backtest")
-def backtest(_conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAtivoV1:
-    """O backtest simples (sem proteções, Monte Carlo nem grade): a estratégia com os custos."""
+def backtest(conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAtivoV1:
+    """O backtest simples (sem proteções, Monte Carlo nem grade) e, embaixo, a ficha "Foi sorte?".
+
+    Como no Streamlit, todo backtest é uma tentativa: a configuração fica contada na conta (a mesma
+    configuração não conta duas vezes) e entra na checagem do acaso.
+    """
     if pedido.estrategia not in ESTRATEGIAS:
         raise HTTPException(status_code=422, detail="Estratégia desconhecida.")
+    livres = _livres_do_pedido(pedido.estrategia, pedido.livres)
     c = _com_o_ativo(pedido.ticker, pedido.periodo, pedido.taxa)
-    return _ou_422(
+    resposta = _ou_422(
         lambda: montar_backtest(
             c, pedido.estrategia, pedido.parametros, pedido.custo_por_operacao
         )
     )
+    return resposta.model_copy(
+        update=_ficha_da_conta(conta, c, pedido, resposta.parametros, livres)
+    )
+
+
+def _livres_do_pedido(estrategia: str, livres: list[str] | None) -> tuple[str, ...]:
+    """Os parâmetros que variam na ficha: só números da estratégia, sem repetir (senão 422)."""
+    numericos = [p.nome for p in parametros_numericos(estrategia)]
+    if livres is None:
+        return tuple(numericos[:2])
+    if len(set(livres)) != len(livres) or any(n not in numericos for n in livres):
+        raise HTTPException(
+            status_code=422,
+            detail="Os parâmetros que variam precisam ser números da estratégia, sem repetir.",
+        )
+    return tuple(livres)
+
+
+def _tolerancia_da_conta(
+    conexao: sa.Connection, usuario_id: uuid.UUID, informada: float | None
+) -> float:
+    """A informada (e guardada nas preferências, como o campo do Streamlit) ou a já guardada."""
+    guardadas = carregar_preferencias(conexao, usuario_id)
+    if informada is None:
+        return ficha.normalizar_tolerancia(
+            guardadas.get(ficha.PREFERENCIA_DA_TOLERANCIA)
+        )
+    fracao = ficha.normalizar_tolerancia(informada)
+    if guardadas.get(ficha.PREFERENCIA_DA_TOLERANCIA) != fracao:
+        salvar_preferencias(
+            conexao, usuario_id, {**guardadas, ficha.PREFERENCIA_DA_TOLERANCIA: fracao}
+        )
+    return fracao
+
+
+def _cdi_da_ficha(c: ContextoDoAtivo) -> pd.Series | None:
+    """O CDI do período, só quando ele é a taxa livre de risco (como no Streamlit)."""
+    if not c.taxa_do_cdi:
+        return None
+    try:
+        return cdi_entre(c.dados.index[0], c.dados.index[-1])
+    except CDIIndisponivelError:
+        return None
+
+
+def _ficha_da_conta(
+    conta: Usuario,
+    c: ContextoDoAtivo,
+    pedido: PedidoDeBacktestV1,
+    parametros: dict[str, int | float | str],
+    livres: tuple[str, ...],
+) -> dict:
+    """{"ficha": ...} ou {"motivo_sem_ficha": ...}: conta a tentativa e monta a ficha."""
+    marca = impressao(
+        c.ticker,
+        pedido.estrategia,
+        parametros,
+        None,
+        pedido.custo_por_operacao,
+        c.periodo,
+    )
+    try:
+        with obter_engine().begin() as conexao:
+            tentativas.registrar_tentativa(conexao, conta.id, c.ticker, marca)
+            da_pessoa = tentativas.contar_tentativas(conexao, conta.id, c.ticker)
+            tolerancia = _tolerancia_da_conta(
+                conexao, conta.id, pedido.tolerancia_de_queda
+            )
+    except Exception:
+        # sem a conta das tentativas, contar "1" deixaria a checagem do acaso mais branda
+        log.exception("Falha ao contar a tentativa do backtest na conta")
+        return {"motivo_sem_ficha": MOTIVO_SEM_CONTAGEM}
+    try:
+        montada = montar_ficha_do_backtest(
+            c,
+            pedido.estrategia,
+            parametros,
+            pedido.custo_por_operacao,
+            pedido.capital_inicial,
+            livres,
+            tolerancia,
+            da_pessoa,
+        )
+    except ValueError as erro:
+        return {"motivo_sem_ficha": str(erro)}
+    return {"ficha": montada}
+
+
+def montar_ficha_do_backtest(
+    c: ContextoDoAtivo,
+    estrategia: str,
+    parametros: dict[str, int | float | str],
+    custo_por_operacao: float,
+    capital_inicial: float,
+    livres: tuple[str, ...],
+    tolerancia_de_queda: float,
+    tentativas_da_pessoa: int,
+) -> esquemas.FichaV1:
+    """A ficha de um ativo já carregado, com as tentativas já contadas (a rota e os testes do React
+    usam). `ValueError` se não der para montar (pouco histórico, por exemplo)."""
+    pedido = ficha.PedidoDaFicha(
+        dados=c.dados,
+        estrategia=estrategia,
+        parametros=dict(parametros),
+        custo_por_operacao=custo_por_operacao,
+        capital_inicial=capital_inicial,
+        livres=livres,
+        taxa_livre_de_risco=c.taxa_livre_de_risco,
+        cdi_diario=_cdi_da_ficha(c),
+        tolerancia_de_queda=tolerancia_de_queda,
+        tentativas_da_pessoa=tentativas_da_pessoa,
+    )
+    resultado = ficha.montar_ficha(pedido)
+    texto = ficha.texto_das_tentativas(tentativas_da_pessoa, c.ticker, TETO_POR_PESSOA)
+    return esquemas.de_ficha(resultado, pedido, texto)
 
 
 def montar_backtest(

@@ -15,13 +15,23 @@ const NOMES: Record<string, string> = {
   materialidade_minima: "Quais acontecimentos mostrar",
   estrategia: "Estratégia",
   custo_por_operacao: "Custo por operação (%)",
+  capital_inicial: "Capital inicial (R$)",
+  tolerancia_de_queda: "Quanto de queda você aguentaria? (%)",
+};
+const DICAS: Record<string, string> = {
+  taxa: "vazio = CDI do período",
+  tolerancia_de_queda: "vazio = a guardada na conta (30%)",
 };
 const PERIODOS: Record<string, string> = { "6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos" };
 const CEM = 100;
 const LISTA = "lista de textos"; // vários valores do mesmo campo (com=VALE3&com=AAPL)
 const OBJETO = "objeto"; // os parâmetros da estratégia, no endereço como p.curta=20
+// os parâmetros que variam na ficha "Foi sorte?" (até 2), no endereço como livres=curta&livres=longa
+const LIVRES = "parametros da estrategia";
+const MAXIMO_DE_LIVRES = 2;
 const PREFIXO_DO_PARAMETRO = "p.";
-const EM_PORCENTAGEM = new Set(["taxa", "custo_por_operacao"]); // fração na API, % no campo
+const EM_PORCENTAGEM = new Set(["taxa", "custo_por_operacao", "tolerancia_de_queda"]); // fração na API, % no campo
+const EM_REAIS = new Set(["capital_inicial"]); // "50.000,50" no campo, 50000.5 na API
 const { atalhos, padrao: ATALHOS_PADRAO } = conteudoDoApp.comparacao;
 const { estrategias } = conteudoDoApp.backtest;
 const GRUPOS = [...new Set(estrategias.map((e) => e.grupo))];
@@ -33,6 +43,7 @@ export function itensDaLista(texto: string): string[] {
 }
 
 const lerObjeto = (texto: string): Record<string, string> => (texto ? JSON.parse(texto) : {});
+const lerNomes = (texto: string): string[] => texto.split(",").map((t) => t.trim()).filter(Boolean);
 
 /** As escolhas de um campo de opção: os períodos, ou as relevâncias da linha do tempo pelo nome. */
 function escolhas(e: EntradaDoContrato): { valor: string; nome: string }[] {
@@ -53,6 +64,10 @@ export function valoresIniciais(
       const doEndereco = busca.getAll(e.nome);
       const padrao = atalhos.filter((a) => ATALHOS_PADRAO.includes(a.nome)).map((a) => a.ticker);
       valores[e.nome] = (doEndereco.length > 0 ? doEndereco : padrao).join(",");
+      continue;
+    }
+    if (e.tipo === LIVRES) {
+      valores[e.nome] = busca.getAll(e.nome).join(",");
       continue;
     }
     if (e.tipo === OBJETO) {
@@ -80,7 +95,8 @@ export function parametrosDoPedido(
   for (const e of entradas) {
     const texto = (valores[e.nome] ?? "").trim();
     if (texto === "" || e.tipo === OBJETO) continue;
-    parametros[e.nome] = e.tipo === LISTA ? itensDaLista(texto) : texto;
+    if (e.tipo === LIVRES) parametros[e.nome] = lerNomes(texto);
+    else parametros[e.nome] = e.tipo === LISTA ? itensDaLista(texto) : texto;
   }
   return parametros;
 }
@@ -105,7 +121,8 @@ export function corpoDoPedido(
       corpo[e.nome] = Object.fromEntries(
         Object.entries(lerObjeto(texto)).map(([nome, v]) => [nome, valorDoParametro(estrategia, nome, v)]),
       );
-    } else if (e.tipo === "numero" || e.tipo === "inteiro") corpo[e.nome] = Number(texto);
+    } else if (e.tipo === LIVRES) corpo[e.nome] = lerNomes(texto);
+    else if (e.tipo === "numero" || e.tipo === "inteiro") corpo[e.nome] = Number(texto);
     else corpo[e.nome] = e.tipo === LISTA ? itensDaLista(texto) : texto;
   }
   return corpo;
@@ -207,6 +224,40 @@ function CamposDaEstrategia(props: { estrategia: string; valor: string; aoMudar(
   );
 }
 
+/** Os parâmetros que variam na ficha: só os numéricos da estratégia, de 1 a 2 (vazio = os 2 primeiros). */
+function CampoDosLivres(props: { estrategia: string; valor: string; aoMudar(valor: string): void }) {
+  const numericos = (estrategias.find((e) => e.nome === props.estrategia)?.parametros ?? []).filter(
+    (p) => p.opcoes.length === 0,
+  );
+  if (numericos.length === 0) return null;
+  const escolhidos = lerNomes(props.valor);
+  const marcados = escolhidos.length > 0 ? escolhidos : numericos.slice(0, MAXIMO_DE_LIVRES).map((p) => p.nome);
+  const trocar = (nome: string, marcar: boolean) => {
+    const novos = marcar ? [...marcados, nome] : marcados.filter((n) => n !== nome);
+    props.aoMudar(novos.join(","));
+  };
+  return (
+    <fieldset className="campo-de-ativos">
+      <legend>Parâmetros que variam na ficha (até {MAXIMO_DE_LIVRES})</legend>
+      {numericos.map((p) => {
+        const marcado = marcados.includes(p.nome);
+        const travado = marcado ? marcados.length === 1 : marcados.length >= MAXIMO_DE_LIVRES;
+        return (
+          <label key={p.nome} className="marcar" title={p.ajuda}>
+            <input
+              type="checkbox"
+              checked={marcado}
+              disabled={travado}
+              onChange={(ev) => trocar(p.nome, ev.target.checked)}
+            />
+            {p.rotulo}
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
 /** Os padrões de uma estratégia, para os campos começarem preenchidos ao trocar de estratégia. */
 const padroesDa = (nome: string) =>
   JSON.stringify(
@@ -219,9 +270,16 @@ export const paraOCampo = (fracao: string) =>
 export const doCampo = (percentual: string) =>
   percentual.trim() === "" ? "" : String(Number((Number(percentual.replace(",", ".")) / CEM).toPrecision(12)));
 
-function converter(valores: Record<string, string>, conversao: (v: string) => string) {
+/** Reais como a pessoa digita ("50.000,50") → número da API ("50000.5"); o caminho de volta mantém o número. */
+export const reaisDoCampo = (texto: string) =>
+  texto.trim() === "" ? "" : String(Number(texto.trim().replaceAll(".", "").replace(",", ".")));
+
+function converter(valores: Record<string, string>, conversao: (v: string) => string, reais = (v: string) => v) {
   return Object.fromEntries(
-    Object.entries(valores).map(([nome, v]) => [nome, EM_PORCENTAGEM.has(nome) ? conversao(v) : v]),
+    Object.entries(valores).map(([nome, v]) => [
+      nome,
+      EM_PORCENTAGEM.has(nome) ? conversao(v) : EM_REAIS.has(nome) ? reais(v) : v,
+    ]),
   );
 }
 
@@ -236,13 +294,23 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
   const mudar = (nome: string, valor: string) => setRascunho((r) => ({ ...r, [nome]: valor }));
   const enviar = (evento: FormEvent) => {
     evento.preventDefault();
-    aoAnalisar(converter(rascunho, doCampo));
+    aoAnalisar(converter(rascunho, doCampo, reaisDoCampo));
   };
   return (
     <form className="formulario-do-app" onSubmit={enviar}>
       {entradas.map((e) => {
         if (e.tipo === LISTA) {
           return <CampoDeAtivos key={e.nome} valor={rascunho[e.nome] ?? ""} aoMudar={(v) => mudar(e.nome, v)} />;
+        }
+        if (e.tipo === LIVRES) {
+          return (
+            <CampoDosLivres
+              key={e.nome}
+              estrategia={rascunho.estrategia ?? ""}
+              valor={rascunho[e.nome] ?? ""}
+              aoMudar={(v) => mudar(e.nome, v)}
+            />
+          );
         }
         if (e.tipo === OBJETO) {
           return (
@@ -260,7 +328,9 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
             {e.nome === "estrategia" ? (
               <select
                 value={rascunho.estrategia}
-                onChange={(ev) => setRascunho((r) => ({ ...r, estrategia: ev.target.value, parametros: padroesDa(ev.target.value) }))}
+                onChange={(ev) =>
+                  setRascunho((r) => ({ ...r, estrategia: ev.target.value, parametros: padroesDa(ev.target.value), livres: "" }))
+                }
               >
                 {GRUPOS.map((grupo) => (
                   <optgroup key={grupo} label={grupo}>
@@ -286,7 +356,7 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
                 onChange={(ev) => mudar(e.nome, ev.target.value)}
                 required={e.obrigatoria}
                 inputMode={e.tipo === "texto" ? "text" : "decimal"}
-                placeholder={e.nome === "taxa" ? "vazio = CDI do período" : undefined}
+                placeholder={DICAS[e.nome]}
                 {...(e.tipo === "inteiro" && e.minimo !== null ? { min: e.minimo } : {})}
                 {...(e.tipo === "inteiro" && e.maximo !== null ? { max: e.maximo } : {})}
                 type={e.tipo === "inteiro" ? "number" : "text"}

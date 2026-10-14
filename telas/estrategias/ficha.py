@@ -99,7 +99,7 @@ def escolher_tolerancia() -> float:
         step=5,
         key=CHAVE_DA_TOLERANCIA,
         on_change=_guardar_tolerancia,
-        help=ajuda_do("Tolerância de queda"),
+        help=ajuda_do(ficha.TERMO_DA_TOLERANCIA),
     )
     return em_porcento / 100
 
@@ -152,7 +152,4 @@ def mostrar_ficha(resultado: Ficha, texto_das_tentativas: str):
                 f"({checagem.situacao.value})  \n{checagem.explicacao}"
             )
         st.markdown(texto_das_tentativas)
-        st.caption(
-            f"Tentativas contadas na pergunta do acaso (com as combinações da grade): "
-            f"{resultado.tentativas}. A ficha usa o custo padrão do app quando o seu é menor."
-        )
+        st.caption(ficha.nota_das_tentativas(resultado.tentativas))

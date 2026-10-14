@@ -15,6 +15,7 @@ import type {
 } from "../../src/app/tipos";
 import backtest from "./exemplos/backtest.json";
 import comparacao from "./exemplos/comparacao.json";
+import ficha from "./exemplos/ficha.json";
 import juros from "./exemplos/juros_e_inflacao.json";
 import linha from "./exemplos/linha_do_tempo.json";
 import mensal from "./exemplos/retorno_mensal.json";
@@ -186,5 +187,14 @@ describe("tipos das respostas", () => {
     const b: BacktestDoAtivoV1 = backtest.resposta;
     expect(Object.keys(b).sort()).toEqual(campos("BacktestDoAtivoV1"));
     expect(Object.keys(b.backtest).sort()).toEqual(campos("BacktestV1"));
+  });
+
+  it("Ficha do backtest (exemplo do Python) bate com o OpenAPI", () => {
+    const b: BacktestDoAtivoV1 = ficha.resposta;
+    const f = b.ficha;
+    expect(f).not.toBeNull();
+    expect(Object.keys(f ?? {}).sort()).toEqual(campos("FichaV1"));
+    expect(Object.keys(f?.veredito ?? {}).sort()).toEqual(campos("VereditoV1"));
+    expect(Object.keys(f?.checagens[0] ?? {}).sort()).toEqual(campos("ChecagemV1"));
   });
 });
