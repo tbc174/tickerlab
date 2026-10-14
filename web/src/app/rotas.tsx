@@ -2,6 +2,7 @@
 // app atual (/visao-geral vira /novo/visao-geral). Página sem tela nova ainda leva ao app atual.
 import type { ReactNode } from "react";
 import { type PaginaDoApp, paginasDoApp } from "../conteudo";
+import { Backtest } from "./telas/Backtest";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
@@ -20,7 +21,11 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   risco: (pagina) => <Risco pagina={pagina} />,
   retorno_mensal: (pagina) => <RetornoMensal pagina={pagina} />,
   comparar: (pagina) => <Comparar pagina={pagina} />,
+  backtest: (pagina) => <Backtest pagina={pagina} />,
 };
+
+/** A página já tem tela em React? (Sem tela, leva à mesma página no app atual.) */
+export const temTelaPronta = (chave: string) => chave in TELAS_PRONTAS;
 
 export function telaDa(pagina: PaginaDoApp): ReactNode {
   const tela = TELAS_PRONTAS[pagina.chave];

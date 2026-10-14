@@ -23,7 +23,8 @@ from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
 from src.api_v1.contexto import ContextoDoAtivo
-from src.api_v1.rotas import montar_linha_do_tempo, montar_visao_geral
+from src.api_v1.rotas import montar_backtest, montar_linha_do_tempo, montar_visao_geral
+from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.banco.eventos import Evento
 from src.dados import baixar_dados
 from tests.ajudantes_da_conta import ir_para
@@ -188,6 +189,31 @@ def exemplo_da_comparacao() -> dict:
     }
 
 
+# os números do backtest que a tela do Streamlit e a API mostram do mesmo jeito
+METRICAS_DO_BACKTEST = (
+    "Retorno total",
+    "Índice de Sharpe",
+    "Maior queda",
+    "Volatilidade anual",
+)
+
+
+def exemplo_do_backtest() -> dict:
+    """O backtest padrão da tela (estratégia, parâmetros e custo de lá) e os números que ela mostra."""
+    app = _tela("backtest")
+    ticker, periodo = app.session_state["ticker"], app.session_state["periodo"]
+    estrategia = app.session_state["backtest_estrategia"]
+    contexto = _contexto_de_exemplo(ticker, periodo)
+    resposta = montar_backtest(contexto, estrategia, {}, CUSTO_PADRAO_POR_OPERACAO)
+    metricas = {m.label: m.value for m in app.metric}
+    return {
+        "resposta": resposta.model_dump(mode="json"),
+        "na_tela": {
+            nome: metricas[nome] for nome in METRICAS_DO_BACKTEST if nome in metricas
+        },
+    }
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
@@ -195,6 +221,7 @@ EXEMPLOS = {
     "risco": exemplo_do_risco,
     "retorno_mensal": exemplo_do_retorno_mensal,
     "comparacao": exemplo_da_comparacao,
+    "backtest": exemplo_do_backtest,
 }
 
 

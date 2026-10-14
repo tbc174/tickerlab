@@ -39,9 +39,10 @@ export function formatarDecimal(valor: number | null | undefined): string {
   return fixo(valor).replace(".", ",");
 }
 
-/** O formato de um item do painel: "pct", "pct_com_sinal" ou "decimal". */
+/** O formato de um número: "pct", "pct_com_sinal", "decimal" ou "inteiro" (a parte inteira). */
 export function formatar(valor: number | null | undefined, formato: string): string {
   if (formato === "decimal") return formatarDecimal(valor);
+  if (formato === "inteiro") return semNumero(valor) ? SEM_NUMERO : String(Math.trunc(valor) || 0);
   return formatarPct(valor, formato === "pct_com_sinal");
 }
 
