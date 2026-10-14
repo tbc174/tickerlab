@@ -3,11 +3,20 @@
 // pronto, que o Google lê.
 import type { ComponentType } from "react";
 import { AportesEMetas } from "./AportesEMetas";
+import { CalculadoraDeDarf } from "./CalculadoraDeDarf";
 import { CalculadoraDeJuros } from "./CalculadoraDeJuros";
+import { CustoDaTaxa, RecuperarAQueda } from "./CustoDasTaxas";
+import { SorteEmSerie } from "./SorteEmSerie";
+import { ViverDeRenda } from "./ViverDeRenda";
 
 export const FERRAMENTAS = {
   juros: CalculadoraDeJuros,
   aportes: AportesEMetas,
+  taxa: CustoDaTaxa,
+  queda: RecuperarAQueda,
+  renda: ViverDeRenda,
+  sorte: SorteEmSerie,
+  darf: CalculadoraDeDarf,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

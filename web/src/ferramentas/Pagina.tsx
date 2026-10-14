@@ -18,7 +18,8 @@ export function PaginaDeFerramenta({
 }: {
   titulo: string;
   subtitulo: string;
-  ilha: NomeDaFerramenta;
+  // uma calculadora, ou várias com um título cada ([nome, título])
+  ilha: NomeDaFerramenta | [NomeDaFerramenta, string][];
   codigo: string; // o nome do arquivo sem ".html": vai no link do anúncio (utm_content)
   anuncio: NomeDoDestino;
   foraDaConta: string[];
@@ -29,7 +30,16 @@ export function PaginaDeFerramenta({
     <>
       <TopoDaPagina olho="Ferramentas grátis" titulo={titulo} subtitulo={subtitulo} />
       <section className="faixa secao ferramenta-secao" aria-label={titulo}>
-        <Ilha nome={ilha} />
+        {typeof ilha === "string" ? (
+          <Ilha nome={ilha} />
+        ) : (
+          ilha.map(([nome, tituloDaIlha]) => (
+            <div className="ferramenta-bloco" key={nome}>
+              <h2>{tituloDaIlha}</h2>
+              <Ilha nome={nome} />
+            </div>
+          ))
+        )}
         <AvisoDaFerramenta foraDaConta={foraDaConta} fonte={fonte} />
       </section>
       <section className="faixa secao ferramenta-explicacao">

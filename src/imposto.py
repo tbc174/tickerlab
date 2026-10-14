@@ -16,10 +16,12 @@ from dataclasses import dataclass, replace
 
 import pandas as pd
 
+from src import regras_de_imposto
 from src.backtest import ResultadoBacktest
 
-ALIQUOTA_SWING_TRADE = 0.15
-ISENCAO_MENSAL_PADRAO = 20_000.0
+# as regras com a fonte oficial ficam em src/regras_de_imposto.py (as mesmas das ferramentas do site)
+ALIQUOTA_SWING_TRADE = float(regras_de_imposto.valor("aliquota_comum"))
+ISENCAO_MENSAL_PADRAO = float(regras_de_imposto.valor("isencao_vendas_no_mes"))
 
 COLUNAS_MENSAIS = [
     "Mês",

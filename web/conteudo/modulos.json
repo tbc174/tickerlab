@@ -330,6 +330,38 @@
         "pagina_do_app": null,
         "pagina_do_site": null,
         "ticker": null
+      },
+      {
+        "descricao": "Quanto 1% ao ano leva em 20 anos, e quanto subir depois de cair.",
+        "disponivel": true,
+        "nome": "Custo das taxas e da queda",
+        "pagina_do_app": null,
+        "pagina_do_site": "custo-das-taxas-e-da-queda.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto juntar para tirar um valor por mês, em dinheiro de hoje.",
+        "disponivel": true,
+        "nome": "Viver de renda",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-viver-de-renda.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Cem estratégias de cara ou coroa: a melhor parece genial por acaso.",
+        "disponivel": true,
+        "nome": "Sorte em série",
+        "pagina_do_app": null,
+        "pagina_do_site": "sorte-em-serie.html",
+        "ticker": null
+      },
+      {
+        "descricao": "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
+        "disponivel": true,
+        "nome": "Imposto sobre ações (DARF)",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-darf.html",
+        "ticker": null
       }
     ],
     "nome": "Ferramentas",
