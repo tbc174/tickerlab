@@ -468,6 +468,189 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ifdata_valores": Tabela(
+        descricao=(
+            "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e "
+            "conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por "
+            "instituição, relatório, conta e coluna). Tipo 1 = conglomerado prudencial (desde "
+            "mar/2014), 2 = conglomerado financeiro, 3 = instituição individual. Ficam fora o "
+            "relatório 15 (câmbio) e as linhas de total sem código de instituição"
+        ),
+        fonte="Banco Central: IF.data (API Olinda, `IfDataValores`)",
+        familia_da_fonte="bcb",
+        frequencia="Trimestral (data-base em mar, jun, set e dez)",
+        atraso=(
+            "Jun/2026 estava publicado em 14/10 (106 dias); `disponivel_em` usa data-base + 120 "
+            "dias. O BC revisa: as 8 datas mais novas são baixadas de novo a cada carga e cada "
+            "revisão vira versão `<AAAAMM>.v<N>`"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/bcb/ifdata/valores/tipo_<t>/<AAAAMM>.parquet` (servidor de "
+            "casa, `scripts/carga_bcb_credito.py`)"
+        ),
+        linhagem=(
+            "O `<AAAAMM>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada resposta "
+            "da API (no acervo e no registro de coletas, fonte `bcb-ifdata`, com a data da coleta) "
+            "e a versão do código que gravou."
+        ),
+        colunas={
+            "data_base": ("Fim do trimestre a que o número se refere", DATA),
+            "tipo_instituicao": ("1 prudencial, 2 financeiro, 3 individual", NUMERO),
+            "cod_inst": (
+                "Código da instituição no BC (raiz do CNPJ ou C00... do conglomerado)",
+                TEXTO,
+            ),
+            "relatorio": (
+                "Número do relatório (1 Resumo, 2 Ativo, 3 Passivo...)",
+                NUMERO,
+            ),
+            "nome_relatorio": ("Nome do relatório", TEXTO),
+            "grupo": ("Grupo da linha, quando o relatório tem", TEXTO),
+            "conta": ("Código da conta no relatório", TEXTO),
+            "coluna": (
+                'Nome da coluna, com a letra da nota ("Disponibilidades (a)")',
+                TEXTO,
+            ),
+            "descricao": ("Fórmula da coluna nas contas do Cosif", TEXTO),
+            "saldo": ("Valor da linha", REAIS),
+            "disponivel_em": (
+                "Desde quando o número era público (como era na data)",
+                DATA,
+            ),
+        },
+    ),
+    "ifdata_cadastro": Tabela(
+        descricao=(
+            "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, "
+            "conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ "
+            "que liga à bolsa"
+        ),
+        fonte="Banco Central: IF.data (API Olinda, `IfDataCadastro`)",
+        familia_da_fonte="bcb",
+        frequencia="Trimestral, junto com os valores",
+        atraso="O dos valores (o cadastro sai com a data-base)",
+        onde="Parquet em `<acervo>/base/bcb/ifdata/cadastro/<AAAAMM>.parquet` (servidor de casa)",
+        linhagem="Como `ifdata_valores`: o manifesto guarda o endereço e o SHA-256 da resposta.",
+        colunas={
+            "data_base": ("Data-base do cadastro", DATA),
+            "cod_inst": ("Código da instituição no BC", TEXTO),
+            "instituicao": ("Nome da instituição", TEXTO),
+            "tipo_controle": (
+                "Tc: 1 público, 2 privado nacional, 3 estrangeiro",
+                TEXTO,
+            ),
+            "tipo_consolidado": (
+                "Tcb: tipo de consolidado bancário (b1, b2...)",
+                TEXTO,
+            ),
+            "tipo_documento": ("Td: tipo de documento contábil", TEXTO),
+            "segmento_prudencial": (
+                "Sr: segmento da regulação prudencial (S1 a S5)",
+                TEXTO,
+            ),
+            "segmento": ("Segmento da instituição, quando informado", TEXTO),
+            "atividade": ("Atividade principal, quando informada", TEXTO),
+            "uf": ("UF da sede", TEXTO),
+            "municipio": ("Município da sede", TEXTO),
+            "conglomerado_financeiro": ("Código do conglomerado financeiro", TEXTO),
+            "conglomerado_prudencial": ("Código do conglomerado prudencial", TEXTO),
+            "cnpj_lider": ("Raiz do CNPJ da instituição líder (8 dígitos)", TEXTO),
+            "inicio_atividade": ("Mês de início da atividade (AAAAMM)", NUMERO),
+            "situacao": ("A = ativa", TEXTO),
+            "cnpj_raiz": (
+                "Raiz do CNPJ usada na ligação: a do líder ou o próprio código, se for CNPJ",
+                TEXTO,
+            ),
+        },
+    ),
+    "ligacao_dos_bancos": Tabela(
+        descricao=(
+            "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por "
+            "data-base. A raiz do CNPJ do líder liga ao CNPJ do FCA; antes de 2010 (sem FCA) a "
+            "ligação chega ao CNPJ, mas não à ação. Instituição sem ação (Caixa, BNDES) fica sem CNPJ"
+        ),
+        fonte="Derivado: IF.data (cadastro) e CVM, FCA (emissores e tickers)",
+        familia_da_fonte="bcb",
+        frequencia="Trimestral, montada de novo a cada carga",
+        atraso="O do cadastro do IF.data",
+        onde="Parquet em `<acervo>/base/bcb/ifdata/ligacao_dos_bancos.parquet` (servidor de casa)",
+        linhagem=(
+            "O `.json` lista cada cadastro e as tabelas do FCA usados, com o SHA-256 de cada "
+            "arquivo, e a versão do código."
+        ),
+        colunas={
+            "data_base": ("Data-base do cadastro", DATA),
+            "cod_inst": ("Código da instituição no BC", TEXTO),
+            "instituicao": ("Nome da instituição", TEXTO),
+            "cnpj_raiz": ("Raiz do CNPJ (8 dígitos)", TEXTO),
+            "cnpj": ("CNPJ da empresa da bolsa (vazio se não tem ação)", TEXTO),
+            "tickers": ("Códigos que valiam no ano, separados por vírgula", TEXTO),
+        },
+    ),
+    "scr_credito": Tabela(
+        descricao=(
+            "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): "
+            "por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, "
+            "modalidade, origem dos recursos e indexador, com prazos a vencer, atraso, "
+            "inadimplência e ativo problemático. Agregado, sem pessoa nem instituição. A versão 1 "
+            "(parou em jun/2025) fica fora"
+        ),
+        fonte="Banco Central: SCR.data (`scrdata_<ano>.zip`)",
+        familia_da_fonte="bcb",
+        frequencia="Mensal, um arquivo por ano",
+        atraso=(
+            "Publicado ~30 dias depois do fim do mês (ago/2026 já estava no arquivo em 09/10); "
+            "`disponivel_em` usa data-base + 60 dias. O BC regrava anos passados: os 2 anos mais "
+            "novos são baixados de novo a cada carga e cada regravação vira versão `<ano>.v<N>`"
+        ),
+        onde="Parquet em `<acervo>/base/bcb/scr/<ano>.parquet` (servidor de casa, `scripts/carga_bcb_credito.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 do arquivo do BC "
+            "(no acervo e no registro de coletas, fonte `bcb-scr-base`) e a versão do código."
+        ),
+        colunas={
+            "data_base": ("Fim do mês", DATA),
+            "uf": ("UF do cliente", TEXTO),
+            "segmento": (
+                "Segmento da instituição (Banco, Cooperativa, Financeira...)",
+                TEXTO,
+            ),
+            "cliente": ("PF ou PJ", TEXTO),
+            "cnae_ocupacao": ("Seção do CNAE (PJ) ou natureza da ocupação (PF)", TEXTO),
+            "porte": ("Porte da empresa (PJ) ou faixa de renda (PF)", TEXTO),
+            "modalidade": ("Modalidade do crédito", TEXTO),
+            "submodalidade": ("Submodalidade do crédito", TEXTO),
+            "origem": ("Origem dos recursos (livres ou direcionados)", TEXTO),
+            "indexador": ("Indexador (prefixado, pós-fixado...)", TEXTO),
+            "numero_de_operacoes": (
+                "Número de operações (vazio quando o BC não informa)",
+                NUMERO,
+            ),
+            "a_vencer_ate_90_dias": ("Carteira a vencer em até 90 dias", REAIS),
+            "a_vencer_de_91_ate_360_dias": ("A vencer de 91 a 360 dias", REAIS),
+            "a_vencer_de_361_ate_1080_dias": ("A vencer de 361 a 1080 dias", REAIS),
+            "a_vencer_de_1081_ate_1800_dias": ("A vencer de 1081 a 1800 dias", REAIS),
+            "a_vencer_de_1801_ate_5400_dias": ("A vencer de 1801 a 5400 dias", REAIS),
+            "a_vencer_acima_de_5400_dias": ("A vencer acima de 5400 dias", REAIS),
+            "carteira_a_vencer": ("Total a vencer", REAIS),
+            "vencido_de_15_ate_90_dias": ("Vencido de 15 a 90 dias", REAIS),
+            "vencido_acima_de_90_dias": ("Vencido há mais de 90 dias", REAIS),
+            "carteira_vencida": ("Total vencido (a partir de 15 dias)", REAIS),
+            "carteira_ativa": ("Carteira ativa, como o BC informa", REAIS),
+            "carteira_inadimplencia": (
+                "Carteira em inadimplência (atraso acima de 90 dias)",
+                REAIS,
+            ),
+            "ativo_problematico": (
+                "Ativo problemático (atraso ou reestruturação)",
+                REAIS,
+            ),
+            "disponivel_em": (
+                "Desde quando o mês era público (como era na data)",
+                DATA,
+            ),
+        },
+    ),
     "padroes_setoriais": Tabela(
         descricao=(
             "Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as "
