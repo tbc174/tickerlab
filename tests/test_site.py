@@ -121,6 +121,15 @@ def test_planos_do_site_sao_os_do_app():
     assert "modo de teste" in texto
 
 
+def test_precos_anunciam_mensal_de_verdade():
+    """ADR 0054: mensal cobrado um mês por vez, sem fidelidade, e o cancelamento no próprio app."""
+    texto = (SITE / "precos.html").read_text(encoding="utf-8")
+    assert "Mensal de verdade:" in texto
+    assert "sem fidelidade" in texto
+    assert "cobra um mês por vez" in texto
+    assert "Planos e assinatura" in texto
+
+
 def test_catalogo_da_busca_e_o_do_app():
     ativos = json.loads((SITE / "catalogo.json").read_text(encoding="utf-8"))
     simbolos = {a[0] for a in ativos}

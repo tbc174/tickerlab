@@ -2,7 +2,9 @@
 
 from streamlit.testing.v1 import AppTest
 
+from src import ficha
 from src.banco import dados_do_usuario as repo
+from src.dados import baixar_dados
 from tests.ajudantes_da_conta import (
     abrir_app,
     botao,
@@ -69,6 +71,23 @@ def test_campos_sobrevivem_a_troca_de_pagina(banco, monkeypatch):
     ir_para(app, "backtest")
     assert app.session_state["backtest_estrategia"] == "MACD"
     assert app.session_state["ticker"] == "VALE3.SA"
+
+
+def test_backtest_salvo_guarda_o_pedido_e_o_veredito_da_ficha(banco, monkeypatch):
+    """O Pulse recalcula a ficha das estratégias salvas: o pedido vai junto (PR E2)."""
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("backtest")
+    app.selectbox(key="backtest_estrategia").select("Cruzamento de médias").run()
+    app.button(key="salvar_backtest").click().run()
+    assert not app.exception
+
+    with banco.connect() as conexao:
+        (salva,) = repo.listar_simulacoes(conexao, id_do_usuario(banco, "ana"))
+    guardada = salva.resultado["ficha"]
+    dados = baixar_dados(salva.parametros["ticker"], salva.parametros["periodo"], True)
+    pedido = ficha.pedido_guardado(guardada["pedido"], dados)
+    assert pedido.estrategia == "Cruzamento de médias"
+    assert guardada["veredito"] == (ficha.montar_ficha(pedido).veredito.resultado.value)
 
 
 def test_salvar_reabrir_e_apagar_uma_simulacao(banco, monkeypatch):

@@ -54,10 +54,15 @@ def carregar_dados(ticker, periodo):
     multiplicados pelo câmbio do dia. Se o câmbio falhar, o ativo segue em dólar e a marca
     `attrs["cambio_falhou"]` avisa a tela.
     """
+    return carregar_dados_de(ticker, periodo, bool(st.session_state.get("em_reais")))
+
+
+def carregar_dados_de(ticker, periodo, em_reais):
+    """Como `carregar_dados`, com o "Converter para reais" dado (o de uma simulação salva)."""
     ticker = normalizar_ticker(ticker)
     exemplo = bool(st.session_state.get("usar_exemplo", False))
     dados = _carregar_dados_em_cache(ticker, periodo, exemplo)
-    if st.session_state.get("em_reais") and moeda_do_ticker(ticker) == "USD":
+    if em_reais and moeda_do_ticker(ticker) == "USD":
         try:
             cambio = _carregar_dados_em_cache(TICKER_DO_DOLAR, periodo, exemplo)[
                 "Close"

@@ -1,9 +1,9 @@
 """Research: Pulse (o que mudou nos seus ativos desde a última visita; onda 3, PR E).
 
-A tela só lê do banco, chama `src/pulse.py` e mostra. A janela fica na sessão: um rerun do
-Streamlit não a zera no meio da leitura. A visita só é marcada depois que os acontecimentos foram
-lidos sem erro; senão a pessoa perderia o que ainda não viu. Regra de `telas/`: nenhum estado
-mutável no módulo.
+A tela só lê do banco, chama `src/pulse.py` e mostra. A janela e os vereditos vistos na última
+visita ficam na sessão: um rerun do Streamlit não os zera no meio da leitura. A visita (com os
+vereditos de agora) só é marcada depois que os acontecimentos foram lidos sem erro; senão a pessoa
+perderia o que ainda não viu. Regra de `telas/`: nenhum estado mutável no módulo.
 """
 
 import logging
@@ -11,7 +11,7 @@ import logging
 import pandas as pd
 import streamlit as st
 
-from src import pulse, research
+from src import ficha, pulse, research
 from src.banco import pulse as repo_pulse
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
@@ -20,16 +20,23 @@ from src.banco.dados_do_usuario import (
     listar_watchlists,
 )
 from src.banco.eventos import eventos_dos_tickers
+from src.cdi import CDIIndisponivelError
 from src.dados import DadosIndisponiveisError
+from src.ficha import Resultado
+from src.simulacoes import restaurar_estado
 from telas.comum import (
     cabecalho_da_pagina,
+    carregar_dados_de,
     carregar_dados_na_moeda,
+    obter_cdi,
     parametros_em_vigor,
 )
+from telas.estrategias.ficha import ICONE_DO_VEREDITO, calcular_ficha
 from telas.research.acontecimentos import _mostrar_item, _resumos_dos_itens
 from telas.research.comum import _carteira_do_research, _sem_banco_agora
 
-CHAVE_DA_JANELA = "pulse_janela"  # (id da pessoa, Janela): a janela desta sessão
+# (id da pessoa, Janela, vereditos vistos na última visita): o que esta sessão compara
+CHAVE_DA_JANELA = "pulse_janela"
 CHAVE_DA_MARCA = (
     "pulse_marcado"  # (id da pessoa, hora marcada): a visita já foi gravada
 )
@@ -38,14 +45,16 @@ log = logging.getLogger(__name__)
 
 
 def _janela_da_sessao(usuario):
+    """A janela e os vereditos vistos antes dela (lidos uma vez: a visita os substitui)."""
     guardada = st.session_state.get(CHAVE_DA_JANELA)
     if guardada is not None and guardada[0] == usuario.id:
-        return guardada[1]
+        return guardada[1], guardada[2]
     with obter_engine().connect() as conexao:
         visita = repo_pulse.ultima_visita(conexao, usuario.id)
+        vistos = repo_pulse.vereditos_vistos(conexao, usuario.id)
     janela = pulse.janela(visita, pulse.agora())
-    st.session_state[CHAVE_DA_JANELA] = (usuario.id, janela)
-    return janela
+    st.session_state[CHAVE_DA_JANELA] = (usuario.id, janela, vistos)
+    return janela, vistos
 
 
 def _atualizar():
@@ -53,26 +62,29 @@ def _atualizar():
     st.session_state.pop(CHAVE_DA_JANELA, None)
 
 
-def _marcar_visita(usuario, janela):
+def _marcar_visita(usuario, janela, vereditos=None):
     marca = (usuario.id, janela.ate)
     if st.session_state.get(CHAVE_DA_MARCA) == marca:
         return
     with obter_engine().begin() as conexao:
-        repo_pulse.marcar_visita(conexao, usuario.id, janela.ate)
+        repo_pulse.marcar_visita(conexao, usuario.id, janela.ate, vereditos)
     st.session_state[CHAVE_DA_MARCA] = marca
 
 
-def _ativos(usuario):
+def _guardados(usuario):
+    """Os ativos da pessoa (e quantos ficaram de fora) e as simulações salvas."""
     with obter_engine().connect() as conexao:
         favoritos = listar_favoritos(conexao, usuario.id)
         listas = [(w.nome, w.tickers) for w in listar_watchlists(conexao, usuario.id)]
-        estrategias = [
-            s.parametros.get("ticker") for s in listar_simulacoes(conexao, usuario.id)
-        ]
+        simulacoes = listar_simulacoes(conexao, usuario.id)
     carteira = _carteira_do_research(usuario)
-    return pulse.ativos_da_pessoa(
-        favoritos, list(carteira.pesos) if carteira else [], listas, estrategias
+    ativos, fora = pulse.ativos_da_pessoa(
+        favoritos,
+        list(carteira.pesos) if carteira else [],
+        listas,
+        [s.parametros.get("ticker") for s in simulacoes],
     )
+    return ativos, fora, simulacoes
 
 
 def _eventos_novos(ativos, janela):
@@ -158,6 +170,65 @@ def _mostrar_variacoes(ativos, janela):
         )
 
 
+def _veredito_de_hoje(estrategia):
+    """O veredito da ficha com os dados de hoje; None se não deu para conferir."""
+    campos = restaurar_estado(estrategia.retrato, "backtest")
+    if "ticker" not in campos or "periodo" not in campos:
+        return None
+    try:
+        dados = carregar_dados_de(
+            campos["ticker"], campos["periodo"], campos.get("em_reais", False)
+        )
+        if dados.attrs.get("cambio_falhou"):
+            return None  # em dólar, o veredito mudaria pelo câmbio que faltou
+        cdi = None
+        if pulse.precisa_do_cdi(estrategia.pedido):
+            cdi = obter_cdi(dados.index[0], dados.index[-1])
+        pedido = ficha.pedido_guardado(estrategia.pedido, dados, cdi)
+        return calcular_ficha(pedido).veredito.resultado.value
+    except (DadosIndisponiveisError, CDIIndisponivelError, ValueError, KeyError):
+        return None
+    except Exception:
+        log.exception("Falha ao conferir a ficha de uma estratégia salva no Pulse")
+        return None
+
+
+def _mostrar_estrategias(simulacoes, vistos):
+    """Os vereditos que mudaram; devolve os vistos agora (None: nenhum backtest salvo)."""
+    salvas, sem_ficha, fora = pulse.estrategias_salvas(simulacoes)
+    if not salvas and not sem_ficha:
+        return None
+    st.subheader("Estratégias salvas")
+    conferidas = [pulse.comparar(e, vistos, _veredito_de_hoje(e)) for e in salvas]
+    mudaram = [v for v in conferidas if v.mudou]
+    for v in mudaram:
+        icone = ICONE_DO_VEREDITO[Resultado(v.agora)]
+        st.markdown(f"{icone} {pulse.texto_do_veredito(v)}")
+    sem_conferir = [v.estrategia.nome for v in conferidas if v.agora is None]
+    feitas = len(conferidas) - len(sem_conferir)
+    if feitas and not mudaram:
+        st.info(
+            "O veredito da estratégia conferida não mudou."
+            if feitas == 1
+            else f"Nenhum veredito mudou nas {feitas} estratégias conferidas."
+        )
+    if sem_conferir:
+        st.caption(f"Não deu para conferir agora: {', '.join(sem_conferir)}.")
+    if fora:
+        st.caption(
+            f"O Pulse confere as {pulse.MAXIMO_DE_FICHAS} estratégias salvas mais "
+            f"recentemente; {fora} ficaram para depois."
+        )
+    if sem_ficha:
+        st.caption(
+            f"Backtests salvos antes de o Pulse acompanhar a ficha: {sem_ficha}. Para "
+            "acompanhar, abra em Minhas simulações e salve de novo."
+        )
+    return pulse.vereditos_para_guardar(
+        vistos, conferidas, {str(s.id) for s in simulacoes}
+    )
+
+
 def pagina_pulse():
     cabecalho_da_pagina("pulse")
     usuario = st.session_state.get("usuario")
@@ -168,8 +239,8 @@ def pagina_pulse():
         )
         return
     try:
-        janela = _janela_da_sessao(usuario)
-        ativos, fora = _ativos(usuario)
+        janela, vistos = _janela_da_sessao(usuario)
+        ativos, fora, simulacoes = _guardados(usuario)
     except Exception as erro:
         if not tabela_inexistente(erro):
             log.exception("Falha ao abrir o Pulse")
@@ -192,11 +263,12 @@ def pagina_pulse():
     if eventos is not None:
         _mostrar_acontecimentos(ativos, janela, eventos)
     _mostrar_variacoes(ativos, janela)
+    vereditos = _mostrar_estrategias(simulacoes, vistos)
     with st.expander("Limites do Pulse"):
         for limite in pulse.LIMITES:
             st.markdown(f"- {limite}")
     if eventos is not None:
-        _marcar_visita(usuario, janela)
+        _marcar_visita(usuario, janela, vereditos)
         st.button(
             "Marcar como visto e atualizar",
             on_click=_atualizar,
