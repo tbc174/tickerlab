@@ -38,14 +38,24 @@ def test_trader_e_c1_sao_da_parte_do_trader():
 
 
 @pytest.mark.parametrize("total", [1, 2, 3, 4])
-def test_as_partes_juntas_rodam_cada_arquivo_uma_vez(total):
+@pytest.mark.parametrize("total_do_trader", [1, 2])
+def test_as_partes_juntas_rodam_cada_arquivo_uma_vez(total, total_do_trader):
     partes = [
         arquivos_da_parte(f"{k}/{total}", ARQUIVOS, DURACOES)
         for k in range(1, total + 1)
     ]
-    partes.append(arquivos_da_parte("trader", ARQUIVOS, DURACOES))
+    partes += [
+        arquivos_da_parte(f"trader-{k}/{total_do_trader}", ARQUIVOS, DURACOES)
+        for k in range(1, total_do_trader + 1)
+    ]
     juntas = [arquivo for parte in partes for arquivo in parte]
     assert sorted(juntas) == sorted(ARQUIVOS)
+
+
+def test_trader_sem_numero_e_o_trader_inteiro():
+    assert arquivos_da_parte("trader", ARQUIVOS, DURACOES) == arquivos_da_parte(
+        "trader-1/1", ARQUIVOS, DURACOES
+    )
 
 
 def test_o_trader_fica_fora_das_partes_do_app():
@@ -96,6 +106,12 @@ def test_a_reparticao_nao_depende_da_ordem_em_que_os_arquivos_chegam():
 def test_parte_sem_sentido_e_recusada(texto):
     with pytest.raises(ValueError, match="parte inválida"):
         ler_parte(texto)
+
+
+@pytest.mark.parametrize("parte", ["trader-3/2", "trader-", "trader1/2", "app-1/2"])
+def test_parte_do_trader_sem_sentido_e_recusada(parte):
+    with pytest.raises(ValueError, match="parte inválida"):
+        arquivos_da_parte(parte, ARQUIVOS, DURACOES)
 
 
 def test_juntar_duracoes_atualiza_e_esquece_o_arquivo_apagado():

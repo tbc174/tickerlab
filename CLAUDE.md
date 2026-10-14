@@ -31,8 +31,9 @@ cd web; npm run site                                        # páginas, CSS e JS
 - O CI (`.github/workflows/testes.yml`) roda `ruff`, `pyright`, os testes com **PostgreSQL de
   verdade** e a **cobertura** (falha abaixo do mínimo do `.coveragerc`), e
   constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
-  Os testes rodam em 4 máquinas ao mesmo tempo (3 partes do app, só com o `requirements.txt`, e a
-  do trader; `scripts/repartir_testes.py`); para rodar uma parte no PC: `pytest --parte=2/3`. Teste
+  Os testes rodam em 5 máquinas ao mesmo tempo (3 partes do app, só com o `requirements.txt`, e 2
+  do trader; `scripts/repartir_testes.py`); para rodar uma parte no PC: `pytest --parte=2/3` ou
+  `pytest --parte=trader-1/2`. Teste
   novo do trader se chama `test_trader_*` ou `test_c1_*`. Partes desiguais: refaça os tempos com
   `pytest -n 4 --dist loadgroup --gravar-duracoes` e faça o commit do `tests/duracoes.json`.
   Mudança só de texto (lista em `scripts/mudou_so_texto.py`) roda só os testes do README: se um

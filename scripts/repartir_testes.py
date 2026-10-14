@@ -1,16 +1,18 @@
 """Reparte os arquivos de teste entre as máquinas do CI, para a suíte rodar em paralelo.
 
 No CI a suíte roda em várias máquinas ao mesmo tempo, cada uma com uma parte
-(`python -m pytest --parte=2/3`, ou `--parte=trader`; com o "=": separado, o pytest confunde o
-`trader` com a pasta `trader/`). O `tests/conftest.py` chama este módulo para saber quais
+(`python -m pytest --parte=2/3`, ou `--parte=trader-1/2`; com o "=": separado, o pytest confunde
+o `trader` com a pasta `trader/`). O `tests/conftest.py` chama este módulo para saber quais
 arquivos ficam em cada parte:
 
-- `trader`: os testes da pesquisa de trading (`test_trader_*`, `test_c1_*`), os únicos que precisam
-  do `requirements-trader.txt` (torch, Qt, LightGBM...). As outras partes instalam só o
-  `requirements.txt`, mais rápido e igual ao que o app usa em produção.
-- `K/N`: o resto, repartido em N grupos de tempo parecido pelos tempos guardados em
-  `tests/duracoes.json`. Arquivo inteiro numa parte só, para a preparação de cada módulo não se
-  repetir em várias máquinas. Arquivo novo, ainda sem tempo guardado, conta como a mediana.
+- `trader-K/N` (ou `trader`, todos juntos): os testes da pesquisa de trading (`test_trader_*`,
+  `test_c1_*`), os únicos que precisam do `requirements-trader.txt` (torch, Qt, LightGBM...).
+- `K/N`: o resto, o do app, que instala só o `requirements.txt` (mais rápido e igual ao que o app
+  usa em produção).
+
+Cada grupo é repartido em N partes de tempo parecido pelos tempos guardados em
+`tests/duracoes.json`. Arquivo inteiro numa parte só, para a preparação de cada módulo não se
+repetir em várias máquinas. Arquivo novo, ainda sem tempo guardado, conta como a mediana.
 
 Os tempos se refazem com `python -m pytest -n 4 --dist loadgroup --gravar-duracoes` (só precisa
 quando as partes ficarem muito desiguais: um tempo velho não quebra nada, só equilibra pior).
@@ -25,6 +27,7 @@ from pathlib import Path, PurePosixPath
 RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVO_DE_DURACOES = RAIZ / "tests" / "duracoes.json"
 PARTE_DO_TRADER = "trader"
+PREFIXO_DO_TRADER = "trader-"
 PADROES_DO_TRADER = ("test_trader_*.py", "test_c1_*.py")
 # tempo de um arquivo sem medida quando ainda não há medida nenhuma
 SEGUNDOS_SEM_MEDIDA = 1.0
@@ -42,7 +45,7 @@ def ler_parte(texto: str) -> tuple[int, int]:
         numero, total = (int(pedaco) for pedaco in texto.split("/"))
     except ValueError:
         raise ValueError(
-            f"parte inválida: {texto!r} (use 'trader' ou 'K/N', como '2/3')"
+            f"parte inválida: {texto!r} (use 'K/N', 'trader-K/N' ou 'trader', como '2/3')"
         ) from None
     if not 1 <= numero <= total:
         raise ValueError(f"parte inválida: {texto!r} (K vai de 1 a N)")
@@ -73,13 +76,18 @@ def repartir(
 def arquivos_da_parte(
     parte: str, arquivos: Iterable[str], duracoes: Mapping[str, float]
 ) -> set[str]:
-    """Devolve os arquivos que a parte pedida (`trader` ou `K/N`) roda."""
+    """Devolve os arquivos que a parte pedida (`K/N`, `trader-K/N` ou `trader`) roda."""
     arquivos = sorted(set(arquivos))
+    do_trader = [arquivo for arquivo in arquivos if e_do_trader(arquivo)]
     if parte == PARTE_DO_TRADER:
-        return {arquivo for arquivo in arquivos if e_do_trader(arquivo)}
+        return set(do_trader)
+    if parte.startswith(PREFIXO_DO_TRADER):
+        grupo = do_trader
+        parte = parte.removeprefix(PREFIXO_DO_TRADER)
+    else:
+        grupo = [arquivo for arquivo in arquivos if not e_do_trader(arquivo)]
     numero, total = ler_parte(parte)
-    do_app = [arquivo for arquivo in arquivos if not e_do_trader(arquivo)]
-    return set(repartir(do_app, duracoes, total)[numero - 1])
+    return set(repartir(grupo, duracoes, total)[numero - 1])
 
 
 def ler_duracoes(caminho: Path = ARQUIVO_DE_DURACOES) -> dict[str, float]:
