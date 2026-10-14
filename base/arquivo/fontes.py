@@ -37,6 +37,9 @@ GLEIF_DO_BRASIL = (
 RAIZ_DA_PGFN = "https://dadosabertos.pgfn.gov.br/"
 PASTA_DO_TRIMESTRE = re.compile(rb'href="(\d{4}_trimestre_\d{2})/"')
 ZIP_NA_PASTA = re.compile(rb'href="([^"/]+\.zip)"')
+# pastas da CVM (listagem do servidor web): o catálogo CKAN só mostra os últimos 5 anos
+ARQUIVO_NA_PASTA = re.compile(rb'href="([^"?/]+\.(?:zip|csv))"')
+PASTAS_DA_CVM = "https://dados.cvm.gov.br/dados/"
 # o CNPJ fica num compartilhamento público do Nextcloud da Receita: o token sai do redirecionamento
 RAIZ_DO_CNPJ = "https://arquivos.receitafederal.gov.br/"
 WEBDAV_DA_RECEITA = "https://arquivos.receitafederal.gov.br/public.php/webdav/"
@@ -84,6 +87,23 @@ def descobrir_ckan(cliente: Cliente, portal: str, *pacotes: str) -> list[Alvo]:
 
 def _ckan(portal: str, *pacotes: str) -> Descobrir:
     return lambda cliente, agora: descobrir_ckan(cliente, portal, *pacotes)
+
+
+def descobrir_pasta(cliente: Cliente, *pastas: str) -> list[Alvo]:
+    """Os arquivos (.zip e .csv) listados em pastas do servidor de dados (todos os anos)."""
+    alvos: list[Alvo] = []
+    for pasta in pastas:
+        pagina = cliente.ler(pasta).conteudo
+        nomes = dict.fromkeys(m.decode() for m in ARQUIVO_NA_PASTA.findall(pagina))
+        if not nomes:
+            raise ErroDeDescoberta(f"nenhum arquivo na pasta {pasta}")
+        alvos += [Alvo(pasta + nome) for nome in nomes]
+    return alvos
+
+
+def _pastas_da_cvm(*caminhos: str) -> Descobrir:
+    pastas = [PASTAS_DA_CVM + caminho for caminho in caminhos]
+    return lambda cliente, agora: descobrir_pasta(cliente, *pastas)
 
 
 def descobrir_cgu(conjunto: str) -> Descobrir:
@@ -254,6 +274,48 @@ FONTES: list[Fonte] = [
     # mensais e pesadas (GBs)
     Fonte("rfb-cnpj", "mensal", descobrir_cnpj, pesada=True),
     Fonte("pgfn-divida", "mensal", descobrir_pgfn, pesada=True),
+    # histórico completo da CVM (a CVM reescreve os anos antigos com reapresentações): todos os
+    # anos, mas só baixa de novo o arquivo cujos cabeçalhos mudaram
+    *(
+        Fonte(f"cvm-hist-{nome}", "mensal", _pastas_da_cvm(*caminhos), pesada=True)
+        for nome, caminhos in (
+            ("ipe", ("CIA_ABERTA/DOC/IPE/DADOS/",)),  # desde 2003
+            ("itr", ("CIA_ABERTA/DOC/ITR/DADOS/",)),  # desde 2011
+            ("dfp", ("CIA_ABERTA/DOC/DFP/DADOS/",)),  # desde 2010
+            ("fre", ("CIA_ABERTA/DOC/FRE/DADOS/",)),  # desde 2010
+            ("fca", ("CIA_ABERTA/DOC/FCA/DADOS/",)),  # desde 2010: auditores, tickers
+            ("vlmo", ("CIA_ABERTA/DOC/VLMO/DADOS/",)),  # desde 2018
+            ("cda", ("FI/DOC/CDA/DADOS/", "FI/DOC/CDA/DADOS/HIST/")),  # desde 2005
+        )
+    ),
+    # fontes abertas novas (pesquisa de 13–14/10/2026); o SCR.data do BC fica de fora por ora: o
+    # firewall do BC recusa o cliente do arquivista (14/10/2026), a investigar à parte
+    Fonte(
+        "ccee-pld",
+        "semanal",
+        _ckan(
+            "https://dadosabertos.ccee.org.br",
+            "pld_horario",
+            "pld_media_diaria",
+            "pld_media_mensal",
+        ),
+    ),
+    Fonte(
+        "antt-pedagio",
+        "semanal",
+        _ckan("https://dados.antt.gov.br", "volume-trafego-praca-pedagio"),
+    ),
+    Fonte(
+        "tesouro-br-divida",
+        "semanal",
+        _ckan(
+            PORTAL_DO_TESOURO,
+            "estoque-da-divida-publica-federal",
+            "emissoes-e-resgates-divida-publica-federal",
+            "capag-estados",
+            "divida-consolidada-estados",
+        ),
+    ),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

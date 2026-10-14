@@ -161,6 +161,14 @@ def test_politica_de_privacidade_cita_as_tentativas_do_backtest():
     assert "tentativas" in texto and "SHA-256" in texto
 
 
+def test_politica_de_privacidade_cita_os_links_compartilhados():
+    """Sem subir a versão dos termos (Tiago, 14/10): o parágrafo fica só na política."""
+    texto = conformidade.carregar_texto("privacidade")
+    assert "Links compartilhados" in texto and "Quem tiver um link" in texto
+    assert "os links compartilhados e a assinatura" in texto
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-13.7"
+
+
 def test_politica_de_privacidade_cita_o_pulse():
     texto = conformidade.carregar_texto("privacidade")
     assert "Pulse" in texto

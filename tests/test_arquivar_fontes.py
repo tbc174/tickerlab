@@ -15,9 +15,8 @@ def test_fonte_desconhecida_sai_com_2(capsys):
 
 
 def test_escolhe_por_grupo_ou_por_id():
-    assert {f.id for f in arquivar_fontes.escolher("mensal")} == {
-        "rfb-cnpj",
-        "pgfn-divida",
-    }
+    mensais = {f.id for f in arquivar_fontes.escolher("mensal")}
+    assert {"rfb-cnpj", "pgfn-divida", "cvm-hist-ipe"} <= mensais
+    assert "cvm-fiagro" not in mensais
     assert [f.id for f in arquivar_fontes.escolher("cvm-fiagro")] == ["cvm-fiagro"]
     assert arquivar_fontes.escolher("nada") == []

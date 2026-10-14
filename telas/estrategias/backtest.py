@@ -46,6 +46,7 @@ from src.validacao import (
     parametros_numericos,
     resumir_grade,
 )
+from telas.compartilhar import compartilhar_ficha
 from telas.comum import (
     ajuda_do,
     cabecalho_da_pagina,
@@ -690,10 +691,9 @@ def secao_validacao(
     try:
         resultado_da_ficha = calcular_ficha(pedido)
         lembrar_para_salvar(pedido, resultado_da_ficha)
-        mostrar_ficha(
-            resultado_da_ficha,
-            texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA),
-        )
+        texto = texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA)
+        mostrar_ficha(resultado_da_ficha, texto)
+        compartilhar_ficha(resultado_da_ficha, pedido, ticker, texto)
     except ValueError as erro:
         st.info(str(erro))
     with st.expander("Ver o detalhe técnico"):
