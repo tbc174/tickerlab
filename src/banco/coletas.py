@@ -64,6 +64,8 @@ LICENCAS = {
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+    # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
+    "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -115,6 +117,7 @@ REVENDA = {
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "aneel": VENDAVEL_ODBL,
     "comexstat": A_CONFIRMAR,
+    "b3": SO_USO_INTERNO,
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000

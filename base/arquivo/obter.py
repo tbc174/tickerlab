@@ -8,8 +8,12 @@
   energia (consumidor pessoa física). Pela LGPD (só pessoa jurídica), as duas colunas saem **antes**
   de guardar; o acervo fica com o arquivo da ANEEL menos essas colunas (e o registro diz isso).
 
-Os dois devolvem os cabeçalhos do arquivo de origem, então as fontes pesadas continuam pulando o que
-não mudou (ETag do ZIP inteiro ou do Parquet).
+- **ZIP que pode faltar** (negócios do pregão da B3): 404 (feriado, dia que ainda não saiu) e
+  "200 com 0 bytes" (dia que já saiu da janela) viram `SemArquivo`; o zip é conferido inteiro (CRC de
+  cada arquivo, como o `unzip -t`), porque um download cortado também começa com "PK".
+
+Os dois primeiros devolvem os cabeçalhos do arquivo de origem, então as fontes pesadas continuam
+pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
 """
 
 import io
@@ -19,10 +23,12 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pandas as pd
+import requests
 
-from base.arquivo.coleta import Cliente, Obter
+from base.arquivo.coleta import Cliente, Obter, SemArquivo
 
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
+HTTP_NAO_ENCONTRADO = 404
 
 
 class ArquivoRemoto(io.RawIOBase):
@@ -98,6 +104,30 @@ def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
         tabela.drop(columns=[c for c in colunas if c in tabela.columns]).to_parquet(
             destino, index=False
         )
+        return cabecalhos
+
+    return obter
+
+
+def zip_que_pode_faltar(url: str) -> Obter:
+    """Baixa o zip; 404 e resposta vazia viram `SemArquivo`; zip quebrado ou cortado é erro."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        try:
+            cabecalhos = cliente.baixar(url, destino)
+        except requests.HTTPError as erro:
+            resposta = erro.response
+            if resposta is not None and resposta.status_code == HTTP_NAO_ENCONTRADO:
+                raise SemArquivo(
+                    "HTTP 404 (feriado ou dia que ainda não saiu)"
+                ) from erro
+            raise
+        if destino.stat().st_size == 0:
+            raise SemArquivo("HTTP 200 com 0 bytes (dia fora da janela)")
+        with zipfile.ZipFile(destino) as arquivo_zip:
+            estragado = arquivo_zip.testzip()
+        if estragado is not None:
+            raise zipfile.BadZipFile(f"{estragado} com CRC errado dentro do zip")
         return cabecalhos
 
     return obter
