@@ -8,7 +8,7 @@ import pytest
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, compartilhamentos, ficha, paginas, planos
+from src import analises, api, cobranca, compartilhamentos, ficha, paginas, planos
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -853,3 +853,143 @@ def test_baixar_meus_dados(cliente, banco):
     recebido = resposta.json()
     assert recebido.keys() == esperado.keys()
     assert recebido["perfil"]["email"] == "ana@exemplo.com"
+
+
+# --- Assinar e gerenciar pelo app novo (conta e planos, PR 4; Stripe só em modo de teste) -------
+
+STRIPE_DE_TESTE = {
+    "STRIPE_SECRET_KEY": "sk_test_abc",
+    "STRIPE_PRICE_ID": "price_123",
+    "TICKERLAB_URL_PUBLICA": "https://app.tickerlab.com.br",
+}
+CHECKOUT = "https://checkout.stripe.com/c/pay/cs_test_1"
+PORTAL = "https://billing.stripe.com/p/session/test_1"
+
+
+@pytest.fixture
+def stripe_de_teste(monkeypatch):
+    """O Stripe configurado com chaves de teste e as chamadas a ele trocadas por respostas fixas."""
+    for nome, valor in STRIPE_DE_TESTE.items():
+        monkeypatch.setenv(nome, valor)
+    chamadas = []
+
+    def pagina(usuario_id, email, id_do_cliente=None, caminho_de_volta="/", **_):
+        chamadas.append(("pagina", usuario_id, email, id_do_cliente, caminho_de_volta))
+        return CHECKOUT
+
+    def portal(id_do_cliente, caminho_de_volta="/", **_):
+        chamadas.append(("portal", id_do_cliente, caminho_de_volta))
+        return PORTAL
+
+    monkeypatch.setattr(cobranca, "criar_pagina_de_pagamento", pagina)
+    monkeypatch.setattr(cobranca, "criar_portal_da_assinatura", portal)
+    return chamadas
+
+
+def _ana_admin(banco):
+    with banco.begin() as conexao:
+        entrar(conexao, "ana", "ana@exemplo.com", emails_de_admin=("ana@exemplo.com",))
+
+
+def _assinatura_da_ana(banco, cliente="cus_ana"):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.insert(assinaturas).values(
+                usuario_id=_id_da_ana_no(banco),
+                stripe_customer_id=cliente,
+                status="active",
+            )
+        )
+
+
+def test_meu_plano_diz_qual_botao_mostrar(cliente, banco, stripe_de_teste):
+    dados = cliente.get("/api/v1/meu-plano").json()
+    assert (dados["acao"], dados["texto_da_acao"]) == (
+        None,
+        cobranca.AVISO_DE_PLANOS_EM_BREVE,  # conta comum: só admins assinam (ADR 0029)
+    )
+    _ana_admin(banco)
+    dados = cliente.get("/api/v1/meu-plano").json()
+    assert dados["acao"] == "assinar"
+    assert dados["nota_do_cartao"] == cobranca.NOTA_DO_CARTAO_DE_TESTE
+
+
+def test_meu_plano_sem_stripe_configurado(cliente, banco, monkeypatch):
+    for nome in STRIPE_DE_TESTE:
+        monkeypatch.delenv(nome, raising=False)
+    dados = cliente.get("/api/v1/meu-plano").json()
+    assert (dados["acao"], dados["texto_da_acao"]) == (
+        None,
+        cobranca.AVISO_SEM_COBRANCA,
+    )
+
+
+def test_admin_assina_e_volta_para_os_planos_do_app_novo(
+    cliente, banco, stripe_de_teste
+):
+    _ana_admin(banco)
+    resposta = cliente.post("/api/v1/pagamento-da-assinatura", json={})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json() == {"url": CHECKOUT}
+    assert stripe_de_teste == [
+        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", None, "/novo/planos")
+    ]
+
+
+def test_quem_ja_e_cliente_reusa_o_cliente_do_stripe(cliente, banco, stripe_de_teste):
+    _ana_admin(banco)
+    _assinatura_da_ana(banco)
+    cliente.post("/api/v1/pagamento-da-assinatura", json={})
+    assert stripe_de_teste[0][3] == "cus_ana"
+
+
+def test_conta_comum_nao_cria_pagamento(cliente, banco, stripe_de_teste):
+    """A trava da ADR 0029 vale também se alguém chamar a rota direto, sem o botão."""
+    resposta = cliente.post("/api/v1/pagamento-da-assinatura", json={})
+    assert resposta.status_code == 409
+    assert resposta.json()["detail"] == cobranca.AVISO_DE_PLANOS_EM_BREVE
+    assert stripe_de_teste == []
+
+
+def test_quem_ja_e_pro_nao_assina_de_novo(cliente, banco, stripe_de_teste):
+    _ana_admin(banco)
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 409
+    assert stripe_de_teste == []
+
+
+def test_sem_stripe_configurado_503(cliente, banco, monkeypatch):
+    for nome in STRIPE_DE_TESTE:
+        monkeypatch.delenv(nome, raising=False)
+    _ana_admin(banco)
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 503
+
+
+def test_assinante_abre_o_portal(cliente, banco, stripe_de_teste):
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    _assinatura_da_ana(banco)
+    resposta = cliente.post("/api/v1/portal-da-assinatura", json={})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json() == {"url": PORTAL}
+    assert stripe_de_teste == [("portal", "cus_ana", "/novo/planos")]
+
+
+def test_sem_assinatura_nao_ha_portal(cliente, banco, stripe_de_teste):
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")  # Pro dado por administrador
+    assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 404
+    assert stripe_de_teste == []
+
+
+def test_o_portal_e_so_da_assinatura_da_conta_do_token(cliente, banco, stripe_de_teste):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia5", "bia5@exemplo.com")[0]
+        conexao.execute(
+            sa.insert(assinaturas).values(
+                usuario_id=bia.id, stripe_customer_id="cus_bia", status="active"
+            )
+        )
+    assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 404
+    assert stripe_de_teste == []

@@ -21,6 +21,7 @@ from scripts.markdown_simples import markdown_para_html
 from src import (
     analises,
     catalogo,
+    cobranca,
     comparacao,
     conformidade,
     ficha,
@@ -307,6 +308,10 @@ def _app() -> dict[str, object]:
             },
         },
         "entrada": {"aviso": AVISO_DA_ENTRADA},
+        "assinatura": {
+            "retorno_ok": cobranca.RETORNO_DO_PAGAMENTO_OK,
+            "retorno_cancelado": cobranca.RETORNO_DO_PAGAMENTO_CANCELADO,
+        },
         "aceite": {
             "versao": conformidade.VERSAO_DOS_TERMOS,
             "titulo": conformidade.TITULO_DO_ACEITE,

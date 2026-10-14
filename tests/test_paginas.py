@@ -150,6 +150,8 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/aceite-dos-termos",
         "/v1/revogar-link",
         "/v1/meus-dados",
+        "/v1/pagamento-da-assinatura",
+        "/v1/portal-da-assinatura",
         "/v1/configuracao",
     }
 
