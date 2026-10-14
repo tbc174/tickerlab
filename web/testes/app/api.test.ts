@@ -84,6 +84,7 @@ describe("erros", () => {
     [401, "sem-token", "sessao-vencida"],
     [401, "conta-nova", "conta-nova"],
     [403, "termos", "termos"],
+    [403, "plano", "plano"], // a página não abre no plano da conta (ADR 0062)
   ])("%i com motivo %s vira %s", async (status, motivo, tipo) => {
     comResposta(respostaJson(status, { detail: "Texto da API." }, { "X-TickerLab-Motivo": motivo }));
     const erro = await erroDe(pedir("/v1/eu", "tok"));
