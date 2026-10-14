@@ -9,19 +9,19 @@ import base64
 import json
 import re
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
-
-FUSO_DE_BRASILIA = timezone(timedelta(hours=-3))
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
 PORTAL_DO_IBAMA = "https://dadosabertos.ibama.gov.br"
 PORTAL_DO_BC = "https://dadosabertos.bcb.gov.br"
 PORTAL_DO_TESOURO = "https://www.tesourotransparente.gov.br/ckan"
 
-DOWNLOAD_DA_CGU = (
-    "https://portaldatransparencia.gov.br/download-de-dados/{conjunto}/{dia:%Y%m%d}"
+PAGINA_DA_CGU = "https://portaldatransparencia.gov.br/download-de-dados/{conjunto}"
+DOWNLOAD_DA_CGU = PAGINA_DA_CGU + "/{dia}"
+DATA_DA_CGU = re.compile(
+    rb'"ano"\s*:\s*"(\d{4})",\s*"mes"\s*:\s*"(\d{2})",\s*"dia"\s*:\s*"(\d{2})"'
 )
 PAGINA_DA_LISTA_SUJA = (
     "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/"
@@ -60,7 +60,7 @@ TERMOS = {
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
-    "catalogo-bc": PORTAL_DO_BC,
+    # o do BC fica de fora: o firewall dele responde "Requisição inválida" a robôs (14/10/2026)
     "catalogo-tesouro": PORTAL_DO_TESOURO,
     "catalogo-ibama": PORTAL_DO_IBAMA,
 }
@@ -87,11 +87,23 @@ def _ckan(portal: str, *pacotes: str) -> Descobrir:
 
 
 def descobrir_cgu(conjunto: str) -> Descobrir:
-    """O arquivo de ontem (no horário de Brasília) do download de dados do Portal da Transparência."""
+    """O arquivo mais recente do download de dados do Portal da Transparência (sem chave).
+
+    Cada conjunto sai em dias diferentes (o CEPIM não é diário): a própria página de download lista
+    as datas publicadas (`arquivos.push({"ano": ..., "mes": ..., "dia": ...})`).
+    """
 
     def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
-        ontem = agora.astimezone(FUSO_DE_BRASILIA).date() - timedelta(days=1)
-        return [Alvo(DOWNLOAD_DA_CGU.format(conjunto=conjunto, dia=ontem), ".zip")]
+        pagina = cliente.ler(PAGINA_DA_CGU.format(conjunto=conjunto)).conteudo
+        datas = sorted(b"".join(d) for d in DATA_DA_CGU.findall(pagina))
+        if not datas:
+            raise ErroDeDescoberta(f"CGU {conjunto}: nenhuma data publicada na página")
+        return [
+            Alvo(
+                DOWNLOAD_DA_CGU.format(conjunto=conjunto, dia=datas[-1].decode()),
+                ".zip",
+            )
+        ]
 
     return descobrir
 

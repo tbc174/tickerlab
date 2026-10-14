@@ -54,12 +54,30 @@ def test_ckan_sem_recurso_e_falha():
         fontes.descobrir_ckan(cliente, portal, "x")
 
 
-def test_cgu_pede_o_arquivo_do_dia_anterior_em_brasilia():
-    alvos = fontes.descobrir_cgu("ceis")(None, AGORA)
+def test_cgu_pega_a_data_mais_recente_publicada_na_pagina():
+    pagina = (
+        b'arquivos.push({"ano" : "2026", "mes" : "10", "dia" : "08", "origem" :  "CEPIM"});'
+        b'arquivos.push({"ano" : "2026", "mes" : "10", "dia" : "09", "origem" :  "CEPIM"});'
+        b'arquivos.push({"ano" : "2026", "mes" : "09", "dia" : "30", "origem" :  "CEPIM"});'
+    )
+    cliente = Paginas(
+        {"https://portaldatransparencia.gov.br/download-de-dados/cepim": pagina}
+    )
+    alvos = fontes.descobrir_cgu("cepim")(cliente, AGORA)
     assert [a.url for a in alvos] == [
-        "https://portaldatransparencia.gov.br/download-de-dados/ceis/20261013"
+        "https://portaldatransparencia.gov.br/download-de-dados/cepim/20261009"
     ]
     assert alvos[0].extensao == ".zip"
+
+
+def test_cgu_sem_data_na_pagina_e_falha():
+    cliente = Paginas(
+        {
+            "https://portaldatransparencia.gov.br/download-de-dados/ceis": b"<html></html>"
+        }
+    )
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_cgu("ceis")(cliente, AGORA)
 
 
 def test_lista_suja_acha_csv_e_pdf_na_pagina():

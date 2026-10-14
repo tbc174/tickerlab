@@ -227,3 +227,12 @@ def test_falha_num_arquivo_nao_impede_os_outros(banco, tmp_path):
     )
     assert resultado.novos == 1
     assert resultado.falhas == [URL]
+
+
+def test_pagina_de_bloqueio_com_xml_antes_do_html_tambem_e_html(banco, tmp_path):
+    bloqueio = b'<?xml version="1.0" encoding="pt-br"?>\r\n<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML">'
+    cliente = ClienteFalso({URL: (bloqueio, {})})
+    resultado = _rodar(_fonte(tipo="json"), cliente, banco, tmp_path)
+    [linha] = _linhas(banco)
+    assert resultado.falhas == [URL]
+    assert "HTML" in linha.detalhe

@@ -42,7 +42,10 @@ CABECALHOS_GUARDADOS = ("Last-Modified", "ETag", "Content-Length", "Content-Type
 SEPARADOR_DO_DETALHE = " | "
 IGUAL_A_ANTERIOR = "igual à coleta anterior"
 ASSINATURAS = {"pdf": (b"%PDF",), "json": (b"{", b"[")}
-COMECO_DE_HTML = re.compile(rb"^\s*(<!doctype html|<html)", re.IGNORECASE)
+# a página de bloqueio do BC começa com "<?xml ...>" antes do "<!DOCTYPE html"
+COMECO_DE_HTML = re.compile(
+    rb"^\s*(<\?xml[^>]*>\s*)?(<!doctype html|<html)", re.IGNORECASE
+)
 SCRIPTS_E_ESTILOS = re.compile(r"<(script|style)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
 ETIQUETAS = re.compile(r"<[^>]+>")
 ESPACOS = re.compile(r"\s+")
