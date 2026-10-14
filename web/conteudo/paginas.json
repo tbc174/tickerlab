@@ -727,7 +727,12 @@
   },
   {
     "chave": "planos",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "MeuPlanoV1",
+      "rota": "/v1/meu-plano"
+    },
     "descricao": "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
     "e_pro": false,
     "grupo": "Minha conta",

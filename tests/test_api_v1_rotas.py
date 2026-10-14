@@ -1,13 +1,14 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
+import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
-from src import analises, api, ficha, paginas
+from src import analises, api, ficha, paginas, planos
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -15,9 +16,15 @@ from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, esquemas, rotas
 from src.backtest import executar_backtest
 from src.banco import series as acervo
 from src.banco import tentativas
-from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
+from src.banco.dados_do_usuario import (
+    TIPOS_DE_SIMULACAO,
+    carregar_preferencias,
+    salvar_favoritos,
+    salvar_preferencias,
+    salvar_simulacao,
+)
 from src.banco.eventos import Evento
-from src.banco.modelo import PLANOS
+from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
 from src.conformidade import registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
@@ -716,3 +723,60 @@ def test_se_o_cdi_sumir_a_ficha_compara_com_zero(cliente, no_dia, monkeypatch):
     )  # a taxa já veio do CDI; a ficha não acha
     custos = _ficha(cliente, taxa=None)["ficha"]["checagens"][1]
     assert "sem o CDI" in custos["explicacao"]
+
+
+# --- Planos e assinatura no app novo (conta e planos, PR 3) -----------------------------------
+
+
+def _id_da_ana_no(banco):
+    with banco.connect() as conexao:
+        ana = buscar_por_google_sub(conexao, "ana")
+    assert ana is not None
+    return ana.id
+
+
+def test_meu_plano_mostra_o_plano_e_o_uso(cliente, banco):
+    ana = _id_da_ana_no(banco)
+    with banco.begin() as conexao:
+        salvar_favoritos(conexao, ana, ["PETR4.SA", "VALE3.SA"])
+        salvar_simulacao(conexao, ana, TIPOS_DE_SIMULACAO[0], "minha", {}, {})
+    resposta = cliente.get("/api/v1/meu-plano")
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert dados["plano"] == "gratuito"
+    assert dados["nome_do_plano"] == "Gratuito"
+    assert dados["simulacoes"] == "1 de 5"  # como as métricas do Streamlit
+    assert dados["favoritos"] == "2 de 3"
+    assert dados["frase_da_assinatura"] is None
+    assert dados["aviso"] == planos.AVISO_DO_MODO_DE_TESTE
+    assert dados["tabela"] == planos.tabela_de_planos()
+
+
+def test_meu_plano_pro_sem_limite_de_simulacoes(cliente, banco):
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    assert cliente.get("/api/v1/meu-plano").json()["simulacoes"] == "0 de ilimitadas"
+
+
+@pytest.mark.parametrize(("cancela", "verbo"), [(False, "renova"), (True, "termina")])
+def test_meu_plano_diz_quando_a_assinatura_renova(cliente, banco, cancela, verbo):
+    with banco.begin() as conexao:
+        conexao.execute(
+            sa.insert(assinaturas).values(
+                usuario_id=_id_da_ana_no(banco),
+                stripe_customer_id="cus_teste",
+                status="active",
+                periodo_fim=datetime(2026, 11, 14, 12, tzinfo=UTC),
+                cancela_no_fim=cancela,
+            )
+        )
+    dados = cliente.get("/api/v1/meu-plano").json()
+    assert dados["frase_da_assinatura"] == f"Sua assinatura {verbo} em 14/11/2026."
+    assert "cus_teste" not in str(dados)  # nada do Stripe na resposta
+
+
+def test_meu_plano_e_so_da_conta_do_token(cliente, banco):
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia2", "bia2@exemplo.com")[0]
+        salvar_favoritos(conexao, bia.id, ["PETR4.SA", "VALE3.SA", "ITUB4.SA"])
+    assert cliente.get("/api/v1/meu-plano").json()["favoritos"] == "0 de 3"
