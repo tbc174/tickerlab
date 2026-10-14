@@ -14,6 +14,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 from src.banco.modelo import TAMANHO_MAXIMO_DA_TESE
 from src.dados import normalizar_ticker
@@ -28,6 +29,26 @@ TAMANHO_DO_TRECHO = 200  # o pedaço da tese que aparece no Pulse
 _CONTROLES_PERMITIDOS = frozenset(
     "\n\t‍"
 )  # quebra de linha, tabulação e o "junta emoji"
+
+FUSO = ZoneInfo("America/Sao_Paulo")
+LIMITES = (
+    (
+        "O Diário guarda o que **você** escreveu; o TickerLab não avalia nem opina sobre a "
+        "sua tese. Nada aqui é recomendação de investimento."
+    ),
+    (
+        f"Cada anotação tem até {TAMANHO_MAXIMO} caracteres e fica com a data em que foi escrita. "
+        "Ela não se edita: para mudar de ideia, escreva outra (o diário mostra a evolução)."
+    ),
+    (
+        f"Até {MAXIMO_DE_ANOTACOES} anotações por conta e até {MAXIMO_DE_ESTRATEGIAS} backtests "
+        "salvos ligados a cada uma, sempre do mesmo ativo."
+    ),
+    (
+        "Apagar um backtest salvo tira só a ligação; a anotação continua. O Diário sai junto com a "
+        'conta e vem na cópia de "Meus dados".'
+    ),
+)
 
 
 class TeseInvalidaError(ValueError):
@@ -120,3 +141,8 @@ def trecho(texto: str, maximo: int = TAMANHO_DO_TRECHO) -> str:
     if " " in cortado:
         cortado = cortado.rsplit(" ", 1)[0]
     return cortado.rstrip() + "…"
+
+
+def texto_da_data(momento: datetime) -> str:
+    """A data e a hora da anotação no horário de Brasília (ex.: 13/10/2026 às 19h00)."""
+    return f"{momento.astimezone(FUSO):%d/%m/%Y às %Hh%M}"

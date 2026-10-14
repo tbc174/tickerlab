@@ -351,6 +351,15 @@ PAGINAS = (
         precisa_do_ativo=False,
     ),
     Pagina(
+        "diario_de_teses",
+        "Diário de Teses",
+        GRUPO_RESEARCH,
+        ":material/edit_note:",
+        "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que "
+        "você salvou.",
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "carteira_b3",
         "Carteira da B3",
         GRUPO_RESEARCH,

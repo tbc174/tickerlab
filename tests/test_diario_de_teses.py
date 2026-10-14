@@ -134,3 +134,12 @@ def test_trecho_corta_no_limite_sem_quebrar_palavra_e_marca_o_corte():
     assert not trecho.removesuffix("…").endswith("palavr")
     assert diario.trecho("curto", 50) == "curto"
     assert diario.trecho("linha 1\nlinha 2", 50) == "linha 1 linha 2"
+
+
+def test_data_da_anotacao_no_horario_de_brasilia():
+    assert diario.texto_da_data(QUANDO) == "13/10/2026 às 19h00"
+
+
+def test_limites_citam_os_tetos():
+    texto = " ".join(diario.LIMITES)
+    assert "2000" in texto and "500" in texto and "10 backtests" in texto

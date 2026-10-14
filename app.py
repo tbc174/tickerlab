@@ -43,6 +43,7 @@ from telas.momentum import pagina_momentum
 from telas.relatorios.pagina import pagina_relatorio
 from telas.research.acontecimentos import pagina_research
 from telas.research.alertas import pagina_alertas
+from telas.research.diario_de_teses import pagina_diario_de_teses
 from telas.research.donos import pagina_donos
 from telas.research.fundamentos import pagina_fundamentos
 from telas.research.juros_e_inflacao import pagina_juros_e_inflacao
@@ -155,6 +156,7 @@ FUNCOES_DAS_PAGINAS = {
     "parametros": pagina_parametros,
     "research": pagina_research,
     "pulse": pagina_pulse,
+    "diario_de_teses": pagina_diario_de_teses,
     "fundamentos": pagina_fundamentos,
     "relatorio_empresa": pagina_relatorio_empresa,
     "carteira_b3": pagina_carteira_b3,
