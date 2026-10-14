@@ -27,6 +27,7 @@ import pandas as pd
 
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import EXERCICIO, POSICAO, e_financeira
+from src.formatos import formatar_decimal
 from src.fundamentos import (
     FRACAO,
     NAO_SE_APLICA_A_FINANCEIRAS,
@@ -304,6 +305,9 @@ SALTO_MINIMO = (
     1.9  # razão entre as ações de dois anos que já pode ser desdobramento (2 para 1)
 )
 TOLERANCIA_DO_SALTO = 0.02  # a razão precisa estar a 2% de um número inteiro
+# salto de exatamente mil vezes: a quantidade veio em milhares num ano e em unidades no outro
+# (Petrobras, 2020 → 2021), não um desdobramento de 1.000 para 1
+TROCA_DE_UNIDADE = 1_000.0
 
 
 @dataclass(frozen=True)
@@ -358,12 +362,24 @@ def _fatores_por_ano(
         fator = _salto_redondo(acoes[seguinte] / acoes[ano])
         if fator:
             conhecidos[ano] = fator
-            tipo = "desdobramento" if fator > 1 else "grupamento"
             avisos.append(
-                f"Entre {ano} e {seguinte} as ações mudaram {acoes[seguinte] / acoes[ano]:.2f} vezes "
-                f"sem evento no FRE: tratado como provável {tipo}, não como diluição."
+                _aviso_do_salto(ano, seguinte, acoes[seguinte] / acoes[ano], fator)
             )
     return conhecidos, avisos
+
+
+def _aviso_do_salto(ano: int, seguinte: int, razao: float, fator: float) -> str:
+    if fator == TROCA_DE_UNIDADE:  # a CVM passou a receber a quantidade em unidades
+        return (
+            f"Entre {ano} e {seguinte} a quantidade de ações passou de milhares para unidades na "
+            "CVM (mil vezes maior, sem evento no FRE): tratado como troca de unidade, não como "
+            "diluição."
+        )
+    tipo = "desdobramento" if fator > 1 else "grupamento"
+    return (
+        f"Entre {ano} e {seguinte} as ações mudaram {formatar_decimal(razao)} vezes sem evento no "
+        f"FRE: tratado como provável {tipo}, não como diluição."
+    )
 
 
 def _ajustadas(acoes: pd.Series, fatores: dict[int, float]) -> pd.Series:
