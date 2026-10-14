@@ -178,3 +178,41 @@ def test_catalogo_tem_ids_unicos_e_grupos_conhecidos():
     vigias = {f.id for f in fontes.FONTES if f.vigia}
     assert vigias and all(i.startswith(("termos-", "catalogo-")) for i in vigias)
     assert "cvm-fiagro" in ids
+
+
+def test_pasta_da_cvm_lista_os_arquivos_de_todos_os_anos():
+    pasta = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/"
+    pagina = (
+        b'<a href="../">../</a><a href="ipe_cia_aberta_2003.zip">x</a>'
+        b'<a href="ipe_cia_aberta_2026.zip">y</a><a href="?C=M;O=A">ordem</a>'
+    )
+    cliente = Paginas({pasta: pagina})
+    urls = [a.url for a in fontes.descobrir_pasta(cliente, pasta)]
+    assert urls == [
+        pasta + "ipe_cia_aberta_2003.zip",
+        pasta + "ipe_cia_aberta_2026.zip",
+    ]
+
+
+def test_pasta_vazia_e_falha():
+    pasta = "https://dados.cvm.gov.br/dados/X/"
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_pasta(Paginas({pasta: b"<html></html>"}), pasta)
+
+
+def test_historico_da_cvm_e_fontes_abertas_novas_no_catalogo():
+    ids = {f.id for f in fontes.FONTES}
+    historico = {
+        "cvm-hist-ipe",
+        "cvm-hist-itr",
+        "cvm-hist-dfp",
+        "cvm-hist-fre",
+        "cvm-hist-fca",
+        "cvm-hist-vlmo",
+        "cvm-hist-cda",
+    }
+    assert historico <= ids
+    assert {"ccee-pld", "antt-pedagio", "tesouro-br-divida"} <= ids
+    assert all(
+        fontes.POR_ID[i].pesada for i in historico
+    )  # GBs: só baixa quando os cabeçalhos mudam
