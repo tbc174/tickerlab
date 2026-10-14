@@ -109,6 +109,30 @@ def test_os_arquivos_do_simbolo_existem_e_batem_com_o_desenho():
     assert marca.ARQUIVO_DE_COMPARTILHAMENTO.exists()
 
 
+def test_icones_do_app_para_instalar_no_celular():
+    """PWA (ADR 0066): 192 e 512 com cantos arredondados, e a versão "maskable" (o celular recorta
+    em círculo ou gota) com o símbolo dentro da zona segura, o círculo de 80% do meio."""
+    from PIL import Image
+
+    for arquivo, lado in marca.ICONES_DO_APP.items():
+        imagem = Image.open(arquivo)
+        assert imagem.size == (lado, lado), arquivo.name
+    mascaravel = Image.open(marca.ARQUIVO_DO_ICONE_MASCARAVEL).convert("RGBA")
+    lado = mascaravel.width
+    # fundo marinho até a borda: nada transparente para o celular recortar
+    assert all(
+        mascaravel.getpixel((x, y))[3] == 255
+        for x in (0, lado - 1)
+        for y in (0, lado - 1)
+    )
+    marinho = tuple(int(marca.MARINHO[i : i + 2], 16) for i in (1, 3, 5))
+    raio_seguro = 0.4 * lado
+    for x in range(0, lado, 4):
+        for y in range(0, lado, 4):
+            if math.dist((x, y), (lado / 2, lado / 2)) > raio_seguro:
+                assert mascaravel.getpixel((x, y))[:3] == marinho, (x, y)
+
+
 def test_a_imagem_docker_leva_a_pasta_static():
     assert "COPY static ./static" in (RAIZ / "Dockerfile").read_text(encoding="utf-8")
 

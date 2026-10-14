@@ -236,3 +236,25 @@ def test_ckan_ignora_paineis_e_paginas_que_nao_sao_arquivos():
     cliente = Paginas({f"{portal}/api/3/action/package_show?id=pedagio": resposta})
     alvos = fontes.descobrir_ckan(cliente, portal, "pedagio")
     assert [a.url for a in alvos] == ["https://dados.antt.gov.br/x/2026.csv"]
+
+
+def test_scr_do_bc_vem_dos_arquivos_por_ano_e_nao_do_ckan():
+    # o firewall do BC responde "Requisição Inválida" à API do CKAN; os arquivos por ano baixam
+    # (inventário da série 3, PR 7, 14/10/2026)
+    from base import bcb_scr
+
+    scr = fontes.POR_ID["bcb-scr"]
+    cliente = Paginas({})
+    urls = [a.url for a in scr.descobrir(cliente, AGORA)]
+    assert urls == [bcb_scr.endereco_do_ano(ano) for ano in range(2012, 2027)]
+    assert cliente.pedidos == []  # nenhum pedido ao catálogo
+    assert scr.pesada  # ~2 GB: só baixa de novo quando os cabeçalhos mudam
+
+
+def test_scr_do_ano_novo_so_entra_quando_o_bc_publica_janeiro():
+    # janeiro sai no fim de fevereiro: antes de março o arquivo do ano não existe
+    scr = fontes.POR_ID["bcb-scr"]
+    fevereiro = datetime(2027, 2, 27, 5, tzinfo=UTC)
+    marco = datetime(2027, 3, 1, 5, tzinfo=UTC)
+    assert scr.descobrir(Paginas({}), fevereiro)[-1].url.endswith("scrdata_2026.zip")
+    assert scr.descobrir(Paginas({}), marco)[-1].url.endswith("scrdata_2027.zip")

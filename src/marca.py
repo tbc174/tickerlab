@@ -179,6 +179,16 @@ FONTE_MONO = "JetBrains Mono"
 PASTA_ESTATICA = Path(__file__).resolve().parent.parent / "static"
 ARQUIVO_DO_SIMBOLO = PASTA_ESTATICA / "marca" / "simbolo.svg"
 ARQUIVO_DO_ICONE = PASTA_ESTATICA / "marca" / "icone.png"
+# o app instalado no celular (PWA, ADR 0066): ícones de cantos arredondados, a versão "maskable"
+# (fundo até a borda, o celular recorta) e a do iPhone (que arredonda sozinho)
+ARQUIVO_DO_ICONE_MASCARAVEL = PASTA_ESTATICA / "marca" / "icone-mascaravel-512.png"
+ARQUIVO_DO_ICONE_DO_IPHONE = PASTA_ESTATICA / "marca" / "apple-touch-icon.png"
+ICONES_DO_APP = {
+    PASTA_ESTATICA / "marca" / "icone-192.png": 192,
+    PASTA_ESTATICA / "marca" / "icone-512.png": 512,
+    ARQUIVO_DO_ICONE_MASCARAVEL: 512,
+    ARQUIVO_DO_ICONE_DO_IPHONE: 180,
+}
 # símbolo + "TickerLab", para o st.logo; os arquivos saem de `python -m scripts.gerar_marca`
 ARQUIVO_DA_ASSINATURA = PASTA_ESTATICA / "marca" / "assinatura.png"
 ARQUIVO_DA_ASSINATURA_CLARA = (

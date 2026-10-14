@@ -17,10 +17,13 @@ from src.marca import (
     ARQUIVO_DA_FONTE,
     ARQUIVO_DE_COMPARTILHAMENTO,
     ARQUIVO_DO_ICONE,
+    ARQUIVO_DO_ICONE_DO_IPHONE,
+    ARQUIVO_DO_ICONE_MASCARAVEL,
     ARQUIVO_DO_SIMBOLO,
     AZUL,
     AZUL_TEXTO,
     CLARO,
+    ICONES_DO_APP,
     MARINHO,
     TEXTO_APAGADO,
     TRACO_DA_HASTE,
@@ -88,6 +91,19 @@ def desenhar_icone_png(tamanho: int = 128) -> Image.Image:
     )
     imagem = imagem.resize((tamanho, tamanho), Image.Resampling.LANCZOS)
     lado = round(tamanho * 0.64)
+    margem = (tamanho - lado) // 2
+    simbolo = desenhar_simbolo_png(lado)
+    imagem.paste(simbolo, (margem, margem), simbolo)
+    return imagem
+
+
+def desenhar_icone_mascaravel_png(tamanho: int = 512) -> Image.Image:
+    """O ícone "maskable" do app instalado: marinho até a borda (o celular recorta em círculo ou
+    gota) e o símbolo pequeno o bastante para caber no círculo de 80% do meio, a zona segura."""
+    imagem = Image.new("RGBA", (tamanho, tamanho), MARINHO)
+    lado = round(
+        tamanho * 0.5
+    )  # a diagonal do símbolo (0,71 do lado) fica dentro dos 80%
     margem = (tamanho - lado) // 2
     simbolo = desenhar_simbolo_png(lado)
     imagem.paste(simbolo, (margem, margem), simbolo)
@@ -174,6 +190,17 @@ def gerar_arquivos() -> None:
     ARQUIVO_DO_SIMBOLO.parent.mkdir(parents=True, exist_ok=True)
     ARQUIVO_DO_SIMBOLO.write_text(icone_svg() + "\n", encoding="utf-8")
     desenhar_icone_png(128).save(ARQUIVO_DO_ICONE)
+    for arquivo, lado in ICONES_DO_APP.items():
+        sem_cantos = arquivo in (
+            ARQUIVO_DO_ICONE_MASCARAVEL,
+            ARQUIVO_DO_ICONE_DO_IPHONE,
+        )
+        desenho = (
+            desenhar_icone_mascaravel_png(lado)
+            if sem_cantos
+            else desenhar_icone_png(lado)
+        )
+        desenho.save(arquivo, optimize=True)
     desenhar_assinatura_png(96).save(ARQUIVO_DA_ASSINATURA)
     desenhar_assinatura_png(96, clara=True).save(ARQUIVO_DA_ASSINATURA_CLARA)
     desenhar_compartilhamento_png().save(ARQUIVO_DE_COMPARTILHAMENTO, optimize=True)

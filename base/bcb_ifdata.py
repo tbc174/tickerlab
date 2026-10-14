@@ -1,0 +1,193 @@
+"""IF.data do Banco Central: balanço, resultado, capital e carteira de crédito de cada instituição e
+conglomerado, por trimestre (série 3 da base de ML, PR 7).
+
+- **API Olinda** (`IfDataValores` e `IfDataCadastro`), licença ODbL. Saldos em reais, no formato longo
+  da fonte: uma linha por instituição, relatório, conta e coluna. O inventário de 14/10/2026 achou:
+  - tipo 1 (conglomerado prudencial) desde mar/2014; tipos 2 (conglomerado financeiro) e 3
+    (instituição individual) desde mar/2000; o tipo 4 (câmbio) e o relatório 15 (câmbio) ficam fora;
+  - em 2000, 34 linhas de total sem código de instituição (somas da fonte): ficam fora;
+  - o nome da coluna vem com a letra da nota numa linha nova ("Disponibilidades \\n(a)"): vira um
+    espaço só.
+- **"Como era na data":** jun/2026 já estava publicado em 14/10 (106 dias) e set/2026 não; a base usa
+  data-base + 120 dias. Cada revisão do BC vira versão (o SHA-256 da resposta fica no manifesto).
+- **Ligação com a bolsa:** o cadastro de cada data dá a raiz do CNPJ do líder do conglomerado (ou o
+  próprio código, para a instituição individual); a raiz liga ao CNPJ da empresa do FCA e aos tickers
+  que valiam no ano (`base/fca.py`). Antes de 2010, sem FCA, a ligação chega ao CNPJ mas não à ação.
+"""
+
+import json
+import re
+
+import pandas as pd
+
+API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
+PRIMEIRO_ANO = 2000
+PRIMEIRA_DATA_PRUDENCIAL = 201403
+PRUDENCIAL, FINANCEIRO, INDIVIDUAL = 1, 2, 3
+RELATORIOS = (
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    16,
+)  # 15 (câmbio) fica fora
+MESES_DA_DATA_BASE = (3, 6, 9, 12)
+DIAS_ATE_FICAR_PUBLICO = 120
+DIGITOS_DA_RAIZ = 8
+COLUNAS_DOS_VALORES = {
+    "TipoInstituicao": "tipo_instituicao",
+    "CodInst": "cod_inst",
+    "NumeroRelatorio": "relatorio",
+    "NomeRelatorio": "nome_relatorio",
+    "Grupo": "grupo",
+    "Conta": "conta",
+    "NomeColuna": "coluna",
+    "DescricaoColuna": "descricao",
+    "Saldo": "saldo",
+}
+COLUNAS_DO_CADASTRO = {
+    "CodInst": "cod_inst",
+    "NomeInstituicao": "instituicao",
+    "Tc": "tipo_controle",
+    "Tcb": "tipo_consolidado",
+    "Td": "tipo_documento",
+    "Sr": "segmento_prudencial",
+    "SegmentoTb": "segmento",
+    "Atividade": "atividade",
+    "Uf": "uf",
+    "Municipio": "municipio",
+    "CodConglomeradoFinanceiro": "conglomerado_financeiro",
+    "CodConglomeradoPrudencial": "conglomerado_prudencial",
+    "CnpjInstituicaoLider": "cnpj_lider",
+    "DataInicioAtividade": "inicio_atividade",
+    "Situacao": "situacao",
+}
+
+
+def datas_base(desde: int, ate: int) -> list[int]:
+    """As datas-base trimestrais (`AAAAMM`) de `desde` a `ate`, inclusive."""
+    return [
+        ano * 100 + mes for ano in range(desde, ate + 1) for mes in MESES_DA_DATA_BASE
+    ]
+
+
+def tipos_da_data(data_base: int) -> tuple[int, ...]:
+    """Os tipos de instituição que a data-base tem (o prudencial só desde mar/2014)."""
+    if data_base >= PRIMEIRA_DATA_PRUDENCIAL:
+        return (PRUDENCIAL, FINANCEIRO, INDIVIDUAL)
+    return (FINANCEIRO, INDIVIDUAL)
+
+
+def endereco_dos_valores(data_base: int, tipo: int, relatorio: int) -> str:
+    return (
+        f"{API}IfDataValores(AnoMes=@AnoMes,TipoInstituicao=@TipoInstituicao,Relatorio=@Relatorio)"
+        f"?@AnoMes={data_base}&@TipoInstituicao={tipo}&@Relatorio='{relatorio}'&$format=json"
+    )
+
+
+def endereco_do_cadastro(data_base: int) -> str:
+    return f"{API}IfDataCadastro(AnoMes=@AnoMes)?@AnoMes={data_base}&$format=json"
+
+
+def _linhas(conteudo_json: bytes) -> pd.DataFrame:
+    return pd.DataFrame(json.loads(conteudo_json)["value"])
+
+
+def _data_da_base(anomes: pd.Series) -> pd.Series:
+    return pd.to_datetime(anomes.astype(str), format="%Y%m") + pd.offsets.MonthEnd(0)
+
+
+def _texto_limpo(serie: pd.Series) -> pd.Series:
+    return serie.map(
+        lambda v: re.sub(r"\s+", " ", v).strip() if isinstance(v, str) else v
+    )
+
+
+def ler_valores(conteudo_json: bytes) -> pd.DataFrame:
+    """Uma resposta de `IfDataValores`, sem as linhas de total da fonte (sem código de instituição)."""
+    bruto = _linhas(conteudo_json)
+    if bruto.empty:
+        return pd.DataFrame(columns=["data_base", *COLUNAS_DOS_VALORES.values()])
+    bruto = bruto[bruto["CodInst"].notna()]
+    valores = bruto.rename(columns=COLUNAS_DOS_VALORES)[
+        list(COLUNAS_DOS_VALORES.values())
+    ]
+    valores.insert(0, "data_base", _data_da_base(bruto["AnoMes"]))
+    for coluna in ("coluna", "descricao", "nome_relatorio"):
+        valores[coluna] = _texto_limpo(valores[coluna])
+    valores["relatorio"] = valores["relatorio"].astype(int)
+    valores["saldo"] = valores["saldo"].astype(float)
+    return valores.reset_index(drop=True)
+
+
+def ler_cadastro(conteudo_json: bytes) -> pd.DataFrame:
+    """Uma resposta de `IfDataCadastro`, com a raiz do CNPJ de cada instituição ou conglomerado."""
+    bruto = _linhas(conteudo_json)
+    cadastro = bruto.rename(columns=COLUNAS_DO_CADASTRO)[
+        list(COLUNAS_DO_CADASTRO.values())
+    ]
+    cadastro.insert(0, "data_base", _data_da_base(bruto["Data"]))
+    proprio = cadastro["cod_inst"].where(cadastro["cod_inst"].str.fullmatch(r"\d{8}"))
+    cadastro["cnpj_raiz"] = cadastro["cnpj_lider"].where(
+        cadastro["cnpj_lider"].notna(), proprio
+    )
+    return cadastro
+
+
+def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
+    """Desde quando o número era público: data-base + 120 dias (jun/2026 saiu em até 106)."""
+    return tabela["data_base"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
+
+
+def _raiz(cnpj: pd.Series) -> pd.Series:
+    return cnpj.str.replace(r"\D", "", regex=True).str[:DIGITOS_DA_RAIZ]
+
+
+def ligacao_dos_bancos(
+    cadastro: pd.DataFrame, emissores: pd.DataFrame, tickers: pd.DataFrame
+) -> pd.DataFrame:
+    """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano da data-base.
+
+    `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. Uma raiz com mais de um CNPJ
+    no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA.
+    """
+    empresas = (
+        emissores.loc[~emissores["conflito"], ["cnpj"]]
+        .drop_duplicates()
+        .assign(cnpj_raiz=lambda t: _raiz(t["cnpj"]))
+    )
+    unicas = empresas[~empresas["cnpj_raiz"].duplicated(keep=False)]
+    ligacao = cadastro[["data_base", "cod_inst", "instituicao", "cnpj_raiz"]].merge(
+        unicas, on="cnpj_raiz", how="left"
+    )
+    ano = ligacao["data_base"].dt.year
+    vigentes = (
+        ligacao[["cnpj"]]
+        .assign(ano=ano)
+        .merge(tickers[["codigo", "cnpj", "primeiro_visto", "ultimo_visto"]], on="cnpj")
+    )
+    vigentes = vigentes[
+        (vigentes["primeiro_visto"].dt.year <= vigentes["ano"])
+        & (vigentes["ultimo_visto"].dt.year >= vigentes["ano"])
+    ]
+    codigos = (
+        vigentes.groupby(["cnpj", "ano"])["codigo"]
+        .agg(lambda c: ",".join(sorted(set(c))))
+        .rename("tickers")
+        .reset_index()
+    )
+    return (
+        ligacao.assign(ano=ano)
+        .merge(codigos, on=["cnpj", "ano"], how="left")
+        .drop(columns="ano")
+    )

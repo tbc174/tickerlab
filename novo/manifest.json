@@ -1,0 +1,29 @@
+{
+  "name": "TickerLab",
+  "short_name": "TickerLab",
+  "description": "Plataforma de inteligência financeira: análise de ações e teste de estratégias.",
+  "lang": "pt-BR",
+  "start_url": "/novo/",
+  "scope": "/novo/",
+  "display": "standalone",
+  "theme_color": "#0a1f44",
+  "background_color": "#0a1f44",
+  "icons": [
+    {
+      "src": "/novo/icones/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/novo/icones/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/novo/icones/icone-mascaravel-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
