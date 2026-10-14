@@ -12,6 +12,10 @@ Regras (testes em `tests/test_base_arquivo.py`):
   fonte **pesada** (GBs): se `ETag`, `Last-Modified` e tamanho são os da última coleta, nem baixa;
 - **freio de disco** antes das pesadas: menos de 50 GB livres ou mais de 70% usado (ADR 0031);
 - descoberta sem nenhum arquivo, ou HTML no lugar do arquivo, é **falha**, nunca "nada novo";
+- a fonte que diz que o arquivo não existe (ainda ou mais; a B3 responde 404 ou "200 com 0 bytes")
+  levanta `SemArquivo`: fica registrada como "nao_encontrado", nunca "ok" nem falha;
+- fonte sem ETag nem Last-Modified (a B3) decide pela última coleta "ok" (`guardado_vale`) se nem
+  precisa baixar de novo;
 - fonte **vigia** (termos de uso, catálogos): avisa quando o texto visível muda.
 """
 
@@ -29,6 +33,7 @@ from pathlib import Path
 from typing import Protocol
 
 import certifi
+import sqlalchemy as sa
 
 from src import acervo
 from src.banco.coletas import registrar_arquivo, ultima_coleta_ok
@@ -44,7 +49,7 @@ TAMANHO_DA_PARTE = 1024 * 1024
 CABECALHOS_GUARDADOS = ("Last-Modified", "ETag", "Content-Length", "Content-Type")
 SEPARADOR_DO_DETALHE = " | "
 IGUAL_A_ANTERIOR = "igual à coleta anterior"
-ASSINATURAS = {"pdf": (b"%PDF",), "json": (b"{", b"[")}
+ASSINATURAS = {"pdf": (b"%PDF",), "json": (b"{", b"["), "zip": (b"PK",)}
 # a página de bloqueio do BC começa com "<?xml ...>" antes do "<!DOCTYPE html"
 COMECO_DE_HTML = re.compile(
     rb"^\s*(<\?xml[^>]*>\s*)?(<!doctype html|<html)", re.IGNORECASE
@@ -129,9 +134,12 @@ class Fonte:
     id: str  # nome no registro de coletas, "família-detalhe" (`licenca_da_fonte`)
     grupo: str  # "diaria", "semanal" ou "mensal" (a hora em que roda)
     descobrir: Descobrir
-    tipo: str = "arquivo"  # "arquivo" (qualquer coisa que não seja HTML), "pdf", "json" ou "html"
+    tipo: str = "arquivo"  # "arquivo" (qualquer coisa que não seja HTML), "pdf", "json", "zip" ou "html"
     pesada: bool = False
     vigia: bool = False
+    # pela última coleta "ok" do endereço, o que já está guardado basta (não baixa de novo)? Para
+    # fonte sem ETag nem Last-Modified (a B3); None: a regra dos cabeçalhos (pesadas) ou do SHA-256
+    guardado_vale: Callable[[sa.Row], bool] | None = None
 
 
 @dataclass
@@ -140,12 +148,17 @@ class Resultado:
     novos: int = 0
     iguais: int = 0
     pulados: int = 0
+    sem_arquivo: int = 0
     falhas: list[str] = field(default_factory=list)
     mudaram: list[str] = field(default_factory=list)
 
 
 class ErroDeDescoberta(Exception):
     """A fonte não mostrou nenhum arquivo, ou mudou de formato: tratar como falha."""
+
+
+class SemArquivo(Exception):
+    """A fonte disse que o arquivo não existe (ainda ou mais): nem "ok" nem falha."""
 
 
 class FreioDeDisco(Exception):
@@ -240,6 +253,16 @@ def _assinatura_registrada(detalhe: str | None) -> str:
     return (detalhe or "").split(SEPARADOR_DO_DETALHE)[0]
 
 
+def _ja_guardado(fonte: Fonte, alvo: Alvo, cliente: Cliente, anterior: sa.Row) -> bool:
+    """O que a última coleta "ok" guardou ainda vale (não precisa baixar de novo)?"""
+    if fonte.guardado_vale is not None:
+        return fonte.guardado_vale(anterior)
+    if not fonte.pesada:
+        return False
+    cab = assinatura(cliente.cabecalhos(alvo.url))
+    return cab != assinatura({}) and cab == _assinatura_registrada(anterior.detalhe)
+
+
 def _arquivar_um(
     fonte: Fonte,
     alvo: Alvo,
@@ -249,12 +272,10 @@ def _arquivar_um(
     resultado: Resultado,
 ) -> None:
     anterior = _ultima(alvo.url)
-    if fonte.pesada and anterior is not None:
-        cab = assinatura(cliente.cabecalhos(alvo.url))
-        if cab != assinatura({}) and cab == _assinatura_registrada(anterior.detalhe):
-            resultado.pulados += 1
-            log.info("%s: %s sem mudança nos cabeçalhos; não baixa", fonte.id, alvo.url)
-            return
+    if anterior is not None and _ja_guardado(fonte, alvo, cliente, anterior):
+        resultado.pulados += 1
+        log.info("%s: %s já guardado e sem mudança; não baixa", fonte.id, alvo.url)
+        return
     if alvo.obter is not None:
         cabecalhos = alvo.obter(cliente, temporario)
     else:
@@ -328,6 +349,13 @@ def arquivar(
         temporario = pasta_temporaria / f"{fonte.id}-{numero}.parcial"
         try:
             _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado)
+        except SemArquivo as motivo:
+            temporario.unlink(missing_ok=True)
+            log.info("%s: sem arquivo em %s (%s)", fonte.id, alvo.url, motivo)
+            resultado.sem_arquivo += 1
+            _registrar(
+                fonte.id, alvo.url, None, None, "nao_encontrado", str(motivo), agora
+            )
         except Exception as erro:  # noqa: BLE001 (cada arquivo falha sozinho, com registro)
             temporario.unlink(missing_ok=True)
             log.warning("%s: falhou %s (%s)", fonte.id, alvo.url, erro)

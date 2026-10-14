@@ -11,12 +11,16 @@ import re
 import xml.etree.ElementTree as ET
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
+
+import sqlalchemy as sa
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     extrair_do_zip_remoto,
     membros_do_zip_remoto,
     parquet_sem_colunas,
+    zip_que_pode_faltar,
 )
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
@@ -133,6 +137,16 @@ MESES_DO_PIX = 3
 # SAMP (mercado por distribuidora): CPF e nome de quem compra energia saem antes de guardar (LGPD)
 PORTAL_DA_ANEEL = "https://dadosabertos.aneel.gov.br"
 COLUNAS_PESSOAIS_DO_SAMP = ("NumCNPJAgenteAcessante", "NomAgenteAcessante")
+# negócios do pregão da B3 (ADR 0073; só pesquisa, ADR 0019): só os últimos ~20 pregões ficam no ar.
+# Medido em 14/10/2026: dia fora da janela responde 200 com 0 bytes; feriado e dia que ainda não
+# saiu, 404; HEAD dá 405 (sem ETag nem Last-Modified)
+NEGOCIOS_DA_B3 = "https://arquivos.b3.com.br/rapinegocios/tickercsv/{dia}"
+DIAS_DA_JANELA_DA_B3 = 30  # dias corridos, hoje incluído: cobre os 20 pregões
+FUSO_DA_B3 = ZoneInfo("America/Sao_Paulo")
+# um pregão inteiro tem de 80 a 200 MB: menor que isso veio incompleto (22/09, 29/09 e 09/10/2026) e
+# é baixado de novo a cada rodada, para ver se a B3 corrigiu. Regra provisória, a da ponte: o selo
+# por ativo contra o COTAHIST (que pega também o 15/09) vem no PR 2 do plano dos intradiários
+TAMANHO_MINIMO_DE_UM_DIA_BOM = 40_000_000
 
 
 def _json(cliente: Cliente, url: str) -> dict:
@@ -398,6 +412,23 @@ def descobrir_samp(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def alvo_dos_negocios_b3(dia: date) -> Alvo:
+    url = NEGOCIOS_DA_B3.format(dia=dia.isoformat())
+    return Alvo(url, ".zip", zip_que_pode_faltar(url))
+
+
+def descobrir_negocios_b3(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os dias úteis da janela da B3, do mais antigo a hoje (no fuso de São Paulo: a rodada das 22h
+    já é o dia seguinte em UTC). Feriado entra e responde 404: o calendário fica com a B3."""
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    dias = (hoje - timedelta(days=n) for n in range(DIAS_DA_JANELA_DA_B3 - 1, -1, -1))
+    return [alvo_dos_negocios_b3(dia) for dia in dias if dia.weekday() < 5]
+
+
+def _pregao_inteiro_ja_guardado(anterior: sa.Row) -> bool:
+    return (anterior.bytes or 0) >= TAMANHO_MINIMO_DE_UM_DIA_BOM
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -572,6 +603,15 @@ FONTES: list[Fonte] = [
     Fonte("anatel-acessos", "mensal", descobrir_anatel, pesada=True),
     Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),
     Fonte("aneel-samp", "mensal", descobrir_samp, pesada=True),
+    # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
+    Fonte(
+        "b3-negocios",
+        "diaria",
+        descobrir_negocios_b3,
+        "zip",
+        pesada=True,
+        guardado_vale=_pregao_inteiro_ja_guardado,
+    ),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
