@@ -216,3 +216,23 @@ def test_historico_da_cvm_e_fontes_abertas_novas_no_catalogo():
     assert all(
         fontes.POR_ID[i].pesada for i in historico
     )  # GBs: só baixa quando os cabeçalhos mudam
+
+
+def test_ckan_ignora_paineis_e_paginas_que_nao_sao_arquivos():
+    # a ANTT lista um painel do Power BI entre os recursos (14/10/2026)
+    portal = "https://dados.antt.gov.br"
+    resposta = json.dumps(
+        {
+            "result": {
+                "resources": [
+                    {"url": "https://dados.antt.gov.br/x/2026.csv", "format": "CSV"},
+                    {"url": "https://app.powerbi.com/view?r=abc", "format": "HTML"},
+                    {"url": "https://app.powerbi.com/view?r=def", "format": ""},
+                    {"url": "https://dados.antt.gov.br/x/pagina", "format": "html"},
+                ]
+            }
+        }
+    ).encode()
+    cliente = Paginas({f"{portal}/api/3/action/package_show?id=pedagio": resposta})
+    alvos = fontes.descobrir_ckan(cliente, portal, "pedagio")
+    assert [a.url for a in alvos] == ["https://dados.antt.gov.br/x/2026.csv"]
