@@ -89,6 +89,9 @@ class Nota:
 # Indicadores em que o percentil do setor engana: no "caixa operacional / lucro", um número alto
 # costuma vir de lucro pequeno, não de caixa bom (a Petrobras, com 1,6×, saía "péssimo"). A nota é
 # por faixa fixa, sem comparar com o setor.
+VERSAO_DAS_FAIXAS = "1"  # sobe quando um limite ou uma nota das faixas fixas mudar
+
+
 @dataclass(frozen=True)
 class FaixaFixa:
     nome: str
