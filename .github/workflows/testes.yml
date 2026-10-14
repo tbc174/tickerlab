@@ -63,8 +63,10 @@ jobs:
           - { nome: app-1, parte: 1/3, dependencias: requirements.txt }
           - { nome: app-2, parte: 2/3, dependencias: requirements.txt }
           - { nome: app-3, parte: 3/3, dependencias: requirements.txt }
-          - { nome: trader-1, parte: trader-1/2, dependencias: requirements-trader.txt, qualidade: true }
-          - { nome: trader-2, parte: trader-2/2, dependencias: requirements-trader.txt }
+          # o ruff e o pyright (~30 s) vão na trader-2: a trader-1 tem só o test_c1_avaliacao, cujos
+          # 2 testes de mais de 1 min seguram a parte mesmo com os outros núcleos livres
+          - { nome: trader-1, parte: trader-1/2, dependencias: requirements-trader.txt }
+          - { nome: trader-2, parte: trader-2/2, dependencias: requirements-trader.txt, qualidade: true }
     services:
       postgres:
         image: postgres:16
