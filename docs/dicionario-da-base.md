@@ -96,8 +96,8 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração
 - **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo
-- **Onde fica:** Lido do acervo quando preciso (`base/cadastro.py::tickers_no_tempo`)
-- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de qual FCA veio cada código. A versão do código que processou a linha ainda não é guardada.
+- **Onde fica:** Parquet em `<acervo>/base/fca/tickers.parquet` (servidor de casa, `scripts/carga_fca.py`); a função é `base/cadastro.py::tickers_no_tempo`
+- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de qual FCA veio cada código. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -109,6 +109,78 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 | `ultimo_visto` | Data do último FCA em que o código apareceu | data (dia) |
 | `inicio_negociacao` | Início da negociação informado pela empresa | data (dia) |
 | `fim_negociacao` | Fim da negociação informado (vazio: ainda negociado) | data (dia) |
+
+## `valores_mobiliarios`
+
+Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), na versão mais nova de cada documento. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
+
+- **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
+- **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017
+- **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
+- **Linhagem:** `cnpj`, `referencia` e `versao` dizem de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data de referência do FCA | data (dia) |
+| `versao` | Versão do documento (fica a mais nova) | número inteiro |
+| `valor_mobiliario` | Tipo do papel, como a empresa informa | texto |
+| `classe` | Classe da ação preferencial (Preferencial Classe A...) | texto |
+| `codigo_informado` | Código de negociação como a empresa escreveu | texto |
+| `ticker` | O código, se está no formato de ticker da B3 (PETR4); senão vazio | texto |
+| `emissor` | As 4 letras do emissor (PETR), tiradas do ticker | texto |
+| `mercado` | Bolsa, balcão organizado ou balcão não organizado | texto |
+| `administradora` | Sigla da entidade administradora do mercado (B3) | texto |
+| `inicio_negociacao` | Início da negociação informado (a troca de ticker não muda) | data (dia) |
+| `fim_negociacao` | Fim da negociação informado (vazio: ainda negociado) | data (dia) |
+| `segmento` | Segmento de listagem (Novo Mercado, Nível 1...) | texto |
+| `inicio_listagem` | Início da listagem no segmento | data (dia) |
+| `fim_listagem` | Fim da listagem no segmento | data (dia) |
+
+## `emissores`
+
+Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o último ano do FCA em que apareceu. É a ligação do ISIN das carteiras dos fundos (CDA) com a empresa. Um emissor com mais de um CNPJ é conflito e fica sem resposta
+
+- **Fonte:** CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
+- **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017
+- **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
+- **Linhagem:** Derivada de `valores_mobiliarios` na mesma carga. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `emissor` | As 4 letras do emissor | texto |
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `primeiro_ano` | Ano do primeiro FCA com o emissor | número inteiro |
+| `ultimo_ano` | Ano do último FCA com o emissor | número inteiro |
+| `conflito` | Verdadeiro se o emissor aparece com mais de um CNPJ | verdadeiro ou falso |
+
+## `codigos_invalidos`
+
+Códigos de negociação informados fora do formato de ticker (a CSN informa "4030"): não viram ligação e vão para o relatório de buracos
+
+- **Fonte:** CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
+- **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017
+- **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
+- **Linhagem:** Derivada de `valores_mobiliarios` na mesma carga. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data de referência do FCA | data (dia) |
+| `valor_mobiliario` | Tipo do papel, como a empresa informa | texto |
+| `codigo_informado` | O código como a empresa escreveu | texto |
 
 ## `padroes_setoriais`
 

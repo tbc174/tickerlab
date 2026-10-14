@@ -63,25 +63,39 @@ TERMOS = {
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
-    # o do BC fica de fora: o firewall dele responde "Requisição inválida" a robôs (14/10/2026)
+    # o firewall do BC bloqueia por alguns minutos de vez em quando ("Requisição inválida"): a nova
+    # tentativa do `scripts/arquivar_fontes.py` cobre (14/10/2026)
+    "catalogo-bc": PORTAL_DO_BC,
     "catalogo-tesouro": PORTAL_DO_TESOURO,
     "catalogo-ibama": PORTAL_DO_IBAMA,
 }
+
+
+PAINEIS = ("powerbi.com", "app.powerbi", "lookerstudio.google", "datastudio.google")
 
 
 def _json(cliente: Cliente, url: str) -> dict:
     return json.loads(cliente.ler(url).conteudo)
 
 
+def _e_arquivo(recurso: dict) -> bool:
+    """Recurso que é arquivo de dados (não painel nem página: a ANTT lista um Power BI)."""
+    url = recurso.get("url") or ""
+    formato = (recurso.get("format") or "").lower()
+    return bool(url) and formato != "html" and not any(p in url for p in PAINEIS)
+
+
 def descobrir_ckan(cliente: Cliente, portal: str, *pacotes: str) -> list[Alvo]:
-    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA)."""
+    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA, CCEE, ANTT...)."""
     alvos: list[Alvo] = []
     for pacote in pacotes:
         resposta = _json(cliente, f"{portal}/api/3/action/package_show?id={pacote}")
-        recursos = resposta.get("result", {}).get("resources", [])
+        recursos = [
+            r for r in resposta.get("result", {}).get("resources", []) if _e_arquivo(r)
+        ]
         if not recursos:
             raise ErroDeDescoberta(f"{pacote}: pacote sem arquivos em {portal}")
-        alvos += [Alvo(r["url"]) for r in recursos if r.get("url")]
+        alvos += [Alvo(r["url"]) for r in recursos]
     return alvos
 
 
@@ -288,8 +302,8 @@ FONTES: list[Fonte] = [
             ("cda", ("FI/DOC/CDA/DADOS/", "FI/DOC/CDA/DADOS/HIST/")),  # desde 2005
         )
     ),
-    # fontes abertas novas (pesquisa de 13–14/10/2026); o SCR.data do BC fica de fora por ora: o
-    # firewall do BC recusa o cliente do arquivista (14/10/2026), a investigar à parte
+    # fontes abertas novas (pesquisa de 13–14/10/2026)
+    Fonte("bcb-scr", "semanal", _ckan(PORTAL_DO_BC, "scr_data")),
     Fonte(
         "ccee-pld",
         "semanal",

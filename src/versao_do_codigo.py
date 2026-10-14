@@ -11,6 +11,7 @@ commit. As cargas da base vendável recusam versão desconhecida ou modificada
 import os
 import subprocess
 from collections.abc import Callable
+from functools import cache
 from pathlib import Path
 
 VARIAVEL = "TICKERLAB_VERSAO"
@@ -37,6 +38,7 @@ def _git(*argumentos: str) -> str:
     ).stdout.strip()
 
 
+@cache
 def _perguntar_ao_git() -> RespostaDoGit:
     """O commit atual e se há mudanças não salvas; None se não há Git ou repositório."""
     try:
