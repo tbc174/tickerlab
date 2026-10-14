@@ -24,7 +24,7 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
           </a>
         </div>
       </header>
-      <div className="app-corpo faixa">
+      <div className={comMenu ? "app-corpo faixa" : "app-corpo sem-menu faixa"}>
         {comMenu ? (
           <nav className="app-menu" aria-label="Telas">
             {TELAS_DO_APP.map((pagina) => (

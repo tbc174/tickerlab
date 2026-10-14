@@ -17,6 +17,7 @@
 .app-menu a:hover { color: var(--texto); }
 .app-menu a.active { background: var(--superficie); color: var(--texto); }
 .app-corpo main { min-width: 0; }
+.app-corpo.sem-menu { grid-template-columns: 1fr; }
 .telas-do-app { list-style: none; padding: 0; display: grid; gap: 1rem;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .telas-do-app a { font-weight: 700; }
@@ -79,3 +80,14 @@
 .campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; border: 0; padding: 0; margin: 0; }
 .campo-de-ativos legend { font-size: .88rem; color: var(--apagado); margin-bottom: .3rem; }
 .campo-de-ativos .marcar { flex-direction: row; align-items: center; gap: .35rem; color: var(--texto); }
+/* link compartilhado (onda 4): a ficha "Foi sorte?" congelada ou o PDF original */
+.compartilhado { max-width: 46rem; }
+.cartao-do-veredito { margin: 1.25rem 0; padding: 1rem 1.25rem; border-radius: var(--raio);
+  border: 1px solid var(--linha-forte); background: var(--superficie); }
+.cartao-do-veredito h2 { margin: 0 0 .4rem; font-size: 1.2rem; }
+.checagens { list-style: none; padding: 0; display: grid; gap: .8rem; }
+.checagens li p { margin: .2rem 0 0; }
+.ficha-tecnica { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 1.25rem 0; }
+.ficha-tecnica dt { color: var(--apagado); }
+.ficha-tecnica dd { margin: 0; }
+.compartilhado code { overflow-wrap: anywhere; }
