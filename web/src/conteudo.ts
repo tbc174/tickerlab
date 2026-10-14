@@ -59,8 +59,29 @@ export const paginasDoApp: PaginaDoApp[] = paginasJson;
 export const planos = planosJson;
 import siteJson from "../conteudo/site.json";
 
-// o que só o site usa e vem do app: estilos do Report Studio e ativos de exemplo
+// o que só o site usa e vem do app: estilos do Report Studio, ativos de exemplo e a fita da inicial
 export const site = siteJson;
+import exemploJson from "../conteudo/exemplo.json";
+
+/** Um número do painel: o valor (para a cor) e o texto como o PDF mostra ("▲ +545,8%"). */
+export interface NumeroDoPainel {
+  valor: number;
+  texto: string;
+}
+
+/** O painel da página inicial: os números do PDF de exemplo (painel_de_exemplo no Python). */
+export const exemplo: {
+  ticker: string;
+  codigo: string;
+  inicio: string; // AAAA-MM-DD
+  fim: string;
+  retorno_total: NumeroDoPainel;
+  retorno_ao_ano: NumeroDoPainel;
+  maior_queda: NumeroDoPainel;
+  volatilidade: NumeroDoPainel;
+  sharpe: NumeroDoPainel;
+  serie: number[]; // preço em base 100
+} = exemploJson;
 import legalJson from "../conteudo/legal.json";
 import qualidadeJson from "../conteudo/qualidade.json";
 import metodologiaJson from "../conteudo/metodologia.json";

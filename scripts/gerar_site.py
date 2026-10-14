@@ -50,7 +50,8 @@ PASTAS_DO_PYTHON = ("fontes", "marca", "tema", "relatorio")
 ARQUIVOS_DO_PYTHON = ("catalogo.json",)
 
 
-def _dados_de_exemplo(ticker: str) -> pd.DataFrame:
+def dados_de_exemplo(ticker: str) -> pd.DataFrame:
+    """Os preços de exemplo guardados no projeto (`dados_de_exemplo/`), sem internet."""
     nome = ticker.replace("^", "_")
     return pd.read_csv(
         RAIZ / "dados_de_exemplo" / f"{nome}.csv", index_col=0, parse_dates=True
@@ -62,7 +63,7 @@ def gerar_relatorio_de_exemplo(destino: Path) -> list[str]:
     estilo, com a data fixa do último dado de exemplo (o arquivo não muda a cada geração)."""
     pasta = destino / "relatorio"
     pasta.mkdir(parents=True, exist_ok=True)
-    dados = _dados_de_exemplo(TICKER_DO_EXEMPLO)
+    dados = dados_de_exemplo(TICKER_DO_EXEMPLO)
     gerado_em = datetime.combine(dados.index[-1].date(), datetime.min.time()).replace(
         hour=18, tzinfo=relatorios.FUSO
     )

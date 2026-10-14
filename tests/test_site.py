@@ -103,7 +103,10 @@ def test_links_para_o_app_vao_para_paginas_que_existem():
 
 def test_nada_vem_de_terceiros():
     """Sem Google Fonts, sem rastreadores: fontes, imagens e scripts são do próprio site."""
-    for arquivo in [*PAGINAS_HTML, SITE / "estilo.css", SITE / "site.js"]:
+    for arquivo in [
+        *PAGINAS_HTML,
+        *(SITE / n for n in ("estilo.css", "site.js", "movimento.js")),
+    ]:
         texto = arquivo.read_text(encoding="utf-8")
         assert "googleapis" not in texto and "gstatic" not in texto
         externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', texto)
@@ -190,7 +193,7 @@ def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():
     um deploy recebe o HTML novo com o estilo antigo."""
     import hashlib
 
-    for nome in ("estilo.css", "site.js"):
+    for nome in ("estilo.css", "site.js", "movimento.js"):
         conteudo = (SITE / nome).read_text(
             encoding="utf-8"
         )  # quebras de linha iguais em todo SO
@@ -308,7 +311,11 @@ def test_pagina_sobre_usa_o_texto_aprovado():
 def test_sobre_no_menu_e_no_rodape_de_todas_as_paginas():
     for arquivo in PAGINAS_HTML:
         texto = arquivo.read_text(encoding="utf-8")
-        topo, rodape = texto.split("</header>")[0], texto.split("<footer")[1]
+        # o rodapé do site (um cartão pode ter o próprio <footer>, como o painel da inicial)
+        topo, rodape = (
+            texto.split("</header>")[0],
+            texto.split('<footer class="rodape')[1],
+        )
         assert '<a href="/sobre.html"' in topo, arquivo.name
         assert '<a href="/sobre.html">' in rodape, arquivo.name
 

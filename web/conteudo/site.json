@@ -38,5 +38,93 @@
       "rotulo": "BTC-USD",
       "simbolo": "BTC-USD"
     }
-  ]
+  ],
+  "fita": [
+    {
+      "codigo": "PETR4",
+      "nome": "Petrobras",
+      "simbolo": "PETR4.SA"
+    },
+    {
+      "codigo": "VALE3",
+      "nome": "Vale",
+      "simbolo": "VALE3.SA"
+    },
+    {
+      "codigo": "ITUB4",
+      "nome": "Itaú Unibanco",
+      "simbolo": "ITUB4.SA"
+    },
+    {
+      "codigo": "WEGE3",
+      "nome": "WEG",
+      "simbolo": "WEGE3.SA"
+    },
+    {
+      "codigo": "BBAS3",
+      "nome": "Banco do Brasil",
+      "simbolo": "BBAS3.SA"
+    },
+    {
+      "codigo": "TAEE11",
+      "nome": "Taesa",
+      "simbolo": "TAEE11.SA"
+    },
+    {
+      "codigo": "HGLG11",
+      "nome": "Pátria Log · FII",
+      "simbolo": "HGLG11.SA"
+    },
+    {
+      "codigo": "IVVB11",
+      "nome": "iShares S&P 500 · ETF",
+      "simbolo": "IVVB11.SA"
+    },
+    {
+      "codigo": "^BVSP",
+      "nome": "Ibovespa",
+      "simbolo": "^BVSP"
+    },
+    {
+      "codigo": "^GSPC",
+      "nome": "S&P 500",
+      "simbolo": "^GSPC"
+    },
+    {
+      "codigo": "AAPL",
+      "nome": "Apple",
+      "simbolo": "AAPL"
+    },
+    {
+      "codigo": "MSFT",
+      "nome": "Microsoft",
+      "simbolo": "MSFT"
+    },
+    {
+      "codigo": "NVDA",
+      "nome": "Nvidia",
+      "simbolo": "NVDA"
+    },
+    {
+      "codigo": "GOOGL",
+      "nome": "Alphabet",
+      "simbolo": "GOOGL"
+    },
+    {
+      "codigo": "BTC-USD",
+      "nome": "Bitcoin",
+      "simbolo": "BTC-USD"
+    },
+    {
+      "codigo": "ETH-USD",
+      "nome": "Ethereum",
+      "simbolo": "ETH-USD"
+    },
+    {
+      "codigo": "USD/BRL",
+      "nome": "Dólar em reais",
+      "simbolo": "BRL=X"
+    }
+  ],
+  "total_de_ativos": 1693
 }

@@ -3,15 +3,27 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Modulo } from "../src/conteudo";
+import { type Modulo, exemplo, marca, site } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
+import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
 import { ROTAS } from "../src/rotas";
-import { contagem } from "../src/site/comum";
+import { MODULOS_DO_PRODUTO, contagem } from "../src/site/comum";
+import { ASSINATURA } from "../src/site/textos";
 
 const SITE = join(process.cwd(), "..", "site");
 // LF sempre: o Git no Windows pode tirar os arquivos com CRLF
 const doSite = (nome: string) => readFileSync(join(SITE, nome), "utf8").replace(/\r\n/g, "\n");
+// o texto como o React escreve no HTML
+const esc = (texto: string) =>
+  texto.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("'", "&#x27;");
+const semTags = (html: string) => html.replace(/<[^>]+>/g, "");
+/** O pedaço do HTML que começa em `inicio` e vai até o primeiro `fim` depois dele. */
+function trecho(html: string, inicio: string, fim: string): string {
+  const de = html.indexOf(inicio);
+  expect(de, `não achei ${inicio}`).toBeGreaterThanOrEqual(0);
+  return html.slice(de, html.indexOf(fim, de) + fim.length);
+}
 
 describe("rotas do site", () => {
   it("cada página vira um arquivo .html diferente", () => {
@@ -78,6 +90,134 @@ function moduloDeTeste(prontas: number, emBreve: number): Modulo {
     ],
   };
 }
+
+describe("movimento sem prejuízo (ADR 0065)", () => {
+  it("nada vem escondido esperando o JavaScript: o Google e quem não tem JS veem tudo", () => {
+    for (const arquivo of arquivos) {
+      const html = renderizar(arquivo);
+      expect(html, arquivo).not.toContain("v2-revelar");
+      expect(html, arquivo).not.toContain("v2-anima");
+    }
+  });
+
+  it("todo fundo animado tem o botão de pausa (WCAG 2.2.2)", () => {
+    const comFundo = arquivos.filter((a) => renderizar(a).includes("data-fundo-mercado"));
+    expect(comFundo).toContain("index.html");
+    for (const arquivo of comFundo) {
+      expect(renderizar(arquivo), arquivo).toMatch(
+        /<button class="v2-pausa" type="button" data-pausa="" aria-pressed="false">/,
+      );
+    }
+  });
+});
+
+describe("página inicial v2", () => {
+  const html = renderizar("index.html");
+
+  it("o título é a assinatura do manual", () => {
+    expect(semTags(trecho(html, '<h1 id="titulo-heroi">', "</h1>"))).toBe(ASSINATURA);
+  });
+
+  it("o painel mostra os números do relatório de exemplo, com a seta junto da cor", () => {
+    const painel = trecho(html, '<article class="v2-painel"', "</article>");
+    expect(painel).toContain('<p class="v2-numero alta"><span aria-hidden="true">▲</span> +545,8%</p>');
+    const texto = semTags(painel);
+    for (const numero of [
+      exemplo.retorno_total,
+      exemplo.retorno_ao_ano,
+      exemplo.maior_queda,
+      exemplo.volatilidade,
+      exemplo.sharpe,
+    ])
+      expect(texto).toContain(numero.texto);
+    expect(texto).toContain("▼ −39,1%");
+    expect(texto).toContain("11/10/2021 a 09/10/2026");
+    expect(texto).toContain(exemplo.codigo);
+    expect(painel).toContain(`href="/relatorio/exemplo-${exemplo.ticker}.pdf"`);
+  });
+
+  it("o desenho do painel tem um ponto para cada valor da série", () => {
+    const linha = trecho(html, '<polyline class="linha"', "/>");
+    const pontos = linha.match(/points="([^"]+)"/)![1].trim().split(" ");
+    expect(pontos).toHaveLength(exemplo.serie.length);
+    for (const ponto of pontos) expect(ponto).toMatch(/^\d+(\.\d)?,\d+(\.\d)?$/);
+  });
+
+  it("a fita mostra o total de ativos da busca e só códigos e nomes, sem preço", () => {
+    const fita = trecho(html, '<section class="v2-fita"', "</section>");
+    expect(fita).toContain(`${site.total_de_ativos.toLocaleString("pt-BR")} ativos na busca`);
+    expect(fita).toContain("1.693 ativos na busca");
+    for (const ativo of site.fita) expect(fita).toContain(`<li><b>${esc(ativo.codigo)}</b>`);
+    // a segunda volta da fita (para emendar sem pulo) não é lida duas vezes
+    expect(fita.match(/<ul aria-hidden="true">/g)).toHaveLength(1);
+  });
+
+  it("diz de onde vêm os dados", () => {
+    const fontes = semTags(trecho(html, '<section class="faixa v2-fontes"', "</section>"));
+    for (const fonte of ["CVM", "SEC", "Banco Central", "Tesouro dos EUA", "Yahoo Finance"])
+      expect(fontes).toContain(fonte);
+  });
+
+  it("o bento tem as seis frentes: o que já existe e o que vem", () => {
+    const bento = trecho(html, '<div class="v2-bento">', '<p><a class="seta" href="/produto.html">');
+    for (const modulo of MODULOS_DO_PRODUTO) {
+      expect(bento).toContain(`<h3>${esc(modulo.nome)}`);
+      expect(bento).toContain(`href="/produto.html#${modulo.chave}"`);
+    }
+    // a frente sem nada pronto aparece como "em breve", com o tracejado
+    expect(bento).toMatch(/class="cartao v2-faixa-cartao breve"[^]*?<span class="selo breve">em breve<\/span>/);
+  });
+
+  it("a faixa 'Por que o TickerLab' com a frase da diferença", () => {
+    const faixa = semTags(trecho(html, '<div class="escura v2-diferenca">', "</section>"));
+    expect(faixa).toContain("Outros sites mostram os números. O TickerLab testa se a ideia funciona.");
+    expect(faixa).toContain("Sem olhar o futuro");
+  });
+
+  it("o relatório de exemplo também está a um toque no celular (o painel some lá)", () => {
+    expect(html).toContain(`href="/relatorio/exemplo-${exemplo.ticker}.pdf">Ver um relatório de exemplo (PDF)`);
+  });
+});
+
+describe("estilo v2 (ADR 0065)", () => {
+  const estilo = css();
+  // os blocos de "reduzir movimento" (o do CSS antigo e os do visual v2)
+  const menosMovimento = estilo.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
+
+  it("traz as peças do visual novo", () => {
+    for (const classe of [".v2-heroi-fundo", ".v2-painel", ".v2-bento", ".v2-pausa", ".v2-fita"])
+      expect(estilo).toContain(classe);
+  });
+
+  it("alta e queda vêm da marca, nos dois temas", () => {
+    const { paleta_clara: claro, paleta_escura: escuro } = marca;
+    expect(estilo).toContain(`--alta: ${claro.alta}; --queda: ${claro.queda};`);
+    expect(estilo).toContain(`--alta: ${escuro.alta}; --queda: ${escuro.queda};`);
+    expect(estilo).not.toContain("#f0525b"); // o vermelho do protótipo, que não é o da marca
+  });
+
+  it("com 'reduzir movimento', o que roda sem parar para e o botão de pausa some", () => {
+    expect(menosMovimento).toContain(".v2-pausa { display: none; }");
+    for (const peca of [".v2-aurora span", ".v2-painel::before", ".v2-fita-faixa"])
+      expect(menosMovimento).toContain(`${peca} { animation: none !important; }`);
+  });
+
+  it("no celular o hero volta a ter uma coluna só (a regra do v2 vem depois da antiga)", () => {
+    const duasColunas = estilo.lastIndexOf(".heroi { grid-template-columns: 1.05fr .95fr; }");
+    const umaColuna = estilo.lastIndexOf(".heroi { grid-template-columns: 1fr; }");
+    expect(duasColunas).toBeGreaterThan(0);
+    expect(umaColuna).toBeGreaterThan(duasColunas);
+    expect(estilo.lastIndexOf("@media (max-width: 860px)", umaColuna)).toBeGreaterThan(duasColunas);
+  });
+
+  it("o botão de pausa tem área de toque de 44 px em tela de toque (ADR 0066)", () => {
+    expect(estilo).toMatch(/@media \(pointer: coarse\) \{[^}]*\.v2-pausa \{ min-height: 44px;/);
+  });
+
+  it("nada do catálogo do design system (só existia no protótipo)", () => {
+    expect(estilo).not.toContain("no-catalogo");
+  });
+});
 
 describe("contagem do módulo", () => {
   it("no singular e no plural", () => {

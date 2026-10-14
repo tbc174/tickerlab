@@ -191,3 +191,68 @@ def test_app_leva_os_textos_de_juros_e_da_linha_do_tempo():
         {"nome": n, "valor": v} for n, v in ldt.RELEVANCIAS.items()
     ]
     assert app["linha_do_tempo"]["padrao"] == ldt.MATERIALIDADE_PADRAO
+
+
+def _pagina_do_pdf_de_exemplo(numero: int) -> str:
+    """O texto de uma página do PDF de exemplo que o site oferece (site/relatorio/)."""
+    import pypdfium2
+
+    from scripts import gerar_site as gs
+
+    caminho = gs.DESTINO / "relatorio" / f"exemplo-{gs.TICKER_DO_EXEMPLO}.pdf"
+    documento = pypdfium2.PdfDocument(caminho.read_bytes())
+    try:
+        return (
+            documento[numero - 1].get_textpage().get_text_range().replace("\r\n", "\n")
+        )
+    finally:
+        documento.close()
+
+
+def test_painel_do_site_tem_os_mesmos_numeros_do_pdf_de_exemplo():
+    """ADR 0065, item 4: o número do hero sai do mesmo cálculo do relatório, nunca escrito à mão."""
+    painel = exp.painel_de_exemplo()
+    numeros_chave = _pagina_do_pdf_de_exemplo(2)
+    rotulos_no_pdf = {
+        "retorno_total": "Retorno total",
+        "retorno_ao_ano": "Retorno anualizado",
+        "volatilidade": "Volatilidade anual",
+        "maior_queda": "Maior queda",
+        "sharpe": "Índice de Sharpe",
+    }
+    for chave, rotulo in rotulos_no_pdf.items():
+        assert f"{rotulo}\n{painel[chave]['texto']}\n" in numeros_chave, chave
+    assert painel["retorno_total"]["texto"].startswith("▲")  # a seta vai junto da cor
+    assert painel["maior_queda"]["valor"] < 0
+
+
+def test_painel_do_site_leva_o_periodo_e_a_serie_em_base_100():
+    from scripts import gerar_site as gs
+
+    painel = exp.painel_de_exemplo()
+    dados = gs.dados_de_exemplo(gs.TICKER_DO_EXEMPLO)
+    assert painel["ticker"] == gs.TICKER_DO_EXEMPLO
+    assert painel["inicio"] == f"{dados.index[0]:%Y-%m-%d}"
+    assert painel["fim"] == f"{dados.index[-1]:%Y-%m-%d}"
+    serie = painel["serie"]
+    assert len(serie) == 64
+    assert serie[0] == 100
+    # o último ponto é o retorno total: 100 × (1 + retorno)
+    assert abs(serie[-1] - 100 * (1 + painel["retorno_total"]["valor"])) < 0.1
+
+
+def test_painel_vai_para_o_site_no_exemplo_json():
+    assert exp.conteudo()["exemplo"] == exp.painel_de_exemplo()
+
+
+def test_site_leva_a_fita_e_o_total_de_ativos_da_busca():
+    """A fita da página inicial: código do catálogo e um nome curto, nenhum preço (ADR 0065)."""
+    from src import catalogo
+
+    site = exp.conteudo()["site"]
+    tabela = catalogo.carregar()
+    assert site["total_de_ativos"] == len(tabela)
+    assert len(site["fita"]) >= 10
+    for item in site["fita"]:
+        assert set(item) == {"simbolo", "codigo", "nome"}
+        assert item["codigo"] == tabela.loc[item["simbolo"], "codigo"]
