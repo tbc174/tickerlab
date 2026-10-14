@@ -10,11 +10,13 @@ import sqlalchemy as sa
 from streamlit.testing.v1 import AppTest
 
 from src import eventos as ev
-from src import pulse
+from src import ficha, pulse
 from src.banco import dados_do_usuario as repo
 from src.banco import eventos as repo_eventos
 from src.banco import pulse as repo_pulse
 from src.banco.modelo import eventos
+from src.dados import baixar_dados
+from src.estrategias import ESTRATEGIAS
 from tests.ajudantes_da_conta import abrir_app, entrar_como, id_do_usuario, ir_para
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm"
@@ -135,3 +137,93 @@ def test_erro_ao_ler_os_acontecimentos_nao_marca_a_visita(banco, ana, monkeypatc
     assert not app.exception
     assert app.warning
     assert _visita(banco, ana_id) == VISITA
+
+
+# --- vereditos das estratégias salvas (PR E2) ---------------------------------------------
+
+RETRATO = {
+    "ticker": "PETR4.SA",
+    "periodo": "5y",
+    "backtest_estrategia": "Cruzamento de médias",
+}
+
+
+def _pedido_de_hoje():
+    padroes = {p.nome: p.padrao for p in ESTRATEGIAS["Cruzamento de médias"].parametros}
+    return ficha.PedidoDaFicha(
+        dados=baixar_dados("PETR4.SA", "5y", True),
+        estrategia="Cruzamento de médias",
+        parametros=padroes,
+        custo_por_operacao=0.0005,
+        capital_inicial=10_000.0,
+    )
+
+
+def _veredito_de_hoje():
+    return ficha.montar_ficha(_pedido_de_hoje()).veredito.resultado.value
+
+
+def _outro(veredito):
+    return next(r.value for r in ficha.Resultado if r.value != veredito)
+
+
+def _salvar_backtest(banco, usuario_id, veredito, pedido=None, com_ficha=True):
+    resultado = {"numeros": {}, "dados_ate": "09/10/2026"}
+    if com_ficha:
+        resultado["ficha"] = {
+            "pedido": pedido or ficha.pedido_para_guardar(_pedido_de_hoje()),
+            "veredito": veredito,
+        }
+    with banco.begin() as c:
+        return repo.salvar_simulacao(
+            c, usuario_id, "backtest", "Meu cruzamento", RETRATO, resultado
+        ).id
+
+
+def _vistos(banco, usuario_id):
+    with banco.connect() as c:
+        return repo_pulse.vereditos_vistos(c, usuario_id)
+
+
+def test_veredito_que_mudou_aparece_fica_no_rerun_e_e_guardado(banco, ana):
+    app, ana_id = ana
+    hoje = _veredito_de_hoje()
+    antes = _outro(hoje)
+    sim_id = _salvar_backtest(banco, ana_id, antes)
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    esperado = (
+        f'**Meu cruzamento**: o veredito da ficha "Foi sorte?" mudou de **{antes}** '
+        f"para **{hoje}** com os dados de hoje."
+    )
+    assert esperado in _textos(app)
+    assert _vistos(banco, ana_id) == {str(sim_id): hoje}
+    app.run()  # o rerun não apaga o que mudou
+    assert esperado in _textos(app)
+
+
+def test_veredito_igual_nao_aparece_como_mudanca(banco, ana):
+    app, ana_id = ana
+    hoje = _veredito_de_hoje()
+    sim_id = _salvar_backtest(banco, ana_id, hoje)
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    assert "O veredito da estratégia conferida não mudou." in _textos(app)
+    assert _vistos(banco, ana_id) == {str(sim_id): hoje}
+
+
+def test_backtest_salvo_antes_do_pulse_pede_para_salvar_de_novo(banco, ana):
+    app, ana_id = ana
+    _salvar_backtest(banco, ana_id, None, com_ficha=False)
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    assert "salve de novo" in _textos(app)
+
+
+def test_pedido_estragado_nao_da_para_conferir_e_nao_quebra(banco, ana):
+    app, ana_id = ana
+    _salvar_backtest(banco, ana_id, "passou", pedido={"versao": 99})
+    ir_para(app, "pulse")
+    assert not app.exception and not app.error
+    assert "Não deu para conferir agora: Meu cruzamento." in _textos(app)
+    assert _vistos(banco, ana_id) == {}

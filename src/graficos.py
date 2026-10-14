@@ -28,13 +28,13 @@ COR_BOTAO = marca.AZUL  # botão ativo do seletor de período
 COR_ALTA = marca.ALTA  # verde só para alta
 COR_QUEDA = marca.QUEDA  # vermelho só para queda
 COR_INDICE = marca.TEXTO_APAGADO  # índices em cinza
-CORES_OUTROS_ATIVOS = list(marca.SERIES[1:5])  # âmbar, verde-água, rosa, amarelo
+CORES_OUTROS_ATIVOS = list(marca.SERIES[1:5])  # âmbar, ciano, roxo, oliva
 CORES_MEDIAS = [
     marca.SERIES[5],
     marca.SERIES[3],
     marca.SERIES[2],
-]  # violeta, rosa, verde-água
-PREENCHIMENTO_AZUL = "rgba(110, 149, 255, 0.22)"
+]  # magenta, roxo, ciano
+PREENCHIMENTO_AZUL = "rgba(90, 146, 248, 0.22)"  # marca.SERIES[0]
 PREENCHIMENTO_QUEDA = "rgba(240, 82, 91, 0.22)"
 # mapa de calor: queda (vermelho) → zero (superfície) → alta (verde)
 ESCALA_QUEDA_ALTA = [[0, "#b8323b"], [0.5, marca.SUPERFICIE], [1, "#1d9567"]]

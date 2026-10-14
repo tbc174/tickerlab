@@ -394,11 +394,14 @@ def test_pulse_no_banco_de_verdade_nao_volta_o_relogio_e_some_com_a_conta(motor)
     with motor.begin() as conexao:
         ana, _ = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
         bia, _ = repo.entrar(conexao, "g-bia", "bia@exemplo.com")
-        pulse.marcar_visita(conexao, ana.id, agora)
-        pulse.marcar_visita(conexao, ana.id, agora - timedelta(hours=1))
+        pulse.marcar_visita(conexao, ana.id, agora, {"s1": "passou"})
+        pulse.marcar_visita(
+            conexao, ana.id, agora - timedelta(hours=1), {"s1": "não passou"}
+        )
         pulse.marcar_visita(conexao, bia.id, agora + timedelta(days=1))
     with motor.begin() as conexao:
         assert pulse.ultima_visita(conexao, ana.id) == agora
+        assert pulse.vereditos_vistos(conexao, ana.id) == {"s1": "passou"}
         repo.apagar_conta(conexao, ana.id)
     with motor.connect() as conexao:
         assert pulse.ultima_visita(conexao, ana.id) is None

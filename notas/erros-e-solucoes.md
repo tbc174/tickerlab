@@ -340,3 +340,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Solução:** `python -m scripts.juntar_main`: merge da `main` no ramo; conflito só em pasta gerada (`site/`, `novo/`, `web/conteudo/`) é resolvido partindo da versão da `main` e rodando todos os geradores por cima; conflito em código desfaz o merge e para. Depois, `git push` comum. Regra no `CLAUDE.md` (Git e GitHub).
 - **Detalhe:** numa cópia criada antes da regra `web/** eol=lf` do `.gitattributes`, o `web/app/index.html` tinha CRLF e o build do Windows punha uma linha em branco a mais no `novo/index.html` (o CI recusaria). Cópia nova (`git worktree add`) já sai com LF.
 - **Data:** 13/10/2026
+
+## Duas sessões criam a migração com o mesmo número
+- **Sintoma:** depois de mesclar a `main` no ramo do Pulse, o Alembic acusou duas "cabeças" (`alembic heads` com duas revisões): a `0030_pulse.py` do ramo e a `0030_relatorio_empresa.py` que outra sessão tinha acabado de mesclar.
+- **Causa:** cada sessão escolhe o próximo número olhando a `main` do momento em que começa; duas sessões em paralelo escolhem o mesmo.
+- **Solução:** quem entra por último renumera: o arquivo, `revision` e `down_revision` (a do Pulse virou `0031`, apontando para a `0030`), e o nome do teste da migração. Conferir com `alembic heads` (uma linha só) e avisar no quadro de sessões o número usado, para a próxima sessão já pegar o seguinte.
+- **Data:** 13/10/2026
+
+## pyright numa cópia de trabalho não acha os pacotes
+- **Sintoma:** numa cópia criada com `git worktree add` (`analise-acoes-NOME`), o pyright acusava `Import "streamlit" could not be resolved` em todo arquivo.
+- **Causa:** a cópia não tem `.venv` própria; o pyright procura o ambiente dentro da pasta.
+- **Solução:** apontar para o Python da cópia principal: `pyright --pythonpath "C:/Users/tiago/projetos/analise-acoes/.venv/Scripts/python.exe" src telas scripts`.
+- **Data:** 13/10/2026

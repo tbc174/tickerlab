@@ -44,8 +44,10 @@ QUEDA = (
     "#f76169"  # um pouco mais claro que antes, para passar no contraste sobre o marinho
 )
 ATENCAO = "#f5b83d"
-# séries dos gráficos, sempre nesta ordem (vizinhas distinguíveis por daltônicos)
-SERIES = ("#6e95ff", "#f5a524", "#2bc4a9", "#e874b6", "#e8d44d", "#a98bff")
+# séries dos gráficos, sempre nesta ordem: azul, âmbar, ciano, roxo, oliva, magenta. Conferidas
+# com o validador de cores (13/10/2026): vizinhas distinguíveis por daltônicos (ΔE >= 8) e à vista
+# (>= 15), luminosidade na faixa do tema, contraste >= 3:1 e nenhuma parecida com alta ou queda
+SERIES = ("#5a92f8", "#c6830e", "#1f8fa8", "#9778ea", "#a08a1a", "#c25fc0")
 
 # Tema claro (site no modo claro, relatórios em PDF, e-mails): marinho sobre claro, cartões em
 # azul claro. Verde, vermelho e as séries ficam mais escuros para ter contraste sobre o claro.
@@ -61,7 +63,7 @@ PAPEL_AZUL_TEXTO = (
 PAPEL_ALTA = "#178a5d"
 PAPEL_QUEDA = "#cf3540"
 PAPEL_ATENCAO = "#9a6700"  # o âmbar escurecido, para texto sobre o claro
-PAPEL_SERIES = ("#2962ff", "#c77700", "#11897a", "#b8417f", "#8a7a00", "#6b4fe0")
+PAPEL_SERIES = ("#2962ff", "#c77700", "#0a7aa0", "#6b4fe0", "#7e6a00", "#a83a90")
 
 
 @dataclass(frozen=True)

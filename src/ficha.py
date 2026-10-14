@@ -15,7 +15,9 @@ Os limites de cada checagem são constantes deste módulo, escritos antes de qua
 (o espírito da ADR 0006) e publicados na metodologia.
 """
 
-from dataclasses import dataclass, replace
+import math
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, fields, replace
 from enum import Enum
 
 import numpy as np
@@ -34,7 +36,7 @@ from src.backtest import (
     ResultadoBacktest,
     executar_backtest,
 )
-from src.cdi import curva_do_cdi
+from src.cdi import calcular_taxa_anual_do_cdi, curva_do_cdi
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.imposto import aplicar_imposto
 from src.indicadores import DIAS_POR_ANO, calcular_indice_sharpe
@@ -596,4 +598,183 @@ def montar_ficha(pedido: PedidoDaFicha) -> Ficha:
             _checar_quedas_do(resultado, pedido.tolerancia_de_queda),
         ),
         tentativas=total_de_tentativas(combinacoes, pedido.tentativas_da_pessoa),
+    )
+
+
+# --- O pedido guardado com o backtest salvo (o Pulse recalcula a ficha; onda 3, PR E2) ------
+
+VERSAO_DO_PEDIDO_GUARDADO = 1
+CUSTO_MAXIMO_GUARDADO = 0.2  # 20% por operação: acima disso não é um custo, é um erro
+CAPITAL_MAXIMO_GUARDADO = 1e12
+TAXA_MAXIMA_GUARDADA = 1.0  # 100% ao ano
+TENTATIVAS_MAXIMAS_GUARDADAS = 100_000
+# as proteções que são frações ou múltiplos (o resto é janela ou dias, inteiros)
+_PROTECOES_DECIMAIS = {
+    "stop_loss",
+    "take_profit",
+    "stop_movel",
+    "stop_atr",
+    "risco_por_operacao",
+    "alvo_de_volatilidade",
+}
+# as que aceitam "desligada" (None); as janelas sempre têm um número
+_PROTECOES_QUE_DESLIGAM = _PROTECOES_DECIMAIS | {"dias_de_espera"}
+_PROTECAO_DECIMAL_MAXIMA = 50.0
+_PROTECAO_INTEIRA_MAXIMA = 1_000
+
+
+def pedido_para_guardar(pedido: PedidoDaFicha) -> dict:
+    """O pedido em tipos simples (JSON), sem os preços nem o CDI: o Pulse baixa os de hoje."""
+    return {
+        "versao": VERSAO_DO_PEDIDO_GUARDADO,
+        "estrategia": pedido.estrategia,
+        "parametros": dict(pedido.parametros),
+        "custo_por_operacao": float(pedido.custo_por_operacao),
+        "capital_inicial": float(pedido.capital_inicial),
+        "protecoes": None if pedido.protecoes is None else asdict(pedido.protecoes),
+        "livres": list(pedido.livres),
+        "taxa_livre_de_risco": float(pedido.taxa_livre_de_risco),
+        "usa_cdi": pedido.cdi_diario is not None,
+        "tolerancia_de_queda": float(pedido.tolerancia_de_queda),
+        "tentativas_da_pessoa": int(pedido.tentativas_da_pessoa),
+    }
+
+
+def _recusar(motivo: str) -> ValueError:
+    return ValueError(f"O pedido guardado da ficha não vale mais: {motivo}.")
+
+
+def _decimal(valor: object, minimo: float, maximo: float, nome: str) -> float:
+    if (
+        isinstance(valor, bool)
+        or not isinstance(valor, int | float)
+        or not math.isfinite(valor)
+        or not minimo <= valor <= maximo
+    ):
+        raise _recusar(f"{nome} fora da faixa")
+    return float(valor)
+
+
+def _inteiro(valor: object, minimo: int, maximo: int, nome: str) -> int:
+    if (
+        isinstance(valor, bool)
+        or not isinstance(valor, int)
+        or not minimo <= valor <= maximo
+    ):
+        raise _recusar(f"{nome} fora da faixa")
+    return valor
+
+
+def _parametros_guardados(estrategia: str, guardados: object) -> dict:
+    """Só os parâmetros que a estratégia tem hoje, cada um dentro da faixa da tela."""
+    if not isinstance(guardados, Mapping):
+        raise _recusar("parâmetros")
+    conhecidos = {p.nome: p for p in ESTRATEGIAS[estrategia].parametros}
+    validos = {}
+    for nome, valor in guardados.items():
+        p = conhecidos.get(nome)
+        if p is None:
+            raise _recusar(f"parâmetro {str(nome)[:40]!r} não existe mais")
+        if p.opcoes:
+            if valor not in p.opcoes:
+                raise _recusar(f"opção do parâmetro {nome}")
+            validos[nome] = valor
+        elif isinstance(p.padrao, int):
+            validos[nome] = _inteiro(
+                valor, int(p.minimo or 0), int(p.maximo or 0), nome
+            )
+        else:
+            validos[nome] = _decimal(
+                valor, float(p.minimo or 0), float(p.maximo or 0), nome
+            )
+    return validos
+
+
+def _protecoes_guardadas(guardadas: object) -> Protecoes | None:
+    if guardadas is None:
+        return None
+    if not isinstance(guardadas, Mapping):
+        raise _recusar("proteções")
+    conhecidas = {f.name for f in fields(Protecoes)}
+    validas: dict = {}
+    for nome, valor in guardadas.items():
+        if nome not in conhecidas:
+            raise _recusar("proteção desconhecida")
+        if valor is None and nome in _PROTECOES_QUE_DESLIGAM:
+            validas[nome] = None
+        elif nome in _PROTECOES_DECIMAIS:
+            validas[nome] = _decimal(valor, 1e-9, _PROTECAO_DECIMAL_MAXIMA, nome)
+        else:  # janelas (ao menos 1 dia) e dias de espera (0 = volta no dia seguinte)
+            minimo = 0 if nome == "dias_de_espera" else 1
+            validas[nome] = _inteiro(valor, minimo, _PROTECAO_INTEIRA_MAXIMA, nome)
+    return Protecoes(**validas)
+
+
+def _livres_guardados(estrategia: str, guardados: object) -> tuple[str, ...]:
+    numericos = {p.nome for p in parametros_numericos(estrategia)}
+    if (
+        not isinstance(guardados, list)
+        or len(guardados) > 2
+        or len(set(guardados)) != len(guardados)
+        or any(nome not in numericos for nome in guardados)
+    ):
+        raise _recusar("parâmetros livres")
+    return tuple(guardados)
+
+
+def pedido_guardado(
+    guardado: object, dados: pd.DataFrame, cdi_diario: pd.Series | None = None
+) -> PedidoDaFicha:
+    """O pedido de volta, com os preços (e o CDI) de hoje. Vem do banco: não é confiável.
+
+    Qualquer campo estranho ou fora da faixa da tela levanta ValueError (o Pulse mostra "não
+    deu para conferir" em vez de calcular com um pedido que a tela nunca aceitaria). Com o CDI
+    como taxa livre de risco, a taxa é recalculada com o CDI do período de hoje, como na tela.
+    """
+    if not isinstance(guardado, Mapping):
+        raise _recusar("formato")
+    if guardado.get("versao") != VERSAO_DO_PEDIDO_GUARDADO:
+        raise _recusar("versão")
+    estrategia = guardado.get("estrategia")
+    if not isinstance(estrategia, str) or estrategia not in ESTRATEGIAS:
+        raise _recusar("a estratégia não existe mais")
+    usa_cdi = guardado.get("usa_cdi")
+    if not isinstance(usa_cdi, bool):
+        raise _recusar("CDI")
+    if usa_cdi and cdi_diario is None:
+        raise ValueError("Este pedido usa o CDI como taxa livre de risco: falta o CDI.")
+    taxa = _decimal(
+        guardado.get("taxa_livre_de_risco"),
+        -TAXA_MAXIMA_GUARDADA,
+        TAXA_MAXIMA_GUARDADA,
+        "taxa livre de risco",
+    )
+    if usa_cdi:
+        taxa = calcular_taxa_anual_do_cdi(cdi_diario, dados.index)
+    return PedidoDaFicha(
+        dados=dados,
+        estrategia=estrategia,
+        parametros=_parametros_guardados(estrategia, guardado.get("parametros")),
+        custo_por_operacao=_decimal(
+            guardado.get("custo_por_operacao"), 0, CUSTO_MAXIMO_GUARDADO, "custo"
+        ),
+        capital_inicial=_decimal(
+            guardado.get("capital_inicial"), 1e-9, CAPITAL_MAXIMO_GUARDADO, "capital"
+        ),
+        protecoes=_protecoes_guardadas(guardado.get("protecoes")),
+        livres=_livres_guardados(estrategia, guardado.get("livres")),
+        taxa_livre_de_risco=taxa,
+        cdi_diario=cdi_diario if usa_cdi else None,
+        tolerancia_de_queda=_decimal(
+            guardado.get("tolerancia_de_queda"),
+            TOLERANCIA_MINIMA,
+            TOLERANCIA_MAXIMA,
+            "tolerância de queda",
+        ),
+        tentativas_da_pessoa=_inteiro(
+            guardado.get("tentativas_da_pessoa"),
+            1,
+            TENTATIVAS_MAXIMAS_GUARDADAS,
+            "tentativas",
+        ),
     )

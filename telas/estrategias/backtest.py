@@ -58,9 +58,12 @@ from telas.comum import (
 from telas.dados_da_conta import ESPERAS_DEPOIS_DO_STOP, oferecer_salvar_simulacao
 from telas.estrategias.comum import ESTRATEGIA_DE_REFERENCIA, obter_estrategias
 from telas.estrategias.ficha import (
+    CHAVE_DA_FICHA_PARA_SALVAR,
     calcular_ficha,
     contar_esta_tentativa,
     escolher_tolerancia,
+    esquecer_a_ficha_para_salvar,
+    lembrar_para_salvar,
     mostrar_ficha,
 )
 from telas.relatorios.estudio import atalho_para_o_relatorio
@@ -685,8 +688,10 @@ def secao_validacao(
         tentativas_da_pessoa=tentativas_da_pessoa,
     )
     try:
+        resultado_da_ficha = calcular_ficha(pedido)
+        lembrar_para_salvar(pedido, resultado_da_ficha)
         mostrar_ficha(
-            calcular_ficha(pedido),
+            resultado_da_ficha,
             texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA),
         )
     except ValueError as erro:
@@ -876,6 +881,7 @@ def _avisar_entrada_tardia(fechamento, nome, resultado):
 
 
 def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
+    esquecer_a_ficha_para_salvar()
     st.subheader("Backtest: e se eu tivesse seguido esta regra?")
     st.caption(
         "Simulação com dados do passado. A decisão tomada no fim de cada dia só vale a partir "
@@ -1048,6 +1054,7 @@ def secao_backtest(dados, taxa_livre_de_risco, cdi_diario=None):
         f"{st.session_state['periodo']}",
         tabela[nome_principal].to_dict(),
         f"{fechamento.index[-1]:%d/%m/%Y}",
+        chave_da_ficha=CHAVE_DA_FICHA_PARA_SALVAR,
     )
     st.download_button(
         "Baixar as curvas de capital (CSV)",
