@@ -57,9 +57,39 @@ def test_relatorio_de_comparacao_tem_todos_os_ativos():
         {t: _dados(t)["Close"] for t in ("PETR4.SA", "VALE3.SA", "_BVSP")}
     )
     texto = _texto(relatorios.relatorio_de_comparacao(alinhado))
-    for ticker in ("PETR4.SA", "VALE3.SA", "_BVSP"):
-        assert ticker in texto
+    for codigo in ("PETR4", "VALE3", "_BVSP"):  # o código da tela, sem o .SA do Yahoo
+        assert codigo in texto
+    assert ".SA" not in texto
     assert "Base 100" in texto  # o termo do glossário (o título do gráfico é imagem)
+
+
+def test_relatorios_mostram_o_codigo_da_tela_e_nao_o_do_yahoo():
+    """ADR 0065: IBOV no lugar de ^BVSP e PETR4 no lugar de PETR4.SA nos títulos e nas frases."""
+    ibov = _dados("_BVSP")
+    texto = _texto(
+        relatorios.relatorio_do_ativo("^BVSP", ibov, 0.0, "5 anos", exemplo=True)
+    )
+    assert "IBOV: retorno, risco e comportamento" in texto
+    assert "o preço de IBOV variou" in texto
+    # o símbolo do Yahoo só na reprodutibilidade, que diz com o que os dados foram pedidos
+    assert texto.count("^BVSP") == texto.count("IBOV (^BVSP no Yahoo Finance)") == 1
+    backtest = _texto(
+        relatorios.relatorio_de_backtest(
+            "PETR4.SA", _dados("PETR4.SA"), "Cruzamento de médias"
+        )
+    )
+    assert "em PETR4" in backtest
+    assert (
+        backtest.count("PETR4.SA")
+        == backtest.count("PETR4 (PETR4.SA no Yahoo Finance)")
+        == 1
+    )
+    alinhado, _ = alinhar_fechamentos(
+        {"PETR4.SA": _dados("PETR4.SA")["Close"], "^BVSP": ibov["Close"]}
+    )
+    comparacao = _texto(relatorios.relatorio_de_comparacao(alinhado))
+    assert "PETR4, IBOV" in comparacao or "IBOV, PETR4" in comparacao
+    assert "^BVSP" not in comparacao and ".SA" not in comparacao
 
 
 def test_relatorio_de_backtest_compara_com_comprar_e_segurar_e_avisa_da_sorte():
@@ -362,7 +392,7 @@ def test_pdf_do_backtest_traz_o_veredito_e_as_cinco_checagens():
 
 def test_pdf_traz_o_numero_de_tentativas_e_a_tolerancia():
     texto = _texto(_pdf_do_backtest(tentativas_da_pessoa=37, tolerancia_de_queda=0.2))
-    assert "Você testou 37 variações em PETR4.SA" in texto
+    assert "Você testou 37 variações em PETR4" in texto
     assert "você disse aguentar até 20%" in texto
 
 

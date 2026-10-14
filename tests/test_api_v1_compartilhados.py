@@ -74,7 +74,8 @@ def test_abrir_a_ficha_sem_login(cliente, banco, ana):
     assert corpo["tipo"] == "ficha" and corpo["pdf"] is None
     assert corpo["titulo"] == "Foi sorte? Cruzamento de médias em PETR4"
     ficha = corpo["ficha"]
-    assert ficha["ticker"] == "PETR4.SA"
+    # a página mostra o código; o símbolo continua sendo a chave dos dados
+    assert (ficha["ticker"], ficha["codigo"]) == ("PETR4.SA", "PETR4")
     assert ficha["resultado"] == "não passou"
     assert [c["situacao"] for c in ficha["checagens"]] == [
         "passou", "não se aplica", "não passou", "não deu para medir", "passou",

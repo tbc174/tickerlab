@@ -7,7 +7,7 @@ mutável no módulo (um módulo importado é do processo inteiro, isto é, de to
 import pandas as pd
 import streamlit as st
 
-from src import graficos, relatorios
+from src import catalogo, graficos, relatorios
 from src import indicadores as ind
 from src.acaso import (
     calcular_pbo,
@@ -690,7 +690,9 @@ def secao_validacao(
     try:
         resultado_da_ficha = calcular_ficha(pedido)
         lembrar_para_salvar(pedido, resultado_da_ficha)
-        texto = texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA)
+        texto = texto_das_tentativas(
+            tentativas_da_pessoa, catalogo.codigo(ticker), TETO_POR_PESSOA
+        )
         mostrar_ficha(resultado_da_ficha, texto)
         compartilhar_ficha(resultado_da_ficha, pedido, ticker, texto)
     except ValueError as erro:

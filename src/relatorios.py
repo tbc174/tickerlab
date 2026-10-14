@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from src import analise_da_carteira
+from src import analise_da_carteira, catalogo
 from src import graficos_pdf as gp
 from src import indicadores as ind
 from src.analises import MIN_DIAS_PARA_ANALISE
@@ -454,6 +454,13 @@ def _glossario(
     pdf.glossario(_o_que_e(termos))
 
 
+def _ativo_e_simbolo(ticker: str) -> str:
+    """Na reprodutibilidade, o código da tela e o símbolo com que os dados foram pedidos ao Yahoo
+    ("IBOV (^BVSP no Yahoo Finance)"): é com o símbolo que alguém refaz a conta."""
+    codigo = catalogo.codigo(ticker)
+    return codigo if codigo == ticker else f"{codigo} ({ticker} no Yahoo Finance)"
+
+
 # --- 1. do ativo ----------------------------------------------------------------------------
 def achados_do_ativo(
     ticker: str, fechamento: pd.Series, taxa_livre_de_risco: float = 0.0
@@ -469,7 +476,7 @@ def achados_do_ativo(
     sharpe = ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco)
     achados = [
         (
-            f"De {_intervalo(fechamento.index)}, o preço de {ticker} variou {_variacao(total)} "
+            f"De {_intervalo(fechamento.index)}, o preço de {catalogo.codigo(ticker)} variou {_variacao(total)} "
             f"no total{_ao_ano(anual)}"
         ),
         (
@@ -511,6 +518,7 @@ def relatorio_do_ativo(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    codigo = catalogo.codigo(ticker)  # o da tela (IBOV); `ticker` é o símbolo dos dados
     fechamento = dados["Close"].dropna()
     _exigir_pregoes(len(fechamento), MIN_PREGOES)
     retorno = ind.calcular_retorno_diario(fechamento)
@@ -522,8 +530,8 @@ def relatorio_do_ativo(
     sharpe = ind.calcular_indice_sharpe(retorno, taxa_livre_de_risco)
 
     pdf = RelatorioPDF(
-        f"{ticker}: retorno, risco e comportamento",
-        f"Relatório do ativo {ticker}" + (f", período de {periodo}" if periodo else ""),
+        f"{codigo}: retorno, risco e comportamento",
+        f"Relatório do ativo {codigo}" + (f", período de {periodo}" if periodo else ""),
         gerado_em,
         e,
     )
@@ -554,7 +562,7 @@ def relatorio_do_ativo(
         secao("preco", reservar=75)
         pdf.imagem(
             gp.grafico_de_preco(
-                fechamento, f"Preço de fechamento de {ticker}", estilo=e
+                fechamento, f"Preço de fechamento de {codigo}", estilo=e
             )
         )
 
@@ -589,7 +597,7 @@ def relatorio_do_ativo(
             periodo,
             fechamento.index,
             [
-                ("Ativo", ticker),
+                ("Ativo", _ativo_e_simbolo(ticker)),
                 ("Taxa livre de risco", f"{gp.pct_br(taxa_livre_de_risco, 2)} ao ano"),
             ],
         ),
@@ -620,7 +628,7 @@ def relatorio_do_ativo(
         ),
     }
     capa = [
-        ("Ativo", ticker),
+        ("Ativo", codigo),
         ("Período", _intervalo(fechamento.index)),
         ("Pregões analisados", str(len(fechamento))),
         ("Último fechamento", gp.numero_br(float(fechamento.iloc[-1]))),
@@ -669,6 +677,7 @@ def relatorio_de_comparacao(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    alinhado = alinhado.rename(columns=catalogo.codigo)  # IBOV, PETR4 na tela
     _exigir_pregoes(len(alinhado), MIN_PREGOES, EM_COMUM)
     tickers = list(alinhado.columns)
     tabela = montar_tabela_comparativa(alinhado, taxa_livre_de_risco)
@@ -861,6 +870,7 @@ def relatorio_de_backtest(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    codigo = catalogo.codigo(ticker)  # o da tela (IBOV); `ticker` é o símbolo dos dados
     parametros = parametros or {}
     fechamento = dados["Close"]
     _exigir_pregoes(int(fechamento.notna().sum()), MIN_PREGOES)
@@ -889,7 +899,7 @@ def relatorio_de_backtest(
     operacoes = int(resumo.get("Operações", len(resultado.operacoes)))
 
     pdf = RelatorioPDF(
-        f"Backtest: {estrategia} em {ticker}",
+        f"Backtest: {estrategia} em {codigo}",
         "E se eu tivesse seguido esta regra de compra e venda?",
         gerado_em,
         e,
@@ -983,7 +993,7 @@ def relatorio_de_backtest(
             pdf,
             secao,
             montar_ficha(pedido_da_ficha),
-            texto_das_tentativas(tentativas_da_pessoa, ticker, TETO_POR_PESSOA),
+            texto_das_tentativas(tentativas_da_pessoa, codigo, TETO_POR_PESSOA),
         ),
         "curva": curva,
         "tabela": tabela,
@@ -996,7 +1006,7 @@ def relatorio_de_backtest(
             periodo,
             fechamento.index,
             [
-                ("Ativo", ticker),
+                ("Ativo", _ativo_e_simbolo(ticker)),
                 ("Estratégia", estrategia),
                 ("Parâmetros", _descrever_parametros(estrategia, parametros)),
                 ("Custo por operação", gp.pct_br(custo_por_operacao, 2)),
@@ -1037,7 +1047,7 @@ def relatorio_de_backtest(
         ),
     }
     capa = [
-        ("Ativo", ticker),
+        ("Ativo", codigo),
         ("Estratégia", estrategia),
         ("Parâmetros", _descrever_parametros(estrategia, parametros)),
         ("Custo por operação", gp.pct_br(custo_por_operacao, 2)),
@@ -1091,6 +1101,7 @@ def relatorio_de_carteira(
     config = config or Configuracao()
     e = estilo_pela_chave(config.estilo)
     gerado_em = gerado_em or agora()
+    fechamentos = fechamentos.rename(columns=catalogo.codigo)  # IBOV, PETR4 na tela
     parametros = parametros or {}
     _exigir_pregoes(len(fechamentos.dropna()), MIN_DIAS_NA_CARTEIRA, EM_COMUM)
     tickers = list(fechamentos.columns)
@@ -1440,7 +1451,10 @@ def relatorio_da_minha_carteira(
                     "Pesos",
                     "valor de hoje de cada posição com cotação, mantidos fixos no período",
                 ),
-                ("Comparação", "Ibovespa (^BVSP), quando disponível"),
+                (
+                    "Comparação",
+                    "Ibovespa (IBOV; ^BVSP no Yahoo Finance), quando disponível",
+                ),
             ],
         ),
         "glossario": lambda: _glossario(
