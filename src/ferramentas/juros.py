@@ -97,5 +97,7 @@ def liquido_de_ir(capital: float, montante_bruto: float, meses: int) -> float:
     ganho = montante_bruto - capital
     if meses < 1 or ganho <= 0:
         return montante_bruto
-    dias = int(meses * DIAS_POR_ANO / 12 + 0.5)  # metade para cima, como o Math.round do site
+    dias = int(
+        meses * DIAS_POR_ANO / 12 + 0.5
+    )  # metade para cima, como o Math.round do site
     return montante_bruto - ganho * aliquota_da_renda_fixa(dias)

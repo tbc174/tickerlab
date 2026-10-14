@@ -108,13 +108,17 @@ def test_em_reais_de_hoje_recusa_inflacao_de_menos_100_por_cento():
 
 def test_liquido_de_ir_em_2_anos_tira_15_por_cento_do_ganho():
     bruto = juros.montante(10000, 0.01, 24)
-    assert juros.liquido_de_ir(10000, bruto, 24) == pytest.approx(12292.744512521, rel=1e-9)
+    assert juros.liquido_de_ir(10000, bruto, 24) == pytest.approx(
+        12292.744512521, rel=1e-9
+    )
 
 
 def test_liquido_de_ir_em_6_meses_tira_20_por_cento():
     # 6 meses são ~183 dias corridos: já passou dos 180 dias da 1ª faixa (22,5%)
     bruto = juros.montante(10000, 0.01, 6)
-    assert juros.liquido_de_ir(10000, bruto, 6) == pytest.approx(10492.161204808, rel=1e-9)
+    assert juros.liquido_de_ir(10000, bruto, 6) == pytest.approx(
+        10492.161204808, rel=1e-9
+    )
 
 
 def test_liquido_de_ir_sem_ganho_nao_cobra_e_sem_prazo_devolve_o_valor():
