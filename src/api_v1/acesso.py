@@ -53,6 +53,9 @@ FOLGA_DO_RELOGIO = (
 )
 ALGORITMOS = ["RS256"]  # o único que o Google usa; nunca aceitar "none" ou HS256
 PEDIDOS_POR_MINUTO = 60
+MAXIMO_DE_CHAVES = (
+    10_000  # contas ou IPs lembrados antes de esquecer quem parou de pedir
+)
 
 
 class TokenInvalidoError(ValueError):
@@ -95,13 +98,35 @@ class LimiteDePedidos:
     Fica na memória do processo: com um processo só da API (como hoje), vale para todos os pedidos.
     """
 
-    def __init__(self, por_minuto: int = PEDIDOS_POR_MINUTO) -> None:
+    def __init__(
+        self,
+        por_minuto: int = PEDIDOS_POR_MINUTO,
+        maximo_de_chaves: int = MAXIMO_DE_CHAVES,
+    ) -> None:
         self.por_minuto = por_minuto
+        self.maximo_de_chaves = maximo_de_chaves
         self._pedidos: dict[str, deque[float]] = {}
         self._trava = threading.Lock()
 
+    def _esquecer_quem_parou(self, momento: float) -> None:
+        """Tira as chaves sem pedido no último minuto (com chave por IP, a lista não para de crescer)."""
+        paradas = [
+            c for c, f in self._pedidos.items() if not f or f[-1] <= momento - 60
+        ]
+        for chave in paradas:
+            del self._pedidos[chave]
+
+    def chaves(self) -> int:
+        with self._trava:
+            return len(self._pedidos)
+
     def permitir(self, conta: str, momento: float) -> bool:
         with self._trava:
+            if (
+                conta not in self._pedidos
+                and len(self._pedidos) >= self.maximo_de_chaves
+            ):
+                self._esquecer_quem_parou(momento)
             fila = self._pedidos.setdefault(conta, deque())
             while fila and fila[0] <= momento - 60:
                 fila.popleft()
