@@ -21,8 +21,25 @@ MOMENTO = "data e hora (UTC)"
 REAIS = "reais (R$), já multiplicado pela escala informada"
 FRACAO = "fração (0,25 = 25%)"
 ACOES = "ações"
-# o que ainda falta para a exigência 13 (ADR 0055): nenhuma tabela guarda o commit do código
+NUMERO = "número inteiro"
+SIM_OU_NAO = "verdadeiro ou falso"
+# tabelas do banco do app que ainda não guardam o commit por linha (exigência 13 da ADR 0055); as
+# da base em Parquet guardam no manifesto (série 3, PR 1) e o registro de coletas, por arquivo (PR 3)
 SEM_VERSAO_DO_CODIGO = "A versão do código que processou a linha ainda não é guardada."
+LINHAGEM_DO_FCA = (
+    "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA "
+    "usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do "
+    "código que baixou) e a versão do código que gravou a tabela."
+)
+_ONDE_DO_FCA = (
+    "Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)"
+)
+_FREQUENCIA_DO_FCA = (
+    "Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos"
+)
+_ATRASO_DO_FCA = (
+    "Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017"
+)
 CARGA_UNICA_DO_FRE = (
     "Carga de uma vez (FRE de 2010 a 2022): a CVM tirou estas tabelas do FRE aberto depois de "
     "2022 (Resolução CVM 59)"
@@ -206,11 +223,14 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="cvm",
         frequencia="Anual (o FCA é entregue até 31/05) e a cada alteração",
         atraso="Até meses: a empresa atualiza o FCA quando muda algo",
-        onde="Lido do acervo quando preciso (`base/cadastro.py::tickers_no_tempo`)",
+        onde=(
+            "Parquet em `<acervo>/base/fca/tickers.parquet` (servidor de casa, "
+            "`scripts/carga_fca.py`); a função é `base/cadastro.py::tickers_no_tempo`"
+        ),
         linhagem=(
             "Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de "
             "coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de "
-            "qual FCA veio cada código. " + SEM_VERSAO_DO_CODIGO
+            "qual FCA veio cada código. " + LINHAGEM_DO_FCA
         ),
         colunas={
             "codigo": ("Código de negociação na B3 (PETR4, TAEE11)", TEXTO),
@@ -226,6 +246,90 @@ TABELAS: dict[str, Tabela] = {
                 "Fim da negociação informado (vazio: ainda negociado)",
                 DATA,
             ),
+        },
+    ),
+    "valores_mobiliarios": Tabela(
+        descricao=(
+            "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, "
+            "debêntures, notas comerciais...), na versão mais nova de cada documento. Base do "
+            "código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação"
+        ),
+        fonte="CVM: formulário cadastral (FCA), valores mobiliários",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DO_FCA,
+        atraso=_ATRASO_DO_FCA,
+        onde=_ONDE_DO_FCA,
+        linhagem="`cnpj`, `referencia` e `versao` dizem de qual FCA veio a linha. "
+        + LINHAGEM_DO_FCA,
+        colunas={
+            **_EMPRESA,
+            "referencia": ("Data de referência do FCA", DATA),
+            "versao": ("Versão do documento (fica a mais nova)", NUMERO),
+            "valor_mobiliario": ("Tipo do papel, como a empresa informa", TEXTO),
+            "classe": ("Classe da ação preferencial (Preferencial Classe A...)", TEXTO),
+            "codigo_informado": ("Código de negociação como a empresa escreveu", TEXTO),
+            "ticker": (
+                "O código, se está no formato de ticker da B3 (PETR4); senão vazio",
+                TEXTO,
+            ),
+            "emissor": ("As 4 letras do emissor (PETR), tiradas do ticker", TEXTO),
+            "mercado": ("Bolsa, balcão organizado ou balcão não organizado", TEXTO),
+            "administradora": (
+                "Sigla da entidade administradora do mercado (B3)",
+                TEXTO,
+            ),
+            "inicio_negociacao": (
+                "Início da negociação informado (a troca de ticker não muda)",
+                DATA,
+            ),
+            "fim_negociacao": (
+                "Fim da negociação informado (vazio: ainda negociado)",
+                DATA,
+            ),
+            "segmento": ("Segmento de listagem (Novo Mercado, Nível 1...)", TEXTO),
+            "inicio_listagem": ("Início da listagem no segmento", DATA),
+            "fim_listagem": ("Fim da listagem no segmento", DATA),
+        },
+    ),
+    "emissores": Tabela(
+        descricao=(
+            "Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o último ano do "
+            "FCA em que apareceu. É a ligação do ISIN das carteiras dos fundos (CDA) com a empresa. Um "
+            "emissor com mais de um CNPJ é conflito e fica sem resposta"
+        ),
+        fonte="CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DO_FCA,
+        atraso=_ATRASO_DO_FCA,
+        onde=_ONDE_DO_FCA,
+        linhagem="Derivada de `valores_mobiliarios` na mesma carga. " + LINHAGEM_DO_FCA,
+        colunas={
+            "emissor": ("As 4 letras do emissor", TEXTO),
+            **_EMPRESA,
+            "primeiro_ano": ("Ano do primeiro FCA com o emissor", NUMERO),
+            "ultimo_ano": ("Ano do último FCA com o emissor", NUMERO),
+            "conflito": (
+                "Verdadeiro se o emissor aparece com mais de um CNPJ",
+                SIM_OU_NAO,
+            ),
+        },
+    ),
+    "codigos_invalidos": Tabela(
+        descricao=(
+            'Códigos de negociação informados fora do formato de ticker (a CSN informa "4030"): não '
+            "viram ligação e vão para o relatório de buracos"
+        ),
+        fonte="CVM: formulário cadastral (FCA), derivado de `valores_mobiliarios`",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DO_FCA,
+        atraso=_ATRASO_DO_FCA,
+        onde=_ONDE_DO_FCA,
+        linhagem="Derivada de `valores_mobiliarios` na mesma carga. " + LINHAGEM_DO_FCA,
+        colunas={
+            **_EMPRESA,
+            "referencia": ("Data de referência do FCA", DATA),
+            "valor_mobiliario": ("Tipo do papel, como a empresa informa", TEXTO),
+            "codigo_informado": ("O código como a empresa escreveu", TEXTO),
         },
     ),
     "padroes_setoriais": Tabela(

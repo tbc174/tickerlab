@@ -14,6 +14,7 @@ catálogo mudou (aviso para alguém ler). Fonte desconhecida também sai com 2.
 import argparse
 import logging
 import sys
+import time
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,12 +26,17 @@ from base.arquivo.coleta import (
     Fonte,
     FreioDeDisco,
     Resposta,
+    Resultado,
     arquivar,
 )
 from base.arquivo.fontes import FONTES, GRUPOS, POR_ID
 from src import acervo
 
 log = logging.getLogger("arquivar_fontes")
+
+# alguns portais bloqueiam por alguns minutos e depois liberam (o firewall do BC, 14/10/2026): uma
+# nova tentativa depois de esperar, nunca um laço
+ESPERA_PARA_TENTAR_DE_NOVO = 300
 
 AGENTE = "TickerLab (tickerlab.com.br; contato@tickerlab.com.br)"
 TEMPO_LIMITE_EM_SEGUNDOS = 120
@@ -78,6 +84,36 @@ class ClienteHttp:
             return dict(resposta.headers)
 
 
+def _uma_rodada(
+    fonte: Fonte, cliente: ClienteHttp, temporaria: Path
+) -> Resultado | None:
+    """Arquiva a fonte; None quando a fonte inteira falhou (descoberta, rede)."""
+    try:
+        return arquivar(fonte, cliente, datetime.now(UTC), temporaria)
+    except (ErroDeDescoberta, requests.RequestException) as erro:
+        log.error("%s: %s", fonte.id, erro)
+        return None
+
+
+def _arquivar_com_nova_tentativa(
+    fonte: Fonte, cliente: ClienteHttp, temporaria: Path
+) -> Resultado | None:
+    """Uma rodada; se falhou (toda ou em parte), espera e tenta mais uma vez. Freio de disco não
+    tenta de novo (vira falha na hora)."""
+    try:
+        resultado = _uma_rodada(fonte, cliente, temporaria)
+        if resultado is not None and not resultado.falhas:
+            return resultado
+        log.warning(
+            "%s: falhou; nova tentativa em %d s", fonte.id, ESPERA_PARA_TENTAR_DE_NOVO
+        )
+        time.sleep(ESPERA_PARA_TENTAR_DE_NOVO)
+        return _uma_rodada(fonte, cliente, temporaria)
+    except FreioDeDisco as erro:
+        log.error("%s: %s", fonte.id, erro)
+        return None
+
+
 def escolher(alvo: str) -> list[Fonte]:
     """As fontes de um grupo ("diaria") ou a fonte pelo id ("cvm-fiagro"); vazio se não existe."""
     if alvo in GRUPOS:
@@ -115,11 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     cliente = ClienteHttp()
     falhou = mudou = False
     for fonte in fontes:
-        agora = datetime.now(UTC)
-        try:
-            resultado = arquivar(fonte, cliente, agora, temporaria)
-        except (ErroDeDescoberta, FreioDeDisco, requests.RequestException) as erro:
-            log.error("%s: %s", fonte.id, erro)
+        resultado = _arquivar_com_nova_tentativa(fonte, cliente, temporaria)
+        if resultado is None:
             falhou = True
             continue
         log.info(

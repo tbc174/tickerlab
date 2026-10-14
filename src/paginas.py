@@ -55,7 +55,8 @@ class Entrada:
     """Um campo que a pessoa preenche (ou que tem padrão) e vai para a rota."""
 
     nome: str  # nome do parâmetro na rota
-    tipo: str  # "texto", "inteiro", "numero", "opcao", "lista de textos" ou "objeto"
+    tipo: str  # "texto", "inteiro", "numero", "opcao", "lista de textos", "objeto" ou
+    # "parametros da estrategia" (nomes de parâmetros numéricos da estratégia escolhida)
     descricao: str
     obrigatoria: bool = False
     padrao: int | float | str | None = None
@@ -284,6 +285,27 @@ PAGINAS = (
                     maximo=0.05,
                 ),
                 TAXA,
+                # a ficha "Foi sorte?" embaixo do resultado (os limites de src/ficha.py; há teste)
+                Entrada(
+                    "capital_inicial",
+                    "numero",
+                    "Capital do começo, em R$ (só o imposto da ficha depende dele).",
+                    padrao=10_000.0,
+                    minimo=100,
+                    maximo=1e12,
+                ),
+                Entrada(
+                    "tolerancia_de_queda",
+                    "numero",
+                    "A maior queda que você aguentaria (0,30 = 30%); vazia = a guardada na conta.",
+                    minimo=0.05,
+                    maximo=0.9,
+                ),
+                Entrada(
+                    "livres",
+                    "parametros da estrategia",
+                    "Até 2 parâmetros numéricos que variam na ficha; vazio = os dois primeiros.",
+                ),
             ),
             "BacktestDoAtivoV1",
         ),

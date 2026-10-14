@@ -20,7 +20,6 @@ mais novo e a versão maior; valor que some numa versão nova vira uma linha em 
 
 import hashlib
 import json
-import os
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -28,6 +27,7 @@ import pandas as pd
 
 from base.contas_cvm import COLUNAS, so_as_contas_das_regras
 from base.enet import DocumentoEnet
+from base.parquet import gravar_atomico
 from src.versao_do_codigo import versao_do_codigo
 
 FATO = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
@@ -157,12 +157,6 @@ def hash_da_base(base: pd.DataFrame) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
-def _gravar_atomico(destino: Path, gravar: object) -> None:
-    temporario = destino.with_name(destino.name + ".parcial")
-    gravar(temporario)  # type: ignore[operator]
-    os.replace(temporario, destino)
-
-
 def gravar_parquet(
     base: pd.DataFrame, pasta: Path, origens: list[dict[str, str]] | None = None
 ) -> list[Path]:
@@ -178,7 +172,7 @@ def gravar_parquet(
     arquivos = []
     for ano, parte in base.groupby(anos):
         destino = pasta / f"{ano}.parquet"
-        _gravar_atomico(
+        gravar_atomico(
             destino, lambda caminho, p=parte: p.to_parquet(caminho, index=False)
         )
         manifesto = {
@@ -189,7 +183,7 @@ def gravar_parquet(
             "versao_do_codigo": versao,
         }
         texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
-        _gravar_atomico(
+        gravar_atomico(
             pasta / f"{ano}.json",
             lambda caminho, t=texto: Path(caminho).write_text(t, encoding="utf-8"),
         )
