@@ -223,3 +223,61 @@ def test_acrescentar_nao_mexe_em_documento_de_outra_versao(motor):
     with motor.begin() as c:
         # versão nova é reapresentação: quem grava é gravar_demonstracoes, não o acréscimo
         assert repo_dm.acrescentar_contas_novas(c, contas, mais_nova, agora=DEPOIS) == 0
+
+
+ITAU = "60.872.504/0001-23"
+DEPRECIACAO_LIDA_ERRADO = (
+    -31_708_000_000.0
+)  # leitor antigo: somava "ao custo amortizado"
+DEPRECIACAO_DO_PDF = 7_386_000_000.0
+
+
+def _com_a_leitura_antiga(contas):
+    errada = (contas["cnpj"] == ITAU) & (contas["conta"] == "depreciacao")
+    return contas.assign(valor=contas["valor"].where(~errada, DEPRECIACAO_LIDA_ERRADO))
+
+
+def _depreciacao_do_itau(linhas):
+    return [l.valor for l in linhas if l.cnpj == ITAU and l.conta == "depreciacao"]
+
+
+def test_leitura_corrigida_troca_o_valor_sem_virar_reapresentacao(motor):
+    """Fim da série 2: o leitor passou a ler certo o LPA e a depreciação. Nos documentos já
+    guardados na mesma versão, o valor certo sempre esteve lá: entra na versão aberta, com o
+    `registrado_em` dela, sem fechar nada; "como estava em D" passa a mostrar o valor certo."""
+    contas, documentos = dm.ler_demonstracoes(
+        (CVM / "fundamentos" / "dfp_cia_aberta_2025.zip").read_bytes(), "DFP"
+    )
+    with motor.begin() as c:
+        repo_dm.gravar_demonstracoes(
+            c, _com_a_leitura_antiga(contas), documentos, agora=ANTES
+        )
+        linhas_antes = _contar(c, demonstracoes_versoes)
+    with motor.begin() as c:
+        assert repo_dm.corrigir_leituras(c, contas, documentos) == 1
+        assert repo_dm.corrigir_leituras(c, contas, documentos) == 0  # de novo: nada
+    with motor.connect() as c:
+        assert _depreciacao_do_itau(c.execute(sa.select(demonstracoes))) == [
+            DEPRECIACAO_DO_PDF
+        ]
+        versoes = c.execute(sa.select(demonstracoes_versoes)).all()
+        assert len(versoes) == linhas_antes
+        assert all(
+            v.substituido_em is None for v in versoes
+        )  # nada virou reapresentação
+        foto = como_estava_em(c, demonstracoes_versoes, ANTES + timedelta(seconds=1))
+        assert _depreciacao_do_itau(foto) == [DEPRECIACAO_DO_PDF]
+
+
+def test_leitura_corrigida_nao_mexe_em_documento_de_outra_versao(motor):
+    contas, documentos = dm.ler_demonstracoes(
+        (CVM / "fundamentos" / "dfp_cia_aberta_2025.zip").read_bytes(), "DFP"
+    )
+    with motor.begin() as c:
+        repo_dm.gravar_demonstracoes(
+            c, _com_a_leitura_antiga(contas), documentos, agora=ANTES
+        )
+    mais_nova = documentos.assign(versao=documentos["versao"] + 1)
+    with motor.begin() as c:
+        # versão nova é reapresentação: quem grava é gravar_demonstracoes
+        assert repo_dm.corrigir_leituras(c, contas, mais_nova) == 0

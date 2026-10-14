@@ -24,6 +24,7 @@ from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import (
     acrescentar_contas_novas,
+    corrigir_leituras,
     gravar_demonstracoes,
     gravar_setores,
 )
@@ -92,11 +93,15 @@ def main(argv: list[str] | None = None) -> int:
                 # documentos já guardados ganham as contas que o leitor passou a ler (sem
                 # virar reapresentação; série 2 da base de ML, PR 1)
                 acrescentadas = acrescentar_contas_novas(conexao, contas, documentos)
+                # e as contas que o leitor lia errado, trocadas na mesma versão (LPA e
+                # depreciação; relatório de fim da série 2)
+                corrigidas = corrigir_leituras(conexao, contas, documentos)
                 alertas = gravar_eventos(conexao, atrasos, fonte=prazos.FONTE_PRAZO)[0]
             log.info(
                 "%s %s: %s documentos lidos, %s novos ou atualizados, %s contas acrescentadas, "
-                "%s alertas de atraso novos",
-                documento, ano_do_arquivo, len(documentos), mudaram, acrescentadas, alertas,
+                "%s contas corrigidas, %s alertas de atraso novos",
+                documento, ano_do_arquivo, len(documentos), mudaram, acrescentadas, corrigidas,
+                alertas,
             )  # fmt: skip
     except (requests.RequestException, ValueError, sa.exc.SQLAlchemyError) as erro:
         log.error("Coleta interrompida: %s", erro)

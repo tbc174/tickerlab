@@ -80,6 +80,11 @@ def referencias_guardadas(conexao: sa.Connection, chave: str) -> set[date]:
     )
 
 
+_COLUNAS_DA_CONTA = (
+    "cnpj", "documento", "referencia", "periodo", "fim", "conta", "inicio", "versao", "valor",
+)  # fmt: skip
+
+
 def _linha_da_conta(l: object) -> dict:
     """Uma conta lida (linha de `ler_demonstracoes`) no formato da tabela `demonstracoes`."""
     return {
@@ -179,6 +184,38 @@ def gravar_demonstracoes(
     return mudaram
 
 
+def _na_mesma_versao(
+    conexao: sa.Connection, documentos: pd.DataFrame, cnpjs: list[str]
+) -> set[tuple]:
+    """(cnpj, documento, referencia) dos documentos lidos que já estão guardados nesta versão."""
+    guardadas = _versoes_guardadas(conexao, cnpjs)
+    return {
+        (d.cnpj, d.documento, d.referencia)
+        for d in documentos.itertuples(index=False)
+        if guardadas.get((d.cnpj, d.documento, d.referencia)) == d.versao
+    }
+
+
+def _registro_das_versoes_abertas(
+    conexao: sa.Connection, cnpjs: list[str]
+) -> dict[tuple, datetime]:
+    """(cnpj, documento, referencia) → desde quando vale a versão aberta do documento."""
+    v = demonstracoes_versoes
+    return {
+        (l.cnpj, l.documento, l.referencia): l.desde
+        for l in conexao.execute(
+            sa.select(
+                v.c.cnpj,
+                v.c.documento,
+                v.c.referencia,
+                sa.func.min(v.c.registrado_em).label("desde"),
+            )
+            .where(v.c.cnpj.in_(cnpjs), v.c.substituido_em.is_(None))
+            .group_by(v.c.cnpj, v.c.documento, v.c.referencia)
+        )
+    }
+
+
 def acrescentar_contas_novas(
     conexao: sa.Connection,
     contas: pd.DataFrame,
@@ -197,12 +234,7 @@ def acrescentar_contas_novas(
         return 0
     agora = agora or datetime.now(UTC)
     cnpjs = sorted(set(documentos["cnpj"]))
-    guardadas = _versoes_guardadas(conexao, cnpjs)
-    mesma_versao = {
-        (d.cnpj, d.documento, d.referencia)
-        for d in documentos.itertuples(index=False)
-        if guardadas.get((d.cnpj, d.documento, d.referencia)) == d.versao
-    }
+    mesma_versao = _na_mesma_versao(conexao, documentos, cnpjs)
     existentes = {
         tuple(linha)
         for linha in conexao.execute(
@@ -214,20 +246,7 @@ def acrescentar_contas_novas(
             ).where(demonstracoes.c.cnpj.in_(cnpjs))
         )
     }
-    v = demonstracoes_versoes
-    registrada_em = {
-        (l.cnpj, l.documento, l.referencia): l.desde
-        for l in conexao.execute(
-            sa.select(
-                v.c.cnpj,
-                v.c.documento,
-                v.c.referencia,
-                sa.func.min(v.c.registrado_em).label("desde"),
-            )
-            .where(v.c.cnpj.in_(cnpjs), v.c.substituido_em.is_(None))
-            .group_by(v.c.cnpj, v.c.documento, v.c.referencia)
-        )
-    }
+    registrada_em = _registro_das_versoes_abertas(conexao, cnpjs)
     novas = [
         _linha_da_conta(l)
         for l in contas.itertuples(index=False)
@@ -238,7 +257,7 @@ def acrescentar_contas_novas(
         return 0
     conexao.execute(sa.insert(demonstracoes), novas)
     conexao.execute(
-        sa.insert(v),
+        sa.insert(demonstracoes_versoes),
         [
             {
                 **n,
@@ -250,6 +269,115 @@ def acrescentar_contas_novas(
         ],
     )
     return len(novas)
+
+
+# contas que o leitor lia errado e passou a ler certo (relatório de fim da série 2, conferido no PDF
+# da DFP 2025): o LPA quando a 1ª classe é zero (Vale, Gol) e a depreciação que somava linhas de
+# juros "ao custo amortizado" (Itaú, Serena...)
+LEITURAS_CORRIGIDAS = ("lpa_basico", "depreciacao")
+
+
+def _por_conta(linhas: list[dict]) -> dict[tuple, list[dict]]:
+    """(cnpj, documento, referencia, conta) → as linhas daquela conta no documento."""
+    grupos: dict[tuple, list[dict]] = {}
+    for linha in linhas:
+        chave = (linha["cnpj"], linha["documento"], linha["referencia"], linha["conta"])
+        grupos.setdefault(chave, []).append(linha)
+    return grupos
+
+
+def _mesmos_valores(a: list[dict], b: list[dict]) -> bool:
+    def assinatura(linhas: list[dict]) -> list[tuple]:
+        return sorted(
+            (
+                l["periodo"],
+                str(l["fim"]),
+                str(l["inicio"]),
+                l["versao"],
+                round(l["valor"], 4),
+            )
+            for l in linhas
+        )
+
+    return assinatura(a) == assinatura(b)
+
+
+def corrigir_leituras(
+    conexao: sa.Connection,
+    contas: pd.DataFrame,
+    documentos: pd.DataFrame,
+    agora: datetime | None = None,
+) -> int:
+    """Troca, nos documentos já guardados **na mesma versão**, as contas de `LEITURAS_CORRIGIDAS`.
+
+    Não é reapresentação: o valor certo sempre esteve naquela versão do documento; o TickerLab é que
+    o lia errado. Como em `acrescentar_contas_novas`, a troca vale na versão aberta de
+    `demonstracoes_versoes`, com o `registrado_em` dela e sem fechar nada, para "como estava em D"
+    mostrar o que o documento dizia. Rodar de novo não muda nada. Devolve quantas contas trocou.
+    """
+    if documentos.empty or contas.empty:
+        return 0
+    agora = agora or datetime.now(UTC)
+    cnpjs = sorted(set(documentos["cnpj"]))
+    mesma_versao = _na_mesma_versao(conexao, documentos, cnpjs)
+    lidas = _por_conta(
+        [
+            _linha_da_conta(l)
+            for l in contas[contas["conta"].isin(LEITURAS_CORRIGIDAS)].itertuples(
+                index=False
+            )
+            if (l.cnpj, l.documento, l.referencia) in mesma_versao
+        ]
+    )
+    guardadas = _por_conta(
+        [
+            dict(l._mapping)
+            for l in conexao.execute(
+                sa.select(*[demonstracoes.c[c] for c in _COLUNAS_DA_CONTA]).where(
+                    demonstracoes.c.cnpj.in_(cnpjs),
+                    demonstracoes.c.conta.in_(LEITURAS_CORRIGIDAS),
+                )
+            )
+            if (l.cnpj, l.documento, l.referencia) in mesma_versao
+        ]
+    )
+    trocar = [
+        chave
+        for chave in lidas.keys() | guardadas.keys()
+        if not _mesmos_valores(lidas.get(chave, []), guardadas.get(chave, []))
+    ]
+    registrada_em = _registro_das_versoes_abertas(conexao, cnpjs)
+    for chave in trocar:
+        _trocar_conta(
+            conexao, chave, lidas.get(chave, []), registrada_em.get(chave[:3], agora)
+        )
+    return len(trocar)
+
+
+def _trocar_conta(
+    conexao: sa.Connection, chave: tuple, linhas: list[dict], registrada_em: datetime
+) -> None:
+    """Uma conta de um documento, trocada na tabela vigente e na versão aberta."""
+    cnpj, documento, referencia, conta = chave
+    for tabela, filtro_extra in (
+        (demonstracoes, sa.true()),
+        (demonstracoes_versoes, demonstracoes_versoes.c.substituido_em.is_(None)),
+    ):
+        conexao.execute(
+            sa.delete(tabela).where(
+                tabela.c.cnpj == cnpj,
+                tabela.c.documento == documento,
+                tabela.c.referencia == referencia,
+                tabela.c.conta == conta,
+                filtro_extra,
+            )
+        )
+    if linhas:
+        conexao.execute(sa.insert(demonstracoes), linhas)
+        conexao.execute(
+            sa.insert(demonstracoes_versoes),
+            [{**l, "registrado_em": registrada_em} for l in linhas],
+        )
 
 
 def dados_da_empresa(conexao: sa.Connection, cnpj: str) -> DadosDaEmpresa:
