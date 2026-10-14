@@ -11,12 +11,19 @@ evidência, cada uma com a data em que ficou pública (`conhecido_em` = data de 
 recuperação judicial em tal data" do catálogo de modelos (ADR 0030).
 """
 
+import csv
 import io
 import re
 import unicodedata
 import zipfile
+from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
+import sqlalchemy as sa
+
+from src import acervo
+from src.banco.coletas import originais_mais_recentes
 
 COLUNAS = (
     "cnpj",
@@ -158,3 +165,103 @@ def primeira_ocorrencia(tabela: pd.DataFrame) -> pd.DataFrame:
     return ordenada.drop_duplicates(["cnpj", "rotulo"], keep="first").reset_index(
         drop=True
     )
+
+
+# --- parte 2: "situação especial" do CNPJ (Receita, arquivos de estabelecimentos) ----------------
+# o arquivo não tem cabeçalho: 30 colunas; 0-2 CNPJ (básico, ordem, dígito), 3 matriz (1) ou filial
+# (2), 28 situação especial, 29 data da situação especial (layout da Receita, conferido em 14/10/2026)
+POSICAO_DA_SITUACAO = 28
+POSICAO_DA_DATA = 29
+SITUACOES = {
+    "FALIDO": "falencia",
+    "RECUPERACAO JUDICIAL": "recuperacao_judicial",
+    "RECUPERACAO EXTRAJUDICIAL": "recuperacao_extrajudicial",
+    "LIQUIDACAO EXTRA-JUDICIAL": "liquidacao_extrajudicial",
+    "EM LIQUID.EXTRA-JUDICIAL": "liquidacao_extrajudicial",
+    "LIQUIDACAO JUDICIAL": "liquidacao_judicial",
+    "EM LIQUIDACAO": "liquidacao",
+    "INTERVENCAO": "intervencao",
+}
+MES_NA_PASTA = re.compile(r"/(\d{4}-\d{2})/Estabelecimentos\d*\.zip$", re.IGNORECASE)
+
+
+def ler_situacao_especial_do_cnpj(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Os estabelecimentos com "situação especial" num arquivo de estabelecimentos do CNPJ.
+
+    Lê em fluxo (o arquivo tem milhões de linhas) e guarda só CNPJ, matriz ou filial, situação e data:
+    nome fantasia, endereço, telefone e e-mail nunca saem (LGPD).
+    """
+    linhas = []
+    with (
+        zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo,
+        arquivo.open(arquivo.namelist()[0]) as bruto,
+    ):
+        leitor = csv.reader(io.TextIOWrapper(bruto, encoding="latin-1"), delimiter=";")
+        for campos in leitor:
+            if len(campos) <= POSICAO_DA_DATA:
+                continue
+            situacao = campos[POSICAO_DA_SITUACAO].strip()
+            if not situacao:
+                continue
+            basico, ordem, digito = (campos[i].strip() for i in range(3))
+            linhas.append(
+                {
+                    "cnpj": f"{basico[:2]}.{basico[2:5]}.{basico[5:8]}/{ordem}-{digito}",
+                    "cnpj_basico": basico,
+                    "matriz": campos[3].strip() == "1",
+                    "situacao_especial": situacao,
+                    "rotulo": SITUACOES.get(situacao),
+                    "data_situacao_especial": campos[POSICAO_DA_DATA].strip(),
+                }
+            )
+    tabela = pd.DataFrame(
+        linhas,
+        columns=[
+            "cnpj",
+            "cnpj_basico",
+            "matriz",
+            "situacao_especial",
+            "rotulo",
+            "data_situacao_especial",
+        ],
+    )
+    tabela["data_situacao_especial"] = pd.to_datetime(
+        tabela["data_situacao_especial"], format="%Y%m%d", errors="coerce"
+    ).dt.date
+    tabela["rotulo"] = (
+        tabela["rotulo"].astype(object).where(tabela["rotulo"].notna(), None)
+    )
+    return tabela
+
+
+def montar_situacao_especial(
+    conexao: sa.Connection, pasta: Path, agora: datetime
+) -> dict[str, int]:
+    """`<pasta>/cnpj_situacao_especial/<AAAA-MM>.parquet` para cada mês do CNPJ guardado.
+
+    O CNPJ só mostra o retrato do mês: cada mês guardado vira um retrato, e o histórico "como era na
+    data" nasce da sequência deles (`mes_do_retrato`, mais `data_situacao_especial` da Receita).
+    """
+    por_mes: dict[str, list[pd.DataFrame]] = {}
+    for original in originais_mais_recentes(conexao, "rfb-cnpj"):
+        achado = MES_NA_PASTA.search(original.url)
+        conteudo = acervo.ler_original(original.caminho_do_original)
+        if achado is None or conteudo is None:
+            continue
+        tabela = ler_situacao_especial_do_cnpj(conteudo).assign(
+            mes_do_retrato=achado.group(1),
+            origem_sha256=original.sha256,
+            origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
+            montado_em=agora.isoformat(),
+        )
+        por_mes.setdefault(achado.group(1), []).append(tabela)
+    linhas: dict[str, int] = {}
+    for mes, partes in por_mes.items():
+        tabela = pd.concat(partes, ignore_index=True)
+        destino = pasta / "cnpj_situacao_especial" / f"{mes}.parquet"
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        parcial = destino.with_name(destino.name + ".parcial")
+        tabela.to_parquet(parcial, index=False)
+        parcial.replace(destino)
+        linhas[mes] = len(tabela)
+    return linhas
