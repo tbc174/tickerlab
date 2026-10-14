@@ -163,3 +163,18 @@ def test_scr_repetido_da_o_mesmo_resultado(ambiente):
     _rodar(pasta, "--so", "scr", "--desde", "2012", "--ate", "2012")
     assert json.loads(manifesto.read_text(encoding="utf-8")) == antes
     assert not list((pasta / "scr").glob("2012.v*"))
+
+
+def test_ligacao_nao_le_as_versoes_anteriores_do_cadastro(ambiente):
+    """Achado no fechamento da série 3: a ligação lia `202506.v1.parquet` junto com o cadastro atual
+    e duplicava as instituições da data-base."""
+    pasta, _, _ = ambiente
+    _rodar(pasta, "--so", "ifdata", "--desde", "2025", "--ate", "2025")
+    cadastro = pasta / "ifdata" / "cadastro"
+    for extensao in (".parquet", ".json"):
+        (cadastro / f"202506.v1{extensao}").write_bytes(
+            (cadastro / f"202506{extensao}").read_bytes()
+        )
+    carga.montar_ligacao(pasta, pasta.parent.parent / "acervo" / "base" / "fca")
+    ligacao = pd.read_parquet(pasta / "ifdata" / "ligacao_dos_bancos.parquet")
+    assert not ligacao.duplicated(["data_base", "cod_inst"]).any()
