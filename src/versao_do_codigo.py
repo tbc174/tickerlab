@@ -47,21 +47,20 @@ def _perguntar_ao_git() -> RespostaDoGit:
     return commit, modificado
 
 
-def versao_do_codigo(git: Callable[[], RespostaDoGit] = _perguntar_ao_git) -> str:
+def versao_do_codigo(git: Callable[[], RespostaDoGit] | None = None) -> str:
     """O commit do código que está rodando: da imagem, do Git ou `DESCONHECIDA`."""
     gravada = os.environ.get(VARIAVEL, "").strip()
     if gravada:
         return gravada
-    resposta = git()
+    # buscada na hora, não no padrão do argumento: assim os testes conseguem trocá-la
+    resposta = (git or _perguntar_ao_git)()
     if resposta is None:
         return DESCONHECIDA
     commit, modificado = resposta
     return commit + MODIFICADO if modificado else commit
 
 
-def exigir_versao_do_codigo(
-    git: Callable[[], RespostaDoGit] = _perguntar_ao_git,
-) -> str:
+def exigir_versao_do_codigo(git: Callable[[], RespostaDoGit] | None = None) -> str:
     """Como `versao_do_codigo`, mas recusa a versão desconhecida ou modificada (cargas da base)."""
     versao = versao_do_codigo(git)
     if versao == DESCONHECIDA:

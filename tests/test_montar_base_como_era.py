@@ -124,7 +124,7 @@ def test_sem_a_versao_do_codigo_a_base_nao_e_gravada(
     """Exigência 13 da ADR 0055: número sem a versão do código que o fez não entra na base."""
     monkeypatch.delenv(vc.VARIAVEL)
     monkeypatch.setattr(vc, "_perguntar_ao_git", lambda: None)
-    with pytest.raises(vc.VersaoDesconhecidaError):
+    with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):  # desconhecida
         montar.main(["--anos", "2024", "--pasta", str(tmp_path / "base")])
     assert not (tmp_path / "base").exists()
 
