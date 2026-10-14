@@ -346,12 +346,10 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
     )
     st.markdown("**Números no mesmo período**")
     st.dataframe(formatar_tabela_comparativa(comparacao.tabela), width="stretch")
+    nota = nota_da_comparacao(comparacao.dias_em_comum, comparacao.dias_descartados)
     st.caption(
-        proteger_cifrao(
-            nota_da_comparacao(comparacao.dias_em_comum, comparacao.dias_descartados)
-        )
-        + " Para incluir o efeito do câmbio, marque a opção de converter ativos em dólar "
-        "para reais, no topo."
+        f"{proteger_cifrao(nota)} Para incluir o efeito do câmbio, marque a opção de "
+        "converter ativos em dólar para reais, no topo."
     )
 
 
