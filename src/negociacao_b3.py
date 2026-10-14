@@ -57,8 +57,8 @@ FORA_DO_RESULTADO = {
 }
 PADRAO_DO_CODIGO = re.compile(r"^([A-Z]{4})(\d{1,2})$")
 FINAIS_DE_ACAO = {"3", "4", "5", "6", "7", "8"}
-FINAIS_DE_BDR = {"31", "32", "33", "34", "35", "39"}
-# palavras do nome do ativo na B3 (sem acento, minúsculas)
+# começos de palavra do nome do ativo na B3 (sem acento, minúsculas): "imob" pega "IMOB",
+# "IMOBILIÁRIO" e "IMOBILIARIOS", que aparecem nos nomes reais
 PALAVRAS_DE_FII = ("fii", "imob", "fiagro")
 PALAVRAS_DE_OUTROS_FUNDOS = ("fdo", "fundo", "etf", "indice", "ishares")
 
@@ -136,10 +136,10 @@ def _classe_no_a_vista(codigo: str, nomes: dict[str, str]) -> str | None:
     nome = sem_acento(nomes.get(codigo, ""))
     if not nome:
         return "outros"
-    palavras = set(re.split(r"[^a-z0-9]+", nome))
-    if palavras & set(PALAVRAS_DE_FII):
+    palavras = re.split(r"[^a-z0-9]+", nome)
+    if any(p.startswith(PALAVRAS_DE_FII) for p in palavras):
         return "fii"
-    if palavras & set(PALAVRAS_DE_OUTROS_FUNDOS):
+    if any(p.startswith(PALAVRAS_DE_OUTROS_FUNDOS) for p in palavras):
         return "outros"
     return "acao"  # unit de empresa (KLBN11, TAEE11): ações juntas num código só
 

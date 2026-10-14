@@ -16,7 +16,7 @@ para os logs.
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 
 import pandas as pd
@@ -96,6 +96,7 @@ class MovimentacaoB3:
     avisos: tuple[str, ...]
     primeira_data: date | None
     ultima_data: date | None
+    nomes: dict[str, str] = field(default_factory=dict)  # código → nome (diz se é FII)
 
 
 def _data(valor: object) -> date:
@@ -239,6 +240,7 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
     datas: list[date] = []
     fora = renda_fixa = derivativos = 0
     desconhecidos: dict[str, int] = {}
+    nomes: dict[str, str] = {}
     achou_colunas = False
     for tabela in abas.values():
         if tabela is None or tabela.empty:
@@ -265,6 +267,9 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
                     continue
                 renda_fixa += 1  # Tesouro, CDB, debênture: não têm código de negociação
                 continue
+            nomes.setdefault(
+                FRACIONARIO.sub("", achado.group(1)), produto[achado.end() :].strip()
+            )
             tipo = TIPOS.get((tipo_da_b3, entrada))
             if tipo is None:
                 if tipo_da_b3 in FORA_DAS_CONTAS:
@@ -302,4 +307,5 @@ def ler_movimentacao(conteudo: bytes, nome_do_arquivo: str) -> MovimentacaoB3:
         tuple(avisos),
         min(datas) if datas else None,
         max(datas) if datas else None,
+        nomes,
     )

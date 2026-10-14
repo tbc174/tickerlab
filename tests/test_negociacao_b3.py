@@ -193,3 +193,11 @@ def test_recusa_planilha_com_linhas_demais():
     )
     with pytest.raises(ArquivoDaB3Error, match="linhas"):
         _ler(linhas)
+
+
+def test_fii_com_imobiliario_por_extenso_no_nome():
+    neg = _ler(
+        [_linha("10/03/2026", "Compra", A_VISTA, "VGIR11", 10, 10.0, 100.0)],
+        nomes={"VGIR11": "VALORA CRI CDI FUNDO DE INVESTIMENTO IMOBILIÁRIO"},
+    )
+    assert neg.negocios[0].classe == "fii"
