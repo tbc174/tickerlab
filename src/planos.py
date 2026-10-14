@@ -108,6 +108,25 @@ def pode_usar(plano: str | None, recurso: str) -> bool:
     return recurso in limites_do(plano).recursos
 
 
+def plano_que_libera(recurso: str) -> str:
+    """O plano mais barato que tem o recurso (a ordem de `PLANOS` vai do Gratuito ao Pro)."""
+    for plano in PLANOS:
+        if recurso in LIMITES_DOS_PLANOS[plano].recursos:
+            return plano
+    raise ValueError(f"Nenhum plano tem o recurso {recurso!r}.")
+
+
+def motivo_sem_acesso(plano: str | None, recurso: str) -> str | None:
+    """Por que o plano não usa o recurso (o mesmo texto no app e na API), ou None se usa."""
+    if pode_usar(plano, recurso):
+        return None
+    return (
+        f"{NOMES_DOS_RECURSOS[recurso]} faz parte do plano "
+        f"{limites_do(plano_que_libera(recurso)).nome}. "
+        f"Você está no plano {limites_do(plano).nome}."
+    )
+
+
 def descrever_limite(limite: int | None) -> str:
     return "Ilimitadas" if limite is None else str(limite)
 

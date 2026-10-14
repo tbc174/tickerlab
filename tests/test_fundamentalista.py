@@ -213,6 +213,32 @@ def test_salto_exato_sem_evento_vira_provavel_desdobramento_e_avisa():
     assert any("provável desdobramento" in aviso for aviso in resultado.avisos)
 
 
+def test_aviso_do_salto_escreve_o_numero_em_portugues():
+    resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 301.0}))
+    assert resultado.avisos == [
+        (
+            "Entre 2023 e 2024 as ações mudaram 3,01 vezes sem evento no FRE: tratado como "
+            "provável desdobramento, não como diluição."
+        )
+    ]
+
+
+def test_salto_de_mil_vezes_e_troca_de_unidade_na_cvm():
+    """Regressão (fim da série 2): a Petrobras passou de 13.044.201 (milhares) a 13.044.201.261
+    ações entre 2020 e 2021, e o aviso dizia "1000.00 vezes ... provável desdobramento"."""
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2020: 13_044_201.0, 2021: 13_044_201_261.0})
+    )
+    assert resultado.diluicao_anual == pytest.approx(0.0, abs=1e-4)
+    assert resultado.avisos == [
+        (
+            "Entre 2020 e 2021 a quantidade de ações passou de milhares para unidades na CVM "
+            "(mil vezes maior, sem evento no FRE): tratado como troca de unidade, não como "
+            "diluição."
+        )
+    ]
+
+
 def test_emissao_de_acoes_conta_como_diluicao():
     resultado = fa.dividendos_e_diluicao(_com_acoes({2023: 100.0, 2024: 110.0}))
     assert resultado.diluicao_anual == pytest.approx(0.10)

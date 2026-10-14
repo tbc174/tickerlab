@@ -6,7 +6,7 @@ mudar o texto de ajuda ou trocar de grupo, é só mexer aqui.
 
 from dataclasses import dataclass
 
-from src.planos import APRENDIZADO_DE_MAQUINA, PARES
+from src.planos import APRENDIZADO_DE_MAQUINA, PARES, motivo_sem_acesso
 
 # Páginas sem grupo: aparecem direto na barra do menu (o Streamlit as põe no começo)
 GRUPO_TOPO = ""
@@ -525,3 +525,21 @@ def paginas_do_grupo(grupo: str) -> list[Pagina]:
 
 def pagina(chave: str) -> Pagina:
     return POR_CHAVE[chave]
+
+
+def motivo_da_pagina(plano: str | None, chave: str) -> str | None:
+    """Por que o plano não abre a página (o Streamlit e a API mostram este texto), ou None se abre."""
+    recurso = POR_CHAVE[chave].recurso
+    return None if recurso is None else motivo_sem_acesso(plano, recurso)
+
+
+# a API acha a página de cada rota pelo contrato (src/api_v1/acesso.py confere o plano por aqui)
+POR_ROTA = {p.contrato.rota: p for p in PAGINAS if p.contrato is not None}
+PREFIXO_DA_API = "/api"  # a API v1 responde em /v1/... e em /api/v1/... (src/api.py)
+
+
+def pagina_da_rota(rota: str) -> Pagina | None:
+    """A página cujo contrato usa esta rota da API (com ou sem o /api na frente), ou None."""
+    if rota.startswith(PREFIXO_DA_API + "/"):
+        rota = rota[len(PREFIXO_DA_API) :]
+    return POR_ROTA.get(rota)
