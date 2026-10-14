@@ -158,7 +158,7 @@ class ResumoDoDocumento:
         return asdict(self)
 
 
-def _sem_cabecalho_e_assinatura(texto: str) -> str:
+def sem_cabecalho_e_assinatura(texto: str) -> str:
     """Tira o cabeçalho (até o título "Fato Relevante") e a assinatura do fim."""
     texto = " ".join(texto.split())
     titulo = re.search(r"(?i)fato\s+relevante", texto)
@@ -191,7 +191,7 @@ def _cortar(frase: str) -> str:
 
 def resumir_fato_relevante(texto: str) -> ResumoDoDocumento:
     """O resumo extrativo, os números e os assuntos de um fato relevante (ou comunicado)."""
-    corpo = _sem_cabecalho_e_assinatura(texto)
+    corpo = sem_cabecalho_e_assinatura(texto)
     frases = dividir_em_frases(corpo)
     pesos = Counter(_palavras(corpo, PALAVRAS_VAZIAS_PT))
     notas = sorted(

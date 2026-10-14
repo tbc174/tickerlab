@@ -1,4 +1,4 @@
-"""Lê os fatos relevantes da CVM e guarda o resumo do algoritmo próprio (Research R5).
+"""Lê os fatos relevantes da CVM e guarda o resumo e o assunto (Research R5 e leitor v2, ADR 0069).
 
     python -m scripts.atualizar_leituras_cvm             (até 20 fatos dos últimos 30 dias)
 
@@ -11,16 +11,17 @@ import argparse
 import logging
 import sys
 import time
+from dataclasses import asdict
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
 import sqlalchemy as sa
 
-from src import leitura
+from src import leitura, topicos
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
-from src.banco.leituras import RESUMO, fatos_sem_leitura, gravar_leitura
+from src.banco.leituras import RESUMO, TOPICO, fatos_sem_leitura, gravar_leitura
 from src.configuracao import url_do_banco
 from src.eventos import FONTE_IPE
 
@@ -43,16 +44,29 @@ def _baixar_da_fonte(url: str) -> bytes:
 baixar = com_registro("cvm-documentos", _baixar_da_fonte)
 
 
-def ler(conteudo: bytes) -> dict:
-    """O resumo do documento (um PDF só de imagem vira um resumo vazio, com o motivo)."""
+def _texto(conteudo: bytes) -> tuple[str, str | None]:
+    """(texto, motivo): o motivo diz por que não há texto (PDF malformado ou só imagem)."""
     try:
         texto = leitura.texto_do_pdf(conteudo)
     except Exception:  # noqa: BLE001 (PDF malformado: guarda o motivo e segue)
-        return {"motivo": "PDF ilegível.", "versao": leitura.VERSAO}
+        return "", "PDF ilegível."
     if len(texto.split()) < leitura.MIN_PALAVRAS_POR_FRASE:
-        return {"motivo": "O PDF é só imagem (escaneado): não há texto para ler.",
-                "versao": leitura.VERSAO}  # fmt: skip
+        return "", "O PDF é só imagem (escaneado): não há texto para ler."
+    return texto, None
+
+
+def ler(conteudo: bytes) -> dict:
+    """O resumo do documento (um PDF sem texto vira um resumo vazio, com o motivo)."""
+    texto, motivo = _texto(conteudo)
+    if motivo:
+        return {"motivo": motivo, "versao": leitura.VERSAO}
     return leitura.resumir_fato_relevante(texto).para_guardar()
+
+
+def assunto(conteudo: bytes, titulo: str) -> dict:
+    """O assunto do fato (leitor v2): o título decide; se for genérico, o texto."""
+    texto, _ = _texto(conteudo)
+    return asdict(topicos.topico_do_documento(titulo, texto))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
                 hoje - timedelta(days=DIAS),
                 opcoes.maximo,
             )
-        for i, (protocolo, cnpj, publicado, link) in enumerate(pendentes):
+        for i, (protocolo, cnpj, publicado, link, titulo) in enumerate(pendentes):
             if i:
                 time.sleep(PAUSA_ENTRE_DOWNLOADS)
             conteudo = baixar(link)
@@ -94,6 +108,16 @@ def main(argv: list[str] | None = None) -> int:
                     cnpj,
                     publicado,
                     ler(conteudo),
+                )
+                gravar_leitura(
+                    conexao,
+                    FONTE_IPE,
+                    protocolo,
+                    TOPICO,
+                    cnpj,
+                    publicado,
+                    assunto(conteudo, titulo),
+                    versao=topicos.VERSAO,
                 )
             lidos += 1
         log.info("Fatos relevantes lidos: %s de %s pendentes", lidos, len(pendentes))

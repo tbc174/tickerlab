@@ -9,11 +9,13 @@ from datetime import UTC, date, datetime
 
 import sqlalchemy as sa
 
+from src import topicos
 from src.banco.modelo import eventos, leituras
 from src.leitura import VERSAO
 from src.links_das_fontes import link_da_fonte
 
 RESUMO, RISCOS = "resumo", "riscos"
+TOPICO = "topico"  # o assunto do fato relevante (leitor v2, ADR 0069), com a versão de topicos
 TAMANHO_DO_LOTE = 5_000
 
 
@@ -25,8 +27,9 @@ def gravar_leitura(
     cnpj: str,
     referencia: date | None,
     resultado: dict,
+    versao: str = VERSAO,
 ) -> None:
-    """Grava (ou troca) a leitura de um documento."""
+    """Grava (ou troca) a leitura de um documento (`versao`: a do algoritmo que leu)."""
     conexao.execute(
         sa.delete(leituras).where(
             leituras.c.fonte == fonte,
@@ -42,7 +45,7 @@ def gravar_leitura(
             cnpj=cnpj,
             referencia=referencia,
             resultado=resultado,
-            versao=VERSAO,
+            versao=versao,
             lido_em=datetime.now(UTC),
         )
     )
@@ -87,6 +90,34 @@ def resumos(
     }
 
 
+def topicos_dos_fatos(
+    conexao: sa.Connection, fonte: str, fatos: Iterable[tuple[str, str]]
+) -> dict[str, topicos.LeituraDoTopico]:
+    """protocolo → assunto, para cada (protocolo, título do IPE).
+
+    Vale o lido do texto (ou do modelo) na versão atual do leitor; sem ele, o do título.
+    """
+    titulos = dict(fatos)
+    lidos: dict[str, topicos.LeituraDoTopico] = {}
+    pedidos = list(titulos)
+    for inicio in range(0, len(pedidos), TAMANHO_DO_LOTE):
+        consulta = sa.select(leituras.c.documento, leituras.c.resultado).where(
+            leituras.c.fonte == fonte,
+            leituras.c.tipo == TOPICO,
+            leituras.c.versao == topicos.VERSAO,
+            leituras.c.documento.in_(pedidos[inicio : inicio + TAMANHO_DO_LOTE]),
+        )
+        for documento, resultado in conexao.execute(consulta):
+            dados = dict(resultado)
+            lidos[documento] = topicos.LeituraDoTopico(
+                **{**dados, "secundarios": tuple(dados["secundarios"])}
+            )
+    return {
+        protocolo: lidos.get(protocolo) or topicos.topico_do_titulo(titulo)
+        for protocolo, titulo in titulos.items()
+    }
+
+
 def ultima_de_riscos(
     conexao: sa.Connection, cnpj: str
 ) -> tuple[str, date | None, dict] | None:
@@ -108,8 +139,9 @@ def ultima_de_riscos(
 
 def fatos_sem_leitura(
     conexao: sa.Connection, fonte: str, categoria: str, desde: date, limite: int
-) -> list[tuple[str, str, date, str]]:
-    """Fatos relevantes ainda sem resumo: (protocolo, cnpj, publicado em, link), do mais novo.
+) -> list[tuple[str, str, date, str, str]]:
+    """Fatos relevantes ainda sem resumo: (protocolo, cnpj, publicado em, link, título do IPE),
+    do mais novo.
 
     O app baixa cada documento por esse link: um endereço que não seja da CVM ou da SEC fica de
     fora (o servidor nunca baixa nada de outro lugar).
@@ -121,7 +153,11 @@ def fatos_sem_leitura(
     )
     consulta = (
         sa.select(
-            eventos.c.protocolo, eventos.c.cnpj, eventos.c.publicado_em, eventos.c.link
+            eventos.c.protocolo,
+            eventos.c.cnpj,
+            eventos.c.publicado_em,
+            eventos.c.link,
+            eventos.c.assunto,
         )
         .where(
             eventos.c.fonte == fonte,
@@ -133,7 +169,7 @@ def fatos_sem_leitura(
         .limit(limite)
     )
     return [
-        (protocolo, cnpj, publicado_em, seguro)
-        for protocolo, cnpj, publicado_em, link in conexao.execute(consulta)
+        (protocolo, cnpj, publicado_em, seguro, assunto)
+        for protocolo, cnpj, publicado_em, link, assunto in conexao.execute(consulta)
         if (seguro := link_da_fonte(link))
     ]
