@@ -430,3 +430,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** contextos de empilhamento criados sem querer. (1) `animation-fill-mode: both` na animação de chegada (`tl-chegar`) deixa o `transform` final aplicado para sempre, e todo elemento com `transform` vira um contexto de empilhamento com `z-index: auto`: o `z-index` da lista passa a valer só dentro do pai dela, que perde para os irmãos que vêm depois no HTML. (2) O `movimento.js` põe `translate` na coluna de texto (paralaxe): mesmo efeito. (3) `overflow: hidden` no topo da página cortava o que descia dele. (4) A fita de ativos é `position: relative` e vem depois do herói: pinta por cima de tudo o que o herói deixa vazar.
 - **Solução:** `backwards` em vez de `both` nas animações de chegada (o estado final é o natural, então nada muda na tela); `z-index` explícito em quem precisa ficar por cima (`.busca`, `.heroi-texto`, `.topo-da-pagina`); as camadas de fundo que precisam de corte numa caixa própria (`.v2-camadas`, com `overflow: hidden`) em vez de cortar o topo inteiro. Para achar o culpado: no console, `getComputedStyle(el).transform`, `translate`, `filter`, `backdropFilter`, `opacity` e `isolation` de cada ancestral, e `document.elementsFromPoint(x, y)` para ver quem está por cima.
 - **Data:** 14/10/2026 (PR #244)
+
+## Acento "errado" ao olhar um CSV do Banco Central no terminal (parecia latin-1)
+- **Sintoma:** ao abrir o `scrdata_AAAAMM.csv` do SCR.data, "Médio" e "salários mínimos" saíam com acento quebrado, e a primeira coluna vinha como `﻿data_base`; parecia que o arquivo era latin-1.
+- **Causa:** o arquivo é UTF-8 com BOM; quem quebrava o acento era a saída do terminal do Windows (cp1252), não a leitura.
+- **Solução:** ler com `encoding="utf-8-sig"` (tira a BOM) e conferir rodando o Python com `python -X utf8`. Teste com acento de verdade (`tests/test_base_bcb.py`).
+- **Data:** 14/10/2026 (PR #226)
+
+## SSH pelo nome do Tailscale: "Host key verification failed"
+- **Sintoma:** fora da rede de casa, `ssh granserver@servidor.<tailnet>.ts.net` recusava com "Host key verification failed", apesar de ser o mesmo servidor.
+- **Causa:** o `known_hosts` guarda a chave pelo IP da rede de casa (`192.168.15.5`); o nome do Tailscale é outro nome para o mesmo servidor e não está lá.
+- **Solução:** `ssh -o HostKeyAlias=192.168.15.5 granserver@servidor.<tailnet>.ts.net` (confere a mesma chave, sem aceitar uma nova às cegas).
+- **Data:** 14/10/2026
+
+## Sessão SSH presa ao disparar uma carga longa com `setsid ... &`
+- **Sintoma:** o comando que disparava a carga no servidor de casa não voltava; a sessão SSH só terminou pelo limite de tempo.
+- **Causa:** não confirmada: a saída já estava redirecionada (`> ~/logs/x.log 2>&1 < /dev/null`) dentro do `setsid`; a suspeita é o `docker run -i` ou o `sleep 60; tail` na mesma chamada.
+- **Solução:** disparar numa chamada e conferir o log numa chamada separada. Mesmo com a sessão presa, a carga segue viva (o `setsid` a solta da sessão): conferir com `pgrep -af <script>` e o log.
+- **Data:** 14/10/2026
