@@ -1,11 +1,13 @@
 // O cliente da API de leitura (v1): monta o endereço, manda o token só para /api/v1 e transforma
-// cada erro num tipo que a tela sabe mostrar (entrar de novo, entrar pelo app, aceitar os termos...).
+// cada erro num tipo que a tela sabe mostrar (entrar de novo, entrar pelo app, aceitar os termos,
+// conhecer os planos...).
 import { PREFIXO_DA_API } from "./configuracao";
 
 export type TipoDeErro =
   | "sessao-vencida" // 401: sem token ou token vencido/inválido → entrar de novo
   | "conta-nova" // 401: a conta nunca entrou pelo app → criar a conta no app atual
   | "termos" // 403: termos novos → aceitar no app atual
+  | "plano" // 403: a página não abre no plano da conta → conhecer os planos (ADR 0062)
   | "nao-encontrado" // 404: ativo sem dados (ou a API desligou)
   | "pedido-invalido" // 422: campo fora dos limites ou período curto demais
   | "limite" // 429: muitos pedidos por minuto
@@ -41,7 +43,7 @@ function consulta(parametros: Parametros): string {
 
 function tipoDoErro(status: number, motivo: string | null): TipoDeErro {
   if (status === 401) return motivo === "conta-nova" ? "conta-nova" : "sessao-vencida";
-  if (status === 403) return "termos";
+  if (status === 403) return motivo === "plano" ? "plano" : "termos";
   if (status === 404) return "nao-encontrado";
   if (status === 422) return "pedido-invalido";
   if (status === 429) return "limite";
