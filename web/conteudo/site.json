@@ -31,7 +31,7 @@
       "simbolo": "AAPL"
     },
     {
-      "rotulo": "^BVSP",
+      "rotulo": "IBOV",
       "simbolo": "^BVSP"
     },
     {
@@ -81,12 +81,12 @@
       "simbolo": "IVVB11.SA"
     },
     {
-      "codigo": "^BVSP",
+      "codigo": "IBOV",
       "nome": "Ibovespa",
       "simbolo": "^BVSP"
     },
     {
-      "codigo": "^GSPC",
+      "codigo": "SPX",
       "nome": "S&P 500",
       "simbolo": "^GSPC"
     },

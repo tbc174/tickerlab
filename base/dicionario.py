@@ -424,6 +424,50 @@ TABELAS: dict[str, Tabela] = {
         ),
         colunas={},
     ),
+    "painel_dos_fundos": Tabela(
+        descricao=(
+            "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por "
+            "mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por "
+            "empresa (CNPJ). O emissor vira CNPJ pelo FCA e, no que falta (empresas que saíram antes "
+            "de 2018), pela tabela conferida `base/conferidas/emissores_antigos.csv`; cada ano tem "
+            "pelo menos 95% do valor comprado com CNPJ (`cobertura`), e o resto está em `buracos`. "
+            "Inclui empresas que saíram da bolsa (sem viés de sobrevivência)"
+        ),
+        fonte="Derivado: CVM, CDA (posições) e FCA (emissores), mais a tabela conferida",
+        familia_da_fonte="cvm",
+        frequencia="Mensal, montado de novo quando o CDA ou o FCA mudam",
+        atraso=(
+            "O do CDA: `disponivel_em` é a maior data das posições somadas (o total só era público "
+            "quando a última posição dele ficou pública)"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, "
+            "`cobertura` e `buracos` (servidor de casa, `scripts/montar_painel_dos_fundos.py`)"
+        ),
+        linhagem=(
+            "O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, "
+            "com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; "
+            "cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira", DATA),
+            "emissor": ("As 4 posições do emissor (só no painel por emissor)", TEXTO),
+            "cnpj": ("CNPJ da empresa (só no painel por empresa)", TEXTO),
+            "tipo": ("comprado, emprestado ou vendido", TEXTO),
+            "fundos": (
+                "Quantos fundos tinham a posição (cada fundo uma vez por empresa)",
+                NUMERO,
+            ),
+            "valor": ("Valor de mercado somado", REAIS),
+            "quantidade": ("Quantidade somada", ACOES),
+            "compras": ("Valor comprado no mês, somado", REAIS),
+            "vendas": ("Valor vendido no mês, somado", REAIS),
+            "disponivel_em": (
+                "Desde quando o total era público (como era na data)",
+                DATA,
+            ),
+        },
+    ),
     "padroes_setoriais": Tabela(
         descricao=(
             "Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre as "

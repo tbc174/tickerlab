@@ -73,9 +73,9 @@ function Resultado({ dados }: { dados: VisaoGeralV1 }) {
         Quanto valeriam R$ 100 investidos no primeiro dia do período (base 100), sem o preço.
       </p>
       <GraficoDeLinha
-        titulo={`${dados.ativo.ticker} em base 100`}
+        titulo={`${dados.ativo.codigo} em base 100`}
         datas={dados.curva.datas}
-        series={[{ nome: dados.ativo.ticker, cor: "var(--azul)", valores: dados.curva.valores }]}
+        series={[{ nome: dados.ativo.codigo, cor: "var(--azul)", valores: dados.curva.valores }]}
         referencia={100}
       />
     </>

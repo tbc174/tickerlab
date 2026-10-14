@@ -1,12 +1,12 @@
 # catálogo de ativos da busca, gerado por scripts/gerar_catalogo.py (pregão 2026-10-09)
 simbolo,codigo,nome,bolsa,tipo
-^BVSP,^BVSP,Ibovespa,B3,Índice
-^GSPC,^GSPC,S&P 500,EUA,Índice
-^IXIC,^IXIC,Nasdaq Composite,EUA,Índice
-^DJI,^DJI,Dow Jones,EUA,Índice
-^N225,^N225,Nikkei 225,Japão,Índice
-^GDAXI,^GDAXI,DAX,Alemanha,Índice
-^FTSE,^FTSE,FTSE 100,Reino Unido,Índice
+^BVSP,IBOV,Ibovespa,B3,Índice
+^GSPC,SPX,S&P 500,EUA,Índice
+^IXIC,IXIC,Nasdaq Composite,EUA,Índice
+^DJI,DJI,Dow Jones,EUA,Índice
+^N225,N225,Nikkei 225,Japão,Índice
+^GDAXI,DAX,DAX,Alemanha,Índice
+^FTSE,FTSE,FTSE 100,Reino Unido,Índice
 BTC-USD,BTC-USD,Bitcoin em dólar,Cripto,Cripto
 ETH-USD,ETH-USD,Ethereum em dólar,Cripto,Cripto
 SOL-USD,SOL-USD,Solana em dólar,Cripto,Cripto

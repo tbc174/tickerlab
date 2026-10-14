@@ -23,9 +23,13 @@ from datetime import date
 import pandas as pd
 
 CODIFICACAO_DA_CVM = "latin-1"
-TICKER = re.compile(r"[A-Z]{4}\d{1,2}")
+# o emissor tem 4 posições começando por letra e pode ter número (B3SA, da B3); o ticker é o emissor
+# mais o número da classe. O código informado no FCA às vezes vem sem o número (NEOE) ou com o
+# sufixo do balcão (LTEL3B): dá o emissor, mas não é ticker de bolsa (série 3, PR 5)
+EMISSOR = r"[A-Z][A-Z0-9]{3}"
+TICKER = re.compile(rf"{EMISSOR}\d{{1,2}}")
+CODIGO_COM_EMISSOR = re.compile(rf"({EMISSOR})(?:\d{{1,2}}[A-Z]?)?")
 ISIN = re.compile(r"BR([A-Z0-9]{4})[A-Z0-9]{5}\d")
-TAMANHO_DO_EMISSOR = 4
 COLUNAS = (
     "cnpj", "empresa", "referencia", "versao", "valor_mobiliario", "classe", "codigo_informado",
     "ticker", "emissor", "mercado", "administradora", "inicio_negociacao", "fim_negociacao",
@@ -40,6 +44,22 @@ def _texto(serie: pd.Series) -> pd.Series:
 
 def _data(serie: pd.Series) -> pd.Series:
     return pd.to_datetime(serie, errors="coerce")
+
+
+def ticker_do_codigo(codigo: object) -> str | None:
+    """O código, se for ticker de bolsa (PETR4, B3SA3, TAEE11); senão None."""
+    if not isinstance(codigo, str):
+        return None
+    codigo = codigo.strip().upper()
+    return codigo if TICKER.fullmatch(codigo) else None
+
+
+def emissor_do_codigo(codigo: object) -> str | None:
+    """As 4 posições do emissor num código informado (PETR4, NEOE, LTEL3B); None se não tiver."""
+    if not isinstance(codigo, str):
+        return None
+    achado = CODIGO_COM_EMISSOR.fullmatch(codigo.strip().upper())
+    return achado.group(1) if achado else None
 
 
 def mais_novas(tabela: pd.DataFrame) -> pd.DataFrame:
@@ -59,7 +79,6 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
             keep_default_na=False,
         )  # fmt: skip
     codigo = _texto(bruto["Codigo_Negociacao"])
-    ticker = codigo.where(codigo.fillna("").str.fullmatch(TICKER))
     tabela = pd.DataFrame(
         {
             "cnpj": bruto["CNPJ_Companhia"].str.strip(),
@@ -71,8 +90,8 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
             "valor_mobiliario": _texto(bruto["Valor_Mobiliario"]),
             "classe": _texto(bruto["Classe_Acao_Preferencial"]),
             "codigo_informado": codigo,
-            "ticker": ticker,
-            "emissor": ticker.str[:TAMANHO_DO_EMISSOR],
+            "ticker": codigo.map(ticker_do_codigo),
+            "emissor": codigo.map(emissor_do_codigo),
             "mercado": _texto(bruto["Mercado"]),
             "administradora": _texto(bruto["Sigla_Entidade_Administradora"]),
             "inicio_negociacao": _data(bruto["Data_Inicio_Negociacao"]),
@@ -86,8 +105,8 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
 
 
 def codigos_invalidos(valores: pd.DataFrame) -> pd.DataFrame:
-    """Linhas com código de negociação informado fora do formato de ticker (para o relatório)."""
-    ruins = valores[valores["codigo_informado"].notna() & valores["ticker"].isna()]
+    """Linhas com código informado que não dá nem o emissor ("4030", "NÃO HÁ"), para o relatório."""
+    ruins = valores[valores["codigo_informado"].notna() & valores["emissor"].isna()]
     return ruins[
         ["cnpj", "empresa", "referencia", "valor_mobiliario", "codigo_informado"]
     ]
