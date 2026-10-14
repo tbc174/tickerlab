@@ -63,7 +63,9 @@ TERMOS = {
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
-    # o do BC fica de fora: o firewall dele responde "Requisição inválida" a robôs (14/10/2026)
+    # o firewall do BC bloqueia por alguns minutos de vez em quando ("Requisição inválida"): a nova
+    # tentativa do `scripts/arquivar_fontes.py` cobre (14/10/2026)
+    "catalogo-bc": PORTAL_DO_BC,
     "catalogo-tesouro": PORTAL_DO_TESOURO,
     "catalogo-ibama": PORTAL_DO_IBAMA,
 }
@@ -288,8 +290,8 @@ FONTES: list[Fonte] = [
             ("cda", ("FI/DOC/CDA/DADOS/", "FI/DOC/CDA/DADOS/HIST/")),  # desde 2005
         )
     ),
-    # fontes abertas novas (pesquisa de 13–14/10/2026); o SCR.data do BC fica de fora por ora: o
-    # firewall do BC recusa o cliente do arquivista (14/10/2026), a investigar à parte
+    # fontes abertas novas (pesquisa de 13–14/10/2026)
+    Fonte("bcb-scr", "semanal", _ckan(PORTAL_DO_BC, "scr_data")),
     Fonte(
         "ccee-pld",
         "semanal",
