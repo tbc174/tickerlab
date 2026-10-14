@@ -17,8 +17,10 @@ from src.banco.modelo import (
     assinaturas,
     carteiras_do_research,
     envios_da_newsletter,
+    envios_de_novidades,
     favoritos,
     inscricoes_da_newsletter,
+    inscricoes_de_novidades,
     pdfs_originais,
     preferencias,
     presets,
@@ -38,6 +40,7 @@ from src.banco.usuarios import Usuario
 # Versão 5: o PDF original dos relatórios fica guardado na biblioteca (ADR 0021). Versão 6: o
 # TickerLab se apresenta como produto por assinatura, não mais como projeto educacional. Versão 7:
 # a contagem das tentativas do backtest (ficha "Foi sorte?", só a impressão SHA-256)
+# (as Novidades por e-mail, 14/10, entraram sem novo aceite: o consentimento delas é à parte)
 VERSAO_DOS_TERMOS = "2026-10-13.7"
 PASTA_DOS_TEXTOS = Path(__file__).resolve().parent.parent / "conteudo"
 TEXTO_PARA_CONFIRMAR_A_EXCLUSAO = "APAGAR"
@@ -200,6 +203,29 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 sa.select(envios_da_newsletter)
                 .where(envios_da_newsletter.c.usuario_id == usuario_id)
                 .order_by(envios_da_newsletter.c.registrado_em)
+            )
+        ],
+        "novidades_por_email": [
+            {
+                "versao_do_consentimento": l.versao_do_consentimento,
+                "inscrito_em": _texto(l.inscrito_em),
+            }
+            for l in conexao.execute(
+                sa.select(inscricoes_de_novidades).where(
+                    inscricoes_de_novidades.c.usuario_id == usuario_id
+                )
+            )
+        ],
+        "envios_de_novidades": [
+            {
+                "campanha": l.campanha,
+                "situacao": l.situacao,
+                "registrado_em": _texto(l.registrado_em),
+            }
+            for l in conexao.execute(
+                sa.select(envios_de_novidades)
+                .where(envios_de_novidades.c.usuario_id == usuario_id)
+                .order_by(envios_de_novidades.c.registrado_em)
             )
         ],
         "listas_do_research": [

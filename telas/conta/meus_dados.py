@@ -1,4 +1,5 @@
-"""Meus dados: a aparência (tema) e, pela LGPD, exportar, baixar os PDFs e apagar a conta.
+"""Meus dados: a aparência (tema), as Novidades por e-mail (opt-in) e, pela LGPD, exportar,
+baixar os PDFs e apagar a conta.
 
 Saiu do `app.py` sem mudar comportamento. Regra de `telas/`: nenhum estado mutável no módulo
 (um módulo importado é do processo inteiro, isto é, de todos os usuários).
@@ -11,6 +12,7 @@ import logging
 import streamlit as st
 
 from src import tema_do_app
+from src.banco import novidades_por_email
 from src.banco.conexao import obter_engine
 from src.banco.dados_do_usuario import carregar_preferencias, salvar_preferencias
 from src.banco.pdfs_originais import pdfs_em_zip
@@ -20,6 +22,8 @@ from src.conformidade import (
     apagar_conta,
     exportar_meus_dados,
 )
+from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
+from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from telas.compartilhar import mostrar_links_da_conta
 from telas.comum import cabecalho_da_pagina
 
@@ -105,6 +109,55 @@ def _mostrar_aparencia(usuario):
     )
 
 
+def _mudar_novidades(usuario, receber):
+    try:
+        with obter_engine().begin() as conexao:
+            if receber:
+                novidades_por_email.inscrever(conexao, usuario.id, VERSAO_DAS_NOVIDADES)
+            else:
+                novidades_por_email.cancelar(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao mudar a inscrição nas Novidades")
+        st.toast("Não consegui guardar a escolha agora. Tente de novo em instantes.")
+        return
+    st.session_state.pop("novidades_consentimento", None)
+
+
+def _mostrar_novidades(usuario):
+    """Novidades e ofertas por e-mail: o opt-in fica aqui para quem não marcou no 1º acesso."""
+    st.subheader("Novidades e ofertas por e-mail")
+    try:
+        with obter_engine().connect() as conexao:
+            inscrita = novidades_por_email.inscricao(conexao, usuario.id)
+    except Exception:
+        log_da_conta.exception("Falha ao ler a inscrição nas Novidades")
+        st.caption("Não consegui ler a sua escolha agora.")
+        return
+    if inscrita is not None:
+        st.caption(
+            f"Você recebe novidades e ofertas do TickerLab desde "
+            f"{inscrita.inscrito_em:%d/%m/%Y}. Cada e-mail também traz um link para sair."
+        )
+        st.button(
+            "Não quero mais receber",
+            key="novidades_cancelar",
+            on_click=_mudar_novidades,
+            args=(usuario, False),
+        )
+        return
+    st.caption(
+        "O e-mail da sua conta serve só para a conta. Propaganda do TickerLab, só se você pedir."
+    )
+    marcou = st.checkbox(TEXTO_DAS_NOVIDADES, key="novidades_consentimento")
+    st.button(
+        "Quero receber",
+        key="novidades_inscrever",
+        disabled=not marcou,
+        on_click=_mudar_novidades,
+        args=(usuario, True),
+    )
+
+
 def pagina_meus_dados():
     cabecalho_da_pagina("meus_dados")
     usuario = st.session_state.get("usuario")
@@ -113,6 +166,8 @@ def pagina_meus_dados():
     if usuario is None:
         st.info("Sem login (modo local) não há conta nem dados pessoais guardados.")
         return
+    _mostrar_novidades(usuario)
+    st.divider()
     st.subheader("Baixar uma cópia dos meus dados")
     st.caption(
         "Perfil, preferências, favoritos, simulações e situação da assinatura, em um "
