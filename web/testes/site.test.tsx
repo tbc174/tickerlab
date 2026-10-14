@@ -3,8 +3,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Modulo } from "../src/conteudo";
+import { type Modulo, marca } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
+import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
 import { ROTAS } from "../src/rotas";
 import { contagem } from "../src/site/comum";
@@ -78,6 +79,34 @@ function moduloDeTeste(prontas: number, emBreve: number): Modulo {
     ],
   };
 }
+
+describe("estilo v2 (ADR 0065)", () => {
+  const estilo = css();
+  // os blocos de "reduzir movimento" (o do CSS antigo e os do visual v2)
+  const menosMovimento = estilo.split("@media (prefers-reduced-motion: reduce)").slice(1).join("");
+
+  it("traz as peças do visual novo", () => {
+    for (const classe of [".v2-heroi-fundo", ".v2-painel", ".v2-bento", ".v2-pausa", ".v2-fita"])
+      expect(estilo).toContain(classe);
+  });
+
+  it("alta e queda vêm da marca, nos dois temas", () => {
+    const { paleta_clara: claro, paleta_escura: escuro } = marca;
+    expect(estilo).toContain(`--alta: ${claro.alta}; --queda: ${claro.queda};`);
+    expect(estilo).toContain(`--alta: ${escuro.alta}; --queda: ${escuro.queda};`);
+    expect(estilo).not.toContain("#f0525b"); // o vermelho do protótipo, que não é o da marca
+  });
+
+  it("com 'reduzir movimento', o que roda sem parar para e o botão de pausa some", () => {
+    expect(menosMovimento).toContain(".v2-pausa { display: none; }");
+    for (const peca of [".v2-aurora span", ".v2-painel::before", ".v2-fita-faixa"])
+      expect(menosMovimento).toContain(`${peca} { animation: none !important; }`);
+  });
+
+  it("nada do catálogo do design system (só existia no protótipo)", () => {
+    expect(estilo).not.toContain("no-catalogo");
+  });
+});
 
 describe("contagem do módulo", () => {
   it("no singular e no plural", () => {

@@ -1,6 +1,7 @@
-// O CSS do site público. As cores vêm de src/marca.py (pelo conteudo/marca.json); o resto é fixo.
-// Era gerado por scripts/gerar_site.py; o teste confere que sai igual ao de antes da troca.
+// O CSS do site público (e do app em React, que usa o mesmo). As cores vêm de src/marca.py (pelo
+// conteudo/marca.json); o resto é fixo. O visual v2 (ADR 0065) vem por último, em estilo-v2.ts.
 import { marca } from "./conteudo";
+import { cssV2 } from "./estilo-v2";
 
 export const CABECALHO = "/* gerado por web/src/estilo.ts a partir de src/marca.py — não editar à mão */";
 
@@ -211,7 +212,8 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
 .rodape nav a { color: var(--apagado); text-decoration: none; }
 .rodape nav a:hover { color: var(--texto); }
 .rodape .aviso { grid-column: 1 / -1; color: var(--sutil); font-size: .86rem; max-width: none; margin: 0; }
-/* --- movimento (blueprint, seção 09): curto, com função, uma vez; nunca em laço ------------ */
+/* --- movimento (blueprint, seção 09): curto, com função, uma vez; o que roda sem parar fica só no
+   fundo do visual v2, sempre com botão de pausa (ADR 0065) ------------------------------------ */
 :root { interpolate-size: allow-keywords; }
 /* troca de página: o conteúdo cruza suavemente e o topo fica parado */
 @view-transition { navigation: auto; }
@@ -259,5 +261,5 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
     scroll-behavior: auto !important; }
   @view-transition { navigation: none; }
 }
-`);
+${cssV2()}`);
 }
