@@ -121,6 +121,42 @@ simulacoes = sa.Table(
 )
 sa.Index("ix_simulacoes_usuario_id", simulacoes.c.usuario_id)
 
+# Diário de Teses (onda 3, PR F): anotações datadas da pessoa sobre um ativo. Não se editam (só se
+# apagam), para o diário mostrar o que ela pensava naquele dia.
+TAMANHO_MAXIMO_DA_TESE = 2000  # caracteres
+teses = sa.Table(
+    "teses",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("ticker", sa.String(20), nullable=False),
+    sa.Column("texto", sa.Text, nullable=False),
+    _momento("criada_em"),
+    sa.CheckConstraint(
+        f"length(texto) BETWEEN 1 AND {TAMANHO_MAXIMO_DA_TESE}", name="texto"
+    ),
+)
+sa.Index("ix_teses_usuario_id_ticker", teses.c.usuario_id, teses.c.ticker)
+
+# Os backtests salvos que sustentam cada anotação: apagar um dos dois apaga só a ligação
+teses_estrategias = sa.Table(
+    "teses_estrategias",
+    metadata,
+    sa.Column(
+        "tese_id",
+        sa.Uuid,
+        sa.ForeignKey("teses.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    sa.Column(
+        "simulacao_id",
+        sa.Uuid,
+        sa.ForeignKey("simulacoes.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+sa.Index("ix_teses_estrategias_simulacao_id", teses_estrategias.c.simulacao_id)
+
 # Research (0007): cada mudança de parâmetros é uma versão nova; nada é sobrescrito.
 # alvo "" = o padrão do usuário; senão, o ticker (ou a watchlist, numa etapa futura).
 ESCOPOS_DE_PRESET = ("global", "watchlist", "ativo")

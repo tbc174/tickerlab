@@ -485,6 +485,17 @@
     "url": "pulse"
   },
   {
+    "chave": "diario_de_teses",
+    "contrato": null,
+    "descricao": "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que você salvou.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Diário de Teses",
+    "url": "diario-de-teses"
+  },
+  {
     "chave": "carteira_b3",
     "contrato": null,
     "descricao": "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos que você escolher, proventos recebidos e custo médio.",
