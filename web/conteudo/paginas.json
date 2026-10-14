@@ -382,6 +382,36 @@
           "opcoes": [],
           "padrao": null,
           "tipo": "numero"
+        },
+        {
+          "descricao": "Capital do começo, em R$ (só o imposto da ficha depende dele).",
+          "maximo": 1000000000000.0,
+          "minimo": 100,
+          "nome": "capital_inicial",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": 10000.0,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "A maior queda que você aguentaria (0,30 = 30%); vazia = a guardada na conta.",
+          "maximo": 0.9,
+          "minimo": 0.05,
+          "nome": "tolerancia_de_queda",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "numero"
+        },
+        {
+          "descricao": "Até 2 parâmetros numéricos que variam na ficha; vazio = os dois primeiros.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "livres",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "parametros da estrategia"
         }
       ],
       "metodo": "POST",
