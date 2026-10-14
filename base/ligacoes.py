@@ -17,7 +17,9 @@ from pathlib import Path
 
 import pandas as pd
 
-TABELA_CONFERIDA = Path(__file__).resolve().parent / "conferidas" / "emissores_antigos.csv"
+TABELA_CONFERIDA = (
+    Path(__file__).resolve().parent / "conferidas" / "emissores_antigos.csv"
+)
 PELO_FCA, PELA_TABELA = "fca", "tabela conferida"
 PRIORIDADE = {PELO_FCA: "0", PELA_TABELA: "1"}  # na ordenação, o FCA vem antes
 COMPRADO = "comprado"
