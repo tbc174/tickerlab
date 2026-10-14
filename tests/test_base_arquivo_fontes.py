@@ -261,3 +261,122 @@ def test_scr_do_ano_novo_so_entra_quando_o_bc_publica_janeiro():
     marco = datetime(2027, 3, 1, 5, tzinfo=UTC)
     assert scr.descobrir(Paginas({}), fevereiro)[-1].url.endswith("scrdata_2026.zip")
     assert scr.descobrir(Paginas({}), marco)[-1].url.endswith("scrdata_2027.zip")
+
+
+# prévia do balanço pelos reguladores, 1ª leva (14/10/2026)
+
+
+def test_previa_do_balanco_no_catalogo():
+    novas = {
+        "anp-vendas-distribuidora": ("semanal", False),
+        "anp-producao-poco": ("mensal", False),
+        "anp-concessionarios": ("mensal", False),
+        "ons-geracao-usina": ("semanal", True),
+        "ons-restricao-eolica-solar": ("semanal", True),
+        "ons-capacidade-geracao": ("semanal", False),
+        "antt-siade": ("semanal", True),
+        "comexstat": ("semanal", True),
+        "anac-estatistico": ("mensal", True),
+        "ans-beneficiarios": ("semanal", True),
+    }
+    for id_, (grupo, pesada) in novas.items():
+        fonte = fontes.POR_ID[id_]
+        assert (fonte.grupo, fonte.pesada) == (grupo, pesada), id_
+    # a ANP não manda ETag: os ZIPs de vendas vêm por endereço fixo, sem perguntar cabeçalhos
+    vendas = fontes.POR_ID["anp-vendas-distribuidora"].descobrir(Paginas({}), AGORA)
+    assert [a.url.rsplit("/", 1)[-1] for a in vendas] == [
+        "liquidos.zip",
+        "glp.zip",
+        "aviacao.zip",
+    ]
+
+
+def test_ckan_escolhe_so_os_formatos_pedidos():
+    # o ONS publica cada mês em CSV, XLSX e Parquet: basta o Parquet (e o dicionário)
+    portal = fontes.PORTAL_DO_ONS
+    resposta = json.dumps(
+        {
+            "result": {
+                "resources": [
+                    {"url": f"{portal}/d/dicionario.pdf", "format": "PDF"},
+                    {"url": f"{portal}/d/2026_10.csv", "format": "CSV"},
+                    {"url": f"{portal}/d/2026_10.xlsx", "format": "XLSX"},
+                    {"url": f"{portal}/d/2026_10.parquet", "format": "PARQUET"},
+                ]
+            }
+        }
+    ).encode()
+    cliente = Paginas({f"{portal}/api/3/action/package_show?id=g": resposta})
+    alvos = fontes.descobrir_ckan(cliente, portal, "g", formatos=("parquet", "pdf"))
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos] == [
+        "dicionario.pdf",
+        "2026_10.parquet",
+    ]
+
+
+def test_producao_da_anp_sai_dos_links_da_pagina():
+    pasta = (
+        "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/"
+        "arquivos-fase-de-desenvolvimento-e-producao/"
+        "arquivos-producao-de-petroleo-e-gas-natural-nacional/"
+    )
+    pagina = (
+        f'<a href="{pasta}pm/producao-mar-2026.csv">2026</a>'
+        f'<a href="{pasta}pm/producao_por_poco_2024.csv">2024</a>'
+        f'<a href="{pasta}pt/2026/producao_por_poco_terra_2026_2_trim.csv">terra</a>'
+        f'<a href="{pasta}pm/producao-mar-2026.csv">de novo</a>'
+        '<a href="https://www.gov.br/anp/outra-coisa.csv">fora</a>'
+    ).encode()
+    cliente = Paginas({fontes.PAGINA_DA_PRODUCAO_DA_ANP: pagina})
+    alvos = fontes.POR_ID["anp-producao-poco"].descobrir(cliente, AGORA)
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos] == [
+        "producao-mar-2026.csv",
+        "producao_por_poco_2024.csv",
+        "producao_por_poco_terra_2026_2_trim.csv",
+    ]
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_links(
+            Paginas({"https://x/p": b"<html></html>"}),
+            "https://x/p",
+            fontes.PRODUCAO_POR_POCO,
+        )
+
+
+def test_comex_tem_todos_os_anos_e_o_ano_novo_so_depois_de_janeiro():
+    alvos = [a.url for a in fontes.descobrir_comex(Paginas({}), AGORA)]
+    anos = 2026 - 1997 + 1
+    assert len(alvos) == 4 * anos + 2 + len(fontes.TABELAS_DO_COMEX)
+    assert f"{fontes.COMEX}comexstat-bd/ncm/EXP_1997.csv" in alvos
+    assert f"{fontes.COMEX}comexstat-bd/mun/IMP_2026_MUN.csv" in alvos
+    janeiro = [
+        a.url
+        for a in fontes.descobrir_comex(Paginas({}), datetime(2027, 1, 20, tzinfo=UTC))
+    ]
+    assert not any("_2027" in url for url in janeiro)
+    assert f"{fontes.COMEX}comexstat-bd/ncm/EXP_2026.csv" in janeiro
+
+
+def test_beneficiarios_da_ans_so_as_duas_safras_mais_recentes():
+    raiz = fontes.BENEFICIARIOS_DA_ANS
+    cliente = Paginas(
+        {
+            raiz: b'<a href="202606/">x</a><a href="202607/">x</a>'
+            b'<a href="202608/">x</a><a href="dicionario/">x</a>',
+            f"{raiz}202607/": b'<a href="pda-024-icb-AC-2026_07.zip">AC</a>',
+            f"{raiz}202608/": b'<a href="pda-024-icb-AC-2026_08.zip">AC</a>'
+            b'<a href="pda-024-icb-SP-2026_08.zip">SP</a>',
+        }
+    )
+    alvos = fontes.descobrir_beneficiarios_ans(cliente, AGORA)
+    assert [a.url.removeprefix(raiz) for a in alvos] == [
+        "202607/pda-024-icb-AC-2026_07.zip",
+        "202608/pda-024-icb-AC-2026_08.zip",
+        "202608/pda-024-icb-SP-2026_08.zip",
+    ]
+    with pytest.raises(ErroDeDescoberta):
+        fontes.descobrir_beneficiarios_ans(Paginas({raiz: b"<html></html>"}), AGORA)
+
+
+def test_endereco_da_anac_vai_codificado():
+    assert " " not in fontes.ESTATISTICO_DA_ANAC
+    assert fontes.ESTATISTICO_DA_ANAC.endswith("/Dados_Estatisticos.csv")
