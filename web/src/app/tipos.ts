@@ -198,10 +198,36 @@ export interface BacktestV1 {
   operacoes: number;
 }
 
+export interface ChecagemV1 {
+  pergunta: string;
+  situacao: string; // "passou", "não passou", "não se aplica" ou "não deu para medir"
+  explicacao: string;
+}
+
+export interface VereditoV1 {
+  resultado: string; // "passou", "não passou" ou "inconclusivo"
+  titulo: string;
+  texto: string;
+}
+
+export interface FichaV1 {
+  veredito: VereditoV1;
+  checagens: ChecagemV1[];
+  tentativas: number;
+  tentativas_da_pessoa: number;
+  texto_das_tentativas: string;
+  tolerancia_de_queda: number;
+  livres: string[];
+  capital_inicial: number;
+  nota: string;
+}
+
 export interface BacktestDoAtivoV1 {
   ativo: AtivoV1;
   estrategia: string;
   parametros: Record<string, number | string>;
   custo_por_operacao: number;
   backtest: BacktestV1;
+  ficha: FichaV1 | null; // null: não deu para montar (motivo_sem_ficha diz por quê)
+  motivo_sem_ficha: string | null;
 }

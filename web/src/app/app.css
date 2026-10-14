@@ -84,7 +84,12 @@
 .compartilhado { max-width: 46rem; }
 .cartao-do-veredito { margin: 1.25rem 0; padding: 1rem 1.25rem; border-radius: var(--raio);
   border: 1px solid var(--linha-forte); background: var(--superficie); }
-.cartao-do-veredito h2 { margin: 0 0 .4rem; font-size: 1.2rem; }
+.cartao-do-veredito :is(h2, h3) { margin: 0 0 .4rem; font-size: 1.2rem; }
+/* a ficha "Foi sorte?" embaixo do backtest: o título com o "?" do glossário ao lado */
+.ficha-foi-sorte { margin-top: 2rem; }
+.ficha-foi-sorte > h2 { display: flex; align-items: center; gap: .5rem; }
+.ficha-foi-sorte > h2 .ajuda { margin-left: 0; }
+.simbolo-da-checagem { display: inline-block; min-width: 1.1rem; font-weight: 700; }
 .checagens { list-style: none; padding: 0; display: grid; gap: .8rem; }
 .checagens li p { margin: .2rem 0 0; }
 .ficha-tecnica { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 1.25rem 0; }

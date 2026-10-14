@@ -463,6 +463,10 @@
             "title": "Livres",
             "type": "array"
           },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
           "tentativas": {
             "title": "Tentativas",
             "type": "integer"
@@ -491,7 +495,8 @@
           "texto_das_tentativas",
           "tolerancia_de_queda",
           "livres",
-          "capital_inicial"
+          "capital_inicial",
+          "nota"
         ],
         "title": "FichaV1",
         "type": "object"
