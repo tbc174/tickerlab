@@ -26,6 +26,10 @@ SIM_OU_NAO = "verdadeiro ou falso"
 # tabelas do banco do app que ainda não guardam o commit por linha (exigência 13 da ADR 0055); as
 # da base em Parquet guardam no manifesto (série 3, PR 1) e o registro de coletas, por arquivo (PR 3)
 SEM_VERSAO_DO_CODIGO = "A versão do código que processou a linha ainda não é guardada."
+COM_VERSAO_DO_CODIGO = (
+    "`versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit "
+    "ou com mudanças não salvas)."
+)
 LINHAGEM_DO_FCA = (
     "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA "
     "usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do "
@@ -74,7 +78,7 @@ _SO_ATE_2022 = (
 LINHAGEM_DA_HISTORICA_SEM_ANO = (
     "Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de "
     "coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela "
-    "foi montada. " + SEM_VERSAO_DO_CODIGO
+    "foi montada. " + COM_VERSAO_DO_CODIGO
 )
 LINHAGEM_DA_HISTORICA = (
     LINHAGEM_DA_HISTORICA_SEM_ANO
@@ -84,6 +88,7 @@ _ORIGEM_SEM_ANO = {
     "origem_sha256": ("SHA-256 do arquivo original no acervo", TEXTO),
     "origem_coletada_em": ("Quando o arquivista baixou esse original", MOMENTO),
     "montado_em": ("Quando a tabela foi montada", MOMENTO),
+    "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
 }
 _ORIGEM_DA_LINHA = {
     "ano_do_arquivo": ("Ano do arquivo da CVM de onde a linha veio", "ano"),
@@ -1251,7 +1256,7 @@ TABELAS: dict[str, Tabela] = {
         linhagem=(
             "`id_documento` leva ao FCA (e dali à linha de `auditores`, que guarda o SHA-256 do "
             "original); `montado_em` diz quando a tabela foi montada. "
-            + SEM_VERSAO_DO_CODIGO
+            + COM_VERSAO_DO_CODIGO
         ),
         colunas={
             "cnpj": _EMPRESA["cnpj"],
@@ -1265,6 +1270,7 @@ TABELAS: dict[str, Tabela] = {
             "anos_com_o_anterior": ("Tempo com a firma anterior", "anos"),
             "id_documento": ("Número na CVM do FCA que mostrou a troca", TEXTO),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
     "curva_juros": Tabela(
@@ -1347,7 +1353,7 @@ TABELAS: dict[str, Tabela] = {
             "`origem_sha256` leva ao arquivo do regulador no acervo de onde a entidade saiu (no "
             "Comex, à versão da tabela conferida); as ligações saem de `controladas`, que guarda "
             "o SHA-256 de cada FRE; `montado_em` diz quando a tabela foi montada. "
-            + SEM_VERSAO_DO_CODIGO
+            + COM_VERSAO_DO_CODIGO
         ),
         ressalva_de_revenda=(
             "Os nomes e códigos das entidades seguem a licença de cada regulador: CC BY (ANS, "
@@ -1388,6 +1394,7 @@ TABELAS: dict[str, Tabela] = {
             "tickers": ("Tickers da companhia no FCA mais recente", TEXTO),
             "origem_sha256": ("SHA-256 do arquivo de onde a entidade saiu", TEXTO),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
 }

@@ -43,6 +43,7 @@ from base import fca
 from base.controladas import cnpj14
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
+from src.versao_do_codigo import versao_do_codigo
 
 TABELA = "empresa_serie"
 TABELA_CONFERIDA = Path(__file__).resolve().parent / "conferidas" / "empresa_serie.csv"
@@ -468,6 +469,7 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     )
     tabela["principal"] = _principal(tabela)
     tabela["montado_em"] = agora.isoformat()
+    tabela["versao_do_codigo"] = versao_do_codigo()
     for coluna in ("desde", "ultima_referencia"):
         tabela[coluna] = tabela[coluna].astype("string")
     destino = pasta / TABELA / f"{TABELA}.parquet"

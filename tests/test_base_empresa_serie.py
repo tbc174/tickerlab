@@ -240,7 +240,8 @@ def test_escolhe_a_safra_mais_recente_de_cada_fonte():
     assert empresa_serie.escolher("bcb-pix-chaves", pix) == {pix[1]}
 
 
-def test_montagem_grava_a_tabela_com_as_ligacoes(banco, tmp_path):
+def test_montagem_grava_a_tabela_com_as_ligacoes(banco, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     pasta = tmp_path / "base"
     (pasta / "controladas").mkdir(parents=True)
     controladas.ler_controladas_do_fre(_fre()).to_parquet(
@@ -258,6 +259,7 @@ def test_montagem_grava_a_tabela_com_as_ligacoes(banco, tmp_path):
     ligadas = tabela[tabela["via"] != "produto"]  # os produtos do Comex vêm sempre
     assert ligadas["cnpj_companhia"].tolist() == ["05197443000138"]
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
+    assert set(tabela["versao_do_codigo"]) == {"0123abc"}
 
 
 def test_sem_controladas_nada_e_gravado(banco, tmp_path):

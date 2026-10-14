@@ -24,6 +24,7 @@ import sqlalchemy as sa
 
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
+from src.versao_do_codigo import versao_do_codigo
 
 COLUNAS = (
     "cnpj",
@@ -255,6 +256,7 @@ def montar_situacao_especial(
             origem_sha256=original.sha256,
             origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
             montado_em=agora.isoformat(),
+            versao_do_codigo=versao_do_codigo(),
         )
         por_mes.setdefault(achado.group(1), []).append(tabela)
     linhas: dict[str, int] = {}

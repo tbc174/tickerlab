@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.versao_do_codigo import versao_do_codigo
+
 CODIFICACAO_DA_CVM = "latin-1"
 COLUNAS = (
     "cnpj", "empresa", "referencia", "versao", "id_documento", "conhecido_em", "auditor_id",
@@ -274,7 +276,9 @@ def montar_trocas(pasta: Path, agora: datetime) -> int:
     for coluna in DATAS:
         todos[coluna] = pd.to_datetime(todos[coluna], errors="coerce").dt.date
     todos = todos.astype(object).where(todos.notna(), None)
-    trocas = trocas_de_auditor(todos).assign(montado_em=agora.isoformat())
+    trocas = trocas_de_auditor(todos).assign(
+        montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
+    )
     destino = pasta / "trocas_de_auditor" / "trocas.parquet"
     destino.parent.mkdir(parents=True, exist_ok=True)
     parcial = destino.with_name(destino.name + ".parcial")

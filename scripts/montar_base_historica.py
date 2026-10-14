@@ -22,6 +22,7 @@ from pathlib import Path
 from base import auditores, curva, empresa_serie, historico, rotulos
 from src import acervo
 from src.banco.conexao import obter_engine
+from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("montar_base_historica")
 
@@ -49,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
         opcoes.pasta
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
+    # como as outras cargas da base: sem saber o commit, nada é montado (exigência 13, ADR 0055)
+    log.info("Versão do código: %s", exigir_versao_do_codigo())
     agora = datetime.now(UTC)
     falhou = False
     with obter_engine().connect() as conexao:
