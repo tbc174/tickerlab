@@ -400,3 +400,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** no Python 3.12 do Windows, `datetime.now()` usa `GetSystemTimeAsFileTime`, que anda de 15,6 em 15,6 ms (`time.get_clock_info("time").resolution`). Duas teses gravadas em seguida saíam com a mesma hora; a consulta desempata pelo `id`, que é um `uuid4` aleatório, então a ordem virava cara ou coroa (com o relógio parado, 10 de 20 rodadas falharam). Em produção (PostgreSQL no Linux, microssegundos) o empate não acontece.
 - **Solução:** teste de ordem não depende do relógio: fixe as horas (aqui com `sa.update(...).values(criada_em=...)`; em `compartilhamentos` a função já recebe `agora=`). Para conferir que um teste aguenta o empate, rode-o com o `datetime` do módulo trocado por um relógio parado (`monkeypatch.setattr(modulo, "datetime", RelogioParado)`).
 - **Data:** 14/10/2026
+
+## Teste do React que passa sozinho e falha de vez em quando: duas fontes para o mesmo estado
+- **Sintoma:** `meus_dados.test.tsx > revogar manda o id do link e atualiza a lista` falhava 1 vez em cada ~12 rodadas e estourou o tempo no CI da `main` (o deploy automático não implantou: "testes do GitHub falharam").
+- **Causa:** a tela guardava a lista em `useState(inicial)` **e** tinha `useEffect(() => setDados(inicial), [inicial])`. Quando a resposta do revogar chegava antes de o efeito rodar, o efeito vinha depois e punha a lista velha de volta (com o botão "Revogar"). Contar os pedidos no teste mostrou que a lista foi pedida uma vez só: não era um segundo pedido.
+- **Solução:** uma fonte só. O estado começa com a resposta da API e só muda pelo revogar; nada de efeito copiando a prop para o estado. Para conferir, repetir o teste em laço (`for i in $(seq 1 20); do npx vitest run ARQUIVO; done`) e ver quantas vezes falha.
+- **Data:** 14/10/2026
+
+## Teste que conta pedidos e erra por um: contou antes do primeiro pedido sair
+- **Sintoma:** `planos.test.tsx > a volta do pagamento avisa e deixa atualizar o plano` falhava às vezes com "esperava antes + 1".
+- **Causa:** o aviso da volta do pagamento aparece na hora, antes de o primeiro pedido do plano sair. O teste guardava "quantos pedidos já houve" logo depois do aviso; às vezes o primeiro pedido ainda não tinha saído e entrava na conta depois.
+- **Solução:** esperar a tela carregar (`findByRole("region", { name: "Seu plano" })`) antes de contar.
+- **Data:** 14/10/2026
+
+## PR sem nenhum check no GitHub ("no checks reported")
+- **Sintoma:** depois de um push, o PR ficou sem CI nenhum.
+- **Causa:** o PR estava em conflito com a `main` (`mergeable: CONFLICTING`). O CI de PR roda sobre a junção do ramo com a `main`; com conflito, essa junção não existe e o GitHub não roda nada.
+- **Solução:** juntar a `main` no ramo, resolver e mandar de novo. Conferir com `gh pr view N --json mergeable,mergeStateStatus`.
+- **Data:** 14/10/2026
+
+## Conflito só em `novo/` (o app em React gerado) ao juntar a `main`
+- **Sintoma:** `CONFLICT (rename/rename): novo/assets/index-XXXX.js ...`, conflito em `novo/index.html` e `novo/sw.js`.
+- **Causa:** o `novo/` é gerado pelo `npm run app` e o nome dos arquivos muda a cada build; os dois lados geraram arquivos diferentes.
+- **Solução:** não resolver à mão. Confirmar que **não** há conflito fora do `novo/`, apagar os `novo/assets/*` em conflito, ficar com o `index.html`/`sw.js` de qualquer lado e **regerar** (`cd web && npm run app`), depois `git add -A novo`. O CI confere que o `novo/` está em dia.
+- **Data:** 14/10/2026
