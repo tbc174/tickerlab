@@ -24,7 +24,7 @@ export interface Modulo {
 /** Um campo da tela, com os limites que a rota da API aceita (`Entrada` de src/paginas.py). */
 export interface EntradaDoContrato {
   nome: string;
-  tipo: string; // "texto", "inteiro", "numero", "opcao", "lista de textos" ou "objeto"
+  tipo: string; // "texto", "inteiro", "numero", "opcao", "lista de textos", "objeto" ou "parametros da estrategia"
   descricao: string;
   obrigatoria: boolean;
   padrao: number | string | null;
