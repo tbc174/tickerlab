@@ -1,0 +1,41 @@
+{
+"@odata.context": "https://was-p.bcnet.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata$metadata#_IfDataCadastro",
+"value": [
+{
+"CodInst": "60746948",
+"Data": "200012",
+"NomeInstituicao": "BANCO BRADESCO S.A.",
+"DataInicioAtividade": 194303,
+"Tcb": "B1",
+"Td": "I",
+"Tc": 2,
+"SegmentoTb": "Banco Múltiplo",
+"Atividade": "Complexo - metodologia até dez/2016",
+"Uf": "RJ",
+"Municipio": "São Gonçalo",
+"Sr": null,
+"CodConglomeradoFinanceiro": "C0010045",
+"CodConglomeradoPrudencial": null,
+"CnpjInstituicaoLider": "60746948",
+"Situacao": "A"
+},
+{
+"CodInst": "C0010045",
+"Data": "200012",
+"NomeInstituicao": "BRADESCO",
+"DataInicioAtividade": 180001,
+"Tcb": "B1",
+"Td": "C",
+"Tc": 2,
+"SegmentoTb": null,
+"Atividade": "Complexo - metodologia até dez/2016",
+"Uf": "RJ",
+"Municipio": "São Gonçalo",
+"Sr": null,
+"CodConglomeradoFinanceiro": "C0010045",
+"CodConglomeradoPrudencial": null,
+"CnpjInstituicaoLider": "60746948",
+"Situacao": "A"
+}
+]
+}
