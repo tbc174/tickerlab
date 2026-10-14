@@ -76,7 +76,7 @@ def test_mandato_leva_a_data_em_que_a_cvm_recebeu_o_documento():
     assert linha["referencia"] == date(2020, 1, 1)
     assert linha["inicio"] == date(2018, 1, 1)
     assert pd.isna(linha["fim"])
-    assert linha["auditor_id"] == "cnpj:57755217"
+    assert linha["auditor_id"] == "rede:kpmg"
     assert linha["codigo_cvm_auditor"] == "004189"
 
 
@@ -99,16 +99,62 @@ def test_linhas_iguais_sem_o_responsavel_viram_uma():
     assert len(tabela) == 1
 
 
-def test_mesma_firma_com_outra_filial_ou_sem_codigo_e_a_mesma_firma():
-    kpmg_filial = ("KPMG AUDITORES INDEPENDENTES LTDA", "57.755.217/0022-53", "")
+def test_rede_vem_do_nome_mesmo_com_erro_de_digitacao_cnpj_ou_codigo_trocado():
+    nomes = {
+        "Delloitte Touche Tohmatsu Auditores Independentes": "deloitte",
+        "Deloitte Touche Tohmatsu (código da BDO)": "deloitte",
+        "Enerst & Young Auditores Independentes S/S": "ey",
+        "Ernest & Young Auditores Independentes S.S.": "ey",
+        "Ernst & Young Terco Auditores Independentes": "ey",
+        # a Terco entrou na EY em 2010: é a mesma rede, não uma troca da empresa auditada
+        "Terco Grant Thornton Aud Indep Soc Simples": "ey",
+        "GRANT THORTON AUDITORES INDEPENDENTES": "grant_thornton",
+        "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES": "pwc",
+        "KPMG AUDITORES INDEPENDENTES LTDA": "kpmg",
+        "KMPG Auditores Independentes": "kpmg",
+        "BDO RCS Auditores Independentes SS": "bdo",
+    }
+    for nome, rede in nomes.items():
+        # o BB informou o próprio CNPJ no lugar do da firma (FCA de 2011); o código é de outra firma
+        firma = (nome, "00.000.000/0001-91", "002100")
+        tabela = _ano(2020, "2020-05-01", (firma, "2018-01-01"))
+        assert tabela["auditor_id"].tolist() == [f"rede:{rede}"], nome
+
+
+def test_firma_fora_das_redes_e_o_codigo_da_cvm_mesmo_com_outro_cnpj():
+    pequena_cnpj_errado = ("AUDITORA PEQUENA", "00.000.000/0001-91", "012345")
+    pequena_outra_raiz = ("AUDITORA PEQUENA S/S", "33.256.439/0001-39", "012345")
     tabela = pd.concat(
         [
-            _ano(2019, "2019-05-01", (KPMG, "2015-01-01")),
-            _ano(2020, "2020-05-01", (kpmg_filial, "2020-01-01")),
+            _ano(2020, "2020-05-01", (pequena_cnpj_errado, "2015-01-01")),
+            _ano(2021, "2021-05-01", (pequena_outra_raiz, "2015-01-01")),
         ]
     )
-    assert tabela["auditor_id"].nunique() == 1
+    assert set(tabela["auditor_id"]) == {"cvm:012345"}
     assert auditores.trocas_de_auditor(tabela).empty
+
+
+def test_codigo_vazio_vem_da_mesma_raiz_de_cnpj_no_mesmo_arquivo():
+    outra = "22.222.222/0001-22"
+    sem_codigo = ("AUDITORA PEQUENA", "12.345.678/0002-00", "")
+    com_codigo = ("AUDITORA PEQUENA S/S", "12.345.678/0001-90", "012345")
+    tabela = auditores.ler_auditores_do_fca(
+        _zip(
+            [_documento("1", "2020-05-01"), _documento("2", "2020-05-02", cnpj=outra)],
+            [
+                _mandato(sem_codigo, "2018-01-01", documento="1"),
+                _mandato(com_codigo, "2018-01-01", cnpj=outra, documento="2"),
+            ],
+        )
+    )
+    assert tabela["auditor_id"].tolist() == ["cvm:012345", "cvm:012345"]
+    assert tabela["codigo_cvm_auditor"].isna().tolist() == [True, False]
+
+
+def test_sem_codigo_em_nenhuma_linha_fica_a_raiz_do_cnpj():
+    sem_codigo = ("AUDITORA PEQUENA S/S", "12.345.678/0001-90", "")
+    tabela = _ano(2020, "2020-05-01", (sem_codigo, "2018-01-01"))
+    assert tabela["auditor_id"].tolist() == ["cnpj:12345678"]
 
 
 def test_troca_entre_dois_anos_vale_na_entrega_do_fca_que_a_mostra():
@@ -129,8 +175,8 @@ def test_troca_entre_dois_anos_vale_na_entrega_do_fca_que_a_mostra():
     assert troca["cnpj"] == CIA
     assert troca["conhecido_em"] == date(2020, 6, 15)
     assert troca["efetiva_em"] == date(2020, 4, 1)
-    assert troca["anterior_id"] == "cnpj:57755217"
-    assert troca["novo_id"] == "cnpj:61366936"
+    assert troca["anterior_id"] == "rede:kpmg"
+    assert troca["novo_id"] == "rede:ey"
     assert troca["anterior"] == KPMG[0] and troca["novo"] == EY[0]
     assert troca["anos_com_o_anterior"] == 6.2
 
@@ -145,7 +191,7 @@ def test_troca_no_primeiro_fca_da_empresa_aparece_pelo_mandato_encerrado():
     )
     trocas = auditores.trocas_de_auditor(tabela)
     assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
-        ["cnpj:57755217", "cnpj:61562112"]
+        ["rede:kpmg", "rede:pwc"]
     ]
     assert trocas.iloc[0]["conhecido_em"] == date(2010, 5, 25)
 
@@ -187,7 +233,7 @@ def test_auditoria_conjunta_nao_vira_troca_mas_a_saida_de_um_com_entrada_de_outr
     )
     trocas = auditores.trocas_de_auditor(tabela)
     assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
-        ["cnpj:61366936", "cnpj:61562112"]
+        ["rede:ey", "rede:pwc"]
     ]
     # com a EY desde 2020 (a entrada na auditoria conjunta), não desde a saída da KPMG
     assert trocas.iloc[0]["anos_com_o_anterior"] == 2.0
@@ -203,7 +249,7 @@ def test_ano_sem_auditor_vigente_nao_apaga_o_anterior():
     )
     trocas = auditores.trocas_de_auditor(tabela)
     assert trocas[["anterior_id", "novo_id", "conhecido_em"]].values.tolist() == [
-        ["cnpj:57755217", "cnpj:61366936", date(2021, 5, 1)]
+        ["rede:kpmg", "rede:ey", date(2021, 5, 1)]
     ]
 
 
@@ -221,7 +267,7 @@ def test_fca_antigo_reapresentado_depois_do_novo_nao_desfaz_a_troca():
     )
     trocas = auditores.trocas_de_auditor(tabela)
     assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
-        ["cnpj:57755217", "cnpj:61366936"]
+        ["rede:kpmg", "rede:ey"]
     ]
 
 
@@ -312,7 +358,7 @@ def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path):
     assert auditores.montar_trocas(tmp_path, agora) == 1
 
     gravada = pd.read_parquet(tmp_path / "trocas_de_auditor" / "trocas.parquet")
-    assert gravada["novo_id"].tolist() == ["cnpj:61366936"]
+    assert gravada["novo_id"].tolist() == ["rede:ey"]
     assert str(gravada["conhecido_em"].iloc[0])[:10] == "2020-06-15"
     assert gravada["montado_em"].iloc[0] == agora.isoformat()
 
@@ -343,4 +389,4 @@ def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path):
     assert saida == 0
     assert (pasta / "auditores" / "2020.parquet").exists()
     trocas = pd.read_parquet(pasta / "trocas_de_auditor" / "trocas.parquet")
-    assert trocas["anterior_id"].tolist() == ["cnpj:57755217"]
+    assert trocas["anterior_id"].tolist() == ["rede:kpmg"]

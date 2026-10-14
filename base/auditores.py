@@ -9,12 +9,17 @@ pode ser mais tarde que a da primeira notícia, nunca mais cedo.
 LGPD: o sócio responsável técnico (nome e CPF) nunca entra, e o auditor pessoa física (CPF no lugar do
 CNPJ, raro) fica só com o código da CVM.
 
-A firma é identificada pela raiz do CNPJ (as filiais da KPMG mudam o final; o código da CVM às vezes vem
-vazio); sem CNPJ, pelo código da CVM; sem os dois (firma estrangeira), pelo nome.
+A firma é identificada pela **rede**, lida do nome (KPMG, EY, PwC, Deloitte, BDO, Grant Thornton...): nem
+o CNPJ nem o código da CVM bastam, porque a mesma firma usa várias raízes de CNPJ, há empresa que informou o
+próprio CNPJ, e ~1,3% das linhas das redes trazem o código da CVM de outra firma (Deloitte com o da BDO).
+O nome erra a grafia ("Delloitte", "Enerst"), e os padrões aceitam isso. Fora das redes, vale o código
+da CVM; código vazio (até 2019, ~12 linhas por ano) pega o da mesma raiz de CNPJ no mesmo arquivo anual;
+sem isso, a raiz do CNPJ; sem CNPJ, o nome.
 """
 
 import io
 import re
+import unicodedata
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -37,6 +42,22 @@ COLUNAS_DAS_TROCAS = (
 ENCERRADO_HA_POUCO = timedelta(days=366)
 DIAS_POR_ANO = 365.25
 SO_DIGITOS = re.compile(r"\D")
+# rede → padrão no nome sem acento e em minúsculas (a primeira que casar vale). A Terco entrou na EY em
+# 2010 ("Ernst & Young Terco"): "Terco Grant Thornton" é a mesma firma, então conta como EY
+REDES = (
+    ("ey", re.compile(r"\b(ern?e?st|enerst)\b|\bey\b|\bterco\b")),
+    ("pwc", re.compile(r"price\s*waterhouse|\bpwc\b")),
+    ("kpmg", re.compile(r"\bk(pm|mp)g\b")),
+    ("deloitte", re.compile(r"del+oit+e")),
+    ("grant_thornton", re.compile(r"grant\s*th")),
+    ("bdo", re.compile(r"\bbdo\b")),
+    ("baker_tilly", re.compile(r"baker\s*til+y")),
+    ("crowe", re.compile(r"\bcrowe\b")),
+    ("rsm", re.compile(r"\brsm\b")),
+    ("mazars", re.compile(r"mazars|forvis")),
+    ("moore", re.compile(r"\bmoore\b")),
+    ("russell_bedford", re.compile(r"russell\s*bedford")),
+)
 
 
 def _texto(serie: pd.Series) -> pd.Series:
@@ -55,11 +76,22 @@ def _ler(arquivo: zipfile.ZipFile, trecho: str) -> pd.DataFrame:
     )  # fmt: skip
 
 
+def _rede(nome: object) -> str | None:
+    if not isinstance(nome, str):
+        return None
+    simples = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode()
+    simples = simples.lower()
+    return next((rede for rede, padrao in REDES if padrao.search(simples)), None)
+
+
 def _identidade(cnpj_da_firma: object, codigo: object, nome: object) -> str:
-    if isinstance(cnpj_da_firma, str) and cnpj_da_firma:
-        return f"cnpj:{cnpj_da_firma[:8]}"
+    rede = _rede(nome)
+    if rede:
+        return f"rede:{rede}"
     if isinstance(codigo, str) and codigo:
         return f"cvm:{codigo}"
+    if isinstance(cnpj_da_firma, str) and cnpj_da_firma:
+        return f"cnpj:{cnpj_da_firma[:8]}"
     return f"nome:{nome.strip().lower() if isinstance(nome, str) else ''}"
 
 
@@ -76,6 +108,15 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
     codigo = _texto(bruto["Codigo_CVM_Auditor"])
     nome = _texto(bruto["Auditor"]).where(pessoa_juridica | (documento == ""), None)
     auditor_cnpj = documento.where(pessoa_juridica, None)
+    # código vazio: o da mesma raiz de CNPJ em outra linha do mesmo arquivo (nunca de outro ano)
+    raiz = auditor_cnpj.str[:8]
+    codigo_da_raiz = (
+        pd.DataFrame({"raiz": raiz, "codigo": codigo})
+        .dropna()
+        .groupby("raiz")["codigo"]
+        .agg(lambda codigos: codigos.mode().iloc[0])
+    )
+    codigo_para_id = codigo.fillna(raiz.map(codigo_da_raiz))
     tabela = pd.DataFrame(
         {
             "cnpj": bruto["CNPJ_Companhia"].str.strip(),
@@ -86,7 +127,7 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
             "conhecido_em": _data(bruto["ID_Documento"].str.strip().map(recebido)),
             "auditor_id": [
                 _identidade(c, k, n)
-                for c, k, n in zip(auditor_cnpj, codigo, nome, strict=True)
+                for c, k, n in zip(auditor_cnpj, codigo_para_id, nome, strict=True)
             ],
             "auditor": nome,
             "auditor_cnpj": auditor_cnpj,
