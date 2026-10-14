@@ -20,7 +20,9 @@ from collections.abc import Iterable
 import pandas as pd
 
 CODIFICACAO_DA_CVM = "latin-1"
-CODIGO_DE_ACAO = r"[A-Z]{4}\d{1,2}"  # PETR4, TAEE11
+CODIGO_DE_ACAO = (
+    r"[A-Z][A-Z0-9]{3}\d{1,2}"  # PETR4, TAEE11, B3SA3 (o emissor pode ter número)
+)
 COLUNAS_DOS_TICKERS = (
     "codigo",
     "cnpj",

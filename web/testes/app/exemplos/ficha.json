@@ -35,6 +35,7 @@
  "resposta": {
   "ativo": {
    "aviso_da_origem": "Estes são dados de exemplo guardados no projeto, até 09/10/2026, e não os mais recentes do Yahoo Finance.",
+   "codigo": "PETR4",
    "fim": "2026-10-09",
    "inicio": "2024-10-10",
    "origem": "exemplo",

@@ -14,38 +14,40 @@ export function linkSeguro(link: string): string | null {
 
 function Tabela({ marcos }: { marcos: MarcoV1[] }) {
   return (
-    <table className="tabela-do-app">
-      <caption>Acontecimentos do período</caption>
-      <thead>
-        <tr>
-          <th scope="col">Data</th>
-          <th scope="col">Documento</th>
-          <th scope="col">Assunto</th>
-          <th scope="col">Documento original</th>
-        </tr>
-      </thead>
-      <tbody>
-        {marcos.map((m) => {
-          const link = linkSeguro(m.link);
-          return (
-            <tr key={`${m.data}-${m.descricao}`}>
-              <td className="numero">{formatarData(m.data)}</td>
-              <td>{m.rotulo}</td>
-              <td>{m.assunto}</td>
-              <td>
-                {link ? (
-                  <a href={link} target="_blank" rel="noopener noreferrer">
-                    Abrir
-                  </a>
-                ) : (
-                  <span className="apagado">sem link</span>
-                )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="tabela-rolavel">
+      <table className="tabela-do-app">
+        <caption>Acontecimentos do período</caption>
+        <thead>
+          <tr>
+            <th scope="col">Data</th>
+            <th scope="col">Documento</th>
+            <th scope="col">Assunto</th>
+            <th scope="col">Documento original</th>
+          </tr>
+        </thead>
+        <tbody>
+          {marcos.map((m) => {
+            const link = linkSeguro(m.link);
+            return (
+              <tr key={`${m.data}-${m.descricao}`}>
+                <td className="numero">{formatarData(m.data)}</td>
+                <td>{m.rotulo}</td>
+                <td>{m.assunto}</td>
+                <td>
+                  {link ? (
+                    <a href={link} target="_blank" rel="noopener noreferrer">
+                      Abrir
+                    </a>
+                  ) : (
+                    <span className="apagado">sem link</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -59,9 +61,9 @@ function Resultado({ dados }: { dados: LinhaDoTempoDoAtivoV1 }) {
         </p>
       ) : null}
       <GraficoDeLinha
-        titulo={`${dados.ativo.ticker} em base 100, com os acontecimentos`}
+        titulo={`${dados.ativo.codigo} em base 100, com os acontecimentos`}
         datas={linha.curva.datas}
-        series={[{ nome: dados.ativo.ticker, cor: "var(--serie-1)", valores: linha.curva.valores }]}
+        series={[{ nome: dados.ativo.codigo, cor: "var(--serie-1)", valores: linha.curva.valores }]}
         referencia={100}
         marcos={linha.marcos.map((m) => ({ dia: m.dia_no_grafico, valor: m.valor_no_grafico, descricao: m.descricao }))}
       />

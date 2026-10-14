@@ -31,6 +31,11 @@ cd web; npm run site                                        # páginas, CSS e JS
 - O CI (`.github/workflows/testes.yml`) roda `ruff`, `pyright`, os testes com **PostgreSQL de
   verdade** e a **cobertura** (falha abaixo do mínimo do `.coveragerc`), e
   constrói a imagem Docker conferindo que app, API, migrações e login abrem dentro dela.
+  Os testes rodam em 5 máquinas ao mesmo tempo (3 partes do app, só com o `requirements.txt`, e 2
+  do trader; `scripts/repartir_testes.py`); para rodar uma parte no PC: `pytest --parte=2/3` ou
+  `pytest --parte=trader-1/2`. Teste
+  novo do trader se chama `test_trader_*` ou `test_c1_*`. Partes desiguais: refaça os tempos com
+  `pytest -n 4 --dist loadgroup --gravar-duracoes` e faça o commit do `tests/duracoes.json`.
   Mudança só de texto (lista em `scripts/mudou_so_texto.py`) roda só os testes do README: se um
   teste ou o app passar a ler um texto da lista, tire-o de lá.
 
@@ -77,6 +82,9 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
   Trabalho em ramos `feat/...`, `fix/...`, `docs/...`, `test/...`; entra na `main` por PR com o
   CI verde. Push, PR e merge **só com autorização do Tiago**, uma etapa de cada vez.
+- **Merge automático:** com a autorização do Tiago para o merge, ative o auto-merge do PR (ele
+  mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
+  não mescla: corrija e faça o push de novo.
 - A `main` vai para produção sozinha (deploy automático só de commits com CI verde). Trate cada
   merge como uma publicação.
 - Mensagens de commit em português, no formato `tipo: o que mudou` (`feat`, `fix`, `docs`,

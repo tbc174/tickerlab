@@ -89,3 +89,26 @@ def test_tickers_com_inicio_e_fim_e_historico_inteiro():
     )  # trocou de código
     assert tickers.loc["AAAA3", "empresa"] == "EMPRESA A NOVA"  # o nome mais recente
     assert pd.isna(tickers.loc["ABCD3", "fim_negociacao"])
+
+
+def test_ticker_com_numero_no_emissor_entra_no_tempo():
+    """Série 3, PR 5: B3SA3 (a própria B3) não casava com "4 letras e 1 ou 2 números" e sumia."""
+    import io
+    import zipfile
+
+    from base.cadastro import tickers_no_tempo
+
+    csv = (
+        "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Empresarial;Valor_Mobiliario;"
+        "Sigla_Classe_Acao_Preferencial;Classe_Acao_Preferencial;Codigo_Negociacao;"
+        "Composicao_BDR_Unit;Mercado;Sigla_Entidade_Administradora;Entidade_Administradora;"
+        "Data_Inicio_Negociacao;Data_Fim_Negociacao;Segmento;Data_Inicio_Listagem;Data_Fim_Listagem\n"
+        "09.346.601/0001-25;2019-01-01;1;1;B3 S.A.;Ações Ordinárias;;;B3SA3;;Bolsa;B3;B3;"
+        "2007-10-26;;Novo Mercado;2007-10-26;\n"
+    )
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        arquivo.writestr(
+            "fca_cia_aberta_valor_mobiliario_2019.csv", csv.encode("latin-1")
+        )
+    assert list(tickers_no_tempo([conteudo.getvalue()])["codigo"]) == ["B3SA3"]

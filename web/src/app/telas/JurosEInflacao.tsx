@@ -29,27 +29,29 @@ function Expectativas({ expectativas }: { expectativas: ExpectativaV1[] }) {
   const pesquisa = expectativas[0].pesquisa;
   return (
     <>
-      <table className="tabela-do-app">
-        <caption>
-          O que o mercado espera (boletim Focus) <Ajuda termo="Boletim Focus" rotulo="Boletim Focus" />
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Indicador</th>
-            <th scope="col">Ano</th>
-            <th scope="col">Mediana (%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {expectativas.map((e) => (
-            <tr key={`${e.indicador}-${e.ano}`}>
-              <td>{e.indicador}</td>
-              <td>{e.ano}</td>
-              <td className="numero">{formatarDecimal(e.mediana)}</td>
+      <div className="tabela-rolavel">
+        <table className="tabela-do-app">
+          <caption>
+            O que o mercado espera (boletim Focus) <Ajuda termo="Boletim Focus" rotulo="Boletim Focus" />
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Indicador</th>
+              <th scope="col">Ano</th>
+              <th scope="col">Mediana (%)</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {expectativas.map((e) => (
+              <tr key={`${e.indicador}-${e.ano}`}>
+                <td>{e.indicador}</td>
+                <td>{e.ano}</td>
+                <td className="numero">{formatarDecimal(e.mediana)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {pesquisa ? (
         <p className="apagado">
           Pesquisa de {formatarData(pesquisa)} · {fonte_focus}. {nota_do_focus}

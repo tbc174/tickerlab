@@ -10,7 +10,9 @@ import { TelaDoContrato } from "./TelaDoContrato";
 
 const { atalhos, max_ativos, colunas, aviso_do_limite, aviso_sem_dados } = conteudoDoApp.comparacao;
 const NOMES: Record<string, string> = Object.fromEntries(atalhos.map((a) => [a.ticker, a.nome]));
-const nomeDo = (ticker: string) => NOMES[ticker] ?? ticker;
+/** O nome do atalho (Ibovespa) ou o código da tela (PETR4), nunca o símbolo do Yahoo. */
+const nomeDo = (ticker: string, codigos: Record<string, string>) =>
+  NOMES[ticker] ?? codigos[ticker] ?? ticker;
 // o rótulo de cada coluna (src/comparacao.FORMATO_DAS_COLUNAS) → o campo da resposta da API
 const CAMPOS: Record<string, keyof LinhaDaComparacaoV1> = {
   "Retorno total": "retorno_total",
@@ -31,7 +33,12 @@ function limitar(valores: Record<string, string>) {
   return { valores: { ...valores, com: dentro.join(",") }, aviso };
 }
 
+function codigosDa(linhas: LinhaDaComparacaoV1[] | null): Record<string, string> {
+  return Object.fromEntries((linhas ?? []).map((l) => [l.ticker, l.codigo]));
+}
+
 function Tabela({ linhas }: { linhas: LinhaDaComparacaoV1[] }) {
+  const codigos = codigosDa(linhas);
   return (
     <div className="tabela-rolavel">
       <table className="tabela-do-app">
@@ -49,7 +56,7 @@ function Tabela({ linhas }: { linhas: LinhaDaComparacaoV1[] }) {
         <tbody>
           {linhas.map((linha) => (
             <tr key={linha.ticker}>
-              <th scope="row">{nomeDo(linha.ticker)}</th>
+              <th scope="row">{nomeDo(linha.ticker, codigos)}</th>
               {colunas.map((c) => (
                 <td key={c.rotulo} className="numero">
                   {formatar(linha[CAMPOS[c.rotulo]] as number | null, c.formato)}
@@ -66,6 +73,7 @@ function Tabela({ linhas }: { linhas: LinhaDaComparacaoV1[] }) {
 function Resultado({ dados }: { dados: ComparacaoDoAtivoV1 }) {
   const { comparacao } = dados;
   const curvas = comparacao.curvas ? Object.entries(comparacao.curvas) : [];
+  const codigos = codigosDa(comparacao.tabela);
   return (
     <>
       {dados.sem_dados.length ? (
@@ -80,10 +88,10 @@ function Resultado({ dados }: { dados: ComparacaoDoAtivoV1 }) {
             Em base 100 <Ajuda termo="Base 100" rotulo="base 100" />
           </h2>
           <GraficoDeLinha
-            titulo={`${curvas.map(([t]) => nomeDo(t)).join(", ")} em base 100`}
+            titulo={`${curvas.map(([t]) => nomeDo(t, codigos)).join(", ")} em base 100`}
             datas={curvas[0][1].datas}
             series={curvas.map(([ticker, curva], i) => ({
-              nome: nomeDo(ticker),
+              nome: nomeDo(ticker, codigos),
               cor: `var(--serie-${i + 1})`,
               valores: curva.valores,
             }))}
