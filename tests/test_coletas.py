@@ -172,6 +172,21 @@ def test_licencas_das_fontes_abertas_novas():
         assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_ODBL
 
 
+def test_licencas_da_previa_do_balanco():
+    """Licença declarada no conjunto do dados.gov.br (lida em 14/10/2026), não o rodapé do site."""
+    for fonte in (
+        "anp-vendas-distribuidora",
+        "anac-estatistico",
+        "ans-beneficiarios",
+        "ons-geracao-usina",
+    ):
+        assert "CC BY" in licenca_da_fonte(fonte)
+        assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert "ANTT" in licenca_da_fonte("antt-siade")
+    # Comex Stat: licença aberta sem nome; não vender antes da resposta do MDIC
+    assert coletas.revenda_da_fonte("comexstat") == coletas.A_CONFIRMAR
+
+
 def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):
     """Série 3, PR 3 (exigência 13 da ADR 0055): cada arquivo registrado diz qual commit o baixou."""
     from src import versao_do_codigo as vc

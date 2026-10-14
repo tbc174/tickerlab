@@ -10,6 +10,7 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from urllib.parse import quote
 
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 
@@ -78,6 +79,34 @@ CATALOGOS = {
 
 PAINEIS = ("powerbi.com", "app.powerbi", "lookerstudio.google", "datastudio.google")
 
+# "prévia do balanço" pelos reguladores (pesquisa de 14/10/2026, `tickerlab-fontes`
+# `notas/previa-do-balanco/`): números mensais por empresa que saem antes do ITR
+PORTAL_DO_ONS = "https://dados.ons.org.br"
+PORTAL_DA_ANTT = "https://dados.antt.gov.br"
+DADOS_DA_ANP = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/"
+# a ANP não manda ETag nem Last-Modified (e recusa HEAD): o acervo guarda cada versão pelo SHA-256
+VENDAS_DA_ANP = DADOS_DA_ANP + "arquivos/mdpg/{nome}.zip"
+CONCESSIONARIOS_DA_ANP = DADOS_DA_ANP + "arquivos/rc/relacao-concessionarios.csv"
+PAGINA_DA_PRODUCAO_DA_ANP = DADOS_DA_ANP + "fase-de-desenvolvimento-e-producao"
+# produção por poço, um arquivo por ano (mar e terra); o nome muda de padrão (2024 é
+# `producao_por_poco_2024.csv`), por isso os links saem da própria página
+PRODUCAO_POR_POCO = re.compile(
+    rb'href="([^"]*/arquivos-producao-de-petroleo-e-gas-natural-nacional/p[mt]/[^"]+\.csv)"'
+)
+# Comex Stat (MDIC): um CSV por ano desde 1997; o do ano corrente sai com janeiro, em fevereiro
+COMEX = "https://balanca.mdic.gov.br/balanca/bd/"
+PRIMEIRO_ANO_DO_COMEX = 1997
+MES_DO_PRIMEIRO_ARQUIVO_DO_COMEX = 2
+TABELAS_DO_COMEX = ("NCM", "PAIS", "UF", "URF", "VIA")
+ESTATISTICO_DA_ANAC = "https://sistemas.anac.gov.br/dadosabertos/" + quote(
+    "Voos e operações aéreas/Dados Estatísticos do Transporte Aéreo/Dados_Estatisticos.csv"
+)
+# a ANS regera o histórico inteiro a cada mês: só a nossa cópia guarda o "como era"; ~420 MB por
+# mês, então só as duas safras mais recentes
+BENEFICIARIOS_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/informacoes_consolidadas_de_beneficiarios-024/"
+PASTA_DO_MES = re.compile(rb'href="(\d{6})/"')
+SAFRAS_DA_ANS = 2
+
 
 def _json(cliente: Cliente, url: str) -> dict:
     return json.loads(cliente.ler(url).conteudo)
@@ -90,13 +119,22 @@ def _e_arquivo(recurso: dict) -> bool:
     return bool(url) and formato != "html" and not any(p in url for p in PAINEIS)
 
 
-def descobrir_ckan(cliente: Cliente, portal: str, *pacotes: str) -> list[Alvo]:
-    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA, CCEE, ANTT...)."""
+def descobrir_ckan(
+    cliente: Cliente, portal: str, *pacotes: str, formatos: tuple[str, ...] = ()
+) -> list[Alvo]:
+    """Os arquivos (recursos) dos pacotes de um portal CKAN (CVM, IBAMA, CCEE, ANTT...).
+
+    `formatos` ("parquet", "pdf") escolhe um só formato quando o portal publica o mesmo dado em
+    vários (o ONS põe cada mês em CSV, XLSX e Parquet).
+    """
     alvos: list[Alvo] = []
     for pacote in pacotes:
         resposta = _json(cliente, f"{portal}/api/3/action/package_show?id={pacote}")
         recursos = [
-            r for r in resposta.get("result", {}).get("resources", []) if _e_arquivo(r)
+            r
+            for r in resposta.get("result", {}).get("resources", [])
+            if _e_arquivo(r)
+            and (not formatos or (r.get("format") or "").lower() in formatos)
         ]
         if not recursos:
             raise ErroDeDescoberta(f"{pacote}: pacote sem arquivos em {portal}")
@@ -104,8 +142,10 @@ def descobrir_ckan(cliente: Cliente, portal: str, *pacotes: str) -> list[Alvo]:
     return alvos
 
 
-def _ckan(portal: str, *pacotes: str) -> Descobrir:
-    return lambda cliente, agora: descobrir_ckan(cliente, portal, *pacotes)
+def _ckan(portal: str, *pacotes: str, formatos: tuple[str, ...] = ()) -> Descobrir:
+    return lambda cliente, agora: descobrir_ckan(
+        cliente, portal, *pacotes, formatos=formatos
+    )
 
 
 def descobrir_pasta(cliente: Cliente, *pastas: str) -> list[Alvo]:
@@ -223,6 +263,65 @@ def descobrir_scr(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_links(
+    cliente: Cliente, pagina: str, padrao: re.Pattern[bytes]
+) -> list[Alvo]:
+    """Os arquivos linkados numa página (sem repetir), quando o nome muda e não há catálogo."""
+    achados = padrao.findall(cliente.ler(pagina).conteudo)
+    links = dict.fromkeys(m.decode() for m in achados)
+    if not links:
+        raise ErroDeDescoberta(f"nenhum arquivo linkado em {pagina}")
+    return [Alvo(link) for link in links]
+
+
+def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Exportação e importação por NCM e por município (um CSV por ano), totais e tabelas."""
+    ultimo = (
+        agora.year
+        if agora.month >= MES_DO_PRIMEIRO_ARQUIVO_DO_COMEX
+        else agora.year - 1
+    )
+    anos = range(PRIMEIRO_ANO_DO_COMEX, ultimo + 1)
+    alvos = [
+        Alvo(f"{COMEX}comexstat-bd/{pasta}/{fluxo}_{ano}{sufixo}.csv")
+        for pasta, sufixo in (("ncm", ""), ("mun", "_MUN"))
+        for fluxo in ("EXP", "IMP")
+        for ano in anos
+    ]
+    alvos += [
+        Alvo(f"{COMEX}comexstat-bd/ncm/{fluxo}_TOTAIS_CONFERENCIA.csv")
+        for fluxo in ("EXP", "IMP")
+    ]
+    return alvos + [Alvo(f"{COMEX}tabelas/{nome}.csv") for nome in TABELAS_DO_COMEX]
+
+
+def descobrir_beneficiarios_ans(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os ZIPs das duas safras mais recentes das informações consolidadas de beneficiários."""
+    raiz = cliente.ler(BENEFICIARIOS_DA_ANS).conteudo
+    meses = sorted(m.decode() for m in PASTA_DO_MES.findall(raiz))
+    if not meses:
+        raise ErroDeDescoberta("ANS: nenhuma pasta AAAAMM de beneficiários")
+    alvos: list[Alvo] = []
+    for mes in meses[-SAFRAS_DA_ANS:]:
+        pasta = f"{BENEFICIARIOS_DA_ANS}{mes}/"
+        zips = dict.fromkeys(
+            m.decode() for m in ZIP_NA_PASTA.findall(cliente.ler(pasta).conteudo)
+        )
+        alvos += [Alvo(pasta + nome) for nome in zips]
+    return alvos
+
+
+def descobrir_vendas_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Vendas por distribuidora: combustíveis líquidos, GLP e aviação (um ZIP cada)."""
+    return [
+        Alvo(VENDAS_DA_ANP.format(nome=nome)) for nome in ("liquidos", "glp", "aviacao")
+    ]
+
+
+def descobrir_producao_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    return descobrir_links(cliente, PAGINA_DA_PRODUCAO_DA_ANP, PRODUCAO_POR_POCO)
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -332,7 +431,7 @@ FONTES: list[Fonte] = [
     Fonte(
         "antt-pedagio",
         "semanal",
-        _ckan("https://dados.antt.gov.br", "volume-trafego-praca-pedagio"),
+        _ckan(PORTAL_DA_ANTT, "volume-trafego-praca-pedagio"),
     ),
     Fonte(
         "tesouro-br-divida",
@@ -353,6 +452,46 @@ FONTES: list[Fonte] = [
         _ckan(PORTAL_DO_TESOURO, "taxas-dos-titulos-ofertados-pelo-tesouro-direto"),
     ),
     Fonte("tesouro-br-leiloes", "semanal", _ckan(PORTAL_DO_TESOURO, "ds013")),
+    # prévia do balanço, 1ª leva (14/10/2026): licença lida no catálogo nacional (dados.gov.br)
+    Fonte("anp-vendas-distribuidora", "semanal", descobrir_vendas_anp),
+    Fonte("anp-producao-poco", "mensal", descobrir_producao_anp),
+    Fonte("anp-concessionarios", "mensal", _um(CONCESSIONARIOS_DA_ANP)),
+    # ONS: um arquivo por mês (desde 2000 na geração); só baixa o que mudou de ETag
+    Fonte(
+        "ons-geracao-usina",
+        "semanal",
+        _ckan(PORTAL_DO_ONS, "geracao-usina-2", formatos=("parquet", "pdf")),
+        pesada=True,
+    ),
+    Fonte(
+        "ons-restricao-eolica-solar",
+        "semanal",
+        _ckan(
+            PORTAL_DO_ONS,
+            "restricao_coff_eolica_usi",
+            "restricao_coff_fotovoltaica",
+            formatos=("parquet", "pdf"),
+        ),
+        pesada=True,
+    ),
+    Fonte(
+        "ons-capacidade-geracao",
+        "semanal",
+        _ckan(PORTAL_DO_ONS, "capacidade-geracao", formatos=("parquet", "pdf")),
+    ),
+    Fonte(
+        "antt-siade",
+        "semanal",
+        _ckan(
+            PORTAL_DA_ANTT,
+            "sistema-de-acompanhamento-do-desempenho-operacional-das-concessionarias-siade",
+            formatos=("csv", "pdf"),
+        ),
+        pesada=True,
+    ),
+    Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
+    Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
+    Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

@@ -54,6 +54,14 @@ LICENCAS = {
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-direto": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-leiloes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    # prévia do balanço (14/10/2026): licença declarada no conjunto no dados.gov.br (o rodapé CC
+    # BY-ND dos sites é do conteúdo das páginas); confirmação por escrito pedida às agências
+    "anp": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+    "anac": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+    "ans": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+    "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+    "comexstat": "Licença aberta sem nome ('Other (Open)') no dados.gov.br (Comex Stat, MDIC); "
+    "confirmação pedida pelo Fala.BR em 14/10/2026",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -98,6 +106,11 @@ REVENDA = {
     "tesouro-br-divida": VENDAVEL_ODBL,
     "tesouro-br-direto": VENDAVEL_ODBL,
     "tesouro-br-leiloes": VENDAVEL_ODBL,
+    "anp": VENDAVEL_COM_ATRIBUICAO,
+    "anac": VENDAVEL_COM_ATRIBUICAO,
+    "ans": VENDAVEL_COM_ATRIBUICAO,
+    "ons": VENDAVEL_COM_ATRIBUICAO,
+    "comexstat": A_CONFIRMAR,
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
