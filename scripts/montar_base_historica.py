@@ -5,6 +5,7 @@
     python -m scripts.montar_base_historica cnpj_situacao_especial (retratos do CNPJ, B2)
     python -m scripts.montar_base_historica auditores trocas_de_auditor (B3; as trocas leem os auditores)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
+    python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
 
 Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<ano>.parquet`. Roda no servidor de casa (ADR 0031),
@@ -18,7 +19,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from base import auditores, curva, historico, rotulos
+from base import auditores, curva, empresa_serie, historico, rotulos
 from src import acervo
 from src.banco.conexao import obter_engine
 
@@ -30,7 +31,9 @@ CNPJ = "cnpj_situacao_especial"
 TROCAS = "trocas_de_auditor"
 # curva de juros própria (B12): sai do CSV do Tesouro Direto, não dos arquivos anuais da CVM
 CURVA = curva.TABELA
-TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA]
+# empresa ↔ série da prévia do balanço (B13): sai das controladas de todos os anos, por isso vem depois
+EMPRESA_SERIE = empresa_serie.TABELA
+TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,6 +56,10 @@ def main(argv: list[str] | None = None) -> int:
             if nome == CNPJ:
                 meses = rotulos.montar_situacao_especial(conexao, pasta, agora)
                 log.info("%s: %s", CNPJ, meses or "nenhum mês do CNPJ guardado")
+                continue
+            if nome == EMPRESA_SERIE:
+                ligadas = empresa_serie.montar(conexao, pasta, agora)
+                log.info("%s: %d ligações a companhias", EMPRESA_SERIE, ligadas)
                 continue
             if nome == CURVA:
                 anos = curva.montar(conexao, pasta, agora)
