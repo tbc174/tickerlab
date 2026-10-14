@@ -52,6 +52,8 @@ LICENCAS = {
     "ccee": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
     "antt": "CC BY (dados abertos da ANTT; citar a ANTT)",
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-direto": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+    "tesouro-br-leiloes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -94,6 +96,8 @@ REVENDA = {
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "antt": VENDAVEL_COM_ATRIBUICAO,
     "tesouro-br-divida": VENDAVEL_ODBL,
+    "tesouro-br-direto": VENDAVEL_ODBL,
+    "tesouro-br-leiloes": VENDAVEL_ODBL,
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000

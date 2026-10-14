@@ -166,6 +166,10 @@ def test_licencas_das_fontes_abertas_novas():
     assert licenca_da_fonte("tesouro-eua-10a") == coletas.LICENCAS["tesouro"]
     assert coletas.revenda_da_fonte("ccee-pld") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("tesouro-br-divida") == coletas.VENDAVEL_ODBL
+    # a família "tesouro" sozinha é o Tesouro dos EUA: as fontes do Tesouro Nacional têm a sua
+    for fonte in ("tesouro-br-direto", "tesouro-br-leiloes"):
+        assert "Tesouro Nacional" in licenca_da_fonte(fonte)
+        assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_ODBL
 
 
 def test_coleta_registra_a_versao_do_codigo(banco, monkeypatch):

@@ -213,6 +213,9 @@ def test_historico_da_cvm_e_fontes_abertas_novas_no_catalogo():
     }
     assert historico <= ids
     assert {"ccee-pld", "antt-pedagio", "tesouro-br-divida"} <= ids
+    # curva de juros própria (B12): taxas do Tesouro Direto todo dia, leilões no domingo
+    assert fontes.POR_ID["tesouro-br-direto"].grupo == "diaria"
+    assert fontes.POR_ID["tesouro-br-leiloes"].grupo == "semanal"
     assert all(
         fontes.POR_ID[i].pesada for i in historico
     )  # GBs: só baixa quando os cabeçalhos mudam
