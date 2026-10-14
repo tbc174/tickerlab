@@ -39,6 +39,34 @@ LICENCAS = {
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
+
+# Pode entrar num produto de dados? (ADR 0055 do autor, exigência 11; não é parecer jurídico: antes
+# de vender qualquer coisa, parecer e decisão nova)
+VENDAVEL_ODBL = (
+    "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor "
+    "está na curadoria, nas versões e na qualidade)"
+)
+VENDAVEL_COM_ATRIBUICAO = "vendável com atribuição à fonte"
+A_CONFIRMAR = (
+    "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)"
+)
+SO_USO_INTERNO = "só uso interno (nunca vender nem exportar)"
+REVENDA = {
+    "cvm": VENDAVEL_ODBL,
+    "bcb": VENDAVEL_ODBL,
+    "ibge": VENDAVEL_COM_ATRIBUICAO,
+    "tesouro": VENDAVEL_COM_ATRIBUICAO,
+    "sec": A_CONFIRMAR,  # os arquivos são escritos pelas empresas
+    "iex": A_CONFIRMAR,
+    "cftc": A_CONFIRMAR,
+    "rfb": A_CONFIRMAR,
+    "wiki": A_CONFIRMAR,
+    "gdelt": A_CONFIRMAR,
+    "btc": A_CONFIRMAR,
+    "yahoo": SO_USO_INTERNO,
+    "kraken": SO_USO_INTERNO,
+    "mb": SO_USO_INTERNO,
+}
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
 HTTP_NAO_ENCONTRADO = 404
@@ -47,6 +75,11 @@ HTTP_NAO_ENCONTRADO = 404
 def licenca_da_fonte(fonte: str) -> str:
     """A licença pela família da fonte ("cvm-ipe" → a da CVM)."""
     return LICENCAS.get(fonte.split("-", 1)[0], SEM_LICENCA_CONHECIDA)
+
+
+def revenda_da_fonte(fonte: str) -> str:
+    """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, nunca."""
+    return REVENDA.get(fonte.split("-", 1)[0], SO_USO_INTERNO)
 
 
 def registrar(

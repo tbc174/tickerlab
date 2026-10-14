@@ -1,14 +1,14 @@
 // Fontes e metodologia: de onde vêm os números, como são calculados e o que eles não dizem.
 // Era `metodologia()` de scripts/gerar_site.py.
-import { qualidade } from "../conteudo";
+import { metodologia, qualidade } from "../conteudo";
 import { EMAIL_DE_CONTATO, URL_DO_CODIGO } from "../site/textos";
 
 export const DADOS = {
   caminho: "/metodologia.html",
   titulo: "Fontes e metodologia",
   descricao:
-    "De onde vêm os dados do TickerLab, como os números são calculados, os limites dos " +
-    "testes de estratégia e como a carteira B3 e a privacidade são tratadas.",
+    "De onde vêm os dados do TickerLab, como os números são calculados, as notas e os padrões " +
+    "do relatório de empresa, os limites dos testes de estratégia e a privacidade.",
   atual: "/metodologia.html",
 };
 
@@ -35,6 +35,47 @@ function QualidadeDosDados() {
         Cada achado vale a partir do dia em que a informação ficou pública (a entrega do
         documento): ao olhar o passado, o selo mostra só o que se podia saber naquela data.
       </p>
+    </>
+  );
+}
+
+/** Padrões por setor, notas e fórmulas do Relatório da empresa, com os mesmos textos do app. */
+function PadroesNotasEFormulas() {
+  return (
+    <>
+      <h2 id={metodologia.ancora}>Relatório da empresa: padrões, notas e fórmulas</h2>
+      <h3>Padrões por setor</h3>
+      {metodologia.padroes.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+      <p>Grupos de setores (pelo setor que a empresa informa à CVM):</p>
+      <ul>
+        {metodologia.grupos.map((g) => (
+          <li key={g.nome}>
+            <strong>{g.nome}:</strong> {g.setores_da_cvm}
+          </li>
+        ))}
+      </ul>
+      <h3>Notas</h3>
+      {metodologia.notas.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+      <p>A direção de cada indicador com nota de qualidade:</p>
+      <ul>
+        {metodologia.indicadores.map((i) => (
+          <li key={i.nome}>
+            <strong>{i.nome}:</strong> {i.direcao}
+          </li>
+        ))}
+      </ul>
+      <h3>Fórmulas</h3>
+      <ul>
+        {metodologia.formulas.map((f) => (
+          <li key={f.nome}>
+            <strong>{f.nome}:</strong> <code>{f.formula}</code>. {f.leitura}
+          </li>
+        ))}
+      </ul>
     </>
   );
 }
@@ -149,6 +190,7 @@ export function Metodologia() {
         </li>
       </ul>
       <QualidadeDosDados />
+      <PadroesNotasEFormulas />
       <h2>Carteira B3</h2>
       <p>
         A API da Área do Investidor da B3 só atende empresas credenciadas (com CNPJ, certificado
