@@ -66,9 +66,7 @@ def _resumos_dos_itens(itens):
         return {}
 
 
-FATO_RELEVANTE = (
-    "Fato relevante"  # o rótulo dos fatos relevantes da CVM (src/eventos.py)
-)
+FATO_RELEVANTE = topicos.ROTULO_DO_FATO_RELEVANTE
 ORIGEM_DO_TOPICO = {
     topicos.REGRA_DO_TITULO: "pelo título",
     topicos.REGRA_DO_TEXTO: "pelo texto",

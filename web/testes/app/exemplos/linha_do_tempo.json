@@ -1018,14 +1018,16 @@
    "fora_do_grafico": 1,
    "marcos": [
     {
-     "assunto": "Plano de investimentos",
+     "assunto": "Aquisição da Refinaria Exemplo",
      "data": "2024-12-09",
-     "descricao": "09/12/2024 · Fato relevante: Plano de investimentos",
+     "descricao": "09/12/2024 · Fato relevante: Aquisição da Refinaria Exemplo",
      "dia_no_grafico": "2024-12-09",
      "link": "https://www.rad.cvm.gov.br/exemplo-1",
      "materialidade": 90,
      "rotulo": "Fato relevante",
      "tema": "eventos",
+     "topico": "AQUISICAO",
+     "topico_nome": "Aquisição",
      "valor_no_grafico": 106.34790729263943
     },
     {
@@ -1037,6 +1039,8 @@
      "materialidade": 60,
      "rotulo": "Comunicado ao mercado",
      "tema": "eventos",
+     "topico": "",
+     "topico_nome": "",
      "valor_no_grafico": 96.78037184820442
     }
    ],

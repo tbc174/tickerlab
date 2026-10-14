@@ -133,3 +133,6 @@
 .app-fundo { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 1.5rem;
   padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem) 4rem; border-radius: var(--raio); }
 .app-fundo-conteudo { position: relative; max-width: 40rem; }
+/* o assunto do fato relevante (leitor v2, ADR 0069), antes do título que a empresa deu */
+.selo-do-assunto { display: inline-block; margin-right: .5rem; padding: .05rem .5rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 700; color: var(--azul-texto); border: 1px solid var(--linha-forte); }

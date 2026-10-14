@@ -105,6 +105,8 @@ export interface MarcoV1 {
   assunto: string;
   descricao: string; // "dd/mm/aaaa · tipo: assunto"
   link: string; // vazio: sem link seguro
+  topico: string; // o assunto do fato relevante (leitor v2): código; vazio se não há
+  topico_nome: string; // o mesmo, em português ("Aquisição")
 }
 
 export interface LinhaDoTempoV1 {

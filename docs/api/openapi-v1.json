@@ -917,6 +917,14 @@
             "title": "Tema",
             "type": "string"
           },
+          "topico": {
+            "title": "Topico",
+            "type": "string"
+          },
+          "topico_nome": {
+            "title": "Topico Nome",
+            "type": "string"
+          },
           "valor_no_grafico": {
             "title": "Valor No Grafico",
             "type": "number"
@@ -931,7 +939,9 @@
           "materialidade",
           "assunto",
           "descricao",
-          "link"
+          "link",
+          "topico",
+          "topico_nome"
         ],
         "title": "MarcoV1",
         "type": "object"
