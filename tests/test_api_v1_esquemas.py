@@ -100,7 +100,7 @@ def test_comparacao_com_curvas_em_base_100():
     assert [linha["ticker"] for linha in dados["tabela"]] == ["PETR4.SA", "VALE3.SA"]
 
 
-def test_comparacao_curta_volta_so_as_contagens():
+def test_comparacao_curta_volta_as_contagens_e_o_aviso():
     curta = analises.Comparacao(10, 2, None, None)
     dados = _ida_e_volta(esquemas.de_comparacao(curta))
     assert dados == {
@@ -108,6 +108,8 @@ def test_comparacao_curta_volta_so_as_contagens():
         "dias_descartados": 2,
         "curvas": None,
         "tabela": None,
+        "nota": None,
+        "aviso": analises.aviso_poucos_dias_em_comum(10),
     }
 
 

@@ -38,8 +38,11 @@ def _data_br(data: pd.Timestamp) -> str:
     return f"{data:%d/%m/%Y}"
 
 
-def descrever_pior_drawdown(pior: PiorDrawdown) -> str:
-    """Frase em português que conta a pior queda do período, para quem está começando."""
+def descrever_pior_drawdown(pior: PiorDrawdown, negrito: bool = True) -> str:
+    """Frase em português que conta a pior queda do período, para quem está começando. Sem
+    `negrito`, sai sem o Markdown (para a API e o app em React, que mostram só texto)."""
+    if not negrito:
+        return descrever_pior_drawdown(pior).replace("**", "")
     if pd.isna(pior.queda):
         return "Não há dados suficientes para calcular a pior queda."
     if pior.data_fundo is None:

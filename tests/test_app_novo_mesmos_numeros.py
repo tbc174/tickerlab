@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from src import analises, comparacao
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -115,10 +116,85 @@ def exemplo_da_linha_do_tempo() -> dict:
     return {"resposta": resposta.model_dump(mode="json")}
 
 
+def _tela(pagina: str) -> AppTest:
+    app = AppTest.from_file("../app.py", default_timeout=120)
+    app.session_state["usar_exemplo"] = True
+    app.session_state["taxa"] = "Zero"
+    app.run()
+    ir_para(app, pagina)
+    assert not app.exception, [e.value for e in app.exception]
+    return app
+
+
+def exemplo_do_risco() -> dict:
+    """O risco de PETR4 (janela de 20 dias) e um período curto demais para a janela de 252."""
+    contexto = _contexto_de_exemplo("PETR4.SA", "2y")
+    resposta = analises.risco_ao_longo_do_tempo(
+        contexto.fechamento, contexto.retorno, 20
+    )
+    curto = _contexto_de_exemplo("PETR4.SA", "6mo")
+    risco_curto = analises.risco_ao_longo_do_tempo(curto.fechamento, curto.retorno, 252)
+    return {
+        "resposta": {
+            "ativo": esquemas.de_ativo(contexto).model_dump(mode="json"),
+            "risco": esquemas.de_risco(resposta).model_dump(mode="json"),
+        },
+        "curto": {
+            "ativo": esquemas.de_ativo(curto).model_dump(mode="json"),
+            "risco": esquemas.de_risco(risco_curto).model_dump(mode="json"),
+        },
+    }
+
+
+def exemplo_do_retorno_mensal() -> dict:
+    """A resposta para os dados de exemplo e os cartões que a tela do Streamlit mostra."""
+    app = _tela("retorno_mensal")
+    ticker, periodo = app.session_state["ticker"], app.session_state["periodo"]
+    contexto = _contexto_de_exemplo(ticker, periodo)
+    mensal = analises.retorno_mensal(contexto.retorno)
+    return {
+        "resposta": {
+            "ativo": esquemas.de_ativo(contexto).model_dump(mode="json"),
+            "retorno_mensal": esquemas.de_retorno_mensal(mensal).model_dump(
+                mode="json"
+            ),
+        },
+        "na_tela": {m.label: m.value for m in app.metric},
+    }
+
+
+def exemplo_da_comparacao() -> dict:
+    """O ativo do topo contra os atalhos padrão (Ibovespa e S&P 500) e a tabela que a tela mostra."""
+    app = _tela("comparar")
+    ticker, periodo = app.session_state["ticker"], app.session_state["periodo"]
+    outros = [comparacao.ATALHOS[n] for n in comparacao.ATALHOS_PADRAO]
+    contexto = _contexto_de_exemplo(ticker, periodo)
+    fechamentos = {ticker: contexto.fechamento} | {
+        t: _contexto_de_exemplo(t, periodo).fechamento for t in outros
+    }
+    resultado = analises.comparacao_de_ativos(fechamentos, 0.0)
+    tabela = app.dataframe[0].value
+    return {
+        "resposta": {
+            "ativo": esquemas.de_ativo(contexto).model_dump(mode="json"),
+            "comparacao": esquemas.de_comparacao(resultado).model_dump(mode="json"),
+            "sem_dados": [],
+        },
+        "com": outros,
+        "na_tela": {
+            str(nome): {str(c): str(v) for c, v in linha.items()}
+            for nome, linha in tabela.iterrows()
+        },
+    }
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
     "linha_do_tempo": exemplo_da_linha_do_tempo,
+    "risco": exemplo_do_risco,
+    "retorno_mensal": exemplo_do_retorno_mensal,
+    "comparacao": exemplo_da_comparacao,
 }
 
 

@@ -134,3 +134,29 @@ def test_itens_do_painel_cobrem_os_numeros_da_visao_geral():
     datas = {i.campo_da_data for i in analises.ITENS_DO_PAINEL}
     # tudo do painel aparece: como número, como data de um número, ou o CVaR na frase de baixo
     assert campos - numeros - datas == {"cvar", "confianca_do_var"}
+
+
+# --- textos de Risco, Retorno mensal e Comparar para o app em React (série 3, PR 5) ---
+
+
+def test_frase_da_pior_queda_sem_negrito_para_a_api():
+    from src.conteudo import descrever_pior_drawdown
+    from src.indicadores import PiorDrawdown
+
+    pior = PiorDrawdown(
+        -0.25, pd.Timestamp("2025-01-02"), pd.Timestamp("2025-03-03"), None
+    )
+    com = descrever_pior_drawdown(pior)
+    sem = descrever_pior_drawdown(pior, negrito=False)
+    assert "**" in com and "**" not in sem
+    assert sem == com.replace("**", "")
+    assert "-25,0%" in sem and "não voltou" in sem
+
+
+def test_avisos_da_comparacao_e_da_janela():
+    assert "60 dias" in analises.aviso_janela_curta(60)
+    aviso = analises.aviso_poucos_dias_em_comum(12)
+    assert "12 dias em comum" in aviso and str(analises.MIN_DIAS_PARA_ANALISE) in aviso
+    nota = analises.nota_da_comparacao(480, 7)
+    assert "480 dias em comum" in nota and "7 dias foram descartados" in nota
+    assert "câmbio" not in nota  # a opção de converter o dólar é só do app atual

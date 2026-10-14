@@ -16,6 +16,14 @@ const NOMES: Record<string, string> = {
 };
 const PERIODOS: Record<string, string> = { "6mo": "6 meses", "1y": "1 ano", "2y": "2 anos", "5y": "5 anos" };
 const CEM = 100;
+const LISTA = "lista de textos"; // vários valores do mesmo campo (com=VALE3&com=AAPL)
+const { atalhos, padrao: ATALHOS_PADRAO } = conteudoDoApp.comparacao;
+
+/** "VALE3, aapl ,VALE3" → ["VALE3", "AAPL"]: sem vazios nem repetidos. */
+export function itensDaLista(texto: string): string[] {
+  const itens = texto.split(",").map((t) => t.trim().toUpperCase()).filter(Boolean);
+  return [...new Set(itens)];
+}
 
 /** As escolhas de um campo de opção: os períodos, ou as relevâncias da linha do tempo pelo nome. */
 function escolhas(e: EntradaDoContrato): { valor: string; nome: string }[] {
@@ -32,6 +40,12 @@ export function valoresIniciais(
 ): Record<string, string> {
   const valores: Record<string, string> = {};
   for (const e of entradas) {
+    if (e.tipo === LISTA) {
+      const doEndereco = busca.getAll(e.nome);
+      const padrao = atalhos.filter((a) => ATALHOS_PADRAO.includes(a.nome)).map((a) => a.ticker);
+      valores[e.nome] = (doEndereco.length > 0 ? doEndereco : padrao).join(",");
+      continue;
+    }
     const doEndereco = busca.get(e.nome);
     if (doEndereco !== null) valores[e.nome] = doEndereco;
     else if (e.nome === "ticker") valores[e.nome] = TICKER_DO_EXEMPLO;
@@ -49,9 +63,66 @@ export function parametrosDoPedido(
   for (const e of entradas) {
     const texto = (valores[e.nome] ?? "").trim();
     if (texto === "") continue;
-    parametros[e.nome] = texto;
+    parametros[e.nome] = e.tipo === LISTA ? itensDaLista(texto) : texto;
   }
   return parametros;
+}
+
+/** Os valores no endereço da página (a lista vira um parâmetro repetido; vazio fica de fora). */
+export function buscaDosValores(
+  entradas: EntradaDoContrato[],
+  valores: Record<string, string>,
+): URLSearchParams {
+  const busca = new URLSearchParams();
+  for (const [nome, valor] of Object.entries(parametrosDoPedido(entradas, valores))) {
+    for (const item of Array.isArray(valor) ? valor : [valor]) {
+      if (item !== undefined) busca.append(nome, String(item));
+    }
+  }
+  return busca;
+}
+
+/** A lista de ativos da comparação: os atalhos (Ibovespa, S&P 500...) e outros tickers digitados. */
+function CampoDeAtivos({ valor, aoMudar }: { valor: string; aoMudar(valor: string): void }) {
+  const itens = itensDaLista(valor);
+  const tickersDosAtalhos = atalhos.map((a) => a.ticker);
+  const outros = itens.filter((t) => !tickersDosAtalhos.includes(t));
+  const [textoDosOutros, setTextoDosOutros] = useState(outros.join(", "));
+  const juntar = (marcados: string[], texto: string) =>
+    aoMudar([...marcados, ...itensDaLista(texto)].join(","));
+  const marcados = tickersDosAtalhos.filter((t) => itens.includes(t));
+  return (
+    <fieldset className="campo-de-ativos">
+      <legend>Comparar com</legend>
+      {atalhos.map((a) => (
+        <label key={a.ticker} className="marcar">
+          <input
+            type="checkbox"
+            checked={marcados.includes(a.ticker)}
+            onChange={(ev) =>
+              juntar(
+                ev.target.checked ? [...marcados, a.ticker] : marcados.filter((t) => t !== a.ticker),
+                textoDosOutros,
+              )
+            }
+          />
+          {a.nome}
+        </label>
+      ))}
+      <label>
+        <span>Outros tickers (separados por vírgula)</span>
+        <input
+          value={textoDosOutros}
+          placeholder="Ex.: VALE3, AAPL"
+          maxLength={120}
+          onChange={(ev) => {
+            setTextoDosOutros(ev.target.value);
+            juntar(marcados, ev.target.value);
+          }}
+        />
+      </label>
+    </fieldset>
+  );
 }
 
 /** A taxa do endereço (fração) vira "% ao ano" no campo, e volta a ser fração no pedido. */
@@ -81,7 +152,10 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
   };
   return (
     <form className="formulario-do-app" onSubmit={enviar}>
-      {entradas.map((e) => (
+      {entradas.map((e) =>
+        e.tipo === LISTA ? (
+          <CampoDeAtivos key={e.nome} valor={rascunho[e.nome] ?? ""} aoMudar={(v) => mudar(e.nome, v)} />
+        ) : (
         <label key={e.nome} title={e.descricao}>
           <span>{NOMES[e.nome] ?? e.nome}</span>
           {e.tipo === "opcao" || e.nome === "materialidade_minima" ? (
@@ -106,7 +180,8 @@ export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
             />
           )}
         </label>
-      ))}
+        ),
+      )}
       <button className="botao primario" type="submit">
         Analisar
       </button>

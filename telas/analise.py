@@ -7,11 +7,15 @@ mutável no módulo (um módulo importado é do processo inteiro, isto é, de to
 import pandas as pd
 import streamlit as st
 
-from src import graficos, relatorios
+from src import formatos, graficos, relatorios
 from src import indicadores as ind
 from src import presets as research_presets
 from src.analises import (
+    LEGENDA_DO_MAPA_MENSAL,
+    aviso_janela_curta,
+    aviso_poucos_dias_em_comum,
     comparacao_de_ativos,
+    nota_da_comparacao,
     painel_de_numeros,
     retorno_mensal,
     risco_ao_longo_do_tempo,
@@ -19,12 +23,15 @@ from src.analises import (
 from src.comparacao import (
     ATALHOS,
     ATALHOS_PADRAO,
+    AVISO_DO_LIMITE,
+    AVISO_SEM_DADOS,
+    FORMATO_DAS_COLUNAS,
     MAX_ATIVOS,
     NOMES_AMIGAVEIS,
     alinhar_fechamentos,
     escolher_ativos,
 )
-from src.conteudo import descrever_pior_drawdown
+from src.conteudo import descrever_pior_drawdown, proteger_cifrao
 from src.correlacao import (
     calcular_beta,
     calcular_beta_movel,
@@ -246,10 +253,7 @@ def secao_risco(fechamento, retorno, janela_do_usuario=None):
         )
     with col_volatilidade:
         if risco.volatilidade_movel.dropna().empty:
-            st.info(
-                f"O período é curto demais para uma janela de {janela} dias. "
-                "Escolha uma janela menor ou um período maior."
-            )
+            st.info(aviso_janela_curta(janela))
         else:
             mostrar_grafico(
                 graficos.criar_grafico_volatilidade(risco.volatilidade_movel, janela)
@@ -281,24 +285,14 @@ def secao_retorno_mensal(retorno):
     )
     st.write("")  # respiro entre os cartões e o mapa
     mostrar_grafico(graficos.criar_mapa_de_calor_mensal(mensal.tabela))
-    st.caption(
-        "O primeiro e o último mês do período podem estar incompletos. "
-        "A última linha mostra a média de cada mês ao longo dos anos "
-        "(com poucos anos de dados, isso pode ser só coincidência)."
-    )
+    st.caption(LEGENDA_DO_MAPA_MENSAL)
 
 
 def formatar_tabela_comparativa(tabela):
     """Troca os números da tabela comparativa por textos no formato brasileiro."""
     exibicao = pd.DataFrame(index=[NOMES_AMIGAVEIS.get(t, t) for t in tabela.index])
-    for coluna in ("Retorno total", "Retorno anualizado"):
-        exibicao[coluna] = [formatar_pct(v, com_sinal=True) for v in tabela[coluna]]
-    for coluna in ("Volatilidade anual", "Maior queda"):
-        exibicao[coluna] = [formatar_pct(v) for v in tabela[coluna]]
-    exibicao["Índice de Sharpe"] = [
-        "—" if pd.isna(v) else f"{v:.2f}".replace(".", ",")
-        for v in tabela["Índice de Sharpe"]
-    ]
+    for coluna, formato in FORMATO_DAS_COLUNAS.items():
+        exibicao[coluna] = [formatos.formatar(v, formato) for v in tabela[coluna]]
     return exibicao
 
 
@@ -323,10 +317,7 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
         principal, [ATALHOS[nome] for nome in atalhos_escolhidos], texto_extra
     )
     if ignorados:
-        st.warning(
-            f"O limite é de {MAX_ATIVOS} ativos por comparação. "
-            f"Ficaram de fora: {', '.join(ignorados)}."
-        )
+        st.warning(AVISO_DO_LIMITE.format(maximo=MAX_ATIVOS, fora=", ".join(ignorados)))
     if len(tickers) < 2:
         st.info("Escolha pelo menos um ativo para comparar.")
         return
@@ -338,20 +329,14 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
         except DadosIndisponiveisError:
             sem_dados.append(ticker)
     if sem_dados:
-        st.warning(
-            f"Não encontrei dados para: {', '.join(sem_dados)}. "
-            "Eles ficaram de fora da comparação."
-        )
+        st.warning(AVISO_SEM_DADOS.format(sem_dados=", ".join(sem_dados)))
     if principal not in fechamentos or len(fechamentos) < 2:
         st.info("Não há ativos suficientes com dados para comparar.")
         return
 
     comparacao = comparacao_de_ativos(fechamentos, taxa_livre_de_risco)
     if comparacao.base_100 is None or comparacao.tabela is None:
-        st.warning(
-            f"Só há {comparacao.dias_em_comum} dias em comum entre esses ativos, e são necessários "
-            f"mais de {MIN_DIAS_PARA_ANALISE}. Tente um período mais longo ou outros ativos."
-        )
+        st.warning(aviso_poucos_dias_em_comum(comparacao.dias_em_comum))
         return
 
     mostrar_grafico(
@@ -362,14 +347,11 @@ def secao_comparar(principal, periodo, taxa_livre_de_risco):
     st.markdown("**Números no mesmo período**")
     st.dataframe(formatar_tabela_comparativa(comparacao.tabela), width="stretch")
     st.caption(
-        f"Comparação feita em {comparacao.dias_em_comum} dias em comum. "
-        f"{comparacao.dias_descartados} dias foram descartados porque algum ativo não tinha preço neles "
-        "(feriados diferentes), sem preencher nem estimar nada. Por isso os números daqui podem "
-        "diferir um pouco dos das outras abas, que usam todos os dias do ativo. "
-        "As moedas diferentes "
-        "(R\\$ e US\\$) não atrapalham, porque comparamos a variação percentual, não os "
-        "preços. Para incluir o efeito do câmbio, marque a opção de converter ativos em "
-        "dólar para reais, no topo."
+        proteger_cifrao(
+            nota_da_comparacao(comparacao.dias_em_comum, comparacao.dias_descartados)
+        )
+        + " Para incluir o efeito do câmbio, marque a opção de converter ativos em dólar "
+        "para reais, no topo."
     )
 
 

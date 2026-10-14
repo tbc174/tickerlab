@@ -2,9 +2,12 @@
 // app atual (/visao-geral vira /novo/visao-geral). Página sem tela nova ainda leva ao app atual.
 import type { ReactNode } from "react";
 import { type PaginaDoApp, paginasDoApp } from "../conteudo";
+import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
+import { RetornoMensal } from "./telas/RetornoMensal";
+import { Risco } from "./telas/Risco";
 import { VisaoGeral } from "./telas/VisaoGeral";
 
 export const TELAS_DO_APP: PaginaDoApp[] = paginasDoApp.filter((p) => p.contrato !== null);
@@ -14,6 +17,9 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   visao_geral: (pagina) => <VisaoGeral pagina={pagina} />,
   juros_e_inflacao: (pagina) => <JurosEInflacao pagina={pagina} />,
   linha_do_tempo: (pagina) => <LinhaDoTempo pagina={pagina} />,
+  risco: (pagina) => <Risco pagina={pagina} />,
+  retorno_mensal: (pagina) => <RetornoMensal pagina={pagina} />,
+  comparar: (pagina) => <Comparar pagina={pagina} />,
 };
 
 export function telaDa(pagina: PaginaDoApp): ReactNode {
