@@ -10,12 +10,14 @@ import sqlalchemy as sa
 import stripe
 
 from src import auditoria, conformidade
+from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
 from src.banco import pulse, tentativas
 from src.banco import teses as diario
 from src.banco.modelo import assinaturas, metadata
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
+from tests.test_compartilhamentos import _congelada
 
 
 @pytest.fixture
@@ -119,6 +121,18 @@ def test_exportar_traz_tudo_da_pessoa_e_so_dela(conexao, ana, bia):
         and "Da Bia" not in texto
         and "VALE3" not in texto
     )
+
+
+def test_exportar_traz_os_links_compartilhados_so_da_pessoa(conexao, ana, bia):
+    links.criar_link_da_ficha(conexao, ana.id, "gratuito", _congelada(), 30)
+    outra = {**_congelada(), "ticker": "VALE3.SA"}
+    links.criar_link_da_ficha(conexao, bia.id, "gratuito", outra, 30)
+    (exportado,) = conformidade.exportar_meus_dados(conexao, ana.id)[
+        "links_compartilhados"
+    ]
+    assert exportado["situacao"] == "ativo"
+    assert exportado["ficha"]["ticker"] == "PETR4.SA"
+    assert "VALE3" not in json.dumps(exportado)
 
 
 def test_politica_de_privacidade_cita_as_tentativas_do_backtest():

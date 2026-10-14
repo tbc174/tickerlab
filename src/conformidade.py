@@ -11,6 +11,7 @@ from pathlib import Path
 import sqlalchemy as sa
 
 from src import auditoria
+from src.banco.compartilhamentos import dados_para_exportar as links_para_exportar
 from src.banco.modelo import (
     alertas,
     assinaturas,
@@ -109,6 +110,7 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "tentativas_por_ativo": contar_por_ativo(conexao, usuario_id),
         "pulse": pulse_para_exportar(conexao, usuario_id),
         "diario_de_teses": diario_para_exportar(conexao, usuario_id),
+        "links_compartilhados": links_para_exportar(conexao, usuario_id),
         "favoritos": [
             l.ticker
             for l in conexao.execute(

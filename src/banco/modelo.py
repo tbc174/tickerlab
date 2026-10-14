@@ -484,6 +484,44 @@ sa.Index(
     pdfs_originais.c.gerado_em,
 )
 
+# Compartilhamento seguro (0034, onda 4 da ADR 0046): links secretos, com prazo e revogáveis,
+# para a ficha "Foi sorte?" congelada ou um PDF original da biblioteca. Só o hash do código fica
+# aqui (src/compartilhamentos.py). Somem com a conta e, os de PDF, junto com o PDF guardado.
+compartilhamentos = sa.Table(
+    "compartilhamentos",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("codigo_hash", sa.String(64), nullable=False, unique=True),
+    sa.Column("tipo", sa.String(10), nullable=False),
+    sa.Column(
+        "relatorio_id",
+        sa.Uuid,
+        sa.ForeignKey("pdfs_originais.relatorio_id", ondelete="CASCADE"),
+    ),
+    sa.Column("ficha", JSON_PORTATIL),
+    sa.Column("titulo", sa.String(200), nullable=False),
+    _momento("criado_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("revogado_em", sa.DateTime(timezone=True)),
+    sa.Column("visitas", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("ultima_visita_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(
+        "(tipo = 'ficha' AND ficha IS NOT NULL AND relatorio_id IS NULL) OR "
+        "(tipo = 'pdf' AND relatorio_id IS NOT NULL AND ficha IS NULL)",
+        name="tipo",
+    ),
+    sa.CheckConstraint("expira_em > criado_em", name="prazo"),
+    sa.CheckConstraint("visitas >= 0", name="visitas"),
+    sa.CheckConstraint("length(titulo) >= 1", name="titulo"),
+)
+sa.Index(
+    "ix_compartilhamentos_usuario_id_criado_em",
+    compartilhamentos.c.usuario_id,
+    compartilhamentos.c.criado_em,
+)
+sa.Index("ix_compartilhamentos_relatorio_id", compartilhamentos.c.relatorio_id)
+
 # Research R3 (0012): quem tem cada ação. Fundos da CVM (carteira mensal, CDA) e gestores da SEC
 # (13F, trimestral). Nomes de fundos e gestores são de pessoas jurídicas.
 detentores_por_acao = sa.Table(
