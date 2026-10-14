@@ -39,6 +39,8 @@ const CONTAS: Record<string, Conta> = {
   "aleatorio.sequencia": aleatorio.sequencia,
   "sorte_em_serie.sharpe": sorte.sharpe,
   "sorte_em_serie.simular": sorte.simular,
+  "sorte_em_serie.erfc": sorte.erfc,
+  "sorte_em_serie.p_valor": sorte.pValor,
   "darf.apurar_mes": darf.apurarMes,
   "darf.apurar_meses": darf.apurarMeses,
   "darf.vencimento": darf.vencimento,

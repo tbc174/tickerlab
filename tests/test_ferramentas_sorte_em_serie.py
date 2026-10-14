@@ -1,5 +1,6 @@
 """Sorte em série (src/ferramentas/sorte_em_serie.py) e o gerador pseudoaleatório (aleatorio.py)."""
 
+import math
 import statistics
 
 import pytest
@@ -76,3 +77,43 @@ def test_em_media_ninguem_tem_vantagem(semente):
     """Moeda honesta: a média dos retornos diários de todas as estratégias fica perto de zero."""
     r = sorte.simular(200, 250, semente)
     assert abs(r.media_dos_retornos_diarios) < 0.001
+
+
+# --- ferramentas v2: a distribuição dos retornos e a correção pelas tentativas -----------------
+@pytest.mark.parametrize("x", [-3.0, -1.0, -0.2, 0.0, 0.3, 1.0, 1.645, 2.5, 4.0, 6.0])
+def test_erfc_aproximada_fica_perto_da_do_python(x):
+    assert sorte.erfc(x) == pytest.approx(math.erfc(x), rel=2e-7, abs=1e-15)
+
+
+def test_p_valor_de_retornos_sem_tendencia_e_meio():
+    assert sorte.p_valor([0.01, -0.01] * 50) == pytest.approx(0.5, abs=1e-6)
+
+
+def test_p_valor_cai_quando_a_media_sobe():
+    assert sorte.p_valor([0.02, -0.01] * 50) < sorte.p_valor([0.011, -0.01] * 50)
+
+
+def test_simular_guarda_o_retorno_final_de_cada_estrategia():
+    r = sorte.simular(100, 250, 42)
+    assert len(r.retornos_finais) == 100
+    assert max(r.retornos_finais) == r.retorno_da_melhor
+    assert min(r.retornos_finais) == r.retorno_da_pior
+
+
+def test_sem_correcao_algumas_passam_por_sorte_e_com_correcao_nenhuma():
+    # todas são moeda: a 5%, umas 5 em 100 "passam" por acaso; dividindo o nível pelas 100
+    # tentativas, nenhuma
+    r = sorte.simular(100, 250, 42)
+    assert 1 <= r.passam_sem_correcao <= 15
+    assert r.passam_com_correcao == 0
+
+
+@given(
+    st.integers(min_value=2, max_value=200),
+    st.integers(min_value=20, max_value=300),
+    st.integers(min_value=0, max_value=2**31),
+)
+@settings(max_examples=30, deadline=None)
+def test_com_correcao_nunca_passam_mais_que_sem(estrategias, dias, semente):
+    r = sorte.simular(estrategias, dias, semente)
+    assert r.passam_com_correcao <= r.passam_sem_correcao

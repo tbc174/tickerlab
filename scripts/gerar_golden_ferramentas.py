@@ -58,6 +58,8 @@ CONTAS: dict[str, Conta] = {
     "aleatorio.sequencia": aleatorio.sequencia,
     "sorte_em_serie.sharpe": sorte.sharpe,
     "sorte_em_serie.simular": sorte.simular,
+    "sorte_em_serie.erfc": sorte.erfc,
+    "sorte_em_serie.p_valor": sorte.p_valor,
     # o DARF recebe o mês e os saldos como dicionários (os campos que faltam ficam em zero)
     "darf.apurar_mes": lambda mes, saldos: darf.apurar_mes(
         darf.Mes(**mes), darf.Saldos(**saldos)
@@ -217,6 +219,17 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("sorte_em_serie.simular", [500, 30, 123456]),
     ("sorte_em_serie.simular", [1, 250, 42]),
     ("sorte_em_serie.simular", [100, 1, 42]),
+    ("sorte_em_serie.erfc", [-3.0]),
+    ("sorte_em_serie.erfc", [-0.5]),
+    ("sorte_em_serie.erfc", [0.0]),
+    ("sorte_em_serie.erfc", [0.7]),
+    ("sorte_em_serie.erfc", [1.645]),
+    ("sorte_em_serie.erfc", [3.2]),
+    ("sorte_em_serie.erfc", [6.0]),
+    ("sorte_em_serie.p_valor", [[0.01, -0.01, 0.01, 0.01, -0.01]]),
+    ("sorte_em_serie.p_valor", [[0.01, -0.01, 0.01, -0.01]]),
+    ("sorte_em_serie.p_valor", [[0.01, 0.01, 0.01]]),
+    ("sorte_em_serie.simular", [1000, 250, 42]),
     ("darf.apurar_mes", [{"vendas_comuns": 15000, "resultado_comum": 2000}, {}]),
     ("darf.apurar_mes", [{"vendas_comuns": 20000, "resultado_comum": 2000}, {}]),
     ("darf.apurar_mes", [{"vendas_comuns": 20000.01, "resultado_comum": 2000}, {}]),
