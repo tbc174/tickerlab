@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { type Plugin, defineConfig } from "vite";
+import { ICONES, manifesto, servicoDaCasca } from "./src/app/pwa";
 import { RAIZ_DO_REPOSITORIO, SOL_JS, lerTexto, versao } from "./src/arquivos";
 import { marca } from "./src/conteudo";
 import { css } from "./src/estilo";
@@ -38,6 +39,10 @@ function transformarPagina(html: string): string {
     `<script src="${BASE}tema/sol.js?v=${versao(SOL_JS)}"></script>\n    ` +
     `${TEMA_SALVO}\n    ` +
     `<link rel="icon" href="${BASE}simbolo.svg" type="image/svg+xml">\n    ` +
+    // o app instalável (PWA): manifesto, ícone do iPhone e a cor da barra do sistema
+    `<link rel="manifest" href="${BASE}manifest.json">\n    ` +
+    `<link rel="apple-touch-icon" href="${BASE}icones/apple-touch-icon.png">\n    ` +
+    `<meta name="theme-color" content="${marca.marinho}">\n    ` +
     `<link rel="stylesheet" href="${BASE}estilo.css?v=${versao(ESTILO)}">`;
   return semCrlf.replace("<!--tema-e-estilo-->", cabeca);
 }
@@ -49,9 +54,13 @@ function arquivosDaMarca(): Plugin {
     // "pre": antes de o Vite mexer no HTML. Ele tira a tag <script> da página e, com CRLF, sobrava
     // uma linha em branco que o build do CI (LF) não tem
     transformIndexHtml: { order: "pre", handler: transformarPagina },
-    generateBundle() {
-      const emitir = (fileName: string, source: string | Uint8Array) =>
+    generateBundle(_opcoes, pacote) {
+      // o que este plugin grava ainda não aparece em `pacote`: a lista vai para a casca do PWA
+      const gravados: string[] = [];
+      const emitir = (fileName: string, source: string | Uint8Array) => {
+        gravados.push(fileName);
         this.emitFile({ type: "asset", fileName, source });
+      };
       emitir("estilo.css", ESTILO);
       emitir("tema/sol.js", SOL_JS);
       // texto com LF (a cópia do Windows pode ter CRLF); fonte é binária e vai como está
@@ -61,6 +70,23 @@ function arquivosDaMarca(): Plugin {
       };
       copiar("simbolo.svg", "marca", "simbolo.svg");
       for (const nome of FONTES) copiar(`fontes/${nome}`, "fontes", nome);
+      for (const nome of Object.keys(ICONES))
+        emitir(`icones/${nome}`, readFileSync(join(RAIZ_DO_REPOSITORIO, "static", "marca", nome)));
+      emitir("manifest.json", `${JSON.stringify(manifesto(), null, 2)}\n`);
+      // a casca: tudo o que o build grava (menos a página, que entra como /novo/), com o ?v= de quem
+      // é pedido assim no HTML; a versão do cache muda quando qualquer arquivo muda de nome
+      const comVersao: Record<string, string> = {
+        "estilo.css": `estilo.css?v=${versao(ESTILO)}`,
+        "tema/sol.js": `tema/sol.js?v=${versao(SOL_JS)}`,
+      };
+      const casca = [
+        BASE,
+        ...[...Object.keys(pacote), ...gravados]
+          .filter((nome) => !nome.endsWith(".html") && !nome.endsWith(".txt"))
+          .sort()
+          .map((nome) => BASE + (comVersao[nome] ?? nome)),
+      ];
+      emitir("sw.js", servicoDaCasca(casca, versao(casca.join("\n"))));
     },
   };
 }
