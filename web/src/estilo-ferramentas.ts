@@ -22,6 +22,10 @@ export function cssFerramentas(): string {
 .grafico-ferramenta-linha { stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .grafico-ferramenta-area { opacity: .16; }
 .grafico-ferramenta-ponta, .grafico-ferramenta-mira circle { stroke: var(--fundo); stroke-width: 2; }
+.grafico-ferramenta-referencia line { stroke: var(--texto); stroke-width: 1; opacity: .55; }
+.grafico-ferramenta .grafico-ferramenta-referencia text { fill: var(--texto); font-weight: 700; }
+.ferramenta-destaque { margin: 1rem 0 0; padding: .75rem .9rem; border-radius: 10px; border-left: 3px solid var(--azul);
+  background: color-mix(in srgb, var(--azul) 8%, transparent); font-size: .92rem; }
 .grafico-ferramenta-mira line { stroke: var(--linha-forte); stroke-width: 1; }
 .grafico-ferramenta .grafico-ferramenta-nome { fill: var(--texto); font-weight: 600; font-size: 13px; }
 .grafico-ferramenta .grafico-ferramenta-valor { fill: var(--texto); font-weight: 700; font-size: 13px; }

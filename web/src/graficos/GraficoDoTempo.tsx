@@ -31,6 +31,7 @@ export function GraficoDoTempo({
   formatarEixo = formatarValor,
   empilhado = false,
   zeroNaBase = empilhado,
+  referencia,
 }: {
   titulo: string; // nomeia o gráfico para leitores de tela
   meses: number[]; // o mês de cada ponto, desde o início (0, 1, 2... ou 0, 12, 24...)
@@ -39,6 +40,7 @@ export function GraficoDoTempo({
   formatarEixo?: (valor: number) => string;
   empilhado?: boolean;
   zeroNaBase?: boolean;
+  referencia?: { valor: number; rotulo: string }; // uma linha horizontal com nome (a meta)
 }) {
   const [largura, medir] = useLargura(640);
   const idDoResumo = useId();
@@ -57,7 +59,8 @@ export function GraficoDoTempo({
   });
 
   const topos = empilhado ? empilhar(series.map((s) => s.valores)) : series.map((s) => s.valores);
-  const [baixo, alto, passo] = limitesDoEixo(topos.flat(), zeroNaBase ? 0 : undefined);
+  const todos = referencia ? [...topos.flat(), referencia.valor] : topos.flat();
+  const [baixo, alto, passo] = limitesDoEixo(todos, zeroNaBase ? 0 : undefined);
   const x = (mes: number) => MARGEM.esquerda + (mes / ultimoMes) * larguraUtil;
   const y = (valor: number) => MARGEM.topo + (1 - (valor - baixo) / (alto - baixo)) * alturaUtil;
   const linha = (valores: number[]) =>
@@ -111,6 +114,14 @@ export function GraficoDoTempo({
             {rotuloDoMes(m, ultimoMes)}
           </text>
         ))}
+        {referencia ? (
+          <g className="grafico-ferramenta-referencia" data-meta={referencia.valor}>
+            <line x1={MARGEM.esquerda} x2={largura - MARGEM.direita} y1={y(referencia.valor)} y2={y(referencia.valor)} />
+            <text x={MARGEM.esquerda + 6} y={y(referencia.valor) - 6}>
+              {referencia.rotulo}: {formatarValor(referencia.valor)}
+            </text>
+          </g>
+        ) : null}
         {series.map((s, k) => {
           const topo = topos[k];
           const base = empilhado && k > 0 ? topos[k - 1] : piso;
