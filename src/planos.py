@@ -42,6 +42,8 @@ class Limites:
     alertas: int = 1
     # PDFs originais guardados na biblioteca (ADR 0021): o mais antigo sai quando passa daqui
     pdfs_guardados: int = 10
+    # links compartilhados ativos (onda 4): vencidos e revogados não contam
+    links_ativos: int = 3
 
 
 LIMITES_DOS_PLANOS = {
@@ -70,6 +72,7 @@ LIMITES_DOS_PLANOS = {
         ativos_por_watchlist=20,
         alertas=5,
         pdfs_guardados=50,
+        links_ativos=20,
     ),
     "pro": Limites(
         nome="Pro",
@@ -84,6 +87,7 @@ LIMITES_DOS_PLANOS = {
         ativos_por_watchlist=50,
         alertas=20,
         pdfs_guardados=200,
+        links_ativos=100,
     ),
 }
 assert set(LIMITES_DOS_PLANOS) == set(
@@ -115,6 +119,16 @@ def conferir_simulacoes(plano: str | None, ja_salvas: int) -> None:
         raise LimiteDoPlanoError(
             f"O plano {limites_do(plano).nome} guarda até {maximo} simulações. "
             "Apague alguma ou conheça o plano Pro."
+        )
+
+
+def conferir_links(plano: str | None, ativos: int) -> None:
+    """Levanta `LimiteDoPlanoError` se o usuário não pode criar mais um link compartilhado."""
+    limites = limites_do(plano)
+    if ativos >= limites.links_ativos:
+        raise LimiteDoPlanoError(
+            f"O plano {limites.nome} mantém até {limites.links_ativos} links ativos. "
+            "Revogue algum ou espere um vencer."
         )
 
 

@@ -14,6 +14,7 @@ from src.planos import (
     PARES,
     LimiteDoPlanoError,
     conferir_favoritos,
+    conferir_links,
     conferir_simulacoes,
     limites_do,
     pode_usar,
@@ -49,6 +50,18 @@ def test_limite_de_simulacoes():
     with pytest.raises(LimiteDoPlanoError, match="até 5"):
         conferir_simulacoes("gratuito", 5)
     conferir_simulacoes("pro", 10_000)
+
+
+def test_limite_de_links_compartilhados():
+    assert [limites_do(p).links_ativos for p in ("gratuito", "plus", "pro")] == [
+        3,
+        20,
+        100,
+    ]
+    conferir_links("gratuito", 2)
+    with pytest.raises(LimiteDoPlanoError, match="até 3 links ativos"):
+        conferir_links("gratuito", 3)
+    conferir_links("pro", 99)
 
 
 def test_favoritos_so_barram_o_que_cresce_alem_do_limite():
