@@ -27,6 +27,7 @@ from src.banco.modelo import (
     usuarios,
     watchlists,
 )
+from src.banco.origens import buscar_linha as buscar_origem_do_cadastro
 from src.banco.pulse import dados_para_exportar as pulse_para_exportar
 from src.banco.tentativas import contar_por_ativo
 from src.banco.teses import dados_para_exportar as diario_para_exportar
@@ -72,6 +73,22 @@ def _texto(valor: object) -> object:
     return valor.isoformat() if isinstance(valor, datetime) else valor
 
 
+def _origem_do_cadastro(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict | None:
+    linha = buscar_origem_do_cadastro(conexao, usuario_id)
+    if linha is None:
+        return None
+    primeira_visita = linha.primeira_visita
+    return {
+        "utm_source": linha.utm_source,
+        "utm_medium": linha.utm_medium,
+        "utm_campaign": linha.utm_campaign,
+        "utm_content": linha.utm_content,
+        "ref": linha.ref,
+        "primeira_visita": primeira_visita.isoformat() if primeira_visita else None,
+        "gravada_em": _texto(linha.gravada_em),
+    }
+
+
 def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
     """Tudo o que o serviço guarda sobre a pessoa, em um dicionário pronto para virar JSON.
 
@@ -111,6 +128,7 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
         "pulse": pulse_para_exportar(conexao, usuario_id),
         "diario_de_teses": diario_para_exportar(conexao, usuario_id),
         "links_compartilhados": links_para_exportar(conexao, usuario_id),
+        "origem_do_cadastro": _origem_do_cadastro(conexao, usuario_id),
         "favoritos": [
             l.ticker
             for l in conexao.execute(
