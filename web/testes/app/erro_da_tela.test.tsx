@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Página fora do plano (ADR 0062): a tela mostra o motivo da API e o caminho para os planos.
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ErroDaApi } from "../../src/app/api";
 import { ErroDaTela } from "../../src/app/telas/ErroDaTela";
@@ -39,5 +39,16 @@ describe("erro da tela", () => {
     });
     expect(await screen.findByText(MOTIVO)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Conhecer os planos" })).toBeTruthy();
+  });
+
+  it("termos que mudaram no meio do uso: leva à tela de aceite", async () => {
+    abrirApp("/risco", {
+      rotas: (endereco) =>
+        endereco.startsWith("/api/v1/risco")
+          ? respostaJson(403, { detail: "Aceite os termos atuais para continuar." }, { "X-TickerLab-Motivo": "termos" })
+          : undefined,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Ler e aceitar os termos" }));
+    expect(await screen.findByRole("heading", { name: "Antes de começar" })).toBeTruthy();
   });
 });

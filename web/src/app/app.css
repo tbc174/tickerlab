@@ -85,6 +85,10 @@
 .cartao-do-veredito { margin: 1.25rem 0; padding: 1rem 1.25rem; border-radius: var(--raio);
   border: 1px solid var(--linha-forte); background: var(--superficie); }
 .cartao-do-veredito :is(h2, h3) { margin: 0 0 .4rem; font-size: 1.2rem; }
+/* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
+.textos-legais { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+.texto-legal { font-weight: 600; }
+.botoes-do-aceite { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; }
 /* a ficha "Foi sorte?" embaixo do backtest: o título com o "?" do glossário ao lado */
 .ficha-foi-sorte { margin-top: 2rem; }
 .ficha-foi-sorte > h2 { display: flex; align-items: center; gap: .5rem; }

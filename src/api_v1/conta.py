@@ -5,17 +5,26 @@
 de administrador só ao e-mail da lista que o Google confirmou e guarda a origem do cadastro (cookie
 `tl_origem`) só no primeiro login.
 
-Fora do `rotas.py` de propósito: as rotas de lá exigem uma conta que já existe (e os termos aceitos);
-esta é justamente a que cria a conta. Os termos continuam valendo: a conta nova ainda precisa
-aceitá-los antes de abrir qualquer página.
+`POST /v1/aceite-dos-termos` grava o aceite dos termos atuais (a mesma `registrar_aceite` do
+Streamlit), conferindo que a tela mostrou a versão atual.
+
+Fora do `rotas.py` de propósito: as rotas de lá exigem uma conta que já existe e os termos aceitos;
+estas são justamente as que criam a conta e registram o aceite. Sem o aceite, nenhuma página abre.
 """
 
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
-from src.api_v1.acesso import LIMITE, agora, exigir_api_ligada, identidade_logada
+from src.api_v1.acesso import (
+    LIMITE,
+    agora,
+    conta_sem_o_aceite,
+    exigir_api_ligada,
+    identidade_logada,
+)
 from src.api_v1.rotas import EuV1, eu_da_conta
 from src.autenticacao import (
     IdentidadeDoGoogle,
@@ -23,7 +32,10 @@ from src.autenticacao import (
     emails_de_admin,
     registrar_login,
 )
-from src.banco.usuarios import Usuario
+from src.banco.conexao import obter_engine
+from src.banco.usuarios import Usuario, buscar_por_id
+from src.conformidade import VERSAO_DOS_TERMOS, aceitar_os_termos
+from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
 from src.origem import NOME_DO_COOKIE, ler_origem
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
@@ -31,6 +43,15 @@ router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
 class ContaV1(EuV1):
     primeira_vez: bool  # True: a conta acabou de ser criada
+
+
+class AceiteV1(BaseModel):
+    """A versão dos termos que a tela mostrou (uma aba velha não aceita os termos novos)."""
+
+    versao: str = Field(max_length=40)
+    # a caixa opcional das Novidades por e-mail (desmarcada por padrão) e a versão do texto dela
+    novidades: bool = False
+    versao_das_novidades: str | None = Field(None, max_length=40)
 
 
 @router.post("/conta")
@@ -59,3 +80,26 @@ def _registrar(
         return registrar_login(identidade, admins=admins, origem=origem)
     except IntegrityError:
         return registrar_login(identidade, admins=admins, origem=origem)
+
+
+@router.post("/aceite-dos-termos")
+def registrar_o_aceite(
+    conta: Annotated[Usuario, Depends(conta_sem_o_aceite)], aceite: AceiteV1
+) -> EuV1:
+    """Grava o aceite dos termos atuais para a conta do token (como o botão do Streamlit)."""
+    if aceite.versao != VERSAO_DOS_TERMOS:
+        raise HTTPException(
+            status_code=409,
+            detail="Os termos mudaram enquanto a página estava aberta. "
+            "Recarregue a página e leia a versão nova.",
+        )
+    if aceite.novidades and aceite.versao_das_novidades != VERSAO_DAS_NOVIDADES:
+        raise HTTPException(
+            status_code=409,
+            detail="O texto das Novidades mudou enquanto a página estava aberta. "
+            "Recarregue a página e confirme de novo.",
+        )
+    with obter_engine().begin() as conexao:
+        aceitar_os_termos(conexao, conta.id, aceite.novidades)
+        atualizada = buscar_por_id(conexao, conta.id)
+    return eu_da_conta(atualizada or conta)
