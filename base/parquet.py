@@ -9,6 +9,7 @@ cada original) e a versão do código que gravou. `conferir_tabela` diz se o Par
 
 import hashlib
 import json
+import logging
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -17,6 +18,7 @@ import pandas as pd
 
 from src.versao_do_codigo import versao_do_codigo
 
+log = logging.getLogger(__name__)
 ALGARISMOS_SIGNIFICATIVOS = "%.17g"  # o mesmo número sempre vira o mesmo texto
 
 
@@ -75,3 +77,50 @@ def conferir_tabela(arquivo: Path) -> bool:
     return anotado.get("sha256_da_tabela") == hash_da_tabela(
         ler_tabela(arquivo), anotado.get("ordem", [])
     )
+
+
+# --- versões: quando a fonte regrava um arquivo, a tabela anterior fica guardada ----------------
+GRAVADO, IGUAL = "gravado", "igual"
+
+
+def origens_gravadas(destino: Path) -> list[dict[str, str]] | None:
+    """As origens anotadas no manifesto de `destino` (None se ainda não foi gravado)."""
+    manifesto = destino.with_suffix(".json")
+    if not manifesto.exists():
+        return None
+    return json.loads(manifesto.read_text(encoding="utf-8")).get("origens")
+
+
+def guardar_versao_anterior(destino: Path) -> Path:
+    """`<destino>.parquet` e `.json` viram `<destino>.v<N>`, com o primeiro N livre."""
+    n = 1
+    while destino.with_name(f"{destino.name}.v{n}.parquet").exists():
+        n += 1
+    versao = destino.with_name(f"{destino.name}.v{n}")
+    for extensao in (".parquet", ".json"):
+        destino.with_name(destino.name + extensao).rename(
+            versao.with_name(versao.name + extensao)
+        )
+    log.info(
+        "%s mudou na fonte: a versão anterior ficou como %s", destino.name, versao.name
+    )
+    return versao
+
+
+def gravar_com_versoes(
+    montar: Callable[[], pd.DataFrame],
+    destino: Path,
+    origens: list[dict[str, str]],
+    ordem: list[str],
+) -> str:
+    """Grava a tabela se as origens mudaram (`GRAVADO`), guardando a anterior; senão, `IGUAL`.
+
+    `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado.
+    """
+    anteriores = origens_gravadas(destino)
+    if anteriores == origens:
+        return IGUAL
+    if anteriores is not None:
+        guardar_versao_anterior(destino)
+    gravar_tabela(montar(), destino, origens, ordem)
+    return GRAVADO
