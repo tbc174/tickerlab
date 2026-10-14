@@ -1034,6 +1034,8 @@
   },
   "custo_por_operacao": 0.0005,
   "estrategia": "Comprar e segurar",
+  "ficha": null,
+  "motivo_sem_ficha": null,
   "parametros": {}
  }
 }

@@ -12,6 +12,7 @@ import {
   baixarPdf,
   codigoDoEndereco,
 } from "../compartilhado";
+import { VereditoDaFicha } from "../VereditoDaFicha";
 import { formatarData, formatarPct } from "../formatar";
 import { Carregando } from "./Avisos";
 
@@ -31,18 +32,11 @@ function Ficha({ ficha }: { ficha: FichaCompartilhadaV1 }) {
   const ajustes = Object.entries({ ...ficha.parametros, ...ficha.protecoes });
   return (
     <>
-      <section className="cartao-do-veredito" aria-label="Veredito">
-        <h2>{ficha.titulo_do_veredito}</h2>
-        <p>{ficha.texto_do_veredito}</p>
-      </section>
-      <ul className="checagens">
-        {ficha.checagens.map((c) => (
-          <li key={c.pergunta}>
-            <strong>{c.pergunta}</strong> <span className="apagado">({c.situacao})</span>
-            <p>{c.explicacao}</p>
-          </li>
-        ))}
-      </ul>
+      <VereditoDaFicha
+        titulo={ficha.titulo_do_veredito}
+        texto={ficha.texto_do_veredito}
+        checagens={ficha.checagens}
+      />
       <p>{ficha.texto_das_tentativas}</p>
       <dl className="ficha-tecnica">
         <dt>Ativo</dt>
