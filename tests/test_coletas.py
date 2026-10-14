@@ -157,3 +157,12 @@ def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):
         6_000_000_000,
         "lm=x",
     )
+
+
+def test_licencas_das_fontes_abertas_novas():
+    assert "CCEE" in licenca_da_fonte("ccee-pld")
+    assert "ANTT" in licenca_da_fonte("antt-pedagio")
+    assert "Tesouro Nacional" in licenca_da_fonte("tesouro-br-divida")
+    assert licenca_da_fonte("tesouro-eua-10a") == coletas.LICENCAS["tesouro"]
+    assert coletas.revenda_da_fonte("ccee-pld") == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert coletas.revenda_da_fonte("tesouro-br-divida") == coletas.VENDAVEL_ODBL
