@@ -359,6 +359,11 @@
         ]
       }
     ],
+    "ficha": {
+      "explicacao": "Um backtest sempre parece bom quando os parâmetros foram escolhidos olhando os mesmos dados. A ficha confere, em cinco perguntas, se o resultado se sustenta.",
+      "termo": "Foi sorte?",
+      "termo_da_tolerancia": "Tolerância de queda"
+    },
     "metricas_por_formato": {
       "inteiro": [
         "Dias debaixo d'água (máx.)",
@@ -508,6 +513,20 @@
         "texto": "mostra o pior susto que quem comprou no topo teria passado. É útil para saber se você aguentaria segurar a ação."
       }
     ],
+    "Foi sorte?": [
+      {
+        "rotulo": "O que é",
+        "texto": "a ficha que confere, em cinco perguntas, se o resultado de um backtest se sustenta ou se pode ter sido sorte: (1) funcionou fora do período usado para escolher os parâmetros? (2) depois dos custos e do imposto, rendeu mais que o CDI? (3) bate versões da mesma regra feitas ao acaso, contando quantas variações foram testadas? (4) parâmetros vizinhos também funcionam? (5) as quedas cabem no que você aguenta? Só passa quando todas as perguntas que se aplicam passam."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "uma regra que rendeu 80% no período, mas que perde para o CDI depois do imposto e que só funciona com uma média de exatamente 23 dias, não passa: o resultado bonito veio de ajustar a regra ao passado."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "passar no teste vale para os dados do passado. Não é promessa de resultado nem recomendação, e o teste é exigente de propósito: muitas regras boas de verdade não passam com poucos anos de dados."
+      }
+    ],
     "IPCA": [
       {
         "rotulo": "O que é",
@@ -632,6 +651,20 @@
       {
         "rotulo": "Cuidado",
         "texto": "a meta é um alvo: a taxa praticada no dia a dia (a \"Selic diária\") fica muito perto dela, mas não é igual. Mudanças da meta valem a partir do dia seguinte à reunião."
+      }
+    ],
+    "Tolerância de queda": [
+      {
+        "rotulo": "O que é",
+        "texto": "a maior queda da carteira, a partir do pico, que você aguentaria sem desistir da regra. A ficha \"Foi sorte?\" compara com ela a queda no pior caso comum do Monte Carlo (as operações em outra ordem)."
+      },
+      {
+        "rotulo": "Exemplo",
+        "texto": "com tolerância de 30%, uma regra cujo pior caso comum cai 42% não passa nesta pergunta, mesmo que tenha rendido bem."
+      },
+      {
+        "rotulo": "Cuidado",
+        "texto": "na hora da queda, quase todo mundo aguenta menos do que imaginava. Na dúvida, escolha um número menor."
       }
     ],
     "Volatilidade": [

@@ -10,6 +10,7 @@ dia. Mudou a tela, a API ou os dados de exemplo? Regrave:
 """
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 
@@ -17,16 +18,23 @@ import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from src import analises, comparacao
+from src import analises, comparacao, ficha
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src.api_v1 import esquemas
 from src.api_v1.contexto import ContextoDoAtivo
-from src.api_v1.rotas import montar_backtest, montar_linha_do_tempo, montar_visao_geral
+from src.api_v1.rotas import (
+    CAPITAL_PADRAO,
+    montar_backtest,
+    montar_ficha_do_backtest,
+    montar_linha_do_tempo,
+    montar_visao_geral,
+)
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.banco.eventos import Evento
 from src.dados import baixar_dados
+from src.validacao import parametros_numericos
 from tests.ajudantes_da_conta import ir_para
 
 PASTA = Path(__file__).resolve().parent.parent / "web" / "testes" / "app" / "exemplos"
@@ -214,6 +222,62 @@ def exemplo_do_backtest() -> dict:
     }
 
 
+# com números para variar: as cinco checagens contam
+ESTRATEGIA_DA_FICHA = "Cruzamento de médias"
+# a tela abre com a estratégia padrão (1ª tentativa no ativo) e troca para esta (2ª), sem login
+TENTATIVAS_NA_TELA = 2
+CHECAGEM_NA_TELA = re.compile(
+    r"^:material/\w+: \*\*(.+?)\*\* \((.+?)\)  \n(.*)$", re.DOTALL
+)
+TITULO_NA_TELA = re.compile(r"^#### :material/\w+: (.+)$")
+
+
+def _ficha_na_tela(app: AppTest) -> dict:
+    """O veredito, as cinco checagens, o texto das tentativas e a nota, como o Streamlit escreve."""
+    textos = [m.value for m in app.markdown]
+    inicio = next(i for i, t in enumerate(textos) if TITULO_NA_TELA.match(t))
+    checagens = [CHECAGEM_NA_TELA.match(t) for t in textos[inicio + 2 : inicio + 7]]
+    assert all(checagens), textos[inicio : inicio + 8]
+    return {
+        "titulo": TITULO_NA_TELA.match(textos[inicio]).group(1),  # type: ignore[union-attr]
+        "texto": textos[inicio + 1],
+        "checagens": [
+            {"pergunta": c.group(1), "situacao": c.group(2), "explicacao": c.group(3)}
+            for c in checagens
+            if c is not None
+        ],
+        "texto_das_tentativas": textos[inicio + 7],
+        "nota": next(c.value for c in app.caption if c.value.startswith("Tentativas")),
+    }
+
+
+def exemplo_da_ficha() -> dict:
+    """A ficha da tela do backtest (sem login, tolerância e capital padrão) e a da API."""
+    app = _tela("backtest")
+    app.session_state["backtest_estrategia"] = ESTRATEGIA_DA_FICHA
+    app.run()
+    assert not app.exception, [e.value for e in app.exception]
+    ticker, periodo = app.session_state["ticker"], app.session_state["periodo"]
+    contexto = _contexto_de_exemplo(ticker, periodo)
+    livres = tuple(p.nome for p in parametros_numericos(ESTRATEGIA_DA_FICHA))[:2]
+    custo = app.session_state["backtest_custo"] / 100
+    resposta = montar_backtest(contexto, ESTRATEGIA_DA_FICHA, {}, custo)
+    resposta.ficha = montar_ficha_do_backtest(
+        contexto,
+        ESTRATEGIA_DA_FICHA,
+        resposta.parametros,
+        custo,
+        CAPITAL_PADRAO,
+        livres,
+        ficha.TOLERANCIA_PADRAO_DE_QUEDA,
+        TENTATIVAS_NA_TELA,
+    )
+    return {
+        "resposta": resposta.model_dump(mode="json"),
+        "na_tela": _ficha_na_tela(app),
+    }
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
@@ -222,6 +286,7 @@ EXEMPLOS = {
     "retorno_mensal": exemplo_do_retorno_mensal,
     "comparacao": exemplo_da_comparacao,
     "backtest": exemplo_do_backtest,
+    "ficha": exemplo_da_ficha,
 }
 
 
@@ -252,3 +317,14 @@ if __name__ == "__main__":
         arquivo = PASTA / f"{nome}.json"
         arquivo.write_text(_em_json(exemplo()), encoding="utf-8")
         print(f"Gravado: {arquivo}")
+
+
+def test_a_ficha_da_api_e_a_da_tela():
+    """A mesma ficha nos dois apps: veredito, as cinco checagens, as tentativas e a nota."""
+    gravado = json.loads((PASTA / "ficha.json").read_text(encoding="utf-8"))
+    da_api, na_tela = gravado["resposta"]["ficha"], gravado["na_tela"]
+    assert da_api["veredito"]["titulo"] == na_tela["titulo"]
+    assert da_api["veredito"]["texto"] == na_tela["texto"]
+    assert da_api["checagens"] == na_tela["checagens"]
+    assert da_api["texto_das_tentativas"] == na_tela["texto_das_tentativas"]
+    assert da_api["nota"] == na_tela["nota"]

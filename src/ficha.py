@@ -53,6 +53,13 @@ from src.validacao import (
 )
 
 AVISO = "Vale para os dados do passado. Não é promessa de resultado nem recomendação."
+# os termos do glossário da ficha e o texto embaixo do título (o Streamlit e o app novo mostram)
+TERMO_DO_GLOSSARIO = "Foi sorte?"
+TERMO_DA_TOLERANCIA = "Tolerância de queda"
+EXPLICACAO = (
+    "Um backtest sempre parece bom quando os parâmetros foram escolhidos olhando os "
+    "mesmos dados. A ficha confere, em cinco perguntas, se o resultado se sustenta."
+)
 
 PERGUNTA_FORA_DO_PERIODO = "Funcionou fora do período usado para escolher?"
 PERGUNTA_VIZINHOS = "Funciona com parâmetros vizinhos?"
@@ -360,6 +367,14 @@ def total_de_tentativas(combinacoes_da_grade: int, tentativas_da_pessoa: int) ->
     grade; por isso conta uma vez só.
     """
     return max(combinacoes_da_grade, 1) + max(tentativas_da_pessoa - 1, 0)
+
+
+def nota_das_tentativas(tentativas: int) -> str:
+    """A nota embaixo da ficha: quantas variações entraram na conta do acaso e o custo usado."""
+    return (
+        f"Tentativas contadas na pergunta do acaso (com as combinações da grade): "
+        f"{tentativas}. A ficha usa o custo padrão do app quando o seu é menor."
+    )
 
 
 def texto_das_tentativas(tentativas_da_pessoa: int, ticker: str, teto: int) -> str:

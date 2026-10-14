@@ -18,7 +18,7 @@ from src import analises, juros_e_inflacao, linha_do_tempo
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.conteudo import descrever_pior_drawdown
-from src.ficha import Ficha, PedidoDaFicha
+from src.ficha import Ficha, PedidoDaFicha, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
 from src.links_das_fontes import link_da_fonte
 
@@ -445,6 +445,7 @@ class FichaV1(BaseModel):
     tolerancia_de_queda: float  # fração (0,30 = 30%) usada na checagem das quedas
     livres: list[str]  # os parâmetros que variaram na grade
     capital_inicial: float  # R$, para a isenção do imposto
+    nota: str  # quantas variações entraram na conta e o custo usado (embaixo da ficha)
 
 
 def de_ficha(
@@ -469,6 +470,7 @@ def de_ficha(
         tolerancia_de_queda=pedido.tolerancia_de_queda,
         livres=list(pedido.livres),
         capital_inicial=pedido.capital_inicial,
+        nota=nota_das_tentativas(resultado.tentativas),
     )
 
 

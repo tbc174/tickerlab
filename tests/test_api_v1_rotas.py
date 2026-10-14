@@ -586,6 +586,7 @@ def test_a_ficha_do_backtest_e_a_mesma_de_src_ficha(cliente):
     assert recebida["tolerancia_de_queda"] == ficha.TOLERANCIA_PADRAO_DE_QUEDA
     assert recebida["livres"] == ["curta", "longa"]
     assert recebida["capital_inicial"] == rotas.CAPITAL_PADRAO
+    assert recebida["nota"] == ficha.nota_das_tentativas(esperada.tentativas)
 
 
 def test_a_mesma_configuracao_conta_uma_vez_so(cliente, banco):
