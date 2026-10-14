@@ -79,6 +79,7 @@ def _modulos() -> list[dict]:
                     "nome": f.nome,
                     "descricao": f.descricao,
                     "pagina_do_app": f.pagina_do_app,
+                    "pagina_do_site": f.pagina_do_site,
                     "ticker": f.ticker,
                     "disponivel": f.disponivel,
                 }

@@ -2,10 +2,12 @@
 // ferramentas.js liga o componente certo no navegador. O build usa o mesmo componente para o HTML
 // pronto, que o Google lê.
 import type { ComponentType } from "react";
+import { AportesEMetas } from "./AportesEMetas";
 import { CalculadoraDeJuros } from "./CalculadoraDeJuros";
 
 export const FERRAMENTAS = {
   juros: CalculadoraDeJuros,
+  aportes: AportesEMetas,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

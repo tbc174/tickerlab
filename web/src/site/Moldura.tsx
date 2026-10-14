@@ -92,6 +92,7 @@ const ITENS_DO_TOPO: [string, string][] = [
   ["/como-funciona.html", "Como funciona"],
   ["/#relatorios", "Relatórios"],
   ["/precos.html", "Planos"],
+  ["/ferramentas.html", "Ferramentas"],
   ["/aprender.html", "Aprender"],
   ["/sobre.html", "Sobre"],
 ];
@@ -129,6 +130,7 @@ function Rodape() {
           <a href="/sobre.html">Sobre</a>
           <a href="/metodologia.html">Fontes e metodologia</a>
           <a href="/novidades.html">Novidades</a>
+          <a href="/ferramentas.html">Ferramentas grátis</a>
           <a href="/precos.html">Planos</a>
           <a href="/termos.html">Termos de uso</a>
           <a href="/privacidade.html">Privacidade</a>

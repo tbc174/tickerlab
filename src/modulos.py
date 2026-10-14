@@ -2,7 +2,7 @@
 
 É a fonte da página "Produto" do site (e de qualquer outro lugar que liste funcionalidades). O
 manual de identidade manda descrever como disponível só o que já existe: cada funcionalidade diz
-se está no app (com a página dele) ou se ainda está em construção ("Em breve", sem link). As ideias
+se está no app (com a página dele), no site (as ferramentas grátis) ou se ainda está em construção ("Em breve", sem link). As ideias
 futuras vêm do catálogo do Documento Mestre v3, seção 09.
 """
 
@@ -17,10 +17,12 @@ class Funcionalidade:
         None  # URL da página no app (src/paginas.py); None = em breve
     )
     ticker: str | None = None  # abre a página já com um ativo de exemplo
+    # página do site público (as ferramentas grátis, sem cadastro): "calculadora-de-....html"
+    pagina_do_site: str | None = None
 
     @property
     def disponivel(self) -> bool:
-        return self.pagina_do_app is not None
+        return self.pagina_do_app is not None or self.pagina_do_site is not None
 
 
 @dataclass(frozen=True)
@@ -243,11 +245,14 @@ MODULOS = (
         "Calculadoras simples, abertas para todos, sem cadastro.",
         (
             Funcionalidade(
-                "Juros simples e compostos", "Quanto um valor rende ao longo do tempo."
+                "Juros simples e compostos",
+                "Quanto um valor rende ao longo do tempo.",
+                pagina_do_site="calculadora-de-juros-compostos.html",
             ),
             Funcionalidade(
                 "Aportes e metas",
                 "Quanto guardar por mês para chegar a um objetivo.",
+                pagina_do_site="calculadora-de-aportes-e-metas.html",
             ),
             Funcionalidade(
                 "Conversores",

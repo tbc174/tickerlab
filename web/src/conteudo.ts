@@ -9,6 +9,7 @@ export interface Funcionalidade {
   nome: string;
   descricao: string;
   pagina_do_app: string | null;
+  pagina_do_site: string | null; // as ferramentas grátis ficam no site, não no app
   ticker: string | null;
   disponivel: boolean;
 }
