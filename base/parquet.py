@@ -91,6 +91,11 @@ def origens_gravadas(destino: Path) -> list[dict[str, str]] | None:
     return json.loads(manifesto.read_text(encoding="utf-8")).get("origens")
 
 
+def _hash_gravado(destino: Path) -> str | None:
+    manifesto = destino.with_suffix(".json")
+    return json.loads(manifesto.read_text(encoding="utf-8")).get("sha256_da_tabela")
+
+
 def guardar_versao_anterior(destino: Path) -> Path:
     """`<destino>.parquet` e `.json` viram `<destino>.v<N>`, com o primeiro N livre."""
     n = 1
@@ -113,14 +118,19 @@ def gravar_com_versoes(
     origens: list[dict[str, str]],
     ordem: list[str],
 ) -> str:
-    """Grava a tabela se as origens mudaram (`GRAVADO`), guardando a anterior; senão, `IGUAL`.
+    """Grava a tabela se o conteúdo mudou (`GRAVADO`), guardando a anterior; senão, `IGUAL`.
 
-    `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado.
+    `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado. Com
+    origens novas e o mesmo conteúdo (o BC devolve o cadastro do IF.data com outros bytes), fica a
+    tabela atual com o original anterior, que continua no acervo: versão só quando o dado muda.
     """
     anteriores = origens_gravadas(destino)
     if anteriores == origens:
         return IGUAL
+    tabela = montar()
     if anteriores is not None:
+        if _hash_gravado(destino) == hash_da_tabela(tabela, ordem):
+            return IGUAL
         guardar_versao_anterior(destino)
-    gravar_tabela(montar(), destino, origens, ordem)
+    gravar_tabela(tabela, destino, origens, ordem)
     return GRAVADO
