@@ -46,6 +46,8 @@ LICENCAS = {
     "gleif": "CC0 (GLEIF, Global LEI Index)",
     "termos": "Termos de uso de terceiros: só prova interna da versão lida",
     "catalogo": "Lista de conjuntos de portais de dados abertos (metadados)",
+    # o SGS do BC repassa o IGP-M, mas a série é da FGV (termos do IBRE: comercial pede autorização)
+    "bcb-sgs-189": "IGP-M da FGV IBRE (repassado pelo BC): uso comercial pede autorização da FGV",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -84,6 +86,7 @@ REVENDA = {
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
     "catalogo": SO_USO_INTERNO,
+    "bcb-sgs-189": SO_USO_INTERNO,
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
