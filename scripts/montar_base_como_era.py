@@ -42,6 +42,7 @@ from src import demonstracoes as dm
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
+from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.base_como_era")
 FONTE = "cvm-dfp-itr"
@@ -194,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
+    # a base vendável só aceita números refeitos de um commit (ADR 0055, exigência 13)
+    log.info("Versão do código: %s", exigir_versao_do_codigo())
     url = url_do_banco()
     migrar_para("head", url=url)
     motor = criar_engine(url)

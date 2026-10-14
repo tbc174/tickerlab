@@ -95,3 +95,9 @@ def test_documento_do_dicionario_esta_em_dia():
     """Mudou o dicionário? Rode `python -m base.dicionario`."""
     atual = (RAIZ / ARQUIVO_DO_DOCUMENTO).read_text(encoding="utf-8")
     assert atual == documento_em_markdown()
+
+
+def test_base_como_era_na_data_guarda_a_versao_do_codigo():
+    """Exigência 13 da ADR 0055: a linhagem da base diz qual commit a montou."""
+    linhagem = TABELAS["demonstracoes_como_era"].linhagem
+    assert "versao_do_codigo" in linhagem and "ainda não é guardada" not in linhagem
