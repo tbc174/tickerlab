@@ -30,6 +30,10 @@ def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_que_existe():
         ("Viver de renda", "calculadora-viver-de-renda.html"),
         ("Sorte em série", "sorte-em-serie.html"),
         ("Imposto sobre ações (DARF)", "calculadora-de-darf.html"),
+        ("Conversor de moedas", "conversor-de-moedas.html"),
+        ("Renda fixa com IR", "calculadora-de-renda-fixa.html"),
+        ("Juro real e taxas", "calculadora-de-juro-real.html"),
+        ("Correção pela inflação", "calculadora-de-correcao-pela-inflacao.html"),
     ],
 )
 def test_calculadoras_levam_as_paginas_do_site(nome, pagina):
@@ -52,8 +56,7 @@ def _funcionalidade(chave_do_modulo, nome):
 
 
 def test_o_que_ainda_nao_existe_nao_diz_que_existe():
-    """Os conversores ainda são ideia futura; do Mercado, as Cotações também."""
-    assert not _funcionalidade("ferramentas", "Conversores").disponivel
+    """Do Mercado, as Cotações ainda são ideia futura."""
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]

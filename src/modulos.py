@@ -255,8 +255,24 @@ MODULOS = (
                 pagina_do_site="calculadora-de-aportes-e-metas.html",
             ),
             Funcionalidade(
-                "Conversores",
-                "Taxa anual em mensal, percentual do CDI em taxa e outros.",
+                "Conversor de moedas",
+                "Dólar, euro, libra e mais 7 moedas pela PTAX do Banco Central.",
+                pagina_do_site="conversor-de-moedas.html",
+            ),
+            Funcionalidade(
+                "Renda fixa com IR",
+                "CDB, LCI/LCA, Tesouro Selic e poupança pelo mesmo prazo, sem o imposto.",
+                pagina_do_site="calculadora-de-renda-fixa.html",
+            ),
+            Funcionalidade(
+                "Juro real e taxas",
+                "Quanto rende acima da inflação, e taxa ao mês ou ao ano.",
+                pagina_do_site="calculadora-de-juro-real.html",
+            ),
+            Funcionalidade(
+                "Correção pela inflação",
+                "Quanto um valor do passado vale hoje, pelo IPCA.",
+                pagina_do_site="calculadora-de-correcao-pela-inflacao.html",
             ),
             Funcionalidade(
                 "Custo das taxas e da queda",

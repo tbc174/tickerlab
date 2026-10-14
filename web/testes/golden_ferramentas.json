@@ -3907,5 +3907,711 @@
   ],
   "conta": "darf.vencimento",
   "valor": "último dia útil de janeiro de 2027"
+ },
+ {
+  "argumentos": [
+   100,
+   "USD",
+   "BRL",
+   {
+    "EUR": 5.6092,
+    "GBP": 6.6387,
+    "JPY": 0.03163,
+    "USD": 5.0096
+   }
+  ],
+  "conta": "moedas.converter",
+  "valor": 500.96
+ },
+ {
+  "argumentos": [
+   1000,
+   "BRL",
+   "EUR",
+   {
+    "EUR": 5.6092,
+    "GBP": 6.6387,
+    "JPY": 0.03163,
+    "USD": 5.0096
+   }
+  ],
+  "conta": "moedas.converter",
+  "valor": 178.27854239463736
+ },
+ {
+  "argumentos": [
+   250,
+   "GBP",
+   "JPY",
+   {
+    "EUR": 5.6092,
+    "GBP": 6.6387,
+    "JPY": 0.03163,
+    "USD": 5.0096
+   }
+  ],
+  "conta": "moedas.converter",
+  "valor": 52471.54600063231
+ },
+ {
+  "argumentos": [
+   1,
+   "BRL",
+   "BRL",
+   {
+    "EUR": 5.6092,
+    "GBP": 6.6387,
+    "JPY": 0.03163,
+    "USD": 5.0096
+   }
+  ],
+  "conta": "moedas.converter",
+  "valor": 1.0
+ },
+ {
+  "argumentos": [
+   1,
+   "ARS",
+   "BRL",
+   {
+    "EUR": 5.6092,
+    "GBP": 6.6387,
+    "JPY": 0.03163,
+    "USD": 5.0096
+   }
+  ],
+  "conta": "moedas.converter",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0.1375,
+   0.05
+  ],
+  "conta": "taxas.juro_real",
+  "valor": 0.08333333333333326
+ },
+ {
+  "argumentos": [
+   0.06,
+   0.08
+  ],
+  "conta": "taxas.juro_real",
+  "valor": -0.01851851851851849
+ },
+ {
+  "argumentos": [
+   0.1,
+   -1
+  ],
+  "conta": "taxas.juro_real",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0.05,
+   0.045
+  ],
+  "conta": "taxas.taxa_nominal",
+  "valor": 0.09725000000000006
+ },
+ {
+  "argumentos": [
+   -1,
+   0.045
+  ],
+  "conta": "taxas.taxa_nominal",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100,
+   "2024-12",
+   "2025-02",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "valor": {
+   "fator": 1.0199975089920004,
+   "meses": 3,
+   "valor_corrigido": 101.99975089920004,
+   "variacao": 0.019997508992000368
+  }
+ },
+ {
+  "argumentos": [
+   2500.5,
+   "2024-11",
+   "2024-11",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "valor": {
+   "fator": 1.0039,
+   "meses": 1,
+   "valor_corrigido": 2510.25195,
+   "variacao": 0.0039000000000000146
+  }
+ },
+ {
+  "argumentos": [
+   100,
+   "2025-02",
+   "2024-12",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100,
+   "2024-10",
+   "2024-12",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100,
+   "2024-12",
+   "2025-03",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100,
+   "2024-13",
+   "2025-01",
+   [
+    [
+     "2024-11",
+     0.0039
+    ],
+    [
+     "2024-12",
+     0.0052
+    ],
+    [
+     "2025-01",
+     0.0016
+    ],
+    [
+     "2025-02",
+     0.0131
+    ]
+   ]
+  ],
+  "conta": "inflacao.corrigir",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   [
+    [
+     "2025-01",
+     0.0031
+    ],
+    [
+     "2025-02",
+     0.0032
+    ],
+    [
+     "2025-03",
+     0.0033
+    ],
+    [
+     "2025-04",
+     0.0034000000000000002
+    ],
+    [
+     "2025-05",
+     0.0035
+    ],
+    [
+     "2025-06",
+     0.0036
+    ],
+    [
+     "2025-07",
+     0.0037
+    ],
+    [
+     "2025-08",
+     0.0038
+    ],
+    [
+     "2025-09",
+     0.0039
+    ],
+    [
+     "2025-10",
+     0.004
+    ],
+    [
+     "2025-11",
+     0.0041
+    ],
+    [
+     "2025-12",
+     0.0042
+    ]
+   ]
+  ],
+  "conta": "inflacao.em_12_meses",
+  "valor": 0.04468932980967
+ },
+ {
+  "argumentos": [
+   [
+    [
+     "2025-01",
+     0.0031
+    ],
+    [
+     "2025-02",
+     0.0032
+    ],
+    [
+     "2025-03",
+     0.0033
+    ],
+    [
+     "2025-04",
+     0.0034000000000000002
+    ],
+    [
+     "2025-05",
+     0.0035
+    ],
+    [
+     "2025-06",
+     0.0036
+    ],
+    [
+     "2025-07",
+     0.0037
+    ],
+    [
+     "2025-08",
+     0.0038
+    ],
+    [
+     "2025-09",
+     0.0039
+    ],
+    [
+     "2025-10",
+     0.004
+    ],
+    [
+     "2025-11",
+     0.0041
+    ]
+   ]
+  ],
+  "conta": "inflacao.em_12_meses",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   10000,
+   365,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.175,
+    "bruto": 11365.00000000007,
+    "imposto": 238.87500000001208,
+    "liquido": 11126.125000000056,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 11220.540188300167,
+    "imposto": 0.0,
+    "liquido": 11220.540188300167,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.175,
+    "bruto": 11365.00000000007,
+    "imposto": 238.87500000001208,
+    "liquido": 11126.125000000056,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 10834.815757703489,
+    "imposto": 0.0,
+    "liquido": 10834.815757703489,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   10000,
+   90,
+   0.1365,
+   1.1,
+   0.92,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.225,
+    "bruto": 10353.13498739585,
+    "imposto": 79.45537216406619,
+    "liquido": 10273.679615231784,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 10294.521036343804,
+    "imposto": 0.0,
+    "liquido": 10294.521036343804,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.225,
+    "bruto": 10320.531262146042,
+    "imposto": 72.11953398285937,
+    "liquido": 10248.411728163182,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 10202.471321500017,
+    "imposto": 0.0,
+    "liquido": 10202.471321500017,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   5000,
+   180,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.225,
+    "bruto": 5325.668276646687,
+    "imposto": 73.27536224550468,
+    "liquido": 5252.392914401183,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 5292.176586810331,
+    "imposto": 0.0,
+    "liquido": 5292.176586810331,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.225,
+    "bruto": 5325.668276646687,
+    "imposto": 73.27536224550468,
+    "liquido": 5252.392914401183,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 5204.521053301516,
+    "imposto": 0.0,
+    "liquido": 5204.521053301516,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   5000,
+   181,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.2,
+    "bruto": 5327.535555080928,
+    "imposto": 65.50711101618563,
+    "liquido": 5262.028444064743,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 5293.846581996656,
+    "imposto": 0.0,
+    "liquido": 5293.846581996656,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.2,
+    "bruto": 5327.535555080928,
+    "imposto": 65.50711101618563,
+    "liquido": 5262.028444064743,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 5204.521053301516,
+    "imposto": 0.0,
+    "liquido": 5204.521053301516,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   50000,
+   721,
+   0.105,
+   1.15,
+   0.95,
+   0.005
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.15,
+    "bruto": 62729.34160366995,
+    "imposto": 1909.4012405504923,
+    "liquido": 60819.94036311946,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 60303.62118803489,
+    "imposto": 0.0,
+    "liquido": 60303.62118803489,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.15,
+    "bruto": 60901.13036840764,
+    "imposto": 1635.1695552611461,
+    "liquido": 59265.96081314649,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 56357.988810269446,
+    "imposto": 0.0,
+    "liquido": 56357.988810269446,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   29,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.225,
+    "bruto": 1010.2180086529772,
+    "imposto": 2.2990519469198776,
+    "liquido": 1007.9189567060573,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 1009.191761338144,
+    "imposto": 0.0,
+    "liquido": 1009.191761338144,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.225,
+    "bruto": 1010.2180086529772,
+    "imposto": 2.2990519469198776,
+    "liquido": 1007.9189567060573,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 1000.0,
+    "imposto": 0.0,
+    "liquido": 1000.0,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   3650,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "valor": [
+   {
+    "aliquota": 0.15,
+    "bruto": 3594.962798886795,
+    "imposto": 389.24441983301926,
+    "liquido": 3205.7183790537756,
+    "nome": "CDB"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 3163.280147739262,
+    "imposto": 0.0,
+    "liquido": 3163.280147739262,
+    "nome": "LCI ou LCA"
+   },
+   {
+    "aliquota": 0.15,
+    "bruto": 3594.962798886795,
+    "imposto": 389.24441983301926,
+    "liquido": 3205.7183790537756,
+    "nome": "Tesouro Selic"
+   },
+   {
+    "aliquota": 0.0,
+    "bruto": 2244.487035197787,
+    "imposto": 0.0,
+    "liquido": 2244.487035197787,
+    "nome": "Poupança"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   0,
+   0.1365,
+   1.0,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   365,
+   0.1365,
+   -0.1,
+   0.9,
+   0.006704
+  ],
+  "conta": "renda_fixa.comparar",
+  "erro": true
  }
 ]

@@ -252,3 +252,68 @@ def test_erro_passageiro_que_insiste_desiste_depois_de_tres_tentativas(monkeypat
             _buscar([RespostaFalsa(None, status=503) for _ in range(3)], pedidos),
         )
     assert len(pedidos) == 3
+
+
+# --- PTAX de outras moedas (ferramentas do site, PR 3) -----------------------------------------
+MOEDAS = {
+    "value": [
+        {"simbolo": "AUD", "nomeFormatado": "Dólar australiano", "tipoMoeda": "B"},
+        {"simbolo": "EUR", "nomeFormatado": "Euro", "tipoMoeda": "B"},
+        {
+            "simbolo": "USD",
+            "nomeFormatado": "Dólar dos Estados Unidos",
+            "tipoMoeda": "A",
+        },
+    ]
+}
+PTAX_DO_EURO = {
+    "value": [
+        {"paridadeCompra": 1.1182, "paridadeVenda": 1.1183, "cotacaoCompra": 5.613,
+         "cotacaoVenda": 5.6142, "dataHoraCotacao": "2026-10-08 10:03:11.648598",
+         "tipoBoletim": "Abertura"},
+        {"paridadeCompra": 1.1191, "paridadeVenda": 1.1192, "cotacaoCompra": 5.6081,
+         "cotacaoVenda": 5.6093, "dataHoraCotacao": "2026-10-08 13:08:16.814037",
+         "tipoBoletim": "Fechamento"},
+        {"paridadeCompra": 1.1197, "paridadeVenda": 1.1199, "cotacaoCompra": 5.5998,
+         "cotacaoVenda": 5.6015, "dataHoraCotacao": "2026-10-09 10:10:14.047225",
+         "tipoBoletim": "Abertura"},
+    ]
+}  # fmt: skip
+
+
+def test_lista_de_moedas_da_ptax():
+    moedas = bcb.montar_moedas(MOEDAS)
+    assert [m.codigo for m in moedas] == ["AUD", "EUR", "USD"]
+    assert moedas[1].nome == "Euro"
+
+
+def test_lista_de_moedas_vazia_da_erro_claro():
+    with pytest.raises(bcb.BcbIndisponivelError, match="moedas"):
+        bcb.montar_moedas({"value": []})
+
+
+def test_ptax_de_outra_moeda_fica_so_com_o_boletim_de_fechamento():
+    """O dia 09/10 só tem a abertura (o fechamento sai às 13h): não entra."""
+    euro = bcb.montar_ptax_da_moeda(PTAX_DO_EURO, HOJE)
+    assert list(euro.index) == [pd.Timestamp("2026-10-08")]
+    assert euro.loc["2026-10-08", "venda"] == pytest.approx(5.6093)
+
+
+def test_ptax_de_outra_moeda_pede_a_moeda_e_o_periodo():
+    pedidos: list = []
+    bcb.baixar_ptax_da_moeda(
+        "EUR",
+        date(2026, 10, 6),
+        date(2026, 10, 9),
+        HOJE,
+        _buscar([RespostaFalsa(PTAX_DO_EURO)], pedidos),
+    )
+    assert "CotacaoMoedaPeriodo" in pedidos[0][0]
+    assert pedidos[0][1]["@moeda"] == "'EUR'"
+    assert pedidos[0][1]["@dataInicial"] == "'10-06-2026'"
+
+
+def test_ptax_de_moeda_sem_fechamento_no_periodo_da_erro_claro():
+    so_abertura = {"value": PTAX_DO_EURO["value"][2:]}
+    with pytest.raises(bcb.BcbIndisponivelError, match="PTAX"):
+        bcb.montar_ptax_da_moeda(so_abertura, HOJE)
