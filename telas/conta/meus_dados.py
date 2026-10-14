@@ -20,6 +20,7 @@ from src.conformidade import (
     apagar_conta,
     exportar_meus_dados,
 )
+from telas.compartilhar import mostrar_links_da_conta
 from telas.comum import cabecalho_da_pagina
 
 # o mesmo logger do telas/comum.py (o nome fixo faz o Python devolver o mesmo objeto)
@@ -143,6 +144,8 @@ def pagina_meus_dados():
         key="baixar_meus_pdfs",
         on_click="ignore",
     )
+    st.divider()
+    mostrar_links_da_conta(usuario)
     st.divider()
     st.subheader("Apagar a minha conta")
     st.warning(

@@ -19,6 +19,7 @@ from src.banco.pdfs_originais import (
     pode_guardar,
 )
 from src.planos import limites_do
+from telas.compartilhar import compartilhar_pdf
 from telas.comum import PAGINAS_DO_MENU, PERIODOS_DO_TOPO
 from telas.relatorios.estudio import NOMES_DOS_MODELOS, _aplicar_secoes
 
@@ -190,10 +191,12 @@ def mostrar_biblioteca(usuario):
     for r in visiveis:
         p = r.parametros
         with st.container(border=True):
-            col_texto, col_original, col_reabrir, col_excluir = st.columns(
-                [6, 1.4, 1.4, 1.2], vertical_alignment="center"
+            col_texto, col_original, col_compartilhar, col_reabrir, col_excluir = (
+                st.columns([6, 1.4, 1.6, 1.4, 1.2], vertical_alignment="center")
             )
             _botao_do_original(col_original, usuario, r, guardados.get(r.id))
+            if r.id in guardados:  # só o PDF guardado tem o que compartilhar
+                compartilhar_pdf(usuario, r.id, col_compartilhar, col_texto)
             col_texto.markdown(
                 f"**{r.titulo or relatorios.NOMES_DOS_RELATORIOS[r.tipo]}**"
             )
