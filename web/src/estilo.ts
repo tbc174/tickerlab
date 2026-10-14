@@ -1,6 +1,8 @@
 // O CSS do site público (e do app em React, que usa o mesmo). As cores vêm de src/marca.py (pelo
-// conteudo/marca.json); o resto é fixo. O visual v2 (ADR 0065) vem por último, em estilo-v2.ts.
+// conteudo/marca.json); o resto é fixo. O visual v2 (ADR 0065) vem depois, em estilo-v2.ts, e as
+// ferramentas grátis por último, em estilo-ferramentas.ts.
 import { marca } from "./conteudo";
+import { cssFerramentas } from "./estilo-ferramentas";
 import { cssV2 } from "./estilo-v2";
 
 export const CABECALHO = "/* gerado por web/src/estilo.ts a partir de src/marca.py — não editar à mão */";
@@ -261,5 +263,5 @@ table.planos thead th:not(:first-child) { text-align: center; color: var(--texto
     scroll-behavior: auto !important; }
   @view-transition { navigation: none; }
 }
-${cssV2()}`);
+${cssV2()}${cssFerramentas()}`);
 }

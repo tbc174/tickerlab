@@ -1,0 +1,836 @@
+[
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 1126.8250301319697
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "juros.montante",
+  "valor": 1120.0
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   0,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 1000.0
+ },
+ {
+  "argumentos": [
+   1000,
+   0,
+   120,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 1000
+ },
+ {
+  "argumentos": [
+   1000,
+   -0.01,
+   24,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 785.6781408072187
+ },
+ {
+  "argumentos": [
+   250.5,
+   0.0087,
+   1,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 252.67934999999997
+ },
+ {
+  "argumentos": [
+   1000000.0,
+   0.0095,
+   600,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 290933658.1903634
+ },
+ {
+  "argumentos": [
+   1000000.0,
+   0.0095,
+   600,
+   false
+  ],
+  "conta": "juros.montante",
+  "valor": 6700000.0
+ },
+ {
+  "argumentos": [
+   50000,
+   0.15,
+   30,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 3310588.5978392884
+ },
+ {
+  "argumentos": [
+   0,
+   0.01,
+   12,
+   true
+  ],
+  "conta": "juros.montante",
+  "valor": 0.0
+ },
+ {
+  "argumentos": [
+   -1,
+   0.01,
+   12,
+   true
+  ],
+  "conta": "juros.montante",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   -1,
+   12,
+   true
+  ],
+  "conta": "juros.montante",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   -1,
+   true
+  ],
+  "conta": "juros.montante",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   1201,
+   true
+  ],
+  "conta": "juros.montante",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   true
+  ],
+  "conta": "juros.evolucao",
+  "valor": [
+   {
+    "juros_acumulados": 0,
+    "juros_no_periodo": 0,
+    "montante": 1000,
+    "periodo": 0
+   },
+   {
+    "juros_acumulados": 10.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1010.0,
+    "periodo": 1
+   },
+   {
+    "juros_acumulados": 20.100000000000023,
+    "juros_no_periodo": 10.100000000000023,
+    "montante": 1020.1,
+    "periodo": 2
+   },
+   {
+    "juros_acumulados": 30.30100000000016,
+    "juros_no_periodo": 10.201000000000136,
+    "montante": 1030.3010000000002,
+    "periodo": 3
+   },
+   {
+    "juros_acumulados": 40.60401000000002,
+    "juros_no_periodo": 10.303009999999858,
+    "montante": 1040.60401,
+    "periodo": 4
+   },
+   {
+    "juros_acumulados": 51.01005010000017,
+    "juros_no_periodo": 10.406040100000155,
+    "montante": 1051.0100501000002,
+    "periodo": 5
+   },
+   {
+    "juros_acumulados": 61.52015060100007,
+    "juros_no_periodo": 10.510100500999897,
+    "montante": 1061.520150601,
+    "periodo": 6
+   },
+   {
+    "juros_acumulados": 72.13535210701002,
+    "juros_no_periodo": 10.615201506009953,
+    "montante": 1072.13535210701,
+    "periodo": 7
+   },
+   {
+    "juros_acumulados": 82.85670562808014,
+    "juros_no_periodo": 10.721353521070114,
+    "montante": 1082.8567056280801,
+    "periodo": 8
+   },
+   {
+    "juros_acumulados": 93.68527268436083,
+    "juros_no_periodo": 10.82856705628069,
+    "montante": 1093.6852726843608,
+    "periodo": 9
+   },
+   {
+    "juros_acumulados": 104.62212541120448,
+    "juros_no_periodo": 10.936852726843654,
+    "montante": 1104.6221254112045,
+    "periodo": 10
+   },
+   {
+    "juros_acumulados": 115.66834666531645,
+    "juros_no_periodo": 11.04622125411197,
+    "montante": 1115.6683466653164,
+    "periodo": 11
+   },
+   {
+    "juros_acumulados": 126.8250301319697,
+    "juros_no_periodo": 11.156683466653249,
+    "montante": 1126.8250301319697,
+    "periodo": 12
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "juros.evolucao",
+  "valor": [
+   {
+    "juros_acumulados": 0,
+    "juros_no_periodo": 0,
+    "montante": 1000,
+    "periodo": 0
+   },
+   {
+    "juros_acumulados": 10.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1010.0,
+    "periodo": 1
+   },
+   {
+    "juros_acumulados": 20.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1020.0,
+    "periodo": 2
+   },
+   {
+    "juros_acumulados": 30.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1030.0,
+    "periodo": 3
+   },
+   {
+    "juros_acumulados": 40.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1040.0,
+    "periodo": 4
+   },
+   {
+    "juros_acumulados": 50.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1050.0,
+    "periodo": 5
+   },
+   {
+    "juros_acumulados": 60.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1060.0,
+    "periodo": 6
+   },
+   {
+    "juros_acumulados": 70.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1070.0,
+    "periodo": 7
+   },
+   {
+    "juros_acumulados": 80.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1080.0,
+    "periodo": 8
+   },
+   {
+    "juros_acumulados": 90.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1090.0,
+    "periodo": 9
+   },
+   {
+    "juros_acumulados": 100.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1100.0,
+    "periodo": 10
+   },
+   {
+    "juros_acumulados": 110.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1110.0,
+    "periodo": 11
+   },
+   {
+    "juros_acumulados": 120.0,
+    "juros_no_periodo": 10.0,
+    "montante": 1120.0,
+    "periodo": 12
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   5000,
+   0.012,
+   3,
+   true
+  ],
+  "conta": "juros.evolucao",
+  "valor": [
+   {
+    "juros_acumulados": 0,
+    "juros_no_periodo": 0,
+    "montante": 5000,
+    "periodo": 0
+   },
+   {
+    "juros_acumulados": 60.0,
+    "juros_no_periodo": 60.0,
+    "montante": 5060.0,
+    "periodo": 1
+   },
+   {
+    "juros_acumulados": 120.71999999999935,
+    "juros_no_periodo": 60.719999999999345,
+    "montante": 5120.719999999999,
+    "periodo": 2
+   },
+   {
+    "juros_acumulados": 182.16863999999987,
+    "juros_no_periodo": 61.44864000000052,
+    "montante": 5182.16864,
+    "periodo": 3
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   0.01,
+   0,
+   true
+  ],
+  "conta": "juros.evolucao",
+  "valor": [
+   {
+    "juros_acumulados": 0,
+    "juros_no_periodo": 0,
+    "montante": 1000,
+    "periodo": 0
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   0.01,
+   1,
+   12
+  ],
+  "conta": "juros.taxa_equivalente",
+  "valor": 0.12682503013196977
+ },
+ {
+  "argumentos": [
+   0.1065,
+   12,
+   1
+  ],
+  "conta": "juros.taxa_equivalente",
+  "valor": 0.008469152100937904
+ },
+ {
+  "argumentos": [
+   0.15,
+   12,
+   6
+  ],
+  "conta": "juros.taxa_equivalente",
+  "valor": 0.07238052947636087
+ },
+ {
+  "argumentos": [
+   -0.05,
+   12,
+   1
+  ],
+  "conta": "juros.taxa_equivalente",
+  "valor": -0.004265318777560645
+ },
+ {
+  "argumentos": [
+   0.01,
+   0,
+   12
+  ],
+  "conta": "juros.taxa_equivalente",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   -1,
+   1,
+   12
+  ],
+  "conta": "juros.taxa_equivalente",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0.01,
+   "mes"
+  ],
+  "conta": "juros.taxa_por_mes",
+  "valor": 0.01
+ },
+ {
+  "argumentos": [
+   0.1265,
+   "ano"
+  ],
+  "conta": "juros.taxa_por_mes",
+  "valor": 0.009975719105089098
+ },
+ {
+  "argumentos": [
+   0.01,
+   "semana"
+  ],
+  "conta": "juros.taxa_por_mes",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0,
+   500,
+   0.008,
+   120,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 100108.73470495823
+ },
+ {
+  "argumentos": [
+   0,
+   500,
+   0.008,
+   120,
+   true
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 100909.60458259791
+ },
+ {
+  "argumentos": [
+   10000,
+   500,
+   0.008,
+   120,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 126126.13225775157
+ },
+ {
+  "argumentos": [
+   1000,
+   100,
+   0,
+   12,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 2200.0
+ },
+ {
+  "argumentos": [
+   1000,
+   100,
+   1e-15,
+   12,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 2200.00000000002
+ },
+ {
+  "argumentos": [
+   0,
+   1000,
+   0.0085,
+   360,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 2359238.7896842486
+ },
+ {
+  "argumentos": [
+   50000,
+   0,
+   -0.005,
+   60,
+   true
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 37013.04788483523
+ },
+ {
+  "argumentos": [
+   0,
+   300,
+   0.01,
+   0,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "valor": 0.0
+ },
+ {
+  "argumentos": [
+   -1,
+   300,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   0,
+   -300,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "aportes.valor_futuro",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100000,
+   0,
+   0.008,
+   120,
+   false
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "valor": 499.4569169949121
+ },
+ {
+  "argumentos": [
+   1000000,
+   20000,
+   0.007,
+   300,
+   true
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "valor": 819.556824206697
+ },
+ {
+  "argumentos": [
+   2200,
+   1000,
+   0,
+   12,
+   false
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "valor": 100.0
+ },
+ {
+  "argumentos": [
+   1000,
+   5000,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "valor": 0.0
+ },
+ {
+  "argumentos": [
+   1000,
+   0,
+   0.01,
+   0,
+   false
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   -5,
+   0,
+   0.01,
+   12,
+   false
+  ],
+  "conta": "aportes.aporte_para_meta",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   100000,
+   0,
+   500,
+   0.008,
+   false
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": 120
+ },
+ {
+  "argumentos": [
+   100000,
+   0,
+   500,
+   0.008,
+   true
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": 120
+ },
+ {
+  "argumentos": [
+   1000,
+   5000,
+   0,
+   0.01,
+   false
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": 0
+ },
+ {
+  "argumentos": [
+   2000,
+   1000,
+   0,
+   -0.01,
+   false
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": null
+ },
+ {
+  "argumentos": [
+   1000000000.0,
+   0,
+   1,
+   0,
+   false
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": null
+ },
+ {
+  "argumentos": [
+   1000000.0,
+   10000,
+   2000,
+   0.009,
+   false
+  ],
+  "conta": "aportes.meses_ate_meta",
+  "valor": 186
+ },
+ {
+  "argumentos": [
+   1000,
+   100,
+   0.01,
+   6,
+   false
+  ],
+  "conta": "aportes.evolucao",
+  "valor": [
+   {
+    "aportado": 1000,
+    "juros": 0,
+    "mes": 0,
+    "saldo": 1000
+   },
+   {
+    "aportado": 1100,
+    "juros": 10.0,
+    "mes": 1,
+    "saldo": 1110.0
+   },
+   {
+    "aportado": 1200,
+    "juros": 21.09999999999991,
+    "mes": 2,
+    "saldo": 1221.1
+   },
+   {
+    "aportado": 1300,
+    "juros": 33.31099999999992,
+    "mes": 3,
+    "saldo": 1333.311
+   },
+   {
+    "aportado": 1400,
+    "juros": 46.644109999999955,
+    "mes": 4,
+    "saldo": 1446.64411
+   },
+   {
+    "aportado": 1500,
+    "juros": 61.110551100000066,
+    "mes": 5,
+    "saldo": 1561.1105511
+   },
+   {
+    "aportado": 1600,
+    "juros": 76.72165661100007,
+    "mes": 6,
+    "saldo": 1676.721656611
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   1000,
+   100,
+   0.01,
+   6,
+   true
+  ],
+  "conta": "aportes.evolucao",
+  "valor": [
+   {
+    "aportado": 1000,
+    "juros": 0,
+    "mes": 0,
+    "saldo": 1000
+   },
+   {
+    "aportado": 1100,
+    "juros": 11.0,
+    "mes": 1,
+    "saldo": 1111.0
+   },
+   {
+    "aportado": 1200,
+    "juros": 23.1099999999999,
+    "mes": 2,
+    "saldo": 1223.11
+   },
+   {
+    "aportado": 1300,
+    "juros": 36.34109999999987,
+    "mes": 3,
+    "saldo": 1336.3410999999999
+   },
+   {
+    "aportado": 1400,
+    "juros": 50.70451099999991,
+    "mes": 4,
+    "saldo": 1450.704511
+   },
+   {
+    "aportado": 1500,
+    "juros": 66.21155610999995,
+    "mes": 5,
+    "saldo": 1566.21155611
+   },
+   {
+    "aportado": 1600,
+    "juros": 82.87367167110006,
+    "mes": 6,
+    "saldo": 1682.8736716711
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   0,
+   250,
+   0,
+   3,
+   false
+  ],
+  "conta": "aportes.evolucao",
+  "valor": [
+   {
+    "aportado": 0,
+    "juros": 0,
+    "mes": 0,
+    "saldo": 0
+   },
+   {
+    "aportado": 250,
+    "juros": 0,
+    "mes": 1,
+    "saldo": 250
+   },
+   {
+    "aportado": 500,
+    "juros": 0,
+    "mes": 2,
+    "saldo": 500
+   },
+   {
+    "aportado": 750,
+    "juros": 0,
+    "mes": 3,
+    "saldo": 750
+   }
+  ]
+ }
+]

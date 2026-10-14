@@ -1,6 +1,14 @@
 // Cada página do site: o arquivo que ela vira (os mesmos endereços de hoje), os dados do <head> e
 // o conteúdo. A moldura (topo, rodapé) é a mesma para todas.
 import type { ReactElement } from "react";
+import {
+  DADOS_DA_VITRINE,
+  DADOS_DOS_APORTES,
+  DADOS_DOS_JUROS,
+  PaginaDosAportes,
+  PaginaDosJuros,
+  Vitrine,
+} from "./ferramentas/paginas";
 import { Aprender, DADOS as DADOS_DO_APRENDER } from "./paginas/Aprender";
 import { ComoFunciona, DADOS as DADOS_DO_COMO_FUNCIONA } from "./paginas/ComoFunciona";
 import { DADOS as DADOS_DO_INICIO, Inicio } from "./paginas/Inicio";
@@ -28,6 +36,17 @@ export const ROTAS: Rota[] = [
     conteudo: () => <ComoFunciona />,
   },
   { arquivo: "aprender.html", dados: DADOS_DO_APRENDER, conteudo: () => <Aprender /> },
+  { arquivo: "ferramentas.html", dados: DADOS_DA_VITRINE, conteudo: () => <Vitrine /> },
+  {
+    arquivo: "calculadora-de-juros-compostos.html",
+    dados: DADOS_DOS_JUROS,
+    conteudo: () => <PaginaDosJuros />,
+  },
+  {
+    arquivo: "calculadora-de-aportes-e-metas.html",
+    dados: DADOS_DOS_APORTES,
+    conteudo: () => <PaginaDosAportes />,
+  },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },
