@@ -1,6 +1,6 @@
 """Diário de Teses: anotações datadas da pessoa sobre cada ativo (onda 3, PR F; ADR 0046)
 
-Revisão: 0033
+Revisão: 0032
 
 Duas tabelas novas: `teses` (uma linha por anotação; não se edita, só se apaga) e
 `teses_estrategias` (os backtests salvos que sustentam cada anotação). Dado do usuário: apagado
@@ -11,7 +11,7 @@ backtest apaga só a ligação, nunca a anotação. Nada do que existe muda.
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0033"
+revision = "0032"
 down_revision = "0031"
 branch_labels = None
 depends_on = None
