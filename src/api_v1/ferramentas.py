@@ -42,7 +42,8 @@ AVISO = (
 
 LIMITE_POR_IP = LimiteDePedidos(PEDIDOS_POR_MINUTO_POR_IP)
 CALCULADOS: dict[
-    tuple[str, date], tuple[list[ponte.ResultadoDoAtivo], list["IndisponivelV1"]]
+    tuple[str, tuple[date, int]],
+    tuple[list[ponte.ResultadoDoAtivo], list["IndisponivelV1"]],
 ] = {}
 _TRAVA = threading.Lock()
 
@@ -168,15 +169,17 @@ def _calcular(
 def _do_cache(
     desde: date, dia: date
 ) -> tuple[list[ponte.ResultadoDoAtivo], list[IndisponivelV1]]:
-    chave = (f"{desde:%Y-%m}", dia)
+    # por hora, como o arquivo de dados (o cron o atualiza às 9h10 e às 13h40)
+    momento = (dia, ponte_dados._hora_agora())
+    chave = (f"{desde:%Y-%m}", momento)
     with _TRAVA:
         if chave in CALCULADOS:
             return CALCULADOS[chave]
-        # dias anteriores não servem mais
-        for velha in [c for c in CALCULADOS if c[1] != dia]:
+        # horas anteriores não servem mais: no máximo ~390 meses guardados
+        for velha in [c for c in CALCULADOS if c[1] != momento]:
             del CALCULADOS[velha]
     calculado = _calcular(desde, dia)
-    # uma fonte fora do ar agora não fica guardada até amanhã: o próximo pedido tenta de novo
+    # uma fonte fora do ar agora não fica guardada: o próximo pedido tenta de novo
     if not any(i.motivo == FONTE_FORA_DO_AR for i in calculado[1]):
         with _TRAVA:
             CALCULADOS[chave] = calculado

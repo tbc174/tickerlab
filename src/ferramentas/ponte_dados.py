@@ -16,12 +16,13 @@ Tudo mês a mês: a data que a pessoa escolhe vale pelo mês dela, e as janelas 
 import os
 import threading
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import requests
 
 from src import dados as dados_de_mercado
+from src.bcb import FUSO
 from src.ferramentas import inflacao
 
 ENDERECO_DOS_DADOS = os.environ.get(
@@ -115,10 +116,11 @@ class CacheDoDia:
     """Guarda o que deu certo até o dia seguinte; a falha não fica guardada."""
 
     def __init__(self) -> None:
-        self._guardado: dict[str, tuple[date, object]] = {}
+        self._guardado: dict[str, tuple[object, object]] = {}
         self._trava = threading.Lock()
 
-    def obter[T](self, chave: str, dia: date, fazer: Callable[[], T]) -> T:
+    def obter[T](self, chave: str, dia: object, fazer: Callable[[], T]) -> T:
+        """O guardado em `chave` se for do mesmo `dia` (ou da mesma hora, para o arquivo)."""
         with self._trava:
             guardado = self._guardado.get(chave)
             if guardado is not None and guardado[0] == dia:
@@ -143,8 +145,14 @@ def baixar_arquivo(buscar: Buscar = requests.get) -> dict:
         ) from erro
 
 
+def _hora_agora() -> int:
+    return datetime.now(FUSO).hour
+
+
 def obter_arquivo(hoje: date, buscar: Buscar = requests.get) -> dict:
-    return CACHE.obter("arquivo", hoje, lambda: baixar_arquivo(buscar))
+    """O arquivo de dados, buscado de novo a cada hora: o cron do VPS o atualiza duas vezes por dia
+    (9h10 e 13h40), e guardar o do dia inteiro prenderia a rota nos dados da madrugada."""
+    return CACHE.obter("arquivo", (hoje, _hora_agora()), lambda: baixar_arquivo(buscar))
 
 
 def obter_curva_do_yahoo(ativo: str, hoje: date, dolar: pd.Series) -> pd.Series:

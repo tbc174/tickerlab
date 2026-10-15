@@ -55,6 +55,7 @@ def chamadas(monkeypatch):
     monkeypatch.setattr(ponte_dados, "obter_arquivo", arquivo)
     monkeypatch.setattr(ponte_dados, "obter_curva_do_yahoo", yahoo)
     monkeypatch.setattr(ferramentas, "hoje", lambda: HOJE)
+    monkeypatch.setattr(ponte_dados, "_hora_agora", lambda: 12)
     monkeypatch.delenv("TICKERLAB_PONTE_COM_YAHOO", raising=False)
     ferramentas.LIMITE_POR_IP.zerar()
     ferramentas.CALCULADOS.clear()
@@ -221,7 +222,7 @@ def test_o_cache_de_ontem_e_jogado_fora(cliente, monkeypatch):
     assert len(ferramentas.CALCULADOS) == 1
     monkeypatch.setattr(ferramentas, "hoje", lambda: date(2026, 10, 16))
     _pedir(cliente, desde="2019-01-01")
-    assert [dia for _, dia in ferramentas.CALCULADOS] == [date(2026, 10, 16)]
+    assert [momento[0] for _, momento in ferramentas.CALCULADOS] == [date(2026, 10, 16)]
 
 
 def test_data_de_seculos_atras_e_422(cliente):
