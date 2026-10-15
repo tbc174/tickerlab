@@ -72,6 +72,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     descricao: "Quanto um valor do passado vale hoje, corrigido pelo IPCA.",
   },
   {
+    arquivo: "calculadora-de-preco-medio.html",
+    nome: "Preço médio de ações e FIIs",
+    descricao: "O preço médio com as taxas, o resultado de cada venda, bonificação, desdobro e amortização de FII.",
+  },
+  {
     arquivo: "quanto-daria.html",
     nome: "Quanto daria? Foi sorte?",
     descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
@@ -701,6 +706,52 @@ export function PaginaDoQuantoDaria() {
         Na renda fixa pós-fixada, o resultado de um prazo depende pouco do dia em que se começa; no
         Ibovespa e no bitcoin, depende muito. Essa diferença é a lição: o mesmo "rendeu X%" pode ser
         habilidade, sorte da data ou só o risco que se correu.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Preço médio ---------------------------------------------------------------------------------
+const PRECO_MEDIO = "calculadora-de-preco-medio.html";
+export const DADOS_DO_PRECO_MEDIO = pagina(
+  PRECO_MEDIO,
+  "Calculadora de preço médio de ações e FIIs",
+  "Calcule o preço médio das suas ações e FIIs com as taxas no custo, o resultado de cada venda, " +
+    "bonificação, desdobro, grupamento e amortização de FII. Grátis e sem cadastro.",
+);
+
+export function PaginaDoPrecoMedio() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de preço médio"
+      subtitulo="Compras, vendas, bonificação, desdobro e amortização de FII: o preço médio de cada momento e o resultado de cada venda. Grátis e sem cadastro."
+      ilha="precoMedio"
+      codigo={codigo(PRECO_MEDIO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o imposto: o resultado das vendas vai para a calculadora de DARF, mês a mês",
+        "operações em mais de uma corretora no mesmo dia em ordem diferente da real: a ordem da grade é a que vale",
+        "aluguel de ações, direitos de subscrição e operações de day trade (que não entram no preço médio)",
+      ]}
+    >
+      <h2>Por que as taxas entram no custo</h2>
+      <p>
+        A Receita manda somar ao custo de compra as despesas da operação, como a corretagem e os
+        emolumentos da B3. Por isso o preço médio aqui é um pouco maior que a média dos preços: ele
+        é o custo de verdade de cada ação.
+      </p>
+      <h2>Por que vender não muda o preço médio</h2>
+      <p>
+        Na venda, sai o custo das ações vendidas pelo preço médio do momento, e o que fica continua
+        com o mesmo preço médio. O lucro ou o prejuízo da venda é o que entrou, menos as taxas, menos
+        esse custo. Vendeu tudo? A próxima compra recomeça a conta.
+      </p>
+      <h2>Bonificação, desdobro e amortização</h2>
+      <p>
+        Na bonificação, as ações novas entram com o valor que a empresa atribuiu a cada uma (ele vem
+        no aviso aos acionistas). Desdobro e grupamento só mudam a quantidade: o custo total é o
+        mesmo. A amortização de um FII devolve parte do capital: o custo cai, e a quantidade de cotas
+        fica igual.
       </p>
     </PaginaDeFerramenta>
   );
