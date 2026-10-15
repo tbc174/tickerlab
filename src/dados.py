@@ -70,6 +70,17 @@ def _baixar_do_yahoo(ticker: str, **pedido: str) -> pd.DataFrame | None:
     return manter_apenas_dias_uteis(dados)
 
 
+def baixar_historico_completo(ticker: str) -> pd.DataFrame:
+    """Todo o histórico diário do Yahoo (`period="max"`), sem o cache em SQLite: para a ferramenta
+    "Quanto daria?" do site, que guarda só o resultado do dia (src/ferramentas/ponte_dados.py)."""
+    dados = _baixar_do_yahoo(normalizar_ticker(ticker), period="max")
+    if dados is None:
+        raise DadosIndisponiveisError(
+            f"Sem histórico de {ticker} no Yahoo Finance agora."
+        )
+    return dados
+
+
 def _recortar_periodo(dados: pd.DataFrame, periodo: str) -> pd.DataFrame:
     """Os últimos `periodo` do histórico (o fim é o último dia disponível)."""
     recorte = dados.loc[

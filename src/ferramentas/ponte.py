@@ -1,13 +1,13 @@
 """A conta da ferramenta "Quanto daria? Foi sorte?" (ADR 0070): quanto um valor aplicado numa data
 teria virado hoje em cada ativo, e se a data escolhida foi de sorte.
 
-Cada ativo chega como uma **curva** (o valor de R$ 1 a cada dia, em qualquer base) que este módulo
-não busca (o `ponte_dados.py` busca). Daqui só saem **números soltos**: o valor final, o retorno, o
+Cada ativo chega como uma **curva** (o valor de R$ 1 no começo de cada mês, em qualquer base) que
+este módulo não busca (o `ponte_dados.py` busca). A data escolhida vale pelo mês dela. Daqui só saem **números soltos**: o valor final, o retorno, o
 valor em poder de compra da data inicial e o resumo das janelas. Nunca a série (a ADR 0070 permite
 mostrar o resultado, não os preços).
 
 "Foi sorte?": para o mesmo prazo (da data escolhida até o último dia com dado), todas as datas de
-início possíveis no histórico. Em que posição a data da pessoa ficou, a pior, a mediana e a melhor.
+início possíveis no histórico (meses de início). Em que posição a data da pessoa ficou, a pior, a mediana e a melhor.
 As janelas se sobrepõem: não são sorteios independentes (a página diz isso). No CDI, o resultado
 quase não depende da data; isso também é a lição.
 """
@@ -29,12 +29,12 @@ NOMES = {
     "bitcoin": "Bitcoin",
 }
 FONTES = {
-    "cdi": "Banco Central (CDI diário, SGS 12)",
+    "cdi": "Banco Central (CDI do mês, SGS 4391)",
     "poupanca": "Banco Central (rendimento do aniversário do dia 1, SGS 25 e 195)",
-    "dolar": "Banco Central (dólar PTAX de venda, SGS 1)",
+    "dolar": "Banco Central (dólar PTAX de venda do 1º dia útil do mês, SGS 1)",
     "parado": "Banco Central (IPCA, SGS 433)",
     "ibovespa": "Yahoo Finance (índice da B3, com os dividendos reinvestidos)",
-    "bitcoin": "Yahoo Finance (BTC-USD, de corretora internacional) convertido pela PTAX do Banco Central",
+    "bitcoin": "Yahoo Finance (BTC-USD, de corretora internacional) convertido pelo dólar PTAX do Banco Central",
 }
 SEM_JANELAS = ("parado",)  # dinheiro parado: toda data dá o mesmo
 VALOR_MINIMO = 1.0

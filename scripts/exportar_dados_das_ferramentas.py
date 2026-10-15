@@ -44,6 +44,7 @@ PARTES = (
     "cdi_mensal",
     "poupanca_mensal",
     "tesouro",
+    "dolar_mensal",
 )
 DIAS_PARA_TRAS = 15  # cobre feriados e o fim de semana sem cotação
 DIAS_DE_HISTORICO_DA_PTAX = 366  # o gráfico de 12 meses do conversor
@@ -132,6 +133,11 @@ def _poupanca_mensal(hoje: date, buscar: Buscar) -> dict:
     return _mensal(series_mensais.poupanca_mensal(hoje, buscar))
 
 
+def _dolar_mensal(hoje: date, buscar: Buscar) -> dict:
+    """O dólar do 1º dia útil de cada mês (para a ferramenta quanto daria)."""
+    return _mensal(series_mensais.dolar_mensal(hoje, buscar))
+
+
 def _focus(hoje: date, buscar: Buscar) -> dict:
     """A mediana da pesquisa Focus mais nova, do ano corrente aos 3 seguintes, em fração."""
     resultado = {}
@@ -170,6 +176,7 @@ COLETORES: dict[str, Coletor] = {
     "cdi_mensal": _cdi_mensal,
     "poupanca_mensal": _poupanca_mensal,
     "tesouro": _tesouro,
+    "dolar_mensal": _dolar_mensal,
 }
 
 

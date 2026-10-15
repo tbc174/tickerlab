@@ -78,6 +78,11 @@ RESPOSTAS = {
             "valor": "0.5300",
         },  # já é regra nova
     ],
+    "sgs.1/": [
+        {"data": "02/09/2026", "valor": "5.40"},
+        {"data": "03/09/2026", "valor": "5.45"},
+        {"data": "01/10/2026", "valor": "5.30"},
+    ],
     "sgs.4391/": [
         {"data": "01/08/2026", "valor": "1.09"},
         {"data": "01/09/2026", "valor": "1.08"},
@@ -264,3 +269,12 @@ def test_main_sem_falhas_sai_com_zero(tmp_path, monkeypatch):
     destino = tmp_path / "ferramentas.json"
     assert exp.main(["--destino", str(destino)], _buscar_do_bc()) == 0
     assert destino.exists()
+
+
+def test_dolar_mes_a_mes_e_o_do_primeiro_dia_util_de_cada_mes():
+    dados, falhas = exp.coletar(HOJE, _buscar_do_bc())
+    assert falhas == []
+    assert exp.montar(dados, {}, AGORA)["dolar_mensal"] == {
+        "meses": [["2026-09", pytest.approx(5.40)], ["2026-10", pytest.approx(5.30)]],
+        "ultimo": "2026-10",
+    }

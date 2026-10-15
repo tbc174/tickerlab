@@ -2,6 +2,7 @@
 poupança de quem depositou no dia 1, como `[["AAAA-MM", fração], ...]`, só com meses fechados.
 
 - CDI do mês: SGS 4391 (o mês corrente vem parcial e fica de fora).
+- Dólar do mês: a PTAX de venda (SGS 1) do 1º dia útil de cada mês (um nível, não um rendimento).
 - Poupança: o BC não tem série mensal simples; as séries 25 (depósitos até 03/05/2012, regra antiga)
   e 195 (desde 04/05/2012, regra nova) dão o rendimento por data de aniversário. Fica o aniversário
   do dia 1 de cada mês: a 25 até mai/2012, a 195 de jun/2012 em diante. O mês corrente fica de fora
@@ -54,3 +55,14 @@ def poupanca_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]
     meses = [m for m in meses_fechados(antiga, hoje) if m[0] < COMECO_DA_REGRA_NOVA]
     meses += [m for m in meses_fechados(nova, hoje) if m[0] >= COMECO_DA_REGRA_NOVA]
     return meses
+
+
+def dolar_mensal(hoje: date, buscar: bcb.Buscar = requests.get) -> list[list]:
+    """[["AAAA-MM", reais por dólar], ...]: a PTAX de venda (SGS 1) do 1º dia útil de cada mês."""
+    serie = bcb.baixar_sgs(bcb.SERIES["dolar"], INICIO_DO_REAL, hoje, hoje, buscar)
+    meses: dict[str, float] = {}
+    for momento, valor in serie.items():
+        meses.setdefault(
+            f"{momento:%Y-%m}", float(valor)
+        )  # a série vem em ordem: fica o 1º do mês
+    return [[mes, valor] for mes, valor in meses.items()]
