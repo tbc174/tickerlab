@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 import pandas as pd
@@ -89,7 +89,9 @@ def conferir_tabela(arquivo: Path) -> bool:
 
 
 # --- versões: quando a fonte regrava um arquivo, a tabela anterior fica guardada ----------------
-GRAVADO, IGUAL = "gravado", "igual"
+GRAVADO, IGUAL, ACRESCIDO = "gravado", "igual", "acrescido"
+# colunas que dizem de onde, quando e com que código a linha foi montada: não são o dado (ADR 0078)
+LINHAGEM = ("origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo")
 
 
 def e_tabela_da_base(url: str) -> bool:
@@ -117,9 +119,9 @@ def guardar_versao_anterior(destino: Path) -> Path:
         n += 1
     versao = destino.with_name(f"{destino.name}.v{n}")
     for extensao in (".parquet", ".json"):
-        destino.with_name(destino.name + extensao).rename(
-            versao.with_name(versao.name + extensao)
-        )
+        anterior = destino.with_name(destino.name + extensao)
+        if anterior.exists():  # tabela gravada antes do manifesto (ADR 0078) não tem o .json
+            anterior.rename(versao.with_name(versao.name + extensao))
     log.info(
         "%s mudou na fonte: a versão anterior ficou como %s", destino.name, versao.name
     )
@@ -151,6 +153,62 @@ def gravar_com_versoes(
             if any(e_tabela_da_base(o["url"]) for o in origens):
                 gravar_tabela(tabela, destino, origens, ordem)
             return IGUAL
+        guardar_versao_anterior(destino)
+    gravar_tabela(tabela, destino, origens, ordem)
+    return GRAVADO
+
+
+def _sem_carimbos(tabela: pd.DataFrame, carimbos: Sequence[str]) -> pd.DataFrame:
+    return tabela.drop(columns=[c for c in carimbos if c in tabela.columns])
+
+
+def so_acrescentou(anterior: pd.DataFrame, nova: pd.DataFrame) -> bool:
+    """Toda linha de `anterior` continua em `nova` (as mesmas colunas, nenhuma linha mudada ou tirada)."""
+    if set(anterior.columns) != set(nova.columns):
+        return False
+    antes = pd.util.hash_pandas_object(anterior[list(nova.columns)], index=False)
+    depois = pd.util.hash_pandas_object(nova, index=False).value_counts()
+    contagem = antes.value_counts()
+    return bool(contagem.le(depois.reindex(contagem.index, fill_value=0)).all())
+
+
+def gravar_se_mudou(
+    tabela: pd.DataFrame,
+    destino: Path,
+    origens: list[dict[str, str]],
+    ordem: list[str],
+    *,
+    carimbos: Sequence[str] = (),
+    versoes: bool = True,
+) -> str:
+    """Grava `<destino>.parquet` com manifesto, sem regravar o que não mudou (ADR 0078).
+
+    Para tabelas que se remontam ou crescem (série B, curva, cripto), sem os `carimbos` (colunas de
+    linhagem como `montado_em`, que mudam a cada montagem):
+    - o mesmo dado, já com manifesto: nada é regravado (`IGUAL`), a linhagem fica a da primeira vez;
+    - só linhas novas: regrava sem versão (`ACRESCIDO`), porque o passado não mudou;
+    - uma linha antiga mudou ou sumiu: a tabela anterior vira `.vN` e a nova é gravada (`GRAVADO`).
+      Com `versoes=False` (cripto, onde "a última vence" de propósito a cada rodada) só regrava.
+    Tabela gravada antes do manifesto ganha o manifesto na primeira remontagem.
+    """
+    destino = destino.with_suffix("")  # aceita `2024` ou `2024.parquet`
+    arquivo = destino.with_suffix(".parquet")
+    if not arquivo.exists():
+        gravar_tabela(tabela, destino, origens, ordem)
+        return GRAVADO
+    antes = _sem_carimbos(ler_tabela(arquivo), carimbos)
+    agora = _sem_carimbos(tabela, carimbos)
+    if set(antes.columns) == set(agora.columns) and hash_da_tabela(
+        antes[list(agora.columns)], ordem
+    ) == hash_da_tabela(agora, ordem):
+        if destino.with_suffix(".json").exists():
+            return IGUAL
+        gravar_tabela(tabela, destino, origens, ordem)
+        return GRAVADO
+    if so_acrescentou(antes, agora):
+        gravar_tabela(tabela, destino, origens, ordem)
+        return ACRESCIDO
+    if versoes:
         guardar_versao_anterior(destino)
     gravar_tabela(tabela, destino, origens, ordem)
     return GRAVADO

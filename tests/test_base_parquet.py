@@ -6,7 +6,16 @@ import json
 import pandas as pd
 import pytest
 
-from base.parquet import conferir_tabela, gravar_tabela, hash_da_tabela, ler_tabela
+from base.parquet import (
+    ACRESCIDO,
+    GRAVADO,
+    IGUAL,
+    conferir_tabela,
+    gravar_se_mudou,
+    gravar_tabela,
+    hash_da_tabela,
+    ler_tabela,
+)
 from src import versao_do_codigo as vc
 
 VERSAO = "587cb6c4d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7"
@@ -139,3 +148,89 @@ def test_tabela_de_entrada_nova_com_o_mesmo_conteudo_atualiza_as_origens(
     assert not list(tmp_path.glob("painel.v*"))
     assert origens_gravadas(destino) == depois
     assert conferir_tabela(tmp_path / "painel.parquet")
+
+
+# --- gravar_se_mudou: manifesto sempre, versão só quando uma linha antiga muda (ADR 0078) --------
+CARIMBOS = ("montado_em", "versao_do_codigo")
+
+
+def _com_carimbo(tabela: pd.DataFrame, quando: str) -> pd.DataFrame:
+    return tabela.assign(montado_em=quando, versao_do_codigo=quando)
+
+
+def _arquivos(pasta):
+    return sorted(p.name for p in pasta.iterdir())
+
+
+def test_gravar_se_mudou_grava_com_manifesto_na_primeira_vez(tabela, tmp_path):
+    resultado = gravar_se_mudou(
+        _com_carimbo(tabela, "1"), tmp_path / "t.parquet", ORIGENS, ["cnpj"], carimbos=CARIMBOS
+    )
+    assert resultado == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+    assert conferir_tabela(tmp_path / "t.parquet")
+
+
+def test_mesmo_dado_com_outro_carimbo_nao_regrava(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(_com_carimbo(tabela, "1"), destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS)
+    antes = destino.read_bytes(), (tmp_path / "t.json").read_bytes()
+    resultado = gravar_se_mudou(
+        _com_carimbo(tabela.iloc[::-1], "2"), destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS
+    )
+    assert resultado == IGUAL
+    assert (destino.read_bytes(), (tmp_path / "t.json").read_bytes()) == antes
+
+
+def test_linhas_novas_regravam_sem_versao(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(_com_carimbo(tabela, "1"), destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS)
+    nova = pd.DataFrame({"cnpj": ["3"], "ano": [2022], "valor": [9.0], "quando": [pd.NaT]})
+    maior = _com_carimbo(pd.concat([tabela, nova], ignore_index=True), "2")
+    resultado = gravar_se_mudou(maior, destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS)
+    assert resultado == ACRESCIDO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+    assert len(ler_tabela(destino)) == 4 and conferir_tabela(destino)
+
+
+def test_linha_antiga_mudada_guarda_a_versao_anterior(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(_com_carimbo(tabela, "1"), destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS)
+    mexida = _com_carimbo(tabela.assign(valor=0.0), "2")
+    assert gravar_se_mudou(mexida, destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS) == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet", "t.v1.json", "t.v1.parquet"]
+    assert ler_tabela(tmp_path / "t.v1.parquet")["valor"].isna().sum() == 1
+    assert conferir_tabela(destino)
+
+
+def test_sem_versoes_so_regrava(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(tabela, destino, [], ["cnpj"], versoes=False)
+    assert gravar_se_mudou(tabela.assign(valor=0.0), destino, [], ["cnpj"], versoes=False) == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+    assert ler_tabela(destino)["valor"].eq(0.0).all()
+
+
+def test_arquivo_antigo_sem_manifesto_ganha_manifesto(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    _com_carimbo(tabela, "1").to_parquet(destino, index=False)
+    resultado = gravar_se_mudou(
+        _com_carimbo(tabela, "2"), destino, ORIGENS, ["cnpj"], carimbos=CARIMBOS
+    )
+    assert resultado == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+    assert conferir_tabela(destino)
+
+
+def test_arquivo_antigo_sem_manifesto_e_dado_mudado_vira_versao(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    tabela.to_parquet(destino, index=False)
+    gravar_se_mudou(tabela.assign(valor=0.0), destino, ORIGENS, ["cnpj"])
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet", "t.v1.parquet"]
+
+
+def test_coluna_nova_conta_como_mudanca(tabela, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(tabela, destino, ORIGENS, ["cnpj"])
+    assert gravar_se_mudou(tabela.assign(extra=1), destino, ORIGENS, ["cnpj"]) == GRAVADO
+    assert (tmp_path / "t.v1.parquet").exists()
