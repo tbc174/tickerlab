@@ -908,6 +908,36 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `rotulos_atraso`
+
+Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
+
+- **Fonte:** CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Refeita a cada montagem, com os arquivos anuais e o cadastro mais recentes
+- **Atraso de divulgação:** O rótulo de um documento existe a partir do prazo (ou da entrega, se veio antes); uma falta só conta se o prazo venceu antes da coleta do arquivo do ano
+- **Onde fica:** Parquet em `<acervo>/base/rotulos_atraso/rotulos_atraso.parquet`, com o manifesto ao lado (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `documento` | DFP (demonstrações anuais) ou ITR (informações trimestrais) | texto |
+| `referencia` | Data a que o documento se refere (fim do exercício ou do trimestre) | data (dia) |
+| `data_da_previsao` | Dia em que o modelo faz a pergunta (a própria data-base) | data (dia) |
+| `prazo` | Último dia para entregar, com feriados e prorrogações (`src/prazos.py`) | data (dia) |
+| `primeira_entrega` | Dia da primeira entrega (vazio: não entregou) | data (dia) |
+| `dias_uteis_de_atraso` | Dias úteis entre o prazo e a entrega (ou a montagem, sem entrega); 0 no prazo | número inteiro |
+| `atrasou` | Entregou 1 dia útil ou mais depois do prazo, ou não entregou | verdadeiro ou falso |
+| `atraso_grave` | Mais de 30 dias corridos de atraso, ou não entregou | verdadeiro ou falso |
+| `zona_cinzenta` | Atraso de 1 ou 2 dias úteis: pode ser um feriado estadual ou municipal | verdadeiro ou falso |
+| `uf` | Estado da sede, no cadastro de hoje | texto |
+| `mes_fim_do_exercicio` | Mês de fim do exercício (o mais comum nas DFPs da companhia) | mês (1 a 12) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `empresa_serie`
 
 De que companhia listada é cada entidade que os reguladores enxergam (operadora de saúde, distribuidora, banco no Pix, prestadora de telecomunicações, usina, concessionária de ferrovia, companhia aérea): pelo CNPJ, pelo nome exato ou pela tabela conferida (`base/conferidas/empresa_serie.csv`), e daí pelas `controladas`. Os capítulos do NCM do Comex Stat ligam às companhias expostas ao produto (`via` = `produto`: exposição, não posse). Toda entidade aparece, ligada ou não.

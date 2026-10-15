@@ -19,15 +19,33 @@ da sede e o mês de fim do exercício), ou sem entrega com o prazo vencido. Medi
 `dias_uteis_de_atraso`, `atraso_grave` (mais de 30 dias corridos ou não entregou) e `zona_cinzenta`
 (1 ou 2 dias úteis: pode ser um feriado local).
 
+`montar` lê os originais que o arquivista guardou (`cvm-hist-dfp`, `cvm-hist-itr` e o cadastro de
+`cvm-cadastros`) e grava `<pasta>/rotulos_atraso/rotulos_atraso.parquet` com o manifesto (SHA-256 da
+tabela e de cada original). O arquivista só baixa de novo o arquivo que mudou, sem anotar as
+conferências: a data da coleta de cada arquivo anual é o que se sabe com certeza, e uma falta só conta
+se o prazo venceu antes dela (`vistos_em`).
+
 O rótulo não é coluna para prever: o mês de fim do exercício sai de todas as DFPs da empresa, e a UF,
 do cadastro de hoje (ver `base/cadastro.py`).
 """
 
+from collections.abc import Mapping
+from datetime import datetime
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import sqlalchemy as sa
 
+from base.cadastro import ler_cadastro
+from base.contas_cvm import ler_indice
 from base.dias_uteis import dias_uteis
+from base.historico import ano_do_arquivo
+from base.parquet import gravar_tabela
+from src import acervo
+from src.banco.coletas import originais_mais_recentes
 from src.prazos import ATRASO_GRAVE, prazo
+from src.versao_do_codigo import versao_do_codigo
 
 COLUNAS = (
     "cnpj",
@@ -45,6 +63,11 @@ COLUNAS = (
     "mes_fim_do_exercicio",
 )
 DOCUMENTO = ["cnpj", "documento", "referencia"]
+TABELA = "rotulos_atraso"
+FONTES_DO_INDICE = {"DFP": "cvm-hist-dfp", "ITR": "cvm-hist-itr"}
+FONTE_DO_CADASTRO = "cvm-cadastros"
+ARQUIVO_DO_CADASTRO = "cad_cia_aberta.csv"
+VistosEm = Mapping[tuple[str, int], pd.Timestamp]
 ZONA_CINZENTA = 2  # dias úteis
 
 
@@ -122,6 +145,7 @@ def _devidos_sem_entrega(
     ufs: pd.Series,
     meses: pd.Series,
     hoje: pd.Timestamp,
+    vistos_em: VistosEm | None,
 ) -> pd.DataFrame:
     """Os documentos de um ano depois de cada entrega que não chegaram e já venceram.
 
@@ -138,16 +162,34 @@ def _devidos_sem_entrega(
     vencidos = candidatos[
         (candidatos["prazo"] < hoje) & _no_calendario_da_empresa(candidatos)
     ]
+    if vistos_em is not None:
+        visto = pd.Series(
+            [
+                vistos_em.get((d, r.year), pd.NaT)
+                for d, r in zip(
+                    vencidos["documento"], vencidos["referencia"], strict=True
+                )
+            ],
+            index=vencidos.index,
+            dtype="datetime64[ns]",
+        )
+        vencidos = vencidos[vencidos["prazo"] < visto]
     return vencidos[_ativa_no_prazo(vencidos, cadastro)].assign(primeira_entrega=pd.NaT)
 
 
 def montar_exemplos(
-    indice: pd.DataFrame, cadastro: pd.DataFrame, hoje: pd.Timestamp
+    indice: pd.DataFrame,
+    cadastro: pd.DataFrame,
+    hoje: pd.Timestamp,
+    *,
+    vistos_em: VistosEm | None = None,
 ) -> pd.DataFrame:
     """Os exemplos com o rótulo, como se sabia em `hoje`.
 
     `indice`: as entregas de DFP e ITR de todos os anos (`base/contas_cvm.ler_indice`, juntos);
-    `cadastro`: `base/cadastro.ler_cadastro` (`cnpj`, `registro`, `cancelamento`, `uf`).
+    `cadastro`: `base/cadastro.ler_cadastro` (`cnpj`, `registro`, `cancelamento`, `uf`);
+    `vistos_em`: (documento, ano do arquivo) → dia em que o arquivo foi coletado; com ele, uma falta
+    só conta se o prazo venceu antes da coleta.
     """
     if indice.empty:
         return pd.DataFrame(columns=list(COLUNAS))
@@ -161,7 +203,7 @@ def montar_exemplos(
     exemplos = pd.concat(
         [
             _com_prazo(entregues, ufs, meses),
-            _devidos_sem_entrega(entregues, cadastro, ufs, meses, hoje),
+            _devidos_sem_entrega(entregues, cadastro, ufs, meses, hoje, vistos_em),
         ],
         ignore_index=True,
     )
@@ -182,3 +224,54 @@ def montar_exemplos(
         .sort_values(["referencia", "documento", "cnpj"])
         .reset_index(drop=True)
     )
+
+
+def _dia(momento: object) -> pd.Timestamp:
+    """O dia (sem hora nem fuso) de um momento, no horário de Brasília."""
+    dia = pd.Timestamp(momento)  # type: ignore[arg-type]
+    if dia.tzinfo is not None:
+        dia = dia.tz_convert("America/Sao_Paulo").tz_localize(None)
+    return dia.normalize()
+
+
+def _cadastro(
+    conexao: sa.Connection, origens: list[dict[str, str]]
+) -> pd.DataFrame | None:
+    for original in originais_mais_recentes(conexao, FONTE_DO_CADASTRO):
+        if original.url.rsplit("/", 1)[-1] != ARQUIVO_DO_CADASTRO:
+            continue
+        conteudo = acervo.ler_original(original.caminho_do_original)
+        if conteudo is not None:
+            origens.append({"url": original.url, "sha256": original.sha256})
+            return ler_cadastro(conteudo)
+    return None
+
+
+def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
+    """`<pasta>/rotulos_atraso/rotulos_atraso.parquet` dos originais do acervo; devolve as linhas.
+
+    Nada é gravado (0) sem índice da DFP/ITR ou sem o cadastro.
+    """
+    partes: list[pd.DataFrame] = []
+    vistos_em: dict[tuple[str, int], pd.Timestamp] = {}
+    origens: list[dict[str, str]] = []
+    for documento, fonte in FONTES_DO_INDICE.items():
+        for original in originais_mais_recentes(conexao, fonte):
+            ano = ano_do_arquivo(original.url)
+            conteudo = acervo.ler_original(original.caminho_do_original)
+            if ano is None or conteudo is None:
+                continue
+            partes.append(ler_indice(conteudo, documento))
+            vistos_em[(documento, ano)] = _dia(original.baixado_em)
+            origens.append({"url": original.url, "sha256": original.sha256})
+    cadastro = _cadastro(conexao, origens)
+    if not partes or cadastro is None:
+        return 0
+    indice = pd.concat(partes, ignore_index=True)
+    tabela = montar_exemplos(indice, cadastro, _dia(agora), vistos_em=vistos_em).assign(
+        montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
+    )
+    gravar_tabela(
+        tabela, pasta / TABELA / TABELA, origens, ["documento", "referencia", "cnpj"]
+    )
+    return len(tabela)

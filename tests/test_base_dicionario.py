@@ -9,6 +9,7 @@ import pandas as pd
 from base import cda, fca, ligacoes
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
+from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
 from src.banco.coletas import (
     LICENCAS,
@@ -63,6 +64,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "demonstracoes_como_era": list(COLUNAS_DA_BASE),
         "achados_de_qualidade": [c.name for c in achados_de_qualidade.columns],
         "cadastro_das_companhias": list(cadastro.columns),
+        "rotulos_atraso": [*rotulo.COLUNAS, "montado_em", "versao_do_codigo"],
         "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
         "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
