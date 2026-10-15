@@ -9,12 +9,13 @@ import base64
 import json
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import sqlalchemy as sa
 
+from base import intradiario_b3
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     extrair_do_zip_remoto,
@@ -143,10 +144,19 @@ COLUNAS_PESSOAIS_DO_SAMP = ("NumCNPJAgenteAcessante", "NomAgenteAcessante")
 NEGOCIOS_DA_B3 = "https://arquivos.b3.com.br/rapinegocios/tickercsv/{dia}"
 DIAS_DA_JANELA_DA_B3 = 30  # dias corridos, hoje incluído: cobre os 20 pregões
 FUSO_DA_B3 = ZoneInfo("America/Sao_Paulo")
-# um pregão inteiro tem de 80 a 200 MB: menor que isso veio incompleto (22/09, 29/09 e 09/10/2026) e
-# é baixado de novo a cada rodada, para ver se a B3 corrigiu. Regra provisória, a da ponte: o selo
-# por ativo contra o COTAHIST (que pega também o 15/09) vem no PR 2 do plano dos intradiários
+# um dia guardado vale se o selo (`base/intradiario_b3.py`, contra o boletim PR) diz `completo`;
+# `incompleto` é baixado de novo a cada rodada, para ver se a B3 corrigiu (15/09, 22/09, 29/09 e
+# 09/10/2026 vieram quebrados). Antes de o selo sair (o dia acabou de ser baixado, ou ainda sem
+# boletim), a regra da ponte: um pregão inteiro tem de 80 a 200 MB, menor que 40 MB veio incompleto
 TAMANHO_MINIMO_DE_UM_DIA_BOM = 40_000_000
+# boletins oficiais do dia, para o selo: o PR (BVBG.086, todos os instrumentos; sai em várias versões
+# até ~21h, um zip dentro de outro) e o COTAHIST do dia (houve pregão? quais são do mercado à vista?)
+BOLETIM_PR_DA_B3 = (
+    "https://www.b3.com.br/pesquisapregao/download?filelist=PR{aammdd}.zip"
+)
+COTAHIST_DO_DIA = (
+    "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{ddmmaaaa}.ZIP"
+)
 
 
 def _json(cliente: Cliente, url: str) -> dict:
@@ -417,16 +427,56 @@ def alvo_dos_negocios_b3(dia: date) -> Alvo:
     return Alvo(url, ".zip", zip_que_pode_faltar(url))
 
 
-def descobrir_negocios_b3(cliente: Cliente, agora: datetime) -> list[Alvo]:
+def _dias_da_janela_da_b3(agora: datetime) -> list[date]:
     """Os dias úteis da janela da B3, do mais antigo a hoje (no fuso de São Paulo: a rodada das 22h
     já é o dia seguinte em UTC). Feriado entra e responde 404: o calendário fica com a B3."""
     hoje = agora.astimezone(FUSO_DA_B3).date()
     dias = (hoje - timedelta(days=n) for n in range(DIAS_DA_JANELA_DA_B3 - 1, -1, -1))
-    return [alvo_dos_negocios_b3(dia) for dia in dias if dia.weekday() < 5]
+    return [dia for dia in dias if dia.weekday() < 5]
+
+
+def descobrir_negocios_b3(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    return [alvo_dos_negocios_b3(dia) for dia in _dias_da_janela_da_b3(agora)]
+
+
+def _zip_do_dia(endereco: str) -> Alvo:
+    return Alvo(endereco, ".zip", zip_que_pode_faltar(endereco))
+
+
+def descobrir_boletim_pr(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    return [
+        _zip_do_dia(BOLETIM_PR_DA_B3.format(aammdd=f"{dia:%y%m%d}"))
+        for dia in _dias_da_janela_da_b3(agora)
+    ]
+
+
+def descobrir_cotahist_do_dia(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    return [
+        _zip_do_dia(COTAHIST_DO_DIA.format(ddmmaaaa=f"{dia:%d%m%Y}"))
+        for dia in _dias_da_janela_da_b3(agora)
+    ]
 
 
 def _pregao_inteiro_ja_guardado(anterior: sa.Row) -> bool:
+    resumo = intradiario_b3.resumo_guardado(
+        intradiario_b3.pregao_do_endereco(anterior.url)
+    )
+    if (
+        resumo is not None
+        and resumo.get("sha256_do_arquivo") == anterior.sha256
+        and resumo.get("selo_do_dia") != intradiario_b3.SELO_SEM_BOLETIM
+    ):
+        return resumo.get("selo_do_dia") == intradiario_b3.SELO_COMPLETO
     return (anterior.bytes or 0) >= TAMANHO_MINIMO_DE_UM_DIA_BOM
+
+
+def _boletim_final_ja_guardado(anterior: sa.Row) -> bool:
+    """Baixado depois do dia do pregão (rodada das 2h): já é a última versão da noite."""
+    baixado = anterior.baixado_em
+    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
+        baixado = baixado.replace(tzinfo=UTC)
+    pregao = intradiario_b3.pregao_do_endereco(anterior.url)
+    return baixado.astimezone(FUSO_DA_B3).date() > pregao
 
 
 def _um(url: str, extensao: str | None = None) -> Descobrir:
@@ -611,6 +661,20 @@ FONTES: list[Fonte] = [
         "zip",
         pesada=True,
         guardado_vale=_pregao_inteiro_ja_guardado,
+    ),
+    Fonte(
+        "b3-boletim-pr",
+        "diaria",
+        descobrir_boletim_pr,
+        "zip",
+        guardado_vale=_boletim_final_ja_guardado,
+    ),
+    Fonte(
+        "b3-cotahist-dia",
+        "diaria",
+        descobrir_cotahist_do_dia,
+        "zip",
+        guardado_vale=_boletim_final_ja_guardado,
     ),
 ]
 

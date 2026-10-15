@@ -4,9 +4,12 @@ import pandas as pd
 import pytest
 
 from src.barras_intradiarias import (
+    barras_parciais_b3,
     cobertura_por_simbolo,
     conferir_fechamentos,
+    juntar_barras_b3,
     montar_barras,
+    montar_barras_b3,
 )
 
 FUSO_NY = "America/New_York"
@@ -127,3 +130,115 @@ def test_conferencia_compara_o_ultimo_preco_com_o_oficial():
     tabela = conferir_fechamentos(barras, pd.Series({"AAPL": 100.0, "MSFT": 50.0}))
     assert list(tabela.index) == ["AAPL"]
     assert tabela.loc["AAPL", "diferenca"] == pytest.approx(0.01)
+
+
+# --- B3: sessão do after, cancelamento e empate de hora (plano dos intradiários, PR 2) ----------
+
+FUSO_SP = "America/Sao_Paulo"
+
+
+def negocios_b3(
+    linhas: list[tuple[str, str, float, int, int, int, bool]],
+) -> pd.DataFrame:
+    tabela = pd.DataFrame(
+        linhas,
+        columns=[
+            "instante",
+            "simbolo",
+            "preco",
+            "quantidade",
+            "sessao",
+            "identificador",
+            "cancelado",
+        ],
+    )
+    tabela["instante"] = pd.to_datetime(tabela["instante"]).dt.tz_localize(FUSO_SP)
+    return tabela
+
+
+def test_after_soma_a_parte_e_nao_mexe_nos_precos():
+    barras = montar_barras_b3(
+        negocios_b3(
+            [
+                ("2026-10-13 17:54:10", "PETR4", 30.0, 100, 1, 10, False),
+                ("2026-10-13 17:54:50", "PETR4", 32.0, 200, 6, 20, False),
+            ]
+        )
+    )
+    barra = barras.iloc[0]
+    assert (barra["abertura"], barra["maxima"], barra["fechamento"]) == (
+        30.0,
+        30.0,
+        30.0,
+    )
+    assert (barra["volume"], barra["negocios"]) == (100, 1)
+    assert (barra["volume_after"], barra["negocios_after"]) == (200, 1)
+
+
+def test_minuto_so_com_after_fica_sem_preco():
+    barras = montar_barras_b3(
+        negocios_b3([("2026-10-13 18:30:00", "PETR4", 30.5, 300, 6, 40, False)])
+    )
+    barra = barras.iloc[0]
+    assert pd.isna(barra["abertura"]) and pd.isna(barra["fechamento"])
+    assert (barra["volume"], barra["volume_after"]) == (0, 300)
+
+
+def test_cancelado_sai_junto_com_o_original():
+    barras = montar_barras_b3(
+        negocios_b3(
+            [
+                ("2026-10-13 10:43:00", "RADL3", 25.0, 5_000_000, 1, 30, False),
+                ("2026-10-13 10:43:20", "RADL3", 26.0, 100, 1, 40, False),
+                ("2026-10-13 16:56:00", "RADL3", 25.0, 5_000_000, 1, 30, True),
+            ]
+        )
+    )
+    assert barras["volume"].sum() == 100
+    assert barras["abertura"].tolist() == [26.0]
+
+
+def test_cancelamento_vale_so_para_o_mesmo_simbolo():
+    """O identificador é por instrumento: o 30 do PETR4 não é o 30 do VALE3."""
+    barras = montar_barras_b3(
+        negocios_b3(
+            [
+                ("2026-10-13 10:00:00", "VALE3", 70.0, 100, 1, 30, False),
+                ("2026-10-13 10:00:00", "PETR4", 30.0, 100, 1, 30, False),
+                ("2026-10-13 11:00:00", "PETR4", 30.0, 100, 1, 30, True),
+            ]
+        )
+    )
+    assert barras["simbolo"].tolist() == ["VALE3"]
+
+
+def test_empate_de_hora_resolvido_pelo_identificador():
+    """Vários negócios no mesmo milésimo (uma ordem grande): o identificador diz a ordem."""
+    barras = montar_barras_b3(
+        negocios_b3(
+            [
+                ("2026-10-13 17:10:31.645", "PETR4", 48.6, 100, 1, 312420, False),
+                ("2026-10-13 17:10:31.645", "PETR4", 48.4, 100, 1, 312410, False),
+            ]
+        )
+    )
+    barra = barras.iloc[0]
+    assert (barra["abertura"], barra["fechamento"]) == (48.4, 48.6)
+
+
+def test_barras_parciais_juntadas_iguais_as_de_uma_vez():
+    negocios = negocios_b3(
+        [
+            ("2026-10-13 10:00:01", "PETR4", 30.0, 100, 1, 10, False),
+            ("2026-10-13 10:00:30", "PETR4", 31.0, 100, 1, 20, False),
+            ("2026-10-13 10:00:59", "PETR4", 29.0, 100, 1, 30, False),
+            ("2026-10-13 18:30:00", "PETR4", 30.5, 50, 6, 40, False),
+        ]
+    )
+    juntas = juntar_barras_b3(
+        [
+            barras_parciais_b3(negocios.iloc[[2, 3]]),
+            barras_parciais_b3(negocios.iloc[[0, 1]]),
+        ]
+    )
+    pd.testing.assert_frame_equal(juntas, montar_barras_b3(negocios))

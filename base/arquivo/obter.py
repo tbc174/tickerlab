@@ -110,7 +110,7 @@ def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
 
 
 def zip_que_pode_faltar(url: str) -> Obter:
-    """Baixa o zip; 404 e resposta vazia viram `SemArquivo`; zip quebrado ou cortado é erro."""
+    """Baixa o zip; 404, resposta vazia e zip vazio viram `SemArquivo`; zip quebrado ou cortado é erro."""
 
     def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
         try:
@@ -125,6 +125,9 @@ def zip_que_pode_faltar(url: str) -> Obter:
         if destino.stat().st_size == 0:
             raise SemArquivo("HTTP 200 com 0 bytes (dia fora da janela)")
         with zipfile.ZipFile(destino) as arquivo_zip:
+            if not arquivo_zip.infolist():
+                # o boletim PR de feriado vem assim (22 bytes; 12/10/2026)
+                raise SemArquivo("zip vazio (dia sem pregão)")
             estragado = arquivo_zip.testzip()
         if estragado is not None:
             raise zipfile.BadZipFile(f"{estragado} com CRC errado dentro do zip")
