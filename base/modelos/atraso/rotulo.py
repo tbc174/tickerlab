@@ -8,7 +8,10 @@ Quem entra:
   atraso);
 - o documento que a empresa **devia e não entregou**: entregou o mesmo documento um ano antes e estava
   registrada e ativa no cadastro da CVM na data do prazo (a mesma regra da R8). Só o primeiro ano
-  sem entrega entra; empresa fora do cadastro nunca "deve" (não dá para saber).
+  sem entrega entra; empresa fora do cadastro nunca "deve" (não dá para saber). E só conta como
+  falta uma data-base que outra empresa entregou: sem o arquivo do ano no índice (um download que
+  falhou), ninguém "deixou de entregar"; e só no calendário da empresa (DFP no mês de fim do
+  exercício, ITR nos outros fins de trimestre): uma DFP especial fora do exercício não se repete.
 - documento sem entrega com o prazo ainda aberto fica de fora: a resposta ainda não existe.
 
 O rótulo `atrasou` vale 1 com a entrega 1 dia útil ou mais depois do prazo (`src/prazos.py`, com a UF
@@ -95,6 +98,24 @@ def _com_prazo(
     )
 
 
+def _esta_em(
+    tabela: pd.DataFrame, outra: pd.DataFrame, colunas: list[str]
+) -> pd.Series:
+    chaves = pd.MultiIndex.from_frame(outra[colunas])
+    return pd.Series(
+        pd.MultiIndex.from_frame(tabela[colunas]).isin(chaves), index=tabela.index
+    )
+
+
+def _no_calendario_da_empresa(exemplos: pd.DataFrame) -> pd.Series:
+    """DFP no mês de fim do exercício; ITR nos outros fins de trimestre do exercício."""
+    distancia = (
+        exemplos["referencia"].dt.month - exemplos["mes_fim_do_exercicio"]
+    ) % 12
+    dfp = exemplos["documento"] == "DFP"
+    return (dfp & (distancia == 0)) | (~dfp & (distancia != 0) & (distancia % 3 == 0))
+
+
 def _devidos_sem_entrega(
     entregues: pd.DataFrame,
     cadastro: pd.DataFrame,
@@ -102,15 +123,21 @@ def _devidos_sem_entrega(
     meses: pd.Series,
     hoje: pd.Timestamp,
 ) -> pd.DataFrame:
-    """Os documentos de um ano depois de cada entrega que não chegaram e já venceram."""
+    """Os documentos de um ano depois de cada entrega que não chegaram e já venceram.
+
+    Só data-bases do calendário da empresa (uma DFP especial fora do exercício não se repete) e que
+    outra empresa entregou (o arquivo do ano está no índice).
+    """
     seguinte = entregues["referencia"] + pd.DateOffset(years=1) + pd.offsets.MonthEnd(0)
     candidatos = entregues.assign(referencia=seguinte).drop(columns="primeira_entrega")
-    ja_entregues = pd.MultiIndex.from_frame(entregues[DOCUMENTO])
     candidatos = candidatos[
-        ~pd.MultiIndex.from_frame(candidatos[DOCUMENTO]).isin(ja_entregues)
+        ~_esta_em(candidatos, entregues, DOCUMENTO)
+        & _esta_em(candidatos, entregues, ["documento", "referencia"])
     ]
     candidatos = _com_prazo(candidatos.reset_index(drop=True), ufs, meses)
-    vencidos = candidatos[candidatos["prazo"] < hoje]
+    vencidos = candidatos[
+        (candidatos["prazo"] < hoje) & _no_calendario_da_empresa(candidatos)
+    ]
     return vencidos[_ativa_no_prazo(vencidos, cadastro)].assign(primeira_entrega=pd.NaT)
 
 

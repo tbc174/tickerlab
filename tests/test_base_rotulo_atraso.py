@@ -2,6 +2,7 @@
 modelo 8, PR 2). Sem internet: o índice e o cadastro são montados à mão."""
 
 import pandas as pd
+
 from base.modelos.atraso.rotulo import COLUNAS, montar_exemplos
 
 A = "11.111.111/0001-11"
@@ -93,13 +94,16 @@ def test_atraso_grave_passa_de_30_dias():
 
 def test_nao_entregue_com_prazo_vencido_e_atraso():
     # entregou a DFP de 2023 e não a de 2024, ainda registrada: atrasou e é grave
-    indice = _indice((A, "DFP", "2023-12-31", 1, "2024-03-25"))
+    indice = _indice(
+        (A, "DFP", "2023-12-31", 1, "2024-03-25"),
+        (B, "DFP", "2024-12-31", 1, "2025-03-25"),
+    )
     exemplos = montar_exemplos(indice, ATIVA_A, HOJE)
-    linha = _linha(exemplos, "DFP", "2024-12-31")
+    linha = _linha(exemplos[exemplos["cnpj"] == A], "DFP", "2024-12-31")
     assert pd.isna(linha["primeira_entrega"])
     assert linha["atrasou"] and linha["atraso_grave"]
     assert linha["empresa"] == "EMPRESA 11"
-    assert len(exemplos) == 2  # a de 2025 não entra: a de 2024 não foi entregue
+    assert (exemplos["cnpj"] == A).sum() == 2  # a de 2025 não entra: a de 2024 não veio
 
 
 def test_prazo_ainda_aberto_fica_de_fora():
@@ -113,9 +117,10 @@ def test_entrega_depois_de_hoje_ainda_nao_existia():
     indice = _indice(
         (A, "DFP", "2023-12-31", 1, "2024-03-25"),
         (A, "DFP", "2024-12-31", 1, "2025-04-20"),
+        (B, "DFP", "2024-12-31", 1, "2025-03-25"),
     )
     exemplos = montar_exemplos(indice, ATIVA_A, pd.Timestamp("2025-04-10"))
-    linha = _linha(exemplos, "DFP", "2024-12-31")
+    linha = _linha(exemplos[exemplos["cnpj"] == A], "DFP", "2024-12-31")
     assert pd.isna(linha["primeira_entrega"]) and linha["atrasou"]
 
 
@@ -135,9 +140,12 @@ def test_registrada_depois_do_prazo_nao_deve_o_documento():
     cadastro = _cadastro(
         (B, "1995-01-01", "2021-01-10", "RJ"), (B, "2021-06-01", None, "RJ")
     )
-    indice = _indice((B, "DFP", "2019-12-31", 1, "2020-05-20"))
+    indice = _indice(
+        (B, "DFP", "2019-12-31", 1, "2020-05-20"),
+        (A, "DFP", "2020-12-31", 1, "2021-03-25"),
+    )
     exemplos = montar_exemplos(indice, cadastro, pd.Timestamp("2021-12-31"))
-    assert exemplos["referencia"].dt.year.tolist() == [2019]
+    assert exemplos.loc[exemplos["cnpj"] == B, "referencia"].dt.year.tolist() == [2019]
 
 
 def test_empresa_fora_do_cadastro_so_entra_com_entrega():
@@ -179,3 +187,23 @@ def test_indice_vazio():
         ]
     )
     assert montar_exemplos(vazio, ATIVA_A, HOJE).empty
+
+
+def test_data_base_sem_nenhuma_entrega_no_indice_nao_vira_falta():
+    # sem o arquivo do ano no índice (download que falhou), ninguém "deixou de entregar"
+    indice = _indice((A, "ITR", "2021-03-31", 1, "2021-05-10"))
+    exemplos = montar_exemplos(indice, ATIVA_A, HOJE)
+    assert exemplos["referencia"].tolist() == [pd.Timestamp("2021-03-31")]
+
+
+def test_dfp_fora_do_exercicio_nao_cria_falta_no_ano_seguinte():
+    # exercício em dezembro e uma DFP especial de 31/03/2023: não se espera outra em 31/03/2024
+    indice = _indice(
+        (A, "DFP", "2022-12-31", 1, "2023-03-20"),
+        (A, "DFP", "2023-03-31", 1, "2023-06-20"),
+        (A, "DFP", "2023-12-31", 1, "2024-03-20"),
+        (B, "DFP", "2024-03-31", 1, "2024-06-20"),
+    )
+    exemplos = montar_exemplos(indice, ATIVA_A, HOJE)
+    datas_de_a = exemplos.loc[exemplos["cnpj"] == A, "referencia"].dt.strftime("%Y-%m")
+    assert datas_de_a.tolist() == ["2022-12", "2023-03", "2023-12"]
