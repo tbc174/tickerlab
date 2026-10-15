@@ -22,6 +22,7 @@ import argparse
 import calendar
 import hashlib
 import logging
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -147,7 +148,12 @@ def carregar_ifdata_data(
 
 def montar_ligacao(pasta: Path, pasta_do_fca: Path) -> int:
     """A ligação instituição → CNPJ → tickers, de todos os cadastros já gravados."""
-    arquivos = sorted((pasta / "ifdata" / "cadastro").glob("[0-9]*.parquet"))
+    # só o cadastro atual de cada data-base (`202506`), nunca as versões anteriores (`202506.v1`)
+    arquivos = sorted(
+        a
+        for a in (pasta / "ifdata" / "cadastro").glob("*.parquet")
+        if re.fullmatch(r"\d{6}", a.stem)
+    )
     if not arquivos:
         return 0
     cadastro = pd.concat([pd.read_parquet(a) for a in arquivos], ignore_index=True)

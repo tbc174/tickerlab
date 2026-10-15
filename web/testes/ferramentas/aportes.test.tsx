@@ -2,10 +2,10 @@
 // A tela de aportes e metas: as três perguntas usam a mesma conta (conferida no golden.test.ts).
 import { act, fireEvent, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EXEMPLO_DE_APORTES, prazoPorExtenso, responder } from "../../src/ferramentas/AportesEMetas";
 import { ligarFerramentas } from "../../src/ferramentas/cliente";
-import { aporteParaMeta, valorFuturo } from "../../src/ferramentas/contas/aportes";
+import { aporteParaMeta, mesDaVirada, valorFuturo } from "../../src/ferramentas/contas/aportes";
 import { taxaPorMes } from "../../src/ferramentas/contas/juros";
 import { formatarReais } from "../../src/ferramentas/numeros";
 import { Ilha } from "../../src/ferramentas/registro";
@@ -67,5 +67,79 @@ describe("aportes e metas", () => {
     });
     expect(screen.getByLabelText("Meta")).toBeTruthy();
     expect(screen.queryByLabelText("Aporte por mês")).toBeNull();
+  });
+});
+
+// --- ferramentas v2: gráfico, reajuste do aporte, virada, meta no gráfico e endereço -----------
+describe("aportes e metas v2", () => {
+  const abrir = async (busca = "") => {
+    window.history.replaceState(null, "", `/calculadora-de-aportes-e-metas.html${busca}`);
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="aportes" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+  };
+  const pontas = () => [...document.querySelectorAll("[data-fim]")].map((el) => Number(el.getAttribute("data-fim")));
+  const resultado = () => document.querySelector("[data-resultado]")?.textContent;
+
+  it("o gráfico empilha o que saiu do bolso e os juros, e termina no saldo", async () => {
+    await abrir();
+    const saldo = valorFuturo(5000, 500, oitoAoAno, 240);
+    const [bolso, total] = pontas();
+    expect(bolso).toBeCloseTo(5000 + 500 * 240, 6);
+    expect(total).toBeCloseTo(saldo, 6);
+    expect(resultado()).toBe(formatarReais(saldo));
+  });
+
+  it("o reajuste anual do aporte entra na conta", async () => {
+    await abrir();
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Aumento do aporte a cada ano"), { target: { value: "5" } });
+    });
+    expect(resultado()).toBe(formatarReais(valorFuturo(5000, 500, oitoAoAno, 240, false, 0.05)));
+  });
+
+  it("diz quando os juros do mês passam o aporte", async () => {
+    await abrir();
+    const virada = mesDaVirada(5000, 500, oitoAoAno, 240)!;
+    expect(virada).toBeGreaterThan(0);
+    expect(document.body.textContent).toContain(`os juros do mês passam o aporte (${prazoPorExtenso(virada)})`);
+  });
+
+  it("nas perguntas com meta, a meta aparece no gráfico", async () => {
+    await abrir("?pergunta=quanto-guardar");
+    expect(document.querySelector("[data-meta]")).not.toBeNull();
+    expect(resultado()).toBe(formatarReais(aporteParaMeta(200000, 5000, oitoAoAno, 240)));
+  });
+
+  it("o aporte e o prazo têm deslizante", async () => {
+    await abrir();
+    expect(screen.getByLabelText("Aporte por mês (deslizante)")).toBeTruthy();
+    expect(screen.getByLabelText("Prazo (deslizante)")).toBeTruthy();
+  });
+});
+
+describe("aportes e metas v2: textos da revisão", () => {
+  const abrir = async (busca = "") => {
+    window.history.replaceState(null, "", `/calculadora-de-aportes-e-metas.html${busca}`);
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="aportes" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+  };
+
+  it("sem aporte, não fala em juros que ainda não chegam ao aporte", async () => {
+    await abrir("?aporte=0");
+    expect(document.body.textContent).not.toContain("ainda não chegam ao aporte");
+  });
+
+  it("o texto de copiar diz que o aporte sobe a cada ano", async () => {
+    const escrever = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText: escrever }, configurable: true });
+    await abrir("?pergunta=quanto-guardar&reajuste=5");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copiar resultado" }));
+    });
+    expect(escrever.mock.calls[0][0]).toContain("no 1º ano, subindo 5% a cada ano");
   });
 });

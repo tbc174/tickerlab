@@ -7,6 +7,7 @@ export const DIAS_POR_ANO = 252;
 export const LIMITE_DO_SHARPE = 1;
 export const ESTRATEGIAS_MAXIMAS = 1000;
 export const DIAS_MAXIMOS = 2520;
+export const NIVEL_DO_TESTE = 0.05;
 
 export interface ResultadoDaSorte {
   estrategias: number;
@@ -21,6 +22,9 @@ export interface ResultadoDaSorte {
   com_sharpe_acima_de_1: number;
   lucraram: number;
   media_dos_retornos_diarios: number;
+  retornos_finais: number[];
+  passam_sem_correcao: number;
+  passam_com_correcao: number;
 }
 
 const media = (valores: number[]) => valores.reduce((soma, v) => soma + v, 0) / valores.length;
@@ -35,6 +39,35 @@ function desvioPadrao(valores: number[]): number {
 export function sharpe(retornos: number[]): number {
   const desvio = desvioPadrao(retornos);
   return desvio ? (media(retornos) / desvio) * DIAS_POR_ANO ** 0.5 : 0;
+}
+
+/** A função erro complementar, pela aproximação de Chebyshev do Numerical Recipes (a mesma do
+ * Python, para dar o mesmo número). */
+export function erfc(x: number): number {
+  const z = Math.abs(x);
+  const t = 1 / (1 + 0.5 * z);
+  const polinomio =
+    -z * z -
+    1.26551223 +
+    t *
+      (1.00002368 +
+        t *
+          (0.37409196 +
+            t *
+              (0.09678418 +
+                t *
+                  (-0.18628806 +
+                    t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))));
+  const resposta = t * Math.exp(polinomio);
+  return x >= 0 ? resposta : 2 - resposta;
+}
+
+/** A chance de uma média tão boa só por acaso, se a média de verdade fosse zero (um lado). */
+export function pValor(retornos: number[]): number {
+  const desvio = desvioPadrao(retornos);
+  if (!desvio) return 0.5;
+  const t = (media(retornos) / desvio) * retornos.length ** 0.5;
+  return 0.5 * erfc(t / Math.SQRT2);
 }
 
 function curva(retornos: number[]): number[] {
@@ -59,6 +92,7 @@ export function simular(estrategias: number, dias: number, semente: number): Res
   const ordem = [...curvas.keys()].sort((a, b) => final(a) - final(b));
   const [melhor, mediana, pior] = [ordem[estrategias - 1], ordem[Math.floor((estrategias - 1) / 2)], ordem[0]];
   const sharpes = todas.map(sharpe);
+  const pValores = todas.map(pValor);
   return {
     estrategias,
     dias,
@@ -72,5 +106,8 @@ export function simular(estrategias: number, dias: number, semente: number): Res
     com_sharpe_acima_de_1: sharpes.filter((s) => s > LIMITE_DO_SHARPE).length,
     lucraram: curvas.filter((c) => c[dias] > 1).length,
     media_dos_retornos_diarios: media(todas.flat()),
+    retornos_finais: curvas.map((c) => c[dias] - 1),
+    passam_sem_correcao: pValores.filter((p) => p < NIVEL_DO_TESTE).length,
+    passam_com_correcao: pValores.filter((p) => p < NIVEL_DO_TESTE / estrategias).length,
   };
 }

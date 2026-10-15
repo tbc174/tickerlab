@@ -98,3 +98,23 @@ def test_origens_novas_guardam_a_versao_anterior(tabela, tmp_path, monkeypatch):
     pd.testing.assert_frame_equal(
         ler_tabela(tmp_path / "2005.parquet"), tabela, check_dtype=False
     )
+
+
+def test_original_novo_com_o_mesmo_conteudo_nao_vira_versao(
+    tabela, tmp_path, monkeypatch
+):
+    """Achado no fechamento da série 3 (PR 8): o BC devolve o cadastro do IF.data com outros bytes
+    e o mesmo conteúdo; virava `.v1` igual à atual. Versão nova só quando o conteúdo muda; a tabela
+    fica com o original anterior, que continua no acervo (a linhagem não quebra)."""
+    from base.parquet import IGUAL, gravar_com_versoes
+
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "202503"
+    gravar_com_versoes(lambda: tabela, destino, ORIGENS, ["cnpj", "ano"])
+    antes = (tmp_path / "202503.json").read_text(encoding="utf-8")
+    resultado = gravar_com_versoes(
+        lambda: tabela.iloc[::-1], destino, OUTRAS, ["cnpj", "ano"]
+    )
+    assert resultado == IGUAL
+    assert not list(tmp_path.glob("202503.v*"))
+    assert (tmp_path / "202503.json").read_text(encoding="utf-8") == antes

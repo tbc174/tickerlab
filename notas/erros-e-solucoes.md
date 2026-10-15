@@ -459,3 +459,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o servidor da Receita fecha a conexão antes de responder de vez em quando. O `requests` tenta **zero** vezes de novo por padrão, e a única nova tentativa do arquivista era a da fonte inteira, 5 minutos depois. Com 37 arquivos no mês, quase sempre algum caía.
 - **Solução:** `HTTPAdapter(max_retries=Retry(...))` na sessão do `scripts/arquivar_fontes.py` (#257): repete o pedido na hora, até 3 vezes (0, 4 e 8 s), só quando a conexão cai ou não abre; resposta de erro (404, 500) não é repetida. O teste usa um servidor HTTP local que fecha a conexão sem responder. Lição: falha que muda de arquivo a cada rodada é da rede ou do servidor, não do arquivo; repetir a tarefa inteira à mão só esconde.
 - **Data:** 14/10/2026
+
+## CI vermelho: "novo/ está velho" depois de mexer só no site
+- **Sintoma:** no PR #254 (ferramentas v2), o job `web (React)` falhou com `novo/ está velho: rode 'npm run app' em web/ e faça o commit`, mesmo o PR sendo das ferramentas do site.
+- **Causa:** o app em React (`novo/`) usa o mesmo CSS (`web/src/estilo*.ts`) e alguns módulos comuns (a escala dos gráficos saiu de `web/src/app/graficos/` para `web/src/graficos/`). Mudou o CSS ou um módulo que o app importa, o build do app muda também. Rodei só o `npm run site`.
+- **Solução:** mexeu em `web/`, rode os dois: `npm run site` **e** `npm run app`, e faça o commit de `site/` e `novo/` juntos. O mesmo PR também caiu no `ruff format` (linhas longas num teste): rodar `ruff format` nos arquivos Python mudados antes do push.
+- **Data:** 14/10/2026 (PR #254)
+
+## O CI do PR não roda depois de um push novo
+- **Sintoma:** o push chega ao GitHub (o PR mostra o commit novo), mas nenhum "Testes e ruff" começa; `gh pr view --json mergeable` diz `UNKNOWN`.
+- **Causa:** a `main` andou e mexeu no mesmo arquivo (aqui, `tests/test_base_dicionario.py`): com conflito, o GitHub **não dispara** o evento `pull_request`.
+- **Solução:** `git merge-tree --write-tree --name-only HEAD origin/main` mostra o conflito sem mexer em nada; juntar a `main` no ramo (`git merge origin/main`), resolver, rodar os testes do arquivo e subir. O CI volta a rodar.
+- **Data:** 14/10/2026
+
+## Uma tabela da base aparecia em dobro depois da primeira carga mensal
+- **Sintoma:** a ligação dos bancos de 2026-06 tinha cada instituição duas vezes (11.730 linhas em vez de 5.865).
+- **Causa:** a montagem lia `glob("[0-9]*.parquet")`, e o padrão também pega as versões guardadas (`202506.v1.parquet`). As versões tinham nascido falsas: o BC devolve o cadastro com outros bytes e o mesmo conteúdo, e a regra de versões olhava só o SHA-256 do arquivo de origem.
+- **Solução:** ler só o arquivo cujo nome é a data (`re.fullmatch(r"\d{6}", arquivo.stem)`), e criar versão só quando o **conteúdo** muda (`sha256_da_tabela`), não quando os bytes do original mudam (#266). Toda leitura de uma pasta com versões precisa filtrar o nome.
+- **Data:** 14/10/2026
