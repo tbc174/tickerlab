@@ -1458,6 +1458,8 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+
+
 # módulo, chaves, apelidos das três datas (`aconteceu_em`: quando o fato ocorreu; `publico_em`: quando
 # ficou público; `coletado_em`: quando a base o guardou), `historico_desde` e granularidade do
 # `publico_em`; só colunas que já existem, sem inventar data onde a fonte não dá
