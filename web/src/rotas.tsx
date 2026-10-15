@@ -12,6 +12,7 @@ import {
   DADOS_DA_RENDA_FIXA,
   DADOS_DA_RENDA,
   DADOS_DA_SORTE,
+  DADOS_DO_QUANTO_DARIA,
   DADOS_DOS_JUROS,
   PaginaDaRenda,
   PaginaDaSorte,
@@ -22,6 +23,7 @@ import {
   PaginaDoConversor,
   PaginaDoDarf,
   PaginaDoJuroReal,
+  PaginaDoQuantoDaria,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
@@ -91,6 +93,7 @@ export const ROTAS: Rota[] = [
     dados: DADOS_DA_INFLACAO,
     conteudo: () => <PaginaDaInflacao />,
   },
+  { arquivo: "quanto-daria.html", dados: DADOS_DO_QUANTO_DARIA, conteudo: () => <PaginaDoQuantoDaria /> },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },

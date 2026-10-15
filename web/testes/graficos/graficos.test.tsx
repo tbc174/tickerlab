@@ -218,3 +218,27 @@ describe("geometria das barras", () => {
     expect(geometriaDasBarras(700, true).compacto).toBe(false);
   });
 });
+
+describe("faixa de posição", () => {
+  it("pior na esquerda, mediana no meio, melhor na direita e a sua no percentil dela", async () => {
+    const { FaixaDePosicao } = await import("../../src/graficos/FaixaDePosicao");
+    const { container } = render(
+      <FaixaDePosicao
+        titulo="Foi sorte?"
+        pior={687}
+        mediana={2097}
+        melhor={691020}
+        sua={1579}
+        abaixoDaSua={0.258}
+        formatarValor={formatarReais}
+      />,
+    );
+    const x = (marca: string) => Number(container.querySelector(`[data-marca="${marca}"]`)?.getAttribute("data-posicao"));
+    expect(x("pior")).toBe(0);
+    expect(x("mediana")).toBe(0.5);
+    expect(x("melhor")).toBe(1);
+    expect(x("sua")).toBeCloseTo(0.258, 9);
+    expect(container.textContent).toContain(formatarReais(691020));
+    expect(container.querySelector("figcaption")?.textContent).toContain("26% das datas dariam menos");
+  });
+});
