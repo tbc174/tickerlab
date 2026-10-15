@@ -8,6 +8,7 @@ cada original) e a versão do código que gravou. `conferir_tabela` diz se o Par
 """
 
 import hashlib
+import io
 import json
 import logging
 import os
@@ -43,6 +44,15 @@ def hash_da_tabela(tabela: pd.DataFrame, ordem: list[str]) -> str:
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
 
 
+def como_no_disco(tabela: pd.DataFrame) -> pd.DataFrame:
+    """A tabela como volta do Parquet. O hash é sempre deste jeito: uma coluna `object` com float do
+    Python (`1.0`) volta como float64 (`1`), e o hash feito na memória não conferia com o arquivo."""
+    memoria = io.BytesIO()
+    tabela.to_parquet(memoria, index=False)
+    memoria.seek(0)
+    return pd.read_parquet(memoria)
+
+
 def gravar_tabela(
     tabela: pd.DataFrame,
     destino: Path,
@@ -60,7 +70,7 @@ def gravar_tabela(
     gravar_atomico(arquivo, lambda caminho: tabela.to_parquet(caminho, index=False))
     manifesto = {
         "linhas": len(tabela),
-        "sha256_da_tabela": hash_da_tabela(tabela, ordem),
+        "sha256_da_tabela": hash_da_tabela(ler_tabela(arquivo), ordem),
         "ordem": ordem,
         "origens": origens,
         "versao_do_codigo": versao_do_codigo(),
@@ -178,7 +188,7 @@ def gravar_com_versoes(
         return IGUAL
     tabela = montar()
     if anteriores is not None:
-        if _hash_gravado(destino) == hash_da_tabela(tabela, ordem):
+        if _hash_gravado(destino) == hash_da_tabela(como_no_disco(tabela), ordem):
             if any(e_tabela_da_base(o["url"]) for o in origens):
                 gravar_tabela(tabela, destino, origens, ordem)
             return IGUAL
@@ -218,7 +228,8 @@ def gravar_se_mudou(
     - só linhas novas: regrava sem versão (`ACRESCIDO`), porque o passado não mudou;
     - uma linha antiga mudou ou sumiu: a tabela anterior vira `.vN` e a nova é gravada (`GRAVADO`).
       Com `versoes=False` (cripto, onde "a última vence" de propósito a cada rodada) só regrava.
-    Tabela gravada antes do manifesto ganha o manifesto na primeira remontagem.
+    Tabela gravada antes do manifesto, ou com manifesto que não confere, ganha um certo na primeira
+    remontagem.
     """
     destino = destino.with_suffix("")  # aceita `2024` ou `2024.parquet`
     arquivo = destino.with_suffix(".parquet")
@@ -226,11 +237,13 @@ def gravar_se_mudou(
         gravar_tabela(tabela, destino, origens, ordem)
         return GRAVADO
     antes = _sem_carimbos(ler_tabela(arquivo), carimbos)
-    agora = _sem_carimbos(tabela, carimbos)
+    agora = _sem_carimbos(como_no_disco(tabela), carimbos)
     if set(antes.columns) == set(agora.columns) and hash_da_tabela(
         antes[list(agora.columns)], ordem
     ) == hash_da_tabela(agora, ordem):
-        if destino.with_suffix(".json").exists():
+        if conferir_tabela(
+            arquivo
+        ):  # manifesto que não confere (ou falta) é refeito, sem versão
             return IGUAL
         gravar_tabela(tabela, destino, origens, ordem)
         return GRAVADO
