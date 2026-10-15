@@ -4,6 +4,8 @@ exploradores do Bitcoin são dublês: o teste não usa a internet."""
 
 import hashlib
 import json
+import os
+from datetime import datetime, timedelta
 
 import pandas as pd
 import pytest
@@ -195,3 +197,179 @@ def test_explorador_fora_do_ar_vira_aviso(ancora, base):
     resultado = ab.conferir(ancora, recibo, pasta=base, arquivos=[], bloco=fora_do_ar)
     assert resultado.confirmado_em is None
     assert any("não concordam" in aviso for aviso in resultado.avisos)
+
+
+# --- rotina noturna (`noite`) --------------------------------------------------------------------
+AGORA = datetime(2026, 10, 16, 0, 15, tzinfo=ab.BRASILIA)
+
+
+@pytest.fixture
+def rotulos(tmp_path):
+    pasta = tmp_path / "rotulos_ia" / "v1"
+    pasta.mkdir(parents=True)
+    (pasta / "rotulos.jsonl").write_text('{"evento_id": "1"}\n', encoding="utf-8")
+    lotes = [
+        {"id": "msgbatch_A", "estado": "gravado"},
+        {"id": "msgbatch_B", "estado": "enviado"},
+    ]
+    (pasta / "manifesto.json").write_text(
+        json.dumps({"lotes": lotes}), encoding="utf-8"
+    )
+    return pasta
+
+
+def _noite(tmp_path, base, rotulos=None, agora=AGORA, calendarios=None):
+    calendarios = calendarios or Calendarios()
+    return ab.noite(
+        tmp_path / "ancoras",
+        pasta=base,
+        rotulos=rotulos,
+        agora=agora,
+        enviar=calendarios.enviar,
+        buscar=calendarios.buscar,
+    )
+
+
+def _nomes(pasta):
+    return sorted(p.name for p in pasta.iterdir())
+
+
+def test_noite_ancora_base_nova(tmp_path, base):
+    feito = _noite(tmp_path, base)
+    assert _nomes(tmp_path / "ancoras") == [
+        "base-2026-10-16.json",
+        "base-2026-10-16.json.ots",
+    ]
+    assert feito.carimbadas == ["base-2026-10-16.json"] and feito.problemas == []
+    ancora = json.loads(
+        (tmp_path / "ancoras" / "base-2026-10-16.json").read_text("utf-8")
+    )
+    assert ab.diferencas_de_hoje(ancora, base, []) == []
+
+
+def test_noite_nao_ancora_base_igual(tmp_path, base):
+    _noite(tmp_path, base)
+    feito = _noite(tmp_path, base, agora=AGORA + timedelta(days=1))
+    assert feito.carimbadas == []
+    assert not (tmp_path / "ancoras" / "base-2026-10-17.json").exists()
+
+
+def test_noite_ancora_base_que_mudou_no_dia_seguinte(tmp_path, base):
+    _noite(tmp_path, base)
+    gravar_tabela(
+        pd.DataFrame({"cnpj": ["9"], "valor": [9]}),
+        base / "cda" / "fundos",
+        [],
+        ["cnpj"],
+    )
+    feito = _noite(tmp_path, base, agora=AGORA + timedelta(days=1))
+    assert feito.carimbadas == ["base-2026-10-17.json"]
+
+
+def test_noite_nao_faz_duas_ancoras_no_mesmo_dia(tmp_path, base):
+    _noite(tmp_path, base)
+    antes = (tmp_path / "ancoras" / "base-2026-10-16.json").read_bytes()
+    gravar_tabela(
+        pd.DataFrame({"cnpj": ["9"], "valor": [9]}),
+        base / "cda" / "fundos",
+        [],
+        ["cnpj"],
+    )
+    feito = _noite(tmp_path, base, agora=AGORA + timedelta(hours=3))
+    assert feito.carimbadas == []
+    assert (tmp_path / "ancoras" / "base-2026-10-16.json").read_bytes() == antes
+
+
+def test_noite_carimba_ancora_que_ficou_sem_recibo(tmp_path, base):
+    sem_calendario = Calendarios(falham=ab.CALENDARIOS)
+    feito = _noite(tmp_path, base, calendarios=sem_calendario)
+    assert feito.carimbadas == []
+    assert any("base-2026-10-16.json sem recibo" in p for p in feito.problemas)
+    depois = _noite(tmp_path, base, agora=AGORA + timedelta(days=1))
+    assert depois.carimbadas == ["base-2026-10-16.json"]
+    assert (tmp_path / "ancoras" / "base-2026-10-16.json.ots").exists()
+
+
+def test_noite_nao_sobrescreve_recibo(tmp_path, base):
+    _noite(tmp_path, base)
+    recibo = tmp_path / "ancoras" / "base-2026-10-16.json.ots"
+    compromisso = ab.ler_recibo(recibo).file_digest
+    _noite(tmp_path, base, agora=AGORA + timedelta(minutes=5))
+    # o atualizar acrescenta o caminho até o bloco, mas o recibo continua sendo desta âncora
+    assert ab.ler_recibo(recibo).file_digest == compromisso
+
+
+def test_noite_recusa_tabela_de_pessoas_pequena(tmp_path, base):
+    gravar_tabela(
+        pd.DataFrame({"cnpj": ["1"], "valor": [1]}),
+        base / "pessoas" / "socios",
+        [],
+        ["cnpj"],
+    )
+    feito = _noite(tmp_path, base)
+    assert feito.carimbadas == []
+    assert any("pessoas/socios" in p for p in feito.problemas)
+    assert not (tmp_path / "ancoras").exists() or _nomes(tmp_path / "ancoras") == []
+
+
+def test_noite_ancora_cada_lote_gravado_uma_vez(tmp_path, rotulos):
+    feito = _noite(tmp_path, None, rotulos=rotulos)
+    assert feito.carimbadas == ["rotulos-msgbatch_A.json"]
+    ancora = json.loads(
+        (tmp_path / "ancoras" / "rotulos-msgbatch_A.json").read_text("utf-8")
+    )
+    assert [f["nome"] for f in ancora["folhas"]] == [
+        "arquivos/manifesto.json",
+        "arquivos/rotulos.jsonl",
+    ]
+    assert ancora["rotulo"] == "lote msgbatch_A"
+    assert (
+        _noite(
+            tmp_path, None, rotulos=rotulos, agora=AGORA + timedelta(days=1)
+        ).carimbadas
+        == []
+    )
+
+
+def test_noite_nao_ancora_lote_enviado(tmp_path, rotulos):
+    _noite(tmp_path, None, rotulos=rotulos)
+    assert not (tmp_path / "ancoras" / "rotulos-msgbatch_B.json").exists()
+
+
+def test_noite_atualiza_os_pendentes(tmp_path, base):
+    _noite(tmp_path, base)
+    feito = _noite(tmp_path, base, agora=AGORA + timedelta(days=1))
+    assert feito.no_bitcoin == ["base-2026-10-16.json.ots"]
+    assert _noite(tmp_path, base, agora=AGORA + timedelta(days=2)).no_bitcoin == []
+
+
+class SemBloco(Calendarios):
+    def buscar(self, _uri, _compromisso):
+        return None
+
+
+def _envelhecer(arquivo, dias):
+    antes = (AGORA - timedelta(days=dias)).timestamp()
+    os.utime(arquivo, (antes, antes))
+
+
+def test_noite_avisa_recibo_pendente_ha_mais_de_2_dias(tmp_path, base):
+    _noite(tmp_path, base, calendarios=SemBloco())
+    _envelhecer(tmp_path / "ancoras" / "base-2026-10-16.json", 3)
+    feito = _noite(tmp_path, base, calendarios=SemBloco())
+    assert feito.problemas == ["base-2026-10-16.json.ots pendente há 3 dias"]
+
+
+def test_noite_nao_avisa_antes_de_2_dias(tmp_path, base):
+    _noite(tmp_path, base, calendarios=SemBloco())
+    _envelhecer(tmp_path / "ancoras" / "base-2026-10-16.json", 1)
+    assert _noite(tmp_path, base, calendarios=SemBloco()).problemas == []
+
+
+def test_main_noite_sai_1_com_linha_falhas(tmp_path, base, monkeypatch, capsys):
+    monkeypatch.setattr(ab, "_enviar", Calendarios(falham=ab.CALENDARIOS).enviar)
+    codigo = ab.main(
+        ["noite", "--ancoras", str(tmp_path / "ancoras"), "--pasta", str(base)]
+    )
+    assert codigo == 1
+    assert "FALHAS: base-" in capsys.readouterr().out

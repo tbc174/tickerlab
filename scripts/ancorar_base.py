@@ -8,6 +8,11 @@ a raiz de Merkle vem de `base/ancoragem.py`).
     python -m scripts.ancorar_base conferir ancoras/base-2026-10-15.json --pasta <acervo>/base
     python -m scripts.ancorar_base provar ancoras/base-2026-10-15.json fca/emissores --saida prova.json
     python -m scripts.ancorar_base conferir-prova prova.json <acervo>/base/fca/emissores.json
+    python -m scripts.ancorar_base noite --ancoras ancoras --pasta <acervo>/base --rotulos <acervo>/rotulos_ia/v1
+
+`noite` é a rotina do cron (servidor de casa, 0h15): âncora da base se ela mudou (no máximo uma por
+dia), uma por lote de rótulos gravado, `carimbar` do que está sem recibo, `atualizar` dos pendentes e
+uma linha `FALHAS:` (saída 1) para recibo pendente há mais de 2 dias.
 
 **O que sai da máquina:** no `carimbar`, só um hash de 32 bytes por calendário: o SHA-256 da âncora
 com 16 bytes aleatórios no fim (o "sal"), passado de novo pelo SHA-256. Nem o hash da âncora sai. No
@@ -24,10 +29,11 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sys
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -262,6 +268,103 @@ def conferir(
     return resultado
 
 
+# --- rotina noturna -------------------------------------------------------------------------------
+PRAZO_DO_BLOCO = timedelta(days=2)  # recibo sem bloco depois disso vai para o Kuma
+BASE_DO_DIA = re.compile(r"^base-\d{4}-\d{2}-\d{2}\.json$")
+
+
+@dataclass
+class Noite:
+    carimbadas: list[str] = field(default_factory=list)
+    no_bitcoin: list[str] = field(default_factory=list)
+    problemas: list[str] = field(default_factory=list)
+
+
+def _nome_do_lote(lote_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_-]", "_", lote_id)
+
+
+def _ancorar_base_do_dia(ancoras: Path, pasta: Path, dia: str, feito: Noite) -> None:
+    """Uma âncora por dia, e só se a base mudou desde a última (ADR 0078, item 3)."""
+    destino = ancoras / f"base-{dia}.json"
+    if destino.exists():
+        return
+    anteriores = sorted(
+        p for p in ancoras.glob("base-*.json") if BASE_DO_DIA.match(p.name)
+    )
+    try:
+        if anteriores and not diferencas_de_hoje(_ler_json(anteriores[-1]), pasta, []):
+            log.info("base igual à %s: sem âncora nova", anteriores[-1].name)
+            return
+        montar(destino, dia, pasta, [])
+    except ValueError as erro:  # a regra da LGPD recusou uma tabela: para e avisa
+        feito.problemas.append(f"base não ancorada: {erro}")
+
+
+def _ancorar_lotes(ancoras: Path, rotulos: Path, feito: Noite) -> None:
+    """Uma âncora para cada lote de rótulos já gravado (ADR 0078, item 1; ADR 0072)."""
+    arquivos = [rotulos / "manifesto.json", rotulos / "rotulos.jsonl"]
+    if not all(arquivo.exists() for arquivo in arquivos):
+        feito.problemas.append(
+            f"rótulos sem {', '.join(a.name for a in arquivos)} em {rotulos}"
+        )
+        return
+    for lote in _ler_json(rotulos / "manifesto.json").get("lotes", []):
+        destino = ancoras / f"rotulos-{_nome_do_lote(lote['id'])}.json"
+        if lote.get("estado") == "gravado" and not destino.exists():
+            montar(destino, f"lote {lote['id']}", None, arquivos)
+
+
+def _completo(recibo: Path) -> bool:
+    return bool(_no_bitcoin(ler_recibo(recibo).timestamp))
+
+
+def noite(
+    ancoras: Path,
+    pasta: Path | None,
+    rotulos: Path | None,
+    agora: datetime,
+    enviar: Enviar = _enviar,
+    buscar: Buscar = _buscar,
+) -> Noite:
+    """A rotina do cron: monta as âncoras novas, carimba as que estão sem recibo, pede o bloco das
+    pendentes e anota como problema o recibo pendente há mais de `PRAZO_DO_BLOCO`."""
+    feito = Noite()
+    ancoras.mkdir(parents=True, exist_ok=True)
+    if pasta is not None:
+        _ancorar_base_do_dia(
+            ancoras, pasta, agora.astimezone(BRASILIA).date().isoformat(), feito
+        )
+    if rotulos is not None:
+        _ancorar_lotes(ancoras, rotulos, feito)
+
+    for ancora in sorted(ancoras.glob("*.json")):
+        if _recibo_de(ancora).exists():
+            continue
+        try:
+            carimbar(ancora, enviar)
+            feito.carimbadas.append(ancora.name)
+        except (
+            RuntimeError
+        ) as erro:  # poucos calendários: tenta de novo na próxima noite
+            feito.problemas.append(f"{ancora.name} sem recibo: {erro}")
+
+    for recibo in sorted(ancoras.glob("*.json.ots")):
+        if recibo.name.removesuffix(".ots") in feito.carimbadas or _completo(recibo):
+            continue
+        if atualizar(recibo, buscar):
+            feito.no_bitcoin.append(recibo.name)
+            continue
+        montada_em = datetime.fromtimestamp(
+            recibo.with_suffix("").stat().st_mtime, tz=BRASILIA
+        )
+        if agora - montada_em > PRAZO_DO_BLOCO:
+            feito.problemas.append(
+                f"{recibo.name} pendente há {(agora - montada_em).days} dias"
+            )
+    return feito
+
+
 # --- linha de comando -----------------------------------------------------------------------------
 def _ler_json(caminho: Path) -> Any:  # noqa: ANN401 (JSON lido do disco)
     return json.loads(caminho.read_text(encoding="utf-8"))
@@ -322,6 +425,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     cp.add_argument("prova", type=Path)
     cp.add_argument("manifesto", type=Path)
+    n = comandos.add_parser(
+        "noite", help="rotina do cron: âncoras novas, recibos e alarme dos pendentes"
+    )
+    n.add_argument("--ancoras", type=Path, required=True)
+    n.add_argument("--pasta", type=Path, help="pasta da base")
+    n.add_argument(
+        "--rotulos", type=Path, help="pasta dos rótulos da IA (rotulos_ia/v1)"
+    )
     args = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -340,6 +451,23 @@ def main(argv: list[str] | None = None) -> int:
         )
         _mostrar(resultado)
         return 0 if resultado.ok else 1
+    elif args.comando == "noite":
+        feito = noite(
+            args.ancoras,
+            args.pasta,
+            args.rotulos,
+            datetime.now(BRASILIA),
+            _enviar,
+            _buscar,
+        )
+        for nome in feito.carimbadas:
+            print("carimbada:", nome)
+        for nome in feito.no_bitcoin:
+            print("no Bitcoin:", nome)
+        if feito.problemas:
+            print("FALHAS: " + "; ".join(feito.problemas))
+            return 1
+        print("âncoras em dia")
     elif args.comando == "provar":
         prova = an.prova_da_tabela(_ler_json(args.ancora), args.nome)
         args.saida.write_text(
