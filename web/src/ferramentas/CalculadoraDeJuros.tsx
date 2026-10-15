@@ -2,6 +2,7 @@
 // do que foi aplicado e dos juros, cenário B para comparar, o valor em reais de hoje e depois do IR,
 // deslizantes e a simulação guardada no endereço.
 import { Compartilhar } from "./Compartilhar";
+import { atalhosDeInflacao, atalhosDeJuros } from "./atalhos";
 import { Alternativas, CampoComDeslizante, CampoDeNumero, Escolha, Resultado } from "./campos";
 import {
   type Linha,
@@ -13,6 +14,7 @@ import {
   montante,
   taxaPorMes,
 } from "./contas/juros";
+import { useDadosOpcionais } from "./dados";
 import { useCamposNoEndereco } from "./endereco";
 import { formatarNumero, formatarPorcentagem, formatarReais, formatarReaisCurto, lerNumero } from "./numeros";
 import { SERIES } from "../graficos/cores";
@@ -95,6 +97,8 @@ function prazoPorExtenso(campos: Campos): string {
 
 export function CalculadoraDeJuros() {
   const [campos, mudar] = useCamposNoEndereco(EXEMPLO_DE_JUROS, OPCOES);
+  const dados = useDadosOpcionais();
+  const hoje = new Date();
   const conta = calcularJuros(campos);
   const erro = typeof conta === "string" ? conta : null;
   const capital = lerNumero(campos.capital) ?? 0;
@@ -134,6 +138,7 @@ export function CalculadoraDeJuros() {
           min={0}
           max={campos.unidadeDaTaxa === "ano" ? 30 : 3}
           passo={campos.unidadeDaTaxa === "ano" ? 0.5 : 0.05}
+          atalhos={dados && campos.unidadeDaTaxa === "ano" ? atalhosDeJuros(dados, hoje) : []}
           depois={
             <>
               <span aria-hidden="true">%</span>
@@ -169,10 +174,14 @@ export function CalculadoraDeJuros() {
           ]}
           aoMudar={mudar("tipo")}
         />
-        <CampoDeNumero
+        <CampoComDeslizante
           rotulo="Inflação esperada"
           valor={campos.inflacao}
           aoMudar={mudar("inflacao")}
+          min={0}
+          max={15}
+          passo={0.25}
+          atalhos={dados ? atalhosDeInflacao(dados, hoje) : []}
           depois={<span>% ao ano</span>}
           dica="Para mostrar quanto o valor final compra em dinheiro de hoje."
         />
