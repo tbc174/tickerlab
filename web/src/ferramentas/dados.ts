@@ -49,10 +49,10 @@ export function useDadosDoBc(): Carga {
   const [carga, setCarga] = useState<Carga>({ estado: "carregando" });
   useEffect(() => {
     let ativo = true;
-    fetch(ENDERECO_DOS_DADOS)
-      .then((resposta) => (resposta.ok ? (resposta.json() as Promise<DadosDoBc>) : Promise.reject()))
-      .then((dados) => ativo && setCarga({ estado: "pronto", dados }))
-      .catch(() => ativo && setCarga({ estado: "indisponivel" }));
+    // a mesma busca dos atalhos (carregarDadosDoBc): o arquivo vem uma vez por página
+    carregarDadosDoBc().then((dados) => {
+      if (ativo) setCarga(dados ? { estado: "pronto", dados } : { estado: "indisponivel" });
+    });
     return () => {
       ativo = false;
     };
