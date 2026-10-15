@@ -260,6 +260,41 @@ As posições em ações de todos os fundos registrados na CVM, por mês, desde 
 | `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
 | `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
 
+## `carteiras_bloco_8`
+
+As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA ("demais ativos não codificados"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa: em 2020, R$ 1,14 tri (soma dos meses) em ações de companhias com ticker, ~26% a mais sobre o bloco 4, quase nada repetido entre os blocos. Emissor pessoa física nunca entra (o CPF é descartado na leitura). Um Parquet por ano, com versões
+
+- **Fonte:** CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 8
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
+- **Atraso de divulgação:** O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cnpj_fundo`, `tipo`, `cnpj_emissor`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`, na mesma carga do CDA)
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (os mesmos do bloco 4) e a versão do código que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira (último dia) | data (dia) |
+| `cnpj_fundo` | CNPJ do fundo (ou da classe, depois da CVM 175) | texto |
+| `tipo_do_fundo` | Tipo do fundo como a CVM informa | texto |
+| `fundo` | Nome do fundo (pessoa jurídica) | texto |
+| `tipo` | comprado, emprestado ou vendido | texto |
+| `tipo_do_ativo` | Ação ordinária, ação preferencial... como o fundo informa | texto |
+| `cnpj_emissor` | CNPJ do emissor que o fundo informa (só pessoa jurídica) | texto |
+| `nome_do_emissor` | Nome do emissor como o fundo escreve | texto |
+| `descricao` | Descrição do ativo ("PETR3 - PETROBRAS") | texto |
+| `quantidade` | Quantidade no fim do mês | ações |
+| `valor` | Valor de mercado no fim do mês | reais (R$), já multiplicado pela escala informada |
+| `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
+| `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
+| `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
+
 ## `fidc_informe`
 
 O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as três abaixo. Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)
@@ -356,7 +391,7 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 - **Chaves:** `competencia`, `emissor`, `tipo`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, `cobertura` e `buracos` (servidor de casa, `scripts/montar_painel_dos_fundos.py`)
 - **Linhagem:** O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
@@ -372,6 +407,9 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 | `compras` | Valor comprado no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `vendas` | Valor vendido no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o total era público (como era na data) | data (dia) |
+| `fundos_no_bloco_8` | Só no painel por empresa: quantos fundos informaram a ação no bloco 8 (demais ativos, pelo CNPJ do emissor) | número inteiro |
+| `valor_no_bloco_8` | Só no painel por empresa: valor de mercado no bloco 8; as colunas sem o sufixo são só o bloco 4 | reais (R$), já multiplicado pela escala informada |
+| `quantidade_no_bloco_8` | Só no painel por empresa: quantidade no bloco 8 | ações |
 
 ## `cobertura_dos_fundos`
 

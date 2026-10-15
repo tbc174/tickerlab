@@ -108,3 +108,32 @@ def test_linhagem_do_ano_e_completa(ambiente):
             assert linhagem_da_tabela(c, pasta / "2025.parquet").completa
     finally:
         motor.dispose()
+
+
+def test_ano_grava_tambem_as_acoes_do_bloco_8(ambiente):
+    """Achado da série 4: as ações que os fundos informam no bloco 8 vão para `cda_bloco_8/<ano>`,
+    ao lado do CDA, com manifesto, "como era na data" e linhagem até o arquivo da CVM."""
+    from base.linhagem import linhagem_da_tabela
+    from src.banco.conexao import criar_engine
+
+    pasta, _, _ = ambiente
+    assert (
+        carga_cda.main(["--pasta", str(pasta), "--desde", "2016", "--ate", "2016"]) == 0
+    )
+    arquivo = pasta.parent / "cda_bloco_8" / "2016.parquet"
+    assert conferir_tabela(arquivo)
+    tabela = pd.read_parquet(arquivo)
+    assert set(tabela["cnpj_emissor"]) == {"33.000.167/0001-01"}
+    assert (
+        tabela["disponivel_em"] >= tabela["competencia"] + pd.Timedelta(days=90)
+    ).all()
+    motor = criar_engine()
+    try:
+        with motor.connect() as c:
+            assert linhagem_da_tabela(c, arquivo).completa
+    finally:
+        motor.dispose()
+    # ano sem o bloco 8 no arquivo: tabela vazia, com as colunas
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2005", "--ate", "2005"])
+    vazio = pd.read_parquet(pasta.parent / "cda_bloco_8" / "2005.parquet")
+    assert vazio.empty and "cnpj_emissor" in vazio.columns

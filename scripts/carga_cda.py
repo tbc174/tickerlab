@@ -15,6 +15,9 @@ pedido por vez.
   no lugar; nada é apagado.
 - Recusa rodar sem a versão do código (exigência 13 da ADR 0055). Feita para o servidor de casa: o
   ano mais pesado (2022) ocupa ~320 MB de memória.
+- **Bloco 8** (achado da série 4): as ações que os fundos informam como "demais ativos", com o CNPJ do
+  emissor, vão para `<pasta>/../cda_bloco_8/<ano>.parquet`, com as mesmas regras (versões, "como era
+  na data"). Pessoa física nunca entra (`base/cda.py::ler_acoes_do_bloco_8`).
 """
 
 import argparse
@@ -46,6 +49,8 @@ MESES = range(1, 13)
 NAO_ENCONTRADO = 404
 SUBPASTA = Path("base") / "cda"
 ORDEM = ["competencia", "cnpj_fundo", "isin", "tipo"]
+ORDEM_DO_BLOCO_8 = ["competencia", "cnpj_fundo", "cnpj_emissor", "tipo"]
+PASTA_DO_BLOCO_8 = "cda_bloco_8"  # ao lado da pasta do CDA
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
@@ -87,6 +92,30 @@ def montar_ano(lidos: list[tuple[str, bytes]]) -> pd.DataFrame:
     return tabela.assign(disponivel_em=cda.disponivel_em(tabela))
 
 
+def montar_bloco_8(lidos: list[tuple[str, bytes]]) -> pd.DataFrame:
+    partes = [p for _, c in lidos for p in cda.ler_acoes_do_bloco_8(c)]
+    tabela = (
+        pd.concat(partes, ignore_index=True)
+        if partes
+        else pd.DataFrame(columns=list(cda.COLUNAS_DO_BLOCO_8))
+    )
+    for coluna in ("competencia", "confidencial_ate"):
+        tabela[coluna] = pd.to_datetime(tabela[coluna])
+    return tabela.assign(disponivel_em=cda.disponivel_em(tabela))
+
+
+def carregar_bloco_8(lidos: list[tuple[str, bytes]], ano: int, pasta: Path) -> str:
+    def montar() -> pd.DataFrame:
+        tabela = montar_bloco_8(lidos)
+        log.info(
+            "Bloco 8 de %s: %s posições em ações com CNPJ do emissor", ano, len(tabela)
+        )
+        return tabela
+
+    destino = pasta.parent / PASTA_DO_BLOCO_8 / str(ano)
+    return gravar_com_versoes(montar, destino, _origens(lidos), ORDEM_DO_BLOCO_8)
+
+
 def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
     """Grava o ano e diz o que aconteceu: "gravado", "igual" (pulado) ou "sem arquivo"."""
     lidos = ler_ano(conexao, ano)
@@ -99,7 +128,9 @@ def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
         log.info("CDA de %s: %s posições de %s fundos", ano, len(tabela), fundos)
         return tabela
 
-    return gravar_com_versoes(montar, pasta / str(ano), _origens(lidos), ORDEM)
+    resultado = gravar_com_versoes(montar, pasta / str(ano), _origens(lidos), ORDEM)
+    log.info("Bloco 8 de %s: %s", ano, carregar_bloco_8(lidos, ano, pasta))
+    return resultado
 
 
 def main(argv: list[str] | None = None) -> int:
