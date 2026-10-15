@@ -363,3 +363,16 @@ def test_versoes_a_buscar_so_nos_anos_com_troca_de_codigo(valores):
     assert PETROBRAS not in set(alvo["cnpj"])
     assert (alvo["referencia"].dt.year >= fca.PRIMEIRO_ANO_COM_TICKER).all()
     assert fca.URL_DA_VERSAO.format(id_documento="108846", versao=3) in set(alvo["url"])
+
+
+def test_linhas_iguais_do_mesmo_documento_continuam(valores):
+    """Duas séries de debêntures iguais no mesmo documento são duas linhas: juntar as versões e as
+    baixadas não pode apagá-las (achado ao recarregar no servidor: 13.066 viraram 12.982 linhas)."""
+    repetida = valores.iloc[[0]]
+    abertos = pd.concat([valores, repetida], ignore_index=True)
+    assert len(fca.juntar_versoes(abertos, valores.iloc[0:0])) == len(abertos)
+    mais_nova, mais_antiga = abertos, abertos.iloc[: len(valores) // 2]
+    juntas = fca.sem_documento_repetido([mais_nova, mais_antiga])
+    assert len(juntas) == len(
+        abertos
+    )  # cada documento vem de uma baixada só, com todas as linhas
