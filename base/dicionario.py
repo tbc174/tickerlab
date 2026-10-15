@@ -493,6 +493,58 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "carteiras_bloco_8": Tabela(
+        descricao=(
+            "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA "
+            '("demais ativos não codificados"), sem o código estruturado, com o CNPJ do emissor que o '
+            "próprio fundo informa: em 2020, R$ 1,14 tri (soma dos meses) em ações de companhias com "
+            "ticker, ~26% a mais sobre o bloco 4, quase nada repetido entre os blocos. Emissor pessoa "
+            "física nunca entra (o CPF é descartado na leitura). Um Parquet por ano, com versões"
+        ),
+        fonte="CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 8",
+        familia_da_fonte="cvm",
+        frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+        atraso=(
+            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+        ),
+        onde=(
+            "Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, "
+            "`scripts/carga_cda.py`, na mesma carga do CDA)"
+        ),
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA "
+            "usado (os mesmos do bloco 4) e a versão do código que gravou."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira (último dia)", DATA),
+            "cnpj_fundo": ("CNPJ do fundo (ou da classe, depois da CVM 175)", TEXTO),
+            "tipo_do_fundo": ("Tipo do fundo como a CVM informa", TEXTO),
+            "fundo": ("Nome do fundo (pessoa jurídica)", TEXTO),
+            "tipo": ("comprado, emprestado ou vendido", TEXTO),
+            "tipo_do_ativo": (
+                "Ação ordinária, ação preferencial... como o fundo informa",
+                TEXTO,
+            ),
+            "cnpj_emissor": (
+                "CNPJ do emissor que o fundo informa (só pessoa jurídica)",
+                TEXTO,
+            ),
+            "nome_do_emissor": ("Nome do emissor como o fundo escreve", TEXTO),
+            "descricao": ('Descrição do ativo ("PETR3 - PETROBRAS")', TEXTO),
+            "quantidade": ("Quantidade no fim do mês", ACOES),
+            "valor": ("Valor de mercado no fim do mês", REAIS),
+            "compras": ("Valor comprado no mês", REAIS),
+            "vendas": ("Valor vendido no mês", REAIS),
+            "confidencial_ate": (
+                "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando a posição era pública (como era na data)",
+                DATA,
+            ),
+        },
+    ),
     "fidc_informe": Tabela(
         descricao=(
             "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e "
@@ -635,6 +687,24 @@ TABELAS: dict[str, Tabela] = {
             "disponivel_em": (
                 "Desde quando o total era público (como era na data)",
                 DATA,
+            ),
+            "fundos_no_bloco_8": (
+                (
+                    "Só no painel por empresa: quantos fundos informaram a ação no bloco 8 (demais "
+                    "ativos, pelo CNPJ do emissor)"
+                ),
+                NUMERO,
+            ),
+            "valor_no_bloco_8": (
+                (
+                    "Só no painel por empresa: valor de mercado no bloco 8; as colunas sem o sufixo são "
+                    "só o bloco 4"
+                ),
+                REAIS,
+            ),
+            "quantidade_no_bloco_8": (
+                "Só no painel por empresa: quantidade no bloco 8",
+                ACOES,
             ),
         },
     ),
@@ -1586,9 +1656,10 @@ _CONTRATO = {
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
     "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
-    "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
     "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "emissores_antigos": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),

@@ -12,6 +12,7 @@ import { SEMENTE_INICIAL } from "./SorteEmSerie";
 import { formatarDecimal } from "../app/formatar";
 import { formatarPorcentagem, formatarReais } from "./numeros";
 import { PaginaDeFerramenta } from "./Pagina";
+import { GraficoDaPrevia, PREVIAS } from "./previas";
 
 export interface FerramentaDoSite {
   arquivo: string;
@@ -90,6 +91,49 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     arquivo: "quanto-daria.html",
     nome: "Quanto daria? Foi sorte?",
     descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
+  },
+];
+
+export interface GrupoDaVitrine {
+  nome: string;
+  descricao: string;
+  arquivos: string[]; // de FERRAMENTAS_DO_SITE, cada uma num grupo só
+}
+
+export const GRUPOS_DA_VITRINE: GrupoDaVitrine[] = [
+  {
+    nome: "Planejar",
+    descricao: "Quanto juntar, quanto o tempo faz pelo dinheiro e quanto custa pagar a prazo.",
+    arquivos: [
+      "calculadora-de-juros-compostos.html",
+      "calculadora-de-aportes-e-metas.html",
+      "calculadora-viver-de-renda.html",
+      "simulador-de-financiamento.html",
+    ],
+  },
+  {
+    nome: "Comparar investimentos",
+    descricao: "O mesmo dinheiro em lugares diferentes, pelo mesmo prazo e já sem o imposto e as taxas.",
+    arquivos: ["calculadora-de-renda-fixa.html", "fundo-ou-cdb.html", "custo-das-taxas-e-da-queda.html"],
+  },
+  {
+    nome: "Impostos",
+    descricao: "O imposto sobre ações do mês e do ano, e o preço médio que a Receita pede.",
+    arquivos: ["calculadora-de-darf.html", "calculadora-de-preco-medio.html"],
+  },
+  {
+    nome: "Inflação e câmbio",
+    descricao: "Quanto um valor do passado vale hoje, quanto rende de verdade e quanto vale em outra moeda.",
+    arquivos: [
+      "calculadora-de-correcao-pela-inflacao.html",
+      "calculadora-de-juro-real.html",
+      "conversor-de-moedas.html",
+    ],
+  },
+  {
+    nome: "Sorte ou habilidade",
+    descricao: "Um resultado bom pode ser só sorte: duas formas de ver isso com os números.",
+    arquivos: ["sorte-em-serie.html", "quanto-daria.html"],
   },
 ];
 
@@ -645,6 +689,7 @@ export const DADOS_DA_VITRINE = {
 };
 
 export function Vitrine() {
+  const porArquivo = new Map(FERRAMENTAS_DO_SITE.map((f) => [f.arquivo, f]));
   return (
     <>
       <TopoDaPagina
@@ -652,19 +697,27 @@ export function Vitrine() {
         titulo="Ferramentas grátis"
         subtitulo="Calculadoras abertas para todos, sem cadastro, com cada conta explicada."
       />
-      <section className="faixa secao" aria-label="Ferramentas">
-        <div className="grade tres">
-          {FERRAMENTAS_DO_SITE.map((f) => (
-            <article className="cartao" key={f.arquivo}>
-              <h2 className="ferramenta-nome">{f.nome}</h2>
-              <p>{f.descricao}</p>
-              <a className="seta" href={`/${f.arquivo}`}>
-                Abrir a ferramenta
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
+      {GRUPOS_DA_VITRINE.map((grupo, k) => (
+        <section className="faixa secao vitrine-grupo" aria-labelledby={`grupo-${k}`} key={grupo.nome}>
+          <h2 id={`grupo-${k}`}>{grupo.nome}</h2>
+          <p className="apagado">{grupo.descricao}</p>
+          <div className={`grade ${grupo.arquivos.length === 4 ? "quatro" : "tres"}`}>
+            {grupo.arquivos.map((arquivo) => {
+              const f = porArquivo.get(arquivo)!;
+              return (
+                <article className="cartao cartao-de-ferramenta" key={arquivo}>
+                  <GraficoDaPrevia previa={PREVIAS[arquivo]()} />
+                  <h3 className="ferramenta-nome">{f.nome}</h3>
+                  <p>{f.descricao}</p>
+                  <a className="seta" href={`/${arquivo}`}>
+                    Abrir a ferramenta
+                  </a>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ))}
       <section className="faixa secao">
         <AnuncioDaCasa destino="ficha" ferramenta="vitrine" />
       </section>

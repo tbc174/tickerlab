@@ -52,6 +52,9 @@ def _origem_da_conferida(arquivo: Path) -> dict[str, str]:
     }
 
 
+PASTA_DO_BLOCO_8 = "cda_bloco_8"  # a mesma de `scripts/carga_cda.py`
+
+
 def anos_do_cda(raiz: Path) -> list[Path]:
     """Os Parquet de ano do CDA (`2008.parquet`), sem as versões anteriores (`2008.v1.parquet`)."""
     return sorted(p for p in (raiz / "cda").glob("*.parquet") if ANO.fullmatch(p.stem))
@@ -90,9 +93,17 @@ def montar(raiz: Path) -> int:
             lambda p=posicoes: ligacoes.painel_por_emissor(p),
             saida / "painel_emissor" / arquivo.stem, origens, ["competencia", "emissor", "tipo"],
         )  # fmt: skip
+        bloco_8 = raiz / PASTA_DO_BLOCO_8 / arquivo.name
+        da_empresa = origens
+        acoes_do_bloco_8 = None
+        if (
+            bloco_8.is_file()
+        ):  # o bloco 8 do ano (achado da série 4), se a carga do CDA já gravou
+            da_empresa = [*origens, _origem_de_tabela(bloco_8, raiz)]
+            acoes_do_bloco_8 = pd.read_parquet(bloco_8)
         gravar_com_versoes(
-            lambda p=posicoes: ligacoes.painel_por_empresa(p, ligacao),
-            saida / "painel_empresa" / arquivo.stem, origens, ["competencia", "cnpj", "tipo"],
+            lambda p=posicoes, b=acoes_do_bloco_8: ligacoes.painel_por_empresa(p, ligacao, b),
+            saida / "painel_empresa" / arquivo.stem, da_empresa, ["competencia", "cnpj", "tipo"],
         )  # fmt: skip
         cobertura = ligacoes.cobertura(posicoes, ligacao)
         coberturas.append(cobertura)

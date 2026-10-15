@@ -33,6 +33,7 @@ PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
 SERIE_3 = (
     "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
     "codigos_fora_do_fca", "emissores_antigos", "emissores_sem_ligacao", "carteiras_dos_fundos",
+    "carteiras_bloco_8",
     "painel_dos_fundos", "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
     "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
 )  # fmt: skip
@@ -68,6 +69,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
         "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
+        "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "disponivel_em"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),

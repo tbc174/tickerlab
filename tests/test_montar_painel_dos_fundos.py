@@ -65,3 +65,19 @@ def test_sem_a_versao_do_codigo_nao_grava(base, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):
         montar.main(["--base", str(base)])
     assert not (base / "fundos").exists()
+
+
+def test_painel_por_empresa_le_o_bloco_8_do_ano(base):
+    """Achado da série 4: com `cda_bloco_8/<ano>` ao lado do CDA, o painel por empresa ganha as
+    colunas do bloco 8 (pelo CNPJ que o fundo informa) e o manifesto anota a tabela de entrada."""
+    from tests.test_base_ligacoes import _bloco_8
+
+    origem = [{"url": "https://dados.cvm.gov.br/x.zip", "sha256": "ab" * 32}]
+    gravar_tabela(_bloco_8(), base / "cda_bloco_8" / "2008", origem, ["competencia"])
+    assert montar.main(["--base", str(base)]) == 0
+    arquivo = base / "fundos" / "painel_empresa" / "2008.parquet"
+    empresa = pd.read_parquet(arquivo).set_index(["cnpj", "tipo"])
+    assert empresa.loc[(ITAU, "comprado"), "valor_no_bloco_8"] == 50.0
+    assert empresa.loc[(ITAU, "comprado"), "valor"] == 180.0  # o bloco 4 não muda
+    manifesto = json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))
+    assert any(o["url"] == "cda_bloco_8/2008.parquet" for o in manifesto["origens"])

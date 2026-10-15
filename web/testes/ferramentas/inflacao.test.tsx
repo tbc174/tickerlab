@@ -32,9 +32,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function abrir() {
+async function abrir(busca = "") {
   vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(DADOS))));
-  window.history.replaceState(null, "", "/calculadora-de-correcao-pela-inflacao.html");
+  window.history.replaceState(null, "", `/calculadora-de-correcao-pela-inflacao.html${busca}`);
   document.body.innerHTML = renderToStaticMarkup(<Ilha nome="inflacao" />);
   await act(async () => {
     ligarFerramentas(document);
@@ -43,6 +43,13 @@ async function abrir() {
 }
 
 describe("correção pela inflação v2", () => {
+  it("o começo que chega de um link (do quanto daria) fica; o fim vai até o último IPCA", async () => {
+    await abrir("?valor=1.000&mesInicial=03&anoInicial=2020");
+    expect((screen.getByLabelText("A partir de: ano") as HTMLInputElement).value).toBe("2020");
+    expect((screen.getByLabelText("Até: ano") as HTMLInputElement).value).toBe("2025");
+    expect(document.body.textContent).toContain(formatarReais(corrigir(1000, "2020-03", "2025-12", IPCA).valor_corrigido));
+  });
+
   it("mostra quanto o valor teria virado na poupança e no CDI no mesmo período", async () => {
     await abrir();
     const texto = document.body.textContent ?? "";

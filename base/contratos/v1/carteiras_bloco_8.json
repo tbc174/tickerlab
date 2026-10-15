@@ -1,0 +1,85 @@
+{
+  "tabela": "carteiras_bloco_8",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês da carteira (último dia)",
+      "unidade": "data (dia)"
+    },
+    "cnpj_fundo": {
+      "descricao": "CNPJ do fundo (ou da classe, depois da CVM 175)",
+      "unidade": "texto"
+    },
+    "tipo_do_fundo": {
+      "descricao": "Tipo do fundo como a CVM informa",
+      "unidade": "texto"
+    },
+    "fundo": {
+      "descricao": "Nome do fundo (pessoa jurídica)",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "comprado, emprestado ou vendido",
+      "unidade": "texto"
+    },
+    "tipo_do_ativo": {
+      "descricao": "Ação ordinária, ação preferencial... como o fundo informa",
+      "unidade": "texto"
+    },
+    "cnpj_emissor": {
+      "descricao": "CNPJ do emissor que o fundo informa (só pessoa jurídica)",
+      "unidade": "texto"
+    },
+    "nome_do_emissor": {
+      "descricao": "Nome do emissor como o fundo escreve",
+      "unidade": "texto"
+    },
+    "descricao": {
+      "descricao": "Descrição do ativo (\"PETR3 - PETROBRAS\")",
+      "unidade": "texto"
+    },
+    "quantidade": {
+      "descricao": "Quantidade no fim do mês",
+      "unidade": "ações"
+    },
+    "valor": {
+      "descricao": "Valor de mercado no fim do mês",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "compras": {
+      "descricao": "Valor comprado no mês",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "vendas": {
+      "descricao": "Valor vendido no mês",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "confidencial_ate": {
+      "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando a posição era pública (como era na data)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "cnpj_fundo",
+    "tipo",
+    "cnpj_emissor"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+  "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+}

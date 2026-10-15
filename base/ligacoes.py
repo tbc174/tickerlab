@@ -106,10 +106,44 @@ def painel_por_emissor(posicoes: pd.DataFrame) -> pd.DataFrame:
     return _agregar(posicoes, ["competencia", "emissor", "tipo"])
 
 
-def painel_por_empresa(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
-    """O mesmo por CNPJ: junta os emissores da mesma empresa (ITAU e ITUB) e conta o fundo uma vez."""
+DO_BLOCO_8 = {
+    "fundos": "fundos_no_bloco_8",
+    "valor": "valor_no_bloco_8",
+    "quantidade": "quantidade_no_bloco_8",
+}
+
+
+def painel_por_empresa(
+    posicoes: pd.DataFrame,
+    ligacao: pd.DataFrame,
+    bloco_8: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """O mesmo por CNPJ: junta os emissores da mesma empresa (ITAU e ITUB) e conta o fundo uma vez.
+
+    As ações do bloco 8 (`cda.ler_acoes_do_bloco_8`) entram pelo CNPJ que o fundo informa, só de
+    empresa da ligação (com ação na bolsa, conferida), em colunas próprias (`*_no_bloco_8`): as do
+    bloco 4 não mudam. `disponivel_em` é a maior data entre os dois blocos.
+    """
+    chave = ["competencia", "cnpj", "tipo"]
     com_cnpj = posicoes.merge(_sem_conflito(ligacao), on="emissor", how="inner")
-    return _agregar(com_cnpj, ["competencia", "cnpj", "tipo"])
+    painel = _agregar(com_cnpj, chave)
+    listadas = set(_sem_conflito(ligacao)["cnpj"])
+    do_8 = (
+        bloco_8[bloco_8["cnpj_emissor"].isin(listadas)].rename(
+            columns={"cnpj_emissor": "cnpj"}
+        )
+        if bloco_8 is not None
+        else pd.DataFrame(columns=[*chave, "cnpj_fundo", "disponivel_em", *SOMAS])
+    )
+    extra = _agregar(do_8, chave)[[*chave, "disponivel_em", *DO_BLOCO_8]].rename(
+        columns={**DO_BLOCO_8, "disponivel_em": "_disponivel_no_bloco_8"}
+    )
+    juntos = painel.merge(extra, on=chave, how="outer")
+    numeros = [c for c in juntos.columns if c in SOMAS or c in DO_BLOCO_8.values()]
+    juntos[[*numeros, "fundos"]] = juntos[[*numeros, "fundos"]].fillna(0)
+    datas = juntos[["disponivel_em", "_disponivel_no_bloco_8"]].apply(pd.to_datetime)
+    juntos["disponivel_em"] = datas.max(axis=1)
+    return juntos.drop(columns="_disponivel_no_bloco_8")
 
 
 def cobertura(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
