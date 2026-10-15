@@ -570,3 +570,63 @@ def test_insercao_em_pedacos_diferentes_do_arquivo(tmp_path):
         b3.barras_do_pregao(DIA, [caminho], linhas_por_pedaco=1),
         b3.barras_do_pregao(DIA, [caminho]),
     )
+
+
+# --- PR 3: houve pregão? e o alarme da janela de 20 pregões ------------------------------------
+
+
+def dias_uteis(inicio: date, fim: date) -> list[date]:
+    dias = pd.bdate_range(inicio, fim).date
+    return [d for d in dias if d != date(2026, 10, 12)]  # 12/10: sem COTAHIST (feriado)
+
+
+PREGOES = dias_uteis(date(2026, 9, 15), date(2026, 10, 13))  # os 20 no ar em 14/10
+
+
+def test_janela_de_14_10_tem_os_20_pregoes():
+    assert len(PREGOES) == 20
+
+
+def test_pregao_mais_antigo_sem_arquivo_esta_em_risco():
+    salvos = set(PREGOES) - {date(2026, 9, 15)}
+    assert b3.dias_em_risco(PREGOES, salvos) == [(date(2026, 9, 15), 1)]
+
+
+def test_risco_so_nos_cinco_pregoes_mais_antigos():
+    faltando = {date(2026, 9, 21), date(2026, 9, 22), date(2026, 10, 13)}
+    salvos = set(PREGOES) - faltando
+    # 21/09 é o 5º mais antigo (some em 5 pregões); 22/09 é o 6º; 13/10 acabou de sair
+    assert b3.dias_em_risco(PREGOES, salvos) == [(date(2026, 9, 21), 5)]
+
+
+def test_feriado_sem_cotahist_nao_e_falha():
+    """12/10/2026 (Nossa Senhora Aparecida): sem COTAHIST, não houve pregão; nada a salvar."""
+    assert date(2026, 10, 12) not in PREGOES
+    assert b3.dias_em_risco(PREGOES, set(PREGOES)) == []
+
+
+def test_pregao_que_ja_saiu_da_janela_nao_entra_no_alarme():
+    pregoes = dias_uteis(date(2026, 9, 1), date(2026, 10, 13))
+    salvos = set(PREGOES)  # tudo antes de 15/09 já saiu da janela e não foi salvo
+    assert b3.dias_em_risco(pregoes, salvos) == []
+
+
+@pytest.mark.parametrize(
+    ("ultimo", "hoje", "atrasado"),
+    [
+        (date(2026, 10, 13), date(2026, 10, 15), False),
+        (date(2026, 10, 9), date(2026, 10, 14), False),  # sexta, feriado na segunda
+        (date(2026, 10, 9), date(2026, 10, 16), True),
+    ],
+)
+def test_cotahist_atrasado(ultimo, hoje, atrasado):
+    assert b3.cotahist_atrasado([date(2026, 10, 1), ultimo], hoje) is atrasado
+
+
+def test_sem_nenhum_cotahist_e_atrasado():
+    assert b3.cotahist_atrasado([], date(2026, 10, 14)) is True
+
+
+def test_lista_curta_de_pregoes_nao_tem_risco():
+    """Com poucos pregões conhecidos (acervo começando), todos são recentes."""
+    assert b3.dias_em_risco([date(2026, 10, 9), date(2026, 10, 13)], set()) == []

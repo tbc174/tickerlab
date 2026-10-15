@@ -504,3 +504,42 @@ def pregao_do_endereco(endereco: str) -> date:
         ddmmaaaa = achado.group(1)
         return date(int(ddmmaaaa[4:]), int(ddmmaaaa[2:4]), int(ddmmaaaa[:2]))
     raise ValueError(f"endereço sem data de pregão conhecida: {endereco}")
+
+
+# --- PR 3: houve pregão? e o alarme da janela ---------------------------------------------------
+# Na B3, "houve pregão" é "existe o COTAHIST do dia" (guardado pelo arquivista como
+# `b3-cotahist-dia`): feriado (12/10/2026) responde 404 e não entra na lista. O arquivo de negócios
+# só fica no ar nos últimos 20 pregões; quem não for salvo some para sempre.
+JANELA_DE_PREGOES = 20
+MARGEM_DO_ALARME = 5  # avisa quando faltam 5 pregões ou menos para o dia sumir
+# a B3 nunca fica mais que 5 dias corridos sem pregão (Carnaval: sábado a terça; Natal e Ano-Novo:
+# duas folgas com fim de semana no meio). Mais que isso sem COTAHIST novo = a coleta parou
+DIAS_SEM_PREGAO_NO_MAXIMO = 5
+
+
+def dias_em_risco(
+    pregoes: Sequence[date],
+    salvos: set[date],
+    janela: int = JANELA_DE_PREGOES,
+    margem: int = MARGEM_DO_ALARME,
+) -> list[tuple[date, int]]:
+    """Pregões ainda no ar que não estão salvos e somem em até `margem` pregões.
+
+    Devolve (pregão, em quantos pregões ele some), do mais urgente ao menos. O mais antigo da
+    janela some no próximo pregão (1). O que já saiu da janela não entra: não há mais o que fazer.
+    """
+    # contado do mais novo (0) para trás: o pregão na posição p some daqui a `janela - p` pregões
+    no_ar = sorted(pregoes, reverse=True)[:janela]
+    em_risco = [
+        (pregao, janela - posicao)
+        for posicao, pregao in enumerate(no_ar)
+        if janela - posicao <= margem and pregao not in salvos
+    ]
+    return sorted(em_risco, key=lambda par: par[1])
+
+
+def cotahist_atrasado(
+    pregoes: Sequence[date], hoje: date, limite: int = DIAS_SEM_PREGAO_NO_MAXIMO
+) -> bool:
+    """O COTAHIST mais novo é de mais de `limite` dias atrás (ou não há nenhum)?"""
+    return not pregoes or (hoje - max(pregoes)).days > limite
