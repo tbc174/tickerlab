@@ -16,12 +16,14 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from src import regras_de_imposto
 from src.ferramentas import (
     aleatorio,
     aportes,
     custos,
     darf,
     financiamento,
+    fundos,
     inflacao,
     juros,
     moedas,
@@ -72,6 +74,8 @@ CONTAS: dict[str, Conta] = {
     "darf.vencimento": darf.vencimento,
     "financiamento.parcela_price": financiamento.parcela_price,
     "financiamento.tabela": financiamento.tabela,
+    "fundos.simular": fundos.simular,
+    "fundos.aliquota_do_fundo": regras_de_imposto.aliquota_do_fundo,
     "preco_medio.calcular": lambda ops: preco_medio.calcular(
         [preco_medio.Operacao(**o) for o in ops]
     ),
@@ -306,6 +310,18 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("financiamento.tabela", ["price", 1200, 0, 12]),
     ("financiamento.tabela", ["bala", 1000, 0.01, 12]),
     ("financiamento.tabela", ["sac", 1000, 0.01, 601]),
+    ("fundos.simular", [1000, 5, 0.12682503013196977, 1, 0, 0, True, 1]),
+    ("fundos.simular", [10000, 36, 0.12, 1, 0.01, 0, True, 3]),
+    ("fundos.simular", [10000, 30, 0.1, 1.3, 0.02, 0.2, True, 8]),
+    ("fundos.simular", [5000, 7, 0.11, 1, 0.005, 0, False, 11]),
+    ("fundos.simular", [1000, 24, 0, 1, 0.02, 0, True, 1]),
+    ("fundos.simular", [1000, 0, 0.1, 1, 0, 0, True, 1]),
+    ("fundos.simular", [1000, 12, 0.1, 1, 0, 0, True, 13]),
+    ("fundos.simular", [1000, 12, 0.1, 1, 1.5, 0, True, 1]),
+    ("fundos.aliquota_do_fundo", [180, False]),
+    ("fundos.aliquota_do_fundo", [181, False]),
+    ("fundos.aliquota_do_fundo", [400, True]),
+    ("fundos.aliquota_do_fundo", [0, False]),
     (
         "preco_medio.calcular",
         [

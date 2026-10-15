@@ -15,6 +15,7 @@ import * as taxas from "../../src/ferramentas/contas/taxas";
 import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
 import * as precoMedio from "../../src/ferramentas/contas/preco_medio";
 import * as financiamento from "../../src/ferramentas/contas/financiamento";
+import * as fundos from "../../src/ferramentas/contas/fundos";
 import casos from "../golden_ferramentas.json";
 
 type Conta = (...argumentos: never[]) => unknown;
@@ -49,6 +50,8 @@ const CONTAS: Record<string, Conta> = {
   "preco_medio.calcular": precoMedio.calcular,
   "financiamento.parcela_price": financiamento.parcelaPrice,
   "financiamento.tabela": financiamento.tabela,
+  "fundos.simular": fundos.simular,
+  "fundos.aliquota_do_fundo": fundos.aliquotaDoFundo,
   "moedas.converter": moedas.converter,
   "taxas.juro_real": taxas.juroReal,
   "taxas.taxa_nominal": taxas.taxaNominal,
