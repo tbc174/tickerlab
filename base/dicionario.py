@@ -136,6 +136,19 @@ class Tabela:
     versao_do_contrato: str = "1.0.0"
 
 
+_ONDE_DA_REDE = "Parquet em `<acervo>/base/rede/{t}.parquet` (servidor de casa, `scripts/montar_rede.py`)"
+LINHAGEM_DA_REDE = (
+    "Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas "
+    "conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo "
+    "(cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a "
+    "coleta de cada um. " + COM_VERSAO_DO_CODIGO
+)
+RESSALVA_DA_REDE = (
+    "A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que "
+    "está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os "
+    "códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`)."
+)
+
 _EMPRESA = {
     "cnpj": ("CNPJ da companhia, no formato 00.000.000/0000-00", TEXTO),
     "empresa": ("Nome da companhia como a fonte informa", TEXTO),
@@ -1512,6 +1525,105 @@ TABELAS: dict[str, Tabela] = {
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
+    "entidades": Tabela(
+        descricao=(
+            "Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a "
+            "mesma empresa) ou fundo (pelo CNPJ de 14), com id determinístico (`base/rede/ids.py`), "
+            "nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: cadastro da CVM, FCA, "
+            "controladas, empresa ↔ série, cadastro de fundos, IF.data e GLEIF. Empresário "
+            "individual, pessoa física com CNPJ e MEI ficam sem nome e com `trata_como_pessoa`"
+        ),
+        fonte=(
+            "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da "
+            "empresa ↔ série e a Receita (natureza jurídica e opção pelo MEI)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem; versão nova só quando o conteúdo muda",
+        atraso="O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela",
+        onde=_ONDE_DA_REDE.format(t="entidades"),
+        linhagem=LINHAGEM_DA_REDE,
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "id_entidade": (
+                "'E' + 20 hexadecimais do SHA-256 do identificador primário",
+                TEXTO,
+            ),
+            "tipo": ("empresa ou fundo", TEXTO),
+            "nome": (
+                "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
+                TEXTO,
+            ),
+            "natureza_juridica": (
+                "Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada",
+                TEXTO,
+            ),
+            "natureza_fonte": (
+                "receita, fonte (CVM ou cadastro de fundos) ou nao_informada",
+                TEXTO,
+            ),
+            "mei": ("Verdadeiro se é MEI hoje (Simples da Receita)", SIM_OU_NAO),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza "
+                    "não informada: nunca recebe sinal negativo publicado"
+                ),
+                SIM_OU_NAO,
+            ),
+            "fontes": (
+                "As fontes de onde a entidade saiu, separadas por vírgula",
+                TEXTO,
+            ),
+            "publico_em": (
+                "O dia mais antigo em que alguma fonte a tornou pública",
+                DATA,
+            ),
+        },
+    ),
+    "identificadores": Tabela(
+        descricao=(
+            "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com "
+            "letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). "
+            "Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e "
+            "ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas "
+            "entidades no mesmo período é conflito e não entra em nenhuma"
+        ),
+        fonte=(
+            "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da "
+            "empresa ↔ série"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem; versão nova só quando o conteúdo muda",
+        atraso="O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois",
+        onde=_ONDE_DA_REDE.format(t="identificadores"),
+        linhagem=LINHAGEM_DA_REDE,
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "id_entidade": ("A entidade (tabela `entidades`)", TEXTO),
+            "sistema": (
+                "cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...)",
+                TEXTO,
+            ),
+            "valor": (
+                "O identificador (CNPJ sem pontuação, com letras se tiver)",
+                TEXTO,
+            ),
+            "desde": ("Desde quando vale (vazio: sempre)", DATA),
+            "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "publico_em": (
+                "Desde quando a ligação era pública (como era na data)",
+                DATA,
+            ),
+            "regra": (
+                "A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias)",
+                NUMERO,
+            ),
+            "conferido_por": ("regra (código) ou tabela (conferida à mão)", TEXTO),
+            "fontes": (
+                "As fontes que trouxeram o identificador, separadas por vírgula",
+                TEXTO,
+            ),
+        },
+    ),
 }
 
 
@@ -1563,6 +1675,8 @@ _CONTRATO = {
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
+    "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
+    "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
 }  # fmt: skip
 
 

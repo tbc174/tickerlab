@@ -1,0 +1,57 @@
+{
+  "tabela": "entidades",
+  "modulo": "rede",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_entidade": {
+      "descricao": "'E' + 20 hexadecimais do SHA-256 do identificador primário",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "empresa ou fundo",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
+      "unidade": "texto"
+    },
+    "natureza_juridica": {
+      "descricao": "Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada",
+      "unidade": "texto"
+    },
+    "natureza_fonte": {
+      "descricao": "receita, fonte (CVM ou cadastro de fundos) ou nao_informada",
+      "unidade": "texto"
+    },
+    "mei": {
+      "descricao": "Verdadeiro se é MEI hoje (Simples da Receita)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "trata_como_pessoa": {
+      "descricao": "Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza não informada: nunca recebe sinal negativo publicado",
+      "unidade": "verdadeiro ou falso"
+    },
+    "fontes": {
+      "descricao": "As fontes de onde a entidade saiu, separadas por vírgula",
+      "unidade": "texto"
+    },
+    "publico_em": {
+      "descricao": "O dia mais antigo em que alguma fonte a tornou pública",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "id_entidade"
+  ],
+  "datas": {
+    "publico_em": "publico_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
+  "atraso": "O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela"
+}

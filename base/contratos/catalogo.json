@@ -2634,6 +2634,124 @@
       "pessoa": false,
       "frequencia": "Refeita a cada montagem, com a safra mais recente de cada fonte",
       "atraso": "A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente"
+    },
+    "entidades": {
+      "tabela": "entidades",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_entidade": {
+          "descricao": "'E' + 20 hexadecimais do SHA-256 do identificador primário",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "empresa ou fundo",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
+          "unidade": "texto"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada",
+          "unidade": "texto"
+        },
+        "natureza_fonte": {
+          "descricao": "receita, fonte (CVM ou cadastro de fundos) ou nao_informada",
+          "unidade": "texto"
+        },
+        "mei": {
+          "descricao": "Verdadeiro se é MEI hoje (Simples da Receita)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza não informada: nunca recebe sinal negativo publicado",
+          "unidade": "verdadeiro ou falso"
+        },
+        "fontes": {
+          "descricao": "As fontes de onde a entidade saiu, separadas por vírgula",
+          "unidade": "texto"
+        },
+        "publico_em": {
+          "descricao": "O dia mais antigo em que alguma fonte a tornou pública",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "id_entidade"
+      ],
+      "datas": {
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
+      "atraso": "O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela"
+    },
+    "identificadores": {
+      "tabela": "identificadores",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_entidade": {
+          "descricao": "A entidade (tabela `entidades`)",
+          "unidade": "texto"
+        },
+        "sistema": {
+          "descricao": "cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...)",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "O identificador (CNPJ sem pontuação, com letras se tiver)",
+          "unidade": "texto"
+        },
+        "desde": {
+          "descricao": "Desde quando vale (vazio: sempre)",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Desde quando a ligação era pública (como era na data)",
+          "unidade": "data (dia)"
+        },
+        "regra": {
+          "descricao": "A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias)",
+          "unidade": "número inteiro"
+        },
+        "conferido_por": {
+          "descricao": "regra (código) ou tabela (conferida à mão)",
+          "unidade": "texto"
+        },
+        "fontes": {
+          "descricao": "As fontes que trouxeram o identificador, separadas por vírgula",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_entidade",
+        "sistema",
+        "valor",
+        "desde"
+      ],
+      "datas": {
+        "aconteceu_em": "desde",
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
+      "atraso": "O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois"
     }
   }
 }

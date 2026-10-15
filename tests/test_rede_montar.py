@@ -248,3 +248,12 @@ def test_entrada_que_falta_fica_vazia():
         "cnpj",
         "cnpj_raiz",
     }
+
+
+def test_colunas_iguais_as_do_dicionario():
+    from base.dicionario import TABELAS
+
+    entidades, identificadores, _ = _rede()
+    assert list(entidades.columns) == list(TABELAS["entidades"].colunas)
+    assert list(identificadores.columns) == list(TABELAS["identificadores"].colunas)
+    assert TABELAS["entidades"].modulo == TABELAS["identificadores"].modulo == "rede"
