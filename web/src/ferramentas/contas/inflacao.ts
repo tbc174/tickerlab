@@ -44,3 +44,42 @@ export function em12Meses(meses: Meses): number {
   for (const [, variacao] of meses.slice(-MESES_POR_ANO)) fator *= 1 + variacao;
   return fator - 1;
 }
+
+/** O valor no começo e no fim de cada mês de `inicio` a `fim` (para o gráfico). Serve a qualquer
+ * série mensal no mesmo formato (IPCA, CDI ou poupança do mês). */
+export function evolucao(valor: number, inicio: string, fim: string, meses: Meses): number[] {
+  corrigir(valor, inicio, fim, meses); // as mesmas conferências de período
+  const caminho = [valor];
+  for (const [mes, variacao] of meses) {
+    if (inicio <= mes && mes <= fim) caminho.push(caminho[caminho.length - 1] * (1 + variacao));
+  }
+  return caminho;
+}
+
+/** Por ano: o fator acumulado e quantos meses a série tem naquele ano. */
+function fatoresPorAno(meses: Meses): Map<number, [number, number]> {
+  const porAno = new Map<number, [number, number]>();
+  for (const [mes, variacao] of meses) {
+    const ano = Number(mes.slice(0, 4));
+    const [fator, quantos] = porAno.get(ano) ?? [1, 0];
+    porAno.set(ano, [fator * (1 + variacao), quantos + 1]);
+  }
+  return porAno;
+}
+
+/** [em quantos anos o rendimento ficou abaixo da inflação, quantos anos deu para comparar], nos
+ * `anos` anos até `anoFinal`; só entram anos completos (12 meses) nas duas séries. */
+export function anosAbaixo(rendimento: Meses, inflacao: Meses, anoFinal: number, anos: number): [number, number] {
+  const doRendimento = fatoresPorAno(rendimento);
+  const daInflacao = fatoresPorAno(inflacao);
+  let [perdeu, comparados] = [0, 0];
+  for (let ano = anoFinal - anos + 1; ano <= anoFinal; ano++) {
+    const [r, mesesR] = doRendimento.get(ano) ?? [1, 0];
+    const [i, mesesI] = daInflacao.get(ano) ?? [1, 0];
+    if (mesesR === MESES_POR_ANO && mesesI === MESES_POR_ANO) {
+      comparados++;
+      if (r < i) perdeu++;
+    }
+  }
+  return [perdeu, comparados];
+}

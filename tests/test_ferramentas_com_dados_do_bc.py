@@ -173,3 +173,31 @@ def test_imposto_e_sobre_o_rendimento_nao_sobre_o_total():
 def test_entradas_invalidas(args, mensagem):
     with pytest.raises(ValueError, match=mensagem):
         renda_fixa.comparar(*args)
+
+
+# --- ferramentas v2: a trajetória mês a mês e os anos em que a poupança perdeu --------------
+def test_evolucao_comeca_no_valor_e_termina_na_correcao():
+    caminho = inflacao.evolucao(100, "2024-12", "2025-02", MESES)
+    assert caminho[0] == 100
+    assert len(caminho) == 4  # o começo e o fim de cada um dos 3 meses
+    assert caminho[1] == pytest.approx(100 * 1.0052)
+    assert caminho[-1] == pytest.approx(
+        inflacao.corrigir(100, "2024-12", "2025-02", MESES).valor_corrigido
+    )
+
+
+def _ano(ano: int, ao_mes: float) -> list[list]:
+    return [[f"{ano}-{m:02d}", ao_mes] for m in range(1, 13)]
+
+
+def test_anos_em_que_o_rendimento_perdeu_para_a_inflacao():
+    rendimento = _ano(2023, 0.005) + _ano(2024, 0.004) + _ano(2025, 0.006)
+    inflacao_mes = _ano(2023, 0.004) + _ano(2024, 0.005) + _ano(2025, 0.005)
+    # 2024: 0,4% ao mês contra 0,5% de inflação; 2023 e 2025 ganharam
+    assert inflacao.anos_abaixo(rendimento, inflacao_mes, 2025, 3) == [1, 3]
+
+
+def test_ano_incompleto_nao_entra_na_conta():
+    rendimento = _ano(2024, 0.004) + _ano(2025, 0.004)[:6]
+    inflacao_mes = _ano(2024, 0.005) + _ano(2025, 0.005)
+    assert inflacao.anos_abaixo(rendimento, inflacao_mes, 2025, 2) == [1, 1]

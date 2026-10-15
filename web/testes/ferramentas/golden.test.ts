@@ -49,6 +49,8 @@ const CONTAS: Record<string, Conta> = {
   "taxas.taxa_nominal": taxas.taxaNominal,
   "inflacao.corrigir": inflacao.corrigir,
   "inflacao.em_12_meses": inflacao.em12Meses,
+  "inflacao.evolucao": inflacao.evolucao,
+  "inflacao.anos_abaixo": inflacao.anosAbaixo,
   "renda_fixa.comparar": rendaFixa.comparar,
   "renda_fixa.tesouro_prefixado": rendaFixa.tesouroPrefixado,
   "renda_fixa.tesouro_ipca": rendaFixa.tesouroIpca,
