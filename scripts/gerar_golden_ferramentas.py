@@ -16,14 +16,18 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from src import regras_de_imposto
 from src.ferramentas import (
     aleatorio,
     aportes,
     custos,
     darf,
+    financiamento,
+    fundos,
     inflacao,
     juros,
     moedas,
+    preco_medio,
     renda_fixa,
     taxas,
 )
@@ -68,6 +72,14 @@ CONTAS: dict[str, Conta] = {
         [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
     ),
     "darf.vencimento": darf.vencimento,
+    "financiamento.parcela_price": financiamento.parcela_price,
+    "financiamento.tabela": financiamento.tabela,
+    "fundos.simular": fundos.simular,
+    "renda_fixa.cdb_que_rende": renda_fixa.cdb_que_rende,
+    "fundos.aliquota_do_fundo": regras_de_imposto.aliquota_do_fundo,
+    "preco_medio.calcular": lambda ops: preco_medio.calcular(
+        [preco_medio.Operacao(**o) for o in ops]
+    ),
     "moedas.converter": moedas.converter,
     "taxas.juro_real": taxas.juro_real,
     "taxas.taxa_nominal": taxas.taxa_nominal,
@@ -288,6 +300,115 @@ CASOS: list[tuple[str, list[Any]]] = [
     ),
     ("darf.vencimento", [2026, 10]),
     ("darf.vencimento", [2026, 12]),
+    ("financiamento.parcela_price", [300000, 0.01, 360]),
+    ("financiamento.parcela_price", [1200, 0, 12]),
+    ("financiamento.parcela_price", [1000, 1e-12, 24]),
+    ("financiamento.tabela", ["price", 50000, 0.009, 24]),
+    ("financiamento.tabela", ["sac", 50000, 0.009, 24]),
+    ("financiamento.tabela", ["price", 50000, 0.009, 24, 6, 10000, "prazo"]),
+    ("financiamento.tabela", ["sac", 50000, 0.009, 24, 6, 10000, "parcela"]),
+    ("financiamento.tabela", ["price", 10000, 0.01, 24, 3, 1000000]),
+    ("financiamento.tabela", ["price", 1200, 0, 12]),
+    ("financiamento.tabela", ["bala", 1000, 0.01, 12]),
+    ("financiamento.tabela", ["sac", 1000, 0.01, 601]),
+    ("fundos.simular", [1000, 5, 0.12682503013196977, 1, 0, 0, True, 1]),
+    ("fundos.simular", [10000, 36, 0.12, 1, 0.01, 0, True, 3]),
+    ("fundos.simular", [10000, 30, 0.1, 1.3, 0.02, 0.2, True, 8]),
+    ("fundos.simular", [5000, 7, 0.11, 1, 0.005, 0, False, 11]),
+    ("fundos.simular", [1000, 24, 0, 1, 0.02, 0, True, 1]),
+    ("fundos.simular", [1000, 0, 0.1, 1, 0, 0, True, 1]),
+    ("fundos.simular", [1000, 12, 0.1, 1, 0, 0, True, 13]),
+    ("fundos.simular", [1000, 12, 0.1, 1, 1.5, 0, True, 1]),
+    ("fundos.aliquota_do_fundo", [180, False]),
+    ("fundos.aliquota_do_fundo", [181, False]),
+    ("fundos.aliquota_do_fundo", [400, True]),
+    ("fundos.aliquota_do_fundo", [0, False]),
+    ("renda_fixa.cdb_que_rende", [10000, 730, [0.12, 0.1], 12000]),
+    ("renda_fixa.cdb_que_rende", [10000, 730, [0.12], 9000]),
+    ("renda_fixa.cdb_que_rende", [10000, 2, [0.12], 10100]),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10, "custos": 5},
+                {"tipo": "compra", "quantidade": 100, "preco": 20, "custos": 5},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "venda", "quantidade": 40, "preco": 15, "custos": 2},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 10},
+                {"tipo": "venda", "quantidade": 10, "preco": 12},
+                {"tipo": "compra", "quantidade": 10, "preco": 30},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "bonificacao", "quantidade": 10, "preco": 5},
+                {"tipo": "desdobro", "quantidade": 110},
+                {"tipo": "grupamento", "quantidade": 20},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 0.5},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 50},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 3, "preco": 33.33, "custos": 0.01},
+                {"tipo": "venda", "quantidade": 1, "preco": 40},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 10},
+                {"tipo": "venda", "quantidade": 11, "preco": 10},
+            ]
+        ],
+    ),
+    ("preco_medio.calcular", [[{"tipo": "aluguel", "quantidade": 10, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "compra", "quantidade": -1, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "venda", "quantidade": 0, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "amortizacao", "quantidade": 0, "preco": 5}]]),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 20},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 30},
+            ]
+        ],
+    ),
+    ("financiamento.tabela", ["price", 300000, 0.10, 600]),
+    ("financiamento.tabela", ["price", 1000000, 0.03, 420]),
+    ("fundos.simular", [1000, 121, 0.1, 1, 0, 0, True, 1]),
     ("moedas.converter", [100, "USD", "BRL", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [1000, "BRL", "EUR", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [250, "GBP", "JPY", COTACOES_DE_EXEMPLO]),

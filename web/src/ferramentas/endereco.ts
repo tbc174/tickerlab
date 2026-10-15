@@ -13,8 +13,10 @@ const TAMANHO_MAXIMO = 20; // "10.000.000,00" cabe com folga
 
 function aceita(valor: string, exemplo: string, opcoes?: readonly string[]): boolean {
   if (opcoes) return opcoes.includes(valor);
-  if (lerNumero(exemplo) === null) return false; // escolha sem lista de opções: não lê do endereço
-  return valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null;
+  // exemplo vazio é campo de número ainda não preenchido; texto sem lista de opções não se lê
+  if (exemplo !== "" && lerNumero(exemplo) === null) return false;
+  // vazio é o campo que a pessoa apagou: volta vazio, não com o número do exemplo
+  return valor === "" || (valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null);
 }
 
 export function lerDoEndereco<T extends Campos>(busca: string, exemplo: T, opcoes: Opcoes<T> = {}, prefixo = ""): T {

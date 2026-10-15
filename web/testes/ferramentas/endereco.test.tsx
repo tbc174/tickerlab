@@ -37,6 +37,17 @@ describe("ler a simulação do endereço", () => {
     expect(lerDoEndereco(`?capital=${"9".repeat(40)}`, EXEMPLO, OPCOES).capital).toBe("10.000");
   });
 
+  it("campo de exemplo vazio é de número: aceita número e recusa texto", () => {
+    const exemplo = { q5: "", t5: "compra" };
+    expect(lerDoEndereco("?q5=40", exemplo)).toEqual({ q5: "40", t5: "compra" });
+    expect(lerDoEndereco("?q5=abc", exemplo)).toEqual(exemplo);
+  });
+
+  it("campo de número que a pessoa apagou volta vazio, não com o exemplo", () => {
+    expect(lerDoEndereco("?capital=&tipo=simples", EXEMPLO, OPCOES).capital).toBe("");
+    expect(lerDoEndereco("?tipo=", EXEMPLO, OPCOES).tipo).toBe("composto"); // escolha vazia não vale
+  });
+
   it("com prefixo, duas ferramentas na mesma página não se misturam", () => {
     expect(lerDoEndereco("?a.taxa=5&taxa=7", { taxa: "1" }, {}, "a.")).toEqual({ taxa: "5" });
   });

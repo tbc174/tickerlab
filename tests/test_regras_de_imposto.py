@@ -99,3 +99,18 @@ def test_o_site_recebe_o_iof_e_a_custodia():
     site = regras.para_o_site()
     assert site["iof"] == list(regras.TABELA_DO_IOF)
     assert site["custodia_do_tesouro"] == {"taxa": 0.002, "isento_no_selic_ate": 10_000}
+
+
+# --- ferramentas v2: fundos (come-cotas e a tabela de curto prazo) ----------------------------
+def test_come_cotas_de_15_e_20_por_cento():
+    assert regras.valor("come_cotas_longo_prazo") == 0.15
+    assert regras.valor("come_cotas_curto_prazo") == 0.20
+
+
+@pytest.mark.parametrize(
+    ("dias", "longo", "aliquota"),
+    [(100, True, 0.225), (300, True, 0.20), (500, True, 0.175), (800, True, 0.15),
+     (100, False, 0.225), (181, False, 0.20), (2000, False, 0.20)],
+)  # fmt: skip
+def test_aliquota_do_fundo_no_resgate(dias, longo, aliquota):
+    assert regras.aliquota_do_fundo(dias, longo) == aliquota

@@ -178,30 +178,32 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
             barras={opcoes.map((o, k) => ({ nome: o.nome, valor: o.liquido - valor, cor: SERIES[k < 4 ? 0 : 2] }))}
             formatarValor={formatarReais}
           />
-          <table className="ferramenta-comparacao">
-            <thead>
-              <tr>
-                <th scope="col">Opção</th>
-                {colunas.map(([, nome]) => (
-                  <th scope="col" key={nome}>
-                    {nome}
-                  </th>
-                ))}
-                <th scope="col">Líquido no fim</th>
-              </tr>
-            </thead>
-            <tbody>
-              {opcoes.map((o) => (
-                <tr key={o.nome}>
-                  <th scope="row">{o.nome}</th>
-                  {colunas.map(([chave, nome]) => (
-                    <td key={nome}>{(o[chave] as number) > 0 ? formatarReais(o[chave] as number) : "—"}</td>
+          <div className="ferramenta-rolagem">
+            <table className="ferramenta-comparacao">
+              <thead>
+                <tr>
+                  <th scope="col">Opção</th>
+                  {colunas.map(([, nome]) => (
+                    <th scope="col" key={nome}>
+                      {nome}
+                    </th>
                   ))}
-                  <td>{formatarReais(o.liquido)}</td>
+                  <th scope="col">Líquido no fim</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {opcoes.map((o) => (
+                  <tr key={o.nome}>
+                    <th scope="row">{o.nome}</th>
+                    {colunas.map(([chave, nome]) => (
+                      <td key={nome}>{(o[chave] as number) > 0 ? formatarReais(o[chave] as number) : "—"}</td>
+                    ))}
+                    <td>{formatarReais(o.liquido)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <ul className="ferramenta-notas apagado">
             {peloFocus ? (
               <li>

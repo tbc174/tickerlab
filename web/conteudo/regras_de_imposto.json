@@ -3,6 +3,17 @@
     "isento_no_selic_ate": 10000,
     "taxa": 0.002
   },
+  "fundos": {
+    "come_cotas_curto": 0.2,
+    "come_cotas_longo": 0.15,
+    "curto_prazo": {
+      "aliquotas": [
+        0.225,
+        0.2
+      ],
+      "ate_dias": 180
+    }
+  },
   "iof": [
     0.96,
     0.93,
@@ -130,6 +141,30 @@
       "fonte": "https://www.b3.com.br/pt_br/produtos-e-servicos/tarifas/tarifas-de-tesouro-direto/",
       "onde": "Tarifas de Tesouro Direto",
       "valor": 10000
+    },
+    {
+      "chave": "come_cotas_longo_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de longo prazo: IR retido em maio e novembro (come-cotas)",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14754.htm",
+      "onde": "art. 17, § 1º, I, a",
+      "valor": 0.15
+    },
+    {
+      "chave": "come_cotas_curto_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de curto prazo: IR retido em maio e novembro (come-cotas)",
+      "fonte": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14754.htm",
+      "onde": "art. 17, § 1º, II, a",
+      "valor": 0.2
+    },
+    {
+      "chave": "tabela_dos_fundos_de_curto_prazo",
+      "conferida_em": "2026-10-15",
+      "descricao": "Fundos de curto prazo no resgate: 22,5% até 180 dias, 20% depois",
+      "fonte": "https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/perguntas-e-respostas/dirpf/p-r-irpf-2026-v1-00-2026-04-23.pdf",
+      "onde": "pergunta 736",
+      "valor": "22,5% / 20%"
     }
   ],
   "renda_fixa": [

@@ -148,3 +148,19 @@ def test_falha_do_yahoo_vira_erro_da_curva_e_nao_fica_no_cache(monkeypatch):
         ponte_dados.obter_curva_do_yahoo(
             "ibovespa", date(2026, 10, 15), pd.Series(dtype=float)
         )
+
+
+def test_o_arquivo_de_dados_e_buscado_de_novo_a_cada_hora(monkeypatch):
+    # o cron do VPS atualiza o arquivo às 9h10 e às 13h40: guardar o arquivo do dia inteiro deixaria
+    # a rota com os dados da madrugada até o dia seguinte
+    buscas = []
+    monkeypatch.setattr(ponte_dados, "CACHE", ponte_dados.CacheDoDia())
+    monkeypatch.setattr(
+        ponte_dados, "baixar_arquivo", lambda buscar: buscas.append(1) or ARQUIVO
+    )
+    monkeypatch.setattr(ponte_dados, "hora_agora", lambda: 8)
+    ponte_dados.obter_arquivo(date(2026, 10, 16))
+    ponte_dados.obter_arquivo(date(2026, 10, 16))
+    monkeypatch.setattr(ponte_dados, "hora_agora", lambda: 10)
+    ponte_dados.obter_arquivo(date(2026, 10, 16))
+    assert len(buscas) == 2

@@ -72,6 +72,21 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     descricao: "Quanto um valor do passado vale hoje, corrigido pelo IPCA.",
   },
   {
+    arquivo: "calculadora-de-preco-medio.html",
+    nome: "Preço médio de ações e FIIs",
+    descricao: "O preço médio com as taxas, o resultado de cada venda, bonificação, desdobro e amortização de FII.",
+  },
+  {
+    arquivo: "fundo-ou-cdb.html",
+    nome: "Fundo ou CDB",
+    descricao: "Um fundo de renda fixa com taxas e come-cotas contra um CDB do mesmo prazo.",
+  },
+  {
+    arquivo: "simulador-de-financiamento.html",
+    nome: "Financiamento SAC × Price",
+    descricao: "As parcelas e os juros dos dois sistemas lado a lado, e o efeito de uma amortização extra.",
+  },
+  {
     arquivo: "quanto-daria.html",
     nome: "Quanto daria? Foi sorte?",
     descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
@@ -514,8 +529,8 @@ export function PaginaDaRendaFixa() {
       codigo={codigo(RENDA_FIXA)}
       anuncio="cadastro"
       foraDaConta={[
-        "o CDI de amanhã: a conta usa o de hoje durante todo o prazo",
-        "a taxa de custódia da B3 no Tesouro e o IOF dos resgates em menos de 30 dias",
+        "o CDI que vier de verdade: a conta usa o de hoje ou o caminho que o Focus espera",
+        "a marcação a mercado: vender o Tesouro antes do vencimento pode dar mais ou menos",
         "o risco de cada emissor e a garantia do FGC",
       ]}
       fonte={FONTE_DO_BC}
@@ -701,6 +716,146 @@ export function PaginaDoQuantoDaria() {
         Na renda fixa pós-fixada, o resultado de um prazo depende pouco do dia em que se começa; no
         Ibovespa e no bitcoin, depende muito. Essa diferença é a lição: o mesmo "rendeu X%" pode ser
         habilidade, sorte da data ou só o risco que se correu.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Preço médio ---------------------------------------------------------------------------------
+const PRECO_MEDIO = "calculadora-de-preco-medio.html";
+export const DADOS_DO_PRECO_MEDIO = pagina(
+  PRECO_MEDIO,
+  "Calculadora de preço médio de ações e FIIs",
+  "Calcule o preço médio das suas ações e FIIs com as taxas no custo, o resultado de cada venda, " +
+    "bonificação, desdobro, grupamento e amortização de FII. Grátis e sem cadastro.",
+);
+
+export function PaginaDoPrecoMedio() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Calculadora de preço médio"
+      subtitulo="Compras, vendas, bonificação, desdobro e amortização de FII: o preço médio de cada momento e o resultado de cada venda. Grátis e sem cadastro."
+      ilha="precoMedio"
+      codigo={codigo(PRECO_MEDIO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o imposto: o resultado das vendas vai para a calculadora de DARF, mês a mês",
+        "operações em mais de uma corretora no mesmo dia em ordem diferente da real: a ordem da grade é a que vale",
+        "aluguel de ações, direitos de subscrição e operações de day trade (que não entram no preço médio)",
+      ]}
+    >
+      <h2>Por que as taxas entram no custo</h2>
+      <p>
+        A Receita manda somar ao custo de compra as despesas da operação, como a corretagem e os
+        emolumentos da B3. Por isso o preço médio aqui é um pouco maior que a média dos preços: ele
+        é o custo de verdade de cada ação.
+      </p>
+      <h2>Por que vender não muda o preço médio</h2>
+      <p>
+        Na venda, sai o custo das ações vendidas pelo preço médio do momento, e o que fica continua
+        com o mesmo preço médio. O lucro ou o prejuízo da venda é o que entrou, menos as taxas, menos
+        esse custo. Vendeu tudo? A próxima compra recomeça a conta.
+      </p>
+      <h2>Bonificação, desdobro e amortização</h2>
+      <p>
+        Na bonificação, as ações novas entram com o valor que a empresa atribuiu a cada uma (ele vem
+        no aviso aos acionistas). Desdobro e grupamento só mudam a quantidade: o custo total é o
+        mesmo. Na quantidade, ponha as ações que entram ou saem, não o total novo: com 100 ações num
+        desdobro de 1 para 2, entram 100; num grupamento de 10 para 1, saem 90. A amortização de um
+        FII devolve parte do capital: o custo cai, e a quantidade de cotas fica igual. Se ela passar
+        do custo que sobrava, o custo fica em zero e o que passou aparece como resultado: é ganho de
+        capital, e o administrador pode reter imposto (confira no informe do fundo).
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Financiamento SAC × Price -----------------------------------------------------------------
+const FINANCIAMENTO = "simulador-de-financiamento.html";
+export const DADOS_DO_FINANCIAMENTO = pagina(
+  FINANCIAMENTO,
+  "Simulador de financiamento SAC e Price",
+  "Compare as parcelas e os juros do financiamento pelo SAC e pela Tabela Price, e veja o efeito " +
+    "de uma amortização extra no prazo ou na parcela. Grátis e sem cadastro.",
+);
+
+export function PaginaDoFinanciamento() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Simulador de financiamento SAC e Price"
+      subtitulo="As parcelas, os juros e o saldo dos dois sistemas lado a lado, e o que uma amortização extra muda. Grátis e sem cadastro."
+      ilha="financiamento"
+      codigo={codigo(FINANCIAMENTO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "os seguros (MIP e DFI) e a taxa de administração que o banco cobra junto com a parcela",
+        "a correção do saldo pela TR ou pelo IPCA, quando o contrato tem",
+        "a entrada e as despesas de cartório e ITBI: o valor aqui é o financiado",
+      ]}
+    >
+      <h2>SAC ou Price</h2>
+      <p>
+        No SAC, a amortização é a mesma todo mês: a parcela começa mais alta e cai, porque o juro é
+        sobre um saldo cada vez menor. Na Price, a parcela é a mesma todo mês: no começo quase tudo é
+        juro, e o saldo cai devagar. Por isso, com a mesma taxa e o mesmo prazo, a Price paga mais
+        juros no total.
+      </p>
+      <h2>Amortização extra: prazo ou parcela</h2>
+      <p>
+        Um pagamento extra abate o saldo. Reduzindo o prazo, a parcela fica e o financiamento termina
+        antes, o que costuma economizar mais juros. Reduzindo a parcela, o prazo fica e o que se paga
+        por mês cai.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Fundo ou CDB --------------------------------------------------------------------------------
+const FUNDO = "fundo-ou-cdb.html";
+export const DADOS_DO_FUNDO = pagina(
+  FUNDO,
+  "Fundo ou CDB: calculadora com come-cotas e taxas",
+  "Compare um fundo de renda fixa, com taxa de administração, de performance e come-cotas, com um " +
+    "CDB do mesmo prazo, e veja a que percentual do CDI o fundo equivale. Grátis e sem cadastro.",
+);
+
+export function PaginaDoFundo() {
+  const { come_cotas_longo, come_cotas_curto, curto_prazo } = regrasDeImposto.fundos;
+  return (
+    <PaginaDeFerramenta
+      titulo="Fundo ou CDB: calculadora com come-cotas e taxas"
+      subtitulo="Um fundo de renda fixa, com as taxas e o come-cotas, contra um CDB do mesmo prazo. A que percentual do CDI o fundo equivale? Grátis e sem cadastro."
+      ilha="fundo"
+      codigo={codigo(FUNDO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "o CDI que vier de verdade: a conta usa o de hoje durante todo o prazo",
+        "a compensação de prejuízo entre fundos, a taxa de saída e o prazo de resgate (cotização)",
+        "o risco de crédito do que o fundo carrega e a garantia do FGC, que vale para o CDB e não para o fundo",
+      ]}
+      fonte={FONTE_DO_BC}
+    >
+      <h2>O que o fundo cobra</h2>
+      <p>
+        A taxa de administração é um percentual ao ano sobre todo o patrimônio, cobrado aos poucos,
+        todo dia, rendendo ou não. A taxa de performance é um percentual só do que o fundo rendeu
+        acima do CDI no semestre. Nas duas, o que aparece na cota já vem descontado.
+      </p>
+      <h2>Come-cotas</h2>
+      <p>
+        No último dia útil de maio e de novembro, o fundo retém o IR sobre o que rendeu desde a última
+        vez: {formatarPorcentagem(come_cotas_longo, 0)} nos fundos de longo prazo e{" "}
+        {formatarPorcentagem(come_cotas_curto, 0)} nos de curto prazo. Ele faz isso tirando cotas,
+        então esse dinheiro deixa de render até o resgate. No resgate, o IR pela tabela do fundo
+        (regressiva no longo prazo; no curto prazo, {formatarPorcentagem(curto_prazo.aliquotas[0], 1)} até{" "}
+        {curto_prazo.ate_dias} dias e {formatarPorcentagem(curto_prazo.aliquotas[1], 0)} depois) sai sobre
+        todo o ganho, menos o que o come-cotas já levou.
+      </p>
+      <h2>Como a conta é feita</h2>
+      <p>
+        O fundo e o CDB rendem um percentual do mesmo CDI, aplicado à taxa de cada dia útil. A conta
+        anda mês a mês, a partir do mês de hoje, e o resultado vira o percentual do CDI que um CDB
+        precisaria pagar para deixar o mesmo valor no bolso, depois do IR.
       </p>
     </PaginaDeFerramenta>
   );
