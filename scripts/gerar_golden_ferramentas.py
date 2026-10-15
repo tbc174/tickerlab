@@ -308,8 +308,19 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("inflacao.em_12_meses", [DOZE_MESES[:11]]),
     ("inflacao.evolucao", [100, "2024-12", "2025-02", IPCA_DE_EXEMPLO]),
     ("inflacao.evolucao", [100, "2025-02", "2024-12", IPCA_DE_EXEMPLO]),
-    ("inflacao.anos_abaixo", [DOZE_MESES, [[m, v * 1.5] for m, v in DOZE_MESES], int(DOZE_MESES[0][0][:4]), 1]),
-    ("inflacao.anos_abaixo", [DOZE_MESES, DOZE_MESES[:11], int(DOZE_MESES[0][0][:4]), 2]),
+    (
+        "inflacao.anos_abaixo",
+        [
+            DOZE_MESES,
+            [[m, v * 1.5] for m, v in DOZE_MESES],
+            int(DOZE_MESES[0][0][:4]),
+            1,
+        ],
+    ),
+    (
+        "inflacao.anos_abaixo",
+        [DOZE_MESES, DOZE_MESES[:11], int(DOZE_MESES[0][0][:4]), 2],
+    ),
     ("renda_fixa.comparar", [10000, 365, [0.1365], 1.0, 0.9, 0.006704]),
     ("renda_fixa.comparar", [10000, 90, [0.1365], 1.1, 0.92, 0.006704]),
     ("renda_fixa.comparar", [5000, 180, [0.1365], 1.0, 0.9, 0.006704]),
@@ -328,7 +339,10 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("renda_fixa.tesouro_ipca", [10000, 730, 0.0669, [0.045]]),
     ("renda_fixa.tesouro_ipca", [30000, 3285, 0.0666, [0.0522, 0.043, 0.0379, 0.035]]),
     ("renda_fixa.tesouro_ipca", [1000, 365, 0.06, []]),
-    ("renda_fixa.cdi_pelo_focus", [0.1365, 0.1375, {"2026": 0.1325, "2027": 0.12}, 2026, 3]),
+    (
+        "renda_fixa.cdi_pelo_focus",
+        [0.1365, 0.1375, {"2026": 0.1325, "2027": 0.12}, 2026, 3],
+    ),
     ("renda_fixa.cdi_pelo_focus", [0.1365, 0.1375, {}, 2026, 2]),
     ("renda_fixa.ponto_de_empate", [10000, 730, [0.1365], 0.9]),
     ("renda_fixa.ponto_de_empate", [10000, 20, [0.1365], 0.95]),
