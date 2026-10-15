@@ -6,7 +6,10 @@ from datetime import date
 
 import pandas as pd
 import sqlalchemy as sa
+from hypothesis import given
+from hypothesis import strategies as st
 
+from base.dias_uteis import feriados_nacionais
 from scripts import atualizar_fundamentos
 from src import demonstracoes as dm
 from src import prazos
@@ -84,3 +87,92 @@ def test_coleta_dos_fundamentos_grava_os_alertas(tmp_path, monkeypatch):
     with criar_engine(url).connect() as c:
         linhas = c.execute(sa.text("select fonte, rotulo from eventos")).all()
     assert linhas == [(prazos.FONTE_PRAZO, "DFP entregue fora do prazo")]
+
+
+def test_prazo_pula_feriado_nacional():
+    # 14/11/2021 foi domingo e 15/11, feriado: o prazo do ITR de 30/09 vai para a terça, 16/11
+    assert prazos.prazo("ITR", date(2021, 9, 30)) == date(2021, 11, 16)
+    # exercício em 30/11/2021: a DFP vencia em 28/02/2022, segunda de Carnaval; terça também
+    assert prazos.prazo("DFP", date(2021, 11, 30)) == date(2022, 3, 2)
+
+
+def test_dfp_do_emissor_estrangeiro_tem_4_meses():
+    assert prazos.prazo("DFP", date(2025, 12, 31), estrangeiro=True) == date(
+        2026, 4, 30
+    )
+
+
+def test_dfp_prorrogada_na_pandemia():
+    # Deliberação CVM 849/2020 (redação da 852): +2 meses para exercícios de 31/12/2019 a 31/03/2020
+    assert prazos.prazo("DFP", date(2019, 12, 31)) == date(
+        2020, 6, 1
+    )  # 31/05 foi domingo
+    assert prazos.prazo("DFP", date(2020, 3, 31)) == date(2020, 8, 31)
+    assert prazos.prazo("DFP", date(2020, 12, 31)) == date(
+        2021, 3, 31
+    )  # já sem prorrogação
+    # a prorrogação vale só para o emissor nacional
+    assert prazos.prazo("DFP", date(2019, 12, 31), estrangeiro=True) == date(
+        2020, 4, 30
+    )
+
+
+def test_itr_prorrogado_na_pandemia():
+    # Deliberação 849, item IV (redação da 852): +45 dias no 1º e no 3º trimestre do exercício
+    assert prazos.prazo("ITR", date(2020, 3, 31)) == date(2020, 6, 29)
+    assert prazos.prazo("ITR", date(2020, 6, 30), mes_fim_do_exercicio=3) == date(
+        2020, 9, 28
+    )
+    assert prazos.prazo("ITR", date(2020, 3, 31), mes_fim_do_exercicio=6) == date(
+        2020, 6, 29
+    )
+    # Deliberação 862: +15 dias no ITR de 30/06/2020, só para quem fecha o exercício em dezembro
+    assert prazos.prazo("ITR", date(2020, 6, 30)) == date(
+        2020, 8, 31
+    )  # 29/08 foi sábado
+    assert prazos.prazo("ITR", date(2020, 9, 30)) == date(
+        2020, 11, 16
+    )  # sem prorrogação
+
+
+def test_itr_prorrogado_no_rio_grande_do_sul_em_2024():
+    # Resolução CVM 202/2024 (enchentes): só para quem tem sede no RS; 30/06/2024 foi domingo
+    assert prazos.prazo("ITR", date(2024, 3, 31), uf="RS") == date(2024, 7, 1)
+    assert prazos.prazo("ITR", date(2024, 3, 31), uf=" rs ") == date(2024, 7, 1)
+    assert prazos.prazo("ITR", date(2024, 3, 31), uf="SP") == date(2024, 5, 15)
+    assert prazos.prazo("ITR", date(2024, 3, 31)) == date(2024, 5, 15)
+    assert prazos.prazo("ITR", date(2024, 6, 30), uf="RS") == date(2024, 8, 14)
+
+
+_FINS_DE_TRIMESTRE = st.builds(
+    lambda ano, mes: pd.Timestamp(ano, mes, 1) + pd.offsets.MonthEnd(0),
+    st.integers(2009, 2030),
+    st.sampled_from([3, 6, 9, 12]),
+).map(lambda dia: dia.date())
+
+
+@given(
+    documento=st.sampled_from(["DFP", "ITR"]),
+    referencia=_FINS_DE_TRIMESTRE,
+    mes_fim=st.sampled_from([3, 6, 9, 12]),
+    uf=st.sampled_from([None, "RS", "SP"]),
+    estrangeiro=st.booleans(),
+)
+def test_prazo_cai_em_dia_util_e_nunca_antes_do_normal(
+    documento, referencia, mes_fim, uf, estrangeiro
+):
+    limite = prazos.prazo(
+        documento,
+        referencia,
+        mes_fim_do_exercicio=mes_fim,
+        uf=uf,
+        estrangeiro=estrangeiro,
+    )
+    assert limite.weekday() < 5 and limite not in feriados_nacionais(limite.year)
+    meses = 4 if estrangeiro else 3
+    normal = (
+        (pd.Timestamp(referencia) + pd.DateOffset(months=meses)).date()
+        if documento == "DFP"
+        else referencia + pd.Timedelta(days=45)
+    )
+    assert normal <= limite

@@ -24,7 +24,8 @@ Regras desta versão:
 - **R7:** receita ou ativo total que subiu ou caiu 5 vezes ou mais em um ano, sem fato relevante ou
   comunicado da empresa no período (saltos de ~1000 vezes ficam para a R3).
 - **R8:** DFP ou ITR não entregue depois do prazo da CVM, ou entregue com atraso (prazos de
-  `src/prazos.py`; 1 ou 2 dias podem ser só um feriado).
+  `src/prazos.py`, com feriados nacionais e as prorrogações da CVM; 1 ou 2 dias podem ser só um
+  feriado local).
 - **R9:** linhas repetidas idênticas no arquivo da CVM (contadas por `base/contas_cvm.py`).
 - **R10:** lucro do período em branco (zero) numa empresa com receita; a linha do lucro é achada
   pela descrição (7 casos na DFP 2022 e 4 na de 2023).
@@ -67,7 +68,9 @@ NAO_PODEM_SER_NEGATIVAS = {
 }
 RECEITA = "3.01"
 FATOR_DE_SALTO = 5.0  # R7: subir ou cair 5 vezes num ano pede explicação
-ATRASO_QUE_PODE_SER_FERIADO = 2  # dias (src/prazos.py não considera feriados)
+ATRASO_QUE_PODE_SER_FERIADO = (
+    2  # dias (src/prazos.py não conhece feriados estaduais e municipais)
+)
 PATRIMONIO_LIQUIDO = re.compile(r"^patrim[oô]nio l[ií]quido", re.IGNORECASE)
 # a linha do lucro do período, achada pela descrição: em parte das empresas a 3.11 é a reversão dos
 # juros sobre capital próprio e o lucro fica na 3.13 (medido na DFP 2022)
