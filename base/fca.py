@@ -271,9 +271,21 @@ def juntar_versoes(abertos: pd.DataFrame, versoes: pd.DataFrame) -> pd.DataFrame
     dados abertos já trazem fica como está."""
     novas = versoes[~versoes["id_documento"].isin(set(abertos["id_documento"]))]
     if novas.empty:  # juntar com uma tabela vazia tiraria o tipo de data das colunas
-        return abertos.drop_duplicates().reset_index(drop=True)
+        return abertos.reset_index(drop=True)
     juntos = pd.concat([abertos, novas], ignore_index=True)
-    return juntos.drop_duplicates().reset_index(drop=True)
+    return juntos.reset_index(drop=True)
+
+
+def sem_documento_repetido(tabelas: list[pd.DataFrame]) -> pd.DataFrame:
+    """Junta os valores de várias baixadas, da mais nova para a mais antiga: cada documento vem de
+    uma só (a primeira que o traz), com todas as linhas dele. Linhas iguais no mesmo documento (duas
+    séries de debêntures com os mesmos campos) continuam sendo duas."""
+    vistos: set[str] = set()
+    partes = []
+    for tabela in tabelas:
+        partes.append(tabela[~tabela["id_documento"].isin(vistos)])
+        vistos |= set(tabela["id_documento"])
+    return pd.concat(partes, ignore_index=True)
 
 
 def versoes_a_buscar(documentos: pd.DataFrame, valores: pd.DataFrame) -> pd.DataFrame:

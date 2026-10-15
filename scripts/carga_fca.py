@@ -166,9 +166,10 @@ def main(argv: list[str] | None = None) -> int:
                 log.error("Nenhum FCA lido")
                 return 1
             conteudos = [c for _, c in lidos]
-            abertos = pd.concat(
-                [fca.ler_valores_mobiliarios(c) for c in conteudos], ignore_index=True
-            ).drop_duplicates()
+            # da baixada mais nova para a mais antiga: cada documento vem de uma só
+            abertos = fca.sem_documento_repetido(
+                [fca.ler_valores_mobiliarios(c) for c in reversed(conteudos)]
+            )
             documentos = pd.concat(
                 [fca.documentos(c) for c in conteudos], ignore_index=True
             )
