@@ -21,6 +21,7 @@ from src.ferramentas import (
     aportes,
     custos,
     darf,
+    financiamento,
     inflacao,
     juros,
     moedas,
@@ -69,6 +70,8 @@ CONTAS: dict[str, Conta] = {
         [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
     ),
     "darf.vencimento": darf.vencimento,
+    "financiamento.parcela_price": financiamento.parcela_price,
+    "financiamento.tabela": financiamento.tabela,
     "preco_medio.calcular": lambda ops: preco_medio.calcular(
         [preco_medio.Operacao(**o) for o in ops]
     ),
@@ -292,6 +295,17 @@ CASOS: list[tuple[str, list[Any]]] = [
     ),
     ("darf.vencimento", [2026, 10]),
     ("darf.vencimento", [2026, 12]),
+    ("financiamento.parcela_price", [300000, 0.01, 360]),
+    ("financiamento.parcela_price", [1200, 0, 12]),
+    ("financiamento.parcela_price", [1000, 1e-12, 24]),
+    ("financiamento.tabela", ["price", 50000, 0.009, 24]),
+    ("financiamento.tabela", ["sac", 50000, 0.009, 24]),
+    ("financiamento.tabela", ["price", 50000, 0.009, 24, 6, 10000, "prazo"]),
+    ("financiamento.tabela", ["sac", 50000, 0.009, 24, 6, 10000, "parcela"]),
+    ("financiamento.tabela", ["price", 10000, 0.01, 24, 3, 1000000]),
+    ("financiamento.tabela", ["price", 1200, 0, 12]),
+    ("financiamento.tabela", ["bala", 1000, 0.01, 12]),
+    ("financiamento.tabela", ["sac", 1000, 0.01, 601]),
     (
         "preco_medio.calcular",
         [
