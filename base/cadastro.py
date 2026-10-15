@@ -133,7 +133,12 @@ def tickers_no_tempo(conteudos_dos_zips: Iterable[bytes]) -> pd.DataFrame:
     partes = [fca.ler_valores_mobiliarios(c) for c in conteudos_dos_zips]
     if not partes:
         return pd.DataFrame(columns=list(COLUNAS_DOS_TICKERS))
-    valores = pd.concat(partes, ignore_index=True)
+    return tickers_dos_valores(pd.concat(partes, ignore_index=True))
+
+
+def tickers_dos_valores(valores: pd.DataFrame) -> pd.DataFrame:
+    """O mesmo que `tickers_no_tempo`, a partir dos valores mobiliários já lidos (os dos dados
+    abertos mais as versões antigas do RAD, por `fca.juntar_versoes`)."""
     acoes = _acoes_da_bolsa(valores).merge(
         fca.formularios_vigentes(valores), on=["cnpj", "id_documento", "recebido_em"]
     )

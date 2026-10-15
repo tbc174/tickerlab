@@ -13,6 +13,11 @@ de quando a quando cada código valeu, pelas entregas do FCA; série 4, PR 1) e 
 também a tabela conferida `base/conferidas/codigos_fora_do_fca.csv` (o BTG informa "000000"; série 3,
 PR 8), com a coluna `origem`. Ano que não existe na CVM é pulado. Feita para o servidor de casa (ADR
 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Versões antigas (achado da série 4): a CVM publica os valores mobiliários só da versão mais nova de cada
+formulário. A carga lê **todas** as baixadas guardadas de cada ano (cada uma com as versões que trazia)
+e os documentos das versões que `scripts/coletar_fca_versoes.py` guardou do sistema de documentos da CVM;
+`valores_mobiliarios` diz a origem de cada linha.
 """
 
 import argparse
@@ -28,19 +33,21 @@ import requests
 import sqlalchemy as sa
 
 from base import fca
-from base.cadastro import tickers_no_tempo
+from base.cadastro import tickers_dos_valores
 from base.parquet import gravar_tabela
 from src import acervo
-from src.banco.coletas import com_registro, original_mais_recente
+from src.banco.coletas import (
+    com_registro,
+    originais_guardados,
+    originais_mais_recentes,
+)
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.carga_fca")
 FONTE = "cvm-fca"
-URL_DO_FCA = (
-    "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_{ano}.zip"
-)
+URL_DO_FCA = fca.URL_DO_ANO
 PRIMEIRO_ANO = 2010  # o 1º FCA aberto
 NAO_ENCONTRADO = 404
 SUBPASTA = Path("base") / "fca"
@@ -67,26 +74,46 @@ def _pasta_padrao() -> Path | None:
 
 
 def ler_anos(conexao: sa.Connection, anos: range) -> list[tuple[str, bytes]]:
-    """(endereço, conteúdo) de cada FCA dos anos pedidos que existe na CVM."""
+    """(endereço, conteúdo) de cada FCA dos anos pedidos: todas as baixadas guardadas no acervo (da
+    mais antiga à mais nova) ou, se nenhuma, a da CVM agora."""
     lidos = []
     for ano in anos:
         url = URL_DO_FCA.format(ano=ano)
-        conteudo = original_mais_recente(conexao, url) or baixar(url)
-        if conteudo is None:
+        guardados = originais_guardados(conexao, url)
+        if not guardados and (novo := baixar(url)) is not None:
+            guardados = [novo]
+        if not guardados:
             log.info("FCA de %s não existe na CVM: pulado", ano)
-            continue
-        lidos.append((url, conteudo))
+        lidos.extend((url, conteudo) for conteudo in guardados)
     return lidos
 
 
-def gravar(
-    valores: pd.DataFrame,
-    conteudos: list[bytes],
-    origens: list[dict[str, str]],
-    pasta: Path,
-) -> None:
+def ler_versoes(
+    conexao: sa.Connection, documentos: pd.DataFrame
+) -> tuple[pd.DataFrame, list[dict[str, str]]]:
+    """Os valores das versões antigas guardadas (`coletar_fca_versoes`) dos documentos dos anos lidos,
+    com a origem de cada uma (endereço e SHA-256)."""
+    por_numero = documentos.drop_duplicates("id_documento").set_index("id_documento")
+    partes, origens = [], []
+    for linha in originais_mais_recentes(conexao, fca.FONTE_DAS_VERSOES):
+        numero = linha.url.split("numSequencia=")[1].split("&")[0]
+        conteudo = acervo.ler_original(linha.caminho_do_original)
+        if numero not in por_numero.index or conteudo is None:
+            continue
+        documento = por_numero.loc[numero].to_dict() | {"id_documento": numero}
+        partes.append(fca.ler_documento_da_versao(conteudo, documento))
+        origens.append({"url": linha.url, "sha256": linha.sha256})
+    versoes = (
+        pd.concat(partes, ignore_index=True)
+        if partes
+        else pd.DataFrame(columns=list(fca.COLUNAS))
+    )
+    return versoes, origens
+
+
+def gravar(valores: pd.DataFrame, origens: list[dict[str, str]], pasta: Path) -> None:
     tickers, emissores = fca.com_codigos_conferidos(
-        tickers_no_tempo(conteudos), fca.emissores(valores), fca.codigos_conferidos()
+        tickers_dos_valores(valores), fca.emissores(valores), fca.codigos_conferidos()
     )
     conferida = {
         "url": URL_DOS_CODIGOS_CONFERIDOS,
@@ -95,7 +122,7 @@ def gravar(
     tabelas = {
         "valores_mobiliarios": (
             valores,
-            ["cnpj", "referencia", "valor_mobiliario"],
+            ["cnpj", "referencia", "versao", "id_documento", "valor_mobiliario"],
             origens,
         ),
         "emissores": (emissores, ["emissor", "cnpj"], [*origens, conferida]),
@@ -135,17 +162,24 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with motor.connect() as conexao:
             lidos = ler_anos(conexao, range(opcoes.desde, opcoes.ate + 1))
+            if not lidos:
+                log.error("Nenhum FCA lido")
+                return 1
+            conteudos = [c for _, c in lidos]
+            abertos = pd.concat(
+                [fca.ler_valores_mobiliarios(c) for c in conteudos], ignore_index=True
+            ).drop_duplicates()
+            documentos = pd.concat(
+                [fca.documentos(c) for c in conteudos], ignore_index=True
+            )
+            versoes, origens_das_versoes = ler_versoes(conexao, documentos)
     finally:
         motor.dispose()
-    if not lidos:
-        log.error("Nenhum FCA lido")
-        return 1
-    conteudos = [c for _, c in lidos]
-    valores = pd.concat(
-        [fca.ler_valores_mobiliarios(c) for c in conteudos], ignore_index=True
-    )
     origens = [{"url": u, "sha256": hashlib.sha256(c).hexdigest()} for u, c in lidos]
-    gravar(valores, conteudos, origens, pasta)
+    log.info("Versões antigas do RAD: %s documentos", len(origens_das_versoes))
+    gravar(
+        fca.juntar_versoes(abertos, versoes), [*origens, *origens_das_versoes], pasta
+    )
     return 0
 
 

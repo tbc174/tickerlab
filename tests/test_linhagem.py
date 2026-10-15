@@ -183,6 +183,7 @@ def base_inteira(tmp_path, monkeypatch):
         p.name: p.read_bytes()
         for pasta in ("cvm/cda", "cvm/fca", "bcb/ifdata")
         for p in (PASTA_DE_AMOSTRAS / pasta).iterdir()
+        if p.is_file()
     }
 
     def baixar_falso(endereco: str) -> bytes | None:

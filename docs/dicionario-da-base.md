@@ -135,7 +135,7 @@ Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, j
 
 ## `valores_mobiliarios`
 
-Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), na versão mais nova de cada documento (a CVM só publica os valores dela), com a data de entrega. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
+Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão: a mais nova de cada documento (a única que a CVM publica nos dados abertos), as das baixadas antigas guardadas no acervo e as versões substituídas buscadas no sistema de documentos da CVM (RAD) nos anos em que o código mudou. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
 
 - **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -146,7 +146,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 - **Chaves:** `cnpj`, `referencia`, `versao`, `valor_mobiliario`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `recebido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
 - **Linhagem:** `id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
@@ -170,6 +170,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 | `segmento` | Segmento de listagem (Novo Mercado, Nível 1...) | texto |
 | `inicio_listagem` | Início da listagem no segmento | data (dia) |
 | `fim_listagem` | Fim da listagem no segmento | data (dia) |
+| `origem` | dados abertos (arquivo anual da CVM) ou documento da versão (RAD da CVM) | texto |
 
 ## `emissores`
 
