@@ -214,3 +214,15 @@ def test_arquivo_ainda_sem_o_dolar_deixa_so_o_dolar_e_o_bitcoin_de_fora(
         "ibovespa",
     ]
     assert [i["nome"] for i in corpo["indisponiveis"]] == ["Dólar", "Bitcoin"]
+
+
+def test_o_cache_de_ontem_e_jogado_fora(cliente, monkeypatch):
+    _pedir(cliente)
+    assert len(ferramentas.CALCULADOS) == 1
+    monkeypatch.setattr(ferramentas, "hoje", lambda: date(2026, 10, 16))
+    _pedir(cliente, desde="2019-01-01")
+    assert [dia for _, dia in ferramentas.CALCULADOS] == [date(2026, 10, 16)]
+
+
+def test_data_de_seculos_atras_e_422(cliente):
+    assert _pedir(cliente, desde="0001-01-01").status_code == 422

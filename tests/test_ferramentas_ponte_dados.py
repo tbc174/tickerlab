@@ -136,3 +136,15 @@ def test_a_curva_do_yahoo_comeca_no_plano_real(monkeypatch):
     curva = ponte_dados.curva_do_yahoo("ibovespa", pd.Series(dtype=float))
     assert curva.index[0] == pd.Timestamp("1994-07-01")
     assert curva.to_numpy() == pytest.approx([4000.0, 4100.0])
+
+
+def test_falha_do_yahoo_vira_erro_da_curva_e_nao_fica_no_cache(monkeypatch):
+    def sem_yahoo(ticker):
+        raise dados_de_mercado.DadosIndisponiveisError("fora do ar")
+
+    monkeypatch.setattr(dados_de_mercado, "baixar_historico_completo", sem_yahoo)
+    monkeypatch.setattr(ponte_dados, "CACHE", ponte_dados.CacheDoDia())
+    with pytest.raises(ponte_dados.CurvaIndisponivelError, match="ibovespa"):
+        ponte_dados.obter_curva_do_yahoo(
+            "ibovespa", date(2026, 10, 15), pd.Series(dtype=float)
+        )

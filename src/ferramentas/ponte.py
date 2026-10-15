@@ -41,6 +41,9 @@ VALOR_MINIMO = 1.0
 VALOR_MAXIMO = 10_000_000.0
 DIAS_MINIMOS = 30  # a data inicial é de pelo menos 30 dias atrás
 FOLGA_ANTES_DO_PRIMEIRO_DADO = 7  # dias
+# antes do Plano Real não há dado; e cada mês pedido vira uma entrada no cache da rota pública:
+# limitar os meses limita a memória que pedidos de fora podem gastar
+PRIMEIRO_MES = date(1994, 7, 1)
 
 
 @dataclass(frozen=True)
@@ -68,9 +71,11 @@ class ResultadoDoAtivo:
 
 
 def conferir_pedido(desde: date, valor: float, hoje: date) -> None:
-    """O valor entre R$ 1 e R$ 10 milhões; a data de pelo menos 30 dias atrás."""
+    """O valor entre R$ 1 e R$ 10 milhões; a data de jul/1994 (Plano Real) até 30 dias atrás."""
     if not VALOR_MINIMO <= valor <= VALOR_MAXIMO:
         raise ValueError("Use um valor entre R$ 1 e R$ 10 milhões.")
+    if desde < PRIMEIRO_MES:
+        raise ValueError("Os dados começam em julho de 1994 (Plano Real).")
     if desde > hoje - timedelta(days=DIAS_MINIMOS):
         raise ValueError("Escolha uma data de pelo menos 30 dias atrás.")
 

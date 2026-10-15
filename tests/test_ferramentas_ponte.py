@@ -119,3 +119,11 @@ def test_a_posicao_fica_entre_0_e_1_e_as_janelas_sao_as_que_cabem(retornos, dado
     assert r.janelas.quantas == inicio + 1
     assert 0 <= r.janelas.abaixo_da_sua < 1
     assert r.janelas.pior <= r.valor_final <= r.janelas.melhor
+
+
+def test_data_antes_do_plano_real_e_recusada():
+    # sem dado antes de jul/1994; e cada mês vira uma entrada no cache da rota: limitar os meses
+    # limita a memória que um pedido de fora pode gastar
+    with pytest.raises(ValueError, match="1994"):
+        ponte.conferir_pedido(date(1990, 1, 1), 1000, hoje=date(2026, 10, 15))
+    ponte.conferir_pedido(date(1994, 7, 1), 1000, hoje=date(2026, 10, 15))
