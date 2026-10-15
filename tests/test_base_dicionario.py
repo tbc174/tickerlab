@@ -305,4 +305,6 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
 
 
 def test_contrato_comeca_na_versao_1():
-    assert {t.versao_do_contrato for t in TABELAS.values()} == {"1.0.0"}
+    """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige)."""
+    assert {t.versao_do_contrato.split(".")[0] for t in TABELAS.values()} == {"1"}
