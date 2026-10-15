@@ -138,3 +138,9 @@ def test_empate_que_passa_do_teto_da_busca_nao_e_um_numero():
     # 2 dias: o IOF leva 93% do rendimento e o IR mais um pedaço; nenhum CDB até 1.000% do CDI
     # empata com uma LCI de 90%, e a conta diz que não achou em vez de mostrar "1.000%"
     assert renda_fixa.ponto_de_empate(10_000, 2, CDI, 0.9) is None
+
+
+def test_cdb_que_rende_o_liquido_de_um_cdb_volta_ao_mesmo_percentual():
+    cdb = renda_fixa.comparar(10_000, 730, CDI, 1.05, 0.9, 0.005)[0]
+    achado = renda_fixa.cdb_que_rende(10_000, 730, CDI, cdb.liquido)
+    assert achado == pytest.approx(1.05, abs=1e-9)

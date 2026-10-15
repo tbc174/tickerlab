@@ -10,6 +10,7 @@ import { CorrecaoPelaInflacao } from "./CorrecaoPelaInflacao";
 import { CustoDaTaxa, RecuperarAQueda } from "./CustoDasTaxas";
 import { JuroReal, TaxaEquivalente } from "./JuroReal";
 import { Financiamento } from "./Financiamento";
+import { FundosERendaFixa } from "./FundosERendaFixa";
 import { PrecoMedio } from "./PrecoMedio";
 import { QuantoDaria } from "./QuantoDaria";
 import { RendaFixa } from "./RendaFixa";
@@ -32,6 +33,7 @@ export const FERRAMENTAS = {
   quantoDaria: QuantoDaria,
   precoMedio: PrecoMedio,
   financiamento: Financiamento,
+  fundo: FundosERendaFixa,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

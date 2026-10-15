@@ -8465,6 +8465,43 @@
  },
  {
   "argumentos": [
+   10000,
+   730,
+   [
+    0.12,
+    0.1
+   ],
+   12000
+  ],
+  "conta": "renda_fixa.cdb_que_rende",
+  "valor": 1.0128010307883444
+ },
+ {
+  "argumentos": [
+   10000,
+   730,
+   [
+    0.12
+   ],
+   9000
+  ],
+  "conta": "renda_fixa.cdb_que_rende",
+  "valor": 3.944304526105059e-30
+ },
+ {
+  "argumentos": [
+   10000,
+   2,
+   [
+    0.12
+   ],
+   10100
+  ],
+  "conta": "renda_fixa.cdb_que_rende",
+  "valor": null
+ },
+ {
+  "argumentos": [
    [
     {
      "custos": 5,

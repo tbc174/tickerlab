@@ -51,6 +51,7 @@ const CONTAS: Record<string, Conta> = {
   "financiamento.parcela_price": financiamento.parcelaPrice,
   "financiamento.tabela": financiamento.tabela,
   "fundos.simular": fundos.simular,
+  "renda_fixa.cdb_que_rende": rendaFixa.cdbQueRende,
   "fundos.aliquota_do_fundo": fundos.aliquotaDoFundo,
   "moedas.converter": moedas.converter,
   "taxas.juro_real": taxas.juroReal,

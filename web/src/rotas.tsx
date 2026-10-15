@@ -15,6 +15,7 @@ import {
   DADOS_DO_QUANTO_DARIA,
   DADOS_DO_PRECO_MEDIO,
   DADOS_DO_FINANCIAMENTO,
+  DADOS_DO_FUNDO,
   DADOS_DOS_JUROS,
   PaginaDaRenda,
   PaginaDaSorte,
@@ -28,6 +29,7 @@ import {
   PaginaDoQuantoDaria,
   PaginaDoPrecoMedio,
   PaginaDoFinanciamento,
+  PaginaDoFundo,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
@@ -108,6 +110,7 @@ export const ROTAS: Rota[] = [
     dados: DADOS_DO_FINANCIAMENTO,
     conteudo: () => <PaginaDoFinanciamento />,
   },
+  { arquivo: "fundo-ou-cdb.html", dados: DADOS_DO_FUNDO, conteudo: () => <PaginaDoFundo /> },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
   { arquivo: "metodologia.html", dados: DADOS_DA_METODOLOGIA, conteudo: () => <Metodologia /> },

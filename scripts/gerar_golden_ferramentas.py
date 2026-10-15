@@ -75,6 +75,7 @@ CONTAS: dict[str, Conta] = {
     "financiamento.parcela_price": financiamento.parcela_price,
     "financiamento.tabela": financiamento.tabela,
     "fundos.simular": fundos.simular,
+    "renda_fixa.cdb_que_rende": renda_fixa.cdb_que_rende,
     "fundos.aliquota_do_fundo": regras_de_imposto.aliquota_do_fundo,
     "preco_medio.calcular": lambda ops: preco_medio.calcular(
         [preco_medio.Operacao(**o) for o in ops]
@@ -322,6 +323,9 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("fundos.aliquota_do_fundo", [181, False]),
     ("fundos.aliquota_do_fundo", [400, True]),
     ("fundos.aliquota_do_fundo", [0, False]),
+    ("renda_fixa.cdb_que_rende", [10000, 730, [0.12, 0.1], 12000]),
+    ("renda_fixa.cdb_que_rende", [10000, 730, [0.12], 9000]),
+    ("renda_fixa.cdb_que_rende", [10000, 2, [0.12], 10100]),
     (
         "preco_medio.calcular",
         [
