@@ -71,7 +71,7 @@ export function principal(a: Apuracao): [string, string] {
 const MESES_DO_ANO = Array.from({ length: 12 }, (_, i) => i + 1);
 // as colunas de entrada de cada mês: [prefixo da chave no endereço, rótulo]
 const COLUNAS_DO_ANO: [string, string][] = [
-  ["v", "Vendas"],
+  ["v", "Vendas (sem day trade)"],
   ["c", "Resultado comum"],
   ["d", "Day trade"],
   ["i", "IR retido"],
@@ -91,6 +91,8 @@ export const EXEMPLO_DO_ANO: Record<string, string> = {
   ano: "2025",
   pc0: "0", // prejuízo comum que vem do ano anterior
   pd0: "0", // prejuízo de day trade que vem do ano anterior
+  ia0: "0", // imposto abaixo de R$ 10 que ficou pendente no ano anterior
+  ir0: "0", // IR retido que sobrou do ano anterior
   ...Object.fromEntries(
     MESES_DO_ANO.flatMap((m) => COLUNAS_DO_ANO.map(([letra], k) => [`${letra}${m}`, MESES_DE_EXEMPLO[m]?.[k] ?? "0"])),
   ),
@@ -100,6 +102,8 @@ export interface AnoApurado {
   meses: Apuracao[];
   total: number;
   prejuizoQueSobra: { comum: number; dayTrade: number };
+  pendente: number; // imposto abaixo de R$ 10 que soma ao 1º DARF do ano seguinte
+  irrfQueSobra: number;
 }
 
 const numeroOuZero = (texto: string | undefined) => (texto === undefined || texto.trim() === "" ? 0 : lerNumero(texto));
@@ -107,7 +111,7 @@ const numeroOuZero = (texto: string | undefined) => (texto === undefined || text
 /** Os 12 meses apurados em sequência (contas/darf.ts, apurarMeses), o total e o que sobra. */
 export function apurarOAno(campos: Record<string, string>): AnoApurado | string {
   const meses = MESES_DO_ANO.map((m) => COLUNAS_DO_ANO.map(([letra]) => numeroOuZero(campos[`${letra}${m}`])));
-  const anteriores = [numeroOuZero(campos.pc0), numeroOuZero(campos.pd0)];
+  const anteriores = [campos.pc0, campos.pd0, campos.ia0, campos.ir0].map(numeroOuZero);
   if (meses.flat().some((n) => n === null) || anteriores.some((n) => n === null)) {
     return "Preencha os meses com números (por exemplo, 1.000,50; prejuízo com o sinal de menos).";
   }
@@ -119,18 +123,34 @@ export function apurarOAno(campos: Record<string, string>): AnoApurado | string 
         resultado_day_trade: dayTrade as number,
         irrf_comum: irrf as number,
       })),
-      { prejuizo_comum: Math.abs(anteriores[0] as number), prejuizo_day_trade: Math.abs(anteriores[1] as number) },
+      {
+        prejuizo_comum: Math.abs(anteriores[0] as number),
+        prejuizo_day_trade: Math.abs(anteriores[1] as number),
+        imposto_abaixo_do_minimo: anteriores[2] as number,
+        irrf_a_compensar: anteriores[3] as number,
+      },
     );
     const ultimo = apuracoes[apuracoes.length - 1].saldos_seguintes;
     return {
       meses: apuracoes,
       total: apuracoes.reduce((soma, a) => soma + a.darf, 0),
       prejuizoQueSobra: { comum: ultimo.prejuizo_comum, dayTrade: ultimo.prejuizo_day_trade },
+      pendente: ultimo.imposto_abaixo_do_minimo,
+      irrfQueSobra: ultimo.irrf_a_compensar,
     };
   } catch (erro) {
     if (erro instanceof RangeError) return erro.message;
     throw erro;
   }
+}
+
+/** O que vai na coluna do DARF: o valor, "isento", "abaixo de R$ 10" (passa para o mês seguinte)
+ * ou "—" (sem imposto). */
+function textoDoDarf(a: Apuracao): string {
+  if (a.darf > 0) return formatarReais(a.darf);
+  if (a.isento) return "isento";
+  if (a.saldos_seguintes.imposto_abaixo_do_minimo > 0) return `abaixo de R$ ${DARF_MINIMO}`;
+  return "—";
 }
 
 function DarfDoAno() {
@@ -176,7 +196,7 @@ function DarfDoAno() {
                         />
                       </td>
                     ))}
-                    <td>{a ? (a.darf > 0 ? formatarReais(a.darf) : a.isento ? "isento" : "—") : ""}</td>
+                    <td>{a ? textoDoDarf(a) : ""}</td>
                     <td>
                       {a
                         ? `${formatarReais(a.saldos_seguintes.prejuizo_comum)} / ${formatarReais(a.saldos_seguintes.prejuizo_day_trade)}`
@@ -189,9 +209,11 @@ function DarfDoAno() {
           </table>
         </div>
         <details className="ferramenta-anteriores">
-          <summary>Prejuízo que vem do ano anterior?</summary>
+          <summary>Vem do ano anterior?</summary>
           <CampoDeNumero rotulo="Prejuízo a compensar, operações comuns" antes="R$" valor={campos.pc0} aoMudar={mudar("pc0")} />
           <CampoDeNumero rotulo="Prejuízo a compensar, day trade" antes="R$" valor={campos.pd0} aoMudar={mudar("pd0")} />
+          <CampoDeNumero rotulo="Imposto abaixo de R$ 10 ainda não pago" antes="R$" valor={campos.ia0} aoMudar={mudar("ia0")} />
+          <CampoDeNumero rotulo="IR retido que sobrou" antes="R$" valor={campos.ir0} aoMudar={mudar("ir0")} />
         </details>
       </form>
       <Resultado rotulo={anoValido ? `Imposto sobre ações em ${ano}` : "Imposto do ano"} principal={r ? formatarReais(r.total) : ""} erro={erro}>
@@ -200,6 +222,12 @@ function DarfDoAno() {
             <p>
               {pagos ? `Em ${pagos} ${pagos === 1 ? "DARF" : "DARFs"}, código ${CODIGO_DO_DARF}, cada um até o último dia útil do mês seguinte ao das operações.` : "Nenhum DARF a pagar no ano."}
             </p>
+            {r.pendente > 0 ? (
+              <p>
+                Mais {formatarReais(r.pendente)} ainda pendente (abaixo de R$ {DARF_MINIMO}): soma ao primeiro DARF de{" "}
+                {anoValido ? ano + 1 : "o ano seguinte"}.
+              </p>
+            ) : null}
             <dl className="ferramenta-numeros">
               <div>
                 <dt>Prejuízo que passa para {anoValido ? ano + 1 : "o ano seguinte"}, comum</dt>
@@ -209,6 +237,12 @@ function DarfDoAno() {
                 <dt>Prejuízo que passa para {anoValido ? ano + 1 : "o ano seguinte"}, day trade</dt>
                 <dd>{formatarReais(r.prejuizoQueSobra.dayTrade)}</dd>
               </div>
+              {r.irrfQueSobra > 0 ? (
+                <div>
+                  <dt>IR retido que sobra para abater depois</dt>
+                  <dd>{formatarReais(r.irrfQueSobra)}</dd>
+                </div>
+              ) : null}
             </dl>
             <Compartilhar
               resultado={`Imposto sobre ações em ${anoValido ? ano : "?"}: ${formatarReais(r.total)} em ${pagos} DARFs; prejuízo que passa para o ano seguinte: ${formatarReais(r.prejuizoQueSobra.comum)} (comum) e ${formatarReais(r.prejuizoQueSobra.dayTrade)} (day trade)`}
