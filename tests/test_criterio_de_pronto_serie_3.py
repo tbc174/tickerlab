@@ -36,7 +36,7 @@ FONTES = {
     "CVM CDA": {
         "fontes_no_registro": [carga_cda.FONTE],
         "enderecos": [carga_cda.PASTA_DA_CVM],
-        "tabelas": ["carteiras_dos_fundos"],
+        "tabelas": ["carteiras_dos_fundos", "carteiras_bloco_8"],
         "reprodutivel": "tests/test_carga_cda.py::test_ano_igual_ao_que_ja_tem_e_pulado",
         "linhagem": "tests/test_carga_cda.py::test_linhagem_do_ano_e_completa",
     },
@@ -82,6 +82,7 @@ COMO_ERA_NA_DATA = {
     "emissores": "primeiro_recebido_em",
     "codigos_invalidos": "recebido_em",
     "carteiras_dos_fundos": "disponivel_em",
+    "carteiras_bloco_8": "disponivel_em",
     "fidc_informe": "disponivel_em",
     "ifdata_valores": "disponivel_em",
     "scr_credito": "disponivel_em",

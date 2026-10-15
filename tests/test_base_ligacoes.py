@@ -202,3 +202,59 @@ def test_buraco_conferido_traz_o_motivo():
     )
     sem_motivo = ligacoes.buracos(_posicoes(), _ligacao())
     assert sem_motivo["motivo"].isna().all()
+
+
+def _bloco_8() -> pd.DataFrame:
+    linhas = [
+        # mês, fundo, cnpj do emissor, tipo, valor, quantidade
+        ("2008-12-31", "F9", ITAU, "comprado", 50.0, 5),
+        ("2008-12-31", "F9", PETROBRAS, "comprado", 30.0, 3),
+        (
+            "2009-01-31",
+            "F8",
+            "11.111.111/0001-11",
+            "comprado",
+            999.0,
+            9,
+        ),  # sem ação na bolsa
+    ]
+    tabela = pd.DataFrame(
+        linhas,
+        columns=[
+            "competencia",
+            "cnpj_fundo",
+            "cnpj_emissor",
+            "tipo",
+            "valor",
+            "quantidade",
+        ],
+    )
+    return tabela.assign(
+        competencia=pd.to_datetime(tabela["competencia"]),
+        compras=0.0,
+        vendas=0.0,
+        disponivel_em=pd.Timestamp("2009-05-01"),
+    )
+
+
+def test_painel_por_empresa_traz_o_bloco_8_em_colunas_proprias():
+    """Achado da série 4: o bloco 8 entra só pelo CNPJ que o fundo informa, só de empresa com ação na
+    bolsa (ligação conferida), e em colunas próprias: as do bloco 4 não mudam."""
+    sem = ligacoes.painel_por_empresa(_posicoes(), _ligacao()).set_index(
+        ["cnpj", "tipo"]
+    )
+    com = ligacoes.painel_por_empresa(_posicoes(), _ligacao(), _bloco_8()).set_index(
+        ["cnpj", "tipo"]
+    )
+    pd.testing.assert_series_equal(
+        com.loc[sem.index, "valor"], sem["valor"], check_names=False
+    )
+    assert com.loc[(ITAU, "comprado"), "valor_no_bloco_8"] == 50.0
+    assert com.loc[(ITAU, "comprado"), "fundos_no_bloco_8"] == 1
+    assert com.loc[(PETROBRAS, "comprado"), "quantidade_no_bloco_8"] == 3
+    assert "11.111.111/0001-11" not in set(com.index.get_level_values("cnpj"))
+    # o total só era público quando a última posição somada ficou pública, nos dois blocos
+    assert com.loc[(ITAU, "comprado"), "disponivel_em"] == pd.Timestamp("2009-05-01")
+    assert (
+        sem["valor_no_bloco_8"] == 0
+    ).all()  # sem o bloco 8, as colunas existem com zero

@@ -13,8 +13,17 @@ base dizerem o mesmo.
   dias depois da competência (o arquivo sai uns 40 dias depois e o sigilo pode ir a 90) ou do fim do
   sigilo (`DT_CONFID_APLIC`), o que vier depois. Regra conservadora: pode atrasar um número, nunca
   adiantar.
+
+**Bloco 8** ("demais ativos não codificados"; achado da série 4): muitos fundos informam ações da bolsa
+sem o código estruturado, só com a descrição ("PETR3 - PETROBRAS") e o CNPJ do emissor. Em 2020, R$ 1,14
+tri (soma dos meses) em ações de companhias com ticker, ~26% a mais sobre o bloco 4, e quase nada
+repetido entre os blocos (0,9% do valor com a mesma empresa no mesmo fundo e mês). `ler_acoes_do_bloco_8`
+lê as ações e os certificados de depósito com o **CNPJ que o fundo informa**: a linha de emissor pessoa
+física (o bloco 8 traz o CPF) é descartada na leitura, e também a marcada como PJ cujo número pode ser
+um CPF (`base/fidc.py::documento_de_empresa`).
 """
 
+import csv
 import io
 import zipfile
 from collections.abc import Iterator
@@ -23,6 +32,7 @@ from datetime import date
 import pandas as pd
 
 from base.fca import emissor_do_isin
+from base.fidc import documento_de_empresa
 from src.detentores import COMPRADO, EMPRESTADO, VENDIDO
 from src.fundos_cvm import CODIFICACAO_DA_CVM, TIPOS
 
@@ -41,6 +51,18 @@ USADAS = (
     "CD_ISIN", "DS_ATIVO", "QT_POS_FINAL", "VL_MERC_POS_FINAL", "VL_AQUIS_NEGOC", "VL_VENDA_NEGOC",
     "DT_CONFID_APLIC",
 )  # fmt: skip
+
+
+COLUNAS_DO_BLOCO_8 = (
+    "competencia", "cnpj_fundo", "tipo_do_fundo", "fundo", "tipo", "tipo_do_ativo", "cnpj_emissor",
+    "nome_do_emissor", "descricao", "quantidade", "valor", "compras", "vendas", "confidencial_ate",
+)  # fmt: skip
+USADAS_NO_BLOCO_8 = (
+    "CNPJ_FUNDO_CLASSE", "TP_FUNDO_CLASSE", "DENOM_SOCIAL", "DT_COMPTC", "TP_APLIC", "TP_ATIVO",
+    "DS_ATIVO", "QT_POS_FINAL", "VL_MERC_POS_FINAL", "VL_AQUIS_NEGOC", "VL_VENDA_NEGOC",
+    "DT_CONFID_APLIC", "PF_PJ_EMISSOR", "CPF_CNPJ_EMISSOR", "EMISSOR",
+)  # fmt: skip
+PESSOA_JURIDICA = "PJ"
 
 
 def _numero(serie: pd.Series) -> pd.Series:
@@ -97,6 +119,57 @@ def ler_posicoes_historicas(
                 dtype=str, keep_default_na=False, usecols=usadas, chunksize=tamanho,
             ):  # fmt: skip
                 yield _do_pedaco(bruto).reset_index(drop=True)[list(COLUNAS)]
+
+
+def _acoes_do_pedaco_do_bloco_8(bruto: pd.DataFrame) -> pd.DataFrame:
+    bruto = bruto.rename(columns=NOMES_NOVOS)
+    # pessoa física (CPF) sai aqui, antes de qualquer outra coluna ser lida
+    pj = bruto[bruto["PF_PJ_EMISSOR"].str.strip().eq(PESSOA_JURIDICA)]
+    cnpj = pj["CPF_CNPJ_EMISSOR"].map(documento_de_empresa)
+    pj = pj.assign(_cnpj=cnpj)[pj["TP_APLIC"].isin(TIPOS) & cnpj.notna()]
+    return pd.DataFrame(
+        {
+            "competencia": pd.to_datetime(pj["DT_COMPTC"], errors="coerce"),
+            "cnpj_fundo": pj["CNPJ_FUNDO_CLASSE"].str.strip(),
+            "tipo_do_fundo": _texto(pj["TP_FUNDO_CLASSE"]),
+            "fundo": pj["DENOM_SOCIAL"].str.strip().str[:200],
+            "tipo": pj["TP_APLIC"].map(TIPOS),
+            "tipo_do_ativo": _texto(pj["TP_ATIVO"]),
+            "cnpj_emissor": pj["_cnpj"],
+            "nome_do_emissor": _texto(pj["EMISSOR"]).str[:200],
+            "descricao": _texto(pj["DS_ATIVO"]),
+            "quantidade": _numero(pj["QT_POS_FINAL"]),
+            "valor": _numero(pj["VL_MERC_POS_FINAL"]),
+            "compras": _numero(pj["VL_AQUIS_NEGOC"]),
+            "vendas": _numero(pj["VL_VENDA_NEGOC"]),
+            "confidencial_ate": pd.to_datetime(pj["DT_CONFID_APLIC"], errors="coerce"),
+        }
+    ).dropna(subset=["competencia"])
+
+
+def ler_acoes_do_bloco_8(
+    conteudo_do_zip: bytes, tamanho: int = LINHAS_POR_PEDACO
+) -> Iterator[pd.DataFrame]:
+    """As ações e os certificados de depósito do bloco 8, com o CNPJ do emissor que o fundo informa,
+    em pedaços (nada, se o arquivo não tem o bloco 8). Pessoa física nunca entra."""
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        nome = next((n for n in arquivo.namelist() if "_BLC_8_" in n), None)
+        if nome is None:
+            return
+        with arquivo.open(nome) as cabeca:
+            cabecalho = pd.read_csv(
+                cabeca, sep=";", encoding=CODIFICACAO_DA_CVM, nrows=0
+            ).columns
+        usadas = [c for c in cabecalho if NOMES_NOVOS.get(c, c) in USADAS_NO_BLOCO_8]
+        with arquivo.open(nome) as fluxo:
+            for bruto in pd.read_csv(
+                fluxo, sep=";", encoding=CODIFICACAO_DA_CVM, encoding_errors="replace",
+                dtype=str, keep_default_na=False, usecols=usadas, chunksize=tamanho,
+                quoting=csv.QUOTE_NONE,
+            ):  # fmt: skip
+                yield _acoes_do_pedaco_do_bloco_8(bruto).reset_index(drop=True)[
+                    list(COLUNAS_DO_BLOCO_8)
+                ]
 
 
 def disponivel_em(posicoes: pd.DataFrame) -> pd.Series:
