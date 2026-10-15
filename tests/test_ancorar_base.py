@@ -379,4 +379,6 @@ def test_noite_avisa_parquet_sem_manifesto(tmp_path, base):
     pd.DataFrame({"a": [1]}).to_parquet(base / "solto.parquet", index=False)
     feito = _noite(tmp_path, base)
     assert feito.carimbadas == ["base-2026-10-16.json"]
-    assert feito.problemas == ["1 Parquet(s) sem manifesto, fora da âncora: solto.parquet"]
+    assert feito.problemas == [
+        "1 Parquet(s) sem manifesto, fora da âncora: solto.parquet"
+    ]

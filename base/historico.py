@@ -19,6 +19,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import auditores, controladas, fre, rotulos
+from base.parquet import LINHAGEM, gravar_se_mudou
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.eventos import ler_ipe
@@ -60,11 +61,10 @@ def ano_do_arquivo(url: str) -> int | None:
     return int(achado.group(1)) if achado else None
 
 
-def _gravar(tabela: pd.DataFrame, destino: Path) -> None:
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    parcial = destino.with_name(destino.name + ".parcial")
-    tabela.to_parquet(parcial, index=False)
-    parcial.replace(destino)
+def _gravar(tabela: pd.DataFrame, destino: Path, origem: dict[str, str]) -> str:
+    """Com manifesto (entra na âncora, ADR 0078); remontar o mesmo dado não regrava, e o ano que
+    mudou guarda o anterior como `.vN`."""
+    return gravar_se_mudou(tabela, destino, [origem], [], carimbos=LINHAGEM)
 
 
 def montar(
@@ -98,6 +98,10 @@ def montar(
             montado_em=agora.isoformat(),
             versao_do_codigo=versao_do_codigo(),
         )
-        _gravar(dados, pasta / nome / f"{ano}.parquet")
+        _gravar(
+            dados,
+            pasta / nome / f"{ano}.parquet",
+            {"url": original.url, "sha256": original.sha256},
+        )
         linhas_por_ano[ano] = len(dados)
     return linhas_por_ano

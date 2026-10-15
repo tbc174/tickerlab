@@ -28,6 +28,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.parquet import (
+    LINHAGEM,
+    arquivos_atuais,
+    gravar_se_mudou,
+    origem_de_tabela,
+)
 from src.versao_do_codigo import versao_do_codigo
 
 CODIFICACAO_DA_CVM = "latin-1"
@@ -269,7 +275,7 @@ def montar_trocas(pasta: Path, agora: datetime) -> int:
     Roda depois de `historico.montar("auditores", ...)`; devolve quantas trocas gravou (0 e nada
     gravado quando ainda não há ano de auditores na base).
     """
-    anos = sorted((pasta / "auditores").glob("*.parquet"))
+    anos = arquivos_atuais(pasta / "auditores")
     if not anos:
         return 0
     todos = pd.concat([pd.read_parquet(ano) for ano in anos], ignore_index=True)
@@ -279,9 +285,11 @@ def montar_trocas(pasta: Path, agora: datetime) -> int:
     trocas = trocas_de_auditor(todos).assign(
         montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
     )
-    destino = pasta / "trocas_de_auditor" / "trocas.parquet"
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    parcial = destino.with_name(destino.name + ".parcial")
-    trocas.to_parquet(parcial, index=False)
-    parcial.replace(destino)
+    gravar_se_mudou(
+        trocas,
+        pasta / "trocas_de_auditor" / "trocas.parquet",
+        [origem_de_tabela(ano, pasta) for ano in anos],
+        ["cnpj", "conhecido_em"],
+        carimbos=LINHAGEM,
+    )
     return len(trocas)

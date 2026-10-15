@@ -187,6 +187,8 @@ def test_parquets_sem_manifesto_ficam_de_fora_e_sao_listados(base):
     pd.DataFrame({"a": [1]}).to_parquet(base / "cripto.parquet", index=False)
     (base / "eventos").mkdir()
     pd.DataFrame({"a": [1]}).to_parquet(base / "eventos" / "2024.parquet", index=False)
-    pd.DataFrame({"a": [1]}).to_parquet(base / "eventos" / "2023.v1.parquet", index=False)
+    pd.DataFrame({"a": [1]}).to_parquet(
+        base / "eventos" / "2023.v1.parquet", index=False
+    )
     assert an.parquets_sem_manifesto(base) == ["cripto.parquet", "eventos/2024.parquet"]
     assert "eventos/2024" not in an.manifestos_atuais(base)

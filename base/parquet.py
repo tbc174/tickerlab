@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -90,6 +91,32 @@ def conferir_tabela(arquivo: Path) -> bool:
 
 # --- versões: quando a fonte regrava um arquivo, a tabela anterior fica guardada ----------------
 GRAVADO, IGUAL, ACRESCIDO = "gravado", "igual", "acrescido"
+VERSAO_GUARDADA = re.compile(
+    r"\.v\d+$"
+)  # `2024.v1.parquet`: a tabela de antes, guardada
+
+
+def arquivos_atuais(pasta: Path) -> list[Path]:
+    """Os Parquets de uma pasta da base, sem as versões guardadas (`2024.v1.parquet`)."""
+    return sorted(
+        arquivo
+        for arquivo in pasta.glob("*.parquet")
+        if not VERSAO_GUARDADA.search(arquivo.stem)
+    )
+
+
+def origem_de_tabela(arquivo: Path, raiz: Path) -> dict[str, str]:
+    """A origem de uma tabela derivada: o caminho da tabela de entrada na base e o hash do manifesto
+    dela (ou do arquivo, se ela ainda não tem manifesto)."""
+    manifesto = arquivo.with_suffix(".json")
+    sha256 = (
+        json.loads(manifesto.read_text(encoding="utf-8"))["sha256_da_tabela"]
+        if manifesto.exists()
+        else hashlib.sha256(arquivo.read_bytes()).hexdigest()
+    )
+    return {"url": arquivo.relative_to(raiz).as_posix(), "sha256": sha256}
+
+
 # colunas que dizem de onde, quando e com que código a linha foi montada: não são o dado (ADR 0078)
 LINHAGEM = ("origem_sha256", "origem_coletada_em", "montado_em", "versao_do_codigo")
 
@@ -120,7 +147,9 @@ def guardar_versao_anterior(destino: Path) -> Path:
     versao = destino.with_name(f"{destino.name}.v{n}")
     for extensao in (".parquet", ".json"):
         anterior = destino.with_name(destino.name + extensao)
-        if anterior.exists():  # tabela gravada antes do manifesto (ADR 0078) não tem o .json
+        if (
+            anterior.exists()
+        ):  # tabela gravada antes do manifesto (ADR 0078) não tem o .json
             anterior.rename(versao.with_name(versao.name + extensao))
     log.info(
         "%s mudou na fonte: a versão anterior ficou como %s", destino.name, versao.name

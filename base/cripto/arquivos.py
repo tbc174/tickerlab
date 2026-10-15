@@ -4,11 +4,12 @@ Cada tabela é uma pasta com vários arquivos Parquet (por mês ou por ano). Acr
 as que já existem com a mesma chave (a última vence): refazer uma coleta não duplica nada.
 """
 
-import os
 from collections.abc import Sequence
 from pathlib import Path
 
 import pandas as pd
+
+from base.parquet import gravar_se_mudou
 
 
 def acrescentar(
@@ -34,11 +35,13 @@ def acrescentar(
 
 
 def gravar_parquet(arquivo: Path, tabela: pd.DataFrame) -> None:
-    """Grava inteiro ou nada: escreve ao lado e troca de nome no fim."""
-    arquivo.parent.mkdir(parents=True, exist_ok=True)
-    provisorio = arquivo.with_name(arquivo.name + ".provisorio")
-    tabela.to_parquet(provisorio, index=False)
-    os.replace(provisorio, arquivo)
+    """Grava inteiro ou nada, com manifesto ao lado (entra na âncora no Bitcoin, ADR 0078).
+
+    Sem regravar o que não mudou (o nó roda a cada 10 min) e sem versão `.vN`: na cripto a linha
+    refeita substitui a anterior de propósito, e a linhagem fica nas colunas (`coletado_em`,
+    `divulgado_em`), não nas origens do manifesto.
+    """
+    gravar_se_mudou(tabela, arquivo, [], [], carimbos=("coletado_em",), versoes=False)
 
 
 def arquivos_da_tabela(pasta: Path) -> list[Path]:
