@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pandas as pd
@@ -43,9 +43,17 @@ def hash_da_tabela(tabela: pd.DataFrame, ordem: list[str]) -> str:
 
 
 def gravar_tabela(
-    tabela: pd.DataFrame, destino: Path, origens: list[dict[str, str]], ordem: list[str]
+    tabela: pd.DataFrame,
+    destino: Path,
+    origens: list[dict[str, str]],
+    ordem: list[str],
+    *,
+    extras: Mapping[str, object] | None = None,
 ) -> Path:
-    """Grava `<destino>.parquet` e o manifesto `<destino>.json`; devolve o caminho do Parquet."""
+    """Grava `<destino>.parquet` e o manifesto `<destino>.json`; devolve o caminho do Parquet.
+
+    `extras`: campos a mais no manifesto (ex.: o que ficou de fora da tabela e por quê).
+    """
     destino.parent.mkdir(parents=True, exist_ok=True)
     arquivo = destino.with_suffix(".parquet")
     gravar_atomico(arquivo, lambda caminho: tabela.to_parquet(caminho, index=False))
@@ -55,6 +63,7 @@ def gravar_tabela(
         "ordem": ordem,
         "origens": origens,
         "versao_do_codigo": versao_do_codigo(),
+        **(extras or {}),
     }
     texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
     gravar_atomico(

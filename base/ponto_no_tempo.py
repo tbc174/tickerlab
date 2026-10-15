@@ -7,7 +7,13 @@ anterior. A base guarda uma linha por **valor diferente** de cada fato, com:
 
 - `divulgado_em`: o dia em que aquele valor ficou público (a entrega do documento à CVM, o
   `DT_RECEB` do índice). Vale a partir desse dia, inclusive. A CVM informa só o dia, não a hora:
-  quem decide no próprio dia deve olhar a véspera.
+  quem decide no próprio dia deve olhar a véspera. **Exceção:** documento entregue com a empresa
+  fora de qualquer registro na CVM (quase sempre durante o pedido de registro) vale a partir do
+  **registro seguinte** (`divulgacao_publica`). Nesse caso o `DT_RECEB` é o dia em que o documento
+  chegou à CVM, e o público só o viu no fim da análise do pedido: 21 a 102 dias depois em ~1 de 4
+  casos medidos, e alguns nunca (`reports/conferencia-data-de-entrega-cvm-2026-10-15.md`). O
+  registro vem depois do dia em que o público viu o documento: perde-se até ~2 meses, nunca se
+  olha o futuro.
 - `ate`: o dia em que outro valor tomou o lugar (vazio = vale até hoje).
 - de onde veio: documento, data, versão, coluna ("ultimo" ou "penultimo") e origem ("enet" ou
   "dados_abertos").
@@ -52,19 +58,54 @@ COLUNAS_DA_BASE = (
 SEM_DATA = "sem_data"  # arquivo dos fatos sem fim de período (não deveria acontecer)
 
 
-def com_divulgacao(
-    contas: pd.DataFrame, indice: pd.DataFrame, origem: str
-) -> pd.DataFrame:
-    """As contas com a data de entrega da **própria versão** (do índice da CVM) e a origem.
+def divulgacao_publica(
+    cnpj: pd.Series, recebido_em: pd.Series, cadastro: pd.DataFrame
+) -> pd.Series:
+    """O dia em que cada entrega ficou pública: o `recebido_em`, ou o registro seguinte da empresa.
 
-    `indice` vem de `ler_indice` (todas as versões). Versão que não está no índice fica sem data, e
-    `montar_base` a recusa.
+    `cadastro`: `base/cadastro.ler_cadastro` (`cnpj`, `registro`, `cancelamento`; uma linha por
+    registro). Fica o `recebido_em` quando a empresa estava registrada nesse dia, quando não há
+    registro depois (cancelada sem voltar) ou quando ela não está no cadastro (não dá para saber).
+    """
+    entregas = pd.DataFrame(
+        {"cnpj": cnpj.to_numpy(), "recebido_em": recebido_em.to_numpy()}
+    )
+    juntos = entregas.reset_index(names="linha").merge(
+        cadastro[["cnpj", "registro", "cancelamento"]], on="cnpj"
+    )
+    dia = juntos["recebido_em"]
+    registrada = (juntos["registro"].isna() | (juntos["registro"] <= dia)) & (
+        juntos["cancelamento"].isna() | (juntos["cancelamento"] > dia)
+    )
+    em_registro = registrada.groupby(juntos["linha"]).any()
+    seguinte = (
+        juntos["registro"]
+        .where(juntos["registro"] > dia)
+        .groupby(juntos["linha"])
+        .min()
+    )
+    trocar = seguinte[~em_registro & seguinte.notna()]
+    publica = entregas["recebido_em"].copy()
+    publica[trocar.index] = trocar
+    return pd.Series(publica.to_numpy(), index=recebido_em.index, name=recebido_em.name)
+
+
+def com_divulgacao(
+    contas: pd.DataFrame, indice: pd.DataFrame, origem: str, *, cadastro: pd.DataFrame
+) -> pd.DataFrame:
+    """As contas com o dia em que a **própria versão** ficou pública e a origem.
+
+    `indice` vem de `ler_indice` (todas as versões); `cadastro`, de `ler_cadastro` (ver
+    `divulgacao_publica`). Versão que não está no índice fica sem data, e `montar_base` a recusa.
     """
     entregas = (
         indice.groupby(["cnpj", "referencia", "versao"])["recebido_em"]
         .min()
         .rename("divulgado_em")
         .reset_index()
+    )
+    entregas["divulgado_em"] = divulgacao_publica(
+        entregas["cnpj"], entregas["divulgado_em"], cadastro
     )
     publicadas = contas[list(COLUNAS)].merge(
         entregas, on=["cnpj", "referencia", "versao"], how="left"
@@ -82,7 +123,7 @@ def versoes_antigas(indice: pd.DataFrame) -> pd.DataFrame:
 
 
 def publicadas_do_enet(
-    documentos: Iterable[DocumentoEnet], indice: pd.DataFrame
+    documentos: Iterable[DocumentoEnet], indice: pd.DataFrame, *, cadastro: pd.DataFrame
 ) -> pd.DataFrame:
     """As contas de cada versão lida do ENET, no recorte das regras, com a data dela."""
     partes = [so_as_contas_das_regras(d.contas) for d in documentos]
@@ -91,7 +132,7 @@ def publicadas_do_enet(
         if partes
         else pd.DataFrame(columns=list(COLUNAS))
     )
-    return com_divulgacao(contas, indice, "enet")
+    return com_divulgacao(contas, indice, "enet", cadastro=cadastro)
 
 
 def _mesmo_valor(valor: pd.Series, anterior: pd.Series) -> pd.Series:

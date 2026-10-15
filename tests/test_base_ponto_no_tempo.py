@@ -10,6 +10,7 @@ from base.ponto_no_tempo import (
     COLUNAS_DA_BASE,
     com_divulgacao,
     como_era_em,
+    divulgacao_publica,
     gravar_parquet,
     ler_parquet,
     montar_base,
@@ -18,6 +19,7 @@ from base.ponto_no_tempo import (
 A = "11.111.111/0001-11"
 DFP_2022 = pd.Timestamp("2022-12-31")
 DFP_2023 = pd.Timestamp("2023-12-31")
+SEM_CADASTRO = pd.DataFrame(columns=["cnpj", "registro", "cancelamento"])
 
 
 def _conta(
@@ -185,7 +187,9 @@ def test_com_divulgacao_usa_a_data_de_cada_versao():
             "recebido_em": [pd.Timestamp("2023-03-17"), pd.Timestamp("2023-05-02")],
         }
     )
-    publicadas = com_divulgacao(contas.astype({"versao": "Int64"}), indice, "enet")
+    publicadas = com_divulgacao(
+        contas.astype({"versao": "Int64"}), indice, "enet", cadastro=SEM_CADASTRO
+    )
     assert publicadas.sort_values("versao")["divulgado_em"].tolist() == [
         pd.Timestamp("2023-03-17"),
         pd.Timestamp("2023-05-02"),
@@ -199,7 +203,9 @@ def test_com_divulgacao_sem_a_versao_no_indice_e_recusado():
     ].astype({"versao": "Int64"})
     indice = pd.DataFrame(columns=["cnpj", "referencia", "versao", "recebido_em"])
     with pytest.raises(ValueError, match="divulga"):
-        montar_base(com_divulgacao(contas, indice, "dados_abertos"))
+        montar_base(
+            com_divulgacao(contas, indice, "dados_abertos", cadastro=SEM_CADASTRO)
+        )
 
 
 def test_parquet_por_ano_volta_igual(tmp_path):
@@ -259,7 +265,7 @@ def test_publicadas_do_enet_usam_o_recorte_e_a_data_de_cada_versao():
         ler_xml_enet(_dfp(versao=1)),
         ler_xml_enet(_dfp(versao=2, lucro="12.345")),
     ]
-    publicadas = publicadas_do_enet(documentos, _indice_do_brb())
+    publicadas = publicadas_do_enet(documentos, _indice_do_brb(), cadastro=SEM_CADASTRO)
     assert set(publicadas["origem"]) == {"enet"}
     assert "1.01" in set(publicadas["conta"])  # balanço inteiro
     assert set(publicadas.loc[publicadas["demonstracao"] == "DRE", "conta"]) == {
@@ -329,3 +335,69 @@ def test_hash_muda_quando_um_numero_muda(tmp_path):
         tmp_path / "base" / "2021.parquet", index=False
     )
     assert conferir_pasta(tmp_path / "base")["2021"] is False
+
+
+# --- entregas do pedido de registro (conferência da data de entrega da CVM, 15/10/2026) ----------
+# Com a empresa ainda sem registro, o DT_RECEB é o dia em que o documento chegou à CVM, não o dia em
+# que o público o viu (3 semanas a 3 meses depois, perto do registro). A base usa o registro seguinte.
+MANAUS = "09.584.854/0001-37"
+TURBI = "26.982.634/0001-80"
+NATURA_CO = "32.785.497/0001-97"
+B = "22.222.222/0001-22"
+CADASTRO = pd.DataFrame(
+    {
+        "cnpj": [MANAUS, TURBI, NATURA_CO, B, B, A],
+        "registro": pd.to_datetime(
+            [
+                "2022-03-29",
+                "2023-05-11",
+                "2019-09-25",
+                "1995-01-01",
+                "2021-06-01",
+                "2001-01-01",
+            ]
+        ),
+        "cancelamento": pd.to_datetime(
+            [None, None, None, "2021-01-10", None, "2020-06-30"]
+        ),
+    }
+)
+
+
+@pytest.mark.parametrize(
+    ("cnpj", "recebido_em", "esperado"),
+    [
+        (MANAUS, "2021-12-21", "2022-03-29"),  # ITR de 31/03/2021, ID_DOC 110848
+        (TURBI, "2023-04-13", "2023-05-11"),  # DFP de 2022, ID_DOC 125242
+        (NATURA_CO, "2019-07-26", "2019-09-25"),  # ITR de 31/03/2019
+        (TURBI, "2023-05-15", "2023-05-15"),  # já registrada: o DT_RECEB vale
+        (MANAUS, "2022-03-29", "2022-03-29"),  # no próprio dia do registro
+        (B, "2021-03-01", "2021-06-01"),  # entre dois registros: o seguinte
+        (A, "2020-08-10", "2020-08-10"),  # cancelada, sem registro depois: fica
+        ("99.999.999/0001-99", "2021-03-01", "2021-03-01"),  # fora do cadastro: fica
+    ],
+)
+def test_entrega_fora_do_registro_vale_a_partir_do_registro_seguinte(
+    cnpj, recebido_em, esperado
+):
+    datas = divulgacao_publica(
+        pd.Series([cnpj]), pd.Series([pd.Timestamp(recebido_em)]), CADASTRO
+    )
+    assert datas.tolist() == [pd.Timestamp(esperado)]
+
+
+def test_com_divulgacao_usa_o_registro_seguinte_na_entrega_do_pedido_de_registro():
+    itr = pd.Timestamp("2021-03-31")
+    contas = pd.DataFrame([_conta(7.0, "2000-01-01", referencia=itr, cnpj=MANAUS)])[
+        list(COLUNAS)
+    ].astype({"versao": "Int64"})
+    indice = pd.DataFrame(
+        {
+            "cnpj": [MANAUS],
+            "referencia": [itr],
+            "versao": pd.array([1], dtype="Int64"),
+            "recebido_em": [pd.Timestamp("2021-12-21")],
+        }
+    )
+    publicadas = com_divulgacao(contas, indice, "dados_abertos", cadastro=CADASTRO)
+    assert publicadas["divulgado_em"].tolist() == [pd.Timestamp("2022-03-29")]

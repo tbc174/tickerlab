@@ -3,7 +3,7 @@ modelo 8, PR 2). Sem internet: o índice e o cadastro são montados à mão."""
 
 import pandas as pd
 
-from base.modelos.atraso.rotulo import COLUNAS, montar_exemplos
+from base.modelos.atraso.rotulo import COLUNAS, montar_exemplos, montar_exemplos_e_fora
 
 A = "11.111.111/0001-11"
 B = "22.222.222/0001-22"
@@ -224,3 +224,45 @@ def test_falta_so_conta_se_o_arquivo_do_ano_foi_visto_depois_do_prazo():
     com_falta = montar_exemplos(indice, ATIVA_A, HOJE, vistos_em=depois)
     assert (sem_falta["cnpj"] == A).sum() == 1
     assert (com_falta["cnpj"] == A).sum() == 2
+
+
+# --- documentos do pedido de registro (conferência da data de entrega da CVM, 15/10/2026) --------
+MANAUS = "09.584.854/0001-37"  # registro em 29/03/2022
+TURBI = "26.982.634/0001-80"  # registro em 11/05/2023
+NATURA_CO = "32.785.497/0001-97"  # Natura &Co Holding, registro em 25/09/2019
+REGISTROS = _cadastro(
+    (MANAUS, "2022-03-29", None, "RJ"),
+    (TURBI, "2023-05-11", None, "SP"),
+    (NATURA_CO, "2019-09-25", None, "SP"),
+)
+ENTREGAS_DO_PEDIDO_DE_REGISTRO = _indice(
+    (MANAUS, "ITR", "2021-03-31", 1, "2021-12-21"),  # ID_DOC 110848
+    (MANAUS, "DFP", "2021-12-31", 1, "2022-03-31"),
+    (TURBI, "DFP", "2022-12-31", 1, "2023-04-13"),  # ID_DOC 125242
+    (TURBI, "ITR", "2023-03-31", 1, "2023-05-15"),
+    (NATURA_CO, "ITR", "2019-03-31", 1, "2019-07-26"),
+    (NATURA_CO, "ITR", "2019-09-30", 1, "2019-11-08"),
+)
+
+
+def test_documento_com_prazo_antes_do_registro_nao_e_exemplo():
+    # a empresa mandou o documento para pedir o registro: não tinha prazo a cumprir
+    exemplos = montar_exemplos(ENTREGAS_DO_PEDIDO_DE_REGISTRO, REGISTROS, HOJE)
+    exemplos = exemplos[exemplos["primeira_entrega"].notna()]
+    ficaram = set(
+        zip(
+            exemplos["cnpj"], exemplos["documento"], exemplos["referencia"], strict=True
+        )
+    )
+    assert ficaram == {
+        (MANAUS, "DFP", pd.Timestamp("2021-12-31")),
+        (TURBI, "ITR", pd.Timestamp("2023-03-31")),
+        (NATURA_CO, "ITR", pd.Timestamp("2019-09-30")),
+    }
+
+
+def test_fora_do_registro_fica_contado_por_motivo():
+    _exemplos, fora = montar_exemplos_e_fora(
+        ENTREGAS_DO_PEDIDO_DE_REGISTRO, REGISTROS, HOJE
+    )
+    assert fora == {"prazo_antes_do_primeiro_registro": {"exemplos": 3, "atrasou": 3}}
