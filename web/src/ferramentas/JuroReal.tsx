@@ -8,6 +8,7 @@ import { em12Meses } from "./contas/inflacao";
 import { taxaEquivalente } from "./contas/juros";
 import { juroReal } from "./contas/taxas";
 import { useDadosDoBc } from "./dados";
+import { useCamposNoEndereco } from "./endereco";
 import { formatarNumero, formatarPorcentagem, lerNumero } from "./numeros";
 
 export const EXEMPLO_DO_JURO_REAL = { nominal: "13,75", inflacao: "5" };
@@ -26,15 +27,16 @@ export function calcularJuroReal(campos: typeof EXEMPLO_DO_JURO_REAL): number | 
 
 export function JuroReal() {
   const carga = useDadosDoBc();
-  const [campos, setCampos] = useState(EXEMPLO_DO_JURO_REAL);
+  const [campos, mudar, , sugerir] = useCamposNoEndereco(EXEMPLO_DO_JURO_REAL, {}, "real.");
   const dados = carga.estado === "pronto" ? carga.dados : null;
   const ipca = dados?.ipca;
   const hoje = new Date();
-  // com os dados, a inflação sugerida passa a ser o IPCA dos últimos 12 meses
+  // com os dados, a inflação sugerida passa a ser o IPCA dos últimos 12 meses (se o endereço não
+  // trouxer outra, de um link de outra ferramenta)
   useEffect(() => {
-    if (ipca) setCampos((antes) => ({ ...antes, inflacao: formatarNumero(em12Meses(ipca.meses) * 100) }));
-  }, [ipca]);
-  const mudar = (chave: keyof typeof campos) => (valor: string) => setCampos((antes) => ({ ...antes, [chave]: valor }));
+    if (!ipca || new URLSearchParams(window.location.search).has("real.inflacao")) return;
+    sugerir((antes) => ({ ...antes, inflacao: formatarNumero(em12Meses(ipca.meses) * 100) }));
+  }, [ipca, sugerir]);
   const conta = calcularJuroReal(campos);
   const erro = typeof conta === "string" ? conta : null;
   return (

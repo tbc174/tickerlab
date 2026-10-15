@@ -1,9 +1,11 @@
 // A página de uma ferramenta: topo, a calculadora (ilha), a explicação em português (o que o Google
-// lê e o que a pessoa precisa para entender o número), o anúncio da casa e o aviso.
+// lê e o que a pessoa precisa para entender o número), o anúncio da casa, o aviso e as ferramentas
+// que continuam a conta (continuar.ts).
 import type { ReactNode } from "react";
 import { TopoDaPagina } from "../site/Fundo";
 import { AnuncioDaCasa, type NomeDoDestino } from "./AnuncioDaCasa";
 import { AvisoDaFerramenta } from "./AvisoDaFerramenta";
+import { CONTINUACOES, enderecoDaContinuacao } from "./continuar";
 import { Ilha, type NomeDaFerramenta } from "./registro";
 
 export function PaginaDeFerramenta({
@@ -46,7 +48,21 @@ export function PaginaDeFerramenta({
         <div className="ferramenta-texto">{children}</div>
         <AnuncioDaCasa destino={anuncio} ferramenta={codigo} />
       </section>
-      <nav className="faixa secao" aria-label="Outras ferramentas">
+      <nav className="faixa secao continue-a-conta" aria-label="Continue a conta">
+        <h2>Continue a conta</h2>
+        <ul>
+          {(CONTINUACOES[`${codigo}.html`] ?? []).map((c) => (
+            <li key={c.para}>
+              <a
+                className="seta"
+                href={enderecoDaContinuacao(c, "")}
+                data-levar={JSON.stringify({ para: c.para, levar: c.levar, fixos: c.fixos })}
+              >
+                {c.texto}
+              </a>
+            </li>
+          ))}
+        </ul>
         <a className="seta" href="/ferramentas.html">
           Ver todas as ferramentas grátis
         </a>

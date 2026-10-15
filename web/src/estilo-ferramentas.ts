@@ -91,6 +91,8 @@ export function cssFerramentas(): string {
 .ferramenta-comparacao { font-variant-numeric: tabular-nums; }
 .ferramenta-comparacao td { text-align: right; }
 .vitrine-grupo + .vitrine-grupo { padding-top: 0; }
+.continue-a-conta h2 { margin: 0 0 .75rem; font-size: 1.15rem; }
+.continue-a-conta ul { list-style: none; padding: 0; margin: 0 0 1.25rem; display: grid; gap: .6rem; }
 .vitrine-grupo > p { margin: .25rem 0 1.25rem; }
 .cartao-de-ferramenta .previa { display: block; width: 100%; height: 3.5rem; margin-bottom: .75rem; }
 .ferramenta-numeros + .ferramenta-rolagem { margin-top: 1rem; }

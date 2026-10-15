@@ -3,6 +3,7 @@
 // Não usa hydrateRoot: o HTML do site sai de renderToStaticMarkup, sem as marcas que o React usa
 // para religar; montar por cima dá o mesmo desenho (o estado começa nos mesmos valores de exemplo).
 import { createRoot } from "react-dom/client";
+import { ligarContinuacoes } from "./continuar";
 import { FERRAMENTAS, type NomeDaFerramenta } from "./registro";
 
 /** Liga as ferramentas que estiverem em `raiz`; devolve quantas ligou. */
@@ -20,6 +21,7 @@ export function ligarFerramentas(raiz: ParentNode = document): number {
 }
 
 if (typeof document !== "undefined" && !import.meta.env?.VITEST) {
+  ligarContinuacoes(document);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => ligarFerramentas());
   } else {
