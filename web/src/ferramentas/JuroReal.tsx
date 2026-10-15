@@ -1,7 +1,8 @@
 // Juro real (contas/taxas.ts) com o IPCA de 12 meses do Banco Central como sugestão, e a troca de
 // taxa ao mês ↔ ao ano (contas/juros.ts), que não precisa de dado nenhum.
 import { useEffect, useState } from "react";
-import { CampoDeNumero, Escolha, Resultado } from "./campos";
+import { atalhosDeInflacao, atalhosDeJuros } from "./atalhos";
+import { CampoComDeslizante, CampoDeNumero, Escolha, Resultado } from "./campos";
 import { MesDoIpca } from "./Carregando";
 import { em12Meses } from "./contas/inflacao";
 import { taxaEquivalente } from "./contas/juros";
@@ -26,7 +27,9 @@ export function calcularJuroReal(campos: typeof EXEMPLO_DO_JURO_REAL): number | 
 export function JuroReal() {
   const carga = useDadosDoBc();
   const [campos, setCampos] = useState(EXEMPLO_DO_JURO_REAL);
-  const ipca = carga.estado === "pronto" ? carga.dados.ipca : undefined;
+  const dados = carga.estado === "pronto" ? carga.dados : null;
+  const ipca = dados?.ipca;
+  const hoje = new Date();
   // com os dados, a inflação sugerida passa a ser o IPCA dos últimos 12 meses
   useEffect(() => {
     if (ipca) setCampos((antes) => ({ ...antes, inflacao: formatarNumero(em12Meses(ipca.meses) * 100) }));
@@ -37,17 +40,37 @@ export function JuroReal() {
   return (
     <div className="ferramenta">
       <form className="ferramenta-campos" onSubmit={(evento) => evento.preventDefault()}>
-        <CampoDeNumero rotulo="Rendimento" valor={campos.nominal} aoMudar={mudar("nominal")} depois={<span>% ao ano</span>} />
-        <CampoDeNumero
+        <CampoComDeslizante
+          rotulo="Rendimento"
+          valor={campos.nominal}
+          aoMudar={mudar("nominal")}
+          min={0}
+          max={25}
+          passo={0.25}
+          atalhos={dados ? atalhosDeJuros(dados, hoje) : []}
+          depois={<span>% ao ano</span>}
+        />
+        <CampoComDeslizante
           rotulo="Inflação"
           valor={campos.inflacao}
           aoMudar={mudar("inflacao")}
+          min={0}
+          max={15}
+          passo={0.25}
+          atalhos={dados ? atalhosDeInflacao(dados, hoje) : []}
           depois={<span>% ao ano</span>}
           dica={ipca ? "Já preenchida com o IPCA dos últimos 12 meses; troque se quiser." : undefined}
         />
       </form>
       <Resultado rotulo="Juro real" principal={erro ? "" : `${formatarPorcentagem(conta as number)} ao ano`} erro={erro}>
         <p>É quanto o dinheiro rende acima da inflação, no poder de compra.</p>
+        {erro ? null : (
+          <p className="ferramenta-destaque">
+            A conta é (1 + {campos.nominal}%) ÷ (1 + {campos.inflacao}%) − 1 ={" "}
+            {formatarPorcentagem(conta as number)}, não {formatarNumero((lerNumero(campos.nominal) ?? 0) - (lerNumero(campos.inflacao) ?? 0))}% (a
+            subtração simples, um erro comum, exagera o ganho real).
+          </p>
+        )}
         {ipca ? <MesDoIpca ultimo={ipca.ultimo} /> : null}
       </Resultado>
     </div>
