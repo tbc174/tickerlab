@@ -35,7 +35,8 @@ function escreverNoEndereco(campos: Campos, prefixo: string): void {
 }
 
 /** Os campos da ferramenta, lidos do endereço ao ligar e escritos nele a cada mudança da pessoa.
- * Devolve os campos, `mudar(chave)(valor)` para um campo e `definir(campos)` para vários. */
+ * Devolve os campos, `mudar(chave)(valor)` para um campo, `definir(campos)` para vários e
+ * `sugerir(campos)`, que troca os campos sem ser mudança da pessoa (não escreve no endereço). */
 export function useCamposNoEndereco<T extends Campos>(exemplo: T, opcoes: Opcoes<T> = {}, prefixo = "") {
   const [campos, setCampos] = useState<T>(exemplo);
   const mexeu = useRef(false);
@@ -50,11 +51,12 @@ export function useCamposNoEndereco<T extends Campos>(exemplo: T, opcoes: Opcoes
     mexeu.current = true;
     setCampos(novos);
   }, []);
+  const sugerir = useCallback((novos: T | ((antes: T) => T)) => setCampos(novos), []);
   const mudar = useCallback(
     <K extends keyof T>(chave: K) =>
       (valor: T[K]) =>
         definir((antes) => ({ ...antes, [chave]: valor })),
     [definir],
   );
-  return [campos, mudar, definir] as const;
+  return [campos, mudar, definir, sugerir] as const;
 }

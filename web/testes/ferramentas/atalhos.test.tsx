@@ -102,3 +102,23 @@ describe("atalhos (na tela)", () => {
     erros.mockRestore();
   });
 });
+
+describe("juro real v2", () => {
+  it("tem os valores de hoje nos dois campos e mostra o erro comum ao lado", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(DADOS))));
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="juroReal" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Selic hoje" }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "IPCA esperado 2026" }));
+    });
+    const texto = document.body.textContent ?? "";
+    // 13,25% de rendimento e 5,22% de inflação: (1,1325 / 1,0522) − 1, não 13,25 − 5,22
+    expect(texto).toContain(`não ${formatarNumero(13.25 - 5.22)}%`);
+    expect(document.querySelector("[data-resultado]")?.textContent).toContain(formatarNumero((1.1325 / 1.0522 - 1) * 100));
+  });
+});

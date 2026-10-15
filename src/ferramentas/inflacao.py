@@ -55,3 +55,41 @@ def em_12_meses(meses: Meses) -> float:
     for _, variacao in meses[-MESES_POR_ANO:]:
         fator *= 1 + variacao
     return fator - 1
+
+
+def evolucao(valor: float, inicio: str, fim: str, meses: Meses) -> list[float]:
+    """O valor no começo e no fim de cada mês de `inicio` a `fim`, mês a mês (para o gráfico). Serve
+    a qualquer série mensal no mesmo formato (IPCA, CDI ou poupança do mês)."""
+    corrigir(valor, inicio, fim, meses)  # as mesmas conferências de período
+    caminho = [valor]
+    for mes, variacao in meses:
+        if inicio <= mes <= fim:
+            caminho.append(caminho[-1] * (1 + variacao))
+    return caminho
+
+
+def _fatores_por_ano(meses: Meses) -> dict[int, tuple[float, int]]:
+    """Por ano: o fator acumulado e quantos meses a série tem naquele ano."""
+    por_ano: dict[int, tuple[float, int]] = {}
+    for mes, variacao in meses:
+        ano = int(mes[:4])
+        fator, quantos = por_ano.get(ano, (1.0, 0))
+        por_ano[ano] = (fator * (1 + variacao), quantos + 1)
+    return por_ano
+
+
+def anos_abaixo(
+    rendimento: Meses, inflacao: Meses, ano_final: int, anos: int
+) -> list[int]:
+    """[em quantos anos o rendimento ficou abaixo da inflação, quantos anos deu para comparar],
+    nos `anos` anos até `ano_final`; só entram anos completos (12 meses) nas duas séries."""
+    do_rendimento = _fatores_por_ano(rendimento)
+    da_inflacao = _fatores_por_ano(inflacao)
+    perdeu = comparados = 0
+    for ano in range(ano_final - anos + 1, ano_final + 1):
+        r, meses_r = do_rendimento.get(ano, (1.0, 0))
+        i, meses_i = da_inflacao.get(ano, (1.0, 0))
+        if meses_r == MESES_POR_ANO and meses_i == MESES_POR_ANO:
+            comparados += 1
+            perdeu += r < i
+    return [perdeu, comparados]

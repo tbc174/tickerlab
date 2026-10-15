@@ -103,6 +103,9 @@ export function cssFerramentas(): string {
 .ferramenta-cenario-b { display: grid; gap: .75rem; margin: 0; padding: .9rem 1rem; border: 1px dashed var(--linha-forte);
   border-radius: 10px; }
 .ferramenta-cenario-b legend { padding: 0 .35rem; font-weight: 700; font-size: .88rem; color: var(--apagado); }
+.ferramenta-notas { margin: 1rem 0 0; padding-left: 1.1rem; font-size: .85rem; display: grid; gap: .35rem; }
+.ferramenta-largo .ferramenta-comparacao { margin-top: 1rem; width: 100%; }
+.ferramenta-inverter { justify-self: start; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }
