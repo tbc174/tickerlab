@@ -32,8 +32,8 @@ PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
 # as tabelas da série 3 da base de ML (fundos e crédito), com a função ou a carga que as grava
 SERIE_3 = (
     "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
-    "codigos_fora_do_fca", "emissores_antigos", "carteiras_dos_fundos", "painel_dos_fundos",
-    "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
+    "codigos_fora_do_fca", "emissores_antigos", "emissores_sem_ligacao", "carteiras_dos_fundos",
+    "painel_dos_fundos", "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
     "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
 )  # fmt: skip
 
@@ -71,6 +71,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
+        "emissores_sem_ligacao": list(ligacoes.emissores_sem_ligacao().columns),
         "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{
             t.name: [c.name for c in t.columns]
@@ -304,4 +305,6 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
 
 
 def test_contrato_comeca_na_versao_1():
-    assert {t.versao_do_contrato for t in TABELAS.values()} == {"1.0.0"}
+    """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige)."""
+    assert {t.versao_do_contrato.split(".")[0] for t in TABELAS.values()} == {"1"}

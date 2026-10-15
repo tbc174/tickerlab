@@ -892,7 +892,7 @@
       "tabela": "buracos_dos_fundos",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "emissor": {
           "descricao": "As 4 posições do emissor sem CNPJ",
@@ -913,6 +913,10 @@
         "descricao": {
           "descricao": "Descrição do ativo no CDA (a pista para a conferência)",
           "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "Por que fica sem empresa, se foi conferido (`emissores_sem_ligacao`); vazio: ainda não conferido",
+          "unidade": "texto"
         }
       },
       "chaves": [
@@ -926,6 +930,51 @@
       "pessoa": false,
       "frequencia": "Mensal, montada junto com o painel dos fundos",
       "atraso": "O do CDA"
+    },
+    "emissores_sem_ligacao": {
+      "tabela": "emissores_sem_ligacao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "emissor": {
+          "descricao": "As 4 posições do emissor",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ, quando é um só e conhecido; vazio nos outros casos",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome no FCA ou no cadastro; sem CNPJ, como o CDA descreve",
+          "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "Por que o emissor fica sem empresa",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "De onde veio a conferência",
+          "unidade": "texto"
+        },
+        "conferido_em": {
+          "descricao": "Dia da conferência",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "emissor"
+      ],
+      "datas": {
+        "coletado_em": "conferido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
+      "atraso": "Nenhum"
     },
     "emissores_antigos": {
       "tabela": "emissores_antigos",

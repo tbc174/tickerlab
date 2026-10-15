@@ -678,6 +678,41 @@ TABELAS: dict[str, Tabela] = {
                 "Descrição do ativo no CDA (a pista para a conferência)",
                 TEXTO,
             ),
+            "motivo": (
+                (
+                    "Por que fica sem empresa, se foi conferido (`emissores_sem_ligacao`); "
+                    "vazio: ainda não conferido"
+                ),
+                TEXTO,
+            ),
+        },
+    ),
+    "emissores_sem_ligacao": Tabela(
+        descricao=(
+            "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de "
+            "propósito, cada um com o motivo (companhia sem ação na bolsa, como a Comerc e a Granja "
+            "Faria; dois CNPJs no período; BDR de empresa de fora; falta de prova). Ficam só no "
+            "painel por emissor, e o motivo vai para o relatório de buracos (série 4, PR 3)"
+        ),
+        fonte="CVM: formulário cadastral (FCA), cadastro de companhias, IPE e descrição no CDA",
+        familia_da_fonte="cvm",
+        frequencia="Quando a conferência anda (pelos buracos de maior valor)",
+        atraso="Nenhum",
+        onde="`base/conferidas/emissores_sem_ligacao.csv` no repositório (Git)",
+        linhagem=(
+            "Cada linha diz a fonte e quando foi conferida; o histórico fica no Git e o painel dos "
+            "fundos anota o SHA-256 da tabela no `.json` de cada tabela que monta."
+        ),
+        colunas={
+            "emissor": ("As 4 posições do emissor", TEXTO),
+            "cnpj": ("CNPJ, quando é um só e conhecido; vazio nos outros casos", TEXTO),
+            "empresa": (
+                "Nome no FCA ou no cadastro; sem CNPJ, como o CDA descreve",
+                TEXTO,
+            ),
+            "motivo": ("Por que o emissor fica sem empresa", TEXTO),
+            "fonte": ("De onde veio a conferência", TEXTO),
+            "conferido_em": ("Dia da conferência", DATA),
         },
     ),
     "emissores_antigos": Tabela(
@@ -1549,8 +1584,9 @@ _CONTRATO = {
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
-    "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM),
+    "buracos_dos_fundos": _contrato(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "emissores_antigos": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
+    "emissores_sem_ligacao": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "codigos_fora_do_fca": _contrato(modulo=_ME, chaves=("codigo",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),

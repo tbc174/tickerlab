@@ -5,7 +5,8 @@ da base de ML, PR 5; `base/ligacoes.py`).
     python -m scripts.montar_painel_dos_fundos --base <pasta>   (a pasta com cda/ e fca/)
 
 Lê as tabelas que a base já tem (`cda/<ano>.parquet`, sem as versões `.v<N>`; `fca/emissores.parquet`)
-e a tabela conferida (`base/conferidas/emissores_antigos.csv`), um ano por vez, e grava em
+e as tabelas conferidas (`base/conferidas/emissores_antigos.csv` e `emissores_sem_ligacao.csv`, com o
+motivo de quem fica sem empresa), um ano por vez, e grava em
 `fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, `cobertura` e `buracos`, com manifesto e
 versões (`base/parquet.py::gravar_com_versoes`). As origens de cada tabela são as tabelas de entrada
 (com o SHA-256 do conteúdo anotado no manifesto delas) e a tabela conferida. Não baixa nada. Recusa
@@ -44,11 +45,10 @@ def _origem_de_tabela(arquivo: Path, raiz: Path) -> dict[str, str]:
     }
 
 
-def _origem_da_conferida() -> dict[str, str]:
-    conteudo = ligacoes.TABELA_CONFERIDA.read_bytes()
+def _origem_da_conferida(arquivo: Path) -> dict[str, str]:
     return {
-        "url": "base/conferidas/emissores_antigos.csv",
-        "sha256": hashlib.sha256(conteudo).hexdigest(),
+        "url": f"base/conferidas/{arquivo.name}",
+        "sha256": hashlib.sha256(arquivo.read_bytes()).hexdigest(),
     }
 
 
@@ -62,7 +62,7 @@ def _juntar_buracos(partes: list[pd.DataFrame]) -> pd.DataFrame:
     return (
         tabela.groupby("emissor")
         .agg(valor=("valor", "sum"), primeira=("primeira", "min"), ultima=("ultima", "max"),
-             descricao=("descricao", "first"))
+             descricao=("descricao", "first"), motivo=("motivo", "first"))
         .sort_values("valor", ascending=False)
         .reset_index()
     )  # fmt: skip
@@ -74,7 +74,12 @@ def montar(raiz: Path) -> int:
     ligacao = ligacoes.ligacao_dos_emissores(
         ler_tabela(emissores), ligacoes.tabela_conferida()
     )
-    comuns = [_origem_de_tabela(emissores, raiz), _origem_da_conferida()]
+    motivos = ligacoes.emissores_sem_ligacao()
+    comuns = [
+        _origem_de_tabela(emissores, raiz),
+        _origem_da_conferida(ligacoes.TABELA_CONFERIDA),
+        _origem_da_conferida(ligacoes.SEM_LIGACAO),
+    ]
     saida = raiz / "fundos"
     coberturas, buracos, origens_de_todos = [], [], list(comuns)
     for arquivo in anos_do_cda(raiz):
@@ -91,7 +96,7 @@ def montar(raiz: Path) -> int:
         )  # fmt: skip
         cobertura = ligacoes.cobertura(posicoes, ligacao)
         coberturas.append(cobertura)
-        buracos.append(ligacoes.buracos(posicoes, ligacao))
+        buracos.append(ligacoes.buracos(posicoes, ligacao, motivos))
         ultima = cobertura.iloc[-1]
         aviso = (
             ""
