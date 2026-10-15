@@ -2462,6 +2462,91 @@
       "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
     },
+    "rotulos_atraso": {
+      "tabela": "rotulos_atraso",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+          "unidade": "data (dia)"
+        },
+        "data_da_previsao": {
+          "descricao": "Dia em que o modelo faz a pergunta (a própria data-base)",
+          "unidade": "data (dia)"
+        },
+        "prazo": {
+          "descricao": "Último dia para entregar, com feriados e prorrogações (`src/prazos.py`)",
+          "unidade": "data (dia)"
+        },
+        "primeira_entrega": {
+          "descricao": "Dia da primeira entrega (vazio: não entregou)",
+          "unidade": "data (dia)"
+        },
+        "dias_uteis_de_atraso": {
+          "descricao": "Dias úteis entre o prazo e a entrega (ou a montagem, sem entrega); 0 no prazo",
+          "unidade": "número inteiro"
+        },
+        "atrasou": {
+          "descricao": "Entregou 1 dia útil ou mais depois do prazo, ou não entregou",
+          "unidade": "verdadeiro ou falso"
+        },
+        "atraso_grave": {
+          "descricao": "Mais de 30 dias corridos de atraso, ou não entregou",
+          "unidade": "verdadeiro ou falso"
+        },
+        "zona_cinzenta": {
+          "descricao": "Atraso de 1 ou 2 dias úteis: pode ser um feriado estadual ou municipal",
+          "unidade": "verdadeiro ou falso"
+        },
+        "uf": {
+          "descricao": "Estado da sede, no cadastro de hoje",
+          "unidade": "texto"
+        },
+        "mes_fim_do_exercicio": {
+          "descricao": "Mês de fim do exercício (o mais comum nas DFPs da companhia)",
+          "unidade": "mês (1 a 12)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "documento",
+        "referencia"
+      ],
+      "datas": {
+        "aconteceu_em": "prazo",
+        "publico_em": "primeira_entrega",
+        "coletado_em": "montado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem, com os arquivos anuais e o cadastro mais recentes",
+      "atraso": "O rótulo de um documento existe a partir do prazo (ou da entrega, se veio antes); uma falta só conta se o prazo venceu antes da coleta do arquivo do ano"
+    },
     "empresa_serie": {
       "tabela": "empresa_serie",
       "modulo": "mercado_e_empresas",

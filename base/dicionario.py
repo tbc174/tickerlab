@@ -1561,10 +1561,24 @@ _CONTRATO = {
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
 }  # fmt: skip
+
+
+def _contrato_de(nome: str) -> dict[str, object]:
+    if nome not in _CONTRATO:
+        raise KeyError(
+            f"tabela nova `{nome}`: ponha módulo, chaves, três datas e histórico dela em "
+            "`_CONTRATO` (base/dicionario.py) e rode `python -m base.contrato`"
+        )
+    return _CONTRATO[nome]
+
+
 TABELAS = {
-    nome: replace(tabela, **{"granularidade_do_publico_em": "dia", **_CONTRATO[nome]})
+    nome: replace(
+        tabela, **{"granularidade_do_publico_em": "dia", **_contrato_de(nome)}
+    )
     for nome, tabela in TABELAS.items()
 }
 
