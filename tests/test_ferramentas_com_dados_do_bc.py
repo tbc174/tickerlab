@@ -105,7 +105,7 @@ def _opcao(opcoes, nome):
 
 
 def test_cdb_paga_ir_e_lci_nao():
-    opcoes = renda_fixa.comparar(10_000, 365, CDI, 1.0, 0.9, POUPANCA)
+    opcoes = renda_fixa.comparar(10_000, 365, [CDI], 1.0, 0.9, POUPANCA)
     cdb, lci = _opcao(opcoes, "CDB"), _opcao(opcoes, "LCI ou LCA")
     dias_uteis = 365 * 252 / 365
     bruto = 10_000 * (1 + CDI) ** (dias_uteis / 252)
@@ -117,27 +117,27 @@ def test_cdb_paga_ir_e_lci_nao():
 
 def test_aliquota_segue_a_tabela_regressiva_pelo_prazo():
     assert (
-        _opcao(renda_fixa.comparar(1000, 90, CDI, 1, 0.9, POUPANCA), "CDB").aliquota
+        _opcao(renda_fixa.comparar(1000, 90, [CDI], 1, 0.9, POUPANCA), "CDB").aliquota
         == 0.225
     )
     assert (
-        _opcao(renda_fixa.comparar(1000, 400, CDI, 1, 0.9, POUPANCA), "CDB").aliquota
+        _opcao(renda_fixa.comparar(1000, 400, [CDI], 1, 0.9, POUPANCA), "CDB").aliquota
         == 0.175
     )
     assert (
-        _opcao(renda_fixa.comparar(1000, 800, CDI, 1, 0.9, POUPANCA), "CDB").aliquota
+        _opcao(renda_fixa.comparar(1000, 800, [CDI], 1, 0.9, POUPANCA), "CDB").aliquota
         == 0.15
     )
 
 
 def test_percentual_do_cdi_vale_sobre_a_taxa_de_cada_dia():
-    opcoes = renda_fixa.comparar(1000, 365, CDI, 1.1, 0.9, POUPANCA)
+    opcoes = renda_fixa.comparar(1000, 365, [CDI], 1.1, 0.9, POUPANCA)
     diaria = ((1 + CDI) ** (1 / 252) - 1) * 1.1
     assert _opcao(opcoes, "CDB").bruto == pytest.approx(1000 * (1 + diaria) ** 252)
 
 
 def test_tesouro_selic_rende_100_por_cento_e_paga_ir():
-    opcoes = renda_fixa.comparar(1000, 365, CDI, 1.1, 0.9, POUPANCA)
+    opcoes = renda_fixa.comparar(1000, 365, [CDI], 1.1, 0.9, POUPANCA)
     tesouro = _opcao(opcoes, "Tesouro Selic")
     assert tesouro.bruto == pytest.approx(1000 * (1 + CDI))
     assert tesouro.aliquota > 0
@@ -145,16 +145,18 @@ def test_tesouro_selic_rende_100_por_cento_e_paga_ir():
 
 def test_poupanca_so_rende_no_aniversario():
     assert (
-        _opcao(renda_fixa.comparar(1000, 29, CDI, 1, 0.9, POUPANCA), "Poupança").bruto
+        _opcao(renda_fixa.comparar(1000, 29, [CDI], 1, 0.9, POUPANCA), "Poupança").bruto
         == 1000
     )
-    poupanca = _opcao(renda_fixa.comparar(1000, 95, CDI, 1, 0.9, POUPANCA), "Poupança")
+    poupanca = _opcao(
+        renda_fixa.comparar(1000, 95, [CDI], 1, 0.9, POUPANCA), "Poupança"
+    )
     assert poupanca.bruto == pytest.approx(1000 * (1 + POUPANCA) ** 3)
     assert poupanca.imposto == 0
 
 
 def test_imposto_e_sobre_o_rendimento_nao_sobre_o_total():
-    cdb = _opcao(renda_fixa.comparar(10_000, 800, CDI, 1, 0.9, POUPANCA), "CDB")
+    cdb = _opcao(renda_fixa.comparar(10_000, 800, [CDI], 1, 0.9, POUPANCA), "CDB")
     assert cdb.imposto == pytest.approx((cdb.bruto - 10_000) * 0.15)
     assert cdb.liquido == pytest.approx(cdb.bruto - cdb.imposto)
 
@@ -162,10 +164,10 @@ def test_imposto_e_sobre_o_rendimento_nao_sobre_o_total():
 @pytest.mark.parametrize(
     ("args", "mensagem"),
     [
-        ((-1, 365, CDI, 1, 0.9, POUPANCA), "valor"),
-        ((1000, 0, CDI, 1, 0.9, POUPANCA), "prazo"),
-        ((1000, renda_fixa.DIAS_MAXIMOS + 1, CDI, 1, 0.9, POUPANCA), "prazo"),
-        ((1000, 365, CDI, -0.1, 0.9, POUPANCA), "percentual"),
+        ((-1, 365, [CDI], 1, 0.9, POUPANCA), "valor"),
+        ((1000, 0, [CDI], 1, 0.9, POUPANCA), "prazo"),
+        ((1000, renda_fixa.DIAS_MAXIMOS + 1, [CDI], 1, 0.9, POUPANCA), "prazo"),
+        ((1000, 365, [CDI], -0.1, 0.9, POUPANCA), "percentual"),
     ],
 )
 def test_entradas_invalidas(args, mensagem):

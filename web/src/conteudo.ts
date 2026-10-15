@@ -182,4 +182,6 @@ export interface RegraDeImposto {
 export const regrasDeImposto: {
   regras: RegraDeImposto[];
   renda_fixa: { ate_dias: number | null; aliquota: number }[];
+  iof: number[]; // a fração do rendimento do 1º ao 29º dia (Decreto 6.306/2007, anexo)
+  custodia_do_tesouro: { taxa: number; isento_no_selic_ate: number };
 } = regrasDeImpostoJson;

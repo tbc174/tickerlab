@@ -50,6 +50,10 @@ const CONTAS: Record<string, Conta> = {
   "inflacao.corrigir": inflacao.corrigir,
   "inflacao.em_12_meses": inflacao.em12Meses,
   "renda_fixa.comparar": rendaFixa.comparar,
+  "renda_fixa.tesouro_prefixado": rendaFixa.tesouroPrefixado,
+  "renda_fixa.tesouro_ipca": rendaFixa.tesouroIpca,
+  "renda_fixa.cdi_pelo_focus": rendaFixa.cdiPeloFocus,
+  "renda_fixa.ponto_de_empate": rendaFixa.pontoDeEmpate,
 };
 
 const TOLERANCIA_RELATIVA = 1e-12;

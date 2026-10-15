@@ -24,7 +24,7 @@ export function calcularRendaFixa(
   const dias = Math.round(prazo * DIAS_POR[campos.unidade]);
   if (dias > DIAS_MAXIMOS) return "O prazo vai até 10 anos.";
   try {
-    return comparar(valor, dias, cdiAoAno, cdb / 100, lci / 100, poupancaAoMes);
+    return comparar(valor, dias, [cdiAoAno], cdb / 100, lci / 100, poupancaAoMes);
   } catch (erro) {
     if (erro instanceof RangeError) return erro.message;
     throw erro;
