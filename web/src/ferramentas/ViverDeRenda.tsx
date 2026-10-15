@@ -3,6 +3,7 @@
 // normal × ano ruim no começo), deslizantes e a simulação no endereço.
 import { prazoPorExtenso } from "./AportesEMetas";
 import { Compartilhar } from "./Compartilhar";
+import { atalhosDeJuroReal } from "./atalhos";
 import { Alternativas, CampoComDeslizante, Resultado } from "./campos";
 import {
   ANOS_MAXIMOS,
@@ -11,6 +12,7 @@ import {
   rendaDaRegraDos4,
   trajetoria,
 } from "./contas/viver_de_renda";
+import { useDadosOpcionais } from "./dados";
 import { useCamposNoEndereco } from "./endereco";
 import { formatarReais, formatarReaisCurto, lerNumero } from "./numeros";
 import { SERIES } from "../graficos/cores";
@@ -87,6 +89,7 @@ function trajetorias(r: RespostaDaRenda): { meses: number[]; normal: number[]; c
 
 export function ViverDeRenda() {
   const [campos, mudar] = useCamposNoEndereco(EXEMPLO_DE_RENDA, OPCOES);
+  const dados = useDadosOpcionais();
   const conta = calcularRenda(campos);
   const erro = typeof conta === "string" ? conta : null;
   const r = typeof conta === "string" ? null : conta;
@@ -107,6 +110,7 @@ export function ViverDeRenda() {
           min={0}
           max={10}
           passo={0.25}
+          atalhos={dados ? atalhosDeJuroReal(dados, new Date()) : []}
           valor={campos.taxa}
           aoMudar={mudar("taxa")}
           depois={<span>% ao ano</span>}

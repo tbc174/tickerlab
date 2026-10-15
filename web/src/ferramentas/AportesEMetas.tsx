@@ -2,9 +2,11 @@
 // gráfico do que saiu do bolso e dos juros (com a meta), aporte que sobe a cada ano, o mês em que
 // os juros passam o aporte, deslizantes e a simulação no endereço.
 import { Compartilhar } from "./Compartilhar";
+import { atalhosDeJuroReal } from "./atalhos";
 import { Alternativas, CampoComDeslizante, CampoDeNumero, Escolha, Resultado } from "./campos";
 import { type Linha, aporteParaMeta, evolucao, mesDaVirada, mesesAteMeta, valorFuturo } from "./contas/aportes";
 import { PRAZO_MAXIMO, type Unidade, taxaPorMes } from "./contas/juros";
+import { useDadosOpcionais } from "./dados";
 import { useCamposNoEndereco } from "./endereco";
 import { formatarNumero, formatarPorcentagem, formatarReais, formatarReaisCurto, lerNumero } from "./numeros";
 import { SERIES } from "../graficos/cores";
@@ -135,6 +137,7 @@ function textoParaCopiar(campos: Campos, resposta: Resposta): string {
 
 export function AportesEMetas() {
   const [campos, mudar] = useCamposNoEndereco(EXEMPLO_DE_APORTES, OPCOES);
+  const dados = useDadosOpcionais();
   const resposta = responder(campos);
   const erro = typeof resposta === "string" ? resposta : null;
   const certa = erro ? null : (resposta as Resposta);
@@ -171,7 +174,8 @@ export function AportesEMetas() {
           min={0}
           max={campos.unidadeDaTaxa === "ano" ? 20 : 2}
           passo={campos.unidadeDaTaxa === "ano" ? 0.5 : 0.05}
-          dica="Use o rendimento depois da inflação para ver o resultado em dinheiro de hoje."
+          atalhos={dados && campos.unidadeDaTaxa === "ano" ? atalhosDeJuroReal(dados, new Date()) : []}
+          dica="Use o rendimento depois da inflação para ver o resultado em dinheiro de hoje (o Tesouro IPCA+ paga um juro real)."
           depois={
             <>
               <span aria-hidden="true">%</span>
