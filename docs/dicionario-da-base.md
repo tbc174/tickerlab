@@ -86,6 +86,7 @@ Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e
 | `motivo_cancelamento` | Motivo informado pela CVM (voluntário, de ofício...) | texto |
 | `situacao` | Situação do registro (ATIVO, CANCELADA...) | texto |
 | `setor` | Setor de atividade informado à CVM | texto |
+| `uf` | Estado da sede, no cadastro de hoje (muda o prazo do ITR de 2024 no RS) | texto |
 
 ## `tickers_no_tempo`
 

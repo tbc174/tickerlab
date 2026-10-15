@@ -267,6 +267,10 @@ TABELAS: dict[str, Tabela] = {
             ),
             "situacao": ("Situação do registro (ATIVO, CANCELADA...)", TEXTO),
             "setor": ("Setor de atividade informado à CVM", TEXTO),
+            "uf": (
+                "Estado da sede, no cadastro de hoje (muda o prazo do ITR de 2024 no RS)",
+                TEXTO,
+            ),
         },
     ),
     "tickers_no_tempo": Tabela(
