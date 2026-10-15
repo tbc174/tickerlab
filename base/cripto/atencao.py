@@ -4,7 +4,8 @@
   01/07/2015. Mede curiosidade do público sem depender de rede social.
 - **GDELT** (DOC 2.0, uso livre com citação): quantas notícias do mundo citaram o termo e o tom
   médio delas, desde 01/01/2017. Só contagem e tom; nenhum texto de notícia é guardado (ADR 0029).
-  O GDELT pede **um pedido a cada 5 segundos**: a coleta pede um dia por vez, devagar.
+  O GDELT pede **um pedido a cada 5 segundos**, mas em outubro/2026 só deixava passar um a cada
+  10 a 20 minutos: a coleta pede 30 dias de uma vez (o GDELT responde um ponto por dia) e devagar.
 
 **Quando o dia passa a valer:** a Wikimedia publica os acessos depois que o dia termina, com algumas
 horas de atraso, então o dia vale no fim do dia seguinte. O GDELT atualiza a cada 15 minutos: o dia
@@ -39,10 +40,12 @@ def endereco_wikipedia(
     )
 
 
-def endereco_gdelt(termo: str, modo: str, dia: date) -> str:
-    """Pedido de um dia UTC ao GDELT (`timelinevolraw` para contagem, `timelinetone` para tom)."""
+def endereco_gdelt(termo: str, modo: str, inicio: date, fim: date | None = None) -> str:
+    """Pedido ao GDELT dos dias UTC de `inicio` até antes de `fim` (sem `fim`, só o dia
+    `inicio`); `timelinevolraw` para contagem, `timelinetone` para tom. Até 3 dias o GDELT
+    responde de 15 em 15 minutos; com mais, um ponto por dia (conferido em 14/10/2026)."""
     return ENDERECO_GDELT.format(
-        termo=termo, modo=modo, inicio=dia, fim=dia + timedelta(days=1)
+        termo=termo, modo=modo, inicio=inicio, fim=fim or inicio + timedelta(days=1)
     )
 
 

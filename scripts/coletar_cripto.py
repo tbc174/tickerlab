@@ -4,7 +4,7 @@
     python -m scripts.coletar_cripto kraken      (Kraken: os últimos 720 dias)
     python -m scripts.coletar_cripto cftc        (posições nos futuros de Bitcoin da CME)
     python -m scripts.coletar_cripto wikipedia   (acessos ao artigo "Bitcoin")
-    python -m scripts.coletar_cripto gdelt       (notícias; um dia por vez, 10 s entre pedidos)
+    python -m scripts.coletar_cripto gdelt       (notícias; 30 dias por pedido, 60 s entre pedidos)
     python -m scripts.coletar_cripto receita     (planilha de criptoativos da Receita)
     python -m scripts.coletar_cripto no          (nó do Bitcoin; cookie em BITCOIN_COOKIE)
     python -m scripts.coletar_cripto kraken-arquivo XBTUSD_1440.csv   (carga única do histórico)

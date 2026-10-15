@@ -66,8 +66,8 @@ def refazer(originais: Iterable[Original]) -> dict[str, pd.DataFrame]:
     gdelt: dict[str, dict[str, bytes]] = defaultdict(dict)
     for original in sorted(originais, key=lambda o: o.baixado_em):
         if original.fonte == "gdelt-cripto":
-            dia, modo = _dia_e_modo_do_gdelt(original.url)
-            gdelt[dia][modo] = original.conteudo
+            periodo, modo = _periodo_e_modo_do_gdelt(original.url)
+            gdelt[periodo][modo] = original.conteudo
             continue
         for tabela, linhas in _ler(original):
             partes[tabela].append(linhas)
@@ -138,9 +138,11 @@ def _ler_receita(
         )
 
 
-def _dia_e_modo_do_gdelt(url: str) -> tuple[str, str]:
+def _periodo_e_modo_do_gdelt(url: str) -> tuple[str, str]:
+    """O período (início e fim) e o modo: a contagem e o tom do mesmo período formam um par."""
     pedido = parse_qs(urlparse(url).query)
-    return pedido["startdatetime"][0], pedido["mode"][0]
+    periodo = f"{pedido['startdatetime'][0]}-{pedido['enddatetime'][0]}"
+    return periodo, pedido["mode"][0]
 
 
 def _sem_repetir(tabela: pd.DataFrame, chave: list[str]) -> pd.DataFrame:

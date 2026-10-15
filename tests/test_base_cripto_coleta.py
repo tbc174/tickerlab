@@ -148,29 +148,81 @@ def test_cada_projeto_da_wikipedia_pede_so_o_que_falta(tmp_path):
     ] * 2
 
 
-def _gdelt_do_dia(url: str) -> bytes:
+def _gdelt_do_periodo(url: str) -> bytes:
+    """Um ponto por dia de `startdatetime` até antes de `enddatetime` (resolução "day")."""
     pedido = parse_qs(urlparse(url).query)
-    inicio = pedido["startdatetime"][0][:8]
-    if pedido["mode"][0] == "timelinevolraw":
-        ponto = {"date": f"{inicio}T000000Z", "value": 4, "norm": 100}
-    else:
-        ponto = {"date": f"{inicio}T000000Z", "value": -1.0}
-    return json.dumps({"timeline": [{"data": [ponto]}]}).encode()
+    dia = date.fromisoformat(pedido["startdatetime"][0][:8])
+    fim = date.fromisoformat(pedido["enddatetime"][0][:8])
+    pontos = []
+    while dia < fim:
+        momento = f"{dia:%Y%m%d}T000000Z"
+        if pedido["mode"][0] == "timelinevolraw":
+            pontos.append({"date": momento, "value": 4, "norm": 100})
+        else:
+            pontos.append({"date": momento, "value": -1.0})
+        dia += timedelta(days=1)
+    return json.dumps({"timeline": [{"data": pontos}]}).encode()
 
 
-def test_gdelt_um_dia_por_vez_com_pausa_e_limite_por_rodada(tmp_path, monkeypatch):
-    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 3)
+def _so_desde(monkeypatch, dia: date, dias_por_pedido: int = 5) -> None:
+    """Começa o GDELT perto de AGORA (o último dia que vale é 12/10/2026)."""
+    monkeypatch.setattr(coleta, "INICIO_DO_GDELT", dia)
+    monkeypatch.setattr(coleta, "DIAS_POR_PEDIDO_AO_GDELT", dias_por_pedido)
+
+
+def test_gdelt_pede_varios_dias_de_uma_vez_e_depois_so_o_que_falta(
+    tmp_path, monkeypatch
+):
+    _so_desde(monkeypatch, date(2026, 10, 1))
     pausas: list[float] = []
-    fonte = Fonte(_gdelt_do_dia)
+    fonte = Fonte(_gdelt_do_periodo)
 
     coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=pausas.append)
+    primeira = len(fonte.pedidos)
     coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=pausas.append)
 
     noticias = ler_tabela(tmp_path / "gdelt", "dia")
-    assert noticias["dia"].tolist() == [date(2017, 1, d) for d in range(1, 7)]
-    assert len(fonte.pedidos) == 12  # 6 dias, contagem e tom
-    assert all(pausa >= coleta.PAUSA_DO_GDELT_EM_SEGUNDOS for pausa in pausas)
-    assert len(pausas) == len(fonte.pedidos)
+    assert noticias["dia"].tolist() == [date(2026, 10, d) for d in range(1, 13)]
+    assert primeira == 6  # 1–5, 6–10 e 11–12: contagem e tom de cada bloco
+    assert len(fonte.pedidos) == primeira  # a 2ª rodada não tinha o que pedir
+    assert (
+        "enddatetime=20261013000000" in fonte.pedidos[-1]
+    )  # o último bloco para no 12/10
+    assert pausas == [coleta.PAUSA_DO_GDELT_EM_SEGUNDOS] * primeira
+
+
+def test_gdelt_pede_de_novo_o_ultimo_dia_guardado_quando_ha_dias_novos(
+    tmp_path, monkeypatch
+):
+    # Até 14/10/2026 o pedido de um dia trazia também o 1º quarto de hora do dia seguinte, que
+    # ficava guardado como se fosse o dia inteiro: a rodada seguinte refaz o último dia.
+    _so_desde(monkeypatch, date(2026, 10, 1))
+    fonte = Fonte(_gdelt_do_periodo)
+    coleta.coletar_gdelt(
+        tmp_path, datetime(2026, 10, 6, 12, tzinfo=UTC), fonte, lambda _: None
+    )
+    fonte.pedidos.clear()
+
+    coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=lambda _: None)
+
+    assert "startdatetime=20261005000000" in fonte.pedidos[0]
+    dias = ler_tabela(tmp_path / "gdelt", "dia")["dia"]
+    assert dias.tolist() == [
+        date(2026, 10, d) for d in range(1, 13)
+    ]  # sem repetir o dia 5
+
+
+def test_gdelt_para_de_comecar_blocos_quando_acaba_o_tempo(tmp_path, monkeypatch):
+    _so_desde(monkeypatch, date(2026, 10, 1))
+    relogio = iter([0.0, 0.0, coleta.MINUTOS_DO_GDELT_POR_RODADA * 60 + 1])
+    fonte = Fonte(_gdelt_do_periodo)
+
+    novas = coleta.coletar_gdelt(
+        tmp_path, AGORA, fonte, esperar=lambda _: None, relogio=lambda: next(relogio)
+    )
+
+    assert novas == 5  # só o 1º bloco; o resto fica para a noite seguinte
+    assert len(fonte.pedidos) == 2
 
 
 # --- GDELT limitando (14/10/2026: a coleta falhou com 429 Too Many Requests) ------------------------
@@ -183,10 +235,10 @@ def _erro_http(codigo: int, espere: str | None = None) -> requests.HTTPError:
 
 
 class GdeltLimitando(Fonte):
-    """Responde 429 nos pedidos de número `limitados` (contando de 1) e o dia certo nos outros."""
+    """Responde 429 nos pedidos de número `limitados` (contando de 1) e os dias certos nos outros."""
 
     def __init__(self, limitados, espere: str | None = None):
-        super().__init__(_gdelt_do_dia)
+        super().__init__(_gdelt_do_periodo)
         self.limitados = limitados
         self.espere = espere
 
@@ -198,20 +250,20 @@ class GdeltLimitando(Fonte):
 
 
 def test_gdelt_espera_e_tenta_de_novo_quando_responde_429(tmp_path, monkeypatch):
-    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 1)
+    _so_desde(monkeypatch, date(2026, 10, 12))
     pausas: list[float] = []
-    fonte = GdeltLimitando(limitados={2, 3})  # o tom do 1º dia leva dois 429
+    fonte = GdeltLimitando(limitados={2, 3})  # o tom leva dois 429
 
     coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=pausas.append)
 
-    assert ler_tabela(tmp_path / "gdelt", "dia")["dia"].tolist() == [date(2017, 1, 1)]
+    assert ler_tabela(tmp_path / "gdelt", "dia")["dia"].tolist() == [date(2026, 10, 12)]
     assert len(fonte.pedidos) == 4
-    esperas_do_429 = [p for p in pausas if p > coleta.PAUSA_DO_GDELT_EM_SEGUNDOS]
+    esperas_do_429 = [p for p in pausas if p != coleta.PAUSA_DO_GDELT_EM_SEGUNDOS]
     assert esperas_do_429 == list(coleta.ESPERAS_DO_GDELT_EM_SEGUNDOS[:2])
 
 
 def test_gdelt_respeita_o_retry_after_da_resposta(tmp_path, monkeypatch):
-    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 1)
+    _so_desde(monkeypatch, date(2026, 10, 12))
     pausas: list[float] = []
     fonte = GdeltLimitando(limitados={1}, espere="90")
 
@@ -233,16 +285,15 @@ def test_gdelt_sempre_limitando_sem_nenhum_dia_novo_falha(tmp_path):
 def test_gdelt_limitando_depois_de_dias_novos_guarda_o_que_veio_e_para(
     tmp_path, monkeypatch
 ):
-    # 2 dias inteiros (4 pedidos); do 5º em diante, só 429: a rodada termina bem, o resto amanhã.
-    monkeypatch.setattr(coleta, "DIAS_DO_GDELT_POR_RODADA", 10)
-    fonte = GdeltLimitando(limitados=range(5, 1000))
+    # 1º bloco inteiro (2 pedidos); do 3º pedido em diante, só 429: termina bem, o resto amanhã.
+    _so_desde(monkeypatch, date(2026, 10, 1))
+    fonte = GdeltLimitando(limitados=range(3, 1000))
 
     novas = coleta.coletar_gdelt(tmp_path, AGORA, fonte, esperar=lambda _: None)
 
-    assert novas == 2
+    assert novas == 5
     assert ler_tabela(tmp_path / "gdelt", "dia")["dia"].tolist() == [
-        date(2017, 1, 1),
-        date(2017, 1, 2),
+        date(2026, 10, d) for d in range(1, 6)
     ]
 
 
