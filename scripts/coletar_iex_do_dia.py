@@ -18,6 +18,13 @@ antigo, até `--maximo` dias coletados (dia ainda sem arquivo não conta) ou at�
 para a rodada da madrugada não encostar no backup. Cada dia baixa ~9 GB (cabe com folga nos 8 TB
 mensais do VPS, conferido em 13/10/2026).
 
+Selo por ativo (plano dos intradiários grátis, PR 5): no fim de cada rodada, os dias com barras e
+sem selo ganham `selo/AAAA-MM-DD.parquet` (o fechamento das barras contra o oficial do dia,
+`src.barras_intradiarias.selo_dos_fechamentos`) e o resumo `.json` ganha a contagem. O oficial vem
+do Yahoo e só serve para conferir: o preço dele não é guardado. Sem resposta do Yahoo, o dia fica
+para a rodada seguinte. `nao_confere` aparece na saída, mas não é falha (na carga antiga, um
+desdobramento depois do dia muda o preço do Yahoo).
+
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
 """
 
@@ -34,10 +41,15 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
 import requests
 
 from src import calendario_nyse, catalogo, iex_tops
-from src.barras_intradiarias import cobertura_por_simbolo, montar_barras
+from src.barras_intradiarias import (
+    cobertura_por_simbolo,
+    montar_barras,
+    selo_dos_fechamentos,
+)
 
 LISTA_DO_HIST = "https://iextrading.com/api/1.0/hist?date={data}"
 PASTA = Path("dados_locais/intradiario/iex")
@@ -46,6 +58,9 @@ DIAS_UTEIS_OLHADOS = 5
 MAXIMO_DE_DIAS_POR_RODADA = 2  # ~12 min; o resto fica para a madrugada seguinte
 TEMPO_LIMITE_S = 120
 SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
+MAXIMO_DE_SELOS_POR_RODADA = (
+    40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
+)
 
 log = logging.getLogger(__name__)
 
@@ -155,6 +170,88 @@ def coletar_dia(
     return resumo
 
 
+def fechamentos_oficiais(dia: date, simbolos: list[str]) -> pd.Series:
+    """O fechamento oficial de `dia` (Yahoo, sem ajuste de dividendos), pelo símbolo da IEX
+    ("BRK.B"). Vazio se o Yahoo não respondeu."""
+    import yfinance as yf  # só aqui: os testes do coletor não vão à internet
+
+    para_yahoo = {s.replace(".", "-"): s for s in simbolos}
+    tabela = yf.download(
+        list(para_yahoo),
+        start=dia,
+        end=dia + timedelta(days=1),
+        auto_adjust=False,
+        progress=False,
+    )
+    if tabela is None or tabela.empty:
+        return pd.Series(dtype=float)
+    fechamentos = tabela["Close"].iloc[0]
+    return fechamentos.rename(index=para_yahoo).dropna()
+
+
+def pasta_do_selo(pasta: Path) -> Path:
+    return pasta / "selo"
+
+
+def dias_sem_selo(pasta: Path) -> list[date]:
+    """Dias coletados (com o resumo `.json`) que ainda não têm selo, do mais novo ao mais antigo."""
+    dias = [date.fromisoformat(r.stem) for r in pasta.glob("????-??-??.json")]
+    return sorted(
+        (d for d in dias if not (pasta_do_selo(pasta) / f"{d}.parquet").exists()),
+        reverse=True,
+    )
+
+
+def selar_dia(
+    dia: date, pasta: Path, oficiais: Callable[[date, list[str]], pd.Series]
+) -> dict | None:
+    """Grava o selo do dia e acrescenta a contagem ao resumo; None se não veio o oficial."""
+    barras = pd.read_parquet(arquivo_do_dia(dia, pasta))
+    fechamentos = oficiais(dia, sorted(barras["simbolo"].unique()))
+    if fechamentos.empty:
+        return None
+    selo = selo_dos_fechamentos(barras, fechamentos)
+    pasta_do_selo(pasta).mkdir(parents=True, exist_ok=True)
+    _gravar_atomico(
+        pasta_do_selo(pasta) / f"{dia}.parquet",
+        lambda p: selo.to_parquet(p, index=False),
+    )
+    caminho_do_resumo = arquivo_do_dia(dia, pasta).with_suffix(".json")
+    resumo = json.loads(caminho_do_resumo.read_text("utf-8"))
+    contagem = selo["selo"].value_counts().sort_index()
+    resumo["selo"] = {str(nome): int(n) for nome, n in contagem.items()}
+    resumo["pior_diferenca"] = round(float(selo["diferenca"].abs().max()), 6)
+    _gravar_atomico(
+        caminho_do_resumo,
+        lambda p: p.write_text(
+            json.dumps(resumo, ensure_ascii=False, indent=1), "utf-8"
+        ),
+    )
+    return resumo
+
+
+def selar_os_que_faltam(
+    pasta: Path,
+    oficiais: Callable[[date, list[str]], pd.Series],
+    maximo: int = MAXIMO_DE_SELOS_POR_RODADA,
+) -> list[str]:
+    """Sela até `maximo` dias sem selo; devolve uma linha por dia selado."""
+    linhas = []
+    for dia in dias_sem_selo(pasta)[:maximo]:
+        resumo = selar_dia(dia, pasta, oficiais)
+        if resumo is None:
+            print(
+                f"{dia}: sem o fechamento oficial ainda; o selo fica para a próxima rodada"
+            )
+            continue
+        contagem = ", ".join(f"{n} {selo}" for selo, n in resumo["selo"].items())
+        linhas.append(
+            f"{dia}: selo {contagem}; pior diferença do fechamento "
+            f"{resumo['pior_diferenca']:.2%}"
+        )
+    return linhas
+
+
 def _opcoes(argumentos: list[str] | None) -> argparse.Namespace:
     leitor = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     leitor.add_argument("--data", type=date.fromisoformat, default=None)
@@ -197,9 +294,20 @@ def _coletar_e_contar(
     return True, False
 
 
-def main(argumentos: list[str] | None = None, buscar: Callable = requests.get) -> int:
+def main(
+    argumentos: list[str] | None = None,
+    buscar: Callable = requests.get,
+    oficiais: Callable[[date, list[str]], pd.Series] | None = None,
+) -> int:
     """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou."""
     opcoes = _opcoes(argumentos)
+    codigo = _coletar(opcoes, buscar)
+    for linha in selar_os_que_faltam(opcoes.pasta, oficiais or fechamentos_oficiais):
+        print(linha)
+    return codigo
+
+
+def _coletar(opcoes: argparse.Namespace, buscar: Callable) -> int:
     inicio = time.monotonic()
     dias = _dias_da_rodada(opcoes, datetime.now(FUSO_NY).date())
     if not dias:
