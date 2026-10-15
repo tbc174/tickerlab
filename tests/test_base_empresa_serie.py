@@ -425,3 +425,48 @@ def test_montagem_inclui_os_produtos_e_a_origem_de_cada_entidade(banco, tmp_path
     assert set(fca["via"]) == {"controlada", "coligada"}
     assert fca["origem_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
     assert (tabela["fonte"] == "comexstat").any()
+
+
+CNPJ_COM_LETRAS = "12ABC34501DE35"  # exemplo oficial da Receita (IN RFB 2.229/2024)
+
+
+def test_cnpj_alfanumerico_atravessa_controladas():
+    assert controladas.cnpj14("12.abc.345/01de-35") == CNPJ_COM_LETRAS
+    fre = controladas.ler_controladas_do_fre(
+        _fre_com(
+            _participacao(
+                "12.ABC.345/01DE-35",
+                "NOVA SA",
+                "1",
+                "900",
+                "FILHA LTDA",
+                "12ABC34502DE16",
+                "Controlada",
+                "100",
+            )
+        )
+    )
+    assert fre[["cnpj_companhia", "cnpj"]].values.tolist() == [
+        [CNPJ_COM_LETRAS, "12ABC34502DE16"]
+    ]
+
+
+def test_cnpj_alfanumerico_atravessa_empresa_serie():
+    anatel = "CNPJ;Empresa;Grupo Econômico;2026-07\n12.ABC.345/01DE-35;NOVA;GRUPO;1\n"
+    linha = empresa_serie.entidades_anatel(anatel.encode("utf-8-sig")).iloc[0]
+    assert (linha["chave"], linha["raiz"]) == (CNPJ_COM_LETRAS, "12ABC345")
+
+
+def _fre_com(participacao: str) -> bytes:
+    """Um FRE de uma linha, entregue em 01/07/2026 (documento 900)."""
+    principal = (
+        f"{PRINCIPAL}\n12.ABC.345/01DE-35;2026-12-31;1;NOVA;9;FRE;900;2026-07-01;x"
+    )
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as arquivo:
+        arquivo.writestr(
+            "fre_cia_aberta_participacao_sociedade_2026.csv",
+            f"{PARTICIPACOES}\n{participacao}".encode("latin-1"),
+        )
+        arquivo.writestr("fre_cia_aberta_2026.csv", principal.encode("latin-1"))
+    return saida.getvalue()

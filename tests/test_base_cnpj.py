@@ -7,7 +7,7 @@ Serpro: cada caractere vale o código ASCII − 48, pesos e resto por 11 como no
 from hypothesis import given
 from hypothesis import strategies as st
 
-from base import cnpj, fidc
+from base import cnpj
 
 EXEMPLO_DA_RECEITA = "12ABC34501DE35"
 
@@ -24,9 +24,24 @@ def test_dv_de_cnpj_conhecido_so_com_numeros():
     assert not cnpj.dv_confere("123")
 
 
+def _dv_so_com_numeros(digitos: str) -> bool:
+    """O cálculo de antes da IN 2.229 (o que `base/fidc.py` usava), para comparar."""
+    if digitos == digitos[0] * 14:
+        return False
+
+    def dv(base: str, pesos: list[int]) -> str:
+        resto = sum(int(c) * k for c, k in zip(base, pesos, strict=True)) % 11
+        return str(0 if resto < 2 else 11 - resto)
+
+    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    primeiro = dv(digitos[:12], pesos)
+    segundo = dv(digitos[:12] + primeiro, [6, *pesos])
+    return digitos[12:] == primeiro + segundo
+
+
 @given(st.text(alphabet="0123456789", min_size=14, max_size=14))
 def test_numerico_continua_igual(digitos):
-    assert cnpj.dv_confere(digitos) == fidc._cnpj_valido(digitos)
+    assert cnpj.dv_confere(digitos) == _dv_so_com_numeros(digitos)
 
 
 def test_normalizar():
@@ -65,3 +80,12 @@ def test_formatar():
 def test_tem_letra():
     assert cnpj.tem_letra(EXEMPLO_DA_RECEITA)
     assert not cnpj.tem_letra("33000167000101")
+
+
+def test_completo_nao_transforma_cpf_em_cnpj():
+    """Coluna que mistura CPF e CNPJ: só os 14 contam (o CPF não ganha zeros e vira "CNPJ")."""
+    assert cnpj.completo("12.abc.345/01de-35") == EXEMPLO_DA_RECEITA
+    assert cnpj.completo("33.000.167/0001-01") == "33000167000101"
+    assert cnpj.completo("123.456.789-09") is None
+    assert cnpj.completo("03645752") is None
+    assert cnpj.completo(None) is None

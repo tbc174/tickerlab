@@ -393,3 +393,12 @@ def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path, monkeypatch
     assert (pasta / "auditores" / "2020.parquet").exists()
     trocas = pd.read_parquet(pasta / "trocas_de_auditor" / "trocas.parquet")
     assert trocas["anterior_id"].tolist() == ["rede:kpmg"]
+
+
+def test_cnpj_alfanumerico_atravessa_auditores():
+    """Firma de auditoria com CNPJ novo (com letras) continua pessoa jurídica, com nome e raiz."""
+    nova = ("Nova Auditores", "12.ABC.345/01DE-35", "")
+    linha = _ano(2027, "2027-05-01", (nova, "2027-01-01")).iloc[0]
+    assert linha["auditor_cnpj"] == "12ABC34501DE35"
+    assert linha["auditor"] == "Nova Auditores"
+    assert linha["auditor_id"] == "cnpj:12ABC345"

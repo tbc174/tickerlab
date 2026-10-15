@@ -43,6 +43,17 @@ def normalizar_cnpj(valor: object) -> str | None:
     return texto
 
 
+def completo(valor: object) -> str | None:
+    """Só os 14 caracteres, sem completar com zeros: para colunas que misturam CPF e CNPJ.
+
+    Um CPF de 11 dígitos com zeros à esquerda viraria um "CNPJ" no `normalizar_cnpj`; aqui não.
+    """
+    if not isinstance(valor, str):
+        return None
+    texto = SEPARADORES.sub("", valor.strip()).upper()
+    return texto if FORMA.match(texto) and texto.strip("0") else None
+
+
 def _digito(base: str, pesos: tuple[int, ...]) -> int:
     soma = sum((ord(c) - VALOR_DO_ZERO) * p for c, p in zip(base, pesos, strict=True))
     resto = soma % 11

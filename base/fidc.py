@@ -19,6 +19,8 @@ import zipfile
 
 import pandas as pd
 
+from base import cnpj
+
 CODIFICACAO_DA_CVM = "latin-1"
 DIAS_ATE_FICAR_PUBLICO = 45
 COLUNAS_DO_FUNDO = (
@@ -43,15 +45,6 @@ def _digito(numeros: str, pesos: range | list[int]) -> int:
     return 0 if resto < 2 else 11 - resto
 
 
-def _cnpj_valido(digitos: str) -> bool:
-    if len(digitos) != DIGITOS_DO_CNPJ or digitos == digitos[0] * DIGITOS_DO_CNPJ:
-        return False
-    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    primeiro = _digito(digitos[:12], pesos)
-    segundo = _digito(digitos[:13], [6, *pesos])
-    return digitos[12:] == f"{primeiro}{segundo}"
-
-
 def _cpf_valido(digitos: str) -> bool:
     if len(digitos) != DIGITOS_DO_CPF or digitos == digitos[0] * DIGITOS_DO_CPF:
         return False
@@ -64,15 +57,16 @@ def documento_de_empresa(valor: object) -> str | None:
     """O CNPJ formatado, se o valor for um CNPJ válido e não puder ser um CPF; senão, None."""
     if not isinstance(valor, str):
         return None
+    com_letras = cnpj.completo(valor)
+    if com_letras and cnpj.tem_letra(com_letras):  # com letra é CNPJ, nunca CPF
+        return cnpj.formatar(com_letras) if cnpj.dv_confere(com_letras) else None
     digitos = re.sub(r"\D", "", valor)
     if not digitos or len(digitos) > DIGITOS_DO_CNPJ:
         return None
     if len(digitos) <= DIGITOS_DO_CPF and _cpf_valido(digitos.zfill(DIGITOS_DO_CPF)):
         return None  # na dúvida entre CPF e CNPJ, é dado pessoal
-    cnpj = digitos.zfill(DIGITOS_DO_CNPJ)
-    if not _cnpj_valido(cnpj):
-        return None
-    return f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+    numerico = digitos.zfill(DIGITOS_DO_CNPJ)
+    return cnpj.formatar(numerico) if cnpj.dv_confere(numerico) else None
 
 
 def _ler_csv(
