@@ -163,3 +163,12 @@ def test_ticker_com_numero_no_emissor_entra_no_tempo():
         2019, _linha(b3, "2019-01-01", "B3SA3", nome="B3 S.A.", inicio="2007-10-26")
     )
     assert list(tickers_no_tempo([conteudo])["codigo"]) == ["B3SA3"]
+
+
+def test_cadastro_traz_a_uf_da_sede():
+    com_uf = (
+        "CNPJ_CIA;DENOM_SOCIAL;DT_REG;DT_CANCEL;MOTIVO_CANCEL;SIT;SETOR_ATIV;UF\n"
+        f"{A};EMPRESA A;2001-05-10;;;ATIVO;Energia Elétrica; rs \n"
+    ).encode("latin-1")
+    assert ler_cadastro(com_uf)["uf"].tolist() == ["RS"]
+    assert ler_cadastro(CADASTRO)["uf"].tolist() == ["", "", ""]  # arquivo sem a coluna
