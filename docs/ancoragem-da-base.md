@@ -75,6 +75,36 @@ python -m scripts.ancorar_base conferir-prova prova.json demo/base/fca/emissores
 E confere o próprio Parquet contra o manifesto com `base.parquet.conferir_tabela`. A corrente
 completa: Parquet → hash da tabela no manifesto → folha → raiz → âncora → recibo → bloco do Bitcoin.
 
+## Rotina no servidor de casa
+
+Toda noite às 0h15 o cron roda `noite` (wrapper `~/bin/ancorar-base.sh`, marca `ancoras` no
+`rodar-tarefa.sh`, aviso no Kuma pelo `conferir-tarefas-casa.sh`):
+
+```bash
+python -m scripts.ancorar_base noite --ancoras /ancoras --pasta <acervo>/base --rotulos <acervo>/rotulos_ia/v1
+```
+
+1. **Base:** se a base mudou desde a última âncora, monta `base-AAAA-MM-DD.json` (dia de Brasília).
+   Se o arquivo do dia já existe, não faz outro: no máximo uma âncora por dia.
+2. **Rótulos:** cada lote com `estado: gravado` no `manifesto.json` ganha `rotulos-<lote>.json`
+   (o `rotulos.jsonl` e o `manifesto.json` daquele momento).
+3. **Carimbar** toda âncora que ainda não tem `.ots` (inclusive a de uma noite em que os
+   calendários estavam fora do ar).
+4. **Atualizar** os recibos sem bloco. Recibo pendente há mais de 2 dias vira uma linha `FALHAS:`
+   e saída 1, e o Kuma fica "down".
+
+A pasta `ancoras/` nunca é sobrescrita. O acervo entra no contêiner só para leitura.
+
+## Pré-registro e auditoria, à mão
+
+Pré-registros (ADR 0006) e auditorias do Tiago (ADR 0072) são raros: monte e carimbe na hora, antes
+da primeira execução ou logo depois da auditoria, e o `noite` cuida do `atualizar`:
+
+```bash
+python -m scripts.ancorar_base montar /ancoras/prereg-m2-v0.4.json --rotulo m2-v0.4 --arquivo docs/pre-registro-m2-v0.4.md
+python -m scripts.ancorar_base carimbar /ancoras/prereg-m2-v0.4.json
+```
+
 ## Limites
 
 - **Data mínima, não máxima:** o recibo prova que a âncora existia *até* a hora do bloco, não que
