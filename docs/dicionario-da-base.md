@@ -89,7 +89,7 @@ Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e
 
 ## `tickers_no_tempo`
 
-Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Os códigos que a empresa informa fora do formato (o BTG põe "000000" nas units) entram pela tabela conferida, válidos do 1º ao último mês em que aparecem nas carteiras dos fundos
+Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Vale da entrega do FCA que trouxe o código até a do que veio sem ele (série 4, PR 1); numa data, vale o FCA de referência mais nova já entregue. Os códigos que a empresa informa fora do formato (o BTG põe "000000" nas units) entram pela tabela conferida, válidos do 1º mês em que aparecem nas carteiras dos fundos até o fim do ano do último
 
 - **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -97,7 +97,7 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração
 - **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo
 - **Onde fica:** Parquet em `<acervo>/base/fca/tickers.parquet` (servidor de casa, `scripts/carga_fca.py`); a função é `base/cadastro.py::tickers_no_tempo`
-- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de qual FCA veio cada código. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela. As linhas com `origem` = códigos conferidos vêm da tabela conferida, que entra nas origens do `.json` pelo caminho no repositório e o SHA-256 (`base/linhagem.py` confere o arquivo).
+- **Linhagem:** Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` são as entregas dos FCA de onde veio cada código. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela. As linhas com `origem` = códigos conferidos vêm da tabela conferida, que entra nas origens do `.json` pelo caminho no repositório e o SHA-256 (`base/linhagem.py` confere o arquivo).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -105,15 +105,16 @@ Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, 
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `valor_mobiliario` | Tipo do papel (ações ordinárias, preferenciais, units) | texto |
-| `primeiro_visto` | Data do primeiro FCA em que o código apareceu | data (dia) |
-| `ultimo_visto` | Data do último FCA em que o código apareceu | data (dia) |
+| `primeiro_visto` | Entrega (DT_RECEB) do primeiro FCA vigente com o código: vale desde esse dia | data (dia) |
+| `ultimo_visto` | Entrega do último FCA vigente com o código | data (dia) |
+| `valido_ate` | Entrega do FCA que passou a valer sem o código (deixa de valer nesse dia); vazio: ainda no FCA mais recente da empresa | data (dia) |
 | `inicio_negociacao` | Início da negociação informado pela empresa | data (dia) |
 | `fim_negociacao` | Fim da negociação informado (vazio: ainda negociado) | data (dia) |
 | `origem` | fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA) | texto |
 
 ## `valores_mobiliarios`
 
-Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), na versão mais nova de cada documento. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
+Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), na versão mais nova de cada documento (a CVM só publica os valores dela), com a data de entrega. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
 
 - **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -121,7 +122,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
 - **Atraso de divulgação:** Até meses: a empresa atualiza o FCA quando muda algo; sem ticker até 2017
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
-- **Linhagem:** `cnpj`, `referencia` e `versao` dizem de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
+- **Linhagem:** `id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -129,6 +130,8 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `referencia` | Data de referência do FCA | data (dia) |
 | `versao` | Versão do documento (fica a mais nova) | número inteiro |
+| `id_documento` | Número do documento na CVM (ID_DOC) | texto |
+| `recebido_em` | Data de entrega desta versão à CVM (DT_RECEB): como era na data | data (dia) |
 | `valor_mobiliario` | Tipo do papel, como a empresa informa | texto |
 | `classe` | Classe da ação preferencial (Preferencial Classe A...) | texto |
 | `codigo_informado` | Código de negociação como a empresa escreveu | texto |
@@ -161,6 +164,7 @@ Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o úl
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `primeiro_ano` | Ano do primeiro FCA com o emissor | número inteiro |
 | `ultimo_ano` | Ano do último FCA com o emissor | número inteiro |
+| `primeiro_recebido_em` | Entrega do primeiro FCA com o emissor (nos códigos conferidos, o 1º mês nas carteiras dos fundos): desde quando a ligação é conhecida | data (dia) |
 | `conflito` | Verdadeiro se o emissor aparece com mais de um CNPJ | verdadeiro ou falso |
 | `origem` | fca (informado no formulário) ou códigos conferidos (tabela `base/conferidas/codigos_fora_do_fca.csv`: o código veio fora do formato no FCA) | texto |
 
@@ -181,6 +185,7 @@ Códigos de negociação informados fora do formato de ticker (a CSN informa "40
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `referencia` | Data de referência do FCA | data (dia) |
+| `recebido_em` | Data de entrega do FCA à CVM (DT_RECEB) | data (dia) |
 | `valor_mobiliario` | Tipo do papel, como a empresa informa | texto |
 | `codigo_informado` | O código como a empresa escreveu | texto |
 
@@ -480,7 +485,7 @@ Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no 
 | `instituicao` | Nome da instituição | texto |
 | `cnpj_raiz` | Raiz do CNPJ (8 dígitos) | texto |
 | `cnpj` | CNPJ da empresa da bolsa (vazio se não tem ação) | texto |
-| `tickers` | Códigos que valiam no ano, separados por vírgula | texto |
+| `tickers` | Códigos que valiam na data-base (FCA já entregue), separados por vírgula | texto |
 | `ligado_por` | próprio CNPJ (a instituição é a empresa da bolsa, como o Banco PAN) ou líder do conglomerado; vazio sem ligação | texto |
 
 ## `scr_credito`

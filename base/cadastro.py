@@ -7,22 +7,21 @@ que existiu:
 
 - `ler_cadastro`: cada registro do `cad_cia_aberta.csv` da CVM (uma empresa pode ter mais de um),
   com registro, cancelamento, motivo, situação e setor.
-- `tickers_no_tempo`: cada código de negociação da B3 (bolsa) com a empresa, o primeiro e o último
-  FCA em que apareceu e as datas de início e fim de negociação que a empresa informou. Junta todos
-  os anos do FCA, sem ficar só com o mais recente: um código que sumiu continua aqui.
+- `tickers_no_tempo`: cada código de negociação da B3 (bolsa) com a empresa, de quando a quando
+  valeu (pelas datas de entrega do FCA; série 4, PR 1) e as datas de início e fim de negociação que
+  a empresa informou. Junta todos os anos do FCA, sem ficar só com o mais recente: um código que
+  sumiu continua aqui.
 - `cobertura_das_canceladas`: das que saíram num período, quais a base tem (a prova da exigência 4).
 """
 
 import io
-import zipfile
 from collections.abc import Iterable
 
 import pandas as pd
 
+from base import fca
+
 CODIFICACAO_DA_CVM = "latin-1"
-CODIGO_DE_ACAO = (
-    r"[A-Z][A-Z0-9]{3}\d{1,2}"  # PETR4, TAEE11, B3SA3 (o emissor pode ter número)
-)
 COLUNAS_DOS_TICKERS = (
     "codigo",
     "cnpj",
@@ -30,6 +29,7 @@ COLUNAS_DOS_TICKERS = (
     "valor_mobiliario",
     "primeiro_visto",
     "ultimo_visto",
+    "valido_ate",
     "inicio_negociacao",
     "fim_negociacao",
 )
@@ -111,50 +111,50 @@ def cobertura_das_canceladas(
     return cobertura
 
 
-def _valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
-    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
-        nomes = [n for n in arquivo.namelist() if "valor_mobiliario" in n]
-        if not nomes:
-            return pd.DataFrame()
-        return _ler_csv(io.BytesIO(arquivo.read(nomes[0])))
+def _acoes_da_bolsa(valores: pd.DataFrame) -> pd.DataFrame:
+    """As linhas com código de ação da B3 negociada em bolsa (PETR4, TAEE11, B3SA3)."""
+    return valores[
+        valores["administradora"].str.upper().eq("B3")
+        & valores["mercado"].str.lower().eq("bolsa")
+        & valores["ticker"].notna()
+    ]
 
 
 def tickers_no_tempo(conteudos_dos_zips: Iterable[bytes]) -> pd.DataFrame:
-    """Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu.
+    """Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu.
 
-    Uma linha por (código, CNPJ): o mesmo código pode ter passado de uma empresa para outra.
+    Uma linha por período de (código, CNPJ): o mesmo código pode ter passado de uma empresa para
+    outra, ou sumido e voltado. `primeiro_visto` e `ultimo_visto` são as entregas do primeiro e do
+    último formulário vigente com o código; `valido_ate`, a do formulário que passou a valer sem ele
+    (vazio: ainda no mais recente). Qual formulário vale em cada data: `fca.formularios_vigentes`.
     """
-    partes = [_valores_mobiliarios(c) for c in conteudos_dos_zips]
-    partes = [p for p in partes if not p.empty]
+    partes = [fca.ler_valores_mobiliarios(c) for c in conteudos_dos_zips]
     if not partes:
         return pd.DataFrame(columns=list(COLUNAS_DOS_TICKERS))
-    bruto = pd.concat(partes, ignore_index=True)
-    bruto = bruto[
-        bruto["Sigla_Entidade_Administradora"].str.upper().eq("B3")
-        & bruto["Mercado"].str.lower().eq("bolsa")
-        & bruto["Codigo_Negociacao"].str.fullmatch(CODIGO_DE_ACAO)
-    ]
-    tabela = pd.DataFrame(
-        {
-            "codigo": bruto["Codigo_Negociacao"],
-            "cnpj": bruto["CNPJ_Companhia"].str.strip(),
-            "empresa": bruto["Nome_Empresarial"].str.strip(),
-            "valor_mobiliario": bruto["Valor_Mobiliario"].str.strip(),
-            "referencia": pd.to_datetime(bruto["Data_Referencia"], errors="coerce"),
-            "inicio": pd.to_datetime(bruto["Data_Inicio_Negociacao"], errors="coerce"),
-            "fim": pd.to_datetime(bruto["Data_Fim_Negociacao"], errors="coerce"),
-        }
-    ).sort_values("referencia")
-    grupos = tabela.groupby(["codigo", "cnpj"], sort=True)
+    valores = pd.concat(partes, ignore_index=True)
+    acoes = _acoes_da_bolsa(valores).merge(
+        fca.formularios_vigentes(valores), on=["cnpj", "id_documento", "recebido_em"]
+    )
+    if acoes.empty:
+        return pd.DataFrame(columns=list(COLUNAS_DOS_TICKERS))
+    acoes = acoes.sort_values(["ticker", "cnpj", "ordem"])
+    # um período segue enquanto o código está em formulários vigentes seguidos (0: duas linhas
+    # do mesmo formulário)
+    salto = acoes.groupby(["ticker", "cnpj"])["ordem"].diff()
+    acoes["periodo"] = (~salto.isin([0, 1])).cumsum()
     return (
-        grupos.agg(
+        acoes.groupby(["ticker", "cnpj", "periodo"], sort=True)
+        .agg(
             empresa=("empresa", "last"),
             valor_mobiliario=("valor_mobiliario", "last"),
-            primeiro_visto=("referencia", "min"),
-            ultimo_visto=("referencia", "max"),
-            inicio_negociacao=("inicio", "min"),
-            fim_negociacao=("fim", "max"),
+            primeiro_visto=("recebido_em", "min"),
+            ultimo_visto=("recebido_em", "max"),
+            # o do último formulário, vazio inclusive ("last" pularia o vazio)
+            valido_ate=("ate", lambda ate: ate.iloc[-1]),
+            inicio_negociacao=("inicio_negociacao", "min"),
+            fim_negociacao=("fim_negociacao", "max"),
         )
         .reset_index()
+        .rename(columns={"ticker": "codigo"})
         .reindex(columns=list(COLUNAS_DOS_TICKERS))
     )

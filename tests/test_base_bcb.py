@@ -106,7 +106,8 @@ def _empresas_e_tickers() -> tuple[pd.DataFrame, pd.DataFrame]:
             "conflito": [False] * 5,
         }
     )
-    ano = pd.Timestamp
+    data = pd.Timestamp
+    # como a `tickers_no_tempo`: da entrega do FCA que trouxe o código até a do que veio sem ele
     tickers = pd.DataFrame(
         {
             "codigo": [
@@ -127,9 +128,9 @@ def _empresas_e_tickers() -> tuple[pd.DataFrame, pd.DataFrame]:
                 "30.306.294/0001-45",
                 "30.306.294/0001-45",
             ],
-            "primeiro_visto": [ano("2010-01-01")] * 6 + [ano("2012-01-01")],
-            "ultimo_visto": [ano("2026-01-01")] * 6
-            + [ano("2017-01-01")],  # BBTG11 saiu
+            "primeiro_visto": [data("2010-05-31")] * 6 + [data("2012-05-31")],
+            "ultimo_visto": [data("2026-05-31")] * 6 + [data("2017-05-31")],
+            "valido_ate": [pd.NaT] * 6 + [data("2018-05-31")],  # BBTG11 saiu
         }
     )
     return empresas, tickers
@@ -188,8 +189,9 @@ def test_instituicao_listada_liga_pelo_proprio_cnpj_e_nao_pelo_do_lider():
                 {
                     "codigo": ["BPAN4"],
                     "cnpj": [pan],
-                    "primeiro_visto": [pd.Timestamp("2019-01-01")],
-                    "ultimo_visto": [pd.Timestamp("2026-01-01")],
+                    "primeiro_visto": [pd.Timestamp("2019-05-31")],
+                    "ultimo_visto": [pd.Timestamp("2026-05-31")],
+                    "valido_ate": [pd.NaT],
                 }
             ),
         ],
@@ -219,6 +221,26 @@ def test_ligacao_antes_do_fca_chega_ao_cnpj_mas_nao_a_acao():
     )
     assert ligacao.loc["C0010045", "cnpj"] == "60.746.948/0001-12"
     assert pd.isna(ligacao.loc["C0010045", "tickers"])  # o FCA começa em 2010
+
+
+def test_ticker_so_entra_na_data_base_depois_da_entrega_do_fca():
+    """Série 4, PR 1: o ticker vale da entrega do FCA, não do ano dele. Com o FCA que trouxe o
+    BPAC11 entregue em 15/07/2025, o cadastro de 30/06/2025 ainda não tem o código; o de 30/09, sim."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2025-06-30"), pd.Timestamp("2025-09-30")],
+            "cod_inst": [BTG, BTG],
+            "instituicao": ["BTG PACTUAL - PRUDENCIAL"] * 2,
+            "cnpj_raiz": ["30306294"] * 2,
+        }
+    )
+    empresas, tickers = _empresas_e_tickers()
+    tickers.loc[tickers["codigo"] == "BPAC11", "primeiro_visto"] = pd.Timestamp(
+        "2025-07-15"
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, empresas, tickers)
+    assert pd.isna(ligacao["tickers"].iloc[0])
+    assert ligacao["tickers"].iloc[1] == "BPAC11"
 
 
 # ---------------------------------------------------------------------------- SCR.data

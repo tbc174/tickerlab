@@ -2,8 +2,8 @@
 e 9; ADR 0055, exigências 11 e 13), conferido fonte por fonte.
 
 O que já tem prova em outro teste aparece pelo nome dele: se o teste sumir, este falha. O que ainda
-falta está em `PENDENCIAS`, com o motivo; cada pendência também é conferida (quando for resolvida, o
-teste avisa para tirá-la da lista).
+falta fica em `PENDENCIAS`, com o motivo. A única (o FCA sem a data de entrega) foi resolvida na série
+4, PR 1: as tabelas do FCA valem pelo `DT_RECEB`.
 """
 
 import importlib
@@ -71,6 +71,10 @@ FONTES = {
 
 # tabelas cuja data de "como era na data" é a própria coluna de tempo da fonte (exigência 3)
 COMO_ERA_NA_DATA = {
+    "valores_mobiliarios": "recebido_em",
+    "tickers_no_tempo": "primeiro_visto",
+    "emissores": "primeiro_recebido_em",
+    "codigos_invalidos": "recebido_em",
     "carteiras_dos_fundos": "disponivel_em",
     "fidc_informe": "disponivel_em",
     "ifdata_valores": "disponivel_em",
@@ -78,12 +82,7 @@ COMO_ERA_NA_DATA = {
 }
 # retratos do cadastro na data da coleta: cada carga que muda algo vira versão `<nome>.v<N>`
 RETRATOS = {"cadastro_de_fundos", "ifdata_cadastro", "ligacao_dos_bancos"}
-PENDENCIAS = {
-    ("CVM FCA", 3): (
-        "As tabelas do FCA valem pelo ano do formulário (`referencia`), sem a data de entrega: o "
-        "`DT_RECEB` está no arquivo principal do FCA e a base ainda não o lê. Vai para a série 4."
-    ),
-}
+PENDENCIAS: dict[tuple[str, int], str] = {}
 
 
 def _endereco(item: str) -> str:
@@ -130,9 +129,3 @@ def test_criterio_de_pronto_das_fontes_novas(fonte):
     # 9 e 13: os testes que provam continuam lá
     assert _existe(dados["reprodutivel"]), dados["reprodutivel"]
     assert _existe(dados["linhagem"]), dados["linhagem"]
-
-
-def test_pendencia_do_fca_continua_valendo():
-    """Quando a base ler o `DT_RECEB` do FCA, tire a pendência de `PENDENCIAS`."""
-    colunas = set(TABELAS["valores_mobiliarios"].colunas)
-    assert not colunas & {"recebido_em", "disponivel_em", "divulgado_em"}
