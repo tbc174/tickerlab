@@ -291,7 +291,7 @@
       "tabela": "valores_mobiliarios",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -364,6 +364,10 @@
         "fim_listagem": {
           "descricao": "Fim da listagem no segmento",
           "unidade": "data (dia)"
+        },
+        "origem": {
+          "descricao": "dados abertos (arquivo anual da CVM) ou documento da versão (RAD da CVM)",
+          "unidade": "texto"
         }
       },
       "chaves": [

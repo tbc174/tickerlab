@@ -217,6 +217,33 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
     return acervo.ler_original(caminho) if caminho else None
 
 
+def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
+
+    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
+    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
+    """
+    linhas = conexao.execute(
+        sa.select(coletas.c.sha256, coletas.c.caminho_do_original)
+        .where(
+            coletas.c.url == url[:LIMITE_DA_URL],
+            coletas.c.situacao == "ok",
+            coletas.c.caminho_do_original.is_not(None),
+        )
+        .order_by(coletas.c.baixado_em)
+    ).all()
+    vistos: set[str] = set()
+    conteudos = []
+    for sha256, caminho in linhas:
+        if sha256 in vistos:
+            continue
+        vistos.add(sha256)
+        conteudo = acervo.ler_original(caminho)
+        if conteudo is not None:
+            conteudos.append(conteudo)
+    return conteudos
+
+
 def ultimas(
     conexao: sa.Connection, fonte: str | None = None, quantas: int = 50
 ) -> list[sa.Row]:

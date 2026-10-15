@@ -344,9 +344,11 @@ TABELAS: dict[str, Tabela] = {
     "valores_mobiliarios": Tabela(
         descricao=(
             "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, "
-            "debêntures, notas comerciais...), na versão mais nova de cada documento (a CVM só "
-            "publica os valores dela), com a data de entrega. Base do código permanente da ação "
-            "(série 3). Até 2017 o FCA não traz o código de negociação"
+            "debêntures, notas comerciais...), com a data de entrega de cada versão: a mais nova de "
+            "cada documento (a única que a CVM publica nos dados abertos), as das baixadas antigas "
+            "guardadas no acervo e as versões substituídas buscadas no sistema de documentos da CVM "
+            "(RAD) nos anos em que o código mudou. Base do código permanente da ação (série 3). Até "
+            "2017 o FCA não traz o código de negociação"
         ),
         fonte="CVM: formulário cadastral (FCA), valores mobiliários",
         familia_da_fonte="cvm",
@@ -388,6 +390,10 @@ TABELAS: dict[str, Tabela] = {
             "segmento": ("Segmento de listagem (Novo Mercado, Nível 1...)", TEXTO),
             "inicio_listagem": ("Início da listagem no segmento", DATA),
             "fim_listagem": ("Fim da listagem no segmento", DATA),
+            "origem": (
+                "dados abertos (arquivo anual da CVM) ou documento da versão (RAD da CVM)",
+                TEXTO,
+            ),
         },
     ),
     "emissores": Tabela(
@@ -1576,7 +1582,7 @@ _CONTRATO = {
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
-    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
+    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
     "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
