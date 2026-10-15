@@ -7,15 +7,22 @@ import { calcularFinanciamento, EXEMPLO_DO_FINANCIAMENTO } from "./Financiamento
 import { EXEMPLO_DO_FUNDO, curvas } from "./FundosERendaFixa";
 import { apurarOAno, EXEMPLO_DO_ANO } from "./CalculadoraDeDarf";
 import { EXEMPLO_DO_PRECO_MEDIO, operacoesDosCampos } from "./PrecoMedio";
-import { SEMENTE_INICIAL } from "./SorteEmSerie";
+import { EXEMPLO_DE_APORTES } from "./AportesEMetas";
+import { EXEMPLO_DE_JUROS } from "./CalculadoraDeJuros";
+import { EXEMPLO_DA_TAXA } from "./CustoDasTaxas";
+import { EXEMPLO_DO_JURO_REAL } from "./JuroReal";
+import { EXEMPLO_DA_RENDA_FIXA } from "./RendaFixa";
+import { EXEMPLO_DA_SORTE, SEMENTE_INICIAL } from "./SorteEmSerie";
+import { EXEMPLO_DE_RENDA } from "./ViverDeRenda";
 import { evolucao as evolucaoDosAportes } from "./contas/aportes";
 import { evolucaoDaTaxa } from "./contas/custos";
-import { evolucao as evolucaoDosJuros } from "./contas/juros";
+import { evolucao as evolucaoDosJuros, taxaPorMes } from "./contas/juros";
 import { calcular as calcularPrecoMedio } from "./contas/preco_medio";
 import { comparar } from "./contas/renda_fixa";
-import { simular as simularASorte } from "./contas/sorte_em_serie";
+import { DIAS_POR_ANO, simular as simularASorte } from "./contas/sorte_em_serie";
 import { juroReal } from "./contas/taxas";
-import { trajetoria } from "./contas/viver_de_renda";
+import { patrimonioNecessario, trajetoria } from "./contas/viver_de_renda";
+import { lerNumero } from "./numeros";
 import { SERIES } from "../graficos/cores";
 
 export interface Previa {
@@ -27,6 +34,8 @@ export interface Previa {
 const CDI_DE_EXEMPLO = 0.14;
 const IPCA_DE_EXEMPLO = 0.045;
 const POUPANCA_DE_EXEMPLO = 0.0067;
+const MESES_POR_ANO = 12;
+const DIAS_POR_ANO_CORRIDO = 365;
 const PONTOS_MAXIMOS = 48;
 const LARGURA = 120;
 const ALTURA = 40;
@@ -43,6 +52,10 @@ function resumir(valores: number[]): number[] {
   return Array.from({ length: PONTOS_MAXIMOS }, (_, k) => valores[Math.round(k * passo)]);
 }
 
+/** O número de um campo do exemplo (os exemplos são sempre números válidos). */
+const n = (texto: string) => lerNumero(texto) ?? 0;
+const fracao = (texto: string) => n(texto) / 100;
+
 function semErro<T>(conta: T | string): T {
   if (typeof conta === "string") throw new Error(`o exemplo da ferramenta não fecha: ${conta}`);
   return conta;
@@ -52,32 +65,49 @@ function semErro<T>(conta: T | string): T {
 const sino = Array.from({ length: 15 }, (_, k) => Math.exp(-(((k - 6) / 3) ** 2)));
 
 export const PREVIAS: Record<string, () => Previa> = {
-  "calculadora-de-juros-compostos.html": () => linhas(evolucaoDosJuros(10000, 0.01, 120).map((l) => l.montante)),
+  "calculadora-de-juros-compostos.html": () => {
+    const { capital, taxa, unidadeDaTaxa, prazo, unidadeDoPrazo } = EXEMPLO_DE_JUROS;
+    const meses = n(prazo) * (unidadeDoPrazo === "anos" ? MESES_POR_ANO : 1);
+    return linhas(evolucaoDosJuros(n(capital), taxaPorMes(fracao(taxa), unidadeDaTaxa), meses).map((l) => l.montante));
+  },
   "calculadora-de-aportes-e-metas.html": () => {
-    const meses = evolucaoDosAportes(5000, 500, 0.008, 240);
+    const { inicial, aporte, taxa, unidadeDaTaxa, anos } = EXEMPLO_DE_APORTES;
+    const meses = evolucaoDosAportes(n(inicial), n(aporte), taxaPorMes(fracao(taxa), unidadeDaTaxa), n(anos) * MESES_POR_ANO);
     return linhas(
       meses.map((l) => l.saldo),
       meses.map((l) => l.aportado),
     );
   },
   "custo-das-taxas-e-da-queda.html": () => {
-    const anos = evolucaoDaTaxa(100000, 0.08, 0.01, 20);
+    const { capital, retorno, taxa, anos: prazo } = EXEMPLO_DA_TAXA;
+    const anos = evolucaoDaTaxa(n(capital), fracao(retorno), fracao(taxa), n(prazo));
     return linhas(
       anos.map((l) => l.sem_taxa),
       anos.map((l) => l.com_taxa),
     );
   },
-  "calculadora-viver-de-renda.html": () => linhas(trajetoria(1_000_000, 7000, [0.04], 360)),
+  "calculadora-viver-de-renda.html": () => {
+    // consumindo o patrimônio no prazo do exemplo (só com os juros, a linha seria reta)
+    const { renda, taxa, anos } = EXEMPLO_DE_RENDA;
+    const patrimonio = patrimonioNecessario(n(renda), fracao(taxa), n(anos));
+    return linhas(trajetoria(patrimonio, n(renda), [fracao(taxa)], n(anos) * MESES_POR_ANO));
+  },
   "sorte-em-serie.html": () => {
-    const r = simularASorte(100, 252, SEMENTE_INICIAL);
+    const r = simularASorte(n(EXEMPLO_DA_SORTE.quantidade), n(EXEMPLO_DA_SORTE.anos) * DIAS_POR_ANO, SEMENTE_INICIAL);
     return linhas(r.curva_da_melhor, r.curva_da_mediana, r.curva_da_pior);
   },
   "calculadora-de-darf.html": () => barras(semErro(apurarOAno(EXEMPLO_DO_ANO)).meses.map((m) => m.darf)),
   "conversor-de-moedas.html": () => linhas([0, 1]), // a conversão é uma reta: o valor vezes a cotação
-  "calculadora-de-renda-fixa.html": () =>
-    barras(comparar(10000, 730, [CDI_DE_EXEMPLO], 1, 0.9, POUPANCA_DE_EXEMPLO).map((o) => o.liquido - 10000)),
-  "calculadora-de-juro-real.html": () =>
-    barras([CDI_DE_EXEMPLO, IPCA_DE_EXEMPLO, juroReal(CDI_DE_EXEMPLO, IPCA_DE_EXEMPLO)]),
+  "calculadora-de-renda-fixa.html": () => {
+    const { valor, prazo, cdb, lci } = EXEMPLO_DA_RENDA_FIXA; // o prazo do exemplo é em anos
+    const dias = n(prazo) * DIAS_POR_ANO_CORRIDO;
+    const opcoes = comparar(n(valor), dias, [CDI_DE_EXEMPLO], fracao(cdb), fracao(lci), POUPANCA_DE_EXEMPLO);
+    return barras(opcoes.map((o) => o.liquido - n(valor)));
+  },
+  "calculadora-de-juro-real.html": () => {
+    const [nominal, inflacao] = [fracao(EXEMPLO_DO_JURO_REAL.nominal), fracao(EXEMPLO_DO_JURO_REAL.inflacao)];
+    return barras([nominal, inflacao, juroReal(nominal, inflacao)]);
+  },
   "calculadora-de-correcao-pela-inflacao.html": () =>
     linhas(Array.from({ length: 11 }, (_, ano) => (1 + IPCA_DE_EXEMPLO) ** ano)),
   "calculadora-de-preco-medio.html": () =>

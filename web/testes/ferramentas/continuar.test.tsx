@@ -119,8 +119,9 @@ describe("continue a conta", () => {
     expect(link.getAttribute("href")).toContain("inicial=25.000");
   });
 
-  it("o juro real lê do endereço a taxa que chegou de outra ferramenta", async () => {
-    const dados: DadosDoBc = { gerado_em: "2026-10-14T13:40:00-03:00", fonte: "BC" };
+  it("o juro real lê do endereço a taxa que chegou de outra ferramenta, e o IPCA não passa por cima", async () => {
+    const ipca: [string, number][] = Array.from({ length: 12 }, (_, i) => [`2025-${String(i + 1).padStart(2, "0")}`, 0.004]);
+    const dados: DadosDoBc = { gerado_em: "2026-10-14T13:40:00-03:00", fonte: "BC", ipca: { meses: ipca, ultimo: "2025-12" } };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dados))));
     window.history.replaceState(null, "", "/calculadora-de-juro-real.html?real.nominal=9&real.inflacao=4");
     document.body.innerHTML = renderToStaticMarkup(<Ilha nome="juroReal" />);
@@ -129,5 +130,19 @@ describe("continue a conta", () => {
     });
     expect((screen.getByLabelText("Rendimento") as HTMLInputElement).value).toBe("9");
     expect((screen.getByLabelText("Inflação") as HTMLInputElement).value).toBe("4");
+    expect(document.body.textContent).not.toContain("IPCA dos últimos 12 meses; troque");
+  });
+
+  it("sem inflação no endereço, o juro real usa o IPCA de 12 meses e diz isso", async () => {
+    const ipca: [string, number][] = Array.from({ length: 12 }, (_, i) => [`2025-${String(i + 1).padStart(2, "0")}`, 0.004]);
+    const dados: DadosDoBc = { gerado_em: "2026-10-14T13:40:00-03:00", fonte: "BC", ipca: { meses: ipca, ultimo: "2025-12" } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(dados))));
+    window.history.replaceState(null, "", "/calculadora-de-juro-real.html?real.nominal=9");
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="juroReal" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+    expect((screen.getByLabelText("Inflação") as HTMLInputElement).value).toBe("4,91");
+    expect(document.body.textContent).toContain("IPCA dos últimos 12 meses; troque");
   });
 });

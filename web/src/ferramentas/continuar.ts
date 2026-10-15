@@ -1,6 +1,7 @@
 // "Continue a conta": as ferramentas que cada página sugere no fim, e os números que o link leva. Os
-// campos de cada ferramenta já vivem no endereço (endereco.ts); no clique, o link copia os que a
-// pessoa preencheu para o nome que a outra ferramenta lê. Só vai o que tem a mesma unidade dos dois
+// campos de cada ferramenta já vivem no endereço (endereco.ts: todos, depois que a pessoa mexe em
+// algum); no clique, o link copia os de `levar` para o nome que a outra ferramenta lê. Por isso não
+// vai campo cujo padrão lá é melhor que o exemplo daqui (a inflação: lá é o IPCA de verdade). Só vai o que tem a mesma unidade dos dois
 // lados (a taxa só quando é ao ano, onde a outra é ao ano); a outra página ainda confere tudo ao ler
 // (só número, só opção da lista). Nada sai do navegador.
 
@@ -38,10 +39,8 @@ export const CONTINUACOES: Record<string, Continuacao[]> = {
     {
       para: "calculadora-de-juro-real.html",
       texto: "Quanto rende acima da inflação?",
-      levar: [
-        ["taxa", "real.nominal", SO_AO_ANO],
-        ["inflacao", "real.inflacao"],
-      ],
+      // a inflação daqui não vai: sem a pessoa mexer, é a do exemplo, e lá o padrão é o IPCA de verdade
+      levar: [["taxa", "real.nominal", SO_AO_ANO]],
     },
   ],
   "calculadora-de-aportes-e-metas.html": [
@@ -217,8 +216,7 @@ export function ligarContinuacoes(raiz: Document = document): void {
   const atualizar = (evento: Event) => {
     const link = (evento.target as Element | null)?.closest?.<HTMLAnchorElement>("a[data-levar]");
     if (!link) return;
-    const { para, levar, fixos } = JSON.parse(link.dataset.levar!) as Continuacao;
-    link.setAttribute("href", enderecoDaContinuacao({ para, levar, fixos }, window.location.search));
+    link.setAttribute("href", enderecoDaContinuacao(JSON.parse(link.dataset.levar!), window.location.search));
   };
   // o clique, o botão do meio e o teclado passam por um destes antes de seguir o link
   for (const tipo of ["pointerdown", "focusin", "click"]) raiz.addEventListener(tipo, atualizar, true);

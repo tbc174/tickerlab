@@ -55,10 +55,9 @@ const rotuloDoMesDaSerie = (iso: string) => `${NOMES[Number(iso.slice(5, 7)) - 1
 
 function Calculadora({ dados, meses, ultimo }: { dados: DadosDoBc; meses: Meses; ultimo: string }) {
   const [campos, mudar, , sugerir] = useCamposNoEndereco(EXEMPLO_DA_CORRECAO);
-  // o exemplo passa a ir até o último IPCA divulgado, começando 10 anos antes (se o endereço não
-  // trouxer outro período)
+  // o exemplo passa a ir até o último IPCA divulgado, começando 10 anos antes (o sugerir não passa
+  // por cima das datas que vieram do endereço, como o começo que chega do "quanto daria")
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("anoFinal")) return;
     const [ano, numero] = ultimo.split("-");
     sugerir((antes) => ({
       ...antes,
