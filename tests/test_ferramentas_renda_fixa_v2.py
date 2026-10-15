@@ -132,3 +132,9 @@ def test_entradas_invalidas_do_tesouro_e_do_caminho():
         renda_fixa.tesouro_prefixado(1000, 0, 0.12)
     with pytest.raises(ValueError, match="inflação"):
         renda_fixa.tesouro_ipca(1000, 365, 0.06, [])
+
+
+def test_empate_que_passa_do_teto_da_busca_nao_e_um_numero():
+    # 2 dias: o IOF leva 93% do rendimento e o IR mais um pedaço; nenhum CDB até 1.000% do CDI
+    # empata com uma LCI de 90%, e a conta diz que não achou em vez de mostrar "1.000%"
+    assert renda_fixa.ponto_de_empate(10_000, 2, CDI, 0.9) is None

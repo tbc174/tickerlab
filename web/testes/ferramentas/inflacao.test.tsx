@@ -63,4 +63,22 @@ describe("correção pela inflação v2", () => {
     expect(perdeu).toBeGreaterThan(0);
     expect(document.body.textContent).toContain(`a poupança perdeu para a inflação em ${perdeu} dos ${comparados}`);
   });
+
+  it("o período padrão não escreve no endereço (só a mudança da pessoa escreve)", async () => {
+    await abrir();
+    expect(window.location.search).toBe("");
+  });
+
+  it("a comparação termina no último ano completo das duas séries", async () => {
+    const poupancaAtrasada = POUPANCA.filter(([m]) => m < "2025-01");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ...DADOS, poupanca_mensal: { meses: poupancaAtrasada, ultimo: "2024-12" } }))));
+    window.history.replaceState(null, "", "/calculadora-de-correcao-pela-inflacao.html");
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="inflacao" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+    await screen.findByLabelText("Até: ano");
+    expect(document.body.textContent).toContain("Nos últimos 10 anos completos");
+  });
 });
+

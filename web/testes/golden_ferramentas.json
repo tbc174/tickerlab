@@ -8555,6 +8555,18 @@
  {
   "argumentos": [
    10000,
+   2,
+   [
+    0.1365
+   ],
+   0.9
+  ],
+  "conta": "renda_fixa.ponto_de_empate",
+  "valor": null
+ },
+ {
+  "argumentos": [
+   10000,
    1825,
    [
     0.1315,

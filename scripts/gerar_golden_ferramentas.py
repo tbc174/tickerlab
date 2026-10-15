@@ -332,6 +332,7 @@ CASOS: list[tuple[str, list[Any]]] = [
     ("renda_fixa.cdi_pelo_focus", [0.1365, 0.1375, {}, 2026, 2]),
     ("renda_fixa.ponto_de_empate", [10000, 730, [0.1365], 0.9]),
     ("renda_fixa.ponto_de_empate", [10000, 20, [0.1365], 0.95]),
+    ("renda_fixa.ponto_de_empate", [10000, 2, [0.1365], 0.9]),
     ("renda_fixa.ponto_de_empate", [10000, 1825, [0.1315, 0.119, 0.105], 0.85]),
     ("renda_fixa.comparar", [1000, 365, [0.1365], -0.1, 0.9, 0.006704]),
 ]

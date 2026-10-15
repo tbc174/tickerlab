@@ -9,6 +9,7 @@ const DIAS_DO_ANIVERSARIO = 30;
 export const DIAS_MAXIMOS = 3650;
 const EMPATE_MAXIMO = 10;
 const PASSOS_DO_EMPATE = 100;
+const FOLGA_DO_TETO = 1e-9; // a busca que encosta no teto não achou o empate
 
 export interface Opcao {
   nome: string;
@@ -146,8 +147,8 @@ export function cdiPeloFocus(
 }
 
 /** O percentual do CDI que um CDB precisa pagar para render, depois do IR e do IOF, o mesmo que a
- * LCI ou LCA isenta de `percentualDaLci` (busca por bisseção). */
-export function pontoDeEmpate(valor: number, dias: number, cdiPorAno: number[], percentualDaLci: number): number {
+ * LCI ou LCA isenta de `percentualDaLci` (busca por bisseção); null se nem 1.000% do CDI empata. */
+export function pontoDeEmpate(valor: number, dias: number, cdiPorAno: number[], percentualDaLci: number): number | null {
   conferir(valor, dias);
   const alvo = peloCdi(valor, dias, cdiPorAno, percentualDaLci);
   let [baixo, alto] = [0, EMPATE_MAXIMO];
@@ -157,5 +158,6 @@ export function pontoDeEmpate(valor: number, dias: number, cdiPorAno: number[], 
     if (cdb < alvo) baixo = meio;
     else alto = meio;
   }
+  if (baixo >= EMPATE_MAXIMO * (1 - FOLGA_DO_TETO)) return null;
   return (baixo + alto) / 2;
 }

@@ -70,7 +70,7 @@ describe("renda fixa v2", () => {
   it("diz o ponto de empate entre a LCI/LCA e o CDB no prazo", async () => {
     await abrir("?cdi=parado");
     const empate = pontoDeEmpate(10000, 730, [0.1365], 0.9);
-    expect(document.body.textContent).toContain(`equivale a um CDB de ${formatarNumero(empate * 100)}% do CDI`);
+    expect(document.body.textContent).toContain(`equivale a um CDB de ${formatarNumero(empate! * 100)}% do CDI`);
   });
 
   it("o CDI seguindo o Focus muda o resultado do CDB e diz que é expectativa do mercado", async () => {
@@ -95,4 +95,29 @@ describe("renda fixa v2", () => {
     expect(document.body.textContent).toContain("levando até o fim do prazo");
     expect(document.body.textContent).toContain("Tesouro Nacional");
   });
+
+  it("um prazo absurdo no endereço não trava a página: mostra a mensagem", async () => {
+    await abrir("?prazo=99999999&unidade=anos");
+    expect(document.body.textContent).toContain("O prazo vai até 10 anos");
+  });
+
+  it("empate que não existe (prazo de 2 dias) não vira frase", async () => {
+    await abrir("?prazo=2&unidade=dias");
+    expect(document.body.textContent).not.toContain("equivale a um CDB");
+  });
+
+  it("sem o Focus do IPCA, o IPCA+ usa a inflação de 12 meses e a nota diz isso, sem NaN", async () => {
+    const meses: [string, number][] = Array.from({ length: 12 }, (_, i) => [`2025-${String(i + 1).padStart(2, "0")}`, 0.004]);
+    const semFocus = { ...DADOS, focus: { ...DADOS.focus, ipca: { data: ontem, anos: {} } }, ipca: { meses, ultimo: "2025-12" } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(semFocus))));
+    window.history.replaceState(null, "", "/calculadora-de-renda-fixa.html");
+    document.body.innerHTML = renderToStaticMarkup(<Ilha nome="rendaFixa" />);
+    await act(async () => {
+      ligarFerramentas(document);
+    });
+    await screen.findAllByText(/CDB/);
+    expect(document.body.innerHTML).not.toContain("NaN");
+    expect(document.body.textContent).toContain("a dos últimos 12 meses");
+  });
 });
+

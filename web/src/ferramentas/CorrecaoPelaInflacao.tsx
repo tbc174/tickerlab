@@ -44,24 +44,30 @@ function noMesmoPeriodo(valor: number, inicio: string, fim: string, serie: Meses
   }
 }
 
+/** O último ano com os 12 meses na série (o ano do último mês, ou o anterior se ele não é dezembro). */
+function anoCompleto(serie: Meses): number {
+  const [ano, mesDoAno] = serie[serie.length - 1][0].split("-").map(Number);
+  return mesDoAno === 12 ? ano : ano - 1;
+}
+
 /** "jan/15": o rótulo do mês no eixo e na dica. */
 const rotuloDoMesDaSerie = (iso: string) => `${NOMES[Number(iso.slice(5, 7)) - 1]}/${iso.slice(2, 4)}`;
 
 function Calculadora({ dados, meses, ultimo }: { dados: DadosDoBc; meses: Meses; ultimo: string }) {
-  const [campos, mudar, definir] = useCamposNoEndereco(EXEMPLO_DA_CORRECAO);
+  const [campos, mudar, , sugerir] = useCamposNoEndereco(EXEMPLO_DA_CORRECAO);
   // o exemplo passa a ir até o último IPCA divulgado, começando 10 anos antes (se o endereço não
   // trouxer outro período)
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("anoFinal")) return;
     const [ano, numero] = ultimo.split("-");
-    definir((antes) => ({
+    sugerir((antes) => ({
       ...antes,
       mesFinal: numero,
       anoFinal: ano,
       mesInicial: numero,
       anoInicial: String(Number(ano) - ANOS_PARA_TRAS),
     }));
-  }, [ultimo, definir]);
+  }, [ultimo, sugerir]);
   const conta = calcularCorrecao(campos, meses);
   const erro = typeof conta === "string" ? conta : null;
   const r = typeof conta === "string" ? null : conta;
@@ -135,8 +141,10 @@ function Comparacao({
     ...(poupanca ? [{ nome: "Na poupança", cor: SERIES[1], valores: poupanca }] : []),
     ...(cdi ? [{ nome: "No CDI", cor: SERIES[0], valores: cdi }] : []),
   ];
-  const [anoDoUltimo, mesDoUltimo] = ipca[ipca.length - 1][0].split("-").map(Number);
-  const ultimoAnoCompleto = mesDoUltimo === 12 ? anoDoUltimo : anoDoUltimo - 1;
+  const ultimoAnoCompleto = Math.min(
+    anoCompleto(ipca),
+    dados.poupanca_mensal ? anoCompleto(dados.poupanca_mensal.meses) : Number.POSITIVE_INFINITY,
+  );
   const [perdeu, comparados] = dados.poupanca_mensal
     ? anosAbaixo(dados.poupanca_mensal.meses, ipca, ultimoAnoCompleto, ANOS_DA_COMPARACAO)
     : [0, 0];

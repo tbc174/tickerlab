@@ -29,6 +29,7 @@ DIAS_DO_ANIVERSARIO = 30  # a poupança rende a cada aniversário mensal
 DIAS_MAXIMOS = 3650  # 10 anos
 EMPATE_MAXIMO = 10.0  # 1.000% do CDI: a busca do ponto de empate não passa disso
 PASSOS_DO_EMPATE = 100
+FOLGA_DO_TETO = 1e-9  # a busca que encosta no teto não achou o empate
 
 
 @dataclass(frozen=True)
@@ -178,9 +179,10 @@ def cdi_pelo_focus(
 
 def ponto_de_empate(
     valor: float, dias: int, cdi_por_ano: list[float], percentual_da_lci: float
-) -> float:
+) -> float | None:
     """O percentual do CDI que um CDB precisa pagar para render, depois do IR e do IOF, o mesmo que
-    a LCI ou LCA isenta de `percentual_da_lci` (busca por bisseção)."""
+    a LCI ou LCA isenta de `percentual_da_lci` (busca por bisseção); None se nem 1.000% do CDI
+    empata (prazo de poucos dias, quando o IOF leva quase todo o rendimento)."""
     _conferir(valor, dias)
     alvo = _pelo_cdi(valor, dias, cdi_por_ano, percentual_da_lci)
     baixo, alto = 0.0, EMPATE_MAXIMO
@@ -193,4 +195,6 @@ def ponto_de_empate(
             baixo = meio
         else:
             alto = meio
+    if baixo >= EMPATE_MAXIMO * (1 - FOLGA_DO_TETO):
+        return None
     return (baixo + alto) / 2

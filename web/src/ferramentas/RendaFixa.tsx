@@ -74,7 +74,7 @@ export function tituloMaisPerto(
  * ou, sem o Focus, a dos últimos 12 meses. */
 function ipcaPorAno(dados: DadosDoBc, anoInicial: number, anos: number): number[] | null {
   const esperada = dados.focus?.ipca?.anos;
-  if (esperada) {
+  if (esperada && Object.keys(esperada).length) {
     const caminho: number[] = [];
     for (let ano = anoInicial; ano < anoInicial + anos; ano++) {
       const valor = esperada[String(ano)];
@@ -97,7 +97,9 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
   const poupanca = dados.poupanca!;
   const valor = lerNumero(campos.valor) ?? 0;
   const prazo = lerNumero(campos.prazo) ?? 0;
-  const dias = Math.round(prazo * DIAS_POR[campos.unidade]);
+  // prazo fora da faixa (até um endereço com "99999999 anos"): a conta recusa e mostra a mensagem;
+  // o caminho do CDI, que anda um ano por vez, não passa dos 10 anos
+  const dias = Math.min(Math.round(prazo * DIAS_POR[campos.unidade]), DIAS_MAXIMOS);
   const anos = Math.max(1, Math.ceil(dias / 365));
   const anoInicial = new Date().getFullYear();
   const comFocus = Boolean(dados.focus?.selic && dados.selic_meta);
@@ -121,6 +123,7 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
   }
   const lci = (lerNumero(campos.lci) ?? 0) / 100;
   const empate = erro ? null : pontoDeEmpate(valor, dias, cdiPorAno, lci);
+  const ipcaPeloFocus = Boolean(dados.focus?.ipca && Object.keys(dados.focus.ipca.anos).length);
   const colunas = COLUNAS_DE_CUSTO.filter(([chave]) => opcoes.some((o) => (o[chave] as number) > 0));
 
   return (
@@ -159,7 +162,7 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
         ) : null}
       </form>
       <Resultado rotulo="CDI hoje" principal={`${formatarPorcentagem(cdi.ao_ano)} ao ano`} erro={erro}>
-        {empate !== null ? (
+        {empate !== null && empate !== undefined ? (
           <p className="ferramenta-destaque">
             Neste prazo, uma LCI ou LCA de {formatarNumero(lci * 100)}% do CDI (isenta) equivale a um CDB de{" "}
             {formatarNumero(empate * 100)}% do CDI, depois do IR.
@@ -210,7 +213,7 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
               <li>
                 Tesouro Prefixado e IPCA+: a taxa de compra de {dataBrasileira(dados.tesouro.data)} do título que vence
                 mais perto do seu prazo, levando até o fim do prazo (vender antes muda o valor). Fonte: Tesouro Nacional.
-                No IPCA+, a inflação é a esperada pelo Focus.
+                No IPCA+, a inflação é {ipcaPeloFocus ? "a esperada pelo Focus" : "a dos últimos 12 meses (sem o Focus agora)"}.
               </li>
             ) : null}
             <li>
