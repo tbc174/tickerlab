@@ -302,7 +302,7 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 - **Frequência:** Mensal, montado de novo quando o CDA ou o FCA mudam
 - **Atraso de divulgação:** O do CDA: `disponivel_em` é a maior data das posições somadas (o total só era público quando a última posição dele ficou pública)
 - **Onde fica:** Parquet em `<acervo>/base/fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, `cobertura` e `buracos` (servidor de casa, `scripts/montar_painel_dos_fundos.py`)
-- **Linhagem:** O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código.
+- **Linhagem:** O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -327,7 +327,7 @@ Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de em
 - **Frequência:** Mensal, montada junto com o painel dos fundos
 - **Atraso de divulgação:** O do CDA (os meses mais novos ainda crescem enquanto os fundos entregam)
 - **Onde fica:** Parquet em `<acervo>/base/fundos/cobertura.parquet` (`scripts/montar_painel_dos_fundos.py`)
-- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código.
+- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -346,7 +346,7 @@ Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor compr
 - **Frequência:** Mensal, montada junto com o painel dos fundos
 - **Atraso de divulgação:** O do CDA
 - **Onde fica:** Parquet em `<acervo>/base/fundos/buracos.parquet` (`scripts/montar_painel_dos_fundos.py`)
-- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código.
+- **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -476,7 +476,7 @@ Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no 
 - **Frequência:** Trimestral, montada de novo a cada carga
 - **Atraso de divulgação:** O do cadastro do IF.data
 - **Onde fica:** Parquet em `<acervo>/base/bcb/ifdata/ligacao_dos_bancos.parquet` (servidor de casa)
-- **Linhagem:** O `.json` lista cada cadastro e as tabelas do FCA usados, com o SHA-256 de cada arquivo, e a versão do código.
+- **Linhagem:** O `.json` lista cada cadastro e as tabelas do FCA usados, com o SHA-256 de cada arquivo, e a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
 | Coluna | O que é | Unidade |
 |---|---|---|

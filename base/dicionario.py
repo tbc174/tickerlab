@@ -30,6 +30,10 @@ COM_VERSAO_DO_CODIGO = (
     "`versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit "
     "ou com mudanças não salvas)."
 )
+LINHAGEM_DAS_DERIVADAS = (
+    " `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os "
+    "originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada."
+)
 LINHAGEM_DO_FCA = (
     "O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA "
     "usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do "
@@ -586,6 +590,7 @@ TABELAS: dict[str, Tabela] = {
             "O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, "
             "com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; "
             "cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código."
+            + LINHAGEM_DAS_DERIVADAS
         ),
         colunas={
             "competencia": ("Mês da carteira", DATA),
@@ -619,6 +624,7 @@ TABELAS: dict[str, Tabela] = {
         linhagem=(
             "O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o "
             "SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código."
+            + LINHAGEM_DAS_DERIVADAS
         ),
         colunas={
             "competencia": ("Mês da carteira", DATA),
@@ -640,6 +646,7 @@ TABELAS: dict[str, Tabela] = {
         linhagem=(
             "O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o "
             "SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código."
+            + LINHAGEM_DAS_DERIVADAS
         ),
         colunas={
             "emissor": ("As 4 posições do emissor sem CNPJ", TEXTO),
@@ -829,7 +836,7 @@ TABELAS: dict[str, Tabela] = {
         onde="Parquet em `<acervo>/base/bcb/ifdata/ligacao_dos_bancos.parquet` (servidor de casa)",
         linhagem=(
             "O `.json` lista cada cadastro e as tabelas do FCA usados, com o SHA-256 de cada "
-            "arquivo, e a versão do código."
+            "arquivo, e a versão do código." + LINHAGEM_DAS_DERIVADAS
         ),
         colunas={
             "data_base": ("Data-base do cadastro", DATA),
