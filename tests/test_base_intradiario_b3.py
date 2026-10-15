@@ -518,3 +518,55 @@ def test_boletim_do_dia_sem_pr_nem_cotahist_e_none():
 )
 def test_pregao_do_endereco(endereco, dia):
     assert b3.pregao_do_endereco(endereco) == dia
+
+
+# --- negócios inseridos depois (identificador fora da dezena) -----------------------------------
+
+
+def test_correcao_fica_no_lugar_do_negocio_corrigido(tmp_path):
+    """PETR4 em 25/09/2026: às 17h06 a B3 cancelou o 346910 (2.700.000 ações, das 16h08) e lançou o
+    346911 (270.000) com a hora da correção. O substituto vale no minuto das 16h08, e o fechamento
+    continua sendo o do leilão (47,99), não o da correção."""
+    linhas = [
+        linha("PETR4", "48,06", 2_700_000, "160844573", 346910),
+        linha("PETR4", "47,99", 900, "170540272", 397450),
+        linha("PETR4", "48,06", 2_700_000, "170634974", 346910, acao=2),
+        linha("PETR4", "48,06", 270_000, "170634974", 346911),
+    ]
+    barras = b3.barras_do_pregao(DIA, [zip_de_negocios(tmp_path, linhas)])
+    assert barras["minuto"].dt.strftime("%H:%M").tolist() == ["16:08", "17:05"]
+    assert barras["volume"].tolist() == [270_000, 900]
+    assert b3.totais_do_dia(barras).loc["PETR4", "fechamento"] == 47.99
+
+
+def test_registro_tardio_vai_para_o_minuto_do_leilao(tmp_path):
+    """PETR4 em 18/09/2026: o 312415 foi registrado às 19h04, entre dois negócios do leilão das
+    17h10 (312410 e 312420)."""
+    linhas = [
+        linha("PETR4", "48,50", 1000, "171031645", 312410),
+        linha("PETR4", "48,50", 24100, "171031645", 312420),
+        linha("PETR4", "48,50", 12000, "190400722", 312415),
+    ]
+    barras = b3.barras_do_pregao(DIA, [zip_de_negocios(tmp_path, linhas)])
+    assert barras["minuto"].dt.strftime("%H:%M").tolist() == ["17:10"]
+    assert barras["negocios"].tolist() == [3]
+
+
+def test_insercao_sem_o_negocio_de_referencia_fica_com_a_propria_hora(tmp_path):
+    linhas = [linha("PETR4", "48,50", 100, "120000000", 5)]
+    barras = b3.barras_do_pregao(DIA, [zip_de_negocios(tmp_path, linhas)])
+    assert barras["minuto"].dt.strftime("%H:%M").tolist() == ["12:00"]
+
+
+def test_insercao_em_pedacos_diferentes_do_arquivo(tmp_path):
+    linhas = [
+        linha("PETR4", "48,06", 2_700_000, "160844573", 346910),
+        linha("PETR4", "47,99", 900, "170540272", 397450),
+        linha("PETR4", "48,06", 2_700_000, "170634974", 346910, acao=2),
+        linha("PETR4", "48,06", 270_000, "170634974", 346911),
+    ]
+    caminho = zip_de_negocios(tmp_path, linhas)
+    pd.testing.assert_frame_equal(
+        b3.barras_do_pregao(DIA, [caminho], linhas_por_pedaco=1),
+        b3.barras_do_pregao(DIA, [caminho]),
+    )

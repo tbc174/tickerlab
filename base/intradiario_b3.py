@@ -69,6 +69,9 @@ COLUNAS_DOS_NEGOCIOS = [
     "identificador",
 ]
 
+# sobe a cada mudança na regra das barras ou do selo: o script diário refaz os pregões já feitos
+# (2: negócios inseridos depois herdam o instante do negócio de dezena, 14/10/2026)
+VERSAO_DA_REGRA = 2
 SELO_COMPLETO = "completo"
 SELO_INCOMPLETO = "incompleto"
 SELO_AUSENTE = "ausente"
@@ -156,7 +159,7 @@ def _negocios_do_pedaco(pedaco: pd.DataFrame) -> pd.DataFrame:
     )[COLUNAS_DOS_NEGOCIOS]
 
 
-COLUNAS_DOS_CANCELAMENTOS = {
+COLUNAS_DOS_AJUSTES = {
     nome: COLUNAS_LIDAS[nome]
     for nome in [
         "CodigoInstrumento",
@@ -167,26 +170,67 @@ COLUNAS_DOS_CANCELAMENTOS = {
 }
 
 
-def _cancelamentos(
+# Identificadores andam de 10 em 10 por instrumento. Final diferente de 0 é negócio inserido depois:
+# correção (PETR4 em 25/09/2026: o 346910 cancelado às 17h06 e o 346911 lançado no lugar, com a
+# quantidade certa) ou registro tardio (PETR4 em 18/09/2026: o 312415 às 19h04, entre dois negócios
+# do leilão das 17h10). Ele vem com a hora do lançamento, mas ocupa o lugar do negócio de dezena
+# logo antes dele: herda o instante dele (senão viraria o "último negócio" e mudaria o fechamento).
+PASSO_DO_IDENTIFICADOR = 10
+
+
+def _ajustes(
     caminho_zip: Path, pregao: date, linhas_por_pedaco: int
-) -> set[tuple[str, int]]:
-    """Os pares (símbolo, identificador) cancelados no pregão; lê só 4 colunas (mais rápido)."""
-    pares: set[tuple[str, int]] = set()
-    for pedaco in _ler_em_pedacos(
-        caminho_zip, COLUNAS_DOS_CANCELAMENTOS, linhas_por_pedaco
-    ):
-        linhas = pedaco[
-            (pedaco["AcaoAtualizacao"] == ACAO_CANCELAMENTO)
-            & (pedaco["DataNegocio"] == pregao.isoformat())
-        ]
-        pares |= set(
+) -> tuple[set[tuple[str, int]], set[tuple[str, int]]]:
+    """Os pares (símbolo, identificador) cancelados no pregão e os negócios de dezena que têm um
+    inserido depois deles; lê só 4 colunas (mais rápido)."""
+    cancelados: set[tuple[str, int]] = set()
+    referencias: set[tuple[str, int]] = set()
+    for pedaco in _ler_em_pedacos(caminho_zip, COLUNAS_DOS_AJUSTES, linhas_por_pedaco):
+        do_pregao = pedaco[pedaco["DataNegocio"] == pregao.isoformat()]
+        simbolo = do_pregao["CodigoInstrumento"]
+        identificador = do_pregao["CodigoIdentificadorNegocio"]
+        cancelamento = do_pregao["AcaoAtualizacao"] == ACAO_CANCELAMENTO
+        cancelados |= set(
+            zip(simbolo[cancelamento], identificador[cancelamento], strict=True)
+        )
+        resto = identificador % PASSO_DO_IDENTIFICADOR
+        inserido = (resto != 0) & ~cancelamento
+        referencias |= set(
             zip(
-                linhas["CodigoInstrumento"],
-                linhas["CodigoIdentificadorNegocio"],
+                simbolo[inserido],
+                (identificador - resto)[inserido],
                 strict=True,
             )
         )
-    return pares
+    return cancelados, referencias
+
+
+def _chaves(negocios: pd.DataFrame) -> pd.MultiIndex:
+    return pd.MultiIndex.from_arrays([negocios["simbolo"], negocios["identificador"]])
+
+
+def _no_lugar_da_referencia(
+    inseridos: pd.DataFrame, instantes: dict[tuple[str, int], pd.Timestamp]
+) -> pd.DataFrame:
+    """Os inseridos com o instante do negócio de dezena antes deles (se ele está no arquivo)."""
+    if inseridos.empty:
+        return inseridos
+    referencia = zip(
+        inseridos["simbolo"],
+        inseridos["identificador"]
+        - inseridos["identificador"] % PASSO_DO_IDENTIFICADOR,
+        strict=True,
+    )
+    herdado = [instantes.get(chave) for chave in referencia]
+    instante = [
+        proprio if novo is None else novo
+        for proprio, novo in zip(inseridos["instante"], herdado, strict=True)
+    ]
+    return inseridos.assign(
+        instante=pd.Series(
+            instante, index=inseridos.index, dtype=inseridos["instante"].dtype
+        )
+    )
 
 
 def barras_do_pregao(
@@ -198,17 +242,34 @@ def barras_do_pregao(
 
     `arquivos`: o zip do pregão e, se houver, o do pregão anterior (que traz os negócios da noite
     anterior com `DataNegocio` deste pregão). Duas leituras: a primeira só junta os cancelamentos
-    (poucos, mas podem estar longe do negócio cancelado), a segunda monta as barras em pedaços.
+    e os negócios inseridos depois (poucos, mas longe do negócio a que se referem), a segunda monta
+    as barras em pedaços; os inseridos ficam para o fim, com o instante herdado.
     """
     cancelados: set[tuple[str, int]] = set()
+    referencias: set[tuple[str, int]] = set()
     for caminho in arquivos:
-        cancelados |= _cancelamentos(caminho, pregao, linhas_por_pedaco)
+        do_arquivo, com_insercao = _ajustes(caminho, pregao, linhas_por_pedaco)
+        cancelados |= do_arquivo
+        referencias |= com_insercao
     dia = pd.Timestamp(pregao)
-    partes = []
+    partes, inseridos = [], []
+    instantes: dict[tuple[str, int], pd.Timestamp] = {}
     for caminho in arquivos:
         for pedaco in ler_negocios(caminho, linhas_por_pedaco):
             do_pregao = pedaco[pedaco["pregao"] == dia]
-            partes.append(barras_parciais_b3(remover_cancelados(do_pregao, cancelados)))
+            inserido = do_pregao["identificador"] % PASSO_DO_IDENTIFICADOR != 0
+            if referencias:
+                e_referencia = (
+                    _chaves(do_pregao).isin(list(referencias)) & ~do_pregao["cancelado"]
+                )
+                for linha in do_pregao[e_referencia].itertuples():
+                    instantes[(linha.simbolo, linha.identificador)] = linha.instante
+            inseridos.append(do_pregao[inserido])
+            normais = remover_cancelados(do_pregao[~inserido], cancelados)
+            partes.append(barras_parciais_b3(normais))
+    if inseridos:
+        juntos = _no_lugar_da_referencia(pd.concat(inseridos), instantes)
+        partes.append(barras_parciais_b3(remover_cancelados(juntos, cancelados)))
     return juntar_barras_b3(partes)
 
 

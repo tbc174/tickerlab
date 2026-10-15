@@ -91,14 +91,19 @@ def _shas(entradas: dict[str, Guardado | None]) -> dict[str, str | None]:
 def pregoes_a_processar(
     arquivos: dict[str, dict[date, Guardado]], forcar: date | None = None
 ) -> list[date]:
-    """Pregões sem resumo, ou com resumo feito de outros arquivos; do mais antigo ao mais novo."""
+    """Pregões sem resumo, ou com resumo feito de outros arquivos ou com outra regra; do mais antigo
+    ao mais novo."""
     if forcar is not None:
         return [forcar]
     pendentes = []
     for pregao in sorted(arquivos[FONTE_DOS_NEGOCIOS]):
         resumo = b3.resumo_guardado(pregao)
         atuais = _shas(_entradas(pregao, arquivos))
-        if resumo is None or any(resumo.get(k) != v for k, v in atuais.items()):
+        if (
+            resumo is None
+            or resumo.get("versao_da_regra") != b3.VERSAO_DA_REGRA
+            or any(resumo.get(k) != v for k, v in atuais.items())
+        ):
             pendentes.append(pregao)
     return pendentes
 
@@ -134,6 +139,7 @@ def processar_pregao(
     resumo = {
         "pregao": pregao.isoformat(),
         "selo_do_dia": b3.selo_do_dia(conferencia, do_a_vista),
+        "versao_da_regra": b3.VERSAO_DA_REGRA,
         **_shas(entradas),
         "instrumentos": _contagem(conferencia),
         "a_vista": _contagem(

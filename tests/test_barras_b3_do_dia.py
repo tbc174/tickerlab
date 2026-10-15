@@ -163,3 +163,13 @@ def test_usa_a_versao_mais_nova_de_cada_arquivo(acervo):
         arquivos["b3-negocios"][DIA].sha256
         == "sha-negocios-02-2026-10-14T02:00:00+00:00"
     )
+
+
+def test_regra_nova_refaz_os_pregoes(acervo, capsys, monkeypatch):
+    guardar_negocios(acervo, NEGOCIOS_BONS)
+    script.main([])
+    assert resumo(acervo[0])["versao_da_regra"] == script.b3.VERSAO_DA_REGRA
+    monkeypatch.setattr(script.b3, "VERSAO_DA_REGRA", script.b3.VERSAO_DA_REGRA + 1)
+    capsys.readouterr()
+    script.main([])
+    assert "2026-10-13: completo" in capsys.readouterr().out
