@@ -10,6 +10,10 @@ Cada arquivo vem do acervo (`src/acervo.py`) e só é baixado da CVM se não est
 `--baixar-enet N`, baixa antes até N versões antigas que faltam, um pedido por vez
 (`base/enet_coleta.py`).
 
+O cadastro de companhias (`cad_cia_aberta.csv`, do acervo ou baixado) dá as datas de registro:
+documento entregue com a empresa fora de qualquer registro vale a partir do registro seguinte
+(`base/ponto_no_tempo.divulgacao_publica`).
+
 Versão antiga que falta não vaza o futuro: o documento só aparece a partir da versão que a base tem.
 A base fica com um buraco, e o relatório conta quantas faltaram. Feita para o servidor de casa ou o
 PC (ADR 0031): no ano inteiro, a memória passa de 1 GB.
@@ -27,6 +31,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
+from base.cadastro import ler_cadastro
 from base.contas_cvm import ler_contas, ler_indice
 from base.enet import DocumentoEnet, ler_xml_enet
 from base.enet_coleta import Baixador, baixar_em_fila, guardar, ja_guardados
@@ -111,6 +116,7 @@ def _baixar_versoes_antigas(motor: sa.Engine, indice: pd.DataFrame, limite: int)
 class Lido:
     """O que um arquivo anual deu para o ano: as contas, o que faltou e de onde veio cada coisa."""
 
+    cadastro: pd.DataFrame
     publicadas: list[pd.DataFrame] = field(default_factory=list)
     faltando: int = 0
     origens: list[dict[str, str]] = field(default_factory=list)
@@ -139,9 +145,9 @@ def _ler_arquivo(
         )
     with motor.connect() as conexao:
         documentos, faltando, origens_do_enet = documentos_do_enet(conexao, indice)
-    partes = [com_divulgacao(contas, indice, "dados_abertos")]
+    partes = [com_divulgacao(contas, indice, "dados_abertos", cadastro=lido.cadastro)]
     if documentos:  # tabela vazia na junção estragaria o tipo das datas
-        partes.append(publicadas_do_enet(documentos, indice))
+        partes.append(publicadas_do_enet(documentos, indice, cadastro=lido.cadastro))
     publicadas = pd.concat(partes, ignore_index=True)
     lido.publicadas.append(publicadas[publicadas["fim"].dt.year == ano])
     lido.faltando += len(faltando)
@@ -150,7 +156,13 @@ def _ler_arquivo(
 
 def montar(motor: sa.Engine, ano: int, pasta: Path, limite_enet: int) -> pd.DataFrame:
     """A base dos fatos de `ano`, gravada em `<pasta>/<ano>.parquet` com o `<ano>.json`."""
-    lido = Lido()
+    cadastro = _conteudo(motor, dm.URL_DO_CADASTRO)
+    if cadastro is None:
+        raise RuntimeError(
+            "sem o cadastro da CVM não há data de registro: nada gravado"
+        )
+    lido = Lido(cadastro=ler_cadastro(cadastro))
+    lido.origens.append(_origem(dm.URL_DO_CADASTRO, cadastro))
     for documento in URLS:
         for ano_do_arquivo in (ano, ano + 1):
             _ler_arquivo(motor, documento, ano_do_arquivo, ano, limite_enet, lido)

@@ -63,7 +63,7 @@
           "unidade": "texto"
         },
         "divulgado_em": {
-          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora)",
+          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro",
           "unidade": "data (dia)"
         },
         "ate": {

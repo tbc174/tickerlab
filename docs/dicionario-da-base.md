@@ -38,7 +38,7 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `versao` | Versão do documento que publicou este valor (1, 2, 3...) | número |
 | `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
 | `origem` | dados_abertos ou enet | texto |
-| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora) | data (dia) |
+| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro | data (dia) |
 | `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
 
 ## `achados_de_qualidade`
@@ -1070,7 +1070,7 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 
 ## `rotulos_atraso`
 
-Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
+Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Não entra o documento com o prazo antes do primeiro registro da empresa (o que ela manda para pedir o registro, sem prazo a cumprir); o manifesto conta quantos ficaram de fora (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
 
 - **Fonte:** CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)

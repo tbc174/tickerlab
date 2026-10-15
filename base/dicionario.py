@@ -203,7 +203,12 @@ TABELAS: dict[str, Tabela] = {
             ),
             "origem": ("dados_abertos ou enet", TEXTO),
             "divulgado_em": (
-                "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora)",
+                (
+                    "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a "
+                    "hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de "
+                    "registro) vale a partir do registro seguinte: o público só viu o documento "
+                    "perto do registro"
+                ),
                 DATA,
             ),
             "ate": (
@@ -1388,8 +1393,11 @@ TABELAS: dict[str, Tabela] = {
             "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
             "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
             "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
-            "no prazo, data-base no calendário da empresa e no arquivo do ano). Não é coluna para "
-            "prever: é a resposta que o modelo tenta acertar (ADR 0027)"
+            "no prazo, data-base no calendário da empresa e no arquivo do ano). Não entra o "
+            "documento com o prazo antes do primeiro registro da empresa (o que ela manda para "
+            "pedir o registro, sem prazo a cumprir); o manifesto conta quantos ficaram de fora "
+            "(`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta "
+            "acertar (ADR 0027)"
         ),
         fonte="CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias",
         familia_da_fonte="cvm",
