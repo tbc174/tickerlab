@@ -77,6 +77,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     descricao: "O preço médio com as taxas, o resultado de cada venda, bonificação, desdobro e amortização de FII.",
   },
   {
+    arquivo: "simulador-de-financiamento.html",
+    nome: "Financiamento SAC × Price",
+    descricao: "As parcelas e os juros dos dois sistemas lado a lado, e o efeito de uma amortização extra.",
+  },
+  {
     arquivo: "quanto-daria.html",
     nome: "Quanto daria? Foi sorte?",
     descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
@@ -752,6 +757,46 @@ export function PaginaDoPrecoMedio() {
         no aviso aos acionistas). Desdobro e grupamento só mudam a quantidade: o custo total é o
         mesmo. A amortização de um FII devolve parte do capital: o custo cai, e a quantidade de cotas
         fica igual.
+      </p>
+    </PaginaDeFerramenta>
+  );
+}
+
+// --- Financiamento SAC × Price -----------------------------------------------------------------
+const FINANCIAMENTO = "simulador-de-financiamento.html";
+export const DADOS_DO_FINANCIAMENTO = pagina(
+  FINANCIAMENTO,
+  "Simulador de financiamento SAC e Price",
+  "Compare as parcelas e os juros do financiamento pelo SAC e pela Tabela Price, e veja o efeito " +
+    "de uma amortização extra no prazo ou na parcela. Grátis e sem cadastro.",
+);
+
+export function PaginaDoFinanciamento() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Simulador de financiamento SAC e Price"
+      subtitulo="As parcelas, os juros e o saldo dos dois sistemas lado a lado, e o que uma amortização extra muda. Grátis e sem cadastro."
+      ilha="financiamento"
+      codigo={codigo(FINANCIAMENTO)}
+      anuncio="cadastro"
+      foraDaConta={[
+        "os seguros (MIP e DFI) e a taxa de administração que o banco cobra junto com a parcela",
+        "a correção do saldo pela TR ou pelo IPCA, quando o contrato tem",
+        "a entrada e as despesas de cartório e ITBI: o valor aqui é o financiado",
+      ]}
+    >
+      <h2>SAC ou Price</h2>
+      <p>
+        No SAC, a amortização é a mesma todo mês: a parcela começa mais alta e cai, porque o juro é
+        sobre um saldo cada vez menor. Na Price, a parcela é a mesma todo mês: no começo quase tudo é
+        juro, e o saldo cai devagar. Por isso, com a mesma taxa e o mesmo prazo, a Price paga mais
+        juros no total.
+      </p>
+      <h2>Amortização extra: prazo ou parcela</h2>
+      <p>
+        Um pagamento extra abate o saldo. Reduzindo o prazo, a parcela fica e o financiamento termina
+        antes, o que costuma economizar mais juros. Reduzindo a parcela, o prazo fica e o que se paga
+        por mês cai.
       </p>
     </PaginaDeFerramenta>
   );

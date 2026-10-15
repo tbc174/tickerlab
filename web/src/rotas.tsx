@@ -14,6 +14,7 @@ import {
   DADOS_DA_SORTE,
   DADOS_DO_QUANTO_DARIA,
   DADOS_DO_PRECO_MEDIO,
+  DADOS_DO_FINANCIAMENTO,
   DADOS_DOS_JUROS,
   PaginaDaRenda,
   PaginaDaSorte,
@@ -26,6 +27,7 @@ import {
   PaginaDoJuroReal,
   PaginaDoQuantoDaria,
   PaginaDoPrecoMedio,
+  PaginaDoFinanciamento,
   PaginaDosJuros,
   Vitrine,
 } from "./ferramentas/paginas";
@@ -100,6 +102,11 @@ export const ROTAS: Rota[] = [
     arquivo: "calculadora-de-preco-medio.html",
     dados: DADOS_DO_PRECO_MEDIO,
     conteudo: () => <PaginaDoPrecoMedio />,
+  },
+  {
+    arquivo: "simulador-de-financiamento.html",
+    dados: DADOS_DO_FINANCIAMENTO,
+    conteudo: () => <PaginaDoFinanciamento />,
   },
   { arquivo: "sobre.html", dados: DADOS_DO_SOBRE, conteudo: () => <Sobre /> },
   { arquivo: "precos.html", dados: DADOS_DOS_PLANOS, conteudo: () => <Precos /> },
