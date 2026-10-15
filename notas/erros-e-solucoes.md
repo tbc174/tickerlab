@@ -477,3 +477,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a montagem lia `glob("[0-9]*.parquet")`, e o padrão também pega as versões guardadas (`202506.v1.parquet`). As versões tinham nascido falsas: o BC devolve o cadastro com outros bytes e o mesmo conteúdo, e a regra de versões olhava só o SHA-256 do arquivo de origem.
 - **Solução:** ler só o arquivo cujo nome é a data (`re.fullmatch(r"\d{6}", arquivo.stem)`), e criar versão só quando o **conteúdo** muda (`sha256_da_tabela`), não quando os bytes do original mudam (#266). Toda leitura de uma pasta com versões precisa filtrar o nome.
 - **Data:** 14/10/2026
+
+## Fechamento da B3 errado nas barras: correção da B3 vira o "último negócio" do dia
+- **Sintoma:** em 25/09/2026 o fechamento do PETR4 nas barras saía 48,07, e o boletim oficial dizia 47,99. Volume e número de negócios batiam.
+- **Causa:** o arquivo de negócios da B3 traz correções no meio do dia: às 17h06 a B3 cancelou o negócio 346910 (2.700.000 ações, das 16h08) e lançou o 346911 (270.000) **com a hora da correção**. Ordenando pela hora, o substituto ficava depois do leilão de fechamento. Os identificadores andam de 10 em 10 por instrumento; final diferente de 0 é negócio inserido depois (correção ou registro tardio).
+- **Solução:** o negócio inserido herda o instante do negócio de dezena logo antes dele (`base/intradiario_b3.py`, `PASSO_DO_IDENTIFICADOR`), com teste dos dois casos reais (25/09 e 18/09). Lição: num arquivo de bolsa, conferir a ordem pelo identificador, não só pela hora.
+- **Data:** 14/10/2026
+
+## Volume da B3 "a mais" que o COTAHIST nas sextas, com o arquivo certo
+- **Sintoma:** nas sextas de vencimento de opções, ~11% das ações tinham alguns negócios a mais no arquivo do que no COTAHIST do dia, com preços 100% iguais.
+- **Causa:** o COTAHIST do dia deixa de fora registros tardios (lançados às 19h); o boletim PR (BVBG.086) os inclui e bate com o arquivo (PETR4 em 18/09: 31.339 negócios no arquivo e no PR, 31.321 no COTAHIST).
+- **Solução:** conferir contra o PR; usar o COTAHIST só para saber se houve pregão, quem é do à vista e o que falta no PR. Lição: antes de culpar o dado, conferir com uma segunda fonte oficial.
+- **Data:** 14/10/2026
