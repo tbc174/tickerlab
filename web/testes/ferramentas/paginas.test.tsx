@@ -3,7 +3,8 @@
 import { describe, expect, it } from "vitest";
 import { modulos } from "../../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../../src/entry-server";
-import { FERRAMENTAS_DO_SITE } from "../../src/ferramentas/paginas";
+import { FERRAMENTAS_DO_SITE, GRUPOS_DA_VITRINE } from "../../src/ferramentas/paginas";
+import { PREVIAS } from "../../src/ferramentas/previas";
 import { ROTAS } from "../../src/rotas";
 
 const PAGINAS_DE_FERRAMENTA = FERRAMENTAS_DO_SITE.map((f) => f.arquivo);
@@ -53,5 +54,28 @@ describe("páginas das ferramentas", () => {
     expect(doCatalogo.length).toBeGreaterThan(0);
     for (const pagina of doCatalogo) expect(PAGINAS_DE_FERRAMENTA).toContain(pagina);
     expect(renderizar("produto.html")).toContain('href="/calculadora-de-juros-compostos.html"');
+  });
+
+  it("a vitrine separa as ferramentas em grupos, cada uma num grupo só", () => {
+    const nosGrupos = GRUPOS_DA_VITRINE.flatMap((g) => g.arquivos);
+    expect([...nosGrupos].sort()).toEqual([...PAGINAS_DE_FERRAMENTA].sort());
+    expect(GRUPOS_DA_VITRINE.map((g) => g.nome)).toEqual([
+      "Planejar",
+      "Comparar investimentos",
+      "Impostos",
+      "Inflação e câmbio",
+      "Sorte ou habilidade",
+    ]);
+    const vitrine = renderizar("ferramentas.html");
+    for (const grupo of GRUPOS_DA_VITRINE) expect(vitrine).toContain(`>${grupo.nome}</h2>`);
+  });
+
+  it("cada cartão da vitrine tem a prévia em SVG, feita no build e escondida do leitor de tela", () => {
+    expect(Object.keys(PREVIAS).sort()).toEqual([...PAGINAS_DE_FERRAMENTA].sort());
+    const vitrine = renderizar("ferramentas.html");
+    const previas = vitrine.match(/<svg class="previa"[^>]*aria-hidden="true"/g) ?? [];
+    expect(previas).toHaveLength(PAGINAS_DE_FERRAMENTA.length);
+    expect(vitrine).not.toMatch(/NaN|Infinity/);
+    expect(vitrine).not.toContain("<img");
   });
 });
