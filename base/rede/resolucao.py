@@ -108,8 +108,10 @@ def _cruzam_com_outra_entidade(identificadores: pd.DataFrame) -> pd.Series:
 def _entidades(observacoes: pd.DataFrame) -> pd.DataFrame:
     ordem = observacoes.assign(
         _prioridade=observacoes["prioridade_do_nome"].fillna(SEM_PRIORIDADE)
-    ).sort_values(
-        ["id_entidade", "_prioridade", "publico_em", "nome"], na_position="last"
+    ).sort_values(  # o nome da fonte mais confiável; nela, o mais recente
+        ["id_entidade", "_prioridade", "publico_em", "nome"],
+        ascending=[True, True, False, True],
+        na_position="last",
     )
     por_entidade = ordem.groupby("id_entidade", sort=True)
     return pd.DataFrame(
