@@ -317,3 +317,27 @@ def test_ciclo_ou_cadeia_longa_demais_e_erro(ambiente, tmp_path):
     _tabela_que_le(raiz / "t0", [raiz / "t1.parquet"], raiz)
     with motor.connect() as c, pytest.raises(ValueError, match="ciclo"):
         linhagem_da_tabela(c, raiz / "t1.parquet")
+
+
+def test_painel_remontado_igual_depois_da_entrada_mudada_volta_a_conferir(base_inteira):
+    """O caso do servidor de casa na série 4 (PR 1): os emissores ganharam uma coluna, o painel saiu
+    com o mesmo conteúdo e ficava com o manifesto antigo; remontado, a linhagem confere de novo."""
+    from base.parquet import gravar_tabela
+    from scripts import montar_painel_dos_fundos as painel
+
+    motor, raiz = base_inteira
+    emissores = raiz / "fca" / "emissores.parquet"
+    manifesto = json.loads(emissores.with_suffix(".json").read_text(encoding="utf-8"))
+    tabela = pd.read_parquet(emissores).assign(coluna_nova=1)
+    gravar_tabela(
+        tabela, raiz / "fca" / "emissores", manifesto["origens"], ["emissor", "cnpj"]
+    )
+    alvo = raiz / "fundos" / "painel_empresa" / "2025.parquet"
+    with motor.connect() as c:
+        assert not linhagem_da_tabela(c, alvo).completa
+    assert painel.main(["--base", str(raiz)]) == 0
+    assert not list(
+        alvo.parent.glob("2025.v*")
+    )  # o conteúdo é o mesmo: sem versão nova
+    with motor.connect() as c:
+        assert linhagem_da_tabela(c, alvo).completa
