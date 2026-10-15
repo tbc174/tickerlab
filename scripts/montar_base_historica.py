@@ -6,6 +6,7 @@
     python -m scripts.montar_base_historica auditores trocas_de_auditor (B3; as trocas leem os auditores)
     python -m scripts.montar_base_historica curva_juros            (curva própria do Tesouro, B12)
     python -m scripts.montar_base_historica controladas empresa_serie (B13; a ligação lê as controladas)
+    python -m scripts.montar_base_historica rotulos_atraso         (rótulo do modelo 8, de DFP, ITR e cadastro)
     python -m scripts.montar_base_historica --pasta /tmp/base     (outra pasta de saída)
 
 Saída padrão: `<TICKERLAB_ACERVO>/base/<tabela>/<ano>.parquet`. Roda no servidor de casa (ADR 0031),
@@ -20,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from base import auditores, curva, empresa_serie, historico, rotulos
+from base.modelos.atraso import rotulo as rotulo_de_atraso
 from src import acervo
 from src.banco.conexao import obter_engine
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -34,7 +36,9 @@ TROCAS = "trocas_de_auditor"
 CURVA = curva.TABELA
 # empresa ↔ série da prévia do balanço (B13): sai das controladas de todos os anos, por isso vem depois
 EMPRESA_SERIE = empresa_serie.TABELA
-TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE]
+# rótulo do modelo de atraso (modelo 8): lê o índice de todos os anos da DFP e do ITR e o cadastro
+ATRASO = rotulo_de_atraso.TABELA
+TODAS = [*historico.TABELAS, CNPJ, TROCAS, CURVA, EMPRESA_SERIE, ATRASO]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,6 +71,10 @@ def main(argv: list[str] | None = None) -> int:
             if nome == CURVA:
                 anos = curva.montar(conexao, pasta, agora)
                 log.info("%s: %d anos", CURVA, len(anos))
+                continue
+            if nome == ATRASO:
+                linhas = rotulo_de_atraso.montar(conexao, pasta, agora)
+                log.info("%s: %d exemplos", ATRASO, linhas)
                 continue
             if nome == TROCAS:
                 log.info("%s: %d trocas", TROCAS, auditores.montar_trocas(pasta, agora))

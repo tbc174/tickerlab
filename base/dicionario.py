@@ -1383,6 +1383,67 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "rotulos_atraso": Tabela(
+        descricao=(
+            "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
+            "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
+            "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
+            "no prazo, data-base no calendário da empresa e no arquivo do ano). Não é coluna para "
+            "prever: é a resposta que o modelo tenta acertar (ADR 0027)"
+        ),
+        fonte="CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias",
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem, com os arquivos anuais e o cadastro mais recentes",
+        atraso=(
+            "O rótulo de um documento existe a partir do prazo (ou da entrega, se veio antes); uma "
+            "falta só conta se o prazo venceu antes da coleta do arquivo do ano"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/rotulos_atraso/rotulos_atraso.parquet`, com o manifesto ao "
+            "lado (servidor de casa, `scripts/montar_base_historica.py`)"
+        ),
+        linhagem=(
+            "O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual "
+            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` diz quando "
+            "a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            **_EMPRESA,
+            **_DOCUMENTO,
+            "data_da_previsao": (
+                "Dia em que o modelo faz a pergunta (a própria data-base)",
+                DATA,
+            ),
+            "prazo": (
+                "Último dia para entregar, com feriados e prorrogações (`src/prazos.py`)",
+                DATA,
+            ),
+            "primeira_entrega": ("Dia da primeira entrega (vazio: não entregou)", DATA),
+            "dias_uteis_de_atraso": (
+                "Dias úteis entre o prazo e a entrega (ou a montagem, sem entrega); 0 no prazo",
+                NUMERO,
+            ),
+            "atrasou": (
+                "Entregou 1 dia útil ou mais depois do prazo, ou não entregou",
+                SIM_OU_NAO,
+            ),
+            "atraso_grave": (
+                "Mais de 30 dias corridos de atraso, ou não entregou",
+                SIM_OU_NAO,
+            ),
+            "zona_cinzenta": (
+                "Atraso de 1 ou 2 dias úteis: pode ser um feriado estadual ou municipal",
+                SIM_OU_NAO,
+            ),
+            "uf": ("Estado da sede, no cadastro de hoje", TEXTO),
+            "mes_fim_do_exercicio": (
+                "Mês de fim do exercício (o mais comum nas DFPs da companhia)",
+                "mês (1 a 12)",
+            ),
+            "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+            "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+        },
+    ),
     "empresa_serie": Tabela(
         descricao=(
             "De que companhia listada é cada entidade que os reguladores enxergam (operadora de "
