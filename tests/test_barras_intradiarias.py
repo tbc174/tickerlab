@@ -10,6 +10,7 @@ from src.barras_intradiarias import (
     juntar_barras_b3,
     montar_barras,
     montar_barras_b3,
+    selo_dos_fechamentos,
 )
 
 FUSO_NY = "America/New_York"
@@ -242,3 +243,42 @@ def test_barras_parciais_juntadas_iguais_as_de_uma_vez():
         ]
     )
     pd.testing.assert_frame_equal(juntas, montar_barras_b3(negocios))
+
+
+# --- selo da IEX (plano dos intradiários grátis, PR 5) -----------------------------------------
+
+
+def barras_da_iex(fechamentos: dict[str, float]) -> pd.DataFrame:
+    linhas = [
+        (f"2026-10-09 15:59:{segundo:02d}", simbolo, preco, 10)
+        for segundo, (simbolo, preco) in enumerate(fechamentos.items())
+    ]
+    return montar_barras(negocios(linhas), FUSO_NY)
+
+
+def test_fechamento_perto_do_oficial_confere():
+    barras = barras_da_iex({"AAPL": 227.50})
+    selo = selo_dos_fechamentos(barras, pd.Series({"AAPL": 227.55})).set_index(
+        "simbolo"
+    )
+    assert selo.loc["AAPL", "selo"] == "confere"
+    assert selo.loc["AAPL", "diferenca"] == pytest.approx(227.50 / 227.55 - 1)
+    assert (
+        "fechamento_oficial" not in selo.columns
+    )  # o número do Yahoo não fica guardado
+
+
+def test_fechamento_longe_do_oficial_nao_confere():
+    """Pior caso medido em 13/10, 09/10 e 04/09/2026: 0,23%. Acima de 0,5% é outra coisa
+    (desdobramento depois do dia, símbolo trocado, barras faltando)."""
+    barras = barras_da_iex({"AAPL": 227.50})
+    selo = selo_dos_fechamentos(barras, pd.Series({"AAPL": 455.0})).set_index("simbolo")
+    assert selo.loc["AAPL", "selo"] == "nao_confere"
+
+
+def test_selo_da_iex_ausente_e_sem_boletim():
+    barras = barras_da_iex({"AAPL": 227.50})
+    selo = selo_dos_fechamentos(barras, pd.Series({"MSFT": 500.0})).set_index("simbolo")
+    assert selo.loc["AAPL", "selo"] == "sem_boletim"
+    assert selo.loc["MSFT", "selo"] == "ausente"
+    assert selo.loc["AAPL", "cobertura"] == pytest.approx(1 / 390)

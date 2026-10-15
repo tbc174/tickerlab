@@ -170,3 +170,45 @@ def montar_barras_b3(negocios: pd.DataFrame) -> pd.DataFrame:
     """Barras de 1 minuto da B3 de uma tabela de negócios inteira (colunas instante com fuso,
     simbolo, preco, quantidade, sessao, identificador e cancelado)."""
     return juntar_barras_b3([barras_parciais_b3(remover_cancelados(negocios))])
+
+
+# --- selo da IEX (plano dos intradiários grátis, PR 5) -------------------------------------------
+# A IEX é uma bolsa entre várias: as barras dela não têm todos os negócios do dia, então o selo não
+# diz "completo", diz se o dia é coerente com o oficial. A máxima e a mínima não servem (o lote
+# fracionário entra nas barras e não mexe na máxima e na mínima oficiais: 20% a 25% das ações "fora"
+# em 13/10/2026). O fechamento serve, com um limite explícito: o último negócio da IEX sai segundos
+# antes do leilão de fechamento da bolsa principal. Medido em 13/10, 09/10 e 04/09/2026 (503 ações):
+# mediana 0,02%, 99% abaixo de 0,12%, pior caso 0,23%. O limite é o dobro do pior caso.
+LIMITE_DO_FECHAMENTO_DA_IEX = 0.005
+SELO_CONFERE = "confere"
+SELO_NAO_CONFERE = "nao_confere"
+SELO_AUSENTE_NA_IEX = "ausente"
+SELO_SEM_OFICIAL = "sem_boletim"
+
+
+def selo_dos_fechamentos(
+    barras: pd.DataFrame,
+    fechamentos_oficiais: pd.Series,
+    limite: float = LIMITE_DO_FECHAMENTO_DA_IEX,
+) -> pd.DataFrame:
+    """Uma linha por símbolo (das barras ou do oficial): diferença do fechamento, cobertura dos
+    minutos do pregão e o selo (`confere`, `nao_confere`, `ausente` na IEX ou `sem_boletim`).
+
+    O fechamento oficial não fica na tabela (vem do Yahoo, que não entra na base).
+    """
+    diferenca = conferir_fechamentos(barras, fechamentos_oficiais)["diferenca"]
+    cobertura = cobertura_por_simbolo(barras)
+    simbolos = sorted(set(cobertura.index) | set(fechamentos_oficiais.dropna().index))
+    selo = pd.DataFrame(
+        {
+            "diferenca": diferenca.reindex(simbolos),
+            "cobertura": cobertura.reindex(simbolos).fillna(0.0),
+        },
+        index=pd.Index(simbolos, name="simbolo"),
+    )
+    selo["selo"] = SELO_CONFERE
+    selo.loc[selo["diferenca"].abs() > limite, "selo"] = SELO_NAO_CONFERE
+    selo.loc[~selo.index.isin(cobertura.index), "selo"] = SELO_AUSENTE_NA_IEX
+    sem_oficial = ~selo.index.isin(fechamentos_oficiais.dropna().index)
+    selo.loc[sem_oficial, "selo"] = SELO_SEM_OFICIAL
+    return selo.reset_index()

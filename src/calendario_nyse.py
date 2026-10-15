@@ -20,6 +20,8 @@ from datetime import date, timedelta
 from functools import cache
 
 FECHAMENTOS_EXTRAS = {
+    date(2012, 10, 29): "Furacão Sandy",
+    date(2012, 10, 30): "Furacão Sandy",
     date(2018, 12, 5): "Luto nacional (George H. W. Bush)",
     date(2025, 1, 9): "Luto nacional (Jimmy Carter)",
 }

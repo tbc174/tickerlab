@@ -7,6 +7,7 @@ import struct
 from datetime import date
 
 import pandas as pd
+import pytest
 
 from scripts import coletar_iex_do_dia as coletor
 from tests.test_iex_tops import mensagem_de_negocio, pacote, pcapng
@@ -218,3 +219,73 @@ def test_404_num_dia_de_pregao_continua_sendo_falha(tmp_path, monkeypatch):
         lambda url, stream=False, timeout=None: _Resposta404(),
     )
     assert codigo == 1
+
+
+# --- selo por ativo (plano dos intradiários grátis, PR 5) --------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _sem_yahoo(monkeypatch):
+    """Nenhum teste deste arquivo vai à internet: o fechamento oficial vem vazio, salvo pedido."""
+    monkeypatch.setattr(
+        coletor, "fechamentos_oficiais", lambda dia, simbolos: pd.Series(dtype=float)
+    )
+
+
+def _oficiais(precos: dict[str, float], pedidos: list | None = None):
+    def buscar(dia, simbolos):
+        if pedidos is not None:
+            pedidos.append(dia)
+        return pd.Series(precos, dtype=float)
+
+    return buscar
+
+
+def test_dia_coletado_ganha_o_selo(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    codigo = coletor.main(
+        ["--data", SEXTA.isoformat(), "--pasta", str(tmp_path)],
+        _iex_falsa(_dia_com_dois_negocios()),
+        _oficiais({"AAPL": 228.10}),
+    )
+    assert codigo == 0
+    selo = pd.read_parquet(tmp_path / "selo" / "2026-10-09.parquet")
+    assert selo.set_index("simbolo").loc["AAPL", "selo"] == "confere"
+    resumo = json.loads((tmp_path / "2026-10-09.json").read_text("utf-8"))
+    assert resumo["selo"] == {"confere": 1}
+    assert resumo["pior_diferenca"] == pytest.approx(abs(228.0 / 228.10 - 1), abs=1e-6)
+
+
+def test_sem_resposta_do_oficial_nao_grava_selo_e_tenta_de_novo(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    coletor.coletar_dia(SEXTA, {"AAPL"}, tmp_path, _iex_falsa(_dia_com_dois_negocios()))
+    assert coletor.selar_os_que_faltam(tmp_path, _oficiais({})) == []
+    assert not (tmp_path / "selo").exists()
+    pedidos: list = []
+    [linha] = coletor.selar_os_que_faltam(tmp_path, _oficiais({"AAPL": 228.0}, pedidos))
+    assert pedidos == [SEXTA]
+    assert linha.startswith("2026-10-09: selo")
+
+
+def test_dia_ja_selado_nao_pede_o_oficial_de_novo(tmp_path):
+    coletor.coletar_dia(SEXTA, {"AAPL"}, tmp_path, _iex_falsa(_dia_com_dois_negocios()))
+    coletor.selar_os_que_faltam(tmp_path, _oficiais({"AAPL": 228.0}))
+    pedidos: list = []
+    assert (
+        coletor.selar_os_que_faltam(tmp_path, _oficiais({"AAPL": 228.0}, pedidos)) == []
+    )
+    assert pedidos == []
+
+
+def test_fechamento_longe_aparece_na_saida_mas_nao_e_falha(
+    tmp_path, monkeypatch, capsys
+):
+    """Na carga antiga, um desdobramento depois do dia muda o preço do Yahoo: fica registrado."""
+    for d in coletor.dias_uteis_recentes(coletor.datetime.now(coletor.FUSO_NY).date()):
+        coletor.arquivo_do_dia(d, tmp_path).write_bytes(b"x")
+    coletor.coletar_dia(SEXTA, {"AAPL"}, tmp_path, _iex_falsa(_dia_com_dois_negocios()))
+    codigo = coletor.main(
+        ["--pasta", str(tmp_path)], _iex_falsa(None), _oficiais({"AAPL": 456.0})
+    )
+    assert codigo == 0
+    assert "1 nao_confere" in capsys.readouterr().out
