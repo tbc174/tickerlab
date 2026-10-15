@@ -80,11 +80,11 @@ describe("quanto daria? foi sorte?", () => {
   it("a frase da sorte é do ativo escolhido, e trocar o ativo não busca de novo", async () => {
     const buscar = await abrir(ok, "?ativo=ibovespa");
     await screen.findAllByText(/dariam menos/);
-    expect(document.body.textContent).toContain("Das 300 datas de início com o mesmo prazo, 26% dariam menos que a sua");
+    expect(document.body.textContent).toContain("Entre as 300 datas de início com o mesmo prazo, 26% das outras dariam menos que a sua");
     await act(async () => {
       fireEvent.change(screen.getByLabelText("Foi sorte? Ver o"), { target: { value: "cdi" } });
     });
-    expect(document.body.textContent).toContain("31% dariam menos que a sua");
+    expect(document.body.textContent).toContain("31% das outras dariam menos que a sua");
     expect(buscar).toHaveBeenCalledTimes(1);
   });
 

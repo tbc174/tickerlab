@@ -239,6 +239,6 @@ describe("faixa de posição", () => {
     expect(x("melhor")).toBe(1);
     expect(x("sua")).toBeCloseTo(0.258, 9);
     expect(container.textContent).toContain(formatarReais(691020));
-    expect(container.querySelector("figcaption")?.textContent).toContain("26% das datas dariam menos");
+    expect(container.querySelector("figcaption")?.textContent).toContain("26% das outras datas dariam menos");
   });
 });

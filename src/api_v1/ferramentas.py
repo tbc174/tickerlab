@@ -32,9 +32,9 @@ from src.ferramentas import ponte, ponte_dados
 PEDIDOS_POR_MINUTO_POR_IP = 30
 ORIGEM_DO_SITE = "https://tickerlab.com.br"
 VARIAVEL_DO_YAHOO = "TICKERLAB_PONTE_COM_YAHOO"
-SEGUNDOS_DE_CACHE = (
-    3600  # o navegador e a Cloudflare podem guardar a resposta por 1 hora
-)
+# o navegador e a Cloudflare podem guardar a resposta por 1 hora
+SEGUNDOS_DE_CACHE = 3600
+FONTE_FORA_DO_AR = "Fonte fora do ar agora."
 AVISO = (
     "Simulação com dados do passado: não é recomendação de investimento nem promessa de "
     "resultado. Antes de imposto e taxas. As janelas se sobrepõem: não são sorteios independentes."
@@ -55,9 +55,22 @@ def ponte_com_yahoo() -> bool:
     return os.environ.get(VARIAVEL_DO_YAHOO, "1") != "0"
 
 
+def _cors(request: Request) -> dict[str, str]:
+    """Os cabeçalhos de CORS (só para o site), também nos erros: sem eles, o navegador bloqueia a
+    resposta e a página não consegue mostrar a mensagem (só vê "falhou")."""
+    cabecalhos = {"Vary": "Origin"}
+    if request.headers.get("origin") == ORIGEM_DO_SITE:
+        cabecalhos["Access-Control-Allow-Origin"] = ORIGEM_DO_SITE
+    return cabecalhos
+
+
+def _recusa(request: Request, status: int, detalhe: str) -> HTTPException:
+    return HTTPException(status_code=status, detail=detalhe, headers=_cors(request))
+
+
 def conferir_o_pedido(request: Request) -> None:
     if not LIMITE_POR_IP.permitir(f"ip:{ip_de_quem_pede(request)}", agora()):
-        raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
+        raise _recusa(request, 429, "Muitos pedidos: espere um minuto.")
 
 
 router = APIRouter(
@@ -142,9 +155,7 @@ def _calcular(
             continue  # desligado pelo .env
         if isinstance(curva, ponte_dados.CurvaIndisponivelError):
             fora.append(
-                IndisponivelV1(
-                    nome=ponte.NOMES[ativo], motivo="Fonte fora do ar agora."
-                )
+                IndisponivelV1(nome=ponte.NOMES[ativo], motivo=FONTE_FORA_DO_AR)
             )
             continue
         try:
@@ -165,8 +176,10 @@ def _do_cache(
         for velha in [c for c in CALCULADOS if c[1] != dia]:
             del CALCULADOS[velha]
     calculado = _calcular(desde, dia)
-    with _TRAVA:
-        CALCULADOS[chave] = calculado
+    # uma fonte fora do ar agora não fica guardada até amanhã: o próximo pedido tenta de novo
+    if not any(i.motivo == FONTE_FORA_DO_AR for i in calculado[1]):
+        with _TRAVA:
+            CALCULADOS[chave] = calculado
     return calculado
 
 
@@ -193,34 +206,43 @@ def _ativo_v1(r: ponte.ResultadoDoAtivo, valor: float) -> AtivoV1:
     )
 
 
+def _ler_pedido(request: Request, desde: str, valor: str) -> tuple[date, float]:
+    try:
+        data = date.fromisoformat(desde)
+        quantia = float(valor)
+    except ValueError as erro:
+        raise _recusa(
+            request, 422, "Use a data como AAAA-MM-DD e o valor em números."
+        ) from erro
+    try:
+        ponte.conferir_pedido(data, quantia, hoje())
+    except ValueError as erro:
+        raise _recusa(request, 422, str(erro)) from erro
+    return data, quantia
+
+
 @router.get("/quanto-daria", response_model=QuantoDariaV1)
 def quanto_daria(
     request: Request,
     response: Response,
-    desde: date,
-    valor: Annotated[float, Query()] = 1000.0,
+    desde: Annotated[str, Query(max_length=10)],
+    valor: Annotated[str, Query(max_length=20)] = "1000",
 ) -> QuantoDariaV1:
     dia = hoje()
-    try:
-        ponte.conferir_pedido(desde, valor, dia)
-    except ValueError as erro:
-        raise HTTPException(status_code=422, detail=str(erro)) from erro
-    mes = desde.replace(day=1)  # a data vale pelo mês dela
+    data, quantia = _ler_pedido(request, desde, valor)
+    mes = data.replace(day=1)  # a data vale pelo mês dela
     try:
         resultados, fora = _do_cache(mes, dia)
     except ponte_dados.CurvaIndisponivelError as erro:
-        raise HTTPException(
-            status_code=503,
-            detail="Os dados das ferramentas estão indisponíveis agora.",
+        raise _recusa(
+            request, 503, "Os dados das ferramentas estão indisponíveis agora."
         ) from erro
-    if request.headers.get("origin") == ORIGEM_DO_SITE:
-        response.headers["Access-Control-Allow-Origin"] = ORIGEM_DO_SITE
-    response.headers["Vary"] = "Origin"
+    response.headers.update(_cors(request))
     response.headers["Cache-Control"] = f"public, max-age={SEGUNDOS_DE_CACHE}"
     return QuantoDariaV1(
         desde=mes,
-        valor=valor,
-        ativos=[_ativo_v1(r, valor) for r in resultados],
+        valor=quantia,
+        ativos=[_ativo_v1(r, quantia) for r in resultados],
         indisponiveis=fora,
         aviso=AVISO,
         calculado_em=dia,

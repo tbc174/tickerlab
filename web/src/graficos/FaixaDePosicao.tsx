@@ -23,7 +23,7 @@ export function FaixaDePosicao({
   mediana: number;
   melhor: number;
   sua: number;
-  abaixoDaSua: number; // fração das janelas que dariam menos que a sua (0 a 1)
+  abaixoDaSua: number; // das outras janelas, a fração que daria menos (0 = a pior, 1 = a melhor)
   formatarValor: (valor: number) => string;
 }) {
   const [largura, medir] = useLargura(560);
@@ -67,7 +67,7 @@ export function FaixaDePosicao({
         </g>
       </svg>
       <figcaption className="so-para-leitor">
-        {titulo}. {porcentagem}% das datas dariam menos que a sua. A pior daria {formatarValor(pior)}, a do meio{" "}
+        {titulo}. {porcentagem}% das outras datas dariam menos que a sua. A pior daria {formatarValor(pior)}, a do meio{" "}
         {formatarValor(mediana)} e a melhor {formatarValor(melhor)}.
       </figcaption>
     </figure>

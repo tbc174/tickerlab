@@ -165,8 +165,8 @@ function Resposta({
               />
             </div>
             <p className="ferramenta-destaque">
-              Das {j.quantas.toLocaleString("pt-BR")} datas de início com o mesmo prazo, {Math.round(j.abaixo_da_sua * 100)}%
-              dariam menos que a sua; a do meio daria {formatarReais(j.mediana)}, a pior {formatarReais(j.pior)} e a
+              Entre as {j.quantas.toLocaleString("pt-BR")} datas de início com o mesmo prazo,{" "}
+              {Math.round(j.abaixo_da_sua * 100)}% das outras dariam menos que a sua; a do meio daria {formatarReais(j.mediana)}, a pior {formatarReais(j.pior)} e a
               melhor {formatarReais(j.melhor)}. As janelas se sobrepõem: não são sorteios independentes.
             </p>
             <FaixaDePosicao
@@ -226,7 +226,7 @@ function Resposta({
         </ul>
         {escolhido ? (
           <Compartilhar
-            resultado={`${formatarReais(dados.valor)} em ${escolhido.nome} desde ${mesPorExtenso(dados.desde)} dariam ${formatarReais(escolhido.valor_final)} hoje${j ? `; ${Math.round(j.abaixo_da_sua * 100)}% das datas com o mesmo prazo dariam menos` : ""}`}
+            resultado={`${formatarReais(dados.valor)} em ${escolhido.nome} desde ${mesPorExtenso(dados.desde)} dariam ${formatarReais(escolhido.valor_final)} hoje${j ? `; ${Math.round(j.abaixo_da_sua * 100)}% das outras datas com o mesmo prazo dariam menos` : ""}`}
           />
         ) : null}
       </div>

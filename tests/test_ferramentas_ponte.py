@@ -40,7 +40,9 @@ def test_resultado_da_data_escolhida_e_a_posicao_dela_entre_as_janelas():
     assert j.pior == pytest.approx(900)
     assert j.mediana == pytest.approx(1000 * 1.2 / 1.1)
     assert j.melhor == pytest.approx(1000 * 1.5 / 0.9)
-    assert j.abaixo_da_sua == pytest.approx(2 / 3)
+    assert j.abaixo_da_sua == pytest.approx(
+        1.0
+    )  # a melhor das 3: as outras 2 dariam menos
 
 
 def test_data_sem_pregao_comeca_no_proximo_dia_com_dado():
@@ -117,7 +119,7 @@ def test_a_posicao_fica_entre_0_e_1_e_as_janelas_sao_as_que_cabem(retornos, dado
     )
     assert r.janelas is not None
     assert r.janelas.quantas == inicio + 1
-    assert 0 <= r.janelas.abaixo_da_sua < 1
+    assert 0 <= r.janelas.abaixo_da_sua <= 1
     assert r.janelas.pior <= r.valor_final <= r.janelas.melhor
 
 
@@ -127,3 +129,19 @@ def test_data_antes_do_plano_real_e_recusada():
     with pytest.raises(ValueError, match="1994"):
         ponte.conferir_pedido(date(1990, 1, 1), 1000, hoje=date(2026, 10, 15))
     ponte.conferir_pedido(date(1994, 7, 1), 1000, hoje=date(2026, 10, 15))
+
+
+def test_uma_janela_so_fica_no_meio_da_regua():
+    curva = pd.Series([1.0, 1.1], index=DIAS[:2])
+    r = ponte.resultado_do_ativo("cdi", curva, date(2026, 1, 5), 1000, 1.0)
+    assert r.janelas is not None and r.janelas.quantas == 1
+    assert r.janelas.abaixo_da_sua == 0.5
+
+
+def test_empates_contam_pela_metade_e_a_pior_fica_em_zero():
+    curva = pd.Series([1.0, 1.0, 1.0, 1.0], index=DIAS[:4])  # todas as janelas iguais
+    r = ponte.resultado_do_ativo("cdi", curva, date(2026, 1, 6), 1000, 1.0)
+    assert r.janelas.abaixo_da_sua == pytest.approx(0.5)
+    queda = pd.Series([1.0, 2.0, 1.0, 0.4], index=DIAS[:4])  # a última janela é a pior
+    pior = ponte.resultado_do_ativo("cdi", queda, date(2026, 1, 7), 1000, 1.0)
+    assert pior.janelas.abaixo_da_sua == 0

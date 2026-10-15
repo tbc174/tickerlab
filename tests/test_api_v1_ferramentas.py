@@ -226,3 +226,39 @@ def test_o_cache_de_ontem_e_jogado_fora(cliente, monkeypatch):
 
 def test_data_de_seculos_atras_e_422(cliente):
     assert _pedir(cliente, desde="0001-01-01").status_code == 422
+
+
+@pytest.mark.parametrize(
+    ("desde", "valor", "status"),
+    [("2026-10-01", "1000", 422), ("ontem", "1000", 422), ("2020-01-02", "muito", 422)],
+)
+def test_erros_tambem_levam_o_cors_para_o_site_ler_a_mensagem(
+    cliente, desde, valor, status
+):
+    resposta = _pedir(cliente, desde, valor, headers={"origin": ORIGEM})
+    assert resposta.status_code == status
+    assert resposta.headers["access-control-allow-origin"] == ORIGEM
+    assert isinstance(resposta.json()["detail"], str)
+
+
+def test_o_429_tambem_leva_o_cors(cliente):
+    cabecalhos = {"origin": ORIGEM, "cf-connecting-ip": "203.0.113.20"}
+    for _ in range(ferramentas.PEDIDOS_POR_MINUTO_POR_IP):
+        _pedir(cliente, headers=cabecalhos)
+    resposta = _pedir(cliente, headers=cabecalhos)
+    assert resposta.status_code == 429
+    assert resposta.headers["access-control-allow-origin"] == ORIGEM
+
+
+def test_falha_do_yahoo_nao_fica_no_cache_do_resultado(cliente, monkeypatch):
+    estado = {"fora": True}
+
+    def yahoo(ativo, hoje, dolar):
+        if estado["fora"]:
+            raise ponte_dados.CurvaIndisponivelError("fora do ar")
+        return YAHOO[ativo]
+
+    monkeypatch.setattr(ponte_dados, "obter_curva_do_yahoo", yahoo)
+    assert len(_pedir(cliente).json()["indisponiveis"]) == 2
+    estado["fora"] = False  # o Yahoo voltou
+    assert _pedir(cliente).json()["indisponiveis"] == []

@@ -52,7 +52,9 @@ class Janelas:
     pior: float  # em reais, para o mesmo valor aplicado
     mediana: float
     melhor: float
-    abaixo_da_sua: float  # fração das janelas que dariam menos que a data escolhida
+    abaixo_da_sua: (
+        float  # das outras janelas, a fração que daria menos (empate vale meio)
+    )
 
 
 @dataclass(frozen=True)
@@ -87,6 +89,18 @@ def janelas(curva: pd.Series, horizonte: int) -> np.ndarray:
     return valores[horizonte : horizonte + inicios] / valores[:inicios]
 
 
+def posicao_entre_as_outras(todas: np.ndarray, sua: float) -> float:
+    """Onde a sua janela fica entre as outras (0 = a pior, 1 = a melhor): a fração das outras que
+    dariam menos, com os empates pela metade. A sua própria janela (uma das `todas`) não conta;
+    com uma janela só, fica no meio."""
+    if len(todas) == 1:
+        return 0.5
+    iguais = np.isclose(todas, sua, rtol=1e-12, atol=0)
+    menores = int(((todas < sua) & ~iguais).sum())
+    outras_iguais = int(iguais.sum()) - 1  # tira a sua
+    return (menores + outras_iguais / 2) / (len(todas) - 1)
+
+
 def resultado_do_ativo(
     ativo: str, curva: pd.Series, desde: date, valor: float, fator_do_ipca: float
 ) -> ResultadoDoAtivo:
@@ -111,7 +125,7 @@ def resultado_do_ativo(
             pior=valor * float(todas.min()),
             mediana=valor * float(np.median(todas)),
             melhor=valor * float(todas.max()),
-            abaixo_da_sua=float((todas < multiplo).mean()),
+            abaixo_da_sua=posicao_entre_as_outras(todas, multiplo),
         )
     return ResultadoDoAtivo(
         ativo=ativo,
