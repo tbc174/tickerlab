@@ -207,3 +207,20 @@ def test_dfp_fora_do_exercicio_nao_cria_falta_no_ano_seguinte():
     exemplos = montar_exemplos(indice, ATIVA_A, HOJE)
     datas_de_a = exemplos.loc[exemplos["cnpj"] == A, "referencia"].dt.strftime("%Y-%m")
     assert datas_de_a.tolist() == ["2022-12", "2023-03", "2023-12"]
+
+
+def test_falta_so_conta_se_o_arquivo_do_ano_foi_visto_depois_do_prazo():
+    # o arquivo de 2024 coletado em 20/03/2025 não diz nada sobre o prazo de 31/03/2025
+    indice = _indice(
+        (A, "DFP", "2023-12-31", 1, "2024-03-25"),
+        (B, "DFP", "2024-12-31", 1, "2025-03-10"),
+    )
+    cedo = {
+        ("DFP", 2023): pd.Timestamp("2025-03-20"),
+        ("DFP", 2024): pd.Timestamp("2025-03-20"),
+    }
+    depois = {**cedo, ("DFP", 2024): pd.Timestamp("2025-05-01")}
+    sem_falta = montar_exemplos(indice, ATIVA_A, HOJE, vistos_em=cedo)
+    com_falta = montar_exemplos(indice, ATIVA_A, HOJE, vistos_em=depois)
+    assert (sem_falta["cnpj"] == A).sum() == 1
+    assert (com_falta["cnpj"] == A).sum() == 2
