@@ -19,6 +19,12 @@ ticker, ficavam sem emissor e sem ligação com os fundos e com o IF.data. A **t
 `base/conferidas/codigos_fora_do_fca.csv` (série 3, PR 8) traz esses códigos, um a um: o CNPJ vem do
 próprio FCA e o código e o ISIN, das carteiras dos fundos (CDA). `com_codigos_conferidos` junta a
 tabela aos tickers e aos emissores do FCA, com a origem de cada linha.
+
+**Data de entrega** (série 4, PR 1): o FCA de um ano chega meses depois da data de referência
+(mediana de 138 dias de 2010 a 2026). Cada linha leva o `DT_RECEB` do documento dela (arquivo
+principal do zip, pelo `ID_Documento`), e um ticker vale da entrega do formulário que o trouxe até a
+entrega do que veio sem ele. A CVM publica os valores mobiliários **só da versão mais nova** de cada
+formulário (o arquivo principal lista todas): a data que vale é a dessa versão.
 """
 
 import io
@@ -38,11 +44,13 @@ TICKER = re.compile(rf"{EMISSOR}\d{{1,2}}")
 CODIGO_COM_EMISSOR = re.compile(rf"({EMISSOR})(?:\d{{1,2}}[A-Z]?)?")
 ISIN = re.compile(r"BR([A-Z0-9]{4})[A-Z0-9]{5}\d")
 COLUNAS = (
-    "cnpj", "empresa", "referencia", "versao", "valor_mobiliario", "classe", "codigo_informado",
+    "cnpj", "empresa", "referencia", "versao", "id_documento", "recebido_em", "valor_mobiliario",
+    "classe", "codigo_informado",
     "ticker", "emissor", "mercado", "administradora", "inicio_negociacao", "fim_negociacao",
     "segmento", "inicio_listagem", "fim_listagem",
 )  # fmt: skip
 DOCUMENTO = ["cnpj", "referencia"]
+ARQUIVO_PRINCIPAL = re.compile(r"fca_cia_aberta_\d{4}\.csv")
 CODIGOS_CONFERIDOS = (
     Path(__file__).resolve().parent / "conferidas" / "codigos_fora_do_fca.csv"
 )
@@ -81,15 +89,37 @@ def mais_novas(tabela: pd.DataFrame) -> pd.DataFrame:
     return tabela[tabela["versao"] == maior].reset_index(drop=True)
 
 
+def _ler_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
+    return pd.read_csv(
+        arquivo.open(nome), sep=";", encoding=CODIFICACAO_DA_CVM, dtype=str,
+        keep_default_na=False,
+    )  # fmt: skip
+
+
+def _entregas(arquivo: zipfile.ZipFile) -> pd.Series:
+    """Data de entrega (`DT_RECEB`) de cada documento do zip, pelo número (`ID_DOC`)."""
+    nome = next((n for n in arquivo.namelist() if ARQUIVO_PRINCIPAL.fullmatch(n)), None)
+    if nome is None:
+        raise ValueError(
+            "FCA sem o arquivo principal (fca_cia_aberta_<ano>.csv): sem a data de entrega"
+        )
+    principal = _ler_csv(arquivo, nome)
+    return _data(principal.set_index(principal["ID_DOC"].str.strip())["DT_RECEB"])
+
+
 def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
-    """Os valores mobiliários de um arquivo anual do FCA, na versão mais nova de cada documento."""
+    """Os valores mobiliários de um arquivo anual do FCA, na versão mais nova de cada documento, com
+    a data de entrega dela (`recebido_em`). Documento sem data de entrega é erro."""
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         nome = next(n for n in arquivo.namelist() if "_valor_mobiliario_" in n)
-        bruto = pd.read_csv(
-            arquivo.open(nome), sep=";", encoding=CODIFICACAO_DA_CVM, dtype=str,
-            keep_default_na=False,
-        )  # fmt: skip
+        bruto = _ler_csv(arquivo, nome)
+        entregas = _entregas(arquivo)
     codigo = _texto(bruto["Codigo_Negociacao"])
+    documento = bruto["ID_Documento"].str.strip()
+    recebido_em = documento.map(entregas)
+    if recebido_em.isna().any():
+        sem_data = sorted(set(documento[recebido_em.isna()]))
+        raise ValueError(f"FCA com documento sem data de entrega: {sem_data[:5]}")
     tabela = pd.DataFrame(
         {
             "cnpj": bruto["CNPJ_Companhia"].str.strip(),
@@ -98,6 +128,8 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
             "versao": pd.to_numeric(bruto["Versao"], errors="coerce")
             .fillna(1)
             .astype(int),
+            "id_documento": documento,
+            "recebido_em": recebido_em,
             "valor_mobiliario": _texto(bruto["Valor_Mobiliario"]),
             "classe": _texto(bruto["Classe_Acao_Preferencial"]),
             "codigo_informado": codigo,
@@ -119,8 +151,11 @@ def codigos_invalidos(valores: pd.DataFrame) -> pd.DataFrame:
     """Linhas com código informado que não dá nem o emissor ("4030", "NÃO HÁ"), para o relatório."""
     ruins = valores[valores["codigo_informado"].notna() & valores["emissor"].isna()]
     return ruins[
-        ["cnpj", "empresa", "referencia", "valor_mobiliario", "codigo_informado"]
-    ]
+        [
+            "cnpj", "empresa", "referencia", "recebido_em", "valor_mobiliario",
+            "codigo_informado",
+        ]
+    ]  # fmt: skip
 
 
 def emissor_do_isin(isin: object) -> str | None:
@@ -132,7 +167,8 @@ def emissor_do_isin(isin: object) -> str | None:
 
 
 def emissores(valores: pd.DataFrame) -> pd.DataFrame:
-    """Emissor → CNPJ, com o primeiro e o último ano do FCA em que apareceu e se há conflito."""
+    """Emissor → CNPJ, com o primeiro e o último ano do FCA em que apareceu, a entrega do primeiro
+    (desde quando a ligação é conhecida) e se há conflito."""
     com_emissor = valores[valores["emissor"].notna()].assign(
         ano=lambda t: t["referencia"].dt.year
     )
@@ -142,6 +178,7 @@ def emissores(valores: pd.DataFrame) -> pd.DataFrame:
             empresa=("empresa", "last"),
             primeiro_ano=("ano", "min"),
             ultimo_ano=("ano", "max"),
+            primeiro_recebido_em=("recebido_em", "min"),
         )
         .reset_index()
     )
@@ -156,18 +193,53 @@ def resolver_emissor(tabela_de_emissores: pd.DataFrame, emissor: str) -> str | N
     return str(linhas["cnpj"].iloc[0])
 
 
-def resolver_ticker(tickers: pd.DataFrame, ticker: str, data: date) -> str | None:
-    """O CNPJ dono do ticker na data; None se ninguém (ou mais de um) o tinha naquele ano.
+def vale_na_data(tickers: pd.DataFrame, data: object) -> pd.Series:
+    """Quais linhas de `tickers` valem na data (uma só, ou uma por linha): da entrega do formulário
+    que trouxe o código (`primeiro_visto`, inclusive) até a do que veio sem ele (`valido_ate`,
+    exclusive; vazio = ainda no formulário mais recente)."""
+    quando = data if isinstance(data, pd.Series) else pd.Timestamp(data)  # type: ignore[arg-type]
+    return (tickers["primeiro_visto"] <= quando) & (
+        tickers["valido_ate"].isna() | (quando < tickers["valido_ate"])
+    )
 
-    `tickers` é a tabela de `base/cadastro.py::tickers_no_tempo` (série 1): a validade vai do ano do
-    1º ao do último FCA em que o código apareceu, porque a troca de ticker regrava a mesma linha.
+
+def resolver_ticker(tickers: pd.DataFrame, ticker: str, data: date) -> str | None:
+    """O CNPJ dono do ticker na data; None se ninguém (ou mais de um) o tinha.
+
+    `tickers` é a tabela de `base/cadastro.py::tickers_no_tempo`: só vale o que já tinha sido
+    entregue à CVM na data (série 4, PR 1; antes valia o ano do FCA, que chega meses depois).
     """
-    vigentes = tickers[
-        (tickers["codigo"] == ticker)
-        & (tickers["primeiro_visto"].dt.year <= data.year)
-        & (tickers["ultimo_visto"].dt.year >= data.year)
-    ]
+    vigentes = tickers[(tickers["codigo"] == ticker) & vale_na_data(tickers, data)]
     return str(vigentes["cnpj"].iloc[0]) if vigentes["cnpj"].nunique() == 1 else None
+
+
+def formularios_vigentes(valores: pd.DataFrame) -> pd.DataFrame:
+    """A linha do tempo dos formulários de cada companhia: qual valia de quando até quando.
+
+    Numa data, vale o FCA de referência mais nova entre os já entregues (a reentrega de um ano antigo
+    depois de um mais novo não volta no tempo). Só entram os formulários com valores mobiliários: o
+    vazio é falta de dado, não saída da bolsa (264 FCA de empresas listadas, de 2010 a 2026, vêm
+    vazios entre anos com ação). Colunas: cnpj, id_documento, recebido_em, ate (entrega do seguinte;
+    vazio = o mais recente) e ordem (0, 1, 2... por companhia).
+    """
+    documentos = (
+        valores[["cnpj", "id_documento", "referencia", "versao", "recebido_em"]]
+        .drop_duplicates("id_documento")
+        .sort_values(["cnpj", "recebido_em", "referencia", "versao"])
+    )
+    # (referência, versão) num número só, para comparar com o maior já entregue: as referências
+    # distam dias (em nanossegundos) e a versão é pequena
+    chave = documentos["referencia"].astype("int64") + documentos["versao"]
+    maior_antes = chave.groupby(documentos["cnpj"]).transform(
+        lambda c: c.cummax().shift()
+    )
+    vigentes = documentos[maior_antes.isna() | (chave > maior_antes)].copy()
+    vigentes["ate"] = vigentes.groupby("cnpj")["recebido_em"].shift(-1)
+    # trocado no mesmo dia em que chegou: nunca valeu
+    vigentes = vigentes[~(vigentes["ate"] <= vigentes["recebido_em"])].copy()
+    vigentes["ate"] = vigentes.groupby("cnpj")["recebido_em"].shift(-1)
+    vigentes["ordem"] = vigentes.groupby("cnpj").cumcount()
+    return vigentes[["cnpj", "id_documento", "recebido_em", "ate", "ordem"]]
 
 
 def codigos_conferidos(caminho: Path = CODIGOS_CONFERIDOS) -> pd.DataFrame:
@@ -190,8 +262,9 @@ def com_codigos_conferidos(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Os tickers e os emissores do FCA mais os da tabela conferida, com a coluna `origem`.
 
-    O código conferido vale do 1º ao último mês em que aparece nas carteiras dos fundos. O que o FCA
-    já traz com o mesmo CNPJ fica como está; com outro CNPJ, vira conflito (ninguém fica com ele).
+    O código conferido vale do 1º mês em que aparece nas carteiras dos fundos até o fim do ano do
+    último (como valia antes da data de entrega do FCA). O que o FCA já traz com o mesmo CNPJ fica
+    como está; com outro CNPJ, vira conflito (ninguém fica com ele).
     """
     novos = pd.DataFrame(
         {
@@ -201,6 +274,7 @@ def com_codigos_conferidos(
             "valor_mobiliario": conferidos["valor_mobiliario"],
             "primeiro_visto": conferidos["primeiro_no_cda"],
             "ultimo_visto": conferidos["ultimo_no_cda"],
+            "valido_ate": conferidos["ultimo_no_cda"] + pd.offsets.YearBegin(),
             "inicio_negociacao": pd.NaT,
             "fim_negociacao": pd.NaT,
             "origem": PELOS_CODIGOS_CONFERIDOS,
@@ -220,6 +294,7 @@ def com_codigos_conferidos(
             empresa=("empresa", "last"),
             primeiro_ano=("primeiro_visto", lambda d: d.dt.year.min()),
             ultimo_ano=("ultimo_visto", lambda d: d.dt.year.max()),
+            primeiro_recebido_em=("primeiro_visto", "min"),
         )
         .reset_index()
         .assign(origem=PELOS_CODIGOS_CONFERIDOS)

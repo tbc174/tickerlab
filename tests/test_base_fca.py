@@ -1,9 +1,11 @@
 """Código permanente da ação (série 3 da base de ML, PR 3): FCA da CVM e o emissor do ISIN.
 
-Amostras reais recortadas (`tests/arquivos/cvm/fca/`: Petrobras, Via, CSN e Itaú nos FCA de 2010,
-2018, 2021 e 2026). Achados do inventário de 14/10/2026: até 2017 o FCA não traz ticker; a troca de
+Amostras reais recortadas (`tests/arquivos/cvm/fca/`: Petrobras, Via, CSN, Itaú e BTG nos FCA de
+2010, 2018, 2021 e 2026, com o arquivo de valores mobiliários e o principal, que traz a data de entrega
+de cada versão). Achados do inventário de 14/10/2026: até 2017 o FCA não traz ticker; a troca de
 ticker regrava a mesma linha (a Via foi VVAR3, VIIA3 e BHIA3 com a mesma data de início); a CSN
-informa "4030" no lugar do ticker.
+informa "4030" no lugar do ticker. Série 4, PR 1: a CVM publica os valores mobiliários só da versão
+mais nova de cada formulário, e a data que vale é a entrega dessa versão (`DT_RECEB`).
 """
 
 from datetime import date
@@ -16,11 +18,12 @@ from base import fca
 from base.cadastro import tickers_no_tempo
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fca"
-PETROBRAS, VIA, CSN, ITAU = (
+PETROBRAS, VIA, CSN, ITAU, BTG = (
     "33.000.167/0001-01",
     "33.041.260/0652-90",
     "33.042.730/0001-04",
     "60.872.504/0001-23",
+    "30.306.294/0001-45",
 )
 
 
@@ -40,7 +43,7 @@ def test_le_valores_mobiliarios_de_cada_layout(ano):
     tabela = _ler(ano)
     assert list(tabela.columns) == list(fca.COLUNAS)
     assert set(tabela["referencia"].dt.year) == {ano}
-    assert set(tabela["cnpj"]) <= {PETROBRAS, VIA, CSN, ITAU}
+    assert set(tabela["cnpj"]) <= {PETROBRAS, VIA, CSN, ITAU, BTG}
 
 
 def test_ate_2017_o_fca_nao_traz_ticker():
@@ -93,19 +96,70 @@ def test_emissor_de_duas_empresas_e_conflito_e_nao_resolve(valores):
     assert emissores.loc[emissores["emissor"] == "PETR", "conflito"].all()
 
 
-def test_ticker_trocado_resolve_pela_data(valores):
-    """A Via foi VVAR3 (FCA de 2018), VIIA3 (2021) e BHIA3 (2026): cada um vale nos anos em que foi
-    informado, sempre para o mesmo CNPJ."""
-    zips = [
-        (PASTA / f"fca_cia_aberta_{a}.zip").read_bytes()
-        for a in (2010, 2018, 2021, 2026)
-    ]
-    tickers = tickers_no_tempo(zips)
-    assert fca.resolver_ticker(tickers, "VVAR3", date(2018, 6, 30)) == VIA
-    assert fca.resolver_ticker(tickers, "VIIA3", date(2021, 6, 30)) == VIA
+def _tickers_das_amostras() -> pd.DataFrame:
+    return tickers_no_tempo(
+        [
+            (PASTA / f"fca_cia_aberta_{a}.zip").read_bytes()
+            for a in (2010, 2018, 2021, 2026)
+        ]
+    )
+
+
+def test_ticker_trocado_resolve_pela_data():
+    """A Via foi VVAR3 (FCA de 2018), VIIA3 (2021) e BHIA3 (2026): cada um vale depois da entrega do
+    formulário que o trouxe, sempre para o mesmo CNPJ."""
+    tickers = _tickers_das_amostras()
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2019, 6, 30)) == VIA
+    assert fca.resolver_ticker(tickers, "VIIA3", date(2022, 6, 30)) == VIA
     assert fca.resolver_ticker(tickers, "BHIA3", date(2026, 6, 30)) == VIA
     assert fca.resolver_ticker(tickers, "VVAR3", date(2026, 6, 30)) is None
-    assert fca.resolver_ticker(tickers, "BHIA3", date(2018, 6, 30)) is None
+    assert fca.resolver_ticker(tickers, "BHIA3", date(2019, 6, 30)) is None
+
+
+# --- data de entrega do FCA (série 4, PR 1): o FCA de um ano chega meses depois da data de
+# referência (mediana de 138 dias de 2010 a 2026); valer pelo ano olhava o futuro
+def test_cada_linha_tem_a_data_de_entrega(valores):
+    """`recebido_em` é o `DT_RECEB` do documento da linha (`ID_Documento` = `ID_DOC`)."""
+    assert valores["recebido_em"].notna().all()
+    por_documento = valores.drop_duplicates("id_documento").set_index("id_documento")
+    assert por_documento.loc["156276", "recebido_em"] == pd.Timestamp("2026-04-17")
+    # o Itaú entregou duas versões do FCA de 2026; a CVM publica os valores só da 2ª (08/05), e
+    # é a data dela que vale, não a da 1ª (09/04)
+    itau = valores.query("cnpj == @ITAU and referencia.dt.year == 2026")
+    assert set(itau["id_documento"]) == {"156921"}
+    assert set(itau["recebido_em"]) == {pd.Timestamp("2026-05-08")}
+
+
+def test_ticker_so_vale_depois_da_entrega_do_fca():
+    """O VIIA3 veio no FCA de 2021 da Via, versão 4, entregue em 30/12/2021: antes disso, quem valia
+    era o VVAR3. E o VVAR3 só vale da entrega da versão 5 do FCA de 2018 (28/02/2019), a única cujo
+    conteúdo a CVM publica: pelo ano, valeria em 2018 inteiro, com o que só se soube em 2019."""
+    tickers = _tickers_das_amostras()
+    assert fca.resolver_ticker(tickers, "VIIA3", date(2021, 12, 29)) is None
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2021, 12, 29)) == VIA
+    assert fca.resolver_ticker(tickers, "VIIA3", date(2021, 12, 30)) == VIA
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2021, 12, 30)) is None
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2019, 2, 27)) is None
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2019, 2, 28)) == VIA
+    via = tickers[tickers["cnpj"] == VIA].set_index("codigo")
+    assert via.loc["VVAR3", "primeiro_visto"] == pd.Timestamp("2019-02-28")
+    assert via.loc["VVAR3", "valido_ate"] == pd.Timestamp("2021-12-30")
+    assert pd.isna(via.loc["BHIA3", "valido_ate"])  # ainda no FCA mais recente
+
+
+def test_fca_sem_o_arquivo_principal_e_erro():
+    """Sem a data de entrega não há "como era na data": melhor parar do que valer pelo ano."""
+    import io
+    import zipfile
+
+    with zipfile.ZipFile(PASTA / "fca_cia_aberta_2026.zip") as original:
+        nome = "fca_cia_aberta_valor_mobiliario_2026.csv"
+        conteudo = original.read(nome)
+    so_valores = io.BytesIO()
+    with zipfile.ZipFile(so_valores, "w") as arquivo:
+        arquivo.writestr(nome, conteudo)
+    with pytest.raises(ValueError, match="principal"):
+        fca.ler_valores_mobiliarios(so_valores.getvalue())
 
 
 def test_fica_a_versao_mais_nova_de_cada_documento():
@@ -139,7 +193,6 @@ def test_ticker_e_emissor_pelo_codigo_informado(codigo, ticker, emissor):
 
 # --- códigos fora do formato no FCA, conferidos um a um (série 3, PR 8): o BTG informa "000000" nas
 # units e por isso ficava sem ticker, sem emissor e sem ligação com o IF.data e com os fundos
-BTG = "30.306.294/0001-45"
 
 
 def test_tabela_de_codigos_conferidos_e_valida():

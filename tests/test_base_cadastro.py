@@ -48,14 +48,37 @@ FCA_CABECALHO = (
     "Composicao_BDR_Unit;Mercado;Sigla_Entidade_Administradora;Entidade_Administradora;"
     "Data_Inicio_Negociacao;Data_Fim_Negociacao;Segmento;Data_Inicio_Listagem;Data_Fim_Listagem"
 )
+PRINCIPAL_CABECALHO = (
+    "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;CATEG_DOC;ID_DOC;DT_RECEB;LINK_DOC"
+)
 
 
-def _fca(ano, *linhas):
+def _documento(cnpj, data, versao):
+    """O número do documento na CVM: um por companhia, referência e versão."""
+    return f"{cnpj[:2]}{data[:4]}{versao}"
+
+
+def _fca(ano, *linhas, recebido=None, vazios=()):
+    """Um zip do FCA com o arquivo de valores mobiliários e o principal.
+
+    `recebido`: data de entrega de cada documento (padrão: 31/05 do ano). `vazios`: documentos
+    (cnpj, data, versão) que estão no arquivo principal sem nenhuma linha de valores mobiliários.
+    """
+    recebido = recebido or f"{ano}-05-31"
+    documentos = {tuple(linha.split(";")[:3]) for linha in linhas} | set(vazios)
+    principal = [
+        f"{cnpj};{data};{versao};EMPRESA;1;FCA;{_documento(cnpj, data, versao)};{recebido};"
+        for cnpj, data, versao in sorted(documentos)
+    ]
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w") as z:
-        texto = "\n".join([FCA_CABECALHO, *linhas])
         z.writestr(
-            f"fca_cia_aberta_valor_mobiliario_{ano}.csv", texto.encode("latin-1")
+            f"fca_cia_aberta_valor_mobiliario_{ano}.csv",
+            "\n".join([FCA_CABECALHO, *linhas]).encode("latin-1"),
+        )
+        z.writestr(
+            f"fca_cia_aberta_{ano}.csv",
+            "\n".join([PRINCIPAL_CABECALHO, *principal]).encode("latin-1"),
         )
     return saida.getvalue()
 
@@ -64,8 +87,8 @@ def _linha(
     cnpj, data, codigo, nome="EMPRESA", inicio="", fim="", mercado="Bolsa", versao=1
 ):
     return (
-        f"{cnpj};{data};{versao};1;{nome};Ações Ordinárias;;;{codigo};;{mercado};B3;B3 S.A.;"
-        f"{inicio};{fim};Novo Mercado;;"
+        f"{cnpj};{data};{versao};{_documento(cnpj, data, versao)};{nome};Ações Ordinárias;;;"
+        f"{codigo};;{mercado};B3;B3 S.A.;{inicio};{fim};Novo Mercado;;"
     )
 
 
@@ -82,33 +105,61 @@ def test_tickers_com_inicio_e_fim_e_historico_inteiro():
     tickers = tickers_no_tempo(arquivos).set_index("codigo")
     assert sorted(tickers.index) == ["AAAA3", "ABCD3", "BBBB3"]  # balcão fica fora
     assert tickers.loc["BBBB3", "fim_negociacao"] == pd.Timestamp("2023-11-30")
-    assert tickers.loc["BBBB3", "ultimo_visto"] == pd.Timestamp("2022-01-01")
-    assert tickers.loc["AAAA3", "primeiro_visto"] == pd.Timestamp("2020-01-01")
-    assert tickers.loc["AAAA3", "ultimo_visto"] == pd.Timestamp(
-        "2022-01-01"
-    )  # trocou de código
+    # as datas são as entregas dos formulários, não as datas de referência
+    assert tickers.loc["BBBB3", "ultimo_visto"] == pd.Timestamp("2022-05-31")
+    assert pd.isna(tickers.loc["BBBB3", "valido_ate"])  # no último FCA que a B entregou
+    assert tickers.loc["AAAA3", "primeiro_visto"] == pd.Timestamp("2020-05-31")
+    assert tickers.loc["AAAA3", "ultimo_visto"] == pd.Timestamp("2022-05-31")
+    # trocou de código: deixa de valer na entrega do FCA que veio sem ele
+    assert tickers.loc["AAAA3", "valido_ate"] == pd.Timestamp("2024-05-31")
     assert tickers.loc["AAAA3", "empresa"] == "EMPRESA A NOVA"  # o nome mais recente
     assert pd.isna(tickers.loc["ABCD3", "fim_negociacao"])
 
 
+def test_reentrega_de_formulario_antigo_nao_volta_o_ticker():
+    """Vale o FCA de referência mais nova entre os já entregues: a 2ª versão do FCA de 2021, entregue
+    depois do de 2022 (acontece: 46 vezes de 2010 a 2026), não traz o código antigo de volta."""
+    arquivos = [
+        _fca(2021, _linha(A, "2021-01-01", "AAAA3", versao=2), recebido="2022-08-01"),
+        _fca(2022, _linha(A, "2022-01-01", "ABCD3"), recebido="2022-05-31"),
+    ]
+    tickers = tickers_no_tempo(arquivos).set_index("codigo")
+    assert list(tickers.index) == ["ABCD3"]
+    assert pd.isna(tickers.loc["ABCD3", "valido_ate"])
+
+
+def test_formulario_sem_valores_mobiliarios_nao_encerra_o_ticker():
+    """264 FCA de empresas com ação na bolsa (CCR, BRF, Cielo em 2011) vêm sem nenhuma linha de valores
+    mobiliários e depois voltam a ter: o vazio é falta de dado, não saída da bolsa."""
+    arquivos = [
+        _fca(2020, _linha(A, "2020-01-01", "AAAA3")),
+        _fca(2021, vazios=[(A, "2021-01-01", "1")]),
+        _fca(2022, _linha(A, "2022-01-01", "AAAA3")),
+    ]
+    tickers = tickers_no_tempo(arquivos)
+    assert len(tickers) == 1
+    assert tickers["primeiro_visto"].iloc[0] == pd.Timestamp("2020-05-31")
+    assert pd.isna(tickers["valido_ate"].iloc[0])
+
+
+def test_codigo_que_some_e_volta_tem_dois_periodos():
+    arquivos = [
+        _fca(2020, _linha(A, "2020-01-01", "AAAA3")),
+        _fca(2021, _linha(A, "2021-01-01", "ABCD3")),
+        _fca(2022, _linha(A, "2022-01-01", "AAAA3")),
+    ]
+    aaaa3 = tickers_no_tempo(arquivos).query("codigo == 'AAAA3'")
+    assert aaaa3["primeiro_visto"].tolist() == [
+        pd.Timestamp("2020-05-31"),
+        pd.Timestamp("2022-05-31"),
+    ]
+    assert aaaa3["valido_ate"].iloc[0] == pd.Timestamp("2021-05-31")
+
+
 def test_ticker_com_numero_no_emissor_entra_no_tempo():
     """Série 3, PR 5: B3SA3 (a própria B3) não casava com "4 letras e 1 ou 2 números" e sumia."""
-    import io
-    import zipfile
-
-    from base.cadastro import tickers_no_tempo
-
-    csv = (
-        "CNPJ_Companhia;Data_Referencia;Versao;ID_Documento;Nome_Empresarial;Valor_Mobiliario;"
-        "Sigla_Classe_Acao_Preferencial;Classe_Acao_Preferencial;Codigo_Negociacao;"
-        "Composicao_BDR_Unit;Mercado;Sigla_Entidade_Administradora;Entidade_Administradora;"
-        "Data_Inicio_Negociacao;Data_Fim_Negociacao;Segmento;Data_Inicio_Listagem;Data_Fim_Listagem\n"
-        "09.346.601/0001-25;2019-01-01;1;1;B3 S.A.;Ações Ordinárias;;;B3SA3;;Bolsa;B3;B3;"
-        "2007-10-26;;Novo Mercado;2007-10-26;\n"
+    b3 = "09.346.601/0001-25"
+    conteudo = _fca(
+        2019, _linha(b3, "2019-01-01", "B3SA3", nome="B3 S.A.", inicio="2007-10-26")
     )
-    conteudo = io.BytesIO()
-    with zipfile.ZipFile(conteudo, "w") as arquivo:
-        arquivo.writestr(
-            "fca_cia_aberta_valor_mobiliario_2019.csv", csv.encode("latin-1")
-        )
-    assert list(tickers_no_tempo([conteudo.getvalue()])["codigo"]) == ["B3SA3"]
+    assert list(tickers_no_tempo([conteudo])["codigo"]) == ["B3SA3"]
