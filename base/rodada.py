@@ -165,16 +165,23 @@ def _r6(atual: Arquivo, seguinte: Arquivo) -> list[Achado]:
 def esperadas(
     anterior: pd.DataFrame, cadastro: pd.DataFrame, limite: pd.Timestamp
 ) -> pd.DataFrame:
-    """Quem deve o documento: entregou o do ano anterior e estava registrada no prazo."""
+    """Quem deve o documento: entregou o do ano anterior e estava registrada no prazo.
+
+    Leva a `uf` da sede quando o cadastro a tem (o prazo do ITR de 2024 muda no RS).
+    """
     registrada = (cadastro["registro"].isna() | (cadastro["registro"] <= limite)) & (
         cadastro["cancelamento"].isna() | (cadastro["cancelamento"] > limite)
     )
     ativas = set(cadastro.loc[registrada, "cnpj"])
-    return (
+    devem = (
         anterior[anterior["cnpj"].isin(ativas)][["cnpj", "empresa"]]
         .drop_duplicates("cnpj")
         .reset_index(drop=True)
     )
+    if "uf" in cadastro:
+        uf = cadastro.drop_duplicates("cnpj").set_index("cnpj")["uf"]
+        devem["uf"] = devem["cnpj"].map(uf).fillna("")
+    return devem
 
 
 def _r8(

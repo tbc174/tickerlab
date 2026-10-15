@@ -9,6 +9,7 @@ import { ConversorDeMoedas } from "./ConversorDeMoedas";
 import { CorrecaoPelaInflacao } from "./CorrecaoPelaInflacao";
 import { CustoDaTaxa, RecuperarAQueda } from "./CustoDasTaxas";
 import { JuroReal, TaxaEquivalente } from "./JuroReal";
+import { QuantoDaria } from "./QuantoDaria";
 import { RendaFixa } from "./RendaFixa";
 import { SorteEmSerie } from "./SorteEmSerie";
 import { ViverDeRenda } from "./ViverDeRenda";
@@ -26,6 +27,7 @@ export const FERRAMENTAS = {
   juroReal: JuroReal,
   equivalente: TaxaEquivalente,
   inflacao: CorrecaoPelaInflacao,
+  quantoDaria: QuantoDaria,
 } satisfies Record<string, ComponentType>;
 
 export type NomeDaFerramenta = keyof typeof FERRAMENTAS;

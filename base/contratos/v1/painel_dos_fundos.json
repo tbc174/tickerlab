@@ -1,0 +1,64 @@
+{
+  "tabela": "painel_dos_fundos",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês da carteira",
+      "unidade": "data (dia)"
+    },
+    "emissor": {
+      "descricao": "As 4 posições do emissor (só no painel por emissor)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da empresa (só no painel por empresa)",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "comprado, emprestado ou vendido",
+      "unidade": "texto"
+    },
+    "fundos": {
+      "descricao": "Quantos fundos tinham a posição (cada fundo uma vez por empresa)",
+      "unidade": "número inteiro"
+    },
+    "valor": {
+      "descricao": "Valor de mercado somado",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "quantidade": {
+      "descricao": "Quantidade somada",
+      "unidade": "ações"
+    },
+    "compras": {
+      "descricao": "Valor comprado no mês, somado",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "vendas": {
+      "descricao": "Valor vendido no mês, somado",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o total era público (como era na data)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "emissor",
+    "tipo"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal, montado de novo quando o CDA ou o FCA mudam",
+  "atraso": "O do CDA: `disponivel_em` é a maior data das posições somadas (o total só era público quando a última posição dele ficou pública)"
+}

@@ -489,3 +489,27 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o COTAHIST do dia deixa de fora registros tardios (lançados às 19h); o boletim PR (BVBG.086) os inclui e bate com o arquivo (PETR4 em 18/09: 31.339 negócios no arquivo e no PR, 31.321 no COTAHIST).
 - **Solução:** conferir contra o PR; usar o COTAHIST só para saber se houve pregão, quem é do à vista e o que falta no PR. Lição: antes de culpar o dado, conferir com uma segunda fonte oficial.
 - **Data:** 14/10/2026
+
+## Carga da IEX falha num feriado dos EUA com `404 Not Found`
+- **Sintoma:** a carga dos 12 meses parou em `2026-09-07: FALHOU ... 404 Client Error: Not Found for url: .../hist?date=20260907` e a marca virou `.falha`.
+- **Causa:** o coletor pedia todos os dias de segunda a sexta e contava que, num feriado, a IEX respondesse uma lista vazia. Ela responde **404**. 07/09/2026 foi Labor Day.
+- **Solução:** pedir só os pregões da NYSE (`src/calendario_nyse.py`: feriados pelas regras da bolsa e os fechamentos extras numa lista). Um 404 num dia de pregão continua sendo falha, para o alarme mostrar um fechamento que o calendário ainda não conhece (#264).
+- **Data:** 14/10/2026
+
+## GDELT responde `429 Too Many Requests` mesmo esperando entre os pedidos
+- **Sintoma:** a coleta do GDELT falhava todo dia com 429, até no primeiro pedido depois de 20 horas parada, mesmo com 6 s entre os pedidos (o GDELT pede 5 s).
+- **Causa:** em outubro/2026 o GDELT deixava passar só **um pedido a cada 10 a 20 minutos**, de casa e também do VPS (não era bloqueio só do endereço de casa). Pedindo um dia por vez, a carga desde 2017 levaria meses.
+- **Solução:** pedir 30 dias de uma vez (com mais de 3 dias o GDELT responde um ponto por dia, com os mesmos números), pausa de 60 s, esperas de 2 a 15 min no 429 e no máximo 4 horas por rodada (#264, #276). Para medir sem gastar a cota: um pedido só, com `curl -w "%{http_code}"`.
+- **Data:** 15/10/2026
+
+## Dia do GDELT guardado "pela metade"
+- **Sintoma:** 02/01/2017 aparecia na base com 5 notícias; os dias vizinhos tinham ~600.
+- **Causa:** o pedido de um dia (`startdatetime=20170101000000&enddatetime=20170102000000`) devolve também o ponto da meia-noite do dia seguinte. Esse quarto de hora virava uma linha do dia 2, e a rodada seguinte começava no dia 3.
+- **Solução:** guardar só os dias do período pedido (`dia < fim`) e, quando há dias novos, pedir de novo o último dia guardado (#276).
+- **Data:** 15/10/2026
+
+## Programa `ots` (OpenTimestamps) quebra no Windows com `TypeError: argument of type 'NoneType' is not iterable`
+- **Sintoma:** depois de `pip install opentimestamps-client`, qualquer comando `ots` parava em `bitcoin/core/key.py`, dentro de `ctypes.cdll.LoadLibrary`.
+- **Causa:** a `python-bitcoinlib` procura a biblioteca do OpenSSL (`libeay32`/`libssl`) por `ctypes` ao importar `bitcoin.rpc`; no Windows ela não acha e passa `None` como nome do arquivo. A biblioteca `opentimestamps` (o núcleo) não importa essa parte e funciona.
+- **Solução:** usar a biblioteca `opentimestamps` direto em `scripts/ancorar_base.py` (o recibo `.ots` é o mesmo formato); o programa `ots` fica para quem confere com Linux e um nó do Bitcoin (#287).
+- **Data:** 15/10/2026

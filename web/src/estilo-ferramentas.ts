@@ -114,6 +114,9 @@ export function cssFerramentas(): string {
 .darf-do-ano td input { width: 7.5rem; padding: .4rem .5rem; border-radius: 8px; border: 1px solid var(--linha-forte);
   background: var(--fundo); color: var(--texto); font: 500 .88rem "Manrope", sans-serif; text-align: right; }
 .darf-do-ano ~ .ferramenta-resultado { grid-column: 1 / -1; }
+.faixa-de-posicao-regua { stroke: var(--linha-forte); stroke-width: 6; stroke-linecap: round; }
+.faixa-de-posicao-marca { stroke: var(--apagado); stroke-width: 2; }
+.faixa-de-posicao-sua { fill: var(--serie-1); stroke: var(--fundo); stroke-width: 3; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }

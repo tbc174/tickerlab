@@ -592,18 +592,20 @@ def r8_atraso(
 ) -> list[Achado]:
     """DFP ou ITR não entregue com o prazo vencido, ou entregue depois do prazo.
 
-    `esperadas`: empresas que deviam entregar (`cnpj`, `empresa`), **registradas e ativas na data do
-    prazo** (quem se registrou depois ou foi cancelado antes não deve o documento). `entregas`:
+    `esperadas`: empresas que deviam entregar (`cnpj`, `empresa` e, se houver, `uf` da sede, que muda
+    o prazo em 2024 no RS), **registradas e ativas na data do prazo** (quem se registrou depois ou foi
+    cancelado antes não deve o documento). `entregas`:
     `cnpj`, `documento`, `referencia`, `recebido_em` (vale a primeira entrega). `hoje` corta o
     futuro.
     """
-    limite = pd.Timestamp(prazo(documento, referencia.date()))
+    ufs = esperadas.set_index("cnpj")["uf"] if "uf" in esperadas else pd.Series()
     do_documento = entregas[
         (entregas["documento"] == documento) & (entregas["referencia"] == referencia)
     ]
     primeira = do_documento.groupby("cnpj")["recebido_em"].min()
     achados = []
     for cnpj in esperadas["cnpj"]:
+        limite = pd.Timestamp(prazo(documento, referencia.date(), uf=ufs.get(cnpj)))
         recebido = primeira.get(cnpj)
         if recebido is not None and recebido > limite:
             dias = (recebido - limite).days

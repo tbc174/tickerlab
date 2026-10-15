@@ -27,7 +27,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base.parquet import conferir_tabela
+from base.parquet import conferir_tabela, e_tabela_da_base
 from base.ponto_no_tempo import SEM_DATA, conferir_pasta
 from src import acervo
 from src.banco.modelo import coletas
@@ -149,7 +149,7 @@ def _origem(
 ) -> Origem:
     if url.startswith(TABELAS_CONFERIDAS):
         return _origem_no_repositorio(url, sha256)
-    if url.endswith(".parquet") and "://" not in url:
+    if e_tabela_da_base(url):
         return _origem_derivada(conexao, url, sha256, tabela, caminho)
     coleta = conexao.execute(
         sa.select(coletas.c.baixado_em, coletas.c.caminho_do_original)

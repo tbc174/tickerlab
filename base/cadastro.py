@@ -57,7 +57,8 @@ def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
     """Cada registro de companhia aberta, com as datas de registro e de cancelamento.
 
     Colunas: cnpj, empresa, registro, cancelamento (vazio = ativa), motivo_cancelamento, situacao,
-    setor. Sem as colunas de data (arquivo antigo ou recortado), vale a situação: cancelada conta
+    setor e uf (da sede, em maiúsculas; vazia no arquivo antigo). A UF é a do cadastro de hoje: uma
+    mudança de sede não deixa rastro. Sem as colunas de data (arquivo antigo ou recortado), vale a situação: cancelada conta
     como cancelada desde sempre.
     """
     bruto = _ler_csv(conteudo_csv)
@@ -74,6 +75,7 @@ def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
             "motivo_cancelamento": _texto(bruto, "MOTIVO_CANCEL"),
             "situacao": situacao,
             "setor": _texto(bruto, "SETOR_ATIV"),
+            "uf": _texto(bruto, "UF").str.upper(),
         }
     )
 

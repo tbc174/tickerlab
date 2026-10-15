@@ -118,3 +118,24 @@ def test_original_novo_com_o_mesmo_conteudo_nao_vira_versao(
     assert resultado == IGUAL
     assert not list(tmp_path.glob("202503.v*"))
     assert (tmp_path / "202503.json").read_text(encoding="utf-8") == antes
+
+
+def test_tabela_de_entrada_nova_com_o_mesmo_conteudo_atualiza_as_origens(
+    tabela, tmp_path, monkeypatch
+):
+    """Achado na série 4 (PR 1 no servidor): os emissores do FCA ganharam uma coluna e o painel dos
+    fundos saiu igual; ficava o manifesto antigo, que apontava para a versão anterior dos emissores,
+    já sobrescrita (a tabela de entrada não guarda versões) e a linhagem quebrava. Com uma tabela da
+    base entre as origens, o manifesto passa a apontar as origens novas, sem versão nova."""
+    from base.parquet import IGUAL, gravar_com_versoes, origens_gravadas
+
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "painel"
+    antes = [*ORIGENS, {"url": "fca/emissores.parquet", "sha256": "aa" * 32}]
+    depois = [*ORIGENS, {"url": "fca/emissores.parquet", "sha256": "bb" * 32}]
+    gravar_com_versoes(lambda: tabela, destino, antes, ["cnpj", "ano"])
+    resultado = gravar_com_versoes(lambda: tabela, destino, depois, ["cnpj", "ano"])
+    assert resultado == IGUAL
+    assert not list(tmp_path.glob("painel.v*"))
+    assert origens_gravadas(destino) == depois
+    assert conferir_tabela(tmp_path / "painel.parquet")

@@ -13,6 +13,7 @@ from base.contas_cvm import COLUNAS, LeituraDeContas, ler_indice
 from base.rodada import (
     REGRAS_DE_UM_DOCUMENTO,
     Arquivo,
+    esperadas,
     principais,
     regras_de_um_documento,
     regras_entre_documentos,
@@ -286,3 +287,15 @@ def test_ler_indice_traz_o_link_de_cada_versao():
         "http://enet/1",
         "http://enet/2",
     ]
+
+
+def test_esperadas_levam_a_uf_da_sede():
+    anterior = pd.DataFrame([{"cnpj": A, "empresa": "A"}, {"cnpj": B, "empresa": "B"}])
+    cadastro = pd.DataFrame(
+        [
+            {"cnpj": A, "registro": pd.NaT, "cancelamento": pd.NaT, "uf": "RS"},
+            {"cnpj": B, "registro": pd.NaT, "cancelamento": pd.NaT, "uf": ""},
+        ]
+    )
+    devem = esperadas(anterior, cadastro, pd.Timestamp("2024-05-15"))
+    assert devem.set_index("cnpj")["uf"].to_dict() == {A: "RS", B: ""}
