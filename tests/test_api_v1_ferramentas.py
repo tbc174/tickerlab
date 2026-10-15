@@ -55,7 +55,7 @@ def chamadas(monkeypatch):
     monkeypatch.setattr(ponte_dados, "obter_arquivo", arquivo)
     monkeypatch.setattr(ponte_dados, "obter_curva_do_yahoo", yahoo)
     monkeypatch.setattr(ferramentas, "hoje", lambda: HOJE)
-    monkeypatch.setattr(ponte_dados, "_hora_agora", lambda: 12)
+    monkeypatch.setattr(ponte_dados, "hora_agora", lambda: 12)
     monkeypatch.delenv("TICKERLAB_PONTE_COM_YAHOO", raising=False)
     ferramentas.LIMITE_POR_IP.zerar()
     ferramentas.CALCULADOS.clear()

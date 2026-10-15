@@ -35,7 +35,8 @@ class Linha:
     quantidade: float  # depois da operação
     custo_total: float
     preco_medio: float | None  # None sem ações
-    resultado: float | None  # só na venda: lucro (+) ou prejuízo (−)
+    # na venda: lucro (+) ou prejuízo (−); na amortização, o que passou do custo (ganho de capital)
+    resultado: float | None
 
 
 def calcular(operacoes: list[Operacao]) -> list[Linha]:
@@ -57,10 +58,17 @@ def calcular(operacoes: list[Operacao]) -> list[Linha]:
         elif op.tipo == "desdobro":
             quantidade += op.quantidade
         elif op.tipo == "amortizacao":
-            custo = max(custo - op.preco * quantidade, 0.0)
+            if quantidade <= _QUASE_ZERO:
+                raise ValueError("Amortização sem cotas na posição.")
+            abatido = op.preco * quantidade
+            if abatido > custo:  # o que passa do custo é ganho de capital
+                resultado = abatido - custo
+            custo = max(custo - abatido, 0.0)
         else:  # venda ou grupamento: saem ações
             if op.quantidade > quantidade + _QUASE_ZERO:
                 raise ValueError("Saem mais ações do que há na posição.")
+            if op.tipo == "venda" and quantidade <= _QUASE_ZERO:
+                raise ValueError("Venda sem ações na posição.")
             if op.tipo == "venda":
                 custo_da_venda = custo / quantidade * op.quantidade
                 resultado = op.quantidade * op.preco - op.custos - custo_da_venda

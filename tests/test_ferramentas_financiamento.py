@@ -93,3 +93,14 @@ def test_as_amortizacoes_pagam_exatamente_o_valor(
     pago = sum(lin.amortizacao + lin.extra for lin in linhas)
     assert pago == pytest.approx(valor, rel=1e-9)
     assert len(linhas) <= meses
+
+
+@pytest.mark.parametrize(
+    ("valor", "taxa", "meses"), [(300_000, 0.10, 600), (1_000_000, 0.03, 420)]
+)
+def test_a_price_quita_o_saldo_no_ultimo_mes_mesmo_com_taxa_alta(valor, taxa, meses):
+    # (1 + taxa)^−meses some na precisão do float: sem quitar no fim, sobrava saldo
+    linhas = fin.tabela("price", valor, taxa, meses)
+    assert len(linhas) == meses
+    assert linhas[-1].saldo == 0
+    assert sum(linha.amortizacao for linha in linhas) == pytest.approx(valor)

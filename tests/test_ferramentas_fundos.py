@@ -113,3 +113,9 @@ def test_sem_taxas_o_fundo_fica_um_pouco_abaixo_do_cdb():
     )[0]
     assert r.liquido < cdb.liquido
     assert r.liquido > cdb.liquido * 0.99
+
+
+def test_prazo_ate_10_anos_como_o_cdb_da_comparacao():
+    assert fundos.PRAZO_MAXIMO * fundos.DIAS_POR_MES <= renda_fixa.DIAS_MAXIMOS
+    with pytest.raises(ValueError, match="prazo"):
+        _fundo(meses=fundos.PRAZO_MAXIMO + 1)

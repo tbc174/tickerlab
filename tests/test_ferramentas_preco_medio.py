@@ -92,3 +92,20 @@ def test_vender_uma_parte_nunca_muda_o_preco_medio(compras, dados):
         return
     depois = pm.calcular([*ops, _op("venda", vendida, 1.0)])[-1]
     assert depois.preco_medio == pytest.approx(antes.preco_medio)
+
+
+def test_venda_sem_acoes_na_posicao_e_recusada():
+    with pytest.raises(ValueError, match="posição"):
+        pm.calcular([_op("venda", 0, 10)])
+
+
+def test_amortizacao_sem_cotas_e_recusada():
+    with pytest.raises(ValueError, match="cotas"):
+        pm.calcular([_op("amortizacao", 0, 5)])
+
+
+def test_amortizacao_acima_do_custo_zera_o_custo_e_o_que_passa_e_ganho():
+    # 10 cotas a R$ 20 (custo 200); amortização de R$ 30 por cota = 300: 100 passam do custo
+    linhas = pm.calcular([_op("compra", 10, 20), _op("amortizacao", 0, 30)])
+    assert linhas[-1].custo_total == 0
+    assert linhas[-1].resultado == pytest.approx(100)

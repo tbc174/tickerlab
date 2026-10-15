@@ -43,6 +43,11 @@ describe("ler a simulação do endereço", () => {
     expect(lerDoEndereco("?q5=abc", exemplo)).toEqual(exemplo);
   });
 
+  it("campo de número que a pessoa apagou volta vazio, não com o exemplo", () => {
+    expect(lerDoEndereco("?capital=&tipo=simples", EXEMPLO, OPCOES).capital).toBe("");
+    expect(lerDoEndereco("?tipo=", EXEMPLO, OPCOES).tipo).toBe("composto"); // escolha vazia não vale
+  });
+
   it("com prefixo, duas ferramentas na mesma página não se misturam", () => {
     expect(lerDoEndereco("?a.taxa=5&taxa=7", { taxa: "1" }, {}, "a.")).toEqual({ taxa: "5" });
   });

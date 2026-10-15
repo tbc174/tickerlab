@@ -84,7 +84,7 @@ export function PrecoMedio() {
   return (
     <div className="ferramenta">
       <form className="ferramenta-campos ferramenta-largo darf-do-ano preco-medio" onSubmit={(evento) => evento.preventDefault()}>
-        <p className="apagado">Uma operação por linha, na ordem em que foram feitas. Linha sem quantidade fica de fora.</p>
+        <p className="apagado">Uma operação por linha, na ordem em que foram feitas. Linha sem quantidade fica de fora. No desdobro e no grupamento, a quantidade é a que entra ou sai, não o total novo.</p>
         <div className="ferramenta-rolagem">
           <table>
             <thead>
@@ -96,7 +96,7 @@ export function PrecoMedio() {
                 <th scope="col">Taxas (R$)</th>
                 <th scope="col">Fica com</th>
                 <th scope="col">Preço médio</th>
-                <th scope="col">Resultado da venda</th>
+                <th scope="col">Resultado</th>
               </tr>
             </thead>
             <tbody>
@@ -143,7 +143,7 @@ export function PrecoMedio() {
                 <dd>{formatarReais(fim.custo_total)}</dd>
               </div>
               <div>
-                <dt>Resultado das vendas</dt>
+                <dt>Resultado (vendas e amortização acima do custo)</dt>
                 <dd>{formatarReais(resultadoDasVendas)}</dd>
               </div>
             </dl>

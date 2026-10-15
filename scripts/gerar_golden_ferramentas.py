@@ -395,6 +395,20 @@ CASOS: list[tuple[str, list[Any]]] = [
     ),
     ("preco_medio.calcular", [[{"tipo": "aluguel", "quantidade": 10, "preco": 10}]]),
     ("preco_medio.calcular", [[{"tipo": "compra", "quantidade": -1, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "venda", "quantidade": 0, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "amortizacao", "quantidade": 0, "preco": 5}]]),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 20},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 30},
+            ]
+        ],
+    ),
+    ("financiamento.tabela", ["price", 300000, 0.10, 600]),
+    ("financiamento.tabela", ["price", 1000000, 0.03, 420]),
+    ("fundos.simular", [1000, 121, 0.1, 1, 0, 0, True, 1]),
     ("moedas.converter", [100, "USD", "BRL", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [1000, "BRL", "EUR", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [250, "GBP", "JPY", COTACOES_DE_EXEMPLO]),

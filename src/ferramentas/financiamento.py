@@ -75,6 +75,9 @@ def tabela(
         else:
             parcela = min(parcela_fixa, saldo + juros)
             amortizacao = parcela - juros
+        if mes == meses:  # quita o que sobrou: com taxa alta, o float deixa resíduo
+            amortizacao = saldo
+            parcela = amortizacao + juros
         saldo -= amortizacao
         extra = 0.0
         if mes == extra_mes and extra_valor > 0 and saldo > _QUASE_ZERO:

@@ -15,7 +15,8 @@ function aceita(valor: string, exemplo: string, opcoes?: readonly string[]): boo
   if (opcoes) return opcoes.includes(valor);
   // exemplo vazio é campo de número ainda não preenchido; texto sem lista de opções não se lê
   if (exemplo !== "" && lerNumero(exemplo) === null) return false;
-  return valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null;
+  // vazio é o campo que a pessoa apagou: volta vazio, não com o número do exemplo
+  return valor === "" || (valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null);
 }
 
 export function lerDoEndereco<T extends Campos>(busca: string, exemplo: T, opcoes: Opcoes<T> = {}, prefixo = ""): T {

@@ -760,8 +760,11 @@ export function PaginaDoPrecoMedio() {
       <p>
         Na bonificação, as ações novas entram com o valor que a empresa atribuiu a cada uma (ele vem
         no aviso aos acionistas). Desdobro e grupamento só mudam a quantidade: o custo total é o
-        mesmo. A amortização de um FII devolve parte do capital: o custo cai, e a quantidade de cotas
-        fica igual.
+        mesmo. Na quantidade, ponha as ações que entram ou saem, não o total novo: com 100 ações num
+        desdobro de 1 para 2, entram 100; num grupamento de 10 para 1, saem 90. A amortização de um
+        FII devolve parte do capital: o custo cai, e a quantidade de cotas fica igual. Se ela passar
+        do custo que sobrava, o custo fica em zero e o que passou aparece como resultado: é ganho de
+        capital, e o administrador pode reter imposto (confira no informe do fundo).
       </p>
     </PaginaDeFerramenta>
   );

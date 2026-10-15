@@ -19,7 +19,7 @@ export interface Linha {
   quantidade: number;
   custo_total: number;
   preco_medio: number | null;
-  resultado: number | null; // só na venda
+  resultado: number | null; // na venda; na amortização, o que passou do custo (ganho de capital)
 }
 
 /** A posição depois de cada operação, na ordem em que foram feitas. */
@@ -42,9 +42,13 @@ export function calcular(operacoes: Operacao[]): Linha[] {
     } else if (op.tipo === "desdobro") {
       quantidade += op.quantidade;
     } else if (op.tipo === "amortizacao") {
-      custo = Math.max(custo - preco * quantidade, 0);
+      if (quantidade <= QUASE_ZERO) throw new RangeError("Amortização sem cotas na posição.");
+      const abatido = preco * quantidade;
+      if (abatido > custo) resultado = abatido - custo; // o que passa do custo é ganho de capital
+      custo = Math.max(custo - abatido, 0);
     } else {
       if (op.quantidade > quantidade + QUASE_ZERO) throw new RangeError("Saem mais ações do que há na posição.");
+      if (op.tipo === "venda" && quantidade <= QUASE_ZERO) throw new RangeError("Venda sem ações na posição.");
       if (op.tipo === "venda") {
         const custoDaVenda = (custo / quantidade) * op.quantidade;
         resultado = op.quantidade * preco - custos - custoDaVenda;

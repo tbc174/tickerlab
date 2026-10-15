@@ -191,26 +191,28 @@ function Resposta({
           }))}
           formatarValor={formatarReais}
         />
-        <table className="ferramenta-comparacao">
-          <thead>
-            <tr>
-              <th scope="col">Ativo</th>
-              <th scope="col">Hoje</th>
-              <th scope="col">Retorno</th>
-              <th scope="col">Em poder de compra de {mesPorExtenso(dados.desde)}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dados.ativos.map((a) => (
-              <tr key={a.ativo}>
-                <th scope="row">{a.nome}</th>
-                <td>{formatarReais(a.valor_final)}</td>
-                <td>{formatarPorcentagem(a.retorno)}</td>
-                <td>{formatarReais(a.valor_real)}</td>
+        <div className="ferramenta-rolagem">
+          <table className="ferramenta-comparacao">
+            <thead>
+              <tr>
+                <th scope="col">Ativo</th>
+                <th scope="col">Hoje</th>
+                <th scope="col">Retorno</th>
+                <th scope="col">Em poder de compra de {mesPorExtenso(dados.desde)}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {dados.ativos.map((a) => (
+                <tr key={a.ativo}>
+                  <th scope="row">{a.nome}</th>
+                  <td>{formatarReais(a.valor_final)}</td>
+                  <td>{formatarPorcentagem(a.retorno)}</td>
+                  <td>{formatarReais(a.valor_real)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <ul className="ferramenta-notas apagado">
           {dados.indisponiveis.map((i) => (
             <li key={i.nome}>

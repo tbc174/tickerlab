@@ -2,6 +2,8 @@
 // renda fixa pelo CDI, com taxa de administração, de performance e come-cotas, contra um CDB do mesmo
 // prazo e do mesmo CDI (o de hoje, parado). O fundo vira "um CDB de X% do CDI"; o gráfico mostra o
 // que cada um daria, já sem IR, se resgatasse no fim de cada mês.
+import { useMemo } from "react";
+import { regrasDeImposto } from "../conteudo";
 import { Compartilhar } from "./Compartilhar";
 import { Alternativas, CampoComDeslizante, Resultado } from "./campos";
 import { ComDadosDoBc, DataDoDado } from "./Carregando";
@@ -14,6 +16,7 @@ import { SERIES } from "../graficos/cores";
 import { GraficoDoTempo } from "../graficos/GraficoDoTempo";
 
 type Prazo = "longo" | "curto";
+const { come_cotas_longo, come_cotas_curto } = regrasDeImposto.fundos;
 
 export const EXEMPLO_DO_FUNDO = {
   valor: "10.000",
@@ -112,7 +115,8 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
   const conta = calcularFundo(campos, cdi.ao_ano, mesInicial);
   const erro = typeof conta === "string" ? conta : null;
   const r = typeof conta === "string" ? null : conta;
-  const linhas = r ? curvas(campos, cdi.ao_ano, mesInicial) : null;
+  // refeita só quando um campo muda: são até 120 simulações, uma por mês do prazo
+  const linhas = useMemo(() => (r ? curvas(campos, cdi.ao_ano, mesInicial) : null), [r !== null, campos, cdi.ao_ano, mesInicial]);
   const diferenca = r ? r.fundo.liquido - r.cdb.liquido : 0;
   const equivalente =
     r && r.equivalente !== null ? `um CDB de ${formatarPorcentagem(r.equivalente, 1)} do CDI` : "mais de 1.000% do CDI";
@@ -120,7 +124,7 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
     <div className="ferramenta">
       <form className="ferramenta-campos" onSubmit={(evento) => evento.preventDefault()}>
         <CampoComDeslizante rotulo="Valor aplicado" antes="R$" valor={campos.valor} aoMudar={mudar("valor")} min={1000} max={1000000} passo={1000} />
-        <CampoComDeslizante rotulo="Prazo" valor={campos.anos} aoMudar={mudar("anos")} min={1} max={30} passo={1} depois={<span>anos</span>} />
+        <CampoComDeslizante rotulo="Prazo" valor={campos.anos} aoMudar={mudar("anos")} min={1} max={PRAZO_MAXIMO / 12} passo={1} depois={<span>anos</span>} />
         <fieldset className="ferramenta-cenario-b">
           <legend>O fundo</legend>
           <CampoComDeslizante rotulo="Rende" valor={campos.fundo} aoMudar={mudar("fundo")} min={50} max={150} passo={1} depois={<span>% do CDI, antes das taxas</span>} />
@@ -146,8 +150,8 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
             rotulo="Tipo"
             valor={campos.prazo}
             opcoes={[
-              ["longo", "Longo prazo (15%)"],
-              ["curto", "Curto prazo (20%)"],
+              ["longo", `Longo prazo (${formatarPorcentagem(come_cotas_longo, 0)})`],
+              ["curto", `Curto prazo (${formatarPorcentagem(come_cotas_curto, 0)})`],
             ]}
             aoMudar={mudar("prazo")}
           />
@@ -176,27 +180,29 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
                 <dd>{formatarReais(r.fundo.come_cotas)}</dd>
               </div>
             </dl>
-            <table className="ferramenta-comparacao">
-              <thead>
-                <tr>
-                  <th scope="col" />
-                  <th scope="col">Fundo</th>
-                  <th scope="col">CDB</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th scope="row">IR no resgate</th>
-                  <td>{formatarReais(r.fundo.ir_no_resgate)}</td>
-                  <td>{formatarReais(r.cdb.imposto + r.cdb.iof)}</td>
-                </tr>
-                <tr>
-                  <th scope="row">Líquido</th>
-                  <td>{formatarReais(r.fundo.liquido)}</td>
-                  <td>{formatarReais(r.cdb.liquido)}</td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="ferramenta-rolagem">
+              <table className="ferramenta-comparacao">
+                <thead>
+                  <tr>
+                    <th scope="col" />
+                    <th scope="col">Fundo</th>
+                    <th scope="col">CDB</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row">IR no resgate</th>
+                    <td>{formatarReais(r.fundo.ir_no_resgate)}</td>
+                    <td>{formatarReais(r.cdb.imposto + r.cdb.iof)}</td>
+                  </tr>
+                  <tr>
+                    <th scope="row">Líquido</th>
+                    <td>{formatarReais(r.fundo.liquido)}</td>
+                    <td>{formatarReais(r.cdb.liquido)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </>
         ) : null}
         <DataDoDado data={cdi.data} rotulo={`CDI de ${formatarPorcentagem(cdi.ao_ano)} ao ano, de`} />

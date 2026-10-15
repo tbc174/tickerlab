@@ -1,5 +1,6 @@
 """As curvas da ferramenta "Quanto daria? Foi sorte?" (ADR 0070): o valor de R$ 1 no começo de cada
-mês, em cada ativo, guardadas na memória até o dia seguinte.
+mês, em cada ativo, guardadas na memória (o arquivo de dados por uma hora; as curvas do Yahoo até o
+dia seguinte).
 
 - CDI, poupança, IPCA e dólar: do arquivo de dados abertos das ferramentas
   (`/dados/ferramentas.json`, gerado pelo cron do VPS a partir do Banco Central), e não do BC ao vivo:
@@ -113,7 +114,8 @@ def curva_do_yahoo(ativo: str, dolar: pd.Series) -> pd.Series:
 
 
 class CacheDoDia:
-    """Guarda o que deu certo até o dia seguinte; a falha não fica guardada."""
+    """Guarda o que deu certo enquanto a chave (o dia, ou o dia e a hora) não muda; a falha não fica
+    guardada."""
 
     def __init__(self) -> None:
         self._guardado: dict[str, tuple[object, object]] = {}
@@ -145,14 +147,16 @@ def baixar_arquivo(buscar: Buscar = requests.get) -> dict:
         ) from erro
 
 
-def _hora_agora() -> int:
+def hora_agora() -> int:
+    """A hora de Brasília, para o cache que troca a cada hora (o arquivo e a rota que o usa). Logo
+    depois do cron, a hora em curso ainda serve o arquivo anterior: as séries são mensais."""
     return datetime.now(FUSO).hour
 
 
 def obter_arquivo(hoje: date, buscar: Buscar = requests.get) -> dict:
     """O arquivo de dados, buscado de novo a cada hora: o cron do VPS o atualiza duas vezes por dia
     (9h10 e 13h40), e guardar o do dia inteiro prenderia a rota nos dados da madrugada."""
-    return CACHE.obter("arquivo", (hoje, _hora_agora()), lambda: baixar_arquivo(buscar))
+    return CACHE.obter("arquivo", (hoje, hora_agora()), lambda: baixar_arquivo(buscar))
 
 
 def obter_curva_do_yahoo(ativo: str, hoje: date, dolar: pd.Series) -> pd.Series:

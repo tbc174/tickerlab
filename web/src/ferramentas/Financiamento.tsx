@@ -111,32 +111,34 @@ export function Financiamento() {
       </form>
       <Resultado rotulo="A Price paga a mais de juros que o SAC" principal={r ? formatarReais(diferenca) : ""} erro={erro}>
         {r ? (
-          <table className="ferramenta-comparacao">
-            <thead>
-              <tr>
-                <th scope="col" />
-                <th scope="col">SAC</th>
-                <th scope="col">Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(
-                [
-                  ["Primeira parcela", (l: Linha[]) => formatarReais(l[0].parcela)],
-                  ["Última parcela", (l: Linha[]) => formatarReais(l[l.length - 1].parcela)],
-                  ["Total de juros", (l: Linha[]) => formatarReais(somar(l, "juros"))],
-                  ["Total pago", (l: Linha[]) => formatarReais(somar(l, "parcela") + somar(l, "extra"))],
-                  ["Prazo", (l: Linha[]) => `${formatarNumero(l.length)} meses`],
-                ] as [string, (l: Linha[]) => string][]
-              ).map(([nome, valor]) => (
-                <tr key={nome}>
-                  <th scope="row">{nome}</th>
-                  <td>{valor(r.sac)}</td>
-                  <td>{valor(r.price)}</td>
+          <div className="ferramenta-rolagem">
+            <table className="ferramenta-comparacao">
+              <thead>
+                <tr>
+                  <th scope="col" />
+                  <th scope="col">SAC</th>
+                  <th scope="col">Price</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {(
+                  [
+                    ["Primeira parcela", (l: Linha[]) => formatarReais(l[0].parcela)],
+                    ["Última parcela", (l: Linha[]) => formatarReais(l[l.length - 1].parcela)],
+                    ["Total de juros", (l: Linha[]) => formatarReais(somar(l, "juros"))],
+                    ["Total pago", (l: Linha[]) => formatarReais(somar(l, "parcela") + somar(l, "extra"))],
+                    ["Prazo", (l: Linha[]) => `${formatarNumero(l.length)} meses`],
+                  ] as [string, (l: Linha[]) => string][]
+                ).map(([nome, valor]) => (
+                  <tr key={nome}>
+                    <th scope="row">{nome}</th>
+                    <td>{valor(r.sac)}</td>
+                    <td>{valor(r.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : null}
       </Resultado>
       {r ? (

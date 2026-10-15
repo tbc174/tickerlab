@@ -58,6 +58,11 @@ export function tabela(
       parcela = Math.min(parcelaFixa, saldo + juros);
       amortizacao = parcela - juros;
     }
+    if (mes === meses) {
+      // quita o que sobrou: com taxa alta, o float deixa resíduo
+      amortizacao = saldo;
+      parcela = amortizacao + juros;
+    }
     saldo -= amortizacao;
     let extra = 0;
     if (mes === extraMes && extraValor > 0 && saldo > QUASE_ZERO) {

@@ -170,7 +170,7 @@ def _do_cache(
     desde: date, dia: date
 ) -> tuple[list[ponte.ResultadoDoAtivo], list[IndisponivelV1]]:
     # por hora, como o arquivo de dados (o cron o atualiza às 9h10 e às 13h40)
-    momento = (dia, ponte_dados._hora_agora())
+    momento = (dia, ponte_dados.hora_agora())
     chave = (f"{desde:%Y-%m}", momento)
     with _TRAVA:
         if chave in CALCULADOS:

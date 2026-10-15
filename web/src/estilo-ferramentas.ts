@@ -90,7 +90,7 @@ export function cssFerramentas(): string {
 .ferramenta-velho { color: var(--atencao); }
 .ferramenta-comparacao { font-variant-numeric: tabular-nums; }
 .ferramenta-comparacao td { text-align: right; }
-.ferramenta-numeros + .ferramenta-comparacao { margin-top: 1rem; }
+.ferramenta-numeros + .ferramenta-rolagem { margin-top: 1rem; }
 .ferramenta-compartilhar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
 .ferramenta-compartilhar [role="status"] { font-size: .85rem; }
 .ferramenta-link-manual { display: grid; gap: .25rem; width: 100%; font-size: .85rem; }
@@ -105,7 +105,8 @@ export function cssFerramentas(): string {
   border-radius: 10px; }
 .ferramenta-cenario-b legend { padding: 0 .35rem; font-weight: 700; font-size: .88rem; color: var(--apagado); }
 .ferramenta-notas { margin: 1rem 0 0; padding-left: 1.1rem; font-size: .85rem; display: grid; gap: .35rem; }
-.ferramenta-largo .ferramenta-comparacao { margin-top: 1rem; width: 100%; }
+.ferramenta-largo .ferramenta-rolagem { margin-top: 1rem; }
+.ferramenta-largo .ferramenta-comparacao { width: 100%; }
 .ferramenta-inverter { justify-self: start; }
 /* DARF do ano: a grade rola de lado dentro dela, sem empurrar a página */
 .ferramenta-rolagem { overflow-x: auto; max-width: 100%; }
@@ -126,9 +127,9 @@ export function cssFerramentas(): string {
   .ferramenta-resultado { position: static; }
 }
 @media (max-width: 480px) {
-  /* a comparação de três colunas cabe em 320px (os valores em reais não quebram a linha); */
-  /* a que tiver mais colunas (a renda fixa) rola dentro dela, não a página */
-  .ferramenta-comparacao { font-size: .85rem; display: block; max-width: 100%; overflow-x: auto; }
+  /* a comparação de três colunas cabe em 375px (os valores em reais não quebram a linha); a que
+     tiver mais colunas (a renda fixa) rola dentro da .ferramenta-rolagem, não a página */
+  .ferramenta-comparacao { font-size: .85rem; }
   .ferramenta-comparacao th, .ferramenta-comparacao td { padding: .5rem .2rem; }
   .ferramenta { padding: .75rem; }
   .ferramenta-resultado { padding: 1rem .85rem; }

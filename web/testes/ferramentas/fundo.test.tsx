@@ -73,7 +73,14 @@ describe("fundo ou CDB", () => {
     expect(conta({ ...EXEMPLO_DO_FUNDO, performance: "20" }).fundo.taxa_de_performance).toBe(0);
   });
 
-  it("prazo acima de 30 anos mostra a mensagem", () => {
-    expect(calcularFundo({ ...EXEMPLO_DO_FUNDO, anos: "31" }, CDI, MES)).toBe("O prazo vai até 30 anos.");
+  it("o prazo vai até 10 anos, o máximo do CDB da comparação", () => {
+    expect(typeof calcularFundo({ ...EXEMPLO_DO_FUNDO, anos: "10" }, CDI, MES)).toBe("object");
+    expect(calcularFundo({ ...EXEMPLO_DO_FUNDO, anos: "11" }, CDI, MES)).toBe("O prazo vai até 10 anos.");
+  });
+
+  it("os rótulos do tipo de fundo mostram a alíquota do come-cotas", async () => {
+    await abrir();
+    expect(screen.getByLabelText("Longo prazo (15%)")).toBeTruthy();
+    expect(screen.getByLabelText("Curto prazo (20%)")).toBeTruthy();
   });
 });

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from src import regras_de_imposto as regras
 
-PRAZO_MAXIMO = 360  # meses: 30 anos
+PRAZO_MAXIMO = 120  # meses: 10 anos, o prazo máximo do CDB da comparação (renda_fixa)
 MESES_DO_COME_COTAS = (5, 11)  # maio e novembro
 DIAS_POR_MES = 365 / 12
 DIAS_UTEIS_POR_ANO = 252
@@ -37,9 +37,6 @@ class Resultado:
     vezes_do_come_cotas: int  # as vezes em que o come-cotas levou dinheiro
     ir_no_resgate: float
     liquido: float
-    patrimonio_por_mes: list[
-        float
-    ]  # no fim de cada mês, depois das taxas e do come-cotas
 
 
 def _conferir(
@@ -127,7 +124,6 @@ def simular(
     chave = "come_cotas_longo_prazo" if longo_prazo else "come_cotas_curto_prazo"
     aliquota_do_come_cotas = float(regras.valor(chave))
     carteira = _Carteira(valor, valor, valor)
-    por_mes: list[float] = []
     for mes in range(1, meses + 1):
         carteira.render(rendimento, rendimento_do_cdi, fica)
         e_come_cotas = _mes_do_calendario(mes_inicial, mes) in MESES_DO_COME_COTAS
@@ -136,8 +132,7 @@ def simular(
             if e_come_cotas:
                 carteira.reter_come_cotas(aliquota_do_come_cotas)
             carteira.referencia = carteira.patrimonio  # começa outro semestre
-        por_mes.append(carteira.patrimonio)
-    return _resgatar(carteira, valor, meses, longo_prazo, por_mes)
+    return _resgatar(carteira, valor, meses, longo_prazo)
 
 
 def _resgatar(
@@ -145,7 +140,6 @@ def _resgatar(
     valor: float,
     meses: int,
     longo_prazo: bool,
-    por_mes: list[float],
 ) -> Resultado:
     """O IR do resgate: a tabela do fundo sobre todo o ganho, menos o que o come-cotas já levou."""
     dias = round(meses * DIAS_POR_MES)
@@ -160,5 +154,4 @@ def _resgatar(
         carteira.vezes,
         ir_no_resgate,
         carteira.patrimonio - ir_no_resgate,
-        por_mes,
     )

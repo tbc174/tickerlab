@@ -158,9 +158,9 @@ def test_o_arquivo_de_dados_e_buscado_de_novo_a_cada_hora(monkeypatch):
     monkeypatch.setattr(
         ponte_dados, "baixar_arquivo", lambda buscar: buscas.append(1) or ARQUIVO
     )
-    monkeypatch.setattr(ponte_dados, "_hora_agora", lambda: 8)
+    monkeypatch.setattr(ponte_dados, "hora_agora", lambda: 8)
     ponte_dados.obter_arquivo(date(2026, 10, 16))
     ponte_dados.obter_arquivo(date(2026, 10, 16))
-    monkeypatch.setattr(ponte_dados, "_hora_agora", lambda: 10)
+    monkeypatch.setattr(ponte_dados, "hora_agora", lambda: 10)
     ponte_dados.obter_arquivo(date(2026, 10, 16))
     assert len(buscas) == 2

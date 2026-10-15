@@ -4,7 +4,7 @@
 import { regrasDeImposto } from "../../conteudo";
 import { aliquotaDaRendaFixa } from "./renda_fixa";
 
-export const PRAZO_MAXIMO = 360; // meses: 30 anos
+export const PRAZO_MAXIMO = 120; // meses: 10 anos, o prazo máximo do CDB da comparação (renda_fixa)
 const MESES_DO_COME_COTAS = [5, 11]; // maio e novembro
 export const DIAS_POR_MES = 365 / 12;
 const DIAS_UTEIS_POR_ANO = 252;
@@ -18,7 +18,6 @@ export interface Resultado {
   vezes_do_come_cotas: number; // as vezes em que o come-cotas levou dinheiro
   ir_no_resgate: number;
   liquido: number;
-  patrimonio_por_mes: number[];
 }
 
 /** A alíquota do IR no resgate: a tabela da renda fixa (longo prazo) ou a do curto prazo. */
@@ -104,7 +103,6 @@ export function simular(
   const { come_cotas_longo, come_cotas_curto } = regrasDeImposto.fundos;
   const aliquotaDoComeCotas = longoPrazo ? come_cotas_longo : come_cotas_curto;
   const carteira = new Carteira(valor);
-  const porMes: number[] = [];
   for (let mes = 1; mes <= meses; mes++) {
     carteira.render(rendimento, rendimentoDoCdi, fica);
     const eComeCotas = MESES_DO_COME_COTAS.includes(mesDoCalendario(mesInicial, mes));
@@ -113,7 +111,6 @@ export function simular(
       if (eComeCotas) carteira.reterComeCotas(aliquotaDoComeCotas);
       carteira.referencia = carteira.patrimonio; // começa outro semestre
     }
-    porMes.push(carteira.patrimonio);
   }
   const dias = Math.round(meses * DIAS_POR_MES);
   const ganho = carteira.patrimonio - valor + carteira.comeCotas;
@@ -127,6 +124,5 @@ export function simular(
     vezes_do_come_cotas: carteira.vezes,
     ir_no_resgate: irNoResgate,
     liquido: carteira.patrimonio - irNoResgate,
-    patrimonio_por_mes: porMes,
   };
 }
