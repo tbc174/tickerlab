@@ -1,5 +1,5 @@
-"""Ancora uma versão da base no Bitcoin pelo OpenTimestamps e confere o recibo (protótipo do rascunho
-da ADR 0078; a raiz de Merkle vem de `base/ancoragem.py`).
+"""Ancora uma versão da base no Bitcoin pelo OpenTimestamps e confere o recibo (ADR 0078;
+a raiz de Merkle vem de `base/ancoragem.py`).
 
     python -m scripts.ancorar_base montar ancoras/base-2026-10-15.json --rotulo 2026-10-15 --pasta <acervo>/base
     python -m scripts.ancorar_base montar ancoras/prereg-m3-v1.json --rotulo m3-v1 --arquivo docs/pre-registro.md

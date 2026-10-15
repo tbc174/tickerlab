@@ -1,7 +1,6 @@
 # Âncora da base no Bitcoin (OpenTimestamps)
 
-Protótipo do rascunho da ADR 0078 (ainda **proposta**: nada é carimbado de verdade até ela ser
-aceita). Código: `base/ancoragem.py` (raiz de Merkle) e `scripts/ancorar_base.py` (recibo `.ots`).
+ADR 0078 (aceita em 15/10/2026). Código: `base/ancoragem.py` (raiz de Merkle) e `scripts/ancorar_base.py` (recibo `.ots`).
 
 ## Para que serve
 

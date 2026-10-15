@@ -1,4 +1,4 @@
-"""Ancoragem da base (rascunho da ADR 0078): a raiz de Merkle de uma versão da base é determinística,
+"""Ancoragem da base (ADR 0078): a raiz de Merkle de uma versão da base é determinística,
 qualquer mudança num manifesto muda a raiz, a prova de inclusão de uma tabela confere sem as outras
 tabelas, e nenhuma folha é de registro individual de pessoa (LGPD)."""
 

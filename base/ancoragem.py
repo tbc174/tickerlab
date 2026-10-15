@@ -1,4 +1,4 @@
-"""Âncora de uma versão da base: a raiz de Merkle dos manifestos (rascunho da ADR 0078; ADR 0055,
+"""Âncora de uma versão da base: a raiz de Merkle dos manifestos (ADR 0078; ADR 0055,
 exigências 9 e 13).
 
 Cada tabela da base já tem um manifesto (`base/parquet.py`) com o SHA-256 do conteúdo e as origens.

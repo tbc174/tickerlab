@@ -1,4 +1,4 @@
-"""Recibo do OpenTimestamps para a âncora da base (`scripts/ancorar_base.py`, rascunho da ADR 0078):
+"""Recibo do OpenTimestamps para a âncora da base (`scripts/ancorar_base.py`, ADR 0078):
 só um hash sai da máquina, o recibo é desta âncora, e a data vem do bloco do Bitcoin. Calendários e
 exploradores do Bitcoin são dublês: o teste não usa a internet."""
 
