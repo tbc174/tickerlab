@@ -162,6 +162,20 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
                 ? `O CDB de ${campos.cdb}% do CDI deixa ${formatarReais(-diferenca)} a mais no bolso.`
                 : `O fundo deixa ${formatarReais(diferenca)} a mais no bolso que o CDB de ${campos.cdb}% do CDI.`}
             </p>
+            <dl className="ferramenta-numeros">
+              <div>
+                <dt>O fundo cobrou de administração</dt>
+                <dd>{formatarReais(r.fundo.taxa_de_administracao)}</dd>
+              </div>
+              <div>
+                <dt>De performance</dt>
+                <dd>{formatarReais(r.fundo.taxa_de_performance)}</dd>
+              </div>
+              <div>
+                <dt>O come-cotas levou ({r.fundo.vezes_do_come_cotas}×)</dt>
+                <dd>{formatarReais(r.fundo.come_cotas)}</dd>
+              </div>
+            </dl>
             <table className="ferramenta-comparacao">
               <thead>
                 <tr>
@@ -172,27 +186,12 @@ function Comparacao({ dados }: { dados: DadosDoBc }) {
               </thead>
               <tbody>
                 <tr>
-                  <th scope="row">Taxa de administração</th>
-                  <td>{formatarReais(r.fundo.taxa_de_administracao)}</td>
-                  <td>—</td>
-                </tr>
-                <tr>
-                  <th scope="row">Taxa de performance</th>
-                  <td>{formatarReais(r.fundo.taxa_de_performance)}</td>
-                  <td>—</td>
-                </tr>
-                <tr>
-                  <th scope="row">Come-cotas ({r.fundo.vezes_do_come_cotas}×)</th>
-                  <td>{formatarReais(r.fundo.come_cotas)}</td>
-                  <td>—</td>
-                </tr>
-                <tr>
                   <th scope="row">IR no resgate</th>
                   <td>{formatarReais(r.fundo.ir_no_resgate)}</td>
                   <td>{formatarReais(r.cdb.imposto + r.cdb.iof)}</td>
                 </tr>
                 <tr>
-                  <th scope="row">Líquido no resgate</th>
+                  <th scope="row">Líquido</th>
                   <td>{formatarReais(r.fundo.liquido)}</td>
                   <td>{formatarReais(r.cdb.liquido)}</td>
                 </tr>
