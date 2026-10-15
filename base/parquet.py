@@ -83,6 +83,11 @@ def conferir_tabela(arquivo: Path) -> bool:
 GRAVADO, IGUAL = "gravado", "igual"
 
 
+def e_tabela_da_base(url: str) -> bool:
+    """A origem é outra tabela da base (`cda/2025.parquet`), não um arquivo coletado ou conferido."""
+    return url.endswith(".parquet") and "://" not in url
+
+
 def origens_gravadas(destino: Path) -> list[dict[str, str]] | None:
     """As origens anotadas no manifesto de `destino` (None se ainda não foi gravado)."""
     manifesto = destino.with_suffix(".json")
@@ -123,6 +128,10 @@ def gravar_com_versoes(
     `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado. Com
     origens novas e o mesmo conteúdo (o BC devolve o cadastro do IF.data com outros bytes), fica a
     tabela atual com o original anterior, que continua no acervo: versão só quando o dado muda.
+
+    Se alguma origem é uma tabela da base (tabela derivada, como o painel dos fundos), a anterior não
+    fica guardada (é sobrescrita na carga dela): com o mesmo conteúdo, o manifesto passa a apontar as
+    origens novas, sem versão nova, para a linhagem continuar chegando aos originais (série 4).
     """
     anteriores = origens_gravadas(destino)
     if anteriores == origens:
@@ -130,6 +139,8 @@ def gravar_com_versoes(
     tabela = montar()
     if anteriores is not None:
         if _hash_gravado(destino) == hash_da_tabela(tabela, ordem):
+            if any(e_tabela_da_base(o["url"]) for o in origens):
+                gravar_tabela(tabela, destino, origens, ordem)
             return IGUAL
         guardar_versao_anterior(destino)
     gravar_tabela(tabela, destino, origens, ordem)
