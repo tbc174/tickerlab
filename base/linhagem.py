@@ -9,6 +9,13 @@ todos os elos existem e conferem.
 Uma tabela conferida à mão (`base/conferidas/`, série 3, PR 8) não tem coleta: o elo é o arquivo no
 repositório com o SHA-256 anotado (cada linha dela diz a fonte e quando foi conferida). Se a tabela
 mudar depois, a base que a usou deixa de conferir até ser remontada (a versão antiga fica no Git).
+
+Uma tabela **derivada** (série 4, PR 2: o painel dos fundos, a ligação dos bancos) vem de outras
+tabelas da base, não de originais: a origem é o endereço de um Parquet (`cda/2025.parquet`,
+`base/fca/emissores.parquet`), procurado a partir da pasta da tabela e subindo, com o SHA-256 do
+conteúdo (o `sha256_da_tabela` do manifesto da entrada) ou dos bytes do arquivo. A linhagem segue o
+manifesto da entrada até os originais; se a entrada foi regravada depois, a derivada não confere até
+ser remontada. Ciclo, ou mais de `PROFUNDIDADE_MAXIMA` tabelas encadeadas, é erro.
 """
 
 import hashlib
@@ -27,6 +34,9 @@ from src.banco.modelo import coletas
 
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parent.parent
 TABELAS_CONFERIDAS = "base/conferidas/"
+PROFUNDIDADE_MAXIMA = (
+    5  # tabelas derivadas encadeadas (hoje: painel ← emissores ← FCA = 1)
+)
 
 
 @dataclass(frozen=True)
@@ -39,6 +49,16 @@ class Origem:
         bool  # o arquivo do acervo (ou do repositório) ainda tem o SHA-256
     )
     no_repositorio: bool = False  # tabela conferida à mão, sem coleta
+    derivada: "Linhagem | None" = None  # a origem é uma tabela da base: a linhagem dela
+
+    @property
+    def tem_procedencia(self) -> bool:
+        """Há de onde veio: coleta registrada, arquivo do repositório ou tabela da base."""
+        return (
+            self.baixado_em is not None
+            or self.no_repositorio
+            or (self.derivada is not None and self.derivada.completa)
+        )
 
 
 @dataclass(frozen=True)
@@ -54,11 +74,17 @@ class Linhagem:
             self.versao_do_codigo is not None
             and self.base_confere
             and bool(self.origens)
-            and all(
-                (o.baixado_em is not None or o.no_repositorio) and o.original_confere
-                for o in self.origens
-            )
+            and all(o.tem_procedencia and o.original_confere for o in self.origens)
         )
+
+    def originais(self) -> list[Origem]:
+        """As origens do fim do caminho (arquivos coletados e tabelas conferidas), atravessando as
+        tabelas derivadas."""
+        return [
+            folha
+            for o in self.origens
+            for folha in ([o] if o.derivada is None else o.derivada.originais())
+        ]
 
 
 def _ano_da_linha(linha: pd.Series) -> str:
@@ -79,9 +105,52 @@ def _origem_no_repositorio(url: str, sha256: str) -> Origem:
     return Origem(url, sha256, None, url, confere, no_repositorio=True)
 
 
-def _origem(conexao: sa.Connection, url: str, sha256: str) -> Origem:
+def _achar_tabela(url: str, tabela: Path) -> Path | None:
+    """O Parquet da origem, procurado a partir da pasta da tabela que a usou, subindo."""
+    return next(
+        (pasta / url for pasta in tabela.parents if (pasta / url).is_file()), None
+    )
+
+
+def _entrada_confere(entrada: Path, sha256: str) -> bool:
+    """A tabela de entrada ainda é a que a derivada leu (pelo conteúdo ou pelos bytes)."""
+    if not conferir_tabela(entrada):
+        return False
+    anotado = json.loads(entrada.with_suffix(".json").read_text(encoding="utf-8"))
+    return sha256 in (
+        anotado.get("sha256_da_tabela"),
+        hashlib.sha256(entrada.read_bytes()).hexdigest(),
+    )
+
+
+def _origem_derivada(
+    conexao: sa.Connection,
+    url: str,
+    sha256: str,
+    tabela: Path,
+    caminho: tuple[Path, ...],
+) -> Origem:
+    entrada = _achar_tabela(url, tabela)
+    if entrada is None:
+        return Origem(url, sha256, None, None, False)
+    derivada = _linhagem_da_tabela(conexao, entrada, caminho)
+    return Origem(
+        url, sha256, None, str(entrada), _entrada_confere(entrada, sha256),
+        derivada=derivada,
+    )  # fmt: skip
+
+
+def _origem(
+    conexao: sa.Connection,
+    url: str,
+    sha256: str,
+    tabela: Path,
+    caminho: tuple[Path, ...],
+) -> Origem:
     if url.startswith(TABELAS_CONFERIDAS):
         return _origem_no_repositorio(url, sha256)
+    if url.endswith(".parquet") and "://" not in url:
+        return _origem_derivada(conexao, url, sha256, tabela, caminho)
     coleta = conexao.execute(
         sa.select(coletas.c.baixado_em, coletas.c.caminho_do_original)
         .where(coletas.c.sha256 == sha256, coletas.c.situacao == "ok")
@@ -96,7 +165,11 @@ def _origem(conexao: sa.Connection, url: str, sha256: str) -> Origem:
 
 
 def _linhagem(
-    conexao: sa.Connection, nome: str, manifesto: Path, confere: bool
+    conexao: sa.Connection,
+    nome: str,
+    manifesto: Path,
+    confere: bool,
+    caminho: tuple[Path, ...] = (),
 ) -> Linhagem:
     anotado = json.loads(manifesto.read_text(encoding="utf-8"))
     return Linhagem(
@@ -104,9 +177,26 @@ def _linhagem(
         versao_do_codigo=anotado.get("versao_do_codigo"),
         base_confere=confere,
         origens=[
-            _origem(conexao, o["url"], o["sha256"]) for o in anotado.get("origens", [])
+            _origem(conexao, o["url"], o["sha256"], manifesto, caminho)
+            for o in anotado.get("origens", [])
         ],
     )
+
+
+def _linhagem_da_tabela(
+    conexao: sa.Connection, arquivo: Path, caminho: tuple[Path, ...]
+) -> Linhagem:
+    arquivo = arquivo.resolve()
+    if arquivo in caminho:
+        raise ValueError(f"ciclo na linhagem: {arquivo} já está no caminho")
+    if len(caminho) > PROFUNDIDADE_MAXIMA:
+        raise ValueError(
+            f"profundidade da linhagem passa de {PROFUNDIDADE_MAXIMA} tabelas: {arquivo}"
+        )
+    return _linhagem(
+        conexao, arquivo.stem, arquivo.with_suffix(".json"), conferir_tabela(arquivo),
+        (*caminho, arquivo),
+    )  # fmt: skip
 
 
 def linhagem_da_linha(
@@ -120,7 +210,6 @@ def linhagem_da_linha(
 
 
 def linhagem_da_tabela(conexao: sa.Connection, arquivo: Path) -> Linhagem:
-    """O mesmo para uma tabela gravada por `base/parquet.py::gravar_tabela` (todas as linhas)."""
-    return _linhagem(
-        conexao, arquivo.stem, arquivo.with_suffix(".json"), conferir_tabela(arquivo)
-    )
+    """O mesmo para uma tabela gravada por `base/parquet.py::gravar_tabela` (todas as linhas),
+    seguindo as tabelas de entrada das derivadas até os originais."""
+    return _linhagem_da_tabela(conexao, arquivo, ())
