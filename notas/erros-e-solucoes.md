@@ -507,3 +507,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o pedido de um dia (`startdatetime=20170101000000&enddatetime=20170102000000`) devolve também o ponto da meia-noite do dia seguinte. Esse quarto de hora virava uma linha do dia 2, e a rodada seguinte começava no dia 3.
 - **Solução:** guardar só os dias do período pedido (`dia < fim`) e, quando há dias novos, pedir de novo o último dia guardado (#276).
 - **Data:** 15/10/2026
+
+## Programa `ots` (OpenTimestamps) quebra no Windows com `TypeError: argument of type 'NoneType' is not iterable`
+- **Sintoma:** depois de `pip install opentimestamps-client`, qualquer comando `ots` parava em `bitcoin/core/key.py`, dentro de `ctypes.cdll.LoadLibrary`.
+- **Causa:** a `python-bitcoinlib` procura a biblioteca do OpenSSL (`libeay32`/`libssl`) por `ctypes` ao importar `bitcoin.rpc`; no Windows ela não acha e passa `None` como nome do arquivo. A biblioteca `opentimestamps` (o núcleo) não importa essa parte e funciona.
+- **Solução:** usar a biblioteca `opentimestamps` direto em `scripts/ancorar_base.py` (o recibo `.ots` é o mesmo formato); o programa `ots` fica para quem confere com Linux e um nó do Bitcoin (#287).
+- **Data:** 15/10/2026
