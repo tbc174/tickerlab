@@ -25,10 +25,9 @@ from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import pandas as pd
 import requests
 
-from src import bcb, tesouro_direto
+from src import bcb, series_mensais, tesouro_direto
 from src.cdi import SERIE_DO_CDI
 
 FONTE = (
@@ -45,19 +44,12 @@ PARTES = (
     "cdi_mensal",
     "poupanca_mensal",
     "tesouro",
+    "dolar_mensal",
 )
 DIAS_PARA_TRAS = 15  # cobre feriados e o fim de semana sem cotação
 DIAS_DE_HISTORICO_DA_PTAX = 366  # o gráfico de 12 meses do conversor
-INICIO_DO_IPCA = date(1994, 7, 1)  # o Plano Real: antes disso, outra moeda
-POUPANCA = bcb.Serie(
-    195, "Poupança: rentabilidade no mês (depósitos desde 04/05/2012)", "% no mês"
-)
-# a regra antiga da poupança (depósitos até 03/05/2012): a série mês a mês usa esta até mai/2012
-POUPANCA_ANTIGA = bcb.Serie(
-    25, "Poupança: rentabilidade no mês (depósitos até 03/05/2012)", "% no mês"
-)
-COMECO_DA_REGRA_NOVA = "2012-06"  # o 1º aniversário de dia 1 depois de 04/05/2012
-CDI_NO_MES = bcb.Serie(4391, "CDI acumulado no mês", "% no mês")
+INICIO_DO_IPCA = series_mensais.INICIO_DO_REAL
+POUPANCA = series_mensais.POUPANCA
 DIAS_DE_FOCUS = 21  # o Focus sai às segundas: três semanas cobrem um feriado
 ANOS_DE_FOCUS = 4  # o ano corrente e os 3 seguintes
 INDICADORES_DO_FOCUS = {"ipca": "IPCA", "selic": "Selic"}
@@ -126,17 +118,6 @@ def _ipca(hoje: date, buscar: Buscar) -> dict:
     return {"meses": meses, "ultimo": meses[-1][0]}
 
 
-def _meses_fechados(serie: pd.Series, hoje: date) -> list[list]:
-    """[["AAAA-MM", fração], ...] do aniversário (ou do mês) que cai no dia 1, sem o mês corrente
-    (que ainda não acabou: o CDI dele é parcial, e a poupança só credita no mês seguinte)."""
-    corrente = f"{hoje:%Y-%m}"
-    return [
-        [f"{momento:%Y-%m}", float(valor) / 100]
-        for momento, valor in serie.items()
-        if momento.day == 1 and f"{momento:%Y-%m}" < corrente
-    ]
-
-
 def _mensal(meses: list[list]) -> dict:
     if not meses:
         raise bcb.BcbIndisponivelError("Série mensal vazia.")
@@ -144,19 +125,17 @@ def _mensal(meses: list[list]) -> dict:
 
 
 def _cdi_mensal(hoje: date, buscar: Buscar) -> dict:
-    serie = bcb.baixar_sgs(CDI_NO_MES, INICIO_DO_IPCA, hoje, hoje, buscar)
-    return _mensal(_meses_fechados(serie, hoje))
+    return _mensal(series_mensais.cdi_mensal(hoje, buscar))
 
 
 def _poupanca_mensal(hoje: date, buscar: Buscar) -> dict:
-    """O rendimento de quem depositou no dia 1: regra antiga até mai/2012, regra nova depois."""
-    antiga = bcb.baixar_sgs(
-        POUPANCA_ANTIGA, INICIO_DO_IPCA, date(2012, 5, 31), hoje, buscar
-    )
-    nova = bcb.baixar_sgs(POUPANCA, date(2012, 6, 1), hoje, hoje, buscar)
-    meses = [m for m in _meses_fechados(antiga, hoje) if m[0] < COMECO_DA_REGRA_NOVA]
-    meses += [m for m in _meses_fechados(nova, hoje) if m[0] >= COMECO_DA_REGRA_NOVA]
-    return _mensal(meses)
+    """O rendimento de quem depositou no dia 1 (src/series_mensais.py)."""
+    return _mensal(series_mensais.poupanca_mensal(hoje, buscar))
+
+
+def _dolar_mensal(hoje: date, buscar: Buscar) -> dict:
+    """O dólar do 1º dia útil de cada mês (para a ferramenta quanto daria)."""
+    return _mensal(series_mensais.dolar_mensal(hoje, buscar))
 
 
 def _focus(hoje: date, buscar: Buscar) -> dict:
@@ -197,6 +176,7 @@ COLETORES: dict[str, Coletor] = {
     "cdi_mensal": _cdi_mensal,
     "poupanca_mensal": _poupanca_mensal,
     "tesouro": _tesouro,
+    "dolar_mensal": _dolar_mensal,
 }
 
 

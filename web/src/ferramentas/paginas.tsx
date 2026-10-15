@@ -71,6 +71,11 @@ export const FERRAMENTAS_DO_SITE: FerramentaDoSite[] = [
     nome: "Correção pela inflação",
     descricao: "Quanto um valor do passado vale hoje, corrigido pelo IPCA.",
   },
+  {
+    arquivo: "quanto-daria.html",
+    nome: "Quanto daria? Foi sorte?",
+    descricao: "R$ 1.000 desde uma data no CDI, na poupança, no dólar, no Ibovespa e em bitcoin, e se a data foi de sorte.",
+  },
 ];
 
 const codigo = (arquivo: string) => arquivo.replace(/\.html$/, "");
@@ -649,5 +654,54 @@ export function Vitrine() {
         <AnuncioDaCasa destino="ficha" ferramenta="vitrine" />
       </section>
     </>
+  );
+}
+
+// --- Quanto daria? Foi sorte? (ADR 0070) ------------------------------------------------------
+const PONTE = "quanto-daria.html";
+export const DADOS_DO_QUANTO_DARIA = pagina(
+  PONTE,
+  "Quanto daria? Foi sorte?",
+  "Quanto R$ 1.000 aplicados num mês do passado dariam hoje no CDI, na poupança, no dólar, no " +
+    "Ibovespa e em bitcoin, e se a data escolhida foi de sorte. Grátis e sem cadastro.",
+);
+
+export function PaginaDoQuantoDaria() {
+  return (
+    <PaginaDeFerramenta
+      titulo="Quanto daria? Foi sorte?"
+      subtitulo="R$ 1.000 desde um mês do passado no CDI, na poupança, no dólar, parados, no Ibovespa e em bitcoin. E a pergunta que quase ninguém faz: a data foi de sorte?"
+      ilha="quantoDaria"
+      codigo={codigo(PONTE)}
+      anuncio="ficha"
+      foraDaConta={[
+        "imposto de renda, taxas, corretagem e o spread de quem vende dólar e bitcoin",
+        "no Ibovespa, os dividendos já entram (o índice os reinveste); no bitcoin, o preço é de corretora internacional convertido pelo dólar do Banco Central",
+        "o dia exato: a conta vale do começo do mês escolhido ao começo do mês atual",
+      ]}
+      fonte="Banco Central (CDI, poupança, dólar e IPCA) e Yahoo Finance (Ibovespa e bitcoin). Mostramos só o resultado, nunca a série de preços."
+    >
+      <h2>Por que perguntar se foi sorte</h2>
+      <p>
+        "Quem pôs dinheiro em bitcoin em 2020 ficou rico" diz muito sobre a data e pouco sobre o
+        bitcoin. Com o mesmo prazo, começar alguns meses antes ou depois pode dar um resultado muito
+        diferente. Por isso a ferramenta refaz a conta para todas as datas de início possíveis com o
+        mesmo prazo e mostra onde a sua ficou: perto da pior, no meio ou perto da melhor.
+      </p>
+      <h2>Como ler a régua</h2>
+      <p>
+        A régua mostra posição, não valor: a pior data na ponta esquerda, a do meio no centro, a
+        melhor na ponta direita e a sua no lugar dela. "70% das datas dariam menos que a sua" quer
+        dizer que a sua foi melhor que a maioria. As janelas se sobrepõem (dois meses seguidos dividem
+        quase todo o prazo), então não são sorteios independentes: a régua mostra o quanto a data
+        pesa, não uma probabilidade.
+      </p>
+      <h2>No CDI, a data quase não importa</h2>
+      <p>
+        Na renda fixa pós-fixada, o resultado de um prazo depende pouco do dia em que se começa; no
+        Ibovespa e no bitcoin, depende muito. Essa diferença é a lição: o mesmo "rendeu X%" pode ser
+        habilidade, sorte da data ou só o risco que se correu.
+      </p>
+    </PaginaDeFerramenta>
   );
 }
