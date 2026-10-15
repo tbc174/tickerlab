@@ -117,3 +117,8 @@ openpyxl==3.1.5
 et_xmlfile==2.0.0
 # base de cripto: lê a planilha .xls antiga da Receita (criptoativos); fora da imagem do app (BSD)
 xlrd==2.0.2
+# âncora da base no Bitcoin (OpenTimestamps; rascunho da ADR 0078): só a biblioteca, não o programa ots
+# (LGPL-3.0, usada como biblioteca, sem mudança); fora da imagem do app
+opentimestamps==0.4.5
+python-bitcoinlib==0.12.2
+pycryptodomex==3.24.1
