@@ -2,6 +2,7 @@
 
     python -m scripts.montar_rede                  (a base do acervo)
     python -m scripts.montar_rede --pasta <base>    (a pasta com fca/, controladas/, fidc/...)
+    python -m scripts.montar_rede --amostra <csv>   (e grava a amostra da tarefa 2.7 para conferir)
 
 Lê o que a base já tem (nenhuma coleta nova): as tabelas `fca/tickers` e `fca/emissores`,
 `controladas/<ano>`, `empresa_serie`, `fidc/cadastro/cad_fi` e `bcb/ifdata/cadastro/<AAAAMM>` (sem as
@@ -31,7 +32,7 @@ import sqlalchemy as sa
 from base import gleif, receita_natureza
 from base.cadastro import ler_cadastro
 from base.parquet import gravar_com_versoes, ler_tabela
-from base.rede import ids, montar
+from base.rede import amostra, ids, montar
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.banco.conexao import obter_engine
@@ -239,6 +240,23 @@ def montar_no_acervo(conexao: sa.Connection, pasta: Path) -> Resumo:
     return Resumo(len(entidades), len(identificadores), conflitos, gravadas)
 
 
+def gravar_amostra(pasta: Path, destino: Path) -> int:
+    """A amostra da tarefa 2.7 num CSV para conferir: até 200 por regra, com o tipo e o nome da
+    entidade e `do_tiago` = sim nas 20 por regra que o Tiago confere. Devolve as linhas."""
+    rede = pasta / PASTA_DA_REDE
+    sorteada = amostra.sortear(ler_tabela(rede / "identificadores.parquet"))
+    do_tiago = amostra.para_o_tiago(sorteada)[amostra.CHAVE].assign(do_tiago="sim")
+    entidades = ler_tabela(rede / "entidades.parquet")[["id_entidade", "tipo", "nome"]]
+    tabela = (
+        sorteada.merge(entidades, on="id_entidade", how="left")
+        .merge(do_tiago, on=amostra.CHAVE, how="left")
+        .fillna({"do_tiago": "nao"})
+    )
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    tabela.to_csv(destino, sep=";", index=False, encoding="utf-8")
+    return len(tabela)
+
+
 def _conflitos_por_regra_e_fonte(conflitos: pd.DataFrame) -> str:
     if conflitos.empty:
         return "nenhum"
@@ -252,6 +270,9 @@ def _conflitos_por_regra_e_fonte(conflitos: pd.DataFrame) -> str:
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--pasta", type=Path, default=None)
+    argumentos.add_argument(
+        "--amostra", type=Path, default=None, help="CSV da amostra a conferir"
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -270,6 +291,12 @@ def main(argv: list[str] | None = None) -> int:
         ", ".join(f"{t} {g}" for t, g in resumo.gravadas.items()),
         _conflitos_por_regra_e_fonte(resumo.conflitos),
     )
+    if opcoes.amostra:
+        log.info(
+            "amostra: %d linhas em %s",
+            gravar_amostra(pasta, opcoes.amostra),
+            opcoes.amostra,
+        )
     return 0
 
 

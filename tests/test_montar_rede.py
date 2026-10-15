@@ -161,3 +161,21 @@ def test_sem_a_versao_do_codigo_nao_monta(base, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError, match=vc.VARIAVEL):
         montar_rede.main(["--pasta", str(base)])
     assert not (base / "rede").exists()
+
+
+def test_amostra_para_conferir(base, tmp_path):
+    _montar(base)
+    destino = tmp_path / "amostra.csv"
+    montar_rede.gravar_amostra(base, destino)
+    tabela = pd.read_csv(destino, sep=";", dtype=str, keep_default_na=False)
+    assert {
+        "regra",
+        "id_entidade",
+        "sistema",
+        "valor",
+        "tipo",
+        "nome",
+        "do_tiago",
+    } <= set(tabela.columns)
+    assert set(tabela["do_tiago"]) <= {"sim", "nao"}
+    assert len(tabela) > 0
