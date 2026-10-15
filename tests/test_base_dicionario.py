@@ -37,14 +37,22 @@ SERIE_3 = (
 )  # fmt: skip
 
 
+def _zips_do_fca() -> list[bytes]:
+    return [p.read_bytes() for p in sorted(PASTA_DO_FCA.glob("*.zip"))]
+
+
+def _valores_da_carga() -> pd.DataFrame:
+    return pd.concat(
+        [fca.ler_valores_mobiliarios(z) for z in _zips_do_fca()], ignore_index=True
+    )
+
+
 def _tickers_e_emissores_da_carga() -> tuple[pd.DataFrame, pd.DataFrame]:
     """Como a `carga_fca` grava (série 3, PR 8: com a tabela de códigos conferidos e a origem)."""
-    zips = [p.read_bytes() for p in sorted(PASTA_DO_FCA.glob("*.zip"))]
-    valores = pd.concat(
-        [fca.ler_valores_mobiliarios(z) for z in zips], ignore_index=True
-    )
     return fca.com_codigos_conferidos(
-        tickers_no_tempo(zips), fca.emissores(valores), fca.codigos_conferidos()
+        tickers_no_tempo(_zips_do_fca()),
+        fca.emissores(_valores_da_carga()),
+        fca.codigos_conferidos(),
     )
 
 
@@ -61,13 +69,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
-        "codigos_invalidos": [
-            "cnpj",
-            "empresa",
-            "referencia",
-            "valor_mobiliario",
-            "codigo_informado",
-        ],
+        "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{
             t.name: [c.name for c in t.columns]
             for t in (padroes_setoriais, fre_proventos, fre_eventos_de_capital)

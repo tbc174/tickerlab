@@ -6,12 +6,13 @@ ML, PR 3; `base/fca.py`).
 
 Cada arquivo anual vem do acervo (`src/acervo.py`) e só é baixado da CVM se não estiver lá (fonte
 `cvm-fca`, com registro e SHA-256). Grava quatro tabelas com manifesto (`base/parquet.py`):
-`valores_mobiliarios` (todas as linhas, versão mais nova de cada documento), `emissores` (emissor →
-CNPJ, com conflitos marcados), `tickers` (`base/cadastro.py::tickers_no_tempo`, da série 1) e `codigos_invalidos` (código de
-negociação fora do formato, para o relatório de buracos). Os tickers e os emissores levam também a
-tabela conferida `base/conferidas/codigos_fora_do_fca.csv` (o BTG informa "000000"; série 3, PR 8),
-com a coluna `origem`. Ano que não existe na CVM é pulado. Feita
-para o servidor de casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+`valores_mobiliarios` (todas as linhas, versão mais nova de cada documento, com a data de entrega),
+`emissores` (emissor → CNPJ, com conflitos marcados), `tickers` (`base/cadastro.py::tickers_no_tempo`,
+de quando a quando cada código valeu, pelas entregas do FCA; série 4, PR 1) e `codigos_invalidos`
+(código de negociação fora do formato, para o relatório de buracos). Os tickers e os emissores levam
+também a tabela conferida `base/conferidas/codigos_fora_do_fca.csv` (o BTG informa "000000"; série 3,
+PR 8), com a coluna `origem`. Ano que não existe na CVM é pulado. Feita para o servidor de casa (ADR
+0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 """
 
 import argparse
@@ -98,7 +99,11 @@ def gravar(
             origens,
         ),
         "emissores": (emissores, ["emissor", "cnpj"], [*origens, conferida]),
-        "tickers": (tickers, ["codigo", "cnpj"], [*origens, conferida]),
+        "tickers": (
+            tickers,
+            ["codigo", "cnpj", "primeiro_visto"],
+            [*origens, conferida],
+        ),
         "codigos_invalidos": (
             fca.codigos_invalidos(valores),
             ["cnpj", "referencia"],

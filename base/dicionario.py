@@ -271,10 +271,12 @@ TABELAS: dict[str, Tabela] = {
     ),
     "tickers_no_tempo": Tabela(
         descricao=(
-            "Cada código de ação da B3 (bolsa) com a empresa e o período em que existiu, juntando "
-            "todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Os códigos "
-            'que a empresa informa fora do formato (o BTG põe "000000" nas units) entram pela tabela '
-            "conferida, válidos do 1º ao último mês em que aparecem nas carteiras dos fundos"
+            "Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, juntando "
+            "todos os anos do formulário cadastral (FCA): código que sumiu continua aqui. Vale da "
+            "entrega do FCA que trouxe o código até a do que veio sem ele (série 4, PR 1); numa data, "
+            "vale o FCA de referência mais nova já entregue. Os códigos que a empresa informa fora "
+            'do formato (o BTG põe "000000" nas units) entram pela tabela conferida, válidos do 1º '
+            "mês em que aparecem nas carteiras dos fundos até o fim do ano do último"
         ),
         fonte="CVM: formulário cadastral (FCA), valores mobiliários",
         familia_da_fonte="cvm",
@@ -286,8 +288,10 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "Montada dos zips do FCA de todos os anos, guardados no acervo e no registro de "
-            "coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` dizem de "
-            "qual FCA veio cada código. " + LINHAGEM_DO_FCA + LINHAGEM_DA_CONFERIDA
+            "coletas (com SHA-256 e data da coleta); `primeiro_visto` e `ultimo_visto` são as "
+            "entregas dos FCA de onde veio cada código. "
+            + LINHAGEM_DO_FCA
+            + LINHAGEM_DA_CONFERIDA
         ),
         colunas={
             "codigo": ("Código de negociação na B3 (PETR4, TAEE11)", TEXTO),
@@ -296,8 +300,18 @@ TABELAS: dict[str, Tabela] = {
                 "Tipo do papel (ações ordinárias, preferenciais, units)",
                 TEXTO,
             ),
-            "primeiro_visto": ("Data do primeiro FCA em que o código apareceu", DATA),
-            "ultimo_visto": ("Data do último FCA em que o código apareceu", DATA),
+            "primeiro_visto": (
+                "Entrega (DT_RECEB) do primeiro FCA vigente com o código: vale desde esse dia",
+                DATA,
+            ),
+            "ultimo_visto": ("Entrega do último FCA vigente com o código", DATA),
+            "valido_ate": (
+                (
+                    "Entrega do FCA que passou a valer sem o código (deixa de valer nesse dia); vazio: "
+                    "ainda no FCA mais recente da empresa"
+                ),
+                DATA,
+            ),
             "inicio_negociacao": ("Início da negociação informado pela empresa", DATA),
             "fim_negociacao": (
                 "Fim da negociação informado (vazio: ainda negociado)",
@@ -309,20 +323,26 @@ TABELAS: dict[str, Tabela] = {
     "valores_mobiliarios": Tabela(
         descricao=(
             "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, "
-            "debêntures, notas comerciais...), na versão mais nova de cada documento. Base do "
-            "código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação"
+            "debêntures, notas comerciais...), na versão mais nova de cada documento (a CVM só "
+            "publica os valores dela), com a data de entrega. Base do código permanente da ação "
+            "(série 3). Até 2017 o FCA não traz o código de negociação"
         ),
         fonte="CVM: formulário cadastral (FCA), valores mobiliários",
         familia_da_fonte="cvm",
         frequencia=_FREQUENCIA_DO_FCA,
         atraso=_ATRASO_DO_FCA,
         onde=_ONDE_DO_FCA,
-        linhagem="`cnpj`, `referencia` e `versao` dizem de qual FCA veio a linha. "
-        + LINHAGEM_DO_FCA,
+        linhagem="`id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a "
+        "linha. " + LINHAGEM_DO_FCA,
         colunas={
             **_EMPRESA,
             "referencia": ("Data de referência do FCA", DATA),
             "versao": ("Versão do documento (fica a mais nova)", NUMERO),
+            "id_documento": ("Número do documento na CVM (ID_DOC)", TEXTO),
+            "recebido_em": (
+                "Data de entrega desta versão à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
             "valor_mobiliario": ("Tipo do papel, como a empresa informa", TEXTO),
             "classe": ("Classe da ação preferencial (Preferencial Classe A...)", TEXTO),
             "codigo_informado": ("Código de negociação como a empresa escreveu", TEXTO),
@@ -368,6 +388,13 @@ TABELAS: dict[str, Tabela] = {
             **_EMPRESA,
             "primeiro_ano": ("Ano do primeiro FCA com o emissor", NUMERO),
             "ultimo_ano": ("Ano do último FCA com o emissor", NUMERO),
+            "primeiro_recebido_em": (
+                (
+                    "Entrega do primeiro FCA com o emissor (nos códigos conferidos, o 1º mês nas "
+                    "carteiras dos fundos): desde quando a ligação é conhecida"
+                ),
+                DATA,
+            ),
             "conflito": (
                 "Verdadeiro se o emissor aparece com mais de um CNPJ",
                 SIM_OU_NAO,
@@ -390,6 +417,7 @@ TABELAS: dict[str, Tabela] = {
         colunas={
             **_EMPRESA,
             "referencia": ("Data de referência do FCA", DATA),
+            "recebido_em": ("Data de entrega do FCA à CVM (DT_RECEB)", DATA),
             "valor_mobiliario": ("Tipo do papel, como a empresa informa", TEXTO),
             "codigo_informado": ("O código como a empresa escreveu", TEXTO),
         },
@@ -816,7 +844,10 @@ TABELAS: dict[str, Tabela] = {
             "instituicao": ("Nome da instituição", TEXTO),
             "cnpj_raiz": ("Raiz do CNPJ (8 dígitos)", TEXTO),
             "cnpj": ("CNPJ da empresa da bolsa (vazio se não tem ação)", TEXTO),
-            "tickers": ("Códigos que valiam no ano, separados por vírgula", TEXTO),
+            "tickers": (
+                "Códigos que valiam na data-base (FCA já entregue), separados por vírgula",
+                TEXTO,
+            ),
             "ligado_por": (
                 (
                     "próprio CNPJ (a instituição é a empresa da bolsa, como o Banco PAN) ou líder "

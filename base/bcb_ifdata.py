@@ -23,6 +23,8 @@ import re
 
 import pandas as pd
 
+from base.fca import vale_na_data
+
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
 PRIMEIRO_ANO = 2000
 PRIMEIRA_DATA_PRUDENCIAL = 201403
@@ -161,12 +163,13 @@ def _raiz(cnpj: pd.Series) -> pd.Series:
 def ligacao_dos_bancos(
     cadastro: pd.DataFrame, emissores: pd.DataFrame, tickers: pd.DataFrame
 ) -> pd.DataFrame:
-    """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano da data-base.
+    """Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam na data-base.
 
     `emissores` e `tickers` são as tabelas da `scripts/carga_fca.py`. A instituição individual cujo
     código é o próprio CNPJ de uma empresa da bolsa liga por ele (o Banco PAN, do conglomerado do
     BTG, tem a BPAN4); as outras, pela raiz do CNPJ do líder do conglomerado. Uma raiz com mais de um
-    CNPJ no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA.
+    CNPJ no FCA (não acontece com os bancos de hoje) fica sem ligação, como os conflitos do FCA. O
+    ticker vale na data-base só se o FCA que o trouxe já tinha sido entregue (`fca.vale_na_data`).
     """
     empresas = (
         emissores.loc[~emissores["conflito"], ["cnpj"]]
@@ -185,24 +188,16 @@ def ligacao_dos_bancos(
         .where(pelo_lider.notna())
         .mask(pelo_proprio.notna(), PELO_PROPRIO_CNPJ)
     )
-    ano = ligacao["data_base"].dt.year
-    vigentes = (
-        ligacao[["cnpj"]]
-        .assign(ano=ano)
-        .merge(tickers[["codigo", "cnpj", "primeiro_visto", "ultimo_visto"]], on="cnpj")
+    pares = (
+        ligacao[["cnpj", "data_base"]]
+        .drop_duplicates()
+        .merge(tickers[["codigo", "cnpj", "primeiro_visto", "valido_ate"]], on="cnpj")
     )
-    vigentes = vigentes[
-        (vigentes["primeiro_visto"].dt.year <= vigentes["ano"])
-        & (vigentes["ultimo_visto"].dt.year >= vigentes["ano"])
-    ]
+    vigentes = pares[vale_na_data(pares, pares["data_base"])]
     codigos = (
-        vigentes.groupby(["cnpj", "ano"])["codigo"]
+        vigentes.groupby(["cnpj", "data_base"])["codigo"]
         .agg(lambda c: ",".join(sorted(set(c))))
         .rename("tickers")
         .reset_index()
     )
-    return (
-        ligacao.assign(ano=ano)
-        .merge(codigos, on=["cnpj", "ano"], how="left")
-        .drop(columns="ano")
-    )
+    return ligacao.merge(codigos, on=["cnpj", "data_base"], how="left")
