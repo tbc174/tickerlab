@@ -60,3 +60,10 @@ def test_dias_sem_pregao(dia):
 def test_dias_com_pregao(dia):
     # 12/10 é feriado no Brasil, não na NYSE; 27/11 (Black Friday) fecha mais cedo, mas abre.
     assert nyse.eh_pregao(dia)
+
+
+def test_furacao_sandy_fechou_dois_dias():
+    """Única diferença com o `exchange_calendars` em 2010–2027 (comparação de 14/10/2026)."""
+    assert not nyse.eh_pregao(date(2012, 10, 29))
+    assert not nyse.eh_pregao(date(2012, 10, 30))
+    assert nyse.eh_pregao(date(2012, 10, 31))
