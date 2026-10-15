@@ -118,7 +118,12 @@ def _enviar(url: str, digest: bytes) -> Timestamp:
 
 
 def carimbar(ancora: Path, enviar: Enviar = _enviar) -> Path:
-    """Manda o hash com sal aos calendários e grava `<âncora>.ots` (ainda pendente)."""
+    """Manda o hash com sal aos calendários e grava `<âncora>.ots` (ainda pendente).
+
+    Nunca sobrescreve: um recibo que já ganhou o bloco perderia a data confirmada.
+    """
+    if _recibo_de(ancora).exists():
+        raise FileExistsError(f"{_recibo_de(ancora)} já existe: use `atualizar`")
     digest = hashlib.sha256(ancora.read_bytes()).digest()
     carimbo = DetachedTimestampFile(OpSHA256(), Timestamp(digest))
     # O sal: sem ele, quem tivesse a âncora acharia o pedido nos calendários (como o `ots stamp`).
@@ -242,7 +247,11 @@ def conferir(
     if not resultado.recibo_desta_ancora:
         return resultado
     for msg, altura in _no_bitcoin(carimbo.timestamp):
-        no_bloco = bloco(altura)
+        try:
+            no_bloco = bloco(altura)
+        except (requests.RequestException, RuntimeError) as erro:
+            resultado.avisos.append(f"bloco {altura} sem conferência: {erro}")
+            continue
         # O Bitcoin guarda a raiz com os bytes ao contrário do que os exploradores mostram.
         if no_bloco is not None and len(msg) == 32 and msg[::-1].hex() == no_bloco[0]:
             data = datetime.fromtimestamp(no_bloco[1], tz=UTC)

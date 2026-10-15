@@ -174,3 +174,24 @@ def test_prova_de_uma_tabela_pela_linha_de_comando(ancora, base, tmp_path, capsy
     assert (
         ab.main(["conferir-prova", str(prova), str(base / "cda" / "fundos.json")]) == 1
     )
+
+
+def test_carimbar_nao_sobrescreve_recibo(ancora):
+    recibo = ab.carimbar(ancora, enviar=Calendarios().enviar)
+    antes = recibo.read_bytes()
+    with pytest.raises(FileExistsError):
+        ab.carimbar(ancora, enviar=Calendarios().enviar)
+    assert recibo.read_bytes() == antes
+
+
+def test_explorador_fora_do_ar_vira_aviso(ancora, base):
+    calendarios = Calendarios()
+    recibo = ab.carimbar(ancora, enviar=calendarios.enviar)
+    ab.atualizar(recibo, buscar=calendarios.buscar)
+
+    def fora_do_ar(_altura):
+        raise RuntimeError("os exploradores não concordam")
+
+    resultado = ab.conferir(ancora, recibo, pasta=base, arquivos=[], bloco=fora_do_ar)
+    assert resultado.confirmado_em is None
+    assert any("não concordam" in aviso for aviso in resultado.avisos)
