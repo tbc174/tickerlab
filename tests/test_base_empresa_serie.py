@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 import pandas as pd
 
 from base import controladas, empresa_serie, historico
+from base.ancoragem import parquets_sem_manifesto
 from src.banco.coletas import com_registro
 
 AGORA = datetime(2026, 10, 14, 7, tzinfo=UTC)
@@ -258,6 +259,7 @@ def test_montagem_grava_a_tabela_com_as_ligacoes(banco, tmp_path, monkeypatch):
     tabela = pd.read_parquet(pasta / "empresa_serie" / "empresa_serie.parquet")
     ligadas = tabela[tabela["via"] != "produto"]  # os produtos do Comex vêm sempre
     assert ligadas["cnpj_companhia"].tolist() == ["05197443000138"]
+    assert parquets_sem_manifesto(pasta / "empresa_serie") == []
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
     assert set(tabela["versao_do_codigo"]) == {"0123abc"}
 

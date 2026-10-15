@@ -122,6 +122,16 @@ def manifestos_atuais(pasta: Path) -> dict[str, dict[str, Any]]:
     return dict(sorted(achados.items()))
 
 
+def parquets_sem_manifesto(pasta: Path) -> list[str]:
+    """Parquets da versão atual sem o `.json` ao lado: ficam fora da raiz, então a rotina avisa."""
+    return sorted(
+        arquivo.relative_to(pasta).as_posix()
+        for arquivo in pasta.rglob("*.parquet")
+        if not VERSAO_ANTIGA.search(arquivo.stem)
+        and not arquivo.with_suffix(".json").exists()
+    )
+
+
 def folhas_da_base(pasta: Path) -> dict[str, bytes]:
     return {
         nome: hash_folha(folha_do_manifesto(nome, manifesto))

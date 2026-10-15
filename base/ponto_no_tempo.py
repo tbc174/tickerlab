@@ -33,10 +33,11 @@ import pandas as pd
 
 from base.contas_cvm import COLUNAS, so_as_contas_das_regras
 from base.enet import DocumentoEnet
-from base.parquet import gravar_atomico
+from base.parquet import gravar_atomico, hash_da_tabela
 from src.versao_do_codigo import versao_do_codigo
 
 FATO = ["cnpj", "grupo", "demonstracao", "conta", "inicio", "fim"]
+ORDEM_DA_TABELA = [*FATO, "divulgado_em"]
 COLUNAS_DA_BASE = (
     "cnpj",
     "empresa",
@@ -220,6 +221,9 @@ def gravar_parquet(
             "ano": ano,
             "linhas": len(parte),
             "sha256_da_base": hash_da_base(parte),
+            # o mesmo hash das outras tabelas da base, para a âncora no Bitcoin (ADR 0078)
+            "sha256_da_tabela": hash_da_tabela(parte, ORDEM_DA_TABELA),
+            "ordem": ORDEM_DA_TABELA,
             "origens": origens or [],
             "versao_do_codigo": versao,
         }

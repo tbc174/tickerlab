@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from base import curva
+from base.ancoragem import parquets_sem_manifesto
 from src.banco.coletas import com_registro
 
 AGORA = datetime(2026, 10, 14, 7, tzinfo=UTC)
@@ -99,6 +100,7 @@ def test_montagem_grava_por_ano_com_a_origem(banco, tmp_path, monkeypatch):
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
     assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
+    assert parquets_sem_manifesto(tmp_path / "base") == []
 
 
 def test_montagem_ignora_o_pdf_de_metadados(banco, tmp_path):

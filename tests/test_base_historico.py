@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from base import historico
+from base.ancoragem import parquets_sem_manifesto
 from src.banco.coletas import com_registro
 
 PASTA_CVM = Path(__file__).parent / "arquivos" / "cvm"
@@ -51,6 +52,7 @@ def test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem(
     assert set(tabela["ano_do_arquivo"]) == {2024}
     assert set(tabela["montado_em"]) == {AGORA.isoformat()}
     assert set(tabela["versao_do_codigo"]) == {"0123abc"}  # exigência 13 (ADR 0055)
+    assert parquets_sem_manifesto(tmp_path / "base") == []  # entra na âncora (ADR 0078)
 
 
 def test_usa_a_copia_mais_recente_do_mesmo_arquivo(banco, tmp_path):
@@ -124,3 +126,20 @@ def test_comando_sai_com_1_se_um_original_nao_abre(banco, tmp_path, monkeypatch)
 
     _guardar("cvm-hist-ipe", URL_IPE, b"PK quebrado")
     assert montar_base_historica.main(["--pasta", str(tmp_path / "b")]) == 1
+
+
+def test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao(
+    banco, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    _guardar("cvm-hist-ipe", URL_IPE, _zip_do_ipe())
+    pasta = tmp_path / "base" / "eventos"
+    with banco.connect() as conexao:
+        historico.montar("eventos", conexao, tmp_path / "base", AGORA)
+        antes = (pasta / "2024.parquet").read_bytes()
+        monkeypatch.setenv("TICKERLAB_VERSAO", "4567def")
+        historico.montar(
+            "eventos", conexao, tmp_path / "base", AGORA.replace(year=2027)
+        )
+    assert sorted(p.name for p in pasta.iterdir()) == ["2024.json", "2024.parquet"]
+    assert (pasta / "2024.parquet").read_bytes() == antes

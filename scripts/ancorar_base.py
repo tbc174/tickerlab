@@ -271,6 +271,7 @@ def conferir(
 # --- rotina noturna -------------------------------------------------------------------------------
 PRAZO_DO_BLOCO = timedelta(days=2)  # recibo sem bloco depois disso vai para o Kuma
 BASE_DO_DIA = re.compile(r"^base-\d{4}-\d{2}-\d{2}\.json$")
+LISTADOS = 5  # quantos Parquets sem manifesto o aviso nomeia
 
 
 @dataclass
@@ -335,6 +336,12 @@ def noite(
         _ancorar_base_do_dia(
             ancoras, pasta, agora.astimezone(BRASILIA).date().isoformat(), feito
         )
+        if soltos := an.parquets_sem_manifesto(pasta):
+            feito.problemas.append(
+                f"{len(soltos)} Parquet(s) sem manifesto, fora da âncora: "
+                + ", ".join(soltos[:LISTADOS])
+                + (" ..." if len(soltos) > LISTADOS else "")
+            )
     if rotulos is not None:
         _ancorar_lotes(ancoras, rotulos, feito)
 

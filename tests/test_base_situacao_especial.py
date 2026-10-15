@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import pandas as pd
 
 from base import historico, rotulos
+from base.ancoragem import parquets_sem_manifesto
 from src.banco import coletas
 from src.banco.coletas import com_registro
 
@@ -82,6 +83,7 @@ def test_retrato_do_mes_vira_parquet_com_a_origem(banco, tmp_path, monkeypatch):
     assert tabela["mes_do_retrato"].iloc[0] == "2026-10"
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
+    assert parquets_sem_manifesto(tmp_path / "base") == []
 
 
 def test_arquivos_que_nao_sao_de_estabelecimentos_ficam_de_fora(banco, tmp_path):

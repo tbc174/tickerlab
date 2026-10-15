@@ -320,6 +320,13 @@ def test_refazer_a_base_dos_originais_da_os_mesmos_hashes(tmp_path):
     assert manifesto["linhas"] == 2 and manifesto["origens"] == origens
     assert manifesto["sha256_da_base"] == hash_da_base(uma[uma["fim"].dt.year == 2022])
     assert conferir_pasta(tmp_path / "base") == {"2021": True, "2022": True}
+    # a âncora no Bitcoin aceita o manifesto (ADR 0078): tem o hash da tabela inteira
+    from base.ancoragem import folhas_da_base, parquets_sem_manifesto
+    from base.parquet import conferir_tabela
+
+    assert parquets_sem_manifesto(tmp_path / "base") == []
+    assert list(folhas_da_base(tmp_path / "base")) == ["2021", "2022"]
+    assert conferir_tabela(tmp_path / "base" / "2022.parquet")
 
 
 def test_hash_muda_quando_um_numero_muda(tmp_path):

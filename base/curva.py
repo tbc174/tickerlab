@@ -29,6 +29,7 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base.dias_uteis import DIAS_POR_ANO, dias_uteis, proximo_dia_util
+from base.parquet import LINHAGEM, gravar_se_mudou
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.versao_do_codigo import versao_do_codigo
@@ -157,11 +158,13 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[int, in
         )
         linhas: dict[int, int] = {}
         for ano, do_ano in curvas.groupby(curvas["data_base"].dt.year):
-            destino = pasta / TABELA / f"{ano}.parquet"
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            parcial = destino.with_name(destino.name + ".parcial")
-            do_ano.to_parquet(parcial, index=False)
-            parcial.replace(destino)
+            gravar_se_mudou(
+                do_ano,
+                pasta / TABELA / f"{ano}.parquet",
+                [{"url": original.url, "sha256": original.sha256}],
+                ["data_base", "curva", "prazo_anos"],
+                carimbos=LINHAGEM,
+            )
             linhas[int(ano)] = len(do_ano)
         return linhas
     return {}

@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime
 import pandas as pd
 import pytest
 
+from base.ancoragem import parquets_sem_manifesto
 from base.cripto import leitura
 from base.cripto.blocos import para_satoshis
 from base.cripto.leitura import (
@@ -235,3 +236,18 @@ def test_freio_de_disco_desliga_e_religa_a_rede_do_no(
     ler_ate_o_topo(no, tmp_path, AGORA)
 
     assert no.rede == esperado
+
+
+def test_toda_tabela_do_no_tem_manifesto_e_rodada_sem_novidade_nao_regrava(tmp_path):
+    no = NoFalso(_cadeia(30))
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)
+    no.blocos = _cadeia(35, letra="b", base=no.blocos[:22])  # reorganização
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)
+    assert parquets_sem_manifesto(tmp_path) == []
+    assert not list(
+        tmp_path.rglob("*.v1.parquet")
+    )  # na cripto a última vence: sem versão
+
+    antes = {p: p.stat().st_mtime_ns for p in tmp_path.rglob("*.parquet")}
+    ler_ate_o_topo(no, tmp_path, AGORA, blocos_por_ponto=5)  # nada novo no topo
+    assert {p: p.stat().st_mtime_ns for p in tmp_path.rglob("*.parquet")} == antes

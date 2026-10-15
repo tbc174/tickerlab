@@ -9,6 +9,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import auditores, historico
+from base.ancoragem import parquets_sem_manifesto
 
 PRINCIPAL = (
     "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;CATEG_DOC;ID_DOC;DT_RECEB;LINK_DOC"
@@ -360,6 +361,7 @@ def test_trocas_saem_dos_anos_de_auditores_gravados_na_base(tmp_path, monkeypatc
 
     gravada = pd.read_parquet(tmp_path / "trocas_de_auditor" / "trocas.parquet")
     assert gravada["novo_id"].tolist() == ["rede:ey"]
+    assert parquets_sem_manifesto(tmp_path / "trocas_de_auditor") == []
     assert str(gravada["conhecido_em"].iloc[0])[:10] == "2020-06-15"
     assert gravada["montado_em"].iloc[0] == agora.isoformat()
     assert gravada["versao_do_codigo"].iloc[0] == "0123abc"
@@ -393,3 +395,15 @@ def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path, monkeypatch
     assert (pasta / "auditores" / "2020.parquet").exists()
     trocas = pd.read_parquet(pasta / "trocas_de_auditor" / "trocas.parquet")
     assert trocas["anterior_id"].tolist() == ["rede:kpmg"]
+
+
+def test_trocas_ignoram_versoes_guardadas_dos_auditores(tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
+    (tmp_path / "auditores").mkdir()
+    _ano(2019, "2019-05-10", (KPMG, "2014-01-01")).to_parquet(
+        tmp_path / "auditores" / "2019.parquet", index=False
+    )
+    _ano(2020, "2020-06-15", (EY, "2020-04-01")).to_parquet(
+        tmp_path / "auditores" / "2019.v1.parquet", index=False
+    )
+    assert auditores.montar_trocas(tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0

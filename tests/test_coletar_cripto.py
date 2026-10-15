@@ -100,6 +100,9 @@ def test_rodada_de_qualidade_grava_os_achados(acervo, monkeypatch):
     achados = ler_tabela(base / "qualidade", "regra")
     assert achados["regra"].tolist() == ["C1"]
     assert achados["chave"].tolist() == ["2024-01-02"]
+    from base.ancoragem import parquets_sem_manifesto
+
+    assert parquets_sem_manifesto(base) == []  # preços e qualidade entram na âncora
 
 
 def _originais_da_kraken():
