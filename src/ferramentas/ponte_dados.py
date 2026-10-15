@@ -28,6 +28,7 @@ ENDERECO_DOS_DADOS = os.environ.get(
     "TICKERLAB_DADOS_DAS_FERRAMENTAS", "https://tickerlab.com.br/dados/ferramentas.json"
 )
 TEMPO_LIMITE = 30
+INICIO_DO_REAL = date(1994, 7, 1)
 TICKERS = {"ibovespa": "^BVSP", "bitcoin": "BTC-USD"}
 Buscar = Callable[..., requests.Response]
 
@@ -84,20 +85,25 @@ def _parte(arquivo: dict, chave: str) -> list[list]:
 
 
 def curvas_do_banco_central(arquivo: dict) -> dict[str, pd.Series]:
-    """CDI, poupança, dólar e parado a partir do arquivo de dados das ferramentas."""
+    """CDI, poupança, parado e (se o arquivo já tiver) o dólar, do arquivo de dados das ferramentas.
+    Sem o dólar mês a mês (o cron ainda não o gerou), ele e o bitcoin ficam de fora."""
     cdi = curva_mensal(_parte(arquivo, "cdi_mensal"))
-    return {
+    curvas = {
         "cdi": cdi,
         "poupanca": curva_mensal(_parte(arquivo, "poupanca_mensal")),
-        "dolar": niveis_mensais(_parte(arquivo, "dolar_mensal")),
         "parado": pd.Series(1.0, index=cdi.index),
     }
+    if "dolar_mensal" in arquivo:
+        curvas["dolar"] = niveis_mensais(_parte(arquivo, "dolar_mensal"))
+    return curvas
 
 
 def curva_do_yahoo(ativo: str, dolar: pd.Series) -> pd.Series:
     """Ibovespa (em reais) ou bitcoin (em dólar, vezes o dólar do BC do mesmo mês), mês a mês."""
     historico = dados_de_mercado.baixar_historico_completo(TICKERS[ativo])["Close"]
     mensal = primeiro_pregao_de_cada_mes(historico)
+    # antes do Plano Real, os números do Yahoo são da hiperinflação (outra moeda)
+    mensal = mensal[mensal.index >= pd.Timestamp(INICIO_DO_REAL)]
     if ativo == "bitcoin":
         mensal = (mensal * dolar.reindex(mensal.index)).dropna()
     if len(mensal) < 2:

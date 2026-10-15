@@ -44,11 +44,13 @@ def test_curvas_do_banco_central_vem_do_arquivo():
     assert list(curvas["parado"].index) == list(curvas["cdi"].index)
 
 
-def test_arquivo_sem_uma_parte_e_erro_claro():
-    with pytest.raises(ponte_dados.CurvaIndisponivelError, match="dolar_mensal"):
+def test_arquivo_sem_uma_parte_e_erro_claro_e_sem_o_dolar_ele_so_fica_de_fora():
+    with pytest.raises(ponte_dados.CurvaIndisponivelError, match="cdi_mensal"):
         ponte_dados.curvas_do_banco_central(
-            {k: v for k, v in ARQUIVO.items() if k != "dolar_mensal"}
+            {k: v for k, v in ARQUIVO.items() if k != "cdi_mensal"}
         )
+    sem_dolar = {k: v for k, v in ARQUIVO.items() if k != "dolar_mensal"}
+    assert "dolar" not in ponte_dados.curvas_do_banco_central(sem_dolar)
 
 
 def test_primeiro_pregao_de_cada_mes_datado_no_dia_1():
@@ -122,3 +124,15 @@ def test_historico_completo_sem_resposta_do_yahoo_e_erro(monkeypatch):
     )
     with pytest.raises(dados_de_mercado.DadosIndisponiveisError):
         dados_de_mercado.baixar_historico_completo("^BVSP")
+
+
+def test_a_curva_do_yahoo_comeca_no_plano_real(monkeypatch):
+    # o ^BVSP do Yahoo começa em 1993, com números da hiperinflação: antes de jul/1994 fica de fora
+    dias = pd.to_datetime(["1993-05-03", "1994-06-01", "1994-07-01", "1994-08-01"])
+    ibov = pd.DataFrame({"Close": [5.0, 300.0, 4000.0, 4100.0]}, index=dias)
+    monkeypatch.setattr(
+        dados_de_mercado, "baixar_historico_completo", lambda ticker: ibov
+    )
+    curva = ponte_dados.curva_do_yahoo("ibovespa", pd.Series(dtype=float))
+    assert curva.index[0] == pd.Timestamp("1994-07-01")
+    assert curva.to_numpy() == pytest.approx([4000.0, 4100.0])
