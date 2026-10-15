@@ -355,6 +355,28 @@ Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor compr
 | `primeira` | Primeiro mês em que aparece | data (dia) |
 | `ultima` | Último mês em que aparece | data (dia) |
 | `descricao` | Descrição do ativo no CDA (a pista para a conferência) | texto |
+| `motivo` | Por que fica sem empresa, se foi conferido (`emissores_sem_ligacao`); vazio: ainda não conferido | texto |
+
+## `emissores_sem_ligacao`
+
+Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo (companhia sem ação na bolsa, como a Comerc e a Granja Faria; dois CNPJs no período; BDR de empresa de fora; falta de prova). Ficam só no painel por emissor, e o motivo vai para o relatório de buracos (série 4, PR 3)
+
+- **Fonte:** CVM: formulário cadastral (FCA), cadastro de companhias, IPE e descrição no CDA
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Quando a conferência anda (pelos buracos de maior valor)
+- **Atraso de divulgação:** Nenhum
+- **Onde fica:** `base/conferidas/emissores_sem_ligacao.csv` no repositório (Git)
+- **Linhagem:** Cada linha diz a fonte e quando foi conferida; o histórico fica no Git e o painel dos fundos anota o SHA-256 da tabela no `.json` de cada tabela que monta.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `emissor` | As 4 posições do emissor | texto |
+| `cnpj` | CNPJ, quando é um só e conhecido; vazio nos outros casos | texto |
+| `empresa` | Nome no FCA ou no cadastro; sem CNPJ, como o CDA descreve | texto |
+| `motivo` | Por que o emissor fica sem empresa | texto |
+| `fonte` | De onde veio a conferência | texto |
+| `conferido_em` | Dia da conferência | data (dia) |
 
 ## `emissores_antigos`
 

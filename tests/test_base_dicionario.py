@@ -31,8 +31,8 @@ PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
 # as tabelas da série 3 da base de ML (fundos e crédito), com a função ou a carga que as grava
 SERIE_3 = (
     "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
-    "codigos_fora_do_fca", "emissores_antigos", "carteiras_dos_fundos", "painel_dos_fundos",
-    "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
+    "codigos_fora_do_fca", "emissores_antigos", "emissores_sem_ligacao", "carteiras_dos_fundos",
+    "painel_dos_fundos", "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
     "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
 )  # fmt: skip
 
@@ -69,6 +69,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
+        "emissores_sem_ligacao": list(ligacoes.emissores_sem_ligacao().columns),
         "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{
             t.name: [c.name for c in t.columns]
