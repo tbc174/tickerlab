@@ -68,9 +68,7 @@ NAO_PODEM_SER_NEGATIVAS = {
 }
 RECEITA = "3.01"
 FATOR_DE_SALTO = 5.0  # R7: subir ou cair 5 vezes num ano pede explicação
-ATRASO_QUE_PODE_SER_FERIADO = (
-    2  # dias (src/prazos.py não conhece feriados estaduais e municipais)
-)
+ATRASO_QUE_PODE_SER_FERIADO = 2  # dias: pode ser um feriado local
 PATRIMONIO_LIQUIDO = re.compile(r"^patrim[oô]nio l[ií]quido", re.IGNORECASE)
 # a linha do lucro do período, achada pela descrição: em parte das empresas a 3.11 é a reversão dos
 # juros sobre capital próprio e o lucro fica na 3.13 (medido na DFP 2022)
