@@ -106,6 +106,14 @@ export function cssFerramentas(): string {
 .ferramenta-notas { margin: 1rem 0 0; padding-left: 1.1rem; font-size: .85rem; display: grid; gap: .35rem; }
 .ferramenta-largo .ferramenta-comparacao { margin-top: 1rem; width: 100%; }
 .ferramenta-inverter { justify-self: start; }
+/* DARF do ano: a grade rola de lado dentro dela, sem empurrar a página */
+.ferramenta-rolagem { overflow-x: auto; max-width: 100%; }
+.darf-do-ano table { font-size: .88rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.darf-do-ano th, .darf-do-ano td { padding: .3rem .4rem; white-space: nowrap; text-align: right; vertical-align: middle; }
+.darf-do-ano th[scope="row"] { text-align: left; }
+.darf-do-ano td input { width: 7.5rem; padding: .4rem .5rem; border-radius: 8px; border: 1px solid var(--linha-forte);
+  background: var(--fundo); color: var(--texto); font: 500 .88rem "Manrope", sans-serif; text-align: right; }
+.darf-do-ano ~ .ferramenta-resultado { grid-column: 1 / -1; }
 .anuncio-da-casa { padding: 1.5rem; border-radius: var(--raio); border: 1px solid color-mix(in srgb, var(--azul) 40%, var(--linha));
   background: color-mix(in srgb, var(--azul) 7%, var(--superficie)); }
 .anuncio-da-casa h2 { font-size: 1.3rem; }
