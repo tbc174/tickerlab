@@ -8,7 +8,7 @@ documento que o Tiago revisa (`docs/dicionario-da-base.md`) é gerado daqui
 desatualizado.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from src.banco.coletas import SO_USO_INTERNO, licenca_da_fonte, revenda_da_fonte
@@ -122,6 +122,18 @@ class Tabela:
     ressalva_de_revenda: str = (
         ""  # parte da tabela que não segue a revenda da fonte principal
     )
+    # contrato de dados (ADR 0077, PR 1); preenchido por `_CONTRATO`, logo abaixo de `TABELAS`
+    modulo: str = (
+        ""  # mercado_e_empresas, credito_e_fidc, ma, governo_e_sancoes, macro, ...
+    )
+    pessoa: bool = False  # a tabela guarda dado de pessoa natural?
+    chaves: tuple[str, ...] = ()  # colunas que identificam uma linha
+    datas: dict[str, str] = field(
+        default_factory=dict
+    )  # as três datas → coluna que já existe
+    historico_desde: str = ""  # a partir de quando a base tem dado (ISO)
+    granularidade_do_publico_em: str = ""  # "dia", "mes" ou "ano"
+    versao_do_contrato: str = "1.0.0"
 
 
 _EMPRESA = {
@@ -1442,6 +1454,62 @@ TABELAS: dict[str, Tabela] = {
 }
 
 
+_ME = "mercado_e_empresas"
+_FIDC = "credito_e_fidc"
+_CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
+_GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+# módulo, chaves, apelidos das três datas (`aconteceu_em`: quando o fato ocorreu; `publico_em`: quando
+# ficou público; `coletado_em`: quando a base o guardou), `historico_desde` e granularidade do
+# `publico_em`; só colunas que já existem, sem inventar data onde a fonte não dá
+_CONTRATO: dict[str, dict] = {
+    "demonstracoes_como_era": dict(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM),
+    "achados_de_qualidade": dict(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
+    "cadastro_das_companhias": dict(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
+    "tickers_no_tempo": dict(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
+    "valores_mobiliarios": dict(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
+    "emissores": dict(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
+    "codigos_invalidos": dict(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
+    "carteiras_dos_fundos": dict(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "fidc_informe": dict(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "cadastro_de_fundos": dict(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
+    "painel_dos_fundos": dict(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "cobertura_dos_fundos": dict(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
+    "buracos_dos_fundos": dict(modulo=_FIDC, chaves=("emissor",), historico_desde=_CVM),
+    "emissores_antigos": dict(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
+    "codigos_fora_do_fca": dict(modulo=_ME, chaves=("codigo",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
+    "ifdata_valores": dict(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "ifdata_cadastro": dict(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
+    "ligacao_dos_bancos": dict(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
+    "scr_credito": dict(modulo=_FIDC, chaves=("data_base", "uf", "segmento", "cliente", "cnae_ocupacao", "porte", "modalidade", "submodalidade", "origem", "indexador"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
+    "padroes_setoriais": dict(modulo=_ME, chaves=("data_de_corte", "grupo", "indicador", "versao"), datas={"aconteceu_em": "data_de_corte", "coletado_em": "calculado_em"}, historico_desde=_CVM),
+    "fre_proventos": dict(modulo=_ME, chaves=("cnpj", "exercicio", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "fre_eventos_de_capital": dict(modulo=_ME, chaves=("cnpj", "tipo", "data", "referencia", "versao"), datas={"aconteceu_em": "data", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "eventos": dict(modulo=_ME, chaves=("protocolo", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "publicado_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "negociacoes": dict(modulo=_ME, chaves=("fonte", "documento", "versao", "cnpj", "cargo", "operacao", "ativo", "data"), datas={"aconteceu_em": "data", "publico_em": "entregue_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "proventos": dict(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "eventos_de_capital": dict(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "insolvencia": dict(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "cnpj_situacao_especial": dict(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "auditores": dict(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "trocas_de_auditor": dict(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "curva_juros": dict(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "controladas": dict(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "empresa_serie": dict(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
+}  # fmt: skip
+TABELAS = {
+    nome: replace(tabela, **{"granularidade_do_publico_em": "dia", **_CONTRATO[nome]})
+    for nome, tabela in TABELAS.items()
+}
+
+
+def _datas_em_texto(tabela: Tabela) -> str:
+    if not tabela.datas:
+        return "nenhuma coluna da tabela traz estas datas"
+    return "; ".join(
+        f"{apelido} = `{coluna}`" for apelido, coluna in tabela.datas.items()
+    )
+
+
 def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
     linhas = [
         f"## `{nome}`",
@@ -1458,6 +1526,11 @@ def _tabela_em_markdown(nome: str, tabela: Tabela) -> list[str]:
         ),
         f"- **Frequência:** {tabela.frequencia}",
         f"- **Atraso de divulgação:** {tabela.atraso}",
+        f"- **Módulo:** {tabela.modulo} · **Contém dado de pessoa:** {'sim' if tabela.pessoa else 'não'}",
+        f"- **Chaves:** {', '.join(f'`{c}`' for c in tabela.chaves)}",
+        f"- **Três datas:** {_datas_em_texto(tabela)}",
+        f"- **Histórico desde:** {tabela.historico_desde} (`publico_em` por {tabela.granularidade_do_publico_em})",
+        f"- **Versão do contrato:** {tabela.versao_do_contrato}",
         f"- **Onde fica:** {tabela.onde}",
         f"- **Linhagem:** {tabela.linhagem}",
         "",

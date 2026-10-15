@@ -264,3 +264,42 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
         assert "versao_do_codigo" in TABELAS[tabela].linhagem, tabela
         assert "ainda não é guardada" not in TABELAS[tabela].linhagem, tabela
     assert "Comex Stat a confirmar" in TABELAS["empresa_serie"].ressalva_de_revenda
+
+
+# --- contrato de dados (ADR 0077, PR 1): módulo, chaves, três datas e histórico ---
+MODULOS = {
+    "mercado_e_empresas", "credito_e_fidc", "ma", "governo_e_sancoes", "macro",
+    "cripto", "intradiarios", "pessoas", "rede",
+}  # fmt: skip
+APELIDOS_DAS_DATAS = {"aconteceu_em", "publico_em", "coletado_em"}
+FAMILIAS_DE_GOVERNO = {"rfb-cnpj", "cgu", "pgfn", "ibama", "mte"}
+
+
+def test_toda_tabela_tem_modulo_conhecido():
+    for nome, tabela in TABELAS.items():
+        assert tabela.modulo in MODULOS, nome
+
+
+def test_toda_tabela_tem_chaves_que_existem():
+    for nome, tabela in TABELAS.items():
+        assert tabela.chaves, f"{nome} sem chaves"
+        assert set(tabela.chaves) <= set(tabela.colunas), nome
+
+
+def test_apelidos_das_datas_apontam_para_colunas():
+    for nome, tabela in TABELAS.items():
+        assert set(tabela.datas) <= APELIDOS_DAS_DATAS, nome
+        assert set(tabela.datas.values()) <= set(tabela.colunas), nome
+
+
+def test_toda_tabela_tem_historico_desde_e_granularidade():
+    for nome, tabela in TABELAS.items():
+        pd.Timestamp(tabela.historico_desde)  # é uma data
+        assert tabela.granularidade_do_publico_em in {"dia", "mes", "ano"}, nome
+        if tabela.familia_da_fonte in FAMILIAS_DE_GOVERNO:
+            assert tabela.historico_desde == "2026-10-14", nome
+            assert tabela.granularidade_do_publico_em == "mes", nome
+
+
+def test_contrato_comeca_na_versao_1():
+    assert {t.versao_do_contrato for t in TABELAS.values()} == {"1.0.0"}
