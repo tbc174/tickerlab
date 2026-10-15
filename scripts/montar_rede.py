@@ -3,6 +3,7 @@
     python -m scripts.montar_rede                  (a base do acervo)
     python -m scripts.montar_rede --pasta <base>    (a pasta com fca/, controladas/, fidc/...)
     python -m scripts.montar_rede --amostra <csv>   (e grava a amostra da tarefa 2.7 para conferir)
+    python -m scripts.montar_rede --saida <pasta>   (ensaio: grava fora da base)
 
 Lê o que a base já tem (nenhuma coleta nova): as tabelas `fca/tickers` e `fca/emissores`,
 `controladas/<ano>`, `empresa_serie`, `fidc/cadastro/cad_fi` e `bcb/ifdata/cadastro/<AAAAMM>` (sem as
@@ -207,8 +208,10 @@ def _linhas_gravadas(destino: Path) -> int:
     ]
 
 
-def montar_no_acervo(conexao: sa.Connection, pasta: Path) -> Resumo:
-    """Monta e grava `<pasta>/rede/entidades` e `<pasta>/rede/identificadores`."""
+def montar_no_acervo(
+    conexao: sa.Connection, pasta: Path, saida: Path | None = None
+) -> Resumo:
+    """Monta e grava `entidades` e `identificadores` em `<pasta>/rede/` (ou em `saida`, no ensaio)."""
     entradas, receita, origens = _entradas(conexao, pasta)
 
     def calcular() -> tuple[pd.DataFrame, ...]:
@@ -217,7 +220,7 @@ def montar_no_acervo(conexao: sa.Connection, pasta: Path) -> Resumo:
         return montar.montar_rede(observacoes, naturezas, meis, ids.ids_fixados())
 
     rede = _UmaVez(calcular)
-    destino = pasta / PASTA_DA_REDE
+    destino = saida or pasta / PASTA_DA_REDE
     gravadas = {
         "entidades": gravar_com_versoes(
             lambda: rede()[0], destino / "entidades", origens, ORDEM_DAS_ENTIDADES
@@ -240,10 +243,9 @@ def montar_no_acervo(conexao: sa.Connection, pasta: Path) -> Resumo:
     return Resumo(len(entidades), len(identificadores), conflitos, gravadas)
 
 
-def gravar_amostra(pasta: Path, destino: Path) -> int:
+def gravar_amostra(rede: Path, destino: Path) -> int:
     """A amostra da tarefa 2.7 num CSV para conferir: até 200 por regra, com o tipo e o nome da
     entidade e `do_tiago` = sim nas 20 por regra que o Tiago confere. Devolve as linhas."""
-    rede = pasta / PASTA_DA_REDE
     sorteada = amostra.sortear(ler_tabela(rede / "identificadores.parquet"))
     do_tiago = amostra.para_o_tiago(sorteada)[amostra.CHAVE].assign(do_tiago="sim")
     entidades = ler_tabela(rede / "entidades.parquet")[["id_entidade", "tipo", "nome"]]
@@ -270,6 +272,7 @@ def _conflitos_por_regra_e_fonte(conflitos: pd.DataFrame) -> str:
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--pasta", type=Path, default=None)
+    argumentos.add_argument("--saida", type=Path, default=None, help="pasta do ensaio")
     argumentos.add_argument(
         "--amostra", type=Path, default=None, help="CSV da amostra a conferir"
     )
@@ -283,7 +286,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
     with obter_engine().connect() as conexao:
-        resumo = montar_no_acervo(conexao, pasta)
+        resumo = montar_no_acervo(conexao, pasta, opcoes.saida)
     log.info(
         "rede: %d entidades, %d identificadores (%s); conflitos: %s",
         resumo.entidades,
@@ -294,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
     if opcoes.amostra:
         log.info(
             "amostra: %d linhas em %s",
-            gravar_amostra(pasta, opcoes.amostra),
+            gravar_amostra(opcoes.saida or pasta / PASTA_DA_REDE, opcoes.amostra),
             opcoes.amostra,
         )
     return 0

@@ -166,7 +166,7 @@ def test_sem_a_versao_do_codigo_nao_monta(base, monkeypatch):
 def test_amostra_para_conferir(base, tmp_path):
     _montar(base)
     destino = tmp_path / "amostra.csv"
-    montar_rede.gravar_amostra(base, destino)
+    montar_rede.gravar_amostra(base / "rede", destino)
     tabela = pd.read_csv(destino, sep=";", dtype=str, keep_default_na=False)
     assert {
         "regra",
@@ -179,3 +179,14 @@ def test_amostra_para_conferir(base, tmp_path):
     } <= set(tabela.columns)
     assert set(tabela["do_tiago"]) <= {"sim", "nao"}
     assert len(tabela) > 0
+
+
+def test_ensaio_grava_fora_da_base(base, tmp_path):
+    motor = criar_engine()
+    try:
+        with motor.connect() as conexao:
+            montar_rede.montar_no_acervo(conexao, base, tmp_path / "ensaio")
+    finally:
+        motor.dispose()
+    assert (tmp_path / "ensaio" / "entidades.parquet").is_file()
+    assert not (base / "rede").exists()
