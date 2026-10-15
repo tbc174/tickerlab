@@ -7192,6 +7192,298 @@
  },
  {
   "argumentos": [
+   [
+    {
+     "custos": 5,
+     "preco": 10,
+     "quantidade": 100,
+     "tipo": "compra"
+    },
+    {
+     "custos": 5,
+     "preco": 20,
+     "quantidade": 100,
+     "tipo": "compra"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 1005.0,
+    "preco_medio": 10.05,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 3010.0,
+    "preco_medio": 15.05,
+    "quantidade": 200.0,
+    "resultado": null,
+    "tipo": "compra"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 100,
+     "tipo": "compra"
+    },
+    {
+     "custos": 2,
+     "preco": 15,
+     "quantidade": 40,
+     "tipo": "venda"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 1000.0,
+    "preco_medio": 10.0,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 600.0,
+    "preco_medio": 10.0,
+    "quantidade": 60.0,
+    "resultado": 198.0,
+    "tipo": "venda"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 10,
+     "tipo": "compra"
+    },
+    {
+     "preco": 12,
+     "quantidade": 10,
+     "tipo": "venda"
+    },
+    {
+     "preco": 30,
+     "quantidade": 10,
+     "tipo": "compra"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 100.0,
+    "preco_medio": 10.0,
+    "quantidade": 10.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 0.0,
+    "preco_medio": null,
+    "quantidade": 0.0,
+    "resultado": 20.0,
+    "tipo": "venda"
+   },
+   {
+    "custo_total": 300.0,
+    "preco_medio": 30.0,
+    "quantidade": 10.0,
+    "resultado": null,
+    "tipo": "compra"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 100,
+     "tipo": "compra"
+    },
+    {
+     "preco": 5,
+     "quantidade": 10,
+     "tipo": "bonificacao"
+    },
+    {
+     "quantidade": 110,
+     "tipo": "desdobro"
+    },
+    {
+     "quantidade": 20,
+     "tipo": "grupamento"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 1000.0,
+    "preco_medio": 10.0,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 1050.0,
+    "preco_medio": 9.545454545454545,
+    "quantidade": 110.0,
+    "resultado": null,
+    "tipo": "bonificacao"
+   },
+   {
+    "custo_total": 1050.0,
+    "preco_medio": 4.7727272727272725,
+    "quantidade": 220.0,
+    "resultado": null,
+    "tipo": "desdobro"
+   },
+   {
+    "custo_total": 1050.0,
+    "preco_medio": 5.25,
+    "quantidade": 200.0,
+    "resultado": null,
+    "tipo": "grupamento"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 100,
+     "tipo": "compra"
+    },
+    {
+     "preco": 0.5,
+     "quantidade": 0,
+     "tipo": "amortizacao"
+    },
+    {
+     "preco": 50,
+     "quantidade": 0,
+     "tipo": "amortizacao"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 1000.0,
+    "preco_medio": 10.0,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 950.0,
+    "preco_medio": 9.5,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "amortizacao"
+   },
+   {
+    "custo_total": 0.0,
+    "preco_medio": 0.0,
+    "quantidade": 100.0,
+    "resultado": null,
+    "tipo": "amortizacao"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "custos": 0.01,
+     "preco": 33.33,
+     "quantidade": 3,
+     "tipo": "compra"
+    },
+    {
+     "preco": 40,
+     "quantidade": 1,
+     "tipo": "venda"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "valor": [
+   {
+    "custo_total": 100.0,
+    "preco_medio": 33.333333333333336,
+    "quantidade": 3.0,
+    "resultado": null,
+    "tipo": "compra"
+   },
+   {
+    "custo_total": 66.66666666666666,
+    "preco_medio": 33.33333333333333,
+    "quantidade": 2.0,
+    "resultado": 6.666666666666664,
+    "tipo": "venda"
+   }
+  ]
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 10,
+     "tipo": "compra"
+    },
+    {
+     "preco": 10,
+     "quantidade": 11,
+     "tipo": "venda"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": 10,
+     "tipo": "aluguel"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "erro": true
+ },
+ {
+  "argumentos": [
+   [
+    {
+     "preco": 10,
+     "quantidade": -1,
+     "tipo": "compra"
+    }
+   ]
+  ],
+  "conta": "preco_medio.calcular",
+  "erro": true
+ },
+ {
+  "argumentos": [
    100,
    "USD",
    "BRL",

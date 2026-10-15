@@ -13,6 +13,7 @@ import * as rendaFixa from "../../src/ferramentas/contas/renda_fixa";
 import * as sorte from "../../src/ferramentas/contas/sorte_em_serie";
 import * as taxas from "../../src/ferramentas/contas/taxas";
 import * as viverDeRenda from "../../src/ferramentas/contas/viver_de_renda";
+import * as precoMedio from "../../src/ferramentas/contas/preco_medio";
 import casos from "../golden_ferramentas.json";
 
 type Conta = (...argumentos: never[]) => unknown;
@@ -44,6 +45,7 @@ const CONTAS: Record<string, Conta> = {
   "darf.apurar_mes": darf.apurarMes,
   "darf.apurar_meses": darf.apurarMeses,
   "darf.vencimento": darf.vencimento,
+  "preco_medio.calcular": precoMedio.calcular,
   "moedas.converter": moedas.converter,
   "taxas.juro_real": taxas.juroReal,
   "taxas.taxa_nominal": taxas.taxaNominal,

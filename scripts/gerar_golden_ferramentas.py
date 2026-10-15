@@ -24,6 +24,7 @@ from src.ferramentas import (
     inflacao,
     juros,
     moedas,
+    preco_medio,
     renda_fixa,
     taxas,
 )
@@ -68,6 +69,9 @@ CONTAS: dict[str, Conta] = {
         [darf.Mes(**m) for m in meses], darf.Saldos(**saldos)
     ),
     "darf.vencimento": darf.vencimento,
+    "preco_medio.calcular": lambda ops: preco_medio.calcular(
+        [preco_medio.Operacao(**o) for o in ops]
+    ),
     "moedas.converter": moedas.converter,
     "taxas.juro_real": taxas.juro_real,
     "taxas.taxa_nominal": taxas.taxa_nominal,
@@ -288,6 +292,75 @@ CASOS: list[tuple[str, list[Any]]] = [
     ),
     ("darf.vencimento", [2026, 10]),
     ("darf.vencimento", [2026, 12]),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10, "custos": 5},
+                {"tipo": "compra", "quantidade": 100, "preco": 20, "custos": 5},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "venda", "quantidade": 40, "preco": 15, "custos": 2},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 10},
+                {"tipo": "venda", "quantidade": 10, "preco": 12},
+                {"tipo": "compra", "quantidade": 10, "preco": 30},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "bonificacao", "quantidade": 10, "preco": 5},
+                {"tipo": "desdobro", "quantidade": 110},
+                {"tipo": "grupamento", "quantidade": 20},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 100, "preco": 10},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 0.5},
+                {"tipo": "amortizacao", "quantidade": 0, "preco": 50},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 3, "preco": 33.33, "custos": 0.01},
+                {"tipo": "venda", "quantidade": 1, "preco": 40},
+            ]
+        ],
+    ),
+    (
+        "preco_medio.calcular",
+        [
+            [
+                {"tipo": "compra", "quantidade": 10, "preco": 10},
+                {"tipo": "venda", "quantidade": 11, "preco": 10},
+            ]
+        ],
+    ),
+    ("preco_medio.calcular", [[{"tipo": "aluguel", "quantidade": 10, "preco": 10}]]),
+    ("preco_medio.calcular", [[{"tipo": "compra", "quantidade": -1, "preco": 10}]]),
     ("moedas.converter", [100, "USD", "BRL", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [1000, "BRL", "EUR", COTACOES_DE_EXEMPLO]),
     ("moedas.converter", [250, "GBP", "JPY", COTACOES_DE_EXEMPLO]),
