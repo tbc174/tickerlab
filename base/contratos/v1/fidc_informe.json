@@ -1,0 +1,35 @@
+{
+  "tabela": "fidc_informe",
+  "modulo": "credito_e_fidc",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês do informe (último dia)",
+      "unidade": "data (dia)"
+    },
+    "cnpj_fundo": {
+      "descricao": "CNPJ do fundo (ou da classe, depois da CVM 175)",
+      "unidade": "texto"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o informe era público (como era na data)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "cnpj_fundo"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
+  "atraso": "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+}

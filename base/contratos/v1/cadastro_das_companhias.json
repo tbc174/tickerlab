@@ -1,0 +1,53 @@
+{
+  "tabela": "cadastro_das_companhias",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "registro": {
+      "descricao": "Data do registro na CVM",
+      "unidade": "data (dia)"
+    },
+    "cancelamento": {
+      "descricao": "Data do cancelamento (vazio: ativa)",
+      "unidade": "data (dia)"
+    },
+    "motivo_cancelamento": {
+      "descricao": "Motivo informado pela CVM (voluntário, de ofício...)",
+      "unidade": "texto"
+    },
+    "situacao": {
+      "descricao": "Situação do registro (ATIVO, CANCELADA...)",
+      "unidade": "texto"
+    },
+    "setor": {
+      "descricao": "Setor de atividade informado à CVM",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Estado da sede, no cadastro de hoje (muda o prazo do ITR de 2024 no RS)",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "registro"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária (a CVM atualiza o arquivo todo dia útil)",
+  "atraso": "Dias, entre o ato (registro ou cancelamento) e a publicação"
+}

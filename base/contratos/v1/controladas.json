@@ -1,0 +1,86 @@
+{
+  "tabela": "controladas",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj_companhia": {
+      "descricao": "CNPJ da companhia que informou (14 dígitos)",
+      "unidade": "texto"
+    },
+    "companhia": {
+      "descricao": "Nome da companhia",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE (fica a mais nova)",
+      "unidade": "número inteiro"
+    },
+    "id_documento": {
+      "descricao": "Número do documento na CVM",
+      "unidade": "texto"
+    },
+    "conhecido_em": {
+      "descricao": "Data em que a CVM recebeu essa versão do FRE",
+      "unidade": "data (dia)"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da sociedade (14 dígitos; vazio nas estrangeiras)",
+      "unidade": "texto"
+    },
+    "razao_social": {
+      "descricao": "Razão social da sociedade",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "controlada, coligada ou vazio (não informado)",
+      "unidade": "texto"
+    },
+    "participacao": {
+      "descricao": "Participação da companhia na sociedade",
+      "unidade": "pontos percentuais (66,25 = 66,25%)"
+    },
+    "ano_do_arquivo": {
+      "descricao": "Ano do arquivo da CVM de onde a linha veio",
+      "unidade": "ano"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj_companhia",
+    "referencia",
+    "versao",
+    "cnpj"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
+  "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança; a ligação vale a partir de `conhecido_em`"
+}

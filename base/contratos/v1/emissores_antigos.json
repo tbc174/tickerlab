@@ -1,0 +1,65 @@
+{
+  "tabela": "emissores_antigos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "emissor": {
+      "descricao": "As 4 posições do emissor",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia no cadastro da CVM",
+      "unidade": "texto"
+    },
+    "empresa_no_cadastro": {
+      "descricao": "Nome no cadastro de companhias da CVM",
+      "unidade": "texto"
+    },
+    "cd_cvm": {
+      "descricao": "Código da companhia na CVM",
+      "unidade": "texto"
+    },
+    "registro": {
+      "descricao": "Data do registro na CVM",
+      "unidade": "data (dia)"
+    },
+    "cancelamento": {
+      "descricao": "Data do cancelamento do registro (vazio: ativa)",
+      "unidade": "data (dia)"
+    },
+    "descricao_no_cda": {
+      "descricao": "Descrição do ativo nas carteiras dos fundos",
+      "unidade": "texto"
+    },
+    "no_cda": {
+      "descricao": "Primeiro e último mês nas carteiras (AAAA-MM–AAAA-MM)",
+      "unidade": "texto"
+    },
+    "observacao": {
+      "descricao": "O que aconteceu com a empresa (incorporação, troca de nome)",
+      "unidade": "texto"
+    },
+    "fonte": {
+      "descricao": "De onde veio a ligação",
+      "unidade": "texto"
+    },
+    "conferido_em": {
+      "descricao": "Dia da conferência",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "emissor"
+  ],
+  "datas": {
+    "coletado_em": "conferido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
+  "atraso": "Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras"
+}

@@ -1,0 +1,65 @@
+{
+  "tabela": "codigos_fora_do_fca",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "codigo": {
+      "descricao": "Código de negociação na B3 (BPAC11)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, como no FCA",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia no FCA",
+      "unidade": "texto"
+    },
+    "valor_mobiliario": {
+      "descricao": "Tipo do papel (units, ações ordinárias...)",
+      "unidade": "texto"
+    },
+    "isin": {
+      "descricao": "ISIN do papel nas carteiras dos fundos (a prova do emissor)",
+      "unidade": "texto"
+    },
+    "primeiro_no_cda": {
+      "descricao": "Primeiro mês em que o código aparece nas carteiras",
+      "unidade": "data (dia)"
+    },
+    "ultimo_no_cda": {
+      "descricao": "Último mês em que o código aparece nas carteiras",
+      "unidade": "data (dia)"
+    },
+    "codigo_no_fca": {
+      "descricao": "O que a empresa escreveu no lugar do código",
+      "unidade": "texto"
+    },
+    "observacao": {
+      "descricao": "Nota da conferência",
+      "unidade": "texto"
+    },
+    "fonte": {
+      "descricao": "De onde veio cada parte da ligação",
+      "unidade": "texto"
+    },
+    "conferido_em": {
+      "descricao": "Dia da conferência",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "codigo"
+  ],
+  "datas": {
+    "coletado_em": "conferido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
+  "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras"
+}

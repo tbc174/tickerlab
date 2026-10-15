@@ -1,0 +1,74 @@
+{
+  "tabela": "fre_eventos_de_capital",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "desdobramento, grupamento, bonificação ou aumento",
+      "unidade": "texto"
+    },
+    "data": {
+      "descricao": "Data da aprovação ou da deliberação",
+      "unidade": "data (dia)"
+    },
+    "quantidade": {
+      "descricao": "Ações depois do evento (no aumento, as ações novas)",
+      "unidade": "ações"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE de onde a linha veio",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão desse FRE (1, 2, 3...)",
+      "unidade": "número"
+    },
+    "acoes_antes": {
+      "descricao": "Ações antes do evento",
+      "unidade": "ações"
+    },
+    "acoes_depois": {
+      "descricao": "Ações depois do evento",
+      "unidade": "ações"
+    },
+    "fator": {
+      "descricao": "Depois ÷ antes (desdobramento de 1 para 10 = 10)",
+      "unidade": "vezes"
+    },
+    "acoes_novas": {
+      "descricao": "Ações emitidas no aumento de capital",
+      "unidade": "ações"
+    },
+    "valor": {
+      "descricao": "Valor do aumento de capital",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "coletado_em": {
+      "descricao": "Quando a carga gravou a linha",
+      "unidade": "data e hora (UTC)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "tipo",
+    "data",
+    "referencia",
+    "versao"
+  ],
+  "datas": {
+    "aconteceu_em": "data",
+    "coletado_em": "coletado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Carga de uma vez (FRE de 2010 a 2022): a CVM tirou estas tabelas do FRE aberto depois de 2022 (Resolução CVM 59)",
+  "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança"
+}
