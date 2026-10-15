@@ -1,0 +1,53 @@
+{
+  "tabela": "padroes_setoriais",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "data_de_corte": {
+      "descricao": "Data de corte: entra só o que era público até ela (fim de cada mês)",
+      "unidade": "data (dia)"
+    },
+    "grupo": {
+      "descricao": "Grupo de setores (`src/setores.py`) ou `mercado` (todas as não financeiras)",
+      "unidade": "texto"
+    },
+    "indicador": {
+      "descricao": "Indicador (`src/padroes.py::INDICADORES`) ou múltiplo de preço",
+      "unidade": "texto"
+    },
+    "versao": {
+      "descricao": "Versão do método (`VERSAO_DOS_PADROES`)",
+      "unidade": "texto"
+    },
+    "empresas": {
+      "descricao": "Quantas empresas do grupo tinham o indicador no corte",
+      "unidade": "número"
+    },
+    "percentis": {
+      "descricao": "Os percentis 10 a 90 do indicador no grupo ({\"50\": 0.08, ...})",
+      "unidade": "a do indicador (fração, vezes ou dias)"
+    },
+    "calculado_em": {
+      "descricao": "Quando a tarefa gravou a linha",
+      "unidade": "data e hora (UTC)"
+    }
+  },
+  "chaves": [
+    "data_de_corte",
+    "grupo",
+    "indicador",
+    "versao"
+  ],
+  "datas": {
+    "aconteceu_em": "data_de_corte",
+    "coletado_em": "calculado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Um corte por fim de mês; o cron do VPS roda todo dia às 8h30 e só grava o corte que falta (`scripts/atualizar_padroes.py --so-o-que-falta`)",
+  "atraso": "O do balanço mais novo de cada empresa até o corte (DFP até 3 meses, ITR até 45 dias)"
+}

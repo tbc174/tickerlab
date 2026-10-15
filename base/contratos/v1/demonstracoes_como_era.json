@@ -1,0 +1,92 @@
+{
+  "tabela": "demonstracoes_como_era",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "grupo": {
+      "descricao": "con (consolidado) ou ind (individual)",
+      "unidade": "texto"
+    },
+    "demonstracao": {
+      "descricao": "BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado)",
+      "unidade": "texto"
+    },
+    "conta": {
+      "descricao": "Código da conta no plano da CVM (1, 1.01, 3.01...)",
+      "unidade": "texto"
+    },
+    "descricao": {
+      "descricao": "Nome da conta como a empresa informou",
+      "unidade": "texto"
+    },
+    "inicio": {
+      "descricao": "Começo do período (vazio no balanço, que é um saldo numa data)",
+      "unidade": "data (dia)"
+    },
+    "fim": {
+      "descricao": "Fim do período ou data do saldo",
+      "unidade": "data (dia)"
+    },
+    "valor": {
+      "descricao": "Valor da conta; vazio quando a empresa deixou em branco",
+      "unidade": "reais (R$), já multiplicado pela escala informada"
+    },
+    "documento": {
+      "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do documento que publicou este valor (1, 2, 3...)",
+      "unidade": "número"
+    },
+    "ordem": {
+      "descricao": "ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito)",
+      "unidade": "texto"
+    },
+    "origem": {
+      "descricao": "dados_abertos ou enet",
+      "unidade": "texto"
+    },
+    "divulgado_em": {
+      "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora)",
+      "unidade": "data (dia)"
+    },
+    "ate": {
+      "descricao": "Dia em que outro valor tomou o lugar (vazio: vale até hoje)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "documento",
+    "referencia",
+    "versao",
+    "demonstracao",
+    "grupo",
+    "conta"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "divulgado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano",
+  "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+}

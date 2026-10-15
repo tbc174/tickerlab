@@ -1,0 +1,79 @@
+{
+  "tabela": "achados_de_qualidade",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id": {
+      "descricao": "Identificador da linha",
+      "unidade": "UUID"
+    },
+    "regra": {
+      "descricao": "Regra que apontou (R1 a R11)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "documento": {
+      "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+      "unidade": "data (dia)"
+    },
+    "grupo": {
+      "descricao": "con, ind ou vazio (regras que olham o documento inteiro)",
+      "unidade": "texto"
+    },
+    "conta": {
+      "descricao": "Conta apontada, ou vazio",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "O número publicado (na R8, os dias de atraso)",
+      "unidade": "reais ou dias"
+    },
+    "valor_esperado": {
+      "descricao": "O que a regra esperava encontrar",
+      "unidade": "reais ou dias"
+    },
+    "porque": {
+      "descricao": "Frase em português que o selo mostra",
+      "unidade": "texto"
+    },
+    "versao_das_regras": {
+      "descricao": "Versão das regras que calculou",
+      "unidade": "texto"
+    },
+    "valido_desde": {
+      "descricao": "Desde quando a informação existia (a entrega do documento)",
+      "unidade": "data e hora (UTC)"
+    },
+    "calculado_em": {
+      "descricao": "Quando a tarefa gravou ou atualizou o achado",
+      "unidade": "data e hora (UTC)"
+    },
+    "fechado_em": {
+      "descricao": "Quando o achado sumiu numa rodada nova (vazio: aberto)",
+      "unidade": "data e hora (UTC)"
+    }
+  },
+  "chaves": [
+    "id"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "valido_desde",
+    "coletado_em": "calculado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária no VPS (tarefa `qualidade-cvm` às 8h15)",
+  "atraso": "O do documento conferido; `valido_desde` diz desde quando o achado existe"
+}

@@ -1,0 +1,50 @@
+{
+  "tabela": "ligacao_dos_bancos",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "data_base": {
+      "descricao": "Data-base do cadastro",
+      "unidade": "data (dia)"
+    },
+    "cod_inst": {
+      "descricao": "Código da instituição no BC",
+      "unidade": "texto"
+    },
+    "instituicao": {
+      "descricao": "Nome da instituição",
+      "unidade": "texto"
+    },
+    "cnpj_raiz": {
+      "descricao": "Raiz do CNPJ (8 dígitos)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da empresa da bolsa (vazio se não tem ação)",
+      "unidade": "texto"
+    },
+    "tickers": {
+      "descricao": "Códigos que valiam na data-base (FCA já entregue), separados por vírgula",
+      "unidade": "texto"
+    },
+    "ligado_por": {
+      "descricao": "próprio CNPJ (a instituição é a empresa da bolsa, como o Banco PAN) ou líder do conglomerado; vazio sem ligação",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "data_base",
+    "cod_inst"
+  ],
+  "datas": {
+    "aconteceu_em": "data_base"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Trimestral, montada de novo a cada carga",
+  "atraso": "O do cadastro do IF.data"
+}

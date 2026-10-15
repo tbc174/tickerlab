@@ -1,0 +1,88 @@
+{
+  "tabela": "empresa_serie",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "fonte": {
+      "descricao": "Fonte do arquivista de onde veio a entidade",
+      "unidade": "texto"
+    },
+    "chave": {
+      "descricao": "Como a fonte identifica a entidade: registro ANS, CNPJ, ISPB, nome, sigla ou capítulo do NCM",
+      "unidade": "texto"
+    },
+    "nome": {
+      "descricao": "Nome da entidade na fonte (ou na tabela conferida)",
+      "unidade": "texto"
+    },
+    "raiz": {
+      "descricao": "Raiz do CNPJ da entidade (8 dígitos), quando há",
+      "unidade": "texto"
+    },
+    "cnpj_companhia": {
+      "descricao": "CNPJ da companhia ligada (14 dígitos)",
+      "unidade": "texto"
+    },
+    "companhia": {
+      "descricao": "Nome da companhia ligada",
+      "unidade": "texto"
+    },
+    "via": {
+      "descricao": "propria, controlada, coligada, sem_tipo ou produto",
+      "unidade": "texto"
+    },
+    "por": {
+      "descricao": "cnpj, nome ou tabela (conferida à mão)",
+      "unidade": "texto"
+    },
+    "participacao": {
+      "descricao": "Participação informada no FRE (vazia no produto)",
+      "unidade": "pontos percentuais (66,25 = 66,25%)"
+    },
+    "desde": {
+      "descricao": "1ª entrega à CVM de um FRE que mostrava a ligação",
+      "unidade": "data (dia)"
+    },
+    "ultima_referencia": {
+      "descricao": "Referência do FRE mais novo que mostra a ligação",
+      "unidade": "data (dia)"
+    },
+    "principal": {
+      "descricao": "A ligação a usar da entidade (ticker hoje, própria, FRE mais recente; nunca no produto)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "tickers": {
+      "descricao": "Tickers da companhia no FCA mais recente",
+      "unidade": "texto"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo de onde a entidade saiu",
+      "unidade": "texto"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "fonte",
+    "chave",
+    "cnpj_companhia"
+  ],
+  "datas": {
+    "aconteceu_em": "desde",
+    "coletado_em": "montado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Refeita a cada montagem, com a safra mais recente de cada fonte",
+  "atraso": "A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente"
+}
