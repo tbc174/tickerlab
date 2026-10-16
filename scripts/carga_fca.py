@@ -29,13 +29,12 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
 import sqlalchemy as sa
 
 from base import fca
 from base.cadastro import tickers_dos_valores
 from base.parquet import gravar_tabela
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import (
     com_registro,
     originais_guardados,
@@ -56,7 +55,7 @@ URL_DOS_CODIGOS_CONFERIDOS = "base/conferidas/codigos_fora_do_fca.csv"
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

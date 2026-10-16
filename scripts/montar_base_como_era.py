@@ -44,6 +44,7 @@ from base.ponto_no_tempo import (
     versoes_antigas,
 )
 from src import demonstracoes as dm
+from src import rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -58,7 +59,7 @@ URLS = {"DFP": dm.URL_DO_DFP, "ITR": dm.URL_DO_ITR}
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
