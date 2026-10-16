@@ -5,10 +5,19 @@ na própria data-base (`data_da_previsao`): a empresa vai entregar depois do pra
 
 Quem entra:
 - todo documento entregue até `hoje` (a primeira versão vale: reapresentar depois do prazo não é
-  atraso), menos o que tem o prazo **antes do primeiro registro** da empresa no cadastro da CVM: são
-  os ITRs e DFPs que ela manda de uma vez para pedir o registro, sem prazo a cumprir (eram 29% dos
-  "atrasou"; `reports/conferencia-data-de-entrega-cvm-2026-10-15.md`). Eles ficam contados no
-  manifesto (`fora_dos_exemplos`). Empresa fora do cadastro continua entrando com a entrega;
+  atraso) **com a empresa registrada e ativa no cadastro da CVM na data do prazo**, a mesma regra
+  das faltas abaixo: só é exemplo o que a empresa devia. Os que ficam de fora vão contados no
+  manifesto (`fora_dos_exemplos`), por motivo (`MOTIVOS_FORA`):
+  - `prazo_antes_do_primeiro_registro`: os ITRs e DFPs que a empresa manda de uma vez para pedir o
+    registro, sem prazo a cumprir (eram 29% dos "atrasou"; conferência da data de entrega da CVM,
+    15/10/2026);
+  - `prazo_entre_dois_registros`: o mesmo, para pedir o registro de volta (todos "atrasou");
+  - `prazo_depois_do_cancelamento`: a empresa já tinha saído (securitizadoras canceladas em 2022 que
+    continuaram mandando ITR, por exemplo);
+  - `empresa_fora_do_cadastro`: quase todas são emissores estrangeiros (GP Investments, Cosan Ltd.,
+    Nu Holdings), que não estão no `cad_cia_aberta.csv`: não se sabe se deviam nem qual prazo valia.
+  A pergunta do modelo vale, então, para quem continuar registrado até o prazo: um limite declarado
+  no pré-registro (sair do registro antes do prazo é outra pergunta);
 - o documento que a empresa **devia e não entregou**: entregou o mesmo documento um ano antes e estava
   registrada e ativa no cadastro da CVM na data do prazo (a mesma regra da R8). Só o primeiro ano
   sem entrega entra; empresa fora do cadastro nunca "deve" (não dá para saber). E só conta como
@@ -40,7 +49,7 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from base.cadastro import ler_cadastro
+from base.cadastro import cadastro_do_acervo
 from base.contas_cvm import ler_indice
 from base.dias_uteis import dias_uteis
 from base.historico import ano_do_arquivo
@@ -68,11 +77,19 @@ COLUNAS = (
 DOCUMENTO = ["cnpj", "documento", "referencia"]
 TABELA = "rotulos_atraso"
 FONTES_DO_INDICE = {"DFP": "cvm-hist-dfp", "ITR": "cvm-hist-itr"}
-FONTE_DO_CADASTRO = "cvm-cadastros"
-ARQUIVO_DO_CADASTRO = "cad_cia_aberta.csv"
 VistosEm = Mapping[tuple[str, int], pd.Timestamp]
 ZONA_CINZENTA = 2  # dias úteis
+BRASILIA = "America/Sao_Paulo"
 ANTES_DO_REGISTRO = "prazo_antes_do_primeiro_registro"
+ENTRE_REGISTROS = "prazo_entre_dois_registros"
+DEPOIS_DO_CANCELAMENTO = "prazo_depois_do_cancelamento"
+FORA_DO_CADASTRO = "empresa_fora_do_cadastro"
+MOTIVOS_FORA = (
+    ANTES_DO_REGISTRO,
+    ENTRE_REGISTROS,
+    DEPOIS_DO_CANCELAMENTO,
+    FORA_DO_CADASTRO,
+)
 
 
 def _entregues(indice: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
@@ -103,12 +120,19 @@ def _ativa_no_prazo(candidatos: pd.DataFrame, cadastro: pd.DataFrame) -> pd.Seri
     )
 
 
-def _prazo_antes_do_registro(
-    exemplos: pd.DataFrame, cadastro: pd.DataFrame
-) -> pd.Series:
-    """Se o prazo cai antes do primeiro registro da empresa (False para empresa fora do cadastro)."""
-    primeiro_registro = cadastro.groupby("cnpj")["registro"].min()
-    return exemplos["prazo"] < exemplos["cnpj"].map(primeiro_registro)
+def _motivo_fora(exemplos: pd.DataFrame, cadastro: pd.DataFrame) -> pd.Series:
+    """Por que a entrega não é exemplo (um de `MOTIVOS_FORA`), ou "" quando a empresa devia."""
+    primeiro_registro = exemplos["cnpj"].map(cadastro.groupby("cnpj")["registro"].min())
+    juntos = exemplos[["cnpj", "prazo"]].reset_index().merge(cadastro, on="cnpj")
+    volta_depois = (
+        (juntos["registro"] > juntos["prazo"]).groupby(juntos["index"]).any()
+    ).reindex(exemplos.index, fill_value=False)
+    motivo = pd.Series("", index=exemplos.index)
+    motivo[~_ativa_no_prazo(exemplos, cadastro)] = DEPOIS_DO_CANCELAMENTO
+    motivo[(motivo != "") & volta_depois] = ENTRE_REGISTROS
+    motivo[exemplos["prazo"] < primeiro_registro] = ANTES_DO_REGISTRO
+    motivo[~exemplos["cnpj"].isin(set(cadastro["cnpj"]))] = FORA_DO_CADASTRO
+    return motivo
 
 
 def _com_prazo(
@@ -215,10 +239,10 @@ def montar_exemplos_e_fora(
 ) -> tuple[pd.DataFrame, dict[str, dict[str, int]]]:
     """Os exemplos (`montar_exemplos`) e quantas entregas ficaram de fora, por motivo.
 
-    O que fica de fora: `{"prazo_antes_do_primeiro_registro": {"exemplos": n, "atrasou": k}}`
+    O que fica de fora: `{motivo: {"exemplos": n, "atrasou": k}}` para cada um de `MOTIVOS_FORA`
     (`atrasou`: quantas seriam "atrasou" se entrassem).
     """
-    fora = {ANTES_DO_REGISTRO: {"exemplos": 0, "atrasou": 0}}
+    fora = {motivo: {"exemplos": 0, "atrasou": 0} for motivo in MOTIVOS_FORA}
     if indice.empty:
         return pd.DataFrame(columns=list(COLUNAS)), fora
     entregues = _entregues(indice, hoje)
@@ -229,15 +253,17 @@ def montar_exemplos_e_fora(
     )
     meses = _mes_fim_do_exercicio(indice)
     com_prazo = _com_prazo(entregues, ufs, meses)
-    antes = _prazo_antes_do_registro(com_prazo, cadastro)
+    motivo = _motivo_fora(com_prazo, cadastro)
     atrasados = com_prazo["primeira_entrega"] > com_prazo["prazo"]
-    fora[ANTES_DO_REGISTRO] = {
-        "exemplos": int(antes.sum()),
-        "atrasou": int((antes & atrasados).sum()),
-    }
+    for nome in MOTIVOS_FORA:
+        deste = motivo == nome
+        fora[nome] = {
+            "exemplos": int(deste.sum()),
+            "atrasou": int((deste & atrasados).sum()),
+        }
     exemplos = pd.concat(
         [
-            com_prazo[~antes],
+            com_prazo[motivo == ""],
             _devidos_sem_entrega(entregues, cadastro, ufs, meses, hoje, vistos_em),
         ],
         ignore_index=True,
@@ -266,21 +292,18 @@ def _dia(momento: object) -> pd.Timestamp:
     """O dia (sem hora nem fuso) de um momento, no horário de Brasília."""
     dia = pd.Timestamp(momento)  # type: ignore[arg-type]
     if dia.tzinfo is not None:
-        dia = dia.tz_convert("America/Sao_Paulo").tz_localize(None)
+        dia = dia.tz_convert(BRASILIA).tz_localize(None)
     return dia.normalize()
 
 
 def _cadastro(
     conexao: sa.Connection, origens: list[dict[str, str]]
 ) -> pd.DataFrame | None:
-    for original in originais_mais_recentes(conexao, FONTE_DO_CADASTRO):
-        if original.url.rsplit("/", 1)[-1] != ARQUIVO_DO_CADASTRO:
-            continue
-        conteudo = acervo.ler_original(original.caminho_do_original)
-        if conteudo is not None:
-            origens.append({"url": original.url, "sha256": original.sha256})
-            return ler_cadastro(conteudo)
-    return None
+    achado = cadastro_do_acervo(conexao)
+    if achado is None:
+        return None
+    origens.append(achado[1])
+    return achado[0]
 
 
 def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
@@ -307,8 +330,10 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     exemplos, fora = montar_exemplos_e_fora(
         indice, cadastro, _dia(agora), vistos_em=vistos_em
     )
+    # o dia, e não a hora: mesmos originais e mesmo dia dão a mesma tabela (exigência 9)
     tabela = exemplos.assign(
-        montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
+        montado_em=_dia(agora).tz_localize(BRASILIA).isoformat(),
+        versao_do_codigo=versao_do_codigo(),
     )
     gravar_tabela(
         tabela,

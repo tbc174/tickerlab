@@ -2685,7 +2685,13 @@ TABELAS: dict[str, Tabela] = {
             "referencia": ("Data de referência do FCA", DATA),
             "versao": ("Versão do FCA", NUMERO),
             "id_documento": ("Número do documento na CVM", TEXTO),
-            "conhecido_em": ("Data em que a CVM recebeu essa versão do FCA", DATA),
+            "conhecido_em": (
+                (
+                    "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do "
+                    "registro (pedido de registro), vale a partir do registro seguinte"
+                ),
+                DATA,
+            ),
             "auditor_id": (
                 (
                     "Identificador da firma: `rede:<nome>` nas redes; senão código da CVM, raiz do "
@@ -2796,11 +2802,13 @@ TABELAS: dict[str, Tabela] = {
             "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
             "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
             "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
-            "no prazo, data-base no calendário da empresa e no arquivo do ano). Não entra o "
-            "documento com o prazo antes do primeiro registro da empresa (o que ela manda para "
-            "pedir o registro, sem prazo a cumprir); o manifesto conta quantos ficaram de fora "
-            "(`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta "
-            "acertar (ADR 0027)"
+            "no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o "
+            "documento que a empresa devia: registrada e ativa no cadastro da CVM na data do "
+            "prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro "
+            "registro ou entre dois registros), o que manda depois do cancelamento e o das "
+            "empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta "
+            "quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: "
+            "é a resposta que o modelo tenta acertar (ADR 0027)"
         ),
         fonte="CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias",
         familia_da_fonte="cvm",
@@ -2815,8 +2823,9 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual "
-            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` diz quando "
-            "a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o início "
+            "do dia (em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. "
+            + COM_VERSAO_DO_CODIGO
         ),
         colunas={
             **_EMPRESA,
