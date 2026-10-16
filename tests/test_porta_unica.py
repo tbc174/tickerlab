@@ -31,9 +31,13 @@ EXCECOES_HERDADAS: dict[str, str] = {
     "base/cripto/coleta.py": _CRIPTO,
     "base/cripto/leitura.py": _CRIPTO,
     "base/cripto/reprodutivel.py": _CRIPTO,
+    "scripts/conferir_canceladas.py": (
+        "conferência das canceladas (modelo 8, #321): só a coluna `cnpj` de `demonstracoes`, que a "
+        "porta não serve (manifesto por ano), `auditores` e `eventos`, numa `--pasta` qualquer"
+    ),
 }
 TETO_DE_EXCECOES = (
-    11  # só desce: arquivo que passou para a porta sai da lista e o teto cai
+    12  # só desce: arquivo que passou para a porta sai da lista e o teto cai
 )
 
 
