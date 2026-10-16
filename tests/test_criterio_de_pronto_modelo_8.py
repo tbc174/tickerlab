@@ -24,6 +24,7 @@ import pytest
 
 from base import historico
 from base.arquivo.fontes import PASTAS_DA_CVM
+from base.cadastro import FONTE_DO_CADASTRO
 from base.dicionario import TABELAS
 from base.modelos.atraso import rotulo
 from scripts import montar_base_como_era
@@ -59,7 +60,7 @@ FONTES = {
         },
     },
     CADASTRO: {
-        "fontes_no_registro": [rotulo.FONTE_DO_CADASTRO],
+        "fontes_no_registro": [FONTE_DO_CADASTRO],
         "enderecos": [demonstracoes.URL_DO_CADASTRO],
         "tabelas": {"cadastro_das_companhias": "registro"},
     },
@@ -98,6 +99,13 @@ ROTULOS_IPE = "tests/test_base_rotulos.py"
 HISTORICO = "tests/test_base_historico.py"
 LINHAGEM = "tests/test_linhagem.py"
 PRAZOS_T = "tests/test_prazos.py"
+CANCELADAS = "tests/test_conferir_canceladas.py"
+# conferência medida das canceladas (rodada no servidor de casa em 16/10/2026: 0 perdidas)
+CONFERENCIA_DAS_CANCELADAS = [
+    f"{CADASTRO_T}::test_conferencia_separa_falta_da_fonte_de_empresa_perdida_na_montagem",
+    f"{CANCELADAS}::test_cancelada_que_a_fonte_tem_e_a_base_nao_faz_a_conferencia_falhar",
+    f"{CANCELADAS}::test_cada_falta_explicada_a_mao_tem_motivo_e_data",
+]
 
 PROVAS: dict[tuple[str, int], list[str]] = {
     (DFP_ITR, 3): [
@@ -105,11 +113,19 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{PONTO}::test_entrega_fora_do_registro_vale_a_partir_do_registro_seguinte",
         f"{ROTULO}::test_entrega_depois_de_hoje_ainda_nao_existia",
         f"{ROTULO}::test_documento_com_prazo_antes_do_registro_nao_e_exemplo",
+        # só é exemplo o que a empresa devia (conferência da data de entrega, 15 e 16/10)
+        f"{ROTULO}::test_documento_com_prazo_entre_dois_registros_nao_e_exemplo",
+        f"{ROTULO}::test_documento_com_prazo_depois_do_cancelamento_nao_e_exemplo",
+        f"{ROTULO}::test_empresa_fora_do_cadastro_nao_e_exemplo",
     ],
-    (DFP_ITR, 4): [f"{ROTULO}::test_empresa_cancelada_continua_nos_anos_ativos"],
+    (DFP_ITR, 4): [
+        f"{ROTULO}::test_empresa_cancelada_continua_nos_anos_ativos",
+        *CONFERENCIA_DAS_CANCELADAS,
+    ],
     (DFP_ITR, 9): [
         f"{PONTO}::test_refazer_a_base_dos_originais_da_os_mesmos_hashes",
         f"{COMO_ERA}::test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma",
+        f"{ROTULO_ACERVO}::test_mesmos_originais_e_mesmo_dia_dao_o_mesmo_hash",
     ],
     (DFP_ITR, 13): [
         f"{COMO_ERA}::test_manifesto_leva_a_versao_do_codigo",
@@ -133,7 +149,11 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{AUDITORES}::test_mandato_leva_a_data_em_que_a_cvm_recebeu_o_documento",
         f"{AUDITORES}::test_trocas_conhecidas_ate_uma_data_nao_dependem_do_futuro",
         f"{AUDITORES}::test_fca_antigo_reapresentado_depois_do_novo_nao_desfaz_a_troca",
+        # o FCA do pedido de registro vale a partir do registro (60 páginas do ENET, 16/10)
+        f"{AUDITORES}::test_fca_do_pedido_de_registro_vale_a_partir_do_registro",
+        f"{AUDITORES}::test_no_fca_do_pedido_de_registro_o_registro_seguinte_nunca_e_cedo_demais",
     ],
+    (FCA, 4): CONFERENCIA_DAS_CANCELADAS,
     (FCA, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao",
         f"{AUDITORES}::test_trocas_saem_dos_anos_de_auditores_gravados_na_base",
@@ -146,6 +166,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{ROTULOS_IPE}::test_primeira_data_por_empresa_e_rotulo",
         f"{HISTORICO}::test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem",
     ],
+    (IPE, 4): CONFERENCIA_DAS_CANCELADAS,
     (IPE, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao"
     ],
@@ -194,14 +215,6 @@ NAO_SE_APLICA: dict[tuple[str, int], str] = {
 }
 
 PENDENCIAS: dict[tuple[str, int], str] = {
-    (DFP_ITR, 3): (
-        "497 exemplos de empresa fora do cadastro e 232 com prazo depois de um cancelamento ou "
-        "entre dois registros, ainda sem regra (conferência da data de entrega, 15/10). PR B"
-    ),
-    (DFP_ITR, 4): (
-        "falta a conferência medida: canceladas do cadastro com registro de 2010 em diante × "
-        "índice e demonstrações, com cada falta explicada. PR B"
-    ),
     (DFP_ITR, 6): (
         "o rótulo foi conferido no ENET (30 casos e 300 entregas) fora do repositório e as contas "
         "só em 5 DFPs de 2025, pelo app: trazer as conferências para cá, com tolerância escrita, e "
@@ -212,13 +225,9 @@ PENDENCIAS: dict[tuple[str, int], str] = {
         "14/10 falhou em silêncio). PR D"
     ),
     (DFP_ITR, 8): (
-        "a ficha `rotulos_atraso` entrou depois da revisão do dicionário de 14/10: falta o Tiago "
-        "ler. Junto com o PR B"
+        "a ficha `rotulos_atraso` entrou depois da revisão do dicionário de 14/10 (e mudou no "
+        "PR B: quem é exemplo): falta o Tiago ler. PR B"
     ),
-    (
-        DFP_ITR,
-        9,
-    ): 'o rótulo não tem o teste "mesmos originais e mesmo dia = mesmo hash". PR B',
     (CADASTRO, 3): (
         "é o retrato de hoje: serve para quem devia o documento e para a UF, não para colunas "
         "(setor e categoria virão do FCA pela data de entrega). Regra e teste no PR 3 do plano"
@@ -228,14 +237,8 @@ PENDENCIAS: dict[tuple[str, int], str] = {
         6,
     ): "registro e cancelamento sem segunda fonte (amostra contra o RAD). PR C",
     (CADASTRO, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
-    (FCA, 3): (
-        "falta medir o FCA mandado durante o pedido de registro (o grupo de risco do `DT_RECEB` da "
-        "DFP/ITR). PR B"
-    ),
-    (FCA, 4): "falta a conferência medida das canceladas nos auditores. PR B",
     (FCA, 6): "auditor do FCA × nome no parecer da DFP, sem conferência ainda. PR C",
     (FCA, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
-    (IPE, 4): "falta a conferência medida das canceladas no IPE. PR B",
     (IPE, 6): (
         "recuperação judicial e falência do IPE × situação especial do CNPJ na Receita, sem "
         "conferência ainda. PR C"

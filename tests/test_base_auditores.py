@@ -1,15 +1,21 @@
 """Auditor por empresa e data e o rótulo "trocou de auditor" (série B3), "como era na data"."""
 
+import hashlib
 import io
+import json
 import zipfile
 from datetime import UTC, date, datetime
+from pathlib import Path
 
 import pandas as pd
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import auditores, historico
 from base.ancoragem import parquets_sem_manifesto
+from base.ponto_no_tempo import divulgacao_publica
+from src.banco.coletas import com_registro
 
 PRINCIPAL = (
     "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;CATEG_DOC;ID_DOC;DT_RECEB;LINK_DOC"
@@ -372,11 +378,72 @@ def test_sem_auditores_gravados_nao_monta_trocas(tmp_path):
     assert not (tmp_path / "trocas_de_auditor").exists()
 
 
+URL_DO_CADASTRO = (
+    "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
+)
+URL_DO_FCA = (
+    "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_{}.zip"
+)
+
+
+def _guardar_cadastro(registro: str) -> str:
+    """O `cad_cia_aberta.csv` no acervo, com a companhia registrada em `registro`."""
+    conteudo = (
+        "CNPJ_CIA;DENOM_SOCIAL;DT_REG;DT_CANCEL;MOTIVO_CANCEL;SIT;SETOR_ATIV;UF\n"
+        f"{CIA};EMPRESA UM;{registro};;;ATIVO;Energia;SP\n"
+    ).encode("latin-1")
+    com_registro("cvm-cadastros", lambda _url: conteudo)(URL_DO_CADASTRO)
+    return hashlib.sha256(conteudo).hexdigest()
+
+
+def _guardar_fca(ano: int, recebido: str, firma) -> None:
+    conteudo = _zip(
+        [_documento(str(ano), recebido, ano=ano)],
+        [_mandato(firma, f"{ano}-01-01", documento=str(ano), ano=ano)],
+        ano=ano,
+    )
+    com_registro("cvm-hist-fca", lambda _url: conteudo)(URL_DO_FCA.format(ano))
+
+
+def test_fca_do_pedido_de_registro_vale_a_partir_do_registro(banco, tmp_path):
+    """O FCA mandado com a empresa em registro só fica público perto do registro: em 20 de 59
+    páginas do ENET, 18 a 213 dias depois do `DT_RECEB`, e sempre antes do registro (conferência
+    de 16/10/2026, `base/conferidas/fca_pedido_de_registro_enet.csv`)."""
+    sha_do_cadastro = _guardar_cadastro("2022-03-29")
+    _guardar_fca(2021, "2021-12-21", KPMG)  # em registro: vale a partir de 29/03/2022
+    _guardar_fca(2022, "2022-05-20", EY)  # já registrada: vale o dia do recebimento
+    with banco.connect() as conexao:
+        historico.montar(
+            "auditores", conexao, tmp_path, datetime(2026, 10, 16, tzinfo=UTC)
+        )
+
+    datas = {
+        ano: pd.read_parquet(tmp_path / "auditores" / f"{ano}.parquet")[
+            "conhecido_em"
+        ].iloc[0]
+        for ano in (2021, 2022)
+    }
+    assert datas == {2021: date(2022, 3, 29), 2022: date(2022, 5, 20)}
+    manifesto = json.loads(
+        (tmp_path / "auditores" / "2021.json").read_text(encoding="utf-8")
+    )
+    assert sha_do_cadastro in {o["sha256"] for o in manifesto["origens"]}
+
+
+def test_sem_cadastro_no_acervo_os_auditores_nao_sao_montados(banco, tmp_path):
+    _guardar_fca(2021, "2021-12-21", KPMG)
+    with banco.connect() as conexao, pytest.raises(historico.ArquivoIlegivel):
+        historico.montar(
+            "auditores", conexao, tmp_path, datetime(2026, 10, 16, tzinfo=UTC)
+        )
+    assert not (tmp_path / "auditores").exists()
+
+
 def test_comando_monta_auditores_e_depois_as_trocas(banco, tmp_path, monkeypatch):
     monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     from scripts import montar_base_historica
-    from src.banco.coletas import com_registro
 
+    _guardar_cadastro("2001-01-01")
     for ano, recebido, firma in ((2019, "2019-05-10", KPMG), (2020, "2020-06-15", EY)):
         conteudo = _zip(
             [_documento(str(ano), recebido, ano=ano)],
@@ -416,3 +483,32 @@ def test_trocas_ignoram_versoes_guardadas_dos_auditores(tmp_path, monkeypatch):
         tmp_path / "auditores" / "2019.v1.parquet", index=False
     )
     assert auditores.montar_trocas(tmp_path, datetime(2026, 10, 14, tzinfo=UTC)) == 0
+
+
+CONFERIDAS = Path(__file__).resolve().parent.parent / "base" / "conferidas"
+
+
+def test_no_fca_do_pedido_de_registro_o_registro_seguinte_nunca_e_cedo_demais():
+    """60 FCAs sorteados entre os 397 com `DT_RECEB` antes do 1º registro (semente 20261018), com a
+    "Data do Envio" da página do ENET: a data que a base usa nunca vem antes do dia público."""
+    conferidos = pd.read_csv(
+        CONFERIDAS / "fca_pedido_de_registro_enet.csv", sep=";", dtype=str
+    ).fillna("")
+    recebido = pd.to_datetime(conferidos["recebido_em"])
+    cadastro = pd.DataFrame(
+        {
+            "cnpj": conferidos["cnpj"],
+            "registro": pd.to_datetime(conferidos["primeiro_registro"]),
+            "cancelamento": pd.NaT,
+        }
+    ).drop_duplicates("cnpj")
+    publica = divulgacao_publica(conferidos["cnpj"], recebido, cadastro)
+    enviado = pd.to_datetime(conferidos["enviado_no_enet"]).dt.normalize()
+    com_pagina = enviado.notna()
+
+    assert len(conferidos) == 60
+    assert (recebido < pd.to_datetime(conferidos["primeiro_registro"])).all()
+    assert (publica[com_pagina] >= enviado[com_pagina]).all()
+    # o que a conferência mediu: o recebimento sozinho erraria 1 em 3
+    diferem = enviado[com_pagina] > recebido[com_pagina]
+    assert (int(diferem.sum()), int((~com_pagina).sum())) == (20, 1)

@@ -12,16 +12,25 @@ que existiu:
   a empresa informou. Junta todos os anos do FCA, sem ficar só com o mais recente: um código que
   sumiu continua aqui.
 - `cobertura_das_canceladas`: das que saíram num período, quais a base tem (a prova da exigência 4).
+- `conferir_canceladas`: a conferência medida (critério de pronto do modelo 8): cada cancelada ×
+  cada tabela, separando o que a fonte nunca publicou do que a montagem perdeu.
+- `cadastro_do_acervo`: o `cad_cia_aberta.csv` mais recente guardado pelo arquivista, com a origem.
 """
 
 import io
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 
 import pandas as pd
+import sqlalchemy as sa
 
 from base import fca
+from src import acervo
+from src.banco.coletas import originais_mais_recentes
 
 CODIFICACAO_DA_CVM = "latin-1"
+FONTE_DO_CADASTRO = "cvm-cadastros"
+ARQUIVO_DO_CADASTRO = "cad_cia_aberta.csv"
 COLUNAS_DOS_TICKERS = (
     "codigo",
     "cnpj",
@@ -80,6 +89,23 @@ def ler_cadastro(conteudo_csv: bytes) -> pd.DataFrame:
     )
 
 
+def cadastro_do_acervo(
+    conexao: sa.Connection,
+) -> tuple[pd.DataFrame, dict[str, str]] | None:
+    """O cadastro mais recente do acervo (`ler_cadastro`) e a origem (`url`, `sha256`) para o
+    manifesto; None se o arquivista ainda não o guardou."""
+    for original in originais_mais_recentes(conexao, FONTE_DO_CADASTRO):
+        if original.url.rsplit("/", 1)[-1] != ARQUIVO_DO_CADASTRO:
+            continue
+        conteudo = acervo.ler_original(original.caminho_do_original)
+        if conteudo is not None:
+            return ler_cadastro(conteudo), {
+                "url": original.url,
+                "sha256": original.sha256,
+            }
+    return None
+
+
 def canceladas(
     cadastro: pd.DataFrame, desde: object, ate: object = None
 ) -> pd.DataFrame:
@@ -111,6 +137,91 @@ def cobertura_das_canceladas(
         float(cobertura["na_base"].mean()) if len(cobertura) else 1.0
     )
     return cobertura
+
+
+NA_TABELA = "na_tabela"
+ANTES_DA_TABELA = "saiu_antes_da_tabela"
+SEM_DOCUMENTO_NA_FONTE = "sem_documento_na_fonte"
+EXPLICADA = "explicada_a_mao"
+PERDIDA = "perdida_na_montagem"
+
+
+@dataclass(frozen=True)
+class FonteETabela:
+    """Os CNPJs com algum documento no original da CVM e os que estão na tabela da base."""
+
+    na_fonte: set[str]
+    na_tabela: set[str]
+    comeca_em: object  # o primeiro prazo (ou documento) que a fonte cobre
+
+
+def _situacao(
+    cnpj: str, cancelamento: pd.Timestamp, conferir: FonteETabela, explicada: bool
+) -> str:
+    if cnpj in conferir.na_tabela:
+        return NA_TABELA
+    if cancelamento <= pd.Timestamp(conferir.comeca_em):  # type: ignore[arg-type]
+        return ANTES_DA_TABELA
+    if cnpj not in conferir.na_fonte:
+        return SEM_DOCUMENTO_NA_FONTE
+    return EXPLICADA if explicada else PERDIDA
+
+
+def conferir_canceladas(
+    cadastro: pd.DataFrame,
+    tabelas: Mapping[str, FonteETabela],
+    desde: object,
+    explicadas: Mapping[tuple[str, str], str] | None = None,
+) -> pd.DataFrame:
+    """Cada empresa cancelada desde `desde` (sem registro ativo) × cada tabela, com a situação.
+
+    Situações: `na_tabela`; `saiu_antes_da_tabela` (cancelada até o começo da fonte);
+    `sem_documento_na_fonte` (a CVM não publica nada dela: limite da fonte, contado e declarado);
+    `explicada_a_mao` (a fonte tem e a tabela não, com o motivo em `explicadas`, chave
+    (tabela, cnpj)); `perdida_na_montagem` (a fonte tem e a tabela não, sem motivo: é erro).
+    `attrs["perdidas"]` conta as perdidas.
+    """
+    explicadas = explicadas or {}
+    ativas = set(cadastro.loc[cadastro["cancelamento"].isna(), "cnpj"])
+    saidas = (
+        canceladas(cadastro, desde)
+        .loc[lambda c: ~c["cnpj"].isin(ativas)]
+        .sort_values("cancelamento")
+        .drop_duplicates("cnpj", keep="last")
+    )
+    linhas = [
+        {
+            "tabela": nome,
+            "cnpj": saida.cnpj,
+            "empresa": saida.empresa,
+            "cancelamento": saida.cancelamento,
+            "motivo_cancelamento": saida.motivo_cancelamento,
+            "situacao": _situacao(
+                saida.cnpj,
+                saida.cancelamento,
+                conferir,
+                (nome, saida.cnpj) in explicadas,
+            ),
+            "explicacao": explicadas.get((nome, saida.cnpj), ""),
+        }
+        for nome, conferir in tabelas.items()
+        for saida in saidas.itertuples(index=False)
+    ]
+    conferencia = pd.DataFrame(
+        linhas,
+        columns=[
+            "tabela",
+            "cnpj",
+            "empresa",
+            "cancelamento",
+            "motivo_cancelamento",
+            "situacao",
+            "explicacao",
+        ],
+    )
+    conferencia.loc[conferencia["situacao"] != EXPLICADA, "explicacao"] = ""
+    conferencia.attrs["perdidas"] = int((conferencia["situacao"] == PERDIDA).sum())
+    return conferencia
 
 
 def _acoes_da_bolsa(valores: pd.DataFrame) -> pd.DataFrame:
