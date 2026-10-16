@@ -291,7 +291,7 @@
       "tabela": "valores_mobiliarios",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.2.0",
+      "versao": "1.3.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -3270,6 +3270,118 @@
         "ofertas_12m": {
           "descricao": "Ofertas públicas anunciadas nos 12 meses antes (antigas e Resolução 160)",
           "unidade": "número com decimais, na unidade da fonte"
+        },
+        "fundos_competencia": {
+          "descricao": "Mês da carteira mais novo já público (CDA)",
+          "unidade": "data (dia)"
+        },
+        "fundos_publico_em": {
+          "descricao": "Quando essa carteira ficou pública",
+          "unidade": "data (dia)"
+        },
+        "fundos_com_a_acao": {
+          "descricao": "Fundos com a ação comprada nesse mês (bloco 4)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "fundos_valor": {
+          "descricao": "Valor de mercado somado nesses fundos (bloco 4)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "fundos_no_bloco_8": {
+          "descricao": "Fundos que informaram a ação no bloco 8 (sem código)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "fundos_valor_no_bloco_8": {
+          "descricao": "Valor de mercado no bloco 8",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "passageiros_anac": {
+          "descricao": "Passageiros pagos (ANAC): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "passageiros_anac_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "passageiros_anac_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "vendas_anp": {
+          "descricao": "Combustíveis líquidos vendidos, em mil m³ (ANP): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "vendas_anp_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "vendas_anp_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "consumidores_samp": {
+          "descricao": "Consumidores de energia (SAMP da ANEEL): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "consumidores_samp_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "consumidores_samp_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "acessos_anatel": {
+          "descricao": "Acessos de telecom, sem contar duas vezes as visões da móvel (Anatel): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "acessos_anatel_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "acessos_anatel_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "beneficiarios_ans": {
+          "descricao": "Beneficiários de planos de saúde (ANS): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "beneficiarios_ans_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "beneficiarios_ans_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "premios_susep": {
+          "descricao": "Prêmios diretos de seguros, em R$ (SUSEP): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "premios_susep_12m_antes": {
+          "descricao": "O mesmo, do mesmo mês um ano antes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "premios_susep_competencia": {
+          "descricao": "O mês desse volume",
+          "unidade": "data (dia)"
+        },
+        "juros_nominal_1a": {
+          "descricao": "Taxa nominal de 1 ano da curva própria do Tesouro, no dia mais novo já público",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "juros_nominal_5a": {
+          "descricao": "Taxa nominal de 5 anos",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "juros_real_5a": {
+          "descricao": "Taxa real de 5 anos",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "juros_data_base": {
+          "descricao": "O dia dessas taxas",
+          "unidade": "data (dia)"
         }
       },
       "chaves": [

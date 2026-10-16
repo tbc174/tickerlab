@@ -2202,6 +2202,79 @@ TABELAS: dict[str, Tabela] = {
                 "Ofertas públicas anunciadas nos 12 meses antes (antigas e Resolução 160)",
                 NUMERO_DECIMAL,
             ),
+            "fundos_competencia": ("Mês da carteira mais novo já público (CDA)", DATA),
+            "fundos_publico_em": ("Quando essa carteira ficou pública", DATA),
+            "fundos_com_a_acao": (
+                "Fundos com a ação comprada nesse mês (bloco 4)",
+                NUMERO_DECIMAL,
+            ),
+            "fundos_valor": ("Valor de mercado somado nesses fundos (bloco 4)", REAIS),
+            "fundos_no_bloco_8": (
+                "Fundos que informaram a ação no bloco 8 (sem código)",
+                NUMERO_DECIMAL,
+            ),
+            "fundos_valor_no_bloco_8": ("Valor de mercado no bloco 8", REAIS),
+            "passageiros_anac": (
+                "Passageiros pagos (ANAC): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "passageiros_anac_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "passageiros_anac_competencia": ("O mês desse volume", DATA),
+            "vendas_anp": (
+                "Combustíveis líquidos vendidos, em mil m³ (ANP): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "vendas_anp_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "vendas_anp_competencia": ("O mês desse volume", DATA),
+            "consumidores_samp": (
+                "Consumidores de energia (SAMP da ANEEL): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "consumidores_samp_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "consumidores_samp_competencia": ("O mês desse volume", DATA),
+            "acessos_anatel": (
+                "Acessos de telecom, sem contar duas vezes as visões da móvel (Anatel): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "acessos_anatel_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "acessos_anatel_competencia": ("O mês desse volume", DATA),
+            "beneficiarios_ans": (
+                "Beneficiários de planos de saúde (ANS): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "beneficiarios_ans_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "beneficiarios_ans_competencia": ("O mês desse volume", DATA),
+            "premios_susep": (
+                "Prêmios diretos de seguros, em R$ (SUSEP): o mês mais novo já público, somado nos códigos ligados pela B13 na data",
+                NUMERO_DECIMAL,
+            ),
+            "premios_susep_12m_antes": (
+                "O mesmo, do mesmo mês um ano antes",
+                NUMERO_DECIMAL,
+            ),
+            "premios_susep_competencia": ("O mês desse volume", DATA),
+            "juros_nominal_1a": (
+                "Taxa nominal de 1 ano da curva própria do Tesouro, no dia mais novo já público",
+                NUMERO_DECIMAL,
+            ),
+            "juros_nominal_5a": ("Taxa nominal de 5 anos", NUMERO_DECIMAL),
+            "juros_real_5a": ("Taxa real de 5 anos", NUMERO_DECIMAL),
+            "juros_data_base": ("O dia dessas taxas", DATA),
         },
     ),
     "setoriais_buracos": Tabela(
@@ -3119,7 +3192,7 @@ _CONTRATO = {
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
-    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.2.0"),
+    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.3.0"),
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
     "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),

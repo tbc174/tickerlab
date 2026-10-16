@@ -7,8 +7,8 @@ fim de mês "como era na data", das tabelas que já estão na base (não baixa n
 Grava `<base>/amostra/v1/painel/<ano>.parquet` com manifesto, versões e linhagem: as origens são as
 tabelas de entrada (e o cadastro da CVM, um original), e a linhagem segue delas até os originais. Blocos:
 universo (quem está, desde quando e com que tickers), demonstrações (balanço e resultado como eram) e
-eventos e governança (documentos, insolvência, auditor, negociações, conselho, remuneração e ofertas);
-os outros entram um por PR. Uma tabela de entrada que ainda não existe na base fica vazia (o bloco
+eventos e governança (documentos, insolvência, auditor, negociações, conselho, remuneração e ofertas)
+e fundos, setor e macro (fundos com a ação, números da operação pela B13 e juros). Uma tabela de entrada que ainda não existe na base fica vazia (o bloco
 continua, com as colunas dela vazias). Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 """
 
@@ -20,7 +20,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base.amostra import demonstracoes, eventos, universo
+from base.amostra import demonstracoes, eventos, setor, universo
 from base.cadastro import ler_cadastro
 from base.parquet import gravar_com_versoes, origem_de_tabela
 from src import acervo
@@ -107,6 +107,86 @@ def _eventos(base: Path) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]
     return tabelas, origens
 
 
+# fonte da B13 -> (pasta em setoriais/, código, volume, filtro (coluna, valores aceitos) ou None)
+OPERACAO = {
+    "anac-estatistico": ("anac", "empresa_sigla", "passageiros_pagos", None),
+    "anp-vendas-distribuidora": ("anp", "agente", "quantidade", ("grupo", ["liquidos"])),
+    "aneel-samp": ("aneel", "cnpj", "valor",
+                   ("detalhe_do_mercado", ["Número de Consumidores", "Número de consumidores"])),
+    "anatel-acessos": ("anatel", "cnpj", "acessos", ("recorte", ["completo", "modalidade"])),
+    "ans-beneficiarios": ("ans", "cd_operadora", "beneficiarios", None),
+    "susep-ses": ("susep", "coenti", "premio_direto", None),
+}  # fmt: skip
+FUNDOS = Path("fundos") / "painel_empresa"
+EMPRESA_SERIE = Path("empresa_serie") / "empresa_serie.parquet"
+JUROS = "curva_juros"
+
+
+def _operacao(base: Path) -> tuple[pd.DataFrame, list[dict[str, str]]]:
+    """Os números da operação por código e mês, na primeira publicação de cada linha (sem revisões)."""
+    partes, origens = [], []
+    for fonte, (pasta, codigo, volume, filtro) in OPERACAO.items():
+        arquivos = sorted(
+            p
+            for p in (base / "setoriais" / pasta).glob("*.parquet")
+            if ".v" not in p.stem
+        )
+        for arquivo in arquivos:
+            colunas = [codigo, "competencia", volume, "disponivel_em"]
+            filtros = [(filtro[0], "in", filtro[1])] if filtro else None
+            tabela = pd.read_parquet(arquivo, filters=filtros)
+            if "visto_em" in tabela:  # só a primeira publicação de cada mês e código
+                primeira = tabela.groupby([codigo, "competencia"])[
+                    "visto_em"
+                ].transform("min")
+                tabela = tabela[tabela["visto_em"] == primeira]
+            somada = (
+                tabela[colunas]
+                .groupby([codigo, "competencia"], as_index=False)
+                .agg(valor=(volume, "sum"), publico_em=("disponivel_em", "max"))
+            )
+            partes.append(somada.rename(columns={codigo: "chave"}).assign(fonte=fonte))
+            origens.append(origem_de_tabela(arquivo, base))
+    colunas = ["fonte", "chave", "competencia", "valor", "publico_em"]
+    tabela = (
+        pd.concat(partes, ignore_index=True)
+        if partes
+        else pd.DataFrame(columns=colunas)
+    )
+    return tabela.assign(chave=tabela["chave"].astype(str)), origens
+
+
+def _setor(base: Path) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
+    colunas_dos_fundos = ["cnpj", "tipo", "competencia", "fundos", "valor", "fundos_no_bloco_8",
+                          "valor_no_bloco_8", "disponivel_em"]  # fmt: skip
+    arquivos = sorted(
+        p for p in (base / FUNDOS).glob("*.parquet") if ".v" not in p.stem
+    )
+    fundos = pd.concat(
+        [pd.read_parquet(p).reindex(columns=colunas_dos_fundos) for p in arquivos], ignore_index=True
+    ) if arquivos else pd.DataFrame(columns=colunas_dos_fundos)  # fmt: skip
+    origens = [origem_de_tabela(p, base) for p in arquivos]
+    operacao, de_onde = _operacao(base)
+    origens += de_onde
+    if (base / EMPRESA_SERIE).exists():
+        ligacoes = setor.ligacoes_no_tempo(pd.read_parquet(base / EMPRESA_SERIE))
+        origens.append(origem_de_tabela(base / EMPRESA_SERIE, base))
+    else:
+        ligacoes = setor.ligacoes_no_tempo(pd.DataFrame(columns=["fonte", "chave", "cnpj_companhia", "via",
+                                                                  "participacao", "desde", "ultima_referencia"]))  # fmt: skip
+    juros, de_onde = _tabelas_da_pasta(
+        base, JUROS, ["data_base", "curva", "prazo_anos", "taxa", "disponivel_em"]
+    )
+    origens += de_onde
+    entradas = {
+        "fundos": fundos,
+        "operacao": operacao,
+        "ligacoes": ligacoes,
+        "juros": juros,
+    }
+    return entradas, origens
+
+
 def entradas_e_origens(
     conexao: sa.Connection, base: Path
 ) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
@@ -118,17 +198,20 @@ def entradas_e_origens(
     tickers = pd.read_parquet(base / TICKERS)
     tabela, origens_das_demonstracoes = _demonstracoes(base)
     tabelas_dos_eventos, origens_dos_eventos = _eventos(base)
+    tabelas_do_setor, origens_do_setor = _setor(base)
     origens = [
         origem_do_cadastro,
         origem_de_tabela(base / ROTULOS_ATRASO, base),
         origem_de_tabela(base / TICKERS, base),
         *origens_das_demonstracoes,
         *origens_dos_eventos,
+        *origens_do_setor,
     ]
     entradas = (
         universo.preparar(cadastro, entregas, tickers)
         | {"demonstracoes": tabela}
         | tabelas_dos_eventos
+        | tabelas_do_setor
     )
     return entradas, origens
 
@@ -140,6 +223,8 @@ def montar_painel(entradas: dict[str, pd.DataFrame], fim: pd.Timestamp) -> pd.Da
         colunas = demonstracoes.montar(entradas, painel)
         painel = painel.merge(colunas, on=["cnpj", "data"], how="left")
     colunas = eventos.montar(entradas, painel)
+    painel = painel.merge(colunas, on=["cnpj", "data"], how="left")
+    colunas = setor.montar(entradas, painel)
     return painel.merge(colunas, on=["cnpj", "data"], how="left")
 
 

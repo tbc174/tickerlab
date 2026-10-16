@@ -146,7 +146,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 - **Chaves:** `cnpj`, `referencia`, `versao`, `valor_mobiliario`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `recebido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.2.0
+- **Versão do contrato:** 1.3.0
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
 - **Linhagem:** `id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
@@ -1268,6 +1268,34 @@ A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan
 | `remuneracao_diretoria` | Remuneração total da diretoria estatutária no exercício mais novo do FRE | reais (R$), já multiplicado pela escala informada |
 | `remuneracao_exercicio` | Fim do exercício dessa remuneração | data (dia) |
 | `ofertas_12m` | Ofertas públicas anunciadas nos 12 meses antes (antigas e Resolução 160) | número com decimais, na unidade da fonte |
+| `fundos_competencia` | Mês da carteira mais novo já público (CDA) | data (dia) |
+| `fundos_publico_em` | Quando essa carteira ficou pública | data (dia) |
+| `fundos_com_a_acao` | Fundos com a ação comprada nesse mês (bloco 4) | número com decimais, na unidade da fonte |
+| `fundos_valor` | Valor de mercado somado nesses fundos (bloco 4) | reais (R$), já multiplicado pela escala informada |
+| `fundos_no_bloco_8` | Fundos que informaram a ação no bloco 8 (sem código) | número com decimais, na unidade da fonte |
+| `fundos_valor_no_bloco_8` | Valor de mercado no bloco 8 | reais (R$), já multiplicado pela escala informada |
+| `passageiros_anac` | Passageiros pagos (ANAC): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `passageiros_anac_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `passageiros_anac_competencia` | O mês desse volume | data (dia) |
+| `vendas_anp` | Combustíveis líquidos vendidos, em mil m³ (ANP): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `vendas_anp_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `vendas_anp_competencia` | O mês desse volume | data (dia) |
+| `consumidores_samp` | Consumidores de energia (SAMP da ANEEL): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `consumidores_samp_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `consumidores_samp_competencia` | O mês desse volume | data (dia) |
+| `acessos_anatel` | Acessos de telecom, sem contar duas vezes as visões da móvel (Anatel): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `acessos_anatel_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `acessos_anatel_competencia` | O mês desse volume | data (dia) |
+| `beneficiarios_ans` | Beneficiários de planos de saúde (ANS): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `beneficiarios_ans_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `beneficiarios_ans_competencia` | O mês desse volume | data (dia) |
+| `premios_susep` | Prêmios diretos de seguros, em R$ (SUSEP): o mês mais novo já público, somado nos códigos ligados pela B13 na data | número com decimais, na unidade da fonte |
+| `premios_susep_12m_antes` | O mesmo, do mesmo mês um ano antes | número com decimais, na unidade da fonte |
+| `premios_susep_competencia` | O mês desse volume | data (dia) |
+| `juros_nominal_1a` | Taxa nominal de 1 ano da curva própria do Tesouro, no dia mais novo já público | número com decimais, na unidade da fonte |
+| `juros_nominal_5a` | Taxa nominal de 5 anos | número com decimais, na unidade da fonte |
+| `juros_real_5a` | Taxa real de 5 anos | número com decimais, na unidade da fonte |
+| `juros_data_base` | O dia dessas taxas | data (dia) |
 
 ## `setoriais_buracos`
 
