@@ -17,6 +17,7 @@ from base.setoriais import aneel as setoriais_aneel
 from base.setoriais import anp as setoriais_anp
 from base.setoriais import ans as setoriais_ans
 from base.setoriais import ons as setoriais_ons
+from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
     LICENCAS,
     REVENDA,
@@ -82,6 +83,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
         "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
         "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
+        "susep_seguros": [*setoriais_susep.COLUNAS, "visto_em"],
         "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),

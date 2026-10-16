@@ -1861,6 +1861,124 @@
       "frequencia": "Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026",
       "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês + 90 dias"
     },
+    "susep_seguros": {
+      "tabela": "susep_seguros",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "coenti": {
+          "descricao": "Código da seguradora na SUSEP (a chave; 5 dígitos)",
+          "unidade": "texto"
+        },
+        "cogrupo": {
+          "descricao": "Código do grupo de ramos",
+          "unidade": "texto"
+        },
+        "coramo": {
+          "descricao": "Código do ramo (nomes em `Ses_ramos.csv`, guardado no acervo)",
+          "unidade": "texto"
+        },
+        "premio_direto": {
+          "descricao": "Prêmio direto no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_de_seguros": {
+          "descricao": "Prêmio de seguros no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_retido": {
+          "descricao": "Prêmio retido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_ganho": {
+          "descricao": "Prêmio ganho no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_direto": {
+          "descricao": "Sinistro direto no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_retido": {
+          "descricao": "Sinistro retido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "desp_com": {
+          "descricao": "Despesa de comercialização no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_emitido2": {
+          "descricao": "Prêmio emitido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_emitido_cap": {
+          "descricao": "Prêmio emitido (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "despesa_resseguros": {
+          "descricao": "Despesa com resseguros no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_ocorrido": {
+          "descricao": "Sinistro ocorrido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "receita_resseguro": {
+          "descricao": "Receita com resseguro no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistros_ocorridos_cap": {
+          "descricao": "Sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "recuperacao_sinistros_ocorridos_cap": {
+          "descricao": "Recuperação de sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "rvne": {
+          "descricao": "Riscos vigentes não emitidos (RVNE) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "conveniodpvat": {
+          "descricao": "Convênio DPVAT no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "consorciosefundos": {
+          "descricao": "Consórcios e fundos no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "coenti",
+        "cogrupo",
+        "coramo",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ZIP é regerado todo dia)",
+      "atraso": "Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias"
+    },
     "setoriais_buracos": {
       "tabela": "setoriais_buracos",
       "modulo": "mercado_e_empresas",
