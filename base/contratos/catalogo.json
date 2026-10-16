@@ -39,7 +39,7 @@
           "unidade": "data (dia)"
         },
         "valor": {
-          "descricao": "Valor da conta; vazio quando a empresa deixou em branco",
+          "descricao": "Valor da conta; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0)",
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "documento": {

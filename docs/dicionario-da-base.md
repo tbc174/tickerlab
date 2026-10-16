@@ -32,7 +32,7 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `descricao` | Nome da conta como a empresa informou | texto |
 | `inicio` | Começo do período (vazio no balanço, que é um saldo numa data) | data (dia) |
 | `fim` | Fim do período ou data do saldo | data (dia) |
-| `valor` | Valor da conta; vazio quando a empresa deixou em branco | reais (R$), já multiplicado pela escala informada |
+| `valor` | Valor da conta; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0) | reais (R$), já multiplicado pela escala informada |
 | `documento` | DFP (demonstrações anuais) ou ITR (informações trimestrais) | texto |
 | `referencia` | Data a que o documento se refere (fim do exercício ou do trimestre) | data (dia) |
 | `versao` | Versão do documento que publicou este valor (1, 2, 3...) | número |

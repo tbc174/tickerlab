@@ -23,3 +23,21 @@ fontes**. O rótulo só é conferido contra o ENET.
 ## Resultados
 
 (preenchidos depois, abaixo desta linha, sem mudar a tabela acima)
+
+Medidos em 16/10/2026, só leitura (servidor de casa e páginas públicas da CVM, um pedido por segundo). Cada
+conferência é uma tabela em `base/conferidas/modelo_8/` e um teste em `tests/test_conferencia_cruzada_modelo_8.py`.
+Das páginas só foram guardados números, datas, códigos e nomes de firmas de auditoria: nenhum nome de pessoa.
+
+| # | Resultado | Passa? |
+|---|---|---|
+| 1 | **142 de 146** contas iguais (10 empresas, 29 documentos, 5 contas; sementes 20261019). As 3 de `2.01.04` que não batem: o documento deixa a linha **em branco** e os dados abertos da CVM trazem **0** (o dicionário foi corrigido). A versão mostrada é sempre a pública na data; na reapresentação do mesmo dia, a base mostra a versão 2 a partir do próprio dia (regra "vale a partir do dia; quem decide no dia olha a véspera"). O caso vazio (Porto Saúde, ITR de 31/03/2024) é um documento do pedido de registro: vale a partir do registro (#288) | sim (divergências explicadas) |
+| 2 | **19 de 20** relatórios assinados pela firma que a tabela dava como vigente (numa auditoria em transição, o FCA tinha EY e KPMG e assinou a EY). O 20º (Magnesita Mineração, DFP 2016) não tem auditor na tabela: o primeiro FCA da companhia só traz o de 2017 em diante. Falta de informação, não auditor errado (sementes 20261021) | sim |
+| 3 | Receita → IPE: **45 de 59 (76%)**; IPE → Receita: **24 de 44 (55%)**. A recuperação judicial bate **25 de 25** da Receita para o IPE. As divergências: 12 massas falidas que pararam de entregar à CVM antes da falência; 2 liquidações que o leitor do IPE não marcou; 2 eventos de **outra** empresa marcados na companhia (Vale/Samarco, V.tal/Oi); recuperações extrajudiciais juntadas com a judicial; recuperações encerradas; CNPJ de filial no IPE; e a Receita sem a marca em casos conhecidos (a Americanas só aparece em outro estabelecimento) | **não** (abaixo de 90%): fica pendente |
+| 4 | **20 de 20** iguais à consulta pública de companhias da CVM (registro das 10 ativas, cancelamento das 10 canceladas; a Panex, com dois registros, bate nos dois; semente 20261020) | sim |
+| 5 | Normas: só a **Resolução CVM 202/2024** em 2022–2026 (duas buscas e a lista de resoluções da CVM, 16/10), já no código. Entregas: 9 de 54 data-bases acima de 3 vezes a mediana, todas explicadas: 5 com menos de 100 empresas (exercício fora de dezembro), as 5 DFPs de dezembro porque a mediana da regra é 0 (contra as data-bases grandes, 0,7 a 1,6 vez; **a regra escrita antes era degenerada para a DFP**, registrado aqui sem trocá-la) e o ITR de 30/06/2023 (3,0 vezes: 21 entregas no dia útil seguinte ao prazo, ao longo do dia; volume normal no dia do prazo) | sim (divergências explicadas) |
+| 6 | Rótulo remontado com o PR B: **30 de 30** com o mesmo rótulo e a mesma data; das 301 entregas de 15/10, **298 de 298** iguais fora do grupo do pedido de registro (que já saiu dos exemplos) | sim |
+
+**O que fica para decidir (IPE):** a proposta é o modelo 8 usar do IPE **só a recuperação judicial da própria
+companhia**, com três correções no PR 3 do plano: juntar pelo CNPJ raiz (filial), não marcar a companhia por
+evento de outra empresa do grupo e separar a recuperação extrajudicial. Quantidade de fatos relevantes fica de
+fora até lá, e empresa sem nenhum documento no IPE fica com a coluna vazia, não 0 (achado do PR B).
