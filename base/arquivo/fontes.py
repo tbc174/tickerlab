@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 
 from base import intradiario_b3
+from base.arquivo import assessorias
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     csv_so_com_colunas,
@@ -78,6 +79,7 @@ TERMOS = {
     "termos-fred": "https://fred.stlouisfed.org/legal/terms/",
     "termos-datajud": "https://datajud-wiki.cnj.jus.br/api-publica/termo-uso",
     "termos-sec": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+    **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -756,6 +758,8 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
+    # posts das assessorias independentes de M&A (middle market, ADR 0082)
+    *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

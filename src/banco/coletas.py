@@ -69,6 +69,8 @@ LICENCAS = {
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
+    # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
+    "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -122,6 +124,7 @@ REVENDA = {
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
     "b3": SO_USO_INTERNO,
+    "assessoria": A_CONFIRMAR,  # vender ou mostrar no app só com o parecer (ADRs 0063 e 0082)
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
