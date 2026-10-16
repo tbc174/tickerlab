@@ -290,6 +290,9 @@ def conectar(
     con = duckdb.connect()
     try:
         con.execute("SET TimeZone = 'UTC'")
+        con.execute(
+            "SET enable_progress_bar = false"
+        )  # a barra encheria os logs da noite
         if memoria is not None:
             if not _MEMORIA.match(memoria):
                 raise ValueError(f"memória inválida: {memoria!r} (ex.: '2GB')")

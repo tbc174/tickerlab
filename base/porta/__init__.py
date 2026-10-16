@@ -67,7 +67,7 @@ def _igualdades(
     for i, (coluna, valor) in enumerate(valores.items()):
         nome, parametro = _nome(coluna), f"{prefixo}{i}"
         if isinstance(valor, list | tuple | set | frozenset):
-            condicoes.append(f"list_contains(${parametro}, {nome})")
+            condicoes.append(f"{nome} IN (SELECT unnest(${parametro}))")
             parametros[parametro] = [_valor(v) for v in valor]
         elif _valor(valor) is None:
             condicoes.append(f"{nome} IS NULL")

@@ -404,8 +404,10 @@ def test_memoria_e_threads(tmp_path):
     with conectar(tmp_path, memoria="256MB", threads=2) as con:
         threads = con.execute("SELECT current_setting('threads')").fetchone()
         fuso = con.execute("SELECT current_setting('TimeZone')").fetchone()
+        barra = con.execute("SELECT current_setting('enable_progress_bar')").fetchone()
     assert threads == (2,)
     assert fuso == ("UTC",)
+    assert barra == (False,)
 
 
 # --- o mapa das tabelas: cada tabela do dicionário tem lugar na porta ou um motivo para não ter ---
