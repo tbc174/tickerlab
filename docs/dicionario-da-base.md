@@ -1871,7 +1871,7 @@ Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por compa
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet em `<acervo>/base/rotulos_atraso/rotulos_atraso.parquet`, com o manifesto ao lado (servidor de casa, `scripts/montar_base_historica.py`)
-- **Linhagem:** O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o dia (em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+- **Linhagem:** O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o início do dia (em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -1888,7 +1888,7 @@ Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por compa
 | `zona_cinzenta` | Atraso de 1 ou 2 dias úteis: pode ser um feriado estadual ou municipal | verdadeiro ou falso |
 | `uf` | Estado da sede, no cadastro de hoje | texto |
 | `mes_fim_do_exercicio` | Mês de fim do exercício (o mais comum nas DFPs da companhia) | mês (1 a 12) |
-| `montado_em` | Dia da montagem, em Brasília | data (dia) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
 ## `empresa_serie`

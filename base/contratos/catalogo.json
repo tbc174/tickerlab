@@ -4346,7 +4346,7 @@
           "unidade": "texto"
         },
         "conhecido_em": {
-          "descricao": "Data em que a CVM recebeu essa versão do FCA",
+          "descricao": "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do registro (pedido de registro), vale a partir do registro seguinte",
           "unidade": "data (dia)"
         },
         "auditor_id": {

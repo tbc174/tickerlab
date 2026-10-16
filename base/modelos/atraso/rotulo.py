@@ -79,6 +79,7 @@ TABELA = "rotulos_atraso"
 FONTES_DO_INDICE = {"DFP": "cvm-hist-dfp", "ITR": "cvm-hist-itr"}
 VistosEm = Mapping[tuple[str, int], pd.Timestamp]
 ZONA_CINZENTA = 2  # dias úteis
+BRASILIA = "America/Sao_Paulo"
 ANTES_DO_REGISTRO = "prazo_antes_do_primeiro_registro"
 ENTRE_REGISTROS = "prazo_entre_dois_registros"
 DEPOIS_DO_CANCELAMENTO = "prazo_depois_do_cancelamento"
@@ -291,7 +292,7 @@ def _dia(momento: object) -> pd.Timestamp:
     """O dia (sem hora nem fuso) de um momento, no horário de Brasília."""
     dia = pd.Timestamp(momento)  # type: ignore[arg-type]
     if dia.tzinfo is not None:
-        dia = dia.tz_convert("America/Sao_Paulo").tz_localize(None)
+        dia = dia.tz_convert(BRASILIA).tz_localize(None)
     return dia.normalize()
 
 
@@ -331,7 +332,8 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     )
     # o dia, e não a hora: mesmos originais e mesmo dia dão a mesma tabela (exigência 9)
     tabela = exemplos.assign(
-        montado_em=_dia(agora).date().isoformat(), versao_do_codigo=versao_do_codigo()
+        montado_em=_dia(agora).tz_localize(BRASILIA).isoformat(),
+        versao_do_codigo=versao_do_codigo(),
     )
     gravar_tabela(
         tabela,

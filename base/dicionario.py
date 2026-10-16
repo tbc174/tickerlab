@@ -2823,8 +2823,8 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual "
-            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o dia "
-            "(em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. "
+            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o início "
+            "do dia (em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. "
             + COM_VERSAO_DO_CODIGO
         ),
         colunas={
@@ -2860,7 +2860,7 @@ TABELAS: dict[str, Tabela] = {
                 "Mês de fim do exercício (o mais comum nas DFPs da companhia)",
                 "mês (1 a 12)",
             ),
-            "montado_em": ("Dia da montagem, em Brasília", DATA),
+            "montado_em": _ORIGEM_SEM_ANO["montado_em"],
             "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
         },
     ),
