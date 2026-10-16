@@ -6,6 +6,7 @@ import json
 import pandas as pd
 import pytest
 
+from base import parquet
 from base.parquet import (
     ACRESCIDO,
     GRAVADO,
@@ -303,4 +304,19 @@ def test_versoes_nao_nascem_de_diferenca_de_tipo(
     assert (
         gravar_com_versoes(lambda: com_floats_em_object, destino, outras, ["cnpj"])
         == IGUAL
+    )
+
+
+def test_hash_em_pedacos_e_o_mesmo_da_tabela_inteira(monkeypatch):
+    """O texto do hash sai em pedaços (a tabela do ONS de um ano não cabia na memória); o hash não muda,
+    senão todo manifesto já gravado deixaria de conferir."""
+    tabela = pd.DataFrame(
+        {"a": ["x", None, "z", "w", "y"], "b": [1.5, 2.0, None, 4.25, 0.1],
+         "c": pd.to_datetime(["2020-01-31", None, "2021-02-28", "2022-03-31", "2023-04-30"])}
+    )  # fmt: skip
+    inteira = hash_da_tabela(tabela, ["a"])
+    monkeypatch.setattr(parquet, "LINHAS_POR_PEDACO", 2)
+    assert hash_da_tabela(tabela, ["a"]) == inteira
+    assert hash_da_tabela(tabela.iloc[:0], ["a"]) == hash_da_tabela(
+        tabela.iloc[:0], ["a"]
     )

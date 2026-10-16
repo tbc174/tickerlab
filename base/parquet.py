@@ -22,6 +22,9 @@ from src.versao_do_codigo import versao_do_codigo
 
 log = logging.getLogger(__name__)
 ALGARISMOS_SIGNIFICATIVOS = "%.17g"  # o mesmo número sempre vira o mesmo texto
+LINHAS_POR_PEDACO = (
+    200_000  # o texto do hash sai em pedaços: a tabela inteira não cabe na memória
+)
 
 
 def gravar_atomico(destino: Path, gravar: Callable[[Path], object]) -> None:
@@ -38,10 +41,16 @@ def hash_da_tabela(tabela: pd.DataFrame, ordem: list[str]) -> str:
         na_position="first",
         kind="stable",
     ).reset_index(drop=True)
-    texto = canonica.to_csv(
-        index=False, float_format=ALGARISMOS_SIGNIFICATIVOS, date_format="%Y-%m-%d"
-    )
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+    soma = hashlib.sha256()
+    for inicio in range(0, max(len(canonica), 1), LINHAS_POR_PEDACO):
+        pedaco = canonica.iloc[inicio : inicio + LINHAS_POR_PEDACO].to_csv(
+            index=False,
+            header=inicio == 0,
+            float_format=ALGARISMOS_SIGNIFICATIVOS,
+            date_format="%Y-%m-%d",
+        )
+        soma.update(pedaco.encode("utf-8"))
+    return soma.hexdigest()
 
 
 def como_no_disco(tabela: pd.DataFrame) -> pd.DataFrame:

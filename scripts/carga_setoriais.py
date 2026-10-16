@@ -70,7 +70,8 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
 
 
 def carregar_fonte(conexao: sa.Connection, fonte: str, base: Path) -> pd.DataFrame:
-    """Grava os anos da fonte e devolve a tabela inteira (para os buracos; vazia no ONS)."""
+    """Grava os anos da fonte e devolve a tabela inteira (para os buracos; vazia no ONS, que vai ano a
+    ano: o ano de 2023 inteiro passa de 5 milhões de linhas)."""
     pasta, ordem, tempo = TABELAS[fonte]
     linhas = [
         (linha, leitor)
@@ -100,19 +101,28 @@ def carregar_fonte(conexao: sa.Connection, fonte: str, base: Path) -> pd.DataFra
     return tabela
 
 
-def gravar_buracos(tabelas: dict[str, pd.DataFrame], base: Path) -> None:
+def _empresa_serie(base: Path) -> pd.DataFrame | None:
     arquivo = base / "empresa_serie" / "empresa_serie.parquet"
     if not arquivo.exists():
         log.warning("sem a empresa_serie (B13): buracos não montados")
-        return
-    empresa_serie = pd.read_parquet(arquivo)
-    partes = [
-        ligacao.buracos(tabelas[fonte], coluna, volume, fonte, empresa_serie)
-        for fonte, (coluna, volume) in CHAVES.items()
-        if not tabelas.get(fonte, pd.DataFrame()).empty
-    ]
+        return None
+    return pd.read_parquet(arquivo)
+
+
+def buracos_da_fonte(
+    tabela: pd.DataFrame, fonte: str, empresa_serie: pd.DataFrame | None
+) -> pd.DataFrame | None:
+    """Os buracos de uma fonte, montados logo depois dela: a tabela inteira não fica na memória."""
+    if empresa_serie is None or fonte not in CHAVES or tabela.empty:
+        return None
+    coluna, volume = CHAVES[fonte]
+    return ligacao.buracos(tabela, coluna, volume, fonte, empresa_serie)
+
+
+def gravar_buracos(partes: list[pd.DataFrame], base: Path) -> None:
     if not partes:
         return
+    arquivo = base / "empresa_serie" / "empresa_serie.parquet"
     manifesto = json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))
     origens = [
         {
@@ -142,12 +152,20 @@ def main(argv: list[str] | None = None) -> int:
     url = url_do_banco()
     migrar_para("head", url=url)
     motor = criar_engine(url)
+    empresa_serie = _empresa_serie(base)
+    partes = []
     try:
         with motor.connect() as conexao:
-            tabelas = {fonte: carregar_fonte(conexao, fonte, base) for fonte in TABELAS}
+            for fonte in TABELAS:
+                tabela = carregar_fonte(conexao, fonte, base)
+                if (
+                    buracos := buracos_da_fonte(tabela, fonte, empresa_serie)
+                ) is not None:
+                    partes.append(buracos)
+                del tabela
     finally:
         motor.dispose()
-    gravar_buracos(tabelas, base)
+    gravar_buracos(partes, base)
     return 0
 
 

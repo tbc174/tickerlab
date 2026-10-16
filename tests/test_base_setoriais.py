@@ -115,6 +115,18 @@ def test_ceg_vazio_do_ons_vira_vazio():
     assert ons.ler(saida.getvalue())["ceg"].isna().all()
 
 
+def test_ons_tira_os_espacos_e_mantem_o_vazio():
+    tabela = pd.read_parquet(PASTA / "ons" / "GERACAO_USINA-2_2026_09.parquet").head(3)
+    tabela["nom_usina"] = [" ITAIPU ", None, "ITAIPU"]
+    import io
+
+    saida = io.BytesIO()
+    tabela.to_parquet(saida, index=False)
+    usinas = ons.ler(saida.getvalue())["usina"]
+    assert usinas.dtype == object
+    assert usinas.tolist() == ["ITAIPU", None, "ITAIPU"]
+
+
 # --- prazos ("como era na data") ------------------------------------------------------------------
 def test_disponivel_em_respeita_o_prazo_da_fonte(voos, vendas, geracao):
     """Nunca antes do que a fonte publicou: agosto/2026 estava publicado em 14/10/2026 na ANAC e na
