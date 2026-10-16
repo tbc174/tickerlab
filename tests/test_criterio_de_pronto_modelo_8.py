@@ -100,6 +100,7 @@ HISTORICO = "tests/test_base_historico.py"
 LINHAGEM = "tests/test_linhagem.py"
 PRAZOS_T = "tests/test_prazos.py"
 CANCELADAS = "tests/test_conferir_canceladas.py"
+CRUZADA = "tests/test_conferencia_cruzada_modelo_8.py"  # tolerâncias em docs/conferencia-cruzada-modelo-8.md
 # conferência medida das canceladas (rodada no servidor de casa em 16/10/2026: 0 perdidas)
 CONFERENCIA_DAS_CANCELADAS = [
     f"{CADASTRO_T}::test_conferencia_separa_falta_da_fonte_de_empresa_perdida_na_montagem",
@@ -122,6 +123,11 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{ROTULO}::test_empresa_cancelada_continua_nos_anos_ativos",
         *CONFERENCIA_DAS_CANCELADAS,
     ],
+    # contas da base "como era" e rótulo contra o ENET, com as tolerâncias escritas antes (PR C)
+    (DFP_ITR, 6): [
+        f"{CRUZADA}::test_contas_da_base_como_era_conferem_com_o_documento_no_enet",
+        f"{CRUZADA}::test_rotulo_confere_com_o_envio_no_enet",
+    ],
     (DFP_ITR, 9): [
         f"{PONTO}::test_refazer_a_base_dos_originais_da_os_mesmos_hashes",
         f"{COMO_ERA}::test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma",
@@ -138,6 +144,9 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{CADASTRO_T}::test_cobertura_das_canceladas_mostra_quem_saiu_e_falta_na_base",
     ],
     # o cadastro não é gravado sozinho: entra nas origens do manifesto de quem o usa
+    (CADASTRO, 6): [
+        f"{CRUZADA}::test_registro_e_cancelamento_conferem_com_a_consulta_da_cvm"
+    ],
     (CADASTRO, 9): [
         f"{COMO_ERA}::test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma"
     ],
@@ -154,6 +163,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{AUDITORES}::test_no_fca_do_pedido_de_registro_o_registro_seguinte_nunca_e_cedo_demais",
     ],
     (FCA, 4): CONFERENCIA_DAS_CANCELADAS,
+    (FCA, 6): [f"{CRUZADA}::test_auditor_da_tabela_e_quem_assina_o_relatorio_da_dfp"],
     (FCA, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao",
         f"{AUDITORES}::test_trocas_saem_dos_anos_de_auditores_gravados_na_base",
@@ -184,6 +194,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{PRAZOS_T}::test_itr_prorrogado_na_pandemia",
         f"{PRAZOS_T}::test_itr_prorrogado_no_rio_grande_do_sul_em_2024",
         f"{PRAZOS_T}::test_dfp_do_emissor_estrangeiro_tem_4_meses",
+        f"{CRUZADA}::test_prorrogacoes_de_2022_a_2026_estao_no_codigo_e_nas_entregas",
     ],
     (PRAZOS, 9): [f"{PRAZOS_T}::test_prazo_cai_em_dia_util_e_nunca_antes_do_normal"],
     # a versão do código que calculou o prazo vai no manifesto do rótulo
@@ -215,11 +226,6 @@ NAO_SE_APLICA: dict[tuple[str, int], str] = {
 }
 
 PENDENCIAS: dict[tuple[str, int], str] = {
-    (DFP_ITR, 6): (
-        "o rótulo foi conferido no ENET (30 casos e 300 entregas) fora do repositório e as contas "
-        "só em 5 DFPs de 2025, pelo app: trazer as conferências para cá, com tolerância escrita, e "
-        'conferir as contas da base "como era" contra o PDF. PR C'
-    ),
     (DFP_ITR, 7): (
         "montagens à mão, sem relatório de qualidade nem alerta no Kuma (a das demonstrações de "
         "14/10 falhou em silêncio). PR D"
@@ -232,22 +238,15 @@ PENDENCIAS: dict[tuple[str, int], str] = {
         "é o retrato de hoje: serve para quem devia o documento e para a UF, não para colunas "
         "(setor e categoria virão do FCA pela data de entrega). Regra e teste no PR 3 do plano"
     ),
-    (
-        CADASTRO,
-        6,
-    ): "registro e cancelamento sem segunda fonte (amostra contra o RAD). PR C",
     (CADASTRO, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
-    (FCA, 6): "auditor do FCA × nome no parecer da DFP, sem conferência ainda. PR C",
     (FCA, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
     (IPE, 6): (
-        "recuperação judicial e falência do IPE × situação especial do CNPJ na Receita, sem "
-        "conferência ainda. PR C"
+        "conferência cruzada com a Receita abaixo da tolerância (76% e 55% contra 90%; a recuperação "
+        "judicial bate 25 de 25): o rótulo do IPE marca eventos de outras empresas do grupo e a "
+        "recuperação extrajudicial, e a Receita não marca casos conhecidos. Proposta para o Tiago "
+        "decidir: usar do IPE só a recuperação judicial da própria companhia, corrigida, no PR 3"
     ),
     (IPE, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
-    (PRAZOS, 6): (
-        "confirmar a busca de prorrogações de 2022 a 2026 (só a Resolução CVM 202/2024 foi "
-        "achada). PR C"
-    ),
 }
 
 
