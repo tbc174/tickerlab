@@ -1,6 +1,7 @@
 """Formas especiais de obter (base/arquivo/obter.py) e a 2ª leva da prévia do balanço."""
 
 import io
+import json
 import random
 import zipfile
 from datetime import UTC, datetime
@@ -205,3 +206,39 @@ def test_pacote_de_certificados_soma_os_intermediarios(tmp_path):
     assert pacote.endswith("AAA\n-----END CERTIFICATE-----\n")
     # o intermediário do SERPRO (Comex Stat) vai no repositório
     assert list(coleta.CERTIFICADOS_EXTRAS.glob("*.pem"))
+
+
+def test_cadastro_da_ans_e_guardado_sem_representante_nem_contato(tmp_path):
+    """O cadastro das operadoras traz o nome do representante, e-mail e telefone: nunca entram."""
+    bruto = (
+        b"REGISTRO_OPERADORA;CNPJ;RAZAO_SOCIAL;TELEFONE;ENDERECO_ELETRONICO;REPRESENTANTE;"
+        b"CARGO_REPRESENTANTE;DATA_REGISTRO_ANS\n"
+        b'"393321";"44649812000138";"OPERADORA FICTICIA";"11999999999";"x@y.com";'
+        b'"PESSOA FICTICIA";"DIRETOR";"2000-01-01"\n'
+    )
+    alvos = fontes.descobrir_cadastro_da_ans(None, AGORA)
+    assert len(alvos) == 2
+    servidor = ServidorComTrechos({alvos[0].url: bruto})
+    destino = tmp_path / "ans.csv"
+    alvos[0].obter(servidor, destino)
+    guardado = destino.read_text(encoding="utf-8")
+    assert (
+        guardado.splitlines()[0]
+        == "REGISTRO_OPERADORA;CNPJ;RAZAO_SOCIAL;DATA_REGISTRO_ANS"
+    )
+    assert "PESSOA FICTICIA" not in guardado and "x@y.com" not in guardado
+    assert not list(tmp_path.glob("*.bruto"))
+
+
+def test_cadastro_da_susep_e_guardado_so_com_codigo_nome_e_cnpj(tmp_path):
+    bruto = json.dumps(
+        {"value": [{"entcodigofip": "05886", "entnome": "PORTO", "entcgc": "61198164000160",
+                    "telefone": "1199", "endereco": "RUA X", "mercodigo": 2,
+                    "dataautorizacao": "1945-12-06"}]}
+    ).encode()  # fmt: skip
+    alvo = fontes.descobrir_cadastro_da_susep(None, AGORA)[0]
+    destino = tmp_path / "susep.json"
+    alvo.obter(ServidorComTrechos({alvo.url: bruto}), destino)
+    item = json.loads(destino.read_text(encoding="utf-8"))["value"][0]
+    assert set(item) == set(fontes.CAMPOS_DO_CADASTRO_DA_SUSEP)
+    assert item["entcgc"] == "61198164000160"

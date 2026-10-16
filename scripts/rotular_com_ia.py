@@ -41,10 +41,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
-import requests
 
 from src import auditoria_rotulos as ar
-from src import leitura
+from src import leitura, rede
 from src import rotulos_ia as ri
 
 log = logging.getLogger("tickerlab.rotulos_ia")
@@ -162,7 +161,7 @@ def _acrescentar(pasta: Path, registros: list[dict]) -> None:
 
 
 def _baixar_da_cvm(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()

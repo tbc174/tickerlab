@@ -19,7 +19,7 @@ import requests
 import sqlalchemy as sa
 
 from src import demonstracoes as dm
-from src import prazos
+from src import prazos, rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.demonstracoes import (
@@ -39,7 +39,7 @@ NAO_ENCONTRADO = 404
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

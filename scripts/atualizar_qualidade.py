@@ -32,6 +32,7 @@ from base.rodada import (
     regras_entre_documentos,
 )
 from src import demonstracoes as dm
+from src import rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.modelo import eventos
@@ -51,7 +52,7 @@ NAO_ENCONTRADO = 404
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

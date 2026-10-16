@@ -2032,6 +2032,44 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "amostra_painel": Tabela(
+        descricao=(
+            "A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o "
+            "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
+            "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
+            "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
+            "universo; os outros entram um por PR"
+        ),
+        fonte="Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR) e `tickers_no_tempo`",
+        familia_da_fonte="cvm",
+        frequencia="Mensal (até o último mês fechado)",
+        atraso="Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+        onde="Parquet por ano em `<acervo>/base/amostra/v1/painel/<ano>.parquet` (`scripts/montar_amostra.py`)",
+        linhagem=(
+            "O `<ano>.json` aponta as tabelas de entrada (com o hash do manifesto de cada uma) e o original "
+            "do cadastro; a linhagem segue das tabelas até os originais (`base/linhagem.py`)."
+        ),
+        colunas={
+            "cnpj": ("CNPJ da companhia, no formato 00.000.000/0000-00", TEXTO),
+            "data": ("Fim do mês: a linha diz o que se sabia neste dia", DATA),
+            "registrada_desde": (
+                "Início do registro de companhia aberta vigente na data",
+                DATA,
+            ),
+            "primeira_entrega": (
+                "A primeira DFP ou ITR entregue (a companhia só entra depois dela)",
+                DATA,
+            ),
+            "tickers_na_data": (
+                "Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum)",
+                TEXTO,
+            ),
+            "com_ticker_na_data": (
+                "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
+                SIM_OU_NAO,
+            ),
+        },
+    ),
     "setoriais_buracos": Tabela(
         descricao=(
             "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma "
@@ -3065,6 +3103,7 @@ _CONTRATO = {
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),

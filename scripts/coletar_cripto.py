@@ -37,7 +37,7 @@ from base.cripto.leitura import CadeiaInconsistente, ler_blocos
 from base.cripto.no_bitcoin import ClienteRPC, ErroDoNo
 from base.cripto.qualidade import VERSAO_DAS_REGRAS, AchadoCripto, rodar
 from base.cripto.reprodutivel import CHAVES, Original, comparar, nada_depois_de, refazer
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import obter_engine
 from src.banco.modelo import coletas
@@ -86,7 +86,7 @@ def pasta_da_base() -> Path:
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=TEMPO_LIMITE_EM_SEGUNDOS, headers={"User-Agent": AGENTE}
     )
     resposta.raise_for_status()

@@ -16,9 +16,12 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 
 from base import intradiario_b3
+from base.arquivo import assessorias
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
+    csv_so_com_colunas,
     extrair_do_zip_remoto,
+    json_so_com_campos,
     membros_do_zip_remoto,
     parquet_sem_colunas,
     zip_que_pode_faltar,
@@ -76,6 +79,7 @@ TERMOS = {
     "termos-fred": "https://fred.stlouisfed.org/legal/terms/",
     "termos-datajud": "https://datajud-wiki.cnj.jus.br/api-publica/termo-uso",
     "termos-sec": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+    **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -129,6 +133,25 @@ CSVS_DA_SUSEP = (
     "Ses_cias.csv",
     "Ses_ramos.csv",
     "ses_gruposramos.csv",
+)
+# cadastros com CNPJ para a B13 ligar a ANS e a SUSEP às companhias (16/10/2026). Só as colunas da
+# lista: o da ANS traz o nome do representante, e-mail e telefone; o da SUSEP, endereço e telefone
+CADASTRO_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/operadoras_de_plano_de_saude_{situacao}/{arquivo}"
+ARQUIVOS_DO_CADASTRO_DA_ANS = {
+    "ativas": "Relatorio_cadop.csv",
+    "canceladas": "Relatorio_cadop_canceladas.csv",
+}
+COLUNAS_DO_CADASTRO_DA_ANS = (
+    "REGISTRO_OPERADORA", "CNPJ", "RAZAO_SOCIAL", "NOME_FANTASIA", "MODALIDADE", "UF",
+    "DATA_REGISTRO_ANS", "DATA_DESCREDENCIAMENTO", "MOTIVO_DO_DESCREDENCIAMENTO",
+)  # fmt: skip
+CADASTRO_DA_SUSEP = "https://dados.susep.gov.br/olinda/servico/empresas/versao/v1/odata/DadosCadastrais?$format=json"
+CAMPOS_DO_CADASTRO_DA_SUSEP = (
+    "mercodigo",
+    "entcodigofip",
+    "entnome",
+    "entcgc",
+    "dataautorizacao",
 )
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
@@ -418,6 +441,28 @@ def descobrir_susep(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
+def descobrir_cadastro_da_ans(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """As operadoras ativas e as canceladas (com CNPJ), sem as colunas de contato e representante."""
+    return [
+        Alvo(url, ".csv", csv_so_com_colunas(url, COLUNAS_DO_CADASTRO_DA_ANS, "utf-8"))
+        for url in (
+            CADASTRO_DA_ANS.format(situacao=situacao, arquivo=arquivo)
+            for situacao, arquivo in ARQUIVOS_DO_CADASTRO_DA_ANS.items()
+        )
+    ]
+
+
+def descobrir_cadastro_da_susep(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """As entidades autorizadas pela SUSEP (código FIP e CNPJ), sem endereço nem telefone."""
+    return [
+        Alvo(
+            CADASTRO_DA_SUSEP,
+            ".json",
+            json_so_com_campos(CADASTRO_DA_SUSEP, CAMPOS_DO_CADASTRO_DA_SUSEP),
+        )
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -688,6 +733,8 @@ FONTES: list[Fonte] = [
     Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),
     Fonte("aneel-samp", "mensal", descobrir_samp, pesada=True),
     Fonte("susep-ses", "mensal", descobrir_susep, pesada=True),
+    Fonte("ans-operadoras", "mensal", descobrir_cadastro_da_ans),
+    Fonte("susep-cadastro", "mensal", descobrir_cadastro_da_susep),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
@@ -711,6 +758,8 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
+    # posts das assessorias independentes de M&A (middle market, ADR 0082)
+    *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
