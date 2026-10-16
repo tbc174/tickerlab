@@ -99,3 +99,22 @@ def test_chave_vista_em_dois_arquivos_vale_a_primeira_e_desconhecida_vence():
     assert pd.isna(
         por_fundo["B"]
     )  # já estava num arquivo antes de olharmos: não sabemos
+
+
+def test_sem_nada_visto_fica_o_prazo_e_a_coluna_vazia():
+    tabela = pd.DataFrame(
+        {"competencia": [SETEMBRO], "cnpj_fundo": ["A"], "disponivel_em": [SETEMBRO]}
+    )
+    vazio = pd.DataFrame(columns=[*CHAVE, publicacao.VISTO_EM])
+    saida = publicacao.com_visto_em(tabela, vazio, CHAVE)
+    assert saida["visto_em"].isna().all() and saida["disponivel_em"].equals(
+        tabela["disponivel_em"]
+    )
+
+
+def test_arquivo_de_uma_versao_so_nem_e_lido():
+    def nao_leia(conteudo):
+        raise AssertionError("não devia ler")
+
+    unica = publicacao.Versao("u", "s", _dia("2026-10-14"), "caminho")
+    assert publicacao.vistos_nas_versoes([unica], nao_leia, CHAVE).empty

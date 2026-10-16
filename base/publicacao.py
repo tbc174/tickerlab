@@ -132,7 +132,14 @@ def vistos_nas_versoes(
     chave: Sequence[str],
 ) -> pd.DataFrame:
     """`chave` + `visto_em` pelas versões de cada arquivo, lidas uma de cada vez (o CDA tem ~25 MB
-    por versão). Versão sem dia (acervo desligado) não dá data."""
+    por versão). Versão sem dia (acervo desligado) não dá data.
+
+    Se nenhum arquivo tem mais de uma versão nem uma ausência vista antes, nada pode ter data: não lê
+    nada (o CDA anual de 2022 tem 146 MB)."""
+    datadas = [v for v in versoes if v.dia is not None]
+    urls = [v.url for v in datadas]
+    if not any(urls.count(v.url) > 1 or v.depois_de_ausente for v in datadas):
+        return pd.DataFrame(columns=[*chave, VISTO_EM])
     partes = []
     for url in dict.fromkeys(v.url for v in versoes):
         do_arquivo = [v for v in versoes if v.url == url and v.dia is not None]
@@ -153,7 +160,11 @@ def com_visto_em(
     tabela: pd.DataFrame, vistos: pd.DataFrame, chave: Sequence[str]
 ) -> pd.DataFrame:
     """A tabela com `visto_em` e `disponivel_em = max(prazo, visto_em)` (o prazo é o piso)."""
-    unicos = uma_por_chave(vistos, chave) if len(vistos) else vistos
+    if vistos.empty:  # nada visto: só o prazo (sem juntar colunas de tipos diferentes)
+        return tabela.assign(
+            **{VISTO_EM: pd.Series(pd.NaT, index=tabela.index, dtype="datetime64[ns]")}
+        )
+    unicos = uma_por_chave(vistos, chave)
     saida = tabela.drop(columns=[VISTO_EM], errors="ignore").merge(
         unicos[[*chave, VISTO_EM]], on=list(chave), how="left"
     )
