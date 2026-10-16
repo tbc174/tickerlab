@@ -62,6 +62,36 @@ def como_no_disco(tabela: pd.DataFrame) -> pd.DataFrame:
     return pd.read_parquet(memoria)
 
 
+def _conferencia_do_contrato(tabela: pd.DataFrame, destino: Path) -> dict[str, object]:
+    """A conferência dos valores contra o contrato (`base/conferencia.py`), se a pasta de `destino` é
+    de uma tabela do dicionário. Só aviso: um problema, ou a própria conferência falhar, fica anotado
+    no manifesto e a montagem segue (bloquear pede o "pode" do Tiago)."""
+    # importado aqui: o dicionário puxa o catálogo de coletas, e quem só grava Parquet não precisa dele
+    from base.conferencia import conferir, tabela_do_destino
+
+    nome = tabela_do_destino(destino.with_suffix(".parquet"))
+    if nome is None:
+        return {}
+    try:
+        resultado = conferir(tabela, nome).para_manifesto()
+    except (
+        Exception
+    ) as erro:  # aviso: a montagem não pode parar por causa da conferência
+        log.exception("conferência do contrato de %s falhou", nome)
+        resultado = {
+            "tabela": nome,
+            "aprovada": False,
+            "erro": f"{type(erro).__name__}: {erro}",
+        }
+    if not resultado["aprovada"]:
+        log.warning(
+            "%s fora do contrato: %s",
+            destino,
+            resultado.get("problemas") or resultado.get("erro"),
+        )
+    return {"conferencia_do_contrato": resultado}
+
+
 def gravar_tabela(
     tabela: pd.DataFrame,
     destino: Path,
@@ -77,12 +107,14 @@ def gravar_tabela(
     destino.parent.mkdir(parents=True, exist_ok=True)
     arquivo = destino.with_suffix(".parquet")
     gravar_atomico(arquivo, lambda caminho: tabela.to_parquet(caminho, index=False))
+    no_disco = ler_tabela(arquivo)
     manifesto = {
         "linhas": len(tabela),
-        "sha256_da_tabela": hash_da_tabela(ler_tabela(arquivo), ordem),
+        "sha256_da_tabela": hash_da_tabela(no_disco, ordem),
         "ordem": ordem,
         "origens": origens,
         "versao_do_codigo": versao_do_codigo(),
+        **_conferencia_do_contrato(no_disco, destino),
         **(extras or {}),
     }
     texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
