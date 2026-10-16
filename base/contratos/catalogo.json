@@ -3077,7 +3077,7 @@
       "tabela": "amostra_painel",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -3102,6 +3102,86 @@
         "com_ticker_na_data": {
           "descricao": "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
           "unidade": "verdadeiro ou falso"
+        },
+        "balanco_fim": {
+          "descricao": "Data do balanço mais novo já público na data",
+          "unidade": "data (dia)"
+        },
+        "balanco_publico_em": {
+          "descricao": "Quando os valores do balanço usados ficaram públicos (entrega à CVM)",
+          "unidade": "data (dia)"
+        },
+        "balanco_grupo": {
+          "descricao": "con (consolidado) ou ind (individual, sem consolidado no período)",
+          "unidade": "texto"
+        },
+        "ativo_total": {
+          "descricao": "Ativo total (conta 1)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "caixa": {
+          "descricao": "Caixa e equivalentes de caixa",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "patrimonio_liquido": {
+          "descricao": "Patrimônio líquido (consolidado: com os minoritários)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "divida_bruta": {
+          "descricao": "Empréstimos e financiamentos de curto e de longo prazo, somados",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "acumulado_inicio": {
+          "descricao": "Início do período acumulado do documento mais novo (o início do exercício)",
+          "unidade": "data (dia)"
+        },
+        "acumulado_fim": {
+          "descricao": "Fim do período acumulado (o fim do trimestre ou do exercício)",
+          "unidade": "data (dia)"
+        },
+        "acumulado_publico_em": {
+          "descricao": "Quando os valores acumulados usados ficaram públicos",
+          "unidade": "data (dia)"
+        },
+        "acumulado_grupo": {
+          "descricao": "con ou ind, no acumulado",
+          "unidade": "texto"
+        },
+        "receita_acumulado": {
+          "descricao": "Receita do início do exercício ao fim do trimestre (bancos: da intermediação)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "ebit_acumulado": {
+          "descricao": "Resultado antes do financeiro e dos tributos, acumulado (vazio nos bancos)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "lucro_acumulado": {
+          "descricao": "Lucro ou prejuízo do período, acumulado",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "anual_fim": {
+          "descricao": "Fim do exercício da DFP mais nova já pública",
+          "unidade": "data (dia)"
+        },
+        "anual_publico_em": {
+          "descricao": "Quando os valores anuais usados ficaram públicos",
+          "unidade": "data (dia)"
+        },
+        "anual_grupo": {
+          "descricao": "con ou ind, no anual",
+          "unidade": "texto"
+        },
+        "receita_anual": {
+          "descricao": "Receita do exercício (bancos: da intermediação)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "ebit_anual": {
+          "descricao": "Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "lucro_anual": {
+          "descricao": "Lucro ou prejuízo do exercício",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
         }
       },
       "chaves": [

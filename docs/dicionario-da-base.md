@@ -1203,9 +1203,9 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 
 ## `amostra_painel`
 
-A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo; os outros entram um por PR
+A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os outros entram um por PR
 
-- **Fonte:** Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR) e `tickers_no_tempo`
+- **Fonte:** Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e `demonstracoes_como_era`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Mensal (até o último mês fechado)
@@ -1214,7 +1214,7 @@ A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan
 - **Chaves:** `cnpj`, `data`
 - **Três datas:** aconteceu_em = `data`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/amostra/v1/painel/<ano>.parquet` (`scripts/montar_amostra.py`)
 - **Linhagem:** O `<ano>.json` aponta as tabelas de entrada (com o hash do manifesto de cada uma) e o original do cadastro; a linhagem segue das tabelas até os originais (`base/linhagem.py`).
 
@@ -1226,6 +1226,26 @@ A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan
 | `primeira_entrega` | A primeira DFP ou ITR entregue (a companhia só entra depois dela) | data (dia) |
 | `tickers_na_data` | Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum) | texto |
 | `com_ticker_na_data` | Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe | verdadeiro ou falso |
+| `balanco_fim` | Data do balanço mais novo já público na data | data (dia) |
+| `balanco_publico_em` | Quando os valores do balanço usados ficaram públicos (entrega à CVM) | data (dia) |
+| `balanco_grupo` | con (consolidado) ou ind (individual, sem consolidado no período) | texto |
+| `ativo_total` | Ativo total (conta 1) | reais (R$), já multiplicado pela escala informada |
+| `caixa` | Caixa e equivalentes de caixa | reais (R$), já multiplicado pela escala informada |
+| `patrimonio_liquido` | Patrimônio líquido (consolidado: com os minoritários) | reais (R$), já multiplicado pela escala informada |
+| `divida_bruta` | Empréstimos e financiamentos de curto e de longo prazo, somados | reais (R$), já multiplicado pela escala informada |
+| `acumulado_inicio` | Início do período acumulado do documento mais novo (o início do exercício) | data (dia) |
+| `acumulado_fim` | Fim do período acumulado (o fim do trimestre ou do exercício) | data (dia) |
+| `acumulado_publico_em` | Quando os valores acumulados usados ficaram públicos | data (dia) |
+| `acumulado_grupo` | con ou ind, no acumulado | texto |
+| `receita_acumulado` | Receita do início do exercício ao fim do trimestre (bancos: da intermediação) | reais (R$), já multiplicado pela escala informada |
+| `ebit_acumulado` | Resultado antes do financeiro e dos tributos, acumulado (vazio nos bancos) | reais (R$), já multiplicado pela escala informada |
+| `lucro_acumulado` | Lucro ou prejuízo do período, acumulado | reais (R$), já multiplicado pela escala informada |
+| `anual_fim` | Fim do exercício da DFP mais nova já pública | data (dia) |
+| `anual_publico_em` | Quando os valores anuais usados ficaram públicos | data (dia) |
+| `anual_grupo` | con ou ind, no anual | texto |
+| `receita_anual` | Receita do exercício (bancos: da intermediação) | reais (R$), já multiplicado pela escala informada |
+| `ebit_anual` | Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos) | reais (R$), já multiplicado pela escala informada |
+| `lucro_anual` | Lucro ou prejuízo do exercício | reais (R$), já multiplicado pela escala informada |
 
 ## `setoriais_buracos`
 
