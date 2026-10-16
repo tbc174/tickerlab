@@ -2062,3 +2062,60 @@ Negócios de M&A do middle market tirados dos posts das assessorias independente
 | `valor` | Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume) | número com decimais, na unidade da fonte |
 | `moeda` | BRL ou USD, a do valor | texto |
 | `conferencia` | assessoria (fonte única: declarado por quem assessorou) ou confirmado | texto |
+
+## `ma_partes`
+
+As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por empresa de cada página, ligadas à rede de entidades (ADR 0077) só por regras exatas: o nome normalizado contra os nomes da rede e a razão social do CNPJ e, se nada casou, contra o nome fantasia. Nome de mais de uma entidade fica na dúvida, nunca escolhido; empresário individual e MEI nunca são ligados (ADR 0075). Série 5 do plano de M&A, passo 3 (ADR 0082)
+
+- **Fonte:** `ma_assessorias`, a rede (`entidades`, `identificadores`) e o CNPJ aberto da Receita (razão social e nome fantasia, lidos e descartados: só a raiz fica)
+- **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
+- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
+- **Atraso de divulgação:** O da tabela `ma_assessorias` e o do mês do CNPJ guardado
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `assessoria`, `url`, `nome`
+- **Três datas:** nenhuma coluna da tabela traz estas datas
+- **Histórico desde:** 2026-10-16 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/ligacao/partes.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** O `.json` guarda as tabelas de entrada (com o hash de cada uma) e os arquivos da Receita usados; a página de cada parte está em `url`. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `assessoria` | Quem postou (`igc`) | texto |
+| `url` | Endereço da página do negócio (liga com `ma_assessorias`) | texto |
+| `nome` | O nome da empresa como a página escreve | texto |
+| `papel` | alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis (dívida, fusão, joint venture, título sem verbo) | texto |
+| `na_pagina` | cliente (a assessorada) ou contraparte: o campo da página em que o nome está | texto |
+| `nome_normalizado` | O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e "Grupo": o que se compara | texto |
+| `id_entidade` | A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede dará à raiz dela. Vazio sem ligação ou na dúvida | texto |
+| `cnpj_raiz` | Os 8 primeiros dígitos do CNPJ da empresa ligada | texto |
+| `lei` | O LEI da entidade ligada, quando a rede tem | texto |
+| `ligacao_por` | nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato) ou sem_ligacao | texto |
+| `candidatos` | Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida) | número inteiro |
+
+## `ma_negocios`
+
+Uma linha por página de negócio de M&A com o `id_negocio`, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes, assessorias diferentes e tipos que não se contradizem. Série 5 do plano de M&A, passo 3 (ADR 0082)
+
+- **Fonte:** `ma_assessorias` e `ma_partes`
+- **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
+- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
+- **Atraso de divulgação:** O da tabela `ma_assessorias`
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `assessoria`, `url`
+- **Três datas:** nenhuma coluna da tabela traz estas datas
+- **Histórico desde:** 2026-10-16 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/ligacao/negocios.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** O `.json` guarda as tabelas de entrada com o hash de cada uma. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `assessoria` | Quem postou (`igc`) | texto |
+| `url` | Endereço da página do negócio (liga com `ma_assessorias`) | texto |
+| `id_negocio` | "N" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); o de uma página quando as mesmas partes não podem ser juntadas | texto |
+| `paginas_do_negocio` | Quantas páginas têm este `id_negocio` | número inteiro |
+| `paginas_com_as_mesmas_partes` | Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo site são posts diferentes) | número inteiro |
+| `duplicata_por` | partes_iguais quando o negócio está em mais de uma página; vazio se só em uma | texto |
