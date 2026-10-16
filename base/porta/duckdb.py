@@ -316,3 +316,35 @@ def conectar(
         con.close()
         raise
     return con
+
+
+# --- "como era em D" (plano, D5): o que já era público no dia e ainda valia ---------------------
+def dia_de(valor: object) -> str:
+    """O dia em ISO (`"2020-12-31"`), de texto, data ou momento."""
+    return pd.Timestamp(valor).date().isoformat()  # type: ignore[arg-type]
+
+
+def condicao_como_era(colunas: list[str], tabela: str) -> str:
+    """`publico_em ≤ D` e (`ate` vazio ou `ate > D`), com o dia no parâmetro `$dia`."""
+    if "publico_em" not in colunas:
+        raise ValueError(
+            f"{tabela}: sem `publico_em` no contrato, não dá para dizer como era numa data"
+        )
+    condicao = "publico_em <= CAST($dia AS DATE)"
+    if "ate" in colunas:
+        ate = _dia("ate")
+        condicao += f" AND ({ate} IS NULL OR {ate} > CAST($dia AS DATE))"
+    return condicao
+
+
+def sem_o_fim_futuro(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Numa foto de D, o que ainda valia não mostra o fim que só veio depois: `ate` vazio e, na
+    ligação, `situacao` = vigente sem `encerrada_por` (toda linha que sobra valia em D)."""
+    tabela = tabela.copy()
+    if "ate" in tabela.columns:
+        tabela["ate"] = tabela["ate"].mask(tabela["ate"].notna())
+    if "situacao" in tabela.columns:
+        tabela["situacao"] = "vigente"
+    if "encerrada_por" in tabela.columns:
+        tabela["encerrada_por"] = None
+    return tabela
