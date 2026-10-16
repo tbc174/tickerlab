@@ -5,8 +5,9 @@ e quem opera muitas vezes é uma controlada da companhia listada. A ligação us
 (`base/controladas.py`), na ordem de segurança:
 
 1. **CNPJ** (raiz de 8 dígitos) da entidade igual ao da companhia (`propria`) ou ao de uma controlada
-   ou coligada informada no FRE (`controlada`, `coligada`): ANS, SAMP da ANEEL, Pix (o ISPB é a raiz
-   do CNPJ) e Anatel;
+   ou coligada informada no FRE (`controlada`, `coligada`): ANS (também pelo cadastro das operadoras,
+   ativas e canceladas), SAMP da ANEEL, Pix (o ISPB é a raiz do CNPJ), Anatel e SUSEP (pelo cadastro
+   das entidades autorizadas: o código FIP do SES ganha o CNPJ);
 2. **nome** igual, depois de normalizar (sem acento, pontuação nem "S.A."/"LTDA" no fim), ao nome da
    companhia ou à razão social de uma sociedade dela: ANP e ONS, que só trazem o nome. Nada de semelhança
    aproximada: um nome parecido não liga (ligar errado é pior que não ligar);
@@ -212,33 +213,46 @@ def entidades_anac(conteudo: bytes) -> pd.DataFrame:
     )
 
 
+def entidades_cadastro_ans(conteudo: bytes) -> pd.DataFrame:
+    """Operadoras do cadastro da ANS (ativas ou canceladas): registro, razão social e CNPJ. A chave é
+    o registro da operadora, a mesma das informações de beneficiários (`ans-beneficiarios`)."""
+    tabela = pd.read_csv(
+        io.BytesIO(conteudo), sep=";", dtype=str, encoding="utf-8", keep_default_na=False,
+        usecols=["REGISTRO_OPERADORA", "CNPJ", "RAZAO_SOCIAL"],
+    )  # fmt: skip
+    return _entidades(
+        "ans-beneficiarios", tabela["REGISTRO_OPERADORA"], tabela["RAZAO_SOCIAL"],
+        tabela["CNPJ"].map(_raiz),
+    )  # fmt: skip
+
+
+def entidades_cadastro_susep(conteudo: bytes) -> pd.DataFrame:
+    """Entidades autorizadas pela SUSEP: o código FIP (o `coenti` do SES, 5 dígitos) e o CNPJ."""
+    itens = json.loads(conteudo)["value"]
+    codigos = [str(item["entcodigofip"]).strip().zfill(5) for item in itens]
+    return _entidades(
+        "susep-ses", codigos, [item["entnome"] for item in itens],
+        [_raiz(item["entcgc"]) for item in itens],
+    )  # fmt: skip
+
+
 def _periodo(url: str) -> str:
     return max(PERIODO.findall(url.rsplit("/", 1)[-1]), default="")
 
 
-def _anatel_mais_recente(urls: Iterable[str]) -> set[str]:
-    """De cada ZIP da Anatel, o "_Colunas" do período mais novo (o maior ano no nome)."""
-    por_zip: dict[str, list[str]] = {}
-    for url in urls:
-        por_zip.setdefault(url.split("#", 1)[0], []).append(url)
-    escolhidos: set[str] = set()
-    for lista in por_zip.values():
-        anos = {
-            u: max(map(int, ANO.findall(u.split("#", 1)[-1])), default=0) for u in lista
-        }
-        maior = max(anos.values())
-        escolhidos |= {u for u, ano in anos.items() if ano == maior}
-    return escolhidos
+# fontes lidas em todos os períodos: quem já saiu (a TIM Celular, incorporada em 2018; a distribuidora
+# vendida) também liga, senão a história das fontes setoriais ficava sem empresa (série 4, 16/10/2026)
+TODOS_OS_PERIODOS = {
+    "anp-vendas-distribuidora", "antt-siade", "anatel-acessos", "aneel-samp", "ans-operadoras",
+}  # fmt: skip
 
 
 def escolher(fonte: str, urls: list[str]) -> set[str]:
-    """Que arquivos da safra mais recente ler: todos os ZIPs da ANP e os anos da ANTT (ferrovia que
-    parou, como a Malha Oeste em 2026, só aparece nos anos antigos), o "_Colunas" mais novo de cada
-    ZIP da Anatel e, nas outras, os de maior período no nome (ano, ano-mês ou data)."""
-    if fonte in ("anp-vendas-distribuidora", "antt-siade"):
+    """Que arquivos ler: todos os períodos das fontes da história (`TODOS_OS_PERIODOS`: os ZIPs da
+    ANP, os anos da ANTT e do SAMP, todos os "_Colunas" da Anatel, as operadoras ativas e as
+    canceladas da ANS) e, nas outras, os de maior período no nome (ano, ano-mês ou data)."""
+    if fonte in TODOS_OS_PERIODOS:
         return set(urls)
-    if fonte == "anatel-acessos":
-        return _anatel_mais_recente(urls)
     maior = max((_periodo(u) for u in urls), default="")
     return {u for u in urls if _periodo(u) == maior}
 
@@ -253,11 +267,13 @@ LEITORES: dict[str, tuple[Callable[[str], bool], Callable[[bytes], pd.DataFrame]
     "ons-capacidade-geracao": (lambda url: url.endswith(".parquet"), entidades_ons),
     "antt-siade": (lambda url: url.endswith(".csv"), entidades_antt),
     "anac-estatistico": (lambda url: url.endswith(".csv"), entidades_anac),
+    "ans-operadoras": (lambda url: url.endswith(".csv"), entidades_cadastro_ans),
+    "susep-cadastro": (lambda url: "DadosCadastrais" in url, entidades_cadastro_susep),
 }
 
 
 def entidades_das_fontes(conexao: sa.Connection) -> pd.DataFrame:
-    """As entidades da safra mais recente de cada fonte da prévia guardada no acervo."""
+    """As entidades de cada fonte guardada no acervo (a história ou a safra mais recente, `escolher`)."""
     partes = []
     for fonte, (serve, ler) in LEITORES.items():
         originais = [o for o in originais_mais_recentes(conexao, fonte) if serve(o.url)]
