@@ -258,3 +258,49 @@ def test_coluna_nova_conta_como_mudanca(tabela, tmp_path):
         gravar_se_mudou(tabela.assign(extra=1), destino, ORIGENS, ["cnpj"]) == GRAVADO
     )
     assert (tmp_path / "t.v1.parquet").exists()
+
+
+# --- o hash é do que fica no disco: coluna `object` com float do Python (1.0) volta do Parquet como
+# float64 e vira texto "1"; o manifesto feito na memória não conferia (eventos_de_capital, 15/10) ---
+@pytest.fixture
+def com_floats_em_object():
+    return pd.DataFrame(
+        {"cnpj": ["1", "2"], "fator": pd.Series([1.0, 4768706356.09], dtype=object)}
+    )
+
+
+def test_manifesto_confere_com_coluna_object_de_floats(com_floats_em_object, tmp_path):
+    destino = gravar_tabela(com_floats_em_object, tmp_path / "t", ORIGENS, ["cnpj"])
+    assert conferir_tabela(destino)
+
+
+def test_remontar_coluna_object_de_floats_e_igual(com_floats_em_object, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    assert gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"]) == IGUAL
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+
+
+def test_manifesto_que_nao_confere_e_refeito_sem_versao(com_floats_em_object, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    manifesto = json.loads((tmp_path / "t.json").read_text(encoding="utf-8"))
+    manifesto["sha256_da_tabela"] = "0" * 64  # o manifesto errado de antes da correção
+    (tmp_path / "t.json").write_text(json.dumps(manifesto), encoding="utf-8")
+    assert gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"]) == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"] and conferir_tabela(destino)
+
+
+def test_versoes_nao_nascem_de_diferenca_de_tipo(
+    com_floats_em_object, tmp_path, monkeypatch
+):
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    from base.parquet import gravar_com_versoes
+
+    destino = tmp_path / "t"
+    gravar_com_versoes(lambda: com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    outras = [{"url": "https://dados.cvm.gov.br/y.zip", "sha256": "cd" * 32}]
+    assert (
+        gravar_com_versoes(lambda: com_floats_em_object, destino, outras, ["cnpj"])
+        == IGUAL
+    )
