@@ -513,3 +513,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a `python-bitcoinlib` procura a biblioteca do OpenSSL (`libeay32`/`libssl`) por `ctypes` ao importar `bitcoin.rpc`; no Windows ela não acha e passa `None` como nome do arquivo. A biblioteca `opentimestamps` (o núcleo) não importa essa parte e funciona.
 - **Solução:** usar a biblioteca `opentimestamps` direto em `scripts/ancorar_base.py` (o recibo `.ots` é o mesmo formato); o programa `ots` fica para quem confere com Linux e um nó do Bitcoin (#287).
 - **Data:** 15/10/2026
+
+## Valor que chega dos dados do dia apaga o número que veio de um link
+- **Sintoma:** o link "continue a conta" do "quanto daria" abria a correção pela inflação com outra data de início; a inflação que a pessoa digitava no juro real antes de os dados do BC chegarem voltava para o IPCA.
+- **Causa:** o `sugerir` do `useCamposNoEndereco` (usado para pôr o IPCA ou o último mês quando os dados chegam) trocava os campos sem saber quais tinham vindo do endereço ou sido mudados pela pessoa; cada tela remendava isso checando uma chave fixa do endereço (`anoFinal`), e a chave que o link trazia era outra.
+- **Solução:** o gancho guarda o conjunto de campos "fixados" (lidos do endereço ao ligar ou mudados pela pessoa) e o `sugerir` nunca passa por cima deles. Regra: valor sugerido por dado externo nunca vence o que a pessoa ou o link escolheu.
+- **Data:** 15/10/2026
+
+## Financiamento pela Price não zera o saldo com taxa alta
+- **Sintoma:** com 10% ao mês em 600 meses, a tabela terminava com o saldo inteiro (R$ 300 mil) e amortização zero em todos os meses; o Hypothesis achou resíduo também em casos menores.
+- **Causa:** `(1 + taxa)^−meses` some na precisão do float, então a parcela calculada fica igual ao juro do mês e o resíduo de arredondamento se acumula.
+- **Solução:** no último mês do prazo, a amortização é o saldo que sobrou (`amortizacao = saldo`), em Python e no TypeScript; o teste de propriedade "as amortizações somam o valor financiado" pega a volta do erro.
+- **Data:** 15/10/2026
