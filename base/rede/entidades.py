@@ -7,15 +7,21 @@ sem ela, da própria fonte (companhia aberta da CVM = 204-6, fundo = 222-4); sem
 ("pessoas físicas": produtor rural, candidato, leiloeiro...) e o MEI. `trata_como_pessoa` marca essas
 e também `nao_informada` (o conservador: nada negativo publicado sobre quem pode ser pessoa). Pessoa
 com CNPJ não leva nome (a razão social é o nome dela): nível 2, só id.
+
+**Firma de auditoria** (PR 3, D16): registrada na CVM, é sociedade (grupo 2 da Receita). A natureza
+pela raiz do CNPJ que ela informa só vale nesse grupo; outra (o CNPJ do FCA cai num cartório, por
+exemplo) quer dizer que o documento não é da firma, e fica `nao_informada` (D8).
 """
 
 import pandas as pd
 
 NAO_INFORMADA, NAO_SE_APLICA = "nao_informada", "nao_se_aplica"
 VALOR_MOBILIARIO = "valor_mobiliario"  # um papel não é pessoa nem tem natureza jurídica
+AUDITOR = "auditor"
 PELA_RECEITA, PELA_FONTE = "receita", "fonte"
 EMPRESARIO_INDIVIDUAL = "2135"
 GRUPO_DAS_PESSOAS_FISICAS = "4"
+GRUPO_DAS_SOCIEDADES = "2"  # "entidades empresariais" da tabela de naturezas
 COMPANHIA_ABERTA, FUNDO_DE_INVESTIMENTO = "2046", "2224"
 
 
@@ -37,6 +43,8 @@ def com_natureza(
     pela_receita = entidades["raiz"].map(
         naturezas.set_index("cnpj_basico")["natureza_juridica"]
     )
+    sociedade = pela_receita.fillna("").str.startswith(GRUPO_DAS_SOCIEDADES)
+    pela_receita = pela_receita.mask((entidades["tipo"] == AUDITOR) & ~sociedade)
     natureza = pela_receita.fillna(entidades["natureza_da_fonte"])
     fonte = (
         pd.Series(NAO_INFORMADA, index=entidades.index)
