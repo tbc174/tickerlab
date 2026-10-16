@@ -5,9 +5,9 @@ fim de mês "como era na data", das tabelas que já estão na base (não baixa n
     python -m scripts.montar_amostra --base <pasta> --fim 2026-09-30
 
 Grava `<base>/amostra/v1/painel/<ano>.parquet` com manifesto, versões e linhagem: as origens são as
-tabelas de entrada (e o cadastro da CVM, um original), e a linhagem segue delas até os originais. Por
-enquanto o painel tem o bloco "universo" (quem está, desde quando e com que tickers); os outros entram
-um por PR. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+tabelas de entrada (e o cadastro da CVM, um original), e a linhagem segue delas até os originais. Blocos:
+universo (quem está, desde quando e com que tickers) e demonstrações (balanço e resultado como eram); os
+outros entram um por PR. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 """
 
 import argparse
@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base.amostra import universo
+from base.amostra import demonstracoes, universo
 from base.cadastro import ler_cadastro
 from base.parquet import gravar_com_versoes, origem_de_tabela
 from src import acervo
@@ -32,6 +32,10 @@ PASTA = Path("amostra") / "v1" / "painel"
 FONTE_DO_CADASTRO, ARQUIVO_DO_CADASTRO = "cvm-cadastros", "cad_cia_aberta.csv"
 ROTULOS_ATRASO = Path("rotulos_atraso") / "rotulos_atraso.parquet"
 TICKERS = Path("fca") / "tickers.parquet"
+DEMONSTRACOES = "demonstracoes"
+CONTAS = sorted(
+    {c for _, contas, _ in demonstracoes.INDICADORES.values() for c in contas}
+)
 ORDEM = ["cnpj", "data"]
 
 
@@ -54,6 +58,16 @@ def _cadastro(conexao: sa.Connection) -> tuple[pd.DataFrame, dict[str, str]]:
     raise FileNotFoundError(f"sem o {ARQUIVO_DO_CADASTRO} no acervo")
 
 
+def _demonstracoes(base: Path) -> tuple[pd.DataFrame, list[dict[str, str]]]:
+    """Só as contas dos indicadores, ano a ano (a base inteira não precisa ficar na memória)."""
+    arquivos = sorted(
+        p for p in (base / DEMONSTRACOES).glob("*.parquet") if p.stem.isdigit()
+    )
+    partes = [pd.read_parquet(p, filters=[("conta", "in", CONTAS)]) for p in arquivos]
+    tabela = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
+    return tabela, [origem_de_tabela(p, base) for p in arquivos]
+
+
 def entradas_e_origens(
     conexao: sa.Connection, base: Path
 ) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
@@ -63,12 +77,26 @@ def entradas_e_origens(
         base / ROTULOS_ATRASO, columns=["cnpj", "primeira_entrega"]
     )
     tickers = pd.read_parquet(base / TICKERS)
+    tabela, origens_das_demonstracoes = _demonstracoes(base)
     origens = [
         origem_do_cadastro,
         origem_de_tabela(base / ROTULOS_ATRASO, base),
         origem_de_tabela(base / TICKERS, base),
+        *origens_das_demonstracoes,
     ]
-    return universo.preparar(cadastro, entregas, tickers), origens
+    entradas = universo.preparar(cadastro, entregas, tickers) | {
+        "demonstracoes": tabela
+    }
+    return entradas, origens
+
+
+def montar_painel(entradas: dict[str, pd.DataFrame], fim: pd.Timestamp) -> pd.DataFrame:
+    """O universo e, em cada linha dele, as colunas de cada bloco."""
+    painel = universo.montar(entradas, fim)
+    if not entradas["demonstracoes"].empty:
+        colunas = demonstracoes.montar(entradas, painel)
+        painel = painel.merge(colunas, on=["cnpj", "data"], how="left")
+    return painel
 
 
 def gravar(painel: pd.DataFrame, base: Path, origens: list[dict[str, str]]) -> None:
@@ -104,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
             entradas, origens = entradas_e_origens(conexao, base)
     finally:
         motor.dispose()
-    painel = universo.montar(entradas, fim)
+    painel = montar_painel(entradas, fim)
     log.info(
         "universo: %s companhias, %s linhas, %s com ticker",
         painel["cnpj"].nunique(), len(painel), int(painel["com_ticker_na_data"].sum()),

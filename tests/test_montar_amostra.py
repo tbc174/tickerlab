@@ -101,3 +101,25 @@ def test_sem_a_versao_do_codigo_nao_grava(base, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError):
         montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"])
     assert not (base / "amostra").exists()
+
+
+def test_painel_traz_as_demonstracoes_como_eram(base):
+    linha = {
+        "cnpj": "11.111.111/0001-11", "empresa": "ATIVA", "grupo": "con", "demonstracao": "BPA",
+        "conta": "1", "descricao": "Ativo Total", "inicio": pd.NaT, "fim": pd.Timestamp("2014-12-31"),
+        "valor": 1000.0, "documento": "DFP", "referencia": pd.Timestamp("2014-12-31"), "versao": 1,
+        "ordem": "ultimo", "origem": "dados_abertos", "divulgado_em": pd.Timestamp("2015-03-20"),
+        "ate": pd.NaT,
+    }  # fmt: skip
+    gravar_tabela(pd.DataFrame([linha]), base / "demonstracoes" / "2014", [], ["cnpj"])
+    montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"])
+    painel = pd.read_parquet(base / montar_amostra.PASTA / "2015.parquet")
+    ativa = painel[painel["cnpj"] == "11.111.111/0001-11"].set_index("data")
+    assert pd.isna(
+        ativa.loc[pd.Timestamp("2015-02-28"), "ativo_total"]
+    )  # entregue em 20/03
+    assert ativa.loc[pd.Timestamp("2015-03-31"), "ativo_total"] == 1000.0
+    manifesto = json.loads(
+        (base / montar_amostra.PASTA / "2015.json").read_text(encoding="utf-8")
+    )
+    assert "demonstracoes/2014.parquet" in [o["url"] for o in manifesto["origens"]]
