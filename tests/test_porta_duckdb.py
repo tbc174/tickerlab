@@ -18,6 +18,7 @@ from base.porta.duckdb import (
     arquivos_da_tabela,
     conectar,
     nome_da_view,
+    sem_o_fim_futuro,
 )
 
 
@@ -385,6 +386,18 @@ def test_eventos_da_rede(tmp_path):
 def test_eventos_da_rede_sem_nenhuma_fonte_fica_vazia(tmp_path):
     with conectar(tmp_path) as con:
         assert con.execute("SELECT count(*) FROM eventos_da_rede").fetchone() == (0,)
+
+
+def test_sem_o_fim_futuro_so_mexe_na_situacao_da_ligacao():
+    """A `situacao` de um cadastro (ATIVO, CANCELADA) não é a da ligação: fica como veio."""
+    cadastro = pd.DataFrame(
+        {"situacao": ["CANCELADA"], "ate": pd.to_datetime(["2023-01-01"])}
+    )
+    ligacao = cadastro.assign(situacao="encerrada", encerrada_por="fonte")
+    assert sem_o_fim_futuro(cadastro)["situacao"].tolist() == ["CANCELADA"]
+    assert sem_o_fim_futuro(cadastro)["ate"].isna().all()
+    assert sem_o_fim_futuro(ligacao)["situacao"].tolist() == ["vigente"]
+    assert sem_o_fim_futuro(ligacao)["encerrada_por"].isna().all()
 
 
 def test_memoria_e_threads(tmp_path):

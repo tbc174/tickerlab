@@ -29,6 +29,7 @@ from base.contrato import PASTA as PASTA_DOS_CONTRATOS
 from base.contrato import versao_em_numeros
 from base.dicionario import TABELAS, Tabela
 from base.parquet import VERSAO_GUARDADA
+from base.rede.ligacoes import VIGENTE
 
 RAIZ_DO_REPOSITORIO = Path(__file__).resolve().parents[2]
 APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
@@ -233,14 +234,16 @@ def _fonte_da_conferida(caminho: Path) -> str:
     )
 
 
-def _view_de_eventos(con: duckdb.DuckDBPyConnection, existem: set[str]) -> None:
+def _view_de_eventos(
+    con: duckdb.DuckDBPyConnection, tabelas: Mapping[str, Tabela], existem: set[str]
+) -> None:
     partes = []
     for nome, (evento, detalhe) in EVENTOS_DA_REDE.items():
         if nome not in existem:
             continue
         cnpj = "upper(regexp_replace(CAST(cnpj AS VARCHAR), '[^0-9A-Za-z]', '', 'g'))"
         datas = ", ".join(
-            f"{a}" if a in TABELAS[nome].datas else f"CAST(NULL AS DATE) AS {a}"
+            f"{a}" if a in tabelas[nome].datas else f"CAST(NULL AS DATE) AS {a}"
             for a in APELIDOS
         )
         partes.append(
@@ -311,7 +314,7 @@ def conectar(
             )
             con.execute(f"CREATE VIEW {_nome(nome)} AS {select}")
             _views_das_versoes(con, nome, tabelas[nome], contratos)
-        _view_de_eventos(con, {n for n in fontes if n in tabelas})
+        _view_de_eventos(con, tabelas, {n for n in fontes if n in tabelas})
     except Exception:
         con.close()
         raise
@@ -343,8 +346,9 @@ def sem_o_fim_futuro(tabela: pd.DataFrame) -> pd.DataFrame:
     tabela = tabela.copy()
     if "ate" in tabela.columns:
         tabela["ate"] = tabela["ate"].mask(tabela["ate"].notna())
-    if "situacao" in tabela.columns:
-        tabela["situacao"] = "vigente"
-    if "encerrada_por" in tabela.columns:
+    if (
+        "encerrada_por" in tabela.columns
+    ):  # só a ligação (outras tabelas têm outra `situacao`)
+        tabela["situacao"] = VIGENTE
         tabela["encerrada_por"] = None
     return tabela
