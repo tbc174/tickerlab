@@ -150,3 +150,25 @@ def test_cnpj_alfanumerico_atravessa_fidc():
     assert fidc.documento_de_empresa("12.ABC.345/01DE-35") == "12.ABC.345/01DE-35"
     assert fidc.documento_de_empresa("12abc34501de35") == "12.ABC.345/01DE-35"
     assert fidc.documento_de_empresa("12ABC34501DE36") is None
+
+
+def test_meses_com_cabecalhos_diferentes_nao_deixam_cnpj_do_fundo_vazio():
+    """Arquivo anual juntando cabeçalho novo (CNPJ_FUNDO_CLASSE) e antigo (CNPJ_FUNDO)."""
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        arquivo.writestr(
+            "inf_mensal_fidc_tab_I_202001.csv",
+            "CNPJ_FUNDO;DT_COMPTC;VL\n11.222.333/0001-81;2020-01-31;1\n".encode(
+                "latin-1"
+            ),
+        )
+        arquivo.writestr(
+            "inf_mensal_fidc_tab_I_202002.csv",
+            "CNPJ_FUNDO_CLASSE;DT_COMPTC;VL\n44.555.666/0001-81 ;2020-02-29;2\n".encode(
+                "latin-1"
+            ),
+        )
+    tabela = fidc.ler_informe(conteudo.getvalue())["tab_I"]
+    assert tabela["cnpj_fundo"].notna().all()
+    assert list(tabela["cnpj_fundo"]) == ["11.222.333/0001-81", "44.555.666/0001-81"]
+    assert not {"CNPJ_FUNDO", "CNPJ_FUNDO_CLASSE"} & set(tabela.columns)
