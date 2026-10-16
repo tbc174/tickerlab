@@ -5102,7 +5102,7 @@
           "unidade": "texto"
         },
         "conferencia": {
-          "descricao": "assessoria (fonte única: declarado por quem assessorou) ou confirmado",
+          "descricao": "assessoria (fonte única: declarado por quem assessorou); a confirmação por fonte oficial, com a prova, fica em `ma_datas`",
           "unidade": "texto"
         }
       },
@@ -5229,6 +5229,106 @@
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`"
+    },
+    "ma_datas": {
+      "tabela": "ma_datas",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "O negócio (liga com `ma_negocios`)",
+          "unidade": "texto"
+        },
+        "coletado_em": {
+          "descricao": "Quando o arquivista baixou a página pela primeira vez",
+          "unidade": "data e hora (UTC)"
+        },
+        "wayback_em": {
+          "descricao": "A cópia mais antiga da página no Wayback que respondeu 200; vazio se nenhuma",
+          "unidade": "data e hora (UTC)"
+        },
+        "wayback_copia": {
+          "descricao": "Link da cópia no Wayback, para conferir à mão",
+          "unidade": "texto"
+        },
+        "wayback_consulta": {
+          "descricao": "Endereço da consulta à API CDX guardada no acervo",
+          "unidade": "texto"
+        },
+        "wayback_sha256": {
+          "descricao": "SHA-256 da resposta da consulta guardada",
+          "unidade": "texto"
+        },
+        "confirmado_por": {
+          "descricao": "rfb-cnpj quando a compradora é sócia PJ da alvo no CNPJ; vazio sem confirmação",
+          "unidade": "texto"
+        },
+        "confirmacao_url": {
+          "descricao": "Endereço do ZIP de sócios da Receita que confirma",
+          "unidade": "texto"
+        },
+        "confirmacao_sha256": {
+          "descricao": "SHA-256 do ZIP guardado no acervo",
+          "unidade": "texto"
+        },
+        "confirmacao_em": {
+          "descricao": "Quando o arquivista baixou esse ZIP",
+          "unidade": "data e hora (UTC)"
+        },
+        "fechamento_em": {
+          "descricao": "Data de entrada da compradora na sociedade da alvo, como a Receita publica (a etapa de fechamento); se ela já era sócia antes, a da primeira entrada",
+          "unidade": "data (dia)"
+        },
+        "conhecido_em": {
+          "descricao": "A prova mais antiga de que o negócio era público (nunca antes dela)",
+          "unidade": "data e hora (UTC)"
+        },
+        "conhecido_por": {
+          "descricao": "wayback, rfb-cnpj ou coleta: de onde veio o `conhecido_em`",
+          "unidade": "texto"
+        },
+        "prova_url": {
+          "descricao": "Endereço do original que prova o `conhecido_em`",
+          "unidade": "texto"
+        },
+        "prova_sha256": {
+          "descricao": "SHA-256 desse original",
+          "unidade": "texto"
+        },
+        "conhecido_em_do_negocio": {
+          "descricao": "O `conhecido_em` mais antigo entre as páginas do mesmo negócio",
+          "unidade": "data e hora (UTC)"
+        },
+        "conferencia": {
+          "descricao": "confirmado (fonte oficial com a prova apontada) ou assessoria (só o post)",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {
+        "aconteceu_em": "fechamento_em",
+        "publico_em": "conhecido_em",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
+      "revenda": "só uso interno (nunca vender nem exportar)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado"
     }
   }
 }

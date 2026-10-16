@@ -13,6 +13,11 @@ da ADR 0055). O esquema `ma` no banco só vem na série 1 do plano: até lá, Pa
 Depois liga as partes à rede e junta as duplicatas (passo 3, `base/ma_ligacao.py`): grava
 `<base>/ma/ligacao/partes.parquet` e `negocios.parquet`. Lê a rede (`<base>/rede`) e o CNPJ da Receita do
 mês mais recente guardado; sem a rede, não liga. Com as mesmas entradas, nada é lido de novo.
+
+Por fim, as datas e a confirmação (passo 4, `base/ma_datas.py`): grava `<base>/ma/datas/negocios.parquet`
+com o `conhecido_em` de cada página (a prova mais antiga: a cópia no Wayback que o arquivista guardou
+na fonte `wayback-<id>`, os sócios PJ do CNPJ do mês mais recente ou a nossa coleta). Sem a ligação, não
+data.
 """
 
 import argparse
@@ -24,7 +29,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import ma_assessorias, ma_ligacao
+from base import ma_assessorias, ma_datas, ma_ligacao
 from base.arquivo.assessorias import ASSESSORIAS, Assessoria
 from base.parquet import (
     GRAVADO,
@@ -45,8 +50,10 @@ ORDEM = ["assessoria", "url"]
 ORDEM_DAS_PARTES = ["assessoria", "url", "nome"]
 FONTE_DA_RECEITA = "rfb-cnpj"
 ARQUIVO_DA_RECEITA = re.compile(
-    r"/(\d{4}-\d{2})/(Empresas|Estabelecimentos|Simples)\d*\.zip$"
+    r"/(\d{4}-\d{2})/(Empresas|Estabelecimentos|Simples|Socios)\d*\.zip$"
 )
+DA_LIGACAO = ("Empresas", "Estabelecimentos", "Simples")
+SOCIOS = "Socios"
 Origem = dict[str, str]
 
 
@@ -96,28 +103,30 @@ def carregar(conexao: sa.Connection, base: Path) -> None:
             print(f"{fonte}: {resumo(ler_tabela(destino.with_suffix('.parquet')))}")
 
 
-def _receita(conexao: sa.Connection) -> tuple[dict[str, list[Path]], list[Origem]]:
-    """Os `Empresas*`, `Estabelecimentos*` e `Simples` do mês mais recente guardado, e as origens."""
+def _do_mes_mais_recente(conexao: sa.Connection) -> list[tuple[str, Path, sa.Row]]:
+    """(tipo, caminho, coleta) dos ZIPs da Receita do mês mais recente guardado, em ordem."""
     pasta = acervo.pasta_do_acervo()
     achados = []
     for original in originais_mais_recentes(conexao, FONTE_DA_RECEITA):
         casou = ARQUIVO_DA_RECEITA.search(original.url)
         if casou and pasta and (pasta / original.caminho_do_original).is_file():
             achados.append((casou.group(1), casou.group(2), original))
-    arquivos: dict[str, list[Path]] = {
-        "Empresas": [],
-        "Estabelecimentos": [],
-        "Simples": [],
-    }
     if not achados or pasta is None:
-        return arquivos, []
+        return []
     mes = max(m for m, _, _ in achados)
     do_mes = sorted(
         ((t, o) for m, t, o in achados if m == mes), key=lambda par: par[1].url
     )
-    for tipo, original in do_mes:
-        arquivos[tipo].append(pasta / original.caminho_do_original)
-    return arquivos, [{"url": o.url, "sha256": o.sha256} for _, o in do_mes]
+    return [(t, pasta / o.caminho_do_original, o) for t, o in do_mes]
+
+
+def _receita(conexao: sa.Connection) -> tuple[dict[str, list[Path]], list[Origem]]:
+    """Os `Empresas*`, `Estabelecimentos*` e `Simples` do mês mais recente guardado, e as origens."""
+    arquivos: dict[str, list[Path]] = {tipo: [] for tipo in DA_LIGACAO}
+    do_mes = [a for a in _do_mes_mais_recente(conexao) if a[0] in DA_LIGACAO]
+    for tipo, caminho, _ in do_mes:
+        arquivos[tipo].append(caminho)
+    return arquivos, [{"url": o.url, "sha256": o.sha256} for _, _, o in do_mes]
 
 
 def ligar(conexao: sa.Connection, base: Path) -> None:
@@ -173,6 +182,55 @@ def ligar(conexao: sa.Connection, base: Path) -> None:
         log.info("ligação, %s: %s", nome, resultado)
 
 
+def _guardado(original: sa.Row) -> ma_datas.Guardado:
+    return ma_datas.Guardado(original.url, original.sha256, original.baixado_em)
+
+
+def _conteudo(original: sa.Row) -> bytes:
+    conteudo = acervo.ler_original(original.caminho_do_original)
+    if conteudo is None:
+        raise FileNotFoundError(f"original fora do acervo: {original.url}")
+    return conteudo
+
+
+def datar(conexao: sa.Connection, base: Path) -> None:
+    """O `conhecido_em` e a confirmação de cada página (`base/ma_datas.py`), se a ligação já existe."""
+    ligacao = base / "ma" / "ligacao"
+    partes, negocios = ligacao / "partes.parquet", ligacao / "negocios.parquet"
+    tabelas = arquivos_atuais(base / "ma" / "assessorias")
+    if not (partes.exists() and negocios.exists()) or not tabelas:
+        log.warning("datas dos negócios: sem a ligação; fica para depois")
+        return
+    consultas = [
+        o
+        for a in ASSESSORIAS
+        for o in originais_mais_recentes(conexao, f"wayback-{a.id}")
+    ]
+    socios = [(c, o) for t, c, o in _do_mes_mais_recente(conexao) if t == SOCIOS]
+    origens = [origem_de_tabela(t, base) for t in [*tabelas, partes, negocios]] + [
+        {"url": o.url, "sha256": o.sha256}
+        for o in [*consultas, *(o for _, o in socios)]
+    ]
+
+    def montar_datas() -> pd.DataFrame:
+        ligadas = ler_tabela(partes)
+        alvos = set(ligadas.loc[ligadas["papel"] == "alvo", "cnpj_raiz"].dropna())
+        saida = ma_datas.datar(
+            pd.concat([ler_tabela(t) for t in tabelas], ignore_index=True),
+            ligadas,
+            ler_tabela(negocios),
+            ma_datas.copias_do_wayback((_guardado(o), _conteudo(o)) for o in consultas),
+            ma_datas.ler_socios_pj([(c, _guardado(o)) for c, o in socios], alvos),
+        )
+        print("datas: " + ma_datas.resumo(saida))
+        return saida
+
+    resultado = gravar_com_versoes(
+        montar_datas, base / "ma" / "datas" / "negocios", origens, ORDEM
+    )
+    log.info("datas dos negócios: %s", resultado)
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--base", type=Path, default=None)
@@ -192,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         with motor.connect() as conexao:
             carregar(conexao, base)
             ligar(conexao, base)
+            datar(conexao, base)
     finally:
         motor.dispose()
     return 0
