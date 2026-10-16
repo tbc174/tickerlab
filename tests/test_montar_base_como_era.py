@@ -137,3 +137,29 @@ def test_manifesto_leva_a_versao_do_codigo(url, sem_internet, tmp_path):
     assert montar.main(["--anos", "2024", "--pasta", str(saida)]) == 0
     manifesto = json.loads((saida / "2024.json").read_text(encoding="utf-8"))
     assert manifesto["versao_do_codigo"] == VERSAO
+
+
+def test_versao_do_enet_sem_cnpj_no_xml_fica_com_o_do_indice(url):
+    """Alguns XMLs do ENET vêm com `CnpjEmpresa` vazio: as contas não achavam a data de divulgação."""
+    motor = criar_engine(url)
+    indice = pd.DataFrame(
+        {
+            "cnpj": ["00.000.208/0001-00"] * 2,
+            "referencia": [pd.Timestamp("2022-12-31")] * 2,
+            "versao": pd.array([1, 2], dtype="Int64"),
+            "recebido_em": pd.to_datetime(["2023-03-10", "2023-06-01"]),
+            "link": ["http://enet/1", "http://enet/2"],
+        }
+    )
+    xml = _dfp(versao=1)
+    sem_cnpj = xml.replace(
+        b"<CnpjEmpresa>00000208000100</CnpjEmpresa>", b"<CnpjEmpresa />"
+    )
+    assert sem_cnpj != xml
+    with motor.begin() as c:
+        guardar(c, "http://enet/1", _pacote(sem_cnpj), COLETADO_EM)
+    with motor.connect() as c:
+        documentos, _, _ = montar.documentos_do_enet(c, indice)
+    motor.dispose()
+    assert documentos[0].cnpj == "00.000.208/0001-00"
+    assert set(documentos[0].contas["cnpj"]) == {"00.000.208/0001-00"}
