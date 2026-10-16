@@ -116,6 +116,10 @@ ESTATISTICO_DA_ANAC = "https://sistemas.anac.gov.br/dadosabertos/" + quote(
 BENEFICIARIOS_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/informacoes_consolidadas_de_beneficiarios-024/"
 PASTA_DO_MES = re.compile(rb'href="(\d{6})/"')
 SAFRAS_DA_ANS = 2
+BENEFICIARIOS_POR_OPERADORA_DA_ANS = (
+    "https://dadosabertos.ans.gov.br/FTP/PDA/beneficiarios_vinculos_tipo_contratacao_vda/"
+    "Beneficiarios_operadora_e_carteira.csv"
+)
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -649,6 +653,11 @@ FONTES: list[Fonte] = [
     Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
     Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
     Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),
+    # série 4, PR 5: beneficiários por operadora e mês desde 2017 (57 MB; as consolidadas, acima,
+    # só começam em 05/2021 e pesam ~135 MB por UF e mês); a ANS regrava o arquivo e revisa meses
+    Fonte(
+        "ans-beneficiarios-operadora", "mensal", _um(BENEFICIARIOS_POR_OPERADORA_DA_ANS)
+    ),
     # 2ª leva: formas especiais de obter (`base/arquivo/obter.py`)
     Fonte("anatel-acessos", "mensal", descobrir_anatel, pesada=True),
     Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),

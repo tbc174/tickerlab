@@ -217,14 +217,13 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
     return acervo.ler_original(caminho) if caminho else None
 
 
-def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
-    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
-
-    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
-    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
-    """
+def coletas_guardadas(
+    conexao: sa.Connection, url: str
+) -> list[tuple[datetime, str, bytes]]:
+    """Cada conteúdo diferente de `url` guardado no acervo (quando foi baixado pela primeira vez, o
+    SHA-256 e o conteúdo), do mais antigo ao mais novo (revisões das fontes setoriais, série 4, PR 5)."""
     linhas = conexao.execute(
-        sa.select(coletas.c.sha256, coletas.c.caminho_do_original)
+        sa.select(coletas.c.sha256, coletas.c.caminho_do_original, coletas.c.baixado_em)
         .where(
             coletas.c.url == url[:LIMITE_DA_URL],
             coletas.c.situacao == "ok",
@@ -233,15 +232,24 @@ def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
         .order_by(coletas.c.baixado_em)
     ).all()
     vistos: set[str] = set()
-    conteudos = []
-    for sha256, caminho in linhas:
+    guardadas = []
+    for sha256, caminho, baixado_em in linhas:
         if sha256 in vistos:
             continue
         vistos.add(sha256)
         conteudo = acervo.ler_original(caminho)
         if conteudo is not None:
-            conteudos.append(conteudo)
-    return conteudos
+            guardadas.append((baixado_em, sha256, conteudo))
+    return guardadas
+
+
+def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
+
+    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
+    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
+    """
+    return [conteudo for _, _, conteudo in coletas_guardadas(conexao, url)]
 
 
 def ultimas(

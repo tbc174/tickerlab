@@ -12,7 +12,10 @@ from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
 from base.setoriais import anac as setoriais_anac
+from base.setoriais import anatel as setoriais_anatel
+from base.setoriais import aneel as setoriais_aneel
 from base.setoriais import anp as setoriais_anp
+from base.setoriais import ans as setoriais_ans
 from base.setoriais import ons as setoriais_ons
 from src.banco.coletas import (
     LICENCAS,
@@ -76,6 +79,9 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anac_estatistico": list(setoriais_anac.COLUNAS),
         "anp_vendas": list(setoriais_anp.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
+        "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
+        "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
+        "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
         "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),

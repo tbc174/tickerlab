@@ -1079,6 +1079,188 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "aneel_samp": Tabela(
+        descricao=(
+            "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de "
+            "consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde "
+            "2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem "
+            "nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte="ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)",
+        familia_da_fonte="aneel",
+        frequencia="Mensal (a ANEEL regera todos os anos a cada mês, perto do dia 15)",
+        atraso=(
+            "Medido: o SAMP de 15/09/2026 tinha julho completo (46 dias) e agosto pela metade; a regra "
+            "usa o fim do mês + 60 dias"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/aneel/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do ano usada (uma por "
+            "revisão) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "cnpj": ("CNPJ da distribuidora (14 dígitos; a chave da B13)", TEXTO),
+            "sigla": ("Sigla da distribuidora, como a ANEEL escreve", TEXTO),
+            "distribuidora": ("Nome da distribuidora, como a ANEEL escreve", TEXTO),
+            "tipo_de_mercado": (
+                "Regular, refaturamento, compensação de geração distribuída...",
+                TEXTO,
+            ),
+            "modalidade_tarifaria": ("Convencional, azul, verde, branca...", TEXTO),
+            "subgrupo_tarifario": ("A1 a A4, AS, B1 a B4", TEXTO),
+            "classe_de_consumo": (
+                "Residencial, industrial, comercial, rural...",
+                TEXTO,
+            ),
+            "subclasse_de_consumo": ("Subclasse (baixa renda, cooperativa...)", TEXTO),
+            "detalhe_do_consumidor": (
+                "Detalhe do consumidor (fonte incentivada...)",
+                TEXTO,
+            ),
+            "nucleo_ceg": ("Núcleo do CEG da usina, quando há (texto inteiro)", TEXTO),
+            "posto_tarifario": ("Ponta, fora ponta, intermediário", TEXTO),
+            "opcao_de_energia": ("Cativo, livre, suprimento, distribuição", TEXTO),
+            "detalhe_do_mercado": (
+                "O que o valor mede: número de consumidores, energia (kWh), receita (R$), desconto (%)...",
+                TEXTO,
+            ),
+            "valor": (
+                "O valor, na unidade do `detalhe_do_mercado` (soma das linhas; média nos percentuais)",
+                NUMERO_DECIMAL,
+            ),
+            "linhas_somadas": (
+                "Quantas linhas da fonte (uma por acessante) foram somadas",
+                NUMERO_DECIMAL,
+            ),
+            "gerado_em": (
+                "A data de geração do arquivo pela ANEEL, na primeira vez que o valor foi visto",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "anatel_acessos": Tabela(
+        descricao=(
+            "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora "
+            "(CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os "
+            "municípios. Na móvel de 2005 a 2018 a Anatel publica duas visões dos mesmos acessos "
+            "(`recorte` modalidade ou tecnologia): somar as duas conta tudo duas vezes. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte='Anatel: painéis de dados, acessos (CSVs "_Colunas" de dentro dos ZIPs)',
+        familia_da_fonte="anatel",
+        frequencia="Mensal",
+        atraso="Agosto/2026 estava publicado em 14/10/2026; a regra usa o fim do mês + 60 dias",
+        onde=(
+            "Parquet por CSV da Anatel em `<acervo>/base/setoriais/anatel/<nome do CSV>.parquet` "
+            "(`scripts/carga_setoriais.py`)"
+        ),
+        linhagem=(
+            "O `.json` de cada CSV guarda o endereço (`zip#csv`) e o SHA-256 de cada baixada usada e a "
+            "versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "servico": (
+                "banda_larga_fixa, telefonia_movel ou tv_por_assinatura",
+                TEXTO,
+            ),
+            "recorte": (
+                "completo; na móvel de 2005 a 2018, modalidade ou tecnologia",
+                TEXTO,
+            ),
+            "cnpj": ("CNPJ da prestadora (14 dígitos; a chave da B13)", TEXTO),
+            "empresa": ("Nome da prestadora, como a Anatel escreve", TEXTO),
+            "grupo_economico": ("Grupo econômico, como a Anatel escreve", TEXTO),
+            "porte_da_prestadora": ("Grande ou pequeno porte", TEXTO),
+            "uf": ("UF", TEXTO),
+            "regiao_pgo": ("Região do plano geral de outorgas (móvel até 2009)", TEXTO),
+            "codigo_nacional": ("DDD (móvel)", TEXTO),
+            "modalidade_de_cobranca": ("Pré-pago ou pós-pago (móvel)", TEXTO),
+            "tecnologia": ("Tecnologia (FTTH, cabo, GSM, LTE, DTH...)", TEXTO),
+            "geracao": ("Geração da tecnologia móvel (2G a 5G)", TEXTO),
+            "tipo_de_pessoa": ("Assinante pessoa física ou jurídica", TEXTO),
+            "tipo_de_produto": ("Tipo de produto (internet, voz, M2M...)", TEXTO),
+            "faixa_de_velocidade": (
+                "Faixa de velocidade contratada (banda larga)",
+                TEXTO,
+            ),
+            "meio_de_acesso": ("Fibra, cabo coaxial, rádio, satélite...", TEXTO),
+            "tipo_de_acesso_tv": ("Tipo de acesso de TV por assinatura", TEXTO),
+            "acessos": (
+                "Acessos em serviço no fim do mês, somados os municípios da UF",
+                NUMERO_DECIMAL,
+            ),
+            "arquivo": ("O CSV da Anatel de onde veio a linha", TEXTO),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "ans_beneficiarios": Tabela(
+        descricao=(
+            "Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, "
+            "vigência do plano, contratação e financiamento, desde 2017, no formato da fonte. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte="ANS: beneficiários por operadora e carteira (Beneficiarios_operadora_e_carteira.csv)",
+        familia_da_fonte="ans",
+        frequencia="Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026",
+        atraso=(
+            "Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês "
+            "+ 90 dias"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/ans/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do arquivo usada (uma por "
+            "revisão) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "cd_operadora": (
+                "Registro da operadora na ANS (a chave da B13, fonte `ans-beneficiarios`)",
+                TEXTO,
+            ),
+            "modalidade": (
+                "Medicina de grupo, cooperativa médica, seguradora...",
+                TEXTO,
+            ),
+            "cobertura": ("Médico-hospitalar ou odontológico", TEXTO),
+            "vigencia_do_plano": (
+                "P (plano posterior à Lei 9.656) ou A (anterior)",
+                TEXTO,
+            ),
+            "contratacao": (
+                "Individual ou familiar, coletivo empresarial, por adesão...",
+                TEXTO,
+            ),
+            "financiamento": ("Pré-estabelecido, pós-estabelecido...", TEXTO),
+            "beneficiarios": ("Beneficiários no mês", NUMERO_DECIMAL),
+            "base_de": (
+                "O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
     "setoriais_buracos": Tabela(
         descricao=(
             "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma "
@@ -2010,6 +2192,9 @@ _CONTRATO = {
     "anac_estatistico": _contrato(modulo=_ME, chaves=("competencia", "empresa_sigla", "aeroporto_de_origem_sigla", "aeroporto_de_destino_sigla", "natureza", "grupo_de_voo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anp_vendas": _contrato(modulo=_ME, chaves=("competencia", "grupo", "agente", "codigo_do_produto", "uf_origem", "uf_destino", "mercado_destino"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ons_geracao": _contrato(modulo=_ME, chaves=("instante", "id_ons"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
