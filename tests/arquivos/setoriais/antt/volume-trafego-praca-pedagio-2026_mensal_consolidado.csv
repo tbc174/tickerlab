@@ -1,0 +1,313 @@
+concessionaria;mes_ano;sentido;praca;tipo_cobranca;categoria_eixo;tipo_de_veiculo;volume_total
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"10";"Comercial";138,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"11";"Comercial";25,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"12";"Comercial";6,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"13";"Comercial";4,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"14";"Comercial";1,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"2";"Comercial";4324,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"2";"Passeio";36510,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"3";"Comercial";4927,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"3";"Passeio";360,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"4";"Comercial";3475,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"4";"Passeio";84,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"5";"Comercial";2409,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"6";"Comercial";9059,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"7";"Comercial";3686,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"8";"Comercial";464,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Automática";"9";"Comercial";1095,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"10";"Comercial";10,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"11";"Comercial";1,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"2";"Comercial";2808,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"2";"Moto";6450,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"2";"Passeio";67926,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"3";"Comercial";1402,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"3";"Passeio";654,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"4";"Comercial";880,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"4";"Passeio";111,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"5";"Comercial";476,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"6";"Comercial";753,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"7";"Comercial";268,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"8";"Comercial";45,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"Manual";"9";"Comercial";45,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"11";"Comercial";1,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";95,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";330,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";110,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"3";"Passeio";3,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";70,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";27,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";152,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";75,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"8";"Comercial";11,00
+"ECOSUL";"01/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";18,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"10";"Comercial";118,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"11";"Comercial";10,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"13";"Comercial";1,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"2";"Comercial";4306,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"2";"Passeio";40031,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"3";"Comercial";5456,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"3";"Passeio";403,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"4";"Comercial";2693,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"4";"Passeio";95,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"5";"Comercial";2198,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"6";"Comercial";8961,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"7";"Comercial";3709,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"8";"Comercial";296,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Automática";"9";"Comercial";1448,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"10";"Comercial";5,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"11";"Comercial";1,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"13";"Comercial";1,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Comercial";2868,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Moto";6359,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Passeio";70538,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"3";"Comercial";1597,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"3";"Passeio";600,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"4";"Comercial";1093,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"4";"Passeio";113,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"5";"Comercial";477,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"6";"Comercial";624,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"7";"Comercial";292,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"8";"Comercial";24,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"Manual";"9";"Comercial";47,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"10";"Comercial";3,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"11";"Comercial";3,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";21,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";293,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";22,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";10,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";22,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";122,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";57,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"8";"Comercial";6,00
+"ECOSUL";"01/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";16,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"10";"Comercial";113,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"11";"Comercial";19,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"12";"Comercial";3,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"13";"Comercial";1,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"14";"Comercial";1,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"2";"Comercial";3623,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"2";"Passeio";35960,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"3";"Comercial";4529,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"3";"Passeio";396,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"4";"Comercial";2794,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"4";"Passeio";86,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"5";"Comercial";2510,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"6";"Comercial";8971,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"7";"Comercial";3269,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"8";"Comercial";507,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Automática";"9";"Comercial";961,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"10";"Comercial";6,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"11";"Comercial";1,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"13";"Comercial";1,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"2";"Comercial";2814,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"2";"Moto";5977,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"2";"Passeio";60446,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"3";"Comercial";1298,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"3";"Passeio";655,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"4";"Comercial";865,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"4";"Passeio";147,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"5";"Comercial";411,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"6";"Comercial";732,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"7";"Comercial";313,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"8";"Comercial";71,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"Manual";"9";"Comercial";53,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"10";"Comercial";3,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"11";"Comercial";2,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";106,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";323,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";87,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"3";"Passeio";4,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";57,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"4";"Passeio";1,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";31,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";217,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";129,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"8";"Comercial";25,00
+"ECOSUL";"02/2026";"Crescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";27,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"10";"Comercial";123,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"11";"Comercial";6,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"13";"Comercial";1,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"2";"Comercial";3955,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"2";"Passeio";35666,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"3";"Comercial";5241,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"3";"Passeio";441,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"4";"Comercial";2499,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"4";"Passeio";97,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"5";"Comercial";2081,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"6";"Comercial";8568,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"7";"Comercial";3606,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"8";"Comercial";327,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Automática";"9";"Comercial";1343,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"10";"Comercial";6,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"11";"Comercial";2,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Comercial";2874,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Moto";6062,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"2";"Passeio";58465,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"3";"Comercial";1545,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"3";"Passeio";643,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"4";"Comercial";998,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"4";"Passeio";144,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"5";"Comercial";443,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"6";"Comercial";657,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"7";"Comercial";283,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"8";"Comercial";43,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"Manual";"9";"Comercial";49,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"10";"Comercial";4,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";44,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";139,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";56,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"3";"Passeio";1,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";20,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";16,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";104,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";53,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"8";"Comercial";5,00
+"ECOSUL";"02/2026";"Decrescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";13,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"10";"Comercial";12,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"12";"Comercial";2,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"2";"Comercial";21649,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"2";"Passeio";235034,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"3";"Comercial";18741,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"3";"Passeio";1015,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"4";"Comercial";16255,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"4";"Passeio";152,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"5";"Comercial";14951,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"6";"Comercial";25027,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"7";"Comercial";9843,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"8";"Comercial";528,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Automática";"9";"Comercial";5269,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"10";"Comercial";1,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"17";"Comercial";1,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Comercial";3469,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Moto";7651,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Passeio";118369,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"3";"Comercial";3101,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"3";"Passeio";532,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"4";"Comercial";2464,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"4";"Passeio";89,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"5";"Comercial";2091,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"6";"Comercial";3509,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"7";"Comercial";1306,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"8";"Comercial";68,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"Manual";"9";"Comercial";516,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"10";"Comercial";1,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";1107,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";18254,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";741,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";82,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";489,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";10,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";333,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";540,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";225,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";10,00
+"MOTIVA MINAS SP";"01/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";44,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"10";"Comercial";8,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"11";"Comercial";1,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"2";"Comercial";21610,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"2";"Passeio";186215,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"3";"Comercial";18629,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"3";"Passeio";828,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"4";"Comercial";16434,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"4";"Passeio";129,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"5";"Comercial";16779,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"6";"Comercial";25470,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"7";"Comercial";8088,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"8";"Comercial";198,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Automática";"9";"Comercial";5696,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"10";"Comercial";4,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Comercial";3491,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Moto";6862,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Passeio";99724,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"3";"Comercial";3014,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"3";"Passeio";442,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"4";"Comercial";2388,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"4";"Passeio";81,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"5";"Comercial";2424,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"6";"Comercial";3914,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"7";"Comercial";1307,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"8";"Comercial";20,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"Manual";"9";"Comercial";697,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";1469,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";13631,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";1128,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";68,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";712,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";12,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";640,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";1017,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";334,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";5,00
+"MOTIVA MINAS SP";"01/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";145,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"10";"Comercial";1,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"11";"Comercial";1,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"2";"Comercial";2482,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"2";"Passeio";18747,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"3";"Comercial";2054,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"3";"Passeio";56,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"4";"Comercial";2033,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"4";"Passeio";7,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"5";"Comercial";2039,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"6";"Comercial";3064,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"7";"Comercial";1246,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"8";"Comercial";52,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Automática";"9";"Comercial";796,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"10";"Comercial";1,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Comercial";446,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Moto";986,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"2";"Passeio";10554,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"3";"Comercial";340,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"3";"Passeio";56,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"4";"Comercial";309,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"4";"Passeio";13,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"5";"Comercial";287,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"6";"Comercial";474,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"7";"Comercial";186,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"8";"Comercial";5,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"Manual";"9";"Comercial";56,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";150,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";1591,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";98,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";10,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";48,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";45,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";69,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";22,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";2,00
+"MOTIVA MINAS SP";"02/2026";"Crescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";6,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"10";"Comercial";2,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"11";"Comercial";1,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"2";"Comercial";2349,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"2";"Passeio";20028,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"3";"Comercial";2129,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"3";"Passeio";99,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"4";"Comercial";2053,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"4";"Passeio";14,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"5";"Comercial";2225,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"6";"Comercial";3508,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"7";"Comercial";1030,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"8";"Comercial";47,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Automática";"9";"Comercial";664,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Comercial";448,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Moto";936,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"2";"Passeio";10516,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"3";"Comercial";417,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"3";"Passeio";71,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"4";"Comercial";372,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"4";"Passeio";10,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"5";"Comercial";375,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"6";"Comercial";643,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"7";"Comercial";215,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"8";"Comercial";6,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"Manual";"9";"Comercial";101,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";175,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";1578,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";171,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";10,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";119,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";1,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";87,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";155,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";36,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";2,00
+"MOTIVA MINAS SP";"02/2026";"Decrescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";17,00

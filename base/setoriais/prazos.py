@@ -18,6 +18,14 @@ DIAS_ATE_PUBLICAR_ONS = 2  # a geração do dia sai no dia seguinte
 # o mesmo em 14/10/2026: a ANS não republica todo mês, e a regra dá folga sobre os 39 dias medidos
 ATRASO_MEDIDO_ANS = 39
 DIAS_ATE_PUBLICAR_ANS = 90
+# série 5, PR 1 (pedágio; sem prazo escrito em nenhuma das duas). ANTT, medido em 16/10/2026 no CKAN:
+# agosto/2026 saiu em 30/09 (30 dias) e janeiro/2026 em 28/02 (28). ARTESP, que publica o mês inteiro de
+# uma vez: setembro/2026 saiu em 13/10 (13 dias depois do fim do mês) e janeiro/2026 em 24/02 (24). Vale
+# para todo o histórico (decisão 3(a) do Tiago, 16/10/2026): a data de recarga dos arquivos não entra
+ATRASO_MEDIDO_PEDAGIO = 30
+DIAS_ATE_PUBLICAR_PEDAGIO = 45
+ATRASO_MEDIDO_ARTESP = 24
+DIAS_ATE_PUBLICAR_ARTESP = 45
 
 
 def fim_do_mes(ano: pd.Series, mes: pd.Series) -> pd.Series:
@@ -38,3 +46,12 @@ def disponivel_ans(competencia: pd.Series) -> pd.Series:
 
 def disponivel_ons(instante: pd.Series) -> pd.Series:
     return instante + pd.Timedelta(days=DIAS_ATE_PUBLICAR_ONS)
+
+
+def disponivel_pedagio(competencia: pd.Series) -> pd.Series:
+    return competencia + pd.Timedelta(days=DIAS_ATE_PUBLICAR_PEDAGIO)
+
+
+def disponivel_artesp(dia: pd.Series) -> pd.Series:
+    """O dia só fica público com o mês inteiro: fim do mês do dia + o prazo."""
+    return dia + pd.offsets.MonthEnd(0) + pd.Timedelta(days=DIAS_ATE_PUBLICAR_ARTESP)

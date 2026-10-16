@@ -1,0 +1,79 @@
+concessionaria;mes_ano;sentido;praca;tipo_cobranca;categoria;tipo_de_veiculo;volume_total
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 1";"Passeio";365094,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 2";"Comercial";42733,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 3";"Passeio";1549,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 4";"Comercial";36654,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 5";"Passeio";224,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 6";"Comercial";32920,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 7";"Comercial";22426,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 8";"Comercial";31515,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 9";"Moto";8791,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Crescente";"2 (Vargem)";"N/I";"Outros";"Comercial";13191,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 1";"Passeio";433280,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 2";"Comercial";43193,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 3";"Passeio";1915,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 4";"Comercial";36571,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 5";"Passeio";238,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 6";"Comercial";31479,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 7";"Comercial";19868,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 8";"Comercial";31898,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 9";"Moto";9774,00
+"AUTOPISTA FERNÃO DIAS";"01/01/2023";"Decrescente";"2 (Vargem)";"N/I";"Outros";"Comercial";14780,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 1";"Passeio";316657,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 2";"Comercial";39634,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 3";"Passeio";1492,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 4";"Comercial";33926,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 5";"Passeio";216,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 6";"Comercial";32648,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 7";"Comercial";21350,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 8";"Comercial";30086,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Categoria 9";"Moto";8486,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Crescente";"2 (Vargem)";"N/I";"Outros";"Comercial";13078,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 1";"Passeio";321729,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 2";"Comercial";39902,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 3";"Passeio";1398,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 4";"Comercial";33847,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 5";"Passeio";214,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 6";"Comercial";29964,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 7";"Comercial";19387,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 8";"Comercial";30439,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Categoria 9";"Moto";8926,00
+"AUTOPISTA FERNÃO DIAS";"01/02/2023";"Decrescente";"2 (Vargem)";"N/I";"Outros";"Comercial";17403,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 1";"Passeio";97137,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 2";"Comercial";8233,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 3";"Passeio";932,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 4";"Comercial";6328,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 5";"Passeio";150,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 6";"Comercial";4527,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 7";"Comercial";2785,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 8";"Comercial";8621,00
+"ECOSUL";"01/01/2023";"Crescente";"Praça Retiro";"N/I";"Outros";"Comercial";2553,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 1";"Passeio";99343,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 2";"Comercial";8680,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 3";"Passeio";889,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 4";"Comercial";7339,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 5";"Passeio";125,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 6";"Comercial";6406,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 7";"Comercial";3012,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 8";"Comercial";5276,00
+"ECOSUL";"01/01/2023";"Decrescente";"Praça Retiro";"N/I";"Outros";"Comercial";1988,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 1";"Passeio";87586,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 2";"Comercial";8023,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 3";"Passeio";847,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 4";"Comercial";6361,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 5";"Passeio";155,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 6";"Comercial";4019,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 7";"Comercial";2658,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 8";"Comercial";7642,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Categoria 9";"Moto";0,00
+"ECOSUL";"01/02/2023";"Crescente";"Praça Retiro";"N/I";"Outros";"Comercial";2046,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 1";"Passeio";85257,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 2";"Comercial";8220,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 3";"Passeio";860,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 4";"Comercial";6810,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 5";"Passeio";134,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 6";"Comercial";5948,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 7";"Comercial";2510,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 8";"Comercial";4581,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Categoria 9";"Moto";0,00
+"ECOSUL";"01/02/2023";"Decrescente";"Praça Retiro";"N/I";"Outros";"Comercial";1913,00

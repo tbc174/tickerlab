@@ -1,0 +1,343 @@
+concessionaria;mes_ano;sentido;praca;tipo_cobranca;categoria_eixo;tipo_de_veiculo;volume_total
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"10";"Comercial";969,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"11";"Comercial";2401,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"12";"Comercial";772,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"13";"Comercial";217,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"14";"Comercial";39,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"15";"Comercial";25,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"16";"Comercial";13,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"19";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"2";"Comercial";22808,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"2";"Moto";4,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"2";"Passeio";227330,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"20";"Comercial";21,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"3";"Comercial";19378,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"3";"Passeio";1019,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"4";"Comercial";12499,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"4";"Passeio";138,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"5";"Comercial";11456,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"6";"Comercial";33207,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"7";"Comercial";11428,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"8";"Comercial";7115,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Automática";"9";"Comercial";8681,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"10";"Comercial";200,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"11";"Comercial";189,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"12";"Comercial";75,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"13";"Comercial";27,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"14";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"15";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Comercial";5352,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Moto";8585,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Passeio";149877,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"20";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"3";"Comercial";4371,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"3";"Passeio";703,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"4";"Comercial";2655,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"4";"Passeio";96,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"5";"Comercial";2304,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"6";"Comercial";5717,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"7";"Comercial";1614,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"8";"Comercial";1151,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"Manual";"9";"Comercial";1382,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"10";"Comercial";16,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"11";"Comercial";22,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"12";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";979,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";15793,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";587,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";55,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";313,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";9,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";191,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";526,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";156,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";113,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";110,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"10";"Comercial";1528,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"11";"Comercial";1601,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"12";"Comercial";855,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"13";"Comercial";462,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"14";"Comercial";80,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"15";"Comercial";39,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"16";"Comercial";14,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"17";"Comercial";4,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"19";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"2";"Comercial";22928,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"2";"Moto";118,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"2";"Passeio";188939,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"20";"Comercial";29,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"3";"Comercial";20111,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"3";"Passeio";853,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"4";"Comercial";13314,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"4";"Passeio";281,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"5";"Comercial";12913,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"6";"Comercial";31476,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"7";"Comercial";10393,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"8";"Comercial";5781,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Automática";"9";"Comercial";7690,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"10";"Comercial";202,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"11";"Comercial";174,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"12";"Comercial";83,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"13";"Comercial";25,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"14";"Comercial";7,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"15";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"16";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"17";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"18";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Comercial";5394,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Moto";7635,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Passeio";126052,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"20";"Comercial";6,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"3";"Comercial";4802,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"3";"Passeio";591,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"4";"Comercial";2756,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"4";"Passeio";95,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"5";"Comercial";2684,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"6";"Comercial";6621,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"7";"Comercial";1733,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"8";"Comercial";1035,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"Manual";"9";"Comercial";1263,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"10";"Comercial";19,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"11";"Comercial";22,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"12";"Comercial";12,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"13";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";1258,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Moto";3,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";11856,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";801,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";54,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";460,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";8,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";272,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";792,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";250,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";136,00
+"AUTOPISTA FERNÃO DIAS";"01/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";143,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"10";"Comercial";149,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"11";"Comercial";9,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"12";"Comercial";6,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"13";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"14";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"16";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"2";"Comercial";25340,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"2";"Passeio";201285,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"3";"Comercial";27040,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"3";"Passeio";802,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"4";"Comercial";12827,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"4";"Passeio";152,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"5";"Comercial";26776,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"6";"Comercial";40637,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"7";"Comercial";10221,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"8";"Comercial";514,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Automática";"9";"Comercial";10656,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"10";"Comercial";22,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"12";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"13";"Comercial";8,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"14";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"15";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"16";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"17";"Comercial";2,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"18";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Comercial";6665,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Moto";9520,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"2";"Passeio";128906,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"3";"Comercial";7422,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"3";"Passeio";608,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"4";"Comercial";2541,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"4";"Passeio";97,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"5";"Comercial";5922,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"6";"Comercial";8895,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"7";"Comercial";2175,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"8";"Comercial";86,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"Manual";"9";"Comercial";1798,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";1049,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";13705,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";681,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";61,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";285,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";6,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";349,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";466,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";113,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";4,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Crescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";65,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"10";"Comercial";105,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"11";"Comercial";26,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"12";"Comercial";16,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"13";"Comercial";9,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"14";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"15";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"16";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"17";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"2";"Comercial";25149,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"2";"Passeio";199826,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"3";"Comercial";26769,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"3";"Passeio";883,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"4";"Comercial";12937,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"4";"Passeio";293,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"5";"Comercial";27563,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"6";"Comercial";38418,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"7";"Comercial";8928,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"8";"Comercial";576,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Automática";"9";"Comercial";10274,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"10";"Comercial";19,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"11";"Comercial";7,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"12";"Comercial";11,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"13";"Comercial";9,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"14";"Comercial";3,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"15";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Comercial";6861,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Moto";9248,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"2";"Passeio";124619,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"3";"Comercial";7350,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"3";"Passeio";611,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"4";"Comercial";2641,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"4";"Passeio";101,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"5";"Comercial";6572,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"6";"Comercial";9807,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"7";"Comercial";2272,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"8";"Comercial";111,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"Manual";"9";"Comercial";1682,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"10";"Comercial";5,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"12";"Comercial";1,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Comercial";1360,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"2";"Passeio";13221,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Comercial";1034,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"3";"Passeio";66,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Comercial";440,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"4";"Passeio";9,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"5";"Comercial";607,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"6";"Comercial";927,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"7";"Comercial";228,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"8";"Comercial";10,00
+"AUTOPISTA FERNÃO DIAS";"02/2024";"Decrescente";"2 (Vargem)";"OCR/PLACA";"9";"Comercial";135,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"10";"Comercial";27,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"11";"Comercial";4,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"12";"Comercial";8,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"13";"Comercial";2,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"2";"Comercial";5163,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"2";"Passeio";27985,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"3";"Comercial";3192,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"3";"Passeio";145,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"4";"Comercial";4448,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"4";"Passeio";41,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"5";"Comercial";1456,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"6";"Comercial";6740,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"7";"Comercial";1631,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"8";"Comercial";107,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Automática";"9";"Comercial";1168,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"10";"Comercial";23,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"11";"Comercial";8,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"12";"Comercial";1,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"2";"Comercial";6091,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"2";"Moto";6455,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"2";"Passeio";73098,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"3";"Comercial";1366,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"3";"Passeio";497,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"4";"Comercial";1100,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"4";"Passeio";89,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"5";"Comercial";948,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"6";"Comercial";2670,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"7";"Comercial";755,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"8";"Comercial";189,00
+"ECOSUL";"01/2024";"Crescente";"Praça Retiro";"Manual";"9";"Comercial";193,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"10";"Comercial";17,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"11";"Comercial";3,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"2";"Comercial";3677,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"2";"Passeio";30278,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"3";"Comercial";4900,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"3";"Passeio";189,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"4";"Comercial";810,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"4";"Passeio";34,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"5";"Comercial";1869,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"6";"Comercial";8348,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"7";"Comercial";2165,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"8";"Comercial";67,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Automática";"9";"Comercial";1486,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"10";"Comercial";8,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"11";"Comercial";13,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Comercial";3646,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Moto";6426,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Passeio";73545,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"3";"Comercial";2060,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"3";"Passeio";556,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"4";"Comercial";1553,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"4";"Passeio";88,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"5";"Comercial";1303,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"6";"Comercial";3472,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"7";"Comercial";910,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"8";"Comercial";154,00
+"ECOSUL";"01/2024";"Decrescente";"Praça Retiro";"Manual";"9";"Comercial";279,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"10";"Comercial";93,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"11";"Comercial";16,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"12";"Comercial";10,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"13";"Comercial";4,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"2";"Comercial";3629,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"2";"Passeio";28022,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"3";"Comercial";4071,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"3";"Passeio";164,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"4";"Comercial";1708,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"4";"Passeio";49,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"5";"Comercial";1891,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"6";"Comercial";8399,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"7";"Comercial";2292,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"8";"Comercial";242,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Automática";"9";"Comercial";1436,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"10";"Comercial";13,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"11";"Comercial";9,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"12";"Comercial";3,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"2";"Comercial";6337,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"2";"Moto";5514,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"2";"Passeio";68670,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"3";"Comercial";1358,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"3";"Passeio";746,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"4";"Comercial";917,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"4";"Passeio";138,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"5";"Comercial";918,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"6";"Comercial";2626,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"7";"Comercial";583,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"8";"Comercial";162,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"Manual";"9";"Comercial";131,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";13,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";74,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";3,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";3,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";3,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";17,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";4,00
+"ECOSUL";"02/2024";"Crescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";1,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"10";"Comercial";20,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"11";"Comercial";2,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"2";"Comercial";3574,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"2";"Passeio";27790,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"3";"Comercial";5039,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"3";"Passeio";182,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"4";"Comercial";873,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"4";"Passeio";41,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"5";"Comercial";1981,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"6";"Comercial";8353,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"7";"Comercial";1918,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"8";"Comercial";43,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Automática";"9";"Comercial";1310,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"10";"Comercial";12,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"11";"Comercial";8,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Comercial";3672,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Moto";5569,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"2";"Passeio";67132,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"3";"Comercial";2243,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"3";"Passeio";757,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"4";"Comercial";1603,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"4";"Passeio";124,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"5";"Comercial";1427,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"6";"Comercial";3143,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"7";"Comercial";762,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"8";"Comercial";109,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"Manual";"9";"Comercial";208,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Comercial";18,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"2";"Passeio";71,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"3";"Comercial";11,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"4";"Comercial";2,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"5";"Comercial";4,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"6";"Comercial";24,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"7";"Comercial";12,00
+"ECOSUL";"02/2024";"Decrescente";"Praça Retiro";"OCR/PLACA";"9";"Comercial";3,00
