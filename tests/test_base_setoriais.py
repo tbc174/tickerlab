@@ -70,10 +70,13 @@ def test_meses_do_historico_e_do_atual_nao_se_repetem():
         "2017;1;RAIZEN S.A.;320102001;Gasolina C;CO;DF;CO;DF;CONSUMIDOR FINAL;9,000000",
         "2016;12;RAIZEN S.A.;320102001;Gasolina C;CO;DF;CO;DF;CONSUMIDOR FINAL;1,000000",
     ]
+    cabecalho = (
+        '"Ano";"Mês";"Agente Regulado";"Código do Produto";"Nome do Produto";'
+        '"Descrição do Produto";"Região Origem";"UF Origem";"Região Destinatário";"UF Destino";'
+        '"Mercado Destinatário";"Quantidade de Produto (mil m³)"'
+    )
     atual = [
-        '"Ano";"Mês";"Agente Regulado";"Código do Produto";"Nome do Produto";"Descrição do Produto";'
-        '"Região Origem";"UF Origem";"Região Destinatário";"UF Destino";"Mercado Destinatário";'
-        '"Quantidade de Produto (mil m³)"',
+        cabecalho,
         "2017;1;RAIZEN S.A.;320102001;Gasolina C;GASOLINA C COMUM;CO;DF;CO;DF;CONSUMIDOR FINAL;2,000000",
     ]
     import io

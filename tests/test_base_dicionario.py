@@ -11,6 +11,9 @@ from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
+from base.setoriais import anac as setoriais_anac
+from base.setoriais import anp as setoriais_anp
+from base.setoriais import ons as setoriais_ons
 from src.banco.coletas import (
     LICENCAS,
     REVENDA,
@@ -70,6 +73,10 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "valores_mobiliarios": list(fca.COLUNAS),
         "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
         "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "disponivel_em"],
+        "anac_estatistico": list(setoriais_anac.COLUNAS),
+        "anp_vendas": list(setoriais_anp.COLUNAS),
+        "ons_geracao": list(setoriais_ons.COLUNAS),
+        "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),

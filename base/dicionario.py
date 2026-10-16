@@ -22,6 +22,7 @@ REAIS = "reais (R$), já multiplicado pela escala informada"
 FRACAO = "fração (0,25 = 25%)"
 ACOES = "ações"
 NUMERO = "número inteiro"
+NUMERO_DECIMAL = "número com decimais, na unidade da fonte"
 SIM_OU_NAO = "verdadeiro ou falso"
 # tabelas do banco do app que ainda não guardam o commit por linha (exigência 13 da ADR 0055); as
 # da base em Parquet guardam no manifesto (série 3, PR 1) e o registro de coletas, por arquivo (PR 3)
@@ -858,6 +859,235 @@ TABELAS: dict[str, Tabela] = {
             "conferido_em": ("Dia da conferência", DATA),
         },
     ),
+    "anac_estatistico": Tabela(
+        descricao=(
+            "Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, "
+            "carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte. A chave da "
+            "empresa é a sigla, a mesma da B13 (empresa ↔ série)"
+        ),
+        fonte="ANAC: dados estatísticos do transporte aéreo (Dados_Estatisticos.csv)",
+        familia_da_fonte="anac",
+        frequencia='Mensal (o arquivo inteiro é republicado; a 1ª linha diz "Atualizado em")',
+        atraso='Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava '
+        "publicado 44 dias depois, medido em 14/10/2026)",
+        onde="Parquet por ano em `<acervo>/base/setoriais/anac/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 do arquivo da ANAC usado (no acervo e no "
+            "registro de coletas) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "empresa_sigla": ("Empresa sigla, como a ANAC publica", TEXTO),
+            "empresa_nome": ("Empresa nome, como a ANAC publica", TEXTO),
+            "empresa_nacionalidade": (
+                "Empresa nacionalidade, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_sigla": (
+                "Aeroporto de origem sigla, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_nome": (
+                "Aeroporto de origem nome, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_uf": (
+                "Aeroporto de origem uf, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_regiao": (
+                "Aeroporto de origem regiao, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_pais": (
+                "Aeroporto de origem pais, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_continente": (
+                "Aeroporto de origem continente, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_sigla": (
+                "Aeroporto de destino sigla, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_nome": (
+                "Aeroporto de destino nome, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_uf": (
+                "Aeroporto de destino uf, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_regiao": (
+                "Aeroporto de destino regiao, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_pais": (
+                "Aeroporto de destino pais, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_continente": (
+                "Aeroporto de destino continente, como a ANAC publica",
+                TEXTO,
+            ),
+            "natureza": ("Natureza, como a ANAC publica", TEXTO),
+            "grupo_de_voo": ("Grupo de voo, como a ANAC publica", TEXTO),
+            "passageiros_pagos": (
+                "Passageiros pagos no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "passageiros_gratis": (
+                "Passageiros gratis no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_paga_kg": (
+                "Carga paga kg no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_gratis_kg": (
+                "Carga gratis kg no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "correio_kg": ("Correio kg no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "ask": ("Ask no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "rpk": ("Rpk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "atk": ("Atk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "rtk": ("Rtk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "combustivel_litros": (
+                "Combustivel litros no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "distancia_voada_km": (
+                "Distancia voada km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "decolagens": ("Decolagens no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "carga_paga_km": (
+                "Carga paga km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_gratis_km": (
+                "Carga gratis km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "correio_km": ("Correio km no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "assentos": ("Assentos no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "payload": ("Payload no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "horas_voadas": (
+                "Horas voadas no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "bagagem_kg": ("Bagagem kg no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "atualizado_em": ('A data da linha "Atualizado em" do arquivo usado', DATA),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "anp_vendas": Tabela(
+        descricao=(
+            "Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, "
+            "produto, origem, destino e mercado, desde 2007, no formato da fonte. A ANP escreve o nome "
+            "atual da distribuidora também no passado; a ligação à empresa é pela B13"
+        ),
+        fonte="ANP: vendas de derivados de petróleo e biocombustíveis por distribuidor (liquidos, glp, aviacao)",
+        familia_da_fonte="anp",
+        frequencia="Mensal",
+        atraso='Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava '
+        "publicado 44 dias depois, medido em 14/10/2026)",
+        onde="Parquet por ano em `<acervo>/base/setoriais/anp/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 dos três zips da ANP usados e a versão do "
+            "código; `arquivo` diz de qual CSV do zip veio a linha (atual ou histórico)."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "grupo": ("liquidos, glp ou aviacao (o zip)", TEXTO),
+            "agente": ("Agente regulado (a distribuidora), como a ANP escreve", TEXTO),
+            "codigo_do_produto": ("Código do produto na ANP", TEXTO),
+            "nome_do_produto": ("Nome do produto", TEXTO),
+            "descricao_do_produto": (
+                "Descrição do produto (vazio no histórico dos líquidos)",
+                TEXTO,
+            ),
+            "codigo_da_embalagem": ("Código da embalagem (só GLP)", TEXTO),
+            "regiao_origem": ("Região de origem", TEXTO),
+            "uf_origem": ("UF de origem", TEXTO),
+            "regiao_destino": ("Região de destino", TEXTO),
+            "uf_destino": ("UF de destino", TEXTO),
+            "mercado_destino": (
+                "Mercado destinatário (posto, consumidor final...)",
+                TEXTO,
+            ),
+            "quantidade": (
+                "Quantidade vendida, na unidade da coluna `unidade`",
+                NUMERO_DECIMAL,
+            ),
+            "unidade": ("mil m³ ou mil ton, como no cabeçalho da ANP", TEXTO),
+            "arquivo": ("O CSV do zip de onde veio a linha", TEXTO),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "ons_geracao": Tabela(
+        descricao=(
+            "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da "
+            "usina é o `id_ons` (o CEG falta em 41% da geração de 09/2026). Sem ligação à empresa: o "
+            "dono da usina só existe no cadastro de hoje, e aplicá-lo ao passado olharia o futuro"
+        ),
+        fonte="ONS: geração por usina em base horária (dados abertos)",
+        familia_da_fonte="ons",
+        frequencia="Diária (um arquivo por ano até 2021, por mês depois)",
+        atraso="O dia seguinte; a regra usa o instante + 2 dias",
+        onde="Parquet por ano em `<acervo>/base/setoriais/ons/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo do ONS do ano e a versão do "
+            "código."
+        ),
+        colunas={
+            "instante": ("Hora (início)", DATA),
+            "id_subsistema": ("Subsistema (N, NE, S, SE)", TEXTO),
+            "subsistema": ("Nome do subsistema", TEXTO),
+            "uf": ("UF da usina", TEXTO),
+            "modalidade_de_operacao": ("Modalidade de operação (tipo I, II...)", TEXTO),
+            "tipo_de_usina": ("Hidrelétrica, térmica, eólica, fotovoltaica...", TEXTO),
+            "combustivel": ("Combustível ou fonte", TEXTO),
+            "usina": ("Nome da usina, como o ONS escreve", TEXTO),
+            "id_ons": ("Código da usina no ONS (a chave)", TEXTO),
+            "ceg": ("Código da usina na ANEEL (vazio quando o ONS não informa)", TEXTO),
+            "geracao_mwmed": ("Geração na hora, em MWmed", NUMERO_DECIMAL),
+            "disponivel_em": (
+                "Desde quando o número era público (instante + 2 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "setoriais_buracos": Tabela(
+        descricao=(
+            "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma "
+            "empresa, do maior volume para o menor: a lista de trabalho da próxima conferência"
+        ),
+        fonte="Derivado: fontes setoriais e a B13 (empresa_serie)",
+        familia_da_fonte="anp",
+        frequencia="A cada carga das fontes setoriais",
+        atraso="Nenhum",
+        onde="Parquet em `<acervo>/base/setoriais/buracos.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem="O `.json` anota a tabela da B13 usada (SHA-256 do conteúdo) e a versão do código.",
+        colunas={
+            "chave": ("Código na fonte sem ligação", TEXTO),
+            "valor": (
+                "Volume somado (passageiros pagos na ANAC, quantidade na ANP)",
+                NUMERO_DECIMAL,
+            ),
+            "primeira": ("Primeiro mês em que aparece", DATA),
+            "ultima": ("Último mês em que aparece", DATA),
+            "fonte": ("Fonte no registro de coletas", TEXTO),
+        },
+    ),
     "ifdata_valores": Tabela(
         descricao=(
             "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e "
@@ -1665,6 +1895,10 @@ _CONTRATO = {
     "emissores_antigos": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "emissores_sem_ligacao": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "codigos_fora_do_fca": _contrato(modulo=_ME, chaves=("codigo",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
+    "anac_estatistico": _contrato(modulo=_ME, chaves=("competencia", "empresa_sigla", "aeroporto_de_origem_sigla", "aeroporto_de_destino_sigla", "natureza", "grupo_de_voo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "anp_vendas": _contrato(modulo=_ME, chaves=("competencia", "grupo", "agente", "codigo_do_produto", "uf_origem", "uf_destino", "mercado_destino"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ons_geracao": _contrato(modulo=_ME, chaves=("instante", "id_ons"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
