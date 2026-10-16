@@ -336,6 +336,47 @@ def isins_das_posicoes(posicoes: pd.DataFrame) -> pd.DataFrame:
     ).reset_index()
 
 
+def fundos_das_posicoes(posicoes: pd.DataFrame) -> pd.DataFrame:
+    """Cada fundo (ou classe) das carteiras, com o tipo e o nome da carteira mais recente e quando
+    ficou público pela primeira vez: metade das linhas do CDA é de fundo fora do cadastro."""
+    tabela = posicoes.assign(
+        cnpj_fundo=posicoes["cnpj_fundo"].map(normalizar_cnpj),
+        competencia=_dia(posicoes["competencia"]),
+        disponivel_em=_dia(posicoes["disponivel_em"]),
+    ).dropna(subset=["cnpj_fundo"])
+    tabela = tabela.sort_values(["cnpj_fundo", "competencia"], kind="stable")
+    por_fundo = tabela.groupby("cnpj_fundo", sort=True)
+    return pd.DataFrame(
+        {
+            "fundo": por_fundo["fundo"].last(),
+            "tipo_do_fundo": por_fundo["tipo_do_fundo"].last(),
+            "ultimo": por_fundo["competencia"].max(),
+            "publico_em": por_fundo["disponivel_em"].min(),
+        }
+    ).reset_index()
+
+
+def juntar_fundos(partes: list[pd.DataFrame]) -> pd.DataFrame:
+    """Os fundos de cada ano somados: o nome e o tipo do ano mais recente, o primeiro dia público."""
+    partes = [p for p in partes if not p.empty]
+    if not partes:
+        return pd.DataFrame(
+            columns=["cnpj_fundo", "fundo", "tipo_do_fundo", "ultimo", "publico_em"]
+        )
+    tabela = pd.concat(partes, ignore_index=True).sort_values(
+        ["cnpj_fundo", "ultimo"], kind="stable"
+    )
+    por_fundo = tabela.groupby("cnpj_fundo", sort=True)
+    return pd.DataFrame(
+        {
+            "fundo": por_fundo["fundo"].last(),
+            "tipo_do_fundo": por_fundo["tipo_do_fundo"].last(),
+            "ultimo": por_fundo["ultimo"].max(),
+            "publico_em": por_fundo["publico_em"].min(),
+        }
+    ).reset_index()
+
+
 def juntar_isins(partes: list[pd.DataFrame]) -> pd.DataFrame:
     """Os ISINs de cada ano somados (o primeiro mês de todos, o último de todos)."""
     tabela = pd.concat([p for p in partes if not p.empty], ignore_index=True) if any(

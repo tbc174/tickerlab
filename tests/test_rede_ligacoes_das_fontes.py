@@ -112,6 +112,8 @@ def _posicoes() -> pd.DataFrame:
         {
             "competencia": [D(m) for m in meses],
             "cnpj_fundo": FUNDO,
+            "fundo": "FIDC DE MENTIRA (no CDA)",
+            "tipo_do_fundo": "FIDC",
             "tipo": "comprado",
             "isin": [PETR4] * 4 + [PETR3],
             "emissor": "PETR",
@@ -345,3 +347,43 @@ def test_duas_filiais_no_mesmo_fre_ficam_uma_ligacao():
     tabela = ligacoes.normalizar(ligacoes_das_fontes.das_controladas(controladas, r))
     ipiranga = tabela[tabela["de"] == _id("33337122")]
     assert ipiranga["participacao"].tolist() == [100.0]
+
+
+def test_fundo_que_so_esta_nas_carteiras_vira_entidade_e_detem():
+    """Metade das linhas do CDA é de fundo fora do cadastro (classes da CVM 175): o CDA traz o CNPJ,
+    o tipo e o nome, e o fundo vira entidade; o nome do cadastro, quando há, continua valendo."""
+    posicoes = pd.concat(
+        [
+            _posicoes(),
+            _posicoes()
+            .head(1)
+            .assign(cnpj_fundo="11.444.777/0001-61", fundo="CLASSE X"),
+        ],
+        ignore_index=True,
+    )
+    entradas = montar.Entradas(
+        **{
+            **vars(_entradas_com_tudo()),
+            "isins": ligacoes_das_fontes.isins_das_posicoes(posicoes),
+            "fundos_das_carteiras": ligacoes_das_fontes.juntar_fundos(
+                [ligacoes_das_fontes.fundos_das_posicoes(posicoes)]
+            ),
+        }
+    )
+    obs = montar.observacoes(entradas)
+    vazia = pd.DataFrame(columns=["cnpj_basico", "natureza_juridica"])
+    entidades, identificadores, _ = montar.montar_rede(
+        obs, vazia, pd.DataFrame(columns=["cnpj_basico", "mei"]), {}
+    )
+    por_id = entidades.set_index("id_entidade")
+    classe = ids.id_entidade("fundo", "cnpj", "11444777000161")
+    assert por_id.loc[classe, ["tipo", "nome", "natureza_juridica"]].tolist() == [
+        "fundo", "CLASSE X", "2224",
+    ]  # fmt: skip
+    assert por_id.loc[ID_FUNDO, "nome"] == "FIDC DE MENTIRA"  # o do cadastro ganha
+    periodos = ligacoes_das_fontes.periodos_das_posicoes(posicoes)
+    tabela = montar.montar_ligacoes(
+        entradas, identificadores, periodos, periodos["fim"].max()
+    )
+    detem = tabela[tabela["tipo"] == "detem"]
+    assert classe in set(detem["de"])

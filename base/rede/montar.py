@@ -97,6 +97,9 @@ class Entradas:
     isins: pd.DataFrame = field(
         default_factory=_vazia
     )  # `ligacoes_das_fontes.juntar_isins`
+    fundos_das_carteiras: pd.DataFrame = field(
+        default_factory=_vazia
+    )  # `ligacoes_das_fontes.juntar_fundos`
 
 
 def _dia(valores: Iterable) -> pd.Series:
@@ -473,12 +476,40 @@ def _dos_isins(isins: pd.DataFrame) -> list[pd.DataFrame]:
     ]
 
 
-def _fundo_e_sempre_o_fundo(tabela: pd.DataFrame, fundos: pd.DataFrame) -> pd.DataFrame:
-    """CNPJ do cadastro de fundos é o fundo, venha de onde vier (o FRE lista FIPs como
-    controladas; o GLEIF registra fundos como GENERAL): a observação vai para a âncora do fundo."""
+def _dos_fundos_das_carteiras(fundos: pd.DataFrame) -> list[pd.DataFrame]:
+    """O fundo (ou classe da CVM 175) que aparece nas carteiras, com ou sem cadastro (regra 1): o nome
+    do cadastro, quando há, ganha pela prioridade."""
     if fundos.empty:
+        return []
+    return [
+        _ancoras(
+            "cvm-cda",
+            fundos["cnpj_fundo"],
+            fundos["fundo"],
+            fundos["publico_em"],
+            FUNDO_DE_INVESTIMENTO,
+            tipo=FUNDO,
+        )
+    ]
+
+
+def _cnpjs_de_fundo(entradas: Entradas) -> set[str]:
+    """Os CNPJs que são fundo: os do cadastro e os das carteiras."""
+    cnpjs = set()
+    if not entradas.fundos.empty:
+        cnpjs |= set(entradas.fundos["CNPJ_FUNDO"].map(normalizar_cnpj).dropna())
+    if not entradas.fundos_das_carteiras.empty:
+        cnpjs |= set(entradas.fundos_das_carteiras["cnpj_fundo"].dropna())
+    return cnpjs
+
+
+def _fundo_e_sempre_o_fundo(
+    tabela: pd.DataFrame, cnpjs_de_fundo: set[str]
+) -> pd.DataFrame:
+    """CNPJ de fundo (do cadastro ou das carteiras) é o fundo, venha de onde vier (o FRE lista FIPs
+    como controladas; o GLEIF registra fundos como GENERAL): a observação vai para a âncora do fundo."""
+    if not cnpjs_de_fundo:
         return tabela
-    cnpjs_de_fundo = set(fundos["CNPJ_FUNDO"].map(normalizar_cnpj).dropna())
     e_fundo = (tabela["tipo"] == EMPRESA) & tabela["cnpj_da_fonte"].isin(cnpjs_de_fundo)
     tabela = tabela.assign(
         tipo=tabela["tipo"].mask(e_fundo, FUNDO),
@@ -501,12 +532,13 @@ def observacoes(entradas: Entradas) -> pd.DataFrame:
         *_do_gleif(entradas.gleif),
         *_dos_auditores(entradas.auditores),
         *_dos_isins(entradas.isins),
+        *_dos_fundos_das_carteiras(entradas.fundos_das_carteiras),
     ]
     partes = [p for p in partes if not p.empty]
     if not partes:
         return pd.DataFrame(columns=list(COLUNAS_DAS_OBSERVACOES))
     tabela = _fundo_e_sempre_o_fundo(
-        pd.concat(partes, ignore_index=True), entradas.fundos
+        pd.concat(partes, ignore_index=True), _cnpjs_de_fundo(entradas)
     )
     for coluna in ("desde", "ate", "publico_em"):
         tabela[coluna] = pd.to_datetime(tabela[coluna])

@@ -63,6 +63,8 @@ ORDEM_DAS_LIGACOES = list(ligacoes.CHAVE)
 COLUNAS_DO_CDA = [
     "competencia",
     "cnpj_fundo",
+    "fundo",
+    "tipo_do_fundo",
     "tipo",
     "isin",
     "emissor",
@@ -280,13 +282,14 @@ def _entradas(conexao: sa.Connection, pasta: Path) -> _Lidas:
 @dataclass
 class _Carteiras:
     isins: pd.DataFrame
+    fundos: pd.DataFrame
     periodos: pd.DataFrame
     ultimo_mes: int
 
 
 def _carteiras(arquivos: list[Path], lidas: TabelasLidas) -> _Carteiras:
     """Os ISINs e os períodos da `detem`, um ano do CDA por vez (o CDA inteiro não cabe na memória)."""
-    isins, periodos, ultimo = [], [], -1
+    isins, fundos, periodos, ultimo = [], [], [], -1
     for arquivo in arquivos:
         ano = _com_origem(
             arquivo, pd.read_parquet(arquivo, columns=COLUNAS_DO_CDA), lidas
@@ -294,6 +297,7 @@ def _carteiras(arquivos: list[Path], lidas: TabelasLidas) -> _Carteiras:
         if ano.empty:
             continue
         isins.append(ligacoes_das_fontes.isins_das_posicoes(ano))
+        fundos.append(ligacoes_das_fontes.fundos_das_posicoes(ano))
         periodos.append(ligacoes_das_fontes.periodos_das_posicoes(ano))
         ultimo = max(
             ultimo,
@@ -302,6 +306,7 @@ def _carteiras(arquivos: list[Path], lidas: TabelasLidas) -> _Carteiras:
     juntos = [p for p in periodos if not p.empty]
     return _Carteiras(
         ligacoes_das_fontes.juntar_isins(isins),
+        ligacoes_das_fontes.juntar_fundos(fundos),
         ligacoes.comprimir_periodos(
             pd.concat(juntos, ignore_index=True), ["cnpj_fundo", "isin", "tipo"]
         )
@@ -362,7 +367,13 @@ def _linhas_gravadas(destino: Path) -> int:
 
 # o que não vem da pasta da base: os originais do acervo, a tabela conferida do repositório e os ISINs
 # (montados depois, das carteiras)
-FORA_DA_PASTA = ("cadastro", "gleif", "emissores_antigos", "isins")
+FORA_DA_PASTA = (
+    "cadastro",
+    "gleif",
+    "emissores_antigos",
+    "isins",
+    "fundos_das_carteiras",
+)
 
 
 def _sem_entradas(lidas: _Lidas) -> bool:
@@ -389,7 +400,9 @@ def montar_no_acervo(
 
     def calcular() -> tuple[pd.DataFrame, ...]:
         carteiras = _carteiras(lidas.carteiras, lidas.tabelas)
-        entradas = replace(lidas.entradas, isins=carteiras.isins)
+        entradas = replace(
+            lidas.entradas, isins=carteiras.isins, fundos_das_carteiras=carteiras.fundos
+        )
         observacoes = montar.observacoes(entradas)
         naturezas, meis = _natureza_e_mei(lidas.receita, montar.raizes(observacoes))
         entidades, identificadores, conflitos = montar.montar_rede(
