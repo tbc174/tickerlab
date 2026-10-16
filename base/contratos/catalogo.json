@@ -3073,6 +3073,52 @@
       "frequencia": "Mensal (o ZIP é regerado todo dia)",
       "atraso": "Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias"
     },
+    "amostra_painel": {
+      "tabela": "amostra_painel",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "data": {
+          "descricao": "Fim do mês: a linha diz o que se sabia neste dia",
+          "unidade": "data (dia)"
+        },
+        "registrada_desde": {
+          "descricao": "Início do registro de companhia aberta vigente na data",
+          "unidade": "data (dia)"
+        },
+        "primeira_entrega": {
+          "descricao": "A primeira DFP ou ITR entregue (a companhia só entra depois dela)",
+          "unidade": "data (dia)"
+        },
+        "tickers_na_data": {
+          "descricao": "Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum)",
+          "unidade": "texto"
+        },
+        "com_ticker_na_data": {
+          "descricao": "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
+          "unidade": "verdadeiro ou falso"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "data"
+      ],
+      "datas": {
+        "aconteceu_em": "data"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal (até o último mês fechado)",
+      "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública"
+    },
     "setoriais_buracos": {
       "tabela": "setoriais_buracos",
       "modulo": "mercado_e_empresas",
