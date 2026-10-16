@@ -83,6 +83,7 @@ ARQUIVOS: dict[str, str] = {
     "entidades": "rede/entidades.parquet",
     "identificadores": "rede/identificadores.parquet",
     "ligacoes": "rede/ligacoes.parquet",
+    "ma_assessorias": "ma/assessorias/*.parquet",
 }
 # tabela conferida à mão → CSV no repositório (separado por `;`)
 CONFERIDAS: dict[str, str] = {
