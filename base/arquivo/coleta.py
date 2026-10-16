@@ -140,6 +140,8 @@ class Fonte:
     # pela última coleta "ok" do endereço, o que já está guardado basta (não baixa de novo)? Para
     # fonte sem ETag nem Last-Modified (a B3); None: a regra dos cabeçalhos (pesadas) ou do SHA-256
     guardado_vale: Callable[[sa.Row], bool] | None = None
+    # espera mínima entre dois pedidos (site pequeno de terceiros, ADR 0082); vale quando há pausa
+    pausa_minima: float = 0.0
 
 
 @dataclass
@@ -343,9 +345,10 @@ def arquivar(
         raise ErroDeDescoberta(f"{fonte.id}: nenhum arquivo encontrado")
     pasta_temporaria.mkdir(parents=True, exist_ok=True)
     resultado = Resultado(fonte.id)
+    espera = max(pausa, fonte.pausa_minima) if pausa else 0.0  # pausa 0: testes
     for numero, alvo in enumerate(alvos):
-        if numero and pausa:
-            time.sleep(pausa)
+        if numero and espera:
+            time.sleep(espera)
         temporario = pasta_temporaria / f"{fonte.id}-{numero}.parcial"
         try:
             _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado)
