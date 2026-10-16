@@ -181,3 +181,14 @@ def test_nao_ha_prova_de_inclusao_para_tabela_de_pessoas():
     ancora = an.montar_ancora(folhas, rotulo="v1")
     with pytest.raises(ValueError, match="pessoas"):
         an.prova_da_tabela(ancora, "pessoas/nivel1")
+
+
+def test_parquets_sem_manifesto_ficam_de_fora_e_sao_listados(base):
+    pd.DataFrame({"a": [1]}).to_parquet(base / "cripto.parquet", index=False)
+    (base / "eventos").mkdir()
+    pd.DataFrame({"a": [1]}).to_parquet(base / "eventos" / "2024.parquet", index=False)
+    pd.DataFrame({"a": [1]}).to_parquet(
+        base / "eventos" / "2023.v1.parquet", index=False
+    )
+    assert an.parquets_sem_manifesto(base) == ["cripto.parquet", "eventos/2024.parquet"]
+    assert "eventos/2024" not in an.manifestos_atuais(base)

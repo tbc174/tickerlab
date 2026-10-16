@@ -12,6 +12,7 @@ import { GraficoDeHistograma } from "../graficos/GraficoDeHistograma";
 import { GraficoDoTempo } from "../graficos/GraficoDoTempo";
 
 export const SEMENTE_INICIAL = 42;
+export const EXEMPLO_DA_SORTE = { quantidade: "100" as Quantidade, anos: "1" as Anos };
 const DIAS_POR_ANO_DE_PREGAO = 250; // dias de pregão num ano, para o prazo da simulação
 const DIAS_POR_TRIMESTRE = 63;
 const VALOR_INICIAL = 100; // as curvas em reais: "R$ 100 viraram..."
@@ -36,8 +37,8 @@ function eixoEmDiasDePregao(dias: number) {
 const sinal = (fracao: number) => `${fracao > 0 ? "+" : ""}${formatarPorcentagem(fracao, 0)}`;
 
 export function SorteEmSerie() {
-  const [quantidade, setQuantidade] = useState<Quantidade>("100");
-  const [anos, setAnos] = useState<Anos>("1");
+  const [quantidade, setQuantidade] = useState<Quantidade>(EXEMPLO_DA_SORTE.quantidade);
+  const [anos, setAnos] = useState<Anos>(EXEMPLO_DA_SORTE.anos);
   const [semente, setSemente] = useState(SEMENTE_INICIAL);
   const r = simular(Number(quantidade), Number(anos) * DIAS_POR_ANO_DE_PREGAO, semente);
   const total = formatarNumero(r.estrategias);

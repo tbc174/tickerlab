@@ -22,6 +22,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
+from base.parquet import LINHAGEM, gravar_se_mudou
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.versao_do_codigo import versao_do_codigo
@@ -246,6 +247,7 @@ def montar_situacao_especial(
     data" nasce da sequência deles (`mes_do_retrato`, mais `data_situacao_especial` da Receita).
     """
     por_mes: dict[str, list[pd.DataFrame]] = {}
+    origens: dict[str, list[dict[str, str]]] = {}
     for original in originais_mais_recentes(conexao, "rfb-cnpj"):
         achado = MES_NA_PASTA.search(original.url)
         conteudo = acervo.ler_original(original.caminho_do_original)
@@ -259,13 +261,18 @@ def montar_situacao_especial(
             versao_do_codigo=versao_do_codigo(),
         )
         por_mes.setdefault(achado.group(1), []).append(tabela)
+        origens.setdefault(achado.group(1), []).append(
+            {"url": original.url, "sha256": original.sha256}
+        )
     linhas: dict[str, int] = {}
     for mes, partes in por_mes.items():
         tabela = pd.concat(partes, ignore_index=True)
-        destino = pasta / "cnpj_situacao_especial" / f"{mes}.parquet"
-        destino.parent.mkdir(parents=True, exist_ok=True)
-        parcial = destino.with_name(destino.name + ".parcial")
-        tabela.to_parquet(parcial, index=False)
-        parcial.replace(destino)
+        gravar_se_mudou(
+            tabela,
+            pasta / "cnpj_situacao_especial" / f"{mes}.parquet",
+            origens[mes],
+            ["cnpj"],
+            carimbos=LINHAGEM,
+        )
         linhas[mes] = len(tabela)
     return linhas

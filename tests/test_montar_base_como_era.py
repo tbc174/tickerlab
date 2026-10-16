@@ -114,6 +114,7 @@ def test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma(
     assert primeiro["sha256_da_base"] == segundo["sha256_da_base"]
     urls = {o["url"] for o in primeiro["origens"]}
     assert {dm.URL_DO_DFP.format(ano=2024), dm.URL_DO_DFP.format(ano=2025)} <= urls
+    assert dm.URL_DO_CADASTRO in urls  # o registro seguinte vem do cadastro
     assert montar.main(["--conferir", "--pasta", str(saida)]) == 0
     assert "2024: ok" in capsys.readouterr().out
 

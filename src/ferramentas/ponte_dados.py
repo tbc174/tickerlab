@@ -1,5 +1,6 @@
 """As curvas da ferramenta "Quanto daria? Foi sorte?" (ADR 0070): o valor de R$ 1 no começo de cada
-mês, em cada ativo, guardadas na memória até o dia seguinte.
+mês, em cada ativo, guardadas na memória (o arquivo de dados por uma hora; as curvas do Yahoo até o
+dia seguinte).
 
 - CDI, poupança, IPCA e dólar: do arquivo de dados abertos das ferramentas
   (`/dados/ferramentas.json`, gerado pelo cron do VPS a partir do Banco Central), e não do BC ao vivo:
@@ -16,12 +17,13 @@ Tudo mês a mês: a data que a pessoa escolhe vale pelo mês dela, e as janelas 
 import os
 import threading
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 import requests
 
 from src import dados as dados_de_mercado
+from src.bcb import FUSO
 from src.ferramentas import inflacao
 
 ENDERECO_DOS_DADOS = os.environ.get(
@@ -112,13 +114,15 @@ def curva_do_yahoo(ativo: str, dolar: pd.Series) -> pd.Series:
 
 
 class CacheDoDia:
-    """Guarda o que deu certo até o dia seguinte; a falha não fica guardada."""
+    """Guarda o que deu certo enquanto a chave (o dia, ou o dia e a hora) não muda; a falha não fica
+    guardada."""
 
     def __init__(self) -> None:
-        self._guardado: dict[str, tuple[date, object]] = {}
+        self._guardado: dict[str, tuple[object, object]] = {}
         self._trava = threading.Lock()
 
-    def obter[T](self, chave: str, dia: date, fazer: Callable[[], T]) -> T:
+    def obter[T](self, chave: str, dia: object, fazer: Callable[[], T]) -> T:
+        """O guardado em `chave` se for do mesmo `dia` (ou da mesma hora, para o arquivo)."""
         with self._trava:
             guardado = self._guardado.get(chave)
             if guardado is not None and guardado[0] == dia:
@@ -143,8 +147,16 @@ def baixar_arquivo(buscar: Buscar = requests.get) -> dict:
         ) from erro
 
 
+def hora_agora() -> int:
+    """A hora de Brasília, para o cache que troca a cada hora (o arquivo e a rota que o usa). Logo
+    depois do cron, a hora em curso ainda serve o arquivo anterior: as séries são mensais."""
+    return datetime.now(FUSO).hour
+
+
 def obter_arquivo(hoje: date, buscar: Buscar = requests.get) -> dict:
-    return CACHE.obter("arquivo", hoje, lambda: baixar_arquivo(buscar))
+    """O arquivo de dados, buscado de novo a cada hora: o cron do VPS o atualiza duas vezes por dia
+    (9h10 e 13h40), e guardar o do dia inteiro prenderia a rota nos dados da madrugada."""
+    return CACHE.obter("arquivo", (hoje, hora_agora()), lambda: baixar_arquivo(buscar))
 
 
 def obter_curva_do_yahoo(ativo: str, hoje: date, dolar: pd.Series) -> pd.Series:

@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import pytest
 
+from base import fca
 from base.dicionario import TABELAS
 from scripts import carga_bcb_credito, carga_cda, carga_fca, carga_fidc
 from src.banco.coletas import (
@@ -23,20 +24,25 @@ from src.banco.coletas import (
 )
 
 RAIZ = Path(__file__).resolve().parent.parent
-DOMINIOS_OFICIAIS = {"dados.cvm.gov.br", "olinda.bcb.gov.br", "www.bcb.gov.br"}
+DOMINIOS_OFICIAIS = {
+    "dados.cvm.gov.br",
+    "www.rad.cvm.gov.br",
+    "olinda.bcb.gov.br",
+    "www.bcb.gov.br",
+}
 
 # fonte → (registro de coletas, endereços, tabelas do dicionário, testes que provam 9 e 13)
 FONTES = {
     "CVM CDA": {
         "fontes_no_registro": [carga_cda.FONTE],
         "enderecos": [carga_cda.PASTA_DA_CVM],
-        "tabelas": ["carteiras_dos_fundos"],
+        "tabelas": ["carteiras_dos_fundos", "carteiras_bloco_8"],
         "reprodutivel": "tests/test_carga_cda.py::test_ano_igual_ao_que_ja_tem_e_pulado",
         "linhagem": "tests/test_carga_cda.py::test_linhagem_do_ano_e_completa",
     },
     "CVM FCA": {
-        "fontes_no_registro": [carga_fca.FONTE],
-        "enderecos": [carga_fca.URL_DO_FCA],
+        "fontes_no_registro": [carga_fca.FONTE, fca.FONTE_DAS_VERSOES],
+        "enderecos": [carga_fca.URL_DO_FCA, fca.URL_DA_VERSAO],
         "tabelas": [
             "valores_mobiliarios",
             "emissores",
@@ -76,6 +82,7 @@ COMO_ERA_NA_DATA = {
     "emissores": "primeiro_recebido_em",
     "codigos_invalidos": "recebido_em",
     "carteiras_dos_fundos": "disponivel_em",
+    "carteiras_bloco_8": "disponivel_em",
     "fidc_informe": "disponivel_em",
     "ifdata_valores": "disponivel_em",
     "scr_credito": "disponivel_em",

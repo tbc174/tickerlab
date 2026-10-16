@@ -41,6 +41,12 @@ import sqlalchemy as sa
 
 from base import fca
 from base.controladas import cnpj14
+from base.parquet import (
+    LINHAGEM,
+    arquivos_atuais,
+    gravar_se_mudou,
+    origem_de_tabela,
+)
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.versao_do_codigo import versao_do_codigo
@@ -451,7 +457,7 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     Devolve quantas linhas ligaram a uma companhia, sem contar a exposição a produto do Comex (0 e
     nada gravado sem controladas ou entidades).
     """
-    anos = sorted((pasta / "controladas").glob("*.parquet"))
+    anos = arquivos_atuais(pasta / "controladas")
     entidades = entidades_das_fontes(conexao)
     if not anos or entidades.empty:
         return 0
@@ -472,9 +478,18 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     tabela["versao_do_codigo"] = versao_do_codigo()
     for coluna in ("desde", "ultima_referencia"):
         tabela[coluna] = tabela[coluna].astype("string")
-    destino = pasta / TABELA / f"{TABELA}.parquet"
-    destino.parent.mkdir(parents=True, exist_ok=True)
-    parcial = destino.with_name(destino.name + ".parcial")
-    tabela.to_parquet(parcial, index=False)
-    parcial.replace(destino)
+    conferida_em_bytes = TABELA_CONFERIDA.read_bytes()
+    gravar_se_mudou(
+        tabela,
+        pasta / TABELA / f"{TABELA}.parquet",
+        [
+            *(origem_de_tabela(ano, pasta) for ano in anos),
+            {
+                "url": f"base/conferidas/{TABELA_CONFERIDA.name}",
+                "sha256": hashlib.sha256(conferida_em_bytes).hexdigest(),
+            },
+        ],
+        ["fonte", "chave"],
+        carimbos=LINHAGEM,
+    )
     return int((tabela["cnpj_companhia"].notna() & (tabela["via"] != PRODUTO)).sum())

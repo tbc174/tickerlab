@@ -181,17 +181,26 @@ def ponto_de_empate(
     valor: float, dias: int, cdi_por_ano: list[float], percentual_da_lci: float
 ) -> float | None:
     """O percentual do CDI que um CDB precisa pagar para render, depois do IR e do IOF, o mesmo que
-    a LCI ou LCA isenta de `percentual_da_lci` (busca por bisseção); None se nem 1.000% do CDI
-    empata (prazo de poucos dias, quando o IOF leva quase todo o rendimento)."""
+    a LCI ou LCA isenta de `percentual_da_lci`; None se nem 1.000% do CDI empata (prazo de poucos
+    dias, quando o IOF leva quase todo o rendimento)."""
     _conferir(valor, dias)
     alvo = _pelo_cdi(valor, dias, cdi_por_ano, percentual_da_lci)
+    return cdb_que_rende(valor, dias, cdi_por_ano, alvo)
+
+
+def cdb_que_rende(
+    valor: float, dias: int, cdi_por_ano: list[float], liquido: float
+) -> float | None:
+    """O percentual do CDI que um CDB precisa pagar para chegar a `liquido` depois do IR e do IOF
+    (busca por bisseção); None se nem 1.000% do CDI chega lá."""
+    _conferir(valor, dias)
     baixo, alto = 0.0, EMPATE_MAXIMO
     for _ in range(PASSOS_DO_EMPATE):
         meio = (baixo + alto) / 2
         cdb = _tributado(
             "CDB", valor, _pelo_cdi(valor, dias, cdi_por_ano, meio), dias
         ).liquido
-        if cdb < alvo:
+        if cdb < liquido:
             baixo = meio
         else:
             alto = meio

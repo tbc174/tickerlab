@@ -63,7 +63,7 @@
           "unidade": "texto"
         },
         "divulgado_em": {
-          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora)",
+          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro",
           "unidade": "data (dia)"
         },
         "ate": {
@@ -291,7 +291,7 @@
       "tabela": "valores_mobiliarios",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -364,6 +364,10 @@
         "fim_listagem": {
           "descricao": "Fim da listagem no segmento",
           "unidade": "data (dia)"
+        },
+        "origem": {
+          "descricao": "dados abertos (arquivo anual da CVM) ou documento da versão (RAD da CVM)",
+          "unidade": "texto"
         }
       },
       "chaves": [
@@ -570,6 +574,91 @@
       "pessoa": false,
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
       "atraso": "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+    },
+    "carteiras_bloco_8": {
+      "tabela": "carteiras_bloco_8",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês da carteira (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cnpj_fundo": {
+          "descricao": "CNPJ do fundo (ou da classe, depois da CVM 175)",
+          "unidade": "texto"
+        },
+        "tipo_do_fundo": {
+          "descricao": "Tipo do fundo como a CVM informa",
+          "unidade": "texto"
+        },
+        "fundo": {
+          "descricao": "Nome do fundo (pessoa jurídica)",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "comprado, emprestado ou vendido",
+          "unidade": "texto"
+        },
+        "tipo_do_ativo": {
+          "descricao": "Ação ordinária, ação preferencial... como o fundo informa",
+          "unidade": "texto"
+        },
+        "cnpj_emissor": {
+          "descricao": "CNPJ do emissor que o fundo informa (só pessoa jurídica)",
+          "unidade": "texto"
+        },
+        "nome_do_emissor": {
+          "descricao": "Nome do emissor como o fundo escreve",
+          "unidade": "texto"
+        },
+        "descricao": {
+          "descricao": "Descrição do ativo (\"PETR3 - PETROBRAS\")",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade no fim do mês",
+          "unidade": "ações"
+        },
+        "valor": {
+          "descricao": "Valor de mercado no fim do mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "compras": {
+          "descricao": "Valor comprado no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "vendas": {
+          "descricao": "Valor vendido no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "confidencial_ate": {
+          "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a posição era pública (como era na data)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "cnpj_fundo",
+        "tipo",
+        "cnpj_emissor"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
     },
     "fidc_informe": {
       "tabela": "fidc_informe",
@@ -791,7 +880,7 @@
       "tabela": "painel_dos_fundos",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês da carteira",
@@ -832,6 +921,18 @@
         "disponivel_em": {
           "descricao": "Desde quando o total era público (como era na data)",
           "unidade": "data (dia)"
+        },
+        "fundos_no_bloco_8": {
+          "descricao": "Só no painel por empresa: quantos fundos informaram a ação no bloco 8 (demais ativos, pelo CNPJ do emissor)",
+          "unidade": "número inteiro"
+        },
+        "valor_no_bloco_8": {
+          "descricao": "Só no painel por empresa: valor de mercado no bloco 8; as colunas sem o sufixo são só o bloco 4",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "quantidade_no_bloco_8": {
+          "descricao": "Só no painel por empresa: quantidade no bloco 8",
+          "unidade": "ações"
         }
       },
       "chaves": [
@@ -892,7 +993,7 @@
       "tabela": "buracos_dos_fundos",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "emissor": {
           "descricao": "As 4 posições do emissor sem CNPJ",
@@ -913,6 +1014,10 @@
         "descricao": {
           "descricao": "Descrição do ativo no CDA (a pista para a conferência)",
           "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "Por que fica sem empresa, se foi conferido (`emissores_sem_ligacao`); vazio: ainda não conferido",
+          "unidade": "texto"
         }
       },
       "chaves": [
@@ -926,6 +1031,51 @@
       "pessoa": false,
       "frequencia": "Mensal, montada junto com o painel dos fundos",
       "atraso": "O do CDA"
+    },
+    "emissores_sem_ligacao": {
+      "tabela": "emissores_sem_ligacao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "emissor": {
+          "descricao": "As 4 posições do emissor",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ, quando é um só e conhecido; vazio nos outros casos",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome no FCA ou no cadastro; sem CNPJ, como o CDA descreve",
+          "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "Por que o emissor fica sem empresa",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "De onde veio a conferência",
+          "unidade": "texto"
+        },
+        "conferido_em": {
+          "descricao": "Dia da conferência",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "emissor"
+      ],
+      "datas": {
+        "coletado_em": "conferido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
+      "atraso": "Nenhum"
     },
     "emissores_antigos": {
       "tabela": "emissores_antigos",
@@ -1056,6 +1206,392 @@
       "pessoa": false,
       "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
       "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras"
+    },
+    "anac_estatistico": {
+      "tabela": "anac_estatistico",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "empresa_sigla": {
+          "descricao": "Empresa sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "empresa_nome": {
+          "descricao": "Empresa nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "empresa_nacionalidade": {
+          "descricao": "Empresa nacionalidade, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_sigla": {
+          "descricao": "Aeroporto de origem sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_nome": {
+          "descricao": "Aeroporto de origem nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_uf": {
+          "descricao": "Aeroporto de origem uf, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_regiao": {
+          "descricao": "Aeroporto de origem regiao, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_pais": {
+          "descricao": "Aeroporto de origem pais, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_continente": {
+          "descricao": "Aeroporto de origem continente, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_sigla": {
+          "descricao": "Aeroporto de destino sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_nome": {
+          "descricao": "Aeroporto de destino nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_uf": {
+          "descricao": "Aeroporto de destino uf, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_regiao": {
+          "descricao": "Aeroporto de destino regiao, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_pais": {
+          "descricao": "Aeroporto de destino pais, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_continente": {
+          "descricao": "Aeroporto de destino continente, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "Natureza, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "grupo_de_voo": {
+          "descricao": "Grupo de voo, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "passageiros_pagos": {
+          "descricao": "Passageiros pagos no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "passageiros_gratis": {
+          "descricao": "Passageiros gratis no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_paga_kg": {
+          "descricao": "Carga paga kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_gratis_kg": {
+          "descricao": "Carga gratis kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "correio_kg": {
+          "descricao": "Correio kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ask": {
+          "descricao": "Ask no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rpk": {
+          "descricao": "Rpk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "atk": {
+          "descricao": "Atk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rtk": {
+          "descricao": "Rtk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "combustivel_litros": {
+          "descricao": "Combustivel litros no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "distancia_voada_km": {
+          "descricao": "Distancia voada km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "decolagens": {
+          "descricao": "Decolagens no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_paga_km": {
+          "descricao": "Carga paga km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_gratis_km": {
+          "descricao": "Carga gratis km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "correio_km": {
+          "descricao": "Correio km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "assentos": {
+          "descricao": "Assentos no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "payload": {
+          "descricao": "Payload no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "horas_voadas": {
+          "descricao": "Horas voadas no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "bagagem_kg": {
+          "descricao": "Bagagem kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "atualizado_em": {
+          "descricao": "A data da linha \"Atualizado em\" do arquivo usado",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "empresa_sigla",
+        "aeroporto_de_origem_sigla",
+        "aeroporto_de_destino_sigla",
+        "natureza",
+        "grupo_de_voo"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivo inteiro é republicado; a 1ª linha diz \"Atualizado em\")",
+      "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+    },
+    "anp_vendas": {
+      "tabela": "anp_vendas",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "grupo": {
+          "descricao": "liquidos, glp ou aviacao (o zip)",
+          "unidade": "texto"
+        },
+        "agente": {
+          "descricao": "Agente regulado (a distribuidora), como a ANP escreve",
+          "unidade": "texto"
+        },
+        "codigo_do_produto": {
+          "descricao": "Código do produto na ANP",
+          "unidade": "texto"
+        },
+        "nome_do_produto": {
+          "descricao": "Nome do produto",
+          "unidade": "texto"
+        },
+        "descricao_do_produto": {
+          "descricao": "Descrição do produto (vazio no histórico dos líquidos)",
+          "unidade": "texto"
+        },
+        "codigo_da_embalagem": {
+          "descricao": "Código da embalagem (só GLP)",
+          "unidade": "texto"
+        },
+        "regiao_origem": {
+          "descricao": "Região de origem",
+          "unidade": "texto"
+        },
+        "uf_origem": {
+          "descricao": "UF de origem",
+          "unidade": "texto"
+        },
+        "regiao_destino": {
+          "descricao": "Região de destino",
+          "unidade": "texto"
+        },
+        "uf_destino": {
+          "descricao": "UF de destino",
+          "unidade": "texto"
+        },
+        "mercado_destino": {
+          "descricao": "Mercado destinatário (posto, consumidor final...)",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade vendida, na unidade da coluna `unidade`",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "mil m³ ou mil ton, como no cabeçalho da ANP",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O CSV do zip de onde veio a linha",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "grupo",
+        "agente",
+        "codigo_do_produto",
+        "uf_origem",
+        "uf_destino",
+        "mercado_destino"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal",
+      "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+    },
+    "ons_geracao": {
+      "tabela": "ons_geracao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "instante": {
+          "descricao": "Hora (início)",
+          "unidade": "data (dia)"
+        },
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "subsistema": {
+          "descricao": "Nome do subsistema",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "modalidade_de_operacao": {
+          "descricao": "Modalidade de operação (tipo I, II...)",
+          "unidade": "texto"
+        },
+        "tipo_de_usina": {
+          "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+          "unidade": "texto"
+        },
+        "combustivel": {
+          "descricao": "Combustível ou fonte",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina, como o ONS escreve",
+          "unidade": "texto"
+        },
+        "id_ons": {
+          "descricao": "Código da usina no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código da usina na ANEEL (vazio quando o ONS não informa)",
+          "unidade": "texto"
+        },
+        "geracao_mwmed": {
+          "descricao": "Geração na hora, em MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (instante + 2 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "instante",
+        "id_ons"
+      ],
+      "datas": {
+        "aconteceu_em": "instante",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Diária (um arquivo por ano até 2021, por mês depois)",
+      "atraso": "O dia seguinte; a regra usa o instante + 2 dias"
+    },
+    "setoriais_buracos": {
+      "tabela": "setoriais_buracos",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "chave": {
+          "descricao": "Código na fonte sem ligação",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Volume somado (passageiros pagos na ANAC, quantidade na ANP)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "primeira": {
+          "descricao": "Primeiro mês em que aparece",
+          "unidade": "data (dia)"
+        },
+        "ultima": {
+          "descricao": "Último mês em que aparece",
+          "unidade": "data (dia)"
+        },
+        "fonte": {
+          "descricao": "Fonte no registro de coletas",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "fonte",
+        "chave"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "A cada carga das fontes setoriais",
+      "atraso": "Nenhum"
     },
     "ifdata_valores": {
       "tabela": "ifdata_valores",

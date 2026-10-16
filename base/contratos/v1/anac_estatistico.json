@@ -1,0 +1,183 @@
+{
+  "tabela": "anac_estatistico",
+  "modulo": "operacao_por_setor",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "empresa_sigla": {
+      "descricao": "Empresa sigla, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "empresa_nome": {
+      "descricao": "Empresa nome, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "empresa_nacionalidade": {
+      "descricao": "Empresa nacionalidade, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_sigla": {
+      "descricao": "Aeroporto de origem sigla, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_nome": {
+      "descricao": "Aeroporto de origem nome, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_uf": {
+      "descricao": "Aeroporto de origem uf, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_regiao": {
+      "descricao": "Aeroporto de origem regiao, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_pais": {
+      "descricao": "Aeroporto de origem pais, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_origem_continente": {
+      "descricao": "Aeroporto de origem continente, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_sigla": {
+      "descricao": "Aeroporto de destino sigla, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_nome": {
+      "descricao": "Aeroporto de destino nome, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_uf": {
+      "descricao": "Aeroporto de destino uf, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_regiao": {
+      "descricao": "Aeroporto de destino regiao, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_pais": {
+      "descricao": "Aeroporto de destino pais, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "aeroporto_de_destino_continente": {
+      "descricao": "Aeroporto de destino continente, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "natureza": {
+      "descricao": "Natureza, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "grupo_de_voo": {
+      "descricao": "Grupo de voo, como a ANAC publica",
+      "unidade": "texto"
+    },
+    "passageiros_pagos": {
+      "descricao": "Passageiros pagos no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "passageiros_gratis": {
+      "descricao": "Passageiros gratis no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "carga_paga_kg": {
+      "descricao": "Carga paga kg no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "carga_gratis_kg": {
+      "descricao": "Carga gratis kg no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "correio_kg": {
+      "descricao": "Correio kg no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "ask": {
+      "descricao": "Ask no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "rpk": {
+      "descricao": "Rpk no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "atk": {
+      "descricao": "Atk no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "rtk": {
+      "descricao": "Rtk no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "combustivel_litros": {
+      "descricao": "Combustivel litros no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "distancia_voada_km": {
+      "descricao": "Distancia voada km no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "decolagens": {
+      "descricao": "Decolagens no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "carga_paga_km": {
+      "descricao": "Carga paga km no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "carga_gratis_km": {
+      "descricao": "Carga gratis km no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "correio_km": {
+      "descricao": "Correio km no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "assentos": {
+      "descricao": "Assentos no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "payload": {
+      "descricao": "Payload no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "horas_voadas": {
+      "descricao": "Horas voadas no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "bagagem_kg": {
+      "descricao": "Bagagem kg no mês, como a ANAC publica",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "atualizado_em": {
+      "descricao": "A data da linha \"Atualizado em\" do arquivo usado",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "empresa_sigla",
+    "aeroporto_de_origem_sigla",
+    "aeroporto_de_destino_sigla",
+    "natureza",
+    "grupo_de_voo"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o arquivo inteiro é republicado; a 1ª linha diz \"Atualizado em\")",
+  "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+}

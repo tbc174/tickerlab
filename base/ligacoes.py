@@ -12,6 +12,11 @@ B3SA). O emissor vira CNPJ por duas fontes, nesta ordem:
 
 Emissor com CNPJ diferente nas duas fontes é **conflito** e fica sem CNPJ: nada é casado no escuro. O
 painel **por emissor** sai sempre, desde 2005; o **por empresa**, quando há ligação.
+
+Os emissores que ficam sem empresa **de propósito** estão em `base/conferidas/emissores_sem_ligacao.csv`
+(série 4, PR 3), cada um com o motivo: companhia sem ação na bolsa (Comerc, Granja Faria; decisão 3 da
+ADR 0074), dois CNPJs no período, BDR de empresa de fora ou falta de prova. O motivo vai para o
+relatório de buracos.
 """
 
 from pathlib import Path
@@ -23,6 +28,9 @@ from base.fca import PELOS_CODIGOS_CONFERIDOS
 TABELA_CONFERIDA = (
     Path(__file__).resolve().parent / "conferidas" / "emissores_antigos.csv"
 )
+SEM_LIGACAO = (
+    Path(__file__).resolve().parent / "conferidas" / "emissores_sem_ligacao.csv"
+)
 PELO_FCA, PELA_TABELA = "fca", "tabela conferida"
 # na ordenação, as tabelas da `carga_fca` vêm antes
 PRIORIDADE = {PELO_FCA: "0", PELOS_CODIGOS_CONFERIDOS: "0", PELA_TABELA: "1"}
@@ -33,6 +41,13 @@ SOMAS = {"valor": "sum", "quantidade": "sum", "compras": "sum", "vendas": "sum"}
 
 def tabela_conferida(caminho: Path = TABELA_CONFERIDA) -> pd.DataFrame:
     """A tabela de emissores antigos, conferida linha a linha (com fonte e observação)."""
+    return pd.read_csv(
+        caminho, sep=";", dtype=str, keep_default_na=False, encoding="utf-8"
+    )
+
+
+def emissores_sem_ligacao(caminho: Path = SEM_LIGACAO) -> pd.DataFrame:
+    """Os emissores que ficam sem empresa de propósito, cada um com o motivo e a fonte."""
     return pd.read_csv(
         caminho, sep=";", dtype=str, keep_default_na=False, encoding="utf-8"
     )
@@ -91,10 +106,44 @@ def painel_por_emissor(posicoes: pd.DataFrame) -> pd.DataFrame:
     return _agregar(posicoes, ["competencia", "emissor", "tipo"])
 
 
-def painel_por_empresa(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
-    """O mesmo por CNPJ: junta os emissores da mesma empresa (ITAU e ITUB) e conta o fundo uma vez."""
+DO_BLOCO_8 = {
+    "fundos": "fundos_no_bloco_8",
+    "valor": "valor_no_bloco_8",
+    "quantidade": "quantidade_no_bloco_8",
+}
+
+
+def painel_por_empresa(
+    posicoes: pd.DataFrame,
+    ligacao: pd.DataFrame,
+    bloco_8: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """O mesmo por CNPJ: junta os emissores da mesma empresa (ITAU e ITUB) e conta o fundo uma vez.
+
+    As ações do bloco 8 (`cda.ler_acoes_do_bloco_8`) entram pelo CNPJ que o fundo informa, só de
+    empresa da ligação (com ação na bolsa, conferida), em colunas próprias (`*_no_bloco_8`): as do
+    bloco 4 não mudam. `disponivel_em` é a maior data entre os dois blocos.
+    """
+    chave = ["competencia", "cnpj", "tipo"]
     com_cnpj = posicoes.merge(_sem_conflito(ligacao), on="emissor", how="inner")
-    return _agregar(com_cnpj, ["competencia", "cnpj", "tipo"])
+    painel = _agregar(com_cnpj, chave)
+    listadas = set(_sem_conflito(ligacao)["cnpj"])
+    do_8 = (
+        bloco_8[bloco_8["cnpj_emissor"].isin(listadas)].rename(
+            columns={"cnpj_emissor": "cnpj"}
+        )
+        if bloco_8 is not None
+        else pd.DataFrame(columns=[*chave, "cnpj_fundo", "disponivel_em", *SOMAS])
+    )
+    extra = _agregar(do_8, chave)[[*chave, "disponivel_em", *DO_BLOCO_8]].rename(
+        columns={**DO_BLOCO_8, "disponivel_em": "_disponivel_no_bloco_8"}
+    )
+    juntos = painel.merge(extra, on=chave, how="outer")
+    numeros = [c for c in juntos.columns if c in SOMAS or c in DO_BLOCO_8.values()]
+    juntos[[*numeros, "fundos"]] = juntos[[*numeros, "fundos"]].fillna(0)
+    datas = juntos[["disponivel_em", "_disponivel_no_bloco_8"]].apply(pd.to_datetime)
+    juntos["disponivel_em"] = datas.max(axis=1)
+    return juntos.drop(columns="_disponivel_no_bloco_8")
 
 
 def cobertura(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
@@ -114,13 +163,18 @@ def cobertura(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def buracos(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
-    """Os emissores sem CNPJ, do maior valor comprado para o menor (o relatório de buracos)."""
+def buracos(
+    posicoes: pd.DataFrame,
+    ligacao: pd.DataFrame,
+    motivos: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Os emissores sem CNPJ, do maior valor comprado para o menor (o relatório de buracos), com o
+    motivo conferido de quem fica sem empresa de propósito (`emissores_sem_ligacao`)."""
     sem = posicoes[
         (posicoes["tipo"] == COMPRADO)
         & ~posicoes["emissor"].isin(set(_sem_conflito(ligacao)["emissor"]))
     ]
-    return (
+    tabela = (
         sem.groupby("emissor")
         .agg(
             valor=("valor", "sum"),
@@ -131,3 +185,9 @@ def buracos(posicoes: pd.DataFrame, ligacao: pd.DataFrame) -> pd.DataFrame:
         .sort_values("valor", ascending=False)
         .reset_index()
     )
+    motivo = (
+        pd.Series(dtype=object)
+        if motivos is None
+        else motivos.set_index("emissor")["motivo"]
+    )
+    return tabela.assign(motivo=tabela["emissor"].map(motivo))

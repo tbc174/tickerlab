@@ -25,12 +25,21 @@ tabela aos tickers e aos emissores do FCA, com a origem de cada linha.
 principal do zip, pelo `ID_Documento`), e um ticker vale da entrega do formulário que o trouxe até a
 entrega do que veio sem ele. A CVM publica os valores mobiliários **só da versão mais nova** de cada
 formulário (o arquivo principal lista todas): a data que vale é a dessa versão.
+
+**Versões antigas** (achado da série 4): o documento de cada versão está no sistema de documentos da
+CVM (RAD), com o XML dos valores mobiliários. `ler_documento_da_versao` o lê no mesmo formato, e
+`versoes_a_buscar` diz quais valem a pena (a CVM limita os downloads): as versões substituídas, de 2018
+em diante, nos anos em que o código da empresa mudou. `juntar_versoes` junta tudo sem repetir documento.
+A coluna `origem` diz de onde veio cada linha.
 """
 
 import io
 import re
+import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Mapping
 from datetime import date
+from itertools import pairwise
 from pathlib import Path
 
 import pandas as pd
@@ -47,8 +56,24 @@ COLUNAS = (
     "cnpj", "empresa", "referencia", "versao", "id_documento", "recebido_em", "valor_mobiliario",
     "classe", "codigo_informado",
     "ticker", "emissor", "mercado", "administradora", "inicio_negociacao", "fim_negociacao",
-    "segmento", "inicio_listagem", "fim_listagem",
+    "segmento", "inicio_listagem", "fim_listagem", "origem",
 )  # fmt: skip
+COLUNAS_DOS_DOCUMENTOS = (
+    "cnpj", "empresa", "referencia", "versao", "id_documento", "recebido_em",
+)  # fmt: skip
+PELOS_DADOS_ABERTOS, PELO_DOCUMENTO_DA_VERSAO = "dados abertos", "documento da versão"
+PRIMEIRO_ANO_COM_TICKER = 2018  # até 2017 o FCA não traz o código de negociação
+FONTE_DAS_VERSOES = "cvm-fca-versao"  # no registro de coletas (família "cvm")
+URL_DO_ANO = (
+    "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_{ano}.zip"
+)
+URL_DA_VERSAO = (
+    "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext"
+    "&numSequencia={id_documento}&numVersao={versao}&numProtocolo=&descTipo=FCA"
+    "&CodigoInstituicao=1"
+)
+XML_DOS_VALORES = "ValorMobiliarioMercadoNegociacao.xml"
+DATA_VAZIA_DO_XML = "0001-01-01"
 DOCUMENTO = ["cnpj", "referencia"]
 ARQUIVO_PRINCIPAL = re.compile(r"fca_cia_aberta_\d{4}\.csv")
 CODIGOS_CONFERIDOS = (
@@ -107,6 +132,32 @@ def _entregas(arquivo: zipfile.ZipFile) -> pd.Series:
     return _data(principal.set_index(principal["ID_DOC"].str.strip())["DT_RECEB"])
 
 
+def _com_ticker_e_emissor(tabela: pd.DataFrame) -> pd.DataFrame:
+    codigo = tabela["codigo_informado"]
+    return tabela.assign(
+        ticker=codigo.map(ticker_do_codigo), emissor=codigo.map(emissor_do_codigo)
+    )[list(COLUNAS)]
+
+
+def documentos(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Todos os documentos (todas as versões) do arquivo principal de um ano do FCA."""
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        nome = next(n for n in arquivo.namelist() if ARQUIVO_PRINCIPAL.fullmatch(n))
+        bruto = _ler_csv(arquivo, nome)
+    return pd.DataFrame(
+        {
+            "cnpj": bruto["CNPJ_CIA"].str.strip(),
+            "empresa": bruto["DENOM_CIA"].str.strip(),
+            "referencia": _data(bruto["DT_REFER"]),
+            "versao": pd.to_numeric(bruto["VERSAO"], errors="coerce")
+            .fillna(1)
+            .astype(int),
+            "id_documento": bruto["ID_DOC"].str.strip(),
+            "recebido_em": _data(bruto["DT_RECEB"]),
+        }
+    )[list(COLUNAS_DOS_DOCUMENTOS)]
+
+
 def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
     """Os valores mobiliários de um arquivo anual do FCA, na versão mais nova de cada documento, com
     a data de entrega dela (`recebido_em`). Documento sem data de entrega é erro."""
@@ -133,8 +184,6 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
             "valor_mobiliario": _texto(bruto["Valor_Mobiliario"]),
             "classe": _texto(bruto["Classe_Acao_Preferencial"]),
             "codigo_informado": codigo,
-            "ticker": codigo.map(ticker_do_codigo),
-            "emissor": codigo.map(emissor_do_codigo),
             "mercado": _texto(bruto["Mercado"]),
             "administradora": _texto(bruto["Sigla_Entidade_Administradora"]),
             "inicio_negociacao": _data(bruto["Data_Inicio_Negociacao"]),
@@ -142,9 +191,134 @@ def ler_valores_mobiliarios(conteudo_do_zip: bytes) -> pd.DataFrame:
             "segmento": _texto(bruto["Segmento"]),
             "inicio_listagem": _data(bruto["Data_Inicio_Listagem"]),
             "fim_listagem": _data(bruto["Data_Fim_Listagem"]),
+            "origem": PELOS_DADOS_ABERTOS,
         }
     )
-    return mais_novas(tabela)[list(COLUNAS)]
+    return _com_ticker_e_emissor(mais_novas(tabela))
+
+
+def _texto_do_xml(no: ET.Element | None, caminho: str) -> str | None:
+    achado = None if no is None else no.find(caminho)
+    texto = None if achado is None else (achado.text or "").strip()
+    return texto or None
+
+
+def _data_do_xml(no: ET.Element | None, caminho: str) -> pd.Timestamp:
+    texto = _texto_do_xml(no, caminho)
+    if texto is None or texto.startswith(DATA_VAZIA_DO_XML):
+        return pd.NaT  # type: ignore[return-value]
+    return pd.Timestamp(texto[:10])
+
+
+def _linhas_do_valor(valor: ET.Element) -> list[dict[str, object]]:
+    comum = {
+        "valor_mobiliario": _texto_do_xml(valor, "ValorMobiliarioNegociado/DescricaoOpcaoDominio"),
+        "classe": _texto_do_xml(valor, "ClasseAcao/DescricaoOpcaoDominio"),
+        "codigo_informado": _texto_do_xml(valor, "CodigoNegociacao"),
+        "mercado": _texto_do_xml(valor, "MercadoNegociacao/DescricaoOpcaoDominio"),
+    }  # fmt: skip
+    mercados: list[ET.Element | None] = list(
+        valor.findall("MercadosNegociacao/MercadoNegociacao")
+    ) or [None]
+    # DataInicioNeg/DataFimNeg: negociação; DataInicioRelc/DataFimRelc: listagem no segmento
+    return [
+        comum
+        | {
+            "administradora": _texto_do_xml(m, "EntidadeAdministradora/SiglaOpcaoDominio"),
+            "segmento": _texto_do_xml(m, "Segmento/DescricaoOpcaoDominio"),
+            "inicio_negociacao": _data_do_xml(m, "DataInicioNeg"),
+            "fim_negociacao": _data_do_xml(m, "DataFimNeg"),
+            "inicio_listagem": _data_do_xml(m, "DataInicioRelc"),
+            "fim_listagem": _data_do_xml(m, "DataFimRelc"),
+        }
+        for m in mercados
+    ]  # fmt: skip
+
+
+def ler_documento_da_versao(
+    conteudo: bytes, documento: Mapping[str, object]
+) -> pd.DataFrame:
+    """Os valores mobiliários do documento de uma versão do FCA (zip do RAD da CVM), no formato de
+    `ler_valores_mobiliarios`. `documento` é a linha dele em `documentos` (CNPJ, referência, versão,
+    número e data de entrega vêm do arquivo principal, não do documento)."""
+    with zipfile.ZipFile(io.BytesIO(conteudo)) as externo:
+        nome = next(n for n in externo.namelist() if n.endswith(".fca"))
+        with zipfile.ZipFile(io.BytesIO(externo.read(nome))) as formulario:
+            raiz = ET.fromstring(formulario.read(XML_DOS_VALORES))
+    linhas = [
+        linha
+        for valor in raiz.findall("ValorMobiliario")
+        for linha in _linhas_do_valor(valor)
+    ]
+    tabela = pd.DataFrame(linhas, columns=[
+        "valor_mobiliario", "classe", "codigo_informado", "mercado", "administradora", "segmento",
+        "inicio_negociacao", "fim_negociacao", "inicio_listagem", "fim_listagem",
+    ])  # fmt: skip
+    for coluna in COLUNAS_DOS_DOCUMENTOS:
+        tabela[coluna] = documento[coluna]
+    for coluna in (
+        "inicio_negociacao",
+        "fim_negociacao",
+        "inicio_listagem",
+        "fim_listagem",
+    ):
+        tabela[coluna] = pd.to_datetime(tabela[coluna])
+    return _com_ticker_e_emissor(tabela.assign(origem=PELO_DOCUMENTO_DA_VERSAO))
+
+
+def juntar_versoes(abertos: pd.DataFrame, versoes: pd.DataFrame) -> pd.DataFrame:
+    """Os valores dos dados abertos mais os das versões antigas, sem repetir documento: o que os
+    dados abertos já trazem fica como está."""
+    novas = versoes[~versoes["id_documento"].isin(set(abertos["id_documento"]))]
+    if novas.empty:  # juntar com uma tabela vazia tiraria o tipo de data das colunas
+        return abertos.reset_index(drop=True)
+    juntos = pd.concat([abertos, novas], ignore_index=True)
+    return juntos.reset_index(drop=True)
+
+
+def sem_documento_repetido(tabelas: list[pd.DataFrame]) -> pd.DataFrame:
+    """Junta os valores de várias baixadas, da mais nova para a mais antiga: cada documento vem de
+    uma só (a primeira que o traz), com todas as linhas dele. Linhas iguais no mesmo documento (duas
+    séries de debêntures com os mesmos campos) continuam sendo duas."""
+    vistos: set[str] = set()
+    partes = []
+    for tabela in tabelas:
+        partes.append(tabela[~tabela["id_documento"].isin(vistos)])
+        vistos |= set(tabela["id_documento"])
+    return pd.concat(partes, ignore_index=True)
+
+
+def versoes_a_buscar(documentos: pd.DataFrame, valores: pd.DataFrame) -> pd.DataFrame:
+    """As versões substituídas (fora dos dados abertos), de 2018 em diante, nos anos em que o código
+    da empresa na bolsa mudou em relação ao ano anterior ou ao seguinte, com o endereço no RAD."""
+    acoes = valores[
+        valores["mercado"].str.lower().eq("bolsa") & valores["ticker"].notna()
+    ].assign(ano=lambda t: t["referencia"].dt.year)
+    codigos = acoes.groupby(["cnpj", "ano"])["ticker"].agg(frozenset)
+    com_troca: set[tuple[str, int]] = set()
+    for cnpj, por_ano in codigos.groupby(level="cnpj"):
+        anos = sorted(por_ano.index.get_level_values("ano"))
+        for antes, depois in pairwise(anos):
+            if por_ano.loc[(cnpj, antes)] != por_ano.loc[(cnpj, depois)]:
+                com_troca |= {(str(cnpj), antes), (str(cnpj), depois)}
+    ano = documentos["referencia"].dt.year
+    alvo = documentos[
+        ~documentos["id_documento"].isin(set(valores["id_documento"]))
+        & (ano >= PRIMEIRO_ANO_COM_TICKER)
+        & pd.Series(
+            [(c, a) in com_troca for c, a in zip(documentos["cnpj"], ano, strict=True)],
+            index=documentos.index,
+        )
+    ]
+    url = [
+        URL_DA_VERSAO.format(id_documento=i, versao=v)
+        for i, v in zip(alvo["id_documento"], alvo["versao"], strict=True)
+    ]
+    return (
+        alvo.assign(url=url)
+        .sort_values("id_documento", key=lambda numero: numero.astype(int))
+        .reset_index(drop=True)
+    )
 
 
 def codigos_invalidos(valores: pd.DataFrame) -> pd.DataFrame:

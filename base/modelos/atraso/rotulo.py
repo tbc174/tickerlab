@@ -5,7 +5,10 @@ na própria data-base (`data_da_previsao`): a empresa vai entregar depois do pra
 
 Quem entra:
 - todo documento entregue até `hoje` (a primeira versão vale: reapresentar depois do prazo não é
-  atraso);
+  atraso), menos o que tem o prazo **antes do primeiro registro** da empresa no cadastro da CVM: são
+  os ITRs e DFPs que ela manda de uma vez para pedir o registro, sem prazo a cumprir (eram 29% dos
+  "atrasou"; `reports/conferencia-data-de-entrega-cvm-2026-10-15.md`). Eles ficam contados no
+  manifesto (`fora_dos_exemplos`). Empresa fora do cadastro continua entrando com a entrega;
 - o documento que a empresa **devia e não entregou**: entregou o mesmo documento um ano antes e estava
   registrada e ativa no cadastro da CVM na data do prazo (a mesma regra da R8). Só o primeiro ano
   sem entrega entra; empresa fora do cadastro nunca "deve" (não dá para saber). E só conta como
@@ -69,6 +72,7 @@ FONTE_DO_CADASTRO = "cvm-cadastros"
 ARQUIVO_DO_CADASTRO = "cad_cia_aberta.csv"
 VistosEm = Mapping[tuple[str, int], pd.Timestamp]
 ZONA_CINZENTA = 2  # dias úteis
+ANTES_DO_REGISTRO = "prazo_antes_do_primeiro_registro"
 
 
 def _entregues(indice: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
@@ -97,6 +101,14 @@ def _ativa_no_prazo(candidatos: pd.DataFrame, cadastro: pd.DataFrame) -> pd.Seri
     return (
         ativa.groupby(juntos["index"]).any().reindex(candidatos.index, fill_value=False)
     )
+
+
+def _prazo_antes_do_registro(
+    exemplos: pd.DataFrame, cadastro: pd.DataFrame
+) -> pd.Series:
+    """Se o prazo cai antes do primeiro registro da empresa (False para empresa fora do cadastro)."""
+    primeiro_registro = cadastro.groupby("cnpj")["registro"].min()
+    return exemplos["prazo"] < exemplos["cnpj"].map(primeiro_registro)
 
 
 def _com_prazo(
@@ -191,18 +203,41 @@ def montar_exemplos(
     `vistos_em`: (documento, ano do arquivo) → dia em que o arquivo foi coletado; com ele, uma falta
     só conta se o prazo venceu antes da coleta.
     """
+    return montar_exemplos_e_fora(indice, cadastro, hoje, vistos_em=vistos_em)[0]
+
+
+def montar_exemplos_e_fora(
+    indice: pd.DataFrame,
+    cadastro: pd.DataFrame,
+    hoje: pd.Timestamp,
+    *,
+    vistos_em: VistosEm | None = None,
+) -> tuple[pd.DataFrame, dict[str, dict[str, int]]]:
+    """Os exemplos (`montar_exemplos`) e quantas entregas ficaram de fora, por motivo.
+
+    O que fica de fora: `{"prazo_antes_do_primeiro_registro": {"exemplos": n, "atrasou": k}}`
+    (`atrasou`: quantas seriam "atrasou" se entrassem).
+    """
+    fora = {ANTES_DO_REGISTRO: {"exemplos": 0, "atrasou": 0}}
     if indice.empty:
-        return pd.DataFrame(columns=list(COLUNAS))
+        return pd.DataFrame(columns=list(COLUNAS)), fora
     entregues = _entregues(indice, hoje)
     if entregues.empty:
-        return pd.DataFrame(columns=list(COLUNAS))
+        return pd.DataFrame(columns=list(COLUNAS)), fora
     ufs = (
         cadastro[cadastro["uf"].ne("")].drop_duplicates("cnpj").set_index("cnpj")["uf"]
     )
     meses = _mes_fim_do_exercicio(indice)
+    com_prazo = _com_prazo(entregues, ufs, meses)
+    antes = _prazo_antes_do_registro(com_prazo, cadastro)
+    atrasados = com_prazo["primeira_entrega"] > com_prazo["prazo"]
+    fora[ANTES_DO_REGISTRO] = {
+        "exemplos": int(antes.sum()),
+        "atrasou": int((antes & atrasados).sum()),
+    }
     exemplos = pd.concat(
         [
-            _com_prazo(entregues, ufs, meses),
+            com_prazo[~antes],
             _devidos_sem_entrega(entregues, cadastro, ufs, meses, hoje, vistos_em),
         ],
         ignore_index=True,
@@ -219,11 +254,12 @@ def montar_exemplos(
         atraso_grave=~entregue | (corridos > ATRASO_GRAVE),
         zona_cinzenta=entregue & atrasou & (dias <= ZONA_CINZENTA),
     )
-    return (
+    exemplos = (
         exemplos[list(COLUNAS)]
         .sort_values(["referencia", "documento", "cnpj"])
         .reset_index(drop=True)
     )
+    return exemplos, fora
 
 
 def _dia(momento: object) -> pd.Timestamp:
@@ -268,10 +304,17 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     if not partes or cadastro is None:
         return 0
     indice = pd.concat(partes, ignore_index=True)
-    tabela = montar_exemplos(indice, cadastro, _dia(agora), vistos_em=vistos_em).assign(
+    exemplos, fora = montar_exemplos_e_fora(
+        indice, cadastro, _dia(agora), vistos_em=vistos_em
+    )
+    tabela = exemplos.assign(
         montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
     )
     gravar_tabela(
-        tabela, pasta / TABELA / TABELA, origens, ["documento", "referencia", "cnpj"]
+        tabela,
+        pasta / TABELA / TABELA,
+        origens,
+        ["documento", "referencia", "cnpj"],
+        extras={"fora_dos_exemplos": fora},
     )
     return len(tabela)

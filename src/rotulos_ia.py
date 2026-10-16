@@ -38,9 +38,7 @@ FATO_RELEVANTE = "Fato Relevante"
 PRECO_ENTRADA = 2.00
 PRECO_SAIDA = 10.00
 DESCONTO_DO_LOTE = 0.5
-SAIDA_ESTIMADA_POR_EVENTO = (
-    500  # resposta (~150) + raciocínio curto; o real vem de `usage`
-)
+SAIDA_ESTIMADA_POR_EVENTO = 80  # medido no 1º lote (15/10): 59 por evento (167.640 em 2.849); o real vem de `usage`
 
 EMPRESA, CODIGO, CNPJ = "[EMPRESA]", "[CODIGO]", "[CNPJ]"
 SEM_TEXTO = "(sem texto: o documento não pôde ser lido; julgue pelo assunto)"

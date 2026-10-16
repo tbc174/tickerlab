@@ -11,6 +11,9 @@ from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
+from base.setoriais import anac as setoriais_anac
+from base.setoriais import anp as setoriais_anp
+from base.setoriais import ons as setoriais_ons
 from src.banco.coletas import (
     LICENCAS,
     REVENDA,
@@ -32,8 +35,9 @@ PASTA_DO_FCA = RAIZ / "tests" / "arquivos" / "cvm" / "fca"
 # as tabelas da série 3 da base de ML (fundos e crédito), com a função ou a carga que as grava
 SERIE_3 = (
     "valores_mobiliarios", "emissores", "tickers_no_tempo", "codigos_invalidos",
-    "codigos_fora_do_fca", "emissores_antigos", "carteiras_dos_fundos", "painel_dos_fundos",
-    "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
+    "codigos_fora_do_fca", "emissores_antigos", "emissores_sem_ligacao", "carteiras_dos_fundos",
+    "carteiras_bloco_8",
+    "painel_dos_fundos", "cobertura_dos_fundos", "buracos_dos_fundos", "fidc_informe", "cadastro_de_fundos",
     "ifdata_valores", "ifdata_cadastro", "ligacao_dos_bancos", "scr_credito",
 )  # fmt: skip
 
@@ -68,9 +72,15 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
         "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
+        "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "disponivel_em"],
+        "anac_estatistico": list(setoriais_anac.COLUNAS),
+        "anp_vendas": list(setoriais_anp.COLUNAS),
+        "ons_geracao": list(setoriais_ons.COLUNAS),
+        "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
+        "emissores_sem_ligacao": list(ligacoes.emissores_sem_ligacao().columns),
         "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{
             t.name: [c.name for c in t.columns]
@@ -304,4 +314,6 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
 
 
 def test_contrato_comeca_na_versao_1():
-    assert {t.versao_do_contrato for t in TABELAS.values()} == {"1.0.0"}
+    """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige)."""
+    assert {t.versao_do_contrato.split(".")[0] for t in TABELAS.values()} == {"1"}

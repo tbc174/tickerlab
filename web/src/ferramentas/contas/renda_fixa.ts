@@ -150,12 +150,18 @@ export function cdiPeloFocus(
  * LCI ou LCA isenta de `percentualDaLci` (busca por bisseção); null se nem 1.000% do CDI empata. */
 export function pontoDeEmpate(valor: number, dias: number, cdiPorAno: number[], percentualDaLci: number): number | null {
   conferir(valor, dias);
-  const alvo = peloCdi(valor, dias, cdiPorAno, percentualDaLci);
+  return cdbQueRende(valor, dias, cdiPorAno, peloCdi(valor, dias, cdiPorAno, percentualDaLci));
+}
+
+/** O percentual do CDI que um CDB precisa pagar para chegar a `liquido` depois do IR e do IOF
+ * (bisseção); null se nem 1.000% do CDI chega lá. */
+export function cdbQueRende(valor: number, dias: number, cdiPorAno: number[], liquido: number): number | null {
+  conferir(valor, dias);
   let [baixo, alto] = [0, EMPATE_MAXIMO];
   for (let passo = 0; passo < PASSOS_DO_EMPATE; passo++) {
     const meio = (baixo + alto) / 2;
     const cdb = tributado("CDB", valor, peloCdi(valor, dias, cdiPorAno, meio), dias).liquido;
-    if (cdb < alvo) baixo = meio;
+    if (cdb < liquido) baixo = meio;
     else alto = meio;
   }
   if (baixo >= EMPATE_MAXIMO * (1 - FOLGA_DO_TETO)) return null;

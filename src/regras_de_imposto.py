@@ -20,6 +20,7 @@ LEI_9430 = "https://www.planalto.gov.br/ccivil_03/leis/l9430.htm"
 DECRETO_6306 = (
     "https://www.planalto.gov.br/ccivil_03/_ato2007-2010/2007/decreto/d6306.htm"
 )
+LEI_14754 = "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2023/lei/l14754.htm"
 TARIFAS_DO_TESOURO_DIRETO = (
     "https://www.b3.com.br/pt_br/produtos-e-servicos/tarifas/tarifas-de-tesouro-direto/"
 )
@@ -124,6 +125,34 @@ CUSTODIA_ISENTA_NO_SELIC = Regra(
     "Tarifas de Tesouro Direto",
     conferida_em="2026-10-15",
 )
+# fundos de investimento (Lei 14.754/2023, art. 17, conferido em 15/10/2026 no texto compilado): o
+# IR é retido no último dia útil de maio e de novembro (o "come-cotas") ou no resgate, se antes;
+# 15% na regra geral (longo prazo) e 20% nos fundos de curto prazo (art. 6º da Lei 11.053/2004);
+# no resgate, o complemento até a tabela (P&R IRPF 2026, pergunta 736)
+COME_COTAS_LONGO = Regra(
+    "come_cotas_longo_prazo",
+    "Fundos de longo prazo: IR retido em maio e novembro (come-cotas)",
+    0.15,
+    LEI_14754,
+    "art. 17, § 1º, I, a",
+    conferida_em="2026-10-15",
+)
+COME_COTAS_CURTO = Regra(
+    "come_cotas_curto_prazo",
+    "Fundos de curto prazo: IR retido em maio e novembro (come-cotas)",
+    0.20,
+    LEI_14754,
+    "art. 17, § 1º, II, a",
+    conferida_em="2026-10-15",
+)
+FUNDOS_DE_CURTO_PRAZO = Regra(
+    "tabela_dos_fundos_de_curto_prazo",
+    "Fundos de curto prazo no resgate: 22,5% até 180 dias, 20% depois",
+    "22,5% / 20%",
+    PERGUNTAS_E_RESPOSTAS,
+    "pergunta 736",
+    conferida_em="2026-10-15",
+)
 TODAS: tuple[Regra, ...] = (
     *REGRAS_DAS_ACOES,
     FONTE_DA_TABELA,
@@ -131,7 +160,12 @@ TODAS: tuple[Regra, ...] = (
     IOF_DA_RENDA_FIXA,
     CUSTODIA_DO_TESOURO,
     CUSTODIA_ISENTA_NO_SELIC,
+    COME_COTAS_LONGO,
+    COME_COTAS_CURTO,
+    FUNDOS_DE_CURTO_PRAZO,
 )
+DIAS_DO_CURTO_PRAZO = 180
+ALIQUOTAS_DO_CURTO_PRAZO = (0.225, 0.20)  # até 180 dias, depois
 
 _POR_CHAVE = {regra.chave: regra for regra in TODAS}
 
@@ -158,6 +192,17 @@ def aliquota_do_iof(dias: int) -> float:
     return TABELA_DO_IOF[dias - 1] if dias <= len(TABELA_DO_IOF) else 0.0
 
 
+def aliquota_do_fundo(dias: int, longo_prazo: bool) -> float:
+    """A alíquota total do IR no resgate de um fundo: a tabela regressiva (longo prazo) ou 22,5%
+    até 180 dias e 20% depois (curto prazo)."""
+    if longo_prazo:
+        return aliquota_da_renda_fixa(dias)
+    if dias < 1:
+        raise ValueError("O prazo da aplicação precisa ser de pelo menos 1 dia.")
+    ate_180, depois = ALIQUOTAS_DO_CURTO_PRAZO
+    return ate_180 if dias <= DIAS_DO_CURTO_PRAZO else depois
+
+
 def para_o_site() -> dict:
     """O que vai para `web/conteudo/regras_de_imposto.json` (as mesmas regras, em JSON)."""
     return {
@@ -177,6 +222,14 @@ def para_o_site() -> dict:
             for ate_dias, aliquota in TABELA_REGRESSIVA
         ],
         "iof": list(TABELA_DO_IOF),
+        "fundos": {
+            "come_cotas_longo": COME_COTAS_LONGO.valor,
+            "come_cotas_curto": COME_COTAS_CURTO.valor,
+            "curto_prazo": {
+                "ate_dias": DIAS_DO_CURTO_PRAZO,
+                "aliquotas": list(ALIQUOTAS_DO_CURTO_PRAZO),
+            },
+        },
         "custodia_do_tesouro": {
             "taxa": CUSTODIA_DO_TESOURO.valor,
             "isento_no_selic_ate": CUSTODIA_ISENTA_NO_SELIC.valor,

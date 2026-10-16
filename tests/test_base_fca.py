@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from base import fca
-from base.cadastro import tickers_no_tempo
+from base.cadastro import tickers_dos_valores, tickers_no_tempo
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fca"
 PETROBRAS, VIA, CSN, ITAU, BTG = (
@@ -282,3 +282,97 @@ def test_codigo_conferido_com_outro_cnpj_no_fca_e_conflito(valores):
     )
     assert fca.resolver_ticker(juntos, "PETR4", date(2026, 6, 30)) is None
     assert fca.resolver_emissor(emissores, "PETR") is None
+
+
+# --- versões antigas do FCA (achado da série 4): a CVM publica os valores mobiliários só da versão
+# mais nova de cada formulário; as anteriores vêm do documento de cada versão no sistema de documentos
+# da CVM (RAD). Amostras: as versões 1 (20/05/2021, VVAR3) e 3 (01/10/2021, VIIA3) do FCA 2021 da Via,
+# só com o XML de valores mobiliários
+VERSOES = PASTA / "versoes"
+
+
+def _documentos_de_2021() -> pd.DataFrame:
+    zip_2021 = (PASTA / "fca_cia_aberta_2021.zip").read_bytes()
+    return fca.documentos(zip_2021).set_index("id_documento", drop=False)
+
+
+def _versao(id_documento: str) -> pd.DataFrame:
+    conteudo = (VERSOES / f"fca_versao_{id_documento}.zip").read_bytes()
+    return fca.ler_documento_da_versao(
+        conteudo, _documentos_de_2021().loc[id_documento]
+    )
+
+
+def test_documentos_do_arquivo_principal_tem_todas_as_versoes():
+    via = _documentos_de_2021().query("cnpj == @VIA")
+    assert via["versao"].tolist() == [1, 2, 3, 4]
+    assert via.loc["108846", "recebido_em"] == pd.Timestamp("2021-10-01")
+
+
+def test_le_o_documento_da_versao():
+    linhas = _versao("104636")
+    assert list(linhas.columns) == list(fca.COLUNAS)
+    acao = linhas[linhas["ticker"].notna()].iloc[0]
+    assert [acao[c] for c in ("ticker", "mercado", "administradora", "segmento")] == [
+        "VVAR3",
+        "Bolsa",
+        "B3",
+        "Novo Mercado",
+    ]
+    assert acao["valor_mobiliario"] == "Ações Ordinárias"
+    assert acao["inicio_negociacao"] == pd.Timestamp("2018-11-26")
+    assert pd.isna(acao["fim_negociacao"])  # 0001-01-01 no XML é vazio
+    assert set(linhas["recebido_em"]) == {pd.Timestamp("2021-05-20")}
+    assert set(linhas["versao"]) == {1} and set(linhas["cnpj"]) == {VIA}
+    assert set(linhas["origem"]) == {fca.PELO_DOCUMENTO_DA_VERSAO}
+
+
+def test_versao_antiga_antecipa_a_troca_de_ticker(valores):
+    """A Via passou a informar VIIA3 na versão 3 do FCA de 2021 (01/10/2021). Só com a versão que a
+    CVM publica (a 4, de 30/12/2021), a troca valia três meses depois."""
+    todas = fca.juntar_versoes(
+        valores, pd.concat([_versao("104636"), _versao("108846")])
+    )
+    tickers = tickers_dos_valores(todas)
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2021, 9, 30)) == VIA
+    assert fca.resolver_ticker(tickers, "VIIA3", date(2021, 9, 30)) is None
+    assert fca.resolver_ticker(tickers, "VIIA3", date(2021, 10, 1)) == VIA
+    assert fca.resolver_ticker(tickers, "VVAR3", date(2021, 10, 1)) is None
+
+
+def test_versao_que_os_dados_abertos_ja_tem_nao_entra_duas_vezes(valores):
+    publicada = valores[valores["id_documento"] == "111029"].assign(
+        origem=fca.PELO_DOCUMENTO_DA_VERSAO
+    )
+    todas = fca.juntar_versoes(valores, publicada)
+    assert len(todas) == len(valores)
+    assert set(todas["origem"]) == {fca.PELOS_DADOS_ABERTOS}
+
+
+def test_versoes_a_buscar_so_nos_anos_com_troca_de_codigo(valores):
+    """Só vale buscar (a CVM limita os downloads) as versões substituídas de anos em que o código
+    da empresa mudou: a Via trocou de código de 2018 para 2021 e de 2021 para 2026; a Petrobras não."""
+    zips = [
+        (PASTA / f"fca_cia_aberta_{a}.zip").read_bytes() for a in (2018, 2021, 2026)
+    ]
+    documentos = pd.concat([fca.documentos(z) for z in zips], ignore_index=True)
+    alvo = fca.versoes_a_buscar(documentos, valores)
+    via = set(alvo.loc[alvo["cnpj"] == VIA, "id_documento"])
+    assert {"104636", "108298", "108846"} <= via  # versões 1 a 3 de 2021
+    assert "111029" not in via  # a versão 4 já está nos dados abertos
+    assert PETROBRAS not in set(alvo["cnpj"])
+    assert (alvo["referencia"].dt.year >= fca.PRIMEIRO_ANO_COM_TICKER).all()
+    assert fca.URL_DA_VERSAO.format(id_documento="108846", versao=3) in set(alvo["url"])
+
+
+def test_linhas_iguais_do_mesmo_documento_continuam(valores):
+    """Duas séries de debêntures iguais no mesmo documento são duas linhas: juntar as versões e as
+    baixadas não pode apagá-las (achado ao recarregar no servidor: 13.066 viraram 12.982 linhas)."""
+    repetida = valores.iloc[[0]]
+    abertos = pd.concat([valores, repetida], ignore_index=True)
+    assert len(fca.juntar_versoes(abertos, valores.iloc[0:0])) == len(abertos)
+    mais_nova, mais_antiga = abertos, abertos.iloc[: len(valores) // 2]
+    juntas = fca.sem_documento_repetido([mais_nova, mais_antiga])
+    assert len(juntas) == len(
+        abertos
+    )  # cada documento vem de uma baixada só, com todas as linhas

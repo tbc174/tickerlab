@@ -69,6 +69,9 @@ def test_monta_o_rotulo_dos_originais_com_manifesto(banco, tmp_path, monkeypatch
     assert set(tabela["versao_do_codigo"]) == {"0123abc"}
     manifesto = json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))
     assert {o["sha256"] for o in manifesto["origens"]} == shas
+    assert manifesto["fora_dos_exemplos"] == {
+        "prazo_antes_do_primeiro_registro": {"exemplos": 0, "atrasou": 0}
+    }
     assert conferir_tabela(arquivo)
 
 

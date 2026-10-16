@@ -13,8 +13,10 @@ const TAMANHO_MAXIMO = 20; // "10.000.000,00" cabe com folga
 
 function aceita(valor: string, exemplo: string, opcoes?: readonly string[]): boolean {
   if (opcoes) return opcoes.includes(valor);
-  if (lerNumero(exemplo) === null) return false; // escolha sem lista de opções: não lê do endereço
-  return valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null;
+  // exemplo vazio é campo de número ainda não preenchido; texto sem lista de opções não se lê
+  if (exemplo !== "" && lerNumero(exemplo) === null) return false;
+  // vazio é o campo que a pessoa apagou: volta vazio, não com o número do exemplo
+  return valor === "" || (valor.length <= TAMANHO_MAXIMO && lerNumero(valor) !== null);
 }
 
 export function lerDoEndereco<T extends Campos>(busca: string, exemplo: T, opcoes: Opcoes<T> = {}, prefixo = ""): T {
@@ -36,12 +38,21 @@ function escreverNoEndereco(campos: Campos, prefixo: string): void {
 
 /** Os campos da ferramenta, lidos do endereço ao ligar e escritos nele a cada mudança da pessoa.
  * Devolve os campos, `mudar(chave)(valor)` para um campo, `definir(campos)` para vários e
- * `sugerir(campos)`, que troca os campos sem ser mudança da pessoa (não escreve no endereço). */
+ * `sugerir(campos)`, que troca os campos sem ser mudança da pessoa (não escreve no endereço) e não
+ * passa por cima dos que vieram do endereço nem dos que a pessoa já mudou (o IPCA que chega dos
+ * dados não apaga a data que veio de um link nem a inflação que a pessoa digitou). */
 export function useCamposNoEndereco<T extends Campos>(exemplo: T, opcoes: Opcoes<T> = {}, prefixo = "") {
   const [campos, setCampos] = useState<T>(exemplo);
   const mexeu = useRef(false);
+  const fixados = useRef(new Set<keyof T>()); // do endereço ou mudados pela pessoa
   useEffect(() => {
-    if (window.location.search) setCampos(lerDoEndereco(window.location.search, exemplo, opcoes, prefixo));
+    if (!window.location.search) return;
+    const lido = lerDoEndereco(window.location.search, exemplo, opcoes, prefixo);
+    const parametros = new URLSearchParams(window.location.search);
+    for (const chave of Object.keys(exemplo) as (keyof T)[]) {
+      if (parametros.get(prefixo + String(chave)) === lido[chave]) fixados.current.add(chave);
+    }
+    setCampos(lido);
     // só ao ligar: o exemplo e as opções são constantes de cada ferramenta
   }, []);
   useEffect(() => {
@@ -49,9 +60,23 @@ export function useCamposNoEndereco<T extends Campos>(exemplo: T, opcoes: Opcoes
   }, [campos, prefixo]);
   const definir = useCallback((novos: T | ((antes: T) => T)) => {
     mexeu.current = true;
-    setCampos(novos);
+    setCampos((antes) => {
+      const depois = typeof novos === "function" ? novos(antes) : novos;
+      for (const chave of Object.keys(depois) as (keyof T)[]) {
+        if (depois[chave] !== antes[chave]) fixados.current.add(chave);
+      }
+      return depois;
+    });
   }, []);
-  const sugerir = useCallback((novos: T | ((antes: T) => T)) => setCampos(novos), []);
+  const sugerir = useCallback(
+    (novos: T | ((antes: T) => T)) =>
+      setCampos((antes) => {
+        const sugeridos = { ...(typeof novos === "function" ? novos(antes) : novos) };
+        for (const chave of fixados.current) sugeridos[chave] = antes[chave];
+        return sugeridos;
+      }),
+    [],
+  );
   const mudar = useCallback(
     <K extends keyof T>(chave: K) =>
       (valor: T[K]) =>

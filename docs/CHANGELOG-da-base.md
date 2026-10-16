@@ -4,4 +4,9 @@ Gerado por `python -m base.contrato` (não edite à mão). Compara o dicionário
 congelado de cada tabela (`base/contratos/v<maior>/`). Versão maior: coluna que some ou
 muda de unidade ou de chave; menor: coluna nova; correção: dado.
 
-Nenhuma mudança: as 36 tabelas estão no contrato congelado (v1.0.0).
+- `valores_mobiliarios`: 1.0.0 → 1.1.0
+  - colunas novas: `origem`
+- `painel_dos_fundos`: 1.0.0 → 1.1.0
+  - colunas novas: `fundos_no_bloco_8`, `quantidade_no_bloco_8`, `valor_no_bloco_8`
+- `buracos_dos_fundos`: 1.0.0 → 1.1.0
+  - colunas novas: `motivo`

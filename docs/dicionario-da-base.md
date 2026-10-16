@@ -38,7 +38,7 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `versao` | Versão do documento que publicou este valor (1, 2, 3...) | número |
 | `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
 | `origem` | dados_abertos ou enet | texto |
-| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora) | data (dia) |
+| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro | data (dia) |
 | `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
 
 ## `achados_de_qualidade`
@@ -135,7 +135,7 @@ Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, j
 
 ## `valores_mobiliarios`
 
-Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), na versão mais nova de cada documento (a CVM só publica os valores dela), com a data de entrega. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
+Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão: a mais nova de cada documento (a única que a CVM publica nos dados abertos), as das baixadas antigas guardadas no acervo e as versões substituídas buscadas no sistema de documentos da CVM (RAD) nos anos em que o código mudou. Base do código permanente da ação (série 3). Até 2017 o FCA não traz o código de negociação
 
 - **Fonte:** CVM: formulário cadastral (FCA), valores mobiliários
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -146,7 +146,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 - **Chaves:** `cnpj`, `referencia`, `versao`, `valor_mobiliario`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `recebido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
 - **Linhagem:** `id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
@@ -170,6 +170,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 | `segmento` | Segmento de listagem (Novo Mercado, Nível 1...) | texto |
 | `inicio_listagem` | Início da listagem no segmento | data (dia) |
 | `fim_listagem` | Fim da listagem no segmento | data (dia) |
+| `origem` | dados abertos (arquivo anual da CVM) ou documento da versão (RAD da CVM) | texto |
 
 ## `emissores`
 
@@ -253,6 +254,41 @@ As posições em ações de todos os fundos registrados na CVM, por mês, desde 
 | `isin` | ISIN do ativo: o código permanente | texto |
 | `emissor` | As 4 letras do emissor, tiradas do ISIN | texto |
 | `descricao` | Descrição do ativo informada | texto |
+| `quantidade` | Quantidade no fim do mês | ações |
+| `valor` | Valor de mercado no fim do mês | reais (R$), já multiplicado pela escala informada |
+| `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
+| `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
+| `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
+
+## `carteiras_bloco_8`
+
+As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA ("demais ativos não codificados"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa: em 2020, R$ 1,14 tri (soma dos meses) em ações de companhias com ticker, ~26% a mais sobre o bloco 4, quase nada repetido entre os blocos. Emissor pessoa física nunca entra (o CPF é descartado na leitura). Um Parquet por ano, com versões
+
+- **Fonte:** CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 8
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
+- **Atraso de divulgação:** O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cnpj_fundo`, `tipo`, `cnpj_emissor`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`, na mesma carga do CDA)
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (os mesmos do bloco 4) e a versão do código que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira (último dia) | data (dia) |
+| `cnpj_fundo` | CNPJ do fundo (ou da classe, depois da CVM 175) | texto |
+| `tipo_do_fundo` | Tipo do fundo como a CVM informa | texto |
+| `fundo` | Nome do fundo (pessoa jurídica) | texto |
+| `tipo` | comprado, emprestado ou vendido | texto |
+| `tipo_do_ativo` | Ação ordinária, ação preferencial... como o fundo informa | texto |
+| `cnpj_emissor` | CNPJ do emissor que o fundo informa (só pessoa jurídica) | texto |
+| `nome_do_emissor` | Nome do emissor como o fundo escreve | texto |
+| `descricao` | Descrição do ativo ("PETR3 - PETROBRAS") | texto |
 | `quantidade` | Quantidade no fim do mês | ações |
 | `valor` | Valor de mercado no fim do mês | reais (R$), já multiplicado pela escala informada |
 | `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
@@ -356,7 +392,7 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 - **Chaves:** `competencia`, `emissor`, `tipo`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fundos/`: `painel_emissor/<ano>`, `painel_empresa/<ano>`, `cobertura` e `buracos` (servidor de casa, `scripts/montar_painel_dos_fundos.py`)
 - **Linhagem:** O `.json` de cada tabela lista as tabelas de entrada (o CDA do ano e os emissores do FCA, com o SHA-256 do conteúdo anotado no manifesto delas) e o SHA-256 da tabela conferida; cada entrada tem a própria linhagem até os arquivos da CVM. Guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
@@ -372,6 +408,9 @@ Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) 
 | `compras` | Valor comprado no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `vendas` | Valor vendido no mês, somado | reais (R$), já multiplicado pela escala informada |
 | `disponivel_em` | Desde quando o total era público (como era na data) | data (dia) |
+| `fundos_no_bloco_8` | Só no painel por empresa: quantos fundos informaram a ação no bloco 8 (demais ativos, pelo CNPJ do emissor) | número inteiro |
+| `valor_no_bloco_8` | Só no painel por empresa: valor de mercado no bloco 8; as colunas sem o sufixo são só o bloco 4 | reais (R$), já multiplicado pela escala informada |
+| `quantidade_no_bloco_8` | Só no painel por empresa: quantidade no bloco 8 | ações |
 
 ## `cobertura_dos_fundos`
 
@@ -410,7 +449,7 @@ Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor compr
 - **Chaves:** `emissor`
 - **Três datas:** nenhuma coluna da tabela traz estas datas
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fundos/buracos.parquet` (`scripts/montar_painel_dos_fundos.py`)
 - **Linhagem:** O `.json` lista as tabelas de entrada (cada ano do CDA e os emissores do FCA, com o SHA-256 do conteúdo) e o SHA-256 da tabela conferida; guarda a versão do código. `base/linhagem.py::linhagem_da_tabela` segue cada tabela de entrada pelo manifesto dela até os originais; se uma entrada foi regravada depois, a derivada não confere até ser remontada.
 
@@ -421,6 +460,33 @@ Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor compr
 | `primeira` | Primeiro mês em que aparece | data (dia) |
 | `ultima` | Último mês em que aparece | data (dia) |
 | `descricao` | Descrição do ativo no CDA (a pista para a conferência) | texto |
+| `motivo` | Por que fica sem empresa, se foi conferido (`emissores_sem_ligacao`); vazio: ainda não conferido | texto |
+
+## `emissores_sem_ligacao`
+
+Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo (companhia sem ação na bolsa, como a Comerc e a Granja Faria; dois CNPJs no período; BDR de empresa de fora; falta de prova). Ficam só no painel por emissor, e o motivo vai para o relatório de buracos (série 4, PR 3)
+
+- **Fonte:** CVM: formulário cadastral (FCA), cadastro de companhias, IPE e descrição no CDA
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Quando a conferência anda (pelos buracos de maior valor)
+- **Atraso de divulgação:** Nenhum
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `emissor`
+- **Três datas:** coletado_em = `conferido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** `base/conferidas/emissores_sem_ligacao.csv` no repositório (Git)
+- **Linhagem:** Cada linha diz a fonte e quando foi conferida; o histórico fica no Git e o painel dos fundos anota o SHA-256 da tabela no `.json` de cada tabela que monta.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `emissor` | As 4 posições do emissor | texto |
+| `cnpj` | CNPJ, quando é um só e conhecido; vazio nos outros casos | texto |
+| `empresa` | Nome no FCA ou no cadastro; sem CNPJ, como o CDA descreve | texto |
+| `motivo` | Por que o emissor fica sem empresa | texto |
+| `fonte` | De onde veio a conferência | texto |
+| `conferido_em` | Dia da conferência | data (dia) |
 
 ## `emissores_antigos`
 
@@ -483,6 +549,158 @@ Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do f
 | `observacao` | Nota da conferência | texto |
 | `fonte` | De onde veio cada parte da ligação | texto |
 | `conferido_em` | Dia da conferência | data (dia) |
+
+## `anac_estatistico`
+
+Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte. A chave da empresa é a sigla, a mesma da B13 (empresa ↔ série)
+
+- **Fonte:** ANAC: dados estatísticos do transporte aéreo (Dados_Estatisticos.csv)
+- **Licença:** CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivo inteiro é republicado; a 1ª linha diz "Atualizado em")
+- **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `empresa_sigla`, `aeroporto_de_origem_sigla`, `aeroporto_de_destino_sigla`, `natureza`, `grupo_de_voo`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/anac/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 do arquivo da ANAC usado (no acervo e no registro de coletas) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `empresa_sigla` | Empresa sigla, como a ANAC publica | texto |
+| `empresa_nome` | Empresa nome, como a ANAC publica | texto |
+| `empresa_nacionalidade` | Empresa nacionalidade, como a ANAC publica | texto |
+| `aeroporto_de_origem_sigla` | Aeroporto de origem sigla, como a ANAC publica | texto |
+| `aeroporto_de_origem_nome` | Aeroporto de origem nome, como a ANAC publica | texto |
+| `aeroporto_de_origem_uf` | Aeroporto de origem uf, como a ANAC publica | texto |
+| `aeroporto_de_origem_regiao` | Aeroporto de origem regiao, como a ANAC publica | texto |
+| `aeroporto_de_origem_pais` | Aeroporto de origem pais, como a ANAC publica | texto |
+| `aeroporto_de_origem_continente` | Aeroporto de origem continente, como a ANAC publica | texto |
+| `aeroporto_de_destino_sigla` | Aeroporto de destino sigla, como a ANAC publica | texto |
+| `aeroporto_de_destino_nome` | Aeroporto de destino nome, como a ANAC publica | texto |
+| `aeroporto_de_destino_uf` | Aeroporto de destino uf, como a ANAC publica | texto |
+| `aeroporto_de_destino_regiao` | Aeroporto de destino regiao, como a ANAC publica | texto |
+| `aeroporto_de_destino_pais` | Aeroporto de destino pais, como a ANAC publica | texto |
+| `aeroporto_de_destino_continente` | Aeroporto de destino continente, como a ANAC publica | texto |
+| `natureza` | Natureza, como a ANAC publica | texto |
+| `grupo_de_voo` | Grupo de voo, como a ANAC publica | texto |
+| `passageiros_pagos` | Passageiros pagos no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `passageiros_gratis` | Passageiros gratis no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_paga_kg` | Carga paga kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_gratis_kg` | Carga gratis kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `correio_kg` | Correio kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `ask` | Ask no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `rpk` | Rpk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `atk` | Atk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `rtk` | Rtk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `combustivel_litros` | Combustivel litros no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `distancia_voada_km` | Distancia voada km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `decolagens` | Decolagens no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_paga_km` | Carga paga km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_gratis_km` | Carga gratis km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `correio_km` | Correio km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `assentos` | Assentos no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `payload` | Payload no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `horas_voadas` | Horas voadas no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `bagagem_kg` | Bagagem kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `atualizado_em` | A data da linha "Atualizado em" do arquivo usado | data (dia) |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+
+## `anp_vendas`
+
+Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, produto, origem, destino e mercado, desde 2007, no formato da fonte. A ANP escreve o nome atual da distribuidora também no passado; a ligação à empresa é pela B13
+
+- **Fonte:** ANP: vendas de derivados de petróleo e biocombustíveis por distribuidor (liquidos, glp, aviacao)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal
+- **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `grupo`, `agente`, `codigo_do_produto`, `uf_origem`, `uf_destino`, `mercado_destino`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/anp/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos três zips da ANP usados e a versão do código; `arquivo` diz de qual CSV do zip veio a linha (atual ou histórico).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `grupo` | liquidos, glp ou aviacao (o zip) | texto |
+| `agente` | Agente regulado (a distribuidora), como a ANP escreve | texto |
+| `codigo_do_produto` | Código do produto na ANP | texto |
+| `nome_do_produto` | Nome do produto | texto |
+| `descricao_do_produto` | Descrição do produto (vazio no histórico dos líquidos) | texto |
+| `codigo_da_embalagem` | Código da embalagem (só GLP) | texto |
+| `regiao_origem` | Região de origem | texto |
+| `uf_origem` | UF de origem | texto |
+| `regiao_destino` | Região de destino | texto |
+| `uf_destino` | UF de destino | texto |
+| `mercado_destino` | Mercado destinatário (posto, consumidor final...) | texto |
+| `quantidade` | Quantidade vendida, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `unidade` | mil m³ ou mil ton, como no cabeçalho da ANP | texto |
+| `arquivo` | O CSV do zip de onde veio a linha | texto |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+
+## `ons_geracao`
+
+Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da usina é o `id_ons` (o CEG falta em 41% da geração de 09/2026). Sem ligação à empresa: o dono da usina só existe no cadastro de hoje, e aplicá-lo ao passado olharia o futuro
+
+- **Fonte:** ONS: geração por usina em base horária (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Diária (um arquivo por ano até 2021, por mês depois)
+- **Atraso de divulgação:** O dia seguinte; a regra usa o instante + 2 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `instante`, `id_ons`
+- **Três datas:** aconteceu_em = `instante`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ons/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo do ONS do ano e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `instante` | Hora (início) | data (dia) |
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `subsistema` | Nome do subsistema | texto |
+| `uf` | UF da usina | texto |
+| `modalidade_de_operacao` | Modalidade de operação (tipo I, II...) | texto |
+| `tipo_de_usina` | Hidrelétrica, térmica, eólica, fotovoltaica... | texto |
+| `combustivel` | Combustível ou fonte | texto |
+| `usina` | Nome da usina, como o ONS escreve | texto |
+| `id_ons` | Código da usina no ONS (a chave) | texto |
+| `ceg` | Código da usina na ANEEL (vazio quando o ONS não informa) | texto |
+| `geracao_mwmed` | Geração na hora, em MWmed | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
+
+## `setoriais_buracos`
+
+Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência
+
+- **Fonte:** Derivado: fontes setoriais e a B13 (empresa_serie)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** A cada carga das fontes setoriais
+- **Atraso de divulgação:** Nenhum
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `fonte`, `chave`
+- **Três datas:** nenhuma coluna da tabela traz estas datas
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/buracos.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` anota a tabela da B13 usada (SHA-256 do conteúdo) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `chave` | Código na fonte sem ligação | texto |
+| `valor` | Volume somado (passageiros pagos na ANAC, quantidade na ANP) | número com decimais, na unidade da fonte |
+| `primeira` | Primeiro mês em que aparece | data (dia) |
+| `ultima` | Último mês em que aparece | data (dia) |
+| `fonte` | Fonte no registro de coletas | texto |
 
 ## `ifdata_valores`
 
@@ -1070,7 +1288,7 @@ Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a pa
 
 ## `rotulos_atraso`
 
-Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
+Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa no prazo, data-base no calendário da empresa e no arquivo do ano). Não entra o documento com o prazo antes do primeiro registro da empresa (o que ela manda para pedir o registro, sem prazo a cumprir); o manifesto conta quantos ficaram de fora (`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta acertar (ADR 0027)
 
 - **Fonte:** CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)

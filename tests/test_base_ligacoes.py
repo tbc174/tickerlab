@@ -142,3 +142,119 @@ def test_cobertura_e_buracos():
     buracos = ligacoes.buracos(_posicoes(), _ligacao())
     assert buracos["emissor"].tolist() == ["XXXX"]
     assert re.fullmatch(r"XXXX ON", buracos["descricao"].iloc[0])
+
+
+# --- 2ª rodada dos buracos (série 4, PR 3; decisão 3 da ADR 0074: empresa sem ação na bolsa fica só
+# no painel por emissor, com o motivo no relatório de buracos)
+PESOS = Path(__file__).parent / "arquivos" / "cvm" / "peso_dos_emissores_no_cda.csv"
+META_DE_COBERTURA = 0.95
+
+
+def _emissores_conferidos() -> set[str]:
+    codigos = fca.codigos_conferidos()["codigo"].map(fca.emissor_do_codigo)
+    return set(ligacoes.tabela_conferida()["emissor"]) | set(codigos)
+
+
+def test_cobertura_de_cada_ano_passa_de_95():
+    """Medido na base real em 15/10/2026 (`peso_dos_emissores_no_cda.csv`: o peso de cada emissor no
+    valor comprado do ano, desde 0,01%, e se ele já liga pelo FCA; o resto, em `_outros`, conta como
+    sem ligação). As tabelas conferidas do repositório levam todo ano de 2005 a 2026 acima de 95%."""
+    pesos = pd.read_csv(PESOS, sep=";")
+    assert set(pesos["ano"]) == set(range(2005, 2027))
+    ligado = pesos["pelo_fca"] | pesos["emissor"].isin(_emissores_conferidos())
+    por_ano = pesos[ligado].groupby("ano")["fracao"].sum()
+    assert (por_ano >= META_DE_COBERTURA).all(), por_ano[por_ano < META_DE_COBERTURA]
+
+
+def test_tabela_de_emissores_sem_ligacao_e_valida():
+    tabela = ligacoes.emissores_sem_ligacao()
+    assert tabela["emissor"].is_unique
+    assert tabela["emissor"].str.fullmatch(fca.EMISSOR).all()
+    com_cnpj = tabela["cnpj"].str.len().gt(0)
+    assert (
+        tabela.loc[com_cnpj, "cnpj"].map(fidc.documento_de_empresa)
+        == tabela.loc[com_cnpj, "cnpj"]
+    ).all()
+    for coluna in ("empresa", "motivo", "fonte", "conferido_em"):
+        assert tabela[coluna].str.len().gt(0).all(), coluna
+    # nenhum emissor fica, ao mesmo tempo, sem ligação e numa tabela conferida
+    assert not set(tabela["emissor"]) & _emissores_conferidos()
+
+
+def test_empresa_sem_acao_na_bolsa_fica_so_no_painel_por_emissor(emissores_do_fca):
+    """Comerc e Granja Faria: o FCA traz o CNPJ, mas não ação negociada em bolsa (a Granja Faria só
+    tem debêntures); as posições dos fundos nelas não entram no painel por empresa."""
+    sem = ligacoes.emissores_sem_ligacao().set_index("emissor")
+    assert {"COMR", "EGGY", "CBOH"} <= set(sem.index)
+    ligacao = ligacoes.ligacao_dos_emissores(
+        emissores_do_fca, ligacoes.tabela_conferida()
+    )
+    assert not set(sem.index) & set(ligacao["emissor"])
+
+
+def test_buraco_conferido_traz_o_motivo():
+    motivos = pd.DataFrame(
+        {"emissor": ["XXXX"], "motivo": ["companhia fechada: ação fora da bolsa"]}
+    )
+    buracos = ligacoes.buracos(_posicoes(), _ligacao(), motivos)
+    assert buracos.set_index("emissor").loc["XXXX", "motivo"] == (
+        "companhia fechada: ação fora da bolsa"
+    )
+    sem_motivo = ligacoes.buracos(_posicoes(), _ligacao())
+    assert sem_motivo["motivo"].isna().all()
+
+
+def _bloco_8() -> pd.DataFrame:
+    linhas = [
+        # mês, fundo, cnpj do emissor, tipo, valor, quantidade
+        ("2008-12-31", "F9", ITAU, "comprado", 50.0, 5),
+        ("2008-12-31", "F9", PETROBRAS, "comprado", 30.0, 3),
+        (
+            "2009-01-31",
+            "F8",
+            "11.111.111/0001-11",
+            "comprado",
+            999.0,
+            9,
+        ),  # sem ação na bolsa
+    ]
+    tabela = pd.DataFrame(
+        linhas,
+        columns=[
+            "competencia",
+            "cnpj_fundo",
+            "cnpj_emissor",
+            "tipo",
+            "valor",
+            "quantidade",
+        ],
+    )
+    return tabela.assign(
+        competencia=pd.to_datetime(tabela["competencia"]),
+        compras=0.0,
+        vendas=0.0,
+        disponivel_em=pd.Timestamp("2009-05-01"),
+    )
+
+
+def test_painel_por_empresa_traz_o_bloco_8_em_colunas_proprias():
+    """Achado da série 4: o bloco 8 entra só pelo CNPJ que o fundo informa, só de empresa com ação na
+    bolsa (ligação conferida), e em colunas próprias: as do bloco 4 não mudam."""
+    sem = ligacoes.painel_por_empresa(_posicoes(), _ligacao()).set_index(
+        ["cnpj", "tipo"]
+    )
+    com = ligacoes.painel_por_empresa(_posicoes(), _ligacao(), _bloco_8()).set_index(
+        ["cnpj", "tipo"]
+    )
+    pd.testing.assert_series_equal(
+        com.loc[sem.index, "valor"], sem["valor"], check_names=False
+    )
+    assert com.loc[(ITAU, "comprado"), "valor_no_bloco_8"] == 50.0
+    assert com.loc[(ITAU, "comprado"), "fundos_no_bloco_8"] == 1
+    assert com.loc[(PETROBRAS, "comprado"), "quantidade_no_bloco_8"] == 3
+    assert "11.111.111/0001-11" not in set(com.index.get_level_values("cnpj"))
+    # o total só era público quando a última posição somada ficou pública, nos dois blocos
+    assert com.loc[(ITAU, "comprado"), "disponivel_em"] == pd.Timestamp("2009-05-01")
+    assert (
+        sem["valor_no_bloco_8"] == 0
+    ).all()  # sem o bloco 8, as colunas existem com zero
