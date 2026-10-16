@@ -789,6 +789,375 @@ Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidad
 | `disponivel_em` | Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
 
+## `fre_conselho`
+
+Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010. Só contagens: nome, CPF, nascimento e currículo dos administradores nem são lidos
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `orgao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_conselho/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `orgao` | Órgão da administração, como a CVM escreve | texto |
+| `membros` | Quantas pessoas no órgão (ou no comitê) | número com decimais, na unidade da fonte |
+| `suplentes` | Quantos suplentes | número com decimais, na unidade da fonte |
+| `independentes` | Quantos conselheiros independentes (pelo cargo informado) | número com decimais, na unidade da fonte |
+| `eleitos_pelo_controlador` | Quantos eleitos pelo controlador (`Eleito_Controlador` = S) | número com decimais, na unidade da fonte |
+| `eleitos_por_minoritarios` | Quantos eleitos pelos minoritários ordinaristas (pelo cargo) | número com decimais, na unidade da fonte |
+| `eleitos_por_preferencialistas` | Quantos eleitos pelos preferencialistas (pelo cargo) | número com decimais, na unidade da fonte |
+| `mandatos_consecutivos_medio` | Média de mandatos consecutivos (vazio quando a CVM não informa) | número com decimais, na unidade da fonte |
+| `participacao_em_reunioes_media` | Média do % de participação em reuniões (vazio quando não informado) | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_comites`
+
+Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010. Só contagens, sem pessoas
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `tipo_de_comite`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_comites/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `tipo_de_comite` | Tipo de comitê (auditoria, risco, remuneração...) | texto |
+| `membros` | Quantas pessoas no órgão (ou no comitê) | número com decimais, na unidade da fonte |
+| `suplentes` | Quantos suplentes | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_remuneracao`
+
+Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `fim_do_exercicio`, `orgao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_remuneracao/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `inicio_do_exercicio` | Início do exercício social | data (dia) |
+| `fim_do_exercicio` | Fim do exercício social | data (dia) |
+| `orgao` | Órgão da administração, como a CVM escreve | texto |
+| `total_remuneracao` | Como a CVM publica (`Total_Remuneracao`) | número com decimais, na unidade da fonte |
+| `membros` | Quantas pessoas no órgão (ou no comitê) | número com decimais, na unidade da fonte |
+| `total_do_orgao` | Como a CVM publica (`Total_Remuneracao_Orgao`) | número com decimais, na unidade da fonte |
+| `membros_remunerados` | Como a CVM publica (`Numero_Membros_Remunerados`) | número com decimais, na unidade da fonte |
+| `salario` | Como a CVM publica (`Salario`) | número com decimais, na unidade da fonte |
+| `beneficios` | Como a CVM publica (`Beneficios_Diretos_Indiretos`) | número com decimais, na unidade da fonte |
+| `participacao_em_comites` | Como a CVM publica (`Participacoes_Comites`) | número com decimais, na unidade da fonte |
+| `outros_fixos` | Como a CVM publica (`Outros_Valores_Fixos`) | número com decimais, na unidade da fonte |
+| `bonus` | Como a CVM publica (`Bonus`) | número com decimais, na unidade da fonte |
+| `participacao_nos_resultados` | Como a CVM publica (`Participacao_Resultados`) | número com decimais, na unidade da fonte |
+| `participacao_em_reunioes` | Como a CVM publica (`Participacao_Reunioes`) | número com decimais, na unidade da fonte |
+| `outros_variaveis` | Como a CVM publica (`Outros_Valores_Variaveis`) | número com decimais, na unidade da fonte |
+| `comissoes` | Como a CVM publica (`Comissoes`) | número com decimais, na unidade da fonte |
+| `pos_emprego` | Como a CVM publica (`Pos_emprego`) | número com decimais, na unidade da fonte |
+| `cessacao_do_cargo` | Como a CVM publica (`Cessacao_Cargo`) | número com decimais, na unidade da fonte |
+| `baseada_em_acoes` | Como a CVM publica (`Baseada_Acoes`) | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_remuneracao_extremos`
+
+A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre)
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `fim_do_exercicio`, `orgao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_remuneracao_extremos/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `inicio_do_exercicio` | Início do exercício social | data (dia) |
+| `fim_do_exercicio` | Fim do exercício social | data (dia) |
+| `orgao` | Órgão da administração, como a CVM escreve | texto |
+| `membros` | Quantas pessoas no órgão (ou no comitê) | número com decimais, na unidade da fonte |
+| `membros_remunerados` | Como a CVM publica (`Numero_Membros_Remunerados`) | número com decimais, na unidade da fonte |
+| `maior` | Como a CVM publica (`Valor_Maior_Remuneracao`) | número com decimais, na unidade da fonte |
+| `menor` | Como a CVM publica (`Valor_Menor_Remuneracao`) | número com decimais, na unidade da fonte |
+| `media` | Como a CVM publica (`Valor_Medio_Remuneracao`) | número com decimais, na unidade da fonte |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `fre_diversidade`
+
+Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores)
+
+- **Fonte:** CVM: formulário de referência (FRE), dados abertos
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual, com reapresentações (a CVM reescreve os anos antigos)
+- **Atraso de divulgação:** A entrega do FRE: `conhecido_em` é o DT_RECEB da versão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`, `orgao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fre_diversidade/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia (como a CVM escreve) | texto |
+| `referencia` | Data de referência do FRE | data (dia) |
+| `versao` | Versão do FRE | número com decimais, na unidade da fonte |
+| `id_documento` | Identificador do documento na CVM | texto |
+| `orgao` | Órgão da administração, como a CVM escreve | texto |
+| `genero_feminino` | Como a CVM publica (`genero_feminino`) | número com decimais, na unidade da fonte |
+| `genero_masculino` | Como a CVM publica (`genero_masculino`) | número com decimais, na unidade da fonte |
+| `genero_nao_binario` | Como a CVM publica (`genero_nao_binario`) | número com decimais, na unidade da fonte |
+| `genero_outros` | Como a CVM publica (`genero_outros`) | número com decimais, na unidade da fonte |
+| `genero_sem_resposta` | Como a CVM publica (`genero_sem_resposta`) | número com decimais, na unidade da fonte |
+| `genero_nao_aplicavel` | Como a CVM publica (`genero_nao_aplicavel`) | texto |
+| `raca_amarelo` | Como a CVM publica (`raca_amarelo`) | número com decimais, na unidade da fonte |
+| `raca_branco` | Como a CVM publica (`raca_branco`) | número com decimais, na unidade da fonte |
+| `raca_preto` | Como a CVM publica (`raca_preto`) | número com decimais, na unidade da fonte |
+| `raca_pardo` | Como a CVM publica (`raca_pardo`) | número com decimais, na unidade da fonte |
+| `raca_indigena` | Como a CVM publica (`raca_indigena`) | número com decimais, na unidade da fonte |
+| `raca_outros` | Como a CVM publica (`raca_outros`) | número com decimais, na unidade da fonte |
+| `raca_sem_resposta` | Como a CVM publica (`raca_sem_resposta`) | número com decimais, na unidade da fonte |
+| `raca_nao_aplicavel` | Como a CVM publica (`raca_nao_aplicavel`) | texto |
+| `pcd_pcd` | Como a CVM publica (`pcd_pcd`) | número com decimais, na unidade da fonte |
+| `pcd_nao_pcd` | Como a CVM publica (`pcd_nao_pcd`) | número com decimais, na unidade da fonte |
+| `pcd_sem_resposta` | Como a CVM publica (`pcd_sem_resposta`) | número com decimais, na unidade da fonte |
+| `pcd_nao_aplicavel` | Como a CVM publica (`pcd_nao_aplicavel`) | texto |
+| `conhecido_em` | Entrega desta versão do FRE à CVM (DT_RECEB): como era na data | data (dia) |
+
+## `ofertas_antigas`
+
+Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram
+
+- **Fonte:** CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária (o ZIP é regerado todo dia)
+- **Atraso de divulgação:** Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `numero_processo`, `numero_registro_oferta`, `cnpj_emissor`, `tipo_ativo`, `classe_ativo`, `serie`, `emissao`
+- **Três datas:** aconteceu_em = `anunciada_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ofertas/antigas.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_processo` | Como a CVM publica (`Numero_Processo`) | texto |
+| `numero_registro_oferta` | Como a CVM publica (`Numero_Registro_Oferta`) | texto |
+| `tipo_oferta` | Como a CVM publica (`Tipo_Oferta`) | texto |
+| `tipo_componente_oferta_mista` | Como a CVM publica (`Tipo_Componente_Oferta_Mista`) | texto |
+| `tipo_ativo` | Como a CVM publica (`Tipo_Ativo`) | texto |
+| `cnpj_emissor` | Como a CVM publica (`CNPJ_Emissor`) | texto |
+| `nome_emissor` | Como a CVM publica (`Nome_Emissor`) | texto |
+| `cnpj_lider` | Como a CVM publica (`CNPJ_Lider`) | texto |
+| `nome_lider` | Como a CVM publica (`Nome_Lider`) | texto |
+| `cnpj_ofertante` | Como a CVM publica (`CNPJ_Ofertante`) | texto |
+| `nome_ofertante` | Como a CVM publica (`Nome_Ofertante`) | texto |
+| `rito_oferta` | Como a CVM publica (`Rito_Oferta`) | texto |
+| `modalidade_oferta` | Como a CVM publica (`Modalidade_Oferta`) | texto |
+| `modalidade_registro` | Como a CVM publica (`Modalidade_Registro`) | texto |
+| `modalidade_dispensa_registro` | Como a CVM publica (`Modalidade_Dispensa_Registro`) | texto |
+| `data_abertura_processo` | Como a CVM publica (`Data_Abertura_Processo`) | data (dia) |
+| `data_protocolo` | Como a CVM publica (`Data_Protocolo`) | data (dia) |
+| `data_dispensa_oferta` | Como a CVM publica (`Data_Dispensa_Oferta`) | data (dia) |
+| `data_registro_oferta` | Como a CVM publica (`Data_Registro_Oferta`) | data (dia) |
+| `data_inicio_oferta` | Como a CVM publica (`Data_Inicio_Oferta`) | data (dia) |
+| `data_encerramento_oferta` | Como a CVM publica (`Data_Encerramento_Oferta`) | data (dia) |
+| `emissao` | Como a CVM publica (`Emissao`) | texto |
+| `classe_ativo` | Como a CVM publica (`Classe_Ativo`) | texto |
+| `serie` | Como a CVM publica (`Serie`) | texto |
+| `especie_ativo` | Como a CVM publica (`Especie_Ativo`) | texto |
+| `forma_ativo` | Como a CVM publica (`Forma_Ativo`) | texto |
+| `data_emissao` | Como a CVM publica (`Data_Emissao`) | data (dia) |
+| `data_vencimento` | Como a CVM publica (`Data_Vencimento`) | data (dia) |
+| `quantidade_sem_lote_suplementar` | Como a CVM publica (`Quantidade_Sem_Lote_Suplementar`) | número com decimais, na unidade da fonte |
+| `quantidade_no_lote_suplementar` | Como a CVM publica (`Quantidade_No_Lote_Suplementar`) | número com decimais, na unidade da fonte |
+| `quantidade_total` | Como a CVM publica (`Quantidade_Total`) | número com decimais, na unidade da fonte |
+| `preco_unitario` | Como a CVM publica (`Preco_Unitario`) | número com decimais, na unidade da fonte |
+| `valor_total` | Como a CVM publica (`Valor_Total`) | número com decimais, na unidade da fonte |
+| `oferta_inicial` | Como a CVM publica (`Oferta_Inicial`) | texto |
+| `oferta_incentivo_fiscal` | Como a CVM publica (`Oferta_Incentivo_Fiscal`) | texto |
+| `oferta_regime_fiduciario` | Como a CVM publica (`Oferta_Regime_Fiduciario`) | texto |
+| `atualizacao_monetaria` | Como a CVM publica (`Atualizacao_Monetaria`) | texto |
+| `juros` | Como a CVM publica (`Juros`) | texto |
+| `projeto_audiovisual` | Como a CVM publica (`Projeto_Audiovisual`) | texto |
+| `tipo_societario_emissor` | Como a CVM publica (`Tipo_Societario_Emissor`) | texto |
+| `tipo_fundo_investimento` | Como a CVM publica (`Tipo_Fundo_Investimento`) | texto |
+| `ultimo_comunicado` | Como a CVM publica (`Ultimo_Comunicado`) | texto |
+| `data_comunicado` | Como a CVM publica (`Data_Comunicado`) | data (dia) |
+| `nr_pessoa_fisica` | Como a CVM publica (`Nr_Pessoa_Fisica`) | número com decimais, na unidade da fonte |
+| `qtd_pessoa_fisica` | Como a CVM publica (`Qtd_Pessoa_Fisica`) | número com decimais, na unidade da fonte |
+| `nr_clube_investimento` | Como a CVM publica (`Nr_Clube_Investimento`) | número com decimais, na unidade da fonte |
+| `qtd_clube_investimento` | Como a CVM publica (`Qtd_Clube_Investimento`) | número com decimais, na unidade da fonte |
+| `nr_fundos_investimento` | Como a CVM publica (`Nr_Fundos_Investimento`) | número com decimais, na unidade da fonte |
+| `qtd_fundos_investimento` | Como a CVM publica (`Qtd_Fundos_Investimento`) | número com decimais, na unidade da fonte |
+| `nr_entidade_previdencia_privada` | Como a CVM publica (`Nr_Entidade_Previdencia_Privada`) | número com decimais, na unidade da fonte |
+| `qtd_entidade_previdencia_privada` | Como a CVM publica (`Qtd_Entidade_Previdencia_Privada`) | número com decimais, na unidade da fonte |
+| `nr_companhia_seguradora` | Como a CVM publica (`Nr_Companhia_Seguradora`) | número com decimais, na unidade da fonte |
+| `qtd_companhia_seguradora` | Como a CVM publica (`Qtd_Companhia_Seguradora`) | número com decimais, na unidade da fonte |
+| `nr_investidor_estrangeiro` | Como a CVM publica (`Nr_Investidor_Estrangeiro`) | número com decimais, na unidade da fonte |
+| `qtd_investidor_estrangeiro` | Como a CVM publica (`Qtd_Investidor_Estrangeiro`) | número com decimais, na unidade da fonte |
+| `nr_instit_intermed_partic_consorcio_distrib` | Como a CVM publica (`Nr_Instit_Intermed_Partic_Consorcio_Distrib`) | número com decimais, na unidade da fonte |
+| `qtd_instit_intermed_partic_consorcio_distrib` | Como a CVM publica (`Qtd_Instit_Intermed_Partic_Consorcio_Distrib`) | número com decimais, na unidade da fonte |
+| `nr_instit_financ_emissora_partic_consorcio` | Como a CVM publica (`Nr_Instit_Financ_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qtd_instit_financ_emissora_partic_consorcio` | Como a CVM publica (`Qtd_Instit_Financ_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `nr_demais_instit_financ` | Como a CVM publica (`Nr_Demais_Instit_Financ`) | número com decimais, na unidade da fonte |
+| `qtd_demais_instit_financ` | Como a CVM publica (`Qtd_Demais_Instit_Financ`) | número com decimais, na unidade da fonte |
+| `nr_demais_pessoa_juridica_emissora_partic_consorcio` | Como a CVM publica (`Nr_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qtd_demais_pessoa_juridica_emissora_partic_consorcio` | Como a CVM publica (`Qtd_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `nr_demais_pessoa_juridica` | Como a CVM publica (`Nr_Demais_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `qtd_demais_pessoa_juridica` | Como a CVM publica (`Qtd_Demais_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `nr_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio` | Como a CVM publica (`Nr_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qdt_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio` | Como a CVM publica (`Qdt_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `nr_outros` | Como a CVM publica (`Nr_Outros`) | número com decimais, na unidade da fonte |
+| `qtd_outros` | Como a CVM publica (`Qtd_Outros`) | número com decimais, na unidade da fonte |
+| `qtd_cli_pessoa_fisica` | Como a CVM publica (`Qtd_Cli_Pessoa_Fisica`) | número com decimais, na unidade da fonte |
+| `qtd_cli_pessoa_juridica` | Como a CVM publica (`Qtd_Cli_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `qtd_cli_pessoa_juridica_ligada_adm` | Como a CVM publica (`Qtd_Cli_Pessoa_Juridica_Ligada_Adm`) | número com decimais, na unidade da fonte |
+| `qtd_cli_demais_pessoa_juridica` | Como a CVM publica (`QtD_Cli_Demais_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `qtd_cli_investidor_estrangeiro` | Como a CVM publica (`Qtd_Cli_Investidor_Estrangeiro`) | número com decimais, na unidade da fonte |
+| `qtd_cli_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio` | Como a CVM publica (`Qtd_Cli_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `anunciada_em` | Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476) | data (dia) |
+| `disponivel_em` | Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento) | data (dia) |
+
+## `ofertas_resolucao_160`
+
+Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos)
+
+- **Fonte:** CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária (o ZIP é regerado todo dia)
+- **Atraso de divulgação:** Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `numero_requerimento`, `cnpj_emissor`
+- **Três datas:** aconteceu_em = `anunciada_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ofertas/resolucao_160.parquet` (`scripts/carga_ofertas_e_conselhos.py`)
+- **Linhagem:** O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `numero_requerimento` | Como a CVM publica (`Numero_Requerimento`) | texto |
+| `rito_requerimento` | Como a CVM publica (`Rito_Requerimento`) | texto |
+| `numero_processo` | Como a CVM publica (`Numero_Processo`) | texto |
+| `data_requerimento` | Como a CVM publica (`Data_requerimento`) | data (dia) |
+| `data_registro` | Como a CVM publica (`Data_Registro`) | data (dia) |
+| `data_encerramento` | Como a CVM publica (`Data_Encerramento`) | data (dia) |
+| `status_requerimento` | Como a CVM publica (`Status_Requerimento`) | texto |
+| `valor_mobiliario` | Como a CVM publica (`Valor_Mobiliario`) | texto |
+| `tipo_requerimento` | Como a CVM publica (`Tipo_requerimento`) | texto |
+| `bookbuilding` | Como a CVM publica (`Bookbuilding`) | texto |
+| `cnpj_emissor` | Como a CVM publica (`CNPJ_Emissor`) | texto |
+| `nome_emissor` | Como a CVM publica (`Nome_Emissor`) | texto |
+| `cnpj_lider` | Como a CVM publica (`CNPJ_Lider`) | texto |
+| `nome_lider` | Como a CVM publica (`Nome_Lider`) | texto |
+| `grupo_coordenador` | Como a CVM publica (`Grupo_Coordenador`) | texto |
+| `tipo_oferta` | Como a CVM publica (`Tipo_Oferta`) | texto |
+| `emissao` | Como a CVM publica (`Emissao`) | texto |
+| `qtde_total_registrada` | Como a CVM publica (`Qtde_Total_Registrada`) | número com decimais, na unidade da fonte |
+| `valor_total_registrado` | Como a CVM publica (`Valor_Total_Registrado`) | número com decimais, na unidade da fonte |
+| `oferta_inicial` | Como a CVM publica (`Oferta_inicial`) | texto |
+| `oferta_vasos_comunicantes` | Como a CVM publica (`Oferta_vasos_comunicantes`) | texto |
+| `publico_alvo` | Como a CVM publica (`Publico_alvo`) | texto |
+| `reabertura_serie` | Como a CVM publica (`Reabertura_serie`) | texto |
+| `titulo_classificado_como_sustentavel` | Como a CVM publica (`Titulo_classificado_como_sustentavel`) | texto |
+| `titulo_padronizado` | Como a CVM publica (`Titulo_padronizado`) | texto |
+| `data_deliberacao_aprovou_oferta` | Como a CVM publica (`Data_deliberacao_aprovou_oferta`) | data (dia) |
+| `mercado_negociacao` | Como a CVM publica (`Mercado_negociacao`) | texto |
+| `tipo_lastro` | Como a CVM publica (`Tipo_lastro`) | texto |
+| `regime_fiduciario` | Como a CVM publica (`Regime_fiduciario`) | texto |
+| `ativos_alvo` | Como a CVM publica (`Ativos_alvo`) | texto |
+| `possibilidade_revolvencia` | Como a CVM publica (`Possibilidade_revolvencia`) | texto |
+| `fidc_nao_padronizado` | Como a CVM publica (`FIDC_nao_padronizado`) | texto |
+| `titulo_incentivado` | Como a CVM publica (`Titulo_incentivado`) | texto |
+| `regime_distribuicao` | Como a CVM publica (`Regime_distribuicao`) | texto |
+| `tipo_societario` | Como a CVM publica (`Tipo_societario`) | texto |
+| `administrador` | Como a CVM publica (`Administrador`) | texto |
+| `gestor` | Como a CVM publica (`Gestor`) | texto |
+| `agente_fiduciario` | Como a CVM publica (`Agente_fiduciario`) | texto |
+| `escriturador` | Como a CVM publica (`Escriturador`) | texto |
+| `custodiante` | Como a CVM publica (`Custodiante`) | texto |
+| `avaliador_risco` | Como a CVM publica (`Avaliador_Risco`) | texto |
+| `processo_sei` | Como a CVM publica (`Processo_SEI`) | texto |
+| `endereco_emissor_rede_mundial_computadores` | Como a CVM publica (`Endereco_emissor_rede_mundial_computadores`) | texto |
+| `num_invest_pessoa_natural` | Como a CVM publica (`Num_Invest_Pessoa_Natural`) | número com decimais, na unidade da fonte |
+| `qtde_vm_pessoa_natural` | Como a CVM publica (`Qtde_VM_Pessoa_Natural`) | número com decimais, na unidade da fonte |
+| `num_invest_clube_investimento` | Como a CVM publica (`Num_Invest_Clube_Investimento`) | número com decimais, na unidade da fonte |
+| `qtde_vm_clube_investimento` | Como a CVM publica (`Qtde_VM_Clube_Investimento`) | número com decimais, na unidade da fonte |
+| `num_invest_fundos_investimento` | Como a CVM publica (`Num_Invest_Fundos_Investimento`) | número com decimais, na unidade da fonte |
+| `qtde_vm_fundos_investimento` | Como a CVM publica (`Qtde_VM_Fundos_Investimento`) | número com decimais, na unidade da fonte |
+| `num_invest_entidade_previdencia_privada` | Como a CVM publica (`Num_Invest_Entidade_Previdencia_Privada`) | número com decimais, na unidade da fonte |
+| `qtde_vm_entidade_previdencia_privada` | Como a CVM publica (`Qtde_VM_Entidade_Previdencia_Privada`) | número com decimais, na unidade da fonte |
+| `num_invest_companhia_seguradora` | Como a CVM publica (`Num_Invest_Companhia_Seguradora`) | número com decimais, na unidade da fonte |
+| `qtde_vm_companhia_seguradora` | Como a CVM publica (`Qtde_VM_Companhia_Seguradora`) | número com decimais, na unidade da fonte |
+| `num_invest_investidor_estrangeiro` | Como a CVM publica (`Num_Invest_Investidor_Estrangeiro`) | número com decimais, na unidade da fonte |
+| `qtde_vm_investidor_estrangeiro` | Como a CVM publica (`Qtde_VM_Investidor_Estrangeiro`) | número com decimais, na unidade da fonte |
+| `num_invest_instit_intermed_partic_consorcio_distrib` | Como a CVM publica (`Num_Invest_Instit_Intermed_Partic_Consorcio_Distrib`) | número com decimais, na unidade da fonte |
+| `qtde_vm_instit_intermed_partic_consorcio_distrib` | Como a CVM publica (`Qtde_VM_Instit_Intermed_Partic_Consorcio_Distrib`) | número com decimais, na unidade da fonte |
+| `num_invest_instit_financ_emissora_partic_consorcio` | Como a CVM publica (`Num_Invest_Instit_Financ_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qtde_vm_instit_financ_emissora_partic_consorcio` | Como a CVM publica (`Qtde_VM_Instit_Financ_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `num_invest_demais_instit_financ` | Como a CVM publica (`Num_Invest_Demais_Instit_Financ`) | número com decimais, na unidade da fonte |
+| `qtde_vm_demais_instit_financ` | Como a CVM publica (`Qtde_VM_Demais_Instit_Financ`) | número com decimais, na unidade da fonte |
+| `num_invest_demais_pessoa_juridica_emissora_partic_consorcio` | Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qtde_vm_demais_pessoa_juridica_emissora_partic_consorcio` | Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `num_invest_demais_pessoa_juridica` | Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `qtde_vm_demais_pessoa_juridica` | Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica`) | número com decimais, na unidade da fonte |
+| `num_invest_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio` | Como a CVM publica (`Num_Invest_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `qdte_vm_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio` | Como a CVM publica (`Qdte_VM_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`) | número com decimais, na unidade da fonte |
+| `anunciada_em` | Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476) | data (dia) |
+| `disponivel_em` | Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento) | data (dia) |
+
 ## `susep_seguros`
 
 Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)

@@ -1261,6 +1261,677 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "fre_conselho": Tabela(
+        descricao=(
+            "Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010. Só contagens: nome, CPF, nascimento e currículo dos administradores nem são lidos"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_conselho/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "suplentes": ("Quantos suplentes", NUMERO_DECIMAL),
+            "independentes": (
+                "Quantos conselheiros independentes (pelo cargo informado)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_pelo_controlador": (
+                "Quantos eleitos pelo controlador (`Eleito_Controlador` = S)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_por_minoritarios": (
+                "Quantos eleitos pelos minoritários ordinaristas (pelo cargo)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_por_preferencialistas": (
+                "Quantos eleitos pelos preferencialistas (pelo cargo)",
+                NUMERO_DECIMAL,
+            ),
+            "mandatos_consecutivos_medio": (
+                "Média de mandatos consecutivos (vazio quando a CVM não informa)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_reunioes_media": (
+                "Média do % de participação em reuniões (vazio quando não informado)",
+                NUMERO_DECIMAL,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_comites": Tabela(
+        descricao=(
+            "Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010. Só contagens, sem pessoas"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_comites/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "tipo_de_comite": (
+                "Tipo de comitê (auditoria, risco, remuneração...)",
+                TEXTO,
+            ),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "suplentes": ("Quantos suplentes", NUMERO_DECIMAL),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_remuneracao": Tabela(
+        descricao=(
+            "Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_remuneracao/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "inicio_do_exercicio": ("Início do exercício social", DATA),
+            "fim_do_exercicio": ("Fim do exercício social", DATA),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "total_remuneracao": (
+                "Como a CVM publica (`Total_Remuneracao`)",
+                NUMERO_DECIMAL,
+            ),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "total_do_orgao": (
+                "Como a CVM publica (`Total_Remuneracao_Orgao`)",
+                NUMERO_DECIMAL,
+            ),
+            "membros_remunerados": (
+                "Como a CVM publica (`Numero_Membros_Remunerados`)",
+                NUMERO_DECIMAL,
+            ),
+            "salario": ("Como a CVM publica (`Salario`)", NUMERO_DECIMAL),
+            "beneficios": (
+                "Como a CVM publica (`Beneficios_Diretos_Indiretos`)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_comites": (
+                "Como a CVM publica (`Participacoes_Comites`)",
+                NUMERO_DECIMAL,
+            ),
+            "outros_fixos": (
+                "Como a CVM publica (`Outros_Valores_Fixos`)",
+                NUMERO_DECIMAL,
+            ),
+            "bonus": ("Como a CVM publica (`Bonus`)", NUMERO_DECIMAL),
+            "participacao_nos_resultados": (
+                "Como a CVM publica (`Participacao_Resultados`)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_reunioes": (
+                "Como a CVM publica (`Participacao_Reunioes`)",
+                NUMERO_DECIMAL,
+            ),
+            "outros_variaveis": (
+                "Como a CVM publica (`Outros_Valores_Variaveis`)",
+                NUMERO_DECIMAL,
+            ),
+            "comissoes": ("Como a CVM publica (`Comissoes`)", NUMERO_DECIMAL),
+            "pos_emprego": ("Como a CVM publica (`Pos_emprego`)", NUMERO_DECIMAL),
+            "cessacao_do_cargo": (
+                "Como a CVM publica (`Cessacao_Cargo`)",
+                NUMERO_DECIMAL,
+            ),
+            "baseada_em_acoes": (
+                "Como a CVM publica (`Baseada_Acoes`)",
+                NUMERO_DECIMAL,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_remuneracao_extremos": Tabela(
+        descricao=(
+            "A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre)"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_remuneracao_extremos/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "inicio_do_exercicio": ("Início do exercício social", DATA),
+            "fim_do_exercicio": ("Fim do exercício social", DATA),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "membros_remunerados": (
+                "Como a CVM publica (`Numero_Membros_Remunerados`)",
+                NUMERO_DECIMAL,
+            ),
+            "maior": ("Como a CVM publica (`Valor_Maior_Remuneracao`)", NUMERO_DECIMAL),
+            "menor": ("Como a CVM publica (`Valor_Menor_Remuneracao`)", NUMERO_DECIMAL),
+            "media": ("Como a CVM publica (`Valor_Medio_Remuneracao`)", NUMERO_DECIMAL),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_diversidade": Tabela(
+        descricao=(
+            "Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores)"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_diversidade/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "genero_feminino": (
+                "Como a CVM publica (`genero_feminino`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_masculino": (
+                "Como a CVM publica (`genero_masculino`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_nao_binario": (
+                "Como a CVM publica (`genero_nao_binario`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_outros": ("Como a CVM publica (`genero_outros`)", NUMERO_DECIMAL),
+            "genero_sem_resposta": (
+                "Como a CVM publica (`genero_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_nao_aplicavel": (
+                "Como a CVM publica (`genero_nao_aplicavel`)",
+                TEXTO,
+            ),
+            "raca_amarelo": ("Como a CVM publica (`raca_amarelo`)", NUMERO_DECIMAL),
+            "raca_branco": ("Como a CVM publica (`raca_branco`)", NUMERO_DECIMAL),
+            "raca_preto": ("Como a CVM publica (`raca_preto`)", NUMERO_DECIMAL),
+            "raca_pardo": ("Como a CVM publica (`raca_pardo`)", NUMERO_DECIMAL),
+            "raca_indigena": ("Como a CVM publica (`raca_indigena`)", NUMERO_DECIMAL),
+            "raca_outros": ("Como a CVM publica (`raca_outros`)", NUMERO_DECIMAL),
+            "raca_sem_resposta": (
+                "Como a CVM publica (`raca_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "raca_nao_aplicavel": ("Como a CVM publica (`raca_nao_aplicavel`)", TEXTO),
+            "pcd_pcd": ("Como a CVM publica (`pcd_pcd`)", NUMERO_DECIMAL),
+            "pcd_nao_pcd": ("Como a CVM publica (`pcd_nao_pcd`)", NUMERO_DECIMAL),
+            "pcd_sem_resposta": (
+                "Como a CVM publica (`pcd_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "pcd_nao_aplicavel": ("Como a CVM publica (`pcd_nao_aplicavel`)", TEXTO),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "ofertas_antigas": Tabela(
+        descricao=(
+            "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram"
+        ),
+        fonte="CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)",
+        familia_da_fonte="cvm",
+        frequencia="Diária (o ZIP é regerado todo dia)",
+        atraso="Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)",
+        onde="Parquet em `<acervo>/base/ofertas/antigas.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.",
+        colunas={
+            "numero_processo": ("Como a CVM publica (`Numero_Processo`)", TEXTO),
+            "numero_registro_oferta": (
+                "Como a CVM publica (`Numero_Registro_Oferta`)",
+                TEXTO,
+            ),
+            "tipo_oferta": ("Como a CVM publica (`Tipo_Oferta`)", TEXTO),
+            "tipo_componente_oferta_mista": (
+                "Como a CVM publica (`Tipo_Componente_Oferta_Mista`)",
+                TEXTO,
+            ),
+            "tipo_ativo": ("Como a CVM publica (`Tipo_Ativo`)", TEXTO),
+            "cnpj_emissor": ("Como a CVM publica (`CNPJ_Emissor`)", TEXTO),
+            "nome_emissor": ("Como a CVM publica (`Nome_Emissor`)", TEXTO),
+            "cnpj_lider": ("Como a CVM publica (`CNPJ_Lider`)", TEXTO),
+            "nome_lider": ("Como a CVM publica (`Nome_Lider`)", TEXTO),
+            "cnpj_ofertante": ("Como a CVM publica (`CNPJ_Ofertante`)", TEXTO),
+            "nome_ofertante": ("Como a CVM publica (`Nome_Ofertante`)", TEXTO),
+            "rito_oferta": ("Como a CVM publica (`Rito_Oferta`)", TEXTO),
+            "modalidade_oferta": ("Como a CVM publica (`Modalidade_Oferta`)", TEXTO),
+            "modalidade_registro": (
+                "Como a CVM publica (`Modalidade_Registro`)",
+                TEXTO,
+            ),
+            "modalidade_dispensa_registro": (
+                "Como a CVM publica (`Modalidade_Dispensa_Registro`)",
+                TEXTO,
+            ),
+            "data_abertura_processo": (
+                "Como a CVM publica (`Data_Abertura_Processo`)",
+                DATA,
+            ),
+            "data_protocolo": ("Como a CVM publica (`Data_Protocolo`)", DATA),
+            "data_dispensa_oferta": (
+                "Como a CVM publica (`Data_Dispensa_Oferta`)",
+                DATA,
+            ),
+            "data_registro_oferta": (
+                "Como a CVM publica (`Data_Registro_Oferta`)",
+                DATA,
+            ),
+            "data_inicio_oferta": ("Como a CVM publica (`Data_Inicio_Oferta`)", DATA),
+            "data_encerramento_oferta": (
+                "Como a CVM publica (`Data_Encerramento_Oferta`)",
+                DATA,
+            ),
+            "emissao": ("Como a CVM publica (`Emissao`)", TEXTO),
+            "classe_ativo": ("Como a CVM publica (`Classe_Ativo`)", TEXTO),
+            "serie": ("Como a CVM publica (`Serie`)", TEXTO),
+            "especie_ativo": ("Como a CVM publica (`Especie_Ativo`)", TEXTO),
+            "forma_ativo": ("Como a CVM publica (`Forma_Ativo`)", TEXTO),
+            "data_emissao": ("Como a CVM publica (`Data_Emissao`)", DATA),
+            "data_vencimento": ("Como a CVM publica (`Data_Vencimento`)", DATA),
+            "quantidade_sem_lote_suplementar": (
+                "Como a CVM publica (`Quantidade_Sem_Lote_Suplementar`)",
+                NUMERO_DECIMAL,
+            ),
+            "quantidade_no_lote_suplementar": (
+                "Como a CVM publica (`Quantidade_No_Lote_Suplementar`)",
+                NUMERO_DECIMAL,
+            ),
+            "quantidade_total": (
+                "Como a CVM publica (`Quantidade_Total`)",
+                NUMERO_DECIMAL,
+            ),
+            "preco_unitario": ("Como a CVM publica (`Preco_Unitario`)", NUMERO_DECIMAL),
+            "valor_total": ("Como a CVM publica (`Valor_Total`)", NUMERO_DECIMAL),
+            "oferta_inicial": ("Como a CVM publica (`Oferta_Inicial`)", TEXTO),
+            "oferta_incentivo_fiscal": (
+                "Como a CVM publica (`Oferta_Incentivo_Fiscal`)",
+                TEXTO,
+            ),
+            "oferta_regime_fiduciario": (
+                "Como a CVM publica (`Oferta_Regime_Fiduciario`)",
+                TEXTO,
+            ),
+            "atualizacao_monetaria": (
+                "Como a CVM publica (`Atualizacao_Monetaria`)",
+                TEXTO,
+            ),
+            "juros": ("Como a CVM publica (`Juros`)", TEXTO),
+            "projeto_audiovisual": (
+                "Como a CVM publica (`Projeto_Audiovisual`)",
+                TEXTO,
+            ),
+            "tipo_societario_emissor": (
+                "Como a CVM publica (`Tipo_Societario_Emissor`)",
+                TEXTO,
+            ),
+            "tipo_fundo_investimento": (
+                "Como a CVM publica (`Tipo_Fundo_Investimento`)",
+                TEXTO,
+            ),
+            "ultimo_comunicado": ("Como a CVM publica (`Ultimo_Comunicado`)", TEXTO),
+            "data_comunicado": ("Como a CVM publica (`Data_Comunicado`)", DATA),
+            "nr_pessoa_fisica": (
+                "Como a CVM publica (`Nr_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_pessoa_fisica": (
+                "Como a CVM publica (`Qtd_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_clube_investimento": (
+                "Como a CVM publica (`Nr_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_clube_investimento": (
+                "Como a CVM publica (`Qtd_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_fundos_investimento": (
+                "Como a CVM publica (`Nr_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_fundos_investimento": (
+                "Como a CVM publica (`Qtd_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_entidade_previdencia_privada": (
+                "Como a CVM publica (`Nr_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_entidade_previdencia_privada": (
+                "Como a CVM publica (`Qtd_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_companhia_seguradora": (
+                "Como a CVM publica (`Nr_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_companhia_seguradora": (
+                "Como a CVM publica (`Qtd_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_investidor_estrangeiro": (
+                "Como a CVM publica (`Nr_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtd_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Nr_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Qtd_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Nr_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_instit_financ": (
+                "Como a CVM publica (`Nr_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_instit_financ": (
+                "Como a CVM publica (`Qtd_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Nr_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_pessoa_juridica": (
+                "Como a CVM publica (`Nr_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_pessoa_juridica": (
+                "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Nr_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qdt_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qdt_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_outros": ("Como a CVM publica (`Nr_Outros`)", NUMERO_DECIMAL),
+            "qtd_outros": ("Como a CVM publica (`Qtd_Outros`)", NUMERO_DECIMAL),
+            "qtd_cli_pessoa_fisica": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_pessoa_juridica": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_pessoa_juridica_ligada_adm": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica_Ligada_Adm`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_demais_pessoa_juridica": (
+                "Como a CVM publica (`QtD_Cli_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtd_Cli_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Cli_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "anunciada_em": (
+                "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+                DATA,
+            ),
+        },
+    ),
+    "ofertas_resolucao_160": Tabela(
+        descricao=(
+            "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos)"
+        ),
+        fonte="CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)",
+        familia_da_fonte="cvm",
+        frequencia="Diária (o ZIP é regerado todo dia)",
+        atraso="Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)",
+        onde="Parquet em `<acervo>/base/ofertas/resolucao_160.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.",
+        colunas={
+            "numero_requerimento": (
+                "Como a CVM publica (`Numero_Requerimento`)",
+                TEXTO,
+            ),
+            "rito_requerimento": ("Como a CVM publica (`Rito_Requerimento`)", TEXTO),
+            "numero_processo": ("Como a CVM publica (`Numero_Processo`)", TEXTO),
+            "data_requerimento": ("Como a CVM publica (`Data_requerimento`)", DATA),
+            "data_registro": ("Como a CVM publica (`Data_Registro`)", DATA),
+            "data_encerramento": ("Como a CVM publica (`Data_Encerramento`)", DATA),
+            "status_requerimento": (
+                "Como a CVM publica (`Status_Requerimento`)",
+                TEXTO,
+            ),
+            "valor_mobiliario": ("Como a CVM publica (`Valor_Mobiliario`)", TEXTO),
+            "tipo_requerimento": ("Como a CVM publica (`Tipo_requerimento`)", TEXTO),
+            "bookbuilding": ("Como a CVM publica (`Bookbuilding`)", TEXTO),
+            "cnpj_emissor": ("Como a CVM publica (`CNPJ_Emissor`)", TEXTO),
+            "nome_emissor": ("Como a CVM publica (`Nome_Emissor`)", TEXTO),
+            "cnpj_lider": ("Como a CVM publica (`CNPJ_Lider`)", TEXTO),
+            "nome_lider": ("Como a CVM publica (`Nome_Lider`)", TEXTO),
+            "grupo_coordenador": ("Como a CVM publica (`Grupo_Coordenador`)", TEXTO),
+            "tipo_oferta": ("Como a CVM publica (`Tipo_Oferta`)", TEXTO),
+            "emissao": ("Como a CVM publica (`Emissao`)", TEXTO),
+            "qtde_total_registrada": (
+                "Como a CVM publica (`Qtde_Total_Registrada`)",
+                NUMERO_DECIMAL,
+            ),
+            "valor_total_registrado": (
+                "Como a CVM publica (`Valor_Total_Registrado`)",
+                NUMERO_DECIMAL,
+            ),
+            "oferta_inicial": ("Como a CVM publica (`Oferta_inicial`)", TEXTO),
+            "oferta_vasos_comunicantes": (
+                "Como a CVM publica (`Oferta_vasos_comunicantes`)",
+                TEXTO,
+            ),
+            "publico_alvo": ("Como a CVM publica (`Publico_alvo`)", TEXTO),
+            "reabertura_serie": ("Como a CVM publica (`Reabertura_serie`)", TEXTO),
+            "titulo_classificado_como_sustentavel": (
+                "Como a CVM publica (`Titulo_classificado_como_sustentavel`)",
+                TEXTO,
+            ),
+            "titulo_padronizado": ("Como a CVM publica (`Titulo_padronizado`)", TEXTO),
+            "data_deliberacao_aprovou_oferta": (
+                "Como a CVM publica (`Data_deliberacao_aprovou_oferta`)",
+                DATA,
+            ),
+            "mercado_negociacao": ("Como a CVM publica (`Mercado_negociacao`)", TEXTO),
+            "tipo_lastro": ("Como a CVM publica (`Tipo_lastro`)", TEXTO),
+            "regime_fiduciario": ("Como a CVM publica (`Regime_fiduciario`)", TEXTO),
+            "ativos_alvo": ("Como a CVM publica (`Ativos_alvo`)", TEXTO),
+            "possibilidade_revolvencia": (
+                "Como a CVM publica (`Possibilidade_revolvencia`)",
+                TEXTO,
+            ),
+            "fidc_nao_padronizado": (
+                "Como a CVM publica (`FIDC_nao_padronizado`)",
+                TEXTO,
+            ),
+            "titulo_incentivado": ("Como a CVM publica (`Titulo_incentivado`)", TEXTO),
+            "regime_distribuicao": (
+                "Como a CVM publica (`Regime_distribuicao`)",
+                TEXTO,
+            ),
+            "tipo_societario": ("Como a CVM publica (`Tipo_societario`)", TEXTO),
+            "administrador": ("Como a CVM publica (`Administrador`)", TEXTO),
+            "gestor": ("Como a CVM publica (`Gestor`)", TEXTO),
+            "agente_fiduciario": ("Como a CVM publica (`Agente_fiduciario`)", TEXTO),
+            "escriturador": ("Como a CVM publica (`Escriturador`)", TEXTO),
+            "custodiante": ("Como a CVM publica (`Custodiante`)", TEXTO),
+            "avaliador_risco": ("Como a CVM publica (`Avaliador_Risco`)", TEXTO),
+            "processo_sei": ("Como a CVM publica (`Processo_SEI`)", TEXTO),
+            "endereco_emissor_rede_mundial_computadores": (
+                "Como a CVM publica (`Endereco_emissor_rede_mundial_computadores`)",
+                TEXTO,
+            ),
+            "num_invest_pessoa_natural": (
+                "Como a CVM publica (`Num_Invest_Pessoa_Natural`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_pessoa_natural": (
+                "Como a CVM publica (`Qtde_VM_Pessoa_Natural`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_clube_investimento": (
+                "Como a CVM publica (`Num_Invest_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_clube_investimento": (
+                "Como a CVM publica (`Qtde_VM_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_fundos_investimento": (
+                "Como a CVM publica (`Num_Invest_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_fundos_investimento": (
+                "Como a CVM publica (`Qtde_VM_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_entidade_previdencia_privada": (
+                "Como a CVM publica (`Num_Invest_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_entidade_previdencia_privada": (
+                "Como a CVM publica (`Qtde_VM_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_companhia_seguradora": (
+                "Como a CVM publica (`Num_Invest_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_companhia_seguradora": (
+                "Como a CVM publica (`Qtde_VM_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_investidor_estrangeiro": (
+                "Como a CVM publica (`Num_Invest_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtde_VM_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Num_Invest_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Qtde_VM_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtde_VM_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_instit_financ": (
+                "Como a CVM publica (`Num_Invest_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_instit_financ": (
+                "Como a CVM publica (`Qtde_VM_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_pessoa_juridica": (
+                "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_pessoa_juridica": (
+                "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qdte_vm_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qdte_VM_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "anunciada_em": (
+                "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+                DATA,
+            ),
+        },
+    ),
     "susep_seguros": Tabela(
         descricao=(
             "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, "
@@ -2295,6 +2966,13 @@ _CONTRATO = {
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "fre_conselho": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_comites": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'tipo_de_comite'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_remuneracao": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_remuneracao_extremos": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),

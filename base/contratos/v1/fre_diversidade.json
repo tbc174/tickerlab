@@ -1,0 +1,121 @@
+{
+  "tabela": "fre_diversidade",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia (como a CVM escreve)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Data de referência do FRE",
+      "unidade": "data (dia)"
+    },
+    "versao": {
+      "descricao": "Versão do FRE",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "id_documento": {
+      "descricao": "Identificador do documento na CVM",
+      "unidade": "texto"
+    },
+    "orgao": {
+      "descricao": "Órgão da administração, como a CVM escreve",
+      "unidade": "texto"
+    },
+    "genero_feminino": {
+      "descricao": "Como a CVM publica (`genero_feminino`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "genero_masculino": {
+      "descricao": "Como a CVM publica (`genero_masculino`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "genero_nao_binario": {
+      "descricao": "Como a CVM publica (`genero_nao_binario`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "genero_outros": {
+      "descricao": "Como a CVM publica (`genero_outros`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "genero_sem_resposta": {
+      "descricao": "Como a CVM publica (`genero_sem_resposta`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "genero_nao_aplicavel": {
+      "descricao": "Como a CVM publica (`genero_nao_aplicavel`)",
+      "unidade": "texto"
+    },
+    "raca_amarelo": {
+      "descricao": "Como a CVM publica (`raca_amarelo`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_branco": {
+      "descricao": "Como a CVM publica (`raca_branco`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_preto": {
+      "descricao": "Como a CVM publica (`raca_preto`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_pardo": {
+      "descricao": "Como a CVM publica (`raca_pardo`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_indigena": {
+      "descricao": "Como a CVM publica (`raca_indigena`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_outros": {
+      "descricao": "Como a CVM publica (`raca_outros`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_sem_resposta": {
+      "descricao": "Como a CVM publica (`raca_sem_resposta`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "raca_nao_aplicavel": {
+      "descricao": "Como a CVM publica (`raca_nao_aplicavel`)",
+      "unidade": "texto"
+    },
+    "pcd_pcd": {
+      "descricao": "Como a CVM publica (`pcd_pcd`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "pcd_nao_pcd": {
+      "descricao": "Como a CVM publica (`pcd_nao_pcd`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "pcd_sem_resposta": {
+      "descricao": "Como a CVM publica (`pcd_sem_resposta`)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "pcd_nao_aplicavel": {
+      "descricao": "Como a CVM publica (`pcd_nao_aplicavel`)",
+      "unidade": "texto"
+    },
+    "conhecido_em": {
+      "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "referencia",
+    "versao",
+    "orgao"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+  "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+}
