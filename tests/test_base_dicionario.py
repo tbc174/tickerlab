@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, fca, ligacoes
+from base import cda, conselhos, fca, ligacoes, ofertas
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
@@ -64,6 +64,25 @@ def _tickers_e_emissores_da_carga() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
 
+def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
+    arquivos = Path(__file__).parent / "arquivos"
+    fre_zip = (arquivos / "fre" / "fre_cia_aberta_2024.zip").read_bytes()
+    ofertas_zip = (
+        arquivos / "cvm" / "ofertas" / "oferta_distribuicao.zip"
+    ).read_bytes()
+    return {
+        "fre_conselho": list(conselhos.COLUNAS_DO_CONSELHO),
+        "fre_comites": list(conselhos.COLUNAS_DOS_COMITES),
+        "fre_remuneracao": list(conselhos.ler_remuneracao(fre_zip).columns),
+        "fre_remuneracao_extremos": list(
+            conselhos.ler_remuneracao_extremos(fre_zip).columns
+        ),
+        "fre_diversidade": conselhos.colunas_da_diversidade(),
+        "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
+        "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
+    }
+
+
 def _colunas_de_verdade() -> dict[str, list[str]]:
     cadastro = ler_cadastro(b"CNPJ_CIA;DENOM_SOCIAL;SIT\n1;A;ATIVO\n")
     tickers, emissores = _tickers_e_emissores_da_carga()
@@ -79,6 +98,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anac_estatistico": list(setoriais_anac.COLUNAS),
         "anp_vendas": list(setoriais_anp.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
+        **_colunas_das_ofertas_e_conselhos(),
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
         "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
         "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
