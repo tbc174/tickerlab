@@ -263,3 +263,74 @@ def gravar_se_mudou(
         guardar_versao_anterior(destino)
     gravar_tabela(tabela, destino, origens, ordem)
     return GRAVADO
+
+
+# --- lápide: oposição ou eliminação atendida (ADR 0077, item 2; plano, D7) -----------------------
+def versoes_da_tabela(destino: Path) -> list[Path]:
+    """A tabela vigente e as versões guardadas dela (`<nome>.v1.parquet`, `.v2`...), as que existem."""
+    destino = destino.with_suffix("")
+    guardadas = sorted(
+        (
+            a
+            for a in destino.parent.glob(f"{destino.name}.v*.parquet")
+            if a.stem.rsplit(".", 1)[0] == destino.name
+            and VERSAO_GUARDADA.search(a.stem)
+        ),
+        key=lambda a: int(a.stem.rsplit(".v", 1)[1]),
+    )
+    vigente = destino.with_suffix(".parquet")
+    return [vigente, *guardadas] if vigente.exists() else guardadas
+
+
+def _sem_os_ids(tabela: pd.DataFrame, ids: set[str]) -> pd.DataFrame | None:
+    """A tabela com cada valor de `ids` trocado por vazio; None se nenhum aparece."""
+    textos = [
+        c
+        for c in tabela.columns
+        if tabela[c].dtype == object or pd.api.types.is_string_dtype(tabela[c])
+    ]
+    achados = {c: tabela[c].isin(ids) for c in textos}
+    if not any(a.any() for a in achados.values()):
+        return None
+    tabela = tabela.copy()
+    for coluna, achado in achados.items():
+        if achado.any():
+            tabela[coluna] = tabela[coluna].astype(object).mask(achado, None)
+    return tabela
+
+
+def regravar_por_lapide(destino: Path, ids_pessoa: set[str], dia: str) -> list[Path]:
+    """Regrava a vigente e as versões `.vN` de `destino` sem os `ids_pessoa` (a única exceção ao
+    "nada é apagado"). Devolve os Parquets regravados.
+
+    A linha fica, com o id trocado por vazio: a aresta vira um fato anônimo da empresa. O hash do
+    manifesto é refeito e `regravada_por_lapide` ganha o dia (nunca o id). A tabela regravada continua
+    conferindo; a derivada que a usava deixa de conferir até ser remontada. Só valores inteiros de
+    coluna de texto (um id dentro de uma lista em texto não é achado: as tabelas da rede não têm).
+    """
+    regravadas = []
+    for arquivo in versoes_da_tabela(destino) if ids_pessoa else []:
+        tabela = _sem_os_ids(ler_tabela(arquivo), set(ids_pessoa))
+        if tabela is None:
+            continue
+        gravar_atomico(
+            arquivo, lambda caminho, t=tabela: t.to_parquet(caminho, index=False)
+        )
+        manifesto = arquivo.with_suffix(".json")
+        if manifesto.exists():
+            anotado = json.loads(manifesto.read_text(encoding="utf-8"))
+            anotado["sha256_da_tabela"] = hash_da_tabela(
+                ler_tabela(arquivo), anotado.get("ordem", [])
+            )
+            anotado["regravada_por_lapide"] = [
+                *anotado.get("regravada_por_lapide", []),
+                {"dia": dia, "versao_do_codigo": versao_do_codigo()},
+            ]
+            texto = json.dumps(anotado, ensure_ascii=False, indent=1)
+            gravar_atomico(
+                manifesto,
+                lambda caminho, x=texto: Path(caminho).write_text(x, encoding="utf-8"),
+            )
+        log.info("%s regravada pela lápide de %s", arquivo.name, dia)
+        regravadas.append(arquivo)
+    return regravadas
