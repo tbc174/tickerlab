@@ -17,6 +17,8 @@ from pathlib import Path
 import pandas as pd
 
 PREFIXO = "E"
+# o id de pessoa (esquema `pessoas`, PR 6) começa por "P": só existe na vista interna, nunca sai de casa
+PREFIXO_DE_PESSOA = "P"
 HEXADECIMAIS = 20
 TABELA_CONFERIDA = (
     Path(__file__).resolve().parent.parent / "conferidas" / "entidades.csv"

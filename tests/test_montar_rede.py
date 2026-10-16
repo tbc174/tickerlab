@@ -21,6 +21,7 @@ from src import acervo
 from src import versao_do_codigo as vc
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
+from tests.test_rede_ligacoes_das_fontes import _auditores, _posicoes
 from tests.test_rede_montar import _entradas
 
 VERSAO = "7b2d29a1e6b0b5a9c1d2e3f4a5b6c7d8e9f0a1b2"
@@ -31,6 +32,7 @@ CADASTRO = (
 )
 RECEITA = "https://arquivos.receitafederal.gov.br/x/Dados/Cadastros/CNPJ/2026-10/"
 FCA = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/fca_cia_aberta_2026.zip"
+TABELAS_DA_REDE = ("entidades", "identificadores", "ligacoes")
 
 
 def _zip(nome: str, texto: str) -> bytes:
@@ -90,6 +92,15 @@ def base(tmp_path, monkeypatch):
         tabela.assign(origem_sha256=origem[0]["sha256"]).to_parquet(
             destino, index=False
         )
+    # os auditores levam a origem em cada linha; as carteiras, no manifesto do ano
+    destino = pasta / "auditores" / "2022.parquet"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    _auditores().assign(origem_sha256=origem[0]["sha256"]).to_parquet(
+        destino, index=False
+    )
+    gravar_tabela(
+        _posicoes().drop(columns="origem_sha256"), pasta / "cda" / "2021", origem, []
+    )
     return pasta
 
 
@@ -108,7 +119,7 @@ def _manifesto(pasta: Path, tabela: str) -> dict:
 
 def test_monta_entidades_e_identificadores_com_natureza_da_receita(base):
     resumo = _montar(base)
-    assert resumo.gravadas == {"entidades": "gravado", "identificadores": "gravado"}
+    assert resumo.gravadas == dict.fromkeys(TABELAS_DA_REDE, "gravado")
     entidades = pd.read_parquet(base / "rede" / "entidades.parquet")
     assert resumo.entidades == len(entidades) > 0
     petrobras = entidades[
@@ -126,20 +137,16 @@ def test_monta_entidades_e_identificadores_com_natureza_da_receita(base):
 
 def test_remontar_da_o_mesmo_hash(base):
     _montar(base)
-    antes = {
-        t: _manifesto(base, t)["sha256_da_tabela"]
-        for t in ("entidades", "identificadores")
-    }
+    antes = {t: _manifesto(base, t)["sha256_da_tabela"] for t in TABELAS_DA_REDE}
     de_novo = _montar(base)
-    assert de_novo.gravadas == {"entidades": IGUAL, "identificadores": IGUAL}
+    assert de_novo.gravadas == dict.fromkeys(TABELAS_DA_REDE, IGUAL)
     assert de_novo.entidades == _manifesto(base, "entidades")["linhas"]
     (base / "rede" / "entidades.json").unlink()  # obriga a montar de novo do zero
     (base / "rede" / "identificadores.json").unlink()
+    (base / "rede" / "ligacoes.json").unlink()
+    (base / "rede" / "ligacoes.parquet").unlink()
     _montar(base)
-    depois = {
-        t: _manifesto(base, t)["sha256_da_tabela"]
-        for t in ("entidades", "identificadores")
-    }
+    depois = {t: _manifesto(base, t)["sha256_da_tabela"] for t in TABELAS_DA_REDE}
     assert depois == antes
 
 
@@ -149,7 +156,7 @@ def test_linha_volta_ao_original(base):
     motor = criar_engine()
     try:
         with motor.connect() as conexao:
-            for tabela in ("entidades", "identificadores"):
+            for tabela in TABELAS_DA_REDE:
                 caminho = linhagem_da_tabela(
                     conexao, base / "rede" / f"{tabela}.parquet"
                 )
@@ -205,3 +212,65 @@ def test_tabelas_conferidas_vem_do_pacote_base():
 
     assert ids.TABELA_CONFERIDA.parent == montar_rede.CONFERIDAS
     assert (montar_rede.CONFERIDAS / "emissores_antigos.csv").is_file()
+
+
+def _ligacoes(pasta: Path) -> pd.DataFrame:
+    return pd.read_parquet(pasta / "rede" / "ligacoes.parquet")
+
+
+def test_ligacoes_de_todas_as_fontes_com_coletado_em(base):
+    resumo = _montar(base)
+    tabela = _ligacoes(base)
+    assert resumo.ligacoes == len(tabela)
+    assert {"controlada_de", "opera_para", "audita", "emite", "detem"} <= set(
+        tabela["tipo"]
+    )
+    # o original do FCA foi guardado hoje (no teste): é o `coletado_em` das linhas que vêm dele
+    assert tabela["coletado_em"].notna().all()
+    assert set(tabela["situacao"]) <= {"vigente", "encerrada"}
+
+
+def test_segunda_carga_nao_apaga_e_guarda_a_versao(base):
+    """A posição que some do CDA fica, encerrada pela carga; a carga anterior fica como `.v1`."""
+    _montar(base)
+    origem = json.loads((base / "cda" / "2021.json").read_text(encoding="utf-8"))[
+        "origens"
+    ]
+    # a PETR4 de maio (o período que estava vigente) some do CDA
+    sem_maio = _posicoes().drop(columns="origem_sha256").iloc[[0, 1, 2, 4]]
+    gravar_tabela(sem_maio, base / "cda" / "2021", origem, [])
+    motor = criar_engine()
+    try:
+        with motor.connect() as conexao:
+            montar_rede.montar_no_acervo(conexao, base, hoje=pd.Timestamp("2026-10-17"))
+    finally:
+        motor.dispose()
+    tabela = _ligacoes(base)
+    sumiu = tabela[(tabela["tipo"] == "detem") & (tabela["situacao"] == "encerrada")]
+    assert (sumiu["encerrada_por"] == "carga").any()
+    assert pd.Timestamp("2026-10-17") in set(sumiu["ate"])
+    assert (base / "rede" / "ligacoes.v1.parquet").is_file()
+    assert len(tabela) >= len(pd.read_parquet(base / "rede" / "ligacoes.v1.parquet"))
+
+
+def test_montar_rede_sem_entradas_nao_grava(tmp_path, base, capsys):
+    vazia = tmp_path / "vazia"
+    vazia.mkdir()
+    assert montar_rede.main(["--pasta", str(vazia)]) == 1
+    assert capsys.readouterr().out.strip().startswith("FALHAS: rede: SemEntradasError")
+    assert not (vazia / "rede").exists()
+
+
+def test_montar_rede_devolve_codigo_para_o_kuma(base, capsys, monkeypatch):
+    assert montar_rede.main(["--pasta", str(base)]) == 0
+    assert "FALHAS" not in capsys.readouterr().out
+
+    def quebra(*_args, **_kwargs):
+        raise OSError("disco cheio")
+
+    monkeypatch.setattr(montar_rede, "gravar_com_versoes", quebra)
+    (base / "rede" / "entidades.json").unlink()
+    assert montar_rede.main(["--pasta", str(base)]) == 1
+    saida = capsys.readouterr().out.strip().splitlines()[-1]
+    assert saida == "FALHAS: rede: OSError: disco cheio"
+    assert len(saida) <= montar_rede.TAMANHO_MAXIMO_DO_RESUMO

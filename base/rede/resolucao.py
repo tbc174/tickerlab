@@ -23,7 +23,12 @@ REGRAS = (
     (7, "tabela conferida à mão"),
 )
 PELA_REGRA, PELA_TABELA = "regra", "tabela"
-SISTEMA_DA_ANCORA = {"empresa": "cnpj_raiz", "fundo": "cnpj"}
+SISTEMA_DA_ANCORA = {
+    "empresa": "cnpj_raiz",
+    "fundo": "cnpj",
+    "valor_mobiliario": "isin",
+    "auditor": "codigo_cvm_auditor",  # a firma registrada na CVM, pelo código (PR 3)
+}
 COLUNAS_DAS_OBSERVACOES = (
     "fonte", "tipo", "ancora", "sistema", "valor", "desde", "ate", "publico_em", "regra",
     "conferido_por", "nome", "prioridade_do_nome", "natureza_da_fonte", "cnpj_da_fonte",

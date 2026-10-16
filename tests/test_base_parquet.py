@@ -320,3 +320,61 @@ def test_hash_em_pedacos_e_o_mesmo_da_tabela_inteira(monkeypatch):
     assert hash_da_tabela(tabela.iloc[:0], ["a"]) == hash_da_tabela(
         tabela.iloc[:0], ["a"]
     )
+
+
+# --- lápide: oposição ou eliminação atendida regrava as versões sem a pessoa (plano, D7) ---------
+PESSOA, OUTRA = "P" + "1" * 20, "P" + "2" * 20
+EMPRESA_A, EMPRESA_B = "E" + "a" * 20, "E" + "b" * 20
+
+
+def _arestas(*de: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"de": list(de), "para": EMPRESA_A, "tipo": "socio_de", "n": range(len(de))}
+    )
+
+
+def _tres_versoes(tmp_path, monkeypatch):
+    """A vigente e duas versões guardadas (.v1 e .v2), todas com a pessoa."""
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "rede" / "ligacoes"
+    for de in ((PESSOA, EMPRESA_B), (PESSOA, OUTRA), (PESSOA, EMPRESA_B, OUTRA)):
+        if destino.with_suffix(".parquet").exists():
+            parquet.guardar_versao_anterior(destino)
+        gravar_tabela(_arestas(*de), destino, ORIGENS, ["de", "para"])
+    return destino
+
+
+def test_lapide_regrava_todas_as_versoes(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    regravadas = parquet.regravar_por_lapide(destino, {PESSOA}, "2026-10-16")
+    assert sorted(p.name for p in regravadas) == [
+        "ligacoes.parquet",
+        "ligacoes.v1.parquet",
+        "ligacoes.v2.parquet",
+    ]
+    for arquivo in regravadas:
+        tabela = ler_tabela(arquivo)
+        assert PESSOA not in tabela.astype(str).to_string()
+        assert (
+            tabela["de"].isna().sum() == 1
+        )  # a aresta fica, anônima (o fato na empresa)
+        assert conferir_tabela(arquivo)  # o hash foi recalculado
+    assert OUTRA in ler_tabela(destino.with_suffix(".parquet"))["de"].tolist()
+
+
+def test_manifesto_anota_a_regravacao(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    parquet.regravar_por_lapide(destino, {PESSOA}, "2026-10-16")
+    texto = destino.with_suffix(".json").read_text(encoding="utf-8")
+    manifesto = json.loads(texto)
+    assert [r["dia"] for r in manifesto["regravada_por_lapide"]] == ["2026-10-16"]
+    assert PESSOA not in texto  # o manifesto diz que houve, não de quem
+    assert manifesto["origens"] == ORIGENS and manifesto["linhas"] == 3
+
+
+def test_sem_lapide_nada_muda(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    antes = {p.name: p.read_bytes() for p in destino.parent.iterdir()}
+    assert parquet.regravar_por_lapide(destino, {"P" + "9" * 20}, "2026-10-16") == []
+    assert parquet.regravar_por_lapide(destino, set(), "2026-10-16") == []
+    assert {p.name: p.read_bytes() for p in destino.parent.iterdir()} == antes

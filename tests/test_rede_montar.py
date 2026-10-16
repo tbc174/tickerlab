@@ -64,7 +64,10 @@ def _entradas() -> montar.Entradas:
                 "companhia": ["ULTRAPAR PARTICIPAÇÕES"],
                 "cnpj": ["33337122000127"],
                 "razao_social": ["Ipiranga Produtos de Petróleo S.A."],
+                "referencia": [D("2009-12-31")],
                 "conhecido_em": [D("2010-06-10").date()],
+                "tipo": ["controlada"],
+                "participacao": [100.0],
             }
         ),
         empresa_serie=pd.DataFrame(
@@ -75,6 +78,10 @@ def _entradas() -> montar.Entradas:
                 "raiz": ["33337122", None, "33592510"],
                 "via": ["controlada", "produto", "propria"],
                 "por": ["cnpj", "cnpj", "tabela"],
+                "cnpj_companhia": [ULTRAPAR, ULTRAPAR, "33592510000154"],
+                "desde": [D("2010-06-10")] * 3,
+                "principal": [True, False, True],
+                "participacao": [100.0, None, None],
                 "montado_em": [D("2026-10-14 18:55", tz="UTC")] * 3,
             }
         ),

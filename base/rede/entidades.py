@@ -11,7 +11,8 @@ com CNPJ não leva nome (a razão social é o nome dela): nível 2, só id.
 
 import pandas as pd
 
-NAO_INFORMADA = "nao_informada"
+NAO_INFORMADA, NAO_SE_APLICA = "nao_informada", "nao_se_aplica"
+VALOR_MOBILIARIO = "valor_mobiliario"  # um papel não é pessoa nem tem natureza jurídica
 PELA_RECEITA, PELA_FONTE = "receita", "fonte"
 EMPRESARIO_INDIVIDUAL = "2135"
 GRUPO_DAS_PESSOAS_FISICAS = "4"
@@ -48,7 +49,9 @@ def com_natureza(
         .fillna(False)
         .astype(bool)
     )
-    natureza = natureza.fillna(NAO_INFORMADA)
+    papel = entidades["tipo"] == VALOR_MOBILIARIO
+    natureza = natureza.fillna(NAO_INFORMADA).mask(papel, NAO_SE_APLICA)
+    fonte = fonte.mask(papel, NAO_SE_APLICA)
     pessoa_com_cnpj = natureza.map(natureza_de_pessoa) | mei
     return entidades.drop(columns=["natureza_da_fonte"]).assign(
         nome=entidades["nome"].where(~pessoa_com_cnpj, None),

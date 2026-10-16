@@ -2925,10 +2925,12 @@ TABELAS: dict[str, Tabela] = {
     "entidades": Tabela(
         descricao=(
             "Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a "
-            "mesma empresa) ou fundo (pelo CNPJ de 14), com id determinístico (`base/rede/ids.py`), "
-            "nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: cadastro da CVM, FCA, "
-            "controladas, empresa ↔ série, cadastro de fundos, IF.data e GLEIF. Empresário "
-            "individual, pessoa física com CNPJ e MEI ficam sem nome e com `trata_como_pessoa`"
+            "mesma empresa), fundo (pelo CNPJ de 14), valor mobiliário (pelo ISIN das carteiras dos "
+            "fundos) ou firma de auditoria (pelo código da CVM), com id determinístico "
+            "(`base/rede/ids.py`), nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: "
+            "cadastro da CVM, FCA, controladas, auditores, empresa ↔ série, cadastro e carteiras de "
+            "fundos, IF.data e GLEIF. Empresário individual, pessoa física com CNPJ e MEI ficam sem "
+            "nome e com `trata_como_pessoa`"
         ),
         fonte=(
             "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da "
@@ -2945,13 +2947,16 @@ TABELAS: dict[str, Tabela] = {
                 "'E' + 20 hexadecimais do SHA-256 do identificador primário",
                 TEXTO,
             ),
-            "tipo": ("empresa ou fundo", TEXTO),
+            "tipo": ("empresa, fundo, valor_mobiliario ou auditor", TEXTO),
             "nome": (
                 "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
                 TEXTO,
             ),
             "natureza_juridica": (
-                "Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada",
+                (
+                    "Código da natureza jurídica da Receita (2046 = S.A. aberta), nao_informada ou "
+                    "nao_se_aplica (valor mobiliário)"
+                ),
                 TEXTO,
             ),
             "natureza_fonte": (
@@ -2997,7 +3002,10 @@ TABELAS: dict[str, Tabela] = {
         colunas={
             "id_entidade": ("A entidade (tabela `entidades`)", TEXTO),
             "sistema": (
-                "cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...)",
+                (
+                    "cnpj, cnpj_raiz, lei, isin, ticker, emissor, codigo_cvm_auditor ou "
+                    "codigo_<fonte> (codigo_bcb_ifdata...)"
+                ),
                 TEXTO,
             ),
             "valor": (
@@ -3019,6 +3027,89 @@ TABELAS: dict[str, Tabela] = {
                 "As fontes que trouxeram o identificador, separadas por vírgula",
                 TEXTO,
             ),
+        },
+    ),
+    "ligacoes": Tabela(
+        descricao=(
+            "Uma linha por relação entre duas entidades da rede (ADR 0077), com as três datas: "
+            "sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador "
+            "que opera para a companhia (empresa ↔ série), instituição do conglomerado do líder "
+            "(IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e "
+            "fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado "
+            "entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; "
+            "a publicada (sem pessoas) sai de `base/rede/vistas.py`"
+        ),
+        fonte=(
+            "CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da "
+            "empresa ↔ série"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Toda noite no servidor de casa; versão nova só quando o conteúdo muda",
+        atraso=(
+            "O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o "
+            "IF.data 120 dias depois da data-base; a fonte de governo desde que guardada"
+        ),
+        onde=_ONDE_DA_REDE.format(t="ligacoes"),
+        linhagem=(
+            LINHAGEM_DA_REDE
+            + " Cada linha leva o `origem_sha256` do arquivo (ou da tabela da base) de onde veio."
+        ),
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "de": (
+                "A entidade de onde a relação sai (a controlada, o fundo, a firma)",
+                TEXTO,
+            ),
+            "para": (
+                "A entidade para onde a relação vai (a companhia, o valor mobiliário)",
+                TEXTO,
+            ),
+            "tipo": (
+                (
+                    "controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, "
+                    "do_conglomerado_de, audita, emite ou detem"
+                ),
+                TEXTO,
+            ),
+            "papel": (
+                (
+                    "Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a "
+                    "principal (opera_para); lider (do_conglomerado_de)"
+                ),
+                TEXTO,
+            ),
+            "participacao": (
+                "Participação informada no FRE (vazia nos outros)",
+                PONTOS_PERCENTUAIS,
+            ),
+            "aconteceu_em": (
+                "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+                DATA,
+            ),
+            "infracao_em": (
+                "Data da infração, nas sanções (vazia nas fontes de hoje)",
+                DATA,
+            ),
+            "publico_em": (
+                "Desde quando a relação era pública (como era na data)",
+                DATA,
+            ),
+            "coletado_em": (
+                "Quando a base guardou o arquivo de onde veio (registro de coletas)",
+                DATA,
+            ),
+            "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "situacao": ("vigente ou encerrada", TEXTO),
+            "encerrada_por": (
+                "fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente",
+                TEXTO,
+            ),
+            "fonte": ("cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie", TEXTO),
+            "origem_sha256": (
+                "SHA-256 do arquivo ou da tabela da base de onde veio",
+                TEXTO,
+            ),
+            "conferido_por": ("regra (código) ou tabela (conferida à mão)", TEXTO),
         },
     ),
 }
@@ -3092,6 +3183,7 @@ _CONTRATO = {
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
+    "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
 }  # fmt: skip
 
 

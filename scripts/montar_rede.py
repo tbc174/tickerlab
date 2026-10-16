@@ -1,4 +1,4 @@
-"""Monta as tabelas `entidades` e `identificadores` da rede (ADR 0077; plano da série, PR 2).
+"""Monta as tabelas `entidades`, `identificadores` e `ligacoes` da rede (ADR 0077; PRs 2 e 3).
 
     python -m scripts.montar_rede                  (a base do acervo)
     python -m scripts.montar_rede --pasta <base>    (a pasta com fca/, controladas/, fidc/...)
@@ -6,15 +6,20 @@
     python -m scripts.montar_rede --saida <pasta>   (ensaio: grava fora da base)
 
 Lê o que a base já tem (nenhuma coleta nova): as tabelas `fca/tickers` e `fca/emissores`,
-`controladas/<ano>`, `empresa_serie`, `fidc/cadastro/cad_fi` e `bcb/ifdata/cadastro/<AAAAMM>` (sem as
-versões `.v<N>`), as tabelas conferidas `emissores_antigos.csv` e `entidades.csv`, e três originais do
+`controladas/<ano>`, `auditores/<ano>`, `empresa_serie`, `fidc/cadastro/cad_fi`,
+`bcb/ifdata/cadastro/<AAAAMM>` e as carteiras dos fundos `cda/<ano>` (sem as versões `.v<N>`; o CDA um
+ano por vez, só as colunas que a rede usa), as tabelas conferidas `emissores_antigos.csv` e `entidades.csv`, e três originais do
 acervo: o `cad_cia_aberta.csv` mais recente da CVM, as páginas do GLEIF da cópia mais nova e, da
 Receita, só duas colunas do mês mais recente (natureza jurídica e opção pelo MEI das raízes da rede).
 
-Grava `rede/entidades` e `rede/identificadores` com manifesto e versões
-(`base/parquet.py::gravar_com_versoes`): com as mesmas origens, nada é lido nem regravado. Mostra
-quantas linhas e quantos conflitos por regra e fonte. Recusa rodar sem a versão do código (exigência 13
-da ADR 0055).
+Grava `rede/entidades`, `rede/identificadores` e `rede/ligacoes` com manifesto e versões
+(`base/parquet.py::gravar_com_versoes`): com as mesmas origens, nada é lido nem regravado. As ligações
+somam a carga nova à tabela que já existe sem apagar nada (`base/rede/ligacoes.py`), com o
+`coletado_em` do registro de coletas. Mostra quantas linhas e quantos conflitos por regra e fonte.
+Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+
+Roda toda noite no servidor de casa, depois das cargas: saída 0 tudo certo; 1 alguma falha, com a
+última linha `FALHAS: ...` (vai para o aviso do Kuma), como `scripts/copiar_b3_negocios.py`.
 """
 
 import argparse
@@ -24,7 +29,7 @@ import logging
 import re
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import pandas as pd
@@ -38,7 +43,7 @@ from base.parquet import (
     ler_tabela,
     origem_de_tabela,
 )
-from base.rede import amostra, ids, montar
+from base.rede import amostra, ids, ligacoes, ligacoes_das_fontes, montar
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.banco.conexao import obter_engine
@@ -54,7 +59,23 @@ FONTE_DO_GLEIF, FONTE_DA_RECEITA = "gleif-br", "rfb-cnpj"
 ARQUIVO_DA_RECEITA = re.compile(r"/(\d{4}-\d{2})/(Empresas\d+|Simples)\.zip$")
 ORDEM_DAS_ENTIDADES = ["id_entidade"]
 ORDEM_DOS_IDENTIFICADORES = ["id_entidade", "sistema", "valor", "desde"]
+ORDEM_DAS_LIGACOES = list(ligacoes.CHAVE)
+COLUNAS_DO_CDA = [
+    "competencia",
+    "cnpj_fundo",
+    "fundo",
+    "tipo_do_fundo",
+    "tipo",
+    "isin",
+    "emissor",
+    "disponivel_em",
+]
+FUSO = "America/Sao_Paulo"
+TAMANHO_MAXIMO_DO_RESUMO = 200  # o aviso do Kuma corta mensagens longas
 Origem = dict[str, str]
+TabelasLidas = dict[
+    str, list[str]
+]  # sha256 do conteúdo da tabela → sha256 das origens dela
 
 
 @dataclass
@@ -63,6 +84,11 @@ class Resumo:
     identificadores: int
     conflitos: pd.DataFrame
     gravadas: dict[str, str]
+    ligacoes: int = 0
+
+
+class SemEntradasError(RuntimeError):
+    """Nenhuma tabela de entrada na base: a montagem não grava nada (a noite avisa o Kuma)."""
 
 
 def _origem_da_conferida(nome: str) -> Origem:
@@ -97,12 +123,40 @@ def _origens_das_linhas(conexao: sa.Connection, tabela: pd.DataFrame) -> list[Or
     ]
 
 
+def _manifesto(arquivo: Path) -> dict | None:
+    caminho = arquivo.with_suffix(".json")
+    return (
+        json.loads(caminho.read_text(encoding="utf-8")) if caminho.is_file() else None
+    )
+
+
+def _com_origem(
+    arquivo: Path, tabela: pd.DataFrame, lidas: TabelasLidas
+) -> pd.DataFrame:
+    """Linha sem `origem_sha256` (tabela com manifesto, como o cadastro do IF.data) leva o SHA-256
+    do conteúdo da tabela: o `coletado_em` da ligação sai das origens dela no registro."""
+    manifesto = _manifesto(arquivo)
+    if manifesto is None:
+        return tabela
+    sha = manifesto["sha256_da_tabela"]
+    lidas[sha] = [o["sha256"] for o in manifesto.get("origens", [])]
+    if "origem_sha256" in tabela:
+        return tabela
+    return tabela.assign(origem_sha256=sha)
+
+
 def _ler(
-    arquivos: list[Path], pasta: Path, origens: list[Origem], conexao: sa.Connection
+    arquivos: list[Path],
+    pasta: Path,
+    origens: list[Origem],
+    conexao: sa.Connection,
+    lidas: TabelasLidas,
 ) -> pd.DataFrame:
     if not arquivos:
         return pd.DataFrame()
-    tabela = pd.concat([ler_tabela(a) for a in arquivos], ignore_index=True)
+    tabela = pd.concat(
+        [_com_origem(a, ler_tabela(a), lidas) for a in arquivos], ignore_index=True
+    )
     if all(a.with_suffix(".json").is_file() for a in arquivos):
         origens += [origem_de_tabela(a, pasta) for a in arquivos]
     else:
@@ -181,40 +235,115 @@ def _natureza_e_mei(
     )
 
 
-def _entradas(
-    conexao: sa.Connection, pasta: Path
-) -> tuple[montar.Entradas, list[tuple[str, Path]], list[Origem]]:
+@dataclass
+class _Lidas:
+    """O que a montagem leu: as entradas, a Receita, as carteiras e as origens de cada uma."""
+
+    entradas: montar.Entradas
+    receita: list[tuple[str, Path]]
+    carteiras: list[Path]
+    origens: list[Origem]
+    tabelas: TabelasLidas
+
+
+def _entradas(conexao: sa.Connection, pasta: Path) -> _Lidas:
     origens: list[Origem] = []
+    lidas: TabelasLidas = {}
+
+    def ler(arquivos: list[Path]) -> pd.DataFrame:
+        return _ler(arquivos, pasta, origens, conexao, lidas)
+
     entradas = montar.Entradas(
         cadastro=_cadastro(conexao, origens),
-        tickers=_ler(_uma(pasta, "fca", "tickers"), pasta, origens, conexao),
-        emissores=_ler(_uma(pasta, "fca", "emissores"), pasta, origens, conexao),
+        tickers=ler(_uma(pasta, "fca", "tickers")),
+        emissores=ler(_uma(pasta, "fca", "emissores")),
         emissores_antigos=pd.read_csv(
             CONFERIDAS / "emissores_antigos.csv",
             sep=";",
             dtype=str,
             keep_default_na=False,
         ).replace("", None),
-        controladas=_ler(
-            arquivos_atuais(pasta / "controladas"), pasta, origens, conexao
-        ),
-        empresa_serie=_ler(
-            _uma(pasta, "empresa_serie", "empresa_serie"), pasta, origens, conexao
-        ),
-        fundos=_ler(_uma(pasta, "fidc", "cadastro", "cad_fi"), pasta, origens, conexao),
-        ifdata=_ler(
-            arquivos_atuais(pasta / "bcb" / "ifdata" / "cadastro"),
-            pasta,
-            origens,
-            conexao,
-        ),
+        controladas=ler(arquivos_atuais(pasta / "controladas")),
+        auditores=ler(arquivos_atuais(pasta / "auditores")),
+        empresa_serie=ler(_uma(pasta, "empresa_serie", "empresa_serie")),
+        fundos=ler(_uma(pasta, "fidc", "cadastro", "cad_fi")),
+        ifdata=ler(arquivos_atuais(pasta / "bcb" / "ifdata" / "cadastro")),
         gleif=_gleif(conexao, origens),
     )
+    carteiras = arquivos_atuais(pasta / "cda")
+    origens += [origem_de_tabela(a, pasta) for a in carteiras]
     origens += [
         _origem_da_conferida("emissores_antigos.csv"),
         _origem_da_conferida("entidades.csv"),
     ]
-    return entradas, _receita(conexao, origens), origens
+    return _Lidas(entradas, _receita(conexao, origens), carteiras, origens, lidas)
+
+
+@dataclass
+class _Carteiras:
+    isins: pd.DataFrame
+    fundos: pd.DataFrame
+    periodos: pd.DataFrame
+    ultimo_mes: int
+
+
+def _carteiras(arquivos: list[Path], lidas: TabelasLidas) -> _Carteiras:
+    """Os ISINs e os períodos da `detem`, um ano do CDA por vez (o CDA inteiro não cabe na memória)."""
+    isins, fundos, periodos, ultimo = [], [], [], -1
+    for arquivo in arquivos:
+        ano = _com_origem(
+            arquivo, pd.read_parquet(arquivo, columns=COLUNAS_DO_CDA), lidas
+        )
+        if ano.empty:
+            continue
+        isins.append(ligacoes_das_fontes.isins_das_posicoes(ano))
+        fundos.append(ligacoes_das_fontes.fundos_das_posicoes(ano))
+        periodos.append(ligacoes_das_fontes.periodos_das_posicoes(ano))
+        ultimo = max(
+            ultimo,
+            int(ligacoes_das_fontes.mes(pd.to_datetime(ano["competencia"])).max()),
+        )
+    juntos = [p for p in periodos if not p.empty]
+    return _Carteiras(
+        ligacoes_das_fontes.juntar_isins(isins),
+        ligacoes_das_fontes.juntar_fundos(fundos),
+        ligacoes.comprimir_periodos(
+            pd.concat(juntos, ignore_index=True), ["cnpj_fundo", "isin", "tipo"]
+        )
+        if juntos
+        else pd.DataFrame(),
+        ultimo,
+    )
+
+
+def _registro(
+    conexao: sa.Connection, shas: set[str], tabelas: TabelasLidas
+) -> dict[str, pd.Timestamp]:
+    """SHA-256 da origem → quando a base o guardou (registro de coletas). A origem que é uma tabela
+    da base vale o dia em que a última das origens dela foi guardada (antes disso a tabela não existia)."""
+    originais = shas | {o for s in shas & tabelas.keys() for o in tabelas[s]}
+    baixado = dict(
+        conexao.execute(
+            sa.select(coletas.c.sha256, sa.func.min(coletas.c.baixado_em))
+            .where(coletas.c.sha256.in_(sorted(originais)), coletas.c.situacao == "ok")
+            .group_by(coletas.c.sha256)
+        ).all()
+    )
+    registro = {s: pd.Timestamp(baixado[s]) for s in shas if s in baixado}
+    for sha in shas & tabelas.keys():
+        datas = [pd.Timestamp(baixado[o]) for o in tabelas[sha] if o in baixado]
+        if datas:
+            registro[sha] = max(datas)
+    return registro
+
+
+def _vigente(destino: Path) -> pd.DataFrame | None:
+    arquivo = destino.with_suffix(".parquet")
+    return ler_tabela(arquivo) if arquivo.is_file() else None
+
+
+def _hoje() -> pd.Timestamp:
+    return pd.Timestamp.now(tz=FUSO).tz_localize(None).normalize()
 
 
 class _UmaVez:
@@ -236,19 +365,58 @@ def _linhas_gravadas(destino: Path) -> int:
     ]
 
 
+# o que não vem da pasta da base: os originais do acervo, a tabela conferida do repositório e os ISINs
+# (montados depois, das carteiras)
+FORA_DA_PASTA = (
+    "cadastro",
+    "gleif",
+    "emissores_antigos",
+    "isins",
+    "fundos_das_carteiras",
+)
+
+
+def _sem_entradas(lidas: _Lidas) -> bool:
+    """Nenhuma tabela da base na pasta (pasta errada, base que não montou): nada a gravar."""
+    return not lidas.carteiras and all(
+        tabela.empty
+        for nome, tabela in vars(lidas.entradas).items()
+        if nome not in FORA_DA_PASTA
+    )
+
+
 def montar_no_acervo(
-    conexao: sa.Connection, pasta: Path, saida: Path | None = None
+    conexao: sa.Connection,
+    pasta: Path,
+    saida: Path | None = None,
+    hoje: pd.Timestamp | None = None,
 ) -> Resumo:
-    """Monta e grava `entidades` e `identificadores` em `<pasta>/rede/` (ou em `saida`, no ensaio)."""
-    entradas, receita, origens = _entradas(conexao, pasta)
+    """Monta e grava `entidades`, `identificadores` e `ligacoes` em `<pasta>/rede/` (ou em `saida`,
+    no ensaio). `hoje` é o dia da carga (o fim das ligações que somem da fonte)."""
+    lidas = _entradas(conexao, pasta)
+    if _sem_entradas(lidas):
+        raise SemEntradasError(f"nenhuma tabela de entrada em {pasta}")
+    destino = saida or pasta / PASTA_DA_REDE
 
     def calcular() -> tuple[pd.DataFrame, ...]:
+        carteiras = _carteiras(lidas.carteiras, lidas.tabelas)
+        entradas = replace(
+            lidas.entradas, isins=carteiras.isins, fundos_das_carteiras=carteiras.fundos
+        )
         observacoes = montar.observacoes(entradas)
-        naturezas, meis = _natureza_e_mei(receita, montar.raizes(observacoes))
-        return montar.montar_rede(observacoes, naturezas, meis, ids.ids_fixados())
+        naturezas, meis = _natureza_e_mei(lidas.receita, montar.raizes(observacoes))
+        entidades, identificadores, conflitos = montar.montar_rede(
+            observacoes, naturezas, meis, ids.ids_fixados()
+        )
+        nova = montar.montar_ligacoes(
+            entradas, identificadores, carteiras.periodos, carteiras.ultimo_mes
+        )
+        shas = set(nova["origem_sha256"].dropna())
+        nova = ligacoes.com_coletado_em(nova, _registro(conexao, shas, lidas.tabelas))
+        return entidades, identificadores, conflitos, nova
 
     rede = _UmaVez(calcular)
-    destino = saida or pasta / PASTA_DA_REDE
+    origens = lidas.origens
     gravadas = {
         "entidades": gravar_com_versoes(
             lambda: rede()[0], destino / "entidades", origens, ORDEM_DAS_ENTIDADES
@@ -259,16 +427,30 @@ def montar_no_acervo(
             origens,
             ORDEM_DOS_IDENTIFICADORES,
         ),
+        "ligacoes": gravar_com_versoes(
+            lambda: ligacoes.juntar_com_a_vigente(
+                rede()[3], _vigente(destino / "ligacoes"), hoje or _hoje()
+            ),
+            destino / "ligacoes",
+            origens,
+            ORDEM_DAS_LIGACOES,
+        ),
     }
-    if rede.resultado is None:  # nada mudou: as contas vêm dos manifestos
-        return Resumo(
-            _linhas_gravadas(destino / "entidades"),
-            _linhas_gravadas(destino / "identificadores"),
-            pd.DataFrame(columns=["regra", "fontes"]),
-            gravadas,
-        )
-    entidades, identificadores, conflitos = rede.resultado
-    return Resumo(len(entidades), len(identificadores), conflitos, gravadas)
+    contagem = {t: _linhas_gravadas(destino / t) for t in gravadas}
+    conflitos = (
+        rede.resultado[2]
+        if rede.resultado is not None
+        else pd.DataFrame(
+            columns=["regra", "fontes"]
+        )  # nada mudou: as contas vêm dos manifestos
+    )
+    return Resumo(
+        contagem["entidades"],
+        contagem["identificadores"],
+        conflitos,
+        gravadas,
+        contagem["ligacoes"],
+    )
 
 
 def gravar_amostra(rede: Path, destino: Path) -> int:
@@ -297,6 +479,12 @@ def _conflitos_por_regra_e_fonte(conflitos: pd.DataFrame) -> str:
     )
 
 
+def _avisar(problemas: list[str]) -> int:
+    linha = "FALHAS: rede: " + "; ".join(problemas)
+    print(linha[:TAMANHO_MAXIMO_DO_RESUMO])
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--pasta", type=Path, default=None)
@@ -313,12 +501,17 @@ def main(argv: list[str] | None = None) -> int:
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
     log.info("Versão do código: %s", exigir_versao_do_codigo())
-    with obter_engine().connect() as conexao:
-        resumo = montar_no_acervo(conexao, pasta, opcoes.saida)
+    try:
+        with obter_engine().connect() as conexao:
+            resumo = montar_no_acervo(conexao, pasta, opcoes.saida)
+    except Exception as erro:  # a noite não para em silêncio: o Kuma recebe o motivo
+        log.exception("a montagem da rede falhou")
+        return _avisar([f"{type(erro).__name__}: {erro}"])
     log.info(
-        "rede: %d entidades, %d identificadores (%s); conflitos: %s",
+        "rede: %d entidades, %d identificadores, %d ligações (%s); conflitos: %s",
         resumo.entidades,
         resumo.identificadores,
+        resumo.ligacoes,
         ", ".join(f"{t} {g}" for t, g in resumo.gravadas.items()),
         _conflitos_por_regra_e_fonte(resumo.conflitos),
     )

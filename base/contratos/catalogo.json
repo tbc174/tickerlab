@@ -4828,7 +4828,7 @@
           "unidade": "texto"
         },
         "tipo": {
-          "descricao": "empresa ou fundo",
+          "descricao": "empresa, fundo, valor_mobiliario ou auditor",
           "unidade": "texto"
         },
         "nome": {
@@ -4836,7 +4836,7 @@
           "unidade": "texto"
         },
         "natureza_juridica": {
-          "descricao": "Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada",
+          "descricao": "Código da natureza jurídica da Receita (2046 = S.A. aberta), nao_informada ou nao_se_aplica (valor mobiliário)",
           "unidade": "texto"
         },
         "natureza_fonte": {
@@ -4885,7 +4885,7 @@
           "unidade": "texto"
         },
         "sistema": {
-          "descricao": "cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...)",
+          "descricao": "cnpj, cnpj_raiz, lei, isin, ticker, emissor, codigo_cvm_auditor ou codigo_<fonte> (codigo_bcb_ifdata...)",
           "unidade": "texto"
         },
         "valor": {
@@ -4934,6 +4934,94 @@
       "pessoa": false,
       "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
       "atraso": "O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois"
+    },
+    "ligacoes": {
+      "tabela": "ligacoes",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "de": {
+          "descricao": "A entidade de onde a relação sai (a controlada, o fundo, a firma)",
+          "unidade": "texto"
+        },
+        "para": {
+          "descricao": "A entidade para onde a relação vai (a companhia, o valor mobiliário)",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, do_conglomerado_de, audita, emite ou detem",
+          "unidade": "texto"
+        },
+        "papel": {
+          "descricao": "Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a principal (opera_para); lider (do_conglomerado_de)",
+          "unidade": "texto"
+        },
+        "participacao": {
+          "descricao": "Participação informada no FRE (vazia nos outros)",
+          "unidade": "pontos percentuais (66,25 = 66,25%)"
+        },
+        "aconteceu_em": {
+          "descricao": "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+          "unidade": "data (dia)"
+        },
+        "infracao_em": {
+          "descricao": "Data da infração, nas sanções (vazia nas fontes de hoje)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Desde quando a relação era pública (como era na data)",
+          "unidade": "data (dia)"
+        },
+        "coletado_em": {
+          "descricao": "Quando a base guardou o arquivo de onde veio (registro de coletas)",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "unidade": "data (dia)"
+        },
+        "situacao": {
+          "descricao": "vigente ou encerrada",
+          "unidade": "texto"
+        },
+        "encerrada_por": {
+          "descricao": "fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo ou da tabela da base de onde veio",
+          "unidade": "texto"
+        },
+        "conferido_por": {
+          "descricao": "regra (código) ou tabela (conferida à mão)",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "de",
+        "para",
+        "tipo",
+        "papel",
+        "aconteceu_em",
+        "fonte"
+      ],
+      "datas": {
+        "aconteceu_em": "aconteceu_em",
+        "publico_em": "publico_em",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Toda noite no servidor de casa; versão nova só quando o conteúdo muda",
+      "atraso": "O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o IF.data 120 dias depois da data-base; a fonte de governo desde que guardada"
     }
   }
 }

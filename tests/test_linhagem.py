@@ -342,3 +342,27 @@ def test_painel_remontado_igual_depois_da_entrada_mudada_volta_a_conferir(base_i
     )  # o conteúdo é o mesmo: sem versão nova
     with motor.connect() as c:
         assert linhagem_da_tabela(c, alvo).completa
+
+
+def test_linhagem_confere_depois_da_lapide(ambiente, tmp_path):
+    """A tabela regravada pela lápide confere sozinha; a derivada que a usava deixa de conferir até ser
+    remontada (como quando a fonte regrava a entrada)."""
+    from base.parquet import gravar_tabela, regravar_por_lapide
+
+    motor, _ = ambiente
+    raiz = tmp_path / "rede"
+    origens = [{"url": URL, "sha256": hashlib.sha256(ORIGINAL).hexdigest()}]
+    pessoa = "P" + "1" * 20
+    gravar_tabela(
+        pd.DataFrame({"de": [pessoa, "E" + "a" * 20], "para": "E" + "b" * 20}),
+        raiz / "ligacoes",
+        origens,
+        ["de", "para"],
+    )
+    _tabela_que_le(raiz / "derivada", [raiz / "ligacoes.parquet"], raiz)
+    with motor.connect() as c:
+        assert linhagem_da_tabela(c, raiz / "derivada.parquet").completa
+    regravar_por_lapide(raiz / "ligacoes", {pessoa}, "2026-10-16")
+    with motor.connect() as c:
+        assert linhagem_da_tabela(c, raiz / "ligacoes.parquet").completa
+        assert not linhagem_da_tabela(c, raiz / "derivada.parquet").completa
