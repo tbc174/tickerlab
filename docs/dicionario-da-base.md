@@ -2023,3 +2023,42 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 | `fonte` | cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie | texto |
 | `origem_sha256` | SHA-256 do arquivo ou da tabela da base de onde veio | texto |
 | `conferido_por` | regra (código) ou tabela (conferida à mão) | texto |
+
+## `ma_assessorias`
+
+Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR 0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem data do negócio (a página não tem; `conhecido_em` vem no passo 4 da série 5) e sem CNPJ das partes (passo 3)
+
+- **Fonte:** Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista
+- **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
+- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Frequência:** Semanal (a coleta é aos domingos); versão nova só quando uma página muda
+- **Atraso de divulgação:** Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `assessoria`, `url`
+- **Três datas:** coletado_em = `coletado_em`
+- **Histórico desde:** 2026-10-16 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/assessorias/<assessoria>.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** Cada linha guarda o endereço e o SHA-256 da página no acervo (`url`, `sha256`, que levam ao registro de coletas) e quando ela foi coletada; o `.json` guarda as páginas usadas. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `assessoria` | Quem postou (`igc`) | texto |
+| `url` | Endereço da página do negócio | texto |
+| `sha256` | SHA-256 da página guardada no acervo | texto |
+| `coletado_em` | Quando o arquivista baixou a página | data e hora (UTC) |
+| `tipo` | Código da taxonomia de M&A (AQ_CONTROLE, AQ_MINORITARIA, FUSAO, JV, VENDA_ATIVO, PE_VC, DCM) ou desconhecido | texto |
+| `regra` | Qual regra do título deu o tipo (divida, fusao, jv, venda_de_ativo, minoritaria, majoritaria, participacao, financiamento, rodada, aquisicao); vazio se nenhuma | texto |
+| `alvo` | Empresa(s) comprada(s) ou que recebeu o investimento, separadas por `; ` | texto |
+| `comprador` | Quem comprou ou investiu | texto |
+| `vendedor` | Quem vendeu, quando não é a própria alvo (controladora, dono do ativo) | texto |
+| `outras_partes` | Empresas da página sem papel dito no título (controladora de quem compra) | texto |
+| `cliente` | Empresa(s) que a assessoria diz ter assessorado (campo da página) | texto |
+| `contraparte` | A(s) outra(s) empresa(s) do negócio, como a página lista | texto |
+| `papeis_por` | titulo (os papéis vieram do título) ou pagina (algum nome não aparece no título e o lado veio do campo da página); vazio sem empresas | texto |
+| `lado_da_assessoria` | venda, compra, captacao (dívida ou empréstimo) ou parte (fusão, JV) | texto |
+| `setor` | Setor da alvo; vazio enquanto a página não diz (vem do CNPJ no passo 3) | texto |
+| `paises` | Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem | texto |
+| `valor` | Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume) | número com decimais, na unidade da fonte |
+| `moeda` | BRL ou USD, a do valor | texto |
+| `conferencia` | assessoria (fonte única: declarado por quem assessorou) ou confirmado | texto |
