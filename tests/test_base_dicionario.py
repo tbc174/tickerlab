@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from base import cda, conselhos, fca, ligacoes, ofertas
+from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
@@ -99,6 +100,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anac_estatistico": list(setoriais_anac.COLUNAS),
         "anp_vendas": list(setoriais_anp.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
+        "amostra_painel": list(amostra_universo.COLUNAS),
         **_colunas_das_ofertas_e_conselhos(),
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
         "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],

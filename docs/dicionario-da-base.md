@@ -1201,6 +1201,32 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
 | `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
 
+## `amostra_painel`
+
+A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo; os outros entram um por PR
+
+- **Fonte:** Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR) e `tickers_no_tempo`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal (até o último mês fechado)
+- **Atraso de divulgação:** Nenhum além do de cada fonte: cada coluna vale desde que ficou pública
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `data`
+- **Três datas:** aconteceu_em = `data`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/amostra/v1/painel/<ano>.parquet` (`scripts/montar_amostra.py`)
+- **Linhagem:** O `<ano>.json` aponta as tabelas de entrada (com o hash do manifesto de cada uma) e o original do cadastro; a linhagem segue das tabelas até os originais (`base/linhagem.py`).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `data` | Fim do mês: a linha diz o que se sabia neste dia | data (dia) |
+| `registrada_desde` | Início do registro de companhia aberta vigente na data | data (dia) |
+| `primeira_entrega` | A primeira DFP ou ITR entregue (a companhia só entra depois dela) | data (dia) |
+| `tickers_na_data` | Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum) | texto |
+| `com_ticker_na_data` | Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe | verdadeiro ou falso |
+
 ## `setoriais_buracos`
 
 Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência
