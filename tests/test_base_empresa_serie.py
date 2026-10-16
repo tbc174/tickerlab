@@ -220,15 +220,46 @@ def test_leitores_de_cada_fonte():
     ]
 
 
-def test_escolhe_a_safra_mais_recente_de_cada_fonte():
+def test_cadastros_da_ans_e_da_susep_dao_o_cnpj_ao_codigo_da_fonte():
+    ans = (
+        b"REGISTRO_OPERADORA;CNPJ;RAZAO_SOCIAL\n"
+        b'"393321";"44649812000138";"OPERADORA FICTICIA S.A."\n'
+    )
+    linha = empresa_serie.entidades_cadastro_ans(ans).iloc[0]
+    assert (linha["fonte"], linha["chave"], linha["raiz"]) == (
+        "ans-beneficiarios",
+        "393321",
+        "44649812",
+    )
+    susep = json.dumps(
+        {
+            "value": [
+                {
+                    "entcodigofip": "5886",
+                    "entnome": "PORTO SEGURO CIA",
+                    "entcgc": "61198164000160",
+                }
+            ]
+        }
+    ).encode()
+    linha = empresa_serie.entidades_cadastro_susep(susep).iloc[0]
+    assert (linha["fonte"], linha["chave"], linha["raiz"]) == (
+        "susep-ses",
+        "05886",
+        "61198164",
+    )
+
+
+def test_escolhe_a_safra_mais_recente_ou_toda_a_historia():
+    """A Anatel e o SAMP leem todos os períodos: a TIM Celular só existe nos arquivos até 2018."""
     zip_anatel = "https://www.anatel.gov.br/x/acessos_telefonia_movel.zip"
     anatel = {
         f"{zip_anatel}#Acessos_Telefonia_Movel_2026_1S_Colunas.csv",
-        f"{zip_anatel}#Acessos_Telefonia_Movel_2025_2S_Colunas.csv",
+        f"{zip_anatel}#Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas.csv",
     }
-    assert empresa_serie.escolher("anatel-acessos", list(anatel)) == {
-        f"{zip_anatel}#Acessos_Telefonia_Movel_2026_1S_Colunas.csv"
-    }
+    assert empresa_serie.escolher("anatel-acessos", list(anatel)) == anatel
+    samp = [f"https://a/samp-{ano}.parquet" for ano in (2003, 2026)]
+    assert empresa_serie.escolher("aneel-samp", samp) == set(samp)
     ans = [
         "https://d/202607/pda-024-icb-AC-2026_07.zip",
         "https://d/202608/pda-024-icb-AC-2026_08.zip",
