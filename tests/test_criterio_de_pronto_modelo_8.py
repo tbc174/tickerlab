@@ -100,6 +100,15 @@ HISTORICO = "tests/test_base_historico.py"
 LINHAGEM = "tests/test_linhagem.py"
 PRAZOS_T = "tests/test_prazos.py"
 CANCELADAS = "tests/test_conferir_canceladas.py"
+MONTAGEM = "tests/test_montar_modelo_8.py"
+QUALIDADE = "tests/test_qualidade_da_montagem.py"
+# montagem semanal no servidor de casa com relatório de qualidade e aviso no Kuma (PR D)
+MONTAGEM_COM_ALERTA = [
+    f"{MONTAGEM}::test_ano_que_some_ou_escala_que_muda_faz_a_montagem_falhar",
+    f"{MONTAGEM}::test_tabela_sem_arquivo_faz_a_montagem_falhar",
+    f"{MONTAGEM}::test_monta_na_ordem_e_falha_quando_um_original_nao_abre",
+    f"{QUALIDADE}::test_primeira_montagem_so_confere_o_que_nao_depende_da_anterior",
+]
 CRUZADA = "tests/test_conferencia_cruzada_modelo_8.py"  # tolerâncias em docs/conferencia-cruzada-modelo-8.md
 # conferência medida das canceladas (rodada no servidor de casa em 16/10/2026: 0 perdidas)
 CONFERENCIA_DAS_CANCELADAS = [
@@ -128,6 +137,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{CRUZADA}::test_contas_da_base_como_era_conferem_com_o_documento_no_enet",
         f"{CRUZADA}::test_rotulo_confere_com_o_envio_no_enet",
     ],
+    (DFP_ITR, 7): MONTAGEM_COM_ALERTA,
     (DFP_ITR, 9): [
         f"{PONTO}::test_refazer_a_base_dos_originais_da_os_mesmos_hashes",
         f"{COMO_ERA}::test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma",
@@ -147,6 +157,11 @@ PROVAS: dict[tuple[str, int], list[str]] = {
     (CADASTRO, 6): [
         f"{CRUZADA}::test_registro_e_cancelamento_conferem_com_a_consulta_da_cvm"
     ],
+    # sem o cadastro no acervo, o rótulo não é montado e a montagem falha (o arquivista coleta todo dia)
+    (CADASTRO, 7): [
+        *MONTAGEM_COM_ALERTA,
+        f"{ROTULO_ACERVO}::test_sem_originais_nada_e_gravado",
+    ],
     (CADASTRO, 9): [
         f"{COMO_ERA}::test_montar_de_novo_da_o_mesmo_hash_e_conferir_confirma"
     ],
@@ -164,6 +179,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
     ],
     (FCA, 4): CONFERENCIA_DAS_CANCELADAS,
     (FCA, 6): [f"{CRUZADA}::test_auditor_da_tabela_e_quem_assina_o_relatorio_da_dfp"],
+    (FCA, 7): MONTAGEM_COM_ALERTA,
     (FCA, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao",
         f"{AUDITORES}::test_trocas_saem_dos_anos_de_auditores_gravados_na_base",
@@ -177,6 +193,7 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{HISTORICO}::test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem",
     ],
     (IPE, 4): CONFERENCIA_DAS_CANCELADAS,
+    (IPE, 7): MONTAGEM_COM_ALERTA,
     (IPE, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao"
     ],
@@ -226,10 +243,6 @@ NAO_SE_APLICA: dict[tuple[str, int], str] = {
 }
 
 PENDENCIAS: dict[tuple[str, int], str] = {
-    (DFP_ITR, 7): (
-        "montagens à mão, sem relatório de qualidade nem alerta no Kuma (a das demonstrações de "
-        "14/10 falhou em silêncio). PR D"
-    ),
     (DFP_ITR, 8): (
         "a ficha `rotulos_atraso` entrou depois da revisão do dicionário de 14/10 (e mudou no "
         "PR B: quem é exemplo): falta o Tiago ler. PR B"
@@ -238,15 +251,12 @@ PENDENCIAS: dict[tuple[str, int], str] = {
         "é o retrato de hoje: serve para quem devia o documento e para a UF, não para colunas "
         "(setor e categoria virão do FCA pela data de entrega). Regra e teste no PR 3 do plano"
     ),
-    (CADASTRO, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
-    (FCA, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
     (IPE, 6): (
         "conferência cruzada com a Receita abaixo da tolerância (76% e 55% contra 90%; a recuperação "
         "judicial bate 25 de 25): o rótulo do IPE marca eventos de outras empresas do grupo e a "
         "recuperação extrajudicial, e a Receita não marca casos conhecidos. Proposta para o Tiago "
         "decidir: usar do IPE só a recuperação judicial da própria companhia, corrigida, no PR 3"
     ),
-    (IPE, 7): "sem relatório de qualidade por montagem nem alerta. PR D",
 }
 
 
