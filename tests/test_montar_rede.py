@@ -190,3 +190,11 @@ def test_ensaio_grava_fora_da_base(base, tmp_path):
         motor.dispose()
     assert (tmp_path / "ensaio" / "entidades.parquet").is_file()
     assert not (base / "rede").exists()
+
+
+def test_tabelas_conferidas_vem_do_pacote_base():
+    """Na imagem o script roda por `python - < scripts/montar_rede.py` (sem `__file__` útil)."""
+    from base.rede import ids
+
+    assert ids.TABELA_CONFERIDA.parent == montar_rede.CONFERIDAS
+    assert (montar_rede.CONFERIDAS / "emissores_antigos.csv").is_file()

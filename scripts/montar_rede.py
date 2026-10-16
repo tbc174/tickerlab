@@ -41,7 +41,8 @@ from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.montar_rede")
 PASTA_DA_REDE = "rede"
-CONFERIDAS = Path(__file__).resolve().parent.parent / "base" / "conferidas"
+# do pacote `base`, não do script: na imagem o script roda pela entrada padrão (`python - <`)
+CONFERIDAS = ids.TABELA_CONFERIDA.parent
 FONTE_DO_CADASTRO, ARQUIVO_DO_CADASTRO = "cvm-cadastros", "cad_cia_aberta.csv"
 FONTE_DO_GLEIF, FONTE_DA_RECEITA = "gleif-br", "rfb-cnpj"
 ARQUIVO_DA_RECEITA = re.compile(r"/(\d{4}-\d{2})/(Empresas\d+|Simples)\.zip$")
