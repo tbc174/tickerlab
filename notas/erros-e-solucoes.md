@@ -525,3 +525,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `(1 + taxa)^−meses` some na precisão do float, então a parcela calculada fica igual ao juro do mês e o resíduo de arredondamento se acumula.
 - **Solução:** no último mês do prazo, a amortização é o saldo que sobrou (`amortizacao = saldo`), em Python e no TypeScript; o teste de propriedade "as amortizações somam o valor financiado" pega a volta do erro.
 - **Data:** 15/10/2026
+
+## Manifesto que não confere com o próprio Parquet (`1.0` na memória, `1` no arquivo)
+- **Sintoma:** ao remontar `eventos_de_capital` com manifesto, cada ano virou versão `.v1` sem o dado ter mudado, e `conferir_tabela` dava `False` logo depois de gravar.
+- **Causa:** o leitor deixa colunas `object` com float do Python. O `to_csv(float_format=...)` do hash não formata coluna `object` (`1.0`), mas o Parquet devolve `float64`, que sai `1`. O hash feito na memória era de um texto diferente do arquivo gravado.
+- **Solução:** o hash do manifesto é sempre da tabela como volta do disco (`base/parquet.py::como_no_disco`), e a comparação "o dado mudou?" também; manifesto que não confere é refeito sem versão (#299). Regra: hash de conferência se calcula sobre o que foi gravado, nunca sobre o objeto em memória.
+- **Data:** 15/10/2026
