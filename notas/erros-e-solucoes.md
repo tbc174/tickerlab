@@ -531,3 +531,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o leitor deixa colunas `object` com float do Python. O `to_csv(float_format=...)` do hash não formata coluna `object` (`1.0`), mas o Parquet devolve `float64`, que sai `1`. O hash feito na memória era de um texto diferente do arquivo gravado.
 - **Solução:** o hash do manifesto é sempre da tabela como volta do disco (`base/parquet.py::como_no_disco`), e a comparação "o dado mudou?" também; manifesto que não confere é refeito sem versão (#299). Regra: hash de conferência se calcula sobre o que foi gravado, nunca sobre o objeto em memória.
 - **Data:** 15/10/2026
+
+## Script do servidor esperou 2 h por um merge que já tinha acontecido
+- **Sintoma:** o `ma-coletor-no-servidor.sh` (#313) ficou no laço "esperando o merge" e saiu com "não entrou na main em 2 h", embora `git log origin/main --oneline | grep '(#313)'` achasse o commit quando rodado à mão.
+- **Causa:** o script tem `set -euo pipefail`. No laço `until git log ... | grep -q '(#313)'`, o `grep -q` termina assim que acha a linha; o `git log` ainda está escrevendo, leva SIGPIPE e sai com 141. Com `pipefail`, o pipeline inteiro conta como falha, então o `until` nunca via o merge.
+- **Solução:** perguntar direto ao Git, sem pipeline: `git merge-base --is-ancestor <commit> origin/main` (sai 0 se o commit já está na `main`). Regra geral: com `pipefail`, não pôr `grep -q` (ou `head`) depois de um comando que escreve muito.
+- **Data:** 16/10/2026
