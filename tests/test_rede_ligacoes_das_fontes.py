@@ -249,6 +249,17 @@ def test_auditor_empresario_individual_e_pessoa_sem_nome():
     assert kpmg["trata_como_pessoa"] and pd.isna(kpmg["nome"])
 
 
+def test_auditor_com_natureza_fora_das_sociedades_segue_como_pessoa():
+    """Firma de auditoria registrada na CVM é sociedade (grupo 2 da Receita). Outra natureza (ex.: o
+    CNPJ do FCA cai num cartório, 303-4) diz que o documento não é da firma: fica a D8."""
+    kpmg = _rede_com_naturezas(_auditores(), {"57755217": "3034"}).loc[ID_KPMG]
+    assert kpmg[["natureza_juridica", "natureza_fonte"]].tolist() == [
+        "nao_informada",
+        "nao_informada",
+    ]
+    assert kpmg["trata_como_pessoa"]
+
+
 def test_codigo_com_duas_raizes_fica_com_a_mais_frequente():
     """Parte das linhas do FCA traz o CNPJ errado: vale a raiz da maioria dos mandatos do código."""
     auditores = _auditores()
