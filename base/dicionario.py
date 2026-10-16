@@ -2038,9 +2038,13 @@ TABELAS: dict[str, Tabela] = {
             "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
             "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
             "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
-            "universo; os outros entram um por PR"
+            "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os "
+            "outros entram um por PR"
         ),
-        fonte="Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR) e `tickers_no_tempo`",
+        fonte=(
+            "Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e "
+            "`demonstracoes_como_era`"
+        ),
         familia_da_fonte="cvm",
         frequencia="Mensal (até o último mês fechado)",
         atraso="Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
@@ -2068,6 +2072,59 @@ TABELAS: dict[str, Tabela] = {
                 "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
                 SIM_OU_NAO,
             ),
+            "balanco_fim": ("Data do balanço mais novo já público na data", DATA),
+            "balanco_publico_em": (
+                "Quando os valores do balanço usados ficaram públicos (entrega à CVM)",
+                DATA,
+            ),
+            "balanco_grupo": (
+                "con (consolidado) ou ind (individual, sem consolidado no período)",
+                TEXTO,
+            ),
+            "ativo_total": ("Ativo total (conta 1)", REAIS),
+            "caixa": ("Caixa e equivalentes de caixa", REAIS),
+            "patrimonio_liquido": (
+                "Patrimônio líquido (consolidado: com os minoritários)",
+                REAIS,
+            ),
+            "divida_bruta": (
+                "Empréstimos e financiamentos de curto e de longo prazo, somados",
+                REAIS,
+            ),
+            "acumulado_inicio": (
+                "Início do período acumulado do documento mais novo (o início do exercício)",
+                DATA,
+            ),
+            "acumulado_fim": (
+                "Fim do período acumulado (o fim do trimestre ou do exercício)",
+                DATA,
+            ),
+            "acumulado_publico_em": (
+                "Quando os valores acumulados usados ficaram públicos",
+                DATA,
+            ),
+            "acumulado_grupo": ("con ou ind, no acumulado", TEXTO),
+            "receita_acumulado": (
+                "Receita do início do exercício ao fim do trimestre (bancos: da intermediação)",
+                REAIS,
+            ),
+            "ebit_acumulado": (
+                "Resultado antes do financeiro e dos tributos, acumulado (vazio nos bancos)",
+                REAIS,
+            ),
+            "lucro_acumulado": ("Lucro ou prejuízo do período, acumulado", REAIS),
+            "anual_fim": ("Fim do exercício da DFP mais nova já pública", DATA),
+            "anual_publico_em": (
+                "Quando os valores anuais usados ficaram públicos",
+                DATA,
+            ),
+            "anual_grupo": ("con ou ind, no anual", TEXTO),
+            "receita_anual": ("Receita do exercício (bancos: da intermediação)", REAIS),
+            "ebit_anual": (
+                "Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos)",
+                REAIS,
+            ),
+            "lucro_anual": ("Lucro ou prejuízo do exercício", REAIS),
         },
     ),
     "setoriais_buracos": Tabela(
@@ -3103,7 +3160,7 @@ _CONTRATO = {
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
-    "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM),
+    "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
