@@ -10,6 +10,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import NamedTuple
 
 import requests
 import sqlalchemy as sa
@@ -224,13 +225,17 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
     return acervo.ler_original(caminho) if caminho else None
 
 
-def coletas_guardadas(
-    conexao: sa.Connection, url: str
-) -> list[tuple[datetime, str, bytes]]:
-    """Cada conteúdo diferente de `url` guardado no acervo (quando foi baixado pela primeira vez, o
-    SHA-256 e o conteúdo), do mais antigo ao mais novo (revisões das fontes setoriais, série 4, PR 5)."""
+class Versao(NamedTuple):
+    baixado_em: datetime  # a primeira vez que este conteúdo foi baixado
+    sha256: str
+    caminho: str  # no acervo (`acervo.ler_original`)
+
+
+def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo, sem ler os
+    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez)."""
     linhas = conexao.execute(
-        sa.select(coletas.c.sha256, coletas.c.caminho_do_original, coletas.c.baixado_em)
+        sa.select(coletas.c.baixado_em, coletas.c.sha256, coletas.c.caminho_do_original)
         .where(
             coletas.c.url == url[:LIMITE_DA_URL],
             coletas.c.situacao == "ok",
@@ -239,11 +244,37 @@ def coletas_guardadas(
         .order_by(coletas.c.baixado_em)
     ).all()
     vistos: set[str] = set()
+    versoes = []
+    for baixado_em, sha256, caminho in linhas:
+        if sha256 not in vistos:
+            vistos.add(sha256)
+            versoes.append(Versao(baixado_em, sha256, caminho))
+    return versoes
+
+
+def ausente_antes(conexao: sa.Connection, url: str, quando: datetime) -> bool:
+    """Alguma coleta antes de `quando` achou `url` sem arquivo ("nao_encontrado", o 404 da fonte)?"""
+    return (
+        conexao.execute(
+            sa.select(coletas.c.id)
+            .where(
+                coletas.c.url == url[:LIMITE_DA_URL],
+                coletas.c.situacao == "nao_encontrado",
+                coletas.c.baixado_em < quando,
+            )
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
+def coletas_guardadas(
+    conexao: sa.Connection, url: str
+) -> list[tuple[datetime, str, bytes]]:
+    """Cada conteúdo diferente de `url` guardado no acervo (quando foi baixado pela primeira vez, o
+    SHA-256 e o conteúdo), do mais antigo ao mais novo (revisões das fontes setoriais, série 4, PR 5)."""
     guardadas = []
-    for sha256, caminho, baixado_em in linhas:
-        if sha256 in vistos:
-            continue
-        vistos.add(sha256)
+    for baixado_em, sha256, caminho in versoes_guardadas(conexao, url):
         conteudo = acervo.ler_original(caminho)
         if conteudo is not None:
             guardadas.append((baixado_em, sha256, conteudo))

@@ -553,6 +553,30 @@ def _boletim_final_ja_guardado(anterior: sa.Row) -> bool:
     return baixado.astimezone(FUSO_DA_B3).date() > pregao
 
 
+# o dia em que cada informe apareceu na CVM (`visto_em`, `base/publicacao.py`): os meses mais novos,
+# todo dia; o que ainda não saiu fica "nao_encontrado" (a prova de que faltava). O FIDC é entregue em
+# 15 dias e regravado depois; o CDA enche em ~3 meses (o sigilo vai a 90 dias). ~140 MB por dia.
+FIDC_DO_MES = "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_{aaaamm}.zip"
+CDA_DO_MES = "https://dados.cvm.gov.br/dados/FI/DOC/CDA/DADOS/cda_fi_{aaaamm}.zip"
+MESES_RECENTES_DO_FIDC = 4
+MESES_RECENTES_DO_CDA = 5
+
+
+def _meses_recentes(modelo: str, meses: int) -> Descobrir:
+    """Os `meses` meses antes do atual (no fuso de São Paulo), do mais antigo ao mais novo."""
+
+    def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        hoje = agora.astimezone(FUSO_DA_B3).date()
+        alvos = []
+        for atras in range(meses, 0, -1):
+            ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
+            url = modelo.format(aaaamm=f"{ano}{mes + 1:02d}")
+            alvos.append(Alvo(url, ".zip", zip_que_pode_faltar(url)))
+        return alvos
+
+    return descobrir
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -605,6 +629,15 @@ FONTES: list[Fonte] = [
     # semanais: a CVM só guarda os meses recentes do FIAGRO e reescreve o FIDC
     Fonte("cvm-fiagro", "semanal", _ckan(PORTAL_DA_CVM, "fiagro-doc-inf_mensal")),
     Fonte("cvm-fidc", "semanal", _ckan(PORTAL_DA_CVM, "fidc-doc-inf_mensal")),
+    # diárias: o dia em que cada informe e cada carteira apareceram (`visto_em`)
+    Fonte(
+        "cvm-fidc-recente",
+        "diaria",
+        _meses_recentes(FIDC_DO_MES, MESES_RECENTES_DO_FIDC),
+    ),
+    Fonte(
+        "cvm-cda-recente", "diaria", _meses_recentes(CDA_DO_MES, MESES_RECENTES_DO_CDA)
+    ),
     Fonte(
         "cvm-cri",
         "semanal",

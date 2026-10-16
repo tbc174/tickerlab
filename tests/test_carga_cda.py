@@ -13,7 +13,7 @@ from scripts import carga_cda
 from src import acervo
 from src import versao_do_codigo as vc
 from src.banco.coletas import com_registro
-from src.banco.conexao import migrar_para
+from src.banco.conexao import criar_engine, migrar_para
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "cda"
 VERSAO = "3af11e4c1e6b0b5a9c1d2e3f4a5b6c7d8e9f0a1b"
@@ -137,3 +137,77 @@ def test_ano_grava_tambem_as_acoes_do_bloco_8(ambiente):
     carga_cda.main(["--pasta", str(pasta), "--desde", "2005", "--ate", "2005"])
     vazio = pd.read_parquet(pasta.parent / "cda_bloco_8" / "2005.parquet")
     assert vazio.empty and "cnpj_emissor" in vazio.columns
+
+
+def test_carteira_entregue_depois_so_vale_do_dia_em_que_apareceu(ambiente):
+    """Relatório de cruzamentos 7 (16/10/2026): o prazo de 90 dias não é a data em que a carteira
+    apareceu; quem entrega depois do prazo só vale do dia em que foi visto."""
+    import io
+    import zipfile
+    from datetime import UTC, datetime
+
+    from base import cda
+    from src.banco.coletas import registrar
+
+    pasta, arquivos, _ = ambiente
+    url = carga_cda.PASTA_DA_CVM + "cda_fi_202509.zip"
+    completo = arquivos["cda_fi_202509.zip"]
+    atrasado = next(cda.ler_posicoes_historicas(completo))["cnpj_fundo"].iloc[-1]
+    saida = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(completo)) as entrada,
+        zipfile.ZipFile(saida, "w") as nova,
+    ):
+        for nome in entrada.namelist():
+            linhas = entrada.read(nome).decode("latin-1").splitlines(keepends=True)
+            nova.writestr(
+                nome,
+                "".join(
+                    linhas[:1] + [x for x in linhas[1:] if atrasado not in x]
+                ).encode("latin-1"),
+            )
+    motor = criar_engine()
+    try:
+        for conteudo, quando in (
+            (saida.getvalue(), datetime(2025, 10, 20, 5, tzinfo=UTC)),
+            (completo, datetime(2026, 2, 10, 5, tzinfo=UTC)),
+        ):
+            caminho = acervo.guardar_original("cvm-cda-recente", url, conteudo, quando)
+            with motor.begin() as c:
+                registrar(
+                    c, "cvm-cda-recente", url, conteudo, "ok", None, quando, caminho
+                )
+    finally:
+        motor.dispose()
+
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2025", "--ate", "2025"])
+
+    for arquivo in (
+        pasta / "2025.parquet",
+        pasta.parent / "cda_bloco_8" / "2025.parquet",
+    ):
+        tabela = pd.read_parquet(arquivo)
+        assert "visto_em" in tabela.columns, arquivo
+    tabela = pd.read_parquet(pasta / "2025.parquet")
+    tarde = tabela["cnpj_fundo"] == atrasado
+    assert tarde.any() and (~tarde).any()
+    assert (tabela.loc[tarde, "visto_em"] == pd.Timestamp("2026-02-10")).all()
+    assert (tabela.loc[tarde, "disponivel_em"] >= pd.Timestamp("2026-02-10")).all()
+    assert tabela.loc[~tarde, "visto_em"].isna().all()  # já na 1ª versão: vale o prazo
+    no_prazo = tabela.loc[~tarde]
+    assert no_prazo["disponivel_em"].tolist() == cda.disponivel_em(no_prazo).tolist()
+
+
+def test_refazer_regrava_o_cda_com_as_mesmas_origens(ambiente, monkeypatch):
+    pasta, _, _ = ambiente
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2005", "--ate", "2005"])
+    antiga = pd.read_parquet(pasta / "2005.parquet")
+    original = carga_cda.cda.disponivel_em
+    monkeypatch.setattr(
+        carga_cda.cda, "disponivel_em", lambda t: original(t) + pd.Timedelta(days=1)
+    )
+    carga_cda.main(
+        ["--pasta", str(pasta), "--desde", "2005", "--ate", "2005", "--refazer"]
+    )
+    assert not pd.read_parquet(pasta / "2005.parquet").equals(antiga)
+    assert (pasta / "2005.v1.parquet").exists()

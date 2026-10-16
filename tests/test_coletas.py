@@ -234,3 +234,28 @@ def test_migracao_da_versao_do_codigo_sobe_e_desce(tmp_path):
         assert "versao_do_codigo" in colunas()
     finally:
         motor.dispose()
+
+
+def test_versoes_guardadas_sem_ler_e_ausencia_antes_da_primeira(banco):
+    """A data em que cada informe apareceu (`base/publicacao.py`) sai das versões guardadas."""
+    from src import acervo
+
+    dia = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)
+    with banco.begin() as conexao:
+        registrar(conexao, "cvm-fidc-recente", URL, None, "nao_encontrado", agora=dia)
+        for n, conteudo in enumerate((b"v1", b"v1", b"v2")):
+            quando = dia + timedelta(days=n + 1)
+            caminho = acervo.guardar_original("cvm-fidc-recente", URL, conteudo, quando)
+            registrar(
+                conexao, "cvm-fidc-recente", URL, conteudo, "ok", None, quando, caminho
+            )
+    with banco.connect() as conexao:
+        versoes = coletas.versoes_guardadas(conexao, URL)
+        assert [v.sha256 for v in versoes] == [
+            hashlib.sha256(b"v1").hexdigest(),
+            hashlib.sha256(b"v2").hexdigest(),
+        ]  # a repetida não conta
+        assert acervo.ler_original(versoes[1].caminho) == b"v2"
+        assert coletas.ausente_antes(conexao, URL, versoes[0].baixado_em)
+        assert not coletas.ausente_antes(conexao, URL, dia)
+        assert coletas.versoes_guardadas(conexao, URL + "x") == []

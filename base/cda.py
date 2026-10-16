@@ -12,7 +12,8 @@ base dizerem o mesmo.
 - **"Como era na data":** o arquivo não diz quando ficou público. A posição só vale a partir de 90
   dias depois da competência (o arquivo sai uns 40 dias depois e o sigilo pode ir a 90) ou do fim do
   sigilo (`DT_CONFID_APLIC`), o que vier depois. Regra conservadora: pode atrasar um número, nunca
-  adiantar.
+  adiantar. Quem entrega atrasado só vale do dia em que a carteira apareceu na CVM (`visto_em`,
+  `base/publicacao.py`).
 
 **Bloco 8** ("demais ativos não codificados"; achado da série 4): muitos fundos informam ações da bolsa
 sem o código estruturado, só com a descrição ("PETR3 - PETROBRAS") e o CNPJ do emissor. Em 2020, R$ 1,14
@@ -170,6 +171,50 @@ def ler_acoes_do_bloco_8(
                 yield _acoes_do_pedaco_do_bloco_8(bruto).reset_index(drop=True)[
                     list(COLUNAS_DO_BLOCO_8)
                 ]
+
+
+def _chaves_do_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
+    with arquivo.open(nome) as cabeca:
+        cabecalho = pd.read_csv(
+            cabeca, sep=";", encoding=CODIFICACAO_DA_CVM, nrows=0
+        ).columns
+    usadas = [
+        c
+        for c in cabecalho
+        if NOMES_NOVOS.get(c, c) in ("CNPJ_FUNDO_CLASSE", "DT_COMPTC")
+    ]
+    partes = []
+    with arquivo.open(nome) as fluxo:
+        for bruto in pd.read_csv(
+            fluxo, sep=";", encoding=CODIFICACAO_DA_CVM, encoding_errors="replace",
+            dtype=str, keep_default_na=False, usecols=usadas, chunksize=LINHAS_POR_PEDACO,
+        ):  # fmt: skip
+            bruto = bruto.rename(columns=NOMES_NOVOS)
+            partes.append(
+                pd.DataFrame(
+                    {
+                        "competencia": pd.to_datetime(
+                            bruto["DT_COMPTC"], errors="coerce"
+                        ),
+                        "cnpj_fundo": bruto["CNPJ_FUNDO_CLASSE"].str.strip(),
+                    }
+                ).drop_duplicates()
+            )
+    return pd.concat(partes, ignore_index=True)
+
+
+def chaves_do_cda(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Os fundos de cada mês do arquivo (`competencia`, `cnpj_fundo`): do arquivo de PL (um fundo por
+    linha, ~3 MB) ou, sem ele, do bloco 4. De cada versão guardada sai o dia em que a carteira
+    apareceu na CVM (`base/publicacao.py`)."""
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        nomes = arquivo.namelist()
+        nome = next((n for n in nomes if "_PL_" in n), None) or next(
+            n for n in nomes if "_BLC_4_" in n
+        )
+        chaves = _chaves_do_csv(arquivo, nome)
+    chaves = chaves.dropna().drop_duplicates()
+    return chaves[chaves["cnpj_fundo"] != ""].reset_index(drop=True)
 
 
 def disponivel_em(posicoes: pd.DataFrame) -> pd.Series:

@@ -234,12 +234,12 @@ As posições em ações de todos os fundos registrados na CVM, por mês, desde 
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
-- **Atraso de divulgação:** O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois
+- **Atraso de divulgação:** O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 5 meses mais novos todo dia: a carteira entregue depois do prazo só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo
 - **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
 - **Chaves:** `competencia`, `cnpj_fundo`, `tipo`, `codigo`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/cda/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`)
 - **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (no acervo e no registro de coletas, com a data da coleta e a versão do código que baixou) e a versão do código que gravou.
 
@@ -259,7 +259,8 @@ As posições em ações de todos os fundos registrados na CVM, por mês, desde 
 | `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
 | `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
 | `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
-| `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
+| `visto_em` | O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois | data (dia) |
 
 ## `carteiras_bloco_8`
 
@@ -269,12 +270,12 @@ As ações e os certificados de depósito que os fundos informam no bloco 8 do C
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
-- **Atraso de divulgação:** O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois
+- **Atraso de divulgação:** O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois
 - **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
 - **Chaves:** `competencia`, `cnpj_fundo`, `tipo`, `cnpj_emissor`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`, na mesma carga do CDA)
 - **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (os mesmos do bloco 4) e a versão do código que gravou.
 
@@ -294,30 +295,32 @@ As ações e os certificados de depósito que os fundos informam no bloco 8 do C
 | `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
 | `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
 | `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
-| `disponivel_em` | Desde quando a posição era pública (como era na data) | data (dia) |
+| `visto_em` | O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois | data (dia) |
 
 ## `fidc_informe`
 
-O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as três abaixo. Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)
+O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as quatro abaixo. Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)
 
 - **Fonte:** CVM: informe mensal de FIDC
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
 - **Frequência:** Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês
-- **Atraso de divulgação:** Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias
+- **Atraso de divulgação:** Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 4 meses mais novos todo dia: o informe entregue depois só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo
 - **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
 - **Chaves:** `competencia`, `cnpj_fundo`
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/fidc/informe/<quadro>/<ano>.parquet` (servidor de casa, `scripts/carga_fidc.py`)
-- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do informe usado (no acervo e no registro de coletas, com a data da coleta e a versão do código que baixou) e a versão do código que gravou.
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do informe usado, com todas as versões guardadas de onde sai o `visto_em` (no acervo e no registro de coletas, com a data da coleta e a versão do código que baixou) e a versão do código que gravou.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `competencia` | Mês do informe (último dia) | data (dia) |
 | `cnpj_fundo` | CNPJ do fundo (ou da classe, depois da CVM 175) | texto |
-| `disponivel_em` | Desde quando o informe era público (como era na data) | data (dia) |
+| `visto_em` | O dia em que o informe do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo) | data (dia) |
+| `disponivel_em` | Desde quando o informe era público (como era na data): competência + 45 dias, ou `visto_em` se for depois | data (dia) |
 
 ## `cadastro_de_fundos`
 

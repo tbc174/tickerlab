@@ -485,7 +485,10 @@ TABELAS: dict[str, Tabela] = {
         frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
         atraso=(
             "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por "
-            "até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+            "até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois "
+            "(o prazo, não a data vista). Desde 10/2026 o arquivista olha os 5 meses mais novos todo "
+            "dia: a carteira entregue depois do prazo só vale do dia em que apareceu (`visto_em`). "
+            "Antes disso, a data é só o prazo"
         ),
         onde="Parquet por ano em `<acervo>/base/cda/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`)",
         linhagem=(
@@ -511,8 +514,19 @@ TABELAS: dict[str, Tabela] = {
                 "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
                 DATA,
             ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do "
+                    "arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; "
+                    "vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando a posição era pública (como era na data)",
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
                 DATA,
             ),
         },
@@ -529,7 +543,8 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="cvm",
         frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
         atraso=(
-            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o "
+            "dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
         ),
         onde=(
             "Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, "
@@ -563,8 +578,19 @@ TABELAS: dict[str, Tabela] = {
                 "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
                 DATA,
             ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas "
+                    "diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em "
+                    "10/2026; vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando a posição era pública (como era na data)",
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
                 DATA,
             ),
         },
@@ -574,7 +600,7 @@ TABELAS: dict[str, Tabela] = {
             "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e "
             "por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, "
             "recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são "
-            "as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as três abaixo. "
+            "as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as quatro abaixo. "
             "Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)"
         ),
         fonte="CVM: informe mensal de FIDC",
@@ -582,19 +608,33 @@ TABELAS: dict[str, Tabela] = {
         frequencia="Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
         atraso=(
             "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão "
-            "`<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+            "`<ano>.v<N>`). `disponivel_em` usa competência + 45 dias (o prazo, não a data vista). "
+            "Desde 10/2026 o arquivista olha os 4 meses mais novos todo dia: o informe entregue "
+            "depois só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
         ),
         onde="Parquet em `<acervo>/base/fidc/informe/<quadro>/<ano>.parquet` (servidor de casa, `scripts/carga_fidc.py`)",
         linhagem=(
             "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do "
-            "informe usado (no acervo e no registro de coletas, com a data da coleta e a versão do "
-            "código que baixou) e a versão do código que gravou."
+            "informe usado, com todas as versões guardadas de onde sai o `visto_em` (no acervo e no "
+            "registro de coletas, com a data da coleta e a versão do código que baixou) e a versão "
+            "do código que gravou."
         ),
         colunas={
             "competencia": ("Mês do informe (último dia)", DATA),
             "cnpj_fundo": ("CNPJ do fundo (ou da classe, depois da CVM 175)", TEXTO),
+            "visto_em": (
+                (
+                    "O dia em que o informe do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do "
+                    "arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; "
+                    "vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando o informe era público (como era na data)",
+                (
+                    "Desde quando o informe era público (como era na data): competência + 45 dias, ou "
+                    "`visto_em` se for depois"
+                ),
                 DATA,
             ),
         },
@@ -3361,9 +3401,9 @@ _CONTRATO = {
     "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
-    "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
-    "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
-    "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
