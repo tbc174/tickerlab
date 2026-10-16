@@ -1,5 +1,6 @@
-"""Carga das fontes setoriais para a base (série 4 da base de ML, PR 4; `base/setoriais/`): ANAC, ANP e
-ONS, no formato de cada fonte, com a data desde quando cada número era público.
+"""Carga das fontes setoriais para a base (série 4 da base de ML, PRs 4 e 5; `base/setoriais/`): ANAC,
+ANP, ONS, ANEEL (SAMP), Anatel e ANS, no formato de cada fonte, com a data desde quando cada número era
+público.
 
     python -m scripts.carga_setoriais                     (a base do acervo)
     python -m scripts.carga_setoriais --base <pasta>      (a pasta com empresa_serie/)
@@ -9,6 +10,11 @@ vez, `<base>/setoriais/<fonte>/<ano>.parquet` com manifesto e versões (`gravar_
 mesmas origens, o ano é pulado sem ler de novo). Os buracos da ligação pela B13 (o código da fonte sem
 empresa, com o volume) vão para `<base>/setoriais/buracos.parquet`. Recusa rodar sem a versão do
 código (exigência 13 da ADR 0055).
+
+ANEEL, Anatel e ANS republicam o arquivo inteiro e revisam meses passados (PR 5): cada baixada guardada
+de um endereço entra como uma coleta (`base/setoriais/revisoes.py`), e a tabela guarda uma linha por
+valor diferente, com o dia em que a revisão foi vista. Um Parquet por arquivo da fonte: o SAMP por ano
+(`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS por ano da competência (`ans/<ano>`).
 """
 
 import argparse
@@ -18,14 +24,15 @@ import re
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import NamedTuple
 
 import pandas as pd
 import sqlalchemy as sa
 
 from base.parquet import gravar_com_versoes
-from base.setoriais import anac, anp, ligacao, ons
+from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes
 from src import acervo
-from src.banco.coletas import originais_mais_recentes
+from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -46,6 +53,57 @@ CHAVES = {
     anac.FONTE: ("empresa_sigla", "passageiros_pagos"),
     anp.FONTE: ("agente", "quantidade"),
 }
+ANO_DO_SAMP = re.compile(r"samp-(\d{4})\.parquet$")
+CONSUMIDORES = (
+    "número de consumidores"  # o volume do SAMP nos buracos (a ANEEL muda a caixa)
+)
+
+
+class Revisada(NamedTuple):
+    """Uma fonte que revisa meses passados: onde grava, a chave, os carimbos, a ligação e o volume."""
+
+    pasta: str
+    chave: list[str]
+    carimbos: tuple[str, ...]
+    destino: Callable[
+        [str], str | None
+    ]  # o nome do Parquet de cada endereço (None: fica fora)
+    ler: Callable[[bytes, str], pd.DataFrame]  # (conteúdo, endereço)
+    fonte_da_ligacao: str
+    coluna_da_ligacao: str
+    volume: Callable[[pd.DataFrame], pd.Series]
+
+
+def _ano_do_samp(url: str) -> str | None:
+    return achado.group(1) if (achado := ANO_DO_SAMP.search(url)) else None
+
+
+def _csv_da_anatel(url: str) -> str | None:
+    arquivo = url.rpartition("#")[2]
+    return arquivo.removesuffix(".csv") if arquivo.endswith("_Colunas.csv") else None
+
+
+def _consumidores(tabela: pd.DataFrame) -> pd.Series:
+    sao = tabela["detalhe_do_mercado"].fillna("").str.lower().eq(CONSUMIDORES)
+    return tabela["valor"].where(sao, 0.0)
+
+
+REVISADAS = {
+    aneel.FONTE: Revisada(
+        "aneel", aneel.CHAVE, aneel.CARIMBOS, _ano_do_samp, lambda c, _: aneel.ler(c),
+        aneel.FONTE, "cnpj", _consumidores,
+    ),
+    anatel.FONTE: Revisada(
+        "anatel", anatel.CHAVE, anatel.CARIMBOS, _csv_da_anatel,
+        lambda c, url: anatel.ler(c, url.rpartition("#")[2]),
+        anatel.FONTE, "cnpj", lambda t: t["acessos"],
+    ),
+    ans.FONTE: Revisada(
+        "ans", ans.CHAVE, ans.CARIMBOS, lambda url: "ans" if url == ans.URL else None,
+        lambda c, _: ans.ler(c), ans.FONTE_DA_LIGACAO, "cd_operadora",
+        lambda t: t["beneficiarios"],
+    ),
+}  # fmt: skip
 
 
 def _origem(linha: sa.Row) -> dict[str, str]:
@@ -119,6 +177,126 @@ def buracos_da_fonte(
     return ligacao.buracos(tabela, coluna, volume, fonte, empresa_serie)
 
 
+def _coletas(
+    conexao: sa.Connection, url: str, revisada: Revisada
+) -> tuple[list[dict[str, str]], Callable[[], pd.DataFrame]]:
+    """As origens (endereço e SHA-256 de cada baixada) e a função que lê e junta as coletas."""
+    guardadas = coletas_guardadas(conexao, url)
+    origens = [{"url": url, "sha256": sha256} for _, sha256, _ in guardadas]
+
+    def montar() -> pd.DataFrame:
+        coletas = [
+            (
+                pd.Timestamp(dia).tz_localize(None).normalize(),
+                revisada.ler(conteudo, url),
+            )
+            for dia, _, conteudo in guardadas
+        ]
+        return revisoes.juntar_coletas(coletas, revisada.chave, revisada.carimbos)
+
+    return origens, montar
+
+
+def _buracos_da_revisada(
+    tabela: pd.DataFrame,
+    fonte: str,
+    revisada: Revisada,
+    empresa_serie: pd.DataFrame | None,
+) -> pd.DataFrame | None:
+    """Os buracos de um arquivo, sobre o valor mais novo de cada chave (a revisão não soma duas vezes)."""
+    if empresa_serie is None or tabela.empty:
+        return None
+    atual = revisoes.como_era_em(tabela, pd.Timestamp.max, revisada.chave)
+    atual = atual.assign(volume=revisada.volume(atual))
+    buracos = ligacao.buracos(
+        atual,
+        revisada.coluna_da_ligacao,
+        "volume",
+        revisada.fonte_da_ligacao,
+        empresa_serie,
+    )
+    return buracos.assign(fonte=fonte)
+
+
+def _gravar_arquivo(
+    montar: Callable[[], pd.DataFrame],
+    destino: Path,
+    origens: list[dict[str, str]],
+    chave: list[str],
+) -> tuple[str, pd.DataFrame]:
+    """Grava um arquivo da fonte e devolve a tabela (lida do disco quando não mudou)."""
+    montada: list[pd.DataFrame] = []
+
+    def montar_e_guardar() -> pd.DataFrame:
+        montada.append(montar())
+        return montada[0]
+
+    resultado = gravar_com_versoes(montar_e_guardar, destino, origens, chave)
+    tabela = montada[0] if montada else pd.read_parquet(destino.with_suffix(".parquet"))
+    return resultado, tabela
+
+
+def _gravar_por_ano(
+    montar: Callable[[], pd.DataFrame],
+    pasta: Path,
+    origens: list[dict[str, str]],
+    chave: list[str],
+) -> pd.DataFrame:
+    """Um arquivo da fonte com muitos anos (a ANS): um Parquet por ano da competência."""
+    tabela = montar()
+    for ano, do_ano in tabela.groupby(tabela["competencia"].dt.year):
+        resultado = gravar_com_versoes(
+            lambda t=do_ano: t.reset_index(drop=True), pasta / str(ano), origens, chave
+        )
+        log.info("%s %s: %s", pasta.name, ano, resultado)
+    return tabela
+
+
+def carregar_revisada(
+    conexao: sa.Connection, fonte: str, base: Path, empresa_serie: pd.DataFrame | None
+) -> pd.DataFrame | None:
+    """Grava cada arquivo da fonte com as revisões e devolve os buracos da ligação, somados."""
+    revisada = REVISADAS[fonte]
+    urls = sorted(
+        {
+            lin.url
+            for lin in originais_mais_recentes(conexao, fonte)
+            if revisada.destino(lin.url)
+        }
+    )
+    pasta = base / PASTA / revisada.pasta
+    partes = []
+    for url in urls:
+        origens, montar = _coletas(conexao, url, revisada)
+        if fonte == ans.FONTE:
+            tabela = _gravar_por_ano(montar, pasta, origens, revisada.chave)
+        else:
+            nome = str(revisada.destino(url))
+            resultado, tabela = _gravar_arquivo(
+                montar, pasta / nome, origens, revisada.chave
+            )
+            log.info("%s %s: %s", fonte, nome, resultado)
+        if (
+            buracos := _buracos_da_revisada(tabela, fonte, revisada, empresa_serie)
+        ) is not None:
+            partes.append(buracos)
+        del tabela
+    if not partes:
+        return None
+    juntos = pd.concat(partes, ignore_index=True).groupby(
+        ["fonte", "chave"], as_index=False
+    )
+    return (
+        juntos.agg(
+            valor=("valor", "sum"),
+            primeira=("primeira", "min"),
+            ultima=("ultima", "max"),
+        )
+        .sort_values("valor", ascending=False)
+        .reset_index(drop=True)
+    )
+
+
 def gravar_buracos(partes: list[pd.DataFrame], base: Path) -> None:
     if not partes:
         return
@@ -163,6 +341,11 @@ def main(argv: list[str] | None = None) -> int:
                 ) is not None:
                     partes.append(buracos)
                 del tabela
+            revisadas = (
+                carregar_revisada(conexao, fonte, base, empresa_serie)
+                for fonte in REVISADAS
+            )
+            partes.extend(b for b in revisadas if b is not None)
     finally:
         motor.dispose()
     gravar_buracos(partes, base)

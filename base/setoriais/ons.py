@@ -10,10 +10,10 @@ hoje, e aplicá-lo à geração do passado seria olhar o futuro (usinas mudam de
 
 import io
 
-import numpy as np
 import pandas as pd
 
 from base.setoriais import prazos
+from base.setoriais.comum import sem_espacos
 
 FONTE = "ons-geracao-usina"
 SEM_CODIGO = ("-", "")
@@ -33,15 +33,6 @@ TEXTOS = (
 )  # fmt: skip
 
 
-def _sem_espacos(coluna: pd.Series) -> pd.Series:
-    """O texto sem espaços nas pontas, limpo pelos valores distintos: um ano tem milhões de linhas e
-    poucos milhares de valores, e um texto novo por célula estourou 4 GB no ONS de 2023."""
-    codigos, distintos = pd.factorize(coluna)
-    limpos = pd.Series(distintos).astype("string").str.strip().astype(object).to_numpy()
-    com_o_vazio = np.append(limpos, None)  # o código -1 (vazio) pega o último: None
-    return pd.Series(com_o_vazio[codigos], index=coluna.index, dtype=object)
-
-
 def ler(conteudo_do_parquet: bytes) -> pd.DataFrame:
     """Um arquivo de geração do ONS (anual ou mensal), com `disponivel_em`."""
     tabela = pd.read_parquet(io.BytesIO(conteudo_do_parquet)).rename(columns=NOMES)
@@ -51,7 +42,7 @@ def ler(conteudo_do_parquet: bytes) -> pd.DataFrame:
         geracao = geracao.astype(str)
     tabela["geracao_mwmed"] = pd.to_numeric(geracao, errors="coerce").astype(float)
     for coluna in TEXTOS:
-        tabela[coluna] = _sem_espacos(tabela[coluna])
+        tabela[coluna] = sem_espacos(tabela[coluna])
     sem_ceg = tabela["ceg"].isna() | tabela["ceg"].isin(SEM_CODIGO)
     tabela["ceg"] = tabela["ceg"].mask(sem_ceg, None)
     tabela["disponivel_em"] = prazos.disponivel_ons(tabela["instante"])

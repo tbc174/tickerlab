@@ -677,6 +677,118 @@ Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. 
 | `geracao_mwmed` | Geração na hora, em MWmed | número com decimais, na unidade da fonte |
 | `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
 
+## `aneel_samp`
+
+Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece
+
+- **Fonte:** ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)
+- **Licença:** ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal (a ANEEL regera todos os anos a cada mês, perto do dia 15)
+- **Atraso de divulgação:** Medido: o SAMP de 15/09/2026 tinha julho completo (46 dias) e agosto pela metade; a regra usa o fim do mês + 60 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cnpj`, `tipo_de_mercado`, `modalidade_tarifaria`, `subgrupo_tarifario`, `classe_de_consumo`, `subclasse_de_consumo`, `detalhe_do_consumidor`, `nucleo_ceg`, `posto_tarifario`, `opcao_de_energia`, `detalhe_do_mercado`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/aneel/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do ano usada (uma por revisão) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `cnpj` | CNPJ da distribuidora (14 dígitos; a chave da B13) | texto |
+| `sigla` | Sigla da distribuidora, como a ANEEL escreve | texto |
+| `distribuidora` | Nome da distribuidora, como a ANEEL escreve | texto |
+| `tipo_de_mercado` | Regular, refaturamento, compensação de geração distribuída... | texto |
+| `modalidade_tarifaria` | Convencional, azul, verde, branca... | texto |
+| `subgrupo_tarifario` | A1 a A4, AS, B1 a B4 | texto |
+| `classe_de_consumo` | Residencial, industrial, comercial, rural... | texto |
+| `subclasse_de_consumo` | Subclasse (baixa renda, cooperativa...) | texto |
+| `detalhe_do_consumidor` | Detalhe do consumidor (fonte incentivada...) | texto |
+| `nucleo_ceg` | Núcleo do CEG da usina, quando há (texto inteiro) | texto |
+| `posto_tarifario` | Ponta, fora ponta, intermediário | texto |
+| `opcao_de_energia` | Cativo, livre, suprimento, distribuição | texto |
+| `detalhe_do_mercado` | O que o valor mede: número de consumidores, energia (kWh), receita (R$), desconto (%)... | texto |
+| `valor` | O valor, na unidade do `detalhe_do_mercado` (soma das linhas; média nos percentuais) | número com decimais, na unidade da fonte |
+| `linhas_somadas` | Quantas linhas da fonte (uma por acessante) foram somadas | número com decimais, na unidade da fonte |
+| `gerado_em` | A data de geração do arquivo pela ANEEL, na primeira vez que o valor foi visto | data (dia) |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
+| `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+
+## `anatel_acessos`
+
+Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora (CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os municípios. Na móvel de 2005 a 2018 a Anatel publica duas visões dos mesmos acessos (`recorte` modalidade ou tecnologia): somar as duas conta tudo duas vezes. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece
+
+- **Fonte:** Anatel: painéis de dados, acessos (CSVs "_Colunas" de dentro dos ZIPs)
+- **Licença:** CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal
+- **Atraso de divulgação:** Agosto/2026 estava publicado em 14/10/2026; a regra usa o fim do mês + 60 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `servico`, `recorte`, `cnpj`, `uf`, `regiao_pgo`, `codigo_nacional`, `modalidade_de_cobranca`, `tecnologia`, `geracao`, `tipo_de_pessoa`, `tipo_de_produto`, `faixa_de_velocidade`, `meio_de_acesso`, `tipo_de_acesso_tv`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por CSV da Anatel em `<acervo>/base/setoriais/anatel/<nome do CSV>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` de cada CSV guarda o endereço (`zip#csv`) e o SHA-256 de cada baixada usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `servico` | banda_larga_fixa, telefonia_movel ou tv_por_assinatura | texto |
+| `recorte` | completo; na móvel de 2005 a 2018, modalidade ou tecnologia | texto |
+| `cnpj` | CNPJ da prestadora (14 dígitos; a chave da B13) | texto |
+| `empresa` | Nome da prestadora, como a Anatel escreve | texto |
+| `grupo_economico` | Grupo econômico, como a Anatel escreve | texto |
+| `porte_da_prestadora` | Grande ou pequeno porte | texto |
+| `uf` | UF | texto |
+| `regiao_pgo` | Região do plano geral de outorgas (móvel até 2009) | texto |
+| `codigo_nacional` | DDD (móvel) | texto |
+| `modalidade_de_cobranca` | Pré-pago ou pós-pago (móvel) | texto |
+| `tecnologia` | Tecnologia (FTTH, cabo, GSM, LTE, DTH...) | texto |
+| `geracao` | Geração da tecnologia móvel (2G a 5G) | texto |
+| `tipo_de_pessoa` | Assinante pessoa física ou jurídica | texto |
+| `tipo_de_produto` | Tipo de produto (internet, voz, M2M...) | texto |
+| `faixa_de_velocidade` | Faixa de velocidade contratada (banda larga) | texto |
+| `meio_de_acesso` | Fibra, cabo coaxial, rádio, satélite... | texto |
+| `tipo_de_acesso_tv` | Tipo de acesso de TV por assinatura | texto |
+| `acessos` | Acessos em serviço no fim do mês, somados os municípios da UF | número com decimais, na unidade da fonte |
+| `arquivo` | O CSV da Anatel de onde veio a linha | texto |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
+| `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+
+## `ans_beneficiarios`
+
+Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, vigência do plano, contratação e financiamento, desde 2017, no formato da fonte. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece
+
+- **Fonte:** ANS: beneficiários por operadora e carteira (Beneficiarios_operadora_e_carteira.csv)
+- **Licença:** CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026
+- **Atraso de divulgação:** Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês + 90 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `cd_operadora`, `modalidade`, `cobertura`, `vigencia_do_plano`, `contratacao`, `financiamento`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ans/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do arquivo usada (uma por revisão) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `cd_operadora` | Registro da operadora na ANS (a chave da B13, fonte `ans-beneficiarios`) | texto |
+| `modalidade` | Medicina de grupo, cooperativa médica, seguradora... | texto |
+| `cobertura` | Médico-hospitalar ou odontológico | texto |
+| `vigencia_do_plano` | P (plano posterior à Lei 9.656) ou A (anterior) | texto |
+| `contratacao` | Individual ou familiar, coletivo empresarial, por adesão... | texto |
+| `financiamento` | Pré-estabelecido, pós-estabelecido... | texto |
+| `beneficiarios` | Beneficiários no mês | número com decimais, na unidade da fonte |
+| `base_de` | O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto | data (dia) |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista) | data (dia) |
+| `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+
 ## `setoriais_buracos`
 
 Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência
