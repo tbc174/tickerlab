@@ -1,0 +1,71 @@
+{
+  "tabela": "ons_geracao",
+  "modulo": "operacao_por_setor",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "instante": {
+      "descricao": "Hora (início)",
+      "unidade": "data (dia)"
+    },
+    "id_subsistema": {
+      "descricao": "Subsistema (N, NE, S, SE)",
+      "unidade": "texto"
+    },
+    "subsistema": {
+      "descricao": "Nome do subsistema",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da usina",
+      "unidade": "texto"
+    },
+    "modalidade_de_operacao": {
+      "descricao": "Modalidade de operação (tipo I, II...)",
+      "unidade": "texto"
+    },
+    "tipo_de_usina": {
+      "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+      "unidade": "texto"
+    },
+    "combustivel": {
+      "descricao": "Combustível ou fonte",
+      "unidade": "texto"
+    },
+    "usina": {
+      "descricao": "Nome da usina, como o ONS escreve",
+      "unidade": "texto"
+    },
+    "id_ons": {
+      "descricao": "Código da usina no ONS (a chave)",
+      "unidade": "texto"
+    },
+    "ceg": {
+      "descricao": "Código da usina na ANEEL (vazio quando o ONS não informa)",
+      "unidade": "texto"
+    },
+    "geracao_mwmed": {
+      "descricao": "Geração na hora, em MWmed",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (instante + 2 dias)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "instante",
+    "id_ons"
+  ],
+  "datas": {
+    "aconteceu_em": "instante",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Diária (um arquivo por ano até 2021, por mês depois)",
+  "atraso": "O dia seguinte; a regra usa o instante + 2 dias"
+}

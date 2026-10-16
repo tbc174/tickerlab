@@ -550,6 +550,158 @@ Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do f
 | `fonte` | De onde veio cada parte da ligação | texto |
 | `conferido_em` | Dia da conferência | data (dia) |
 
+## `anac_estatistico`
+
+Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte. A chave da empresa é a sigla, a mesma da B13 (empresa ↔ série)
+
+- **Fonte:** ANAC: dados estatísticos do transporte aéreo (Dados_Estatisticos.csv)
+- **Licença:** CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o arquivo inteiro é republicado; a 1ª linha diz "Atualizado em")
+- **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `empresa_sigla`, `aeroporto_de_origem_sigla`, `aeroporto_de_destino_sigla`, `natureza`, `grupo_de_voo`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/anac/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 do arquivo da ANAC usado (no acervo e no registro de coletas) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `empresa_sigla` | Empresa sigla, como a ANAC publica | texto |
+| `empresa_nome` | Empresa nome, como a ANAC publica | texto |
+| `empresa_nacionalidade` | Empresa nacionalidade, como a ANAC publica | texto |
+| `aeroporto_de_origem_sigla` | Aeroporto de origem sigla, como a ANAC publica | texto |
+| `aeroporto_de_origem_nome` | Aeroporto de origem nome, como a ANAC publica | texto |
+| `aeroporto_de_origem_uf` | Aeroporto de origem uf, como a ANAC publica | texto |
+| `aeroporto_de_origem_regiao` | Aeroporto de origem regiao, como a ANAC publica | texto |
+| `aeroporto_de_origem_pais` | Aeroporto de origem pais, como a ANAC publica | texto |
+| `aeroporto_de_origem_continente` | Aeroporto de origem continente, como a ANAC publica | texto |
+| `aeroporto_de_destino_sigla` | Aeroporto de destino sigla, como a ANAC publica | texto |
+| `aeroporto_de_destino_nome` | Aeroporto de destino nome, como a ANAC publica | texto |
+| `aeroporto_de_destino_uf` | Aeroporto de destino uf, como a ANAC publica | texto |
+| `aeroporto_de_destino_regiao` | Aeroporto de destino regiao, como a ANAC publica | texto |
+| `aeroporto_de_destino_pais` | Aeroporto de destino pais, como a ANAC publica | texto |
+| `aeroporto_de_destino_continente` | Aeroporto de destino continente, como a ANAC publica | texto |
+| `natureza` | Natureza, como a ANAC publica | texto |
+| `grupo_de_voo` | Grupo de voo, como a ANAC publica | texto |
+| `passageiros_pagos` | Passageiros pagos no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `passageiros_gratis` | Passageiros gratis no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_paga_kg` | Carga paga kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_gratis_kg` | Carga gratis kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `correio_kg` | Correio kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `ask` | Ask no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `rpk` | Rpk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `atk` | Atk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `rtk` | Rtk no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `combustivel_litros` | Combustivel litros no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `distancia_voada_km` | Distancia voada km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `decolagens` | Decolagens no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_paga_km` | Carga paga km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `carga_gratis_km` | Carga gratis km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `correio_km` | Correio km no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `assentos` | Assentos no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `payload` | Payload no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `horas_voadas` | Horas voadas no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `bagagem_kg` | Bagagem kg no mês, como a ANAC publica | número com decimais, na unidade da fonte |
+| `atualizado_em` | A data da linha "Atualizado em" do arquivo usado | data (dia) |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+
+## `anp_vendas`
+
+Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, produto, origem, destino e mercado, desde 2007, no formato da fonte. A ANP escreve o nome atual da distribuidora também no passado; a ligação à empresa é pela B13
+
+- **Fonte:** ANP: vendas de derivados de petróleo e biocombustíveis por distribuidor (liquidos, glp, aviacao)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal
+- **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `grupo`, `agente`, `codigo_do_produto`, `uf_origem`, `uf_destino`, `mercado_destino`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/anp/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos três zips da ANP usados e a versão do código; `arquivo` diz de qual CSV do zip veio a linha (atual ou histórico).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `grupo` | liquidos, glp ou aviacao (o zip) | texto |
+| `agente` | Agente regulado (a distribuidora), como a ANP escreve | texto |
+| `codigo_do_produto` | Código do produto na ANP | texto |
+| `nome_do_produto` | Nome do produto | texto |
+| `descricao_do_produto` | Descrição do produto (vazio no histórico dos líquidos) | texto |
+| `codigo_da_embalagem` | Código da embalagem (só GLP) | texto |
+| `regiao_origem` | Região de origem | texto |
+| `uf_origem` | UF de origem | texto |
+| `regiao_destino` | Região de destino | texto |
+| `uf_destino` | UF de destino | texto |
+| `mercado_destino` | Mercado destinatário (posto, consumidor final...) | texto |
+| `quantidade` | Quantidade vendida, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `unidade` | mil m³ ou mil ton, como no cabeçalho da ANP | texto |
+| `arquivo` | O CSV do zip de onde veio a linha | texto |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+
+## `ons_geracao`
+
+Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da usina é o `id_ons` (o CEG falta em 41% da geração de 09/2026). Sem ligação à empresa: o dono da usina só existe no cadastro de hoje, e aplicá-lo ao passado olharia o futuro
+
+- **Fonte:** ONS: geração por usina em base horária (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Diária (um arquivo por ano até 2021, por mês depois)
+- **Atraso de divulgação:** O dia seguinte; a regra usa o instante + 2 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `instante`, `id_ons`
+- **Três datas:** aconteceu_em = `instante`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ons/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo do ONS do ano e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `instante` | Hora (início) | data (dia) |
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `subsistema` | Nome do subsistema | texto |
+| `uf` | UF da usina | texto |
+| `modalidade_de_operacao` | Modalidade de operação (tipo I, II...) | texto |
+| `tipo_de_usina` | Hidrelétrica, térmica, eólica, fotovoltaica... | texto |
+| `combustivel` | Combustível ou fonte | texto |
+| `usina` | Nome da usina, como o ONS escreve | texto |
+| `id_ons` | Código da usina no ONS (a chave) | texto |
+| `ceg` | Código da usina na ANEEL (vazio quando o ONS não informa) | texto |
+| `geracao_mwmed` | Geração na hora, em MWmed | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
+
+## `setoriais_buracos`
+
+Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência
+
+- **Fonte:** Derivado: fontes setoriais e a B13 (empresa_serie)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** A cada carga das fontes setoriais
+- **Atraso de divulgação:** Nenhum
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `fonte`, `chave`
+- **Três datas:** nenhuma coluna da tabela traz estas datas
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/buracos.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` anota a tabela da B13 usada (SHA-256 do conteúdo) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `chave` | Código na fonte sem ligação | texto |
+| `valor` | Volume somado (passageiros pagos na ANAC, quantidade na ANP) | número com decimais, na unidade da fonte |
+| `primeira` | Primeiro mês em que aparece | data (dia) |
+| `ultima` | Último mês em que aparece | data (dia) |
+| `fonte` | Fonte no registro de coletas | texto |
+
 ## `ifdata_valores`
 
 Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por instituição, relatório, conta e coluna). Tipo 1 = conglomerado prudencial (desde mar/2014), 2 = conglomerado financeiro, 3 = instituição individual. Ficam fora o relatório 15 (câmbio) e as linhas de total sem código de instituição
