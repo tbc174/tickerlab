@@ -212,6 +212,54 @@ def test_valores_mobiliarios_e_auditores_viram_entidades():
     assert ids.id_entidade("auditor", "codigo_cvm_auditor", "99999") not in por_id.index
 
 
+def _rede_com_naturezas(
+    auditores: pd.DataFrame, naturezas: dict[str, str]
+) -> pd.DataFrame:
+    entradas = montar.Entradas(**{**vars(_entradas_com_tudo()), "auditores": auditores})
+    entidades, _, _ = montar.montar_rede(
+        montar.observacoes(entradas),
+        pd.DataFrame(
+            {
+                "cnpj_basico": list(naturezas),
+                "natureza_juridica": list(naturezas.values()),
+            }
+        ),
+        pd.DataFrame(columns=["cnpj_basico", "mei"]),
+        {},
+    )
+    return entidades.set_index("id_entidade")
+
+
+def test_firma_de_auditoria_tem_a_natureza_da_receita_pela_raiz_do_cnpj():
+    """A CVM não diz a natureza do auditor: ela vem da Receita pela raiz do CNPJ da firma (D8 só
+    quando a Receita não acha a raiz)."""
+    assert "57755217" in montar.raizes(montar.observacoes(_entradas_com_tudo()))
+    kpmg = _rede_com_naturezas(_auditores(), {"57755217": "2232"}).loc[ID_KPMG]
+    assert kpmg[["natureza_juridica", "natureza_fonte"]].tolist() == ["2232", "receita"]
+    assert not kpmg["trata_como_pessoa"] and kpmg["nome"] == "KPMG AUDITORES"
+
+
+def test_firma_de_auditoria_sem_natureza_na_receita_segue_como_pessoa():
+    kpmg = _rede_com_naturezas(_auditores(), {}).loc[ID_KPMG]
+    assert kpmg["natureza_juridica"] == "nao_informada" and kpmg["trata_como_pessoa"]
+
+
+def test_auditor_empresario_individual_e_pessoa_sem_nome():
+    kpmg = _rede_com_naturezas(_auditores(), {"57755217": "2135"}).loc[ID_KPMG]
+    assert kpmg["trata_como_pessoa"] and pd.isna(kpmg["nome"])
+
+
+def test_codigo_com_duas_raizes_fica_com_a_mais_frequente():
+    """Parte das linhas do FCA traz o CNPJ errado: vale a raiz da maioria dos mandatos do código."""
+    auditores = _auditores()
+    # 1 linha com o CNPJ errado e 2 com o certo
+    auditores.loc[0, "auditor_cnpj"] = "11222333000181"
+    auditores = pd.concat([auditores, auditores.iloc[[1]]], ignore_index=True)
+    naturezas = {"11222333": "2135", "57755217": "2232"}
+    kpmg = _rede_com_naturezas(auditores, naturezas).loc[ID_KPMG]
+    assert kpmg["natureza_juridica"] == "2232"
+
+
 def test_controladas_viram_controlada_de():
     controladas = _do_tipo(_ligacoes(), "controlada_de")
     ipiranga = controladas[controladas["de"] == _id("33337122")].iloc[0]

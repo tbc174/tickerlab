@@ -7,7 +7,8 @@ ponte LEI ↔ CNPJ do GLEIF. Cada fonte vira **observações** (`base/rede/resol
 jurídica e o MEI vêm de duas colunas da Receita (`base/receita_natureza.py`).
 
 Desde o PR 3 entram também o **valor mobiliário** (pelo ISIN das carteiras dos fundos) e a **firma de
-auditoria** (pelo código da CVM, só a que informa CNPJ: auditor pessoa física nunca entra), e
+auditoria** (pelo código da CVM, só a que informa CNPJ: auditor pessoa física nunca entra; a natureza
+vem da Receita pela raiz do CNPJ mais frequente do código), e
 `montar_ligacoes` monta a tabela `ligacoes` (`base/rede/ligacoes_das_fontes.py`).
 
 Fica de fora, de propósito: entidade só com nome (série de governo, regra 6), conglomerado do IF.data
@@ -438,7 +439,7 @@ def _do_gleif(ponte: pd.DataFrame) -> list[pd.DataFrame]:
 
 
 def _dos_auditores(auditores: pd.DataFrame) -> list[pd.DataFrame]:
-    """A firma de auditoria pelo código da CVM (regra 5), com o nome que ela informa."""
+    """A firma de auditoria pelo código da CVM (regra 5), com o nome e o CNPJ que ela informa."""
     firmas = ligacoes_das_fontes.auditores_sem_conflito(auditores)
     if firmas.empty:
         return []
@@ -454,6 +455,7 @@ def _dos_auditores(auditores: pd.DataFrame) -> list[pd.DataFrame]:
             publico_em=_dia(firmas["conhecido_em"]),
             regra=5,
             conferido_por=PELA_REGRA,
+            cnpj_da_fonte=firmas["auditor_cnpj"],
         )
     ]
 
@@ -546,10 +548,29 @@ def observacoes(entradas: Entradas) -> pd.DataFrame:
     return tabela
 
 
+def raiz_dos_auditores(observacoes: pd.DataFrame) -> pd.Series:
+    """A raiz do CNPJ de cada firma de auditoria (índice: o código da CVM), para a Receita dizer a
+    natureza: a da maioria das linhas do código, porque parte do FCA traz o CNPJ errado (no empate,
+    a menor, para sair sempre a mesma)."""
+    firmas = observacoes[observacoes["tipo"] == AUDITOR]
+    linhas = (
+        firmas.assign(raiz=firmas["cnpj_da_fonte"].str[:8])
+        .dropna(subset=["raiz"])
+        .groupby(["ancora", "raiz"])
+        .size()
+        .rename("linhas")
+        .reset_index()
+        .sort_values(["ancora", "linhas", "raiz"], ascending=[True, False, True])
+    )
+    return linhas.drop_duplicates("ancora").set_index("ancora")["raiz"]
+
+
 def raizes(observacoes: pd.DataFrame) -> set[str]:
     """As raízes de CNPJ da rede: o que se procura na Receita (natureza e MEI)."""
     com_raiz = observacoes[observacoes["tipo"].isin(TEM_RAIZ)]
-    return set(com_raiz["ancora"].dropna().str[:8])
+    return set(com_raiz["ancora"].dropna().str[:8]) | set(
+        raiz_dos_auditores(observacoes)
+    )
 
 
 def montar_rede(
@@ -560,7 +581,13 @@ def montar_rede(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """(entidades, identificadores, conflitos), ordenados pelo id (o mesmo resultado sempre)."""
     entidades, identificadores, conflitos = resolver(observacoes, fixados)
-    raiz = entidades["ancora"].str[:8].where(entidades["tipo"].isin(TEM_RAIZ))
+    raiz = (
+        entidades["ancora"]
+        .str[:8]
+        .where(entidades["tipo"].isin(TEM_RAIZ))
+        .fillna(entidades["ancora"].map(raiz_dos_auditores(observacoes)))
+        .where(entidades["tipo"].isin((*TEM_RAIZ, AUDITOR)))
+    )
     entidades = com_natureza(entidades.assign(raiz=raiz), naturezas, meis)
     entidades = entidades[list(COLUNAS_DAS_ENTIDADES)]
     return (
