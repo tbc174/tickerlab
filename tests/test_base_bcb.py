@@ -292,3 +292,23 @@ def test_scr_meses_do_arquivo_e_publicacao():
         == "https://www.bcb.gov.br/pda/desig/scrdata_2026.zip"
     )
     assert bcb_scr.PRIMEIRO_ANO == 2012
+
+
+def test_cnpj_alfanumerico_atravessa_ifdata():
+    """Banco novo com CNPJ de letras: a raiz do FCA guarda as letras e liga ao líder."""
+    cadastro = pd.DataFrame(
+        {
+            "data_base": [pd.Timestamp("2027-06-30")],
+            "cod_inst": ["C0099999"],
+            "instituicao": ["NOVO BANCO"],
+            "cnpj_raiz": ["12ABC345"],
+        }
+    )
+    emissores = pd.DataFrame(
+        {"emissor": ["NOVO"], "cnpj": ["12.ABC.345/01DE-35"], "conflito": [False]}
+    )
+    tickers = pd.DataFrame(
+        columns=["codigo", "cnpj", "primeiro_visto", "ultimo_visto", "valido_ate"]
+    )
+    ligacao = bcb_ifdata.ligacao_dos_bancos(cadastro, emissores, tickers).iloc[0]
+    assert ligacao["cnpj"] == "12.ABC.345/01DE-35"

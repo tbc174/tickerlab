@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.cnpj import SEPARADORES
+from base.cnpj import completo as cnpj_completo
 from base.parquet import (
     LINHAGEM,
     arquivos_atuais,
@@ -49,7 +51,6 @@ COLUNAS_DAS_TROCAS = (
 # referência indica a troca (um encerrado há anos é história antiga, não notícia daquele ano)
 ENCERRADO_HA_POUCO = timedelta(days=366)
 DIAS_POR_ANO = 365.25
-SO_DIGITOS = re.compile(r"\D")
 # rede → padrão no nome sem acento e em minúsculas (a primeira que casar vale). A Terco entrou na EY em
 # 2010 ("Ernst & Young Terco"): "Terco Grant Thornton" é a mesma firma, então conta como EY
 REDES = (
@@ -111,11 +112,13 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
     recebido = dict(
         zip(principal["ID_DOC"].str.strip(), principal["DT_RECEB"], strict=True)
     )
-    documento = bruto["CPF_CNPJ_Auditor"].str.replace(SO_DIGITOS, "", regex=True)
-    pessoa_juridica = documento.str.len() == 14
+    documento = bruto["CPF_CNPJ_Auditor"].str.replace(SEPARADORES, "", regex=True)
+    pessoa_juridica = bruto["CPF_CNPJ_Auditor"].map(cnpj_completo).notna()
     codigo = _texto(bruto["Codigo_CVM_Auditor"])
     nome = _texto(bruto["Auditor"]).where(pessoa_juridica | (documento == ""), None)
-    auditor_cnpj = documento.where(pessoa_juridica, None)
+    auditor_cnpj = (
+        bruto["CPF_CNPJ_Auditor"].map(cnpj_completo).where(pessoa_juridica, None)
+    )
     # código vazio: o da mesma raiz de CNPJ em outra linha do mesmo arquivo (nunca de outro ano)
     raiz = auditor_cnpj.str[:8]
     codigo_da_raiz = (

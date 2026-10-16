@@ -143,3 +143,10 @@ def test_historico_do_cadastro_sem_diretor_responsavel():
 def test_informe_vale_45_dias_depois_da_competencia():
     tabela = pd.DataFrame({"competencia": pd.to_datetime(["2026-08-31"])})
     assert fidc.disponivel_em(tabela).tolist() == [pd.Timestamp("2026-10-15")]
+
+
+def test_cnpj_alfanumerico_atravessa_fidc():
+    """Com letra é CNPJ (nunca CPF): fica, formatado, se o DV confere."""
+    assert fidc.documento_de_empresa("12.ABC.345/01DE-35") == "12.ABC.345/01DE-35"
+    assert fidc.documento_de_empresa("12abc34501de35") == "12.ABC.345/01DE-35"
+    assert fidc.documento_de_empresa("12ABC34501DE36") is None

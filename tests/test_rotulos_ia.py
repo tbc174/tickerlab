@@ -226,3 +226,13 @@ def test_cliente_manda_o_workspace_quando_configurado(monkeypatch):
     assert ri.cliente().default_headers["anthropic-workspace-id"] == "wrkspc_teste"
     monkeypatch.delenv(ri.VARIAVEL_DO_WORKSPACE)
     assert "anthropic-workspace-id" not in ri.cliente().default_headers
+
+
+def test_cnpj_com_letras_tambem_e_mascarado():
+    """CNPJ novo (IN RFB 2.229/2024) não pode escapar da máscara e identificar a empresa."""
+    texto = ri.anonimizar(
+        "Inscrita no CNPJ 12.ABC.345/01DE-35 e no 12ABC34501DE35.", []
+    )
+    assert "12" not in texto and texto.count(ri.CNPJ) == 2
+    # 12 letras e 2 números que não são CNPJ (o DV não confere) ficam como estão
+    assert ri.anonimizar("PALAVRAGRAND12", []) == "PALAVRAGRAND12"

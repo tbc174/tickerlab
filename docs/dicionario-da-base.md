@@ -1357,3 +1357,63 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 | `origem_sha256` | SHA-256 do arquivo de onde a entidade saiu | texto |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `entidades`
+
+Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a mesma empresa) ou fundo (pelo CNPJ de 14), com id determinístico (`base/rede/ids.py`), nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: cadastro da CVM, FCA, controladas, empresa ↔ série, cadastro de fundos, IF.data e GLEIF. Empresário individual, pessoa física com CNPJ e MEI ficam sem nome e com `trata_como_pessoa`
+
+- **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da empresa ↔ série e a Receita (natureza jurídica e opção pelo MEI)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Frequência:** Refeita a cada montagem; versão nova só quando o conteúdo muda
+- **Atraso de divulgação:** O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela
+- **Módulo:** rede · **Contém dado de pessoa:** não
+- **Chaves:** `id_entidade`
+- **Três datas:** publico_em = `publico_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/rede/entidades.parquet` (servidor de casa, `scripts/montar_rede.py`)
+- **Linhagem:** Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo (cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a coleta de cada um. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_entidade` | 'E' + 20 hexadecimais do SHA-256 do identificador primário | texto |
+| `tipo` | empresa ou fundo | texto |
+| `nome` | Nome pela fonte mais confiável (vazio na pessoa com CNPJ) | texto |
+| `natureza_juridica` | Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada | texto |
+| `natureza_fonte` | receita, fonte (CVM ou cadastro de fundos) ou nao_informada | texto |
+| `mei` | Verdadeiro se é MEI hoje (Simples da Receita) | verdadeiro ou falso |
+| `trata_como_pessoa` | Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza não informada: nunca recebe sinal negativo publicado | verdadeiro ou falso |
+| `fontes` | As fontes de onde a entidade saiu, separadas por vírgula | texto |
+| `publico_em` | O dia mais antigo em que alguma fonte a tornou pública | data (dia) |
+
+## `identificadores`
+
+Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas entidades no mesmo período é conflito e não entra em nenhuma
+
+- **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da empresa ↔ série
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Frequência:** Refeita a cada montagem; versão nova só quando o conteúdo muda
+- **Atraso de divulgação:** O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois
+- **Módulo:** rede · **Contém dado de pessoa:** não
+- **Chaves:** `id_entidade`, `sistema`, `valor`, `desde`
+- **Três datas:** aconteceu_em = `desde`; publico_em = `publico_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/rede/identificadores.parquet` (servidor de casa, `scripts/montar_rede.py`)
+- **Linhagem:** Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo (cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a coleta de cada um. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_entidade` | A entidade (tabela `entidades`) | texto |
+| `sistema` | cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...) | texto |
+| `valor` | O identificador (CNPJ sem pontuação, com letras se tiver) | texto |
+| `desde` | Desde quando vale (vazio: sempre) | data (dia) |
+| `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale) | data (dia) |
+| `publico_em` | Desde quando a ligação era pública (como era na data) | data (dia) |
+| `regra` | A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias) | número inteiro |
+| `conferido_por` | regra (código) ou tabela (conferida à mão) | texto |
+| `fontes` | As fontes que trouxeram o identificador, separadas por vírgula | texto |

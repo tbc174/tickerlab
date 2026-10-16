@@ -28,6 +28,7 @@ from dataclasses import dataclass
 import pandas as pd
 from defusedxml.ElementTree import iterparse
 
+from base.cnpj import formatar, normalizar_cnpj
 from base.contas_cvm import COLUNAS
 
 ESCALAS = {"1": 1.0, "2": 1000.0}
@@ -110,9 +111,10 @@ def _data(texto: str | None) -> pd.Timestamp:
     return pd.to_datetime((texto or "").strip(), format="%d/%m/%Y", errors="coerce")
 
 
-def _cnpj(digitos: str) -> str:
-    d = digitos.strip().zfill(14)
-    return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
+def _cnpj(texto: str) -> str:
+    """O CNPJ formatado (com letras, se tiver); vazio se o XML não trouxer um CNPJ."""
+    completo = normalizar_cnpj(texto)
+    return formatar(completo) if completo else ""
 
 
 def _ler(conteudo: bytes) -> tuple[dict[str, str], str, list[dict[str, str]]]:
