@@ -90,7 +90,7 @@ Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Lido do acervo quando preciso (`base/cadastro.py::ler_cadastro`)
-- **Linhagem:** O `cad_cia_aberta.csv` de cada dia fica no acervo e no registro de coletas (com SHA-256 e data da coleta); a tabela é refeita dele. A versão do código que processou a linha ainda não é guardada.
+- **Linhagem:** O `cad_cia_aberta.csv` de cada dia fica no acervo e no registro de coletas (com SHA-256 e data da coleta); a tabela é refeita dele. Não é gravada sozinha: o arquivo lido entra nas origens do manifesto de quem o usa (`rotulos_atraso`, `demonstracoes_como_era`), ao lado da versão do código que montou a tabela.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
