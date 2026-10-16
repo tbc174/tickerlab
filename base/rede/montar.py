@@ -126,6 +126,7 @@ def _ancoras(
         "publico_em": _dia(publico_em),
         "natureza_da_fonte": natureza,
         "conferido_por": PELA_REGRA,
+        "cnpj_da_fonte": cnpj,
     }
     partes = [
         _observacoes(fonte, tipo, ancora, sistema="cnpj", valor=cnpj, regra=1, **comum)
@@ -303,6 +304,12 @@ def _dos_fundos(fundos: pd.DataFrame) -> list[pd.DataFrame]:
         return []
     registro = _dia(fundos["DT_REG"])
     cnpj = fundos["CNPJ_FUNDO"].map(normalizar_cnpj)
+    # a CVM reaproveita o código em tipos diferentes de fundo (FI 19 e FIF 19 são fundos diferentes)
+    tipo_do_fundo = (
+        fundos["TP_FUNDO"].fillna(FUNDO)
+        if "TP_FUNDO" in fundos
+        else pd.Series(FUNDO, fundos.index)
+    )
     partes = [
         _ancoras(
             "cvm-fundos",
@@ -316,7 +323,7 @@ def _dos_fundos(fundos: pd.DataFrame) -> list[pd.DataFrame]:
             "cvm-fundos",
             FUNDO,
             cnpj,
-            sistema="codigo_cvm_fundo",
+            sistema="codigo_cvm_" + tipo_do_fundo,
             valor=fundos["CD_CVM"],
             publico_em=registro,
             regra=5,
@@ -408,9 +415,24 @@ def _do_gleif(ponte: pd.DataFrame) -> list[pd.DataFrame]:
                 publico_em=_dia(linhas["publico_em"]),
                 regra=3,
                 conferido_por=PELA_REGRA,
+                cnpj_da_fonte=linhas["cnpj"],
             ),
         ]
     return partes
+
+
+def _fundo_e_sempre_o_fundo(tabela: pd.DataFrame, fundos: pd.DataFrame) -> pd.DataFrame:
+    """CNPJ do cadastro de fundos é o fundo, venha de onde vier (o FRE lista FIPs como
+    controladas; o GLEIF registra fundos como GENERAL): a observação vai para a âncora do fundo."""
+    if fundos.empty:
+        return tabela
+    cnpjs_de_fundo = set(fundos["CNPJ_FUNDO"].map(normalizar_cnpj).dropna())
+    e_fundo = (tabela["tipo"] == EMPRESA) & tabela["cnpj_da_fonte"].isin(cnpjs_de_fundo)
+    tabela = tabela.assign(
+        tipo=tabela["tipo"].mask(e_fundo, FUNDO),
+        ancora=tabela["ancora"].mask(e_fundo, tabela["cnpj_da_fonte"]),
+    )
+    return tabela[~(e_fundo & (tabela["sistema"] == "cnpj_raiz"))]  # fundo não tem raiz
 
 
 def observacoes(entradas: Entradas) -> pd.DataFrame:
@@ -429,7 +451,9 @@ def observacoes(entradas: Entradas) -> pd.DataFrame:
     partes = [p for p in partes if not p.empty]
     if not partes:
         return pd.DataFrame(columns=list(COLUNAS_DAS_OBSERVACOES))
-    tabela = pd.concat(partes, ignore_index=True)
+    tabela = _fundo_e_sempre_o_fundo(
+        pd.concat(partes, ignore_index=True), entradas.fundos
+    )
     for coluna in ("desde", "ate", "publico_em"):
         tabela[coluna] = pd.to_datetime(tabela[coluna])
     tabela["regra"] = tabela["regra"].astype(int)

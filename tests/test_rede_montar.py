@@ -80,6 +80,7 @@ def _entradas() -> montar.Entradas:
         ),
         fundos=pd.DataFrame(
             {
+                "TP_FUNDO": ["FIDC"],
                 "CNPJ_FUNDO": [FUNDO],
                 "DENOM_SOCIAL": ["FIDC DE MENTIRA"],
                 "DT_REG": ["2015-03-02"],
@@ -257,3 +258,45 @@ def test_colunas_iguais_as_do_dicionario():
     assert list(entidades.columns) == list(TABELAS["entidades"].colunas)
     assert list(identificadores.columns) == list(TABELAS["identificadores"].colunas)
     assert TABELAS["entidades"].modulo == TABELAS["identificadores"].modulo == "rede"
+
+
+def test_codigo_cvm_do_fundo_leva_o_tipo():
+    """A CVM reaproveita o código em tipos diferentes de fundo (FI 19 e FIF 19 são outros fundos)."""
+    fundos = pd.DataFrame(
+        {
+            "TP_FUNDO": ["FI", "FIF"],
+            "CNPJ_FUNDO": ["11.222.333/0001-81", "60.746.948/0001-12"],
+            "DENOM_SOCIAL": ["FUNDO A", "FUNDO B"],
+            "DT_REG": ["2005-01-01", "2003-01-01"],
+            "CD_CVM": ["19", "19"],
+        }
+    )
+    _, identificadores, conflitos = _rede(montar.Entradas(fundos=fundos))
+    codigos = identificadores[identificadores["valor"] == "19"]
+    assert sorted(codigos["sistema"]) == ["codigo_cvm_FI", "codigo_cvm_FIF"]
+    assert conflitos.empty
+
+
+def test_cnpj_de_fundo_e_sempre_o_fundo():
+    """O fundo que aparece como controlada no FRE ou como empresa no GLEIF é o mesmo fundo."""
+    entradas = _entradas()
+    controladas = pd.concat(
+        [
+            entradas.controladas,
+            entradas.controladas.assign(
+                cnpj="11222333000181", razao_social="FIDC DE MENTIRA (no FRE)"
+            ),
+        ],
+        ignore_index=True,
+    )
+    gleif = entradas.gleif.assign(cnpj="11222333000181", categoria="GENERAL")
+    entidades, identificadores, conflitos = _rede(
+        montar.Entradas(
+            **{**vars(entradas), "controladas": controladas, "gleif": gleif}
+        )
+    )
+    assert conflitos.empty
+    fundo = ids.id_entidade("fundo", "cnpj", "11222333000181")
+    assert _id("11222333") not in set(entidades["id_entidade"])
+    lei = identificadores[identificadores["sistema"] == "lei"].iloc[0]
+    assert lei["id_entidade"] == fundo

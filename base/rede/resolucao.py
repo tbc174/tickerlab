@@ -26,7 +26,7 @@ PELA_REGRA, PELA_TABELA = "regra", "tabela"
 SISTEMA_DA_ANCORA = {"empresa": "cnpj_raiz", "fundo": "cnpj"}
 COLUNAS_DAS_OBSERVACOES = (
     "fonte", "tipo", "ancora", "sistema", "valor", "desde", "ate", "publico_em", "regra",
-    "conferido_por", "nome", "prioridade_do_nome", "natureza_da_fonte",
+    "conferido_por", "nome", "prioridade_do_nome", "natureza_da_fonte", "cnpj_da_fonte",
 )  # fmt: skip
 COLUNAS_DAS_ENTIDADES = (
     "id_entidade", "tipo", "ancora", "nome", "natureza_da_fonte", "fontes", "publico_em",
