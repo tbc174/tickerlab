@@ -135,6 +135,9 @@ class Tabela:
     historico_desde: str = ""  # a partir de quando a base tem dado (ISO)
     granularidade_do_publico_em: str = ""  # "dia", "mes" ou "ano"
     versao_do_contrato: str = "1.0.0"
+    # coluna renomeada numa versão maior: nome antigo → nome novo (a porta serve a versão antiga
+    # como vista pelo contrato congelado; ADR 0077, item 8; plano, D12)
+    renomeadas: dict[str, str] = field(default_factory=dict)
 
 
 _ONDE_DA_REDE = "Parquet em `<acervo>/base/rede/{t}.parquet` (servidor de casa, `scripts/montar_rede.py`)"

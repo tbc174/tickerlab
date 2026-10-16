@@ -54,6 +54,8 @@ def contrato_da_tabela(nome: str, tabela: Tabela) -> dict:
         "pessoa": tabela.pessoa,
         "frequencia": tabela.frequencia,
         "atraso": tabela.atraso,
+        # só quando há: o catálogo das tabelas que nunca renomearam nada não muda
+        **({"renomeadas": dict(tabela.renomeadas)} if tabela.renomeadas else {}),
     }
 
 
