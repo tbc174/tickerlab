@@ -32,7 +32,12 @@ import sqlalchemy as sa
 
 from base import gleif, receita_natureza
 from base.cadastro import ler_cadastro
-from base.parquet import gravar_com_versoes, ler_tabela
+from base.parquet import (
+    arquivos_atuais,
+    gravar_com_versoes,
+    ler_tabela,
+    origem_de_tabela,
+)
 from base.rede import amostra, ids, montar
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
@@ -47,7 +52,6 @@ CONFERIDAS = ids.TABELA_CONFERIDA.parent
 FONTE_DO_CADASTRO, ARQUIVO_DO_CADASTRO = "cvm-cadastros", "cad_cia_aberta.csv"
 FONTE_DO_GLEIF, FONTE_DA_RECEITA = "gleif-br", "rfb-cnpj"
 ARQUIVO_DA_RECEITA = re.compile(r"/(\d{4}-\d{2})/(Empresas\d+|Simples)\.zip$")
-ANO, MES = re.compile(r"\d{4}"), re.compile(r"\d{6}")
 ORDEM_DAS_ENTIDADES = ["id_entidade"]
 ORDEM_DOS_IDENTIFICADORES = ["id_entidade", "sistema", "valor", "desde"]
 Origem = dict[str, str]
@@ -61,27 +65,12 @@ class Resumo:
     gravadas: dict[str, str]
 
 
-def _origem_de_tabela(arquivo: Path, pasta: Path) -> Origem:
-    manifesto = json.loads(arquivo.with_suffix(".json").read_text(encoding="utf-8"))
-    return {
-        "url": arquivo.relative_to(pasta).as_posix(),
-        "sha256": manifesto["sha256_da_tabela"],
-    }
-
-
 def _origem_da_conferida(nome: str) -> Origem:
     conteudo = (CONFERIDAS / nome).read_bytes()
     return {
         "url": f"base/conferidas/{nome}",
         "sha256": hashlib.sha256(conteudo).hexdigest(),
     }
-
-
-def _tabelas(pasta: Path, padrao: re.Pattern[str], *partes: str) -> list[Path]:
-    """Os Parquet de uma pasta cujo nome casa com o padrão (sem as versões anteriores `.v<N>`)."""
-    return sorted(
-        p for p in pasta.joinpath(*partes).glob("*.parquet") if padrao.fullmatch(p.stem)
-    )
 
 
 def _origens_das_linhas(conexao: sa.Connection, tabela: pd.DataFrame) -> list[Origem]:
@@ -115,7 +104,7 @@ def _ler(
         return pd.DataFrame()
     tabela = pd.concat([ler_tabela(a) for a in arquivos], ignore_index=True)
     if all(a.with_suffix(".json").is_file() for a in arquivos):
-        origens += [_origem_de_tabela(a, pasta) for a in arquivos]
+        origens += [origem_de_tabela(a, pasta) for a in arquivos]
     else:
         origens += _origens_das_linhas(conexao, tabela)
     return tabela
@@ -206,13 +195,18 @@ def _entradas(
             dtype=str,
             keep_default_na=False,
         ).replace("", None),
-        controladas=_ler(_tabelas(pasta, ANO, "controladas"), pasta, origens, conexao),
+        controladas=_ler(
+            arquivos_atuais(pasta / "controladas"), pasta, origens, conexao
+        ),
         empresa_serie=_ler(
             _uma(pasta, "empresa_serie", "empresa_serie"), pasta, origens, conexao
         ),
         fundos=_ler(_uma(pasta, "fidc", "cadastro", "cad_fi"), pasta, origens, conexao),
         ifdata=_ler(
-            _tabelas(pasta, MES, "bcb", "ifdata", "cadastro"), pasta, origens, conexao
+            arquivos_atuais(pasta / "bcb" / "ifdata" / "cadastro"),
+            pasta,
+            origens,
+            conexao,
         ),
         gleif=_gleif(conexao, origens),
     )
