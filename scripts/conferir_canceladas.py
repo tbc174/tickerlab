@@ -5,7 +5,7 @@ o modelo 8 usa, separando o que a CVM nunca publicou (`sem_documento_na_fonte`: 
 contado) do que a montagem perdeu (`perdida_na_montagem`: erro). A fonte de cada tabela é o original
 do acervo, lido inteiro (todas as companhias, sem os filtros do leitor da tabela):
 
-- `demonstracoes` (DFP e ITR "como era"): o índice das entregas (`cvm-hist-dfp`, `cvm-hist-itr`);
+- `demonstracoes_como_era` (DFP e ITR): o índice das entregas (`cvm-hist-dfp`, `cvm-hist-itr`);
 - `auditores` (FCA): o arquivo dos auditores do FCA (`cvm-hist-fca`);
 - `eventos` (IPE): o arquivo do IPE (`cvm-hist-ipe`).
 
@@ -26,8 +26,8 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
+from base import porta
 from base.cadastro import FonteETabela, cadastro_do_acervo, conferir_canceladas
-from base.parquet import arquivos_atuais
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.banco.conexao import obter_engine
@@ -44,7 +44,7 @@ EXPLICADAS = (
 # tabela da base → (fontes do arquivista, prefixo do arquivo no zip, coluna do CNPJ, começo da fonte)
 FONTES = {
     # o índice começa na DFP de 2010: o primeiro prazo é 31/03/2011
-    "demonstracoes": (
+    "demonstracoes_como_era": (
         ("cvm-hist-dfp", "cvm-hist-itr"),
         ("dfp_cia_aberta_2", "itr_cia_aberta_2"),
         "CNPJ_CIA",
@@ -100,11 +100,12 @@ def na_fonte(
     return cnpjs
 
 
-def na_tabela(pasta: Path) -> set[str]:
-    cnpjs: set[str] = set()
-    for arquivo in arquivos_atuais(pasta):
-        cnpjs |= set(pd.read_parquet(arquivo, columns=["cnpj"])["cnpj"].dropna())
-    return cnpjs
+def na_tabela(base: porta.Porta, tabela: str) -> set[str]:
+    """Os CNPJs da tabela, lidos pela porta (vazio se a tabela não tem arquivo nesta base)."""
+    try:
+        return {str(cnpj) for cnpj in base.distintos(tabela, "cnpj")}
+    except KeyError:
+        return set()
 
 
 def explicadas() -> dict[tuple[str, str], str]:
@@ -129,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         opcoes.pasta
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
     )
-    with obter_engine().connect() as conexao:
+    with obter_engine().connect() as conexao, porta.abrir(pasta) as base:
         achado = cadastro_do_acervo(conexao)
         if achado is None:
             log.error("sem o cadastro de companhias no acervo")
@@ -137,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         tabelas = {
             nome: FonteETabela(
                 na_fonte=na_fonte(conexao, fontes, prefixos, coluna),
-                na_tabela=na_tabela(pasta / nome),
+                na_tabela=na_tabela(base, nome),
                 comeca_em=comeca_em,
             )
             for nome, (fontes, prefixos, coluna, comeca_em) in FONTES.items()

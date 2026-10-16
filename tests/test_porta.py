@@ -182,6 +182,15 @@ def test_ler_recusa_o_que_nao_conhece(base):
             p.ler("ligacoes", versao="7")
 
 
+def test_distintos_traz_os_valores_sem_a_tabela_inteira(base):
+    with Porta(base) as p:
+        assert p.distintos("ligacoes", "para") == {"EA", "EC1"}
+        with pytest.raises(ValueError, match="coluna"):
+            p.distintos("ligacoes", "nao_existe")
+        with pytest.raises(KeyError, match="eventos"):
+            p.distintos("eventos", "cnpj")  # no dicionário, mas sem arquivo nesta base
+
+
 def test_ler_como_era_em_sem_data_publica_e_erro(tmp_path):
     """Sem `publico_em` no contrato, a porta não finge saber como era."""
     _gravar(

@@ -163,6 +163,19 @@ class Porta:
         ).df()
         return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
 
+    def distintos(
+        self, tabela: str, coluna: str, versao: str | None = None
+    ) -> set[object]:
+        """Os valores diferentes de uma coluna (sem os vazios), sem trazer a tabela inteira."""
+        view = self._view(tabela, versao)
+        if coluna not in colunas(self.con, view):
+            raise ValueError(f"{tabela}: coluna {coluna!r} não existe")
+        linhas = self.con.execute(
+            f"SELECT DISTINCT {_nome(coluna)} FROM {_nome(view)} "
+            f"WHERE {_nome(coluna)} IS NOT NULL"
+        ).fetchall()
+        return {linha[0] for linha in linhas}
+
     # --- rede, linhagem e carteira --------------------------------------------------------------
     def rede(
         self,
