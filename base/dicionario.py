@@ -208,7 +208,13 @@ TABELAS: dict[str, Tabela] = {
                 DATA,
             ),
             "fim": ("Fim do período ou data do saldo", DATA),
-            "valor": ("Valor da conta; vazio quando a empresa deixou em branco", REAIS),
+            "valor": (
+                (
+                    "Valor da conta; vazio quando a empresa deixou em branco na versão lida do "
+                    "ENET (nos dados abertos da CVM, a linha em branco vem como 0)"
+                ),
+                REAIS,
+            ),
             **_DOCUMENTO,
             "versao": (
                 "Versão do documento que publicou este valor (1, 2, 3...)",

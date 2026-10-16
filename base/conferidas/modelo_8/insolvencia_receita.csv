@@ -1,0 +1,104 @@
+direcao;cnpj;tipo_na_receita;data_na_receita;tipo_no_ipe;confere;explicacao;conferido_em
+receita_para_ipe;00.410.345/0001-13;falencia;2003-03-21;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;05.495.546/0001-84;liquidacao_extrajudicial;2021-02-08;;True;;2026-10-16
+receita_para_ipe;02.465.783/0001-04;liquidacao_extrajudicial;2019-05-17;;False;o IPE tem documentos depois da liquidação, mas o leitor não marcou a liquidação extrajudicial (falso negativo do rótulo do IPE);2026-10-16
+receita_para_ipe;60.851.615/0001-53;recuperacao_judicial;2019-08-07;;True;;2026-10-16
+receita_para_ipe;60.873.874/0001-85;falencia;2009-10-30;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;60.500.139/0001-26;falencia;2023-10-06;;True;;2026-10-16
+receita_para_ipe;33.470.022/0001-74;falencia;2009-07-14;;True;;2026-10-16
+receita_para_ipe;02.363.918/0001-20;liquidacao_extrajudicial;2017-04-17;;True;;2026-10-16
+receita_para_ipe;62.136.254/0001-99;falencia;2015-08-12;;True;;2026-10-16
+receita_para_ipe;60.703.923/0001-31;falencia;2008-09-04;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;07.718.269/0001-57;recuperacao_judicial;2024-07-25;;True;;2026-10-16
+receita_para_ipe;09.112.685/0001-32;recuperacao_judicial;2014-03-19;;True;;2026-10-16
+receita_para_ipe;02.604.997/0001-14;liquidacao_extrajudicial;2019-05-22;;True;;2026-10-16
+receita_para_ipe;22.677.520/0001-76;recuperacao_judicial;2024-07-25;;True;;2026-10-16
+receita_para_ipe;01.547.749/0001-16;liquidacao_extrajudicial;2015-05-13;;True;;2026-10-16
+receita_para_ipe;61.082.004/0001-50;recuperacao_judicial;2026-06-15;;True;;2026-10-16
+receita_para_ipe;33.035.536/0001-00;recuperacao_judicial;2020-05-11;;True;;2026-10-16
+receita_para_ipe;33.200.049/0001-47;recuperacao_judicial;2018-11-28;;True;;2026-10-16
+receita_para_ipe;02.762.115/0001-49;falencia;2019-08-21;;True;;2026-10-16
+receita_para_ipe;21.240.146/0001-84;recuperacao_judicial;2024-10-01;;True;;2026-10-16
+receita_para_ipe;00.249.786/0001-85;liquidacao_extrajudicial;2013-01-15;;True;;2026-10-16
+receita_para_ipe;04.032.433/0001-80;recuperacao_judicial;2022-06-15;;True;;2026-10-16
+receita_para_ipe;56.994.924/0001-05;liquidacao_extrajudicial;2014-03-28;;False;"o IPE marca a recuperação judicial; a liquidação extrajudicial que veio depois não foi marcada (falso negativo do rótulo do IPE)";2026-10-16
+receita_para_ipe;88.658.752/0001-95;falencia;2003-06-30;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;02.117.801/0001-67;liquidacao_extrajudicial;2019-01-08;;True;;2026-10-16
+receita_para_ipe;11.395.624/0001-71;falencia;2019-06-10;;True;;2026-10-16
+receita_para_ipe;31.553.627/0001-01;recuperacao_judicial;2026-06-12;;True;;2026-10-16
+receita_para_ipe;76.535.764/0001-43;recuperacao_judicial;2016-06-29;;True;;2026-10-16
+receita_para_ipe;60.631.090/0001-40;falencia;2013-09-26;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;03.494.776/0001-01;recuperacao_judicial;2024-07-25;;True;;2026-10-16
+receita_para_ipe;82.981.812/0001-20;falencia;2016-04-28;;True;;2026-10-16
+receita_para_ipe;83.296.889/0001-23;falencia;2005-04-29;;True;;2026-10-16
+receita_para_ipe;86.550.951/0001-50;falencia;2024-04-26;;True;;2026-10-16
+receita_para_ipe;00.185.475/0001-08;liquidacao_extrajudicial;2013-01-15;;True;;2026-10-16
+receita_para_ipe;08.613.550/0001-98;recuperacao_judicial;2023-02-14;;True;;2026-10-16
+receita_para_ipe;19.711.282/0001-63;falencia;2005-10-24;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;61.087.581/0001-35;falencia;2012-03-19;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;50.564.053/0001-03;recuperacao_judicial;2025-02-12;;True;;2026-10-16
+receita_para_ipe;07.950.674/0001-04;liquidacao_extrajudicial;2019-12-26;;True;;2026-10-16
+receita_para_ipe;16.233.389/0001-55;recuperacao_judicial;2026-05-05;;True;;2026-10-16
+receita_para_ipe;00.354.053/0001-00;recuperacao_judicial;2010-08-11;;True;;2026-10-16
+receita_para_ipe;21.255.567/0001-89;recuperacao_judicial;2024-07-25;;True;;2026-10-16
+receita_para_ipe;82.981.671/0001-45;falencia;2013-07-15;;True;;2026-10-16
+receita_para_ipe;10.851.805/0001-00;recuperacao_judicial;2023-01-23;;True;;2026-10-16
+receita_para_ipe;92.929.520/0001-00;liquidacao_extrajudicial;2020-09-21;;True;;2026-10-16
+receita_para_ipe;29.075.363/0001-78;falencia;2008-07-09;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;33.010.760/0001-39;falencia;2004-08-13;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;68.271.295/0001-74;falencia;2006-07-13;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;09.116.278/0001-01;recuperacao_judicial;2017-08-18;;True;;2026-10-16
+receita_para_ipe;76.627.504/0001-06;recuperacao_judicial;2015-05-21;;True;;2026-10-16
+receita_para_ipe;61.065.751/0001-80;recuperacao_judicial;2022-09-29;;True;;2026-10-16
+receita_para_ipe;08.773.135/0001-00;recuperacao_judicial;2025-04-23;;True;;2026-10-16
+receita_para_ipe;89.723.993/0001-33;recuperacao_judicial;2015-07-09;;True;;2026-10-16
+receita_para_ipe;62.258.884/0001-36;recuperacao_judicial;2024-12-05;;True;;2026-10-16
+receita_para_ipe;33.111.246/0001-90;falencia;2022-10-07;;True;;2026-10-16
+receita_para_ipe;33.143.025/0001-01;falencia;2006-08-30;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;78.594.876/0001-09;falencia;2009-12-15;;False;nenhum documento no IPE depois da data da Receita: a companhia parou de entregar à CVM (massa falida);2026-10-16
+receita_para_ipe;33.412.081/0001-96;recuperacao_judicial;2015-07-06;;True;;2026-10-16
+receita_para_ipe;10.242.478/0001-81;liquidacao_extrajudicial;2016-02-18;;True;;2026-10-16
+ipe_para_receita;02.950.811/0001-89;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;24.973.927/0001-76;;;recuperacao_judicial;False;a Receita marca a recuperação judicial em outro estabelecimento (mesma raiz do CNPJ);2026-10-16
+ipe_para_receita;08.534.605/0001-74;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;09.116.278/0001-01;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;02.162.616/0001-94;;;liquidacao;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;33.592.510/0001-54;;;recuperacao_judicial;False;evento de outra empresa (conclusão da recuperação judicial da Samarco): o rótulo do IPE marca a companhia (falso positivo);2026-10-16
+ipe_para_receita;09.478.309/0001-66;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;02.041.460/0001-93;;;recuperacao_judicial;False;evento de outra empresa (decisão na recuperação judicial da Oi): o rótulo do IPE marca a companhia (falso positivo);2026-10-16
+ipe_para_receita;83.296.889/0001-23;;;falencia;True;;2026-10-16
+ipe_para_receita;62.258.884/0001-36;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;22.677.520/0001-76;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;07.718.269/0001-57;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;09.527.023/0001-23;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;08.773.135/0001-00;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;02.117.801/0001-67;;;liquidacao;True;;2026-10-16
+ipe_para_receita;01.547.749/0001-16;;;liquidacao;True;;2026-10-16
+ipe_para_receita;05.495.546/0001-84;;;liquidacao;True;;2026-10-16
+ipe_para_receita;60.398.369/0004-79;;;recuperacao_judicial;False;"o IPE traz o CNPJ de uma filial; a Receita marca a recuperação judicial em outro estabelecimento da mesma raiz";2026-10-16
+ipe_para_receita;13.270.520/0001-66;;;recuperacao_judicial;False;recuperação extrajudicial: o rótulo do IPE junta com a judicial e a Receita não marca a extrajudicial;2026-10-16
+ipe_para_receita;21.255.567/0001-89;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;01.107.327/0001-20;;;recuperacao_judicial;False;recuperação extrajudicial: o rótulo do IPE junta com a judicial e a Receita não marca a extrajudicial;2026-10-16
+ipe_para_receita;04.032.433/0001-80;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;10.678.505/0001-63;;;recuperacao_judicial;False;documento do fim da recuperação judicial: a Receita já tirou a marca;2026-10-16
+ipe_para_receita;61.082.004/0001-50;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;16.233.389/0001-55;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;76.535.764/0001-43;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;33.041.260/0652-90;;;recuperacao_judicial;False;o IPE traz o CNPJ de uma filial e a Receita não tem marca na companhia;2026-10-16
+ipe_para_receita;33.412.081/0001-96;;;falencia;False;"a falência é de 31/08/2026; a Receita ainda marca a recuperação judicial (tipo antigo)";2026-10-16
+ipe_para_receita;21.240.146/0001-84;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;03.378.521/0001-75;;;recuperacao_judicial;False;documento do encerramento da recuperação judicial: a Receita já tirou a marca;2026-10-16
+ipe_para_receita;50.564.053/0001-03;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;60.851.615/0001-53;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;12.648.266/0001-24;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;33.035.536/0001-00;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;00.359.742/0001-08;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;11.395.624/0001-71;;;falencia;True;;2026-10-16
+ipe_para_receita;61.065.751/0001-80;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;08.613.550/0001-98;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;00.776.574/0001-56;;;recuperacao_judicial;False;a Receita marca a recuperação judicial em outro estabelecimento (mesma raiz do CNPJ);2026-10-16
+ipe_para_receita;09.112.685/0001-32;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;33.200.049/0001-47;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;82.636.986/0001-55;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
+ipe_para_receita;31.553.627/0001-01;;;recuperacao_judicial;True;;2026-10-16
+ipe_para_receita;38.199.406/0001-18;;;recuperacao_judicial;False;a Receita não tem a marca: a situação especial depende do registro na Junta e fica incompleta (a Americanas, em recuperação desde 2023, só aparece em outro estabelecimento);2026-10-16
