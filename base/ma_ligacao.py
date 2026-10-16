@@ -172,7 +172,7 @@ OPTANTE = "S"
 Arquivo = Path | IO[bytes]
 
 
-def _partes(arquivo_zip: Arquivo, colunas: list[int]) -> Iterator[pd.DataFrame]:
+def partes_do_zip(arquivo_zip: Arquivo, colunas: list[int]) -> Iterator[pd.DataFrame]:
     with zipfile.ZipFile(arquivo_zip) as zipado:
         (membro,) = zipado.namelist()  # cada ZIP da Receita tem um arquivo só
         with zipado.open(membro) as texto:
@@ -188,7 +188,7 @@ def _pelo_nome(
     """(raiz, nome_normalizado) das linhas cujo nome normalizado é um dos `nomes`."""
     achados = []
     for arquivo in arquivos:
-        for parte in _partes(arquivo, [0, coluna]):
+        for parte in partes_do_zip(arquivo, [0, coluna]):
             parte = parte[parte[coluna].str.strip() != ""]
             normalizados = normalizar_nomes(parte[coluna])
             casou = normalizados.isin(nomes)
@@ -212,7 +212,7 @@ def _das_raizes(
     pedacos = [
         parte[parte[0].isin(raizes)].set_index(0)[coluna]
         for arquivo in arquivos
-        for parte in _partes(arquivo, [0, coluna])
+        for parte in partes_do_zip(arquivo, [0, coluna])
     ]
     if not pedacos:
         return pd.Series(dtype=object)

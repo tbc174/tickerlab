@@ -71,6 +71,8 @@ LICENCAS = {
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
     "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+    # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
+    "wayback": "Internet Archive: 'for scholarship and research purposes only'; só datas",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -125,6 +127,7 @@ REVENDA = {
     "comexstat": A_CONFIRMAR,
     "b3": SO_USO_INTERNO,
     "assessoria": A_CONFIRMAR,  # vender ou mostrar no app só com o parecer (ADRs 0063 e 0082)
+    "wayback": SO_USO_INTERNO,  # os termos falam em pesquisa: vender pede o parecer antes
 }
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000

@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 
 from base import intradiario_b3
-from base.arquivo import assessorias
+from base.arquivo import assessorias, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     csv_so_com_colunas,
@@ -760,6 +760,8 @@ FONTES: list[Fonte] = [
     ),
     # posts das assessorias independentes de M&A (middle market, ADR 0082)
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
+    # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
+    *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}
