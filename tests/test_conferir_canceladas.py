@@ -6,6 +6,7 @@ import zipfile
 
 import pandas as pd
 
+from base.dicionario import TABELAS
 from scripts import conferir_canceladas
 from src.banco.coletas import com_registro
 
@@ -53,8 +54,13 @@ def _acervo() -> None:
 
 
 def _tabela(pasta, nome: str, cnpjs: list[str]) -> None:
+    """A tabela com todas as colunas do dicionário (a porta monta as views com elas), vazias."""
+    tabela = "demonstracoes_como_era" if nome == "demonstracoes" else nome
+    colunas = {coluna: [None] * len(cnpjs) for coluna in TABELAS[tabela].colunas}
     (pasta / nome).mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"cnpj": cnpjs}).to_parquet(pasta / nome / "2014.parquet")
+    pd.DataFrame({**colunas, "cnpj": cnpjs}).astype("string").to_parquet(
+        pasta / nome / "2014.parquet"
+    )
 
 
 def test_cancelada_que_a_fonte_tem_e_a_base_nao_faz_a_conferencia_falhar(
@@ -73,8 +79,8 @@ def test_cancelada_que_a_fonte_tem_e_a_base_nao_faz_a_conferencia_falhar(
     )
     situacao = conferencia.set_index(["tabela", "cnpj"])["situacao"].to_dict()
     assert situacao == {
-        ("demonstracoes", SAIU): "na_tabela",
-        ("demonstracoes", PERDIDA): "perdida_na_montagem",
+        ("demonstracoes_como_era", SAIU): "na_tabela",
+        ("demonstracoes_como_era", PERDIDA): "perdida_na_montagem",
         ("auditores", SAIU): "na_tabela",
         ("auditores", PERDIDA): "sem_documento_na_fonte",
         ("eventos", SAIU): "na_tabela",
