@@ -5120,6 +5120,115 @@
       "pessoa": false,
       "frequencia": "Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta"
+    },
+    "ma_partes": {
+      "tabela": "ma_partes",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "O nome da empresa como a página escreve",
+          "unidade": "texto"
+        },
+        "papel": {
+          "descricao": "alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis (dívida, fusão, joint venture, título sem verbo)",
+          "unidade": "texto"
+        },
+        "na_pagina": {
+          "descricao": "cliente (a assessorada) ou contraparte: o campo da página em que o nome está",
+          "unidade": "texto"
+        },
+        "nome_normalizado": {
+          "descricao": "O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e \"Grupo\": o que se compara",
+          "unidade": "texto"
+        },
+        "id_entidade": {
+          "descricao": "A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede dará à raiz dela. Vazio sem ligação ou na dúvida",
+          "unidade": "texto"
+        },
+        "cnpj_raiz": {
+          "descricao": "Os 8 primeiros dígitos do CNPJ da empresa ligada",
+          "unidade": "texto"
+        },
+        "lei": {
+          "descricao": "O LEI da entidade ligada, quando a rede tem",
+          "unidade": "texto"
+        },
+        "ligacao_por": {
+          "descricao": "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato) ou sem_ligacao",
+          "unidade": "texto"
+        },
+        "candidatos": {
+          "descricao": "Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida)",
+          "unidade": "número inteiro"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url",
+        "nome"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias` e o do mês do CNPJ guardado"
+    },
+    "ma_negocios": {
+      "tabela": "ma_negocios",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "\"N\" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); o de uma página quando as mesmas partes não podem ser juntadas",
+          "unidade": "texto"
+        },
+        "paginas_do_negocio": {
+          "descricao": "Quantas páginas têm este `id_negocio`",
+          "unidade": "número inteiro"
+        },
+        "paginas_com_as_mesmas_partes": {
+          "descricao": "Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo site são posts diferentes)",
+          "unidade": "número inteiro"
+        },
+        "duplicata_por": {
+          "descricao": "partes_iguais quando o negócio está em mais de uma página; vazio se só em uma",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias`"
     }
   }
 }

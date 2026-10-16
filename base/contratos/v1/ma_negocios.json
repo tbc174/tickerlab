@@ -1,0 +1,44 @@
+{
+  "tabela": "ma_negocios",
+  "modulo": "ma",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "assessoria": {
+      "descricao": "Quem postou (`igc`)",
+      "unidade": "texto"
+    },
+    "url": {
+      "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+      "unidade": "texto"
+    },
+    "id_negocio": {
+      "descricao": "\"N\" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); o de uma página quando as mesmas partes não podem ser juntadas",
+      "unidade": "texto"
+    },
+    "paginas_do_negocio": {
+      "descricao": "Quantas páginas têm este `id_negocio`",
+      "unidade": "número inteiro"
+    },
+    "paginas_com_as_mesmas_partes": {
+      "descricao": "Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo site são posts diferentes)",
+      "unidade": "número inteiro"
+    },
+    "duplicata_por": {
+      "descricao": "partes_iguais quando o negócio está em mais de uma página; vazio se só em uma",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "assessoria",
+    "url"
+  ],
+  "datas": {},
+  "historico_desde": "2026-10-16",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+  "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+  "pessoa": false,
+  "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+  "atraso": "O da tabela `ma_assessorias`"
+}

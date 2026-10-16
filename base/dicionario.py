@@ -3207,6 +3207,118 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ma_partes": Tabela(
+        descricao=(
+            "As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por "
+            "empresa de cada página, ligadas à rede de entidades (ADR 0077) só por regras exatas: "
+            "o nome normalizado contra os nomes da rede e a razão social do CNPJ e, se nada casou, "
+            "contra o nome fantasia. Nome de mais de uma entidade fica na dúvida, nunca escolhido; "
+            "empresário individual e MEI nunca são ligados (ADR 0075). Série 5 do plano de M&A, "
+            "passo 3 (ADR 0082)"
+        ),
+        fonte=(
+            "`ma_assessorias`, a rede (`entidades`, `identificadores`) e o CNPJ aberto da Receita "
+            "(razão social e nome fantasia, lidos e descartados: só a raiz fica)"
+        ),
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso="O da tabela `ma_assessorias` e o do mês do CNPJ guardado",
+        onde=(
+            "Parquet em `<acervo>/base/ma/ligacao/partes.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "O `.json` guarda as tabelas de entrada (com o hash de cada uma) e os arquivos da "
+            "Receita usados; a página de cada parte está em `url`. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "nome": ("O nome da empresa como a página escreve", TEXTO),
+            "papel": (
+                (
+                    "alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis "
+                    "(dívida, fusão, joint venture, título sem verbo)"
+                ),
+                TEXTO,
+            ),
+            "na_pagina": (
+                "cliente (a assessorada) ou contraparte: o campo da página em que o nome está",
+                TEXTO,
+            ),
+            "nome_normalizado": (
+                (
+                    'O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e "Grupo": o '
+                    "que se compara"
+                ),
+                TEXTO,
+            ),
+            "id_entidade": (
+                (
+                    "A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede "
+                    "dará à raiz dela. Vazio sem ligação ou na dúvida"
+                ),
+                TEXTO,
+            ),
+            "cnpj_raiz": ("Os 8 primeiros dígitos do CNPJ da empresa ligada", TEXTO),
+            "lei": ("O LEI da entidade ligada, quando a rede tem", TEXTO),
+            "ligacao_por": (
+                (
+                    "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um "
+                    "candidato) ou sem_ligacao"
+                ),
+                TEXTO,
+            ),
+            "candidatos": (
+                "Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida)",
+                NUMERO,
+            ),
+        },
+    ),
+    "ma_negocios": Tabela(
+        descricao=(
+            "Uma linha por página de negócio de M&A com o `id_negocio`, o mesmo para as páginas "
+            "do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo "
+            "negócio): mesmas partes, assessorias diferentes e tipos que não se contradizem. "
+            "Série 5 do plano de M&A, passo 3 (ADR 0082)"
+        ),
+        fonte="`ma_assessorias` e `ma_partes`",
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso="O da tabela `ma_assessorias`",
+        onde=(
+            "Parquet em `<acervo>/base/ma/ligacao/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "O `.json` guarda as tabelas de entrada com o hash de cada uma. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "id_negocio": (
+                (
+                    '"N" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); '
+                    "o de uma página quando as mesmas partes não podem ser juntadas"
+                ),
+                TEXTO,
+            ),
+            "paginas_do_negocio": ("Quantas páginas têm este `id_negocio`", NUMERO),
+            "paginas_com_as_mesmas_partes": (
+                (
+                    "Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo "
+                    "site são posts diferentes)"
+                ),
+                NUMERO,
+            ),
+            "duplicata_por": (
+                "partes_iguais quando o negócio está em mais de uma página; vazio se só em uma",
+                TEXTO,
+            ),
+        },
+    ),
 }
 
 
@@ -3280,6 +3392,8 @@ _CONTRATO = {
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
     "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
+    "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
 }  # fmt: skip
 
 
