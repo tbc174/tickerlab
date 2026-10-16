@@ -16,7 +16,7 @@ import time
 import requests
 import sqlalchemy as sa
 
-from src import catalogo
+from src import catalogo, rede
 from src import fundos_sec as f13
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -35,7 +35,7 @@ SEM_CONTATO = 2
 
 def _baixar_da_fonte(url: str, agente: str) -> bytes:
     time.sleep(PAUSA_ENTRE_CONSULTAS)
-    resposta = requests.get(
+    resposta = rede.obter(
         url,
         timeout=600,
         headers={"User-Agent": agente, "Accept-Encoding": "gzip, deflate"},

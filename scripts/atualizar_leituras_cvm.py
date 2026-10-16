@@ -25,7 +25,7 @@ import anthropic
 import requests
 import sqlalchemy as sa
 
-from src import leitura, topicos, topicos_modelo
+from src import leitura, rede, topicos, topicos_modelo
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.leituras import (
@@ -48,7 +48,7 @@ DIAS = 30
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()

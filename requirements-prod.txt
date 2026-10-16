@@ -25,6 +25,8 @@ psycopg-binary==3.3.6
 psycopg==3.3.6
 requests==2.34.2
 SQLAlchemy==2.1.4
+# tenacity: as coletas tentam de novo quando a fonte falha por um instante (src/rede.py).
+tenacity==9.2.1
 streamlit==1.65.0
 stripe==16.0.0
 uvicorn==0.54.0
