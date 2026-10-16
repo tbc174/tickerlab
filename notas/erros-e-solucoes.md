@@ -537,3 +537,8 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o script tem `set -euo pipefail`. No laço `until git log ... | grep -q '(#313)'`, o `grep -q` termina assim que acha a linha; o `git log` ainda está escrevendo, leva SIGPIPE e sai com 141. Com `pipefail`, o pipeline inteiro conta como falha, então o `until` nunca via o merge.
 - **Solução:** perguntar direto ao Git, sem pipeline: `git merge-base --is-ancestor <commit> origin/main` (sai 0 se o commit já está na `main`). Regra geral: com `pipefail`, não pôr `grep -q` (ou `head`) depois de um comando que escreve muito.
 - **Data:** 16/10/2026
+## Carga da IEX para no meio com `ProtocolError: Connection broken: IncompleteRead(...)`
+- **Sintoma:** a tarefa `iex-carga` do VPS termina com saída 1 e um traceback da `urllib3` no log; o Kuma ("Tarefas do VPS") fica vermelho e o selo da rodada não roda.
+- **Causa:** a conexão com a IEX caiu no meio do arquivo do dia (~17 GB). O coletor lê o `resposta.raw` direto, então o erro vem da `urllib3`, que não é `requests.RequestException` nem `OSError` e escapava do `except`.
+- **Solução:** `scripts/coletar_iex_do_dia.py` baixa o dia de novo uma vez; se cair de novo, o dia falha sozinho ("FALHOU, nada gravado") e a rodada segue (PR #322). Lição: quem lê `.raw` de uma resposta do `requests` precisa tratar os erros da `urllib3` também.
+- **Data:** 16/10/2026

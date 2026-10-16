@@ -8,8 +8,10 @@ import zipfile
 import pandas as pd
 
 from base.cadastro import (
+    FonteETabela,
     canceladas,
     cobertura_das_canceladas,
+    conferir_canceladas,
     ler_cadastro,
     tickers_no_tempo,
 )
@@ -172,3 +174,63 @@ def test_cadastro_traz_a_uf_da_sede():
     ).encode("latin-1")
     assert ler_cadastro(com_uf)["uf"].tolist() == ["RS"]
     assert ler_cadastro(CADASTRO)["uf"].tolist() == ["", "", ""]  # arquivo sem a coluna
+
+
+# --- conferência medida das canceladas (ADR 0027, exigência 4; critério de pronto do modelo 8) ---
+D = "44.444.444/0001-44"
+E = "55.555.555/0001-55"
+CANCELADAS = (
+    "CNPJ_CIA;DENOM_SOCIAL;DT_REG;DT_CANCEL;MOTIVO_CANCEL;SIT;SETOR_ATIV\n"
+    f"{A};EMPRESA A;2001-05-10;;;ATIVO;Energia Elétrica\n"
+    f"{B};EMPRESA B;1990-01-02;2023-11-30;Cancelamento voluntário;CANCELADA;Têxtil\n"
+    f"{C};EMPRESA C;2005-03-01;2010-06-15;Incorporação;CANCELADA;Bancos\n"
+    f"{D};EMPRESA D;1977-07-20;2014-01-09;Cancelamento de ofício;CANCELADA;Têxtil\n"
+    f"{E};EMPRESA E;1998-02-20;2015-12-08;Cancelamento voluntário;CANCELADA;Bancos\n"
+).encode("latin-1")
+
+
+def test_conferencia_separa_falta_da_fonte_de_empresa_perdida_na_montagem():
+    cadastro = ler_cadastro(CANCELADAS)
+    tabelas = {
+        "demonstracoes": FonteETabela(
+            na_fonte={A, B, E}, na_tabela={A, B}, comeca_em="2011-03-31"
+        )
+    }
+    conferencia = conferir_canceladas(cadastro, tabelas, desde="2010-01-01")
+    situacao = conferencia.set_index("cnpj")["situacao"].to_dict()
+    assert situacao == {
+        B: "na_tabela",
+        C: "saiu_antes_da_tabela",  # cancelada antes do primeiro prazo que a fonte cobre
+        D: "sem_documento_na_fonte",  # a CVM não publica nada dela: limite da fonte
+        E: "perdida_na_montagem",  # a fonte tem, a base não: é erro
+    }
+    assert conferencia.attrs["perdidas"] == 1
+    assert set(conferencia["motivo_cancelamento"]) >= {"Cancelamento de ofício"}
+
+
+def test_falta_explicada_a_mao_deixa_de_ser_perdida():
+    cadastro = ler_cadastro(CANCELADAS)
+    tabelas = {
+        "eventos": FonteETabela(na_fonte={E}, na_tabela=set(), comeca_em="2003-01-01")
+    }
+    explicadas = {("eventos", E): "só documentos que o leitor do IPE não classifica"}
+    conferencia = conferir_canceladas(
+        cadastro, tabelas, desde="2010-01-01", explicadas=explicadas
+    )
+    linha = conferencia.set_index("cnpj").loc[E]
+    assert (linha["situacao"], linha["explicacao"]) == (
+        "explicada_a_mao",
+        "só documentos que o leitor do IPE não classifica",
+    )
+    assert conferencia.attrs["perdidas"] == 0
+
+
+def test_empresa_com_um_registro_ainda_ativo_nao_e_cancelada():
+    cadastro = ler_cadastro(
+        CANCELADAS + f"{B};EMPRESA B;2024-05-01;;;ATIVO;Têxtil\n".encode("latin-1")
+    )
+    tabelas = {
+        "x": FonteETabela(na_fonte=set(), na_tabela=set(), comeca_em="2003-01-01")
+    }
+    conferencia = conferir_canceladas(cadastro, tabelas, desde="2010-01-01")
+    assert B not in set(conferencia["cnpj"])
