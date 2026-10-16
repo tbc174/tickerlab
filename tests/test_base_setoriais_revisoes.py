@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from base.arquivo import fontes
-from base.setoriais import anatel, aneel, ans, prazos, revisoes
+from base.setoriais import anatel, aneel, ans, prazos, revisoes, susep
 
 PASTA = Path(__file__).parent / "arquivos" / "setoriais"
 
@@ -107,6 +107,29 @@ def test_disponivel_em_respeita_o_prazo_de_cada_fonte(samp, beneficiarios):
         .all()
     )
     assert prazos.DIAS_ATE_PUBLICAR_ANS > prazos.ATRASO_MEDIDO_ANS
+
+
+def test_le_a_susep_no_formato_da_fonte():
+    seguros = susep.ler((PASTA / "susep" / "Ses_seguros.csv").read_bytes())
+    assert list(seguros.columns) == list(susep.COLUNAS)
+    assert set(seguros["coenti"]) == {
+        "05631",
+        "05886",
+        "06033",
+        "06785",
+    }  # o zero à esquerda fica
+    assert not seguros.duplicated(susep.CHAVE).any()
+    porto = seguros[
+        (seguros["coenti"] == "05886") & (seguros["competencia"] == "2000-09-30")
+    ]
+    assert porto["premio_direto"].max() == pytest.approx(
+        4575781.13
+    )  # a vírgula decimal
+    assert (
+        (seguros["disponivel_em"] - seguros["competencia"])
+        .dt.days.eq(prazos.DIAS_ATE_PUBLICAR_MENSAL)
+        .all()
+    )
 
 
 # --- revisões ---------------------------------------------------------------------------------------

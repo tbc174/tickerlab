@@ -120,6 +120,16 @@ BENEFICIARIOS_POR_OPERADORA_DA_ANS = (
     "https://dadosabertos.ans.gov.br/FTP/PDA/beneficiarios_vinculos_tipo_contratacao_vda/"
     "Beneficiarios_operadora_e_carteira.csv"
 )
+# SUSEP (série 4, PR 5b): o SES inteiro é um ZIP de ~580 MB regerado todo dia; saem de dentro dele só
+# os prêmios e sinistros por seguradora e os cadastros. Nunca os CSVs com pessoas (administradores,
+# contatos, acionistas): a lista é fechada
+SES_DA_SUSEP = "https://www2.susep.gov.br/download/estatisticas/BaseCompleta.zip"
+CSVS_DA_SUSEP = (
+    "Ses_seguros.csv",
+    "Ses_cias.csv",
+    "Ses_ramos.csv",
+    "ses_gruposramos.csv",
+)
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -393,6 +403,21 @@ def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return alvos
 
 
+def descobrir_susep(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os CSVs escolhidos de dentro do ZIP do SES (o endereço guarda `zip#arquivo`)."""
+    membros = set(membros_do_zip_remoto(cliente, SES_DA_SUSEP))
+    if faltam := [m for m in CSVS_DA_SUSEP if m not in membros]:
+        raise ErroDeDescoberta(f"SUSEP: o ZIP do SES não tem {', '.join(faltam)}")
+    return [
+        Alvo(
+            f"{SES_DA_SUSEP}#{membro}",
+            ".csv",
+            extrair_do_zip_remoto(SES_DA_SUSEP, membro),
+        )
+        for membro in CSVS_DA_SUSEP
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -662,6 +687,7 @@ FONTES: list[Fonte] = [
     Fonte("anatel-acessos", "mensal", descobrir_anatel, pesada=True),
     Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),
     Fonte("aneel-samp", "mensal", descobrir_samp, pesada=True),
+    Fonte("susep-ses", "mensal", descobrir_susep, pesada=True),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",

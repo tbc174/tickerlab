@@ -9,8 +9,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base.arquivo.fontes import SES_DA_SUSEP
 from base.parquet import conferir_tabela, gravar_tabela
-from base.setoriais import anac, anatel, aneel, anp, ans, ons
+from base.setoriais import anac, anatel, aneel, anp, ans, ons, susep
 from scripts import carga_setoriais
 from src import acervo
 from src import versao_do_codigo as vc
@@ -39,6 +40,7 @@ ENDERECOS = {
         ]
     ],
     ans.FONTE: [(ans.URL, "ans/Beneficiarios_operadora_e_carteira.csv")],
+    susep.FONTE: [(f"{SES_DA_SUSEP}#{susep.ARQUIVO}", "susep/Ses_seguros.csv")],
 }  # fmt: skip
 ANATEL = {"Acessos_Banda_Larga_Fixa_2024_Colunas", "Acessos_Telefonia_Movel_200902-2018_Modalidade_Colunas",
           "Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas"}  # fmt: skip
@@ -85,6 +87,7 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
         "aneel": {"2010", "2024"},
         "anatel": ANATEL,
         "ans": {"2017", "2026"},
+        "susep": {"2000", "2015", "2026"},
     }
     with criar_engine().connect() as c:
         for fonte, anos in esperados.items():
@@ -112,6 +115,12 @@ def test_buracos_da_ligacao_pela_b13(ambiente):
         aneel.FONTE: {"15139629000194"},  # a Coelba, fora da B13 do teste
         anatel.FONTE: {"02421421000111"},  # a TIM, idem
         ans.FONTE: {"005711", "326305"},
+        susep.FONTE: {
+            "05631",
+            "05886",
+            "06033",
+            "06785",
+        },  # a B13 não liga a SUSEP (ainda)
     }
 
 
