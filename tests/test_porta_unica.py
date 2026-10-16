@@ -31,9 +31,12 @@ EXCECOES_HERDADAS: dict[str, str] = {
     "base/cripto/coleta.py": _CRIPTO,
     "base/cripto/leitura.py": _CRIPTO,
     "base/cripto/reprodutivel.py": _CRIPTO,
+    # entrou na main junto com a porta (#321 e #323 no mesmo dia): lê só a coluna `cnpj` de
+    # demonstracoes, auditores e eventos; vai para a porta num PR próprio e sai daqui
+    "scripts/conferir_canceladas.py": "conferência do modelo 8, de antes da porta (sai no próximo PR)",
 }
 TETO_DE_EXCECOES = (
-    11  # só desce: arquivo que passou para a porta sai da lista e o teto cai
+    12  # só desce: arquivo que passou para a porta sai da lista e o teto cai
 )
 
 
