@@ -138,6 +138,16 @@ class Tabela:
     # coluna renomeada numa versão maior: nome antigo → nome novo (a porta serve a versão antiga
     # como vista pelo contrato congelado; ADR 0077, item 8; plano, D12)
     renomeadas: dict[str, str] = field(default_factory=dict)
+    # conferência dos valores do Parquet contra o contrato (`base/conferencia.py`); preenchido por
+    # `_CONFERENCIA`, logo abaixo de `_CONTRATO`. O tipo e a faixa de cada coluna já saem da unidade.
+    pasta: str = ""  # onde o Parquet fica dentro de `<acervo>/base/` (vazio: ainda não conferida)
+    faixas: dict[str, tuple[float | None, float | None]] = field(
+        default_factory=dict
+    )  # coluna → (mínimo, máximo); None = sem limite desse lado
+    nao_nulas: tuple[str, ...] = ()  # além das chaves, colunas que não aceitam vazio
+    # o fato é anunciado antes de acontecer (assembleia, calendário, mandato que começa depois):
+    # `aconteceu_em` pode vir depois de `publico_em`
+    anuncia_o_futuro: bool = False
 
 
 _ONDE_DA_REDE = "Parquet em `<acervo>/base/rede/{t}.parquet` (servidor de casa, `scripts/montar_rede.py`)"
@@ -3503,6 +3513,24 @@ _CONTRATO = {
 }  # fmt: skip
 
 
+# conferência dos valores (`base/conferencia.py`): só as tabelas daqui são conferidas na montagem,
+# por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
+_SEM_NEGATIVO = (0.0, None)
+_CONFERENCIA: dict[str, dict[str, object]] = {
+    "amostra_painel": {"pasta": "amostra/v1/painel"},
+    "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
+    "curva_juros": {
+        "pasta": "curva_juros",
+        "faixas": {"prazo_anos": _SEM_NEGATIVO, "maior_prazo_anos": _SEM_NEGATIVO, "titulos": _SEM_NEGATIVO},
+        "nao_nulas": ("taxa", "disponivel_em"),
+    },
+    "proventos": {
+        "pasta": "proventos",
+        "faixas": {"dividendos": _SEM_NEGATIVO, "jcp": _SEM_NEGATIVO, "dividendo_total": _SEM_NEGATIVO},
+    },
+}  # fmt: skip
+
+
 def _contrato_de(nome: str) -> dict[str, object]:
     if nome not in _CONTRATO:
         raise KeyError(
@@ -3514,7 +3542,12 @@ def _contrato_de(nome: str) -> dict[str, object]:
 
 TABELAS = {
     nome: replace(
-        tabela, **{"granularidade_do_publico_em": "dia", **_contrato_de(nome)}
+        tabela,
+        **{
+            "granularidade_do_publico_em": "dia",
+            **_contrato_de(nome),
+            **_CONFERENCIA.get(nome, {}),
+        },
     )
     for nome, tabela in TABELAS.items()
 }
