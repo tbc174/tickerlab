@@ -1884,7 +1884,7 @@ De que companhia listada é cada entidade que os reguladores enxergam (operadora
 
 ## `entidades`
 
-Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a mesma empresa) ou fundo (pelo CNPJ de 14), com id determinístico (`base/rede/ids.py`), nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: cadastro da CVM, FCA, controladas, empresa ↔ série, cadastro de fundos, IF.data e GLEIF. Empresário individual, pessoa física com CNPJ e MEI ficam sem nome e com `trata_como_pessoa`
+Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14), valor mobiliário (pelo ISIN das carteiras dos fundos) ou firma de auditoria (pelo código da CVM), com id determinístico (`base/rede/ids.py`), nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: cadastro da CVM, FCA, controladas, auditores, empresa ↔ série, cadastro e carteiras de fundos, IF.data e GLEIF. Empresário individual, pessoa física com CNPJ e MEI ficam sem nome e com `trata_como_pessoa`
 
 - **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da empresa ↔ série e a Receita (natureza jurídica e opção pelo MEI)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -1903,9 +1903,9 @@ Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial 
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `id_entidade` | 'E' + 20 hexadecimais do SHA-256 do identificador primário | texto |
-| `tipo` | empresa ou fundo | texto |
+| `tipo` | empresa, fundo, valor_mobiliario ou auditor | texto |
 | `nome` | Nome pela fonte mais confiável (vazio na pessoa com CNPJ) | texto |
-| `natureza_juridica` | Código da natureza jurídica da Receita (2046 = S.A. aberta) ou nao_informada | texto |
+| `natureza_juridica` | Código da natureza jurídica da Receita (2046 = S.A. aberta), nao_informada ou nao_se_aplica (valor mobiliário) | texto |
 | `natureza_fonte` | receita, fonte (CVM ou cadastro de fundos) ou nao_informada | texto |
 | `mei` | Verdadeiro se é MEI hoje (Simples da Receita) | verdadeiro ou falso |
 | `trata_como_pessoa` | Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza não informada: nunca recebe sinal negativo publicado | verdadeiro ou falso |
@@ -1933,7 +1933,7 @@ Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ 
 | Coluna | O que é | Unidade |
 |---|---|---|
 | `id_entidade` | A entidade (tabela `entidades`) | texto |
-| `sistema` | cnpj, cnpj_raiz, lei, ticker, emissor ou codigo_<fonte> (codigo_bcb_ifdata...) | texto |
+| `sistema` | cnpj, cnpj_raiz, lei, isin, ticker, emissor, codigo_cvm_auditor ou codigo_<fonte> (codigo_bcb_ifdata...) | texto |
 | `valor` | O identificador (CNPJ sem pontuação, com letras se tiver) | texto |
 | `desde` | Desde quando vale (vazio: sempre) | data (dia) |
 | `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale) | data (dia) |
@@ -1941,3 +1941,39 @@ Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ 
 | `regra` | A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias) | número inteiro |
 | `conferido_por` | regra (código) ou tabela (conferida à mão) | texto |
 | `fontes` | As fontes que trouxeram o identificador, separadas por vírgula | texto |
+
+## `ligacoes`
+
+Uma linha por relação entre duas entidades da rede (ADR 0077), com as três datas: sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador que opera para a companhia (empresa ↔ série), instituição do conglomerado do líder (IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; a publicada (sem pessoas) sai de `base/rede/vistas.py`
+
+- **Fonte:** CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da empresa ↔ série
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Frequência:** Toda noite no servidor de casa; versão nova só quando o conteúdo muda
+- **Atraso de divulgação:** O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o IF.data 120 dias depois da data-base; a fonte de governo desde que guardada
+- **Módulo:** rede · **Contém dado de pessoa:** não
+- **Chaves:** `de`, `para`, `tipo`, `papel`, `aconteceu_em`, `fonte`
+- **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `publico_em`; coletado_em = `coletado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/rede/ligacoes.parquet` (servidor de casa, `scripts/montar_rede.py`)
+- **Linhagem:** Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo (cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a coleta de cada um. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). Cada linha leva o `origem_sha256` do arquivo (ou da tabela da base) de onde veio.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `de` | A entidade de onde a relação sai (a controlada, o fundo, a firma) | texto |
+| `para` | A entidade para onde a relação vai (a companhia, o valor mobiliário) | texto |
+| `tipo` | controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, do_conglomerado_de, audita, emite ou detem | texto |
+| `papel` | Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a principal (opera_para); lider (do_conglomerado_de) | texto |
+| `participacao` | Participação informada no FRE (vazia nos outros) | pontos percentuais (66,25 = 66,25%) |
+| `aconteceu_em` | Data do fato: referência do FRE, início do mandato, primeiro mês da carteira | data (dia) |
+| `infracao_em` | Data da infração, nas sanções (vazia nas fontes de hoje) | data (dia) |
+| `publico_em` | Desde quando a relação era pública (como era na data) | data (dia) |
+| `coletado_em` | Quando a base guardou o arquivo de onde veio (registro de coletas) | data (dia) |
+| `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale) | data (dia) |
+| `situacao` | vigente ou encerrada | texto |
+| `encerrada_por` | fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente | texto |
+| `fonte` | cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie | texto |
+| `origem_sha256` | SHA-256 do arquivo ou da tabela da base de onde veio | texto |
+| `conferido_por` | regra (código) ou tabela (conferida à mão) | texto |

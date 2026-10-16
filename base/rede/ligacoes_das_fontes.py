@@ -289,7 +289,7 @@ def audita(auditores: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
 
 
 # --- carteiras dos fundos (CDA): valores mobiliários, emite e detem -----------------------------
-def _mes(datas: pd.Series) -> pd.Series:
+def mes(datas: pd.Series) -> pd.Series:
     return datas.dt.year * MESES_POR_ANO + datas.dt.month - 1
 
 
@@ -362,7 +362,7 @@ def periodos_das_posicoes(posicoes: pd.DataFrame) -> pd.DataFrame:
     tabela = _posicoes_validas(posicoes)
     tabela = tabela.assign(
         cnpj_fundo=tabela["cnpj_fundo"].map(normalizar_cnpj),
-        inicio=_mes(tabela["competencia"]),
+        inicio=mes(tabela["competencia"]),
         publico_em=tabela["disponivel_em"],
     ).sort_values(["disponivel_em"], kind="stable")
     tabela["fim"] = tabela["inicio"]

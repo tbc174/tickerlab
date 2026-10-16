@@ -193,3 +193,11 @@ def test_comprimir_periodos_seguidos():
         ["G", 2, 2],
         ["G", 6, 7],
     ]
+
+
+def test_colunas_iguais_as_do_dicionario():
+    from base.dicionario import TABELAS
+
+    assert list(ligacoes.COLUNAS) == list(TABELAS["ligacoes"].colunas)
+    assert TABELAS["ligacoes"].modulo == "rede"
+    assert list(TABELAS["ligacoes"].chaves) == ligacoes.CHAVE
