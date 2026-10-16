@@ -12,6 +12,8 @@ malformado (`ArquivoIexInvalidoError`) não grava nada e faz a tarefa falhar, pa
 avisar. Olha os últimos pregões e coleta só os que faltam: um dia perdido é recuperado na
 madrugada seguinte. Fins de semana e feriados da NYSE (`src.calendario_nyse`) nem são pedidos: a
 IEX responde 404 neles, e um 404 num dia de pregão continua sendo falha, para o alarme avisar.
+Conexão que cai no meio do arquivo: o dia é baixado de novo uma vez; se cair de novo, o dia falha
+(nada gravado, alarme avisa), mas a rodada segue com os outros dias e o selo.
 
 Carga do passado (`--desde`): os pregões que faltam desde a data, do mais novo para o mais
 antigo, até `--maximo` dias coletados (dia ainda sem arquivo não conta) ou até acabar o tempo (`--minutos`),
@@ -43,6 +45,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
+import urllib3
 
 from src import calendario_nyse, catalogo, iex_tops
 from src.barras_intradiarias import (
@@ -57,6 +60,10 @@ FUSO_NY = ZoneInfo("America/New_York")
 DIAS_UTEIS_OLHADOS = 5
 MAXIMO_DE_DIAS_POR_RODADA = 2  # ~12 min; o resto fica para a madrugada seguinte
 TEMPO_LIMITE_S = 120
+# Conexão que cai no meio do arquivo (~17 GB; 16/10/2026: IncompleteRead perto da metade): o dia é
+# baixado de novo do começo, uma vez. Se cair de novo, o dia falha e a rodada segue para o próximo.
+TENTATIVAS_DO_ARQUIVO = 2
+CONEXAO_CAIU = (urllib3.exceptions.HTTPError, requests.ConnectionError)
 SEM_ARQUIVO = "sem arquivo"  # ainda não publicado
 MAXIMO_DE_SELOS_POR_RODADA = (
     40  # um pedido ao Yahoo por dia; a carga põe ~20 dias por noite
@@ -120,6 +127,26 @@ def _gravar_atomico(caminho: Path, escrever: Callable[[Path], None]) -> None:
     os.replace(temporario, caminho)
 
 
+def _ler_o_arquivo(
+    link: str, simbolos: set[str], buscar: Callable
+) -> iex_tops.NegociosDoDia:
+    for tentativa in range(1, TENTATIVAS_DO_ARQUIVO + 1):
+        try:
+            with buscar(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
+                resposta.raise_for_status()
+                with gzip.GzipFile(fileobj=resposta.raw) as descomprimido:
+                    return iex_tops.coletar_negocios(
+                        iex_tops.pacotes_do_pcapng(descomprimido), simbolos
+                    )
+        except CONEXAO_CAIU as erro:
+            if tentativa == TENTATIVAS_DO_ARQUIVO:
+                raise
+            print(
+                f"A conexão caiu no meio do arquivo ({type(erro).__name__}); baixando de novo."
+            )
+    raise AssertionError("inalcançável")
+
+
 def coletar_dia(
     dia: date,
     simbolos: set[str],
@@ -128,18 +155,14 @@ def coletar_dia(
 ) -> dict | str:
     """Baixa, lê e grava as barras de `dia`. Devolve o resumo, ou `SEM_ARQUIVO`.
 
-    Levanta `iex_tops.ArquivoIexInvalidoError` (arquivo malformado) sem gravar nada.
+    Levanta `iex_tops.ArquivoIexInvalidoError` (arquivo malformado) ou o erro da conexão (se ela
+    cair nas `TENTATIVAS_DO_ARQUIVO`) sem gravar nada.
     """
     link = endereco_do_tops(dia, buscar)
     if link is None:
         return SEM_ARQUIVO
     inicio = time.perf_counter()
-    with buscar(link, stream=True, timeout=TEMPO_LIMITE_S) as resposta:
-        resposta.raise_for_status()
-        with gzip.GzipFile(fileobj=resposta.raw) as descomprimido:
-            negocios = iex_tops.coletar_negocios(
-                iex_tops.pacotes_do_pcapng(descomprimido), simbolos
-            )
+    negocios = _ler_o_arquivo(link, simbolos, buscar)
     barras = montar_barras(iex_tops.tabela_de_negocios(negocios), "America/New_York")
     pasta.mkdir(parents=True, exist_ok=True)
     parquet = arquivo_do_dia(dia, pasta)
@@ -280,6 +303,7 @@ def _coletar_e_contar(
     except (
         iex_tops.ArquivoIexInvalidoError,
         requests.RequestException,
+        urllib3.exceptions.HTTPError,
         OSError,
     ) as erro:
         print(f"{dia}: FALHOU, nada gravado ({type(erro).__name__}: {erro})")
