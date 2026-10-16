@@ -148,10 +148,43 @@ def test_registrada_depois_do_prazo_nao_deve_o_documento():
     assert exemplos.loc[exemplos["cnpj"] == B, "referencia"].dt.year.tolist() == [2019]
 
 
-def test_empresa_fora_do_cadastro_so_entra_com_entrega():
-    indice = _indice((B, "DFP", "2023-12-31", 1, "2024-03-25"))
-    exemplos = montar_exemplos(indice, ATIVA_A, HOJE)
-    assert exemplos["referencia"].dt.year.tolist() == [2023]
+def test_empresa_fora_do_cadastro_nao_e_exemplo():
+    # quase todas são emissores estrangeiros (GP Investments, Cosan Ltd., Nu Holdings): sem o
+    # cadastro não se sabe se deviam o documento nem qual prazo valia (conferência de 16/10/2026)
+    indice = _indice(
+        (A, "DFP", "2023-12-31", 1, "2024-03-25"),
+        (B, "DFP", "2023-12-31", 1, "2024-03-25"),
+    )
+    exemplos, fora = montar_exemplos_e_fora(indice, ATIVA_A, HOJE)
+    assert exemplos["cnpj"].tolist() == [A]
+    assert fora["empresa_fora_do_cadastro"] == {"exemplos": 1, "atrasou": 0}
+
+
+def test_documento_com_prazo_entre_dois_registros_nao_e_exemplo():
+    # Linha Amarela (LAMSA): registro de 1998 a 2003 e de novo em 08/04/2020; os ITRs de 2019
+    # foram mandados para pedir o registro de volta, sem prazo a cumprir
+    cadastro = _cadastro(
+        (B, "1998-02-02", "2003-05-06", "RJ"), (B, "2020-04-08", None, "RJ")
+    )
+    indice = _indice(
+        (B, "ITR", "2019-09-30", 1, "2019-11-21"),
+        (B, "DFP", "2020-12-31", 1, "2021-03-25"),
+    )
+    exemplos, fora = montar_exemplos_e_fora(indice, cadastro, HOJE)
+    assert exemplos["referencia"].dt.year.tolist() == [2020]
+    assert fora["prazo_entre_dois_registros"] == {"exemplos": 1, "atrasou": 1}
+
+
+def test_documento_com_prazo_depois_do_cancelamento_nao_e_exemplo():
+    # securitizadora cancelada em 01/06/2022 que continuou mandando ITR: não devia mais nada
+    cadastro = _cadastro((B, "2019-02-13", "2022-06-01", "SP"))
+    indice = _indice(
+        (B, "ITR", "2022-03-31", 1, "2022-05-10"),
+        (B, "ITR", "2022-06-30", 1, "2022-08-10"),
+    )
+    exemplos, fora = montar_exemplos_e_fora(indice, cadastro, HOJE)
+    assert exemplos["referencia"].tolist() == [pd.Timestamp("2022-03-31")]
+    assert fora["prazo_depois_do_cancelamento"] == {"exemplos": 1, "atrasou": 0}
 
 
 def test_sede_no_rio_grande_do_sul_usa_a_prorrogacao_de_2024():
@@ -265,4 +298,9 @@ def test_fora_do_registro_fica_contado_por_motivo():
     _exemplos, fora = montar_exemplos_e_fora(
         ENTREGAS_DO_PEDIDO_DE_REGISTRO, REGISTROS, HOJE
     )
-    assert fora == {"prazo_antes_do_primeiro_registro": {"exemplos": 3, "atrasou": 3}}
+    assert fora == {
+        "prazo_antes_do_primeiro_registro": {"exemplos": 3, "atrasou": 3},
+        "prazo_entre_dois_registros": {"exemplos": 0, "atrasou": 0},
+        "prazo_depois_do_cancelamento": {"exemplos": 0, "atrasou": 0},
+        "empresa_fora_do_cadastro": {"exemplos": 0, "atrasou": 0},
+    }
