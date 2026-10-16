@@ -6,9 +6,13 @@ de fundos (com administrador, gestor PJ, auditor, custodiante e controlador), o 
 ponte LEI ↔ CNPJ do GLEIF. Cada fonte vira **observações** (`base/rede/resolucao.py`); a natureza
 jurídica e o MEI vêm de duas colunas da Receita (`base/receita_natureza.py`).
 
+Desde o PR 3 entram também o **valor mobiliário** (pelo ISIN das carteiras dos fundos) e a **firma de
+auditoria** (pelo código da CVM, só a que informa CNPJ: auditor pessoa física nunca entra), e
+`montar_ligacoes` monta a tabela `ligacoes` (`base/rede/ligacoes_das_fontes.py`).
+
 Fica de fora, de propósito: entidade só com nome (série de governo, regra 6), conglomerado do IF.data
-(é um grupo, não uma entidade: a ligação com o líder vai para `ligacoes`, PR 3), produto do Comex (é
-exposição, não entidade), gestor pessoa física e o ISIN (o valor mobiliário entra com as ligações).
+(é um grupo, não uma entidade: a ligação de cada instituição com a líder vai para `ligacoes`), produto
+do Comex (é exposição, não entidade) e gestor pessoa física.
 """
 
 from collections.abc import Iterable
@@ -18,8 +22,9 @@ import pandas as pd
 
 from base.bcb_ifdata import disponivel_em
 from base.cnpj import completo, dv_confere, normalizar_cnpj
-from base.rede import ids
+from base.rede import ids, ligacoes_das_fontes
 from base.rede.entidades import COMPANHIA_ABERTA, FUNDO_DE_INVESTIMENTO, com_natureza
+from base.rede.ligacoes import normalizar
 from base.rede.resolucao import (
     COLUNAS_DAS_OBSERVACOES,
     PELA_REGRA,
@@ -28,6 +33,8 @@ from base.rede.resolucao import (
 )
 
 EMPRESA, FUNDO = "empresa", "fundo"
+VALOR_MOBILIARIO, AUDITOR = "valor_mobiliario", "auditor"
+TEM_RAIZ = (EMPRESA, FUNDO)  # só estes se procuram na Receita (natureza jurídica e MEI)
 CATEGORIA_FUNDO_DO_GLEIF = "FUND"
 CONFERIDOS_NO_FCA = "códigos conferidos"  # `base/fca.py::PELOS_CODIGOS_CONFERIDOS`
 CONFERIDA_NA_EMPRESA_SERIE = "tabela"  # `base/empresa_serie.py::PELA_TABELA`
@@ -47,6 +54,8 @@ PRIORIDADE_DO_NOME = {
     "conferida-emissores": 6,
     "empresa_serie": 7,
     "cvm-fca": 8,
+    "cvm-fca-auditores": 9,
+    "cvm-cda": 10,
 }
 PARTICIPANTES_DOS_FUNDOS = (
     ("CNPJ_ADMIN", "ADMIN"),
@@ -84,6 +93,10 @@ class Entradas:
     fundos: pd.DataFrame = field(default_factory=_vazia)
     ifdata: pd.DataFrame = field(default_factory=_vazia)
     gleif: pd.DataFrame = field(default_factory=_vazia)
+    auditores: pd.DataFrame = field(default_factory=_vazia)
+    isins: pd.DataFrame = field(
+        default_factory=_vazia
+    )  # `ligacoes_das_fontes.juntar_isins`
 
 
 def _dia(valores: Iterable) -> pd.Series:
@@ -421,6 +434,45 @@ def _do_gleif(ponte: pd.DataFrame) -> list[pd.DataFrame]:
     return partes
 
 
+def _dos_auditores(auditores: pd.DataFrame) -> list[pd.DataFrame]:
+    """A firma de auditoria pelo código da CVM (regra 5), com o nome que ela informa."""
+    firmas = ligacoes_das_fontes.auditores_sem_conflito(auditores)
+    if firmas.empty:
+        return []
+    codigo = firmas["codigo_cvm_auditor"]
+    return [
+        _observacoes(
+            "cvm-fca-auditores",
+            AUDITOR,
+            codigo,
+            sistema="codigo_cvm_auditor",
+            valor=codigo,
+            nome=firmas["auditor"],
+            publico_em=_dia(firmas["conhecido_em"]),
+            regra=5,
+            conferido_por=PELA_REGRA,
+        )
+    ]
+
+
+def _dos_isins(isins: pd.DataFrame) -> list[pd.DataFrame]:
+    """O valor mobiliário pelo ISIN (regra 4), público desde a primeira carteira que o mostrou."""
+    if isins.empty:
+        return []
+    return [
+        _observacoes(
+            "cvm-cda",
+            VALOR_MOBILIARIO,
+            isins["isin"],
+            sistema="isin",
+            valor=isins["isin"],
+            publico_em=_dia(isins["publico_em"]),
+            regra=4,
+            conferido_por=PELA_REGRA,
+        )
+    ]
+
+
 def _fundo_e_sempre_o_fundo(tabela: pd.DataFrame, fundos: pd.DataFrame) -> pd.DataFrame:
     """CNPJ do cadastro de fundos é o fundo, venha de onde vier (o FRE lista FIPs como
     controladas; o GLEIF registra fundos como GENERAL): a observação vai para a âncora do fundo."""
@@ -447,6 +499,8 @@ def observacoes(entradas: Entradas) -> pd.DataFrame:
         *_dos_fundos(entradas.fundos),
         *_do_ifdata(entradas.ifdata),
         *_do_gleif(entradas.gleif),
+        *_dos_auditores(entradas.auditores),
+        *_dos_isins(entradas.isins),
     ]
     partes = [p for p in partes if not p.empty]
     if not partes:
@@ -462,7 +516,8 @@ def observacoes(entradas: Entradas) -> pd.DataFrame:
 
 def raizes(observacoes: pd.DataFrame) -> set[str]:
     """As raízes de CNPJ da rede: o que se procura na Receita (natureza e MEI)."""
-    return set(observacoes["ancora"].dropna().str[:8])
+    com_raiz = observacoes[observacoes["tipo"].isin(TEM_RAIZ)]
+    return set(com_raiz["ancora"].dropna().str[:8])
 
 
 def montar_rede(
@@ -473,9 +528,8 @@ def montar_rede(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """(entidades, identificadores, conflitos), ordenados pelo id (o mesmo resultado sempre)."""
     entidades, identificadores, conflitos = resolver(observacoes, fixados)
-    entidades = com_natureza(
-        entidades.assign(raiz=entidades["ancora"].str[:8]), naturezas, meis
-    )
+    raiz = entidades["ancora"].str[:8].where(entidades["tipo"].isin(TEM_RAIZ))
+    entidades = com_natureza(entidades.assign(raiz=raiz), naturezas, meis)
     entidades = entidades[list(COLUNAS_DAS_ENTIDADES)]
     return (
         entidades.sort_values("id_entidade").reset_index(drop=True),
@@ -483,4 +537,27 @@ def montar_rede(
             ["id_entidade", "sistema", "valor", "desde"]
         ).reset_index(drop=True),
         conflitos,
+    )
+
+
+def montar_ligacoes(
+    entradas: Entradas,
+    identificadores: pd.DataFrame,
+    periodos: pd.DataFrame,
+    ultimo_mes: int,
+) -> pd.DataFrame:
+    """A tabela `ligacoes` de todas as fontes. `periodos` são os da `detem`, já comprimidos
+    (`ligacoes_das_fontes.periodos_das_posicoes`); `ultimo_mes`, o último mês das carteiras."""
+    r = ligacoes_das_fontes.Resolvedor(identificadores)
+    partes = [
+        ligacoes_das_fontes.das_controladas(entradas.controladas, r),
+        ligacoes_das_fontes.opera_para(entradas.empresa_serie, r),
+        ligacoes_das_fontes.do_conglomerado(entradas.ifdata, r),
+        ligacoes_das_fontes.audita(entradas.auditores, r),
+        ligacoes_das_fontes.emite(entradas.isins, identificadores),
+        ligacoes_das_fontes.detem(periodos, r, ultimo_mes),
+    ]
+    partes = [p for p in partes if not p.empty]
+    return normalizar(
+        pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
     )
