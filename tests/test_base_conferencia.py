@@ -219,3 +219,20 @@ def test_tabela_sem_contrato_nao_leva_conferencia(tmp_path, monkeypatch):
     gravar_tabela(_eventos(), destino, [], ["protocolo"])
     manifesto = json.loads(destino.with_suffix(".json").read_text(encoding="utf-8"))
     assert "conferencia_do_contrato" not in manifesto
+
+
+def test_conferencia_que_falha_nao_para_a_montagem(tmp_path, monkeypatch):
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+
+    def quebrada(*_args, **_kwargs):
+        raise RuntimeError("defeito no conferidor")
+
+    monkeypatch.setattr("base.conferencia.conferir", quebrada)
+    destino = tmp_path / "base" / "eventos" / "2024"
+    assert gravar_tabela(_eventos(), destino, [], ["protocolo"]).exists()
+    manifesto = json.loads(destino.with_suffix(".json").read_text(encoding="utf-8"))
+    assert manifesto["conferencia_do_contrato"] == {
+        "tabela": "eventos",
+        "aprovada": False,
+        "erro": "RuntimeError: defeito no conferidor",
+    }

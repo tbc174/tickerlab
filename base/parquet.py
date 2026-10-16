@@ -66,18 +66,19 @@ def _conferencia_do_contrato(tabela: pd.DataFrame, destino: Path) -> dict[str, o
     """A conferência dos valores contra o contrato (`base/conferencia.py`), se a pasta de `destino` é
     de uma tabela do dicionário. Só aviso: um problema, ou a própria conferência falhar, fica anotado
     no manifesto e a montagem segue (bloquear pede o "pode" do Tiago)."""
-    # importado aqui: o dicionário puxa o catálogo de coletas, e quem só grava Parquet não precisa dele
-    from base.conferencia import conferir, tabela_do_destino
-
-    nome = tabela_do_destino(destino.with_suffix(".parquet"))
-    if nome is None:
-        return {}
+    nome = None
     try:
+        # importado aqui: o dicionário puxa o catálogo de coletas, e quem só grava Parquet não precisa
+        from base.conferencia import conferir, tabela_do_destino
+
+        nome = tabela_do_destino(destino.with_suffix(".parquet"))
+        if nome is None:
+            return {}
         resultado = conferir(tabela, nome).para_manifesto()
     except (
         Exception
     ) as erro:  # aviso: a montagem não pode parar por causa da conferência
-        log.exception("conferência do contrato de %s falhou", nome)
+        log.exception("conferência do contrato de %s falhou", destino)
         resultado = {
             "tabela": nome,
             "aprovada": False,
