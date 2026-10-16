@@ -124,6 +124,35 @@ def test_buracos_da_ligacao_pela_b13(ambiente):
     }
 
 
+def test_buracos_mudam_com_a_fonte_mesmo_com_a_b13_igual(ambiente):
+    """A B13 é a única origem anotada: com ela igual, uma revisão da fonte ainda muda os buracos."""
+    carga_setoriais.main(["--base", str(ambiente)])
+    arquivo = ambiente / "setoriais" / "buracos.parquet"
+    antes = pd.read_parquet(arquivo).set_index(["fonte", "chave"])["valor"]
+    original = (
+        AMOSTRAS / "ans" / "Beneficiarios_operadora_e_carteira.csv"
+    ).read_bytes()
+    revisado = original.replace(b'"202606";558570', b'"202606";600000', 1)
+    quando = datetime(2026, 11, 14, 17, tzinfo=UTC)
+    with criar_engine().begin() as c:
+        caminho = acervo.guardar_original(ans.FONTE, ans.URL, revisado, quando)
+        registrar(
+            c,
+            ans.FONTE,
+            ans.URL,
+            revisado,
+            "ok",
+            agora=quando,
+            caminho_do_original=caminho,
+        )
+    carga_setoriais.main(["--base", str(ambiente)])
+    depois = pd.read_parquet(arquivo).set_index(["fonte", "chave"])["valor"]
+    assert (
+        depois[(ans.FONTE, "326305")] == antes[(ans.FONTE, "326305")] + 600000 - 558570
+    )
+    assert conferir_tabela(arquivo)
+
+
 def test_mes_revisado_pela_ans_vira_linha_nova_com_o_dia_em_que_foi_visto(ambiente):
     """A ANS regrava o arquivo e muda um mês passado: a 2ª coleta entra como revisão (série 4, PR 5)."""
     original = (

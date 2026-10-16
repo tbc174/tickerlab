@@ -30,7 +30,7 @@ from typing import NamedTuple
 import pandas as pd
 import sqlalchemy as sa
 
-from base.parquet import gravar_com_versoes
+from base.parquet import gravar_com_versoes, gravar_se_mudou
 from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes, susep
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
@@ -318,8 +318,11 @@ def gravar_buracos(partes: list[pd.DataFrame], base: Path) -> None:
         }
     ]
     buracos = pd.concat(partes, ignore_index=True)
-    resultado = gravar_com_versoes(
-        lambda: buracos, base / PASTA / "buracos", origens, ["fonte", "chave"]
+    # pelo conteúdo, não pelas origens: a B13 igual com uma fonte nova (ou um mês novo) muda os
+    # buracos, e com as mesmas origens eles ficavam como antes (achado na carga do PR 5, 16/10/2026).
+    # É uma lista de trabalho refeita a cada carga: sem versões guardadas
+    resultado = gravar_se_mudou(
+        buracos, base / PASTA / "buracos", origens, ["fonte", "chave"], versoes=False
     )
     log.info("buracos da ligação: %s (%s chaves)", resultado, len(buracos))
 
