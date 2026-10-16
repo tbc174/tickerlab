@@ -1158,6 +1158,49 @@ Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por 
 | `anunciada_em` | Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476) | data (dia) |
 | `disponivel_em` | Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento) | data (dia) |
 
+## `susep_seguros`
+
+Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)
+
+- **Fonte:** SUSEP: SES, base de dados completa (`Ses_seguros.csv` de dentro do ZIP)
+- **Licença:** CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o ZIP é regerado todo dia)
+- **Atraso de divulgação:** Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `coenti`, `cogrupo`, `coramo`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/susep/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço (`zip#Ses_seguros.csv`) e o SHA-256 de cada baixada usada e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `coenti` | Código da seguradora na SUSEP (a chave; 5 dígitos) | texto |
+| `cogrupo` | Código do grupo de ramos | texto |
+| `coramo` | Código do ramo (nomes em `Ses_ramos.csv`, guardado no acervo) | texto |
+| `premio_direto` | Prêmio direto no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `premio_de_seguros` | Prêmio de seguros no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `premio_retido` | Prêmio retido no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `premio_ganho` | Prêmio ganho no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `sinistro_direto` | Sinistro direto no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `sinistro_retido` | Sinistro retido no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `desp_com` | Despesa de comercialização no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `premio_emitido2` | Prêmio emitido no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `premio_emitido_cap` | Prêmio emitido (capitalização) no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `despesa_resseguros` | Despesa com resseguros no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `sinistro_ocorrido` | Sinistro ocorrido no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `receita_resseguro` | Receita com resseguro no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `sinistros_ocorridos_cap` | Sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `recuperacao_sinistros_ocorridos_cap` | Recuperação de sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `rvne` | Riscos vigentes não emitidos (RVNE) no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `conveniodpvat` | Convênio DPVAT no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `consorciosefundos` | Consórcios e fundos no mês, em R$, como a SUSEP publica | reais (R$), já multiplicado pela escala informada |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista) | data (dia) |
+| `visto_em` | O dia da baixada do arquivista que trouxe este valor pela primeira vez | data (dia) |
+
 ## `setoriais_buracos`
 
 Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência

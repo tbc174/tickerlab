@@ -1932,6 +1932,106 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "susep_seguros": Tabela(
+        descricao=(
+            "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, "
+            "ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a "
+            "B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha "
+            "por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale "
+            "desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)"
+        ),
+        fonte="SUSEP: SES, base de dados completa (`Ses_seguros.csv` de dentro do ZIP)",
+        familia_da_fonte="susep",
+        frequencia="Mensal (o ZIP é regerado todo dia)",
+        atraso="Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias",
+        onde="Parquet por ano em `<acervo>/base/setoriais/susep/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço (`zip#Ses_seguros.csv`) e o SHA-256 de cada baixada usada "
+            "e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "coenti": ("Código da seguradora na SUSEP (a chave; 5 dígitos)", TEXTO),
+            "cogrupo": ("Código do grupo de ramos", TEXTO),
+            "coramo": (
+                "Código do ramo (nomes em `Ses_ramos.csv`, guardado no acervo)",
+                TEXTO,
+            ),
+            "premio_direto": (
+                "Prêmio direto no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_de_seguros": (
+                "Prêmio de seguros no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_retido": (
+                "Prêmio retido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_ganho": ("Prêmio ganho no mês, em R$, como a SUSEP publica", REAIS),
+            "sinistro_direto": (
+                "Sinistro direto no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistro_retido": (
+                "Sinistro retido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "desp_com": (
+                "Despesa de comercialização no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_emitido2": (
+                "Prêmio emitido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_emitido_cap": (
+                "Prêmio emitido (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "despesa_resseguros": (
+                "Despesa com resseguros no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistro_ocorrido": (
+                "Sinistro ocorrido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "receita_resseguro": (
+                "Receita com resseguro no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistros_ocorridos_cap": (
+                "Sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "recuperacao_sinistros_ocorridos_cap": (
+                "Recuperação de sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "rvne": (
+                "Riscos vigentes não emitidos (RVNE) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "conveniodpvat": (
+                "Convênio DPVAT no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "consorciosefundos": (
+                "Consórcios e fundos no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
     "setoriais_buracos": Tabela(
         descricao=(
             "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma "
@@ -2873,6 +2973,7 @@ _CONTRATO = {
     "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),

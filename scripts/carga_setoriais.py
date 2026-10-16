@@ -1,5 +1,5 @@
 """Carga das fontes setoriais para a base (série 4 da base de ML, PRs 4 e 5; `base/setoriais/`): ANAC,
-ANP, ONS, ANEEL (SAMP), Anatel e ANS, no formato de cada fonte, com a data desde quando cada número era
+ANP, ONS, ANEEL (SAMP), Anatel, ANS e SUSEP, no formato de cada fonte, com a data desde quando cada número era
 público.
 
     python -m scripts.carga_setoriais                     (a base do acervo)
@@ -11,10 +11,11 @@ mesmas origens, o ano é pulado sem ler de novo). Os buracos da ligação pela B
 empresa, com o volume) vão para `<base>/setoriais/buracos.parquet`. Recusa rodar sem a versão do
 código (exigência 13 da ADR 0055).
 
-ANEEL, Anatel e ANS republicam o arquivo inteiro e revisam meses passados (PR 5): cada baixada guardada
+ANEEL, Anatel, ANS e SUSEP republicam o arquivo inteiro e revisam meses passados (PRs 5 e 5b): cada baixada guardada
 de um endereço entra como uma coleta (`base/setoriais/revisoes.py`), e a tabela guarda uma linha por
 valor diferente, com o dia em que a revisão foi vista. Um Parquet por arquivo da fonte: o SAMP por ano
-(`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS por ano da competência (`ans/<ano>`).
+(`aneel/<ano>`), a Anatel por CSV (`anatel/<nome do CSV>`), a ANS e a SUSEP por ano da competência
+(`ans/<ano>`, `susep/<ano>`).
 """
 
 import argparse
@@ -29,8 +30,8 @@ from typing import NamedTuple
 import pandas as pd
 import sqlalchemy as sa
 
-from base.parquet import gravar_com_versoes
-from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes
+from base.parquet import gravar_com_versoes, gravar_se_mudou
+from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes, susep
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -72,6 +73,9 @@ class Revisada(NamedTuple):
     fonte_da_ligacao: str
     coluna_da_ligacao: str
     volume: Callable[[pd.DataFrame], pd.Series]
+    por_ano: bool = (
+        False  # um arquivo com muitos anos: um Parquet por ano da competência
+    )
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -101,7 +105,12 @@ REVISADAS = {
     ans.FONTE: Revisada(
         "ans", ans.CHAVE, ans.CARIMBOS, lambda url: "ans" if url == ans.URL else None,
         lambda c, _: ans.ler(c), ans.FONTE_DA_LIGACAO, "cd_operadora",
-        lambda t: t["beneficiarios"],
+        lambda t: t["beneficiarios"], por_ano=True,
+    ),
+    susep.FONTE: Revisada(
+        "susep", susep.CHAVE, (), lambda url: "susep" if url.endswith("#" + susep.ARQUIVO) else None,
+        lambda c, _: susep.ler(c), susep.FONTE, "coenti", lambda t: t["premio_direto"],
+        por_ano=True,
     ),
 }  # fmt: skip
 
@@ -268,7 +277,7 @@ def carregar_revisada(
     partes = []
     for url in urls:
         origens, montar = _coletas(conexao, url, revisada)
-        if fonte == ans.FONTE:
+        if revisada.por_ano:
             tabela = _gravar_por_ano(montar, pasta, origens, revisada.chave)
         else:
             nome = str(revisada.destino(url))
@@ -309,8 +318,11 @@ def gravar_buracos(partes: list[pd.DataFrame], base: Path) -> None:
         }
     ]
     buracos = pd.concat(partes, ignore_index=True)
-    resultado = gravar_com_versoes(
-        lambda: buracos, base / PASTA / "buracos", origens, ["fonte", "chave"]
+    # pelo conteúdo, não pelas origens: a B13 igual com uma fonte nova (ou um mês novo) muda os
+    # buracos, e com as mesmas origens eles ficavam como antes (achado na carga do PR 5, 16/10/2026).
+    # É uma lista de trabalho refeita a cada carga: sem versões guardadas
+    resultado = gravar_se_mudou(
+        buracos, base / PASTA / "buracos", origens, ["fonte", "chave"], versoes=False
     )
     log.info("buracos da ligação: %s (%s chaves)", resultado, len(buracos))
 

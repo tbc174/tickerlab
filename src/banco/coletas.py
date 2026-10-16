@@ -62,6 +62,9 @@ LICENCAS = {
     "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
     "anatel": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
+    # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
+    "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
@@ -116,6 +119,7 @@ REVENDA = {
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "aneel": VENDAVEL_ODBL,
+    "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
     "b3": SO_USO_INTERNO,
 }

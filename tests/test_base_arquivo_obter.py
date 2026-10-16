@@ -125,6 +125,27 @@ def test_anatel_sem_csv_de_acessos_e_falha():
         fontes.descobrir_anatel(servidor, AGORA)
 
 
+def test_susep_tira_do_zip_so_os_csvs_sem_pessoas():
+    """O ZIP do SES traz administradores, contatos e acionistas: nunca entram (série 4, PR 5b)."""
+    com_pessoas = ("Ses_Administradores.csv", "ses_contatos.csv", "Ses_part_acion.csv")
+    conteudo = _zip(
+        dict.fromkeys([*fontes.CSVS_DA_SUSEP, *com_pessoas, "SES_Balanco.csv"], b"x")
+    )
+    servidor = ServidorComTrechos({fontes.SES_DA_SUSEP: conteudo})
+    alvos = fontes.descobrir_susep(servidor, AGORA)
+    membros = [a.url.rpartition("#")[2] for a in alvos]
+    assert membros == list(fontes.CSVS_DA_SUSEP)
+    assert not set(membros) & set(com_pessoas)
+    assert all(a.extensao == ".csv" and a.obter is not None for a in alvos)
+
+
+def test_susep_sem_o_csv_de_seguros_falha():
+    conteudo = _zip(dict.fromkeys(fontes.CSVS_DA_SUSEP[1:], b"x"))
+    servidor = ServidorComTrechos({fontes.SES_DA_SUSEP: conteudo})
+    with pytest.raises(coleta.ErroDeDescoberta, match="Ses_seguros"):
+        fontes.descobrir_susep(servidor, AGORA)
+
+
 def test_pix_pede_o_fim_dos_tres_ultimos_meses_fechados():
     datas = [a.url.split("@Data='")[1][:10] for a in fontes.descobrir_pix(None, AGORA)]
     assert datas == ["2026-07-31", "2026-08-31", "2026-09-30"]
