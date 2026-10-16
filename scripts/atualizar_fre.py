@@ -17,6 +17,7 @@ import requests
 import sqlalchemy as sa
 
 from base.fre import ULTIMO_ANO_COM_AS_TABELAS, ler_eventos_de_capital, ler_proventos
+from src import rede
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.fre import gravar_eventos, gravar_proventos
@@ -31,7 +32,7 @@ NAO_ENCONTRADO = 404
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

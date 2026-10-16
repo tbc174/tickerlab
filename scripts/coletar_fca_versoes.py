@@ -24,10 +24,10 @@ from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
 import sqlalchemy as sa
 
 from base import fca
+from src import rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.modelo import coletas
@@ -58,7 +58,7 @@ def conferir_documento(conteudo: bytes | None) -> bytes | None:
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:

@@ -29,12 +29,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
 import sqlalchemy as sa
 
 from base import cda
 from base.parquet import gravar_com_versoes
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -54,7 +53,7 @@ PASTA_DO_BLOCO_8 = "cda_bloco_8"  # ao lado da pasta do CDA
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=900, headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
