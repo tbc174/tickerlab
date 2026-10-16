@@ -146,7 +146,7 @@ Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDR
 - **Chaves:** `cnpj`, `referencia`, `versao`, `valor_mobiliario`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `recebido_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.1.0
+- **Versão do contrato:** 1.2.0
 - **Onde fica:** Parquet em `<acervo>/base/fca/` (servidor de casa, `scripts/carga_fca.py`)
 - **Linhagem:** `id_documento` (ou `cnpj`, `referencia` e `versao`) diz de qual FCA veio a linha. O `.json` ao lado do Parquet guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada FCA usado (no acervo e no registro de coletas, fonte `cvm-fca`, com a data da coleta e a versão do código que baixou) e a versão do código que gravou a tabela.
 
@@ -1203,7 +1203,7 @@ Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), gru
 
 ## `amostra_painel`
 
-A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os outros entram um por PR
+A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram) e eventos e governança; os outros entram um por PR. Os proventos e eventos de capital do FRE ficam de fora: não têm a data em que ficaram públicos
 
 - **Fonte:** Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e `demonstracoes_como_era`
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -1246,6 +1246,28 @@ A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan
 | `receita_anual` | Receita do exercício (bancos: da intermediação) | reais (R$), já multiplicado pela escala informada |
 | `ebit_anual` | Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos) | reais (R$), já multiplicado pela escala informada |
 | `lucro_anual` | Lucro ou prejuízo do exercício | reais (R$), já multiplicado pela escala informada |
+| `documentos_resultados_90d` | Documentos de resultados entregues à CVM nos 90 dias antes (IPE) | número com decimais, na unidade da fonte |
+| `documentos_proventos_90d` | Documentos de proventos nos 90 dias antes | número com decimais, na unidade da fonte |
+| `documentos_eventos_90d` | Documentos de eventos (fatos, assembleias, comunicados) nos 90 dias antes | número com decimais, na unidade da fonte |
+| `documentos_risco_90d` | Documentos de risco (rating) nos 90 dias antes | número com decimais, na unidade da fonte |
+| `fatos_relevantes_90d` | Fatos relevantes entregues nos 90 dias antes | número com decimais, na unidade da fonte |
+| `insolvencia_conhecida` | Já comunicou recuperação judicial, extrajudicial, falência, liquidação ou pedido | verdadeiro ou falso |
+| `insolvencia_rotulo` | O rótulo de insolvência mais recente já comunicado | texto |
+| `insolvencia_desde` | Quando a primeira insolvência ficou pública | data (dia) |
+| `auditor_id` | A firma de auditoria do FCA mais novo já entregue (`rede:<nome>` nas redes) | texto |
+| `auditor_publico_em` | Quando esse FCA foi entregue | data (dia) |
+| `meses_desde_a_troca_de_auditor` | Meses desde o início do mandato da firma nova, na última troca conhecida | número com decimais, na unidade da fonte |
+| `compras_controlador_90d` | Compras do controlador nos 90 dias antes, em R$, já entregues (VLMO, desde 12/2018) | reais (R$), já multiplicado pela escala informada |
+| `vendas_controlador_90d` | Vendas do controlador nos 90 dias antes, em R$, já entregues | reais (R$), já multiplicado pela escala informada |
+| `compras_administracao_90d` | Compras de diretoria, conselhos e outros órgãos nos 90 dias antes, em R$ | reais (R$), já multiplicado pela escala informada |
+| `vendas_administracao_90d` | Vendas de diretoria, conselhos e outros órgãos nos 90 dias antes, em R$ | reais (R$), já multiplicado pela escala informada |
+| `conselho_membros` | Membros do conselho de administração no FRE mais novo já entregue | número com decimais, na unidade da fonte |
+| `conselho_independentes` | Conselheiros independentes (pelo cargo informado) | número com decimais, na unidade da fonte |
+| `conselho_fiscal_membros` | Membros do conselho fiscal (0: sem conselho fiscal instalado) | número com decimais, na unidade da fonte |
+| `fre_publico_em` | Quando o FRE usado foi entregue | data (dia) |
+| `remuneracao_diretoria` | Remuneração total da diretoria estatutária no exercício mais novo do FRE | reais (R$), já multiplicado pela escala informada |
+| `remuneracao_exercicio` | Fim do exercício dessa remuneração | data (dia) |
+| `ofertas_12m` | Ofertas públicas anunciadas nos 12 meses antes (antigas e Resolução 160) | número com decimais, na unidade da fonte |
 
 ## `setoriais_buracos`
 

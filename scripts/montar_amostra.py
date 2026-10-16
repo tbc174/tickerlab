@@ -6,8 +6,10 @@ fim de mês "como era na data", das tabelas que já estão na base (não baixa n
 
 Grava `<base>/amostra/v1/painel/<ano>.parquet` com manifesto, versões e linhagem: as origens são as
 tabelas de entrada (e o cadastro da CVM, um original), e a linhagem segue delas até os originais. Blocos:
-universo (quem está, desde quando e com que tickers) e demonstrações (balanço e resultado como eram); os
-outros entram um por PR. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+universo (quem está, desde quando e com que tickers), demonstrações (balanço e resultado como eram) e
+eventos e governança (documentos, insolvência, auditor, negociações, conselho, remuneração e ofertas);
+os outros entram um por PR. Uma tabela de entrada que ainda não existe na base fica vazia (o bloco
+continua, com as colunas dela vazias). Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
 """
 
 import argparse
@@ -18,7 +20,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base.amostra import demonstracoes, universo
+from base.amostra import demonstracoes, eventos, universo
 from base.cadastro import ler_cadastro
 from base.parquet import gravar_com_versoes, origem_de_tabela
 from src import acervo
@@ -68,6 +70,43 @@ def _demonstracoes(base: Path) -> tuple[pd.DataFrame, list[dict[str, str]]]:
     return tabela, [origem_de_tabela(p, base) for p in arquivos]
 
 
+# entrada do bloco de eventos -> (pasta ou arquivo na base, colunas lidas)
+TABELAS_DOS_EVENTOS = {
+    "eventos": ("eventos", ["cnpj", "tema", "rotulo", "publicado_em"]),
+    "insolvencia": ("insolvencia", ["cnpj", "rotulo", "conhecido_em"]),
+    "auditores": ("auditores", ["cnpj", "conhecido_em", "inicio", "auditor_id"]),
+    "trocas_de_auditor": ("trocas_de_auditor", ["cnpj", "conhecido_em", "efetiva_em"]),
+    "negociacoes": ("negociacoes", ["cnpj", "cargo", "operacao", "data", "entregue_em", "valor"]),
+    "fre_conselho": ("fre_conselho", ["cnpj", "id_documento", "conhecido_em", "orgao", "membros",
+                                      "independentes"]),
+    "fre_remuneracao": ("fre_remuneracao", ["cnpj", "id_documento", "conhecido_em", "orgao",
+                                            "fim_do_exercicio", "total_do_orgao"]),
+    "ofertas": ("ofertas", ["cnpj_emissor", "anunciada_em"]),
+}  # fmt: skip
+
+
+def _tabelas_da_pasta(
+    base: Path, pasta: str, colunas: list[str]
+) -> tuple[pd.DataFrame, list[dict[str, str]]]:
+    """Os Parquets atuais da pasta (sem as versões guardadas), só com as colunas pedidas."""
+    arquivos = sorted(p for p in (base / pasta).glob("*.parquet") if ".v" not in p.stem)
+    partes = [pd.read_parquet(p, columns=colunas) for p in arquivos]
+    tabela = (
+        pd.concat(partes, ignore_index=True)
+        if partes
+        else pd.DataFrame(columns=colunas)
+    )
+    return tabela, [origem_de_tabela(p, base) for p in arquivos]
+
+
+def _eventos(base: Path) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
+    tabelas, origens = {}, []
+    for nome, (pasta, colunas) in TABELAS_DOS_EVENTOS.items():
+        tabelas[nome], de_onde = _tabelas_da_pasta(base, pasta, colunas)
+        origens += de_onde
+    return tabelas, origens
+
+
 def entradas_e_origens(
     conexao: sa.Connection, base: Path
 ) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
@@ -78,15 +117,19 @@ def entradas_e_origens(
     )
     tickers = pd.read_parquet(base / TICKERS)
     tabela, origens_das_demonstracoes = _demonstracoes(base)
+    tabelas_dos_eventos, origens_dos_eventos = _eventos(base)
     origens = [
         origem_do_cadastro,
         origem_de_tabela(base / ROTULOS_ATRASO, base),
         origem_de_tabela(base / TICKERS, base),
         *origens_das_demonstracoes,
+        *origens_dos_eventos,
     ]
-    entradas = universo.preparar(cadastro, entregas, tickers) | {
-        "demonstracoes": tabela
-    }
+    entradas = (
+        universo.preparar(cadastro, entregas, tickers)
+        | {"demonstracoes": tabela}
+        | tabelas_dos_eventos
+    )
     return entradas, origens
 
 
@@ -96,7 +139,8 @@ def montar_painel(entradas: dict[str, pd.DataFrame], fim: pd.Timestamp) -> pd.Da
     if not entradas["demonstracoes"].empty:
         colunas = demonstracoes.montar(entradas, painel)
         painel = painel.merge(colunas, on=["cnpj", "data"], how="left")
-    return painel
+    colunas = eventos.montar(entradas, painel)
+    return painel.merge(colunas, on=["cnpj", "data"], how="left")
 
 
 def gravar(painel: pd.DataFrame, base: Path, origens: list[dict[str, str]]) -> None:

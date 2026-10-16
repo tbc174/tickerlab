@@ -75,7 +75,11 @@ def ultimo_publico(
     direita = direita.dropna(subset=[coluna_da_data])
     direita[coluna_da_data] = pd.to_datetime(direita[coluna_da_data]).astype(DATA)
     direita = direita.sort_values(coluna_da_data, kind="stable")
+    direita[por] = direita[por].astype(
+        object
+    )  # texto do pandas 3 e "object" não se juntam
     esquerda = grade.assign(data=pd.to_datetime(grade["data"]).astype(DATA))
+    esquerda[por] = esquerda[por].astype(object)
     juntas = pd.merge_asof(
         esquerda.sort_values("data", kind="stable"),
         direita,
@@ -85,3 +89,42 @@ def ultimo_publico(
         direction="backward",
     )
     return juntas.sort_values([por, "data"]).reset_index(drop=True)
+
+
+def na_janela(
+    fatos: pd.DataFrame,
+    *,
+    data_do_fato: str,
+    publico_em: str,
+    dias: int,
+    ultimo_mes: pd.Timestamp,
+) -> pd.DataFrame:
+    """Cada fato repetido em cada fim de mês em que ele conta numa janela de `dias`: o fim de mês `m`
+    conta o fato se ele já era público (`publico_em` <= m) e aconteceu nos `dias` antes de `m`
+    (`m - dias` < `data_do_fato` <= m). Devolve as colunas dos fatos e `data` (o fim de mês).
+
+    Cada fato vira 3 ou 4 linhas numa janela de 90 dias, em vez de juntar todos os fatos a todos os
+    meses de cada companhia.
+    """
+    tabela = fatos.dropna(subset=[data_do_fato, publico_em]).copy()
+    fato = pd.to_datetime(tabela[data_do_fato]).astype(DATA)
+    publico = pd.to_datetime(tabela[publico_em]).astype(DATA)
+    primeiro = (pd.concat([fato, publico], axis=1).max(axis=1)) + pd.offsets.MonthEnd(0)
+    limite = fato + pd.Timedelta(days=dias)  # o fim de mês tem de ser antes disto
+    meses = (
+        (limite.dt.year - primeiro.dt.year) * 12
+        + (limite.dt.month - primeiro.dt.month)
+        + 1
+    ).clip(lower=0)
+    tabela = tabela.assign(_primeiro=primeiro, _limite=limite).loc[
+        meses.index.repeat(meses)
+    ]
+    deslocamento = tabela.groupby(level=0).cumcount()
+    tabela["data"] = (
+        (tabela["_primeiro"].dt.to_period("M") + deslocamento.to_numpy())
+        .dt.to_timestamp(how="end")
+        .dt.normalize()
+        .astype(DATA)
+    )
+    vale = (tabela["data"] < tabela["_limite"]) & (tabela["data"] <= ultimo_mes)
+    return tabela[vale].drop(columns=["_primeiro", "_limite"]).reset_index(drop=True)

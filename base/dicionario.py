@@ -2038,8 +2038,9 @@ TABELAS: dict[str, Tabela] = {
             "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
             "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
             "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
-            "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os "
-            "outros entram um por PR"
+            "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram) e eventos e "
+            "governança; os outros entram um por PR. Os proventos e eventos de capital do FRE ficam de fora: "
+            "não têm a data em que ficaram públicos"
         ),
         fonte=(
             "Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e "
@@ -2125,6 +2126,82 @@ TABELAS: dict[str, Tabela] = {
                 REAIS,
             ),
             "lucro_anual": ("Lucro ou prejuízo do exercício", REAIS),
+            "documentos_resultados_90d": (
+                "Documentos de resultados entregues à CVM nos 90 dias antes (IPE)",
+                NUMERO_DECIMAL,
+            ),
+            "documentos_proventos_90d": (
+                "Documentos de proventos nos 90 dias antes",
+                NUMERO_DECIMAL,
+            ),
+            "documentos_eventos_90d": (
+                "Documentos de eventos (fatos, assembleias, comunicados) nos 90 dias antes",
+                NUMERO_DECIMAL,
+            ),
+            "documentos_risco_90d": (
+                "Documentos de risco (rating) nos 90 dias antes",
+                NUMERO_DECIMAL,
+            ),
+            "fatos_relevantes_90d": (
+                "Fatos relevantes entregues nos 90 dias antes",
+                NUMERO_DECIMAL,
+            ),
+            "insolvencia_conhecida": (
+                "Já comunicou recuperação judicial, extrajudicial, falência, liquidação ou pedido",
+                SIM_OU_NAO,
+            ),
+            "insolvencia_rotulo": (
+                "O rótulo de insolvência mais recente já comunicado",
+                TEXTO,
+            ),
+            "insolvencia_desde": ("Quando a primeira insolvência ficou pública", DATA),
+            "auditor_id": (
+                "A firma de auditoria do FCA mais novo já entregue (`rede:<nome>` nas redes)",
+                TEXTO,
+            ),
+            "auditor_publico_em": ("Quando esse FCA foi entregue", DATA),
+            "meses_desde_a_troca_de_auditor": (
+                "Meses desde o início do mandato da firma nova, na última troca conhecida",
+                NUMERO_DECIMAL,
+            ),
+            "compras_controlador_90d": (
+                "Compras do controlador nos 90 dias antes, em R$, já entregues (VLMO, desde 12/2018)",
+                REAIS,
+            ),
+            "vendas_controlador_90d": (
+                "Vendas do controlador nos 90 dias antes, em R$, já entregues",
+                REAIS,
+            ),
+            "compras_administracao_90d": (
+                "Compras de diretoria, conselhos e outros órgãos nos 90 dias antes, em R$",
+                REAIS,
+            ),
+            "vendas_administracao_90d": (
+                "Vendas de diretoria, conselhos e outros órgãos nos 90 dias antes, em R$",
+                REAIS,
+            ),
+            "conselho_membros": (
+                "Membros do conselho de administração no FRE mais novo já entregue",
+                NUMERO_DECIMAL,
+            ),
+            "conselho_independentes": (
+                "Conselheiros independentes (pelo cargo informado)",
+                NUMERO_DECIMAL,
+            ),
+            "conselho_fiscal_membros": (
+                "Membros do conselho fiscal (0: sem conselho fiscal instalado)",
+                NUMERO_DECIMAL,
+            ),
+            "fre_publico_em": ("Quando o FRE usado foi entregue", DATA),
+            "remuneracao_diretoria": (
+                "Remuneração total da diretoria estatutária no exercício mais novo do FRE",
+                REAIS,
+            ),
+            "remuneracao_exercicio": ("Fim do exercício dessa remuneração", DATA),
+            "ofertas_12m": (
+                "Ofertas públicas anunciadas nos 12 meses antes (antigas e Resolução 160)",
+                NUMERO_DECIMAL,
+            ),
         },
     ),
     "setoriais_buracos": Tabela(
@@ -3042,7 +3119,7 @@ _CONTRATO = {
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),
-    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.2.0"),
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
     "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),

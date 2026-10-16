@@ -8,6 +8,7 @@ import pandas as pd
 
 from base import cda, conselhos, fca, ligacoes, ofertas
 from base.amostra import demonstracoes as amostra_demonstracoes
+from base.amostra import eventos as amostra_eventos
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
@@ -104,6 +105,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "amostra_painel": [
             *amostra_universo.COLUNAS,
             *amostra_demonstracoes.COLUNAS[2:],
+            *amostra_eventos.COLUNAS[2:],
         ],
         **_colunas_das_ofertas_e_conselhos(),
         "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
