@@ -27,7 +27,7 @@ COLUNAS_DO_FUNDO = (
     "CNPJ_FUNDO_CLASSE",
     "CNPJ_FUNDO",
     "CNPJ_CLASSE",
-)  # a 1ª que existir
+)  # a 1ª não vazia de cada linha
 NOME_DA_TABELA = re.compile(r"inf_mensal_fidc_(tab_[IVX]+(?:_\d+)*)_\d{6}\.csv$")
 DIGITOS_DO_CNPJ, DIGITOS_DO_CPF = 14, 11
 PESSOA_FISICA = "PF"
@@ -86,12 +86,16 @@ def _sem_cpf(tabela: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalizar_informe(tabela: pd.DataFrame) -> pd.DataFrame:
-    coluna_do_fundo = next(c for c in COLUNAS_DO_FUNDO if c in tabela.columns)
+    colunas_do_fundo = [c for c in COLUNAS_DO_FUNDO if c in tabela.columns]
     tabela = _sem_cpf(tabela)
     tabela.insert(
         0, "competencia", pd.to_datetime(tabela["DT_COMPTC"], errors="coerce")
     )
-    tabela.insert(1, "cnpj_fundo", tabela.pop(coluna_do_fundo).str.strip())
+    # meses de cabeçalhos diferentes, juntados num só quadro, deixam as duas colunas:
+    # vale a primeira não vazia de cada linha
+    cnpj_fundo = tabela[colunas_do_fundo].bfill(axis=1).iloc[:, 0]
+    tabela = tabela.drop(columns=colunas_do_fundo)
+    tabela.insert(1, "cnpj_fundo", cnpj_fundo.str.strip())
     return tabela
 
 
