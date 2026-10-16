@@ -3113,6 +3113,100 @@ TABELAS: dict[str, Tabela] = {
             "conferido_por": ("regra (código) ou tabela (conferida à mão)", TEXTO),
         },
     ),
+    "ma_assessorias": Tabela(
+        descricao=(
+            "Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR "
+            "0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: "
+            "nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem "
+            "data do negócio (a página não tem; `conhecido_em` vem no passo 4 da série 5) e sem "
+            "CNPJ das partes (passo 3)"
+        ),
+        fonte="Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista",
+        familia_da_fonte="assessoria",
+        frequencia="Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
+        atraso=(
+            "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a "
+            "base só sabe a data da nossa coleta"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/assessorias/<assessoria>.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o endereço e o SHA-256 da página no acervo (`url`, `sha256`, que "
+            "levam ao registro de coletas) e quando ela foi coletada; o `.json` guarda as páginas "
+            "usadas. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio", TEXTO),
+            "sha256": ("SHA-256 da página guardada no acervo", TEXTO),
+            "coletado_em": ("Quando o arquivista baixou a página", MOMENTO),
+            "tipo": (
+                (
+                    "Código da taxonomia de M&A (AQ_CONTROLE, AQ_MINORITARIA, FUSAO, JV, VENDA_ATIVO, "
+                    "PE_VC, DCM) ou desconhecido"
+                ),
+                TEXTO,
+            ),
+            "regra": (
+                (
+                    "Qual regra do título deu o tipo (divida, fusao, jv, venda_de_ativo, minoritaria, "
+                    "majoritaria, participacao, financiamento, rodada, aquisicao); vazio se nenhuma"
+                ),
+                TEXTO,
+            ),
+            "alvo": (
+                "Empresa(s) comprada(s) ou que recebeu o investimento, separadas por `; `",
+                TEXTO,
+            ),
+            "comprador": ("Quem comprou ou investiu", TEXTO),
+            "vendedor": (
+                "Quem vendeu, quando não é a própria alvo (controladora, dono do ativo)",
+                TEXTO,
+            ),
+            "outras_partes": (
+                "Empresas da página sem papel dito no título (controladora de quem compra)",
+                TEXTO,
+            ),
+            "cliente": (
+                "Empresa(s) que a assessoria diz ter assessorado (campo da página)",
+                TEXTO,
+            ),
+            "contraparte": (
+                "A(s) outra(s) empresa(s) do negócio, como a página lista",
+                TEXTO,
+            ),
+            "papeis_por": (
+                (
+                    "titulo (os papéis vieram do título) ou pagina (algum nome não aparece no título e "
+                    "o lado veio do campo da página); vazio sem empresas"
+                ),
+                TEXTO,
+            ),
+            "lado_da_assessoria": (
+                "venda, compra, captacao (dívida ou empréstimo) ou parte (fusão, JV)",
+                TEXTO,
+            ),
+            "setor": (
+                "Setor da alvo; vazio enquanto a página não diz (vem do CNPJ no passo 3)",
+                TEXTO,
+            ),
+            "paises": (
+                "Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem",
+                TEXTO,
+            ),
+            "valor": (
+                "Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume)",
+                NUMERO_DECIMAL,
+            ),
+            "moeda": ("BRL ou USD, a do valor", TEXTO),
+            "conferencia": (
+                "assessoria (fonte única: declarado por quem assessorou) ou confirmado",
+                TEXTO,
+            ),
+        },
+    ),
 }
 
 
@@ -3185,6 +3279,7 @@ _CONTRATO = {
     "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
     "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
 }  # fmt: skip
 
 
