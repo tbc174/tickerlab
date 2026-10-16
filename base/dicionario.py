@@ -285,8 +285,9 @@ TABELAS: dict[str, Tabela] = {
         onde="Lido do acervo quando preciso (`base/cadastro.py::ler_cadastro`)",
         linhagem=(
             "O `cad_cia_aberta.csv` de cada dia fica no acervo e no registro de coletas (com "
-            "SHA-256 e data da coleta); a tabela é refeita dele. "
-            + SEM_VERSAO_DO_CODIGO
+            "SHA-256 e data da coleta); a tabela é refeita dele. Não é gravada sozinha: o arquivo "
+            "lido entra nas origens do manifesto de quem o usa (`rotulos_atraso`, "
+            "`demonstracoes_como_era`), ao lado da versão do código que montou a tabela."
         ),
         colunas={
             **_EMPRESA,
