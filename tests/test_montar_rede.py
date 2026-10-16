@@ -77,12 +77,19 @@ def base(tmp_path, monkeypatch):
     for tabela, destino in (
         (entradas.tickers, pasta / "fca" / "tickers"),
         (entradas.emissores, pasta / "fca" / "emissores"),
-        (entradas.controladas, pasta / "controladas" / "2026"),
-        (entradas.empresa_serie, pasta / "empresa_serie" / "empresa_serie"),
         (entradas.fundos, pasta / "fidc" / "cadastro" / "cad_fi"),
         (entradas.ifdata, pasta / "bcb" / "ifdata" / "cadastro" / "202506"),
     ):
         gravar_tabela(tabela, destino, origem, [])
+    # como no servidor: as históricas da série B não têm manifesto, a origem vai em cada linha
+    for tabela, destino in (
+        (entradas.controladas, pasta / "controladas" / "2026.parquet"),
+        (entradas.empresa_serie, pasta / "empresa_serie" / "empresa_serie.parquet"),
+    ):
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        tabela.assign(origem_sha256=origem[0]["sha256"]).to_parquet(
+            destino, index=False
+        )
     return pasta
 
 

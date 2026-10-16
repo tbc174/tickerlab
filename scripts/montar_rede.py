@@ -37,6 +37,7 @@ from base.rede import amostra, ids, montar
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 from src.banco.conexao import obter_engine
+from src.banco.modelo import coletas
 from src.versao_do_codigo import exigir_versao_do_codigo
 
 log = logging.getLogger("tickerlab.montar_rede")
@@ -83,11 +84,41 @@ def _tabelas(pasta: Path, padrao: re.Pattern[str], *partes: str) -> list[Path]:
     )
 
 
-def _ler(arquivos: list[Path], pasta: Path, origens: list[Origem]) -> pd.DataFrame:
+def _origens_das_linhas(conexao: sa.Connection, tabela: pd.DataFrame) -> list[Origem]:
+    """Tabela sem manifesto (as históricas da série B, como `controladas`): a origem está em cada
+    linha (`origem_sha256`); o endereço vem do registro de coletas ou da tabela conferida."""
+    shas = sorted(set(tabela["origem_sha256"].dropna()))
+    conferidas = {
+        hashlib.sha256(c.read_bytes()).hexdigest(): f"base/conferidas/{c.name}"
+        for c in CONFERIDAS.glob("*.csv")
+    }
+    registradas = dict(
+        conexao.execute(
+            sa.select(coletas.c.sha256, sa.func.min(coletas.c.url))
+            .where(coletas.c.sha256.in_(shas), coletas.c.situacao == "ok")
+            .group_by(coletas.c.sha256)
+        ).all()
+    )
+    return [
+        {
+            "url": conferidas.get(sha) or registradas.get(sha) or f"sha256:{sha}",
+            "sha256": sha,
+        }
+        for sha in shas
+    ]
+
+
+def _ler(
+    arquivos: list[Path], pasta: Path, origens: list[Origem], conexao: sa.Connection
+) -> pd.DataFrame:
     if not arquivos:
         return pd.DataFrame()
-    origens += [_origem_de_tabela(a, pasta) for a in arquivos]
-    return pd.concat([ler_tabela(a) for a in arquivos], ignore_index=True)
+    tabela = pd.concat([ler_tabela(a) for a in arquivos], ignore_index=True)
+    if all(a.with_suffix(".json").is_file() for a in arquivos):
+        origens += [_origem_de_tabela(a, pasta) for a in arquivos]
+    else:
+        origens += _origens_das_linhas(conexao, tabela)
+    return tabela
 
 
 def _uma(pasta: Path, *partes: str) -> list[Path]:
@@ -167,20 +198,22 @@ def _entradas(
     origens: list[Origem] = []
     entradas = montar.Entradas(
         cadastro=_cadastro(conexao, origens),
-        tickers=_ler(_uma(pasta, "fca", "tickers"), pasta, origens),
-        emissores=_ler(_uma(pasta, "fca", "emissores"), pasta, origens),
+        tickers=_ler(_uma(pasta, "fca", "tickers"), pasta, origens, conexao),
+        emissores=_ler(_uma(pasta, "fca", "emissores"), pasta, origens, conexao),
         emissores_antigos=pd.read_csv(
             CONFERIDAS / "emissores_antigos.csv",
             sep=";",
             dtype=str,
             keep_default_na=False,
         ).replace("", None),
-        controladas=_ler(_tabelas(pasta, ANO, "controladas"), pasta, origens),
+        controladas=_ler(_tabelas(pasta, ANO, "controladas"), pasta, origens, conexao),
         empresa_serie=_ler(
-            _uma(pasta, "empresa_serie", "empresa_serie"), pasta, origens
+            _uma(pasta, "empresa_serie", "empresa_serie"), pasta, origens, conexao
         ),
-        fundos=_ler(_uma(pasta, "fidc", "cadastro", "cad_fi"), pasta, origens),
-        ifdata=_ler(_tabelas(pasta, MES, "bcb", "ifdata", "cadastro"), pasta, origens),
+        fundos=_ler(_uma(pasta, "fidc", "cadastro", "cad_fi"), pasta, origens, conexao),
+        ifdata=_ler(
+            _tabelas(pasta, MES, "bcb", "ifdata", "cadastro"), pasta, origens, conexao
+        ),
         gleif=_gleif(conexao, origens),
     )
     origens += [
