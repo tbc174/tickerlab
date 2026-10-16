@@ -138,6 +138,16 @@ class Tabela:
     # coluna renomeada numa versão maior: nome antigo → nome novo (a porta serve a versão antiga
     # como vista pelo contrato congelado; ADR 0077, item 8; plano, D12)
     renomeadas: dict[str, str] = field(default_factory=dict)
+    # conferência dos valores do Parquet contra o contrato (`base/conferencia.py`); preenchido por
+    # `_CONFERENCIA`, logo abaixo de `_CONTRATO`. O tipo e a faixa de cada coluna já saem da unidade.
+    pasta: str = ""  # onde o Parquet fica dentro de `<acervo>/base/` (vazio: ainda não conferida)
+    faixas: dict[str, tuple[float | None, float | None]] = field(
+        default_factory=dict
+    )  # coluna → (mínimo, máximo); None = sem limite desse lado
+    nao_nulas: tuple[str, ...] = ()  # além das chaves, colunas que não aceitam vazio
+    # o fato é anunciado antes de acontecer (assembleia, calendário, mandato que começa depois):
+    # `aconteceu_em` pode vir depois de `publico_em`
+    anuncia_o_futuro: bool = False
 
 
 _ONDE_DA_REDE = "Parquet em `<acervo>/base/rede/{t}.parquet` (servidor de casa, `scripts/montar_rede.py`)"
@@ -3176,7 +3186,7 @@ TABELAS: dict[str, Tabela] = {
             "Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR "
             "0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: "
             "nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem "
-            "data do negócio (a página não tem; `conhecido_em` vem no passo 4 da série 5) e sem "
+            "data do negócio (a página não tem; `conhecido_em` está em `ma_datas`) e sem "
             "CNPJ das partes (passo 3)"
         ),
         fonte="Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista",
@@ -3260,7 +3270,10 @@ TABELAS: dict[str, Tabela] = {
             ),
             "moeda": ("BRL ou USD, a do valor", TEXTO),
             "conferencia": (
-                "assessoria (fonte única: declarado por quem assessorou) ou confirmado",
+                (
+                    "assessoria (fonte única: declarado por quem assessorou); a confirmação por "
+                    "fonte oficial, com a prova, fica em `ma_datas`"
+                ),
                 TEXTO,
             ),
         },
@@ -3377,6 +3390,90 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ma_datas": Tabela(
+        descricao=(
+            "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por "
+            "fonte oficial; uma linha por página (ADR 0082, série 5 do plano de M&A, passo 4). "
+            "`conhecido_em` é a prova mais antiga guardada: a primeira cópia da página no Internet "
+            "Archive, o arquivo de sócios do CNPJ em que a compradora aparece como sócia pessoa "
+            "jurídica da alvo, ou a nossa primeira coleta. Nunca uma data contada: a entrada na "
+            "sociedade é a do fechamento (`fechamento_em`) e não entra na conta"
+        ),
+        fonte=(
+            "`ma_assessorias`, `ma_partes` e `ma_negocios`; a API CDX do Wayback Machine (só as datas "
+            "das cópias) e os sócios pessoa jurídica do CNPJ aberto da Receita (raiz, raiz da sócia e "
+            "data de entrada; nome, CPF e representante nunca são lidos)"
+        ),
+        familia_da_fonte="wayback",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso=(
+            "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois "
+            "da página, e o CNPJ é o do mês mais recente guardado"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/datas/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada data aponta a prova: o endereço e o SHA-256 do original no acervo (a consulta do "
+            "Wayback, o ZIP de sócios da Receita ou a página da assessoria). O `.json` guarda as "
+            "tabelas e os originais de entrada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "id_negocio": ("O negócio (liga com `ma_negocios`)", TEXTO),
+            "coletado_em": (
+                "Quando o arquivista baixou a página pela primeira vez",
+                MOMENTO,
+            ),
+            "wayback_em": (
+                "A cópia mais antiga da página no Wayback que respondeu 200; vazio se nenhuma",
+                MOMENTO,
+            ),
+            "wayback_copia": ("Link da cópia no Wayback, para conferir à mão", TEXTO),
+            "wayback_consulta": (
+                "Endereço da consulta à API CDX guardada no acervo",
+                TEXTO,
+            ),
+            "wayback_sha256": ("SHA-256 da resposta da consulta guardada", TEXTO),
+            "confirmado_por": (
+                "rfb-cnpj quando a compradora é sócia PJ da alvo no CNPJ; vazio sem confirmação",
+                TEXTO,
+            ),
+            "confirmacao_url": (
+                "Endereço do ZIP de sócios da Receita que confirma",
+                TEXTO,
+            ),
+            "confirmacao_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
+            "confirmacao_em": ("Quando o arquivista baixou esse ZIP", MOMENTO),
+            "fechamento_em": (
+                (
+                    "Data de entrada da compradora na sociedade da alvo, como a Receita publica (a "
+                    "etapa de fechamento); se ela já era sócia antes, a da primeira entrada"
+                ),
+                DATA,
+            ),
+            "conhecido_em": (
+                "A prova mais antiga de que o negócio era público (nunca antes dela)",
+                MOMENTO,
+            ),
+            "conhecido_por": (
+                "wayback, rfb-cnpj ou coleta: de onde veio o `conhecido_em`",
+                TEXTO,
+            ),
+            "prova_url": ("Endereço do original que prova o `conhecido_em`", TEXTO),
+            "prova_sha256": ("SHA-256 desse original", TEXTO),
+            "conhecido_em_do_negocio": (
+                "O `conhecido_em` mais antigo entre as páginas do mesmo negócio",
+                MOMENTO,
+            ),
+            "conferencia": (
+                "confirmado (fonte oficial com a prova apontada) ou assessoria (só o post)",
+                TEXTO,
+            ),
+        },
+    ),
 }
 
 
@@ -3452,6 +3549,25 @@ _CONTRATO = {
     "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
+    "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+}  # fmt: skip
+
+
+# conferência dos valores (`base/conferencia.py`): só as tabelas daqui são conferidas na montagem,
+# por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
+_SEM_NEGATIVO = (0.0, None)
+_CONFERENCIA: dict[str, dict[str, object]] = {
+    "amostra_painel": {"pasta": "amostra/v1/painel"},
+    "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
+    "curva_juros": {
+        "pasta": "curva_juros",
+        "faixas": {"prazo_anos": _SEM_NEGATIVO, "maior_prazo_anos": _SEM_NEGATIVO, "titulos": _SEM_NEGATIVO},
+        "nao_nulas": ("taxa", "disponivel_em"),
+    },
+    "proventos": {
+        "pasta": "proventos",
+        "faixas": {"dividendos": _SEM_NEGATIVO, "jcp": _SEM_NEGATIVO, "dividendo_total": _SEM_NEGATIVO},
+    },
 }  # fmt: skip
 
 
@@ -3466,7 +3582,12 @@ def _contrato_de(nome: str) -> dict[str, object]:
 
 TABELAS = {
     nome: replace(
-        tabela, **{"granularidade_do_publico_em": "dia", **_contrato_de(nome)}
+        tabela,
+        **{
+            "granularidade_do_publico_em": "dia",
+            **_contrato_de(nome),
+            **_CONFERENCIA.get(nome, {}),
+        },
     )
     for nome, tabela in TABELAS.items()
 }

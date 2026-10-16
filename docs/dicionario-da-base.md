@@ -2029,7 +2029,7 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 
 ## `ma_assessorias`
 
-Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR 0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem data do negócio (a página não tem; `conhecido_em` vem no passo 4 da série 5) e sem CNPJ das partes (passo 3)
+Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR 0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem data do negócio (a página não tem; `conhecido_em` está em `ma_datas`) e sem CNPJ das partes (passo 3)
 
 - **Fonte:** Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
@@ -2064,7 +2064,7 @@ Negócios de M&A do middle market tirados dos posts das assessorias independente
 | `paises` | Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem | texto |
 | `valor` | Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume) | número com decimais, na unidade da fonte |
 | `moeda` | BRL ou USD, a do valor | texto |
-| `conferencia` | assessoria (fonte única: declarado por quem assessorou) ou confirmado | texto |
+| `conferencia` | assessoria (fonte única: declarado por quem assessorou); a confirmação por fonte oficial, com a prova, fica em `ma_datas` | texto |
 
 ## `ma_partes`
 
@@ -2122,3 +2122,42 @@ Uma linha por página de negócio de M&A com o `id_negocio`, o mesmo para as pá
 | `paginas_do_negocio` | Quantas páginas têm este `id_negocio` | número inteiro |
 | `paginas_com_as_mesmas_partes` | Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo site são posts diferentes) | número inteiro |
 | `duplicata_por` | partes_iguais quando o negócio está em mais de uma página; vazio se só em uma | texto |
+
+## `ma_datas`
+
+Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por fonte oficial; uma linha por página (ADR 0082, série 5 do plano de M&A, passo 4). `conhecido_em` é a prova mais antiga guardada: a primeira cópia da página no Internet Archive, o arquivo de sócios do CNPJ em que a compradora aparece como sócia pessoa jurídica da alvo, ou a nossa primeira coleta. Nunca uma data contada: a entrada na sociedade é a do fechamento (`fechamento_em`) e não entra na conta
+
+- **Fonte:** `ma_assessorias`, `ma_partes` e `ma_negocios`; a API CDX do Wayback Machine (só as datas das cópias) e os sócios pessoa jurídica do CNPJ aberto da Receita (raiz, raiz da sócia e data de entrada; nome, CPF e representante nunca são lidos)
+- **Licença:** Internet Archive: 'for scholarship and research purposes only'; só datas
+- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
+- **Atraso de divulgação:** O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `assessoria`, `url`
+- **Três datas:** aconteceu_em = `fechamento_em`; publico_em = `conhecido_em`; coletado_em = `coletado_em`
+- **Histórico desde:** 2026-10-16 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/datas/negocios.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** Cada data aponta a prova: o endereço e o SHA-256 do original no acervo (a consulta do Wayback, o ZIP de sócios da Receita ou a página da assessoria). O `.json` guarda as tabelas e os originais de entrada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `assessoria` | Quem postou (`igc`) | texto |
+| `url` | Endereço da página do negócio (liga com `ma_assessorias`) | texto |
+| `id_negocio` | O negócio (liga com `ma_negocios`) | texto |
+| `coletado_em` | Quando o arquivista baixou a página pela primeira vez | data e hora (UTC) |
+| `wayback_em` | A cópia mais antiga da página no Wayback que respondeu 200; vazio se nenhuma | data e hora (UTC) |
+| `wayback_copia` | Link da cópia no Wayback, para conferir à mão | texto |
+| `wayback_consulta` | Endereço da consulta à API CDX guardada no acervo | texto |
+| `wayback_sha256` | SHA-256 da resposta da consulta guardada | texto |
+| `confirmado_por` | rfb-cnpj quando a compradora é sócia PJ da alvo no CNPJ; vazio sem confirmação | texto |
+| `confirmacao_url` | Endereço do ZIP de sócios da Receita que confirma | texto |
+| `confirmacao_sha256` | SHA-256 do ZIP guardado no acervo | texto |
+| `confirmacao_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
+| `fechamento_em` | Data de entrada da compradora na sociedade da alvo, como a Receita publica (a etapa de fechamento); se ela já era sócia antes, a da primeira entrada | data (dia) |
+| `conhecido_em` | A prova mais antiga de que o negócio era público (nunca antes dela) | data e hora (UTC) |
+| `conhecido_por` | wayback, rfb-cnpj ou coleta: de onde veio o `conhecido_em` | texto |
+| `prova_url` | Endereço do original que prova o `conhecido_em` | texto |
+| `prova_sha256` | SHA-256 desse original | texto |
+| `conhecido_em_do_negocio` | O `conhecido_em` mais antigo entre as páginas do mesmo negócio | data e hora (UTC) |
+| `conferencia` | confirmado (fonte oficial com a prova apontada) ou assessoria (só o post) | texto |
