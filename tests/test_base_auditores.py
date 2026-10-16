@@ -120,6 +120,9 @@ def test_rede_vem_do_nome_mesmo_com_erro_de_digitacao_cnpj_ou_codigo_trocado():
         "KPMG AUDITORES INDEPENDENTES LTDA": "kpmg",
         "KMPG Auditores Independentes": "kpmg",
         "BDO RCS Auditores Independentes SS": "bdo",
+        # achados pelo relatório de qualidade da montagem do modelo 8 (16/10/2026)
+        "Delotite Touche Tohmatsu Auditores Independentes": "deloitte",
+        "Esconder detalhesBDO RCS AUDITORES INDEPENDENTES -SS": "bdo",
     }
     for nome, rede in nomes.items():
         # o BB informou o próprio CNPJ no lugar do da firma (FCA de 2011); o código é de outra firma
@@ -275,6 +278,55 @@ def test_fca_antigo_reapresentado_depois_do_novo_nao_desfaz_a_troca():
     trocas = auditores.trocas_de_auditor(tabela)
     assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
         ["rede:kpmg", "rede:ey"]
+    ]
+
+
+def test_mandato_ja_visto_que_volta_num_fca_novo_nao_e_troca():
+    """FCA desatualizado (Cielo, Fibria): um ano volta a listar o auditor antigo sem o fim do mandato
+    e o seguinte lista o novo de novo. Mandato já visto (mesma firma, mesmo início) que volta não é
+    troca: a troca de 2017 aparecia outra vez em 2026 (relatório de qualidade de 16/10/2026)."""
+    tabela = pd.concat(
+        [
+            _ano(2016, "2016-05-20", (KPMG, "2010-01-01")),
+            _ano(
+                2017,
+                "2017-05-20",
+                (KPMG, "2010-01-01", "2016-12-31"),
+                (PWC, "2017-01-01"),
+            ),
+            _ano(2025, "2025-05-20", (KPMG, "2010-01-01")),  # desatualizado
+            _ano(2026, "2026-05-20", (PWC, "2017-01-01")),
+        ]
+    )
+    trocas = auditores.trocas_de_auditor(tabela)
+    assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
+        ["rede:kpmg", "rede:pwc"]
+    ]
+
+
+def test_mandato_novo_da_mesma_firma_depois_de_outra_e_troca():
+    """A volta de uma firma com um mandato novo (outro início) é troca de verdade."""
+    tabela = pd.concat(
+        [
+            _ano(2016, "2016-05-20", (KPMG, "2010-01-01")),
+            _ano(
+                2017,
+                "2017-05-20",
+                (KPMG, "2010-01-01", "2016-12-31"),
+                (PWC, "2017-01-01"),
+            ),
+            _ano(
+                2022,
+                "2022-05-20",
+                (PWC, "2017-01-01", "2021-12-31"),
+                (KPMG, "2022-01-01"),
+            ),
+        ]
+    )
+    trocas = auditores.trocas_de_auditor(tabela)
+    assert trocas[["anterior_id", "novo_id"]].values.tolist() == [
+        ["rede:kpmg", "rede:pwc"],
+        ["rede:pwc", "rede:kpmg"],
     ]
 
 

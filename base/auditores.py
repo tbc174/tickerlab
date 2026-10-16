@@ -57,9 +57,9 @@ REDES = (
     ("ey", re.compile(r"\b(ern?e?st|enerst)\b|\bey\b|\bterco\b")),
     ("pwc", re.compile(r"price\s*waterhouse|\bpwc\b")),
     ("kpmg", re.compile(r"\bk(pm|mp)g\b")),
-    ("deloitte", re.compile(r"del+oit+e")),
+    ("deloitte", re.compile(r"del+oit+e|delotit+e")),
     ("grant_thornton", re.compile(r"grant\s*th")),
-    ("bdo", re.compile(r"\bbdo\b")),
+    ("bdo", re.compile(r"\bbdo\b|bdo\s+rcs")),
     ("baker_tilly", re.compile(r"baker\s*til+y")),
     ("crowe", re.compile(r"\bcrowe\b")),
     ("rsm", re.compile(r"\brsm\b")),
@@ -163,6 +163,8 @@ class _Empresa:
     referencia: date | None = None
     vigentes: dict[str, date] = field(default_factory=dict)  # auditor_id → desde
     nomes: dict[str, str | None] = field(default_factory=dict)
+    # mandatos que já apareceram (firma, início): voltar num FCA novo não é troca
+    vistos: set[tuple[str, date]] = field(default_factory=set)
 
 
 def _vigentes(documento: pd.DataFrame, recebido: date) -> dict[str, date]:
@@ -232,7 +234,8 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
     entregues até uma data dá as mesmas trocas que montar com tudo e cortar naquela data. Entrada de
     uma segunda firma (auditoria conjunta) ou saída de uma delas não é troca; troca é sair uma firma e
     entrar outra. Um FCA de um ano mais velho entregue depois de um mais novo (reapresentação) é
-    correção do passado e não gera troca.
+    correção do passado e não gera troca; nem um mandato que já tinha aparecido (mesma firma, mesmo
+    início) e volta num FCA novo, depois de um FCA desatualizado.
     """
     linhas: list[dict] = []
     estados: dict[str, _Empresa] = {}
@@ -258,7 +261,12 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
         if primeiro:
             estado.vigentes = _anteriores_no_primeiro_fca(documento, vigentes)
         saidas = set(estado.vigentes) - set(vigentes)
-        entradas = set(vigentes) - set(estado.vigentes)
+        entradas = {
+            auditor
+            for auditor in set(vigentes) - set(estado.vigentes)
+            if (auditor, vigentes[auditor]) not in estado.vistos
+        }
+        estado.vistos.update(vigentes.items())
         if saidas and entradas:
             linhas.append(_troca(estado, documento, saidas, entradas, recebido))
         # quem continua mantém o "desde" antigo; quem entra começa no início do mandato
