@@ -154,11 +154,13 @@ _SITUACAO = re.compile(
     r"|em\s+liquida[cç][aã]o(\s+extrajudicial)?)$"
 )
 _CONECTORES = frozenset(["de", "do", "da", "dos", "das", "e", "em"])
-# siglas de 2 ou 3 letras do cadastro que são palavras ou partes de qualquer nome: não são trocadas
+# começos de nome de 2 ou 3 letras que são palavras (em maiúsculas, aparecem em qualquer título:
+# "PODERÁ SER", "VIA E-MAIL") ou termos de qualquer empresa ("SPE"): não são trocados
 _SIGLAS_COMUNS = frozenset(
     ["DE", "DO", "DA", "DOS", "DAS", "E", "EM", "NO", "NA", "AO", "SA", "CIA", "LTD", "INC", "CO",
-     "RIO", "SUL", "S/A"]
+     "RIO", "SUL", "AÇO", "BOA", "SER", "SOC", "SPE", "VIA", "SAO", "SÃO", "PAR", "SOL", "LUZ"]
 )  # fmt: skip
+_ANTES_DA_SIGLA = frozenset(["BANCO", "GRUPO"])  # "BANCO ABC BRASIL", "GRUPO SBF"
 # palavras dos 816 nomes da fila (lidas em 17/10/2026) que são português ou termo do negócio: apagar
 # "pagamento", "distribuidora" ou "recuperação" tiraria o sentido do texto. As que a auditoria já
 # trata como genéricas (`GENERICAS`) também ficam. Nomes de lugar no nome da empresa ("Sergipe",
@@ -193,7 +195,7 @@ _TEXTO_DAS_COMUNS = """
     abastecimento abastec solar bebidas entretenimento armas terminal conteineres pigmentos moveis
     caminhoes urbano biologicos cimentos siderurgicas mecanicas academias ginastica petroleos petroleum
     oleo confeccoes interestaduais intermodal commercial relacionamentos adquirencia compartilhamento
-    automob auto hidro gerais norte nordeste sudeste noroeste leste oeste brazil brazilian america
+    automob auto hidro gerais estadual securitzadora const empr emp arrend telec resseguros norte nordeste sudeste noroeste leste oeste brazil brazilian america
     americas bank para mais menos tres nova novo alto forte terra verde quero fica pague uniao dias
     pratica impacto origem estilo quality
 """
@@ -231,11 +233,19 @@ def _parte_e_nome(parte: str, principal: bool) -> bool:
 
 
 def _siglas(nome: str) -> set[str]:
-    """As siglas curtas do nome (OI, BRF, B3), como estão no cadastro."""
-    return {
-        s for s in re.findall(r"[0-9A-Z/]+", nome)
-        if 2 <= len(s) <= 3 and any(c.isalpha() for c in s) and s not in _SIGLAS_COMUNS
-    }  # fmt: skip
+    """As siglas curtas do nome (OI, BRF, B3), como estão no cadastro: a primeira palavra de uma
+    parte, ou a que vem depois de "BANCO" ou "GRUPO". As do meio ("IND. E COM.") são abreviações."""
+    siglas = set()
+    for parte in _partes_do_nome(nome):
+        palavras = re.findall(r"[^\W_]+", parte)
+        if not palavras:
+            continue
+        candidatas = palavras[:2] if palavras[0] in _ANTES_DA_SIGLA else palavras[:1]
+        siglas.update(
+            s for s in candidatas
+            if 2 <= len(s) <= 3 and any(c.isalpha() for c in s) and s not in _SIGLAS_COMUNS
+        )  # fmt: skip
+    return siglas
 
 
 def _padrao_do_nome(nome: str) -> re.Pattern[str]:

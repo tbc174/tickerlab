@@ -148,6 +148,26 @@ def test_sigla_curta_so_em_maiusculas():
     )
 
 
+def test_sigla_so_no_comeco_de_uma_parte_do_nome():
+    """Abreviações do meio do cadastro ("IND. E COM.") estão em qualquer texto em maiúsculas; a sigla
+    que é nome vem no começo ("OI S.A."), depois de "BANCO" ou numa parte própria ("- NTS")."""
+    nome = "AERIS IND. E COM. DE EQUIP. PARA GER. DE ENG. S.A."
+    assert (
+        ri.anonimizar("VENDA COM DESCONTO NA IND", [nome])
+        == "VENDA COM DESCONTO NA IND"
+    )
+    assert (
+        ri.anonimizar("O ABC e o BANCO.", ["BANCO ABC BRASIL S/A"])
+        == "O [EMPRESA] e o BANCO."
+    )
+    nome = "NOVA TRANSPORTADORA DO SUDESTE S.A. - NTS"
+    assert ri.anonimizar("A NTS informa.", [nome]) == "A [EMPRESA] informa."
+    assert (
+        ri.anonimizar("ITA e ITAÚ.", ["ITAÚ UNIBANCO HOLDING S.A."])
+        == "ITA e [EMPRESA]."
+    )
+
+
 def test_marcadores_nao_sao_trocados_de_novo():
     nome = "EMAE - EMPRESA METROP.AGUAS ENERGIA S.A."
     assert (
