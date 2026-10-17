@@ -30,10 +30,11 @@ CODIFICACAO_DA_CVM = "cp1252"
 TIPO_DO_RELATORIO = "relatorio de agencia de rating"
 # assunto (sem acento, minúsculas) que fala de rating; agência pelo nome ou pela palavra
 ASSUNTO_COM_RATING = re.compile(
-    r"\brating|classificacao de risco|agencia de (?:classificacao|risco)|nota de (?:risco|credito)"
-    r"|moody|fitch|standard ?(?:&|and) ?poor|\bs ?& ?p\b|austin rating|liberum|\bsr rating"
-    r"|\blf rating|am best"
+    r"\brating|classificacao de risco|agencia de (?:classificacao|risco)|nota de risco"
+    r"|moody|fitch|standard ?(?:&(?:amp;?)?|and) ?poor|\bs ?&(?:amp;?)? ?p\b|austin rating"
+    r"|liberum|\bsr rating|\blf rating|am best"
 )
+# "nota de crédito" fica de fora de propósito: no IPE quase sempre é a Nota de Crédito à Exportação
 COLUNAS = (
     "cnpj",
     "empresa",

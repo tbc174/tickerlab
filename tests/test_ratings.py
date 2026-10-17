@@ -126,3 +126,18 @@ def test_protocolo_vazio_dos_anos_antigos_usa_o_link():
         _zip(_linha(*RELATORIO, "Fitch", protocolo="", link=f"{RAD}&antigo=1"))
     )
     assert tabela["protocolo"].iloc[0] == f"{RAD}&antigo=1"
+
+
+def test_nota_de_credito_a_exportacao_nao_e_rating_e_amp_do_html_e():
+    tabela = ratings.ler_documentos_do_ipe(
+        _zip(
+            _linha(
+                *COMUNICADO,
+                "Contratação de Nota de Crédito à Exportação",
+                protocolo="1",
+            ),
+            _linha(*COMUNICADO, "Standard &amp Poor's eleva a nota", protocolo="2"),
+            _linha(*COMUNICADO, "Elevação da nota de risco de crédito", protocolo="3"),
+        )
+    )
+    assert sorted(tabela["protocolo"]) == ["2", "3"]
