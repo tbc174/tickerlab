@@ -1809,10 +1809,10 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
 - **Atraso de divulgação:** Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `referencia`, `versao`, `auditor_id`
+- **Chaves:** `cnpj`, `referencia`, `versao`, `auditor_id`, `inicio`
 - **Três datas:** aconteceu_em = `inicio`; publico_em = `conhecido_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/auditores/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 

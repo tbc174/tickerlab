@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 
 from base import auditores, historico
 from base.ancoragem import parquets_sem_manifesto
+from base.dicionario import TABELAS
 from base.ponto_no_tempo import divulgacao_publica
 from src.banco.coletas import com_registro
 
@@ -32,11 +33,20 @@ PWC = ("PricewaterhouseCoopers Auditores", "61.562.112/0002-01", "002879")
 CIA = "11.111.111/0001-11"
 
 
-def _mandato(firma, inicio, fim="", cnpj=CIA, documento="10", ano=2020, versao="2"):
+def _mandato(
+    firma,
+    inicio,
+    fim="",
+    cnpj=CIA,
+    documento="10",
+    ano=2020,
+    versao="2",
+    origem="Nacional",
+):
     nome, cpf_cnpj, codigo = firma
     return (
         f"{cnpj};{ano}-01-01;{versao};{documento};EMPRESA UM;{nome};{cpf_cnpj};{codigo};"
-        f"Nacional;{inicio};{fim};FULANO DE TAL;123.456.789-00;{inicio};"
+        f"{origem};{inicio};{fim};FULANO DE TAL;123.456.789-00;{inicio};"
     )
 
 
@@ -104,6 +114,60 @@ def test_linhas_iguais_sem_o_responsavel_viram_uma():
     # o BB em 2024: a mesma KPMG duas vezes, uma por sócio responsável
     tabela = _ano(2024, "2024-05-01", (KPMG, "2024-01-01"), (KPMG, "2024-01-01"))
     assert len(tabela) == 1
+
+
+CHAVE_DO_CONTRATO = list(TABELAS["auditores"].chaves)
+
+
+def test_mesma_rede_com_o_mesmo_inicio_no_mesmo_fca_e_um_mandato_so():
+    """Vale em 2015 (doc 46733): a PwC do Chile (estrangeira, sem CNPJ) e a do Brasil no mesmo mandato.
+    Fica a linha nacional, com o fim mais tarde (a rede só sai quando o último escritório sai)."""
+    chile = ("PricewaterhouseCoopers Chile", "", "")
+    linhas = [
+        _mandato(chile, "2012-01-01", "2012-12-01", origem="Estrangeiro"),
+        _mandato(PWC, "2012-01-01", "2012-11-30"),
+        _mandato(chile, "2013-01-01", "", origem="Estrangeiro"),
+    ]
+    tabela = auditores.ler_auditores_do_fca(
+        _zip([_documento("10", "2020-05-08")], linhas)
+    )
+    assert not tabela.duplicated(CHAVE_DO_CONTRATO).any()
+    assert len(tabela) == 2  # 2012 e 2013 são mandatos diferentes da mesma rede
+    mandato = tabela[tabela["inicio"] == date(2012, 1, 1)].iloc[0]
+    assert mandato["origem"] == "Nacional"
+    assert mandato["auditor_cnpj"] == "61562112000201"
+    assert mandato["fim"] == date(2012, 12, 1)
+
+
+def test_dois_escritorios_da_rede_no_mesmo_mandato_seguem_vigentes_se_um_segue():
+    # 2022, doc 121038: a PwC com duas filiais e o mesmo início, uma delas encerrada em setembro
+    filial = ("PricewaterhouseCoopers Auditores", "61.562.112/0001-20", "002879")
+    tabela = _ano(
+        2022, "2023-01-16", (PWC, "2022-06-28", "2022-09-23"), (filial, "2022-06-28")
+    )
+    assert len(tabela) == 1
+    assert pd.isna(tabela.iloc[0]["fim"])
+
+
+def test_mesma_versao_entregue_em_dois_documentos_fica_a_primeira():
+    # 2021, docs 110772 e 111833: a versão 1 do FCA entregue duas vezes no mesmo dia
+    principal = [_documento("111833", "2022-03-28"), _documento("110772", "2022-03-28")]
+    linhas = [
+        _mandato(
+            ("KPMG Auditores", "57.755.217/0001-29", "4189"),
+            "2012-01-01",
+            documento="111833",
+        ),
+        _mandato(KPMG, "2012-01-01", documento="110772"),
+    ]
+    tabela = auditores.ler_auditores_do_fca(_zip(principal, linhas))
+    assert tabela["id_documento"].tolist() == ["110772"]
+    assert not tabela.duplicated(CHAVE_DO_CONTRATO).any()
+
+
+def test_chave_do_contrato_tem_o_inicio_do_mandato():
+    """A mesma rede tem mandatos seguidos no mesmo FCA (108 casos na base em 17/10/2026)."""
+    assert "inicio" in CHAVE_DO_CONTRATO
 
 
 def test_rede_vem_do_nome_mesmo_com_erro_de_digitacao_cnpj_ou_codigo_trocado():
@@ -328,6 +392,37 @@ def test_mandato_novo_da_mesma_firma_depois_de_outra_e_troca():
         ["rede:kpmg", "rede:pwc"],
         ["rede:pwc", "rede:kpmg"],
     ]
+
+
+def test_troca_vale_no_inicio_do_mandato_novo_mesmo_com_o_antigo_da_firma_no_fca():
+    """RNI em 2026 (doc 159290): o FCA lista o mandato antigo da PwC (2017 a 2021), o da KPMG
+    (2022 a 2025) e o novo da PwC (desde 2026). A troca vale em 2026, não no início do mandato
+    antigo: com 2017 ela repetia a troca de 2017 (chave duplicada, relatório de 16/10/2026)."""
+    tabela = pd.concat(
+        [
+            _ano(2016, "2016-12-13", (KPMG, "2012-01-01")),
+            _ano(2017, "2017-12-11", (PWC, "2017-01-01")),
+            _ano(
+                2025,
+                "2025-12-18",
+                (PWC, "2017-01-01", "2021-12-31"),
+                (KPMG, "2022-01-01"),
+            ),
+            _ano(
+                2026,
+                "2026-07-01",
+                (PWC, "2017-01-01", "2021-12-31"),
+                (KPMG, "2022-01-01", "2025-12-31"),
+                (PWC, "2026-01-01"),
+            ),
+        ]
+    )
+    trocas = auditores.trocas_de_auditor(tabela)
+    assert not trocas.duplicated(list(TABELAS["trocas_de_auditor"].chaves)).any()
+    ultima = trocas.iloc[-1]
+    assert ultima["efetiva_em"] == date(2026, 1, 1)
+    assert ultima["anos_com_o_anterior"] == 4.0
+    assert (ultima["anterior_id"], ultima["novo_id"]) == ("rede:kpmg", "rede:pwc")
 
 
 def test_mandato_sem_data_de_inicio_da_a_troca_sem_os_anos():
