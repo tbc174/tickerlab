@@ -66,7 +66,9 @@ def test_o_que_ainda_nao_existe_nao_diz_que_existe():
     ]
     assert disponiveis == ["Juros e inflação", "Qualidade dos dados"]
     research = [
-        f.nome for f in modulos.POR_CHAVE["research"].funcionalidades if not f.disponivel
+        f.nome
+        for f in modulos.POR_CHAVE["research"].funcionalidades
+        if not f.disponivel
     ]
     assert research == ["Calendário"]
 
