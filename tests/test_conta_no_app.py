@@ -201,3 +201,22 @@ def test_falha_ao_carregar_a_conta_nao_apaga_os_favoritos(banco, monkeypatch):
     assert not app.exception
     with banco.connect() as conexao:
         assert repo.listar_favoritos(conexao, ana) == ["AAPL", "PETR4.SA"]
+
+
+def test_sessao_aberta_nao_recria_a_conta_apagada(banco, monkeypatch):
+    """Achado 4d do Codex (ADR 0091): apagada a conta em outra sessão, esta sessão (ainda com o
+    login do Google) não pode cadastrá-la de novo sozinha na execução seguinte."""
+    from src.banco.usuarios import apagar_conta, buscar_por_google_sub
+
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app()
+    with banco.begin() as conexao:
+        assert apagar_conta(conexao, id_do_usuario(banco, "ana"))
+    app.session_state["usuario_em"] = 0  # a próxima execução relê o usuário
+    app.run()
+    assert any("não existe mais" in e.value for e in app.error)
+    app.run()  # qualquer clique depois disso
+    app.run()
+    with banco.connect() as conexao:
+        assert buscar_por_google_sub(conexao, "ana") is None
+    assert any("não existe mais" in e.value for e in app.error)

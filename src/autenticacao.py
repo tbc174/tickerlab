@@ -78,7 +78,10 @@ AVISO_DA_ENTRADA = (
 
 
 def emails_de_admin(ambiente: Mapping[str, str] | None = None) -> tuple[str, ...]:
-    """E-mails que viram administradores no primeiro login (`TICKERLAB_ADMINS`, separados por vírgula)."""
+    """E-mails que viram administradores ao entrar (`TICKERLAB_ADMINS`, separados por vírgula).
+
+    Vale também para quem já tinha conta; por isso o painel não rebaixa quem está aqui.
+    """
     texto = (ambiente if ambiente is not None else os.environ).get(
         VARIAVEL_DOS_ADMINS, ""
     )
