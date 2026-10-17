@@ -1,0 +1,107 @@
+{
+  "tabela": "noticias_fatos",
+  "modulo": "noticias",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_fato": {
+      "descricao": "SHA-256 de `pauta` + `chave_de_origem`: remontar dá o mesmo id",
+      "unidade": "texto"
+    },
+    "pauta": {
+      "descricao": "`resultado_trimestral`, `fato_relevante` ou `copom`",
+      "unidade": "texto"
+    },
+    "versao_do_gatilho": {
+      "descricao": "Versão da regra que criou a linha (`resultado-1.0`)",
+      "unidade": "texto"
+    },
+    "cnpj": {
+      "descricao": "CNPJ da companhia (vazio no Copom)",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia, como a CVM publica (vazio no Copom)",
+      "unidade": "texto"
+    },
+    "tabela_de_origem": {
+      "descricao": "Tabela da base de onde o fato saiu",
+      "unidade": "texto"
+    },
+    "chave_de_origem": {
+      "descricao": "JSON canônico da chave da linha de origem",
+      "unidade": "texto"
+    },
+    "aconteceu_em": {
+      "descricao": "Fim do trimestre, data de referência do IPE ou data da reunião",
+      "unidade": "data (dia)"
+    },
+    "publico_em": {
+      "descricao": "Quando o documento ficou público (o comunicado do Copom, no dia da reunião)",
+      "unidade": "data (dia)"
+    },
+    "coletado_em": {
+      "descricao": "Quando a origem foi baixada",
+      "unidade": "data e hora (UTC)"
+    },
+    "link": {
+      "descricao": "Endereço do documento original (CVM) ou do comunicado (Banco Central)",
+      "unidade": "texto"
+    },
+    "topico": {
+      "descricao": "Fato relevante: tópico da lista fechada (`src/topicos.py`); vazio nas outras pautas",
+      "unidade": "texto"
+    },
+    "metodo_do_topico": {
+      "descricao": "Fato relevante: `regra_titulo`",
+      "unidade": "texto"
+    },
+    "versao_do_topico": {
+      "descricao": "Fato relevante: versão das regras do tópico",
+      "unidade": "texto"
+    },
+    "trecho": {
+      "descricao": "Fato relevante: o assunto escrito pela empresa, literal, até 200 caracteres",
+      "unidade": "texto"
+    },
+    "reapresentacao": {
+      "descricao": "Resultado: o documento é uma versão 2 em diante (verdadeiro/falso)",
+      "unidade": "sim ou não"
+    },
+    "fato_anterior": {
+      "descricao": "Resultado reapresentado: `id_fato` da versão anterior",
+      "unidade": "texto"
+    },
+    "marcas": {
+      "descricao": "Lista: `dado_em_conferencia`, `fontes_divergem`, `trecho_cortado`",
+      "unidade": "texto"
+    },
+    "licenca": {
+      "descricao": "Família da fonte (`cvm` ou `bcb`), para a marca de licença",
+      "unidade": "texto"
+    },
+    "hash_da_linha": {
+      "descricao": "SHA-256 da linha e dos números dela",
+      "unidade": "texto"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_fato"
+  ],
+  "datas": {
+    "aconteceu_em": "aconteceu_em",
+    "publico_em": "publico_em",
+    "coletado_em": "coletado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária, no lote da manhã (`base/noticias_fatos.py`)",
+  "atraso": "Nenhum além do de cada origem: o fato vale a partir de `publico_em`"
+}

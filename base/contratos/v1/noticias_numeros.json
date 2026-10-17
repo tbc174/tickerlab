@@ -1,0 +1,62 @@
+{
+  "tabela": "noticias_numeros",
+  "modulo": "noticias",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "id_fato": {
+      "descricao": "Fato a que o número pertence (`noticias_fatos`)",
+      "unidade": "texto"
+    },
+    "campo": {
+      "descricao": "Nome do número (`receita_trimestre`, `meta_selic`...)",
+      "unidade": "texto"
+    },
+    "valor": {
+      "descricao": "O número, na unidade da coluna `unidade`",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "unidade": {
+      "descricao": "`reais` ou `pct_ao_ano`",
+      "unidade": "texto"
+    },
+    "periodo": {
+      "descricao": "Período em texto (`3T26`, `30/09/2026`, `fim de 2026`)",
+      "unidade": "texto"
+    },
+    "origem_conta": {
+      "descricao": "Conta do plano da CVM ou código da série do Banco Central",
+      "unidade": "texto"
+    },
+    "origem_periodo": {
+      "descricao": "`acumulado`, `exercicio` ou `posicao` (ou vazio na série do Banco Central)",
+      "unidade": "texto"
+    },
+    "origem_versao": {
+      "descricao": "Versão do documento de origem",
+      "unidade": "número inteiro"
+    },
+    "origem_divulgado_em": {
+      "descricao": "Quando o valor de origem ficou público",
+      "unidade": "data (dia)"
+    },
+    "calculo": {
+      "descricao": "Vazio se é o valor publicado; senão a conta (`acumulado 9M26 - acumulado 6M26`)",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "id_fato",
+    "campo"
+  ],
+  "datas": {
+    "publico_em": "origem_divulgado_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "Diária, junto com `noticias_fatos`",
+  "atraso": "Nenhum além do de cada origem: cada número vale a partir de `origem_divulgado_em`"
+}
