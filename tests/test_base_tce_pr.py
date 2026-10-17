@@ -329,3 +329,17 @@ def test_pit_nao_espera_entre_zips_internos_que_nem_pediu(banco, tmp_path, monke
     assert (
         resultado.pulados == 6 and esperas == []
     )  # nada mudou: nenhum pedido, nenhuma espera
+
+
+def test_nome_com_pasta_vira_so_o_nome_no_regravado():
+    # nome vindo da fonte com pasta ("../"): o acervo guarda só o nome do arquivo
+    regravado = tce_pr.regravar(
+        _zip({"../../2025_410740_Licitacao.xml": LICITACAO.encode()})
+    )
+    assert list(_xmls(regravado)) == ["2025_410740_Licitacao.xml"]
+
+
+def test_xml_acima_do_limite_e_falha_e_nao_vai_para_o_acervo(monkeypatch):
+    monkeypatch.setattr(tce_pr, "LIMITE_DO_XML", 100)
+    with pytest.raises(ValueError, match="acima do limite"):
+        tce_pr.regravar(_zip_de_licitacao())

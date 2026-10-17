@@ -55,6 +55,9 @@ HTTP_NAO_ENCONTRADO = 404
 TAMANHO_DO_CABECALHO_LOCAL = 30
 ASSINATURA_DO_CABECALHO_LOCAL = b"PK\x03\x04"
 SEM_JANELA_DO_ZLIB = -15  # o "deflate" cru do ZIP, sem o cabeçalho do zlib
+# o maior ZIP interno do PIT tem ~8 MB: acima disto é defeito ou bomba de descompressão (o contêiner
+# do arquivista tem 1 GB)
+LIMITE_DO_MEMBRO = 256 * 1024**2
 # caracteres de controle que o XML 1.0 não aceita (o PIT manda alguns: \x0b, \x1f)
 CONTROLE_INVALIDO = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
@@ -133,6 +136,8 @@ def ler_membro(cliente: Cliente, url: str, membro: zipfile.ZipInfo) -> bytes:
     O `zipfile` pediria trechos de 8 MB (o buffer de `_zip_remoto`) para um ZIP interno de 30 KB;
     aqui sai o cabeçalho local (que diz onde os dados começam) e os dados, nada além.
     """
+    if max(membro.file_size, membro.compress_size) > LIMITE_DO_MEMBRO:
+        raise zipfile.BadZipFile(f"{membro.filename}: maior que o limite de leitura")
     inicio = membro.header_offset
     cabecalho = cliente.ler_trecho(url, inicio, inicio + TAMANHO_DO_CABECALHO_LOCAL - 1)
     if not cabecalho.startswith(ASSINATURA_DO_CABECALHO_LOCAL):
@@ -147,7 +152,9 @@ def ler_membro(cliente: Cliente, url: str, membro: zipfile.ZipInfo) -> bytes:
         else b""
     )
     if membro.compress_type == zipfile.ZIP_DEFLATED:
-        dados = zlib.decompress(comprimido, SEM_JANELA_DO_ZLIB)
+        # nunca mais que o tamanho do índice (+1, para o excesso aparecer na conferência abaixo)
+        descompressor = zlib.decompressobj(SEM_JANELA_DO_ZLIB)
+        dados = descompressor.decompress(comprimido, membro.file_size + 1)
     elif membro.compress_type == zipfile.ZIP_STORED:
         dados = comprimido
     else:

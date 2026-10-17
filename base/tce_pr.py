@@ -49,6 +49,8 @@ DATA_FIXA_NO_ZIP = (
 )  # a menor que o ZIP aceita: o regravado não muda com o dia
 SISTEMA_UNIX = 3  # o mesmo "criado em" no PC e no servidor (senão o SHA-256 muda)
 PERMISSOES_NO_ZIP = 0o644 << 16
+# o maior XML visto (vencedores de um município em 2013) tem ~8 MB; o XML vira árvore na memória
+LIMITE_DO_XML = 128 * 1024**2
 NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)\.xml$")
 ATRIBUTOS_DE_PESSOA = ("nm",)
 TEXTO_LIVRE = ("dsObjeto", "dsHistorico", "dsItem")
@@ -215,13 +217,19 @@ def regravar(zip_interno: bytes) -> bytes:
         zipfile.ZipFile(io.BytesIO(zip_interno)) as entrada,
         zipfile.ZipFile(saida, "w") as regravado,
     ):
-        for nome in sorted(entrada.namelist()):
-            achado = NOME_DO_XML.match(nome.rsplit("/", 1)[-1])
+        for info in sorted(entrada.infolist(), key=lambda i: i.filename):
+            # só o nome do arquivo, nunca a pasta que a fonte puser nele ("../x.xml")
+            nome = info.filename.replace("\\", "/").rsplit("/", 1)[-1]
+            achado = NOME_DO_XML.match(nome)
             tipo = achado.group(1) if achado else ""
             if tipo not in PERMITIDOS:
                 log.warning("TCE-PR: %s fora da lista de XMLs, fica de fora", nome)
                 continue
-            _gravar(regravado, nome, regravar_xml(tipo, entrada.read(nome)))
+            if info.file_size > LIMITE_DO_XML:
+                raise ValueError(
+                    f"TCE-PR: {nome} com {info.file_size} bytes, acima do limite"
+                )
+            _gravar(regravado, nome, regravar_xml(tipo, entrada.read(info)))
     return saida.getvalue()
 
 

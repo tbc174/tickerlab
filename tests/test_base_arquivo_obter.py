@@ -300,3 +300,18 @@ def test_cabecalhos_do_membro_dizem_a_versao_pelo_crc():
     assert cabecalhos["Content-Length"] == "1234"
     assert len(cabecalhos[obter.SHA256_DA_ORIGEM]) == 64
     assert coleta.assinatura(cabecalhos) == obter.versao_do_membro(interno)
+
+
+def test_bomba_de_descompressao_para_no_tamanho_do_indice():
+    # 50 MB de zeros comprimidos em poucos KB, com o índice dizendo 100 bytes: nunca descomprime tudo
+    bomba = _zip({"bomba.zip": bytes(50 * 1024**2)})
+    servidor = ServidorComTrechos({URL_DO_ZIP: bomba})
+    [membro] = obter.indice_do_zip_remoto(servidor, URL_DO_ZIP)
+    mentiroso = copy.copy(membro)
+    mentiroso.file_size = 100
+    with pytest.raises(zipfile.BadZipFile, match="tamanho"):
+        obter.ler_membro(servidor, URL_DO_ZIP, mentiroso)
+    grande = copy.copy(membro)
+    grande.file_size = obter.LIMITE_DO_MEMBRO + 1
+    with pytest.raises(zipfile.BadZipFile, match="limite"):
+        obter.ler_membro(servidor, URL_DO_ZIP, grande)
