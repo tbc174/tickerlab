@@ -5,7 +5,8 @@
     python -m scripts.rotular_com_ia piloto   --eventos eventos.json --pasta ... --teto-dolares 60 --n 30
     python -m scripts.rotular_com_ia enviar   --eventos eventos.json --pasta ... --teto-dolares 60
     python -m scripts.rotular_com_ia buscar   --eventos eventos.json --pasta ...
-    python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --humanos tiago.json --teto-dolares 60
+    python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --teto-dolares 60 [--so-estimar]
+    python -m scripts.rotular_com_ia estabilidade --eventos ... --pasta ... --teto-dolares 60 [--so-estimar]
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
     python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
         --modelo claude-opus-5-5 --so-prova
@@ -34,6 +35,15 @@ mesmos passos com o Opus, no mesmo pedido, gravando em `<pasta>/rotulos.claude-o
 `--so-prova` limita ao conjunto de prova: os 300 primeiros da fila e o `lote-leitor-v1`. `comparar`
 mede Sonnet × Opus nos 300 com os limites da emenda e lista, no lote do leitor, os eventos em que os
 dois concordam no assunto (a referência de máquina do leitor), em `<pasta>/comparacao-modelos.json`.
+
+**As outras duas conferências da Emenda 1**, só com o Sonnet e sem os rótulos do Tiago:
+`identificar` pergunta qual é a empresa em todo o conjunto de prova (mais os eventos que o Tiago rotulou,
+se `--humanos` vier) e grava o veredito em `<pasta>/identificacao.json` (mais de 10% reconhecidas
+reprova); `estabilidade` sorteia 100 eventos com a semente fixa, grava o sorteio em
+`<pasta>/estabilidade-sorteio.json` **antes de gastar**, rotula os sorteados de novo (em
+`<pasta>/estabilidade.jsonl`, nunca no `rotulos.jsonl`) e publica a concordância IA × IA em
+`<pasta>/estabilidade.json`. Os dois leem o mesmo pedido que o rótulo do Sonnet leu (a regra de texto
+gravada nele) e, com `--so-estimar`, só contam os tokens e mostram o custo (não gastam).
 """
 
 import argparse
@@ -104,10 +114,15 @@ def ler_eventos(caminho: Path) -> list[dict]:
     return validos
 
 
+def ids_de_prova(eventos: list[dict]) -> list[str]:
+    """Os ids do conjunto de prova: os 300 primeiros da fila e o `lote-leitor-v1`."""
+    primeiros, lote = ar.conjunto_de_prova(eventos)
+    return primeiros + lote
+
+
 def so_prova(eventos: list[dict]) -> list[dict]:
     """Só o conjunto de prova: os 300 primeiros da fila e o `lote-leitor-v1`."""
-    primeiros, lote = ar.conjunto_de_prova(eventos)
-    prova = set(primeiros) | set(lote)
+    prova = set(ids_de_prova(eventos))
     return [e for e in eventos if e["id"] in prova]
 
 
@@ -138,9 +153,8 @@ def texto_guardado(pasta: Path, evento_id: str) -> str | None:
     return None
 
 
-def ler_rotulos(pasta: Path, modelo: str = ri.MODELO) -> dict[str, dict]:
-    """Os registros já gravados por um modelo, pelo id do evento (o último vale)."""
-    arquivo = arquivo_dos_rotulos(pasta, modelo)
+def _ler_jsonl(arquivo: Path) -> dict[str, dict]:
+    """Os registros de um arquivo, pelo id do evento (o último vale)."""
     if not arquivo.exists():
         return {}
     registros = (
@@ -149,6 +163,11 @@ def ler_rotulos(pasta: Path, modelo: str = ri.MODELO) -> dict[str, dict]:
         if linha
     )
     return {r["evento_id"]: r for r in registros}
+
+
+def ler_rotulos(pasta: Path, modelo: str = ri.MODELO) -> dict[str, dict]:
+    """Os registros já gravados por um modelo, pelo id do evento (o último vale)."""
+    return _ler_jsonl(arquivo_dos_rotulos(pasta, modelo))
 
 
 def _rotulados(pasta: Path, modelo: str = ri.MODELO) -> set[str]:
@@ -311,6 +330,28 @@ def estimar(
     )
     return ri.custo_em_dolares(
         round(entrada), preco.saida_estimada_por_evento * n, lote=True, modelo=modelo
+    )
+
+
+def custo_na_hora(
+    cliente: anthropic.Anthropic, pedidos: list[dict], saida_por_evento: int
+) -> float:
+    """O custo em US$ de mandar `pedidos` um por um, a preço cheio e sem descontar o cache (fica um
+    pouco acima do real): a entrada contada numa amostra (a contagem não gasta) e a saída estimada."""
+    if not pedidos:
+        return 0.0
+    amostra = random.Random(SEMENTE).sample(
+        pedidos, min(AMOSTRA_DA_ESTIMATIVA, len(pedidos))
+    )
+    media = sum(
+        cliente.messages.count_tokens(
+            model=p["model"], system=p["system"], messages=p["messages"]
+        ).input_tokens
+        for p in amostra
+    ) / len(amostra)
+    n = len(pedidos)
+    return ri.custo_em_dolares(
+        round(media * n), saida_por_evento * n, lote=False, modelo=pedidos[0]["model"]
     )
 
 
@@ -522,7 +563,9 @@ def buscar(
 
 # --- auditoria: identificação da empresa e veredito (ADR 0072, item 3) -----------------------
 
-TOKENS_POR_IDENTIFICACAO = (4_500, 200)  # entrada e saída, para conferir o teto antes
+# tokens de saída por pergunta, para conferir o teto antes
+SAIDA_POR_IDENTIFICACAO = 200
+ARQUIVO_DA_IDENTIFICACAO = "identificacao.json"
 
 
 def ler_humanos(caminho: Path) -> dict[str, dict]:
@@ -532,7 +575,8 @@ def ler_humanos(caminho: Path) -> dict[str, dict]:
     return {r["evento_id"]: r for r in rotulos}
 
 
-def _prova(humanos: dict[str, dict]) -> list[str]:
+def prova_dos_humanos(humanos: dict[str, dict]) -> list[str]:
+    """Os eventos que o Tiago rotulou (pulados não contam)."""
     return sorted(
         i for i, h in humanos.items() if not h.get("pulado") and h.get("nota")
     )
@@ -542,42 +586,64 @@ def ler_identificacoes(pasta: Path) -> dict[str, bool] | None:
     arquivo = pasta / "identificacoes.jsonl"
     if not arquivo.exists():
         return None
-    linhas = (
-        json.loads(linha)
-        for linha in arquivo.read_text(encoding="utf-8").splitlines()
-        if linha
-    )
-    return {r["evento_id"]: r["identificou"] for r in linhas}
+    return {i: r["identificou"] for i, r in _ler_jsonl(arquivo).items()}
+
+
+def _regra_do_rotulo(rotulos: dict[str, dict], evento_id: str, so_fatos: bool) -> bool:
+    """A regra de texto com que o Sonnet rotulou o evento (gravada no rótulo); sem rótulo, a da
+    linha de comando. Assim as conferências leem o mesmo documento que o rotulador leu."""
+    return rotulos.get(evento_id, {}).get("texto_so_nos_fatos", so_fatos)
+
+
+def _pedidos_de_identificacao(
+    eventos: list[dict], pasta: Path, ids: list[str], so_fatos: bool
+) -> list[tuple[dict, dict]]:
+    """Os eventos de `ids` ainda sem palpite, cada um com o pedido de identificação."""
+    por_id = {e["id"]: e for e in eventos}
+    feitos = ler_identificacoes(pasta) or {}
+    rotulos = ler_rotulos(pasta)
+    faltam = [por_id[i] for i in ids if i in por_id and i not in feitos]
+    return [
+        (e, ri.pedido_de_identificacao(e, texto_do_pedido(
+            e, pasta, _regra_do_rotulo(rotulos, e["id"], so_fatos)) or ""))
+        for e in faltam
+    ]  # fmt: skip
+
+
+def estimar_identificacao(
+    cliente: anthropic.Anthropic,
+    eventos: list[dict],
+    pasta: Path,
+    ids: list[str],
+    so_fatos: bool = False,
+) -> float:
+    """O custo das perguntas que faltam (não gasta: só conta os tokens)."""
+    pedidos = [p for _, p in _pedidos_de_identificacao(eventos, pasta, ids, so_fatos)]
+    return custo_na_hora(cliente, pedidos, SAIDA_POR_IDENTIFICACAO)
 
 
 def identificar(
     cliente: anthropic.Anthropic,
     eventos: list[dict],
     pasta: Path,
-    humanos: dict[str, dict],
+    ids: list[str],
     teto: float,
     so_fatos: bool = False,
-) -> int:
-    """Pergunta à IA qual é a empresa de cada evento de prova, lendo o mesmo documento anonimizado
-    que o rotulador leu (use a mesma regra de texto do lote)."""
-    por_id = {e["id"]: e for e in eventos}
-    feitos = ler_identificacoes(pasta) or {}
-    faltam = [por_id[i] for i in _prova(humanos) if i in por_id and i not in feitos]
+) -> ar.Veredito:
+    """Pergunta ao Sonnet qual é a empresa de cada evento de `ids` (o conjunto de prova, pela
+    Emenda 1), lendo o mesmo documento anonimizado que o rotulador leu, e grava o veredito em
+    `<pasta>/identificacao.json` (passe ou não, conta como tentativa)."""
+    faltam = _pedidos_de_identificacao(eventos, pasta, ids, so_fatos)
     manifesto = ler_manifesto(pasta)
-    entrada, saida = TOKENS_POR_IDENTIFICACAO
     conferir_teto(
         manifesto,
-        ri.custo_em_dolares(entrada * len(faltam), saida * len(faltam), lote=False),
+        custo_na_hora(cliente, [p for _, p in faltam], SAIDA_POR_IDENTIFICACAO),
         teto,
     )
     gasto = 0.0
     with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
-        for evento in faltam:
-            mensagem = cliente.messages.create(
-                **ri.pedido_de_identificacao(
-                    evento, texto_do_pedido(evento, pasta, so_fatos) or ""
-                )
-            )
+        for evento, parametros in faltam:
+            mensagem = cliente.messages.create(**parametros)
             bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
             palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
             linha = {
@@ -587,10 +653,26 @@ def identificar(
             }
             arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
             gasto += _custo_da_resposta(mensagem.usage, lote=False)
+    identificacoes = ler_identificacoes(pasta) or {}
+    anterior = manifesto.get("identificacao", {}).get("gasto", 0.0)
     manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
-    manifesto["identificacao"] = {"eventos": len(faltam) + len(feitos), "gasto": gasto}
+    manifesto["identificacao"] = {
+        "eventos": len(identificacoes),
+        "gasto": anterior + gasto,
+    }
     gravar_manifesto(pasta, manifesto, eventos)
-    return len(faltam)
+    veredito = ar.veredito_da_identificacao(identificacoes, ids)
+    (pasta / ARQUIVO_DA_IDENTIFICACAO).write_text(
+        json.dumps(
+            asdict(veredito) | {"passou": veredito.passou,
+                                "limite": ar.LIMITES["max_identificadas"],
+                                "modelo": ri.MODELO, "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+                                "identificado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return veredito
 
 
 def auditar(pasta: Path, humanos: dict[str, dict]) -> ar.Veredito:
@@ -668,6 +750,118 @@ def comparar(
     return veredito
 
 
+# --- estabilidade (Emenda 1, item 3): o Sonnet contra ele mesmo -------------------------------
+
+ARQUIVO_DO_SORTEIO = "estabilidade-sorteio.json"
+ARQUIVO_DA_ESTABILIDADE = "estabilidade.json"
+
+
+def ler_estabilidade(pasta: Path) -> dict[str, dict]:
+    """A segunda rodada dos sorteados, pelo id do evento."""
+    return _ler_jsonl(pasta / "estabilidade.jsonl")
+
+
+def _sha256(arquivo: Path) -> str | None:
+    return (
+        hashlib.sha256(arquivo.read_bytes()).hexdigest() if arquivo.exists() else None
+    )
+
+
+def sorteio_gravado(eventos: list[dict], pasta: Path) -> list[str]:
+    """Os 100 da estabilidade, escritos antes de qualquer gasto e nunca refeitos: na primeira vez,
+    sorteia e grava com a semente e o SHA-256 dos rótulos de onde saiu; depois, só lê."""
+    arquivo = pasta / ARQUIVO_DO_SORTEIO
+    if arquivo.exists():
+        return json.loads(arquivo.read_text(encoding="utf-8"))["eventos"]
+    sorteio = ar.sorteio_da_estabilidade(eventos, ler_rotulos(pasta))
+    arquivo.write_text(
+        json.dumps(
+            {"semente": ar.SEMENTE_DA_ESTABILIDADE, "eventos": sorteio,
+             "sha256_dos_rotulos": _sha256(arquivo_dos_rotulos(pasta)),
+             "sorteado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return sorteio
+
+
+def _pedidos_da_estabilidade(
+    eventos: list[dict], pasta: Path, sorteio: list[str]
+) -> tuple[list[tuple[dict, bool, dict]], list[str]]:
+    """Os sorteados ainda sem a segunda rodada, cada um com a regra de texto e o pedido da primeira,
+    e os que ficam de fora porque o pedido de hoje não bate com o hash do rótulo (texto mudou)."""
+    por_id = {e["id"]: e for e in eventos}
+    primeira, feitos = ler_rotulos(pasta), ler_estabilidade(pasta)
+    pendentes, diferentes = [], []
+    for i in sorteio:
+        if i in feitos:
+            continue
+        regra = _regra_do_rotulo(primeira, i, False)
+        parametros = _parametros(por_id[i], pasta, regra)
+        if ri.hash_da_entrada(parametros) != primeira.get(i, {}).get("hash_da_entrada"):
+            diferentes.append(i)
+            continue
+        pendentes.append((por_id[i], regra, parametros))
+    return pendentes, diferentes
+
+
+def estimar_estabilidade(
+    cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path
+) -> float:
+    """O custo da segunda rodada que falta (não gasta; o sorteio fica gravado)."""
+    pendentes, _ = _pedidos_da_estabilidade(
+        eventos, pasta, sorteio_gravado(eventos, pasta)
+    )
+    saida = ri.MODELOS[ri.MODELO].saida_estimada_por_evento
+    return custo_na_hora(cliente, [p for *_, p in pendentes], saida)
+
+
+def estabilidade(
+    cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path, teto: float
+) -> dict:
+    """Rotula de novo, um por um, os sorteados, com o mesmo pedido da primeira vez, e publica a
+    concordância em `<pasta>/estabilidade.json` (sem limite: a Emenda 1 só pede publicar)."""
+    sorteio = sorteio_gravado(eventos, pasta)
+    pendentes, diferentes = _pedidos_da_estabilidade(eventos, pasta, sorteio)
+    manifesto = ler_manifesto(pasta)
+    saida = ri.MODELOS[ri.MODELO].saida_estimada_por_evento
+    conferir_teto(
+        manifesto, custo_na_hora(cliente, [p for *_, p in pendentes], saida), teto
+    )
+    gasto = 0.0
+    with (pasta / "estabilidade.jsonl").open("a", encoding="utf-8") as arquivo:
+        for evento, regra, parametros in pendentes:
+            mensagem = cliente.messages.create(**parametros)
+            linha = registro(evento, pasta, mensagem, "estabilidade", regra)
+            arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
+            gasto += _custo_da_resposta(mensagem.usage, lote=False)
+    segunda = ler_estabilidade(pasta)
+    anterior = manifesto.get("estabilidade", {}).get("gasto", 0.0)
+    manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
+    manifesto["estabilidade"] = {"eventos": len(segunda), "gasto": anterior + gasto}
+    gravar_manifesto(pasta, manifesto, eventos)
+    medida = ar.estabilidade(ler_rotulos(pasta), segunda, sorteio) | {
+        "entradas_diferentes": diferentes
+    }
+    (pasta / ARQUIVO_DA_ESTABILIDADE).write_text(
+        json.dumps(
+            medida | {"modelo": ri.MODELO, "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+                      "semente": ar.SEMENTE_DA_ESTABILIDADE,
+                      "sha256": {"rotulos": _sha256(arquivo_dos_rotulos(pasta)),
+                                 "estabilidade": _sha256(pasta / "estabilidade.jsonl")},
+                      "medido_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return medida
+
+
+def _por_cento(valor: float | None) -> str:
+    return "-" if valor is None else f"{valor:.0%}"
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
@@ -681,6 +875,7 @@ def main(argv: list[str] | None = None) -> int:
             "identificar",
             "auditar",
             "comparar",
+            "estabilidade",
         ),
     )
     argumentos.add_argument(
@@ -695,7 +890,7 @@ def main(argv: list[str] | None = None) -> int:
     argumentos.add_argument(
         "--humanos",
         type=Path,
-        help="rótulos do Tiago exportados (identificar e auditar)",
+        help="rótulos do Tiago exportados (auditar; em identificar, entram na prova)",
     )
     argumentos.add_argument("--n", type=int, default=30, help="eventos do piloto")
     argumentos.add_argument(
@@ -725,6 +920,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="só o conjunto de prova: os 300 primeiros da fila e o lote-leitor-v1",
     )
+    argumentos.add_argument(
+        "--so-estimar",
+        action="store_true",
+        help="identificar e estabilidade: só mostra o custo (não gasta)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -743,13 +943,16 @@ def main(argv: list[str] | None = None) -> int:
         baixar(eventos, opcoes.pasta, opcoes.maximo)
         return 0
     modelo = opcoes.modelo
-    if opcoes.passo in ("identificar", "auditar") and modelo != ri.MODELO:
+    if (
+        opcoes.passo in ("identificar", "auditar", "estabilidade")
+        and modelo != ri.MODELO
+    ):
         log.error(
-            "A identificação e a auditoria contra o Tiago são do rotulador (%s).",
+            "A identificação, a estabilidade e a auditoria são do rotulador (%s).",
             ri.MODELO,
         )
         return 2
-    if opcoes.passo in ("identificar", "auditar") and opcoes.humanos is None:
+    if opcoes.passo == "auditar" and opcoes.humanos is None:
         log.error("Diga o arquivo dos rótulos do Tiago com --humanos.")
         return 2
     if opcoes.passo == "auditar":
@@ -759,7 +962,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if (
-        opcoes.passo in ("estimar", "piloto", "enviar", "identificar")
+        opcoes.passo in ("estimar", "piloto", "enviar", "identificar", "estabilidade")
         and opcoes.teto_dolares is None
     ):
         log.error(
@@ -784,15 +987,8 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"Estimativa pela Batch API: US$ {estimativa:.2f}; já gasto: US$ {gasto:.2f}; teto: US$ {opcoes.teto_dolares:.2f}"
             )
-        elif opcoes.passo == "identificar":
-            identificar(
-                cliente,
-                eventos,
-                opcoes.pasta,
-                ler_humanos(opcoes.humanos),
-                opcoes.teto_dolares,
-                opcoes.texto_so_nos_fatos,
-            )
+        elif opcoes.passo in ("identificar", "estabilidade"):
+            _conferencia_da_emenda(cliente, eventos, opcoes)
         elif opcoes.passo == "piloto":
             piloto(
                 cliente,
@@ -820,6 +1016,50 @@ def main(argv: list[str] | None = None) -> int:
         log.error("%s Nada foi enviado.", erro)
         return 3
     return 0
+
+
+def _conferencia_da_emenda(
+    cliente: anthropic.Anthropic, eventos: list[dict], opcoes: argparse.Namespace
+) -> None:
+    """`identificar` e `estabilidade` (ou só a estimativa delas, com `--so-estimar`)."""
+    if opcoes.passo == "identificar":
+        ids = ids_de_prova(eventos)
+        if opcoes.humanos is not None:  # o que o Tiago rotulou a mais é prova extra
+            extra = prova_dos_humanos(ler_humanos(opcoes.humanos))
+            ids += [i for i in extra if i not in set(ids)]
+        so_fatos = opcoes.texto_so_nos_fatos
+        if opcoes.so_estimar:
+            custo = estimar_identificacao(cliente, eventos, opcoes.pasta, ids, so_fatos)
+            _mostrar_estimativa(len(ids), custo, opcoes.pasta, opcoes.teto_dolares)
+            return
+        veredito = identificar(
+            cliente, eventos, opcoes.pasta, ids, opcoes.teto_dolares, so_fatos
+        )
+        print("PASSOU" if veredito.passou else "NÃO PASSOU",
+              f"reconheceu a empresa em {_por_cento(veredito.identificadas)} de {veredito.n}",
+              *veredito.motivos, sep="\n- ")  # fmt: skip
+        return
+    if opcoes.so_estimar:
+        custo = estimar_estabilidade(cliente, eventos, opcoes.pasta)
+        _mostrar_estimativa(
+            ar.EVENTOS_DA_ESTABILIDADE, custo, opcoes.pasta, opcoes.teto_dolares
+        )
+        return
+    m = estabilidade(cliente, eventos, opcoes.pasta, opcoes.teto_dolares)
+    print(
+        f"Pares: {m['pares']} de {m['sorteados']} (erros: {m['erros']}; "
+        f"entrada diferente: {len(m['entradas_diferentes'])})"
+    )
+    print(f"Nota igual: {_por_cento(m.get('nota_igual'))}; a 1 ponto: "
+          f"{_por_cento(m.get('perto_nota'))}; tema igual: {_por_cento(m.get('tema_igual'))}; "
+          f"assunto igual: {_por_cento(m.get('assunto_igual'))}")  # fmt: skip
+
+
+def _mostrar_estimativa(eventos: int, custo: float, pasta: Path, teto: float) -> None:
+    gasto = ler_manifesto(pasta).get("gasto_em_dolares", 0.0)
+    print(f"Modelo: {ri.MODELO}; eventos: {eventos}")
+    print(f"Estimativa (um por um, preço cheio): US$ {custo:.2f}; já gasto: US$ {gasto:.2f}; "
+          f"teto: US$ {teto:.2f}")  # fmt: skip
 
 
 if __name__ == "__main__":

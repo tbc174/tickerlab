@@ -13,6 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from scripts import rotular_com_ia as rc
+from src import auditoria_rotulos as ar
 from src import leitura
 from src import rotulos_ia as ri
 
@@ -271,9 +272,12 @@ def _humanos(n=None):
 def test_identificar_grava_o_palpite_e_respeita_o_teto(pasta):
     cliente = ClienteDeMentira()
     cliente.palpite = "Alfa Beta"
+    dois = [EVENTOS[0]["id"], EVENTOS[1]["id"]]
     with pytest.raises(rc.TetoPassado):
-        rc.identificar(cliente, EVENTOS, pasta, _humanos(), teto=0.0001)
-    assert rc.identificar(cliente, EVENTOS, pasta, _humanos(2), teto=60) == 2
+        rc.identificar(cliente, EVENTOS, pasta, list(_humanos()), teto=0.0001)
+    assert cliente.criados == []
+    veredito = rc.identificar(cliente, EVENTOS, pasta, dois, teto=60)
+    assert len(cliente.criados) == 2 and veredito.identificadas == 1.0
     assert rc.ler_identificacoes(pasta) == {
         EVENTOS[0]["id"]: True,
         EVENTOS[1]["id"]: True,
@@ -281,15 +285,14 @@ def test_identificar_grava_o_palpite_e_respeita_o_teto(pasta):
     assert "Alfa Beta" not in json.dumps(
         cliente.criados, ensure_ascii=False
     )  # o pedido segue anonimizado
-    assert (
-        rc.identificar(cliente, EVENTOS, pasta, _humanos(2), teto=60) == 0
-    )  # não repete
+    rc.identificar(cliente, EVENTOS, pasta, dois, teto=60)
+    assert len(cliente.criados) == 2  # não repete
 
 
 def test_auditar_grava_o_veredito(pasta, monkeypatch):
     cliente = ClienteDeMentira()
     rc.piloto(cliente, EVENTOS, pasta, n=4, teto=60)
-    rc.identificar(cliente, EVENTOS, pasta, _humanos(), teto=60)
+    rc.identificar(cliente, EVENTOS, pasta, list(_humanos()), teto=60)
     veredito = rc.auditar(pasta, _humanos())
     assert veredito.incompleto  # só 4 eventos de prova: não decide
     salvo = json.loads((pasta / "auditoria.json").read_text(encoding="utf-8"))
@@ -526,9 +529,9 @@ def test_main_estima_o_opus_so_no_conjunto_de_prova(tmp_path, monkeypatch, capsy
     assert cliente.modelos_contados == {OPUS} and cliente.criados == []
 
 
-@pytest.mark.parametrize("passo", ["identificar", "auditar"])
+@pytest.mark.parametrize("passo", ["identificar", "auditar", "estabilidade"])
 def test_identificar_e_auditar_ficam_com_o_sonnet(tmp_path, passo):
-    """O teste de identificação e a auditoria contra o Tiago são do rotulador (Sonnet)."""
+    """O teste de identificação, a estabilidade e a auditoria contra o Tiago são do rotulador."""
     codigo = rc.main([passo, "--eventos", str(_fila_com_lote(tmp_path, n=3, lote=())),
                       "--pasta", str(tmp_path / "v1"), "--humanos", "x.json",
                       "--teto-dolares", "10", "--modelo", OPUS])  # fmt: skip
@@ -598,3 +601,145 @@ def test_comparar_so_conta_pares_que_leram_o_mesmo_texto(tmp_path):
     )
     assert gravado["entradas_diferentes"] == ["E7", "E303"]
     assert gravado["lote_do_leitor"]["referencia"] == []
+
+
+# --- Emenda 1: identificação no conjunto de prova e estabilidade --------------------------------
+
+
+def _fila_rotulada(tmp_path, n=305, lote=(303,)):
+    """A fila de `_fila_com_lote` com um rótulo válido do Sonnet em cada evento (só com o assunto)."""
+    eventos = rc.ler_eventos(_fila_com_lote(tmp_path, n, lote))
+    pasta = tmp_path / "v1"
+    pasta.mkdir()
+    _gravar(pasta, eventos, ri.MODELO,
+            {e["id"]: {"nota": 2, "tema": "dividendos", "assunto": None} for e in eventos})  # fmt: skip
+    return eventos, pasta
+
+
+def test_identificar_sem_o_tiago_usa_o_conjunto_de_prova(tmp_path):
+    eventos, pasta = _fila_rotulada(tmp_path)
+    cliente = ClienteDeMentira()
+    veredito = rc.identificar(
+        cliente, eventos, pasta, rc.ids_de_prova(eventos), teto=60
+    )
+    assert len(cliente.criados) == 301  # 300 primeiros + 1 do lote do leitor
+    assert veredito.passou and veredito.n == 301 and veredito.identificadas == 0
+    gravado = json.loads((pasta / "identificacao.json").read_text(encoding="utf-8"))
+    assert gravado["passou"] and gravado["n"] == 301 and gravado["modelo"] == ri.MODELO
+    assert gravado["limite"] == ar.LIMITES["max_identificadas"]
+
+
+def test_identificar_le_o_mesmo_documento_que_o_rotulo_leu(tmp_path):
+    """O rótulo do Sonnet saiu só com o assunto (regra `--texto-so-nos-fatos`): se o texto chegou
+    depois, a identificação continua sem ele, para ler o mesmo documento que o rotulador leu."""
+    eventos, pasta = _fila_rotulada(tmp_path, n=300, lote=())
+    (pasta / "textos").mkdir()
+    (pasta / "textos" / "E0.txt").write_text(
+        "Texto que chegou depois.", encoding="utf-8"
+    )
+    cliente = ClienteDeMentira()
+    rc.identificar(cliente, eventos, pasta, ["E0"], teto=60)
+    assert "chegou depois" not in cliente.criados[0]["messages"][0]["content"]
+
+
+def test_estimar_a_identificacao_nao_gasta(tmp_path):
+    eventos, pasta = _fila_rotulada(tmp_path)
+    cliente = ClienteDeMentira(tokens_por_evento=1_000)
+    estimativa = rc.estimar_identificacao(
+        cliente, eventos, pasta, rc.ids_de_prova(eventos)
+    )
+    assert cliente.criados == [] and cliente.contagens == rc.AMOSTRA_DA_ESTIMATIVA
+    saida = rc.SAIDA_POR_IDENTIFICACAO
+    assert estimativa == pytest.approx(
+        ri.custo_em_dolares(1_000 * 301, saida * 301, lote=False)
+    )
+
+
+def test_estabilidade_sorteia_antes_e_grava_em_arquivo_separado(tmp_path):
+    eventos, pasta = _fila_rotulada(
+        tmp_path, lote=()
+    )  # sem fato relevante: o de mentira não dá assunto
+    antes = rc.arquivo_dos_rotulos(pasta).read_bytes()
+    cliente = ClienteDeMentira()
+    medida = rc.estabilidade(cliente, eventos, pasta, teto=60)
+    sorteio = json.loads(
+        (pasta / "estabilidade-sorteio.json").read_text(encoding="utf-8")
+    )
+    assert sorteio["semente"] == ar.SEMENTE_DA_ESTABILIDADE
+    assert sorteio["eventos"] == ar.sorteio_da_estabilidade(
+        eventos, rc.ler_rotulos(pasta)
+    )
+    assert sorteio["sha256_dos_rotulos"] == hashlib.sha256(antes).hexdigest()
+    assert len(cliente.criados) == 100
+    assert (
+        rc.arquivo_dos_rotulos(pasta).read_bytes() == antes
+    )  # o rótulo da fila não muda
+    assert len(rc.ler_estabilidade(pasta)) == 100
+    # o de mentira responde nota 3 onde o rótulo tem 2: nunca igual, sempre a 1 ponto
+    assert (
+        medida["pares"] == 100
+        and medida["nota_igual"] == 0
+        and medida["perto_nota"] == 1
+    )
+    gravado = json.loads((pasta / "estabilidade.json").read_text(encoding="utf-8"))
+    assert gravado["tema_igual"] == 1 and gravado["modelo"] == ri.MODELO
+    manifesto = rc.ler_manifesto(pasta)
+    assert (
+        manifesto["estabilidade"]["eventos"] == 100
+        and manifesto["gasto_em_dolares"] > 0
+    )
+
+
+def test_estabilidade_nao_resorteia_nem_paga_de_novo(tmp_path):
+    eventos, pasta = _fila_rotulada(tmp_path)
+    cliente = ClienteDeMentira()
+    rc.estabilidade(cliente, eventos, pasta, teto=60)
+    sorteio = (pasta / "estabilidade-sorteio.json").read_text(encoding="utf-8")
+    _gravar(pasta, eventos[:50], ri.MODELO,
+            {e["id"]: {"nota": 2, "tema": "dividendos", "assunto": None} for e in eventos[:50]})  # fmt: skip
+    rc.estabilidade(cliente, eventos, pasta, teto=60)
+    assert len(cliente.criados) == 100
+    assert (pasta / "estabilidade-sorteio.json").read_text(encoding="utf-8") == sorteio
+
+
+def test_estabilidade_respeita_o_teto_antes_de_gastar(tmp_path):
+    eventos, pasta = _fila_rotulada(tmp_path)
+    cliente = ClienteDeMentira()
+    with pytest.raises(rc.TetoPassado):
+        rc.estabilidade(cliente, eventos, pasta, teto=0.0001)
+    assert cliente.criados == []
+    assert (
+        pasta / "estabilidade-sorteio.json"
+    ).exists()  # o sorteio fica escrito antes
+
+
+def test_estabilidade_pula_o_evento_cuja_entrada_mudou(tmp_path):
+    """A segunda rodada tem de ler o mesmo pedido da primeira; se não, o evento fica de fora."""
+    eventos, pasta = _fila_rotulada(tmp_path)
+    mudado = ar.sorteio_da_estabilidade(eventos, rc.ler_rotulos(pasta))[0]
+    rotulos = rc.ler_rotulos(pasta)
+    rotulos[mudado]["hash_da_entrada"] = "0" * 64
+    rc.arquivo_dos_rotulos(pasta).write_text(
+        "\n".join(json.dumps(r) for r in rotulos.values()) + "\n", encoding="utf-8"
+    )
+    cliente = ClienteDeMentira()
+    medida = rc.estabilidade(cliente, eventos, pasta, teto=60)
+    assert len(cliente.criados) == 99 and medida["entradas_diferentes"] == [mudado]
+
+
+def test_main_identifica_e_mede_a_estabilidade_sem_o_tiago(
+    tmp_path, monkeypatch, capsys
+):
+    _, pasta = _fila_rotulada(tmp_path)
+    cliente = ClienteDeMentira()
+    monkeypatch.setattr(ri, "cliente", lambda: cliente)
+    base = ["--eventos", str(tmp_path / "eventos.json"), "--pasta", str(pasta),
+            "--teto-dolares", "10"]  # fmt: skip
+    for passo in ("identificar", "estabilidade"):
+        assert rc.main([passo, *base, "--so-estimar"]) == 0
+        assert "Estimativa" in capsys.readouterr().out
+    assert cliente.criados == []
+    assert rc.main(["identificar", *base]) == 0 and len(cliente.criados) == 301
+    assert "PASSOU" in capsys.readouterr().out
+    assert rc.main(["estabilidade", *base]) == 0 and len(cliente.criados) == 401
+    assert "Nota igual" in capsys.readouterr().out

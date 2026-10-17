@@ -14,13 +14,16 @@ Tiago), passarem em todos os limites de `LIMITES`, escritos antes de existir qua
 **Emenda 1 (17/10/2026):** o Tiago sai do caminho. Os mesmos limites de nota, tema e assunto passam
 a valer entre o Sonnet (rotulador) e o Opus (segundo modelo às cegas) nos 300 primeiros da fila
 (`comparar_modelos`); no `lote-leitor-v1`, os eventos em que os dois concordam no assunto viram a
-referência de máquina do leitor (`referencia_do_leitor`). O teste de identificação continua no Sonnet.
+referência de máquina do leitor (`referencia_do_leitor`). O teste de identificação continua no Sonnet, agora no conjunto de prova
+inteiro (`veredito_da_identificacao`), e a **estabilidade** (`estabilidade`) mede o Sonnet contra ele
+mesmo em 100 eventos sorteados com semente fixa (`sorteio_da_estabilidade`), sem limite: só se publica.
 
 O kappa mede a concordância descontando a que viria por sorte: 1 é concordância perfeita, 0 é o
 mesmo que chutar com as mesmas proporções. O ponderado quadrático pune mais quem erra por 3 pontos do
 que quem erra por 1.
 """
 
+import random
 import unicodedata
 from collections import Counter
 from collections.abc import Hashable, Sequence
@@ -39,6 +42,9 @@ LIMITES_DA_COMPARACAO = {k: v for k, v in LIMITES.items() if k != "max_identific
 NOTAS = (1, 2, 3, 4, 5)
 PRIMEIROS_DA_FILA = 300  # `ordem` < 300: os mesmos "em comum" da ADR 0060
 LOTE_DO_LEITOR = "lote-leitor-v1"
+# estabilidade (Emenda 1, item 3): escritos antes de rodar, como o resto (ADR 0006)
+EVENTOS_DA_ESTABILIDADE = 100
+SEMENTE_DA_ESTABILIDADE = 20261017
 
 # palavras que aparecem no nome de muitas empresas: acertar uma delas não é reconhecer a empresa
 GENERICAS = frozenset(
@@ -132,6 +138,12 @@ def perto(a: Sequence[int], b: Sequence[int], diferenca: int = 1) -> float:
     return sum(abs(x - y) <= diferenca for x, y in zip(a, b, strict=True)) / len(a)
 
 
+def iguais(a: Sequence[Hashable], b: Sequence[Hashable]) -> float:
+    """A fração de pares iguais."""
+    _iguais_na_ordem(a, b)
+    return sum(x == y for x, y in zip(a, b, strict=True)) / len(a)
+
+
 def acerto(a: Sequence[str | None], b: Sequence[str | None]) -> float | None:
     """A fração de iguais entre os pares em que o humano deu resposta (None se não houver nenhum)."""
     pares = [(x, y) for x, y in zip(a, b, strict=True) if x is not None]
@@ -207,19 +219,10 @@ def auditar(
         veredito.incompleto = True
         veredito.motivos.append("falta o teste de identificação da empresa")
     else:
-        conferidas = [identificadas[i] for i in prova if i in identificadas]
-        if len(conferidas) < len(prova):
-            veredito.incompleto = True
-            veredito.motivos.append(
-                f"identificação conferida em {len(conferidas)} de {len(prova)}"
-            )
-        if conferidas:
-            veredito.identificadas = sum(conferidas) / len(conferidas)
-            if veredito.identificadas > LIMITES["max_identificadas"]:
-                veredito.motivos.append(
-                    f"a IA reconheceu a empresa em {veredito.identificadas:.0%} "
-                    f"(máximo {LIMITES['max_identificadas']:.0%}): possível olhar o futuro"
-                )
+        identificacao = veredito_da_identificacao(identificadas, prova)
+        veredito.identificadas = identificacao.identificadas
+        veredito.incompleto |= identificacao.incompleto
+        veredito.motivos += identificacao.motivos
     return veredito
 
 
@@ -309,3 +312,65 @@ def referencia_do_leitor(
             }
         )
     return referencia
+
+
+def veredito_da_identificacao(
+    identificadas: dict[str, bool], ids: list[str]
+) -> Veredito:
+    """O teste de identificação da Emenda 1 nos eventos de prova `ids`: o Sonnet reconheceu a empresa
+    em mais de 10% deles reprova (vazamento do futuro); evento sem resposta deixa incompleto."""
+    veredito = Veredito(n=len(ids))
+    conferidas = [identificadas[i] for i in ids if i in identificadas]
+    if len(conferidas) < len(ids):
+        veredito.incompleto = True
+        veredito.motivos.append(
+            f"identificação conferida em {len(conferidas)} de {len(ids)}"
+        )
+    if conferidas:
+        veredito.identificadas = sum(conferidas) / len(conferidas)
+        if veredito.identificadas > LIMITES["max_identificadas"]:
+            veredito.motivos.append(
+                f"a IA reconheceu a empresa em {veredito.identificadas:.0%} "
+                f"(máximo {LIMITES['max_identificadas']:.0%}): possível olhar o futuro"
+            )
+    return veredito
+
+
+def sorteio_da_estabilidade(eventos: list[dict], rotulos: dict[str, dict]) -> list[str]:
+    """Os eventos que o Sonnet rotula de novo: 100 sorteados com a semente fixa entre os que têm
+    rótulo válido dele, na fila inteira. Os candidatos vão em ordem de id, para o sorteio não
+    depender da ordem do arquivo."""
+    candidatos = sorted(e["id"] for e in eventos if valido(rotulos, e["id"]))
+    n = min(EVENTOS_DA_ESTABILIDADE, len(candidatos))
+    return random.Random(SEMENTE_DA_ESTABILIDADE).sample(candidatos, n)
+
+
+def estabilidade(
+    primeira: dict[str, dict], segunda: dict[str, dict], ids: list[str]
+) -> dict:
+    """A concordância do Sonnet com ele mesmo nos sorteados: igual e kappa na nota e no tema, ±1 na
+    nota e igual no assunto (fatos relevantes). A segunda rodada com erro conta à parte. A emenda
+    não põe limite: o número é publicado, nunca aprova nem reprova."""
+    pares = [i for i in ids if valido(primeira, i) and valido(segunda, i)]
+    medida: dict = {
+        "sorteados": len(ids),
+        "pares": len(pares),
+        "erros": sum(i in segunda and "erro" in segunda[i] for i in ids),
+    }
+    if not pares:
+        return medida
+    notas = [primeira[i]["nota"] for i in pares], [segunda[i]["nota"] for i in pares]
+    temas = [primeira[i]["tema"] for i in pares], [segunda[i]["tema"] for i in pares]
+    assuntos = (
+        [primeira[i].get("assunto") for i in pares],
+        [segunda[i].get("assunto") for i in pares],
+    )
+    return medida | {
+        "nota_igual": iguais(*notas),
+        "perto_nota": perto(*notas),
+        "kappa_nota": kappa_ponderado(*notas),
+        "tema_igual": iguais(*temas),
+        "kappa_tema": kappa(*temas),
+        "assunto_igual": acerto(*assuntos),
+        "n_assunto": sum(a is not None for a in assuntos[0]),
+    }
