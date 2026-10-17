@@ -4,6 +4,7 @@
     python -m scripts.montar_rede --pasta <base>    (a pasta com fca/, controladas/, fidc/...)
     python -m scripts.montar_rede --amostra <csv>   (e grava a amostra da tarefa 2.7 para conferir)
     python -m scripts.montar_rede --saida <pasta>   (ensaio: grava fora da base)
+    python -m scripts.montar_rede --forcar          (refaz mesmo com as mesmas origens: o código mudou)
 
 Lê o que a base já tem (nenhuma coleta nova): as tabelas `fca/tickers` e `fca/emissores`,
 `controladas/<ano>`, `auditores/<ano>`, `empresa_serie`, `fidc/cadastro/cad_fi`,
@@ -390,9 +391,11 @@ def montar_no_acervo(
     pasta: Path,
     saida: Path | None = None,
     hoje: pd.Timestamp | None = None,
+    forcar: bool = False,
 ) -> Resumo:
     """Monta e grava `entidades`, `identificadores` e `ligacoes` em `<pasta>/rede/` (ou em `saida`,
-    no ensaio). `hoje` é o dia da carga (o fim das ligações que somem da fonte)."""
+    no ensaio). `hoje` é o dia da carga (o fim das ligações que somem da fonte); `forcar` monta e
+    compara mesmo com as mesmas origens (`base/parquet.py::gravar_com_versoes`)."""
     lidas = _entradas(conexao, pasta)
     if _sem_entradas(lidas):
         raise SemEntradasError(f"nenhuma tabela de entrada em {pasta}")
@@ -419,13 +422,18 @@ def montar_no_acervo(
     origens = lidas.origens
     gravadas = {
         "entidades": gravar_com_versoes(
-            lambda: rede()[0], destino / "entidades", origens, ORDEM_DAS_ENTIDADES
+            lambda: rede()[0],
+            destino / "entidades",
+            origens,
+            ORDEM_DAS_ENTIDADES,
+            forcar=forcar,
         ),
         "identificadores": gravar_com_versoes(
             lambda: rede()[1],
             destino / "identificadores",
             origens,
             ORDEM_DOS_IDENTIFICADORES,
+            forcar=forcar,
         ),
         "ligacoes": gravar_com_versoes(
             lambda: ligacoes.juntar_com_a_vigente(
@@ -434,6 +442,7 @@ def montar_no_acervo(
             destino / "ligacoes",
             origens,
             ORDEM_DAS_LIGACOES,
+            forcar=forcar,
         ),
     }
     contagem = {t: _linhas_gravadas(destino / t) for t in gravadas}
@@ -492,6 +501,9 @@ def main(argv: list[str] | None = None) -> int:
     argumentos.add_argument(
         "--amostra", type=Path, default=None, help="CSV da amostra a conferir"
     )
+    argumentos.add_argument(
+        "--forcar", action="store_true", help="refaz mesmo com as mesmas origens"
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -503,7 +515,9 @@ def main(argv: list[str] | None = None) -> int:
     log.info("Versão do código: %s", exigir_versao_do_codigo())
     try:
         with obter_engine().connect() as conexao:
-            resumo = montar_no_acervo(conexao, pasta, opcoes.saida)
+            resumo = montar_no_acervo(
+                conexao, pasta, opcoes.saida, forcar=opcoes.forcar
+            )
     except Exception as erro:  # a noite não para em silêncio: o Kuma recebe o motivo
         log.exception("a montagem da rede falhou")
         return _avisar([f"{type(erro).__name__}: {erro}"])

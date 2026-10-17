@@ -253,6 +253,22 @@ def test_segunda_carga_nao_apaga_e_guarda_a_versao(base):
     assert len(tabela) >= len(pd.read_parquet(base / "rede" / "ligacoes.v1.parquet"))
 
 
+def test_forcar_refaz_com_as_mesmas_origens(base):
+    """Corrigir o código não refaz o que já está gravado (lição do #333): a rede de antes do
+    `ate_publico_em` (#373) fica igual sem `--forcar` e ganha a coluna com ele."""
+    _montar(base)
+    antiga = _ligacoes(base).drop(columns="ate_publico_em")
+    origens = _manifesto(base, "ligacoes")["origens"]
+    gravar_tabela(
+        antiga, base / "rede" / "ligacoes", origens, montar_rede.ORDEM_DAS_LIGACOES
+    )
+    assert montar_rede.main(["--pasta", str(base)]) == 0
+    assert "ate_publico_em" not in _ligacoes(base).columns
+    assert montar_rede.main(["--pasta", str(base), "--forcar"]) == 0
+    assert "ate_publico_em" in _ligacoes(base).columns
+    assert (base / "rede" / "ligacoes.v1.parquet").is_file()  # a antiga fica guardada
+
+
 def test_montar_rede_sem_entradas_nao_grava(tmp_path, base, capsys):
     vazia = tmp_path / "vazia"
     vazia.mkdir()
