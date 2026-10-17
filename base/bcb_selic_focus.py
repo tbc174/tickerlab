@@ -16,10 +16,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.dias_uteis import proximo_dia_util
 from base.parquet import LINHAGEM, gravar_se_mudou, hash_da_tabela
 from src.versao_do_codigo import versao_do_codigo
 
 TABELA = "bcb_selic_focus"
+CAMINHO_DO_COPOM = Path(__file__).resolve().parent / "conferidas" / "copom_reunioes.csv"
 SERIE_DA_META = "bcb-sgs-432"
 SERIES_DO_ACERVO = {
     SERIE_DA_META: SERIE_DA_META,
@@ -76,3 +78,49 @@ def gravar(observacoes: pd.DataFrame, pasta: Path, agora: datetime) -> int:
         carimbos=LINHAGEM,
     )
     return len(tabela)
+
+
+def reunioes_do_copom(caminho: Path = CAMINHO_DO_COPOM) -> pd.DataFrame:
+    """As reuniões do Copom conferidas à mão (`base/conferidas/copom_reunioes.csv`), da mais velha à mais nova.
+
+    O Banco Central não publica o calendário numa tabela que a base coleta, e a meta (SGS 432) só muda
+    quando o Copom muda: a manutenção não aparece na série. Por isso a tabela é conferida à mão.
+    """
+    reunioes = pd.read_csv(
+        caminho, sep=";", parse_dates=["data", "conferido_em"], encoding="utf-8"
+    )
+    return reunioes.sort_values("reuniao").reset_index(drop=True)
+
+
+def divergencias_com_a_sgs(
+    reunioes: pd.DataFrame, selic_focus: pd.DataFrame
+) -> list[dict[str, object]]:
+    """Reuniões cuja meta conferida não é a da SGS 432 no dia útil seguinte (vazio = tudo bate).
+
+    A meta decidida vale a partir do dia útil seguinte à reunião. Sem valor da SGS naquele dia, a
+    reunião também diverge (`meta_sgs` None): a nota do Copom não sai sem as duas fontes de acordo.
+    """
+    metas = pd.DataFrame(selic_focus[selic_focus["serie"] == SERIE_DA_META])
+    metas = metas.sort_values("divulgado_em").drop_duplicates("referencia", keep="last")
+    da_sgs = dict(
+        zip(
+            pd.to_datetime(metas["referencia"]),
+            metas["valor"].astype(float),
+            strict=True,
+        )
+    )
+    vigente_em = proximo_dia_util(pd.Series(reunioes["data"]))
+    divergencias: list[dict[str, object]] = []
+    for (_, reuniao), dia in zip(reunioes.iterrows(), vigente_em, strict=True):
+        meta_sgs = da_sgs.get(pd.Timestamp(dia))
+        meta = float(reuniao["meta_selic"])
+        if meta_sgs is None or abs(meta_sgs - meta) > 1e-9:
+            divergencias.append(
+                {
+                    "reuniao": int(reuniao["reuniao"]),
+                    "meta_conferida": meta,
+                    "meta_sgs": meta_sgs,
+                    "vigente_em": pd.Timestamp(dia).date(),
+                }
+            )
+    return divergencias
