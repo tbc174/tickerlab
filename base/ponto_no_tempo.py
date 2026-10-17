@@ -33,6 +33,7 @@ import pandas as pd
 
 from base.contas_cvm import COLUNAS, so_as_contas_das_regras
 from base.enet import DocumentoEnet
+from base.licenca import licenca_para_gravar
 from base.parquet import gravar_atomico, hash_da_tabela
 from src.versao_do_codigo import versao_do_codigo
 
@@ -225,6 +226,9 @@ def gravar_parquet(
             "sha256_da_tabela": hash_da_tabela(parte, ORDEM_DA_TABELA),
             "ordem": ORDEM_DA_TABELA,
             "origens": origens or [],
+            "licenca": licenca_para_gravar(
+                destino, origens or []
+            ),  # ADR 0008, Emenda 1
             "versao_do_codigo": versao,
         }
         texto = json.dumps(manifesto, ensure_ascii=False, indent=1)

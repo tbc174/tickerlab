@@ -156,4 +156,5 @@ def test_wayback_no_catalogo_semanal_depois_da_assessoria():
 
 def test_wayback_so_pesquisa_ate_o_parecer():
     assert "research" in coletas.licenca_da_fonte("wayback-igc")
-    assert coletas.revenda_da_fonte("wayback-igc") == coletas.SO_USO_INTERNO
+    # "for scholarship and research purposes only": não comercial (ADR 0008, Emenda 1)
+    assert coletas.revenda_da_fonte("wayback-igc") == coletas.NAO_COMERCIAL

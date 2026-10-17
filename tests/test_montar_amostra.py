@@ -24,6 +24,14 @@ CADASTRO = (
     "22.222.222/0001-22;CANCELADA FICTICIA SA;2012-02-10;2015-07-20;Voluntário;CANCELADA;Varejo;RJ\n"
 )
 
+# as entradas vêm da CVM (a trava das licenças barra a amostra de treino sem fonte conhecida)
+DA_CVM = [
+    {
+        "url": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/x.zip",
+        "sha256": "a" * 64,
+    }
+]
+
 
 @pytest.fixture
 def base(tmp_path, monkeypatch):
@@ -47,14 +55,16 @@ def base(tmp_path, monkeypatch):
             "primeira_entrega": pd.to_datetime(["2009-03-30", "2012-05-15"]),
         }
     )
-    gravar_tabela(entregas, raiz / "rotulos_atraso" / "rotulos_atraso", [], ["cnpj"])
+    gravar_tabela(
+        entregas, raiz / "rotulos_atraso" / "rotulos_atraso", DA_CVM, ["cnpj"]
+    )
     tickers = pd.DataFrame(
         {
             "codigo": ["ATVA3"], "cnpj": ["11.111.111/0001-11"],
             "primeiro_visto": pd.to_datetime(["2011-05-31"]), "valido_ate": pd.to_datetime([None]),
         }
     )  # fmt: skip
-    gravar_tabela(tickers, raiz / "fca" / "tickers", [], ["codigo"])
+    gravar_tabela(tickers, raiz / "fca" / "tickers", DA_CVM, ["codigo"])
     return raiz
 
 
@@ -111,7 +121,9 @@ def test_painel_traz_as_demonstracoes_como_eram(base):
         "ordem": "ultimo", "origem": "dados_abertos", "divulgado_em": pd.Timestamp("2015-03-20"),
         "ate": pd.NaT,
     }  # fmt: skip
-    gravar_tabela(pd.DataFrame([linha]), base / "demonstracoes" / "2014", [], ["cnpj"])
+    gravar_tabela(
+        pd.DataFrame([linha]), base / "demonstracoes" / "2014", DA_CVM, ["cnpj"]
+    )
     montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"])
     painel = pd.read_parquet(base / montar_amostra.PASTA / "2015.parquet")
     ativa = painel[painel["cnpj"] == "11.111.111/0001-11"].set_index("data")
@@ -123,3 +135,16 @@ def test_painel_traz_as_demonstracoes_como_eram(base):
         (base / montar_amostra.PASTA / "2015.json").read_text(encoding="utf-8")
     )
     assert "demonstracoes/2014.parquet" in [o["url"] for o in manifesto["origens"]]
+
+
+def test_amostra_com_entrada_nao_comercial_da_erro_e_nao_grava(base):
+    """A trava das licenças (ADR 0008, Emenda 1): a amostra é a entrada do treino; uma tabela com
+    fonte "não comercial" (aqui, datas do Wayback, só para pesquisa) barra a montagem inteira."""
+    from src.banco.coletas import LicencaNaoPermiteError
+
+    tickers = pd.read_parquet(base / "fca" / "tickers.parquet")
+    wayback = [{"url": "https://web.archive.org/web/2025/x", "sha256": "b" * 64}]
+    gravar_tabela(tickers, base / "fca" / "tickers", wayback, ["codigo"])
+    with pytest.raises(LicencaNaoPermiteError, match="wayback"):
+        montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"])
+    assert not (base / montar_amostra.PASTA).exists()

@@ -49,13 +49,13 @@ import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
-from base.cadastro import cadastro_do_acervo
+from base.cadastro import FONTE_DO_CADASTRO, cadastro_do_acervo
 from base.contas_cvm import ler_indice
 from base.dias_uteis import dias_uteis
 from base.historico import ano_do_arquivo
 from base.parquet import gravar_tabela
 from src import acervo
-from src.banco.coletas import originais_mais_recentes
+from src.banco.coletas import exigir_licenca, originais_mais_recentes
 from src.prazos import ATRASO_GRAVE, prazo
 from src.versao_do_codigo import versao_do_codigo
 
@@ -309,8 +309,12 @@ def _cadastro(
 def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
     """`<pasta>/rotulos_atraso/rotulos_atraso.parquet` dos originais do acervo; devolve as linhas.
 
-    Nada é gravado (0) sem índice da DFP/ITR ou sem o cadastro.
+    Nada é gravado (0) sem índice da DFP/ITR ou sem o cadastro. Fonte que não pode rotular (ADR 0008,
+    Emenda 1) é erro, antes de ler qualquer original.
     """
+    exigir_licenca(
+        "rotular", [*FONTES_DO_INDICE.values(), FONTE_DO_CADASTRO], onde=TABELA
+    )
     partes: list[pd.DataFrame] = []
     vistos_em: dict[tuple[str, int], pd.Timestamp] = {}
     origens: list[dict[str, str]] = []

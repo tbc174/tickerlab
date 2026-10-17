@@ -198,3 +198,17 @@ def test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao(
         )
     assert sorted(p.name for p in pasta.iterdir()) == ["2024.json", "2024.parquet"]
     assert (pasta / "2024.parquet").read_bytes() == antes
+
+
+def test_rotulo_de_insolvencia_com_fonte_nao_comercial_da_erro(
+    banco, tmp_path, monkeypatch
+):
+    """A trava das licenças (ADR 0008, Emenda 1): rotular pede fonte vendável ou de uso interno; as
+    outras tabelas da base histórica não são rótulos e não passam pela trava de rotular."""
+    from src.banco import coletas
+
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao:
+        with pytest.raises(coletas.LicencaNaoPermiteError, match="insolvencia"):
+            historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+        assert historico.montar("eventos", conexao, tmp_path / "base", AGORA) == {}
