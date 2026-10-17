@@ -270,3 +270,22 @@ def test_exemplo_forcado_nao_toca_no_banco(yahoo, tmp_path):
     baixar_dados("VALE3", "1y", forcar_exemplo=True)
     assert yahoo.pedidos == []
     assert not (tmp_path / "precos_de_teste.sqlite").exists()
+
+
+def test_reajuste_pequeno_tambem_e_reajuste():
+    """Achado 5c do Codex: um dividendo de 0,05% reajusta o passado; abaixo da tolerância antiga
+    (0,1%) ele passava e o histórico ficava em duas escalas."""
+    base = _precos("2026-01-05", "2026-01-30", nivel=100.0)
+    novo = base.iloc[-5:].copy()
+    novo[["Open", "High", "Low", "Close"]] *= 0.9995
+    assert ar.precos_foram_reajustados(base, novo)
+
+
+def test_ultimo_dia_guardado_pode_ter_sido_parcial():
+    """O último dia guardado pode ser o pregão em andamento: só ele mudar não é reajuste."""
+    base = _precos("2026-01-05", "2026-01-30", nivel=100.0)
+    novo = base.iloc[-5:].copy()
+    novo.loc[novo.index[-1], "Close"] *= 1.02  # o fechamento do dia, depois do pregão
+    assert not ar.precos_foram_reajustados(base, novo)
+    # só o último dia em comum: ainda é o que há para comparar
+    assert ar.precos_foram_reajustados(base, novo.iloc[-1:])

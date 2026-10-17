@@ -30,9 +30,9 @@ HORAS_DE_VALIDADE = 4  # depois disso, o app pergunta ao Yahoo se há dias novos
 DIAS_DE_SOBREPOSICAO = (
     7  # dias já guardados que o pedido incremental repete, para conferir
 )
-TOLERANCIA_DO_AJUSTE = (
-    0.001  # diferença relativa que indica que o Yahoo reajustou o passado
-)
+# diferença relativa que indica que o Yahoo reajustou o passado. Só o ruído de arredondamento
+# fica abaixo dela: um dividendo de 0,05% já reajusta (achado 5c do Codex, 17/10/2026; era 0,1%)
+TOLERANCIA_DO_AJUSTE = 1e-6
 
 log = logging.getLogger(__name__)
 
@@ -166,8 +166,15 @@ def consulta_recente(
 
 
 def precos_foram_reajustados(guardado: pd.DataFrame, novo: pd.DataFrame) -> bool:
-    """Os dias que aparecem nos dois lados têm fechamentos diferentes (dividendo ou desdobramento)?"""
+    """Os dias que aparecem nos dois lados têm fechamentos diferentes (dividendo ou desdobramento)?
+
+    O último dia guardado fica de fora quando há outros em comum: ele pode ter sido gravado com o
+    pregão em andamento, e o fechamento do dia mudar não é reajuste. Um reajuste muda todos os
+    dias antes da data-ex, então os outros dias em comum mostram.
+    """
     comuns = guardado.index.intersection(novo.index)
+    if len(comuns) > 1:
+        comuns = comuns[comuns != guardado.index[-1]]
     if len(comuns) == 0:
         return False
     antes, depois = guardado.loc[comuns, "Close"], novo.loc[comuns, "Close"]
