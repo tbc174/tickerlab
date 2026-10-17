@@ -10,7 +10,8 @@ base do TickerLab Capital, decisão C-07).
 - **Cadastro:** o diretor responsável (nome de pessoa) fica fora, inclusive o histórico dele; o gestor
   pessoa física fica só com a marca "PF", sem CPF e sem nome. Fundos cancelados continuam.
 - **"Como era na data":** o informe é entregue em até 15 dias; a base usa competência + 45 dias
-  (conservador). Cada regravação da CVM vira versão (`base/parquet.py::gravar_com_versoes`).
+  (conservador), ou o dia em que o informe apareceu na CVM, se for depois (`base/publicacao.py`,
+  `visto_em`). Cada regravação da CVM vira versão (`base/parquet.py::gravar_com_versoes`).
 """
 
 import io
@@ -121,8 +122,30 @@ def ler_informe(conteudo_do_zip: bytes) -> dict[str, pd.DataFrame]:
     }
 
 
+def chaves_do_informe(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Os fundos de cada mês do arquivo (`competencia`, `cnpj_fundo`), pela tabela I (todo informe a
+    traz): de cada versão guardada sai o dia em que o informe apareceu (`base/publicacao.py`)."""
+    partes = []
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        for nome in sorted(arquivo.namelist()):
+            achado = NOME_DA_TABELA.search(nome)
+            if achado and achado.group(1) == "tab_I":
+                partes.append(_ler_csv(arquivo, nome))
+    if not partes:
+        return pd.DataFrame(
+            {
+                "competencia": pd.Series(dtype="datetime64[ns]"),
+                "cnpj_fundo": pd.Series(dtype=str),
+            }
+        )
+    tabela = _normalizar_informe(pd.concat(partes, ignore_index=True))
+    chaves = tabela[["competencia", "cnpj_fundo"]].dropna().drop_duplicates()
+    return chaves.reset_index(drop=True)
+
+
 def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
-    """Desde quando o informe era público: competência + 45 dias (o prazo de entrega é 15)."""
+    """Desde quando o informe era público pela regra do prazo: competência + 45 dias (o prazo de
+    entrega é 15). É o piso: o dia em que o informe foi visto na CVM vem de `base/publicacao.py`."""
     return tabela["competencia"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
 
 

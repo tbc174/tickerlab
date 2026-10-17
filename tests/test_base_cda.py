@@ -166,3 +166,32 @@ def test_bloco_8_nunca_guarda_cpf():
 
 def test_arquivo_sem_o_bloco_8_nao_traz_nada():
     assert _bloco_8((PASTA / "cda_fi_2005.zip").read_bytes()).empty
+
+
+def _zip(**arquivos: str) -> bytes:
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        for nome, texto in arquivos.items():
+            arquivo.writestr(nome, texto.encode("latin-1"))
+    return conteudo.getvalue()
+
+
+def test_chaves_do_cda_vem_do_arquivo_de_pl_um_fundo_por_linha():
+    conteudo = _zip(
+        cda_fi_PL_202609="TP_FUNDO_CLASSE;CNPJ_FUNDO_CLASSE;DENOM_SOCIAL;DT_COMPTC;VL_PATRIM_LIQ\n"
+        "FI;11.222.333/0001-81 ;A;2026-09-30;10\nFI;44.555.666/0001-81;B;2026-09-30;20\n",
+        cda_fi_BLC_4_202609="nada que precise ser lido",
+    )
+    chaves = cda.chaves_do_cda(conteudo)
+    assert list(chaves.columns) == ["competencia", "cnpj_fundo"]
+    assert chaves["cnpj_fundo"].tolist() == ["11.222.333/0001-81", "44.555.666/0001-81"]
+    assert (chaves["competencia"] == pd.Timestamp("2026-09-30")).all()
+
+
+def test_chaves_do_cda_sem_pl_vem_do_bloco_4():
+    conteudo = (PASTA / "cda_fi_202509.zip").read_bytes()
+    posicoes = _ler("cda_fi_202509.zip")
+    chaves = cda.chaves_do_cda(conteudo)
+    esperado = posicoes[["competencia", "cnpj_fundo"]].drop_duplicates()
+    assert set(map(tuple, chaves.to_numpy())) >= set(map(tuple, esperado.to_numpy()))
+    assert not chaves.duplicated().any()

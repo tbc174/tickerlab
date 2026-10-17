@@ -214,8 +214,13 @@ def gravar_com_versoes(
     destino: Path,
     origens: list[dict[str, str]],
     ordem: list[str],
+    *,
+    forcar: bool = False,
 ) -> str:
     """Grava a tabela se o conteúdo mudou (`GRAVADO`), guardando a anterior; senão, `IGUAL`.
+
+    `forcar`: monta e compara mesmo com as mesmas origens (o leitor mudou: corrigir o código não refaz
+    o que já está gravado, lição do #333); se o conteúdo mudou, a anterior vira versão, como sempre.
 
     `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado. Com
     origens novas e o mesmo conteúdo (o BC devolve o cadastro do IF.data com outros bytes), fica a
@@ -226,7 +231,7 @@ def gravar_com_versoes(
     origens novas, sem versão nova, para a linhagem continuar chegando aos originais (série 4).
     """
     anteriores = origens_gravadas(destino)
-    if anteriores == origens:
+    if anteriores == origens and not forcar:
         return IGUAL
     tabela = montar()
     if anteriores is not None:

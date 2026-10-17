@@ -6,6 +6,12 @@ muda de unidade ou de chave; menor: coluna nova; correção: dado.
 
 - `valores_mobiliarios`: 1.0.0 → 1.1.0
   - colunas novas: `origem`
+- `carteiras_dos_fundos`: 1.0.0 → 1.1.0
+  - colunas novas: `visto_em`
+- `carteiras_bloco_8`: 1.0.0 → 1.1.0
+  - colunas novas: `visto_em`
+- `fidc_informe`: 1.0.0 → 1.1.0
+  - colunas novas: `visto_em`
 - `painel_dos_fundos`: 1.0.0 → 1.1.0
   - colunas novas: `fundos_no_bloco_8`, `quantidade_no_bloco_8`, `valor_no_bloco_8`
 - `buracos_dos_fundos`: 1.0.0 → 1.1.0

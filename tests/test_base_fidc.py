@@ -172,3 +172,13 @@ def test_meses_com_cabecalhos_diferentes_nao_deixam_cnpj_do_fundo_vazio():
     assert tabela["cnpj_fundo"].notna().all()
     assert list(tabela["cnpj_fundo"]) == ["11.222.333/0001-81", "44.555.666/0001-81"]
     assert not {"CNPJ_FUNDO", "CNPJ_FUNDO_CLASSE"} & set(tabela.columns)
+
+
+def test_chaves_do_informe_sao_os_fundos_de_cada_mes_da_tabela_i():
+    """Para a data em que cada informe apareceu (`base/publicacao.py`): um fundo por mês."""
+    conteudo = (PASTA / "inf_mensal_fidc_202608.zip").read_bytes()
+    chaves = fidc.chaves_do_informe(conteudo)
+    tabela_i = fidc.ler_informe(conteudo)["tab_I"]
+    assert list(chaves.columns) == ["competencia", "cnpj_fundo"]
+    assert len(chaves) == len(tabela_i[["competencia", "cnpj_fundo"]].drop_duplicates())
+    assert chaves["cnpj_fundo"].notna().all()

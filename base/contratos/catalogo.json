@@ -494,7 +494,7 @@
       "tabela": "carteiras_dos_fundos",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês da carteira (último dia)",
@@ -552,8 +552,12 @@
           "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
           "unidade": "data (dia)"
         },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando a posição era pública (como era na data)",
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -573,13 +577,13 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
-      "atraso": "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+      "atraso": "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 5 meses mais novos todo dia: a carteira entregue depois do prazo só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
     },
     "carteiras_bloco_8": {
       "tabela": "carteiras_bloco_8",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês da carteira (último dia)",
@@ -637,8 +641,12 @@
           "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
           "unidade": "data (dia)"
         },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando a posição era pública (como era na data)",
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -658,13 +666,13 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
-      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
     },
     "fidc_informe": {
       "tabela": "fidc_informe",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês do informe (último dia)",
@@ -674,8 +682,12 @@
           "descricao": "CNPJ do fundo (ou da classe, depois da CVM 175)",
           "unidade": "texto"
         },
+        "visto_em": {
+          "descricao": "O dia em que o informe do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando o informe era público (como era na data)",
+          "descricao": "Desde quando o informe era público (como era na data): competência + 45 dias, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -693,7 +705,7 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
-      "atraso": "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+      "atraso": "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 4 meses mais novos todo dia: o informe entregue depois só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
     },
     "cadastro_de_fundos": {
       "tabela": "cadastro_de_fundos",
