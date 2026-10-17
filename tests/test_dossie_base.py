@@ -159,6 +159,15 @@ def test_troca_com_auditor_pessoa_esconde_o_nome() -> None:
     assert secao["tabelas"]["trocas_de_auditor"][0]["anterior"] == dossie.AUDITOR_PESSOA
 
 
+def test_data_sem_hora_nas_tabelas_sai_como_texto_iso() -> None:
+    trocas = _trocas().assign(efetiva_em=lambda e: e["efetiva_em"].dt.date)
+    secao = dossie.secao_auditor_e_controladas(
+        pd.DataFrame(), trocas, pd.DataFrame(), pd.DataFrame(), set()
+    )
+    assert secao is not None
+    assert secao["tabelas"]["trocas_de_auditor"][0]["efetiva_em"] == "2025-04-01"
+
+
 def test_empresa_sem_nada_nao_tem_a_secao() -> None:
     vazio = pd.DataFrame()
     assert dossie.secao_auditor_e_controladas(vazio, vazio, vazio, vazio, set()) is None
@@ -331,6 +340,22 @@ def test_setor_regulado_soma_as_entidades_principais_e_a_participacao() -> None:
     assert secao["tabelas"]["entidades_ligadas"][0]["nome"] == "CPFL Paulista"
 
 
+def test_ano_sem_numero_da_empresa_fica_fora_da_serie() -> None:
+    # 2026: a agência tem dado, a empresa ainda não; o item fica com 2025
+    serie = pd.concat(
+        [
+            _serie_aneel(),
+            pd.DataFrame({"ano": [2026], "chave": ["99"], "valor": [15.0]}),
+        ]
+    )
+    secao = dossie.secao_setor_regulado(_ligacoes_b13(), {"aneel_consumidores": serie})
+    assert secao is not None
+    anos = [r["ano"] for r in secao["tabelas"]["aneel_consumidores"]]
+    assert anos == [2025, 2024]
+    assert secao["itens"][0]["base"] == "2025"
+    assert secao["itens"][0]["valor"] == 6.0
+
+
 def test_empresa_sem_agencia_nao_tem_setor_regulado() -> None:
     assert dossie.secao_setor_regulado(pd.DataFrame(), {}) is None
 
@@ -378,6 +403,14 @@ def test_negocios_sao_fatos_e_comunicados_com_palavras_de_negocio() -> None:
     assert secao is not None
     assuntos = [linha["assunto"] for linha in secao["tabelas"]["negocios"]]
     assert assuntos == ["Aquisição da Enercan", "Conclusão da incorporação de ações"]
+
+
+def test_negocios_aceitam_data_sem_hora_como_vem_da_base() -> None:
+    eventos = _eventos().assign(publicado_em=lambda e: e["publicado_em"].dt.date)
+    secao = dossie.secao_negocios(eventos)
+    assert secao is not None
+    assert secao["tabelas"]["negocios"][0]["publicado_em"] == "2025-03-01"
+    assert secao["itens"][0]["base"] == "2025-03-01"
 
 
 def test_sem_negocios_nao_tem_a_secao() -> None:

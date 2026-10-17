@@ -27,6 +27,7 @@ import re
 import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 import pandas as pd
@@ -289,6 +290,9 @@ def _registros(tabela: pd.DataFrame) -> list[dict[str, Any]]:
     for coluna in copia.columns:
         if pd.api.types.is_datetime64_any_dtype(copia[coluna]):
             copia[coluna] = copia[coluna].dt.strftime("%Y-%m-%d")
+        elif copia[coluna].map(lambda v: isinstance(v, date)).any():
+            # a base guarda algumas datas sem hora (`datetime.date`): o JSON as escreveria em milissegundos
+            copia[coluna] = copia[coluna].map(_data)
     return json.loads(copia.to_json(orient="records", force_ascii=False))
 
 
@@ -614,7 +618,10 @@ def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame
     dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
     total = dados.groupby("ano")["valor"].sum()
     da_empresa = dados[dados["chave"].isin(chaves)].groupby("ano")["valor"].sum()
-    tabela = pd.DataFrame({"valor": da_empresa, "participacao": da_empresa / total})
+    # só os anos em que a empresa tem número: a divisão alinharia com todos os anos do mercado
+    tabela = pd.DataFrame(
+        {"valor": da_empresa, "participacao": da_empresa / total}
+    ).dropna(subset=["valor"])
     return (
         tabela.reset_index().sort_values("ano", ascending=False).head(ANOS_NAS_SERIES)
     )
@@ -663,6 +670,8 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
     """Fatos relevantes e comunicados de compra, venda, fusão ou reorganização (None: nenhum)."""
     if eventos.empty:
         return None
+    # a base guarda a data sem hora (`datetime.date`): vira data do pandas para ordenar e agrupar
+    eventos = eventos.assign(publicado_em=pd.to_datetime(eventos["publicado_em"]))
     assunto = eventos["assunto"].fillna("").map(normalizar_nome)
     negocios = eventos[
         eventos["rotulo"].isin(ROTULOS_DE_NEGOCIO)
