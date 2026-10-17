@@ -163,3 +163,14 @@ def test_so_baixa_link_https_da_cvm():
         "file:///c:/x",
     ):
         assert not ler_releases.link_da_cvm(fora)
+
+
+def test_cliente_da_vitrine_exige_a_chave_propria(monkeypatch):
+    from scripts import ler_releases
+
+    monkeypatch.delenv(ler_releases.VARIAVEL_DA_CHAVE, raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-dos-rotulos")
+    with pytest.raises(SystemExit, match="ANTHROPIC_API_KEY_VITRINE"):
+        ler_releases.cliente_da_vitrine()
+    monkeypatch.setenv(ler_releases.VARIAVEL_DA_CHAVE, "sk-ant-da-vitrine")
+    assert ler_releases.cliente_da_vitrine().api_key == "sk-ant-da-vitrine"

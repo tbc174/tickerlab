@@ -19,6 +19,7 @@ claude-sonnet-5-5` para a leitura às cegas): só rodam com o "pode" do Tiago pa
 import argparse
 import json
 import logging
+import os
 import random
 import re
 import sys
@@ -614,7 +615,7 @@ def _passo_com_releases(opcoes: argparse.Namespace) -> int:
     elif opcoes.passo == "conferir":
         print(json.dumps(conferir_gravadas(achados, pasta, modelo), indent=2))
     else:
-        cliente = ri.cliente()
+        cliente = cliente_da_vitrine()
         if opcoes.passo == "estimar":
             fila = pendentes(achados, pasta, modelo)
             custo = estimar(cliente, fila, modelo)
@@ -629,6 +630,24 @@ def _passo_com_releases(opcoes: argparse.Namespace) -> int:
         else:
             buscar(cliente, achados, pasta, modelo)
     return 0
+
+
+VARIAVEL_DA_CHAVE = "ANTHROPIC_API_KEY_VITRINE"
+
+
+def cliente_da_vitrine() -> anthropic.Anthropic:
+    """O cliente da API com a chave só da vitrine (uma chave por uso, ADR 0087, regra 2).
+
+    Não cai na `ANTHROPIC_API_KEY`: ela é a da rotulagem, e misturar as duas esconde de que uso veio o
+    gasto. Sem a variável própria, o script para antes de qualquer chamada.
+    """
+    chave = os.environ.get(VARIAVEL_DA_CHAVE, "").strip()
+    if not chave:
+        raise SystemExit(
+            f"Falta {VARIAVEL_DA_CHAVE} no ambiente (a chave da vitrine, separada da dos rótulos): "
+            "rode projeto-acoes/configurar-chave-anthropic-vitrine-casa.ps1."
+        )
+    return anthropic.Anthropic(api_key=chave)
 
 
 def main(argv: list[str] | None = None) -> int:
