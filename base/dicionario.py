@@ -2900,6 +2900,102 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "ratings": Tabela(
+        descricao=(
+            "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM "
+            "no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados, fatos "
+            "relevantes e editais que falam do rating. Uma linha por documento baixado e lido, com "
+            "a situação da extração (`extraido`; `nao_extraido`: PDF escaneado ou sem nota; "
+            "`nao_e_pdf`: Word, ZIP ou PDF quebrado). O mesmo evento (companhia, agência, escala, "
+            "nota e data da ação) contado pelo relatório e pelo comunicado vira uma linha só, com a "
+            "primeira entrega. v1: o rating principal de cada documento; notas por emissão, uma a "
+            "uma, ficam para depois. Conferência à mão: 35 de 36 certas (16/10/2026)"
+        ),
+        fonte=(
+            "CVM: documentos do IPE no sistema de documentos (RAD), fonte `cvm-ipe-rating`, e a "
+            "lista dos arquivos anuais do IPE (`base/ratings.py`)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_ratings.py`), depois das rodadas do "
+            "coletor, que baixa os documentos de hora em hora, do mais novo ao mais velho"
+        ),
+        atraso=(
+            "O rating vale a partir de `publico_em` (entrega da versão do documento à CVM), nunca "
+            "da data do relatório da agência; `data_acao` depois da entrega fica vazia"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ratings/ratings.parquet` (servidor de casa, "
+            "`scripts/montar_ratings.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do documento no acervo (`origem_sha256`, que leva ao "
+            "registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto "
+            "lista os arquivos anuais do IPE e todos os documentos lidos. `montado_em` diz quando a "
+            "tabela foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "agencia": (
+                "fitch, sp, moodys, austin, liberum, sr_rating, lf_rating ou am_best (vazia se não extraído)",
+                TEXTO,
+            ),
+            "escala": ("nacional ou global", TEXTO),
+            "nota": (
+                "Nota sem sufixos (AA, RD, Aa1): compara documentos da mesma agência",
+                TEXTO,
+            ),
+            "nivel": (
+                "Posição da nota na escala (1 = AAA ou Aaa): compara agências",
+                NUMERO,
+            ),
+            "nota_original": (
+                "A nota como está no texto (AA(bra), brAAA, Aa1.br)",
+                TEXTO,
+            ),
+            "perspectiva": (
+                "estavel, positiva, negativa, em_desenvolvimento, em_observacao_positiva ou em_observacao_negativa",
+                TEXTO,
+            ),
+            "acao": (
+                "afirmacao, elevacao, rebaixamento, atribuicao, retirada...",
+                TEXTO,
+            ),
+            "data_acao": (
+                "Data da ação da agência lida do texto (vazia se não está ou se vem depois da entrega)",
+                DATA,
+            ),
+            "outras_notas": (
+                "As outras notas citadas no documento, separadas por `; `",
+                TEXTO,
+            ),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando o rating ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            "evidencia": (
+                "Por que o documento entrou: relatorio_de_agencia (tipo do IPE) ou assunto",
+                TEXTO,
+            ),
+            "situacao_extracao": ("extraido, nao_extraido ou nao_e_pdf", TEXTO),
+            "documentos": (
+                (
+                    "Protocolos de todos os documentos do mesmo evento, pela data de entrega, "
+                    "separados por `; ` (pode citar entregas posteriores a `publico_em`)"
+                ),
+                TEXTO,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "auditores": Tabela(
         descricao=(
             "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início "
@@ -3801,6 +3897,7 @@ _CONTRATO = {
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -3833,6 +3930,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "pgfn_divida",
         "faixas": {"inscricoes": (1.0, None), "valor_consolidado": _SEM_NEGATIVO},
         "nao_nulas": ("cnpj", "cnpj_basico", "data_do_retrato", "disponivel_em", "trata_como_pessoa"),
+    },
+    "ratings": {
+        "pasta": "ratings",
+        "faixas": {"nivel": (1.0, None), "versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "publico_em", "protocolo", "link", "situacao_extracao", "documentos"),
     },
     "proventos": {
         "pasta": "proventos",
