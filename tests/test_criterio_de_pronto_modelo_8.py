@@ -30,9 +30,11 @@ from base.modelos.atraso import rotulo
 from scripts import montar_base_como_era
 from src import demonstracoes
 from src.banco.coletas import (
+    PODEM_ENTRAR,
     REVENDA,
     SEM_LICENCA_CONHECIDA,
     licenca_da_fonte,
+    marca_da_fonte,
     revenda_da_fonte,
 )
 
@@ -274,6 +276,8 @@ def _conferencia_automatica(fonte: str, exigencia: int) -> bool:
         for registro in dados["fontes_no_registro"]:
             assert licenca_da_fonte(registro) != SEM_LICENCA_CONHECIDA, registro
             assert revenda_da_fonte(registro) in REVENDA.values(), registro
+            # ADR 0008, Emenda 1: só "vendável" e "só uso interno" entram em modelo
+            assert marca_da_fonte(registro) in PODEM_ENTRAR, registro
         return True
     if exigencia == 2 and dados["enderecos"]:
         # domínio oficial e HTTPS; o original vai para o acervo com SHA-256

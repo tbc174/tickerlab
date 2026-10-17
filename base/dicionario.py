@@ -11,7 +11,7 @@ desatualizado.
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from src.banco.coletas import SO_USO_INTERNO, licenca_da_fonte, revenda_da_fonte
+from src.banco.coletas import NAO_COMERCIAL, licenca_da_fonte, revenda_da_fonte
 from src.padroes import MULTIPLOS
 
 ARQUIVO_DO_DOCUMENTO = "docs/dicionario-da-base.md"
@@ -159,7 +159,8 @@ LINHAGEM_DA_REDE = (
 )
 RESSALVA_DA_REDE = (
     "A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que "
-    "está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os "
+    "está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF "
+    "(CC0, citar); os "
     "códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`)."
 )
 
@@ -2540,7 +2541,7 @@ TABELAS: dict[str, Tabela] = {
         },
         ressalva_de_revenda=(
             f"As linhas dos múltiplos ({', '.join(f'`{m}`' for m in MULTIPLOS)}) usam o preço do "
-            f"Yahoo Finance: {SO_USO_INTERNO}."
+            f"Yahoo Finance: {NAO_COMERCIAL}."
         ),
     ),
     "fre_proventos": Tabela(
@@ -2845,8 +2846,8 @@ TABELAS: dict[str, Tabela] = {
             "fontes de governo (o conservador; a história começa em 14/10/2026)"
         ),
         onde=(
-            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor "
-            "de casa, `scripts/carga_pgfn.py`)"
+            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do "
+            "CNPJ>.parquet`, 11 por CSV da PGFN (servidor de casa, `scripts/carga_pgfn.py`)"
         ),
         linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
         colunas={

@@ -20,6 +20,7 @@ import sqlalchemy as sa
 
 from base.amostra import demonstracoes, universo
 from base.cadastro import ler_cadastro
+from base.licenca import exigir_licenca_das_origens
 from base.parquet import gravar_com_versoes, origem_de_tabela
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
@@ -58,32 +59,39 @@ def _cadastro(conexao: sa.Connection) -> tuple[pd.DataFrame, dict[str, str]]:
     raise FileNotFoundError(f"sem o {ARQUIVO_DO_CADASTRO} no acervo")
 
 
-def _demonstracoes(base: Path) -> tuple[pd.DataFrame, list[dict[str, str]]]:
-    """Só as contas dos indicadores, ano a ano (a base inteira não precisa ficar na memória)."""
-    arquivos = sorted(
+def _arquivos_das_demonstracoes(base: Path) -> list[Path]:
+    return sorted(
         p for p in (base / DEMONSTRACOES).glob("*.parquet") if p.stem.isdigit()
     )
+
+
+def _demonstracoes(arquivos: list[Path]) -> pd.DataFrame:
+    """Só as contas dos indicadores, ano a ano (a base inteira não precisa ficar na memória)."""
     partes = [pd.read_parquet(p, filters=[("conta", "in", CONTAS)]) for p in arquivos]
-    tabela = pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
-    return tabela, [origem_de_tabela(p, base) for p in arquivos]
+    return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
 
 
 def entradas_e_origens(
     conexao: sa.Connection, base: Path
 ) -> tuple[dict[str, pd.DataFrame], list[dict[str, str]]]:
-    """As entradas do painel (já preparadas) e as origens para o manifesto."""
+    """As entradas do painel (já preparadas) e as origens para o manifesto.
+
+    A amostra é a entrada do treino: uma entrada com fonte "não comercial" ou "a confirmar" é erro
+    (ADR 0008, Emenda 1), antes de ler as demonstrações."""
     cadastro, origem_do_cadastro = _cadastro(conexao)
     entregas = pd.read_parquet(
         base / ROTULOS_ATRASO, columns=["cnpj", "primeira_entrega"]
     )
     tickers = pd.read_parquet(base / TICKERS)
-    tabela, origens_das_demonstracoes = _demonstracoes(base)
+    arquivos_das_demonstracoes = _arquivos_das_demonstracoes(base)
     origens = [
         origem_do_cadastro,
         origem_de_tabela(base / ROTULOS_ATRASO, base),
         origem_de_tabela(base / TICKERS, base),
-        *origens_das_demonstracoes,
+        *[origem_de_tabela(p, base) for p in arquivos_das_demonstracoes],
     ]
+    exigir_licenca_das_origens("treinar", origens, base / PASTA)
+    tabela = _demonstracoes(arquivos_das_demonstracoes)
     entradas = universo.preparar(cadastro, entregas, tickers) | {
         "demonstracoes": tabela
     }

@@ -17,9 +17,11 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import IO
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
+from base import cnpj
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
 
@@ -42,10 +44,23 @@ def _partes(arquivo_zip: Path | IO[bytes], coluna: int) -> Iterator[pd.DataFrame
             )  # fmt: skip
 
 
+Raizes = (
+    set[str] | np.ndarray
+)  # textos, ou os números ordenados de `base/cnpj.py` (milhões)
+
+
+def _pedidas(parte: pd.Series, raizes: Raizes) -> pd.Series:
+    if isinstance(raizes, np.ndarray):
+        return pd.Series(
+            cnpj.contem(raizes, cnpj.raizes_em_numeros(parte)), index=parte.index
+        )
+    return parte.isin(raizes)
+
+
 def _filtrar(
-    arquivo_zip: Path | IO[bytes], coluna: int, raizes: set[str]
+    arquivo_zip: Path | IO[bytes], coluna: int, raizes: Raizes
 ) -> pd.DataFrame:
-    pedacos = [p[p[0].isin(raizes)] for p in _partes(arquivo_zip, coluna)]
+    pedacos = [p[_pedidas(p[0], raizes)] for p in _partes(arquivo_zip, coluna)]
     tabela = (
         pd.concat(pedacos, ignore_index=True)
         if pedacos
@@ -54,7 +69,7 @@ def _filtrar(
     return tabela.rename(columns={0: "cnpj_basico", coluna: "valor"})
 
 
-def ler_naturezas(arquivo_zip: Path | IO[bytes], raizes: set[str]) -> pd.DataFrame:
+def ler_naturezas(arquivo_zip: Path | IO[bytes], raizes: Raizes) -> pd.DataFrame:
     """(cnpj_basico, natureza_juridica) das raízes pedidas, de um `Empresas*.zip`."""
     tabela = _filtrar(arquivo_zip, COLUNA_DA_NATUREZA, raizes)
     return pd.DataFrame(
@@ -65,7 +80,7 @@ def ler_naturezas(arquivo_zip: Path | IO[bytes], raizes: set[str]) -> pd.DataFra
     )
 
 
-def ler_mei(arquivo_zip: Path | IO[bytes], raizes: set[str]) -> pd.DataFrame:
+def ler_mei(arquivo_zip: Path | IO[bytes], raizes: Raizes) -> pd.DataFrame:
     """(cnpj_basico, mei) das raízes pedidas que estão no `Simples.zip` (opção atual pelo MEI)."""
     tabela = _filtrar(arquivo_zip, COLUNA_DO_MEI, raizes)
     return pd.DataFrame(

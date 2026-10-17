@@ -1456,7 +1456,7 @@ Os padrões por setor das notas (ADR 0033): os percentis de cada indicador entre
 - **Fonte:** Calculado pelo TickerLab das demonstrações da CVM (DFP e ITR, versões do Radar); nos múltiplos, também o preço da ação (Yahoo Finance)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Ressalva de revenda:** As linhas dos múltiplos (`p_l`, `p_vp`) usam o preço do Yahoo Finance: só uso interno (nunca vender nem exportar).
+- **Ressalva de revenda:** As linhas dos múltiplos (`p_l`, `p_vp`) usam o preço do Yahoo Finance: não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação).
 - **Frequência:** Um corte por fim de mês; o cron do VPS roda todo dia às 8h30 e só grava o corte que falta (`scripts/atualizar_padroes.py --so-o-que-falta`)
 - **Atraso de divulgação:** O do balanço mais novo de cada empresa até o corte (DFP até 3 meses, ITR até 45 dias)
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
@@ -1734,7 +1734,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 
 - **Fonte:** Receita Federal: dados abertos do CNPJ, arquivos de estabelecimentos
 - **Licença:** Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)
-- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
@@ -1765,7 +1765,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 
 - **Fonte:** PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)
 - **Licença:** Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)
-- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
@@ -1773,7 +1773,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 - **Três datas:** aconteceu_em = `data_do_retrato`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor de casa, `scripts/carga_pgfn.py`)
+- **Onde fica:** Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do CNPJ>.parquet`, 11 por CSV da PGFN (servidor de casa, `scripts/carga_pgfn.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
@@ -2014,7 +2014,7 @@ Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial 
 - **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da empresa ↔ série e a Receita (natureza jurídica e opção pelo MEI)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
 - **Frequência:** Refeita a cada montagem; versão nova só quando o conteúdo muda
 - **Atraso de divulgação:** O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela
 - **Módulo:** rede · **Contém dado de pessoa:** não
@@ -2044,7 +2044,7 @@ Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ 
 - **Fonte:** CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da empresa ↔ série
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
 - **Frequência:** Refeita a cada montagem; versão nova só quando o conteúdo muda
 - **Atraso de divulgação:** O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois
 - **Módulo:** rede · **Contém dado de pessoa:** não
@@ -2074,7 +2074,7 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 - **Fonte:** CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da empresa ↔ série
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como só uso interno até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
+- **Ressalva de revenda:** A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF (CC0, citar); os códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`).
 - **Frequência:** Toda noite no servidor de casa; versão nova só quando o conteúdo muda
 - **Atraso de divulgação:** O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o IF.data 120 dias depois da data-base; a fonte de governo desde que guardada
 - **Módulo:** rede · **Contém dado de pessoa:** não
@@ -2109,7 +2109,7 @@ Negócios de M&A do middle market tirados dos posts das assessorias independente
 
 - **Fonte:** Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
-- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal (a coleta é aos domingos); versão nova só quando uma página muda
 - **Atraso de divulgação:** Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta
 - **Módulo:** ma · **Contém dado de pessoa:** não
@@ -2148,7 +2148,7 @@ As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linh
 
 - **Fonte:** `ma_assessorias`, a rede (`entidades`, `identificadores`) e o CNPJ aberto da Receita (razão social e nome fantasia, lidos e descartados: só a raiz fica)
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
-- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
 - **Atraso de divulgação:** O da tabela `ma_assessorias` e o do mês do CNPJ guardado
 - **Módulo:** ma · **Contém dado de pessoa:** não
@@ -2179,7 +2179,7 @@ Uma linha por página de negócio de M&A com o `id_negocio`, o mesmo para as pá
 
 - **Fonte:** `ma_assessorias` e `ma_partes`
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
-- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
 - **Atraso de divulgação:** O da tabela `ma_assessorias`
 - **Módulo:** ma · **Contém dado de pessoa:** não
@@ -2205,7 +2205,7 @@ Quando cada negócio de M&A das assessorias ficou público, provado, e a confirm
 
 - **Fonte:** `ma_assessorias`, `ma_partes` e `ma_negocios`; a API CDX do Wayback Machine (só as datas das cópias) e os sócios pessoa jurídica do CNPJ aberto da Receita (raiz, raiz da sócia e data de entrada; nome, CPF e representante nunca são lidos)
 - **Licença:** Internet Archive: 'for scholarship and research purposes only'; só datas
-- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Revenda:** não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação)
 - **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
 - **Atraso de divulgação:** O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado
 - **Módulo:** ma · **Contém dado de pessoa:** não
@@ -2244,7 +2244,7 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 
 - **Fonte:** `ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ aberto da Receita (só raiz e porte são lidos)
 - **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
-- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
 - **Atraso de divulgação:** O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado
 - **Módulo:** ma · **Contém dado de pessoa:** não

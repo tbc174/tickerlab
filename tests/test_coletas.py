@@ -119,23 +119,20 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
         licenca_da_fonte("rfb-cripto") == coletas.LICENCAS["rfb"]
     )  # a planilha de cripto não muda
     assert licenca_da_fonte("gleif-br").startswith("CC0")
-    for fonte in (
-        "cgu-ceis",
-        "pgfn-divida",
-        "ibama-autos",
-        "mte-lista-suja",
-        "rfb-cnpj",
-    ):
+    for fonte in ("cgu-ceis", "ibama-autos", "mte-lista-suja"):
         assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
+    # só o rodapé CC BY-ND do site: perguntar a licença (ADR 0008, Emenda 1: não entra em modelo)
+    for fonte in ("pgfn-divida", "rfb-cnpj"):
+        assert coletas.revenda_da_fonte(fonte) == coletas.A_CONFIRMAR, fonte
     assert coletas.revenda_da_fonte("gleif-br") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
 
 
-def test_b3_cita_a_politica_de_consumo_e_e_so_uso_interno():
+def test_b3_cita_a_politica_de_consumo_e_e_nao_comercial():
     # negócios do pregão: só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
     assert "Política de Consumo" in licenca_da_fonte("b3-negocios")
-    assert coletas.revenda_da_fonte("b3-negocios") == coletas.SO_USO_INTERNO
-    assert coletas.revenda_da_fonte("b3-boletim-pr") == coletas.SO_USO_INTERNO
+    assert coletas.revenda_da_fonte("b3-negocios") == coletas.NAO_COMERCIAL
+    assert coletas.revenda_da_fonte("b3-boletim-pr") == coletas.NAO_COMERCIAL
 
 
 def test_registrar_arquivo_grande_usa_o_sha256_e_o_tamanho_ja_calculados(banco):

@@ -44,7 +44,7 @@ def _rodar_com(monkeypatch, resultados):
 
     esperas = []
     monkeypatch.setattr(arquivar_fontes, "arquivar", arquivar_falso)
-    monkeypatch.setattr(arquivar_fontes.time, "sleep", esperas.append)
+    monkeypatch.setattr(arquivar_fontes, "esperar", esperas.append)
     return arquivar_fontes.main(["cvm-fiagro"]), chamadas, esperas
 
 
