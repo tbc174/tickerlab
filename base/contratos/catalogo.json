@@ -5349,6 +5349,101 @@
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado"
+    },
+    "ma_regua": {
+      "tabela": "ma_regua",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_datas`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "O negócio (liga com `ma_negocios`)",
+          "unidade": "texto"
+        },
+        "alvo_cnpj_raiz": {
+          "descricao": "Raiz do CNPJ da alvo (vazio sem ligação ou com mais de uma alvo ligada)",
+          "unidade": "texto"
+        },
+        "conhecido_em_do_negocio": {
+          "descricao": "O `conhecido_em` do negócio (`ma_datas`): o corte do que a régua pode usar",
+          "unidade": "data e hora (UTC)"
+        },
+        "fechamento_em": {
+          "descricao": "Data do fechamento pelo CNPJ (`ma_datas`), quando há: o exercício é o de antes dela",
+          "unidade": "data (dia)"
+        },
+        "middle_market": {
+          "descricao": "sim (receita de 30 a 500 milhões, limites inclusos), nao ou desconhecido",
+          "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "receita, porte_me_epp, sem_receita (alvo com CNPJ sem receita pública antes), alvo_sem_cnpj ou varias_alvos",
+          "unidade": "texto"
+        },
+        "receita": {
+          "descricao": "Receita anual da alvo; vazio quando não há documento",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "receita_exercicio_fim": {
+          "descricao": "Fim do exercício dessa receita",
+          "unidade": "data (dia)"
+        },
+        "receita_fonte": {
+          "descricao": "cpc15-compradora, dfp-alvo, balanco-alvo ou cade (no mesmo exercício, nessa ordem)",
+          "unidade": "texto"
+        },
+        "receita_documento": {
+          "descricao": "O documento: a entrega à CVM (tipo, CNPJ, referência, versão e grupo) ou o endereço",
+          "unidade": "texto"
+        },
+        "receita_documento_sha256": {
+          "descricao": "SHA-256 do documento no acervo, quando guardado",
+          "unidade": "texto"
+        },
+        "receita_publico_em": {
+          "descricao": "Dia em que o documento ficou público",
+          "unidade": "data (dia)"
+        },
+        "porte": {
+          "descricao": "Porte da alvo no CNPJ baixado antes do negócio (01 ME, 03 EPP, 05 demais, 00 não informado); vazio se o arquivo é de depois",
+          "unidade": "texto"
+        },
+        "porte_publico_em": {
+          "descricao": "Quando o arquivista baixou esse ZIP",
+          "unidade": "data e hora (UTC)"
+        },
+        "porte_prova_url": {
+          "descricao": "Endereço do ZIP `Empresas` da Receita",
+          "unidade": "texto"
+        },
+        "porte_prova_sha256": {
+          "descricao": "SHA-256 do ZIP guardado no acervo",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {
+        "aconteceu_em": "fechamento_em",
+        "publico_em": "conhecido_em_do_negocio"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"
     }
   }
 }

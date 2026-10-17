@@ -18,9 +18,14 @@ Por fim, as datas e a confirmação (passo 4, `base/ma_datas.py`): grava `<base>
 com o `conhecido_em` de cada página (a prova mais antiga: a cópia no Wayback que o arquivista guardou
 na fonte `wayback-<id>`, os sócios PJ do CNPJ do mês mais recente ou a nossa coleta). Sem a ligação, não
 data.
+
+E a régua do middle market (passo 5, `base/ma_regua.py`): grava `<base>/ma/regua/negocios.parquet` com a
+receita anual da alvo de antes do negócio (a DRE da CVM já montada em `<base>/demonstracoes` e as lidas à
+mão em `base/conferidas/ma_receitas.csv`) e o porte do CNPJ do mês mais recente. Sem as datas, não mede.
 """
 
 import argparse
+import hashlib
 import logging
 import re
 import sys
@@ -29,7 +34,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import ma_assessorias, ma_datas, ma_ligacao
+from base import ma_assessorias, ma_datas, ma_ligacao, ma_regua
 from base.arquivo.assessorias import ASSESSORIAS, Assessoria
 from base.parquet import (
     GRAVADO,
@@ -54,6 +59,8 @@ ARQUIVO_DA_RECEITA = re.compile(
 )
 DA_LIGACAO = ("Empresas", "Estabelecimentos", "Simples")
 SOCIOS = "Socios"
+EMPRESAS = "Empresas"
+DA_REGUA = [("demonstracao", "==", "DRE"), ("conta", "==", "3.01")]
 Origem = dict[str, str]
 
 
@@ -231,6 +238,51 @@ def datar(conexao: sa.Connection, base: Path) -> None:
     log.info("datas dos negócios: %s", resultado)
 
 
+def medir_regua(conexao: sa.Connection, base: Path) -> None:
+    """A régua do middle market de cada página (`base/ma_regua.py`), se as datas já existem."""
+    datas = base / "ma" / "datas" / "negocios.parquet"
+    partes = base / "ma" / "ligacao" / "partes.parquet"
+    if not (datas.exists() and partes.exists()):
+        log.warning("régua do middle market: sem as datas; fica para depois")
+        return
+    demonstracoes = arquivos_atuais(base / "demonstracoes")
+    empresas = [(c, o) for t, c, o in _do_mes_mais_recente(conexao) if t == EMPRESAS]
+    conferidas = ma_regua.CONFERIDAS
+    origens = (
+        [origem_de_tabela(t, base) for t in [datas, partes, *demonstracoes]]
+        + [{"url": o.url, "sha256": o.sha256} for _, o in empresas]
+        + [
+            {
+                "url": f"base/conferidas/{conferidas.name}",
+                "sha256": hashlib.sha256(conferidas.read_bytes()).hexdigest(),
+            }
+        ]
+    )
+
+    def montar_regua() -> pd.DataFrame:
+        ligadas = ler_tabela(partes)
+        alvos = set(ligadas.loc[ligadas["papel"] == "alvo", "cnpj_raiz"].dropna())
+        dre = [pd.read_parquet(t, filters=DA_REGUA) for t in demonstracoes]
+        receitas = [ma_regua.receitas_conferidas()]
+        if dre:
+            receitas.append(
+                ma_regua.receitas_da_cvm(pd.concat(dre, ignore_index=True), alvos)
+            )
+        saida = ma_regua.medir(
+            ler_tabela(datas),
+            ligadas,
+            pd.concat(receitas, ignore_index=True),
+            ma_regua.portes_do_cnpj([(c, _guardado(o)) for c, o in empresas], alvos),
+        )
+        print("régua: " + ma_regua.resumo(saida))
+        return saida
+
+    resultado = gravar_com_versoes(
+        montar_regua, base / "ma" / "regua" / "negocios", origens, ORDEM
+    )
+    log.info("régua do middle market: %s", resultado)
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--base", type=Path, default=None)
@@ -251,6 +303,7 @@ def main(argv: list[str] | None = None) -> int:
             carregar(conexao, base)
             ligar(conexao, base)
             datar(conexao, base)
+            medir_regua(conexao, base)
     finally:
         motor.dispose()
     return 0
