@@ -1,41 +1,14 @@
 // O cartão "Estratégias acompanhadas" do Workspace (ADR 0062; Workspace, PR 2): os backtests salvos com a
 // ficha "Foi sorte?", que o Pulse refaz com os preços de hoje. A API já manda na ordem do cartão (o que
-// mudou, as iguais, as não conferidas); aqui só se mostra.
-//
-// Abrir o Pulse marca a visita. Sem sessão no servidor, a aba guarda o início da janela que mostrou e o
-// reenvia em `desde` no F5: senão a janela encolheria para os segundos desde a visita que ela mesma marcou.
-import { useEffect, useState } from "react";
+// mudou, as iguais, as não conferidas); aqui só se mostra. O pedido ao Pulse é do Início (usarPulse).
 import { Link } from "react-router";
 import { conteudoDoApp } from "../../../conteudo";
 import { linkDoApp } from "../../../site/textos";
 import type { EstrategiaAcompanhadaV1, PulseV1 } from "../../tipos";
-import { Carregando } from "../../Carregando";
-import { usarPedido } from "../../usarPedido";
 import { Vazio } from "../../Vazio";
-import { ErroDaTela } from "../ErroDaTela";
 
-const ROTA_DO_PULSE = "/v1/pulse";
-const CHAVE_DA_JANELA = "tickerlab.workspace.inicio-da-janela";
 const TERMO_DA_FICHA = conteudoDoApp.backtest.ficha.termo;
 const SIMBOLO_DO_VEREDITO: Record<string, string> = { passou: "✓", "não passou": "✕", inconclusivo: "?" };
-
-/** O início da janela que esta aba já mostrou (o sessionStorage pode faltar: aba anônima, bloqueio). */
-function inicioGuardado(): string | undefined {
-  try {
-    const guardado = sessionStorage.getItem(CHAVE_DA_JANELA);
-    return guardado && !Number.isNaN(Date.parse(guardado)) ? guardado : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function guardarInicio(inicio: string) {
-  try {
-    sessionStorage.setItem(CHAVE_DA_JANELA, inicio);
-  } catch {
-    // sem sessionStorage, o F5 volta à janela desde a última visita: nada quebra
-  }
-}
 
 /** "2026-10-09T23:00:00Z" → "09/10" (no horário de Brasília, como as datas do Pulse no app atual). */
 function diaEMes(iso: string): string {
@@ -86,10 +59,10 @@ function Estrategia({ e }: { e: EstrategiaAcompanhadaV1 }) {
   );
 }
 
-function Conteudo({ dados }: { dados: PulseV1 }) {
+export function EstrategiasAcompanhadas({ dados }: { dados: PulseV1 }) {
   return (
-    <>
-      <p className="apagado">{dados.janela.texto}</p>
+    <section className="cartao-do-workspace" aria-labelledby="titulo-das-estrategias">
+      <h2 id="titulo-das-estrategias">Estratégias acompanhadas</h2>
       {dados.estrategias.length === 0 ? (
         <Vazio frase={dados.sem_estrategias} acao={{ texto: "Rodar um backtest", para: "/backtest" }} />
       ) : (
@@ -109,28 +82,6 @@ function Conteudo({ dados }: { dados: PulseV1 }) {
           {nota}
         </p>
       ))}
-    </>
-  );
-}
-
-export function EstrategiasAcompanhadas() {
-  // lido uma vez só: os parâmetros não mudam depois, e a página pede o Pulse uma vez
-  const [parametros] = useState(() => ({ desde: inicioGuardado() }));
-  const pedido = usarPedido<PulseV1>(ROTA_DO_PULSE, parametros);
-  const inicio = pedido.estado === "pronto" ? pedido.dados.janela.inicio : null;
-  useEffect(() => {
-    if (inicio !== null) guardarInicio(inicio);
-  }, [inicio]);
-  return (
-    <section className="cartao-do-workspace" aria-labelledby="titulo-das-estrategias">
-      <h2 id="titulo-das-estrategias">Estratégias acompanhadas</h2>
-      {pedido.estado === "carregando" ? (
-        <Carregando tipo="lista" rotulo="Conferindo as suas estratégias com os preços de hoje…" />
-      ) : pedido.estado === "erro" ? (
-        <ErroDaTela erro={pedido.erro} />
-      ) : (
-        <Conteudo dados={pedido.dados} />
-      )}
     </section>
   );
 }

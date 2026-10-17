@@ -42,11 +42,11 @@ describe("esqueleto de carregamento", () => {
     expect(reduzido).toMatch(/\.esqueleto \{[^}]*animation: none;/);
   });
 
-  it("as estratégias acompanhadas esperam com o esqueleto de lista", async () => {
+  it("o 'O que mudou' do Início espera com o esqueleto de lista", async () => {
     abrirApp("/", { rotas: NUNCA });
-    const espera = await screen.findByRole("status", { name: /Conferindo as suas estratégias/ });
+    const espera = await screen.findByRole("status", { name: /conferindo as suas estratégias/ });
     expect(espera.querySelectorAll(".esqueleto")).toHaveLength(3);
-    expect(screen.queryByText(/Conferindo as suas estratégias/)).toBeNull();
+    expect(screen.queryByText(/conferindo as suas estratégias/)).toBeNull();
   });
 });
 

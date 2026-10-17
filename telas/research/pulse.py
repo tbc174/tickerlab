@@ -158,10 +158,7 @@ def _mostrar_variacoes(ativos, janela):
             },
             hide_index=True,
         )
-        st.caption(
-            "Do último fechamento que já existia na hora da sua visita até o último fechamento "
-            "de hoje, na moeda do ativo e sem os proventos."
-        )
+        st.caption(pulse.NOTA_DA_VARIACAO)
     if sem_mudanca:
         st.caption(
             "Sem pregão novo ou sem preço desde a visita: "
@@ -236,17 +233,11 @@ def pagina_pulse():
         return
     st.caption(pulse.texto_da_janela(janela))
     if not ativos:
-        st.info(
-            "Ainda não há nenhum ativo guardado. O Pulse acompanha os seus favoritos, as "
-            "listas do Research, a carteira guardada (Pro) e os ativos das estratégias salvas."
-        )
+        st.info(pulse.SEM_ATIVOS)
         _marcar_visita(usuario, janela)
         return
     if fora:
-        st.caption(
-            f"O Pulse acompanha até {pulse.MAXIMO_DE_ATIVOS} ativos; {fora} ficaram de fora "
-            "(valem os favoritos, depois a carteira, as listas e as estratégias)."
-        )
+        st.caption(pulse.aviso_dos_ativos_de_fora(fora))
     eventos = _eventos_novos(ativos, janela)
     if eventos is not None:
         _mostrar_acontecimentos(ativos, janela, eventos)

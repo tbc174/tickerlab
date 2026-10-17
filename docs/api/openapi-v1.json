@@ -33,6 +33,76 @@
         "title": "AceiteV1",
         "type": "object"
       },
+      "AcontecimentoV1": {
+        "description": "Um documento novo (CVM ou SEC) de uma empresa que a pessoa acompanha.",
+        "properties": {
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "link_do_original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Do Original"
+          },
+          "por_que_aparece": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Por Que Aparece",
+            "type": "array"
+          },
+          "publicado_em": {
+            "format": "date",
+            "title": "Publicado Em",
+            "type": "string"
+          },
+          "relevancia": {
+            "title": "Relevancia",
+            "type": "number"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ticker",
+          "empresa",
+          "tipo",
+          "titulo",
+          "publicado_em",
+          "fonte",
+          "link_do_original",
+          "relevancia",
+          "por_que_aparece"
+        ],
+        "title": "AcontecimentoV1",
+        "type": "object"
+      },
       "AnoV1": {
         "properties": {
           "ano": {
@@ -785,6 +855,10 @@
             "title": "Alem Do Maximo",
             "type": "integer"
           },
+          "alem_dos_ativos": {
+            "title": "Alem Dos Ativos",
+            "type": "integer"
+          },
           "nao_conferidas": {
             "title": "Nao Conferidas",
             "type": "integer"
@@ -797,7 +871,8 @@
         "required": [
           "sem_ficha",
           "alem_do_maximo",
-          "nao_conferidas"
+          "nao_conferidas",
+          "alem_dos_ativos"
         ],
         "title": "LimitesDoPulseV1",
         "type": "object"
@@ -1764,11 +1839,32 @@
       },
       "PulseV1": {
         "properties": {
+          "acontecimentos": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AcontecimentoV1"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acontecimentos"
+          },
           "avisos": {
             "items": {
               "type": "string"
             },
             "title": "Avisos",
+            "type": "array"
+          },
+          "avisos_dos_ativos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos Dos Ativos",
             "type": "array"
           },
           "estrategias": {
@@ -1784,6 +1880,10 @@
           "limites": {
             "$ref": "#/components/schemas/LimitesDoPulseV1"
           },
+          "nota_da_variacao": {
+            "title": "Nota Da Variacao",
+            "type": "string"
+          },
           "notas": {
             "items": {
               "type": "string"
@@ -1791,9 +1891,27 @@
             "title": "Notas",
             "type": "array"
           },
+          "sem_ativos": {
+            "title": "Sem Ativos",
+            "type": "string"
+          },
           "sem_estrategias": {
             "title": "Sem Estrategias",
             "type": "string"
+          },
+          "sem_variacao": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sem Variacao",
+            "type": "array"
+          },
+          "variacoes": {
+            "items": {
+              "$ref": "#/components/schemas/VariacaoV1"
+            },
+            "title": "Variacoes",
+            "type": "array"
           }
         },
         "required": [
@@ -1802,7 +1920,13 @@
           "limites",
           "avisos",
           "sem_estrategias",
-          "notas"
+          "notas",
+          "acontecimentos",
+          "variacoes",
+          "avisos_dos_ativos",
+          "sem_variacao",
+          "sem_ativos",
+          "nota_da_variacao"
         ],
         "title": "PulseV1",
         "type": "object"
@@ -2054,6 +2178,45 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VariacaoV1": {
+        "description": "Do último fechamento conhecido na hora da visita ao último de hoje, sem os proventos.",
+        "properties": {
+          "ate": {
+            "format": "date",
+            "title": "Ate",
+            "type": "string"
+          },
+          "de": {
+            "format": "date",
+            "title": "De",
+            "type": "string"
+          },
+          "por_que_aparece": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Por Que Aparece",
+            "type": "array"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          },
+          "variacao": {
+            "title": "Variacao",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ticker",
+          "variacao",
+          "de",
+          "ate",
+          "por_que_aparece"
+        ],
+        "title": "VariacaoV1",
         "type": "object"
       },
       "VereditoV1": {
@@ -2891,7 +3054,7 @@
     },
     "/v1/pulse": {
       "get": {
-        "description": "O Pulse (parte 1): as estratégias salvas com o veredito da ficha \"Foi sorte?\" refeito\ncom os preços de hoje, o que mudou primeiro. Abrir marca a visita, como no app atual.\n\nSem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela\nnão encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).\nConfere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.",
+        "description": "O Pulse: os acontecimentos novos nas empresas dos ativos da pessoa, a variação do preço\ndesde a visita e as estratégias salvas com o veredito da ficha \"Foi sorte?\" refeito com os\npreços de hoje. Abrir marca a visita, como no app atual; se a leitura dos acontecimentos\nfalhar, não marca (senão a pessoa perderia o que ainda não viu).\n\nSem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela\nnão encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).\nConfere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.",
         "operationId": "pulse_da_conta_v1_pulse_get",
         "parameters": [
           {

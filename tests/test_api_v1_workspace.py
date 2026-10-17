@@ -8,18 +8,31 @@ PR 2: o Pulse pela API, parte 1: as estratégias acompanhadas (o veredito da fic
 hoje) e a janela da visita, que o F5 não zera.
 """
 
-from datetime import UTC, datetime, timedelta
+import io
+import zipfile
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+import sqlalchemy as sa
 from fastapi.testclient import TestClient
 
 from src import api, ficha, planos, pulse
-from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto
+from src import eventos as ev
+from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto, rotas
+from src.banco import eventos as repo_eventos
 from src.banco import pulse as repo_pulse
 from src.banco import teses as repo_teses
-from src.banco.dados_do_usuario import listar_simulacoes, salvar_simulacao
-from src.banco.usuarios import buscar_por_google_sub, entrar
+from src.banco.dados_do_usuario import (
+    listar_simulacoes,
+    salvar_carteira,
+    salvar_favoritos,
+    salvar_simulacao,
+)
+from src.banco.modelo import eventos
+from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
+from src.carteira_research import Fotografia
 from src.conformidade import registrar_aceite
 from src.dados import baixar_dados
 from src.exemplos import carregar_exemplo
@@ -382,6 +395,7 @@ def test_pulse_veredito_que_mudou_vem_com_antes_agora_e_data(cliente, banco, rel
         "sem_ficha": 0,
         "alem_do_maximo": 0,
         "nao_conferidas": 0,
+        "alem_dos_ativos": 0,
     }
     # o F5: a aba reenvia o início; a mudança vista há pouco continua com o selo e a data
     relogio.append(UMA_HORA_DEPOIS)
@@ -440,6 +454,7 @@ def test_pulse_confere_no_maximo_10_fichas(cliente, banco, relogio, monkeypatch)
         "sem_ficha": 0,
         "alem_do_maximo": 2,
         "nao_conferidas": 0,
+        "alem_dos_ativos": 0,
     }
     assert any("ficaram para depois" in aviso for aviso in dados["avisos"])
 
@@ -469,6 +484,7 @@ def test_pulse_ordem_mudou_iguais_e_nao_conferidas(
         "sem_ficha": 1,
         "alem_do_maximo": 0,
         "nao_conferidas": 1,
+        "alem_dos_ativos": 0,
     }
     assert any("Não deu para conferir agora: Não deu." in a for a in dados["avisos"])
     assert any("salve de novo" in a for a in dados["avisos"])
@@ -508,6 +524,193 @@ def test_textos_do_pulse_nao_recomendam(cliente, banco, relogio):
     dados = _pulse(cliente)
     textos = [dados["janela"]["texto"], dados["sem_estrategias"], *dados["avisos"]]
     textos += [n for n in dados["notas"] if "é recomendação" not in n]
+    for texto in textos:
+        for palavra in PALAVRAS_DE_RECOMENDACAO:
+            assert palavra not in texto.lower(), texto
+
+
+# --- Tarefa 3.1: o Pulse pela API, parte 2 (acontecimentos novos e variação do preço) ---------
+PASTA_DA_CVM = Path(__file__).parent / "arquivos" / "cvm"
+VISITA = datetime(2026, 10, 5, 22, 0, tzinfo=UTC)  # 19h em São Paulo
+COLETA = datetime(2026, 10, 8, 10, 0, tzinfo=UTC)  # entre a visita e o "agora" do Pulse
+
+
+def _zip_da_cvm(nome, arquivo):
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        z.writestr(nome, (PASTA_DA_CVM / arquivo).read_bytes())
+    return saida.getvalue()
+
+
+def _coletar(banco, publicado_em=date(2026, 10, 7), coletado_em=COLETA):
+    """A amostra do IPE da CVM (fatos da Petrobras e de outras) como coletada em `coletado_em`."""
+    tabela = ev.ler_ipe(_zip_da_cvm("ipe_cia_aberta_2026.csv", "ipe_amostra.csv"))
+    tabela["publicado_em"] = publicado_em
+    tickers = ev.ler_tickers_do_fca(
+        [_zip_da_cvm("fca_cia_aberta_valor_mobiliario_2026.csv", "fca_vm_2026.csv")]
+    )
+    with banco.begin() as conexao:
+        repo_eventos.gravar_tickers(conexao, tickers)
+        repo_eventos.gravar_eventos(conexao, tabela)
+        conexao.execute(sa.update(eventos).values(ingerido_em=coletado_em))
+
+
+def _com_visita(banco, favoritos):
+    ana = _conta(banco)
+    with banco.begin() as conexao:
+        salvar_favoritos(conexao, ana.id, favoritos)
+        repo_pulse.marcar_visita(conexao, ana.id, VISITA)
+    return ana
+
+
+def _protocolos_da_petrobras(banco):
+    with banco.connect() as conexao:
+        linhas = conexao.execute(
+            sa.select(eventos.c.protocolo).where(eventos.c.cnpj == "33.000.167/0001-01")
+        )
+        return sorted(p for (p,) in linhas)
+
+
+def test_pulse_acontecimentos_novos_na_janela(cliente, banco, relogio):
+    """Só o que foi coletado depois da visita e publicado até 30 dias antes dela, com o título,
+    a data, a fonte, o link do documento original e por que aparece (o ativo que a pessoa
+    acompanha vem primeiro)."""
+    _com_visita(banco, ["PETR4.SA"])
+    _coletar(banco)
+    velho, antes_da_visita, *novos = _protocolos_da_petrobras(banco)
+    with banco.begin() as conexao:
+        conexao.execute(  # publicado 31 dias antes da visita: fora da janela
+            sa.update(eventos)
+            .where(eventos.c.protocolo == velho)
+            .values(publicado_em=date(2026, 9, 4))
+        )
+        conexao.execute(  # coletado antes da visita: a pessoa já podia ter visto
+            sa.update(eventos)
+            .where(eventos.c.protocolo == antes_da_visita)
+            .values(ingerido_em=VISITA - timedelta(hours=1))
+        )
+    dados = _pulse(cliente)
+    itens = dados["acontecimentos"]
+    assert sorted(i["id"].removeprefix("cvm_ipe:") for i in itens) == novos
+    for item in itens:
+        assert item["ticker"] == "PETR4"
+        assert item["titulo"]
+        assert item["publicado_em"] == "2026-10-07"
+        assert item["fonte"] == "CVM"
+        assert urlsplit(item["link_do_original"]).scheme == "https"
+        assert item["por_que_aparece"][0] == "Você acompanha PETR4 em: favoritos."
+        assert 0 <= item["relevancia"] <= 1
+    relevancias = [i["relevancia"] for i in itens]
+    assert relevancias == sorted(relevancias, reverse=True)
+    assert _visita(banco, _conta(banco).id) == AGORA_DO_PULSE
+
+
+def test_pulse_variacao_por_ativo(cliente, banco, relogio):
+    """O mesmo número de `pulse.variacao` (do último fechamento conhecido na hora da visita ao
+    de hoje), a maior mudança primeiro; o ativo sem preço fica numa lista à parte."""
+    _com_visita(banco, ["PETR4.SA", "VALE3.SA", "ZZZZ3.SA"])
+    dados = _pulse(cliente)
+    janela = pulse.Janela(VISITA, AGORA_DO_PULSE, primeira_vez=False)
+    periodo = pulse.periodo_de_precos(janela)
+    esperadas = pulse.ordenar_variacoes(
+        v
+        for t in ("PETR4.SA", "VALE3.SA")
+        if (
+            v := pulse.variacao(
+                t, baixar_dados(t, periodo, forcar_exemplo=True)["Close"], VISITA
+            )
+        )
+        is not None
+    )
+    assert esperadas, "os preços de exemplo têm pregão depois da visita"
+    assert [
+        (v["ticker"], v["variacao"], v["de"], v["ate"]) for v in dados["variacoes"]
+    ] == [
+        (e.ticker.removesuffix(".SA"), e.retorno, e.de.isoformat(), e.ate.isoformat())
+        for e in esperadas
+    ]
+    assert dados["variacoes"][0]["por_que_aparece"] == ["favoritos"]
+    assert dados["sem_variacao"] == ["ZZZZ3"]
+    assert "sem os proventos" in dados["nota_da_variacao"]
+
+
+def _com_carteira(banco, plano):
+    ana = _com_visita(banco, ["PETR4.SA"])
+    with banco.begin() as conexao:
+        mudar_plano(conexao, ana.id, plano)
+        salvar_carteira(
+            conexao, ana.id, Fotografia({"ITUB4.SA": 1.0}, date(2026, 10, 1))
+        )
+    return ana
+
+
+def test_ativos_da_pessoa_inclui_carteira_guardada(cliente, banco, relogio):
+    """A carteira guardada no Research (Pro) entra nos ativos do Pulse, com os favoritos e os
+    ativos das estratégias salvas."""
+    ana = _com_carteira(banco, "pro")
+    _salvar_com_ficha(banco, ana.id, "RSI na Vale")  # o retrato é de VALE3.SA
+    dados = _pulse(cliente)
+    origens = {v["ticker"]: v["por_que_aparece"] for v in dados["variacoes"]}
+    assert origens == {
+        "PETR4": [pulse.NOME_DOS_FAVORITOS],
+        "ITUB4": [pulse.NOME_DA_CARTEIRA],
+        "VALE3": [pulse.NOME_DAS_ESTRATEGIAS],
+    }
+
+
+def test_carteira_fica_de_fora_no_plano_sem_ela(cliente, banco, relogio):
+    """Num plano sem a carteira no Research, a fotografia guardada não entra no Pulse."""
+    _com_carteira(banco, "gratuito")
+    assert [v["ticker"] for v in _pulse(cliente)["variacoes"]] == ["PETR4"]
+
+
+def test_pulse_nao_marca_a_visita_se_os_acontecimentos_falham(
+    cliente, banco, relogio, monkeypatch
+):
+    """A regra do Streamlit: se a leitura dos acontecimentos falhar, a visita não é marcada
+    (senão a pessoa perderia o que ainda não viu); `acontecimentos` vem null e o resto vem."""
+    ana = _com_visita(banco, ["PETR4.SA"])
+
+    def falhar(*_args, **_kwargs):
+        raise RuntimeError("banco fora do ar")
+
+    monkeypatch.setattr(rotas, "eventos_dos_tickers", falhar)
+    dados = _pulse(cliente)
+    assert dados["acontecimentos"] is None
+    assert dados["variacoes"]
+    assert _visita(banco, ana.id) == VISITA
+
+
+def test_pulse_sem_ativos_guardados(cliente, banco, relogio):
+    """Sem favoritos, listas, carteira ou estratégias: nada a mostrar, a frase explica de onde
+    vêm os ativos e a visita é marcada (como no Streamlit)."""
+    dados = _pulse(cliente)
+    assert dados["acontecimentos"] == []
+    assert dados["variacoes"] == []
+    assert "favoritos" in dados["sem_ativos"]
+    assert _visita(banco, _conta(banco).id) == AGORA_DO_PULSE
+
+
+def test_pulse_avisa_ativos_alem_do_maximo(cliente, banco, relogio, monkeypatch):
+    monkeypatch.setattr(pulse, "MAXIMO_DE_ATIVOS", 1)
+    _com_visita(banco, ["PETR4.SA", "VALE3.SA"])
+    dados = _pulse(cliente)
+    assert dados["limites"]["alem_dos_ativos"] == 1
+    assert [v["ticker"] for v in dados["variacoes"]] == ["PETR4"]
+    assert any("ficaram de fora" in a for a in dados["avisos_dos_ativos"])
+
+
+def test_textos_da_parte_2_nao_recomendam(cliente, banco, relogio, monkeypatch):
+    monkeypatch.setattr(pulse, "MAXIMO_DE_ATIVOS", 1)
+    _com_visita(banco, ["PETR4.SA", "ZZZZ3.SA"])
+    _coletar(banco)
+    dados = _pulse(cliente)
+    textos = [
+        dados["sem_ativos"],
+        dados["nota_da_variacao"],
+        *dados["avisos_dos_ativos"],
+    ]
+    textos += [r for i in dados["acontecimentos"] for r in i["por_que_aparece"]]
     for texto in textos:
         for palavra in PALAVRAS_DE_RECOMENDACAO:
             assert palavra not in texto.lower(), texto

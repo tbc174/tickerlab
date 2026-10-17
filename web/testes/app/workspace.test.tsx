@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-// O Início do app novo é o Workspace (ADR 0062; Workspace, PR 2): o cartão "Estratégias acompanhadas"
-// com o veredito da ficha refeito pelo Pulse, a janela que o F5 não encolhe e a lista de telas embaixo.
+// O Início do app novo é o Workspace (ADR 0062; Workspace, PRs 2 e 3): os cartões "Acontecimentos novos",
+// "Variação do preço" e "Estratégias acompanhadas", todos de um pedido só ao Pulse, a janela que o F5 não
+// encolhe e a lista de telas embaixo. Os acontecimentos e as variações vêm de exemplos/pulse.json, gravado
+// por tests/test_app_novo_mesmos_numeros.py com as funções da API (os mesmos números do app atual).
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { abrirApp, respostaJson } from "./ajudantes";
+import exemplo from "./exemplos/pulse.json";
 
 const JANELA = {
   inicio: "2026-10-02T23:00:00Z",
@@ -41,10 +44,12 @@ const SEM_CONFERIR = {
   conferido_em: null,
   tese_ligada: null,
 };
+const PARTE_2 = exemplo.resposta;
 const PULSE = {
+  ...PARTE_2,
   janela: JANELA,
   estrategias: [MUDOU, IGUAL, SEM_CONFERIR],
-  limites: { sem_ficha: 1, alem_do_maximo: 0, nao_conferidas: 1 },
+  limites: { sem_ficha: 1, alem_do_maximo: 0, nao_conferidas: 1, alem_dos_ativos: 3 },
   avisos: ["Não deu para conferir agora: Sem dados hoje."],
   sem_estrategias: "Salve um backtest para acompanhar: o Pulse refaz a ficha com os preços de hoje.",
   notas: ["O Pulse mostra o que mudou, não o que fazer: nada aqui é recomendação de investimento."],
@@ -57,7 +62,12 @@ function abrir(resposta: Response | (() => Response) = () => respostaJson(200, P
   });
 }
 
-const cartao = () => screen.findByRole("region", { name: "Estratégias acompanhadas" }, { timeout: 5000 });
+const cartao = (nome = "Estratégias acompanhadas") => screen.findByRole("region", { name: nome }, { timeout: 5000 });
+const acontecimentos = () => cartao("Acontecimentos novos");
+const variacao = () => cartao("Variação do preço");
+// só os itens de cima: cada um tem a lista do "por que aparece" dentro
+const itensDe = (c: HTMLElement) =>
+  Array.from(within(c).getByRole("list", { name: "Acontecimentos" }).children) as HTMLElement[];
 const pedidosDoPulse = (buscar: ReturnType<typeof abrir>["buscar"]) =>
   buscar.mock.calls.map(([e]) => String(e)).filter((e) => e.startsWith("/api/v1/pulse"));
 
@@ -70,18 +80,18 @@ afterEach(() => {
 describe("o Início é o Workspace", () => {
   it("pede o Pulse uma vez e mostra o texto da janela", async () => {
     const { buscar } = abrir();
-    const c = await cartao();
-    expect(await within(c).findByText(JANELA.texto)).toBeTruthy();
+    await cartao();
+    expect(screen.getByText(JANELA.texto)).toBeTruthy(); // a janela vale para os três cartões
     expect(pedidosDoPulse(buscar)).toEqual(["/api/v1/pulse"]);
   });
 
   it("guarda o início da janela na aba e o reenvia no F5", async () => {
     abrir();
-    await within(await cartao()).findByText(JANELA.texto);
+    await screen.findByText(JANELA.texto, {}, { timeout: 5000 });
     cleanup();
     vi.unstubAllGlobals();
     const { buscar } = abrir(); // o F5: a mesma aba (o sessionStorage continua)
-    await within(await cartao()).findByText(JANELA.texto);
+    await screen.findByText(JANELA.texto, {}, { timeout: 5000 });
     const [pedido] = pedidosDoPulse(buscar);
     expect(new URL(pedido, "http://app").searchParams.get("desde")).toBe(JANELA.inicio);
   });
@@ -123,10 +133,134 @@ describe("o Início é o Workspace", () => {
     expect(within(telas).queryByRole("link", { name: "Pulse" })).toBeNull();
   });
 
-  it("se o Pulse falha, o cartão mostra o erro e as telas continuam", async () => {
+  it("se o Pulse falha, um erro só no lugar dos cartões, e as telas continuam", async () => {
     abrir(() => respostaJson(503, { detail: "fora do ar" }));
-    const c = await cartao();
+    const c = await cartao("O que mudou");
     expect(await within(c).findByRole("alert")).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.queryByRole("region", { name: "Estratégias acompanhadas" })).toBeNull();
     expect(screen.getByRole("list", { name: "Telas novas" })).toBeTruthy();
+  });
+
+  it("os cartões vêm na ordem: acontecimentos, variação, estratégias", async () => {
+    abrir();
+    const [a, v, e] = [await acontecimentos(), await variacao(), await cartao()];
+    expect(a.compareDocumentPosition(v) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(v.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("Acontecimentos novos (Workspace, PR 3)", () => {
+  it("na ordem da API, com o ativo, o tipo, a data, o título e a empresa", async () => {
+    abrir();
+    const itens = itensDe(await acontecimentos());
+    expect(itens).toHaveLength(PARTE_2.acontecimentos.length);
+    PARTE_2.acontecimentos.forEach((a, i) => {
+      expect(within(itens[i]).getByText(a.titulo)).toBeTruthy();
+      expect(within(itens[i]).getByText(`${a.ticker} · ${a.tipo}`, { exact: false })).toBeTruthy();
+    });
+    expect(within(itens[0]).getByText("PETR4 · Fato Relevante · 08/10/2026 · Petrobras")).toBeTruthy();
+  });
+
+  it("cada acontecimento abre o documento original em nova aba; sem link, avisa", async () => {
+    abrir();
+    const [comLink, semLink] = itensDe(await acontecimentos());
+    const link = within(comLink).getByRole("link", { name: /Abrir o documento na CVM/ });
+    expect(link.getAttribute("href")).toBe(PARTE_2.acontecimentos[0].link_do_original);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(within(semLink).queryByRole("link")).toBeNull();
+    expect(within(semLink).getByText(/sem link para o documento/)).toBeTruthy();
+  });
+
+  it("um link que não é http(s) não vira link", async () => {
+    const [primeiro, ...resto] = PARTE_2.acontecimentos;
+    abrir(() =>
+      respostaJson(200, { ...PULSE, acontecimentos: [{ ...primeiro, link_do_original: "javascript:alert(1)" }, ...resto] }),
+    );
+    const [ruim] = itensDe(await acontecimentos());
+    expect(within(ruim).queryByRole("link")).toBeNull();
+    expect(within(ruim).getByText(/sem link para o documento/)).toBeTruthy();
+  });
+
+  it("por que aparece fica à mão, num detalhe que abre", async () => {
+    abrir();
+    const [primeiro] = itensDe(await acontecimentos());
+    expect(within(primeiro).getByText("Por que aparece")).toBeTruthy();
+    expect(within(primeiro).getByText(PARTE_2.acontecimentos[0].por_que_aparece[0])).toBeTruthy();
+  });
+
+  it("“nenhum acontecimento novo” quando a lista vem vazia", async () => {
+    abrir(() => respostaJson(200, { ...PULSE, acontecimentos: [] }));
+    const c = await acontecimentos();
+    expect(within(c).getByText(/Nenhum acontecimento novo/)).toBeTruthy();
+  });
+
+  it("se a leitura falhou (null), avisa que a visita não foi marcada; o resto aparece", async () => {
+    abrir(() => respostaJson(200, { ...PULSE, acontecimentos: null }));
+    const c = await acontecimentos();
+    expect(within(c).getByText(/Não deu para ler os acontecimentos agora/)).toBeTruthy();
+    expect(within(c).getByText(/aparecem na próxima visita/)).toBeTruthy();
+    expect(await variacao()).toBeTruthy();
+  });
+
+  it("sem nenhum ativo guardado, a frase da API diz de onde vêm os ativos", async () => {
+    abrir(() =>
+      respostaJson(200, { ...PULSE, acontecimentos: [], variacoes: [], sem_variacao: [], avisos_dos_ativos: [] }),
+    );
+    const c = await acontecimentos();
+    expect(within(c).getByText(PULSE.sem_ativos)).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Variação do preço" })).toBeNull();
+  });
+});
+
+describe("Variação do preço (Workspace, PR 3)", () => {
+  it("na ordem da API (pulse.ordenar_variacoes: a maior mudança primeiro), com o sinal e as datas", async () => {
+    abrir();
+    const c = await variacao();
+    const linhas = within(c).getAllByRole("row").slice(1); // a 1ª é o cabeçalho
+    expect(linhas.map((l) => within(l).getAllByRole("cell")[0].textContent)).toEqual(
+      PARTE_2.variacoes.map((v) => v.ticker),
+    );
+    expect(within(linhas[0]).getByText("-4,90%")).toBeTruthy(); // VALE3, -0,049…
+    expect(within(linhas[1]).getByText("+2,00%")).toBeTruthy(); // ITUB4
+    expect(within(linhas[0]).getByText("05/10/2026 → 09/10/2026")).toBeTruthy();
+    expect(within(linhas[1]).getByText("Minha carteira")).toBeTruthy();
+  });
+
+  it("os sem preço, a nota de como a conta é feita e o aviso dos ativos de fora", async () => {
+    abrir();
+    const c = await variacao();
+    expect(within(c).getByText(/Sem preço para comparar: ZZZZ3/)).toBeTruthy();
+    expect(within(c).getByText(PARTE_2.nota_da_variacao)).toBeTruthy();
+    expect(within(c).getByText(PARTE_2.avisos_dos_ativos[0])).toBeTruthy();
+  });
+});
+
+describe("os textos novos só mostram o que mudou", () => {
+  // nada de compra ou venda, e nenhum adjetivo que julgue a mudança: o número fala sozinho
+  const PROIBIDAS = [
+    "compre",
+    "venda",
+    "oportunidade",
+    "preço-alvo",
+    "recomend",
+    "positiv",
+    "negativ",
+    "forte",
+    "fraco",
+    "excelente",
+    "preocupante",
+    "ótim",
+    "ruim",
+    "expressiv",
+  ];
+
+  it("nenhuma palavra de recomendação nem adjetivo nos cartões de acontecimentos e variação", async () => {
+    abrir();
+    for (const c of [await acontecimentos(), await variacao()]) {
+      const texto = (c.textContent ?? "").toLowerCase();
+      for (const palavra of PROIBIDAS) expect(texto, palavra).not.toContain(palavra);
+    }
   });
 });

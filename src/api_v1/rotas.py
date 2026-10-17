@@ -13,10 +13,20 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, catalogo, cobranca, conformidade, ficha, pulse, topicos
+from src import (
+    analises,
+    catalogo,
+    cobranca,
+    conformidade,
+    ficha,
+    pulse,
+    research,
+    topicos,
+)
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
+from src import presets as research_presets
 from src.api_v1 import contexto, esquemas
 from src.api_v1.acesso import (
     VARIAVEL_DO_CLIENT_ID,
@@ -40,10 +50,13 @@ from src.banco.dados_do_usuario import (
     TAMANHO_MAXIMO_DO_NOME,
     DadosInvalidosError,
     apagar_simulacao,
+    carregar_carteira,
     carregar_preferencias,
     contar_simulacoes,
     listar_favoritos,
     listar_simulacoes,
+    listar_watchlists,
+    presets_atuais,
     salvar_preferencias,
     salvar_simulacao,
 )
@@ -58,12 +71,15 @@ from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
+from src.links_das_fontes import link_da_fonte
 from src.metricas import resumir_desempenho
 from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.planos import (
+    CARTEIRA_NO_RESEARCH,
     aviso_da_pagina_de_planos,
     frase_da_assinatura,
     limites_do,
+    pode_usar,
     tabela_de_planos,
     texto_do_uso,
 )
@@ -938,6 +954,123 @@ def _estrategia_v1(
     )
 
 
+# --- Pulse, parte 2: acontecimentos novos e variação do preço (Workspace, PR 3) -------------
+
+
+def _ativos_da_conta(
+    conexao: sa.Connection, conta: Usuario, simulacoes: list
+) -> tuple[tuple[pulse.AtivoDaPessoa, ...], int]:
+    """Os ativos que o Pulse acompanha, como no app atual: favoritos, a carteira guardada (se o
+    plano tem), as listas do Research e os ativos das estratégias salvas."""
+    favoritos = listar_favoritos(conexao, conta.id)
+    listas = [(w.nome, w.tickers) for w in listar_watchlists(conexao, conta.id)]
+    carteira = (
+        carregar_carteira(conexao, conta.id)
+        if pode_usar(conta.plano, CARTEIRA_NO_RESEARCH)
+        else None
+    )
+    return pulse.ativos_da_pessoa(
+        favoritos,
+        list(carteira.pesos) if carteira else [],
+        listas,
+        [s.parametros.get("ticker") for s in simulacoes],
+        maximo=pulse.MAXIMO_DE_ATIVOS,
+    )
+
+
+def _acontecimento_v1(item: research.ItemDoResearch) -> esquemas.AcontecimentoV1:
+    e = item.evento
+    return esquemas.AcontecimentoV1(
+        id=f"{e.fonte}:{e.protocolo}",
+        ticker=e.ticker.removesuffix(".SA"),
+        empresa=e.empresa,
+        tipo=e.rotulo,
+        titulo=e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro).",
+        publicado_em=e.publicado_em,
+        fonte=research.SIGLAS_DAS_FONTES.get(e.fonte, "fonte"),
+        link_do_original=link_da_fonte(e.link),
+        relevancia=item.relevancia,
+        por_que_aparece=item.razoes,
+    )
+
+
+def montar_acontecimentos(
+    eventos: list[Evento],
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    presets: list,
+) -> list[esquemas.AcontecimentoV1]:
+    """Os eventos novos por relevância, pelos parâmetros do Research da pessoa (se os guardados
+    não combinarem mais, os padrões). (A rota e os testes do React usam.)"""
+    try:
+        r = research_presets.resolver(presets)
+    except ValueError:
+        r = research_presets.resolver([])
+    itens = pulse.acontecimentos(
+        eventos,
+        ativos,
+        j,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        list(r["newsletter.temas"]),
+    )
+    return [_acontecimento_v1(item) for item in itens]
+
+
+def _eventos_novos(
+    ativos: tuple[pulse.AtivoDaPessoa, ...], j: pulse.Janela
+) -> list[Evento] | None:
+    """Os eventos coletados na janela; None se a leitura falhou (aí a visita não é marcada)."""
+    if not ativos:
+        return []
+    try:
+        with obter_engine().connect() as conexao:
+            return eventos_dos_tickers(
+                conexao,
+                [a.ticker for a in ativos],
+                j.publicados_desde,
+                coletados_entre=(j.desde, j.ate),
+            )
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return []  # banco sem o Research: nada coletado
+        log.exception("Falha ao ler os acontecimentos do Pulse")
+        return None
+
+
+def montar_variacoes(
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    carregar: Callable[[str, str], pd.DataFrame] | None = None,
+) -> tuple[list[esquemas.VariacaoV1], list[str]]:
+    """A variação de cada ativo desde a visita (a maior primeiro) e os que ficaram sem: na
+    moeda do ativo, sem o câmbio, como no app atual. (A rota e os testes do React usam.)"""
+    carregar = carregar or contexto.carregar_dados
+    periodo = pulse.periodo_de_precos(j)
+    variacoes, sem_variacao = [], []
+    for ativo in ativos:
+        try:
+            fechamentos = carregar(ativo.ticker, periodo)["Close"]
+        except (DadosIndisponiveisError, ValueError, KeyError):
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
+        v = pulse.variacao(ativo.ticker, fechamentos, j.desde)
+        if v is None:
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+        else:
+            variacoes.append(v)
+    origens = {a.ticker: list(a.origens) for a in ativos}
+    return [
+        esquemas.VariacaoV1(
+            ticker=v.ticker.removesuffix(".SA"),
+            variacao=v.retorno,
+            de=v.de,
+            ate=v.ate,
+            por_que_aparece=origens.get(v.ticker, []),
+        )
+        for v in pulse.ordenar_variacoes(variacoes)
+    ], sem_variacao
+
+
 @router.get("/pulse")
 def pulse_da_conta(
     conta: Conta,
@@ -946,8 +1079,10 @@ def pulse_da_conta(
         Query(description="O início da janela que a aba já mostrava (ISO, com fuso)."),
     ] = None,
 ) -> esquemas.PulseV1:
-    """O Pulse (parte 1): as estratégias salvas com o veredito da ficha "Foi sorte?" refeito
-    com os preços de hoje, o que mudou primeiro. Abrir marca a visita, como no app atual.
+    """O Pulse: os acontecimentos novos nas empresas dos ativos da pessoa, a variação do preço
+    desde a visita e as estratégias salvas com o veredito da ficha "Foi sorte?" refeito com os
+    preços de hoje. Abrir marca a visita, como no app atual; se a leitura dos acontecimentos
+    falhar, não marca (senão a pessoa perderia o que ainda não viu).
 
     Sem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela
     não encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).
@@ -960,7 +1095,14 @@ def pulse_da_conta(
         guardadas = pulse.ler_mudancas(repo_pulse.mudancas_vistas(conexao, conta.id))
         simulacoes = listar_simulacoes(conexao, conta.id)
         ligadas = pulse.teses_por_estrategia(repo_teses.listar(conexao, conta.id))
+        ativos, ativos_de_fora = _ativos_da_conta(conexao, conta, simulacoes)
+        presets = presets_atuais(conexao, conta.id)
     j = _ou_422(lambda: pulse.janela_da_aba(visita, agora, desde))
+    eventos = _eventos_novos(ativos, j)
+    acontecimentos = (
+        None if eventos is None else montar_acontecimentos(eventos, ativos, j, presets)
+    )
+    variacoes, sem_variacao = montar_variacoes(ativos, j)
     salvas, sem_ficha, _ = pulse.estrategias_salvas(simulacoes, maximo=len(simulacoes))
     a_conferir = salvas[: pulse.MAXIMO_DE_FICHAS]
     fora = len(salvas) - len(a_conferir)
@@ -971,16 +1113,17 @@ def pulse_da_conta(
         for e in a_conferir
     ] + [pulse.comparar(e, vistos, None) for e in salvas[pulse.MAXIMO_DE_FICHAS :]]
     acompanhadas, mudancas = pulse.acompanhar(conferidos, guardadas, j)
-    with obter_engine().begin() as conexao:
-        repo_pulse.marcar_visita(
-            conexao,
-            conta.id,
-            agora,
-            pulse.vereditos_para_guardar(
-                vistos, conferidos, {str(s.id) for s in simulacoes}
-            ),
-            pulse.mudancas_para_guardar(mudancas),
-        )
+    if acontecimentos is not None:
+        with obter_engine().begin() as conexao:
+            repo_pulse.marcar_visita(
+                conexao,
+                conta.id,
+                agora,
+                pulse.vereditos_para_guardar(
+                    vistos, conferidos, {str(s.id) for s in simulacoes}
+                ),
+                pulse.mudancas_para_guardar(mudancas),
+            )
     sem_conferir = [
         v.estrategia.nome for v in conferidos[: len(a_conferir)] if v.agora is None
     ]
@@ -993,9 +1136,20 @@ def pulse_da_conta(
         ),
         estrategias=[_estrategia_v1(a, ligadas) for a in acompanhadas],
         limites=esquemas.LimitesDoPulseV1(
-            sem_ficha=sem_ficha, alem_do_maximo=fora, nao_conferidas=len(sem_conferir)
+            sem_ficha=sem_ficha,
+            alem_do_maximo=fora,
+            nao_conferidas=len(sem_conferir),
+            alem_dos_ativos=ativos_de_fora,
         ),
         avisos=_avisos_do_pulse(sem_conferir, sem_ficha, fora),
         sem_estrategias=SEM_ESTRATEGIAS,
         notas=[pulse.LIMITES[2], pulse.LIMITES[3]],
+        acontecimentos=acontecimentos,
+        variacoes=variacoes,
+        avisos_dos_ativos=(
+            [pulse.aviso_dos_ativos_de_fora(ativos_de_fora)] if ativos_de_fora else []
+        ),
+        sem_variacao=sem_variacao,
+        sem_ativos=pulse.SEM_ATIVOS,
+        nota_da_variacao=pulse.NOTA_DA_VARIACAO,
     )
