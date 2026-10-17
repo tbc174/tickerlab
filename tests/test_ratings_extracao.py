@@ -285,3 +285,11 @@ def test_companhia_no_titulo_segue_a_regra_de_sempre():
     r = ratings.extrair_rating(texto, empresa="MINERVA S/A")
     assert r is not None
     assert (r.escala, r.nota) == ("nacional", "A-")
+
+
+def test_varias_companhias_sem_a_nota_de_quem_entregou_nao_chuta():
+    texto = CABECALHO + (
+        "S&P Global Ratings revisou perspectivas. Ultrafértil S.A. Escala Nacional brAA/Estável/-- "
+        "MRS Logística S.A. Escala global BB-/Estável/-- Neoenergia S.A. brAAA/Estável/--"
+    )
+    assert ratings.extrair_rating(texto, empresa="MRS LOGÍSTICA S/A") is None

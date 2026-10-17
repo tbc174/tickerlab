@@ -515,6 +515,10 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
     ):
         assert empresa is not None
         perto = _mais_perto_da_empresa(texto, nacionais + globais, empresa)
+        if perto is None:
+            return (
+                None  # a nota de quem entregou não está no texto: a primeira é de outra
+            )
     nacional = perto in nacionais if perto else bool(nacionais)
     achados = nacionais if nacional else globais
     if not achados:
