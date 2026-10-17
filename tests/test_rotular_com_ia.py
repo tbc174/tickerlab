@@ -784,3 +784,52 @@ def test_comparar_conta_os_3_eventos_do_desvio_pela_resposta_bruta(
     assert rc.arquivo_dos_rotulos(pasta).read_bytes() == antes
     monkeypatch.setattr(ar, "DESVIO_DO_TRECHO", frozenset({"E5", "E6"}))
     assert rc.comparar(pasta, eventos).passou
+
+
+# --- vazamento (v2, 17/10/2026): a conferência sem custo antes do teste de identificação ---
+
+
+def _fila_com_nomes(tmp_path):
+    eventos = [
+        {**EVENTOS[0], "id": "A", "empresa": "COSAN S.A.", "categoria": "Fato Relevante"},
+        {**EVENTOS[0], "id": "B", "empresa": "CIELO S.A. - INSTITUIÇÃO DE PAGAMENTO",
+         "categoria": "Fato Relevante"},
+    ]  # fmt: skip
+    pasta = tmp_path / "v2"
+    (pasta / "textos").mkdir(parents=True)
+    (pasta / "textos" / "A.txt").write_text("A Cosan vendeu.", encoding="utf-8")
+    (pasta / "textos" / "B.txt").write_text(
+        "A Cielo, instituição de pagamento.", encoding="utf-8"
+    )
+    return eventos, pasta
+
+
+def test_vazamento_sem_gastar_na_v2_fica_so_a_palavra_comum(tmp_path):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    resultado = rc.vazamento(eventos, pasta, ["A", "B"])
+    assert resultado["n"] == 2 and resultado["com_palavra_distinta"] == 0
+    assert (
+        resultado["com_palavra_comum"] == 1
+    )  # "instituição" e "pagamento" ficam no texto
+    gravado = json.loads((pasta / "vazamento.json").read_text(encoding="utf-8"))
+    assert gravado["versao_do_prompt"] == ri.VERSAO_DO_PROMPT and gravado["n"] == 2
+
+
+def test_vazamento_acha_o_nome_que_escapou(tmp_path, monkeypatch):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    monkeypatch.setattr(
+        ri, "anonimizar", lambda texto, nomes: texto
+    )  # como se nada fosse trocado
+    resultado = rc.vazamento(eventos, pasta, ["A", "B"])
+    assert resultado["com_palavra_distinta"] == 2
+    assert resultado["palavras_distintas"] == {"cosan": 1, "cielo": 1}
+    assert resultado["eventos_com_palavra_distinta"] == ["A", "B"]
+
+
+def test_main_vazamento_nao_chama_a_api(tmp_path, monkeypatch, capsys):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    caminho = tmp_path / "eventos.json"
+    caminho.write_text(json.dumps({"eventos": eventos}), encoding="utf-8")
+    monkeypatch.setattr(ri, "cliente", lambda: pytest.fail("vazamento não usa a API"))
+    assert rc.main(["vazamento", "--eventos", str(caminho), "--pasta", str(pasta)]) == 0
+    assert "palavra que distingue a empresa: 0" in capsys.readouterr().out

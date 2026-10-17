@@ -7,6 +7,7 @@
     python -m scripts.rotular_com_ia buscar   --eventos eventos.json --pasta ...
     python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --teto-dolares 60 [--so-estimar]
     python -m scripts.rotular_com_ia estabilidade --eventos ... --pasta ... --teto-dolares 60 [--so-estimar]
+    python -m scripts.rotular_com_ia vazamento --eventos ... --pasta ... [--texto-so-nos-fatos]  (sem API)
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
     python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
         --modelo claude-opus-5-5 --so-prova
@@ -54,6 +55,7 @@ import random
 import re
 import sys
 import time
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
@@ -610,6 +612,50 @@ def _pedidos_de_identificacao(
     ]  # fmt: skip
 
 
+ARQUIVO_DO_VAZAMENTO = "vazamento.json"
+
+
+def vazamento(
+    eventos: list[dict], pasta: Path, ids: list[str], so_fatos: bool = False
+) -> dict:
+    """A conferência sem custo antes do teste de identificação (v2): em quantos eventos de `ids` o
+    documento anonimizado, o mesmo que a identificação lê, ainda tem uma palavra que distingue a
+    empresa (deveria ser zero) ou uma palavra comum do nome que a auditoria contaria como acerto.
+    Grava em `<pasta>/vazamento.json`; não chama a API."""
+    por_id = {e["id"]: e for e in eventos}
+    rotulos = ler_rotulos(pasta)
+    distintas: Counter[str] = Counter()
+    comuns: Counter[str] = Counter()
+    com_distinta, com_comum = [], []
+    for i in (i for i in ids if i in por_id):
+        evento = por_id[i]
+        regra = _regra_do_rotulo(rotulos, i, so_fatos)
+        lido = ri.documento(evento, texto_do_pedido(evento, pasta, regra) or "")
+        nome = evento.get("empresa") or ""
+        achadas = ri.palavras_que_vazam(lido, nome)
+        ficam = ri.palavras_comuns_que_ficam(lido, nome)
+        distintas.update(achadas)
+        comuns.update(ficam)
+        if achadas:
+            com_distinta.append(i)
+        if ficam:
+            com_comum.append(i)
+    resultado = {
+        "n": sum(i in por_id for i in ids),
+        "com_palavra_distinta": len(com_distinta),
+        "com_palavra_comum": len(com_comum),
+        "palavras_distintas": dict(distintas.most_common(30)),
+        "palavras_comuns": dict(comuns.most_common(30)),
+        "eventos_com_palavra_distinta": com_distinta[:100],
+        "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+        "medido_em": datetime.now(FUSO).isoformat(timespec="seconds"),
+    }
+    (pasta / ARQUIVO_DO_VAZAMENTO).write_text(
+        json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return resultado
+
+
 def estimar_identificacao(
     cliente: anthropic.Anthropic,
     eventos: list[dict],
@@ -899,6 +945,7 @@ def main(argv: list[str] | None = None) -> int:
             "auditar",
             "comparar",
             "estabilidade",
+            "vazamento",
         ),
     )
     argumentos.add_argument(
@@ -964,6 +1011,20 @@ def main(argv: list[str] | None = None) -> int:
         eventos = so_prova(eventos)
     if opcoes.passo == "baixar":
         baixar(eventos, opcoes.pasta, opcoes.maximo)
+        return 0
+    if opcoes.passo == "vazamento":
+        r = vazamento(
+            eventos, opcoes.pasta, ids_de_prova(eventos), opcoes.texto_so_nos_fatos
+        )
+        print(f"Eventos de prova: {r['n']} (prompt v{r['versao_do_prompt']})")
+        print(
+            f"Com palavra que distingue a empresa: {r['com_palavra_distinta']}",
+            r["palavras_distintas"],
+        )
+        print(
+            f"Com palavra comum do nome (fica de propósito): {r['com_palavra_comum']}",
+            r["palavras_comuns"],
+        )
         return 0
     modelo = opcoes.modelo
     if (

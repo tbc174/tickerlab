@@ -307,9 +307,22 @@ def anonimizar(texto: str, nomes: list[str]) -> str:
 def palavras_que_vazam(texto: str, nome: str) -> set[str]:
     """As palavras que distinguem a empresa (as que a auditoria conta como acerto, fora as comuns)
     e que ainda estão no documento: a conferência sem custo antes do teste de identificação."""
-    return _distintas(nome) & set(
-        re.findall(r"[a-z0-9]+", _sem_acento_minusculo(texto))
-    )
+    return _distintas(nome) & _palavras_do_texto(texto)
+
+
+def palavras_comuns_que_ficam(texto: str, nome: str) -> set[str]:
+    """As palavras comuns do nome que ficam no documento de propósito ("pagamento") e que a auditoria
+    contaria como acerto se a IA as dissesse: o resto do que a identificação pode pegar."""
+    palavras = re.findall(r"[a-z0-9]+", _sem_acento_minusculo(nome))
+    comuns = {
+        p for p in palavras
+        if len(p) >= _MIN_LETRAS_DO_NOME and p not in GENERICAS and p in PALAVRAS_COMUNS
+    }  # fmt: skip
+    return comuns & _palavras_do_texto(texto)
+
+
+def _palavras_do_texto(texto: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", _sem_acento_minusculo(texto)))
 
 
 def e_fato_relevante(evento: dict) -> bool:
