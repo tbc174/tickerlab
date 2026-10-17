@@ -2172,7 +2172,7 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 - **Chaves:** `de`, `para`, `tipo`, `papel`, `aconteceu_em`, `fonte`
 - **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `publico_em`; coletado_em = `coletado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/rede/ligacoes.parquet` (servidor de casa, `scripts/montar_rede.py`)
 - **Linhagem:** Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo (cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a coleta de cada um. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). Cada linha leva o `origem_sha256` do arquivo (ou da tabela da base) de onde veio.
 
@@ -2188,6 +2188,7 @@ Uma linha por relação entre duas entidades da rede (ADR 0077), com as três da
 | `publico_em` | Desde quando a relação era pública (como era na data) | data (dia) |
 | `coletado_em` | Quando a base guardou o arquivo de onde veio (registro de coletas) | data (dia) |
 | `ate` | Até quando valeu, sem incluir o dia (vazio: ainda vale) | data (dia) |
+| `ate_publico_em` | Desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a mostra (vazio: ainda vale). Como era em D usa este, não o `ate` | data (dia) |
 | `situacao` | vigente ou encerrada | texto |
 | `encerrada_por` | fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente | texto |
 | `fonte` | cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie | texto |
