@@ -13,7 +13,7 @@ cada fonte fica num de três lugares:
 
 Diferente das séries 3 e 4, aqui as exigências 4 (sobrevivência), 5 (eventos), 6 (conferência
 cruzada) e 7 (qualidade automática) também precisam de prova. A Fase 1 só começa com `PENDENCIAS`
-vazio: `test_modelo_8_pronto_para_a_fase_1` falha de propósito até lá.
+vazio (`test_fontes_do_modelo_8_prontas_para_a_fase_1`; vazio desde 17/10/2026).
 """
 
 import re
@@ -221,6 +221,10 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         *COLUNAS_COMO_ERA,
     ],
     (IPE, 4): CONFERENCIA_DAS_CANCELADAS,
+    # tolerância de 90% mantida; passa com cada falta explicada (decisão do Tiago, 17/10)
+    (IPE, 6): [
+        f"{CRUZADA}::test_recuperacao_judicial_propria_pela_raiz_x_receita_tem_cada_falta_explicada"
+    ],
     (IPE, 7): MONTAGEM_COM_ALERTA,
     (IPE, 9): [
         f"{HISTORICO}::test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao"
@@ -270,15 +274,8 @@ NAO_SE_APLICA: dict[tuple[str, int], str] = {
     ),
 }
 
-PENDENCIAS: dict[tuple[str, int], str] = {
-    (IPE, 6): (
-        "conferência cruzada com a Receita abaixo da tolerância de 90%. Remedida em 17/10 com a "
-        "regra do PR 3 (só a recuperação judicial da própria companhia, pela raiz do CNPJ): Receita "
-        "→ IPE 25 de 25, IPE → Receita 22 de 32 (69%). O que sobra é a Receita sem a marca (Junta "
-        "incompleta), recuperações encerradas e 1 filial. Mudar a tolerância depois de ver é "
-        "decisão escrita do Tiago, antes do PR 4"
-    ),
-}
+# vazio desde 17/10/2026: a última, (IPE, 6), saiu por decisão do Tiago (ver PROVAS)
+PENDENCIAS: dict[tuple[str, int], str] = {}
 
 
 def _existe(teste: str) -> bool:
@@ -352,9 +349,7 @@ def test_o_prazo_esta_na_ficha_do_rotulo():
     assert {"prazo", "dias_uteis_de_atraso", "zona_cinzenta"} <= set(colunas)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="ADR 0027, Emenda 1: o modelo 8 só começa a Fase 1 sem pendências (PRs B a D)",
-)
-def test_modelo_8_pronto_para_a_fase_1():
+def test_fontes_do_modelo_8_prontas_para_a_fase_1():
+    """ADR 0027, Emenda 1: sem pendências nas fontes desde 17/10/2026. A Fase 1 ainda espera o
+    resto da Fase 0 do plano (notebook e pré-registro)."""
     assert not PENDENCIAS
