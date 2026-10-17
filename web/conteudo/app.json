@@ -6,6 +6,10 @@
       "texto": "Opcional: Quero receber por e-mail novidades e ofertas do TickerLab (lançamentos, recursos novos e promoções dos planos). Posso sair a qualquer momento pelo link em cada e-mail ou em Meus dados.",
       "versao": "2026-10-14"
     },
+    "sem_o_aceite": {
+      "explicacao": "Sem aceitar, você não usa o app, mas os seus dados continuam seus: dá para baixar uma cópia ou apagar a conta aqui mesmo.",
+      "titulo": "Não quer aceitar? Baixe ou apague os seus dados"
+    },
     "titulo": "Antes de começar",
     "versao": "2026-10-13.7"
   },

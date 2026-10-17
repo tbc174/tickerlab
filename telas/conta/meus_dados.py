@@ -168,6 +168,18 @@ def pagina_meus_dados():
         return
     _mostrar_novidades(usuario)
     st.divider()
+    mostrar_exportacao(usuario)
+    st.divider()
+    mostrar_links_da_conta(usuario)
+    st.divider()
+    mostrar_apagar_a_conta(usuario)
+
+
+def mostrar_exportacao(usuario):
+    """Baixar a cópia dos dados (JSON) e os PDFs guardados (LGPD: acesso e portabilidade).
+
+    Também na tela do aceite dos termos: não aceitar termos novos não tira esse direito.
+    """
     st.subheader("Baixar uma cópia dos meus dados")
     st.caption(
         "Perfil, preferências, favoritos, simulações e situação da assinatura, em um "
@@ -199,9 +211,10 @@ def pagina_meus_dados():
         key="baixar_meus_pdfs",
         on_click="ignore",
     )
-    st.divider()
-    mostrar_links_da_conta(usuario)
-    st.divider()
+
+
+def mostrar_apagar_a_conta(usuario):
+    """Apagar a conta, com a palavra de confirmação (LGPD: eliminação; também na tela do aceite)."""
     st.subheader("Apagar a minha conta")
     st.warning(
         "Isto apaga **para sempre** o seu perfil, preferências, favoritos e simulações, "

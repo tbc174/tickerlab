@@ -4,7 +4,7 @@ A interface nova faz o login com o Google no navegador e manda o token (um "ID t
 Google) no cabeçalho `Authorization: Bearer ...`. Aqui ele é conferido: assinatura com as chaves
 públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`), dentro da validade e
 com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
-aceitado os termos atuais. Por último, o plano da conta precisa abrir a página da rota (o contrato da
+aceitado os termos atuais (menos para baixar os próprios dados: LGPD). Por último, o plano da conta precisa abrir a página da rota (o contrato da
 página em src/paginas.py diz qual é; a regra é a mesma do Streamlit, ADR 0062).
 
 A chave liga/desliga fica em `src/api_v1/__init__.py`; aqui ela é conferida de novo a cada pedido.
@@ -204,11 +204,19 @@ def conta_sem_o_aceite(
     return usuario
 
 
+# rotas dos direitos da LGPD (art. 18): valem sem o aceite dos termos atuais. Quem não quer
+# aceitar termos novos ainda baixa os próprios dados (achado 6c da auditoria do Codex, 17/10/2026)
+ROTAS_SEM_O_ACEITE = frozenset({"/v1/meus-dados"})
+
+
 def conta_logada(
+    request: Request,
     usuario: Annotated[Usuario, Depends(conta_sem_o_aceite)],
 ) -> Usuario:
     """A conta do TickerLab de quem chamou, ou o erro HTTP certo (401, 403, 429 ou 503)."""
-    if precisa_aceitar_os_termos(usuario):
+    rota: str = request.scope["route"].path
+    sem_o_aceite = rota.removeprefix(PREFIXO_DA_API) in ROTAS_SEM_O_ACEITE
+    if precisa_aceitar_os_termos(usuario) and not sem_o_aceite:
         raise _recusa(403, "Aceite os termos atuais para continuar.", "termos")
     return usuario
 

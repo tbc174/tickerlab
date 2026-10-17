@@ -187,6 +187,28 @@ describe("conta recusada pela API", () => {
     expect(JSON.parse(String(aceite?.[1]?.body))).toMatchObject({ novidades: true });
   });
 
+  it("termos novos sem aceite: ainda baixa os dados e acha onde apagar a conta (LGPD)", async () => {
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: vi.fn(() => "blob:dados"), revokeObjectURL: vi.fn() }));
+    const aberto = abrirApp("/", {
+      entraSozinho: false,
+      eu: () => respostaJson(403, { detail: "Aceite os termos." }, { "X-TickerLab-Motivo": "termos" }),
+      rotas: (endereco) =>
+        endereco === "/api/v1/meus-dados" ? respostaJson(200, { perfil: { email: "ana@exemplo.com" } }) : undefined,
+    });
+    google = aberto.google;
+    await entrar();
+    expect(await screen.findByText(conteudoDoApp.aceite.sem_o_aceite.titulo)).toBeTruthy();
+    expect(screen.getByText(conteudoDoApp.aceite.sem_o_aceite.explicacao)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Baixar meus dados (JSON)" }));
+    await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
+    expect(aberto.buscar).toHaveBeenCalledWith("/api/v1/meus-dados", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    const apagar = screen.getByRole("link", { name: /Apagar a conta/ });
+    expect(apagar.getAttribute("href")).toBe("https://app.tickerlab.com.br/meus-dados");
+  });
+
   it("termos que mudaram com a página aberta: explica e não entra", async () => {
     const aberto = abrirApp("/", {
       entraSozinho: false,

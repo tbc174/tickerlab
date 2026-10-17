@@ -347,3 +347,17 @@ def test_rota_sem_contrato_fecha(cliente, banco, ana, chave, chamadas):
     resposta = cliente.get("/api/v1/sem-contrato", headers=com_token(token(chave)))
     assert resposta.status_code == 500
     assert chamadas == []
+
+
+def test_termos_novos_nao_bloqueiam_baixar_os_meus_dados(cliente, banco, chave):
+    """Achado 6c do Codex (LGPD): sem aceitar os termos novos, a pessoa ainda baixa os dados dela;
+    o resto da API continua pedindo o aceite."""
+    with banco.begin() as conexao:
+        entrar(
+            conexao, "ana", "ana@exemplo.com"
+        )  # conta sem o aceite dos termos atuais
+    cabecalho = com_token(token(chave))
+    assert cliente.get("/api/v1/eu", headers=cabecalho).status_code == 403
+    resposta = cliente.get("/api/v1/meus-dados", headers=cabecalho)
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["perfil"]["email"] == "ana@exemplo.com"

@@ -24,14 +24,17 @@ from src.banco.usuarios import buscar_por_id
 from src.cobranca import buscar_assinatura
 from src.conformidade import (
     CAIXA_DO_ACEITE,
+    EXPLICACAO_SEM_O_ACEITE,
     INTRODUCAO_DO_ACEITE,
     TITULO_DO_ACEITE,
+    TITULO_SEM_O_ACEITE,
     aceitar_os_termos,
     precisa_aceitar_os_termos,
 )
 from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
 from src.origem import NOME_DO_COOKIE, ler_origem
 from telas.comum import paleta_da_sessao
+from telas.conta import meus_dados
 from telas.conta.assinatura import _recarregar_o_plano
 from telas.conta.textos_legais import _corpo_do_texto
 
@@ -200,6 +203,11 @@ def mostrar_aceite_dos_termos(usuario):
             args=(usuario,),
         )
         st.button("Sair", on_click=st.logout)
+        # LGPD: termos novos sem aceite não podem prender os dados de quem já tem conta
+        with st.expander(TITULO_SEM_O_ACEITE):
+            st.caption(EXPLICACAO_SEM_O_ACEITE)
+            meus_dados.mostrar_exportacao(usuario)
+            meus_dados.mostrar_apagar_a_conta(usuario)
 
 
 def obter_usuario_logado():

@@ -4,55 +4,14 @@
 import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
 import { linkDoApp } from "../../site/textos";
-import { ErroDaApi, baixar, pedir } from "../api";
+import { pedir } from "../api";
+import { BaixarMeusDados, mensagemDe } from "../BaixarMeusDados";
 import { useConta } from "../conta";
 import type { MeusLinksV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 
 const SEM_PARAMETROS = {};
-const NOME_DO_ARQUIVO = "meus-dados-tickerlab.json"; // o mesmo do botão do Streamlit
-
-function mensagemDe(falha: unknown): string {
-  return falha instanceof ErroDaApi ? falha.message : "Não deu agora. Tente de novo em instantes.";
-}
-
-function BaixarMeusDados() {
-  const token = useConta()?.token ?? null;
-  const [falha, setFalha] = useState<string | null>(null);
-  const [baixando, setBaixando] = useState(false);
-  const baixarAgora = () => {
-    if (token === null) return;
-    setBaixando(true);
-    setFalha(null);
-    baixar("/v1/meus-dados", token)
-      .then((arquivo) => {
-        const endereco = URL.createObjectURL(arquivo);
-        const ancora = document.createElement("a");
-        ancora.href = endereco;
-        ancora.download = NOME_DO_ARQUIVO;
-        ancora.click();
-        URL.revokeObjectURL(endereco);
-      })
-      .catch((erro: unknown) => setFalha(mensagemDe(erro)))
-      .finally(() => setBaixando(false));
-  };
-  return (
-    <section aria-label="Seus dados">
-      <h2>Seus dados</h2>
-      <p className="apagado">Uma cópia de tudo o que o TickerLab guarda sobre você, num arquivo JSON.</p>
-      <button type="button" className="botao primario" disabled={baixando} onClick={baixarAgora}>
-        Baixar meus dados (JSON)
-      </button>
-      {falha ? (
-        <p className="erro-do-app" role="alert">
-          {falha}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
 function Links({ inicial }: { inicial: MeusLinksV1 }) {
   const token = useConta()?.token ?? null;
   // uma fonte só: a lista começa com a resposta da API e só muda pelo revogar (um efeito que copiasse
@@ -106,7 +65,7 @@ export function MeusDados({ pagina }: { pagina: PaginaDoApp }) {
     <section>
       <h1>{pagina.titulo}</h1>
       <p className="apagado">{pagina.descricao}</p>
-      <BaixarMeusDados />
+      <BaixarMeusDados token={useConta()?.token ?? null} />
       {pedido.estado === "carregando" ? (
         <p className="apagado" role="status">
           Lendo os seus links…

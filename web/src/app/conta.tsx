@@ -5,6 +5,7 @@ import { type ReactNode, createContext, useCallback, useContext, useEffect, useR
 import { conteudoDoApp, planos } from "../conteudo";
 import { URL_DO_SITE, linkDoApp } from "../site/textos";
 import { ErroDaApi, pedir } from "./api";
+import { BaixarMeusDados } from "./BaixarMeusDados";
 import { FundoDoApp } from "./FundoDoApp";
 import { type GoogleId, carregarGoogle } from "./login";
 import type { EuV1 } from "./tipos";
@@ -176,7 +177,7 @@ function TextoLegal({ titulo, pagina }: { titulo: string; pagina: string }) {
 
 /** Primeiro acesso ou termos novos: a pessoa lê e confirma antes de abrir qualquer tela. */
 function AceiteDosTermos({ conta }: { conta: Conta }) {
-  const { titulo, introducao, caixa, novidades } = conteudoDoApp.aceite;
+  const { titulo, introducao, caixa, novidades, sem_o_aceite } = conteudoDoApp.aceite;
   const [aceitou, setAceitou] = useState(false);
   const [querNovidades, setQuerNovidades] = useState(false); // opt-in: começa desmarcada
   const [enviando, setEnviando] = useState(false);
@@ -218,6 +219,15 @@ function AceiteDosTermos({ conta }: { conta: Conta }) {
           Sair
         </button>
       </div>
+      {/* LGPD: termos novos sem aceite não prendem os dados de quem já tem conta */}
+      <details className="sem-o-aceite">
+        <summary>{sem_o_aceite.titulo}</summary>
+        <p className="apagado">{sem_o_aceite.explicacao}</p>
+        <BaixarMeusDados token={conta.token} />
+        <a className="botao" href={linkDoApp("meus-dados")}>
+          Apagar a conta (no app atual)
+        </a>
+      </details>
     </section>
   );
 }
