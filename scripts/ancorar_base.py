@@ -303,17 +303,25 @@ def _ancorar_base_do_dia(ancoras: Path, pasta: Path, dia: str, feito: Noite) -> 
 
 
 def _ancorar_lotes(ancoras: Path, rotulos: Path, feito: Noite) -> None:
-    """Uma âncora para cada lote de rótulos já gravado (ADR 0078, item 1; ADR 0072)."""
+    """Uma âncora para cada lote de rótulos já gravado (ADR 0078, item 1; ADR 0072), do rotulador
+    (`manifesto.json`) e do segundo modelo (`manifesto.<modelo>.json`, Emenda 1)."""
     arquivos = [rotulos / "manifesto.json", rotulos / "rotulos.jsonl"]
     if not all(arquivo.exists() for arquivo in arquivos):
         feito.problemas.append(
             f"rótulos sem {', '.join(a.name for a in arquivos)} em {rotulos}"
         )
         return
-    for lote in _ler_json(rotulos / "manifesto.json").get("lotes", []):
-        destino = ancoras / f"rotulos-{_nome_do_lote(lote['id'])}.json"
-        if lote.get("estado") == "gravado" and not destino.exists():
-            montar(destino, f"lote {lote['id']}", None, arquivos)
+    outros = sorted(rotulos.glob("manifesto.*.json"))
+    for manifesto in [arquivos[0], *outros]:
+        sufixo = manifesto.name.removeprefix("manifesto").removesuffix(".json")
+        par = [manifesto, rotulos / f"rotulos{sufixo}.jsonl"]
+        if not par[1].exists():
+            feito.problemas.append(f"{manifesto.name} sem {par[1].name} em {rotulos}")
+            continue
+        for lote in _ler_json(manifesto).get("lotes", []):
+            destino = ancoras / f"rotulos-{_nome_do_lote(lote['id'])}.json"
+            if lote.get("estado") == "gravado" and not destino.exists():
+                montar(destino, f"lote {lote['id']}", None, par)
 
 
 def _completo(recibo: Path) -> bool:

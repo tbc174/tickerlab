@@ -331,6 +331,29 @@ def test_noite_ancora_cada_lote_gravado_uma_vez(tmp_path, rotulos):
     )
 
 
+def test_noite_ancora_tambem_os_lotes_do_segundo_modelo(tmp_path, rotulos):
+    """Os rótulos do Opus (Emenda 1 da ADR 0072) ficam em arquivos próprios e também são carimbados."""
+    (rotulos / "rotulos.claude-opus-5-5.jsonl").write_text(
+        '{"evento_id": "1"}\n', encoding="utf-8"
+    )
+    (rotulos / "manifesto.claude-opus-5-5.json").write_text(
+        json.dumps({"lotes": [{"id": "msgbatch_O", "estado": "gravado"}]}),
+        encoding="utf-8",
+    )
+    feito = _noite(tmp_path, None, rotulos=rotulos)
+    assert sorted(feito.carimbadas) == [
+        "rotulos-msgbatch_A.json",
+        "rotulos-msgbatch_O.json",
+    ]
+    ancora = json.loads(
+        (tmp_path / "ancoras" / "rotulos-msgbatch_O.json").read_text("utf-8")
+    )
+    assert [f["nome"] for f in ancora["folhas"]] == [
+        "arquivos/manifesto.claude-opus-5-5.json",
+        "arquivos/rotulos.claude-opus-5-5.jsonl",
+    ]
+
+
 def test_noite_nao_ancora_lote_enviado(tmp_path, rotulos):
     _noite(tmp_path, None, rotulos=rotulos)
     assert not (tmp_path / "ancoras" / "rotulos-msgbatch_B.json").exists()

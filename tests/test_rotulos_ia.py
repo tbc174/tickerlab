@@ -193,7 +193,7 @@ def test_custo_em_lote_e_metade():
 def test_estimativa_da_fila_inteira_fica_perto_do_plano():
     # 3.196 eventos x 4.500 tokens de entrada x 500 de saída, pela Batch: ~US$ 22 (plano de 14/10)
     estimativa = ri.custo_em_dolares(
-        3_196 * 4_500, 3_196 * ri.SAIDA_ESTIMADA_POR_EVENTO
+        3_196 * 4_500, 3_196 * ri.MODELOS[ri.MODELO].saida_estimada_por_evento
     )
     assert 15 < estimativa < 30
 
@@ -236,3 +236,38 @@ def test_cnpj_com_letras_tambem_e_mascarado():
     assert "12" not in texto and texto.count(ri.CNPJ) == 2
     # 12 letras e 2 números que não são CNPJ (o DV não confere) ficam como estão
     assert ri.anonimizar("PALAVRAGRAND12", []) == "PALAVRAGRAND12"
+
+
+# --- segundo modelo às cegas (Emenda 1 da ADR 0072, 17/10/2026) ---------------------------------
+
+
+def test_preco_do_opus():
+    """Opus 5.5: US$ 4 e US$ 20 por milhão (o dobro do Sonnet); pela Batch API, a metade."""
+    opus = ri.MODELO_CONFERENTE
+    assert ri.custo_em_dolares(
+        1_000_000, 100_000, lote=False, modelo=opus
+    ) == pytest.approx(6.0)
+    assert ri.custo_em_dolares(1_000_000, 100_000, modelo=opus) == pytest.approx(3.0)
+
+
+def test_modelo_desconhecido_nao_vira_preco_de_outro():
+    with pytest.raises(ValueError, match="claude-x"):
+        ri.custo_em_dolares(1, 1, modelo="claude-x")
+    with pytest.raises(ValueError, match="claude-x"):
+        ri.pedido(FATO, TEXTO, modelo="claude-x")
+
+
+def test_opus_le_exatamente_o_mesmo_pedido_que_o_sonnet():
+    """Mesmo guia, mesma versão do prompt e mesmo texto anonimizado: só o modelo muda."""
+    sonnet = ri.pedido(FATO, TEXTO)
+    opus = ri.pedido(FATO, TEXTO, modelo=ri.MODELO_CONFERENTE)
+    assert sonnet["model"] == ri.MODELO and opus["model"] == ri.MODELO_CONFERENTE
+    assert {**opus, "model": ri.MODELO} == sonnet
+    assert ri.hash_da_entrada(opus) != ri.hash_da_entrada(sonnet)
+
+
+def test_rotulo_do_opus_guarda_o_modelo():
+    rotulo = ri.RotuloDaIA("E1", 3, "fusao", "OUTROS", "trecho", "alta")
+    guardado = rotulo.para_guardar(ri.MODELO_CONFERENTE)
+    assert guardado["por"] == "ia" and guardado["modelo"] == ri.MODELO_CONFERENTE
+    assert guardado["versao_do_prompt"] == ri.VERSAO_DO_PROMPT

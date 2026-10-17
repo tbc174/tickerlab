@@ -7,6 +7,9 @@
     python -m scripts.rotular_com_ia buscar   --eventos eventos.json --pasta ...
     python -m scripts.rotular_com_ia identificar --eventos ... --pasta ... --humanos tiago.json --teto-dolares 60
     python -m scripts.rotular_com_ia auditar  --eventos ... --pasta ... --humanos tiago.json
+    python -m scripts.rotular_com_ia estimar  --eventos ... --pasta ... --teto-dolares 10 \
+        --modelo claude-opus-5-5 --so-prova
+    python -m scripts.rotular_com_ia comparar --eventos ... --pasta ...
 
 Com `--texto-so-nos-fatos` (estimar, piloto, enviar, identificar), só os fatos relevantes vão com
 texto; os outros vão só com o assunto, como o guia manda a pessoa fazer (Tiago, 14/10/2026: vale se a
@@ -24,6 +27,13 @@ dá o veredito da ADR 0072 contra os rótulos do Tiago, em `<pasta>/auditoria.js
 Os rótulos vão para `<pasta>/rotulos.jsonl` (um por linha, com `por: "ia"`, a entrada em hash e a
 resposta bruta) e o resumo para `<pasta>/manifesto.json`. Nada aqui lê ou grava na página das 21h: os
 rótulos do Tiago continuam às cegas. A chave fica em `ANTHROPIC_API_KEY` (nunca no código).
+
+**Segundo modelo às cegas (Emenda 1 da ADR 0072, 17/10/2026):** `--modelo claude-opus-5-5` faz os
+mesmos passos com o Opus, no mesmo pedido, gravando em `<pasta>/rotulos.claude-opus-5-5.jsonl` e
+`<pasta>/manifesto.claude-opus-5-5.json` (o gasto e o teto do Opus são contados à parte do Sonnet).
+`--so-prova` limita ao conjunto de prova: os 300 primeiros da fila e o `lote-leitor-v1`. `comparar`
+mede Sonnet × Opus nos 300 com os limites da emenda e lista, no lote do leitor, os eventos em que os
+dois concordam no assunto (a referência de máquina do leitor), em `<pasta>/comparacao-modelos.json`.
 """
 
 import argparse
@@ -52,8 +62,8 @@ PAUSA_ENTRE_DOWNLOADS = 60  # segundos: a CVM limita os downloads por endereço
 MAX_CARACTERES_GUARDADOS = 20_000  # o texto guardado; o pedido usa só o começo
 AMOSTRA_DA_ESTIMATIVA = 50
 SEMENTE = 20261014
-# cache: escrever custa 1,25x a entrada; ler custa 0,1x
-PESO_DA_ESCRITA_NO_CACHE, PESO_DA_LEITURA_DO_CACHE = 1.25, 0.1
+# cache: escrever custa 1,25x a entrada; ler custa uma fração que muda por modelo (`ri.MODELOS`)
+PESO_DA_ESCRITA_NO_CACHE = 1.25
 # mensagem mínima para contar o prefixo fixo (o guia no `system`), que o cache escreve uma vez e lê nos outros
 SONDA_DO_PREFIXO = "."
 _CUSTOM_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -75,8 +85,9 @@ def chave(evento_id: str) -> str:
 
 
 def ler_eventos(caminho: Path) -> list[dict]:
-    """A fila da página. Evento sem id ou com chave repetida fica de fora, com aviso (a fila v1 tem um
-    sem id, na posição 3.120)."""
+    """A fila da página, cada evento com a `ordem` (a posição dele na página, como nos rótulos do
+    Tiago). Evento sem id ou com chave repetida fica de fora, com aviso (a fila v1 tinha um sem id, na
+    posição 3.120)."""
     eventos = json.loads(caminho.read_text(encoding="utf-8"))["eventos"]
     validos, chaves = [], set()
     for posicao, evento in enumerate(eventos):
@@ -89,8 +100,28 @@ def ler_eventos(caminho: Path) -> list[dict]:
             )
             continue
         chaves.add(k)
-        validos.append(evento)
+        validos.append({"ordem": posicao, **evento})
     return validos
+
+
+def so_prova(eventos: list[dict]) -> list[dict]:
+    """Só o conjunto de prova: os 300 primeiros da fila e o `lote-leitor-v1`."""
+    primeiros, lote = ar.conjunto_de_prova(eventos)
+    prova = set(primeiros) | set(lote)
+    return [e for e in eventos if e["id"] in prova]
+
+
+def _sufixo(modelo: str) -> str:
+    """Os arquivos do rotulador ficam com o nome de sempre; os de outro modelo levam o nome dele."""
+    return "" if modelo == ri.MODELO else f".{modelo}"
+
+
+def arquivo_dos_rotulos(pasta: Path, modelo: str = ri.MODELO) -> Path:
+    return pasta / f"rotulos{_sufixo(modelo)}.jsonl"
+
+
+def arquivo_do_manifesto(pasta: Path, modelo: str = ri.MODELO) -> Path:
+    return pasta / f"manifesto{_sufixo(modelo)}.json"
 
 
 def _textos(pasta: Path) -> Path:
@@ -107,9 +138,9 @@ def texto_guardado(pasta: Path, evento_id: str) -> str | None:
     return None
 
 
-def ler_rotulos(pasta: Path) -> dict[str, dict]:
-    """Os registros já gravados, pelo id do evento (o último vale)."""
-    arquivo = pasta / "rotulos.jsonl"
+def ler_rotulos(pasta: Path, modelo: str = ri.MODELO) -> dict[str, dict]:
+    """Os registros já gravados por um modelo, pelo id do evento (o último vale)."""
+    arquivo = arquivo_dos_rotulos(pasta, modelo)
     if not arquivo.exists():
         return {}
     registros = (
@@ -120,22 +151,24 @@ def ler_rotulos(pasta: Path) -> dict[str, dict]:
     return {r["evento_id"]: r for r in registros}
 
 
-def _rotulados(pasta: Path) -> set[str]:
-    return {i for i, r in ler_rotulos(pasta).items() if "erro" not in r}
+def _rotulados(pasta: Path, modelo: str = ri.MODELO) -> set[str]:
+    return {i for i, r in ler_rotulos(pasta, modelo).items() if "erro" not in r}
 
 
-def ler_manifesto(pasta: Path) -> dict:
-    arquivo = pasta / "manifesto.json"
+def ler_manifesto(pasta: Path, modelo: str = ri.MODELO) -> dict:
+    arquivo = arquivo_do_manifesto(pasta, modelo)
     if arquivo.exists():
         return json.loads(arquivo.read_text(encoding="utf-8"))
     return {"gasto_em_dolares": 0.0, "lotes": [], "pilotos": []}
 
 
-def gravar_manifesto(pasta: Path, manifesto: dict, eventos: list[dict]) -> None:
-    registros = ler_rotulos(pasta)
-    jsonl = pasta / "rotulos.jsonl"
+def gravar_manifesto(
+    pasta: Path, manifesto: dict, eventos: list[dict], modelo: str = ri.MODELO
+) -> None:
+    registros = ler_rotulos(pasta, modelo)
+    jsonl = arquivo_dos_rotulos(pasta, modelo)
     manifesto |= {
-        "modelo": ri.MODELO,
+        "modelo": modelo,
         "versao_do_prompt": ri.VERSAO_DO_PROMPT,
         "guia": ri.GUIA,
         "eventos_na_fila": len(eventos),
@@ -146,13 +179,13 @@ def gravar_manifesto(pasta: Path, manifesto: dict, eventos: list[dict]) -> None:
         else None,
         "atualizado_em": datetime.now(FUSO).isoformat(timespec="seconds"),
     }
-    (pasta / "manifesto.json").write_text(
+    arquivo_do_manifesto(pasta, modelo).write_text(
         json.dumps(manifesto, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
 
-def _acrescentar(pasta: Path, registros: list[dict]) -> None:
-    with (pasta / "rotulos.jsonl").open("a", encoding="utf-8") as arquivo:
+def _acrescentar(pasta: Path, registros: list[dict], modelo: str = ri.MODELO) -> None:
+    with arquivo_dos_rotulos(pasta, modelo).open("a", encoding="utf-8") as arquivo:
         for registro in registros:
             arquivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
 
@@ -219,9 +252,9 @@ def baixar(
 # --- estimar e conferir o teto --------------------------------------------------------------
 
 
-def pendentes(eventos: list[dict], pasta: Path) -> list[dict]:
-    """Os eventos ainda sem rótulo (os com erro entram de novo)."""
-    feitos = _rotulados(pasta)
+def pendentes(eventos: list[dict], pasta: Path, modelo: str = ri.MODELO) -> list[dict]:
+    """Os eventos ainda sem rótulo deste modelo (os com erro entram de novo)."""
+    feitos = _rotulados(pasta, modelo)
     return [e for e in eventos if e["id"] not in feitos]
 
 
@@ -234,8 +267,10 @@ def texto_do_pedido(evento: dict, pasta: Path, so_fatos: bool = False) -> str | 
     return texto_guardado(pasta, evento["id"])
 
 
-def _parametros(evento: dict, pasta: Path, so_fatos: bool = False) -> dict:
-    return ri.pedido(evento, texto_do_pedido(evento, pasta, so_fatos) or "")
+def _parametros(
+    evento: dict, pasta: Path, so_fatos: bool = False, modelo: str = ri.MODELO
+) -> dict:
+    return ri.pedido(evento, texto_do_pedido(evento, pasta, so_fatos) or "", modelo)
 
 
 def estimar(
@@ -243,6 +278,7 @@ def estimar(
     eventos: list[dict],
     pasta: Path,
     so_fatos: bool = False,
+    modelo: str = ri.MODELO,
 ) -> float:
     """O custo projetado em US$ pela Batch API: tokens de entrada contados numa amostra (a contagem
     não gasta) e a saída estimada por evento. O prefixo fixo do pedido (o guia) entra pelo preço do
@@ -254,13 +290,13 @@ def estimar(
     )
     contados = []
     for evento in amostra:
-        p = _parametros(evento, pasta, so_fatos)
+        p = _parametros(evento, pasta, so_fatos, modelo)
         contados.append(
             cliente.messages.count_tokens(
                 model=p["model"], system=p["system"], messages=p["messages"]
             ).input_tokens
         )
-    sonda = _parametros(amostra[0], pasta, so_fatos)
+    sonda = _parametros(amostra[0], pasta, so_fatos, modelo)
     prefixo = cliente.messages.count_tokens(
         model=sonda["model"],
         system=sonda["system"],
@@ -269,11 +305,12 @@ def estimar(
     n = len(eventos)
     media = sum(contados) / len(contados)
     prefixo = min(prefixo, media)  # a sonda tem alguns tokens a mais que o prefixo puro
+    preco = ri.modelo_conhecido(modelo)
     entrada = (media - prefixo) * n + prefixo * (
-        PESO_DA_ESCRITA_NO_CACHE + PESO_DA_LEITURA_DO_CACHE * (n - 1)
+        PESO_DA_ESCRITA_NO_CACHE + preco.leitura_do_cache * (n - 1)
     )
     return ri.custo_em_dolares(
-        round(entrada), ri.SAIDA_ESTIMADA_POR_EVENTO * n, lote=True
+        round(entrada), preco.saida_estimada_por_evento * n, lote=True, modelo=modelo
     )
 
 
@@ -288,14 +325,19 @@ def conferir_teto(manifesto: dict, estimativa: float, teto: float) -> None:
 # --- rótulos a partir das respostas -----------------------------------------------------------
 
 
-def _custo_da_resposta(usage: anthropic.types.Usage, lote: bool) -> float:
+def _custo_da_resposta(
+    usage: anthropic.types.Usage, lote: bool, modelo: str = ri.MODELO
+) -> float:
+    leitura = ri.modelo_conhecido(modelo).leitura_do_cache
     entrada = (
         (usage.input_tokens or 0)
         + PESO_DA_ESCRITA_NO_CACHE
         * (getattr(usage, "cache_creation_input_tokens", 0) or 0)
-        + PESO_DA_LEITURA_DO_CACHE * (getattr(usage, "cache_read_input_tokens", 0) or 0)
+        + leitura * (getattr(usage, "cache_read_input_tokens", 0) or 0)
     )
-    return ri.custo_em_dolares(round(entrada), usage.output_tokens or 0, lote=lote)
+    return ri.custo_em_dolares(
+        round(entrada), usage.output_tokens or 0, lote=lote, modelo=modelo
+    )
 
 
 def registro(
@@ -304,6 +346,7 @@ def registro(
     mensagem: anthropic.types.Message,
     origem: str,
     so_fatos: bool = False,
+    modelo: str = ri.MODELO,
 ) -> dict:
     """O que fica guardado de uma resposta: rótulo ou erro, sempre com a entrada e a resposta bruta
     (o texto conferido é o mesmo que foi no pedido, pela mesma regra)."""
@@ -316,14 +359,16 @@ def registro(
         "rotulado_em": datetime.now(FUSO).isoformat(timespec="seconds"),
         "tinha_texto": bool(texto_do_documento),
         "texto_so_nos_fatos": so_fatos,
-        "hash_da_entrada": ri.hash_da_entrada(ri.pedido(evento, texto_do_documento)),
+        "hash_da_entrada": ri.hash_da_entrada(
+            ri.pedido(evento, texto_do_documento, modelo)
+        ),
         "resposta_bruta": bruta,
         "tokens_entrada": mensagem.usage.input_tokens,
         "tokens_saida": mensagem.usage.output_tokens,
     }
     if isinstance(resultado, ri.ErroDeRotulo):
-        return base | {"erro": resultado.motivo, "por": "ia", "modelo": ri.MODELO}
-    return base | resultado.para_guardar()
+        return base | {"erro": resultado.motivo, "por": "ia", "modelo": modelo}
+    return base | resultado.para_guardar(modelo)
 
 
 # --- piloto, enviar e buscar ------------------------------------------------------------------
@@ -336,33 +381,36 @@ def piloto(
     n: int,
     teto: float,
     so_fatos: bool = False,
+    modelo: str = ri.MODELO,
 ) -> int:
     """Rotula `n` eventos na hora (preço normal), para conferir formato, erros e custo real. Só
     entram eventos prontos pela regra de texto (o texto baixado, ou só o assunto com `so_fatos`)."""
     prontos = [
         e
-        for e in pendentes(eventos, pasta)
+        for e in pendentes(eventos, pasta, modelo)
         if texto_do_pedido(e, pasta, so_fatos) is not None
     ]
     escolhidos = prontos[:n]
-    manifesto = ler_manifesto(pasta)
+    manifesto = ler_manifesto(pasta, modelo)
     conferir_teto(
         manifesto,
-        estimar(cliente, escolhidos, pasta, so_fatos) / ri.DESCONTO_DO_LOTE,
+        estimar(cliente, escolhidos, pasta, so_fatos, modelo) / ri.DESCONTO_DO_LOTE,
         teto,
     )
     registros, gasto = [], 0.0
     for evento in escolhidos:
-        mensagem = cliente.messages.create(**_parametros(evento, pasta, so_fatos))
-        registros.append(registro(evento, pasta, mensagem, "piloto", so_fatos))
-        gasto += _custo_da_resposta(mensagem.usage, lote=False)
-    _acrescentar(pasta, registros)
+        mensagem = cliente.messages.create(
+            **_parametros(evento, pasta, so_fatos, modelo)
+        )
+        registros.append(registro(evento, pasta, mensagem, "piloto", so_fatos, modelo))
+        gasto += _custo_da_resposta(mensagem.usage, lote=False, modelo=modelo)
+    _acrescentar(pasta, registros, modelo)
     manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
     manifesto["pilotos"] = [
         *manifesto.get("pilotos", []),
         {"eventos": len(registros), "gasto": gasto},
     ]
-    gravar_manifesto(pasta, manifesto, eventos)
+    gravar_manifesto(pasta, manifesto, eventos, modelo)
     log.info("Piloto: %s eventos, US$ %.4f", len(registros), gasto)
     return len(registros)
 
@@ -375,16 +423,17 @@ def enviar(
     permitir_sem_texto: bool = False,
     so_fatos: bool = False,
     so_prontos: bool = False,
+    modelo: str = ri.MODELO,
 ) -> str | None:
     """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote. Com
     `so_prontos`, vão só os que já têm o texto pela regra; os outros esperam o próximo lote (a CVM
     libera poucos textos por dia)."""
-    manifesto = ler_manifesto(pasta)
+    manifesto = ler_manifesto(pasta, modelo)
     if any(lote.get("estado") != "gravado" for lote in manifesto.get("lotes", [])):
         raise RuntimeError(
             "Há um lote enviado e ainda não gravado: rode `buscar` primeiro."
         )
-    faltam = pendentes(eventos, pasta)
+    faltam = pendentes(eventos, pasta, modelo)
     if not faltam:
         log.info("Nada pendente.")
         return None
@@ -401,11 +450,14 @@ def enviar(
         raise RuntimeError(
             f"{len(sem_baixar)} eventos sem o texto baixado: rode `baixar` (ou use --permitir-sem-texto)."
         )
-    estimativa = estimar(cliente, faltam, pasta, so_fatos)
+    estimativa = estimar(cliente, faltam, pasta, so_fatos, modelo)
     conferir_teto(manifesto, estimativa, teto)
     lote = cliente.messages.batches.create(
         requests=[
-            {"custom_id": chave(e["id"]), "params": _parametros(e, pasta, so_fatos)}
+            {
+                "custom_id": chave(e["id"]),
+                "params": _parametros(e, pasta, so_fatos, modelo),
+            }
             for e in faltam
         ]
     )
@@ -415,7 +467,7 @@ def enviar(
          "texto_so_nos_fatos": so_fatos,
          "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
     ]  # fmt: skip
-    gravar_manifesto(pasta, manifesto, eventos)
+    gravar_manifesto(pasta, manifesto, eventos, modelo)
     log.info(
         "Lote %s enviado: %s eventos, estimativa US$ %.2f",
         lote.id,
@@ -425,9 +477,14 @@ def enviar(
     return lote.id
 
 
-def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> int:
+def buscar(
+    cliente: anthropic.Anthropic,
+    eventos: list[dict],
+    pasta: Path,
+    modelo: str = ri.MODELO,
+) -> int:
     """Grava os resultados dos lotes que terminaram. Devolve quantos registros gravou."""
-    manifesto = ler_manifesto(pasta)
+    manifesto = ler_manifesto(pasta, modelo)
     por_chave = {chave(e["id"]): e for e in eventos}
     gravados = 0
     for lote in manifesto.get("lotes", []):
@@ -448,17 +505,18 @@ def buscar(cliente: anthropic.Anthropic, eventos: list[dict], pasta: Path) -> in
                         mensagem,
                         f"lote {lote['id']}",
                         lote.get("texto_so_nos_fatos", False),
+                        modelo,
                     )
                 )
-                gasto += _custo_da_resposta(mensagem.usage, lote=True)
+                gasto += _custo_da_resposta(mensagem.usage, lote=True, modelo=modelo)
             else:
                 registros.append({"evento_id": evento["id"], "origem": f"lote {lote['id']}",
-                                  "erro": f"lote: {resultado.result.type}", "por": "ia", "modelo": ri.MODELO})  # fmt: skip
-        _acrescentar(pasta, registros)
+                                  "erro": f"lote: {resultado.result.type}", "por": "ia", "modelo": modelo})  # fmt: skip
+        _acrescentar(pasta, registros, modelo)
         lote |= {"estado": "gravado", "gasto": gasto}
         manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
         gravados += len(registros)
-    gravar_manifesto(pasta, manifesto, eventos)
+    gravar_manifesto(pasta, manifesto, eventos, modelo)
     return gravados
 
 
@@ -550,6 +608,66 @@ def auditar(pasta: Path, humanos: dict[str, dict]) -> ar.Veredito:
     return veredito
 
 
+def _mesma_entrada(evento: dict, pasta: Path, a: dict, b: dict) -> bool:
+    """Os dois rótulos saíram do mesmo pedido, trocando só o modelo? O pedido é refeito com o texto
+    de hoje, pela regra do primeiro, e tem de bater com o hash guardado em cada um (Emenda 1: "o mesmo
+    texto anonimizado")."""
+    texto = texto_do_pedido(evento, pasta, a.get("texto_so_nos_fatos", False)) or ""
+    return all(
+        r.get("hash_da_entrada")
+        == ri.hash_da_entrada(ri.pedido(evento, texto, r["modelo"]))
+        for r in (a, b)
+    )
+
+
+def comparar(
+    pasta: Path,
+    eventos: list[dict],
+    modelo_a: str = ri.MODELO,
+    modelo_b: str = ri.MODELO_CONFERENTE,
+) -> ar.Veredito:
+    """Sonnet × Opus (Emenda 1 da ADR 0072): o veredito nos 300 primeiros e a referência do leitor
+    (os eventos do lote em que os dois concordam no assunto), gravados em
+    `<pasta>/comparacao-modelos.json` com o SHA-256 dos dois arquivos (passe ou não, conta como
+    tentativa). Só contam os pares que leram o mesmo texto: o par com entrada diferente fica de fora
+    e deixa o veredito incompleto."""
+    a, b = ler_rotulos(pasta, modelo_a), ler_rotulos(pasta, modelo_b)
+    primeiros, lote = ar.conjunto_de_prova(eventos)
+    diferentes = [
+        e["id"]
+        for e in eventos
+        if ar.valido(a, e["id"])
+        and ar.valido(b, e["id"])
+        and not _mesma_entrada(e, pasta, a[e["id"]], b[e["id"]])
+    ]
+    b = {i: r for i, r in b.items() if i not in set(diferentes)}
+    veredito = ar.comparar_modelos(a, b, primeiros)
+    if fora := [i for i in diferentes if i in set(primeiros)]:
+        veredito.motivos.append(
+            f"{len(fora)} eventos em que os dois modelos não leram o mesmo texto"
+        )
+    referencia = ar.referencia_do_leitor(a, b, lote)
+    sha256 = {
+        m: hashlib.sha256(arquivo_dos_rotulos(pasta, m).read_bytes()).hexdigest()
+        for m in (modelo_a, modelo_b)
+        if arquivo_dos_rotulos(pasta, m).exists()
+    }
+    (pasta / "comparacao-modelos.json").write_text(
+        json.dumps(
+            {"modelos": [modelo_a, modelo_b], "versao_do_prompt": ri.VERSAO_DO_PROMPT,
+             "primeiros": asdict(veredito), "passou": veredito.passou,
+             "limites": ar.LIMITES_DA_COMPARACAO, "entradas_diferentes": diferentes,
+             "lote_do_leitor": {"eventos": len(lote), "concordam_no_assunto": len(referencia),
+                                "referencia": referencia},
+             "sha256": sha256,
+             "comparado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+            ensure_ascii=False, indent=2,
+        ),
+        encoding="utf-8",
+    )  # fmt: skip
+    return veredito
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument(
@@ -562,6 +680,7 @@ def main(argv: list[str] | None = None) -> int:
             "buscar",
             "identificar",
             "auditar",
+            "comparar",
         ),
     )
     argumentos.add_argument(
@@ -595,15 +714,41 @@ def main(argv: list[str] | None = None) -> int:
         help="só os fatos relevantes vão com texto; os outros, só com o assunto",
     )
     argumentos.add_argument("--maximo", type=int, default=500, help="downloads por vez")
+    argumentos.add_argument(
+        "--modelo",
+        choices=tuple(ri.MODELOS),
+        default=ri.MODELO,
+        help=f"quem rotula (padrão: {ri.MODELO}; o conferente da Emenda 1 é {ri.MODELO_CONFERENTE})",
+    )
+    argumentos.add_argument(
+        "--so-prova",
+        action="store_true",
+        help="só o conjunto de prova: os 300 primeiros da fila e o lote-leitor-v1",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     eventos = ler_eventos(opcoes.eventos)
     opcoes.pasta.mkdir(parents=True, exist_ok=True)
+    if opcoes.passo == "comparar":
+        veredito = comparar(opcoes.pasta, eventos)
+        print(
+            "PASSOU" if veredito.passou else "NÃO PASSOU", *veredito.motivos, sep="\n- "
+        )
+        return 0
+    if opcoes.so_prova:
+        eventos = so_prova(eventos)
     if opcoes.passo == "baixar":
         baixar(eventos, opcoes.pasta, opcoes.maximo)
         return 0
+    modelo = opcoes.modelo
+    if opcoes.passo in ("identificar", "auditar") and modelo != ri.MODELO:
+        log.error(
+            "A identificação e a auditoria contra o Tiago são do rotulador (%s).",
+            ri.MODELO,
+        )
+        return 2
     if opcoes.passo in ("identificar", "auditar") and opcoes.humanos is None:
         log.error("Diga o arquivo dos rótulos do Tiago com --humanos.")
         return 2
@@ -624,14 +769,18 @@ def main(argv: list[str] | None = None) -> int:
     cliente = ri.cliente()  # chave e workspace vêm do .env
     try:
         if opcoes.passo == "estimar":
-            faltam = pendentes(eventos, opcoes.pasta)
+            faltam = pendentes(eventos, opcoes.pasta, modelo)
             so_fatos = opcoes.texto_so_nos_fatos
-            estimativa = estimar(cliente, faltam, opcoes.pasta, so_fatos)
-            gasto = ler_manifesto(opcoes.pasta).get("gasto_em_dolares", 0.0)
+            estimativa = estimar(cliente, faltam, opcoes.pasta, so_fatos, modelo)
+            gasto = ler_manifesto(opcoes.pasta, modelo).get("gasto_em_dolares", 0.0)
             sem_texto = sum(
                 texto_do_pedido(e, opcoes.pasta, so_fatos) is None for e in faltam
             )
-            print(f"Pendentes: {len(faltam)} ({sem_texto} sem texto baixado)")
+            fatos = sum(ri.e_fato_relevante(e) for e in faltam)
+            print(f"Modelo: {modelo}")
+            print(
+                f"Pendentes: {len(faltam)} ({fatos} fatos relevantes; {sem_texto} sem texto baixado)"
+            )
             print(
                 f"Estimativa pela Batch API: US$ {estimativa:.2f}; já gasto: US$ {gasto:.2f}; teto: US$ {opcoes.teto_dolares:.2f}"
             )
@@ -652,6 +801,7 @@ def main(argv: list[str] | None = None) -> int:
                 opcoes.n,
                 opcoes.teto_dolares,
                 opcoes.texto_so_nos_fatos,
+                modelo,
             )
         elif opcoes.passo == "enviar":
             enviar(
@@ -662,9 +812,10 @@ def main(argv: list[str] | None = None) -> int:
                 opcoes.permitir_sem_texto,
                 opcoes.texto_so_nos_fatos,
                 opcoes.so_prontos,
+                modelo,
             )
         else:
-            buscar(cliente, eventos, opcoes.pasta)
+            buscar(cliente, eventos, opcoes.pasta, modelo)
     except TetoPassado as erro:
         log.error("%s Nada foi enviado.", erro)
         return 3
