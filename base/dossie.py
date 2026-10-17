@@ -1,7 +1,7 @@
 """O dossiê da empresa: o que a base de ML diz de cada companhia, para o app (plano de 17/10/2026).
 
 O "Relatório da empresa" do app (ADR 0032) ganha seções que vêm da base. Elas são calculadas toda noite
-no servidor de casa (`scripts/montar_dossies.py`), uma ficha JSON por CNPJ, e só o assinante Pro as vê.
+no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só o assinante Pro as vê.
 É o primeiro uso da base como produto (ADR 0076: o TickerLab é o primeiro cliente).
 
 **Só entra o que pode ser mostrado a quem paga** (`pode_mostrar`):
@@ -116,17 +116,14 @@ class SerieDaAgencia:
 
     nome: str  # chave da série na ficha
     fonte_b13: str  # a `fonte` em `empresa_serie`
-    tabela: str  # no dicionário da base
-    pasta: str  # dentro da base
+    tabela: str  # no dicionário da base (lida pela porta)
     chave: str  # a coluna que a B13 usa como `chave`
     valor: str
     modo: str  # SOMA_DO_ANO ou ULTIMO_MES
     medida: str  # o que o número é, escrito para a tela
     unidade: str
-    filtros: tuple[tuple[str, str], ...] = ()
-    pular_arquivos: str = (
-        ""  # parte do nome dos Parquet que repetem o dado em outro recorte
-    )
+    # filtros de igualdade da porta: `(coluna, valor)` ou `(coluna, (valores aceitos))`
+    filtros: tuple[tuple[str, str | tuple[str, ...]], ...] = ()
     chave_em_digitos: bool = False  # CNPJ: casa formatado ou não
 
 
@@ -135,7 +132,6 @@ SERIES_DAS_AGENCIAS = (
         "aneel_consumidores",
         "aneel-samp",
         "aneel_samp",
-        "setoriais/aneel",
         "cnpj",
         "valor",
         ULTIMO_MES,
@@ -152,14 +148,13 @@ SERIES_DAS_AGENCIAS = (
             f"anatel_{servico}",
             "anatel-acessos",
             "anatel_acessos",
-            "setoriais/anatel",
             "cnpj",
             "acessos",
             ULTIMO_MES,
             f"Acessos em serviço, {texto} (Anatel)",
             "acessos",
-            (("servico", servico),),
-            pular_arquivos="Tecnologia",
+            # a móvel vem por modalidade e por tecnologia (o mesmo acesso duas vezes): só a 1ª
+            (("servico", servico), ("recorte", ("completo", "modalidade"))),
             chave_em_digitos=True,
         )
         for servico, texto in (
@@ -172,7 +167,6 @@ SERIES_DAS_AGENCIAS = (
         "ans_beneficiarios",
         "ans-beneficiarios",
         "ans_beneficiarios",
-        "setoriais/ans",
         "cd_operadora",
         "beneficiarios",
         ULTIMO_MES,
@@ -183,7 +177,6 @@ SERIES_DAS_AGENCIAS = (
         "anac_passageiros",
         "anac-estatistico",
         "anac_estatistico",
-        "setoriais/anac",
         "empresa_sigla",
         "passageiros_pagos",
         SOMA_DO_ANO,
@@ -194,7 +187,6 @@ SERIES_DAS_AGENCIAS = (
         "susep_premio_ganho",
         "susep-ses",
         "susep_seguros",
-        "setoriais/susep",
         "coenti",
         "premio_ganho",
         SOMA_DO_ANO,
@@ -205,7 +197,6 @@ SERIES_DAS_AGENCIAS = (
         "anp_vendas",
         "anp-vendas-distribuidora",
         "anp_vendas",
-        "setoriais/anp",
         "agente",
         "quantidade",
         SOMA_DO_ANO,

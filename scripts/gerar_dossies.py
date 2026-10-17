@@ -1,10 +1,11 @@
-"""Monta as fichas do dossiê da empresa a partir da base (plano de 17/10/2026, PR 1).
+"""Monta as fichas do dossiê da empresa a partir da base (plano de 17/10/2026, PRs 1 e 1b).
 
-    python -m scripts.montar_dossies                   (a base do acervo; grava em <acervo>/dossies)
-    python -m scripts.montar_dossies --pasta <base>    (outra pasta da base)
-    python -m scripts.montar_dossies --saida <pasta>   (ensaio: grava fora do acervo)
+    python -m scripts.gerar_dossies                   (a base do acervo; grava em <acervo>/dossies)
+    python -m scripts.gerar_dossies --pasta <base>    (outra pasta da base)
+    python -m scripts.gerar_dossies --saida <pasta>   (ensaio: grava fora do acervo)
 
-Lê só o que a base já tem (nenhuma coleta nova) e grava `<saida>/<AAAA-MM-DD>/<cnpj>.json`, uma ficha
+Lê só o que a base já tem (nenhuma coleta nova), e só pela porta (`base.porta`, ADR 0077): o nome não é
+`montar_*` porque não grava a base, então o `test_porta_unica` vigia. Grava `<saida>/<AAAA-MM-DD>/<cnpj>.json`, uma ficha
 por companhia com ticker que vale hoje e tem alguma seção, e o `manifesto.json`: a versão do esquema e do
 código, o hash de cada tabela lida (ADR 0078: dá para refazer e conferir) e as tabelas que faltaram. A
 pasta do dia é montada ao lado e só troca de nome no fim: quem lê nunca vê uma pasta pela metade. As
@@ -27,10 +28,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import pyarrow.parquet as pq
 
 from base import dossie
-from base.parquet import arquivos_atuais
+from base.porta import Porta
 from src import acervo
 from src.versao_do_codigo import exigir_versao_do_codigo
 
@@ -38,68 +38,54 @@ log = logging.getLogger(__name__)
 FUSO = ZoneInfo("America/Sao_Paulo")  # o dia da pasta é o do Brasil, não o do servidor
 TAMANHO_MAXIMO_DO_RESUMO = 300  # o resumo vai no endereço do push do Kuma
 VAZIA = pd.DataFrame()
-Filtro = list[tuple[str, str, str]]
+Filtros = dict[str, object]
 
 
 @dataclass
 class Leitor:
-    """Lê as tabelas da base e anota o hash de cada uma e as que faltaram (vão no manifesto)."""
+    """Lê as tabelas pela porta e anota o hash de cada arquivo lido e as tabelas que faltaram (vão no
+    manifesto: dá para refazer a noite e conferir, ADR 0078)."""
 
-    pasta: Path
+    porta: Porta
     tabelas: dict[str, str | None] = field(default_factory=dict)
     faltando: list[str] = field(default_factory=list)
 
-    def _anotar(self, arquivo: Path) -> None:
-        nome = arquivo.relative_to(self.pasta).with_suffix("").as_posix()
-        manifesto = arquivo.with_suffix(".json")
-        self.tabelas[nome] = (
-            json.loads(manifesto.read_text(encoding="utf-8")).get("sha256_da_tabela")
-            if manifesto.exists()
-            else None
-        )
+    def _existe(self, tabela: str) -> bool:
+        """A tabela tem arquivo nesta base (uma que nem existe no dicionário é erro de código)."""
+        if tabela not in self.porta.tabelas:
+            raise KeyError(f"tabela `{tabela}` não existe no dicionário da base")
+        try:
+            self.tabelas.update(self.porta.hashes(tabela))
+        except KeyError:
+            self.faltando.append(tabela)
+            return False
+        return True
 
-    def _ler(
-        self, arquivo: Path, colunas: list[str] | None, filtro: Filtro | None
+    def ler(
+        self,
+        tabela: str,
+        colunas: list[str] | None = None,
+        filtros: Filtros | None = None,
+        como_era_em: pd.Timestamp | None = None,
     ) -> pd.DataFrame:
-        existentes = pq.read_schema(arquivo).names
+        """A tabela inteira, ou só as `colunas` que ela tem (vazia e anotada, se não há arquivo)."""
+        if not self._existe(tabela):
+            return VAZIA
+        existentes = self.porta.colunas(tabela)
         escolhidas = (
             None if colunas is None else [c for c in colunas if c in existentes]
         )
-        self._anotar(arquivo)
-        return pq.read_table(
-            arquivo, columns=escolhidas, filters=filtro or None
-        ).to_pandas()
+        return self.porta.ler(
+            tabela, como_era_em=como_era_em, filtros=filtros, colunas=escolhidas
+        )
 
-    def arquivo(self, relativo: str, colunas: list[str] | None = None) -> pd.DataFrame:
-        """Um Parquet da base (vazio e anotado como faltando, se não existe)."""
-        arquivo = self.pasta / f"{relativo}.parquet"
-        if not arquivo.exists():
-            self.faltando.append(relativo)
-            return VAZIA
-        return self._ler(arquivo, colunas, None)
-
-    def arquivos(
-        self,
-        relativo: str,
-        colunas: list[str] | None = None,
-        filtro: Filtro | None = None,
-        pular: str = "",
-    ) -> list[pd.DataFrame]:
-        """Cada Parquet atual de uma pasta da base, sem as versões guardadas (vazia → faltando)."""
-        arquivos = [
-            a
-            for a in arquivos_atuais(self.pasta / relativo)
-            if not (pular and pular in a.name)
-        ]
-        if not arquivos:
-            self.faltando.append(relativo)
-        return [self._ler(a, colunas, filtro) for a in arquivos]
-
-    def pasta_inteira(
-        self, relativo: str, colunas: list[str] | None = None
+    def somar(
+        self, tabela: str, por: list[str], valor: str, filtros: Filtros
     ) -> pd.DataFrame:
-        partes = [p for p in self.arquivos(relativo, colunas) if not p.empty]
-        return pd.concat(partes, ignore_index=True) if partes else VAZIA
+        """A soma de `valor` por `por`, feita na porta (série de milhões de linhas)."""
+        if not self._existe(tabela):
+            return VAZIA
+        return self.porta.somar(tabela, por, valor, filtros)
 
 
 @dataclass(frozen=True)
@@ -139,46 +125,50 @@ def _pessoas(entidades: pd.DataFrame) -> set[str]:
     return {n for n in pessoas["nome"].dropna().map(dossie.normalizar_nome) if n}
 
 
-def _filtro(serie: dossie.SerieDaAgencia) -> Filtro:
-    return [(coluna, "=", valor) for coluna, valor in serie.filtros]
-
-
 def ler_serie(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
-    """(ano, chave, valor) de todo o mercado de uma agência, já no modo da série."""
-    colunas = ["competencia", serie.chave, serie.valor]
-    mensais = []
-    for parte in leitor.arquivos(
-        serie.pasta, colunas, _filtro(serie), serie.pular_arquivos
-    ):
-        if parte.empty:
-            continue
-        chave = parte[serie.chave].astype(str).str.strip()
-        parte = pd.DataFrame(
-            {
-                "competencia": parte["competencia"],
-                "chave": dossie.digitos(chave) if serie.chave_em_digitos else chave,
-                "valor": pd.to_numeric(parte[serie.valor], errors="coerce"),
-            }
-        )
-        mensais.append(
-            parte.groupby(["competencia", "chave"], as_index=False)["valor"].sum()
-        )
-    if not mensais:
+    """(ano, chave, valor) de todo o mercado de uma agência, já no modo da série.
+
+    A porta soma por mês e chave como a fonte escreve; aqui a chave é limpa (o mesmo CNPJ formatado e
+    em dígitos vira um só) e somada de novo, o que dá o mesmo que limpar antes de somar.
+    """
+    somada = leitor.somar(
+        serie.tabela,
+        ["competencia", serie.chave],
+        serie.valor,
+        {coluna: valor for coluna, valor in serie.filtros},
+    )
+    if somada.empty:
         return VAZIA
-    juntas = pd.concat(mensais, ignore_index=True)
-    juntas = juntas.groupby(["competencia", "chave"], as_index=False)["valor"].sum()
-    return dossie.serie_anual(juntas, serie.modo)
+    chave = somada[serie.chave].astype(str).str.strip()
+    mensais = pd.DataFrame(
+        {
+            "competencia": pd.to_datetime(somada["competencia"]),
+            "chave": dossie.digitos(chave) if serie.chave_em_digitos else chave,
+            "valor": somada[serie.valor],
+        }
+    )
+    mensais = mensais.groupby(["competencia", "chave"], as_index=False)["valor"].sum()
+    return dossie.serie_anual(mensais, serie.modo)
 
 
-def _controladoras(leitor: Leitor) -> tuple[pd.DataFrame, set[str]]:
-    entidades = leitor.arquivo(
-        "rede/entidades", ["id_entidade", "nome", "trata_como_pessoa"]
+def _controladoras(leitor: Leitor, hoje: pd.Timestamp) -> tuple[pd.DataFrame, set[str]]:
+    """Quem controla cada companhia hoje (a rede como era hoje) e os nomes das pessoas da rede.
+
+    As pessoas vêm de todas as entidades, sem data: o filtro de pessoas da ficha erra para o lado
+    de tirar demais.
+    """
+    entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
+    ligacoes = leitor.ler(
+        "ligacoes",
+        ["de", "para", "tipo", "situacao", "fonte", "participacao"],
+        filtros={"tipo": "controlada_de", "fonte": "cvm-fre"},
+        como_era_em=hoje,
     )
-    ligacoes = leitor.arquivo(
-        "rede/ligacoes", ["de", "para", "tipo", "situacao", "fonte", "participacao"]
-    )
-    identificadores = leitor.arquivo(
-        "rede/identificadores", ["id_entidade", "sistema", "valor", "ate"]
+    identificadores = leitor.ler(
+        "identificadores",
+        ["id_entidade", "sistema", "valor", "ate"],
+        filtros={"sistema": "cnpj"},
+        como_era_em=hoje,
     )
     pessoas = _pessoas(entidades)
     if ligacoes.empty or entidades.empty or identificadores.empty:
@@ -188,24 +178,25 @@ def _controladoras(leitor: Leitor) -> tuple[pd.DataFrame, set[str]]:
 
 def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
     """Tudo o que o dossiê lê da base, uma vez, para todas as empresas."""
-    controladoras, pessoas = _controladoras(leitor)
-    controladas = leitor.pasta_inteira("controladas")
+    controladoras, pessoas = _controladoras(leitor, hoje)
+    controladas = leitor.ler("controladas")
     return Entradas(
         empresas=_empresas(
-            leitor.arquivo("fca/tickers", ["cnpj", "empresa", "valido_ate"])
+            leitor.ler("tickers_no_tempo", ["cnpj", "empresa", "valido_ate"])
         ),
-        auditores=leitor.pasta_inteira("auditores"),
-        trocas=leitor.arquivo("trocas_de_auditor/trocas"),
+        auditores=leitor.ler("auditores"),
+        trocas=leitor.ler("trocas_de_auditor"),
         controladas=controladas,
         controladoras=dossie.controladoras_em_dia(controladoras, controladas, hoje),
-        ofertas_160=leitor.arquivo("ofertas/resolucao_160"),
-        ofertas_antigas=leitor.arquivo("ofertas/antigas"),
-        painel=leitor.pasta_inteira("fundos/painel_empresa"),
+        ofertas_160=leitor.ler("ofertas_resolucao_160"),
+        ofertas_antigas=leitor.ler("ofertas_antigas"),
+        # a tabela tem os dois painéis: o por empresa é o que não tem emissor
+        painel=leitor.ler("painel_dos_fundos", filtros={"emissor": None}),
         ultimo_mes_do_cda=dossie.ultimo_mes_completo(
-            leitor.arquivo("fundos/cobertura", ["competencia", "valor_comprado"])
+            leitor.ler("cobertura_dos_fundos", ["competencia", "valor_comprado"])
         ),
-        empresa_serie=leitor.arquivo("empresa_serie/empresa_serie"),
-        eventos=leitor.pasta_inteira(
+        empresa_serie=leitor.ler("empresa_serie"),
+        eventos=leitor.ler(
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
         ),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
@@ -324,11 +315,12 @@ def montar(
     pasta: Path, saida: Path, agora: pd.Timestamp, versao_do_codigo: str
 ) -> Resumo:
     """Grava as fichas e o manifesto em `<saida>/<dia>`; devolve quantas e o que falhou."""
-    leitor = Leitor(pasta)
-    entradas = ler_entradas(leitor, agora)
+    with Porta(pasta) as porta:
+        leitor = Leitor(porta)
+        entradas = ler_entradas(leitor, agora)
     resumo = Resumo(empresas=len(entradas.empresas))
     if entradas.empresas.empty:
-        resumo.falhas.append("fca/tickers: sem o universo das empresas")
+        resumo.falhas.append("tickers_no_tempo: sem o universo das empresas")
         return resumo
     dia = agora.strftime("%Y-%m-%d")
     montando = saida / f".{dia}.montando"
