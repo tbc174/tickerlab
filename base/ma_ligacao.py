@@ -14,8 +14,10 @@ alvos que hoje são ME/EPP eram outra empresa com o mesmo nome curto):
 - regra 1: nome de **uma palavra só** (ou sigla) que só casou com uma **ME ou EPP** da Receita fica
   `na_duvida` ("Kawa" não é a KAWA LTDA, uma microempresa); marca de uma palavra de porte maior (SANKHYA
   S.A., SUNO S.A.) liga. A 1ª versão (#347) barrava toda palavra só e derrubou 118 ligações, muitas certas;
-- regra 4: ligação só pelo nome fantasia vale quando a razão social **tem o nome** do post; senão,
-  `na_duvida` ("Estante Virtual" era o nome fantasia de um sebo);
+- regra 4: na **alvo**, ligação só pelo nome fantasia vale quando a razão social **tem o nome** do
+  post; senão, `na_duvida` ("Estante Virtual" era o nome fantasia de um sebo). Na compradora, liga: a
+  marca de quem compra costuma não estar na razão social (ClearSale = CLEAR SALE S.A., Hypermarcas = hoje
+  HYPERA S.A.), e o #351 derrubou essas compradoras certas;
 - regra 5: na **alvo**, razão social de empresa estrangeira registrada no Brasil (AG, BV, LLC, LTD,
   GmbH...) vira `holding_estrangeira`, sem CNPJ: é a dona de fora, não a empresa brasileira vendida. Na
   compradora (One Equity Partners, Sumitomo...) a dona de fora é a própria parte e liga;
@@ -378,7 +380,7 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
     )
     vazia: dict[str, object] = dict.fromkeys(
         ("id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira")
-    )
+    ) | {"fantasia_sem_o_nome": False}
     if len(por_entidade) > 1:
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": len(por_entidade)}
     unica = por_entidade.iloc[0]
@@ -386,9 +388,11 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
         return {**vazia, "ligacao_por": SEM_LIGACAO, "candidatos": 1}
     so_da_receita = not unica["da_rede"]
     palavra_so_de_pequena = " " not in nome and unica["pequena"]
-    fantasia_sem_o_nome = not len(exato) and not unica["razao_tem_o_nome"]
-    if so_da_receita and (palavra_so_de_pequena or fantasia_sem_o_nome):  # regras 1 e 4
+    if so_da_receita and palavra_so_de_pequena:  # regra 1
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": 1}
+    fantasia_sem_o_nome = (
+        so_da_receita and not len(exato) and not unica["razao_tem_o_nome"]
+    )  # regra 4: decide `ligar`, que sabe o papel de cada página
     return {
         "id_entidade": por_entidade.index[0],
         "cnpj_raiz": unica["cnpj_raiz"] if pd.notna(unica["cnpj_raiz"]) else None,
@@ -397,6 +401,7 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
         "estrangeira": bool(unica["estrangeira"]),
         "ligacao_por": NOME_EXATO if len(exato) else NOME_FANTASIA,
         "candidatos": 1,
+        "fantasia_sem_o_nome": bool(fantasia_sem_o_nome),
     }
 
 
@@ -432,6 +437,7 @@ def ligar(
         **dict.fromkeys(("id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira")),
         "ligacao_por": SEM_LIGACAO,
         "candidatos": 0,
+        "fantasia_sem_o_nome": False,
     }
     decididas = pd.DataFrame(
         [decisoes.get(n, sem) for n in partes_["nome_normalizado"]],
@@ -443,14 +449,21 @@ def ligar(
             "estrangeira",
             "ligacao_por",
             "candidatos",
+            "fantasia_sem_o_nome",
         ],
         index=partes_.index,
     ).astype(object)
     tabela = pd.concat([partes_, decididas], axis=1)
+    alvo = tabela["papel"] == "alvo"
+    duvida = alvo & tabela["fantasia_sem_o_nome"].eq(True)  # regra 4, antes das 2 e 5
+    tabela.loc[
+        duvida, ["id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira"]
+    ] = None
+    tabela.loc[duvida, "ligacao_por"] = NA_DUVIDA
     depois = _aberto_depois(tabela, publico_em)
     tabela.loc[depois, ["id_entidade", "cnpj_raiz", "lei"]] = None
     tabela.loc[depois, "ligacao_por"] = ABERTO_DEPOIS
-    holding = (tabela["papel"] == "alvo") & tabela["estrangeira"].eq(True) & ~depois
+    holding = alvo & tabela["estrangeira"].eq(True) & ~depois
     tabela.loc[holding, ["id_entidade", "cnpj_raiz", "lei"]] = None
     tabela.loc[holding, "ligacao_por"] = HOLDING_ESTRANGEIRA
     tabela = tabela[list(COLUNAS_DAS_PARTES)]

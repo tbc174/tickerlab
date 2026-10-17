@@ -272,6 +272,30 @@ def test_nome_fantasia_sem_o_nome_na_razao_social_fica_na_duvida():
     assert _ligar("Estante Virtual", receita=com)["ligacao_por"] == "nome_fantasia"
 
 
+def test_regra_4_vale_so_para_a_alvo():
+    """Na compradora, o nome fantasia liga mesmo sem o nome na razão social ("Hypermarcas" é hoje a
+    HYPERA S.A.; "ClearSale", a CLEAR SALE S.A.): o homônimo que a regra pega é o da alvo."""
+    receita = _receita(
+        (RAIZ_DELTA, "hypermarcas", lig.NOME_FANTASIA, False, None, False)
+    )
+    partes = lig.partes(
+        ma.tabela(
+            [
+                _negocio(url="u1", alvo="Alfa Óleos", comprador="Hypermarcas"),
+                _negocio(url="u2", alvo="Hypermarcas", comprador="Beta"),
+            ]
+        )
+    )
+    ligadas = lig.ligar(partes, _rede(), receita).set_index(["url", "nome"])
+    compradora = ligadas.loc[("u1", "Hypermarcas")]
+    assert compradora["ligacao_por"] == "nome_fantasia"
+    assert compradora["cnpj_raiz"] == RAIZ_DELTA
+    alvo = ligadas.loc[("u2", "Hypermarcas")]
+    assert alvo["ligacao_por"] == "na_duvida"
+    assert alvo["cnpj_raiz"] is None and alvo["id_entidade"] is None
+    assert alvo["candidatos"] == 1
+
+
 def test_cnpj_de_empresa_estrangeira_vira_holding_e_nao_a_alvo():
     """Regra 5: a FOXBIT LLC registrada no Brasil é a holding de fora, não a empresa brasileira."""
     receita = _receita(
@@ -609,6 +633,22 @@ def test_carga_liga_as_partes_e_grava_com_manifesto(ambiente, capsys):
     antes = arquivo.with_suffix(".json").read_text(encoding="utf-8")
     carga.main(["--base", str(ambiente)])  # nada mudou: nada é lido de novo
     assert arquivo.with_suffix(".json").read_text(encoding="utf-8") == antes
+
+
+def test_forcar_refaz_com_as_mesmas_entradas(ambiente, monkeypatch):
+    """Só o código mudou (a regra da ligação): sem `--forcar` nada é refeito; com ele, sim."""
+    assert carga.main(["--base", str(ambiente)]) == 0
+    arquivo = ambiente / "ma" / "ligacao" / "partes.parquet"
+    ligar = lig.ligar
+
+    def ligar_diferente(*args, **kwargs):
+        return ligar(*args, **kwargs).assign(ligacao_por=lig.NA_DUVIDA)
+
+    monkeypatch.setattr(carga.ma_ligacao, "ligar", ligar_diferente)
+    carga.main(["--base", str(ambiente)])
+    assert set(ler_tabela(arquivo)["ligacao_por"]) != {lig.NA_DUVIDA}
+    assert carga.main(["--base", str(ambiente), "--forcar"]) == 0
+    assert set(ler_tabela(arquivo)["ligacao_por"]) == {lig.NA_DUVIDA}
 
 
 def test_carga_sem_a_rede_nao_liga(ambiente, capsys):
