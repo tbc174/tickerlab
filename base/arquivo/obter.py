@@ -66,7 +66,9 @@ class ArquivoRemoto(io.RawIOBase):
         self.cliente = cliente
         self.url = url
         self.posicao = 0
-        self.tamanho = int(cliente.cabecalhos(url)["Content-Length"])
+        # o IIS do TCE-PR manda os nomes em minúsculas ("content-length"); o HTTP não diferencia
+        cabecalhos = {k.lower(): v for k, v in cliente.cabecalhos(url).items()}
+        self.tamanho = int(cabecalhos["content-length"])
 
     def readable(self) -> bool:
         return True

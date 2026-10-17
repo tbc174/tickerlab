@@ -80,6 +80,18 @@ def test_zip_remoto_le_so_o_indice_e_o_arquivo_pedido(tmp_path):
     assert servidor.bytes_servidos < len(conteudo)
 
 
+def test_zip_remoto_aceita_cabecalho_em_minusculas():
+    # o IIS do TCE-PR responde "content-length" (medido em 17/10/2026)
+    conteudo = _zip({"a.csv": b"x;y\n"})
+
+    class ServidorMinusculo(ServidorComTrechos):
+        def cabecalhos(self, url):
+            return {"content-length": str(len(self.arquivos[url]))}
+
+    servidor = ServidorMinusculo({URL_DO_ZIP: conteudo})
+    assert obter.membros_do_zip_remoto(servidor, URL_DO_ZIP) == ["a.csv"]
+
+
 def test_parquet_sai_sem_as_colunas_pessoais(tmp_path):
     origem = tmp_path / "origem.parquet"
     pd.DataFrame(
