@@ -292,6 +292,14 @@ def test_le_utf16_e_utf8_e_limpa_controle():
     assert obter.decodificar_xml(texto.encode("utf-8")) == esperado  # sem BOM: UTF-8
 
 
+def test_referencia_a_caractere_de_controle_sai_e_as_validas_ficam():
+    # o PIT escreve controles como referência (2013 e 2025: "reference to invalid character number")
+    texto = '<root><X a="1&#11;0" b="&#x1F;ok" c="S&#227;o &#x26; &#10;"/></root>'
+    assert obter.decodificar_xml(texto.encode()) == (
+        '<root><X a="10" b="ok" c="S&#227;o &#x26; &#10;"/></root>'
+    )
+
+
 def test_cabecalhos_do_membro_dizem_a_versao_pelo_crc():
     interno = zipfile.ZipInfo("x.zip")
     interno.CRC, interno.file_size = 0xABCDEF01, 1234

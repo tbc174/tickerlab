@@ -11,10 +11,10 @@ uma pessoa ("show do cantor Fulano"). O município e o órgão ficam pelos códi
 
 **Documento do licitante, vencedor, contratado e executor** (ADR 0075, só pessoa jurídica): entra só
 se for CNPJ de DV certo; senão a linha fica (conta como concorrente) sem o número e com a classe em
-`tipoDocumento` (`cpf`, `cnpj_dv_errado`, `outro`, `vazio`). O PIT manda o CPF com 14 posições e zeros
-à esquerda; quando não há sigla (vencedor, contratado), o número que pode ser um CPF é tratado como
-CPF, mesmo que também passe como CNPJ (o do Banco do Brasil, `00000000000191`): perde-se a ligação de
-um CNPJ antigo, nunca se guarda um CPF.
+`tipoDocumento` (`cpf`, `cnpj_ou_cpf`, `cnpj_dv_errado`, `outro`, `vazio`). O PIT manda o CPF com 14
+posições e zeros à esquerda; quando não há sigla (vencedor, contratado), o número que pode ser um CPF é
+tratado como CPF. O que passa como CNPJ e como CPF (5 zeros ou mais à esquerda) sai sem o número, com
+uma exceção medida no ensaio de 17/10/2026: a raiz do Banco do Brasil (39 de 40 casos em 2013 e 2025).
 
 **Formato medido em 17/10/2026**: 2013 em UTF-16 (BOM `FF FE`), anos recentes em UTF-8 com BOM; os
 atributos são os mesmos de 2013 a 2025. Cada linha traz `dtEnvio` (licitação, contrato), que a D1 da
@@ -56,6 +56,12 @@ ATRIBUTOS_DE_PESSOA = ("nm",)
 TEXTO_LIVRE = ("dsObjeto", "dsHistorico", "dsItem")
 # atributos com números que não são documentos (códigos, valores, datas): fora da varredura de CPF
 NAO_SAO_DOCUMENTO = ("id", "vl", "dt", "cd")
+# com 5 zeros ou mais à esquerda, os DVs do CNPJ e do CPF são a mesma conta (os pesos só diferem nas
+# 2 primeiras posições do CPF): o número passa nos dois. Isso só acontece nas raízes mais antigas,
+# de bancos. A do Banco do Brasil (00.000.000, uma por agência) aparece aos milhares e fica como CNPJ;
+# como CPF seria 000.00x.xxx-xx, dos primeiros emitidos. As outras saem sem o número (`cnpj_ou_cpf`)
+RAIZ_DO_BANCO_DO_BRASIL = "00000000"
+CLASSES_DE_POSSIVEL_PESSOA = ("cpf", "cnpj_ou_cpf")
 
 _ENVIO = ("ultimoEnvioSIMAMNesteExercicio", "DataReferencia")
 _ADITIVO = (
@@ -160,10 +166,16 @@ def documento_ou_classe(
     if tipo not in ("", "CNPJ"):
         return "outro", None
     if texto.isdigit():
-        if not tipo and _pode_ser_cpf(texto):
-            return "cpf", None
-        if len(texto) <= cnpj.TAMANHO and cnpj.dv_confere(texto.zfill(cnpj.TAMANHO)):
-            return "cnpj", texto.zfill(cnpj.TAMANHO)
+        numerico = texto.zfill(cnpj.TAMANHO) if len(texto) <= cnpj.TAMANHO else ""
+        e_cnpj = bool(numerico) and cnpj.dv_confere(numerico)
+        if e_cnpj and numerico.startswith(RAIZ_DO_BANCO_DO_BRASIL):
+            return "cnpj", numerico
+        if _pode_ser_cpf(texto):
+            if e_cnpj:
+                return "cnpj_ou_cpf", None
+            return ("cnpj_dv_errado" if tipo else "cpf"), None
+        if e_cnpj:
+            return "cnpj", numerico
     elif cnpj.FORMA.match(texto) and cnpj.dv_confere(
         texto
     ):  # CNPJ com letras (2026 em diante)
@@ -242,7 +254,7 @@ def _vestigios_da_linha(xml: str, atributos: Mapping[str, str]) -> list[str]:
             not atributo.startswith(NAO_SAO_DOCUMENTO)
             and valor.strip().isdigit()
             and len(valor.strip()) in (cnpj.TAMANHO_DO_CPF, cnpj.TAMANHO)
-            and documento_ou_classe(None, valor)[0] == "cpf"
+            and documento_ou_classe(None, valor)[0] in CLASSES_DE_POSSIVEL_PESSOA
         ):
             achados.append(f"{xml}: possível CPF em {atributo}")
     return achados

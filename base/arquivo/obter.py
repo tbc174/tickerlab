@@ -60,6 +60,8 @@ SEM_JANELA_DO_ZLIB = -15  # o "deflate" cru do ZIP, sem o cabeçalho do zlib
 LIMITE_DO_MEMBRO = 256 * 1024**2
 # caracteres de controle que o XML 1.0 não aceita (o PIT manda alguns: \x0b, \x1f)
 CONTROLE_INVALIDO = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+# o mesmo caractere escrito como referência numérica (`&#11;`, `&#x1F;`; o PIT manda, 2013 e 2025)
+REFERENCIA_NUMERICA = re.compile(r"&#(?:([0-9]{1,7})|[xX]([0-9a-fA-F]{1,6}));")
 
 
 class ArquivoRemoto(io.RawIOBase):
@@ -205,7 +207,21 @@ def decodificar_xml(conteudo: bytes) -> str:
         texto = conteudo.decode("utf-16")
     else:
         texto = conteudo.decode("utf-8-sig")
+    texto = REFERENCIA_NUMERICA.sub(_referencia_valida, texto)
     return CONTROLE_INVALIDO.sub("", texto)
+
+
+def _referencia_valida(achado: re.Match[str]) -> str:
+    """A referência (`&#11;`, `&#x1F;`) como veio, se o caractere vale no XML; senão, nada (o PIT
+    escreve alguns caracteres de controle assim, e o leitor de XML recusa o arquivo inteiro)."""
+    decimal, hexadecimal = achado.groups()
+    codigo = int(decimal) if decimal else int(hexadecimal, 16)
+    vale = (
+        codigo in (0x9, 0xA, 0xD)
+        or 0x20 <= codigo <= 0xD7FF
+        or 0xE000 <= codigo <= 0x10FFFF
+    )
+    return achado.group(0) if vale and codigo not in (0xFFFE, 0xFFFF) else ""
 
 
 def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:

@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 import requests
 
-from base import tce_pr
+from base import cnpj, tce_pr
 from base.arquivo import coleta, fontes
 from base.arquivo.coleta import Resposta
 
@@ -22,6 +22,10 @@ AGORA = datetime(2026, 10, 18, 9, tzinfo=UTC)  # domingo, 6h em Brasília
 CPF_INVENTADO = "00012345678909"  # como o PIT manda: 14 posições, zeros à esquerda
 CNPJ_BOM = "11222333000181"
 CNPJ_DV_ERRADO = "11222333000182"
+# raiz antiga (00.000.208, como as dos bancos mais velhos), com os DVs certos: passa como CNPJ e como CPF
+RAIZ_ANTIGA = next(
+    v for v in (f"000002080001{dv:02d}" for dv in range(100)) if cnpj.dv_confere(v)
+)
 
 LICITACAO = (
     '<root><Licitacao cdIBGE="410740" nmMunicipio="Município Inventado" idPessoa="12277" '
@@ -121,9 +125,16 @@ def test_vencedor_sem_sigla_decide_pelo_dv():
         ("CPF", CNPJ_BOM, ("cpf", None)),  # a fonte diz CPF: vale a fonte
         (None, CPF_INVENTADO, ("cpf", None)),  # sem sigla: o DV do CPF decide
         (None, "12345678909", ("cpf", None)),
-        # CNPJ com DV certo que também poderia ser um CPF com zeros (o do Banco do Brasil): na dúvida,
-        # é pessoa (perde-se a ligação do BB, nunca se guarda um CPF)
-        (None, "00000000000191", ("cpf", None)),
+        # 5 zeros ou mais à esquerda passam nos dois DVs: a raiz do Banco do Brasil fica como CNPJ
+        # (uma por agência; 39 dos 40 casos do ensaio), as outras saem sem o número
+        (None, "00000000000191", ("cnpj", "00000000000191")),
+        (
+            "CNPJ",
+            "00000000123456",
+            ("cnpj_dv_errado", None),
+        ),  # BB com DV errado não passa
+        ("CNPJ", RAIZ_ANTIGA, ("cnpj_ou_cpf", None)),
+        (None, RAIZ_ANTIGA, ("cnpj_ou_cpf", None)),
         (None, CNPJ_BOM, ("cnpj", CNPJ_BOM)),
         (None, "", ("vazio", None)),
         (None, "ABC", ("outro", None)),
