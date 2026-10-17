@@ -34,6 +34,8 @@ VARIAVEL_DA_URL = "TICKERLAB_URL_PUBLICA"
 STATUS_QUE_DAO_O_PRO = frozenset({"active", "trialing", "past_due"})
 # estados finais: o Stripe nunca reativa uma assinatura que chegou a eles
 STATUS_ENCERRADOS = frozenset({"canceled", "incomplete_expired"})
+# a conta já tem o cliente no Stripe (criado antes do primeiro Checkout), mas nenhuma assinatura
+STATUS_SO_O_CLIENTE = "sem_assinatura"
 PREFIXOS_DE_CHAVE_DE_TESTE = ("sk_test_", "rk_test_")  # secreta ou restrita (preferida)
 # decisão 0029: com o login aberto a qualquer conta Google e o pagamento ainda de teste, qualquer
 # pessoa viraria Pro com o cartão de teste; até a cobrança real, só administradores assinam
@@ -56,6 +58,10 @@ EVENTOS_DA_ASSINATURA = (
 
 class CobrancaIndisponivelError(Exception):
     """A cobrança não está configurada (ou está configurada de forma insegura)."""
+
+
+class AssinaturaJaExisteError(Exception):
+    """A conta já tem uma assinatura que não terminou: vai ao portal, não assina de novo."""
 
 
 @dataclass(frozen=True)
@@ -130,18 +136,33 @@ def acao_da_assinatura(
     assinatura: "Assinatura | None",
     configurada: bool,
 ) -> AcaoDaAssinatura:
-    """Qual botão a página de planos mostra: assinar o Pro, gerenciar no portal ou nenhum."""
+    """Qual botão a página de planos mostra: assinar o Pro, gerenciar no portal ou nenhum.
+
+    Quem tem uma assinatura que não terminou gerencia, em qualquer plano: o administrador pode ter
+    rebaixado a conta, e a assinatura continua no Stripe (achado 1d do Codex, ADR 0091).
+    """
     if not configurada:
         return AcaoDaAssinatura(None, AVISO_SEM_COBRANCA)
+    if tem_assinatura_viva(assinatura):
+        return AcaoDaAssinatura("gerenciar", None)
     if plano in PLANOS_QUE_ASSINAM_O_PRO:
         if not pode_assinar(e_admin):
             return AcaoDaAssinatura(None, AVISO_DE_PLANOS_EM_BREVE)
         return AcaoDaAssinatura(
             "assinar", AVISO_DO_PLUS if plano == "gratuito" else None
         )
-    if assinatura is not None:
-        return AcaoDaAssinatura("gerenciar", None)
+    if assinatura is not None and assinatura.status != STATUS_SO_O_CLIENTE:
+        return AcaoDaAssinatura("gerenciar", None)  # no portal ficam as faturas antigas
     return AcaoDaAssinatura(None, None)
+
+
+def tem_assinatura_viva(assinatura: "Assinatura | None") -> bool:
+    """Há uma assinatura no Stripe que ainda não chegou a um estado final."""
+    return (
+        assinatura is not None
+        and assinatura.stripe_subscription_id is not None
+        and assinatura.status not in STATUS_ENCERRADOS
+    )
 
 
 # --- falar com o Stripe -------------------------------------------------------------------
@@ -155,16 +176,96 @@ def _identificador_da_integracao() -> str:
     return f"tickerlab-pro-{sufixo}"
 
 
-def criar_pagina_de_pagamento(
+def abrir_pagamento(
+    motor: sa.Engine,
     usuario_id: uuid.UUID,
     email: str,
-    id_do_cliente: str | None = None,
+    configuracao: ConfiguracaoDaCobranca | None = None,
+    cliente: stripe.StripeClient | None = None,
+    caminho_de_volta: str = "/",
+) -> str:
+    """O caminho inteiro até o Checkout: confere, garante o cliente, fecha o pagamento aberto.
+
+    Achado 1b do Codex (ADR 0091): sem cliente guardado, dois Checkouts abertos antes do primeiro
+    webhook criavam dois clientes e duas assinaturas, e apagar a conta só encerrava a última. Agora
+    a conta tem um cliente só, criado e guardado antes do primeiro Checkout; cada Checkout novo
+    expira o que ficou aberto; e quem já tem assinatura viva vai ao portal, não assina de novo.
+    """
+    configuracao = configuracao or ler_configuracao()
+    cliente = cliente or _cliente(configuracao)
+    with motor.connect() as conexao:
+        guardada = buscar_assinatura(conexao, usuario_id)
+    if tem_assinatura_viva(guardada):
+        raise AssinaturaJaExisteError("Esta conta já tem uma assinatura.")
+    if guardada is not None:
+        id_do_cliente = guardada.stripe_customer_id
+    else:
+        id_do_cliente = _criar_cliente(motor, usuario_id, email, cliente)
+    _expirar_pagamentos_abertos(id_do_cliente, cliente)
+    return criar_pagina_de_pagamento(
+        usuario_id, id_do_cliente, configuracao, cliente, caminho_de_volta
+    )
+
+
+def _criar_cliente(
+    motor: sa.Engine,
+    usuario_id: uuid.UUID,
+    email: str,
+    cliente: stripe.StripeClient,
+) -> str:
+    """Cria o cliente no Stripe e o guarda já (status `sem_assinatura`).
+
+    Guardado antes do pagamento, ele é apagado junto com a conta mesmo que o webhook ainda não
+    tenha chegado (achado 6b): apagar o cliente no Stripe também cancela as assinaturas dele. A
+    chave de idempotência faz dois cliques ao mesmo tempo receberem o mesmo cliente.
+    """
+    criado = cliente.v1.customers.create(
+        params={"email": email, "metadata": {"usuario_id": str(usuario_id)}},
+        options={"idempotency_key": f"tickerlab-cliente-{usuario_id}"},
+    )
+    try:
+        with motor.begin() as conexao:
+            conexao.execute(
+                sa.insert(assinaturas).values(
+                    usuario_id=usuario_id,
+                    stripe_customer_id=criado.id,
+                    stripe_subscription_id=None,
+                    status=STATUS_SO_O_CLIENTE,
+                    cancela_no_fim=False,
+                    evento_em=0,
+                    atualizada_em=datetime.now(UTC),
+                )
+            )
+    except sa.exc.IntegrityError:
+        # o outro clique guardou primeiro; pela chave de idempotência, é o mesmo cliente
+        log.info("Cliente do Stripe já guardado por outro pedido")
+    return criado.id
+
+
+def _expirar_pagamentos_abertos(
+    id_do_cliente: str, cliente: stripe.StripeClient
+) -> None:
+    """Fecha os Checkouts que o cliente abriu e não terminou: cada um viraria uma assinatura."""
+    abertas = cliente.v1.checkout.sessions.list(
+        params={"customer": id_do_cliente, "status": "open", "limit": 100}
+    )
+    for sessao in abertas.data:
+        try:
+            cliente.v1.checkout.sessions.expire(sessao.id)
+        except stripe.InvalidRequestError:
+            log.info("Checkout aberto já tinha terminado")
+
+
+def criar_pagina_de_pagamento(
+    usuario_id: uuid.UUID,
+    id_do_cliente: str,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
     caminho_de_volta: str = "/",
 ) -> str:
     """Cria a sessão do Checkout para assinar o Pro e devolve o endereço dela.
 
+    Quem chama é `abrir_pagamento`, que garante o cliente e fecha o pagamento aberto antes.
     `caminho_de_volta` é escolhido pelo código (o app atual volta para "/", o app novo para a página
     de planos), nunca por quem chama a API: assim o Stripe nunca devolve a pessoa para outro site.
     """
@@ -179,11 +280,8 @@ def criar_pagina_de_pagamento(
         "subscription_data": {"metadata": {"usuario_id": str(usuario_id)}},
         "allow_promotion_codes": False,
         "integration_identifier": _identificador_da_integracao(),
+        "customer": id_do_cliente,
     }
-    if id_do_cliente:
-        parametros["customer"] = id_do_cliente
-    else:
-        parametros["customer_email"] = email
     sessao = (cliente or _cliente(configuracao)).v1.checkout.sessions.create(
         params=parametros
     )
@@ -249,10 +347,7 @@ def encerrar_cobranca(
     if assinatura is None:
         return
     cliente = cliente or _cliente(configuracao or ler_configuracao())
-    if assinatura.stripe_subscription_id and assinatura.status not in (
-        "canceled",
-        "incomplete_expired",
-    ):
+    if tem_assinatura_viva(assinatura):
         try:
             cliente.v1.subscriptions.cancel(assinatura.stripe_subscription_id)
         except stripe.InvalidRequestError:

@@ -19,8 +19,8 @@ def stripe_ligado(monkeypatch):
         monkeypatch.setenv(chave, valor)
     chamadas = []
 
-    def pagina(usuario_id, email, id_do_cliente=None, **_):
-        chamadas.append(("pagamento", usuario_id, email, id_do_cliente))
+    def pagina(motor, usuario_id, email, **_):
+        chamadas.append(("pagamento", usuario_id, email))
         return "https://checkout.stripe.exemplo/sessao"
 
     def portal(id_do_cliente, **_):
@@ -30,7 +30,7 @@ def stripe_ligado(monkeypatch):
     # troca onde a tela usa: telas/conta/assinatura.py importa as funções pelo nome, e um módulo
     # importado guarda o que recebeu na primeira vez (o app.py, que roda de novo a cada execução,
     # pegava a troca feita em src.cobranca)
-    monkeypatch.setattr(assinatura_na_tela, "criar_pagina_de_pagamento", pagina)
+    monkeypatch.setattr(assinatura_na_tela, "abrir_pagamento", pagina)
     monkeypatch.setattr(assinatura_na_tela, "criar_portal_da_assinatura", portal)
     return chamadas
 
@@ -104,8 +104,8 @@ def test_gratuito_assina_pelo_convite_de_um_recurso_do_pro(
     app.button(key="assinar_recurso_pares").click().run()
     assert not app.exception
     assert _links(app) == ["https://checkout.stripe.exemplo/sessao"]
-    tipo, usuario, email, cliente = stripe_ligado[0]
-    assert (tipo, email, cliente) == ("pagamento", "ana@exemplo.com", None)
+    tipo, usuario, email = stripe_ligado[0]
+    assert (tipo, email) == ("pagamento", "ana@exemplo.com")
     assert usuario == id_do_usuario(banco, "ana")
 
 
@@ -158,6 +158,21 @@ def test_assinante_gerencia_pelo_portal_e_nao_ve_assinar(
     app.button(key="gerenciar_conta").click().run()
     assert _links(app) == ["https://portal.stripe.exemplo/sessao"]
     assert stripe_ligado[0] == ("portal", "cus_1")
+
+
+def test_rebaixado_pelo_administrador_ainda_gerencia_a_assinatura(
+    banco, stripe_ligado, monkeypatch
+):
+    """Achado 1d do Codex (ADR 0091): a assinatura continua no Stripe depois do rebaixamento."""
+    _entrar_como_admin(monkeypatch, banco, "ana", "ana@exemplo.com")
+    _assinar(banco, "ana")
+    with banco.begin() as conexao:
+        mudar_plano(conexao, id_do_usuario(banco, "ana"), "gratuito")
+    app = abrir_app()
+    assert not app.exception
+    assert not [r for r in _rotulos(app) if r.startswith("Assinar")]
+    app.button(key="gerenciar_conta").click().run()
+    assert _links(app) == ["https://portal.stripe.exemplo/sessao"]
 
 
 def test_pro_dado_por_administrador_nao_tem_portal(banco, stripe_ligado, monkeypatch):

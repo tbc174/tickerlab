@@ -81,7 +81,7 @@ def test_pagina_de_pagamento_leva_o_usuario_e_o_preco():
     cliente, usuario = ClienteFalso(), uuid.uuid4()
     url = criar_pagina_de_pagamento(
         usuario,
-        "ana@exemplo.com",
+        "cus_1",
         configuracao=ler_configuracao(AMBIENTE),
         cliente=cliente,
     )
@@ -91,24 +91,12 @@ def test_pagina_de_pagamento_leva_o_usuario_e_o_preco():
     assert p["line_items"] == [{"price": "price_123", "quantity": 1}]
     assert p["client_reference_id"] == str(usuario)
     assert p["subscription_data"]["metadata"]["usuario_id"] == str(usuario)
-    assert p["customer_email"] == "ana@exemplo.com" and "customer" not in p
+    # sempre o cliente guardado, nunca customer_email (achado 1b do Codex)
+    assert p["customer"] == "cus_1" and "customer_email" not in p
     assert p["success_url"] == "https://servidor.exemplo.ts.net:8443/?assinatura=ok"
     assert "payment_method_types" not in p
     assert p["integration_identifier"].startswith("tickerlab-pro-")
     assert len(p["integration_identifier"]) == len("tickerlab-pro-") + 8
-
-
-def test_quem_ja_e_cliente_reusa_o_cliente_do_stripe():
-    cliente = ClienteFalso()
-    criar_pagina_de_pagamento(
-        uuid.uuid4(),
-        "ana@exemplo.com",
-        id_do_cliente="cus_1",
-        configuracao=ler_configuracao(AMBIENTE),
-        cliente=cliente,
-    )
-    _, p = cliente.chamadas[0]
-    assert p["customer"] == "cus_1" and "customer_email" not in p
 
 
 def test_portal_da_assinatura():
@@ -127,7 +115,7 @@ def test_sem_configuracao_nao_cria_pagina(monkeypatch):
     for chave in AMBIENTE:
         monkeypatch.delenv(chave, raising=False)
     with pytest.raises(CobrancaIndisponivelError):
-        criar_pagina_de_pagamento(uuid.uuid4(), "a@b.com")
+        criar_pagina_de_pagamento(uuid.uuid4(), "cus_1")
 
 
 # --- quem pode assinar (decisão 0029) ---
@@ -540,7 +528,7 @@ def test_pagina_de_pagamento_volta_para_o_caminho_pedido():
     cliente = ClienteFalso()
     criar_pagina_de_pagamento(
         uuid.uuid4(),
-        "ana@exemplo.com",
+        "cus_1",
         configuracao=ler_configuracao(AMBIENTE),
         cliente=cliente,
         caminho_de_volta="/novo/planos",
@@ -567,3 +555,186 @@ def test_portal_volta_para_o_caminho_pedido():
     assert cliente.chamadas[0][1]["return_url"] == (
         "https://servidor.exemplo.ts.net:8443/novo/planos"
     )
+
+
+# --- achados 1b, 1d e 6b do Codex (ADR 0091): um cliente do Stripe por conta, criado antes ---
+class StripeComClientes(ClienteFalso):
+    """O cliente falso com clientes e pagamentos abertos (o Checkout que ninguém terminou)."""
+
+    def __init__(self, abertas=()):
+        super().__init__()
+        self.abertas = list(abertas)
+        criar_sessao = self.v1.checkout.sessions.create
+        self.v1.checkout.sessions = SimpleNamespace(
+            create=criar_sessao, list=self._listar, expire=self._expirar
+        )
+        self.v1.customers = SimpleNamespace(
+            create=self._criar_cliente, delete=self._apagar_cliente
+        )
+        self.v1.subscriptions = SimpleNamespace(cancel=self._cancelar)
+
+    def _criar_cliente(self, params, options=None):
+        self.chamadas.append(("cliente", params, options))
+        return SimpleNamespace(id="cus_novo")
+
+    def _listar(self, params):
+        self.chamadas.append(("listar", params))
+        return SimpleNamespace(data=[SimpleNamespace(id=i) for i in self.abertas])
+
+    def _expirar(self, id_da_sessao):
+        self.chamadas.append(("expirar", id_da_sessao))
+
+    def _apagar_cliente(self, id_do_cliente):
+        self.chamadas.append(("apagar", id_do_cliente))
+
+    def _cancelar(self, id_da_assinatura):
+        self.chamadas.append(("cancelar", id_da_assinatura))
+
+    def do_tipo(self, tipo):
+        return [c for c in self.chamadas if c[0] == tipo]
+
+
+@pytest.fixture
+def motor():
+    motor = sa.create_engine("sqlite://", poolclass=sa.pool.StaticPool)
+    sa.event.listen(motor, "connect", lambda c, _: c.execute("PRAGMA foreign_keys=ON"))
+    metadata.create_all(motor)
+    return motor
+
+
+def _cadastrar(motor, sub="ana"):
+    with motor.begin() as c:
+        return entrar(c, sub, f"{sub}@exemplo.com")[0]
+
+
+def _abrir(motor, usuario, stripe_falso):
+    return cobranca.abrir_pagamento(
+        motor,
+        usuario.id,
+        usuario.email,
+        configuracao=ler_configuracao(AMBIENTE),
+        cliente=stripe_falso,
+    )
+
+
+def test_dois_pagamentos_antes_do_primeiro_webhook_usam_o_mesmo_cliente(motor):
+    """1b: sem cliente guardado, cada Checkout criava um cliente (e uma assinatura) novo."""
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    _abrir(motor, ana, stripe_falso)
+    assert len(stripe_falso.do_tipo("cliente")) == 1
+    pagamentos = [p for _, p in stripe_falso.do_tipo("checkout")]
+    assert [p["customer"] for p in pagamentos] == ["cus_novo", "cus_novo"]
+    assert all("customer_email" not in p for p in pagamentos)
+    with motor.connect() as c:
+        guardada = buscar_assinatura(c, ana.id)
+    assert guardada.stripe_customer_id == "cus_novo"
+    assert guardada.stripe_subscription_id is None
+
+
+def test_o_cliente_e_criado_com_o_email_e_uma_chave_de_idempotencia(motor):
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    _, params, opcoes = stripe_falso.do_tipo("cliente")[0]
+    assert params["email"] == "ana@exemplo.com"
+    assert params["metadata"] == {"usuario_id": str(ana.id)}
+    assert str(ana.id) in opcoes["idempotency_key"]
+
+
+def test_abrir_um_pagamento_expira_o_que_ficou_aberto(motor):
+    """1b: dois Checkouts abertos do mesmo cliente dariam duas assinaturas."""
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes(abertas=["cs_velho"])
+    _abrir(motor, ana, stripe_falso)
+    assert stripe_falso.do_tipo("listar")[0][1] == {
+        "customer": "cus_novo",
+        "status": "open",
+        "limit": 100,
+    }
+    tipos = [c[0] for c in stripe_falso.chamadas]
+    assert stripe_falso.do_tipo("expirar") == [("expirar", "cs_velho")]
+    assert tipos.index("expirar") < tipos.index("checkout")
+
+
+def test_quem_tem_assinatura_viva_nao_abre_outro_pagamento(motor):
+    """1b e 1d: rebaixada pelo administrador, a conta ainda tem a assinatura no Stripe."""
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    evento = _checkout(ana)
+    evento["data"]["object"]["customer"] = "cus_novo"
+    with motor.begin() as c:
+        processar_evento(c, evento)
+        mudar_plano(c, ana.id, "gratuito")
+    with pytest.raises(cobranca.AssinaturaJaExisteError):
+        _abrir(motor, ana, stripe_falso)
+    assert len(stripe_falso.do_tipo("checkout")) == 1
+
+
+def test_assinatura_encerrada_deixa_assinar_de_novo_com_o_mesmo_cliente(motor):
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    with motor.begin() as c:
+        processar_evento(
+            c,
+            _assinatura(
+                "evt_x", "customer.subscription.deleted", "canceled", 300, "cus_novo"
+            ),
+        )
+    _abrir(motor, ana, stripe_falso)
+    assert len(stripe_falso.do_tipo("cliente")) == 1
+    assert len(stripe_falso.do_tipo("checkout")) == 2
+
+
+def test_o_checkout_concluido_completa_o_cliente_guardado(motor):
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    evento = _checkout(ana)
+    evento["data"]["object"]["customer"] = "cus_novo"
+    with motor.begin() as c:
+        assert processar_evento(c, evento) == "aplicado"
+        assert _plano(c, ana) == "pro"
+        guardada = buscar_assinatura(c, ana.id)
+    assert (guardada.stripe_subscription_id, guardada.status) == ("sub_ana", "active")
+
+
+def test_apagar_a_conta_antes_do_webhook_apaga_o_cliente_no_stripe(motor):
+    """6b: sem nada guardado, apagar a conta não chamava o Stripe e o cliente ficava lá.
+
+    Apagar o cliente no Stripe também cancela as assinaturas dele.
+    """
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    _abrir(motor, ana, stripe_falso)
+    with motor.connect() as c:
+        guardada = buscar_assinatura(c, ana.id)
+    cobranca.encerrar_cobranca(guardada, cliente=stripe_falso)
+    assert stripe_falso.do_tipo("apagar") == [("apagar", "cus_novo")]
+    assert stripe_falso.do_tipo("cancelar") == []
+
+
+def _guardada(status, assinatura="sub_1"):
+    return cobranca.Assinatura(uuid.uuid4(), "cus_1", assinatura, status, None, False)
+
+
+@pytest.mark.parametrize(
+    ("plano", "admin", "guardada", "esperado"),
+    [
+        # 1d: rebaixada pelo administrador, a assinatura viva continua com o portal
+        ("gratuito", True, _guardada("active"), ("gerenciar", None)),
+        ("plus", False, _guardada("past_due"), ("gerenciar", None)),
+        ("gratuito", False, _guardada("incomplete"), ("gerenciar", None)),
+        # encerrada: pode assinar de novo
+        ("gratuito", True, _guardada("canceled"), ("assinar", cobranca.AVISO_DO_PLUS)),
+        ("plus", True, _guardada("incomplete_expired"), ("assinar", None)),
+        # só o cliente guardado, sem assinatura ainda
+        (
+            "gratuito",
+            True,
+            _guardada("sem_assinatura", None),
+            ("assinar", cobranca.AVISO_DO_PLUS),
+        ),
+        ("pro", True, _guardada("sem_assinatura", None), (None, None)),
+        ("pro", False, _guardada("canceled"), ("gerenciar", None)),
+    ],
+)
+def test_acao_com_a_assinatura_guardada(plano, admin, guardada, esperado):
+    acao = cobranca.acao_da_assinatura(plano, admin, guardada, True)
+    assert (acao.tipo, acao.texto) == esperado
