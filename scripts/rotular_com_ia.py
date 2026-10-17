@@ -702,6 +702,27 @@ def _mesma_entrada(evento: dict, pasta: Path, a: dict, b: dict) -> bool:
     )
 
 
+def _com_o_desvio_do_trecho(
+    rotulos: dict[str, dict], eventos: list[dict]
+) -> tuple[dict[str, dict], list[str]]:
+    """Os rótulos do Sonnet com os eventos do desvio registrado (`ar.DESVIO_DO_TRECHO`) refeitos
+    pela resposta bruta, sem conferir o trecho; só se o erro for o do trecho e o resto valer."""
+    por_id = {e["id"]: e for e in eventos}
+    refeitos, desvios = dict(rotulos), []
+    for i in sorted(ar.DESVIO_DO_TRECHO):
+        r = rotulos.get(i, {})
+        if i not in por_id or r.get("erro") != "trecho não está no documento":
+            continue
+        rotulo = ri.interpretar(
+            r.get("resposta_bruta", ""), por_id[i], "", conferir_trecho=False
+        )
+        if isinstance(rotulo, ri.RotuloDaIA):
+            semerro = {k: v for k, v in r.items() if k != "erro"}
+            refeitos[i] = semerro | asdict(rotulo) | {"desvio": "trecho juntado"}
+            desvios.append(i)
+    return refeitos, desvios
+
+
 def comparar(
     pasta: Path,
     eventos: list[dict],
@@ -714,6 +735,7 @@ def comparar(
     tentativa). Só contam os pares que leram o mesmo texto: o par com entrada diferente fica de fora
     e deixa o veredito incompleto."""
     a, b = ler_rotulos(pasta, modelo_a), ler_rotulos(pasta, modelo_b)
+    a, desvios = _com_o_desvio_do_trecho(a, eventos)
     primeiros, lote = ar.conjunto_de_prova(eventos)
     diferentes = [
         e["id"]
@@ -739,6 +761,7 @@ def comparar(
             {"modelos": [modelo_a, modelo_b], "versao_do_prompt": ri.VERSAO_DO_PROMPT,
              "primeiros": asdict(veredito), "passou": veredito.passou,
              "limites": ar.LIMITES_DA_COMPARACAO, "entradas_diferentes": diferentes,
+             "desvios": desvios,
              "lote_do_leitor": {"eventos": len(lote), "concordam_no_assunto": len(referencia),
                                 "referencia": referencia},
              "sha256": sha256,

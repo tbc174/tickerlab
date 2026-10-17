@@ -42,6 +42,17 @@ LIMITES_DA_COMPARACAO = {k: v for k, v in LIMITES.items() if k != "max_identific
 NOTAS = (1, 2, 3, 4, 5)
 PRIMEIROS_DA_FILA = 300  # `ordem` < 300: os mesmos "em comum" da ADR 0060
 LOTE_DO_LEITOR = "lote-leitor-v1"
+# Desvio registrado (Tiago, 17/10/2026, depois de ver a causa): nestes 3 dos 300 primeiros, o Sonnet
+# monta o trecho juntando dois campos do documento com " - " (ou pula um item do assunto) e repete
+# igual em 5 lotes. Só na comparação Sonnet × Opus, a nota, o tema e o assunto deles contam pela
+# resposta bruta; o rótulo continua com erro e fora do treino.
+DESVIO_DO_TRECHO = frozenset(
+    {
+        "018660IPE250320260161833251-76",
+        "022365IPE300920240104561000-69",
+        "021130IPE311220200104431610-85",
+    }
+)
 # estabilidade (Emenda 1, item 3): escritos antes de rodar, como o resto (ADR 0006)
 EVENTOS_DA_ESTABILIDADE = 100
 SEMENTE_DA_ESTABILIDADE = 20261017

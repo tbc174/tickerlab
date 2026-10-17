@@ -743,3 +743,44 @@ def test_main_identifica_e_mede_a_estabilidade_sem_o_tiago(
     assert "PASSOU" in capsys.readouterr().out
     assert rc.main(["estabilidade", *base]) == 0 and len(cliente.criados) == 401
     assert "Nota igual" in capsys.readouterr().out
+
+
+def _com_erro_de_trecho(pasta: Path, ids: list[str]) -> None:
+    """O Sonnet com o trecho juntado (dois campos com " - ") nos `ids`: erro, com a resposta bruta."""
+    rotulos = rc.ler_rotulos(pasta)
+    for i in ids:
+        bruta = {"nota": 1 + int(i[1:]) % 5, "tema": "dividendos", "confianca": "media",
+                 "trecho": "Aviso aos Acionistas - Pagamento de dividendos"}  # fmt: skip
+        rotulos[i] = {
+            k: v for k, v in rotulos[i].items() if k not in ("nota", "tema", "assunto")
+        }
+        rotulos[i] |= {
+            "erro": "trecho não está no documento",
+            "resposta_bruta": json.dumps(bruta),
+        }
+    rc.arquivo_dos_rotulos(pasta).write_text(
+        "\n".join(json.dumps(r) for r in rotulos.values()) + "\n", encoding="utf-8"
+    )
+
+
+def test_comparar_conta_os_3_eventos_do_desvio_pela_resposta_bruta(
+    tmp_path, monkeypatch
+):
+    """Desvio registrado (Tiago, 17/10/2026): só nos eventos da lista, o erro de trecho conta pela
+    nota e pelo tema da resposta bruta; o rotulos.jsonl não muda (o treino continua sem eles)."""
+    eventos, pasta = _dois_modelos(tmp_path)
+    _com_erro_de_trecho(pasta, ["E5", "E6"])
+    monkeypatch.setattr(ar, "DESVIO_DO_TRECHO", frozenset({"E5"}))
+    antes = rc.arquivo_dos_rotulos(pasta).read_bytes()
+    veredito = rc.comparar(pasta, eventos)
+    assert veredito.incompleto  # o E6 não está na lista: continua faltando
+    assert veredito.motivos == [
+        "1 eventos sem rótulo válido dos dois modelos: rode os pendentes de novo"
+    ]
+    gravado = json.loads(
+        (pasta / "comparacao-modelos.json").read_text(encoding="utf-8")
+    )
+    assert gravado["desvios"] == ["E5"]
+    assert rc.arquivo_dos_rotulos(pasta).read_bytes() == antes
+    monkeypatch.setattr(ar, "DESVIO_DO_TRECHO", frozenset({"E5", "E6"}))
+    assert rc.comparar(pasta, eventos).passou

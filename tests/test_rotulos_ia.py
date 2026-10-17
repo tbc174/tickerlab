@@ -271,3 +271,16 @@ def test_rotulo_do_opus_guarda_o_modelo():
     guardado = rotulo.para_guardar(ri.MODELO_CONFERENTE)
     assert guardado["por"] == "ia" and guardado["modelo"] == ri.MODELO_CONFERENTE
     assert guardado["versao_do_prompt"] == ri.VERSAO_DO_PROMPT
+
+
+def test_sem_conferir_o_trecho_a_lista_fechada_continua_valendo():
+    """Só para o desvio registrado da Emenda 1 (17/10/2026): o trecho deixa de ser conferido, o resto
+    da resposta continua tendo de respeitar a lista fechada."""
+    rotulo = ri.interpretar(
+        _resposta(trecho="comprou a empresa toda"), FATO, TEXTO, conferir_trecho=False
+    )
+    assert (
+        isinstance(rotulo, ri.RotuloDaIA) and rotulo.trecho == "comprou a empresa toda"
+    )
+    erro = ri.interpretar(_resposta(nota=9), FATO, TEXTO, conferir_trecho=False)
+    assert isinstance(erro, ri.ErroDeRotulo) and "nota" in erro.motivo

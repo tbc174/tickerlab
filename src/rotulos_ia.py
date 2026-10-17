@@ -304,8 +304,12 @@ def _junto(texto: str) -> str:
     return " ".join(texto.split())
 
 
-def interpretar(resposta: str, evento: dict, texto: str) -> RotuloDaIA | ErroDeRotulo:
-    """A resposta do modelo vira rótulo só se respeitar a lista fechada e o trecho literal."""
+def interpretar(
+    resposta: str, evento: dict, texto: str, conferir_trecho: bool = True
+) -> RotuloDaIA | ErroDeRotulo:
+    """A resposta do modelo vira rótulo só se respeitar a lista fechada e o trecho literal.
+    `conferir_trecho=False` só serve ao desvio registrado da comparação (Emenda 1 da ADR 0072):
+    a lista fechada continua valendo."""
     evento_id = str(evento.get("id", ""))
 
     def erro(motivo: str) -> ErroDeRotulo:
@@ -330,7 +334,9 @@ def interpretar(resposta: str, evento: dict, texto: str) -> RotuloDaIA | ErroDeR
         if assunto not in topicos.TOPICOS:
             return erro(f"assunto fora da lista: {assunto!r}")
     trecho = _junto(str(dados.get("trecho") or ""))
-    if not trecho or trecho not in _junto(documento(evento, texto)):
+    if conferir_trecho and (
+        not trecho or trecho not in _junto(documento(evento, texto))
+    ):
         return erro("trecho não está no documento")
     return RotuloDaIA(evento_id, nota, tema, assunto, trecho, confianca)
 
