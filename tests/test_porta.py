@@ -204,6 +204,85 @@ def test_distintos_traz_os_valores_sem_a_tabela_inteira(base):
             p.distintos("eventos", "cnpj")  # no dicionário, mas sem arquivo nesta base
 
 
+def test_ler_so_as_colunas_pedidas(base):
+    """Tabela grande lida só nas colunas que o leitor usa; a data `como_era_em` filtra mesmo assim."""
+    with Porta(base) as p:
+        duas = p.ler("ligacoes", colunas=["de", "para"])
+        em_2020 = p.ler("ligacoes", como_era_em=DIA, colunas=["de"])
+        assert "situacao" in p.colunas("ligacoes")
+        with pytest.raises(ValueError, match="coluna"):
+            p.ler("ligacoes", colunas=["de", "nao_existe"])
+        with pytest.raises(KeyError, match="eventos"):
+            p.colunas("eventos")
+    assert list(duas.columns) == ["de", "para"] and len(duas) == 6
+    assert list(em_2020.columns) == ["de"]
+    assert set(em_2020["de"]) == {"EC1", "EC2", "EC4", "EAUD", "EX"}
+
+
+def test_somar_agrupa_no_duckdb(base):
+    """Série grande (Anatel: milhões de linhas) volta já somada: só o agregado vem para o pandas."""
+    _gravar(
+        base,
+        "setoriais/anatel/Acessos_2025_Colunas.parquet",
+        pd.DataFrame(
+            {
+                "competencia": ["2025-01-31", "2025-01-31", "2025-01-31", "2025-02-28"],
+                "cnpj": ["A", "A", "B", "A"],
+                "servico": ["movel"] * 4,
+                "recorte": ["completo", "completo", "completo", "tecnologia"],
+                "acessos": [1.0, 2.0, 5.0, 7.0],
+            }
+        ),
+    )
+    with Porta(base) as p:
+        somado = p.somar(
+            "anatel_acessos",
+            por=["competencia", "cnpj"],
+            valor="acessos",
+            filtros={"recorte": ["completo", "modalidade"]},
+        )
+        with pytest.raises(ValueError, match="coluna"):
+            p.somar("anatel_acessos", por=["nao_existe"], valor="acessos")
+    assert somado.sort_values("cnpj").to_dict("records") == [
+        {"competencia": "2025-01-31", "cnpj": "A", "acessos": 3.0},
+        {"competencia": "2025-01-31", "cnpj": "B", "acessos": 5.0},
+    ]
+
+
+def test_somar_e_exato(base):
+    """Em DOUBLE, 0,1 + 0,2 dá 0,30000000000000004 e a ordem da soma mexe na 15ª casa; em DECIMAL não."""
+    _gravar(
+        base,
+        "setoriais/anatel/Acessos_2025_Colunas.parquet",
+        pd.DataFrame(
+            {
+                "competencia": ["2025-01-31"] * 2,
+                "cnpj": ["A"] * 2,
+                "servico": ["movel"] * 2,
+                "recorte": ["completo"] * 2,
+                "acessos": [0.1, 0.2],
+            }
+        ),
+    )
+    with Porta(base) as p:
+        somado = p.somar("anatel_acessos", por=["cnpj"], valor="acessos")
+    assert somado["acessos"].tolist() == [0.3]
+
+
+def test_hashes_dos_arquivos_da_tabela(base):
+    """ADR 0078: quem lê anota o hash de cada arquivo (do manifesto ao lado) para refazer e conferir."""
+    (base / "rede" / "ligacoes.json").write_text(
+        '{"sha256_da_tabela": "h-lig"}', encoding="utf-8"
+    )
+    _gravar(base, "auditores/2024.parquet", pd.DataFrame({"cnpj": [CNPJ]}))
+    _gravar(base, "auditores/2024.v1.parquet", pd.DataFrame({"cnpj": [CNPJ]}))
+    with Porta(base) as p:
+        assert p.hashes("ligacoes") == {"rede/ligacoes": "h-lig"}
+        assert p.hashes("auditores") == {"auditores/2024": None}  # sem manifesto
+        with pytest.raises(KeyError, match="eventos"):
+            p.hashes("eventos")
+
+
 def test_ler_como_era_em_sem_data_publica_e_erro(tmp_path):
     """Sem `publico_em` no contrato, a porta não finge saber como era."""
     _gravar(

@@ -8,6 +8,7 @@ Código novo lê a base **só por aqui** (`tests/test_porta_unica.py` cuida diss
     porta.rede("33.256.439/0001-39", como_era_em="2020-12-31", profundidade=2)
     porta.linhagem("entidades", linha)                      # da linha ao original e à coleta
     porta.carteira(["33.256.439/0001-39"], desde="2024-01-01")
+    with porta.abrir() as p: p.somar("anatel_acessos", ["competencia", "cnpj"], "acessos")
 
 As funções do módulo abrem `<acervo>/base` (`TICKERLAB_ACERVO`) e fecham no fim. Para várias
 consultas seguidas, `with porta.abrir() as p:` usa uma conexão só. "Como era em D" é sempre D5:
@@ -15,7 +16,8 @@ consultas seguidas, `with porta.abrir() as p:` usa uma conexão só. "Como era e
 **no** dia D passa D − 1.
 """
 
-from collections.abc import Iterable, Mapping
+import json
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Self
 
@@ -139,29 +141,91 @@ class Porta:
             raise KeyError(f"tabela `{tabela}` não tem a versão {versao} na porta")
         return view
 
-    def ler(
+    def colunas(self, tabela: str, versao: str | None = None) -> list[str]:
+        """As colunas da tabela nesta base (com as datas pelos apelidos), sem ler as linhas."""
+        return colunas(self.con, self._view(tabela, versao))
+
+    def hashes(self, tabela: str) -> dict[str, str | None]:
+        """Por arquivo vigente da tabela (caminho dentro da base, sem `.parquet`), o SHA-256 do
+        conteúdo que o manifesto ao lado guarda (None se não há manifesto). Quem monta algo a partir
+        da base anota isso, e dá para refazer e conferir (ADR 0078)."""
+        self._view(tabela, None)
+        hashes: dict[str, str | None] = {}
+        for arquivo in arquivos_da_tabela(self.pasta, self.arquivos[tabela]):
+            manifesto = arquivo.with_suffix(".json")
+            nome = arquivo.relative_to(self.pasta).with_suffix("").as_posix()
+            hashes[nome] = (
+                json.loads(manifesto.read_text(encoding="utf-8")).get(
+                    "sha256_da_tabela"
+                )
+                if manifesto.is_file()
+                else None
+            )
+        return hashes
+
+    def _onde(
         self,
         tabela: str,
-        versao: str | None = None,
-        como_era_em: object = None,
-        filtros: Mapping[str, object] | None = None,
-    ) -> pd.DataFrame:
-        """A tabela (na versão maior pedida), com filtros de igualdade (`{coluna: valor}` ou
-        `{coluna: [valores]}`) e, com `como_era_em`, só o que era público no dia e ainda valia."""
-        view = self._view(tabela, versao)
-        existentes = colunas(self.con, view)
-        desconhecidas = [c for c in filtros or {} if c not in existentes]
+        versao: str | None,
+        filtros: Mapping[str, object] | None,
+        como_era_em: object,
+        usadas: Sequence[str],
+    ) -> tuple[str, dict[str, object]]:
+        """O `WHERE` (filtros de igualdade e "como era em") e os parâmetros dele; toda coluna usada
+        precisa existir (o nome nunca vira código: só os que a tabela tem passam)."""
+        existentes = self.colunas(tabela, versao)
+        desconhecidas = [c for c in [*(filtros or {}), *usadas] if c not in existentes]
         if desconhecidas:
             raise ValueError(f"{tabela}: coluna {desconhecidas[0]!r} não existe")
         condicoes, parametros = _igualdades(filtros or {}, "f")
         if como_era_em is not None:
             condicoes.append(condicao_como_era(existentes, tabela))
             parametros["dia"] = dia_de(como_era_em)
+        return " AND ".join(["true", *condicoes]), parametros
+
+    def ler(
+        self,
+        tabela: str,
+        versao: str | None = None,
+        como_era_em: object = None,
+        filtros: Mapping[str, object] | None = None,
+        colunas: Sequence[str] | None = None,
+    ) -> pd.DataFrame:
+        """A tabela (na versão maior pedida), com filtros de igualdade (`{coluna: valor}` ou
+        `{coluna: [valores]}`) e, com `como_era_em`, só o que era público no dia e ainda valia.
+        `colunas` traz só essas (tabela grande: menos memória); o filtro vale do mesmo jeito."""
+        view = self._view(tabela, versao)
+        onde, parametros = self._onde(
+            tabela, versao, filtros, como_era_em, colunas or []
+        )
+        selecao = "*" if colunas is None else ", ".join(_nome(c) for c in colunas)
         resultado = self.con.execute(
-            f"SELECT * FROM {_nome(view)} WHERE {' AND '.join(['true', *condicoes])}",
-            parametros,
+            f"SELECT {selecao} FROM {_nome(view)} WHERE {onde}", parametros
         ).df()
         return resultado if como_era_em is None else sem_o_fim_futuro(resultado)
+
+    def somar(
+        self,
+        tabela: str,
+        por: Sequence[str],
+        valor: str,
+        filtros: Mapping[str, object] | None = None,
+        como_era_em: object = None,
+    ) -> pd.DataFrame:
+        """A soma de `valor` por `por`, feita no DuckDB: série de milhões de linhas (Anatel) volta só
+        com o agregado. Filtros e `como_era_em` como em `ler`; as colunas saem com os mesmos nomes.
+
+        A soma é em DECIMAL (exata): em DOUBLE o DuckDB soma em paralelo, a ordem muda e o resultado varia
+        na 15ª casa de uma rodada para outra, e aí a mesma base não dá a mesma ficha (ADR 0078)."""
+        view = self._view(tabela, None)
+        onde, parametros = self._onde(tabela, None, filtros, como_era_em, [*por, valor])
+        grupos = ", ".join(_nome(c) for c in por)
+        exato = f"TRY_CAST({_nome(valor)} AS DECIMAL(38, 10))"
+        return self.con.execute(
+            f"SELECT {grupos}, sum({exato})::DOUBLE AS {_nome(valor)} "
+            f"FROM {_nome(view)} WHERE {onde} GROUP BY {grupos}",
+            parametros,
+        ).df()
 
     def distintos(
         self, tabela: str, coluna: str, versao: str | None = None
@@ -275,9 +339,10 @@ def ler(
     versao: str | None = None,
     como_era_em: object = None,
     filtros: Mapping[str, object] | None = None,
+    colunas: Sequence[str] | None = None,
 ) -> pd.DataFrame:
     with abrir() as p:
-        return p.ler(tabela, versao, como_era_em, filtros)
+        return p.ler(tabela, versao, como_era_em, filtros, colunas)
 
 
 def rede(

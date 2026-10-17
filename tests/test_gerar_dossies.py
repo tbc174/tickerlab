@@ -1,4 +1,5 @@
-"""As fichas do dossiê gravadas a partir de uma mini-base (plano de 17/10/2026, PR 1, tarefa 8).
+"""As fichas do dossiê gravadas a partir de uma mini-base (plano de 17/10/2026, PR 1, tarefa 8; PR 1b:
+tudo lido pela porta da base, `base.porta`).
 
 A mini-base: a CPFL (ticker CPFE3, auditor, uma distribuidora na ANEEL, um fato relevante de aquisição)
 e a Sem Nada S.A. (ticker, mas nenhuma tabela fala dela). Um auditor pessoa física na rede.
@@ -11,7 +12,9 @@ import pandas as pd
 import pytest
 
 from base import dossie
-from scripts import montar_dossies
+from base.porta import Porta
+from scripts import gerar_dossies
+from tests.test_porta import _entidades, _identificadores, _ligacoes
 
 D = pd.Timestamp
 CPFL, SEM_NADA = "02.429.144/0001-93", "11.111.111/0001-11"
@@ -111,8 +114,8 @@ def _mini_base(pasta: Path) -> None:
     )
 
 
-def _montar(pasta: Path, saida: Path) -> montar_dossies.Resumo:
-    return montar_dossies.montar(pasta, saida, D("2026-10-17 07:00"), "abc1234")
+def _montar(pasta: Path, saida: Path) -> gerar_dossies.Resumo:
+    return gerar_dossies.montar(pasta, saida, D("2026-10-17 07:00"), "abc1234")
 
 
 def test_grava_uma_ficha_por_empresa_com_dados(tmp_path: Path) -> None:
@@ -152,7 +155,7 @@ def test_manifesto_traz_versao_hashes_e_tabelas_que_faltam(tmp_path: Path) -> No
     assert manifesto["versao_do_esquema"] == dossie.VERSAO_DO_ESQUEMA
     assert manifesto["versao_do_codigo"] == "abc1234"
     assert manifesto["tabelas"]["auditores/2025"] == "hash-2025"
-    assert "trocas_de_auditor/trocas" in manifesto["faltando"]
+    assert "trocas_de_auditor" in manifesto["faltando"]  # o nome da tabela na porta
     assert manifesto["fichas"] == 1
 
 
@@ -164,7 +167,7 @@ def test_secao_que_quebra_nao_derruba_as_outras(
     def quebra(*_: object) -> None:
         raise ValueError("coluna sumiu")
 
-    monkeypatch.setattr(montar_dossies.dossie, "secao_negocios", quebra)
+    monkeypatch.setattr(gerar_dossies.dossie, "secao_negocios", quebra)
     resumo = _montar(tmp_path / "base", tmp_path / "dossies")
     assert resumo.fichas == 1
     assert resumo.falhas == ["negocios: ValueError: coluna sumiu (2 empresas)"]
@@ -205,8 +208,8 @@ def test_mesmo_dia_regrava_a_pasta_inteira(tmp_path: Path) -> None:
 def test_main_avisa_as_falhas_na_ultima_linha(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setattr(montar_dossies, "exigir_versao_do_codigo", lambda: "abc1234")
-    saida = montar_dossies.main(
+    monkeypatch.setattr(gerar_dossies, "exigir_versao_do_codigo", lambda: "abc1234")
+    saida = gerar_dossies.main(
         ["--pasta", str(tmp_path / "nada"), "--saida", str(tmp_path / "d")]
     )
     assert saida == 1
@@ -232,6 +235,20 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
         ),
     )
     # o último mês só tem 20% das carteiras: ainda está chegando
+    # o painel por emissor mora na mesma tabela da porta e não pode somar na empresa
+    _gravar(
+        tmp_path / "base",
+        "fundos/painel_emissor/2025.parquet",
+        pd.DataFrame(
+            {
+                "competencia": meses,
+                "emissor": ["CPFL ENERGIA"] * 14,
+                "tipo": ["comprado"] * 14,
+                "fundos": [999] * 14,
+                "valor": [1.0e12] * 14,
+            }
+        ),
+    )
     _gravar(
         tmp_path / "base",
         "fundos/cobertura.parquet",
@@ -252,3 +269,73 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
         "unidade": "fundos",
         "base": "2026-01-31",
     }
+
+
+def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:
+    """A situação de hoje vem do `como_era_em` da porta: a ligação que só fica pública depois não entra."""
+    pasta = tmp_path / "base"
+    _gravar(pasta, "rede/entidades.parquet", _entidades("EA", "EDONA", "ENOVA"))
+    _gravar(
+        pasta,
+        "rede/identificadores.parquet",
+        _identificadores(
+            ("EA", "cnpj", CPFL_DIGITOS, "2010-01-01", None, "2010-01-01"),
+            ("EDONA", "cnpj", "33333333000133", "2010-01-01", None, "2010-01-01"),
+            ("ENOVA", "cnpj", "44444444000144", "2010-01-01", None, "2010-01-01"),
+        ),
+    )
+    _gravar(
+        pasta,
+        "rede/ligacoes.parquet",
+        _ligacoes(
+            {
+                "de": "EA",
+                "para": "EDONA",
+                "tipo": "controlada_de",
+                "publico_em": "2020-05-31",
+            },
+            {
+                "de": "EA",
+                "para": "ENOVA",
+                "tipo": "controlada_de",
+                "publico_em": "2026-12-01",
+            },
+        ),
+    )
+    with Porta(pasta) as porta:
+        controladoras, _ = gerar_dossies._controladoras(
+            gerar_dossies.Leitor(porta), D("2026-10-17 07:00")
+        )
+    assert controladoras["cnpj_controladora"].tolist() == ["33333333000133"]
+
+
+def test_serie_da_anatel_nao_soma_o_recorte_por_tecnologia(tmp_path: Path) -> None:
+    """A Anatel repete a móvel por modalidade e por tecnologia: só uma das duas entra na soma."""
+    _gravar(
+        tmp_path / "base",
+        "setoriais/anatel/Acessos_Telefonia_Movel_2025.parquet",
+        pd.DataFrame(
+            {
+                "competencia": [D("2025-12-31")] * 3,
+                "servico": ["telefonia_movel"] * 3,
+                "recorte": ["modalidade", "modalidade", "tecnologia"],
+                "cnpj": ["02.558.157/0001-62"] * 3,
+                "acessos": [10.0, 5.0, 15.0],
+            }
+        ),
+    )
+    serie = next(
+        s for s in dossie.SERIES_DAS_AGENCIAS if s.nome == "anatel_telefonia_movel"
+    )
+    with Porta(tmp_path / "base") as porta:
+        anual = gerar_dossies.ler_serie(gerar_dossies.Leitor(porta), serie)
+    assert anual[["ano", "chave", "valor"]].to_dict("records") == [
+        {"ano": 2025, "chave": "02558157000162", "valor": 15.0}
+    ]
+
+
+def test_le_a_base_so_pela_porta() -> None:
+    """O gerador só lê (não grava a base): não tem a exceção dos montadores do `test_porta_unica`."""
+    from tests.test_porta_unica import _montador
+
+    assert not _montador("scripts/gerar_dossies.py")
