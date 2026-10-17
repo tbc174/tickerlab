@@ -148,7 +148,7 @@ def _familia_da_pasta_de_cripto(arquivo: Path) -> str | None:
 
 
 def _familia_conhecida(valor: str) -> str | None:
-    """ "comexstat" → "comexstat"; "antt-siade" → "antt"; texto livre → None."""
+    """A família de um valor da coluna `fonte` ("antt-siade" → "antt"); texto livre → None."""
     if valor in REVENDA:
         return valor
     familia = valor.split("-", 1)[0]
