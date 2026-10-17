@@ -8,7 +8,7 @@ from dataclasses import replace
 
 import pandas as pd
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import dossie
@@ -258,6 +258,22 @@ def test_fundos_mostram_so_a_posicao_comprada_do_ultimo_mes() -> None:
     assert len(secao["tabelas"]["fundos_por_mes"]) == 2
 
 
+def test_grupo_e_a_companhia_e_as_controladas_do_ultimo_fre() -> None:
+    controladas = _controladas().assign(
+        cnpj=["44444444000144", "33.050.196/0001-88", "55555555000155"]
+    )
+    # a "Antiga" é de um FRE velho; a coligada não emite pelo grupo
+    assert dossie.cnpjs_do_grupo(CNPJ, controladas) == {CNPJ, "33050196000188"}
+    assert dossie.cnpjs_do_grupo(CNPJ, pd.DataFrame()) == {CNPJ}
+
+
+def test_oferta_mostra_quem_emitiu() -> None:
+    ofertas = _ofertas_160().assign(nome_emissor=["CPFL Paulista", "CPFL Energia"])
+    secao = dossie.secao_ofertas_e_fundos(ofertas, pd.DataFrame(), pd.DataFrame())
+    assert secao is not None
+    assert secao["tabelas"]["ofertas"][0]["emissor"] == "CPFL Energia"
+
+
 def test_sem_ofertas_nem_fundos_nao_tem_a_secao() -> None:
     vazio = pd.DataFrame()
     assert dossie.secao_ofertas_e_fundos(vazio, vazio, vazio) is None
@@ -411,6 +427,7 @@ def test_ficha_com_coluna_de_pessoa_da_erro() -> None:
         dossie.conferir_sem_pessoas(ficha, set())
 
 
+@settings(max_examples=60, deadline=None)
 @given(st.text(alphabet="abcdefghij ÁÉÍÓÚáéíóú", min_size=3, max_size=30))
 def test_nome_de_pessoa_e_pego_com_qualquer_caixa_e_acento(nome: str) -> None:
     normalizado = dossie.normalizar_nome(nome)

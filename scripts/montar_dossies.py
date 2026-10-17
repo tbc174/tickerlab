@@ -215,6 +215,12 @@ def _por_cnpj(tabela: pd.DataFrame, coluna: str) -> dict[str, pd.DataFrame]:
     return {str(c): g for c, g in tabela.groupby(dossie.digitos(tabela[coluna]))}
 
 
+def _do_grupo(tabelas: dict[str, pd.DataFrame], cnpjs: set[str]) -> pd.DataFrame:
+    """As linhas de todos os CNPJs do grupo juntas (vazia se nenhum aparece)."""
+    partes = [tabelas[c] for c in sorted(cnpjs) if c in tabelas]
+    return pd.concat(partes, ignore_index=True) if partes else VAZIA
+
+
 Secao = Callable[[str], dict | None]
 
 
@@ -229,6 +235,15 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
     painel = _por_cnpj(entradas.painel, "cnpj")
     empresa_serie = _por_cnpj(entradas.empresa_serie, "cnpj_companhia")
     eventos = _por_cnpj(entradas.eventos, "cnpj")
+
+    def ofertas_e_fundos(cnpj: str) -> dict | None:
+        grupo = dossie.cnpjs_do_grupo(cnpj, controladas.get(cnpj, VAZIA))
+        return dossie.secao_ofertas_e_fundos(
+            _do_grupo(ofertas_160, grupo),
+            _do_grupo(ofertas_antigas, grupo),
+            painel.get(cnpj, VAZIA),
+        )
+
     return {
         "auditor_e_controladas": lambda c: dossie.secao_auditor_e_controladas(
             auditores.get(c, VAZIA),
@@ -237,11 +252,7 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
             controladoras.get(c, VAZIA),
             entradas.pessoas,
         ),
-        "ofertas_e_fundos": lambda c: dossie.secao_ofertas_e_fundos(
-            ofertas_160.get(c, VAZIA),
-            ofertas_antigas.get(c, VAZIA),
-            painel.get(c, VAZIA),
-        ),
+        "ofertas_e_fundos": ofertas_e_fundos,
         "setor_regulado": lambda c: dossie.secao_setor_regulado(
             empresa_serie.get(c, VAZIA), entradas.series
         ),

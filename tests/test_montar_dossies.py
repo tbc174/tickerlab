@@ -175,6 +175,7 @@ def test_ficha_com_pessoa_nao_e_gravada(tmp_path: Path) -> None:
                 "cnpj_companhia": [CPFL_DIGITOS],
                 "referencia": [D("2025-01-01")],
                 "versao": [1],
+                "cnpj": [""],
                 "razao_social": ["Fulano de Tal"],
                 "tipo": ["controlada"],
                 "participacao": [100.0],

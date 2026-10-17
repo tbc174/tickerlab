@@ -247,7 +247,8 @@ LIMITES = {
         "nome mostrado."
     ),
     "ofertas_e_fundos": (
-        "Ofertas registradas na CVM (Resolução 160 e as anteriores), pelo valor registrado, não o "
+        "Ofertas registradas na CVM (Resolução 160 e as anteriores) da companhia e das controladas do "
+        "FRE mais recente (o grupo costuma emitir pelas controladas), pelo valor registrado, não o "
         "colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem "
         "com até 90 dias de atraso."
     ),
@@ -381,6 +382,17 @@ def _trocas_sem_pessoas(trocas: pd.DataFrame, pessoas: set[str]) -> pd.DataFrame
     return tabela.sort_values("efetiva_em", ascending=False)
 
 
+def cnpjs_do_grupo(cnpj: str, controladas: pd.DataFrame) -> set[str]:
+    """A companhia e as controladas do FRE mais recente (só dígitos): quem emite pelo grupo."""
+    ultimas = _mais_recente(controladas)
+    if ultimas.empty:
+        return {cnpj}
+    das_controladas = digitos(
+        ultimas.loc[ultimas["tipo"] == "controlada", "cnpj"].dropna()
+    )
+    return {cnpj, *(c for c in das_controladas if len(c) == DIGITOS_DO_CNPJ)}
+
+
 def _controladas_do_ultimo_fre(
     controladas: pd.DataFrame,
 ) -> tuple[pd.DataFrame, str | None]:
@@ -472,6 +484,7 @@ def _ofertas(ofertas_160: pd.DataFrame, ofertas_antigas: pd.DataFrame) -> pd.Dat
                         ofertas_160["data_requerimento"]
                     ),
                     "regime": "Res. 160",
+                    "emissor": ofertas_160.get("nome_emissor"),
                     "valor_mobiliario": ofertas_160["valor_mobiliario"],
                     "tipo_oferta": ofertas_160["tipo_oferta"],
                     "valor_total": _numero(ofertas_160["valor_total_registrado"]),
@@ -487,6 +500,7 @@ def _ofertas(ofertas_160: pd.DataFrame, ofertas_antigas: pd.DataFrame) -> pd.Dat
                         ofertas_antigas["data_protocolo"]
                     ),
                     "regime": "anterior à Res. 160",
+                    "emissor": ofertas_antigas.get("nome_emissor"),
                     "valor_mobiliario": ofertas_antigas["tipo_ativo"],
                     "tipo_oferta": ofertas_antigas["tipo_oferta"],
                     "valor_total": _numero(ofertas_antigas["valor_total"]),
