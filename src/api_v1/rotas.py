@@ -52,7 +52,7 @@ from src.eventos import FONTE_IPE
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
 from src.planos import (
-    AVISO_DO_MODO_DE_TESTE,
+    aviso_da_pagina_de_planos,
     frase_da_assinatura,
     limites_do,
     tabela_de_planos,
@@ -183,7 +183,7 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
         frase_da_assinatura=None
         if assinatura is None
         else frase_da_assinatura(assinatura.periodo_fim, assinatura.cancela_no_fim),
-        aviso=AVISO_DO_MODO_DE_TESTE,
+        aviso=aviso_da_pagina_de_planos(),
         tabela=tabela_de_planos(),
         acao=acao.tipo,
         texto_da_acao=acao.texto,

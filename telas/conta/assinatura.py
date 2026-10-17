@@ -26,7 +26,7 @@ from src.cobranca import (
 )
 from src.paginas import motivo_da_pagina, pagina
 from src.planos import (
-    AVISO_DO_MODO_DE_TESTE,
+    aviso_da_pagina_de_planos,
     frase_da_assinatura,
     limites_do,
     tabela_de_planos,
@@ -207,5 +207,5 @@ def pagina_planos():
             st.caption(frase)
     st.subheader("O que cada plano inclui")
     mostrar_planos()
-    st.caption(AVISO_DO_MODO_DE_TESTE)
+    st.caption(aviso_da_pagina_de_planos())
     mostrar_assinatura("planos")

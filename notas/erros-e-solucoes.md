@@ -578,3 +578,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o montador faz `from base.modelos.atraso import colunas` (o módulo). Dentro de `_demonstracoes`, uma lista de campos também se chamava `colunas`, e dentro da função esse nome passou a ser a lista; `colunas.contas_do_balanco(...)` procurou a função na lista. A troca automática de nomes (`contas_do_balanco` → `colunas.contas_do_balanco`) ao mover o código criou o choque. Os testes não pegaram porque nenhum gravava demonstrações na pasta, então o laço nunca rodava.
 - **Solução:** a lista virou `campos`, e o teste da montagem passou a gravar demonstrações (com o código velho, ele falha com o mesmo erro). Regras: não dar a uma variável o nome de um módulo importado; o teste de montagem precisa ter pelo menos uma linha de cada fonte; e, depois de mover código com troca automática de nomes, ensaiar contra a base real antes do merge.
 - **Data:** 17/10/2026
+
+## CI: `test_qualquer_texto_de_plano_decide_igual_e_vale_como_gratuito` falha só no CI do #390
+- **Sintoma:** localmente os testes de planos passavam; no CI, `test_limites_iguais.py` dizia que o Gratuito abria todas as páginas (`motivo == None`).
+- **Causa:** ordem das fixtures do pytest. A fixture `no_gratuito` tem `scope="module"` e é montada **antes** das fixtures de cada teste; a que desligava a trava do pré-lançamento era por teste (`monkeypatch`). Então `no_gratuito` foi calculada com tudo liberado.
+- **Solução:** a fixture que desliga a trava passou a valer para a sessão inteira (`scope="session"`, com `pytest.MonkeyPatch.context()`), e assim já está ativa antes de qualquer fixture de módulo. Regra: o que muda uma configuração global para os testes deve ter o escopo mais largo de quem lê essa configuração.
+- **Data:** 17/10/2026
