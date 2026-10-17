@@ -502,6 +502,7 @@ PAGINAS = (
         ":material/bookmarks:",
         "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
         precisa_do_ativo=False,
+        contrato=Contrato("GET", "/v1/simulacoes", (), "MinhasSimulacoesV1"),
     ),
     Pagina(
         "momentum",

@@ -155,10 +155,24 @@ def criar_app(ambiente: Mapping[str, str] | None = None) -> FastAPI:
     nova.include_router(router, prefix="/api")
     if api_v1_ligada(ambiente):
         # só aqui: as contas da v1 carregam o pandas, e desligada a API continua leve
+        from src.api_v1.acesso import CABECALHO_DO_MOTIVO
         from src.api_v1.compartilhados import router as router_compartilhados
         from src.api_v1.conta import router as router_da_conta
         from src.api_v1.ferramentas import router as router_das_ferramentas
         from src.api_v1.rotas import router as router_v1
+        from src.planos import LimiteDoPlanoError
+
+        @nova.exception_handler(LimiteDoPlanoError)
+        async def _limite_do_plano(
+            _pedido: Request, erro: LimiteDoPlanoError
+        ) -> JSONResponse:
+            # a mesma recusa de plano das páginas fechadas (acesso._recusa): o app novo lê o
+            # cabeçalho e mostra o caminho para o plano maior; a frase do erro já sugere o Pro
+            return JSONResponse(
+                status_code=403,
+                content={"detail": str(erro)},
+                headers={CABECALHO_DO_MOTIVO: "plano"},
+            )
 
         for rotas in (
             router_v1,

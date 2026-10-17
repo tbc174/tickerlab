@@ -261,3 +261,23 @@ export interface BacktestDoAtivoV1 {
   ficha: FichaV1 | null; // null: não deu para montar (motivo_sem_ficha diz por quê)
   motivo_sem_ficha: string | null;
 }
+
+/** Uma simulação guardada na conta (Minhas simulações; Workspace, PR 1). */
+export interface SimulacaoV1 {
+  id: string;
+  tipo: string; // "backtest", "carteira"...
+  nome: string;
+  criada_em: string; // data e hora, ISO
+  dados_ate: string | null; // "dd/mm/aaaa": até quando iam os dados quando foi salva
+  numeros: Record<string, string>; // os números como a tela mostrou ("Retorno total": "+12,0%")
+  veredito: string | null; // o da ficha "Foi sorte?" ao salvar; null: salva sem ficha
+  endereco: string | null; // reabre no app novo ("/backtest?..."); null: só reabre no app atual
+}
+
+export interface MinhasSimulacoesV1 {
+  simulacoes: SimulacaoV1[]; // a mais nova primeiro
+  usadas: number;
+  limite: number | null; // null = sem limite
+  uso: string; // "1 de 5", "0 de ilimitadas"
+  sem_simulacoes: string; // a frase da lista vazia
+}

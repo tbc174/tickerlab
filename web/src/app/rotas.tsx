@@ -11,6 +11,7 @@ import { MeusDados } from "./telas/MeusDados";
 import { Planos } from "./telas/Planos";
 import { RetornoMensal } from "./telas/RetornoMensal";
 import { Risco } from "./telas/Risco";
+import { Simulacoes } from "./telas/Simulacoes";
 import { VisaoGeral } from "./telas/VisaoGeral";
 
 export const TELAS_DO_APP: PaginaDoApp[] = paginasDoApp.filter((p) => p.contrato !== null);
@@ -26,6 +27,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   backtest: (pagina) => <Backtest pagina={pagina} />,
   planos: (pagina) => <Planos pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
+  simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
 };
 
 /** A página já tem tela em React? (Sem tela, leva à mesma página no app atual.) */

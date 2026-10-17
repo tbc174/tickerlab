@@ -35,10 +35,15 @@ from src.banco import leituras as repo_leituras
 from src.banco import tentativas
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
+    TAMANHO_MAXIMO_DO_NOME,
+    DadosInvalidosError,
+    apagar_simulacao,
     carregar_preferencias,
     contar_simulacoes,
     listar_favoritos,
+    listar_simulacoes,
     salvar_preferencias,
+    salvar_simulacao,
 )
 from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.usuarios import Usuario
@@ -49,6 +54,7 @@ from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
+from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
 from src.planos import (
@@ -58,6 +64,7 @@ from src.planos import (
     tabela_de_planos,
     texto_do_uso,
 )
+from src.simulacoes import retrato_do_app_novo
 from src.tentativas import TETO_POR_PESSOA, impressao
 from src.validacao import parametros_numericos
 
@@ -470,6 +477,141 @@ def backtest(conta: Conta, pedido: PedidoDeBacktestV1) -> esquemas.BacktestDoAti
     )
 
 
+# --- Minhas simulações (ADR 0062, tela 3; Workspace, PR 1) ----------------------------------
+
+SEM_SIMULACOES = (
+    "Você ainda não guardou nenhuma simulação. Rode um backtest e clique em Salvar."
+)
+
+
+class PedidoDeSalvarSimulacaoV1(BaseModel):
+    """O backtest que a tela mostrou (o mesmo pedido de /v1/backtest) e o veredito da ficha."""
+
+    nome: str = Field(min_length=1, max_length=TAMANHO_MAXIMO_DO_NOME)
+    backtest: PedidoDeBacktestV1
+    veredito: str | None = Field(None, max_length=20)  # None: a tela ficou sem ficha
+
+
+class PedidoDeSimulacaoV1(BaseModel):
+    id: uuid.UUID
+
+
+def _minhas_simulacoes(
+    conexao: sa.Connection, conta: Usuario
+) -> esquemas.MinhasSimulacoesV1:
+    salvas = listar_simulacoes(conexao, conta.id)
+    limite = limites_do(conta.plano).simulacoes
+    return esquemas.MinhasSimulacoesV1(
+        simulacoes=[esquemas.de_simulacao(s) for s in salvas],
+        usadas=len(salvas),
+        limite=limite,
+        uso=texto_do_uso(len(salvas), limite),
+        sem_simulacoes=SEM_SIMULACOES,
+    )
+
+
+@router.get("/simulacoes")
+def minhas_simulacoes(conta: Conta) -> esquemas.MinhasSimulacoesV1:
+    """Minhas simulações: as guardadas na conta do token (as do app atual também), a mais nova
+    primeiro, com quantas o plano ainda deixa."""
+    with obter_engine().connect() as conexao:
+        return _minhas_simulacoes(conexao, conta)
+
+
+@router.post("/salvar-simulacao")
+def salvar_simulacao_da_tela(
+    conta: Conta, pedido: PedidoDeSalvarSimulacaoV1
+) -> esquemas.MinhasSimulacoesV1:
+    """Guarda o backtest da tela como o Streamlit guarda (telas/dados_da_conta.py): o retrato
+    das escolhas, os números formatados, até quando iam os dados e a ficha "Foi sorte?" (o
+    pedido e o veredito), que o Pulse recalcula depois.
+
+    O backtest roda de novo aqui (é barato) em vez de confiar nos números que a tela mandar; só
+    o veredito vem da tela, porque a ficha custa caro e ele serve só de "antes" na comparação do
+    Pulse. Além do limite do plano: 403 com o motivo "plano" (src/api.py).
+    """
+    b = pedido.backtest
+    if b.estrategia not in ESTRATEGIAS:
+        raise HTTPException(status_code=422, detail="Estratégia desconhecida.")
+    if pedido.veredito is not None and pedido.veredito not in esquemas.VEREDITOS:
+        raise HTTPException(status_code=422, detail="Veredito desconhecido.")
+    livres = _livres_do_pedido(b.estrategia, b.livres)
+    c = _com_o_ativo(b.ticker, b.periodo, b.taxa)
+    resposta = _ou_422(
+        lambda: montar_backtest(c, b.estrategia, b.parametros, b.custo_por_operacao)
+    )
+    numeros = {
+        nome: formatar(valor, formato_da_metrica(nome))
+        for nome, valor in resposta.backtest.metricas.items()
+    }
+    numeros["Operações"] = formatar(resposta.backtest.operacoes, "inteiro")
+    with obter_engine().begin() as conexao:
+        informada = b.tolerancia_de_queda
+        if informada is None:  # a guardada na conta, como a ficha usou
+            informada = carregar_preferencias(conexao, conta.id).get(
+                ficha.PREFERENCIA_DA_TOLERANCIA
+            )
+        tolerancia = ficha.normalizar_tolerancia(informada)
+        retrato = retrato_do_app_novo(
+            ticker=c.ticker,
+            periodo=c.periodo,
+            estrategia=b.estrategia,
+            parametros=resposta.parametros,
+            custo_por_operacao=b.custo_por_operacao,
+            capital_inicial=b.capital_inicial,
+            tolerancia_de_queda=tolerancia,
+            livres=livres,
+            taxa=b.taxa,
+        )
+        resumo: dict = {
+            "numeros": numeros,
+            "dados_ate": f"{c.dados.index[-1]:%d/%m/%Y}",
+        }
+        if pedido.veredito is not None:
+            da_pessoa = tentativas.contar_tentativas(conexao, conta.id, c.ticker)
+            pedido_da_ficha = _pedido_da_ficha(
+                c,
+                b.estrategia,
+                resposta.parametros,
+                b.custo_por_operacao,
+                b.capital_inicial,
+                livres,
+                tolerancia,
+                max(da_pessoa, 1),  # a tela contou esta tentativa; ao menos ela
+            )
+            resumo["ficha"] = {
+                "pedido": ficha.pedido_para_guardar(pedido_da_ficha),
+                "veredito": pedido.veredito,
+            }
+        try:
+            salvar_simulacao(
+                conexao,
+                conta.id,
+                "backtest",
+                pedido.nome,
+                retrato,
+                resumo,
+                plano=conta.plano,
+            )
+        except DadosInvalidosError as erro:
+            raise HTTPException(status_code=422, detail=str(erro)) from erro
+        return _minhas_simulacoes(conexao, conta)
+
+
+@router.post("/apagar-simulacao")
+def apagar_simulacao_da_conta(
+    conta: Conta, pedido: PedidoDeSimulacaoV1
+) -> esquemas.MinhasSimulacoesV1:
+    """Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer
+    qual é o caso."""
+    with obter_engine().begin() as conexao:
+        if not apagar_simulacao(conexao, conta.id, pedido.id):
+            raise HTTPException(
+                status_code=404, detail="Esta simulação não existe ou já foi apagada."
+            )
+        return _minhas_simulacoes(conexao, conta)
+
+
 def _livres_do_pedido(estrategia: str, livres: list[str] | None) -> tuple[str, ...]:
     """Os parâmetros que variam na ficha: só números da estratégia, sem repetir (senão 422)."""
     numericos = [p.nome for p in parametros_numericos(estrategia)]
@@ -565,7 +707,35 @@ def montar_ficha_do_backtest(
 ) -> esquemas.FichaV1:
     """A ficha de um ativo já carregado, com as tentativas já contadas (a rota e os testes do React
     usam). `ValueError` se não der para montar (pouco histórico, por exemplo)."""
-    pedido = ficha.PedidoDaFicha(
+    pedido = _pedido_da_ficha(
+        c,
+        estrategia,
+        parametros,
+        custo_por_operacao,
+        capital_inicial,
+        livres,
+        tolerancia_de_queda,
+        tentativas_da_pessoa,
+    )
+    resultado = ficha.montar_ficha(pedido)
+    texto = ficha.texto_das_tentativas(
+        tentativas_da_pessoa, catalogo.codigo(c.ticker), TETO_POR_PESSOA
+    )
+    return esquemas.de_ficha(resultado, pedido, texto)
+
+
+def _pedido_da_ficha(
+    c: ContextoDoAtivo,
+    estrategia: str,
+    parametros: dict[str, int | float | str],
+    custo_por_operacao: float,
+    capital_inicial: float,
+    livres: tuple[str, ...],
+    tolerancia_de_queda: float,
+    tentativas_da_pessoa: int,
+) -> ficha.PedidoDaFicha:
+    """Tudo o que a ficha precisa, com os preços (e o CDI) do ativo já carregado."""
+    return ficha.PedidoDaFicha(
         dados=c.dados,
         estrategia=estrategia,
         parametros=dict(parametros),
@@ -577,11 +747,6 @@ def montar_ficha_do_backtest(
         tolerancia_de_queda=tolerancia_de_queda,
         tentativas_da_pessoa=tentativas_da_pessoa,
     )
-    resultado = ficha.montar_ficha(pedido)
-    texto = ficha.texto_das_tentativas(
-        tentativas_da_pessoa, catalogo.codigo(c.ticker), TETO_POR_PESSOA
-    )
-    return esquemas.de_ficha(resultado, pedido, texto)
 
 
 def montar_backtest(
