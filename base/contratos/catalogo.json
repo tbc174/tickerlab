@@ -4530,6 +4530,139 @@
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
       "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
     },
+    "debentures_assembleias": {
+      "tabela": "debentures_assembleias",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "codigo_cvm": {
+          "descricao": "Código da companhia na CVM",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "assembleia, aviso ou notificacao_do_agente",
+          "unidade": "texto"
+        },
+        "especie": {
+          "descricao": "Espécie do documento da assembleia (Ata, Edital de Convocação, Proposta da Administração...); vazia no aviso e na notificação",
+          "unidade": "texto"
+        },
+        "assunto": {
+          "descricao": "Assunto como a companhia preencheu no IPE",
+          "unidade": "texto"
+        },
+        "emissao": {
+          "descricao": "Número da emissão citada no assunto (vazio se não há nenhuma ou se há mais de uma)",
+          "unidade": "número inteiro"
+        },
+        "tema_vencimento_antecipado": {
+          "descricao": "O assunto fala de vencimento antecipado (inclui o pedido para não declarar)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_waiver": {
+          "descricao": "O assunto fala de waiver, renúncia, perdão, anuência ou consentimento prévio",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_covenant": {
+          "descricao": "O assunto fala de covenant, índices ou limites financeiros, alavancagem, dívida líquida ou EBITDA",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_repactuacao": {
+          "descricao": "O assunto fala de repactuação, prorrogação, postergação, carência, suspensão de pagamento ou mudança de taxa, prazo ou cronograma",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_inadimplemento": {
+          "descricao": "O assunto fala de inadimplemento, não pagamento, recuperação judicial ou extrajudicial ou falência",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_garantia": {
+          "descricao": "O assunto fala de garantia, alienação ou cessão fiduciária, fiança, aval ou conta vinculada",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_resgate": {
+          "descricao": "O assunto fala de resgate antecipado, amortização extraordinária ou aquisição facultativa",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_reorganizacao": {
+          "descricao": "O assunto fala de incorporação, cisão, fusão, reorganização, troca de controle ou oferta de ações",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_pagamento": {
+          "descricao": "O assunto avisa pagamento de juros, remuneração, amortização, prêmio ou principal",
+          "unidade": "verdadeiro ou falso"
+        },
+        "estresse": {
+          "descricao": "O tema é de aperto de crédito (regra na descrição)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "generico": {
+          "descricao": "O assunto não casa com nenhum tema: só o PDF dirá",
+          "unidade": "verdadeiro ou falso"
+        },
+        "referencia": {
+          "descricao": "Data informada pela companhia (no edital, o dia da assembleia)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Entrega da versão do documento à CVM: quando ficou público para a base",
+          "unidade": "data (dia)"
+        },
+        "protocolo": {
+          "descricao": "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+          "unidade": "texto"
+        },
+        "versao": {
+          "descricao": "Versão do documento (reapresentação)",
+          "unidade": "número inteiro"
+        },
+        "link": {
+          "descricao": "Link do documento no sistema da CVM",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "protocolo",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "publico_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2003-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do arquivista baixar o IPE do ano",
+      "atraso": "O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois"
+    },
     "ratings": {
       "tabela": "ratings",
       "modulo": "credito_e_fidc",

@@ -1799,6 +1799,53 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `debentures_assembleias`
+
+Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora (`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): `estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF
+
+- **Fonte:** CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/debentures.py`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do arquivista baixar o IPE do ano
+- **Atraso de divulgação:** O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `protocolo`, `versao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2003-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/debentures_assembleias/debentures_assembleias.parquet` (servidor de casa, `scripts/montar_debentures_assembleias.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `codigo_cvm` | Código da companhia na CVM | texto |
+| `documento` | assembleia, aviso ou notificacao_do_agente | texto |
+| `especie` | Espécie do documento da assembleia (Ata, Edital de Convocação, Proposta da Administração...); vazia no aviso e na notificação | texto |
+| `assunto` | Assunto como a companhia preencheu no IPE | texto |
+| `emissao` | Número da emissão citada no assunto (vazio se não há nenhuma ou se há mais de uma) | número inteiro |
+| `tema_vencimento_antecipado` | O assunto fala de vencimento antecipado (inclui o pedido para não declarar) | verdadeiro ou falso |
+| `tema_waiver` | O assunto fala de waiver, renúncia, perdão, anuência ou consentimento prévio | verdadeiro ou falso |
+| `tema_covenant` | O assunto fala de covenant, índices ou limites financeiros, alavancagem, dívida líquida ou EBITDA | verdadeiro ou falso |
+| `tema_repactuacao` | O assunto fala de repactuação, prorrogação, postergação, carência, suspensão de pagamento ou mudança de taxa, prazo ou cronograma | verdadeiro ou falso |
+| `tema_inadimplemento` | O assunto fala de inadimplemento, não pagamento, recuperação judicial ou extrajudicial ou falência | verdadeiro ou falso |
+| `tema_garantia` | O assunto fala de garantia, alienação ou cessão fiduciária, fiança, aval ou conta vinculada | verdadeiro ou falso |
+| `tema_resgate` | O assunto fala de resgate antecipado, amortização extraordinária ou aquisição facultativa | verdadeiro ou falso |
+| `tema_reorganizacao` | O assunto fala de incorporação, cisão, fusão, reorganização, troca de controle ou oferta de ações | verdadeiro ou falso |
+| `tema_pagamento` | O assunto avisa pagamento de juros, remuneração, amortização, prêmio ou principal | verdadeiro ou falso |
+| `estresse` | O tema é de aperto de crédito (regra na descrição) | verdadeiro ou falso |
+| `generico` | O assunto não casa com nenhum tema: só o PDF dirá | verdadeiro ou falso |
+| `referencia` | Data informada pela companhia (no edital, o dia da assembleia) | data (dia) |
+| `publico_em` | Entrega da versão do documento à CVM: quando ficou público para a base | data (dia) |
+| `protocolo` | Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo) | texto |
+| `versao` | Versão do documento (reapresentação) | número inteiro |
+| `link` | Link do documento no sistema da CVM | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `ratings`
 
 Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados, fatos relevantes e editais que falam do rating. Uma linha por documento baixado e lido, com a situação da extração (`extraido`; `nao_extraido`: PDF escaneado ou sem nota; `nao_e_pdf`: Word, ZIP ou PDF quebrado). O mesmo evento (companhia, agência, escala, nota e data da ação) contado pelo relatório e pelo comunicado vira uma linha só, com a primeira entrega. v1: o rating principal de cada documento; notas por emissão, uma a uma, ficam para depois. Conferência à mão: 35 de 36 certas (16/10/2026)
