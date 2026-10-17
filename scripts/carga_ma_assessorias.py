@@ -3,10 +3,12 @@
 
     python -m scripts.carga_ma_assessorias                     (a base do acervo)
     python -m scripts.carga_ma_assessorias --base <pasta>
+    python -m scripts.carga_ma_assessorias --forcar            (refaz mesmo com as mesmas entradas)
 
 Lê as páginas que o arquivista já guardou (fonte `assessoria-<id>`; não baixa nada) e grava uma linha
 por negócio em `<base>/ma/assessorias/<id>.parquet`, com manifesto e versões (`gravar_com_versoes`:
-com as mesmas páginas, nada é lido de novo). No fim, imprime quantos negócios saíram com alvo e
+com as mesmas páginas, nada é lido de novo; `--forcar` monta e compara assim mesmo, para quando só o
+código mudou, como uma regra da ligação). No fim, imprime quantos negócios saíram com alvo e
 comprador, com tipo e sem tipo, para a conferência. Recusa rodar sem a versão do código (exigência 13
 da ADR 0055). O esquema `ma` no banco só vem na série 1 do plano: até lá, Parquet no servidor de casa.
 
@@ -93,7 +95,7 @@ def resumo(tabela: pd.DataFrame) -> str:
     )
 
 
-def carregar(conexao: sa.Connection, base: Path) -> None:
+def carregar(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     for assessoria in ASSESSORIAS:
         fonte = f"assessoria-{assessoria.id}"
         guardadas = originais_mais_recentes(conexao, fonte)
@@ -103,7 +105,11 @@ def carregar(conexao: sa.Connection, base: Path) -> None:
         origens = [{"url": g.url, "sha256": g.sha256} for g in guardadas]
         destino = base / "ma" / "assessorias" / assessoria.id
         resultado = gravar_com_versoes(
-            lambda a=assessoria: montar(conexao, a), destino, origens, ORDEM
+            lambda a=assessoria: montar(conexao, a),
+            destino,
+            origens,
+            ORDEM,
+            forcar=forcar,
         )
         log.info("%s: %s", fonte, resultado)
         if resultado == GRAVADO:
@@ -151,7 +157,7 @@ def _primeira_copia(consultas: list[sa.Row]) -> pd.Series:
     return copias.dropna(subset=["wayback_em"]).set_index("url")["wayback_em"]
 
 
-def ligar(conexao: sa.Connection, base: Path) -> None:
+def ligar(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     """Partes ligadas à rede e duplicatas juntas (`base/ma_ligacao.py`), se a rede já foi montada."""
     rede = base / "rede"
     entidades, identificadores = (
@@ -203,7 +209,11 @@ def ligar(conexao: sa.Connection, base: Path) -> None:
     destino = base / "ma" / "ligacao"
     for nome, ordem in (("partes", ORDEM_DAS_PARTES), ("negocios", ORDEM)):
         resultado = gravar_com_versoes(
-            lambda n=nome: montar_tudo()[n], destino / nome, origens, ordem
+            lambda n=nome: montar_tudo()[n],
+            destino / nome,
+            origens,
+            ordem,
+            forcar=forcar,
         )
         log.info("ligação, %s: %s", nome, resultado)
 
@@ -219,7 +229,7 @@ def _conteudo(original: sa.Row) -> bytes:
     return conteudo
 
 
-def datar(conexao: sa.Connection, base: Path) -> None:
+def datar(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     """O `conhecido_em` e a confirmação de cada página (`base/ma_datas.py`), se a ligação já existe."""
     ligacao = base / "ma" / "ligacao"
     partes, negocios = ligacao / "partes.parquet", ligacao / "negocios.parquet"
@@ -248,12 +258,12 @@ def datar(conexao: sa.Connection, base: Path) -> None:
         return saida
 
     resultado = gravar_com_versoes(
-        montar_datas, base / "ma" / "datas" / "negocios", origens, ORDEM
+        montar_datas, base / "ma" / "datas" / "negocios", origens, ORDEM, forcar=forcar
     )
     log.info("datas dos negócios: %s", resultado)
 
 
-def medir_regua(conexao: sa.Connection, base: Path) -> None:
+def medir_regua(conexao: sa.Connection, base: Path, forcar: bool = False) -> None:
     """A régua do middle market de cada página (`base/ma_regua.py`), se as datas já existem."""
     datas = base / "ma" / "datas" / "negocios.parquet"
     partes = base / "ma" / "ligacao" / "partes.parquet"
@@ -293,7 +303,7 @@ def medir_regua(conexao: sa.Connection, base: Path) -> None:
         return saida
 
     resultado = gravar_com_versoes(
-        montar_regua, base / "ma" / "regua" / "negocios", origens, ORDEM
+        montar_regua, base / "ma" / "regua" / "negocios", origens, ORDEM, forcar=forcar
     )
     log.info("régua do middle market: %s", resultado)
 
@@ -301,6 +311,11 @@ def medir_regua(conexao: sa.Connection, base: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--base", type=Path, default=None)
+    argumentos.add_argument(
+        "--forcar",
+        action="store_true",
+        help="refaz as tabelas mesmo com as mesmas entradas (o código mudou)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -315,10 +330,10 @@ def main(argv: list[str] | None = None) -> int:
     motor = criar_engine(url)
     try:
         with motor.connect() as conexao:
-            carregar(conexao, base)
-            ligar(conexao, base)
-            datar(conexao, base)
-            medir_regua(conexao, base)
+            carregar(conexao, base, opcoes.forcar)
+            ligar(conexao, base, opcoes.forcar)
+            datar(conexao, base, opcoes.forcar)
+            medir_regua(conexao, base, opcoes.forcar)
     finally:
         motor.dispose()
     return 0

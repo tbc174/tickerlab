@@ -118,11 +118,13 @@ PADRAO_DA_RECEITA = (
     True,
     False,
     False,
-)  # abertura, tem o nome, estrangeira, pequena
+    False,
+)  # abertura, tem o nome, estrangeira, pequena, sem fins lucrativos
 
 
 def _receita(*linhas: tuple) -> pd.DataFrame:
-    """(raiz, nome normalizado, por, pessoa[, abertura, tem o nome, estrangeira, pequena])."""
+    """(raiz, nome normalizado, por, pessoa[, abertura, tem o nome, estrangeira, pequena, sem fins
+    lucrativos])."""
     completas = [tuple(linha) + PADRAO_DA_RECEITA[len(linha) - 4 :] for linha in linhas]
     return pd.DataFrame(completas, columns=list(lig.COLUNAS_DA_RECEITA))
 
@@ -270,6 +272,50 @@ def test_nome_fantasia_sem_o_nome_na_razao_social_fica_na_duvida():
         (RAIZ_DELTA, "estante virtual", lig.NOME_FANTASIA, False, None, True)
     )
     assert _ligar("Estante Virtual", receita=com)["ligacao_por"] == "nome_fantasia"
+
+
+def test_regra_4_vale_so_para_a_alvo():
+    """Na compradora, o nome fantasia liga mesmo sem o nome na razão social ("Hypermarcas" é hoje a
+    HYPERA S.A.; "ClearSale", a CLEAR SALE S.A.): o homônimo que a regra pega é o da alvo."""
+    receita = _receita(
+        (RAIZ_DELTA, "hypermarcas", lig.NOME_FANTASIA, False, None, False)
+    )
+    partes = lig.partes(
+        ma.tabela(
+            [
+                _negocio(url="u1", alvo="Alfa Óleos", comprador="Hypermarcas"),
+                _negocio(url="u2", alvo="Hypermarcas", comprador="Beta"),
+            ]
+        )
+    )
+    ligadas = lig.ligar(partes, _rede(), receita).set_index(["url", "nome"])
+    compradora = ligadas.loc[("u1", "Hypermarcas")]
+    assert compradora["ligacao_por"] == "nome_fantasia"
+    assert compradora["cnpj_raiz"] == RAIZ_DELTA
+    alvo = ligadas.loc[("u2", "Hypermarcas")]
+    assert alvo["ligacao_por"] == "na_duvida"
+    assert alvo["cnpj_raiz"] is None and alvo["id_entidade"] is None
+    assert alvo["candidatos"] == 1
+
+
+def test_nome_fantasia_de_entidade_sem_fins_lucrativos_nunca_liga():
+    """Regra 6: "Urgo" (a compradora francesa) casou com o nome fantasia de um sindicato. Sindicato,
+    associação e fundação (grupo 3 da Receita) não ligam pelo nome fantasia em nenhum papel."""
+    receita = _receita(
+        (RAIZ_GAMA, "urgo", lig.NOME_FANTASIA, False, None, False, False, False, True)
+    )
+    partes = lig.partes(ma.tabela([_negocio(alvo="Alfa Óleos", comprador="Urgo")]))
+    urgo = lig.ligar(partes, _rede(), receita).set_index("nome").loc["Urgo"]
+    assert urgo["ligacao_por"] == "na_duvida"
+    assert urgo["cnpj_raiz"] is None and urgo["candidatos"] == 1
+    # pela razão social, liga: a fundação de previdência compra e vende participações
+    exata = _receita(
+        (RAIZ_GAMA, "urgo", lig.RAZAO_SOCIAL, False, None, True, False, False, True)
+    )
+    assert (
+        lig.ligar(partes, _rede(), exata).set_index("nome").loc["Urgo", "cnpj_raiz"]
+        == RAIZ_GAMA
+    )
 
 
 def test_cnpj_de_empresa_estrangeira_vira_holding_e_nao_a_alvo():
@@ -454,6 +500,7 @@ def _empresas() -> io.BytesIO:
             [RAIZ_DELTA, "DELTA HOLDING LTDA", "2062", "49", "10,00", "03", ""],
             ["55555555", "OUTRA COISA LTDA", "2062", "49", "10,00", "03", ""],
             ["66666666", "OMEGA PAGAMENTOS LLC", "2062", "49", "10,00", "05", ""],
+            ["77777777", "SINDICATO DOS EXEMPLOS", "3131", "16", "0,00", "05", ""],
         ]
     )
 
@@ -475,6 +522,7 @@ def _estabelecimentos() -> io.BytesIO:
             linha("55555555", "0001", "1", "", "20000101"),
             linha("66666666", "0001", "1", "", "20180725"),
             linha(RAIZ_ALFA, "0001", "1", "", "19660908"),
+            linha("77777777", "0001", "1", "URGO", "19900101"),
         ]
     )
 
@@ -491,6 +539,7 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
         "gama comercio",
         "fulano exemplar 12345678909",
         "omega pagamentos",
+        "urgo",
     }
     achados = lig.ler_receita([_empresas()], [_estabelecimentos()], [_simples()], nomes)
     assert list(achados.columns) == list(lig.COLUNAS_DA_RECEITA)
@@ -514,6 +563,9 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
     # porte 03 (EPP) é pequena; 05 (demais) não
     assert por[(RAIZ_DELTA, lig.NOME_FANTASIA)].pequena
     assert not por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].pequena
+    # natureza do grupo 3 (3131, entidade sindical) é sem fins lucrativos; 2054 (S.A.) não
+    assert por[("77777777", lig.NOME_FANTASIA)].sem_fins_lucrativos
+    assert not por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].sem_fins_lucrativos
 
 
 # --- contrato ---------------------------------------------------------------------------------------
@@ -609,6 +661,22 @@ def test_carga_liga_as_partes_e_grava_com_manifesto(ambiente, capsys):
     antes = arquivo.with_suffix(".json").read_text(encoding="utf-8")
     carga.main(["--base", str(ambiente)])  # nada mudou: nada é lido de novo
     assert arquivo.with_suffix(".json").read_text(encoding="utf-8") == antes
+
+
+def test_forcar_refaz_com_as_mesmas_entradas(ambiente, monkeypatch):
+    """Só o código mudou (a regra da ligação): sem `--forcar` nada é refeito; com ele, sim."""
+    assert carga.main(["--base", str(ambiente)]) == 0
+    arquivo = ambiente / "ma" / "ligacao" / "partes.parquet"
+    ligar = lig.ligar
+
+    def ligar_diferente(*args, **kwargs):
+        return ligar(*args, **kwargs).assign(ligacao_por=lig.NA_DUVIDA)
+
+    monkeypatch.setattr(carga.ma_ligacao, "ligar", ligar_diferente)
+    carga.main(["--base", str(ambiente)])
+    assert set(ler_tabela(arquivo)["ligacao_por"]) != {lig.NA_DUVIDA}
+    assert carga.main(["--base", str(ambiente), "--forcar"]) == 0
+    assert set(ler_tabela(arquivo)["ligacao_por"]) == {lig.NA_DUVIDA}
 
 
 def test_carga_sem_a_rede_nao_liga(ambiente, capsys):
