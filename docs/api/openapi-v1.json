@@ -1083,6 +1083,49 @@
         "title": "MeusLinksV1",
         "type": "object"
       },
+      "MinhasSimulacoesV1": {
+        "properties": {
+          "limite": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limite"
+          },
+          "sem_simulacoes": {
+            "title": "Sem Simulacoes",
+            "type": "string"
+          },
+          "simulacoes": {
+            "items": {
+              "$ref": "#/components/schemas/SimulacaoV1"
+            },
+            "title": "Simulacoes",
+            "type": "array"
+          },
+          "usadas": {
+            "title": "Usadas",
+            "type": "integer"
+          },
+          "uso": {
+            "title": "Uso",
+            "type": "string"
+          }
+        },
+        "required": [
+          "simulacoes",
+          "usadas",
+          "limite",
+          "uso",
+          "sem_simulacoes"
+        ],
+        "title": "MinhasSimulacoesV1",
+        "type": "object"
+      },
       "NumeroDeJurosV1": {
         "description": "Um número do painel (em %, como o Banco Central publica), com a data e a fonte.",
         "properties": {
@@ -1425,6 +1468,52 @@
         "title": "PedidoDeRevogarV1",
         "type": "object"
       },
+      "PedidoDeSalvarSimulacaoV1": {
+        "description": "O backtest que a tela mostrou (o mesmo pedido de /v1/backtest) e o veredito da ficha.",
+        "properties": {
+          "backtest": {
+            "$ref": "#/components/schemas/PedidoDeBacktestV1"
+          },
+          "nome": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Nome",
+            "type": "string"
+          },
+          "veredito": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veredito"
+          }
+        },
+        "required": [
+          "nome",
+          "backtest"
+        ],
+        "title": "PedidoDeSalvarSimulacaoV1",
+        "type": "object"
+      },
+      "PedidoDeSimulacaoV1": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "PedidoDeSimulacaoV1",
+        "type": "object"
+      },
       "PiorQuedaV1": {
         "properties": {
           "data_fundo": {
@@ -1656,6 +1745,81 @@
         "title": "RiscoV1",
         "type": "object"
       },
+      "SimulacaoV1": {
+        "description": "Uma simulação guardada na conta: o que a lista mostra e o endereço que a reabre.",
+        "properties": {
+          "criada_em": {
+            "format": "date-time",
+            "title": "Criada Em",
+            "type": "string"
+          },
+          "dados_ate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dados Ate"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "numeros": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Numeros",
+            "type": "object"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "veredito": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Veredito"
+          }
+        },
+        "required": [
+          "id",
+          "tipo",
+          "nome",
+          "criada_em",
+          "dados_ate",
+          "numeros",
+          "veredito",
+          "endereco"
+        ],
+        "title": "SimulacaoV1",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1814,6 +1978,63 @@
           }
         },
         "summary": "Registrar O Aceite"
+      }
+    },
+    "/v1/apagar-simulacao": {
+      "post": {
+        "description": "Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer\nqual é o caso.",
+        "operationId": "apagar_simulacao_da_conta_v1_apagar_simulacao_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeSimulacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apagar Simulacao Da Conta"
       }
     },
     "/v1/backtest": {
@@ -2721,6 +2942,110 @@
           }
         },
         "summary": "Risco"
+      }
+    },
+    "/v1/salvar-simulacao": {
+      "post": {
+        "description": "Guarda o backtest da tela como o Streamlit guarda (telas/dados_da_conta.py): o retrato\ndas escolhas, os números formatados, até quando iam os dados e a ficha \"Foi sorte?\" (o\npedido e o veredito), que o Pulse recalcula depois.\n\nO backtest roda de novo aqui (é barato) em vez de confiar nos números que a tela mandar; só\no veredito vem da tela, porque a ficha custa caro e ele serve só de \"antes\" na comparação do\nPulse. Além do limite do plano: 403 com o motivo \"plano\" (src/api.py).",
+        "operationId": "salvar_simulacao_da_tela_v1_salvar_simulacao_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeSalvarSimulacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Salvar Simulacao Da Tela"
+      }
+    },
+    "/v1/simulacoes": {
+      "get": {
+        "description": "Minhas simulações: as guardadas na conta do token (as do app atual também), a mais nova\nprimeiro, com quantas o plano ainda deixa.",
+        "operationId": "minhas_simulacoes_v1_simulacoes_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinhasSimulacoesV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Minhas Simulacoes"
       }
     },
     "/v1/visao-geral": {

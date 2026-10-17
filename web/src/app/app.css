@@ -113,6 +113,13 @@
 .links-da-conta li { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
   padding: .6rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); }
 .links-da-conta li p { margin: .2rem 0 0; }
+/* Minhas simulações (Workspace, PR 1): a mesma lista, com os números e os botões que quebram linha no celular */
+.lista-de-simulacoes li { flex-wrap: wrap; }
+.numeros-da-simulacao { font-size: .86rem; font-variant-numeric: tabular-nums; }
+.acoes-da-simulacao { display: flex; flex-wrap: wrap; gap: .4rem; }
+.salvar-simulacao { margin-top: 2rem; }
+.salvar-simulacao .formulario-do-app { margin: .75rem 0; }
+.salvar-simulacao input { min-width: min(24rem, 100%); }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
 .textos-legais { display: flex; gap: 1.2rem; flex-wrap: wrap; }
 .texto-legal { font-weight: 600; }

@@ -12,6 +12,8 @@ import type {
   RiscoDoAtivoV1,
   JurosEInflacaoV1,
   LinhaDoTempoDoAtivoV1,
+  MinhasSimulacoesV1,
+  SimulacaoV1,
   VisaoGeralV1,
 } from "../../src/app/tipos";
 import backtest from "./exemplos/backtest.json";
@@ -204,6 +206,22 @@ describe("tipos das respostas", () => {
       nota_do_cartao: "",
     };
     expect(Object.keys(p).sort()).toEqual(campos("MeuPlanoV1"));
+  });
+
+  it("Minhas simulações bate com o OpenAPI", () => {
+    const simulacao: SimulacaoV1 = {
+      id: "11111111-1111-1111-1111-111111111111",
+      tipo: "backtest",
+      nome: "Médias 10/40",
+      criada_em: "2026-10-17T21:40:00",
+      dados_ate: "09/10/2026",
+      numeros: { "Retorno total": "+12,0%" },
+      veredito: "passou",
+      endereco: "/backtest?ticker=PETR4.SA",
+    };
+    const minhas: MinhasSimulacoesV1 = { simulacoes: [simulacao], usadas: 1, limite: 5, uso: "1 de 5", sem_simulacoes: "" };
+    expect(Object.keys(minhas).sort()).toEqual(campos("MinhasSimulacoesV1"));
+    expect(Object.keys(simulacao).sort()).toEqual(campos("SimulacaoV1"));
   });
 
   it("Ficha do backtest (exemplo do Python) bate com o OpenAPI", () => {

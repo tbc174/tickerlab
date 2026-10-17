@@ -3,8 +3,9 @@
 // Streamlit): os números têm de sair iguais, e o pedido vai por POST com os parâmetros da estratégia.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { abrirApp, respostaJson } from "./ajudantes";
+import { TOKEN, abrirApp, respostaJson } from "./ajudantes";
 import exemplo from "./exemplos/backtest.json";
+import comFicha from "./exemplos/ficha.json";
 
 function abrir(caminho = "/backtest") {
   return abrirApp(caminho, {
@@ -123,5 +124,53 @@ describe("backtest", () => {
       expect(ultimo?.estrategia).toBe("Filtro de tendência");
       expect(ultimo).not.toHaveProperty("livres");
     });
+  });
+});
+
+// Salvar na minha conta (Minhas simulações; Workspace, PR 1)
+const LISTA_SALVA = { simulacoes: [], usadas: 1, limite: 5, uso: "1 de 5", sem_simulacoes: "" };
+
+function abrirComFicha(salvar: () => Response) {
+  return abrirApp("/backtest?estrategia=Cruzamento+de+m%C3%A9dias", {
+    rotas: (endereco) => {
+      if (endereco === "/api/v1/backtest") return respostaJson(200, comFicha.resposta);
+      if (endereco === "/api/v1/salvar-simulacao") return salvar();
+      return undefined;
+    },
+  });
+}
+
+describe("salvar na minha conta", () => {
+  it("manda o mesmo pedido da tela, com o nome e o veredito da ficha, e mostra o uso do plano", async () => {
+    const { buscar } = abrirComFicha(() => respostaJson(200, LISTA_SALVA));
+    await screen.findByRole("region", { name: "Resultado do backtest" });
+    const nome = screen.getByLabelText("Nome da simulação") as HTMLInputElement;
+    expect(nome.value).toBe("Cruzamento de médias · PETR4 · 2y"); // a sugestão: estratégia · ativo · período
+    fireEvent.change(nome, { target: { value: "Minha regra de médias" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText(/Simulação guardada \(1 de 5\)/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Ver minhas simulações" }).getAttribute("href")).toBe("/simulacoes");
+    const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/salvar-simulacao");
+    expect(pedido?.[1]?.method).toBe("POST");
+    expect(pedido?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+    expect(JSON.parse(String(pedido?.[1]?.body))).toEqual({
+      nome: "Minha regra de médias",
+      backtest: corposDosPedidos(buscar)[0], // exatamente o que a tela mandou a /v1/backtest
+      veredito: "não passou",
+    });
+  });
+
+  it("além do limite do plano, a frase da API e o caminho para os planos", async () => {
+    abrirComFicha(() =>
+      respostaJson(
+        403,
+        { detail: "Você chegou ao limite de 5 simulações do plano Gratuito." },
+        { "X-TickerLab-Motivo": "plano" },
+      ),
+    );
+    await screen.findByRole("region", { name: "Resultado do backtest" });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText(/limite de 5 simulações/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Conhecer os planos" })).toBeTruthy();
   });
 });

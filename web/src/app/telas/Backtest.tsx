@@ -2,13 +2,20 @@
 // métricas saem na ordem e no formato do Streamlit (src/formatos.py) e a curva de capital em base 100.
 // Embaixo, a ficha "Foi sorte?" (src/ficha.py, pela API). Proteções, Monte Carlo e o detalhe técnico
 // da validação continuam só no app atual.
+import { type FormEvent, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { type PaginaDoApp, conteudoDoApp } from "../../conteudo";
 import { linkDoApp } from "../../site/textos";
 import { Ajuda } from "../Ajuda";
+import { mensagemDe } from "../BaixarMeusDados";
+import { corpoDoPedido, valoresIniciais } from "../Formulario";
 import { VereditoDaFicha } from "../VereditoDaFicha";
+import { ErroDaApi, pedir } from "../api";
+import { useConta } from "../conta";
 import { formatar } from "../formatar";
 import { GraficoDeLinha } from "../graficos/GraficoDeLinha";
-import type { BacktestDoAtivoV1, FichaV1 } from "../tipos";
+import type { BacktestDoAtivoV1, FichaV1, MinhasSimulacoesV1 } from "../tipos";
+import { ErroDaTela } from "./ErroDaTela";
 import { TelaDoContrato } from "./TelaDoContrato";
 
 const { metricas_por_formato, ficha: textosDaFicha } = conteudoDoApp.backtest;
@@ -99,7 +106,65 @@ function Resultado({ dados }: { dados: BacktestDoAtivoV1 }) {
   );
 }
 
+type Salvamento =
+  | { estado: "parado" }
+  | { estado: "salvando" }
+  | { estado: "salva"; uso: string }
+  | { estado: "erro"; erro: ErroDaApi };
+
+/** "Salvar na minha conta" (Minhas simulações; Workspace, PR 1): manda à API o mesmo pedido que a
+ * tela fez (lido do endereço, como TelaDoContrato) e o veredito da ficha, que o Pulse usa como o
+ * "antes" quando recalcula. Os números e a ficha guardados são refeitos no servidor. */
+function SalvarNaConta({ pagina, dados }: { pagina: PaginaDoApp; dados: BacktestDoAtivoV1 }) {
+  const token = useConta()?.token ?? null;
+  const [busca] = useSearchParams();
+  const sugestao = `${dados.estrategia} · ${dados.ativo.codigo} · ${dados.ativo.periodo}`;
+  const [nome, setNome] = useState(sugestao);
+  const [salvamento, setSalvamento] = useState<Salvamento>({ estado: "parado" });
+  const salvar = (evento: FormEvent) => {
+    evento.preventDefault();
+    if (token === null) return;
+    const entradas = pagina.contrato?.entradas ?? [];
+    setSalvamento({ estado: "salvando" });
+    pedir<MinhasSimulacoesV1>("/v1/salvar-simulacao", token, {}, {
+      nome: nome.trim() || sugestao,
+      backtest: corpoDoPedido(entradas, valoresIniciais(entradas, busca)),
+      veredito: dados.ficha?.veredito.resultado ?? null,
+    })
+      .then((lista) => setSalvamento({ estado: "salva", uso: lista.uso }))
+      .catch((falha: unknown) => {
+        const erro = falha instanceof ErroDaApi ? falha : new ErroDaApi("indisponivel", mensagemDe(falha));
+        setSalvamento({ estado: "erro", erro });
+      });
+  };
+  return (
+    <section aria-label="Salvar na minha conta" className="salvar-simulacao">
+      <h2>Salvar na minha conta</h2>
+      <p className="apagado">
+        A simulação fica em Minhas simulações, para reabrir depois com os dados de hoje. O veredito da ficha
+        "Foi sorte?" de agora fica guardado para comparar com o de amanhã.
+      </p>
+      <form className="formulario-do-app" onSubmit={salvar}>
+        <label>
+          Nome da simulação
+          <input value={nome} maxLength={120} required onChange={(e) => setNome(e.target.value)} />
+        </label>
+        <button type="submit" className="botao primario" disabled={salvamento.estado === "salvando"}>
+          Salvar
+        </button>
+      </form>
+      {salvamento.estado === "salva" ? (
+        <p role="status">
+          Simulação guardada ({salvamento.uso}). <Link to="/simulacoes">Ver minhas simulações</Link>
+        </p>
+      ) : null}
+      {salvamento.estado === "erro" ? <ErroDaTela erro={salvamento.erro} /> : null}
+    </section>
+  );
+}
+
 export function Backtest({ pagina }: { pagina: PaginaDoApp }) {
+  const [busca] = useSearchParams();
   return (
     <TelaDoContrato<BacktestDoAtivoV1>
       pagina={pagina}
@@ -108,6 +173,8 @@ export function Backtest({ pagina }: { pagina: PaginaDoApp }) {
         <>
           <Resultado dados={dados} />
           <FoiSorte dados={dados} />
+          {/* a chave zera o nome sugerido e a mensagem a cada análise nova */}
+          <SalvarNaConta key={busca.toString()} pagina={pagina} dados={dados} />
         </>
       )}
     />
