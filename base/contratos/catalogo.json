@@ -5083,6 +5083,175 @@
       "frequencia": "A cada montagem, a partir da exportação do acervo (`base/bcb_selic_focus.py`)",
       "atraso": "O valor vale a partir de `divulgado_em` (a safra): a data da pesquisa, no Focus; o dia da coleta, na meta"
     },
+    "noticias_fatos": {
+      "tabela": "noticias_fatos",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_fato": {
+          "descricao": "SHA-256 de `pauta` + `chave_de_origem`: remontar dá o mesmo id",
+          "unidade": "texto"
+        },
+        "pauta": {
+          "descricao": "`resultado_trimestral`, `fato_relevante` ou `copom`",
+          "unidade": "texto"
+        },
+        "versao_do_gatilho": {
+          "descricao": "Versão da regra que criou a linha (`resultado-1.0`)",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da companhia (vazio no Copom)",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia, como a CVM publica (vazio no Copom)",
+          "unidade": "texto"
+        },
+        "tabela_de_origem": {
+          "descricao": "Tabela da base de onde o fato saiu",
+          "unidade": "texto"
+        },
+        "chave_de_origem": {
+          "descricao": "JSON canônico da chave da linha de origem",
+          "unidade": "texto"
+        },
+        "aconteceu_em": {
+          "descricao": "Fim do trimestre, data de referência do IPE ou data da reunião",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Quando o documento ficou público (o comunicado do Copom, no dia da reunião)",
+          "unidade": "data (dia)"
+        },
+        "coletado_em": {
+          "descricao": "Quando a origem foi baixada",
+          "unidade": "data e hora (UTC)"
+        },
+        "link": {
+          "descricao": "Endereço do documento original (CVM) ou do comunicado (Banco Central)",
+          "unidade": "texto"
+        },
+        "topico": {
+          "descricao": "Fato relevante: tópico da lista fechada (`src/topicos.py`); vazio nas outras pautas",
+          "unidade": "texto"
+        },
+        "metodo_do_topico": {
+          "descricao": "Fato relevante: `regra_titulo`",
+          "unidade": "texto"
+        },
+        "versao_do_topico": {
+          "descricao": "Fato relevante: versão das regras do tópico",
+          "unidade": "texto"
+        },
+        "trecho": {
+          "descricao": "Fato relevante: o assunto escrito pela empresa, literal, até 200 caracteres",
+          "unidade": "texto"
+        },
+        "reapresentacao": {
+          "descricao": "Resultado: o documento é uma versão 2 em diante (verdadeiro/falso)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "fato_anterior": {
+          "descricao": "Resultado reapresentado: `id_fato` da versão anterior",
+          "unidade": "texto"
+        },
+        "marcas": {
+          "descricao": "Lista: `dado_em_conferencia`, `fontes_divergem`, `trecho_cortado`",
+          "unidade": "texto"
+        },
+        "licenca": {
+          "descricao": "Família da fonte (`cvm` ou `bcb`), para a marca de licença",
+          "unidade": "texto"
+        },
+        "hash_da_linha": {
+          "descricao": "SHA-256 da linha e dos números dela",
+          "unidade": "texto"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_fato"
+      ],
+      "datas": {
+        "aconteceu_em": "aconteceu_em",
+        "publico_em": "publico_em",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária, no lote da manhã (`base/noticias_fatos.py`)",
+      "atraso": "Nenhum além do de cada origem: o fato vale a partir de `publico_em`"
+    },
+    "noticias_numeros": {
+      "tabela": "noticias_numeros",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_fato": {
+          "descricao": "Fato a que o número pertence (`noticias_fatos`)",
+          "unidade": "texto"
+        },
+        "campo": {
+          "descricao": "Nome do número (`receita_trimestre`, `meta_selic`...)",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "O número, na unidade da coluna `unidade`",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "`reais` ou `pct_ao_ano`",
+          "unidade": "texto"
+        },
+        "periodo": {
+          "descricao": "Período em texto (`3T26`, `30/09/2026`, `fim de 2026`)",
+          "unidade": "texto"
+        },
+        "origem_conta": {
+          "descricao": "Conta do plano da CVM ou código da série do Banco Central",
+          "unidade": "texto"
+        },
+        "origem_periodo": {
+          "descricao": "`acumulado`, `exercicio` ou `posicao` (ou vazio na série do Banco Central)",
+          "unidade": "texto"
+        },
+        "origem_versao": {
+          "descricao": "Versão do documento de origem",
+          "unidade": "número inteiro"
+        },
+        "origem_divulgado_em": {
+          "descricao": "Quando o valor de origem ficou público",
+          "unidade": "data (dia)"
+        },
+        "calculo": {
+          "descricao": "Vazio se é o valor publicado; senão a conta (`acumulado 9M26 - acumulado 6M26`)",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_fato",
+        "campo"
+      ],
+      "datas": {
+        "publico_em": "origem_divulgado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária, junto com `noticias_fatos`",
+      "atraso": "Nenhum além do de cada origem: cada número vale a partir de `origem_divulgado_em`"
+    },
     "controladas": {
       "tabela": "controladas",
       "modulo": "mercado_e_empresas",

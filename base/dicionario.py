@@ -3275,6 +3275,123 @@ TABELAS: dict[str, Tabela] = {
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
+    "noticias_fatos": Tabela(
+        descricao=(
+            "Um fato por linha para as notas de dado (ADR 0093): resultado trimestral (ITR e DFP), "
+            "fato relevante (IPE) e reunião do Copom. Tabela derivada: cada linha diz de qual linha de "
+            "qual tabela da base saiu (`chave_de_origem`) e quando ficou pública. Sem nenhum dado de pessoa: "
+            "o trecho do fato relevante é cortado se citar nome"
+        ),
+        fonte="Derivado: `demonstracoes_como_era`, `eventos` (CVM) e `bcb_selic_focus` (Banco Central)",
+        familia_da_fonte="cvm",
+        ressalva_de_revenda="A pauta `copom` vem do Banco Central (`bcb_selic_focus` e a tabela conferida do Copom)",
+        frequencia="Diária, no lote da manhã (`base/noticias_fatos.py`)",
+        atraso="Nenhum além do de cada origem: o fato vale a partir de `publico_em`",
+        onde="Parquet em `<acervo>/base/noticias_fatos/<ano>.parquet` (servidor de casa)",
+        linhagem=(
+            "`chave_de_origem` aponta a linha da tabela de entrada; `hash_da_linha` cobre a linha e os "
+            "números dela (`noticias_numeros`). " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "id_fato": (
+                "SHA-256 de `pauta` + `chave_de_origem`: remontar dá o mesmo id",
+                TEXTO,
+            ),
+            "pauta": ("`resultado_trimestral`, `fato_relevante` ou `copom`", TEXTO),
+            "versao_do_gatilho": (
+                "Versão da regra que criou a linha (`resultado-1.0`)",
+                TEXTO,
+            ),
+            "cnpj": ("CNPJ da companhia (vazio no Copom)", TEXTO),
+            "empresa": (
+                "Nome da companhia, como a CVM publica (vazio no Copom)",
+                TEXTO,
+            ),
+            "tabela_de_origem": ("Tabela da base de onde o fato saiu", TEXTO),
+            "chave_de_origem": ("JSON canônico da chave da linha de origem", TEXTO),
+            "aconteceu_em": (
+                "Fim do trimestre, data de referência do IPE ou data da reunião",
+                DATA,
+            ),
+            "publico_em": (
+                "Quando o documento ficou público (o comunicado do Copom, no dia da reunião)",
+                DATA,
+            ),
+            "coletado_em": ("Quando a origem foi baixada", MOMENTO),
+            "link": (
+                "Endereço do documento original (CVM) ou do comunicado (Banco Central)",
+                TEXTO,
+            ),
+            "topico": (
+                "Fato relevante: tópico da lista fechada (`src/topicos.py`); vazio nas outras pautas",
+                TEXTO,
+            ),
+            "metodo_do_topico": ("Fato relevante: `regra_titulo`", TEXTO),
+            "versao_do_topico": ("Fato relevante: versão das regras do tópico", TEXTO),
+            "trecho": (
+                "Fato relevante: o assunto escrito pela empresa, literal, até 200 caracteres",
+                TEXTO,
+            ),
+            "reapresentacao": (
+                "Resultado: o documento é uma versão 2 em diante (verdadeiro/falso)",
+                SIM_OU_NAO,
+            ),
+            "fato_anterior": (
+                "Resultado reapresentado: `id_fato` da versão anterior",
+                TEXTO,
+            ),
+            "marcas": (
+                "Lista: `dado_em_conferencia`, `fontes_divergem`, `trecho_cortado`",
+                TEXTO,
+            ),
+            "licenca": (
+                "Família da fonte (`cvm` ou `bcb`), para a marca de licença",
+                TEXTO,
+            ),
+            "hash_da_linha": ("SHA-256 da linha e dos números dela", TEXTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
+        },
+    ),
+    "noticias_numeros": Tabela(
+        descricao=(
+            "Um número por linha de cada fato de `noticias_fatos`, com a conta, o período, a versão e "
+            "a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado)"
+        ),
+        fonte="Derivado: `demonstracoes_como_era` (CVM) e `bcb_selic_focus` (Banco Central)",
+        familia_da_fonte="cvm",
+        ressalva_de_revenda="Os números do Copom vêm do Banco Central",
+        frequencia="Diária, junto com `noticias_fatos`",
+        atraso="Nenhum além do de cada origem: cada número vale a partir de `origem_divulgado_em`",
+        onde="Parquet em `<acervo>/base/noticias_numeros/<ano>.parquet` (servidor de casa)",
+        linhagem=(
+            "Cada linha diz a conta, o período, a versão e a data pública da origem; `calculo` mostra a "
+            "conta feita quando o valor não é o publicado. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "id_fato": ("Fato a que o número pertence (`noticias_fatos`)", TEXTO),
+            "campo": ("Nome do número (`receita_trimestre`, `meta_selic`...)", TEXTO),
+            "valor": ("O número, na unidade da coluna `unidade`", NUMERO_DECIMAL),
+            "unidade": ("`reais` ou `pct_ao_ano`", TEXTO),
+            "periodo": (
+                "Período em texto (`3T26`, `30/09/2026`, `fim de 2026`)",
+                TEXTO,
+            ),
+            "origem_conta": (
+                "Conta do plano da CVM ou código da série do Banco Central",
+                TEXTO,
+            ),
+            "origem_periodo": (
+                "`acumulado`, `exercicio` ou `posicao` (ou vazio na série do Banco Central)",
+                TEXTO,
+            ),
+            "origem_versao": ("Versão do documento de origem", NUMERO),
+            "origem_divulgado_em": ("Quando o valor de origem ficou público", DATA),
+            "calculo": (
+                "Vazio se é o valor publicado; senão a conta (`acumulado 9M26 - acumulado 6M26`)",
+                TEXTO,
+            ),
+        },
+    ),
     "controladas": Tabela(
         descricao=(
             "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a "
@@ -4086,6 +4203,8 @@ _CONTRATO = {
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
@@ -4114,6 +4233,14 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "bcb_selic_focus": {
         "pasta": "bcb_selic_focus",
         "nao_nulas": ("valor", "divulgado_em", "publico_em"),
+    },
+    "noticias_fatos": {
+        "pasta": "noticias_fatos",
+        "nao_nulas": ("id_fato", "pauta", "publico_em", "link", "hash_da_linha"),
+    },
+    "noticias_numeros": {
+        "pasta": "noticias_numeros",
+        "nao_nulas": ("id_fato", "campo", "valor", "origem_divulgado_em"),
     },
     "pgfn_divida": {
         "pasta": "pgfn_divida",
