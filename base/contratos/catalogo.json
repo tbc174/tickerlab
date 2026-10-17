@@ -4534,7 +4534,7 @@
       "tabela": "debentures_assembleias",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4621,11 +4621,11 @@
           "unidade": "texto"
         },
         "versao": {
-          "descricao": "Versão do documento (reapresentação)",
+          "descricao": "Versão do documento (reapresentação); vazia de 2003 a 2015, quando o IPE não a traz",
           "unidade": "número inteiro"
         },
         "link": {
-          "descricao": "Link do documento no sistema da CVM",
+          "descricao": "Link do arquivo no sistema da CVM: identifica a linha (uma entrega pode ter vários arquivos)",
           "unidade": "texto"
         },
         "origem_sha256": {
@@ -4646,9 +4646,7 @@
         }
       },
       "chaves": [
-        "cnpj",
-        "protocolo",
-        "versao"
+        "link"
       ],
       "datas": {
         "aconteceu_em": "referencia",

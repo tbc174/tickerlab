@@ -1809,10 +1809,10 @@ Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de vot
 - **Frequência:** Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do arquivista baixar o IPE do ano
 - **Atraso de divulgação:** O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois
 - **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `protocolo`, `versao`
+- **Chaves:** `link`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2003-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/debentures_assembleias/debentures_assembleias.parquet` (servidor de casa, `scripts/montar_debentures_assembleias.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -1839,8 +1839,8 @@ Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de vot
 | `referencia` | Data informada pela companhia (no edital, o dia da assembleia) | data (dia) |
 | `publico_em` | Entrega da versão do documento à CVM: quando ficou público para a base | data (dia) |
 | `protocolo` | Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo) | texto |
-| `versao` | Versão do documento (reapresentação) | número inteiro |
-| `link` | Link do documento no sistema da CVM | texto |
+| `versao` | Versão do documento (reapresentação); vazia de 2003 a 2015, quando o IPE não a traz | número inteiro |
+| `link` | Link do arquivo no sistema da CVM: identifica a linha (uma entrega pode ter vários arquivos) | texto |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
