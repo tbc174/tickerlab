@@ -18,7 +18,7 @@ from base import releases
 from base.ratings import FONTE_DO_IPE, ler_ipe_bruto
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
-from src.banco.conexao import criar_engine, migrar_para
+from src.banco.conexao import criar_engine
 from src.configuracao import url_do_banco
 
 log = logging.getLogger("tickerlab.ler_releases")
@@ -97,7 +97,6 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
-    migrar_para("head", url=url_do_banco())
     base = (
         opcoes.base
         or (acervo.pasta_do_acervo() or Path("dados_locais/acervo")) / "base"
