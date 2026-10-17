@@ -45,7 +45,8 @@ def test_com_login_o_usuario_e_criado_e_aparece_no_topo(tmp_path, monkeypatch):
     assert app.session_state["usuario"].plano == "gratuito"
     assert "Entrar com o Google" not in [b.label for b in app.button]
     # no primeiro acesso o app pede o aceite dos termos antes de abrir
-    assert [b.label for b in app.button] == ["Continuar", "Sair"]
+    # (e, para quem não quer aceitar, baixar ou apagar os dados: LGPD, 6c)
+    assert [b.label for b in app.button][:2] == ["Continuar", "Sair"]
     app.checkbox(key="aceite_dos_termos").check().run()
     next(b for b in app.button if b.label == "Continuar").click().run()
     assert not app.exception
