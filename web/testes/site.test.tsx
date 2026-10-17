@@ -3,7 +3,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type Modulo, exemplo, marca, planos, site } from "../src/conteudo";
+import { type Modulo, amostraRelatorio, exemplo, marca, planos, site } from "../src/conteudo";
 import { arquivos, arquivosFixos, renderizar } from "../src/entry-server";
 import { css } from "../src/estilo";
 import { dataPorExtenso } from "../src/paginas/Novidades";
@@ -345,3 +345,52 @@ describe("Novidades", () => {
   });
 });
 
+
+describe("relatório de exemplo da base (plano do relatório-modelo, 17/10/2026)", () => {
+  const html = renderizar("relatorio-de-exemplo.html");
+  const texto = semTags(html);
+
+  it("abre com a empresa, o CNPJ, a data dos dados e o aviso", () => {
+    expect(texto).toContain(`${amostraRelatorio.empresa}: o que a base do TickerLab mostra`);
+    expect(texto).toContain(`CNPJ ${amostraRelatorio.cnpj}`);
+    expect(texto).toContain(`Dados da base de ${amostraRelatorio.dados_de}`);
+    expect(html).toContain('<p class="v2-aviso">');
+    expect(texto.toLowerCase()).toContain("nada aqui é recomendação de investimento");
+  });
+
+  it("cada destaque traz a fonte, a data e o caminho para o detalhe", () => {
+    expect(amostraRelatorio.destaques.length).toBeGreaterThanOrEqual(5);
+    for (const d of amostraRelatorio.destaques) {
+      expect(html).toContain(esc(d.texto));
+      expect(texto).toContain(`dado de ${d.data}`);
+    }
+    expect(html).toContain('href="#ofertas-e-fundos">Ver o detalhe</a>');
+  });
+
+  it("o PDF e as seções da base estão na página, com o sumário", () => {
+    expect(html).toContain(`href="${amostraRelatorio.pdf}"`);
+    for (const id of [
+      "auditor-e-controladas",
+      "ofertas-e-fundos",
+      "setor-regulado",
+      "negocios-m-a-pela-cvm",
+    ]) {
+      expect(html).toContain(`<h2 id="${id}">`);
+      expect(html).toContain(`href="#${id}"`);
+    }
+    expect(html).toContain('href="#limites-e-cuidados"');
+  });
+
+  it("tabela longa fica fechada; o assunto do documento leva à CVM", () => {
+    expect(html).toContain('<details class="v2-tabela-da-base"><summary>');
+    expect(html).toMatch(/<a href="https:\/\/www\.rad\.cvm\.gov\.br\/[^"]+" rel="noopener">/);
+  });
+
+  it("não promete o que ainda não existe: o Pro aparece como em breve", () => {
+    expect(texto).toContain("Em breve no plano Pro");
+  });
+
+  it("a página inicial leva ao relatório de exemplo", () => {
+    expect(renderizar("index.html")).toContain('href="/relatorio-de-exemplo.html"');
+  });
+});

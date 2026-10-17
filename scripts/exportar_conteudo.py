@@ -19,6 +19,7 @@ import numpy as np
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
+    amostra_do_relatorio,
     analises,
     catalogo,
     cobranca,
@@ -347,6 +348,7 @@ def conteudo() -> dict[str, object]:
         "formatacao": formatos.casos_de_formatacao(),
         "novidades": novidades.como_lista(),
         "exemplo": painel_de_exemplo(),
+        "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
     }
 

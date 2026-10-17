@@ -3,7 +3,14 @@
 // frentes, o "Por que o TickerLab", o Report Studio e a chamada final. Os números do painel vêm do
 // Python (exemplo.json), os mesmos do PDF de exemplo: nunca escritos à mão.
 import type { ReactNode } from "react";
-import { type Modulo, type NumeroDoPainel, exemplo, marca, site } from "../conteudo";
+import {
+  type Modulo,
+  type NumeroDoPainel,
+  amostraRelatorio,
+  exemplo,
+  marca,
+  site,
+} from "../conteudo";
 import {
   AvisoDeAcesso,
   ChamadaFinal,
@@ -12,6 +19,7 @@ import {
   disponiveis,
 } from "../site/comum";
 import { Fundo } from "../site/Fundo";
+import { DADOS as RELATORIO_DE_EXEMPLO } from "./RelatorioExemplo";
 import {
   ASSINATURA,
   FONTES_DOS_DADOS,
@@ -275,6 +283,9 @@ function FontesDosDados() {
       </ul>
       <a className="seta" href="/metodologia.html">
         Fontes e metodologia
+      </a>{" "}
+      <a className="seta" href={RELATORIO_DE_EXEMPLO.caminho}>
+        O que a base cruza: {amostraRelatorio.empresa}
       </a>
     </section>
   );

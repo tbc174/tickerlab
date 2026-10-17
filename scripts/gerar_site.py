@@ -24,7 +24,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src import catalogo, previa_pdf, relatorios
+from src import amostra_do_relatorio, catalogo, previa_pdf, relatorios
 from src.estilos_pdf import ESTILOS
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -106,6 +106,9 @@ def gerar(destino: Path = DESTINO) -> None:
         for nome in nomes:
             shutil.copyfile(RAIZ / "static" / pasta / nome, destino / pasta / nome)
     gerar_relatorio_de_exemplo(destino)
+    (destino / amostra_do_relatorio.CAMINHO_DO_PDF.lstrip("/")).write_bytes(
+        amostra_do_relatorio.pdf()
+    )
     tabela = catalogo.carregar().reset_index()
     (destino / "catalogo.json").write_text(
         json.dumps(
