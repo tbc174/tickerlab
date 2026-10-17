@@ -668,6 +668,87 @@
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
       "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
     },
+    "cda_cotas": {
+      "tabela": "cda_cotas",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês da carteira (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cnpj_fundo": {
+          "descricao": "CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175)",
+          "unidade": "texto"
+        },
+        "tipo_do_fundo": {
+          "descricao": "Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em 11/2022 um fundo aparece como FI e como FIP)",
+          "unidade": "texto"
+        },
+        "tipo_do_ativo": {
+          "descricao": "Tipo do fundo investido como o fundo informa (\"FIDC\", \"FI Participações\", \"FI Imobiliário\", \"Fundos de Índice\", \"Fundo de Investimento e de Cotas\", \"Cotas de fundos\")",
+          "unidade": "texto"
+        },
+        "emissor_ligado": {
+          "descricao": "O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não informado, como em 2005)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cnpj_fundo_investido": {
+          "descricao": "CNPJ do fundo (ou da classe) cujas cotas o fundo tem",
+          "unidade": "texto"
+        },
+        "id_subclasse": {
+          "descricao": "Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse)",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade de cotas no fim do mês",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor": {
+          "descricao": "Valor de mercado no fim do mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "compras": {
+          "descricao": "Valor comprado no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "vendas": {
+          "descricao": "Valor vendido no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "confidencial_ate": {
+          "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "tipo_do_fundo",
+        "cnpj_fundo",
+        "cnpj_fundo_investido"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2005-01-31",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
+    },
     "fidc_informe": {
       "tabela": "fidc_informe",
       "modulo": "credito_e_fidc",

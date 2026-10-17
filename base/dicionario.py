@@ -605,6 +605,89 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "cda_cotas": Tabela(
+        descricao=(
+            'As cotas de fundos que cada fundo tem, do bloco 2 do CDA ("cotas de fundos"): quem compra '
+            "cotas de FIDC, de FIP, de FII e de outros fundos, com o CNPJ do fundo investido e o tipo dele "
+            '(`tipo_do_ativo` = "FIDC" desde ~2009; em 2005 tudo é "Cotas de fundos"). Em jun/2026, '
+            "4.531 fundos com R$ 291,8 bi em cotas de 2.403 FIDCs (relatório da base de crédito). Só fundos "
+            "(pessoas jurídicas); os nomes ficam no cadastro de fundos. Um Parquet por ano, com versões"
+        ),
+        fonte="CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 2",
+        familia_da_fonte="cvm",
+        frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+        atraso=(
+            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o "
+            "dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
+        ),
+        onde=(
+            "Parquet por ano em `<acervo>/base/cda_cotas/<ano>.parquet` (servidor de casa, "
+            "`scripts/carga_cda.py`, na mesma carga do CDA)"
+        ),
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA "
+            "usado (os mesmos do bloco 4) e a versão do código que gravou."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira (último dia)", DATA),
+            "cnpj_fundo": (
+                "CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175)",
+                TEXTO,
+            ),
+            "tipo_do_fundo": (
+                (
+                    "Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em "
+                    "11/2022 um fundo aparece como FI e como FIP)"
+                ),
+                TEXTO,
+            ),
+            "tipo_do_ativo": (
+                (
+                    'Tipo do fundo investido como o fundo informa ("FIDC", "FI Participações", "FI '
+                    'Imobiliário", "Fundos de Índice", "Fundo de Investimento e de Cotas", "Cotas de fundos")'
+                ),
+                TEXTO,
+            ),
+            "emissor_ligado": (
+                (
+                    "O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não "
+                    "informado, como em 2005)"
+                ),
+                SIM_OU_NAO,
+            ),
+            "cnpj_fundo_investido": (
+                "CNPJ do fundo (ou da classe) cujas cotas o fundo tem",
+                TEXTO,
+            ),
+            "id_subclasse": (
+                "Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse)",
+                TEXTO,
+            ),
+            "quantidade": ("Quantidade de cotas no fim do mês", NUMERO_DECIMAL),
+            "valor": ("Valor de mercado no fim do mês", REAIS),
+            "compras": ("Valor comprado no mês", REAIS),
+            "vendas": ("Valor vendido no mês", REAIS),
+            "confidencial_ate": (
+                "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+                DATA,
+            ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas "
+                    "diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em "
+                    "10/2026; vale o prazo)"
+                ),
+                DATA,
+            ),
+            "disponivel_em": (
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
+                DATA,
+            ),
+        },
+    ),
     "fidc_informe": Tabela(
         descricao=(
             "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e "
@@ -3678,6 +3761,7 @@ _CONTRATO = {
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
     "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "cda_cotas": _contrato(modulo=_FIDC, chaves=("competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="2005-01-31"),
     "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),

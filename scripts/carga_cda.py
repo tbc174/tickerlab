@@ -18,12 +18,15 @@ pedido por vez.
 - **Bloco 8** (achado da série 4): as ações que os fundos informam como "demais ativos", com o CNPJ do
   emissor, vão para `<pasta>/../cda_bloco_8/<ano>.parquet`, com as mesmas regras (versões, "como era
   na data"). Pessoa física nunca entra (`base/cda.py::ler_acoes_do_bloco_8`).
+- **Bloco 2** (relatório da base de crédito, 16/10/2026): as cotas de fundos que cada fundo tem (quem
+  compra cotas de FIDC) vão para `<pasta>/../cda_cotas/<ano>.parquet`, com as mesmas regras
+  (`base/cda.py::ler_cotas_de_fundos`). Um ano já carregado ganha a tabela sem regravar o CDA.
 """
 
 import argparse
 import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from functools import cache
 from pathlib import Path
@@ -55,6 +58,8 @@ CHAVE = [
 ]  # uma carteira por fundo e mês: a chave do `visto_em`
 ORDEM_DO_BLOCO_8 = ["competencia", "cnpj_fundo", "cnpj_emissor", "tipo"]
 PASTA_DO_BLOCO_8 = "cda_bloco_8"  # ao lado da pasta do CDA
+ORDEM_DAS_COTAS = ["competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"]
+PASTA_DAS_COTAS = "cda_cotas"  # ao lado da pasta do CDA
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
@@ -105,18 +110,36 @@ def _com_visto_em(tabela: pd.DataFrame, vistos: pd.DataFrame | None) -> pd.DataF
     return publicacao.com_visto_em(tabela, vistos, CHAVE)
 
 
-def montar_bloco_8(
-    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+def _montar_bloco(
+    ler: Callable[[bytes], Iterator[pd.DataFrame]],
+    colunas: tuple[str, ...],
+    lidos: list[tuple[str, bytes]],
+    vistos: pd.DataFrame | None,
 ) -> pd.DataFrame:
-    partes = [p for _, c in lidos for p in cda.ler_acoes_do_bloco_8(c)]
+    """Um bloco do CDA que pode faltar no arquivo (ano sem ele: tabela vazia, com as colunas)."""
+    partes = [p for _, c in lidos for p in ler(c)]
     tabela = (
         pd.concat(partes, ignore_index=True)
         if partes
-        else pd.DataFrame(columns=list(cda.COLUNAS_DO_BLOCO_8))
+        else pd.DataFrame(columns=list(colunas))
     )
     for coluna in ("competencia", "confidencial_ate"):
         tabela[coluna] = pd.to_datetime(tabela[coluna])
     return _com_visto_em(tabela.assign(disponivel_em=cda.disponivel_em(tabela)), vistos)
+
+
+def montar_bloco_8(
+    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    return _montar_bloco(
+        cda.ler_acoes_do_bloco_8, cda.COLUNAS_DO_BLOCO_8, lidos, vistos
+    )
+
+
+def montar_cotas(
+    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    return _montar_bloco(cda.ler_cotas_de_fundos, cda.COLUNAS_DAS_COTAS, lidos, vistos)
 
 
 def carregar_bloco_8(
@@ -138,6 +161,26 @@ def carregar_bloco_8(
     destino = pasta.parent / PASTA_DO_BLOCO_8 / str(ano)
     return gravar_com_versoes(
         montar, destino, _origens(versoes), ORDEM_DO_BLOCO_8, forcar=refazer
+    )
+
+
+def carregar_cotas(
+    lidos: list[tuple[str, bytes]],
+    ano: int,
+    pasta: Path,
+    versoes: list[publicacao.Versao],
+    vistos: Callable[[], pd.DataFrame],
+    *,
+    refazer: bool = False,
+) -> str:
+    def montar() -> pd.DataFrame:
+        tabela = montar_cotas(lidos, vistos())
+        log.info("Bloco 2 de %s: %s posições em cotas de fundos", ano, len(tabela))
+        return tabela
+
+    destino = pasta.parent / PASTA_DAS_COTAS / str(ano)
+    return gravar_com_versoes(
+        montar, destino, _origens(versoes), ORDEM_DAS_COTAS, forcar=refazer
     )
 
 
@@ -167,6 +210,8 @@ def carregar_ano(
     )
     bloco_8 = carregar_bloco_8(lidos, ano, pasta, versoes, vistos, refazer=refazer)
     log.info("Bloco 8 de %s: %s", ano, bloco_8)
+    cotas = carregar_cotas(lidos, ano, pasta, versoes, vistos, refazer=refazer)
+    log.info("Bloco 2 de %s: %s", ano, cotas)
     return resultado
 
 

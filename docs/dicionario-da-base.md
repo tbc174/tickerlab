@@ -298,6 +298,40 @@ As ações e os certificados de depósito que os fundos informam no bloco 8 do C
 | `visto_em` | O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo) | data (dia) |
 | `disponivel_em` | Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois | data (dia) |
 
+## `cda_cotas`
+
+As cotas de fundos que cada fundo tem, do bloco 2 do CDA ("cotas de fundos"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos, com o CNPJ do fundo investido e o tipo dele (`tipo_do_ativo` = "FIDC" desde ~2009; em 2005 tudo é "Cotas de fundos"). Em jun/2026, 4.531 fundos com R$ 291,8 bi em cotas de 2.403 FIDCs (relatório da base de crédito). Só fundos (pessoas jurídicas); os nomes ficam no cadastro de fundos. Um Parquet por ano, com versões
+
+- **Fonte:** CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 2
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês
+- **Atraso de divulgação:** O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `tipo_do_fundo`, `cnpj_fundo`, `cnpj_fundo_investido`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2005-01-31 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/cda_cotas/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`, na mesma carga do CDA)
+- **Linhagem:** O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA usado (os mesmos do bloco 4) e a versão do código que gravou.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês da carteira (último dia) | data (dia) |
+| `cnpj_fundo` | CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175) | texto |
+| `tipo_do_fundo` | Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em 11/2022 um fundo aparece como FI e como FIP) | texto |
+| `tipo_do_ativo` | Tipo do fundo investido como o fundo informa ("FIDC", "FI Participações", "FI Imobiliário", "Fundos de Índice", "Fundo de Investimento e de Cotas", "Cotas de fundos") | texto |
+| `emissor_ligado` | O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não informado, como em 2005) | verdadeiro ou falso |
+| `cnpj_fundo_investido` | CNPJ do fundo (ou da classe) cujas cotas o fundo tem | texto |
+| `id_subclasse` | Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse) | texto |
+| `quantidade` | Quantidade de cotas no fim do mês | número com decimais, na unidade da fonte |
+| `valor` | Valor de mercado no fim do mês | reais (R$), já multiplicado pela escala informada |
+| `compras` | Valor comprado no mês | reais (R$), já multiplicado pela escala informada |
+| `vendas` | Valor vendido no mês | reais (R$), já multiplicado pela escala informada |
+| `confidencial_ate` | Até quando a posição ficou em sigilo (vazio: sem sigilo) | data (dia) |
+| `visto_em` | O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo) | data (dia) |
+| `disponivel_em` | Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois | data (dia) |
+
 ## `fidc_informe`
 
 O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as quatro abaixo. Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)
