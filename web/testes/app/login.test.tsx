@@ -45,6 +45,16 @@ describe("login", () => {
     expect(buscar).toHaveBeenCalledTimes(1); // só a configuração
   });
 
+  it("o botão do Google só é desenhado depois do initialize (antes, o Google não desenha nada)", async () => {
+    // efeitos do React rodam do filho para o pai: a Entrada não pode desenhar antes de o Provedor iniciar
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    await waitFor(() => expect(google.id.renderButton).toHaveBeenCalled());
+    const [desenhou] = google.id.renderButton.mock.invocationCallOrder;
+    const [iniciou] = google.id.initialize.mock.invocationCallOrder;
+    expect(desenhou).toBeGreaterThan(iniciou);
+  });
+
   it("com o token do Google, busca a conta e mostra o nome e o plano", async () => {
     const buscar = abrir(() => respostaJson(200, ANA));
     await entrar();

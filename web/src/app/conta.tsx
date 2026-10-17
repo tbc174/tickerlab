@@ -14,6 +14,7 @@ interface Conta {
   token: string | null;
   eu: EuV1 | null;
   erro: ErroDaApi | null;
+  google: GoogleId | null; // o Google já iniciado (initialize): só então dá para desenhar o botão
   precisaAceitar: boolean; // a conta existe, mas ainda não aceitou os termos atuais
   aceitar(querNovidades: boolean): Promise<void>;
   pedirAceite(): void; // os termos mudaram no meio do uso: volta para a tela do aceite
@@ -36,14 +37,13 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
   const [eu, setEu] = useState<EuV1 | null>(null);
   const [erro, setErro] = useState<ErroDaApi | null>(null);
   const [precisaAceitar, setPrecisaAceitar] = useState(false);
-  const google = useRef<GoogleId | null>(null);
+  const [google, setGoogle] = useState<GoogleId | null>(null);
 
   useEffect(() => {
     let valendo = true;
     carregarGoogle()
       .then((id) => {
         if (!valendo) return;
-        google.current = id;
         id.initialize({
           client_id: clientId,
           callback: (resposta) => {
@@ -54,6 +54,7 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
           use_fedcm_for_prompt: true,
         });
         id.prompt();
+        setGoogle(id);
       })
       .catch(() => {
         if (valendo) setErro(new ErroDaApi("rede", "Não deu para carregar o login do Google."));
@@ -111,15 +112,15 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
   }, []);
 
   const sair = useCallback(() => {
-    google.current?.disableAutoSelect();
+    google?.disableAutoSelect();
     setToken(null);
     setEu(null);
     setErro(null);
     setPrecisaAceitar(false);
-  }, []);
+  }, [google]);
 
   return (
-    <ContextoDaConta.Provider value={{ token, eu, erro, precisaAceitar, aceitar, pedirAceite, sair }}>
+    <ContextoDaConta.Provider value={{ token, eu, erro, google, precisaAceitar, aceitar, pedirAceite, sair }}>
       {children}
     </ContextoDaConta.Provider>
   );
@@ -133,17 +134,14 @@ const SAIDA_DE_CADA_ERRO: Partial<Record<ErroDaApi["tipo"], [string, string]>> =
 /** O botão do Google e, se a API recusou a conta, o motivo e o caminho para resolver. */
 function Entrada({ erro }: { erro: ErroDaApi | null }) {
   const botao = useRef<HTMLDivElement>(null);
+  const google = useConta()?.google ?? null;
   useEffect(() => {
-    let valendo = true;
-    void carregarGoogle().then((id) => {
-      if (valendo && botao.current) {
-        id.renderButton(botao.current, { theme: "outline", size: "large", text: "signin_with", locale: "pt-BR" });
-      }
-    });
-    return () => {
-      valendo = false;
-    };
-  }, []);
+    // só depois do initialize do Provedor (os efeitos do React rodam do filho para o pai): antes
+    // disso o Google recusa o botão e não desenha nada; quem não tinha o login automático ficava sem entrar
+    if (google && botao.current) {
+      google.renderButton(botao.current, { theme: "outline", size: "large", text: "signin_with", locale: "pt-BR" });
+    }
+  }, [google]);
   const saida = erro ? SAIDA_DE_CADA_ERRO[erro.tipo] : undefined;
   return (
     <section className="aviso-do-app">
