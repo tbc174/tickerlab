@@ -40,6 +40,7 @@ from src.configuracao import url_do_banco
 from src.eventos import FONTE_IPE, identificador
 from src.links_das_fontes import link_da_fonte
 
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 log = logging.getLogger("tickerlab.leituras")
 CATEGORIA = "Fato Relevante"
 MAXIMO_POR_VEZ = 20
@@ -157,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
         for i, (protocolo, cnpj, publicado, link, titulo) in enumerate(pendentes):
             if i:
-                time.sleep(PAUSA_ENTRE_DOWNLOADS)
+                esperar(PAUSA_ENTRE_DOWNLOADS)
             conteudo = baixar(link)
             if not leitura.e_pdf(conteudo):
                 log.warning(

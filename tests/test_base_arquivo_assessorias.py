@@ -125,7 +125,7 @@ def test_pagina_ja_guardada_nao_e_baixada_de_novo(banco, tmp_path):
 
 def test_pausa_minima_da_fonte_vale_mesmo_com_pausa_menor(banco, tmp_path, monkeypatch):
     esperas: list[float] = []
-    monkeypatch.setattr(coleta.time, "sleep", esperas.append)
+    monkeypatch.setattr(coleta, "esperar", esperas.append)
     coleta.arquivar(assessorias.fonte(IGC), _site(), AGORA, tmp_path / "t", pausa=1.0)
     assert esperas == [assessorias.PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS]
     assert assessorias.PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS >= 3
@@ -133,14 +133,14 @@ def test_pausa_minima_da_fonte_vale_mesmo_com_pausa_menor(banco, tmp_path, monke
 
 def test_pausa_zero_dos_testes_continua_sem_esperar(banco, tmp_path, monkeypatch):
     esperas: list[float] = []
-    monkeypatch.setattr(coleta.time, "sleep", esperas.append)
+    monkeypatch.setattr(coleta, "esperar", esperas.append)
     coleta.arquivar(assessorias.fonte(IGC), _site(), AGORA, tmp_path / "t", pausa=0)
     assert esperas == []
 
 
 def test_fonte_sem_pausa_minima_usa_a_pausa_de_sempre(banco, tmp_path, monkeypatch):
     esperas: list[float] = []
-    monkeypatch.setattr(coleta.time, "sleep", esperas.append)
+    monkeypatch.setattr(coleta, "esperar", esperas.append)
     fonte = Fonte(
         "teste-fonte", "diaria", lambda c, a: [Alvo(PAGINA_1), Alvo(PAGINA_2)], "html"
     )
