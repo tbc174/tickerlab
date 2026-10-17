@@ -273,6 +273,9 @@ DATAS = (
     ),  # 7 de julho de 2023
     re.compile(rf"\b(?P<d>\d{{1,2}}) {_MES}\.?,? (?P<a>\d{{4}})"),  # 07 Jul 2023
     re.compile(rf"\b{_MES}\.? (?P<d>\d{{1,2}}),? (?P<a>\d{{4}})"),  # October 11, 2017
+    re.compile(
+        rf"\b(?P<d>\d{{1,2}}), {_MES}, (?P<a>\d{{4}})"
+    ),  # 26, jun, 2018 (Liberum)
     re.compile(r"\b(?P<d>\d{1,2})/(?P<m>\d{1,2})/(?P<a>\d{4})\b"),  # 15/08/2019
 )
 
@@ -324,17 +327,24 @@ OBSERVACAO_REMOVIDA = re.compile(
 
 
 def _perspectiva(texto: str) -> str | None:
+    """A perspectiva citada primeiro (a do título); a legenda fixa do fim dos relatórios da Fitch
+    ("OUTLOOK WATCH POSITIVE NEGATIVE...") vem depois e não ganha. No empate, "alterada de X para
+    Y" vale mais que a menção simples."""
+    achados: list[tuple[int, int, str]] = []
     for padrao, nome in PERSPECTIVAS:
         for achado in padrao.finditer(texto):
             # "Fitch Remove Observação Negativa": a observação acabou, não começou
             antes = texto[max(0, achado.start() - 30) : achado.start()]
             if not OBSERVACAO_REMOVIDA.search(antes):
-                return nome
+                achados.append((achado.start(), 0, nome))
+                break
     if alterada := PERSPECTIVA_ALTERADA.search(texto):
-        return NOME_DA_PERSPECTIVA[_simples(alterada.group(1))]
+        nome = NOME_DA_PERSPECTIVA[_simples(alterada.group(1))]
+        achados.append((alterada.start(), 1, nome))
     if achado := PERSPECTIVA.search(texto):
-        return NOME_DA_PERSPECTIVA[_simples(achado.group(1) or achado.group(2))]
-    return None
+        nome = NOME_DA_PERSPECTIVA[_simples(achado.group(1) or achado.group(2))]
+        achados.append((achado.start(), 2, nome))
+    return min(achados)[2] if achados else None
 
 
 # perspectiva colada na nota, nas tabelas: "AA.br Negativa" (Moody's Local), "brAA/Positiva/--" (S&P)

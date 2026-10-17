@@ -225,3 +225,18 @@ def test_elevadas_margens_nao_e_elevacao():
     r = ratings.extrair_rating(AUSTIN)
     assert r is not None
     assert (r.agencia, r.nota, r.acao) == ("austin", "A", None)
+
+
+def test_perspectiva_do_titulo_ganha_da_legenda_do_fim():
+    texto = (
+        "Fitch Afirma Rating 'AA(bra)' da Rodobens; Perspectiva Estável 07 Jul 2023: ... "
+        "Rating Actions Rodobens S.A. Natl LT AA(bra) Affirmed RATINGS KEY OUTLOOK WATCH POSITIVE "
+        "NEGATIVE EVOLVING STABLE"
+    )
+    r = ratings.extrair_rating(texto)
+    assert r is not None and r.perspectiva == "estavel"
+
+
+def test_data_no_formato_da_liberum():
+    r = ratings.extrair_rating(LIBERUM)
+    assert r is not None and r.data_acao == date(2018, 6, 26)
