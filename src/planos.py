@@ -11,6 +11,11 @@ from src.banco.modelo import PLANOS, TIPOS_DE_RELATORIO
 
 PLANO_DO_MODO_LOCAL = "pro"  # sem contas (desenvolvimento) não há o que limitar
 
+# Pré-lançamento (Tiago, 17/10/2026; emenda à ADR 0029): toda conta usa os limites do Pro, de
+# graça, para as pessoas conhecerem o app inteiro. O plano guardado no banco não muda. Desligar
+# (False) no mesmo PR que liga a cobrança real e troca `ASSINATURA_SO_PARA_ADMINS`.
+TUDO_LIBERADO_NO_PRE_LANCAMENTO = True
+
 APRENDIZADO_DE_MAQUINA = "aprendizado_de_maquina"
 PARES = "pares"
 CARTEIRA_NO_RESEARCH = (
@@ -101,7 +106,13 @@ class LimiteDoPlanoError(ValueError):
 
 
 def limites_do(plano: str | None) -> Limites:
-    """Os limites do plano. Um plano desconhecido ou vazio vale como Gratuito (o mais restrito)."""
+    """Os limites que valem para quem está no plano (todas as travas do app passam por aqui).
+
+    No pré-lançamento, os do Pro para todo mundo. Depois, um plano desconhecido ou vazio vale
+    como Gratuito (o mais restrito). A tabela de comparação lê `LIMITES_DOS_PLANOS` direto.
+    """
+    if TUDO_LIBERADO_NO_PRE_LANCAMENTO:
+        return LIMITES_DOS_PLANOS["pro"]
     return LIMITES_DOS_PLANOS.get(plano or "", LIMITES_DOS_PLANOS["gratuito"])
 
 
@@ -136,6 +147,17 @@ def descrever_limite(limite: int | None) -> str:
 AVISO_DO_MODO_DE_TESTE = (
     "Pagamento em modo de teste do Stripe: nenhum dinheiro real é cobrado."
 )
+AVISO_DO_PRE_LANCAMENTO = (
+    "Pré-lançamento: todas as contas usam tudo o que o Pro inclui, de graça, até a "
+    "cobrança começar. A tabela mostra o que cada plano vai incluir depois."
+)
+
+
+def aviso_da_pagina_de_planos() -> str:
+    """O aviso no pé da página de planos (o Streamlit e o app novo mostram o mesmo)."""
+    if TUDO_LIBERADO_NO_PRE_LANCAMENTO:
+        return f"{AVISO_DO_PRE_LANCAMENTO} {AVISO_DO_MODO_DE_TESTE}"
+    return AVISO_DO_MODO_DE_TESTE
 
 
 def texto_do_uso(usados: int | None, limite: int | None) -> str:
@@ -267,7 +289,7 @@ COM_COBRANCA = ("pro",)  # o Plus existe, mas a assinatura dele ainda não está
 
 def tabela_de_planos() -> list[dict[str, str]]:
     """Linhas da tabela de comparação mostrada na tela (uma coluna por plano)."""
-    planos = [limites_do(p) for p in PLANOS]
+    planos = [LIMITES_DOS_PLANOS[p] for p in PLANOS]
 
     def linha(recurso: str, valor) -> dict[str, str]:  # noqa: ANN001 (função de cada linha)
         return {"Recurso": recurso, **{l.nome: valor(l) for l in planos}}

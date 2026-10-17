@@ -85,6 +85,12 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
+def limites_de_depois_do_lancamento(monkeypatch):
+    """Os testes conferem os limites de cada plano; o pré-lançamento (tudo liberado) tem os seus."""
+    monkeypatch.setattr("src.planos.TUDO_LIBERADO_NO_PRE_LANCAMENTO", False)
+
+
+@pytest.fixture(autouse=True)
 def banco_de_precos_isolado(tmp_path, monkeypatch):
     """Cada teste usa um banco SQLite novo: nenhum teste lê ou escreve o banco de verdade."""
     monkeypatch.setenv(VARIAVEL_DO_CAMINHO, str(tmp_path / "precos_de_teste.sqlite"))
