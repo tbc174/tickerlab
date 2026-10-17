@@ -1,6 +1,6 @@
 {
   "tabela": "noticias_fatos",
-  "modulo": "noticias",
+  "modulo": "mercado_e_empresas",
   "dono": "Dados",
   "versao": "1.0.0",
   "colunas": {
@@ -66,7 +66,7 @@
     },
     "reapresentacao": {
       "descricao": "Resultado: o documento é uma versão 2 em diante (verdadeiro/falso)",
-      "unidade": "sim ou não"
+      "unidade": "verdadeiro ou falso"
     },
     "fato_anterior": {
       "descricao": "Resultado reapresentado: `id_fato` da versão anterior",
