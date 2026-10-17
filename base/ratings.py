@@ -70,7 +70,7 @@ def _simples(texto: object) -> str:
     return sem_acento.decode().lower().strip()
 
 
-def _ler_ipe_bruto(conteudo_do_zip: bytes) -> pd.DataFrame:
+def ler_ipe_bruto(conteudo_do_zip: bytes) -> pd.DataFrame:
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         nome = next(n for n in arquivo.namelist() if "ipe_cia_aberta" in n)
         with arquivo.open(nome) as csv:
@@ -134,7 +134,7 @@ def documentos_com_rating(bruto: pd.DataFrame) -> pd.DataFrame:
 
 def ler_documentos_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
     """Os documentos com rating de um arquivo anual do IPE."""
-    return documentos_com_rating(_ler_ipe_bruto(conteudo_do_zip))
+    return documentos_com_rating(ler_ipe_bruto(conteudo_do_zip))
 
 
 # --- extração do rating do texto -----------------------------------------------------------------

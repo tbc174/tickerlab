@@ -2900,6 +2900,117 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "debentures_assembleias": Tabela(
+        descricao=(
+            "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
+            "aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam "
+            "à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só "
+            "do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade "
+            "dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto "
+            "de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que "
+            "não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). "
+            "Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora "
+            "(`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): "
+            "`estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF"
+        ),
+        fonte="CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/debentures.py`",
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do "
+            "arquivista baixar o IPE do ano"
+        ),
+        atraso=(
+            "O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data "
+            "informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/debentures_assembleias/debentures_assembleias.parquet` "
+            "(servidor de casa, `scripts/montar_debentures_assembleias.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que "
+            "leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o "
+            "manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "documento": ("assembleia, aviso ou notificacao_do_agente", TEXTO),
+            "especie": (
+                (
+                    "Espécie do documento da assembleia (Ata, Edital de Convocação, Proposta da "
+                    "Administração...); vazia no aviso e na notificação"
+                ),
+                TEXTO,
+            ),
+            "assunto": ("Assunto como a companhia preencheu no IPE", TEXTO),
+            "emissao": (
+                "Número da emissão citada no assunto (vazio se não há nenhuma ou se há mais de uma)",
+                NUMERO,
+            ),
+            "tema_vencimento_antecipado": (
+                "O assunto fala de vencimento antecipado (inclui o pedido para não declarar)",
+                SIM_OU_NAO,
+            ),
+            "tema_waiver": (
+                "O assunto fala de waiver, renúncia, perdão, anuência ou consentimento prévio",
+                SIM_OU_NAO,
+            ),
+            "tema_covenant": (
+                "O assunto fala de covenant, índices ou limites financeiros, alavancagem, dívida líquida ou EBITDA",
+                SIM_OU_NAO,
+            ),
+            "tema_repactuacao": (
+                "O assunto fala de repactuação, prorrogação, postergação, carência, suspensão de pagamento ou mudança de taxa, prazo ou cronograma",
+                SIM_OU_NAO,
+            ),
+            "tema_inadimplemento": (
+                "O assunto fala de inadimplemento, não pagamento, recuperação judicial ou extrajudicial ou falência",
+                SIM_OU_NAO,
+            ),
+            "tema_garantia": (
+                "O assunto fala de garantia, alienação ou cessão fiduciária, fiança, aval ou conta vinculada",
+                SIM_OU_NAO,
+            ),
+            "tema_resgate": (
+                "O assunto fala de resgate antecipado, amortização extraordinária ou aquisição facultativa",
+                SIM_OU_NAO,
+            ),
+            "tema_reorganizacao": (
+                "O assunto fala de incorporação, cisão, fusão, reorganização, troca de controle ou oferta de ações",
+                SIM_OU_NAO,
+            ),
+            "tema_pagamento": (
+                "O assunto avisa pagamento de juros, remuneração, amortização, prêmio ou principal",
+                SIM_OU_NAO,
+            ),
+            "estresse": (
+                "O tema é de aperto de crédito (regra na descrição)",
+                SIM_OU_NAO,
+            ),
+            "generico": (
+                "O assunto não casa com nenhum tema: só o PDF dirá",
+                SIM_OU_NAO,
+            ),
+            "referencia": (
+                "Data informada pela companhia (no edital, o dia da assembleia)",
+                DATA,
+            ),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "ratings": Tabela(
         descricao=(
             "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM "
@@ -3899,6 +4010,7 @@ _CONTRATO = {
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
@@ -3932,6 +4044,12 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "pgfn_divida",
         "faixas": {"inscricoes": (1.0, None), "valor_consolidado": _SEM_NEGATIVO},
         "nao_nulas": ("cnpj", "cnpj_basico", "data_do_retrato", "disponivel_em", "trata_como_pessoa"),
+    },
+    "debentures_assembleias": {
+        "pasta": "debentures_assembleias",
+        "faixas": {"emissao": (1.0, None), "versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "documento", "publico_em", "protocolo", "link", "estresse", "generico"),
+        "anuncia_o_futuro": True,  # o edital sai antes da assembleia
     },
     "ratings": {
         "pasta": "ratings",
