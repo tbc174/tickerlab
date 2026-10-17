@@ -1,0 +1,61 @@
+{
+  "tabela": "bcb_selic_focus",
+  "modulo": "macro",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "serie": {
+      "descricao": "`bcb-sgs-432` (meta da Selic) ou `focus-selic-anual` (mediana do Focus)",
+      "unidade": "texto"
+    },
+    "referencia": {
+      "descricao": "Dia a que o valor se refere (no Focus, 31/12 do ano esperado)",
+      "unidade": "data (dia)"
+    },
+    "valor": {
+      "descricao": "Taxa ao ano, em % (14,25 = 14,25% ao ano)",
+      "unidade": "0 a 100"
+    },
+    "divulgado_em": {
+      "descricao": "A safra: quando este valor passou a valer",
+      "unidade": "data (dia)"
+    },
+    "publico_em": {
+      "descricao": "Igual a `divulgado_em`: quando o valor ficou público",
+      "unidade": "data (dia)"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o acervo registrou a observação",
+      "unidade": "data e hora (UTC)"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 da exportação do acervo de onde a tabela saiu",
+      "unidade": "texto"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "serie",
+    "referencia",
+    "divulgado_em"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "publico_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada montagem, a partir da exportação do acervo (`base/bcb_selic_focus.py`)",
+  "atraso": "O valor vale a partir de `divulgado_em` (a safra): a data da pesquisa, no Focus; o dia da coleta, na meta"
+}

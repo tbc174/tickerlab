@@ -3229,6 +3229,52 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "bcb_selic_focus": Tabela(
+        descricao=(
+            "Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: "
+            "cada revisão é uma linha a mais, que passa a valer em `divulgado_em`. Tabela derivada "
+            'da exportação do acervo, sem coleta nova. O Focus é o anual ("Selic no fim do ano"), '
+            "não o por reunião. A meta só muda quando o Copom muda; a manutenção não aparece na série"
+        ),
+        fonte="Banco Central: SGS (série 432) e Focus (API Olinda, expectativas anuais)",
+        familia_da_fonte="bcb",
+        frequencia="A cada montagem, a partir da exportação do acervo (`base/bcb_selic_focus.py`)",
+        atraso=(
+            "O valor vale a partir de `divulgado_em` (a safra): a data da pesquisa, no Focus; o dia "
+            "da coleta, na meta"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/bcb_selic_focus/bcb_selic_focus.parquet` (servidor de casa)"
+        ),
+        linhagem=(
+            "Cada linha guarda quando o acervo registrou a observação (`origem_coletada_em`) e o "
+            "SHA-256 da exportação de onde saiu (`origem_sha256`); `montado_em` diz quando a tabela "
+            "foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "serie": (
+                "`bcb-sgs-432` (meta da Selic) ou `focus-selic-anual` (mediana do Focus)",
+                TEXTO,
+            ),
+            "referencia": (
+                "Dia a que o valor se refere (no Focus, 31/12 do ano esperado)",
+                DATA,
+            ),
+            "valor": ("Taxa ao ano, em % (14,25 = 14,25% ao ano)", "0 a 100"),
+            "divulgado_em": ("A safra: quando este valor passou a valer", DATA),
+            "publico_em": (
+                "Igual a `divulgado_em`: quando o valor ficou público",
+                DATA,
+            ),
+            "origem_coletada_em": ("Quando o acervo registrou a observação", MOMENTO),
+            "origem_sha256": (
+                "SHA-256 da exportação do acervo de onde a tabela saiu",
+                TEXTO,
+            ),
+            "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
+        },
+    ),
     "controladas": Tabela(
         descricao=(
             "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a "
@@ -4039,6 +4085,7 @@ _CONTRATO = {
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
@@ -4063,6 +4110,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "curva_juros",
         "faixas": {"prazo_anos": _SEM_NEGATIVO, "maior_prazo_anos": _SEM_NEGATIVO, "titulos": _SEM_NEGATIVO},
         "nao_nulas": ("taxa", "disponivel_em"),
+    },
+    "bcb_selic_focus": {
+        "pasta": "bcb_selic_focus",
+        "nao_nulas": ("valor", "divulgado_em", "publico_em"),
     },
     "pgfn_divida": {
         "pasta": "pgfn_divida",

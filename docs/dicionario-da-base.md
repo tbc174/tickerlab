@@ -1991,6 +1991,35 @@ Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (T
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `bcb_selic_focus`
+
+Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: cada revisão é uma linha a mais, que passa a valer em `divulgado_em`. Tabela derivada da exportação do acervo, sem coleta nova. O Focus é o anual ("Selic no fim do ano"), não o por reunião. A meta só muda quando o Copom muda; a manutenção não aparece na série
+
+- **Fonte:** Banco Central: SGS (série 432) e Focus (API Olinda, expectativas anuais)
+- **Licença:** ODbL (dados abertos do Banco Central; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** A cada montagem, a partir da exportação do acervo (`base/bcb_selic_focus.py`)
+- **Atraso de divulgação:** O valor vale a partir de `divulgado_em` (a safra): a data da pesquisa, no Focus; o dia da coleta, na meta
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `serie`, `referencia`, `divulgado_em`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/bcb_selic_focus/bcb_selic_focus.parquet` (servidor de casa)
+- **Linhagem:** Cada linha guarda quando o acervo registrou a observação (`origem_coletada_em`) e o SHA-256 da exportação de onde saiu (`origem_sha256`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `serie` | `bcb-sgs-432` (meta da Selic) ou `focus-selic-anual` (mediana do Focus) | texto |
+| `referencia` | Dia a que o valor se refere (no Focus, 31/12 do ano esperado) | data (dia) |
+| `valor` | Taxa ao ano, em % (14,25 = 14,25% ao ano) | 0 a 100 |
+| `divulgado_em` | A safra: quando este valor passou a valer | data (dia) |
+| `publico_em` | Igual a `divulgado_em`: quando o valor ficou público | data (dia) |
+| `origem_coletada_em` | Quando o acervo registrou a observação | data e hora (UTC) |
+| `origem_sha256` | SHA-256 da exportação do acervo de onde a tabela saiu | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `controladas`
 
 Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco em muitas linhas, e o FRE guarda ligações antigas.
