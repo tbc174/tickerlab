@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from fpdf.enums import XPos, YPos
 
+from src import dossie
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
 from src.relatorio_empresa import (
@@ -20,12 +21,13 @@ from src.relatorio_empresa import (
     nome_da_tabela,
     rotulo_da_coluna,
 )
-from src.relatorio_pdf import RelatorioPDF
+from src.relatorio_pdf import AVISO, RelatorioPDF
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 ESPACO_MINIMO_DA_TABELA = 50  # mm: o título não fica sozinho no pé da página
 MAX_COLUNAS = 7  # mais que isso não cabe na largura de uma página A4
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
+LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
 
 
 def _itens(pdf: RelatorioPDF, itens: list[Item]) -> None:
@@ -80,6 +82,21 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
     for chave, linhas in secao.tabelas.items():
         if not linhas:
             continue
+        if chave == LISTA:
+            for linha in linhas:
+                pdf.item(
+                    linha["titulo"],
+                    linha["texto"],
+                    linha.get("link", ""),
+                    nota=linha["nota"],
+                )
+            continue
+        if chave in dossie.TITULOS_DAS_TABELAS:
+            _titulo_da_tabela(pdf, dossie.titulo_da_tabela(chave))
+            pdf.tabela_de_texto(
+                list(linhas[0]), [list(linha.values()) for linha in linhas]
+            )
+            continue
         if chave in GRAFICOS:
             passos = [(linha["passo"], float(linha["valor"])) for linha in linhas]
             grafico = grafico_de_cascata(
@@ -92,15 +109,19 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
 
 
 def relatorio_da_empresa(
-    relatorio: Relatorio, gerado_em: datetime | None = None, estilo: Estilo = PADRAO
+    relatorio: Relatorio,
+    gerado_em: datetime | None = None,
+    estilo: Estilo = PADRAO,
+    aviso: str = AVISO,
 ) -> bytes:
-    """Os bytes do PDF do relatório."""
+    """Os bytes do PDF do relatório (`aviso`: o rodapé, que diz de onde vêm os dados)."""
     gerado_em = gerado_em or datetime.now(FUSO)
     pdf = RelatorioPDF(
         f"Relatório da empresa: {relatorio.empresa}",
         f"{relatorio.ticker.removesuffix('.SA')} · {relatorio.setor or 'setor não informado'}",
         gerado_em,
         estilo,
+        aviso,
     )
     pdf.capa(
         [

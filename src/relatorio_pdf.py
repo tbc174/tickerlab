@@ -8,16 +8,19 @@ As fontes (Manrope e JetBrains Mono) vão embutidas no arquivo, então o PDF abr
 computador.
 """
 
+import re
 from datetime import datetime
 from io import BytesIO
 
 from fpdf import FPDF
-from fpdf.enums import XPos, YPos
+from fpdf.enums import MethodReturnValue, XPos, YPos
 
 from src import marca
 from src.estilos_pdf import PADRAO, Estilo
 
 MARGEM = 18  # mm
+# uma célula que é número já escrito ("R$ 1,7 bi", "11,1%", "370", "4,8"): vai à direita
+NUMERO_ESCRITO = re.compile(r"^(R\$ |US\$ )?[-−]?[\d.,]+( mil| mi| bi)?%?$|^—$")
 AVISO = (
     "Nada aqui é recomendação de investimento. Dados do Yahoo Finance, "
     "que podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro."
@@ -36,8 +39,10 @@ class RelatorioPDF(FPDF):
         subtitulo: str,
         gerado_em: datetime,
         estilo: Estilo = PADRAO,
+        aviso: str = AVISO,
     ) -> None:
         super().__init__(format="A4", unit="mm")
+        self.aviso = aviso  # o rodapé de cada página (de onde vêm os dados)
         self.titulo_do_relatorio = titulo
         self.subtitulo = subtitulo
         self.gerado_em = gerado_em
@@ -141,7 +146,7 @@ class RelatorioPDF(FPDF):
         self.line(MARGEM, self.get_y() - 1, self.w - MARGEM, self.get_y() - 1)
         self.set_font("Manrope", "", 7)
         self._cor_do_texto(apagado=True)
-        self.multi_cell(self.epw - 22, 3.4, AVISO, align="L")
+        self.multi_cell(self.epw - 22, 3.4, self.aviso, align="L")
         self.set_xy(self.w - MARGEM - 22, -16)
         self.cell(22, 3.4, f"Página {self.page_no()} de {{nb}}", align="R")
         self._cor_do_texto()
@@ -387,6 +392,71 @@ class RelatorioPDF(FPDF):
             self.ln(7)
         self.line(MARGEM, self.get_y(), self.w - MARGEM, self.get_y())
         self._cor_do_texto()
+        self.ln(4)
+
+    def _larguras_do_texto(self, colunas: list[list[str]]) -> list[float]:
+        """Cada coluna com a largura do texto mais longo; sem caber, as mais largas dividem o que
+        sobra por igual (e o texto delas quebra a linha)."""
+        naturais = [
+            max(self.get_string_width(texto) for texto in coluna) + 3
+            for coluna in colunas
+        ]
+        if sum(naturais) <= self.epw:
+            return [n * self.epw / sum(naturais) for n in naturais]
+        teto, sobra, largas = self.epw / len(naturais), self.epw, sorted(naturais)
+        for n, natural in enumerate(largas):
+            teto = sobra / (len(largas) - n)
+            if natural > teto:
+                break
+            sobra -= natural
+        return [min(natural, teto) for natural in naturais]
+
+    def tabela_de_texto(self, cabecalho: list[str], linhas: list[list[str]]) -> None:
+        """Tabela de nomes e frases (as do dossiê da base): o texto longo quebra a linha, as colunas
+        de número ficam à direita."""
+        self.set_font("Manrope", "", 8.5)
+        larguras = self._larguras_do_texto(
+            [list(coluna) for coluna in zip(cabecalho, *linhas, strict=True)]
+        )
+        numeros = [
+            all(NUMERO_ESCRITO.match(linha[i]) for linha in linhas)
+            for i in range(len(cabecalho))
+        ]
+        alinhar = ["R" if numero else "L" for numero in numeros]
+        if self.get_y() + 7 * min(len(linhas) + 1, 4) > self.h - 24:
+            self.add_page()
+        self.set_font("Manrope", "I", 8)
+        self._cor_do_texto(apagado=True)
+        for texto, largura, lado in zip(cabecalho, larguras, alinhar, strict=True):
+            self.cell(largura, 7, texto, align=lado)
+        self.ln(7)
+        self.set_draw_color(*_rgb(self.estilo.linha))
+        self.set_font("Manrope", "", 8.5)
+        self._cor_do_texto()
+        for linha in linhas:
+            partes = [
+                self.multi_cell(
+                    largura - 1.5,
+                    4.4,
+                    texto,
+                    dry_run=True,
+                    output=MethodReturnValue.LINES,
+                )
+                for texto, largura in zip(linha, larguras, strict=True)
+            ]
+            altura = max(len(p) for p in partes) * 4.4 + 2.6
+            if self.get_y() + altura > self.h - 24:
+                self.add_page()
+                self.set_draw_color(*_rgb(self.estilo.linha))
+            y = self.get_y()
+            self.line(MARGEM, y, self.w - MARGEM, y)
+            x = MARGEM
+            for texto, largura, lado in zip(linha, larguras, alinhar, strict=True):
+                self.set_xy(x, y + 1.3)
+                self.multi_cell(largura - 1.5, 4.4, texto, align=lado)
+                x += largura
+            self.set_xy(MARGEM, y + altura)
+        self.line(MARGEM, self.get_y(), self.w - MARGEM, self.get_y())
         self.ln(4)
 
     def glossario(self, termos: dict[str, str]) -> None:

@@ -54,6 +54,16 @@ MOLDES = {
 }
 
 
+TITULOS = {
+    "fundos": "Fundos com a empresa",
+    "ofertas": "Ofertas do grupo",
+    "setor": "Setor regulado",
+    "auditor": "Rodízio do auditor",
+    "controladas": "Controladas",
+    "negocios": "Negócios na CVM",
+}
+
+
 @dataclass(frozen=True)
 class Destaque:
     chave: str
@@ -62,6 +72,10 @@ class Destaque:
     data: str  # de quando é o dado, já escrito
     secao: str  # a seção da ficha onde está o detalhe
     link: str = ""  # o documento original, quando há um
+
+    @property
+    def titulo(self) -> str:
+        return TITULOS[self.chave]
 
 
 def _secao(ficha: Ficha, chave: str) -> SecaoDaFicha | None:
