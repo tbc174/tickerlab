@@ -17,6 +17,8 @@ import io
 import re
 import unicodedata
 import zipfile
+from dataclasses import dataclass
+from datetime import date
 
 import pandas as pd
 
@@ -123,3 +125,265 @@ def documentos_com_rating(bruto: pd.DataFrame) -> pd.DataFrame:
 def ler_documentos_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
     """Os documentos com rating de um arquivo anual do IPE."""
     return documentos_com_rating(_ler_ipe_bruto(conteudo_do_zip))
+
+
+# --- extração do rating do texto -----------------------------------------------------------------
+# v1: o rating principal de cada documento (a primeira nota da escala nacional; sem ela, a primeira
+# da escala global) e as outras notas citadas. Notas por emissão, uma a uma, ficam para depois.
+
+AGENCIAS = (
+    ("fitch", re.compile(r"fitch", re.IGNORECASE)),
+    ("moodys", re.compile(r"moody", re.IGNORECASE)),
+    (
+        "sp",
+        re.compile(
+            r"standard ?(?:&(?:amp;?)?|and) ?poor|s ?&(?:amp;?)? ?p\b|spglobal",
+            re.IGNORECASE,
+        ),
+    ),
+    ("austin", re.compile(r"austin rating", re.IGNORECASE)),
+    ("liberum", re.compile(r"liberum", re.IGNORECASE)),
+    ("sr_rating", re.compile(r"\bsr rating", re.IGNORECASE)),
+    ("lf_rating", re.compile(r"\blf rating", re.IGNORECASE)),
+    ("am_best", re.compile(r"am best", re.IGNORECASE)),
+)
+# escala de letras (Fitch, S&P, Austin...) e a da Moody's, do melhor ao pior: a posição é o `nivel`
+ESCALA_LETRAS = [
+    "AAA",
+    "AA+",
+    "AA",
+    "AA-",
+    "A+",
+    "A",
+    "A-",
+    "BBB+",
+    "BBB",
+    "BBB-",
+    "BB+",
+    "BB",
+    "BB-",
+    "B+",
+    "B",
+    "B-",
+    "CCC+",
+    "CCC",
+    "CCC-",
+    "CC",
+    "C",
+    "RD",
+    "SD",
+    "D",
+]
+ESCALA_MOODYS = [
+    "Aaa",
+    "Aa1",
+    "Aa2",
+    "Aa3",
+    "A1",
+    "A2",
+    "A3",
+    "Baa1",
+    "Baa2",
+    "Baa3",
+    "Ba1",
+    "Ba2",
+    "Ba3",
+    "B1",
+    "B2",
+    "B3",
+    "Caa1",
+    "Caa2",
+    "Caa3",
+    "Ca",
+    "C",
+]
+_LETRA = r"(?:AAA|AA|A|BBB|BB|B|CCC|CC|C)[+-]?|RD|SD|D"
+_MOODYS = r"Aaa|Aa[1-3]|A[1-3]|Baa[1-3]|Ba[1-3]|B[1-3]|Caa[1-3]|Ca|C"
+ASPAS = "'‘’\"“”"
+# escala nacional: Fitch 'AA(bra)', 'AAAsf(bra)', 'AA(EXP)(bra)'; S&P e Austin brAA+;
+# Moody's Aa1.br; Liberum e outras AA(br). Nota curta da S&P (brA-1+) não entra.
+NACIONAL = re.compile(
+    rf"(?<![A-Za-z])(?P<f>{_LETRA})(?i:sf)?(?i:\(exp\))?\s?\((?i:bra?)\)"
+    rf"|\bbr(?P<s>{_LETRA})(?![-+]?\d)(?![A-Za-z])(?:\s?\(?sf\)?)?"
+    rf"|\b(?P<m>{_MOODYS})\.br\b"
+)
+# escala global: só entre aspas ('BB-'), para não confundir com siglas; Moody's pelo nome da nota,
+# menos "B1" a "B3" soltos (B3 é a bolsa)
+GLOBAL = re.compile(
+    rf"[{ASPAS}](?P<f>{_LETRA})[{ASPAS}]"
+    r"|\b(?P<m>Aaa|Aa[1-3]|A[1-3]|Baa[1-3]|Ba[1-3]|Caa[1-3])\b"
+)
+PERSPECTIVAS = (
+    (re.compile(r"observa[cç][aã]o negativa|watch negative|creditwatch\W+(?:\w+\W+){0,4}negati"
+                r"|revis[aã]o para (?:poss[ií]vel )?rebaixamento|review for downgrade", re.IGNORECASE),
+     "em_observacao_negativa"),
+    (re.compile(r"observa[cç][aã]o positiva|watch positive|creditwatch\W+(?:\w+\W+){0,4}positi"
+                r"|revis[aã]o para (?:poss[ií]vel )?eleva[cç][aã]o|review for upgrade", re.IGNORECASE),
+     "em_observacao_positiva"),
+)  # fmt: skip
+PERSPECTIVA_ALTERADA = re.compile(
+    r"perspectiva[^.;]{0,80}?alterada de \w+ para (est[aá]vel|positiva|negativa)",
+    re.IGNORECASE,
+)
+PERSPECTIVA = re.compile(
+    r"perspectiva\W+(?:\w+\W+){0,3}?(est[aá]vel|positiva|negativa|em desenvolvimento)"
+    r"|outlook\W+(?:\w+\W+){0,2}?(stable|positive|negative|developing)",
+    re.IGNORECASE,
+)
+NOME_DA_PERSPECTIVA = {
+    "estavel": "estavel", "stable": "estavel", "positiva": "positiva", "positive": "positiva",
+    "negativa": "negativa", "negative": "negativa", "em desenvolvimento": "em_desenvolvimento",
+    "developing": "em_desenvolvimento",
+}  # fmt: skip
+# ação, pelo título e pelo começo do texto; a primeira da lista que casar vale
+ACOES = (
+    ("retirada", re.compile(r"\bretir(?:a|ou|ad)|withdr[ae]w", re.IGNORECASE)),
+    ("rebaixamento", re.compile(r"rebaix|downgrad|\blower(?:s|ed)\b", re.IGNORECASE)),
+    (
+        "elevacao",
+        re.compile(r"\belev(?:a|ou|ad)|upgrad|\brais(?:es|ed)\b", re.IGNORECASE),
+    ),
+    (
+        "atribuicao",
+        re.compile(r"\batribu[ií]|\bassign|\brates\b|rating inicial", re.IGNORECASE),
+    ),
+    ("afirmacao", re.compile(r"afirm|\bmant(?:[eé]m|eve)\b|maintain", re.IGNORECASE)),
+)
+INICIO_DO_TEXTO = 700  # caracteres: título e primeira frase, onde ficam a ação e a data
+MESES = {
+    "jan": 1, "janeiro": 1, "january": 1, "fev": 2, "feb": 2, "fevereiro": 2, "february": 2,
+    "mar": 3, "marco": 3, "march": 3, "abr": 4, "apr": 4, "abril": 4, "april": 4, "mai": 5,
+    "may": 5, "maio": 5, "jun": 6, "junho": 6, "june": 6, "jul": 7, "julho": 7, "july": 7,
+    "ago": 8, "aug": 8, "agosto": 8, "august": 8, "set": 9, "sep": 9, "sept": 9, "setembro": 9,
+    "september": 9, "out": 10, "oct": 10, "outubro": 10, "october": 10, "nov": 11,
+    "novembro": 11, "november": 11, "dez": 12, "dec": 12, "dezembro": 12, "december": 12,
+}  # fmt: skip
+_MES = r"(?P<mes>[a-z]{3,9})"
+DATAS = (
+    re.compile(
+        rf"\b(?P<d>\d{{1,2}}) de {_MES} de (?P<a>\d{{4}})"
+    ),  # 7 de julho de 2023
+    re.compile(rf"\b(?P<d>\d{{1,2}}) {_MES}\.?,? (?P<a>\d{{4}})"),  # 07 Jul 2023
+    re.compile(rf"\b{_MES}\.? (?P<d>\d{{1,2}}),? (?P<a>\d{{4}})"),  # October 11, 2017
+    re.compile(r"\b(?P<d>\d{1,2})/(?P<m>\d{1,2})/(?P<a>\d{4})\b"),  # 15/08/2019
+)
+
+
+@dataclass(frozen=True)
+class Rating:
+    agencia: str | None
+    escala: str  # "nacional" ou "global"
+    nota: str  # sem sufixos: AA, RD, Aa1
+    nivel: int | None  # posição na escala (1 = AAA ou Aaa): compara agências
+    nota_original: str
+    perspectiva: str | None
+    acao: str | None
+    data_acao: date | None
+    outras_notas: tuple[str, ...]
+
+
+def nivel(nota: str) -> int | None:
+    """A posição da nota na escala (1 = a melhor); Moody's e letras na mesma régua."""
+    for escala in (ESCALA_LETRAS, ESCALA_MOODYS):
+        if nota in escala:
+            return escala.index(nota) + 1
+    return None
+
+
+def _nota_do_achado(achado: re.Match[str]) -> str:
+    nome = next(g for g in ("f", "s", "m") if achado.groupdict().get(g))
+    texto = achado.group(nome)
+    return texto if nome == "m" else texto.upper()
+
+
+def _agencia(texto: str, de_moodys: bool) -> str | None:
+    contagem = {nome: len(p.findall(texto)) for nome, p in AGENCIAS}
+    contagem = {nome: n for nome, n in contagem.items() if n}
+    if de_moodys and "moodys" in contagem:
+        return "moodys"
+    if not contagem:
+        return None
+    return max(contagem, key=lambda nome: contagem[nome])
+
+
+def _perspectiva(texto: str) -> str | None:
+    for padrao, nome in PERSPECTIVAS:
+        if padrao.search(texto):
+            return nome
+    if alterada := PERSPECTIVA_ALTERADA.search(texto):
+        return NOME_DA_PERSPECTIVA[_simples(alterada.group(1))]
+    if achado := PERSPECTIVA.search(texto):
+        return NOME_DA_PERSPECTIVA[_simples(achado.group(1) or achado.group(2))]
+    return None
+
+
+def _acao(inicio: str) -> str | None:
+    return next((nome for nome, padrao in ACOES if padrao.search(inicio)), None)
+
+
+def _data_do_achado(achado: re.Match[str]) -> date | None:
+    partes = achado.groupdict()
+    mes = int(partes["m"]) if partes.get("m") else MESES.get(partes.get("mes") or "")
+    dia, ano = int(partes["d"]), int(partes["a"])
+    if not mes:
+        return None
+    try:
+        return date(ano, mes, dia)
+    except ValueError:
+        return None
+
+
+def _data(inicio: str) -> date | None:
+    """A primeira data do começo do texto (a da ação da agência ou a do comunicado)."""
+    simples = _simples(inicio)
+    achados = [
+        (a.start(), quando)
+        for padrao in DATAS
+        for a in padrao.finditer(simples)
+        if (quando := _data_do_achado(a))
+    ]
+    return min(achados)[1] if achados else None
+
+
+ANTES_DA_NOTA_ANTIGA = re.compile(r"\bde\W{0,3}$", re.IGNORECASE)
+ENTRE_ANTIGA_E_NOVA = re.compile(r"^\W{0,3}para\W{0,3}$", re.IGNORECASE)
+
+
+def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
+    """A primeira nota citada; se ela é a antiga de um "de brAA+ para brAAA", vale a nova."""
+    primeira = achados[0]
+    if len(achados) > 1:
+        antes = texto[max(0, primeira.start() - 6) : primeira.start()]
+        entre = texto[primeira.end() : achados[1].start()]
+        if ANTES_DA_NOTA_ANTIGA.search(antes) and ENTRE_ANTIGA_E_NOVA.match(entre):
+            return achados[1]
+    return primeira
+
+
+def extrair_rating(texto: str) -> Rating | None:
+    """O rating principal do documento, ou None se o texto não traz nota (PDF escaneado, fonte
+    embaralhada): nunca inventa nota."""
+    texto = re.sub(r"\s+", " ", texto or "").strip()
+    nacionais = list(NACIONAL.finditer(texto))
+    achados = nacionais or list(GLOBAL.finditer(texto))
+    if not achados:
+        return None
+    principal = _principal(texto, achados)
+    de_moodys = bool(principal.groupdict().get("m"))
+    agencia = _agencia(texto, de_moodys)
+    # sem agência no texto, ou "A1" solto sem a Moody's: não é rating (texto embaralhado, siglas)
+    if agencia is None or (de_moodys and agencia != "moodys"):
+        return None
+    notas = list(dict.fromkeys(_nota_do_achado(a) for a in [principal, *achados]))
+    inicio = texto[:INICIO_DO_TEXTO]
+    return Rating(
+        agencia=agencia,
+        escala="nacional" if nacionais else "global",
+        nota=notas[0],
+        nivel=nivel(notas[0]),
+        nota_original=principal.group(0).strip(ASPAS + " "),
+        perspectiva=_perspectiva(texto),
+        acao=_acao(inicio),
+        data_acao=_data(inicio),
+        outras_notas=tuple(notas[1:]),
+    )
