@@ -4334,7 +4334,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
       "atraso": "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
@@ -5136,7 +5136,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta"
@@ -5201,7 +5201,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias` e o do mês do CNPJ guardado"
@@ -5245,7 +5245,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`"
@@ -5345,7 +5345,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado"
@@ -5440,7 +5440,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"

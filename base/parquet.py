@@ -4,7 +4,7 @@ ADR 0055, exigência 13).
 Para as fontes novas que não são "por ano de balanço" (código da ação, emissores, cadastros): grava
 `<nome>.parquet` sem ficar pela metade e, ao lado, `<nome>.json` com as linhas, o SHA-256 do
 conteúdo (independente da ordem das linhas), a ordem usada no hash, as origens (endereço e SHA-256 de
-cada original) e a versão do código que gravou. `conferir_tabela` diz se o Parquet ainda é o anotado.
+cada original), a marca de licença (`base/licenca.py`) e a versão do código que gravou. `conferir_tabela` diz se o Parquet ainda é o anotado.
 """
 
 import hashlib
@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.licenca import licenca_para_gravar
 from src.versao_do_codigo import versao_do_codigo
 
 log = logging.getLogger(__name__)
@@ -114,6 +115,8 @@ def gravar_tabela(
         "sha256_da_tabela": hash_da_tabela(no_disco, ordem),
         "ordem": ordem,
         "origens": origens,
+        # a marca de licença da tabela, a mais restrita das fontes (ADR 0008, Emenda 1)
+        "licenca": licenca_para_gravar(arquivo, origens),
         "versao_do_codigo": versao_do_codigo(),
         **_conferencia_do_contrato(no_disco, destino),
         **(extras or {}),
