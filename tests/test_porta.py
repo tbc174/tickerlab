@@ -249,6 +249,47 @@ def test_somar_agrupa_no_duckdb(base):
     ]
 
 
+def test_somar_conta_so_a_revisao_mais_nova(base):
+    """A Anatel republica o arquivo e a revisão vira uma linha nova (`visto_em` diferente) da mesma chave:
+    somar tudo contaria o mês duas vezes. Fica a linha mais nova de cada chave; com `como_era_em`, a
+    mais nova que já era pública no dia (a revisão vista depois não entra)."""
+    _gravar(
+        base,
+        "setoriais/anatel/Acessos_2025_Colunas.parquet",
+        pd.DataFrame(
+            {
+                "competencia": pd.to_datetime(["2025-01-31"] * 3 + ["2025-02-28"]),
+                "cnpj": ["A", "A", "B", "A"],
+                "servico": ["movel"] * 4,
+                "recorte": ["completo"] * 4,
+                "acessos": [10.0, 12.0, 5.0, 7.0],
+                "visto_em": pd.to_datetime(
+                    ["2026-10-14", "2026-11-14", "2026-10-14", "2026-10-14"]
+                ),
+                "disponivel_em": pd.to_datetime(
+                    ["2025-04-01", "2026-11-14", "2025-04-01", "2025-04-30"]
+                ),
+            }
+        ),
+    )
+    with Porta(base) as p:
+        agora = p.somar("anatel_acessos", por=["cnpj"], valor="acessos")
+        antes = p.somar(
+            "anatel_acessos",
+            por=["cnpj"],
+            valor="acessos",
+            como_era_em="2026-10-20",
+        )
+    assert agora.sort_values("cnpj")["acessos"].tolist() == [
+        19.0,
+        5.0,
+    ]  # 12 + 7, não 10 + 12 + 7
+    assert antes.sort_values("cnpj")["acessos"].tolist() == [
+        17.0,
+        5.0,
+    ]  # a revisão ainda não era pública
+
+
 def test_somar_e_exato(base):
     """Em DOUBLE, 0,1 + 0,2 dá 0,30000000000000004 e a ordem da soma mexe na 15ª casa; em DECIMAL não."""
     _gravar(
