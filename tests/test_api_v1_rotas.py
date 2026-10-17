@@ -908,15 +908,15 @@ def stripe_de_teste(monkeypatch):
         monkeypatch.setenv(nome, valor)
     chamadas = []
 
-    def pagina(usuario_id, email, id_do_cliente=None, caminho_de_volta="/", **_):
-        chamadas.append(("pagina", usuario_id, email, id_do_cliente, caminho_de_volta))
+    def pagina(motor, usuario_id, email, caminho_de_volta="/", **_):
+        chamadas.append(("pagina", usuario_id, email, caminho_de_volta))
         return CHECKOUT
 
     def portal(id_do_cliente, caminho_de_volta="/", **_):
         chamadas.append(("portal", id_do_cliente, caminho_de_volta))
         return PORTAL
 
-    monkeypatch.setattr(cobranca, "criar_pagina_de_pagamento", pagina)
+    monkeypatch.setattr(cobranca, "abrir_pagamento", pagina)
     monkeypatch.setattr(cobranca, "criar_portal_da_assinatura", portal)
     return chamadas
 
@@ -967,15 +967,30 @@ def test_admin_assina_e_volta_para_os_planos_do_app_novo(
     assert resposta.status_code == 200, resposta.text
     assert resposta.json() == {"url": CHECKOUT}
     assert stripe_de_teste == [
-        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", None, "/novo/planos")
+        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", "/novo/planos")
     ]
 
 
-def test_quem_ja_e_cliente_reusa_o_cliente_do_stripe(cliente, banco, stripe_de_teste):
+def test_rebaixada_com_assinatura_viva_gerencia_e_nao_assina_de_novo(
+    cliente, banco, stripe_de_teste
+):
+    """Achados 1b e 1d do Codex (ADR 0091): um segundo Checkout daria a segunda assinatura."""
     _ana_admin(banco)
     _assinatura_da_ana(banco)
-    cliente.post("/api/v1/pagamento-da-assinatura", json={})
-    assert stripe_de_teste[0][3] == "cus_ana"
+    with banco.begin() as conexao:
+        conexao.execute(sa.update(assinaturas).values(stripe_subscription_id="sub_ana"))
+    assert cliente.get("/api/v1/meu-plano").json()["acao"] == "gerenciar"
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 409
+    assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 200
+    assert stripe_de_teste == [("portal", "cus_ana", "/novo/planos")]
+
+
+def test_quem_ja_assinou_e_cancelou_assina_de_novo(cliente, banco, stripe_de_teste):
+    _ana_admin(banco)
+    _assinatura_da_ana(banco)
+    with banco.begin() as conexao:
+        conexao.execute(sa.update(assinaturas).values(status="canceled"))
+    assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 200
 
 
 def test_conta_comum_nao_cria_pagamento(cliente, banco, stripe_de_teste):

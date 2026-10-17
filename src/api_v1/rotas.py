@@ -215,18 +215,24 @@ def pagamento_da_assinatura(conta: Conta) -> EnderecoDoStripeV1:
 
     A rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.
     """
-    acao, assinatura = _acao_da_conta(conta)
+    acao, _ = _acao_da_conta(conta)
     if acao.tipo != "assinar":
         raise HTTPException(
             status_code=409, detail=acao.texto or "Você já está no plano Pro."
         )
     try:
-        url = cobranca.criar_pagina_de_pagamento(
+        url = cobranca.abrir_pagamento(
+            obter_engine(),
             conta.id,
             conta.email,
-            assinatura.stripe_customer_id if assinatura else None,
             caminho_de_volta=CAMINHO_DE_VOLTA_DO_APP_NOVO,
         )
+    except (
+        cobranca.AssinaturaJaExisteError
+    ) as erro:  # outra aba assinou nesse meio tempo
+        raise HTTPException(
+            status_code=409, detail="Esta conta já tem uma assinatura."
+        ) from erro
     except Exception as erro:
         log.exception("Falha ao criar a página de pagamento do Stripe")
         raise HTTPException(status_code=503, detail=STRIPE_FORA_DO_AR) from erro
