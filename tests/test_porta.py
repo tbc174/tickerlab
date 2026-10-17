@@ -249,6 +249,26 @@ def test_somar_agrupa_no_duckdb(base):
     ]
 
 
+def test_somar_e_exato(base):
+    """Em DOUBLE, 0,1 + 0,2 dá 0,30000000000000004 e a ordem da soma mexe na 15ª casa; em DECIMAL não."""
+    _gravar(
+        base,
+        "setoriais/anatel/Acessos_2025_Colunas.parquet",
+        pd.DataFrame(
+            {
+                "competencia": ["2025-01-31"] * 2,
+                "cnpj": ["A"] * 2,
+                "servico": ["movel"] * 2,
+                "recorte": ["completo"] * 2,
+                "acessos": [0.1, 0.2],
+            }
+        ),
+    )
+    with Porta(base) as p:
+        somado = p.somar("anatel_acessos", por=["cnpj"], valor="acessos")
+    assert somado["acessos"].tolist() == [0.3]
+
+
 def test_hashes_dos_arquivos_da_tabela(base):
     """ADR 0078: quem lê anota o hash de cada arquivo (do manifesto ao lado) para refazer e conferir."""
     (base / "rede" / "ligacoes.json").write_text(

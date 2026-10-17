@@ -213,12 +213,16 @@ class Porta:
         como_era_em: object = None,
     ) -> pd.DataFrame:
         """A soma de `valor` por `por`, feita no DuckDB: série de milhões de linhas (Anatel) volta só
-        com o agregado. Filtros e `como_era_em` como em `ler`; as colunas saem com os mesmos nomes."""
+        com o agregado. Filtros e `como_era_em` como em `ler`; as colunas saem com os mesmos nomes.
+
+        A soma é em DECIMAL (exata): em DOUBLE o DuckDB soma em paralelo, a ordem muda e o resultado varia
+        na 15ª casa de uma rodada para outra, e aí a mesma base não dá a mesma ficha (ADR 0078)."""
         view = self._view(tabela, None)
         onde, parametros = self._onde(tabela, None, filtros, como_era_em, [*por, valor])
         grupos = ", ".join(_nome(c) for c in por)
+        exato = f"TRY_CAST({_nome(valor)} AS DECIMAL(38, 10))"
         return self.con.execute(
-            f"SELECT {grupos}, sum(TRY_CAST({_nome(valor)} AS DOUBLE)) AS {_nome(valor)} "
+            f"SELECT {grupos}, sum({exato})::DOUBLE AS {_nome(valor)} "
             f"FROM {_nome(view)} WHERE {onde} GROUP BY {grupos}",
             parametros,
         ).df()
