@@ -5,6 +5,8 @@ fatos relevantes, assunto. As proteções da ADR ficam aqui, sem rede:
 
 - **sem o nome da empresa:** razão social, códigos de negociação e CNPJ viram `[EMPRESA]`, `[CODIGO]`
   e `[CNPJ]` antes de ir para o modelo, para ele não dar a nota pelo que sabe que aconteceu depois;
+  desde o prompt v3 (Emenda 2, 17/10/2026) o conteúdo que ainda entregava a empresa também sai:
+  outras empresas, lugares, pessoas, endereços eletrônicos e números de registro (`anonimizar`);
 - **lista fechada** (saída estruturada) e um **trecho que tem de existir** no que o modelo leu;
   resposta fora disso vira erro, nunca um chute;
 - cada rótulo guarda `por: "ia"`, o modelo e a versão do prompt, e nunca se mistura com os humanos.
@@ -15,11 +17,14 @@ Emenda 1 (17/10/2026), o **Opus 5.5** rotula às cegas o conjunto de prova com o
 conferir o Sonnet no lugar do Tiago; os papéis ficam fixos (`MODELO` e `MODELO_CONFERENTE`).
 """
 
+import functools
 import hashlib
 import json
 import os
 import re
 import unicodedata
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 
 import anthropic
@@ -32,7 +37,9 @@ MODELO = "claude-sonnet-5-5"  # o rotulador da fila inteira (14/10)
 MODELO_CONFERENTE = "claude-opus-5-5"  # o segundo modelo às cegas (Emenda 1, 17/10)
 # chave criada fora de um workspace: a API pede o id do workspace em cada pedido (não é segredo)
 VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
-VERSAO_DO_PROMPT = "2"  # v2 (17/10/2026): anonimização mais forte e sem o setor
+VERSAO_DO_PROMPT = (
+    "3"  # v3 (17/10/2026, Emenda 2): o conteúdo também é anonimizado; v2: sem o setor
+)
 GUIA = "v2"
 MAX_CARACTERES_DO_TEXTO = 6_000  # o começo do documento, como no leitor (ADR 0069)
 MAX_TOKENS_DA_RESPOSTA = 2_000  # a resposta é curta; a folga é para o raciocínio
@@ -72,6 +79,11 @@ def modelo_conhecido(nome: str) -> Modelo:
 
 
 EMPRESA, CODIGO, CNPJ = "[EMPRESA]", "[CODIGO]", "[CNPJ]"
+# v3 (Emenda 2): o conteúdo que ainda entregava a empresa na v2
+OUTRA_EMPRESA, LOCAL, PESSOA = "[OUTRA EMPRESA]", "[LOCAL]", "[pessoa]"
+ENDERECO, NUMERO = "[ENDEREÇO]", "[NUMERO]"
+MARCADORES = (EMPRESA, CODIGO, CNPJ, OUTRA_EMPRESA, LOCAL, PESSOA, ENDERECO, NUMERO)
+_MARCADOR = re.compile("|".join(re.escape(m) for m in MARCADORES))
 SEM_TEXTO = "(sem texto: o documento não pôde ser lido; julgue pelo assunto)"
 
 NOTAS = {
@@ -95,8 +107,10 @@ CONFIANCAS = ("alta", "media", "baixa")
 _ASSUNTOS = "\n".join(f"- {codigo}: {nome}" for codigo, nome in topicos.TOPICOS.items())
 SISTEMA = f"""Você rotula documentos públicos de companhias abertas brasileiras (CVM), como uma pessoa \
 faria na página de rotulagem do TickerLab. O nome, os códigos de negociação e o CNPJ da empresa foram \
-trocados por {EMPRESA}, {CODIGO} e {CNPJ}: não tente descobrir qual é a empresa. Julgue só pelo que \
-está no documento, como se fosse a data de entrega dele; não use o que aconteceu depois.
+trocados por {EMPRESA}, {CODIGO} e {CNPJ}; outras empresas, lugares, pessoas, endereços eletrônicos e \
+números de registro viram {OUTRA_EMPRESA}, {LOCAL}, {PESSOA}, {ENDERECO} e {NUMERO}: não tente \
+descobrir qual é a empresa nem quem são os outros. Julgue só pelo que está no documento, como se \
+fosse a data de entrega dele; não use o que aconteceu depois.
 
 Importância (nota de 1 a 5). Pergunte: para quem tem esta ação, este documento muda alguma coisa?
 1 Rotina. Obrigação de calendário, formulário padrão, posição mensal de ações de administradores sem \
@@ -248,18 +262,77 @@ def _siglas(nome: str) -> set[str]:
     return siglas
 
 
-def _padrao_do_nome(nome: str) -> re.Pattern[str]:
-    # "S.A" no cadastro costuma ser "S.A." no texto: o ponto final vai junto
-    fim = r"\.?" if _SUFIXO.search(nome) else ""
-    partes = []
-    for letra in _sem_acento(nome).lower():
-        if letra.isspace():
-            partes.append(r"\s+")
-        elif letra in _VARIANTES:
-            partes.append(f"[{_VARIANTES[letra]}]")
+# --- v3 (17/10/2026, Emenda 2): o cadastro abrevia ("CIA", "IND E COM", "ENERG") e tira os conectivos;
+# o texto escreve por extenso ("Companhia de Saneamento Básico do Estado de São Paulo"). Na v2 isso
+# escapou em parte dos 110 reconhecidos. Cada grupo é uma palavra do cadastro e suas formas no texto.
+_FORMAS_DA_ABREVIACAO = (
+    ("cia", "companhia"), ("cias", "companhias"),
+    ("ind", "industria", "industrias", "industrial"),
+    ("com", "comercio", "comercial"),
+    ("part", "particip", "participacoes"),
+    ("empreend", "empreends", "empreendimentos"),
+    ("adm", "administracao", "administradora"),
+    ("distrib", "distribuidora", "distribuicao"),
+    ("telec", "telecomunicacoes"),
+    ("energ", "energia", "energetica"),
+    ("metrop", "metropolitana", "metropolitano"),
+    ("emp", "empr", "empresa", "empresas"),
+    ("const", "constr", "construcoes", "construtora"),
+    ("sid", "siderurgica"), ("nac", "nacional"),
+    ("bras", "brasil", "brasileira", "brasileiro"),
+    ("agric", "agricola"), ("imob", "imobiliaria", "imobiliarios"),
+    ("transp", "transportes"), ("arrend", "arrendamento"),
+    ("abastec", "abastecimento"), ("equip", "equipamentos"),
+    ("concess", "conc", "concessoes", "concessionaria"),
+    ("infra", "infraestrutura"), ("mat", "materiais"), ("petr", "petroleo"),
+)  # fmt: skip
+_ABREVIACOES = {forma: formas for formas in _FORMAS_DA_ABREVIACAO for forma in formas}
+_SOCIEDADE_ANONIMA = re.compile(r"^s\.?\s*/?\s*a\.?$")
+# entre as palavras do nome cabem conectivos que o cadastro não tem ("de", "do", "e")
+_ENTRE_PALAVRAS = r"(?:\s+(?i:d[aeo]s?|e|em))*\s+"
+
+
+def _letras(palavra: str) -> str:
+    """Cada letra com e sem acento, nas duas caixas ("a" casa "A", "á", "Ã"...)."""
+    pedacos = []
+    for letra in palavra:
+        if letra in _VARIANTES:
+            pedacos.append(f"[{_VARIANTES[letra]}{_VARIANTES[letra].upper()}]")
+        elif letra.isalpha():
+            pedacos.append(f"[{letra}{letra.upper()}]")
         else:
-            partes.append(re.escape(letra))
-    return re.compile(r"(?<!\w)" + "".join(partes) + r"(?!\w)" + fim, re.IGNORECASE)
+            pedacos.append(re.escape(letra))
+    return "".join(pedacos)
+
+
+def _palavra_do_nome(palavra: str) -> str:
+    """O padrão de uma palavra do cadastro: "S.A." em qualquer grafia, abreviação ou forma por
+    extenso (com ponto opcional: "Cia."), ou as letras; a pontuação do meio aceita espaços."""
+    if _SOCIEDADE_ANONIMA.match(palavra):
+        return r"[sS]\.?\s?/?\s?[aA]\.?"
+    pedacos = []
+    for pedaco in re.findall(r"[a-z0-9]+|[^a-z0-9]", palavra):
+        if pedaco in _ABREVIACOES:
+            formas = "|".join(_letras(f) + r"\.?" for f in _ABREVIACOES[pedaco])
+            pedacos.append(f"(?:{formas})")
+        elif pedaco.isalnum():
+            pedacos.append(_letras(pedaco))
+        else:
+            pedacos.append(r"\s*" + re.escape(pedaco) + r"\s*")
+    return "".join(pedacos)
+
+
+def _corpo_do_nome(nome: str) -> str:
+    """O padrão de uma variante do nome, palavra a palavra, sem os conectivos do cadastro (eles e
+    os do texto cabem entre as palavras)."""
+    palavras = [
+        p for p in _sem_acento(nome).lower().split() if p not in _CONECTORES
+    ] or _sem_acento(nome).lower().split()
+    return _ENTRE_PALAVRAS.join(_palavra_do_nome(p) for p in palavras)
+
+
+def _padrao_do_nome(nome: str) -> re.Pattern[str]:
+    return re.compile(r"(?<!\w)" + _corpo_do_nome(nome) + r"(?!\w)")
 
 
 def _comecos(nome: str) -> list[str]:
@@ -303,16 +376,262 @@ def _mascara_do_cnpj(achado: re.Match[str]) -> str:
     return texto
 
 
-def anonimizar(texto: str, nomes: list[str]) -> str:
-    """Troca CNPJ, códigos de negociação (PETR4, TAEE11) e os nomes da empresa pelos marcadores."""
-    texto = _CNPJ.sub(_mascara_do_cnpj, texto)
-    texto = _CODIGO.sub(CODIGO, texto)
+def _sem_o_nome(texto: str, nomes: list[str]) -> str:
+    """A empresa do documento vira [EMPRESA]: nomes do cadastro em qualquer grafia (v2 e v3), o
+    sufixo que sobrou ("[EMPRESA] S/A") e as siglas."""
     for variante in _variantes_do_nome(nomes):
         texto = _padrao_do_nome(variante).sub(EMPRESA, texto)
+    texto = _SUFIXO_SOLTO.sub(EMPRESA, texto)
     for sigla in set().union(*(_siglas(nome) for nome in nomes)):
         formas = "|".join(re.escape(f) for f in {sigla, sigla.capitalize()})
         texto = re.sub(rf"(?<![\w/])(?:{formas})(?![\w/])", EMPRESA, texto)
     return texto
+
+
+def anonimizar(
+    texto: str, nomes: list[str], outras: Sequence[str] | None = None
+) -> str:
+    """O que o modelo não pode ver (ADR 0072, Emenda 2): CNPJ, códigos de negociação (aqui e em
+    outras bolsas), endereços eletrônicos, a empresa do documento (`nomes`), as outras empresas
+    (`outras`, o cadastro da fila; por padrão `OUTRAS_EMPRESAS`) e qualquer sociedade com sufixo,
+    lugares, números de registro e pessoas. Datas, valores, leis e o vocabulário do negócio ficam."""
+    texto = _CNPJ.sub(_mascara_do_cnpj, texto)
+    texto = _CODIGO.sub(CODIGO, texto)
+    texto = _BOLSA_ESTRANGEIRA.sub(CODIGO, texto)
+    texto = _CODIGO_DE_ADR.sub(CODIGO, texto)
+    texto = _ENDERECO_ELETRONICO.sub(ENDERECO, texto)
+    texto = _sem_o_nome(texto, nomes)
+    texto = mascarar_pessoas(
+        texto
+    )  # antes das outras empresas: um sobrenome pode ser marca
+    padrao_das_outras = _padrao_das_outras(
+        OUTRAS_EMPRESAS if outras is None else tuple(outras)
+    )
+    if padrao_das_outras is not None:
+        texto = padrao_das_outras.sub(OUTRA_EMPRESA, texto)
+    texto = _OUTRA_SOCIEDADE.sub(OUTRA_EMPRESA, texto)
+    texto = _GRUPO.sub(OUTRA_EMPRESA, texto)
+    # o apelido que o documento define ("Sabesp", "GOL") vale para quem foi definido
+    for marcador in (EMPRESA, OUTRA_EMPRESA):
+        for apelido in _apelidos(texto, marcador):
+            texto = _padrao_do_apelido(apelido).sub(marcador, texto)
+    texto = _DATACAO.sub(f"{LOCAL}, ", texto)
+    texto = _CIDADE_UF.sub(LOCAL, texto)
+    texto = _LUGARES_CONHECIDOS.sub(LOCAL, texto)
+    texto = _ENDERECO_POSTAL.sub(LOCAL, texto)
+    texto = _CEP.sub(LOCAL, texto)
+    for padrao in (_NIRE, _PROCESSO):
+        texto = padrao.sub(NUMERO, texto)
+    for padrao in (_NIRE_SEM_PONTO, _REGISTRO_CVM):
+        texto = padrao.sub(lambda m: m.group(1) + NUMERO, texto)
+    return texto
+
+
+# --- v3: o conteúdo que entregava a empresa na v2 (ADR 0072, Emenda 2) --------------------------
+
+OUTRAS_EMPRESAS: tuple[str, ...] = ()
+_MIN_LETRAS_DE_OUTRA = (
+    5  # palavra sozinha de outra empresa: "Cosan" sim, "Vale" não (é verbo)
+)
+
+
+def definir_outras_empresas(nomes: Iterable[str]) -> None:
+    """O cadastro da fila inteira (todas as empresas dos eventos), lido uma vez em `main`, antes
+    de qualquer filtro: `documento()` o usa em todos os passos, então o pedido guardado e o
+    recalculado em `buscar` têm o mesmo hash."""
+    global OUTRAS_EMPRESAS
+    OUTRAS_EMPRESAS = tuple(dict.fromkeys(n for n in nomes if n))
+
+
+def _padrao_das_outras(outras: tuple[str, ...]) -> re.Pattern[str] | None:
+    return _padrao_das_outras_guardado(outras)
+
+
+@functools.lru_cache(maxsize=4)
+def _padrao_das_outras_guardado(outras: tuple[str, ...]) -> re.Pattern[str] | None:
+    """Um só padrão com as variantes de todos os nomes do cadastro, do maior para o menor: nome com
+    e sem sufixo, começos e palavras distintas de 5 letras ou mais (fora as de lugar), só quando
+    começam em maiúscula no texto ("Light" sim, "light" não)."""
+    variantes = [
+        v for v in _variantes_do_nome(list(outras))
+        if len(v.split()) >= 2
+        or (sum(c.isalpha() for c in v) >= _MIN_LETRAS_DE_OUTRA
+            and _sem_acento(v).lower() not in _PALAVRAS_DE_LUGAR)
+    ]  # fmt: skip
+    if not variantes:
+        return None
+    corpos = (
+        _corpo_do_nome(v) + (r"(?!\w)\.?" if _SUFIXO.search(v) else r"(?!\w)")
+        for v in variantes
+    )
+    return re.compile(r"(?<!\w)(?![a-zà-ÿ])(?:" + "|".join(corpos) + ")")
+
+
+_SUFIXO_SOLTO = re.compile(r"\[EMPRESA\]\s*,?\s*(?:S\.?\s?/?\s?A\.?|Ltda\.?)(?!\w)")
+# o documento define o apelido logo depois do nome: ("Sabesp" ou "Companhia"), (“FNS”); entre o
+# marcador e a definição podem estar os códigos e o CNPJ, já trocados
+_JANELA_DO_APELIDO = {
+    marcador: re.compile(
+        re.escape(marcador) + r"((?:[^\n\[]|\[(?:CODIGO|CNPJ|NUMERO)\]){0,120})"
+    )
+    for marcador in (EMPRESA, OUTRA_EMPRESA)
+}
+_DEFINICAO = re.compile(r"\(\s*((?:[\"“][^\"“”\n]{2,40}[\"”]\s*(?:ou|,|e)?\s*)+)\)")
+_ENTRE_ASPAS = re.compile(r"[\"“]\s*([^\"“”\n]{2,40}?)\s*[\"”]")
+# um apelido com uma destas palavras não é o nome da empresa ("Grupo Ad Hoc", "Companhias")
+_APELIDOS_GENERICOS = frozenset(
+    [
+        "companhia",
+        "companhias",
+        "sociedade",
+        "sociedades",
+        "empresa",
+        "empresas",
+        "emissora",
+        "emitente",
+        "ofertante",
+        "devedora",
+        "cedente",
+        "banco",
+        "grupo",
+        "group",
+        "fundo",
+        "controladora",
+        "controladas",
+        "incorporadora",
+        "administradora",
+        "compradora",
+        "vendedora",
+        "garantidora",
+        "acordo",
+        "contrato",
+        "oferta",
+        "operacao",
+    ]
+)
+
+
+def _apelidos(texto: str, marcador: str) -> set[str]:
+    """Os termos definidos entre aspas e parênteses logo depois do marcador, fora os genéricos
+    ("Companhia", "Sociedade"): o nome pelo qual o documento chama a empresa dali em diante."""
+    apelidos = set()
+    for janela in _JANELA_DO_APELIDO[marcador].finditer(texto):
+        for definicao in _DEFINICAO.findall(janela.group(1)):
+            for apelido in _ENTRE_ASPAS.findall(definicao):
+                palavras = _palavras(apelido)
+                if (
+                    palavras
+                    and len(apelido.split()) <= 3
+                    and not palavras & (_APELIDOS_GENERICOS | GENERICAS)
+                    and not palavras <= PALAVRAS_COMUNS
+                ):
+                    apelidos.add(apelido)
+    return apelidos
+
+
+def _padrao_do_apelido(apelido: str) -> re.Pattern[str]:
+    """Como o nome, mas só começando em maiúscula: "Grupo Ad Hoc" não casa "um grupo ad hoc"."""
+    return re.compile(r"(?<!\w)(?![a-zà-ÿ])" + _corpo_do_nome(apelido) + r"(?!\w)")
+
+
+_BOLSA_ESTRANGEIRA = re.compile(
+    r"\b(?:NYSE|NASDAQ|OTCQX|OTCQB|OTC|LSE|LATIBEX|EURONEXT|TSX"
+    r"|ADR(?:\s+(?:N[ií]vel\s+)?(?:I{1,3}|[1-3]))?)\s*:\s*[A-Z]{2,6}\b"
+)
+_CODIGO_DE_ADR = re.compile(
+    r"\b[A-Z]{4}Y\b"
+)  # LZRFY, PBRAY: o código do ADR termina em Y
+_ENDERECO_ELETRONICO = re.compile(
+    r"(?i)\b(?:https?://|www\.)[^\s)>\]]+"
+    r"|[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+    r"|(?<![\w@])(?:[\w-]+\.)+(?:com\.br|gov\.br|org\.br|net\.br|com|net|org|io)(?![\w.])(?:/[^\s)]*)?"
+)
+_MAIUSCULA = "A-ZÁÉÍÓÚÂÊÔÃÕÇ"
+_MINUSCULA = "a-záéíóúâêôãõç"
+_SUFIXOS_DE_SOCIEDADE = (
+    r"(?:S\.?\s?/?\s?A\.?|Ltda\.?|S\.?R\.?L\.?|Inc\.?|LLC|L\.?P\.?|N\.?V\.?|Ltd\.?|Corp\.?|GmbH"
+    r"|Holding|Participa[çc][õo]es)(?!\w)"
+)
+_PALAVRA_DE_EMPRESA = rf"[{_MAIUSCULA}\d][\w&'’.-]*"
+_OUTRA_SOCIEDADE = re.compile(
+    rf"(?<![\w\[])[{_MAIUSCULA}\d][\w&'’.-]+"  # a 1ª palavra tem 2 letras ou mais ("A Alfa" não)
+    rf"(?:\s+(?:(?i:d[aeo]s?|e|&)\s+)?{_PALAVRA_DE_EMPRESA}){{0,6}}\s*,?\s+{_SUFIXOS_DE_SOCIEDADE}"
+)
+_GRUPO = re.compile(
+    rf"(?<!\w)Grupo\s+[{_MAIUSCULA}][\w&-]*(?:\s+[{_MAIUSCULA}][\w&-]*){{0,2}}"
+)
+_UF = r"(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)"
+_PALAVRA_DE_LUGAR = rf"[{_MAIUSCULA}][\w'’]*"
+_LUGAR = rf"{_PALAVRA_DE_LUGAR}(?:\s+(?:(?i:d[aeo]s?)\s+)?{_PALAVRA_DE_LUGAR}){{0,3}}"
+_COM_UF = rf"(?:\(\s*{_UF}\s*\)|/\s?{_UF}(?!\w)|\s+-\s+{_UF}(?!\w))"
+_DATACAO = (
+    re.compile(  # "Caxias do Sul, 31 de julho de 2024" (ou em caixa alta): a data fica
+        rf"(?<!\w){_LUGAR}\s*{_COM_UF}?,\s*"
+        rf"(?=\d{{1,2}}º?\s+(?i:de)\s+[^\W\d_]+\s+(?i:de)\s+\d{{4}})"
+    )
+)
+_CIDADE_UF = re.compile(rf"(?<!\w){_LUGAR}\s*{_COM_UF}")
+_ESTADOS_E_CAPITAIS = (
+    "Acre", "Alagoas", "Amapá", "Amazonas", "Bahia", "Ceará", "Distrito Federal", "Espírito Santo",
+    "Goiás", "Maranhão", "Mato Grosso", "Mato Grosso do Sul", "Minas Gerais", "Pará", "Paraíba",
+    "Paraná", "Pernambuco", "Piauí", "Rio de Janeiro", "Rio Grande do Norte", "Rio Grande do Sul",
+    "Rondônia", "Roraima", "Santa Catarina", "São Paulo", "Sergipe", "Tocantins",
+    "Rio Branco", "Maceió", "Macapá", "Manaus", "Salvador", "Fortaleza", "Brasília", "Vitória",
+    "Goiânia", "São Luís", "Cuiabá", "Campo Grande", "Belo Horizonte", "Belém", "João Pessoa",
+    "Curitiba", "Recife", "Teresina", "Natal", "Porto Alegre", "Porto Velho", "Boa Vista",
+    "Florianópolis", "Aracaju", "Palmas",
+)  # fmt: skip
+_PALAVRAS_DE_LUGAR = frozenset(
+    p for lugar in _ESTADOS_E_CAPITAIS for p in _palavras(lugar)
+)
+_LUGARES_CONHECIDOS = re.compile(
+    r"(?<!\w)(?:"
+    + "|".join(
+        re.escape(forma)
+        for lugar in sorted(_ESTADOS_E_CAPITAIS, key=len, reverse=True)
+        for forma in (lugar, lugar.upper())
+    )
+    + r")(?!\w)"
+)
+_ENDERECO_POSTAL = re.compile(  # só a via e o número; andar, bairro e cidade seguem suas regras
+    r"(?i)(?<!\w)(?:rua|avenida|av\.|alameda|pra[çc]a|rodovia|rod\.|estrada|travessa|largo)\s+"
+    r"[^,;.\n]{2,60}(?:,\s*(?:n[º°.o]*\s*)?\d+(?:\s*[-–/]\s*\w+)?)?"
+)
+_CEP = re.compile(r"\b\d{5}-\d{3}\b")
+_NIRE = re.compile(  # 33.300.294.597; um valor "R$ 12.345.678.901" não
+    r"(?<!\$ )(?<![\d.$])\d{2}\.\d{3}\.\d{3}\.\d{3}(?![\d.])"
+)
+_NIRE_SEM_PONTO = re.compile(r"(?i)(NIRE\s*(?:n[º°.o]*\s*)?)\d{11}")
+_PROCESSO = re.compile(r"\b\d{7}-?\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b")  # numeração do CNJ
+_REGISTRO_CVM = re.compile(
+    r"(?i)(c[oó]digo\s+(?:de\s+registro\s+)?(?:na\s+)?cvm\s*(?:n[º°.o]*\s*)?)\d{3,6}"
+)
+
+# --- pessoas: nome junto de um cargo (veio de `base/leitor_release.py`, que importa daqui) -------
+_PALAVRA_DE_NOME = rf"[{_MAIUSCULA}][{_MINUSCULA}]+"
+_NOME = rf"{_PALAVRA_DE_NOME}(?:\s+(?:d[aeo]s?\s+)?{_PALAVRA_DE_NOME})+"
+_CARGO = (
+    r"(?:Vice-Presidente|Presidente|Diretor(?:a)?(?:-\w+)?|CEO|CFO|COO|CIO|Superintendente|"
+    r"Gerente|Head)"
+    rf"(?:\s+d[aeo]s?\s+[{_MAIUSCULA}]\w+(?:\s+(?:com|d[aeo]s?)?\s*[{_MAIUSCULA}]?\w+){{0,3}})?"
+)
+_NOME_DEPOIS_DO_CARGO = re.compile(rf"(?P<cargo>\b{_CARGO})(?P<sep>[\s,:]+){_NOME}")
+_NOME_ANTES_DO_CARGO = re.compile(rf"{_NOME}(?=\s*[,(–-]?\s*{_CARGO})")
+
+
+def mascarar_pessoas(texto: str) -> str:
+    """Troca por "[pessoa]" os nomes escritos junto de um cargo ("CFO Maria Souza", "João Silva,
+    Diretor-Presidente"). É uma heurística; os guias também mandam não copiar nomes."""
+    texto = _NOME_DEPOIS_DO_CARGO.sub(
+        lambda m: f"{m['cargo']}{m['sep']}{PESSOA}", texto
+    )
+    return _NOME_ANTES_DO_CARGO.sub(PESSOA, texto)
+
+
+def marcadores(texto: str) -> Counter[str]:
+    """Quantas vezes cada marcador aparece no documento anonimizado (o passo `vazamento` conta em
+    quantos documentos cada um entrou: é o registro, sem API, do que o v3 tirou)."""
+    return Counter(_MARCADOR.findall(texto))
 
 
 def palavras_que_vazam(texto: str, nome: str) -> set[str]:
@@ -491,8 +810,10 @@ def custo_em_dolares(
 # --- teste de identificação (auditoria, ADR 0072): a IA reconhece a empresa pelo texto? ----------
 
 SISTEMA_DA_IDENTIFICACAO = f"""O documento abaixo é de uma companhia aberta brasileira e foi \
-anonimizado ({EMPRESA}, {CODIGO}, {CNPJ}). Diga qual companhia você acha que é, pelo nome. Se não \
-tiver um bom palpite, responda NAO_SEI. Responda só o nome."""
+anonimizado: {EMPRESA}, {CODIGO} e {CNPJ} são a empresa; {OUTRA_EMPRESA}, {LOCAL}, {PESSOA}, \
+{ENDERECO} e {NUMERO} são outras empresas, lugares, pessoas, endereços eletrônicos e números de \
+registro. Diga qual companhia você acha que é, pelo nome. Se não tiver um bom palpite, responda \
+NAO_SEI. Responda só o nome."""
 NAO_SEI = "NAO_SEI"
 
 
