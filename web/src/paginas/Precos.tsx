@@ -10,7 +10,7 @@ export const DADOS = {
   titulo: "Planos",
   descricao:
     "Gratuito, Plus e Pro: o que cada plano do TickerLab inclui, com os mesmos limites do " +
-    "app. Assinatura mensal de verdade, sem fidelidade. Cobrança em modo de teste.",
+    "app. Assinatura mensal, sem fidelidade. Cobrança em modo de teste.",
   atual: "/precos.html",
 };
 

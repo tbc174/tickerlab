@@ -251,8 +251,7 @@ export const DADOS_DOS_CUSTOS = {
   caminho: `/${CUSTOS}`,
   titulo: "Custo das taxas e da queda",
   descricao:
-    "Calcule quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto um " +
-    "investimento precisa subir para recuperar uma queda. Grátis e sem cadastro.",
+    "Veja quanto uma taxa de administração leva do seu patrimônio em 20 anos e quanto é preciso subir para recuperar uma queda. Grátis.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -373,8 +372,7 @@ export const DADOS_DA_SORTE = {
   caminho: `/${SORTE}`,
   titulo: "Sorte em série",
   descricao:
-    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o " +
-    "problema de testar muitas ideias e mostrar só a melhor. Grátis e sem cadastro.",
+    "Simule 100 estratégias de cara ou coroa e veja a melhor parecer genial por puro acaso: o risco de mostrar só a melhor. Grátis.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -439,8 +437,7 @@ export const DADOS_DO_DARF = {
   caminho: `/${DARF}`,
   titulo: "Calculadora de DARF de ações",
   descricao:
-    "Calcule o imposto sobre ações do mês: swing trade e day trade, isenção de R$ 20 mil, " +
-    "prejuízo a compensar, IR retido e o DARF 6015. Regras da Receita, grátis e sem cadastro.",
+    "Calcule o DARF 6015 das ações do mês: swing e day trade, isenção de R$ 20 mil, prejuízo a compensar e IR retido. Grátis e sem cadastro.",
   atual: "/ferramentas.html",
   ferramenta: true,
 };
@@ -730,8 +727,7 @@ const PONTE = "quanto-daria.html";
 export const DADOS_DO_QUANTO_DARIA = pagina(
   PONTE,
   "Quanto daria? Foi sorte?",
-  "Quanto R$ 1.000 aplicados num mês do passado dariam hoje no CDI, na poupança, no dólar, no " +
-    "Ibovespa e em bitcoin, e se a data escolhida foi de sorte. Grátis e sem cadastro.",
+  "Quanto R$ 1.000 aplicados num mês do passado dariam hoje no CDI, na poupança, no dólar, no Ibovespa e em bitcoin. Grátis e sem cadastro.",
 );
 
 export function PaginaDoQuantoDaria() {
@@ -779,8 +775,7 @@ const PRECO_MEDIO = "calculadora-de-preco-medio.html";
 export const DADOS_DO_PRECO_MEDIO = pagina(
   PRECO_MEDIO,
   "Calculadora de preço médio de ações e FIIs",
-  "Calcule o preço médio das suas ações e FIIs com as taxas no custo, o resultado de cada venda, " +
-    "bonificação, desdobro, grupamento e amortização de FII. Grátis e sem cadastro.",
+  "Calcule o preço médio de ações e FIIs com as taxas no custo, o resultado de cada venda e eventos como desdobro. Grátis e sem cadastro.",
 );
 
 export function PaginaDoPrecoMedio() {
@@ -828,8 +823,7 @@ const FINANCIAMENTO = "simulador-de-financiamento.html";
 export const DADOS_DO_FINANCIAMENTO = pagina(
   FINANCIAMENTO,
   "Simulador de financiamento SAC e Price",
-  "Compare as parcelas e os juros do financiamento pelo SAC e pela Tabela Price, e veja o efeito " +
-    "de uma amortização extra no prazo ou na parcela. Grátis e sem cadastro.",
+  "Compare parcelas e juros do financiamento pelo SAC e pela Tabela Price e veja o efeito de uma amortização extra. Grátis e sem cadastro.",
 );
 
 export function PaginaDoFinanciamento() {
@@ -868,8 +862,7 @@ const FUNDO = "fundo-ou-cdb.html";
 export const DADOS_DO_FUNDO = pagina(
   FUNDO,
   "Fundo ou CDB: calculadora com come-cotas e taxas",
-  "Compare um fundo de renda fixa, com taxa de administração, de performance e come-cotas, com um " +
-    "CDB do mesmo prazo, e veja a que percentual do CDI o fundo equivale. Grátis e sem cadastro.",
+  "Compare um fundo de renda fixa, com come-cotas e taxas, a um CDB do mesmo prazo e veja a que percentual do CDI ele equivale. Grátis.",
 );
 
 export function PaginaDoFundo() {

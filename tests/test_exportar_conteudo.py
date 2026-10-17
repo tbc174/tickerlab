@@ -123,6 +123,16 @@ def test_paginas_levam_o_contrato_para_a_tela_nova():
     assert exportadas["inicio"]["contrato"] is None
 
 
+def test_paginas_de_admin_ficam_fora_do_bundle_publico():
+    """O catálogo da administração não vai no JavaScript público (a tela é só do Streamlit)."""
+    from src.paginas import PAGINAS
+
+    assert any(p.somente_admin for p in PAGINAS)  # o teste só vale enquanto existir uma
+    texto = exp.em_json(exp.conteudo()["paginas"])
+    assert '"somente_admin": true' not in texto
+    assert "registro de ações de administrador" not in texto
+
+
 def test_app_leva_o_painel_e_as_ajudas_sem_markdown():
     """A visão geral em React: os itens do painel, na ordem da tela, e o "?" de cada um em partes."""
     from src import analises

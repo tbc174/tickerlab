@@ -745,16 +745,5 @@
     "somente_admin": false,
     "titulo": "Planos e assinatura",
     "url": "planos"
-  },
-  {
-    "chave": "admin",
-    "contrato": null,
-    "descricao": "Usuários, planos, assinaturas e o registro de ações de administrador.",
-    "e_pro": false,
-    "grupo": "Administração",
-    "no_menu": true,
-    "somente_admin": true,
-    "titulo": "Administração",
-    "url": "admin"
   }
 ]
