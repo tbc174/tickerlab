@@ -213,3 +213,42 @@ def test_main_avisa_as_falhas_na_ultima_linha(
     assert (
         capsys.readouterr().out.strip().splitlines()[-1].startswith("FALHAS: dossiês:")
     )
+
+
+def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    meses = pd.date_range("2025-01-31", periods=14, freq="ME")
+    _gravar(
+        tmp_path / "base",
+        "fundos/painel_empresa/2025.parquet",
+        pd.DataFrame(
+            {
+                "competencia": meses,
+                "cnpj": [CPFL_DIGITOS] * 14,
+                "tipo": ["comprado"] * 14,
+                "fundos": [400] * 13 + [75],
+                "valor": [9.0e9] * 13 + [1.0e9],
+            }
+        ),
+    )
+    # o último mês só tem 20% das carteiras: ainda está chegando
+    _gravar(
+        tmp_path / "base",
+        "fundos/cobertura.parquet",
+        pd.DataFrame({"competencia": meses, "valor_comprado": [100.0] * 13 + [20.0]}),
+    )
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    ficha = json.loads(
+        (tmp_path / "dossies" / "2026-10-17" / f"{CPFL_DIGITOS}.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    fundos = next(s for s in ficha["secoes"] if s["chave"] == "ofertas_e_fundos")
+    itens = {i["chave"]: i for i in fundos["itens"]}
+    assert itens["fundos_com_a_acao"] == {
+        "chave": "fundos_com_a_acao",
+        "nome": "Fundos com a empresa na carteira",
+        "valor": 400,
+        "unidade": "fundos",
+        "base": "2026-01-31",
+    }

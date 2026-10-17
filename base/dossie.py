@@ -55,6 +55,11 @@ MESES_NO_ANO = 12
 PARTICIPACAO_DE_CONTROLE = (
     50.0  # sem o tipo no FRE, mais da metade do capital é controle
 )
+ANOS_DO_FRE_EM_DIA = 2  # FRE da controladora mais velho que isso: ela parou de entregar
+# mês do CDA com menos que isso do valor normal (mediana dos 12 anteriores): carteiras ainda chegando
+FRACAO_DO_MES_COMPLETO = 0.6
+MESES_PARA_A_MEDIANA = 12
+MESES_MINIMOS_NA_MEDIANA = 6
 AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
@@ -249,14 +254,15 @@ LIMITES = {
     "auditor_e_controladas": (
         "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM. "
         "Quando o FRE não informa o tipo, conta como controlada a sociedade com mais da metade do "
-        "capital. A controladora aparece só quando ela também entrega o FRE. Auditor pessoa física "
+        "capital. A controladora aparece só quando ela também entrega o FRE, com o dos últimos 2 anos ainda listando a "
+        "companhia. Auditor pessoa física "
         "não tem o nome mostrado."
     ),
     "ofertas_e_fundos": (
         "Ofertas registradas na CVM (Resolução 160 e as anteriores) da companhia e das controladas do "
         "FRE mais recente (o grupo costuma emitir pelas controladas), pelo valor registrado, não o "
         "colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem "
-        "com até 90 dias de atraso."
+        "com até 90 dias de atraso: os meses em que as carteiras ainda estão chegando ficam de fora."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -468,6 +474,9 @@ def controladoras(
     cnpjs = identificadores[
         (identificadores["sistema"] == "cnpj") & identificadores["ate"].isna()
     ][["id_entidade", "valor"]].rename(columns={"id_entidade": "de", "valor": "cnpj"})
+    cnpjs_das_controladoras = cnpjs.rename(
+        columns={"de": "para", "cnpj": "cnpj_controladora"}
+    )
     vigentes = ligacoes[
         (ligacoes["tipo"] == "controlada_de")
         & (ligacoes["situacao"] == "vigente")
@@ -476,8 +485,49 @@ def controladoras(
     nomes = entidades[~entidades["trata_como_pessoa"].fillna(True).astype(bool)][
         ["id_entidade", "nome"]
     ].rename(columns={"id_entidade": "para", "nome": "controladora"})
-    tabela = vigentes.merge(cnpjs, on="de").merge(nomes, on="para")
-    return tabela[["cnpj", "controladora", "participacao"]].reset_index(drop=True)
+    tabela = (
+        vigentes.merge(cnpjs, on="de")
+        .merge(nomes, on="para")
+        .merge(cnpjs_das_controladoras, on="para", how="left")
+    )
+    return tabela[
+        ["cnpj", "controladora", "participacao", "cnpj_controladora"]
+    ].reset_index(drop=True)
+
+
+def controladoras_em_dia(
+    controladoras: pd.DataFrame, controladas: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """Só as controladoras cujo FRE mais recente é dos últimos anos e ainda lista a empresa como controlada.
+
+    A rede guarda a ligação como vigente enquanto ninguém a encerra: a controladora que parou de
+    entregar o FRE (a VBC Energia, que deixou a CPFL em 2011) continuaria aparecendo como dona hoje.
+    """
+    if controladoras.empty or controladas.empty:
+        return pd.DataFrame(columns=["cnpj", "controladora", "participacao"])
+    limite = hoje.tz_localize(None) - pd.DateOffset(years=ANOS_DO_FRE_EM_DIA)
+    listadas = set()
+    for cnpj_controladora, fres in controladas.groupby(
+        digitos(controladas["cnpj_companhia"])
+    ):
+        ultimo = _mais_recente(fres)
+        if ultimo.empty or pd.Timestamp(ultimo["referencia"].iloc[0]) < limite:
+            continue
+        como_controlada = ultimo[_e_controlada(ultimo)]
+        listadas |= {
+            (str(cnpj_controladora), c)
+            for c in digitos(como_controlada["cnpj"].dropna())
+        }
+    pares = zip(
+        controladoras["cnpj_controladora"], digitos(controladoras["cnpj"]), strict=True
+    )
+    em_dia = [
+        isinstance(dona, str) and (re.sub(r"\D", "", dona), empresa) in listadas
+        for dona, empresa in pares
+    ]
+    return controladoras.loc[
+        em_dia, ["cnpj", "controladora", "participacao"]
+    ].reset_index(drop=True)
 
 
 # --- ofertas e fundos ----------------------------------------------------------------------------
@@ -540,10 +590,36 @@ def _ofertas_por_ano(ofertas: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _fundos(painel: pd.DataFrame) -> tuple[list[dict[str, Any]], pd.DataFrame]:
-    """Quantos fundos têm a ação e quanto, no último mês, e a série dos últimos meses."""
+def ultimo_mes_completo(cobertura: pd.DataFrame) -> pd.Timestamp | None:
+    """O último mês do CDA com as carteiras já entregues (None: sem a tabela de cobertura).
+
+    Os fundos entregam a carteira com até 90 dias de atraso, então os meses mais novos ainda crescem.
+    Só o rabo da série é cortado: do fim para trás, sai cada mês com menos de 60% da mediana dos 12
+    anteriores. Uma queda no meio da série (crise de mercado) não é carteira faltando.
+    """
+    if cobertura.empty:
+        return None
+    serie = cobertura.sort_values("competencia").reset_index(drop=True)
+    valores = pd.to_numeric(serie["valor_comprado"], errors="coerce")
+    for posicao in range(len(serie) - 1, -1, -1):
+        anteriores = valores.iloc[
+            max(0, posicao - MESES_PARA_A_MEDIANA) : posicao
+        ].dropna()
+        if len(anteriores) < MESES_MINIMOS_NA_MEDIANA:
+            return pd.Timestamp(serie["competencia"].iloc[posicao])
+        if valores.iloc[posicao] >= FRACAO_DO_MES_COMPLETO * anteriores.median():
+            return pd.Timestamp(serie["competencia"].iloc[posicao])
+    return None
+
+
+def _fundos(
+    painel: pd.DataFrame, ultimo_mes: pd.Timestamp | None = None
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Quantos fundos têm a ação e quanto, no último mês completo, e a série dos últimos meses."""
     if painel.empty:
         return [], painel
+    if ultimo_mes is not None:
+        painel = painel[pd.to_datetime(painel["competencia"]) <= ultimo_mes]
     comprado = painel[painel["tipo"] == "comprado"].sort_values("competencia")
     if comprado.empty:
         return [], comprado
@@ -570,11 +646,14 @@ def _fundos(painel: pd.DataFrame) -> tuple[list[dict[str, Any]], pd.DataFrame]:
 
 
 def secao_ofertas_e_fundos(
-    ofertas_160: pd.DataFrame, ofertas_antigas: pd.DataFrame, painel: pd.DataFrame
+    ofertas_160: pd.DataFrame,
+    ofertas_antigas: pd.DataFrame,
+    painel: pd.DataFrame,
+    ultimo_mes_completo: pd.Timestamp | None = None,
 ) -> dict[str, Any] | None:
     """As ofertas registradas na CVM e os fundos que têm a empresa na carteira (None: nada)."""
     ofertas = _ofertas(ofertas_160, ofertas_antigas)
-    itens, fundos_por_mes = _fundos(painel)
+    itens, fundos_por_mes = _fundos(painel, ultimo_mes_completo)
     if ofertas.empty and not itens:
         return None
     if not ofertas.empty:

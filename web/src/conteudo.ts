@@ -186,3 +186,43 @@ export const regrasDeImposto: {
   custodia_do_tesouro: { taxa: number; isento_no_selic_ate: number };
   fundos: { come_cotas_longo: number; come_cotas_curto: number; curto_prazo: { ate_dias: number; aliquotas: number[] } };
 } = regrasDeImpostoJson;
+import amostraJson from "../conteudo/amostra_relatorio.json";
+
+/** Uma tabela da amostra, já escrita: colunas, linhas e, quando há, o link de cada linha. */
+export interface TabelaDaAmostra {
+  chave: string;
+  titulo: string;
+  colunas: string[];
+  linhas: string[][];
+  links: string[];
+}
+
+/** A amostra aberta do relatório da base (src/amostra_do_relatorio.py, para_o_site). */
+export const amostraRelatorio: {
+  empresa: string;
+  razao_social: string;
+  cnpj: string;
+  ticker: string;
+  setor: string;
+  dados_de: string; // DD/MM/AAAA
+  pdf: string;
+  aviso: string;
+  destaques: {
+    chave: string;
+    titulo: string;
+    texto: string;
+    fonte: string;
+    data: string;
+    secao: string;
+    link: string;
+  }[];
+  secoes: {
+    chave: string;
+    titulo: string;
+    itens: { nome: string; texto: string; base: string }[];
+    paragrafos: string[];
+    tabelas: TabelaDaAmostra[];
+  }[];
+  limites: string[];
+  fontes: string[];
+} = amostraJson;

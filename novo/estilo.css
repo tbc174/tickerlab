@@ -713,6 +713,20 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-texto article h3 { display: inline-block; padding: .1rem .7rem; border-radius: 999px; font-size: .85rem;
   color: var(--azul-texto); border: 1px solid color-mix(in srgb, var(--azul-texto) 45%, transparent); }
 
+/* relatório de exemplo da base: os destaques, os números de cada seção e as tabelas */
+.v2-destaques { display: grid; gap: 1rem; margin: 1.2rem 0 2.5rem; }
+.v2-destaques article p { margin: .6rem 0 0; }
+.v2-fonte { color: var(--apagado); font-size: .86rem; }
+.v2-aviso { padding: .9rem 1.1rem; border-radius: var(--raio); border: 1px solid var(--linha); background: color-mix(in srgb, var(--azul) 7%, transparent); }
+.v2-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .8rem; margin: 1rem 0 1.2rem; }
+.v2-numeros div { padding: .8rem 1rem; border: 1px solid var(--linha); border-radius: var(--raio); background: var(--destaque); }
+:root[data-tema="escuro"] .v2-numeros div { background: var(--superficie); }
+.v2-numeros dt { color: var(--apagado); font-size: .85rem; }
+.v2-numeros dd { margin: .25rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.v2-numeros small { display: block; margin-top: .15rem; color: var(--apagado); font-weight: 400; font-size: .8rem; }
+.v2-tabela-da-base summary { cursor: pointer; font-weight: 700; margin: 1.2rem 0 .4rem; }
+.v2-texto th.v2-num, .v2-texto td.v2-num { text-align: right; white-space: nowrap; }
+
 /* 404: o número grande e a linha de preço que despenca */
 .v2-heroi-404 .v2-pagina-topo { min-height: calc(100vh - 9rem); display: flex; flex-direction: column; justify-content: center; }
 .v2-quatro-zero-quatro { margin: 0; font: 800 clamp(5rem, 18vw, 11rem)/.9 "JetBrains Mono", monospace; letter-spacing: -0.06em;
