@@ -52,3 +52,11 @@ filiais passaram a bater. Dos 10 que sobram: 7 sem a marca na Receita (registro 
 Americanas), 2 encerradas e 1 filial (`33.041.260/0652-90`) sem marca em nenhum estabelecimento. **Continua
 abaixo de 90%**: o que sobra é falta da Receita, não erro do IPE, mas mudar a tolerância depois de ver exige
 decisão escrita do Tiago (ADR 0027). A pendência fica.
+
+**Decisão do Tiago (17/10/2026):** a tolerância **continua em 90%** e não foi mudada. A exigência 6 do IPE
+passa porque cada uma das 10 faltas do IPE para a Receita tem causa conhecida do lado da Receita (7 sem a
+marca, 2 encerradas, 1 filial), e nenhuma é erro do IPE. O teste
+`test_recuperacao_judicial_propria_pela_raiz_x_receita_tem_cada_falta_explicada` confere as três causas e
+as contagens. Uma falta de outro tipo faz o teste falhar, e a fonte volta a ser pendência. **Limite
+declarado:** a Receita não serve de segunda fonte completa para a recuperação judicial. O IPE é a fonte do
+modelo, e a Receita só confirma.

@@ -163,7 +163,8 @@ def _ler(
 
 def _demonstracoes(pasta: Path, origens: list[dict[str, str]]) -> pd.DataFrame:
     """As contas do balanço de todos os anos da base "como era", um ano por vez (cabe na memória)."""
-    colunas = [
+    # `campos`, não `colunas`: o nome do módulo das colunas (escondê-lo derrubou a 1ª montagem)
+    campos = [
         "cnpj", "grupo", "demonstracao", "conta", "descricao", "inicio", "fim", "valor",
         "divulgado_em", "ate",
     ]  # fmt: skip
@@ -172,12 +173,12 @@ def _demonstracoes(pasta: Path, origens: list[dict[str, str]]) -> pd.DataFrame:
         origens.append(origem_de_tabela(arquivo, pasta))
         ano = pd.read_parquet(
             arquivo,
-            columns=colunas,
+            columns=campos,
             filters=[("demonstracao", "in", ["BPA", "BPP", "DRE"])],
         )
         partes.append(colunas.contas_do_balanco(ano))
     if not partes:
-        return pd.DataFrame(columns=[*colunas, "item"])
+        return pd.DataFrame(columns=[*campos, "item"])
     return _datas(
         pd.concat(partes, ignore_index=True), ["inicio", "fim", "divulgado_em", "ate"]
     )

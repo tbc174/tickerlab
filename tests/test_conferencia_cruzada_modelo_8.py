@@ -85,10 +85,12 @@ def test_insolvencia_do_ipe_x_receita_tem_cada_divergencia_explicada():
     assert len(rj) == 25 and _sim(rj["confere"]).all()
 
 
-def test_recuperacao_judicial_propria_pela_raiz_x_receita_continua_abaixo_da_tolerancia():
+def test_recuperacao_judicial_propria_pela_raiz_x_receita_tem_cada_falta_explicada():
     """Remedida de 17/10 com a regra do PR 3 (só a recuperação judicial da própria companhia, pela
-    raiz do CNPJ): 25 de 25 da Receita para o IPE, 22 de 32 do IPE para a Receita. O que sobra é a
-    Receita sem a marca; a tolerância só muda por decisão escrita do Tiago."""
+    raiz do CNPJ): 25 de 25 da Receita para o IPE, 22 de 32 do IPE para a Receita. **Decisão do
+    Tiago (17/10):** a tolerância continua em 90% e a exigência 6 do IPE passa porque cada uma das
+    10 faltas tem causa conhecida do lado da Receita, nenhuma é erro do IPE. Se aparecer uma falta
+    de outro tipo, este teste falha e a fonte volta a ser pendência."""
     rj = _ler("insolvencia_receita_rj_propria")
     _divergencias_explicadas(rj)
     # Receita → IPE confere quando o IPE marca a raiz; IPE → Receita, quando a Receita marca
@@ -101,6 +103,16 @@ def test_recuperacao_judicial_propria_pela_raiz_x_receita_continua_abaixo_da_tol
     assert (confere[receita].sum(), receita.sum()) == (25, 25)
     assert (confere[~receita].sum(), (~receita).sum()) == (22, 32)
     assert confere[~receita].mean() < CONCORDANCIA_MINIMA
+    # as 10 faltas do IPE para a Receita: só as três causas conhecidas
+    faltas = rj.loc[~receita & ~confere, "explicacao"]
+    causas = {
+        "a Receita não tem a marca": 7,  # registro na Junta incompleto (como o da Americanas)
+        "a Receita já tirou a marca": 2,  # recuperação já encerrada
+        "CNPJ de uma filial": 1,
+    }
+    for causa, quantas in causas.items():
+        assert faltas.str.contains(causa, regex=False).sum() == quantas, causa
+    assert len(faltas) == sum(causas.values())
 
 
 def test_prorrogacoes_de_2022_a_2026_estao_no_codigo_e_nas_entregas():

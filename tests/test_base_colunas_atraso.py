@@ -785,6 +785,14 @@ def test_montar_grava_uma_linha_por_exemplo_com_manifesto(tmp_path, monkeypatch)
     pd.DataFrame([_fca("2021-05-31")]).to_parquet(
         tmp_path / "fca_geral" / "2021.parquet"
     )
+    # com demonstrações na pasta: a 1ª montagem no servidor quebrou só ao lê-las (17/10)
+    (tmp_path / "demonstracoes").mkdir()
+    pd.DataFrame(
+        [
+            _conta("BPA", "1", "Ativo Total", 1000.0, "2021-11-10"),
+            _conta("DFC_MI", "6.01", "Caixa das operações", 5.0, "2021-11-10"),
+        ]
+    ).to_parquet(tmp_path / "demonstracoes" / "2021.parquet")
     indice = pd.DataFrame(
         {"cnpj": [CIA], "versao": [2], "recebido_em": pd.to_datetime(["2021-12-01"])}
     )
@@ -824,6 +832,7 @@ def test_montar_grava_uma_linha_por_exemplo_com_manifesto(tmp_path, monkeypatch)
     assert {
         "rotulos_atraso/rotulos_atraso.parquet",
         "fca_geral/2021.parquet",
+        "demonstracoes/2021.parquet",
         "i",
         "c",
     } <= urls
