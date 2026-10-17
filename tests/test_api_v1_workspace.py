@@ -500,14 +500,14 @@ PALAVRAS_DE_RECOMENDACAO = ("compre", "venda", "oportunidade", "preço-alvo", "r
 
 def test_textos_do_pulse_nao_recomendam(cliente, banco, relogio):
     """O Pulse mostra o que mudou, não o que fazer: nenhum texto fixo sugere compra ou venda
-    (a nota que diz "não é recomendação" é a única que pode usar a palavra)."""
+    (a nota "nada aqui é recomendação" é a única que pode usar a palavra)."""
     ana = _conta(banco)
     _salvar_com_ficha(banco, ana.id, "X")
     with banco.begin() as conexao:
         salvar_simulacao(conexao, ana.id, "backtest", "Velha", {}, {})
     dados = _pulse(cliente)
     textos = [dados["janela"]["texto"], dados["sem_estrategias"], *dados["avisos"]]
-    textos += [n for n in dados["notas"] if "não é recomendação" not in n]
+    textos += [n for n in dados["notas"] if "é recomendação" not in n]
     for texto in textos:
         for palavra in PALAVRAS_DE_RECOMENDACAO:
             assert palavra not in texto.lower(), texto

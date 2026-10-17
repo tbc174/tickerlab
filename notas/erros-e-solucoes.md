@@ -339,6 +339,7 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `novo/` (app em React) é um pacote minificado gerado e guardado no Git (o VPS não tem Node), com nome de arquivo que muda a cada build, e ele empacota `web/conteudo/paginas.json`. Todo PR que mexe numa página ou no React regrava os mesmos arquivos; o primeiro a entrar deixa os outros em conflito. Rebase não resolve: reescreve o ramo e exige push forçado (proibido pela trava).
 - **Solução:** `python -m scripts.juntar_main`: merge da `main` no ramo; conflito só em pasta gerada (`site/`, `novo/`, `web/conteudo/`) é resolvido partindo da versão da `main` e rodando todos os geradores por cima; conflito em código desfaz o merge e para. Depois, `git push` comum. Regra no `CLAUDE.md` (Git e GitHub).
 - **Detalhe:** numa cópia criada antes da regra `web/** eol=lf` do `.gitattributes`, o `web/app/index.html` tinha CRLF e o build do Windows punha uma linha em branco a mais no `novo/index.html` (o CI recusaria). Cópia nova (`git worktree add`) já sai com LF.
+- **Detalhe (17/10):** depois dos geradores (ou da trava do commit, que os roda), os `web/conteudo/*.json` podem aparecer como modificados só pelo fim de linha (`git diff --ignore-cr-at-eol` vazio). Antes de rodar o `juntar_main` ou um commit, `git checkout -- web/conteudo/` limpa esses arquivos; se um deles mudou de verdade (ex.: `paginas.json` com contrato novo), limpe só os outros e faça `git add` dele.
 - **Data:** 13/10/2026
 
 ## Duas sessões criam a migração com o mesmo número
