@@ -1691,7 +1691,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de to
 
 ## `insolvencia`
 
-Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido (`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o `rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa (controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` guarda o que aconteceu com a outra
+Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido (`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o `rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa (controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` guarda o que aconteceu com a outra. Desde a 3.0.0 cada versão de uma entrega é uma linha, com a própria `conhecido_em`: a reapresentação não apaga a data da 1ª versão
 
 - **Fonte:** CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -1702,7 +1702,7 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 - **Chaves:** `cnpj`, `protocolo`, `versao`, `rotulo`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 2.0.0
+- **Versão do contrato:** 3.0.0
 - **Onde fica:** Parquet em `<acervo>/base/insolvencia/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
@@ -1736,12 +1736,12 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 - **Licença:** Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)
-- **Atraso de divulgação:** O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
+- **Atraso de divulgação:** A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** não
 - **Chaves:** `cnpj`, `mes_do_retrato`
-- **Três datas:** aconteceu_em = `data_situacao_especial`; publico_em = `mes_do_retrato`; coletado_em = `origem_coletada_em`
+- **Três datas:** aconteceu_em = `data_situacao_especial`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
@@ -1754,6 +1754,7 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `rotulo` | falencia, recuperacao_judicial, recuperacao_extrajudicial, liquidacao, liquidacao_judicial, liquidacao_extrajudicial ou intervencao (vazio nas outras situações, como espólio) | texto |
 | `data_situacao_especial` | Data da situação especial informada | data (dia) |
 | `mes_do_retrato` | Mês do arquivo da Receita de onde a linha veio | AAAA-MM |
+| `disponivel_em` | Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois) | data (dia) |
 | `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
 | `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |

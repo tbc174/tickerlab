@@ -4254,7 +4254,7 @@
       "tabela": "insolvencia",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "2.0.0",
+      "versao": "3.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4356,7 +4356,7 @@
       "tabela": "cnpj_situacao_especial",
       "modulo": "governo_e_sancoes",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4386,6 +4386,10 @@
           "descricao": "Mês do arquivo da Receita de onde a linha veio",
           "unidade": "AAAA-MM"
         },
+        "disponivel_em": {
+          "descricao": "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo baixado depois)",
+          "unidade": "data (dia)"
+        },
         "origem_sha256": {
           "descricao": "SHA-256 do arquivo original no acervo",
           "unidade": "texto"
@@ -4409,7 +4413,7 @@
       ],
       "datas": {
         "aconteceu_em": "data_situacao_especial",
-        "publico_em": "mes_do_retrato",
+        "publico_em": "disponivel_em",
         "coletado_em": "origem_coletada_em"
       },
       "historico_desde": "2026-10-14",
@@ -4418,7 +4422,7 @@
       "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
-      "atraso": "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
     },
     "pgfn_divida": {
       "tabela": "pgfn_divida",

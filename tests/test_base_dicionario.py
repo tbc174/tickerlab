@@ -283,7 +283,7 @@ def test_tabelas_da_serie_b_cobrem_as_colunas_gravadas():
     ]  # fmt: skip
     situacao = [
         "cnpj", "cnpj_basico", "matriz", "situacao_especial", "rotulo",
-        "data_situacao_especial", "mes_do_retrato",
+        "data_situacao_especial", "mes_do_retrato", "disponivel_em",
     ]  # fmt: skip
     curva = [
         "data_base", "curva", "prazo_anos", "taxa", "titulos", "maior_prazo_anos",
@@ -354,12 +354,15 @@ def test_contrato_comeca_na_versao_1():
     buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige).
 
     Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
-    própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e `auditores` 2.0.0
+    própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e 3.0.0 (17/10/2026),
+    uma linha por versão da entrega (a reapresentação apagava a data da 1ª versão), e `auditores` 2.0.0
     (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA), e
     `debentures_assembleias` 2.0.0 (17/10/2026), a chave passou a ser o `link` (a CVM põe vários
-    arquivos numa entrega e, de 2003 a 2015, não dá a versão)."""
+    arquivos numa entrega e, de 2003 a 2015, não dá a versão), e `cnpj_situacao_especial` 2.0.0
+    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
-    assert maiores.pop("insolvencia") == "2"
+    assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
+    assert maiores.pop("cnpj_situacao_especial") == "2"
     assert set(maiores.values()) == {"1"}

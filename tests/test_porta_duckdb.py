@@ -329,6 +329,7 @@ def test_eventos_da_rede(tmp_path):
                 "situacao_especial": ["FALIDO"],
                 "data_situacao_especial": ["2024-07-05"],
                 "mes_do_retrato": ["2024-07"],
+                "disponivel_em": [pd.Timestamp("2024-07-31").date()],
                 "origem_coletada_em": ["2024-07-10T12:00:00+00:00"],
             }
         ),
