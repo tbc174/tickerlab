@@ -269,7 +269,9 @@ def test_porta_le_as_cotas_como_eram_na_data(ambiente, tmp_path):
     pytest.importorskip("duckdb")
     from base import porta
 
-    pasta = tmp_path / "acervo" / "base" / "cda"  # dentro do acervo, onde a porta procura
+    pasta = (
+        tmp_path / "acervo" / "base" / "cda"
+    )  # dentro do acervo, onde a porta procura
     carga_cda.main(["--pasta", str(pasta), "--desde", "2022", "--ate", "2022"])
     filtro = {"cnpj_fundo": "00.322.699/0001-06"}
     todas = porta.ler("cda_cotas", filtros=filtro)
