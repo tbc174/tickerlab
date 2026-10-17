@@ -340,7 +340,8 @@ def dia_de(valor: object) -> str:
 
 
 def condicao_como_era(colunas: list[str], tabela: str) -> str:
-    """`publico_em ≤ D` e (`ate` vazio ou `ate > D`), com o dia no parâmetro `$dia`."""
+    """`publico_em ≤ D` e (`ate` vazio ou `ate > D` ou, se a tabela diz, `ate_publico_em > D`: o fim
+    que ainda não era público não conta), com o dia no parâmetro `$dia`."""
     if "publico_em" not in colunas:
         raise ValueError(
             f"{tabela}: sem `publico_em` no contrato, não dá para dizer como era numa data"
@@ -348,7 +349,10 @@ def condicao_como_era(colunas: list[str], tabela: str) -> str:
     condicao = "publico_em <= CAST($dia AS DATE)"
     if "ate" in colunas:
         ate = _dia("ate")
-        condicao += f" AND ({ate} IS NULL OR {ate} > CAST($dia AS DATE))"
+        valia = f"{ate} IS NULL OR {ate} > CAST($dia AS DATE)"
+        if "ate_publico_em" in colunas:
+            valia += f" OR {_dia('ate_publico_em')} > CAST($dia AS DATE)"
+        condicao += f" AND ({valia})"
     return condicao
 
 
@@ -356,8 +360,9 @@ def sem_o_fim_futuro(tabela: pd.DataFrame) -> pd.DataFrame:
     """Numa foto de D, o que ainda valia não mostra o fim que só veio depois: `ate` vazio e, na
     ligação, `situacao` = vigente sem `encerrada_por` (toda linha que sobra valia em D)."""
     tabela = tabela.copy()
-    if "ate" in tabela.columns:
-        tabela["ate"] = tabela["ate"].mask(tabela["ate"].notna())
+    for coluna in ("ate", "ate_publico_em"):
+        if coluna in tabela.columns:
+            tabela[coluna] = tabela[coluna].mask(tabela[coluna].notna())
     if (
         "encerrada_por" in tabela.columns
     ):  # só a ligação (outras tabelas têm outra `situacao`)

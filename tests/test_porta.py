@@ -88,7 +88,7 @@ def base(tmp_path):
     _gravar(
         pasta,
         "rede/entidades.parquet",
-        _entidades("EA", "EC1", "EC2", "EC3", "EAUD", "EX"),
+        _entidades("EA", "EC1", "EC2", "EC3", "EC4", "EAUD", "EX"),
     )
     _gravar(
         pasta,
@@ -137,6 +137,14 @@ def base(tmp_path):
                 "tipo": "controlada_de",
                 "publico_em": "2017-05-31",
             },
+            {  # acabou em 2020, mas o fim só ficou público em 2021: em 2020 ainda valia
+                "de": "EC4",
+                "para": "EA",
+                "tipo": "controlada_de",
+                "publico_em": "2017-05-31",
+                "ate": "2020-01-01",
+                "ate_publico_em": "2021-04-23",
+            },
         ),
     )
     return pasta
@@ -145,7 +153,7 @@ def base(tmp_path):
 def test_catalogo(base):
     catalogo = Porta(base).catalogo()
     tabelas = catalogo["tabelas"]
-    assert tabelas["ligacoes"]["versao"] == "1.0.0"
+    assert tabelas["ligacoes"]["versao"] == "1.1.0"  # coluna `ate_publico_em`
     assert tabelas["ligacoes"]["datas"]["publico_em"] == "publico_em"
     assert tabelas["ligacoes"]["na_porta"] is True
     assert tabelas["eventos"]["na_porta"] is False  # sem arquivo nesta base
@@ -160,13 +168,18 @@ def test_ler_com_como_era_em(base):
         em_2020 = p.ler("ligacoes", como_era_em=DIA)
         so_ea = p.ler("ligacoes", como_era_em=DIA, filtros={"para": "EA"})
         tipos = p.ler("ligacoes", filtros={"de": ["EC1", "EAUD"]})
-    assert len(tudo) == 5
-    assert set(em_2020["de"]) == {"EC1", "EC2", "EAUD", "EX"}
+    assert len(tudo) == 6
+    assert set(em_2020["de"]) == {"EC1", "EC2", "EC4", "EAUD", "EX"}
     ec2 = em_2020[em_2020["de"] == "EC2"].iloc[0]
     assert (
         pd.isna(ec2["ate"]) and ec2["situacao"] == "vigente"
     )  # o fim de 2023 era futuro
-    assert set(so_ea["de"]) == {"EC1", "EC2", "EAUD"}
+    ec4 = em_2020[em_2020["de"] == "EC4"].iloc[0]
+    assert pd.isna(ec4["ate"]) and pd.isna(
+        ec4["ate_publico_em"]
+    )  # o fim de 2020 era segredo
+    assert ec4["situacao"] == "vigente"
+    assert set(so_ea["de"]) == {"EC1", "EC2", "EC4", "EAUD"}
     assert set(tipos["de"]) == {"EC1", "EAUD"}
 
 
@@ -251,9 +264,10 @@ def test_rede_de_uma_empresa_de_mentira(base):
         ("EAUD", "auditada_por"),
         ("EC1", "controlada_de"),
         ("EC2", "controlada_de"),
+        ("EC4", "controlada_de"),
     ]
     assert set(rede.ligacoes["salto"]) == {1}
-    assert set(rede.entidades["id_entidade"]) == {"EA", "EC1", "EC2", "EAUD"}
+    assert set(rede.entidades["id_entidade"]) == {"EA", "EC1", "EC2", "EC4", "EAUD"}
     tickers = rede.identificadores[rede.identificadores["sistema"] == "ticker"]
     assert set(tickers["valor"]) == {"VELH3", "NOVA3"}  # o FUTR3 só apareceu em 2022
     nova = tickers[tickers["valor"] == "NOVA3"].iloc[0]
@@ -264,8 +278,8 @@ def test_rede_sem_data_traz_tudo_e_tipos_filtram(base):
     with Porta(base) as p:
         hoje = p.rede(RAIZ)
         so_controle = p.rede(RAIZ, tipos=["controlada_de"])
-    assert set(hoje.ligacoes["de"]) == {"EC1", "EC2", "EC3", "EAUD"}
-    assert set(so_controle.ligacoes["de"]) == {"EC1", "EC2", "EC3"}
+    assert set(hoje.ligacoes["de"]) == {"EC1", "EC2", "EC3", "EC4", "EAUD"}
+    assert set(so_controle.ligacoes["de"]) == {"EC1", "EC2", "EC3", "EC4"}
 
 
 def test_rede_de_quem_nao_existe_e_erro(base):
@@ -387,7 +401,7 @@ def test_carteira(base):
 def test_funcoes_do_modulo_usam_o_acervo(base, monkeypatch):
     """`base.porta.ler(...)` sem abrir nada: a base é `<acervo>/base`."""
     monkeypatch.setenv(acervo.VARIAVEL_DA_PASTA, str(base.parent))
-    assert len(porta.ler("ligacoes", como_era_em=DIA)) == 4
+    assert len(porta.ler("ligacoes", como_era_em=DIA)) == 5
     assert porta.rede(RAIZ).centro == "EA"
     assert "ligacoes" in porta.catalogo()["tabelas"]
     assert porta.carteira([CNPJ], desde="2024-01-01").empty

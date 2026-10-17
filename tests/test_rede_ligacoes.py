@@ -91,6 +91,28 @@ def test_como_era_em_respeita_o_fim():
     assert ligacoes.como_era_em(tabela, D("2021-03-31")).empty  # `ate` não inclui o dia
 
 
+def test_fim_que_so_ficou_publico_depois_ainda_vale():
+    """A Ultrapar (PR 4): o FRE de 2020 trocou a Ipiranga para coligada (fim em 01/01/2020), mas só
+    ficou público em 23/04/2021. Em 31/12/2020 a base ainda a via como controlada."""
+    tabela = _tabela(_ligacao(ate=D("2020-01-01"), ate_publico_em=D("2021-04-23")))
+    assert len(ligacoes.como_era_em(tabela, D("2020-12-31"))) == 1
+    assert ligacoes.como_era_em(tabela, D("2021-04-23")).empty
+
+
+def test_fim_sem_data_publica_e_publico_no_fim_ou_com_a_ligacao():
+    """Sem `ate_publico_em` da fonte, o fim fica público no próprio dia (a regra de antes) ou, se
+    acabou antes de a ligação ser pública, junto com ela: nunca antes de nenhum dos dois."""
+    tabela = _tabela(
+        _ligacao(ate=D("2021-03-31")),
+        _ligacao(de=OXITENO, ate=D("2019-01-01")),
+        _ligacao(de="E" + "4" * 20),
+    )
+    por_de = tabela.set_index("de")["ate_publico_em"]
+    assert por_de[IPIRANGA] == D("2021-03-31")
+    assert por_de[OXITENO] == D("2020-05-29")
+    assert pd.isna(por_de["E" + "4" * 20])  # vigente: sem fim, sem data do fim
+
+
 _DIAS = st.integers(min_value=0, max_value=3000).map(
     lambda n: D("2015-01-01") + pd.Timedelta(days=n)
 )
@@ -99,20 +121,27 @@ _DIAS = st.integers(min_value=0, max_value=3000).map(
 @settings(max_examples=60, deadline=None)
 @given(
     linhas=st.lists(
-        st.tuples(_DIAS, st.one_of(st.none(), _DIAS)), min_size=1, max_size=15
+        st.tuples(_DIAS, st.one_of(st.none(), _DIAS), st.one_of(st.none(), _DIAS)),
+        min_size=1,
+        max_size=15,
     ),
     dia=_DIAS,
 )
 def test_como_era_em_e_igual_sem_o_futuro(linhas, dia):
-    """Cortar o que ficou público depois de D não muda "como era em D"; nada dela é de depois."""
+    """Cortar o que ficou público depois de D não muda "como era em D"; nada dela é de depois, e o
+    que acabou só sai quando o fim já era público."""
     tabela = _tabela(
         *(
-            _ligacao(de=f"E{n:020d}", publico_em=publico, ate=fim)
-            for n, (publico, fim) in enumerate(linhas)
+            _ligacao(
+                de=f"E{n:020d}", publico_em=publico, ate=fim, ate_publico_em=fim_publico
+            )
+            for n, (publico, fim, fim_publico) in enumerate(linhas)
         )
     )
     em_d = ligacoes.como_era_em(tabela, dia)
     assert (em_d["publico_em"] <= dia).all()
+    saiu = tabela[(tabela["publico_em"] <= dia) & ~tabela["de"].isin(em_d["de"])]
+    assert (saiu["ate"] <= dia).all() and (saiu["ate_publico_em"] <= dia).all()
     sem_o_futuro = tabela[tabela["publico_em"] <= dia]
     pd.testing.assert_frame_equal(
         em_d.reset_index(drop=True),
@@ -143,6 +172,7 @@ def test_nada_apagado_entre_cargas():
         "carga",
     ]
     assert por_de.loc[OXITENO, "ate"] == D("2023-06-02")
+    assert por_de.loc[OXITENO, "ate_publico_em"] == D("2023-06-02")  # soube-se na carga
     assert por_de.loc["E" + "4" * 20, "encerrada_por"] == "fonte"
     assert por_de.loc["E" + "5" * 20, "situacao"] == "vigente"
     # a encerrada pela carga continua encerrada na carga seguinte, com a mesma data

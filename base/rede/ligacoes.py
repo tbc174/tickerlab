@@ -3,15 +3,19 @@
 Cada linha diz "`de` → `para`" com um `tipo` (`controlada_de`, `detem`, `emite`...). As três datas têm
 nomes fixos: `aconteceu_em` é a data do fato (na sanção, a do ato administrativo publicado; a da infração
 vai em `infracao_em`), `publico_em` quando ficou público e `coletado_em` quando a base guardou o arquivo
-(do registro de coletas). `ate` é o fim, sem incluir o dia (vazio: ainda vale).
+(do registro de coletas). `ate` é o fim, sem incluir o dia (vazio: ainda vale), e `ate_publico_em` é
+desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a mostra (nunca antes do
+`ate` nem do `publico_em`; sem a data da fonte, o maior dos dois).
 
 **Nada é apagado entre cargas** (plano, D6): a ligação que some da fonte fica, com `situacao` =
 encerrada, `ate` = dia da carga e `encerrada_por` = carga; quando a própria fonte diz o fim,
 `encerrada_por` = fonte. A única exceção é a lápide (`base/parquet.py::regravar_por_lapide`).
 
-**Como era em D** (D5): `publico_em ≤ D` e (`ate` vazio ou `ate > D`); quem decide **no** dia D passa
-D − 1. O `ate` é a data do fato: um fim que só ficou público depois aparece já no passado. Para o
-retrato exato de uma carga antiga, use a versão guardada dela (`ligacoes.v<N>`).
+**Como era em D** (D5): `publico_em ≤ D` e (`ate` vazio ou `ate > D` ou `ate_publico_em > D`); quem
+decide **no** dia D passa D − 1. O `ate` é a data do fato e, sozinho, olharia o futuro: o FRE de 2020
+da Ultrapar (público só em 23/04/2021) fecha a Ipiranga como controlada em 01/01/2020, e em 31/12/2020
+ninguém sabia disso. Para o retrato exato de uma carga antiga, use a versão guardada dela
+(`ligacoes.v<N>`).
 """
 
 from collections.abc import Mapping, Sequence
@@ -20,9 +24,17 @@ import pandas as pd
 
 COLUNAS = (
     "de", "para", "tipo", "papel", "participacao", "aconteceu_em", "infracao_em", "publico_em",
-    "coletado_em", "ate", "situacao", "encerrada_por", "fonte", "origem_sha256", "conferido_por",
+    "coletado_em", "ate", "ate_publico_em", "situacao", "encerrada_por", "fonte", "origem_sha256",
+    "conferido_por",
 )  # fmt: skip
-DATAS = ("aconteceu_em", "infracao_em", "publico_em", "coletado_em", "ate")
+DATAS = (
+    "aconteceu_em",
+    "infracao_em",
+    "publico_em",
+    "coletado_em",
+    "ate",
+    "ate_publico_em",
+)
 # o que identifica uma ligação entre uma carga e a outra (o fim e a situação podem mudar)
 CHAVE = ["de", "para", "tipo", "papel", "aconteceu_em", "fonte"]
 VIGENTE, ENCERRADA = "vigente", "encerrada"
@@ -52,6 +64,10 @@ def normalizar(tabela: pd.DataFrame) -> pd.DataFrame:
     texto = [c for c in COLUNAS if c not in DATAS and c != "participacao"]
     tabela[texto] = tabela[texto].astype(object).where(tabela[texto].notna(), None)
     encerrada = tabela["ate"].notna()
+    # o fim nunca fica público antes de acontecer nem antes de a própria ligação ser pública
+    tabela["ate_publico_em"] = (
+        tabela[["ate_publico_em", "ate", "publico_em"]].max(axis=1).where(encerrada)
+    )
     tabela["situacao"] = tabela["situacao"].where(
         tabela["situacao"].notna(), encerrada.map({True: ENCERRADA, False: VIGENTE})
     )
@@ -101,15 +117,19 @@ def juntar_com_a_vigente(
     agora = sumiram["situacao"] == VIGENTE
     sumiram.loc[agora, "situacao"] = ENCERRADA
     sumiram.loc[agora, "encerrada_por"] = PELA_CARGA
-    sumiram.loc[agora, "ate"] = pd.Timestamp(dia_da_carga).normalize()
+    sumiram.loc[agora, ["ate", "ate_publico_em"]] = pd.Timestamp(
+        dia_da_carga
+    ).normalize()
     return normalizar(pd.concat([nova.drop(columns="_chave"), sumiram]))
 
 
 def como_era_em(ligacoes: pd.DataFrame, dia: pd.Timestamp) -> pd.DataFrame:
-    """As ligações como a base as conhecia no dia (D5): públicas até ele e ainda não encerradas."""
+    """As ligações como a base as conhecia no dia (D5): públicas até ele e sem um fim já público."""
     dia = pd.Timestamp(dia)
     valia = (ligacoes["publico_em"] <= dia) & (
-        ligacoes["ate"].isna() | (ligacoes["ate"] > dia)
+        ligacoes["ate"].isna()
+        | (ligacoes["ate"] > dia)
+        | (ligacoes["ate_publico_em"] > dia)
     )
     return ligacoes[valia]
 

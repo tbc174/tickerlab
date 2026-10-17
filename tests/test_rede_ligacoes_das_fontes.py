@@ -282,6 +282,8 @@ def test_controladas_viram_controlada_de():
     # a Oxiteno sumiu no FRE de 2022: a fonte encerrou na referência dele
     oxiteno = controladas[controladas["de"] == _id("62545686")].iloc[0]
     assert (oxiteno["ate"], oxiteno["encerrada_por"]) == (D("2021-12-31"), "fonte")
+    # o fim só ficou público com o FRE que já não a mostra (entregue em 31/05/2022)
+    assert oxiteno["ate_publico_em"] == D("2022-05-31")
     assert (
         len(controladas) == 2
     )  # o tipo em branco nos FREs seguintes não abre outra ligação
@@ -305,6 +307,9 @@ def test_detem_comprime_meses_seguidos():
     assert set(petr4["papel"]) == {"comprado"}
     petr3 = detem[detem["para"] == _isin(PETR3)].iloc[0]
     assert petr3["ate"] == D("2021-02-28")
+    # a carteira sem a posição só fica pública 90 dias depois do mês
+    assert petr3["ate_publico_em"] == D("2021-02-28") + pd.Timedelta(days=90)
+    assert petr4["ate_publico_em"].iloc[0] == D("2021-04-30") + pd.Timedelta(days=90)
 
 
 def test_emite_pelo_emissor_do_isin():
@@ -345,6 +350,7 @@ def test_audita_pelo_codigo_da_cvm():
     assert linha["aconteceu_em"] == D("2017-01-01")
     assert linha["publico_em"] == D("2021-05-31")  # o FCA que primeiro mostrou
     assert linha["ate"] == D("2021-12-31")  # o fim, do FCA mais novo
+    assert linha["ate_publico_em"] == D("2022-05-31")  # o 1º FCA que mostrou o fim
     assert linha["origem_sha256"] == "a1" * 32
 
 
@@ -370,6 +376,89 @@ def test_banco_do_conglomerado():
     assert linha["aconteceu_em"] == D("2025-03-31")
     assert linha["publico_em"] == D("2025-03-31") + pd.Timedelta(days=120)
     assert pd.isna(linha["ate"])
+
+
+PWC = "00287"
+ID_PWC = ids.id_entidade("auditor", "codigo_cvm_auditor", PWC)
+
+
+def _ligacoes_com(**trocas: pd.DataFrame) -> pd.DataFrame:
+    entradas = montar.Entradas(**{**vars(_entradas_com_tudo()), **trocas})
+    identificadores = _identificadores(entradas)
+    periodos = ligacoes_das_fontes.periodos_das_posicoes(_posicoes())
+    return montar.montar_ligacoes(
+        entradas, identificadores, periodos, ultimo_mes=periodos["fim"].max()
+    )
+
+
+def _petrobras_troca_kpmg_por_pwc() -> pd.DataFrame:
+    """FCA de 2021: KPMG desde 2017, sem fim. FCA de 2022: só a PwC, desde 01/01/2022; a KPMG some
+    sem que nenhum FCA diga o fim dela (o caso da KPMG de 2006 "vigente" em 2020)."""
+    return pd.DataFrame(
+        {
+            "cnpj": [PETROBRAS, PETROBRAS],
+            "referencia": [D("2021-01-01"), D("2022-01-01")],
+            "conhecido_em": [D("2021-05-31"), D("2022-05-31")],
+            "auditor_id": ["rede:kpmg", "rede:pwc"],
+            "auditor": ["KPMG AUDITORES", "PRICEWATERHOUSECOOPERS"],
+            "auditor_cnpj": ["57755217000129", "61562112000120"],
+            "codigo_cvm_auditor": [KPMG, PWC],
+            "inicio": [D("2017-01-01"), D("2022-01-01")],
+            "fim": [pd.NaT, pd.NaT],
+            "origem_sha256": ["a1" * 32, "a2" * 32],
+        }
+    )
+
+
+def test_mandato_sem_fim_que_some_do_fca_fecha():
+    audita = _do_tipo(
+        _ligacoes_com(auditores=_petrobras_troca_kpmg_por_pwc()), "audita"
+    )
+    por_firma = audita.set_index("de")
+    kpmg, pwc = por_firma.loc[ID_KPMG], por_firma.loc[ID_PWC]
+    # fecha no início do mandato que entrou, público com o FCA que já não a lista
+    assert (kpmg["ate"], kpmg["ate_publico_em"]) == (D("2022-01-01"), D("2022-05-31"))
+    assert (kpmg["situacao"], kpmg["encerrada_por"]) == ("encerrada", "fonte")
+    assert pd.isna(pwc["ate"]) and pwc["situacao"] == "vigente"
+
+
+def test_mandato_que_some_sem_outro_entrar_fecha_na_entrega():
+    """O FCA seguinte lista só um mandato já encerrado: a KPMG sumiu sem ninguém no lugar. O fim é a
+    entrega desse FCA (o mais tarde que pode ter sido), público no mesmo dia."""
+    auditores = _petrobras_troca_kpmg_por_pwc().assign(
+        inicio=[D("2017-01-01"), D("2012-01-01")],
+        fim=[pd.NaT, D("2016-12-31")],
+    )
+    audita = _do_tipo(_ligacoes_com(auditores=auditores), "audita").set_index("de")
+    kpmg = audita.loc[ID_KPMG]
+    assert (kpmg["ate"], kpmg["ate_publico_em"]) == (D("2022-05-31"), D("2022-05-31"))
+
+
+def test_mandato_listado_no_fca_mais_novo_continua():
+    auditores = _petrobras_troca_kpmg_por_pwc()
+    de_novo = auditores.head(1).assign(
+        referencia=D("2022-01-01"), conhecido_em=D("2022-05-31")
+    )
+    auditores = pd.concat([auditores, de_novo], ignore_index=True)
+    audita = _do_tipo(_ligacoes_com(auditores=auditores), "audita").set_index("de")
+    assert pd.isna(audita.loc[ID_KPMG, "ate"])  # auditoria conjunta: as duas seguem
+
+
+def test_banco_que_sai_do_conglomerado_fecha_com_o_if_data_seguinte():
+    """O Inter some do conglomerado na data-base de set/2025: o fim é essa data-base, pública 120
+    dias depois (quando o IF.data dela sai)."""
+    ifdata = pd.DataFrame(
+        {
+            "data_base": [D("2025-03-31"), D("2025-06-30"), D("2025-09-30")],
+            "cod_inst": ["00416968", "00416968", "60746948"],
+            "instituicao": ["BANCO INTER", "BANCO INTER", "BANCO ADMIN"],
+            "cnpj_lider": ["60746948", "60746948", "60746948"],
+            "origem_sha256": "ee" * 32,
+        }
+    )
+    linha = _do_tipo(_ligacoes_com(ifdata=ifdata), "do_conglomerado_de").iloc[0]
+    assert linha["ate"] == D("2025-09-30")
+    assert linha["ate_publico_em"] == D("2025-09-30") + pd.Timedelta(days=120)
 
 
 def test_toda_ligacao_tem_as_duas_pontas_e_chave_unica():
