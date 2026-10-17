@@ -273,6 +273,11 @@ def ambiente(tmp_path, monkeypatch):
             _linha("1", assunto="Waiver - 9ª emissão"),
             _linha("2", AVISO, "Pagamento de juros"),
             _linha("3", AGE),
+            # de 2003 a 2015 o IPE não traz a versão nem o protocolo
+            _linha("", entrega="2011-03-01", versao=""),
+            # dois arquivos na mesma entrega: mesmo protocolo e versão, links diferentes
+            {**_linha("4"), "Link_Download": f"{RAD}&numProtocolo=904346&numVersao=1"},
+            {**_linha("4"), "Link_Download": f"{RAD}&numProtocolo=904348&numVersao=1"},
         )
     )
     quando = datetime(2026, 10, 16, 23, tzinfo=UTC)
@@ -300,10 +305,13 @@ def test_montar_grava_a_tabela_com_manifesto_linhagem_e_licenca_vendavel(ambient
         ambiente / "base" / "debentures_assembleias" / "debentures_assembleias.parquet"
     )
     tabela = pd.read_parquet(arquivo)
-    assert tabela["protocolo"].tolist() == ["1", "2"]
-    assert tabela["tema_waiver"].tolist() == [True, False]
-    assert tabela["emissao"].tolist()[0] == 9
-    assert resumo == {"documentos": 2, "estresse": 1, "generico": 0}
+    assert tabela["protocolo"].tolist()[1:] == ["1", "2", "4", "4"]
+    assert tabela["protocolo"].iloc[0].startswith("https://")  # sem protocolo: o link
+    assert tabela["versao"].isna().tolist() == [True, False, False, False, False]
+    assert tabela["link"].is_unique  # a chave: um arquivo, uma linha
+    assert tabela["tema_waiver"].tolist()[1:3] == [True, False]
+    assert tabela["emissao"].tolist()[1] == 9
+    assert resumo == {"documentos": 5, "estresse": 1, "generico": 3}
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["versao_do_codigo"].iloc[0] == VERSAO
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()

@@ -355,8 +355,11 @@ def test_contrato_comeca_na_versao_1():
 
     Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
     própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e `auditores` 2.0.0
-    (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA)."""
+    (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA), e
+    `debentures_assembleias` 2.0.0 (17/10/2026), a chave passou a ser o `link` (a CVM põe vários
+    arquivos numa entrega e, de 2003 a 2015, não dá a versão)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "2"
     assert maiores.pop("auditores") == "2"
+    assert maiores.pop("debentures_assembleias") == "2"
     assert set(maiores.values()) == {"1"}
