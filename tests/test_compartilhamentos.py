@@ -221,3 +221,10 @@ def test_textos_da_tela():
     for texto in (comp.O_QUE_FICA_VISIVEL["ficha"], comp.O_QUE_FICA_VISIVEL["pdf"]):
         assert "nome" in texto and "e-mail" in texto
     assert set(comp.NOMES_DOS_TIPOS) == set(comp.TIPOS)
+
+
+def test_impressao_da_ficha_ignora_a_hora_e_pega_o_ativo():
+    """A tela usa a impressão para não mostrar o link de outra ficha (achado 2a do Codex)."""
+    base = comp.impressao_da_ficha(_congelada())
+    assert comp.impressao_da_ficha(_congelada(agora=AGORA + timedelta(hours=1))) == base
+    assert comp.impressao_da_ficha(_congelada(ticker="VALE3.SA")) != base
