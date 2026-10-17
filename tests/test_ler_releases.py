@@ -9,7 +9,7 @@ from scripts import ler_releases
 def _release(cnpj, referencia, entrega, protocolo):
     return {
         "cnpj": cnpj, "codigo_cvm": "1", "periodo": "x", "referencia": pd.Timestamp(referencia),
-        "data_entrega": pd.Timestamp(entrega), "protocolo": protocolo, "versao": 1, "link": "l",
+        "data_entrega": pd.Timestamp(entrega), "protocolo": protocolo, "versao": 1, "link": "https://www.rad.cvm.gov.br/x.pdf",
     }  # fmt: skip
 
 
@@ -152,3 +152,14 @@ def test_pdf_ilegivel_vai_para_a_fila_de_revisao(tmp_path, monkeypatch):
     ler_releases.piloto(cliente, _achados("a"), tmp_path, n=1, teto=1.0)
     assert cliente.criados == 0
     assert ler_releases.fila_de_revisao(_achados("a"), tmp_path) == ["a"]
+
+
+def test_so_baixa_link_https_da_cvm():
+    assert ler_releases.link_da_cvm("https://www.rad.cvm.gov.br/ENET/x.pdf")
+    for fora in (
+        "http://www.rad.cvm.gov.br/x",
+        "https://cvm.gov.br.evil.com/x",
+        "https://evil.com/x",
+        "file:///c:/x",
+    ):
+        assert not ler_releases.link_da_cvm(fora)

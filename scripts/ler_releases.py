@@ -27,6 +27,7 @@ from collections.abc import Callable
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -51,6 +52,7 @@ AMOSTRA_DA_ESTIMATIVA = 50
 SEMENTE = 20261017
 PESO_DA_ESCRITA_NO_CACHE = 1.25
 SONDA_DO_PREFIXO = "."
+DOMINIO_DA_CVM = "cvm.gov.br"  # o link vem do índice; só baixa daqui, por https
 _FORA_DA_CHAVE = re.compile(r"[^A-Za-z0-9_-]")
 
 
@@ -208,6 +210,15 @@ def escolher(achados: pd.DataFrame, amostra: int | None) -> pd.DataFrame:
 # --- baixar ----------------------------------------------------------------------------------
 
 
+def link_da_cvm(link: str) -> bool:
+    """O link é https e de um endereço da CVM? (nada que o índice traga leva o servidor a outro lugar)."""
+    partes = urlsplit(link)
+    host = partes.hostname or ""
+    return partes.scheme == "https" and (
+        host == DOMINIO_DA_CVM or host.endswith("." + DOMINIO_DA_CVM)
+    )
+
+
 def baixar(
     achados: pd.DataFrame,
     pasta: Path,
@@ -224,6 +235,9 @@ def baixar(
     for i, (_, release) in enumerate(faltam.head(maximo).iterrows()):
         if i:
             time.sleep(pausa)
+        if not link_da_cvm(release["link"]):
+            log.warning("Link fora da CVM ignorado: %s", release["protocolo"])
+            continue
         conteudo = obter(release["link"])
         if not leitura.e_pdf(conteudo):
             log.warning(
