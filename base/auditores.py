@@ -149,11 +149,45 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
         }
     )
     tabela = tabela.astype(object).where(tabela.notna(), None)
-    # sem o responsável técnico, o mesmo mandato repetido (um por sócio) vira uma linha só
-    tabela = tabela.dropna(subset=["conhecido_em"]).drop_duplicates(
-        ["id_documento", "auditor_id", "inicio", "fim"]
+    tabela = _uma_entrega_por_versao(tabela.dropna(subset=["conhecido_em"]))
+    return _um_mandato_por_firma(tabela)[list(COLUNAS)].reset_index(drop=True)
+
+
+def _uma_entrega_por_versao(tabela: pd.DataFrame) -> pd.DataFrame:
+    """A mesma versão do FCA entregue em dois documentos (2021, docs 110772 e 111833, no mesmo dia):
+    fica a primeira entrega, a que se conheceu antes (no empate, o documento de número menor)."""
+    ordem = tabela.assign(
+        numero=pd.to_numeric(tabela["id_documento"], errors="coerce")
+    ).sort_values(["conhecido_em", "numero"], kind="stable")
+    primeiras = ordem.drop_duplicates(["cnpj", "referencia", "versao"])["id_documento"]
+    return tabela[tabela["id_documento"].isin(set(primeiras))]
+
+
+def _ultimo_fim(fins: pd.Series) -> date | None:
+    """O fim do mandato da firma: vazio se algum escritório segue, senão o último a sair."""
+    return None if fins.isna().any() else fins.max()
+
+
+def _um_mandato_por_firma(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Linhas do mesmo documento, da mesma firma e com o mesmo início são um mandato só.
+
+    Acontece com o mesmo mandato repetido por sócio responsável (que não entra), com o escritório
+    estrangeiro da rede ao lado do brasileiro (PwC Chile e PwC Brasil) e com duas filiais da mesma
+    rede. Fica a linha nacional e com CNPJ; o fim é o do último escritório a sair.
+    """
+    grupo = ["id_documento", "auditor_id", "inicio"]
+    preferida = tabela.assign(
+        estrangeira=tabela["origem"].ne("Nacional"),
+        sem_cnpj=tabela["auditor_cnpj"].isna(),
+    ).sort_values(["estrangeira", "sem_cnpj"], kind="stable")
+    fins = preferida.groupby(grupo, dropna=False, sort=False)["fim"].transform(
+        _ultimo_fim
     )
-    return tabela[list(COLUNAS)].reset_index(drop=True)
+    return (
+        preferida.assign(fim=fins.astype(object).where(fins.notna(), None))
+        .drop_duplicates(grupo)
+        .sort_index()
+    )
 
 
 @dataclass
@@ -204,11 +238,11 @@ def _troca(
     documento: pd.DataFrame,
     saidas: set[str],
     entradas: set[str],
+    vigentes: dict[str, date],
     recebido: date,
 ) -> dict:
-    efetiva = _mais_cedo(
-        documento.loc[documento["auditor_id"].isin(entradas), "inicio"]
-    )
+    # o início do mandato que entra, não o de um mandato antigo da mesma firma listado no FCA
+    efetiva = _mais_cedo(vigentes[i] for i in entradas)
     desde = _mais_cedo(estado.vigentes[i] for i in saidas)
     anos = (
         round((efetiva - desde).days / DIAS_POR_ANO, 1) if efetiva and desde else None
@@ -268,7 +302,9 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
         }
         estado.vistos.update(vigentes.items())
         if saidas and entradas:
-            linhas.append(_troca(estado, documento, saidas, entradas, recebido))
+            linhas.append(
+                _troca(estado, documento, saidas, entradas, vigentes, recebido)
+            )
         # quem continua mantém o "desde" antigo; quem entra começa no início do mandato
         estado.vigentes = {
             auditor: estado.vigentes.get(auditor, inicio)

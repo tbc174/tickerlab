@@ -4651,7 +4651,7 @@
       "tabela": "auditores",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4730,7 +4730,8 @@
         "cnpj",
         "referencia",
         "versao",
-        "auditor_id"
+        "auditor_id",
+        "inicio"
       ],
       "datas": {
         "aconteceu_em": "inicio",

@@ -39,8 +39,7 @@ RESUMOS: dict[str, tuple[str, tuple[str, ...], bool]] = {
     "rotulos_atraso": ("referencia", (), False),
     # a mesma conta aparece no trimestre e no acumulado, e em cada valor que valeu ao longo do tempo
     "demonstracoes_como_era": ("fim", ("inicio", "fim", "divulgado_em"), True),
-    # a mesma rede pode ter dois mandatos seguidos no mesmo FCA (KPMG com dois CNPJs, BDO → BDO RCS)
-    "auditores": ("ano_do_arquivo", ("inicio",), False),
+    "auditores": ("ano_do_arquivo", (), False),
     "trocas_de_auditor": ("conhecido_em", (), False),
     "insolvencia": ("ano_do_arquivo", (), False),
     "eventos": ("ano_do_arquivo", (), False),
