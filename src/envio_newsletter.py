@@ -160,7 +160,7 @@ Transporte = Callable[..., requests.Response]
 def enviar_pelo_resend(
     para: str,
     email: Email,
-    link_de_saida: str,
+    link_de_saida: str | None,
     idempotencia: str,
     chave: str,
     transporte: Transporte = requests.post,
@@ -168,7 +168,8 @@ def enviar_pelo_resend(
 ) -> str:
     """Envia pelo Resend e devolve o id da mensagem. A chave de idempotência evita duplicar.
 
-    Sem `remetente`, vale o da Newsletter (as Novidades passam o delas)."""
+    Sem `remetente`, vale o da Newsletter (as Novidades passam o delas). Sem `link_de_saida` (o
+    boletim interno da base, que só vai para o autor), o e-mail sai sem o cabeçalho de saída."""
     remetente = remetente or os.environ.get(VARIAVEL_DO_REMETENTE) or REMETENTE_PADRAO
     try:
         resposta = transporte(
@@ -184,10 +185,16 @@ def enviar_pelo_resend(
                 "subject": email.assunto,
                 "html": email.html,
                 "text": email.texto,
-                "headers": {
-                    "List-Unsubscribe": f"<{link_de_saida}>",
-                    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-                },
+                **(
+                    {
+                        "headers": {
+                            "List-Unsubscribe": f"<{link_de_saida}>",
+                            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+                        }
+                    }
+                    if link_de_saida
+                    else {}
+                ),
             },
         )
     except requests.RequestException as erro:
