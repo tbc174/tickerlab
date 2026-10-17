@@ -8,6 +8,7 @@ from datetime import date
 
 import pandas as pd
 import pytest
+import urllib3
 
 from scripts import coletar_iex_do_dia as coletor
 from tests.test_iex_tops import mensagem_de_negocio, pacote, pcapng
@@ -219,6 +220,66 @@ def test_404_num_dia_de_pregao_continua_sendo_falha(tmp_path, monkeypatch):
         lambda url, stream=False, timeout=None: _Resposta404(),
     )
     assert codigo == 1
+
+
+# --- conexão que cai no meio do arquivo (16/10/2026: a carga parou num ProtocolError da urllib3) ---
+class _FluxoQueCai(io.RawIOBase):
+    """O arquivo do dia que a IEX começa a mandar e corta no meio, como na carga de 16/10."""
+
+    def readable(self):
+        return True
+
+    def readinto(self, _buffer):
+        raise urllib3.exceptions.ProtocolError(
+            "Connection broken: IncompleteRead(8791124987 bytes read, 8722677294 more expected)"
+        )
+
+
+def _iex_que_cai(vezes: int, pedidos: list, dia_que_cai: str = "20260909"):
+    """Corta o arquivo de `dia_que_cai` nas primeiras `vezes` tentativas; o resto vai inteiro."""
+    inteira = _iex_falsa(_dia_com_dois_negocios())
+    cortes = {"faltam": vezes}
+
+    def buscar(url, stream=False, timeout=None):
+        pedidos.append(url)
+        if url.endswith("hist?date=" + dia_que_cai):
+            return _Resposta(json_=[{"feed": "TOPS", "link": LINK + dia_que_cai}])
+        if url.endswith(LINK + dia_que_cai) and cortes["faltam"] > 0:
+            cortes["faltam"] -= 1
+            resposta = _Resposta()
+            resposta.raw = _FluxoQueCai()
+            return resposta
+        return inteira(url, stream, timeout)
+
+    return buscar
+
+
+def test_conexao_que_cai_uma_vez_e_tentada_de_novo(tmp_path, monkeypatch):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    pedidos: list = []
+    codigo = coletor.main(
+        ["--data", "2026-09-09", "--pasta", str(tmp_path)], _iex_que_cai(1, pedidos)
+    )
+    assert codigo == 0
+    assert (tmp_path / "2026-09-09.parquet").exists()
+    assert pedidos.count(LINK + "20260909") == 2
+
+
+def test_conexao_que_cai_de_novo_falha_o_dia_sem_parar_a_rodada(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    pedidos: list = []
+    codigo = coletor.main(
+        ["--desde", "2026-09-08", "--maximo", "99", "--pasta", str(tmp_path)],
+        _iex_que_cai(99, pedidos),
+    )
+    assert codigo == 1  # o alarme avisa
+    assert not (tmp_path / "2026-09-09.parquet").exists()
+    assert not list(tmp_path.glob("*.parcial"))
+    # o dia seguinte da fila foi coletado
+    assert (tmp_path / "2026-09-08.parquet").exists()
+    assert "2026-09-09: FALHOU, nada gravado (ProtocolError" in capsys.readouterr().out
 
 
 # --- selo por ativo (plano dos intradiários grátis, PR 5) --------------------------------------

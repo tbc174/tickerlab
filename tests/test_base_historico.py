@@ -73,6 +73,61 @@ def test_negociacoes_do_vlmo(banco, tmp_path):
     assert (tmp_path / "base" / "negociacoes" / "2024.parquet").exists()
 
 
+def _zip_do_ipe_com(ano: int, *linhas: str) -> bytes:
+    cabecalho = (
+        "CNPJ_Companhia;Nome_Companhia;Codigo_CVM;Data_Referencia;Categoria;Tipo;Especie;"
+        "Assunto;Data_Entrega;Tipo_Apresentacao;Protocolo_Entrega;Versao;Link_Download"
+    )
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        texto = "\n".join([cabecalho, *linhas])
+        z.writestr(f"ipe_cia_aberta_{ano}.csv", texto.encode("latin-1"))
+    return saida.getvalue()
+
+
+def test_insolvencia_olha_os_anos_anteriores_e_grava_cada_ano_no_seu_arquivo(
+    banco, tmp_path
+):
+    # a recuperação extrajudicial começa em 2019; o documento de 2020 não diz o tipo
+    rj = "Informações de Companhias em Recuperação Judicial ou Extrajudicial"
+
+    def linha(tipo, assunto, entrega, protocolo):
+        return (
+            f"11.111.111/0001-11;ATMA PARTICIPAÇÕES S.A.;1;{entrega};{rj};{tipo};;{assunto};"
+            f"{entrega};AP;{protocolo};1;https://www.rad.cvm.gov.br/x?n={protocolo}"
+        )
+
+    url = (
+        "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{}.zip"
+    )
+    _guardar(
+        "cvm-hist-ipe",
+        url.format(2019),
+        _zip_do_ipe_com(
+            2019,
+            linha(
+                "Petição Inicial",
+                "Pedido de Homologação de Plano de Recuperação Extrajudicial",
+                "2019-12-30",
+                "1",
+            ),
+        ),
+    )
+    _guardar(
+        "cvm-hist-ipe",
+        url.format(2020),
+        _zip_do_ipe_com(
+            2020, linha("Sentenças", "Efeito Suspensivo", "2020-08-16", "2")
+        ),
+    )
+    with banco.connect() as conexao:
+        linhas = historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+    assert linhas == {2019: 1, 2020: 1}
+    de_2020 = pd.read_parquet(tmp_path / "base" / "insolvencia" / "2020.parquet")
+    assert list(de_2020["rotulo"]) == ["recuperacao_extrajudicial"]
+    assert set(de_2020["ano_do_arquivo"]) == {2020}
+
+
 def test_sem_original_guardado_nada_e_montado(banco, tmp_path):
     with banco.connect() as conexao:
         assert historico.montar("eventos", conexao, tmp_path / "base", AGORA) == {}
@@ -143,3 +198,17 @@ def test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao(
         )
     assert sorted(p.name for p in pasta.iterdir()) == ["2024.json", "2024.parquet"]
     assert (pasta / "2024.parquet").read_bytes() == antes
+
+
+def test_rotulo_de_insolvencia_com_fonte_nao_comercial_da_erro(
+    banco, tmp_path, monkeypatch
+):
+    """A trava das licenças (ADR 0008, Emenda 1): rotular pede fonte vendável ou de uso interno; as
+    outras tabelas da base histórica não são rótulos e não passam pela trava de rotular."""
+    from src.banco import coletas
+
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao:
+        with pytest.raises(coletas.LicencaNaoPermiteError, match="insolvencia"):
+            historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+        assert historico.montar("eventos", conexao, tmp_path / "base", AGORA) == {}

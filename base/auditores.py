@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.cnpj import SEPARADORES
+from base.cnpj import completo as cnpj_completo
 from base.parquet import (
     LINHAGEM,
     arquivos_atuais,
@@ -49,16 +51,15 @@ COLUNAS_DAS_TROCAS = (
 # referência indica a troca (um encerrado há anos é história antiga, não notícia daquele ano)
 ENCERRADO_HA_POUCO = timedelta(days=366)
 DIAS_POR_ANO = 365.25
-SO_DIGITOS = re.compile(r"\D")
 # rede → padrão no nome sem acento e em minúsculas (a primeira que casar vale). A Terco entrou na EY em
 # 2010 ("Ernst & Young Terco"): "Terco Grant Thornton" é a mesma firma, então conta como EY
 REDES = (
     ("ey", re.compile(r"\b(ern?e?st|enerst)\b|\bey\b|\bterco\b")),
     ("pwc", re.compile(r"price\s*waterhouse|\bpwc\b")),
     ("kpmg", re.compile(r"\bk(pm|mp)g\b")),
-    ("deloitte", re.compile(r"del+oit+e")),
+    ("deloitte", re.compile(r"del+oit+e|delotit+e")),
     ("grant_thornton", re.compile(r"grant\s*th")),
-    ("bdo", re.compile(r"\bbdo\b")),
+    ("bdo", re.compile(r"\bbdo\b|bdo\s+rcs")),
     ("baker_tilly", re.compile(r"baker\s*til+y")),
     ("crowe", re.compile(r"\bcrowe\b")),
     ("rsm", re.compile(r"\brsm\b")),
@@ -111,11 +112,13 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
     recebido = dict(
         zip(principal["ID_DOC"].str.strip(), principal["DT_RECEB"], strict=True)
     )
-    documento = bruto["CPF_CNPJ_Auditor"].str.replace(SO_DIGITOS, "", regex=True)
-    pessoa_juridica = documento.str.len() == 14
+    documento = bruto["CPF_CNPJ_Auditor"].str.replace(SEPARADORES, "", regex=True)
+    pessoa_juridica = bruto["CPF_CNPJ_Auditor"].map(cnpj_completo).notna()
     codigo = _texto(bruto["Codigo_CVM_Auditor"])
     nome = _texto(bruto["Auditor"]).where(pessoa_juridica | (documento == ""), None)
-    auditor_cnpj = documento.where(pessoa_juridica, None)
+    auditor_cnpj = (
+        bruto["CPF_CNPJ_Auditor"].map(cnpj_completo).where(pessoa_juridica, None)
+    )
     # código vazio: o da mesma raiz de CNPJ em outra linha do mesmo arquivo (nunca de outro ano)
     raiz = auditor_cnpj.str[:8]
     codigo_da_raiz = (
@@ -146,11 +149,45 @@ def ler_auditores_do_fca(conteudo_do_zip: bytes) -> pd.DataFrame:
         }
     )
     tabela = tabela.astype(object).where(tabela.notna(), None)
-    # sem o responsável técnico, o mesmo mandato repetido (um por sócio) vira uma linha só
-    tabela = tabela.dropna(subset=["conhecido_em"]).drop_duplicates(
-        ["id_documento", "auditor_id", "inicio", "fim"]
+    tabela = _uma_entrega_por_versao(tabela.dropna(subset=["conhecido_em"]))
+    return _um_mandato_por_firma(tabela)[list(COLUNAS)].reset_index(drop=True)
+
+
+def _uma_entrega_por_versao(tabela: pd.DataFrame) -> pd.DataFrame:
+    """A mesma versão do FCA entregue em dois documentos (2021, docs 110772 e 111833, no mesmo dia):
+    fica a primeira entrega, a que se conheceu antes (no empate, o documento de número menor)."""
+    ordem = tabela.assign(
+        numero=pd.to_numeric(tabela["id_documento"], errors="coerce")
+    ).sort_values(["conhecido_em", "numero"], kind="stable")
+    primeiras = ordem.drop_duplicates(["cnpj", "referencia", "versao"])["id_documento"]
+    return tabela[tabela["id_documento"].isin(set(primeiras))]
+
+
+def _ultimo_fim(fins: pd.Series) -> date | None:
+    """O fim do mandato da firma: vazio se algum escritório segue, senão o último a sair."""
+    return None if fins.isna().any() else fins.max()
+
+
+def _um_mandato_por_firma(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Linhas do mesmo documento, da mesma firma e com o mesmo início são um mandato só.
+
+    Acontece com o mesmo mandato repetido por sócio responsável (que não entra), com o escritório
+    estrangeiro da rede ao lado do brasileiro (PwC Chile e PwC Brasil) e com duas filiais da mesma
+    rede. Fica a linha nacional e com CNPJ; o fim é o do último escritório a sair.
+    """
+    grupo = ["id_documento", "auditor_id", "inicio"]
+    preferida = tabela.assign(
+        estrangeira=tabela["origem"].ne("Nacional"),
+        sem_cnpj=tabela["auditor_cnpj"].isna(),
+    ).sort_values(["estrangeira", "sem_cnpj"], kind="stable")
+    fins = preferida.groupby(grupo, dropna=False, sort=False)["fim"].transform(
+        _ultimo_fim
     )
-    return tabela[list(COLUNAS)].reset_index(drop=True)
+    return (
+        preferida.assign(fim=fins.astype(object).where(fins.notna(), None))
+        .drop_duplicates(grupo)
+        .sort_index()
+    )
 
 
 @dataclass
@@ -160,6 +197,8 @@ class _Empresa:
     referencia: date | None = None
     vigentes: dict[str, date] = field(default_factory=dict)  # auditor_id → desde
     nomes: dict[str, str | None] = field(default_factory=dict)
+    # mandatos que já apareceram (firma, início): voltar num FCA novo não é troca
+    vistos: set[tuple[str, date]] = field(default_factory=set)
 
 
 def _vigentes(documento: pd.DataFrame, recebido: date) -> dict[str, date]:
@@ -199,11 +238,11 @@ def _troca(
     documento: pd.DataFrame,
     saidas: set[str],
     entradas: set[str],
+    vigentes: dict[str, date],
     recebido: date,
 ) -> dict:
-    efetiva = _mais_cedo(
-        documento.loc[documento["auditor_id"].isin(entradas), "inicio"]
-    )
+    # o início do mandato que entra, não o de um mandato antigo da mesma firma listado no FCA
+    efetiva = _mais_cedo(vigentes[i] for i in entradas)
     desde = _mais_cedo(estado.vigentes[i] for i in saidas)
     anos = (
         round((efetiva - desde).days / DIAS_POR_ANO, 1) if efetiva and desde else None
@@ -229,7 +268,8 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
     entregues até uma data dá as mesmas trocas que montar com tudo e cortar naquela data. Entrada de
     uma segunda firma (auditoria conjunta) ou saída de uma delas não é troca; troca é sair uma firma e
     entrar outra. Um FCA de um ano mais velho entregue depois de um mais novo (reapresentação) é
-    correção do passado e não gera troca.
+    correção do passado e não gera troca; nem um mandato que já tinha aparecido (mesma firma, mesmo
+    início) e volta num FCA novo, depois de um FCA desatualizado.
     """
     linhas: list[dict] = []
     estados: dict[str, _Empresa] = {}
@@ -255,9 +295,16 @@ def trocas_de_auditor(auditores: pd.DataFrame) -> pd.DataFrame:
         if primeiro:
             estado.vigentes = _anteriores_no_primeiro_fca(documento, vigentes)
         saidas = set(estado.vigentes) - set(vigentes)
-        entradas = set(vigentes) - set(estado.vigentes)
+        entradas = {
+            auditor
+            for auditor in set(vigentes) - set(estado.vigentes)
+            if (auditor, vigentes[auditor]) not in estado.vistos
+        }
+        estado.vistos.update(vigentes.items())
         if saidas and entradas:
-            linhas.append(_troca(estado, documento, saidas, entradas, recebido))
+            linhas.append(
+                _troca(estado, documento, saidas, entradas, vigentes, recebido)
+            )
         # quem continua mantém o "desde" antigo; quem entra começa no início do mandato
         estado.vigentes = {
             auditor: estado.vigentes.get(auditor, inicio)

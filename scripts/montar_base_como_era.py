@@ -23,7 +23,7 @@ import argparse
 import hashlib
 import logging
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -44,6 +44,7 @@ from base.ponto_no_tempo import (
     versoes_antigas,
 )
 from src import demonstracoes as dm
+from src import rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -58,7 +59,7 @@ URLS = {"DFP": dm.URL_DO_DFP, "ITR": dm.URL_DO_ITR}
 
 def _baixar_da_fonte(url: str) -> bytes | None:
     """O arquivo da CVM, ou None se ele ainda não existe (404)."""
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=300, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
@@ -86,14 +87,23 @@ def documentos_do_enet(
     """As versões antigas do índice que estão no acervo, lidas; os links das que faltam; e a
     origem (endereço e SHA-256 do XML) de cada uma lida."""
     documentos, faltando, origens = [], [], []
-    for link in versoes_antigas(indice)["link"]:
-        xml = original_mais_recente(conexao, link)
+    for versao in versoes_antigas(indice).itertuples():
+        xml = original_mais_recente(conexao, versao.link)
         if xml is None:
-            faltando.append(link)
+            faltando.append(versao.link)
         else:
-            documentos.append(ler_xml_enet(xml))
-            origens.append(_origem(link, xml))
+            documentos.append(_com_o_cnpj_do_indice(ler_xml_enet(xml), versao.cnpj))
+            origens.append(_origem(versao.link, xml))
     return documentos, faltando, origens
+
+
+def _com_o_cnpj_do_indice(documento: DocumentoEnet, cnpj: str) -> DocumentoEnet:
+    """Alguns XMLs do ENET vêm sem o CNPJ (`CnpjEmpresa` vazio): o documento fica com o do índice,
+    que é quem diz de que companhia é aquele link. Sem isso, as contas ficavam sem data de divulgação
+    e a montagem do ano parava (2020 a 2025, achado em 16/10/2026)."""
+    if documento.cnpj:
+        return documento
+    return replace(documento, cnpj=cnpj, contas=documento.contas.assign(cnpj=cnpj))
 
 
 def _baixar_versoes_antigas(motor: sa.Engine, indice: pd.DataFrame, limite: int) -> int:

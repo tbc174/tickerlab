@@ -25,7 +25,7 @@ import anthropic
 import requests
 import sqlalchemy as sa
 
-from src import leitura, topicos, topicos_modelo
+from src import leitura, rede, topicos, topicos_modelo
 from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.leituras import (
@@ -40,6 +40,7 @@ from src.configuracao import url_do_banco
 from src.eventos import FONTE_IPE, identificador
 from src.links_das_fontes import link_da_fonte
 
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 log = logging.getLogger("tickerlab.leituras")
 CATEGORIA = "Fato Relevante"
 MAXIMO_POR_VEZ = 20
@@ -48,7 +49,7 @@ DIAS = 30
 
 
 def _baixar_da_fonte(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()
@@ -157,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
         for i, (protocolo, cnpj, publicado, link, titulo) in enumerate(pendentes):
             if i:
-                time.sleep(PAUSA_ENTRE_DOWNLOADS)
+                esperar(PAUSA_ENTRE_DOWNLOADS)
             conteudo = baixar(link)
             if not leitura.e_pdf(conteudo):
                 log.warning(

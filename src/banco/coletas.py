@@ -8,8 +8,10 @@ este registro. Um problema no registro nunca derruba a coleta (fica no log).
 import hashlib
 import logging
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
+from enum import StrEnum
+from typing import NamedTuple
 
 import requests
 import sqlalchemy as sa
@@ -51,6 +53,7 @@ LICENCAS = {
     "bcb-sgs-189": "IGP-M da FGV IBRE (repassado pelo BC): uso comercial pede autorização da FGV",
     "ccee": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
     "antt": "CC BY (dados abertos da ANTT; citar a ANTT)",
+    "tesouro-br": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-divida": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-direto": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
     "tesouro-br-leiloes": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
@@ -62,51 +65,69 @@ LICENCAS = {
     "ons": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
     "anatel": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
     "aneel": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+    # série 4, PR 5b: "SES - Base de dados completa" com CC BY no dados.gov.br (lido em 15/10/2026);
+    # só os CSVs sem pessoas (nunca administradores, contatos ou acionistas)
+    "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
+    # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
+    "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+    # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
+    "wayback": "Internet Archive: 'for scholarship and research purposes only'; só datas",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
-# Pode entrar num produto de dados? (ADR 0055 do autor, exigência 11; não é parecer jurídico: antes
-# de vender qualquer coisa, parecer e decisão nova)
+# Pode entrar num produto de dados, num modelo ou num rótulo? (ADR 0055, exigência 11; ADR 0008,
+# Emenda 1: as quatro marcas, com a resposta por escrito no `licencas-por-fonte.md`). Não é parecer
+# jurídico: antes de vender qualquer coisa, parecer e decisão nova.
 VENDAVEL_ODBL = (
     "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor "
     "está na curadoria, nas versões e na qualidade)"
 )
 VENDAVEL_COM_ATRIBUICAO = "vendável com atribuição à fonte"
+SO_USO_INTERNO = "só uso interno (entra em modelo; nunca vender nem exportar o dado)"
 A_CONFIRMAR = (
-    "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)"
+    "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não "
+    "comercial até a resposta)"
 )
-SO_USO_INTERNO = "só uso interno (nunca vender nem exportar)"
+NAO_COMERCIAL = (
+    "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; "
+    "nunca em modelo, rótulo ou exportação)"
+)
 REVENDA = {
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
-    "sec": A_CONFIRMAR,  # os arquivos são escritos pelas empresas
-    "iex": A_CONFIRMAR,
-    "cftc": A_CONFIRMAR,
-    "rfb": A_CONFIRMAR,
-    "wiki": A_CONFIRMAR,
-    "gdelt": A_CONFIRMAR,
-    "btc": A_CONFIRMAR,
-    "yahoo": SO_USO_INTERNO,
-    "kraken": SO_USO_INTERNO,
-    "mb": SO_USO_INTERNO,
-    # dado pessoal (sócios, autuados, empregadores pessoa física) ou licença a perguntar: só interno
-    "rfb-cnpj": SO_USO_INTERNO,
+    # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
+    "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas
+    "iex": SO_USO_INTERNO,  # com a atribuição "Data provided for free by IEX"
+    "cftc": SO_USO_INTERNO,  # obra do governo dos EUA
+    "wiki": SO_USO_INTERNO,  # CC0
+    "btc": SO_USO_INTERNO,  # blockchain pública lida por nó próprio
+    "rfb": A_CONFIRMAR,  # planilha de cripto da Receita: perguntar a licença
+    "gdelt": A_CONFIRMAR,  # sem termo lido sobre treino de ML
+    "yahoo": NAO_COMERCIAL,  # termos do Yahoo: uso pessoal
+    # sem termo de dados: só a exceção da ADR 0045 (modelo "Clima de risco do Bitcoin"); fora dela,
+    # não comercial (`EXCECOES_DE_MODELO`)
+    "kraken": NAO_COMERCIAL,
+    "mb": NAO_COMERCIAL,
+    # o conjunto só tem o rodapé CC BY-ND do site: perguntar a licença (e há dado pessoal)
+    "rfb-cnpj": A_CONFIRMAR,
+    "pgfn": A_CONFIRMAR,
+    # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
-    "pgfn": SO_USO_INTERNO,
     "ibama": SO_USO_INTERNO,
     "mte": SO_USO_INTERNO,
     "gleif": VENDAVEL_COM_ATRIBUICAO,
     "termos": SO_USO_INTERNO,
     "catalogo": SO_USO_INTERNO,
-    "bcb-sgs-189": SO_USO_INTERNO,
+    "bcb-sgs-189": NAO_COMERCIAL,  # IGP-M da FGV: uso comercial pede autorização da FGV
     "ccee": VENDAVEL_COM_ATRIBUICAO,
     "antt": VENDAVEL_COM_ATRIBUICAO,
+    "tesouro-br": VENDAVEL_ODBL,
     "tesouro-br-divida": VENDAVEL_ODBL,
     "tesouro-br-direto": VENDAVEL_ODBL,
     "tesouro-br-leiloes": VENDAVEL_ODBL,
@@ -116,9 +137,41 @@ REVENDA = {
     "ons": VENDAVEL_COM_ATRIBUICAO,
     "anatel": VENDAVEL_COM_ATRIBUICAO,
     "aneel": VENDAVEL_ODBL,
+    "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
-    "b3": SO_USO_INTERNO,
+    "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
+    "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
+    "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
 }
+
+
+class Marca(StrEnum):
+    """As quatro marcas da Emenda 1 da ADR 0008, da menos para a mais restrita."""
+
+    VENDAVEL = "vendavel"
+    USO_INTERNO = "uso_interno"
+    A_CONFIRMAR = "a_confirmar"  # vale como não comercial até a resposta escrita
+    NAO_COMERCIAL = "nao_comercial"
+
+
+MARCA_DA_REVENDA = {
+    VENDAVEL_ODBL: Marca.VENDAVEL,
+    VENDAVEL_COM_ATRIBUICAO: Marca.VENDAVEL,
+    SO_USO_INTERNO: Marca.USO_INTERNO,
+    A_CONFIRMAR: Marca.A_CONFIRMAR,
+    NAO_COMERCIAL: Marca.NAO_COMERCIAL,
+}
+USOS = ("treinar", "rotular", "exportar")
+PODEM_ENTRAR = {Marca.VENDAVEL, Marca.USO_INTERNO}  # nos três usos
+MODELO_CLIMA_DE_RISCO = "clima-de-risco-do-bitcoin"
+# exceção da ADR 0045: preços das corretoras de cripto sem termo de dados, só neste modelo
+EXCECOES_DE_MODELO = {"kraken": MODELO_CLIMA_DE_RISCO, "mb": MODELO_CLIMA_DE_RISCO}
+
+
+class LicencaNaoPermiteError(Exception):
+    """Treinar, rotular ou exportar com fonte "não comercial" ou "a confirmar" (ADR 0008, Emenda 1)."""
+
+
 LIMITE_DO_DETALHE = 300
 LIMITE_DA_URL = 1000
 HTTP_NAO_ENCONTRADO = 404
@@ -132,8 +185,47 @@ def licenca_da_fonte(fonte: str) -> str:
 
 
 def revenda_da_fonte(fonte: str) -> str:
-    """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, nunca."""
-    return REVENDA.get(fonte) or REVENDA.get(fonte.split("-", 1)[0], SO_USO_INTERNO)
+    """Se o dado da fonte pode ser revendido ("cvm-ipe" → o da CVM); fonte desconhecida, a confirmar
+    (fonte nova sem resposta escrita: ADR 0008, Emenda 1)."""
+    return REVENDA.get(fonte) or REVENDA.get(fonte.split("-", 1)[0], A_CONFIRMAR)
+
+
+def marca_da_fonte(fonte: str) -> Marca:
+    """A marca da fonte ("yahoo-bvsp" → não comercial; "cvm-ipe" → vendável)."""
+    return MARCA_DA_REVENDA[revenda_da_fonte(fonte)]
+
+
+def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:
+    """A marca de uma tabela feita de várias fontes; sem nenhuma fonte conhecida, a confirmar."""
+    ordem = list(Marca)
+    return max(marcas, key=ordem.index, default=Marca.A_CONFIRMAR)
+
+
+def _pode(fonte: str, uso: str, modelo: str | None) -> bool:
+    if marca_da_fonte(fonte) in PODEM_ENTRAR:
+        return True
+    excecao = EXCECOES_DE_MODELO.get(fonte.split("-", 1)[0])
+    return uso != "exportar" and modelo is not None and modelo == excecao
+
+
+def exigir_licenca(
+    uso: str, fontes: Iterable[str], modelo: str | None = None, onde: str = ""
+) -> None:
+    """Erro (não aviso) se alguma fonte não pode `uso` ("treinar", "rotular" ou "exportar").
+
+    Passam "vendável" e "só uso interno"; Kraken e Mercado Bitcoin, só para treinar ou rotular o
+    modelo da exceção da ADR 0045. `onde` (a tabela, o script) entra na mensagem.
+    """
+    if uso not in USOS:
+        raise ValueError(f"uso {uso!r} não existe; use um de {USOS}")
+    barradas = sorted({f for f in fontes if not _pode(f, uso, modelo)})
+    if barradas:
+        lista = ", ".join(f"{f} ({marca_da_fonte(f)})" for f in barradas)
+        alvo = f" ({onde})" if onde else ""
+        raise LicencaNaoPermiteError(
+            f"{uso}{alvo} com fonte sem licença para isso: {lista} "
+            "(ADR 0008, Emenda 1: só 'vendável' e 'só uso interno')"
+        )
 
 
 def registrar(
@@ -217,14 +309,17 @@ def original_mais_recente(conexao: sa.Connection, url: str) -> bytes | None:
     return acervo.ler_original(caminho) if caminho else None
 
 
-def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
-    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
+class Versao(NamedTuple):
+    baixado_em: datetime  # a primeira vez que este conteúdo foi baixado
+    sha256: str
+    caminho: str  # no acervo (`acervo.ler_original`)
 
-    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
-    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
-    """
+
+def versoes_guardadas(conexao: sa.Connection, url: str) -> list[Versao]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo, sem ler os
+    arquivos (o CDA tem ~25 MB por versão: quem usa lê um de cada vez)."""
     linhas = conexao.execute(
-        sa.select(coletas.c.sha256, coletas.c.caminho_do_original)
+        sa.select(coletas.c.baixado_em, coletas.c.sha256, coletas.c.caminho_do_original)
         .where(
             coletas.c.url == url[:LIMITE_DA_URL],
             coletas.c.situacao == "ok",
@@ -233,15 +328,50 @@ def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
         .order_by(coletas.c.baixado_em)
     ).all()
     vistos: set[str] = set()
-    conteudos = []
-    for sha256, caminho in linhas:
-        if sha256 in vistos:
-            continue
-        vistos.add(sha256)
+    versoes = []
+    for baixado_em, sha256, caminho in linhas:
+        if sha256 not in vistos:
+            vistos.add(sha256)
+            versoes.append(Versao(baixado_em, sha256, caminho))
+    return versoes
+
+
+def ausente_antes(conexao: sa.Connection, url: str, quando: datetime) -> bool:
+    """Alguma coleta antes de `quando` achou `url` sem arquivo ("nao_encontrado", o 404 da fonte)?"""
+    return (
+        conexao.execute(
+            sa.select(coletas.c.id)
+            .where(
+                coletas.c.url == url[:LIMITE_DA_URL],
+                coletas.c.situacao == "nao_encontrado",
+                coletas.c.baixado_em < quando,
+            )
+            .limit(1)
+        ).first()
+        is not None
+    )
+
+
+def coletas_guardadas(
+    conexao: sa.Connection, url: str
+) -> list[tuple[datetime, str, bytes]]:
+    """Cada conteúdo diferente de `url` guardado no acervo (quando foi baixado pela primeira vez, o
+    SHA-256 e o conteúdo), do mais antigo ao mais novo (revisões das fontes setoriais, série 4, PR 5)."""
+    guardadas = []
+    for baixado_em, sha256, caminho in versoes_guardadas(conexao, url):
         conteudo = acervo.ler_original(caminho)
         if conteudo is not None:
-            conteudos.append(conteudo)
-    return conteudos
+            guardadas.append((baixado_em, sha256, conteudo))
+    return guardadas
+
+
+def originais_guardados(conexao: sa.Connection, url: str) -> list[bytes]:
+    """Cada conteúdo diferente de `url` guardado no acervo, do mais antigo ao mais novo.
+
+    A fonte que regrava o arquivo no mesmo endereço (o FCA da CVM só publica a versão mais nova de cada
+    formulário) deixa no acervo as baixadas anteriores, que continuam valendo como versões.
+    """
+    return [conteudo for _, _, conteudo in coletas_guardadas(conexao, url)]
 
 
 def ultimas(

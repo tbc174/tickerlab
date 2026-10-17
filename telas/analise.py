@@ -197,6 +197,12 @@ def secao_preco(dados, medias_do_usuario=()):
         horizontal=True,
         help=ajuda_do("Gráfico de velas (candlestick)"),
     )
+    escala_log = col_tipo.toggle(
+        "Escala logarítmica",
+        help="Cada faixa do eixo vale a mesma variação em %: uma queda de 50% ocupa a mesma "
+        "altura com a ação a R$ 100 ou a R$ 2. Ajuda em históricos longos e em ações que "
+        "caíram muito, onde a escala normal achata tudo perto do zero.",
+    )
     medias_escolhidas = col_medias.multiselect(
         "Médias móveis (dias)",
         sorted({*JANELAS_MEDIAS, *medias_do_usuario}),
@@ -212,8 +218,11 @@ def secao_preco(dados, medias_do_usuario=()):
             list(PERIODOS_DAS_VELAS),
             index=1,
             horizontal=True,
-            help="Cada vela é um dia. Com muitos dias elas ficam finas; use o zoom ou "
-            "troque o período para ver os detalhes.",
+            help="Até 1 ano, cada vela é um dia. Com mais de 1 ano, cada vela vira uma "
+            "semana (abertura do primeiro pregão, máxima e mínima da semana e fechamento do "
+            "último pregão), "
+            "porque as velas diárias ficariam finas demais para enxergar. As médias "
+            "móveis continuam sendo de dias.",
         )
         dias_visiveis = PERIODOS_DAS_VELAS[periodo_velas]
     mostrar_grafico(
@@ -222,6 +231,7 @@ def secao_preco(dados, medias_do_usuario=()):
             tipo_do_grafico.lower(),
             tuple(sorted(medias_escolhidas)),
             dias_visiveis,
+            escala_log,
         )
     )
     st.caption(

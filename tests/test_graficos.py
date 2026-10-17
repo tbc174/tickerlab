@@ -234,6 +234,82 @@ def test_variacao_do_dia_usa_o_fechamento_anterior():
     assert "+10,00%" in vela.hovertext[1]  # 11 contra o fechamento anterior de 10
 
 
+# --- Velas semanais, escala log e legenda -------------------------------------------
+
+
+def test_velas_semanais_juntam_os_dias_de_cada_semana():
+    datas = pd.to_datetime(["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-12"])
+    dados = pd.DataFrame(
+        {
+            "Open": [10.0, 11.0, 12.0, 20.0],
+            "High": [11.0, 15.0, 13.0, 21.0],
+            "Low": [9.0, 8.0, 11.0, 19.0],
+            "Close": [10.5, 12.0, 12.5, 20.5],
+            "Volume": [100, 200, 300, 400],
+        },
+        index=datas,
+    )
+    semanas = graficos.velas_semanais(dados)
+    # cada semana fica no último dia que teve pregão (aqui uma quarta), não num sábado
+    assert list(semanas.index) == list(pd.to_datetime(["2026-01-07", "2026-01-12"]))
+    primeira = semanas.iloc[0]
+    assert primeira["Open"] == 10.0  # abertura do 1º dia
+    assert primeira["High"] == 15.0  # maior máxima da semana
+    assert primeira["Low"] == 8.0  # menor mínima da semana
+    assert primeira["Close"] == 12.5  # fechamento do último dia
+    assert primeira["Volume"] == 600  # soma do volume
+
+
+def test_velas_de_mais_de_um_ano_viram_semanais():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="velas", janelas_medias=(20,))
+    semanas = graficos.velas_semanais(dados)
+    vela, volume = figura.data[0], figura.data[-1]
+    assert len(vela.x) == len(semanas)
+    assert len(volume.x) == len(semanas)  # o volume acompanha (soma da semana)
+    assert "Variação na semana" in vela.hovertext[1]
+    # a média continua sendo de dias, lida no último dia de cada semana
+    media = next(tr for tr in figura.data if tr.name == "MM 20")
+    diaria = dados["Close"].rolling(20).mean()
+    assert media.y[-1] == pytest.approx(diaria.loc[semanas.index[-1]])
+
+
+def test_velas_de_um_ano_continuam_diarias():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="velas", dias_visiveis=252)
+    assert len(figura.data[0].x) == 252
+    assert "Variação no dia" in figura.data[0].hovertext[1]
+
+
+def test_linha_nunca_vira_semanal():
+    dados = _ohlcv(graficos.LIMITE_DE_VELAS_DIARIAS + 40)
+    figura = criar_grafico_preco(dados, tipo="linha")
+    assert len(figura.data[0].x) == len(dados)
+
+
+def test_escala_logaritmica_so_quando_pedida():
+    assert criar_grafico_preco(_ohlcv()).layout.yaxis.type != "log"
+    figura = criar_grafico_preco(_ohlcv(), escala_log=True)
+    assert figura.layout.yaxis.type == "log"
+    assert figura.layout.yaxis2.type != "log"  # o volume continua em escala normal
+
+
+def test_etiqueta_do_ultimo_preco_fica_no_lugar_certo_na_escala_log():
+    # No eixo logarítmico, o Plotly lê o "y" das anotações como log10 do valor: passar o
+    # preço direto (5,6) punha a etiqueta em 10^5,6 e esticava o eixo até 400 mil.
+    dados = _ohlcv()
+    figura = criar_grafico_preco(dados, escala_log=True)
+    etiqueta = figura.layout.annotations[0]
+    assert etiqueta.y == pytest.approx(np.log10(dados["Close"].iloc[-1]))
+
+
+def test_legenda_fica_abaixo_do_grafico_longe_dos_botoes_de_periodo():
+    # Em cima, a legenda ficava escondida atrás dos botões 1M a Tudo.
+    figura = criar_grafico_preco(_ohlcv(30), janelas_medias=(5,))
+    assert figura.layout.legend.y < 0
+    assert figura.layout.legend.yanchor == "top"
+
+
 # --- Mapa de calor do retorno mensal ---------------------------------------------
 
 

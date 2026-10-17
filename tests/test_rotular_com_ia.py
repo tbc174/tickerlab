@@ -43,13 +43,14 @@ def _resposta_para(params: dict) -> str:
 
 
 class ClienteDeMentira:
-    def __init__(self, tokens_por_evento=4_500, resposta=None):
+    def __init__(self, tokens_por_evento=4_500, resposta=None, tokens_do_prefixo=1_500):
         self.criados: list[dict] = []
         self.contagens = 0
         self.lotes: list[list] = []
         self.estado = "in_progress"
         self.palpite = "NAO_SEI"
         self._tokens, self._resposta = tokens_por_evento, resposta
+        self._prefixo = tokens_do_prefixo
         self.messages = SimpleNamespace(
             create=self._criar,
             count_tokens=self._contar,
@@ -64,9 +65,10 @@ class ClienteDeMentira:
             return _mensagem(json.dumps({"empresa": self.palpite}))
         return _mensagem(self._resposta or _resposta_para(params))
 
-    def _contar(self, **_):
+    def _contar(self, **pedido):
         self.contagens += 1
-        return SimpleNamespace(input_tokens=self._tokens)
+        sonda = pedido["messages"][0]["content"] == rc.SONDA_DO_PREFIXO
+        return SimpleNamespace(input_tokens=self._prefixo if sonda else self._tokens)
 
     def _lote(self, requests):
         self.lotes.append(list(requests))
@@ -101,11 +103,38 @@ def test_estimar_nao_gasta(pasta):
     cliente = ClienteDeMentira()
     estimativa = rc.estimar(cliente, EVENTOS, pasta)
     assert cliente.criados == [] and cliente.lotes == []
-    assert cliente.contagens == len(EVENTOS)  # amostra de até 50
+    assert cliente.contagens == len(EVENTOS) + 1  # amostra de até 50 + o prefixo fixo
+    n, prefixo = len(EVENTOS), 1_500
+    entrada = (4_500 - prefixo) * n + prefixo * (
+        rc.PESO_DA_ESCRITA_NO_CACHE + rc.PESO_DA_LEITURA_DO_CACHE * (n - 1)
+    )
     esperado = ri.custo_em_dolares(
-        4_500 * 4, ri.SAIDA_ESTIMADA_POR_EVENTO * 4, lote=True
+        round(entrada), ri.SAIDA_ESTIMADA_POR_EVENTO * n, lote=True
     )
     assert estimativa == pytest.approx(esperado)
+
+
+def test_estimativa_conta_o_cache_do_lote_de_15_10():
+    """O lote msgbatch_01WUXkiJ... (2.849 eventos) custou US$ 1,84 de verdade (entrada 570.175, cache
+    lido 4.216.952, escrito 7.650, saída 167.640) e foi estimado em US$ 10,72 sem contar o cache. A
+    estimativa nova fica acima do real (o teto não pode furar) e a no máximo 30% dele."""
+    n = 2_849
+    eventos = [{**EVENTOS[0], "id": f"E{i}"} for i in range(n)]
+    por_evento = round((570_175 + 4_216_952 + 7_650) / n)
+    prefixo = round(4_216_952 / n)
+    cliente = ClienteDeMentira(por_evento, tokens_do_prefixo=prefixo)
+    estimativa = rc.estimar(cliente, eventos, Path("."), so_fatos=True)
+    real = rc._custo_da_resposta(
+        SimpleNamespace(
+            input_tokens=570_175,
+            output_tokens=167_640,
+            cache_creation_input_tokens=7_650,
+            cache_read_input_tokens=4_216_952,
+        ),
+        lote=True,
+    )
+    assert real == pytest.approx(1.84, abs=0.01)
+    assert real <= estimativa <= real * 1.3
 
 
 def test_para_se_estimativa_passa_do_teto(pasta):

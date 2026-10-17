@@ -6,14 +6,16 @@ de ML, PR 6; `base/fidc.py`).
 
 Grava, com manifesto e versões (`base/parquet.py::gravar_com_versoes`):
 - `informe/<quadro>/<ano>.parquet`: cada quadro do informe (`tab_I`...) no formato da fonte, com
-  `competencia`, `cnpj_fundo` e `disponivel_em`; de 2013 a 2024 pelos arquivos anuais (`HIST/`), de
-  2025 em diante pelos mensais;
+  `competencia`, `cnpj_fundo`, `visto_em` e `disponivel_em`; de 2013 a 2024 pelos arquivos anuais
+  (`HIST/`), de 2025 em diante pelos mensais. `visto_em` é o dia em que o informe apareceu na CVM,
+  pelas versões que o arquivista guardou (`base/publicacao.py`); as origens são todas essas versões;
 - `cadastro/cad_fi.parquet`, `cadastro/hist_<tabela>.parquet` e `cadastro/registro_<tabela>.parquet`:
   o cadastro atual, o histórico e o registro da CVM 175.
 
 Nada de dado pessoal: CPF de cedente, diretor e gestor pessoa física saem no leitor. Cada arquivo
 vem do acervo (o arquivista guarda os do FIDC, `cvm-fidc`) e só é baixado se faltar (fonte
 `cvm-fidc-base`), um pedido por vez. Recusa rodar sem a versão do código (exigência 13 da ADR 0055).
+`--refazer` regrava mesmo com as mesmas origens (o leitor mudou); a tabela anterior vira versão.
 """
 
 import argparse
@@ -27,12 +29,11 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
 import sqlalchemy as sa
 
-from base import fidc
+from base import fidc, publicacao
 from base.parquet import GRAVADO, IGUAL, gravar_com_versoes
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -48,10 +49,14 @@ MESES = range(1, 13)
 NAO_ENCONTRADO = 404
 SUBPASTA = Path("base") / "fidc"
 ORDEM = ["competencia", "cnpj_fundo"]
+CHAVE = [
+    "competencia",
+    "cnpj_fundo",
+]  # um informe por fundo e mês: a chave do `visto_em`
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=600, headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
@@ -74,17 +79,24 @@ def _obter(conexao: sa.Connection, url: str) -> bytes | None:
 
 
 def _origem(url: str, conteudo: bytes) -> dict[str, str]:
-    return {"url": url, "sha256": hashlib.sha256(conteudo).hexdigest()}
+    return _origem_da_versao(url, hashlib.sha256(conteudo).hexdigest())
 
 
-def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
+def _origem_da_versao(url: str, sha256: str) -> dict[str, str]:
+    return {"url": url, "sha256": sha256}
+
+
+def carregar_ano(
+    conexao: sa.Connection, ano: int, pasta: Path, *, refazer: bool = False
+) -> str:
     """Grava os quadros do informe de um ano; diz quantos foram gravados e quantos estavam iguais."""
     lidos = [
         (u, c) for u in enderecos_do_ano(ano) if (c := _obter(conexao, u)) is not None
     ]
     if not lidos:
         return "sem arquivo"
-    origens = [_origem(u, c) for u, c in lidos]
+    versoes = publicacao.todas_as_versoes(conexao, lidos)
+    origens = [_origem_da_versao(v.url, v.sha256) for v in versoes]
 
     @cache
     def quadros() -> dict[str, pd.DataFrame]:  # lido só se algum quadro precisar
@@ -94,13 +106,25 @@ def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
                 partes.setdefault(chave, []).append(tabela)
         return {k: pd.concat(v, ignore_index=True) for k, v in partes.items()}
 
+    @cache
+    def vistos() -> (
+        pd.DataFrame
+    ):  # o dia em que cada informe apareceu, versão por versão
+        return publicacao.vistos_nas_versoes(versoes, fidc.chaves_do_informe, CHAVE)
+
     def montar(chave: str) -> Callable[[], pd.DataFrame]:
-        return lambda: quadros()[chave].assign(disponivel_em=fidc.disponivel_em)
+        return lambda: publicacao.com_visto_em(
+            quadros()[chave].assign(disponivel_em=fidc.disponivel_em), vistos(), CHAVE
+        )
 
     nomes = sorted(set().union(*(fidc.quadros_do_arquivo(c) for _, c in lidos)))
     resultados = [
         gravar_com_versoes(
-            montar(chave), pasta / "informe" / chave / str(ano), origens, ORDEM
+            montar(chave),
+            pasta / "informe" / chave / str(ano),
+            origens,
+            ORDEM,
+            forcar=refazer,
         )
         for chave in nomes
     ]
@@ -142,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
     argumentos.add_argument("--desde", type=int, default=PRIMEIRO_ANO)
     argumentos.add_argument("--ate", type=int, default=hoje.year)
     argumentos.add_argument("--pasta", type=Path, default=None)
+    argumentos.add_argument(
+        "--refazer",
+        action="store_true",
+        help="regrava mesmo com as mesmas origens (o leitor mudou)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -157,7 +186,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with motor.connect() as conexao:
             for ano in range(opcoes.desde, opcoes.ate + 1):
-                log.info("FIDC de %s: %s", ano, carregar_ano(conexao, ano, pasta))
+                resultado = carregar_ano(conexao, ano, pasta, refazer=opcoes.refazer)
+                log.info("FIDC de %s: %s", ano, resultado)
             carregar_cadastro(conexao, pasta)
     finally:
         motor.dispose()

@@ -23,6 +23,7 @@ import re
 
 import pandas as pd
 
+from base.cnpj import raiz as raiz_do_cnpj
 from base.fca import vale_na_data
 
 API = "https://olinda.bcb.gov.br/olinda/servico/IFDATA/versao/v1/odata/"
@@ -48,7 +49,6 @@ RELATORIOS = (
 )  # 15 (câmbio) fica fora
 MESES_DA_DATA_BASE = (3, 6, 9, 12)
 DIAS_ATE_FICAR_PUBLICO = 120
-DIGITOS_DA_RAIZ = 8
 # por onde a instituição chegou à empresa da bolsa (série 3, PR 8)
 PELO_PROPRIO_CNPJ, PELO_LIDER = "próprio CNPJ", "líder do conglomerado"
 COLUNAS_DOS_VALORES = {
@@ -157,7 +157,7 @@ def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
 
 
 def _raiz(cnpj: pd.Series) -> pd.Series:
-    return cnpj.str.replace(r"\D", "", regex=True).str[:DIGITOS_DA_RAIZ]
+    return cnpj.map(raiz_do_cnpj)
 
 
 def ligacao_dos_bancos(

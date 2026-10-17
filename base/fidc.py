@@ -10,7 +10,8 @@ base do TickerLab Capital, decisão C-07).
 - **Cadastro:** o diretor responsável (nome de pessoa) fica fora, inclusive o histórico dele; o gestor
   pessoa física fica só com a marca "PF", sem CPF e sem nome. Fundos cancelados continuam.
 - **"Como era na data":** o informe é entregue em até 15 dias; a base usa competência + 45 dias
-  (conservador). Cada regravação da CVM vira versão (`base/parquet.py::gravar_com_versoes`).
+  (conservador), ou o dia em que o informe apareceu na CVM, se for depois (`base/publicacao.py`,
+  `visto_em`). Cada regravação da CVM vira versão (`base/parquet.py::gravar_com_versoes`).
 """
 
 import io
@@ -19,13 +20,15 @@ import zipfile
 
 import pandas as pd
 
+from base import cnpj
+
 CODIFICACAO_DA_CVM = "latin-1"
 DIAS_ATE_FICAR_PUBLICO = 45
 COLUNAS_DO_FUNDO = (
     "CNPJ_FUNDO_CLASSE",
     "CNPJ_FUNDO",
     "CNPJ_CLASSE",
-)  # a 1ª que existir
+)  # a 1ª não vazia de cada linha
 NOME_DA_TABELA = re.compile(r"inf_mensal_fidc_(tab_[IVX]+(?:_\d+)*)_\d{6}\.csv$")
 DIGITOS_DO_CNPJ, DIGITOS_DO_CPF = 14, 11
 PESSOA_FISICA = "PF"
@@ -43,15 +46,6 @@ def _digito(numeros: str, pesos: range | list[int]) -> int:
     return 0 if resto < 2 else 11 - resto
 
 
-def _cnpj_valido(digitos: str) -> bool:
-    if len(digitos) != DIGITOS_DO_CNPJ or digitos == digitos[0] * DIGITOS_DO_CNPJ:
-        return False
-    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    primeiro = _digito(digitos[:12], pesos)
-    segundo = _digito(digitos[:13], [6, *pesos])
-    return digitos[12:] == f"{primeiro}{segundo}"
-
-
 def _cpf_valido(digitos: str) -> bool:
     if len(digitos) != DIGITOS_DO_CPF or digitos == digitos[0] * DIGITOS_DO_CPF:
         return False
@@ -64,15 +58,16 @@ def documento_de_empresa(valor: object) -> str | None:
     """O CNPJ formatado, se o valor for um CNPJ válido e não puder ser um CPF; senão, None."""
     if not isinstance(valor, str):
         return None
+    com_letras = cnpj.completo(valor)
+    if com_letras and cnpj.tem_letra(com_letras):  # com letra é CNPJ, nunca CPF
+        return cnpj.formatar(com_letras) if cnpj.dv_confere(com_letras) else None
     digitos = re.sub(r"\D", "", valor)
     if not digitos or len(digitos) > DIGITOS_DO_CNPJ:
         return None
     if len(digitos) <= DIGITOS_DO_CPF and _cpf_valido(digitos.zfill(DIGITOS_DO_CPF)):
         return None  # na dúvida entre CPF e CNPJ, é dado pessoal
-    cnpj = digitos.zfill(DIGITOS_DO_CNPJ)
-    if not _cnpj_valido(cnpj):
-        return None
-    return f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+    numerico = digitos.zfill(DIGITOS_DO_CNPJ)
+    return cnpj.formatar(numerico) if cnpj.dv_confere(numerico) else None
 
 
 def _ler_csv(
@@ -92,12 +87,16 @@ def _sem_cpf(tabela: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalizar_informe(tabela: pd.DataFrame) -> pd.DataFrame:
-    coluna_do_fundo = next(c for c in COLUNAS_DO_FUNDO if c in tabela.columns)
+    colunas_do_fundo = [c for c in COLUNAS_DO_FUNDO if c in tabela.columns]
     tabela = _sem_cpf(tabela)
     tabela.insert(
         0, "competencia", pd.to_datetime(tabela["DT_COMPTC"], errors="coerce")
     )
-    tabela.insert(1, "cnpj_fundo", tabela.pop(coluna_do_fundo).str.strip())
+    # meses de cabeçalhos diferentes, juntados num só quadro, deixam as duas colunas:
+    # vale a primeira não vazia de cada linha
+    cnpj_fundo = tabela[colunas_do_fundo].bfill(axis=1).iloc[:, 0]
+    tabela = tabela.drop(columns=colunas_do_fundo)
+    tabela.insert(1, "cnpj_fundo", cnpj_fundo.str.strip())
     return tabela
 
 
@@ -123,8 +122,30 @@ def ler_informe(conteudo_do_zip: bytes) -> dict[str, pd.DataFrame]:
     }
 
 
+def chaves_do_informe(conteudo_do_zip: bytes) -> pd.DataFrame:
+    """Os fundos de cada mês do arquivo (`competencia`, `cnpj_fundo`), pela tabela I (todo informe a
+    traz): de cada versão guardada sai o dia em que o informe apareceu (`base/publicacao.py`)."""
+    partes = []
+    with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
+        for nome in sorted(arquivo.namelist()):
+            achado = NOME_DA_TABELA.search(nome)
+            if achado and achado.group(1) == "tab_I":
+                partes.append(_ler_csv(arquivo, nome))
+    if not partes:
+        return pd.DataFrame(
+            {
+                "competencia": pd.Series(dtype="datetime64[ns]"),
+                "cnpj_fundo": pd.Series(dtype=str),
+            }
+        )
+    tabela = _normalizar_informe(pd.concat(partes, ignore_index=True))
+    chaves = tabela[["competencia", "cnpj_fundo"]].dropna().drop_duplicates()
+    return chaves.reset_index(drop=True)
+
+
 def disponivel_em(tabela: pd.DataFrame) -> pd.Series:
-    """Desde quando o informe era público: competência + 45 dias (o prazo de entrega é 15)."""
+    """Desde quando o informe era público pela regra do prazo: competência + 45 dias (o prazo de
+    entrega é 15). É o piso: o dia em que o informe foi visto na CVM vem de `base/publicacao.py`."""
     return tabela["competencia"] + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICO)
 
 

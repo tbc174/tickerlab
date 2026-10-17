@@ -39,7 +39,7 @@
           "unidade": "data (dia)"
         },
         "valor": {
-          "descricao": "Valor da conta; vazio quando a empresa deixou em branco",
+          "descricao": "Valor da conta; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0)",
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "documento": {
@@ -494,7 +494,7 @@
       "tabela": "carteiras_dos_fundos",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês da carteira (último dia)",
@@ -552,8 +552,12 @@
           "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
           "unidade": "data (dia)"
         },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando a posição era pública (como era na data)",
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -573,13 +577,13 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
-      "atraso": "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+      "atraso": "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 5 meses mais novos todo dia: a carteira entregue depois do prazo só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
     },
     "carteiras_bloco_8": {
       "tabela": "carteiras_bloco_8",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês da carteira (último dia)",
@@ -637,8 +641,12 @@
           "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
           "unidade": "data (dia)"
         },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando a posição era pública (como era na data)",
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -658,13 +666,94 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
-      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
+    },
+    "cda_cotas": {
+      "tabela": "cda_cotas",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês da carteira (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cnpj_fundo": {
+          "descricao": "CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175)",
+          "unidade": "texto"
+        },
+        "tipo_do_fundo": {
+          "descricao": "Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em 11/2022 um fundo aparece como FI e como FIP)",
+          "unidade": "texto"
+        },
+        "tipo_do_ativo": {
+          "descricao": "Tipo do fundo investido como o fundo informa (\"FIDC\", \"FI Participações\", \"FI Imobiliário\", \"Fundos de Índice\", \"Fundo de Investimento e de Cotas\", \"Cotas de fundos\")",
+          "unidade": "texto"
+        },
+        "emissor_ligado": {
+          "descricao": "O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não informado, como em 2005)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cnpj_fundo_investido": {
+          "descricao": "CNPJ do fundo (ou da classe) cujas cotas o fundo tem",
+          "unidade": "texto"
+        },
+        "id_subclasse": {
+          "descricao": "Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse)",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade de cotas no fim do mês",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor": {
+          "descricao": "Valor de mercado no fim do mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "compras": {
+          "descricao": "Valor comprado no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "vendas": {
+          "descricao": "Valor vendido no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "confidencial_ate": {
+          "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "tipo_do_fundo",
+        "cnpj_fundo",
+        "cnpj_fundo_investido"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2005-01-31",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
     },
     "fidc_informe": {
       "tabela": "fidc_informe",
       "modulo": "credito_e_fidc",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "competencia": {
           "descricao": "Mês do informe (último dia)",
@@ -674,8 +763,12 @@
           "descricao": "CNPJ do fundo (ou da classe, depois da CVM 175)",
           "unidade": "texto"
         },
+        "visto_em": {
+          "descricao": "O dia em que o informe do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
         "disponivel_em": {
-          "descricao": "Desde quando o informe era público (como era na data)",
+          "descricao": "Desde quando o informe era público (como era na data): competência + 45 dias, ou `visto_em` se for depois",
           "unidade": "data (dia)"
         }
       },
@@ -693,7 +786,7 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
-      "atraso": "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+      "atraso": "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão `<ano>.v<N>`). `disponivel_em` usa competência + 45 dias (o prazo, não a data vista). Desde 10/2026 o arquivista olha os 4 meses mais novos todo dia: o informe entregue depois só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
     },
     "cadastro_de_fundos": {
       "tabela": "cadastro_de_fundos",
@@ -1206,6 +1299,2038 @@
       "pessoa": false,
       "frequencia": "Quando a conferência anda (pelos buracos de maior valor)",
       "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras"
+    },
+    "anac_estatistico": {
+      "tabela": "anac_estatistico",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "empresa_sigla": {
+          "descricao": "Empresa sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "empresa_nome": {
+          "descricao": "Empresa nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "empresa_nacionalidade": {
+          "descricao": "Empresa nacionalidade, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_sigla": {
+          "descricao": "Aeroporto de origem sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_nome": {
+          "descricao": "Aeroporto de origem nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_uf": {
+          "descricao": "Aeroporto de origem uf, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_regiao": {
+          "descricao": "Aeroporto de origem regiao, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_pais": {
+          "descricao": "Aeroporto de origem pais, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_origem_continente": {
+          "descricao": "Aeroporto de origem continente, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_sigla": {
+          "descricao": "Aeroporto de destino sigla, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_nome": {
+          "descricao": "Aeroporto de destino nome, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_uf": {
+          "descricao": "Aeroporto de destino uf, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_regiao": {
+          "descricao": "Aeroporto de destino regiao, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_pais": {
+          "descricao": "Aeroporto de destino pais, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "aeroporto_de_destino_continente": {
+          "descricao": "Aeroporto de destino continente, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "natureza": {
+          "descricao": "Natureza, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "grupo_de_voo": {
+          "descricao": "Grupo de voo, como a ANAC publica",
+          "unidade": "texto"
+        },
+        "passageiros_pagos": {
+          "descricao": "Passageiros pagos no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "passageiros_gratis": {
+          "descricao": "Passageiros gratis no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_paga_kg": {
+          "descricao": "Carga paga kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_gratis_kg": {
+          "descricao": "Carga gratis kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "correio_kg": {
+          "descricao": "Correio kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ask": {
+          "descricao": "Ask no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rpk": {
+          "descricao": "Rpk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "atk": {
+          "descricao": "Atk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "rtk": {
+          "descricao": "Rtk no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "combustivel_litros": {
+          "descricao": "Combustivel litros no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "distancia_voada_km": {
+          "descricao": "Distancia voada km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "decolagens": {
+          "descricao": "Decolagens no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_paga_km": {
+          "descricao": "Carga paga km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "carga_gratis_km": {
+          "descricao": "Carga gratis km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "correio_km": {
+          "descricao": "Correio km no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "assentos": {
+          "descricao": "Assentos no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "payload": {
+          "descricao": "Payload no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "horas_voadas": {
+          "descricao": "Horas voadas no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "bagagem_kg": {
+          "descricao": "Bagagem kg no mês, como a ANAC publica",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "atualizado_em": {
+          "descricao": "A data da linha \"Atualizado em\" do arquivo usado",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "empresa_sigla",
+        "aeroporto_de_origem_sigla",
+        "aeroporto_de_destino_sigla",
+        "natureza",
+        "grupo_de_voo"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o arquivo inteiro é republicado; a 1ª linha diz \"Atualizado em\")",
+      "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+    },
+    "anp_vendas": {
+      "tabela": "anp_vendas",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "grupo": {
+          "descricao": "liquidos, glp ou aviacao (o zip)",
+          "unidade": "texto"
+        },
+        "agente": {
+          "descricao": "Agente regulado (a distribuidora), como a ANP escreve",
+          "unidade": "texto"
+        },
+        "codigo_do_produto": {
+          "descricao": "Código do produto na ANP",
+          "unidade": "texto"
+        },
+        "nome_do_produto": {
+          "descricao": "Nome do produto",
+          "unidade": "texto"
+        },
+        "descricao_do_produto": {
+          "descricao": "Descrição do produto (vazio no histórico dos líquidos)",
+          "unidade": "texto"
+        },
+        "codigo_da_embalagem": {
+          "descricao": "Código da embalagem (só GLP)",
+          "unidade": "texto"
+        },
+        "regiao_origem": {
+          "descricao": "Região de origem",
+          "unidade": "texto"
+        },
+        "uf_origem": {
+          "descricao": "UF de origem",
+          "unidade": "texto"
+        },
+        "regiao_destino": {
+          "descricao": "Região de destino",
+          "unidade": "texto"
+        },
+        "uf_destino": {
+          "descricao": "UF de destino",
+          "unidade": "texto"
+        },
+        "mercado_destino": {
+          "descricao": "Mercado destinatário (posto, consumidor final...)",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade vendida, na unidade da coluna `unidade`",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "mil m³ ou mil ton, como no cabeçalho da ANP",
+          "unidade": "texto"
+        },
+        "arquivo": {
+          "descricao": "O CSV do zip de onde veio a linha",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "grupo",
+        "agente",
+        "codigo_do_produto",
+        "uf_origem",
+        "uf_destino",
+        "mercado_destino"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal",
+      "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
+    },
+    "ons_geracao": {
+      "tabela": "ons_geracao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "instante": {
+          "descricao": "Hora (início)",
+          "unidade": "data (dia)"
+        },
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "subsistema": {
+          "descricao": "Nome do subsistema",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "modalidade_de_operacao": {
+          "descricao": "Modalidade de operação (tipo I, II...)",
+          "unidade": "texto"
+        },
+        "tipo_de_usina": {
+          "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+          "unidade": "texto"
+        },
+        "combustivel": {
+          "descricao": "Combustível ou fonte",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina, como o ONS escreve",
+          "unidade": "texto"
+        },
+        "id_ons": {
+          "descricao": "Código da usina no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código da usina na ANEEL (vazio quando o ONS não informa)",
+          "unidade": "texto"
+        },
+        "geracao_mwmed": {
+          "descricao": "Geração na hora, em MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (instante + 2 dias)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "instante",
+        "id_ons"
+      ],
+      "datas": {
+        "aconteceu_em": "instante",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Diária (um arquivo por ano até 2021, por mês depois)",
+      "atraso": "O dia seguinte; a regra usa o instante + 2 dias"
+    },
+    "aneel_samp": {
+      "tabela": "aneel_samp",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da distribuidora (14 dígitos; a chave da B13)",
+          "unidade": "texto"
+        },
+        "sigla": {
+          "descricao": "Sigla da distribuidora, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "distribuidora": {
+          "descricao": "Nome da distribuidora, como a ANEEL escreve",
+          "unidade": "texto"
+        },
+        "tipo_de_mercado": {
+          "descricao": "Regular, refaturamento, compensação de geração distribuída...",
+          "unidade": "texto"
+        },
+        "modalidade_tarifaria": {
+          "descricao": "Convencional, azul, verde, branca...",
+          "unidade": "texto"
+        },
+        "subgrupo_tarifario": {
+          "descricao": "A1 a A4, AS, B1 a B4",
+          "unidade": "texto"
+        },
+        "classe_de_consumo": {
+          "descricao": "Residencial, industrial, comercial, rural...",
+          "unidade": "texto"
+        },
+        "subclasse_de_consumo": {
+          "descricao": "Subclasse (baixa renda, cooperativa...)",
+          "unidade": "texto"
+        },
+        "detalhe_do_consumidor": {
+          "descricao": "Detalhe do consumidor (fonte incentivada...)",
+          "unidade": "texto"
+        },
+        "nucleo_ceg": {
+          "descricao": "Núcleo do CEG da usina, quando há (texto inteiro)",
+          "unidade": "texto"
+        },
+        "posto_tarifario": {
+          "descricao": "Ponta, fora ponta, intermediário",
+          "unidade": "texto"
+        },
+        "opcao_de_energia": {
+          "descricao": "Cativo, livre, suprimento, distribuição",
+          "unidade": "texto"
+        },
+        "detalhe_do_mercado": {
+          "descricao": "O que o valor mede: número de consumidores, energia (kWh), receita (R$), desconto (%)...",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "O valor, na unidade do `detalhe_do_mercado` (soma das linhas; média nos percentuais)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "linhas_somadas": {
+          "descricao": "Quantas linhas da fonte (uma por acessante) foram somadas",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "gerado_em": {
+          "descricao": "A data de geração do arquivo pela ANEEL, na primeira vez que o valor foi visto",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "cnpj",
+        "tipo_de_mercado",
+        "modalidade_tarifaria",
+        "subgrupo_tarifario",
+        "classe_de_consumo",
+        "subclasse_de_consumo",
+        "detalhe_do_consumidor",
+        "nucleo_ceg",
+        "posto_tarifario",
+        "opcao_de_energia",
+        "detalhe_do_mercado",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal (a ANEEL regera todos os anos a cada mês, perto do dia 15)",
+      "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo (46 dias) e agosto pela metade; a regra usa o fim do mês + 60 dias"
+    },
+    "anatel_acessos": {
+      "tabela": "anatel_acessos",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "servico": {
+          "descricao": "banda_larga_fixa, telefonia_movel ou tv_por_assinatura",
+          "unidade": "texto"
+        },
+        "recorte": {
+          "descricao": "completo; na móvel de 2005 a 2018, modalidade ou tecnologia",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ da prestadora (14 dígitos; a chave da B13)",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da prestadora, como a Anatel escreve",
+          "unidade": "texto"
+        },
+        "grupo_economico": {
+          "descricao": "Grupo econômico, como a Anatel escreve",
+          "unidade": "texto"
+        },
+        "porte_da_prestadora": {
+          "descricao": "Grande ou pequeno porte",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF",
+          "unidade": "texto"
+        },
+        "regiao_pgo": {
+          "descricao": "Região do plano geral de outorgas (móvel até 2009)",
+          "unidade": "texto"
+        },
+        "codigo_nacional": {
+          "descricao": "DDD (móvel)",
+          "unidade": "texto"
+        },
+        "modalidade_de_cobranca": {
+          "descricao": "Pré-pago ou pós-pago (móvel)",
+          "unidade": "texto"
+        },
+        "tecnologia": {
+          "descricao": "Tecnologia (FTTH, cabo, GSM, LTE, DTH...)",
+          "unidade": "texto"
+        },
+        "geracao": {
+          "descricao": "Geração da tecnologia móvel (2G a 5G)",
+          "unidade": "texto"
+        },
+        "tipo_de_pessoa": {
+          "descricao": "Assinante pessoa física ou jurídica",
+          "unidade": "texto"
+        },
+        "tipo_de_produto": {
+          "descricao": "Tipo de produto (internet, voz, M2M...)",
+          "unidade": "texto"
+        },
+        "faixa_de_velocidade": {
+          "descricao": "Faixa de velocidade contratada (banda larga)",
+          "unidade": "texto"
+        },
+        "meio_de_acesso": {
+          "descricao": "Fibra, cabo coaxial, rádio, satélite...",
+          "unidade": "texto"
+        },
+        "tipo_de_acesso_tv": {
+          "descricao": "Tipo de acesso de TV por assinatura",
+          "unidade": "texto"
+        },
+        "acessos": {
+          "descricao": "Acessos em serviço no fim do mês, somados os municípios da UF",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "arquivo": {
+          "descricao": "O CSV da Anatel de onde veio a linha",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "servico",
+        "recorte",
+        "cnpj",
+        "uf",
+        "regiao_pgo",
+        "codigo_nacional",
+        "modalidade_de_cobranca",
+        "tecnologia",
+        "geracao",
+        "tipo_de_pessoa",
+        "tipo_de_produto",
+        "faixa_de_velocidade",
+        "meio_de_acesso",
+        "tipo_de_acesso_tv",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal",
+      "atraso": "Agosto/2026 estava publicado em 14/10/2026; a regra usa o fim do mês + 60 dias"
+    },
+    "ans_beneficiarios": {
+      "tabela": "ans_beneficiarios",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cd_operadora": {
+          "descricao": "Registro da operadora na ANS (a chave da B13, fonte `ans-beneficiarios`)",
+          "unidade": "texto"
+        },
+        "modalidade": {
+          "descricao": "Medicina de grupo, cooperativa médica, seguradora...",
+          "unidade": "texto"
+        },
+        "cobertura": {
+          "descricao": "Médico-hospitalar ou odontológico",
+          "unidade": "texto"
+        },
+        "vigencia_do_plano": {
+          "descricao": "P (plano posterior à Lei 9.656) ou A (anterior)",
+          "unidade": "texto"
+        },
+        "contratacao": {
+          "descricao": "Individual ou familiar, coletivo empresarial, por adesão...",
+          "unidade": "texto"
+        },
+        "financiamento": {
+          "descricao": "Pré-estabelecido, pós-estabelecido...",
+          "unidade": "texto"
+        },
+        "beneficiarios": {
+          "descricao": "Beneficiários no mês",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "base_de": {
+          "descricao": "O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "cd_operadora",
+        "modalidade",
+        "cobertura",
+        "vigencia_do_plano",
+        "contratacao",
+        "financiamento",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026",
+      "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês + 90 dias"
+    },
+    "fre_conselho": {
+      "tabela": "fre_conselho",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "orgao": {
+          "descricao": "Órgão da administração, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "membros": {
+          "descricao": "Quantas pessoas no órgão (ou no comitê)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "suplentes": {
+          "descricao": "Quantos suplentes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "independentes": {
+          "descricao": "Quantos conselheiros independentes (pelo cargo informado)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "eleitos_pelo_controlador": {
+          "descricao": "Quantos eleitos pelo controlador (`Eleito_Controlador` = S)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "eleitos_por_minoritarios": {
+          "descricao": "Quantos eleitos pelos minoritários ordinaristas (pelo cargo)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "eleitos_por_preferencialistas": {
+          "descricao": "Quantos eleitos pelos preferencialistas (pelo cargo)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "mandatos_consecutivos_medio": {
+          "descricao": "Média de mandatos consecutivos (vazio quando a CVM não informa)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "participacao_em_reunioes_media": {
+          "descricao": "Média do % de participação em reuniões (vazio quando não informado)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "orgao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
+    "fre_comites": {
+      "tabela": "fre_comites",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "tipo_de_comite": {
+          "descricao": "Tipo de comitê (auditoria, risco, remuneração...)",
+          "unidade": "texto"
+        },
+        "membros": {
+          "descricao": "Quantas pessoas no órgão (ou no comitê)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "suplentes": {
+          "descricao": "Quantos suplentes",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "tipo_de_comite"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
+    "fre_remuneracao": {
+      "tabela": "fre_remuneracao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "inicio_do_exercicio": {
+          "descricao": "Início do exercício social",
+          "unidade": "data (dia)"
+        },
+        "fim_do_exercicio": {
+          "descricao": "Fim do exercício social",
+          "unidade": "data (dia)"
+        },
+        "orgao": {
+          "descricao": "Órgão da administração, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "total_remuneracao": {
+          "descricao": "Como a CVM publica (`Total_Remuneracao`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "membros": {
+          "descricao": "Quantas pessoas no órgão (ou no comitê)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "total_do_orgao": {
+          "descricao": "Como a CVM publica (`Total_Remuneracao_Orgao`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "membros_remunerados": {
+          "descricao": "Como a CVM publica (`Numero_Membros_Remunerados`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "salario": {
+          "descricao": "Como a CVM publica (`Salario`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "beneficios": {
+          "descricao": "Como a CVM publica (`Beneficios_Diretos_Indiretos`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "participacao_em_comites": {
+          "descricao": "Como a CVM publica (`Participacoes_Comites`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "outros_fixos": {
+          "descricao": "Como a CVM publica (`Outros_Valores_Fixos`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "bonus": {
+          "descricao": "Como a CVM publica (`Bonus`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "participacao_nos_resultados": {
+          "descricao": "Como a CVM publica (`Participacao_Resultados`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "participacao_em_reunioes": {
+          "descricao": "Como a CVM publica (`Participacao_Reunioes`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "outros_variaveis": {
+          "descricao": "Como a CVM publica (`Outros_Valores_Variaveis`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "comissoes": {
+          "descricao": "Como a CVM publica (`Comissoes`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "pos_emprego": {
+          "descricao": "Como a CVM publica (`Pos_emprego`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "cessacao_do_cargo": {
+          "descricao": "Como a CVM publica (`Cessacao_Cargo`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "baseada_em_acoes": {
+          "descricao": "Como a CVM publica (`Baseada_Acoes`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "fim_do_exercicio",
+        "orgao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
+    "fre_remuneracao_extremos": {
+      "tabela": "fre_remuneracao_extremos",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "inicio_do_exercicio": {
+          "descricao": "Início do exercício social",
+          "unidade": "data (dia)"
+        },
+        "fim_do_exercicio": {
+          "descricao": "Fim do exercício social",
+          "unidade": "data (dia)"
+        },
+        "orgao": {
+          "descricao": "Órgão da administração, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "membros": {
+          "descricao": "Quantas pessoas no órgão (ou no comitê)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "membros_remunerados": {
+          "descricao": "Como a CVM publica (`Numero_Membros_Remunerados`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "maior": {
+          "descricao": "Como a CVM publica (`Valor_Maior_Remuneracao`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "menor": {
+          "descricao": "Como a CVM publica (`Valor_Menor_Remuneracao`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "media": {
+          "descricao": "Como a CVM publica (`Valor_Medio_Remuneracao`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "fim_do_exercicio",
+        "orgao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
+    "fre_diversidade": {
+      "tabela": "fre_diversidade",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia (como a CVM escreve)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FRE",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FRE",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "id_documento": {
+          "descricao": "Identificador do documento na CVM",
+          "unidade": "texto"
+        },
+        "orgao": {
+          "descricao": "Órgão da administração, como a CVM escreve",
+          "unidade": "texto"
+        },
+        "genero_feminino": {
+          "descricao": "Como a CVM publica (`genero_feminino`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "genero_masculino": {
+          "descricao": "Como a CVM publica (`genero_masculino`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "genero_nao_binario": {
+          "descricao": "Como a CVM publica (`genero_nao_binario`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "genero_outros": {
+          "descricao": "Como a CVM publica (`genero_outros`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "genero_sem_resposta": {
+          "descricao": "Como a CVM publica (`genero_sem_resposta`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "genero_nao_aplicavel": {
+          "descricao": "Como a CVM publica (`genero_nao_aplicavel`)",
+          "unidade": "texto"
+        },
+        "raca_amarelo": {
+          "descricao": "Como a CVM publica (`raca_amarelo`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_branco": {
+          "descricao": "Como a CVM publica (`raca_branco`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_preto": {
+          "descricao": "Como a CVM publica (`raca_preto`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_pardo": {
+          "descricao": "Como a CVM publica (`raca_pardo`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_indigena": {
+          "descricao": "Como a CVM publica (`raca_indigena`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_outros": {
+          "descricao": "Como a CVM publica (`raca_outros`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_sem_resposta": {
+          "descricao": "Como a CVM publica (`raca_sem_resposta`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "raca_nao_aplicavel": {
+          "descricao": "Como a CVM publica (`raca_nao_aplicavel`)",
+          "unidade": "texto"
+        },
+        "pcd_pcd": {
+          "descricao": "Como a CVM publica (`pcd_pcd`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "pcd_nao_pcd": {
+          "descricao": "Como a CVM publica (`pcd_nao_pcd`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "pcd_sem_resposta": {
+          "descricao": "Como a CVM publica (`pcd_sem_resposta`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "pcd_nao_aplicavel": {
+          "descricao": "Como a CVM publica (`pcd_nao_aplicavel`)",
+          "unidade": "texto"
+        },
+        "conhecido_em": {
+          "descricao": "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao",
+        "orgao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual, com reapresentações (a CVM reescreve os anos antigos)",
+      "atraso": "A entrega do FRE: `conhecido_em` é o DT_RECEB da versão"
+    },
+    "ofertas_antigas": {
+      "tabela": "ofertas_antigas",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "numero_processo": {
+          "descricao": "Como a CVM publica (`Numero_Processo`)",
+          "unidade": "texto"
+        },
+        "numero_registro_oferta": {
+          "descricao": "Como a CVM publica (`Numero_Registro_Oferta`)",
+          "unidade": "texto"
+        },
+        "tipo_oferta": {
+          "descricao": "Como a CVM publica (`Tipo_Oferta`)",
+          "unidade": "texto"
+        },
+        "tipo_componente_oferta_mista": {
+          "descricao": "Como a CVM publica (`Tipo_Componente_Oferta_Mista`)",
+          "unidade": "texto"
+        },
+        "tipo_ativo": {
+          "descricao": "Como a CVM publica (`Tipo_Ativo`)",
+          "unidade": "texto"
+        },
+        "cnpj_emissor": {
+          "descricao": "Como a CVM publica (`CNPJ_Emissor`)",
+          "unidade": "texto"
+        },
+        "nome_emissor": {
+          "descricao": "Como a CVM publica (`Nome_Emissor`)",
+          "unidade": "texto"
+        },
+        "cnpj_lider": {
+          "descricao": "Como a CVM publica (`CNPJ_Lider`)",
+          "unidade": "texto"
+        },
+        "nome_lider": {
+          "descricao": "Como a CVM publica (`Nome_Lider`)",
+          "unidade": "texto"
+        },
+        "cnpj_ofertante": {
+          "descricao": "Como a CVM publica (`CNPJ_Ofertante`)",
+          "unidade": "texto"
+        },
+        "nome_ofertante": {
+          "descricao": "Como a CVM publica (`Nome_Ofertante`)",
+          "unidade": "texto"
+        },
+        "rito_oferta": {
+          "descricao": "Como a CVM publica (`Rito_Oferta`)",
+          "unidade": "texto"
+        },
+        "modalidade_oferta": {
+          "descricao": "Como a CVM publica (`Modalidade_Oferta`)",
+          "unidade": "texto"
+        },
+        "modalidade_registro": {
+          "descricao": "Como a CVM publica (`Modalidade_Registro`)",
+          "unidade": "texto"
+        },
+        "modalidade_dispensa_registro": {
+          "descricao": "Como a CVM publica (`Modalidade_Dispensa_Registro`)",
+          "unidade": "texto"
+        },
+        "data_abertura_processo": {
+          "descricao": "Como a CVM publica (`Data_Abertura_Processo`)",
+          "unidade": "data (dia)"
+        },
+        "data_protocolo": {
+          "descricao": "Como a CVM publica (`Data_Protocolo`)",
+          "unidade": "data (dia)"
+        },
+        "data_dispensa_oferta": {
+          "descricao": "Como a CVM publica (`Data_Dispensa_Oferta`)",
+          "unidade": "data (dia)"
+        },
+        "data_registro_oferta": {
+          "descricao": "Como a CVM publica (`Data_Registro_Oferta`)",
+          "unidade": "data (dia)"
+        },
+        "data_inicio_oferta": {
+          "descricao": "Como a CVM publica (`Data_Inicio_Oferta`)",
+          "unidade": "data (dia)"
+        },
+        "data_encerramento_oferta": {
+          "descricao": "Como a CVM publica (`Data_Encerramento_Oferta`)",
+          "unidade": "data (dia)"
+        },
+        "emissao": {
+          "descricao": "Como a CVM publica (`Emissao`)",
+          "unidade": "texto"
+        },
+        "classe_ativo": {
+          "descricao": "Como a CVM publica (`Classe_Ativo`)",
+          "unidade": "texto"
+        },
+        "serie": {
+          "descricao": "Como a CVM publica (`Serie`)",
+          "unidade": "texto"
+        },
+        "especie_ativo": {
+          "descricao": "Como a CVM publica (`Especie_Ativo`)",
+          "unidade": "texto"
+        },
+        "forma_ativo": {
+          "descricao": "Como a CVM publica (`Forma_Ativo`)",
+          "unidade": "texto"
+        },
+        "data_emissao": {
+          "descricao": "Como a CVM publica (`Data_Emissao`)",
+          "unidade": "data (dia)"
+        },
+        "data_vencimento": {
+          "descricao": "Como a CVM publica (`Data_Vencimento`)",
+          "unidade": "data (dia)"
+        },
+        "quantidade_sem_lote_suplementar": {
+          "descricao": "Como a CVM publica (`Quantidade_Sem_Lote_Suplementar`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "quantidade_no_lote_suplementar": {
+          "descricao": "Como a CVM publica (`Quantidade_No_Lote_Suplementar`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "quantidade_total": {
+          "descricao": "Como a CVM publica (`Quantidade_Total`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "preco_unitario": {
+          "descricao": "Como a CVM publica (`Preco_Unitario`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_total": {
+          "descricao": "Como a CVM publica (`Valor_Total`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "oferta_inicial": {
+          "descricao": "Como a CVM publica (`Oferta_Inicial`)",
+          "unidade": "texto"
+        },
+        "oferta_incentivo_fiscal": {
+          "descricao": "Como a CVM publica (`Oferta_Incentivo_Fiscal`)",
+          "unidade": "texto"
+        },
+        "oferta_regime_fiduciario": {
+          "descricao": "Como a CVM publica (`Oferta_Regime_Fiduciario`)",
+          "unidade": "texto"
+        },
+        "atualizacao_monetaria": {
+          "descricao": "Como a CVM publica (`Atualizacao_Monetaria`)",
+          "unidade": "texto"
+        },
+        "juros": {
+          "descricao": "Como a CVM publica (`Juros`)",
+          "unidade": "texto"
+        },
+        "projeto_audiovisual": {
+          "descricao": "Como a CVM publica (`Projeto_Audiovisual`)",
+          "unidade": "texto"
+        },
+        "tipo_societario_emissor": {
+          "descricao": "Como a CVM publica (`Tipo_Societario_Emissor`)",
+          "unidade": "texto"
+        },
+        "tipo_fundo_investimento": {
+          "descricao": "Como a CVM publica (`Tipo_Fundo_Investimento`)",
+          "unidade": "texto"
+        },
+        "ultimo_comunicado": {
+          "descricao": "Como a CVM publica (`Ultimo_Comunicado`)",
+          "unidade": "texto"
+        },
+        "data_comunicado": {
+          "descricao": "Como a CVM publica (`Data_Comunicado`)",
+          "unidade": "data (dia)"
+        },
+        "nr_pessoa_fisica": {
+          "descricao": "Como a CVM publica (`Nr_Pessoa_Fisica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_pessoa_fisica": {
+          "descricao": "Como a CVM publica (`Qtd_Pessoa_Fisica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_clube_investimento": {
+          "descricao": "Como a CVM publica (`Nr_Clube_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_clube_investimento": {
+          "descricao": "Como a CVM publica (`Qtd_Clube_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_fundos_investimento": {
+          "descricao": "Como a CVM publica (`Nr_Fundos_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_fundos_investimento": {
+          "descricao": "Como a CVM publica (`Qtd_Fundos_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_entidade_previdencia_privada": {
+          "descricao": "Como a CVM publica (`Nr_Entidade_Previdencia_Privada`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_entidade_previdencia_privada": {
+          "descricao": "Como a CVM publica (`Qtd_Entidade_Previdencia_Privada`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_companhia_seguradora": {
+          "descricao": "Como a CVM publica (`Nr_Companhia_Seguradora`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_companhia_seguradora": {
+          "descricao": "Como a CVM publica (`Qtd_Companhia_Seguradora`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_investidor_estrangeiro": {
+          "descricao": "Como a CVM publica (`Nr_Investidor_Estrangeiro`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_investidor_estrangeiro": {
+          "descricao": "Como a CVM publica (`Qtd_Investidor_Estrangeiro`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_instit_intermed_partic_consorcio_distrib": {
+          "descricao": "Como a CVM publica (`Nr_Instit_Intermed_Partic_Consorcio_Distrib`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_instit_intermed_partic_consorcio_distrib": {
+          "descricao": "Como a CVM publica (`Qtd_Instit_Intermed_Partic_Consorcio_Distrib`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_instit_financ_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Nr_Instit_Financ_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_instit_financ_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qtd_Instit_Financ_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_demais_instit_financ": {
+          "descricao": "Como a CVM publica (`Nr_Demais_Instit_Financ`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_demais_instit_financ": {
+          "descricao": "Como a CVM publica (`Qtd_Demais_Instit_Financ`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_demais_pessoa_juridica_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Nr_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_demais_pessoa_juridica_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_demais_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`Nr_Demais_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_demais_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Nr_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qdt_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qdt_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nr_outros": {
+          "descricao": "Como a CVM publica (`Nr_Outros`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_outros": {
+          "descricao": "Como a CVM publica (`Qtd_Outros`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_pessoa_fisica": {
+          "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Fisica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_pessoa_juridica_ligada_adm": {
+          "descricao": "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica_Ligada_Adm`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_demais_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`QtD_Cli_Demais_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_investidor_estrangeiro": {
+          "descricao": "Como a CVM publica (`Qtd_Cli_Investidor_Estrangeiro`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtd_cli_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qtd_Cli_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "anunciada_em": {
+          "descricao": "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "numero_processo",
+        "numero_registro_oferta",
+        "cnpj_emissor",
+        "tipo_ativo",
+        "classe_ativo",
+        "serie",
+        "emissao"
+      ],
+      "datas": {
+        "aconteceu_em": "anunciada_em",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária (o ZIP é regerado todo dia)",
+      "atraso": "Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)"
+    },
+    "ofertas_resolucao_160": {
+      "tabela": "ofertas_resolucao_160",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "numero_requerimento": {
+          "descricao": "Como a CVM publica (`Numero_Requerimento`)",
+          "unidade": "texto"
+        },
+        "rito_requerimento": {
+          "descricao": "Como a CVM publica (`Rito_Requerimento`)",
+          "unidade": "texto"
+        },
+        "numero_processo": {
+          "descricao": "Como a CVM publica (`Numero_Processo`)",
+          "unidade": "texto"
+        },
+        "data_requerimento": {
+          "descricao": "Como a CVM publica (`Data_requerimento`)",
+          "unidade": "data (dia)"
+        },
+        "data_registro": {
+          "descricao": "Como a CVM publica (`Data_Registro`)",
+          "unidade": "data (dia)"
+        },
+        "data_encerramento": {
+          "descricao": "Como a CVM publica (`Data_Encerramento`)",
+          "unidade": "data (dia)"
+        },
+        "status_requerimento": {
+          "descricao": "Como a CVM publica (`Status_Requerimento`)",
+          "unidade": "texto"
+        },
+        "valor_mobiliario": {
+          "descricao": "Como a CVM publica (`Valor_Mobiliario`)",
+          "unidade": "texto"
+        },
+        "tipo_requerimento": {
+          "descricao": "Como a CVM publica (`Tipo_requerimento`)",
+          "unidade": "texto"
+        },
+        "bookbuilding": {
+          "descricao": "Como a CVM publica (`Bookbuilding`)",
+          "unidade": "texto"
+        },
+        "cnpj_emissor": {
+          "descricao": "Como a CVM publica (`CNPJ_Emissor`)",
+          "unidade": "texto"
+        },
+        "nome_emissor": {
+          "descricao": "Como a CVM publica (`Nome_Emissor`)",
+          "unidade": "texto"
+        },
+        "cnpj_lider": {
+          "descricao": "Como a CVM publica (`CNPJ_Lider`)",
+          "unidade": "texto"
+        },
+        "nome_lider": {
+          "descricao": "Como a CVM publica (`Nome_Lider`)",
+          "unidade": "texto"
+        },
+        "grupo_coordenador": {
+          "descricao": "Como a CVM publica (`Grupo_Coordenador`)",
+          "unidade": "texto"
+        },
+        "tipo_oferta": {
+          "descricao": "Como a CVM publica (`Tipo_Oferta`)",
+          "unidade": "texto"
+        },
+        "emissao": {
+          "descricao": "Como a CVM publica (`Emissao`)",
+          "unidade": "texto"
+        },
+        "qtde_total_registrada": {
+          "descricao": "Como a CVM publica (`Qtde_Total_Registrada`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor_total_registrado": {
+          "descricao": "Como a CVM publica (`Valor_Total_Registrado`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "oferta_inicial": {
+          "descricao": "Como a CVM publica (`Oferta_inicial`)",
+          "unidade": "texto"
+        },
+        "oferta_vasos_comunicantes": {
+          "descricao": "Como a CVM publica (`Oferta_vasos_comunicantes`)",
+          "unidade": "texto"
+        },
+        "publico_alvo": {
+          "descricao": "Como a CVM publica (`Publico_alvo`)",
+          "unidade": "texto"
+        },
+        "reabertura_serie": {
+          "descricao": "Como a CVM publica (`Reabertura_serie`)",
+          "unidade": "texto"
+        },
+        "titulo_classificado_como_sustentavel": {
+          "descricao": "Como a CVM publica (`Titulo_classificado_como_sustentavel`)",
+          "unidade": "texto"
+        },
+        "titulo_padronizado": {
+          "descricao": "Como a CVM publica (`Titulo_padronizado`)",
+          "unidade": "texto"
+        },
+        "data_deliberacao_aprovou_oferta": {
+          "descricao": "Como a CVM publica (`Data_deliberacao_aprovou_oferta`)",
+          "unidade": "data (dia)"
+        },
+        "mercado_negociacao": {
+          "descricao": "Como a CVM publica (`Mercado_negociacao`)",
+          "unidade": "texto"
+        },
+        "tipo_lastro": {
+          "descricao": "Como a CVM publica (`Tipo_lastro`)",
+          "unidade": "texto"
+        },
+        "regime_fiduciario": {
+          "descricao": "Como a CVM publica (`Regime_fiduciario`)",
+          "unidade": "texto"
+        },
+        "ativos_alvo": {
+          "descricao": "Como a CVM publica (`Ativos_alvo`)",
+          "unidade": "texto"
+        },
+        "possibilidade_revolvencia": {
+          "descricao": "Como a CVM publica (`Possibilidade_revolvencia`)",
+          "unidade": "texto"
+        },
+        "fidc_nao_padronizado": {
+          "descricao": "Como a CVM publica (`FIDC_nao_padronizado`)",
+          "unidade": "texto"
+        },
+        "titulo_incentivado": {
+          "descricao": "Como a CVM publica (`Titulo_incentivado`)",
+          "unidade": "texto"
+        },
+        "regime_distribuicao": {
+          "descricao": "Como a CVM publica (`Regime_distribuicao`)",
+          "unidade": "texto"
+        },
+        "tipo_societario": {
+          "descricao": "Como a CVM publica (`Tipo_societario`)",
+          "unidade": "texto"
+        },
+        "administrador": {
+          "descricao": "Como a CVM publica (`Administrador`)",
+          "unidade": "texto"
+        },
+        "gestor": {
+          "descricao": "Como a CVM publica (`Gestor`)",
+          "unidade": "texto"
+        },
+        "agente_fiduciario": {
+          "descricao": "Como a CVM publica (`Agente_fiduciario`)",
+          "unidade": "texto"
+        },
+        "escriturador": {
+          "descricao": "Como a CVM publica (`Escriturador`)",
+          "unidade": "texto"
+        },
+        "custodiante": {
+          "descricao": "Como a CVM publica (`Custodiante`)",
+          "unidade": "texto"
+        },
+        "avaliador_risco": {
+          "descricao": "Como a CVM publica (`Avaliador_Risco`)",
+          "unidade": "texto"
+        },
+        "processo_sei": {
+          "descricao": "Como a CVM publica (`Processo_SEI`)",
+          "unidade": "texto"
+        },
+        "endereco_emissor_rede_mundial_computadores": {
+          "descricao": "Como a CVM publica (`Endereco_emissor_rede_mundial_computadores`)",
+          "unidade": "texto"
+        },
+        "num_invest_pessoa_natural": {
+          "descricao": "Como a CVM publica (`Num_Invest_Pessoa_Natural`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_pessoa_natural": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Pessoa_Natural`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_clube_investimento": {
+          "descricao": "Como a CVM publica (`Num_Invest_Clube_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_clube_investimento": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Clube_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_fundos_investimento": {
+          "descricao": "Como a CVM publica (`Num_Invest_Fundos_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_fundos_investimento": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Fundos_Investimento`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_entidade_previdencia_privada": {
+          "descricao": "Como a CVM publica (`Num_Invest_Entidade_Previdencia_Privada`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_entidade_previdencia_privada": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Entidade_Previdencia_Privada`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_companhia_seguradora": {
+          "descricao": "Como a CVM publica (`Num_Invest_Companhia_Seguradora`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_companhia_seguradora": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Companhia_Seguradora`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_investidor_estrangeiro": {
+          "descricao": "Como a CVM publica (`Num_Invest_Investidor_Estrangeiro`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_investidor_estrangeiro": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Investidor_Estrangeiro`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_instit_intermed_partic_consorcio_distrib": {
+          "descricao": "Como a CVM publica (`Num_Invest_Instit_Intermed_Partic_Consorcio_Distrib`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_instit_intermed_partic_consorcio_distrib": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Instit_Intermed_Partic_Consorcio_Distrib`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_instit_financ_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Num_Invest_Instit_Financ_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_instit_financ_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Instit_Financ_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_demais_instit_financ": {
+          "descricao": "Como a CVM publica (`Num_Invest_Demais_Instit_Financ`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_demais_instit_financ": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Demais_Instit_Financ`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_demais_pessoa_juridica_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_demais_pessoa_juridica_emissora_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_demais_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qtde_vm_demais_pessoa_juridica": {
+          "descricao": "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "num_invest_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Num_Invest_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "qdte_vm_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": {
+          "descricao": "Como a CVM publica (`Qdte_VM_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "anunciada_em": {
+          "descricao": "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "numero_requerimento",
+        "cnpj_emissor"
+      ],
+      "datas": {
+        "aconteceu_em": "anunciada_em",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária (o ZIP é regerado todo dia)",
+      "atraso": "Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)"
+    },
+    "susep_seguros": {
+      "tabela": "susep_seguros",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "coenti": {
+          "descricao": "Código da seguradora na SUSEP (a chave; 5 dígitos)",
+          "unidade": "texto"
+        },
+        "cogrupo": {
+          "descricao": "Código do grupo de ramos",
+          "unidade": "texto"
+        },
+        "coramo": {
+          "descricao": "Código do ramo (nomes em `Ses_ramos.csv`, guardado no acervo)",
+          "unidade": "texto"
+        },
+        "premio_direto": {
+          "descricao": "Prêmio direto no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_de_seguros": {
+          "descricao": "Prêmio de seguros no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_retido": {
+          "descricao": "Prêmio retido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_ganho": {
+          "descricao": "Prêmio ganho no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_direto": {
+          "descricao": "Sinistro direto no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_retido": {
+          "descricao": "Sinistro retido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "desp_com": {
+          "descricao": "Despesa de comercialização no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_emitido2": {
+          "descricao": "Prêmio emitido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "premio_emitido_cap": {
+          "descricao": "Prêmio emitido (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "despesa_resseguros": {
+          "descricao": "Despesa com resseguros no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistro_ocorrido": {
+          "descricao": "Sinistro ocorrido no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "receita_resseguro": {
+          "descricao": "Receita com resseguro no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "sinistros_ocorridos_cap": {
+          "descricao": "Sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "recuperacao_sinistros_ocorridos_cap": {
+          "descricao": "Recuperação de sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "rvne": {
+          "descricao": "Riscos vigentes não emitidos (RVNE) no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "conveniodpvat": {
+          "descricao": "Convênio DPVAT no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "consorciosefundos": {
+          "descricao": "Consórcios e fundos no mês, em R$, como a SUSEP publica",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "coenti",
+        "cogrupo",
+        "coramo",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ZIP é regerado todo dia)",
+      "atraso": "Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias"
+    },
+    "amostra_painel": {
+      "tabela": "amostra_painel",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.1.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "data": {
+          "descricao": "Fim do mês: a linha diz o que se sabia neste dia",
+          "unidade": "data (dia)"
+        },
+        "registrada_desde": {
+          "descricao": "Início do registro de companhia aberta vigente na data",
+          "unidade": "data (dia)"
+        },
+        "primeira_entrega": {
+          "descricao": "A primeira DFP ou ITR entregue (a companhia só entra depois dela)",
+          "unidade": "data (dia)"
+        },
+        "tickers_na_data": {
+          "descricao": "Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum)",
+          "unidade": "texto"
+        },
+        "com_ticker_na_data": {
+          "descricao": "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
+          "unidade": "verdadeiro ou falso"
+        },
+        "balanco_fim": {
+          "descricao": "Data do balanço mais novo já público na data",
+          "unidade": "data (dia)"
+        },
+        "balanco_publico_em": {
+          "descricao": "Quando os valores do balanço usados ficaram públicos (entrega à CVM)",
+          "unidade": "data (dia)"
+        },
+        "balanco_grupo": {
+          "descricao": "con (consolidado) ou ind (individual, sem consolidado no período)",
+          "unidade": "texto"
+        },
+        "ativo_total": {
+          "descricao": "Ativo total (conta 1)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "caixa": {
+          "descricao": "Caixa e equivalentes de caixa",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "patrimonio_liquido": {
+          "descricao": "Patrimônio líquido (consolidado: com os minoritários)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "divida_bruta": {
+          "descricao": "Empréstimos e financiamentos de curto e de longo prazo, somados",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "acumulado_inicio": {
+          "descricao": "Início do período acumulado do documento mais novo (o início do exercício)",
+          "unidade": "data (dia)"
+        },
+        "acumulado_fim": {
+          "descricao": "Fim do período acumulado (o fim do trimestre ou do exercício)",
+          "unidade": "data (dia)"
+        },
+        "acumulado_publico_em": {
+          "descricao": "Quando os valores acumulados usados ficaram públicos",
+          "unidade": "data (dia)"
+        },
+        "acumulado_grupo": {
+          "descricao": "con ou ind, no acumulado",
+          "unidade": "texto"
+        },
+        "receita_acumulado": {
+          "descricao": "Receita do início do exercício ao fim do trimestre (bancos: da intermediação)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "ebit_acumulado": {
+          "descricao": "Resultado antes do financeiro e dos tributos, acumulado (vazio nos bancos)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "lucro_acumulado": {
+          "descricao": "Lucro ou prejuízo do período, acumulado",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "anual_fim": {
+          "descricao": "Fim do exercício da DFP mais nova já pública",
+          "unidade": "data (dia)"
+        },
+        "anual_publico_em": {
+          "descricao": "Quando os valores anuais usados ficaram públicos",
+          "unidade": "data (dia)"
+        },
+        "anual_grupo": {
+          "descricao": "con ou ind, no anual",
+          "unidade": "texto"
+        },
+        "receita_anual": {
+          "descricao": "Receita do exercício (bancos: da intermediação)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "ebit_anual": {
+          "descricao": "Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "lucro_anual": {
+          "descricao": "Lucro ou prejuízo do exercício",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "data"
+      ],
+      "datas": {
+        "aconteceu_em": "data"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal (até o último mês fechado)",
+      "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública"
+    },
+    "setoriais_buracos": {
+      "tabela": "setoriais_buracos",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "chave": {
+          "descricao": "Código na fonte sem ligação",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Volume somado (passageiros pagos na ANAC, quantidade na ANP)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "primeira": {
+          "descricao": "Primeiro mês em que aparece",
+          "unidade": "data (dia)"
+        },
+        "ultima": {
+          "descricao": "Último mês em que aparece",
+          "unidade": "data (dia)"
+        },
+        "fonte": {
+          "descricao": "Fonte no registro de coletas",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "fonte",
+        "chave"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "A cada carga das fontes setoriais",
+      "atraso": "Nenhum"
     },
     "ifdata_valores": {
       "tabela": "ifdata_valores",
@@ -2129,7 +4254,7 @@
       "tabela": "insolvencia",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -2140,7 +4265,15 @@
           "unidade": "texto"
         },
         "rotulo": {
-          "descricao": "recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia ou liquidacao",
+          "descricao": "O que aconteceu com a própria companhia: recuperacao_judicial, recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa)",
+          "unidade": "texto"
+        },
+        "evento": {
+          "descricao": "O que aconteceu, com quem for: os mesmos valores do rótulo, sem exposicao_a_terceiro",
+          "unidade": "texto"
+        },
+        "regra": {
+          "descricao": "O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, outra_empresa (palavras achadas) ou contexto_de_terceiro",
           "unidade": "texto"
         },
         "evidencia": {
@@ -2282,16 +4415,376 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
       "atraso": "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+    },
+    "pgfn_divida": {
+      "tabela": "pgfn_divida",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "tipo_divida": {
+          "descricao": "nao_previdenciaria (SIDA), previdenciaria ou fgts: o arquivo da PGFN de onde veio",
+          "unidade": "texto"
+        },
+        "regiao": {
+          "descricao": "Região da PGFN no nome do arquivo (1 a 6, ou NA)",
+          "unidade": "texto"
+        },
+        "tipo_devedor": {
+          "descricao": "principal, corresponsavel ou solidario",
+          "unidade": "texto"
+        },
+        "tipo_situacao": {
+          "descricao": "Grupo da situação, como a PGFN escreve (Em cobrança, Suspenso por decisão judicial, Benefício Fiscal, Garantia)",
+          "unidade": "texto"
+        },
+        "situacao_inscricao": {
+          "descricao": "Situação da inscrição, como a PGFN escreve (ATIVA AJUIZADA, ATIVA EM COBRANCA...)",
+          "unidade": "texto"
+        },
+        "ajuizado": {
+          "descricao": "Verdadeiro se a cobrança já está na Justiça",
+          "unidade": "verdadeiro ou falso"
+        },
+        "inscricoes": {
+          "descricao": "Quantas inscrições somadas nesta linha",
+          "unidade": "número inteiro"
+        },
+        "valor_consolidado": {
+          "descricao": "Valor consolidado somado das inscrições",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "primeira_inscricao": {
+          "descricao": "Data da inscrição mais antiga (vazia se a PGFN não informa)",
+          "unidade": "data (dia)"
+        },
+        "ultima_inscricao": {
+          "descricao": "Data da inscrição mais recente",
+          "unidade": "data (dia)"
+        },
+        "data_do_retrato": {
+          "descricao": "Último dia do mês do retrato da PGFN",
+          "unidade": "data (dia)"
+        },
+        "gerado_em": {
+          "descricao": "Data dos CSVs dentro do ZIP (informativa: não é a de publicação)",
+          "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base",
+          "unidade": "verdadeiro ou falso"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que o arquivista viu o arquivo pela primeira vez (quando ficou público para a base)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "tipo_divida",
+        "regiao",
+        "tipo_devedor",
+        "tipo_situacao",
+        "situacao_inscricao",
+        "ajuizado",
+        "data_do_retrato"
+      ],
+      "datas": {
+        "aconteceu_em": "data_do_retrato",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": true,
+      "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
+      "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
+    },
+    "debentures_assembleias": {
+      "tabela": "debentures_assembleias",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "codigo_cvm": {
+          "descricao": "Código da companhia na CVM",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "assembleia, aviso ou notificacao_do_agente",
+          "unidade": "texto"
+        },
+        "especie": {
+          "descricao": "Espécie do documento da assembleia (Ata, Edital de Convocação, Proposta da Administração...); vazia no aviso e na notificação",
+          "unidade": "texto"
+        },
+        "assunto": {
+          "descricao": "Assunto como a companhia preencheu no IPE",
+          "unidade": "texto"
+        },
+        "emissao": {
+          "descricao": "Número da emissão citada no assunto (vazio se não há nenhuma ou se há mais de uma)",
+          "unidade": "número inteiro"
+        },
+        "tema_vencimento_antecipado": {
+          "descricao": "O assunto fala de vencimento antecipado (inclui o pedido para não declarar)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_waiver": {
+          "descricao": "O assunto fala de waiver, renúncia, perdão, anuência ou consentimento prévio",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_covenant": {
+          "descricao": "O assunto fala de covenant, índices ou limites financeiros, alavancagem, dívida líquida ou EBITDA",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_repactuacao": {
+          "descricao": "O assunto fala de repactuação, prorrogação, postergação, carência, suspensão de pagamento ou mudança de taxa, prazo ou cronograma",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_inadimplemento": {
+          "descricao": "O assunto fala de inadimplemento, não pagamento, recuperação judicial ou extrajudicial ou falência",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_garantia": {
+          "descricao": "O assunto fala de garantia, alienação ou cessão fiduciária, fiança, aval ou conta vinculada",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_resgate": {
+          "descricao": "O assunto fala de resgate antecipado, amortização extraordinária ou aquisição facultativa",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_reorganizacao": {
+          "descricao": "O assunto fala de incorporação, cisão, fusão, reorganização, troca de controle ou oferta de ações",
+          "unidade": "verdadeiro ou falso"
+        },
+        "tema_pagamento": {
+          "descricao": "O assunto avisa pagamento de juros, remuneração, amortização, prêmio ou principal",
+          "unidade": "verdadeiro ou falso"
+        },
+        "estresse": {
+          "descricao": "O tema é de aperto de crédito (regra na descrição)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "generico": {
+          "descricao": "O assunto não casa com nenhum tema: só o PDF dirá",
+          "unidade": "verdadeiro ou falso"
+        },
+        "referencia": {
+          "descricao": "Data informada pela companhia (no edital, o dia da assembleia)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Entrega da versão do documento à CVM: quando ficou público para a base",
+          "unidade": "data (dia)"
+        },
+        "protocolo": {
+          "descricao": "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+          "unidade": "texto"
+        },
+        "versao": {
+          "descricao": "Versão do documento (reapresentação)",
+          "unidade": "número inteiro"
+        },
+        "link": {
+          "descricao": "Link do documento no sistema da CVM",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "protocolo",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "publico_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2003-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do arquivista baixar o IPE do ano",
+      "atraso": "O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois"
+    },
+    "ratings": {
+      "tabela": "ratings",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "codigo_cvm": {
+          "descricao": "Código da companhia na CVM",
+          "unidade": "texto"
+        },
+        "agencia": {
+          "descricao": "fitch, sp, moodys, austin, liberum, sr_rating, lf_rating ou am_best (vazia se não extraído)",
+          "unidade": "texto"
+        },
+        "escala": {
+          "descricao": "nacional ou global",
+          "unidade": "texto"
+        },
+        "nota": {
+          "descricao": "Nota sem sufixos (AA, RD, Aa1): compara documentos da mesma agência",
+          "unidade": "texto"
+        },
+        "nivel": {
+          "descricao": "Posição da nota na escala (1 = AAA ou Aaa): compara agências",
+          "unidade": "número inteiro"
+        },
+        "nota_original": {
+          "descricao": "A nota como está no texto (AA(bra), brAAA, Aa1.br)",
+          "unidade": "texto"
+        },
+        "perspectiva": {
+          "descricao": "estavel, positiva, negativa, em_desenvolvimento, em_observacao_positiva ou em_observacao_negativa",
+          "unidade": "texto"
+        },
+        "acao": {
+          "descricao": "afirmacao, elevacao, rebaixamento, atribuicao, retirada...",
+          "unidade": "texto"
+        },
+        "data_acao": {
+          "descricao": "Data da ação da agência lida do texto (vazia se não está ou se vem depois da entrega)",
+          "unidade": "data (dia)"
+        },
+        "outras_notas": {
+          "descricao": "As outras notas citadas no documento, separadas por `; `",
+          "unidade": "texto"
+        },
+        "publico_em": {
+          "descricao": "Entrega da versão do documento à CVM: quando o rating ficou público para a base",
+          "unidade": "data (dia)"
+        },
+        "protocolo": {
+          "descricao": "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+          "unidade": "texto"
+        },
+        "versao": {
+          "descricao": "Versão do documento (reapresentação)",
+          "unidade": "número inteiro"
+        },
+        "link": {
+          "descricao": "Link do documento no sistema da CVM",
+          "unidade": "texto"
+        },
+        "evidencia": {
+          "descricao": "Por que o documento entrou: relatorio_de_agencia (tipo do IPE) ou assunto",
+          "unidade": "texto"
+        },
+        "situacao_extracao": {
+          "descricao": "extraido, nao_extraido ou nao_e_pdf",
+          "unidade": "texto"
+        },
+        "documentos": {
+          "descricao": "Protocolos de todos os documentos do mesmo evento, pela data de entrega, separados por `; ` (pode citar entregas posteriores a `publico_em`)",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "protocolo",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "data_acao",
+        "publico_em": "publico_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2003-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária no servidor de casa (`scripts/montar_ratings.py`), depois das rodadas do coletor, que baixa os documentos de hora em hora, do mais novo ao mais velho",
+      "atraso": "O rating vale a partir de `publico_em` (entrega da versão do documento à CVM), nunca da data do relatório da agência; `data_acao` depois da entrega fica vazia"
     },
     "auditores": {
       "tabela": "auditores",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -2314,7 +4807,7 @@
           "unidade": "texto"
         },
         "conhecido_em": {
-          "descricao": "Data em que a CVM recebeu essa versão do FCA",
+          "descricao": "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do registro (pedido de registro), vale a partir do registro seguinte",
           "unidade": "data (dia)"
         },
         "auditor_id": {
@@ -2370,7 +4863,8 @@
         "cnpj",
         "referencia",
         "versao",
-        "auditor_id"
+        "auditor_id",
+        "inicio"
       ],
       "datas": {
         "aconteceu_em": "inicio",
@@ -2784,6 +5278,614 @@
       "pessoa": false,
       "frequencia": "Refeita a cada montagem, com a safra mais recente de cada fonte",
       "atraso": "A ligação vale a partir de `desde` (entrega do FRE que a mostrou); os tickers são os do FCA mais recente"
+    },
+    "entidades": {
+      "tabela": "entidades",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_entidade": {
+          "descricao": "'E' + 20 hexadecimais do SHA-256 do identificador primário",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "empresa, fundo, valor_mobiliario ou auditor",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
+          "unidade": "texto"
+        },
+        "natureza_juridica": {
+          "descricao": "Código da natureza jurídica da Receita (2046 = S.A. aberta), nao_informada ou nao_se_aplica (valor mobiliário)",
+          "unidade": "texto"
+        },
+        "natureza_fonte": {
+          "descricao": "receita, fonte (CVM ou cadastro de fundos) ou nao_informada",
+          "unidade": "texto"
+        },
+        "mei": {
+          "descricao": "Verdadeiro se é MEI hoje (Simples da Receita)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza não informada: nunca recebe sinal negativo publicado",
+          "unidade": "verdadeiro ou falso"
+        },
+        "fontes": {
+          "descricao": "As fontes de onde a entidade saiu, separadas por vírgula",
+          "unidade": "texto"
+        },
+        "publico_em": {
+          "descricao": "O dia mais antigo em que alguma fonte a tornou pública",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "id_entidade"
+      ],
+      "datas": {
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
+      "atraso": "O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela"
+    },
+    "identificadores": {
+      "tabela": "identificadores",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_entidade": {
+          "descricao": "A entidade (tabela `entidades`)",
+          "unidade": "texto"
+        },
+        "sistema": {
+          "descricao": "cnpj, cnpj_raiz, lei, isin, ticker, emissor, codigo_cvm_auditor ou codigo_<fonte> (codigo_bcb_ifdata...)",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "O identificador (CNPJ sem pontuação, com letras se tiver)",
+          "unidade": "texto"
+        },
+        "desde": {
+          "descricao": "Desde quando vale (vazio: sempre)",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Desde quando a ligação era pública (como era na data)",
+          "unidade": "data (dia)"
+        },
+        "regra": {
+          "descricao": "A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias)",
+          "unidade": "número inteiro"
+        },
+        "conferido_por": {
+          "descricao": "regra (código) ou tabela (conferida à mão)",
+          "unidade": "texto"
+        },
+        "fontes": {
+          "descricao": "As fontes que trouxeram o identificador, separadas por vírgula",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "id_entidade",
+        "sistema",
+        "valor",
+        "desde"
+      ],
+      "datas": {
+        "aconteceu_em": "desde",
+        "publico_em": "publico_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem; versão nova só quando o conteúdo muda",
+      "atraso": "O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois"
+    },
+    "ligacoes": {
+      "tabela": "ligacoes",
+      "modulo": "rede",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "de": {
+          "descricao": "A entidade de onde a relação sai (a controlada, o fundo, a firma)",
+          "unidade": "texto"
+        },
+        "para": {
+          "descricao": "A entidade para onde a relação vai (a companhia, o valor mobiliário)",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, do_conglomerado_de, audita, emite ou detem",
+          "unidade": "texto"
+        },
+        "papel": {
+          "descricao": "Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a principal (opera_para); lider (do_conglomerado_de)",
+          "unidade": "texto"
+        },
+        "participacao": {
+          "descricao": "Participação informada no FRE (vazia nos outros)",
+          "unidade": "pontos percentuais (66,25 = 66,25%)"
+        },
+        "aconteceu_em": {
+          "descricao": "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+          "unidade": "data (dia)"
+        },
+        "infracao_em": {
+          "descricao": "Data da infração, nas sanções (vazia nas fontes de hoje)",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Desde quando a relação era pública (como era na data)",
+          "unidade": "data (dia)"
+        },
+        "coletado_em": {
+          "descricao": "Quando a base guardou o arquivo de onde veio (registro de coletas)",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "unidade": "data (dia)"
+        },
+        "situacao": {
+          "descricao": "vigente ou encerrada",
+          "unidade": "texto"
+        },
+        "encerrada_por": {
+          "descricao": "fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente",
+          "unidade": "texto"
+        },
+        "fonte": {
+          "descricao": "cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo ou da tabela da base de onde veio",
+          "unidade": "texto"
+        },
+        "conferido_por": {
+          "descricao": "regra (código) ou tabela (conferida à mão)",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "de",
+        "para",
+        "tipo",
+        "papel",
+        "aconteceu_em",
+        "fonte"
+      ],
+      "datas": {
+        "aconteceu_em": "aconteceu_em",
+        "publico_em": "publico_em",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Toda noite no servidor de casa; versão nova só quando o conteúdo muda",
+      "atraso": "O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o IF.data 120 dias depois da data-base; a fonte de governo desde que guardada"
+    },
+    "ma_assessorias": {
+      "tabela": "ma_assessorias",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio",
+          "unidade": "texto"
+        },
+        "sha256": {
+          "descricao": "SHA-256 da página guardada no acervo",
+          "unidade": "texto"
+        },
+        "coletado_em": {
+          "descricao": "Quando o arquivista baixou a página",
+          "unidade": "data e hora (UTC)"
+        },
+        "tipo": {
+          "descricao": "Código da taxonomia de M&A (AQ_CONTROLE, AQ_MINORITARIA, FUSAO, JV, VENDA_ATIVO, PE_VC, DCM) ou desconhecido",
+          "unidade": "texto"
+        },
+        "regra": {
+          "descricao": "Qual regra do título deu o tipo (divida, fusao, jv, venda_de_ativo, minoritaria, majoritaria, participacao, financiamento, rodada, aquisicao); vazio se nenhuma",
+          "unidade": "texto"
+        },
+        "alvo": {
+          "descricao": "Empresa(s) comprada(s) ou que recebeu o investimento, separadas por `; `",
+          "unidade": "texto"
+        },
+        "comprador": {
+          "descricao": "Quem comprou ou investiu",
+          "unidade": "texto"
+        },
+        "vendedor": {
+          "descricao": "Quem vendeu, quando não é a própria alvo (controladora, dono do ativo)",
+          "unidade": "texto"
+        },
+        "outras_partes": {
+          "descricao": "Empresas da página sem papel dito no título (controladora de quem compra)",
+          "unidade": "texto"
+        },
+        "cliente": {
+          "descricao": "Empresa(s) que a assessoria diz ter assessorado (campo da página)",
+          "unidade": "texto"
+        },
+        "contraparte": {
+          "descricao": "A(s) outra(s) empresa(s) do negócio, como a página lista",
+          "unidade": "texto"
+        },
+        "papeis_por": {
+          "descricao": "titulo (os papéis vieram do título) ou pagina (algum nome não aparece no título e o lado veio do campo da página); vazio sem empresas",
+          "unidade": "texto"
+        },
+        "lado_da_assessoria": {
+          "descricao": "venda, compra, captacao (dívida ou empréstimo) ou parte (fusão, JV)",
+          "unidade": "texto"
+        },
+        "setor": {
+          "descricao": "Setor da alvo; vazio enquanto a página não diz (vem do CNPJ no passo 3)",
+          "unidade": "texto"
+        },
+        "paises": {
+          "descricao": "Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "moeda": {
+          "descricao": "BRL ou USD, a do valor",
+          "unidade": "texto"
+        },
+        "conferencia": {
+          "descricao": "assessoria (fonte única: declarado por quem assessorou); a confirmação por fonte oficial, com a prova, fica em `ma_datas`",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
+      "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta"
+    },
+    "ma_partes": {
+      "tabela": "ma_partes",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "O nome da empresa como a página escreve",
+          "unidade": "texto"
+        },
+        "papel": {
+          "descricao": "alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis (dívida, fusão, joint venture, título sem verbo)",
+          "unidade": "texto"
+        },
+        "na_pagina": {
+          "descricao": "cliente (a assessorada) ou contraparte: o campo da página em que o nome está",
+          "unidade": "texto"
+        },
+        "nome_normalizado": {
+          "descricao": "O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e \"Grupo\": o que se compara",
+          "unidade": "texto"
+        },
+        "id_entidade": {
+          "descricao": "A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede dará à raiz dela. Vazio sem ligação ou na dúvida",
+          "unidade": "texto"
+        },
+        "cnpj_raiz": {
+          "descricao": "Os 8 primeiros dígitos do CNPJ da empresa ligada",
+          "unidade": "texto"
+        },
+        "lei": {
+          "descricao": "O LEI da entidade ligada, quando a rede tem",
+          "unidade": "texto"
+        },
+        "ligacao_por": {
+          "descricao": "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato, nome de uma palavra só fora da rede, ou nome fantasia que a razão social não tem), holding_estrangeira (CNPJ da dona de fora), aberto_depois_do_negocio (a matriz abriu depois do post) ou sem_ligacao",
+          "unidade": "texto"
+        },
+        "candidatos": {
+          "descricao": "Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida)",
+          "unidade": "número inteiro"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url",
+        "nome"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias` e o do mês do CNPJ guardado"
+    },
+    "ma_negocios": {
+      "tabela": "ma_negocios",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "\"N\" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); o de uma página quando as mesmas partes não podem ser juntadas",
+          "unidade": "texto"
+        },
+        "paginas_do_negocio": {
+          "descricao": "Quantas páginas têm este `id_negocio`",
+          "unidade": "número inteiro"
+        },
+        "paginas_com_as_mesmas_partes": {
+          "descricao": "Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo site são posts diferentes)",
+          "unidade": "número inteiro"
+        },
+        "duplicata_por": {
+          "descricao": "partes_iguais quando o negócio está em mais de uma página; vazio se só em uma",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {},
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias`"
+    },
+    "ma_datas": {
+      "tabela": "ma_datas",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_assessorias`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "O negócio (liga com `ma_negocios`)",
+          "unidade": "texto"
+        },
+        "coletado_em": {
+          "descricao": "Quando o arquivista baixou a página pela primeira vez",
+          "unidade": "data e hora (UTC)"
+        },
+        "wayback_em": {
+          "descricao": "A cópia mais antiga da página no Wayback que respondeu 200; vazio se nenhuma",
+          "unidade": "data e hora (UTC)"
+        },
+        "wayback_copia": {
+          "descricao": "Link da cópia no Wayback, para conferir à mão",
+          "unidade": "texto"
+        },
+        "wayback_consulta": {
+          "descricao": "Endereço da consulta à API CDX guardada no acervo",
+          "unidade": "texto"
+        },
+        "wayback_sha256": {
+          "descricao": "SHA-256 da resposta da consulta guardada",
+          "unidade": "texto"
+        },
+        "confirmado_por": {
+          "descricao": "rfb-cnpj quando a compradora é sócia PJ da alvo no CNPJ; vazio sem confirmação",
+          "unidade": "texto"
+        },
+        "confirmacao_url": {
+          "descricao": "Endereço do ZIP de sócios da Receita que confirma",
+          "unidade": "texto"
+        },
+        "confirmacao_sha256": {
+          "descricao": "SHA-256 do ZIP guardado no acervo",
+          "unidade": "texto"
+        },
+        "confirmacao_em": {
+          "descricao": "Quando o arquivista baixou esse ZIP",
+          "unidade": "data e hora (UTC)"
+        },
+        "fechamento_em": {
+          "descricao": "Data de entrada da compradora na sociedade da alvo, como a Receita publica (a etapa de fechamento); se ela já era sócia antes, a da primeira entrada",
+          "unidade": "data (dia)"
+        },
+        "conhecido_em": {
+          "descricao": "A prova mais antiga de que o negócio era público (nunca antes dela)",
+          "unidade": "data e hora (UTC)"
+        },
+        "conhecido_por": {
+          "descricao": "wayback, rfb-cnpj ou coleta: de onde veio o `conhecido_em`",
+          "unidade": "texto"
+        },
+        "prova_url": {
+          "descricao": "Endereço do original que prova o `conhecido_em`",
+          "unidade": "texto"
+        },
+        "prova_sha256": {
+          "descricao": "SHA-256 desse original",
+          "unidade": "texto"
+        },
+        "conhecido_em_do_negocio": {
+          "descricao": "O `conhecido_em` mais antigo entre as páginas do mesmo negócio",
+          "unidade": "data e hora (UTC)"
+        },
+        "conferencia": {
+          "descricao": "confirmado (fonte oficial com a prova apontada) ou assessoria (só o post)",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {
+        "aconteceu_em": "fechamento_em",
+        "publico_em": "conhecido_em",
+        "coletado_em": "coletado_em"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
+      "revenda": "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado"
+    },
+    "ma_regua": {
+      "tabela": "ma_regua",
+      "modulo": "ma",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "assessoria": {
+          "descricao": "Quem postou (`igc`)",
+          "unidade": "texto"
+        },
+        "url": {
+          "descricao": "Endereço da página do negócio (liga com `ma_datas`)",
+          "unidade": "texto"
+        },
+        "id_negocio": {
+          "descricao": "O negócio (liga com `ma_negocios`)",
+          "unidade": "texto"
+        },
+        "alvo_cnpj_raiz": {
+          "descricao": "Raiz do CNPJ da alvo (vazio sem ligação ou com mais de uma alvo ligada)",
+          "unidade": "texto"
+        },
+        "conhecido_em_do_negocio": {
+          "descricao": "O `conhecido_em` do negócio (`ma_datas`): o corte do que a régua pode usar",
+          "unidade": "data e hora (UTC)"
+        },
+        "fechamento_em": {
+          "descricao": "Data do fechamento pelo CNPJ (`ma_datas`), quando há: o exercício é o de antes dela",
+          "unidade": "data (dia)"
+        },
+        "middle_market": {
+          "descricao": "sim (receita de 30 a 500 milhões, limites inclusos), nao ou desconhecido",
+          "unidade": "texto"
+        },
+        "motivo": {
+          "descricao": "receita, porte_me_epp, sem_receita (alvo com CNPJ sem receita pública antes), alvo_sem_cnpj ou varias_alvos",
+          "unidade": "texto"
+        },
+        "receita": {
+          "descricao": "Receita anual da alvo; vazio quando não há documento",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "receita_exercicio_fim": {
+          "descricao": "Fim do exercício dessa receita",
+          "unidade": "data (dia)"
+        },
+        "receita_fonte": {
+          "descricao": "cpc15-compradora, dfp-alvo, balanco-alvo ou cade (no mesmo exercício, nessa ordem)",
+          "unidade": "texto"
+        },
+        "receita_documento": {
+          "descricao": "O documento: a entrega à CVM (tipo, CNPJ, referência, versão e grupo) ou o endereço",
+          "unidade": "texto"
+        },
+        "receita_documento_sha256": {
+          "descricao": "SHA-256 do documento no acervo, quando guardado",
+          "unidade": "texto"
+        },
+        "receita_publico_em": {
+          "descricao": "Dia em que o documento ficou público",
+          "unidade": "data (dia)"
+        },
+        "porte": {
+          "descricao": "Porte da alvo no CNPJ baixado antes do negócio (01 ME, 03 EPP, 05 demais, 00 não informado); vazio se o arquivo é de depois",
+          "unidade": "texto"
+        },
+        "porte_publico_em": {
+          "descricao": "Quando o arquivista baixou esse ZIP",
+          "unidade": "data e hora (UTC)"
+        },
+        "porte_prova_url": {
+          "descricao": "Endereço do ZIP `Empresas` da Receita",
+          "unidade": "texto"
+        },
+        "porte_prova_sha256": {
+          "descricao": "SHA-256 do ZIP guardado no acervo",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "assessoria",
+        "url"
+      ],
+      "datas": {
+        "aconteceu_em": "fechamento_em",
+        "publico_em": "conhecido_em_do_negocio"
+      },
+      "historico_desde": "2026-10-16",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
+      "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"
     }
   }
 }

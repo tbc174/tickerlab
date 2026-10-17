@@ -4,10 +4,11 @@ ADR 0055, exigência 13).
 Para as fontes novas que não são "por ano de balanço" (código da ação, emissores, cadastros): grava
 `<nome>.parquet` sem ficar pela metade e, ao lado, `<nome>.json` com as linhas, o SHA-256 do
 conteúdo (independente da ordem das linhas), a ordem usada no hash, as origens (endereço e SHA-256 de
-cada original) e a versão do código que gravou. `conferir_tabela` diz se o Parquet ainda é o anotado.
+cada original), a marca de licença (`base/licenca.py`) e a versão do código que gravou. `conferir_tabela` diz se o Parquet ainda é o anotado.
 """
 
 import hashlib
+import io
 import json
 import logging
 import os
@@ -17,10 +18,14 @@ from pathlib import Path
 
 import pandas as pd
 
+from base.licenca import licenca_para_gravar
 from src.versao_do_codigo import versao_do_codigo
 
 log = logging.getLogger(__name__)
 ALGARISMOS_SIGNIFICATIVOS = "%.17g"  # o mesmo número sempre vira o mesmo texto
+LINHAS_POR_PEDACO = (
+    200_000  # o texto do hash sai em pedaços: a tabela inteira não cabe na memória
+)
 
 
 def gravar_atomico(destino: Path, gravar: Callable[[Path], object]) -> None:
@@ -37,10 +42,56 @@ def hash_da_tabela(tabela: pd.DataFrame, ordem: list[str]) -> str:
         na_position="first",
         kind="stable",
     ).reset_index(drop=True)
-    texto = canonica.to_csv(
-        index=False, float_format=ALGARISMOS_SIGNIFICATIVOS, date_format="%Y-%m-%d"
-    )
-    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+    soma = hashlib.sha256()
+    for inicio in range(0, max(len(canonica), 1), LINHAS_POR_PEDACO):
+        pedaco = canonica.iloc[inicio : inicio + LINHAS_POR_PEDACO].to_csv(
+            index=False,
+            header=inicio == 0,
+            float_format=ALGARISMOS_SIGNIFICATIVOS,
+            date_format="%Y-%m-%d",
+        )
+        soma.update(pedaco.encode("utf-8"))
+    return soma.hexdigest()
+
+
+def como_no_disco(tabela: pd.DataFrame) -> pd.DataFrame:
+    """A tabela como volta do Parquet. O hash é sempre deste jeito: uma coluna `object` com float do
+    Python (`1.0`) volta como float64 (`1`), e o hash feito na memória não conferia com o arquivo."""
+    memoria = io.BytesIO()
+    tabela.to_parquet(memoria, index=False)
+    memoria.seek(0)
+    return pd.read_parquet(memoria)
+
+
+def _conferencia_do_contrato(tabela: pd.DataFrame, destino: Path) -> dict[str, object]:
+    """A conferência dos valores contra o contrato (`base/conferencia.py`), se a pasta de `destino` é
+    de uma tabela do dicionário. Só aviso: um problema, ou a própria conferência falhar, fica anotado
+    no manifesto e a montagem segue (bloquear pede o "pode" do Tiago)."""
+    nome = None
+    try:
+        # importado aqui: o dicionário puxa o catálogo de coletas, e quem só grava Parquet não precisa
+        from base.conferencia import conferir, tabela_do_destino
+
+        nome = tabela_do_destino(destino.with_suffix(".parquet"))
+        if nome is None:
+            return {}
+        resultado = conferir(tabela, nome).para_manifesto()
+    except (
+        Exception
+    ) as erro:  # aviso: a montagem não pode parar por causa da conferência
+        log.exception("conferência do contrato de %s falhou", destino)
+        resultado = {
+            "tabela": nome,
+            "aprovada": False,
+            "erro": f"{type(erro).__name__}: {erro}",
+        }
+    if not resultado["aprovada"]:
+        log.warning(
+            "%s fora do contrato: %s",
+            destino,
+            resultado.get("problemas") or resultado.get("erro"),
+        )
+    return {"conferencia_do_contrato": resultado}
 
 
 def gravar_tabela(
@@ -58,12 +109,16 @@ def gravar_tabela(
     destino.parent.mkdir(parents=True, exist_ok=True)
     arquivo = destino.with_suffix(".parquet")
     gravar_atomico(arquivo, lambda caminho: tabela.to_parquet(caminho, index=False))
+    no_disco = ler_tabela(arquivo)
     manifesto = {
         "linhas": len(tabela),
-        "sha256_da_tabela": hash_da_tabela(tabela, ordem),
+        "sha256_da_tabela": hash_da_tabela(no_disco, ordem),
         "ordem": ordem,
         "origens": origens,
+        # a marca de licença da tabela, a mais restrita das fontes (ADR 0008, Emenda 1)
+        "licenca": licenca_para_gravar(arquivo, origens),
         "versao_do_codigo": versao_do_codigo(),
+        **_conferencia_do_contrato(no_disco, destino),
         **(extras or {}),
     }
     texto = json.dumps(manifesto, ensure_ascii=False, indent=1)
@@ -162,8 +217,13 @@ def gravar_com_versoes(
     destino: Path,
     origens: list[dict[str, str]],
     ordem: list[str],
+    *,
+    forcar: bool = False,
 ) -> str:
     """Grava a tabela se o conteúdo mudou (`GRAVADO`), guardando a anterior; senão, `IGUAL`.
+
+    `forcar`: monta e compara mesmo com as mesmas origens (o leitor mudou: corrigir o código não refaz
+    o que já está gravado, lição do #333); se o conteúdo mudou, a anterior vira versão, como sempre.
 
     `montar` só é chamada quando precisa: com as mesmas origens, nada é lido nem regravado. Com
     origens novas e o mesmo conteúdo (o BC devolve o cadastro do IF.data com outros bytes), fica a
@@ -174,11 +234,11 @@ def gravar_com_versoes(
     origens novas, sem versão nova, para a linhagem continuar chegando aos originais (série 4).
     """
     anteriores = origens_gravadas(destino)
-    if anteriores == origens:
+    if anteriores == origens and not forcar:
         return IGUAL
     tabela = montar()
     if anteriores is not None:
-        if _hash_gravado(destino) == hash_da_tabela(tabela, ordem):
+        if _hash_gravado(destino) == hash_da_tabela(como_no_disco(tabela), ordem):
             if any(e_tabela_da_base(o["url"]) for o in origens):
                 gravar_tabela(tabela, destino, origens, ordem)
             return IGUAL
@@ -218,7 +278,8 @@ def gravar_se_mudou(
     - só linhas novas: regrava sem versão (`ACRESCIDO`), porque o passado não mudou;
     - uma linha antiga mudou ou sumiu: a tabela anterior vira `.vN` e a nova é gravada (`GRAVADO`).
       Com `versoes=False` (cripto, onde "a última vence" de propósito a cada rodada) só regrava.
-    Tabela gravada antes do manifesto ganha o manifesto na primeira remontagem.
+    Tabela gravada antes do manifesto, ou com manifesto que não confere, ganha um certo na primeira
+    remontagem.
     """
     destino = destino.with_suffix("")  # aceita `2024` ou `2024.parquet`
     arquivo = destino.with_suffix(".parquet")
@@ -226,11 +287,13 @@ def gravar_se_mudou(
         gravar_tabela(tabela, destino, origens, ordem)
         return GRAVADO
     antes = _sem_carimbos(ler_tabela(arquivo), carimbos)
-    agora = _sem_carimbos(tabela, carimbos)
+    agora = _sem_carimbos(como_no_disco(tabela), carimbos)
     if set(antes.columns) == set(agora.columns) and hash_da_tabela(
         antes[list(agora.columns)], ordem
     ) == hash_da_tabela(agora, ordem):
-        if destino.with_suffix(".json").exists():
+        if conferir_tabela(
+            arquivo
+        ):  # manifesto que não confere (ou falta) é refeito, sem versão
             return IGUAL
         gravar_tabela(tabela, destino, origens, ordem)
         return GRAVADO
@@ -241,3 +304,74 @@ def gravar_se_mudou(
         guardar_versao_anterior(destino)
     gravar_tabela(tabela, destino, origens, ordem)
     return GRAVADO
+
+
+# --- lápide: oposição ou eliminação atendida (ADR 0077, item 2; plano, D7) -----------------------
+def versoes_da_tabela(destino: Path) -> list[Path]:
+    """A tabela vigente e as versões guardadas dela (`<nome>.v1.parquet`, `.v2`...), as que existem."""
+    destino = destino.with_suffix("")
+    guardadas = sorted(
+        (
+            a
+            for a in destino.parent.glob(f"{destino.name}.v*.parquet")
+            if a.stem.rsplit(".", 1)[0] == destino.name
+            and VERSAO_GUARDADA.search(a.stem)
+        ),
+        key=lambda a: int(a.stem.rsplit(".v", 1)[1]),
+    )
+    vigente = destino.with_suffix(".parquet")
+    return [vigente, *guardadas] if vigente.exists() else guardadas
+
+
+def _sem_os_ids(tabela: pd.DataFrame, ids: set[str]) -> pd.DataFrame | None:
+    """A tabela com cada valor de `ids` trocado por vazio; None se nenhum aparece."""
+    textos = [
+        c
+        for c in tabela.columns
+        if tabela[c].dtype == object or pd.api.types.is_string_dtype(tabela[c])
+    ]
+    achados = {c: tabela[c].isin(ids) for c in textos}
+    if not any(a.any() for a in achados.values()):
+        return None
+    tabela = tabela.copy()
+    for coluna, achado in achados.items():
+        if achado.any():
+            tabela[coluna] = tabela[coluna].astype(object).mask(achado, None)
+    return tabela
+
+
+def regravar_por_lapide(destino: Path, ids_pessoa: set[str], dia: str) -> list[Path]:
+    """Regrava a vigente e as versões `.vN` de `destino` sem os `ids_pessoa` (a única exceção ao
+    "nada é apagado"). Devolve os Parquets regravados.
+
+    A linha fica, com o id trocado por vazio: a aresta vira um fato anônimo da empresa. O hash do
+    manifesto é refeito e `regravada_por_lapide` ganha o dia (nunca o id). A tabela regravada continua
+    conferindo; a derivada que a usava deixa de conferir até ser remontada. Só valores inteiros de
+    coluna de texto (um id dentro de uma lista em texto não é achado: as tabelas da rede não têm).
+    """
+    regravadas = []
+    for arquivo in versoes_da_tabela(destino) if ids_pessoa else []:
+        tabela = _sem_os_ids(ler_tabela(arquivo), set(ids_pessoa))
+        if tabela is None:
+            continue
+        gravar_atomico(
+            arquivo, lambda caminho, t=tabela: t.to_parquet(caminho, index=False)
+        )
+        manifesto = arquivo.with_suffix(".json")
+        if manifesto.exists():
+            anotado = json.loads(manifesto.read_text(encoding="utf-8"))
+            anotado["sha256_da_tabela"] = hash_da_tabela(
+                ler_tabela(arquivo), anotado.get("ordem", [])
+            )
+            anotado["regravada_por_lapide"] = [
+                *anotado.get("regravada_por_lapide", []),
+                {"dia": dia, "versao_do_codigo": versao_do_codigo()},
+            ]
+            texto = json.dumps(anotado, ensure_ascii=False, indent=1)
+            gravar_atomico(
+                manifesto,
+                lambda caminho, x=texto: Path(caminho).write_text(x, encoding="utf-8"),
+            )
+        log.info("%s regravada pela lápide de %s", arquivo.name, dia)
+        regravadas.append(arquivo)
+    return regravadas

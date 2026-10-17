@@ -1,0 +1,73 @@
+{
+  "tabela": "ans_beneficiarios",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "cd_operadora": {
+      "descricao": "Registro da operadora na ANS (a chave da B13, fonte `ans-beneficiarios`)",
+      "unidade": "texto"
+    },
+    "modalidade": {
+      "descricao": "Medicina de grupo, cooperativa médica, seguradora...",
+      "unidade": "texto"
+    },
+    "cobertura": {
+      "descricao": "Médico-hospitalar ou odontológico",
+      "unidade": "texto"
+    },
+    "vigencia_do_plano": {
+      "descricao": "P (plano posterior à Lei 9.656) ou A (anterior)",
+      "unidade": "texto"
+    },
+    "contratacao": {
+      "descricao": "Individual ou familiar, coletivo empresarial, por adesão...",
+      "unidade": "texto"
+    },
+    "financiamento": {
+      "descricao": "Pré-estabelecido, pós-estabelecido...",
+      "unidade": "texto"
+    },
+    "beneficiarios": {
+      "descricao": "Beneficiários no mês",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "base_de": {
+      "descricao": "O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto",
+      "unidade": "data (dia)"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "cd_operadora",
+    "modalidade",
+    "cobertura",
+    "vigencia_do_plano",
+    "contratacao",
+    "financiamento",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026",
+  "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês + 90 dias"
+}

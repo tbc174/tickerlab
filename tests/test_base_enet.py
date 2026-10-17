@@ -270,3 +270,8 @@ def test_limpar_tira_o_pdf_e_os_dados_de_quem_entregou_sem_mudar_as_contas():
 def test_limpar_duas_vezes_da_o_mesmo_resultado():
     limpo = limpar_xml(_itr())
     assert limpar_xml(limpo) == limpo
+
+
+def test_cnpj_alfanumerico_atravessa_enet():
+    xml = _dfp().replace(b"00000208000100", b"12ABC34501DE35")
+    assert ler_xml_enet(xml).cnpj == "12.ABC.345/01DE-35"

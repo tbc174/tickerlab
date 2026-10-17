@@ -220,15 +220,46 @@ def test_leitores_de_cada_fonte():
     ]
 
 
-def test_escolhe_a_safra_mais_recente_de_cada_fonte():
+def test_cadastros_da_ans_e_da_susep_dao_o_cnpj_ao_codigo_da_fonte():
+    ans = (
+        b"REGISTRO_OPERADORA;CNPJ;RAZAO_SOCIAL\n"
+        b'"393321";"44649812000138";"OPERADORA FICTICIA S.A."\n'
+    )
+    linha = empresa_serie.entidades_cadastro_ans(ans).iloc[0]
+    assert (linha["fonte"], linha["chave"], linha["raiz"]) == (
+        "ans-beneficiarios",
+        "393321",
+        "44649812",
+    )
+    susep = json.dumps(
+        {
+            "value": [
+                {
+                    "entcodigofip": "5886",
+                    "entnome": "PORTO SEGURO CIA",
+                    "entcgc": "61198164000160",
+                }
+            ]
+        }
+    ).encode()
+    linha = empresa_serie.entidades_cadastro_susep(susep).iloc[0]
+    assert (linha["fonte"], linha["chave"], linha["raiz"]) == (
+        "susep-ses",
+        "05886",
+        "61198164",
+    )
+
+
+def test_escolhe_a_safra_mais_recente_ou_toda_a_historia():
+    """A Anatel e o SAMP leem todos os períodos: a TIM Celular só existe nos arquivos até 2018."""
     zip_anatel = "https://www.anatel.gov.br/x/acessos_telefonia_movel.zip"
     anatel = {
         f"{zip_anatel}#Acessos_Telefonia_Movel_2026_1S_Colunas.csv",
-        f"{zip_anatel}#Acessos_Telefonia_Movel_2025_2S_Colunas.csv",
+        f"{zip_anatel}#Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas.csv",
     }
-    assert empresa_serie.escolher("anatel-acessos", list(anatel)) == {
-        f"{zip_anatel}#Acessos_Telefonia_Movel_2026_1S_Colunas.csv"
-    }
+    assert empresa_serie.escolher("anatel-acessos", list(anatel)) == anatel
+    samp = [f"https://a/samp-{ano}.parquet" for ano in (2003, 2026)]
+    assert empresa_serie.escolher("aneel-samp", samp) == set(samp)
     ans = [
         "https://d/202607/pda-024-icb-AC-2026_07.zip",
         "https://d/202608/pda-024-icb-AC-2026_08.zip",
@@ -427,3 +458,48 @@ def test_montagem_inclui_os_produtos_e_a_origem_de_cada_entidade(banco, tmp_path
     assert set(fca["via"]) == {"controlada", "coligada"}
     assert fca["origem_sha256"].str.fullmatch(r"[0-9a-f]{64}").all()
     assert (tabela["fonte"] == "comexstat").any()
+
+
+CNPJ_COM_LETRAS = "12ABC34501DE35"  # exemplo oficial da Receita (IN RFB 2.229/2024)
+
+
+def test_cnpj_alfanumerico_atravessa_controladas():
+    assert controladas.cnpj14("12.abc.345/01de-35") == CNPJ_COM_LETRAS
+    fre = controladas.ler_controladas_do_fre(
+        _fre_com(
+            _participacao(
+                "12.ABC.345/01DE-35",
+                "NOVA SA",
+                "1",
+                "900",
+                "FILHA LTDA",
+                "12ABC34502DE16",
+                "Controlada",
+                "100",
+            )
+        )
+    )
+    assert fre[["cnpj_companhia", "cnpj"]].values.tolist() == [
+        [CNPJ_COM_LETRAS, "12ABC34502DE16"]
+    ]
+
+
+def test_cnpj_alfanumerico_atravessa_empresa_serie():
+    anatel = "CNPJ;Empresa;Grupo Econômico;2026-07\n12.ABC.345/01DE-35;NOVA;GRUPO;1\n"
+    linha = empresa_serie.entidades_anatel(anatel.encode("utf-8-sig")).iloc[0]
+    assert (linha["chave"], linha["raiz"]) == (CNPJ_COM_LETRAS, "12ABC345")
+
+
+def _fre_com(participacao: str) -> bytes:
+    """Um FRE de uma linha, entregue em 01/07/2026 (documento 900)."""
+    principal = (
+        f"{PRINCIPAL}\n12.ABC.345/01DE-35;2026-12-31;1;NOVA;9;FRE;900;2026-07-01;x"
+    )
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as arquivo:
+        arquivo.writestr(
+            "fre_cia_aberta_participacao_sociedade_2026.csv",
+            f"{PARTICIPACOES}\n{participacao}".encode("latin-1"),
+        )
+        arquivo.writestr("fre_cia_aberta_2026.csv", principal.encode("latin-1"))
+    return saida.getvalue()

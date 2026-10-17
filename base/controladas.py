@@ -19,26 +19,21 @@ import zipfile
 import pandas as pd
 
 from base import fre
+from base.cnpj import normalizar_cnpj
 
 COLUNAS = (
     "cnpj_companhia", "companhia", "referencia", "versao", "id_documento", "conhecido_em",
     "cnpj", "razao_social", "tipo", "participacao",
 )  # fmt: skip
 PRINCIPAL = re.compile(r"^fre_cia_aberta_\d{4}\.csv$")
-SO_DIGITOS = re.compile(r"\D")
-TAMANHO_DO_CNPJ = 14
-MENOR_CNPJ = 8  # só a raiz (o ISPB do Pix, por exemplo)
 
 
 def cnpj14(valor: object) -> str | None:
-    """O CNPJ com 14 dígitos ("00.000.000/0001-91" ou 8884213000135.0); None se não for CNPJ."""
-    if valor is None or (isinstance(valor, float) and pd.isna(valor)):
-        return None
-    texto = str(valor).strip().removesuffix(".0")
-    digitos = SO_DIGITOS.sub("", texto)
-    if not MENOR_CNPJ <= len(digitos) <= TAMANHO_DO_CNPJ or not digitos.strip("0"):
-        return None
-    return digitos.zfill(TAMANHO_DO_CNPJ)
+    """O CNPJ com 14 caracteres ("00.000.000/0001-91", 8884213000135.0 ou com letras); senão None.
+
+    É o `base.cnpj.normalizar_cnpj` (o nome fica porque a base inteira o usa).
+    """
+    return normalizar_cnpj(valor)
 
 
 def _entregas(conteudo_do_zip: bytes) -> dict[str, str]:

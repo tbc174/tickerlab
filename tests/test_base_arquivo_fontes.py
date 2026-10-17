@@ -380,3 +380,33 @@ def test_beneficiarios_da_ans_so_as_duas_safras_mais_recentes():
 def test_endereco_da_anac_vai_codificado():
     assert " " not in fontes.ESTATISTICO_DA_ANAC
     assert fontes.ESTATISTICO_DA_ANAC.endswith("/Dados_Estatisticos.csv")
+
+
+def test_meses_recentes_do_fidc_e_do_cda_todo_dia():
+    """O dia em que cada informe apareceu (`base/publicacao.py`): os meses mais novos, todo dia, e o
+    que ainda não saiu fica como "não encontrado" (a prova de que faltava)."""
+    from datetime import UTC, datetime
+
+    agora = datetime(2026, 10, 16, 5, 0, tzinfo=UTC)
+    fidc = fontes.POR_ID["cvm-fidc-recente"]
+    cda = fontes.POR_ID["cvm-cda-recente"]
+    assert (fidc.grupo, cda.grupo) == ("diaria", "diaria")
+    assert not (fidc.pesada or cda.pesada)  # a CVM regrava sem mudar os cabeçalhos
+    alvos_fidc = fidc.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("_", 1)[-1] for a in alvos_fidc] == [
+        "202606.zip",
+        "202607.zip",
+        "202608.zip",
+        "202609.zip",
+    ]
+    assert alvos_fidc[0].url.startswith(
+        "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_"
+    )
+    assert all(a.obter is not None for a in alvos_fidc)  # 404 vira "nao_encontrado"
+    alvos_cda = cda.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos_cda] == [
+        f"cda_fi_2026{m:02d}.zip" for m in range(5, 10)
+    ]
+    # virada do ano, no fuso de São Paulo (1º/01 às 01h UTC ainda é 31/12)
+    janeiro = fidc.descobrir(None, datetime(2027, 1, 1, 1, 0, tzinfo=UTC))  # type: ignore[arg-type]
+    assert [a.url[-10:-4] for a in janeiro] == ["202608", "202609", "202610", "202611"]

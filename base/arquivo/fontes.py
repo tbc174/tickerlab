@@ -16,9 +16,12 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as sa
 
 from base import intradiario_b3
+from base.arquivo import assessorias, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
+    csv_so_com_colunas,
     extrair_do_zip_remoto,
+    json_so_com_campos,
     membros_do_zip_remoto,
     parquet_sem_colunas,
     zip_que_pode_faltar,
@@ -76,6 +79,7 @@ TERMOS = {
     "termos-fred": "https://fred.stlouisfed.org/legal/terms/",
     "termos-datajud": "https://datajud-wiki.cnj.jus.br/api-publica/termo-uso",
     "termos-sec": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+    **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -116,6 +120,39 @@ ESTATISTICO_DA_ANAC = "https://sistemas.anac.gov.br/dadosabertos/" + quote(
 BENEFICIARIOS_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/informacoes_consolidadas_de_beneficiarios-024/"
 PASTA_DO_MES = re.compile(rb'href="(\d{6})/"')
 SAFRAS_DA_ANS = 2
+BENEFICIARIOS_POR_OPERADORA_DA_ANS = (
+    "https://dadosabertos.ans.gov.br/FTP/PDA/beneficiarios_vinculos_tipo_contratacao_vda/"
+    "Beneficiarios_operadora_e_carteira.csv"
+)
+# SUSEP (série 4, PR 5b): o SES inteiro é um ZIP de ~580 MB regerado todo dia; saem de dentro dele só
+# os prêmios e sinistros por seguradora e os cadastros. Nunca os CSVs com pessoas (administradores,
+# contatos, acionistas): a lista é fechada
+SES_DA_SUSEP = "https://www2.susep.gov.br/download/estatisticas/BaseCompleta.zip"
+CSVS_DA_SUSEP = (
+    "Ses_seguros.csv",
+    "Ses_cias.csv",
+    "Ses_ramos.csv",
+    "ses_gruposramos.csv",
+)
+# cadastros com CNPJ para a B13 ligar a ANS e a SUSEP às companhias (16/10/2026). Só as colunas da
+# lista: o da ANS traz o nome do representante, e-mail e telefone; o da SUSEP, endereço e telefone
+CADASTRO_DA_ANS = "https://dadosabertos.ans.gov.br/FTP/PDA/operadoras_de_plano_de_saude_{situacao}/{arquivo}"
+ARQUIVOS_DO_CADASTRO_DA_ANS = {
+    "ativas": "Relatorio_cadop.csv",
+    "canceladas": "Relatorio_cadop_canceladas.csv",
+}
+COLUNAS_DO_CADASTRO_DA_ANS = (
+    "REGISTRO_OPERADORA", "CNPJ", "RAZAO_SOCIAL", "NOME_FANTASIA", "MODALIDADE", "UF",
+    "DATA_REGISTRO_ANS", "DATA_DESCREDENCIAMENTO", "MOTIVO_DO_DESCREDENCIAMENTO",
+)  # fmt: skip
+CADASTRO_DA_SUSEP = "https://dados.susep.gov.br/olinda/servico/empresas/versao/v1/odata/DadosCadastrais?$format=json"
+CAMPOS_DO_CADASTRO_DA_SUSEP = (
+    "mercodigo",
+    "entcodigofip",
+    "entnome",
+    "entcgc",
+    "dataautorizacao",
+)
 # 2ª leva (14/10/2026)
 # Anatel: só os CSVs de formato largo ("_Colunas", um por período) e os totais, lidos por partes de
 # dentro dos ZIPs (o de telefonia móvel tem 3,2 GB; os "_Colunas" somam ~70 MB comprimidos)
@@ -389,6 +426,43 @@ def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return alvos
 
 
+def descobrir_susep(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os CSVs escolhidos de dentro do ZIP do SES (o endereço guarda `zip#arquivo`)."""
+    membros = set(membros_do_zip_remoto(cliente, SES_DA_SUSEP))
+    if faltam := [m for m in CSVS_DA_SUSEP if m not in membros]:
+        raise ErroDeDescoberta(f"SUSEP: o ZIP do SES não tem {', '.join(faltam)}")
+    return [
+        Alvo(
+            f"{SES_DA_SUSEP}#{membro}",
+            ".csv",
+            extrair_do_zip_remoto(SES_DA_SUSEP, membro),
+        )
+        for membro in CSVS_DA_SUSEP
+    ]
+
+
+def descobrir_cadastro_da_ans(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """As operadoras ativas e as canceladas (com CNPJ), sem as colunas de contato e representante."""
+    return [
+        Alvo(url, ".csv", csv_so_com_colunas(url, COLUNAS_DO_CADASTRO_DA_ANS, "utf-8"))
+        for url in (
+            CADASTRO_DA_ANS.format(situacao=situacao, arquivo=arquivo)
+            for situacao, arquivo in ARQUIVOS_DO_CADASTRO_DA_ANS.items()
+        )
+    ]
+
+
+def descobrir_cadastro_da_susep(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """As entidades autorizadas pela SUSEP (código FIP e CNPJ), sem endereço nem telefone."""
+    return [
+        Alvo(
+            CADASTRO_DA_SUSEP,
+            ".json",
+            json_so_com_campos(CADASTRO_DA_SUSEP, CAMPOS_DO_CADASTRO_DA_SUSEP),
+        )
+    ]
+
+
 def _fim_dos_meses(agora: datetime, quantos: int) -> list[date]:
     """O último dia de cada um dos `quantos` meses fechados antes de `agora`."""
     dias: list[date] = []
@@ -479,6 +553,30 @@ def _boletim_final_ja_guardado(anterior: sa.Row) -> bool:
     return baixado.astimezone(FUSO_DA_B3).date() > pregao
 
 
+# o dia em que cada informe apareceu na CVM (`visto_em`, `base/publicacao.py`): os meses mais novos,
+# todo dia; o que ainda não saiu fica "nao_encontrado" (a prova de que faltava). O FIDC é entregue em
+# 15 dias e regravado depois; o CDA enche em ~3 meses (o sigilo vai a 90 dias). ~140 MB por dia.
+FIDC_DO_MES = "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_{aaaamm}.zip"
+CDA_DO_MES = "https://dados.cvm.gov.br/dados/FI/DOC/CDA/DADOS/cda_fi_{aaaamm}.zip"
+MESES_RECENTES_DO_FIDC = 4
+MESES_RECENTES_DO_CDA = 5
+
+
+def _meses_recentes(modelo: str, meses: int) -> Descobrir:
+    """Os `meses` meses antes do atual (no fuso de São Paulo), do mais antigo ao mais novo."""
+
+    def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        hoje = agora.astimezone(FUSO_DA_B3).date()
+        alvos = []
+        for atras in range(meses, 0, -1):
+            ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
+            url = modelo.format(aaaamm=f"{ano}{mes + 1:02d}")
+            alvos.append(Alvo(url, ".zip", zip_que_pode_faltar(url)))
+        return alvos
+
+    return descobrir
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -531,6 +629,15 @@ FONTES: list[Fonte] = [
     # semanais: a CVM só guarda os meses recentes do FIAGRO e reescreve o FIDC
     Fonte("cvm-fiagro", "semanal", _ckan(PORTAL_DA_CVM, "fiagro-doc-inf_mensal")),
     Fonte("cvm-fidc", "semanal", _ckan(PORTAL_DA_CVM, "fidc-doc-inf_mensal")),
+    # diárias: o dia em que cada informe e cada carteira apareceram (`visto_em`)
+    Fonte(
+        "cvm-fidc-recente",
+        "diaria",
+        _meses_recentes(FIDC_DO_MES, MESES_RECENTES_DO_FIDC),
+    ),
+    Fonte(
+        "cvm-cda-recente", "diaria", _meses_recentes(CDA_DO_MES, MESES_RECENTES_DO_CDA)
+    ),
     Fonte(
         "cvm-cri",
         "semanal",
@@ -649,10 +756,18 @@ FONTES: list[Fonte] = [
     Fonte("comexstat", "semanal", descobrir_comex, pesada=True),
     Fonte("anac-estatistico", "mensal", _um(ESTATISTICO_DA_ANAC), pesada=True),
     Fonte("ans-beneficiarios", "semanal", descobrir_beneficiarios_ans, pesada=True),
+    # série 4, PR 5: beneficiários por operadora e mês desde 2017 (57 MB; as consolidadas, acima,
+    # só começam em 05/2021 e pesam ~135 MB por UF e mês); a ANS regrava o arquivo e revisa meses
+    Fonte(
+        "ans-beneficiarios-operadora", "mensal", _um(BENEFICIARIOS_POR_OPERADORA_DA_ANS)
+    ),
     # 2ª leva: formas especiais de obter (`base/arquivo/obter.py`)
     Fonte("anatel-acessos", "mensal", descobrir_anatel, pesada=True),
     Fonte("bcb-pix-chaves", "mensal", descobrir_pix, "json"),
     Fonte("aneel-samp", "mensal", descobrir_samp, pesada=True),
+    Fonte("susep-ses", "mensal", descobrir_susep, pesada=True),
+    Fonte("ans-operadoras", "mensal", descobrir_cadastro_da_ans),
+    Fonte("susep-cadastro", "mensal", descobrir_cadastro_da_susep),
     # intradiários da B3 (ADR 0073): também às 22h, só ela (cron do servidor de casa)
     Fonte(
         "b3-negocios",
@@ -676,6 +791,10 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
+    # posts das assessorias independentes de M&A (middle market, ADR 0082)
+    *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
+    # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
+    *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

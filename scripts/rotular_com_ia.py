@@ -41,10 +41,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
-import requests
 
 from src import auditoria_rotulos as ar
-from src import leitura
+from src import leitura, rede
 from src import rotulos_ia as ri
 
 log = logging.getLogger("tickerlab.rotulos_ia")
@@ -55,6 +54,8 @@ AMOSTRA_DA_ESTIMATIVA = 50
 SEMENTE = 20261014
 # cache: escrever custa 1,25x a entrada; ler custa 0,1x
 PESO_DA_ESCRITA_NO_CACHE, PESO_DA_LEITURA_DO_CACHE = 1.25, 0.1
+# mensagem mínima para contar o prefixo fixo (o guia no `system`), que o cache escreve uma vez e lê nos outros
+SONDA_DO_PREFIXO = "."
 _CUSTOM_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _FORA_DA_CHAVE = re.compile(r"[^A-Za-z0-9_-]")
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -160,7 +161,7 @@ def _acrescentar(pasta: Path, registros: list[dict]) -> None:
 
 
 def _baixar_da_cvm(url: str) -> bytes:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=120, headers={"User-Agent": "TickerLab (tickerlab.com.br)"}
     )
     resposta.raise_for_status()
@@ -244,7 +245,8 @@ def estimar(
     so_fatos: bool = False,
 ) -> float:
     """O custo projetado em US$ pela Batch API: tokens de entrada contados numa amostra (a contagem
-    não gasta) e a saída estimada por evento."""
+    não gasta) e a saída estimada por evento. O prefixo fixo do pedido (o guia) entra pelo preço do
+    cache: escrito uma vez, lido nos outros (sem isso a estimativa saía ~6x acima do real, 15/10)."""
     if not eventos:
         return 0.0
     amostra = random.Random(SEMENTE).sample(
@@ -258,9 +260,20 @@ def estimar(
                 model=p["model"], system=p["system"], messages=p["messages"]
             ).input_tokens
         )
-    entrada = sum(contados) / len(contados) * len(eventos)
+    sonda = _parametros(amostra[0], pasta, so_fatos)
+    prefixo = cliente.messages.count_tokens(
+        model=sonda["model"],
+        system=sonda["system"],
+        messages=[{"role": "user", "content": SONDA_DO_PREFIXO}],
+    ).input_tokens
+    n = len(eventos)
+    media = sum(contados) / len(contados)
+    prefixo = min(prefixo, media)  # a sonda tem alguns tokens a mais que o prefixo puro
+    entrada = (media - prefixo) * n + prefixo * (
+        PESO_DA_ESCRITA_NO_CACHE + PESO_DA_LEITURA_DO_CACHE * (n - 1)
+    )
     return ri.custo_em_dolares(
-        round(entrada), ri.SAIDA_ESTIMADA_POR_EVENTO * len(eventos), lote=True
+        round(entrada), ri.SAIDA_ESTIMADA_POR_EVENTO * n, lote=True
     )
 
 

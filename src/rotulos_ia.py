@@ -22,6 +22,7 @@ from dataclasses import asdict, dataclass
 
 import anthropic
 
+from base.cnpj import dv_confere, normalizar_cnpj, tem_letra
 from src import topicos
 
 MODELO = "claude-sonnet-5-5"
@@ -37,9 +38,7 @@ FATO_RELEVANTE = "Fato Relevante"
 PRECO_ENTRADA = 2.00
 PRECO_SAIDA = 10.00
 DESCONTO_DO_LOTE = 0.5
-SAIDA_ESTIMADA_POR_EVENTO = (
-    500  # resposta (~150) + raciocínio curto; o real vem de `usage`
-)
+SAIDA_ESTIMADA_POR_EVENTO = 80  # medido no 1º lote (15/10): 59 por evento (167.640 em 2.849); o real vem de `usage`
 
 EMPRESA, CODIGO, CNPJ = "[EMPRESA]", "[CODIGO]", "[CNPJ]"
 SEM_TEXTO = "(sem texto: o documento não pôde ser lido; julgue pelo assunto)"
@@ -110,7 +109,8 @@ _VARIANTES = {
     "n": "nñ",
 }
 _SUFIXO = re.compile(r"(?i)[\s,.-]*\b(s\.?\s*/?\s*a\.?|ltda\.?)\s*$")
-_CNPJ = re.compile(r"\b\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}\b")
+# com letras desde a IN RFB 2.229/2024 (só nos 12 primeiros; os 2 DVs continuam números)
+_CNPJ = re.compile(r"\b[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}/?[0-9A-Z]{4}-?\d{2}\b")
 _CODIGO = re.compile(r"\b[A-Z]{4}\d{1,2}\b")
 _MIN_LETRAS_DO_NOME = 4
 
@@ -155,9 +155,18 @@ def _variantes_do_nome(nomes: list[str]) -> list[str]:
     return sorted(variantes, key=len, reverse=True)
 
 
+def _mascara_do_cnpj(achado: re.Match[str]) -> str:
+    """Só números: máscara sempre, como antes; com letras, só se o DV confere (não é uma palavra)."""
+    texto = achado.group()
+    completo = normalizar_cnpj(texto)
+    if not tem_letra(texto) or (completo is not None and dv_confere(completo)):
+        return CNPJ
+    return texto
+
+
 def anonimizar(texto: str, nomes: list[str]) -> str:
     """Troca CNPJ, códigos de negociação (PETR4, TAEE11) e os nomes da empresa pelos marcadores."""
-    texto = _CNPJ.sub(CNPJ, texto)
+    texto = _CNPJ.sub(_mascara_do_cnpj, texto)
     texto = _CODIGO.sub(CODIGO, texto)
     for variante in _variantes_do_nome(nomes):
         texto = _padrao_do_nome(variante).sub(EMPRESA, texto)

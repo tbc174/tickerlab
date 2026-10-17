@@ -11,7 +11,7 @@ desatualizado.
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from src.banco.coletas import SO_USO_INTERNO, licenca_da_fonte, revenda_da_fonte
+from src.banco.coletas import NAO_COMERCIAL, licenca_da_fonte, revenda_da_fonte
 from src.padroes import MULTIPLOS
 
 ARQUIVO_DO_DOCUMENTO = "docs/dicionario-da-base.md"
@@ -22,6 +22,7 @@ REAIS = "reais (R$), já multiplicado pela escala informada"
 FRACAO = "fração (0,25 = 25%)"
 ACOES = "ações"
 NUMERO = "número inteiro"
+NUMERO_DECIMAL = "número com decimais, na unidade da fonte"
 SIM_OU_NAO = "verdadeiro ou falso"
 # tabelas do banco do app que ainda não guardam o commit por linha (exigência 13 da ADR 0055); as
 # da base em Parquet guardam no manifesto (série 3, PR 1) e o registro de coletas, por arquivo (PR 3)
@@ -134,7 +135,34 @@ class Tabela:
     historico_desde: str = ""  # a partir de quando a base tem dado (ISO)
     granularidade_do_publico_em: str = ""  # "dia", "mes" ou "ano"
     versao_do_contrato: str = "1.0.0"
+    # coluna renomeada numa versão maior: nome antigo → nome novo (a porta serve a versão antiga
+    # como vista pelo contrato congelado; ADR 0077, item 8; plano, D12)
+    renomeadas: dict[str, str] = field(default_factory=dict)
+    # conferência dos valores do Parquet contra o contrato (`base/conferencia.py`); preenchido por
+    # `_CONFERENCIA`, logo abaixo de `_CONTRATO`. O tipo e a faixa de cada coluna já saem da unidade.
+    pasta: str = ""  # onde o Parquet fica dentro de `<acervo>/base/` (vazio: ainda não conferida)
+    faixas: dict[str, tuple[float | None, float | None]] = field(
+        default_factory=dict
+    )  # coluna → (mínimo, máximo); None = sem limite desse lado
+    nao_nulas: tuple[str, ...] = ()  # além das chaves, colunas que não aceitam vazio
+    # o fato é anunciado antes de acontecer (assembleia, calendário, mandato que começa depois):
+    # `aconteceu_em` pode vir depois de `publico_em`
+    anuncia_o_futuro: bool = False
 
+
+_ONDE_DA_REDE = "Parquet em `<acervo>/base/rede/{t}.parquet` (servidor de casa, `scripts/montar_rede.py`)"
+LINHAGEM_DA_REDE = (
+    "Derivada: o manifesto aponta as tabelas de entrada (com o SHA-256 do conteúdo), as tabelas "
+    "conferidas (`emissores_antigos.csv`, `entidades.csv`) e os originais lidos do acervo "
+    "(cadastro da CVM, páginas do GLEIF, Empresas e Simples da Receita); a linhagem segue até a "
+    "coleta de cada um. " + COM_VERSAO_DO_CODIGO
+)
+RESSALVA_DA_REDE = (
+    "A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que "
+    "está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF "
+    "(CC0, citar); os "
+    "códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`)."
+)
 
 _EMPRESA = {
     "cnpj": ("CNPJ da companhia, no formato 00.000.000/0000-00", TEXTO),
@@ -191,7 +219,13 @@ TABELAS: dict[str, Tabela] = {
                 DATA,
             ),
             "fim": ("Fim do período ou data do saldo", DATA),
-            "valor": ("Valor da conta; vazio quando a empresa deixou em branco", REAIS),
+            "valor": (
+                (
+                    "Valor da conta; vazio quando a empresa deixou em branco na versão lida do "
+                    "ENET (nos dados abertos da CVM, a linha em branco vem como 0)"
+                ),
+                REAIS,
+            ),
             **_DOCUMENTO,
             "versao": (
                 "Versão do documento que publicou este valor (1, 2, 3...)",
@@ -271,8 +305,9 @@ TABELAS: dict[str, Tabela] = {
         onde="Lido do acervo quando preciso (`base/cadastro.py::ler_cadastro`)",
         linhagem=(
             "O `cad_cia_aberta.csv` de cada dia fica no acervo e no registro de coletas (com "
-            "SHA-256 e data da coleta); a tabela é refeita dele. "
-            + SEM_VERSAO_DO_CODIGO
+            "SHA-256 e data da coleta); a tabela é refeita dele. Não é gravada sozinha: o arquivo "
+            "lido entra nas origens do manifesto de quem o usa (`rotulos_atraso`, "
+            "`demonstracoes_como_era`), ao lado da versão do código que montou a tabela."
         ),
         colunas={
             **_EMPRESA,
@@ -461,7 +496,10 @@ TABELAS: dict[str, Tabela] = {
         frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
         atraso=(
             "O arquivo sai uns 40 dias depois do mês e o fundo pode deixar uma posição em sigilo por "
-            "até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+            "até 90 dias: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois "
+            "(o prazo, não a data vista). Desde 10/2026 o arquivista olha os 5 meses mais novos todo "
+            "dia: a carteira entregue depois do prazo só vale do dia em que apareceu (`visto_em`). "
+            "Antes disso, a data é só o prazo"
         ),
         onde="Parquet por ano em `<acervo>/base/cda/<ano>.parquet` (servidor de casa, `scripts/carga_cda.py`)",
         linhagem=(
@@ -487,8 +525,19 @@ TABELAS: dict[str, Tabela] = {
                 "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
                 DATA,
             ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do "
+                    "arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; "
+                    "vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando a posição era pública (como era na data)",
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
                 DATA,
             ),
         },
@@ -505,7 +554,8 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="cvm",
         frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
         atraso=(
-            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois"
+            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o "
+            "dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
         ),
         onde=(
             "Parquet por ano em `<acervo>/base/cda_bloco_8/<ano>.parquet` (servidor de casa, "
@@ -539,8 +589,102 @@ TABELAS: dict[str, Tabela] = {
                 "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
                 DATA,
             ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas "
+                    "diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em "
+                    "10/2026; vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando a posição era pública (como era na data)",
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
+                DATA,
+            ),
+        },
+    ),
+    "cda_cotas": Tabela(
+        descricao=(
+            'As cotas de fundos que cada fundo tem, do bloco 2 do CDA ("cotas de fundos"): quem compra '
+            "cotas de FIDC, de FIP, de FII e de outros fundos, com o CNPJ do fundo investido e o tipo dele "
+            '(`tipo_do_ativo` = "FIDC" desde ~2009; em 2005 tudo é "Cotas de fundos"). Em jun/2026, '
+            "4.531 fundos com R$ 291,8 bi em cotas de 2.403 FIDCs (relatório da base de crédito). Só fundos "
+            "(pessoas jurídicas); os nomes ficam no cadastro de fundos. Um Parquet por ano, com versões"
+        ),
+        fonte="CVM: composição e diversificação das aplicações dos fundos (CDA), bloco 2",
+        familia_da_fonte="cvm",
+        frequencia="Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+        atraso=(
+            "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o "
+            "dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
+        ),
+        onde=(
+            "Parquet por ano em `<acervo>/base/cda_cotas/<ano>.parquet` (servidor de casa, "
+            "`scripts/carga_cda.py`, na mesma carga do CDA)"
+        ),
+        linhagem=(
+            "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do CDA "
+            "usado (os mesmos do bloco 4) e a versão do código que gravou."
+        ),
+        colunas={
+            "competencia": ("Mês da carteira (último dia)", DATA),
+            "cnpj_fundo": (
+                "CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175)",
+                TEXTO,
+            ),
+            "tipo_do_fundo": (
+                (
+                    "Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em "
+                    "11/2022 um fundo aparece como FI e como FIP)"
+                ),
+                TEXTO,
+            ),
+            "tipo_do_ativo": (
+                (
+                    'Tipo do fundo investido como o fundo informa ("FIDC", "FI Participações", "FI '
+                    'Imobiliário", "Fundos de Índice", "Fundo de Investimento e de Cotas", "Cotas de fundos")'
+                ),
+                TEXTO,
+            ),
+            "emissor_ligado": (
+                (
+                    "O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não "
+                    "informado, como em 2005)"
+                ),
+                SIM_OU_NAO,
+            ),
+            "cnpj_fundo_investido": (
+                "CNPJ do fundo (ou da classe) cujas cotas o fundo tem",
+                TEXTO,
+            ),
+            "id_subclasse": (
+                "Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse)",
+                TEXTO,
+            ),
+            "quantidade": ("Quantidade de cotas no fim do mês", NUMERO_DECIMAL),
+            "valor": ("Valor de mercado no fim do mês", REAIS),
+            "compras": ("Valor comprado no mês", REAIS),
+            "vendas": ("Valor vendido no mês", REAIS),
+            "confidencial_ate": (
+                "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+                DATA,
+            ),
+            "visto_em": (
+                (
+                    "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas "
+                    "diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em "
+                    "10/2026; vale o prazo)"
+                ),
+                DATA,
+            ),
+            "disponivel_em": (
+                (
+                    "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se "
+                    "for depois"
+                ),
                 DATA,
             ),
         },
@@ -550,7 +694,7 @@ TABELAS: dict[str, Tabela] = {
             "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (`tab_I` a `tab_X_7`) e "
             "por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, "
             "recompras, cedentes. As colunas mudam com os anos (15 quadros em 2013, 18 em 2026) e são "
-            "as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as três abaixo. "
+            "as do dicionário da CVM (`meta_inf_mensal_fidc.txt`); a base acrescenta as quatro abaixo. "
             "Sem dado pessoal: dos documentos de cedentes só fica CNPJ válido (CPF vira vazio)"
         ),
         fonte="CVM: informe mensal de FIDC",
@@ -558,19 +702,33 @@ TABELAS: dict[str, Tabela] = {
         frequencia="Mensal; de 2013 a 2024 um arquivo por ano, de 2025 em diante um por mês",
         atraso=(
             "Entregue em até 15 dias; a CVM regrava meses passados (cada regravação vira versão "
-            "`<ano>.v<N>`). `disponivel_em` usa competência + 45 dias"
+            "`<ano>.v<N>`). `disponivel_em` usa competência + 45 dias (o prazo, não a data vista). "
+            "Desde 10/2026 o arquivista olha os 4 meses mais novos todo dia: o informe entregue "
+            "depois só vale do dia em que apareceu (`visto_em`). Antes disso, a data é só o prazo"
         ),
         onde="Parquet em `<acervo>/base/fidc/informe/<quadro>/<ano>.parquet` (servidor de casa, `scripts/carga_fidc.py`)",
         linhagem=(
             "O `<ano>.json` guarda o SHA-256 da tabela, o endereço e o SHA-256 de cada arquivo do "
-            "informe usado (no acervo e no registro de coletas, com a data da coleta e a versão do "
-            "código que baixou) e a versão do código que gravou."
+            "informe usado, com todas as versões guardadas de onde sai o `visto_em` (no acervo e no "
+            "registro de coletas, com a data da coleta e a versão do código que baixou) e a versão "
+            "do código que gravou."
         ),
         colunas={
             "competencia": ("Mês do informe (último dia)", DATA),
             "cnpj_fundo": ("CNPJ do fundo (ou da classe, depois da CVM 175)", TEXTO),
+            "visto_em": (
+                (
+                    "O dia em que o informe do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do "
+                    "arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; "
+                    "vale o prazo)"
+                ),
+                DATA,
+            ),
             "disponivel_em": (
-                "Desde quando o informe era público (como era na data)",
+                (
+                    "Desde quando o informe era público (como era na data): competência + 45 dias, ou "
+                    "`visto_em` se for depois"
+                ),
                 DATA,
             ),
         },
@@ -858,6 +1016,1283 @@ TABELAS: dict[str, Tabela] = {
             "conferido_em": ("Dia da conferência", DATA),
         },
     ),
+    "anac_estatistico": Tabela(
+        descricao=(
+            "Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, "
+            "carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte. A chave da "
+            "empresa é a sigla, a mesma da B13 (empresa ↔ série)"
+        ),
+        fonte="ANAC: dados estatísticos do transporte aéreo (Dados_Estatisticos.csv)",
+        familia_da_fonte="anac",
+        frequencia='Mensal (o arquivo inteiro é republicado; a 1ª linha diz "Atualizado em")',
+        atraso='Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava '
+        "publicado 44 dias depois, medido em 14/10/2026)",
+        onde="Parquet por ano em `<acervo>/base/setoriais/anac/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 do arquivo da ANAC usado (no acervo e no "
+            "registro de coletas) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "empresa_sigla": ("Empresa sigla, como a ANAC publica", TEXTO),
+            "empresa_nome": ("Empresa nome, como a ANAC publica", TEXTO),
+            "empresa_nacionalidade": (
+                "Empresa nacionalidade, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_sigla": (
+                "Aeroporto de origem sigla, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_nome": (
+                "Aeroporto de origem nome, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_uf": (
+                "Aeroporto de origem uf, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_regiao": (
+                "Aeroporto de origem regiao, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_pais": (
+                "Aeroporto de origem pais, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_origem_continente": (
+                "Aeroporto de origem continente, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_sigla": (
+                "Aeroporto de destino sigla, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_nome": (
+                "Aeroporto de destino nome, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_uf": (
+                "Aeroporto de destino uf, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_regiao": (
+                "Aeroporto de destino regiao, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_pais": (
+                "Aeroporto de destino pais, como a ANAC publica",
+                TEXTO,
+            ),
+            "aeroporto_de_destino_continente": (
+                "Aeroporto de destino continente, como a ANAC publica",
+                TEXTO,
+            ),
+            "natureza": ("Natureza, como a ANAC publica", TEXTO),
+            "grupo_de_voo": ("Grupo de voo, como a ANAC publica", TEXTO),
+            "passageiros_pagos": (
+                "Passageiros pagos no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "passageiros_gratis": (
+                "Passageiros gratis no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_paga_kg": (
+                "Carga paga kg no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_gratis_kg": (
+                "Carga gratis kg no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "correio_kg": ("Correio kg no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "ask": ("Ask no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "rpk": ("Rpk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "atk": ("Atk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "rtk": ("Rtk no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "combustivel_litros": (
+                "Combustivel litros no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "distancia_voada_km": (
+                "Distancia voada km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "decolagens": ("Decolagens no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "carga_paga_km": (
+                "Carga paga km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "carga_gratis_km": (
+                "Carga gratis km no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "correio_km": ("Correio km no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "assentos": ("Assentos no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "payload": ("Payload no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "horas_voadas": (
+                "Horas voadas no mês, como a ANAC publica",
+                NUMERO_DECIMAL,
+            ),
+            "bagagem_kg": ("Bagagem kg no mês, como a ANAC publica", NUMERO_DECIMAL),
+            "atualizado_em": ('A data da linha "Atualizado em" do arquivo usado', DATA),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "anp_vendas": Tabela(
+        descricao=(
+            "Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, "
+            "produto, origem, destino e mercado, desde 2007, no formato da fonte. A ANP escreve o nome "
+            "atual da distribuidora também no passado; a ligação à empresa é pela B13"
+        ),
+        fonte="ANP: vendas de derivados de petróleo e biocombustíveis por distribuidor (liquidos, glp, aviacao)",
+        familia_da_fonte="anp",
+        frequencia="Mensal",
+        atraso='Mensal; a regra de "como era na data" usa o fim do mês + 60 dias (agosto/2026 estava '
+        "publicado 44 dias depois, medido em 14/10/2026)",
+        onde="Parquet por ano em `<acervo>/base/setoriais/anp/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 dos três zips da ANP usados e a versão do "
+            "código; `arquivo` diz de qual CSV do zip veio a linha (atual ou histórico)."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "grupo": ("liquidos, glp ou aviacao (o zip)", TEXTO),
+            "agente": ("Agente regulado (a distribuidora), como a ANP escreve", TEXTO),
+            "codigo_do_produto": ("Código do produto na ANP", TEXTO),
+            "nome_do_produto": ("Nome do produto", TEXTO),
+            "descricao_do_produto": (
+                "Descrição do produto (vazio no histórico dos líquidos)",
+                TEXTO,
+            ),
+            "codigo_da_embalagem": ("Código da embalagem (só GLP)", TEXTO),
+            "regiao_origem": ("Região de origem", TEXTO),
+            "uf_origem": ("UF de origem", TEXTO),
+            "regiao_destino": ("Região de destino", TEXTO),
+            "uf_destino": ("UF de destino", TEXTO),
+            "mercado_destino": (
+                "Mercado destinatário (posto, consumidor final...)",
+                TEXTO,
+            ),
+            "quantidade": (
+                "Quantidade vendida, na unidade da coluna `unidade`",
+                NUMERO_DECIMAL,
+            ),
+            "unidade": ("mil m³ ou mil ton, como no cabeçalho da ANP", TEXTO),
+            "arquivo": ("O CSV do zip de onde veio a linha", TEXTO),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "ons_geracao": Tabela(
+        descricao=(
+            "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da "
+            "usina é o `id_ons` (o CEG falta em 41% da geração de 09/2026). Sem ligação à empresa: o "
+            "dono da usina só existe no cadastro de hoje, e aplicá-lo ao passado olharia o futuro"
+        ),
+        fonte="ONS: geração por usina em base horária (dados abertos)",
+        familia_da_fonte="ons",
+        frequencia="Diária (um arquivo por ano até 2021, por mês depois)",
+        atraso="O dia seguinte; a regra usa o instante + 2 dias",
+        onde="Parquet por ano em `<acervo>/base/setoriais/ons/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo do ONS do ano e a versão do "
+            "código."
+        ),
+        colunas={
+            "instante": ("Hora (início)", DATA),
+            "id_subsistema": ("Subsistema (N, NE, S, SE)", TEXTO),
+            "subsistema": ("Nome do subsistema", TEXTO),
+            "uf": ("UF da usina", TEXTO),
+            "modalidade_de_operacao": ("Modalidade de operação (tipo I, II...)", TEXTO),
+            "tipo_de_usina": ("Hidrelétrica, térmica, eólica, fotovoltaica...", TEXTO),
+            "combustivel": ("Combustível ou fonte", TEXTO),
+            "usina": ("Nome da usina, como o ONS escreve", TEXTO),
+            "id_ons": ("Código da usina no ONS (a chave)", TEXTO),
+            "ceg": ("Código da usina na ANEEL (vazio quando o ONS não informa)", TEXTO),
+            "geracao_mwmed": ("Geração na hora, em MWmed", NUMERO_DECIMAL),
+            "disponivel_em": (
+                "Desde quando o número era público (instante + 2 dias)",
+                DATA,
+            ),
+        },
+    ),
+    "aneel_samp": Tabela(
+        descricao=(
+            "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de "
+            "consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde "
+            "2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem "
+            "nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte="ANEEL: SAMP, mercado de distribuição (dados abertos, um Parquet por ano)",
+        familia_da_fonte="aneel",
+        frequencia="Mensal (a ANEEL regera todos os anos a cada mês, perto do dia 15)",
+        atraso=(
+            "Medido: o SAMP de 15/09/2026 tinha julho completo (46 dias) e agosto pela metade; a regra "
+            "usa o fim do mês + 60 dias"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/aneel/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do ano usada (uma por "
+            "revisão) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "cnpj": ("CNPJ da distribuidora (14 dígitos; a chave da B13)", TEXTO),
+            "sigla": ("Sigla da distribuidora, como a ANEEL escreve", TEXTO),
+            "distribuidora": ("Nome da distribuidora, como a ANEEL escreve", TEXTO),
+            "tipo_de_mercado": (
+                "Regular, refaturamento, compensação de geração distribuída...",
+                TEXTO,
+            ),
+            "modalidade_tarifaria": ("Convencional, azul, verde, branca...", TEXTO),
+            "subgrupo_tarifario": ("A1 a A4, AS, B1 a B4", TEXTO),
+            "classe_de_consumo": (
+                "Residencial, industrial, comercial, rural...",
+                TEXTO,
+            ),
+            "subclasse_de_consumo": ("Subclasse (baixa renda, cooperativa...)", TEXTO),
+            "detalhe_do_consumidor": (
+                "Detalhe do consumidor (fonte incentivada...)",
+                TEXTO,
+            ),
+            "nucleo_ceg": ("Núcleo do CEG da usina, quando há (texto inteiro)", TEXTO),
+            "posto_tarifario": ("Ponta, fora ponta, intermediário", TEXTO),
+            "opcao_de_energia": ("Cativo, livre, suprimento, distribuição", TEXTO),
+            "detalhe_do_mercado": (
+                "O que o valor mede: número de consumidores, energia (kWh), receita (R$), desconto (%)...",
+                TEXTO,
+            ),
+            "valor": (
+                "O valor, na unidade do `detalhe_do_mercado` (soma das linhas; média nos percentuais)",
+                NUMERO_DECIMAL,
+            ),
+            "linhas_somadas": (
+                "Quantas linhas da fonte (uma por acessante) foram somadas",
+                NUMERO_DECIMAL,
+            ),
+            "gerado_em": (
+                "A data de geração do arquivo pela ANEEL, na primeira vez que o valor foi visto",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "anatel_acessos": Tabela(
+        descricao=(
+            "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora "
+            "(CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os "
+            "municípios. Na móvel de 2005 a 2018 a Anatel publica duas visões dos mesmos acessos "
+            "(`recorte` modalidade ou tecnologia): somar as duas conta tudo duas vezes. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte='Anatel: painéis de dados, acessos (CSVs "_Colunas" de dentro dos ZIPs)',
+        familia_da_fonte="anatel",
+        frequencia="Mensal",
+        atraso="Agosto/2026 estava publicado em 14/10/2026; a regra usa o fim do mês + 60 dias",
+        onde=(
+            "Parquet por CSV da Anatel em `<acervo>/base/setoriais/anatel/<nome do CSV>.parquet` "
+            "(`scripts/carga_setoriais.py`)"
+        ),
+        linhagem=(
+            "O `.json` de cada CSV guarda o endereço (`zip#csv`) e o SHA-256 de cada baixada usada e a "
+            "versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "servico": (
+                "banda_larga_fixa, telefonia_movel ou tv_por_assinatura",
+                TEXTO,
+            ),
+            "recorte": (
+                "completo; na móvel de 2005 a 2018, modalidade ou tecnologia",
+                TEXTO,
+            ),
+            "cnpj": ("CNPJ da prestadora (14 dígitos; a chave da B13)", TEXTO),
+            "empresa": ("Nome da prestadora, como a Anatel escreve", TEXTO),
+            "grupo_economico": ("Grupo econômico, como a Anatel escreve", TEXTO),
+            "porte_da_prestadora": ("Grande ou pequeno porte", TEXTO),
+            "uf": ("UF", TEXTO),
+            "regiao_pgo": ("Região do plano geral de outorgas (móvel até 2009)", TEXTO),
+            "codigo_nacional": ("DDD (móvel)", TEXTO),
+            "modalidade_de_cobranca": ("Pré-pago ou pós-pago (móvel)", TEXTO),
+            "tecnologia": ("Tecnologia (FTTH, cabo, GSM, LTE, DTH...)", TEXTO),
+            "geracao": ("Geração da tecnologia móvel (2G a 5G)", TEXTO),
+            "tipo_de_pessoa": ("Assinante pessoa física ou jurídica", TEXTO),
+            "tipo_de_produto": ("Tipo de produto (internet, voz, M2M...)", TEXTO),
+            "faixa_de_velocidade": (
+                "Faixa de velocidade contratada (banda larga)",
+                TEXTO,
+            ),
+            "meio_de_acesso": ("Fibra, cabo coaxial, rádio, satélite...", TEXTO),
+            "tipo_de_acesso_tv": ("Tipo de acesso de TV por assinatura", TEXTO),
+            "acessos": (
+                "Acessos em serviço no fim do mês, somados os municípios da UF",
+                NUMERO_DECIMAL,
+            ),
+            "arquivo": ("O CSV da Anatel de onde veio a linha", TEXTO),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "ans_beneficiarios": Tabela(
+        descricao=(
+            "Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, "
+            "vigência do plano, contratação e financiamento, desde 2017, no formato da fonte. Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece"
+        ),
+        fonte="ANS: beneficiários por operadora e carteira (Beneficiarios_operadora_e_carteira.csv)",
+        familia_da_fonte="ans",
+        frequencia="Sem data fixa: o arquivo de 08/08/2026 ainda era o mesmo em 14/10/2026",
+        atraso=(
+            "Medido: o arquivo de 08/08/2026 trazia até junho/2026 (39 dias); a regra usa o fim do mês "
+            "+ 90 dias"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/ans/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do arquivo usada (uma por "
+            "revisão) e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "cd_operadora": (
+                "Registro da operadora na ANS (a chave da B13, fonte `ans-beneficiarios`)",
+                TEXTO,
+            ),
+            "modalidade": (
+                "Medicina de grupo, cooperativa médica, seguradora...",
+                TEXTO,
+            ),
+            "cobertura": ("Médico-hospitalar ou odontológico", TEXTO),
+            "vigencia_do_plano": (
+                "P (plano posterior à Lei 9.656) ou A (anterior)",
+                TEXTO,
+            ),
+            "contratacao": (
+                "Individual ou familiar, coletivo empresarial, por adesão...",
+                TEXTO,
+            ),
+            "financiamento": ("Pré-estabelecido, pós-estabelecido...", TEXTO),
+            "beneficiarios": ("Beneficiários no mês", NUMERO_DECIMAL),
+            "base_de": (
+                "O mês da extração da ANS (`ID_CMPT`) na primeira vez que o valor foi visto",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 90 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "fre_conselho": Tabela(
+        descricao=(
+            "Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010. Só contagens: nome, CPF, nascimento e currículo dos administradores nem são lidos"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_conselho/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "suplentes": ("Quantos suplentes", NUMERO_DECIMAL),
+            "independentes": (
+                "Quantos conselheiros independentes (pelo cargo informado)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_pelo_controlador": (
+                "Quantos eleitos pelo controlador (`Eleito_Controlador` = S)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_por_minoritarios": (
+                "Quantos eleitos pelos minoritários ordinaristas (pelo cargo)",
+                NUMERO_DECIMAL,
+            ),
+            "eleitos_por_preferencialistas": (
+                "Quantos eleitos pelos preferencialistas (pelo cargo)",
+                NUMERO_DECIMAL,
+            ),
+            "mandatos_consecutivos_medio": (
+                "Média de mandatos consecutivos (vazio quando a CVM não informa)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_reunioes_media": (
+                "Média do % de participação em reuniões (vazio quando não informado)",
+                NUMERO_DECIMAL,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_comites": Tabela(
+        descricao=(
+            "Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010. Só contagens, sem pessoas"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_comites/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "tipo_de_comite": (
+                "Tipo de comitê (auditoria, risco, remuneração...)",
+                TEXTO,
+            ),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "suplentes": ("Quantos suplentes", NUMERO_DECIMAL),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_remuneracao": Tabela(
+        descricao=(
+            "Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_remuneracao/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "inicio_do_exercicio": ("Início do exercício social", DATA),
+            "fim_do_exercicio": ("Fim do exercício social", DATA),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "total_remuneracao": (
+                "Como a CVM publica (`Total_Remuneracao`)",
+                NUMERO_DECIMAL,
+            ),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "total_do_orgao": (
+                "Como a CVM publica (`Total_Remuneracao_Orgao`)",
+                NUMERO_DECIMAL,
+            ),
+            "membros_remunerados": (
+                "Como a CVM publica (`Numero_Membros_Remunerados`)",
+                NUMERO_DECIMAL,
+            ),
+            "salario": ("Como a CVM publica (`Salario`)", NUMERO_DECIMAL),
+            "beneficios": (
+                "Como a CVM publica (`Beneficios_Diretos_Indiretos`)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_comites": (
+                "Como a CVM publica (`Participacoes_Comites`)",
+                NUMERO_DECIMAL,
+            ),
+            "outros_fixos": (
+                "Como a CVM publica (`Outros_Valores_Fixos`)",
+                NUMERO_DECIMAL,
+            ),
+            "bonus": ("Como a CVM publica (`Bonus`)", NUMERO_DECIMAL),
+            "participacao_nos_resultados": (
+                "Como a CVM publica (`Participacao_Resultados`)",
+                NUMERO_DECIMAL,
+            ),
+            "participacao_em_reunioes": (
+                "Como a CVM publica (`Participacao_Reunioes`)",
+                NUMERO_DECIMAL,
+            ),
+            "outros_variaveis": (
+                "Como a CVM publica (`Outros_Valores_Variaveis`)",
+                NUMERO_DECIMAL,
+            ),
+            "comissoes": ("Como a CVM publica (`Comissoes`)", NUMERO_DECIMAL),
+            "pos_emprego": ("Como a CVM publica (`Pos_emprego`)", NUMERO_DECIMAL),
+            "cessacao_do_cargo": (
+                "Como a CVM publica (`Cessacao_Cargo`)",
+                NUMERO_DECIMAL,
+            ),
+            "baseada_em_acoes": (
+                "Como a CVM publica (`Baseada_Acoes`)",
+                NUMERO_DECIMAL,
+            ),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_remuneracao_extremos": Tabela(
+        descricao=(
+            "A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre)"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_remuneracao_extremos/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "inicio_do_exercicio": ("Início do exercício social", DATA),
+            "fim_do_exercicio": ("Fim do exercício social", DATA),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "membros": ("Quantas pessoas no órgão (ou no comitê)", NUMERO_DECIMAL),
+            "membros_remunerados": (
+                "Como a CVM publica (`Numero_Membros_Remunerados`)",
+                NUMERO_DECIMAL,
+            ),
+            "maior": ("Como a CVM publica (`Valor_Maior_Remuneracao`)", NUMERO_DECIMAL),
+            "menor": ("Como a CVM publica (`Valor_Menor_Remuneracao`)", NUMERO_DECIMAL),
+            "media": ("Como a CVM publica (`Valor_Medio_Remuneracao`)", NUMERO_DECIMAL),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "fre_diversidade": Tabela(
+        descricao=(
+            "Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores)"
+        ),
+        fonte="CVM: formulário de referência (FRE), dados abertos",
+        familia_da_fonte="cvm",
+        frequencia="Anual, com reapresentações (a CVM reescreve os anos antigos)",
+        atraso="A entrega do FRE: `conhecido_em` é o DT_RECEB da versão",
+        onde="Parquet em `<acervo>/base/fre_diversidade/<ano>.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do FRE do ano usada e a versão do código.",
+        colunas={
+            "cnpj": ("CNPJ da companhia (como a CVM escreve)", TEXTO),
+            "referencia": ("Data de referência do FRE", DATA),
+            "versao": ("Versão do FRE", NUMERO_DECIMAL),
+            "id_documento": ("Identificador do documento na CVM", TEXTO),
+            "orgao": ("Órgão da administração, como a CVM escreve", TEXTO),
+            "genero_feminino": (
+                "Como a CVM publica (`genero_feminino`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_masculino": (
+                "Como a CVM publica (`genero_masculino`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_nao_binario": (
+                "Como a CVM publica (`genero_nao_binario`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_outros": ("Como a CVM publica (`genero_outros`)", NUMERO_DECIMAL),
+            "genero_sem_resposta": (
+                "Como a CVM publica (`genero_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "genero_nao_aplicavel": (
+                "Como a CVM publica (`genero_nao_aplicavel`)",
+                TEXTO,
+            ),
+            "raca_amarelo": ("Como a CVM publica (`raca_amarelo`)", NUMERO_DECIMAL),
+            "raca_branco": ("Como a CVM publica (`raca_branco`)", NUMERO_DECIMAL),
+            "raca_preto": ("Como a CVM publica (`raca_preto`)", NUMERO_DECIMAL),
+            "raca_pardo": ("Como a CVM publica (`raca_pardo`)", NUMERO_DECIMAL),
+            "raca_indigena": ("Como a CVM publica (`raca_indigena`)", NUMERO_DECIMAL),
+            "raca_outros": ("Como a CVM publica (`raca_outros`)", NUMERO_DECIMAL),
+            "raca_sem_resposta": (
+                "Como a CVM publica (`raca_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "raca_nao_aplicavel": ("Como a CVM publica (`raca_nao_aplicavel`)", TEXTO),
+            "pcd_pcd": ("Como a CVM publica (`pcd_pcd`)", NUMERO_DECIMAL),
+            "pcd_nao_pcd": ("Como a CVM publica (`pcd_nao_pcd`)", NUMERO_DECIMAL),
+            "pcd_sem_resposta": (
+                "Como a CVM publica (`pcd_sem_resposta`)",
+                NUMERO_DECIMAL,
+            ),
+            "pcd_nao_aplicavel": ("Como a CVM publica (`pcd_nao_aplicavel`)", TEXTO),
+            "conhecido_em": (
+                "Entrega desta versão do FRE à CVM (DT_RECEB): como era na data",
+                DATA,
+            ),
+        },
+    ),
+    "ofertas_antigas": Tabela(
+        descricao=(
+            "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo (sem chave única: a ICVM 476 não tem número de processo). O nome do vendedor e o nome e o documento do ofertante sem CNPJ nunca entram"
+        ),
+        fonte="CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)",
+        familia_da_fonte="cvm",
+        frequencia="Diária (o ZIP é regerado todo dia)",
+        atraso="Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)",
+        onde="Parquet em `<acervo>/base/ofertas/antigas.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.",
+        colunas={
+            "numero_processo": ("Como a CVM publica (`Numero_Processo`)", TEXTO),
+            "numero_registro_oferta": (
+                "Como a CVM publica (`Numero_Registro_Oferta`)",
+                TEXTO,
+            ),
+            "tipo_oferta": ("Como a CVM publica (`Tipo_Oferta`)", TEXTO),
+            "tipo_componente_oferta_mista": (
+                "Como a CVM publica (`Tipo_Componente_Oferta_Mista`)",
+                TEXTO,
+            ),
+            "tipo_ativo": ("Como a CVM publica (`Tipo_Ativo`)", TEXTO),
+            "cnpj_emissor": ("Como a CVM publica (`CNPJ_Emissor`)", TEXTO),
+            "nome_emissor": ("Como a CVM publica (`Nome_Emissor`)", TEXTO),
+            "cnpj_lider": ("Como a CVM publica (`CNPJ_Lider`)", TEXTO),
+            "nome_lider": ("Como a CVM publica (`Nome_Lider`)", TEXTO),
+            "cnpj_ofertante": ("Como a CVM publica (`CNPJ_Ofertante`)", TEXTO),
+            "nome_ofertante": ("Como a CVM publica (`Nome_Ofertante`)", TEXTO),
+            "rito_oferta": ("Como a CVM publica (`Rito_Oferta`)", TEXTO),
+            "modalidade_oferta": ("Como a CVM publica (`Modalidade_Oferta`)", TEXTO),
+            "modalidade_registro": (
+                "Como a CVM publica (`Modalidade_Registro`)",
+                TEXTO,
+            ),
+            "modalidade_dispensa_registro": (
+                "Como a CVM publica (`Modalidade_Dispensa_Registro`)",
+                TEXTO,
+            ),
+            "data_abertura_processo": (
+                "Como a CVM publica (`Data_Abertura_Processo`)",
+                DATA,
+            ),
+            "data_protocolo": ("Como a CVM publica (`Data_Protocolo`)", DATA),
+            "data_dispensa_oferta": (
+                "Como a CVM publica (`Data_Dispensa_Oferta`)",
+                DATA,
+            ),
+            "data_registro_oferta": (
+                "Como a CVM publica (`Data_Registro_Oferta`)",
+                DATA,
+            ),
+            "data_inicio_oferta": ("Como a CVM publica (`Data_Inicio_Oferta`)", DATA),
+            "data_encerramento_oferta": (
+                "Como a CVM publica (`Data_Encerramento_Oferta`)",
+                DATA,
+            ),
+            "emissao": ("Como a CVM publica (`Emissao`)", TEXTO),
+            "classe_ativo": ("Como a CVM publica (`Classe_Ativo`)", TEXTO),
+            "serie": ("Como a CVM publica (`Serie`)", TEXTO),
+            "especie_ativo": ("Como a CVM publica (`Especie_Ativo`)", TEXTO),
+            "forma_ativo": ("Como a CVM publica (`Forma_Ativo`)", TEXTO),
+            "data_emissao": ("Como a CVM publica (`Data_Emissao`)", DATA),
+            "data_vencimento": ("Como a CVM publica (`Data_Vencimento`)", DATA),
+            "quantidade_sem_lote_suplementar": (
+                "Como a CVM publica (`Quantidade_Sem_Lote_Suplementar`)",
+                NUMERO_DECIMAL,
+            ),
+            "quantidade_no_lote_suplementar": (
+                "Como a CVM publica (`Quantidade_No_Lote_Suplementar`)",
+                NUMERO_DECIMAL,
+            ),
+            "quantidade_total": (
+                "Como a CVM publica (`Quantidade_Total`)",
+                NUMERO_DECIMAL,
+            ),
+            "preco_unitario": ("Como a CVM publica (`Preco_Unitario`)", NUMERO_DECIMAL),
+            "valor_total": ("Como a CVM publica (`Valor_Total`)", NUMERO_DECIMAL),
+            "oferta_inicial": ("Como a CVM publica (`Oferta_Inicial`)", TEXTO),
+            "oferta_incentivo_fiscal": (
+                "Como a CVM publica (`Oferta_Incentivo_Fiscal`)",
+                TEXTO,
+            ),
+            "oferta_regime_fiduciario": (
+                "Como a CVM publica (`Oferta_Regime_Fiduciario`)",
+                TEXTO,
+            ),
+            "atualizacao_monetaria": (
+                "Como a CVM publica (`Atualizacao_Monetaria`)",
+                TEXTO,
+            ),
+            "juros": ("Como a CVM publica (`Juros`)", TEXTO),
+            "projeto_audiovisual": (
+                "Como a CVM publica (`Projeto_Audiovisual`)",
+                TEXTO,
+            ),
+            "tipo_societario_emissor": (
+                "Como a CVM publica (`Tipo_Societario_Emissor`)",
+                TEXTO,
+            ),
+            "tipo_fundo_investimento": (
+                "Como a CVM publica (`Tipo_Fundo_Investimento`)",
+                TEXTO,
+            ),
+            "ultimo_comunicado": ("Como a CVM publica (`Ultimo_Comunicado`)", TEXTO),
+            "data_comunicado": ("Como a CVM publica (`Data_Comunicado`)", DATA),
+            "nr_pessoa_fisica": (
+                "Como a CVM publica (`Nr_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_pessoa_fisica": (
+                "Como a CVM publica (`Qtd_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_clube_investimento": (
+                "Como a CVM publica (`Nr_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_clube_investimento": (
+                "Como a CVM publica (`Qtd_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_fundos_investimento": (
+                "Como a CVM publica (`Nr_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_fundos_investimento": (
+                "Como a CVM publica (`Qtd_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_entidade_previdencia_privada": (
+                "Como a CVM publica (`Nr_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_entidade_previdencia_privada": (
+                "Como a CVM publica (`Qtd_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_companhia_seguradora": (
+                "Como a CVM publica (`Nr_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_companhia_seguradora": (
+                "Como a CVM publica (`Qtd_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_investidor_estrangeiro": (
+                "Como a CVM publica (`Nr_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtd_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Nr_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Qtd_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Nr_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_instit_financ": (
+                "Como a CVM publica (`Nr_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_instit_financ": (
+                "Como a CVM publica (`Qtd_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Nr_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_demais_pessoa_juridica": (
+                "Como a CVM publica (`Nr_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_demais_pessoa_juridica": (
+                "Como a CVM publica (`Qtd_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Nr_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qdt_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qdt_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "nr_outros": ("Como a CVM publica (`Nr_Outros`)", NUMERO_DECIMAL),
+            "qtd_outros": ("Como a CVM publica (`Qtd_Outros`)", NUMERO_DECIMAL),
+            "qtd_cli_pessoa_fisica": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Fisica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_pessoa_juridica": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_pessoa_juridica_ligada_adm": (
+                "Como a CVM publica (`Qtd_Cli_Pessoa_Juridica_Ligada_Adm`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_demais_pessoa_juridica": (
+                "Como a CVM publica (`QtD_Cli_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtd_Cli_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtd_cli_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qtd_Cli_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "anunciada_em": (
+                "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+                DATA,
+            ),
+        },
+    ),
+    "ofertas_resolucao_160": Tabela(
+        descricao=(
+            "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos)"
+        ),
+        fonte="CVM: ofertas públicas de distribuição (OFERTA/DISTRIB, ODbL)",
+        familia_da_fonte="cvm",
+        frequencia="Diária (o ZIP é regerado todo dia)",
+        atraso="Nenhum além das datas da própria oferta (`anunciada_em`, `disponivel_em`)",
+        onde="Parquet em `<acervo>/base/ofertas/resolucao_160.parquet` (`scripts/carga_ofertas_e_conselhos.py`)",
+        linhagem="O `.json` guarda o endereço e o SHA-256 do ZIP de ofertas usado e a versão do código.",
+        colunas={
+            "numero_requerimento": (
+                "Como a CVM publica (`Numero_Requerimento`)",
+                TEXTO,
+            ),
+            "rito_requerimento": ("Como a CVM publica (`Rito_Requerimento`)", TEXTO),
+            "numero_processo": ("Como a CVM publica (`Numero_Processo`)", TEXTO),
+            "data_requerimento": ("Como a CVM publica (`Data_requerimento`)", DATA),
+            "data_registro": ("Como a CVM publica (`Data_Registro`)", DATA),
+            "data_encerramento": ("Como a CVM publica (`Data_Encerramento`)", DATA),
+            "status_requerimento": (
+                "Como a CVM publica (`Status_Requerimento`)",
+                TEXTO,
+            ),
+            "valor_mobiliario": ("Como a CVM publica (`Valor_Mobiliario`)", TEXTO),
+            "tipo_requerimento": ("Como a CVM publica (`Tipo_requerimento`)", TEXTO),
+            "bookbuilding": ("Como a CVM publica (`Bookbuilding`)", TEXTO),
+            "cnpj_emissor": ("Como a CVM publica (`CNPJ_Emissor`)", TEXTO),
+            "nome_emissor": ("Como a CVM publica (`Nome_Emissor`)", TEXTO),
+            "cnpj_lider": ("Como a CVM publica (`CNPJ_Lider`)", TEXTO),
+            "nome_lider": ("Como a CVM publica (`Nome_Lider`)", TEXTO),
+            "grupo_coordenador": ("Como a CVM publica (`Grupo_Coordenador`)", TEXTO),
+            "tipo_oferta": ("Como a CVM publica (`Tipo_Oferta`)", TEXTO),
+            "emissao": ("Como a CVM publica (`Emissao`)", TEXTO),
+            "qtde_total_registrada": (
+                "Como a CVM publica (`Qtde_Total_Registrada`)",
+                NUMERO_DECIMAL,
+            ),
+            "valor_total_registrado": (
+                "Como a CVM publica (`Valor_Total_Registrado`)",
+                NUMERO_DECIMAL,
+            ),
+            "oferta_inicial": ("Como a CVM publica (`Oferta_inicial`)", TEXTO),
+            "oferta_vasos_comunicantes": (
+                "Como a CVM publica (`Oferta_vasos_comunicantes`)",
+                TEXTO,
+            ),
+            "publico_alvo": ("Como a CVM publica (`Publico_alvo`)", TEXTO),
+            "reabertura_serie": ("Como a CVM publica (`Reabertura_serie`)", TEXTO),
+            "titulo_classificado_como_sustentavel": (
+                "Como a CVM publica (`Titulo_classificado_como_sustentavel`)",
+                TEXTO,
+            ),
+            "titulo_padronizado": ("Como a CVM publica (`Titulo_padronizado`)", TEXTO),
+            "data_deliberacao_aprovou_oferta": (
+                "Como a CVM publica (`Data_deliberacao_aprovou_oferta`)",
+                DATA,
+            ),
+            "mercado_negociacao": ("Como a CVM publica (`Mercado_negociacao`)", TEXTO),
+            "tipo_lastro": ("Como a CVM publica (`Tipo_lastro`)", TEXTO),
+            "regime_fiduciario": ("Como a CVM publica (`Regime_fiduciario`)", TEXTO),
+            "ativos_alvo": ("Como a CVM publica (`Ativos_alvo`)", TEXTO),
+            "possibilidade_revolvencia": (
+                "Como a CVM publica (`Possibilidade_revolvencia`)",
+                TEXTO,
+            ),
+            "fidc_nao_padronizado": (
+                "Como a CVM publica (`FIDC_nao_padronizado`)",
+                TEXTO,
+            ),
+            "titulo_incentivado": ("Como a CVM publica (`Titulo_incentivado`)", TEXTO),
+            "regime_distribuicao": (
+                "Como a CVM publica (`Regime_distribuicao`)",
+                TEXTO,
+            ),
+            "tipo_societario": ("Como a CVM publica (`Tipo_societario`)", TEXTO),
+            "administrador": ("Como a CVM publica (`Administrador`)", TEXTO),
+            "gestor": ("Como a CVM publica (`Gestor`)", TEXTO),
+            "agente_fiduciario": ("Como a CVM publica (`Agente_fiduciario`)", TEXTO),
+            "escriturador": ("Como a CVM publica (`Escriturador`)", TEXTO),
+            "custodiante": ("Como a CVM publica (`Custodiante`)", TEXTO),
+            "avaliador_risco": ("Como a CVM publica (`Avaliador_Risco`)", TEXTO),
+            "processo_sei": ("Como a CVM publica (`Processo_SEI`)", TEXTO),
+            "endereco_emissor_rede_mundial_computadores": (
+                "Como a CVM publica (`Endereco_emissor_rede_mundial_computadores`)",
+                TEXTO,
+            ),
+            "num_invest_pessoa_natural": (
+                "Como a CVM publica (`Num_Invest_Pessoa_Natural`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_pessoa_natural": (
+                "Como a CVM publica (`Qtde_VM_Pessoa_Natural`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_clube_investimento": (
+                "Como a CVM publica (`Num_Invest_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_clube_investimento": (
+                "Como a CVM publica (`Qtde_VM_Clube_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_fundos_investimento": (
+                "Como a CVM publica (`Num_Invest_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_fundos_investimento": (
+                "Como a CVM publica (`Qtde_VM_Fundos_Investimento`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_entidade_previdencia_privada": (
+                "Como a CVM publica (`Num_Invest_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_entidade_previdencia_privada": (
+                "Como a CVM publica (`Qtde_VM_Entidade_Previdencia_Privada`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_companhia_seguradora": (
+                "Como a CVM publica (`Num_Invest_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_companhia_seguradora": (
+                "Como a CVM publica (`Qtde_VM_Companhia_Seguradora`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_investidor_estrangeiro": (
+                "Como a CVM publica (`Num_Invest_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_investidor_estrangeiro": (
+                "Como a CVM publica (`Qtde_VM_Investidor_Estrangeiro`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Num_Invest_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_instit_intermed_partic_consorcio_distrib": (
+                "Como a CVM publica (`Qtde_VM_Instit_Intermed_Partic_Consorcio_Distrib`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_instit_financ_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtde_VM_Instit_Financ_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_instit_financ": (
+                "Como a CVM publica (`Num_Invest_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_instit_financ": (
+                "Como a CVM publica (`Qtde_VM_Demais_Instit_Financ`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_pessoa_juridica_emissora_partic_consorcio": (
+                "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica_Emissora_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_demais_pessoa_juridica": (
+                "Como a CVM publica (`Num_Invest_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "qtde_vm_demais_pessoa_juridica": (
+                "Como a CVM publica (`Qtde_VM_Demais_Pessoa_Juridica`)",
+                NUMERO_DECIMAL,
+            ),
+            "num_invest_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Num_Invest_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "qdte_vm_soc_adm_emp_prop_demais_pess_jurid_emiss_partic_consorcio": (
+                "Como a CVM publica (`Qdte_VM_Soc_Adm_Emp_Prop_Demais_Pess_Jurid_Emiss_Partic_Consorcio`)",
+                NUMERO_DECIMAL,
+            ),
+            "anunciada_em": (
+                "Quando a oferta ficou pública na CVM (registro, dispensa ou comunicado da 476)",
+                DATA,
+            ),
+            "disponivel_em": (
+                "Quando a linha inteira era pública (o mais tarde entre o anúncio e o encerramento)",
+                DATA,
+            ),
+        },
+    ),
+    "susep_seguros": Tabela(
+        descricao=(
+            "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, "
+            "ramo e mês desde 1995 (SES), no formato da fonte. O cadastro da SUSEP não traz CNPJ e a "
+            "B13 ainda não liga o código a uma empresa: todos os códigos estão nos buracos. Uma linha "
+            "por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale "
+            "desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`)"
+        ),
+        fonte="SUSEP: SES, base de dados completa (`Ses_seguros.csv` de dentro do ZIP)",
+        familia_da_fonte="susep",
+        frequencia="Mensal (o ZIP é regerado todo dia)",
+        atraso="Agosto/2026 estava publicado em 16/10/2026 (47 dias); a regra usa o fim do mês + 60 dias",
+        onde="Parquet por ano em `<acervo>/base/setoriais/susep/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço (`zip#Ses_seguros.csv`) e o SHA-256 de cada baixada usada "
+            "e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "coenti": ("Código da seguradora na SUSEP (a chave; 5 dígitos)", TEXTO),
+            "cogrupo": ("Código do grupo de ramos", TEXTO),
+            "coramo": (
+                "Código do ramo (nomes em `Ses_ramos.csv`, guardado no acervo)",
+                TEXTO,
+            ),
+            "premio_direto": (
+                "Prêmio direto no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_de_seguros": (
+                "Prêmio de seguros no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_retido": (
+                "Prêmio retido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_ganho": ("Prêmio ganho no mês, em R$, como a SUSEP publica", REAIS),
+            "sinistro_direto": (
+                "Sinistro direto no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistro_retido": (
+                "Sinistro retido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "desp_com": (
+                "Despesa de comercialização no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_emitido2": (
+                "Prêmio emitido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "premio_emitido_cap": (
+                "Prêmio emitido (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "despesa_resseguros": (
+                "Despesa com resseguros no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistro_ocorrido": (
+                "Sinistro ocorrido no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "receita_resseguro": (
+                "Receita com resseguro no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "sinistros_ocorridos_cap": (
+                "Sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "recuperacao_sinistros_ocorridos_cap": (
+                "Recuperação de sinistros ocorridos (capitalização) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "rvne": (
+                "Riscos vigentes não emitidos (RVNE) no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "conveniodpvat": (
+                "Convênio DPVAT no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "consorciosefundos": (
+                "Consórcios e fundos no mês, em R$, como a SUSEP publica",
+                REAIS,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias; a revisão, desde o dia em que foi vista)",
+                DATA,
+            ),
+            "visto_em": (
+                "O dia da baixada do arquivista que trouxe este valor pela primeira vez",
+                DATA,
+            ),
+        },
+    ),
+    "amostra_painel": Tabela(
+        descricao=(
+            "A amostra integrada (ADR 0058): uma linha por companhia e fim de mês, desde jan/2010, com só o "
+            "que se sabia dela naquele dia, de todas as fontes da base. Cada bloco usa a linha mais nova já "
+            "pública na data (`base/amostra/como_era.py`), e o teste corta a base em cada data para provar que "
+            "nada do futuro entra. As canceladas ficam nos meses em que existiam. Por enquanto, só o bloco "
+            "universo (quem está e os tickers) e demonstrações (balanço, acumulado no ano e anual, como eram); os "
+            "outros entram um por PR"
+        ),
+        fonte=(
+            "Derivado: cadastro da CVM, `rotulos_atraso` (entregas de DFP e ITR), `tickers_no_tempo` e "
+            "`demonstracoes_como_era`"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Mensal (até o último mês fechado)",
+        atraso="Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+        onde="Parquet por ano em `<acervo>/base/amostra/v1/painel/<ano>.parquet` (`scripts/montar_amostra.py`)",
+        linhagem=(
+            "O `<ano>.json` aponta as tabelas de entrada (com o hash do manifesto de cada uma) e o original "
+            "do cadastro; a linhagem segue das tabelas até os originais (`base/linhagem.py`)."
+        ),
+        colunas={
+            "cnpj": ("CNPJ da companhia, no formato 00.000.000/0000-00", TEXTO),
+            "data": ("Fim do mês: a linha diz o que se sabia neste dia", DATA),
+            "registrada_desde": (
+                "Início do registro de companhia aberta vigente na data",
+                DATA,
+            ),
+            "primeira_entrega": (
+                "A primeira DFP ou ITR entregue (a companhia só entra depois dela)",
+                DATA,
+            ),
+            "tickers_na_data": (
+                "Os códigos de negociação válidos na data, pelo FCA (vazio: nenhum)",
+                TEXTO,
+            ),
+            "com_ticker_na_data": (
+                "Tinha ao menos um código válido na data; vazio antes de o FCA trazer códigos (2018): não se sabe",
+                SIM_OU_NAO,
+            ),
+            "balanco_fim": ("Data do balanço mais novo já público na data", DATA),
+            "balanco_publico_em": (
+                "Quando os valores do balanço usados ficaram públicos (entrega à CVM)",
+                DATA,
+            ),
+            "balanco_grupo": (
+                "con (consolidado) ou ind (individual, sem consolidado no período)",
+                TEXTO,
+            ),
+            "ativo_total": ("Ativo total (conta 1)", REAIS),
+            "caixa": ("Caixa e equivalentes de caixa", REAIS),
+            "patrimonio_liquido": (
+                "Patrimônio líquido (consolidado: com os minoritários)",
+                REAIS,
+            ),
+            "divida_bruta": (
+                "Empréstimos e financiamentos de curto e de longo prazo, somados",
+                REAIS,
+            ),
+            "acumulado_inicio": (
+                "Início do período acumulado do documento mais novo (o início do exercício)",
+                DATA,
+            ),
+            "acumulado_fim": (
+                "Fim do período acumulado (o fim do trimestre ou do exercício)",
+                DATA,
+            ),
+            "acumulado_publico_em": (
+                "Quando os valores acumulados usados ficaram públicos",
+                DATA,
+            ),
+            "acumulado_grupo": ("con ou ind, no acumulado", TEXTO),
+            "receita_acumulado": (
+                "Receita do início do exercício ao fim do trimestre (bancos: da intermediação)",
+                REAIS,
+            ),
+            "ebit_acumulado": (
+                "Resultado antes do financeiro e dos tributos, acumulado (vazio nos bancos)",
+                REAIS,
+            ),
+            "lucro_acumulado": ("Lucro ou prejuízo do período, acumulado", REAIS),
+            "anual_fim": ("Fim do exercício da DFP mais nova já pública", DATA),
+            "anual_publico_em": (
+                "Quando os valores anuais usados ficaram públicos",
+                DATA,
+            ),
+            "anual_grupo": ("con ou ind, no anual", TEXTO),
+            "receita_anual": ("Receita do exercício (bancos: da intermediação)", REAIS),
+            "ebit_anual": (
+                "Resultado antes do financeiro e dos tributos, no exercício (vazio nos bancos)",
+                REAIS,
+            ),
+            "lucro_anual": ("Lucro ou prejuízo do exercício", REAIS),
+        },
+    ),
+    "setoriais_buracos": Tabela(
+        descricao=(
+            "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma "
+            "empresa, do maior volume para o menor: a lista de trabalho da próxima conferência"
+        ),
+        fonte="Derivado: fontes setoriais e a B13 (empresa_serie)",
+        familia_da_fonte="anp",
+        frequencia="A cada carga das fontes setoriais",
+        atraso="Nenhum",
+        onde="Parquet em `<acervo>/base/setoriais/buracos.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem="O `.json` anota a tabela da B13 usada (SHA-256 do conteúdo) e a versão do código.",
+        colunas={
+            "chave": ("Código na fonte sem ligação", TEXTO),
+            "valor": (
+                "Volume somado (passageiros pagos na ANAC, quantidade na ANP)",
+                NUMERO_DECIMAL,
+            ),
+            "primeira": ("Primeiro mês em que aparece", DATA),
+            "ultima": ("Último mês em que aparece", DATA),
+            "fonte": ("Fonte no registro de coletas", TEXTO),
+        },
+    ),
     "ifdata_valores": Tabela(
         descricao=(
             "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e "
@@ -1106,7 +2541,7 @@ TABELAS: dict[str, Tabela] = {
         },
         ressalva_de_revenda=(
             f"As linhas dos múltiplos ({', '.join(f'`{m}`' for m in MULTIPLOS)}) usam o preço do "
-            f"Yahoo Finance: {SO_USO_INTERNO}."
+            f"Yahoo Finance: {NAO_COMERCIAL}."
         ),
     ),
     "fre_proventos": Tabela(
@@ -1304,7 +2739,10 @@ TABELAS: dict[str, Tabela] = {
             "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e "
             "liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria "
             "própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido "
-            "(`fato_relevante`, costuma ser o primeiro sinal público)"
+            "(`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o "
+            "`rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa "
+            "(controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` "
+            "guarda o que aconteceu com a outra"
         ),
         fonte="CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)",
         familia_da_fonte="cvm",
@@ -1317,8 +2755,25 @@ TABELAS: dict[str, Tabela] = {
             "empresa": _EMPRESA["empresa"],
             "rotulo": (
                 (
-                    "recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia "
-                    "ou liquidacao"
+                    "O que aconteceu com a própria companhia: recuperacao_judicial, "
+                    "recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria "
+                    "da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou "
+                    "liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa)"
+                ),
+                TEXTO,
+            ),
+            "evento": (
+                (
+                    "O que aconteceu, com quem for: os mesmos valores do rótulo, sem "
+                    "exposicao_a_terceiro"
+                ),
+                TEXTO,
+            ),
+            "regra": (
+                (
+                    "O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, "
+                    "sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, "
+                    "outra_empresa (palavras achadas) ou contexto_de_terceiro"
                 ),
                 TEXTO,
             ),
@@ -1371,6 +2826,287 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "pgfn_divida": Tabela(
+        descricao=(
+            "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
+            "uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região "
+            "da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor "
+            "somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e "
+            "nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`."
+        ),
+        fonte="PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)",
+        familia_da_fonte="pgfn",
+        frequencia=(
+            "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)"
+        ),
+        atraso=(
+            "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); "
+            "a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu "
+            "o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras "
+            "fontes de governo (o conservador; a história começa em 14/10/2026)"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do "
+            "CNPJ>.parquet`, 11 por CSV da PGFN (servidor de casa, `scripts/carga_pgfn.py`)"
+        ),
+        linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+            "tipo_divida": (
+                "nao_previdenciaria (SIDA), previdenciaria ou fgts: o arquivo da PGFN de onde veio",
+                TEXTO,
+            ),
+            "regiao": ("Região da PGFN no nome do arquivo (1 a 6, ou NA)", TEXTO),
+            "tipo_devedor": ("principal, corresponsavel ou solidario", TEXTO),
+            "tipo_situacao": (
+                (
+                    "Grupo da situação, como a PGFN escreve (Em cobrança, Suspenso por decisão "
+                    "judicial, Benefício Fiscal, Garantia)"
+                ),
+                TEXTO,
+            ),
+            "situacao_inscricao": (
+                "Situação da inscrição, como a PGFN escreve (ATIVA AJUIZADA, ATIVA EM COBRANCA...)",
+                TEXTO,
+            ),
+            "ajuizado": ("Verdadeiro se a cobrança já está na Justiça", SIM_OU_NAO),
+            "inscricoes": ("Quantas inscrições somadas nesta linha", NUMERO),
+            "valor_consolidado": ("Valor consolidado somado das inscrições", REAIS),
+            "primeira_inscricao": (
+                "Data da inscrição mais antiga (vazia se a PGFN não informa)",
+                DATA,
+            ),
+            "ultima_inscricao": ("Data da inscrição mais recente", DATA),
+            "data_do_retrato": ("Último dia do mês do retrato da PGFN", DATA),
+            "gerado_em": (
+                "Data dos CSVs dentro do ZIP (informativa: não é a de publicação)",
+                DATA,
+            ),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                    "Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base"
+                ),
+                SIM_OU_NAO,
+            ),
+            "disponivel_em": (
+                (
+                    "Dia em que o arquivista viu o arquivo pela primeira vez (quando ficou "
+                    "público para a base)"
+                ),
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
+    "debentures_assembleias": Tabela(
+        descricao=(
+            "Assembleias de debenturistas (`AGDEB`: ata, edital, proposta, instrução de voto), avisos "
+            "aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam "
+            "à CVM no IPE desde 2003, uma linha por versão entregue. O tema de cada documento sai só "
+            "do assunto preenchido pela companhia, sem abrir o PDF (modelo 18, PR 1): cerca de metade "
+            "dos assuntos é genérica (`generico`) e só o PDF dirá o tema. `estresse` marca o aperto "
+            "de crédito (vencimento antecipado, covenant, repactuação, inadimplemento ou waiver que "
+            "não é para reorganizar a empresa nem prêmio de resgate; no aviso, só vencimento antecipado e inadimplemento). "
+            "Cobre só quem entrega ao IPE: as emissões ICVM 476 de companhias fechadas ficam de fora "
+            "(`relatorio-modelo-18-agente-fiduciario.md`). Conferência à mão de 50 PDFs (17/10/2026): "
+            "`estresse` certo em 23 de 26; 3 de 10 genéricos tinham estresse no PDF"
+        ),
+        fonte="CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/debentures.py`",
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_debentures_assembleias.py`), depois do "
+            "arquivista baixar o IPE do ano"
+        ),
+        atraso=(
+            "O documento vale a partir de `publico_em` (entrega da versão à CVM); `referencia` é a data "
+            "informada pela companhia e, no edital, é o dia da assembleia, que pode vir depois"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/debentures_assembleias/debentures_assembleias.parquet` "
+            "(servidor de casa, `scripts/montar_debentures_assembleias.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que "
+            "leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o "
+            "manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "documento": ("assembleia, aviso ou notificacao_do_agente", TEXTO),
+            "especie": (
+                (
+                    "Espécie do documento da assembleia (Ata, Edital de Convocação, Proposta da "
+                    "Administração...); vazia no aviso e na notificação"
+                ),
+                TEXTO,
+            ),
+            "assunto": ("Assunto como a companhia preencheu no IPE", TEXTO),
+            "emissao": (
+                "Número da emissão citada no assunto (vazio se não há nenhuma ou se há mais de uma)",
+                NUMERO,
+            ),
+            "tema_vencimento_antecipado": (
+                "O assunto fala de vencimento antecipado (inclui o pedido para não declarar)",
+                SIM_OU_NAO,
+            ),
+            "tema_waiver": (
+                "O assunto fala de waiver, renúncia, perdão, anuência ou consentimento prévio",
+                SIM_OU_NAO,
+            ),
+            "tema_covenant": (
+                "O assunto fala de covenant, índices ou limites financeiros, alavancagem, dívida líquida ou EBITDA",
+                SIM_OU_NAO,
+            ),
+            "tema_repactuacao": (
+                "O assunto fala de repactuação, prorrogação, postergação, carência, suspensão de pagamento ou mudança de taxa, prazo ou cronograma",
+                SIM_OU_NAO,
+            ),
+            "tema_inadimplemento": (
+                "O assunto fala de inadimplemento, não pagamento, recuperação judicial ou extrajudicial ou falência",
+                SIM_OU_NAO,
+            ),
+            "tema_garantia": (
+                "O assunto fala de garantia, alienação ou cessão fiduciária, fiança, aval ou conta vinculada",
+                SIM_OU_NAO,
+            ),
+            "tema_resgate": (
+                "O assunto fala de resgate antecipado, amortização extraordinária ou aquisição facultativa",
+                SIM_OU_NAO,
+            ),
+            "tema_reorganizacao": (
+                "O assunto fala de incorporação, cisão, fusão, reorganização, troca de controle ou oferta de ações",
+                SIM_OU_NAO,
+            ),
+            "tema_pagamento": (
+                "O assunto avisa pagamento de juros, remuneração, amortização, prêmio ou principal",
+                SIM_OU_NAO,
+            ),
+            "estresse": (
+                "O tema é de aperto de crédito (regra na descrição)",
+                SIM_OU_NAO,
+            ),
+            "generico": (
+                "O assunto não casa com nenhum tema: só o PDF dirá",
+                SIM_OU_NAO,
+            ),
+            "referencia": (
+                "Data informada pela companhia (no edital, o dia da assembleia)",
+                DATA,
+            ),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
+    "ratings": Tabela(
+        descricao=(
+            "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM "
+            "no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados, fatos "
+            "relevantes e editais que falam do rating. Uma linha por documento baixado e lido, com "
+            "a situação da extração (`extraido`; `nao_extraido`: PDF escaneado ou sem nota; "
+            "`nao_e_pdf`: Word, ZIP ou PDF quebrado). O mesmo evento (companhia, agência, escala, "
+            "nota e data da ação) contado pelo relatório e pelo comunicado vira uma linha só, com a "
+            "primeira entrega. v1: o rating principal de cada documento; notas por emissão, uma a "
+            "uma, ficam para depois. Conferência à mão: 35 de 36 certas (16/10/2026)"
+        ),
+        fonte=(
+            "CVM: documentos do IPE no sistema de documentos (RAD), fonte `cvm-ipe-rating`, e a "
+            "lista dos arquivos anuais do IPE (`base/ratings.py`)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_ratings.py`), depois das rodadas do "
+            "coletor, que baixa os documentos de hora em hora, do mais novo ao mais velho"
+        ),
+        atraso=(
+            "O rating vale a partir de `publico_em` (entrega da versão do documento à CVM), nunca "
+            "da data do relatório da agência; `data_acao` depois da entrega fica vazia"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ratings/ratings.parquet` (servidor de casa, "
+            "`scripts/montar_ratings.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do documento no acervo (`origem_sha256`, que leva ao "
+            "registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto "
+            "lista os arquivos anuais do IPE e todos os documentos lidos. `montado_em` diz quando a "
+            "tabela foi montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "agencia": (
+                "fitch, sp, moodys, austin, liberum, sr_rating, lf_rating ou am_best (vazia se não extraído)",
+                TEXTO,
+            ),
+            "escala": ("nacional ou global", TEXTO),
+            "nota": (
+                "Nota sem sufixos (AA, RD, Aa1): compara documentos da mesma agência",
+                TEXTO,
+            ),
+            "nivel": (
+                "Posição da nota na escala (1 = AAA ou Aaa): compara agências",
+                NUMERO,
+            ),
+            "nota_original": (
+                "A nota como está no texto (AA(bra), brAAA, Aa1.br)",
+                TEXTO,
+            ),
+            "perspectiva": (
+                "estavel, positiva, negativa, em_desenvolvimento, em_observacao_positiva ou em_observacao_negativa",
+                TEXTO,
+            ),
+            "acao": (
+                "afirmacao, elevacao, rebaixamento, atribuicao, retirada...",
+                TEXTO,
+            ),
+            "data_acao": (
+                "Data da ação da agência lida do texto (vazia se não está ou se vem depois da entrega)",
+                DATA,
+            ),
+            "outras_notas": (
+                "As outras notas citadas no documento, separadas por `; `",
+                TEXTO,
+            ),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando o rating ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            "evidencia": (
+                "Por que o documento entrou: relatorio_de_agencia (tipo do IPE) ou assunto",
+                TEXTO,
+            ),
+            "situacao_extracao": ("extraido, nao_extraido ou nao_e_pdf", TEXTO),
+            "documentos": (
+                (
+                    "Protocolos de todos os documentos do mesmo evento, pela data de entrega, "
+                    "separados por `; ` (pode citar entregas posteriores a `publico_em`)"
+                ),
+                TEXTO,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "auditores": Tabela(
         descricao=(
             "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início "
@@ -1393,7 +3129,13 @@ TABELAS: dict[str, Tabela] = {
             "referencia": ("Data de referência do FCA", DATA),
             "versao": ("Versão do FCA", NUMERO),
             "id_documento": ("Número do documento na CVM", TEXTO),
-            "conhecido_em": ("Data em que a CVM recebeu essa versão do FCA", DATA),
+            "conhecido_em": (
+                (
+                    "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do "
+                    "registro (pedido de registro), vale a partir do registro seguinte"
+                ),
+                DATA,
+            ),
             "auditor_id": (
                 (
                     "Identificador da firma: `rede:<nome>` nas redes; senão código da CVM, raiz do "
@@ -1504,11 +3246,13 @@ TABELAS: dict[str, Tabela] = {
             "Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por companhia, "
             "documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou. "
             "Entram os documentos entregues e os devidos sem entrega (entregou um ano antes, ativa "
-            "no prazo, data-base no calendário da empresa e no arquivo do ano). Não entra o "
-            "documento com o prazo antes do primeiro registro da empresa (o que ela manda para "
-            "pedir o registro, sem prazo a cumprir); o manifesto conta quantos ficaram de fora "
-            "(`fora_dos_exemplos`). Não é coluna para prever: é a resposta que o modelo tenta "
-            "acertar (ADR 0027)"
+            "no prazo, data-base no calendário da empresa e no arquivo do ano). Só entra o "
+            "documento que a empresa devia: registrada e ativa no cadastro da CVM na data do "
+            "prazo. Ficam de fora o que ela manda para pedir o registro (prazo antes do primeiro "
+            "registro ou entre dois registros), o que manda depois do cancelamento e o das "
+            "empresas fora do cadastro (quase todas emissores estrangeiros); o manifesto conta "
+            "quantos ficaram de fora, por motivo (`fora_dos_exemplos`). Não é coluna para prever: "
+            "é a resposta que o modelo tenta acertar (ADR 0027)"
         ),
         fonte="CVM: dados abertos da DFP e do ITR (índice das entregas) e cadastro das companhias",
         familia_da_fonte="cvm",
@@ -1523,8 +3267,9 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "O manifesto (`rotulos_atraso.json`) lista o endereço e o SHA-256 de cada arquivo anual "
-            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` diz quando "
-            "a tabela foi montada. " + COM_VERSAO_DO_CODIGO
+            "da DFP e do ITR e do cadastro usados, e o SHA-256 da tabela; `montado_em` é o início "
+            "do dia (em Brasília) da montagem: os mesmos originais no mesmo dia dão a mesma tabela. "
+            + COM_VERSAO_DO_CODIGO
         ),
         colunas={
             **_EMPRESA,
@@ -1631,6 +3376,575 @@ TABELAS: dict[str, Tabela] = {
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
+    "entidades": Tabela(
+        descricao=(
+            "Uma linha por entidade da rede (ADR 0077): empresa (pela raiz do CNPJ; a filial é a "
+            "mesma empresa), fundo (pelo CNPJ de 14), valor mobiliário (pelo ISIN das carteiras dos "
+            "fundos) ou firma de auditoria (pelo código da CVM), com id determinístico "
+            "(`base/rede/ids.py`), nome, natureza jurídica e MEI. Vem das tabelas que a base já tem: "
+            "cadastro da CVM, FCA, controladas, auditores, empresa ↔ série, cadastro e carteiras de "
+            "fundos, IF.data e GLEIF. Empresário individual, pessoa física com CNPJ e MEI ficam sem "
+            "nome e com `trata_como_pessoa`"
+        ),
+        fonte=(
+            "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF, os reguladores da "
+            "empresa ↔ série e a Receita (natureza jurídica e opção pelo MEI)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem; versão nova só quando o conteúdo muda",
+        atraso="O da fonte mais lenta de cada entidade; `publico_em` diz desde quando se sabe dela",
+        onde=_ONDE_DA_REDE.format(t="entidades"),
+        linhagem=LINHAGEM_DA_REDE,
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "id_entidade": (
+                "'E' + 20 hexadecimais do SHA-256 do identificador primário",
+                TEXTO,
+            ),
+            "tipo": ("empresa, fundo, valor_mobiliario ou auditor", TEXTO),
+            "nome": (
+                "Nome pela fonte mais confiável (vazio na pessoa com CNPJ)",
+                TEXTO,
+            ),
+            "natureza_juridica": (
+                (
+                    "Código da natureza jurídica da Receita (2046 = S.A. aberta), nao_informada ou "
+                    "nao_se_aplica (valor mobiliário)"
+                ),
+                TEXTO,
+            ),
+            "natureza_fonte": (
+                "receita, fonte (CVM ou cadastro de fundos) ou nao_informada",
+                TEXTO,
+            ),
+            "mei": ("Verdadeiro se é MEI hoje (Simples da Receita)", SIM_OU_NAO),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro para empresário individual (213-5), grupo 4, MEI e natureza "
+                    "não informada: nunca recebe sinal negativo publicado"
+                ),
+                SIM_OU_NAO,
+            ),
+            "fontes": (
+                "As fontes de onde a entidade saiu, separadas por vírgula",
+                TEXTO,
+            ),
+            "publico_em": (
+                "O dia mais antigo em que alguma fonte a tornou pública",
+                DATA,
+            ),
+        },
+    ),
+    "identificadores": Tabela(
+        descricao=(
+            "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com "
+            "letras), raiz, LEI, ticker, emissor e códigos dos reguladores (`codigo_<fonte>`). "
+            "Resolvidos por regras de código em ordem fixa (1 CNPJ, 2 raiz, 3 LEI, 4 emissor e "
+            "ticker, 5 código do regulador, 7 tabela conferida); o mesmo identificador em duas "
+            "entidades no mesmo período é conflito e não entra em nenhuma"
+        ),
+        fonte=(
+            "CVM (cadastro, FCA, FRE, fundos), Banco Central (IF.data), GLEIF e os reguladores da "
+            "empresa ↔ série"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem; versão nova só quando o conteúdo muda",
+        atraso="O ticker vale da entrega do FCA que o trouxe; o código do IF.data, 120 dias depois",
+        onde=_ONDE_DA_REDE.format(t="identificadores"),
+        linhagem=LINHAGEM_DA_REDE,
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "id_entidade": ("A entidade (tabela `entidades`)", TEXTO),
+            "sistema": (
+                (
+                    "cnpj, cnpj_raiz, lei, isin, ticker, emissor, codigo_cvm_auditor ou "
+                    "codigo_<fonte> (codigo_bcb_ifdata...)"
+                ),
+                TEXTO,
+            ),
+            "valor": (
+                "O identificador (CNPJ sem pontuação, com letras se tiver)",
+                TEXTO,
+            ),
+            "desde": ("Desde quando vale (vazio: sempre)", DATA),
+            "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "publico_em": (
+                "Desde quando a ligação era pública (como era na data)",
+                DATA,
+            ),
+            "regra": (
+                "A regra que ligou (1, 2, 3, 4, 5 ou 7; a menor, se várias)",
+                NUMERO,
+            ),
+            "conferido_por": ("regra (código) ou tabela (conferida à mão)", TEXTO),
+            "fontes": (
+                "As fontes que trouxeram o identificador, separadas por vírgula",
+                TEXTO,
+            ),
+        },
+    ),
+    "ligacoes": Tabela(
+        descricao=(
+            "Uma linha por relação entre duas entidades da rede (ADR 0077), com as três datas: "
+            "sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador "
+            "que opera para a companhia (empresa ↔ série), instituição do conglomerado do líder "
+            "(IF.data), firma que audita a companhia (FCA), empresa que emite o valor mobiliário e "
+            "fundo que o detém (carteiras do CDA, meses seguidos num período só). Nada é apagado "
+            "entre cargas: o que some da fonte fica, encerrado pela carga. Esta é a vista interna; "
+            "a publicada (sem pessoas) sai de `base/rede/vistas.py`"
+        ),
+        fonte=(
+            "CVM (FRE, FCA, carteiras dos fundos), Banco Central (IF.data) e os reguladores da "
+            "empresa ↔ série"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Toda noite no servidor de casa; versão nova só quando o conteúdo muda",
+        atraso=(
+            "O da fonte: o FRE e o FCA pela entrega à CVM, a carteira 90 dias depois do mês, o "
+            "IF.data 120 dias depois da data-base; a fonte de governo desde que guardada"
+        ),
+        onde=_ONDE_DA_REDE.format(t="ligacoes"),
+        linhagem=(
+            LINHAGEM_DA_REDE
+            + " Cada linha leva o `origem_sha256` do arquivo (ou da tabela da base) de onde veio."
+        ),
+        ressalva_de_revenda=RESSALVA_DA_REDE,
+        colunas={
+            "de": (
+                "A entidade de onde a relação sai (a controlada, o fundo, a firma)",
+                TEXTO,
+            ),
+            "para": (
+                "A entidade para onde a relação vai (a companhia, o valor mobiliário)",
+                TEXTO,
+            ),
+            "tipo": (
+                (
+                    "controlada_de, coligada_de, participada_de (FRE sem o tipo), opera_para, "
+                    "do_conglomerado_de, audita, emite ou detem"
+                ),
+                TEXTO,
+            ),
+            "papel": (
+                (
+                    "Detalhe do tipo: comprado, emprestado ou vendido (detem); a via e se é a "
+                    "principal (opera_para); lider (do_conglomerado_de)"
+                ),
+                TEXTO,
+            ),
+            "participacao": (
+                "Participação informada no FRE (vazia nos outros)",
+                PONTOS_PERCENTUAIS,
+            ),
+            "aconteceu_em": (
+                "Data do fato: referência do FRE, início do mandato, primeiro mês da carteira",
+                DATA,
+            ),
+            "infracao_em": (
+                "Data da infração, nas sanções (vazia nas fontes de hoje)",
+                DATA,
+            ),
+            "publico_em": (
+                "Desde quando a relação era pública (como era na data)",
+                DATA,
+            ),
+            "coletado_em": (
+                "Quando a base guardou o arquivo de onde veio (registro de coletas)",
+                DATA,
+            ),
+            "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "situacao": ("vigente ou encerrada", TEXTO),
+            "encerrada_por": (
+                "fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente",
+                TEXTO,
+            ),
+            "fonte": ("cvm-fre, cvm-fca, cvm-cda, bcb-ifdata ou empresa_serie", TEXTO),
+            "origem_sha256": (
+                "SHA-256 do arquivo ou da tabela da base de onde veio",
+                TEXTO,
+            ),
+            "conferido_por": ("regra (código) ou tabela (conferida à mão)", TEXTO),
+        },
+    ),
+    "ma_assessorias": Tabela(
+        descricao=(
+            "Negócios de M&A do middle market tirados dos posts das assessorias independentes (ADR "
+            "0082), uma linha por página de negócio: as empresas, o tipo e o sentido. Só fatos: "
+            "nenhum texto do post e nenhuma pessoa física (a equipe da assessoria nem é lida). Sem "
+            "data do negócio (a página não tem; `conhecido_em` está em `ma_datas`) e sem "
+            "CNPJ das partes (passo 3)"
+        ),
+        fonte="Sites das assessorias de M&A (IGC Partners), páginas guardadas pelo arquivista",
+        familia_da_fonte="assessoria",
+        frequencia="Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
+        atraso=(
+            "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a "
+            "base só sabe a data da nossa coleta"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/assessorias/<assessoria>.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o endereço e o SHA-256 da página no acervo (`url`, `sha256`, que "
+            "levam ao registro de coletas) e quando ela foi coletada; o `.json` guarda as páginas "
+            "usadas. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio", TEXTO),
+            "sha256": ("SHA-256 da página guardada no acervo", TEXTO),
+            "coletado_em": ("Quando o arquivista baixou a página", MOMENTO),
+            "tipo": (
+                (
+                    "Código da taxonomia de M&A (AQ_CONTROLE, AQ_MINORITARIA, FUSAO, JV, VENDA_ATIVO, "
+                    "PE_VC, DCM) ou desconhecido"
+                ),
+                TEXTO,
+            ),
+            "regra": (
+                (
+                    "Qual regra do título deu o tipo (divida, fusao, jv, venda_de_ativo, minoritaria, "
+                    "majoritaria, participacao, financiamento, rodada, aquisicao); vazio se nenhuma"
+                ),
+                TEXTO,
+            ),
+            "alvo": (
+                "Empresa(s) comprada(s) ou que recebeu o investimento, separadas por `; `",
+                TEXTO,
+            ),
+            "comprador": ("Quem comprou ou investiu", TEXTO),
+            "vendedor": (
+                "Quem vendeu, quando não é a própria alvo (controladora, dono do ativo)",
+                TEXTO,
+            ),
+            "outras_partes": (
+                "Empresas da página sem papel dito no título (controladora de quem compra)",
+                TEXTO,
+            ),
+            "cliente": (
+                "Empresa(s) que a assessoria diz ter assessorado (campo da página)",
+                TEXTO,
+            ),
+            "contraparte": (
+                "A(s) outra(s) empresa(s) do negócio, como a página lista",
+                TEXTO,
+            ),
+            "papeis_por": (
+                (
+                    "titulo (os papéis vieram do título) ou pagina (algum nome não aparece no título e "
+                    "o lado veio do campo da página); vazio sem empresas"
+                ),
+                TEXTO,
+            ),
+            "lado_da_assessoria": (
+                "venda, compra, captacao (dívida ou empréstimo) ou parte (fusão, JV)",
+                TEXTO,
+            ),
+            "setor": (
+                "Setor da alvo; vazio enquanto a página não diz (vem do CNPJ no passo 3)",
+                TEXTO,
+            ),
+            "paises": (
+                "Países das partes (ISO 3166-1, separados por `;`), sem dizer de quem",
+                TEXTO,
+            ),
+            "valor": (
+                "Valor que o título escreve (quase sempre vazio; nas emissões de dívida, o volume)",
+                NUMERO_DECIMAL,
+            ),
+            "moeda": ("BRL ou USD, a do valor", TEXTO),
+            "conferencia": (
+                (
+                    "assessoria (fonte única: declarado por quem assessorou); a confirmação por "
+                    "fonte oficial, com a prova, fica em `ma_datas`"
+                ),
+                TEXTO,
+            ),
+        },
+    ),
+    "ma_partes": Tabela(
+        descricao=(
+            "As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por "
+            "empresa de cada página, ligadas à rede de entidades (ADR 0077) só por regras exatas: "
+            "o nome normalizado contra os nomes da rede e a razão social do CNPJ e, se nada casou, "
+            "contra o nome fantasia. Nome de mais de uma entidade fica na dúvida, nunca escolhido; "
+            "empresário individual e MEI nunca são ligados (ADR 0075). Série 5 do plano de M&A, "
+            "passo 3 (ADR 0082)"
+        ),
+        fonte=(
+            "`ma_assessorias`, a rede (`entidades`, `identificadores`) e o CNPJ aberto da Receita "
+            "(razão social e nome fantasia, lidos e descartados: só a raiz fica)"
+        ),
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso="O da tabela `ma_assessorias` e o do mês do CNPJ guardado",
+        onde=(
+            "Parquet em `<acervo>/base/ma/ligacao/partes.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "O `.json` guarda as tabelas de entrada (com o hash de cada uma) e os arquivos da "
+            "Receita usados; a página de cada parte está em `url`. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "nome": ("O nome da empresa como a página escreve", TEXTO),
+            "papel": (
+                (
+                    "alvo, comprador, vendedor ou outras_partes; vazio quando o negócio não tem papéis "
+                    "(dívida, fusão, joint venture, título sem verbo)"
+                ),
+                TEXTO,
+            ),
+            "na_pagina": (
+                "cliente (a assessorada) ou contraparte: o campo da página em que o nome está",
+                TEXTO,
+            ),
+            "nome_normalizado": (
+                (
+                    'O nome sem acento, caixa, forma jurídica no fim (S.A., Ltda...) e "Grupo": o '
+                    "que se compara"
+                ),
+                TEXTO,
+            ),
+            "id_entidade": (
+                (
+                    "A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede "
+                    "dará à raiz dela. Vazio sem ligação ou na dúvida"
+                ),
+                TEXTO,
+            ),
+            "cnpj_raiz": ("Os 8 primeiros dígitos do CNPJ da empresa ligada", TEXTO),
+            "lei": ("O LEI da entidade ligada, quando a rede tem", TEXTO),
+            "ligacao_por": (
+                (
+                    "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um "
+                    "candidato, nome de uma palavra só fora da rede, ou nome fantasia que a razão "
+                    "social não tem), holding_estrangeira (CNPJ da dona de fora), "
+                    "aberto_depois_do_negocio (a matriz abriu depois do post) ou sem_ligacao"
+                ),
+                TEXTO,
+            ),
+            "candidatos": (
+                "Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida)",
+                NUMERO,
+            ),
+        },
+    ),
+    "ma_negocios": Tabela(
+        descricao=(
+            "Uma linha por página de negócio de M&A com o `id_negocio`, o mesmo para as páginas "
+            "do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo "
+            "negócio): mesmas partes, assessorias diferentes e tipos que não se contradizem. "
+            "Série 5 do plano de M&A, passo 3 (ADR 0082)"
+        ),
+        fonte="`ma_assessorias` e `ma_partes`",
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso="O da tabela `ma_assessorias`",
+        onde=(
+            "Parquet em `<acervo>/base/ma/ligacao/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "O `.json` guarda as tabelas de entrada com o hash de cada uma. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "id_negocio": (
+                (
+                    '"N" + 20 hexadecimais do SHA-256 das partes (entidade ou nome normalizado); '
+                    "o de uma página quando as mesmas partes não podem ser juntadas"
+                ),
+                TEXTO,
+            ),
+            "paginas_do_negocio": ("Quantas páginas têm este `id_negocio`", NUMERO),
+            "paginas_com_as_mesmas_partes": (
+                (
+                    "Quantas páginas têm as mesmas partes, juntadas ou não (mais de uma do mesmo "
+                    "site são posts diferentes)"
+                ),
+                NUMERO,
+            ),
+            "duplicata_por": (
+                "partes_iguais quando o negócio está em mais de uma página; vazio se só em uma",
+                TEXTO,
+            ),
+        },
+    ),
+    "ma_datas": Tabela(
+        descricao=(
+            "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por "
+            "fonte oficial; uma linha por página (ADR 0082, série 5 do plano de M&A, passo 4). "
+            "`conhecido_em` é a prova mais antiga guardada: a primeira cópia da página no Internet "
+            "Archive, o arquivo de sócios do CNPJ em que a compradora aparece como sócia pessoa "
+            "jurídica da alvo, ou a nossa primeira coleta. Nunca uma data contada: a entrada na "
+            "sociedade é a do fechamento (`fechamento_em`) e não entra na conta"
+        ),
+        fonte=(
+            "`ma_assessorias`, `ma_partes` e `ma_negocios`; a API CDX do Wayback Machine (só as datas "
+            "das cópias) e os sócios pessoa jurídica do CNPJ aberto da Receita (raiz, raiz da sócia e "
+            "data de entrada; nome, CPF e representante nunca são lidos)"
+        ),
+        familia_da_fonte="wayback",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso=(
+            "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois "
+            "da página, e o CNPJ é o do mês mais recente guardado"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/datas/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada data aponta a prova: o endereço e o SHA-256 do original no acervo (a consulta do "
+            "Wayback, o ZIP de sócios da Receita ou a página da assessoria). O `.json` guarda as "
+            "tabelas e os originais de entrada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_assessorias`)", TEXTO),
+            "id_negocio": ("O negócio (liga com `ma_negocios`)", TEXTO),
+            "coletado_em": (
+                "Quando o arquivista baixou a página pela primeira vez",
+                MOMENTO,
+            ),
+            "wayback_em": (
+                "A cópia mais antiga da página no Wayback que respondeu 200; vazio se nenhuma",
+                MOMENTO,
+            ),
+            "wayback_copia": ("Link da cópia no Wayback, para conferir à mão", TEXTO),
+            "wayback_consulta": (
+                "Endereço da consulta à API CDX guardada no acervo",
+                TEXTO,
+            ),
+            "wayback_sha256": ("SHA-256 da resposta da consulta guardada", TEXTO),
+            "confirmado_por": (
+                "rfb-cnpj quando a compradora é sócia PJ da alvo no CNPJ; vazio sem confirmação",
+                TEXTO,
+            ),
+            "confirmacao_url": (
+                "Endereço do ZIP de sócios da Receita que confirma",
+                TEXTO,
+            ),
+            "confirmacao_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
+            "confirmacao_em": ("Quando o arquivista baixou esse ZIP", MOMENTO),
+            "fechamento_em": (
+                (
+                    "Data de entrada da compradora na sociedade da alvo, como a Receita publica (a "
+                    "etapa de fechamento); se ela já era sócia antes, a da primeira entrada"
+                ),
+                DATA,
+            ),
+            "conhecido_em": (
+                "A prova mais antiga de que o negócio era público (nunca antes dela)",
+                MOMENTO,
+            ),
+            "conhecido_por": (
+                "wayback, rfb-cnpj ou coleta: de onde veio o `conhecido_em`",
+                TEXTO,
+            ),
+            "prova_url": ("Endereço do original que prova o `conhecido_em`", TEXTO),
+            "prova_sha256": ("SHA-256 desse original", TEXTO),
+            "conhecido_em_do_negocio": (
+                "O `conhecido_em` mais antigo entre as páginas do mesmo negócio",
+                MOMENTO,
+            ),
+            "conferencia": (
+                "confirmado (fonte oficial com a prova apontada) ou assessoria (só o post)",
+                TEXTO,
+            ),
+        },
+    ),
+    "ma_regua": Tabela(
+        descricao=(
+            "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo "
+            "no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página "
+            "(ADR 0082, item 2; série 5 do plano de M&A, passo 5). Só vale o que era público antes "
+            "do `conhecido_em` do negócio (documento entregue no mesmo dia ou depois não entra). "
+            "Sem receita conhecida, `desconhecido`: o valor nunca é estimado"
+        ),
+        fonte=(
+            "`ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as "
+            "receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de "
+            "negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ "
+            "aberto da Receita (só raiz e porte são lidos)"
+        ),
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso=(
+            "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente "
+            "guardado"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/regua/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada receita diz a fonte e o documento (a entrega à CVM, ou o endereço do documento "
+            "lido à mão) e o dia em que ficou público; o porte aponta o ZIP da Receita no acervo "
+            "(endereço e SHA-256). O `.json` guarda as tabelas e os originais de entrada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_datas`)", TEXTO),
+            "id_negocio": ("O negócio (liga com `ma_negocios`)", TEXTO),
+            "alvo_cnpj_raiz": (
+                "Raiz do CNPJ da alvo (vazio sem ligação ou com mais de uma alvo ligada)",
+                TEXTO,
+            ),
+            "conhecido_em_do_negocio": (
+                "O `conhecido_em` do negócio (`ma_datas`): o corte do que a régua pode usar",
+                MOMENTO,
+            ),
+            "fechamento_em": (
+                "Data do fechamento pelo CNPJ (`ma_datas`), quando há: o exercício é o de antes dela",
+                DATA,
+            ),
+            "middle_market": (
+                "sim (receita de 30 a 500 milhões, limites inclusos), nao ou desconhecido",
+                TEXTO,
+            ),
+            "motivo": (
+                (
+                    "receita, porte_me_epp, sem_receita (alvo com CNPJ sem receita pública antes), "
+                    "alvo_sem_cnpj ou varias_alvos"
+                ),
+                TEXTO,
+            ),
+            "receita": ("Receita anual da alvo; vazio quando não há documento", REAIS),
+            "receita_exercicio_fim": ("Fim do exercício dessa receita", DATA),
+            "receita_fonte": (
+                "cpc15-compradora, dfp-alvo, balanco-alvo ou cade (no mesmo exercício, nessa ordem)",
+                TEXTO,
+            ),
+            "receita_documento": (
+                "O documento: a entrega à CVM (tipo, CNPJ, referência, versão e grupo) ou o endereço",
+                TEXTO,
+            ),
+            "receita_documento_sha256": (
+                "SHA-256 do documento no acervo, quando guardado",
+                TEXTO,
+            ),
+            "receita_publico_em": ("Dia em que o documento ficou público", DATA),
+            "porte": (
+                (
+                    "Porte da alvo no CNPJ baixado antes do negócio (01 ME, 03 EPP, 05 demais, 00 "
+                    "não informado); vazio se o arquivo é de depois"
+                ),
+                TEXTO,
+            ),
+            "porte_publico_em": ("Quando o arquivista baixou esse ZIP", MOMENTO),
+            "porte_prova_url": ("Endereço do ZIP `Empresas` da Receita", TEXTO),
+            "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
+        },
+    ),
 }
 
 
@@ -1655,9 +3969,10 @@ _CONTRATO = {
     "valores_mobiliarios": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "valor_mobiliario"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "emissores": _contrato(modulo=_ME, chaves=("emissor", "cnpj"), datas={"publico_em": "primeiro_recebido_em"}, historico_desde=_CVM),
     "codigos_invalidos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "codigo_informado"), datas={"aconteceu_em": "referencia", "publico_em": "recebido_em"}, historico_desde=_CVM),
-    "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
-    "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
-    "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "carteiras_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "codigo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "carteiras_bloco_8": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo", "tipo", "cnpj_emissor"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "cda_cotas": _contrato(modulo=_FIDC, chaves=("competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="2005-01-31"),
+    "fidc_informe": _contrato(modulo=_FIDC, chaves=("competencia", "cnpj_fundo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cadastro_de_fundos": _contrato(modulo=_FIDC, chaves=("CNPJ_FUNDO",), datas={"aconteceu_em": "DT_REG"}, historico_desde=_CVM),
     "painel_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia", "emissor", "tipo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "cobertura_dos_fundos": _contrato(modulo=_FIDC, chaves=("competencia",), datas={"aconteceu_em": "competencia"}, historico_desde=_CVM),
@@ -1665,6 +3980,22 @@ _CONTRATO = {
     "emissores_antigos": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "emissores_sem_ligacao": _contrato(modulo=_ME, chaves=("emissor",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "codigos_fora_do_fca": _contrato(modulo=_ME, chaves=("codigo",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
+    "anac_estatistico": _contrato(modulo=_ME, chaves=("competencia", "empresa_sigla", "aeroporto_de_origem_sigla", "aeroporto_de_destino_sigla", "natureza", "grupo_de_voo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "anp_vendas": _contrato(modulo=_ME, chaves=("competencia", "grupo", "agente", "codigo_do_produto", "uf_origem", "uf_destino", "mercado_destino"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ons_geracao": _contrato(modulo=_ME, chaves=("instante", "id_ons"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "fre_conselho": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_comites": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'tipo_de_comite'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_remuneracao": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_remuneracao_extremos": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'fim_do_exercicio', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "fre_diversidade": _contrato(modulo=_ME, chaves=('cnpj', 'referencia', 'versao', 'orgao'), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em"}, historico_desde=_CVM),
+    "ofertas_antigas": _contrato(modulo=_ME, chaves=('numero_processo', 'numero_registro_oferta', 'cnpj_emissor', 'tipo_ativo', 'classe_ativo', 'serie', 'emissao'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "ofertas_resolucao_160": _contrato(modulo=_ME, chaves=('numero_requerimento', 'cnpj_emissor'), datas={"aconteceu_em": "anunciada_em", "publico_em": "disponivel_em"}, historico_desde=_CVM),
+    "susep_seguros": _contrato(modulo=_ME, chaves=("competencia", "coenti", "cogrupo", "coramo", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "amostra_painel": _contrato(modulo=_ME, chaves=("cnpj", "data"), datas={"aconteceu_em": "data"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
+    "setoriais_buracos": _contrato(modulo=_ME, chaves=("fonte", "chave"), historico_desde=_GOVERNO),
     "ifdata_valores": _contrato(modulo=_ME, chaves=("data_base", "tipo_instituicao", "cod_inst", "relatorio", "grupo", "conta", "coluna"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em"}, historico_desde=_CVM),
     "ifdata_cadastro": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
     "ligacao_dos_bancos": _contrato(modulo=_ME, chaves=("data_base", "cod_inst"), datas={"aconteceu_em": "data_base"}, historico_desde=_CVM),
@@ -1676,14 +4007,59 @@ _CONTRATO = {
     "negociacoes": _contrato(modulo=_ME, chaves=("fonte", "documento", "versao", "cnpj", "cargo", "operacao", "ativo", "data"), datas={"aconteceu_em": "data", "publico_em": "entregue_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "proventos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
-    "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
+    "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
+    "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
+    "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
+    "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
+    "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
+    "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
+    "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
+}  # fmt: skip
+
+
+# conferência dos valores (`base/conferencia.py`): só as tabelas daqui são conferidas na montagem,
+# por enquanto como aviso no manifesto. O tipo e a faixa que a unidade já diz não se repetem aqui.
+_SEM_NEGATIVO = (0.0, None)
+_CONFERENCIA: dict[str, dict[str, object]] = {
+    "amostra_painel": {"pasta": "amostra/v1/painel"},
+    "eventos": {"pasta": "eventos", "anuncia_o_futuro": True},  # 19% (assembleias, calendários)
+    "curva_juros": {
+        "pasta": "curva_juros",
+        "faixas": {"prazo_anos": _SEM_NEGATIVO, "maior_prazo_anos": _SEM_NEGATIVO, "titulos": _SEM_NEGATIVO},
+        "nao_nulas": ("taxa", "disponivel_em"),
+    },
+    "pgfn_divida": {
+        "pasta": "pgfn_divida",
+        "faixas": {"inscricoes": (1.0, None), "valor_consolidado": _SEM_NEGATIVO},
+        "nao_nulas": ("cnpj", "cnpj_basico", "data_do_retrato", "disponivel_em", "trata_como_pessoa"),
+    },
+    "debentures_assembleias": {
+        "pasta": "debentures_assembleias",
+        "faixas": {"emissao": (1.0, None), "versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "documento", "publico_em", "protocolo", "link", "estresse", "generico"),
+        "anuncia_o_futuro": True,  # o edital sai antes da assembleia
+    },
+    "ratings": {
+        "pasta": "ratings",
+        "faixas": {"nivel": (1.0, None), "versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "publico_em", "protocolo", "link", "situacao_extracao", "documentos"),
+    },
+    "proventos": {
+        "pasta": "proventos",
+        "faixas": {"dividendos": _SEM_NEGATIVO, "jcp": _SEM_NEGATIVO, "dividendo_total": _SEM_NEGATIVO},
+    },
 }  # fmt: skip
 
 
@@ -1698,7 +4074,12 @@ def _contrato_de(nome: str) -> dict[str, object]:
 
 TABELAS = {
     nome: replace(
-        tabela, **{"granularidade_do_publico_em": "dia", **_contrato_de(nome)}
+        tabela,
+        **{
+            "granularidade_do_publico_em": "dia",
+            **_contrato_de(nome),
+            **_CONFERENCIA.get(nome, {}),
+        },
     )
     for nome, tabela in TABELAS.items()
 }

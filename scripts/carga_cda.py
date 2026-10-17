@@ -18,23 +18,26 @@ pedido por vez.
 - **Bloco 8** (achado da série 4): as ações que os fundos informam como "demais ativos", com o CNPJ do
   emissor, vão para `<pasta>/../cda_bloco_8/<ano>.parquet`, com as mesmas regras (versões, "como era
   na data"). Pessoa física nunca entra (`base/cda.py::ler_acoes_do_bloco_8`).
+- **Bloco 2** (relatório da base de crédito, 16/10/2026): as cotas de fundos que cada fundo tem (quem
+  compra cotas de FIDC) vão para `<pasta>/../cda_cotas/<ano>.parquet`, com as mesmas regras
+  (`base/cda.py::ler_cotas_de_fundos`). Um ano já carregado ganha a tabela sem regravar o CDA.
 """
 
 import argparse
-import hashlib
 import logging
 import sys
+from collections.abc import Callable, Iterator
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
 import sqlalchemy as sa
 
-from base import cda
+from base import cda, publicacao
 from base.parquet import gravar_com_versoes
-from src import acervo
+from src import acervo, rede
 from src.banco.coletas import com_registro, original_mais_recente
 from src.banco.conexao import criar_engine, migrar_para
 from src.configuracao import url_do_banco
@@ -49,12 +52,18 @@ MESES = range(1, 13)
 NAO_ENCONTRADO = 404
 SUBPASTA = Path("base") / "cda"
 ORDEM = ["competencia", "cnpj_fundo", "isin", "tipo"]
+CHAVE = [
+    "competencia",
+    "cnpj_fundo",
+]  # uma carteira por fundo e mês: a chave do `visto_em`
 ORDEM_DO_BLOCO_8 = ["competencia", "cnpj_fundo", "cnpj_emissor", "tipo"]
 PASTA_DO_BLOCO_8 = "cda_bloco_8"  # ao lado da pasta do CDA
+ORDEM_DAS_COTAS = ["competencia", "tipo_do_fundo", "cnpj_fundo", "cnpj_fundo_investido"]
+PASTA_DAS_COTAS = "cda_cotas"  # ao lado da pasta do CDA
 
 
 def _baixar_da_fonte(url: str) -> bytes | None:
-    resposta = requests.get(
+    resposta = rede.obter(
         url, timeout=900, headers={"User-Agent": "TickerLab (contato@tickerlab.com.br)"}
     )
     if resposta.status_code == NAO_ENCONTRADO:
@@ -82,54 +91,127 @@ def ler_ano(conexao: sa.Connection, ano: int) -> list[tuple[str, bytes]]:
     return lidos
 
 
-def _origens(lidos: list[tuple[str, bytes]]) -> list[dict[str, str]]:
-    return [{"url": u, "sha256": hashlib.sha256(c).hexdigest()} for u, c in lidos]
+def _origens(versoes: list[publicacao.Versao]) -> list[dict[str, str]]:
+    """Todas as versões guardadas de cada arquivo: delas sai o `visto_em`."""
+    return [{"url": v.url, "sha256": v.sha256} for v in versoes]
 
 
-def montar_ano(lidos: list[tuple[str, bytes]]) -> pd.DataFrame:
+def montar_ano(
+    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+) -> pd.DataFrame:
     partes = [p for _, c in lidos for p in cda.ler_posicoes_historicas(c)]
     tabela = pd.concat(partes, ignore_index=True)
-    return tabela.assign(disponivel_em=cda.disponivel_em(tabela))
+    return _com_visto_em(tabela.assign(disponivel_em=cda.disponivel_em(tabela)), vistos)
 
 
-def montar_bloco_8(lidos: list[tuple[str, bytes]]) -> pd.DataFrame:
-    partes = [p for _, c in lidos for p in cda.ler_acoes_do_bloco_8(c)]
+def _com_visto_em(tabela: pd.DataFrame, vistos: pd.DataFrame | None) -> pd.DataFrame:
+    if vistos is None:
+        vistos = pd.DataFrame(columns=[*CHAVE, publicacao.VISTO_EM])
+    return publicacao.com_visto_em(tabela, vistos, CHAVE)
+
+
+def _montar_bloco(
+    ler: Callable[[bytes], Iterator[pd.DataFrame]],
+    colunas: tuple[str, ...],
+    lidos: list[tuple[str, bytes]],
+    vistos: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """Um bloco do CDA que pode faltar no arquivo (ano sem ele: tabela vazia, com as colunas)."""
+    partes = [p for _, c in lidos for p in ler(c)]
     tabela = (
         pd.concat(partes, ignore_index=True)
         if partes
-        else pd.DataFrame(columns=list(cda.COLUNAS_DO_BLOCO_8))
+        else pd.DataFrame(columns=list(colunas))
     )
     for coluna in ("competencia", "confidencial_ate"):
         tabela[coluna] = pd.to_datetime(tabela[coluna])
-    return tabela.assign(disponivel_em=cda.disponivel_em(tabela))
+    return _com_visto_em(tabela.assign(disponivel_em=cda.disponivel_em(tabela)), vistos)
 
 
-def carregar_bloco_8(lidos: list[tuple[str, bytes]], ano: int, pasta: Path) -> str:
+def montar_bloco_8(
+    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    return _montar_bloco(
+        cda.ler_acoes_do_bloco_8, cda.COLUNAS_DO_BLOCO_8, lidos, vistos
+    )
+
+
+def montar_cotas(
+    lidos: list[tuple[str, bytes]], vistos: pd.DataFrame | None = None
+) -> pd.DataFrame:
+    return _montar_bloco(cda.ler_cotas_de_fundos, cda.COLUNAS_DAS_COTAS, lidos, vistos)
+
+
+def carregar_bloco_8(
+    lidos: list[tuple[str, bytes]],
+    ano: int,
+    pasta: Path,
+    versoes: list[publicacao.Versao],
+    vistos: Callable[[], pd.DataFrame],
+    *,
+    refazer: bool = False,
+) -> str:
     def montar() -> pd.DataFrame:
-        tabela = montar_bloco_8(lidos)
+        tabela = montar_bloco_8(lidos, vistos())
         log.info(
             "Bloco 8 de %s: %s posições em ações com CNPJ do emissor", ano, len(tabela)
         )
         return tabela
 
     destino = pasta.parent / PASTA_DO_BLOCO_8 / str(ano)
-    return gravar_com_versoes(montar, destino, _origens(lidos), ORDEM_DO_BLOCO_8)
+    return gravar_com_versoes(
+        montar, destino, _origens(versoes), ORDEM_DO_BLOCO_8, forcar=refazer
+    )
 
 
-def carregar_ano(conexao: sa.Connection, ano: int, pasta: Path) -> str:
+def carregar_cotas(
+    lidos: list[tuple[str, bytes]],
+    ano: int,
+    pasta: Path,
+    versoes: list[publicacao.Versao],
+    vistos: Callable[[], pd.DataFrame],
+    *,
+    refazer: bool = False,
+) -> str:
+    def montar() -> pd.DataFrame:
+        tabela = montar_cotas(lidos, vistos())
+        log.info("Bloco 2 de %s: %s posições em cotas de fundos", ano, len(tabela))
+        return tabela
+
+    destino = pasta.parent / PASTA_DAS_COTAS / str(ano)
+    return gravar_com_versoes(
+        montar, destino, _origens(versoes), ORDEM_DAS_COTAS, forcar=refazer
+    )
+
+
+def carregar_ano(
+    conexao: sa.Connection, ano: int, pasta: Path, *, refazer: bool = False
+) -> str:
     """Grava o ano e diz o que aconteceu: "gravado", "igual" (pulado) ou "sem arquivo"."""
     lidos = ler_ano(conexao, ano)
     if not lidos:
         return "sem arquivo"
+    versoes = publicacao.todas_as_versoes(conexao, lidos)
+
+    @cache
+    def vistos() -> (
+        pd.DataFrame
+    ):  # o dia em que cada carteira apareceu, versão por versão
+        return publicacao.vistos_nas_versoes(versoes, cda.chaves_do_cda, CHAVE)
 
     def montar() -> pd.DataFrame:
-        tabela = montar_ano(lidos)
+        tabela = montar_ano(lidos, vistos())
         fundos = tabela["cnpj_fundo"].nunique()
         log.info("CDA de %s: %s posições de %s fundos", ano, len(tabela), fundos)
         return tabela
 
-    resultado = gravar_com_versoes(montar, pasta / str(ano), _origens(lidos), ORDEM)
-    log.info("Bloco 8 de %s: %s", ano, carregar_bloco_8(lidos, ano, pasta))
+    resultado = gravar_com_versoes(
+        montar, pasta / str(ano), _origens(versoes), ORDEM, forcar=refazer
+    )
+    bloco_8 = carregar_bloco_8(lidos, ano, pasta, versoes, vistos, refazer=refazer)
+    log.info("Bloco 8 de %s: %s", ano, bloco_8)
+    cotas = carregar_cotas(lidos, ano, pasta, versoes, vistos, refazer=refazer)
+    log.info("Bloco 2 de %s: %s", ano, cotas)
     return resultado
 
 
@@ -139,6 +221,11 @@ def main(argv: list[str] | None = None) -> int:
     argumentos.add_argument("--desde", type=int, default=PRIMEIRO_ANO)
     argumentos.add_argument("--ate", type=int, default=hoje.year)
     argumentos.add_argument("--pasta", type=Path, default=None)
+    argumentos.add_argument(
+        "--refazer",
+        action="store_true",
+        help="regrava mesmo com as mesmas origens (o leitor mudou)",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -154,7 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with motor.connect() as conexao:
             for ano in range(opcoes.desde, opcoes.ate + 1):
-                log.info("CDA de %s: %s", ano, carregar_ano(conexao, ano, pasta))
+                resultado = carregar_ano(conexao, ano, pasta, refazer=opcoes.refazer)
+                log.info("CDA de %s: %s", ano, resultado)
     finally:
         motor.dispose()
     return 0

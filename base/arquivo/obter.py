@@ -8,6 +8,10 @@
   energia (consumidor pessoa física). Pela LGPD (só pessoa jurídica), as duas colunas saem **antes**
   de guardar; o acervo fica com o arquivo da ANEEL menos essas colunas (e o registro diz isso).
 
+- **CSV e JSON só com as colunas da lista** (cadastros da ANS e da SUSEP): o cadastro das operadoras
+  traz o nome do representante, e-mail e telefone. Guarda-se só o que a lista permite (a lista diz o
+  que entra; uma coluna nova da fonte fica de fora até alguém pôr na lista).
+
 - **ZIP que pode faltar** (negócios do pregão da B3): 404 (feriado, dia que ainda não saiu) e
   "200 com 0 bytes" (dia que já saiu da janela) viram `SemArquivo`; o zip é conferido inteiro (CRC de
   cada arquivo, como o `unzip -t`), porque um download cortado também começa com "PK".
@@ -16,7 +20,9 @@ Os dois primeiros devolvem os cabeçalhos do arquivo de origem, então as fontes
 pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
 """
 
+import csv
 import io
+import json
 import shutil
 import zipfile
 from collections.abc import Mapping
@@ -103,6 +109,51 @@ def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
             bruto.unlink(missing_ok=True)
         tabela.drop(columns=[c for c in colunas if c in tabela.columns]).to_parquet(
             destino, index=False
+        )
+        return cabecalhos
+
+    return obter
+
+
+def csv_so_com_colunas(url: str, colunas: tuple[str, ...], codificacao: str) -> Obter:
+    """Baixa o CSV (";") e grava em `destino` só as `colunas` da lista, na ordem da fonte."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        bruto = destino.with_name(destino.name + ".bruto")
+        try:
+            cabecalhos = cliente.baixar(url, bruto)
+            with bruto.open(encoding=codificacao, newline="") as entrada:
+                leitor = csv.DictReader(entrada, delimiter=";")
+                campos = [c for c in (leitor.fieldnames or []) if c in colunas]
+                if not campos:
+                    raise ValueError(f"{url}: nenhuma das colunas pedidas no cabeçalho")
+                with destino.open("w", encoding=codificacao, newline="") as saida:
+                    escritor = csv.DictWriter(
+                        saida, campos, delimiter=";", extrasaction="ignore",
+                        quoting=csv.QUOTE_MINIMAL,
+                    )  # fmt: skip
+                    escritor.writeheader()
+                    escritor.writerows(leitor)
+        finally:
+            bruto.unlink(missing_ok=True)
+        return cabecalhos
+
+    return obter
+
+
+def json_so_com_campos(url: str, campos: tuple[str, ...]) -> Obter:
+    """Baixa o JSON do OData (`{"value": [...]}`) e grava só os `campos` da lista de cada item."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        bruto = destino.with_name(destino.name + ".bruto")
+        try:
+            cabecalhos = cliente.baixar(url, bruto)
+            itens = json.loads(bruto.read_bytes())["value"]
+        finally:
+            bruto.unlink(missing_ok=True)
+        filtrados = [{c: item.get(c) for c in campos} for item in itens]
+        destino.write_text(
+            json.dumps({"value": filtrados}, ensure_ascii=False), encoding="utf-8"
         )
         return cabecalhos
 

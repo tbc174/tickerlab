@@ -76,6 +76,7 @@ soupsieve==2.10
 stack-data==0.6.3
 starlette==1.7.0
 streamlit==1.65.0
+tenacity==9.2.1
 toml==0.10.2
 tornado==6.5.10
 traitlets==5.16.1
@@ -122,3 +123,6 @@ xlrd==2.0.2
 opentimestamps==0.4.5
 python-bitcoinlib==0.12.2
 pycryptodomex==3.24.1
+# porta da base (ADR 0077, PR 4; D10): views sobre os Parquets do acervo, sem cópia (MIT); entra na
+# imagem do app só no PR 5, com o tamanho medido
+duckdb==1.5.6

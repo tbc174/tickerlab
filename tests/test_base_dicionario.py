@@ -6,16 +6,26 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import cda, fca, ligacoes
+from base import cda, conselhos, fca, ligacoes, ofertas
+from base.amostra import demonstracoes as amostra_demonstracoes
+from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
+from base.setoriais import anac as setoriais_anac
+from base.setoriais import anatel as setoriais_anatel
+from base.setoriais import aneel as setoriais_aneel
+from base.setoriais import anp as setoriais_anp
+from base.setoriais import ans as setoriais_ans
+from base.setoriais import ons as setoriais_ons
+from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
+    A_CONFIRMAR,
     LICENCAS,
+    NAO_COMERCIAL,
     REVENDA,
     SEM_LICENCA_CONHECIDA,
-    SO_USO_INTERNO,
     licenca_da_fonte,
     revenda_da_fonte,
 )
@@ -58,6 +68,25 @@ def _tickers_e_emissores_da_carga() -> tuple[pd.DataFrame, pd.DataFrame]:
     )
 
 
+def _colunas_das_ofertas_e_conselhos() -> dict[str, list[str]]:
+    arquivos = Path(__file__).parent / "arquivos"
+    fre_zip = (arquivos / "fre" / "fre_cia_aberta_2024.zip").read_bytes()
+    ofertas_zip = (
+        arquivos / "cvm" / "ofertas" / "oferta_distribuicao.zip"
+    ).read_bytes()
+    return {
+        "fre_conselho": list(conselhos.COLUNAS_DO_CONSELHO),
+        "fre_comites": list(conselhos.COLUNAS_DOS_COMITES),
+        "fre_remuneracao": list(conselhos.ler_remuneracao(fre_zip).columns),
+        "fre_remuneracao_extremos": list(
+            conselhos.ler_remuneracao_extremos(fre_zip).columns
+        ),
+        "fre_diversidade": conselhos.colunas_da_diversidade(),
+        "ofertas_antigas": list(ofertas.ler_antigas(ofertas_zip).columns),
+        "ofertas_resolucao_160": list(ofertas.ler_resolucao_160(ofertas_zip).columns),
+    }
+
+
 def _colunas_de_verdade() -> dict[str, list[str]]:
     cadastro = ler_cadastro(b"CNPJ_CIA;DENOM_SOCIAL;SIT\n1;A;ATIVO\n")
     tickers, emissores = _tickers_e_emissores_da_carga()
@@ -68,8 +97,21 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "rotulos_atraso": [*rotulo.COLUNAS, "montado_em", "versao_do_codigo"],
         "tickers_no_tempo": list(tickers.columns),
         "valores_mobiliarios": list(fca.COLUNAS),
-        "carteiras_dos_fundos": [*cda.COLUNAS, "disponivel_em"],
-        "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "disponivel_em"],
+        "carteiras_dos_fundos": [*cda.COLUNAS, "visto_em", "disponivel_em"],
+        "carteiras_bloco_8": [*cda.COLUNAS_DO_BLOCO_8, "visto_em", "disponivel_em"],
+        "anac_estatistico": list(setoriais_anac.COLUNAS),
+        "anp_vendas": list(setoriais_anp.COLUNAS),
+        "ons_geracao": list(setoriais_ons.COLUNAS),
+        "amostra_painel": [
+            *amostra_universo.COLUNAS,
+            *amostra_demonstracoes.COLUNAS[2:],
+        ],
+        **_colunas_das_ofertas_e_conselhos(),
+        "aneel_samp": [*setoriais_aneel.COLUNAS, "visto_em"],
+        "anatel_acessos": [*setoriais_anatel.COLUNAS, "visto_em"],
+        "ans_beneficiarios": [*setoriais_ans.COLUNAS, "visto_em"],
+        "susep_seguros": [*setoriais_susep.COLUNAS, "visto_em"],
+        "setoriais_buracos": ["chave", "valor", "primeira", "ultima", "fonte"],
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
@@ -118,17 +160,18 @@ def test_toda_fonte_com_licenca_tem_resposta_sobre_revenda():
 
 
 def test_fonte_sem_licenca_de_dados_nunca_e_vendavel():
-    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008 e 0045): só uso interno."""
+    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008, Emenda 1, e 0045): não comercial;
+    fonte nova sem resposta escrita: a confirmar."""
     for familia in ("yahoo", "kraken", "mb"):
-        assert revenda_da_fonte(familia) == SO_USO_INTERNO
-    assert revenda_da_fonte("desconhecida") == SO_USO_INTERNO
+        assert revenda_da_fonte(familia) == NAO_COMERCIAL
+    assert revenda_da_fonte("desconhecida") == A_CONFIRMAR
 
 
 def test_padroes_avisam_que_os_multiplos_usam_o_preco_do_yahoo():
-    """Os múltiplos dos padrões levam o preço do Yahoo: só uso interno, nunca vender (plano da
-    série 2, nota da ADR 0055)."""
+    """Os múltiplos dos padrões levam o preço do Yahoo: não comercial, nunca vender nem pôr em modelo
+    (plano da série 2, nota da ADR 0055; ADR 0008, Emenda 1)."""
     ressalva = TABELAS["padroes_setoriais"].ressalva_de_revenda
-    assert SO_USO_INTERNO in ressalva
+    assert NAO_COMERCIAL in ressalva
     for multiplo in MULTIPLOS:
         assert f"`{multiplo}`" in ressalva
 
@@ -308,5 +351,12 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
 
 def test_contrato_comeca_na_versao_1():
     """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
-    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige)."""
-    assert {t.versao_do_contrato.split(".")[0] for t in TABELAS.values()} == {"1"}
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige).
+
+    Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
+    própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e `auditores` 2.0.0
+    (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA)."""
+    maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
+    assert maiores.pop("insolvencia") == "2"
+    assert maiores.pop("auditores") == "2"
+    assert set(maiores.values()) == {"1"}

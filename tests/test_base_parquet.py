@@ -6,6 +6,7 @@ import json
 import pandas as pd
 import pytest
 
+from base import parquet
 from base.parquet import (
     ACRESCIDO,
     GRAVADO,
@@ -258,3 +259,122 @@ def test_coluna_nova_conta_como_mudanca(tabela, tmp_path):
         gravar_se_mudou(tabela.assign(extra=1), destino, ORIGENS, ["cnpj"]) == GRAVADO
     )
     assert (tmp_path / "t.v1.parquet").exists()
+
+
+# --- o hash é do que fica no disco: coluna `object` com float do Python (1.0) volta do Parquet como
+# float64 e vira texto "1"; o manifesto feito na memória não conferia (eventos_de_capital, 15/10) ---
+@pytest.fixture
+def com_floats_em_object():
+    return pd.DataFrame(
+        {"cnpj": ["1", "2"], "fator": pd.Series([1.0, 4768706356.09], dtype=object)}
+    )
+
+
+def test_manifesto_confere_com_coluna_object_de_floats(com_floats_em_object, tmp_path):
+    destino = gravar_tabela(com_floats_em_object, tmp_path / "t", ORIGENS, ["cnpj"])
+    assert conferir_tabela(destino)
+
+
+def test_remontar_coluna_object_de_floats_e_igual(com_floats_em_object, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    assert gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"]) == IGUAL
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"]
+
+
+def test_manifesto_que_nao_confere_e_refeito_sem_versao(com_floats_em_object, tmp_path):
+    destino = tmp_path / "t.parquet"
+    gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    manifesto = json.loads((tmp_path / "t.json").read_text(encoding="utf-8"))
+    manifesto["sha256_da_tabela"] = "0" * 64  # o manifesto errado de antes da correção
+    (tmp_path / "t.json").write_text(json.dumps(manifesto), encoding="utf-8")
+    assert gravar_se_mudou(com_floats_em_object, destino, ORIGENS, ["cnpj"]) == GRAVADO
+    assert _arquivos(tmp_path) == ["t.json", "t.parquet"] and conferir_tabela(destino)
+
+
+def test_versoes_nao_nascem_de_diferenca_de_tipo(
+    com_floats_em_object, tmp_path, monkeypatch
+):
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    from base.parquet import gravar_com_versoes
+
+    destino = tmp_path / "t"
+    gravar_com_versoes(lambda: com_floats_em_object, destino, ORIGENS, ["cnpj"])
+    outras = [{"url": "https://dados.cvm.gov.br/y.zip", "sha256": "cd" * 32}]
+    assert (
+        gravar_com_versoes(lambda: com_floats_em_object, destino, outras, ["cnpj"])
+        == IGUAL
+    )
+
+
+def test_hash_em_pedacos_e_o_mesmo_da_tabela_inteira(monkeypatch):
+    """O texto do hash sai em pedaços (a tabela do ONS de um ano não cabia na memória); o hash não muda,
+    senão todo manifesto já gravado deixaria de conferir."""
+    tabela = pd.DataFrame(
+        {"a": ["x", None, "z", "w", "y"], "b": [1.5, 2.0, None, 4.25, 0.1],
+         "c": pd.to_datetime(["2020-01-31", None, "2021-02-28", "2022-03-31", "2023-04-30"])}
+    )  # fmt: skip
+    inteira = hash_da_tabela(tabela, ["a"])
+    monkeypatch.setattr(parquet, "LINHAS_POR_PEDACO", 2)
+    assert hash_da_tabela(tabela, ["a"]) == inteira
+    assert hash_da_tabela(tabela.iloc[:0], ["a"]) == hash_da_tabela(
+        tabela.iloc[:0], ["a"]
+    )
+
+
+# --- lápide: oposição ou eliminação atendida regrava as versões sem a pessoa (plano, D7) ---------
+PESSOA, OUTRA = "P" + "1" * 20, "P" + "2" * 20
+EMPRESA_A, EMPRESA_B = "E" + "a" * 20, "E" + "b" * 20
+
+
+def _arestas(*de: str) -> pd.DataFrame:
+    return pd.DataFrame(
+        {"de": list(de), "para": EMPRESA_A, "tipo": "socio_de", "n": range(len(de))}
+    )
+
+
+def _tres_versoes(tmp_path, monkeypatch):
+    """A vigente e duas versões guardadas (.v1 e .v2), todas com a pessoa."""
+    monkeypatch.setenv(vc.VARIAVEL, VERSAO)
+    destino = tmp_path / "rede" / "ligacoes"
+    for de in ((PESSOA, EMPRESA_B), (PESSOA, OUTRA), (PESSOA, EMPRESA_B, OUTRA)):
+        if destino.with_suffix(".parquet").exists():
+            parquet.guardar_versao_anterior(destino)
+        gravar_tabela(_arestas(*de), destino, ORIGENS, ["de", "para"])
+    return destino
+
+
+def test_lapide_regrava_todas_as_versoes(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    regravadas = parquet.regravar_por_lapide(destino, {PESSOA}, "2026-10-16")
+    assert sorted(p.name for p in regravadas) == [
+        "ligacoes.parquet",
+        "ligacoes.v1.parquet",
+        "ligacoes.v2.parquet",
+    ]
+    for arquivo in regravadas:
+        tabela = ler_tabela(arquivo)
+        assert PESSOA not in tabela.astype(str).to_string()
+        assert (
+            tabela["de"].isna().sum() == 1
+        )  # a aresta fica, anônima (o fato na empresa)
+        assert conferir_tabela(arquivo)  # o hash foi recalculado
+    assert OUTRA in ler_tabela(destino.with_suffix(".parquet"))["de"].tolist()
+
+
+def test_manifesto_anota_a_regravacao(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    parquet.regravar_por_lapide(destino, {PESSOA}, "2026-10-16")
+    texto = destino.with_suffix(".json").read_text(encoding="utf-8")
+    manifesto = json.loads(texto)
+    assert [r["dia"] for r in manifesto["regravada_por_lapide"]] == ["2026-10-16"]
+    assert PESSOA not in texto  # o manifesto diz que houve, não de quem
+    assert manifesto["origens"] == ORIGENS and manifesto["linhas"] == 3
+
+
+def test_sem_lapide_nada_muda(tmp_path, monkeypatch):
+    destino = _tres_versoes(tmp_path, monkeypatch)
+    antes = {p.name: p.read_bytes() for p in destino.parent.iterdir()}
+    assert parquet.regravar_por_lapide(destino, {"P" + "9" * 20}, "2026-10-16") == []
+    assert parquet.regravar_por_lapide(destino, set(), "2026-10-16") == []
+    assert {p.name: p.read_bytes() for p in destino.parent.iterdir()} == antes

@@ -162,6 +162,9 @@ ALTURA_PADRAO = 320
 ALTURA_PRECO = 520
 TIPOS_DE_GRAFICO = ("linha", "velas")
 COLUNAS_DE_PRECO = ("Open", "High", "Low", "Close", "Volume")
+# Acima de ~1 ano de pregões, as velas diárias ficam com menos de 1 pixel de largura: o
+# corpo some e sobra só o pavio. Aí cada vela passa a ser uma semana (como no TradingView).
+LIMITE_DE_VELAS_DIARIAS = 260
 
 # Com a roda do mouse ligada, rolar a página por cima de um gráfico dá zoom nele em vez de
 # rolar a página (os gráficos são grandes e prendem a rolagem). Mude para True se preferir.
@@ -237,8 +240,25 @@ def _numero_br(valor: float, casas: int = 2) -> str:
     return texto.replace(",", "#").replace(".", ",").replace("#", ".")
 
 
-def _textos_das_velas(dados: pd.DataFrame, fechamento_anterior: pd.Series) -> list[str]:
-    """Texto da dica do mouse em cada vela, em português, com a variação do dia."""
+def velas_semanais(dados: pd.DataFrame) -> pd.DataFrame:
+    """Junta os dias de cada semana numa vela só.
+
+    Abertura do primeiro dia, máxima e mínima da semana, fechamento do último dia e a soma do
+    volume. A vela fica no último dia que teve pregão na semana (não num sábado sem pregão),
+    para casar com as médias móveis diárias e com o eixo que esconde os fins de semana.
+    """
+    semana = dados.index.to_period("W")
+    juntos = dados.groupby(semana).agg(
+        {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
+    )
+    juntos.index = pd.DatetimeIndex(dados.index.to_series().groupby(semana).max())
+    return juntos
+
+
+def _textos_das_velas(
+    dados: pd.DataFrame, fechamento_anterior: pd.Series, periodo: str = "dia"
+) -> list[str]:
+    """Texto da dica do mouse em cada vela, em português, com a variação do dia ou da semana."""
     variacao = dados["Close"] / fechamento_anterior - 1
     textos = []
     for (_, linha), var in zip(dados.iterrows(), variacao, strict=True):
@@ -248,7 +268,7 @@ def _textos_das_velas(dados: pd.DataFrame, fechamento_anterior: pd.Series) -> li
             f"Máxima: {_numero_br(linha['High'])}<br>"
             f"Mínima: {_numero_br(linha['Low'])}<br>"
             f"Fechamento: {_numero_br(linha['Close'])}<br>"
-            f"Variação no dia: {texto_var}"
+            f"Variação {'no' if periodo == 'dia' else 'na'} {periodo}: {texto_var}"
         )
     return textos
 
@@ -258,11 +278,16 @@ def criar_grafico_preco(
     tipo: str = "linha",
     janelas_medias: tuple[int, ...] = (),
     dias_visiveis: int | None = None,
+    escala_log: bool = False,
 ) -> go.Figure:
     """Preço em linha ou velas, com volume embaixo, médias móveis opcionais e zoom sincronizado.
 
     `dias_visiveis` mostra só os últimos N dias (útil nas velas, que ficam finas demais com
     muitos dias). As médias móveis são calculadas com todo o histórico antes do recorte.
+    Velas com mais de `LIMITE_DE_VELAS_DIARIAS` dias viram velas semanais; as médias
+    continuam sendo de dias, lidas no último dia de cada semana.
+    `escala_log` põe o preço em escala logarítmica: a mesma variação em % ocupa a mesma
+    altura, seja a ação de R$ 4.000 ou de R$ 5 (útil em históricos longos ou com tombos).
     """
     if tipo not in TIPOS_DE_GRAFICO:
         raise ValueError(
@@ -280,6 +305,12 @@ def criar_grafico_preco(
         dados = dados.tail(dias_visiveis)
         medias = {j: serie.loc[dados.index] for j, serie in medias.items()}
         fechamento_anterior = fechamento_anterior.loc[dados.index]
+    periodo_da_vela = "dia"
+    if tipo == "velas" and len(dados) > LIMITE_DE_VELAS_DIARIAS:
+        periodo_da_vela = "semana"
+        dados = velas_semanais(dados)
+        medias = {j: serie.loc[dados.index] for j, serie in medias.items()}
+        fechamento_anterior = dados["Close"].shift(1)
 
     figura = make_subplots(
         rows=2,
@@ -307,7 +338,9 @@ def criar_grafico_preco(
                     "fillcolor": COR_QUEDA,
                 },
                 whiskerwidth=0.5,
-                hovertext=_textos_das_velas(dados, fechamento_anterior),
+                hovertext=_textos_das_velas(
+                    dados, fechamento_anterior, periodo_da_vela
+                ),
                 hoverinfo="text",
                 name="Preço",
             ),
@@ -342,11 +375,12 @@ def criar_grafico_preco(
             col=1,
         )
 
-    # etiqueta com o último preço
+    # etiqueta com o último preço (no eixo log, o Plotly espera o log10 do valor)
+    ultimo = dados["Close"].iloc[-1]
     figura.add_annotation(
         x=dados.index[-1],
-        y=dados["Close"].iloc[-1],
-        text=_numero_br(dados["Close"].iloc[-1]),
+        y=np.log10(ultimo) if escala_log else ultimo,
+        text=_numero_br(ultimo),
         showarrow=False,
         xanchor="left",
         bgcolor=COR_BOTAO,  # texto branco: o azul forte dá mais contraste
@@ -373,8 +407,18 @@ def criar_grafico_preco(
         rangeslider_visible=False, rangeselector=_seletor_de_periodo(), row=1, col=1
     )
     figura.update_yaxes(title_text="Volume", row=2, col=1)
+    if escala_log:
+        figura.update_yaxes(type="log", row=1, col=1)
+    # legenda embaixo do gráfico: em cima ela ficava escondida atrás dos botões 1M a Tudo
     figura.update_layout(
-        showlegend=bool(janelas_medias), legend={"orientation": "h", "y": 1.05}
+        showlegend=bool(janelas_medias),
+        legend={
+            "orientation": "h",
+            "y": -0.06,
+            "yanchor": "top",
+            "x": 0,
+            "xanchor": "left",
+        },
     )
     if not (dados.index.dayofweek >= 5).any():  # ação: some o buraco do fim de semana
         figura.update_xaxes(rangebreaks=[{"bounds": ["sat", "mon"]}])

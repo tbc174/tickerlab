@@ -513,3 +513,38 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a `python-bitcoinlib` procura a biblioteca do OpenSSL (`libeay32`/`libssl`) por `ctypes` ao importar `bitcoin.rpc`; no Windows ela não acha e passa `None` como nome do arquivo. A biblioteca `opentimestamps` (o núcleo) não importa essa parte e funciona.
 - **Solução:** usar a biblioteca `opentimestamps` direto em `scripts/ancorar_base.py` (o recibo `.ots` é o mesmo formato); o programa `ots` fica para quem confere com Linux e um nó do Bitcoin (#287).
 - **Data:** 15/10/2026
+
+## Valor que chega dos dados do dia apaga o número que veio de um link
+- **Sintoma:** o link "continue a conta" do "quanto daria" abria a correção pela inflação com outra data de início; a inflação que a pessoa digitava no juro real antes de os dados do BC chegarem voltava para o IPCA.
+- **Causa:** o `sugerir` do `useCamposNoEndereco` (usado para pôr o IPCA ou o último mês quando os dados chegam) trocava os campos sem saber quais tinham vindo do endereço ou sido mudados pela pessoa; cada tela remendava isso checando uma chave fixa do endereço (`anoFinal`), e a chave que o link trazia era outra.
+- **Solução:** o gancho guarda o conjunto de campos "fixados" (lidos do endereço ao ligar ou mudados pela pessoa) e o `sugerir` nunca passa por cima deles. Regra: valor sugerido por dado externo nunca vence o que a pessoa ou o link escolheu.
+- **Data:** 15/10/2026
+
+## Financiamento pela Price não zera o saldo com taxa alta
+- **Sintoma:** com 10% ao mês em 600 meses, a tabela terminava com o saldo inteiro (R$ 300 mil) e amortização zero em todos os meses; o Hypothesis achou resíduo também em casos menores.
+- **Causa:** `(1 + taxa)^−meses` some na precisão do float, então a parcela calculada fica igual ao juro do mês e o resíduo de arredondamento se acumula.
+- **Solução:** no último mês do prazo, a amortização é o saldo que sobrou (`amortizacao = saldo`), em Python e no TypeScript; o teste de propriedade "as amortizações somam o valor financiado" pega a volta do erro.
+- **Data:** 15/10/2026
+
+## Manifesto que não confere com o próprio Parquet (`1.0` na memória, `1` no arquivo)
+- **Sintoma:** ao remontar `eventos_de_capital` com manifesto, cada ano virou versão `.v1` sem o dado ter mudado, e `conferir_tabela` dava `False` logo depois de gravar.
+- **Causa:** o leitor deixa colunas `object` com float do Python. O `to_csv(float_format=...)` do hash não formata coluna `object` (`1.0`), mas o Parquet devolve `float64`, que sai `1`. O hash feito na memória era de um texto diferente do arquivo gravado.
+- **Solução:** o hash do manifesto é sempre da tabela como volta do disco (`base/parquet.py::como_no_disco`), e a comparação "o dado mudou?" também; manifesto que não confere é refeito sem versão (#299). Regra: hash de conferência se calcula sobre o que foi gravado, nunca sobre o objeto em memória.
+- **Data:** 15/10/2026
+
+## Script do servidor esperou 2 h por um merge que já tinha acontecido
+- **Sintoma:** o `ma-coletor-no-servidor.sh` (#313) ficou no laço "esperando o merge" e saiu com "não entrou na main em 2 h", embora `git log origin/main --oneline | grep '(#313)'` achasse o commit quando rodado à mão.
+- **Causa:** o script tem `set -euo pipefail`. No laço `until git log ... | grep -q '(#313)'`, o `grep -q` termina assim que acha a linha; o `git log` ainda está escrevendo, leva SIGPIPE e sai com 141. Com `pipefail`, o pipeline inteiro conta como falha, então o `until` nunca via o merge.
+- **Solução:** perguntar direto ao Git, sem pipeline: `git merge-base --is-ancestor <commit> origin/main` (sai 0 se o commit já está na `main`). Regra geral: com `pipefail`, não pôr `grep -q` (ou `head`) depois de um comando que escreve muito.
+- **Data:** 16/10/2026
+## Carga da IEX para no meio com `ProtocolError: Connection broken: IncompleteRead(...)`
+- **Sintoma:** a tarefa `iex-carga` do VPS termina com saída 1 e um traceback da `urllib3` no log; o Kuma ("Tarefas do VPS") fica vermelho e o selo da rodada não roda.
+- **Causa:** a conexão com a IEX caiu no meio do arquivo do dia (~17 GB). O coletor lê o `resposta.raw` direto, então o erro vem da `urllib3`, que não é `requests.RequestException` nem `OSError` e escapava do `except`.
+- **Solução:** `scripts/coletar_iex_do_dia.py` baixa o dia de novo uma vez; se cair de novo, o dia falha sozinho ("FALHOU, nada gravado") e a rodada segue (PR #322). Lição: quem lê `.raw` de uma resposta do `requests` precisa tratar os erros da `urllib3` também.
+- **Data:** 16/10/2026
+
+## Carga da PGFN passa de 2,7 GB no servidor de casa (milhões de linhas em texto)
+- **Sintoma:** a 1ª montagem da `pgfn_divida` (#339) chegou a 2,7 GB no contêiner; o vigia de memória pôs o Kuma de casa em "down" (728 MB livres) e a carga foi parada à mão.
+- **Causa:** três coisas, medidas por fases com os dados reais: (1) 6,8 milhões de raízes de CNPJ num `set` de textos do Python (~60 bytes cada, mais o conjunto) e o `isin(set)` refeito a cada pedaço da Receita; (2) a conversão das raízes para número feita no lote inteiro de uma vez (cópias de 64 bits de tudo: 2,3 GB); (3) o maior CSV (2,28 milhões de linhas) gravado de uma vez, com a linhagem (SHA-256, datas, commit) repetida como texto em cada linha, e o hash do manifesto relendo e ordenando a tabela inteira (2,4 GB).
+- **Solução (#342):** raiz como número de 8 bytes (`base/cnpj.py::raizes_em_numeros`, base 36, aceita o CNPJ com letras) e busca por ordenação (`contem`), em pedaços de 1 milhão; cada CSV gravado em 11 Parquets pelo 1º caractere do CNPJ, com a linhagem só no pedaço que está sendo gravado. Pico de 1,96 GB. **Lição:** antes de rodar uma carga nova no servidor de casa, um ensaio só de leitura com `ru_maxrss` por fase; pandas 3 guarda texto em Arrow, mas texto repetido em milhões de linhas ainda pesa.
+- **Data:** 16/10/2026
