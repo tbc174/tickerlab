@@ -21,10 +21,11 @@ from base.setoriais import ans as setoriais_ans
 from base.setoriais import ons as setoriais_ons
 from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
+    A_CONFIRMAR,
     LICENCAS,
+    NAO_COMERCIAL,
     REVENDA,
     SEM_LICENCA_CONHECIDA,
-    SO_USO_INTERNO,
     licenca_da_fonte,
     revenda_da_fonte,
 )
@@ -159,17 +160,18 @@ def test_toda_fonte_com_licenca_tem_resposta_sobre_revenda():
 
 
 def test_fonte_sem_licenca_de_dados_nunca_e_vendavel():
-    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008 e 0045): só uso interno."""
+    """Yahoo e corretoras de cripto sem termo de dados (ADRs 0008, Emenda 1, e 0045): não comercial;
+    fonte nova sem resposta escrita: a confirmar."""
     for familia in ("yahoo", "kraken", "mb"):
-        assert revenda_da_fonte(familia) == SO_USO_INTERNO
-    assert revenda_da_fonte("desconhecida") == SO_USO_INTERNO
+        assert revenda_da_fonte(familia) == NAO_COMERCIAL
+    assert revenda_da_fonte("desconhecida") == A_CONFIRMAR
 
 
 def test_padroes_avisam_que_os_multiplos_usam_o_preco_do_yahoo():
-    """Os múltiplos dos padrões levam o preço do Yahoo: só uso interno, nunca vender (plano da
-    série 2, nota da ADR 0055)."""
+    """Os múltiplos dos padrões levam o preço do Yahoo: não comercial, nunca vender nem pôr em modelo
+    (plano da série 2, nota da ADR 0055; ADR 0008, Emenda 1)."""
     ressalva = TABELAS["padroes_setoriais"].ressalva_de_revenda
-    assert SO_USO_INTERNO in ressalva
+    assert NAO_COMERCIAL in ressalva
     for multiplo in MULTIPLOS:
         assert f"`{multiplo}`" in ressalva
 

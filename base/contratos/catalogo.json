@@ -668,6 +668,87 @@
       "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
       "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
     },
+    "cda_cotas": {
+      "tabela": "cda_cotas",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês da carteira (último dia)",
+          "unidade": "data (dia)"
+        },
+        "cnpj_fundo": {
+          "descricao": "CNPJ do fundo que tem as cotas (ou da classe, depois da CVM 175)",
+          "unidade": "texto"
+        },
+        "tipo_do_fundo": {
+          "descricao": "Tipo do fundo que tem as cotas como a CVM informa; com o CNPJ, identifica o fundo (em 11/2022 um fundo aparece como FI e como FIP)",
+          "unidade": "texto"
+        },
+        "tipo_do_ativo": {
+          "descricao": "Tipo do fundo investido como o fundo informa (\"FIDC\", \"FI Participações\", \"FI Imobiliário\", \"Fundos de Índice\", \"Fundo de Investimento e de Cotas\", \"Cotas de fundos\")",
+          "unidade": "texto"
+        },
+        "emissor_ligado": {
+          "descricao": "O fundo investido é ligado ao administrador ou ao gestor de quem compra (vazio: não informado, como em 2005)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "cnpj_fundo_investido": {
+          "descricao": "CNPJ do fundo (ou da classe) cujas cotas o fundo tem",
+          "unidade": "texto"
+        },
+        "id_subclasse": {
+          "descricao": "Código da subclasse investida, depois da CVM 175 (vazio: sem subclasse)",
+          "unidade": "texto"
+        },
+        "quantidade": {
+          "descricao": "Quantidade de cotas no fim do mês",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "valor": {
+          "descricao": "Valor de mercado no fim do mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "compras": {
+          "descricao": "Valor comprado no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "vendas": {
+          "descricao": "Valor vendido no mês",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "confidencial_ate": {
+          "descricao": "Até quando a posição ficou em sigilo (vazio: sem sigilo)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "O dia em que a carteira do fundo apareceu na CVM pela primeira vez, pelas baixadas diárias do arquivista (vazio: já estava no arquivo quando a base começou a olhar, em 10/2026; vale o prazo)",
+          "unidade": "data (dia)"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a posição era pública (como era na data): o prazo, ou `visto_em` se for depois",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "tipo_do_fundo",
+        "cnpj_fundo",
+        "cnpj_fundo_investido"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2005-01-31",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Mensal; de 2005 a 2022 um arquivo por ano, de 2023 em diante um por mês",
+      "atraso": "O do CDA: `disponivel_em` usa competência + 90 dias, ou o fim do sigilo se depois, ou o dia em que a carteira apareceu (`visto_em`, desde 10/2026) se for depois"
+    },
     "fidc_informe": {
       "tabela": "fidc_informe",
       "modulo": "credito_e_fidc",
@@ -4334,7 +4415,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
       "atraso": "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
@@ -4444,7 +4525,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": true,
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
       "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
@@ -5246,7 +5327,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal (a coleta é aos domingos); versão nova só quando uma página muda",
       "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando; a base só sabe a data da nossa coleta"
@@ -5311,7 +5392,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias` e o do mês do CNPJ guardado"
@@ -5355,7 +5436,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`"
@@ -5455,7 +5536,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_assessorias`; a consulta ao Wayback roda na coleta de domingo, depois da página, e o CNPJ é o do mês mais recente guardado"
@@ -5550,7 +5631,7 @@
       "historico_desde": "2026-10-16",
       "granularidade_do_publico_em": "dia",
       "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
-      "revenda": "a confirmar (sem resposta escrita sobre revenda; não vender até conferir)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"

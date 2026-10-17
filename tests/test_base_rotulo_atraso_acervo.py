@@ -109,3 +109,17 @@ def test_mesmos_originais_e_mesmo_dia_dao_o_mesmo_hash(banco, tmp_path, monkeypa
     assert _hash("manha") != _hash(
         "outro_dia"
     )  # outro dia, outra montagem (`montado_em`)
+
+
+def test_rotular_com_fonte_nao_comercial_da_erro(banco, tmp_path, monkeypatch):
+    """A trava das licenças (ADR 0008, Emenda 1): se a CVM deixasse de permitir uso comercial, o
+    rótulo não seria montado (erro, não aviso)."""
+    import pytest
+
+    from src.banco import coletas
+
+    _guardar_originais()
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao, pytest.raises(coletas.LicencaNaoPermiteError):
+        rotulo.montar(conexao, tmp_path / "base", AGORA)
+    assert not (tmp_path / "base").exists()

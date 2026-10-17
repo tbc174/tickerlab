@@ -23,7 +23,7 @@ from base.cadastro import cadastro_do_acervo
 from base.parquet import LINHAGEM, gravar_se_mudou
 from base.ponto_no_tempo import divulgacao_publica
 from src import acervo
-from src.banco.coletas import originais_mais_recentes
+from src.banco.coletas import exigir_licenca, originais_mais_recentes
 from src.eventos import ler_ipe
 from src.negociacoes_cvm import ler_vlmo
 from src.versao_do_codigo import versao_do_codigo
@@ -41,6 +41,9 @@ class Tabela:
     # passo que olha todos os anos juntos antes de gravar (o processo de uma companhia atravessa
     # os arquivos anuais); recebe e devolve a tabela de todos os anos com `ano_do_arquivo`
     com_todos_os_anos: Callable[[pd.DataFrame], pd.DataFrame] | None = None
+    e_rotulo: bool = (
+        False  # rótulo de modelo: a fonte precisa poder rotular (ADR 0008, Emenda 1)
+    )
 
 
 TABELAS = {
@@ -55,6 +58,7 @@ TABELAS = {
         "cvm-hist-ipe",
         rotulos.ler_insolvencia_do_ipe,
         com_todos_os_anos=rotulos.rotular_com_contexto,
+        e_rotulo=True,
     ),
     # série B3: mandatos de auditor por empresa (base/auditores.py); as trocas saem deles. O FCA
     # do pedido de registro só fica público perto do registro (conferência de 16/10/2026)
@@ -95,11 +99,14 @@ def montar(
 ) -> dict[int, int]:
     """Monta `<pasta>/<nome>/<ano>.parquet` para cada arquivo anual guardado; devolve linhas por ano.
 
-    Levanta `KeyError` (tabela desconhecida) e `ArquivoIlegivel` (original que não abre: nada é
+    Levanta `KeyError` (tabela desconhecida), `LicencaNaoPermiteError` (rótulo com fonte que não
+    pode rotular) e `ArquivoIlegivel` (original que não abre: nada é
     gravado para aquele ano, e a falha aparece em vez de virar um ano vazio; ou, para tabela com
     `data_publica`, sem o cadastro no acervo).
     """
     tabela = TABELAS[nome]
+    if tabela.e_rotulo:
+        exigir_licenca("rotular", [tabela.fonte], onde=nome)
     linhas_por_ano: dict[int, int] = {}
     cadastro = None
     if tabela.data_publica:

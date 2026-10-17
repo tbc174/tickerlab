@@ -121,3 +121,18 @@ def test_admin_prepara_e_baixa_pela_tela(banco, monkeypatch, pessoas):
     assert not app.exception
     with banco.connect() as c:
         assert auditoria.listar_recentes(c)[0].acao == exp.ACAO_ACERVO_EXPORTADO
+
+
+def test_serie_nao_comercial_sem_a_marca_de_uso_interno_da_erro(banco, pessoas):
+    """A trava das licenças (ADR 0008, Emenda 1): o IGP-M é da FGV, mesmo vindo do SGS do BC. Se a
+    série perder a marca `uso_interno`, a exportação dá erro em vez de sair."""
+    from src.banco.coletas import LicencaNaoPermiteError
+
+    chefe, _ = pessoas
+    igpm = SerieDoAcervo("bcb-sgs-189", "IGP-M", "% no mês", "mensal")
+    with banco.begin() as c:
+        acervo_de_series.garantir_serie(c, igpm)
+        valores = pd.Series([0.5], index=[pd.Timestamp("2026-09-01")])
+        acervo_de_series.gravar(c, igpm.codigo, valores, date(2026, 10, 10))
+    with banco.begin() as c, pytest.raises(LicencaNaoPermiteError, match="bcb-sgs-189"):
+        exp.exportar(c, chefe.id, "series", "csv", AGORA)
