@@ -1654,7 +1654,7 @@ Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de to
 
 ## `insolvencia`
 
-Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido (`fato_relevante`, costuma ser o primeiro sinal público)
+Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido (`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o `rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa (controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` guarda o que aconteceu com a outra
 
 - **Fonte:** CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
@@ -1665,7 +1665,7 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 - **Chaves:** `cnpj`, `protocolo`, `versao`, `rotulo`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/insolvencia/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 
@@ -1673,7 +1673,9 @@ Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falên
 |---|---|---|
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `empresa` | Nome da companhia como a fonte informa | texto |
-| `rotulo` | recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia ou liquidacao | texto |
+| `rotulo` | O que aconteceu com a própria companhia: recuperacao_judicial, recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa) | texto |
+| `evento` | O que aconteceu, com quem for: os mesmos valores do rótulo, sem exposicao_a_terceiro | texto |
+| `regra` | O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, outra_empresa (palavras achadas) ou contexto_de_terceiro | texto |
 | `evidencia` | categoria_ipe ou fato_relevante | texto |
 | `categoria` | Categoria do documento, como a CVM publica | texto |
 | `tipo` | Tipo do documento, como a CVM publica (pode vir vazio) | texto |

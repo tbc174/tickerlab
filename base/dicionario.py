@@ -2615,7 +2615,10 @@ TABELAS: dict[str, Tabela] = {
             "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e "
             "liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria "
             "própria da CVM (`categoria_ipe`) ou fato relevante que anuncia o pedido "
-            "(`fato_relevante`, costuma ser o primeiro sinal público)"
+            "(`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o "
+            "`rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa "
+            "(controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` "
+            "guarda o que aconteceu com a outra"
         ),
         fonte="CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)",
         familia_da_fonte="cvm",
@@ -2628,8 +2631,25 @@ TABELAS: dict[str, Tabela] = {
             "empresa": _EMPRESA["empresa"],
             "rotulo": (
                 (
-                    "recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia "
-                    "ou liquidacao"
+                    "O que aconteceu com a própria companhia: recuperacao_judicial, "
+                    "recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria "
+                    "da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou "
+                    "liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa)"
+                ),
+                TEXTO,
+            ),
+            "evento": (
+                (
+                    "O que aconteceu, com quem for: os mesmos valores do rótulo, sem "
+                    "exposicao_a_terceiro"
+                ),
+                TEXTO,
+            ),
+            "regra": (
+                (
+                    "O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, "
+                    "sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, "
+                    "outra_empresa (palavras achadas) ou contexto_de_terceiro"
                 ),
                 TEXTO,
             ),
@@ -3495,7 +3515,7 @@ _CONTRATO = {
     "negociacoes": _contrato(modulo=_ME, chaves=("fonte", "documento", "versao", "cnpj", "cargo", "operacao", "ativo", "data"), datas={"aconteceu_em": "data", "publico_em": "entregue_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "proventos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),

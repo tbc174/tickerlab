@@ -38,6 +38,9 @@ class Tabela:
     # coluna com o dia do recebimento pela CVM que passa a valer a partir do registro seguinte
     # quando a entrega foi feita fora do registro (`base/ponto_no_tempo.divulgacao_publica`)
     data_publica: str | None = None
+    # passo que olha todos os anos juntos antes de gravar (o processo de uma companhia atravessa
+    # os arquivos anuais); recebe e devolve a tabela de todos os anos com `ano_do_arquivo`
+    com_todos_os_anos: Callable[[pd.DataFrame], pd.DataFrame] | None = None
 
 
 TABELAS = {
@@ -48,7 +51,11 @@ TABELAS = {
     ),  # 2010 a 2022 (o FRE novo não tem a tabela)
     "eventos_de_capital": Tabela("cvm-hist-fre", fre.ler_eventos_de_capital),
     # série B2: rótulos de recuperação judicial, falência e liquidação (base/rotulos.py)
-    "insolvencia": Tabela("cvm-hist-ipe", rotulos.ler_insolvencia_do_ipe),
+    "insolvencia": Tabela(
+        "cvm-hist-ipe",
+        rotulos.ler_insolvencia_do_ipe,
+        com_todos_os_anos=rotulos.rotular_com_contexto,
+    ),
     # série B3: mandatos de auditor por empresa (base/auditores.py); as trocas saem deles. O FCA
     # do pedido de registro só fica público perto do registro (conferência de 16/10/2026)
     "auditores": Tabela(  # desde 2010
@@ -101,6 +108,7 @@ def montar(
             raise ArquivoIlegivel(
                 f"{nome}: sem o cadastro de companhias no acervo para a data pública"
             )
+    lidos: list[tuple[int, pd.DataFrame, list[dict[str, str]]]] = []
     for original in originais_mais_recentes(conexao, tabela.fonte):
         ano = ano_do_arquivo(original.url)
         conteudo = acervo.ler_original(original.caminho_do_original)
@@ -126,6 +134,17 @@ def montar(
             montado_em=agora.isoformat(),
             versao_do_codigo=versao_do_codigo(),
         )
-        _gravar(dados, pasta / nome / f"{ano}.parquet", origens)
+        # só a tabela que olha todos os anos guarda os anos na memória
+        if tabela.com_todos_os_anos is None:
+            _gravar(dados, pasta / nome / f"{ano}.parquet", origens)
+        else:
+            lidos.append((ano, dados, origens))
         linhas_por_ano[ano] = len(dados)
+    if tabela.com_todos_os_anos is not None and lidos:
+        juntos = tabela.com_todos_os_anos(
+            pd.concat([dados for _, dados, _ in lidos], ignore_index=True)
+        )
+        for ano, _, origens in lidos:
+            do_ano = juntos[juntos["ano_do_arquivo"] == ano].reset_index(drop=True)
+            _gravar(do_ano, pasta / nome / f"{ano}.parquet", origens)
     return linhas_por_ano
