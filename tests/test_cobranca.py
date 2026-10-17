@@ -5,9 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 import sqlalchemy as sa
+import stripe
 
 from src import cobranca
-from src.banco.modelo import eventos_stripe, metadata
+from src.banco.modelo import assinaturas, eventos_stripe, metadata
 from src.banco.usuarios import buscar_por_id, entrar, mudar_plano
 from src.cobranca import (
     CobrancaIndisponivelError,
@@ -653,6 +654,45 @@ def test_abrir_um_pagamento_expira_o_que_ficou_aberto(motor):
     tipos = [c[0] for c in stripe_falso.chamadas]
     assert stripe_falso.do_tipo("expirar") == [("expirar", "cs_velho")]
     assert tipos.index("expirar") < tipos.index("checkout")
+
+
+def test_checkout_que_terminou_no_meio_nao_impede_o_novo(motor):
+    """Entre listar e expirar, o Checkout aberto pode ter terminado: o Stripe recusa o expire."""
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes(abertas=["cs_velho"])
+
+    def expirar_tarde(id_da_sessao):
+        raise stripe.InvalidRequestError("Session is not open", "session")
+
+    stripe_falso.v1.checkout.sessions.expire = expirar_tarde
+    assert _abrir(motor, ana, stripe_falso)
+    assert stripe_falso.do_tipo("checkout")
+
+
+def test_dois_cliques_ao_mesmo_tempo_guardam_um_cliente_so(motor):
+    """O outro clique guardou o cliente entre a leitura e a gravação: segue com o mesmo cliente."""
+    ana, stripe_falso = _cadastrar(motor), StripeComClientes()
+    criar = stripe_falso.v1.customers.create
+
+    def criar_depois_do_outro_clique(params, options=None):
+        criado = criar(params, options)
+        with motor.begin() as c:
+            c.execute(
+                sa.insert(assinaturas).values(
+                    usuario_id=ana.id,
+                    stripe_customer_id=criado.id,
+                    status=cobranca.STATUS_SO_O_CLIENTE,
+                    evento_em=0,
+                )
+            )
+        return criado
+
+    stripe_falso.v1.customers.create = criar_depois_do_outro_clique
+    _abrir(motor, ana, stripe_falso)
+    assert stripe_falso.do_tipo("checkout")[0][1]["customer"] == "cus_novo"
+    with motor.connect() as c:
+        assert (
+            c.execute(sa.select(sa.func.count()).select_from(assinaturas)).scalar() == 1
+        )
 
 
 def test_quem_tem_assinatura_viva_nao_abre_outro_pagamento(motor):
