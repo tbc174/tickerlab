@@ -480,6 +480,13 @@ def _mais_perto_da_empresa(
     return next((a for a in notas if _escala(a) == "nacional"), notas[0])
 
 
+def _fala_de_varias(texto: str, empresa: str | None) -> bool:
+    """O documento é sobre várias companhias? Quando é sobre uma só, o nome dela está no título ou
+    no começo do texto; nos comunicados de várias (a Moody's sobre o setor, a lista da S&P), não."""
+    nome = _nome_da_empresa(empresa) if empresa else None
+    return bool(nome) and nome not in _simples(texto[:INICIO_DO_TEXTO])
+
+
 def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
     """A primeira nota citada; se ela é a antiga de um "de brAA+ para brAAA", vale a nova."""
     primeira = achados[0]
@@ -502,7 +509,11 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
     ]
     globais = list(GLOBAL.finditer(texto))
     perto = None
-    if empresa and len({_nota_do_achado(a) for a in nacionais + globais}) > 1:
+    if (
+        _fala_de_varias(texto, empresa)
+        and len({_nota_do_achado(a) for a in nacionais + globais}) > 1
+    ):
+        assert empresa is not None
         perto = _mais_perto_da_empresa(texto, nacionais + globais, empresa)
     nacional = perto in nacionais if perto else bool(nacionais)
     achados = nacionais if nacional else globais

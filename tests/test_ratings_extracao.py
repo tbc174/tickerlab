@@ -177,7 +177,10 @@ MOODYS_LOCAL = (
     "1 Brasil 19 de setembro de 2024 CM Hospitalar S.A. RESUMO O perfil de crédito... Moody's Local "
     "Brasil. Rating Perspectiva CM Hospitalar S.A. Rating Corporativo (CFR) AA.br Negativa"
 )
-VARIAS_EMPRESAS = (
+# os comunicados de várias companhias começam com contatos e analistas: o nome de quem entregou
+# só aparece depois do começo do texto
+CABECALHO = "Contatos e analistas da agência. " * 30
+VARIAS_EMPRESAS = CABECALHO + (
     "Rating Action: Moody's altera perspectiva de companhias brasileiras para estável, de negativa "
     "17 Mar 2017. Ambev S.A.: debêntures afirmadas em Baa3 e em Aaa.br. Suzano Papel e Celulose "
     "S.A.: rating de emissor afirmado em Ba1 e Aa1.br na escala nacional."
@@ -243,7 +246,7 @@ def test_data_no_formato_da_liberum():
 
 
 def test_tabela_de_varias_empresas_usa_a_mencao_mais_proxima():
-    texto = (
+    texto = CABECALHO + (
         "S&P Global Ratings revisou perspectivas: Brazil Realty S.A., MRS Logística S.A., Neoenergia "
         "S.A. Ultrafértil S.A. Ratings de Crédito Corporativo De Para Escala Nacional brAA/Estável/-- "
         "brAA/Positiva/-- MRS Logística S.A. Ratings de Crédito Corporativo De Para Escala global "
@@ -270,3 +273,15 @@ def test_acoes_em_varias_series_nao_viram_um_rating_so():
         "'Asf(bra)'; Série 2010-156: rating rebaixado para 'BBBsf(bra)'"
     )
     assert ratings.extrair_rating(texto) is None
+
+
+def test_companhia_no_titulo_segue_a_regra_de_sempre():
+    """Uma companhia só (o nome no título): a escala nacional ganha, mesmo com a global perto."""
+    texto = (
+        "FITCH UPGRADES MINERVA TO 'BB-' Fitch has upgraded the IDRs of Minerva S.A. to 'BB-' from "
+        "'B+'. Fitch has also upgraded Minerva's National Scale rating to 'A-(bra)' from "
+        "'BBB+(bra)'. The Rating Outlook is Stable."
+    )
+    r = ratings.extrair_rating(texto, empresa="MINERVA S/A")
+    assert r is not None
+    assert (r.escala, r.nota) == ("nacional", "A-")
