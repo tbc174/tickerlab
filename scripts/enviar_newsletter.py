@@ -3,7 +3,7 @@
     python -m scripts.enviar_newsletter         (no VPS: todo dia, depois das coletas)
 
 Para cada inscrição: hoje é dia dessa frequência? A edição deste período ainda não saiu? A
-pessoa pode receber? (trava `SO_PARA_ADMINS` até o parecer jurídico.) Então monta a mesma edição
+pessoa pode receber? (trava `TICKERLAB_NEWSLETTER_SO_ADMINS`, ADR 0020.) Então monta a mesma edição
 da página, com os parâmetros dela, e envia pelo Resend.
 
 Sem `RESEND_API_KEY`, nada sai: a edição é montada e registrada como "retida" (dá para testar no

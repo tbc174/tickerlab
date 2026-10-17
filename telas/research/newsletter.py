@@ -99,8 +99,8 @@ def _cancelar_a_newsletter(usuario):
 
 
 def _mostrar_inscricao_por_email(usuario, nomes):
-    """Receber por e-mail (etapa 5c). Até o parecer jurídico, só para administradores."""
-    if usuario is None or (envio_newsletter.SO_PARA_ADMINS and not usuario.e_admin):
+    """Receber por e-mail (etapa 5c). Com a trava ligada, só para administradores."""
+    if usuario is None or (envio_newsletter.so_para_admins() and not usuario.e_admin):
         return
     try:
         with obter_engine().connect() as conexao:
@@ -108,7 +108,7 @@ def _mostrar_inscricao_por_email(usuario, nomes):
     except (sa_exc.OperationalError, sa_exc.ProgrammingError):
         return  # banco sem a tabela (modo local sem migrar)
     rotulo = "Receber por e-mail" + (
-        " (em teste: só administradores)" if envio_newsletter.SO_PARA_ADMINS else ""
+        " (em teste: só administradores)" if envio_newsletter.so_para_admins() else ""
     )
     with st.expander(rotulo, icon=":material/mail:"):
         if atual is not None:
