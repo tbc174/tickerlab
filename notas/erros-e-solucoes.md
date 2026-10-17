@@ -562,7 +562,7 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Data:** 17/10/2026
 
 ## Arquivo esparso passa pelo limite de tamanho do tar
-- **Sintoma:** na revisão de segurança do `receber-dossies.sh` (VPS), um tar de 10 KB passava no limite de 200 MB e abria um arquivo de 3 GB.
+- **Sintoma:** numa revisão de segurança de um recebedor de arquivos por tar, um tar de 10 KB passava no limite de tamanho e abria um arquivo de 3 GB.
 - **Causa:** um arquivo esparso (com "buracos") ocupa quase nada no tar, mas o tamanho aparente dele, que é o que o app leria, é enorme. O limite só olhava o tar.
 - **Solução:** depois de extrair, conferir também `du -s --apparent-size --block-size=1` da pasta contra o limite. Regra: limite de tamanho vale para o que entra e para o que sai aberto.
 - **Data:** 17/10/2026
