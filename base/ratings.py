@@ -484,7 +484,12 @@ def _fala_de_varias(texto: str, empresa: str | None) -> bool:
     """O documento é sobre várias companhias? Quando é sobre uma só, o nome dela está no título ou
     no começo do texto; nos comunicados de várias (a Moody's sobre o setor, a lista da S&P), não."""
     nome = _nome_da_empresa(empresa) if empresa else None
-    return bool(nome) and nome not in _simples(texto[:INICIO_DO_TEXTO])
+    if not nome:
+        return False
+    # o nome que não aparece em lugar nenhum é o de hoje num documento antigo (o IPE guarda o
+    # nome atual: Voiter era Indusval, Brava era 3R): aí o documento é de uma companhia só
+    simples = _simples(texto)
+    return nome in simples and nome not in simples[:INICIO_DO_TEXTO]
 
 
 def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
@@ -509,11 +514,7 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
     ]
     globais = list(GLOBAL.finditer(texto))
     perto = None
-    if (
-        _fala_de_varias(texto, empresa)
-        and len({_nota_do_achado(a) for a in nacionais + globais}) > 1
-    ):
-        assert empresa is not None
+    if empresa and _fala_de_varias(texto, empresa):
         perto = _mais_perto_da_empresa(texto, nacionais + globais, empresa)
         if perto is None:
             return (

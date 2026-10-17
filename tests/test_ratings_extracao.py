@@ -293,3 +293,13 @@ def test_varias_companhias_sem_a_nota_de_quem_entregou_nao_chuta():
         "MRS Logística S.A. Escala global BB-/Estável/-- Neoenergia S.A. brAAA/Estável/--"
     )
     assert ratings.extrair_rating(texto, empresa="MRS LOGÍSTICA S/A") is None
+
+
+def test_nome_antigo_no_documento_segue_como_uma_companhia_so():
+    """O IPE guarda o nome de hoje (Banco Voiter); o documento de 2012 diz Banco Indusval."""
+    texto = (
+        CABECALHO
+        + "Fitch afirmou os Ratings do Banco Indusval S.A.: 'BBB(bra)', Perspectiva Estável"
+    )
+    r = ratings.extrair_rating(texto, empresa="BANCO VOITER S.A.")
+    assert r is not None and r.nota == "BBB"
