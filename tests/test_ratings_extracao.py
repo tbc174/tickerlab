@@ -166,3 +166,62 @@ def test_nivel_compara_agencias():
     assert ratings.nivel("BB+") == ratings.nivel("Ba1")
     assert ratings.nivel("RD") > ratings.nivel("C")
     assert ratings.nivel("xyz") is None
+
+
+LIBERUM = (
+    "Eco Securitizadora 26, jun, 2018 CLASSIFICAÇÕES FE0051-2015 (CRA - Único - 74ª Série da 1ª "
+    "Emissão) A-(fe) CP2(fe) COMITÊ - 19, jun, 2018 Confirmação dos Ratings A-(fe) de Crédito - "
+    "Longo Prazo. Liberum Ratings."
+)
+MOODYS_LOCAL = (
+    "1 Brasil 19 de setembro de 2024 CM Hospitalar S.A. RESUMO O perfil de crédito... Moody's Local "
+    "Brasil. Rating Perspectiva CM Hospitalar S.A. Rating Corporativo (CFR) AA.br Negativa"
+)
+VARIAS_EMPRESAS = (
+    "Rating Action: Moody's altera perspectiva de companhias brasileiras para estável, de negativa "
+    "17 Mar 2017. Ambev S.A.: debêntures afirmadas em Baa3 e em Aaa.br. Suzano Papel e Celulose "
+    "S.A.: rating de emissor afirmado em Ba1 e Aa1.br na escala nacional."
+)
+SERENA = (
+    "RATING ACTION COMMENTARY Fitch Remove Observação Negativa e Afirma Ratings do Grupo Serena; "
+    "Perspectiva Estável 31 May 2024: A Fitch removeu a Observação Negativa e afirmou 'AA-(bra)'."
+)
+AUSTIN = (
+    "Certificados de Recebíveis Imobiliários FORTE SECURITIZADORA – Relatório Analítico Rating "
+    "brA(sf) Obrigações protegidas por elevadas margens de cobertura. Austin Rating."
+)
+
+
+def test_escala_fe_da_liberum():
+    r = ratings.extrair_rating(LIBERUM)
+    assert r is not None
+    assert (r.agencia, r.escala, r.nota) == ("liberum", "nacional", "A-")
+
+
+def test_letras_com_br_da_moodys_local():
+    r = ratings.extrair_rating(MOODYS_LOCAL)
+    assert r is not None
+    assert (r.agencia, r.escala, r.nota, r.perspectiva) == (
+        "moodys",
+        "nacional",
+        "AA",
+        "negativa",
+    )
+
+
+def test_documento_de_varias_empresas_pega_a_nota_de_quem_entregou():
+    r = ratings.extrair_rating(VARIAS_EMPRESAS, empresa="SUZANO PAPEL E CELULOSE S.A.")
+    assert r is not None and r.nota == "Aa1"
+    sem_empresa = ratings.extrair_rating(VARIAS_EMPRESAS)
+    assert sem_empresa is not None and sem_empresa.nota == "Aaa"
+
+
+def test_observacao_removida_nao_e_observacao():
+    r = ratings.extrair_rating(SERENA)
+    assert r is not None and r.perspectiva == "estavel"
+
+
+def test_elevadas_margens_nao_e_elevacao():
+    r = ratings.extrair_rating(AUSTIN)
+    assert r is not None
+    assert (r.agencia, r.nota, r.acao) == ("austin", "A", None)

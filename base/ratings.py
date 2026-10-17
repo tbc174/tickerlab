@@ -201,12 +201,15 @@ _LETRA = r"(?:AAA|AA|A|BBB|BB|B|CCC|CC|C)[+-]?|RD|SD|D"
 _MOODYS = r"Aaa|Aa[1-3]|A[1-3]|Baa[1-3]|Ba[1-3]|B[1-3]|Caa[1-3]|Ca|C"
 ASPAS = "'‘’\"“”"
 # escala nacional: Fitch 'AA(bra)', 'AAAsf(bra)', 'AA(EXP)(bra)'; S&P e Austin brAA+;
-# Moody's Aa1.br; Liberum e outras AA(br). Nota curta da S&P (brA-1+) não entra.
+# Moody's Aa1.br e, desde 2022, a Moody's Local AA.br; Liberum A-(fe); outras AA(br). Nota curta
+# da S&P (brA-1+) não entra.
 NACIONAL = re.compile(
-    rf"(?<![A-Za-z])(?P<f>{_LETRA})(?i:sf)?(?i:\(exp\))?\s?\((?i:bra?)\)"
+    rf"(?<![A-Za-z])(?P<f>{_LETRA})(?i:sf)?(?i:\(exp\))?\s?\((?i:bra?|fe)\)"
     rf"|\bbr(?P<s>{_LETRA})(?![-+]?\d)(?![A-Za-z])(?:\s?\(?sf\)?)?"
     rf"|\b(?P<m>{_MOODYS})\.br\b"
+    rf"|(?<![A-Za-z])(?P<l>{_LETRA})\.br\b"
 )
+GRUPOS_DA_MOODYS = ("m", "l")
 # escala global: só entre aspas ('BB-'), para não confundir com siglas; Moody's pelo nome da nota,
 # menos "B1" a "B3" soltos (B3 é a bolsa)
 GLOBAL = re.compile(
@@ -241,7 +244,12 @@ ACOES = (
     ("rebaixamento", re.compile(r"rebaix|downgrad|\blower(?:s|ed)\b", re.IGNORECASE)),
     (
         "elevacao",
-        re.compile(r"\belev(?:a|ou|ad)|upgrad|\brais(?:es|ed)\b", re.IGNORECASE),
+        # "elevadas margens" é adjetivo: só o verbo e "elevado para/de"
+        re.compile(
+            r"\belev(?:a|ou|a[cç][aã]o)\b|\belevad[oa]s? (?:para|de)\b"
+            r"|upgrad|\brais(?:es|ed)\b",
+            re.IGNORECASE,
+        ),
     ),
     (
         "atribuicao",
@@ -291,9 +299,13 @@ def nivel(nota: str) -> int | None:
 
 
 def _nota_do_achado(achado: re.Match[str]) -> str:
-    nome = next(g for g in ("f", "s", "m") if achado.groupdict().get(g))
+    nome = next(g for g in ("f", "s", "m", "l") if achado.groupdict().get(g))
     texto = achado.group(nome)
     return texto if nome == "m" else texto.upper()
+
+
+def _da_moodys(achado: re.Match[str]) -> bool:
+    return any(achado.groupdict().get(g) for g in GRUPOS_DA_MOODYS)
 
 
 def _agencia(texto: str, de_moodys: bool) -> str | None:
@@ -306,15 +318,35 @@ def _agencia(texto: str, de_moodys: bool) -> str | None:
     return max(contagem, key=lambda nome: contagem[nome])
 
 
+OBSERVACAO_REMOVIDA = re.compile(
+    r"(?:remov|retir|exclu)\w*\W+(?:\w+\W+){0,2}$", re.IGNORECASE
+)
+
+
 def _perspectiva(texto: str) -> str | None:
     for padrao, nome in PERSPECTIVAS:
-        if padrao.search(texto):
-            return nome
+        for achado in padrao.finditer(texto):
+            # "Fitch Remove Observação Negativa": a observação acabou, não começou
+            antes = texto[max(0, achado.start() - 30) : achado.start()]
+            if not OBSERVACAO_REMOVIDA.search(antes):
+                return nome
     if alterada := PERSPECTIVA_ALTERADA.search(texto):
         return NOME_DA_PERSPECTIVA[_simples(alterada.group(1))]
     if achado := PERSPECTIVA.search(texto):
         return NOME_DA_PERSPECTIVA[_simples(achado.group(1) or achado.group(2))]
     return None
+
+
+# perspectiva colada na nota, nas tabelas: "AA.br Negativa" (Moody's Local), "brAA/Positiva/--" (S&P)
+PERSPECTIVA_AO_LADO = re.compile(
+    r"^\W{0,3}(est[aá]vel|positiva|negativa|stable|positive|negative|developing)\b",
+    re.IGNORECASE,
+)
+
+
+def _perspectiva_ao_lado(texto: str, nota: re.Match[str]) -> str | None:
+    achado = PERSPECTIVA_AO_LADO.match(texto[nota.end() : nota.end() + 20])
+    return NOME_DA_PERSPECTIVA[_simples(achado.group(1))] if achado else None
 
 
 def _acao(inicio: str) -> str | None:
@@ -349,8 +381,69 @@ ANTES_DA_NOTA_ANTIGA = re.compile(r"\bde\W{0,3}$", re.IGNORECASE)
 ENTRE_ANTIGA_E_NOVA = re.compile(r"^\W{0,3}para\W{0,3}$", re.IGNORECASE)
 
 
-def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
-    """A primeira nota citada; se ela é a antiga de um "de brAA+ para brAAA", vale a nova."""
+# palavras comuns em nomes de companhia: não servem para achar a companhia no texto
+PALAVRAS_COMUNS = frozenset(
+    [
+        "companhia",
+        "participacoes",
+        "securitizadora",
+        "securitizacao",
+        "brasil",
+        "brasileira",
+        "brasileiro",
+        "energia",
+        "holding",
+        "empreendimentos",
+        "investimentos",
+        "industria",
+        "comercio",
+        "servicos",
+        "distribuidora",
+        "geracao",
+        "transmissao",
+        "concessionaria",
+        "rodovia",
+        "rodovias",
+        "saneamento",
+        "estado",
+        "paulo",
+        "basico",
+        "eletrica",
+        "credito",
+        "creditos",
+        "direitos",
+        "creditorios",
+        "agronegocio",
+        "financeira",
+        "banco",
+        "imobiliarios",
+        "recebiveis",
+    ]
+)
+PERTO_DA_EMPRESA = (
+    600  # caracteres depois do nome da companhia onde procurar a nota dela
+)
+
+
+def _nome_da_empresa(empresa: str) -> str | None:
+    """A primeira palavra própria do nome (SUZANO PAPEL E CELULOSE → suzano), para achar a
+    companhia num documento que fala de várias."""
+    palavras = [p for p in _simples(empresa).replace(".", " ").split() if len(p) >= 5]
+    return next((p for p in palavras if p not in PALAVRAS_COMUNS), None)
+
+
+def _principal(
+    texto: str, achados: list[re.Match[str]], empresa: str | None = None
+) -> re.Match[str]:
+    """A nota de quem entregou o documento: num documento com várias notas, a primeira depois do
+    nome da companhia; senão a primeira citada; se ela é a antiga de um "de brAA+ para brAAA",
+    vale a nova."""
+    if empresa and len({_nota_do_achado(a) for a in achados}) > 1:
+        nome = _nome_da_empresa(empresa)
+        posicao = _simples(texto).find(nome) if nome else -1
+        if posicao >= 0:
+            perto = [a for a in achados if 0 <= a.start() - posicao <= PERTO_DA_EMPRESA]
+            achados = perto or achados
     primeira = achados[0]
     if len(achados) > 1:
         antes = texto[max(0, primeira.start() - 6) : primeira.start()]
@@ -360,16 +453,16 @@ def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
     return primeira
 
 
-def extrair_rating(texto: str) -> Rating | None:
-    """O rating principal do documento, ou None se o texto não traz nota (PDF escaneado, fonte
-    embaralhada): nunca inventa nota."""
+def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
+    """O rating principal do documento (o da `empresa` que o entregou, quando ele fala de várias),
+    ou None se o texto não traz nota (PDF escaneado, fonte embaralhada): nunca inventa nota."""
     texto = re.sub(r"\s+", " ", texto or "").strip()
     nacionais = list(NACIONAL.finditer(texto))
     achados = nacionais or list(GLOBAL.finditer(texto))
     if not achados:
         return None
-    principal = _principal(texto, achados)
-    de_moodys = bool(principal.groupdict().get("m"))
+    principal = _principal(texto, achados, empresa)
+    de_moodys = _da_moodys(principal)
     agencia = _agencia(texto, de_moodys)
     # sem agência no texto, ou "A1" solto sem a Moody's: não é rating (texto embaralhado, siglas)
     if agencia is None or (de_moodys and agencia != "moodys"):
@@ -382,7 +475,7 @@ def extrair_rating(texto: str) -> Rating | None:
         nota=notas[0],
         nivel=nivel(notas[0]),
         nota_original=principal.group(0).strip(ASPAS + " "),
-        perspectiva=_perspectiva(texto),
+        perspectiva=_perspectiva_ao_lado(texto, principal) or _perspectiva(texto),
         acao=_acao(inicio),
         data_acao=_data(inicio),
         outras_notas=tuple(notas[1:]),
