@@ -3434,6 +3434,90 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ma_regua": Tabela(
+        descricao=(
+            "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo "
+            "no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página "
+            "(ADR 0082, item 2; série 5 do plano de M&A, passo 5). Só vale o que era público antes "
+            "do `conhecido_em` do negócio (documento entregue no mesmo dia ou depois não entra). "
+            "Sem receita conhecida, `desconhecido`: o valor nunca é estimado"
+        ),
+        fonte=(
+            "`ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as "
+            "receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de "
+            "negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ "
+            "aberto da Receita (só raiz e porte são lidos)"
+        ),
+        familia_da_fonte="assessoria",
+        frequencia="Semanal, junto da extração; versão nova só quando uma entrada muda",
+        atraso=(
+            "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente "
+            "guardado"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/regua/negocios.parquet` (servidor de casa, "
+            "`scripts/carga_ma_assessorias.py`)"
+        ),
+        linhagem=(
+            "Cada receita diz a fonte e o documento (a entrega à CVM, ou o endereço do documento "
+            "lido à mão) e o dia em que ficou público; o porte aponta o ZIP da Receita no acervo "
+            "(endereço e SHA-256). O `.json` guarda as tabelas e os originais de entrada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "assessoria": ("Quem postou (`igc`)", TEXTO),
+            "url": ("Endereço da página do negócio (liga com `ma_datas`)", TEXTO),
+            "id_negocio": ("O negócio (liga com `ma_negocios`)", TEXTO),
+            "alvo_cnpj_raiz": (
+                "Raiz do CNPJ da alvo (vazio sem ligação ou com mais de uma alvo ligada)",
+                TEXTO,
+            ),
+            "conhecido_em_do_negocio": (
+                "O `conhecido_em` do negócio (`ma_datas`): o corte do que a régua pode usar",
+                MOMENTO,
+            ),
+            "fechamento_em": (
+                "Data do fechamento pelo CNPJ (`ma_datas`), quando há: o exercício é o de antes dela",
+                DATA,
+            ),
+            "middle_market": (
+                "sim (receita de 30 a 500 milhões, limites inclusos), nao ou desconhecido",
+                TEXTO,
+            ),
+            "motivo": (
+                (
+                    "receita, porte_me_epp, sem_receita (alvo com CNPJ sem receita pública antes), "
+                    "alvo_sem_cnpj ou varias_alvos"
+                ),
+                TEXTO,
+            ),
+            "receita": ("Receita anual da alvo; vazio quando não há documento", REAIS),
+            "receita_exercicio_fim": ("Fim do exercício dessa receita", DATA),
+            "receita_fonte": (
+                "cpc15-compradora, dfp-alvo, balanco-alvo ou cade (no mesmo exercício, nessa ordem)",
+                TEXTO,
+            ),
+            "receita_documento": (
+                "O documento: a entrega à CVM (tipo, CNPJ, referência, versão e grupo) ou o endereço",
+                TEXTO,
+            ),
+            "receita_documento_sha256": (
+                "SHA-256 do documento no acervo, quando guardado",
+                TEXTO,
+            ),
+            "receita_publico_em": ("Dia em que o documento ficou público", DATA),
+            "porte": (
+                (
+                    "Porte da alvo no CNPJ baixado antes do negócio (01 ME, 03 EPP, 05 demais, 00 "
+                    "não informado); vazio se o arquivo é de depois"
+                ),
+                TEXTO,
+            ),
+            "porte_publico_em": ("Quando o arquivista baixou esse ZIP", MOMENTO),
+            "porte_prova_url": ("Endereço do ZIP `Empresas` da Receita", TEXTO),
+            "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
+        },
+    ),
 }
 
 
@@ -3510,6 +3594,7 @@ _CONTRATO = {
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
 }  # fmt: skip
 
 

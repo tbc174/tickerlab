@@ -2158,3 +2158,41 @@ Quando cada negócio de M&A das assessorias ficou público, provado, e a confirm
 | `prova_sha256` | SHA-256 desse original | texto |
 | `conhecido_em_do_negocio` | O `conhecido_em` mais antigo entre as páginas do mesmo negócio | data e hora (UTC) |
 | `conferencia` | confirmado (fonte oficial com a prova apontada) ou assessoria (só o post) | texto |
+
+## `ma_regua`
+
+Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página (ADR 0082, item 2; série 5 do plano de M&A, passo 5). Só vale o que era público antes do `conhecido_em` do negócio (documento entregue no mesmo dia ou depois não entra). Sem receita conhecida, `desconhecido`: o valor nunca é estimado
+
+- **Fonte:** `ma_datas` e `ma_partes`; a DRE anual da alvo na CVM (`demonstracoes_como_era`), as receitas lidas à mão em `base/conferidas/ma_receitas.csv` (nota de combinação de negócios da compradora, balanço publicado da alvo, faixa do CADE) e o porte do CNPJ aberto da Receita (só raiz e porte são lidos)
+- **Licença:** Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)
+- **Revenda:** a confirmar (sem resposta escrita sobre revenda; não vender até conferir)
+- **Frequência:** Semanal, junto da extração; versão nova só quando uma entrada muda
+- **Atraso de divulgação:** O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `assessoria`, `url`
+- **Três datas:** aconteceu_em = `fechamento_em`; publico_em = `conhecido_em_do_negocio`
+- **Histórico desde:** 2026-10-16 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/regua/negocios.parquet` (servidor de casa, `scripts/carga_ma_assessorias.py`)
+- **Linhagem:** Cada receita diz a fonte e o documento (a entrega à CVM, ou o endereço do documento lido à mão) e o dia em que ficou público; o porte aponta o ZIP da Receita no acervo (endereço e SHA-256). O `.json` guarda as tabelas e os originais de entrada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `assessoria` | Quem postou (`igc`) | texto |
+| `url` | Endereço da página do negócio (liga com `ma_datas`) | texto |
+| `id_negocio` | O negócio (liga com `ma_negocios`) | texto |
+| `alvo_cnpj_raiz` | Raiz do CNPJ da alvo (vazio sem ligação ou com mais de uma alvo ligada) | texto |
+| `conhecido_em_do_negocio` | O `conhecido_em` do negócio (`ma_datas`): o corte do que a régua pode usar | data e hora (UTC) |
+| `fechamento_em` | Data do fechamento pelo CNPJ (`ma_datas`), quando há: o exercício é o de antes dela | data (dia) |
+| `middle_market` | sim (receita de 30 a 500 milhões, limites inclusos), nao ou desconhecido | texto |
+| `motivo` | receita, porte_me_epp, sem_receita (alvo com CNPJ sem receita pública antes), alvo_sem_cnpj ou varias_alvos | texto |
+| `receita` | Receita anual da alvo; vazio quando não há documento | reais (R$), já multiplicado pela escala informada |
+| `receita_exercicio_fim` | Fim do exercício dessa receita | data (dia) |
+| `receita_fonte` | cpc15-compradora, dfp-alvo, balanco-alvo ou cade (no mesmo exercício, nessa ordem) | texto |
+| `receita_documento` | O documento: a entrega à CVM (tipo, CNPJ, referência, versão e grupo) ou o endereço | texto |
+| `receita_documento_sha256` | SHA-256 do documento no acervo, quando guardado | texto |
+| `receita_publico_em` | Dia em que o documento ficou público | data (dia) |
+| `porte` | Porte da alvo no CNPJ baixado antes do negócio (01 ME, 03 EPP, 05 demais, 00 não informado); vazio se o arquivo é de depois | texto |
+| `porte_publico_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
+| `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
+| `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
