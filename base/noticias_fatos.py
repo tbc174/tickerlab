@@ -22,15 +22,18 @@ não mudar a cada versão do código).
 
 import hashlib
 import json
+import re
 from collections.abc import Collection, Mapping
 from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
 
-from base.dias_uteis import dias_uteis
+from base.dias_uteis import dias_uteis, proximo_dia_util
+from base.dossie import CPF, normalizar_nome
 from base.ponto_no_tempo import como_era_em
 from src.demonstracoes import URL_DO_DFP, URL_DO_ITR, e_financeira
+from src.topicos import OUTROS, topico_do_titulo
 from src.versao_do_codigo import versao_do_codigo
 
 JANELA_EM_DIAS_UTEIS = 5
@@ -424,6 +427,236 @@ def fatos_de_resultado(
             {"id_fato": id_fato, "campo": campo, "unidade": REAIS, **n}
             for campo, n in numeros.items()
         ]
+    return _montar(fatos, numeros_dos_fatos)
+
+
+# --- G2: fato relevante ---------------------------------------------------------------------------
+
+PAUTA_FATO_RELEVANTE = "fato_relevante"
+VERSAO_DO_FATO_RELEVANTE = "fato-relevante-1.0"
+TABELA_DOS_EVENTOS = "eventos"
+CATEGORIA_FATO_RELEVANTE = "Fato Relevante"
+TRECHO_MAXIMO = 200
+MARCA_TRECHO_CORTADO = "trecho_cortado"
+# "Renúncia de Diretor Fulano": mudança de quadro + cargo + uma palavra com inicial maiúscula (o nome).
+# Pega também "Diretor Financeiro": errar para o lado de cortar é o seguro, o trecho some inteiro.
+MUDANCA_COM_NOME = re.compile(
+    r"(?i:renúncia|renuncia|eleição|eleicao|nomeação|nomeacao|destituição|destituicao|saída|saida"
+    r"|afastamento|falecimento|contratação|contratacao|posse)\b.{0,40}?"
+    r"(?i:diretor|diretora|presidente|conselheiro|conselheira|ceo|cfo)\s+"
+    r"[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+"
+)
+
+
+def _tem_nome_de_pessoa(assunto: str, pessoas: Collection[str]) -> bool:
+    if CPF.search(assunto) or MUDANCA_COM_NOME.search(assunto):
+        return True
+    normalizado = normalizar_nome(assunto)
+    return any(nome and nome in normalizado for nome in pessoas)
+
+
+def fatos_de_fato_relevante(
+    eventos: pd.DataFrame,
+    universo: Collection[str],
+    dia: date | pd.Timestamp,
+    *,
+    coletado_em: datetime,
+    em_conferencia: Collection[str] = (),
+    pessoas: Collection[str] = (),
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """G2: os fatos relevantes (versão 1) de companhia do universo que ficaram públicos na janela.
+
+    O tópico vem das regras do título (`src/topicos.py`). O `trecho` é o assunto literal do IPE até 200
+    caracteres; se tiver CPF, nome de pessoa ou um nome de `pessoas` (já normalizado por
+    `normalizar_nome`), o trecho some e a linha leva a marca `trecho_cortado`. Em "Outros" não há trecho.
+    G2 não tem números.
+    """
+    novos = eventos[
+        (eventos["categoria"] == CATEGORIA_FATO_RELEVANTE)
+        & (eventos["versao"] == 1)
+        & eventos["cnpj"].isin(list(universo))
+    ].drop_duplicates("protocolo")
+    novos = novos[no_prazo(novos["publicado_em"], dia)]
+    if novos.empty:
+        return _vazio()
+    fatos: list[dict[str, Any]] = []
+    for evento in novos.itertuples():
+        chave = {"protocolo": str(evento.protocolo), "versao": 1}
+        assunto = "" if pd.isna(evento.assunto) else str(evento.assunto)
+        leitura = topico_do_titulo(assunto)
+        marcas: list[str] = []
+        trecho = "" if leitura.principal == OUTROS else assunto[:TRECHO_MAXIMO]
+        if trecho and _tem_nome_de_pessoa(assunto, pessoas):
+            trecho = ""
+            marcas.append(MARCA_TRECHO_CORTADO)
+        if evento.cnpj in em_conferencia:
+            marcas.append(MARCA_EM_CONFERENCIA)
+        publico_em = pd.Timestamp(evento.publicado_em).normalize()
+        fatos.append(
+            {
+                "id_fato": id_do_fato(PAUTA_FATO_RELEVANTE, chave),
+                "pauta": PAUTA_FATO_RELEVANTE,
+                "versao_do_gatilho": VERSAO_DO_FATO_RELEVANTE,
+                "cnpj": evento.cnpj,
+                "empresa": evento.empresa,
+                "tabela_de_origem": TABELA_DOS_EVENTOS,
+                "chave_de_origem": _json(chave),
+                "aconteceu_em": publico_em,
+                "publico_em": publico_em,
+                "coletado_em": pd.Timestamp(coletado_em),
+                "link": evento.link,
+                "topico": leitura.principal,
+                "metodo_do_topico": leitura.metodo,
+                "versao_do_topico": leitura.versao,
+                "trecho": trecho,
+                "reapresentacao": False,
+                "fato_anterior": "",
+                "marcas": marcas,
+                "licenca": "cvm",
+                "versao_do_codigo": versao_do_codigo(),
+            }
+        )
+    return _montar(fatos, {f["id_fato"]: [] for f in fatos})
+
+
+# --- G3: Copom ------------------------------------------------------------------------------------
+
+PAUTA_COPOM = "copom"
+VERSAO_DO_COPOM = "copom-1.0"
+TABELA_DO_COPOM = "bcb_selic_focus + copom_reunioes"
+PCT_AO_ANO = "pct_ao_ano"
+MARCA_FONTES_DIVERGEM = "fontes_divergem"
+SERIE_DA_META = "bcb-sgs-432"
+SERIE_DO_FOCUS = "focus-selic-anual"
+
+
+def _numero_do_copom(
+    id_fato: str,
+    campo: str,
+    valor: float,
+    periodo: str,
+    conta: str,
+    origem_periodo: str,
+    divulgado_em: pd.Timestamp,
+) -> dict[str, Any]:
+    return {
+        "id_fato": id_fato,
+        "campo": campo,
+        "valor": float(valor),
+        "unidade": PCT_AO_ANO,
+        "periodo": periodo,
+        "origem_conta": conta,
+        "origem_periodo": origem_periodo,
+        "origem_versao": 1,
+        "origem_divulgado_em": divulgado_em,
+        "calculo": "",
+    }
+
+
+def fatos_do_copom(
+    reunioes: pd.DataFrame, selic_focus: pd.DataFrame, dia: date | pd.Timestamp
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """G3: a reunião do Copom (data ≤ ontem, na janela) cuja meta já está na SGS 432 até ontem.
+
+    `reunioes`: `base/conferidas/copom_reunioes.csv`; `selic_focus`: `bcb_selic_focus`. A meta da nota é
+    a conferida; se a SGS (dia útil seguinte à reunião) diz outra, a linha leva `fontes_divergem`. O
+    Focus é a última pesquisa **antes** da reunião para a Selic do fim do ano dela (a do mesmo dia já
+    pode refletir a decisão). A SGS só confere: o `divulgado_em` dela é depois da reunião.
+    """
+    hoje = _dia(dia)
+    reunioes = reunioes.sort_values("reuniao").reset_index(drop=True)
+    metas = selic_focus[selic_focus["serie"] == SERIE_DA_META]
+    focus = selic_focus[selic_focus["serie"] == SERIE_DO_FOCUS]
+    na_janela = no_prazo(reunioes["data"], hoje)
+    vigentes = proximo_dia_util(pd.to_datetime(reunioes["data"]))
+    fatos: list[dict[str, Any]] = []
+    numeros_dos_fatos: dict[str, list[dict[str, Any]]] = {}
+    for posicao, reuniao in enumerate(reunioes.itertuples()):
+        if not na_janela.iloc[posicao]:
+            continue
+        data = pd.Timestamp(reuniao.data)
+        da_sgs = metas[
+            (metas["referencia"] == pd.Timestamp(vigentes.iloc[posicao]))
+            & (metas["divulgado_em"] < hoje)
+        ].sort_values("divulgado_em")
+        if da_sgs.empty:
+            continue
+        sgs = da_sgs.iloc[-1]
+        chave = {"reuniao": int(reuniao.reuniao)}
+        id_fato = id_do_fato(PAUTA_COPOM, chave)
+        marcas = (
+            [MARCA_FONTES_DIVERGEM]
+            if abs(float(sgs["valor"]) - float(reuniao.meta_selic)) > 1e-9
+            else []
+        )
+        rotulo = data.strftime("%d/%m/%Y")
+        numeros = [
+            _numero_do_copom(
+                id_fato,
+                "meta_selic",
+                reuniao.meta_selic,
+                rotulo,
+                "copom_reunioes.meta_selic",
+                "reuniao",
+                data,
+            )
+        ]
+        if posicao > 0:
+            anterior = reunioes.iloc[posicao - 1]
+            data_anterior = pd.Timestamp(anterior["data"])
+            numeros.append(
+                _numero_do_copom(
+                    id_fato,
+                    "meta_selic_anterior",
+                    anterior["meta_selic"],
+                    data_anterior.strftime("%d/%m/%Y"),
+                    "copom_reunioes.meta_selic",
+                    "reuniao",
+                    data_anterior,
+                )
+            )
+        pesquisas = focus[
+            (focus["referencia"] == pd.Timestamp(data.year, 12, 31))
+            & (focus["divulgado_em"] < data)
+        ].sort_values("divulgado_em")
+        if not pesquisas.empty:
+            ultima = pesquisas.iloc[-1]
+            numeros.append(
+                _numero_do_copom(
+                    id_fato,
+                    "focus_selic_fim_do_ano",
+                    ultima["valor"],
+                    f"fim de {data.year}",
+                    SERIE_DO_FOCUS,
+                    "anual",
+                    pd.Timestamp(ultima["divulgado_em"]),
+                )
+            )
+        fatos.append(
+            {
+                "id_fato": id_fato,
+                "pauta": PAUTA_COPOM,
+                "versao_do_gatilho": VERSAO_DO_COPOM,
+                "cnpj": "",
+                "empresa": "",
+                "tabela_de_origem": TABELA_DO_COPOM,
+                "chave_de_origem": _json(chave),
+                "aconteceu_em": data,
+                "publico_em": data,
+                "coletado_em": pd.Timestamp(sgs["origem_coletada_em"]),
+                "link": reuniao.link,
+                "topico": "",
+                "metodo_do_topico": "",
+                "versao_do_topico": "",
+                "trecho": "",
+                "reapresentacao": False,
+                "fato_anterior": "",
+                "marcas": marcas,
+                "licenca": "bcb",
+                "versao_do_codigo": versao_do_codigo(),
+            }
+        )
+        numeros_dos_fatos[id_fato] = numeros
     return _montar(fatos, numeros_dos_fatos)
 
 
