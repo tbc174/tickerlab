@@ -3611,7 +3611,9 @@ TABELAS: dict[str, Tabela] = {
             "ligacao_por": (
                 (
                     "nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um "
-                    "candidato) ou sem_ligacao"
+                    "candidato, nome de uma palavra só fora da rede, ou nome fantasia que a razão "
+                    "social não tem), holding_estrangeira (CNPJ da dona de fora), "
+                    "aberto_depois_do_negocio (a matriz abriu depois do post) ou sem_ligacao"
                 ),
                 TEXTO,
             ),

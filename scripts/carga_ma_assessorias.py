@@ -136,6 +136,21 @@ def _receita(conexao: sa.Connection) -> tuple[dict[str, list[Path]], list[Origem
     return arquivos, [{"url": o.url, "sha256": o.sha256} for _, _, o in do_mes]
 
 
+def _consultas_do_wayback(conexao: sa.Connection) -> list[sa.Row]:
+    """As consultas ao Wayback guardadas (a mais recente de cada página), de todas as assessorias."""
+    return [
+        o
+        for a in ASSESSORIAS
+        for o in originais_mais_recentes(conexao, f"wayback-{a.id}")
+    ]
+
+
+def _primeira_copia(consultas: list[sa.Row]) -> pd.Series:
+    """página → a primeira cópia no Wayback: quando o post ficou público (regra 2 da ligação)."""
+    copias = ma_datas.copias_do_wayback((_guardado(o), _conteudo(o)) for o in consultas)
+    return copias.dropna(subset=["wayback_em"]).set_index("url")["wayback_em"]
+
+
 def ligar(conexao: sa.Connection, base: Path) -> None:
     """Partes ligadas à rede e duplicatas juntas (`base/ma_ligacao.py`), se a rede já foi montada."""
     rede = base / "rede"
@@ -148,9 +163,12 @@ def ligar(conexao: sa.Connection, base: Path) -> None:
         log.warning("ligação das partes: sem a rede ou sem negócios; fica para depois")
         return
     receita, da_receita = _receita(conexao)
-    origens = [
-        origem_de_tabela(a, base) for a in [*tabelas, entidades, identificadores]
-    ] + da_receita
+    consultas = _consultas_do_wayback(conexao)
+    origens = (
+        [origem_de_tabela(a, base) for a in [*tabelas, entidades, identificadores]]
+        + da_receita
+        + [{"url": o.url, "sha256": o.sha256} for o in consultas]
+    )
     montadas: dict[str, pd.DataFrame] = {}
 
     def montar_tudo() -> dict[str, pd.DataFrame]:
@@ -170,6 +188,7 @@ def ligar(conexao: sa.Connection, base: Path) -> None:
                 ),
                 achados,
                 ids_fixados(),
+                publico_em=_primeira_copia(consultas),
             )
             montadas.update(
                 negocios=ma_ligacao.negocios(negocios, ligadas),
@@ -208,11 +227,7 @@ def datar(conexao: sa.Connection, base: Path) -> None:
     if not (partes.exists() and negocios.exists()) or not tabelas:
         log.warning("datas dos negócios: sem a ligação; fica para depois")
         return
-    consultas = [
-        o
-        for a in ASSESSORIAS
-        for o in originais_mais_recentes(conexao, f"wayback-{a.id}")
-    ]
+    consultas = _consultas_do_wayback(conexao)
     socios = [(c, o) for t, c, o in _do_mes_mais_recente(conexao) if t == SOCIOS]
     origens = [origem_de_tabela(t, base) for t in [*tabelas, partes, negocios]] + [
         {"url": o.url, "sha256": o.sha256}

@@ -2213,7 +2213,7 @@ As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linh
 | `id_entidade` | A entidade da rede; para uma fechada que ainda não está na rede, o id que a rede dará à raiz dela. Vazio sem ligação ou na dúvida | texto |
 | `cnpj_raiz` | Os 8 primeiros dígitos do CNPJ da empresa ligada | texto |
 | `lei` | O LEI da entidade ligada, quando a rede tem | texto |
-| `ligacao_por` | nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato) ou sem_ligacao | texto |
+| `ligacao_por` | nome_exato (rede ou razão social), nome_fantasia, na_duvida (mais de um candidato, nome de uma palavra só fora da rede, ou nome fantasia que a razão social não tem), holding_estrangeira (CNPJ da dona de fora), aberto_depois_do_negocio (a matriz abriu depois do post) ou sem_ligacao | texto |
 | `candidatos` | Quantas entidades têm esse nome (0 sem ligação, 1 ligada, 2 ou mais na dúvida) | número inteiro |
 
 ## `ma_negocios`
