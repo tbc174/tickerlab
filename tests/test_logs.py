@@ -93,3 +93,27 @@ def test_json_leva_os_logs_do_uvicorn_pelo_mesmo_caminho():
     for nome in logs.LOGGERS_DO_UVICORN:
         assert logging.getLogger(nome).handlers == [handler]
         assert logging.getLogger(nome).propagate is False
+
+
+def _acesso_do_uvicorn(caminho):
+    """Um registro como o do `uvicorn.access`: o caminho vem com a query string."""
+    return logging.getLogger("uvicorn.access").info(
+        '%s - "%s %s HTTP/%s" %d', "1.2.3.4:5", "GET", caminho, "1.1", 200
+    )
+
+
+@pytest.mark.parametrize("formato", ["json", "texto"])
+@pytest.mark.parametrize("rota", ["/newsletter/sair", "/novidades/sair"])
+def test_log_de_acesso_nao_guarda_o_codigo_de_descadastro(formato, rota, capsys):
+    # achado 6a do Codex (ADR 0091): quem lê o log não pode reusar o código para descadastrar
+    logs.configurar_logs({"TICKERLAB_LOG_FORMATO": formato})
+    _acesso_do_uvicorn(f"{rota}?codigo=SEGREDO123&outro=1")
+    saida = capsys.readouterr().err
+    assert rota in saida and "200" in saida
+    assert "SEGREDO123" not in saida and "codigo=" not in saida
+
+
+def test_log_de_acesso_sem_query_fica_igual(capsys):
+    logs.configurar_logs({"TICKERLAB_LOG_FORMATO": "json"})
+    _acesso_do_uvicorn("/saude")
+    assert '\\"GET /saude HTTP/1.1\\" 200' in capsys.readouterr().err

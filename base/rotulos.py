@@ -24,15 +24,16 @@ import io
 import re
 import unicodedata
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
 import sqlalchemy as sa
 
 from base.parquet import LINHAGEM, gravar_se_mudou
+from base.publicacao import dia_da_coleta
 from src import acervo
-from src.banco.coletas import originais_mais_recentes
+from src.banco.coletas import originais_mais_recentes, versoes_guardadas
 from src.versao_do_codigo import versao_do_codigo
 
 COLUNAS = (
@@ -331,7 +332,7 @@ def rotular_com_contexto(tabela: pd.DataFrame) -> pd.DataFrame:
 
 
 def ler_insolvencia_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
-    """Os documentos de um arquivo anual do IPE que indicam insolvência, um por entrega."""
+    """Os documentos de um arquivo anual do IPE que indicam insolvência, um por versão da entrega."""
     bruto = _ler_ipe_bruto(conteudo_do_zip)
     linhas = []
     for _, linha in bruto.iterrows():
@@ -361,10 +362,9 @@ def ler_insolvencia_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
     for coluna in ("conhecido_em", "referencia"):
         tabela[coluna] = pd.to_datetime(tabela[coluna], errors="coerce").dt.date
     tabela = tabela.dropna(subset=["conhecido_em"])
-    # reapresentações da mesma entrega: fica a versão mais nova
-    tabela = tabela.sort_values(["protocolo", "versao"]).drop_duplicates(
-        "protocolo", keep="last"
-    )
+    # cada versão é uma entrega, com a data em que ela ficou pública: guardar só a mais nova
+    # atrasava o rótulo para a data da reapresentação (achado 3e do Codex, 17/10/2026)
+    tabela = tabela.drop_duplicates(["protocolo", "versao"], keep="last")
     tabela = tabela.sort_values(["conhecido_em", "cnpj"]).reset_index(drop=True)
     return rotular_com_contexto(tabela)
 
@@ -446,6 +446,27 @@ def ler_situacao_especial_do_cnpj(conteudo_do_zip: bytes) -> pd.DataFrame:
     return tabela
 
 
+def disponivel_em(conexao: sa.Connection, original: sa.Row, mes: str) -> date:
+    """Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia (em São Paulo) em
+    que este conteúdo foi baixado pela primeira vez.
+
+    A Receita publica a pasta do mês por volta do dia 10 a 15 (de 05/2025 a 10/2026, todas antes do
+    fim do mês), mas pode atrasar ou corrigir um arquivo; e uma pasta antiga baixada hoje (as de
+    antes de 05/2025 foram todas regravadas em 20/05/2025) não era conhecida no mês dela. Só o mês
+    olharia o futuro nesses casos (achado 3a do Codex, 17/10/2026).
+    """
+    fim_do_mes = (pd.Period(mes, freq="M").end_time).date()
+    primeira = next(
+        (
+            v.baixado_em
+            for v in versoes_guardadas(conexao, original.url)
+            if v.sha256 == original.sha256
+        ),
+        original.baixado_em,
+    )
+    return max(fim_do_mes, dia_da_coleta(primeira).date())
+
+
 def montar_situacao_especial(
     conexao: sa.Connection, pasta: Path, agora: datetime
 ) -> dict[str, int]:
@@ -453,6 +474,7 @@ def montar_situacao_especial(
 
     O CNPJ só mostra o retrato do mês: cada mês guardado vira um retrato, e o histórico "como era na
     data" nasce da sequência deles (`mes_do_retrato`, mais `data_situacao_especial` da Receita).
+    Cada retrato vale desde `disponivel_em`, não do mês do arquivo.
     """
     por_mes: dict[str, list[pd.DataFrame]] = {}
     origens: dict[str, list[dict[str, str]]] = {}
@@ -463,6 +485,7 @@ def montar_situacao_especial(
             continue
         tabela = ler_situacao_especial_do_cnpj(conteudo).assign(
             mes_do_retrato=achado.group(1),
+            disponivel_em=disponivel_em(conexao, original, achado.group(1)),
             origem_sha256=original.sha256,
             origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
             montado_em=agora.isoformat(),

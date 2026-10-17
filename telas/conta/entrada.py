@@ -91,6 +91,8 @@ def _usuario_da_sessao():
     atual = st.session_state.get("usuario")
     if atual is not None and atual.google_sub == st.user.get("sub"):
         return _com_plano_atualizado(atual)
+    if st.session_state.get("conta_apagada") == st.user.get("sub"):
+        _parar_na_conta_apagada()
     try:
         usuario, primeira_vez = registrar_login(
             ler_identidade(st.user.to_dict()),
@@ -132,12 +134,19 @@ def _com_plano_atualizado(usuario):
         return usuario
     if novo is None:  # a conta foi apagada
         st.session_state.pop("usuario", None)
-        st.error("Esta conta não existe mais.")
-        st.button("Sair", on_click=st.logout)
-        st.stop()
+        st.session_state["conta_apagada"] = usuario.google_sub
+        _parar_na_conta_apagada()
     st.session_state["usuario"] = novo
     _carregar_assinatura(novo)
     return novo
+
+
+def _parar_na_conta_apagada():
+    """A conta foi apagada em outra sessão: esta só oferece sair. Sem isso, a execução seguinte
+    cadastraria a conta de novo com o login do Google ainda aberto (achado 4d do Codex)."""
+    st.error("Esta conta não existe mais.")
+    st.button("Sair", on_click=st.logout)
+    st.stop()
 
 
 def _carregar_assinatura(usuario):

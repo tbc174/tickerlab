@@ -8,6 +8,7 @@ import pandas as pd
 
 from base import historico, rotulos
 from base.ancoragem import parquets_sem_manifesto
+from src import acervo
 from src.banco import coletas
 from src.banco.coletas import com_registro
 
@@ -84,6 +85,49 @@ def test_retrato_do_mes_vira_parquet_com_a_origem(banco, tmp_path, monkeypatch):
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
     assert parquets_sem_manifesto(tmp_path / "base") == []
+
+
+def _montar_visto_em(banco, tmp_path, *baixadas: datetime) -> pd.DataFrame:
+    """O retrato de 2026-10 baixado nas datas dadas (o mesmo conteúdo), montado."""
+    conteudo = _zip(
+        _estabelecimento("11111111", "0001", "11", "1", "FALIDO", "20210311")
+    )
+    with banco.begin() as conexao:
+        for quando in baixadas:
+            coletas.registrar(
+                conexao,
+                "rfb-cnpj",
+                URL,
+                conteudo,
+                "ok",
+                agora=quando,
+                caminho_do_original=acervo.guardar_original(
+                    "rfb-cnpj", URL, conteudo, quando
+                ),
+            )
+    with banco.connect() as conexao:
+        rotulos.montar_situacao_especial(conexao, tmp_path / "base", AGORA)
+    return pd.read_parquet(
+        tmp_path / "base" / "cnpj_situacao_especial" / "2026-10.parquet"
+    )
+
+
+def test_retrato_visto_dentro_do_mes_vale_do_fim_do_mes(banco, tmp_path):
+    """Achado 3a do Codex (17/10/2026): o mês do arquivo não é a data em que ele ficou público."""
+    tabela = _montar_visto_em(banco, tmp_path, datetime(2026, 10, 13, 23, tzinfo=UTC))
+    assert str(tabela["disponivel_em"].iloc[0]) == "2026-10-31"
+
+
+def test_retrato_visto_depois_do_mes_vale_do_dia_em_que_foi_visto(banco, tmp_path):
+    """Publicado (ou só baixado) em 10/11: antes disso ninguém sabia; ficar com 31/10 olharia o
+    futuro. Baixar de novo o mesmo conteúdo depois não atrasa a data."""
+    tabela = _montar_visto_em(
+        banco,
+        tmp_path,
+        datetime(2026, 11, 10, 12, tzinfo=UTC),
+        datetime(2026, 11, 20, 12, tzinfo=UTC),
+    )
+    assert str(tabela["disponivel_em"].iloc[0]) == "2026-11-10"
 
 
 def test_arquivos_que_nao_sao_de_estabelecimentos_ficam_de_fora(banco, tmp_path):

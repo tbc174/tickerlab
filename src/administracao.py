@@ -11,6 +11,8 @@ from datetime import UTC, datetime, timedelta
 import sqlalchemy as sa
 
 from src import auditoria as registro_de_auditoria
+from src.autenticacao import VARIAVEL_DOS_ADMINS
+from src.autenticacao import emails_de_admin as admins_do_servidor
 from src.banco.modelo import (
     PAPEIS,
     PLANOS,
@@ -177,16 +179,32 @@ def alterar_plano(
 
 
 def alterar_papel(
-    conexao: sa.Connection, ator_id: uuid.UUID, alvo_id: uuid.UUID, papel: str
+    conexao: sa.Connection,
+    ator_id: uuid.UUID,
+    alvo_id: uuid.UUID,
+    papel: str,
+    emails_de_admin: tuple[str, ...] | None = None,
 ) -> None:
+    """Muda o papel de alguém. `emails_de_admin` é a lista do servidor (None: lê a variável).
+
+    Quem está na lista `TICKERLAB_ADMINS` não é rebaixado pelo painel: o login o promoveria de
+    novo (achado 4a do Codex, ADR 0091). Para tirar o acesso, tira-se o e-mail da lista antes.
+    """
     exigir_admin(conexao, ator_id)
     if papel not in PAPEIS:
         raise OperacaoInvalidaError(f"Papel desconhecido: {papel}.")
-    antes = conexao.execute(
-        sa.select(usuarios.c.papel).where(usuarios.c.id == alvo_id)
-    ).scalar()
-    if antes is None:
+    alvo = conexao.execute(
+        sa.select(usuarios.c.papel, usuarios.c.email).where(usuarios.c.id == alvo_id)
+    ).first()
+    if alvo is None:
         raise OperacaoInvalidaError("Usuário não encontrado.")
+    antes = alvo.papel
+    lista = admins_do_servidor() if emails_de_admin is None else emails_de_admin
+    if papel != "admin" and alvo.email.lower() in {e.lower() for e in lista}:
+        raise OperacaoInvalidaError(
+            f"Este e-mail está em {VARIAVEL_DOS_ADMINS} e voltaria a ser administrador no "
+            "próximo login. Tire-o da lista no servidor antes de rebaixar."
+        )
     if alvo_id == ator_id and papel != "admin":
         raise OperacaoInvalidaError(
             "Você não pode tirar o seu próprio acesso de administrador."
