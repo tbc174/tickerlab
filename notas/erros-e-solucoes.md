@@ -554,3 +554,21 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** `git log --oneline -15 | grep -q "(#356)"`: o `grep -q` sai assim que acha, o `git log` ainda escrevendo leva SIGPIPE e sai com 141; com `pipefail` o pipe inteiro vale 141 e o `set -e` encerra o script, sem mensagem.
 - **Solução:** não pôr `grep -q` (nem `head`) no fim de um pipe com `pipefail`. Guardar a saída numa variável e testar: `ultimos=$(git log --oneline -15)` e `[[ "$ultimos" == *"(#356)"* ]]`.
 - **Data:** 17/10/2026
+
+## A mesma base dá fichas diferentes na 15ª casa decimal (soma em DOUBLE no DuckDB)
+- **Sintoma:** no ensaio do dossiê pela porta (#381), duas rodadas seguidas sobre a mesma base deram 4 fichas diferentes, só na 15ª casa decimal de somas (ex.: acessos da Anatel).
+- **Causa:** o DuckDB soma em paralelo. Em ponto flutuante (DOUBLE), a ordem da soma muda o arredondamento (0,1 + 0,2 dá 0,30000000000000004), e a ordem muda de uma rodada para outra.
+- **Solução:** a `Porta.somar` soma em `DECIMAL(38, 10)`, que é exato, e só no fim volta para DOUBLE (`test_somar_e_exato`). Regra: em resultado que precisa se reproduzir (ADR 0078), somar em decimal.
+- **Data:** 17/10/2026
+
+## Arquivo esparso passa pelo limite de tamanho do tar
+- **Sintoma:** numa revisão de segurança de um recebedor de arquivos por tar, um tar de 10 KB passava no limite de tamanho e abria um arquivo de 3 GB.
+- **Causa:** um arquivo esparso (com "buracos") ocupa quase nada no tar, mas o tamanho aparente dele, que é o que o app leria, é enorme. O limite só olhava o tar.
+- **Solução:** depois de extrair, conferir também `du -s --apparent-size --block-size=1` da pasta contra o limite. Regra: limite de tamanho vale para o que entra e para o que sai aberto.
+- **Data:** 17/10/2026
+
+## `cat > arquivo` antes de um heredoc engole o texto
+- **Sintoma:** o teste novo não apareceu em `tests/test_porta.py`, embora o comando tivesse "rodado".
+- **Causa:** no comando `cat > x.py; python - <<'EOF' ...`, o `cat` sem entrada própria leu o heredoc que era do Python e o gravou no arquivo; o Python não recebeu nada.
+- **Solução:** editar arquivo com a ferramenta de edição (ou um único `python - <<'EOF'` sem nada antes). Regra: um heredoc por comando, e só no comando que deve lê-lo.
+- **Data:** 17/10/2026
