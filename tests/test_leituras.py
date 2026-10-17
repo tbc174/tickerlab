@@ -270,7 +270,7 @@ def cvm(banco, monkeypatch):
         _fato(c, "f2", hoje)
     respostas: list[bytes] = []
     monkeypatch.setattr(atualizar_leituras_cvm, "baixar", lambda url: respostas.pop(0))
-    monkeypatch.setattr(atualizar_leituras_cvm.time, "sleep", lambda s: None)
+    monkeypatch.setattr(atualizar_leituras_cvm, "esperar", lambda s: None)
     return respostas
 
 

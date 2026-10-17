@@ -110,7 +110,7 @@ def test_sem_pagina_guardada_e_falha(banco):
 
 def test_fora_do_ar_tenta_de_novo_e_guarda_a_resposta_boa(banco, tmp_path, monkeypatch):
     esperas: list[float] = []
-    monkeypatch.setattr(wayback.time, "sleep", esperas.append)
+    monkeypatch.setattr(wayback, "esperar", esperas.append)
     _guardar_paginas(banco, PAGINA_1)
     arquivo = Arquivo(
         {wayback.consulta(PAGINA_1): [FORA_DO_AR, requests.ConnectionError(), CDX_1]},
@@ -127,7 +127,7 @@ def test_fora_do_ar_tenta_de_novo_e_guarda_a_resposta_boa(banco, tmp_path, monke
 
 
 def test_fora_do_ar_tres_vezes_e_falha_registrada(banco, tmp_path, monkeypatch):
-    monkeypatch.setattr(wayback.time, "sleep", lambda s: None)
+    monkeypatch.setattr(wayback, "esperar", lambda s: None)
     _guardar_paginas(banco, PAGINA_1)
     consulta = wayback.consulta(PAGINA_1)
     arquivo = Arquivo({consulta: [FORA_DO_AR] * wayback.TENTATIVAS}, robots=b"")
