@@ -385,4 +385,6 @@ def test_security_txt_existe_e_nao_esta_perto_de_vencer():
     expira = re.search(r"^Expires: (\S+)$", texto, re.MULTILINE)
     assert expira, "falta o campo Expires"
     vence = datetime.fromisoformat(expira.group(1).replace("Z", "+00:00"))
-    assert vence - datetime.now(UTC) > timedelta(days=30), "renove o Expires do security.txt"
+    assert vence - datetime.now(UTC) > timedelta(days=30), (
+        "renove o Expires do security.txt"
+    )
