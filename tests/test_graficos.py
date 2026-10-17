@@ -5,6 +5,8 @@ import json
 import numpy as np
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from src import graficos, marca
 from src.graficos import (
@@ -849,3 +851,26 @@ def test_botao_ativo_do_periodo_le_bem_no_claro():
     assert (
         seletor.activecolor == "#c7d6ff"
     )  # texto marinho sobre azul claro (no escuro: elétrico)
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    dias=st.integers(min_value=3, max_value=400),
+    sorteio=st.sets(st.integers(min_value=1, max_value=398), max_size=30),
+    tipo=st.sampled_from(["linha", "velas"]),
+)
+def test_nenhum_dia_util_fica_vazio_no_eixo(dias, sorteio, tipo):
+    # a regra que não pode voltar a falhar: entre o primeiro e o último pregão, todo dia útil
+    # ou tem vela/ponto, ou está escondido no eixo; e nenhum dia com pregão é escondido.
+    # Vale para velas diárias e semanais (acima de LIMITE_DE_VELAS_DIARIAS) e para a linha.
+    datas = pd.bdate_range("2024-01-02", periods=dias)
+    sem_pregao = datas[[i for i in sorted(sorteio) if i < dias - 1]]
+    dados = _ohlcv(dias).set_axis(datas).drop(sem_pregao)
+
+    figura = criar_grafico_preco(dados, tipo=tipo)
+
+    escondidos = pd.DatetimeIndex(
+        [d for q in figura.layout.xaxis.rangebreaks if q.values for d in q.values]
+    )
+    assert set(escondidos) == set(sem_pregao)
+    assert not set(escondidos) & set(pd.to_datetime(list(figura.data[0].x)))
