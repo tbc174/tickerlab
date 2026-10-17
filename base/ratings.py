@@ -20,10 +20,12 @@ import zipfile
 
 import pandas as pd
 
+from src import eventos
 from src.links_das_fontes import link_da_fonte
 
 FONTE_DOS_PDFS = "cvm-ipe-rating"
 FONTE_DO_IPE = "cvm-hist-ipe"
+URL_DO_IPE = eventos.URL_DO_IPE  # arquivo anual do IPE, como o arquivista guarda
 CODIFICACAO_DA_CVM = "cp1252"
 TIPO_DO_RELATORIO = "relatorio de agencia de rating"
 # assunto (sem acento, minúsculas) que fala de rating; agência pelo nome ou pela palavra
