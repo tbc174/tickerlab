@@ -3559,6 +3559,13 @@ TABELAS: dict[str, Tabela] = {
                 DATA,
             ),
             "ate": ("Até quando valeu, sem incluir o dia (vazio: ainda vale)", DATA),
+            "ate_publico_em": (
+                (
+                    "Desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a "
+                    "mostra (vazio: ainda vale). Como era em D usa este, não o `ate`"
+                ),
+                DATA,
+            ),
             "situacao": ("vigente ou encerrada", TEXTO),
             "encerrada_por": (
                 "fonte (a fonte diz o fim) ou carga (sumiu da fonte nesta carga); vazio se vigente",
@@ -4026,7 +4033,7 @@ _CONTRATO = {
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
-    "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
+    "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),

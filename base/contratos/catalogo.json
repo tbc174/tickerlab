@@ -5399,7 +5399,7 @@
       "tabela": "ligacoes",
       "modulo": "rede",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "1.1.0",
       "colunas": {
         "de": {
           "descricao": "A entidade de onde a relação sai (a controlada, o fundo, a firma)",
@@ -5439,6 +5439,10 @@
         },
         "ate": {
           "descricao": "Até quando valeu, sem incluir o dia (vazio: ainda vale)",
+          "unidade": "data (dia)"
+        },
+        "ate_publico_em": {
+          "descricao": "Desde quando se sabia que tinha acabado: o FRE, o FCA ou a carteira que já não a mostra (vazio: ainda vale). Como era em D usa este, não o `ate`",
           "unidade": "data (dia)"
         },
         "situacao": {

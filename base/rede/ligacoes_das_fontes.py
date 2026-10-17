@@ -14,7 +14,10 @@ Cada fonte vira um tipo, com as duas pontas como `id_entidade` (pelos `identific
 Ponta que não é entidade da rede (controlada estrangeira, fundo fora do cadastro) fica de fora e é
 contada no log. Quando a fonte repete a relação em cada entrega (o FRE de cada ano, a carteira de cada
 mês, o cadastro de cada trimestre), as entregas seguidas viram **um período** (`comprimir_periodos`):
-`aconteceu_em` é a primeira, `ate` é a primeira entrega que já não a mostra (encerrada pela fonte).
+`aconteceu_em` é a primeira, `ate` é a primeira entrega que já não a mostra (encerrada pela fonte) e
+`ate_publico_em` é quando essa entrega ficou pública (o FRE entregue, a carteira 90 dias depois do mês,
+o IF.data 120 dias depois da data-base). O mandato de auditor sem fim que some do FCA seguinte acaba
+quando entra o mandato novo (ou na entrega desse FCA, se nenhum entra), público com esse FCA.
 
 O FRE mais novo deixa o tipo em branco em muitas linhas: vale o último tipo informado antes (nunca um
 de depois); sem nenhum, `participada_de`. Firma de auditoria com o código da CVM de outra firma (~1,3%
@@ -23,10 +26,12 @@ das linhas das redes) é conflito e não liga; auditor pessoa física (sem CNPJ)
 
 import logging
 import re
+from collections.abc import Sequence
 
 import pandas as pd
 
 from base.bcb_ifdata import disponivel_em
+from base.cda import DIAS_ATE_FICAR_PUBLICA
 from base.cnpj import normalizar_cnpj
 from base.rede.ligacoes import comprimir_periodos
 
@@ -93,8 +98,8 @@ def _com_as_duas_pontas(tabela: pd.DataFrame, tipo: str) -> pd.DataFrame:
     return tabela[tem]
 
 
-def _fim_pela_fonte(fim: pd.Series, entregas: pd.Series) -> pd.Series:
-    """A data da entrega seguinte ao período (`fim` + 1) na lista `entregas`; vazio se não há."""
+def _fim_pela_fonte(fim: pd.Series, entregas: Sequence) -> pd.Series:
+    """O valor da entrega seguinte ao período (`fim` + 1) na lista `entregas`; vazio se não há."""
     proxima = (fim + 1).astype(int)
     datas = list(entregas)
     return pd.Series(
@@ -126,12 +131,20 @@ def das_controladas(controladas: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
     )
     tabela = _com_as_duas_pontas(tabela, "controladas")
     # o passo é a posição do FRE na lista de FREs da companhia: o que não aparece num FRE saiu
-    entregas = {
-        c: sorted(g.unique())
-        for c, g in _dia(controladas["referencia"]).groupby(
-            controladas["cnpj_companhia"]
+    # cada FRE da companhia (a referência) e quando ficou público (a primeira entrega dele)
+    publico_do_fre = (
+        controladas.assign(
+            referencia=_dia(controladas["referencia"]),
+            conhecido_em=_dia(controladas["conhecido_em"]),
         )
+        .groupby(["cnpj_companhia", "referencia"])["conhecido_em"]
+        .min()
+    )
+    entregas = {
+        c: list(g.index.get_level_values("referencia"))
+        for c, g in publico_do_fre.groupby(level="cnpj_companhia")
     }
+    publicos = {c: list(g) for c, g in publico_do_fre.groupby(level="cnpj_companhia")}
     tabela["inicio"] = [
         entregas[c].index(ref)
         for c, ref in zip(tabela["cnpj_companhia"], tabela["referencia"], strict=True)
@@ -146,16 +159,22 @@ def das_controladas(controladas: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
                 "referencia", "conhecido_em", "origem_sha256"]],
         ["de", "para", "tipo", "participacao"],
     )  # fmt: skip
-    ate = pd.concat(
-        [
-            _fim_pela_fonte(g["fim"], entregas[c])
-            for c, g in periodos.groupby("cnpj_companhia", sort=False)
-        ]
-    ) if not periodos.empty else pd.Series(dtype="datetime64[ns]")  # fmt: skip
+
+    def pela_fonte(lista: dict[str, list]) -> pd.Series:
+        if periodos.empty:
+            return pd.Series(dtype="datetime64[ns]")
+        return pd.concat(
+            [
+                _fim_pela_fonte(g["fim"], lista[c])
+                for c, g in periodos.groupby("cnpj_companhia", sort=False)
+            ]
+        ).reindex(periodos.index)
+
     return periodos.assign(
         aconteceu_em=periodos["referencia"],
         publico_em=periodos["conhecido_em"],
-        ate=ate.reindex(periodos.index),
+        ate=pela_fonte(entregas),
+        ate_publico_em=pela_fonte(publicos),
         fonte="cvm-fre",
         conferido_por=PELA_REGRA,
     )
@@ -232,11 +251,13 @@ def do_conglomerado(cadastro: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
         ],
         ["de", "para"],
     )
+    ate = _fim_pela_fonte(periodos["fim"], datas)
     return periodos.assign(
         tipo=DO_CONGLOMERADO_DE,
         papel=LIDER,
         aconteceu_em=periodos["data_base"],
-        ate=_fim_pela_fonte(periodos["fim"], datas),
+        ate=ate,
+        ate_publico_em=disponivel_em(pd.DataFrame({"data_base": ate})),
         fonte="bcb-ifdata",
         conferido_por=PELA_REGRA,
     )
@@ -257,9 +278,48 @@ def auditores_sem_conflito(auditores: pd.DataFrame) -> pd.DataFrame:
     return firmas[firmas["auditor_id"] == firmas["codigo_cvm_auditor"].map(dona)]
 
 
+def _fca_seguinte(
+    mandatos: pd.DataFrame, auditores: pd.DataFrame, tabela: pd.DataFrame
+) -> pd.DataFrame:
+    """Para cada mandato, o FCA da companhia logo depois do último que o lista (`proxima`, o dia em que
+    ficou público em `proxima_em`) e o início mais cedo de um mandato que começa depois dele nesse FCA
+    (`entrou_em`). Sem FCA depois, tudo vazio."""
+    entregas = (
+        auditores.assign(
+            referencia=_dia(auditores["referencia"]),
+            conhecido_em=_dia(auditores["conhecido_em"]),
+        )
+        .groupby(["cnpj", "referencia"], as_index=False)["conhecido_em"]
+        .min()
+        .rename(columns={"referencia": "proxima", "conhecido_em": "proxima_em"})
+    )
+    depois = mandatos.merge(entregas, on="cnpj")
+    depois = depois[depois["proxima"] > depois["ultima"]]
+    proxima = depois.sort_values("proxima", kind="stable").drop_duplicates("_mandato")
+    novos = proxima.merge(
+        tabela[["cnpj", "referencia", "inicio"]].rename(
+            columns={"referencia": "proxima", "inicio": "inicio_novo"}
+        ),
+        on=["cnpj", "proxima"],
+    )
+    entrou = (
+        novos[novos["inicio_novo"] > novos["inicio"]]
+        .groupby("_mandato")["inicio_novo"]
+        .min()
+        .rename("entrou_em")
+    )
+    return (
+        proxima.set_index("_mandato")[["proxima", "proxima_em"]]
+        .join(entrou)
+        .reindex(mandatos["_mandato"])
+    )
+
+
 def audita(auditores: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
     """A firma → a companhia, um mandato por início; público do primeiro FCA que o mostrou, fim do
-    FCA mais novo."""
+    FCA mais novo, público no primeiro FCA que o trouxe. O mandato sem fim que o FCA seguinte da
+    companhia já não lista acabou (a KPMG de 2006 não fica "vigente" em 2020): no início do mandato
+    que entrou nesse FCA ou, sem nenhum, na entrega dele; o fim é público com esse FCA."""
     tabela = auditores_sem_conflito(auditores)
     if tabela.empty:
         return _VAZIA
@@ -269,20 +329,47 @@ def audita(auditores: pd.DataFrame, r: Resolvedor) -> pd.DataFrame:
         inicio=_dia(tabela["inicio"]),
         fim=_dia(tabela["fim"]),
         conhecido_em=_dia(tabela["conhecido_em"]),
+        referencia=_dia(tabela["referencia"]),
     )
     tabela = _com_as_duas_pontas(tabela, "audita")
     mandato = ["de", "para", "inicio"]
     ordem = tabela.sort_values(
         [*mandato, "conhecido_em", "origem_sha256"], kind="stable"
     )
-    primeiro = ordem.groupby(mandato, dropna=False).first().reset_index()
-    mais_novo = ordem.groupby(mandato, dropna=False)["fim"].last().reset_index()
-    juntas = primeiro.drop(columns="fim").merge(mais_novo, on=mandato, how="left")
-    return juntas.assign(
+    por_mandato = ordem.groupby(mandato, dropna=False)
+    primeiro = por_mandato.first().reset_index()
+    resumo = por_mandato.agg(
+        fim=("fim", "last"), ultima=("referencia", "max")
+    ).reset_index()
+    # o primeiro FCA que trouxe o fim (o fim só é público desde ele)
+    com_fim = ordem[ordem["fim"].notna()]
+    fim_em = (
+        com_fim.groupby(mandato, dropna=False)["conhecido_em"]
+        .min()
+        .rename("fim_em")
+        .reset_index()
+    )
+    juntas = (
+        primeiro.drop(columns=["fim", "referencia"])
+        .merge(resumo, on=mandato, how="left")
+        .merge(fim_em, on=mandato, how="left")
+    )
+    juntas["_mandato"] = range(len(juntas))
+    seguinte = _fca_seguinte(juntas, auditores, tabela)
+    sumiu = juntas["fim"].isna() & seguinte["proxima"].notna().to_numpy()
+    fim_que_sumiu = (
+        pd.concat([seguinte["entrou_em"], seguinte["proxima_em"]], axis=1)
+        .min(axis=1)
+        .to_numpy()
+    )
+    ate = juntas["fim"].mask(sumiu, fim_que_sumiu)
+    ate_publico_em = juntas["fim_em"].mask(sumiu, seguinte["proxima_em"].to_numpy())
+    return juntas.drop(columns=["_mandato", "ultima", "fim_em"]).assign(
         tipo=AUDITA,
         aconteceu_em=juntas["inicio"],
         publico_em=juntas["conhecido_em"],
-        ate=juntas["fim"],
+        ate=ate,
+        ate_publico_em=ate_publico_em,
         fonte="cvm-fca",
         conferido_por=PELA_REGRA,
     )
@@ -434,11 +521,14 @@ def detem(periodos: pd.DataFrame, r: Resolvedor, ultimo_mes: int) -> pd.DataFram
     )
     tabela = _com_as_duas_pontas(tabela, "detem")
     continua = tabela["fim"] >= ultimo_mes
+    ate = _fim_do_mes(tabela["fim"] + 1).mask(continua)
     return tabela.assign(
         tipo=DETEM,
         papel=tabela["tipo"],
         aconteceu_em=_fim_do_mes(tabela["inicio"]),
-        ate=_fim_do_mes(tabela["fim"] + 1).mask(continua),
+        ate=ate,
+        # a carteira que já não tinha a posição só ficou pública 90 dias depois do mês
+        ate_publico_em=ate + pd.Timedelta(days=DIAS_ATE_FICAR_PUBLICA),
         fonte="cvm-cda",
         conferido_por=PELA_REGRA,
     )
