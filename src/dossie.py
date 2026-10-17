@@ -166,39 +166,39 @@ def _numero(valor: object) -> float:
     return float(valor) if isinstance(valor, int | float) else float(str(valor))
 
 
-def _data(valor: object) -> date:
+def para_data(valor: object) -> date:
     return date.fromisoformat(str(valor)[:10])  # "2026-03-31" ou "2026-03-31T00:00:00"
 
 
-def _inteiro(valor: object) -> str:
+def inteiro(valor: object) -> str:
     return f"{_numero(valor):,.0f}".replace(",", ".")
 
 
-def _decimal(valor: object, casas: int = 1) -> str:
+def decimal(valor: object, casas: int = 1) -> str:
     return f"{_numero(valor):.{casas}f}".replace(".", ",")
 
 
 def _porcentagem(valor: object) -> str:
     """30.0 → "30%"; 89.01 → "89,01%" (a participação no capital, como o FRE informa)."""
     numero = _numero(valor)
-    return f"{numero:.0f}%" if numero.is_integer() else f"{_decimal(numero, 2)}%"
+    return f"{numero:.0f}%" if numero.is_integer() else f"{decimal(numero, 2)}%"
 
 
-def _fracao(valor: object) -> str:
-    return f"{_decimal(_numero(valor) * 100)}%"
+def fracao(valor: object) -> str:
+    return f"{decimal(_numero(valor) * 100)}%"
 
 
-def _reais(valor: object) -> str:
+def reais(valor: object) -> str:
     return formatar_valor(_numero(valor), "BRL")
 
 
-def _dia(valor: object) -> str:
-    return _data(valor).strftime("%d/%m/%Y")
+def dia(valor: object) -> str:
+    return para_data(valor).strftime("%d/%m/%Y")
 
 
-def _mes(valor: object) -> str:
-    dia = _data(valor)
-    return f"{MESES[dia.month - 1]}/{dia.year}"
+def mes(valor: object) -> str:
+    quando = para_data(valor)
+    return f"{MESES[quando.month - 1]}/{quando.year}"
 
 
 def _ano(valor: object) -> str:
@@ -221,11 +221,11 @@ def _escrever_valor(valor: str | float | None, unidade: str) -> str:
     if valor is None:
         return "—"
     if unidade == "R$":
-        return _reais(valor)
+        return reais(valor)
     if unidade == "data":
-        return _dia(valor)
+        return dia(valor)
     if isinstance(valor, int | float):
-        return _inteiro(valor)
+        return inteiro(valor)
     return str(valor)
 
 
@@ -234,21 +234,21 @@ def _escrever_base(base: str | None, gerado_em: datetime) -> str:
     if not base:
         return ""
     if len(base) == TAMANHO_DO_MES:
-        return _mes(f"{base}-01")
-    dia = _data(base)
-    if dia > gerado_em.date():
-        return f"FRE de {dia.year}"
-    return _dia(dia)
+        return mes(f"{base}-01")
+    quando = para_data(base)
+    if quando > gerado_em.date():
+        return f"FRE de {quando.year}"
+    return dia(quando)
 
 
 # cada coluna de cada tabela da ficha: (coluna, rótulo, como escrever); o que não está aqui não sai
 Coluna = tuple[str, str, Any]
 COLUNAS: dict[str, list[Coluna]] = {
     "trocas_de_auditor": [
-        ("efetiva_em", "Desde", _dia),
+        ("efetiva_em", "Desde", dia),
         ("anterior", "Auditor anterior", _texto),
         ("novo", "Auditor novo", _texto),
-        ("anos_com_o_anterior", "Anos com o anterior", _decimal),
+        ("anos_com_o_anterior", "Anos com o anterior", decimal),
     ],
     "controladas": [
         ("razao_social", "Sociedade", _texto),
@@ -260,36 +260,36 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("participacao", "Participação", _porcentagem),
     ],
     "ofertas": [
-        ("data", "Data", _dia),
+        ("data", "Data", dia),
         ("emissor", "Emissor", _texto),
         ("valor_mobiliario", "Papel", _texto),
         ("tipo_oferta", "Tipo", lambda v: str(v).capitalize()),
-        ("valor_total", "Valor registrado", _reais),
+        ("valor_total", "Valor registrado", reais),
         ("regime", "Regra", _texto),
     ],
     "ofertas_por_ano": [
         ("ano", "Ano", _ano),
-        ("ofertas", "Ofertas", _inteiro),
-        ("valor_total", "Valor registrado", _reais),
+        ("ofertas", "Ofertas", inteiro),
+        ("valor_total", "Valor registrado", reais),
     ],
     "fundos_por_mes": [
-        ("competencia", "Mês", _mes),
-        ("fundos", "Fundos", _inteiro),
-        ("valor", "Valor nas carteiras", _reais),
+        ("competencia", "Mês", mes),
+        ("fundos", "Fundos", inteiro),
+        ("valor", "Valor nas carteiras", reais),
     ],
     "entidades_ligadas": [
         ("nome", "Entidade na agência", _texto),
         ("fonte", "Agência", _agencia),
-        ("desde", "Ligada desde", _dia),
+        ("desde", "Ligada desde", dia),
     ],
     "negocios": [
-        ("publicado_em", "Data", _dia),
+        ("publicado_em", "Data", dia),
         ("rotulo", "Documento", _texto),
         ("assunto", "Assunto, como a empresa escreveu", _texto),
     ],
     "negocios_por_ano": [
         ("ano", "Ano", _ano),
-        ("documentos", "Documentos", _inteiro),
+        ("documentos", "Documentos", inteiro),
     ],
 }
 
@@ -297,9 +297,9 @@ COLUNAS: dict[str, list[Coluna]] = {
 def _colunas_da_serie(nome: str) -> list[Coluna]:
     return [
         ("ano", "Ano", _ano),
-        ("valor", _UNIDADE_DA_SERIE[nome].capitalize(), _inteiro),
-        ("participacao", "Parte do total", _fracao),
-        ("meses", "Meses no ano", _inteiro),
+        ("valor", _UNIDADE_DA_SERIE[nome].capitalize(), inteiro),
+        ("participacao", "Parte do total", fracao),
+        ("meses", "Meses no ano", inteiro),
     ]
 
 
