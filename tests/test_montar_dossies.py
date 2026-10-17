@@ -129,7 +129,13 @@ def test_grava_uma_ficha_por_empresa_com_dados(tmp_path: Path) -> None:
     chaves = [s["chave"] for s in ficha["secoes"]]
     assert chaves == ["auditor_e_controladas", "setor_regulado", "negocios"]
     setor = ficha["secoes"][1]["tabelas"]["aneel_consumidores"][0]
-    assert setor == {"ano": 2025, "valor": 110.0, "participacao": pytest.approx(0.11)}
+    assert setor == {
+        "ano": 2025,
+        "valor": 110.0,
+        "participacao": pytest.approx(0.11),
+        "meses": 2,
+        "ultimo_mes": "2025-12-31",
+    }
     assert resumo.fichas == 1
     assert resumo.empresas == 2  # o ticker que deixou de valer fica fora
     assert resumo.falhas == []

@@ -51,6 +51,10 @@ LINHAS_NAS_LISTAS = (
 )
 MESES_DOS_FUNDOS = 24
 ANOS_NAS_SERIES = 10
+MESES_NO_ANO = 12
+PARTICIPACAO_DE_CONTROLE = (
+    50.0  # sem o tipo no FRE, mais da metade do capital é controle
+)
 AUDITOR_PESSOA = "Auditor pessoa física (nome não mostrado)"
 DIGITOS_DO_CNPJ = 14
 SOMA_DO_ANO, ULTIMO_MES = "soma do ano", "último mês do ano"
@@ -61,7 +65,7 @@ COLUNAS_DE_PESSOA = frozenset(
 # palavras do assunto que indicam compra, venda, fusão ou reorganização (escolha editorial, sem acento)
 PALAVRAS_DE_NEGOCIO = re.compile(
     r"aquisi|incorpora|fusao|cisao|aliena|desinvestimento|combinacao de negocio"
-    r"|venda de (?:participa|ativo|controle|acoes)|compra de (?:participa|ativo|controle|acoes)"
+    r"|\bvenda de (?:participa|ativo|controle)|\bcompra de (?:participa|ativo|controle)"
     r"|oferta publica de aquisi|\bopa\b|reorganizacao societaria|joint venture"
     r"|transferencia de controle|memorando de entendimento"
 )
@@ -243,9 +247,10 @@ _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
 LIMITES = {
     "auditor_e_controladas": (
-        "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM; "
-        "a controladora aparece só quando ela também entrega o FRE. Auditor pessoa física não tem o "
-        "nome mostrado."
+        "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM. "
+        "Quando o FRE não informa o tipo, conta como controlada a sociedade com mais da metade do "
+        "capital. A controladora aparece só quando ela também entrega o FRE. Auditor pessoa física "
+        "não tem o nome mostrado."
     ),
     "ofertas_e_fundos": (
         "Ofertas registradas na CVM (Resolução 160 e as anteriores) da companhia e das controladas do "
@@ -386,14 +391,21 @@ def _trocas_sem_pessoas(trocas: pd.DataFrame, pessoas: set[str]) -> pd.DataFrame
     return tabela.sort_values("efetiva_em", ascending=False)
 
 
+def _e_controlada(sociedades: pd.DataFrame) -> pd.Series:
+    """Controlada pelo tipo do FRE ou, quando o tipo vem vazio (os FREs recentes), por mais da metade."""
+    tipo = sociedades["tipo"].fillna("").astype(str).str.strip().str.lower()
+    participacao = pd.to_numeric(sociedades["participacao"], errors="coerce")
+    return (tipo == "controlada") | (
+        (tipo == "") & (participacao > PARTICIPACAO_DE_CONTROLE)
+    )
+
+
 def cnpjs_do_grupo(cnpj: str, controladas: pd.DataFrame) -> set[str]:
     """A companhia e as controladas do FRE mais recente (só dígitos): quem emite pelo grupo."""
     ultimas = _mais_recente(controladas)
     if ultimas.empty:
         return {cnpj}
-    das_controladas = digitos(
-        ultimas.loc[ultimas["tipo"] == "controlada", "cnpj"].dropna()
-    )
+    das_controladas = digitos(ultimas.loc[_e_controlada(ultimas), "cnpj"].dropna())
     return {cnpj, *(c for c in das_controladas if len(c) == DIGITOS_DO_CNPJ)}
 
 
@@ -403,8 +415,10 @@ def _controladas_do_ultimo_fre(
     ultimas = _mais_recente(controladas)
     if ultimas.empty:
         return ultimas, None
-    tabela = ultimas[["razao_social", "tipo", "participacao"]].sort_values(
-        "participacao", ascending=False
+    tabela = (
+        ultimas[["razao_social", "tipo", "participacao"]]
+        .assign(controlada=_e_controlada(ultimas))
+        .sort_values("participacao", ascending=False)
     )
     return tabela, _data(ultimas["referencia"].iloc[0])
 
@@ -420,19 +434,15 @@ def secao_auditor_e_controladas(
     itens = _itens_do_auditor(auditores, pessoas)
     tabela_de_controladas, base = _controladas_do_ultimo_fre(controladas)
     if not tabela_de_controladas.empty:
-        tipos = tabela_de_controladas["tipo"].value_counts()
+        sao_controladas = int(tabela_de_controladas["controlada"].sum())
+        total = len(tabela_de_controladas)
         itens += [
+            _item("sociedades", "Sociedades no FRE", total, "empresas", base),
+            _item("controladas", "Controladas", sao_controladas, "empresas", base),
             _item(
-                "controladas",
-                "Controladas",
-                int(tipos.get("controlada", 0)),
-                "empresas",
-                base,
-            ),
-            _item(
-                "coligadas",
-                "Coligadas",
-                int(tipos.get("coligada", 0)),
+                "coligadas_e_outras",
+                "Coligadas e outras participações",
+                total - sao_controladas,
                 "empresas",
                 base,
             ),
@@ -596,14 +606,16 @@ def serie_anual(tabela: pd.DataFrame, modo: str) -> pd.DataFrame:
     tem em cada ano (consumidores, acessos: um estoque, que não se soma).
     """
     ano = tabela["competencia"].dt.year
+    # quantos meses a fonte tem em cada ano e qual o último: o ano corrente ainda está pela metade
+    meses = tabela.groupby(ano)["competencia"].agg(meses="nunique", ultimo_mes="max")
     if modo == ULTIMO_MES:
         ultimo = tabela.groupby(ano)["competencia"].transform("max")
         tabela, ano = (
             tabela[tabela["competencia"] == ultimo],
             ano[tabela["competencia"] == ultimo],
         )
-    somada = tabela.groupby([ano.rename("ano"), "chave"])["valor"].sum()
-    return somada.reset_index()
+    somada = tabela.groupby([ano.rename("ano"), "chave"])["valor"].sum().reset_index()
+    return somada.merge(meses.rename_axis("ano").reset_index(), on="ano")
 
 
 def _chaves(ligacoes: pd.DataFrame, serie: SerieDaAgencia) -> set[str]:
@@ -622,6 +634,8 @@ def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame
     tabela = pd.DataFrame(
         {"valor": da_empresa, "participacao": da_empresa / total}
     ).dropna(subset=["valor"])
+    periodo = dados.groupby("ano")[["meses", "ultimo_mes"]].first()
+    tabela = tabela.join(periodo)
     return (
         tabela.reset_index().sort_values("ano", ascending=False).head(ANOS_NAS_SERIES)
     )
@@ -630,6 +644,18 @@ def _participacao_por_ano(dados: pd.DataFrame, chaves: set[str]) -> pd.DataFrame
 def _entidades_ligadas(ligacoes: pd.DataFrame) -> pd.DataFrame:
     principais = ligacoes[ligacoes["principal"]]
     return principais[["fonte", "nome", "via", "desde"]].sort_values(["fonte", "nome"])
+
+
+def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
+    """O número do item: o último mês (estoque) ou o último ano completo (soma; o corrente engana)."""
+    if serie.modo == ULTIMO_MES:
+        linha = tabela.iloc[0]
+        base = pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
+    else:
+        completos = tabela[tabela["meses"] == MESES_NO_ANO]
+        linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
+        base = str(int(linha["ano"]))
+    return _item(serie.nome, serie.medida, float(linha["valor"]), serie.unidade, base)
 
 
 def secao_setor_regulado(
@@ -652,11 +678,7 @@ def secao_setor_regulado(
         if tabela.empty:
             continue
         tabelas[serie.nome] = tabela
-        ultimo = tabela.iloc[0]
-        base = str(int(ultimo["ano"]))
-        itens.append(
-            _item(serie.nome, serie.medida, float(ultimo["valor"]), serie.unidade, base)
-        )
+        itens.append(_item_da_serie(serie, tabela))
     if not tabelas:
         return None
     tabelas["entidades_ligadas"] = _entidades_ligadas(ligacoes_b13)

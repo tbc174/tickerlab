@@ -127,7 +127,24 @@ def test_controladas_vem_so_do_fre_mais_recente() -> None:
     assert nomes == ["CPFL Paulista", "Coligada S.A."]
     itens = {i["chave"]: i["valor"] for i in secao["itens"]}
     assert itens["controladas"] == 1
-    assert itens["coligadas"] == 1
+    assert itens["coligadas_e_outras"] == 1
+
+
+def test_sem_tipo_controlada_e_quem_tem_mais_da_metade() -> None:
+    controladas = _controladas().assign(
+        tipo=["", " ", ""], participacao=[100.0, 100.0, 30.0]
+    )
+    secao = dossie.secao_auditor_e_controladas(
+        pd.DataFrame(), pd.DataFrame(), controladas, pd.DataFrame(), set()
+    )
+    assert secao is not None
+    itens = {i["chave"]: i["valor"] for i in secao["itens"]}
+    assert itens == {"sociedades": 2, "controladas": 1, "coligadas_e_outras": 1}
+    grupo = dossie.cnpjs_do_grupo(
+        CNPJ,
+        controladas.assign(cnpj=["44444444000144", "33050196000188", "55555555000155"]),
+    )
+    assert grupo == {CNPJ, "33050196000188"}
 
 
 def test_auditor_pessoa_fisica_nao_mostra_o_nome() -> None:
@@ -326,7 +343,16 @@ def _serie_aneel() -> pd.DataFrame:
             + ["11111111000111", "99"],
             "valor": [5.0, 3.0, 1.0, 11.0, 6.0, 14.0],
         }
-    )
+    ).merge(_PERIODOS, on="ano")
+
+
+_PERIODOS = pd.DataFrame(
+    {
+        "ano": [2024, 2025, 2026],
+        "meses": [12, 12, 8],
+        "ultimo_mes": [D("2024-12-31"), D("2025-12-31"), D("2026-08-31")],
+    }
+)
 
 
 def test_setor_regulado_soma_as_entidades_principais_e_a_participacao() -> None:
@@ -345,15 +371,48 @@ def test_ano_sem_numero_da_empresa_fica_fora_da_serie() -> None:
     serie = pd.concat(
         [
             _serie_aneel(),
-            pd.DataFrame({"ano": [2026], "chave": ["99"], "valor": [15.0]}),
+            pd.DataFrame({"ano": [2026], "chave": ["99"], "valor": [15.0]}).merge(
+                _PERIODOS, on="ano"
+            ),
         ]
     )
     secao = dossie.secao_setor_regulado(_ligacoes_b13(), {"aneel_consumidores": serie})
     assert secao is not None
     anos = [r["ano"] for r in secao["tabelas"]["aneel_consumidores"]]
     assert anos == [2025, 2024]
-    assert secao["itens"][0]["base"] == "2025"
+    assert secao["itens"][0]["base"] == "2025-12"  # estoque: o mês, não o ano
     assert secao["itens"][0]["valor"] == 6.0
+
+
+def test_soma_do_ano_usa_o_ultimo_ano_completo_no_item() -> None:
+    meses = pd.date_range("2024-01-31", "2025-03-31", freq="ME")
+    mensal = pd.DataFrame({"competencia": meses, "chave": "AZUL", "valor": 10.0})
+    anual = dossie.serie_anual(mensal, dossie.SOMA_DO_ANO)
+    assert anual.set_index("ano")["meses"].to_dict() == {2024: 12, 2025: 3}
+    ligacoes = _ligacoes_b13().assign(
+        fonte="anac-estatistico", chave=["AZUL", "x", "y"]
+    )
+    secao = dossie.secao_setor_regulado(ligacoes, {"anac_passageiros": anual})
+    assert secao is not None
+    assert secao["itens"][0]["base"] == "2024"
+    assert secao["itens"][0]["valor"] == 120.0
+    assert (
+        secao["tabelas"]["anac_passageiros"][0]["meses"] == 3
+    )  # 2025 fica na tabela, marcado
+
+
+def test_ultimo_mes_tem_o_mes_como_base() -> None:
+    mensal = pd.DataFrame(
+        {
+            "competencia": [D("2025-12-31"), D("2026-08-31")],
+            "chave": "11111111000111",
+            "valor": [5.0, 6.0],
+        }
+    )
+    anual = dossie.serie_anual(mensal, dossie.ULTIMO_MES)
+    secao = dossie.secao_setor_regulado(_ligacoes_b13(), {"aneel_consumidores": anual})
+    assert secao is not None
+    assert secao["itens"][0]["base"] == "2026-08"
 
 
 def test_empresa_sem_agencia_nao_tem_setor_regulado() -> None:
@@ -403,6 +462,20 @@ def test_negocios_sao_fatos_e_comunicados_com_palavras_de_negocio() -> None:
     assert secao is not None
     assuntos = [linha["assunto"] for linha in secao["tabelas"]["negocios"]]
     assert assuntos == ["Aquisição da Enercan", "Conclusão da incorporação de ações"]
+
+
+@pytest.mark.parametrize(
+    "assunto",
+    ["Programa de Recompra de Ações", "Aprovação do Plano de Opção de Compra de Ações"],
+)
+def test_recompra_e_opcao_de_compra_nao_sao_negocios(assunto: str) -> None:
+    eventos = _eventos().iloc[[0]].assign(assunto=[assunto])
+    assert dossie.secao_negocios(eventos) is None
+
+
+def test_compra_de_participacao_e_negocio() -> None:
+    eventos = _eventos().iloc[[0]].assign(assunto=["Compra de participação na Enercan"])
+    assert dossie.secao_negocios(eventos) is not None
 
 
 def test_negocios_aceitam_data_sem_hora_como_vem_da_base() -> None:
