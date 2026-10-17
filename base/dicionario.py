@@ -4329,6 +4329,7 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "release_x_oficial": {
         "pasta": "release_x_oficial",
         "nao_nulas": ("classe", "disponivel_em", "publico_em", "sha256_do_documento"),
+    },
     "noticias_fatos": {
         "pasta": "noticias_fatos",
         "nao_nulas": ("id_fato", "pauta", "publico_em", "link", "hash_da_linha"),
