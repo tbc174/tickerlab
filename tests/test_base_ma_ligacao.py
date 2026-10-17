@@ -113,17 +113,26 @@ def _rede(*entidades: tuple[str, str, str | None, str | None]) -> pd.DataFrame:
     )
 
 
-def _receita(*linhas: tuple[str, str, str, bool]) -> pd.DataFrame:
-    """(raiz, nome normalizado, por, pessoa)."""
-    return pd.DataFrame(linhas, columns=list(lig.COLUNAS_DA_RECEITA))
+PADRAO_DA_RECEITA = (
+    None,
+    True,
+    False,
+)  # abertura, razão social tem o nome, estrangeira
 
 
-def _ligar(nome: str, rede=None, receita=None) -> dict:
+def _receita(*linhas: tuple) -> pd.DataFrame:
+    """(raiz, nome normalizado, por, pessoa[, abertura, razão social tem o nome, estrangeira])."""
+    completas = [tuple(linha) + PADRAO_DA_RECEITA[len(linha) - 4 :] for linha in linhas]
+    return pd.DataFrame(completas, columns=list(lig.COLUNAS_DA_RECEITA))
+
+
+def _ligar(nome: str, rede=None, receita=None, publico_em=None) -> dict:
     partes = lig.partes(ma.tabela([_negocio(cliente=nome, alvo=nome)]))
     ligadas = lig.ligar(
         partes,
         rede if rede is not None else _rede(),
         receita if receita is not None else _receita(),
+        publico_em=publico_em,
     )
     assert len(ligadas) == 1
     return ligadas.iloc[0].to_dict()
@@ -173,16 +182,16 @@ def test_razao_social_de_fechada_fora_da_rede_ganha_o_id_que_a_rede_daria():
 
 
 def test_nome_fantasia_so_quando_o_nome_nao_casou():
-    receita = _receita((RAIZ_DELTA, "delta", lig.NOME_FANTASIA, False))
-    parte = _ligar("Delta", receita=receita)
+    receita = _receita((RAIZ_DELTA, "delta adubos", lig.NOME_FANTASIA, False))
+    parte = _ligar("Delta Adubos", receita=receita)
     assert parte["ligacao_por"] == "nome_fantasia"
     assert parte["cnpj_raiz"] == RAIZ_DELTA
     # com a razão social de outra raiz, o nome fantasia nem é olhado
     receita = _receita(
-        (RAIZ_DELTA, "delta", lig.NOME_FANTASIA, False),
-        (RAIZ_GAMA, "delta", lig.RAZAO_SOCIAL, False),
+        (RAIZ_DELTA, "delta adubos", lig.NOME_FANTASIA, False),
+        (RAIZ_GAMA, "delta adubos", lig.RAZAO_SOCIAL, False),
     )
-    assert _ligar("Delta", receita=receita)["cnpj_raiz"] == RAIZ_GAMA
+    assert _ligar("Delta Adubos", receita=receita)["cnpj_raiz"] == RAIZ_GAMA
 
 
 def test_nome_fantasia_de_duas_raizes_fica_na_duvida():
@@ -212,6 +221,77 @@ def test_sem_nada_fica_sem_ligacao():
     parte = _ligar("Ômega Internacional")
     assert parte["ligacao_por"] == "sem_ligacao"
     assert parte["candidatos"] == 0
+
+
+# --- regras contra homônimos (conferência do Tiago, 16/10: `ma-regua-conferencia-2026-10-16.md`) ----
+def test_nome_de_uma_palavra_so_nao_liga_pela_receita():
+    """Regra 1: "Kawa" casava com a KAWA LTDA, uma microempresa sem relação com o negócio."""
+    receita = _receita((RAIZ_GAMA, "kawa", lig.RAZAO_SOCIAL, False))
+    parte = _ligar("Kawa", receita=receita)
+    assert parte["ligacao_por"] == "na_duvida"
+    assert parte["candidatos"] == 1
+    assert parte["id_entidade"] is None and parte["cnpj_raiz"] is None
+    fantasia = _receita((RAIZ_GAMA, "kawa", lig.NOME_FANTASIA, False))
+    assert _ligar("Kawa", receita=fantasia)["ligacao_por"] == "na_duvida"
+
+
+def test_nome_de_uma_palavra_so_liga_pela_rede():
+    rede = _rede((ID_ALFA, "KAWA S.A.", RAIZ_ALFA, None))
+    parte = _ligar("Kawa", rede)
+    assert parte["ligacao_por"] == "nome_exato"
+    assert parte["cnpj_raiz"] == RAIZ_ALFA
+    # a mesma empresa também pela Receita continua uma só
+    receita = _receita((RAIZ_ALFA, "kawa", lig.RAZAO_SOCIAL, False))
+    assert _ligar("Kawa", rede, receita)["cnpj_raiz"] == RAIZ_ALFA
+
+
+def test_nome_fantasia_sem_o_nome_na_razao_social_fica_na_duvida():
+    """Regra 4: "Estante Virtual" era o nome fantasia de um sebo com outra razão social."""
+    sem = _receita(
+        (RAIZ_DELTA, "estante virtual", lig.NOME_FANTASIA, False, None, False)
+    )
+    parte = _ligar("Estante Virtual", receita=sem)
+    assert parte["ligacao_por"] == "na_duvida"
+    assert parte["cnpj_raiz"] is None
+    com = _receita(
+        (RAIZ_DELTA, "estante virtual", lig.NOME_FANTASIA, False, None, True)
+    )
+    assert _ligar("Estante Virtual", receita=com)["ligacao_por"] == "nome_fantasia"
+
+
+def test_cnpj_de_empresa_estrangeira_vira_holding_e_nao_a_parte():
+    """Regra 5: a FOXBIT LLC registrada no Brasil é a holding de fora, não a empresa brasileira."""
+    receita = _receita(
+        (RAIZ_GAMA, "foxbit brasil", lig.RAZAO_SOCIAL, False, None, True, True)
+    )
+    parte = _ligar("Foxbit Brasil", receita=receita)
+    assert parte["ligacao_por"] == "holding_estrangeira"
+    assert parte["candidatos"] == 1
+    assert parte["id_entidade"] is None and parte["cnpj_raiz"] is None
+
+
+def test_cnpj_aberto_depois_do_post_nunca_e_a_parte():
+    """Regra 2: a CDF LTDA abriu em 02/2026, três meses depois da primeira cópia do post."""
+    receita = _receita(
+        (
+            RAIZ_GAMA,
+            "cdf tecnologia",
+            lig.RAZAO_SOCIAL,
+            False,
+            pd.Timestamp("2026-02-04"),
+        )
+    )
+    publico = pd.Series({"u1": pd.Timestamp("2025-11-18 13:08", tz="UTC")})
+    parte = _ligar("CDF Tecnologia", receita=receita, publico_em=publico)
+    assert parte["ligacao_por"] == "aberto_depois_do_negocio"
+    assert parte["id_entidade"] is None and parte["cnpj_raiz"] is None
+    antes = pd.Series({"u1": pd.Timestamp("2026-03-01", tz="UTC")})
+    depois_do_cnpj = _ligar("CDF Tecnologia", receita=receita, publico_em=antes)
+    assert depois_do_cnpj["cnpj_raiz"] == RAIZ_GAMA
+    # sem a data do post, a regra não tem como valer: liga
+    sem_data = _ligar("CDF Tecnologia", receita=receita)
+    assert sem_data["cnpj_raiz"] == RAIZ_GAMA
+    assert "abertura" not in sem_data
 
 
 # --- duplicatas -------------------------------------------------------------------------------------
@@ -347,18 +427,28 @@ def _empresas() -> io.BytesIO:
             [RAIZ_GAMA, "GAMA COMERCIO LTDA", "2062", "49", "10,00", "03", ""],
             [RAIZ_DELTA, "DELTA HOLDING LTDA", "2062", "49", "10,00", "03", ""],
             ["55555555", "OUTRA COISA LTDA", "2062", "49", "10,00", "03", ""],
+            ["66666666", "OMEGA PAGAMENTOS LLC", "2062", "49", "10,00", "05", ""],
         ]
     )
 
 
 def _estabelecimentos() -> io.BytesIO:
-    # básico; ordem; dv; matriz/filial; nome fantasia; situação; ...
+    # básico; ordem; dv; matriz/filial; nome fantasia; situação; data; motivo; cidade; país; início
+    def linha(
+        raiz: str, ordem: str, matriz: str, fantasia: str, inicio: str
+    ) -> list[str]:
+        return [raiz, ordem, "00", matriz, fantasia, "02", "", "", "", "", inicio]
+
     return _zip(
         [
-            [RAIZ_DELTA, "0001", "00", "1", "DELTA", "02"],
-            [RAIZ_DELTA, "0002", "00", "2", "DELTA", "02"],  # filial: liga pela raiz
-            [RAIZ_BETA, "0001", "00", "1", "FULANO", "02"],
-            ["55555555", "0001", "00", "1", "", "02"],
+            linha(RAIZ_DELTA, "0001", "1", "DELTA", "19940613"),
+            linha(
+                RAIZ_DELTA, "0002", "2", "DELTA", "20240101"
+            ),  # filial: liga pela raiz
+            linha(RAIZ_BETA, "0001", "1", "FULANO", "20100101"),
+            linha("55555555", "0001", "1", "", "20000101"),
+            linha("66666666", "0001", "1", "", "20180725"),
+            linha(RAIZ_ALFA, "0001", "1", "", "19660908"),
         ]
     )
 
@@ -374,6 +464,7 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
         "fulano",
         "gama comercio",
         "fulano exemplar 12345678909",
+        "omega pagamentos",
     }
     achados = lig.ler_receita([_empresas()], [_estabelecimentos()], [_simples()], nomes)
     assert list(achados.columns) == list(lig.COLUNAS_DA_RECEITA)
@@ -387,6 +478,13 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
     assert por[(RAIZ_BETA, lig.RAZAO_SOCIAL)].pessoa
     # nenhuma razão social sai do leitor: só o nome da parte, que já estava na página
     assert set(achados["nome_normalizado"]) <= nomes
+    # a abertura é a da matriz (a filial de 2024 não conta)
+    assert por[(RAIZ_DELTA, lig.NOME_FANTASIA)].abertura == pd.Timestamp("1994-06-13")
+    assert por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].abertura == pd.Timestamp("1966-09-08")
+    # nome fantasia "DELTA" e razão social "DELTA HOLDING": a razão social tem o nome
+    assert por[(RAIZ_DELTA, lig.NOME_FANTASIA)].razao_tem_o_nome
+    assert por[("66666666", lig.RAZAO_SOCIAL)].estrangeira
+    assert not por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].estrangeira
 
 
 # --- contrato ---------------------------------------------------------------------------------------
@@ -398,7 +496,7 @@ def test_tabelas_tem_as_colunas_do_dicionario():
 # --- carga ------------------------------------------------------------------------------------------
 PAGINAS = {
     "https://www.igcp.com.br/transactions/a-alfa-oleos-foi-adquirida-pela-delta": pagina(
-        [("alfa-oleos", "Alfa Óleos")], [("delta", "Delta")]
+        [("alfa-oleos", "Alfa Óleos")], [("delta-holding", "Delta Holding")]
     ),
     "https://www.igcp.com.br/transactions/omega-concluiu-a-emissao-de-um-cra": pagina(
         [("omega", "Ômega")]
@@ -474,7 +572,7 @@ def test_carga_liga_as_partes_e_grava_com_manifesto(ambiente, capsys):
     assert RECEITA + "Estabelecimentos0.zip" in urls
     partes = ler_tabela(arquivo).set_index("nome")
     assert partes.loc["Alfa Óleos", "id_entidade"] == ID_ALFA
-    assert partes.loc["Delta", "ligacao_por"] == "nome_fantasia"
+    assert partes.loc["Delta Holding", "ligacao_por"] == "nome_exato"
     assert partes.loc["Ômega", "ligacao_por"] == "sem_ligacao"
     negocios = ler_tabela(ambiente / "ma" / "ligacao" / "negocios.parquet")
     assert len(negocios) == 2

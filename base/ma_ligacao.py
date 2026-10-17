@@ -9,6 +9,18 @@
 3. um candidato só → `nome_exato` ou `nome_fantasia`; mais de um → `na_duvida` (nunca se escolhe);
    nenhum → `sem_ligacao`. O casamento aproximado fica com a prova de conceito do Splink.
 
+**Contra homônimos** (conferência do Tiago, 16/10/2026, `ma-regua-conferencia-2026-10-16.md`: ~22 das 27
+alvos que hoje são ME/EPP eram outra empresa com o mesmo nome curto):
+- regra 1: nome de **uma palavra só** (ou sigla) liga só pela rede; um candidato da Receita conta para a
+  dúvida, mas nunca vira a ligação ("Kawa" não é a KAWA LTDA);
+- regra 4: ligação só pelo nome fantasia vale quando a razão social **tem o nome** do post; senão,
+  `na_duvida` ("Estante Virtual" era o nome fantasia de um sebo);
+- regra 5: razão social de empresa estrangeira registrada no Brasil (AG, BV, LLC, LTD, GmbH...) vira
+  `holding_estrangeira`, sem CNPJ: é a dona de fora, não a empresa brasileira do negócio;
+- regra 2: CNPJ cuja matriz abriu **depois** de o post ficar público (a primeira cópia no Wayback) nunca é
+  a parte: `aberto_depois_do_negocio`, sem CNPJ.
+A regra "ME/EPP fica na dúvida" foi descartada: o porte é declarado pela empresa e fica velho.
+
 **Pessoas** (ADR 0075): empresário individual (213-5), as naturezas do grupo 4 e o MEI contam como
 candidatos (para a dúvida), mas nunca viram a ligação, e nada deles sai do leitor da Receita além da
 raiz. Da Receita sai só a raiz e o nome da parte, que já estava na página da assessoria: nenhuma razão
@@ -162,11 +174,23 @@ def nomes_da_rede(
 
 # --- a Receita --------------------------------------------------------------------------------------
 RAZAO_SOCIAL, NOME_FANTASIA = "razao_social", "nome_fantasia"
-COLUNAS_DA_RECEITA = ("raiz", "nome_normalizado", "por", "pessoa")
+COLUNAS_DA_RECEITA = (
+    "raiz",
+    "nome_normalizado",
+    "por",
+    "pessoa",
+    "abertura",  # início de atividade da matriz
+    "razao_tem_o_nome",  # a razão social contém o nome do post (regra 4)
+    "estrangeira",  # a razão social termina com forma jurídica de fora (regra 5)
+)
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 1_000_000
 RAZAO, NATUREZA = 1, 2  # colunas dos `Empresas*.zip`
-FANTASIA = 4  # coluna dos `Estabelecimentos*.zip`
+FANTASIA, MATRIZ_OU_FILIAL, INICIO = 4, 3, 10  # colunas dos `Estabelecimentos*.zip`
+MATRIZ = "1"
+FORMATO_DA_DATA = "%Y%m%d"
+# a forma jurídica de fora no fim da razão social ("FOXBIT LLC", "DOCK LTD"; "LTDA" é brasileira)
+ESTRANGEIRA = r"\b(AG|B\.? ?V|LLC|L\.L\.C|LTD|LIMITED|GMBH|INC|PLC|N\.? ?V|CORP|CORPORATION)\.?\s*$"
 MEI = 4  # coluna do `Simples.zip` (opção pelo MEI)
 OPTANTE = "S"
 Arquivo = Path | IO[bytes]
@@ -206,18 +230,41 @@ def _pelo_nome(
 
 
 def _das_raizes(
-    arquivos: Sequence[Arquivo], coluna: int, raizes: set[str]
-) -> pd.Series:
-    """raiz → valor da coluna, só das raízes pedidas."""
+    arquivos: Sequence[Arquivo], colunas: list[int], raizes: set[str]
+) -> pd.DataFrame:
+    """raiz → valores das colunas, só das raízes pedidas (a primeira linha de cada raiz)."""
     pedacos = [
-        parte[parte[0].isin(raizes)].set_index(0)[coluna]
+        parte[parte[0].isin(raizes)].set_index(0)[colunas]
         for arquivo in arquivos
-        for parte in partes_do_zip(arquivo, [0, coluna])
+        for parte in partes_do_zip(arquivo, [0, *colunas])
     ]
     if not pedacos:
-        return pd.Series(dtype=object)
+        return pd.DataFrame(columns=colunas, dtype=object)
     valores = pd.concat(pedacos)
     return valores[~valores.index.duplicated()]
+
+
+def _abertura_da_matriz(
+    estabelecimentos: Sequence[Arquivo], raizes: set[str]
+) -> pd.Series:
+    """raiz → data de início de atividade da matriz (a filial abre depois e não conta)."""
+    pedacos = [
+        parte[parte[0].isin(raizes) & (parte[MATRIZ_OU_FILIAL] == MATRIZ)]
+        for arquivo in estabelecimentos
+        for parte in partes_do_zip(arquivo, [0, MATRIZ_OU_FILIAL, INICIO])
+    ]
+    if not pedacos:
+        return pd.Series(dtype="datetime64[ns]")
+    matrizes = pd.concat(pedacos).drop_duplicates(0).set_index(0)[INICIO]
+    return pd.to_datetime(matrizes, format=FORMATO_DA_DATA, errors="coerce")
+
+
+def _tem_o_nome(razoes: pd.Series, nomes: pd.Series) -> list[bool]:
+    """A razão social normalizada contém o nome do post, palavra por palavra?"""
+    return [
+        isinstance(r, str) and isinstance(n, str) and f" {n} " in f" {r} "
+        for r, n in zip(normalizar_nomes(razoes), nomes, strict=True)
+    ]
 
 
 def ler_receita(
@@ -229,24 +276,39 @@ def ler_receita(
     """As raízes cujo nome (razão social ou nome fantasia) normalizado é o nome de uma parte.
 
     `pessoa`: empresário individual, natureza do grupo 4, MEI ou natureza que a Receita não deu (o
-    conservador, como a rede). Lê os arquivos por partes; guarda só raiz e o nome da parte.
+    conservador, como a rede). `abertura`, `razao_tem_o_nome` e `estrangeira` servem às regras contra
+    homônimos. Lê os arquivos por partes; a razão social só é olhada aqui e nunca sai do leitor: sai a
+    raiz, o nome da parte e os indicadores.
     """
     razao = _pelo_nome(empresas, RAZAO, nomes).assign(por=RAZAO_SOCIAL)
     fantasia = _pelo_nome(estabelecimentos, FANTASIA, nomes).assign(por=NOME_FANTASIA)
     achados = pd.concat([razao, fantasia], ignore_index=True)
     raizes = set(achados["raiz"])
-    natureza = achados["raiz"].map(_das_raizes(empresas, NATUREZA, raizes))
-    mei = achados["raiz"].map(_das_raizes(simples, MEI, raizes).str.strip() == OPTANTE)
+    das_empresas = _das_raizes(empresas, [RAZAO, NATUREZA], raizes)
+    natureza = achados["raiz"].map(das_empresas[NATUREZA])
+    razao_social = achados["raiz"].map(das_empresas[RAZAO])
+    mei = achados["raiz"].map(
+        _das_raizes(simples, [MEI], raizes)[MEI].str.strip() == OPTANTE
+    )
     pessoa = (
         natureza.isna()
         | natureza.fillna("").map(natureza_de_pessoa)
         | (mei.fillna(False).astype(bool))
     )
-    return achados.assign(pessoa=pessoa.astype(bool))[list(COLUNAS_DA_RECEITA)]
+    estrangeira = (
+        razao_social.fillna("").str.upper().str.contains(ESTRANGEIRA, regex=True)
+    )
+    return achados.assign(
+        pessoa=pessoa.astype(bool),
+        abertura=achados["raiz"].map(_abertura_da_matriz(estabelecimentos, raizes)),
+        razao_tem_o_nome=_tem_o_nome(razao_social, achados["nome_normalizado"]),
+        estrangeira=estrangeira.astype(bool),
+    )[list(COLUNAS_DA_RECEITA)]
 
 
 # --- a ligação --------------------------------------------------------------------------------------
 NOME_EXATO, NA_DUVIDA, SEM_LIGACAO = "nome_exato", "na_duvida", "sem_ligacao"
+HOLDING_ESTRANGEIRA, ABERTO_DEPOIS = "holding_estrangeira", "aberto_depois_do_negocio"
 
 
 def _candidatos(
@@ -265,35 +327,80 @@ def _candidatos(
         ],
         cnpj_raiz=receita["raiz"],
     )
-    da_receita = da_receita.assign(lei=da_receita["id_entidade"].map(lei))
-    da_rede = rede.assign(por=RAZAO_SOCIAL, pessoa=False)
-    colunas = ["nome_normalizado", "id_entidade", "cnpj_raiz", "lei", "por", "pessoa"]
-    return pd.concat([da_rede[colunas], da_receita[colunas]], ignore_index=True).astype(
-        object
+    da_receita = da_receita.assign(
+        lei=da_receita["id_entidade"].map(lei), da_rede=False
     )
+    da_rede = rede.assign(
+        por=RAZAO_SOCIAL,
+        pessoa=False,
+        da_rede=True,
+        abertura=pd.NaT,
+        razao_tem_o_nome=True,
+        estrangeira=False,
+    )
+    colunas = [
+        "nome_normalizado",
+        "id_entidade",
+        "cnpj_raiz",
+        "lei",
+        "por",
+        "pessoa",
+        "da_rede",
+        "abertura",
+        "razao_tem_o_nome",
+        "estrangeira",
+    ]
+    juntos = pd.concat(
+        [da_rede[colunas], da_receita[colunas]], ignore_index=True
+    ).astype(object)
+    return juntos.assign(abertura=pd.to_datetime(juntos["abertura"], errors="coerce"))
 
 
-def _decidir(grupo: pd.DataFrame) -> dict[str, object]:
+def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
     exato = grupo[grupo["por"] == RAZAO_SOCIAL]
     escolhidos = exato if len(exato) else grupo  # o nome fantasia só sem nome exato
     por_entidade = escolhidos.groupby("id_entidade", sort=True).agg(
         pessoa=("pessoa", "any"),
         cnpj_raiz=("cnpj_raiz", "first"),
         lei=("lei", "first"),
+        da_rede=("da_rede", "any"),
+        abertura=("abertura", "min"),
+        razao_tem_o_nome=("razao_tem_o_nome", "all"),
+        estrangeira=("estrangeira", "any"),
     )
-    vazia: dict[str, object] = dict.fromkeys(("id_entidade", "cnpj_raiz", "lei"))
+    vazia: dict[str, object] = dict.fromkeys(
+        ("id_entidade", "cnpj_raiz", "lei", "abertura")
+    )
     if len(por_entidade) > 1:
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": len(por_entidade)}
     unica = por_entidade.iloc[0]
     if unica["pessoa"]:
         return {**vazia, "ligacao_por": SEM_LIGACAO, "candidatos": 1}
+    so_da_receita = not unica["da_rede"]
+    uma_palavra = " " not in nome
+    fantasia_sem_o_nome = not len(exato) and not unica["razao_tem_o_nome"]
+    if so_da_receita and (uma_palavra or fantasia_sem_o_nome):  # regras 1 e 4
+        return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": 1}
+    if unica["estrangeira"]:  # regra 5
+        return {**vazia, "ligacao_por": HOLDING_ESTRANGEIRA, "candidatos": 1}
     return {
         "id_entidade": por_entidade.index[0],
         "cnpj_raiz": unica["cnpj_raiz"] if pd.notna(unica["cnpj_raiz"]) else None,
         "lei": unica["lei"] if pd.notna(unica["lei"]) else None,
+        "abertura": unica["abertura"],
         "ligacao_por": NOME_EXATO if len(exato) else NOME_FANTASIA,
         "candidatos": 1,
     }
+
+
+def _aberto_depois(tabela: pd.DataFrame, publico_em: pd.Series | None) -> pd.Series:
+    """Regra 2: a matriz abriu depois do dia em que o post ficou público (a primeira cópia)."""
+    if publico_em is None or publico_em.empty:
+        return pd.Series(False, index=tabela.index)
+    dia = pd.to_datetime(publico_em, utc=True).dt.tz_localize(None).dt.normalize()
+    publico = tabela["url"].map(dia)
+    abertura = pd.to_datetime(tabela["abertura"], errors="coerce")
+    return (abertura > publico).fillna(False).astype(bool)
 
 
 def ligar(
@@ -301,26 +408,41 @@ def ligar(
     rede: pd.DataFrame,
     receita: pd.DataFrame,
     fixados: dict[ids.Chave, str] | None = None,
+    publico_em: pd.Series | None = None,
 ) -> pd.DataFrame:
-    """As partes com `id_entidade`, `cnpj_raiz`, `lei`, `ligacao_por` e `candidatos`."""
+    """As partes com `id_entidade`, `cnpj_raiz`, `lei`, `ligacao_por` e `candidatos`.
+
+    `publico_em`: url → quando o post ficou público (a primeira cópia no Wayback), para a regra 2.
+    """
     candidatos = _candidatos(rede, receita, fixados or {})
     decisoes = {
-        nome: _decidir(grupo)
+        str(nome): _decidir(str(nome), grupo)
         for nome, grupo in candidatos[
             candidatos["nome_normalizado"].isin(set(partes_["nome_normalizado"]))
         ].groupby("nome_normalizado")
     }
     sem: dict[str, object] = {
-        **dict.fromkeys(("id_entidade", "cnpj_raiz", "lei")),
+        **dict.fromkeys(("id_entidade", "cnpj_raiz", "lei", "abertura")),
         "ligacao_por": SEM_LIGACAO,
         "candidatos": 0,
     }
     decididas = pd.DataFrame(
         [decisoes.get(n, sem) for n in partes_["nome_normalizado"]],
-        columns=["id_entidade", "cnpj_raiz", "lei", "ligacao_por", "candidatos"],
+        columns=[
+            "id_entidade",
+            "cnpj_raiz",
+            "lei",
+            "abertura",
+            "ligacao_por",
+            "candidatos",
+        ],
         index=partes_.index,
     ).astype(object)
-    tabela = pd.concat([partes_, decididas], axis=1)[list(COLUNAS_DAS_PARTES)]
+    tabela = pd.concat([partes_, decididas], axis=1)
+    depois = _aberto_depois(tabela, publico_em)
+    tabela.loc[depois, ["id_entidade", "cnpj_raiz", "lei"]] = None
+    tabela.loc[depois, "ligacao_por"] = ABERTO_DEPOIS
+    tabela = tabela[list(COLUNAS_DAS_PARTES)]
     return tabela.astype({"candidatos": "int64"}).sort_values(
         ["assessoria", "url", "nome"], ignore_index=True
     )
