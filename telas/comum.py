@@ -112,8 +112,8 @@ log_da_conta = logging.getLogger("tickerlab.conta")
 
 def salvar_na_conta(usuario):
     """Grava favoritos e preferências só quando o usuário muda alguma coisa."""
-    if usuario is None:
-        return
+    if usuario is None or not st.session_state.get("conta_carregada"):
+        return  # sem ter lido a conta, gravar sobrescreveria o que está guardado
     atual = {
         "favoritos": list(st.session_state["favoritos"]),
         "preferencias": {

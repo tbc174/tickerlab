@@ -169,3 +169,35 @@ def test_no_modo_local_a_pagina_de_simulacoes_pede_login():
     ir_para(app, "simulacoes")
     assert not app.exception
     assert any("Entre com a sua conta" in i.value for i in app.info)
+
+
+def test_falha_ao_carregar_a_conta_nao_apaga_os_favoritos(banco, monkeypatch):
+    """Achado 4c do Codex: se a 1ª leitura falha, favoritar depois não sobrescreve a lista guardada."""
+    from telas import dados_da_conta
+
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    abrir_app()
+    ana = id_do_usuario(banco, "ana")
+    with banco.begin() as conexao:
+        repo.salvar_favoritos(conexao, ana, ["AAPL"])
+    original = dados_da_conta.listar_favoritos
+    chamadas = []
+
+    def falha_na_primeira(conexao, usuario_id):
+        chamadas.append(usuario_id)
+        if len(chamadas) == 1:
+            raise RuntimeError("banco fora do ar")
+        return original(conexao, usuario_id)
+
+    monkeypatch.setattr(dados_da_conta, "listar_favoritos", falha_na_primeira)
+    app = abrir_app()  # a 1ª leitura falha: a conta não fica marcada como lida
+    assert not app.exception
+    assert app.session_state["favoritos"] == []
+    with banco.connect() as conexao:
+        assert repo.listar_favoritos(conexao, ana) == ["AAPL"]
+    ir_para(app, "visao_geral")  # a próxima execução lê de novo, e a conta manda
+    assert app.session_state["favoritos"] == ["AAPL"]
+    botao(app, "Favoritar PETR4.SA").click().run()
+    assert not app.exception
+    with banco.connect() as conexao:
+        assert repo.listar_favoritos(conexao, ana) == ["AAPL", "PETR4.SA"]

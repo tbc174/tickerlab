@@ -24,7 +24,7 @@ from telas.comum import (
     _presets_guardados,
     cabecalho_da_pagina,
     carregar_contexto,
-    carregar_dados,
+    carregar_dados_de,
     formatar_pct,
     obter_cdi,
 )
@@ -152,9 +152,11 @@ def _formatar_metrica(metrica):
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def _fechamento_do_indice(indice, periodo, exemplo):
+def _fechamento_do_indice(indice, periodo, exemplo, em_reais):
+    """O fechamento do índice; `em_reais` entra na chave do cache (achado 5b do Codex, 17/10):
+    sem isso, o índice ficava na moeda da 1ª chamada e o ativo na da opção marcada."""
     try:
-        return carregar_dados(indice, periodo)["Close"]
+        return carregar_dados_de(indice, periodo, em_reais)["Close"]
     except (DadosIndisponiveisError, ValueError):
         return None
 
@@ -177,7 +179,10 @@ def _taxa_do_cdi(c):
 def _analisar_com(c, resolucao):
     indice = resolucao["quant.benchmark"]
     benchmark = _fechamento_do_indice(
-        indice, c.periodo, bool(st.session_state.get("usar_exemplo"))
+        indice,
+        c.periodo,
+        bool(st.session_state.get("usar_exemplo")),
+        bool(st.session_state.get("em_reais")),
     )
     cdi = _taxa_do_cdi(c) if resolucao["quant.taxa_livre_de_risco"] == "cdi" else None
     return research_analise.analisar_ativo(c.ticker, c.dados, resolucao, cdi, benchmark)

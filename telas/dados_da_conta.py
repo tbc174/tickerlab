@@ -43,18 +43,24 @@ def carregar_da_conta(usuario):
     """Uma vez por sessão: favoritos e preferências da conta viram o ponto de partida.
 
     Vem antes de `ler_entradas`, então um link compartilhado (que é lido depois) ainda manda.
+    Só marca a conta como carregada depois de ler: se a leitura falha, tenta de novo na próxima
+    execução e, até lá, `salvar_na_conta` não grava nada (senão a lista vazia desta sessão
+    apagaria os favoritos guardados; achado 4c da auditoria do Codex, 17/10/2026).
     """
     if usuario is None or st.session_state.get("conta_carregada"):
         return
-    st.session_state["conta_carregada"] = True
     try:
         with obter_engine().connect() as conexao:
             favoritos = listar_favoritos(conexao, usuario.id)
             preferencias = carregar_preferencias(conexao, usuario.id)
     except Exception:
         log_da_conta.exception("Falha ao carregar os dados da conta")
-        st.warning("Não consegui carregar os favoritos e as preferências da sua conta.")
+        st.warning(
+            "Não consegui carregar os favoritos e as preferências da sua conta. "
+            "Até conseguir, o que você mudar não fica guardado."
+        )
         return
+    st.session_state["conta_carregada"] = True
     lidos = ler_parametros(
         {
             "ticker": str(preferencias.get("ticker", "")),

@@ -119,3 +119,15 @@ def test_meus_dados_lista_e_revoga(banco, monkeypatch):
         assert links.abrir_link(conexao, codigo) is None
         assert links.listar_links(conexao, usuario_id)[0].situacao == "revogado"
     assert not [b for b in app.button if b.key == f"revogar_link_{link.id}"]
+
+
+def test_link_de_outra_ficha_nao_fica_embaixo_da_ficha_nova(banco, monkeypatch):
+    """Achado 2a do Codex: trocar a estratégia não pode deixar o link da ficha anterior à vista."""
+    entrar_como(monkeypatch, "lia", "lia@exemplo.com")
+    app = abrir_app("backtest")
+    app.button(key="compartilhar_ficha_criar").click().run()
+    assert _codigo_mostrado(app)
+    app.selectbox(key="backtest_estrategia").select("MACD").run()
+    assert not app.exception
+    assert not [c for c in app.code if comp.ENDERECO_DA_PAGINA in c.value]
+    assert comp.AVISO_DO_LINK_CRIADO not in _textos(app)
