@@ -3233,7 +3233,7 @@ TABELAS: dict[str, Tabela] = {
         descricao=(
             "Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: "
             "cada revisão é uma linha a mais, que passa a valer em `divulgado_em`. Tabela derivada "
-            "da exportação do acervo, sem coleta nova. O Focus é o anual (\"Selic no fim do ano\"), "
+            'da exportação do acervo, sem coleta nova. O Focus é o anual ("Selic no fim do ano"), '
             "não o por reunião. A meta só muda quando o Copom muda; a manutenção não aparece na série"
         ),
         fonte="Banco Central: SGS (série 432) e Focus (API Olinda, expectativas anuais)",
@@ -3252,13 +3252,25 @@ TABELAS: dict[str, Tabela] = {
             "foi montada. " + COM_VERSAO_DO_CODIGO
         ),
         colunas={
-            "serie": ("`bcb-sgs-432` (meta da Selic) ou `focus-selic-anual` (mediana do Focus)", TEXTO),
-            "referencia": ("Dia a que o valor se refere (no Focus, 31/12 do ano esperado)", DATA),
+            "serie": (
+                "`bcb-sgs-432` (meta da Selic) ou `focus-selic-anual` (mediana do Focus)",
+                TEXTO,
+            ),
+            "referencia": (
+                "Dia a que o valor se refere (no Focus, 31/12 do ano esperado)",
+                DATA,
+            ),
             "valor": ("Taxa ao ano, em % (14,25 = 14,25% ao ano)", "0 a 100"),
             "divulgado_em": ("A safra: quando este valor passou a valer", DATA),
-            "publico_em": ("Igual a `divulgado_em`: quando o valor ficou público", DATA),
+            "publico_em": (
+                "Igual a `divulgado_em`: quando o valor ficou público",
+                DATA,
+            ),
             "origem_coletada_em": ("Quando o acervo registrou a observação", MOMENTO),
-            "origem_sha256": ("SHA-256 da exportação do acervo de onde a tabela saiu", TEXTO),
+            "origem_sha256": (
+                "SHA-256 da exportação do acervo de onde a tabela saiu",
+                TEXTO,
+            ),
             "montado_em": ("Quando a tabela foi montada", MOMENTO),
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
