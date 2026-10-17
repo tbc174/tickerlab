@@ -114,6 +114,7 @@ class Entradas:
     ofertas_160: pd.DataFrame
     ofertas_antigas: pd.DataFrame
     painel: pd.DataFrame
+    ultimo_mes_do_cda: pd.Timestamp | None
     empresa_serie: pd.DataFrame
     eventos: pd.DataFrame
     series: dict[str, pd.DataFrame]
@@ -185,20 +186,24 @@ def _controladoras(leitor: Leitor) -> tuple[pd.DataFrame, set[str]]:
     return dossie.controladoras(ligacoes, entidades, identificadores), pessoas
 
 
-def ler_entradas(leitor: Leitor) -> Entradas:
+def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
     """Tudo o que o dossiê lê da base, uma vez, para todas as empresas."""
     controladoras, pessoas = _controladoras(leitor)
+    controladas = leitor.pasta_inteira("controladas")
     return Entradas(
         empresas=_empresas(
             leitor.arquivo("fca/tickers", ["cnpj", "empresa", "valido_ate"])
         ),
         auditores=leitor.pasta_inteira("auditores"),
         trocas=leitor.arquivo("trocas_de_auditor/trocas"),
-        controladas=leitor.pasta_inteira("controladas"),
-        controladoras=controladoras,
+        controladas=controladas,
+        controladoras=dossie.controladoras_em_dia(controladoras, controladas, hoje),
         ofertas_160=leitor.arquivo("ofertas/resolucao_160"),
         ofertas_antigas=leitor.arquivo("ofertas/antigas"),
         painel=leitor.pasta_inteira("fundos/painel_empresa"),
+        ultimo_mes_do_cda=dossie.ultimo_mes_completo(
+            leitor.arquivo("fundos/cobertura", ["competencia", "valor_comprado"])
+        ),
         empresa_serie=leitor.arquivo("empresa_serie/empresa_serie"),
         eventos=leitor.pasta_inteira(
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
@@ -242,6 +247,7 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
             _do_grupo(ofertas_160, grupo),
             _do_grupo(ofertas_antigas, grupo),
             painel.get(cnpj, VAZIA),
+            entradas.ultimo_mes_do_cda,
         )
 
     return {
@@ -319,7 +325,7 @@ def montar(
 ) -> Resumo:
     """Grava as fichas e o manifesto em `<saida>/<dia>`; devolve quantas e o que falhou."""
     leitor = Leitor(pasta)
-    entradas = ler_entradas(leitor)
+    entradas = ler_entradas(leitor, agora)
     resumo = Resumo(empresas=len(entradas.empresas))
     if entradas.empresas.empty:
         resumo.falhas.append("fca/tickers: sem o universo das empresas")

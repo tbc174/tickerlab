@@ -200,10 +200,10 @@ def test_controladoras_vem_da_rede_sem_pessoas_e_so_vigentes() -> None:
     )
     identificadores = pd.DataFrame(
         {
-            "id_entidade": ["E1"],
-            "sistema": ["cnpj"],
-            "valor": [CNPJ],
-            "ate": [pd.NaT],
+            "id_entidade": ["E1", "E2"],
+            "sistema": ["cnpj", "cnpj"],
+            "valor": [CNPJ, "33333333000133"],
+            "ate": [pd.NaT, pd.NaT],
         }
     )
     ligacoes = pd.DataFrame(
@@ -218,8 +218,63 @@ def test_controladoras_vem_da_rede_sem_pessoas_e_so_vigentes() -> None:
     )
     tabela = dossie.controladoras(ligacoes, entidades, identificadores)
     assert tabela.to_dict("records") == [
+        {
+            "cnpj": CNPJ,
+            "controladora": "State Grid",
+            "participacao": 83.7,
+            "cnpj_controladora": "33333333000133",
+        }
+    ]
+
+
+def _controladas_das_controladoras() -> pd.DataFrame:
+    """O que cada controladora lista no FRE dela: a State Grid em dia, a VBC parou em 2011, a
+    Vendeu S.A. deixou de listar a empresa no FRE de 2026 e a Sócia S.A. a lista como coligada."""
+    return pd.DataFrame(
+        {
+            "cnpj_companhia": ["33333333000133", "44444444000144"]
+            + ["55555555000155"] * 2
+            + ["66666666000166"],
+            "referencia": [D("2026-01-01"), D("2011-01-01")]
+            + [D("2025-01-01"), D("2026-01-01")]
+            + [D("2026-01-01")],
+            "versao": [1, 1, 1, 1, 1],
+            "cnpj": ["02.429.144/0001-93", CNPJ, CNPJ, "99999999000199", CNPJ],
+            "razao_social": ["CPFL Energia"] * 3 + ["Outra", "CPFL Energia"],
+            "tipo": ["controlada"] * 4 + ["coligada"],
+            "participacao": [83.7, 25.55, 40.0, 100.0, 5.0],
+        }
+    )
+
+
+def test_controladora_so_aparece_se_o_fre_recente_dela_ainda_lista_a_empresa() -> None:
+    controladoras = pd.DataFrame(
+        {
+            "cnpj": [CNPJ] * 5,
+            "controladora": ["State Grid", "VBC Energia", "Vendeu S.A.", "Sem CNPJ"]
+            + ["Sócia S.A."],
+            "participacao": [83.7, 25.55, 40.0, 60.0, 5.0],
+            "cnpj_controladora": [
+                "33333333000133",
+                "44444444000144",
+                "55555555000155",
+                None,
+                "66666666000166",
+            ],
+        }
+    )
+    tabela = dossie.controladoras_em_dia(
+        controladoras, _controladas_das_controladoras(), D("2026-10-17")
+    )
+    assert tabela.to_dict("records") == [
         {"cnpj": CNPJ, "controladora": "State Grid", "participacao": 83.7}
     ]
+
+
+def test_controladoras_em_dia_sem_tabelas_fica_vazia() -> None:
+    assert dossie.controladoras_em_dia(
+        pd.DataFrame(), _controladas_das_controladoras(), D("2026-10-17")
+    ).empty
 
 
 # --- ofertas e fundos ----------------------------------------------------------------------------
@@ -298,6 +353,38 @@ def test_oferta_mostra_quem_emitiu() -> None:
     secao = dossie.secao_ofertas_e_fundos(ofertas, pd.DataFrame(), pd.DataFrame())
     assert secao is not None
     assert secao["tabelas"]["ofertas"][0]["emissor"] == "CPFL Energia"
+
+
+def _cobertura(valores: list[float]) -> pd.DataFrame:
+    meses = pd.date_range("2025-01-31", periods=len(valores), freq="ME")
+    return pd.DataFrame({"competencia": meses, "valor_comprado": valores})
+
+
+def test_ultimo_mes_completo_do_cda_tira_o_rabo_que_ainda_esta_chegando() -> None:
+    # 12 meses cheios; os 3 últimos com as carteiras ainda chegando (55%, 54%, 20% do normal)
+    cobertura = _cobertura([100.0] * 12 + [55.0, 54.0, 20.0])
+    assert dossie.ultimo_mes_completo(cobertura) == D("2025-12-31")
+
+
+def test_queda_no_meio_da_serie_nao_corta_o_cda() -> None:
+    # uma queda forte que já passou (crise de mercado) não é carteira faltando
+    cobertura = _cobertura([100.0] * 7 + [50.0] + [100.0] * 6)
+    assert dossie.ultimo_mes_completo(cobertura) == D("2026-02-28")
+
+
+def test_cda_sem_cobertura_nao_corta() -> None:
+    assert dossie.ultimo_mes_completo(pd.DataFrame()) is None
+
+
+def test_fundos_param_no_ultimo_mes_completo() -> None:
+    secao = dossie.secao_ofertas_e_fundos(
+        pd.DataFrame(), pd.DataFrame(), _painel(), ultimo_mes_completo=D("2025-08-31")
+    )
+    assert secao is not None
+    itens = {i["chave"]: i for i in secao["itens"]}
+    assert itens["fundos_com_a_acao"]["valor"] == 400
+    assert itens["fundos_com_a_acao"]["base"] == "2025-08-31"
+    assert len(secao["tabelas"]["fundos_por_mes"]) == 1
 
 
 def test_sem_ofertas_nem_fundos_nao_tem_a_secao() -> None:
