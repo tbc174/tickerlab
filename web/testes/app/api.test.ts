@@ -225,7 +225,7 @@ describe("tipos das respostas", () => {
     expect(Object.keys(simulacao).sort()).toEqual(campos("SimulacaoV1"));
   });
 
-  it("Pulse (estratégias acompanhadas) bate com o OpenAPI", () => {
+  it("Pulse (estratégias, acontecimentos e variação) bate com o OpenAPI", () => {
     const pulse: PulseV1 = {
       janela: { inicio: "2026-10-02T23:00:00Z", fim: "2026-10-09T23:00:00Z", primeira_vez: true, texto: "" },
       estrategias: [
@@ -241,15 +241,36 @@ describe("tipos das respostas", () => {
           endereco: "/backtest?ticker=PETR4.SA",
         },
       ],
-      limites: { sem_ficha: 0, alem_do_maximo: 0, nao_conferidas: 0 },
+      limites: { sem_ficha: 0, alem_do_maximo: 0, nao_conferidas: 0, alem_dos_ativos: 0 },
       avisos: [],
       sem_estrategias: "",
       notas: [],
+      acontecimentos: [
+        {
+          id: "cvm_ipe:1",
+          ticker: "PETR4",
+          empresa: "Petrobras",
+          tipo: "Fato Relevante",
+          titulo: "",
+          publicado_em: "2026-10-08",
+          fonte: "CVM",
+          link_do_original: null,
+          relevancia: 0.7,
+          por_que_aparece: [],
+        },
+      ],
+      variacoes: [{ ticker: "PETR4", variacao: 0.01, de: "2026-10-05", ate: "2026-10-09", por_que_aparece: [] }],
+      avisos_dos_ativos: [],
+      sem_variacao: [],
+      sem_ativos: "",
+      nota_da_variacao: "",
     };
     expect(Object.keys(pulse).sort()).toEqual(campos("PulseV1"));
     expect(Object.keys(pulse.janela).sort()).toEqual(campos("JanelaV1"));
     expect(Object.keys(pulse.estrategias[0]).sort()).toEqual(campos("EstrategiaAcompanhadaV1"));
     expect(Object.keys(pulse.limites).sort()).toEqual(campos("LimitesDoPulseV1"));
+    expect(Object.keys(pulse.acontecimentos?.[0] ?? {}).sort()).toEqual(campos("AcontecimentoV1"));
+    expect(Object.keys(pulse.variacoes[0]).sort()).toEqual(campos("VariacaoV1"));
   });
 
   it("Ficha do backtest (exemplo do Python) bate com o OpenAPI", () => {

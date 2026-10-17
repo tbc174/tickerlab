@@ -175,7 +175,25 @@ def ativos_da_pessoa(
     return tuple(todos[:maximo]), max(len(todos) - maximo, 0)
 
 
+SEM_ATIVOS = (
+    "Ainda não há nenhum ativo guardado. O Pulse acompanha os seus favoritos, as listas do "
+    "Research, a carteira guardada (Pro) e os ativos das estratégias salvas."
+)
+
+
+def aviso_dos_ativos_de_fora(fora: int) -> str:
+    return (
+        f"O Pulse acompanha até {MAXIMO_DE_ATIVOS} ativos; {fora} ficaram de fora "
+        "(valem os favoritos, depois a carteira, as listas e as estratégias)."
+    )
+
+
 # --- variação -------------------------------------------------------------------------------
+
+NOTA_DA_VARIACAO = (
+    "Do último fechamento que já existia na hora da sua visita até o último fechamento de "
+    "hoje, na moeda do ativo e sem os proventos."
+)
 
 
 @dataclass(frozen=True)

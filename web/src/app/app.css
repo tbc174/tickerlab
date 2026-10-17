@@ -126,7 +126,18 @@
 .selo-da-mudanca { font-weight: 700; }
 .tese-ligada { font-size: .88rem; color: var(--apagado); white-space: pre-line; }
 .salvar-simulacao .formulario-do-app { margin: .75rem 0; }
-.salvar-simulacao input { min-width: min(24rem, 100%); }
+/* o nome sugerido ("Cruzamento de médias · PETR4.SA · 2 anos") cabe inteiro: o rótulo cresce até 36rem
+   (um min-width em % dentro de um rótulo que encolhe vira zero, e o campo ficava com a largura padrão) */
+.salvar-simulacao label { flex: 1 1 22rem; max-width: 36rem; }
+.salvar-simulacao input { width: 100%; }
+/* Workspace (PR 3): os acontecimentos novos (o documento original e o "por que aparece" à mão) */
+.lista-de-acontecimentos { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .6rem; }
+.lista-de-acontecimentos > li { padding: .6rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); }
+.lista-de-acontecimentos > li p { margin: 0 0 .25rem; }
+.titulo-do-acontecimento { font-weight: 600; overflow-wrap: anywhere; }
+.por-que-aparece { margin-top: .35rem; font-size: .86rem; color: var(--apagado); }
+.por-que-aparece summary { cursor: pointer; }
+.por-que-aparece ul { margin: .3rem 0 0; padding-left: 1.1rem; }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
 .textos-legais { display: flex; gap: 1.2rem; flex-wrap: wrap; }
 .texto-legal { font-weight: 600; }
