@@ -16,10 +16,13 @@ PARES = "pares"
 CARTEIRA_NO_RESEARCH = (
     "carteira_no_research"  # Research, etapa 5 (PRD, seção 15: no Pro)
 )
+# relatório da empresa: as seções da base de ML (auditor, ofertas, setor regulado, negócios), ADR 0076
+DOSSIE_DA_BASE = "dossie_da_base"
 NOMES_DOS_RECURSOS = {
     APRENDIZADO_DE_MAQUINA: "Aprendizado de máquina",
     PARES: "Pairs trading",
     CARTEIRA_NO_RESEARCH: "Carteira no Research",
+    DOSSIE_DA_BASE: "Dossiê da base",
 }
 
 
@@ -80,7 +83,9 @@ LIMITES_DOS_PLANOS = {
         simulacoes=None,
         favoritos=20,
         ativos_na_carteira=8,
-        recursos=frozenset({APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH}),
+        recursos=frozenset(
+            {APRENDIZADO_DE_MAQUINA, PARES, CARTEIRA_NO_RESEARCH, DOSSIE_DA_BASE}
+        ),
         relatorios_por_dia=None,
         tipos_de_relatorio=frozenset(TIPOS_DE_RELATORIO),
         ativos_com_parametros=50,
@@ -290,6 +295,7 @@ def tabela_de_planos() -> list[dict[str, str]]:
         linha("Aprendizado de máquina", sim_nao(APRENDIZADO_DE_MAQUINA)),
         linha("Pairs trading", sim_nao(PARES)),
         linha("Carteira no Research", sim_nao(CARTEIRA_NO_RESEARCH)),
+        linha("Dossiê da base", sim_nao(DOSSIE_DA_BASE)),
         linha("Parâmetros só para um ativo", lambda l: str(l.ativos_com_parametros)),
         linha(
             "Listas do Research",
