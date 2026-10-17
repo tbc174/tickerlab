@@ -5,6 +5,8 @@ import json
 import numpy as np
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from src import graficos, marca
 from src.graficos import (
@@ -33,6 +35,7 @@ from src.graficos import (
     criar_mapa_de_calor_de_correlacao,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
+    dias_sem_pregao,
 )
 from src.indicadores import (
     NOMES_DOS_MESES,
@@ -153,6 +156,30 @@ def test_dia_util_esconde_o_fim_de_semana_mas_cripto_nao():
     cripto = criar_grafico_preco(_ohlcv(10, fim_de_semana=True))
     assert len(acao.layout.xaxis.rangebreaks) == 1
     assert not cripto.layout.xaxis.rangebreaks
+
+
+def test_feriado_sem_pregao_nao_deixa_buraco_entre_as_velas():
+    # 07/09 (Independência) e 12/10 (Aparecida) caem em dia útil, mas a B3 não abre: o eixo
+    # precisa pular esses dias como pula o fim de semana, senão sobra um vão vazio no gráfico
+    datas = pd.bdate_range("2026-09-01", "2026-10-16")
+    feriados = pd.to_datetime(["2026-09-07", "2026-10-12"])
+    dados = _ohlcv(len(datas)).set_axis(datas).drop(feriados)
+
+    figura = criar_grafico_preco(dados, tipo="velas")
+
+    escondidos = [q for q in figura.layout.xaxis.rangebreaks if q.values]
+    assert len(escondidos) == 1
+    assert pd.to_datetime(list(escondidos[0].values)).equals(pd.DatetimeIndex(feriados))
+
+
+def test_dias_sem_pregao_so_os_dias_uteis_que_faltam():
+    datas = pd.bdate_range("2026-12-21", "2026-12-31").drop(
+        pd.to_datetime(["2026-12-24", "2026-12-25", "2026-12-31"])
+    )
+    faltam = dias_sem_pregao(pd.DatetimeIndex(datas))
+    # 31/12 não entra: é o último dia pedido, mas fica depois do último pregão
+    assert list(faltam) == list(pd.to_datetime(["2026-12-24", "2026-12-25"]))
+    assert dias_sem_pregao(pd.DatetimeIndex([])).empty
 
 
 def test_tipo_de_grafico_invalido():
@@ -824,3 +851,26 @@ def test_botao_ativo_do_periodo_le_bem_no_claro():
     assert (
         seletor.activecolor == "#c7d6ff"
     )  # texto marinho sobre azul claro (no escuro: elétrico)
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    dias=st.integers(min_value=3, max_value=400),
+    sorteio=st.sets(st.integers(min_value=1, max_value=398), max_size=30),
+    tipo=st.sampled_from(["linha", "velas"]),
+)
+def test_nenhum_dia_util_fica_vazio_no_eixo(dias, sorteio, tipo):
+    # a regra que não pode voltar a falhar: entre o primeiro e o último pregão, todo dia útil
+    # ou tem vela/ponto, ou está escondido no eixo; e nenhum dia com pregão é escondido.
+    # Vale para velas diárias e semanais (acima de LIMITE_DE_VELAS_DIARIAS) e para a linha.
+    datas = pd.bdate_range("2024-01-02", periods=dias)
+    sem_pregao = datas[[i for i in sorted(sorteio) if i < dias - 1]]
+    dados = _ohlcv(dias).set_axis(datas).drop(sem_pregao)
+
+    figura = criar_grafico_preco(dados, tipo=tipo)
+
+    escondidos = pd.DatetimeIndex(
+        [d for q in figura.layout.xaxis.rangebreaks if q.values for d in q.values]
+    )
+    assert set(escondidos) == set(sem_pregao)
+    assert not set(escondidos) & set(pd.to_datetime(list(figura.data[0].x)))
