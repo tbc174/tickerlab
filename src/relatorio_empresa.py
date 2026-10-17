@@ -6,6 +6,10 @@ por quê; as notas da ADR 0033 vêm ao lado, com o padrão e o aviso; o selo de 
 há achado aberto. Junta o que já existe: indicadores da tela (`src/fundamentos.py`), os cálculos novos
 (`src/fundamentalista.py`), as notas clássicas, os padrões e as notas, o valuation e o FRE.
 
+As seções do dossiê da base (auditor, ofertas, setor regulado, negócios; plano do dossiê da empresa no
+app, 17/10/2026) vêm depois de "Acontecimentos recentes" e são **trancadas aqui, no servidor**: quem não
+é Pro recebe só os títulos e o convite, sem nenhum número, na página, no PDF e na API.
+
 Premissas padrão do valuation (a pessoa troca na página): desconto de 12% ao ano, perpetuidade de 3%,
 10 anos de projeção e crescimento de 5% no DCF. São um ponto de partida declarado, não uma opinião.
 """
@@ -21,6 +25,7 @@ from src.banco.demonstracoes import DadosDaEmpresa
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
 from src.padroes import INDICADORES, MULTIPLOS
+from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
@@ -94,6 +99,10 @@ LIMITES = (
     ),
     "Bancos e seguradoras têm outro plano de contas: vários indicadores não se aplicam a eles.",
 )
+CONVITE_DO_DOSSIE = (
+    "Com ele, esta seção mostra o que a base do TickerLab reuniu da companhia nos dados abertos da "
+    "CVM e das agências reguladoras, com a fonte de cada número."
+)
 
 
 @dataclass(frozen=True)
@@ -124,6 +133,18 @@ class Secao:
     itens: list[Item] = field(default_factory=list)
     paragrafos: list[str] = field(default_factory=list)
     tabelas: dict[str, list[dict]] = field(default_factory=dict)
+    trancada: bool = False  # só o título e o convite: o plano não inclui a seção
+
+
+@dataclass(frozen=True)
+class Dossie:
+    """As seções do dossiê da base (a ficha da noite, de `src/dossie.py`), antes da tranca do plano."""
+
+    secoes: list[Secao]
+    fontes: tuple[str, ...]
+    limites: list[str]
+    dia: date
+    velha: bool  # a ficha não chegou nas últimas noites
 
 
 @dataclass(frozen=True)
@@ -160,6 +181,7 @@ class Entradas:
     proventos: pd.DataFrame | None = None  # do FRE
     eventos_de_capital: pd.DataFrame | None = None  # do FRE
     pares: pd.DataFrame | None = None  # cnpj, empresa, receita (do mesmo grupo)
+    dossie: Dossie | None = None  # a ficha da base do CNPJ (`src/dossie.py`)
     premissas: Premissas = field(default_factory=Premissas)
 
 
@@ -689,9 +711,40 @@ def _metodologia() -> Secao:
     ])  # fmt: skip
 
 
-def montar(entradas: Entradas) -> Relatorio:
-    """O relatório completo de uma empresa, pronto para a página, o PDF e a API."""
+def _data_do_dossie(d: Dossie) -> str:
+    if d.velha:
+        return (
+            f"Dados da base do TickerLab de {d.dia:%d/%m/%Y}: a atualização das últimas noites não "
+            "chegou, então os números podem estar atrasados."
+        )
+    return f"Dados da base do TickerLab de {d.dia:%d/%m/%Y}."
+
+
+def _secoes_do_dossie(e: Entradas, plano: str | None) -> list[Secao]:
+    """As seções da base: inteiras para o Pro; para os outros, só o título e o convite."""
+    if e.dossie is None:
+        return []
+    motivo = motivo_sem_acesso(plano, DOSSIE_DA_BASE)
+    if motivo is not None:
+        convite = [f"{motivo} {CONVITE_DO_DOSSIE}"]
+        return [
+            Secao(s.chave, s.titulo, paragrafos=convite, trancada=True)
+            for s in e.dossie.secoes
+        ]
+    data = _data_do_dossie(e.dossie)
+    return [replace(s, paragrafos=[data, *s.paragrafos]) for s in e.dossie.secoes]
+
+
+def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
+    """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
+
+    `plano` é o de quem vai ver (None vale como Gratuito): só o Pro recebe os números do dossiê.
+    """
     c = _calcular(entradas)
+    do_dossie = _secoes_do_dossie(entradas, plano)
+    mostrado = entradas.dossie if any(not s.trancada for s in do_dossie) else None
+    limites = [*LIMITES, *(mostrado.limites if mostrado else [])]
+    fontes = (*FONTES, *(mostrado.fontes if mostrado else ()))
     secoes = [
         _resumo(c),
         *(
@@ -704,11 +757,12 @@ def montar(entradas: Entradas) -> Relatorio:
         _dividendos(c),
         _historico(c),
         _eventos(entradas),
+        *do_dossie,
         _qualidade(entradas),
         _o_que_mudou(entradas, c),
         _pares(entradas, c),
         _metodologia(),
-        Secao("limites", SECOES["limites"], paragrafos=list(LIMITES)),
+        Secao("limites", SECOES["limites"], paragrafos=limites),
     ]
     _graficos_de_contas(c, secoes)
     return Relatorio(
@@ -718,7 +772,7 @@ def montar(entradas: Entradas) -> Relatorio:
         setor=entradas.dados.setor,
         grupo=NOMES.get(c.grupo, c.grupo),
         secoes=secoes,
-        fontes=FONTES,
+        fontes=tuple(dict.fromkeys(fontes)),
         aviso_das_notas=notas.AVISO,
         em_conferencia=bool(entradas.achados),
     )

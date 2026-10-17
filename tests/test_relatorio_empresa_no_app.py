@@ -107,3 +107,50 @@ def test_plano_pro_registra_guarda_o_original_e_reabre_na_pagina(banco, monkeypa
     app.button(key=f"estudio_reabrir_{item.id}").click().run()
     assert not app.exception
     assert [s.value for s in app.subheader][:1] == [SECOES["resumo"]]  # voltou à página
+
+
+# --- dossiê da base (plano do dossiê da empresa no app, PR 3) ---------------------------------------
+
+
+def _ficha_da_petrobras(tmp_path, monkeypatch):
+    """A ficha de exemplo (CPFL) gravada como se fosse a da Petrobras, na pasta das fichas."""
+    import json
+
+    from src import dossie
+
+    bruta = json.loads(dossie.FICHA_DE_EXEMPLO.read_text(encoding="utf-8"))
+    atual = tmp_path / "atual"
+    atual.mkdir()
+    (atual / "33000167000101.json").write_text(
+        json.dumps(bruta | {"cnpj": "33000167000101"}), encoding="utf-8"
+    )
+    monkeypatch.setenv("TICKERLAB_DOSSIES", str(tmp_path))
+
+
+def test_no_modo_local_mostra_o_dossie_da_base(banco, tmp_path, monkeypatch):
+    _coletar(banco)
+    _ficha_da_petrobras(tmp_path, monkeypatch)
+    app = _abrir("PETR4.SA")
+    assert not app.exception
+    titulos = [s.value for s in app.subheader]
+    assert (
+        titulos.index("Auditor e controladas") == titulos.index(SECOES["eventos"]) + 1
+    )
+    assert "R$ 495,2 mi" in [m.value for m in app.metric]
+    assert "Fundos com a empresa, mês a mês" in [e.label for e in app.expander]
+
+
+def test_plano_gratuito_ve_o_convite_sem_os_numeros(banco, tmp_path, monkeypatch):
+    _coletar(banco)
+    _ficha_da_petrobras(tmp_path, monkeypatch)
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    app = abrir_app("relatorio_empresa")
+    assert not app.exception
+    assert "Auditor e controladas" in [s.value for s in app.subheader]
+    assert any("plano Pro" in i.value for i in app.info)
+    assert "R$ 495,2 mi" not in [m.value for m in app.metric]
+    assert "PRICEWATERHOUSECOOPERS" not in _textos(app) + " ".join(
+        m.value for m in app.metric
+    )
+    rotulos = [link.proto.label for link in app.get("page_link")]
+    assert rotulos.count("Conhecer o plano Pro") == 1

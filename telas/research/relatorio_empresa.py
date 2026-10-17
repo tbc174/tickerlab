@@ -2,6 +2,8 @@
 
 A tela só lê do banco e desenha o `Relatorio` de `src/relatorio_empresa.py`, seção por seção, na
 mesma ordem do PDF e da futura API. Por enquanto só as empresas da B3 (os padrões e o FRE são da CVM).
+O relatório é montado com o plano de quem vê: as seções do dossiê da base chegam trancadas (só o
+título e o convite) para quem não é Pro.
 """
 
 import logging
@@ -11,7 +13,7 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import exc as sa_exc
 
-from src import eventos_sec, graficos, relatorios
+from src import dossie, eventos_sec, graficos, relatorios
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
@@ -37,6 +39,7 @@ from telas.comum import (
     cabecalho_da_pagina,
     carregar_contexto,
     mostrar_grafico,
+    plano_atual,
 )
 from telas.research.comum import _ainda_nao_coletado, _sem_banco_agora
 
@@ -96,8 +99,18 @@ def _mostrar_item(coluna, item: Item) -> None:
         )
 
 
+def _titulo_da_tabela(chave: str) -> str:
+    if chave in dossie.TITULOS_DAS_TABELAS:
+        return dossie.titulo_da_tabela(chave)
+    return nome_da_tabela(chave)
+
+
 def _mostrar_secao(secao: Secao) -> None:
     st.subheader(secao.titulo)
+    if secao.trancada:
+        for paragrafo in secao.paragrafos:
+            st.info(paragrafo, icon=":material/workspace_premium:")
+        return
     for inicio in range(0, len(secao.itens), ITENS_POR_LINHA):
         linha = secao.itens[inicio : inicio + ITENS_POR_LINHA]
         for coluna, item in zip(st.columns(ITENS_POR_LINHA), linha, strict=False):
@@ -115,7 +128,7 @@ def _mostrar_secao(secao: Secao) -> None:
                 )
             )
             continue
-        with st.expander(nome_da_tabela(chave)):
+        with st.expander(_titulo_da_tabela(chave)):
             st.dataframe(_tabela_escrita(linhas), hide_index=True, width="stretch")
 
 
@@ -170,8 +183,16 @@ def _mostrar(relatorio: Relatorio) -> None:
             "Qualidade dos dados.",
             icon=":material/fact_check:",
         )
-    for secao in relatorio.secoes:
+    for secao, seguinte in zip(
+        relatorio.secoes, [*relatorio.secoes[1:], None], strict=True
+    ):
         _mostrar_secao(secao)
+        if secao.trancada and not (seguinte and seguinte.trancada):
+            st.page_link(  # um convite depois das seções trancadas, não um por seção
+                PAGINAS_DO_MENU["planos"],
+                label="Conhecer o plano Pro",
+                icon=":material/workspace_premium:",
+            )
     st.caption("Fontes: " + "; ".join(relatorio.fontes) + ". Nada aqui é recomendação.")
 
 
@@ -252,7 +273,7 @@ def pagina_relatorio_empresa():
     entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
     if entradas is None:
         return
-    relatorio = montar(replace(entradas, premissas=_premissas()))
+    relatorio = montar(replace(entradas, premissas=_premissas()), plano_atual())
     _oferecer_o_pdf(relatorio)
     _mostrar(relatorio)
     st.page_link(

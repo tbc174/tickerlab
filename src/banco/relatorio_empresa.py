@@ -2,7 +2,7 @@
 
 Uma consulta por pedaço: demonstrações, achados abertos, acontecimentos recentes, FRE, padrões do
 corte mais recente até `hoje` e os pares do mesmo grupo de setores com a receita do último ano. A
-montagem do relatório fica em `src/relatorio_empresa.py` (sem banco).
+ficha do dossiê da base vem do arquivo da noite (`src/dossie.py`), não do banco. A montagem do relatório fica em `src/relatorio_empresa.py` (sem banco).
 """
 
 from datetime import date, datetime
@@ -18,6 +18,7 @@ from src.banco.modelo import demonstracoes, documentos_financeiros, eventos, set
 from src.banco.padroes import padroes_em
 from src.banco.qualidade import achados_de
 from src.demonstracoes import EXERCICIO
+from src.dossie import dossie_da_ficha, ficha_do
 from src.relatorio_empresa import QUANTOS_EVENTOS, Entradas
 from src.setores import SEM_GRUPO, grupo_do_setor
 
@@ -83,7 +84,9 @@ def entradas_do_relatorio(
         return None
     cnpj, nome = empresa
     dados = dados_da_empresa(conexao, cnpj)
-    corte, padroes = padroes_em(conexao, hoje or datetime.now(FUSO).date())
+    hoje = hoje or datetime.now(FUSO).date()
+    corte, padroes = padroes_em(conexao, hoje)
+    ficha = ficha_do(cnpj)  # o plano tranca na montagem (`montar`), não aqui
     return Entradas(
         dados=dados,
         cnpj=cnpj,
@@ -97,4 +100,5 @@ def entradas_do_relatorio(
         proventos=proventos_de(conexao, cnpj),
         eventos_de_capital=eventos_de(conexao, cnpj),
         pares=pares_do_grupo(conexao, dados.setor),
+        dossie=None if ficha is None else dossie_da_ficha(ficha, hoje),
     )

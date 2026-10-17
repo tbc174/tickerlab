@@ -6,23 +6,37 @@ com cada número escrito: a página do site, o PDF e a tela do app leem a mesma 
 
 Uma ficha que não abre, fora do esquema ou de uma versão desconhecida não é mostrada (`None`): melhor
 nenhuma seção do que uma seção errada.
+
+No VPS (plano do dossiê da empresa no app, PR 3), as fichas chegam de casa toda noite em
+`dados_locais/dossies/<dia>/`, e o link `atual` aponta para a última noite completa (`TICKERLAB_DOSSIES`
+troca a pasta). `ficha_do` lê a do CNPJ e passa de novo pelas regras da base: seção fora do registro
+ou tabela que não pode ser mostrada sai; CPF ou coluna de pessoa barra a ficha inteira.
 """
 
 import json
 import logging
+import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ValidationError
 
 from base import dossie as dossie_da_base
+from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
-from src.relatorio_empresa import Item, Secao
+from src.relatorio_empresa import Dossie, Item, Secao
 
 log = logging.getLogger(__name__)
 
 VERSOES_CONHECIDAS = frozenset({1})
+PASTA_PADRAO = PASTA_RAIZ / "dados_locais" / "dossies"
+TAMANHO_MAXIMO = 2_000_000  # bytes; a maior ficha tem dezenas de KB
+TAMANHO_DO_CNPJ = 14
+DIAS_ATE_FICAR_VELHA = 3
+FUSO = ZoneInfo("America/Sao_Paulo")
 FICHA_DE_EXEMPLO = (
     Path(__file__).resolve().parent.parent
     / "dados_de_exemplo"
@@ -110,6 +124,75 @@ def ler_ficha(caminho: Path) -> Ficha | None:
     except ValidationError:
         log.warning("ficha do dossiê fora do esquema: %s", caminho)
         return None
+
+
+def pasta_das_fichas() -> Path:
+    return Path(os.environ.get("TICKERLAB_DOSSIES") or PASTA_PADRAO)
+
+
+def ficha_do(cnpj: str, pasta: Path | None = None) -> Ficha | None:
+    """A ficha do CNPJ (formatado ou não) já conferida e cortada; None se não há ou não deve aparecer."""
+    digitos = re.sub(r"\D", "", cnpj)
+    if len(digitos) != TAMANHO_DO_CNPJ:
+        return None
+    caminho = (pasta or pasta_das_fichas()) / "atual" / f"{digitos}.json"
+    try:
+        if caminho.stat().st_size > TAMANHO_MAXIMO:
+            log.warning("ficha do dossiê grande demais: %s", caminho)
+            return None
+    except OSError:
+        return None  # a empresa não tem ficha (ou a pasta ainda não chegou)
+    ficha = ler_ficha(caminho)
+    if ficha is None:
+        return None
+    if ficha.cnpj != digitos:
+        log.warning("ficha do dossiê com outro CNPJ dentro: %s", caminho)
+        return None
+    ficha = _so_o_que_pode_mostrar(ficha)
+    try:
+        # os nomes das entidades-pessoa ficam no servidor de casa; aqui valem o CPF e as colunas
+        dossie_da_base.conferir_sem_pessoas(ficha.model_dump(mode="json"), set())
+    except dossie_da_base.PessoaNaFichaError as erro:
+        log.warning("ficha do dossiê barrada (%s): %s", erro, caminho)
+        return None
+    return cortar(ficha)
+
+
+_REGISTRO = {secao.chave: secao for secao in dossie_da_base.SECOES}
+_TABELA_DA_SERIE = {
+    serie.nome: serie.tabela for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+
+
+def _tabela_pode_sair(chave: str) -> bool:
+    """A tabela da ficha tem colunas declaradas e, se é série de agência, a fonte é vendável."""
+    if chave in _TABELA_DA_SERIE:
+        return dossie_da_base.pode_mostrar(_TABELA_DA_SERIE[chave])
+    return chave in COLUNAS
+
+
+def _so_o_que_pode_mostrar(ficha: Ficha) -> Ficha:
+    """Tira a seção fora do registro ou que lê tabela proibida, e a tabela que não pode sair.
+
+    As séries das agências são vistas uma a uma: uma fonte que deixa de ser vendável tira só a
+    série dela, não o setor regulado inteiro.
+    """
+    series = set(_TABELA_DA_SERIE.values())
+    secoes = []
+    for secao in ficha.secoes:
+        registrada = _REGISTRO.get(secao.chave)
+        lidas = set(registrada.tabelas) - series if registrada else set()
+        if registrada is None or not all(dossie_da_base.pode_mostrar(t) for t in lidas):
+            log.warning("seção do dossiê que não pode ser mostrada: %s", secao.chave)
+            continue
+        tabelas = {k: v for k, v in secao.tabelas.items() if _tabela_pode_sair(k)}
+        if len(tabelas) < len(secao.tabelas):
+            log.warning(
+                "tabelas do dossiê que não podem ser mostradas: %s",
+                sorted(set(secao.tabelas) - set(tabelas)),
+            )
+        secoes.append(secao.model_copy(update={"tabelas": tabelas}))
+    return ficha.model_copy(update={"secoes": secoes})
 
 
 # --- cortes ----------------------------------------------------------------------------------------
@@ -361,3 +444,36 @@ def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
 
 def dia_da_ficha(ficha: Ficha) -> date:
     return ficha.gerado_em.date()
+
+
+def limites_da_ficha(ficha: Ficha) -> list[str]:
+    """Os cuidados com os números do dossiê (vão em "Limites e cuidados", no app e na amostra)."""
+    return [
+        (
+            f"Os números são da base do TickerLab em {ficha.gerado_em:%d/%m/%Y} e mudam quando a "
+            "companhia reapresenta um documento ou um fundo entrega uma carteira atrasada."
+        ),
+        (
+            "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos "
+            "documentos é escrito pela própria companhia, e os documentos de negócios são "
+            "escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum."
+        ),
+        (
+            "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos "
+            "anteriores: um ano antigo pode contar uma distribuidora comprada depois."
+        ),
+        "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
+    ]
+
+
+def dossie_da_ficha(ficha: Ficha, hoje: date | None = None) -> Dossie:
+    """A ficha (já de `ficha_do`) pronta para o relatório; velha com mais de 3 dias."""
+    hoje = hoje or datetime.now(FUSO).date()
+    dia = dia_da_ficha(ficha)
+    return Dossie(
+        secoes=secoes_da_ficha(ficha),
+        fontes=tuple(dict.fromkeys(f for s in ficha.secoes for f in s.fontes)),
+        limites=limites_da_ficha(ficha),
+        dia=dia,
+        velha=(hoje - dia).days > DIAS_ATE_FICAR_VELHA,
+    )

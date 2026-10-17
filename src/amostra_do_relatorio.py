@@ -35,26 +35,12 @@ AVISO = (
 
 
 def _limites(ficha: dossie.Ficha) -> list[str]:
-    dia = f"{ficha.gerado_em:%d/%m/%Y}"
     return [
         (
             "Nada aqui é recomendação de investimento. Os destaques descrevem o que a companhia, "
             "os fundos e as agências entregaram; não dizem se é bom ou ruim nem o que vai acontecer."
         ),
-        (
-            f"Os números são da base do TickerLab em {dia} e mudam quando a companhia reapresenta "
-            "um documento ou um fundo entrega uma carteira atrasada."
-        ),
-        (
-            "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos "
-            "documentos é escrito pela própria companhia, e os documentos de negócios são "
-            "escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum."
-        ),
-        (
-            "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos "
-            "anteriores: um ano antigo pode contar uma distribuidora comprada depois."
-        ),
-        "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
+        *dossie.limites_da_ficha(ficha),
     ]
 
 
