@@ -1,6 +1,7 @@
 """Análise do dia do boletim (`base/boletim/analises.py`): cada cruzamento com uma base pequena feita à
 mão, o rodízio e as travas (só tabelas permitidas, nenhum nome de empresa no que sai)."""
 
+import json
 from datetime import date
 
 import pandas as pd
@@ -8,15 +9,19 @@ import pytest
 
 from base.boletim import analises as an
 from base.boletim import fotografia as fo
+from base.porta import Porta
 
 HOJE = date(2026, 10, 17)
 NOME_SECRETO = "EMPRESA QUE NAO PODE APARECER SA"
 
 
-def _grava(raiz, nome, tabela):
+def _grava(raiz, nome, tabela, origens=None):
     destino = raiz / f"{nome}.parquet"
     destino.parent.mkdir(parents=True, exist_ok=True)
     tabela.to_parquet(destino, index=False)
+    if origens is not None:  # o manifesto, só com o que o boletim lê dele
+        texto = json.dumps({"linhas": len(tabela), "origens": origens})
+        destino.with_suffix(".json").write_text(texto, encoding="utf-8")
 
 
 @pytest.fixture
@@ -30,26 +35,29 @@ def raiz(tmp_path):
     }))  # fmt: skip
     _grava(r, "pgfn_divida/2026-03/a", pd.DataFrame({
         "tipo_divida": ["X"], "ajuizado": [True], "inscricoes": [9], "valor_consolidado": [1.0], "trata_como_pessoa": [False],
-    }))  # fmt: skip
+        "origem_sha256": ["antigo"],
+    }), origens=[{"url": "x", "sha256": "antigo"}])  # fmt: skip
     _grava(r, "pgfn_divida/2026-06/a", pd.DataFrame({
         "tipo_divida": ["Previdenciária", "Previdenciária", "Não previdenciária"],
         "ajuizado": [True, False, True],
         "inscricoes": [2, 3, 5],
         "valor_consolidado": [100.0, 300.0, 600.0],
         "trata_como_pessoa": [False, False, False],
-    }))  # fmt: skip
+        "origem_sha256": ["novo"] * 3,
+    }), origens=[{"url": "y", "sha256": "novo"}])  # fmt: skip
     _grava(r, "insolvencia/2025", pd.DataFrame({
         "cnpj": ["1", "1", "2", "3"],
         "empresa": [NOME_SECRETO] * 4,
         "rotulo": ["recuperacao_judicial", "recuperacao_judicial", "falencia", "exposicao_a_terceiro"],
+        "assunto": ["x"] * 4,
         "referencia": pd.to_datetime(["2025-03-01", "2025-04-01", "2025-05-01", "2025-06-01"]).date,
     }))  # fmt: skip
     _grava(r, "insolvencia/2024", pd.DataFrame({
-        "cnpj": ["4"], "empresa": [NOME_SECRETO], "rotulo": ["recuperacao_judicial"],
+        "cnpj": ["4"], "empresa": [NOME_SECRETO], "rotulo": ["recuperacao_judicial"], "assunto": ["x"],
         "referencia": pd.to_datetime(["2024-02-01"]).date,
     }))  # fmt: skip
     _grava(r, "trocas_de_auditor/trocas", pd.DataFrame({
-        "empresa": [NOME_SECRETO] * 4, "anterior": ["X"] * 4, "novo": ["Y"] * 4,
+        "cnpj": ["1"] * 4, "empresa": [NOME_SECRETO] * 4, "anterior": ["X"] * 4, "novo": ["Y"] * 4,
         "efetiva_em": pd.to_datetime(["2022-01-01", "2022-01-01", "2023-01-01", "2017-01-01"]).date,
         "anos_com_o_anterior": [5.0, 5.0, 2.0, 5.0],
     }))  # fmt: skip
@@ -65,12 +73,12 @@ def raiz(tmp_path):
         "prazo_anos": [1.0, 10.0], "taxa": [0.11, 0.12],
     }))  # fmt: skip
     _grava(r, "eventos/2026", pd.DataFrame({
-        "empresa": [NOME_SECRETO] * 4,
+        "cnpj": ["1"] * 4, "rotulo": ["x"] * 4, "assunto": ["x"] * 4, "empresa": [NOME_SECRETO] * 4,
         "categoria": ["Fato Relevante", "Fato Relevante", "Assembleia", "Assembleia"],
         "publicado_em": pd.to_datetime(["2026-10-08", "2026-09-20", "2026-09-01", "2026-10-01"]).date,
     }))  # fmt: skip
     _grava(r, "eventos/2025", pd.DataFrame({
-        "empresa": [NOME_SECRETO], "categoria": ["Fato Relevante"],
+        "cnpj": ["1"], "rotulo": ["x"], "assunto": ["x"], "empresa": [NOME_SECRETO], "categoria": ["Fato Relevante"],
         "publicado_em": pd.to_datetime(["2025-09-25"]).date,
     }))  # fmt: skip
     _grava(r, "ofertas/resolucao_160", pd.DataFrame({
@@ -88,8 +96,10 @@ def raiz(tmp_path):
     return r
 
 
-def _contexto(raiz):
-    return an.Contexto(raiz=raiz, hoje=HOJE, foto=fo.fotografar(raiz))
+def _contexto(raiz, hoje=HOJE):
+    return an.Contexto(
+        raiz=raiz, hoje=hoje, foto=fo.fotografar(raiz), porta=Porta(raiz)
+    )
 
 
 def test_faixa_das_notas():
@@ -184,23 +194,19 @@ def test_nenhuma_analise_mostra_nome_de_empresa(raiz):
 
 def test_so_le_tabelas_permitidas(raiz):
     with pytest.raises(an.TabelaProibidaError):
-        an.ler(raiz, "fre_conselho/2026", ["cnpj"])
+        an.consultar(_contexto(raiz), "fre_conselho", "SELECT cnpj FROM {t}")
 
 
 def test_rodizio_escolhe_pelo_dia_e_pula_a_que_falta(raiz):
-    ctx = _contexto(raiz)
     n = len(an.ANALISES)
-    dias = [
-        an.Contexto(raiz, date.fromordinal(HOJE.toordinal() + i), ctx.foto)
-        for i in range(n)
-    ]
-    nomes = [an.analise_do_dia(c).nome for c in dias]
+    dias = [date.fromordinal(HOJE.toordinal() + i) for i in range(n)]
+    nomes = [an.analise_do_dia(_contexto(raiz, d)).nome for d in dias]
     assert sorted(nomes) == sorted(
         a.__name__ for a in an.ANALISES
     )  # cada uma uma vez em n dias
     for pasta in (raiz / "ratings").iterdir():
         pasta.unlink()
-    nomes = [an.analise_do_dia(c).nome for c in dias]
+    nomes = [an.analise_do_dia(_contexto(raiz, d)).nome for d in dias]
     assert "ratings" not in nomes
 
 

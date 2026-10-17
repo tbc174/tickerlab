@@ -1,17 +1,19 @@
 """A análise do dia do boletim: um cruzamento curto da base, num rodízio pelo dia.
 
-Cada análise lê só as colunas que usa e devolve uma `Secao` (título, pergunta, números de destaque,
+Cada análise consulta a base **pela porta** (`base.porta`, ADR 0077: SQL do DuckDB sobre as views
+das tabelas, só com as colunas que usa e, quando dá, já somando) e devolve uma `Secao` (título, pergunta, números de destaque,
 uma tabela, o achado em uma frase, os limites e os números para o parágrafo da IA).
 
 **Travas (ADR 0075, LGPD; regras do boletim):**
-- só lê tabelas da lista `TABELAS_PERMITIDAS` (nenhuma tem pessoas; `ler` recusa as outras);
+- só lê tabelas da lista `TABELAS_PERMITIDAS` (nenhuma tem pessoas; `consultar` recusa as outras);
 - **só números somados:** nenhuma empresa, fundo ou pessoa aparece com nome (o teste procura um nome
   plantado em todas as tabelas);
 - nada de "crise" ou "fraude"; insolvência é só a contagem do que a empresa informou à CVM.
 """
 
+import json
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -21,11 +23,12 @@ import pandas as pd
 
 from base.boletim import fotografia as fo
 from base.boletim.formato import grande, num, pct, reais, tamanho
-from base.parquet import arquivos_atuais
+from base.porta import Porta
+from base.porta.rede import views
 
 TABELAS_PERMITIDAS = frozenset(
     {"ratings", "pgfn_divida", "insolvencia", "trocas_de_auditor", "curva_juros", "eventos",
-     "ofertas", "rede"}
+     "ofertas_resolucao_160", "ligacoes"}
 )  # fmt: skip
 
 
@@ -42,6 +45,7 @@ class Contexto:
     raiz: Path  # a pasta base/ do acervo
     hoje: date
     foto: dict[str, Any]
+    porta: Porta  # aberta na mesma `raiz`
 
 
 @dataclass(frozen=True)
@@ -58,36 +62,17 @@ class Secao:
     numeros: dict[str, Any] = field(default_factory=dict)
 
 
-def _conferir(caminho: str) -> None:
-    if caminho.split("/")[0] not in TABELAS_PERMITIDAS:
-        raise TabelaProibidaError(f"o boletim não lê {caminho}")
-
-
-def ler(raiz: Path, tabela: str, colunas: list[str]) -> pd.DataFrame:
-    """Uma tabela (`ratings/ratings`), só com as colunas pedidas."""
-    _conferir(tabela)
-    arquivo = raiz / f"{tabela}.parquet"
-    if not arquivo.exists():
-        raise TabelaFaltandoError(tabela)
-    return pd.read_parquet(arquivo, columns=colunas)
-
-
-def ler_pasta(
-    raiz: Path, pasta: str, colunas: list[str], nomes: Iterable[str] | None = None
+def consultar(
+    ctx: Contexto, tabela: str, sql: str, parametros: dict[str, object] | None = None
 ) -> pd.DataFrame:
-    """Todos os Parquets atuais de uma pasta (`insolvencia/*.parquet`), ou só os de `nomes`."""
-    _conferir(pasta)
-    escolhidos = set(nomes) if nomes is not None else None
-    arquivos = [
-        a
-        for a in arquivos_atuais(raiz / pasta)
-        if escolhidos is None or a.stem in escolhidos
-    ]
-    if not arquivos:
-        raise TabelaFaltandoError(pasta)
-    return pd.concat(
-        [pd.read_parquet(a, columns=colunas) for a in arquivos], ignore_index=True
-    )
+    """Uma consulta à view `tabela` da porta (`{t}` no SQL é o nome dela)."""
+    if tabela not in TABELAS_PERMITIDAS:
+        raise TabelaProibidaError(f"o boletim não lê {tabela}")
+    if tabela not in views(ctx.porta.con):
+        raise TabelaFaltandoError(tabela)
+    return ctx.porta.con.execute(
+        sql.replace("{t}", f'"{tabela}"'), parametros or {}
+    ).df()
 
 
 # --- 1. retrato da base (só a fotografia) ---------------------------------------------------------
@@ -159,7 +144,7 @@ def faixa(nota: str | None) -> str:
 
 
 def ratings(ctx: Contexto) -> Secao:
-    t = ler(ctx.raiz, "ratings/ratings", ["agencia", "nota", "publico_em"])
+    t = consultar(ctx, "ratings", "SELECT agencia, nota, publico_em FROM {t}")
     t["faixa"] = t["nota"].map(faixa)
     t["agencia"] = t["agencia"].map(
         lambda a: AGENCIAS.get(a, a) if isinstance(a, str) else "sem agência"
@@ -202,6 +187,22 @@ def ratings(ctx: Contexto) -> Secao:
     )
 
 
+def _origens(pasta: Path) -> set[str]:
+    """Os SHA-256 dos originais anotados nos manifestos de uma pasta (um retrato da PGFN)."""
+    achados = set()
+    for manifesto in pasta.glob("*.json"):
+        try:
+            origens = (
+                json.loads(manifesto.read_text(encoding="utf-8")).get("origens") or []
+            )
+        except (OSError, ValueError):
+            continue
+        achados |= {
+            o["sha256"] for o in origens if isinstance(o, dict) and o.get("sha256")
+        }
+    return achados
+
+
 # --- 3. PGFN ---------------------------------------------------------------------------------------
 TIPOS_DE_DIVIDA = {
     "nao_previdenciaria": "Não previdenciária",
@@ -211,34 +212,31 @@ TIPOS_DE_DIVIDA = {
 
 
 def pgfn(ctx: Contexto) -> Secao:
-    pasta = ctx.raiz / "pgfn_divida"
-    retratos = (
-        sorted(p.name for p in pasta.iterdir() if p.is_dir()) if pasta.is_dir() else []
-    )
+    retratos = sorted(
+        {n.split("/")[1] for n in ctx.foto["tabelas"] if n.startswith("pgfn_divida/") and n.count("/") == 2}
+    )  # fmt: skip
     if not retratos:
         raise TabelaFaltandoError("pgfn_divida")
     mais_novo = retratos[-1]
-    partes = []
-    for arquivo in arquivos_atuais(pasta / mais_novo):
-        _conferir("pgfn_divida")
-        t = pd.read_parquet(
-            arquivo, columns=["tipo_divida", "ajuizado", "inscricoes", "valor_consolidado", "trata_como_pessoa"]
-        )  # fmt: skip
-        t = t[~t["trata_como_pessoa"].fillna(False).astype(bool)]
-        t["valor_ajuizado"] = t["valor_consolidado"].where(
-            t["ajuizado"].fillna(False).astype(bool), 0.0
+    origens = sorted(_origens(ctx.raiz / "pgfn_divida" / mais_novo))
+    if (
+        len(retratos) > 1 and not origens
+    ):  # sem como separar os retratos: melhor não somar
+        raise TabelaFaltandoError(
+            "pgfn_divida (retrato mais novo sem origens no manifesto)"
         )
-        partes.append(
-            t.groupby("tipo_divida", dropna=False)[["inscricoes", "valor_consolidado", "valor_ajuizado"]].sum()
-        )  # fmt: skip
-    if not partes:
-        raise TabelaFaltandoError("pgfn_divida")
-    soma = (
-        pd.concat(partes)
-        .groupby(level=0)
-        .sum()
-        .sort_values("valor_consolidado", ascending=False)
+    so_o_retrato = (
+        "AND origem_sha256 IN (SELECT unnest($origens))" if len(retratos) > 1 else ""
     )
+    soma = consultar(
+        ctx,
+        "pgfn_divida",
+        "SELECT tipo_divida, sum(inscricoes) AS inscricoes, sum(valor_consolidado) AS valor_consolidado, "
+        "sum(CASE WHEN ajuizado THEN valor_consolidado ELSE 0 END) AS valor_ajuizado "
+        f"FROM {{t}} WHERE NOT coalesce(trata_como_pessoa, false) {so_o_retrato} "
+        "GROUP BY tipo_divida ORDER BY valor_consolidado DESC",
+        {"origens": origens} if so_o_retrato else None,
+    ).set_index("tipo_divida")  # fmt: skip
     valor = float(soma["valor_consolidado"].sum())
     ajuizado = float(soma["valor_ajuizado"].sum()) / valor if valor else 0.0
     inscricoes = int(soma["inscricoes"].sum())
@@ -289,7 +287,7 @@ EVENTOS_DE_INSOLVENCIA = {
 
 
 def insolvencia(ctx: Contexto) -> Secao:
-    t = ler_pasta(ctx.raiz, "insolvencia", ["cnpj", "rotulo", "referencia"])
+    t = consultar(ctx, "insolvencia", "SELECT cnpj, rotulo, referencia FROM {t}")
     t = t[t["rotulo"].isin(EVENTOS_DE_INSOLVENCIA)]  # sem "exposicao_a_terceiro"
     t["ano"] = pd.to_datetime(t["referencia"]).dt.year
     t = t[t["ano"] >= ctx.hoje.year - 9]
@@ -341,7 +339,9 @@ def insolvencia(ctx: Contexto) -> Secao:
 
 # --- 5. trocas de auditor --------------------------------------------------------------------------
 def trocas_de_auditor(ctx: Contexto) -> Secao:
-    t = ler(ctx.raiz, "trocas_de_auditor/trocas", ["efetiva_em", "anos_com_o_anterior"])
+    t = consultar(
+        ctx, "trocas_de_auditor", "SELECT efetiva_em, anos_com_o_anterior FROM {t}"
+    )
     t["ano"] = pd.to_datetime(t["efetiva_em"]).dt.year
     t = t[t["ano"] >= ctx.hoje.year - 14]
     por = t.groupby("ano").agg(
@@ -392,9 +392,11 @@ def _dia_ate(t: pd.DataFrame, limite: pd.Timestamp) -> pd.Timestamp | None:
 
 
 def curva_juros(ctx: Contexto) -> Secao:
-    anos = [str(ctx.hoje.year), str(ctx.hoje.year - 1)]
-    t = ler_pasta(
-        ctx.raiz, "curva_juros", ["data_base", "curva", "prazo_anos", "taxa"], anos
+    t = consultar(
+        ctx,
+        "curva_juros",
+        "SELECT data_base, curva, prazo_anos, taxa FROM {t} WHERE data_base >= $desde",
+        {"desde": date(ctx.hoje.year - 1, 1, 1)},
     )
     t["data_base"] = pd.to_datetime(t["data_base"])
     hoje = t["data_base"].max()
@@ -469,8 +471,12 @@ def curva_juros(ctx: Contexto) -> Secao:
 
 # --- 7. documentos das companhias ------------------------------------------------------------------
 def eventos(ctx: Contexto) -> Secao:
-    anos = [str(ctx.hoje.year), str(ctx.hoje.year - 1)]
-    t = ler_pasta(ctx.raiz, "eventos", ["categoria", "publicado_em"], anos)
+    t = consultar(
+        ctx,
+        "eventos",
+        "SELECT categoria, publicado_em FROM {t} WHERE publicado_em >= $desde",
+        {"desde": date(ctx.hoje.year - 1, 1, 1)},
+    )
     t["publicado_em"] = pd.to_datetime(t["publicado_em"])
     ate = t["publicado_em"].max()
     janela = t[
@@ -523,10 +529,10 @@ def eventos(ctx: Contexto) -> Secao:
 
 # --- 8. ofertas públicas ---------------------------------------------------------------------------
 def ofertas(ctx: Contexto) -> Secao:
-    t = ler(
-        ctx.raiz,
-        "ofertas/resolucao_160",
-        ["valor_mobiliario", "data_registro", "valor_total_registrado"],
+    t = consultar(
+        ctx,
+        "ofertas_resolucao_160",
+        "SELECT valor_mobiliario, data_registro, valor_total_registrado FROM {t}",
     )
     t["data_registro"] = pd.to_datetime(t["data_registro"])
     hoje = pd.Timestamp(ctx.hoje)
@@ -593,7 +599,7 @@ TIPOS_DE_LIGACAO = {
 
 
 def rede(ctx: Contexto) -> Secao:
-    t = ler(ctx.raiz, "rede/ligacoes", ["tipo", "fonte", "ate", "publico_em"])
+    t = consultar(ctx, "ligacoes", "SELECT tipo, fonte, ate, publico_em FROM {t}")
     ativas = t["ate"].isna()
     publico = pd.to_datetime(t["publico_em"])
     recentes = publico > pd.Timestamp(ctx.hoje - timedelta(days=30))

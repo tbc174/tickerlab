@@ -23,6 +23,7 @@ from zoneinfo import ZoneInfo
 import anthropic
 import requests
 
+from base import porta
 from base.boletim import analises as an
 from base.boletim import email as em
 from base.boletim import fotografia as fo
@@ -35,6 +36,7 @@ log = logging.getLogger("tickerlab.boletim_da_base")
 FUSO = ZoneInfo("America/Sao_Paulo")
 VARIAVEL_DAS_TAREFAS = "TICKERLAB_BOLETIM_TAREFAS"
 VARIAVEL_DAS_DIARIAS = "TICKERLAB_BOLETIM_DIARIAS"
+MEMORIA_DA_PORTA = "1GB"  # o DuckDB soma as tabelas grandes (PGFN, rede) dentro disto
 
 
 def _falha(motivo: str) -> int:
@@ -90,7 +92,8 @@ def main(
         agora,
         (os.environ.get(VARIAVEL_DAS_DIARIAS) or "").split(),
     )
-    secao = an.analise_do_dia(an.Contexto(raiz, hoje, foto))
+    with porta.abrir(raiz, memoria=MEMORIA_DA_PORTA, threads=2) as p:
+        secao = an.analise_do_dia(an.Contexto(raiz, hoje, foto, p))
     conteudo = em.Conteudo(
         dia=hoje,
         dia_anterior=anterior[0] if anterior else None,
