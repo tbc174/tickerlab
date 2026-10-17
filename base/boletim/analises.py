@@ -559,7 +559,10 @@ def ofertas(ctx: Contexto) -> Secao:
         kpis=[
             ("valor em 12 meses", reais(valor)),
             ("ofertas", num(len(ultimos))),
-            ("contra os 12 anteriores", pct(variacao) if variacao is not None else "—"),
+            (
+                "contra os 12 anteriores",
+                ("+" if variacao and variacao > 0 else "") + pct(variacao),
+            ),
         ],
         cabecalho=[
             "Valor mobiliário",
@@ -633,6 +636,24 @@ def rede(ctx: Contexto) -> Secao:
 ANALISES: list[Callable[[Contexto], Secao]] = [
     retrato, ratings, pgfn, insolvencia, trocas_de_auditor, curva_juros, eventos, ofertas, rede,
 ]  # fmt: skip
+
+
+TITULOS = {
+    "retrato": "Do que a base é feita hoje",
+    "ratings": "Ratings publicados na CVM",
+    "pgfn": "Dívida ativa da União (empresas)",
+    "insolvencia": "Recuperação judicial, falência e liquidação por ano",
+    "trocas_de_auditor": "Trocas de auditor por ano",
+    "curva_juros": "Curva de juros do Tesouro",
+    "eventos": "O que as companhias publicaram nos últimos 30 dias",
+    "ofertas": "Ofertas públicas registradas (Resolução CVM 160)",
+    "rede": "A rede de entidades",
+}
+
+
+def titulo_do_dia(dia: date) -> str:
+    """O título da análise que o rodízio escolhe para `dia` (se a tabela dela estiver na base)."""
+    return TITULOS[ANALISES[dia.toordinal() % len(ANALISES)].__name__]
 
 
 def analise_do_dia(ctx: Contexto) -> Secao:

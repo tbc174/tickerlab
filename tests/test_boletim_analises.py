@@ -202,3 +202,10 @@ def test_rodizio_escolhe_pelo_dia_e_pula_a_que_falta(raiz):
         pasta.unlink()
     nomes = [an.analise_do_dia(c).nome for c in dias]
     assert "ratings" not in nomes
+
+
+def test_titulos_batem_com_as_secoes(raiz):
+    ctx = _contexto(raiz)
+    for analise in an.ANALISES:
+        assert an.TITULOS[analise.__name__] == analise(ctx).titulo
+    assert an.titulo_do_dia(HOJE) == an.analise_do_dia(ctx).titulo

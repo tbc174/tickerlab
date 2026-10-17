@@ -37,7 +37,7 @@ def test_paragrafo_que_passa_nas_travas():
     assert leitura.motivo == ""
     pedido = cliente.pedidos[0]
     assert pedido["model"] == li.MODELO
-    assert pedido["max_tokens"] <= 400
+    assert pedido["max_tokens"] <= 1_000
     assert FATOS in pedido["messages"][0]["content"]
 
 

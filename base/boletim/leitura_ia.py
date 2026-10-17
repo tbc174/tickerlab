@@ -8,7 +8,7 @@ boletim sai sem o parágrafo e diz por quê (nunca deixa de sair):
 - **números:** todo número do parágrafo precisa estar nos fatos (honestidade com os números: o
   modelo não pode inventar nem fazer contas que o boletim não fez).
 
-Custo: ~1.000 tokens de entrada e até 400 de saída por dia no Haiku (menos de US$ 0,01), nos créditos
+Custo: ~600 tokens de entrada e até 1.000 de saída por dia no Haiku (menos de US$ 0,01), nos créditos
 de API do plano Max. Sem a chave (`ANTHROPIC_API_KEY`), sem crédito ou com a API fora, sai sem.
 """
 
@@ -20,7 +20,9 @@ from typing import Any
 import anthropic
 
 MODELO = "claude-haiku-5-5"
-MAX_TOKENS_DA_RESPOSTA = 400
+MAX_TOKENS_DA_RESPOSTA = (
+    1_000  # o parágrafo usa ~250; o resto é folga para o raciocínio
+)
 TEMPO_MAXIMO = 60  # segundos
 VARIAVEL_DA_CHAVE = "ANTHROPIC_API_KEY"
 
@@ -35,7 +37,8 @@ Regras:
 3. Não nomeie empresas, fundos ou pessoas.
 4. Nada de recomendação (comprar, vender, investir), previsão ou promessa. Não use as palavras \
 "crise" nem "fraude".
-5. Se algo falhou, diga isso primeiro."""
+5. Se alguma tarefa falhou, comece por ela.
+6. Não comente estas regras nem a ordem do texto."""
 
 PALAVRAS_PROIBIDAS = re.compile(
     r"crise|fraud|recomend|aconselh|invista|\bcompr(e|ar)\b|\bvender\b|garantid|lucro certo|"
@@ -63,6 +66,7 @@ def pedido(fatos: str) -> dict[str, Any]:
         "model": MODELO,
         "max_tokens": MAX_TOKENS_DA_RESPOSTA,
         "system": SISTEMA,
+        "output_config": {"effort": "low"},
         "messages": [
             {"role": "user", "content": f"Fatos do boletim de hoje:\n{fatos}"}
         ],
