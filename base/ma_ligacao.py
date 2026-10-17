@@ -11,15 +11,17 @@
 
 **Contra homônimos** (conferência do Tiago, 16/10/2026, `ma-regua-conferencia-2026-10-16.md`: ~22 das 27
 alvos que hoje são ME/EPP eram outra empresa com o mesmo nome curto):
-- regra 1: nome de **uma palavra só** (ou sigla) liga só pela rede; um candidato da Receita conta para a
-  dúvida, mas nunca vira a ligação ("Kawa" não é a KAWA LTDA);
+- regra 1: nome de **uma palavra só** (ou sigla) que só casou com uma **ME ou EPP** da Receita fica
+  `na_duvida` ("Kawa" não é a KAWA LTDA, uma microempresa); marca de uma palavra de porte maior (SANKHYA
+  S.A., SUNO S.A.) liga. A 1ª versão (#347) barrava toda palavra só e derrubou 118 ligações, muitas certas;
 - regra 4: ligação só pelo nome fantasia vale quando a razão social **tem o nome** do post; senão,
   `na_duvida` ("Estante Virtual" era o nome fantasia de um sebo);
-- regra 5: razão social de empresa estrangeira registrada no Brasil (AG, BV, LLC, LTD, GmbH...) vira
-  `holding_estrangeira`, sem CNPJ: é a dona de fora, não a empresa brasileira do negócio;
+- regra 5: na **alvo**, razão social de empresa estrangeira registrada no Brasil (AG, BV, LLC, LTD,
+  GmbH...) vira `holding_estrangeira`, sem CNPJ: é a dona de fora, não a empresa brasileira vendida. Na
+  compradora (One Equity Partners, Sumitomo...) a dona de fora é a própria parte e liga;
 - regra 2: CNPJ cuja matriz abriu **depois** de o post ficar público (a primeira cópia no Wayback) nunca é
   a parte: `aberto_depois_do_negocio`, sem CNPJ.
-A regra "ME/EPP fica na dúvida" foi descartada: o porte é declarado pela empresa e fica velho.
+O porte sozinho não decide (é declarado pela empresa e fica velho: Poupafarma é EPP); só junto da regra 1.
 
 **Pessoas** (ADR 0075): empresário individual (213-5), as naturezas do grupo 4 e o MEI contam como
 candidatos (para a dúvida), mas nunca viram a ligação, e nada deles sai do leitor da Receita além da
@@ -182,15 +184,17 @@ COLUNAS_DA_RECEITA = (
     "abertura",  # início de atividade da matriz
     "razao_tem_o_nome",  # a razão social contém o nome do post (regra 4)
     "estrangeira",  # a razão social termina com forma jurídica de fora (regra 5)
+    "pequena",  # porte ME ou EPP na Receita (regra 1)
 )
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 1_000_000
-RAZAO, NATUREZA = 1, 2  # colunas dos `Empresas*.zip`
+RAZAO, NATUREZA, PORTE = 1, 2, 5  # colunas dos `Empresas*.zip`
+PEQUENA = ("01", "03")  # porte da Receita: 01 microempresa, 03 empresa de pequeno porte
 FANTASIA, MATRIZ_OU_FILIAL, INICIO = 4, 3, 10  # colunas dos `Estabelecimentos*.zip`
 MATRIZ = "1"
 FORMATO_DA_DATA = "%Y%m%d"
 # a forma jurídica de fora no fim da razão social ("FOXBIT LLC", "DOCK LTD"; "LTDA" é brasileira)
-ESTRANGEIRA = r"\b(AG|B\.? ?V|LLC|L\.L\.C|LTD|LIMITED|GMBH|INC|PLC|N\.? ?V|CORP|CORPORATION)\.?\s*$"
+ESTRANGEIRA = r"\b(?:AG|B\.? ?V|LLC|L\.L\.C|LTD|LIMITED|GMBH|INC|PLC|N\.? ?V|CORP|CORPORATION)\.?\s*$"
 MEI = 4  # coluna do `Simples.zip` (opção pelo MEI)
 OPTANTE = "S"
 Arquivo = Path | IO[bytes]
@@ -284,7 +288,7 @@ def ler_receita(
     fantasia = _pelo_nome(estabelecimentos, FANTASIA, nomes).assign(por=NOME_FANTASIA)
     achados = pd.concat([razao, fantasia], ignore_index=True)
     raizes = set(achados["raiz"])
-    das_empresas = _das_raizes(empresas, [RAZAO, NATUREZA], raizes)
+    das_empresas = _das_raizes(empresas, [RAZAO, NATUREZA, PORTE], raizes)
     natureza = achados["raiz"].map(das_empresas[NATUREZA])
     razao_social = achados["raiz"].map(das_empresas[RAZAO])
     mei = achados["raiz"].map(
@@ -303,6 +307,7 @@ def ler_receita(
         abertura=achados["raiz"].map(_abertura_da_matriz(estabelecimentos, raizes)),
         razao_tem_o_nome=_tem_o_nome(razao_social, achados["nome_normalizado"]),
         estrangeira=estrangeira.astype(bool),
+        pequena=achados["raiz"].map(das_empresas[PORTE]).isin(PEQUENA),
     )[list(COLUNAS_DA_RECEITA)]
 
 
@@ -337,6 +342,7 @@ def _candidatos(
         abertura=pd.NaT,
         razao_tem_o_nome=True,
         estrangeira=False,
+        pequena=False,
     )
     colunas = [
         "nome_normalizado",
@@ -349,6 +355,7 @@ def _candidatos(
         "abertura",
         "razao_tem_o_nome",
         "estrangeira",
+        "pequena",
     ]
     juntos = pd.concat(
         [da_rede[colunas], da_receita[colunas]], ignore_index=True
@@ -367,9 +374,10 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
         abertura=("abertura", "min"),
         razao_tem_o_nome=("razao_tem_o_nome", "all"),
         estrangeira=("estrangeira", "any"),
+        pequena=("pequena", "any"),
     )
     vazia: dict[str, object] = dict.fromkeys(
-        ("id_entidade", "cnpj_raiz", "lei", "abertura")
+        ("id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira")
     )
     if len(por_entidade) > 1:
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": len(por_entidade)}
@@ -377,17 +385,16 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
     if unica["pessoa"]:
         return {**vazia, "ligacao_por": SEM_LIGACAO, "candidatos": 1}
     so_da_receita = not unica["da_rede"]
-    uma_palavra = " " not in nome
+    palavra_so_de_pequena = " " not in nome and unica["pequena"]
     fantasia_sem_o_nome = not len(exato) and not unica["razao_tem_o_nome"]
-    if so_da_receita and (uma_palavra or fantasia_sem_o_nome):  # regras 1 e 4
+    if so_da_receita and (palavra_so_de_pequena or fantasia_sem_o_nome):  # regras 1 e 4
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": 1}
-    if unica["estrangeira"]:  # regra 5
-        return {**vazia, "ligacao_por": HOLDING_ESTRANGEIRA, "candidatos": 1}
     return {
         "id_entidade": por_entidade.index[0],
         "cnpj_raiz": unica["cnpj_raiz"] if pd.notna(unica["cnpj_raiz"]) else None,
         "lei": unica["lei"] if pd.notna(unica["lei"]) else None,
         "abertura": unica["abertura"],
+        "estrangeira": bool(unica["estrangeira"]),
         "ligacao_por": NOME_EXATO if len(exato) else NOME_FANTASIA,
         "candidatos": 1,
     }
@@ -422,7 +429,7 @@ def ligar(
         ].groupby("nome_normalizado")
     }
     sem: dict[str, object] = {
-        **dict.fromkeys(("id_entidade", "cnpj_raiz", "lei", "abertura")),
+        **dict.fromkeys(("id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira")),
         "ligacao_por": SEM_LIGACAO,
         "candidatos": 0,
     }
@@ -433,6 +440,7 @@ def ligar(
             "cnpj_raiz",
             "lei",
             "abertura",
+            "estrangeira",
             "ligacao_por",
             "candidatos",
         ],
@@ -442,6 +450,9 @@ def ligar(
     depois = _aberto_depois(tabela, publico_em)
     tabela.loc[depois, ["id_entidade", "cnpj_raiz", "lei"]] = None
     tabela.loc[depois, "ligacao_por"] = ABERTO_DEPOIS
+    holding = (tabela["papel"] == "alvo") & tabela["estrangeira"].eq(True) & ~depois
+    tabela.loc[holding, ["id_entidade", "cnpj_raiz", "lei"]] = None
+    tabela.loc[holding, "ligacao_por"] = HOLDING_ESTRANGEIRA
     tabela = tabela[list(COLUNAS_DAS_PARTES)]
     return tabela.astype({"candidatos": "int64"}).sort_values(
         ["assessoria", "url", "nome"], ignore_index=True
