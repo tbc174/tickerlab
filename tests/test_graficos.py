@@ -33,6 +33,7 @@ from src.graficos import (
     criar_mapa_de_calor_de_correlacao,
     criar_mapa_de_calor_de_parametros,
     criar_mapa_de_calor_mensal,
+    dias_sem_pregao,
 )
 from src.indicadores import (
     NOMES_DOS_MESES,
@@ -153,6 +154,30 @@ def test_dia_util_esconde_o_fim_de_semana_mas_cripto_nao():
     cripto = criar_grafico_preco(_ohlcv(10, fim_de_semana=True))
     assert len(acao.layout.xaxis.rangebreaks) == 1
     assert not cripto.layout.xaxis.rangebreaks
+
+
+def test_feriado_sem_pregao_nao_deixa_buraco_entre_as_velas():
+    # 07/09 (Independência) e 12/10 (Aparecida) caem em dia útil, mas a B3 não abre: o eixo
+    # precisa pular esses dias como pula o fim de semana, senão sobra um vão vazio no gráfico
+    datas = pd.bdate_range("2026-09-01", "2026-10-16")
+    feriados = pd.to_datetime(["2026-09-07", "2026-10-12"])
+    dados = _ohlcv(len(datas)).set_axis(datas).drop(feriados)
+
+    figura = criar_grafico_preco(dados, tipo="velas")
+
+    escondidos = [q for q in figura.layout.xaxis.rangebreaks if q.values]
+    assert len(escondidos) == 1
+    assert pd.to_datetime(list(escondidos[0].values)).equals(pd.DatetimeIndex(feriados))
+
+
+def test_dias_sem_pregao_so_os_dias_uteis_que_faltam():
+    datas = pd.bdate_range("2026-12-21", "2026-12-31").drop(
+        pd.to_datetime(["2026-12-24", "2026-12-25", "2026-12-31"])
+    )
+    faltam = dias_sem_pregao(pd.DatetimeIndex(datas))
+    # 31/12 não entra: é o último dia pedido, mas fica depois do último pregão
+    assert list(faltam) == list(pd.to_datetime(["2026-12-24", "2026-12-25"]))
+    assert dias_sem_pregao(pd.DatetimeIndex([])).empty
 
 
 def test_tipo_de_grafico_invalido():

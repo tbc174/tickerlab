@@ -240,6 +240,18 @@ def _numero_br(valor: float, casas: int = 2) -> str:
     return texto.replace(",", "#").replace(".", ",").replace("#", ".")
 
 
+def dias_sem_pregao(datas: pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """Dias úteis (segunda a sexta) entre o primeiro e o último pregão que não estão nos dados.
+
+    São os feriados da bolsa (07/09 e 12/10 na B3, Ação de Graças nos EUA). O gráfico os esconde
+    como esconde o fim de semana: sem isso, cada feriado vira um vão vazio entre as velas.
+    """
+    if datas.empty:
+        return pd.DatetimeIndex([])
+    uteis = pd.bdate_range(datas.min().normalize(), datas.max().normalize())
+    return uteis.difference(datas.normalize())
+
+
 def velas_semanais(dados: pd.DataFrame) -> pd.DataFrame:
     """Junta os dias de cada semana numa vela só.
 
@@ -305,6 +317,9 @@ def criar_grafico_preco(
         dados = dados.tail(dias_visiveis)
         medias = {j: serie.loc[dados.index] for j, serie in medias.items()}
         fechamento_anterior = fechamento_anterior.loc[dados.index]
+    feriados = dias_sem_pregao(
+        pd.DatetimeIndex(dados.index)
+    )  # antes de juntar em semanas
     periodo_da_vela = "dia"
     if tipo == "velas" and len(dados) > LIMITE_DE_VELAS_DIARIAS:
         periodo_da_vela = "semana"
@@ -421,7 +436,10 @@ def criar_grafico_preco(
         },
     )
     if not (dados.index.dayofweek >= 5).any():  # ação: some o buraco do fim de semana
-        figura.update_xaxes(rangebreaks=[{"bounds": ["sat", "mon"]}])
+        pulos: list[dict] = [{"bounds": ["sat", "mon"]}]
+        if not feriados.empty:  # e o dos feriados
+            pulos.append({"values": feriados.strftime("%Y-%m-%d").tolist()})
+        figura.update_xaxes(rangebreaks=pulos)
     return figura
 
 
