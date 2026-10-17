@@ -4881,6 +4881,91 @@
       "frequencia": "Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos",
       "atraso": "Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo"
     },
+    "fca_geral": {
+      "tabela": "fca_geral",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do FCA",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do FCA",
+          "unidade": "número inteiro"
+        },
+        "id_documento": {
+          "descricao": "Número do documento na CVM",
+          "unidade": "texto"
+        },
+        "conhecido_em": {
+          "descricao": "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do registro (pedido de registro), vale a partir do registro seguinte",
+          "unidade": "data (dia)"
+        },
+        "categoria": {
+          "descricao": "Categoria do registro na CVM: A (pode emitir ações) ou B",
+          "unidade": "texto"
+        },
+        "setor": {
+          "descricao": "Setor de atividade, como a companhia informou",
+          "unidade": "texto"
+        },
+        "controle_acionario": {
+          "descricao": "Espécie do controle (Privado, Privado Holding, Estatal, Estrangeiro...)",
+          "unidade": "texto"
+        },
+        "mes_fim_do_exercicio": {
+          "descricao": "Mês de fim do exercício social",
+          "unidade": "mês (1 a 12)"
+        },
+        "ano_do_arquivo": {
+          "descricao": "Ano do arquivo da CVM de onde a linha veio",
+          "unidade": "ano"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "referencia",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "conhecido_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos",
+      "atraso": "Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo"
+    },
     "trocas_de_auditor": {
       "tabela": "trocas_de_auditor",
       "modulo": "mercado_e_empresas",
@@ -5422,6 +5507,154 @@
       "pessoa": false,
       "frequencia": "Refeita a cada montagem, com os arquivos anuais e o cadastro mais recentes",
       "atraso": "O rótulo de um documento existe a partir do prazo (ou da entrega, se veio antes); uma falta só conta se o prazo venceu antes da coleta do arquivo do ano"
+    },
+    "colunas_atraso": {
+      "tabela": "colunas_atraso",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+          "unidade": "data (dia)"
+        },
+        "data_da_previsao": {
+          "descricao": "Dia da previsão (a própria data-base)",
+          "unidade": "data (dia)"
+        },
+        "documentos_anteriores": {
+          "descricao": "DFPs e ITRs anteriores com o resultado já conhecido na véspera",
+          "unidade": "número inteiro"
+        },
+        "atrasou_o_anterior": {
+          "descricao": "O último documento anterior conhecido atrasou (ou venceu sem entrega)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "atrasos_nos_ultimos_4": {
+          "descricao": "Atrasos entre os 4 documentos anteriores",
+          "unidade": "número inteiro"
+        },
+        "atrasos_nos_ultimos_8": {
+          "descricao": "Atrasos entre os 8 documentos anteriores",
+          "unidade": "número inteiro"
+        },
+        "media_dias_de_atraso_ultimos_4": {
+          "descricao": "Média de dias úteis de atraso nos 4 anteriores (sem entrega: até a previsão)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "folga_media_ultimos_4": {
+          "descricao": "Média de dias úteis entre a entrega e o prazo nos 4 anteriores (negativa: atrasou)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "entregou_o_anterior_no_ultimo_dia": {
+          "descricao": "O último documento anterior foi entregue no dia do prazo",
+          "unidade": "verdadeiro ou falso"
+        },
+        "reapresentacoes_12_meses": {
+          "descricao": "Versões 2 em diante de DFP/ITR públicas nos 12 meses antes da previsão",
+          "unidade": "número inteiro"
+        },
+        "auditor_rede_grande": {
+          "descricao": "O auditor do FCA vigente é EY, PwC, KPMG ou Deloitte",
+          "unidade": "verdadeiro ou falso"
+        },
+        "trocou_de_auditor_12_meses": {
+          "descricao": "Uma troca de auditor ficou pública nos 12 meses antes da previsão",
+          "unidade": "verdadeiro ou falso"
+        },
+        "anos_com_o_auditor": {
+          "descricao": "Anos desde o início do mandato mais antigo da firma atual no FCA vigente",
+          "unidade": "anos"
+        },
+        "ja_entrou_em_recuperacao_judicial": {
+          "descricao": "Recuperação judicial da própria companhia (raiz do CNPJ) pública no IPE antes da previsão; vazio se a companhia não tinha nenhum documento no IPE",
+          "unidade": "verdadeiro ou falso"
+        },
+        "setor": {
+          "descricao": "Setor de atividade no FCA vigente na data",
+          "unidade": "texto"
+        },
+        "categoria": {
+          "descricao": "Categoria do registro (A ou B) no FCA vigente",
+          "unidade": "texto"
+        },
+        "controle_acionario": {
+          "descricao": "Espécie do controle no FCA vigente",
+          "unidade": "texto"
+        },
+        "exercicio_fora_de_dezembro": {
+          "descricao": "O exercício social não fecha em dezembro (FCA vigente)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "anos_de_registro": {
+          "descricao": "Anos desde o último registro na CVM antes da previsão",
+          "unidade": "anos"
+        },
+        "tem_acao_na_bolsa": {
+          "descricao": "Ações ou units negociadas em bolsa no FCA vigente",
+          "unidade": "verdadeiro ou falso"
+        },
+        "segmento_de_listagem": {
+          "descricao": "Segmento de listagem dessas ações (Novo Mercado, Nível 1...)",
+          "unidade": "texto"
+        },
+        "ativo_total": {
+          "descricao": "Ativo total do último balanço público (consolidado se houver)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "patrimonio_liquido_negativo": {
+          "descricao": "Patrimônio líquido negativo no último balanço público",
+          "unidade": "verdadeiro ou falso"
+        },
+        "prejuizo_no_ultimo_exercicio": {
+          "descricao": "Prejuízo na DRE do último exercício (12 meses) público",
+          "unidade": "verdadeiro ou falso"
+        },
+        "divida_curto_prazo_sobre_caixa": {
+          "descricao": "Empréstimos de curto prazo (2.01.04) sobre caixa (1.01.01); vazio sem caixa",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "trimestre": {
+          "descricao": "Trimestre da data-base (1 a 4)",
+          "unidade": "número inteiro"
+        },
+        "prazo_perto_de_feriado": {
+          "descricao": "Há feriado nacional nos 7 dias antes do prazo (ou no próprio dia)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "documento",
+        "referencia"
+      ],
+      "datas": {
+        "aconteceu_em": "data_da_previsao",
+        "coletado_em": "montado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Refeita a cada montagem do modelo 8 (`scripts/montar_modelo_8.py`)",
+      "atraso": "Cada coluna usa só o que era público na véspera da previsão"
     },
     "empresa_serie": {
       "tabela": "empresa_serie",

@@ -1928,6 +1928,41 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `fca_geral`
+
+Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou naquele formulário. É o cadastro "como era na data" do modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje
+
+- **Fonte:** CVM: dados abertos do FCA, tabela de dados gerais (`base/fca_geral.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
+- **Atraso de divulgação:** Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `referencia`, `versao`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `conhecido_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/fca_geral/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `referencia` | Data de referência do FCA | data (dia) |
+| `versao` | Versão do FCA | número inteiro |
+| `id_documento` | Número do documento na CVM | texto |
+| `conhecido_em` | Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do registro (pedido de registro), vale a partir do registro seguinte | data (dia) |
+| `categoria` | Categoria do registro na CVM: A (pode emitir ações) ou B | texto |
+| `setor` | Setor de atividade, como a companhia informou | texto |
+| `controle_acionario` | Espécie do controle (Privado, Privado Holding, Estatal, Estrangeiro...) | texto |
+| `mes_fim_do_exercicio` | Mês de fim do exercício social | mês (1 a 12) |
+| `ano_do_arquivo` | Ano do arquivo da CVM de onde a linha veio | ano |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `trocas_de_auditor`
 
 Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de `auditores` na ordem de entrega dos FCAs (uma troca nunca é reescrita depois)
@@ -2160,6 +2195,57 @@ Rótulo do modelo de atraso na entrega (modelo 8, ADR 0030): uma linha por compa
 | `zona_cinzenta` | Atraso de 1 ou 2 dias úteis: pode ser um feriado estadual ou municipal | verdadeiro ou falso |
 | `uf` | Estado da sede, no cadastro de hoje | texto |
 | `mes_fim_do_exercicio` | Mês de fim do exercício (o mais comum nas DFPs da companhia) | mês (1 a 12) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `colunas_atraso`
+
+Colunas do modelo de atraso na entrega (modelo 8) como eram na data da previsão: uma linha por exemplo de `rotulos_atraso` (mesma chave), só com fatos públicos antes de `data_da_previsao` (o que chegou no próprio dia fica de fora). Grupos: histórico de entregas, auditor, dificuldade (só a recuperação judicial da própria companhia, pela raiz do CNPJ), cadastro (do FCA vigente na data, nunca do cadastro de hoje), balanço e calendário. O selo de qualidade e os fatos relevantes ficam fora da v1. Vazio = não se sabia na data. O rótulo não está aqui: junta-se pela chave na hora de treinar
+
+- **Fonte:** CVM: índice da DFP/ITR, FCA (dados gerais, valores mobiliários e auditores), IPE (insolvência e eventos), demonstrações "como era" e cadastro das companhias
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Refeita a cada montagem do modelo 8 (`scripts/montar_modelo_8.py`)
+- **Atraso de divulgação:** Cada coluna usa só o que era público na véspera da previsão
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `documento`, `referencia`
+- **Três datas:** aconteceu_em = `data_da_previsao`; coletado_em = `montado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/colunas_atraso/colunas_atraso.parquet`, com o manifesto ao lado (servidor de casa, `scripts/montar_modelo_8.py`)
+- **Linhagem:** O manifesto (`colunas_atraso.json`) lista cada tabela da base lida (caminho e SHA-256) e cada arquivo anual do índice e o cadastro; `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `documento` | DFP (demonstrações anuais) ou ITR (informações trimestrais) | texto |
+| `referencia` | Data a que o documento se refere (fim do exercício ou do trimestre) | data (dia) |
+| `data_da_previsao` | Dia da previsão (a própria data-base) | data (dia) |
+| `documentos_anteriores` | DFPs e ITRs anteriores com o resultado já conhecido na véspera | número inteiro |
+| `atrasou_o_anterior` | O último documento anterior conhecido atrasou (ou venceu sem entrega) | verdadeiro ou falso |
+| `atrasos_nos_ultimos_4` | Atrasos entre os 4 documentos anteriores | número inteiro |
+| `atrasos_nos_ultimos_8` | Atrasos entre os 8 documentos anteriores | número inteiro |
+| `media_dias_de_atraso_ultimos_4` | Média de dias úteis de atraso nos 4 anteriores (sem entrega: até a previsão) | número com decimais, na unidade da fonte |
+| `folga_media_ultimos_4` | Média de dias úteis entre a entrega e o prazo nos 4 anteriores (negativa: atrasou) | número com decimais, na unidade da fonte |
+| `entregou_o_anterior_no_ultimo_dia` | O último documento anterior foi entregue no dia do prazo | verdadeiro ou falso |
+| `reapresentacoes_12_meses` | Versões 2 em diante de DFP/ITR públicas nos 12 meses antes da previsão | número inteiro |
+| `auditor_rede_grande` | O auditor do FCA vigente é EY, PwC, KPMG ou Deloitte | verdadeiro ou falso |
+| `trocou_de_auditor_12_meses` | Uma troca de auditor ficou pública nos 12 meses antes da previsão | verdadeiro ou falso |
+| `anos_com_o_auditor` | Anos desde o início do mandato mais antigo da firma atual no FCA vigente | anos |
+| `ja_entrou_em_recuperacao_judicial` | Recuperação judicial da própria companhia (raiz do CNPJ) pública no IPE antes da previsão; vazio se a companhia não tinha nenhum documento no IPE | verdadeiro ou falso |
+| `setor` | Setor de atividade no FCA vigente na data | texto |
+| `categoria` | Categoria do registro (A ou B) no FCA vigente | texto |
+| `controle_acionario` | Espécie do controle no FCA vigente | texto |
+| `exercicio_fora_de_dezembro` | O exercício social não fecha em dezembro (FCA vigente) | verdadeiro ou falso |
+| `anos_de_registro` | Anos desde o último registro na CVM antes da previsão | anos |
+| `tem_acao_na_bolsa` | Ações ou units negociadas em bolsa no FCA vigente | verdadeiro ou falso |
+| `segmento_de_listagem` | Segmento de listagem dessas ações (Novo Mercado, Nível 1...) | texto |
+| `ativo_total` | Ativo total do último balanço público (consolidado se houver) | reais (R$), já multiplicado pela escala informada |
+| `patrimonio_liquido_negativo` | Patrimônio líquido negativo no último balanço público | verdadeiro ou falso |
+| `prejuizo_no_ultimo_exercicio` | Prejuízo na DRE do último exercício (12 meses) público | verdadeiro ou falso |
+| `divida_curto_prazo_sobre_caixa` | Empréstimos de curto prazo (2.01.04) sobre caixa (1.01.01); vazio sem caixa | número com decimais, na unidade da fonte |
+| `trimestre` | Trimestre da data-base (1 a 4) | número inteiro |
+| `prazo_perto_de_feriado` | Há feriado nacional nos 7 dias antes do prazo (ou no próprio dia) | verdadeiro ou falso |
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 

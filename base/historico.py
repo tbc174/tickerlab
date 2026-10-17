@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy as sa
 
-from base import auditores, controladas, fre, rotulos
+from base import auditores, controladas, fca_geral, fre, rotulos
 from base.cadastro import cadastro_do_acervo
 from base.parquet import LINHAGEM, gravar_se_mudou
 from base.ponto_no_tempo import divulgacao_publica
@@ -64,6 +64,10 @@ TABELAS = {
     # do pedido de registro só fica público perto do registro (conferência de 16/10/2026)
     "auditores": Tabela(  # desde 2010
         "cvm-hist-fca", auditores.ler_auditores_do_fca, data_publica="conhecido_em"
+    ),
+    # modelo 8 (nota i do critério de pronto): setor, categoria e controle como eram em cada FCA
+    "fca_geral": Tabela(  # desde 2010
+        "cvm-hist-fca", fca_geral.ler_geral_do_fca, data_publica="conhecido_em"
     ),
     # série B13: controladas e coligadas pelo FRE (base/controladas.py), desde 2010
     "controladas": Tabela("cvm-hist-fre", controladas.ler_controladas_do_fre),
