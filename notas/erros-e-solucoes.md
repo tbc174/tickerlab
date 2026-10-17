@@ -548,3 +548,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** três coisas, medidas por fases com os dados reais: (1) 6,8 milhões de raízes de CNPJ num `set` de textos do Python (~60 bytes cada, mais o conjunto) e o `isin(set)` refeito a cada pedaço da Receita; (2) a conversão das raízes para número feita no lote inteiro de uma vez (cópias de 64 bits de tudo: 2,3 GB); (3) o maior CSV (2,28 milhões de linhas) gravado de uma vez, com a linhagem (SHA-256, datas, commit) repetida como texto em cada linha, e o hash do manifesto relendo e ordenando a tabela inteira (2,4 GB).
 - **Solução (#342):** raiz como número de 8 bytes (`base/cnpj.py::raizes_em_numeros`, base 36, aceita o CNPJ com letras) e busca por ordenação (`contem`), em pedaços de 1 milhão; cada CSV gravado em 11 Parquets pelo 1º caractere do CNPJ, com a linhagem só no pedaço que está sendo gravado. Pico de 1,96 GB. **Lição:** antes de rodar uma carga nova no servidor de casa, um ensaio só de leitura com `ru_maxrss` por fase; pandas 3 guarda texto em Arrow, mas texto repetido em milhões de linhas ainda pesa.
 - **Data:** 16/10/2026
+
+## Script do servidor some sem mensagem depois de `cmd | grep -q`
+- **Sintoma:** um script com `set -euo pipefail` para no meio sem escrever nada no log; o passo seguinte nunca roda (17/10/2026, `~/bin/ma-religar-356.sh`: fez o `git pull` e parou antes do `docker tag`).
+- **Causa:** `git log --oneline -15 | grep -q "(#356)"`: o `grep -q` sai assim que acha, o `git log` ainda escrevendo leva SIGPIPE e sai com 141; com `pipefail` o pipe inteiro vale 141 e o `set -e` encerra o script, sem mensagem.
+- **Solução:** não pôr `grep -q` (nem `head`) no fim de um pipe com `pipefail`. Guardar a saída numa variável e testar: `ultimos=$(git log --oneline -15)` e `[[ "$ultimos" == *"(#356)"* ]]`.
+- **Data:** 17/10/2026
