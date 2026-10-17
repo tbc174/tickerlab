@@ -5,7 +5,7 @@ a página, sem internet. Amostras reais e reduzidas: `tests/arquivos/cvm/vlmo_am
 
 import io
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -188,6 +188,38 @@ def test_gravar_de_novo_nao_duplica_e_versao_nova_troca_o_documento(motor, da_cv
         assert repo.gravar_negociacoes(c, nova) == (0, 1)
         guardadas = repo.negociacoes(c, date(2000, 1, 1))
     assert len(guardadas) == len(da_cvm) - len(um) + 1
+
+
+def test_operacao_retirada_na_versao_nova_some_dos_eventos(motor, da_cvm):
+    # achado 7c do Codex: a versão nova do documento VLMO tirou uma operação; o evento dela não
+    # pode continuar no Research (nada é apagado: a versão antiga continua no banco)
+    eventos = ng.eventos_das_negociacoes(da_cvm)
+    documento = eventos["protocolo"].str.rsplit("|", n=2).str[0]
+    do_doc = eventos[documento == "33.000.167/0001-01|2026-03"]
+    assert len(do_doc) == 3
+    corrigido = do_doc.head(1).assign(versao=do_doc["versao"].max() + 1)
+    antes, depois = datetime(2026, 4, 1, tzinfo=UTC), datetime(2026, 4, 5, tzinfo=UTC)
+    with motor.begin() as c:
+        repo_eventos.gravar_tickers(
+            c,
+            pd.DataFrame(
+                [{"ticker": "PETR4", "codigo": "PETR", "cnpj": PETROBRAS,
+                  "empresa": "Petrobras", "valor_mobiliario": "ON"}]
+            ),
+        )  # fmt: skip
+        repo_eventos.gravar_eventos(c, do_doc, fonte=ng.FONTE_VLMO, agora=antes)
+        repo_eventos.gravar_eventos(c, corrigido, fonte=ng.FONTE_VLMO, agora=depois)
+        vistos = repo_eventos.eventos_dos_tickers(c, ["PETR4"], date(2000, 1, 1))
+        no_passado = repo_eventos.eventos_como_estavam_em(c, antes, PETROBRAS)
+        hoje = repo_eventos.eventos_como_estavam_em(c, depois, PETROBRAS)
+    marco = {
+        e.protocolo for e in vistos if e.protocolo.startswith(PETROBRAS + "|2026-03")
+    }
+    assert marco == set(corrigido["protocolo"])
+    assert {l.protocolo for l in no_passado} >= set(do_doc["protocolo"])
+    assert {
+        l.protocolo for l in hoje if l.protocolo.startswith(PETROBRAS + "|2026-03")
+    } == set(corrigido["protocolo"])
 
 
 def test_documentos_lidos(motor):
