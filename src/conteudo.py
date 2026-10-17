@@ -67,6 +67,21 @@ def proteger_cifrao(texto: str | None) -> str | None:
     return texto.replace("$", r"\$") if texto else texto
 
 
+# os sinais que o Markdown do Streamlit usa (link, imagem, ênfase, título, lista, tabela, cor,
+# fórmula, HTML); com uma barra antes, cada um aparece como o próprio caractere
+_SINAIS_DO_MARKDOWN = str.maketrans({c: "\\" + c for c in r"\`*_{}[]()<>#+-.!|~:$"})
+
+
+def texto_da_fonte(texto: str | None) -> str | None:
+    """Texto que veio de fora (assunto e frases dos documentos da CVM e da SEC) pronto para
+    `st.markdown`: nada nele vira link, imagem, negrito ou fórmula (achado 7d do Codex).
+
+    As quebras de linha viram espaço: uma linha nova não começa título nem lista."""
+    if not texto:
+        return texto
+    return " ".join(texto.split()).translate(_SINAIS_DO_MARKDOWN)
+
+
 def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
     """Explicações das estratégias (um verbete por estratégia), no mesmo formato do glossário."""
     return carregar_glossario(caminho)

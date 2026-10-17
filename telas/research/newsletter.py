@@ -13,6 +13,7 @@ from src import edicao as edicao_do_banco
 from src import envio_newsletter, newsletter, relatorios
 from src.banco import newsletter_por_email
 from src.banco.conexao import obter_engine, tabela_inexistente
+from src.conteudo import texto_da_fonte
 from telas.comum import (
     PAGINAS_DO_MENU,
     avisar_parametros,
@@ -61,15 +62,16 @@ def _mostrar_secao_da_newsletter(secao):
     if not secao.itens:
         st.caption(secao.vazio)
         return
+    # título, texto e trechos saem das fontes (assunto, empresa, frases): nunca Markdown (7d)
     for item in secao.itens:
-        texto = f"**{item.titulo}**  \n{item.texto}"
+        texto = f"**{texto_da_fonte(item.titulo)}**  \n{texto_da_fonte(item.texto)}"
         if item.link:
             texto += f"  \n[Abrir o documento original na {item.sigla_da_fonte}]({item.link})"
         st.markdown(texto)
         if item.trechos:
             st.caption(
                 f"{newsletter.TITULO_DOS_TRECHOS}:  \n"
-                + "  \n".join(f"“{trecho}”" for trecho in item.trechos)
+                + "  \n".join(f"“{texto_da_fonte(t)}”" for t in item.trechos)
             )
         if item.razoes:
             st.caption("Por que aparece: " + " · ".join(item.razoes))

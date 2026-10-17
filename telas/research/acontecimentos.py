@@ -20,7 +20,7 @@ from src.banco.dados_do_usuario import (
     salvar_watchlist,
 )
 from src.banco.eventos import empresas_dos_tickers, eventos_dos_tickers, ultima_coleta
-from src.conteudo import proteger_cifrao
+from src.conteudo import texto_da_fonte
 from src.eventos import FONTE_IPE
 from src.planos import LimiteDoPlanoError, limites_do
 from telas.comum import (
@@ -105,13 +105,18 @@ def mostrar_resumo_do_documento(resumo):
         if resumo.get("motivo"):
             st.caption(resumo["motivo"])
             return
+        # frases, números e assuntos saem do documento: texto da fonte, nunca Markdown (7d)
         for frase in resumo.get("frases", []):
-            st.markdown(f"- {frase}")
+            st.markdown(f"- {texto_da_fonte(frase)}")
         detalhes = []
         if resumo.get("numeros"):
-            detalhes.append("Números citados: " + "; ".join(resumo["numeros"]))
+            detalhes.append(
+                "Números citados: " + "; ".join(map(texto_da_fonte, resumo["numeros"]))
+            )
         if resumo.get("assuntos"):
-            detalhes.append("Assuntos: " + ", ".join(resumo["assuntos"]))
+            detalhes.append(
+                "Assuntos: " + ", ".join(map(texto_da_fonte, resumo["assuntos"]))
+            )
         for detalhe in detalhes:
             st.caption(detalhe)
         st.caption(
@@ -135,9 +140,10 @@ def _mostrar_item(item, chave, destaque=False, resumo=None, topico=None):
             )
         )
         col_texto.markdown(
-            e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro)."
+            texto_da_fonte(e.assunto)
+            or f"{e.rotulo} de {texto_da_fonte(e.empresa)} (sem assunto no cadastro)."
         )
-        col_texto.caption(e.empresa)
+        col_texto.caption(texto_da_fonte(e.empresa))
         col_acoes.link_button(
             f"Abrir na {research.SIGLAS_DAS_FONTES.get(e.fonte, 'fonte')}",
             e.link,
@@ -157,7 +163,7 @@ def _mostrar_item(item, chave, destaque=False, resumo=None, topico=None):
                 st.markdown(f"- {razao}")
             if _com_assunto(topico):
                 origem = ORIGEM_DO_TOPICO.get(topico.metodo, "")
-                st.markdown(f"- Assunto ({origem}): “{proteger_cifrao(topico.trecho)}”")
+                st.markdown(f"- Assunto ({origem}): “{texto_da_fonte(topico.trecho)}”")
             st.caption(
                 f"Relevância {item.relevancia:.0%}: soma dos componentes (0 a 1) vezes os seus "
                 "pesos da página Parâmetros. Ordena a leitura; não é nota da empresa nem "
