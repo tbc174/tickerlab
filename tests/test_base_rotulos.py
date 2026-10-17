@@ -3,6 +3,8 @@
 import io
 import zipfile
 
+import pandas as pd
+
 from base import historico, rotulos
 
 CABECALHO = (
@@ -11,22 +13,24 @@ CABECALHO = (
 )
 
 
-def _linha(cnpj, categoria, tipo, assunto, entrega, protocolo, versao="1"):
+def _linha(cnpj, categoria, tipo, assunto, entrega, protocolo, versao="1", nome=None):
+    nome = nome or f"EMPRESA {cnpj[:2]}"
     return (
-        f"{cnpj};EMPRESA {cnpj[:2]};1;{entrega};{categoria};{tipo};;{assunto};{entrega};AP;"
+        f"{cnpj};{nome};1;{entrega};{categoria};{tipo};;{assunto};{entrega};AP;"
         f"{protocolo};{versao};https://www.rad.cvm.gov.br/x?n={protocolo}"
     )
 
 
-def _zip(*linhas: str) -> bytes:
+def _zip(*linhas: str, ano: int = 2019) -> bytes:
     saida = io.BytesIO()
     with zipfile.ZipFile(saida, "w") as z:
         texto = "\n".join([CABECALHO, *linhas])
-        z.writestr("ipe_cia_aberta_2019.csv", texto.encode("latin-1"))
+        z.writestr(f"ipe_cia_aberta_{ano}.csv", texto.encode("latin-1"))
     return saida.getvalue()
 
 
 RJ = "Informações de Companhias em Recuperação Judicial ou Extrajudicial"
+FR = "Fato Relevante"
 
 
 def test_categorias_proprias_da_cvm_viram_rotulos():
@@ -36,7 +40,7 @@ def test_categorias_proprias_da_cvm_viram_rotulos():
                 "11.111.111/0001-11",
                 RJ,
                 "Petição Inicial",
-                "Pedido",
+                "Pedido de recuperação judicial",
                 "2019-03-01",
                 "100",
             ),
@@ -233,3 +237,491 @@ def test_arquivos_antigos_sem_protocolo_usam_o_link_do_documento():
         "https://www.rad.cvm.gov.br/x?n=900",
         "https://www.rad.cvm.gov.br/x?n=901",
     }
+
+
+# --- de quem é a recuperação (relatório 4 dos cruzamentos v2, 16/10/2026) ------------------------
+# Os casos do relatório, com CNPJs de mentira e o assunto como a companhia escreveu.
+
+
+def _rotulo_e_evento(tabela):
+    return {
+        assunto: (rotulo, evento)
+        for assunto, rotulo, evento in zip(
+            tabela["assunto"], tabela["rotulo"], tabela["evento"], strict=True
+        )
+    }
+
+
+def test_fato_sobre_a_recuperacao_de_outra_empresa_vira_exposicao_a_terceiro():
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            # Vale, 09/04/2021: a RJ é da Samarco (investida), não da Vale
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Samarco ajuíza pedido de recuperação judicial",
+                "2021-04-09",
+                "600",
+                nome="VALE S.A.",
+            ),
+            # V.tal, 06/03/2023: a RJ é da Oi (acionista)
+            _linha(
+                "22.222.222/0001-22",
+                FR,
+                "",
+                "Pedido de recuperação judicial pela Oi S.A. - Em Recuperação Judicial",
+                "2023-03-06",
+                "601",
+                nome="V. TAL - REDE NEUTRA DE TELECOMUNICAÇÕES S.A.",
+            ),
+            # Energisa, 02/09/2016: a RJ é da controlada
+            _linha(
+                "33.333.333/0001-33",
+                FR,
+                "",
+                "Encerramento da Recuperação Judicial da controlada Rede Energia e outras",
+                "2016-09-02",
+                "602",
+                nome="ENERGISA SA",
+            ),
+            # Embraer, 29/02/2016: a RJ é de um cliente (assunto todo em maiúsculas)
+            _linha(
+                "44.444.444/0001-44",
+                FR,
+                "",
+                "NOTA DA EMBRAER EM RELAÇÃO AO PEDIDO DE RECUPERAÇÃO JUDICIAL DA REPUBLIC AIRWAYS",
+                "2016-02-29",
+                "603",
+                nome="EMBRAER S.A.",
+            ),
+        )
+    )
+    assert set(tabela["rotulo"]) == {"exposicao_a_terceiro"}
+    assert set(tabela["evento"]) == {"recuperacao_judicial"}
+    primeiras = rotulos.primeira_ocorrencia(tabela)
+    assert "recuperacao_judicial" not in set(primeiras["rotulo"])
+
+
+def test_recuperacao_extrajudicial_de_outra_empresa_tambem_e_de_terceiro():
+    # Cosan, 11/03/2026: a recuperação extrajudicial é da Raízen
+    assunto = "Pedido de recuperação extrajudicial da Raízen"
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                assunto,
+                "2026-03-11",
+                "610",
+                nome="COSAN S.A.",
+            )
+        )
+    )
+    assert _rotulo_e_evento(tabela) == {
+        assunto: ("exposicao_a_terceiro", "recuperacao_extrajudicial")
+    }
+
+
+def test_extrajudicial_nunca_vira_judicial_mesmo_pela_categoria_da_cvm():
+    # Casas Bahia, 2024: a categoria da CVM é "Recuperação Judicial ou Extrajudicial" e o tipo
+    # "Sentenças" não diz qual; o assunto diz. O documento sem pista herda o processo aberto.
+    def casas_bahia(tipo, assunto, entrega, protocolo):
+        return _linha(
+            "11.111.111/0001-11",
+            RJ,
+            tipo,
+            assunto,
+            entrega,
+            protocolo,
+            nome="GRUPO CASAS BAHIA S.A.",
+        )
+
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            casas_bahia(
+                "Plano de Recuperação",
+                "Plano de Recuperação Extrajudicial",
+                "2024-04-29",
+                "620",
+            ),
+            casas_bahia(
+                "Sentenças",
+                "Setença Plano de Recuperação Extrajudicial",
+                "2024-06-21",
+                "621",
+            ),
+            casas_bahia("Outros documentos", "Material blowout", "2024-07-01", "622"),
+            casas_bahia("Petição Inicial", "Petição Inicial - RE", "2024-07-02", "623"),
+        )
+    )
+    assert set(tabela["rotulo"]) == {"recuperacao_extrajudicial"}
+
+
+def test_recuperacao_judicial_depois_da_extrajudicial_e_judicial():
+    # Casas Bahia, 16/08/2026: depois da RE de 2024, o pedido de RJ
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            _linha(
+                "11.111.111/0001-11",
+                RJ,
+                "Plano de Recuperação",
+                "Plano de Recuperação Extrajudicial",
+                "2024-04-29",
+                "630",
+                nome="GRUPO CASAS BAHIA S.A.",
+            ),
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Pedido de Recuperação Judicial",
+                "2026-08-16",
+                "631",
+                nome="GRUPO CASAS BAHIA S.A.",
+            ),
+            _linha(
+                "11.111.111/0001-11",
+                RJ,
+                "Petição Inicial",
+                "Petição inicial",
+                "2026-08-18",
+                "632",
+                nome="GRUPO CASAS BAHIA S.A.",
+            ),
+        )
+    )
+    assert list(tabela["rotulo"]) == [
+        "recuperacao_extrajudicial",
+        "recuperacao_judicial",
+        "recuperacao_judicial",
+    ]
+
+
+def test_recuperacao_da_propria_companhia_continua_recuperacao_judicial():
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            # Americanas, 19/01/2023: o fato relevante é o primeiro sinal público
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Ajuizamento de Recuperação Judicial",
+                "2023-01-19",
+                "640",
+                nome="AMERICANAS S.A.",
+            ),
+            _linha(
+                "11.111.111/0001-11",
+                RJ,
+                "Outros documentos",
+                "Lista atualizada de credores RJ",
+                "2023-02-10",
+                "641",
+                nome="AMERICANAS S.A.",
+            ),
+            # Oi, 20/06/2016: o fato relevante do dia, a petição e as contas mensais, sem texto
+            _linha(
+                "22.222.222/0001-22",
+                FR,
+                "",
+                "Pedido de Recuperação Judicial",
+                "2016-06-20",
+                "6420",
+                nome="OI S.A.",
+            ),
+            _linha(
+                "22.222.222/0001-22",
+                RJ,
+                "Petição Inicial",
+                "Petição Inicial",
+                "2016-06-20",
+                "642",
+                nome="OI S.A.",
+            ),
+            _linha(
+                "22.222.222/0001-22",
+                RJ,
+                "Contas demonstrativas mensais",
+                "",
+                "2016-07-31",
+                "643",
+                nome="OI S.A.",
+            ),
+            # Brasil Biofuels, 31/07/2025: a companhia e as subsidiárias juntas
+            _linha(
+                "33.333.333/0001-33",
+                FR,
+                "",
+                "Pedido de Recuperação Judicial da Companhia e de certas Subsidiárias",
+                "2025-07-31",
+                "644",
+                nome="BRASIL BIOFUELS S.A.",
+            ),
+        )
+    )
+    assert set(tabela["rotulo"]) == {"recuperacao_judicial"}
+    assert set(tabela["evento"]) == {"recuperacao_judicial"}
+
+
+def test_securitizadora_falando_da_devedora_e_exposicao_a_terceiro():
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Alteração nos Direitos e Vantagens dos Valores Mobiliários||CRI 6aS 5aE||"
+                "Plano de Recuperação Judicial da Devedora (Urbplan)",
+                "2019-05-28",
+                "650",
+                nome="PLANETA SECURITIZADORA S.A.",
+            ),
+            # Habitasec, 28/06/2016: sem pista no texto; a securitizadora fala do devedor
+            _linha(
+                "22.222.222/0001-22",
+                FR,
+                "",
+                "Recuperação Judicial",
+                "2016-06-28",
+                "651",
+                nome="HABITASEC SECURITIZADORA SA",
+            ),
+        )
+    )
+    assert set(tabela["rotulo"]) == {"exposicao_a_terceiro"}
+
+
+def test_documento_sem_pista_e_sem_processo_anterior_nao_escolhe_o_tipo():
+    # Hopi Hari, 26/08/2016: "Ofício 2945/2016" na categoria da CVM; até ali nada dizia se era
+    # judicial ou extrajudicial (o plano de RJ só apareceu em 09/02/2017)
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            _linha(
+                "11.111.111/0001-11",
+                RJ,
+                "Petição Inicial",
+                "Ofício 2945/2016",
+                "2016-08-26",
+                "660",
+                nome="HOPI HARI SA",
+            ),
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Apresentação do Plano de Recuperação Judicial",
+                "2017-02-09",
+                "661",
+                nome="HOPI HARI SA",
+            ),
+        )
+    )
+    assert list(tabela["rotulo"]) == [
+        "recuperacao_judicial_ou_extrajudicial",
+        "recuperacao_judicial",
+    ]
+
+
+def test_cada_linha_diz_a_regra_que_decidiu_o_rotulo():
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            _linha(
+                "11.111.111/0001-11",
+                FR,
+                "",
+                "Samarco ajuíza pedido de recuperação judicial",
+                "2021-04-09",
+                "670",
+                nome="VALE S.A.",
+            ),
+            _linha(
+                "22.222.222/0001-22",
+                FR,
+                "",
+                "Recuperação judicial da controladora Galvão",
+                "2015-03-26",
+                "671",
+                nome="IGUA SANEAMENTO S.A.",
+            ),
+            _linha(
+                "33.333.333/0001-33",
+                RJ,
+                "Petição Inicial",
+                "Petição Inicial",
+                "2016-06-20",
+                "672",
+                nome="OI S.A.",
+            ),
+        )
+    )
+    regras = dict(zip(tabela["cnpj"], tabela["regra"], strict=True))
+    assert regras == {
+        "11.111.111/0001-11": "outra_empresa (samarco)",
+        "22.222.222/0001-22": "texto_de_terceiro",
+        "33.333.333/0001-33": "categoria_ipe",
+    }
+
+
+def test_cortar_o_futuro_nao_muda_o_rotulo_do_passado():
+    cbd = "COMPANHIA BRASILEIRA DE DISTRIBUIÇÃO"
+    linhas = [
+        _linha(
+            "11.111.111/0001-11",
+            RJ,
+            "Petição Inicial",
+            "Petição inicial - Recuperação Extrajudicial",
+            "2026-03-10",
+            "680",
+            nome=cbd,
+        ),
+        _linha(
+            "11.111.111/0001-11",
+            RJ,
+            "Outros documentos",
+            "Anexos",
+            "2026-03-20",
+            "681",
+            nome=cbd,
+        ),
+        _linha(
+            "11.111.111/0001-11",
+            FR,
+            "",
+            "Pedido de Recuperação Judicial",
+            "2026-08-16",
+            "682",
+            nome=cbd,
+        ),
+        _linha(
+            "11.111.111/0001-11",
+            RJ,
+            "Outros documentos",
+            "Anexos",
+            "2026-08-20",
+            "683",
+            nome=cbd,
+        ),
+        _linha(
+            "22.222.222/0001-22",
+            FR,
+            "",
+            "Recuperação Judicial da Samarco",
+            "2026-03-11",
+            "684",
+            nome="EMPRESA PARTICIPACOES S.A.",
+        ),
+        _linha(
+            "22.222.222/0001-22",
+            RJ,
+            "Petição Inicial",
+            "Petição Inicial",
+            "2026-05-01",
+            "685",
+            nome="EMPRESA PARTICIPACOES S.A.",
+        ),
+    ]
+    completa = rotulos.ler_insolvencia_do_ipe(_zip(*linhas))
+    for corte in ("2026-03-10", "2026-03-20", "2026-05-01", "2026-08-16"):
+        cortada = rotulos.ler_insolvencia_do_ipe(
+            _zip(*(x for x in linhas if x.split(";")[8] <= corte))
+        )
+        antes = completa[completa["conhecido_em"].astype(str) <= corte]
+        assert list(cortada["rotulo"]) == list(antes["rotulo"]), corte
+        assert list(cortada["regra"]) == list(antes["regra"]), corte
+
+
+def test_o_contexto_atravessa_os_arquivos_anuais():
+    # Atma: a RE começa no arquivo de 2019 e o documento sem pista está no de 2020
+    def do_ano(ano, assunto, tipo, entrega, protocolo):
+        linha = _linha(
+            "11.111.111/0001-11",
+            RJ,
+            tipo,
+            assunto,
+            entrega,
+            protocolo,
+            nome="ATMA PARTICIPAÇÕES S.A.",
+        )
+        return rotulos.ler_insolvencia_do_ipe(_zip(linha, ano=ano)).assign(
+            ano_do_arquivo=ano
+        )
+
+    juntos = rotulos.rotular_com_contexto(
+        pd.concat(
+            [
+                do_ano(
+                    2019,
+                    "Pedido de Homologação de Plano de Recuperação Extrajudicial",
+                    "Petição Inicial",
+                    "2019-12-30",
+                    "690",
+                ),
+                do_ano(2020, "Efeito Suspensivo", "Sentenças", "2020-08-16", "691"),
+            ],
+            ignore_index=True,
+        )
+    )
+    assert list(juntos["rotulo"]) == ["recuperacao_extrajudicial"] * 2
+    assert list(juntos["ano_do_arquivo"]) == [2019, 2020]
+    insolvencia = historico.TABELAS["insolvencia"]
+    assert insolvencia.com_todos_os_anos is rotulos.rotular_com_contexto
+
+
+def test_recuperacao_de_terceiro_nao_vira_o_processo_da_companhia():
+    # TPI: RE própria em 2017; em 2018 a RJ é da investida Viracopos. O documento seguinte, sem
+    # pista, continua no processo da TPI (extrajudicial), não no da investida
+    def tpi(categoria, tipo, assunto, entrega, protocolo):
+        return _linha(
+            "11.111.111/0001-11",
+            categoria,
+            tipo,
+            assunto,
+            entrega,
+            protocolo,
+            nome="TPI - TRIUNFO PARTICIPACOES E INVESTIMENTOS S.A.",
+        )
+
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            tpi(
+                RJ,
+                "Plano de Recuperação",
+                "Planos de recuperação extrajudicial",
+                "2017-07-22",
+                "700",
+            ),
+            tpi(FR, "", "Recuperação Judicial - Viracopos", "2018-05-07", "701"),
+            tpi(RJ, "Outros documentos", "", "2018-05-07", "702"),
+        )
+    )
+    assert list(tabela["rotulo"]) == [
+        "recuperacao_extrajudicial",
+        "exposicao_a_terceiro",
+        "recuperacao_extrajudicial",
+    ]
+
+
+def test_pedido_da_propria_companhia_nao_herda_o_terceiro_de_antes():
+    # Rede Energia: em maio de 2012 a RJ era da controlada CELPA; em novembro, a própria pediu
+    def rede(assunto, entrega, protocolo):
+        return _linha(
+            "11.111.111/0001-11",
+            FR,
+            "",
+            assunto,
+            entrega,
+            protocolo,
+            nome="REDE ENERGIA PARTICIPAÇÕES S.A.",
+        )
+
+    tabela = rotulos.ler_insolvencia_do_ipe(
+        _zip(
+            rede(
+                "Plano de Recuperação Judicial da controlada CELPA", "2012-05-07", "710"
+            ),
+            rede("Ajuizamento de pedido de Recuperação Judicial", "2012-11-23", "711"),
+        )
+    )
+    assert list(tabela["rotulo"]) == ["exposicao_a_terceiro", "recuperacao_judicial"]

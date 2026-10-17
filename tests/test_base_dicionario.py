@@ -349,5 +349,10 @@ def test_toda_tabela_tem_historico_desde_e_granularidade():
 
 def test_contrato_comeca_na_versao_1():
     """Todas as tabelas seguem na versão maior 1; a menor sobe com coluna nova (série 4, PR 3: os
-    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige)."""
-    assert {t.versao_do_contrato.split(".")[0] for t in TABELAS.values()} == {"1"}
+    buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige).
+
+    Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
+    própria companhia, com `exposicao_a_terceiro` para o que fala de outra)."""
+    maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
+    assert maiores.pop("insolvencia") == "2"
+    assert set(maiores.values()) == {"1"}

@@ -1,0 +1,102 @@
+{
+  "tabela": "insolvencia",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "2.0.0",
+  "colunas": {
+    "cnpj": {
+      "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+      "unidade": "texto"
+    },
+    "empresa": {
+      "descricao": "Nome da companhia como a fonte informa",
+      "unidade": "texto"
+    },
+    "rotulo": {
+      "descricao": "O que aconteceu com a própria companhia: recuperacao_judicial, recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa)",
+      "unidade": "texto"
+    },
+    "evento": {
+      "descricao": "O que aconteceu, com quem for: os mesmos valores do rótulo, sem exposicao_a_terceiro",
+      "unidade": "texto"
+    },
+    "regra": {
+      "descricao": "O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, outra_empresa (palavras achadas) ou contexto_de_terceiro",
+      "unidade": "texto"
+    },
+    "evidencia": {
+      "descricao": "categoria_ipe ou fato_relevante",
+      "unidade": "texto"
+    },
+    "categoria": {
+      "descricao": "Categoria do documento, como a CVM publica",
+      "unidade": "texto"
+    },
+    "tipo": {
+      "descricao": "Tipo do documento, como a CVM publica (pode vir vazio)",
+      "unidade": "texto"
+    },
+    "assunto": {
+      "descricao": "Assunto escrito pela empresa",
+      "unidade": "texto"
+    },
+    "conhecido_em": {
+      "descricao": "Data de entrega à CVM (quando ficou público)",
+      "unidade": "data (dia)"
+    },
+    "referencia": {
+      "descricao": "Data a que o documento se refere",
+      "unidade": "data (dia)"
+    },
+    "protocolo": {
+      "descricao": "Protocolo de entrega na CVM",
+      "unidade": "texto"
+    },
+    "versao": {
+      "descricao": "Versão da entrega",
+      "unidade": "número inteiro"
+    },
+    "link": {
+      "descricao": "Endereço do documento original no sistema da CVM",
+      "unidade": "texto"
+    },
+    "ano_do_arquivo": {
+      "descricao": "Ano do arquivo da CVM de onde a linha veio",
+      "unidade": "ano"
+    },
+    "origem_sha256": {
+      "descricao": "SHA-256 do arquivo original no acervo",
+      "unidade": "texto"
+    },
+    "origem_coletada_em": {
+      "descricao": "Quando o arquivista baixou esse original",
+      "unidade": "data e hora (UTC)"
+    },
+    "montado_em": {
+      "descricao": "Quando a tabela foi montada",
+      "unidade": "data e hora (UTC)"
+    },
+    "versao_do_codigo": {
+      "descricao": "Commit do código que montou a tabela",
+      "unidade": "texto"
+    }
+  },
+  "chaves": [
+    "cnpj",
+    "protocolo",
+    "versao",
+    "rotulo"
+  ],
+  "datas": {
+    "aconteceu_em": "referencia",
+    "publico_em": "conhecido_em",
+    "coletado_em": "origem_coletada_em"
+  },
+  "historico_desde": "2010-01-01",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+  "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+  "pessoa": false,
+  "frequencia": "A cada montagem (`scripts/montar_base_historica.py`), que relê todos os arquivos anuais guardados",
+  "atraso": "O rótulo vale a partir de `conhecido_em` (entrega à CVM)"
+}

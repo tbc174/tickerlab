@@ -4173,7 +4173,7 @@
       "tabela": "insolvencia",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4184,7 +4184,15 @@
           "unidade": "texto"
         },
         "rotulo": {
-          "descricao": "recuperacao_judicial, recuperacao_extrajudicial, pedido_de_falencia, falencia ou liquidacao",
+          "descricao": "O que aconteceu com a própria companhia: recuperacao_judicial, recuperacao_extrajudicial, recuperacao_judicial_ou_extrajudicial (a categoria da CVM não diz qual e nada antes disse), pedido_de_falencia, falencia ou liquidacao; ou exposicao_a_terceiro (o documento fala de outra empresa)",
+          "unidade": "texto"
+        },
+        "evento": {
+          "descricao": "O que aconteceu, com quem for: os mesmos valores do rótulo, sem exposicao_a_terceiro",
+          "unidade": "texto"
+        },
+        "regra": {
+          "descricao": "O que decidiu de quem é o evento: categoria_ipe ou fato_relevante (da própria, sem sinal contrário), texto_proprio, texto_de_terceiro, securitizadora, outra_empresa (palavras achadas) ou contexto_de_terceiro",
           "unidade": "texto"
         },
         "evidencia": {
