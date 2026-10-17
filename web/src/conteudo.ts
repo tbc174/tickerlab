@@ -134,6 +134,7 @@ export const conteudoDoApp: {
     titulo: string;
     introducao: string;
     caixa: string;
+    sem_o_aceite: { titulo: string; explicacao: string };
     novidades: { texto: string; versao: string };
   };
   linha_do_tempo: { relevancias: { nome: string; valor: number }[]; padrao: number };

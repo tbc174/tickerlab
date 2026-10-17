@@ -20,13 +20,23 @@ def _rotulos(app):
     return [b.label for b in app.button]
 
 
+# a tela do aceite: Continuar e Sair, e os direitos da LGPD para quem não quer aceitar
+BOTOES_DO_ACEITE = [
+    "Continuar",
+    "Sair",
+    "Preparar o arquivo",
+    "Apagar a minha conta e os meus dados",
+]
+
+
 # --- aceite dos termos ---
 def test_primeiro_acesso_pede_o_aceite_e_bloqueia_o_app(banco, monkeypatch):
     entrar_como(monkeypatch, "ana", "ana@exemplo.com")
     app = abrir_app(aceitar_termos=False)
     assert not app.exception
-    assert _rotulos(app) == ["Continuar", "Sair"]
-    assert not app.text_input  # nada do app de verdade antes do aceite
+    assert _rotulos(app) == BOTOES_DO_ACEITE
+    # nada do app de verdade antes do aceite: só a palavra que confirma apagar a conta
+    assert [c.key for c in app.text_input] == ["confirmar_exclusao"]
     continuar = next(b for b in app.button if b.label == "Continuar")
     assert continuar.disabled  # só libera depois de marcar a caixa
 
@@ -55,7 +65,7 @@ def test_termos_novos_pedem_novo_aceite(banco, monkeypatch):
     abrir_app()
     monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2099-01-01")
     app = abrir_app(aceitar_termos=False)
-    assert _rotulos(app) == ["Continuar", "Sair"]
+    assert _rotulos(app) == BOTOES_DO_ACEITE
 
 
 def test_paginas_de_termos_e_privacidade(banco, monkeypatch):
@@ -165,3 +175,30 @@ def test_modo_local_nao_tem_dados_pessoais():
 
 def test_texto_do_banco_de_usuarios_tem_as_colunas_dos_termos():
     assert {"termos_versao", "termos_aceitos_em"} <= set(usuarios.c.keys())
+
+
+# --- termos novos não bloqueiam os direitos da LGPD (achado 6c do Codex) ---
+def test_sem_aceitar_os_termos_novos_ainda_exporta(banco, monkeypatch):
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    abrir_app()
+    monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2099-01-01")
+    app = abrir_app(aceitar_termos=False)
+    assert not app.exception
+    app.button(key="preparar_exportacao").click().run()
+    dados = json.loads(app.session_state["exportacao_json"])
+    assert dados["perfil"]["email"] == "ana@exemplo.com"
+
+
+def test_sem_aceitar_os_termos_novos_ainda_apaga_a_conta(banco, monkeypatch):
+    saiu = []
+    monkeypatch.setattr(st, "logout", lambda: saiu.append(True))
+    entrar_como(monkeypatch, "ana", "ana@exemplo.com")
+    abrir_app()
+    ana = id_do_usuario(banco, "ana")
+    monkeypatch.setattr(conformidade, "VERSAO_DOS_TERMOS", "2099-01-01")
+    app = abrir_app(aceitar_termos=False)
+    app.text_input(key="confirmar_exclusao").input("APAGAR").run()
+    app.button(key="apagar_minha_conta").click().run()
+    assert saiu == [True]
+    with banco.connect() as conexao:
+        assert buscar_por_id(conexao, ana) is None

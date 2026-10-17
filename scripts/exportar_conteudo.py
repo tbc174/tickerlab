@@ -318,6 +318,10 @@ def _app() -> dict[str, object]:
             "titulo": conformidade.TITULO_DO_ACEITE,
             "introducao": conformidade.INTRODUCAO_DO_ACEITE,
             "caixa": conformidade.CAIXA_DO_ACEITE,
+            "sem_o_aceite": {
+                "titulo": conformidade.TITULO_SEM_O_ACEITE,
+                "explicacao": conformidade.EXPLICACAO_SEM_O_ACEITE,
+            },
             "novidades": {
                 "texto": f"Opcional: {TEXTO_DAS_NOVIDADES}",
                 "versao": VERSAO_DAS_NOVIDADES,

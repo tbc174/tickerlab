@@ -53,6 +53,12 @@ INTRODUCAO_DO_ACEITE = (
     "investimento. Leia os termos e a política de privacidade e confirme."
 )
 CAIXA_DO_ACEITE = "Li e aceito os Termos de uso e a Política de privacidade"
+# quem não aceita os termos novos ainda pode exercer os direitos da LGPD (art. 18)
+TITULO_SEM_O_ACEITE = "Não quer aceitar? Baixe ou apague os seus dados"
+EXPLICACAO_SEM_O_ACEITE = (
+    "Sem aceitar, você não usa o app, mas os seus dados continuam seus: dá para baixar "
+    "uma cópia ou apagar a conta aqui mesmo."
+)
 
 
 def carregar_texto(nome: str) -> str:
