@@ -30,8 +30,8 @@ CODIFICACAO_DA_CVM = "cp1252"
 TIPO_DO_RELATORIO = "relatorio de agencia de rating"
 # assunto (sem acento, minúsculas) que fala de rating; agência pelo nome ou pela palavra
 ASSUNTO_COM_RATING = re.compile(
-    r"\brating|classificacao de risco|agencia de (classificacao|risco)|nota de (risco|credito)"
-    r"|moody|fitch|standard ?(&|and) ?poor|\bs ?& ?p\b|austin rating|liberum|\bsr rating"
+    r"\brating|classificacao de risco|agencia de (?:classificacao|risco)|nota de (?:risco|credito)"
+    r"|moody|fitch|standard ?(?:&|and) ?poor|\bs ?& ?p\b|austin rating|liberum|\bsr rating"
     r"|\blf rating|am best"
 )
 COLUNAS = (
@@ -70,20 +70,21 @@ def _ler_ipe_bruto(conteudo_do_zip: bytes) -> pd.DataFrame:
             ).fillna("")
 
 
-def evidencia(tipo: str, assunto: str) -> str | None:
-    """Por que o documento entra: é um relatório de agência, ou o assunto fala de rating."""
-    if _simples(tipo) == TIPO_DO_RELATORIO:
-        return "relatorio_de_agencia"
-    if ASSUNTO_COM_RATING.search(_simples(assunto)):
-        return "assunto"
-    return None
+def evidencias(bruto: pd.DataFrame) -> pd.Series:
+    """Por que cada documento entra: `relatorio_de_agencia` (o tipo próprio do IPE), `assunto` (o
+    assunto fala de rating) ou vazio (não entra). Vetorizado: o IPE inteiro tem ~750 mil linhas e a
+    coleta relê a lista a cada rodada."""
+    relatorio = bruto["Tipo"].map(_simples).eq(TIPO_DO_RELATORIO)
+    no_assunto = bruto["Assunto"].map(_simples).str.contains(ASSUNTO_COM_RATING)
+    escolha = pd.Series(None, index=bruto.index, dtype=object)
+    escolha[no_assunto] = "assunto"
+    escolha[relatorio] = "relatorio_de_agencia"
+    return escolha
 
 
 def documentos_com_rating(bruto: pd.DataFrame) -> pd.DataFrame:
     """Os documentos do IPE que trazem rating, um por versão entregue, com a data pública."""
-    escolha = bruto.apply(
-        lambda linha: evidencia(linha["Tipo"], linha["Assunto"]), axis=1
-    )
+    escolha = evidencias(bruto)
     linhas = bruto[escolha.notna()]
     tabela = pd.DataFrame(
         {
