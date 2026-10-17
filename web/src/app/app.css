@@ -69,8 +69,14 @@
 .erro-do-app { padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
 .botao-do-google { margin-top: var(--e5); min-height: 44px; }
 /* formulário de cada tela (campos do contrato) */
-.formulario-do-app { display: flex; flex-wrap: wrap; align-items: end; gap: var(--e3) var(--e4); margin: var(--e5) 0; }
+/* em caixa (ADR 0096): os campos do dia a dia em grade, "Opções avançadas" recolhidas, o botão à direita */
+.formulario-do-app { display: flex; flex-direction: column; gap: var(--e4); margin: var(--e5) 0; padding: var(--e4) var(--e5);
+  border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.campos-do-formulario { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); align-items: end; gap: var(--e3) var(--e4); }
 .formulario-do-app label { display: flex; flex-direction: column; gap: var(--e1); font-size: .88rem; color: var(--apagado); }
+.formulario-do-app .botao { align-self: flex-end; min-height: 44px; }
+.opcoes-avancadas summary { cursor: pointer; width: fit-content; margin-bottom: var(--e3); font-size: .88rem; font-weight: 700; color: var(--azul-texto); }
+.opcoes-avancadas:not([open]) summary { margin-bottom: 0; }
 .formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: var(--e2) var(--e3); border-radius: 8px;
   border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit;
   font-size: 16px; } /* menos que 16 px, o iPhone dá zoom na página ao tocar no campo */
@@ -140,7 +146,9 @@
 .cartao-do-workspace li.mudou { border-color: var(--linha-forte); }
 .selo-da-mudanca { font-weight: 700; }
 .tese-ligada { font-size: .88rem; color: var(--apagado); white-space: pre-line; }
-.salvar-simulacao .formulario-do-app { margin: var(--e3) 0; }
+/* o formulário de salvar é só um nome e um botão: sem a caixa, na mesma linha */
+.salvar-simulacao .formulario-do-app { flex-direction: row; flex-wrap: wrap; align-items: end; margin: var(--e3) 0; padding: 0;
+  border: 0; background: none; }
 .salvar-simulacao input { min-width: min(24rem, 100%); }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
 .textos-legais { display: flex; gap: var(--e5); flex-wrap: wrap; }
