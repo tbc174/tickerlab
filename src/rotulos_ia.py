@@ -26,12 +26,13 @@ import anthropic
 
 from base.cnpj import dv_confere, normalizar_cnpj, tem_letra
 from src import topicos
+from src.auditoria_rotulos import GENERICAS
 
 MODELO = "claude-sonnet-5-5"  # o rotulador da fila inteira (14/10)
 MODELO_CONFERENTE = "claude-opus-5-5"  # o segundo modelo às cegas (Emenda 1, 17/10)
 # chave criada fora de um workspace: a API pede o id do workspace em cada pedido (não é segredo)
 VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
-VERSAO_DO_PROMPT = "1"
+VERSAO_DO_PROMPT = "2"  # v2 (17/10/2026): anonimização mais forte e sem o setor
 GUIA = "v2"
 MAX_CARACTERES_DO_TEXTO = 6_000  # o começo do documento, como no leitor (ADR 0069)
 MAX_TOKENS_DA_RESPOSTA = 2_000  # a resposta é curta; a folga é para o raciocínio
@@ -144,6 +145,108 @@ _CNPJ = re.compile(r"\b[0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3}/?[0-9A-Z]{4}-?\d{
 _CODIGO = re.compile(r"\b[A-Z]{4}\d{1,2}\b")
 _MIN_LETRAS_DO_NOME = 4
 
+# --- v2 (17/10/2026): o teste de identificação da v1 achou a palavra do nome no texto em 118 de 176 ---
+# o cadastro junta partes com " - ": "PETRÓLEO BRASILEIRO S.A. - PETROBRAS", "LIGHT S.A. - EM RECUPERAÇÃO
+# JUDICIAL"; a situação é de hoje e, no texto, é conteúdo (nunca é trocada)
+_PARTES = re.compile(r"\s+-\s+")
+_SITUACAO = re.compile(
+    r"(?i)^(massa\s+)?(falida|em\s+recupera[cç][aã]o(\s+extra)?\s*judicial"
+    r"|em\s+liquida[cç][aã]o(\s+extrajudicial)?)$"
+)
+_CONECTORES = frozenset(["de", "do", "da", "dos", "das", "e", "em"])
+# começos de nome de 2 ou 3 letras que são palavras (em maiúsculas, aparecem em qualquer título:
+# "PODERÁ SER", "VIA E-MAIL") ou termos de qualquer empresa ("SPE"): não são trocados
+_SIGLAS_COMUNS = frozenset(
+    ["DE", "DO", "DA", "DOS", "DAS", "E", "EM", "NO", "NA", "AO", "SA", "CIA", "LTD", "INC", "CO",
+     "RIO", "SUL", "AÇO", "BOA", "SER", "SOC", "SPE", "VIA", "SAO", "SÃO", "PAR", "SOL", "LUZ"]
+)  # fmt: skip
+_ANTES_DA_SIGLA = frozenset(["BANCO", "GRUPO"])  # "BANCO ABC BRASIL", "GRUPO SBF"
+# palavras dos 816 nomes da fila (lidas em 17/10/2026) que são português ou termo do negócio: apagar
+# "pagamento", "distribuidora" ou "recuperação" tiraria o sentido do texto. As que a auditoria já
+# trata como genéricas (`GENERICAS`) também ficam. Nomes de lugar no nome da empresa ("Sergipe",
+# "Bahia") e marcas ("Vale", "Rumo", "Claro") saem, só nos documentos dela.
+_TEXTO_DAS_COMUNS = """
+    recuperacao judicial extrajudicial liquidacao falida massa
+    empresa grupo holdings part particip participacao participations sociedade company corp limited
+    capital investimento investments partners consorcio
+    securitizadora securitizacao concessionaria concessao concessoes concess conc rodovias rodovia
+    rodoviarios estradas ferrovia distribuidora distrib educacao educacional educacionais escola
+    engenharia imobiliarios imobiliario imoveis imob mercantil creditos credito cred credit financeiros
+    financiamento financial finance telecomunicacoes telecomunicacao telecom aguas agua esgoto esgotos
+    tecidos produtos energias energetica energeticos energ eletricas eletricidade eletronica centrais
+    empreend empreends infraestrutura infra industrial industriais industrializados locacao
+    renovaveis lojas shopping saude health consultoria desenvolvimento arrendamento leasing solucoes
+    solutions transmissora veiculos digital agropecuaria agro agricola agricolas agroindustrial
+    agronegocios farmaceutica farmaceuticos farma pharma farmacia drogaria mineracao minerals miner
+    cartoes metropolitana metropolitano metrop redes rede papel celulose hospital hospitalar hotel
+    hoteis global quimica petroquimica center centers centro textil porto portuaria operacoes operacao
+    operadora internet corretora corretagem varejo varejista tech technology seguridade seguro servico
+    advisory malls properties propriedades prop ambiental environmental diagnosticos sistema ligas
+    ferro forca consignados pagamento instituicao instituto fiacao tecelagem linha linhas integradas
+    medicamentos incorporacoes fabrica fertilizantes esportivos transportes transportadora medicos
+    medicina residencial turismo usinas maquinas equipamentos equip alimentacao cereais cabos metais
+    metal metalicos componentes editora bolsa balcao mobile mobilidade mobility bicicletas assessoria
+    restaurantes sementes borrachas real estate securities regiao modas moda store carvao imagem trans
+    basico basicos melhoramentos aluminio aeroporto aeroportos internacional international terapeuticos
+    agencia viagens parts laboratorios laboratorio frigorifico outlets general meios fibra aereas casas
+    talheres care florestal florestas embalagem irrigacao refratarios brinquedos manufatura foods
+    estruturas consumidor consumo cosmeticos trade navegacao maritimos trust valorizacao residuos plano
+    publicos produtores software implementos recebiveis negocios roupas plasticos fidelidade
+    abastecimento abastec solar bebidas entretenimento armas terminal conteineres pigmentos moveis
+    caminhoes urbano biologicos cimentos siderurgicas mecanicas academias ginastica petroleos petroleum
+    oleo confeccoes interestaduais intermodal commercial relacionamentos adquirencia compartilhamento
+    automob auto hidro gerais estadual securitzadora const empr emp arrend telec resseguros norte nordeste sudeste noroeste leste oeste brazil brazilian america
+    americas bank para mais menos tres nova novo alto forte terra verde quero fica pague uniao dias
+    pratica impacto origem estilo quality
+"""
+PALAVRAS_COMUNS = frozenset(_TEXTO_DAS_COMUNS.split())
+
+
+def _palavras(texto: str) -> set[str]:
+    """As palavras do texto sem acento e em minúsculas ("PETRÓLEO" vira "petroleo")."""
+    return set(re.findall(r"[a-z0-9]+", _sem_acento(texto).lower()))
+
+
+def _distintas(nome: str) -> set[str]:
+    """As palavras do nome que distinguem a empresa: 4 letras ou mais (como a auditoria conta o
+    acerto), fora das genéricas da auditoria e das palavras comuns."""
+    return {
+        p for p in _palavras(nome)
+        if len(p) >= _MIN_LETRAS_DO_NOME and p not in GENERICAS and p not in PALAVRAS_COMUNS
+    }  # fmt: skip
+
+
+def _partes_do_nome(nome: str) -> list[str]:
+    """O nome do cadastro em partes, sem as de situação ("- EM RECUPERAÇÃO JUDICIAL")."""
+    partes = _PARTES.split(" ".join(nome.split()))
+    return [p for p in partes if p and not _SITUACAO.match(_SUFIXO.sub("", p))]
+
+
+def _parte_e_nome(parte: str, principal: bool) -> bool:
+    """A primeira parte é sempre o nome. As outras só quando têm palavra que distingue ("PETROBRAS")
+    ou são um nome sem conector ("BRASIL, BOLSA, BALCÃO"); com conector ("INSTITUIÇÃO DE PAGAMENTO")
+    são descrição e ficam no texto."""
+    if principal or _distintas(parte):
+        return True
+    palavras = _palavras(parte)
+    return len(palavras) >= 2 and not _CONECTORES.intersection(palavras)
+
+
+def _siglas(nome: str) -> set[str]:
+    """As siglas curtas do nome (OI, BRF, B3), como estão no cadastro: a primeira palavra de uma
+    parte, ou a que vem depois de "BANCO" ou "GRUPO". As do meio ("IND. E COM.") são abreviações."""
+    siglas = set()
+    for parte in _partes_do_nome(nome):
+        palavras = re.findall(r"[^\W_]+", parte)
+        if not palavras:
+            continue
+        candidatas = palavras[:2] if palavras[0] in _ANTES_DA_SIGLA else palavras[:1]
+        siglas.update(
+            s for s in candidatas
+            if 2 <= len(s) <= 3 and any(c.isalpha() for c in s) and s not in _SIGLAS_COMUNS
+        )  # fmt: skip
+    return siglas
+
 
 def _padrao_do_nome(nome: str) -> re.Pattern[str]:
     # "S.A" no cadastro costuma ser "S.A." no texto: o ponto final vai junto
@@ -161,8 +264,8 @@ def _padrao_do_nome(nome: str) -> re.Pattern[str]:
 
 def _comecos(nome: str) -> list[str]:
     """Os começos do nome com pelo menos duas palavras de 4 letras ("Viver Incorporadora"), sem
-    terminar num conector ("e", "de"). Uma palavra sozinha não entra: "Banco" ou "Petróleo" apagariam
-    o sentido do texto; o teste de identificação da auditoria mede o que escapar."""
+    terminar num conector ("e", "de"). Palavra sozinha só entra pelas distintas (`_distintas`, v2):
+    "Banco" ou "Petróleo" apagariam o sentido do texto."""
     palavras = nome.split()
     comecos = []
     for k in range(2, len(palavras)):
@@ -173,16 +276,22 @@ def _comecos(nome: str) -> list[str]:
 
 
 def _variantes_do_nome(nomes: list[str]) -> list[str]:
-    """Cada nome inteiro, sem o sufixo da sociedade (S.A., S/A, Ltda.) e os começos dele, do maior
-    para o menor (o maior troca primeiro)."""
+    """Cada parte do nome que é nome (v2), sem o sufixo da sociedade (S.A., S/A, Ltda.), os começos
+    dela e as palavras que distinguem a empresa, do maior para o menor (o maior troca primeiro)."""
     variantes = set()
     for nome in nomes:
-        nome = " ".join(nome.split())
-        sem_sufixo = _SUFIXO.sub("", nome)
-        for v in (nome, sem_sufixo, *_comecos(sem_sufixo)):
-            if sum(c.isalpha() for c in v) >= _MIN_LETRAS_DO_NOME:
-                variantes.add(v)
-    return sorted(variantes, key=len, reverse=True)
+        partes = _partes_do_nome(nome)
+        variantes.add(" - ".join(partes))  # o nome inteiro, sem a situação
+        for i, parte in enumerate(partes):
+            if _parte_e_nome(parte, principal=i == 0):
+                sem_sufixo = _SUFIXO.sub("", parte)
+                variantes.update((parte, sem_sufixo, *_comecos(sem_sufixo)))
+        variantes.update(_distintas(nome))
+    return sorted(
+        (v for v in variantes if sum(c.isalpha() for c in v) >= _MIN_LETRAS_DO_NOME),
+        key=len,
+        reverse=True,
+    )
 
 
 def _mascara_do_cnpj(achado: re.Match[str]) -> str:
@@ -200,7 +309,26 @@ def anonimizar(texto: str, nomes: list[str]) -> str:
     texto = _CODIGO.sub(CODIGO, texto)
     for variante in _variantes_do_nome(nomes):
         texto = _padrao_do_nome(variante).sub(EMPRESA, texto)
+    for sigla in set().union(*(_siglas(nome) for nome in nomes)):
+        formas = "|".join(re.escape(f) for f in {sigla, sigla.capitalize()})
+        texto = re.sub(rf"(?<![\w/])(?:{formas})(?![\w/])", EMPRESA, texto)
     return texto
+
+
+def palavras_que_vazam(texto: str, nome: str) -> set[str]:
+    """As palavras que distinguem a empresa (as que a auditoria conta como acerto, fora as comuns)
+    e que ainda estão no documento: a conferência sem custo antes do teste de identificação."""
+    return _distintas(nome) & _palavras(texto)
+
+
+def palavras_comuns_que_ficam(texto: str, nome: str) -> set[str]:
+    """As palavras comuns do nome que ficam no documento de propósito ("pagamento") e que a auditoria
+    contaria como acerto se a IA as dissesse: o resto do que a identificação pode pegar."""
+    comuns = {
+        p for p in _palavras(nome)
+        if len(p) >= _MIN_LETRAS_DO_NOME and p not in GENERICAS and p in PALAVRAS_COMUNS
+    }  # fmt: skip
+    return comuns & _palavras(texto)
 
 
 def e_fato_relevante(evento: dict) -> bool:
@@ -208,7 +336,9 @@ def e_fato_relevante(evento: dict) -> bool:
 
 
 def documento(evento: dict, texto: str) -> str:
-    """O que o modelo lê: os dados do IPE e o começo do texto, sem o nome da empresa."""
+    """O que o modelo lê: os dados do IPE e o começo do texto, sem o nome da empresa. Sem o setor
+    desde a v2: o guia não usa o setor para a nota, e alguns setores da CVM são quase de uma empresa
+    só ("Bolsas de Valores")."""
     nomes = [evento.get("empresa") or ""]
     corpo = anonimizar(texto[: MAX_CARACTERES_DO_TEXTO + 500], nomes)[
         :MAX_CARACTERES_DO_TEXTO
@@ -218,8 +348,7 @@ def documento(evento: dict, texto: str) -> str:
         f"Tipo: {evento.get('tipo', '')}\n"
         f"Espécie: {evento.get('especie', '')}\n"
         f"Assunto: {anonimizar(evento.get('assunto') or '', nomes)}\n"
-        f"Data de entrega: {evento.get('entrega', '')}\n"
-        f"Setor: {evento.get('setor', '')}\n\n"
+        f"Data de entrega: {evento.get('entrega', '')}\n\n"  # v2: sem o setor
         f"Texto do documento (começo):\n{corpo.strip() or SEM_TEXTO}"
     )
 

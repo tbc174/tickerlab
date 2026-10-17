@@ -77,13 +77,126 @@ def test_nome_vazio_nao_apaga_o_texto():
     assert ri.anonimizar("Texto comum.", ["", "S.A."]) == "Texto comum."
 
 
+# --- prompt v2 (17/10/2026): o que escapou na identificação da v1 -------------------------
+
+
+@pytest.mark.parametrize(
+    "nome, texto, esperado",
+    [
+        ("PETRÓLEO BRASILEIRO  S.A.  - PETROBRAS",
+         "A Petrobras informa que a Petrobras Distribuidora foi vendida.",
+         "A [EMPRESA] informa que a [EMPRESA] Distribuidora foi vendida."),
+        ("CPFL ENERGIA S.A.", "A CPFL Paulista concluiu a obra.",
+         "A [EMPRESA] Paulista concluiu a obra."),
+        ("LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL", "A Light comunica.", "A [EMPRESA] comunica."),
+        ("COSAN S.A.", "A Cosan e a Raízen assinaram.", "A [EMPRESA] e a Raízen assinaram."),
+        ("KEPLER WEBER S.A.", "A Kepler informa; a Weber também.",
+         "A [EMPRESA] informa; a [EMPRESA] também."),
+        ("CIA ENERG MINAS GERAIS - CEMIG", "A Cemig e a CEMIG GT.", "A [EMPRESA] e a [EMPRESA] GT."),
+    ],
+)  # fmt: skip
+def test_palavra_que_distingue_a_empresa_sozinha_e_trocada(nome, texto, esperado):
+    assert ri.anonimizar(texto, [nome]) == esperado
+
+
+def test_situacao_no_cadastro_nao_apaga_o_texto():
+    """O sufixo de situação é do cadastro de hoje; no texto, "em recuperação judicial" é conteúdo."""
+    nome = "AMERICANAS S.A. - EM RECUPERAÇÃO JUDICIAL"
+    texto = "A Americanas S.A. - Em Recuperação Judicial informa que está em recuperação judicial."
+    assert ri.anonimizar(texto, [nome]) == (
+        "A [EMPRESA] - Em Recuperação Judicial informa que está em recuperação judicial."
+    )
+    nome = "CCX CARVÃO DA COLOMBIA S.A. - EM LIQUIDAÇÃO"
+    assert ri.anonimizar("A massa em liquidação.", [nome]) == "A massa em liquidação."
+
+
+def test_parte_depois_do_traco_com_nome_e_trocada_inteira():
+    nome = "B3 S.A. - BRASIL, BOLSA, BALCÃO"
+    texto = "A B3 S.A. - Brasil, Bolsa, Balcão divulga o volume da bolsa."
+    assert ri.anonimizar(texto, [nome]) == "A [EMPRESA] divulga o volume da bolsa."
+    # só a parte de depois do traço, sem a de antes, também sai
+    assert (
+        ri.anonimizar("A Brasil, Bolsa, Balcão e a bolsa.", [nome])
+        == "A [EMPRESA] e a bolsa."
+    )
+
+
+def test_palavra_comum_do_nome_fica():
+    """Apagar "pagamento" ou "distribuidora" tiraria o sentido do texto; uma descrição com conector
+    ("Instituição de Pagamento") depois do traço também fica."""
+    nome = "CIELO S.A. - INSTITUIÇÃO DE PAGAMENTO"
+    texto = "A Cielo, instituição de pagamento, aprovou o pagamento de dividendos."
+    assert ri.anonimizar(texto, [nome]) == (
+        "A [EMPRESA], instituição de pagamento, aprovou o pagamento de dividendos."
+    )
+    nome = "ENERGISA MINAS RIO - DISTRIBUIDORA DE ENERGIA S/A"
+    texto = "A Energisa, distribuidora de energia, e a outra distribuidora."
+    assert ri.anonimizar(texto, [nome]) == (
+        "A [EMPRESA], distribuidora de energia, e a outra distribuidora."
+    )
+
+
+def test_sigla_curta_so_em_maiusculas_ou_com_inicial_maiuscula():
+    """OI, BRF, B3: siglas de 2 ou 3 letras trocadas como estão no cadastro ou com a inicial
+    maiúscula ("a Oi"), nunca em minúsculas, para "oi" e "de" não sumirem do texto."""
+    assert ri.anonimizar(
+        "A OI e a Oi informam: oi, tudo bem.", ["OI S.A. - EM RECUPERAÇÃO JUDICIAL"]
+    ) == ("A [EMPRESA] e a [EMPRESA] informam: oi, tudo bem.")
+    assert (
+        ri.anonimizar("BRF e a Sadia de SP.", ["BRF S.A."])
+        == "[EMPRESA] e a Sadia de SP."
+    )
+
+
+def test_sigla_so_no_comeco_de_uma_parte_do_nome():
+    """Abreviações do meio do cadastro ("IND. E COM.") estão em qualquer texto em maiúsculas; a sigla
+    que é nome vem no começo ("OI S.A."), depois de "BANCO" ou numa parte própria ("- NTS")."""
+    nome = "AERIS IND. E COM. DE EQUIP. PARA GER. DE ENG. S.A."
+    assert (
+        ri.anonimizar("VENDA COM DESCONTO NA IND", [nome])
+        == "VENDA COM DESCONTO NA IND"
+    )
+    assert (
+        ri.anonimizar("O ABC e o BANCO.", ["BANCO ABC BRASIL S/A"])
+        == "O [EMPRESA] e o BANCO."
+    )
+    nome = "NOVA TRANSPORTADORA DO SUDESTE S.A. - NTS"
+    assert ri.anonimizar("A NTS informa.", [nome]) == "A [EMPRESA] informa."
+    assert (
+        ri.anonimizar("ITA e ITAÚ.", ["ITAÚ UNIBANCO HOLDING S.A."])
+        == "ITA e [EMPRESA]."
+    )
+
+
+def test_marcadores_nao_sao_trocados_de_novo():
+    nome = "EMAE - EMPRESA METROP.AGUAS ENERGIA S.A."
+    assert (
+        ri.anonimizar("A EMAE, empresa de energia.", [nome])
+        == "A [EMPRESA], empresa de energia."
+    )
+
+
+@pytest.mark.parametrize(
+    "nome, texto, vazam",
+    [
+        ("COSAN S.A.", "A [EMPRESA] e a Cosan Lubrificantes.", {"cosan"}),
+        ("CIELO S.A. - INSTITUIÇÃO DE PAGAMENTO", "Instituição de pagamento.", set()),
+        ("KEPLER WEBER S.A.", "Texto limpo.", set()),
+    ],
+)
+def test_palavras_que_vazam(nome, texto, vazam):
+    """A conferência sem custo: palavras do nome que distinguem a empresa (as que a auditoria conta
+    como acerto) e que ainda estão no documento."""
+    assert ri.palavras_que_vazam(texto, nome) == vazam
+
+
 # --- o pedido ---------------------------------------------------------------------------
 
 
 def test_pedido_sem_nome_da_empresa():
     pedido = json.dumps(ri.pedido(FATO, TEXTO), ensure_ascii=False)
     assert "Viver" not in pedido and "VIVER" not in pedido and "VIVR3" not in pedido
-    assert "Construção Civil" in pedido  # o setor vai
+    assert "Construção Civil" not in pedido and "Setor" not in pedido  # v2: sem o setor
 
 
 def test_pedido_usa_o_guia_v2_e_o_modelo_combinado():
