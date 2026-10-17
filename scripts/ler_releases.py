@@ -2,7 +2,7 @@
 
     python -m scripts.ler_releases medir [--base PASTA] [--desde 2024]
 
-`medir` (sem API, sem gasto) conta os press-releases do IPE guardado no acervo por ano de entrega e
+`medir` (sem API, sem gasto; lê a base pela `base.porta`, na imagem com duckdb) conta os press-releases do IPE guardado no acervo por ano de entrega e
 quantos têm ITR ou DFP do mesmo período em `demonstracoes_como_era`. Os outros passos (baixar,
 estimar, piloto, enviar, conferir) entram nos PRs 2 e 3 do plano.
 """
@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from base import releases
+from base import porta, releases
+from base.porta.duckdb import nome_da_view
 from base.ratings import FONTE_DO_IPE, ler_ipe_bruto
 from src import acervo
 from src.banco.coletas import originais_mais_recentes
@@ -77,12 +78,10 @@ def _releases_do_acervo(desde: int) -> pd.DataFrame:
 
 
 def _demonstracoes(pasta_da_base: Path) -> pd.DataFrame:
-    arquivos = sorted((pasta_da_base / "demonstracoes").glob("*.parquet"))
-    colunas = ["cnpj", "documento", "referencia"]
-    return pd.concat(
-        [pd.read_parquet(a, columns=colunas).drop_duplicates() for a in arquivos],
-        ignore_index=True,
-    ).drop_duplicates()
+    """Só os pares (CNPJ, período) entregues: a base é lida pela porta, sem trazer as contas."""
+    with porta.abrir(pasta_da_base) as p:
+        visao = nome_da_view("demonstracoes_como_era")
+        return p.con.execute(f'SELECT DISTINCT cnpj, referencia FROM "{visao}"').df()
 
 
 def main(argv: list[str] | None = None) -> int:
