@@ -97,6 +97,9 @@ def _modulos() -> list[dict]:
 
 
 def _paginas() -> list[dict]:
+    """As páginas que o app em React conhece. As `somente_admin` ficam de fora de propósito: o
+    bundle é público, e o catálogo da área de administração não deve estar nele (a tela de admin
+    é só do Streamlit; o servidor continua sendo quem autoriza)."""
     return [
         {
             "chave": p.chave,
@@ -110,6 +113,7 @@ def _paginas() -> list[dict]:
             "contrato": asdict(p.contrato) if p.contrato else None,
         }
         for p in paginas.PAGINAS
+        if not p.somente_admin
     ]
 
 

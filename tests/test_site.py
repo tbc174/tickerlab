@@ -373,3 +373,18 @@ def test_novidades_no_rodape_de_todas_as_paginas_e_no_mapa_do_site():
     assert "https://tickerlab.com.br/novidades.html" in (
         SITE / "sitemap.xml"
     ).read_text(encoding="utf-8")
+
+
+def test_security_txt_existe_e_nao_esta_perto_de_vencer():
+    """RFC 9116: o `Expires` do security.txt vale um ano; quem lê ignora arquivo vencido.
+    Falha 30 dias antes: gere de novo com a data nova (SECURITY_TXT_EXPIRA em web/src/entry-server.tsx)."""
+    from datetime import UTC, datetime, timedelta
+
+    texto = (SITE / ".well-known" / "security.txt").read_text(encoding="utf-8")
+    assert "Contact: mailto:contato@tickerlab.com.br" in texto
+    expira = re.search(r"^Expires: (\S+)$", texto, re.MULTILINE)
+    assert expira, "falta o campo Expires"
+    vence = datetime.fromisoformat(expira.group(1).replace("Z", "+00:00"))
+    assert vence - datetime.now(UTC) > timedelta(days=30), (
+        "renove o Expires do security.txt"
+    )

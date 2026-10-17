@@ -8,8 +8,7 @@ export const DADOS = {
   caminho: "/metodologia.html",
   titulo: "Fontes e metodologia",
   descricao:
-    "De onde vêm os dados do TickerLab, como os números são calculados, as notas e os padrões " +
-    "do relatório de empresa, os limites dos testes de estratégia e a privacidade.",
+    "De onde vêm os dados do TickerLab, como os números são calculados, os padrões do relatório, os limites dos testes e a privacidade.",
   atual: "/metodologia.html",
 };
 

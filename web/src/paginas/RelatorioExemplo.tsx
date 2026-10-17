@@ -7,8 +7,8 @@ export const DADOS = {
   caminho: "/relatorio-de-exemplo.html",
   titulo: `Relatório de exemplo: ${amostra.empresa}`,
   descricao:
-    `O que a base do TickerLab mostra sobre a ${amostra.empresa}: fundos com a empresa, ofertas ` +
-    "do grupo, rodízio do auditor, setor regulado e negócios, cruzando a CVM e as agências.",
+    `O que a base do TickerLab mostra sobre a ${amostra.empresa}: fundos, ofertas, ` +
+    "rodízio do auditor, setor regulado e negócios, cruzando a CVM e as agências.",
   atual: "/relatorio-de-exemplo.html",
 };
 

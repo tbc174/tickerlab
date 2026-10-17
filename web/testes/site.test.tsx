@@ -62,6 +62,24 @@ describe("HTML pronto", () => {
     for (const arquivo of arquivos) expect(renderizar(arquivo)).not.toContain("tl-bruto");
   });
 
+  it("o security.txt segue a RFC 9116", () => {
+    const texto = arquivosFixos()[".well-known/security.txt"];
+    expect(texto).toContain("Contact: mailto:contato@tickerlab.com.br\n");
+    expect(texto).toContain("Expires: 2027-10-17T00:00:00.000Z\n");
+    expect(texto).toContain("Preferred-Languages: pt-BR, en\n");
+    expect(texto).toContain("Canonical: https://tickerlab.com.br/.well-known/security.txt\n");
+  });
+
+  it("a descrição de cada página cabe no resultado do Google (até 160 caracteres)", () => {
+    for (const arquivo of arquivos.filter((a) => a !== "404.html")) {
+      const descricao = /<meta name="description" content="([^"]*)"/.exec(renderizar(arquivo))?.[1];
+      expect(descricao, arquivo).toBeDefined();
+      // o HTML escapa & e aspas; conta cada entidade como um caractere
+      const texto = descricao!.replace(/&(amp|quot|#x27);/g, "x");
+      expect(texto.length, `${arquivo}: ${texto.length}`).toBeLessThanOrEqual(160);
+    }
+  });
+
   it("o mapa do site tem todas as páginas menos a 404", () => {
     const mapa = arquivosFixos()["sitemap.xml"];
     expect(mapa).toContain("<loc>https://tickerlab.com.br/</loc>");
