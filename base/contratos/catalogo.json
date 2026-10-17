@@ -5083,6 +5083,144 @@
       "frequencia": "A cada montagem, a partir da exportação do acervo (`base/bcb_selic_focus.py`)",
       "atraso": "O valor vale a partir de `divulgado_em` (a safra): a data da pesquisa, no Focus; o dia da coleta, na meta"
     },
+    "release_x_oficial": {
+      "tabela": "release_x_oficial",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "protocolo": {
+          "descricao": "Protocolo da entrega do release no IPE da CVM",
+          "unidade": "texto"
+        },
+        "versao": {
+          "descricao": "Versão da entrega do release (1, 2, 3...)",
+          "unidade": "número inteiro"
+        },
+        "periodo": {
+          "descricao": "Trimestre do release (3T25)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data de referência do release: o fim do trimestre",
+          "unidade": "data (dia)"
+        },
+        "data_entrega": {
+          "descricao": "Dia em que o release foi entregue à CVM",
+          "unidade": "data (dia)"
+        },
+        "link": {
+          "descricao": "Endereço do PDF do release na CVM",
+          "unidade": "texto"
+        },
+        "linha": {
+          "descricao": "receita_liquida, lucro_liquido_controladores ou resultado_operacional",
+          "unidade": "texto"
+        },
+        "periodo_lido": {
+          "descricao": "O período a que o valor do release se refere: trimestre, acumulado_no_ano ou ano",
+          "unidade": "texto"
+        },
+        "leitura": {
+          "descricao": "Ordem do valor quando o release repete a linha no mesmo período (0, 1...)",
+          "unidade": "número inteiro"
+        },
+        "valor_release_reais": {
+          "descricao": "Valor que o release mostra, já em reais (vazio: o release não mostra a linha)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "unidade_release": {
+          "descricao": "Escala em que o release mostra o valor: unidade, mil, milhoes ou bilhoes",
+          "unidade": "texto"
+        },
+        "grupo": {
+          "descricao": "con (consolidado) ou ind (individual) do valor oficial",
+          "unidade": "texto"
+        },
+        "documento": {
+          "descricao": "ITR ou DFP de onde veio o valor oficial",
+          "unidade": "texto"
+        },
+        "documento_versao": {
+          "descricao": "Versão do ITR ou da DFP usada",
+          "unidade": "número inteiro"
+        },
+        "documento_entregue_em": {
+          "descricao": "Dia da entrega dessa versão à CVM",
+          "unidade": "data (dia)"
+        },
+        "valor_oficial_reais": {
+          "descricao": "Valor do ITR ou da DFP, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "tolerancia_reais": {
+          "descricao": "Meia unidade do que o release mostra, em reais: até aqui é arredondamento",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "diferenca_reais": {
+          "descricao": "Valor do release menos o oficial, em reais",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "diferenca_pct": {
+          "descricao": "Diferença em % do valor oficial",
+          "unidade": "pontos percentuais (66,25 = 66,25%)"
+        },
+        "classe": {
+          "descricao": "igual, igual (arredondamento), diferente, release não mostra ou sem ITR",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "A data mais nova entre o release e o documento oficial: quando a linha passou a existir",
+          "unidade": "data (dia)"
+        },
+        "publico_em": {
+          "descricao": "Igual a `disponivel_em`",
+          "unidade": "data (dia)"
+        },
+        "modelo": {
+          "descricao": "Modelo que leu o release",
+          "unidade": "texto"
+        },
+        "versao_do_guia": {
+          "descricao": "Versão do guia de leitura dado ao modelo",
+          "unidade": "texto"
+        },
+        "sha256_do_documento": {
+          "descricao": "SHA-256 do PDF do release",
+          "unidade": "texto"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "protocolo",
+        "linha",
+        "periodo_lido",
+        "leitura"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "publico_em",
+        "coletado_em": "montado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Semanal no servidor de casa: baixa os releases novos, lê em lote e remonta a tabela",
+      "atraso": "Vale a partir de `disponivel_em`, a data mais nova entre o release e o documento oficial: sem as duas pontas, não existe"
+    },
     "controladas": {
       "tabela": "controladas",
       "modulo": "mercado_e_empresas",

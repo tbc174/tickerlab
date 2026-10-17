@@ -185,3 +185,29 @@ def test_gravar_cria_parquet_com_manifesto(tmp_path):
     pasta = tmp_path / "release_x_oficial"
     assert (pasta / "release_x_oficial.parquet").exists()
     assert (pasta / "release_x_oficial.json").exists()
+
+
+def test_dicionario_e_contrato_dizem_as_mesmas_colunas():
+    from base.dicionario import TABELAS
+
+    tabela = TABELAS["release_x_oficial"]
+    assert tuple(tabela.colunas) == rxo.COLUNAS
+    assert tabela.chaves == tuple(rxo.CHAVE)
+    assert tabela.datas["publico_em"] == "publico_em"
+    assert tabela.familia_da_fonte == "cvm"
+
+
+def test_manifesto_tem_um_original_por_pdf_com_o_sha256(tmp_path):
+    import json
+
+    leituras = [_leitura(100.0), _leitura(10.0, linha="resultado_operacional")]
+    rxo.gravar(
+        pd.DataFrame(leituras),
+        pd.DataFrame([_oficial(100_000_000)]),
+        tmp_path,
+        pd.Timestamp("2026-10-17", tz="UTC"),
+    )
+    manifesto = json.loads(
+        (tmp_path / "release_x_oficial" / "release_x_oficial.json").read_text("utf-8")
+    )
+    assert [o["sha256"] for o in manifesto["origens"]] == ["ab"]

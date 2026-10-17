@@ -2020,6 +2020,54 @@ Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `release_x_oficial`
+
+O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional. Uma linha por valor lido do release, com o valor oficial, a diferença em R$ e em % e a classe (igual, igual por arredondamento, diferente, release não mostra, sem ITR). O modelo só copiou o número e o trecho; o código conferiu o trecho no texto do PDF e fez a comparação. A tabela guarda só números, nenhum texto do modelo. Diferença não é erro: pode ser ajuste ou outro critério da empresa
+
+- **Fonte:** CVM: índice do IPE (press-releases de resultado) e dados abertos de DFP e ITR (`demonstracoes_como_era`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Semanal no servidor de casa: baixa os releases novos, lê em lote e remonta a tabela
+- **Atraso de divulgação:** Vale a partir de `disponivel_em`, a data mais nova entre o release e o documento oficial: sem as duas pontas, não existe
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `protocolo`, `linha`, `periodo_lido`, `leitura`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `montado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/release_x_oficial/release_x_oficial.parquet` (servidor de casa)
+- **Linhagem:** `protocolo` e `link` levam ao PDF do release no IPE da CVM; `sha256_do_documento` é o SHA-256 dele, igual ao do manifesto. `modelo` e `versao_do_guia` dizem quem leu e com que instrução; a resposta bruta, o trecho, os tokens e os descartes ficam no arquivo de leituras ao lado do PDF (`scripts/ler_releases.py`). O valor oficial vem de `demonstracoes_como_era`, na versão que valia no dia do release. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `protocolo` | Protocolo da entrega do release no IPE da CVM | texto |
+| `versao` | Versão da entrega do release (1, 2, 3...) | número inteiro |
+| `periodo` | Trimestre do release (3T25) | texto |
+| `referencia` | Data de referência do release: o fim do trimestre | data (dia) |
+| `data_entrega` | Dia em que o release foi entregue à CVM | data (dia) |
+| `link` | Endereço do PDF do release na CVM | texto |
+| `linha` | receita_liquida, lucro_liquido_controladores ou resultado_operacional | texto |
+| `periodo_lido` | O período a que o valor do release se refere: trimestre, acumulado_no_ano ou ano | texto |
+| `leitura` | Ordem do valor quando o release repete a linha no mesmo período (0, 1...) | número inteiro |
+| `valor_release_reais` | Valor que o release mostra, já em reais (vazio: o release não mostra a linha) | reais (R$), já multiplicado pela escala informada |
+| `unidade_release` | Escala em que o release mostra o valor: unidade, mil, milhoes ou bilhoes | texto |
+| `grupo` | con (consolidado) ou ind (individual) do valor oficial | texto |
+| `documento` | ITR ou DFP de onde veio o valor oficial | texto |
+| `documento_versao` | Versão do ITR ou da DFP usada | número inteiro |
+| `documento_entregue_em` | Dia da entrega dessa versão à CVM | data (dia) |
+| `valor_oficial_reais` | Valor do ITR ou da DFP, em reais | reais (R$), já multiplicado pela escala informada |
+| `tolerancia_reais` | Meia unidade do que o release mostra, em reais: até aqui é arredondamento | reais (R$), já multiplicado pela escala informada |
+| `diferenca_reais` | Valor do release menos o oficial, em reais | reais (R$), já multiplicado pela escala informada |
+| `diferenca_pct` | Diferença em % do valor oficial | pontos percentuais (66,25 = 66,25%) |
+| `classe` | igual, igual (arredondamento), diferente, release não mostra ou sem ITR | texto |
+| `disponivel_em` | A data mais nova entre o release e o documento oficial: quando a linha passou a existir | data (dia) |
+| `publico_em` | Igual a `disponivel_em` | data (dia) |
+| `modelo` | Modelo que leu o release | texto |
+| `versao_do_guia` | Versão do guia de leitura dado ao modelo | texto |
+| `sha256_do_documento` | SHA-256 do PDF do release | texto |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `controladas`
 
 Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega. O FRE mais novo deixa o tipo da sociedade em branco em muitas linhas, e o FRE guarda ligações antigas.

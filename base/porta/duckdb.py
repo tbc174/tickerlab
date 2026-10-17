@@ -82,6 +82,7 @@ ARQUIVOS: dict[str, str] = {
     "trocas_de_auditor": "trocas_de_auditor/trocas.parquet",
     "curva_juros": "curva_juros/*.parquet",
     "bcb_selic_focus": "bcb_selic_focus/bcb_selic_focus.parquet",
+    "release_x_oficial": "release_x_oficial/release_x_oficial.parquet",
     "controladas": "controladas/*.parquet",
     "rotulos_atraso": "rotulos_atraso/rotulos_atraso.parquet",
     "empresa_serie": "empresa_serie/empresa_serie.parquet",
