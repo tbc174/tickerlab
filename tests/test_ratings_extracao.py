@@ -240,3 +240,33 @@ def test_perspectiva_do_titulo_ganha_da_legenda_do_fim():
 def test_data_no_formato_da_liberum():
     r = ratings.extrair_rating(LIBERUM)
     assert r is not None and r.data_acao == date(2018, 6, 26)
+
+
+def test_tabela_de_varias_empresas_usa_a_mencao_mais_proxima():
+    texto = (
+        "S&P Global Ratings revisou perspectivas: Brazil Realty S.A., MRS Logística S.A., Neoenergia "
+        "S.A. Ultrafértil S.A. Ratings de Crédito Corporativo De Para Escala Nacional brAA/Estável/-- "
+        "brAA/Positiva/-- MRS Logística S.A. Ratings de Crédito Corporativo De Para Escala global "
+        "'BB-'/Estável/-- 'BB-'/Positiva/-- Neoenergia S.A. brAAA/Estável/--"
+    )
+    r = ratings.extrair_rating(texto, empresa="MRS LOGÍSTICA S/A")
+    assert r is not None
+    assert (r.escala, r.nota) == ("global", "BB-")
+
+
+def test_nota_preliminar_da_austin_nao_conta():
+    texto = (
+        "Austin Rating. Histórico de atribuições: Mai/19: Indicação ‘brA-(sf)(p)’ Jun/19: "
+        "Atribuição ‘brA(sf) Set/19: Confirmação ‘brA(sf)"
+    )
+    r = ratings.extrair_rating(texto)
+    assert r is not None and r.nota == "A"
+
+
+def test_acoes_em_varias_series_nao_viram_um_rating_so():
+    texto = (
+        "Fitch Realiza Ações de Rating em Seis Séries de CRIs da Brazilian Securities 19 Mai 2015: "
+        "Série 2007-74: rating afirmado em 'A+sf(bra)'; Série 2009-130: rating afirmado em "
+        "'Asf(bra)'; Série 2010-156: rating rebaixado para 'BBBsf(bra)'"
+    )
+    assert ratings.extrair_rating(texto) is None

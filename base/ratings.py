@@ -210,6 +210,14 @@ NACIONAL = re.compile(
     rf"|(?<![A-Za-z])(?P<l>{_LETRA})\.br\b"
 )
 GRUPOS_DA_MOODYS = ("m", "l")
+PRELIMINAR = re.compile(
+    r"\s?\(p\)", re.IGNORECASE
+)  # Austin brA-(sf)(p): indicação, não rating
+VARIAS_SERIES = re.compile(
+    r"(?:realiza|takes)\s+a[cç][oõ]es\s+de\s+rating|rating\s+actions\s+on"
+    r"|a[cç][oõ]es\s+de\s+rating\s+em",
+    re.IGNORECASE,
+)
 # escala global: só entre aspas ('BB-'), para não confundir com siglas; Moody's pelo nome da nota,
 # menos "B1" a "B3" soltos (B3 é a bolsa)
 GLOBAL = re.compile(
@@ -430,9 +438,15 @@ PALAVRAS_COMUNS = frozenset(
         "recebiveis",
     ]
 )
-PERTO_DA_EMPRESA = (
-    600  # caracteres depois do nome da companhia onde procurar a nota dela
-)
+# caracteres depois do nome da companhia onde procurar a nota dela
+PERTO_DA_EMPRESA = 600
+TAMANHO_DO_NOME = 80  # caracteres até o "S.A." do próprio nome da companhia
+# fim do nome de uma companhia: marca onde começa o trecho da próxima
+FIM_DO_TRECHO = re.compile(r"\bS\.?\s?A\.?(?=\W)|\bS/A\b|\bLtda\b")
+
+
+def _escala(achado: re.Match[str]) -> str:
+    return "nacional" if achado.re is NACIONAL else "global"
 
 
 def _nome_da_empresa(empresa: str) -> str | None:
@@ -442,18 +456,32 @@ def _nome_da_empresa(empresa: str) -> str | None:
     return next((p for p in palavras if p not in PALAVRAS_COMUNS), None)
 
 
-def _principal(
-    texto: str, achados: list[re.Match[str]], empresa: str | None = None
-) -> re.Match[str]:
-    """A nota de quem entregou o documento: num documento com várias notas, a primeira depois do
-    nome da companhia; senão a primeira citada; se ela é a antiga de um "de brAA+ para brAAA",
-    vale a nova."""
-    if empresa and len({_nota_do_achado(a) for a in achados}) > 1:
-        nome = _nome_da_empresa(empresa)
-        posicao = _simples(texto).find(nome) if nome else -1
-        if posicao >= 0:
-            perto = [a for a in achados if 0 <= a.start() - posicao <= PERTO_DA_EMPRESA]
-            achados = perto or achados
+def _mais_perto_da_empresa(
+    texto: str, achados: list[re.Match[str]], empresa: str
+) -> re.Match[str] | None:
+    """Num documento sobre várias companhias, a nota que vem logo depois de alguma menção à que
+    entregou (a lista de nomes do topo não atrapalha: vale a menção mais próxima)."""
+    nome = _nome_da_empresa(empresa)
+    if not nome:
+        return None
+    trechos = []
+    for mencao in (m.start() for m in re.finditer(re.escape(nome), _simples(texto))):
+        # o trecho da companhia vai do nome dela até o nome da próxima ("Neoenergia S.A."): uma
+        # lista de nomes no topo dá trechos sem nota
+        proprio = FIM_DO_TRECHO.search(texto, mencao, mencao + TAMANHO_DO_NOME)
+        proxima = FIM_DO_TRECHO.search(texto, proprio.end() if proprio else mencao)
+        fim = min(proxima.start() if proxima else len(texto), mencao + PERTO_DA_EMPRESA)
+        if notas := [a for a in achados if mencao <= a.start() < fim]:
+            trechos.append((notas[0].start() - mencao, mencao, notas))
+    if not trechos:
+        return None
+    notas = min(trechos, key=lambda t: (t[0], t[1]))[2]
+    # no trecho, a escala nacional ganha da global, como no resto do documento
+    return next((a for a in notas if _escala(a) == "nacional"), notas[0])
+
+
+def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
+    """A primeira nota citada; se ela é a antiga de um "de brAA+ para brAAA", vale a nova."""
     primeira = achados[0]
     if len(achados) > 1:
         antes = texto[max(0, primeira.start() - 6) : primeira.start()]
@@ -467,11 +495,20 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
     """O rating principal do documento (o da `empresa` que o entregou, quando ele fala de várias),
     ou None se o texto não traz nota (PDF escaneado, fonte embaralhada): nunca inventa nota."""
     texto = re.sub(r"\s+", " ", texto or "").strip()
-    nacionais = list(NACIONAL.finditer(texto))
-    achados = nacionais or list(GLOBAL.finditer(texto))
+    if VARIAS_SERIES.search(texto[:INICIO_DO_TEXTO]):
+        return None  # uma ação por série: sem a série certa, não há "o" rating do documento
+    nacionais = [
+        a for a in NACIONAL.finditer(texto) if not PRELIMINAR.match(texto, a.end())
+    ]
+    globais = list(GLOBAL.finditer(texto))
+    perto = None
+    if empresa and len({_nota_do_achado(a) for a in nacionais + globais}) > 1:
+        perto = _mais_perto_da_empresa(texto, nacionais + globais, empresa)
+    nacional = perto in nacionais if perto else bool(nacionais)
+    achados = nacionais if nacional else globais
     if not achados:
         return None
-    principal = _principal(texto, achados, empresa)
+    principal = perto or _principal(texto, achados)
     de_moodys = _da_moodys(principal)
     agencia = _agencia(texto, de_moodys)
     # sem agência no texto, ou "A1" solto sem a Moody's: não é rating (texto embaralhado, siglas)
@@ -481,7 +518,7 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
     inicio = texto[:INICIO_DO_TEXTO]
     return Rating(
         agencia=agencia,
-        escala="nacional" if nacionais else "global",
+        escala="nacional" if nacional else "global",
         nota=notas[0],
         nivel=nivel(notas[0]),
         nota_original=principal.group(0).strip(ASPAS + " "),
