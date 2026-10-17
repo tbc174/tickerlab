@@ -2020,53 +2020,78 @@ Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com 
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
-## `release_x_oficial`
+## `noticias_fatos`
 
-O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional. Uma linha por valor lido do release, com o valor oficial, a diferença em R$ e em % e a classe (igual, igual por arredondamento, diferente, release não mostra, sem ITR). O modelo só copiou o número e o trecho; o código conferiu o trecho no texto do PDF e fez a comparação. A tabela guarda só números, nenhum texto do modelo. Diferença não é erro: pode ser ajuste ou outro critério da empresa
+Um fato por linha para as notas de dado (ADR 0093): resultado trimestral (ITR e DFP), fato relevante (IPE) e reunião do Copom. Tabela derivada: cada linha diz de qual linha de qual tabela da base saiu (`chave_de_origem`) e quando ficou pública. Sem nenhum dado de pessoa: o trecho do fato relevante é cortado se citar nome
 
-- **Fonte:** CVM: índice do IPE (press-releases de resultado) e dados abertos de DFP e ITR (`demonstracoes_como_era`)
+- **Fonte:** Derivado: `demonstracoes_como_era`, `eventos` (CVM) e `bcb_selic_focus` (Banco Central)
 - **Licença:** ODbL (dados abertos da CVM; citar a fonte)
 - **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
-- **Frequência:** Semanal no servidor de casa: baixa os releases novos, lê em lote e remonta a tabela
-- **Atraso de divulgação:** Vale a partir de `disponivel_em`, a data mais nova entre o release e o documento oficial: sem as duas pontas, não existe
+- **Ressalva de revenda:** A pauta `copom` vem do Banco Central (`bcb_selic_focus` e a tabela conferida do Copom)
+- **Frequência:** Diária, no lote da manhã (`base/noticias_fatos.py`)
+- **Atraso de divulgação:** Nenhum além do de cada origem: o fato vale a partir de `publico_em`
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `protocolo`, `linha`, `periodo_lido`, `leitura`
-- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `montado_em`
+- **Chaves:** `id_fato`
+- **Três datas:** aconteceu_em = `aconteceu_em`; publico_em = `publico_em`; coletado_em = `coletado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/release_x_oficial/release_x_oficial.parquet` (servidor de casa)
-- **Linhagem:** `protocolo` e `link` levam ao PDF do release no IPE da CVM; `sha256_do_documento` é o SHA-256 dele, igual ao do manifesto. `modelo` e `versao_do_guia` dizem quem leu e com que instrução; a resposta bruta, o trecho, os tokens e os descartes ficam no arquivo de leituras ao lado do PDF (`scripts/ler_releases.py`). O valor oficial vem de `demonstracoes_como_era`, na versão que valia no dia do release. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+- **Onde fica:** Parquet em `<acervo>/base/noticias_fatos/<ano>.parquet` (servidor de casa)
+- **Linhagem:** `chave_de_origem` aponta a linha da tabela de entrada; `hash_da_linha` cobre a linha e os números dela (`noticias_numeros`). `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
-| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
-| `protocolo` | Protocolo da entrega do release no IPE da CVM | texto |
-| `versao` | Versão da entrega do release (1, 2, 3...) | número inteiro |
-| `periodo` | Trimestre do release (3T25) | texto |
-| `referencia` | Data de referência do release: o fim do trimestre | data (dia) |
-| `data_entrega` | Dia em que o release foi entregue à CVM | data (dia) |
-| `link` | Endereço do PDF do release na CVM | texto |
-| `linha` | receita_liquida, lucro_liquido_controladores ou resultado_operacional | texto |
-| `periodo_lido` | O período a que o valor do release se refere: trimestre, acumulado_no_ano ou ano | texto |
-| `leitura` | Ordem do valor quando o release repete a linha no mesmo período (0, 1...) | número inteiro |
-| `valor_release_reais` | Valor que o release mostra, já em reais (vazio: o release não mostra a linha) | reais (R$), já multiplicado pela escala informada |
-| `unidade_release` | Escala em que o release mostra o valor: unidade, mil, milhoes ou bilhoes | texto |
-| `grupo` | con (consolidado) ou ind (individual) do valor oficial | texto |
-| `documento` | ITR ou DFP de onde veio o valor oficial | texto |
-| `documento_versao` | Versão do ITR ou da DFP usada | número inteiro |
-| `documento_entregue_em` | Dia da entrega dessa versão à CVM | data (dia) |
-| `valor_oficial_reais` | Valor do ITR ou da DFP, em reais | reais (R$), já multiplicado pela escala informada |
-| `tolerancia_reais` | Meia unidade do que o release mostra, em reais: até aqui é arredondamento | reais (R$), já multiplicado pela escala informada |
-| `diferenca_reais` | Valor do release menos o oficial, em reais | reais (R$), já multiplicado pela escala informada |
-| `diferenca_pct` | Diferença em % do valor oficial | pontos percentuais (66,25 = 66,25%) |
-| `classe` | igual, igual (arredondamento), diferente, release não mostra ou sem ITR | texto |
-| `disponivel_em` | A data mais nova entre o release e o documento oficial: quando a linha passou a existir | data (dia) |
-| `publico_em` | Igual a `disponivel_em` | data (dia) |
-| `modelo` | Modelo que leu o release | texto |
-| `versao_do_guia` | Versão do guia de leitura dado ao modelo | texto |
-| `sha256_do_documento` | SHA-256 do PDF do release | texto |
-| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `id_fato` | SHA-256 de `pauta` + `chave_de_origem`: remontar dá o mesmo id | texto |
+| `pauta` | `resultado_trimestral`, `fato_relevante` ou `copom` | texto |
+| `versao_do_gatilho` | Versão da regra que criou a linha (`resultado-1.0`) | texto |
+| `cnpj` | CNPJ da companhia (vazio no Copom) | texto |
+| `empresa` | Nome da companhia, como a CVM publica (vazio no Copom) | texto |
+| `tabela_de_origem` | Tabela da base de onde o fato saiu | texto |
+| `chave_de_origem` | JSON canônico da chave da linha de origem | texto |
+| `aconteceu_em` | Fim do trimestre, data de referência do IPE ou data da reunião | data (dia) |
+| `publico_em` | Quando o documento ficou público (o comunicado do Copom, no dia da reunião) | data (dia) |
+| `coletado_em` | Quando a origem foi baixada | data e hora (UTC) |
+| `link` | Endereço do documento original (CVM) ou do comunicado (Banco Central) | texto |
+| `topico` | Fato relevante: tópico da lista fechada (`src/topicos.py`); vazio nas outras pautas | texto |
+| `metodo_do_topico` | Fato relevante: `regra_titulo` | texto |
+| `versao_do_topico` | Fato relevante: versão das regras do tópico | texto |
+| `trecho` | Fato relevante: o assunto escrito pela empresa, literal, até 200 caracteres | texto |
+| `reapresentacao` | Resultado: o documento é uma versão 2 em diante (verdadeiro/falso) | verdadeiro ou falso |
+| `fato_anterior` | Resultado reapresentado: `id_fato` da versão anterior | texto |
+| `marcas` | Lista: `dado_em_conferencia`, `fontes_divergem`, `trecho_cortado` | texto |
+| `licenca` | Família da fonte (`cvm` ou `bcb`), para a marca de licença | texto |
+| `hash_da_linha` | SHA-256 da linha e dos números dela | texto |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
+## `noticias_numeros`
+
+Um número por linha de cada fato de `noticias_fatos`, com a conta, o período, a versão e a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado)
+
+- **Fonte:** Derivado: `demonstracoes_como_era` (CVM) e `bcb_selic_focus` (Banco Central)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Ressalva de revenda:** Os números do Copom vêm do Banco Central
+- **Frequência:** Diária, junto com `noticias_fatos`
+- **Atraso de divulgação:** Nenhum além do de cada origem: cada número vale a partir de `origem_divulgado_em`
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `id_fato`, `campo`
+- **Três datas:** publico_em = `origem_divulgado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/noticias_numeros/<ano>.parquet` (servidor de casa)
+- **Linhagem:** Cada linha diz a conta, o período, a versão e a data pública da origem; `calculo` mostra a conta feita quando o valor não é o publicado. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_fato` | Fato a que o número pertence (`noticias_fatos`) | texto |
+| `campo` | Nome do número (`receita_trimestre`, `meta_selic`...) | texto |
+| `valor` | O número, na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `unidade` | `reais` ou `pct_ao_ano` | texto |
+| `periodo` | Período em texto (`3T26`, `30/09/2026`, `fim de 2026`) | texto |
+| `origem_conta` | Conta do plano da CVM ou código da série do Banco Central | texto |
+| `origem_periodo` | `acumulado`, `exercicio` ou `posicao` (ou vazio na série do Banco Central) | texto |
+| `origem_versao` | Versão do documento de origem | número inteiro |
+| `origem_divulgado_em` | Quando o valor de origem ficou público | data (dia) |
+| `calculo` | Vazio se é o valor publicado; senão a conta (`acumulado 9M26 - acumulado 6M26`) | texto |
 
 ## `controladas`
 
