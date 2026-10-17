@@ -250,3 +250,70 @@ def test_referencia_do_leitor_sao_os_eventos_em_que_os_dois_concordam_no_assunto
         },
         {"evento_id": "L1", "assunto": "OUTROS", "nota": None, "tema": "divida"},
     ]
+
+
+# --- Emenda 1: identificação sem o Tiago e estabilidade -----------------------------------------
+
+
+def test_identificacao_reprova_acima_de_10_por_cento_dos_eventos_de_prova():
+    ids = [f"E{i}" for i in range(20)]
+    passa = ar.veredito_da_identificacao({i: i in ("E0", "E1") for i in ids}, ids)
+    assert passa.passou and passa.identificadas == pytest.approx(0.10)
+    reprova = ar.veredito_da_identificacao(
+        {i: i in ("E0", "E1", "E2") for i in ids}, ids
+    )
+    assert not reprova.passou and "15%" in reprova.motivos[0]
+
+
+def test_identificacao_sem_todos_os_eventos_fica_incompleta():
+    ids = ["E0", "E1", "E2"]
+    veredito = ar.veredito_da_identificacao({"E0": False}, ids)
+    assert veredito.incompleto and not veredito.passou and veredito.n == 3
+
+
+def _rotulos(n, erro=()):
+    return {f"E{i}": ({"erro": "x"} if i in erro else {"nota": 1 + i % 5, "tema": "divida"})
+            for i in range(n)}  # fmt: skip
+
+
+def test_sorteio_da_estabilidade_e_fixo_e_so_de_rotulos_validos():
+    eventos = [{"id": f"E{i}"} for i in range(400)]
+    rotulos = _rotulos(400, erro=range(0, 400, 7))
+    sorteio = ar.sorteio_da_estabilidade(eventos, rotulos)
+    assert len(sorteio) == len(set(sorteio)) == ar.EVENTOS_DA_ESTABILIDADE == 100
+    assert all(ar.valido(rotulos, i) for i in sorteio)
+    assert sorteio == ar.sorteio_da_estabilidade(eventos, rotulos)  # a semente fixa
+    assert sorteio == ar.sorteio_da_estabilidade(list(reversed(eventos)), rotulos)
+
+
+def test_sorteio_com_menos_de_100_validos_leva_todos():
+    eventos = [{"id": f"E{i}"} for i in range(5)]
+    assert sorted(ar.sorteio_da_estabilidade(eventos, _rotulos(5, erro=(2,)))) == [
+        "E0",
+        "E1",
+        "E3",
+        "E4",
+    ]
+
+
+def test_estabilidade_mede_a_concordancia_ia_x_ia_sem_limite():
+    primeira = {
+        "A": {"nota": 3, "tema": "divida", "assunto": None},
+        "B": {"nota": 2, "tema": "resultado", "assunto": "OUTROS"},
+        "C": {"nota": 5, "tema": "fusao", "assunto": "FUSAO_INCORPORACAO"},
+        "D": {"nota": 1, "tema": "governanca", "assunto": None},
+    }
+    segunda = {
+        "A": {"nota": 3, "tema": "divida", "assunto": None},
+        "B": {"nota": 4, "tema": "resultado", "assunto": "OUTROS"},
+        "C": {"nota": 5, "tema": "operacao", "assunto": "FECHAMENTO_CAPITAL"},
+        "D": {"erro": "trecho não está no documento"},
+    }
+    medida = ar.estabilidade(primeira, segunda, ["A", "B", "C", "D"])
+    assert medida["sorteados"] == 4 and medida["pares"] == 3 and medida["erros"] == 1
+    assert medida["nota_igual"] == pytest.approx(2 / 3)
+    assert medida["perto_nota"] == pytest.approx(2 / 3)
+    assert medida["tema_igual"] == pytest.approx(2 / 3)
+    assert medida["assunto_igual"] == pytest.approx(1 / 2) and medida["n_assunto"] == 2
+    assert "kappa_nota" in medida and "kappa_tema" in medida
+    assert "passou" not in medida  # a emenda só pede publicar
