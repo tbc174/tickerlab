@@ -2,7 +2,8 @@
 
 Em produção (`TICKERLAB_LOG_FORMATO=json`) cada linha é um JSON com hora, nível, origem e
 mensagem, o que facilita filtrar com `docker logs ... | jq`. Nunca registre e-mail, nome, senhas
-ou chaves: o que passa por aqui vai para o disco do servidor.
+ou chaves: o que passa por aqui vai para o disco do servidor. Pelo mesmo motivo, o log de acesso
+do uvicorn sai sem a query string (o link de descadastro leva um código que vale como senha).
 """
 
 import json
@@ -17,6 +18,26 @@ VARIAVEL_DO_NIVEL = "TICKERLAB_LOG_NIVEL"
 TAMANHO_MAXIMO_DO_ERRO = 4000  # caracteres do rastreio de uma exceção
 LOGGERS_DO_UVICORN = ("uvicorn", "uvicorn.error", "uvicorn.access")
 FORMATO_DE_TEXTO = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+# no uvicorn.access, args = (cliente, método, caminho, versão do HTTP, status)
+POSICAO_DO_CAMINHO = 2
+
+
+class SemQueryString(logging.Filter):
+    """Tira a query string do caminho no log de acesso do uvicorn.
+
+    `GET /newsletter/sair?codigo=...` levava ao disco o código que descadastra sem login (achado
+    6a do Codex, ADR 0091). Nenhuma rota precisa da query no log, então ela sai de todas.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) > POSICAO_DO_CAMINHO:
+            caminho = args[POSICAO_DO_CAMINHO]
+            if isinstance(caminho, str) and "?" in caminho:
+                novos = list(args)
+                novos[POSICAO_DO_CAMINHO] = caminho.split("?", 1)[0]
+                record.args = tuple(novos)
+        return True
 
 
 class FormatadorJson(logging.Formatter):
@@ -57,6 +78,9 @@ def configurar_logs(ambiente: Mapping[str, str] | None = None) -> logging.Handle
     )
     raiz.addHandler(handler)
     raiz.setLevel(_nivel(ambiente.get(VARIAVEL_DO_NIVEL)))
+    acesso = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, SemQueryString) for f in acesso.filters):
+        acesso.addFilter(SemQueryString())
     if em_json:
         # o uvicorn tem logs próprios; manda tudo pelo mesmo formato
         for nome in LOGGERS_DO_UVICORN:
