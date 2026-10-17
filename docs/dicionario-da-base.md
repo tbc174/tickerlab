@@ -1731,7 +1731,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 
 - **Fonte:** PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)
 - **Licença:** Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)
-- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
 - **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
 - **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim

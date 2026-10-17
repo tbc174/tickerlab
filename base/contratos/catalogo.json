@@ -4444,7 +4444,7 @@
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "só uso interno (nunca vender nem exportar)",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": true,
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
       "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
