@@ -93,13 +93,27 @@ _BASE_36 = 36
 _PESOS_DA_RAIZ = _BASE_36 ** np.arange(TAMANHO_DA_RAIZ - 1, -1, -1, dtype=np.int64)
 
 
-def raizes_em_numeros(raizes: pd.Series) -> np.ndarray:
-    """Cada raiz de 8 caracteres (maiúsculas e dígitos) como um inteiro de 64 bits."""
+RAIZES_POR_PEDACO = 1_000_000  # as contas de 64 bits ficam em ~70 MB por vez
+
+
+def _pedaco_em_numeros(raizes: pd.Series) -> np.ndarray:
     texto = np.asarray(raizes.to_numpy(dtype=str), dtype=f"S{TAMANHO_DA_RAIZ}")
-    bytes_ = np.frombuffer(texto.tobytes(), dtype=np.uint8).reshape(-1, TAMANHO_DA_RAIZ)
-    valores = bytes_.astype(np.int64)
-    valores = np.where(valores >= ord("A"), valores - ord("A") + 10, valores - ord("0"))
-    return valores @ _PESOS_DA_RAIZ
+    digitos = np.frombuffer(texto.tobytes(), dtype=np.uint8).reshape(
+        -1, TAMANHO_DA_RAIZ
+    )
+    valores = np.where(
+        digitos >= ord("A"), digitos - (ord("A") - 10), digitos - ord("0")
+    )
+    return valores.astype(np.int64) @ _PESOS_DA_RAIZ
+
+
+def raizes_em_numeros(raizes: pd.Series) -> np.ndarray:
+    """Cada raiz de 8 caracteres (maiúsculas e dígitos) como um inteiro de 64 bits, em pedaços."""
+    pedacos = [
+        _pedaco_em_numeros(raizes.iloc[inicio : inicio + RAIZES_POR_PEDACO])
+        for inicio in range(0, len(raizes), RAIZES_POR_PEDACO)
+    ]
+    return np.concatenate(pedacos) if pedacos else np.array([], dtype=np.int64)
 
 
 def ordenados(numeros: np.ndarray) -> np.ndarray:

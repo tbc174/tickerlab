@@ -112,3 +112,16 @@ def test_contem_pelos_numeros_ordenados():
     assert cnpj.contem(conjunto, procurados).tolist() == [True, False, True, False]
     vazio = cnpj.ordenados(cnpj.raizes_em_numeros(pd.Series([], dtype=str)))
     assert cnpj.contem(vazio, procurados).tolist() == [False] * 4
+
+
+def test_raiz_em_numero_em_pedacos_da_o_mesmo(monkeypatch):
+    """Milhões de raízes de uma vez criavam cópias de 64 bits de tudo (2,3 GB no servidor)."""
+    raizes = pd.Series(
+        [f"{n:08d}" for n in range(0, 99_999_999, 7_654_321)] + ["12ABC345"]
+    )
+    inteiro = cnpj.raizes_em_numeros(raizes)
+    monkeypatch.setattr(cnpj, "RAIZES_POR_PEDACO", 3)
+    pd.testing.assert_series_equal(
+        pd.Series(cnpj.raizes_em_numeros(raizes)), pd.Series(inteiro)
+    )
+    assert cnpj.raizes_em_numeros(pd.Series(["00000123"]))[0] == 1 * 36**2 + 2 * 36 + 3

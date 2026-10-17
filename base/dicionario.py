@@ -2762,8 +2762,8 @@ TABELAS: dict[str, Tabela] = {
             "fontes de governo (o conservador; a história começa em 14/10/2026)"
         ),
         onde=(
-            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor "
-            "de casa, `scripts/carga_pgfn.py`)"
+            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do "
+            "CNPJ>.parquet`, 11 por CSV da PGFN (servidor de casa, `scripts/carga_pgfn.py`)"
         ),
         linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
         colunas={

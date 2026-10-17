@@ -55,6 +55,7 @@ FILIAL = _cnpj("11222333", "0002")
 OUTRA = _cnpj("33000167")
 MEI = _cnpj("44555666")
 SEM_RECEITA = _cnpj("77888999")
+COM_LETRAS = _cnpj("AB222333")  # CNPJ alfanumérico (desde 07/2026)
 INVALIDO = EMPRESA[:-1] + str((int(EMPRESA[-1]) + 1) % 10)
 NOME_DA_PESSOA = "MARIA DA SILVA DE MENTIRA"
 CPF_MASCARADO = "XXX123.456XX"
@@ -90,6 +91,13 @@ def _zip(membros: dict[str, list[str]]) -> bytes:
             info = zipfile.ZipInfo(nome, date_time=GERADO)
             arquivo.writestr(info, "\n".join(linhas).encode("latin-1"))
     return saida.getvalue()
+
+
+def _ler(pasta, arquivo: str) -> pd.DataFrame:
+    """Os 11 pedaços de um CSV (pelo 1º caractere do CNPJ) numa tabela só."""
+    pedacos = sorted(pasta.glob(f"{arquivo}-*.parquet"))
+    assert len(pedacos) == len(pgfn.PREFIXOS), arquivo
+    return pd.concat([pd.read_parquet(p) for p in pedacos], ignore_index=True)
 
 
 def _sida_zip(*linhas: str, regiao: str = "1") -> io.BytesIO:
@@ -268,7 +276,7 @@ def test_montar_grava_um_parquet_por_arquivo_com_manifesto(
     monkeypatch.setenv("TICKERLAB_VERSAO", "0123abc")
     sida = _zip(
         {
-            "arquivo_lai_SIDA_1_202606.csv": [CABECALHO_SIDA, _sida(EMPRESA), _sida(MEI)],
+            "arquivo_lai_SIDA_1_202606.csv": [CABECALHO_SIDA, _sida(EMPRESA), _sida(MEI), _sida(COM_LETRAS)],
             "arquivo_lai_SIDA_2_202606.csv": [CABECALHO_SIDA, _sida(SEM_RECEITA)],
         }
     )  # fmt: skip
@@ -278,19 +286,23 @@ def test_montar_grava_um_parquet_por_arquivo_com_manifesto(
     with banco.connect() as conexao:
         resumo = pgfn.montar(conexao, tmp_path / "base", AGORA, pessoas={"44555666"})
     pasta = tmp_path / "base" / "pgfn_divida" / "2026-06"
-    assert sorted(p.name for p in pasta.glob("*.parquet")) == [
-        "fgts-NA.parquet",
-        "sida-1.parquet",
-        "sida-2.parquet",
-    ]
-    assert resumo["2026-06/sida-1"]["na_tabela"] == 2
-    tabela = pd.read_parquet(pasta / "sida-1.parquet")
+    assert sorted(p.name for p in pasta.glob("*.parquet")) == sorted(
+        f"{arquivo}-{prefixo}.parquet"
+        for arquivo in ("fgts-NA", "sida-1", "sida-2")
+        for prefixo in pgfn.PREFIXOS
+    )  # sempre os 11 pedaços, vazios também: nunca sobra pedaço de um retrato antigo
+    assert len(pd.read_parquet(pasta / "sida-1-1.parquet")) == 1  # 11.222.333/...
+    assert len(pd.read_parquet(pasta / "sida-1-letras.parquet")) == 1
+    assert len(pd.read_parquet(pasta / "sida-1-9.parquet")) == 0
+    assert resumo["2026-06/sida-1"]["na_tabela"] == 3
+    tabela = _ler(pasta, "sida-1")
     assert len(tabela["origem_sha256"].iloc[0]) == 64
     assert tabela["versao_do_codigo"].iloc[0] == "0123abc"
     assert tabela["montado_em"].iloc[0] == AGORA.isoformat()
     assert dict(zip(tabela["cnpj"], tabela["trata_como_pessoa"], strict=True)) == {
         EMPRESA: False,
         MEI: True,
+        COM_LETRAS: False,  # aqui as pessoas vêm dadas (sem a Receita)
     }
     assert parquets_sem_manifesto(tmp_path / "base") == []
     for manifesto in pasta.glob("*.json"):
@@ -315,9 +327,7 @@ def test_disponivel_em_e_o_dia_em_que_o_arquivo_foi_visto_pela_primeira_vez(
     com_registro("pgfn-divida", lambda _url: sida)(URL_SIDA)
     with banco.connect() as conexao:
         pgfn.montar(conexao, tmp_path / "base", AGORA, pessoas=set())
-    tabela = pd.read_parquet(
-        tmp_path / "base" / "pgfn_divida" / "2026-06" / "sida-1.parquet"
-    )
+    tabela = _ler(tmp_path / "base" / "pgfn_divida" / "2026-06", "sida-1")
     assert tabela["disponivel_em"].tolist() == [date(2026, 10, 14)]
     assert tabela["gerado_em"].tolist() == [date(2026, 7, 23)]
 
@@ -341,9 +351,7 @@ def test_comando_monta_e_sem_a_receita_todos_ficam_como_pessoa(
     )
     com_registro("pgfn-divida", lambda _url: sida)(URL_SIDA)
     assert carga_pgfn.main(["--pasta", str(tmp_path / "b")]) == 0
-    tabela = pd.read_parquet(
-        tmp_path / "b" / "pgfn_divida" / "2026-06" / "sida-1.parquet"
-    )
+    tabela = _ler(tmp_path / "b" / "pgfn_divida" / "2026-06", "sida-1")
     assert tabela["trata_como_pessoa"].all()
 
 

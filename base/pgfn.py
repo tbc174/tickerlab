@@ -47,6 +47,10 @@ TABELA = "pgfn_divida"
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 500_000  # linhas do CSV por vez
 JUNTAR_A_CADA = 8  # partes já somadas que se juntam numa só (limita a memória)
+# cada CSV vira 11 Parquets pelo 1º caractere do CNPJ (o maior CSV dá 2,28 milhões de linhas e, de uma vez
+# só, a gravação passava de 2,4 GB no servidor de casa); sempre os 11, vazios também
+LETRAS = "letras"  # CNPJ alfanumérico que começa com letra (desde 07/2026)
+PREFIXOS = (*"0123456789", LETRAS)
 JA_MONTADO = {"ja_montado": 1}  # no resumo: o arquivo já estava montado deste mesmo ZIP
 SISTEMAS = {"SIDA": "nao_previdenciaria", "PREV": "previdenciaria", "FGTS": "fgts"}
 MEMBRO = re.compile(
@@ -366,8 +370,13 @@ def pessoas_pela_receita(conexao: sa.Connection, raizes: np.ndarray) -> np.ndarr
     )
 
 
-def _destino(pasta: Path, membro: Membro) -> Path:
-    return pasta / TABELA / membro.mes / membro.arquivo
+def _destino(pasta: Path, membro: Membro, prefixo: str) -> Path:
+    return pasta / TABELA / membro.mes / f"{membro.arquivo}-{prefixo}"
+
+
+def _prefixos(cnpj: pd.Series) -> pd.Series:
+    primeiro = cnpj.str[0]
+    return primeiro.where(primeiro.str.isdigit(), LETRAS)
 
 
 def _origem(guardado: _Guardado) -> list[dict[str, str]]:
@@ -377,8 +386,9 @@ def _origem(guardado: _Guardado) -> list[dict[str, str]]:
 def _ja_montado(pasta: Path, guardado: _Guardado) -> bool:
     """Todos os CSVs do ZIP já gravados com ele de origem (o manifesto diz o SHA-256)."""
     return all(
-        origens_gravadas(_destino(pasta, m)) == _origem(guardado)
+        origens_gravadas(_destino(pasta, m, prefixo)) == _origem(guardado)
         for m in membros(guardado.caminho)
+        for prefixo in PREFIXOS
     )
 
 
@@ -389,7 +399,7 @@ def montar(
     pessoas: Collection[str] | np.ndarray | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
-    """`<pasta>/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` para cada CSV guardado.
+    """`<pasta>/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do CNPJ>.parquet`, 11 por CSV.
 
     Um arquivo de cada vez (o maior tem ~2,7 GB descompactado). ZIP já montado é pulado (a PGFN muda
     por trimestre; `refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já
@@ -417,19 +427,24 @@ def montar(
                 membro,
                 _como_numeros(pessoas if pessoas is not None else []),
             )
-            tabela = tabela.assign(
-                disponivel_em=guardado.disponivel_em,
-                origem_sha256=original.sha256,
-                origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
-                montado_em=agora.isoformat(),
-                versao_do_codigo=versao_do_codigo(),
-            )
-            gravar_se_mudou(
-                tabela,
-                _destino(pasta, membro),
-                _origem(guardado),
-                ORDEM,
-                carimbos=LINHAGEM,
-            )
+            prefixos = _prefixos(tabela["cnpj"])
+            for prefixo in PREFIXOS:  # a linhagem só no pedaço que está sendo gravado
+                pedaco = tabela[prefixos == prefixo].reset_index(drop=True)
+                gravar_se_mudou(
+                    pedaco.assign(
+                        disponivel_em=guardado.disponivel_em,
+                        origem_sha256=original.sha256,
+                        origem_coletada_em=pd.Timestamp(
+                            original.baixado_em
+                        ).isoformat(),
+                        montado_em=agora.isoformat(),
+                        versao_do_codigo=versao_do_codigo(),
+                    ),
+                    _destino(pasta, membro, prefixo),
+                    _origem(guardado),
+                    ORDEM,
+                    carimbos=LINHAGEM,
+                )
+            del tabela, prefixos
             resumo[f"{membro.mes}/{membro.arquivo}"] = contagem
     return resumo
