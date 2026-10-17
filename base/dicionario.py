@@ -3275,6 +3275,97 @@ TABELAS: dict[str, Tabela] = {
             "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
         },
     ),
+    "release_x_oficial": Tabela(
+        descricao=(
+            "O que a empresa disse no press-release de resultado contra o que entregou à CVM no "
+            "ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e "
+            "resultado operacional. Uma linha por valor lido do release, com o valor oficial, a "
+            "diferença em R$ e em % e a classe (igual, igual por arredondamento, diferente, release "
+            "não mostra, sem ITR). O modelo só copiou o número e o trecho; o código conferiu o "
+            "trecho no texto do PDF e fez a comparação. A tabela guarda só números, nenhum texto "
+            "do modelo. Diferença não é erro: pode ser ajuste ou outro critério da empresa"
+        ),
+        fonte=(
+            "CVM: índice do IPE (press-releases de resultado) e dados abertos de DFP e ITR "
+            "(`demonstracoes_como_era`)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Semanal no servidor de casa: baixa os releases novos, lê em lote e remonta a tabela"
+        ),
+        atraso=(
+            "Vale a partir de `disponivel_em`, a data mais nova entre o release e o documento "
+            "oficial: sem as duas pontas, não existe"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/release_x_oficial/release_x_oficial.parquet` (servidor de casa)"
+        ),
+        linhagem=(
+            "`protocolo` e `link` levam ao PDF do release no IPE da CVM; `sha256_do_documento` é "
+            "o SHA-256 dele, igual ao do manifesto. `modelo` e `versao_do_guia` dizem quem leu e "
+            "com que instrução; a resposta bruta, o trecho, os tokens e os descartes ficam no "
+            "arquivo de leituras ao lado do PDF (`scripts/ler_releases.py`). O valor oficial vem "
+            "de `demonstracoes_como_era`, na versão que valia no dia do release. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": ("CNPJ da companhia, no formato 00.000.000/0000-00", TEXTO),
+            "protocolo": ("Protocolo da entrega do release no IPE da CVM", TEXTO),
+            "versao": ("Versão da entrega do release (1, 2, 3...)", "número inteiro"),
+            "periodo": ("Trimestre do release (3T25)", TEXTO),
+            "referencia": ("Data de referência do release: o fim do trimestre", DATA),
+            "data_entrega": ("Dia em que o release foi entregue à CVM", DATA),
+            "link": ("Endereço do PDF do release na CVM", TEXTO),
+            "linha": (
+                "receita_liquida, lucro_liquido_controladores ou resultado_operacional",
+                TEXTO,
+            ),
+            "periodo_lido": (
+                "O período a que o valor do release se refere: trimestre, acumulado_no_ano ou ano",
+                TEXTO,
+            ),
+            "leitura": (
+                "Ordem do valor quando o release repete a linha no mesmo período (0, 1...)",
+                "número inteiro",
+            ),
+            "valor_release_reais": (
+                "Valor que o release mostra, já em reais (vazio: o release não mostra a linha)",
+                REAIS,
+            ),
+            "unidade_release": (
+                "Escala em que o release mostra o valor: unidade, mil, milhoes ou bilhoes",
+                TEXTO,
+            ),
+            "grupo": ("con (consolidado) ou ind (individual) do valor oficial", TEXTO),
+            "documento": ("ITR ou DFP de onde veio o valor oficial", TEXTO),
+            "documento_versao": ("Versão do ITR ou da DFP usada", "número inteiro"),
+            "documento_entregue_em": ("Dia da entrega dessa versão à CVM", DATA),
+            "valor_oficial_reais": ("Valor do ITR ou da DFP, em reais", REAIS),
+            "tolerancia_reais": (
+                "Meia unidade do que o release mostra, em reais: até aqui é arredondamento",
+                REAIS,
+            ),
+            "diferenca_reais": ("Valor do release menos o oficial, em reais", REAIS),
+            "diferenca_pct": (
+                "Diferença em % do valor oficial",
+                "pontos percentuais (66,25 = 66,25%)",
+            ),
+            "classe": (
+                "igual, igual (arredondamento), diferente, release não mostra ou sem ITR",
+                TEXTO,
+            ),
+            "disponivel_em": (
+                "A data mais nova entre o release e o documento oficial: quando a linha passou a existir",
+                DATA,
+            ),
+            "publico_em": ("Igual a `disponivel_em`", DATA),
+            "modelo": ("Modelo que leu o release", TEXTO),
+            "versao_do_guia": ("Versão do guia de leitura dado ao modelo", TEXTO),
+            "sha256_do_documento": ("SHA-256 do PDF do release", TEXTO),
+            "montado_em": ("Quando a tabela foi montada", MOMENTO),
+            "versao_do_codigo": ("Commit do código que montou a tabela", TEXTO),
+        },
+    ),
     "noticias_fatos": Tabela(
         descricao=(
             "Um fato por linha para as notas de dado (ADR 0093): resultado trimestral (ITR e DFP), "
@@ -4203,6 +4294,7 @@ _CONTRATO = {
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
+    "release_x_oficial": _contrato(modulo=_ME, chaves=("protocolo", "linha", "periodo_lido", "leitura"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "noticias_fatos": _contrato(modulo=_ME, chaves=("id_fato",), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM),
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -4233,6 +4325,10 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
     "bcb_selic_focus": {
         "pasta": "bcb_selic_focus",
         "nao_nulas": ("valor", "divulgado_em", "publico_em"),
+    },
+    "release_x_oficial": {
+        "pasta": "release_x_oficial",
+        "nao_nulas": ("classe", "disponivel_em", "publico_em", "sha256_do_documento"),
     },
     "noticias_fatos": {
         "pasta": "noticias_fatos",
