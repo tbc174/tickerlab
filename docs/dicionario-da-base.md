@@ -1759,6 +1759,46 @@ Estabelecimentos com "situação especial" no CNPJ da Receita (falido, em recupe
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `pgfn_divida`
+
+Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`.
+
+- **Fonte:** PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)
+- **Licença:** Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)
+- **Revenda:** só uso interno (nunca vender nem exportar)
+- **Frequência:** Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)
+- **Atraso de divulgação:** O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)
+- **Módulo:** governo_e_sancoes · **Contém dado de pessoa:** sim
+- **Chaves:** `cnpj`, `tipo_divida`, `regiao`, `tipo_devedor`, `tipo_situacao`, `situacao_inscricao`, `ajuizado`, `data_do_retrato`
+- **Três datas:** aconteceu_em = `data_do_retrato`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor de casa, `scripts/carga_pgfn.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `cnpj_basico` | Raiz do CNPJ (8 caracteres): a empresa | texto |
+| `tipo_divida` | nao_previdenciaria (SIDA), previdenciaria ou fgts: o arquivo da PGFN de onde veio | texto |
+| `regiao` | Região da PGFN no nome do arquivo (1 a 6, ou NA) | texto |
+| `tipo_devedor` | principal, corresponsavel ou solidario | texto |
+| `tipo_situacao` | Grupo da situação, como a PGFN escreve (Em cobrança, Suspenso por decisão judicial, Benefício Fiscal, Garantia) | texto |
+| `situacao_inscricao` | Situação da inscrição, como a PGFN escreve (ATIVA AJUIZADA, ATIVA EM COBRANCA...) | texto |
+| `ajuizado` | Verdadeiro se a cobrança já está na Justiça | verdadeiro ou falso |
+| `inscricoes` | Quantas inscrições somadas nesta linha | número inteiro |
+| `valor_consolidado` | Valor consolidado somado das inscrições | reais (R$), já multiplicado pela escala informada |
+| `primeira_inscricao` | Data da inscrição mais antiga (vazia se a PGFN não informa) | data (dia) |
+| `ultima_inscricao` | Data da inscrição mais recente | data (dia) |
+| `data_do_retrato` | Último dia do mês do retrato da PGFN | data (dia) |
+| `gerado_em` | Data dos CSVs dentro do ZIP (informativa: não é a de publicação) | data (dia) |
+| `trata_como_pessoa` | Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base | verdadeiro ou falso |
+| `disponivel_em` | Dia em que o arquivista viu o arquivo pela primeira vez (quando ficou público para a base) | data (dia) |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `auditores`
 
 Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim). A firma é identificada pela rede, lida do nome (KPMG, EY, PwC, Deloitte...), porque CNPJ e código da CVM vêm errados em parte das linhas. O sócio responsável (nome e CPF) nunca entra (LGPD).

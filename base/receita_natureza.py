@@ -11,18 +11,25 @@ básico; opção Simples; datas; **opção MEI** (`S`/`N`); datas. Cada arquivo 
 lê por partes e guarda só as raízes pedidas (as entidades da rede).
 """
 
+import re
 import zipfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import IO
 
 import pandas as pd
+import sqlalchemy as sa
+
+from src import acervo
+from src.banco.coletas import originais_mais_recentes
 
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 1_000_000
 COLUNA_DA_NATUREZA = 2
 COLUNA_DO_MEI = 4
 OPTANTE = "S"
+FONTE = "rfb-cnpj"
+ARQUIVO = re.compile(r"/(\d{4}-\d{2})/(Empresas\d+|Simples)\.zip$")
 
 
 def _partes(arquivo_zip: Path | IO[bytes], coluna: int) -> Iterator[pd.DataFrame]:
@@ -67,3 +74,21 @@ def ler_mei(arquivo_zip: Path | IO[bytes], raizes: set[str]) -> pd.DataFrame:
             "mei": tabela["valor"].str.strip() == OPTANTE,
         }
     )
+
+
+def arquivos_do_mes_mais_recente(conexao: sa.Connection) -> list[tuple[str, Path]]:
+    """(nome, caminho no acervo) dos `Empresas*.zip` e do `Simples.zip` do mês mais recente guardado."""
+    pasta = acervo.pasta_do_acervo()
+    if pasta is None:
+        return []
+    achados = []
+    for original in originais_mais_recentes(conexao, FONTE):
+        casou = ARQUIVO.search(original.url)
+        if casou and (pasta / original.caminho_do_original).is_file():
+            achados.append(
+                (casou.group(1), casou.group(2), original.caminho_do_original)
+            )
+    if not achados:
+        return []
+    mes = max(m for m, _, _ in achados)
+    return sorted((n, pasta / c) for m, n, c in achados if m == mes)

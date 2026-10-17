@@ -4420,6 +4420,116 @@
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
       "atraso": "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
     },
+    "pgfn_divida": {
+      "tabela": "pgfn_divida",
+      "modulo": "governo_e_sancoes",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "cnpj_basico": {
+          "descricao": "Raiz do CNPJ (8 caracteres): a empresa",
+          "unidade": "texto"
+        },
+        "tipo_divida": {
+          "descricao": "nao_previdenciaria (SIDA), previdenciaria ou fgts: o arquivo da PGFN de onde veio",
+          "unidade": "texto"
+        },
+        "regiao": {
+          "descricao": "Região da PGFN no nome do arquivo (1 a 6, ou NA)",
+          "unidade": "texto"
+        },
+        "tipo_devedor": {
+          "descricao": "principal, corresponsavel ou solidario",
+          "unidade": "texto"
+        },
+        "tipo_situacao": {
+          "descricao": "Grupo da situação, como a PGFN escreve (Em cobrança, Suspenso por decisão judicial, Benefício Fiscal, Garantia)",
+          "unidade": "texto"
+        },
+        "situacao_inscricao": {
+          "descricao": "Situação da inscrição, como a PGFN escreve (ATIVA AJUIZADA, ATIVA EM COBRANCA...)",
+          "unidade": "texto"
+        },
+        "ajuizado": {
+          "descricao": "Verdadeiro se a cobrança já está na Justiça",
+          "unidade": "verdadeiro ou falso"
+        },
+        "inscricoes": {
+          "descricao": "Quantas inscrições somadas nesta linha",
+          "unidade": "número inteiro"
+        },
+        "valor_consolidado": {
+          "descricao": "Valor consolidado somado das inscrições",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "primeira_inscricao": {
+          "descricao": "Data da inscrição mais antiga (vazia se a PGFN não informa)",
+          "unidade": "data (dia)"
+        },
+        "ultima_inscricao": {
+          "descricao": "Data da inscrição mais recente",
+          "unidade": "data (dia)"
+        },
+        "data_do_retrato": {
+          "descricao": "Último dia do mês do retrato da PGFN",
+          "unidade": "data (dia)"
+        },
+        "gerado_em": {
+          "descricao": "Data dos CSVs dentro do ZIP (informativa: não é a de publicação)",
+          "unidade": "data (dia)"
+        },
+        "trata_como_pessoa": {
+          "descricao": "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base",
+          "unidade": "verdadeiro ou falso"
+        },
+        "disponivel_em": {
+          "descricao": "Dia em que o arquivista viu o arquivo pela primeira vez (quando ficou público para a base)",
+          "unidade": "data (dia)"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "tipo_divida",
+        "regiao",
+        "tipo_devedor",
+        "tipo_situacao",
+        "situacao_inscricao",
+        "ajuizado",
+        "data_do_retrato"
+      ],
+      "datas": {
+        "aconteceu_em": "data_do_retrato",
+        "publico_em": "disponivel_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
+      "revenda": "só uso interno (nunca vender nem exportar)",
+      "pessoa": true,
+      "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
+      "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
+    },
     "auditores": {
       "tabela": "auditores",
       "modulo": "mercado_e_empresas",
