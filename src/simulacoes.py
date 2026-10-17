@@ -9,6 +9,7 @@ validação do link compartilhável.
 
 import math
 from collections.abc import Callable, Mapping
+from urllib.parse import urlencode
 
 from src.link import ler_parametros
 
@@ -99,3 +100,85 @@ def restaurar_estado(
     if campo_ainda_vale is not None:
         candidatos = {c: v for c, v in candidatos.items() if campo_ainda_vale(c, v)}
     return {**_campos_do_topo_validos(retrato), **candidatos}
+
+
+# --- as simulações salvas pelo app novo (ADR 0062, tela 3) -----------------------------------
+# O app novo não tem session_state: o retrato dele guarda os campos do contrato do backtest
+# (src/paginas.py) com esta marca de origem. O app atual reabre só o ticker e o período desse
+# retrato (as outras chaves não têm o prefixo de nenhuma aba e ficam de fora no restaurar).
+ORIGEM_DO_APP_NOVO = "app-novo"
+CAMPOS_DO_BACKTEST_NO_APP_NOVO = (
+    "ticker",
+    "periodo",
+    "estrategia",
+    "custo_por_operacao",
+    "taxa",
+    "capital_inicial",
+    "tolerancia_de_queda",
+)
+PREFIXO_DO_PARAMETRO = (
+    "p."  # como web/src/app/Formulario.tsx põe os parâmetros no endereço
+)
+MAX_LIVRES = 2
+MAX_PARAMETROS = 10
+
+
+def retrato_do_app_novo(
+    ticker: str,
+    periodo: str,
+    estrategia: str,
+    parametros: Mapping[str, int | float | str],
+    custo_por_operacao: float,
+    capital_inicial: float,
+    tolerancia_de_queda: float,
+    livres: tuple[str, ...],
+    taxa: float | None,
+) -> dict:
+    """O que o app novo guarda como `parametros` de um backtest: as escolhas da tela, nos nomes
+    do contrato (frações, como a API). Sem `taxa`, a tela usou o CDI e a reabertura também usa."""
+    retrato = {
+        "origem": ORIGEM_DO_APP_NOVO,
+        "ticker": ticker,
+        "periodo": periodo,
+        "estrategia": estrategia,
+        "parametros": dict(parametros),
+        "custo_por_operacao": float(custo_por_operacao),
+        "capital_inicial": float(capital_inicial),
+        "tolerancia_de_queda": float(tolerancia_de_queda),
+        "livres": list(livres),
+    }
+    if taxa is not None:
+        retrato["taxa"] = float(taxa)
+    return retrato
+
+
+def endereco_no_app_novo(tipo: str, retrato: object) -> str | None:
+    """A tela do app novo que reabre a simulação com as mesmas escolhas ("/backtest?...").
+
+    None quando ela só reabre no app atual: outro tipo de simulação ou retrato do Streamlit.
+    O retrato vem do banco (não confiável): só os campos conhecidos, com valores simples.
+    """
+    if (
+        tipo != "backtest"
+        or not isinstance(retrato, Mapping)
+        or retrato.get("origem") != ORIGEM_DO_APP_NOVO
+    ):
+        return None
+    pares: list[tuple[str, str]] = []
+    for campo in CAMPOS_DO_BACKTEST_NO_APP_NOVO:
+        valor = retrato.get(campo)
+        if valor is not None and _valor_simples(valor) and not isinstance(valor, bool):
+            pares.append((campo, str(valor)))
+    livres = retrato.get("livres")
+    if isinstance(livres, list):
+        pares += [
+            ("livres", nome) for nome in livres[:MAX_LIVRES] if isinstance(nome, str)
+        ]
+    parametros = retrato.get("parametros")
+    if isinstance(parametros, Mapping):
+        pares += [
+            (f"{PREFIXO_DO_PARAMETRO}{nome}", str(valor))
+            for nome, valor in list(parametros.items())[:MAX_PARAMETROS]
+            if isinstance(nome, str) and _valor_simples(valor)
+        ]
+    return f"/backtest?{urlencode(pares)}"

@@ -8,8 +8,10 @@ JSON. Duas regras valem para todos:
 """
 
 import math
+import uuid
+from collections.abc import Mapping
 from dataclasses import asdict
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 from pydantic import BaseModel
@@ -17,10 +19,12 @@ from pydantic import BaseModel
 from src import analises, catalogo, juros_e_inflacao, linha_do_tempo, topicos
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
+from src.banco.dados_do_usuario import Simulacao
 from src.conteudo import descrever_pior_drawdown
-from src.ficha import Ficha, PedidoDaFicha, nota_das_tentativas
+from src.ficha import Ficha, PedidoDaFicha, Resultado, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
 from src.links_das_fontes import link_da_fonte
+from src.simulacoes import endereco_no_app_novo
 
 BASE = 100.0  # as curvas de valor começam aqui
 
@@ -494,3 +498,55 @@ class BacktestDoAtivoV1(BaseModel):
 class LinhaDoTempoDoAtivoV1(BaseModel):
     ativo: AtivoV1  # a linha do tempo não usa taxa livre de risco: vem zerada
     linha_do_tempo: LinhaDoTempoV1
+
+
+# --- Minhas simulações (ADR 0062, tela 3; Workspace, PR 1) ----------------------------------
+
+VEREDITOS = frozenset(r.value for r in Resultado)
+
+
+class SimulacaoV1(BaseModel):
+    """Uma simulação guardada na conta: o que a lista mostra e o endereço que a reabre."""
+
+    id: uuid.UUID
+    tipo: str  # "backtest", "carteira" ou "pares"
+    nome: str
+    criada_em: datetime
+    dados_ate: str | None  # "dd/mm/aaaa": até quando iam os dados na hora de salvar
+    numeros: dict[str, str]  # o resumo dos números, formatado como a tela mostrou
+    veredito: str | None  # o da ficha "Foi sorte?" ao salvar (só backtests com ficha)
+    endereco: (
+        str | None
+    )  # a tela do app novo que a reabre; null: só reabre no app atual
+
+
+class MinhasSimulacoesV1(BaseModel):
+    simulacoes: list[SimulacaoV1]  # a mais nova primeiro
+    usadas: int
+    limite: int | None  # null = sem limite
+    uso: str  # "2 de 5"
+    sem_simulacoes: str  # a frase de quando a lista está vazia
+
+
+def de_simulacao(simulacao: Simulacao) -> SimulacaoV1:
+    """O `resultado` vem do banco e pode ter sido salvo por versões antigas do app: só o que
+    estiver no formato esperado aparece (números como texto, veredito conhecido)."""
+    resumo = simulacao.resultado if isinstance(simulacao.resultado, Mapping) else {}
+    numeros = resumo.get("numeros")
+    guardada = resumo.get("ficha")
+    veredito = guardada.get("veredito") if isinstance(guardada, Mapping) else None
+    dados_ate = resumo.get("dados_ate")
+    return SimulacaoV1(
+        id=simulacao.id,
+        tipo=simulacao.tipo,
+        nome=simulacao.nome,
+        criada_em=simulacao.criada_em,
+        dados_ate=dados_ate if isinstance(dados_ate, str) else None,
+        numeros=(
+            {str(k): str(v) for k, v in numeros.items()}
+            if isinstance(numeros, Mapping)
+            else {}
+        ),
+        veredito=veredito if veredito in VEREDITOS else None,
+        endereco=endereco_no_app_novo(simulacao.tipo, simulacao.parametros),
+    )

@@ -226,6 +226,8 @@ ROTAS_DA_CONTA = frozenset(
     {
         "/v1/eu",
         "/v1/revogar-link",
+        "/v1/salvar-simulacao",
+        "/v1/apagar-simulacao",
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",

@@ -694,7 +694,12 @@
   },
   {
     "chave": "simulacoes",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "MinhasSimulacoesV1",
+      "rota": "/v1/simulacoes"
+    },
     "descricao": "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
     "e_pro": false,
     "grupo": "Minha conta",
