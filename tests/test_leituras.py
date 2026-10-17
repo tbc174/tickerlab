@@ -4,7 +4,7 @@ fatos relevantes da CVM. Sem internet: a SEC e a CVM são simuladas."""
 import json
 import uuid
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 import sqlalchemy as sa
@@ -13,7 +13,7 @@ from scripts import atualizar_leituras_cvm
 from src import coleta_sec, leitura, topicos, topicos_modelo
 from src import eventos_sec as sec
 from src.banco import leituras as repo
-from src.banco.modelo import eventos
+from src.banco.modelo import eventos, leituras
 from src.eventos import FONTE_IPE
 from src.relatorios import FUSO
 from tests.test_fundamentos_sec import _abrir, _coletar_apple
@@ -141,6 +141,40 @@ def test_fatos_sem_leitura(banco):
         f"{LINK_DA_CVM}novo",
         "Fato Relevante",
     )
+
+
+def test_fato_reapresentado_depois_do_resumo_volta_para_a_fila(banco):
+    # achado 7b do Codex: a CVM reapresentou o fato (versão nova) depois que ele foi lido; o
+    # resumo velho não pode continuar na tela como se fosse do documento novo
+    lido, reapresentado = (
+        datetime(2026, 10, 10, tzinfo=UTC),
+        datetime(2026, 10, 11, tzinfo=UTC),
+    )
+    with banco.begin() as c:
+        _fato(c, "fato", date(2026, 10, 10))
+        repo.gravar_leitura(
+            c, FONTE_IPE, "fato", repo.RESUMO, "x", None, {"a": "velho"}
+        )
+        c.execute(sa.update(leituras).values(lido_em=lido))
+        c.execute(
+            sa.update(eventos)
+            .where(eventos.c.protocolo == "fato")
+            .values(versao=2, ingerido_em=reapresentado)
+        )
+    with banco.connect() as c:
+        pendentes = repo.fatos_sem_leitura(
+            c, FONTE_IPE, "Fato Relevante", date(2026, 9, 1), 10
+        )
+        assert [p[0] for p in pendentes] == ["fato"]
+        assert repo.resumos(c, FONTE_IPE, ["fato"]) == {}
+    with banco.begin() as c:  # lido de novo: sai da fila e o resumo novo aparece
+        repo.gravar_leitura(c, FONTE_IPE, "fato", repo.RESUMO, "x", None, {"a": "novo"})
+    with banco.connect() as c:
+        assert (
+            repo.fatos_sem_leitura(c, FONTE_IPE, "Fato Relevante", date(2026, 9, 1), 10)
+            == []
+        )
+        assert repo.resumos(c, FONTE_IPE, ["fato"]) == {"fato": {"a": "novo"}}
 
 
 def test_fato_com_link_de_fora_da_cvm_nao_e_baixado(banco):

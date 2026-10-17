@@ -23,6 +23,24 @@ TOPICO_MODELO = (
 TAMANHO_DO_LOTE = 5_000
 
 
+def _em_dia(consulta: sa.Select) -> sa.Select:
+    """Só as leituras feitas depois da versão vigente do documento.
+
+    Quando a CVM reapresenta um fato (versão nova), o evento ganha `ingerido_em` novo: a leitura
+    de antes fica velha, sai da tela e o fato volta para a fila (achado 7b do Codex). Nada é
+    apagado. Leitura sem evento (o 10-K da SEC) continua valendo.
+    """
+    do_evento = (eventos.c.fonte == leituras.c.fonte) & (
+        eventos.c.protocolo == leituras.c.documento
+    )
+    return consulta.select_from(leituras.outerjoin(eventos, do_evento)).where(
+        sa.or_(
+            eventos.c.ingerido_em.is_(None),
+            leituras.c.lido_em >= eventos.c.ingerido_em,
+        )
+    )
+
+
 def gravar_leitura(
     conexao: sa.Connection,
     fonte: str,
@@ -89,10 +107,12 @@ def resumos(
     pedidos = list(dict.fromkeys(documentos))
     if not pedidos:
         return {}
-    consulta = sa.select(leituras.c.documento, leituras.c.resultado).where(
-        leituras.c.fonte == fonte,
-        leituras.c.tipo == RESUMO,
-        leituras.c.documento.in_(pedidos[:TAMANHO_DO_LOTE]),
+    consulta = _em_dia(
+        sa.select(leituras.c.documento, leituras.c.resultado).where(
+            leituras.c.fonte == fonte,
+            leituras.c.tipo == RESUMO,
+            leituras.c.documento.in_(pedidos[:TAMANHO_DO_LOTE]),
+        )
     )
     return {
         documento: dict(resultado) for documento, resultado in conexao.execute(consulta)
@@ -104,11 +124,13 @@ def _topicos_lidos(
 ) -> dict[str, topicos.LeituraDoTopico]:
     lidos: dict[str, topicos.LeituraDoTopico] = {}
     for inicio in range(0, len(pedidos), TAMANHO_DO_LOTE):
-        consulta = sa.select(leituras.c.documento, leituras.c.resultado).where(
-            leituras.c.fonte == fonte,
-            leituras.c.tipo == tipo,
-            leituras.c.versao == topicos.VERSAO,
-            leituras.c.documento.in_(pedidos[inicio : inicio + TAMANHO_DO_LOTE]),
+        consulta = _em_dia(
+            sa.select(leituras.c.documento, leituras.c.resultado).where(
+                leituras.c.fonte == fonte,
+                leituras.c.tipo == tipo,
+                leituras.c.versao == topicos.VERSAO,
+                leituras.c.documento.in_(pedidos[inicio : inicio + TAMANHO_DO_LOTE]),
+            )
         )
         for documento, resultado in conexao.execute(consulta):
             dados = dict(resultado)
@@ -167,16 +189,18 @@ def ultima_de_riscos(
 def fatos_sem_leitura(
     conexao: sa.Connection, fonte: str, categoria: str, desde: date, limite: int
 ) -> list[tuple[str, str, date, str, str]]:
-    """Fatos relevantes ainda sem resumo: (protocolo, cnpj, publicado em, link, título do IPE),
-    do mais novo.
+    """Fatos relevantes ainda sem resumo (ou com o resumo de uma versão anterior do fato):
+    (protocolo, cnpj, publicado em, link, título do IPE), do mais novo.
 
     O app baixa cada documento por esse link: um endereço que não seja da CVM ou da SEC fica de
     fora (o servidor nunca baixa nada de outro lugar).
     """
-    ja = sa.select(leituras.c.documento).where(
+    lido_em_dia = sa.exists().where(
         leituras.c.fonte == fonte,
+        leituras.c.documento == eventos.c.protocolo,
         leituras.c.tipo == RESUMO,
         leituras.c.versao == VERSAO,
+        leituras.c.lido_em >= eventos.c.ingerido_em,  # depois da versão vigente (7b)
     )
     consulta = (
         sa.select(
@@ -190,7 +214,7 @@ def fatos_sem_leitura(
             eventos.c.fonte == fonte,
             eventos.c.categoria == categoria,
             eventos.c.publicado_em >= desde,
-            eventos.c.protocolo.not_in(ja),
+            ~lido_em_dia,
         )
         .order_by(eventos.c.publicado_em.desc())
         .limit(limite)
