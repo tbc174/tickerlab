@@ -4,6 +4,7 @@ Regra do dígito verificador pela FAQ da Receita ("CNPJ alfanumérico", pergunta
 Serpro: cada caractere vale o código ASCII − 48, pesos e resto por 11 como no CNPJ só com números.
 """
 
+import pandas as pd
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -89,3 +90,25 @@ def test_completo_nao_transforma_cpf_em_cnpj():
     assert cnpj.completo("123.456.789-09") is None
     assert cnpj.completo("03645752") is None
     assert cnpj.completo(None) is None
+
+
+def test_raiz_em_numero_e_unica_e_aceita_letras():
+    """Milhões de raízes num conjunto: 8 bytes cada (base 36), em vez de um texto do Python."""
+    raizes = pd.Series(["00000000", "11222333", "12ABC345", "ZZZZZZZZ", "11222334"])
+    numeros = cnpj.raizes_em_numeros(raizes)
+    assert numeros.dtype == "int64"
+    assert len(set(numeros.tolist())) == 5
+    assert numeros[0] == 0
+    assert numeros[3] == 36**8 - 1
+
+
+def test_contem_pelos_numeros_ordenados():
+    conjunto = cnpj.ordenados(
+        cnpj.raizes_em_numeros(pd.Series(["11222333", "12ABC345"]))
+    )
+    procurados = cnpj.raizes_em_numeros(
+        pd.Series(["12ABC345", "99999999", "11222333", "00000000"])
+    )
+    assert cnpj.contem(conjunto, procurados).tolist() == [True, False, True, False]
+    vazio = cnpj.ordenados(cnpj.raizes_em_numeros(pd.Series([], dtype=str)))
+    assert cnpj.contem(vazio, procurados).tolist() == [False] * 4

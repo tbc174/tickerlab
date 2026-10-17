@@ -36,6 +36,11 @@ URL_SIDA = "https://dadosabertos.pgfn.gov.br/2026_trimestre_02/Dados_abertos_Nao
 URL_FGTS = "https://dadosabertos.pgfn.gov.br/2026_trimestre_02/Dados_abertos_FGTS.zip"
 
 
+def _numeros(*raizes: str):
+    """As raízes como o conjunto de números que a montagem usa (`base/cnpj.py`)."""
+    return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(raizes), dtype=str)))
+
+
 def _cnpj(raiz: str, filial: str = "0001") -> str:
     """Um CNPJ com o dígito certo, formatado como a PGFN escreve."""
     for dv in range(100):
@@ -203,13 +208,16 @@ def test_raizes_de_pessoa_pela_natureza_pelo_mei_e_pela_falta_da_receita():
         }
     )
     meis = pd.DataFrame({"cnpj_basico": ["44555666", "11222333"], "mei": [True, False]})
-    raizes = {"11222333", "44555666", "55666777", "66777888", "77888999"}
-    assert pgfn.raizes_de_pessoa(raizes, naturezas, meis) == {
-        "44555666",  # MEI
-        "55666777",  # empresário individual (213-5)
-        "66777888",  # grupo 4 da tabela de naturezas
-        "77888999",  # a Receita não tem: o conservador (ADR 0075)
-    }
+    raizes = _numeros("11222333", "44555666", "55666777", "66777888", "77888999")
+    assert (
+        pgfn.raizes_de_pessoa(raizes, naturezas, meis).tolist()
+        == _numeros(
+            "44555666",  # MEI
+            "55666777",  # empresário individual (213-5)
+            "66777888",  # grupo 4 da tabela de naturezas
+            "77888999",  # a Receita não tem: o conservador (ADR 0075)
+        ).tolist()
+    )
 
 
 def test_raizes_dos_devedores_so_de_pessoa_juridica_valida():
@@ -220,7 +228,10 @@ def test_raizes_dos_devedores_so_de_pessoa_juridica_valida():
         _sida(OUTRA),
         _sida(CPF_MASCARADO, pessoa="Pessoa física", nome=NOME_DA_PESSOA),
     )
-    assert pgfn.raizes_dos_devedores(arquivo) == {"11222333", "33000167"}
+    assert (
+        pgfn.raizes_dos_devedores(arquivo).tolist()
+        == _numeros("11222333", "33000167").tolist()
+    )
 
 
 def test_leitura_em_pedacos_da_o_mesmo_resultado(monkeypatch):

@@ -13,6 +13,7 @@ regra de emissão, não de validação: aqui toda letra vale.
 
 import re
 
+import numpy as np
 import pandas as pd
 
 TAMANHO = 14
@@ -83,3 +84,32 @@ def formatar(cnpj: str) -> str:
 def tem_letra(cnpj: str) -> bool:
     """True se o CNPJ é alfanumérico (nunca pode ser um CPF)."""
     return any(c.isalpha() for c in cnpj)
+
+
+# --- raízes como números, para conjuntos de milhões (PGFN × Receita): 8 bytes por raiz em vez de um
+# texto do Python (~60 bytes, mais o conjunto). Base 36: `0`–`9` valem 0–9 e `A`–`Z` 10–35, então o
+# CNPJ com letras também cabe, e duas raízes diferentes nunca dão o mesmo número.
+_BASE_36 = 36
+_PESOS_DA_RAIZ = _BASE_36 ** np.arange(TAMANHO_DA_RAIZ - 1, -1, -1, dtype=np.int64)
+
+
+def raizes_em_numeros(raizes: pd.Series) -> np.ndarray:
+    """Cada raiz de 8 caracteres (maiúsculas e dígitos) como um inteiro de 64 bits."""
+    texto = np.asarray(raizes.to_numpy(dtype=str), dtype=f"S{TAMANHO_DA_RAIZ}")
+    bytes_ = np.frombuffer(texto.tobytes(), dtype=np.uint8).reshape(-1, TAMANHO_DA_RAIZ)
+    valores = bytes_.astype(np.int64)
+    valores = np.where(valores >= ord("A"), valores - ord("A") + 10, valores - ord("0"))
+    return valores @ _PESOS_DA_RAIZ
+
+
+def ordenados(numeros: np.ndarray) -> np.ndarray:
+    """Os números sem repetição, em ordem (o conjunto que `contem` procura)."""
+    return np.unique(numeros)
+
+
+def contem(conjunto: np.ndarray, procurados: np.ndarray) -> np.ndarray:
+    """Para cada procurado, se está no `conjunto` (saído de `ordenados`), por busca binária."""
+    if len(conjunto) == 0:
+        return np.zeros(len(procurados), dtype=bool)
+    posicao = np.minimum(np.searchsorted(conjunto, procurados), len(conjunto) - 1)
+    return conjunto[posicao] == procurados

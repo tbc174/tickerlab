@@ -8,6 +8,9 @@ aspas, latin-1; a razão social às vezes tem `;` dentro das aspas. Arquivos de 
 import io
 import zipfile
 
+import pandas as pd
+
+from base import cnpj
 from base import receita_natureza as rn
 
 EMPRESAS = (
@@ -70,3 +73,17 @@ def test_arquivos_em_partes(monkeypatch):
     monkeypatch.setattr(rn, "TAMANHO_DA_PARTE", 1)
     tabela = rn.ler_naturezas(_zip("EMPRECSV", EMPRESAS), {"33000167", "99999999"})
     assert sorted(tabela["cnpj_basico"]) == ["33000167", "99999999"]
+
+
+def test_raizes_pedidas_tambem_como_numeros():
+    """Milhões de raízes (os devedores da PGFN) vão como números ordenados, não como textos."""
+    numeros = cnpj.ordenados(
+        cnpj.raizes_em_numeros(pd.Series(["33000167", "12ABC345"]))
+    )
+    tabela = rn.ler_naturezas(_zip("EMPRECSV", EMPRESAS), numeros)
+    assert sorted(tabela["cnpj_basico"]) == ["12ABC345", "33000167"]
+    mei = rn.ler_mei(
+        _zip("SIMPLES.CSV", SIMPLES),
+        cnpj.ordenados(cnpj.raizes_em_numeros(pd.Series(["11222333"]))),
+    )
+    assert mei["mei"].tolist() == [True]
