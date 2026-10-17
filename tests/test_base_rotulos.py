@@ -132,15 +132,22 @@ def test_fato_relevante_que_anuncia_o_pedido_tambem_conta_como_evidencia():
     assert set(tabela["evidencia"]) == {"fato_relevante"}
 
 
-def test_versoes_repetidas_ficam_so_com_a_mais_nova():
-    tabela = rotulos.ler_insolvencia_do_ipe(
-        _zip(
-            _linha("11.111.111/0001-11", RJ, "Sentenças", "", "2019-03-01", "300", "1"),
-            _linha("11.111.111/0001-11", RJ, "Sentenças", "", "2019-03-05", "300", "2"),
-        )
+def test_cada_versao_da_entrega_fica_com_a_propria_data():
+    """Achado 3e do Codex (17/10/2026): a reapresentação não apaga a data da 1ª versão."""
+    versao_1 = _linha(
+        "11.111.111/0001-11", RJ, "Sentenças", "", "2019-03-01", "300", "1"
     )
-    assert len(tabela) == 1
-    assert int(tabela["versao"].iloc[0]) == 2
+    versao_2 = _linha(
+        "11.111.111/0001-11", RJ, "Sentenças", "", "2019-03-05", "300", "2"
+    )
+    tabela = rotulos.ler_insolvencia_do_ipe(_zip(versao_1, versao_2))
+    assert sorted(int(v) for v in tabela["versao"]) == [1, 2]
+    primeiros = rotulos.primeira_ocorrencia(tabela)
+    assert str(primeiros["conhecido_em"].iloc[0]) == "2019-03-01"
+    # cortar o futuro não muda o passado: em 03/03 só a versão 1 existia, e ela já estava lá
+    so_a_1 = rotulos.ler_insolvencia_do_ipe(_zip(versao_1))
+    ate_03_03 = tabela[tabela["conhecido_em"] <= pd.Timestamp("2019-03-03").date()]
+    pd.testing.assert_frame_equal(ate_03_03.reset_index(drop=True), so_a_1)
 
 
 def test_primeira_data_por_empresa_e_rotulo():

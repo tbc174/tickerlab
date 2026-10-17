@@ -2742,7 +2742,8 @@ TABELAS: dict[str, Tabela] = {
             "(`fato_relevante`, costuma ser o primeiro sinal público). Desde a versão 2.0.0 o "
             "`rotulo` é da companhia que entregou o documento: quando ele fala de outra empresa "
             "(controlada, investida, devedora do CRI), vira `exposicao_a_terceiro` e o `evento` "
-            "guarda o que aconteceu com a outra"
+            "guarda o que aconteceu com a outra. Desde a 3.0.0 cada versão de uma entrega é uma "
+            "linha, com a própria `conhecido_em`: a reapresentação não apaga a data da 1ª versão"
         ),
         fonte="CVM: dados abertos do IPE, um arquivo por ano (`base/rotulos.py`)",
         familia_da_fonte="cvm",
@@ -2800,8 +2801,10 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="rfb-cnpj",
         frequencia="Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
         atraso=(
-            "O retrato sai semanas depois do mês; `data_situacao_especial` é a data que a Receita "
-            "informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"
+            "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde "
+            "`disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). "
+            "`data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao "
+            "retrato em que a linha apareceu pela primeira vez"
         ),
         onde="Parquet em `<acervo>/base/cnpj_situacao_especial/<AAAA-MM>.parquet` (servidor de casa)",
         linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
@@ -2822,6 +2825,14 @@ TABELAS: dict[str, Tabela] = {
             "mes_do_retrato": (
                 "Mês do arquivo da Receita de onde a linha veio",
                 "AAAA-MM",
+            ),
+            "disponivel_em": (
+                (
+                    "Desde quando o retrato era público: o fim do mês dele ou, se depois, o dia em "
+                    "que o arquivo foi baixado pela primeira vez (atraso, correção ou mês antigo "
+                    "baixado depois)"
+                ),
+                DATA,
             ),
             **_ORIGEM_SEM_ANO,
         },
@@ -4013,8 +4024,8 @@ _CONTRATO = {
     "negociacoes": _contrato(modulo=_ME, chaves=("fonte", "documento", "versao", "cnpj", "cargo", "operacao", "ativo", "data"), datas={"aconteceu_em": "data", "publico_em": "entregue_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "proventos": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
-    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
-    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="3.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro; 3.0.0 (17/10/2026): uma linha por versão da entrega
+    "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes", versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): público desde `disponivel_em`, não do mês do arquivo
     "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
