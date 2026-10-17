@@ -76,6 +76,12 @@ LICENCAS = {
     "assessoria": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
     # termos lidos em 16/10/2026 (archive.org/about/terms); só a data das cópias entra na base
     "wayback": "Internet Archive: 'for scholarship and research purposes only'; só datas",
+    # regras de utilização dos dados abertos do TCE-PR (lidas em 16/10/2026): "livre para qualquer
+    # finalidade ou atividade, no limite das restrições legais"; sem pessoas (ADR 0075)
+    "tce-pr": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-pr-pit": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
+    "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -142,6 +148,12 @@ REVENDA = {
     "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
     "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
     "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
+    # a família vem do endereço ("tce-pr") e a fonte do arquivista tem o próprio id ("tce-pr-pit"):
+    # o "tce" sozinho não diz qual tribunal
+    "tce-pr": VENDAVEL_COM_ATRIBUICAO,
+    "tce-pr-pit": VENDAVEL_COM_ATRIBUICAO,
+    "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
+    "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
 }
 
 

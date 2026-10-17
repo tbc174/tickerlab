@@ -256,3 +256,19 @@ def test_versoes_guardadas_sem_ler_e_ausencia_antes_da_primeira(banco):
         assert coletas.ausente_antes(conexao, URL, versoes[0].baixado_em)
         assert not coletas.ausente_antes(conexao, URL, dia)
         assert coletas.versoes_guardadas(conexao, URL + "x") == []
+
+
+def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
+    # regras de utilização do PIT: "livre para qualquer finalidade ou atividade" (lidas em 16/10/2026)
+    for fonte in ("tce-pr", "tce-pr-pit"):
+        assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO, fonte
+        assert "TCE-PR" in licenca_da_fonte(fonte)
+    assert (
+        coletas.revenda_da_fonte("tce-rs-empenhos") == coletas.VENDAVEL_COM_ATRIBUICAO
+    )
+
+
+def test_licitacon_fica_a_confirmar():
+    # o LicitaCon do TCE-RS espera a resposta da Ouvidoria (ADR 0085)
+    assert coletas.revenda_da_fonte("tce-rs") == coletas.A_CONFIRMAR
+    assert coletas.revenda_da_fonte("tce-rs-licitacon") == coletas.A_CONFIRMAR

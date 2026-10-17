@@ -9,21 +9,27 @@ import base64
 import json
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from datetime import UTC, date, datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
+import requests
 import sqlalchemy as sa
 
-from base import intradiario_b3
+from base import intradiario_b3, tce_pr
 from base.arquivo import assessorias, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
+    HTTP_NAO_ENCONTRADO,
     csv_so_com_colunas,
     extrair_do_zip_remoto,
+    indice_do_zip_remoto,
     json_so_com_campos,
+    membro_regravado,
     membros_do_zip_remoto,
     parquet_sem_colunas,
+    versao_do_membro,
     zip_que_pode_faltar,
 )
 
@@ -193,6 +199,16 @@ BOLETIM_PR_DA_B3 = (
 )
 COTAHIST_DO_DIA = (
     "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{ddmmaaaa}.ZIP"
+)
+
+# PIT do TCE-PR (sinais de risco em compras públicas, ADR 0085): um ZIP por ano desde 2013, com um ZIP
+# por município e tema dentro (399 × 9). Só licitação, contrato e ligações (a `Despesa` é o PR 2);
+# anos fechados quase não mudam (2013: 20/01/2020), o corrente é regravado toda semana. Medido em
+# 17/10/2026: ~3 GB na história toda (os três temas)
+PIT_DO_TCE_PR = "https://pit.tce.pr.gov.br/Arquivos/{ano}_PIT_TodosArquivos.zip"
+PRIMEIRO_ANO_DO_PIT = 2013
+ZIP_INTERNO_DO_PIT = re.compile(
+    r"^\d{4}_\d+_(Licitacao|Contrato|Relacionamentos)\.zip$"
 )
 
 
@@ -422,6 +438,49 @@ def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
         alvos += [
             Alvo(f"{url}#{membro}", ".csv", extrair_do_zip_remoto(url, membro))
             for membro in membros
+        ]
+    return alvos
+
+
+def _ainda_nao_saiu(erro: requests.HTTPError) -> bool:
+    resposta = erro.response
+    return resposta is not None and resposta.status_code == HTTP_NAO_ENCONTRADO
+
+
+def descobrir_pit(
+    cliente: Cliente, agora: datetime, anos: Iterable[int] | None = None
+) -> list[Alvo]:
+    """Cada ZIP interno de licitação, contrato e ligações de cada ano (o endereço guarda
+    `zip#arquivo`), com a versão (CRC) lida no índice: o que não mudou nem é pedido.
+
+    O ano corrente que ainda não saiu (começo de janeiro) fica de fora; um ano fechado que falta é falha.
+    """
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    alvos: list[Alvo] = []
+    for ano in anos or range(PRIMEIRO_ANO_DO_PIT, hoje.year + 1):
+        url = PIT_DO_TCE_PR.format(ano=ano)
+        try:
+            indice = indice_do_zip_remoto(cliente, url)
+        except requests.HTTPError as erro:
+            if ano == hoje.year and _ainda_nao_saiu(erro):
+                continue
+            raise
+        membros = sorted(
+            (m for m in indice if ZIP_INTERNO_DO_PIT.match(m.filename)),
+            key=lambda m: m.filename,
+        )
+        if not membros:
+            raise ErroDeDescoberta(
+                f"TCE-PR: nenhum ZIP de licitação ou contrato em {url}"
+            )
+        alvos += [
+            Alvo(
+                f"{url}#{m.filename}",
+                ".zip",
+                membro_regravado(url, m, tce_pr.regravar),
+                versao_do_membro(m),
+            )
+            for m in membros
         ]
     return alvos
 
@@ -791,6 +850,8 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
+    # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
+    Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
     # posts das assessorias independentes de M&A (middle market, ADR 0082)
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)

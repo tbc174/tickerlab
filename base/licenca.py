@@ -82,6 +82,9 @@ FAMILIA_DO_ENDERECO = {
     "api.kraken.com/": "kraken",
     "assets.kraken.com/": "kraken",
     "api.mercadobitcoin.net/": "mb",
+    "pit.tce.pr.gov.br/": "tce-pr",
+    "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
+    "dados.tce.rs.gov.br/": "tce-rs",
 }
 # a base de cripto (`<acervo>/cripto/<pasta>/...`, `base/cripto/coleta.py`) grava sem origens
 PASTAS_DA_CRIPTO = {

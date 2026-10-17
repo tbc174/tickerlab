@@ -143,6 +143,15 @@ def test_excecao_da_adr_0045_so_no_clima_de_risco_e_nunca_na_exportacao():
             "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/x.csv",
             "anp",
         ),
+        (
+            "https://pit.tce.pr.gov.br/Arquivos/2013_PIT_TodosArquivos.zip#2013_410010_Contrato.zip",
+            "tce-pr",
+        ),
+        (
+            "https://dados.tce.rs.gov.br/dados/municipal/empenhos/2024.csv.zip",
+            "tce-rs-empenhos",
+        ),
+        ("https://dados.tce.rs.gov.br/dados/licitacon/2024.zip", "tce-rs"),
         ("https://sem-fonte.example/x.csv", None),
         ("base/conferidas/empresas.csv", None),  # conferida à mão: não traz fonte nova
     ],
