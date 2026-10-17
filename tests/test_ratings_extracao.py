@@ -303,3 +303,35 @@ def test_nome_antigo_no_documento_segue_como_uma_companhia_so():
     )
     r = ratings.extrair_rating(texto, empresa="BANCO VOITER S.A.")
     assert r is not None and r.nota == "BBB"
+
+
+def test_simbolos_no_texto_nao_desalinham_o_nome_da_nota():
+    """Tirar acentos e símbolos ("•", aspas curvas) não pode mudar as posições: em documento
+    longo, a nota "perto do nome" virava a de outra companhia (Rio Paranapanema, S&P, jan/2018)."""
+    texto = CABECALHO + (
+        "S&P Global Ratings. Raízen Energia S.A. Escala Nacional Brasil brAAA/Estável/-- "
+        + "• “Grupo” ’ " * 150
+        + "• Rio Paranapanema Energia S.A (BB/Estável/--; brAA+/Estável/--). "
+        "Telefônica Brasil S.A. brAAA em CreditWatch"
+    )
+    r = ratings.extrair_rating(texto, empresa="RIO PARANAPANEMA ENERGIA SA")
+    assert r is not None and r.nota == "AA+"
+
+
+def test_palavra_comum_no_nome_nao_faz_o_documento_ser_de_varias():
+    texto = (
+        "RATING ACTION COMMENTARY Fitch Afirma Rating ‘AAA(bra)’ do Mateus; Perspectiva Estável. "
+        + CABECALHO
+        + "Informações do Grupo Mateus S.A. ANÁLISE DE PARES: CBD, AA(bra)/Perspectiva Negativa"
+    )
+    r = ratings.extrair_rating(texto, empresa="GRUPO MATEUS S.A.")
+    assert r is not None and r.nota == "AAA"
+
+
+def test_tabela_de_para_da_sp_vale_a_coluna_para():
+    texto = CABECALHO + (
+        "S&P Global Ratings revisou ratings. RODOVIAS DAS COLINAS S.A. Ratings de Crédito de "
+        "Emissor De Para Escala Nacional Brasil brA/Estável/-- brA+/Estável/-- OUTRA EMPRESA S.A."
+    )
+    r = ratings.extrair_rating(texto, empresa="RODOVIAS DAS COLINAS S.A.")
+    assert r is not None and r.nota == "A+"

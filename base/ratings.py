@@ -459,11 +459,23 @@ def _escala(achado: re.Match[str]) -> str:
     return "nacional" if achado.re is NACIONAL else "global"
 
 
-def _nome_da_empresa(empresa: str) -> str | None:
-    """A primeira palavra própria do nome (SUZANO PAPEL E CELULOSE → suzano), para achar a
-    companhia num documento que fala de várias."""
+def _nomes_da_empresa(empresa: str) -> list[str]:
+    """As palavras próprias do nome (GRUPO MATEUS → mateus; SUZANO PAPEL E CELULOSE → suzano,
+    papel, celulose), para achar a companhia num documento que fala de várias."""
     palavras = [p for p in _simples(empresa).replace(".", " ").split() if len(p) >= 5]
-    return next((p for p in palavras if p not in PALAVRAS_COMUNS), None)
+    return [p for p in palavras if p not in PALAVRAS_COMUNS]
+
+
+def _mesmo_tamanho(texto: str) -> str:
+    """O texto em minúsculas e sem acento com UMA letra por letra do original: o que sumiria (•,
+    aspas curvas) vira espaço, e a posição de um nome é a mesma no texto original."""
+    letras = (unicodedata.normalize("NFKD", c)[:1] for c in texto)
+    return "".join(c.lower() if c.isascii() else " " for c in letras)
+
+
+def _nomes_no_texto(texto: str, empresa: str) -> list[str]:
+    simples = _mesmo_tamanho(texto)
+    return [nome for nome in _nomes_da_empresa(empresa) if nome in simples]
 
 
 def _mais_perto_da_empresa(
@@ -471,11 +483,14 @@ def _mais_perto_da_empresa(
 ) -> re.Match[str] | None:
     """Num documento sobre várias companhias, a nota que vem logo depois de alguma menção à que
     entregou (a lista de nomes do topo não atrapalha: vale a menção mais próxima)."""
-    nome = _nome_da_empresa(empresa)
-    if not nome:
-        return None
+    simples = _mesmo_tamanho(texto)
+    mencoes = sorted(
+        m.start()
+        for nome in _nomes_no_texto(texto, empresa)
+        for m in re.finditer(re.escape(nome), simples)
+    )
     trechos = []
-    for mencao in (m.start() for m in re.finditer(re.escape(nome), _simples(texto))):
+    for mencao in mencoes:
         # o trecho da companhia vai do nome dela até o nome da próxima ("Neoenergia S.A."): uma
         # lista de nomes no topo dá trechos sem nota
         proprio = FIM_DO_TRECHO.search(texto, mencao, mencao + TAMANHO_DO_NOME)
@@ -487,19 +502,39 @@ def _mais_perto_da_empresa(
         return None
     notas = min(trechos, key=lambda t: (t[0], t[1]))[2]
     # no trecho, a escala nacional ganha da global, como no resto do documento
-    return next((a for a in notas if _escala(a) == "nacional"), notas[0])
+    escolhida = next((a for a in notas if _escala(a) == "nacional"), notas[0])
+    return _para_da_tabela(texto, notas, escolhida)
+
+
+ANTES_DA_TABELA = re.compile(r"\bDe\s+Para\b")
+ENTRE_DE_E_PARA = (
+    40  # caracteres entre a nota da coluna "De" e a da "Para" (brA/Estável/-- )
+)
+
+
+def _para_da_tabela(
+    texto: str, achados: list[re.Match[str]], nota: re.Match[str]
+) -> re.Match[str]:
+    """Nas tabelas "De / Para" da S&P (brA/Estável/-- brA+/Estável/--), vale a coluna "Para"."""
+    seguinte = next((a for a in achados if a.start() > nota.start()), None)
+    cabecalho = texto[max(0, nota.start() - 120) : nota.start()]
+    if (
+        seguinte is not None
+        and seguinte.start() - nota.end() <= ENTRE_DE_E_PARA
+        and ANTES_DA_TABELA.search(cabecalho)
+    ):
+        return seguinte
+    return nota
 
 
 def _fala_de_varias(texto: str, empresa: str | None) -> bool:
     """O documento é sobre várias companhias? Quando é sobre uma só, o nome dela está no título ou
     no começo do texto; nos comunicados de várias (a Moody's sobre o setor, a lista da S&P), não."""
-    nome = _nome_da_empresa(empresa) if empresa else None
-    if not nome:
-        return False
     # o nome que não aparece em lugar nenhum é o de hoje num documento antigo (o IPE guarda o
     # nome atual: Voiter era Indusval, Brava era 3R): aí o documento é de uma companhia só
-    simples = _simples(texto)
-    return nome in simples and nome not in simples[:INICIO_DO_TEXTO]
+    nomes = _nomes_no_texto(texto, empresa) if empresa else []
+    inicio = _mesmo_tamanho(texto[:INICIO_DO_TEXTO])
+    return bool(nomes) and not any(nome in inicio for nome in nomes)
 
 
 def _principal(texto: str, achados: list[re.Match[str]]) -> re.Match[str]:
