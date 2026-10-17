@@ -542,3 +542,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a conexão com a IEX caiu no meio do arquivo do dia (~17 GB). O coletor lê o `resposta.raw` direto, então o erro vem da `urllib3`, que não é `requests.RequestException` nem `OSError` e escapava do `except`.
 - **Solução:** `scripts/coletar_iex_do_dia.py` baixa o dia de novo uma vez; se cair de novo, o dia falha sozinho ("FALHOU, nada gravado") e a rodada segue (PR #322). Lição: quem lê `.raw` de uma resposta do `requests` precisa tratar os erros da `urllib3` também.
 - **Data:** 16/10/2026
+
+## Carga da PGFN passa de 2,7 GB no servidor de casa (milhões de linhas em texto)
+- **Sintoma:** a 1ª montagem da `pgfn_divida` (#339) chegou a 2,7 GB no contêiner; o vigia de memória pôs o Kuma de casa em "down" (728 MB livres) e a carga foi parada à mão.
+- **Causa:** três coisas, medidas por fases com os dados reais: (1) 6,8 milhões de raízes de CNPJ num `set` de textos do Python (~60 bytes cada, mais o conjunto) e o `isin(set)` refeito a cada pedaço da Receita; (2) a conversão das raízes para número feita no lote inteiro de uma vez (cópias de 64 bits de tudo: 2,3 GB); (3) o maior CSV (2,28 milhões de linhas) gravado de uma vez, com a linhagem (SHA-256, datas, commit) repetida como texto em cada linha, e o hash do manifesto relendo e ordenando a tabela inteira (2,4 GB).
+- **Solução (#342):** raiz como número de 8 bytes (`base/cnpj.py::raizes_em_numeros`, base 36, aceita o CNPJ com letras) e busca por ordenação (`contem`), em pedaços de 1 milhão; cada CSV gravado em 11 Parquets pelo 1º caractere do CNPJ, com a linhagem só no pedaço que está sendo gravado. Pico de 1,96 GB. **Lição:** antes de rodar uma carga nova no servidor de casa, um ensaio só de leitura com `ru_maxrss` por fase; pandas 3 guarda texto em Arrow, mas texto repetido em milhões de linhas ainda pesa.
+- **Data:** 16/10/2026
