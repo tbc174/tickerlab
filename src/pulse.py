@@ -15,20 +15,25 @@ e os ativos das estratégias salvas. Tudo aqui é função pura em tipos simples
 lê do banco, chama e mostra. Nada é recomendação.
 """
 
-from collections.abc import Iterable, Mapping
+import logging
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from src import diario_de_teses, research
+from src import diario_de_teses, ficha, research
 from src.banco.eventos import Evento
-from src.dados import normalizar_ticker
+from src.cdi import CDIIndisponivelError
+from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.ficha import Resultado
+from src.simulacoes import restaurar_estado
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 JANELA_DA_PRIMEIRA_VISITA = timedelta(days=7)
+# o app novo reenvia, no F5, o início da janela que a aba mostrava: nunca antes disto
+JANELA_MAXIMA_DA_ABA = timedelta(days=30)
 # um documento entregue um pouco antes da visita pode ser coletado depois dela; mais velho que
 # isso é carga antiga (não é novidade para a pessoa)
 PUBLICADOS_ATE_ANTES_DA_VISITA = timedelta(days=30)
@@ -57,6 +62,9 @@ LIMITES = (
 )
 
 
+log = logging.getLogger(__name__)
+
+
 def _codigo(ticker: str) -> str:
     return ticker.removesuffix(".SA")
 
@@ -69,6 +77,9 @@ class Janela:
     desde: datetime  # a última visita (ou 7 dias atrás, na primeira)
     ate: datetime  # agora, na hora em que a página foi aberta
     primeira_vez: bool
+    guardada_na_aba: bool = (
+        False  # o app novo voltou ao início que a aba já mostrava (F5)
+    )
 
     @property
     def publicados_desde(self) -> date:
@@ -86,7 +97,32 @@ def janela(ultima_visita: datetime | None, agora: datetime) -> Janela:
     return Janela(min(ultima_visita, agora), agora, primeira_vez=False)
 
 
+def janela_da_aba(
+    ultima_visita: datetime | None, agora: datetime, desde: datetime | None
+) -> Janela:
+    """A janela do app novo, que não guarda sessão no servidor: abrir o Pulse marca a visita, e
+    o F5 da mesma aba reenvia o início que ela mostrava (`desde`), para a janela não zerar.
+
+    `desde` só amplia a janela (nunca a encurta) e nunca volta mais de 30 dias.
+    """
+    j = janela(ultima_visita, agora)
+    if desde is None:
+        return j
+    if desde.tzinfo is None:
+        raise ValueError("As horas do Pulse precisam ter fuso.")
+    inicio = max(desde, agora - JANELA_MAXIMA_DA_ABA)
+    if inicio >= j.desde:
+        return j
+    return Janela(inicio, agora, primeira_vez=False, guardada_na_aba=True)
+
+
 def texto_da_janela(j: Janela) -> str:
+    if j.guardada_na_aba:
+        desde = j.desde.astimezone(FUSO)
+        return (
+            f"O que mudou desde {desde:%d/%m/%Y} às {desde:%Hh%M} "
+            "(a janela que esta aba já mostrava)."
+        )
     if j.primeira_vez:
         return (
             "Primeira visita: o que aconteceu nos últimos "
@@ -329,6 +365,140 @@ def vereditos_para_guardar(
         if conferido.agora is not None:
             novos[conferido.estrategia.id] = conferido.agora
     return novos
+
+
+def veredito_de_hoje(
+    estrategia: EstrategiaSalva,
+    carregar: Callable[[str, str, bool], pd.DataFrame],
+    cdi: Callable[[pd.Timestamp, pd.Timestamp], pd.Series],
+    montar: Callable[[ficha.PedidoDaFicha], ficha.Ficha] = ficha.montar_ficha,
+) -> str | None:
+    """O veredito da ficha "Foi sorte?" com os preços de hoje; None se não deu para conferir.
+
+    Quem chama passa o seu jeito de baixar preços e CDI (o Streamlit usa os caches dele, a API
+    os dela): o cálculo é um só, e os números são os mesmos nas duas telas.
+    """
+    campos = restaurar_estado(estrategia.retrato, "backtest")
+    if "ticker" not in campos or "periodo" not in campos:
+        return None
+    try:
+        dados = carregar(
+            campos["ticker"], campos["periodo"], campos.get("em_reais", False)
+        )
+        if dados.attrs.get("cambio_falhou"):
+            return None  # em dólar, o veredito mudaria pelo câmbio que faltou
+        cdi_diario = None
+        if precisa_do_cdi(estrategia.pedido):
+            cdi_diario = cdi(dados.index[0], dados.index[-1])
+        pedido = ficha.pedido_guardado(estrategia.pedido, dados, cdi_diario)
+        return montar(pedido).veredito.resultado.value
+    except (DadosIndisponiveisError, CDIIndisponivelError, ValueError, KeyError):
+        return None
+    except Exception:
+        log.exception("Falha ao conferir a ficha de uma estratégia salva no Pulse")
+        return None
+
+
+# --- o selo da mudança no app novo (Workspace) ----------------------------------------------
+# A visita marcada já guarda o veredito novo como "visto": no F5 da aba, "antes" e "agora" seriam
+# iguais e o selo sumiria. A mudança vista (de, para e quando) fica guardada junto dos vistos até
+# sair de qualquer janela possível (30 dias) e aparece enquanto estiver dentro da janela da aba.
+TAMANHO_MAXIMO_DO_ID = 64  # o mesmo limite dos vistos em src/banco/pulse.py
+
+
+@dataclass(frozen=True)
+class Mudanca:
+    antes: str
+    agora: str
+    em: datetime  # a visita em que a mudança foi vista
+
+
+@dataclass(frozen=True)
+class EstrategiaAcompanhada:
+    estrategia: EstrategiaSalva
+    antes: str | None
+    agora: str | None  # None: não deu para conferir agora
+    mudou: bool
+    conferido_em: datetime | None  # a visita em que o veredito de agora foi visto
+
+
+def acompanhar(
+    conferidos: Iterable[VereditoDaEstrategia],
+    mudancas: Mapping[str, Mudanca],
+    j: Janela,
+) -> tuple[list[EstrategiaAcompanhada], dict[str, Mudanca]]:
+    """As estratégias na ordem do cartão (as que mudaram, as iguais, as não conferidas) e as
+    mudanças que continuam guardadas."""
+    mudaram, iguais, sem_conferir = [], [], []
+    guardar: dict[str, Mudanca] = {}
+    for v in conferidos:
+        sid = v.estrategia.id
+        anterior = mudancas.get(sid)
+        if anterior is not None and anterior.em < j.ate - JANELA_MAXIMA_DA_ABA:
+            anterior = None  # velha: fora de qualquer janela
+        if v.agora is None:
+            if anterior is not None:
+                guardar[sid] = anterior  # fica para quando der para conferir
+            sem_conferir.append(
+                EstrategiaAcompanhada(v.estrategia, v.antes, None, False, None)
+            )
+        elif v.mudou and v.antes is not None:
+            guardar[sid] = Mudanca(v.antes, v.agora, j.ate)
+            mudaram.append(
+                EstrategiaAcompanhada(v.estrategia, v.antes, v.agora, True, j.ate)
+            )
+        elif anterior is not None and anterior.agora == v.agora:
+            guardar[sid] = anterior
+            if (
+                anterior.em > j.desde
+            ):  # vista depois da visita que abre a janela: o selo fica
+                mudaram.append(
+                    EstrategiaAcompanhada(
+                        v.estrategia, anterior.antes, v.agora, True, anterior.em
+                    )
+                )
+            else:
+                iguais.append(
+                    EstrategiaAcompanhada(v.estrategia, v.antes, v.agora, False, j.ate)
+                )
+        else:  # sem mudança guardada, ou a guardada se desfez
+            iguais.append(
+                EstrategiaAcompanhada(v.estrategia, v.antes, v.agora, False, j.ate)
+            )
+    return [*mudaram, *iguais, *sem_conferir], guardar
+
+
+def mudancas_para_guardar(mudancas: Mapping[str, Mudanca]) -> dict[str, dict[str, str]]:
+    return {
+        sid: {"antes": m.antes, "agora": m.agora, "em": m.em.isoformat()}
+        for sid, m in mudancas.items()
+    }
+
+
+def _mudanca(guardada: object) -> Mudanca | None:
+    if not isinstance(guardada, Mapping):
+        return None
+    antes, depois = _veredito(guardada.get("antes")), _veredito(guardada.get("agora"))
+    em = guardada.get("em")
+    if antes is None or depois is None or antes == depois or not isinstance(em, str):
+        return None
+    try:
+        quando = datetime.fromisoformat(em)
+    except ValueError:
+        return None
+    return None if quando.tzinfo is None else Mudanca(antes, depois, quando)
+
+
+def ler_mudancas(guardadas: object) -> dict[str, Mudanca]:
+    """As mudanças guardadas. Vêm do banco (não confiável): o estranho fica de fora."""
+    if not isinstance(guardadas, Mapping):
+        return {}
+    lidas = {}
+    for sid, guardada in guardadas.items():
+        mudanca = _mudanca(guardada)
+        if isinstance(sid, str) and len(sid) <= TAMANHO_MAXIMO_DO_ID and mudanca:
+            lidas[sid] = mudanca
+    return lidas
 
 
 def texto_do_veredito(v: VereditoDaEstrategia) -> str:

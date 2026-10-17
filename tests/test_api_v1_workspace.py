@@ -1,10 +1,14 @@
-"""As simulações pelo app novo (Workspace, PR 1 do plano de 17/10; ADR 0062, tela 3).
+"""O Workspace pelo app novo (plano de 17/10; ADR 0062, tela 3).
 
-O que o Streamlit faz em "Minhas simulações" passa a existir na API v1: listar, salvar (com a ficha
-"Foi sorte?", para o Pulse recalcular depois) e apagar. O limite de simulações do plano vira um 403
-com o motivo "plano", que o app novo já sabe mostrar.
+PR 1: o que o Streamlit faz em "Minhas simulações" passa a existir na API v1: listar, salvar (com a
+ficha "Foi sorte?", para o Pulse recalcular depois) e apagar. O limite de simulações do plano vira um
+403 com o motivo "plano", que o app novo já sabe mostrar.
+
+PR 2: o Pulse pela API, parte 1: as estratégias acompanhadas (o veredito da ficha com os dados de
+hoje) e a janela da visita, que o F5 não zera.
 """
 
+from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -12,6 +16,8 @@ from fastapi.testclient import TestClient
 
 from src import api, ficha, planos, pulse
 from src.api_v1 import VARIAVEL_DA_CHAVE, acesso, contexto
+from src.banco import pulse as repo_pulse
+from src.banco import teses as repo_teses
 from src.banco.dados_do_usuario import listar_simulacoes, salvar_simulacao
 from src.banco.usuarios import buscar_por_google_sub, entrar
 from src.conformidade import registrar_aceite
@@ -260,3 +266,248 @@ def test_apagar_simulacao_so_a_propria(cliente, banco):
         ).status_code
         == 404
     )
+
+
+# --- Tarefa 2.1: o Pulse pela API, parte 1 (estratégias acompanhadas e a janela da visita) ----
+# os preços de exemplo vão até 09/10/2026: o "agora" do Pulse fica logo depois (como no Streamlit)
+AGORA_DO_PULSE = datetime(2026, 10, 9, 23, 0, tzinfo=UTC)
+UMA_HORA_DEPOIS = AGORA_DO_PULSE + timedelta(hours=1)
+
+
+@pytest.fixture
+def relogio(monkeypatch):
+    """O relógio do Pulse: começa em AGORA_DO_PULSE e o teste o adianta com `relogio.append`."""
+    horas = [AGORA_DO_PULSE]
+    monkeypatch.setattr(pulse, "agora", lambda: horas[-1])
+    return horas
+
+
+def _pulse(cliente, desde=None):
+    params = {} if desde is None else {"desde": desde}
+    resposta = cliente.get("/api/v1/pulse", params=params)
+    assert resposta.status_code == 200, resposta.text
+    return resposta.json()
+
+
+def _hora(texto):
+    return datetime.fromisoformat(texto.replace("Z", "+00:00"))
+
+
+def _visita(banco, usuario_id):
+    with banco.connect() as conexao:
+        return repo_pulse.ultima_visita(conexao, usuario_id)
+
+
+def _veredito_de_hoje_da_petrobras():
+    """O veredito da ficha do PEDIDO com os preços de exemplo de hoje (calculado à parte)."""
+    pedido = ficha.PedidoDaFicha(
+        dados=baixar_dados("PETR4.SA", "2y", forcar_exemplo=True),
+        estrategia="Cruzamento de médias",
+        parametros={"curta": 10, "longa": 40},
+        custo_por_operacao=0.001,
+        capital_inicial=20_000,
+        livres=("curta", "longa"),
+        taxa_livre_de_risco=0.1,
+        tentativas_da_pessoa=1,
+    )
+    return ficha.montar_ficha(pedido).veredito.resultado.value
+
+
+def _outro(veredito):
+    return next(r.value for r in ficha.Resultado if r.value != veredito)
+
+
+def test_pulse_marca_a_visita_e_devolve_a_janela(cliente, banco, relogio):
+    """1ª visita: os últimos 7 dias; a visita fica marcada e a 2ª começa nela."""
+    primeira = _pulse(cliente)["janela"]
+    assert _hora(primeira["inicio"]) == AGORA_DO_PULSE - timedelta(days=7)
+    assert _hora(primeira["fim"]) == AGORA_DO_PULSE
+    assert primeira["primeira_vez"] is True
+    assert "Primeira visita" in primeira["texto"]
+    assert _visita(banco, _conta(banco).id) == AGORA_DO_PULSE
+    relogio.append(UMA_HORA_DEPOIS)
+    segunda = _pulse(cliente)["janela"]
+    assert _hora(segunda["inicio"]) == AGORA_DO_PULSE
+    assert segunda["primeira_vez"] is False
+    assert "Desde a sua última visita" in segunda["texto"]
+
+
+def test_desde_mantem_a_janela_no_f5(cliente, relogio):
+    """O F5 reenvia o início que a aba já mostrava: a janela não encolhe para a última hora."""
+    inicio = _pulse(cliente)["janela"]["inicio"]
+    relogio.append(UMA_HORA_DEPOIS)
+    janela = _pulse(cliente, desde=inicio)["janela"]
+    assert _hora(janela["inicio"]) == _hora(inicio)
+    assert _hora(janela["fim"]) == UMA_HORA_DEPOIS
+    assert "Primeira visita" not in janela["texto"]
+
+
+def test_desde_alem_de_30_dias_e_cortado(cliente, banco, relogio):
+    """`desde` só amplia a janela até 30 dias atrás; nunca a encurta; sem fuso é recusado."""
+    janela = _pulse(cliente, desde=(AGORA_DO_PULSE - timedelta(days=90)).isoformat())
+    assert _hora(janela["janela"]["inicio"]) == AGORA_DO_PULSE - timedelta(days=30)
+    with banco.begin() as conexao:
+        repo_pulse.marcar_visita(
+            conexao, _conta(banco).id, UMA_HORA_DEPOIS - timedelta(minutes=30)
+        )
+    relogio.append(UMA_HORA_DEPOIS)
+    mais_tarde = (UMA_HORA_DEPOIS - timedelta(minutes=5)).isoformat()
+    janela = _pulse(cliente, desde=mais_tarde)["janela"]
+    assert _hora(janela["inicio"]) == UMA_HORA_DEPOIS - timedelta(minutes=30)
+    sem_fuso = cliente.get("/api/v1/pulse", params={"desde": "2026-10-08T10:00:00"})
+    assert sem_fuso.status_code == 422
+
+
+def test_pulse_veredito_que_mudou_vem_com_antes_agora_e_data(cliente, banco, relogio):
+    """Salvo com um veredito; com os dados de hoje, outro: o selo vem com a data, a tese ligada
+    e o endereço do backtest; o F5 (com `desde`) mantém o selo; a visita seguinte, não."""
+    hoje = _veredito_de_hoje_da_petrobras()
+    antes = _outro(hoje)
+    assert _salvar(cliente, veredito=antes).status_code == 200
+    ana = _conta(banco)
+    [salva] = _simulacoes_no_banco(banco, ana.id)
+    with banco.begin() as conexao:
+        repo_teses.escrever(conexao, ana.id, "PETR4", "Tese <b>da Ana</b>", [salva.id])
+    dados = _pulse(cliente)
+    [estrategia] = dados["estrategias"]
+    assert estrategia["id"] == str(salva.id)
+    assert estrategia["nome"] == PEDIDO["nome"]
+    assert estrategia["ticker"] == "PETR4.SA"
+    assert (estrategia["antes"], estrategia["agora"]) == (antes, hoje)
+    assert estrategia["mudou"] is True
+    assert _hora(estrategia["conferido_em"]) == AGORA_DO_PULSE
+    assert estrategia["tese_ligada"].endswith("“Tese <b>da Ana</b>”")
+    assert urlsplit(estrategia["endereco"]).path == "/backtest"
+    assert dados["limites"] == {
+        "sem_ficha": 0,
+        "alem_do_maximo": 0,
+        "nao_conferidas": 0,
+    }
+    # o F5: a aba reenvia o início; a mudança vista há pouco continua com o selo e a data
+    relogio.append(UMA_HORA_DEPOIS)
+    [no_f5] = _pulse(cliente, desde=dados["janela"]["inicio"])["estrategias"]
+    assert (no_f5["antes"], no_f5["agora"], no_f5["mudou"]) == (antes, hoje, True)
+    assert _hora(no_f5["conferido_em"]) == AGORA_DO_PULSE
+    # a visita seguinte (sem `desde`) começa depois da mudança: o veredito está igual
+    relogio.append(UMA_HORA_DEPOIS + timedelta(hours=1))
+    [depois] = _pulse(cliente)["estrategias"]
+    assert (depois["antes"], depois["agora"], depois["mudou"]) == (hoje, hoje, False)
+    assert _hora(depois["conferido_em"]) == UMA_HORA_DEPOIS + timedelta(hours=1)
+
+
+def test_pulse_grava_os_vereditos_vistos(cliente, banco, relogio):
+    hoje = _veredito_de_hoje_da_petrobras()
+    assert _salvar(cliente, veredito=hoje).status_code == 200
+    ana = _conta(banco)
+    [salva] = _simulacoes_no_banco(banco, ana.id)
+    [estrategia] = _pulse(cliente)["estrategias"]
+    assert (estrategia["antes"], estrategia["agora"], estrategia["mudou"]) == (
+        hoje,
+        hoje,
+        False,
+    )
+    with banco.connect() as conexao:
+        assert repo_pulse.vereditos_vistos(conexao, ana.id) == {str(salva.id): hoje}
+
+
+def _salvar_com_ficha(banco, usuario_id, nome, veredito="passou"):
+    resumo = {"numeros": {}, "ficha": {"pedido": {"versao": 1}, "veredito": veredito}}
+    with banco.begin() as conexao:
+        return salvar_simulacao(
+            conexao, usuario_id, "backtest", nome, RETRATO_DO_STREAMLIT, resumo
+        )
+
+
+def test_pulse_confere_no_maximo_10_fichas(cliente, banco, relogio, monkeypatch):
+    """Cada ficha refaz a validação inteira: só as 10 mais novas são conferidas; as outras
+    aparecem como não conferidas agora."""
+    ana = _conta(banco)
+    for n in range(12):
+        _salvar_com_ficha(banco, ana.id, f"Estratégia {n:02d}")
+    conferidas = []
+
+    def conferir(estrategia, _carregar, _cdi):
+        conferidas.append(estrategia.nome)
+        return "passou"
+
+    monkeypatch.setattr(pulse, "veredito_de_hoje", conferir)
+    dados = _pulse(cliente)
+    assert len(conferidas) == pulse.MAXIMO_DE_FICHAS
+    assert "Estratégia 00" not in conferidas and "Estratégia 01" not in conferidas
+    assert len(dados["estrategias"]) == 12
+    assert [e["agora"] for e in dados["estrategias"][-2:]] == [None, None]
+    assert dados["limites"] == {
+        "sem_ficha": 0,
+        "alem_do_maximo": 2,
+        "nao_conferidas": 0,
+    }
+    assert any("ficaram para depois" in aviso for aviso in dados["avisos"])
+
+
+def test_pulse_ordem_mudou_iguais_e_nao_conferidas(
+    cliente, banco, relogio, monkeypatch
+):
+    """Primeiro o que mudou, depois as iguais, por último as que não deu para conferir; a do
+    app atual (retrato do Streamlit) traz o ticker, mas só reabre lá (endereço nulo)."""
+    ana = _conta(banco)
+    _salvar_com_ficha(banco, ana.id, "Não deu")
+    _salvar_com_ficha(banco, ana.id, "Igual")
+    _salvar_com_ficha(banco, ana.id, "Mudou")
+    with banco.begin() as conexao:
+        salvar_simulacao(conexao, ana.id, "backtest", "Velha", {}, {})  # sem ficha
+    hoje = {"Igual": "passou", "Mudou": _outro("passou"), "Não deu": None}
+    monkeypatch.setattr(
+        pulse, "veredito_de_hoje", lambda e, _carregar, _cdi: hoje[e.nome]
+    )
+    dados = _pulse(cliente)
+    assert [e["nome"] for e in dados["estrategias"]] == ["Mudou", "Igual", "Não deu"]
+    assert [e["mudou"] for e in dados["estrategias"]] == [True, False, False]
+    assert dados["estrategias"][2]["conferido_em"] is None
+    assert {e["ticker"] for e in dados["estrategias"]} == {"VALE3.SA"}
+    assert {e["endereco"] for e in dados["estrategias"]} == {None}
+    assert dados["limites"] == {
+        "sem_ficha": 1,
+        "alem_do_maximo": 0,
+        "nao_conferidas": 1,
+    }
+    assert any("Não deu para conferir agora: Não deu." in a for a in dados["avisos"])
+    assert any("salve de novo" in a for a in dados["avisos"])
+
+
+def test_pulse_de_quem_nao_salvou_nada(cliente, banco, relogio):
+    dados = _pulse(cliente)
+    assert dados["estrategias"] == []
+    assert "salve um backtest" in dados["sem_estrategias"].lower()
+    assert dados["notas"]  # os limites do Pulse que valem para esta parte
+    assert _visita(banco, _conta(banco).id) == AGORA_DO_PULSE
+
+
+def test_pulse_so_mostra_o_da_propria_conta(cliente, banco, relogio, monkeypatch):
+    """O Pulse lê e marca pela conta do token: a estratégia e a visita da Bia não aparecem."""
+    with banco.begin() as conexao:
+        bia = entrar(conexao, "bia", "bia@exemplo.com")[0]
+        repo_pulse.marcar_visita(conexao, bia.id, AGORA_DO_PULSE - timedelta(days=1))
+    _salvar_com_ficha(banco, bia.id, "Da Bia")
+    monkeypatch.setattr(pulse, "veredito_de_hoje", lambda *_: "passou")
+    dados = _pulse(cliente)
+    assert dados["estrategias"] == []
+    assert dados["janela"]["primeira_vez"] is True
+    assert _visita(banco, bia.id) == AGORA_DO_PULSE - timedelta(days=1)
+
+
+PALAVRAS_DE_RECOMENDACAO = ("compre", "venda", "oportunidade", "preço-alvo", "recomend")
+
+
+def test_textos_do_pulse_nao_recomendam(cliente, banco, relogio):
+    """O Pulse mostra o que mudou, não o que fazer: nenhum texto fixo sugere compra ou venda
+    (a nota que diz "não é recomendação" é a única que pode usar a palavra)."""
+    ana = _conta(banco)
+    _salvar_com_ficha(banco, ana.id, "X")
+    with banco.begin() as conexao:
+        salvar_simulacao(conexao, ana.id, "backtest", "Velha", {}, {})
+    dados = _pulse(cliente)
+    textos = [dados["janela"]["texto"], dados["sem_estrategias"], *dados["avisos"]]
+    textos += [n for n in dados["notas"] if "não é recomendação" not in n]
+    for texto in textos:
+        for palavra in PALAVRAS_DE_RECOMENDACAO:
+            assert palavra not in texto.lower(), texto

@@ -461,6 +461,103 @@
         "title": "EnderecoDoStripeV1",
         "type": "object"
       },
+      "EstrategiaAcompanhadaV1": {
+        "description": "Um backtest salvo com a ficha \"Foi sorte?\" e o veredito dela refeito com os preços de\nhoje.",
+        "properties": {
+          "agora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agora"
+          },
+          "antes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Antes"
+          },
+          "conferido_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conferido Em"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mudou": {
+            "title": "Mudou",
+            "type": "boolean"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "tese_ligada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tese Ligada"
+          },
+          "ticker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticker"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "ticker",
+          "antes",
+          "agora",
+          "mudou",
+          "conferido_em",
+          "tese_ligada",
+          "endereco"
+        ],
+        "title": "EstrategiaAcompanhadaV1",
+        "type": "object"
+      },
       "EuV1": {
         "description": "Quem está logado: só o necessário para a tela (sem e-mail).",
         "properties": {
@@ -604,6 +701,37 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "JanelaV1": {
+        "description": "De quando a quando o Pulse olha: da última visita (na 1ª, 7 dias atrás) até agora.",
+        "properties": {
+          "fim": {
+            "format": "date-time",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date-time",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "primeira_vez": {
+            "title": "Primeira Vez",
+            "type": "boolean"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inicio",
+          "fim",
+          "primeira_vez",
+          "texto"
+        ],
+        "title": "JanelaV1",
+        "type": "object"
+      },
       "JurosEInflacaoV1": {
         "description": "O painel de juros e inflação como era conhecido em `dia` (fonte: Banco Central).",
         "properties": {
@@ -649,6 +777,29 @@
           "avisos"
         ],
         "title": "JurosEInflacaoV1",
+        "type": "object"
+      },
+      "LimitesDoPulseV1": {
+        "properties": {
+          "alem_do_maximo": {
+            "title": "Alem Do Maximo",
+            "type": "integer"
+          },
+          "nao_conferidas": {
+            "title": "Nao Conferidas",
+            "type": "integer"
+          },
+          "sem_ficha": {
+            "title": "Sem Ficha",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sem_ficha",
+          "alem_do_maximo",
+          "nao_conferidas"
+        ],
+        "title": "LimitesDoPulseV1",
         "type": "object"
       },
       "LimitesV1": {
@@ -1609,6 +1760,51 @@
           "ipca_12_meses"
         ],
         "title": "PontoMensalV1",
+        "type": "object"
+      },
+      "PulseV1": {
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "estrategias": {
+            "items": {
+              "$ref": "#/components/schemas/EstrategiaAcompanhadaV1"
+            },
+            "title": "Estrategias",
+            "type": "array"
+          },
+          "janela": {
+            "$ref": "#/components/schemas/JanelaV1"
+          },
+          "limites": {
+            "$ref": "#/components/schemas/LimitesDoPulseV1"
+          },
+          "notas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "sem_estrategias": {
+            "title": "Sem Estrategias",
+            "type": "string"
+          }
+        },
+        "required": [
+          "janela",
+          "estrategias",
+          "limites",
+          "avisos",
+          "sem_estrategias",
+          "notas"
+        ],
+        "title": "PulseV1",
         "type": "object"
       },
       "RetornoMensalDoAtivoV1": {
@@ -2691,6 +2887,72 @@
           }
         },
         "summary": "Portal Da Assinatura"
+      }
+    },
+    "/v1/pulse": {
+      "get": {
+        "description": "O Pulse (parte 1): as estratégias salvas com o veredito da ficha \"Foi sorte?\" refeito\ncom os preços de hoje, o que mudou primeiro. Abrir marca a visita, como no app atual.\n\nSem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela\nnão encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).\nConfere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.",
+        "operationId": "pulse_da_conta_v1_pulse_get",
+        "parameters": [
+          {
+            "description": "O início da janela que a aba já mostrava (ISO, com fuso).",
+            "in": "query",
+            "name": "desde",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "O início da janela que a aba já mostrava (ISO, com fuso).",
+              "title": "Desde"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PulseV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pulse Da Conta"
       }
     },
     "/v1/retorno-mensal": {

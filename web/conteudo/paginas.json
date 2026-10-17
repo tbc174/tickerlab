@@ -505,8 +505,24 @@
   },
   {
     "chave": "pulse",
-    "contrato": null,
-    "descricao": "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM e na SEC e a variação do preço.",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O início da janela que a aba já mostrava (data e hora com fuso), para o F5 não encolher a janela; vale até 30 dias atrás.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "desde",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "PulseV1",
+      "rota": "/v1/pulse"
+    },
+    "descricao": "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM e na SEC, a variação do preço e o veredito das suas estratégias salvas.",
     "e_pro": false,
     "grupo": "Research",
     "no_menu": true,

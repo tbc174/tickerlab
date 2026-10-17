@@ -5,7 +5,7 @@ import logging
 import os
 import uuid
 from collections.abc import Callable
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
 import pandas as pd
@@ -13,11 +13,11 @@ import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
 
-from src import analises, catalogo, cobranca, conformidade, ficha, topicos
+from src import analises, catalogo, cobranca, conformidade, ficha, pulse, topicos
 from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
-from src.api_v1 import esquemas
+from src.api_v1 import contexto, esquemas
 from src.api_v1.acesso import (
     VARIAVEL_DO_CLIENT_ID,
     conta_com_acesso,
@@ -32,7 +32,9 @@ from src.api_v1.contexto import (
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO, executar_backtest
 from src.banco import compartilhamentos as links
 from src.banco import leituras as repo_leituras
+from src.banco import pulse as repo_pulse
 from src.banco import tentativas
+from src.banco import teses as repo_teses
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import (
     TAMANHO_MAXIMO_DO_NOME,
@@ -57,6 +59,7 @@ from src.eventos import FONTE_IPE
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
+from src.moedas import TICKER_DO_DOLAR, converter_para_reais, moeda_do_ticker
 from src.planos import (
     aviso_da_pagina_de_planos,
     frase_da_assinatura,
@@ -64,7 +67,11 @@ from src.planos import (
     tabela_de_planos,
     texto_do_uso,
 )
-from src.simulacoes import retrato_do_app_novo
+from src.simulacoes import (
+    endereco_no_app_novo,
+    restaurar_estado,
+    retrato_do_app_novo,
+)
 from src.tentativas import TETO_POR_PESSOA, impressao
 from src.validacao import parametros_numericos
 
@@ -868,3 +875,127 @@ def openapi_v1() -> dict:
     app.include_router(router)
     app.include_router(router_da_conta)
     return app.openapi()
+
+
+# --- Pulse: estratégias acompanhadas (ADR 0062, Workspace, PR 2) ----------------------------
+
+SEM_ESTRATEGIAS = (
+    'Salve um backtest para acompanhar: o Pulse refaz a ficha "Foi sorte?" com os preços de '
+    "hoje e mostra aqui quando o veredito muda."
+)
+
+
+def _precos_da_estrategia(ticker: str, periodo: str, em_reais: bool) -> pd.DataFrame:
+    """Os preços como o app atual carrega os de uma simulação salva (telas/comum.py): em reais
+    quando ela foi salva assim; sem o dólar, `cambio_falhou` (o veredito fica sem conferir)."""
+    ticker = normalizar_ticker(ticker)
+    dados = contexto.carregar_dados(ticker, periodo)
+    if not (em_reais and moeda_do_ticker(ticker) == "USD"):
+        return dados
+    try:
+        cambio = contexto.carregar_dados(TICKER_DO_DOLAR, periodo)
+        return converter_para_reais(dados, cambio["Close"])
+    except (DadosIndisponiveisError, ValueError) as erro:
+        log.warning("Câmbio indisponível para converter %s: %s", ticker, erro)
+        dados = dados.copy()
+        dados.attrs = {**dados.attrs, "cambio_falhou": True}
+        return dados
+
+
+def _avisos_do_pulse(sem_conferir: list[str], sem_ficha: int, fora: int) -> list[str]:
+    """Os mesmos avisos do Pulse no app atual (telas/research/pulse.py)."""
+    avisos = []
+    if sem_conferir:
+        avisos.append(f"Não deu para conferir agora: {', '.join(sem_conferir)}.")
+    if fora:
+        avisos.append(
+            f"O Pulse confere as {pulse.MAXIMO_DE_FICHAS} estratégias salvas mais "
+            f"recentemente; {fora} ficaram para depois."
+        )
+    if sem_ficha:
+        avisos.append(
+            f"Backtests salvos antes de o Pulse acompanhar a ficha: {sem_ficha}. Para "
+            "acompanhar, abra em Minhas simulações e salve de novo."
+        )
+    return avisos
+
+
+def _estrategia_v1(
+    a: pulse.EstrategiaAcompanhada, ligadas: dict
+) -> esquemas.EstrategiaAcompanhadaV1:
+    retrato = a.estrategia.retrato
+    tese = ligadas.get(a.estrategia.id)
+    return esquemas.EstrategiaAcompanhadaV1(
+        id=a.estrategia.id,
+        nome=a.estrategia.nome,
+        ticker=restaurar_estado(retrato, "backtest").get("ticker"),
+        antes=a.antes,
+        agora=a.agora,
+        mudou=a.mudou,
+        conferido_em=a.conferido_em,
+        tese_ligada=None if tese is None else pulse.texto_da_tese_ligada(tese),
+        endereco=endereco_no_app_novo("backtest", retrato),
+    )
+
+
+@router.get("/pulse")
+def pulse_da_conta(
+    conta: Conta,
+    desde: Annotated[
+        datetime | None,
+        Query(description="O início da janela que a aba já mostrava (ISO, com fuso)."),
+    ] = None,
+) -> esquemas.PulseV1:
+    """O Pulse (parte 1): as estratégias salvas com o veredito da ficha "Foi sorte?" refeito
+    com os preços de hoje, o que mudou primeiro. Abrir marca a visita, como no app atual.
+
+    Sem sessão no servidor, o F5 da aba reenvia em `desde` o início que ela mostrava: a janela
+    não encolhe para os minutos desde a visita que a própria aba marcou (até 30 dias atrás).
+    Confere no máximo 10 fichas (as salvas mais recentemente); o resto aparece sem conferir.
+    """
+    agora = pulse.agora()
+    with obter_engine().connect() as conexao:
+        visita = repo_pulse.ultima_visita(conexao, conta.id)
+        vistos = repo_pulse.vereditos_vistos(conexao, conta.id)
+        guardadas = pulse.ler_mudancas(repo_pulse.mudancas_vistas(conexao, conta.id))
+        simulacoes = listar_simulacoes(conexao, conta.id)
+        ligadas = pulse.teses_por_estrategia(repo_teses.listar(conexao, conta.id))
+    j = _ou_422(lambda: pulse.janela_da_aba(visita, agora, desde))
+    salvas, sem_ficha, _ = pulse.estrategias_salvas(simulacoes, maximo=len(simulacoes))
+    a_conferir = salvas[: pulse.MAXIMO_DE_FICHAS]
+    fora = len(salvas) - len(a_conferir)
+    conferidos = [
+        pulse.comparar(
+            e, vistos, pulse.veredito_de_hoje(e, _precos_da_estrategia, cdi_entre)
+        )
+        for e in a_conferir
+    ] + [pulse.comparar(e, vistos, None) for e in salvas[pulse.MAXIMO_DE_FICHAS :]]
+    acompanhadas, mudancas = pulse.acompanhar(conferidos, guardadas, j)
+    with obter_engine().begin() as conexao:
+        repo_pulse.marcar_visita(
+            conexao,
+            conta.id,
+            agora,
+            pulse.vereditos_para_guardar(
+                vistos, conferidos, {str(s.id) for s in simulacoes}
+            ),
+            pulse.mudancas_para_guardar(mudancas),
+        )
+    sem_conferir = [
+        v.estrategia.nome for v in conferidos[: len(a_conferir)] if v.agora is None
+    ]
+    return esquemas.PulseV1(
+        janela=esquemas.JanelaV1(
+            inicio=j.desde,
+            fim=j.ate,
+            primeira_vez=j.primeira_vez,
+            texto=pulse.texto_da_janela(j),
+        ),
+        estrategias=[_estrategia_v1(a, ligadas) for a in acompanhadas],
+        limites=esquemas.LimitesDoPulseV1(
+            sem_ficha=sem_ficha, alem_do_maximo=fora, nao_conferidas=len(sem_conferir)
+        ),
+        avisos=_avisos_do_pulse(sem_conferir, sem_ficha, fora),
+        sem_estrategias=SEM_ESTRATEGIAS,
+        notas=[pulse.LIMITES[2], pulse.LIMITES[3]],
+    )
