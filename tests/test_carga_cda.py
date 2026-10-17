@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from base.conferencia import conferir
 from base.parquet import conferir_tabela
 from scripts import carga_cda
 from src import acervo
@@ -211,3 +212,68 @@ def test_refazer_regrava_o_cda_com_as_mesmas_origens(ambiente, monkeypatch):
     )
     assert not pd.read_parquet(pasta / "2005.parquet").equals(antiga)
     assert (pasta / "2005.v1.parquet").exists()
+
+
+def test_ano_grava_tambem_as_cotas_de_fundos_do_bloco_2(ambiente):
+    """Relatório da base de crédito (16/10/2026): as cotas de fundos que cada fundo tem (bloco 2) vão
+    para `cda_cotas/<ano>`, ao lado do CDA, com manifesto, "como era na data" e linhagem."""
+    from base import cda
+    from base.linhagem import linhagem_da_tabela
+
+    pasta, _, _ = ambiente
+    assert (
+        carga_cda.main(["--pasta", str(pasta), "--desde", "2022", "--ate", "2022"]) == 0
+    )
+    arquivo = pasta.parent / "cda_cotas" / "2022.parquet"
+    assert conferir_tabela(arquivo)
+    tabela = pd.read_parquet(arquivo)
+    assert list(tabela.columns) == [*cda.COLUNAS_DAS_COTAS, "disponivel_em", "visto_em"]
+    assert "FIDC" in set(tabela["tipo_do_ativo"])
+    assert (
+        tabela["disponivel_em"] >= tabela["competencia"] + pd.Timedelta(days=90)
+    ).all()
+    assert (
+        tabela["disponivel_em"] >= tabela["confidencial_ate"].fillna(pd.Timestamp(0))
+    ).all()
+    # os valores conferem com o contrato (colunas, tipos, chave sem duplicata, datas em ordem)
+    conferencia = conferir(tabela, "cda_cotas")
+    assert conferencia.aprovada, conferencia.problemas
+    motor = criar_engine()
+    try:
+        with motor.connect() as c:
+            assert linhagem_da_tabela(c, arquivo).completa
+    finally:
+        motor.dispose()
+    # ano sem o bloco 2 no arquivo: tabela vazia, com as colunas
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2014", "--ate", "2014"])
+    vazio = pd.read_parquet(pasta.parent / "cda_cotas" / "2014.parquet")
+    assert vazio.empty and "cnpj_fundo_investido" in vazio.columns
+
+
+def test_ano_ja_carregado_ganha_as_cotas_sem_regravar_o_cda(ambiente):
+    """No servidor, os anos do CDA já estão na base: a carga seguinte só monta a tabela nova."""
+    pasta, _, _ = ambiente
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2025", "--ate", "2025"])
+    cotas = pasta.parent / "cda_cotas" / "2025.parquet"
+    cotas.unlink()
+    cotas.with_suffix(".json").unlink()
+    antes = (pasta / "2025.json").read_text(encoding="utf-8")
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2025", "--ate", "2025"])
+    assert conferir_tabela(cotas)
+    assert (pasta / "2025.json").read_text(encoding="utf-8") == antes
+    assert not (pasta / "2025.v1.parquet").exists()
+
+
+def test_porta_le_as_cotas_como_eram_na_data(ambiente, tmp_path):
+    """A tabela entra pela porta (`base.porta`): "como era em D" só traz o que já era público."""
+    pytest.importorskip("duckdb")
+    from base import porta
+
+    pasta = tmp_path / "acervo" / "base" / "cda"  # dentro do acervo, onde a porta procura
+    carga_cda.main(["--pasta", str(pasta), "--desde", "2022", "--ate", "2022"])
+    filtro = {"cnpj_fundo": "00.322.699/0001-06"}
+    todas = porta.ler("cda_cotas", filtros=filtro)
+    assert set(todas["tipo_do_ativo"]) == {"FIDC"} and len(todas) == 4
+    # 31/12/2022 + 90 dias: a carteira de dezembro ainda não era pública em 15/03/2023
+    em_marco = porta.ler("cda_cotas", como_era_em="2023-03-15", filtros=filtro)
+    assert set(em_marco["competencia"].astype(str).str[:10]) == {"2022-11-30"}

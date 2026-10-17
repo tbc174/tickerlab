@@ -43,6 +43,7 @@ ARQUIVOS: dict[str, str] = {
     "codigos_invalidos": "fca/codigos_invalidos.parquet",
     "carteiras_dos_fundos": "cda/*.parquet",
     "carteiras_bloco_8": "cda_bloco_8/*.parquet",
+    "cda_cotas": "cda_cotas/*.parquet",
     "fidc_informe": "fidc/informe/*/*.parquet",
     "cadastro_de_fundos": "fidc/cadastro/cad_fi.parquet",
     "painel_dos_fundos": "fundos/painel_emissor/*.parquet",
