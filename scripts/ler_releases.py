@@ -208,6 +208,42 @@ def escolher(achados: pd.DataFrame, amostra: int | None) -> pd.DataFrame:
     return achados[achados["protocolo"].astype(str).isin(sorteados)]
 
 
+PROVA_DE = pd.Timestamp("2024-01-01")
+PROVA_ATE = pd.Timestamp("2026-03-31")
+MAXIMO_POR_EMPRESA_NA_PROVA = 2
+
+
+def amostra_da_prova(achados: pd.DataFrame, tamanho: int = 200) -> pd.DataFrame:
+    """A amostra da prova (plano de 17/10/2026): de 01/2024 a 03/2026, no máximo 2 por empresa, os
+    quatro trimestres do ano em partes iguais, sorteio com semente fixa (a mesma lista dá sempre os
+    mesmos releases, na ordem que vier)."""
+    janela = achados[
+        (achados["referencia"] >= PROVA_DE) & (achados["referencia"] <= PROVA_ATE)
+    ]
+    sorteio = random.Random(SEMENTE)
+    protocolos = sorted(janela["protocolo"].astype(str))
+    sorteio.shuffle(protocolos)
+    ordem = {p: i for i, p in enumerate(protocolos)}
+    janela = janela.assign(
+        _ordem=janela["protocolo"].astype(str).map(ordem)
+    ).sort_values("_ordem")
+    janela = janela.groupby("cnpj").head(MAXIMO_POR_EMPRESA_NA_PROVA)
+    por_trimestre = [janela[janela["referencia"].dt.quarter == q] for q in (1, 2, 3, 4)]
+    cota = tamanho // len(por_trimestre)
+    escolhidos = pd.concat([grupo.head(cota) for grupo in por_trimestre])
+    faltam = tamanho - len(escolhidos)
+    if (
+        faltam > 0
+    ):  # um trimestre com menos releases que a cota: completa com os que sobraram
+        resto = janela[~janela["protocolo"].isin(escolhidos["protocolo"])]
+        escolhidos = pd.concat([escolhidos, resto.head(faltam)])
+    return (
+        escolhidos.drop(columns="_ordem")
+        .sort_values("protocolo")
+        .reset_index(drop=True)
+    )
+
+
 # --- baixar ----------------------------------------------------------------------------------
 
 
@@ -596,6 +632,11 @@ def _argumentos() -> argparse.ArgumentParser:
         passo.add_argument(
             "--amostra", type=int, default=None, help="sorteio com semente fixa"
         )
+        passo.add_argument(
+            "--prova",
+            action="store_true",
+            help="a amostra da prova do plano (200 releases, 01/2024 a 03/2026)",
+        )
         passo.add_argument("--modelo", default=lr.MODELO)
         if nome == "baixar":
             passo.add_argument("--maximo", type=int, default=200)
@@ -607,7 +648,10 @@ def _argumentos() -> argparse.ArgumentParser:
 
 
 def _passo_com_releases(opcoes: argparse.Namespace) -> int:
-    achados = escolher(_releases_do_acervo(opcoes.desde), opcoes.amostra)
+    todos = _releases_do_acervo(opcoes.desde)
+    achados = (
+        amostra_da_prova(todos) if opcoes.prova else escolher(todos, opcoes.amostra)
+    )
     pasta, modelo = opcoes.pasta, opcoes.modelo
     pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "baixar":

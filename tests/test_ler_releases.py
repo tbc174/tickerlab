@@ -174,3 +174,32 @@ def test_cliente_da_vitrine_exige_a_chave_propria(monkeypatch):
         ler_releases.cliente_da_vitrine()
     monkeypatch.setenv(ler_releases.VARIAVEL_DA_CHAVE, "sk-ant-da-vitrine")
     assert ler_releases.cliente_da_vitrine().api_key == "sk-ant-da-vitrine"
+
+
+def _lista_da_prova():
+    linhas = []
+    for n in range(300):
+        ano = 2023 + n % 4  # 2023 a 2026: 2023 e depois de 03/2026 ficam de fora
+        trimestre = n // 4 % 4
+        referencia = pd.Timestamp(year=ano, month=3 * trimestre + 3, day=28)
+        linhas.append(
+            _release(f"{n % 150:03d}.000.000/0001-00", referencia, referencia, f"p{n}")
+        )
+    return pd.DataFrame(linhas, columns=list(releases.COLUNAS))
+
+
+def test_amostra_da_prova_respeita_o_plano():
+    achados = _lista_da_prova()
+    amostra = ler_releases.amostra_da_prova(achados, 100)
+    assert len(amostra) == 100
+    assert amostra["referencia"].min() >= pd.Timestamp("2024-01-01")
+    assert amostra["referencia"].max() <= pd.Timestamp("2026-03-31")
+    assert amostra.groupby("cnpj").size().max() <= 2
+    assert set(amostra["referencia"].dt.quarter) == {1, 2, 3, 4}
+
+
+def test_amostra_da_prova_e_sempre_a_mesma():
+    achados = _lista_da_prova()
+    primeira = ler_releases.amostra_da_prova(achados, 100)
+    outra_ordem = ler_releases.amostra_da_prova(achados.iloc[::-1], 100)
+    assert sorted(primeira["protocolo"]) == sorted(outra_ordem["protocolo"])
