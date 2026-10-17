@@ -11,14 +11,14 @@ dia. Mudou a tela, a API ou os dados de exemplo? Regrave:
 
 import json
 import re
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from src import analises, comparacao, ficha
+from src import analises, comparacao, ficha, pulse
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
@@ -26,9 +26,11 @@ from src.api_v1 import esquemas
 from src.api_v1.contexto import ContextoDoAtivo
 from src.api_v1.rotas import (
     CAPITAL_PADRAO,
+    montar_acontecimentos,
     montar_backtest,
     montar_ficha_do_backtest,
     montar_linha_do_tempo,
+    montar_variacoes,
     montar_visao_geral,
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
@@ -278,6 +280,71 @@ def exemplo_da_ficha() -> dict:
     }
 
 
+def exemplo_do_pulse() -> dict:
+    """A parte 2 do Pulse (acontecimentos e variação) com os preços de exemplo: a visita em
+    05/10/2026 às 19h e o "agora" logo depois do último pregão de exemplo (09/10). Os documentos
+    são feitos à mão; um tem um link perigoso, que a tela não pode transformar em link."""
+    visita = datetime(2026, 10, 5, 22, 0, tzinfo=UTC)
+    janela = pulse.Janela(visita, datetime(2026, 10, 9, 23, 0, tzinfo=UTC), False)
+    ativos, _ = pulse.ativos_da_pessoa(
+        ["PETR4.SA", "VALE3.SA"],
+        ["ITUB4.SA"],
+        [("Bancos", ["BBDC4.SA"])],
+        ["WEGE3.SA", "ZZZZ3.SA"],
+    )
+    documentos = (
+        ("PETR4.SA", "Petrobras", "Fato Relevante", "Aquisição da Refinaria Exemplo", "cvm_ipe",
+         "https://www.rad.cvm.gov.br/exemplo-1", date(2026, 10, 8)),
+        ("VALE3.SA", "Vale", "Comunicado ao Mercado", "Produção do trimestre", "cvm_ipe",
+         "javascript:alert(1)", date(2026, 10, 7)),
+        ("PETR4.SA", "Petrobras", "Aviso aos Acionistas", "", "cvm_ipe",
+         "https://www.rad.cvm.gov.br/exemplo-3", date(2026, 9, 20)),
+    )  # fmt: skip
+    eventos = [
+        Evento(
+            ticker=ticker,
+            empresa=empresa,
+            rotulo=rotulo,
+            tema="eventos",
+            materialidade=60,
+            assunto=assunto,
+            referencia=None,
+            publicado_em=publicado_em,
+            link=link,
+            fonte=fonte,
+            protocolo=f"exemplo-{n}",
+            versao=1,
+        )
+        for n, (
+            ticker,
+            empresa,
+            rotulo,
+            assunto,
+            fonte,
+            link,
+            publicado_em,
+        ) in enumerate(documentos)
+    ]
+    variacoes, sem_variacao = montar_variacoes(
+        ativos,
+        janela,
+        lambda ticker, periodo: baixar_dados(ticker, periodo, forcar_exemplo=True),
+    )
+    return {
+        "resposta": {
+            "acontecimentos": [
+                a.model_dump(mode="json")
+                for a in montar_acontecimentos(eventos, ativos, janela, [])
+            ],
+            "variacoes": [v.model_dump(mode="json") for v in variacoes],
+            "sem_variacao": sem_variacao,
+            "avisos_dos_ativos": [pulse.aviso_dos_ativos_de_fora(3)],
+            "sem_ativos": pulse.SEM_ATIVOS,
+            "nota_da_variacao": pulse.NOTA_DA_VARIACAO,
+        }
+    }
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
@@ -287,6 +354,7 @@ EXEMPLOS = {
     "comparacao": exemplo_da_comparacao,
     "backtest": exemplo_do_backtest,
     "ficha": exemplo_da_ficha,
+    "pulse": exemplo_do_pulse,
 }
 
 
@@ -317,6 +385,22 @@ if __name__ == "__main__":
         arquivo = PASTA / f"{nome}.json"
         arquivo.write_text(_em_json(exemplo()), encoding="utf-8")
         print(f"Gravado: {arquivo}")
+
+
+def test_o_exemplo_do_pulse_tem_o_numero_de_pulse_variacao():
+    """Cada variação do exemplo é a de `pulse.variacao` com os preços de exemplo; a maior
+    mudança vem primeiro; o link perigoso não chega à tela."""
+    gravado = json.loads((PASTA / "pulse.json").read_text(encoding="utf-8"))["resposta"]
+    visita = datetime(2026, 10, 5, 22, 0, tzinfo=UTC)
+    for v in gravado["variacoes"]:
+        precos = baixar_dados(f"{v['ticker']}.SA", "6mo", forcar_exemplo=True)["Close"]
+        esperada = pulse.variacao(f"{v['ticker']}.SA", precos, visita)
+        assert esperada is not None and v["variacao"] == esperada.retorno
+    tamanhos = [abs(v["variacao"]) for v in gravado["variacoes"]]
+    assert tamanhos == sorted(tamanhos, reverse=True)
+    assert gravado["sem_variacao"] == ["ZZZZ3"]
+    links = {a["titulo"]: a["link_do_original"] for a in gravado["acontecimentos"]}
+    assert links["Produção do trimestre"] is None
 
 
 def test_a_ficha_da_api_e_a_da_tela():

@@ -978,12 +978,42 @@ def _ativos_da_conta(
     )
 
 
-def _parametros_do_research(presets: list) -> research_presets.Resolucao:
-    """Os parâmetros do Research da pessoa; se os guardados não combinarem mais, os padrões."""
+def _acontecimento_v1(item: research.ItemDoResearch) -> esquemas.AcontecimentoV1:
+    e = item.evento
+    return esquemas.AcontecimentoV1(
+        id=f"{e.fonte}:{e.protocolo}",
+        ticker=e.ticker.removesuffix(".SA"),
+        empresa=e.empresa,
+        tipo=e.rotulo,
+        titulo=e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro).",
+        publicado_em=e.publicado_em,
+        fonte=research.SIGLAS_DAS_FONTES.get(e.fonte, "fonte"),
+        link_do_original=link_da_fonte(e.link),
+        relevancia=item.relevancia,
+        por_que_aparece=item.razoes,
+    )
+
+
+def montar_acontecimentos(
+    eventos: list[Evento],
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    presets: list,
+) -> list[esquemas.AcontecimentoV1]:
+    """Os eventos novos por relevância, pelos parâmetros do Research da pessoa (se os guardados
+    não combinarem mais, os padrões). (A rota e os testes do React usam.)"""
     try:
-        return research_presets.resolver(presets)
+        r = research_presets.resolver(presets)
     except ValueError:
-        return research_presets.resolver([])
+        r = research_presets.resolver([])
+    itens = pulse.acontecimentos(
+        eventos,
+        ativos,
+        j,
+        research.pesos_da_resolucao(r.valores("relevancia")),
+        list(r["newsletter.temas"]),
+    )
+    return [_acontecimento_v1(item) for item in itens]
 
 
 def _eventos_novos(
@@ -1007,32 +1037,19 @@ def _eventos_novos(
         return None
 
 
-def _acontecimento_v1(item: research.ItemDoResearch) -> esquemas.AcontecimentoV1:
-    e = item.evento
-    return esquemas.AcontecimentoV1(
-        id=f"{e.fonte}:{e.protocolo}",
-        ticker=e.ticker.removesuffix(".SA"),
-        empresa=e.empresa,
-        tipo=e.rotulo,
-        titulo=e.assunto or f"{e.rotulo} de {e.empresa} (sem assunto no cadastro).",
-        publicado_em=e.publicado_em,
-        fonte=research.SIGLAS_DAS_FONTES.get(e.fonte, "fonte"),
-        link_do_original=link_da_fonte(e.link),
-        relevancia=item.relevancia,
-        por_que_aparece=item.razoes,
-    )
-
-
-def _variacoes(
-    ativos: tuple[pulse.AtivoDaPessoa, ...], j: pulse.Janela
+def montar_variacoes(
+    ativos: tuple[pulse.AtivoDaPessoa, ...],
+    j: pulse.Janela,
+    carregar: Callable[[str, str], pd.DataFrame] | None = None,
 ) -> tuple[list[esquemas.VariacaoV1], list[str]]:
     """A variação de cada ativo desde a visita (a maior primeiro) e os que ficaram sem: na
-    moeda do ativo, sem o câmbio, como no app atual."""
+    moeda do ativo, sem o câmbio, como no app atual. (A rota e os testes do React usam.)"""
+    carregar = carregar or contexto.carregar_dados
     periodo = pulse.periodo_de_precos(j)
     variacoes, sem_variacao = [], []
     for ativo in ativos:
         try:
-            fechamentos = contexto.carregar_dados(ativo.ticker, periodo)["Close"]
+            fechamentos = carregar(ativo.ticker, periodo)["Close"]
         except (DadosIndisponiveisError, ValueError, KeyError):
             sem_variacao.append(ativo.ticker.removesuffix(".SA"))
             continue
@@ -1082,18 +1099,10 @@ def pulse_da_conta(
         presets = presets_atuais(conexao, conta.id)
     j = _ou_422(lambda: pulse.janela_da_aba(visita, agora, desde))
     eventos = _eventos_novos(ativos, j)
-    acontecimentos = None
-    if eventos is not None:
-        r = _parametros_do_research(presets)
-        itens = pulse.acontecimentos(
-            eventos,
-            ativos,
-            j,
-            research.pesos_da_resolucao(r.valores("relevancia")),
-            list(r["newsletter.temas"]),
-        )
-        acontecimentos = [_acontecimento_v1(item) for item in itens]
-    variacoes, sem_variacao = _variacoes(ativos, j)
+    acontecimentos = (
+        None if eventos is None else montar_acontecimentos(eventos, ativos, j, presets)
+    )
+    variacoes, sem_variacao = montar_variacoes(ativos, j)
     salvas, sem_ficha, _ = pulse.estrategias_salvas(simulacoes, maximo=len(simulacoes))
     a_conferir = salvas[: pulse.MAXIMO_DE_FICHAS]
     fora = len(salvas) - len(a_conferir)
