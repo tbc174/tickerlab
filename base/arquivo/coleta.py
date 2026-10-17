@@ -16,6 +16,9 @@ Regras (testes em `tests/test_base_arquivo.py`):
   levanta `SemArquivo`: fica registrada como "nao_encontrado", nunca "ok" nem falha;
 - fonte sem ETag nem Last-Modified (a B3) decide pela última coleta "ok" (`guardado_vale`) se nem
   precisa baixar de novo;
+- alvo que já sabe a versão na descoberta (`Alvo.versao`: o CRC do ZIP interno do PIT, lido no
+  índice do ZIP anual) nem pede nada à fonte quando a versão é a da última coleta, e não conta
+  como pedido para a pausa;
 - fonte **vigia** (termos de uso, catálogos): avisa quando o texto visível muda.
 """
 
@@ -47,7 +50,16 @@ LIVRE_MINIMO_EM_BYTES = 50 * 1024**3
 USO_MAXIMO_DO_DISCO = 0.70
 PAUSA_ENTRE_PEDIDOS_EM_SEGUNDOS = 1.0
 TAMANHO_DA_PARTE = 1024 * 1024
-CABECALHOS_GUARDADOS = ("Last-Modified", "ETag", "Content-Length", "Content-Type")
+# de qual arquivo saiu o que foi guardado, quando a forma de obter regrava (ZIP dentro de ZIP do PIT)
+SHA256_DA_ORIGEM = "X-Sha256-Da-Origem"
+# os 3 primeiros dizem a versão (`assinatura`); os outros só vão para o manifesto
+CABECALHOS_GUARDADOS = (
+    "Last-Modified",
+    "ETag",
+    "Content-Length",
+    "Content-Type",
+    SHA256_DA_ORIGEM,
+)
 SEPARADOR_DO_DETALHE = " | "
 IGUAL_A_ANTERIOR = "igual à coleta anterior"
 ASSINATURAS = {"pdf": (b"%PDF",), "json": (b"{", b"["), "zip": (b"PK",)}
@@ -125,6 +137,8 @@ class Alvo:
     obter: Obter | None = field(
         default=None, compare=False
     )  # None: `cliente.baixar(url)`
+    # a `assinatura` que a coleta vai gravar, quando a descoberta já sabe (CRC do índice do ZIP)
+    versao: str | None = None
 
 
 Descobrir = Callable[[Cliente, datetime], list[Alvo]]
@@ -256,8 +270,19 @@ def _assinatura_registrada(detalhe: str | None) -> str:
     return (detalhe or "").split(SEPARADOR_DO_DETALHE)[0]
 
 
+def _versao_ja_guardada(alvo: Alvo, anterior: sa.Row | None) -> bool:
+    """A versão que a descoberta leu (`Alvo.versao`) é a da última coleta "ok"? Então nem pede."""
+    return (
+        alvo.versao is not None
+        and anterior is not None
+        and alvo.versao == _assinatura_registrada(anterior.detalhe)
+    )
+
+
 def _ja_guardado(fonte: Fonte, alvo: Alvo, cliente: Cliente, anterior: sa.Row) -> bool:
     """O que a última coleta "ok" guardou ainda vale (não precisa baixar de novo)?"""
+    if alvo.versao is not None:
+        return False  # a versão da descoberta já foi comparada (`_versao_ja_guardada`) e mudou
     if fonte.guardado_vale is not None:
         return fonte.guardado_vale(anterior)
     if not fonte.pesada:
@@ -273,8 +298,8 @@ def _arquivar_um(
     agora: datetime,
     temporario: Path,
     resultado: Resultado,
+    anterior: sa.Row | None,
 ) -> None:
-    anterior = _ultima(alvo.url)
     if anterior is not None and _ja_guardado(fonte, alvo, cliente, anterior):
         resultado.pulados += 1
         log.info("%s: %s já guardado e sem mudança; não baixa", fonte.id, alvo.url)
@@ -347,12 +372,19 @@ def arquivar(
     pasta_temporaria.mkdir(parents=True, exist_ok=True)
     resultado = Resultado(fonte.id)
     espera = max(pausa, fonte.pausa_minima) if pausa else 0.0  # pausa 0: testes
+    # a pausa é entre dois pedidos: o alvo pulado sem pedir nada não espera
+    ja_pediu = False
     for numero, alvo in enumerate(alvos):
-        if numero and espera:
+        anterior = _ultima(alvo.url)
+        if _versao_ja_guardada(alvo, anterior):
+            resultado.pulados += 1
+            continue
+        if ja_pediu and espera:
             esperar(espera)
+        ja_pediu = True
         temporario = pasta_temporaria / f"{fonte.id}-{numero}.parcial"
         try:
-            _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado)
+            _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado, anterior)
         except SemArquivo as motivo:
             temporario.unlink(missing_ok=True)
             log.info("%s: sem arquivo em %s (%s)", fonte.id, alvo.url, motivo)

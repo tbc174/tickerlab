@@ -18,6 +18,7 @@ import pandas as pd
 
 TAMANHO = 14
 TAMANHO_DA_RAIZ = 8
+TAMANHO_DO_CPF = 11
 MENOR_COM_ZEROS = (
     TAMANHO_DA_RAIZ  # só números: a raiz sozinha ganha zeros à esquerda (ISPB do Pix)
 )
@@ -68,6 +69,20 @@ def dv_confere(cnpj: str) -> bool:
     primeiro = _digito(cnpj[:12], PESOS)
     segundo = _digito(cnpj[:13], (6, *PESOS))
     return cnpj[12:] == f"{primeiro}{segundo}"
+
+
+def cpf_confere(digitos: str) -> bool:
+    """True se os 11 dígitos têm os DVs de um CPF (para tirar pessoas de colunas que misturam CPF e
+    CNPJ; ninguém aqui guarda o CPF)."""
+    if (
+        len(digitos) != TAMANHO_DO_CPF
+        or not digitos.isdigit()
+        or len(set(digitos)) == 1
+    ):
+        return False
+    primeiro = _digito(digitos[:9], tuple(range(10, 1, -1)))
+    segundo = _digito(digitos[:10], tuple(range(11, 1, -1)))
+    return digitos[9:] == f"{primeiro}{segundo}"
 
 
 def raiz(valor: object) -> str | None:

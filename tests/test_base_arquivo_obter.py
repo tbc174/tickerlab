@@ -1,5 +1,6 @@
 """Formas especiais de obter (base/arquivo/obter.py) e a 2ª leva da prévia do balanço."""
 
+import copy
 import io
 import json
 import random
@@ -77,6 +78,18 @@ def test_zip_remoto_le_so_o_indice_e_o_arquivo_pedido(tmp_path):
     assert cabecalhos["ETag"] == '"zip-1"'  # a pesada pula quando o ZIP não mudou
     # não baixou o ZIP inteiro: só o índice (fim) e o pedaço do CSV pedido
     assert servidor.bytes_servidos < len(conteudo)
+
+
+def test_zip_remoto_aceita_cabecalho_em_minusculas():
+    # o IIS do TCE-PR responde "content-length" (medido em 17/10/2026)
+    conteudo = _zip({"a.csv": b"x;y\n"})
+
+    class ServidorMinusculo(ServidorComTrechos):
+        def cabecalhos(self, url):
+            return {"content-length": str(len(self.arquivos[url]))}
+
+    servidor = ServidorMinusculo({URL_DO_ZIP: conteudo})
+    assert obter.membros_do_zip_remoto(servidor, URL_DO_ZIP) == ["a.csv"]
 
 
 def test_parquet_sai_sem_as_colunas_pessoais(tmp_path):
@@ -242,3 +255,71 @@ def test_cadastro_da_susep_e_guardado_so_com_codigo_nome_e_cnpj(tmp_path):
     item = json.loads(destino.read_text(encoding="utf-8"))["value"][0]
     assert set(item) == set(fontes.CAMPOS_DO_CADASTRO_DA_SUSEP)
     assert item["entcgc"] == "61198164000160"
+
+
+def test_membro_do_zip_remoto_sai_em_dois_trechos_e_com_o_crc_conferido():
+    # ZIP dentro de ZIP (PIT do TCE-PR): o índice do ZIP anual dá a posição e o tamanho de cada ZIP
+    # interno; ler um deles custa o cabeçalho local e os dados, nada além
+    interno = _zip({"a.xml": b"<root/>" * 50})
+    grande = random.Random(1).randbytes(2 * obter.TAMANHO_DO_TRECHO)
+    conteudo = _zip({"um.zip": interno, "outro.bin": grande}, zipfile.ZIP_DEFLATED)
+    servidor = ServidorComTrechos({URL_DO_ZIP: conteudo})
+    um, _ = obter.indice_do_zip_remoto(servidor, URL_DO_ZIP)
+    servidor.bytes_servidos = 0
+    pedidos: list[tuple[int, int]] = []
+    ler_trecho = servidor.ler_trecho
+    servidor.ler_trecho = lambda url, i, f: (
+        pedidos.append((i, f)) or ler_trecho(url, i, f)
+    )
+    assert obter.ler_membro(servidor, URL_DO_ZIP, um) == interno
+    assert len(pedidos) == 2
+    assert servidor.bytes_servidos < um.compress_size + 100
+    # o CRC do índice confere o que chegou
+    torto = copy.copy(um)
+    torto.CRC = um.CRC ^ 1
+    with pytest.raises(zipfile.BadZipFile):
+        obter.ler_membro(servidor, URL_DO_ZIP, torto)
+
+
+def test_le_utf16_e_utf8_e_limpa_controle():
+    texto = '<root><Contrato vlContrato="1\x0b0" flSubContratacao="NÃO"/></root>'
+    utf8 = b"\xef\xbb\xbf" + texto.encode("utf-8")
+    utf16 = texto.encode("utf-16")  # 2013: começa com FF FE
+    assert utf16[:2] == b"\xff\xfe"
+    esperado = '<root><Contrato vlContrato="10" flSubContratacao="NÃO"/></root>'
+    assert obter.decodificar_xml(utf8) == esperado
+    assert obter.decodificar_xml(utf16) == esperado
+    assert obter.decodificar_xml(texto.encode("utf-8")) == esperado  # sem BOM: UTF-8
+
+
+def test_referencia_a_caractere_de_controle_sai_e_as_validas_ficam():
+    # o PIT escreve controles como referência (2013 e 2025: "reference to invalid character number")
+    texto = '<root><X a="1&#11;0" b="&#x1F;ok" c="S&#227;o &#x26; &#10;"/></root>'
+    assert obter.decodificar_xml(texto.encode()) == (
+        '<root><X a="10" b="ok" c="S&#227;o &#x26; &#10;"/></root>'
+    )
+
+
+def test_cabecalhos_do_membro_dizem_a_versao_pelo_crc():
+    interno = zipfile.ZipInfo("x.zip")
+    interno.CRC, interno.file_size = 0xABCDEF01, 1234
+    cabecalhos = obter.cabecalhos_do_membro(interno, b"conteudo")
+    assert cabecalhos["ETag"] == '"crc32-abcdef01"'
+    assert cabecalhos["Content-Length"] == "1234"
+    assert len(cabecalhos[obter.SHA256_DA_ORIGEM]) == 64
+    assert coleta.assinatura(cabecalhos) == obter.versao_do_membro(interno)
+
+
+def test_bomba_de_descompressao_para_no_tamanho_do_indice():
+    # 50 MB de zeros comprimidos em poucos KB, com o índice dizendo 100 bytes: nunca descomprime tudo
+    bomba = _zip({"bomba.zip": bytes(50 * 1024**2)})
+    servidor = ServidorComTrechos({URL_DO_ZIP: bomba})
+    [membro] = obter.indice_do_zip_remoto(servidor, URL_DO_ZIP)
+    mentiroso = copy.copy(membro)
+    mentiroso.file_size = 100
+    with pytest.raises(zipfile.BadZipFile, match="tamanho"):
+        obter.ler_membro(servidor, URL_DO_ZIP, mentiroso)
+    grande = copy.copy(membro)
+    grande.file_size = obter.LIMITE_DO_MEMBRO + 1
+    with pytest.raises(zipfile.BadZipFile, match="limite"):
+        obter.ler_membro(servidor, URL_DO_ZIP, grande)

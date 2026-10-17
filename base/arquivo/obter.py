@@ -12,6 +12,11 @@
   traz o nome do representante, e-mail e telefone. Guarda-se só o que a lista permite (a lista diz o
   que entra; uma coluna nova da fonte fica de fora até alguém pôr na lista).
 
+- **ZIP dentro de ZIP remoto** (PIT do TCE-PR): o ZIP anual (1,7 GB em 2013) tem um ZIP por
+  município e tema. O índice do ZIP anual dá o CRC, a posição e o tamanho de cada ZIP interno: a
+  descoberta já sabe a versão (o CRC) sem baixar nada, e ler um ZIP interno custa dois pedidos de
+  trecho (cabeçalho local e dados). Quem chama regrava o conteúdo (só os atributos da lista).
+
 - **ZIP que pode faltar** (negócios do pregão da B3): 404 (feriado, dia que ainda não saiu) e
   "200 com 0 bytes" (dia que já saiu da janela) viram `SemArquivo`; o zip é conferido inteiro (CRC de
   cada arquivo, como o `unzip -t`), porque um download cortado também começa com "PK".
@@ -20,21 +25,43 @@ Os dois primeiros devolvem os cabeçalhos do arquivo de origem, então as fontes
 pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
 """
 
+import codecs
 import csv
+import hashlib
 import io
 import json
+import re
 import shutil
+import struct
 import zipfile
-from collections.abc import Mapping
+import zlib
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 import pandas as pd
 import requests
 
-from base.arquivo.coleta import Cliente, Obter, SemArquivo
+from base.arquivo.coleta import (
+    SHA256_DA_ORIGEM,
+    Cliente,
+    Obter,
+    SemArquivo,
+    assinatura,
+)
 
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
 HTTP_NAO_ENCONTRADO = 404
+# cabeçalho local de cada arquivo dentro do ZIP: 30 bytes fixos, depois o nome e o campo extra
+TAMANHO_DO_CABECALHO_LOCAL = 30
+ASSINATURA_DO_CABECALHO_LOCAL = b"PK\x03\x04"
+SEM_JANELA_DO_ZLIB = -15  # o "deflate" cru do ZIP, sem o cabeçalho do zlib
+# o maior ZIP interno do PIT tem ~8 MB: acima disto é defeito ou bomba de descompressão (o contêiner
+# do arquivista tem 1 GB)
+LIMITE_DO_MEMBRO = 256 * 1024**2
+# caracteres de controle que o XML 1.0 não aceita (o PIT manda alguns: \x0b, \x1f)
+CONTROLE_INVALIDO = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+# o mesmo caractere escrito como referência numérica (`&#11;`, `&#x1F;`; o PIT manda, 2013 e 2025)
+REFERENCIA_NUMERICA = re.compile(r"&#(?:([0-9]{1,7})|[xX]([0-9a-fA-F]{1,6}));")
 
 
 class ArquivoRemoto(io.RawIOBase):
@@ -44,7 +71,9 @@ class ArquivoRemoto(io.RawIOBase):
         self.cliente = cliente
         self.url = url
         self.posicao = 0
-        self.tamanho = int(cliente.cabecalhos(url)["Content-Length"])
+        # o IIS do TCE-PR manda os nomes em minúsculas ("content-length"); o HTTP não diferencia
+        cabecalhos = {k.lower(): v for k, v in cliente.cabecalhos(url).items()}
+        self.tamanho = int(cabecalhos["content-length"])
 
     def readable(self) -> bool:
         return True
@@ -95,6 +124,104 @@ def extrair_do_zip_remoto(url: str, membro: str) -> Obter:
         return cliente.cabecalhos(url)
 
     return obter
+
+
+def indice_do_zip_remoto(cliente: Cliente, url: str) -> list[zipfile.ZipInfo]:
+    """O índice do ZIP remoto (nome, CRC, posição e tamanhos de cada arquivo), sem baixar os dados."""
+    with _zip_remoto(cliente, url) as arquivo_zip:
+        return arquivo_zip.infolist()
+
+
+def ler_membro(cliente: Cliente, url: str, membro: zipfile.ZipInfo) -> bytes:
+    """Os bytes de um arquivo de dentro do ZIP remoto, em dois pedidos de trecho e com o CRC conferido.
+
+    O `zipfile` pediria trechos de 8 MB (o buffer de `_zip_remoto`) para um ZIP interno de 30 KB;
+    aqui sai o cabeçalho local (que diz onde os dados começam) e os dados, nada além.
+    """
+    if max(membro.file_size, membro.compress_size) > LIMITE_DO_MEMBRO:
+        raise zipfile.BadZipFile(f"{membro.filename}: maior que o limite de leitura")
+    inicio = membro.header_offset
+    cabecalho = cliente.ler_trecho(url, inicio, inicio + TAMANHO_DO_CABECALHO_LOCAL - 1)
+    if not cabecalho.startswith(ASSINATURA_DO_CABECALHO_LOCAL):
+        raise zipfile.BadZipFile(
+            f"{membro.filename}: cabeçalho local sem a assinatura do ZIP"
+        )
+    tamanho_do_nome, tamanho_do_extra = struct.unpack("<HH", cabecalho[26:30])
+    comeco = inicio + TAMANHO_DO_CABECALHO_LOCAL + tamanho_do_nome + tamanho_do_extra
+    comprimido = (
+        cliente.ler_trecho(url, comeco, comeco + membro.compress_size - 1)
+        if membro.compress_size
+        else b""
+    )
+    if membro.compress_type == zipfile.ZIP_DEFLATED:
+        # nunca mais que o tamanho do índice (+1, para o excesso aparecer na conferência abaixo)
+        descompressor = zlib.decompressobj(SEM_JANELA_DO_ZLIB)
+        dados = descompressor.decompress(comprimido, membro.file_size + 1)
+    elif membro.compress_type == zipfile.ZIP_STORED:
+        dados = comprimido
+    else:
+        raise zipfile.BadZipFile(
+            f"{membro.filename}: compressão {membro.compress_type} desconhecida"
+        )
+    if zlib.crc32(dados) != membro.CRC or len(dados) != membro.file_size:
+        raise zipfile.BadZipFile(
+            f"{membro.filename}: CRC ou tamanho diferente do índice"
+        )
+    return dados
+
+
+def cabecalhos_do_membro(membro: zipfile.ZipInfo, dados: bytes) -> dict[str, str]:
+    """A versão de um arquivo de dentro do ZIP (o CRC no lugar do ETag) e o SHA-256 dele."""
+    return {
+        "ETag": f'"crc32-{membro.CRC:08x}"',
+        "Content-Length": str(membro.file_size),
+        SHA256_DA_ORIGEM: hashlib.sha256(dados).hexdigest(),
+    }
+
+
+def versao_do_membro(membro: zipfile.ZipInfo) -> str:
+    """A assinatura que o arquivista grava para o arquivo de dentro do ZIP, já na descoberta (pelo
+    índice): igual à da última coleta, nem pede nada."""
+    return assinatura(cabecalhos_do_membro(membro, b""))
+
+
+def membro_regravado(
+    url: str, membro: zipfile.ZipInfo, regravar: Callable[[bytes], bytes]
+) -> Obter:
+    """Grava em `destino` o arquivo de dentro do ZIP remoto depois de passar por `regravar` (que tira
+    o que não pode ser guardado); os cabeçalhos dizem a versão e o SHA-256 do original."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        dados = ler_membro(cliente, url, membro)
+        destino.write_bytes(regravar(dados))
+        return cabecalhos_do_membro(membro, dados)
+
+    return obter
+
+
+def decodificar_xml(conteudo: bytes) -> str:
+    """O texto de um XML em UTF-16 (começa com FF FE) ou UTF-8 (com ou sem BOM), sem os caracteres de
+    controle que o XML não aceita. Decodifica primeiro e limpa depois: em UTF-16 um byte 0x0b pode ser
+    metade de uma letra."""
+    if conteudo.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
+        texto = conteudo.decode("utf-16")
+    else:
+        texto = conteudo.decode("utf-8-sig")
+    texto = REFERENCIA_NUMERICA.sub(_referencia_valida, texto)
+    return CONTROLE_INVALIDO.sub("", texto)
+
+
+def _referencia_valida(achado: re.Match[str]) -> str:
+    """A referência (`&#11;`, `&#x1F;`) como veio, se o caractere vale no XML; senão, nada (o PIT
+    escreve alguns caracteres de controle assim, e o leitor de XML recusa o arquivo inteiro)."""
+    decimal, hexadecimal = achado.groups()
+    codigo = int(decimal) if decimal else int(hexadecimal, 16)
+    vale = (
+        codigo in (0x9, 0xA, 0xD)
+        or 0x20 <= codigo <= 0xD7FF
+        or 0xE000 <= codigo <= 0x10FFFF
+    )
+    return achado.group(0) if vale and codigo not in (0xFFFE, 0xFFFF) else ""
 
 
 def parquet_sem_colunas(url: str, colunas: tuple[str, ...]) -> Obter:
