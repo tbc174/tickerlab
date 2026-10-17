@@ -281,3 +281,39 @@ export interface MinhasSimulacoesV1 {
   uso: string; // "1 de 5", "0 de ilimitadas"
   sem_simulacoes: string; // a frase da lista vazia
 }
+
+// --- Pulse: estratégias acompanhadas (Workspace, PR 2) ---
+
+export interface JanelaV1 {
+  inicio: string; // data e hora, ISO com fuso: o início que o F5 reenvia em `desde`
+  fim: string;
+  primeira_vez: boolean;
+  texto: string; // "Desde a sua última visita, em 16/10/2026 às 09h30."
+}
+
+export interface EstrategiaAcompanhadaV1 {
+  id: string;
+  nome: string;
+  ticker: string | null;
+  antes: string | null; // o veredito visto na última visita (ou o da hora de salvar)
+  agora: string | null; // null: não deu para conferir agora
+  mudou: boolean;
+  conferido_em: string | null; // a visita em que o veredito de agora foi visto (ISO)
+  tese_ligada: string | null; // texto da pessoa: mostrar como texto puro
+  endereco: string | null; // o backtest no app novo; null: só reabre no app atual
+}
+
+export interface LimitesDoPulseV1 {
+  sem_ficha: number;
+  alem_do_maximo: number;
+  nao_conferidas: number;
+}
+
+export interface PulseV1 {
+  janela: JanelaV1;
+  estrategias: EstrategiaAcompanhadaV1[]; // as que mudaram, as iguais, as não conferidas
+  limites: LimitesDoPulseV1;
+  avisos: string[];
+  sem_estrategias: string;
+  notas: string[];
+}

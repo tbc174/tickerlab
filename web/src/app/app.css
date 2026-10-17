@@ -118,6 +118,13 @@
 .numeros-da-simulacao { font-size: .86rem; font-variant-numeric: tabular-nums; }
 .acoes-da-simulacao { display: flex; flex-wrap: wrap; gap: .4rem; }
 .salvar-simulacao { margin-top: 2rem; }
+/* Workspace (PR 2): o cartão das estratégias acompanhadas; o que mudou ganha a borda forte e o selo */
+.cartao-do-workspace { margin: 1.5rem 0 2rem; padding: 1rem 1.25rem; border-radius: var(--raio);
+  border: 1px solid var(--linha); background: var(--superficie); }
+.cartao-do-workspace h2 { margin: 0 0 .4rem; font-size: 1.2rem; }
+.cartao-do-workspace li.mudou { border-color: var(--linha-forte); }
+.selo-da-mudanca { font-weight: 700; }
+.tese-ligada { font-size: .88rem; color: var(--apagado); white-space: pre-line; }
 .salvar-simulacao .formulario-do-app { margin: .75rem 0; }
 .salvar-simulacao input { min-width: min(24rem, 100%); }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
