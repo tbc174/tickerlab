@@ -306,15 +306,13 @@ def _cadastro(
     return achado[0]
 
 
-def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
-    """`<pasta>/rotulos_atraso/rotulos_atraso.parquet` dos originais do acervo; devolve as linhas.
-
-    Nada é gravado (0) sem índice da DFP/ITR ou sem o cadastro. Fonte que não pode rotular (ADR 0008,
-    Emenda 1) é erro, antes de ler qualquer original.
-    """
-    exigir_licenca(
-        "rotular", [*FONTES_DO_INDICE.values(), FONTE_DO_CADASTRO], onde=TABELA
-    )
+def ler_indices(
+    conexao: sa.Connection,
+) -> tuple[
+    pd.DataFrame | None, dict[tuple[str, int], pd.Timestamp], list[dict[str, str]]
+]:
+    """O índice da DFP e do ITR de todos os anos guardados no acervo (None sem nenhum), o dia da
+    coleta de cada arquivo anual (`vistos_em`) e as origens (URL e SHA-256 de cada original)."""
     partes: list[pd.DataFrame] = []
     vistos_em: dict[tuple[str, int], pd.Timestamp] = {}
     origens: list[dict[str, str]] = []
@@ -327,10 +325,23 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
             partes.append(ler_indice(conteudo, documento))
             vistos_em[(documento, ano)] = _dia(original.baixado_em)
             origens.append({"url": original.url, "sha256": original.sha256})
+    indice = pd.concat(partes, ignore_index=True) if partes else None
+    return indice, vistos_em, origens
+
+
+def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> int:
+    """`<pasta>/rotulos_atraso/rotulos_atraso.parquet` dos originais do acervo; devolve as linhas.
+
+    Nada é gravado (0) sem índice da DFP/ITR ou sem o cadastro. Fonte que não pode rotular (ADR 0008,
+    Emenda 1) é erro, antes de ler qualquer original.
+    """
+    exigir_licenca(
+        "rotular", [*FONTES_DO_INDICE.values(), FONTE_DO_CADASTRO], onde=TABELA
+    )
+    indice, vistos_em, origens = ler_indices(conexao)
     cadastro = _cadastro(conexao, origens)
-    if not partes or cadastro is None:
+    if indice is None or cadastro is None:
         return 0
-    indice = pd.concat(partes, ignore_index=True)
     exemplos, fora = montar_exemplos_e_fora(
         indice, cadastro, _dia(agora), vistos_em=vistos_em
     )

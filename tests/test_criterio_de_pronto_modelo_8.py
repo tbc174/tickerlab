@@ -44,7 +44,7 @@ EXIGENCIAS = (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13)
 
 DFP_ITR = "CVM DFP e ITR"
 CADASTRO = "CVM cadastro de companhias"
-FCA = "CVM FCA (auditores)"
+FCA = "CVM FCA (auditores e dados gerais)"
 IPE = "CVM IPE"
 PRAZOS = "Prazos da CVM (normas)"
 
@@ -67,9 +67,16 @@ FONTES = {
         "tabelas": {"cadastro_das_companhias": "registro"},
     },
     FCA: {
-        "fontes_no_registro": [historico.TABELAS["auditores"].fonte],
+        "fontes_no_registro": [
+            historico.TABELAS["auditores"].fonte,
+            historico.TABELAS["fca_geral"].fonte,
+        ],
         "enderecos": [f"{PASTAS_DA_CVM}CIA_ABERTA/DOC/FCA/DADOS/"],
-        "tabelas": {"auditores": "conhecido_em", "trocas_de_auditor": "conhecido_em"},
+        "tabelas": {
+            "auditores": "conhecido_em",
+            "trocas_de_auditor": "conhecido_em",
+            "fca_geral": "conhecido_em",
+        },
     },
     IPE: {
         "fontes_no_registro": [
@@ -104,6 +111,12 @@ PRAZOS_T = "tests/test_prazos.py"
 CANCELADAS = "tests/test_conferir_canceladas.py"
 MONTAGEM = "tests/test_montar_modelo_8.py"
 QUALIDADE = "tests/test_qualidade_da_montagem.py"
+COLUNAS = "tests/test_base_colunas_atraso.py"
+# toda coluna do modelo, com as fontes cortadas na data, dá o mesmo resultado (PR 3)
+COLUNAS_COMO_ERA = [
+    f"{COLUNAS}::test_toda_coluna_usa_so_fatos_publicos_antes_da_previsao",
+    f"{COLUNAS}::test_coluna_ignora_fato_publicado_no_dia",
+]
 # montagem semanal no servidor de casa com relatório de qualidade e aviso no Kuma (PR D)
 MONTAGEM_COM_ALERTA = [
     f"{MONTAGEM}::test_ano_que_some_ou_escala_que_muda_faz_a_montagem_falhar",
@@ -129,6 +142,8 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{ROTULO}::test_documento_com_prazo_entre_dois_registros_nao_e_exemplo",
         f"{ROTULO}::test_documento_com_prazo_depois_do_cancelamento_nao_e_exemplo",
         f"{ROTULO}::test_empresa_fora_do_cadastro_nao_e_exemplo",
+        *COLUNAS_COMO_ERA,
+        f"{COLUNAS}::test_reapresentacao_do_balanco_depois_da_previsao_nao_aparece",
     ],
     (DFP_ITR, 4): [
         f"{ROTULO}::test_empresa_cancelada_continua_nos_anos_ativos",
@@ -150,7 +165,12 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         f"{ROTULO_ACERVO}::test_monta_o_rotulo_dos_originais_com_manifesto",
         f"{LINHAGEM}::test_linha_sorteada_volta_ao_original",
     ],
-    (CADASTRO, 3): [f"{ROTULO}::test_registrada_depois_do_prazo_nao_deve_o_documento"],
+    # o cadastro de hoje só decide quem devia, a UF e as datas de registro; setor e categoria vêm
+    # do FCA vigente na data (nota i do critério, PR 3)
+    (CADASTRO, 3): [
+        f"{ROTULO}::test_registrada_depois_do_prazo_nao_deve_o_documento",
+        f"{COLUNAS}::test_setor_vem_do_fca_vigente_na_data_e_nao_do_de_hoje",
+    ],
     (CADASTRO, 4): [
         f"{CADASTRO_T}::test_canceladas_com_data_e_motivo",
         f"{CADASTRO_T}::test_cobertura_das_canceladas_mostra_quem_saiu_e_falta_na_base",
@@ -178,6 +198,10 @@ PROVAS: dict[tuple[str, int], list[str]] = {
         # o FCA do pedido de registro vale a partir do registro (60 páginas do ENET, 16/10)
         f"{AUDITORES}::test_fca_do_pedido_de_registro_vale_a_partir_do_registro",
         f"{AUDITORES}::test_no_fca_do_pedido_de_registro_o_registro_seguinte_nunca_e_cedo_demais",
+        f"{COLUNAS}::test_ler_geral_do_fca_com_a_data_de_entrega",
+        f"{COLUNAS}::test_fca_geral_e_tabela_historica_com_data_publica",
+        f"{COLUNAS}::test_acao_na_bolsa_e_segmento_do_fca_vigente",
+        *COLUNAS_COMO_ERA,
     ],
     (FCA, 4): CONFERENCIA_DAS_CANCELADAS,
     (FCA, 6): [f"{CRUZADA}::test_auditor_da_tabela_e_quem_assina_o_relatorio_da_dfp"],
@@ -193,6 +217,8 @@ PROVAS: dict[tuple[str, int], list[str]] = {
     (IPE, 3): [
         f"{ROTULOS_IPE}::test_primeira_data_por_empresa_e_rotulo",
         f"{HISTORICO}::test_eventos_do_ipe_saem_num_parquet_por_ano_com_a_origem",
+        f"{COLUNAS}::test_recuperacao_judicial_so_da_propria_companhia_pela_raiz",
+        *COLUNAS_COMO_ERA,
     ],
     (IPE, 4): CONFERENCIA_DAS_CANCELADAS,
     (IPE, 7): MONTAGEM_COM_ALERTA,
@@ -245,19 +271,12 @@ NAO_SE_APLICA: dict[tuple[str, int], str] = {
 }
 
 PENDENCIAS: dict[tuple[str, int], str] = {
-    (DFP_ITR, 8): (
-        "a ficha `rotulos_atraso` entrou depois da revisão do dicionário de 14/10 (e mudou no "
-        "PR B: quem é exemplo): falta o Tiago ler. PR B"
-    ),
-    (CADASTRO, 3): (
-        "é o retrato de hoje: serve para quem devia o documento e para a UF, não para colunas "
-        "(setor e categoria virão do FCA pela data de entrega). Regra e teste no PR 3 do plano"
-    ),
     (IPE, 6): (
-        "conferência cruzada com a Receita abaixo da tolerância (76% e 55% contra 90%; a recuperação "
-        "judicial bate 25 de 25): o rótulo do IPE marca eventos de outras empresas do grupo e a "
-        "recuperação extrajudicial, e a Receita não marca casos conhecidos. Proposta para o Tiago "
-        "decidir: usar do IPE só a recuperação judicial da própria companhia, corrigida, no PR 3"
+        "conferência cruzada com a Receita abaixo da tolerância de 90%. Remedida em 17/10 com a "
+        "regra do PR 3 (só a recuperação judicial da própria companhia, pela raiz do CNPJ): Receita "
+        "→ IPE 25 de 25, IPE → Receita 22 de 32 (69%). O que sobra é a Receita sem a marca (Junta "
+        "incompleta), recuperações encerradas e 1 filial. Mudar a tolerância depois de ver é "
+        "decisão escrita do Tiago, antes do PR 4"
     ),
 }
 

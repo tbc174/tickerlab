@@ -53,7 +53,15 @@ def _base(pasta, anos=ANOS, valor=5e8) -> None:
             for d in data
         ],
     )
-    for nome in ("auditores", "insolvencia", "eventos"):
+    _gravar(
+        pasta,
+        "colunas_atraso",
+        [
+            {"cnpj": f"{a}", "documento": "DFP", "referencia": d}
+            for a, d in zip(anos, data, strict=True)
+        ],
+    )
+    for nome in ("auditores", "fca_geral", "insolvencia", "eventos"):
         _gravar(
             pasta,
             nome,
@@ -146,11 +154,16 @@ def test_monta_na_ordem_e_falha_quando_um_original_nao_abre(
     monkeypatch.setattr(
         montar_modelo_8.rotulo, "montar", lambda *_: ordem.append("rotulo") or 1
     )
+    monkeypatch.setattr(
+        montar_modelo_8, "montar_colunas", lambda *_: ordem.append("colunas") or 1
+    )
     monkeypatch.setattr(montar_modelo_8, "obter_engine", lambda: _SemBanco())
 
     saida = montar_modelo_8.main(["--pasta", str(tmp_path)])
 
-    assert ordem == ["auditores", "insolvencia", "eventos", "trocas", "rotulo"]
+    assert ordem == [
+        "auditores", "fca_geral", "insolvencia", "eventos", "trocas", "rotulo", "colunas",
+    ]  # fmt: skip
     assert saida == 1
     assert "eventos 2021: zip quebrado" in capsys.readouterr().out
 

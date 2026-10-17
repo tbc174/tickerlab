@@ -3172,6 +3172,48 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_DA_LINHA,
         },
     ),
+    "fca_geral": Tabela(
+        descricao=(
+            "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A "
+            "ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, "
+            'como a companhia informou naquele formulário. É o cadastro "como era na data" do '
+            "modelo 8 (nota i do critério de pronto): o `cad_cia_aberta.csv` só tem o de hoje"
+        ),
+        fonte="CVM: dados abertos do FCA, tabela de dados gerais (`base/fca_geral.py`)",
+        familia_da_fonte="cvm",
+        frequencia=_FREQUENCIA_DO_FCA,
+        atraso=(
+            "Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser "
+            "mais tarde que a primeira notícia, nunca mais cedo"
+        ),
+        onde=_onde_da_historica("fca_geral"),
+        linhagem=LINHAGEM_DA_HISTORICA,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "referencia": ("Data de referência do FCA", DATA),
+            "versao": ("Versão do FCA", NUMERO),
+            "id_documento": ("Número do documento na CVM", TEXTO),
+            "conhecido_em": (
+                (
+                    "Data em que a CVM recebeu essa versão do FCA; mandada com a empresa fora do "
+                    "registro (pedido de registro), vale a partir do registro seguinte"
+                ),
+                DATA,
+            ),
+            "categoria": (
+                "Categoria do registro na CVM: A (pode emitir ações) ou B",
+                TEXTO,
+            ),
+            "setor": ("Setor de atividade, como a companhia informou", TEXTO),
+            "controle_acionario": (
+                "Espécie do controle (Privado, Privado Holding, Estatal, Estrangeiro...)",
+                TEXTO,
+            ),
+            "mes_fim_do_exercicio": ("Mês de fim do exercício social", "mês (1 a 12)"),
+            **_ORIGEM_DA_LINHA,
+        },
+    ),
     "trocas_de_auditor": Tabela(
         descricao=(
             'Rótulo "trocou de auditor": cada troca de firma, montada de todos os anos de '
@@ -3574,6 +3616,131 @@ TABELAS: dict[str, Tabela] = {
             "mes_fim_do_exercicio": (
                 "Mês de fim do exercício (o mais comum nas DFPs da companhia)",
                 "mês (1 a 12)",
+            ),
+            "montado_em": _ORIGEM_SEM_ANO["montado_em"],
+            "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
+        },
+    ),
+    "colunas_atraso": Tabela(
+        descricao=(
+            "Colunas do modelo de atraso na entrega (modelo 8) como eram na data da previsão: uma "
+            "linha por exemplo de `rotulos_atraso` (mesma chave), só com fatos públicos antes de "
+            "`data_da_previsao` (o que chegou no próprio dia fica de fora). Grupos: histórico de "
+            "entregas, auditor, dificuldade (só a recuperação judicial da própria companhia, pela "
+            "raiz do CNPJ), cadastro (do FCA vigente na data, nunca do cadastro de hoje), balanço e "
+            "calendário. O selo de qualidade e os fatos relevantes ficam fora da v1. Vazio = não se "
+            "sabia na data. O rótulo não está aqui: junta-se pela chave na hora de treinar"
+        ),
+        fonte=(
+            "CVM: índice da DFP/ITR, FCA (dados gerais, valores mobiliários e auditores), IPE "
+            '(insolvência e eventos), demonstrações "como era" e cadastro das companhias'
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Refeita a cada montagem do modelo 8 (`scripts/montar_modelo_8.py`)",
+        atraso="Cada coluna usa só o que era público na véspera da previsão",
+        onde=(
+            "Parquet em `<acervo>/base/colunas_atraso/colunas_atraso.parquet`, com o manifesto ao "
+            "lado (servidor de casa, `scripts/montar_modelo_8.py`)"
+        ),
+        linhagem=(
+            "O manifesto (`colunas_atraso.json`) lista cada tabela da base lida (caminho e SHA-256) "
+            "e cada arquivo anual do índice e o cadastro; `montado_em` diz quando a tabela foi "
+            "montada. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            **_DOCUMENTO,
+            "data_da_previsao": ("Dia da previsão (a própria data-base)", DATA),
+            "documentos_anteriores": (
+                "DFPs e ITRs anteriores com o resultado já conhecido na véspera",
+                NUMERO,
+            ),
+            "atrasou_o_anterior": (
+                "O último documento anterior conhecido atrasou (ou venceu sem entrega)",
+                SIM_OU_NAO,
+            ),
+            "atrasos_nos_ultimos_4": (
+                "Atrasos entre os 4 documentos anteriores",
+                NUMERO,
+            ),
+            "atrasos_nos_ultimos_8": (
+                "Atrasos entre os 8 documentos anteriores",
+                NUMERO,
+            ),
+            "media_dias_de_atraso_ultimos_4": (
+                "Média de dias úteis de atraso nos 4 anteriores (sem entrega: até a previsão)",
+                NUMERO_DECIMAL,
+            ),
+            "folga_media_ultimos_4": (
+                "Média de dias úteis entre a entrega e o prazo nos 4 anteriores (negativa: atrasou)",
+                NUMERO_DECIMAL,
+            ),
+            "entregou_o_anterior_no_ultimo_dia": (
+                "O último documento anterior foi entregue no dia do prazo",
+                SIM_OU_NAO,
+            ),
+            "reapresentacoes_12_meses": (
+                "Versões 2 em diante de DFP/ITR públicas nos 12 meses antes da previsão",
+                NUMERO,
+            ),
+            "auditor_rede_grande": (
+                "O auditor do FCA vigente é EY, PwC, KPMG ou Deloitte",
+                SIM_OU_NAO,
+            ),
+            "trocou_de_auditor_12_meses": (
+                "Uma troca de auditor ficou pública nos 12 meses antes da previsão",
+                SIM_OU_NAO,
+            ),
+            "anos_com_o_auditor": (
+                "Anos desde o início do mandato mais antigo da firma atual no FCA vigente",
+                "anos",
+            ),
+            "ja_entrou_em_recuperacao_judicial": (
+                (
+                    "Recuperação judicial da própria companhia (raiz do CNPJ) pública no IPE antes "
+                    "da previsão; vazio se a companhia não tinha nenhum documento no IPE"
+                ),
+                SIM_OU_NAO,
+            ),
+            "setor": ("Setor de atividade no FCA vigente na data", TEXTO),
+            "categoria": ("Categoria do registro (A ou B) no FCA vigente", TEXTO),
+            "controle_acionario": ("Espécie do controle no FCA vigente", TEXTO),
+            "exercicio_fora_de_dezembro": (
+                "O exercício social não fecha em dezembro (FCA vigente)",
+                SIM_OU_NAO,
+            ),
+            "anos_de_registro": (
+                "Anos desde o último registro na CVM antes da previsão",
+                "anos",
+            ),
+            "tem_acao_na_bolsa": (
+                "Ações ou units negociadas em bolsa no FCA vigente",
+                SIM_OU_NAO,
+            ),
+            "segmento_de_listagem": (
+                "Segmento de listagem dessas ações (Novo Mercado, Nível 1...)",
+                TEXTO,
+            ),
+            "ativo_total": (
+                "Ativo total do último balanço público (consolidado se houver)",
+                REAIS,
+            ),
+            "patrimonio_liquido_negativo": (
+                "Patrimônio líquido negativo no último balanço público",
+                SIM_OU_NAO,
+            ),
+            "prejuizo_no_ultimo_exercicio": (
+                "Prejuízo na DRE do último exercício (12 meses) público",
+                SIM_OU_NAO,
+            ),
+            "divida_curto_prazo_sobre_caixa": (
+                "Empréstimos de curto prazo (2.01.04) sobre caixa (1.01.01); vazio sem caixa",
+                NUMERO_DECIMAL,
+            ),
+            "trimestre": ("Trimestre da data-base (1 a 4)", NUMERO),
+            "prazo_perto_de_feriado": (
+                "Há feriado nacional nos 7 dias antes do prazo (ou no próprio dia)",
+                SIM_OU_NAO,
             ),
             "montado_em": _ORIGEM_SEM_ANO["montado_em"],
             "versao_do_codigo": _ORIGEM_SEM_ANO["versao_do_codigo"],
@@ -4291,6 +4458,7 @@ _CONTRATO = {
     "debentures_assembleias": _contrato(modulo=_FIDC, chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01", versao_do_contrato="2.0.0"),  # 2.0.0: o link é a chave (a CVM põe vários arquivos numa entrega; antes de 2015 não há versão)
     "ratings": _contrato(modulo=_FIDC, chaves=("cnpj", "protocolo", "versao"), datas={"aconteceu_em": "data_acao", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id", "inicio"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (17/10/2026): a mesma firma tem mandatos seguidos no mesmo FCA
+    "fca_geral": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "bcb_selic_focus": _contrato(modulo="macro", chaves=("serie", "referencia", "divulgado_em"), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -4299,6 +4467,7 @@ _CONTRATO = {
     "noticias_numeros": _contrato(modulo=_ME, chaves=("id_fato", "campo"), datas={"publico_em": "origem_divulgado_em"}, historico_desde=_CVM),
     "controladas": _contrato(modulo=_ME, chaves=("cnpj_companhia", "referencia", "versao", "cnpj"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "rotulos_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "prazo", "publico_em": "primeira_entrega", "coletado_em": "montado_em"}, historico_desde=_CVM),
+    "colunas_atraso": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia"), datas={"aconteceu_em": "data_da_previsao", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "empresa_serie": _contrato(modulo=_ME, chaves=("fonte", "chave", "cnpj_companhia"), datas={"aconteceu_em": "desde", "coletado_em": "montado_em"}, historico_desde=_CVM),
     "entidades": _contrato(modulo="rede", chaves=("id_entidade",), datas={"publico_em": "publico_em"}, historico_desde=_CVM),
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),

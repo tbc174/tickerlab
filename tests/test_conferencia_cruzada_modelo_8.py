@@ -85,6 +85,24 @@ def test_insolvencia_do_ipe_x_receita_tem_cada_divergencia_explicada():
     assert len(rj) == 25 and _sim(rj["confere"]).all()
 
 
+def test_recuperacao_judicial_propria_pela_raiz_x_receita_continua_abaixo_da_tolerancia():
+    """Remedida de 17/10 com a regra do PR 3 (só a recuperação judicial da própria companhia, pela
+    raiz do CNPJ): 25 de 25 da Receita para o IPE, 22 de 32 do IPE para a Receita. O que sobra é a
+    Receita sem a marca; a tolerância só muda por decisão escrita do Tiago."""
+    rj = _ler("insolvencia_receita_rj_propria")
+    _divergencias_explicadas(rj)
+    # Receita → IPE confere quando o IPE marca a raiz; IPE → Receita, quando a Receita marca
+    lado = rj["rj_propria_no_ipe"].where(
+        rj["direcao"] == "receita_para_ipe", rj["receita_marca_a_raiz"]
+    )
+    assert (rj["confere"] == lado).all()
+    confere = _sim(rj["confere"])
+    receita = rj["direcao"] == "receita_para_ipe"
+    assert (confere[receita].sum(), receita.sum()) == (25, 25)
+    assert (confere[~receita].sum(), (~receita).sum()) == (22, 32)
+    assert confere[~receita].mean() < CONCORDANCIA_MINIMA
+
+
 def test_prorrogacoes_de_2022_a_2026_estao_no_codigo_e_nas_entregas():
     """Tolerância 5: nenhuma norma de prorrogação fora de `src/prazos.py` (buscas de 16/10: só a
     Resolução CVM 202/2024) e nenhuma data-base acima do limite sem explicação."""

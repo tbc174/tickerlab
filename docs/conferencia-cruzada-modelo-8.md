@@ -41,3 +41,14 @@ Das páginas só foram guardados números, datas, códigos e nomes de firmas de 
 companhia**, com três correções no PR 3 do plano: juntar pelo CNPJ raiz (filial), não marcar a companhia por
 evento de outra empresa do grupo e separar a recuperação extrajudicial. Quantidade de fatos relevantes fica de
 fora até lá, e empresa sem nenhum documento no IPE fica com a coluna vazia, não 0 (achado do PR B).
+
+**Remedida em 17/10/2026** (só leitura, servidor de casa), com a regra que o Tiago aprovou em 17/10 e o PR 3
+usa: do IPE, **só a recuperação judicial da própria companhia, pela raiz do CNPJ** (sem a extrajudicial e sem
+eventos de outras empresas do grupo; a Receita também pela raiz). Mesma amostra da linha 3, tabela
+`insolvencia_receita_rj_propria.csv`. Receita → IPE: **25 de 25**. IPE → Receita: **22 de 32 (69%)**; sem as 2
+recuperações já encerradas (a Receita tira a marca), 22 de 30 (73%). Saíram 5 casos que eram erro do rótulo
+(Samarco e Oi marcadas em outra companhia, 2 extrajudiciais e 1 sem recuperação judicial da própria raiz) e 3
+filiais passaram a bater. Dos 10 que sobram: 7 sem a marca na Receita (registro na Junta incompleto, como o da
+Americanas), 2 encerradas e 1 filial (`33.041.260/0652-90`) sem marca em nenhum estabelecimento. **Continua
+abaixo de 90%**: o que sobra é falta da Receita, não erro do IPE, mas mudar a tolerância depois de ver exige
+decisão escrita do Tiago (ADR 0027). A pendência fica.
