@@ -169,6 +169,7 @@ export function Backtest({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<BacktestDoAtivoV1>
       pagina={pagina}
       carregando="Rodando o backtest…"
+      esqueleto="grafico"
       resultado={(dados) => (
         <>
           <Resultado dados={dados} />

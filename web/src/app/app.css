@@ -170,6 +170,18 @@
 .app-fundo { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 1.5rem;
   padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem) 4rem; border-radius: var(--raio); }
 .app-fundo-conteudo { position: relative; max-width: 40rem; }
+/* esqueleto de carregamento e estado vazio (ADR 0096): o tamanho do que vem, sem a página pular */
+.esqueleto-da-tela { display: grid; gap: var(--e3); margin: var(--e4) 0; }
+.esqueleto-painel { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.esqueleto { display: block; height: 4.5rem; border-radius: var(--raio); border: 1px solid var(--linha);
+  background: linear-gradient(90deg, var(--superficie) 30%, var(--linha) 50%, var(--superficie) 70%) 0 0 / 300% 100%;
+  animation: brilho-do-esqueleto 1.4s ease-in-out infinite; }
+.esqueleto-lista .esqueleto { height: 3.25rem; }
+.esqueleto-grafico { height: auto; aspect-ratio: 16 / 9; }
+@keyframes brilho-do-esqueleto { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
+.vazio { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e3); }
+.vazio p { margin: 0; }
 /* o assunto do fato relevante (leitor v2, ADR 0069), antes do título que a empresa deu */
 .selo-do-assunto { display: inline-block; margin-right: var(--e2); padding: 0 var(--e2); border-radius: 999px;
   font-size: .78rem; font-weight: 700; color: var(--azul-texto); border: 1px solid var(--linha-forte); }

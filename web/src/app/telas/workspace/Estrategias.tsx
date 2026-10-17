@@ -9,7 +9,9 @@ import { Link } from "react-router";
 import { conteudoDoApp } from "../../../conteudo";
 import { linkDoApp } from "../../../site/textos";
 import type { EstrategiaAcompanhadaV1, PulseV1 } from "../../tipos";
+import { Carregando } from "../../Carregando";
 import { usarPedido } from "../../usarPedido";
+import { Vazio } from "../../Vazio";
 import { ErroDaTela } from "../ErroDaTela";
 
 const ROTA_DO_PULSE = "/v1/pulse";
@@ -89,12 +91,7 @@ function Conteudo({ dados }: { dados: PulseV1 }) {
     <>
       <p className="apagado">{dados.janela.texto}</p>
       {dados.estrategias.length === 0 ? (
-        <p>
-          {dados.sem_estrategias}{" "}
-          <Link className="botao pequeno" to="/backtest">
-            Rodar um backtest
-          </Link>
-        </p>
+        <Vazio frase={dados.sem_estrategias} acao={{ texto: "Rodar um backtest", para: "/backtest" }} />
       ) : (
         <ul className="links-da-conta lista-de-simulacoes" aria-label="Estratégias">
           {dados.estrategias.map((e) => (
@@ -128,9 +125,7 @@ export function EstrategiasAcompanhadas() {
     <section className="cartao-do-workspace" aria-labelledby="titulo-das-estrategias">
       <h2 id="titulo-das-estrategias">Estratégias acompanhadas</h2>
       {pedido.estado === "carregando" ? (
-        <p className="apagado" role="status">
-          Conferindo as suas estratégias com os preços de hoje…
-        </p>
+        <Carregando tipo="lista" rotulo="Conferindo as suas estratégias com os preços de hoje…" />
       ) : pedido.estado === "erro" ? (
         <ErroDaTela erro={pedido.erro} />
       ) : (

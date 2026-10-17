@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { Carregando, type FormatoDoEsqueleto } from "../Carregando";
 import {
   Formulario,
   buscaDosValores,
@@ -16,13 +17,14 @@ import { ErroDaTela } from "./ErroDaTela";
 
 interface Propriedades<T> {
   pagina: PaginaDoApp;
-  carregando: string;
+  carregando: string; // o rótulo do esqueleto para o leitor de tela (não aparece na página)
+  esqueleto?: FormatoDoEsqueleto; // o formato do que vem: painel (padrão), gráfico ou lista
   resultado(dados: T): ReactNode;
   // ajuste antes do pedido (ex.: o limite de ativos da comparação), com um aviso opcional
   ajustar?(valores: Record<string, string>): { valores: Record<string, string>; aviso: string | null };
 }
 
-export function TelaDoContrato<T>({ pagina, carregando, resultado, ajustar }: Propriedades<T>) {
+export function TelaDoContrato<T>({ pagina, carregando, esqueleto = "painel", resultado, ajustar }: Propriedades<T>) {
   const [busca, setBusca] = useSearchParams();
   const entradas = pagina.contrato?.entradas ?? [];
   const iniciais = valoresIniciais(entradas, busca);
@@ -48,9 +50,7 @@ export function TelaDoContrato<T>({ pagina, carregando, resultado, ajustar }: Pr
         </p>
       ) : null}
       {pedido.estado === "carregando" ? (
-        <p className="apagado" role="status">
-          {carregando}
-        </p>
+        <Carregando tipo={esqueleto} rotulo={carregando} />
       ) : pedido.estado === "erro" ? (
         <ErroDaTela erro={pedido.erro} />
       ) : (

@@ -86,6 +86,7 @@ export function LinhaDoTempo({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<LinhaDoTempoDoAtivoV1>
       pagina={pagina}
       carregando="Montando a linha do tempo…"
+      esqueleto="lista"
       resultado={(dados) => <Resultado dados={dados} />}
     />
   );
