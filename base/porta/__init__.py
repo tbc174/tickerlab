@@ -221,11 +221,33 @@ class Porta:
         onde, parametros = self._onde(tabela, None, filtros, como_era_em, [*por, valor])
         grupos = ", ".join(_nome(c) for c in por)
         exato = f"TRY_CAST({_nome(valor)} AS DECIMAL(38, 10))"
+        linhas = f"SELECT * FROM {_nome(view)} WHERE {onde}"
+        mais_novas = self._so_a_mais_nova(tabela)
+        if mais_novas:
+            linhas = f"SELECT * FROM ({linhas}) {mais_novas}"
         return self.con.execute(
             f"SELECT {grupos}, sum({exato})::DOUBLE AS {_nome(valor)} "
-            f"FROM {_nome(view)} WHERE {onde} GROUP BY {grupos}",
+            f"FROM ({linhas}) GROUP BY {grupos}",
             parametros,
         ).df()
+
+    def _so_a_mais_nova(self, tabela: str) -> str:
+        """`QUALIFY` que deixa, de cada chave, a linha de `visto_em` mais novo ("" se a tabela não
+        guarda revisões). ANS, Anatel e ANEEL gravam a revisão como linha nova da mesma chave
+        (`base/setoriais/revisoes.py`): somar tudo contaria o mês duas vezes. Vem depois do filtro de
+        `como_era_em`, então a revisão que ainda não era pública no dia não entra."""
+        contrato = self.tabelas[tabela].chaves
+        existentes = self.colunas(tabela)
+        if "visto_em" not in contrato or "visto_em" not in existentes:
+            return ""
+        chaves = [c for c in contrato if c != "visto_em" and c in existentes]
+        if not chaves:
+            return ""
+        particao = ", ".join(_nome(c) for c in chaves)
+        return (
+            f"QUALIFY row_number() OVER (PARTITION BY {particao} "
+            f'ORDER BY "visto_em" DESC) = 1'
+        )
 
     def distintos(
         self, tabela: str, coluna: str, versao: str | None = None
