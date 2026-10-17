@@ -23,8 +23,8 @@ import pandas as pd
 import sqlalchemy as sa
 
 from base import ratings
-from src import acervo, rede
-from src.banco.coletas import com_registro, originais_mais_recentes
+from src import rede
+from src.banco.coletas import com_registro
 from src.banco.conexao import criar_engine, migrar_para
 from src.banco.modelo import coletas
 from src.configuracao import url_do_banco
@@ -67,19 +67,7 @@ baixar = com_registro(ratings.FONTE_DOS_PDFS, _baixar_da_fonte)
 def alvos(conexao: sa.Connection) -> pd.DataFrame:
     """Os documentos com rating de todos os arquivos anuais do IPE guardados, do mais novo ao mais
     velho (o mais recente serve ao monitoramento antes; o resto vem nas rodadas seguintes)."""
-    anuais = [
-        original
-        for original in originais_mais_recentes(conexao, ratings.FONTE_DO_IPE)
-        if "ipe_cia_aberta_" in original.url
-    ]
-    tabelas = [
-        ratings.ler_documentos_do_ipe(conteudo)
-        for o in anuais
-        if (conteudo := acervo.ler_original(o.caminho_do_original))
-    ]
-    if not tabelas:
-        return pd.DataFrame(columns=list(ratings.COLUNAS))
-    documentos = pd.concat(tabelas, ignore_index=True).drop_duplicates("link")
+    documentos, _ = ratings.documentos_guardados(conexao)
     return documentos.sort_values(
         ["publico_em", "protocolo", "versao"], ascending=False
     ).reset_index(drop=True)
