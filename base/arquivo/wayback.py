@@ -42,6 +42,7 @@ from base.arquivo.coleta import (
 from src.banco.coletas import originais_mais_recentes
 from src.banco.conexao import obter_engine
 
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 CDX = "https://web.archive.org/cdx/search/cdx"
 ROBOTS = "https://web.archive.org/robots.txt"
 CAMPOS = "timestamp,original,statuscode,digest"
@@ -78,7 +79,7 @@ def _obter(endereco: str) -> Obter:
         motivo = ""
         for tentativa in range(TENTATIVAS):
             if tentativa:
-                time.sleep(ESPERA_ENTRE_AS_TENTATIVAS_EM_SEGUNDOS * tentativa)
+                esperar(ESPERA_ENTRE_AS_TENTATIVAS_EM_SEGUNDOS * tentativa)
             try:
                 resposta = cliente.ler(endereco)
             except Exception as erro:  # noqa: BLE001 (conexão que cai ou erro 5xx: tenta de novo)

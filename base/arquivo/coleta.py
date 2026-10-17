@@ -41,6 +41,7 @@ from src.banco.conexao import obter_engine
 
 log = logging.getLogger(__name__)
 
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 VERSAO_DO_ARQUIVISTA = "1"
 LIVRE_MINIMO_EM_BYTES = 50 * 1024**3
 USO_MAXIMO_DO_DISCO = 0.70
@@ -348,7 +349,7 @@ def arquivar(
     espera = max(pausa, fonte.pausa_minima) if pausa else 0.0  # pausa 0: testes
     for numero, alvo in enumerate(alvos):
         if numero and espera:
-            time.sleep(espera)
+            esperar(espera)
         temporario = pasta_temporaria / f"{fonte.id}-{numero}.parcial"
         try:
             _arquivar_um(fonte, alvo, cliente, agora, temporario, resultado)

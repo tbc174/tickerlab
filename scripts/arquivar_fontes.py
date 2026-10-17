@@ -36,6 +36,7 @@ from base.arquivo.fontes import FONTES, GRUPOS, POR_ID
 from src import acervo
 
 log = logging.getLogger("arquivar_fontes")
+esperar = time.sleep  # só este módulo espera por aqui: os testes trocam este nome, não o `time.sleep` do processo
 
 # alguns portais bloqueiam por alguns minutos e depois liberam (o firewall do BC, 14/10/2026): uma
 # nova tentativa depois de esperar, nunca um laço
@@ -73,7 +74,7 @@ def _arquivar_com_nova_tentativa(
         log.warning(
             "%s: falhou; nova tentativa em %d s", fonte.id, ESPERA_PARA_TENTAR_DE_NOVO
         )
-        time.sleep(ESPERA_PARA_TENTAR_DE_NOVO)
+        esperar(ESPERA_PARA_TENTAR_DE_NOVO)
         return _uma_rodada(fonte, cliente, temporaria)
     except FreioDeDisco as erro:
         log.error("%s: %s", fonte.id, erro)

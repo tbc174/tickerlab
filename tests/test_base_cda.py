@@ -195,3 +195,163 @@ def test_chaves_do_cda_sem_pl_vem_do_bloco_4():
     esperado = posicoes[["competencia", "cnpj_fundo"]].drop_duplicates()
     assert set(map(tuple, chaves.to_numpy())) >= set(map(tuple, esperado.to_numpy()))
     assert not chaves.duplicated().any()
+
+
+# --- bloco 2 (cotas de fundos que cada fundo tem; relatório da base de crédito, 16/10/2026): quem compra
+# cotas de FIDC. Amostras reais recortadas de 2005, 2022 (layout antigo: `CNPJ_FUNDO_COTA`) e set/2025
+# (CVM 175: `CNPJ_FUNDO_CLASSE_COTA`, `ID_SUBCLASSE`). Inventário de 16/10/2026 no acervo: 64 arquivos, um
+# cabeçalho por arquivo, dois layouts; nomes com aspas sem fechar (2005 tem 54 linhas com aspas)
+ARQUIVOS_DO_BLOCO_2 = ("cda_fi_2005.zip", "cda_fi_2022.zip", "cda_fi_202509.zip")
+CNPJ = r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}"
+
+
+def _cotas(conteudo: bytes, tamanho: int = cda.LINHAS_POR_PEDACO) -> pd.DataFrame:
+    partes = list(cda.ler_cotas_de_fundos(conteudo, tamanho))
+    return (
+        pd.concat(partes, ignore_index=True)
+        if partes
+        else pd.DataFrame(columns=list(cda.COLUNAS_DAS_COTAS))
+    )
+
+
+def _bruto_do_bloco_2(nome: str) -> pd.DataFrame:
+    with zipfile.ZipFile(PASTA / nome) as arquivo:
+        bloco = next(n for n in arquivo.namelist() if "_BLC_2_" in n)
+        texto = arquivo.read(bloco)
+    return pd.read_csv(
+        io.BytesIO(texto), sep=";", encoding="latin-1", dtype=str, quoting=3
+    )
+
+
+@pytest.mark.parametrize("nome", ARQUIVOS_DO_BLOCO_2)
+def test_bloco_2_le_as_cotas_de_cada_layout(nome):
+    cotas = _cotas((PASTA / nome).read_bytes())
+    bruto = _bruto_do_bloco_2(nome)
+    assert list(cotas.columns) == list(cda.COLUNAS_DAS_COTAS)
+    assert len(cotas) == len(bruto)  # nenhuma linha perdida nem engolida pelas aspas
+    assert cotas["cnpj_fundo"].str.fullmatch(CNPJ).all()
+    assert cotas["cnpj_fundo_investido"].str.fullmatch(CNPJ).all()
+    investido = next(
+        c for c in ("CNPJ_FUNDO_CLASSE_COTA", "CNPJ_FUNDO_COTA") if c in bruto
+    )
+    assert (
+        cotas["cnpj_fundo_investido"].tolist() == bruto[investido].str.strip().tolist()
+    )
+    assert cotas["valor"].sum() == pytest.approx(
+        pd.to_numeric(bruto["VL_MERC_POS_FINAL"]).sum()
+    )
+
+
+def test_bloco_2_traz_a_cota_de_fidc_com_valor_e_emissor_ligado():
+    cotas = _cotas((PASTA / "cda_fi_2022.zip").read_bytes())
+    linha = cotas[
+        (cotas["cnpj_fundo"] == "00.322.699/0001-06")
+        & (cotas["cnpj_fundo_investido"] == "30.365.876/0001-00")
+    ].iloc[0]
+    assert linha["competencia"] == pd.Timestamp("2022-11-30")
+    assert linha["tipo_do_ativo"] == "FIDC"
+    assert linha["valor"] == pytest.approx(17_976_349.58)
+    assert linha["quantidade"] == pytest.approx(17_536)
+    assert linha["emissor_ligado"] == True
+    dezembro = cotas[
+        (cotas["cnpj_fundo"] == "00.322.699/0001-06")
+        & (cotas["competencia"] == pd.Timestamp("2022-12-31"))
+    ]
+    assert (dezembro["emissor_ligado"] == False).all()
+    # "Cotas de fundos" sem a coluna preenchida: nem sim nem não
+    assert (
+        cotas.loc[cotas["tipo_do_ativo"] == "Cotas de fundos", "emissor_ligado"]
+        .isna()
+        .all()
+    )
+
+
+def test_bloco_2_guarda_o_fim_do_sigilo_e_o_prazo_de_divulgacao():
+    cotas = _cotas((PASTA / "cda_fi_2022.zip").read_bytes())
+    sigilo = cotas[cotas["cnpj_fundo"] == "00.524.617/0001-06"]
+    assert (sigilo["confidencial_ate"] == pd.Timestamp("2023-02-28")).all()
+    publica = cda.disponivel_em(cotas)
+    assert (publica >= cotas["competencia"] + pd.Timedelta(days=90)).all()
+
+
+def test_bloco_2_le_nome_com_aspas_sem_fechar_sem_engolir_a_linha_seguinte():
+    """O CSV da CVM tem aspas no meio dos nomes (`CURTO PRAZO "2"`) e às vezes sem fechar: lido sem
+    tratar aspas (`quoting=3`), cada linha do arquivo é uma posição."""
+    cotas = _cotas((PASTA / "cda_fi_2005.zip").read_bytes())
+    basa = cotas[
+        cotas["cnpj_fundo"] == "07.143.386/0001-30"
+    ]  # FUNDO BASA [...] CURTO PRAZO "2"
+    assert basa["cnpj_fundo_investido"].tolist() == [
+        "01.671.480/0001-85",
+        "04.877.280/0001-71",
+    ]
+    aberta = (
+        'FI;11.111.111/0001-11;"FUNDO SEM FECHAR AS ASPAS;2025-09-30;Cotas de Fundos;FIDC;N;;;;;;'
+        "10.000000;1000.00;;;22.222.222/0001-22;;FIDC DE TESTE"
+    )
+    seguinte = (
+        "FI;33.333.333/0001-33;OUTRO FUNDO;2025-09-30;Cotas de Fundos;FIDC;N;;;;;;"
+        "5.000000;500.00;;;22.222.222/0001-22;ABCDE1234567890;FIDC DE TESTE"
+    )
+    conteudo = _bloco_2_com_linhas_a_mais("cda_fi_202509.zip", aberta, seguinte)
+    lidas = _cotas(conteudo)
+    novas = lidas[lidas["cnpj_fundo_investido"] == "22.222.222/0001-22"]
+    assert novas["cnpj_fundo"].tolist() == ["11.111.111/0001-11", "33.333.333/0001-33"]
+    assert novas["valor"].tolist() == [1000.0, 500.0]
+    assert novas["id_subclasse"].tolist()[1] == "ABCDE1234567890"
+
+
+def _bloco_2_com_linhas_a_mais(nome: str, *linhas: str) -> bytes:
+    with zipfile.ZipFile(PASTA / nome) as original:
+        blocos = {n: original.read(n) for n in original.namelist()}
+    bloco = next(n for n in blocos if "_BLC_2_" in n)
+    texto = (
+        blocos[bloco].decode("latin-1").rstrip("\r\n") + "\r\n" + "\r\n".join(linhas)
+    )
+    blocos[bloco] = (texto + "\r\n").encode("latin-1")
+    saida = io.BytesIO()
+    with zipfile.ZipFile(saida, "w") as z:
+        for n, conteudo in blocos.items():
+            z.writestr(n, conteudo)
+    return saida.getvalue()
+
+
+def test_bloco_2_junta_as_colunas_de_nome_antigo_e_novo():
+    """Lição do #333 (informe de FIDC): com as duas colunas no mesmo arquivo, vale a primeira não
+    vazia de cada linha, nunca só a primeira coluna. Cabeçalho repetido no meio do arquivo sai."""
+    cabecalho = (
+        "TP_FUNDO;TP_FUNDO_CLASSE;CNPJ_FUNDO;CNPJ_FUNDO_CLASSE;DENOM_SOCIAL;DT_COMPTC;TP_APLIC;"
+        "TP_ATIVO;EMISSOR_LIGADO;QT_POS_FINAL;VL_MERC_POS_FINAL;DT_CONFID_APLIC;CNPJ_FUNDO_COTA;"
+        "CNPJ_FUNDO_CLASSE_COTA;NM_FUNDO_COTA;NM_FUNDO_CLASSE_SUBCLASSE_COTA"
+    )
+    conteudo = _zip(
+        cda_fi_BLC_2_202301=cabecalho + "\n"
+        "FI;;11.111.111/0001-11;;ANTIGO;2023-01-31;Cotas de Fundos;FIDC;N;1;100.00;;"
+        "22.222.222/0001-22;;FIDC A;\n" + cabecalho + "\n"
+        ";CLASSES - FIF;;33.333.333/0001-33;NOVO;2023-01-31;Cotas de Fundos;FIDC;S;2;200.00;;"
+        ";44.444.444/0001-44;;FIDC B\n"
+    )
+    cotas = _cotas(conteudo)
+    assert cotas["cnpj_fundo"].tolist() == ["11.111.111/0001-11", "33.333.333/0001-33"]
+    assert cotas["cnpj_fundo_investido"].tolist() == [
+        "22.222.222/0001-22",
+        "44.444.444/0001-44",
+    ]
+    assert cotas["tipo_do_fundo"].tolist() == ["FI", "CLASSES - FIF"]
+
+
+def test_bloco_2_em_pedacos_da_o_mesmo_que_inteiro():
+    conteudo = (PASTA / "cda_fi_2022.zip").read_bytes()
+    pd.testing.assert_frame_equal(_cotas(conteudo, 5), _cotas(conteudo, 10**6))
+
+
+def test_arquivo_sem_o_bloco_2_nao_traz_nada():
+    assert _cotas((PASTA / "cda_fi_2014.zip").read_bytes()).empty
+
+
+def test_bloco_2_guarda_o_texto_no_formato_compacto():
+    """O bloco 2 de 2022 tem 2,2 milhões de linhas: com texto em objeto Python a tabela passava de 1,5 GB
+    no servidor de casa (8 GB para tudo); no formato de texto do pandas fica com menos da metade."""
+    cotas = _cotas((PASTA / "cda_fi_2022.zip").read_bytes())
+    textos = ["cnpj_fundo", "tipo_do_fundo", "tipo_do_ativo", "cnpj_fundo_investido"]
+    assert all(cotas[c].dtype == "str" for c in textos)
