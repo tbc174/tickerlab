@@ -626,6 +626,9 @@ def vazamento(
     rotulos = ler_rotulos(pasta)
     distintas: Counter[str] = Counter()
     comuns: Counter[str] = Counter()
+    com_marcador = Counter(
+        {m: 0 for m in ri.MARCADORES}
+    )  # v3: documentos com cada marcador
     com_distinta, com_comum = [], []
     for i in (i for i in ids if i in por_id):
         evento = por_id[i]
@@ -636,6 +639,7 @@ def vazamento(
         ficam = ri.palavras_comuns_que_ficam(lido, nome)
         distintas.update(achadas)
         comuns.update(ficam)
+        com_marcador.update(ri.marcadores(lido).keys())
         if achadas:
             com_distinta.append(i)
         if ficam:
@@ -647,6 +651,7 @@ def vazamento(
         "palavras_distintas": dict(distintas.most_common(30)),
         "palavras_comuns": dict(comuns.most_common(30)),
         "eventos_com_palavra_distinta": com_distinta[:100],
+        "documentos_com_marcador": dict(com_marcador),
         "versao_do_prompt": ri.VERSAO_DO_PROMPT,
         "medido_em": datetime.now(FUSO).isoformat(timespec="seconds"),
     }
@@ -1000,6 +1005,8 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     eventos = ler_eventos(opcoes.eventos)
+    # v3: as outras empresas do cadastro inteiro viram [OUTRA EMPRESA], antes de qualquer filtro
+    ri.definir_outras_empresas(e.get("empresa") or "" for e in eventos)
     opcoes.pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "comparar":
         veredito = comparar(opcoes.pasta, eventos)
@@ -1025,6 +1032,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Com palavra comum do nome (fica de propósito): {r['com_palavra_comum']}",
             r["palavras_comuns"],
         )
+        print("Documentos com cada marcador (v3):", r["documentos_com_marcador"])
         return 0
     modelo = opcoes.modelo
     if (

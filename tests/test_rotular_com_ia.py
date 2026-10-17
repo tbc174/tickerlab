@@ -833,3 +833,32 @@ def test_main_vazamento_nao_chama_a_api(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(ri, "cliente", lambda: pytest.fail("vazamento não usa a API"))
     assert rc.main(["vazamento", "--eventos", str(caminho), "--pasta", str(pasta)]) == 0
     assert "palavra que distingue a empresa: 0" in capsys.readouterr().out
+
+
+# --- vazamento (v3, 17/10/2026): quantos documentos ganharam cada marcador do conteúdo ---
+
+
+def test_vazamento_conta_os_marcadores_do_conteudo(tmp_path, monkeypatch):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    (pasta / "textos" / "A.txt").write_text(
+        "São Paulo, 1 de março de 2025. A Cosan e a Cielo S.A. assinaram.",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ri, "OUTRAS_EMPRESAS", ())
+    ri.definir_outras_empresas(e["empresa"] for e in eventos)
+    resultado = rc.vazamento(eventos, pasta, ["A", "B"])
+    assert resultado["documentos_com_marcador"][ri.OUTRA_EMPRESA] == 1
+    assert resultado["documentos_com_marcador"][ri.LOCAL] == 1
+    assert resultado["documentos_com_marcador"][ri.EMPRESA] == 2
+
+
+def test_main_define_as_outras_empresas_pelo_cadastro_inteiro(
+    tmp_path, monkeypatch, capsys
+):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    caminho = tmp_path / "eventos.json"
+    caminho.write_text(json.dumps({"eventos": eventos}), encoding="utf-8")
+    monkeypatch.setattr(ri, "OUTRAS_EMPRESAS", ())
+    assert rc.main(["vazamento", "--eventos", str(caminho), "--pasta", str(pasta)]) == 0
+    assert set(ri.OUTRAS_EMPRESAS) == {e["empresa"] for e in eventos}
+    assert "[OUTRA EMPRESA]" in capsys.readouterr().out
