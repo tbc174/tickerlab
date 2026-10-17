@@ -119,3 +119,29 @@ def test_vereditos_estranhos_no_banco_ficam_de_fora(conexao, ana):
 def test_vereditos_de_uma_conta_nao_aparecem_na_outra(conexao, ana, bia):
     repo.marcar_visita(conexao, ana.id, AGORA, {"sim-ana": "passou"})
     assert repo.vereditos_vistos(conexao, bia.id) == {}
+
+
+# --- mudanças de veredito vistas (Workspace, PR 2: o selo que o F5 do app novo não apaga) -----
+
+
+def test_mudancas_guardadas_junto_com_os_vereditos_sem_atrapalhar_os_vistos(
+    conexao, ana
+):
+    """As mudanças vão na mesma coluna, numa chave à parte: a leitura dos vistos (a do
+    Streamlit) continua igual, e quem marca sem mudanças as esquece."""
+    mudancas = {"sim-1": {"antes": "passou", "agora": "não passou", "em": "x"}}
+    repo.marcar_visita(conexao, ana.id, AGORA, {"sim-1": "não passou"}, mudancas)
+    assert repo.vereditos_vistos(conexao, ana.id) == {"sim-1": "não passou"}
+    assert repo.mudancas_vistas(conexao, ana.id) == mudancas
+    exportado = repo.dados_para_exportar(conexao, ana.id)
+    assert exportado is not None and exportado["vereditos"]["sim-1"] == "não passou"
+    repo.marcar_visita(conexao, ana.id, AGORA + timedelta(hours=1), {"sim-1": "passou"})
+    assert repo.mudancas_vistas(conexao, ana.id) == {}
+
+
+def test_sem_visita_ou_com_lixo_nao_ha_mudancas(conexao, ana, bia):
+    assert repo.mudancas_vistas(conexao, ana.id) == {}
+    repo.marcar_visita(conexao, ana.id, AGORA, {"_mudancas": "texto"})
+    assert repo.mudancas_vistas(conexao, ana.id) == {}
+    repo.marcar_visita(conexao, bia.id, AGORA, {}, {"sim": {"antes": "passou"}})
+    assert repo.mudancas_vistas(conexao, ana.id) == {}

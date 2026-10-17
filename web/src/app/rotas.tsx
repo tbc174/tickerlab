@@ -1,6 +1,7 @@
 // As telas do app novo: as páginas que já têm contrato na API (src/paginas.py), no mesmo endereço do
 // app atual (/visao-geral vira /novo/visao-geral). Página sem tela nova ainda leva ao app atual.
 import type { ReactNode } from "react";
+import { Navigate } from "react-router";
 import { type PaginaDoApp, paginasDoApp } from "../conteudo";
 import { Backtest } from "./telas/Backtest";
 import { Comparar } from "./telas/Comparar";
@@ -28,6 +29,8 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   planos: (pagina) => <Planos pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
+  // o Pulse é o Workspace: o Início do app novo
+  pulse: () => <Navigate to="/" replace />,
 };
 
 /** A página já tem tela em React? (Sem tela, leva à mesma página no app atual.) */

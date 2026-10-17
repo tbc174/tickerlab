@@ -11,7 +11,7 @@ import logging
 import pandas as pd
 import streamlit as st
 
-from src import ficha, pulse, research
+from src import pulse, research
 from src.banco import pulse as repo_pulse
 from src.banco import teses as repo_teses
 from src.banco.conexao import obter_engine, tabela_inexistente
@@ -21,10 +21,8 @@ from src.banco.dados_do_usuario import (
     listar_watchlists,
 )
 from src.banco.eventos import eventos_dos_tickers
-from src.cdi import CDIIndisponivelError
 from src.dados import DadosIndisponiveisError
 from src.ficha import Resultado
-from src.simulacoes import restaurar_estado
 from telas.comum import (
     cabecalho_da_pagina,
     carregar_dados_de,
@@ -173,26 +171,11 @@ def _mostrar_variacoes(ativos, janela):
 
 
 def _veredito_de_hoje(estrategia):
-    """O veredito da ficha com os dados de hoje; None se não deu para conferir."""
-    campos = restaurar_estado(estrategia.retrato, "backtest")
-    if "ticker" not in campos or "periodo" not in campos:
-        return None
-    try:
-        dados = carregar_dados_de(
-            campos["ticker"], campos["periodo"], campos.get("em_reais", False)
-        )
-        if dados.attrs.get("cambio_falhou"):
-            return None  # em dólar, o veredito mudaria pelo câmbio que faltou
-        cdi = None
-        if pulse.precisa_do_cdi(estrategia.pedido):
-            cdi = obter_cdi(dados.index[0], dados.index[-1])
-        pedido = ficha.pedido_guardado(estrategia.pedido, dados, cdi)
-        return calcular_ficha(pedido).veredito.resultado.value
-    except (DadosIndisponiveisError, CDIIndisponivelError, ValueError, KeyError):
-        return None
-    except Exception:
-        log.exception("Falha ao conferir a ficha de uma estratégia salva no Pulse")
-        return None
+    """O veredito da ficha com os dados de hoje; None se não deu para conferir. O cálculo é o
+    mesmo da API (src/pulse.py); aqui com os caches do app."""
+    return pulse.veredito_de_hoje(
+        estrategia, carregar_dados_de, obter_cdi, montar=calcular_ficha
+    )
 
 
 def _mostrar_estrategias(simulacoes, vistos, teses):

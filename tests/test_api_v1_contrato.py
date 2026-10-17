@@ -37,6 +37,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/simulacoes",
         "/v1/salvar-simulacao",
         "/v1/apagar-simulacao",
+        "/v1/pulse",
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",

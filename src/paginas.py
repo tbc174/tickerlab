@@ -369,8 +369,21 @@ PAGINAS = (
         GRUPO_RESEARCH,
         ":material/monitor_heart:",
         "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM "
-        "e na SEC e a variação do preço.",
+        "e na SEC, a variação do preço e o veredito das suas estratégias salvas.",
         precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/pulse",
+            (
+                Entrada(
+                    "desde",
+                    "texto",
+                    "O início da janela que a aba já mostrava (data e hora com fuso), para o "
+                    "F5 não encolher a janela; vale até 30 dias atrás.",
+                ),
+            ),
+            "PulseV1",
+        ),
     ),
     Pagina(
         "diario_de_teses",

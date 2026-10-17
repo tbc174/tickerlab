@@ -13,6 +13,7 @@ import type {
   JurosEInflacaoV1,
   LinhaDoTempoDoAtivoV1,
   MinhasSimulacoesV1,
+  PulseV1,
   SimulacaoV1,
   VisaoGeralV1,
 } from "../../src/app/tipos";
@@ -222,6 +223,33 @@ describe("tipos das respostas", () => {
     const minhas: MinhasSimulacoesV1 = { simulacoes: [simulacao], usadas: 1, limite: 5, uso: "1 de 5", sem_simulacoes: "" };
     expect(Object.keys(minhas).sort()).toEqual(campos("MinhasSimulacoesV1"));
     expect(Object.keys(simulacao).sort()).toEqual(campos("SimulacaoV1"));
+  });
+
+  it("Pulse (estratégias acompanhadas) bate com o OpenAPI", () => {
+    const pulse: PulseV1 = {
+      janela: { inicio: "2026-10-02T23:00:00Z", fim: "2026-10-09T23:00:00Z", primeira_vez: true, texto: "" },
+      estrategias: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          nome: "Médias 10/40",
+          ticker: "PETR4.SA",
+          antes: "passou",
+          agora: "não passou",
+          mudou: true,
+          conferido_em: "2026-10-09T23:00:00Z",
+          tese_ligada: null,
+          endereco: "/backtest?ticker=PETR4.SA",
+        },
+      ],
+      limites: { sem_ficha: 0, alem_do_maximo: 0, nao_conferidas: 0 },
+      avisos: [],
+      sem_estrategias: "",
+      notas: [],
+    };
+    expect(Object.keys(pulse).sort()).toEqual(campos("PulseV1"));
+    expect(Object.keys(pulse.janela).sort()).toEqual(campos("JanelaV1"));
+    expect(Object.keys(pulse.estrategias[0]).sort()).toEqual(campos("EstrategiaAcompanhadaV1"));
+    expect(Object.keys(pulse.limites).sort()).toEqual(campos("LimitesDoPulseV1"));
   });
 
   it("Ficha do backtest (exemplo do Python) bate com o OpenAPI", () => {

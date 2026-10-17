@@ -118,6 +118,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "planos",
         "meus_dados",
         "simulacoes",
+        "pulse",
     }
 
 

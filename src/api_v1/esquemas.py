@@ -550,3 +550,47 @@ def de_simulacao(simulacao: Simulacao) -> SimulacaoV1:
         veredito=veredito if veredito in VEREDITOS else None,
         endereco=endereco_no_app_novo(simulacao.tipo, simulacao.parametros),
     )
+
+
+# --- Pulse: estratégias acompanhadas (ADR 0062, Workspace, PR 2) ----------------------------
+
+
+class JanelaV1(BaseModel):
+    """De quando a quando o Pulse olha: da última visita (na 1ª, 7 dias atrás) até agora."""
+
+    inicio: datetime
+    fim: datetime
+    primeira_vez: bool
+    texto: str  # "Desde a sua última visita, em 16/10/2026 às 09h30."
+
+
+class EstrategiaAcompanhadaV1(BaseModel):
+    """Um backtest salvo com a ficha "Foi sorte?" e o veredito dela refeito com os preços de
+    hoje."""
+
+    id: str
+    nome: str
+    ticker: str | None
+    antes: str | None  # o veredito visto na última visita (ou o da hora de salvar)
+    agora: str | None  # null: não deu para conferir agora
+    mudou: bool
+    conferido_em: datetime | None  # a visita em que o veredito de agora foi visto
+    tese_ligada: str | None  # texto da pessoa: mostrar como texto puro
+    endereco: str | None  # o backtest no app novo; null: só reabre no app atual
+
+
+class LimitesDoPulseV1(BaseModel):
+    sem_ficha: int  # backtests salvos antes de o Pulse guardar a ficha
+    alem_do_maximo: int  # além das 10 conferidas a cada visita
+    nao_conferidas: int  # das conferidas, as que não deu para conferir agora
+
+
+class PulseV1(BaseModel):
+    janela: JanelaV1
+    estrategias: list[
+        EstrategiaAcompanhadaV1
+    ]  # as que mudaram, as iguais, as não conferidas
+    limites: LimitesDoPulseV1
+    avisos: list[str]  # o que ficou de fora e por quê, como o app atual mostra
+    sem_estrategias: str  # a frase de quando não há backtest salvo
+    notas: list[str]  # os limites do Pulse que valem para esta parte
