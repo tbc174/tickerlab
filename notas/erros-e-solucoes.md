@@ -572,3 +572,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** no comando `cat > x.py; python - <<'EOF' ...`, o `cat` sem entrada própria leu o heredoc que era do Python e o gravou no arquivo; o Python não recebeu nada.
 - **Solução:** editar arquivo com a ferramenta de edição (ou um único `python - <<'EOF'` sem nada antes). Regra: um heredoc por comando, e só no comando que deve lê-lo.
 - **Data:** 17/10/2026
+
+## Variável local com o nome de um módulo importado (`'list' object has no attribute ...`)
+- **Sintoma:** a 1ª montagem das colunas do modelo 8 no servidor (17/10, depois do #384) caiu com `AttributeError: 'list' object has no attribute 'contas_do_balanco'`, embora todos os testes passassem.
+- **Causa:** o montador faz `from base.modelos.atraso import colunas` (o módulo). Dentro de `_demonstracoes`, uma lista de campos também se chamava `colunas`, e dentro da função esse nome passou a ser a lista; `colunas.contas_do_balanco(...)` procurou a função na lista. A troca automática de nomes (`contas_do_balanco` → `colunas.contas_do_balanco`) ao mover o código criou o choque. Os testes não pegaram porque nenhum gravava demonstrações na pasta, então o laço nunca rodava.
+- **Solução:** a lista virou `campos`, e o teste da montagem passou a gravar demonstrações (com o código velho, ele falha com o mesmo erro). Regras: não dar a uma variável o nome de um módulo importado; o teste de montagem precisa ter pelo menos uma linha de cada fonte; e, depois de mover código com troca automática de nomes, ensaiar contra a base real antes do merge.
+- **Data:** 17/10/2026
