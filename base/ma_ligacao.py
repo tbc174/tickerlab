@@ -21,6 +21,9 @@ alvos que hoje são ME/EPP eram outra empresa com o mesmo nome curto):
 - regra 5: na **alvo**, razão social de empresa estrangeira registrada no Brasil (AG, BV, LLC, LTD,
   GmbH...) vira `holding_estrangeira`, sem CNPJ: é a dona de fora, não a empresa brasileira vendida. Na
   compradora (One Equity Partners, Sumitomo...) a dona de fora é a própria parte e liga;
+- regra 6: nome fantasia de **entidade sem fins lucrativos** (grupo 3 da Receita: sindicato, associação,
+  fundação) fica `na_duvida` em qualquer papel ("Urgo", a compradora francesa, casou com o nome fantasia
+  de um sindicato; ensaio do #356). Pela razão social liga: fundação de previdência compra e vende;
 - regra 2: CNPJ cuja matriz abriu **depois** de o post ficar público (a primeira cópia no Wayback) nunca é
   a parte: `aberto_depois_do_negocio`, sem CNPJ.
 O porte sozinho não decide (é declarado pela empresa e fica velho: Poupafarma é EPP); só junto da regra 1.
@@ -187,6 +190,7 @@ COLUNAS_DA_RECEITA = (
     "razao_tem_o_nome",  # a razão social contém o nome do post (regra 4)
     "estrangeira",  # a razão social termina com forma jurídica de fora (regra 5)
     "pequena",  # porte ME ou EPP na Receita (regra 1)
+    "sem_fins_lucrativos",  # natureza do grupo 3 na Receita (regra 6)
 )
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 1_000_000
@@ -194,6 +198,9 @@ RAZAO, NATUREZA, PORTE = 1, 2, 5  # colunas dos `Empresas*.zip`
 PEQUENA = ("01", "03")  # porte da Receita: 01 microempresa, 03 empresa de pequeno porte
 FANTASIA, MATRIZ_OU_FILIAL, INICIO = 4, 3, 10  # colunas dos `Estabelecimentos*.zip`
 MATRIZ = "1"
+SEM_FINS_LUCRATIVOS = (
+    "3"  # grupo 3 da tabela de naturezas: sindicato, associação, fundação...
+)
 FORMATO_DA_DATA = "%Y%m%d"
 # a forma jurídica de fora no fim da razão social ("FOXBIT LLC", "DOCK LTD"; "LTDA" é brasileira)
 ESTRANGEIRA = r"\b(?:AG|B\.? ?V|LLC|L\.L\.C|LTD|LIMITED|GMBH|INC|PLC|N\.? ?V|CORP|CORPORATION)\.?\s*$"
@@ -282,7 +289,8 @@ def ler_receita(
     """As raízes cujo nome (razão social ou nome fantasia) normalizado é o nome de uma parte.
 
     `pessoa`: empresário individual, natureza do grupo 4, MEI ou natureza que a Receita não deu (o
-    conservador, como a rede). `abertura`, `razao_tem_o_nome` e `estrangeira` servem às regras contra
+    conservador, como a rede). `abertura`, `razao_tem_o_nome`, `estrangeira`, `pequena` e
+    `sem_fins_lucrativos` servem às regras contra
     homônimos. Lê os arquivos por partes; a razão social só é olhada aqui e nunca sai do leitor: sai a
     raiz, o nome da parte e os indicadores.
     """
@@ -310,6 +318,7 @@ def ler_receita(
         razao_tem_o_nome=_tem_o_nome(razao_social, achados["nome_normalizado"]),
         estrangeira=estrangeira.astype(bool),
         pequena=achados["raiz"].map(das_empresas[PORTE]).isin(PEQUENA),
+        sem_fins_lucrativos=natureza.fillna("").str.startswith(SEM_FINS_LUCRATIVOS),
     )[list(COLUNAS_DA_RECEITA)]
 
 
@@ -345,6 +354,7 @@ def _candidatos(
         razao_tem_o_nome=True,
         estrangeira=False,
         pequena=False,
+        sem_fins_lucrativos=False,
     )
     colunas = [
         "nome_normalizado",
@@ -358,6 +368,7 @@ def _candidatos(
         "razao_tem_o_nome",
         "estrangeira",
         "pequena",
+        "sem_fins_lucrativos",
     ]
     juntos = pd.concat(
         [da_rede[colunas], da_receita[colunas]], ignore_index=True
@@ -377,6 +388,7 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
         razao_tem_o_nome=("razao_tem_o_nome", "all"),
         estrangeira=("estrangeira", "any"),
         pequena=("pequena", "any"),
+        sem_fins_lucrativos=("sem_fins_lucrativos", "any"),
     )
     vazia: dict[str, object] = dict.fromkeys(
         ("id_entidade", "cnpj_raiz", "lei", "abertura", "estrangeira")
@@ -388,7 +400,8 @@ def _decidir(nome: str, grupo: pd.DataFrame) -> dict[str, object]:
         return {**vazia, "ligacao_por": SEM_LIGACAO, "candidatos": 1}
     so_da_receita = not unica["da_rede"]
     palavra_so_de_pequena = " " not in nome and unica["pequena"]
-    if so_da_receita and palavra_so_de_pequena:  # regra 1
+    fantasia_sem_fins = not len(exato) and unica["sem_fins_lucrativos"]
+    if so_da_receita and (palavra_so_de_pequena or fantasia_sem_fins):  # regras 1 e 6
         return {**vazia, "ligacao_por": NA_DUVIDA, "candidatos": 1}
     fantasia_sem_o_nome = (
         so_da_receita and not len(exato) and not unica["razao_tem_o_nome"]
