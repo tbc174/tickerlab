@@ -305,7 +305,11 @@ def insolvencia(ctx: Contexto) -> Secao:
             ]
         )
     empresas = int(t["cnpj"].nunique())
-    rj = por.get("recuperacao_judicial", pd.Series(dtype=int))
+    rj = (
+        por["recuperacao_judicial"]
+        if "recuperacao_judicial" in por
+        else pd.Series(dtype=int)
+    )
     ano_pico = int(rj.idxmax()) if len(rj) and rj.max() > 0 else None
     return Secao(
         nome="insolvencia",
