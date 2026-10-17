@@ -4530,11 +4530,128 @@
       "frequencia": "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)",
       "atraso": "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras fontes de governo (o conservador; a história começa em 14/10/2026)"
     },
+    "ratings": {
+      "tabela": "ratings",
+      "modulo": "credito_e_fidc",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "codigo_cvm": {
+          "descricao": "Código da companhia na CVM",
+          "unidade": "texto"
+        },
+        "agencia": {
+          "descricao": "fitch, sp, moodys, austin, liberum, sr_rating, lf_rating ou am_best (vazia se não extraído)",
+          "unidade": "texto"
+        },
+        "escala": {
+          "descricao": "nacional ou global",
+          "unidade": "texto"
+        },
+        "nota": {
+          "descricao": "Nota sem sufixos (AA, RD, Aa1): compara documentos da mesma agência",
+          "unidade": "texto"
+        },
+        "nivel": {
+          "descricao": "Posição da nota na escala (1 = AAA ou Aaa): compara agências",
+          "unidade": "número inteiro"
+        },
+        "nota_original": {
+          "descricao": "A nota como está no texto (AA(bra), brAAA, Aa1.br)",
+          "unidade": "texto"
+        },
+        "perspectiva": {
+          "descricao": "estavel, positiva, negativa, em_desenvolvimento, em_observacao_positiva ou em_observacao_negativa",
+          "unidade": "texto"
+        },
+        "acao": {
+          "descricao": "afirmacao, elevacao, rebaixamento, atribuicao, retirada...",
+          "unidade": "texto"
+        },
+        "data_acao": {
+          "descricao": "Data da ação da agência lida do texto (vazia se não está ou se vem depois da entrega)",
+          "unidade": "data (dia)"
+        },
+        "outras_notas": {
+          "descricao": "As outras notas citadas no documento, separadas por `; `",
+          "unidade": "texto"
+        },
+        "publico_em": {
+          "descricao": "Entrega da versão do documento à CVM: quando o rating ficou público para a base",
+          "unidade": "data (dia)"
+        },
+        "protocolo": {
+          "descricao": "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+          "unidade": "texto"
+        },
+        "versao": {
+          "descricao": "Versão do documento (reapresentação)",
+          "unidade": "número inteiro"
+        },
+        "link": {
+          "descricao": "Link do documento no sistema da CVM",
+          "unidade": "texto"
+        },
+        "evidencia": {
+          "descricao": "Por que o documento entrou: relatorio_de_agencia (tipo do IPE) ou assunto",
+          "unidade": "texto"
+        },
+        "situacao_extracao": {
+          "descricao": "extraido, nao_extraido ou nao_e_pdf",
+          "unidade": "texto"
+        },
+        "documentos": {
+          "descricao": "Protocolos de todos os documentos do mesmo evento, pela data de entrega, separados por `; ` (pode citar entregas posteriores a `publico_em`)",
+          "unidade": "texto"
+        },
+        "origem_sha256": {
+          "descricao": "SHA-256 do arquivo original no acervo",
+          "unidade": "texto"
+        },
+        "origem_coletada_em": {
+          "descricao": "Quando o arquivista baixou esse original",
+          "unidade": "data e hora (UTC)"
+        },
+        "montado_em": {
+          "descricao": "Quando a tabela foi montada",
+          "unidade": "data e hora (UTC)"
+        },
+        "versao_do_codigo": {
+          "descricao": "Commit do código que montou a tabela",
+          "unidade": "texto"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "protocolo",
+        "versao"
+      ],
+      "datas": {
+        "aconteceu_em": "data_acao",
+        "publico_em": "publico_em",
+        "coletado_em": "origem_coletada_em"
+      },
+      "historico_desde": "2003-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Diária no servidor de casa (`scripts/montar_ratings.py`), depois das rodadas do coletor, que baixa os documentos de hora em hora, do mais novo ao mais velho",
+      "atraso": "O rating vale a partir de `publico_em` (entrega da versão do documento à CVM), nunca da data do relatório da agência; `data_acao` depois da entrega fica vazia"
+    },
     "auditores": {
       "tabela": "auditores",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -4613,7 +4730,8 @@
         "cnpj",
         "referencia",
         "versao",
-        "auditor_id"
+        "auditor_id",
+        "inicio"
       ],
       "datas": {
         "aconteceu_em": "inicio",

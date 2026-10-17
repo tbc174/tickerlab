@@ -1799,6 +1799,49 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 | `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
 | `versao_do_codigo` | Commit do código que montou a tabela | texto |
 
+## `ratings`
+
+Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados, fatos relevantes e editais que falam do rating. Uma linha por documento baixado e lido, com a situação da extração (`extraido`; `nao_extraido`: PDF escaneado ou sem nota; `nao_e_pdf`: Word, ZIP ou PDF quebrado). O mesmo evento (companhia, agência, escala, nota e data da ação) contado pelo relatório e pelo comunicado vira uma linha só, com a primeira entrega. v1: o rating principal de cada documento; notas por emissão, uma a uma, ficam para depois. Conferência à mão: 35 de 36 certas (16/10/2026)
+
+- **Fonte:** CVM: documentos do IPE no sistema de documentos (RAD), fonte `cvm-ipe-rating`, e a lista dos arquivos anuais do IPE (`base/ratings.py`)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária no servidor de casa (`scripts/montar_ratings.py`), depois das rodadas do coletor, que baixa os documentos de hora em hora, do mais novo ao mais velho
+- **Atraso de divulgação:** O rating vale a partir de `publico_em` (entrega da versão do documento à CVM), nunca da data do relatório da agência; `data_acao` depois da entrega fica vazia
+- **Módulo:** credito_e_fidc · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `protocolo`, `versao`
+- **Três datas:** aconteceu_em = `data_acao`; publico_em = `publico_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2003-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ratings/ratings.parquet` (servidor de casa, `scripts/montar_ratings.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do documento no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto lista os arquivos anuais do IPE e todos os documentos lidos. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `codigo_cvm` | Código da companhia na CVM | texto |
+| `agencia` | fitch, sp, moodys, austin, liberum, sr_rating, lf_rating ou am_best (vazia se não extraído) | texto |
+| `escala` | nacional ou global | texto |
+| `nota` | Nota sem sufixos (AA, RD, Aa1): compara documentos da mesma agência | texto |
+| `nivel` | Posição da nota na escala (1 = AAA ou Aaa): compara agências | número inteiro |
+| `nota_original` | A nota como está no texto (AA(bra), brAAA, Aa1.br) | texto |
+| `perspectiva` | estavel, positiva, negativa, em_desenvolvimento, em_observacao_positiva ou em_observacao_negativa | texto |
+| `acao` | afirmacao, elevacao, rebaixamento, atribuicao, retirada... | texto |
+| `data_acao` | Data da ação da agência lida do texto (vazia se não está ou se vem depois da entrega) | data (dia) |
+| `outras_notas` | As outras notas citadas no documento, separadas por `; ` | texto |
+| `publico_em` | Entrega da versão do documento à CVM: quando o rating ficou público para a base | data (dia) |
+| `protocolo` | Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo) | texto |
+| `versao` | Versão do documento (reapresentação) | número inteiro |
+| `link` | Link do documento no sistema da CVM | texto |
+| `evidencia` | Por que o documento entrou: relatorio_de_agencia (tipo do IPE) ou assunto | texto |
+| `situacao_extracao` | extraido, nao_extraido ou nao_e_pdf | texto |
+| `documentos` | Protocolos de todos os documentos do mesmo evento, pela data de entrega, separados por `; ` (pode citar entregas posteriores a `publico_em`) | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `auditores`
 
 Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim). A firma é identificada pela rede, lida do nome (KPMG, EY, PwC, Deloitte...), porque CNPJ e código da CVM vêm errados em parte das linhas. O sócio responsável (nome e CPF) nunca entra (LGPD).
@@ -1809,10 +1852,10 @@ Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, i
 - **Frequência:** Anual (o FCA é entregue até 31/05) e a cada alteração; a carga relê todos os anos
 - **Atraso de divulgação:** Até meses: o acervo só tem a última versão de cada FCA, então `conhecido_em` pode ser mais tarde que a primeira notícia, nunca mais cedo
 - **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
-- **Chaves:** `cnpj`, `referencia`, `versao`, `auditor_id`
+- **Chaves:** `cnpj`, `referencia`, `versao`, `auditor_id`, `inicio`
 - **Três datas:** aconteceu_em = `inicio`; publico_em = `conhecido_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet em `<acervo>/base/auditores/<ano>.parquet` (servidor de casa, `scripts/montar_base_historica.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas). `ano_do_arquivo` diz de que arquivo anual veio a linha.
 

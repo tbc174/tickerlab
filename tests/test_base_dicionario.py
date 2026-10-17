@@ -354,7 +354,9 @@ def test_contrato_comeca_na_versao_1():
     buracos dos fundos ganharam `motivo` e foram para 1.1.0, como `conferir_versoes` exige).
 
     Exceção de propósito: `insolvencia` 2.0.0 (16/10/2026), o rótulo mudou de sentido (o da
-    própria companhia, com `exposicao_a_terceiro` para o que fala de outra)."""
+    própria companhia, com `exposicao_a_terceiro` para o que fala de outra), e `auditores` 2.0.0
+    (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "2"
+    assert maiores.pop("auditores") == "2"
     assert set(maiores.values()) == {"1"}
