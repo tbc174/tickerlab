@@ -8,7 +8,8 @@ Lê os ZIPs da fonte `pgfn-divida` que o arquivista já guardou no acervo (não 
 jurídica com CNPJ de dígito certo entra; nome e CPF nunca (ADR 0075). Duas leituras de cada ZIP: a
 1ª, leve, junta as raízes dos devedores para perguntar à Receita guardada quais são empresário
 individual ou MEI (`trata_como_pessoa`); a 2ª soma as inscrições, um CSV de cada vez. Saída padrão:
-`<TICKERLAB_ACERVO>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet`. Feita para o servidor de
+`<TICKERLAB_ACERVO>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere>.parquet`
+(11 pedaços por CSV: ~1 GB no maior). Feita para o servidor de
 casa (ADR 0031); recusa rodar sem a versão do código (exigência 13 da ADR 0055). Saída 0 tudo certo;
 1 nenhum ZIP da PGFN guardado.
 """

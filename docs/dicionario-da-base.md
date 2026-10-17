@@ -1773,7 +1773,7 @@ Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre gua
 - **Três datas:** aconteceu_em = `data_do_retrato`; publico_em = `disponivel_em`; coletado_em = `origem_coletada_em`
 - **Histórico desde:** 2026-10-14 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor de casa, `scripts/carga_pgfn.py`)
+- **Onde fica:** Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do CNPJ>.parquet`, 11 por CSV da PGFN (servidor de casa, `scripts/carga_pgfn.py`)
 - **Linhagem:** Cada linha guarda o SHA-256 do original no acervo (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |

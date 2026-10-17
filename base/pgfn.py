@@ -24,12 +24,13 @@ import csv
 import re
 import zipfile
 from calendar import monthrange
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import IO
 
+import numpy as np
 import pandas as pd
 import sqlalchemy as sa
 
@@ -46,6 +47,10 @@ TABELA = "pgfn_divida"
 CODIFICACAO = "latin-1"
 TAMANHO_DA_PARTE = 500_000  # linhas do CSV por vez
 JUNTAR_A_CADA = 8  # partes já somadas que se juntam numa só (limita a memória)
+# cada CSV vira 11 Parquets pelo 1º caractere do CNPJ (o maior CSV dá 2,28 milhões de linhas e, de uma vez
+# só, a gravação passava de 2,4 GB no servidor de casa); sempre os 11, vazios também
+LETRAS = "letras"  # CNPJ alfanumérico que começa com letra (desde 07/2026)
+PREFIXOS = (*"0123456789", LETRAS)
 JA_MONTADO = {"ja_montado": 1}  # no resumo: o arquivo já estava montado deste mesmo ZIP
 SISTEMAS = {"SIDA": "nao_previdenciaria", "PREV": "previdenciaria", "FGTS": "fgts"}
 MEMBRO = re.compile(
@@ -163,30 +168,48 @@ def _so_digitos(cnpj: pd.Series) -> pd.Series:
     return cnpj.str.replace(SEPARADORES, "", regex=True)
 
 
-def raizes_dos_devedores(arquivo_zip: Arquivo) -> set[str]:
-    """As raízes (8 primeiros caracteres) dos CNPJs de pessoa jurídica do ZIP (1ª leitura, leve)."""
-    raizes: set[str] = set()
+def raizes_dos_devedores(arquivo_zip: Arquivo) -> np.ndarray:
+    """As raízes dos CNPJs de pessoa jurídica do ZIP (1ª leitura, leve), como números ordenados
+    (`base/cnpj.py`): são milhões, e um conjunto de textos do Python passava de 1 GB no servidor."""
+    achadas: list[np.ndarray] = []
     for membro in membros(arquivo_zip):
         for parte in _partes(arquivo_zip, membro.nome, ["CPF_CNPJ", "TIPO_PESSOA"]):
             cnpj = parte.loc[_de_pessoa_juridica(parte), "CPF_CNPJ"].str.strip()
-            raizes.update(_so_digitos(cnpj.drop_duplicates()).str[:8])
-    return raizes
+            achadas.append(
+                cnpjs.ordenados(cnpjs.raizes_em_numeros(_so_digitos(cnpj).str[:8]))
+            )
+            if len(achadas) >= JUNTAR_A_CADA:
+                achadas = [cnpjs.ordenados(np.concatenate(achadas))]
+    return (
+        cnpjs.ordenados(np.concatenate(achadas))
+        if achadas
+        else np.array([], dtype=np.int64)
+    )
 
 
 def raizes_de_pessoa(
-    raizes: set[str], naturezas: pd.DataFrame, meis: pd.DataFrame
-) -> set[str]:
-    """As raízes que são (ou podem ser) pessoa: empresário individual, grupo 4, MEI ou sem Receita."""
-    todas = pd.Index(sorted(raizes))
+    raizes: np.ndarray, naturezas: pd.DataFrame, meis: pd.DataFrame
+) -> np.ndarray:
+    """As raízes que são (ou podem ser) pessoa: empresário individual, grupo 4, MEI ou sem Receita.
+
+    Tudo em números ordenados (`base/cnpj.py`), entrada e saída."""
+    conhecidas = cnpjs.ordenados(cnpjs.raizes_em_numeros(naturezas["cnpj_basico"]))
     de_pessoa = naturezas.loc[
-        naturezas["natureza_juridica"].map(natureza_de_pessoa), "cnpj_basico"
+        naturezas["natureza_juridica"].map(natureza_de_pessoa).astype(bool),
+        "cnpj_basico",
     ]
-    e_pessoa = (
-        ~todas.isin(naturezas["cnpj_basico"])
-        | todas.isin(de_pessoa)
-        | todas.isin(meis.loc[meis["mei"], "cnpj_basico"])
+    de_mei = meis.loc[meis["mei"].astype(bool), "cnpj_basico"]
+    pessoas = cnpjs.ordenados(
+        cnpjs.raizes_em_numeros(pd.concat([de_pessoa, de_mei], ignore_index=True))
     )
-    return set(todas[e_pessoa])
+    e_pessoa = ~cnpjs.contem(conhecidas, raizes) | cnpjs.contem(pessoas, raizes)
+    return raizes[e_pessoa]
+
+
+def _como_numeros(pessoas: Collection[str] | np.ndarray) -> np.ndarray:
+    if isinstance(pessoas, np.ndarray):
+        return pessoas
+    return cnpjs.ordenados(cnpjs.raizes_em_numeros(pd.Series(list(pessoas), dtype=str)))
 
 
 def _sem_acento(texto: pd.Series) -> pd.Series:
@@ -249,7 +272,7 @@ def _cnpj_valido(cnpj: str) -> bool:
 
 
 def ler_membro(
-    arquivo_zip: Arquivo, membro: Membro, pessoas: set[str]
+    arquivo_zip: Arquivo, membro: Membro, pessoas: Collection[str] | np.ndarray
 ) -> tuple[pd.DataFrame, dict[str, int]]:
     """A tabela agregada de um CSV e a contagem do que ficou de fora (linhas do CSV)."""
     lidas = fora_por_pessoa = 0
@@ -283,7 +306,9 @@ def ler_membro(
         ultima_inscricao=pd.to_datetime(tabela["ultima_inscricao"]).dt.date,
         data_do_retrato=membro.data_do_retrato,
         gerado_em=membro.gerado_em,
-        trata_como_pessoa=basico.isin(pessoas),
+        trata_como_pessoa=cnpjs.contem(
+            _como_numeros(pessoas), cnpjs.raizes_em_numeros(basico)
+        ),
     )[COLUNAS]
     contagem = {
         "linhas": lidas,
@@ -323,11 +348,11 @@ def _guardados(conexao: sa.Connection) -> list[_Guardado]:
     return achados
 
 
-def pessoas_pela_receita(conexao: sa.Connection, raizes: set[str]) -> set[str]:
+def pessoas_pela_receita(conexao: sa.Connection, raizes: np.ndarray) -> np.ndarray:
     """As raízes de pessoa entre as `raizes`, pela Receita do mês mais recente (sem ela, todas)."""
     arquivos = receita_natureza.arquivos_do_mes_mais_recente(conexao)
     if not arquivos:
-        return set(raizes)
+        return raizes
     naturezas = [
         receita_natureza.ler_naturezas(c, raizes) for n, c in arquivos if n != "Simples"
     ]
@@ -345,8 +370,13 @@ def pessoas_pela_receita(conexao: sa.Connection, raizes: set[str]) -> set[str]:
     )
 
 
-def _destino(pasta: Path, membro: Membro) -> Path:
-    return pasta / TABELA / membro.mes / membro.arquivo
+def _destino(pasta: Path, membro: Membro, prefixo: str) -> Path:
+    return pasta / TABELA / membro.mes / f"{membro.arquivo}-{prefixo}"
+
+
+def _prefixos(cnpj: pd.Series) -> pd.Series:
+    primeiro = cnpj.str[0]
+    return primeiro.where(primeiro.str.isdigit(), LETRAS)
 
 
 def _origem(guardado: _Guardado) -> list[dict[str, str]]:
@@ -356,8 +386,9 @@ def _origem(guardado: _Guardado) -> list[dict[str, str]]:
 def _ja_montado(pasta: Path, guardado: _Guardado) -> bool:
     """Todos os CSVs do ZIP já gravados com ele de origem (o manifesto diz o SHA-256)."""
     return all(
-        origens_gravadas(_destino(pasta, m)) == _origem(guardado)
+        origens_gravadas(_destino(pasta, m, prefixo)) == _origem(guardado)
         for m in membros(guardado.caminho)
+        for prefixo in PREFIXOS
     )
 
 
@@ -365,10 +396,10 @@ def montar(
     conexao: sa.Connection,
     pasta: Path,
     agora: datetime,
-    pessoas: set[str] | None = None,
+    pessoas: Collection[str] | np.ndarray | None = None,
     refazer: bool = False,
 ) -> dict[str, dict[str, int]]:
-    """`<pasta>/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` para cada CSV guardado.
+    """`<pasta>/pgfn_divida/<AAAA-MM>/<sistema>-<região>-<1º caractere do CNPJ>.parquet`, 11 por CSV.
 
     Um arquivo de cada vez (o maior tem ~2,7 GB descompactado). ZIP já montado é pulado (a PGFN muda
     por trimestre; `refazer` relê mesmo assim, para código novo). `pessoas`: as raízes de pessoa já
@@ -384,27 +415,36 @@ def montar(
         else:
             guardados.append(guardado)
     if pessoas is None and guardados:
-        raizes: set[str] = set()
-        for guardado in guardados:
-            raizes |= raizes_dos_devedores(guardado.caminho)
+        raizes = cnpjs.ordenados(
+            np.concatenate([raizes_dos_devedores(g.caminho) for g in guardados])
+        )
         pessoas = pessoas_pela_receita(conexao, raizes)
     for guardado in guardados:
         original = guardado.original
         for membro in membros(guardado.caminho):
-            tabela, contagem = ler_membro(guardado.caminho, membro, pessoas or set())
-            tabela = tabela.assign(
-                disponivel_em=guardado.disponivel_em,
-                origem_sha256=original.sha256,
-                origem_coletada_em=pd.Timestamp(original.baixado_em).isoformat(),
-                montado_em=agora.isoformat(),
-                versao_do_codigo=versao_do_codigo(),
+            tabela, contagem = ler_membro(
+                guardado.caminho,
+                membro,
+                _como_numeros(pessoas if pessoas is not None else []),
             )
-            gravar_se_mudou(
-                tabela,
-                _destino(pasta, membro),
-                _origem(guardado),
-                ORDEM,
-                carimbos=LINHAGEM,
-            )
+            prefixos = _prefixos(tabela["cnpj"])
+            for prefixo in PREFIXOS:  # a linhagem só no pedaço que está sendo gravado
+                pedaco = tabela[prefixos == prefixo].reset_index(drop=True)
+                gravar_se_mudou(
+                    pedaco.assign(
+                        disponivel_em=guardado.disponivel_em,
+                        origem_sha256=original.sha256,
+                        origem_coletada_em=pd.Timestamp(
+                            original.baixado_em
+                        ).isoformat(),
+                        montado_em=agora.isoformat(),
+                        versao_do_codigo=versao_do_codigo(),
+                    ),
+                    _destino(pasta, membro, prefixo),
+                    _origem(guardado),
+                    ORDEM,
+                    carimbos=LINHAGEM,
+                )
+            del tabela, prefixos
             resumo[f"{membro.mes}/{membro.arquivo}"] = contagem
     return resumo
