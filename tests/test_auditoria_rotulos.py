@@ -144,3 +144,109 @@ def test_sem_teste_de_identificacao_nao_passa():
     humanos, ia = _humanos_e_ia()
     veredito = ar.auditar(humanos, ia, identificadas=None)
     assert not veredito.passou and veredito.incompleto
+
+
+# --- Sonnet × Opus (Emenda 1, 17/10/2026) ------------------------------------------------------
+
+
+def _rotulo(nota=3, tema="resultado", assunto=None):
+    return {"nota": nota, "tema": tema, "assunto": assunto}
+
+
+def _fila(n_primeiros=300, n_lote=4):
+    """Os eventos como o script lê: `ordem` é a posição na fila; o lote do leitor vem no fim."""
+    primeiros = [
+        {"id": f"A{i}", "ordem": i, "amostra": None} for i in range(n_primeiros + 5)
+    ]
+    lote = [{"id": f"L{i}", "ordem": n_primeiros + 5 + i, "amostra": ar.LOTE_DO_LEITOR}
+            for i in range(n_lote)]  # fmt: skip
+    return primeiros + lote
+
+
+def test_conjunto_de_prova_sao_os_300_primeiros_e_o_lote_do_leitor():
+    primeiros, lote = ar.conjunto_de_prova(_fila())
+    assert primeiros == [f"A{i}" for i in range(300)]
+    assert lote == ["L0", "L1", "L2", "L3"]
+
+
+def _variados(ids):
+    """Notas e temas que variam (com tudo igual, o kappa não diz nada)."""
+    temas = ("resultado", "dividendos", "divida", "governanca")
+    return {i: _rotulo(1 + k % 5, temas[k % 4]) for k, i in enumerate(ids)}
+
+
+def test_modelos_que_concordam_passam():
+    ids = [f"A{i}" for i in range(300)]
+    veredito = ar.comparar_modelos(_variados(ids), _variados(ids), ids)
+    assert veredito.passou and veredito.n == 300
+    assert veredito.kappa_nota == pytest.approx(1.0)
+    assert (
+        veredito.identificadas is None
+    )  # a identificação é do Sonnet, não da comparação
+
+
+def test_comparacao_com_menos_de_300_fica_incompleta():
+    ids = [f"A{i}" for i in range(299)]
+    veredito = ar.comparar_modelos(_variados(ids), _variados(ids), ids)
+    assert veredito.incompleto and not veredito.passou
+
+
+def test_rotulo_faltando_ou_com_erro_deixa_incompleta():
+    ids = [f"A{i}" for i in range(300)]
+    opus = _variados(ids)
+    del opus["A0"]
+    opus["A1"] = {"erro": "trecho não está no documento"}
+    veredito = ar.comparar_modelos(_variados(ids), opus, ids)
+    assert veredito.incompleto and not veredito.passou
+    assert any("2" in m and "sem rótulo" in m for m in veredito.motivos)
+
+
+def test_notas_distantes_reprovam_pela_nota():
+    ids = [f"A{i}" for i in range(300)]
+    sonnet = _variados(ids)
+    opus = {
+        i: {**r, "nota": 6 - r["nota"]} for i, r in sonnet.items()
+    }  # nota invertida
+    veredito = ar.comparar_modelos(sonnet, opus, ids)
+    assert not veredito.passou and not veredito.incompleto
+    assert any("kappa da nota" in m for m in veredito.motivos)
+    assert veredito.kappa_tema == pytest.approx(1.0)
+
+
+def test_assunto_conta_so_nos_fatos_relevantes():
+    ids = [f"A{i}" for i in range(300)]
+    sonnet = _variados(ids)
+    opus = _variados(ids)
+    for k in range(10):  # 10 fatos relevantes; os dois discordam em 3 (70% < 80%)
+        sonnet[f"A{k}"]["assunto"] = "DIVIDENDOS"
+        opus[f"A{k}"]["assunto"] = "DIVIDENDOS" if k >= 3 else "OUTROS"
+    veredito = ar.comparar_modelos(sonnet, opus, ids)
+    assert veredito.n_assunto == 10 and veredito.acerto_assunto == pytest.approx(0.7)
+    assert any("assunto" in m for m in veredito.motivos)
+
+
+def test_referencia_do_leitor_sao_os_eventos_em_que_os_dois_concordam_no_assunto():
+    sonnet = {
+        "L0": _rotulo(4, "fusao", "FUSAO_INCORPORACAO"),
+        "L1": _rotulo(3, "divida", "OUTROS"),
+        "L2": _rotulo(2, "governanca", "OUTROS"),
+        "L3": _rotulo(3, "resultado", "OUTROS"),
+    }
+    opus = {
+        "L0": _rotulo(4, "fusao", "FUSAO_INCORPORACAO"),
+        "L1": _rotulo(5, "divida", "OUTROS"),  # mesma coisa, nota diferente
+        "L2": _rotulo(
+            2, "governanca", "FECHAMENTO_CAPITAL"
+        ),  # assunto diferente: fica de fora
+        "L3": {"erro": "parada: max_tokens"},  # sem rótulo do Opus: fica de fora
+    }
+    referencia = ar.referencia_do_leitor(sonnet, opus, ["L0", "L1", "L2", "L3"])
+    assert referencia == [
+        {
+            "evento_id": "L0",
+            "assunto": "FUSAO_INCORPORACAO",
+            "nota": 4,
+            "tema": "fusao",
+        },
+        {"evento_id": "L1", "assunto": "OUTROS", "nota": None, "tema": "divida"},
+    ]

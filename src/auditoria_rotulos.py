@@ -11,6 +11,11 @@ Tiago), passarem em todos os limites de `LIMITES`, escritos antes de existir qua
   depois. (Troca a comparação das notas 5 da ADR, que reprovaria à toa: os eventos de nota 5 são os
   mais fáceis para qualquer um.)
 
+**Emenda 1 (17/10/2026):** o Tiago sai do caminho. Os mesmos limites de nota, tema e assunto passam
+a valer entre o Sonnet (rotulador) e o Opus (segundo modelo às cegas) nos 300 primeiros da fila
+(`comparar_modelos`); no `lote-leitor-v1`, os eventos em que os dois concordam no assunto viram a
+referência de máquina do leitor (`referencia_do_leitor`). O teste de identificação continua no Sonnet.
+
 O kappa mede a concordância descontando a que viria por sorte: 1 é concordância perfeita, 0 é o
 mesmo que chutar com as mesmas proporções. O ponderado quadrático pune mais quem erra por 3 pontos do
 que quem erra por 1.
@@ -29,7 +34,11 @@ LIMITES = {
     "max_identificadas": 0.10,
     "min_eventos": 300,
 }
+# os limites que a Emenda 1 aplica a Sonnet × Opus (a identificação fica no teste do Sonnet)
+LIMITES_DA_COMPARACAO = {k: v for k, v in LIMITES.items() if k != "max_identificadas"}
 NOTAS = (1, 2, 3, 4, 5)
+PRIMEIROS_DA_FILA = 300  # `ordem` < 300: os mesmos "em comum" da ADR 0060
+LOTE_DO_LEITOR = "lote-leitor-v1"
 
 # palavras que aparecem no nome de muitas empresas: acertar uma delas não é reconhecer a empresa
 GENERICAS = frozenset(
@@ -146,6 +155,17 @@ def identificou(palpite: str, nome: str) -> bool:
     return bool(distintas & _palavras(palpite))
 
 
+def conjunto_de_prova(eventos: list[dict]) -> tuple[list[str], list[str]]:
+    """Os ids dos 300 primeiros da fila (fora o lote do leitor) e os do `lote-leitor-v1`."""
+    primeiros = [
+        e["id"]
+        for e in eventos
+        if e["ordem"] < PRIMEIROS_DA_FILA and e.get("amostra") != LOTE_DO_LEITOR
+    ]
+    lote = [e["id"] for e in eventos if e.get("amostra") == LOTE_DO_LEITOR]
+    return primeiros, lote
+
+
 @dataclass
 class Veredito:
     n: int
@@ -182,15 +202,43 @@ def auditar(
             f"só {len(prova)} eventos de prova (mínimo {LIMITES['min_eventos']})"
         )
         return veredito
-    notas_h = [humanos[i]["nota"] for i in prova]
-    notas_ia = [ia[i]["nota"] for i in prova]
+    _medir(humanos, ia, prova, veredito)
+    if identificadas is None:
+        veredito.incompleto = True
+        veredito.motivos.append("falta o teste de identificação da empresa")
+    else:
+        conferidas = [identificadas[i] for i in prova if i in identificadas]
+        if len(conferidas) < len(prova):
+            veredito.incompleto = True
+            veredito.motivos.append(
+                f"identificação conferida em {len(conferidas)} de {len(prova)}"
+            )
+        if conferidas:
+            veredito.identificadas = sum(conferidas) / len(conferidas)
+            if veredito.identificadas > LIMITES["max_identificadas"]:
+                veredito.motivos.append(
+                    f"a IA reconheceu a empresa em {veredito.identificadas:.0%} "
+                    f"(máximo {LIMITES['max_identificadas']:.0%}): possível olhar o futuro"
+                )
+    return veredito
+
+
+def _medir(
+    referencia: dict[str, dict],
+    outro: dict[str, dict],
+    ids: list[str],
+    veredito: Veredito,
+) -> None:
+    """Nota, tema e assunto de `outro` contra `referencia` nos `ids`, com os motivos de reprovação."""
+    notas_h = [referencia[i]["nota"] for i in ids]
+    notas_ia = [outro[i]["nota"] for i in ids]
     veredito.kappa_nota = kappa_ponderado(notas_h, notas_ia)
     veredito.perto_nota = perto(notas_h, notas_ia)
     veredito.kappa_tema = kappa(
-        [humanos[i]["tema"] for i in prova], [ia[i]["tema"] for i in prova]
+        [referencia[i]["tema"] for i in ids], [outro[i]["tema"] for i in ids]
     )
-    assuntos_h = [humanos[i].get("assunto") for i in prova]
-    veredito.acerto_assunto = acerto(assuntos_h, [ia[i].get("assunto") for i in prova])
+    assuntos_h = [referencia[i].get("assunto") for i in ids]
+    veredito.acerto_assunto = acerto(assuntos_h, [outro[i].get("assunto") for i in ids])
     veredito.n_assunto = sum(a is not None for a in assuntos_h)
 
     if veredito.kappa_nota < LIMITES["kappa_nota"]:
@@ -212,21 +260,52 @@ def auditar(
         veredito.motivos.append(
             f"acerto do assunto {veredito.acerto_assunto:.0%} < {LIMITES['acerto_assunto']:.0%}"
         )
-    if identificadas is None:
+
+
+def valido(rotulos: dict[str, dict], i: str) -> bool:
+    return i in rotulos and "erro" not in rotulos[i]
+
+
+def comparar_modelos(
+    rotulador: dict[str, dict], conferente: dict[str, dict], primeiros: list[str]
+) -> Veredito:
+    """Sonnet × Opus nos 300 primeiros da fila (Emenda 1): os limites de nota, tema e assunto. Evento
+    sem rótulo válido de um dos dois deixa o veredito incompleto (a medição sai só dos que têm)."""
+    veredito = Veredito(n=len(primeiros))
+    ids = [i for i in primeiros if valido(rotulador, i) and valido(conferente, i)]
+    if len(primeiros) < PRIMEIROS_DA_FILA:
         veredito.incompleto = True
-        veredito.motivos.append("falta o teste de identificação da empresa")
-    else:
-        conferidas = [identificadas[i] for i in prova if i in identificadas]
-        if len(conferidas) < len(prova):
-            veredito.incompleto = True
-            veredito.motivos.append(
-                f"identificação conferida em {len(conferidas)} de {len(prova)}"
-            )
-        if conferidas:
-            veredito.identificadas = sum(conferidas) / len(conferidas)
-            if veredito.identificadas > LIMITES["max_identificadas"]:
-                veredito.motivos.append(
-                    f"a IA reconheceu a empresa em {veredito.identificadas:.0%} "
-                    f"(máximo {LIMITES['max_identificadas']:.0%}): possível olhar o futuro"
-                )
+        veredito.motivos.append(
+            f"só {len(primeiros)} eventos de prova (mínimo {PRIMEIROS_DA_FILA})"
+        )
+    if faltam := len(primeiros) - len(ids):
+        veredito.incompleto = True
+        veredito.motivos.append(
+            f"{faltam} eventos sem rótulo válido dos dois modelos: rode os pendentes de novo"
+        )
+    if ids:
+        _medir(rotulador, conferente, ids, veredito)
     return veredito
+
+
+def referencia_do_leitor(
+    rotulador: dict[str, dict], conferente: dict[str, dict], lote: list[str]
+) -> list[dict]:
+    """Os eventos do lote do leitor em que os dois modelos concordam no assunto (ADR 0069, Emenda 1:
+    "referência de máquina", não humana). Nota e tema vão junto só quando também concordam."""
+    referencia = []
+    for i in lote:
+        if not (valido(rotulador, i) and valido(conferente, i)):
+            continue
+        a, b = rotulador[i], conferente[i]
+        if a.get("assunto") is None or a.get("assunto") != b.get("assunto"):
+            continue
+        referencia.append(
+            {
+                "evento_id": i,
+                "assunto": a["assunto"],
+                "nota": a["nota"] if a["nota"] == b["nota"] else None,
+                "tema": a["tema"] if a["tema"] == b["tema"] else None,
+            }
+        )
+    return referencia

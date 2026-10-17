@@ -10,7 +10,9 @@ fatos relevantes, assunto. As proteções da ADR ficam aqui, sem rede:
 - cada rótulo guarda `por: "ia"`, o modelo e a versão do prompt, e nunca se mistura com os humanos.
 
 O modelo foi escolhido pelo Tiago antes da auditoria (14/10/2026: Sonnet 5.5, teto de US$ 60); trocar
-de modelo ou de prompt depois de ver a auditoria conta como uma tentativa nova (ADR 0006).
+de modelo ou de prompt depois de ver a auditoria conta como uma tentativa nova (ADR 0006). Desde a
+Emenda 1 (17/10/2026), o **Opus 5.5** rotula às cegas o conjunto de prova com o mesmo pedido, para
+conferir o Sonnet no lugar do Tiago; os papéis ficam fixos (`MODELO` e `MODELO_CONFERENTE`).
 """
 
 import hashlib
@@ -25,7 +27,8 @@ import anthropic
 from base.cnpj import dv_confere, normalizar_cnpj, tem_letra
 from src import topicos
 
-MODELO = "claude-sonnet-5-5"
+MODELO = "claude-sonnet-5-5"  # o rotulador da fila inteira (14/10)
+MODELO_CONFERENTE = "claude-opus-5-5"  # o segundo modelo às cegas (Emenda 1, 17/10)
 # chave criada fora de um workspace: a API pede o id do workspace em cada pedido (não é segredo)
 VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
 VERSAO_DO_PROMPT = "1"
@@ -34,11 +37,38 @@ MAX_CARACTERES_DO_TEXTO = 6_000  # o começo do documento, como no leitor (ADR 0
 MAX_TOKENS_DA_RESPOSTA = 2_000  # a resposta é curta; a folga é para o raciocínio
 FATO_RELEVANTE = "Fato Relevante"
 
-# preços do Sonnet 5.5 em US$ por milhão de tokens (14/10/2026); a Batch API cobra a metade
-PRECO_ENTRADA = 2.00
-PRECO_SAIDA = 10.00
-DESCONTO_DO_LOTE = 0.5
-SAIDA_ESTIMADA_POR_EVENTO = 80  # medido no 1º lote (15/10): 59 por evento (167.640 em 2.849); o real vem de `usage`
+DESCONTO_DO_LOTE = 0.5  # a Batch API cobra a metade
+
+
+@dataclass(frozen=True)
+class Modelo:
+    """Preços em US$ por milhão de tokens. Ler do cache custa uma fração da entrada, que muda por
+    modelo; escrever custa 1,25x em todos. A saída por evento é só para a estimativa (o real vem de
+    `usage`)."""
+
+    entrada: float
+    saida: float
+    leitura_do_cache: float
+    saida_estimada_por_evento: int
+
+
+MODELOS = {
+    # Sonnet 5.5 (14/10/2026); saída medida no 1º lote (15/10): 59 por evento (167.640 em 2.849)
+    MODELO: Modelo(2.00, 10.00, 0.1, 80),
+    # Opus 5.5 (skill claude-api, 17/10/2026): cache lido a 0,05x. O raciocínio do Opus não desliga e
+    # entra na saída: a estimativa usa o triplo do que o Sonnet gastou, até o piloto medir
+    MODELO_CONFERENTE: Modelo(4.00, 20.00, 0.05, 180),
+}
+
+
+def modelo_conhecido(nome: str) -> Modelo:
+    """O preço do modelo; um nome fora da lista é erro (nunca o preço de outro)."""
+    if nome not in MODELOS:
+        raise ValueError(
+            f"Modelo sem preço cadastrado: {nome} (conhecidos: {', '.join(MODELOS)})"
+        )
+    return MODELOS[nome]
+
 
 EMPRESA, CODIGO, CNPJ = "[EMPRESA]", "[CODIGO]", "[CNPJ]"
 SEM_TEXTO = "(sem texto: o documento não pôde ser lido; julgue pelo assunto)"
@@ -211,14 +241,16 @@ def esquema(fato_relevante: bool) -> dict:
     }
 
 
-def pedido(evento: dict, texto: str) -> dict:
-    """Os parâmetros de `messages.create` para um evento (os mesmos servem para o lote)."""
+def pedido(evento: dict, texto: str, modelo: str = MODELO) -> dict:
+    """Os parâmetros de `messages.create` para um evento (os mesmos servem para o lote). Só o modelo
+    muda entre o rotulador e o conferente: guia, prompt e texto anonimizado são os mesmos."""
+    modelo_conhecido(modelo)
     pede_assunto = e_fato_relevante(evento)
     instrucao = "Rotule este documento (nota, tema" + (
         ", assunto" if pede_assunto else ""
     )
     return {
-        "model": MODELO,
+        "model": modelo,
         "max_tokens": MAX_TOKENS_DA_RESPOSTA,
         "system": [
             {"type": "text", "text": SISTEMA, "cache_control": {"type": "ephemeral"}}
@@ -252,11 +284,11 @@ class RotuloDaIA:
     trecho: str
     confianca: str
 
-    def para_guardar(self) -> dict:
+    def para_guardar(self, modelo: str = MODELO) -> dict:
         return {
             **asdict(self),
             "por": "ia",
-            "modelo": MODELO,
+            "modelo": modelo,
             "versao_do_prompt": VERSAO_DO_PROMPT,
             "guia": GUIA,
         }
@@ -313,10 +345,11 @@ def de_mensagem(
 
 
 def custo_em_dolares(
-    tokens_entrada: int, tokens_saida: int, lote: bool = True
+    tokens_entrada: int, tokens_saida: int, lote: bool = True, modelo: str = MODELO
 ) -> float:
     """O custo pelos preços do modelo; pela Batch API, a metade."""
-    custo = (tokens_entrada * PRECO_ENTRADA + tokens_saida * PRECO_SAIDA) / 1_000_000
+    preco = modelo_conhecido(modelo)
+    custo = (tokens_entrada * preco.entrada + tokens_saida * preco.saida) / 1_000_000
     return custo * (DESCONTO_DO_LOTE if lote else 1.0)
 
 

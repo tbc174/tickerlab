@@ -46,6 +46,7 @@ class ClienteDeMentira:
     def __init__(self, tokens_por_evento=4_500, resposta=None, tokens_do_prefixo=1_500):
         self.criados: list[dict] = []
         self.contagens = 0
+        self.modelos_contados: set[str] = set()
         self.lotes: list[list] = []
         self.estado = "in_progress"
         self.palpite = "NAO_SEI"
@@ -67,6 +68,7 @@ class ClienteDeMentira:
 
     def _contar(self, **pedido):
         self.contagens += 1
+        self.modelos_contados.add(pedido["model"])
         sonda = pedido["messages"][0]["content"] == rc.SONDA_DO_PREFIXO
         return SimpleNamespace(input_tokens=self._prefixo if sonda else self._tokens)
 
@@ -105,11 +107,12 @@ def test_estimar_nao_gasta(pasta):
     assert cliente.criados == [] and cliente.lotes == []
     assert cliente.contagens == len(EVENTOS) + 1  # amostra de até 50 + o prefixo fixo
     n, prefixo = len(EVENTOS), 1_500
+    sonnet = ri.MODELOS[ri.MODELO]
     entrada = (4_500 - prefixo) * n + prefixo * (
-        rc.PESO_DA_ESCRITA_NO_CACHE + rc.PESO_DA_LEITURA_DO_CACHE * (n - 1)
+        rc.PESO_DA_ESCRITA_NO_CACHE + sonnet.leitura_do_cache * (n - 1)
     )
     esperado = ri.custo_em_dolares(
-        round(entrada), ri.SAIDA_ESTIMADA_POR_EVENTO * n, lote=True
+        round(entrada), sonnet.saida_estimada_por_evento * n, lote=True
     )
     assert estimativa == pytest.approx(esperado)
 
@@ -321,7 +324,7 @@ def test_id_fora_do_formato_nao_vira_caminho(tmp_path):
     ]  # sem id e repetido
     caminho = tmp_path / "eventos.json"
     caminho.write_text(json.dumps({"eventos": [EVENTOS[2], *ruins]}), encoding="utf-8")
-    assert rc.ler_eventos(caminho) == [EVENTOS[2]]
+    assert rc.ler_eventos(caminho) == [{**EVENTOS[2], "ordem": 0}]
     assert rc.chave("../../fora") == "______fora"
     assert rc.chave("22616 IPE1401-54") == "22616_IPE1401-54"
 
@@ -428,3 +431,170 @@ def test_enviar_so_os_prontos_e_o_resto_no_proximo_lote(pasta):
     )
     rc.enviar(cliente, eventos, pasta, teto=60, so_fatos=True, so_prontos=True)
     assert [p["custom_id"] for p in cliente.lotes[1]] == [rc.chave(FATO["id"])]
+
+
+# --- segundo modelo às cegas (Emenda 1 da ADR 0072, 17/10/2026) ---------------------------------
+
+OPUS = ri.MODELO_CONFERENTE
+
+
+def test_ler_eventos_guarda_a_posicao_na_fila(tmp_path):
+    """`ordem` é a posição na página (o evento sem id não desloca os seguintes)."""
+    arquivo = tmp_path / "eventos.json"
+    fila = [EVENTOS[0], {**EVENTOS[1], "id": ""}, EVENTOS[2]]
+    arquivo.write_text(json.dumps({"eventos": fila}), encoding="utf-8")
+    assert [e["ordem"] for e in rc.ler_eventos(arquivo)] == [0, 2]
+
+
+def test_opus_grava_em_arquivo_separado_e_nao_ve_o_sonnet(pasta):
+    rc.piloto(ClienteDeMentira(), EVENTOS, pasta, n=2, teto=60)  # Sonnet
+    cliente = ClienteDeMentira()
+    rc.enviar(cliente, EVENTOS, pasta, teto=10, modelo=OPUS)
+    assert [p["custom_id"] for p in cliente.lotes[0]] == [e["id"] for e in EVENTOS]
+    assert {p["params"]["model"] for p in cliente.lotes[0]} == {OPUS}
+    cliente.estado = "ended"
+    assert rc.buscar(cliente, EVENTOS, pasta, modelo=OPUS) == 4
+    opus = rc.ler_rotulos(pasta, OPUS)
+    assert {r["modelo"] for r in opus.values()} == {OPUS}
+    assert all(
+        r["por"] == "ia" and len(r["hash_da_entrada"]) == 64 for r in opus.values()
+    )
+    assert len(rc.ler_rotulos(pasta)) == 2  # o arquivo do Sonnet não mudou
+    assert (pasta / f"rotulos.{OPUS}.jsonl").exists()
+    manifesto = json.loads(
+        (pasta / f"manifesto.{OPUS}.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["modelo"] == OPUS and manifesto["rotulados"] == 4
+    sonnet = json.loads((pasta / "manifesto.json").read_text(encoding="utf-8"))
+    assert sonnet["modelo"] == ri.MODELO
+
+
+def test_teto_do_opus_conta_so_o_gasto_do_opus(pasta):
+    """O teto do Opus é outro "pode" (US$ 10 sugeridos): o gasto do Sonnet não entra nele."""
+    (pasta / "manifesto.json").write_text(
+        json.dumps({"gasto_em_dolares": 59.99, "lotes": []})
+    )
+    assert rc.enviar(ClienteDeMentira(), EVENTOS, pasta, teto=10, modelo=OPUS)
+    (pasta / f"manifesto.{OPUS}.json").write_text(
+        json.dumps({"gasto_em_dolares": 9.99, "lotes": []})
+    )
+    with pytest.raises(rc.TetoPassado):
+        rc.piloto(ClienteDeMentira(), EVENTOS, pasta, n=2, teto=10, modelo=OPUS)
+
+
+def test_estimar_usa_preco_e_cache_do_modelo(pasta):
+    cliente = ClienteDeMentira()
+    estimativa = rc.estimar(cliente, EVENTOS, pasta, modelo=OPUS)
+    assert cliente.modelos_contados == {OPUS}
+    opus = ri.MODELOS[OPUS]
+    n, prefixo = len(EVENTOS), 1_500
+    entrada = (4_500 - prefixo) * n + prefixo * (
+        rc.PESO_DA_ESCRITA_NO_CACHE + opus.leitura_do_cache * (n - 1)
+    )
+    esperado = ri.custo_em_dolares(
+        round(entrada), opus.saida_estimada_por_evento * n, modelo=OPUS
+    )
+    assert estimativa == pytest.approx(esperado)
+
+
+def test_custo_real_do_opus_le_o_cache_a_5_por_cento():
+    usage = SimpleNamespace(input_tokens=0, output_tokens=0,
+                            cache_creation_input_tokens=0, cache_read_input_tokens=1_000_000)  # fmt: skip
+    # 1 milhão lido do cache: 0,05 x US$ 4, metade no lote = US$ 0,10 (no Sonnet, 0,1 x US$ 2 / 2)
+    assert rc._custo_da_resposta(usage, lote=True, modelo=OPUS) == pytest.approx(0.10)
+    assert rc._custo_da_resposta(usage, lote=True) == pytest.approx(0.10)
+
+
+def _fila_com_lote(tmp_path, n=305, lote=(303,)):
+    fila = [{**EVENTOS[0], "id": f"E{i}",
+             **({"amostra": "lote-leitor-v1", "categoria": "Fato Relevante"} if i in lote else {})}
+            for i in range(n)]  # fmt: skip
+    arquivo = tmp_path / "eventos.json"
+    arquivo.write_text(json.dumps({"eventos": fila}), encoding="utf-8")
+    return arquivo
+
+
+def test_main_estima_o_opus_so_no_conjunto_de_prova(tmp_path, monkeypatch, capsys):
+    cliente = ClienteDeMentira()
+    monkeypatch.setattr(ri, "cliente", lambda: cliente)
+    codigo = rc.main(["estimar", "--eventos", str(_fila_com_lote(tmp_path)),
+                      "--pasta", str(tmp_path / "v1"), "--teto-dolares", "10",
+                      "--modelo", OPUS, "--so-prova"])  # fmt: skip
+    assert codigo == 0
+    saida = capsys.readouterr().out
+    assert "Pendentes: 301" in saida and OPUS in saida  # 300 primeiros + 1 do lote
+    assert cliente.modelos_contados == {OPUS} and cliente.criados == []
+
+
+@pytest.mark.parametrize("passo", ["identificar", "auditar"])
+def test_identificar_e_auditar_ficam_com_o_sonnet(tmp_path, passo):
+    """O teste de identificação e a auditoria contra o Tiago são do rotulador (Sonnet)."""
+    codigo = rc.main([passo, "--eventos", str(_fila_com_lote(tmp_path, n=3, lote=())),
+                      "--pasta", str(tmp_path / "v1"), "--humanos", "x.json",
+                      "--teto-dolares", "10", "--modelo", OPUS])  # fmt: skip
+    assert codigo == 2
+
+
+def _gravar(pasta: Path, eventos: list[dict], modelo: str, rotulos: dict) -> None:
+    """Rótulos com o hash da entrada de verdade (os eventos não têm texto baixado: vão só com o
+    assunto, como pela regra `--texto-so-nos-fatos`)."""
+    por_id = {e["id"]: e for e in eventos}
+    linhas = [
+        json.dumps({"evento_id": i, "por": "ia", "modelo": modelo, "texto_so_nos_fatos": True,
+                    "hash_da_entrada": ri.hash_da_entrada(ri.pedido(por_id[i], "", modelo)), **r})
+        for i, r in rotulos.items()
+    ]  # fmt: skip
+    rc.arquivo_dos_rotulos(pasta, modelo).write_text(
+        "\n".join(linhas) + "\n", encoding="utf-8"
+    )
+
+
+def _dois_modelos(tmp_path):
+    eventos = rc.ler_eventos(_fila_com_lote(tmp_path))
+    pasta = tmp_path / "v1"
+    pasta.mkdir()
+    temas = ("resultado", "dividendos", "divida", "governanca")
+    rotulos = {e["id"]: {"nota": 1 + k % 5, "tema": temas[k % 4], "assunto": None}
+               for k, e in enumerate(eventos)}  # fmt: skip
+    rotulos["E303"]["assunto"] = "OUTROS"
+    _gravar(pasta, eventos, ri.MODELO, rotulos)
+    _gravar(pasta, eventos, OPUS, rotulos)
+    return eventos, pasta
+
+
+def test_comparar_grava_o_veredito_e_a_referencia_do_leitor(tmp_path):
+    eventos, pasta = _dois_modelos(tmp_path)
+    veredito = rc.comparar(pasta, eventos)
+    assert veredito.passou and veredito.n == 300
+    gravado = json.loads(
+        (pasta / "comparacao-modelos.json").read_text(encoding="utf-8")
+    )
+    assert gravado["passou"] and gravado["modelos"] == [ri.MODELO, OPUS]
+    assert gravado["entradas_diferentes"] == []
+    assert gravado["lote_do_leitor"]["eventos"] == 1
+    referencia = gravado["lote_do_leitor"]["referencia"]
+    assert [r["evento_id"] for r in referencia] == ["E303"]
+    assert len(gravado["sha256"][OPUS]) == 64
+
+
+def test_comparar_so_conta_pares_que_leram_o_mesmo_texto(tmp_path):
+    """A emenda pede o mesmo texto anonimizado: se o texto do evento mudou entre um modelo e o outro
+    (baixado depois, outra regra), o par fica de fora e o veredito fica incompleto."""
+    eventos, pasta = _dois_modelos(tmp_path)
+    (pasta / "textos").mkdir()
+    (pasta / "textos" / "E303.txt").write_text(
+        "Texto que chegou depois.", encoding="utf-8"
+    )
+    opus = rc.ler_rotulos(pasta, OPUS)
+    opus["E7"]["hash_da_entrada"] = "0" * 64
+    linhas = [json.dumps(r) for r in opus.values()]
+    rc.arquivo_dos_rotulos(pasta, OPUS).write_text(
+        "\n".join(linhas) + "\n", encoding="utf-8"
+    )
+    veredito = rc.comparar(pasta, eventos)
+    assert veredito.incompleto and not veredito.passou
+    gravado = json.loads(
+        (pasta / "comparacao-modelos.json").read_text(encoding="utf-8")
+    )
+    assert gravado["entradas_diferentes"] == ["E7", "E303"]
+    assert gravado["lote_do_leitor"]["referencia"] == []
