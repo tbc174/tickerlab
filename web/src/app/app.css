@@ -27,6 +27,11 @@
 /* os títulos de toda tela: h1 da escala, h2 da escala, a legenda menor (--t-1) */
 .app-corpo main h1 { margin: 0 0 var(--e2); font-size: var(--t3); }
 .app-corpo main h2 { font-size: var(--t2); }
+.cabecalho-da-tela { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: var(--e3) var(--e4);
+  margin-bottom: var(--e4); }
+.cabecalho-da-tela .olho { margin: 0 0 var(--e1); }
+.cabecalho-da-tela .apagado { margin: 0; max-width: 40rem; }
+.cabecalho-acoes { display: flex; flex-wrap: wrap; gap: var(--e2); }
 .legenda-do-numero { font-size: var(--t-1); color: var(--apagado); }
 .apagado { color: var(--apagado); }
 .telas-do-app { list-style: none; padding: 0; display: grid; gap: var(--e4);

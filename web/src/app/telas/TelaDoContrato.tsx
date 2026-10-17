@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
+import { CabecalhoDaTela } from "../CabecalhoDaTela";
 import {
   Formulario,
   buscaDosValores,
@@ -34,8 +35,7 @@ export function TelaDoContrato<T>({ pagina, carregando, resultado, ajustar }: Pr
   );
   return (
     <section>
-      <h1>{pagina.titulo}</h1>
-      <p className="apagado">{pagina.descricao}</p>
+      <CabecalhoDaTela pagina={pagina} />
       <Formulario
         key={busca.toString()}
         entradas={entradas}
