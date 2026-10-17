@@ -117,11 +117,12 @@ PADRAO_DA_RECEITA = (
     None,
     True,
     False,
-)  # abertura, razão social tem o nome, estrangeira
+    False,
+)  # abertura, tem o nome, estrangeira, pequena
 
 
 def _receita(*linhas: tuple) -> pd.DataFrame:
-    """(raiz, nome normalizado, por, pessoa[, abertura, razão social tem o nome, estrangeira])."""
+    """(raiz, nome normalizado, por, pessoa[, abertura, tem o nome, estrangeira, pequena])."""
     completas = [tuple(linha) + PADRAO_DA_RECEITA[len(linha) - 4 :] for linha in linhas]
     return pd.DataFrame(completas, columns=list(lig.COLUNAS_DA_RECEITA))
 
@@ -224,15 +225,27 @@ def test_sem_nada_fica_sem_ligacao():
 
 
 # --- regras contra homônimos (conferência do Tiago, 16/10: `ma-regua-conferencia-2026-10-16.md`) ----
-def test_nome_de_uma_palavra_so_nao_liga_pela_receita():
+def test_nome_de_uma_palavra_so_de_microempresa_nao_liga_pela_receita():
     """Regra 1: "Kawa" casava com a KAWA LTDA, uma microempresa sem relação com o negócio."""
-    receita = _receita((RAIZ_GAMA, "kawa", lig.RAZAO_SOCIAL, False))
+    receita = _receita(
+        (RAIZ_GAMA, "kawa", lig.RAZAO_SOCIAL, False, None, True, False, True)
+    )
     parte = _ligar("Kawa", receita=receita)
     assert parte["ligacao_por"] == "na_duvida"
     assert parte["candidatos"] == 1
     assert parte["id_entidade"] is None and parte["cnpj_raiz"] is None
-    fantasia = _receita((RAIZ_GAMA, "kawa", lig.NOME_FANTASIA, False))
+    fantasia = _receita(
+        (RAIZ_GAMA, "kawa", lig.NOME_FANTASIA, False, None, True, False, True)
+    )
     assert _ligar("Kawa", receita=fantasia)["ligacao_por"] == "na_duvida"
+
+
+def test_marca_de_uma_palavra_de_porte_maior_liga_pela_receita():
+    """A 1ª versão da regra 1 derrubou SANKHYA S.A., SUNO S.A. e outras marcas certas."""
+    receita = _receita((RAIZ_GAMA, "sankhya", lig.RAZAO_SOCIAL, False))
+    parte = _ligar("Sankhya", receita=receita)
+    assert parte["ligacao_por"] == "nome_exato"
+    assert parte["cnpj_raiz"] == RAIZ_GAMA
 
 
 def test_nome_de_uma_palavra_so_liga_pela_rede():
@@ -259,15 +272,28 @@ def test_nome_fantasia_sem_o_nome_na_razao_social_fica_na_duvida():
     assert _ligar("Estante Virtual", receita=com)["ligacao_por"] == "nome_fantasia"
 
 
-def test_cnpj_de_empresa_estrangeira_vira_holding_e_nao_a_parte():
+def test_cnpj_de_empresa_estrangeira_vira_holding_e_nao_a_alvo():
     """Regra 5: a FOXBIT LLC registrada no Brasil é a holding de fora, não a empresa brasileira."""
     receita = _receita(
         (RAIZ_GAMA, "foxbit brasil", lig.RAZAO_SOCIAL, False, None, True, True)
     )
-    parte = _ligar("Foxbit Brasil", receita=receita)
+    parte = _ligar("Foxbit Brasil", receita=receita)  # `_ligar` põe o nome como alvo
     assert parte["ligacao_por"] == "holding_estrangeira"
     assert parte["candidatos"] == 1
     assert parte["id_entidade"] is None and parte["cnpj_raiz"] is None
+
+
+def test_compradora_estrangeira_liga_a_dona_de_fora():
+    """Na compradora, a empresa de fora registrada no Brasil é a própria parte."""
+    receita = _receita(
+        (RAIZ_GAMA, "one equity partners", lig.RAZAO_SOCIAL, False, None, True, True)
+    )
+    partes = lig.partes(
+        ma.tabela([_negocio(alvo="Alfa Óleos", comprador="One Equity Partners")])
+    )
+    ligadas = lig.ligar(partes, _rede(), receita).set_index("nome")
+    assert ligadas.loc["One Equity Partners", "ligacao_por"] == "nome_exato"
+    assert ligadas.loc["One Equity Partners", "cnpj_raiz"] == RAIZ_GAMA
 
 
 def test_cnpj_aberto_depois_do_post_nunca_e_a_parte():
@@ -485,6 +511,9 @@ def test_receita_devolve_so_raiz_e_o_nome_ja_normalizado():
     assert por[(RAIZ_DELTA, lig.NOME_FANTASIA)].razao_tem_o_nome
     assert por[("66666666", lig.RAZAO_SOCIAL)].estrangeira
     assert not por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].estrangeira
+    # porte 03 (EPP) é pequena; 05 (demais) não
+    assert por[(RAIZ_DELTA, lig.NOME_FANTASIA)].pequena
+    assert not por[(RAIZ_ALFA, lig.RAZAO_SOCIAL)].pequena
 
 
 # --- contrato ---------------------------------------------------------------------------------------
