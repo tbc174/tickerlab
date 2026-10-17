@@ -1,6 +1,6 @@
 """As fichas do dossiê da base no app (plano do relatório-modelo, 17/10/2026, PR 1).
 
-A ficha é montada toda noite no servidor de casa (`scripts/montar_dossies.py`), uma por CNPJ. Aqui ela
+A ficha é montada toda noite no servidor de casa (`scripts/gerar_dossies.py`), uma por CNPJ. Aqui ela
 é lida e validada, perde o que é ruído (série de agência sem peso) e vira as `Secao` do relatório, já
 com cada número escrito: a página do site, o PDF e a tela do app leem a mesma coisa (ADR 0044).
 
