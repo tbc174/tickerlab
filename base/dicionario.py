@@ -2743,6 +2743,80 @@ TABELAS: dict[str, Tabela] = {
             **_ORIGEM_SEM_ANO,
         },
     ),
+    "pgfn_divida": Tabela(
+        descricao=(
+            "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: "
+            "uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região "
+            "da PGFN, tipo de devedor, situação e ajuizamento, com quantas inscrições e o valor "
+            "somado. Só pessoa jurídica com CNPJ de dígito certo (ADR 0075): pessoa física, CPF e "
+            "nome nunca entram; empresário individual e MEI ficam com `trata_como_pessoa`."
+        ),
+        fonte="PGFN: dados abertos da dívida ativa (SIDA, Previdência e FGTS; `base/pgfn.py`)",
+        familia_da_fonte="pgfn",
+        frequencia=(
+            "Trimestral (a PGFN publica um retrato por trimestre; cada CSV guardado vira um arquivo)"
+        ),
+        atraso=(
+            "O retrato do fim do trimestre sai semanas depois (o de 2026-06 foi gerado em 23/07); "
+            "a PGFN não diz quando publicou, então `disponivel_em` é o dia em que o arquivista viu "
+            "o arquivo pela primeira vez, e a porta o lê pelo último dia do mês, como as outras "
+            "fontes de governo (o conservador; a história começa em 14/10/2026)"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/pgfn_divida/<AAAA-MM>/<sistema>-<região>.parquet` (servidor "
+            "de casa, `scripts/carga_pgfn.py`)"
+        ),
+        linhagem=LINHAGEM_DA_HISTORICA_SEM_ANO,
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "cnpj_basico": ("Raiz do CNPJ (8 caracteres): a empresa", TEXTO),
+            "tipo_divida": (
+                "nao_previdenciaria (SIDA), previdenciaria ou fgts: o arquivo da PGFN de onde veio",
+                TEXTO,
+            ),
+            "regiao": ("Região da PGFN no nome do arquivo (1 a 6, ou NA)", TEXTO),
+            "tipo_devedor": ("principal, corresponsavel ou solidario", TEXTO),
+            "tipo_situacao": (
+                (
+                    "Grupo da situação, como a PGFN escreve (Em cobrança, Suspenso por decisão "
+                    "judicial, Benefício Fiscal, Garantia)"
+                ),
+                TEXTO,
+            ),
+            "situacao_inscricao": (
+                "Situação da inscrição, como a PGFN escreve (ATIVA AJUIZADA, ATIVA EM COBRANCA...)",
+                TEXTO,
+            ),
+            "ajuizado": ("Verdadeiro se a cobrança já está na Justiça", SIM_OU_NAO),
+            "inscricoes": ("Quantas inscrições somadas nesta linha", NUMERO),
+            "valor_consolidado": ("Valor consolidado somado das inscrições", REAIS),
+            "primeira_inscricao": (
+                "Data da inscrição mais antiga (vazia se a PGFN não informa)",
+                DATA,
+            ),
+            "ultima_inscricao": ("Data da inscrição mais recente", DATA),
+            "data_do_retrato": ("Último dia do mês do retrato da PGFN", DATA),
+            "gerado_em": (
+                "Data dos CSVs dentro do ZIP (informativa: não é a de publicação)",
+                DATA,
+            ),
+            "trata_como_pessoa": (
+                (
+                    "Verdadeiro em empresário individual, natureza do grupo 4, MEI ou CNPJ que a "
+                    "Receita guardada não tem (ADR 0075): nada negativo sobre ele sai da base"
+                ),
+                SIM_OU_NAO,
+            ),
+            "disponivel_em": (
+                (
+                    "Dia em que o arquivista viu o arquivo pela primeira vez (quando ficou "
+                    "público para a base)"
+                ),
+                DATA,
+            ),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "auditores": Tabela(
         descricao=(
             "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início "
@@ -3642,6 +3716,7 @@ _CONTRATO = {
     "eventos_de_capital": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "tipo", "data"), datas={"aconteceu_em": "data", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "insolvencia": _contrato(modulo=_ME, chaves=("cnpj", "protocolo", "versao", "rotulo"), datas={"aconteceu_em": "referencia", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),  # 2.0.0 (16/10/2026): rótulo da própria × de terceiro
     "cnpj_situacao_especial": _contrato(modulo="governo_e_sancoes", chaves=("cnpj", "mes_do_retrato"), datas={"aconteceu_em": "data_situacao_especial", "publico_em": "mes_do_retrato", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
+    "pgfn_divida": _contrato(modulo="governo_e_sancoes", pessoa=True, chaves=("cnpj", "tipo_divida", "regiao", "tipo_devedor", "tipo_situacao", "situacao_inscricao", "ajuizado", "data_do_retrato"), datas={"aconteceu_em": "data_do_retrato", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_GOVERNO, granularidade_do_publico_em="mes"),
     "auditores": _contrato(modulo=_ME, chaves=("cnpj", "referencia", "versao", "auditor_id"), datas={"aconteceu_em": "inicio", "publico_em": "conhecido_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
     "trocas_de_auditor": _contrato(modulo=_ME, chaves=("cnpj", "efetiva_em", "novo_id"), datas={"aconteceu_em": "efetiva_em", "publico_em": "conhecido_em"}, historico_desde=_CVM),
     "curva_juros": _contrato(modulo="macro", chaves=("data_base", "curva", "prazo_anos"), datas={"aconteceu_em": "data_base", "publico_em": "disponivel_em", "coletado_em": "origem_coletada_em"}, historico_desde=_CVM),
@@ -3669,6 +3744,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "curva_juros",
         "faixas": {"prazo_anos": _SEM_NEGATIVO, "maior_prazo_anos": _SEM_NEGATIVO, "titulos": _SEM_NEGATIVO},
         "nao_nulas": ("taxa", "disponivel_em"),
+    },
+    "pgfn_divida": {
+        "pasta": "pgfn_divida",
+        "faixas": {"inscricoes": (1.0, None), "valor_consolidado": _SEM_NEGATIVO},
+        "nao_nulas": ("cnpj", "cnpj_basico", "data_do_retrato", "disponivel_em", "trata_como_pessoa"),
     },
     "proventos": {
         "pasta": "proventos",
