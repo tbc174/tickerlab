@@ -84,7 +84,9 @@ MODULOS = (
                 "por-dentro",
             ),
             Funcionalidade(
-                "Pulse", "O resumo do que mudou nos seus ativos desde a última visita."
+                "Pulse",
+                "O resumo do que mudou nos seus ativos desde a última visita.",
+                "pulse",
             ),
             Funcionalidade(
                 "Calendário", "Resultados, assembleias e proventos que vêm pela frente."
@@ -98,6 +100,7 @@ MODULOS = (
             Funcionalidade(
                 "Diário de Teses",
                 "Escreva por que acompanha um ativo e revisite a ideia depois.",
+                "diario-de-teses",
             ),
         ),
     ),
@@ -138,6 +141,7 @@ MODULOS = (
             Funcionalidade(
                 "Dividendos e custo médio",
                 "Proventos recebidos e preço médio por ativo.",
+                CARTEIRA_B3,
             ),
         ),
     ),
@@ -203,7 +207,9 @@ MODULOS = (
                 "O arquivo exato que você gerou, para baixar de novo.",
                 "relatorio",
             ),
-            Funcionalidade("Newsletter", "Os acontecimentos da sua lista por e-mail."),
+            Funcionalidade(
+                "Newsletter", "Os acontecimentos da sua lista por e-mail.", "newsletter"
+            ),
             Funcionalidade(
                 "Compartilhamento seguro",
                 'Um link privado, com prazo e revogável, para a ficha "Foi sorte?" ou um PDF.',
@@ -293,6 +299,26 @@ MODULOS = (
                 "Imposto sobre ações (DARF)",
                 "O imposto do mês, a isenção de R$ 20 mil e o prejuízo a compensar.",
                 pagina_do_site="calculadora-de-darf.html",
+            ),
+            Funcionalidade(
+                "Preço médio",
+                "O preço médio de ações e FIIs, com as mesmas regras do app.",
+                pagina_do_site="calculadora-de-preco-medio.html",
+            ),
+            Funcionalidade(
+                "Fundo ou CDB",
+                "Um fundo DI, com taxas e come-cotas, contra um CDB no mesmo prazo.",
+                pagina_do_site="fundo-ou-cdb.html",
+            ),
+            Funcionalidade(
+                "Financiamento SAC ou Price",
+                "As parcelas dos dois sistemas lado a lado, com amortização extra.",
+                pagina_do_site="simulador-de-financiamento.html",
+            ),
+            Funcionalidade(
+                "Quanto daria? Foi sorte?",
+                "Quanto um valor aplicado num mês teria virado, e se a data foi sorte.",
+                pagina_do_site="quanto-daria.html",
             ),
         ),
     ),

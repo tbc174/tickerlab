@@ -34,6 +34,10 @@ def test_toda_funcionalidade_disponivel_aponta_para_uma_pagina_que_existe():
         ("Renda fixa com IR", "calculadora-de-renda-fixa.html"),
         ("Juro real e taxas", "calculadora-de-juro-real.html"),
         ("Correção pela inflação", "calculadora-de-correcao-pela-inflacao.html"),
+        ("Preço médio", "calculadora-de-preco-medio.html"),
+        ("Fundo ou CDB", "fundo-ou-cdb.html"),
+        ("Financiamento SAC ou Price", "simulador-de-financiamento.html"),
+        ("Quanto daria? Foi sorte?", "quanto-daria.html"),
     ],
 )
 def test_calculadoras_levam_as_paginas_do_site(nome, pagina):
@@ -56,12 +60,17 @@ def _funcionalidade(chave_do_modulo, nome):
 
 
 def test_o_que_ainda_nao_existe_nao_diz_que_existe():
-    """Do Mercado, as Cotações ainda são ideia futura."""
+    """Do Mercado, as Cotações ainda são ideia futura; do Research, o Calendário."""
     disponiveis = [
         f.nome for f in modulos.POR_CHAVE["mercado"].funcionalidades if f.disponivel
     ]
     assert disponiveis == ["Juros e inflação", "Qualidade dos dados"]
-    assert not _funcionalidade("carteira", "Dividendos e custo médio").disponivel
+    research = [
+        f.nome
+        for f in modulos.POR_CHAVE["research"].funcionalidades
+        if not f.disponivel
+    ]
+    assert research == ["Calendário"]
 
 
 def test_juros_e_inflacao_e_linha_do_tempo_levam_as_paginas_da_onda_2():
@@ -82,6 +91,7 @@ def test_cuidar_da_carteira_leva_a_carteira_da_b3_e_nao_a_de_estrategias():
         "A carteira no passado",
         "Raio-X",
         "Rebalanceamento",
+        "Dividendos e custo médio",
     )
     for nome in da_planilha:
         assert _funcionalidade("carteira", nome).pagina_do_app == "carteira-b3", nome

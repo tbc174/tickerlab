@@ -53,9 +53,9 @@
       },
       {
         "descricao": "O resumo do que mudou nos seus ativos desde a última visita.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Pulse",
-        "pagina_do_app": null,
+        "pagina_do_app": "pulse",
         "pagina_do_site": null,
         "ticker": null
       },
@@ -77,9 +77,9 @@
       },
       {
         "descricao": "Escreva por que acompanha um ativo e revisite a ideia depois.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Diário de Teses",
-        "pagina_do_app": null,
+        "pagina_do_app": "diario-de-teses",
         "pagina_do_site": null,
         "ticker": null
       }
@@ -141,9 +141,9 @@
       },
       {
         "descricao": "Proventos recebidos e preço médio por ativo.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Dividendos e custo médio",
-        "pagina_do_app": null,
+        "pagina_do_app": "carteira-b3",
         "pagina_do_site": null,
         "ticker": null
       }
@@ -245,9 +245,9 @@
       },
       {
         "descricao": "Os acontecimentos da sua lista por e-mail.",
-        "disponivel": false,
+        "disponivel": true,
         "nome": "Newsletter",
-        "pagina_do_app": null,
+        "pagina_do_app": "newsletter",
         "pagina_do_site": null,
         "ticker": null
       },
@@ -385,6 +385,38 @@
         "nome": "Imposto sobre ações (DARF)",
         "pagina_do_app": null,
         "pagina_do_site": "calculadora-de-darf.html",
+        "ticker": null
+      },
+      {
+        "descricao": "O preço médio de ações e FIIs, com as mesmas regras do app.",
+        "disponivel": true,
+        "nome": "Preço médio",
+        "pagina_do_app": null,
+        "pagina_do_site": "calculadora-de-preco-medio.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Um fundo DI, com taxas e come-cotas, contra um CDB no mesmo prazo.",
+        "disponivel": true,
+        "nome": "Fundo ou CDB",
+        "pagina_do_app": null,
+        "pagina_do_site": "fundo-ou-cdb.html",
+        "ticker": null
+      },
+      {
+        "descricao": "As parcelas dos dois sistemas lado a lado, com amortização extra.",
+        "disponivel": true,
+        "nome": "Financiamento SAC ou Price",
+        "pagina_do_app": null,
+        "pagina_do_site": "simulador-de-financiamento.html",
+        "ticker": null
+      },
+      {
+        "descricao": "Quanto um valor aplicado num mês teria virado, e se a data foi sorte.",
+        "disponivel": true,
+        "nome": "Quanto daria? Foi sorte?",
+        "pagina_do_app": null,
+        "pagina_do_site": "quanto-daria.html",
         "ticker": null
       }
     ],
