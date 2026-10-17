@@ -14,16 +14,26 @@ o que já tinha sido entregue. Licença: ODbL (CVM).
 """
 
 import io
+import logging
 import re
 import unicodedata
 import zipfile
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 
 import pandas as pd
+import sqlalchemy as sa
 
-from src import eventos
+from base.parquet import LINHAGEM, gravar_se_mudou
+from src import acervo, eventos
+from src.banco.coletas import originais_mais_recentes
+from src.leitura import texto_do_pdf
 from src.links_das_fontes import link_da_fonte
+from src.versao_do_codigo import versao_do_codigo
+
+log = logging.getLogger("tickerlab.ratings")
 
 FONTE_DOS_PDFS = "cvm-ipe-rating"
 FONTE_DO_IPE = "cvm-hist-ipe"
@@ -543,3 +553,197 @@ def extrair_rating(texto: str, empresa: str | None = None) -> Rating | None:
         data_acao=_data(inicio),
         outras_notas=tuple(notas[1:]),
     )
+
+
+# --- a tabela `ratings` da base ------------------------------------------------------------------
+# Uma linha por documento baixado e lido; o mesmo evento contado por dois documentos (o relatório da
+# agência e o comunicado da companhia) vira uma linha só, com a primeira data de entrega.
+
+EXTRAIDO, NAO_EXTRAIDO, NAO_E_PDF = "extraido", "nao_extraido", "nao_e_pdf"
+SITUACOES = (EXTRAIDO, NAO_EXTRAIDO, NAO_E_PDF)
+COLUNAS_DO_RATING = (
+    "agencia",
+    "escala",
+    "nota",
+    "nivel",
+    "nota_original",
+    "perspectiva",
+    "acao",
+    "data_acao",
+    "outras_notas",
+)
+COLUNAS_DA_TABELA = (
+    "cnpj",
+    "empresa",
+    "codigo_cvm",
+    *COLUNAS_DO_RATING,
+    "publico_em",
+    "protocolo",
+    "versao",
+    "link",
+    "evidencia",
+    "situacao_extracao",
+    "documentos",
+)
+# o mesmo evento: mesma companhia, agência, escala, nota e data da ação
+MESMO_EVENTO = ["cnpj", "agencia", "escala", "nota", "data_acao"]
+ORDEM = ["publico_em", "protocolo", "versao"]
+SEPARADOR = "; "
+PASTA_DA_TABELA = "ratings"
+# a linhagem que vem de cada documento (o PDF de onde saiu a linha), quando os documentos a trazem
+LINHAGEM_DO_DOCUMENTO = ("origem_sha256", "origem_coletada_em")
+
+
+def ler_texto(conteudo: bytes) -> str | None:
+    """O texto do documento, ou None se ele não abre como PDF (Word, ZIP, PDF quebrado). Tenta mesmo
+    sem o "%PDF" no começo: há documentos da CVM com lixo antes do cabeçalho que abrem assim mesmo."""
+    if not conteudo:
+        return None
+    try:
+        return texto_do_pdf(conteudo)
+    except Exception:  # noqa: BLE001 - o leitor de PDF tem erros próprios; todos querem dizer "não é PDF"
+        return None
+
+
+def _linha_do_rating(documento: pd.Series, texto: str | None) -> dict[str, object]:
+    if texto is None:
+        return {"situacao_extracao": NAO_E_PDF}
+    rating = extrair_rating(texto, empresa=documento["empresa"] or None)
+    if rating is None:
+        return {"situacao_extracao": NAO_EXTRAIDO}
+    data_acao = rating.data_acao
+    if data_acao is not None and data_acao > documento["publico_em"]:
+        data_acao = None  # depois da entrega: erro de leitura ou de digitação; nunca olha o futuro
+    return {
+        "agencia": rating.agencia,
+        "escala": rating.escala,
+        "nota": rating.nota,
+        "nivel": rating.nivel,
+        "nota_original": rating.nota_original,
+        "perspectiva": rating.perspectiva,
+        "acao": rating.acao,
+        "data_acao": data_acao,
+        "outras_notas": SEPARADOR.join(rating.outras_notas) or None,
+        "situacao_extracao": EXTRAIDO,
+    }
+
+
+def _juntar_eventos(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por evento: a do primeiro documento entregue (a tabela vem em `ORDEM`), com os
+    protocolos de todos em `documentos`. Sem a data da ação não dá para saber se é o mesmo evento."""
+    tabela = tabela.assign(documentos=tabela["protocolo"])
+    juntaveis = (tabela["situacao_extracao"] == EXTRAIDO) & tabela["data_acao"].notna()
+    do_evento = tabela[juntaveis]
+    if do_evento.empty:
+        return tabela
+    protocolos = do_evento.groupby(MESMO_EVENTO, sort=False)["protocolo"].transform(
+        lambda p: SEPARADOR.join(dict.fromkeys(p))
+    )
+    primeiros = do_evento.assign(documentos=protocolos).drop_duplicates(MESMO_EVENTO)
+    return pd.concat([tabela[~juntaveis], primeiros])
+
+
+def montar_ratings(
+    documentos: pd.DataFrame,
+    textos: Mapping[str, str | None],
+    ate: date | None = None,
+) -> pd.DataFrame:
+    """A tabela `ratings`: os `documentos` com rating (`documentos_com_rating`) já baixados.
+
+    `textos`: o texto de cada documento pelo link (None = não abriu como PDF); documento que não
+    está aqui ainda não foi baixado e fica de fora. `ate`: a base como era nesse dia (nada entregue
+    depois, nem na lista dos documentos de um evento). Passa o nome da companhia para a extração
+    (documento sobre várias companhias: a nota é a de quem entregou).
+    """
+    if ate is not None:
+        documentos = documentos[documentos["publico_em"] <= ate]
+    baixados = documentos[documentos["link"].isin(list(textos.keys()))]
+    baixados = baixados.sort_values(ORDEM, kind="stable").reset_index(drop=True)
+    extraidos = pd.DataFrame(
+        [_linha_do_rating(d, textos[d["link"]]) for _, d in baixados.iterrows()],
+        index=baixados.index,
+        columns=[*COLUNAS_DO_RATING, "situacao_extracao"],
+        dtype=object,  # coluna toda vazia continua texto, não vira número
+    )
+    tabela = _juntar_eventos(pd.concat([baixados, extraidos], axis=1))
+    linhagem = [c for c in LINHAGEM_DO_DOCUMENTO if c in tabela.columns]
+    return (
+        tabela.astype({"nivel": "Int64", "versao": "Int64"})
+        .sort_values(ORDEM, kind="stable")
+        .reset_index(drop=True)
+        .loc[:, [*COLUNAS_DA_TABELA, *linhagem]]
+    )
+
+
+# --- montagem pelo acervo (servidor de casa) -----------------------------------------------------
+def documentos_guardados(conexao: sa.Connection) -> tuple[pd.DataFrame, list[sa.Row]]:
+    """Os documentos com rating de todos os arquivos anuais do IPE guardados, e esses arquivos."""
+    anuais = [
+        original
+        for original in originais_mais_recentes(conexao, FONTE_DO_IPE)
+        if "ipe_cia_aberta_" in original.url
+    ]
+    tabelas = [
+        ler_documentos_do_ipe(conteudo)
+        for o in anuais
+        if (conteudo := acervo.ler_original(o.caminho_do_original))
+    ]
+    if not tabelas:
+        return pd.DataFrame(columns=list(COLUNAS)), anuais
+    documentos = pd.concat(tabelas, ignore_index=True).drop_duplicates("link")
+    return documentos.reset_index(drop=True), anuais
+
+
+class _TextosDoAcervo(Mapping[str, str | None]):
+    """O texto de cada PDF guardado, lido só quando pedido: um documento por vez na memória."""
+
+    def __init__(self, originais: Mapping[str, sa.Row]) -> None:
+        self._originais = originais
+
+    def __getitem__(self, link: str) -> str | None:
+        conteudo = acervo.ler_original(self._originais[link].caminho_do_original)
+        if conteudo is None:
+            log.warning("original de %s registrado, mas fora do acervo", link)
+        return ler_texto(conteudo or b"")
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._originais)
+
+    def __len__(self) -> int:
+        return len(self._originais)
+
+
+def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[str, int]:
+    """`<pasta>/ratings/ratings.parquet` com os documentos já baixados; devolve quantos documentos
+    há em cada situação. Remontada inteira a cada rodada (`gravar_se_mudou` só regrava o que mudou;
+    o passado que muda vira `.vN`)."""
+    documentos, anuais = documentos_guardados(conexao)
+    links = set(documentos["link"])
+    pdfs = {
+        o.url: o
+        for o in originais_mais_recentes(conexao, FONTE_DOS_PDFS)
+        if o.url in links
+    }
+    documentos = documentos.assign(
+        origem_sha256=documentos["link"].map(
+            lambda u: pdfs[u].sha256 if u in pdfs else None
+        ),
+        origem_coletada_em=documentos["link"].map(
+            lambda u: (
+                pd.Timestamp(pdfs[u].baixado_em).isoformat() if u in pdfs else None
+            )
+        ),
+    )
+    tabela = montar_ratings(documentos, _TextosDoAcervo(pdfs))
+    contagem = tabela["situacao_extracao"].value_counts()
+    origens = [{"url": o.url, "sha256": o.sha256} for o in [*anuais, *pdfs.values()]]
+    gravar_se_mudou(
+        tabela.assign(
+            montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
+        ),
+        pasta / PASTA_DA_TABELA / PASTA_DA_TABELA,
+        origens,
+        ORDEM,
+        carimbos=LINHAGEM,
+    )
+    return {s: int(contagem.get(s, 0)) for s in SITUACOES}
