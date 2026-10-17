@@ -2,9 +2,9 @@
 
 - **Opt-in:** só recebe quem se inscreveu numa lista, com consentimento próprio (texto e versão
   aqui). Cada e-mail traz um link para sair que funciona sem login (`/newsletter/sair` na API).
-- **Trava até o parecer jurídico:** `SO_PARA_ADMINS`. Enquanto valer, a edição de quem não é
-  administrador fica "retida" e não sai (o PRD condiciona o envio a parecer; liberar exige uma
-  decisão nova).
+- **Trava `TICKERLAB_NEWSLETTER_SO_ADMINS`:** ligada por padrão. Ligada, a edição de quem não é
+  administrador fica "retida" e não sai. A Emenda 1 da ADR 0020 (17/10/2026) liberou o envio
+  para todos; o servidor desliga a trava (valor `0`) só no deploy autorizado pelo Tiago.
 - **Uma edição por período:** a diária uma vez por dia; a semanal às segundas, com a semana
   anterior. O registro do envio (usuário + período) e a chave de idempotência do Resend impedem
   mandar duas vezes, mesmo se a coleta rodar de novo.
@@ -23,13 +23,14 @@ import requests
 from src import marca
 from src.newsletter import TITULO_DOS_TRECHOS, Edicao, Item
 
-VERSAO_DO_CONSENTIMENTO = "2026-10-12"
+VERSAO_DO_CONSENTIMENTO = "2026-10-17"
 TEXTO_DO_CONSENTIMENTO = (
     "Quero receber a Newsletter desta lista por e-mail, na frequência escolhida. Sei que é um "
-    "resumo de documentos públicos, não uma recomendação, e que posso sair a qualquer momento "
-    "pelo link em cada e-mail ou aqui."
+    "resumo de documentos públicos, com fonte e link e sem notas, não uma recomendação, e que "
+    "posso sair a qualquer momento pelo link em cada e-mail ou aqui."
 )
-SO_PARA_ADMINS = True  # decisão 0020: até o parecer jurídico, só a equipe recebe
+VARIAVEL_DA_TRAVA = "TICKERLAB_NEWSLETTER_SO_ADMINS"  # decisão 0020, Emenda 1
+_VALORES_QUE_DESLIGAM = {"0", "false", "nao", "não", "off", "no"}
 JANELA_DA_CADENCIA = {"diaria": 1, "semanal": 7}
 NOMES_DAS_CADENCIAS = {"diaria": "Diária", "semanal": "Semanal (às segundas)"}
 SEGUNDA = 0
@@ -52,9 +53,15 @@ def periodo_da_edicao(cadencia: str, hoje: date) -> str | None:
     return f"{ano}-W{semana:02d}"
 
 
+def so_para_admins() -> bool:
+    """A trava da decisão 0020: ligada (padrão), só os e-mails de `TICKERLAB_ADMINS` recebem."""
+    valor = os.environ.get(VARIAVEL_DA_TRAVA, "1").strip().lower()
+    return valor not in _VALORES_QUE_DESLIGAM
+
+
 def pode_receber(email: str, admins: Iterable[str]) -> bool:
-    """A trava da decisão 0020: até o parecer, só os e-mails de `TICKERLAB_ADMINS`."""
-    return not SO_PARA_ADMINS or email.strip().lower() in {a.lower() for a in admins}
+    """Com a trava ligada, só os e-mails de `TICKERLAB_ADMINS`; desligada, quem se inscreveu."""
+    return not so_para_admins() or email.strip().lower() in {a.lower() for a in admins}
 
 
 def link_para_sair(codigo: str) -> str:

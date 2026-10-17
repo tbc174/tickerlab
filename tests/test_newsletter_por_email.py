@@ -41,10 +41,43 @@ def test_periodo_diario_e_semanal():
     )  # só às segundas
 
 
-def test_trava_ate_o_parecer_so_admins():
-    assert envio.SO_PARA_ADMINS  # decisão 0020: liberar exige parecer e decisão nova
+def test_trava_so_admins_e_configuravel_e_comeca_ligada(monkeypatch):
+    monkeypatch.delenv(envio.VARIAVEL_DA_TRAVA, raising=False)
+    assert (
+        envio.so_para_admins()
+    )  # sem a variável, a trava fica ligada (seguro por padrão)
     assert envio.pode_receber(" Ana@Exemplo.com ", ADMINS)
     assert not envio.pode_receber("bia@exemplo.com", ADMINS)
+
+
+def test_decisao_0020_emenda_1_libera_para_todos_com_a_variavel(monkeypatch):
+    for desligada in ("0", "false", "NAO", " off "):
+        monkeypatch.setenv(envio.VARIAVEL_DA_TRAVA, desligada)
+        assert not envio.so_para_admins()
+        assert envio.pode_receber("bia@exemplo.com", ADMINS)
+    monkeypatch.setenv(envio.VARIAVEL_DA_TRAVA, "1")
+    assert envio.so_para_admins()
+    assert not envio.pode_receber("bia@exemplo.com", ADMINS)
+
+
+def test_consentimento_diz_que_nao_ha_notas_e_tem_versao_nova():
+    assert "sem notas" in envio.TEXTO_DO_CONSENTIMENTO
+    assert envio.VERSAO_DO_CONSENTIMENTO == "2026-10-17"
+
+
+def test_edicao_nao_usa_notas_nem_linguagem_de_recomendacao():
+    """ADR 0089 (regras 5 e 9) e Emenda 1 da 0020: Newsletter sem notas barato/caro."""
+    import re
+    from pathlib import Path
+
+    import src.newsletter as modulo_da_edicao
+
+    fonte = Path(modulo_da_edicao.__file__).read_text(encoding="utf-8")
+    assert not re.search(r"^\s*(from|import)\s+src\.notas", fonte, re.MULTILINE)
+    email = envio.montar_email(_edicao(), "https://x/sair?codigo=abc")
+    corpo = (email.html + email.texto).lower()
+    for proibida in ("compre", "oportunidade", "recomendamos", "garantid"):
+        assert proibida not in corpo
 
 
 # --- o e-mail -------------------------------------------------------------------------------------
