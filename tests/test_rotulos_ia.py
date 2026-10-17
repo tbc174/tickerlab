@@ -136,12 +136,12 @@ def test_palavra_comum_do_nome_fica():
     )
 
 
-def test_sigla_curta_so_em_maiusculas():
-    """OI, BRF, B3: siglas de 2 ou 3 letras trocadas só como estão no cadastro, para "oi" e "de" não
-    sumirem do texto."""
+def test_sigla_curta_so_em_maiusculas_ou_com_inicial_maiuscula():
+    """OI, BRF, B3: siglas de 2 ou 3 letras trocadas como estão no cadastro ou com a inicial
+    maiúscula ("a Oi"), nunca em minúsculas, para "oi" e "de" não sumirem do texto."""
     assert ri.anonimizar(
-        "A OI informa: oi, tudo bem.", ["OI S.A. - EM RECUPERAÇÃO JUDICIAL"]
-    ) == ("A [EMPRESA] informa: oi, tudo bem.")
+        "A OI e a Oi informam: oi, tudo bem.", ["OI S.A. - EM RECUPERAÇÃO JUDICIAL"]
+    ) == ("A [EMPRESA] e a [EMPRESA] informam: oi, tudo bem.")
     assert (
         ri.anonimizar("BRF e a Sadia de SP.", ["BRF S.A."])
         == "[EMPRESA] e a Sadia de SP."

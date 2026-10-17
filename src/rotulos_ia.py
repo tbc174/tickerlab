@@ -202,16 +202,16 @@ _TEXTO_DAS_COMUNS = """
 PALAVRAS_COMUNS = frozenset(_TEXTO_DAS_COMUNS.split())
 
 
-def _sem_acento_minusculo(texto: str) -> str:
-    return _sem_acento(texto).lower()
+def _palavras(texto: str) -> set[str]:
+    """As palavras do texto sem acento e em minúsculas ("PETRÓLEO" vira "petroleo")."""
+    return set(re.findall(r"[a-z0-9]+", _sem_acento(texto).lower()))
 
 
 def _distintas(nome: str) -> set[str]:
     """As palavras do nome que distinguem a empresa: 4 letras ou mais (como a auditoria conta o
     acerto), fora das genéricas da auditoria e das palavras comuns."""
-    palavras = re.findall(r"[a-z0-9]+", _sem_acento_minusculo(nome))
     return {
-        p for p in palavras
+        p for p in _palavras(nome)
         if len(p) >= _MIN_LETRAS_DO_NOME and p not in GENERICAS and p not in PALAVRAS_COMUNS
     }  # fmt: skip
 
@@ -228,7 +228,7 @@ def _parte_e_nome(parte: str, principal: bool) -> bool:
     são descrição e ficam no texto."""
     if principal or _distintas(parte):
         return True
-    palavras = re.findall(r"[a-z0-9]+", _sem_acento_minusculo(parte))
+    palavras = _palavras(parte)
     return len(palavras) >= 2 and not _CONECTORES.intersection(palavras)
 
 
@@ -310,29 +310,25 @@ def anonimizar(texto: str, nomes: list[str]) -> str:
     for variante in _variantes_do_nome(nomes):
         texto = _padrao_do_nome(variante).sub(EMPRESA, texto)
     for sigla in set().union(*(_siglas(nome) for nome in nomes)):
-        texto = re.sub(rf"(?<![\w/]){re.escape(sigla)}(?![\w/])", EMPRESA, texto)
+        formas = "|".join(re.escape(f) for f in {sigla, sigla.capitalize()})
+        texto = re.sub(rf"(?<![\w/])(?:{formas})(?![\w/])", EMPRESA, texto)
     return texto
 
 
 def palavras_que_vazam(texto: str, nome: str) -> set[str]:
     """As palavras que distinguem a empresa (as que a auditoria conta como acerto, fora as comuns)
     e que ainda estão no documento: a conferência sem custo antes do teste de identificação."""
-    return _distintas(nome) & _palavras_do_texto(texto)
+    return _distintas(nome) & _palavras(texto)
 
 
 def palavras_comuns_que_ficam(texto: str, nome: str) -> set[str]:
     """As palavras comuns do nome que ficam no documento de propósito ("pagamento") e que a auditoria
     contaria como acerto se a IA as dissesse: o resto do que a identificação pode pegar."""
-    palavras = re.findall(r"[a-z0-9]+", _sem_acento_minusculo(nome))
     comuns = {
-        p for p in palavras
+        p for p in _palavras(nome)
         if len(p) >= _MIN_LETRAS_DO_NOME and p not in GENERICAS and p in PALAVRAS_COMUNS
     }  # fmt: skip
-    return comuns & _palavras_do_texto(texto)
-
-
-def _palavras_do_texto(texto: str) -> set[str]:
-    return set(re.findall(r"[a-z0-9]+", _sem_acento_minusculo(texto)))
+    return comuns & _palavras(texto)
 
 
 def e_fato_relevante(evento: dict) -> bool:
