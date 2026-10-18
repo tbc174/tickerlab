@@ -113,6 +113,46 @@ def test_trecho_so_com_palavra_generica_nao_prova_o_nome():
     assert conferida.descartes[0].motivo == mx.NOME_FORA_DO_TRECHO
 
 
+TEXTO_COM_APELIDO = (
+    "FATO RELEVANTE. A Centrais Elétricas Brasileiras S.A. (B3: ELET3) (“Companhia” ou "
+    "“Eletrobras”) e a 3R Petroleum Óleo e Gás S.A. (“3R”) (B3: RRRP3) comunicam que a Eletrobras transferiu "
+    "100% das ações da Beta, que passa a ser subsidiária integral da 3R."
+)
+
+
+def _conferir_parte_no_texto_com_apelido(nome: str, trecho: str) -> mx.LeituraConferida:
+    partes = [{"nome": nome, "papel": "vendedor", "participacao_depois": None, "trecho": trecho}]  # fmt: skip
+    leitura = _leitura(
+        partes=partes, trecho_do_tipo="transferiu 100% das ações da Beta"
+    )
+    return mx.conferir(leitura, TEXTO_COM_APELIDO, PUBLICO_EM)
+
+
+@pytest.mark.parametrize(
+    ("nome", "trecho"),
+    [
+        (
+            "Centrais Elétricas Brasileiras S.A.",
+            "a Eletrobras transferiu 100% das ações da Beta",
+        ),
+        ("3R Petroleum Óleo e Gás S.A.", "passa a ser subsidiária integral da 3R"),
+    ],
+)
+def test_apelido_que_o_documento_define_logo_depois_do_nome_prova_o_nome(nome, trecho):
+    # série 1, guia v2: o modelo copia o trecho da ação, que usa o apelido ("a Eletrobras")
+    conferida = _conferir_parte_no_texto_com_apelido(nome, trecho)
+    assert [p.nome for p in conferida.leitura.partes] == [nome]
+
+
+def test_apelido_de_outra_empresa_nao_prova_o_nome():
+    conferida = _conferir_parte_no_texto_com_apelido(
+        "Furnas Centrais Elétricas S.A.",
+        "a Eletrobras transferiu 100% das ações da Beta",
+    )
+    assert conferida.leitura.partes == []
+    assert mx.NOME_FORA_DO_TRECHO in [d.motivo for d in conferida.descartes]
+
+
 def test_participacao_sem_o_numero_no_trecho_perde_so_o_numero():
     partes = [{"nome": "Beta Geração Ltda.", "papel": "alvo", "participacao_depois": 60,
                "trecho": "capital social da Beta Geração Ltda."}]  # fmt: skip
