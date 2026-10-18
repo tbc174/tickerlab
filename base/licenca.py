@@ -85,6 +85,7 @@ FAMILIA_DO_ENDERECO = {
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
+    "www.gov.br/conab/": "conab",
 }
 # a base de cripto (`<acervo>/cripto/<pasta>/...`, `base/cripto/coleta.py`) grava sem origens
 PASTAS_DA_CRIPTO = {

@@ -1,0 +1,61 @@
+{
+  "tabela": "conab_cafe",
+  "modulo": "commodities",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "safra": {
+      "descricao": "Ano em que a safra começa (2026 é a safra 2026/27)",
+      "unidade": "número inteiro"
+    },
+    "levantamento": {
+      "descricao": "Número do levantamento da safra, de 1 a 4",
+      "unidade": "número inteiro"
+    },
+    "tipo": {
+      "descricao": "`arabica`, `conilon` ou `total`",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "Sigla da UF, `OUTROS` (agrupamento da CONAB) ou `BRASIL`",
+      "unidade": "texto"
+    },
+    "area_formacao_ha": {
+      "descricao": "Área em formação, em hectares",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "area_producao_ha": {
+      "descricao": "Área em produção, em hectares",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "produtividade_sc_ha": {
+      "descricao": "Produtividade, em sacas de 60 kg por hectare",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "producao_mil_sacas": {
+      "descricao": "Produção, em mil sacas de 60 kg",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "divulgado_em": {
+      "descricao": "Dia em que a CONAB divulgou o levantamento",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "safra",
+    "levantamento",
+    "tipo",
+    "uf",
+    "divulgado_em"
+  ],
+  "datas": {
+    "publico_em": "divulgado_em"
+  },
+  "historico_desde": "2026-02-05",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede resposta dela",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",
+  "atraso": "O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento"
+}

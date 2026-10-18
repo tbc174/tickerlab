@@ -4393,6 +4393,34 @@ TABELAS: dict[str, Tabela] = {
             "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
         },
     ),
+    "conab_cafe": Tabela(
+        descricao=(
+            "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento "
+            "(1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção, a "
+            "produtividade e a produção em mil sacas. Cada levantamento é uma linha a mais, nunca "
+            "sobrescreve o anterior. Licença CC BY-ND 3.0: só como publicado, citando a CONAB"
+        ),
+        fonte="CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)",
+        familia_da_fonte="conab",
+        frequencia="Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",
+        atraso="O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento",
+        onde="Parquet em `<acervo>/base/conab_cafe/conab_cafe.parquet` (servidor de casa)",
+        linhagem=(
+            "A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da "
+            "coleta e SHA-256. " + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "safra": ("Ano em que a safra começa (2026 é a safra 2026/27)", NUMERO),
+            "levantamento": ("Número do levantamento da safra, de 1 a 4", NUMERO),
+            "tipo": ("`arabica`, `conilon` ou `total`", TEXTO),
+            "uf": ("Sigla da UF, `OUTROS` (agrupamento da CONAB) ou `BRASIL`", TEXTO),
+            "area_formacao_ha": ("Área em formação, em hectares", NUMERO_DECIMAL),
+            "area_producao_ha": ("Área em produção, em hectares", NUMERO_DECIMAL),
+            "produtividade_sc_ha": ("Produtividade, em sacas de 60 kg por hectare", NUMERO_DECIMAL),
+            "producao_mil_sacas": ("Produção, em mil sacas de 60 kg", NUMERO_DECIMAL),
+            "divulgado_em": ("Dia em que a CONAB divulgou o levantamento", DATA),
+        },
+    ),
 }
 
 
@@ -4479,6 +4507,7 @@ _CONTRATO = {
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05"),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
 }  # fmt: skip
 
