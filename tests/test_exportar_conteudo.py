@@ -123,6 +123,29 @@ def test_paginas_levam_o_contrato_para_a_tela_nova():
     assert exportadas["inicio"]["contrato"] is None
 
 
+def test_paginas_e_areas_levam_a_area_para_o_menu_do_app_novo():
+    """O menu por áreas do React (ADR 0096) lê a área de cada página e a ordem de cada área daqui."""
+    from src.paginas import AREAS, POR_CHAVE, paginas_da_area
+
+    exportadas = {
+        p["chave"]: p for p in json.loads(exp.em_json(exp.conteudo()["paginas"]))
+    }
+    for chave, p in exportadas.items():
+        assert p["area"] == POR_CHAVE[chave].area
+    areas = json.loads(exp.em_json(exp.conteudo()["app"]))["areas"]
+    assert [a["chave"] for a in areas] == list(AREAS)
+    ativo = next(a for a in areas if a["chave"] == "ativo")
+    assert (
+        ativo["rotulo"] == AREAS["ativo"].rotulo
+        and ativo["frase"] == AREAS["ativo"].frase
+    )
+    assert ativo["paginas"] == [p.chave for p in paginas_da_area("ativo")]
+    conta = next(a for a in areas if a["chave"] == "conta")
+    assert (
+        "admin" not in conta["paginas"]
+    )  # o catálogo da administração fica fora do bundle
+
+
 def test_paginas_de_admin_ficam_fora_do_bundle_publico():
     """O catálogo da administração não vai no JavaScript público (a tela é só do Streamlit)."""
     from src.paginas import PAGINAS

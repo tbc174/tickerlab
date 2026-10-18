@@ -48,6 +48,7 @@ export interface PaginaDoApp {
   url: string;
   grupo: string;
   descricao: string;
+  area: string; // a área no menu do app novo (AREAS de src/paginas.py; ADR 0096)
   e_pro: boolean;
   no_menu: boolean;
   somente_admin: boolean;
@@ -123,7 +124,17 @@ export interface ParteDaAjuda {
   texto: string;
 }
 
+/** Uma área do menu do app novo (`Area` de src/paginas.py), com as páginas na ordem do menu. */
+export interface AreaDoApp {
+  chave: string;
+  rotulo: string;
+  icone: string; // o nome do desenho em web/src/app/areas.ts
+  frase: string;
+  paginas: string[]; // chaves das páginas
+}
+
 export const conteudoDoApp: {
+  areas: AreaDoApp[];
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };

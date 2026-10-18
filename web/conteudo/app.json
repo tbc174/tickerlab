@@ -13,6 +13,92 @@
     "titulo": "Antes de começar",
     "versao": "2026-10-13.7"
   },
+  "areas": [
+    {
+      "chave": "inicio",
+      "frase": "O que mudou nos seus ativos e por onde começar.",
+      "icone": "inicio",
+      "paginas": [
+        "inicio",
+        "pulse"
+      ],
+      "rotulo": "Início"
+    },
+    {
+      "chave": "ativo",
+      "frase": "Entenda um ativo: preço, risco, a empresa e quem tem a ação.",
+      "icone": "ativo",
+      "paginas": [
+        "visao_geral",
+        "risco",
+        "retorno_mensal",
+        "correlacao",
+        "linha_do_tempo",
+        "fundamentos",
+        "relatorio_empresa",
+        "por_dentro",
+        "donos",
+        "comparar",
+        "relatorio"
+      ],
+      "rotulo": "Ativo"
+    },
+    {
+      "chave": "estrategias",
+      "frase": "Teste regras de compra e venda no passado, com custos.",
+      "icone": "estrategias",
+      "paginas": [
+        "backtest",
+        "ranking",
+        "carteira",
+        "experimentos",
+        "regimes",
+        "aprendizado",
+        "pares"
+      ],
+      "rotulo": "Estratégias"
+    },
+    {
+      "chave": "acompanhar",
+      "frase": "O que você acompanha: acontecimentos, teses, carteira, alertas, juros e inflação.",
+      "icone": "acompanhar",
+      "paginas": [
+        "research",
+        "diario_de_teses",
+        "carteira_b3",
+        "juros_e_inflacao",
+        "newsletter",
+        "carteira_research",
+        "alertas",
+        "parametros",
+        "momentum"
+      ],
+      "rotulo": "Acompanhar"
+    },
+    {
+      "chave": "conta",
+      "frase": "O que é seu: simulações guardadas, plano e privacidade.",
+      "icone": "conta",
+      "paginas": [
+        "simulacoes",
+        "meus_dados",
+        "planos"
+      ],
+      "rotulo": "Conta"
+    },
+    {
+      "chave": "ajuda",
+      "frase": "Como os números são calculados, as regras de uso e a pesquisa em curso.",
+      "icone": "ajuda",
+      "paginas": [
+        "guia",
+        "termos",
+        "privacidade",
+        "trade"
+      ],
+      "rotulo": "Ajuda"
+    }
+  ],
   "assinatura": {
     "retorno_cancelado": "Pagamento cancelado. Nada foi cobrado.",
     "retorno_ok": "Pagamento recebido! O plano muda assim que o Stripe confirmar, em poucos segundos."

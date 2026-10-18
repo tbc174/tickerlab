@@ -43,6 +43,62 @@ FRASE_DE_CADA_GRUPO = {
 }
 
 
+# --- Áreas do app novo (ADR 0096) -----------------------------------------------------------
+# O app em React organiza o menu por área, não pelo grupo do Streamlit (que não muda). O mapa vem da
+# pesquisa de organização do app (§5); trocar uma página de área é mexer só no `area=` dela.
+
+
+@dataclass(frozen=True)
+class Area:
+    rotulo: str  # o nome no menu e nas abas do celular
+    icone: str  # o nome do ícone em web/src/app/areas.ts (SVG desenhado lá, sem biblioteca)
+    frase: str  # uma frase: o que a pessoa encontra nesta área
+    ordem: int
+
+
+AREA_INICIO = "inicio"
+AREA_ATIVO = "ativo"
+AREA_ESTRATEGIAS = "estrategias"
+AREA_ACOMPANHAR = "acompanhar"
+AREA_CONTA = "conta"  # no menu da pessoa, no topo
+AREA_AJUDA = "ajuda"  # no rodapé, fora do menu principal
+AREAS = {
+    AREA_INICIO: Area(
+        "Início", "inicio", "O que mudou nos seus ativos e por onde começar.", 1
+    ),
+    AREA_ATIVO: Area(
+        "Ativo",
+        "ativo",
+        "Entenda um ativo: preço, risco, a empresa e quem tem a ação.",
+        2,
+    ),
+    AREA_ESTRATEGIAS: Area(
+        "Estratégias",
+        "estrategias",
+        "Teste regras de compra e venda no passado, com custos.",
+        3,
+    ),
+    AREA_ACOMPANHAR: Area(
+        "Acompanhar",
+        "acompanhar",
+        "O que você acompanha: acontecimentos, teses, carteira, alertas, juros e inflação.",
+        4,
+    ),
+    AREA_CONTA: Area(
+        "Conta", "conta", "O que é seu: simulações guardadas, plano e privacidade.", 5
+    ),
+    AREA_AJUDA: Area(
+        "Ajuda",
+        "ajuda",
+        "Como os números são calculados, as regras de uso e a pesquisa em curso.",
+        6,
+    ),
+}
+# ficam por último na área, nesta ordem: são ações sobre o ativo da tela ("Comparar com…" e o
+# relatório em PDF), não análises; a ordem é a das abas da página do ativo (PR 3 da ADR 0096)
+NO_FIM_DA_AREA = ("comparar", "relatorio")
+
+
 # --- Contrato de cada página (preparação 3 da ADR 0044; ADR 0048) ---------------------------
 # O que a tela recebe (entradas) e qual rota da API devolve o que ela mostra (resposta). Uma tela nova
 # (React) é montada a partir daqui; há teste que confere cada contrato contra a API de verdade.
@@ -93,6 +149,7 @@ class Pagina:
     grupo: str
     icone: str  # ícone do Material (o Streamlit mostra no menu)
     descricao: str  # uma frase: para que serve esta página
+    area: str  # a área no menu do app novo (uma de AREAS)
     recurso: str | None = None  # recurso do plano que a página exige (None = livre)
     precisa_do_ativo: bool = True  # mostra os campos de ativo e período no topo
     somente_admin: bool = False  # só aparece no menu (e só abre) para administradores
@@ -117,6 +174,7 @@ PAGINAS = (
         GRUPO_TOPO,
         ":material/home:",
         "Comece por aqui: o que é o TickerLab e o caminho mais curto para usá-lo.",
+        area=AREA_INICIO,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -125,6 +183,7 @@ PAGINAS = (
         GRUPO_TOPO,
         ":material/picture_as_pdf:",
         "Leve a análise com você: um PDF com os números, os gráficos e cada termo explicado.",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "guia",
@@ -132,6 +191,7 @@ PAGINAS = (
         GRUPO_APRENDER,
         ":material/menu_book:",
         "Como os números são calculados, os limites do app e cada termo explicado em português.",
+        area=AREA_AJUDA,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -140,6 +200,7 @@ PAGINAS = (
         GRUPO_APRENDER,
         ":material/gavel:",
         "As regras de uso do TickerLab e o que ele não é: não há recomendação de investimento.",
+        area=AREA_AJUDA,
         precisa_do_ativo=False,
         no_menu=False,
     ),
@@ -149,6 +210,7 @@ PAGINAS = (
         GRUPO_APRENDER,
         ":material/lock_person:",
         "Quais dados pessoais o TickerLab guarda, para quê, por quanto tempo e quais são os seus direitos.",
+        area=AREA_AJUDA,
         precisa_do_ativo=False,
         no_menu=False,
     ),
@@ -158,6 +220,7 @@ PAGINAS = (
         GRUPO_MAIS,
         ":material/memory:",
         "A pesquisa de trading quantitativo do TickerLab: o que está sendo testado e em que fase está.",
+        area=AREA_AJUDA,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -166,6 +229,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/dashboard:",
         "O preço do ativo e os números-chave: retorno, risco e os dias mais extremos.",
+        area=AREA_ATIVO,
         contrato=Contrato(
             "GET",
             "/v1/visao-geral",
@@ -191,6 +255,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/shield:",
         "Quanto o ativo já caiu e o quanto o preço oscila ao longo do tempo.",
+        area=AREA_ATIVO,
         contrato=Contrato(
             "GET",
             "/v1/risco",
@@ -216,6 +281,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/calendar_month:",
         "Como o ativo foi em cada mês e ano, e se existem meses melhores que outros.",
+        area=AREA_ATIVO,
         contrato=Contrato(
             "GET",
             "/v1/retorno-mensal",
@@ -229,6 +295,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/compare_arrows:",
         "Coloque dois ou mais ativos lado a lado, com o Ibovespa e o S&P 500 de referência.",
+        area=AREA_ATIVO,
         contrato=Contrato(
             "GET",
             "/v1/comparacao",
@@ -252,6 +319,7 @@ PAGINAS = (
         GRUPO_ANALISAR,
         ":material/hub:",
         "Quanto o ativo anda junto com outros e com o mercado (o beta mede essa sensibilidade).",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "backtest",
@@ -259,6 +327,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/history:",
         "Teste no passado: e se eu tivesse seguido esta regra de compra e venda?",
+        area=AREA_ESTRATEGIAS,
         contrato=Contrato(
             "POST",
             "/v1/backtest",
@@ -316,6 +385,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/leaderboard:",
         "Todas as estratégias no mesmo ativo, da melhor à pior, e quanto do resultado pode ser sorte.",
+        area=AREA_ESTRATEGIAS,
     ),
     Pagina(
         "carteira",
@@ -323,6 +393,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/pie_chart:",
         "Várias ações ao mesmo tempo, com regras para dividir o dinheiro entre elas.",
+        area=AREA_ESTRATEGIAS,
     ),
     Pagina(
         "experimentos",
@@ -330,6 +401,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/science:",
         "Perguntas clássicas respondidas com dados: aportar de uma vez ou aos poucos, rebalancear, virada do mês.",
+        area=AREA_ESTRATEGIAS,
     ),
     Pagina(
         "regimes",
@@ -337,6 +409,7 @@ PAGINAS = (
         GRUPO_ESTRATEGIAS,
         ":material/waves:",
         "Como uma estratégia se comporta em fases calmas e agitadas, e proteções contra quedas fortes.",
+        area=AREA_ESTRATEGIAS,
     ),
     Pagina(
         "aprendizado",
@@ -344,6 +417,7 @@ PAGINAS = (
         GRUPO_AVANCADO,
         ":material/psychology:",
         "Modelos que tentam prever o mercado, com validação honesta do que realmente funciona.",
+        area=AREA_ESTRATEGIAS,
         recurso=APRENDIZADO_DE_MAQUINA,
     ),
     Pagina(
@@ -352,6 +426,7 @@ PAGINAS = (
         GRUPO_AVANCADO,
         ":material/swap_horiz:",
         "Apostar que dois ativos ligados voltam a andar juntos depois de se afastarem.",
+        area=AREA_ESTRATEGIAS,
         recurso=PARES,
     ),
     Pagina(
@@ -361,6 +436,7 @@ PAGINAS = (
         ":material/travel_explore:",
         "O que as empresas que você acompanha publicaram na CVM e na SEC, por relevância, "
         "com o documento original de cada item.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -370,6 +446,7 @@ PAGINAS = (
         ":material/monitor_heart:",
         "O que mudou nos seus ativos desde a sua última visita: os acontecimentos novos na CVM "
         "e na SEC, a variação do preço e o veredito das suas estratégias salvas.",
+        area=AREA_INICIO,
         precisa_do_ativo=False,
         contrato=Contrato(
             "GET",
@@ -392,6 +469,7 @@ PAGINAS = (
         ":material/edit_note:",
         "O que você pensa de cada ativo, com a data em que escreveu, ligado aos backtests que "
         "você salvou.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -402,6 +480,7 @@ PAGINAS = (
         "A sua posição e a sua movimentação da B3 lidas só na memória: concentração, a "
         "carteira no passado, Raio-X por tipo, setor e moeda, Rebalanceamento para os pesos "
         "que você escolher, proventos recebidos e custo médio.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -411,6 +490,7 @@ PAGINAS = (
         ":material/percent:",
         "Selic, CDI, IPCA, juro real e o que o mercado espera, com a data e a fonte de cada "
         "número (Banco Central).",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/juros-e-inflacao", (), "JurosEInflacaoV1"),
     ),
@@ -421,6 +501,7 @@ PAGINAS = (
         ":material/timeline:",
         "O preço do ativo do topo e os documentos que a empresa publicou na CVM ou na SEC, no "
         "mesmo eixo, com o link de cada documento.",
+        area=AREA_ATIVO,
         contrato=Contrato(
             "GET",
             "/v1/linha-do-tempo",
@@ -447,6 +528,7 @@ PAGINAS = (
         ":material/account_balance:",
         "Receita, lucro, margens, retorno, dívida e múltiplos do ativo do topo, a partir das "
         "demonstrações entregues à CVM ou à SEC, com o documento de cada número.",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "relatorio_empresa",
@@ -456,6 +538,7 @@ PAGINAS = (
         "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas "
         "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
         "número.",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "por_dentro",
@@ -464,6 +547,7 @@ PAGINAS = (
         ":material/badge:",
         "Quem conhece a empresa por dentro (diretoria, conselho, controlador) comprou ou vendeu "
         "ações? Dados oficiais da CVM e da SEC, com o documento de cada negociação.",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "donos",
@@ -472,6 +556,7 @@ PAGINAS = (
         ":material/groups:",
         "Quais fundos (B3) e grandes gestores (EUA) têm a ação, quem entrou e quem saiu, e quanto "
         "está vendido. Carteiras oficiais entregues à CVM e à SEC.",
+        area=AREA_ATIVO,
     ),
     Pagina(
         "newsletter",
@@ -480,6 +565,7 @@ PAGINAS = (
         ":material/newspaper:",
         "A edição da sua lista: destaques, alertas, pessoas de dentro, resultados e fundos, com o "
         "documento de cada item. Na tela ou em PDF.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -489,6 +575,7 @@ PAGINAS = (
         ":material/donut_large:",
         "Guarde a fotografia da sua carteira da B3 (só os pesos em %, com o seu consentimento) "
         "para o Research e a Newsletter darem mais destaque às maiores posições.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,  # guardar é do Pro: a própria página explica (sem cadeado)
     ),
     Pagina(
@@ -498,6 +585,7 @@ PAGINAS = (
         ":material/notifications:",
         "Monte regras com várias condições (diário e semanal) e veja em quais ativos da sua lista "
         "elas valem hoje, com o fechamento usado e o motivo de cada resultado.",
+        area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
     ),
     Pagina(
@@ -507,6 +595,7 @@ PAGINAS = (
         ":material/tune:",
         "Escolha como analisar: janelas, médias, RSI, pesos e temas, para todos os ativos ou só "
         "para um, e veja o efeito antes de salvar.",
+        area=AREA_ACOMPANHAR,
     ),
     Pagina(
         "simulacoes",
@@ -514,6 +603,7 @@ PAGINAS = (
         GRUPO_CONTA,
         ":material/bookmarks:",
         "As simulações que você guardou: reabra para recalcular com os dados de hoje ou apague.",
+        area=AREA_CONTA,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/simulacoes", (), "MinhasSimulacoesV1"),
     ),
@@ -523,6 +613,7 @@ PAGINAS = (
         GRUPO_CONTA,
         ":material/star:",
         "Seus ativos favoritos ordenados pela força da tendência recente (momentum).",
+        area=AREA_ACOMPANHAR,
     ),
     Pagina(
         "meus_dados",
@@ -530,6 +621,7 @@ PAGINAS = (
         GRUPO_CONTA,
         ":material/shield_person:",
         "Baixe uma cópia dos seus dados ou apague a sua conta e tudo o que está nela.",
+        area=AREA_CONTA,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/links-compartilhados", (), "MeusLinksV1"),
     ),
@@ -539,6 +631,7 @@ PAGINAS = (
         GRUPO_CONTA,
         ":material/workspace_premium:",
         "Seu plano, o que ele inclui, quanto você já usou e como assinar o Pro.",
+        area=AREA_CONTA,
         precisa_do_ativo=False,
         contrato=Contrato("GET", "/v1/meu-plano", (), "MeuPlanoV1"),
     ),
@@ -548,6 +641,7 @@ PAGINAS = (
         GRUPO_ADMIN,
         ":material/admin_panel_settings:",
         "Usuários, planos, assinaturas e o registro de ações de administrador.",
+        area=AREA_CONTA,
         precisa_do_ativo=False,
         somente_admin=True,
     ),
@@ -559,6 +653,17 @@ PAGINA_INICIAL = "inicio"
 
 def paginas_do_grupo(grupo: str) -> list[Pagina]:
     return [p for p in PAGINAS if p.grupo == grupo]
+
+
+def paginas_da_area(area: str) -> list[Pagina]:
+    """As páginas da área na ordem do menu: a de PAGINAS, com as de NO_FIM_DA_AREA por último."""
+    if area not in AREAS:
+        raise KeyError(f"área desconhecida: {area}")
+
+    def posicao(p: Pagina) -> int:
+        return NO_FIM_DA_AREA.index(p.chave) + 1 if p.chave in NO_FIM_DA_AREA else 0
+
+    return sorted((p for p in PAGINAS if p.area == area), key=posicao)
 
 
 def pagina(chave: str) -> Pagina:

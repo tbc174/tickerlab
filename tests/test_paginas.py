@@ -63,6 +63,89 @@ def test_so_o_grupo_de_administracao_e_restrito_a_administradores():
         assert p.somente_admin == (p.grupo == paginas.GRUPO_ADMIN)
 
 
+# --- Áreas do app novo (ADR 0096): o menu por áreas sai daqui; o grupo do Streamlit não muda ---
+
+
+def test_toda_pagina_tem_area_conhecida_e_toda_area_tem_pagina():
+    for p in paginas.PAGINAS:
+        assert p.area in paginas.AREAS, p.chave
+    for area in paginas.AREAS:
+        assert paginas.paginas_da_area(area), area
+
+
+def test_areas_tem_rotulo_icone_frase_e_ordem_unica():
+    ordens = [a.ordem for a in paginas.AREAS.values()]
+    assert len(ordens) == len(set(ordens))
+    assert list(paginas.AREAS) == sorted(
+        paginas.AREAS, key=lambda a: paginas.AREAS[a].ordem
+    )
+    assert list(paginas.AREAS)[:4] == ["inicio", "ativo", "estrategias", "acompanhar"]
+    for area in paginas.AREAS.values():
+        assert area.rotulo and area.icone and area.frase.endswith(".")
+
+
+def test_paginas_da_area_ativo_na_ordem_das_abas():
+    """A ordem das abas da página do ativo (PR 3): as análises, depois "Comparar com…" e o relatório."""
+    chaves = [p.chave for p in paginas.paginas_da_area("ativo")]
+    assert chaves == [
+        "visao_geral",
+        "risco",
+        "retorno_mensal",
+        "correlacao",
+        "linha_do_tempo",
+        "fundamentos",
+        "relatorio_empresa",
+        "por_dentro",
+        "donos",
+        "comparar",
+        "relatorio",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("area", "chaves"),
+    [
+        ("inicio", {"inicio", "pulse"}),
+        (
+            "estrategias",
+            {
+                "backtest",
+                "ranking",
+                "carteira",
+                "experimentos",
+                "regimes",
+                "pares",
+                "aprendizado",
+            },
+        ),
+        (
+            "acompanhar",
+            {
+                "research",
+                "diario_de_teses",
+                "carteira_b3",
+                "carteira_research",
+                "alertas",
+                "newsletter",
+                "momentum",
+                "juros_e_inflacao",
+                "parametros",
+            },
+        ),
+        ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
+        ("ajuda", {"guia", "termos", "privacidade", "trade"}),
+    ],
+)
+def test_cada_area_tem_as_paginas_do_mapa(area, chaves):
+    """O mapa da pesquisa (organização do app, §5). Trocar uma página de área é mexer só aqui e no mapa."""
+    assert {p.chave for p in paginas.paginas_da_area(area)} == chaves
+
+
+def test_area_sem_paginas_da_erro_claro():
+    with pytest.raises(KeyError):
+        paginas.paginas_da_area("nao_existe")
+
+
 # --- Contrato de entradas e saídas (preparação 3 da ADR 0044; ADR 0048) ---
 
 
