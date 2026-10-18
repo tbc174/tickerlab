@@ -118,6 +118,7 @@ pypdfium2==5.14.0
 # vazio ou embaralhado (plano B leve, 18/10/2026); os modelos vêm dentro do pacote (sem download).
 rapidocr==3.10.0
 onnxruntime==1.31.0
+opencv-python-headless==5.0.0.93  # o rapidocr puxa sem fixar; fixado para a imagem ser igual à do PC
 openpyxl==3.1.5
 et_xmlfile==2.0.0
 # base de cripto: lê a planilha .xls antiga da Receita (criptoativos); fora da imagem do app (BSD)

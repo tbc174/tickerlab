@@ -374,6 +374,16 @@ MAX_PAGINAS_OCR = (
     10  # um termo de 133 páginas levaria 15 min; o fato cabe nas primeiras
 )
 ESCALA_DO_OCR = 2  # 2 x 72 = 144 pontos por polegada: o bastante para letra de ofício
+SEPARADOR_DE_PAGINAS = (
+    "\f"  # entre as páginas no texto do OCR (o mesmo que o pdftotext usa)
+)
+# Uma página A4 de ofício tem até ~60 linhas; uma página de jornal em colunas rende 450 a 510
+# linhas no OCR (medido em 18/10/2026), com as colunas misturadas e o fato relevante, se houver,
+# numa parte pequena dela. Esse documento fica com o motivo, não com um assunto chutado.
+MAX_LINHAS_POR_PAGINA_DE_OCR = 150
+TENTATIVAS_DE_OCR = (
+    2  # uma falha isolada do motor (vista na medição de 18/10) ganha outra chance
+)
 # Porta de legibilidade (ADR 0069, "ilegível nunca vira chute"): texto que faz sentido tem uma
 # parte previsível de palavras comuns; a fonte embaralhada ("&RPSDQKLD$EHUWD") e o lixo do OCR
 # numa página de jornal ficam bem abaixo. Medido no relatório do docling (17/10/2026): 8% separa
@@ -506,13 +516,21 @@ def texto_por_ocr(conteudo: bytes, max_paginas: int = MAX_PAGINAS_OCR) -> str:
     motor = _motor_de_ocr()
     documento = pdfium.PdfDocument(conteudo)
     try:
-        linhas: list[str] = []
+        paginas: list[str] = []
         for i in range(min(len(documento), max_paginas)):
             imagem = documento[i].render(scale=ESCALA_DO_OCR).to_numpy()
-            linhas.extend(motor(imagem).txts or ())
-        return "\n".join(linhas)
+            paginas.append("\n".join(motor(imagem).txts or ()))
+        return SEPARADOR_DE_PAGINAS.join(paginas)
     finally:
         documento.close()
+
+
+def parece_pagina_de_jornal(texto: str) -> bool:
+    """Alguma página do OCR tem linhas demais para ser um ofício (jornal em colunas)."""
+    return any(
+        pagina.count("\n") + 1 > MAX_LINHAS_POR_PAGINA_DE_OCR
+        for pagina in texto.split(SEPARADOR_DE_PAGINAS)
+    )
 
 
 def ler_documento(
@@ -547,15 +565,28 @@ def _pelo_ocr(
 ) -> TextoDoDocumento:
     lidas = min(paginas, MAX_PAGINAS_OCR)
     try:
-        texto = ocr(conteudo, MAX_PAGINAS_OCR)
+        texto = _ocr_com_outra_chance(conteudo, ocr)
     except ImportError:
         return TextoDoDocumento(
             "", "", f"Sem texto: {problema} e o OCR não está instalado.", paginas
         )
     except Exception as erro:  # noqa: BLE001 (o OCR falhou: guarda o motivo e a fila segue)
-        log.warning("OCR falhou (%s): o documento fica sem texto", type(erro).__name__)
+        log.warning(
+            "OCR falhou (%s: %.200s): o documento fica sem texto",
+            type(erro).__name__,
+            erro,
+        )
         return TextoDoDocumento(
             "", "", f"Sem texto: {problema} e o OCR falhou.", paginas
+        )
+    if parece_pagina_de_jornal(texto):
+        return TextoDoDocumento(
+            "",
+            "",
+            f"Sem texto legível: {problema} e o OCR leu uma página de jornal "
+            "(colunas misturadas).",
+            paginas,
+            lidas,
         )
     if e_legivel(texto):
         return TextoDoDocumento(texto, OCR, None, paginas, lidas)
@@ -566,3 +597,21 @@ def _pelo_ocr(
         paginas,
         lidas,
     )
+
+
+def _ocr_com_outra_chance(conteudo: bytes, ocr: Callable[[bytes, int], str]) -> str:
+    """Roda o OCR; uma falha isolada do motor ganha mais uma tentativa (falta do pacote, não)."""
+    for tentativa in range(1, TENTATIVAS_DE_OCR):
+        try:
+            return ocr(conteudo, MAX_PAGINAS_OCR)
+        except ImportError:
+            raise
+        except Exception as erro:  # noqa: BLE001 (a próxima tentativa decide)
+            log.warning(
+                "OCR falhou (%s: %.200s): tentativa %d de %d",
+                type(erro).__name__,
+                erro,
+                tentativa,
+                TENTATIVAS_DE_OCR,
+            )
+    return ocr(conteudo, MAX_PAGINAS_OCR)

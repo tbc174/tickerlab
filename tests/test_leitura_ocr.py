@@ -143,11 +143,48 @@ def test_sem_o_ocr_instalado_fica_o_motivo():
 
 
 def test_ocr_que_falha_nao_derruba_a_fila():
+    chamadas: list[int] = []
+
     def quebrado(conteudo: bytes, max_paginas: int) -> str:
+        chamadas.append(max_paginas)
         raise RuntimeError("modelo corrompido")
 
     lido = leitura.ler_documento(_pdf_so_imagem("x"), ocr=quebrado)
     assert not lido.legivel and "o OCR falhou" in lido.motivo
+    assert (
+        len(chamadas) == leitura.TENTATIVAS_DE_OCR
+    )  # tentou de novo antes de desistir
+
+
+def test_falha_isolada_do_ocr_ganha_outra_chance():
+    """Na medição de 18/10 o motor falhou uma vez em 2 de 10 documentos e leu os dois na repetição."""
+    chamadas: list[int] = []
+
+    def falha_uma_vez(conteudo: bytes, max_paginas: int) -> str:
+        chamadas.append(max_paginas)
+        if len(chamadas) == 1:
+            raise RuntimeError("falha passageira")
+        return FATO
+
+    lido = leitura.ler_documento(_pdf_so_imagem("x"), ocr=falha_uma_vez)
+    assert lido.legivel and lido.texto == FATO and len(chamadas) == 2
+
+
+def test_pagina_de_jornal_fica_com_o_motivo_e_nao_com_assunto():
+    """Uma página de jornal em colunas rende centenas de linhas de português de verdade (editais
+    de prefeituras, balanços de outras empresas): passa na taxa de palavras comuns, mas o assunto
+    seria chute. ADR 0069."""
+    linhas = ["o edital de licitação da prefeitura para a compra de um lote"] * (
+        leitura.MAX_LINHAS_POR_PAGINA_DE_OCR + 1
+    )
+    jornal = "\n".join(linhas)
+    assert leitura.e_legivel(jornal)  # a taxa de palavras comuns não pega
+    assert leitura.parece_pagina_de_jornal(jornal)
+    assert leitura.parece_pagina_de_jornal(FATO + leitura.SEPARADOR_DE_PAGINAS + jornal)
+    assert not leitura.parece_pagina_de_jornal("\n".join(linhas[:60]))  # ofício denso
+    ocr, _ = _ocr_de_mentira(jornal)
+    lido = leitura.ler_documento(_pdf_so_imagem("x"), ocr=ocr)
+    assert not lido.legivel and "página de jornal" in lido.motivo
 
 
 def test_documento_que_nao_e_pdf_fica_com_o_motivo():
@@ -188,6 +225,9 @@ def test_texto_por_ocr_respeita_o_teto_de_paginas():
     assert (
         leitura.texto_por_ocr(conteudo, max_paginas=1) == ""
     )  # páginas em branco: nada
+    assert (
+        leitura.texto_por_ocr(conteudo, max_paginas=2) == leitura.SEPARADOR_DE_PAGINAS
+    )  # duas páginas, separadas
 
 
 def test_pdf_so_imagem_salva_em_arquivo_bytes():
