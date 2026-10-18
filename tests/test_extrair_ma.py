@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from base import ma_extracao as mx
+from base import ma_multiplos as mm
 from scripts import extrair_ma
 from scripts.rotular_com_ia import TetoPassado
 
@@ -127,3 +128,77 @@ def test_enviar_sem_a_chave_propria_para_antes_de_chamar(amostra, monkeypatch):
     with pytest.raises(SystemExit):
         extrair_ma.main(["enviar", "--ouro", str(amostra.ouro), "--textos", str(amostra.textos),
                          "--saida", str(amostra.saida), "--teto-dolares", "1"])  # fmt: skip
+
+
+def test_operacoes_da_amostra_sem_duplicadas(tmp_path):
+    # a alvo e a compradora publicam a mesma aquisição no mesmo dia: uma operação só
+    textos, saida = tmp_path / "textos", tmp_path / "saida"
+    textos.mkdir()
+    saida.mkdir()
+    for protocolo in ("P-1", "P-4"):
+        (textos / f"{protocolo}.txt").write_text(TEXTO, encoding="utf-8")
+    ouro = pd.DataFrame(
+        {"Protocolo_Entrega": ["P-1", "P-4"], "Data_Entrega": ["2024-05-02"] * 2,
+         "confere_tiago": ["ok"] * 2, "tipo_conferido": ["AQ_CONTROLE"] * 2,
+         "alvo": ["Beta Ltda.", "Beta"], "comprador": ["Alfa S.A.", None],
+         "vendedor": [None] * 2, "valor": [None] * 2}
+    )  # fmt: skip
+    arquivo = tmp_path / "ouro.csv"
+    ouro.to_csv(arquivo, sep=";", index=False, encoding="utf-8-sig")
+    registros = [
+        {"protocolo": p, "resposta_bruta": json.dumps(RESPOSTA)} for p in ("P-1", "P-4")
+    ]
+    (saida / f"leituras-{mx.CONFERENTE}.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in registros), encoding="utf-8"
+    )
+    tabela, ligacoes, comparacao = extrair_ma.operacoes_da_amostra(
+        arquivo, textos, saida, mx.CONFERENTE
+    )
+    assert tabela[["operacao", "documentos"]].to_dict("records") == [
+        {"operacao": "P-1", "documentos": 2}
+    ]
+    assert ligacoes["operacao"].tolist() == ["P-1", "P-1"]
+    assert comparacao == {
+        "no_gabarito": [["P-1", "P-4"]],
+        "separadas": [],
+        "juntadas": [],
+    }
+    texto = extrair_ma.relatorio_das_operacoes(mx.CONFERENTE, tabela, comparacao)
+    assert "2 documentos de operação viraram 1 operações" in texto
+
+
+def test_multiplos_da_amostra_pede_so_as_emissoras_e_os_anos_do_anuncio(
+    tmp_path, monkeypatch
+):
+    textos, saida = tmp_path / "textos", tmp_path / "saida"
+    textos.mkdir()
+    saida.mkdir()
+    (textos / "P-1.txt").write_text(TEXTO, encoding="utf-8")
+    ouro = pd.DataFrame(
+        {"Protocolo_Entrega": ["P-1"], "Data_Entrega": ["2024-05-02"], "confere_tiago": ["ok"],
+         "CNPJ_Companhia": ["11.111.111/0001-11"], "Nome_Companhia": ["BETA LTDA"],
+         "tipo_conferido": ["AQ_CONTROLE"], "alvo": ["Beta Ltda."], "comprador": [None],
+         "vendedor": [None], "valor": [None]}
+    )  # fmt: skip
+    arquivo = tmp_path / "ouro.csv"
+    ouro.to_csv(arquivo, sep=";", index=False, encoding="utf-8-sig")
+    (saida / f"leituras-{mx.CONFERENTE}.jsonl").write_text(
+        json.dumps({"protocolo": "P-1", "resposta_bruta": json.dumps(RESPOSTA)}),
+        encoding="utf-8",
+    )
+    fontes = []
+    monkeypatch.setattr(
+        extrair_ma,
+        "originais_mais_recentes",
+        lambda _, fonte: fontes.append(fonte) or [],
+    )
+    tabela = extrair_ma.multiplos_da_amostra(
+        None, arquivo, textos, saida, mx.CONFERENTE
+    )  # type: ignore[arg-type]
+    assert fontes == ["cvm-hist-dfp", "cvm-hist-itr"]
+    # a leitura só traz o valor de uma participação: a operação fica, com o motivo
+    assert tabela[["alvo_cnpj", "motivo"]].to_dict("records") == [
+        {"alvo_cnpj": "11.111.111/0001-11", "motivo": mm.SO_PARTICIPACAO}
+    ]
+    texto = extrair_ma.relatorio_dos_multiplos(mx.CONFERENTE, tabela)
+    assert "0 de 1 operações com algum múltiplo" in texto

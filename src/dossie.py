@@ -233,6 +233,7 @@ def _cortar_setor(secao: SecaoDaFicha) -> SecaoDaFicha | None:
         update={
             "itens": [i for i in secao.itens if i.chave in series],
             "tabelas": series | ({"entidades_ligadas": ligadas} if ligadas else {}),
+            "fontes": dossie_da_base.fontes_do_setor(series),
         }
     )
 
@@ -303,6 +304,11 @@ def _sim_ou_nao(valor: object) -> str:
 
 def _agencia(valor: object) -> str:
     return _NOME_DA_AGENCIA.get(str(valor), str(valor))
+
+
+def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
+    """Como escrever um número da série: em reais ("R$ 8,0 bi") ou inteiro ("9.743.641")."""
+    return reais if unidade == "R$" else inteiro
 
 
 def _escrever_valor(valor: str | float | None, unidade: str) -> str:
@@ -388,7 +394,11 @@ COLUNAS: dict[str, list[Coluna]] = {
 def _colunas_da_serie(nome: str) -> list[Coluna]:
     return [
         ("ano", "Ano", _ano),
-        ("valor", _UNIDADE_DA_SERIE[nome].capitalize(), inteiro),
+        (
+            "valor",
+            _UNIDADE_DA_SERIE[nome].capitalize(),
+            _escritor_da_unidade(_UNIDADE_DA_SERIE[nome]),
+        ),
         ("participacao", "Parte do total", fracao),
         ("meses", "Meses no ano", inteiro),
     ]
@@ -518,16 +528,31 @@ def _contra_o_mesmo_mes(
 
 
 def _contra_o_total_da_agencia(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    """A participação no ano do item e o valor do ano anterior; o ano depois do item, se há na
+    tabela, é o corrente, que o item deixou de fora por estar incompleto (`base/dossie.py`,
+    `_item_da_serie`)."""
     anos = _mais_recentes(secao.tabelas.get(item.chave, []), "ano")
     if not anos:
         return None, SEM_COM_O_QUE_COMPARAR
-    ultimo = anos[0]
-    texto = (
-        f"{fracao(ultimo['participacao'])} do total da agência em {_ano(ultimo['ano'])}"
+    ano_do_item = (item.base or "")[:TAMANHO_DO_ANO]
+    posicao = next(
+        (i for i, linha in enumerate(anos) if _ano(linha["ano"]) == ano_do_item), 0
     )
-    if len(anos) > 1:
-        texto += f"; {inteiro(anos[1]['valor'])} em {_ano(anos[1]['ano'])}"
-    return Comparacao("total da agência no ano", texto), ""
+    do_ano = anos[posicao]
+    textos = [
+        f"{fracao(do_ano['participacao'])} do total da agência em {_ano(do_ano['ano'])}"
+    ]
+    anterior = anos[posicao + 1] if posicao + 1 < len(anos) else None
+    if anterior is not None:
+        escrever = _escritor_da_unidade(item.unidade)
+        textos.append(f"{escrever(anterior['valor'])} em {_ano(anterior['ano'])}")
+    if posicao > 0:
+        textos.append(f"{_ano(anos[0]['ano'])} fica de fora por estar incompleto")
+    return Comparacao(
+        "total da agência no ano",
+        "; ".join(textos),
+        _numero(anterior["valor"]) if anterior is not None else None,
+    ), ""
 
 
 _COMPARACOES = {

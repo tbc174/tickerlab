@@ -400,6 +400,35 @@ def nomes_batem(a: str, b: str) -> bool:
     return _palavras(a) == _palavras(b)
 
 
+def mesma_empresa(a: str, b: str) -> bool:
+    """Mais estrita que `nomes_batem`, para ligar documentos diferentes: as palavras que distinguem
+    o nome mais curto estão todas no outro ("Sabesp" e "Companhia de Saneamento Básico do Estado de
+    São Paulo (Sabesp)" batem; "Banco BTG Pactual" e "Banco Pan S.A." não, só dividem "Banco")."""
+    distintas_a, distintas_b = _distintas(a), _distintas(b)
+    if distintas_a and distintas_b:
+        return distintas_a <= distintas_b or distintas_b <= distintas_a
+    return _palavras(a) == _palavras(b)
+
+
+COLADA = 6  # palavra que pode estar colada a outra no nome abreviado ("AGRO FLORESTAL"): a curta, não
+
+
+def nome_cobre(nome: str, abreviado: str) -> bool:
+    """Num sentido só, para dizer se a alvo é a companhia que entregou o documento: toda palavra que
+    distingue `nome` está no `abreviado` (o nome curto do cadastro da CVM), inteira, abreviada ("SID"
+    de "Siderúrgicas", "IND" de "Indústria") ou, se longa, colada ("Agroflorestal" em "AGRO
+    FLORESTAL"). "Energisa Bioeletricidade" não cabe em "ENERGISA S.A.": é a controlada."""
+    distintas = _distintas(nome)
+    if not distintas:
+        return _palavras(nome) == _palavras(abreviado)
+    palavras = [p for p in _palavras(abreviado) if len(p) >= 3]
+    colado = "".join(_palavras(abreviado))
+    return all(
+        any(p.startswith(q) for q in palavras) or (len(p) >= COLADA and p in colado)
+        for p in distintas
+    )
+
+
 def _nomes(leitura: LeituraDaOperacao, papel: str) -> list[str]:
     return [p.nome for p in leitura.partes if p.papel == papel]
 
