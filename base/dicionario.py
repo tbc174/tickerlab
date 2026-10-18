@@ -4149,6 +4149,79 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ma_candidatos": Tabela(
+        descricao=(
+            "Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem "
+            "anunciar uma operação de M&A (série 1 da base de M&A, ADR 0063), uma linha por versão "
+            "entregue: fatos relevantes escolhidos pelo assunto, comunicados ao mercado com o tipo no "
+            "assunto e todo edital de OPA. É a lista do que ler, não a lista de operações: favorece "
+            "a cobertura, e o assunto genérico (o padrão do sistema da CVM, o vazio, o esclarecimento "
+            "sobre notícia) entra sem tipo, para a leitura do texto decidir. Recompra, proventos, "
+            "dívida e oferta de ações ficam fora. Cobertura contra as reestruturações declaradas no "
+            "FRE (2010 a 2015): 80% das operações com algum fato relevante da companhia no ano "
+            "anterior têm fato relevante candidato na janela (92% com os comunicados); lidas à mão 40 perdidas, 36 não tinham fato relevante "
+            "sobre a operação (~97% dos que existem). Amostra de ouro: 84 de 85 operações candidatas"
+        ),
+        fonte="CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/ma_ipe.py`",
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_ma_candidatos.py`), depois do arquivista "
+            "baixar o IPE do ano"
+        ),
+        atraso=(
+            "O documento vale a partir de `publico_em` (entrega da versão à CVM), nunca da "
+            "`referencia` informada pela companhia"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/candidatos/candidatos.parquet` (servidor de casa, "
+            "`scripts/montar_ma_candidatos.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que "
+            "leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o "
+            "manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "categoria": (
+                "Categoria do IPE: Fato Relevante, Comunicado ao Mercado ou o edital de OPA",
+                TEXTO,
+            ),
+            "tipo": ("Tipo do IPE (vazio no fato relevante)", TEXTO),
+            "assunto": ("Assunto como a companhia preencheu", TEXTO),
+            "tipo_provavel": (
+                (
+                    "Pista do assunto: OPA, INC_ACOES, FUSAO, CISAO, INC_EMPRESA, JV, UPI, "
+                    "PRIVATIZACAO, ALIEN_CONTROLE, VENDA_ATIVO, AQUISICAO (controle ou minoritária) "
+                    "ou NEGOCIACAO (memorando, exclusividade); vazia no assunto genérico. Não é o "
+                    "tipo da operação: quem diz é o texto"
+                ),
+                TEXTO,
+            ),
+            "evidencia": (
+                (
+                    "Por que entrou: assunto (o assunto dá o tipo provável), assunto_generico (fato "
+                    "relevante de assunto padrão ou vazio) ou categoria (edital de OPA)"
+                ),
+                TEXTO,
+            ),
+            "referencia": ("Data de referência informada pela companhia", DATA),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "ma_partes": Tabela(
         descricao=(
             "As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por "
@@ -4817,6 +4890,7 @@ _CONTRATO = {
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
     "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_candidatos": _contrato(modulo="ma", chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
@@ -4867,6 +4941,11 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "faixas": {"emissao": (1.0, None), "versao": (1.0, None)},
         "nao_nulas": ("cnpj", "documento", "publico_em", "protocolo", "link", "estresse", "generico"),
         "anuncia_o_futuro": True,  # o edital sai antes da assembleia
+    },
+    "ma_candidatos": {
+        "pasta": "ma/candidatos",
+        "faixas": {"versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "publico_em", "protocolo", "link", "evidencia"),
     },
     "ratings": {
         "pasta": "ratings",

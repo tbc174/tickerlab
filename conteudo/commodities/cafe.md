@@ -54,6 +54,61 @@ fevereiro de 2014 em Minas Gerais e o verão de 2020/21 são os casos recentes.
 O **déficit** aqui é a chuva acumulada de dezembro a março contra a normal de 1991–2020 da região:
 anomalia negativa é déficit. Como os outros, é um índice **explicativo, não previsão**.
 
+## O que o mercado olha na florada
+
+De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a
+chuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o "chumbinho". É a
+primeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a
+chuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo
+(2001) e Embrapa Café; contexto explicativo, não previsão de safra.
+
+## O que o mercado olha no enchimento do grão
+
+De dezembro a março o fruto se expande e o grão enche. É a fase em que o cafeeiro mais precisa de
+água, e por isso o mercado olha a chuva e a falta dela por região. O **déficit de dezembro a março**
+compara a chuva acumulada com a normal de 1991–2020. Fonte da fase: Camargo & Camargo (2001) e
+Embrapa Café; contexto explicativo, não previsão de safra.
+
+## O que o mercado olha na maturação
+
+Em abril e maio os frutos amadurecem e começam a ser colhidos nas regiões mais precoces. O mercado
+olha o andamento da maturação e a estimativa de safra que a CONAB e as cooperativas publicam nos
+levantamentos, que mudam de um levantamento para outro. Fonte da fase: Camargo & Camargo (2001) e
+CONAB; contexto, não previsão.
+
+## O que o mercado olha no repouso dos ramos
+
+De junho a agosto a planta descansa e os ramos que deram fruto envelhecem. Pouca coisa muda na
+safra em curso, e o olhar se volta à colheita e ao tempo frio. Fonte da fase: Camargo & Camargo
+(2001); contexto, não previsão.
+
+## O que o mercado olha na colheita
+
+A colheita vai de maio a setembro no Brasil e começa antes, em abril, no Espírito Santo, onde o
+conilon amadurece cedo. Chuva na colheita costuma mexer mais na qualidade do grão e no ritmo do
+trabalho do que no volume. O mercado olha o ritmo da colheita, o que os levantamentos da CONAB
+mostram e o que sai pelos portos. Fonte: CONAB e Embrapa Café; contexto, não previsão.
+
+## O que o mercado olha na janela de geada
+
+De junho a agosto o frio de inverno pode trazer geada. Ela queima os ramos novos e tira a safra do
+**ano seguinte** mais do que a do ano em curso. O mercado olha as frentes frias e as previsões de
+temperatura para o Sul de Minas, o Cerrado e o Paraná. O **índice de geada** conta os dias com
+mínima abaixo de 1 °C no abrigo. Fonte da fase: Camargo & Camargo (2001) e Embrapa Café; contexto
+explicativo, não previsão.
+
+## O que o mercado olha na vegetação da safra seguinte
+
+De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão
+nascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita
+mais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.
+
+## O que o mercado olha na indução das gemas da safra seguinte
+
+De abril a agosto as gemas dos ramos novos amadurecem, e o frio e a falta de água moderada do
+inverno as preparam para florir em setembro. É por isso que a geada e a seca do inverno pesam na
+florada seguinte. Fonte da fase: Camargo & Camargo (2001) e Embrapa Café; contexto, não previsão.
+
 ## O que é o spread entre arábica e robusta
 
 O **spread** é a diferença entre o preço do arábica e o do robusta (o conilon, no Brasil), em centavos

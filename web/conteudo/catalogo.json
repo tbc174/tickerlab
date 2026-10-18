@@ -5,13 +5,14 @@
       "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
       "modulos": [
         "credito_e_fidc",
+        "ma",
         "mercado_e_empresas",
         "rede"
       ],
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 49
+      "tabelas": 50
     },
     {
       "historico_desde": "2010-01-01",
@@ -255,7 +256,7 @@
     {
       "chave": "ma",
       "nome": "M&A",
-      "tabelas": 5
+      "tabelas": 6
     },
     {
       "chave": "rede",
@@ -941,6 +942,16 @@
     },
     {
       "atraso": null,
+      "frase": "Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem anunciar uma operação de M&A, uma linha por versão entregue: fatos relevantes escolhidos pelo assunto.",
+      "frequencia": "Diária",
+      "historico_desde": "2003-01-01",
+      "modulo": "ma",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ma_candidatos"
+    },
+    {
+      "atraso": null,
       "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
@@ -1044,6 +1055,6 @@
     "fontes": 21,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 77
+    "tabelas": 78
   }
 }
