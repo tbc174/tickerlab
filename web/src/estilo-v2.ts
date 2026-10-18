@@ -200,7 +200,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-pausado .v2-pausa .pausar { display: none; }
 .v2-pausado .v2-pausa .retomar { display: block; }
 
-/* brilho que passa uma vez pelo "Mais inteligência" */
+/* brilho que passa uma vez pelo "auditáveis" */
 .v2-degrade { background-size: 220% 100%; animation: v2-brilho 2200ms cubic-bezier(.3, .7, .2, 1) 500ms both; }
 @keyframes v2-brilho { from { background-position: 100% 0; } to { background-position: 0 0; } }
 
