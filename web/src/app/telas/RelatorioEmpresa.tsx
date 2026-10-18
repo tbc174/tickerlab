@@ -11,7 +11,13 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
     <div className="numero-do-painel">
       <span className="numero-rotulo">{item.nome}</span>
       <span className="numero-valor">{item.texto}</span>
+      {item.comparacao ? (
+        <span className="legenda-do-numero">
+          Contra {item.comparacao.contra}: {item.comparacao.texto}
+        </span>
+      ) : null}
       {item.base ? <span className="legenda-do-numero">Base: {item.base}</span> : null}
+      {item.fonte ? <span className="legenda-do-numero">Fonte: {item.fonte}</span> : null}
       {item.motivo ? <span className="legenda-do-numero">{item.motivo}</span> : null}
       {item.nota ? (
         <span className="legenda-do-numero">

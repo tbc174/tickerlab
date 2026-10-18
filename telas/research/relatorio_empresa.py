@@ -86,10 +86,19 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
     return entradas
 
 
+def _origem(item: Item) -> str:
+    """De quando é e de onde veio (a ajuda do número), e por que não compara, quando não compara."""
+    partes = [
+        f"Base: {item.base}." if item.base else "",
+        f"Fonte: {item.fonte}." if item.fonte else "",
+    ]
+    return " ".join([p for p in partes if p] + [item.sem_comparacao])
+
+
 def _mostrar_item(coluna, item: Item) -> None:
-    coluna.metric(
-        item.nome, item.texto, help=f"Base: {item.base}" if item.base else None
-    )
+    coluna.metric(item.nome, item.texto, help=_origem(item) or None)
+    if item.comparacao is not None:
+        coluna.caption(f"Contra {item.comparacao.contra}: {item.comparacao.texto}")
     if item.motivo:
         coluna.caption(item.motivo)
     if item.nota:

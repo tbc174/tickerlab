@@ -351,6 +351,25 @@
         "title": "ComparacaoDoAtivoV1",
         "type": "object"
       },
+      "ComparacaoDoNumeroV1": {
+        "description": "Contra o quê o número é comparado (o setor, uma faixa, o artigo, o balanço anterior).",
+        "properties": {
+          "contra": {
+            "title": "Contra",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contra",
+          "texto"
+        ],
+        "title": "ComparacaoDoNumeroV1",
+        "type": "object"
+      },
       "ComparacaoV1": {
         "description": "Ativos nos dias em que todos têm preço; curvas e tabela vêm `null` se o período for curto.",
         "properties": {
@@ -772,6 +791,7 @@
         "type": "object"
       },
       "ItemDoRelatorioV1": {
+        "description": "Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a\ncomparação (ou, em `sem_comparacao`, por que não há com o quê comparar).",
         "properties": {
           "base": {
             "title": "Base",
@@ -779,6 +799,20 @@
           },
           "chave": {
             "title": "Chave",
+            "type": "string"
+          },
+          "comparacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComparacaoDoNumeroV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fonte": {
+            "title": "Fonte",
             "type": "string"
           },
           "motivo": {
@@ -802,6 +836,10 @@
           },
           "nota_texto": {
             "title": "Nota Texto",
+            "type": "string"
+          },
+          "sem_comparacao": {
+            "title": "Sem Comparacao",
             "type": "string"
           },
           "texto": {
@@ -833,7 +871,10 @@
           "base",
           "motivo",
           "nota",
-          "nota_texto"
+          "nota_texto",
+          "fonte",
+          "comparacao",
+          "sem_comparacao"
         ],
         "title": "ItemDoRelatorioV1",
         "type": "object"

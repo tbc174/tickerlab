@@ -349,6 +349,13 @@ export interface PulseV1 {
 }
 
 /** Um número do relatório da empresa, já escrito ("R$ 12,3 bi"), com a base e a nota. */
+/** Contra o quê o número é comparado (o setor, uma faixa, o artigo, o balanço anterior). */
+export interface ComparacaoDoNumeroV1 {
+  contra: string;
+  texto: string;
+}
+
+/** Um número com de quando é (base), de onde veio (fonte) e a comparação (ou por que não há). */
 export interface ItemDoRelatorioV1 {
   chave: string;
   nome: string;
@@ -359,6 +366,9 @@ export interface ItemDoRelatorioV1 {
   motivo: string;
   nota: string | null;
   nota_texto: string;
+  fonte: string;
+  comparacao: ComparacaoDoNumeroV1 | null;
+  sem_comparacao: string;
 }
 
 /** Uma tabela com as células já escritas (como na página do Streamlit e no PDF). */

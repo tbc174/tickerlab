@@ -647,7 +647,17 @@ class PulseV1(BaseModel):
 # --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------
 
 
+class ComparacaoDoNumeroV1(BaseModel):
+    """Contra o quê o número é comparado (o setor, uma faixa, o artigo, o balanço anterior)."""
+
+    contra: str
+    texto: str
+
+
 class ItemDoRelatorioV1(BaseModel):
+    """Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a
+    comparação (ou, em `sem_comparacao`, por que não há com o quê comparar)."""
+
     chave: str
     nome: str
     texto: str  # o número já escrito ("R$ 12,3 bi", "18,5%")
@@ -657,6 +667,9 @@ class ItemDoRelatorioV1(BaseModel):
     motivo: str
     nota: str | None
     nota_texto: str
+    fonte: str
+    comparacao: ComparacaoDoNumeroV1 | None
+    sem_comparacao: str
 
 
 class TabelaDoRelatorioV1(BaseModel):

@@ -30,15 +30,23 @@ GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → sub
 LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
 
 
+def _comparacao(item: Item) -> str:
+    if item.comparacao is None:
+        return item.sem_comparacao
+    return f"{item.comparacao.contra}: {item.comparacao.texto}"
+
+
 def _itens(pdf: RelatorioPDF, itens: list[Item]) -> None:
-    """Os números numa tabela (indicador, valor, nota); embaixo, as bases sem repetir, os
-    motivos dos que não saíram e o texto de cada nota."""
-    larguras = [pdf.epw * 0.56, pdf.epw * 0.24, pdf.epw * 0.20]
-    linhas = [[i.nome, i.texto, i.nota or ""] for i in itens]
-    pdf.tabela(["Indicador", "Valor", "Nota"], linhas, larguras)
+    """Os números numa tabela (indicador, valor, comparação, nota); embaixo, as bases e as fontes
+    sem repetir, os motivos dos que não saíram e o texto de cada nota."""
+    linhas = [[i.nome, i.texto, _comparacao(i), i.nota or ""] for i in itens]
+    pdf.tabela_de_texto(["Indicador", "Valor", "Comparado com", "Nota"], linhas)
     bases = list(dict.fromkeys(i.base for i in itens if i.base))
     if bases:
         pdf.paragrafo("Base: " + "; ".join(bases) + ".", apagado=True)
+    fontes = list(dict.fromkeys(i.fonte for i in itens if i.fonte))
+    if fontes:
+        pdf.paragrafo("Fonte: " + "; ".join(fontes) + ".", apagado=True)
     for frase in dict.fromkeys(
         [f"{i.nome}: {i.motivo}" for i in itens if i.motivo]
         + [i.nota_texto for i in itens if i.nota_texto]

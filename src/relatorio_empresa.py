@@ -24,6 +24,7 @@ from src import fundamentalista, fundamentos, notas, notas_classicas, valuation
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
+from src.numero import Comparacao, Numero
 from src.padroes import INDICADORES, MULTIPLOS
 from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
@@ -103,6 +104,34 @@ CONVITE_DO_DOSSIE = (
     "Com ele, esta seção mostra o que a base do TickerLab reuniu da companhia nos dados abertos da "
     "CVM e das agências reguladoras, com a fonte de cada número."
 )
+# de onde vem cada número (o contrato do número, `src/numero.py`)
+FONTE_DAS_DEMONSTRACOES = "DFP e ITR entregues à CVM (demonstrações consolidadas)"
+FONTE_DOS_MULTIPLOS = "preço da ação (Yahoo Finance) e DFP e ITR entregues à CVM"
+FONTE_DAS_ACOES = "DFP entregues à CVM (fluxo de caixa e composição do capital)"
+SEM_O_ANTERIOR = "O balanço anterior guardado não tem este número para comparar."
+SEM_DILUICAO = (
+    "Sem dois anos de ações em circulação, ou com um salto sem desdobramento explicado."
+)
+
+
+def _dec(valor: float) -> str:
+    return f"{valor:.2f}".replace(".", ",").replace("-", "−")
+
+
+ESCALAS_DO_ARTIGO = {
+    "altman": (
+        f"segura acima de {_dec(notas_classicas.ALTMAN_SEGURA)}; aflição abaixo de "
+        f"{_dec(notas_classicas.ALTMAN_AFLICAO)}; cinzenta entre as duas"
+    ),
+    "beneish": (
+        f"limite de {_dec(notas_classicas.BENEISH_LIMITE)}: acima dele, o artigo separa o caso "
+        "para uma segunda olhada"
+    ),
+    "piotroski": (
+        f"de 0 a 9 pontos; o artigo compara as empresas com {notas_classicas.PIOTROSKI_ALTO} ou "
+        f"mais com as de {notas_classicas.PIOTROSKI_BAIXO} ou menos"
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -124,6 +153,15 @@ class Item:
     motivo: str = ""
     nota: str | None = None
     nota_texto: str = ""
+    fonte: str = ""  # de onde veio (o contrato do número, `src/numero.py`)
+    comparacao: Comparacao | None = None
+    sem_comparacao: str = ""  # por que não há com o quê comparar
+
+    @property
+    def numero(self) -> Numero:
+        return Numero(
+            self.valor, self.base, self.fonte, self.comparacao, self.sem_comparacao
+        )
 
 
 @dataclass(frozen=True)
@@ -239,10 +277,48 @@ def _pct(fracao: float) -> str:
     return escrever(fracao, fundamentos.FRACAO)
 
 
-def _item(
-    indicador: fundamentos.Indicador,
-    nota: notas.Nota | notas.NotaPorFaixa | None = None,
-) -> Item:
+def _o_setor(grupo: str, empresas: int, corte: date) -> str:
+    return f"setor {NOMES.get(grupo, grupo)} ({empresas} empresas, corte de {corte:%d/%m/%Y})"
+
+
+def _contra_o_setor(nota: notas.Nota, unidade: str) -> Comparacao:
+    p = nota.percentis
+    return Comparacao(
+        _o_setor(nota.grupo, nota.empresas, nota.data_de_corte),
+        f"mediana {escrever(p['50'], unidade)}; metade entre {escrever(p['25'], unidade)} e "
+        f"{escrever(p['75'], unidade)}",
+    )
+
+
+def _contra_a_faixa(chave: str) -> Comparacao:
+    f = notas.FAIXAS_FIXAS[chave]
+    baixo, alto = escrever(f.abaixo_de, f.unidade), escrever(f.ate, f.unidade)
+    return Comparacao(
+        "faixa fixa e pública do TickerLab",
+        f"{f.notas[1]} de {baixo} a {alto}; abaixo, {f.notas[0]}; acima, {f.notas[2]}",
+    )
+
+
+def _contra_o_anterior(chave: str, unidade: str, c: "_Calculos") -> Comparacao | None:
+    antes = c.anterior.get(chave)
+    if c.data_anterior is None or antes is None or antes.valor is None:
+        return None
+    return Comparacao(
+        f"balanço de {c.data_anterior:%d/%m/%Y}",
+        f"era {escrever(antes.valor, unidade)}",
+    )
+
+
+def _item(indicador: fundamentos.Indicador, c: "_Calculos") -> Item:
+    """O indicador escrito, com a nota ao lado e a comparação: a do setor quando há nota contra o
+    setor, a faixa fixa quando a nota é por faixa e, nos outros, o balanço anterior."""
+    nota = c.notas_por_indicador.get(indicador.chave)
+    if isinstance(nota, notas.Nota):
+        comparacao = _contra_o_setor(nota, indicador.unidade)
+    elif isinstance(nota, notas.NotaPorFaixa):
+        comparacao = _contra_a_faixa(indicador.chave)
+    else:
+        comparacao = _contra_o_anterior(indicador.chave, indicador.unidade, c)
     return Item(
         indicador.chave,
         indicador.nome,
@@ -253,6 +329,9 @@ def _item(
         indicador.motivo,
         nota.nota if nota else None,
         nota.texto if nota else "",
+        fonte=FONTE_DAS_DEMONSTRACOES,
+        comparacao=comparacao,
+        sem_comparacao="" if comparacao else SEM_O_ANTERIOR,
     )
 
 
@@ -274,6 +353,33 @@ class _Calculos:
     historico: fundamentalista.Historico
     dividendos: fundamentalista.DividendosEDiluicao
     grupo: str
+    balancos: list[date]  # as datas dos balanços guardados, em ordem
+    anterior: dict[str, fundamentos.Indicador]  # os indicadores até o balanço anterior
+
+    @property
+    def data_anterior(self) -> date | None:
+        return self.balancos[-2] if len(self.balancos) > 1 else None
+
+
+def _balancos(contas: pd.DataFrame) -> list[date]:
+    if contas.empty:
+        return []
+    saldos = contas[contas["periodo"] == fundamentos.POSICAO]
+    return sorted(set(saldos["referencia"]))
+
+
+def _indicadores_de_antes(
+    e: Entradas, balancos: list[date]
+) -> dict[str, fundamentos.Indicador]:
+    """Os indicadores como estavam no balanço anterior (cortando o mais recente)."""
+    if len(balancos) < 2:
+        return {}
+    contas = e.dados.contas
+    antes = replace(e.dados, contas=contas[contas["referencia"] < balancos[-1]])
+    return {
+        **fundamentos.calcular(antes, e.preco).indicadores,
+        **fundamentalista.calcular(antes).indicadores,
+    }
 
 
 def _calcular(e: Entradas) -> _Calculos:
@@ -297,6 +403,7 @@ def _calcular(e: Entradas) -> _Calculos:
         and indicadores[chave].valor is not None
         and (nota := notas.nota_por_faixa(chave, indicadores[chave].valor)) is not None
     ]
+    balancos = _balancos(e.dados.contas)
     return _Calculos(
         indicadores,
         {n.indicador: n for n in [*lista, *por_faixa]},
@@ -306,12 +413,14 @@ def _calcular(e: Entradas) -> _Calculos:
             e.dados, e.proventos, e.eventos_de_capital
         ),
         grupo,
+        balancos,
+        _indicadores_de_antes(e, balancos),
     )
 
 
 def _secao_de_itens(chave: str, c: _Calculos) -> Secao:
     itens = [
-        _item(c.indicadores[i], c.notas_por_indicador.get(i))
+        _item(c.indicadores[i], c)
         for i in CHAVES_DAS_SECOES[chave]
         if i in c.indicadores
     ]
@@ -352,6 +461,10 @@ def _notas_classicas(c: _Calculos) -> Secao:
                 nota.base,
                 nota.motivo,
                 nota.faixa or None,
+                fonte=FONTE_DAS_DEMONSTRACOES,
+                comparacao=Comparacao(
+                    "escala do artigo", ESCALAS_DO_ARTIGO[nota.chave]
+                ),
             )
         )
         tabelas[nota.chave] = [
@@ -386,18 +499,38 @@ def _padroes_e_notas(c: _Calculos, e: Entradas) -> Secao:
     )
 
 
-def _percentis_do_setor(
+@dataclass(frozen=True)
+class _PadraoDoMultiplo:
+    grupo: str  # o usado (pode ser o mercado)
+    empresas: int
+    percentis: dict[str, float]
+    corte: date
+
+    def comparacao(self, unidade: str) -> Comparacao:
+        p = self.percentis
+        return Comparacao(
+            _o_setor(self.grupo, self.empresas, self.corte),
+            f"mediana {escrever(p['50'], unidade)}; um terço abaixo de "
+            f"{escrever(p[notas.TERCIL_BAIXO], unidade)} e um terço acima de "
+            f"{escrever(p[notas.TERCIL_ALTO], unidade)}",
+        )
+
+
+def _padrao_do_multiplo(
     e: Entradas, grupo: str, multiplo: str
-) -> dict[str, float] | None:
+) -> _PadraoDoMultiplo | None:
     if e.padroes is None:
         return None
-    _, padroes = e.padroes
+    corte, padroes = e.padroes
     do_multiplo = padroes[padroes["indicador"] == multiplo]
     contagem = dict(zip(do_multiplo["grupo"], do_multiplo["empresas"], strict=True))
     usado, _ = grupo_para_comparar(grupo, {g: int(n) for g, n in contagem.items()})
     linha = do_multiplo[do_multiplo["grupo"] == usado]
-    return (
-        None if usado == SEM_GRUPO or linha.empty else dict(linha.iloc[0]["percentis"])
+    if usado == SEM_GRUPO or linha.empty:
+        return None
+    primeira = linha.iloc[0]
+    return _PadraoDoMultiplo(
+        usado, int(primeira["empresas"]), dict(primeira["percentis"]), corte
     )
 
 
@@ -405,10 +538,21 @@ def _item_de_preco(
     c: _Calculos, e: Entradas, chave: str, historico: pd.DataFrame
 ) -> Item:
     indicador = c.indicadores[chave]
-    item = _item(indicador)
-    setor = _percentis_do_setor(e, c.grupo, chave)
-    if indicador.valor is None or setor is None:
+    item = replace(_item(indicador, c), fonte=FONTE_DOS_MULTIPLOS)
+    if item.comparacao is not None:  # o balanço anterior, com o mesmo preço de hoje
+        item = replace(
+            item,
+            comparacao=replace(
+                item.comparacao, contra=f"{item.comparacao.contra}, com o preço de hoje"
+            ),
+        )
+    padrao = _padrao_do_multiplo(e, c.grupo, chave)
+    if indicador.valor is None or padrao is None:
         return item
+    item = replace(
+        item, comparacao=padrao.comparacao(indicador.unidade), sem_comparacao=""
+    )
+    setor = padrao.percentis
     proprio = (
         valuation.percentis_do_historico(historico[chave])
         if chave in historico
@@ -492,12 +636,34 @@ def _acoes_e_divida(c: _Calculos) -> tuple[float | None, float]:
     return acoes, (divida.valor or 0.0) if divida else 0.0
 
 
+def _acoes(quantidade: float) -> str:
+    return f"{quantidade:,.0f}".replace(",", ".")
+
+
 def _dividendos(c: _Calculos) -> Secao:
     d = c.dividendos
+    anos = [int(a) for a in d.historico.index] if not d.historico.empty else []
+    base = f"DFP de {anos[0]} a {anos[-1]}" if anos else ""
+    ajustadas = (
+        d.historico["acoes_ajustadas"].dropna() if anos else pd.Series(dtype=float)
+    )
+    diluicao = (
+        Comparacao(
+            f"ações em circulação em {ajustadas.index[0]}",
+            f"{_acoes(ajustadas.iloc[0])} em {ajustadas.index[0]} e "
+            f"{_acoes(ajustadas.iloc[-1])} em {ajustadas.index[-1]}",
+        )
+        if len(ajustadas) > 1
+        else None
+    )
     itens = [
-        Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando), "anos", "DFPs guardadas"),
+        Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando),
+             "anos", base, fonte=FONTE_DAS_ACOES,
+             comparacao=Comparacao("anos com DFP guardada", f"{d.anos_pagando} de {len(anos)}")),
         Item("diluicao", "Diluição ao ano", escrever(d.diluicao_anual, fundamentos.FRACAO), d.diluicao_anual,
-             fundamentos.FRACAO, "ações em circulação ajustadas por desdobramentos"),
+             fundamentos.FRACAO, base,
+             "" if d.diluicao_anual is not None else SEM_DILUICAO,
+             fonte=FONTE_DAS_ACOES, comparacao=diluicao),
     ]  # fmt: skip
     return Secao(
         "dividendos",
@@ -640,25 +806,16 @@ def _graficos_de_contas(c: _Calculos, secoes: list[Secao]) -> None:
 
 
 def _o_que_mudou(e: Entradas, c: _Calculos) -> Secao:
-    contas = e.dados.contas
-    saldos = (
-        contas[contas["periodo"] == fundamentos.POSICAO] if not contas.empty else contas
-    )
-    datas = sorted(set(saldos["referencia"])) if not saldos.empty else []
-    if len(datas) < 2:
+    datas = c.balancos
+    if c.data_anterior is None:
         return Secao(
             "o_que_mudou",
             SECOES["o_que_mudou"],
             paragrafos=["Só há um balanço guardado."],
         )
-    antes = replace(e.dados, contas=contas[contas["referencia"] < datas[-1]])
-    anterior = {
-        **fundamentos.calcular(antes, e.preco).indicadores,
-        **fundamentalista.calcular(antes).indicadores,
-    }
     linhas = []
     for chave in INDICADORES_DO_QUE_MUDOU:
-        agora, antes_i = c.indicadores.get(chave), anterior.get(chave)
+        agora, antes_i = c.indicadores.get(chave), c.anterior.get(chave)
         if agora and antes_i:
             linhas.append({"indicador": agora.nome, "antes": escrever(antes_i.valor, agora.unidade),
                            "agora": escrever(agora.valor, agora.unidade)})  # fmt: skip
