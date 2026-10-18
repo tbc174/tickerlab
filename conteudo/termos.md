@@ -1,6 +1,6 @@
 # Termos de uso do TickerLab
 
-Última atualização: 13/10/2026 (versão 6: produto por assinatura).
+Última atualização: 18/10/2026 (versão 6: produto por assinatura; esclarecido que o PDF original fica guardado por 1 ano).
 
 ## O que é o TickerLab
 
@@ -28,7 +28,7 @@ Enquanto o projeto estiver em fase de demonstração, os pagamentos acontecem em
 ## Relatórios em PDF e carteira da B3
 
 - O limite de relatórios do seu plano conta os relatórios **gerados** nas últimas 24 horas. A prévia não conta; excluir um relatório da biblioteca não devolve o limite.
-- O PDF não fica guardado no TickerLab: a biblioteca guarda o título e os parâmetros, para você gerar de novo com os dados do dia.
+- O PDF original fica guardado por 1 ano na biblioteca, até o limite do seu plano; excluir o relatório apaga o PDF na hora. O relatório "Minha carteira" nunca é guardado. A biblioteca também guarda o título e os parâmetros, para você gerar de novo com os dados do dia.
 - O TickerLab **não tem conexão com a B3**. A planilha de posição que você envia é lida só na memória para montar o relatório e não fica guardada. A "carteira de exemplo" é **fictícia** e sai marcada como demonstração.
 - Os relatórios são para o seu uso pessoal. Se compartilhar, mantenha os avisos e as seções de limites.
 
