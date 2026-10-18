@@ -80,3 +80,21 @@ def test_sem_o_pro_parte_que_cita_o_dossie_vira_molde_sem_o_dossie():
     assert (
         _origens(m)["o_que_mudou"] == saida.ORIGEM_MOLDE
     )  # cita os negócios do dossiê
+
+
+def test_resposta_bruta_le_o_json_e_monta():
+    texto = json.dumps(RESPOSTA, ensure_ascii=False)
+    m = montagem.da_resposta_bruta("end_turn", texto, ENTRADA, HASH)
+    assert set(_origens(m).values()) == {saida.ORIGEM_MODELO}
+
+
+def test_resposta_bruta_cortada_vira_molde_com_o_motivo():
+    m = montagem.da_resposta_bruta("max_tokens", '{"partes": [', ENTRADA, HASH)
+    assert set(_origens(m).values()) == {saida.ORIGEM_MOLDE}
+    assert m.motivo is not None and m.motivo.startswith(montagem.FORA_DO_FORMATO)
+    assert "max_tokens" in m.motivo
+
+
+def test_resposta_bruta_de_ficha_velha_diz_que_a_ficha_mudou():
+    m = montagem.da_resposta_bruta("max_tokens", "", ENTRADA, "outro hash")
+    assert m.motivo == montagem.FICHA_NOVA
