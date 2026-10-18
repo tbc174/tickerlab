@@ -42,6 +42,15 @@ ENTRADA = {
             "celulas": {"passo": "Caixa operacional", "valor": -7162797000.0},
         },
         {
+            "id": "resultado.cascata.5",
+            "tipo": "linha",
+            "tabela": "Do faturamento ao lucro",
+            "celulas": {
+                "passo": "Resultado financeiro, impostos e outros",
+                "valor": -5.3e9,
+            },
+        },
+        {
             "id": "resultado.lucro",
             "tipo": "numero",
             "texto": "-R$ 1,2 bi",
@@ -137,6 +146,10 @@ def test_sinal_so_e_ignorado_em_saida_de_dinheiro():
     assert _regras(caixa) == []
     lucro = saida.Frase("O lucro foi de R$ 1,2 bilhão.", ("resultado.lucro",))
     assert _regras(lucro) == ["numero"]  # prejuízo escrito como lucro
+    impostos = saida.Frase(
+        "Impostos e outros levaram R$ 5,3 bilhões.", ("resultado.cascata.5",)
+    )
+    assert _regras(impostos) == []  # 1ª prova da CPFL: o Opus escreveu assim
 
 
 def test_conta_declarada_e_refeita():

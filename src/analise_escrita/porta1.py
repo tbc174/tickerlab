@@ -38,7 +38,7 @@ FOLGA_DA_CONTA = (
 CAMPOS_SEM_DADO = frozenset({"id", "secao", "tipo", "so_pro"})
 # saída de dinheiro: a ficha guarda com sinal, o texto diz "gastou R$ 0,4 bi" sem o menos
 _SAIDA_DE_DINHEIRO = re.compile(
-    r"custo|despesa|capex|dividendo|caixa operacional|\bfco\b|depreciac"
+    r"custo|despesa|imposto|capex|dividendo|caixa operacional|\bfco\b|depreciac"
 )
 # siglas, órgãos e nomes de método que o texto pode usar sem estarem na entrada
 NOMES_PERMITIDOS = frozenset(
