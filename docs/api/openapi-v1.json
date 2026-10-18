@@ -771,6 +771,73 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ItemDoRelatorioV1": {
+        "properties": {
+          "base": {
+            "title": "Base",
+            "type": "string"
+          },
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota"
+          },
+          "nota_texto": {
+            "title": "Nota Texto",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "texto",
+          "valor",
+          "unidade",
+          "base",
+          "motivo",
+          "nota",
+          "nota_texto"
+        ],
+        "title": "ItemDoRelatorioV1",
+        "type": "object"
+      },
       "JanelaV1": {
         "description": "De quando a quando o Pulse olha: da última visita (na 1ª, 7 dias atrás) até agora.",
         "properties": {
@@ -1931,6 +1998,65 @@
         "title": "PulseV1",
         "type": "object"
       },
+      "RelatorioDaEmpresaV1": {
+        "properties": {
+          "aviso_das_notas": {
+            "title": "Aviso Das Notas",
+            "type": "string"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "em_conferencia": {
+            "title": "Em Conferencia",
+            "type": "boolean"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "grupo": {
+            "title": "Grupo",
+            "type": "string"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "setor": {
+            "title": "Setor",
+            "type": "string"
+          },
+          "ticker": {
+            "title": "Ticker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "empresa",
+          "cnpj",
+          "ticker",
+          "setor",
+          "grupo",
+          "secoes",
+          "fontes",
+          "aviso_das_notas",
+          "em_conferencia"
+        ],
+        "title": "RelatorioDaEmpresaV1",
+        "type": "object"
+      },
       "RetornoMensalDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -2065,6 +2191,53 @@
         "title": "RiscoV1",
         "type": "object"
       },
+      "SecaoDoRelatorioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoRelatorioV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "paragrafos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paragrafos",
+            "type": "array"
+          },
+          "tabelas": {
+            "items": {
+              "$ref": "#/components/schemas/TabelaDoRelatorioV1"
+            },
+            "title": "Tabelas",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "trancada": {
+            "title": "Trancada",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "itens",
+          "paragrafos",
+          "tabelas",
+          "trancada"
+        ],
+        "title": "SecaoDoRelatorioV1",
+        "type": "object"
+      },
       "SimulacaoV1": {
         "description": "Uma simulação guardada na conta: o que a lista mostra e o endereço que a reabre.",
         "properties": {
@@ -2138,6 +2311,44 @@
           "endereco"
         ],
         "title": "SimulacaoV1",
+        "type": "object"
+      },
+      "TabelaDoRelatorioV1": {
+        "description": "Uma tabela de uma seção, com o título e as células já escritas (como na página e no PDF).",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "colunas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Colunas",
+            "type": "array"
+          },
+          "linhas": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Linhas",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "colunas",
+          "linhas"
+        ],
+        "title": "TabelaDoRelatorioV1",
         "type": "object"
       },
       "ValidationError": {
@@ -3116,6 +3327,64 @@
           }
         },
         "summary": "Pulse Da Conta"
+      }
+    },
+    "/v1/relatorio-empresa": {
+      "get": {
+        "description": "O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML\nsó vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite).",
+        "operationId": "relatorio_da_empresa_v1_relatorio_empresa_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "ticker",
+            "required": true,
+            "schema": {
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
+              "title": "Ticker",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioDaEmpresaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Da Empresa"
       }
     },
     "/v1/retorno-mensal": {

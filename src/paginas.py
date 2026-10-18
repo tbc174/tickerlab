@@ -456,6 +456,9 @@ PAGINAS = (
         "O relatório completo da empresa do topo (B3): resultado, retorno, dívida, caixa, notas "
         "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
         "número.",
+        contrato=Contrato(
+            "GET", "/v1/relatorio-empresa", (ATIVO,), "RelatorioDaEmpresaV1"
+        ),
     ),
     Pagina(
         "por_dentro",

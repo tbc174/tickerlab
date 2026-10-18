@@ -1,5 +1,6 @@
 """As rotas de leitura da API v1: os mesmos números que a tela, com os dados de exemplo."""
 
+import json
 import re
 from dataclasses import asdict
 from datetime import UTC, date, datetime
@@ -1043,3 +1044,77 @@ def test_o_portal_e_so_da_assinatura_da_conta_do_token(cliente, banco, stripe_de
         )
     assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 404
     assert stripe_de_teste == []
+
+
+# --- relatório da empresa com o dossiê da base (PR 4 do plano do dossiê) ---
+
+
+def _com_a_petrobras_coletada(banco, tmp_path, monkeypatch):
+    from tests.test_fundamentos_no_app import _coletar
+    from tests.test_relatorio_empresa_no_app import _ficha_da_petrobras
+
+    _coletar(banco)
+    _ficha_da_petrobras(tmp_path, monkeypatch)
+
+
+def _textos_da_resposta(valor) -> str:
+    return json.dumps(valor, ensure_ascii=False)
+
+
+def test_relatorio_empresa_do_pro_traz_as_secoes_da_base(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "pro")
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "petr4"})
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    assert dados["ticker"] == "PETR4.SA" and dados["cnpj"] == "33.000.167/0001-01"
+    secoes = {s["chave"]: s for s in dados["secoes"]}
+    base = [s for s in dados["secoes"] if s["titulo"] == "Auditor e controladas"]
+    assert len(base) == 1 and base[0]["trancada"] is False
+    assert "R$ 495,2 mi" in [i["texto"] for s in dados["secoes"] for i in s["itens"]]
+    fundos = [t for s in dados["secoes"] for t in s["tabelas"]]
+    assert "Fundos com a empresa, mês a mês" in [t["titulo"] for t in fundos]
+    assert all(len(t["colunas"]) == len(l) for t in fundos for l in t["linhas"])
+    assert secoes["limites"]["paragrafos"]
+
+
+def test_relatorio_empresa_do_gratuito_vem_trancado_sem_numeros(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    dados = resposta.json()
+    trancadas = [s for s in dados["secoes"] if s["trancada"]]
+    assert trancadas[0]["titulo"] == "Auditor e controladas"
+    assert trancadas and all(
+        not s["itens"] and not s["tabelas"] and s["paragrafos"] for s in trancadas
+    )
+    texto = _textos_da_resposta(trancadas)
+    assert "R$ 495,2 mi" not in texto and "PRICEWATERHOUSECOOPERS" not in texto
+    assert "PRICEWATERHOUSECOOPERS" not in _textos_da_resposta(dados)
+
+
+def test_relatorio_empresa_do_plus_tambem_vem_trancado(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    with banco.begin() as conexao:
+        mudar_plano(conexao, _id_da_ana_no(banco), "plus")
+    dados = cliente.get(
+        "/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"}
+    ).json()
+    assert any(s["trancada"] for s in dados["secoes"])
+    assert "PRICEWATERHOUSECOOPERS" not in _textos_da_resposta(dados)
+
+
+def test_relatorio_empresa_de_ticker_sem_empresa_da_404(cliente):
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "ZZZZ9.SA"})
+    assert resposta.status_code == 404
+
+
+def test_relatorio_empresa_exige_ticker(cliente):
+    assert cliente.get("/api/v1/relatorio-empresa").status_code == 422

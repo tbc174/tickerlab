@@ -196,3 +196,7 @@
 /* o assunto do fato relevante (leitor v2, ADR 0069), antes do título que a empresa deu */
 .selo-do-assunto { display: inline-block; margin-right: var(--e2); padding: 0 var(--e2); border-radius: 999px;
   font-size: .78rem; font-weight: 700; color: var(--azul-texto); border: 1px solid var(--linha-forte); }
+/* relatório da empresa: as tabelas das seções ficam fechadas até a pessoa abrir */
+.secao-do-relatorio { margin-top: var(--e5); }
+.tabela-do-relatorio { margin: var(--e2) 0; }
+.tabela-do-relatorio > summary { cursor: pointer; font-weight: 600; }
