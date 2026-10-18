@@ -35,6 +35,7 @@ from src.api_v1.rotas import (
 )
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.banco.eventos import Evento
+from src.commodities import painel_de_precos as pdp
 from src.dados import baixar_dados
 from src.validacao import parametros_numericos
 from tests.ajudantes_da_conta import ir_para
@@ -345,9 +346,55 @@ def exemplo_do_pulse() -> dict:
     }
 
 
+def _preco_de_exemplo(
+    chave: str, nome: str, inicio: float, com_fmi: bool
+) -> pdp.PrecoDeReferencia:
+    meses = pd.date_range("2025-08-01", "2026-09-01", freq="MS")
+    historico = tuple(
+        pdp.PontoMensal(
+            m.date(), inicio + i / 10, inicio + i / 10 + 0.02 if com_fmi else None
+        )
+        for i, m in enumerate(meses)
+    )
+    ultimo = historico[-1].bm or 0.0
+    um_ano_antes = historico[-1 - pdp.MESES_NO_ANO].bm or 1.0
+    return pdp.PrecoDeReferencia(
+        chave=chave,
+        nome=nome,
+        unidade="US$/kg",
+        ultimo_mes=historico[-1].mes,
+        ultimo_valor=ultimo,
+        variacao_12_meses=(ultimo / um_ano_antes - 1) * 100,
+        historico=historico,
+        com_fmi=com_fmi,
+        nota_das_fontes=None if com_fmi else pdp.NOTA_FONTES_DIFEREM,
+    )
+
+
+def exemplo_de_precos_de_referencia() -> dict:
+    """O painel de preços com séries feitas à mão; `na_tela` é o rótulo do `st.metric` e o texto."""
+    hoje = date(2026, 10, 18)
+    itens = (
+        _preco_de_exemplo(pdp.ARABICA, "Café arábica", 7.0, com_fmi=True),
+        _preco_de_exemplo(pdp.ROBUSTA, "Café robusta", 3.5, com_fmi=True),
+        _preco_de_exemplo("ureia", "Ureia", 0.4, com_fmi=False),
+    )
+    spread = tuple(
+        pdp.PontoDoSpread(a.mes, (a.bm or 0.0) - (r.bm or 0.0))
+        for a, r in zip(itens[0].historico, itens[1].historico, strict=True)
+    )
+    painel = pdp.PainelDePrecos(itens=itens, spread=spread)
+    resposta = esquemas.de_precos_de_referencia(painel, hoje).model_dump(mode="json")
+    na_tela = {
+        f"{i.nome} ({i.unidade})": pdp.formatar_valor(i.ultimo_valor) for i in itens
+    }
+    return {"resposta": resposta, "na_tela": na_tela}
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
+    "precos_de_referencia": exemplo_de_precos_de_referencia,
     "linha_do_tempo": exemplo_da_linha_do_tempo,
     "risco": exemplo_do_risco,
     "retorno_mensal": exemplo_do_retorno_mensal,

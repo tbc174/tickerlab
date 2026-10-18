@@ -67,6 +67,7 @@ from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
+from src.commodities import painel_de_precos
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -838,6 +839,27 @@ def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
     except CDIIndisponivelError:
         cdi = None  # o painel deixa o CDI e o juro real em branco e avisa
     return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
+
+
+def _painel_de_precos(dia: date) -> painel_de_precos.PainelDePrecos:
+    """O painel de preços de referência do acervo; vazio se o banco ainda não tem a tabela."""
+    try:
+        with obter_engine().connect() as conexao:
+            return painel_de_precos.montar_painel(conexao, dia)
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return painel_de_precos.PainelDePrecos(itens=(), spread=())
+        raise
+
+
+@router.get("/precos-de-referencia")
+def precos_de_referencia(_conta: Conta) -> esquemas.PrecosDeReferenciaV1:
+    """Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta."""
+    hoje = hoje_no_brasil()
+    lido = _painel_de_precos(hoje)
+    if not lido.itens:
+        raise HTTPException(status_code=503, detail=painel_de_precos.SEM_COLETA)
+    return esquemas.de_precos_de_referencia(lido, hoje)
 
 
 def _eventos_do_ativo(
