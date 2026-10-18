@@ -159,7 +159,8 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 /* Dados: a lista de tabelas, as fontes e o "como foi calculado" recolhido */
 .dados-resumo { font-size: 1.35rem; font-weight: 700; margin: .4rem 0 1rem; }
 .dados-regras, .dados-fontes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.dados-fonte h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; }
+.v2-texto .dados-fonte h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; padding: 0; border: 0;
+  border-radius: 0; font-size: 1.12rem; color: var(--texto); background: none; }
 .dados-frase { color: var(--apagado); font-size: .88rem; }
 .dados-repasse { font-weight: 600; }
 .dados-contagem { color: var(--apagado); font-size: .85rem; font-weight: 500; margin-left: .4rem; }
