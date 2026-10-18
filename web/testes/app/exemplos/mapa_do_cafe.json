@@ -1,0 +1,755 @@
+{
+ "resposta": {
+  "ano": 2025,
+  "aviso": "Contexto datado, não previsão: o mapa mostra o que foi publicado até a data do pacote. Não diz como será a safra nem para onde vai o preço, e nada aqui é recomendação de investimento.",
+  "camadas": [
+   {
+    "chave": "producao",
+    "escala": "sequencial",
+    "fonte": "IBGE, Produção Agrícola Municipal (PAM), tabela 1613 do SIDRA, ano 2025",
+    "o_que_e": "Quanto café arábica o município colheu no ano, em toneladas de café beneficiado, como o IBGE publicou.",
+    "referencia": null,
+    "titulo": "Produção de café arábica",
+    "unidade": "t"
+   },
+   {
+    "chave": "area",
+    "escala": "sequencial",
+    "fonte": "IBGE, Produção Agrícola Municipal (PAM), tabela 1613 do SIDRA, ano 2025",
+    "o_que_e": "Os hectares de café arábica colhidos no ano. Não é a área plantada: lavoura nova ou podada ainda não colhe.",
+    "referencia": null,
+    "titulo": "Área colhida de café arábica",
+    "unidade": "ha"
+   },
+   {
+    "chave": "chuva",
+    "escala": "divergente",
+    "fonte": "CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015); normal 1991–2020",
+    "o_que_e": "A chuva somada da região nos últimos meses publicados, em porcentagem da normal de 1991–2020 dos mesmos meses: 100% é a chuva de sempre. O índice é da região produtora, não do município.",
+    "referencia": 100.0,
+    "titulo": "Chuva dos últimos 3 meses contra a normal",
+    "unidade": "% da normal"
+   },
+   {
+    "chave": "geada",
+    "escala": "sequencial",
+    "fonte": "estações automáticas do INMET (BDMEP), média ponderada pela área de café da PAM",
+    "o_que_e": "Dias de junho a agosto com temperatura mínima abaixo de 1,0 °C no abrigo das estações da região. A geada não tira a safra do ano: tira a do ano seguinte.",
+    "referencia": null,
+    "titulo": "Dias de geada no último inverno",
+    "unidade": "dias"
+   }
+  ],
+  "fontes": [
+   "IBGE, Produção Agrícola Municipal (PAM), tabela 1613 do SIDRA, ano 2025",
+   "MapBiomas, Coleção 11 (CC BY 4.0; Souza et al. 2020), ano 2025",
+   "CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015)",
+   "estações automáticas do INMET (BDMEP), média ponderada pela área de café da PAM",
+   "IBGE, malha municipal (API de malhas), simplificada para o navegador",
+   "Camargo & Camargo (2001), fases do cafeeiro em dois anos; épocas de colheita da CONAB e da Embrapa Café"
+  ],
+  "gerado_em": "2026-11-05",
+  "malha": {
+   "features": [
+    {
+     "geometry": {
+      "coordinates": [
+       [
+        [
+         -40.3495,
+         -19.6682
+        ],
+        [
+         -40.3095,
+         -19.6524
+        ],
+        [
+         -40.2577,
+         -19.5996
+        ],
+        [
+         -40.2033,
+         -19.5829
+        ],
+        [
+         -40.1675,
+         -19.5537
+        ],
+        [
+         -40.1201,
+         -19.5515
+        ],
+        [
+         -39.9117,
+         -19.687
+        ],
+        [
+         -39.8108,
+         -19.6496
+        ],
+        [
+         -39.7305,
+         -19.4684
+        ],
+        [
+         -39.6965,
+         -19.3669
+        ],
+        [
+         -39.6891,
+         -19.3049
+        ],
+        [
+         -39.7193,
+         -19.097
+        ],
+        [
+         -39.7227,
+         -19.1395
+        ],
+        [
+         -39.7411,
+         -19.1489
+        ],
+        [
+         -39.7614,
+         -19.1609
+        ],
+        [
+         -39.8259,
+         -19.1391
+        ],
+        [
+         -39.8741,
+         -19.1119
+        ],
+        [
+         -39.8709,
+         -19.0805
+        ],
+        [
+         -39.9052,
+         -19.0525
+        ],
+        [
+         -39.93,
+         -19.06
+        ],
+        [
+         -40.0025,
+         -18.995
+        ],
+        [
+         -40.0879,
+         -19.1698
+        ],
+        [
+         -40.0375,
+         -19.1849
+        ],
+        [
+         -40.0843,
+         -19.2348
+        ],
+        [
+         -40.1484,
+         -19.2166
+        ],
+        [
+         -40.1565,
+         -19.1934
+        ],
+        [
+         -40.1918,
+         -19.1924
+        ],
+        [
+         -40.1815,
+         -19.2433
+        ],
+        [
+         -40.2035,
+         -19.3419
+        ],
+        [
+         -40.2728,
+         -19.3687
+        ],
+        [
+         -40.2974,
+         -19.3558
+        ],
+        [
+         -40.3985,
+         -19.3585
+        ],
+        [
+         -40.424,
+         -19.3118
+        ],
+        [
+         -40.4159,
+         -19.2706
+        ],
+        [
+         -40.4307,
+         -19.258
+        ],
+        [
+         -40.509,
+         -19.313
+        ],
+        [
+         -40.5251,
+         -19.3316
+        ],
+        [
+         -40.4554,
+         -19.4018
+        ],
+        [
+         -40.4442,
+         -19.4578
+        ],
+        [
+         -40.4166,
+         -19.5088
+        ],
+        [
+         -40.3736,
+         -19.5362
+        ],
+        [
+         -40.3892,
+         -19.5742
+        ],
+        [
+         -40.3765,
+         -19.6225
+        ],
+        [
+         -40.3495,
+         -19.6682
+        ]
+       ]
+      ],
+      "type": "Polygon"
+     },
+     "properties": {
+      "codarea": "3203205"
+     },
+     "type": "Feature"
+    }
+   ],
+   "type": "FeatureCollection"
+  },
+  "mes": 11,
+  "municipios": [
+   {
+    "area_mapbiomas_ha": null,
+    "codigo": "1100049",
+    "nome": "Cacoal",
+    "regiao": "rondonia",
+    "sem_dado": {
+     "area": "a PAM não registra café arábica neste município em 2025",
+     "chuva": "sem dado de chuva suficiente na região no período",
+     "geada": "sem temperatura de 3 estações do INMET com dias bastantes na região no inverno",
+     "producao": "a PAM não registra café arábica neste município em 2025"
+    },
+    "uf": "RO",
+    "valores": {
+     "area": null,
+     "chuva": null,
+     "geada": null,
+     "producao": null
+    }
+   },
+   {
+    "area_mapbiomas_ha": 23.029378125,
+    "codigo": "3136702",
+    "nome": "Juiz de Fora",
+    "regiao": null,
+    "sem_dado": {
+     "chuva": "fora das regiões produtoras do cadastro: sem índice de clima",
+     "geada": "fora das regiões produtoras do cadastro: sem índice de clima"
+    },
+    "uf": "MG",
+    "valores": {
+     "area": 3.0,
+     "chuva": null,
+     "geada": null,
+     "producao": 4.0
+    }
+   },
+   {
+    "area_mapbiomas_ha": 7838.294979961964,
+    "codigo": "3148004",
+    "nome": "Patos de Minas",
+    "regiao": "cerrado-mineiro",
+    "sem_dado": {
+     "geada": "sem temperatura de 3 estações do INMET com dias bastantes na região no inverno"
+    },
+    "uf": "MG",
+    "valores": {
+     "area": 9175.0,
+     "chuva": 75.0,
+     "geada": null,
+     "producao": 15253.0
+    }
+   },
+   {
+    "area_mapbiomas_ha": 5978.405470593252,
+    "codigo": "3203205",
+    "nome": "Linhares",
+    "regiao": "es-norte",
+    "sem_dado": {
+     "area": "a PAM não registra café arábica neste município em 2025",
+     "geada": "sem temperatura de 3 estações do INMET com dias bastantes na região no inverno",
+     "producao": "a PAM não registra café arábica neste município em 2025"
+    },
+    "uf": "ES",
+    "valores": {
+     "area": null,
+     "chuva": 75.0,
+     "geada": null,
+     "producao": null
+    }
+   },
+   {
+    "area_mapbiomas_ha": 4790.879709930366,
+    "codigo": "3516200",
+    "nome": "Franca",
+    "regiao": "mogiana",
+    "sem_dado": {
+     "geada": "sem temperatura de 3 estações do INMET com dias bastantes na região no inverno"
+    },
+    "uf": "SP",
+    "valores": {
+     "area": 9775.0,
+     "chuva": 75.0,
+     "geada": null,
+     "producao": 17956.0
+    }
+   }
+  ],
+  "regioes": [
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "sul-de-minas",
+    "nome": "Sul de Minas",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": 120.0,
+     "texto": "Chuva de 90 mm contra a normal de 120 mm (1991–2020), CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015), de 01/06/2026 a 31/08/2026.",
+     "valor": 90.0
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "cerrado-mineiro",
+    "nome": "Cerrado Mineiro",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "matas-de-minas",
+    "nome": "Matas de Minas",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "chapada-de-minas",
+    "nome": "Chapada de Minas",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": 120.0,
+     "texto": "Chuva de 90 mm contra a normal de 120 mm (1991–2020), CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015), de 01/06/2026 a 31/08/2026.",
+     "valor": 90.0
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "mogiana",
+    "nome": "Mogiana",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "alta-paulista",
+    "nome": "Alta Paulista",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "norte-do-parana",
+    "nome": "Norte do Paraná",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "oeste-da-bahia",
+    "nome": "Oeste da Bahia",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "planalto-da-bahia",
+    "nome": "Planalto da Bahia",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "es-montanhas",
+    "nome": "Espírito Santo, montanhas",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "arabica"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": 120.0,
+     "texto": "Chuva de 90 mm contra a normal de 120 mm (1991–2020), CHIRPS v2.0 (satélite e pluviômetros, UCSB; Funk et al. 2015), de 01/06/2026 a 31/08/2026.",
+     "valor": 90.0
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "es-norte",
+    "nome": "Espírito Santo, norte",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "conilon"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "rondonia",
+    "nome": "Rondônia",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "conilon"
+   },
+   {
+    "chuva": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de chuva bastante na região de 01/06/2026 a 31/08/2026.",
+     "valor": null
+    },
+    "fase": "Em novembro, a safra em curso está na florada, e a seguinte, na vegetação (formação dos ramos).",
+    "geada": {
+     "fim": "2026-08-31",
+     "inicio": "2026-06-01",
+     "n_estacoes": 0,
+     "normal": null,
+     "texto": "Sem dado de temperatura bastante na região de 01/06/2026 a 31/08/2026 (sem temperatura de 3 estações do INMET com dias bastantes na região no inverno).",
+     "valor": null
+    },
+    "id": "bahia-atlantico",
+    "nome": "Bahia, Atlântico",
+    "o_que_o_mercado_olha": [
+     {
+      "texto": "De setembro a novembro as primeiras chuvas abrem as flores e o mercado acompanha duas coisas: se a\nchuva veio e quando, e se o calor e a seca das semanas seguintes derrubaram o \"chumbinho\". É a\nprimeira pista do tamanho da safra que vem, sempre incerta. Aqui o **índice de florada** mostra a\nchuva da janela contra a normal e o calor depois da primeira chuva. Fonte da fase: Camargo & Camargo\n(2001) e Embrapa Café; contexto explicativo, não previsão de safra.",
+      "titulo": "O que o mercado olha na florada"
+     },
+     {
+      "texto": "De setembro a março a planta cresce ramos novos, e é neles que as flores do ano seguinte vão\nnascer. Seca ou excesso de calor nessa fase mexe na safra de dois anos adiante, não na da colheita\nmais próxima. Fonte da fase: Camargo & Camargo (2001); contexto, não previsão.",
+      "titulo": "O que o mercado olha na vegetação da safra seguinte"
+     }
+    ],
+    "tipo_predominante": "conilon"
+   }
+  ],
+  "tipo": "arabica"
+ }
+}

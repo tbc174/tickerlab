@@ -304,6 +304,57 @@
         "title": "BacktestV1",
         "type": "object"
       },
+      "CamadaDoMapaV1": {
+        "description": "Uma camada do mapa: o que pinta os municípios, com o \"o que é isto\" e a fonte.",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "escala": {
+            "title": "Escala",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "referencia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referencia"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "unidade",
+          "o_que_e",
+          "fonte",
+          "escala",
+          "referencia"
+        ],
+        "title": "CamadaDoMapaV1",
+        "type": "object"
+      },
       "ChecagemV1": {
         "properties": {
           "explicacao": {
@@ -801,6 +852,78 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IndiceDoMapaV1": {
+        "properties": {
+          "fim": {
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "n_estacoes": {
+            "title": "N Estacoes",
+            "type": "integer"
+          },
+          "normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "valor",
+          "normal",
+          "n_estacoes",
+          "inicio",
+          "fim",
+          "texto"
+        ],
+        "title": "IndiceDoMapaV1",
+        "type": "object"
+      },
+      "ItemDoMesV1": {
+        "properties": {
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "titulo",
+          "texto"
+        ],
+        "title": "ItemDoMesV1",
+        "type": "object"
+      },
       "ItemDoRelatorioV1": {
         "description": "Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a\ncomparação (ou, em `sem_comparacao`, por que não há com o quê comparar).",
         "properties": {
@@ -1225,6 +1348,79 @@
         "title": "LinkV1",
         "type": "object"
       },
+      "MapaDoCafeV1": {
+        "description": "O mapa de um tipo de café como o pacote de `gerado_em` o deixou (nada publicado depois).",
+        "properties": {
+          "ano": {
+            "title": "Ano",
+            "type": "integer"
+          },
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "camadas": {
+            "items": {
+              "$ref": "#/components/schemas/CamadaDoMapaV1"
+            },
+            "title": "Camadas",
+            "type": "array"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "gerado_em": {
+            "format": "date",
+            "title": "Gerado Em",
+            "type": "string"
+          },
+          "malha": {
+            "additionalProperties": true,
+            "title": "Malha",
+            "type": "object"
+          },
+          "mes": {
+            "title": "Mes",
+            "type": "integer"
+          },
+          "municipios": {
+            "items": {
+              "$ref": "#/components/schemas/MunicipioDoMapaV1"
+            },
+            "title": "Municipios",
+            "type": "array"
+          },
+          "regioes": {
+            "items": {
+              "$ref": "#/components/schemas/RegiaoDoMapaV1"
+            },
+            "title": "Regioes",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "ano",
+          "gerado_em",
+          "mes",
+          "camadas",
+          "municipios",
+          "regioes",
+          "malha",
+          "fontes",
+          "aviso"
+        ],
+        "title": "MapaDoCafeV1",
+        "type": "object"
+      },
       "MarcoV1": {
         "description": "Um acontecimento na linha do tempo: o documento e o ponto da curva (base 100) onde ele fica.",
         "properties": {
@@ -1469,6 +1665,76 @@
           "sem_simulacoes"
         ],
         "title": "MinhasSimulacoesV1",
+        "type": "object"
+      },
+      "MunicipioDoMapaV1": {
+        "properties": {
+          "area_mapbiomas_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Mapbiomas Ha"
+          },
+          "codigo": {
+            "title": "Codigo",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "regiao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regiao"
+          },
+          "sem_dado": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Sem Dado",
+            "type": "object"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          },
+          "valores": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Valores",
+            "type": "object"
+          }
+        },
+        "required": [
+          "codigo",
+          "nome",
+          "uf",
+          "regiao",
+          "valores",
+          "sem_dado",
+          "area_mapbiomas_ha"
+        ],
+        "title": "MunicipioDoMapaV1",
         "type": "object"
       },
       "NumeroDeJurosV1": {
@@ -2291,6 +2557,50 @@
         "title": "PulseV1",
         "type": "object"
       },
+      "RegiaoDoMapaV1": {
+        "properties": {
+          "chuva": {
+            "$ref": "#/components/schemas/IndiceDoMapaV1"
+          },
+          "fase": {
+            "title": "Fase",
+            "type": "string"
+          },
+          "geada": {
+            "$ref": "#/components/schemas/IndiceDoMapaV1"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "o_que_o_mercado_olha": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoMesV1"
+            },
+            "title": "O Que O Mercado Olha",
+            "type": "array"
+          },
+          "tipo_predominante": {
+            "title": "Tipo Predominante",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "tipo_predominante",
+          "chuva",
+          "geada",
+          "fase",
+          "o_que_o_mercado_olha"
+        ],
+        "title": "RegiaoDoMapaV1",
+        "type": "object"
+      },
       "RelatorioDaEmpresaV1": {
         "properties": {
           "aviso_das_notas": {
@@ -2968,6 +3278,67 @@
           }
         },
         "summary": "Backtest"
+      }
+    },
+    "/v1/commodities/cafe/mapa": {
+      "get": {
+        "description": "Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia\nos deixou; 503 se o pacote ainda não chegou a este servidor.",
+        "operationId": "mapa_do_cafe_v1_commodities_cafe_mapa_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "default": "arabica",
+              "enum": [
+                "arabica",
+                "conilon"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapaDoCafeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mapa Do Cafe"
       }
     },
     "/v1/comparacao": {

@@ -11,6 +11,7 @@ dia. Mudou a tela, a API ou os dados de exemplo? Regrave:
 
 import json
 import re
+from dataclasses import asdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -36,9 +37,11 @@ from src.api_v1.rotas import (
 from src.backtest import CUSTO_PADRAO_POR_OPERACAO
 from src.banco.eventos import Evento
 from src.commodities import painel_de_precos as pdp
+from src.commodities.cafe import pacote_do_mapa
 from src.dados import baixar_dados
 from src.validacao import parametros_numericos
 from tests.ajudantes_da_conta import ir_para
+from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 
 PASTA = Path(__file__).resolve().parent.parent / "web" / "testes" / "app" / "exemplos"
 ARQUIVO = PASTA / "visao_geral.json"
@@ -391,6 +394,16 @@ def exemplo_de_precos_de_referencia() -> dict:
     return {"resposta": resposta, "na_tela": na_tela}
 
 
+def exemplo_do_mapa_do_cafe() -> dict:
+    """O mapa do arábica em novembro com o pacote dos 5 municípios de exemplo (só Linhares tem
+    contorno na malha pequena)."""
+    vista = pacote_do_mapa.montar_vista(pacote_de_exemplo(), "arabica", 11)
+    resposta = esquemas.MapaDoCafeV1.model_validate(asdict(vista)).model_dump(
+        mode="json"
+    )
+    return {"resposta": resposta}
+
+
 EXEMPLOS = {
     "visao_geral": exemplo_da_visao_geral,
     "juros_e_inflacao": exemplo_de_juros,
@@ -402,6 +415,7 @@ EXEMPLOS = {
     "backtest": exemplo_do_backtest,
     "ficha": exemplo_da_ficha,
     "pulse": exemplo_do_pulse,
+    "mapa_do_cafe": exemplo_do_mapa_do_cafe,
 }
 
 
