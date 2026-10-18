@@ -37,6 +37,10 @@ NOMES_DOS_MODULOS = {
     "governo_e_sancoes": "Governo e sanções",
     "macro": "Macro",
 }
+# o que a página diz sobre repassar os dados da fonte (o texto do contrato fala de ML e de revenda)
+REPASSE_COM_ATRIBUICAO = "Pode ser repassado, citando a fonte."
+REPASSE_ODBL = "Pode ser repassado, citando a fonte e compartilhando igual (ODbL)."
+REPASSE_EM_CONSULTA = "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta."
 LIMITE_DA_FRASE = 200
 LIMITE_DO_ATRASO = 110
 SEM_CALENDARIO = "Sem calendário fixo"
@@ -65,8 +69,8 @@ _FREQUENCIAS = (
 @dataclass(frozen=True)
 class Fonte:
     orgao: str
-    licenca: str
-    revenda: str  # o que o contrato diz que pode ser repassado
+    licenca: str  # o texto do contrato, sem número de decisão (`licenca_do_site`)
+    repasse: str  # o que pode ser repassado (`repasse_do_site`)
     situacao: str  # "licenciada" ou "em consulta"
     modulos: tuple[str, ...]
     tabelas: int
@@ -109,6 +113,18 @@ def situacao_da_licenca(licenca: str, revenda: str) -> str:
     return LICENCIADA
 
 
+def licenca_do_site(licenca: str) -> str:
+    """O texto da licença sem a decisão interna entre parênteses ("(ADR 0082)")."""
+    sem_decisao = _PARENTESES_INTERNO.sub("", licenca)
+    return sem_decisao.replace("perguntar a licença", "reuso em consulta")
+
+
+def repasse_do_site(licenca: str, situacao: str) -> str:
+    if situacao == EM_CONSULTA:
+        return REPASSE_EM_CONSULTA
+    return REPASSE_ODBL if "ODbL" in licenca else REPASSE_COM_ATRIBUICAO
+
+
 def fontes_do_catalogo(catalogo: dict) -> list[Fonte]:
     """Uma fonte por texto de licença, as de mais tabelas primeiro."""
     grupos: dict[str, list[dict]] = {}
@@ -120,13 +136,13 @@ def fontes_do_catalogo(catalogo: dict) -> list[Fonte]:
         em_consulta = [
             r for r in revendas if situacao_da_licenca(licenca, r) == EM_CONSULTA
         ]
-        revenda = (em_consulta or revendas)[0]
+        situacao = situacao_da_licenca(licenca, (em_consulta or revendas)[0])
         fontes.append(
             Fonte(
                 orgao=orgao_da_licenca(licenca),
-                licenca=licenca,
-                revenda=revenda,
-                situacao=situacao_da_licenca(licenca, revenda),
+                licenca=licenca_do_site(licenca),
+                repasse=repasse_do_site(licenca, situacao),
+                situacao=situacao,
                 modulos=tuple(sorted({t["modulo"] for t in tabelas})),
                 tabelas=len(tabelas),
                 historico_desde=min(

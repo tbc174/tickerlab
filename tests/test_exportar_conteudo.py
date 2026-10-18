@@ -322,8 +322,13 @@ def test_catalogo_do_site_nao_leva_conversa_interna():
     catalogo = exp.conteudo()["catalogo"]
     for t in catalogo["tabelas"]:
         for texto in (t["frase"], t["atraso"] or "", t["frequencia"]):
-            assert not re.search(r"servidor|VPS|arquivista|`|bADRb|\w+/\w+\.py", texto), (
-                texto
-            )
+            assert not re.search(
+                r"servidor|VPS|arquivista|`|\bADR\b|\w+/\w+\.py", texto
+            ), texto
         assert t["frase"].endswith((".", "…"))
         assert t["frase"].count("(") == t["frase"].count(")"), t["frase"]
+    for f in catalogo["fontes"]:
+        assert "revenda" not in f
+        assert not re.search(
+            r"\bADR\b|perguntar|\bML\b", f["licenca"] + f["repasse"]
+        ), f

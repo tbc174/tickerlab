@@ -5,6 +5,7 @@ Funções puras sobre o dicionário do `catalogo.json`; nenhum número da págin
 """
 
 import json
+import re
 
 import pytest
 
@@ -64,7 +65,7 @@ def test_fontes_do_catalogo():
     ]  # mais tabelas primeiro
     cvm, bcb = fontes
     assert cvm.licenca == CVM
-    assert cvm.revenda == VENDAVEL
+    assert cvm.repasse == vitrine.REPASSE_ODBL
     assert cvm.modulos == ("mercado_e_empresas",)
     assert cvm.tabelas == 2
     assert cvm.historico_desde == "2005-01-31"  # a mais antiga das tabelas da fonte
@@ -93,6 +94,31 @@ def test_licenca_em_consulta():
 
     assert por_orgao["PGFN"].situacao == "em consulta"
     assert por_orgao["CVM"].situacao == "licenciada"
+
+
+def test_licenca_do_site_perde_a_decisao_interna():
+    assert (
+        vitrine.licenca_do_site("Posts públicos de M&A: só fatos, sem texto (ADR 0082)")
+        == "Posts públicos de M&A: só fatos, sem texto"
+    )
+    em_consulta = vitrine.licenca_do_site(PGFN)
+    assert "perguntar" not in em_consulta
+    assert em_consulta.endswith("reuso em consulta)")
+
+
+def test_repasse_do_site():
+    assert vitrine.repasse_do_site(CVM, "licenciada") == vitrine.REPASSE_ODBL
+    assert (
+        vitrine.repasse_do_site("CC BY (dados abertos da ANP)", "licenciada")
+        == vitrine.REPASSE_COM_ATRIBUICAO
+    )
+    assert vitrine.repasse_do_site(PGFN, "em consulta") == vitrine.REPASSE_EM_CONSULTA
+    for texto in (
+        vitrine.REPASSE_ODBL,
+        vitrine.REPASSE_COM_ATRIBUICAO,
+        vitrine.REPASSE_EM_CONSULTA,
+    ):
+        assert not re.search(r"\bML\b|revenda|ADR", texto)
 
 
 @pytest.mark.parametrize(

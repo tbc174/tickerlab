@@ -9,7 +9,7 @@
         "rede"
       ],
       "orgao": "CVM",
-      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 49
     },
@@ -22,18 +22,18 @@
         "mercado_e_empresas"
       ],
       "orgao": "Banco Central",
-      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 5
     },
     {
       "historico_desde": "2026-10-16",
-      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto (ADR 0082)",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto",
       "modulos": [
         "ma"
       ],
       "orgao": "Assessorias de M&A",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 4
     },
@@ -44,7 +44,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANP",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 2
     },
@@ -55,7 +55,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANAC",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -66,7 +66,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANEEL",
-      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -77,7 +77,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANS",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -88,7 +88,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "Anatel",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -99,7 +99,7 @@
         "ma"
       ],
       "orgao": "Internet Archive",
-      "revenda": "não comercial (uso pessoal, só pesquisa ou conta de estudante: só gabarito e pesquisa no PC; nunca em modelo, rótulo ou exportação)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
     },
@@ -110,29 +110,29 @@
         "mercado_e_empresas"
       ],
       "orgao": "ONS",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
+      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
       "modulos": [
         "governo_e_sancoes"
       ],
       "orgao": "PGFN",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
+      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: reuso em consulta)",
       "modulos": [
         "governo_e_sancoes"
       ],
       "orgao": "Receita Federal",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
     },
@@ -143,7 +143,7 @@
         "mercado_e_empresas"
       ],
       "orgao": "SUSEP",
-      "revenda": "vendável com atribuição à fonte",
+      "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
     },
@@ -154,7 +154,7 @@
         "macro"
       ],
       "orgao": "Tesouro Nacional",
-      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
     }
