@@ -51,6 +51,7 @@ ARQUIVOS: dict[str, str] = {
     "buracos_dos_fundos": "fundos/buracos.parquet",
     "anac_estatistico": "setoriais/anac/*.parquet",
     "anp_vendas": "setoriais/anp/*.parquet",
+    "comex_cafe": "commodities/comex_cafe/*.parquet",
     "ons_geracao": "setoriais/ons/*.parquet",
     "aneel_samp": "setoriais/aneel/*.parquet",
     "anatel_acessos": "setoriais/anatel/*.parquet",

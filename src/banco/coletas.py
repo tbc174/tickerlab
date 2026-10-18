@@ -74,6 +74,8 @@ LICENCAS = {
     "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+    # relatório mensal do Cecafé: robots.txt proíbe PDF e a página de termos veio vazia (18/10/2026)
+    "cecafe": "Cecafé: sem termos legíveis e robots.txt veda PDF; só pesquisa",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
@@ -84,6 +86,7 @@ LICENCAS = {
     # finalidade ou atividade, no limite das restrições legais"; sem pessoas (ADR 0075)
     "tce-pr": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-pr-pit": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-pr-despesa": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
     # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
@@ -155,6 +158,7 @@ REVENDA = {
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
+    "cecafe": NAO_COMERCIAL,  # só pesquisa até a Cecafé autorizar por escrito
     "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
     "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
     "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
@@ -162,6 +166,7 @@ REVENDA = {
     # o "tce" sozinho não diz qual tribunal
     "tce-pr": VENDAVEL_COM_ATRIBUICAO,
     "tce-pr-pit": VENDAVEL_COM_ATRIBUICAO,
+    "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
     "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
     "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
     "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem

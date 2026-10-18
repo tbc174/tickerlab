@@ -1190,6 +1190,44 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "comex_cafe": Tabela(
+        descricao=(
+            "Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat "
+            "(NCMs 09011110, 09011190, 09012100 e 21011110). A NCM não separa arábica de conilon: o "
+            "`tipo` é sempre `total` e o Espírito Santo (quase só conilon) vai marcado em "
+            "`proxy_conilon`, sem dividir o volume. Cada coleta do arquivista vira linhas novas "
+            "(`divulgado_em`), porque o MDIC revisa meses antigos"
+        ),
+        fonte="MDIC: Comex Stat, exportação por NCM (EXP_AAAA.csv) e tabela de países",
+        familia_da_fonte="comexstat",
+        frequencia="Mensal",
+        atraso="O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, "
+        "não a do MDIC",
+        onde="Parquet em `<acervo>/base/commodities/comex_cafe/` (carga em PR seguinte; `base/commodities/comex_cafe.py`)",
+        linhagem=(
+            "Recorte do `EXP_AAAA.csv` guardado pelo arquivista (fonte `comexstat`); as vias e unidades "
+            "da aduana são somadas por mês, NCM, UF e país."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "ncm": ("NCM do café (8 dígitos)", TEXTO),
+            "uf_origem": ("UF do produtor/exportador", TEXTO),
+            "codigo_do_pais": ("Código do país de destino no Comex", TEXTO),
+            "pais_destino": ("Nome do país de destino", TEXTO),
+            "vl_fob_usd": ("Valor FOB em dólares", NUMERO_DECIMAL),
+            "kg_liquido": ("Peso líquido em quilos", NUMERO_DECIMAL),
+            "sacas": ("Sacas de 60 kg (quilos líquidos ÷ 60)", NUMERO_DECIMAL),
+            "tipo": ("Sempre `total`: a NCM não separa arábica de conilon", TEXTO),
+            "proxy_conilon": (
+                "Verdadeiro para o Espírito Santo, pista de conilon (não divide o volume)",
+                SIM_OU_NAO,
+            ),
+            "divulgado_em": (
+                "Data da coleta do arquivista em que a linha apareceu (sem olhar o futuro)",
+                DATA,
+            ),
+        },
+    ),
     "ons_geracao": Tabela(
         descricao=(
             "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da "
@@ -4420,7 +4458,10 @@ TABELAS: dict[str, Tabela] = {
             "tipo": ("arabica, conilon ou total", TEXTO),
             "valor": ("Valor em mil sacas de 60 kg", NUMERO_DECIMAL),
             "unidade": ("Unidade da fonte, conferida na leitura", TEXTO),
-            "divulgado_em": ("Quando a revisão ficou pública (fim do mês da revisão)", DATA),
+            "divulgado_em": (
+                "Quando a revisão ficou pública (fim do mês da revisão)",
+                DATA,
+            ),
         },
     ),
 }
@@ -4430,7 +4471,9 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
-_COMMODITIES = "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
+_COMMODITIES = (
+    "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
+)
 
 
 # módulo, chaves, apelidos das três datas (`aconteceu_em`: quando o fato ocorreu; `publico_em`: quando
@@ -4461,6 +4504,7 @@ _CONTRATO = {
     "codigos_fora_do_fca": _contrato(modulo=_ME, chaves=("codigo",), datas={"coletado_em": "conferido_em"}, historico_desde=_CVM),
     "anac_estatistico": _contrato(modulo=_ME, chaves=("competencia", "empresa_sigla", "aeroporto_de_origem_sigla", "aeroporto_de_destino_sigla", "natureza", "grupo_de_voo"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anp_vendas": _contrato(modulo=_ME, chaves=("competencia", "grupo", "agente", "codigo_do_produto", "uf_origem", "uf_destino", "mercado_destino"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "comex_cafe": _contrato(modulo=_ME, chaves=("competencia", "ncm", "uf_origem", "codigo_do_pais", "divulgado_em"), datas={"aconteceu_em": "competencia", "publico_em": "divulgado_em"}, historico_desde="2026-10-18"),
     "ons_geracao": _contrato(modulo=_ME, chaves=("instante", "id_ons"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),

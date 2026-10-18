@@ -140,10 +140,7 @@ DESTINOS: dict[str, Destino] = {
     "antt-siade": _planejada(
         "serie-T/T8", _SO_LIGA_HOJE + " (desempenho por ferrovia)"
     ),
-    "comexstat": _planejada(
-        "serie-T/T8",
-        _SO_LIGA_HOJE + " (exposição por NCM); falta o preço médio de exportação",
-    ),
+    "comexstat": _tabela("comex_cafe"),
     # governo, sanções e identificadores
     "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
     "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
@@ -153,6 +150,9 @@ DESTINOS: dict[str, Destino] = {
     "cgu-leniencia": _planejada("sinais/PR4", "acordos de leniência"),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
+    ),
+    "tce-pr-despesa": _planejada(
+        "sinais/PR2-3", "empenhos, liquidações e pagamentos dos municípios do Paraná"
     ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
     "ibama-embargos": _planejada("serie-T/T5", "embargos ambientais por CNPJ"),
@@ -179,6 +179,10 @@ DESTINOS: dict[str, Destino] = {
     "ico-relatorio-mensal": _pesquisa(
         "relatório mensal da ICO em PDF, sem termos de uso localizados; só pesquisa até a ICO publicar a licença"
     ),
+    "cecafe-relatorio-mensal": _pesquisa(
+        "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
+        "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -198,6 +202,7 @@ DESTINOS: dict[str, Destino] = {
             "catalogo-bc",
             "catalogo-tesouro",
             "catalogo-ibama",
+            "termos-cecafe-robots",
         )
     },
 }

@@ -18,7 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, wayback
+from base.arquivo import assessorias, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -77,6 +77,14 @@ PRIMEIRO_ANO_DO_SCR = 2012
 MES_DO_PRIMEIRO_ARQUIVO_DO_SCR = 3
 
 # termos de uso que decidem o que o TickerLab pode fazer (vigia: avisa quando o texto muda)
+# relatório mensal do Cecafé (café, PR 6): só pesquisa; o robots.txt do site proíbe PDF (18/10/2026)
+CECAFE_ROBOTS = "https://www.cecafe.com.br/robots.txt"
+CECAFE_RELATORIOS = "https://www.cecafe.com.br/publicacoes/relatorio-de-exportacoes/"
+PDF_DO_CECAFE = re.compile(
+    rb'href="(https://www\.cecafe\.com\.br/[^"]*Relatorio-Mensal[^"]*\.pdf)"',
+    re.IGNORECASE,
+)
+
 TERMOS = {
     "termos-b3-politica": "https://www.b3.com.br/data/files/0D/97/1F/B7/4CCFF91094DCD8F9AC094EA8/"
     "Politica%20de%20Consumo%20de%20Market%20Data%20B3%20V1.1.pdf",
@@ -94,6 +102,7 @@ TERMOS = {
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
     # a FNC veda robôs e cópia sem autorização escrita: não coletamos, só vigiamos os termos (18/10/2026)
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
+    "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -262,6 +271,9 @@ PRIMEIRO_ANO_DO_PIT = 2013
 ZIP_INTERNO_DO_PIT = re.compile(
     r"^\d{4}_\d+_(Licitacao|Contrato|Relacionamentos)\.zip$"
 )
+# a `Despesa` (PR 2) é uma fonte à parte: ~17 GB como vem (1,1 GB só em 2025), então tem a própria
+# hora e nunca roda junto com a do `tce-pr-pit`
+ZIP_INTERNO_DA_DESPESA = re.compile(r"^\d{4}_\d+_Despesa\.zip$")
 
 
 def _json(cliente: Cliente, url: str) -> dict:
@@ -430,6 +442,23 @@ def descobrir_links(
     return [Alvo(link) for link in links]
 
 
+def descobrir_cecafe(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os PDFs do relatório mensal linkados na página; falha, sem baixar nada, se o robots.txt os proíbe."""
+    robots_txt = cliente.ler(CECAFE_ROBOTS).conteudo.decode("utf-8", errors="replace")
+    alvos = descobrir_links(cliente, CECAFE_RELATORIOS, PDF_DO_CECAFE)
+    proibidos = [
+        a
+        for a in alvos
+        if not robots.pode_buscar(robots_txt, a.url.split(".com.br", 1)[1])
+    ]
+    if proibidos:
+        raise ErroDeDescoberta(
+            f"cecafe-relatorio-mensal: o robots.txt proíbe {len(proibidos)} PDF(s) "
+            f"(ex.: {proibidos[0].url}); nada foi baixado"
+        )
+    return alvos
+
+
 def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
     """Exportação e importação por NCM e por município (um CSV por ano), totais e tabelas."""
     ultimo = (
@@ -504,9 +533,29 @@ def descobrir_pit(
 ) -> list[Alvo]:
     """Cada ZIP interno de licitação, contrato e ligações de cada ano (o endereço guarda
     `zip#arquivo`), com a versão (CRC) lida no índice: o que não mudou nem é pedido.
-
-    O ano corrente que ainda não saiu (começo de janeiro) fica de fora; um ano fechado que falta é falha.
     """
+    return _descobrir_zips_do_pit(
+        cliente, agora, anos, ZIP_INTERNO_DO_PIT, "licitação ou contrato"
+    )
+
+
+def descobrir_pit_despesa(
+    cliente: Cliente, agora: datetime, anos: Iterable[int] | None = None
+) -> list[Alvo]:
+    """Cada ZIP interno de `Despesa` (empenho, liquidação, pagamento) de cada ano; o resto é como no PIT."""
+    return _descobrir_zips_do_pit(
+        cliente, agora, anos, ZIP_INTERNO_DA_DESPESA, "despesa"
+    )
+
+
+def _descobrir_zips_do_pit(
+    cliente: Cliente,
+    agora: datetime,
+    anos: Iterable[int] | None,
+    padrao: re.Pattern[str],
+    tema: str,
+) -> list[Alvo]:
+    """O ano corrente que ainda não saiu (começo de janeiro) fica de fora; um ano fechado que falta é falha."""
     hoje = agora.astimezone(FUSO_DA_B3).date()
     alvos: list[Alvo] = []
     for ano in anos or range(PRIMEIRO_ANO_DO_PIT, hoje.year + 1):
@@ -518,13 +567,11 @@ def descobrir_pit(
                 continue
             raise
         membros = sorted(
-            (m for m in indice if ZIP_INTERNO_DO_PIT.match(m.filename)),
+            (m for m in indice if padrao.match(m.filename)),
             key=lambda m: m.filename,
         )
         if not membros:
-            raise ErroDeDescoberta(
-                f"TCE-PR: nenhum ZIP de licitação ou contrato em {url}"
-            )
+            raise ErroDeDescoberta(f"TCE-PR: nenhum ZIP de {tema} em {url}")
         alvos += [
             Alvo(
                 f"{url}#{m.filename}",
@@ -922,6 +969,7 @@ FONTES: list[Fonte] = [
     _fonte_do_bdi("b3-emprestimo-resumo", "BTBLoanBalance"),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
+    Fonte("tce-pr-despesa", "semanal", descobrir_pit_despesa, "zip", pesada=True),
     # posts das assessorias independentes de M&A (middle market, ADR 0082)
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
@@ -937,6 +985,8 @@ FONTES: list[Fonte] = [
         ),
         "pdf",
     ),
+    # relatório mensal do Cecafé (café, PR 6): só pesquisa; falha enquanto o robots.txt proibir PDF
+    Fonte("cecafe-relatorio-mensal", "mensal", descobrir_cecafe, "pdf"),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

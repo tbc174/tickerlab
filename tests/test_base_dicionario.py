@@ -11,6 +11,7 @@ from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.commodities import usda_psd
+from base.commodities import comex_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
@@ -103,6 +104,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anac_estatistico": list(setoriais_anac.COLUNAS),
         "anp_vendas": list(setoriais_anp.COLUNAS),
         "usda_psd_cafe": list(usda_psd.COLUNAS),
+        "comex_cafe": list(comex_cafe.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
         "amostra_painel": [
             *amostra_universo.COLUNAS,
