@@ -127,6 +127,20 @@ describe("topo compacto e campos que não dão zoom", () => {
   it("no celular o topo esconde o selo e fica mais baixo", () => {
     expect(NO_CELULAR).toMatch(/\.selo-novo \{ display: none; \}/);
   });
+
+  it("no celular o 'App atual' sai do topo (vazava em 375 px) e fica no fim da folha 'Mais'", async () => {
+    expect(NO_CELULAR).toMatch(/\.app-atual-no-topo \{ display: none; \}/);
+    abrirApp("/");
+    await noInicio();
+    const noTopo = within(screen.getByRole("banner")).getByRole("link", { name: "App atual" });
+    expect(noTopo.classList.contains("app-atual-no-topo")).toBe(true);
+    // a folha está fechada: o link existe, mas só aparece quando ela abre
+    const naFolha = within(document.querySelector<HTMLDialogElement>("dialog.folha-mais")!).getByRole("link", {
+      name: "App atual",
+      hidden: true,
+    });
+    expect(naFolha.getAttribute("href")).toBe(noTopo.getAttribute("href"));
+  });
 });
 
 describe("fundo contido (ADR 0065 item 2)", () => {

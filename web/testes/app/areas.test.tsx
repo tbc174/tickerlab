@@ -2,11 +2,15 @@
 // O menu do app novo por áreas (ADR 0096, PR 2 da reorganização): Ativo, Estratégias e Acompanhar, cada
 // uma com as suas telas (as que ainda não estão no app novo aparecem apagadas, sem link), favoritos no
 // topo, áreas que recolhem e o trilho de ícones entre 761 e 1.100 px. A Conta fica no menu da pessoa.
+// O jsdom não aplica CSS: as regras que o Chrome mostrou faltar são conferidas como texto.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AREAS, areaDoEndereco, itensDaArea } from "../../src/app/areas";
 import { abrirApp } from "./ajudantes";
 
+const CSS_DO_APP = readFileSync(join(process.cwd(), "src", "app", "app.css"), "utf8");
 const menu = () => screen.getByRole("navigation", { name: "Telas" });
 const secao = (rotulo: string) => within(menu()).getByRole("heading", { name: rotulo }).closest("section")!;
 /** Abre uma tela que nunca termina de carregar (o menu é o que interessa aqui). */
@@ -88,6 +92,24 @@ describe("menu lateral por áreas", () => {
     expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual(["estrategias"]);
   });
 
+  it("a área da tela aberta também recolhe (só abre sozinha ao chegar numa tela dela)", async () => {
+    abrirTela("/risco");
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    const botao = within(secao("Ativo")).getByRole("button", { name: "Ativo" });
+    fireEvent.click(botao);
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+    expect(secao("Ativo").querySelector("ul")!.hidden).toBe(true);
+    expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual(["ativo"]);
+  });
+
+  it("o CSS respeita o hidden da lista recolhida (o display: flex dela ganhava do hidden)", () => {
+    expect(CSS_DO_APP).toMatch(/\.itens-da-area\[hidden\] \{ display: none; \}/);
+  });
+
+  it("tela em breve: o nome e o selo seguem na mesma linha de texto, sem coluna espremida", () => {
+    expect(CSS_DO_APP).toMatch(/\.itens-da-area li\.em-breve \{ display: block; \}/);
+  });
+
   it("a estrela põe a tela em Favoritos, no topo do menu, e guarda no navegador", async () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
@@ -156,5 +178,10 @@ describe("trilho de ícones entre 761 e 1.100 px", () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     expect(menu().classList.contains("trilho")).toBe(false);
+  });
+
+  it("as telas que abrem ao lado ficam por cima do gráfico (o menu fixo tem a própria camada)", () => {
+    const noTrilho = CSS_DO_APP.split("@media (min-width: 761px) and (max-width: 1100px)")[1];
+    expect(noTrilho).toMatch(/\.app-menu\.trilho \{[^}]*z-index: 7;/);
   });
 });

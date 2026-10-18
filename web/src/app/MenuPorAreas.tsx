@@ -6,6 +6,7 @@
 // se o navegador recusar (navegação privada), valem só nesta visita.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
+import { linkDoApp } from "../site/textos";
 import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
 import { Icone } from "./Icone";
 
@@ -103,8 +104,12 @@ export function MenuPorAreas() {
   const [favoritos, setFavoritos] = useListaGuardada(FAVORITOS);
   const [recolhidas, setRecolhidas] = useListaGuardada(RECOLHIDAS);
 
-  // abrir uma tela de uma área recolhida abre a área (o link da tela aberta fica à vista)
+  // chegar numa tela de uma área recolhida abre a área (o link da tela aberta fica à vista); só na
+  // chegada: depois disso a pessoa pode recolher a área da tela aberta também
+  const areaDaChegada = useRef<string | null>(null);
   useEffect(() => {
+    if (atual === areaDaChegada.current) return;
+    areaDaChegada.current = atual;
     if (atual && recolhidas.includes(atual)) setRecolhidas(recolhidas.filter((a) => a !== atual));
   }, [atual, recolhidas, setRecolhidas]);
 
@@ -260,6 +265,10 @@ export function AbasDoCelular() {
             ))}
           </section>
         ))}
+        {/* no celular o "App atual" não cabe no topo: fica aqui */}
+        <a className="app-atual-na-folha" href={linkDoApp()}>
+          App atual
+        </a>
       </dialog>
     </>
   );
