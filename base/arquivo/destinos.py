@@ -181,9 +181,17 @@ DESTINOS: dict[str, Destino] = {
         "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
         "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
     ),
-    "cecafe-relatorio-mensal": _pesquisa(
-        "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
-        "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
+    "fnc-estadisticas": _planejada(
+        "cafe/PR4",
+        "preço, área, produção e exportação de café da Colômbia nas planilhas da FNC; marca 'não "
+        "comercial' registrada (os termos vedam robô), coleta com ritmo e uso citando a FNC e a data "
+        "(ADR 0102)",
+    ),
+    "cecafe-relatorio-mensal": _planejada(
+        "cafe/PR6",
+        "exportações de café por tipo e destino no relatório mensal do Cecafé em PDF; marca 'não "
+        "comercial' registrada (o robots.txt veda PDF, lido em 18/10/2026 e vigiado), coleta com ritmo "
+        "e uso citando o Cecafé e a data (ADR 0102)",
     ),
     # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
     "inmet-bdmep": _tabela("clima_regiao_cafe"),

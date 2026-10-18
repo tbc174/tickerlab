@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from base import licenca
 from base.arquivo import destinos, fontes
 from base.arquivo.coleta import ErroDeDescoberta, Resposta
 from src.banco import coletas
@@ -40,11 +41,50 @@ def test_as_fontes_do_cafe_tem_destino_certo():
     assert "ICO" in ico.porque and "ADR 0102" in ico.porque
 
 
-def test_fnc_nao_e_coletada_porque_os_termos_vedam_robos():
-    # os termos da FNC proíbem robôs e cópia sem autorização escrita: só os termos são vigiados
-    assert "fnc-colombia" not in fontes.POR_ID
+PAGINA_DA_FNC = b"""
+<a href="https://federaciondecafeteros.org/wp-content/uploads/2026/10/Precios-area-y-produccion-de-cafe-Septiembre-2026.xlsx">Precios</a>
+<a href="https://federaciondecafeteros.org/wp-content/uploads/2026/10/Exportaciones-Septiembre-2026.xlsx">Exportaciones</a>
+<a href="https://federaciondecafeteros.org/wp-content/uploads/2026/10/Exportaciones-Septiembre-2026.xlsx">de novo</a>
+<a href="https://federaciondecafeteros.org/wp-content/uploads/2026/10/Informe-Expos-Septiembre-2026.pdf">Informe</a>
+"""
+
+
+def test_fnc_e_coletada_com_ritmo_e_os_termos_seguem_vigiados():
+    # ADR 0102: os termos da FNC (uso pessoal, vedam robô) ficam na marca e no vigia, não barram
+    fonte = fontes.POR_ID["fnc-estadisticas"]
+    assert (fonte.grupo, fonte.tipo) == ("mensal", "arquivo")
+    assert (
+        fonte.pausa_minima >= 3
+    )  # site pequeno de terceiros: um pedido por vez, com folga
+    destino = destinos.DESTINOS["fnc-estadisticas"]
+    assert destino.tipo == destinos.PLANEJADA and "ADR 0102" in destino.porque
     assert destinos.DESTINOS["termos-fnc-colombia"].tipo == destinos.VIGIA
     assert fontes.POR_ID["termos-fnc-colombia"].vigia
+
+
+def test_fnc_descobre_as_planilhas_da_pagina_sem_repetir_e_sem_pdf():
+    cliente = ClienteFalso(PAGINA_DA_FNC)
+    alvos = fontes.POR_ID["fnc-estadisticas"].descobrir(cliente, AGORA)
+    assert cliente.pedidos == [fontes.FNC_ESTADISTICAS]
+    assert [a.url.rsplit("/", 1)[-1] for a in alvos] == [
+        "Precios-area-y-produccion-de-cafe-Septiembre-2026.xlsx",
+        "Exportaciones-Septiembre-2026.xlsx",
+    ]
+
+
+def test_fnc_sem_planilha_na_pagina_e_falha_de_descoberta():
+    with pytest.raises(ErroDeDescoberta):
+        fontes.POR_ID["fnc-estadisticas"].descobrir(
+            ClienteFalso(b"<html></html>"), AGORA
+        )
+
+
+def test_fnc_tem_a_marca_nao_comercial_registrada_e_entra_nos_usos():
+    assert licenca.FAMILIA_DO_ENDERECO["federaciondecafeteros.org/"] == "fnc"
+    assert coletas.marca_da_fonte("fnc-estadisticas") == coletas.Marca.NAO_COMERCIAL
+    assert "ADR 0102" in coletas.LICENCAS["fnc"]
+    assert coletas.pode_usar("mostrar", "fnc-estadisticas")
+    assert coletas.pode_usar("exportar", "fnc-estadisticas")
 
 
 def test_psd_baixa_o_zip_completo_toda_semana():
