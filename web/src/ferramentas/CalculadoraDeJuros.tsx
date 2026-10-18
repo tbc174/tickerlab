@@ -64,12 +64,13 @@ export function calcularJuros(campos: Pick<Campos, "capital" | "taxa" | "unidade
   if (!Number.isInteger(meses)) return "Use um prazo em meses inteiros.";
   if (meses > PRAZO_MAXIMO) return `O prazo vai até ${PRAZO_MAXIMO / 12} anos.`;
   try {
-    const porMes = taxaPorMes(taxa / 100, campos.unidadeDaTaxa);
     const composto = campos.tipo === "composto";
+    const porMes = taxaPorMes(taxa / 100, campos.unidadeDaTaxa, composto);
     return {
       linhas: evolucao(capital, porMes, meses, composto),
       final: montante(capital, porMes, meses, composto),
-      simples: montante(capital, porMes, meses, false),
+      // os simples têm a própria taxa ao mês (a proporcional), diferente da dos compostos
+      simples: montante(capital, taxaPorMes(taxa / 100, campos.unidadeDaTaxa, false), meses, false),
       meses,
     };
   } catch (erro) {
