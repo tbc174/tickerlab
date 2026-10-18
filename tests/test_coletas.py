@@ -260,7 +260,7 @@ def test_versoes_guardadas_sem_ler_e_ausencia_antes_da_primeira(banco):
 
 def test_marca_do_tce_pr_e_vendavel_com_atribuicao():
     # regras de utilização do PIT: "livre para qualquer finalidade ou atividade" (lidas em 16/10/2026)
-    for fonte in ("tce-pr", "tce-pr-pit"):
+    for fonte in ("tce-pr", "tce-pr-pit", "tce-pr-despesa"):
         assert coletas.revenda_da_fonte(fonte) == coletas.VENDAVEL_COM_ATRIBUICAO, fonte
         assert "TCE-PR" in licenca_da_fonte(fonte)
     assert (
