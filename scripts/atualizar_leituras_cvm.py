@@ -6,9 +6,12 @@
 Com `--lote`, depois dos fatos recentes o dia é completado com os do lote de medição do leitor v2
 (fatos antigos, que não estão no banco; plano do leitor de fatos relevantes), até o máximo.
 
-O texto vem do PDF original no sistema da CVM (RAD). A CVM limita os downloads por endereço: a
-coleta baixa poucos documentos, com intervalo de um minuto, e para no primeiro sinal de limite
-(uma página de aviso no lugar do PDF), continuando no dia seguinte. Não apaga nada.
+O texto vem do PDF original no sistema da CVM (RAD): pela camada de texto ou, quando ela falta
+(documento escaneado) ou está embaralhada, pelo OCR das primeiras páginas (`leitura.ler_documento`).
+A CVM limita os downloads por endereço: a coleta baixa poucos documentos, com intervalo de um
+minuto, e para no primeiro sinal de limite (uma página de aviso no lugar do PDF), continuando no
+dia seguinte. Um documento que não é PDF (um .doc antigo) fica guardado com o motivo e a fila
+segue. Não apaga nada.
 """
 
 import argparse
@@ -60,34 +63,28 @@ def _baixar_da_fonte(url: str) -> bytes:
 baixar = com_registro("cvm-documentos", _baixar_da_fonte)
 
 
-def _texto(conteudo: bytes) -> tuple[str, str | None]:
-    """(texto, motivo): o motivo diz por que não há texto (PDF malformado ou só imagem)."""
-    try:
-        texto = leitura.texto_do_pdf(conteudo)
-    except Exception:  # noqa: BLE001 (PDF malformado: guarda o motivo e segue)
-        return "", "PDF ilegível."
-    if len(texto.split()) < leitura.MIN_PALAVRAS_POR_FRASE:
-        return "", "O PDF é só imagem (escaneado): não há texto para ler."
-    return texto, None
-
-
-def ler(conteudo: bytes) -> dict:
-    """O resumo do documento (um PDF sem texto vira um resumo vazio, com o motivo)."""
-    texto, motivo = _texto(conteudo)
-    if motivo:
-        return {"motivo": motivo, "versao": leitura.VERSAO}
-    return leitura.resumir_fato_relevante(texto).para_guardar()
+def ler(lido: leitura.TextoDoDocumento) -> dict:
+    """O resumo do documento e de onde veio o texto (um documento sem texto legível vira um
+    resumo vazio, com o motivo)."""
+    if lido.motivo:
+        return {"motivo": lido.motivo, "versao": leitura.VERSAO}
+    resumo = leitura.resumir_fato_relevante(lido.texto).para_guardar()
+    resumo["origem"] = (
+        lido.origem
+    )  # auditável: "texto" (camada do PDF) ou "ocr" (imagem lida)
+    if lido.paginas_por_ocr:
+        resumo["paginas_por_ocr"] = lido.paginas_por_ocr
+    return resumo
 
 
 def assunto(
-    conteudo: bytes, titulo: str, cliente: anthropic.Anthropic | None
+    lido: leitura.TextoDoDocumento, titulo: str, cliente: anthropic.Anthropic | None
 ) -> tuple[dict, dict | None]:
     """O assunto do fato (leitor v2) pelas regras e, se elas deixam "Outros" e há chave, pelo modelo."""
-    texto, _ = _texto(conteudo)
-    pelas_regras = topicos.topico_do_documento(titulo, texto)
+    pelas_regras = topicos.topico_do_documento(titulo, lido.texto)
     pelo_modelo = None
-    if cliente is not None and texto and pelas_regras.principal == topicos.OUTROS:
-        pelo_modelo = topicos_modelo.ler_com_modelo(cliente, titulo, texto)
+    if cliente is not None and lido.texto and pelas_regras.principal == topicos.OUTROS:
+        pelo_modelo = topicos_modelo.ler_com_modelo(cliente, titulo, lido.texto)
     return asdict(pelas_regras), asdict(pelo_modelo) if pelo_modelo else None
 
 
@@ -160,11 +157,14 @@ def main(argv: list[str] | None = None) -> int:
             if i:
                 esperar(PAUSA_ENTRE_DOWNLOADS)
             conteudo = baixar(link)
-            if not leitura.e_pdf(conteudo):
+            if leitura.parece_limite_da_cvm(leitura.formato_do_documento(conteudo)):
                 log.warning(
                     "A CVM devolveu uma página no lugar do PDF (limite): para e continua amanhã."
                 )
                 break
+            lido = leitura.ler_documento(
+                conteudo
+            )  # um .doc antigo fica com o motivo e a fila segue
             with motor.begin() as conexao:
                 gravar_leitura(
                     conexao,
@@ -173,9 +173,9 @@ def main(argv: list[str] | None = None) -> int:
                     RESUMO,
                     cnpj,
                     publicado,
-                    ler(conteudo),
+                    ler(lido),
                 )
-                pelas_regras, pelo_modelo = assunto(conteudo, titulo, cliente)
+                pelas_regras, pelo_modelo = assunto(lido, titulo, cliente)
                 for tipo, resultado in (
                     (TOPICO, pelas_regras),
                     (TOPICO_MODELO, pelo_modelo),
