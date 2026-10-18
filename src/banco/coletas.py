@@ -95,7 +95,7 @@ LICENCAS = {
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
     # site da CONAB lido em 18/10/2026 (rodapé: Creative Commons Atribuição-SemDerivações 3.0): mostrar
     # "como publicado" com citação é permitido; recorte, soma ou gráfico derivado pode ser obra derivada
-    "conab": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
+    "conab": "CC BY-ND 3.0 (CONAB): uso citando a CONAB e a data do levantamento (ADR 0102)",
     # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
     "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
     "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
@@ -281,6 +281,15 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "citada enquanto o TickerLab não cobra)",
     ),
     UsoSemCobranca(
+        "conab",
+        "safra de café (levantamentos da CONAB como publicados, termômetro e bienalidade) na área "
+        "de commodities, na API e nos PDFs",
+        "nenhum oficial: a CONAB é a única fonte da safra brasileira; sem ela, só o balanço do "
+        "USDA PSD (`usda_psd_cafe`)",
+        "Safra de café: CONAB, Acompanhamento da Safra Brasileira de Café, com a data do "
+        "levantamento em cada número (CC BY-ND 3.0; mostrado com a fonte citada, ADR 0102)",
+    ),
+    UsoSemCobranca(
         "gdelt",
         "contagem e tom de notícias por empresa (sem texto)",
         "resposta escrita do GDELT sobre uso comercial; sem ela, desligar",
@@ -293,7 +302,12 @@ FRASE_DA_IEX = (
     "Data provided for free by IEX. By accessing or using IEX Historical Data, "
     "you agree to the IEX Historical Data Terms of Use."
 )
-FRASES_DAS_FONTES = {"iex": FRASE_DA_IEX}
+# crédito no formato que a FAO pede (CC BY 4.0), em toda tela, API ou PDF com dado do FAOSTAT
+FRASE_DA_FAO = (
+    "FAO, FAOSTAT: Crops and livestock products (CC BY 4.0; acessado na data de cada número; "
+    "a FAO não endossa o TickerLab)"
+)
+FRASES_DAS_FONTES = {"iex": FRASE_DA_IEX, "faostat": FRASE_DA_FAO}
 
 
 class LicencaNaoPermiteError(Exception):

@@ -10,8 +10,9 @@ Regras (testes em `tests/test_base_conab_cafe.py`):
 - **Nunca sobrescreve:** a linha é (safra, levantamento, tipo, uf, divulgado_em); um levantamento
   revisado depois fica ao lado do primeiro. Só a coluna da safra do levantamento entra: a coluna do ano
   anterior repete um número já guardado pelo levantamento daquele ano.
-- **Como publicado:** os números ficam como na planilha (licença CC BY-ND 3.0: nada de recorte, soma ou
-  gráfico sai daqui sem a resposta da CONAB; os derivados de `src/commodities/cafe` ficam sem tela).
+- **Como publicado:** os números ficam como na planilha; a tabela não recorta nem soma. Os derivados
+  (`src/commodities/cafe`) vão para tela e API citando a CONAB e a data do levantamento (ADR 0102; a
+  licença CC BY-ND 3.0 fica registrada na marca da fonte).
 - **Sem olhar o futuro:** `como_estava_em(tabela, dia)` só usa o que já tinha sido divulgado em `dia`.
 - **Arábica e conilon separados:** `tipo` em {arabica, conilon, total} em toda linha.
 """

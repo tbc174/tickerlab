@@ -4561,7 +4561,8 @@ TABELAS: dict[str, Tabela] = {
             "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento "
             "(1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção, a "
             "produtividade e a produção em mil sacas. Cada levantamento é uma linha a mais, nunca "
-            "sobrescreve o anterior. Licença CC BY-ND 3.0: só como publicado, citando a CONAB"
+            "sobrescreve o anterior. Em tela e API citando a CONAB e a data do levantamento (ADR "
+            "0102; licença CC BY-ND 3.0 registrada na marca)"
         ),
         fonte="CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)",
         familia_da_fonte="conab",

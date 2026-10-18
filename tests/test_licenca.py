@@ -383,6 +383,20 @@ def test_a_lista_nao_decide_mais_o_que_aparece(monkeypatch):
         exigir_licenca("mostrar", ["b3-negocios"])
 
 
+def test_conab_e_faostat_saem_com_a_fonte_citada():
+    # PR 3 da ADR 0102: as tabelas do café vão para tela e API; a frase da fonte vem daqui
+    citacao_da_conab = next(
+        u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "conab"
+    )
+    assert "CONAB" in citacao_da_conab and "CC BY-ND" in citacao_da_conab
+    assert coletas.citacoes_das_fontes(["conab-cafe-safra", "faostat-cafe"]) == [
+        citacao_da_conab,
+        coletas.FRASE_DA_FAO,
+    ]
+    assert "CC BY 4.0" in coletas.FRASE_DA_FAO and "FAOSTAT" in coletas.FRASE_DA_FAO
+    assert "ADR 0102" in coletas.LICENCAS["conab"]
+
+
 def test_citacoes_das_fontes_restritas_e_a_frase_da_iex():
     citacao_do_yahoo = next(
         u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo"
