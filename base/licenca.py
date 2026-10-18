@@ -73,6 +73,7 @@ FAMILIA_DO_ENDERECO = {
     "www2.susep.gov.br/": "susep",
     "balanca.mdic.gov.br/": "comexstat",
     "www.cecafe.com.br/": "cecafe",
+    "federaciondecafeteros.org/": "fnc",
     "www.b3.com.br/": "b3",
     "arquivos.b3.com.br/": "b3",
     "bvmf.bmfbovespa.com.br/": "b3",
