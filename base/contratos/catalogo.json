@@ -6549,7 +6549,7 @@
       },
       "historico_desde": "2026-02-05",
       "granularidade_do_publico_em": "dia",
-      "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede resposta dela",
+      "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
       "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
       "pessoa": false,
       "frequencia": "Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",

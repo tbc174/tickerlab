@@ -2609,7 +2609,7 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção, a produtividade e a produção em mil sacas. Cada levantamento é uma linha a mais, nunca sobrescreve o anterior. Licença CC BY-ND 3.0: só como publicado, citando a CONAB
 
 - **Fonte:** CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)
-- **Licença:** CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede resposta dela
+- **Licença:** CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista
 - **Atraso de divulgação:** O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento

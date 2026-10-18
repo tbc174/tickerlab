@@ -89,7 +89,7 @@ LICENCAS = {
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
     # site da CONAB lido em 18/10/2026 (rodapé: Creative Commons Atribuição-SemDerivações 3.0): mostrar
     # "como publicado" com citação é permitido; recorte, soma ou gráfico derivado pode ser obra derivada
-    "conab": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede resposta dela",
+    "conab": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
