@@ -93,6 +93,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "1981-01-31",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "INMET",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
       "modulos": [
@@ -200,7 +211,7 @@
     {
       "chave": "macro",
       "nome": "Macro",
-      "tabelas": 3
+      "tabelas": 4
     },
     {
       "chave": "rede",
@@ -933,12 +944,22 @@
       "orgao": "USDA",
       "situacao": "licenciada",
       "tabela": "usda_psd_cafe"
+    },
+    {
+      "atraso": "Mensal",
+      "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
+      "frequencia": "Mensal",
+      "historico_desde": "1981-01-31",
+      "modulo": "macro",
+      "orgao": "INMET",
+      "situacao": "licenciada",
+      "tabela": "clima_regiao_cafe"
     }
   ],
   "totais": {
-    "fontes": 16,
+    "fontes": 17,
     "fontes_em_consulta": 5,
     "modulos": 6,
-    "tabelas": 72
+    "tabelas": 73
   }
 }
