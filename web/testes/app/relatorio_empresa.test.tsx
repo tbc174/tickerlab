@@ -29,18 +29,22 @@ const relatorio = (trancado: boolean): RelatorioDaEmpresaV1 => ({
   secoes: [
     secao("resultado", "Resultado", {
       itens: [
-        { chave: "receita", nome: "Receita", texto: "R$ 500,0 bi", valor: 5e11, unidade: "reais", base: "DFP 2025", motivo: "", nota: "A", nota_texto: "acima do setor" },
+        { chave: "receita", nome: "Receita", texto: "R$ 500,0 bi", valor: 5e11, unidade: "reais", base: "DFP 2025", motivo: "", nota: "A", nota_texto: "acima do setor", fonte: "DFP", comparacao: null, sem_comparacao: "" },
       ],
     }),
+    // na ordem do molde A as seções da base ficam em dois blocos: capital e governança, depois negócios
+    secao("ofertas", "Ofertas e fundos", trancado ? { trancada: true, paragrafos: [CONVITE] } : {}),
     secao("auditor", "Auditor e controladas", trancado
       ? { trancada: true, paragrafos: [CONVITE] }
       : {
-          itens: [{ chave: "audit", nome: "Auditor atual", texto: "R$ 495,2 mi", valor: 4.9e8, unidade: "reais", base: "", motivo: "", nota: null, nota_texto: "" }],
+          itens: [{ chave: "audit", nome: "Auditor atual", texto: "R$ 495,2 mi", valor: 4.9e8, unidade: "reais", base: "", motivo: "", nota: null, nota_texto: "", fonte: "FRE", comparacao: null, sem_comparacao: "" }],
           paragrafos: ["Dados da base de 17/10."],
           tabelas: [{ chave: "trocas", titulo: "Trocas de auditor", colunas: ["Ano", "Auditor"], linhas: [["2022", "Auditoria Exemplo"]] }],
         }),
-    secao("ofertas", "Ofertas e fundos", trancado ? { trancada: true, paragrafos: [CONVITE] } : {}),
-    secao("limites", "Limites e cuidados", { paragrafos: ["Nada aqui é recomendação."] }),
+    secao("pares", "Pares do mesmo setor", { paragrafos: ["Sem pares para comparar."] }),
+    secao("negocios", "Negócios (M&A pela CVM)", trancado ? { trancada: true, paragrafos: [CONVITE] } : {}),
+    secao("metodologia", "Metodologia e fontes", { paragrafos: ["Fórmulas na metodologia."], recolhida: true }),
+    secao("limites", "Limites e perguntas em aberto", { paragrafos: ["Nada aqui é recomendação."] }),
   ],
 });
 
@@ -64,7 +68,12 @@ describe("relatório da empresa", () => {
     expect(await screen.findByRole("heading", { name: "Auditor e controladas" })).toBeTruthy();
     expect(buscar.mock.calls.map(([e]) => String(e))).toContain("/api/v1/relatorio-empresa?ticker=PETR4.SA");
     expect(screen.getByText("R$ 500,0 bi")).toBeTruthy();
-    expect(screen.getByText(/Nota:/).textContent).toContain("acima do setor");
+    expect(screen.getByText(/Nota:/).textContent).not.toContain("acima do setor");
+    // a explicação da nota e a metodologia ficam recolhidas (o corpo fica sóbrio)
+    expect(screen.getByText("Como ler a nota").closest("details")?.textContent).toContain("acima do setor");
+    const metodologia = screen.getByText("Ver a explicação").closest("details");
+    expect(metodologia?.open).toBe(false);
+    expect(metodologia?.textContent).toContain("Fórmulas na metodologia.");
     expect(screen.getByText("R$ 495,2 mi")).toBeTruthy();
     expect(screen.getByText("Dados da base de 17/10.")).toBeTruthy();
     const tabela = screen.getByRole("table", { name: "Trocas de auditor", hidden: true });
@@ -72,14 +81,17 @@ describe("relatório da empresa", () => {
     expect(screen.queryByRole("link", { name: "Conhecer o plano Pro" })).toBeNull();
   });
 
-  it("seções trancadas: só o convite e um único link para os Planos", async () => {
+  it("seções trancadas em dois blocos: só o convite e um único link, depois do 1º bloco", async () => {
     abrir(relatorio(true));
     expect(await screen.findByRole("heading", { name: "Ofertas e fundos" })).toBeTruthy();
-    expect(screen.getAllByText(CONVITE)).toHaveLength(2);
+    expect(screen.getAllByText(CONVITE)).toHaveLength(3);
     expect(screen.queryByText("R$ 495,2 mi")).toBeNull();
     const links = screen.getAllByRole("link", { name: "Conhecer o plano Pro" });
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute("href")).toBe("/planos");
+    const pares = screen.getByRole("heading", { name: "Pares do mesmo setor" });
+    const antesDosPares = links[0].compareDocumentPosition(pares) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(antesDosPares).toBeTruthy();
   });
 
   it("mostra o aviso de conferência e as fontes", async () => {
