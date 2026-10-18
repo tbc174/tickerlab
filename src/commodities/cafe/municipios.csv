@@ -1,0 +1,704 @@
+codigo,nome,uf,regiao,mesorregiao,microrregiao,area_arabica_ha,area_conilon_ha,ano_pam
+3500105,Adamantina,SP,alta-paulista,3508,35035,300.0,30.0,2025
+3501400,Álvaro de Carvalho,SP,alta-paulista,3509,35038,750.0,0.0,2025
+3501509,Alvinlândia,SP,alta-paulista,3509,35038,860.0,0.0,2025
+3502408,Anhumas,SP,alta-paulista,3508,35036,60.0,0.0,2025
+3503109,Arandu,SP,alta-paulista,3504,35022,800.0,0.0,2025
+3503604,Areiópolis,SP,alta-paulista,3504,35020,75.0,0.0,2025
+3504503,Avaré,SP,alta-paulista,3504,35022,100.0,0.0,2025
+3505203,Bariri,SP,alta-paulista,3504,35021,76.0,0.0,2025
+3506300,Bernardino de Campos,SP,alta-paulista,3510,35040,50.0,0.0,2025
+3507506,Botucatu,SP,alta-paulista,3504,35023,475.0,0.0,2025
+3508306,Cabrália Paulista,SP,alta-paulista,3504,35020,70.0,0.0,2025
+3508801,Cafelândia,SP,alta-paulista,3504,35019,220.0,0.0,2025
+3511409,Cerqueira César,SP,alta-paulista,3504,35022,150.0,0.0,2025
+3514106,Dois Córregos,SP,alta-paulista,3504,35021,3050.0,0.0,2025
+3514502,Duartina,SP,alta-paulista,3504,35020,870.0,0.0,2025
+3514700,Echaporã,SP,alta-paulista,3509,35038,90.0,0.0,2025
+3515400,Fartura,SP,alta-paulista,3510,35040,2482.0,0.0,2025
+3515657,Fernão,SP,alta-paulista,3509,35038,181.0,0.0,2025
+3516606,Gália,SP,alta-paulista,3509,35038,2800.0,0.0,2025
+3516705,Garça,SP,alta-paulista,3509,35038,7900.0,0.0,2025
+3517000,Getulina,SP,alta-paulista,3504,35019,48.0,2.0,2025
+3517307,Guaimbê,SP,alta-paulista,3504,35019,85.0,0.0,2025
+3518107,Guarantã,SP,alta-paulista,3504,35020,172.0,1.0,2025
+3519006,Herculândia,SP,alta-paulista,3509,35037,60.0,0.0,2025
+3521804,Itaí,SP,alta-paulista,3504,35022,1200.0,0.0,2025
+3523503,Itatinga,SP,alta-paulista,3504,35022,300.0,0.0,2025
+3525300,Jaú,SP,alta-paulista,3504,35021,580.0,0.0,2025
+3526803,Lençóis Paulista,SP,alta-paulista,3504,35020,520.0,0.0,2025
+3527405,Lucélia,SP,alta-paulista,3508,35035,55.0,0.0,2025
+3527504,Lucianópolis,SP,alta-paulista,3504,35020,80.0,0.0,2025
+3527801,Lupércio,SP,alta-paulista,3509,35038,1000.0,0.0,2025
+3528007,Macatuba,SP,alta-paulista,3504,35021,172.0,0.0,2025
+3528601,Manduri,SP,alta-paulista,3510,35040,1632.0,0.0,2025
+3529005,Marília,SP,alta-paulista,3509,35038,800.0,0.0,2025
+3529807,Mineiros do Tietê,SP,alta-paulista,3504,35021,102.0,0.0,2025
+3532157,Nantes,SP,alta-paulista,3510,35039,250.0,0.0,2025
+3533700,Ocauçu,SP,alta-paulista,3509,35038,650.0,0.0,2025
+3533809,Óleo,SP,alta-paulista,3510,35040,80.0,0.0,2025
+3534104,Oriente,SP,alta-paulista,3509,35038,100.0,0.0,2025
+3534500,Oscar Bressane,SP,alta-paulista,3509,35038,67.0,0.0,2025
+3534609,Osvaldo Cruz,SP,alta-paulista,3508,35035,1300.0,0.0,2025
+3534906,Pacaembu,SP,alta-paulista,3508,35035,127.0,0.0,2025
+3536000,Parapuã,SP,alta-paulista,3508,35035,250.0,0.0,2025
+3536109,Pardinho,SP,alta-paulista,3504,35023,500.0,0.0,2025
+3538808,Piraju,SP,alta-paulista,3510,35040,1300.0,0.0,2025
+3538907,Pirajuí,SP,alta-paulista,3504,35020,180.0,0.0,2025
+3539400,Piratininga,SP,alta-paulista,3504,35020,60.0,0.0,2025
+3540002,Pompéia,SP,alta-paulista,3509,35038,98.0,0.0,2025
+3541059,Pratânia,SP,alta-paulista,3504,35023,230.0,0.0,2025
+3542404,Regente Feijó,SP,alta-paulista,3508,35036,80.0,0.0,2025
+3543204,Ribeirão do Sul,SP,alta-paulista,3510,35040,440.0,0.0,2025
+3545100,Salmourão,SP,alta-paulista,3508,35035,80.0,0.0,2025
+3550100,São Manuel,SP,alta-paulista,3504,35023,1600.0,0.0,2025
+3550506,São Pedro do Turvo,SP,alta-paulista,3510,35040,228.0,0.0,2025
+3551207,Sarutaiá,SP,alta-paulista,3510,35040,1700.0,0.0,2025
+3553005,Taguaí,SP,alta-paulista,3510,35040,1960.0,0.0,2025
+3554201,Tejupá,SP,alta-paulista,3510,35040,4500.0,0.0,2025
+3554607,Timburi,SP,alta-paulista,3510,35040,835.0,0.0,2025
+3555000,Tupã,SP,alta-paulista,3509,35037,140.0,0.0,2025
+3555505,Ubirajara,SP,alta-paulista,3504,35020,200.0,0.0,2025
+3556602,Vera Cruz,SP,alta-paulista,3509,35038,2700.0,0.0,2025
+2900801,Alcobaça,BA,bahia-atlantico,2907,29032,0.0,1120.0,2025
+2900900,Almadina,BA,bahia-atlantico,2907,29031,0.0,80.0,2025
+2902252,Arataca,BA,bahia-atlantico,2907,29031,0.0,545.0,2025
+2903409,Belmonte,BA,bahia-atlantico,2907,29031,0.0,182.0,2025
+2905602,Camacan,BA,bahia-atlantico,2907,29031,0.0,891.0,2025
+2905800,Camamu,BA,bahia-atlantico,2907,29030,0.0,103.0,2025
+2906303,Canavieiras,BA,bahia-atlantico,2907,29031,0.0,343.0,2025
+2906907,Caravelas,BA,bahia-atlantico,2907,29032,0.0,1313.0,2025
+2910727,Eunápolis,BA,bahia-atlantico,2907,29032,0.0,4177.0,2025
+2911808,Guaratinga,BA,bahia-atlantico,2907,29032,0.0,1653.0,2025
+2912707,Ibirapitanga,BA,bahia-atlantico,2907,29031,0.0,61.0,2025
+2912806,Ibirapuã,BA,bahia-atlantico,2907,29032,0.0,249.0,2025
+2913606,Ilhéus,BA,bahia-atlantico,2907,29031,0.0,260.0,2025
+2914653,Itabela,BA,bahia-atlantico,2907,29032,0.0,4900.0,2025
+2915502,Itajuípe,BA,bahia-atlantico,2907,29031,0.0,63.0,2025
+2915601,Itamaraju,BA,bahia-atlantico,2907,29032,0.0,8019.0,2025
+2916005,Itanhém,BA,bahia-atlantico,2907,29032,0.0,762.0,2025
+2916302,Itapebi,BA,bahia-atlantico,2907,29031,0.0,57.0,2025
+2918456,Jucuruçu,BA,bahia-atlantico,2907,29032,0.0,1313.0,2025
+2918555,Jussari,BA,bahia-atlantico,2907,29031,0.0,97.0,2025
+2918902,Lajedão,BA,bahia-atlantico,2907,29032,0.0,64.0,2025
+2920700,Maraú,BA,bahia-atlantico,2907,29030,0.0,142.0,2025
+2920908,Mascote,BA,bahia-atlantico,2907,29031,0.0,252.0,2025
+2921104,Medeiros Neto,BA,bahia-atlantico,2907,29032,0.0,91.0,2025
+2922003,Mucuri,BA,bahia-atlantico,2907,29032,0.0,623.0,2025
+2923001,Nova Viçosa,BA,bahia-atlantico,2907,29032,0.0,438.0,2025
+2923902,Pau Brasil,BA,bahia-atlantico,2907,29031,0.0,50.0,2025
+2925303,Porto Seguro,BA,bahia-atlantico,2907,29032,0.0,5080.0,2025
+2925501,Prado,BA,bahia-atlantico,2907,29032,0.0,7487.0,2025
+2927705,Santa Cruz Cabrália,BA,bahia-atlantico,2907,29032,0.0,1557.0,2025
+2928059,Santa Luzia,BA,bahia-atlantico,2907,29031,0.0,933.0,2025
+2931202,Taperoá,BA,bahia-atlantico,2907,29030,0.0,87.0,2025
+2931350,Teixeira de Freitas,BA,bahia-atlantico,2907,29032,0.0,2983.0,2025
+2932507,Una,BA,bahia-atlantico,2907,29031,0.0,459.0,2025
+2932903,Valença,BA,bahia-atlantico,2907,29030,0.0,128.0,2025
+2933257,Vereda,BA,bahia-atlantico,2907,29032,0.0,300.0,2025
+2933505,Wenceslau Guimarães,BA,bahia-atlantico,2907,29031,0.0,117.0,2025
+3100104,Abadia dos Dourados,MG,cerrado-mineiro,3105,31019,234.0,0.0,2025
+3103504,Araguari,MG,cerrado-mineiro,3105,31018,13390.0,0.0,2025
+3103801,Arapuá,MG,cerrado-mineiro,3105,31020,770.0,0.0,2025
+3104007,Araxá,MG,cerrado-mineiro,3105,31023,2940.0,0.0,2025
+3108206,Bonfinópolis de Minas,MG,cerrado-mineiro,3101,31001,650.0,0.0,2025
+3109303,Buritis,MG,cerrado-mineiro,3101,31001,929.0,0.0,2025
+3111507,Campos Altos,MG,cerrado-mineiro,3105,31023,9620.0,0.0,2025
+3114303,Carmo do Paranaíba,MG,cerrado-mineiro,3105,31020,10690.0,0.0,2025
+3115003,Cascalho Rico,MG,cerrado-mineiro,3105,31018,450.0,0.0,2025
+3119302,Coromandel,MG,cerrado-mineiro,3105,31019,8000.0,0.0,2025
+3120706,Cruzeiro da Fortaleza,MG,cerrado-mineiro,3105,31019,480.0,0.0,2025
+3124807,Estrela do Sul,MG,cerrado-mineiro,3105,31019,2800.0,0.0,2025
+3126208,Formoso,MG,cerrado-mineiro,3101,31001,1000.0,0.0,2025
+3128600,Guarda-Mor,MG,cerrado-mineiro,3101,31002,354.0,0.0,2025
+3128907,Guimarânia,MG,cerrado-mineiro,3105,31020,4100.0,0.0,2025
+3129509,Ibiá,MG,cerrado-mineiro,3105,31023,5550.0,0.0,2025
+3130705,Indianópolis,MG,cerrado-mineiro,3105,31018,5325.0,0.0,2025
+3131604,Iraí de Minas,MG,cerrado-mineiro,3105,31019,1178.0,0.0,2025
+3136306,João Pinheiro,MG,cerrado-mineiro,3101,31002,3000.0,0.0,2025
+3137106,Lagamar,MG,cerrado-mineiro,3101,31002,440.0,0.0,2025
+3137502,Lagoa Formosa,MG,cerrado-mineiro,3105,31020,1250.0,0.0,2025
+3137536,Lagoa Grande,MG,cerrado-mineiro,3101,31002,140.0,0.0,2025
+3141207,Matutina,MG,cerrado-mineiro,3105,31020,247.0,0.0,2025
+3142809,Monte Alegre de Minas,MG,cerrado-mineiro,3105,31018,130.0,0.0,2025
+3143104,Monte Carmelo,MG,cerrado-mineiro,3105,31019,16630.0,0.0,2025
+3145000,Nova Ponte,MG,cerrado-mineiro,3105,31023,610.0,0.0,2025
+3147006,Paracatu,MG,cerrado-mineiro,3101,31002,2000.0,0.0,2025
+3148004,Patos de Minas,MG,cerrado-mineiro,3105,31020,9175.0,0.0,2025
+3148103,Patrocínio,MG,cerrado-mineiro,3105,31019,43850.0,0.0,2025
+3149200,Pedrinópolis,MG,cerrado-mineiro,3105,31023,430.0,0.0,2025
+3149804,Perdizes,MG,cerrado-mineiro,3105,31023,5710.0,0.0,2025
+3153004,Pratinha,MG,cerrado-mineiro,3105,31023,4740.0,0.0,2025
+3153400,Presidente Olegário,MG,cerrado-mineiro,3101,31002,5360.0,0.0,2025
+3155504,Rio Paranaíba,MG,cerrado-mineiro,3105,31020,12585.0,0.0,2025
+3156403,Romaria,MG,cerrado-mineiro,3105,31019,6730.0,0.0,2025
+3156908,Sacramento,MG,cerrado-mineiro,3105,31023,2340.0,0.0,2025
+3157708,Santa Juliana,MG,cerrado-mineiro,3105,31023,90.0,0.0,2025
+3159704,Santa Rosa da Serra,MG,cerrado-mineiro,3105,31020,3600.0,0.0,2025
+3161700,São Gonçalo do Abaeté,MG,cerrado-mineiro,3101,31002,420.0,0.0,2025
+3162104,São Gotardo,MG,cerrado-mineiro,3105,31020,2015.0,0.0,2025
+3166808,Serra do Salitre,MG,cerrado-mineiro,3105,31019,16000.0,0.0,2025
+3168101,Tapira,MG,cerrado-mineiro,3105,31023,500.0,0.0,2025
+3168903,Tiros,MG,cerrado-mineiro,3105,31020,2285.0,0.0,2025
+3169604,Tupaciguara,MG,cerrado-mineiro,3105,31018,191.0,0.0,2025
+3170107,Uberaba,MG,cerrado-mineiro,3105,31022,408.0,0.0,2025
+3170206,Uberlândia,MG,cerrado-mineiro,3105,31018,460.0,0.0,2025
+3170404,Unaí,MG,cerrado-mineiro,3101,31001,3740.0,0.0,2025
+3170750,Varjão de Minas,MG,cerrado-mineiro,3101,31002,2337.0,0.0,2025
+3101003,Águas Vermelhas,MG,chapada-de-minas,3102,31005,805.0,0.0,2025
+3101706,Almenara,MG,chapada-de-minas,3103,31014,50.0,20.0,2025
+3102852,Angelândia,MG,chapada-de-minas,3103,31011,3720.0,0.0,2025
+3104452,Aricanduva,MG,chapada-de-minas,3103,31011,810.0,0.0,2025
+3104700,Ataléia,MG,chapada-de-minas,3104,31015,80.0,10.0,2025
+3106507,Berilo,MG,chapada-de-minas,3103,31011,176.0,0.0,2025
+3106655,Berizal,MG,chapada-de-minas,3102,31005,310.0,0.0,2025
+3107307,Bocaiúva,MG,chapada-de-minas,3102,31009,182.0,0.0,2025
+3109402,Buritizeiro,MG,chapada-de-minas,3102,31006,1170.0,0.0,2025
+3112307,Capelinha,MG,chapada-de-minas,3103,31011,6650.0,0.0,2025
+3113008,Caraí,MG,chapada-de-minas,3103,31012,500.0,0.0,2025
+3120870,Curral de Dentro,MG,chapada-de-minas,3102,31005,80.0,0.0,2025
+3121605,Diamantina,MG,chapada-de-minas,3103,31010,647.0,0.0,2025
+3122454,Divisópolis,MG,chapada-de-minas,3103,31014,798.0,0.0,2025
+3125408,Felício dos Santos,MG,chapada-de-minas,3103,31010,287.0,0.0,2025
+3126604,Francisco Dumont,MG,chapada-de-minas,3102,31009,800.0,0.0,2025
+3126752,Franciscópolis,MG,chapada-de-minas,3104,31015,90.0,0.0,2025
+3127800,Grão Mogol,MG,chapada-de-minas,3102,31008,290.0,0.0,2025
+3130655,Indaiabira,MG,chapada-de-minas,3102,31005,545.0,0.0,2025
+3132305,Itaipé,MG,chapada-de-minas,3104,31015,415.0,0.0,2025
+3132503,Itamarandiba,MG,chapada-de-minas,3103,31011,500.0,14.0,2025
+3135803,Jequitinhonha,MG,chapada-de-minas,3103,31014,60.0,0.0,2025
+3136520,José Gonçalves de Minas,MG,chapada-de-minas,3103,31011,196.0,0.0,2025
+3137007,Ladainha,MG,chapada-de-minas,3104,31015,120.0,130.0,2025
+3138104,Lassance,MG,chapada-de-minas,3102,31006,60.0,0.0,2025
+3138351,Leme do Prado,MG,chapada-de-minas,3103,31011,68.0,0.0,2025
+3139201,Malacacheta,MG,chapada-de-minas,3104,31015,1310.0,2.0,2025
+3140555,Mata Verde,MG,chapada-de-minas,3103,31014,530.0,29.0,2025
+3140852,Matias Cardoso,MG,chapada-de-minas,3102,31003,0.0,52.0,2025
+3141801,Minas Novas,MG,chapada-de-minas,3103,31011,465.0,0.0,2025
+3144656,Ninheira,MG,chapada-de-minas,3102,31005,2005.0,0.0,2025
+3145307,Novo Cruzeiro,MG,chapada-de-minas,3103,31012,810.0,0.0,2025
+3146206,Ouro Verde de Minas,MG,chapada-de-minas,3104,31015,20.0,48.0,2025
+3146305,Padre Paraíso,MG,chapada-de-minas,3103,31012,165.0,0.0,2025
+3151206,Pirapora,MG,chapada-de-minas,3102,31006,890.0,0.0,2025
+3152170,Ponto dos Volantes,MG,chapada-de-minas,3103,31012,60.0,0.0,2025
+3155603,Rio Pardo de Minas,MG,chapada-de-minas,3102,31005,720.0,0.0,2025
+3160454,Santo Antônio do Retiro,MG,chapada-de-minas,3102,31005,132.0,0.0,2025
+3162708,São João do Paraíso,MG,chapada-de-minas,3102,31005,295.0,0.0,2025
+3165552,Setubinha,MG,chapada-de-minas,3104,31015,1000.0,0.0,2025
+3165909,Senador Modestino Gonçalves,MG,chapada-de-minas,3103,31010,85.0,0.0,2025
+3168002,Taiobeiras,MG,chapada-de-minas,3102,31005,630.0,0.0,2025
+3169703,Turmalina,MG,chapada-de-minas,3103,31011,670.0,0.0,2025
+3170529,Urucuia,MG,chapada-de-minas,3102,31003,553.0,0.0,2025
+3170651,Vargem Grande do Rio Pardo,MG,chapada-de-minas,3102,31005,85.0,0.0,2025
+3170800,Várzea da Palma,MG,chapada-de-minas,3102,31006,720.0,0.0,2025
+3171071,Veredinha,MG,chapada-de-minas,3103,31011,140.0,0.0,2025
+3200102,Afonso Cláudio,ES,es-montanhas,3203,32007,7380.0,4550.0,2025
+3200201,Alegre,ES,es-montanhas,3204,32011,2210.0,2015.0,2025
+3200300,Alfredo Chaves,ES,es-montanhas,3203,32010,2417.0,2400.0,2025
+3200409,Anchieta,ES,es-montanhas,3203,32010,0.0,1015.0,2025
+3200508,Apiacá,ES,es-montanhas,3204,32012,1350.0,440.0,2025
+3200706,Atílio Vivácqua,ES,es-montanhas,3204,32012,0.0,1380.0,2025
+3201100,Bom Jesus do Norte,ES,es-montanhas,3204,32012,80.0,99.0,2025
+3201159,Brejetuba,ES,es-montanhas,3203,32007,16000.0,0.0,2025
+3201209,Cachoeiro de Itapemirim,ES,es-montanhas,3204,32012,150.0,5860.0,2025
+3201308,Cariacica,ES,es-montanhas,3203,32009,30.0,293.0,2025
+3201407,Castelo,ES,es-montanhas,3204,32012,3590.0,8283.0,2025
+3201704,Conceição do Castelo,ES,es-montanhas,3203,32007,2180.0,2008.0,2025
+3201803,Divino de São Lourenço,ES,es-montanhas,3204,32011,2100.0,0.0,2025
+3201902,Domingos Martins,ES,es-montanhas,3203,32007,5984.0,47.0,2025
+3202009,Dores do Rio Preto,ES,es-montanhas,3204,32011,3200.0,0.0,2025
+3202306,Guaçuí,ES,es-montanhas,3204,32011,6850.0,0.0,2025
+3202405,Guarapari,ES,es-montanhas,3203,32010,650.0,1450.0,2025
+3202454,Ibatiba,ES,es-montanhas,3204,32011,8200.0,0.0,2025
+3202553,Ibitirama,ES,es-montanhas,3204,32011,5500.0,2.0,2025
+3202603,Iconha,ES,es-montanhas,3203,32010,10.0,4216.0,2025
+3202652,Irupi,ES,es-montanhas,3204,32011,10300.0,8.0,2025
+3202702,Itaguaçu,ES,es-montanhas,3203,32008,1300.0,5535.0,2025
+3202801,Itapemirim,ES,es-montanhas,3204,32013,0.0,607.0,2025
+3202900,Itarana,ES,es-montanhas,3203,32008,2120.0,1400.0,2025
+3203007,Iúna,ES,es-montanhas,3204,32011,16000.0,20.0,2025
+3203106,Jerônimo Monteiro,ES,es-montanhas,3204,32012,100.0,2850.0,2025
+3203163,Laranja da Terra,ES,es-montanhas,3203,32007,10.0,2190.0,2025
+3203346,Marechal Floriano,ES,es-montanhas,3203,32007,2200.0,5.0,2025
+3203403,Mimoso do Sul,ES,es-montanhas,3204,32012,3682.0,4240.0,2025
+3203700,Muniz Freire,ES,es-montanhas,3204,32011,7200.0,1605.0,2025
+3203809,Muqui,ES,es-montanhas,3204,32012,500.0,4200.0,2025
+3204203,Piúma,ES,es-montanhas,3203,32010,0.0,276.0,2025
+3204302,Presidente Kennedy,ES,es-montanhas,3204,32013,0.0,106.0,2025
+3204401,Rio Novo do Sul,ES,es-montanhas,3203,32010,10.0,2650.0,2025
+3204500,Santa Leopoldina,ES,es-montanhas,3203,32008,430.0,3800.0,2025
+3204559,Santa Maria de Jetibá,ES,es-montanhas,3203,32008,2520.0,80.0,2025
+3204609,Santa Teresa,ES,es-montanhas,3203,32008,3605.0,5790.0,2025
+3204807,São José do Calçado,ES,es-montanhas,3204,32012,627.0,174.0,2025
+3204955,São Roque do Canaã,ES,es-montanhas,3203,32008,450.0,3150.0,2025
+3205002,Serra,ES,es-montanhas,3203,32009,0.0,585.0,2025
+3205036,Vargem Alta,ES,es-montanhas,3204,32012,2160.0,3290.0,2025
+3205069,Venda Nova do Imigrante,ES,es-montanhas,3203,32007,3000.0,0.0,2025
+3205101,Viana,ES,es-montanhas,3203,32009,10.0,255.0,2025
+3200136,Águia Branca,ES,es-norte,3201,32002,30.0,6000.0,2025
+3200169,Água Doce do Norte,ES,es-norte,3201,32001,400.0,1805.0,2025
+3200359,Alto Rio Novo,ES,es-norte,3201,32003,1500.0,1861.0,2025
+3200607,Aracruz,ES,es-norte,3202,32006,0.0,5750.0,2025
+3200805,Baixo Guandu,ES,es-norte,3201,32003,1490.0,2330.0,2025
+3200904,Barra de São Francisco,ES,es-norte,3201,32001,25.0,5080.0,2025
+3201001,Boa Esperança,ES,es-norte,3201,32002,0.0,6850.0,2025
+3201506,Colatina,ES,es-norte,3201,32003,110.0,11055.0,2025
+3201605,Conceição da Barra,ES,es-norte,3202,32005,0.0,1121.0,2025
+3202108,Ecoporanga,ES,es-norte,3201,32001,160.0,2860.0,2025
+3202207,Fundão,ES,es-norte,3202,32006,0.0,2482.0,2025
+3202256,Governador Lindenberg,ES,es-norte,3201,32003,0.0,9200.0,2025
+3202504,Ibiraçu,ES,es-norte,3202,32006,0.0,1910.0,2025
+3203056,Jaguaré,ES,es-norte,3202,32005,0.0,13437.0,2025
+3203130,João Neiva,ES,es-norte,3202,32006,30.0,1421.0,2025
+3203205,Linhares,ES,es-norte,3202,32006,0.0,18400.0,2025
+3203304,Mantenópolis,ES,es-norte,3201,32001,4070.0,700.0,2025
+3203353,Marilândia,ES,es-norte,3201,32003,0.0,8600.0,2025
+3203502,Montanha,ES,es-norte,3202,32004,0.0,3500.0,2025
+3203601,Mucurici,ES,es-norte,3202,32004,0.0,220.0,2025
+3203908,Nova Venécia,ES,es-norte,3201,32002,0.0,13200.0,2025
+3204005,Pancas,ES,es-norte,3201,32003,0.0,11800.0,2025
+3204054,Pedro Canário,ES,es-norte,3202,32005,0.0,1220.0,2025
+3204104,Pinheiros,ES,es-norte,3202,32004,0.0,10200.0,2025
+3204252,Ponto Belo,ES,es-norte,3202,32004,0.0,460.0,2025
+3204351,Rio Bananal,ES,es-norte,3202,32006,0.0,19300.0,2025
+3204658,São Domingos do Norte,ES,es-norte,3201,32003,0.0,6200.0,2025
+3204708,São Gabriel da Palha,ES,es-norte,3201,32002,0.0,8500.0,2025
+3204906,São Mateus,ES,es-norte,3202,32005,0.0,13000.0,2025
+3205010,Sooretama,ES,es-norte,3202,32006,0.0,11200.0,2025
+3205150,Vila Pavão,ES,es-norte,3201,32002,0.0,4600.0,2025
+3205176,Vila Valério,ES,es-norte,3201,32002,0.0,15000.0,2025
+3100302,Abre Campo,MG,matas-de-minas,3112,31061,4100.0,0.0,2025
+3100609,Água Boa,MG,matas-de-minas,3108,31036,2200.0,220.0,2025
+3101102,Aimorés,MG,matas-de-minas,3108,31041,630.0,850.0,2025
+3102050,Alto Caparaó,MG,matas-de-minas,3112,31061,2500.0,0.0,2025
+3102506,Amparo do Serra,MG,matas-de-minas,3112,31062,360.0,0.0,2025
+3103702,Araponga,MG,matas-de-minas,3112,31062,4800.0,0.0,2025
+3107802,Bom Jesus do Galho,MG,matas-de-minas,3108,31040,1200.0,0.0,2025
+3110103,Caiana,MG,matas-de-minas,3112,31063,3500.0,0.0,2025
+3110202,Cajuri,MG,matas-de-minas,3112,31062,850.0,0.0,2025
+3111705,Canaã,MG,matas-de-minas,3112,31062,1250.0,0.0,2025
+3112109,Caparaó,MG,matas-de-minas,3112,31061,6180.0,0.0,2025
+3112901,Caputira,MG,matas-de-minas,3112,31061,4620.0,0.0,2025
+3113305,Carangola,MG,matas-de-minas,3112,31063,4225.0,0.0,2025
+3113404,Caratinga,MG,matas-de-minas,3108,31040,10730.0,0.0,2025
+3116001,Chalé,MG,matas-de-minas,3112,31061,2415.0,70.0,2025
+3116704,Coimbra,MG,matas-de-minas,3112,31062,480.0,0.0,2025
+3117405,Conceição de Ipanema,MG,matas-de-minas,3108,31041,770.0,80.0,2025
+3118403,Conselheiro Pena,MG,matas-de-minas,3108,31041,3890.0,600.0,2025
+3119203,Coroaci,MG,matas-de-minas,3108,31037,70.0,12.0,2025
+3120839,Cuparaque,MG,matas-de-minas,3108,31041,245.0,49.0,2025
+3121902,Divinésia,MG,matas-de-minas,3112,31064,64.0,0.0,2025
+3122009,Divino,MG,matas-de-minas,3112,31063,10200.0,0.0,2025
+3123528,Durandé,MG,matas-de-minas,3112,31061,5225.0,0.0,2025
+3123858,Entre Folhas,MG,matas-de-minas,3108,31040,350.0,0.0,2025
+3124005,Ervália,MG,matas-de-minas,3112,31062,5250.0,0.0,2025
+3124203,Espera Feliz,MG,matas-de-minas,3112,31063,10000.0,0.0,2025
+3124906,Eugenópolis,MG,matas-de-minas,3112,31063,1700.0,21.0,2025
+3125309,Faria Lemos,MG,matas-de-minas,3112,31063,710.0,0.0,2025
+3125952,Fervedouro,MG,matas-de-minas,3112,31063,3600.0,0.0,2025
+3128204,Guaraciaba,MG,matas-de-minas,3112,31060,130.0,0.0,2025
+3128402,Guarani,MG,matas-de-minas,3112,31064,58.0,0.0,2025
+3129004,Guiricema,MG,matas-de-minas,3112,31064,230.0,0.0,2025
+3129301,Iapu,MG,matas-de-minas,3108,31040,330.0,5.0,2025
+3130556,Imbé de Minas,MG,matas-de-minas,3108,31040,3400.0,0.0,2025
+3130903,Inhapim,MG,matas-de-minas,3108,31040,3580.0,0.0,2025
+3131208,Ipanema,MG,matas-de-minas,3108,31041,0.0,312.0,2025
+3131802,Itabirinha,MG,matas-de-minas,3108,31038,111.0,48.0,2025
+3132602,Itamarati de Minas,MG,matas-de-minas,3112,31066,66.0,0.0,2025
+3132701,Itambacuri,MG,matas-de-minas,3108,31037,220.0,15.0,2025
+3133204,Itanhomi,MG,matas-de-minas,3108,31037,335.0,0.0,2025
+3134103,Itueta,MG,matas-de-minas,3108,31041,0.0,720.0,2025
+3135506,Jequeri,MG,matas-de-minas,3112,31060,3600.0,0.0,2025
+3136553,José Raydan,MG,matas-de-minas,3108,31036,0.0,60.0,2025
+3137700,Lajinha,MG,matas-de-minas,3112,31061,8615.0,0.0,2025
+3138401,Leopoldina,MG,matas-de-minas,3112,31066,70.0,3.0,2025
+3138674,Luisburgo,MG,matas-de-minas,3112,31061,6150.0,0.0,2025
+3139409,Manhuaçu,MG,matas-de-minas,3112,31061,22000.0,0.0,2025
+3139508,Manhumirim,MG,matas-de-minas,3112,31061,5000.0,0.0,2025
+3139607,Mantena,MG,matas-de-minas,3108,31038,500.0,600.0,2025
+3139805,Mar de Espanha,MG,matas-de-minas,3112,31065,82.0,0.0,2025
+3140530,Martins Soares,MG,matas-de-minas,3112,31061,3000.0,0.0,2025
+3140902,Matipó,MG,matas-de-minas,3112,31061,4290.0,0.0,2025
+3142106,Miradouro,MG,matas-de-minas,3112,31063,2770.0,0.0,2025
+3142205,Miraí,MG,matas-de-minas,3112,31063,300.0,0.0,2025
+3143906,Muriaé,MG,matas-de-minas,3112,31063,905.0,25.0,2025
+3144003,Mutum,MG,matas-de-minas,3108,31041,7350.0,335.0,2025
+3144672,Nova Belém,MG,matas-de-minas,3108,31038,5000.0,700.0,2025
+3145877,Orizânia,MG,matas-de-minas,3112,31063,4150.0,0.0,2025
+3146701,Palma,MG,matas-de-minas,3112,31066,0.0,112.0,2025
+3148301,Paula Cândido,MG,matas-de-minas,3112,31062,1080.0,0.0,2025
+3148608,Peçanha,MG,matas-de-minas,3108,31036,174.0,0.0,2025
+3148756,Pedra Bonita,MG,matas-de-minas,3112,31061,3700.0,0.0,2025
+3148806,Pedra do Anta,MG,matas-de-minas,3112,31062,250.0,0.0,2025
+3149002,Pedra Dourada,MG,matas-de-minas,3112,31063,1300.0,0.0,2025
+3150158,Piedade de Caratinga,MG,matas-de-minas,3108,31040,3500.0,0.0,2025
+3150802,Piranga,MG,matas-de-minas,3112,31062,200.0,0.0,2025
+3151107,Pirapetinga,MG,matas-de-minas,3112,31066,0.0,82.0,2025
+3151909,Pocrane,MG,matas-de-minas,3108,31041,130.0,700.0,2025
+3152303,Porto Firme,MG,matas-de-minas,3112,31062,450.0,0.0,2025
+3153103,Presidente Bernardes,MG,matas-de-minas,3112,31062,300.0,0.0,2025
+3153509,Alto Jequitibá,MG,matas-de-minas,3112,31061,5350.0,0.0,2025
+3154002,Raul Soares,MG,matas-de-minas,3112,31060,3430.0,50.0,2025
+3154150,Reduto,MG,matas-de-minas,3112,31061,3300.0,0.0,2025
+3154309,Resplendor,MG,matas-de-minas,3108,31041,0.0,220.0,2025
+3156452,Rosário da Limeira,MG,matas-de-minas,3112,31063,800.0,0.0,2025
+3157252,Santa Bárbara do Leste,MG,matas-de-minas,3108,31040,3130.0,0.0,2025
+3157906,Santa Margarida,MG,matas-de-minas,3112,31061,11000.0,0.0,2025
+3158904,Santana do Manhuaçu,MG,matas-de-minas,3112,31061,7500.0,0.0,2025
+3159357,Santa Rita de Minas,MG,matas-de-minas,3108,31040,2300.0,0.0,2025
+3159506,Santa Rita do Itueto,MG,matas-de-minas,3108,31041,1590.0,3530.0,2025
+3160959,São Domingos das Dores,MG,matas-de-minas,3108,31040,2380.0,0.0,2025
+3161403,São Francisco do Glória,MG,matas-de-minas,3112,31063,1500.0,8.0,2025
+3161502,São Geraldo,MG,matas-de-minas,3112,31064,370.0,0.0,2025
+3162559,São João do Manhuaçu,MG,matas-de-minas,3112,31061,6800.0,0.0,2025
+3162575,São João do Manteninha,MG,matas-de-minas,3108,31038,60.0,150.0,2025
+3163607,São José do Mantimento,MG,matas-de-minas,3112,31061,600.0,100.0,2025
+3163805,São Miguel do Anta,MG,matas-de-minas,3112,31062,1570.0,0.0,2025
+3164431,São Sebastião da Vargem Alegre,MG,matas-de-minas,3112,31063,850.0,0.0,2025
+3164472,São Sebastião do Anta,MG,matas-de-minas,3108,31040,2200.0,6.0,2025
+3164506,São Sebastião do Maranhão,MG,matas-de-minas,3108,31036,125.0,13.0,2025
+3165701,Senador Firmino,MG,matas-de-minas,3112,31064,92.0,0.0,2025
+3166006,Senhora de Oliveira,MG,matas-de-minas,3112,31062,120.0,0.0,2025
+3166303,Sericita,MG,matas-de-minas,3112,31060,4900.0,0.0,2025
+3167608,Simonésia,MG,matas-de-minas,3112,31061,11180.0,0.0,2025
+3168051,Taparuba,MG,matas-de-minas,3108,31041,0.0,148.0,2025
+3168507,Teixeiras,MG,matas-de-minas,3112,31062,1020.0,0.0,2025
+3169208,Tombos,MG,matas-de-minas,3112,31063,1600.0,30.0,2025
+3170057,Ubaporanga,MG,matas-de-minas,3108,31040,2795.0,0.0,2025
+3170578,Vargem Alegre,MG,matas-de-minas,3108,31040,70.0,0.0,2025
+3171154,Vermelho Novo,MG,matas-de-minas,3112,31060,2100.0,4.0,2025
+3171303,Viçosa,MG,matas-de-minas,3112,31062,1000.0,0.0,2025
+3171402,Vieiras,MG,matas-de-minas,3112,31063,670.0,0.0,2025
+3171808,Virginópolis,MG,matas-de-minas,3108,31035,80.0,0.0,2025
+3500303,Aguaí,SP,mogiana,3507,35029,460.0,0.0,2025
+3500402,Águas da Prata,SP,mogiana,3507,35030,820.0,0.0,2025
+3500501,Águas de Lindóia,SP,mogiana,3507,35033,350.0,0.0,2025
+3501004,Altinópolis,SP,mogiana,3502,35015,10600.0,0.0,2025
+3501905,Amparo,SP,mogiana,3507,35033,1036.0,0.0,2025
+3505906,Batatais,SP,mogiana,3502,35015,3500.0,0.0,2025
+3507803,Brodowski,SP,mogiana,3502,35014,1300.0,0.0,2025
+3508207,Buritizal,SP,mogiana,3502,35011,458.0,0.0,2025
+3508702,Caconde,SP,mogiana,3507,35030,11300.0,0.0,2025
+3509403,Cajuru,SP,mogiana,3502,35015,2300.0,0.0,2025
+3509502,Campinas,SP,mogiana,3507,35032,450.0,0.0,2025
+3510807,Casa Branca,SP,mogiana,3507,35030,160.0,0.0,2025
+3510906,Cássia dos Coqueiros,SP,mogiana,3502,35015,2800.0,0.0,2025
+3513207,Cristais Paulista,SP,mogiana,3502,35012,9000.0,0.0,2025
+3513900,Divinolândia,SP,mogiana,3507,35030,4000.0,0.0,2025
+3515186,Espírito Santo do Pinhal,SP,mogiana,3507,35030,7200.0,0.0,2025
+3516200,Franca,SP,mogiana,3502,35012,9775.0,0.0,2025
+3520103,Igarapava,SP,mogiana,3502,35011,106.0,0.0,2025
+3520509,Indaiatuba,SP,mogiana,3507,35032,121.0,0.0,2025
+3522604,Itapira,SP,mogiana,3507,35031,970.0,0.0,2025
+3523701,Itirapuã,SP,mogiana,3502,35012,4500.0,0.0,2025
+3523800,Itobi,SP,mogiana,3507,35030,200.0,0.0,2025
+3524105,Ituverava,SP,mogiana,3502,35011,313.0,0.0,2025
+3525409,Jeriquara,SP,mogiana,3502,35012,5100.0,0.0,2025
+3527009,Lindóia,SP,mogiana,3507,35033,140.0,0.0,2025
+3527603,Luís Antônio,SP,mogiana,3502,35014,50.0,0.0,2025
+3530508,Mococa,SP,mogiana,3507,35030,2500.0,0.0,2025
+3530706,Mogi Guaçu,SP,mogiana,3507,35031,410.0,0.0,2025
+3531209,Monte Alegre do Sul,SP,mogiana,3507,35033,420.0,0.0,2025
+3531506,Monte Azul Paulista,SP,mogiana,3502,35013,121.0,0.0,2025
+3533601,Nuporanga,SP,mogiana,3502,35010,552.0,0.0,2025
+3534302,Orlândia,SP,mogiana,3502,35010,434.0,0.0,2025
+3536307,Patrocínio Paulista,SP,mogiana,3502,35012,3800.0,0.0,2025
+3537008,Pedregulho,SP,mogiana,3502,35012,17000.0,0.0,2025
+3542701,Restinga,SP,mogiana,3502,35012,2500.0,0.0,2025
+3543105,Ribeirão Corrente,SP,mogiana,3502,35012,6200.0,0.0,2025
+3543402,Ribeirão Preto,SP,mogiana,3502,35014,70.0,0.0,2025
+3544905,Sales Oliveira,SP,mogiana,3502,35010,100.0,0.0,2025
+3546256,Santa Cruz da Esperança,SP,mogiana,3502,35015,150.0,0.0,2025
+3546306,Santa Cruz das Palmeiras,SP,mogiana,3507,35029,574.0,0.0,2025
+3547502,Santa Rita do Passa Quatro,SP,mogiana,3502,35014,180.0,0.0,2025
+3547601,Santa Rosa de Viterbo,SP,mogiana,3502,35014,120.0,0.0,2025
+3547908,Santo Antônio da Alegria,SP,mogiana,3502,35015,2750.0,0.0,2025
+3548005,Santo Antônio de Posse,SP,mogiana,3507,35031,83.0,0.0,2025
+3548104,Santo Antônio do Jardim,SP,mogiana,3507,35030,3320.0,0.0,2025
+3549102,São João da Boa Vista,SP,mogiana,3507,35030,3200.0,0.0,2025
+3549508,São José da Bela Vista,SP,mogiana,3502,35012,1480.0,0.0,2025
+3549706,São José do Rio Pardo,SP,mogiana,3507,35030,1300.0,0.0,2025
+3550803,São Sebastião da Grama,SP,mogiana,3507,35030,4200.0,0.0,2025
+3551504,Serrana,SP,mogiana,3502,35014,140.0,0.0,2025
+3551603,Serra Negra,SP,mogiana,3507,35033,2560.0,0.0,2025
+3552106,Socorro,SP,mogiana,3507,35033,2700.0,0.0,2025
+3553302,Tambaú,SP,mogiana,3507,35030,200.0,0.0,2025
+3553609,Tapiratiba,SP,mogiana,3507,35030,1910.0,0.0,2025
+3556404,Vargem Grande do Sul,SP,mogiana,3507,35030,420.0,0.0,2025
+4100103,Abatiá,PR,norte-do-parana,4104,41015,300.0,0.0,2025
+4100509,Altônia,PR,norte-do-parana,4101,41002,75.0,0.0,2025
+4101408,Apucarana,PR,norte-do-parana,4103,41010,1300.0,0.0,2025
+4101903,Assaí,PR,norte-do-parana,4104,41014,130.0,0.0,2025
+4102109,Astorga,PR,norte-do-parana,4103,41006,90.0,0.0,2025
+4103305,Borrazópolis,PR,norte-do-parana,4103,41012,90.0,0.0,2025
+4103701,Cambé,PR,norte-do-parana,4103,41011,127.0,0.0,2025
+4103800,Cambira,PR,norte-do-parana,4103,41010,390.0,0.0,2025
+4104709,Carlópolis,PR,norte-do-parana,4104,41018,5060.0,0.0,2025
+4105508,Cianorte,PR,norte-do-parana,4101,41003,480.0,0.0,2025
+4106001,Congonhinhas,PR,norte-do-parana,4104,41015,310.0,0.0,2025
+4106100,Conselheiro Mairinck,PR,norte-do-parana,4104,41017,78.0,0.0,2025
+4106407,Cornélio Procópio,PR,norte-do-parana,4104,41015,252.0,0.0,2025
+4107009,Curiúva,PR,norte-do-parana,4104,41017,142.0,0.0,2025
+4107751,Figueira,PR,norte-do-parana,4104,41017,102.0,0.0,2025
+4108700,Grandes Rios,PR,norte-do-parana,4103,41013,910.0,0.0,2025
+4109005,Guapirama,PR,norte-do-parana,4104,41018,62.0,0.0,2025
+4109708,Ibaiti,PR,norte-do-parana,4104,41017,1623.0,0.0,2025
+4111506,Ivaiporã,PR,norte-do-parana,4103,41013,360.0,0.0,2025
+4111704,Jaboti,PR,norte-do-parana,4104,41017,720.0,0.0,2025
+4111803,Jacarezinho,PR,norte-do-parana,4104,41016,276.0,0.0,2025
+4112108,Jandaia do Sul,PR,norte-do-parana,4103,41010,280.0,0.0,2025
+4112306,Japira,PR,norte-do-parana,4104,41017,563.0,0.0,2025
+4112405,Japurá,PR,norte-do-parana,4101,41003,60.0,0.0,2025
+4112504,Jardim Alegre,PR,norte-do-parana,4103,41013,242.0,0.0,2025
+4112801,Joaquim Távora,PR,norte-do-parana,4104,41018,164.0,0.0,2025
+4112900,Jundiaí do Sul,PR,norte-do-parana,4104,41016,98.0,0.0,2025
+4113429,Lidianópolis,PR,norte-do-parana,4103,41013,220.0,0.0,2025
+4113700,Londrina,PR,norte-do-parana,4103,41011,230.0,0.0,2025
+4113759,Lunardelli,PR,norte-do-parana,4103,41013,61.0,0.0,2025
+4114203,Mandaguari,PR,norte-do-parana,4103,41009,624.0,0.0,2025
+4114807,Marialva,PR,norte-do-parana,4103,41009,87.0,0.0,2025
+4115200,Maringá,PR,norte-do-parana,4103,41009,65.0,0.0,2025
+4117008,Nova Fátima,PR,norte-do-parana,4104,41015,332.0,0.0,2025
+4119202,Pinhalão,PR,norte-do-parana,4104,41017,1946.0,0.0,2025
+4119657,Pitangueiras,PR,norte-do-parana,4103,41011,160.0,0.0,2025
+4121802,Ribeirão Claro,PR,norte-do-parana,4104,41016,523.0,0.0,2025
+4121901,Ribeirão do Pinhal,PR,norte-do-parana,4104,41015,476.0,0.0,2025
+4122404,Rolândia,PR,norte-do-parana,4103,41011,300.0,0.0,2025
+4122909,Salto do Itararé,PR,norte-do-parana,4104,41018,289.0,0.0,2025
+4123105,Santa Amélia,PR,norte-do-parana,4104,41015,100.0,0.0,2025
+4123907,Santa Mariana,PR,norte-do-parana,4104,41015,410.0,0.0,2025
+4124103,Santo Antônio da Platina,PR,norte-do-parana,4104,41016,780.0,0.0,2025
+4124707,São Jerônimo da Serra,PR,norte-do-parana,4104,41014,689.0,0.0,2025
+4125357,São Jorge do Patrocínio,PR,norte-do-parana,4101,41002,204.0,0.0,2025
+4126108,São Tomé,PR,norte-do-parana,4101,41003,66.0,0.0,2025
+4126207,Sapopema,PR,norte-do-parana,4104,41017,150.0,0.0,2025
+4126603,Siqueira Campos,PR,norte-do-parana,4104,41018,460.0,0.0,2025
+4127809,Tomazina,PR,norte-do-parana,4104,41018,1218.0,0.0,2025
+2903201,Barreiras,BA,oeste-da-bahia,2901,29001,3359.0,0.0,2025
+2908101,Cocos,BA,oeste-da-bahia,2901,29003,799.0,0.0,2025
+2919553,Luís Eduardo Magalhães,BA,oeste-da-bahia,2901,29001,862.0,0.0,2025
+2928901,São Desidério,BA,oeste-da-bahia,2901,29001,1722.0,0.0,2025
+2900108,Abaíra,BA,planalto-da-bahia,2906,29023,139.0,0.0,2025
+2902807,Barra da Estiva,BA,planalto-da-bahia,2906,29023,10102.0,0.0,2025
+2902906,Barra do Choça,BA,planalto-da-bahia,2906,29028,15200.0,0.0,2025
+2903003,Barra do Mendes,BA,planalto-da-bahia,2903,29009,88.0,0.0,2025
+2904050,Bonito,BA,planalto-da-bahia,2906,29023,6869.0,0.0,2025
+2904308,Brejões,BA,planalto-da-bahia,2906,29024,1168.0,0.0,2025
+2908804,Contendas do Sincorá,BA,planalto-da-bahia,2906,29023,241.0,0.0,2025
+2910404,Encruzilhada,BA,planalto-da-bahia,2906,29029,5340.0,0.0,2025
+2912202,Ibicoara,BA,planalto-da-bahia,2906,29023,5952.0,0.0,2025
+2913507,Iguaí,BA,planalto-da-bahia,2906,29028,88.0,0.0,2025
+2914208,Irajuba,BA,planalto-da-bahia,2906,29024,56.0,0.0,2025
+2914307,Iramaia,BA,planalto-da-bahia,2906,29024,171.0,0.0,2025
+2914406,Iraquara,BA,planalto-da-bahia,2903,29009,960.0,0.0,2025
+2915809,Itambé,BA,planalto-da-bahia,2906,29029,219.0,0.0,2025
+2916906,Itiruçu,BA,planalto-da-bahia,2906,29024,306.0,0.0,2025
+2917201,Ituaçu,BA,planalto-da-bahia,2906,29027,4156.0,0.0,2025
+2917607,Jaguaquara,BA,planalto-da-bahia,2906,29024,89.0,0.0,2025
+2918605,Jussiape,BA,planalto-da-bahia,2906,29023,102.0,0.0,2025
+2918704,Lafaiete Coutinho,BA,planalto-da-bahia,2906,29024,126.0,0.0,2025
+2919058,Lajedo do Tabocal,BA,planalto-da-bahia,2906,29024,200.0,0.0,2025
+2919306,Lençóis,BA,planalto-da-bahia,2906,29023,872.0,0.0,2025
+2919702,Macarani,BA,planalto-da-bahia,2906,29029,80.0,0.0,2025
+2920502,Maracás,BA,planalto-da-bahia,2906,29024,339.0,0.0,2025
+2921708,Morro do Chapéu,BA,planalto-da-bahia,2903,29010,435.0,0.0,2025
+2921906,Mucugê,BA,planalto-da-bahia,2906,29023,1410.0,0.0,2025
+2922052,Mulungu do Morro,BA,planalto-da-bahia,2903,29009,1000.0,0.0,2025
+2922706,Nova Canaã,BA,planalto-da-bahia,2906,29028,692.0,0.0,2025
+2922805,Nova Itarana,BA,planalto-da-bahia,2906,29024,285.0,0.0,2025
+2924306,Piatã,BA,planalto-da-bahia,2906,29023,1167.0,0.0,2025
+2925006,Planalto,BA,planalto-da-bahia,2906,29028,2047.0,0.0,2025
+2925105,Poções,BA,planalto-da-bahia,2906,29028,757.0,0.0,2025
+2926657,Ribeirão do Largo,BA,planalto-da-bahia,2906,29029,1350.0,0.0,2025
+2926707,Rio de Contas,BA,planalto-da-bahia,2906,29023,195.0,0.0,2025
+2929909,Seabra,BA,planalto-da-bahia,2906,29023,1442.0,0.0,2025
+2930808,Souto Soares,BA,planalto-da-bahia,2903,29009,144.0,0.0,2025
+2931004,Tanhaçu,BA,planalto-da-bahia,2906,29027,102.0,0.0,2025
+2931301,Tapiramutá,BA,planalto-da-bahia,2903,29011,255.0,0.0,2025
+2932804,Utinga,BA,planalto-da-bahia,2906,29023,243.0,0.0,2025
+2933307,Vitória da Conquista,BA,planalto-da-bahia,2906,29028,5436.0,0.0,2025
+1100015,Alta Floresta D'Oeste,RO,rondonia,1102,11006,0.0,4246.0,2025
+1100023,Ariquemes,RO,rondonia,1102,11003,0.0,370.0,2025
+1100049,Cacoal,RO,rondonia,1102,11006,0.0,4990.0,2025
+1100080,Costa Marques,RO,rondonia,1101,11002,0.0,140.0,2025
+1100098,Espigão D'Oeste,RO,rondonia,1102,11006,0.0,720.0,2025
+1100114,Jaru,RO,rondonia,1102,11004,0.0,205.0,2025
+1100122,Ji-Paraná,RO,rondonia,1102,11004,0.0,180.0,2025
+1100130,Machadinho D'Oeste,RO,rondonia,1102,11003,0.0,1146.0,2025
+1100148,Nova Brasilândia D'Oeste,RO,rondonia,1102,11005,0.0,7380.0,2025
+1100155,Ouro Preto do Oeste,RO,rondonia,1102,11004,0.0,95.0,2025
+1100189,Pimenta Bueno,RO,rondonia,1102,11007,0.0,90.0,2025
+1100205,Porto Velho,RO,rondonia,1101,11001,0.0,1120.0,2025
+1100254,Presidente Médici,RO,rondonia,1102,11004,0.0,270.0,2025
+1100262,Rio Crespo,RO,rondonia,1102,11003,0.0,250.0,2025
+1100288,Rolim de Moura,RO,rondonia,1102,11006,0.0,1120.0,2025
+1100296,Santa Luzia D'Oeste,RO,rondonia,1102,11006,0.0,860.0,2025
+1100320,São Miguel do Guaporé,RO,rondonia,1102,11005,0.0,3850.0,2025
+1100338,Nova Mamoré,RO,rondonia,1101,11001,0.0,135.0,2025
+1100346,Alvorada D'Oeste,RO,rondonia,1102,11005,0.0,1400.0,2025
+1100379,Alto Alegre dos Parecis,RO,rondonia,1102,11006,0.0,4350.0,2025
+1100403,Alto Paraíso,RO,rondonia,1102,11003,0.0,780.0,2025
+1100452,Buritis,RO,rondonia,1101,11001,0.0,845.0,2025
+1100502,Novo Horizonte do Oeste,RO,rondonia,1102,11006,0.0,1940.0,2025
+1100601,Cacaulândia,RO,rondonia,1102,11003,0.0,90.0,2025
+1100700,Campo Novo de Rondônia,RO,rondonia,1101,11001,0.0,310.0,2025
+1100809,Candeias do Jamari,RO,rondonia,1101,11001,0.0,137.0,2025
+1100908,Castanheiras,RO,rondonia,1102,11006,0.0,140.0,2025
+1100940,Cujubim,RO,rondonia,1101,11001,0.0,320.0,2025
+1101005,Governador Jorge Teixeira,RO,rondonia,1102,11004,0.0,125.0,2025
+1101203,Ministro Andreazza,RO,rondonia,1102,11006,0.0,1315.0,2025
+1101302,Mirante da Serra,RO,rondonia,1102,11004,0.0,450.0,2025
+1101401,Monte Negro,RO,rondonia,1102,11003,0.0,150.0,2025
+1101435,Nova União,RO,rondonia,1102,11004,0.0,120.0,2025
+1101450,Parecis,RO,rondonia,1102,11007,0.0,110.0,2025
+1101476,Primavera de Rondônia,RO,rondonia,1102,11007,0.0,200.0,2025
+1101484,São Felipe D'Oeste,RO,rondonia,1102,11007,0.0,250.0,2025
+1101492,São Francisco do Guaporé,RO,rondonia,1101,11002,0.0,720.0,2025
+1101500,Seringueiras,RO,rondonia,1102,11005,0.0,1503.0,2025
+1101609,Theobroma,RO,rondonia,1102,11004,0.0,220.0,2025
+1101708,Urupá,RO,rondonia,1102,11004,0.0,200.0,2025
+1101757,Vale do Anari,RO,rondonia,1102,11003,0.0,310.0,2025
+1101807,Vale do Paraíso,RO,rondonia,1102,11004,0.0,90.0,2025
+3100807,Aguanil,MG,sul-de-minas,3109,31045,1917.0,0.0,2025
+3101409,Albertina,MG,sul-de-minas,3110,31051,1500.0,0.0,2025
+3101607,Alfenas,MG,sul-de-minas,3110,31049,13325.0,0.0,2025
+3101904,Alpinópolis,MG,sul-de-minas,3110,31047,6110.0,0.0,2025
+3102001,Alterosa,MG,sul-de-minas,3110,31049,5300.0,0.0,2025
+3102605,Andradas,MG,sul-de-minas,3110,31051,7100.0,0.0,2025
+3102803,Andrelândia,MG,sul-de-minas,3110,31055,250.0,0.0,2025
+3104106,Arceburgo,MG,sul-de-minas,3110,31048,1760.0,0.0,2025
+3104304,Areado,MG,sul-de-minas,3110,31049,2860.0,0.0,2025
+3104908,Baependi,MG,sul-de-minas,3110,31054,905.0,0.0,2025
+3105103,Bambuí,MG,sul-de-minas,3109,31042,3100.0,0.0,2025
+3105301,Bandeira do Sul,MG,sul-de-minas,3110,31051,290.0,0.0,2025
+3107109,Boa Esperança,MG,sul-de-minas,3110,31050,13740.0,0.0,2025
+3107604,Bom Jesus da Penha,MG,sul-de-minas,3110,31047,3280.0,0.0,2025
+3108008,Bom Sucesso,MG,sul-de-minas,3109,31046,3500.0,0.0,2025
+3108305,Borda da Mata,MG,sul-de-minas,3110,31052,425.0,0.0,2025
+3108404,Botelhos,MG,sul-de-minas,3110,31051,7000.0,0.0,2025
+3108909,Brazópolis,MG,sul-de-minas,3110,31056,411.0,0.0,2025
+3109105,Bueno Brandão,MG,sul-de-minas,3110,31052,2040.0,0.0,2025
+3109501,Cabo Verde,MG,sul-de-minas,3110,31048,8660.0,0.0,2025
+3109709,Cachoeira de Minas,MG,sul-de-minas,3110,31053,980.0,0.0,2025
+3110301,Caldas,MG,sul-de-minas,3110,31051,1320.0,0.0,2025
+3110400,Camacho,MG,sul-de-minas,3109,31044,2850.0,0.0,2025
+3110707,Cambuquira,MG,sul-de-minas,3110,31054,2700.0,0.0,2025
+3110905,Campanha,MG,sul-de-minas,3110,31050,4186.0,0.0,2025
+3111002,Campestre,MG,sul-de-minas,3110,31051,10300.0,0.0,2025
+3111200,Campo Belo,MG,sul-de-minas,3109,31045,2500.0,0.0,2025
+3111309,Campo do Meio,MG,sul-de-minas,3110,31050,3895.0,0.0,2025
+3111606,Campos Gerais,MG,sul-de-minas,3110,31050,17050.0,0.0,2025
+3111903,Cana Verde,MG,sul-de-minas,3109,31045,650.0,0.0,2025
+3112000,Candeias,MG,sul-de-minas,3109,31045,6130.0,0.0,2025
+3112406,Capetinga,MG,sul-de-minas,3110,31047,5350.0,0.0,2025
+3112802,Capitólio,MG,sul-de-minas,3110,31047,1800.0,0.0,2025
+3113602,Careaçu,MG,sul-de-minas,3110,31053,1200.0,0.0,2025
+3113909,Carmo da Cachoeira,MG,sul-de-minas,3110,31050,12500.0,0.0,2025
+3114006,Carmo da Mata,MG,sul-de-minas,3109,31046,900.0,0.0,2025
+3114105,Carmo de Minas,MG,sul-de-minas,3110,31054,3400.0,0.0,2025
+3114402,Carmo do Rio Claro,MG,sul-de-minas,3110,31049,11060.0,0.0,2025
+3114501,Carmópolis de Minas,MG,sul-de-minas,3109,31046,100.0,0.0,2025
+3114709,Carvalhópolis,MG,sul-de-minas,3110,31049,1890.0,0.0,2025
+3115102,Cássia,MG,sul-de-minas,3110,31047,5710.0,0.0,2025
+3115508,Caxambu,MG,sul-de-minas,3110,31054,98.0,0.0,2025
+3116407,Claraval,MG,sul-de-minas,3110,31047,3950.0,0.0,2025
+3117108,Conceição da Aparecida,MG,sul-de-minas,3110,31049,9000.0,0.0,2025
+3117207,Conceição das Pedras,MG,sul-de-minas,3110,31053,1795.0,0.0,2025
+3117702,Conceição do Rio Verde,MG,sul-de-minas,3110,31054,4300.0,0.0,2025
+3117801,Conceição dos Ouros,MG,sul-de-minas,3110,31053,280.0,0.0,2025
+3117900,Congonhal,MG,sul-de-minas,3110,31052,330.0,0.0,2025
+3118700,Coqueiral,MG,sul-de-minas,3110,31050,9000.0,0.0,2025
+3119005,Cordislândia,MG,sul-de-minas,3110,31053,1860.0,0.0,2025
+3119807,Córrego Danta,MG,sul-de-minas,3109,31042,900.0,0.0,2025
+3119955,Córrego Fundo,MG,sul-de-minas,3109,31044,256.0,0.0,2025
+3120201,Cristais,MG,sul-de-minas,3109,31045,3560.0,0.0,2025
+3120508,Cristina,MG,sul-de-minas,3110,31056,760.0,0.0,2025
+3120805,Cruzília,MG,sul-de-minas,3110,31055,180.0,0.0,2025
+3121209,Delfinópolis,MG,sul-de-minas,3110,31047,400.0,0.0,2025
+3122405,Divisa Nova,MG,sul-de-minas,3110,31049,2540.0,0.0,2025
+3122801,Dom Viçoso,MG,sul-de-minas,3110,31056,365.0,0.0,2025
+3123403,Doresópolis,MG,sul-de-minas,3109,31042,270.0,0.0,2025
+3123601,Elói Mendes,MG,sul-de-minas,3110,31050,14402.0,0.0,2025
+3124401,Espírito Santo do Dourado,MG,sul-de-minas,3110,31052,500.0,0.0,2025
+3125200,Fama,MG,sul-de-minas,3110,31049,1240.0,0.0,2025
+3126109,Formiga,MG,sul-de-minas,3109,31044,2785.0,0.0,2025
+3126307,Fortaleza de Minas,MG,sul-de-minas,3110,31047,1270.0,0.0,2025
+3128105,Guapé,MG,sul-de-minas,3110,31050,10000.0,0.0,2025
+3128303,Guaranésia,MG,sul-de-minas,3110,31048,4350.0,0.0,2025
+3128709,Guaxupé,MG,sul-de-minas,3110,31048,4500.0,0.0,2025
+3129202,Heliodora,MG,sul-de-minas,3110,31053,3258.0,0.0,2025
+3129707,Ibiraci,MG,sul-de-minas,3110,31047,15690.0,0.0,2025
+3129905,Ibitiúra de Minas,MG,sul-de-minas,3110,31051,1510.0,0.0,2025
+3130002,Ibituruna,MG,sul-de-minas,3109,31046,570.0,0.0,2025
+3130408,Ijaci,MG,sul-de-minas,3111,31057,290.0,0.0,2025
+3130507,Ilicínea,MG,sul-de-minas,3110,31050,6390.0,0.0,2025
+3130606,Inconfidentes,MG,sul-de-minas,3110,31051,3175.0,0.0,2025
+3130804,Ingaí,MG,sul-de-minas,3111,31057,490.0,0.0,2025
+3132909,Itamogi,MG,sul-de-minas,3110,31048,10370.0,0.0,2025
+3133501,Itapecerica,MG,sul-de-minas,3109,31044,395.0,0.0,2025
+3134301,Itumirim,MG,sul-de-minas,3111,31057,360.0,0.0,2025
+3134509,Itutinga,MG,sul-de-minas,3111,31057,110.0,0.0,2025
+3134806,Jacuí,MG,sul-de-minas,3110,31048,3100.0,0.0,2025
+3134905,Jacutinga,MG,sul-de-minas,3110,31051,3195.0,0.0,2025
+3135902,Jesuânia,MG,sul-de-minas,3110,31054,1630.0,0.0,2025
+3136900,Juruaia,MG,sul-de-minas,3110,31048,4800.0,0.0,2025
+3137809,Lambari,MG,sul-de-minas,3110,31054,4900.0,0.0,2025
+3138203,Lavras,MG,sul-de-minas,3111,31057,5520.0,0.0,2025
+3138708,Luminárias,MG,sul-de-minas,3111,31057,2625.0,0.0,2025
+3139003,Machado,MG,sul-de-minas,3110,31049,13430.0,0.0,2025
+3139904,Maria da Fé,MG,sul-de-minas,3110,31056,80.0,0.0,2025
+3141306,Medeiros,MG,sul-de-minas,3109,31042,3070.0,0.0,2025
+3142601,Monsenhor Paulo,MG,sul-de-minas,3110,31050,3695.0,0.0,2025
+3143005,Monte Belo,MG,sul-de-minas,3110,31048,5200.0,0.0,2025
+3143203,Monte Santo de Minas,MG,sul-de-minas,3110,31048,7750.0,0.0,2025
+3143401,Monte Sião,MG,sul-de-minas,3110,31051,2200.0,0.0,2025
+3144102,Muzambinho,MG,sul-de-minas,3110,31048,4700.0,0.0,2025
+3144409,Natércia,MG,sul-de-minas,3110,31053,2800.0,0.0,2025
+3144607,Nepomuceno,MG,sul-de-minas,3111,31057,10000.0,0.0,2025
+3145109,Nova Resende,MG,sul-de-minas,3110,31048,9885.0,0.0,2025
+3145505,Olímpio Noronha,MG,sul-de-minas,3110,31054,720.0,0.0,2025
+3145604,Oliveira,MG,sul-de-minas,3109,31046,7035.0,0.0,2025
+3146008,Ouro Fino,MG,sul-de-minas,3110,31051,4260.0,0.0,2025
+3147204,Paraguaçu,MG,sul-de-minas,3110,31049,8600.0,0.0,2025
+3147303,Paraisópolis,MG,sul-de-minas,3110,31056,65.0,0.0,2025
+3147709,Passa Tempo,MG,sul-de-minas,3109,31046,120.0,0.0,2025
+3147907,Passos,MG,sul-de-minas,3110,31047,2890.0,0.0,2025
+3149101,Pedralva,MG,sul-de-minas,3110,31053,2530.0,0.0,2025
+3149903,Perdões,MG,sul-de-minas,3109,31045,4220.0,0.0,2025
+3150505,Pimenta,MG,sul-de-minas,3109,31044,2142.0,0.0,2025
+3151008,Piranguinho,MG,sul-de-minas,3110,31056,473.0,0.0,2025
+3151503,Piumhi,MG,sul-de-minas,3109,31042,9900.0,0.0,2025
+3151701,Poço Fundo,MG,sul-de-minas,3110,31049,10880.0,0.0,2025
+3151800,Poços de Caldas,MG,sul-de-minas,3110,31051,3700.0,0.0,2025
+3152600,Pouso Alto,MG,sul-de-minas,3110,31054,100.0,0.0,2025
+3152907,Pratápolis,MG,sul-de-minas,3110,31047,176.0,0.0,2025
+3154705,Ribeirão Vermelho,MG,sul-de-minas,3111,31057,280.0,0.0,2025
+3158300,Santana da Vargem,MG,sul-de-minas,3110,31050,4065.0,0.0,2025
+3158805,Santana do Jacaré,MG,sul-de-minas,3109,31045,400.0,0.0,2025
+3159209,Santa Rita de Caldas,MG,sul-de-minas,3110,31051,200.0,0.0,2025
+3159605,Santa Rita do Sapucaí,MG,sul-de-minas,3110,31053,3300.0,0.0,2025
+3159902,Santo Antônio do Amparo,MG,sul-de-minas,3109,31046,8710.0,0.0,2025
+3160801,São Bento Abade,MG,sul-de-minas,3110,31050,1200.0,0.0,2025
+3161205,São Francisco de Paula,MG,sul-de-minas,3109,31046,2850.0,0.0,2025
+3162005,São Gonçalo do Sapucaí,MG,sul-de-minas,3110,31053,9335.0,0.0,2025
+3162203,São João Batista do Glória,MG,sul-de-minas,3110,31047,283.0,0.0,2025
+3162302,São João da Mata,MG,sul-de-minas,3110,31053,600.0,0.0,2025
+3162948,São José da Barra,MG,sul-de-minas,3110,31047,4000.0,0.0,2025
+3163201,São José do Alegre,MG,sul-de-minas,3110,31053,260.0,0.0,2025
+3163904,São Pedro da União,MG,sul-de-minas,3110,31048,3800.0,0.0,2025
+3164308,São Roque de Minas,MG,sul-de-minas,3109,31042,5400.0,0.0,2025
+3164407,São Sebastião da Bela Vista,MG,sul-de-minas,3110,31053,1350.0,0.0,2025
+3164704,São Sebastião do Paraíso,MG,sul-de-minas,3110,31048,12300.0,0.0,2025
+3165107,São Tomás de Aquino,MG,sul-de-minas,3110,31048,6600.0,0.0,2025
+3165206,São Tomé das Letras,MG,sul-de-minas,3110,31050,1400.0,0.0,2025
+3165800,Senador José Bento,MG,sul-de-minas,3110,31052,330.0,0.0,2025
+3166907,Serrania,MG,sul-de-minas,3110,31049,3300.0,0.0,2025
+3167400,Silvianópolis,MG,sul-de-minas,3110,31053,1600.0,0.0,2025
+3167806,Soledade de Minas,MG,sul-de-minas,3110,31054,250.0,0.0,2025
+3168200,Tapiraí,MG,sul-de-minas,3109,31042,1913.0,0.0,2025
+3169059,Tocos do Moji,MG,sul-de-minas,3110,31052,355.0,0.0,2025
+3169307,Três Corações,MG,sul-de-minas,3110,31050,8700.0,0.0,2025
+3169406,Três Pontas,MG,sul-de-minas,3110,31050,15990.0,0.0,2025
+3169802,Turvolândia,MG,sul-de-minas,3110,31053,1550.0,0.0,2025
+3170602,Vargem Bonita,MG,sul-de-minas,3109,31042,2350.0,0.0,2025
+3170701,Varginha,MG,sul-de-minas,3110,31050,6575.0,0.0,2025

@@ -22,6 +22,7 @@ from base.arquivo import assessorias, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
+    arquivo_que_pode_faltar,
     csv_do_bdi_da_b3,
     csv_so_com_colunas,
     extrair_do_zip_remoto,
@@ -33,6 +34,7 @@ from base.arquivo.obter import (
     versao_do_membro,
     zip_que_pode_faltar,
 )
+from src.commodities.cafe.regioes import CODIGO_DA_UF
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
 PORTAL_DO_IBAMA = "https://dadosabertos.ibama.gov.br"
@@ -99,7 +101,10 @@ TERMOS = {
     "servicos-de-dados/market-data/consultas/boletim-diario/boletim-diario-do-mercado/",
     # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
+    "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    # a FNC veda robôs e cópia sem autorização escrita: não coletamos, só vigiamos os termos (18/10/2026)
+    "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
     "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
 }
 CATALOGOS = {
@@ -757,6 +762,63 @@ def _meses_recentes(modelo: str, meses: int) -> Descobrir:
     return descobrir
 
 
+# balanço mundial do café (PR 4 do plano de commodities)
+PSD_DO_CAFE = "https://apps.fas.usda.gov/psdonline/downloads/psd_coffee_csv.zip"
+FAOSTAT_PRODUCAO = (
+    "https://bulks-faostat.fao.org/production/"
+    "Production_Crops_Livestock_E_All_Data_(Normalized).zip"
+)
+PAGINA_DO_RELATORIO_DA_ICO = (
+    "https://ico.org/resources/coffee-market-report-statistics-section/"
+)
+PDF_DO_RELATORIO_DA_ICO = re.compile(
+    rb'href="(https?://[^"]*ico\.org/documents/[^"]*cmr-\d{4}-e\.pdf)"'
+)
+
+
+# --- clima e geografia do café (plano do café, PR 8; `base/commodities/clima_regiao.py`) -----------
+PORTAL_DO_INMET = "https://portal.inmet.gov.br"
+PRIMEIRO_ANO_DO_INMET = (
+    2000  # as estações automáticas começam aí; zip por ano, ~100 MB nos recentes
+)
+CHIRPS_MENSAL = (
+    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
+    "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
+)
+MESES_RECENTES_DO_CHIRPS = (
+    3  # o definitivo do mês sai ao longo do mês seguinte; o que falta é 404
+)
+MALHA_DO_IBGE = (
+    "https://servicodados.ibge.gov.br/api/v3/malhas/estados/{uf}"
+    "?intrarregiao=municipio&formato=application/vnd.geo+json&qualidade=minima"
+)
+
+
+def _anos_do_inmet(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Todos os zips anuais do BDMEP; o do ano corrente é regravado (ETag e Last-Modified mudam)."""
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    return [
+        Alvo(f"{PORTAL_DO_INMET}/uploads/dadoshistoricos/{ano}.zip", ".zip")
+        for ano in range(PRIMEIRO_ANO_DO_INMET, hoje.year + 1)
+    ]
+
+
+def _meses_do_chirps(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os GeoTIFFs dos meses recentes, do mais antigo ao mais novo; o que ainda não saiu é 404."""
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    alvos = []
+    for atras in range(MESES_RECENTES_DO_CHIRPS, 0, -1):
+        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
+        url = CHIRPS_MENSAL.format(ano=ano, mes=mes + 1)
+        alvos.append(Alvo(url, ".tif.gz", arquivo_que_pode_faltar(url)))
+    return alvos
+
+
+def _malhas_do_ibge(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """A malha municipal (GeoJSON, qualidade mínima) de cada UF com região cafeeira."""
+    return [Alvo(MALHA_DO_IBGE.format(uf=uf), ".json") for uf in CODIGO_DA_UF.values()]
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -984,8 +1046,23 @@ FONTES: list[Fonte] = [
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
     # área de commodities, café primeiro (PR 7): os quatro levantamentos de cada safra, como publicados
     Fonte("conab-cafe-safra", "semanal", descobrir_cafe_conab),
+    # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)
+    Fonte("usda-psd-cafe", "semanal", _um(PSD_DO_CAFE), "zip"),
+    Fonte("faostat-cafe", "semanal", _um(FAOSTAT_PRODUCAO), "zip", pesada=True),
+    Fonte(
+        "ico-relatorio-mensal",
+        "mensal",
+        lambda cliente, agora: descobrir_links(
+            cliente, PAGINA_DO_RELATORIO_DA_ICO, PDF_DO_RELATORIO_DA_ICO
+        ),
+        "pdf",
+    ),
     # relatório mensal do Cecafé (café, PR 6): só pesquisa; falha enquanto o robots.txt proibir PDF
     Fonte("cecafe-relatorio-mensal", "mensal", descobrir_cecafe, "pdf"),
+    # clima por região cafeeira: estações do INMET, chuva do CHIRPS e a malha municipal do IBGE
+    Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
+    Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
+    Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

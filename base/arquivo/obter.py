@@ -322,6 +322,21 @@ def zip_que_pode_faltar(url: str) -> Obter:
     return obter
 
 
+def arquivo_que_pode_faltar(url: str) -> Obter:
+    """Baixa o arquivo; 404 vira `SemArquivo` (o mês que a fonte ainda não publicou)."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        try:
+            return cliente.baixar(url, destino)
+        except requests.HTTPError as erro:
+            resposta = erro.response
+            if resposta is not None and resposta.status_code == HTTP_NAO_ENCONTRADO:
+                raise SemArquivo("HTTP 404 (mês que ainda não saiu)") from erro
+            raise
+
+    return obter
+
+
 def csv_do_bdi_da_b3(url: str, tabela: str, dia: date) -> Obter:
     """Pede ao BDI da B3 o CSV de `tabela` em `dia` (POST, o mesmo pedido do botão "Informações em
     arquivo") e guarda o corpo como veio. Dia sem pregão responde só o cabeçalho, corpo vazio ou 404:

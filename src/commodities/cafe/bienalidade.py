@@ -12,7 +12,7 @@ from itertools import pairwise
 
 import pandas as pd
 
-from src.commodities.cafe.pontos import PontoAnual, levantamentos_ate
+from src.commodities.cafe.pontos import PontoDaSafra, levantamentos_ate
 
 TIPO = "arabica"
 MIL_SACAS = "mil sacas de 60 kg"
@@ -42,12 +42,12 @@ def _variacoes(
 
 def marcar(
     tabela: pd.DataFrame, tipo: str = TIPO, uf: str = "BRASIL", ate: date | None = None
-) -> list[PontoAnual]:
+) -> list[PontoDaSafra]:
     """Uma marca por safra (menos a primeira): rótulo "cheio" ou "vazio" e a produção em mil sacas."""
     if tipo != TIPO:
         raise ValueError(f"só o {TIPO} tem bienalidade, não o {tipo}")
     return [
-        PontoAnual(
+        PontoDaSafra(
             safra,
             TIPO,
             uf,
@@ -62,13 +62,13 @@ def marcar(
 
 def ciclo_quebrado(
     tabela: pd.DataFrame, tipo: str = TIPO, uf: str = "BRASIL", ate: date | None = None
-) -> list[PontoAnual]:
+) -> list[PontoDaSafra]:
     """Surpresa de bienalidade: 1,0 na safra em que o sinal repetiu o da anterior, 0,0 se alternou."""
     if tipo != TIPO:
         raise ValueError(f"só o {TIPO} tem bienalidade, não o {tipo}")
     variacoes = _variacoes(tabela, uf, ate)
     return [
-        PontoAnual(
+        PontoDaSafra(
             safra,
             TIPO,
             uf,

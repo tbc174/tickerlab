@@ -1,0 +1,1587 @@
+{
+ "fonte": "projeto-acoes/planos/2026-10-18-gabarito-cpfl-analise-completa.md",
+ "aprovado": "Tiago, 18/10/2026",
+ "mudancas": [
+  "Uma frase por sentença; cada item de lista vira um parágrafo de fato.",
+  "Os marcadores \"**Leitura.**\" saem: o tipo do parágrafo diz que é leitura.",
+  "As notas [^n] viram ids da entrada; as contas nossas viram contas declaradas, com os operandos em precisão cheia.",
+  "Quem manda, leitura: sai \"; entram nos PRs 2 e 3 do plano\" (assunto interno, sem fonte na entrada; a porta 1 reprovaria os números 2 e 3)."
+ ],
+ "analise": {
+  "partes": [
+   {
+    "chave": "em_meia_pagina",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "A CPFL Energia é uma *holding* (uma empresa que existe para ter outras) do setor elétrico: o Formulário de Referência de 2026 lista 18 controladas e 1 coligada, e quatro delas são distribuidoras de energia que atendiam 9,7 milhões de consumidores em dezembro de 2025, 11,1% de todos os consumidores das distribuidoras da ANEEL.",
+        "notas": [
+         "auditor_e_controladas.controladas",
+         "auditor_e_controladas.coligadas_e_outras",
+         "setor_regulado.entidades_ligadas.0",
+         "setor_regulado.entidades_ligadas.1",
+         "setor_regulado.entidades_ligadas.2",
+         "setor_regulado.entidades_ligadas.3",
+         "setor_regulado.entidades_ligadas.4",
+         "setor_regulado.entidades_ligadas.5",
+         "setor_regulado.entidades_ligadas.6",
+         "setor_regulado.entidades_ligadas.7",
+         "setor_regulado.entidades_ligadas.8",
+         "setor_regulado.entidades_ligadas.9",
+         "setor_regulado.aneel_consumidores"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Nos 12 meses até 30/06/2026, o grupo faturou R$ 45,6 bilhões e deu R$ 6,0 bilhões de lucro aos acionistas.",
+        "notas": [
+         "resultado.receita",
+         "resultado.lucro"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**A favor, nos dados:** o retorno sobre o patrimônio de 26,4% fica mais de duas vezes acima da mediana do setor (11,8%), e o retorno sobre o capital investido, de 14,9%, também passa da mediana (8,9%); o caixa que a operação gera acompanha o lucro (1,02 real de caixa por real de lucro); e o índice de Beneish, que procura sinais de lucro maquiado, fica abaixo do limite do artigo.",
+        "notas": [
+         "retorno.roe",
+         "retorno.roic",
+         "caixa.conversao_de_caixa",
+         "notas_classicas.beneish"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Pontos de atenção:** a dívida líquida passou de 1,07 para 1,21 vez o patrimônio em um trimestre, a 0,04 do ponto em que a régua do setor passa a chamá-la de ruim (1,25); o Z'' de Altman, que mede aperto financeiro, está na faixa cinzenta; e 85 fundos a menos tinham a ação em março de 2026 do que um ano antes.",
+        "notas": [
+         "o_que_mudou.indicadores.4",
+         "endividamento.divida_sobre_pl",
+         "o_que_mudaria.gatilhos.5",
+         "notas_classicas.altman",
+         "ofertas_e_fundos.fundos_com_a_acao"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "o_que_mudaria.gatilhos.5",
+            "valor": 1.25,
+            "conta": null
+           },
+           {
+            "id": "endividamento.divida_sobre_pl",
+            "valor": 1.2133495160909695,
+            "conta": null
+           }
+          ],
+          "resultado": 0.0366505
+         },
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.fundos_com_a_acao",
+            "valor": 455.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.fundos_com_a_acao",
+            "valor": 370.0,
+            "conta": null
+           }
+          ],
+          "resultado": 85.0
+         }
+        ]
+       },
+       {
+        "texto": "Três buracos pesam na leitura: a base não tem o controlador, nem a receita por negócio, nem quanto o grupo investe na rede das concessões.",
+        "notas": [
+         "ficha_tecnica.controlador",
+         "lacuna.segmentos",
+         "lacuna.concessao"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "O retorno alto vem, em boa parte, de trabalhar com muito capital de terceiros: o ativo é 3,67 vezes o patrimônio.",
+        "notas": [
+         "retorno.dupont_alavancagem"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "É um desenho comum em concessão regulada, mas deixa o resultado sensível ao custo da dívida, e as despesas financeiras cresceram mais que o lucro em 2025.",
+        "notas": [
+         "historico.contas.0",
+         "historico.contas.1",
+         "historico.paragrafos.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A pergunta que esta análise deixa é se o balanço comporta mais dívida, e os dados de hoje não respondem sozinhos.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "o_que_e",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "A CVM classifica a CPFL como \"Emp. Adm. Part. - Energia Elétrica\" (empresa de participações), e o TickerLab a compara com o grupo Energia elétrica, de 112 empresas.",
+        "notas": [
+         "ficha_tecnica.setor"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O que ela faz está nas controladas: quatro distribuidoras (CPFL Paulista, CPFL Piratininga e CPFL Santa Cruz com 100%, RGE Sul com 89,01%); geração, pela CPFL Renováveis (51%) e pela Jaguari Geração (100%); venda de energia no mercado livre, pela CPFL Brasil (100%); e uma série de empresas de apoio (serviços, atendimento, telecomunicações, informática, recursos humanos, finanças) e uma sociedade de crédito direto, a ALESTA (100%).",
+        "notas": [
+         "auditor_e_controladas.controladas.0",
+         "auditor_e_controladas.controladas.1",
+         "auditor_e_controladas.controladas.2",
+         "auditor_e_controladas.controladas.3",
+         "auditor_e_controladas.controladas.4",
+         "auditor_e_controladas.controladas.5",
+         "auditor_e_controladas.controladas.6",
+         "auditor_e_controladas.controladas.7",
+         "auditor_e_controladas.controladas.8",
+         "auditor_e_controladas.controladas.9",
+         "auditor_e_controladas.controladas.10",
+         "auditor_e_controladas.controladas.11",
+         "auditor_e_controladas.controladas.12",
+         "auditor_e_controladas.controladas.13",
+         "auditor_e_controladas.controladas.14",
+         "auditor_e_controladas.controladas.15",
+         "auditor_e_controladas.controladas.16",
+         "auditor_e_controladas.controladas.17"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A CPFL Transmissão aparece no mesmo formulário com 30% e marcada como não controlada.",
+        "notas": [
+         "auditor_e_controladas.controladas.18"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "As quatro distribuidoras estão ligadas às séries da ANEEL, que contam 9.743.641 consumidores em 2025.",
+        "notas": [
+         "setor_regulado.entidades_ligadas.0",
+         "setor_regulado.entidades_ligadas.1",
+         "setor_regulado.entidades_ligadas.2",
+         "setor_regulado.entidades_ligadas.3",
+         "setor_regulado.entidades_ligadas.4",
+         "setor_regulado.entidades_ligadas.5",
+         "setor_regulado.entidades_ligadas.6",
+         "setor_regulado.entidades_ligadas.7",
+         "setor_regulado.entidades_ligadas.8",
+         "setor_regulado.entidades_ligadas.9",
+         "setor_regulado.aneel_consumidores"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O número cresceu de 9.095.518 em 2016 para 9.819.327 em 2021 e ficou praticamente parado desde então, enquanto a fatia no total da agência caiu de 11,4% para 11,1%.",
+        "notas": [
+         "setor_regulado.aneel_consumidores.0",
+         "setor_regulado.aneel_consumidores.4",
+         "setor_regulado.aneel_consumidores.9"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Em 2025, de cada R$ 100 de receita, R$ 68 foram custo (energia comprada, encargos e operação: a base não abre a conta).",
+        "notas": [
+         "historico.vertical.1",
+         "resultado.cascata.0",
+         "resultado.cascata.1"
+        ],
+        "contas": [
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": "historico.vertical.1",
+            "valor": 0.6816564633163976,
+            "conta": null
+           },
+           {
+            "id": null,
+            "valor": 100.0,
+            "conta": null
+           }
+          ],
+          "resultado": 68.16564633163976
+         }
+        ]
+       },
+       {
+        "texto": "O ativo gira 0,55 vez por ano em receita, contra 0,30 da mediana do setor.",
+        "notas": [
+         "retorno.dupont_giro"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "É o desenho de uma distribuidora: muita receita passa pela empresa (a energia comprada e repassada na tarifa) e pouca fica como margem.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Isso explica o giro alto.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O que a base não permite dizer é quanto do lucro vem de cada negócio: a receita e o lucro por segmento (distribuição, geração, transmissão, comercialização) não estão na base, e sem eles esta seção descreve a forma do grupo, não onde ele ganha o dinheiro.",
+        "notas": [
+         "lacuna.segmentos"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "quem_manda",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**O controlador, a base não tem.**",
+        "notas": [
+         "ficha_tecnica.controlador"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A ficha só mostra a controladora quando ela também entrega o Formulário de Referência (FRE) à CVM, o que uma controladora de fora do Brasil não faz.",
+        "notas": [
+         "ficha_tecnica.controlador"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Para um relatório de quem analisa empresas, é o buraco mais visível desta ficha.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "O capital tem 1.152.254.440 ações, o mesmo número em 2024 e em 2025, sem diluição; na B3 negocia a ação ordinária CPFE3, e a ficha não diz desde quando.",
+        "notas": [
+         "dividendos.diluicao",
+         "historico.contas.0",
+         "historico.contas.1",
+         "ficha_tecnica.tickers"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O auditor é a PwC desde 01/01/2022; antes, a KPMG ficou 4,8 anos, e antes dela a Deloitte, 5,0 anos: são 3 trocas desde 2012.",
+        "notas": [
+         "auditor_e_controladas.auditor_atual",
+         "auditor_e_controladas.auditor_desde",
+         "auditor_e_controladas.trocas_de_auditor.0",
+         "auditor_e_controladas.trocas_de_auditor.1",
+         "auditor_e_controladas.trocas_de_auditor.2"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "auditor_e_controladas.trocas_de_auditor.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "auditor_e_controladas.trocas_de_auditor.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "auditor_e_controladas.trocas_de_auditor.2",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 3.0
+         }
+        ]
+       },
+       {
+        "texto": "A demonstração mais recente, o ITR (balanço trimestral) de 30/06/2026, chegou à CVM em 13/08/2026, 44 dias depois do fim do trimestre e dentro do prazo de 45.",
+        "notas": [
+         "ficha_tecnica.ultima_demonstracao"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Trocas a cada cerca de cinco anos têm o ritmo de um rodízio de calendário, não de uma ruptura; sozinhas, não são sinal.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A base não guarda o motivo de cada troca, e a ficha ainda não traz conselho, comitês, remuneração nem compras e vendas de ações por pessoas de dentro (a base tem as tabelas).",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "o_que_mudou",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Nos últimos cinco anos, a mudança foi a transmissão.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A base acha 89 fatos relevantes e comunicados da CPFL sobre compras, vendas e reorganizações, 10 deles em 2022.",
+        "notas": [
+         "negocios.negocios",
+         "negocios.negocios_por_ano.3"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Em 16/07/2021 a empresa anunciou a compra da CEEE-T, transmissora do Rio Grande do Sul; o CADE (o órgão da concorrência) aprovou em 27/09/2021, a ANEEL em 01/10/2021, e a compra foi concluída em 14/10/2021 pela CPFL Cone Sul.",
+        "notas": [
+         "negocios.negocios.15",
+         "negocios.negocios.16",
+         "negocios.negocios.17",
+         "negocios.negocios.18"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Em 2022 vieram as ofertas para comprar as ações restantes da CEEE-T (OPA, oferta pública de aquisição), até 18/11/2022, e uma participação na Enercan.",
+        "notas": [
+         "negocios.negocios.4",
+         "negocios.negocios.5",
+         "negocios.negocios.6",
+         "negocios.negocios.7",
+         "negocios.negocios.8",
+         "negocios.negocios.9",
+         "negocios.negocios.10",
+         "negocios.negocios.11",
+         "negocios.negocios.12",
+         "negocios.negocios.13"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Depois, a arrumação: a CPFL Transmissão incorporou a CPFL Cone Sul (28/02/2024), a CPFL Energia absorveu parte da CPFL Geração (29/04/2025), comprou um lote no leilão de transmissão da ANEEL nº 4/2025 (31/10/2025) e anunciou outra reorganização em 02/02/2026.",
+        "notas": [
+         "negocios.negocios.0",
+         "negocios.negocios.1",
+         "negocios.negocios.2",
+         "negocios.negocios.3"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "A sequência mostra um grupo que comprou uma transmissora e depois passou três anos reorganizando as empresas em volta dela.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Por isso chama atenção que o FRE de 2026 traga a CPFL Transmissão com 30% e como não controlada: ou o formulário registra uma mudança que a base ainda não explica (a reorganização de 02/02/2026?), ou o campo está errado.",
+        "notas": [
+         "auditor_e_controladas.controladas.18",
+         "negocios.negocios.0"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A base tem só o assunto dos documentos, escrito pela empresa, não o texto; a pergunta fica em aberto.",
+        "notas": [
+         "negocios.paragrafos.1"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**No último trimestre, o lucro subiu e a dívida também.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Do balanço de 31/03/2026 para o de 30/06/2026, a receita de 12 meses foi de R$ 45,1 para R$ 45,6 bilhões, o lucro dos acionistas de R$ 5,8 para R$ 6,0 bilhões, a margem líquida de 13,4% para 13,8% e o ROE de 23,7% para 26,4%; a dívida líquida sobre o patrimônio foi de 1,07 para 1,21.",
+        "notas": [
+         "o_que_mudou.paragrafos.0",
+         "o_que_mudou.indicadores.0",
+         "o_que_mudou.indicadores.1",
+         "o_que_mudou.indicadores.2",
+         "o_que_mudou.indicadores.3",
+         "o_que_mudou.indicadores.4"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "o_que_os_numeros_mostram",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Resultado e margens.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Das três margens, todas ficam um pouco acima da mediana do setor: a bruta (o que sobra da receita depois do custo) é 32,1% contra 30,1%; a EBIT (o que sobra depois das despesas da operação, antes de juros e impostos) é 25,3% contra 23,5%; a líquida é 13,8% contra 10,8%.",
+        "notas": [
+         "resultado.margem_bruta",
+         "resultado.margem_ebit",
+         "resultado.margem_liquida"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "De 2024 para 2025, a receita cresceu 4,1% e o lucro dos acionistas, 0,5% (de R$ 5,46 para R$ 5,48 bilhões).",
+        "notas": [
+         "historico.paragrafos.0",
+         "historico.contas.0",
+         "historico.contas.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O crescimento de cinco anos, a ficha não calcula: ela recebeu só dois anos de demonstrações.",
+        "notas": [
+         "resultado.crescimento_receita"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "No mesmo intervalo, as despesas financeiras foram de R$ 4,34 para R$ 4,94 bilhões, de 10,2% para 11,1% da receita.",
+        "notas": [
+         "historico.contas.0",
+         "historico.contas.1",
+         "historico.vertical.0",
+         "historico.vertical.1"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Em 2025 a receita cresceu, mas o lucro ficou parado porque as despesas financeiras subiram cerca de 14% (conta nossa) e comeram a diferença.",
+        "notas": [
+         "historico.contas.0",
+         "historico.contas.1"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "historico.contas.0",
+            "valor": -4343203000.0,
+            "conta": null
+           },
+           {
+            "id": "historico.contas.1",
+            "valor": -4942969000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 0.138093
+         }
+        ]
+       },
+       {
+        "texto": "A alta do lucro de 12 meses no 1º semestre de 2026 é recente demais para dizer se muda essa história.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**De onde vem o retorno.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O ROE (lucro sobre o patrimônio dos acionistas) é 26,4%, contra 11,8% de mediana; o ROIC (lucro da operação sobre todo o capital investido, próprio e de terceiros) é 14,9%, contra 8,9%.",
+        "notas": [
+         "retorno.roe",
+         "retorno.roic"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A decomposição de DuPont, que separa o ROE em três partes, mostra margem de 13,2%, giro do ativo de 0,55 e alavancagem (ativo sobre patrimônio) de 3,67, que era 3,46 no trimestre anterior; multiplicadas, dão os 26,4% (conta nossa).",
+        "notas": [
+         "retorno.dupont_margem",
+         "retorno.dupont_giro",
+         "retorno.dupont_alavancagem"
+        ],
+        "contas": [
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": "retorno.dupont_margem",
+            "valor": 0.13165020166119318,
+            "conta": null
+           },
+           {
+            "id": "retorno.dupont_giro",
+            "valor": 0.5465445281471469,
+            "conta": null
+           },
+           {
+            "id": "retorno.dupont_alavancagem",
+            "valor": 3.673692904617619,
+            "conta": null
+           }
+          ],
+          "resultado": 0.264332
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Das três partes, a alavancagem é a que mais multiplica: margem e giro sozinhos dão 7,2% sobre o ativo (conta nossa: 13,2% × 0,55), e é o ativo 3,67 vezes maior que o patrimônio que leva aos 26,4%.",
+        "notas": [],
+        "contas": [
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": "retorno.dupont_margem",
+            "valor": 0.13165020166119318,
+            "conta": null
+           },
+           {
+            "id": "retorno.dupont_giro",
+            "valor": 0.5465445281471469,
+            "conta": null
+           }
+          ],
+          "resultado": 0.071953
+         }
+        ]
+       },
+       {
+        "texto": "O ROIC acima do setor diz que a operação também rende mais que a dos pares, então o retorno não é só dívida; mas a vantagem sobre a mediana é de 1,7 vez no ROIC e de 2,2 vezes no ROE (conta nossa), e a diferença entre as duas é a dívida.",
+        "notas": [
+         "retorno.roe",
+         "retorno.roic"
+        ],
+        "contas": [
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "retorno.roic",
+            "valor": 0.14850898959058126,
+            "conta": null
+           },
+           {
+            "id": "retorno.roic",
+            "valor": 0.089,
+            "conta": null
+           }
+          ],
+          "resultado": 1.66864
+         },
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "retorno.roe",
+            "valor": 0.26433211371321874,
+            "conta": null
+           },
+           {
+            "id": "retorno.roe",
+            "valor": 0.118,
+            "conta": null
+           }
+          ],
+          "resultado": 2.240103
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Dívida e caixa.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Em 30/06/2026, a dívida bruta era R$ 31,6 bilhões, o caixa R$ 4,0 bilhões e a dívida líquida R$ 27,6 bilhões; três meses antes, R$ 31,7, R$ 5,8 e R$ 26,0 bilhões.",
+        "notas": [
+         "endividamento.divida_bruta",
+         "endividamento.caixa",
+         "endividamento.divida_liquida"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A dívida líquida é 1,21 vez o patrimônio, contra 0,98 de mediana (metade do setor fica entre 0,45 e 2,15).",
+        "notas": [
+         "endividamento.divida_sobre_pl"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O lucro da operação cobre 2,15 vezes as despesas financeiras, contra 1,54 de mediana.",
+        "notas": [
+         "endividamento.cobertura_de_juros"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "A dívida bruta tinha subido de R$ 29,1 bilhões em dezembro de 2025 para R$ 31,7 bilhões em março, no mesmo trimestre em que duas controladas registraram R$ 2,5 bilhões em debêntures (títulos de dívida vendidos a investidores) em 11/03/2026.",
+        "notas": [
+         "historico.contas.1",
+         "endividamento.divida_bruta",
+         "ofertas_e_fundos.ofertas.1",
+         "ofertas_e_fundos.ofertas.2"
+        ],
+        "contas": [
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "historico.contas.1",
+            "valor": 4895705000.0,
+            "conta": null
+           },
+           {
+            "id": "historico.contas.1",
+            "valor": 24160022000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 29055727000.0
+         },
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.ofertas.1",
+            "valor": 2200000000.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.2",
+            "valor": 312000000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 2512000000.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "O aumento da dívida líquida no 2º trimestre não veio de dívida nova (a bruta ficou parada): veio do caixa, que caiu R$ 1,8 bilhão.",
+        "notas": [
+         "endividamento.caixa"
+        ],
+        "contas": [
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "endividamento.caixa",
+            "valor": 5751930000.0,
+            "conta": null
+           },
+           {
+            "id": "endividamento.caixa",
+            "valor": 3988266000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 1763664000.0
+         }
+        ]
+       },
+       {
+        "texto": "As duas razões juntas indicam também que o patrimônio encolheu, de cerca de R$ 24,3 para cerca de R$ 22,7 bilhões (conta nossa: dívida líquida dividida pela razão), o que combina com dividendos pagos ou declarados no trimestre.",
+        "notas": [
+         "endividamento.divida_liquida",
+         "endividamento.divida_sobre_pl",
+         "o_que_mudou.indicadores.4"
+        ],
+        "contas": [
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "endividamento.divida_liquida",
+            "valor": 25962216000.0,
+            "conta": null
+           },
+           {
+            "id": "o_que_mudou.indicadores.4",
+            "valor": 1.07,
+            "conta": null
+           }
+          ],
+          "resultado": 24263753000.0
+         },
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "endividamento.divida_liquida",
+            "valor": 27563883000.0,
+            "conta": null
+           },
+           {
+            "id": "endividamento.divida_sobre_pl",
+            "valor": 1.2133495160909695,
+            "conta": null
+           }
+          ],
+          "resultado": 22717356000.0
+         }
+        ]
+       },
+       {
+        "texto": "A ficha não traz o fluxo de caixa nem a mutação do patrimônio do trimestre, então a explicação fica como pergunta.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**O que a ficha não enxerga no caixa.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Na ponte da dívida de 2025, a dívida líquida foi de R$ 25,2 para R$ 26,2 bilhões: a operação gerou R$ 7,2 bilhões de caixa, o capex (investimento em imobilizado) consumiu R$ 0,4 bilhão, os dividendos R$ 3,5 bilhões, e uma linha \"outros\" levou R$ 4,2 bilhões.",
+        "notas": [
+         "endividamento.ponte.0",
+         "endividamento.ponte.1",
+         "endividamento.ponte.2",
+         "endividamento.ponte.3",
+         "endividamento.ponte.4",
+         "endividamento.ponte.5",
+         "historico.contas.1"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O capex de 12 meses, R$ 414 milhões, é só 0,17 vez a depreciação, e o caixa livre que sai dessa conta é R$ 6,0 bilhões.",
+        "notas": [
+         "caixa.capex",
+         "caixa.capex_sobre_depreciacao",
+         "caixa.caixa_livre"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Para uma distribuidora, investir 0,17 vez o que deprecia não fecha: a rede envelhece mais rápido do que é reposta.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O mais provável é que o investimento na rede esteja registrado como ativo da concessão, fora do capex, e apareça na linha \"outros\".",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Se for isso, o caixa livre de R$ 6,0 bilhões está inflado e o capex/depreciação não deve ser lido.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A base não separa o investimento na concessão; até separar, os dois números entram neste relatório só com este aviso.",
+        "notas": [
+         "lacuna.concessao"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Capital de giro e qualidade do lucro.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A empresa recebe dos clientes em 51 dias, guarda estoque por 3 e paga fornecedores em 43 (eram 47): o ciclo de caixa é de 11 dias, contra 14 de mediana.",
+        "notas": [
+         "caixa.pmr",
+         "caixa.pme",
+         "caixa.pmp",
+         "caixa.ciclo_de_caixa"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O caixa da operação é 1,02 vez o lucro, dentro da faixa que a régua do TickerLab chama de saudável (0,80 a 1,50).",
+        "notas": [
+         "caixa.conversao_de_caixa"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "O Piotroski F dá 6 de 9 pontos (faltaram retorno sobre o ativo, liquidez corrente e giro, que não subiram de 2024 para 2025); o Z'' de Altman dá 1,89, entre 1,10 (aflição) e 2,60 (segura), puxado pelo capital de giro negativo (-1,6% do ativo) e pelo patrimônio pequeno contra o passivo (0,41); o M de Beneish dá -2,50, abaixo do limite de -1,78 a partir do qual o artigo pede uma segunda olhada.",
+        "notas": [
+         "notas_classicas.piotroski",
+         "notas_classicas.piotroski.2",
+         "notas_classicas.piotroski.5",
+         "notas_classicas.piotroski.8",
+         "notas_classicas.altman",
+         "notas_classicas.altman.0",
+         "notas_classicas.altman.3",
+         "notas_classicas.beneish"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Nenhum número da ficha está em conferência na base.",
+        "notas": [
+         "qualidade.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "O lucro vira caixa e não mostra os sinais que o Beneish procura.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O Altman cinzento repete, com outra régua, o que a DuPont já mostrou (patrimônio pequeno contra a dívida): é o mesmo traço, não um sinal novo.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "dinheiro",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Dividendos.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "O grupo pagou R$ 3,48 bilhões em dividendos em 2024 e R$ 3,52 bilhões em 2025, cerca de 64% do lucro dos acionistas nos dois anos.",
+        "notas": [
+         "dividendos.historico.0",
+         "dividendos.historico.1"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Dívida no mercado.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A base acha 94 ofertas do grupo registradas na CVM.",
+        "notas": [
+         "ofertas_e_fundos.ofertas"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "De 2023 a 09/09/2026, foram 32 ofertas e R$ 21,0 bilhões pelo valor registrado (conta nossa: 4, 11, 14 e 3 por ano), contra nenhuma registrada entre 2018 e 2022.",
+        "notas": [
+         "ofertas_e_fundos.ofertas",
+         "ofertas_e_fundos.ofertas_por_ano.0",
+         "ofertas_e_fundos.ofertas_por_ano.1",
+         "ofertas_e_fundos.ofertas_por_ano.2",
+         "ofertas_e_fundos.ofertas_por_ano.3",
+         "ofertas_e_fundos.ofertas_por_ano.4"
+        ],
+        "contas": [
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.3",
+            "valor": 4.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.2",
+            "valor": 11.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.1",
+            "valor": 14.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.0",
+            "valor": 3.0,
+            "conta": null
+           }
+          ],
+          "resultado": 32.0
+         },
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.3",
+            "valor": 1500000000.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.2",
+            "valor": 5500000000.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.1",
+            "valor": 9800000000.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas_por_ano.0",
+            "valor": 4200000000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 21000000000.0
+         }
+        ]
+       },
+       {
+        "texto": "As 20 mais recentes são todas debêntures, emitidas pelas controladas, a maior de R$ 3,2 bilhões pela CPFL Paulista em 28/02/2025.",
+        "notas": [
+         "ofertas_e_fundos.ofertas.16"
+        ],
+        "contas": [
+         {
+          "operacao": "contagem",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.ofertas.0",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.1",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.2",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.3",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.4",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.5",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.6",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.7",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.8",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.9",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.10",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.11",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.12",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.13",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.14",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.15",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.16",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.17",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.18",
+            "valor": null,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.ofertas.19",
+            "valor": null,
+            "conta": null
+           }
+          ],
+          "resultado": 20.0
+         }
+        ]
+       },
+       {
+        "texto": "Só as de 2025 somam R$ 9,8 bilhões, um terço da dívida bruta do fim daquele ano, de R$ 29,1 bilhões (conta nossa).",
+        "notas": [
+         "ofertas_e_fundos.ofertas_por_ano.1",
+         "historico.contas.1"
+        ],
+        "contas": [
+         {
+          "operacao": "soma",
+          "de": [
+           {
+            "id": "historico.contas.1",
+            "valor": 4895705000.0,
+            "conta": null
+           },
+           {
+            "id": "historico.contas.1",
+            "valor": 24160022000.0,
+            "conta": null
+           }
+          ],
+          "resultado": 29055727000.0
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "O grupo financia a operação e os dividendos rolando dívida nas controladas, o que é usual em distribuição.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Duas cautelas: o valor é o registrado, não o colocado, e a ausência de ofertas entre 2018 e 2022 pode vir da regra de registro da época, não de um intervalo sem emissões.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A base não marca essa mudança de regra; o texto não deve comparar os dois períodos sem a nota.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Quem tem a ação.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Em 31/03/2026, 370 fundos tinham papéis da CPFL, somando R$ 495,2 milhões; um ano antes eram 455 fundos e R$ 611,6 milhões, e o pico da série foi 477 fundos em janeiro de 2025.",
+        "notas": [
+         "ofertas_e_fundos.fundos_com_a_acao",
+         "ofertas_e_fundos.valor_nos_fundos",
+         "ofertas_e_fundos.fundos_por_mes.9"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "Menos fundos e menos dinheiro na ação, nos dois casos perto de 19% a menos em um ano (conta nossa).",
+        "notas": [],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.fundos_com_a_acao",
+            "valor": 455.0,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.fundos_com_a_acao",
+            "valor": 370.0,
+            "conta": null
+           }
+          ],
+          "resultado": -0.186813
+         },
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "ofertas_e_fundos.valor_nos_fundos",
+            "valor": 611626555.1,
+            "conta": null
+           },
+           {
+            "id": "ofertas_e_fundos.valor_nos_fundos",
+            "valor": 495194775.44,
+            "conta": null
+           }
+          ],
+          "resultado": -0.190364
+         }
+        ]
+       },
+       {
+        "texto": "A base não diz por que, nem quanto disso é preço e quanto é venda: sem o preço com data na ficha, não dá para separar.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "o_que_mudaria",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Não é previsão: são os pontos em que a mesma régua de hoje mudaria a nota de cada número contra o setor.",
+        "notas": [
+         "o_que_mudaria.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Dívida líquida sobre patrimônio** (hoje 1,21): acima de 1,25 vira ruim; com o patrimônio parado, bastaria cerca de R$ 0,8 bilhão a mais de dívida líquida (conta nossa).",
+        "notas": [
+         "o_que_mudaria.gatilhos.5"
+        ],
+        "contas": [
+         {
+          "operacao": "razao",
+          "de": [
+           {
+            "id": "endividamento.divida_liquida",
+            "valor": 27563883000.0,
+            "conta": null
+           },
+           {
+            "id": "endividamento.divida_sobre_pl",
+            "valor": 1.2133495160909695,
+            "conta": null
+           }
+          ],
+          "resultado": 22717356000.0
+         },
+         {
+          "operacao": "diferenca",
+          "de": [
+           {
+            "id": "o_que_mudaria.gatilhos.5",
+            "valor": 1.25,
+            "conta": null
+           },
+           {
+            "id": "endividamento.divida_sobre_pl",
+            "valor": 1.2133495160909695,
+            "conta": null
+           }
+          ],
+          "resultado": 0.0366505
+         },
+         {
+          "operacao": "produto",
+          "de": [
+           {
+            "id": null,
+            "valor": null,
+            "conta": 0
+           },
+           {
+            "id": null,
+            "valor": null,
+            "conta": 1
+           }
+          ],
+          "resultado": 832598000.0
+         }
+        ]
+       },
+       {
+        "texto": "Até 0,81, boa.",
+        "notas": [
+         "o_que_mudaria.gatilhos.5"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Cobertura de juros** (hoje 2,15): abaixo de 1,79 (queda de cerca de 17%) deixa de ser boa; a partir de 2,49, ótima.",
+        "notas": [
+         "o_que_mudaria.gatilhos.8"
+        ],
+        "contas": [
+         {
+          "operacao": "variacao",
+          "de": [
+           {
+            "id": "endividamento.cobertura_de_juros",
+            "valor": 2.1475387942106106,
+            "conta": null
+           },
+           {
+            "id": "o_que_mudaria.gatilhos.8",
+            "valor": 1.79,
+            "conta": null
+           }
+          ],
+          "resultado": -0.166488
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Z'' de Altman** (hoje 1,89): acima de 2,60, faixa segura; abaixo de 1,10, aflição.",
+        "notas": [
+         "o_que_mudaria.gatilhos.10"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Caixa da operação sobre o lucro** (hoje 1,02): abaixo de 0,80, atenção; acima de 1,50, conferir o lucro.",
+        "notas": [
+         "o_que_mudaria.gatilhos.9"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Margem líquida** (hoje 13,8%): abaixo de 6,8%, ruim; a partir de 15,8%, boa.",
+        "notas": [
+         "o_que_mudaria.gatilhos.2"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "**ROE:** o limite do \"ótimo\" está colado nos 26,4% de hoje; qualquer queda o leva para \"bom\".",
+        "notas": [
+         "o_que_mudaria.gatilhos.3"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "leitura",
+      "frases": [
+       {
+        "texto": "O gatilho mais perto é o da dívida: é o que merece ser olhado primeiro no próximo ITR, junto com a explicação da linha \"outros\" da ponte da dívida.",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "Fora da régua, três fatos mudariam esta análise mais que qualquer nota: saber quem controla o grupo, saber quanto do lucro vem de cada negócio e saber quanto se investe de fato na rede.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   },
+   {
+    "chave": "limites",
+    "paragrafos": [
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Números entregues pela empresa à CVM podem ser reapresentados; padrões do setor de 31/08/2026; base de 17/10/2026.",
+        "notas": [
+         "limites.paragrafos.1",
+         "ficha_tecnica.datas_das_fontes.1",
+         "limites.paragrafos.5"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Preço e valuation ficaram de fora.**",
+        "notas": [],
+        "contas": []
+       },
+       {
+        "texto": "A ficha usada traz um preço fixo de teste, e o preço do app vem de uma fonte de uso interno: múltiplos como preço sobre lucro não entram neste texto até a ficha receber um preço com data e licença de exibição.",
+        "notas": [],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Pares nominais:** a ficha não trouxe pares do mesmo setor para comparar; toda comparação aqui é com a mediana do grupo Energia elétrica, que mistura distribuidoras, geradoras e transmissoras.",
+        "notas": [
+         "pares.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos anteriores: a série de consumidores pode contar, num ano antigo, uma distribuidora comprada depois.",
+        "notas": [
+         "limites.paragrafos.7"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "A base não tem protestos, processos judiciais nem atrasos de pagamento a fornecedores e bancos; não aparecer aqui não quer dizer que não existam.",
+        "notas": [
+         "limites.paragrafos.4"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "**Perguntas em aberto:** quem é o controlador; por que a CPFL Transmissão está com 30% no FRE de 2026; o que é a linha \"outros\" de R$ 4,2 bilhões na ponte da dívida; por que o patrimônio encolheu no 2º trimestre de 2026; quanto do lucro vem da distribuição; por que os consumidores pararam de crescer em 2021.",
+        "notas": [
+         "ficha_tecnica.controlador",
+         "limites.paragrafos.9",
+         "auditor_e_controladas.controladas.18",
+         "endividamento.ponte.4",
+         "lacuna.segmentos",
+         "setor_regulado.aneel_consumidores.4"
+        ],
+        "contas": []
+       }
+      ]
+     },
+     {
+      "tipo": "fato",
+      "frases": [
+       {
+        "texto": "Nenhum nome de pessoa aparece.",
+        "notas": [
+         "limites.paragrafos.8"
+        ],
+        "contas": []
+       },
+       {
+        "texto": "Nada aqui é recomendação de compra ou venda, preço-alvo ou previsão.",
+        "notas": [
+         "limites.paragrafos.0"
+        ],
+        "contas": []
+       }
+      ]
+     }
+    ],
+    "origem": "modelo"
+   }
+  ]
+ }
+}

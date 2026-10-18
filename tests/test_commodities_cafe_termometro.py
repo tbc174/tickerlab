@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from src.commodities.cafe.pontos import PontoAnual
+from src.commodities.cafe.pontos import PontoDaSafra
 from src.commodities.cafe.termometro import erro_do_primeiro_levantamento, vies_medio
 from tests.ajudantes_do_cafe import tabela
 
@@ -92,5 +92,5 @@ def test_vies_com_menos_de_tres_safras_nao_devolve_numero():
 
 def test_pontos_viram_json():
     pontos = erro_do_primeiro_levantamento(tabela(PRODUCOES), "arabica")
-    assert all(isinstance(p, PontoAnual) for p in pontos)
+    assert all(isinstance(p, PontoDaSafra) for p in pontos)
     assert json.loads(json.dumps([asdict(p) for p in pontos]))[0]["tipo"] == "arabica"

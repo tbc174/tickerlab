@@ -9,7 +9,7 @@ from datetime import date
 
 import pandas as pd
 
-from src.commodities.cafe.pontos import PontoAnual, levantamentos_ate
+from src.commodities.cafe.pontos import PontoDaSafra, levantamentos_ate
 
 PRIMEIRO, FINAL = 1, 4
 SAFRAS_DO_VIES = 10  # "viés médio dos últimos 10 anos"
@@ -33,13 +33,13 @@ def _primeiro_e_final(
 
 def erro_do_primeiro_levantamento(
     tabela: pd.DataFrame, tipo: str, uf: str = "BRASIL", ate: date | None = None
-) -> list[PontoAnual]:
+) -> list[PontoDaSafra]:
     """Por safra concluída (com o 4º levantamento até `ate`): o erro do 1º, em % e em mil sacas."""
-    pontos: list[PontoAnual] = []
+    pontos: list[PontoDaSafra] = []
     for safra, linha in _primeiro_e_final(tabela, tipo, uf, ate).iterrows():
         erro = float(linha["primeiro"] - linha["final"])
         pontos.append(
-            PontoAnual(
+            PontoDaSafra(
                 int(safra),
                 tipo,
                 uf,
@@ -50,7 +50,7 @@ def erro_do_primeiro_levantamento(
             )
         )
         pontos.append(
-            PontoAnual(
+            PontoDaSafra(
                 int(safra),
                 tipo,
                 uf,
@@ -65,7 +65,7 @@ def erro_do_primeiro_levantamento(
 
 def vies_medio(
     tabela: pd.DataFrame, tipo: str, uf: str = "BRASIL", ate: date | None = None
-) -> list[PontoAnual]:
+) -> list[PontoDaSafra]:
     """Um ponto: a média do erro (%) do 1º levantamento nas últimas 10 safras concluídas.
 
     Vazio se há menos de três safras concluídas. Positivo = a CONAB costuma começar alta demais.
@@ -79,5 +79,5 @@ def vies_medio(
         return []
     media = sum(p.valor for p in erros) / len(erros)
     return [
-        PontoAnual(erros[-1].safra, tipo, uf, "vies_medio_10_safras_pct", media, PCT)
+        PontoDaSafra(erros[-1].safra, tipo, uf, "vies_medio_10_safras_pct", media, PCT)
     ]

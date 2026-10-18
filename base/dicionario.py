@@ -4462,6 +4462,116 @@ TABELAS: dict[str, Tabela] = {
             "divulgado_em": ("Dia em que a CONAB divulgou o levantamento", DATA),
         },
     ),
+    "usda_psd_cafe": Tabela(
+        descricao=(
+            "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, "
+            "importação), em mil sacas de 60 kg, do USDA PSD. Só a produção se separa por tipo "
+            "(arabica, conilon = a Robusta do USDA); os demais atributos são do `total`. Cada baixada "
+            "semanal guarda as revisões do USDA com a data em que apareceram, para o 'como era na data'"
+        ),
+        fonte="USDA FAS, PSD Online: Coffee (psd_coffee_csv.zip)",
+        familia_da_fonte="usda",
+        frequencia="Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)",
+        atraso="`divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia "
+        "da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das "
+        "baixadas guardadas pelo arquivista",
+        onde="Parquet em `<acervo>/base/commodities/usda_psd/<dia da baixada>.parquet`",
+        linhagem=(
+            "Cada parquet nasce de um `psd_coffee_csv.zip` guardado pelo arquivista (SHA-256 no "
+            "registro de coletas); a unidade da fonte é conferida (mil sacas de 60 kg) e uma "
+            "unidade diferente interrompe a leitura."
+        ),
+        colunas={
+            "codigo_do_pais": ("Código do país no USDA (ex.: BR)", TEXTO),
+            "pais": ("Nome do país, como o USDA escreve", TEXTO),
+            "ano_safra": ("Ano de início da safra comercial (2024 = 2024/25)", NUMERO),
+            "atributo": ("Produção, consumo, estoque final, exportação...", TEXTO),
+            "tipo": ("arabica, conilon ou total", TEXTO),
+            "valor": ("Valor em mil sacas de 60 kg", NUMERO_DECIMAL),
+            "unidade": ("Unidade da fonte, conferida na leitura", TEXTO),
+            "divulgado_em": (
+                "Quando a revisão ficou pública (fim do mês da revisão)",
+                DATA,
+            ),
+        },
+    ),
+    "clima_regiao_cafe": Tabela(
+        descricao=(
+            "Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): "
+            "chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de "
+            "1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET "
+            "(`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só "
+            "chuva, média dos municípios ponderada pela área de café da PAM). Região com menos de 3 "
+            "estações válidas no mês fica com os valores vazios, nunca zero"
+        ),
+        fonte=(
+            "INMET: dados históricos das estações automáticas (BDMEP), um zip por ano; CHIRPS v2.0 "
+            "(UCSB): GeoTIFF mensal global; IBGE: malha municipal (API de malhas)"
+        ),
+        familia_da_fonte="inmet",
+        ressalva_de_revenda=(
+            "As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); a malha "
+            "é do IBGE"
+        ),
+        frequencia="Mensal",
+        atraso=(
+            'Mensal; a regra de "como era na data" usa o fim do mês + 45 dias para o INMET e + 60 dias '
+            "para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)"
+        ),
+        onde=(
+            "Parquet por ano em `<acervo>/base/commodities/clima_regiao_cafe/<ano>.parquet` (a carga "
+            "segue o molde de `scripts/carga_setoriais.py`)"
+        ),
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da "
+            "malha usados e a versão do código; `fonte` diz de qual fonte veio a linha."
+        ),
+        colunas={
+            "regiao": (
+                "Id da região produtora (`src/commodities/cafe/regioes.py`)",
+                TEXTO,
+            ),
+            "competencia": ("Mês (último dia)", DATA),
+            "fonte": ("inmet ou chirps", TEXTO),
+            "chuva_mm": (
+                "Chuva acumulada no mês (média das estações, ou do satélite)",
+                "mm",
+            ),
+            "tmin_media_c": (
+                "Média das temperaturas mínimas diárias (vazio no chirps)",
+                "°C",
+            ),
+            "dias_tmin_abaixo_de_2c": (
+                "Dias do mês com Tmín abaixo de 2 °C (média das estações; vazio no chirps)",
+                "dias",
+            ),
+            "tmax_media_c": (
+                "Média das temperaturas máximas diárias (vazio no chirps)",
+                "°C",
+            ),
+            "n_estacoes": (
+                "Estações válidas no mês (80% dos dias com 20 horas de leitura); vazio no chirps",
+                NUMERO,
+            ),
+            "chuva_normal_mm": (
+                "Normal 1991–2020 da chuva do mês do ano (10 anos no mínimo)",
+                "mm",
+            ),
+            "chuva_anomalia_mm": ("chuva_mm menos a normal", "mm"),
+            "tmin_normal_c": ("Normal 1991–2020 da Tmín média", "°C"),
+            "tmin_anomalia_c": ("tmin_media_c menos a normal", "°C"),
+            "tmax_normal_c": ("Normal 1991–2020 da Tmáx média", "°C"),
+            "tmax_anomalia_c": ("tmax_media_c menos a normal", "°C"),
+            "anos_na_normal": (
+                "Anos que entraram na normal (vazio quando menos de 10)",
+                NUMERO,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + a folga da fonte)",
+                DATA,
+            ),
+        },
+    ),
 }
 
 
@@ -4469,6 +4579,9 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_COMMODITIES = (
+    "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
+)
 
 
 # módulo, chaves, apelidos das três datas (`aconteceu_em`: quando o fato ocorreu; `publico_em`: quando
@@ -4551,6 +4664,8 @@ _CONTRATO = {
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05"),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
+    "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),
+    "clima_regiao_cafe": _contrato(modulo="macro", chaves=("regiao", "competencia", "fonte"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="1981-01-31", granularidade_do_publico_em="mes"),
 }  # fmt: skip
 
 

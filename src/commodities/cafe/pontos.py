@@ -1,6 +1,6 @@
 """O ponto de uma série anual do café: uma dataclass simples, que vira JSON sem adaptação.
 
-Os derivados da CONAB (`termometro`, `bienalidade`) devolvem `list[PontoAnual]`. Por causa da licença
+Os derivados da CONAB (`termometro`, `bienalidade`) devolvem `list[PontoDaSafra]`. Por causa da licença
 CC BY-ND 3.0 da CONAB, nenhum desses números sai por tela, API ou exportação até a resposta dela.
 """
 
@@ -11,7 +11,7 @@ import pandas as pd
 
 
 @dataclass(frozen=True)
-class PontoAnual:
+class PontoDaSafra:
     safra: int  # ano em que a safra começa
     tipo: str  # arabica, conilon ou total
     uf: str
