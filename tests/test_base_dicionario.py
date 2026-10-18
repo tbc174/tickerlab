@@ -11,6 +11,7 @@ from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.commodities import cftc_cot, comex_cafe, usda_psd
+from base.contrapartes import cafe as contrapartes_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
@@ -119,6 +120,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "emissores": list(emissores.columns),
         "codigos_fora_do_fca": list(fca.codigos_conferidos().columns),
         "emissores_antigos": list(ligacoes.tabela_conferida().columns),
+        "contraparte_cafe": list(contrapartes_cafe.COLUNAS),
         "emissores_sem_ligacao": list(ligacoes.emissores_sem_ligacao().columns),
         "codigos_invalidos": list(fca.codigos_invalidos(_valores_da_carga()).columns),
         **{

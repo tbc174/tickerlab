@@ -33,6 +33,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"\bMDIC\b", "MDIC"),
     (r"do INMET\b", "INMET"),
     (r"\bMapBiomas\b", "MapBiomas"),
+    (r"guardadas só como prova", "Imprensa e páginas públicas"),
 )
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {

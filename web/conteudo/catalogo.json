@@ -126,6 +126,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2004-07-01",
+      "licenca": "Notícias e páginas públicas guardadas só como prova; na ficha, fato e link",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "Imprensa e páginas públicas",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
       "modulos": [
@@ -239,7 +250,7 @@
     {
       "chave": "macro",
       "nome": "Macro",
-      "tabelas": 6
+      "tabelas": 7
     },
     {
       "chave": "ma",
@@ -1017,12 +1028,22 @@
       "orgao": "MapBiomas",
       "situacao": "licenciada",
       "tabela": "area_cafe_municipio"
+    },
+    {
+      "atraso": null,
+      "frase": "Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café (faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), cada um com fonte.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2004-07-01",
+      "modulo": "macro",
+      "orgao": "Imprensa e páginas públicas",
+      "situacao": "em consulta",
+      "tabela": "contraparte_cafe"
     }
   ],
   "totais": {
-    "fontes": 20,
-    "fontes_em_consulta": 6,
+    "fontes": 21,
+    "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 76
+    "tabelas": 77
   }
 }
