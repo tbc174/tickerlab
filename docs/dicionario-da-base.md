@@ -2699,3 +2699,37 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 | `tmax_anomalia_c` | tmax_media_c menos a normal | °C |
 | `anos_na_normal` | Anos que entraram na normal (vazio quando menos de 10) | número inteiro |
 | `disponivel_em` | Desde quando o número era público (fim do mês + a folga da fonte) | data (dia) |
+
+## `area_cafe_municipio`
+
+Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado. A PAM traz a área colhida (hectares) e a quantidade produzida (toneladas) por tipo: arábica, conilon e o total quando os dois têm número. O MapBiomas traz os hectares de lavoura de café vistos por satélite (classe 46, soma dos biomas do município). Medem coisas diferentes (colhida contra plantada visível) e nunca se somam; coluna sem número fica vazia, nunca zero
+
+- **Fonte:** IBGE: PAM, tabela 1613 do SIDRA (variáveis 216 e 214, café arábica e canephora, por município); MapBiomas: Coleção 11, planilha de cobertura por bioma, estado e município
+- **Licença:** MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** As colunas da PAM são do IBGE (domínio público; citar o IBGE); a coluna do MapBiomas é CC BY 4.0 (citar o projeto MapBiomas, Souza et al. 2020)
+- **Frequência:** Anual
+- **Atraso de divulgação:** Anual; a regra de "como era na data" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `codigo`, `ano`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 1985-12-31 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet único em `<acervo>/base/commodities/area_cafe_municipio/municipios.parquet` (a carga segue o molde de `scripts/carga_setoriais.py`)
+- **Linhagem:** O `municipios.json` guarda o endereço e o SHA-256 da resposta do SIDRA e do zip do MapBiomas (com a coleção), e a versão do código
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo` | Código do município no IBGE (7 dígitos) | texto |
+| `nome` | Nome do município (PAM); vazio quando só o MapBiomas tem o município | texto |
+| `uf` | Sigla da UF | texto |
+| `ano` | Ano da safra (PAM) ou do mapa (MapBiomas) | ano |
+| `referencia` | Último dia do ano | data (dia) |
+| `area_arabica_ha` | Área colhida de café arábica (PAM) | hectares |
+| `area_conilon_ha` | Área colhida de café canephora/conilon (PAM) | hectares |
+| `area_total_ha` | Arábica + conilon, só quando os dois têm número | hectares |
+| `producao_arabica_t` | Quantidade produzida de arábica (PAM) | toneladas |
+| `producao_conilon_t` | Quantidade produzida de canephora/conilon (PAM) | toneladas |
+| `producao_total_t` | Arábica + conilon, só quando os dois têm número | toneladas |
+| `area_mapbiomas_ha` | Cobertura da classe Café do MapBiomas no município (soma dos biomas) | hectares |
+| `disponivel_em` | Desde quando o número era público (31/10 do ano seguinte, pela PAM) | data (dia) |

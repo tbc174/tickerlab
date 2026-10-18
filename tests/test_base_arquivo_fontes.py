@@ -442,3 +442,14 @@ def test_clima_do_cafe_inmet_por_ano_chirps_por_mes_e_malha_por_uf():
     ]
     assert all("qualidade=minima" in a.url and a.extensao == ".json" for a in malhas)
     assert fontes.TERMOS["termos-inmet"].startswith("https://portal.inmet.gov.br/")
+
+
+def test_mapbiomas_cafe_e_um_zip_pesado_no_google_drive_atras_da_confirmacao():
+    """Plano do café, PR 8 (8.4): a cobertura de café por município do MapBiomas (Coleção 11) é
+    uma planilha zipada no Google Drive; o `obter` do alvo segue a página de confirmação de arquivo
+    grande em vez de guardar o HTML dela."""
+    fonte = fontes.POR_ID["mapbiomas-cafe"]
+    assert (fonte.grupo, fonte.tipo, fonte.pesada) == ("mensal", "zip", True)
+    (alvo,) = fonte.descobrir(None, datetime(2026, 10, 18, tzinfo=UTC))  # type: ignore[arg-type]
+    assert alvo.url.startswith("https://drive.google.com/uc?id=")
+    assert alvo.extensao == ".zip" and alvo.obter is not None

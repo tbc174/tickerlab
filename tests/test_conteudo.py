@@ -240,3 +240,31 @@ def test_pagina_sobre_tem_todas_as_secoes_e_o_aviso():
     assert list(sobre) == SECOES_DA_PAGINA_SOBRE
     assert "recomendação de investimento" in sobre["Aviso importante"]
     assert all(texto.strip() for texto in sobre.values())
+
+
+TEXTOS_DO_CAFE = (
+    "O que é a florada",
+    "O que é a bienalidade",
+    "Por que a geada é do ano seguinte",
+    "O que é o déficit hídrico na granação",
+)
+
+
+def test_textos_do_cafe_explicam_florada_bienalidade_e_geada_sem_prometer_previsao():
+    """Plano do café, PR 8 (8.3): cada índice de clima tem o seu "o que é isto", e os índices se
+    apresentam como explicativos, não previsão."""
+    from src.conteudo import carregar_textos_do_cafe
+
+    textos = carregar_textos_do_cafe()
+    assert tuple(textos) == TEXTOS_DO_CAFE
+    for titulo in TEXTOS_DO_CAFE:
+        assert len(textos[titulo]) > 200, titulo
+    for titulo in TEXTOS_DO_CAFE[:1] + TEXTOS_DO_CAFE[2:]:
+        assert "explicativo, não previsão" in textos[titulo], titulo
+    assert "safra **seguinte**" in textos["Por que a geada é do ano seguinte"]
+    assert "1 °C" in textos["Por que a geada é do ano seguinte"]
+    assert (
+        "10 mm" in textos["O que é a florada"]
+        and "34 °C" in textos["O que é a florada"]
+    )
+    assert "dois anos antes" in textos["O que é a bienalidade"]
