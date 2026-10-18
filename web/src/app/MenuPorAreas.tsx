@@ -4,7 +4,7 @@
 // de cada área abrem ao lado, ao passar o mouse ou com o Tab.
 // Favoritos e áreas recolhidas ficam no localStorage do navegador (preferência de tela, sem dado pessoal);
 // se o navegador recusar (navegação privada), valem só nesta visita.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
 import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
 import { Icone } from "./Icone";
@@ -34,10 +34,14 @@ function gravarLista(chave: string, lista: string[]) {
 /** A lista de chaves com estado no React e cópia no navegador. */
 function useListaGuardada(chave: string) {
   const [lista, setLista] = useState(() => lerLista(chave));
-  const mudar = (nova: string[]) => {
-    setLista(nova);
-    gravarLista(chave, nova);
-  };
+  // estável entre renderizações: o efeito que abre a área da tela aberta depende dela
+  const mudar = useCallback(
+    (nova: string[]) => {
+      setLista(nova);
+      gravarLista(chave, nova);
+    },
+    [chave],
+  );
   return [lista, mudar] as const;
 }
 
