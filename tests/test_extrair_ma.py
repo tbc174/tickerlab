@@ -127,3 +127,40 @@ def test_enviar_sem_a_chave_propria_para_antes_de_chamar(amostra, monkeypatch):
     with pytest.raises(SystemExit):
         extrair_ma.main(["enviar", "--ouro", str(amostra.ouro), "--textos", str(amostra.textos),
                          "--saida", str(amostra.saida), "--teto-dolares", "1"])  # fmt: skip
+
+
+def test_operacoes_da_amostra_sem_duplicadas(tmp_path):
+    # a alvo e a compradora publicam a mesma aquisição no mesmo dia: uma operação só
+    textos, saida = tmp_path / "textos", tmp_path / "saida"
+    textos.mkdir()
+    saida.mkdir()
+    for protocolo in ("P-1", "P-4"):
+        (textos / f"{protocolo}.txt").write_text(TEXTO, encoding="utf-8")
+    ouro = pd.DataFrame(
+        {"Protocolo_Entrega": ["P-1", "P-4"], "Data_Entrega": ["2024-05-02"] * 2,
+         "confere_tiago": ["ok"] * 2, "tipo_conferido": ["AQ_CONTROLE"] * 2,
+         "alvo": ["Beta Ltda.", "Beta"], "comprador": ["Alfa S.A.", None],
+         "vendedor": [None] * 2, "valor": [None] * 2}
+    )  # fmt: skip
+    arquivo = tmp_path / "ouro.csv"
+    ouro.to_csv(arquivo, sep=";", index=False, encoding="utf-8-sig")
+    registros = [
+        {"protocolo": p, "resposta_bruta": json.dumps(RESPOSTA)} for p in ("P-1", "P-4")
+    ]
+    (saida / f"leituras-{mx.CONFERENTE}.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in registros), encoding="utf-8"
+    )
+    tabela, ligacoes, comparacao = extrair_ma.operacoes_da_amostra(
+        arquivo, textos, saida, mx.CONFERENTE
+    )
+    assert tabela[["operacao", "documentos"]].to_dict("records") == [
+        {"operacao": "P-1", "documentos": 2}
+    ]
+    assert ligacoes["operacao"].tolist() == ["P-1", "P-1"]
+    assert comparacao == {
+        "no_gabarito": [["P-1", "P-4"]],
+        "separadas": [],
+        "juntadas": [],
+    }
+    texto = extrair_ma.relatorio_das_operacoes(mx.CONFERENTE, tabela, comparacao)
+    assert "2 documentos de operação viraram 1 operações" in texto
