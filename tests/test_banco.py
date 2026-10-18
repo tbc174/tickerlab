@@ -527,7 +527,11 @@ def test_erros_do_banco_nao_citam_os_valores_da_consulta(motor):
     with pytest.raises(sa.exc.IntegrityError) as erro, motor.begin() as conexao:
         conexao.execute(
             sa.insert(usuarios).values(
-                id=uuid.uuid4(), google_sub=None, email=segredo, papel="usuario"
+                # papel fora da regra (o google_sub vazio deixou de ser erro na 0039)
+                id=uuid.uuid4(),
+                google_sub="g",
+                email=segredo,
+                papel="intruso",
             )
         )
     assert segredo not in str(erro.value)
