@@ -2649,7 +2649,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 - **Três datas:** publico_em = `divulgado_em`
 - **Histórico desde:** 2026-02-05 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/conab_cafe/conab_cafe.parquet` (servidor de casa)
+- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)
 - **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |

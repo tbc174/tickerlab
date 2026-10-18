@@ -4442,7 +4442,7 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="conab",
         frequencia="Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",
         atraso="O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento",
-        onde="Parquet em `<acervo>/base/conab_cafe/conab_cafe.parquet` (servidor de casa)",
+        onde="Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)",
         linhagem=(
             "A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da "
             "coleta e SHA-256. " + COM_VERSAO_DO_CODIGO
