@@ -603,3 +603,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a parte 1 entrou na `main` por squash (um commit novo); o ramo da parte 2 tinha os commits originais da parte 1 e mais os seus. Para o Git, os dois lados mudaram os mesmos trechos.
 - **Solução:** conferir que `git diff <ponta da parte 1> origin/main -- <arquivos>` é vazio e então `git merge --no-commit origin/main` + `git checkout --ours` nesses arquivos (`--theirs` nas pastas geradas, que se refazem). Antes disso, `git checkout -- web/conteudo` nos arquivos que só diferiam na quebra de linha, senão o `juntar_main` nem começa.
 - **Data:** 19/10/2026
+
+## Tabela nova do IPE sai "fora do contrato" no servidor, com os testes verdes (`ma_candidatos`, #431)
+- **Sintoma:** a 1ª montagem de `ma_candidatos` no servidor avisou `datas: 479 linhas com aconteceu_em (referencia) depois de publico_em`; o manifesto ficou com `aprovada: false`.
+- **Causa:** a data de referência que a companhia informa ao IPE pode ser o evento anunciado (a assembleia que ainda vai aprovar a operação). Os dados de teste só tinham referência igual à entrega.
+- **Solução:** `"anuncia_o_futuro": True` na entrada da tabela em `_CONFERENCIA` (`base/dicionario.py`), como `eventos` e `debentures_assembleias`, e um teste com referência depois da entrega. Regra: tabela que vem do IPE (ou de qualquer documento que anuncia algo) precisa de um caso de teste com data futura.
+- **Data:** 18/10/2026
