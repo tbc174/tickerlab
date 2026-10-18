@@ -5,7 +5,7 @@
 // O jsdom não aplica CSS: as regras que o Chrome mostrou faltar são conferidas como texto.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AREAS, areaDoEndereco, itensDaArea } from "../../src/app/areas";
 import { abrirApp } from "./ajudantes";
@@ -76,7 +76,8 @@ describe("menu lateral por áreas", () => {
     abrirTela("/risco");
     await screen.findByRole("heading", { level: 1, name: "Risco" });
     const botao = within(secao("Ativo")).getByRole("button", { name: "Ativo" });
-    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    // o menu nasce junto com a tela (a moldura só vem depois do login): a área abre no efeito da chegada
+    await waitFor(() => expect(botao.getAttribute("aria-expanded")).toBe("true"));
     expect(within(secao("Ativo")).getByRole("link", { name: "Risco" }).getAttribute("aria-current")).toBe("page");
     expect(JSON.parse(localStorage.getItem("tickerlab.menu.recolhidas")!)).toEqual([]);
   });

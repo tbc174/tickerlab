@@ -136,7 +136,12 @@
 .lista-da-conta a { padding: var(--e2) var(--e3); border-radius: 8px; color: var(--texto); text-decoration: none; font-weight: 600; }
 .lista-da-conta a:hover, .lista-da-conta a.active { background: var(--superficie); }
 .erro-do-app { padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
-.botao-do-google { margin-top: var(--e5); min-height: 44px; }
+.botao-do-google { margin: var(--e5) 0 var(--e4); min-height: 44px; }
+/* até o Google desenhar o botão, um esqueleto do mesmo tamanho: o cartão não abre com um buraco */
+.botao-do-google:empty { border-radius: 4px; border: 1px solid var(--linha);
+  background: linear-gradient(90deg, var(--superficie) 30%, var(--linha) 50%, var(--superficie) 70%) 0 0 / 300% 100%;
+  animation: brilho-do-esqueleto 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .botao-do-google:empty { animation: none; } }
 /* formulário de cada tela (campos do contrato) */
 /* em caixa (ADR 0096): os campos do dia a dia em grade, "Opções avançadas" recolhidas, o botão à direita */
 .formulario-do-app { display: flex; flex-direction: column; gap: var(--e4); margin: var(--e5) 0; padding: var(--e4) var(--e5);
@@ -251,6 +256,38 @@
 .app-fundo { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 1.5rem;
   padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem) 4rem; border-radius: var(--raio); }
 .app-fundo-conteudo { position: relative; max-width: 40rem; }
+/* a página de entrada (sem a moldura do app): o fundo ocupa a tela; a marca de um lado, o cartão do outro */
+.app-fundo-cheio { min-height: 100vh; min-height: 100dvh; margin: 0; padding: 0; border-radius: 0; }
+.app-fundo-cheio .app-fundo-conteudo { max-width: none; }
+.entrada { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; padding-block: var(--e5) var(--e7); }
+.entrada-topo { display: flex; align-items: center; }
+.entrada-corpo { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 26rem); align-items: center;
+  gap: var(--e7); padding-block: var(--e6); }
+.entrada-assinatura { max-width: 18ch; margin: 0 0 var(--e5); font-size: clamp(2rem, 3.4vw, 2.9rem); font-weight: 800;
+  line-height: 1.12; letter-spacing: -0.03em; text-wrap: balance; }
+.entrada-pontos { display: grid; gap: var(--e3); max-width: 30rem; margin: 0; padding: 0; list-style: none;
+  color: var(--apagado); font-size: var(--t1); }
+.entrada-pontos li { display: flex; align-items: baseline; gap: var(--e3); }
+.entrada-pontos li::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--azul-texto); transform: translateY(-2px); }
+.entrada-cartao { padding: var(--e6); border: 1px solid var(--linha-forte); border-radius: var(--raio);
+  background: color-mix(in srgb, var(--superficie) 85%, transparent); backdrop-filter: blur(12px);
+  box-shadow: 0 24px 60px var(--sombra); }
+.cartao-de-entrada h1 { margin: 0 0 var(--e2); font-size: var(--t3); }
+.cartao-de-entrada > p { margin: 0; }
+.lembrete-da-entrada { font-size: var(--t-1); color: var(--apagado); }
+.cartao-de-entrada .aviso-da-entrada { margin-top: var(--e5); padding-top: var(--e4); border-top: 1px solid var(--linha);
+  font-size: var(--t-1); }
+.cartao-de-entrada .textos-legais { margin-top: var(--e3); font-size: var(--t-1); }
+.entrada-cartao .erro-do-app { margin-top: var(--e4); }
+/* no celular: o cartão primeiro (é o que a pessoa veio fazer) e a marca embaixo, menor */
+@media (max-width: 760px) {
+  .entrada { padding-block: var(--e4) var(--e7); }
+  .entrada-corpo { grid-template-columns: 1fr; align-items: start; gap: var(--e6); padding-block: var(--e5); }
+  .entrada-cartao { order: -1; padding: var(--e5); }
+  .entrada-assinatura { font-size: var(--t2); }
+  .entrada-pontos { font-size: var(--t0); }
+}
 /* esqueleto de carregamento e estado vazio (ADR 0096): o tamanho do que vem, sem a página pular */
 .esqueleto-da-tela { display: grid; gap: var(--e3); margin: var(--e4) 0; }
 .esqueleto-painel { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
