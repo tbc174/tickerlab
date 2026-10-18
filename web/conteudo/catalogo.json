@@ -157,6 +157,17 @@
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-18",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "USDA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
     }
   ],
   "modulos": [
@@ -176,6 +187,11 @@
       "tabelas": 5
     },
     {
+      "chave": "macro",
+      "nome": "Macro",
+      "tabelas": 3
+    },
+    {
       "chave": "rede",
       "nome": "Rede de entidades",
       "tabelas": 3
@@ -183,11 +199,6 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 2
-    },
-    {
-      "chave": "macro",
-      "nome": "Macro",
       "tabelas": 2
     }
   ],
@@ -891,12 +902,22 @@
       "orgao": "Assessorias de M&A",
       "situacao": "em consulta",
       "tabela": "ma_regua"
+    },
+    {
+      "atraso": null,
+      "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-18",
+      "modulo": "macro",
+      "orgao": "USDA",
+      "situacao": "licenciada",
+      "tabela": "usda_psd_cafe"
     }
   ],
   "totais": {
-    "fontes": 14,
+    "fontes": 15,
     "fontes_em_consulta": 4,
     "modulos": 6,
-    "tabelas": 70
+    "tabelas": 71
   }
 }
