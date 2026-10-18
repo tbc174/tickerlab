@@ -14,7 +14,7 @@ export const AVISO =
   "Finance e podem ter atraso ou erros. Rentabilidade passada não garante resultado futuro.";
 
 // a assinatura institucional do manual de identidade
-export const ASSINATURA = "Menos ruído. Mais inteligência para investir.";
+export const ASSINATURA = "Dados auditáveis para quem analisa empresas no Brasil.";
 
 /** Endereço de uma página do app, com os parâmetros na ordem dada (sem codificar, como antes). */
 export function linkDoApp(pagina = "", parametros: Record<string, string> = {}): string {

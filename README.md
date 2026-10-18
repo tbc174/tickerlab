@@ -220,7 +220,7 @@ Os limites ficam num lugar só (`src/planos.py`) e valem também no banco de dad
 
 Segue o manual de identidade v1: marinho `#0A1F44`, azul elétrico `#2962FF`, claro `#F6F8FB` e
 azul claro `#E8F0FF`, o símbolo T geométrico em dois traços (`static/marca/`) e a assinatura
-"Menos ruído. Mais inteligência para investir.". O site abre claro, com faixas em marinho e um
+"Dados auditáveis para quem analisa empresas no Brasil.". O site abre claro, com faixas em marinho e um
 botão para o tema escuro; o app é escuro em marinho. As fontes Manrope e JetBrains Mono são
 servidas pelo próprio site, sem Google Fonts. As cores ficam num lugar só, `src/marca.py`, de
 onde saem o tema do Streamlit, o CSS, o tema dos gráficos, os relatórios em PDF e o site público.

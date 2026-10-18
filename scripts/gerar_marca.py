@@ -7,6 +7,7 @@ que o site no ar não precisa: ele só serve os arquivos já gerados.
 """
 
 import re
+import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -35,7 +36,16 @@ SUPERAMOSTRA = (
     4  # desenha 4× maior e reduz: bordas suaves (o Pillow não suaviza polígonos)
 )
 PONTOS_POR_CURVA = 24
-ASSINATURA_INSTITUCIONAL = "Menos ruído. Mais inteligência para investir."
+ASSINATURA_INSTITUCIONAL = "Dados auditáveis para quem analisa empresas no Brasil."
+# caracteres por linha da assinatura na imagem de compartilhamento
+LARGURA_DA_LINHA = 28
+
+
+def linhas_da_assinatura() -> tuple[str, str]:
+    """A assinatura quebrada em duas linhas para a imagem de compartilhamento (sem cortar palavra)."""
+    linhas = textwrap.wrap(ASSINATURA_INSTITUCIONAL, LARGURA_DA_LINHA)
+    assert len(linhas) == 2, "a assinatura deve caber em duas linhas"
+    return linhas[0], linhas[1]
 
 
 def pontos_do_traco(caminho: str) -> list[tuple[float, float]]:
@@ -172,8 +182,8 @@ def desenhar_compartilhamento_png(
         lapis, margem + lado + 34, topo + lado / 2, _fonte(96, "ExtraBold"), AZUL
     )
     frase = _fonte(46, "Bold")
-    linha_1, linha_2 = ASSINATURA_INSTITUCIONAL.split(". ", 1)
-    lapis.text((margem, 360), linha_1 + ".", font=frase, fill=CLARO)
+    linha_1, linha_2 = linhas_da_assinatura()
+    lapis.text((margem, 360), linha_1, font=frase, fill=CLARO)
     lapis.text((margem, 418), linha_2, font=frase, fill=CLARO)
     lapis.rectangle([margem, 520, margem + 64, 524], fill=AZUL)
     lapis.text(
