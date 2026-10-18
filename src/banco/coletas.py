@@ -9,7 +9,7 @@ import hashlib
 import logging
 import uuid
 from collections.abc import Callable, Iterable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import NamedTuple
 
@@ -173,15 +173,104 @@ MARCA_DA_REVENDA = {
     A_CONFIRMAR: Marca.A_CONFIRMAR,
     NAO_COMERCIAL: Marca.NAO_COMERCIAL,
 }
-USOS = ("treinar", "rotular", "exportar")
-PODEM_ENTRAR = {Marca.VENDAVEL, Marca.USO_INTERNO}  # nos três usos
+MOSTRAR = "mostrar"  # em tela, relatório, PDF ou newsletter (ADR 0008, Emenda 3)
+USOS = ("treinar", "rotular", "exportar", MOSTRAR)
+PODEM_ENTRAR = {Marca.VENDAVEL, Marca.USO_INTERNO}  # nos quatro usos
 MODELO_CLIMA_DE_RISCO = "clima-de-risco-do-bitcoin"
 # exceção da ADR 0045: preços das corretoras de cripto sem termo de dados, só neste modelo
 EXCECOES_DE_MODELO = {"kraken": MODELO_CLIMA_DE_RISCO, "mb": MODELO_CLIMA_DE_RISCO}
 
 
+class UsoSemCobranca(NamedTuple):
+    """Um uso de fonte restrita liberado enquanto não há cobrança (ADR 0008, Emenda 3, item 4)."""
+
+    fonte: str  # a fonte ou a família em `REVENDA` ("yahoo" vale para "yahoo-bvsp")
+    onde: str  # onde aparece no app ou no relatório
+    substituto: str  # o que entra no lugar (ou desliga) no dia da 1ª cobrança real
+    citacao: str  # a frase que a tela, o relatório e o PDF escrevem como fonte
+
+
+# Emenda 3 da ADR 0008 (18/10/2026, opção a): enquanto não há cobrança, fonte "a confirmar" ou "não
+# comercial" pode aparecer em tela, relatório, PDF e newsletter, com a fonte citada, **só nos usos
+# desta lista**. Cada entrada diz o substituto no dia da 1ª cobrança (`pronto-para-lancar.md`, item
+# "trocar ou desligar os usos de USOS_SEM_COBRANCA antes da 1ª cobrança"). Não libera exportar,
+# treinar nem rotular, e a B3 fica fora (`FONTES_FORA_MESMO_SEM_COBRANCA`).
+USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
+    UsoSemCobranca(
+        "yahoo",
+        "múltiplos com preço (P/L, P/VP) na ficha da empresa, nos padrões setoriais e no "
+        "'Quanto daria?' (ADR 0070)",
+        "distribuidor licenciado da B3 ou Tiingo com redistribuição (ADR 0008, itens 6 e 7)",
+        "Preço da ação: Yahoo Finance (uso pessoal; mostrado com a fonte citada enquanto o "
+        "TickerLab não cobra, ADR 0008 Emenda 3)",
+    ),
+    UsoSemCobranca(
+        "rfb-cnpj",
+        "situação cadastral e situação especial da Receita na ficha da empresa",
+        "resposta escrita da Receita sobre a licença do conjunto (Fala.BR, série 6); sem ela, "
+        "desligar",
+        "Situação cadastral e especial: dados abertos do CNPJ, Receita Federal (licença a "
+        "confirmar; mostrado com a fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "pgfn",
+        "dívida ativa da União na ficha da empresa",
+        "resposta escrita da PGFN sobre a licença (pedido LAI da ADR 0086); sem ela, desligar",
+        "Dívida ativa: dados abertos da PGFN (licença a confirmar; mostrado com a fonte citada "
+        "enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "comexstat",
+        "comércio exterior por capítulo do NCM na B13 (empresa ↔ série) e na rede de entidades",
+        "confirmação do MDIC pelo Fala.BR (pedido de 14/10/2026); sem ela, desligar a série",
+        "Comércio exterior: Comex Stat, MDIC (licença aberta sem nome, a confirmar; mostrado com "
+        "a fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "assessoria",
+        "negócios de M&A do middle market (só fatos: partes, tipo e data; ADR 0082)",
+        "parecer jurídico sobre os posts das assessorias (ADR 0060); sem ele, desligar",
+        "Negócios de M&A: posts públicos das assessorias, só os fatos (ADR 0082; mostrado com a "
+        "fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "bcb-sgs-189",
+        "IGP-M nas séries macro e nos deflatores",
+        "autorização da FGV IBRE para uso comercial; sem ela, IPCA (IBGE, domínio público)",
+        "IGP-M: FGV IBRE, repassado pelo SGS do Banco Central (uso comercial pede autorização "
+        "da FGV; mostrado com a fonte citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "wayback",
+        "data das cópias dos posts de M&A (`ma_datas`) e das páginas guardadas",
+        "data do próprio coletor (a primeira coleta nossa) ou a data declarada no post",
+        "Datas: cópias do Internet Archive (Wayback Machine; só pesquisa; mostrado com a fonte "
+        "citada enquanto o TickerLab não cobra)",
+    ),
+    UsoSemCobranca(
+        "gdelt",
+        "contagem e tom de notícias por empresa (sem texto)",
+        "resposta escrita do GDELT sobre uso comercial; sem ela, desligar",
+        "Notícias: GDELT, só contagem e tom (licença a confirmar; mostrado com a fonte citada "
+        "enquanto o TickerLab não cobra)",
+    ),
+)
+# a B3 proíbe redistribuição sem consentimento e a empresa espera a resposta escrita dela (ADR
+# 0019): fora de qualquer tela até lá, mesmo sem cobrança (Emenda 3, item 3d)
+FONTES_FORA_MESMO_SEM_COBRANCA = frozenset({"b3"})
+# o dia da 1ª cobrança real (ADR 0025). Preenchido, a Emenda 3 expira: `mostrar` volta a barrar
+# "a confirmar" e "não comercial", e os usos da lista já têm de estar trocados ou desligados.
+PRIMEIRA_COBRANCA: date | None = None
+# Emenda 2 da ADR 0008, item 6: em toda tela ou PDF com dado da IEX
+FRASE_DA_IEX = (
+    "Data provided for free by IEX. By accessing or using IEX Historical Data, "
+    "you agree to the IEX Historical Data Terms of Use."
+)
+FRASES_DAS_FONTES = {"iex": FRASE_DA_IEX}
+
+
 class LicencaNaoPermiteError(Exception):
-    """Treinar, rotular ou exportar com fonte "não comercial" ou "a confirmar" (ADR 0008, Emenda 1)."""
+    """Treinar, rotular, exportar ou mostrar com fonte sem licença para isso (ADR 0008, Emendas 1 e 3)."""
 
 
 LIMITE_DO_DETALHE = 300
@@ -213,20 +302,63 @@ def marca_mais_restrita(marcas: Iterable[Marca]) -> Marca:
     return max(marcas, key=ordem.index, default=Marca.A_CONFIRMAR)
 
 
+def _familia(fonte: str) -> str:
+    return fonte.split("-", 1)[0]
+
+
+def uso_sem_cobranca(fonte: str) -> UsoSemCobranca | None:
+    """A entrada de `USOS_SEM_COBRANCA` da fonte ("yahoo-bvsp" → a do Yahoo), se houver."""
+    por_fonte = {uso.fonte: uso for uso in USOS_SEM_COBRANCA}
+    return por_fonte.get(fonte) or por_fonte.get(_familia(fonte))
+
+
+def sem_cobranca(hoje: date | None = None) -> bool:
+    """A fase sem cobrança da Emenda 3: até o dia da 1ª cobrança real (`PRIMEIRA_COBRANCA`)."""
+    hoje = hoje or datetime.now(tz=UTC).date()
+    return PRIMEIRA_COBRANCA is None or hoje < PRIMEIRA_COBRANCA
+
+
+def _pode_mostrar_sem_cobranca(fonte: str) -> bool:
+    if _familia(fonte) in FONTES_FORA_MESMO_SEM_COBRANCA:
+        return False
+    return sem_cobranca() and uso_sem_cobranca(fonte) is not None
+
+
 def _pode(fonte: str, uso: str, modelo: str | None) -> bool:
     if marca_da_fonte(fonte) in PODEM_ENTRAR:
         return True
-    excecao = EXCECOES_DE_MODELO.get(fonte.split("-", 1)[0])
+    if uso == MOSTRAR:
+        return _pode_mostrar_sem_cobranca(fonte)
+    excecao = EXCECOES_DE_MODELO.get(_familia(fonte))
     return uso != "exportar" and modelo is not None and modelo == excecao
+
+
+def pode_usar(uso: str, fonte: str, modelo: str | None = None) -> bool:
+    """A fonte pode `uso` ("treinar", "rotular", "exportar" ou "mostrar")? `exigir_licenca` sem o erro."""
+    if uso not in USOS:
+        raise ValueError(f"uso {uso!r} não existe; use um de {USOS}")
+    return _pode(fonte, uso, modelo)
+
+
+def _regra_que_barrou(uso: str, fontes: Iterable[str]) -> str:
+    if uso != MOSTRAR:
+        return "ADR 0008, Emenda 1: só 'vendável' e 'só uso interno'"
+    if any(_familia(f) in FONTES_FORA_MESMO_SEM_COBRANCA for f in fontes):
+        return "ADR 0019: a B3 fica fora das telas até a resposta escrita dela"
+    if not sem_cobranca():
+        return "ADR 0008, Emenda 3 expirou com a 1ª cobrança: troque ou desligue o uso"
+    return "ADR 0008, Emenda 3: fonte restrita só nos usos de USOS_SEM_COBRANCA"
 
 
 def exigir_licenca(
     uso: str, fontes: Iterable[str], modelo: str | None = None, onde: str = ""
 ) -> None:
-    """Erro (não aviso) se alguma fonte não pode `uso` ("treinar", "rotular" ou "exportar").
+    """Erro (não aviso) se alguma fonte não pode `uso` ("treinar", "rotular", "exportar" ou "mostrar").
 
     Passam "vendável" e "só uso interno"; Kraken e Mercado Bitcoin, só para treinar ou rotular o
-    modelo da exceção da ADR 0045. `onde` (a tabela, o script) entra na mensagem.
+    modelo da exceção da ADR 0045; para mostrar, também "a confirmar" e "não comercial" enquanto não
+    há cobrança e a fonte está em `USOS_SEM_COBRANCA` (nunca a B3). `onde` (a tabela, o script, o
+    relatório) entra na mensagem.
     """
     if uso not in USOS:
         raise ValueError(f"uso {uso!r} não existe; use um de {USOS}")
@@ -236,8 +368,22 @@ def exigir_licenca(
         alvo = f" ({onde})" if onde else ""
         raise LicencaNaoPermiteError(
             f"{uso}{alvo} com fonte sem licença para isso: {lista} "
-            "(ADR 0008, Emenda 1: só 'vendável' e 'só uso interno')"
+            f"({_regra_que_barrou(uso, barradas)})"
         )
+
+
+def citacoes_das_fontes(fontes: Iterable[str]) -> list[str]:
+    """As frases que a tela, o relatório e o PDF escrevem pelas fontes restritas que usam, sem
+    repetir: a citação de cada uso sem cobrança (Emenda 3) e a frase da IEX (Emenda 2, item 6)."""
+    citacoes: dict[str, None] = {}
+    for fonte in fontes:
+        frase = FRASES_DAS_FONTES.get(_familia(fonte))
+        uso = uso_sem_cobranca(fonte)
+        if frase:
+            citacoes[frase] = None
+        elif uso is not None and marca_da_fonte(fonte) != Marca.VENDAVEL:
+            citacoes[uso.citacao] = None
+    return list(citacoes)
 
 
 def registrar(

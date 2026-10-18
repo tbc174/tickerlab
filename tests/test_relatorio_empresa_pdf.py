@@ -54,3 +54,18 @@ def test_grafico_de_cascata_do_pdf_e_png():
     from src.graficos_pdf import grafico_de_cascata
 
     assert grafico_de_cascata(PASSOS, "Da receita ao lucro").startswith(b"\x89PNG")
+
+
+def test_pdf_cita_a_fonte_restrita_e_a_frase_da_iex(dados_da_weg):  # noqa: F811
+    from dataclasses import replace
+
+    from src.banco.coletas import FRASE_DA_IEX, citacoes_das_fontes
+
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    texto = _sem_espacos(_texto(relatorio_da_empresa(relatorio)))
+    assert _sem_espacos("Yahoo Finance") in texto
+    com_iex = replace(
+        relatorio, fontes=(*relatorio.fontes, *citacoes_das_fontes(["iex"]))
+    )
+    texto = _sem_espacos(_texto(relatorio_da_empresa(com_iex)))
+    assert _sem_espacos(FRASE_DA_IEX[:40]) in texto

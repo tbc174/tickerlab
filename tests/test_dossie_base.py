@@ -12,6 +12,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from base import dossie
+from src.banco import coletas
 
 D = pd.Timestamp
 CNPJ = "02429144000193"
@@ -21,18 +22,29 @@ CNPJ = "02429144000193"
 
 
 @pytest.mark.parametrize(
-    "tabela", ["auditores", "controladas", "aneel_samp", "anatel_acessos", "eventos"]
+    "tabela",
+    [
+        "auditores",
+        "controladas",
+        "aneel_samp",
+        "anatel_acessos",
+        "eventos",
+        # a confirmar, mas na lista dos usos sem cobrança (ADR 0008, Emenda 3)
+        "ma_negocios",  # assessorias de M&A, só fatos
+        "ma_datas",  # datas pelo Wayback
+    ],
 )
-def test_tabela_vendavel_sem_pessoa_pode_ser_mostrada(tabela: str) -> None:
+def test_tabela_vendavel_ou_da_lista_sem_cobranca_pode_ser_mostrada(
+    tabela: str,
+) -> None:
     assert dossie.pode_mostrar(tabela)
 
 
 @pytest.mark.parametrize(
     "tabela",
     [
-        "pgfn_divida",  # a confirmar
-        "ma_negocios",  # assessorias: a confirmar
-        "cnpj_situacao_especial",  # Receita
+        "pgfn_divida",  # licença liberada pela Emenda 3, mas é crise com nome (P-44)
+        "cnpj_situacao_especial",  # idem
         "insolvencia",  # vendável, mas é rótulo de crise com nome (P-44)
         "rotulos_atraso",
         "tabela_que_nao_existe",
@@ -40,6 +52,33 @@ def test_tabela_vendavel_sem_pessoa_pode_ser_mostrada(tabela: str) -> None:
 )
 def test_tabela_que_nao_pode_ser_mostrada(tabela: str) -> None:
     assert not dossie.pode_mostrar(tabela)
+
+
+def test_so_o_parecer_segura_a_situacao_especial(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A licença não barra mais (Emenda 3); o que segura é a lista do P-44."""
+    monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
+    assert dossie.pode_mostrar("cnpj_situacao_especial")
+
+
+def test_a_pgfn_tem_pessoa_e_a_lgpd_segura_mesmo_com_a_licenca_liberada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Emenda 3, item 3b: dado pessoal é LGPD, não licença; a trava deixa, a tabela não sai."""
+    assert coletas.pode_usar("mostrar", dossie.TABELAS["pgfn_divida"].familia_da_fonte)
+    monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
+    assert dossie.TABELAS["pgfn_divida"].pessoa
+    assert not dossie.pode_mostrar("pgfn_divida")
+
+
+def test_fonte_restrita_fora_da_lista_sem_cobranca_nao_pode_ser_mostrada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sem_wayback = tuple(u for u in coletas.USOS_SEM_COBRANCA if u.fonte != "wayback")
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", sem_wayback)
+    assert not dossie.pode_mostrar("ma_datas")
+    assert dossie.pode_mostrar("ma_negocios")
 
 
 def test_tabela_vendavel_com_pessoa_nao_pode_ser_mostrada(
