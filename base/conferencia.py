@@ -77,6 +77,10 @@ REGRA_POR_UNIDADE: dict[str, Regra] = {
     "vezes": _DECIMAL,
     "anos (base 252)": _DECIMAL,
     "anos": _DECIMAL,
+    # clima por região cafeeira: a anomalia pode ser negativa; "dias" é média de estações
+    "mm": _DECIMAL,
+    "°C": _DECIMAL,
+    "dias": Regra("decimal", (0, None)),
 }
 
 

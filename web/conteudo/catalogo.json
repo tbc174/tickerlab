@@ -104,6 +104,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "1981-01-31",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "INMET",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
       "modulos": [
@@ -179,6 +190,17 @@
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-18",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "USDA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
     }
   ],
   "modulos": [
@@ -198,6 +220,11 @@
       "tabelas": 5
     },
     {
+      "chave": "macro",
+      "nome": "Macro",
+      "tabelas": 4
+    },
+    {
       "chave": "rede",
       "nome": "Rede de entidades",
       "tabelas": 3
@@ -205,11 +232,6 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 2
-    },
-    {
-      "chave": "macro",
-      "nome": "Macro",
       "tabelas": 2
     }
   ],
@@ -933,12 +955,32 @@
       "orgao": "CFTC",
       "situacao": "licenciada",
       "tabela": "cftc_cot_agro"
+    },
+    {
+      "atraso": null,
+      "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-18",
+      "modulo": "macro",
+      "orgao": "USDA",
+      "situacao": "licenciada",
+      "tabela": "usda_psd_cafe"
+    },
+    {
+      "atraso": "Mensal",
+      "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
+      "frequencia": "Mensal",
+      "historico_desde": "1981-01-31",
+      "modulo": "macro",
+      "orgao": "INMET",
+      "situacao": "licenciada",
+      "tabela": "clima_regiao_cafe"
     }
   ],
   "totais": {
-    "fontes": 16,
+    "fontes": 18,
     "fontes_em_consulta": 5,
     "modulos": 6,
-    "tabelas": 72
+    "tabelas": 74
   }
 }

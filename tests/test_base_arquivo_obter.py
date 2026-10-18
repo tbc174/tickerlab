@@ -323,3 +323,30 @@ def test_bomba_de_descompressao_para_no_tamanho_do_indice():
     grande.file_size = obter.LIMITE_DO_MEMBRO + 1
     with pytest.raises(zipfile.BadZipFile, match="limite"):
         obter.ler_membro(servidor, URL_DO_ZIP, grande)
+
+
+class ServidorQueFalha(ServidorComTrechos):
+    """Responde `baixar` com o erro HTTP do código dado."""
+
+    def __init__(self, codigo: int):
+        super().__init__({})
+        self.codigo = codigo
+
+    def baixar(self, url, destino: Path):
+        import requests
+
+        resposta = requests.Response()
+        resposta.status_code = self.codigo
+        raise requests.HTTPError(response=resposta)
+
+
+def test_arquivo_que_pode_faltar_404_vira_sem_arquivo_e_outro_erro_sobe(tmp_path):
+    url = "https://data.chc.ucsb.edu/chirps-v2.0.2026.10.tif.gz"
+    with pytest.raises(coleta.SemArquivo, match="404"):
+        obter.arquivo_que_pode_faltar(url)(ServidorQueFalha(404), tmp_path / "a.tif.gz")
+    with pytest.raises(Exception, match="") as erro:
+        obter.arquivo_que_pode_faltar(url)(ServidorQueFalha(500), tmp_path / "a.tif.gz")
+    assert not isinstance(erro.value, coleta.SemArquivo)
+    servidor = ServidorComTrechos({url: b"tif"})
+    cabecalhos = obter.arquivo_que_pode_faltar(url)(servidor, tmp_path / "b.tif.gz")
+    assert cabecalhos == {"ETag": '"samp"'} and servidor.baixados == [url]

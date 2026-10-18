@@ -29,6 +29,10 @@ LICENCAS = {
     "sec": "Acesso público (EDGAR, SEC)",
     "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
     "ibge": "Domínio público (citar o IBGE)",
+    # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
+    "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+    "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+    "mapbiomas": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
     "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
@@ -89,6 +93,10 @@ LICENCAS = {
     "tce-pr-despesa": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
+    # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
+    "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+    "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+    "ico": "Relatório mensal da ICO sem termos localizados: só pesquisa",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -113,6 +121,9 @@ REVENDA = {
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
+    "inmet": VENDAVEL_COM_ATRIBUICAO,  # sem licença escrita: confirmar por escrito antes de vender
+    "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
+    "mapbiomas": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
     "fmi": A_CONFIRMAR,  # uso comercial pede permissão por escrito do FMI
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
@@ -165,6 +176,9 @@ REVENDA = {
     "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
     "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
     "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
+    "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem
+    "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "ico": NAO_COMERCIAL,  # PDF sem termos lidos: só pesquisa
 }
 
 
