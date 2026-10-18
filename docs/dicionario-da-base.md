@@ -2603,3 +2603,35 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 | `porte_publico_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
 | `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
 | `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
+
+## `cftc_cot_agro`
+
+Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC
+
+- **Fonte:** CFTC: Commitments of Traders, Disaggregated Futures Only (fut_disagg_txt)
+- **Licença:** Obra do governo dos EUA (domínio público; citar a CFTC)
+- **Revenda:** só uso interno (entra em modelo; nunca vender nem exportar o dado)
+- **Frequência:** Semanal (posição de terça-feira)
+- **Atraso de divulgação:** Divulgado na sexta-feira; a base conta a segunda-feira seguinte, 15h30 de Nova York (regra conservadora do `base/commodities/cftc_cot.py`, com as exceções das paralisações do governo dos EUA em 2018-19 e 2025). `disponivel_em` é o dia seguinte à divulgação
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `relatorio`, `contrato`
+- **Três datas:** aconteceu_em = `relatorio`; publico_em = `disponivel_em`
+- **Histórico desde:** 2006-06-13 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/cftc/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips da CFTC usados (o histórico de 2006 a 2016 e um zip por ano desde 2017) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `relatorio` | Terça-feira a que a posição se refere | data (dia) |
+| `contrato` | cafe-arabica, acucar, soja, milho, boi-gordo ou algodao | texto |
+| `open_interest` | Contratos em aberto no mercado, total | número com decimais, na unidade da fonte |
+| `producer_merchant_long` | Produtores e comerciantes: contratos comprados | número com decimais, na unidade da fonte |
+| `producer_merchant_short` | Produtores e comerciantes: contratos vendidos | número com decimais, na unidade da fonte |
+| `swap_long` | Operadores de swap: contratos comprados | número com decimais, na unidade da fonte |
+| `swap_short` | Operadores de swap: contratos vendidos | número com decimais, na unidade da fonte |
+| `swap_spread` | Operadores de swap: posições em spread | número com decimais, na unidade da fonte |
+| `managed_money_long` | Fundos (managed money): contratos comprados | número com decimais, na unidade da fonte |
+| `managed_money_short` | Fundos (managed money): contratos vendidos | número com decimais, na unidade da fonte |
+| `managed_money_spread` | Fundos (managed money): posições em spread | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (dia seguinte à divulgação) | data (dia) |

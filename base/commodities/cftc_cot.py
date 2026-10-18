@@ -111,6 +111,9 @@ def ler_relatorio(
 
 # --- Disaggregated: posição dos fundos no café e nos outros agro (PR 5 do plano do café) ---
 
+FONTE = (
+    "cftc-cot-disaggregated"  # o id da fonte no arquivista (`base/arquivo/fontes.py`)
+)
 ENDERECO_DO_ANO = "https://www.cftc.gov/files/dea/history/fut_disagg_txt_{ano}.zip"
 # 2006 a 2016 vêm juntos num zip só: a CFTC não tem os anos 2006 a 2009 separados
 ENDERECO_DO_HISTORICO = (

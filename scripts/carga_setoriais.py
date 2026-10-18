@@ -30,6 +30,7 @@ from typing import NamedTuple
 import pandas as pd
 import sqlalchemy as sa
 
+from base.commodities import cftc_cot
 from base.parquet import gravar_com_versoes, gravar_se_mudou
 from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes, susep
 from src import acervo
@@ -48,6 +49,7 @@ TABELAS = {
                           "aeroporto_de_destino_sigla"], "competencia"),
     anp.FONTE: ("anp", ["competencia", "grupo", "agente", "codigo_do_produto"], "competencia"),
     ons.FONTE: ("ons", ["instante", "id_ons"], "instante"),
+    cftc_cot.FONTE: ("cftc", ["relatorio", "contrato"], "relatorio"),
 }  # fmt: skip
 # fonte → (coluna da chave na tabela, coluna do volume) para os buracos da ligação
 CHAVES = {
@@ -133,6 +135,8 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
         return lambda conteudo: anp.ler(conteudo, grupo.group(1))
     if fonte == ons.FONTE and linha.url.endswith(".parquet"):
         return ons.ler
+    if fonte == cftc_cot.FONTE and linha.url.endswith(".zip"):
+        return cftc_cot.ler_disaggregated
     return None
 
 
@@ -156,6 +160,8 @@ def carregar_fonte(conexao: sa.Connection, fonte: str, base: Path) -> pd.DataFra
                 base / PASTA / pasta / ano, [_origem(lin) for lin, _ in do_ano], ordem,
             )  # fmt: skip
             log.info("%s %s: %s", fonte, ano, resultado)
+        return pd.DataFrame()
+    if not linhas:  # fonte ainda sem original no acervo
         return pd.DataFrame()
     tabela = pd.concat([_ler(lin, ler) for lin, ler in linhas], ignore_index=True)
     origens = [_origem(lin) for lin, _ in linhas]

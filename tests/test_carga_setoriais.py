@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 
 from base.arquivo.fontes import SES_DA_SUSEP
+from base.commodities import cftc_cot
 from base.parquet import conferir_tabela, gravar_tabela
 from base.setoriais import anac, anatel, aneel, anp, ans, ons, susep
 from scripts import carga_setoriais
@@ -39,6 +40,7 @@ ENDERECOS = {
             ("acessos_telefonia_movel", "Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas.csv"),
         ]
     ],
+    cftc_cot.FONTE: [(cftc_cot.ENDERECO_DO_ANO.format(ano=2026), "cftc/fut_disagg_txt_2026.zip")],
     ans.FONTE: [(ans.URL, "ans/Beneficiarios_operadora_e_carteira.csv")],
     susep.FONTE: [(f"{SES_DA_SUSEP}#{susep.ARQUIVO}", "susep/Ses_seguros.csv")],
 }  # fmt: skip
@@ -88,6 +90,7 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
         "anatel": ANATEL,
         "ans": {"2017", "2026"},
         "susep": {"2000", "2015", "2026"},
+        "cftc": {"2026"},
     }
     with criar_engine().connect() as c:
         for fonte, anos in esperados.items():
