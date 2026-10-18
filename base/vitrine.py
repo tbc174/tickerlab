@@ -27,6 +27,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da PGFN\b", "PGFN"),
     (r"Tesouro", "Tesouro Nacional"),
     (r"Internet Archive", "Internet Archive"),
+    (r"\(CONAB\)", "CONAB"),
 )
 # o nome de cada módulo do catálogo, como o site o escreve
 NOMES_DOS_MODULOS = {

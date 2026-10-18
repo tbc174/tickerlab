@@ -592,6 +592,18 @@
     "url": "juros-e-inflacao"
   },
   {
+    "area": "acompanhar",
+    "chave": "precos_de_referencia",
+    "contrato": null,
+    "descricao": "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Preços de referência",
+    "url": "precos-de-referencia"
+  },
+  {
     "area": "ativo",
     "chave": "linha_do_tempo",
     "contrato": {
