@@ -31,7 +31,7 @@ import zipfile
 from collections.abc import Mapping
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from defusedxml.ElementTree import fromstring
+from defusedxml.ElementTree import fromstring, iterparse
 
 from base import cnpj
 from base.arquivo.obter import decodificar_xml
@@ -49,9 +49,12 @@ DATA_FIXA_NO_ZIP = (
 )  # a menor que o ZIP aceita: o regravado não muda com o dia
 SISTEMA_UNIX = 3  # o mesmo "criado em" no PC e no servidor (senão o SHA-256 muda)
 PERMISSOES_NO_ZIP = 0o644 << 16
-# o maior XML visto (vencedores de um município em 2013) tem ~8 MB; o XML vira árvore na memória
-LIMITE_DO_XML = 128 * 1024**2
-NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)\.xml$")
+# o XML é lido linha a linha, mas o texto decodificado fica inteiro na memória (~2,5× o XML, com a
+# entrada): o maior da Despesa de 2025 tem 228 MB (Londrina); a carga roda com memória para isso
+LIMITE_DO_XML = 1024**3
+# município grande parte o XML em pedaços (`Empenho_1.xml`, `Empenho_2.xml`, medido na Despesa de 2025):
+# o tipo é o mesmo, e o pedaço não pode ficar de fora
+NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)(?:_\d+)?\.xml$")
 ATRIBUTOS_DE_PESSOA = ("nm",)
 TEXTO_LIVRE = ("dsObjeto", "dsHistorico", "dsItem")
 # atributos com números que não são documentos (códigos, valores, datas): fora da varredura de CPF
@@ -128,6 +131,38 @@ PERMITIDOS: Mapping[str, frozenset[str]] = {
         "LicitacaoXEmpenho": ("idLicitacao", "idEmpenho", *_LIGACAO),
         "ContratoXConvenio": ("idContrato", "idConvenio", *_LIGACAO),
         "LicitacaoXConvenio": ("idLicitacao", "idConvenio", *_LIGACAO),
+        # `Despesa` (PR 2): códigos da classificação (cd*), valores, datas e ids. As descrições (ds*) saem
+        # (vêm dos códigos); o texto livre e todo nome também
+        "Empenho": (
+            "cdIBGE", "idPessoa", "idEmpenho", "nrEmpenho", "nrAnoEmpenho", "dtEmpenho",
+            "idTipoEmpenho", "dsTipoEmpenho", "idOrigemEmpenho", "cdOrgao", "cdUnidade",
+            "cdFuncao", "cdSubFuncao", "cdPrograma", "cdProjetoAtividade", "cdCategoriaEconomica",
+            "cdGrupoNatureza", "cdModalidade", "cdElemento", "cdDesdobramento", "cdFontePadrao",
+            "cdGrupoFonte", "cdOrigemFonte", "cdDesdobramentoFonte", "cdDetalhamentoFonte",
+            "nrAnoCompetencia", "nrMesCompetencia", "vlEmpenho", "vlEstornoEmpenho",
+            "vlLiquidacao", "vlEstornoLiquidacao", "vlPagamento", "vlEstornoPagamento",
+            "vlSaldoAntDotacao", *_ENVIO,
+        ),
+        "EmpenhoLiquidacao": (
+            "cdIBGE", "idPessoa", "idEmpenho", "idLiquidacao", "idOrigemLiquidacao",
+            "nrLiquidacao", "nrAnoLiquidacao", "dtLiquidacao", "vlLiquidacaoBruto",
+            "vlLiquidacaoEstornado", "vlLiquidacaoLiquido", "DataEnvioParaTCE", *_ENVIO,
+        ),
+        "EmpenhoLiquidacaoEstorno": (
+            "cdIBGE", "idPessoa", "idEmpenho", "idLiquidacao", "idEstornoLiquidacao",
+            "nrEstorno", "nrAnoEstorno", "nrAnoLiquidacao", "dtEstorno", "vlEstorno",
+            "DataEnvioParaTCE", *_ENVIO,
+        ),
+        "EmpenhoPagamento": (
+            "cdIBGE", "idPessoa", "idEmpenho", "idLiquidacao", "idPagamento", "nrPagamento",
+            "nrAnoPagamento", "nrAnoLiquidacao", "dtOperacao", "vlOperacao", "vlPagamentoBruto",
+            "DataEnvioParaTCE", *_ENVIO,
+        ),
+        "EmpenhoPagamentoEstorno": (
+            "cdIBGE", "idPessoa", "idEmpenho", "idLiquidacao", "idPagamento",
+            "idEstornoPagamento", "nrEstorno", "nrAnoEstorno", "nrAnoLiquidacao", "dtEstorno",
+            "vlEstorno", "DataEnvioParaTCE", *_ENVIO,
+        ),
     }.items()
 }  # fmt: skip
 
@@ -140,7 +175,19 @@ DOCUMENTOS: Mapping[str, tuple[str | None, str]] = {
     "LicitacaoVencedor": (None, "nrDocumento"),
     "Contrato": (None, "nrDocContratado"),
     "ContratoAditivoCessao": ("sgDocExecutor", "nrDocumento"),
+    "Empenho": ("sgDocCredor", "nrDocCredor"),
 }
+
+# Despesa: o empenho de credor que pode ser pessoa sai inteiro; estes XMLs saem junto, pelo `idEmpenho`
+DEPENDENTES_DO_EMPENHO = frozenset(
+    {
+        "EmpenhoLiquidacao",
+        "EmpenhoLiquidacaoEstorno",
+        "EmpenhoPagamento",
+        "EmpenhoPagamentoEstorno",
+    }
+)
+DESCARTADAS = "descartadasPorCredorPf"
 
 
 def _pode_ser_cpf(digitos: str) -> bool:
@@ -185,33 +232,69 @@ def documento_ou_classe(
     return "outro", None
 
 
-def _regravar_linha(tipo: str, original: Mapping[str, str], destino: Element) -> None:
+def _regravar_linha(tipo: str, original: Mapping[str, str], destino: Element) -> bool:
+    """Grava a linha só com a lista; False (nada gravado) no empenho de credor que pode ser pessoa."""
+    classe_e_documento = None
+    if tipo in DOCUMENTOS:
+        sigla, numero = DOCUMENTOS[tipo]
+        classe_e_documento = documento_ou_classe(
+            original.get(sigla) if sigla else None, original.get(numero)
+        )
+        if tipo == "Empenho" and classe_e_documento[0] in CLASSES_DE_POSSIVEL_PESSOA:
+            return False
     permitidos = PERMITIDOS[tipo]
     linha = SubElement(destino, tipo)
     for atributo, valor in original.items():
         if atributo in permitidos:
             linha.set(atributo, valor)
-    if tipo in DOCUMENTOS:
-        sigla, numero = DOCUMENTOS[tipo]
-        classe, documento = documento_ou_classe(
-            original.get(sigla) if sigla else None, original.get(numero)
-        )
+    if classe_e_documento:
+        classe, documento = classe_e_documento
         if documento:
-            linha.set(numero, documento)
+            linha.set(DOCUMENTOS[tipo][1], documento)
         linha.set(TIPO_DO_DOCUMENTO, classe)
+    return True
 
 
-def regravar_xml(tipo: str, conteudo: bytes) -> bytes:
-    """O XML em UTF-8 só com as linhas do tipo e os atributos da lista (`defusedxml`: recusa entidades)."""
-    raiz = fromstring(decodificar_xml(conteudo))
-    saida = Element(raiz.tag)
-    for elemento in raiz:
-        if elemento.tag == tipo:
-            _regravar_linha(tipo, elemento.attrib, saida)
-        else:
+def regravar_xml(
+    tipo: str, conteudo: bytes, empenhos_descartados: set[str] | None = None
+) -> bytes:
+    """O XML em UTF-8 só com as linhas do tipo e os atributos da lista (`defusedxml`: recusa entidades).
+
+    `empenhos_descartados` (Despesa): no `Empenho`, recebe o `idEmpenho` de cada linha de credor que pode
+    ser pessoa, que sai; nos XMLs que dependem do empenho, saem as linhas desses empenhos. Quantas linhas
+    saíram vai na raiz (`descartadasPorCredorPf`).
+    """
+    descartados = empenhos_descartados if empenhos_descartados is not None else set()
+    saida: Element | None = None
+    raiz: Element | None = None
+    fora = 0
+    # linha a linha, descartando o que já foi lido: o XML de Londrina em 2025 tem 228 MB, e a árvore
+    # inteira de um XML desse tamanho passa de vários GB
+    for evento, elemento in iterparse(
+        io.StringIO(decodificar_xml(conteudo)), events=("start", "end")
+    ):
+        if raiz is None:
+            raiz = elemento
+            saida = Element(elemento.tag)
+            continue
+        if evento == "start" or elemento is raiz:
+            continue
+        if elemento.tag != tipo:
             log.info(
                 "TCE-PR: linha <%s> fora do tipo %s, fica de fora", elemento.tag, tipo
             )
+        elif (
+            tipo in DEPENDENTES_DO_EMPENHO and elemento.get("idEmpenho") in descartados
+        ):
+            fora += 1
+        elif not _regravar_linha(tipo, elemento.attrib, saida):
+            descartados.add(elemento.get("idEmpenho", ""))
+            fora += 1
+        raiz.clear()
+    if saida is None:
+        raise ValueError("TCE-PR: XML vazio")
+    if fora:
+        saida.set(DESCARTADAS, str(fora))
     return tostring(saida, encoding="utf-8", xml_declaration=True)
 
 
@@ -229,6 +312,7 @@ def regravar(zip_interno: bytes) -> bytes:
         zipfile.ZipFile(io.BytesIO(zip_interno)) as entrada,
         zipfile.ZipFile(saida, "w") as regravado,
     ):
+        membros = []
         for info in sorted(entrada.infolist(), key=lambda i: i.filename):
             # só o nome do arquivo, nunca a pasta que a fonte puser nele ("../x.xml")
             nome = info.filename.replace("\\", "/").rsplit("/", 1)[-1]
@@ -241,7 +325,16 @@ def regravar(zip_interno: bytes) -> bytes:
                 raise ValueError(
                     f"TCE-PR: {nome} com {info.file_size} bytes, acima do limite"
                 )
-            _gravar(regravado, nome, regravar_xml(tipo, entrada.read(info)))
+            membros.append((tipo, nome, info))
+        # o `Empenho` é lido primeiro: ele diz quais empenhos (de credor que pode ser pessoa) levam
+        # junto a liquidação, o pagamento e os estornos; a gravação segue em ordem de nome
+        descartados: set[str] = set()
+        xmls = {
+            nome: regravar_xml(tipo, entrada.read(info), descartados)
+            for tipo, nome, info in sorted(membros, key=lambda m: m[0] != "Empenho")
+        }
+        for nome in sorted(xmls):
+            _gravar(regravado, nome, xmls[nome])
     return saida.getvalue()
 
 
