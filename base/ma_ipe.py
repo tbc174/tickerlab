@@ -221,10 +221,9 @@ def ler_candidatos_do_ipe(conteudo_do_zip: bytes) -> pd.DataFrame:
 
 
 # --- montagem pelo acervo (servidor de casa) -----------------------------------------------------
-def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[str, int]:
-    """`<pasta>/ma/candidatos/candidatos.parquet` com todos os arquivos anuais do IPE guardados;
-    devolve quantos candidatos há por evidência. Remontada inteira (`gravar_se_mudou` só regrava o
-    que mudou; o passado que muda vira `.vN`)."""
+def candidatos_guardados(conexao: sa.Connection) -> tuple[pd.DataFrame, list[sa.Row]]:
+    """Os candidatos de todos os arquivos anuais do IPE guardados (um por link, na `ORDEM`), com o
+    arquivo de onde veio cada linha, e esses arquivos."""
     anuais = [
         original
         for original in originais_mais_recentes(conexao, FONTE_DO_IPE)
@@ -244,8 +243,16 @@ def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[str, in
         else pd.DataFrame(columns=[*COLUNAS, *LINHAGEM_DO_ARQUIVO])
     )
     tabela = tabela.astype({"versao": "Int64"}).sort_values(ORDEM, kind="stable")
+    return tabela.reset_index(drop=True), anuais
+
+
+def montar(conexao: sa.Connection, pasta: Path, agora: datetime) -> dict[str, int]:
+    """`<pasta>/ma/candidatos/candidatos.parquet` com todos os arquivos anuais do IPE guardados;
+    devolve quantos candidatos há por evidência. Remontada inteira (`gravar_se_mudou` só regrava o
+    que mudou; o passado que muda vira `.vN`)."""
+    tabela, anuais = candidatos_guardados(conexao)
     gravar_se_mudou(
-        tabela.reset_index(drop=True).assign(
+        tabela.assign(
             montado_em=agora.isoformat(), versao_do_codigo=versao_do_codigo()
         ),
         pasta / PASTA_DA_TABELA,
