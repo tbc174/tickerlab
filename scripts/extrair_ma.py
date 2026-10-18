@@ -4,6 +4,7 @@
     python -m scripts.extrair_ma enviar  --ouro CSV --textos P --saida S --teto-dolares 3 [--modelo M]
     python -m scripts.extrair_ma buscar  --ouro CSV --textos P --saida S [--modelo M]
     python -m scripts.extrair_ma medir   --ouro CSV --textos P --saida S                (sem API)
+    python -m scripts.extrair_ma operacoes|multiplos --ouro CSV --textos P --saida S    (sem API)
 
 `--ouro` é a amostra de ouro (`tickerlab-fontes/ma/amostra_de_ouro_candidatas.csv`); `--textos`, a
 pasta com o texto de cada documento (`<protocolo>.txt`). `enviar` manda um lote da Batch API (Haiku
@@ -25,10 +26,17 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 import pandas as pd
+import sqlalchemy as sa
 
 from base import ma_extracao as mx
+from base import ma_multiplos as mm
 from base import ma_operacoes as mo
+from base.historico import ano_do_arquivo
 from scripts.rotular_com_ia import TetoPassado
+from src import acervo
+from src import demonstracoes as dm
+from src.banco.coletas import originais_mais_recentes
+from src.banco.conexao import obter_engine
 
 log = logging.getLogger("tickerlab.extrair_ma")
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -289,6 +297,71 @@ def operacoes_da_amostra(
     return tabela, ligacoes, comparacao
 
 
+def emissoras_do_ouro(ouro: Path) -> dict[str, mm.Emissora]:
+    """Quem entregou cada documento da amostra (as colunas do IPE)."""
+    return {
+        linha["Protocolo_Entrega"]: mm.Emissora(
+            linha["CNPJ_Companhia"], linha["Nome_Companhia"]
+        )
+        for linha in _ouro(ouro).to_dict("records")
+    }
+
+
+def demonstracoes_do_acervo(
+    conexao: sa.Connection, cnpjs: set[str], anos: set[int]
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(contas, documentos) dos DFP e ITR guardados pelo arquivista (`cvm-hist-dfp`, `cvm-hist-itr`),
+    só das companhias e dos anos pedidos (não baixa nada)."""
+    contas, indices = [], []
+    for documento, fonte in (("DFP", "cvm-hist-dfp"), ("ITR", "cvm-hist-itr")):
+        for original in originais_mais_recentes(conexao, fonte):
+            if ano_do_arquivo(original.url) not in anos:
+                continue
+            conteudo = acervo.ler_original(original.caminho_do_original)
+            if conteudo is None:
+                continue
+            do_ano, indice = dm.ler_demonstracoes(conteudo, documento)
+            contas.append(do_ano[do_ano["cnpj"].isin(cnpjs)])
+            indices.append(indice[indice["cnpj"].isin(cnpjs)])
+    if not contas:
+        return pd.DataFrame(columns=dm.COLUNAS), pd.DataFrame(
+            columns=["cnpj", "documento", "referencia", "versao", "recebido_em"]
+        )
+    return pd.concat(contas, ignore_index=True), pd.concat(indices, ignore_index=True)
+
+
+def multiplos_da_amostra(
+    conexao: sa.Connection, ouro: Path, textos: Path, saida: Path, modelo: str
+) -> pd.DataFrame:
+    """Os múltiplos implícitos das operações da amostra (PR 4 do plano), das leituras guardadas."""
+    datas = {d.protocolo: d.publico_em for d in documentos(ouro, textos)}
+    lidos = [
+        mo.DocumentoLido(protocolo, datas[protocolo], leitura)
+        for protocolo, leitura in medir_modelo(
+            ouro, textos, saida, modelo
+        ).leituras.items()
+    ]
+    emissoras = emissoras_do_ouro(ouro)
+    # o ano do anúncio e o anterior: o DFP do ano passado e o ITR deste dão os 12 meses
+    anos = {ano for dia in datas.values() for ano in (dia.year - 1, dia.year)}
+    contas, entregues = demonstracoes_do_acervo(
+        conexao, {e.cnpj for e in emissoras.values()}, anos
+    )
+    return mm.multiplos(lidos, emissoras, contas, entregues)
+
+
+def relatorio_dos_multiplos(modelo: str, tabela: pd.DataFrame) -> str:
+    com = tabela[tabela[["ev_receita", "ev_ebit", "p_l", "p_vp"]].notna().any(axis=1)]
+    motivos = tabela.loc[tabela["motivo"].fillna("") != "", "motivo"].value_counts()
+    colunas = ["alvo", "anuncio", "valor_campo", "base_12m", "entregue_ate",
+               "ev_receita", "ev_ebit", "p_l", "p_vp"]  # fmt: skip
+    return (
+        f"## Múltiplos implícitos ({modelo})\n\n{len(com)} de {len(tabela)} operações com algum "
+        f"múltiplo; todos de documentos entregues antes do anúncio.\n\nSem múltiplo, por "
+        f"motivo:\n\n{motivos.to_string()}\n\n{com.loc[:, colunas].to_string(index=False)}\n"
+    )
+
+
 def relatorio_das_operacoes(
     modelo: str, tabela: pd.DataFrame, comparacao: dict[str, list[list[str]]]
 ) -> str:
@@ -349,6 +422,10 @@ def _argumentos() -> argparse.ArgumentParser:
             "operacoes",
             "liga os documentos da mesma operação e confere no gabarito (sem API)",
         ),
+        (
+            "multiplos",
+            "múltiplos implícitos com o balanço de antes do anúncio (sem API)",
+        ),
     ):
         passo = sub.add_parser(nome, help=ajuda)
         passo.add_argument("--ouro", type=Path, required=True)
@@ -387,6 +464,13 @@ def main(argv: list[str] | None = None) -> int:
         ligacoes.to_csv(saida / f"ligacoes-{modelo}.csv", sep=";", index=False)
         texto = relatorio_das_operacoes(modelo, tabela, comparacao)
         (saida / f"operacoes-{modelo}.md").write_text(texto, encoding="utf-8")
+        print(texto)
+    elif opcoes.passo == "multiplos":
+        with obter_engine().connect() as conexao:
+            tabela = multiplos_da_amostra(conexao, ouro, textos, saida, modelo)
+        tabela.to_csv(saida / f"multiplos-{modelo}.csv", sep=";", index=False)
+        texto = relatorio_dos_multiplos(modelo, tabela)
+        (saida / f"multiplos-{modelo}.md").write_text(texto, encoding="utf-8")
         print(texto)
     elif opcoes.passo == "enviar":
         enviar(cliente_de_ma(), ouro, textos, saida, modelo, opcoes.teto_dolares)
