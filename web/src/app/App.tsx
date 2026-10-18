@@ -1,11 +1,12 @@
-// O app em React (série 3 da ADR 0048), servido em app.tickerlab.com.br/novo/ ao lado do Streamlit.
-// Sem a API de leitura ligada, só mostra o aviso e o caminho para o app atual; com ela, tudo
+// O app em React (série 3 da ADR 0048), o principal em app.tickerlab.com.br/; o Streamlit é a versão
+// clássica em /classico. Link antigo de página que ainda só existe lá é levado para lá (src/app/rotas.tsx).
+// Sem a API de leitura ligada, só mostra o aviso e o caminho para a versão clássica; com ela, tudo
 // fica atrás do login com o Google (src/app/conta.tsx), menos o link compartilhado (/c), que é público.
-import { Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { useConfiguracao } from "./configuracao";
 import { ExigeLogin, ProvedorDaConta } from "./conta";
 import { Moldura } from "./Moldura";
-import { TELAS_DO_APP, telaDa } from "./rotas";
+import { ParaOClassico, TELAS_DO_APP, eAInicialDoClassico, enderecoSoDoClassico, telaDa } from "./rotas";
 import {
   Carregando,
   EmPreparacao,
@@ -22,6 +23,16 @@ const ROTA_PUBLICA_DO_LINK = "/c";
 export function App() {
   const api = useConfiguracao();
   const { pathname } = useLocation();
+  // o link antigo vem antes de tudo: não depende da API ligada nem do login do app novo
+  const doClassico = enderecoSoDoClassico(pathname);
+  if (doClassico !== null) {
+    return (
+      <Moldura comMenu={false}>
+        <ParaOClassico endereco={doClassico} />
+      </Moldura>
+    );
+  }
+  if (eAInicialDoClassico(pathname)) return <Navigate to="/" replace />;
   if (api.estado !== "ligada") {
     const aviso = {
       carregando: <Carregando />,

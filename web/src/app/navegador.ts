@@ -1,8 +1,12 @@
-// Sair do app para um site de fora (a página de pagamento ou o portal do Stripe). Num objeto para os
-// testes trocarem a ida por uma conferência (o jsdom não navega).
+// Sair do app: para um site de fora (a página de pagamento ou o portal do Stripe) ou para a versão
+// clássica. Num objeto para os testes trocarem a ida por uma conferência (o jsdom não navega).
 export const navegador = {
   ir(url: string): void {
     window.location.assign(url);
+  },
+  /** Como `ir`, mas sem deixar a página atual no histórico: o Voltar não cai no mesmo desvio. */
+  trocar(url: string): void {
+    window.location.replace(url);
   },
 };
 
