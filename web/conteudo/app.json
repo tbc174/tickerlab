@@ -539,7 +539,15 @@
     ]
   },
   "entrada": {
-    "aviso": "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. Nada aqui é recomendação de investimento."
+    "aviso": "Usamos só o seu nome, e-mail e foto para criar a sua conta. Nada é publicado. Nada aqui é recomendação de investimento.",
+    "explicacao": "Use a sua conta do Google. No primeiro acesso, a conta é criada na hora, no plano gratuito.",
+    "lembrete_da_versao_classica": "Já usa a versão clássica? Entre com a mesma conta do Google.",
+    "pontos": [
+      "A ficha de cada empresa da B3, com a fonte e a data de cada número.",
+      "Relatórios em PDF para levar e compartilhar.",
+      "Fatos e números, nunca recomendação de investimento."
+    ],
+    "titulo": "Entrar no TickerLab"
   },
   "glossario": {
     "Base 100": [
