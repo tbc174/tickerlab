@@ -61,11 +61,6 @@
   "empresa": "CPFL Energia",
   "fontes": [
     "ODbL (dados abertos da CVM; citar a fonte)",
-    "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
-    "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
-    "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
-    "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-    "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
     "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor"
   ],
   "limites": [
@@ -660,11 +655,6 @@
       ],
       "paragrafos": [
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou controlada, pelo FRE). A participação é sobre o total da agência no ano.",
-        "Fonte: CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas.",
-        "Fonte: CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC).",
-        "Fonte: CC BY (dados abertos da ANP no dados.gov.br; citar a ANP).",
-        "Fonte: CC BY (dados abertos da ANS no dados.gov.br; citar a ANS).",
-        "Fonte: CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel).",
         "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
         "Fonte: ODbL (dados abertos da CVM; citar a fonte)."
       ],

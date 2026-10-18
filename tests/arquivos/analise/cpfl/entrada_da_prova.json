@@ -1,0 +1,3749 @@
+{
+ "versao": 1,
+ "empresa": "CPFL ENERGIA S.A.",
+ "cnpj": "02.429.144/0001-93",
+ "ticker": "CPFE3.SA",
+ "setor": "Emp. Adm. Part. - Energia Elétrica",
+ "grupo": "Energia elétrica",
+ "corte": "2026-10-17",
+ "fontes": [
+  "CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",
+  "ODbL (dados abertos da CVM; citar a fonte)",
+  "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+  "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+  "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+  "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+  "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+  "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor"
+ ],
+ "secoes": {
+  "ficha_tecnica": "Ficha técnica",
+  "o_que_os_dados_mostram": "O que os dados mostram",
+  "o_que_mudou": "O que mudou desde o balanço anterior",
+  "resultado": "Resultado",
+  "retorno": "Retorno",
+  "endividamento": "Endividamento",
+  "caixa": "Caixa e capital de giro",
+  "qualidade": "Qualidade dos dados",
+  "dividendos": "Dividendos e diluição",
+  "ofertas_e_fundos": "Ofertas e fundos",
+  "auditor_e_controladas": "Auditor e controladas",
+  "pares": "Pares do mesmo setor",
+  "setor_regulado": "Setor regulado",
+  "eventos": "Acontecimentos recentes",
+  "negocios": "Negócios (M&A pela CVM)",
+  "notas_classicas": "Notas clássicas",
+  "padroes_e_notas": "Notas contra o setor",
+  "historico": "Histórico de até 10 anos",
+  "o_que_mudaria": "O que mudaria esta leitura",
+  "metodologia": "Metodologia e fontes",
+  "limites": "Limites e perguntas em aberto"
+ },
+ "linhas": [
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.nome",
+   "tipo": "numero",
+   "nome": "Nome",
+   "texto": "CPFL ENERGIA S.A.",
+   "unidade": "texto",
+   "medido_em": "ITR de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (tabela documentos)",
+   "comparacao": {
+    "contra": "DFP de 31/12/2024",
+    "texto": "o mesmo nome",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.cnpj",
+   "tipo": "numero",
+   "nome": "CNPJ",
+   "texto": "02.429.144/0001-93",
+   "unidade": "texto",
+   "medido_em": "ITR de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (tabela documentos)",
+   "sem_comparacao": "Identificação: não há com o quê comparar.",
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.tickers",
+   "tipo": "numero",
+   "nome": "Tickers",
+   "texto": "CPFE3 (Ações Ordinárias)",
+   "unidade": "texto",
+   "medido_em": "cadastro de 17/10/2026",
+   "fonte": "FCA entregue à CVM (valores mobiliários negociados na B3)",
+   "sem_comparacao": "Falta saber desde quando o ticker negocia: a base guarda o histórico dos tickers, mas a ficha ainda não o traz ao app.",
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.setor",
+   "tipo": "numero",
+   "nome": "Setor",
+   "texto": "Emp. Adm. Part. - Energia Elétrica",
+   "unidade": "texto",
+   "medido_em": "cadastro atual da CVM",
+   "fonte": "cadastro de companhias da CVM (setor de atividade)",
+   "comparacao": {
+    "contra": "grupos de setores do TickerLab",
+    "texto": "grupo Energia elétrica, com 112 empresas nos padrões de 31/08/2026",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.auditor",
+   "tipo": "numero",
+   "nome": "Auditor",
+   "texto": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA, desde 01/01/2022",
+   "unidade": "texto",
+   "medido_em": "01/01/2026",
+   "fonte": "FRE entregue à CVM (tabela auditores)",
+   "comparacao": {
+    "contra": "auditor anterior",
+    "texto": "KPMG Auditores Independentes por 4,8 anos, até 01/01/2022",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.controlador",
+   "tipo": "numero",
+   "nome": "Controlador",
+   "texto": "—",
+   "unidade": "texto",
+   "motivo": "A ficha não traz a controladora: ela só aparece quando a controladora também entrega o FRE à CVM (uma controladora de fora do Brasil, por exemplo, não entrega).",
+   "so_pro": true
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.ultima_demonstracao",
+   "tipo": "numero",
+   "nome": "Última demonstração",
+   "texto": "ITR de 30/06/2026, versão 1",
+   "unidade": "texto",
+   "medido_em": "recebido em 13/08/2026",
+   "fonte": "DFP e ITR entregues à CVM (tabela documentos)",
+   "comparacao": {
+    "contra": "prazo da CVM",
+    "texto": "versão 1 recebida em 13/08/2026, 44 dias depois do fim do período, dentro do prazo (até 14/08/2026, 45 dias depois do trimestre)",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.datas_das_fontes.0",
+   "tipo": "linha",
+   "tabela": "Última data de cada fonte",
+   "celulas": {
+    "fonte": "Demonstrações (DFP e ITR na CVM)",
+    "data": "13/08/2026"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.datas_das_fontes.1",
+   "tipo": "linha",
+   "tabela": "Última data de cada fonte",
+   "celulas": {
+    "fonte": "Padrões do setor",
+    "data": "31/08/2026"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.datas_das_fontes.2",
+   "tipo": "linha",
+   "tabela": "Última data de cada fonte",
+   "celulas": {
+    "fonte": "Dossiê da base",
+    "data": "17/10/2026"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ficha_tecnica",
+   "id": "ficha_tecnica.datas_das_fontes.3",
+   "tipo": "linha",
+   "tabela": "Última data de cada fonte",
+   "celulas": {
+    "fonte": "Cadastro de tickers",
+    "data": "17/10/2026"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.0",
+   "tipo": "ponto",
+   "lado": "atenção",
+   "texto": "Altman Z'' de 1,89: faixa cinzenta do artigo (segura acima de 2,60; aflição abaixo de 1,10; cinzenta entre as duas).",
+   "numero": "1,89",
+   "medido_em": "DFP de 2025",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "altman",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.1",
+   "tipo": "ponto",
+   "lado": "forte",
+   "texto": "Beneish M de -2,50: abaixo do limite do artigo (limite de −1,78: acima dele, o artigo separa o caso para uma segunda olhada).",
+   "numero": "-2,50",
+   "medido_em": "DFP de 2025 contra 2024",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "beneish",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.2",
+   "tipo": "ponto",
+   "lado": "forte",
+   "texto": "ROE (retorno sobre o patrimônio) de 26,4% (12 meses até 30/06/2026; balanço de 30/06/2026): ótimo contra o setor Energia elétrica (105 empresas, corte de 31/08/2026); mediana 11,8%; metade entre 0,6% e 20,1%.",
+   "numero": "26,4%",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "roe",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.3",
+   "tipo": "ponto",
+   "lado": "forte",
+   "texto": "ROIC (retorno sobre o capital investido) de 14,9% (12 meses até 30/06/2026; balanço de 30/06/2026): ótimo contra o setor Energia elétrica (112 empresas, corte de 31/08/2026); mediana 8,9%; metade entre 4,9% e 12,6%.",
+   "numero": "14,9%",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "roic",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.4",
+   "tipo": "ponto",
+   "lado": "atenção",
+   "texto": "Dívida líquida / patrimônio subiu de 1,07× para 1,21× desde o balanço de 31/03/2026 (+14%).",
+   "numero": "1,21×",
+   "medido_em": "balanço de 30/06/2026",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "divida_sobre_pl",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.5",
+   "tipo": "ponto",
+   "lado": "forte",
+   "texto": "Caixa operacional / lucro de 1,02×: saudável na faixa fixa (saudável de 0,80× a 1,50×; abaixo, atenção; acima, conferir o lucro).",
+   "numero": "1,02×",
+   "medido_em": "12 meses até 30/06/2026",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "conversao_de_caixa",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.6",
+   "tipo": "ponto",
+   "lado": "atenção",
+   "texto": "370 fundos com a ação em 31/03/2026, menos que um ano antes (455 fundos em mar/2025).",
+   "numero": "370",
+   "medido_em": "31/03/2026",
+   "tabela": "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)",
+   "indicador": "fundos_com_a_acao",
+   "so_pro": true
+  },
+  {
+   "secao": "o_que_os_dados_mostram",
+   "id": "o_que_os_dados_mostram.pontos.7",
+   "tipo": "ponto",
+   "lado": "forte",
+   "texto": "Giro do ativo de 0,55× (12 meses até 30/06/2026; balanço de 30/06/2026): bom contra o setor Energia elétrica (100 empresas, corte de 31/08/2026); mediana 0,30×; metade entre 0,17× e 0,55×.",
+   "numero": "0,55×",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "tabela": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "indicador": "dupont_giro",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.indicadores.0",
+   "tipo": "linha",
+   "tabela": "Antes e agora",
+   "celulas": {
+    "indicador": "Receita (12 meses)",
+    "antes": "R$ 45,1 bi",
+    "agora": "R$ 45,6 bi"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.indicadores.1",
+   "tipo": "linha",
+   "tabela": "Antes e agora",
+   "celulas": {
+    "indicador": "Lucro dos acionistas (12 meses)",
+    "antes": "R$ 5,8 bi",
+    "agora": "R$ 6,0 bi"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.indicadores.2",
+   "tipo": "linha",
+   "tabela": "Antes e agora",
+   "celulas": {
+    "indicador": "Margem líquida (lucro consolidado)",
+    "antes": "13,4%",
+    "agora": "13,8%"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.indicadores.3",
+   "tipo": "linha",
+   "tabela": "Antes e agora",
+   "celulas": {
+    "indicador": "ROE (retorno sobre o patrimônio)",
+    "antes": "23,7%",
+    "agora": "26,4%"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.indicadores.4",
+   "tipo": "linha",
+   "tabela": "Antes e agora",
+   "celulas": {
+    "indicador": "Dívida líquida / patrimônio",
+    "antes": "1,07×",
+    "agora": "1,21×"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudou",
+   "id": "o_que_mudou.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Comparando o balanço de 31/03/2026 com o de 30/06/2026.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.receita",
+   "tipo": "numero",
+   "nome": "Receita (12 meses)",
+   "texto": "R$ 45,6 bi",
+   "valor": 45612395000.0,
+   "unidade": "reais",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 45,1 bi",
+    "valor": 45054093000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.lucro",
+   "tipo": "numero",
+   "nome": "Lucro dos acionistas (12 meses)",
+   "texto": "R$ 6,0 bi",
+   "valor": 6004881000.0,
+   "unidade": "reais",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 5,8 bi",
+    "valor": 5763246000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.margem_bruta",
+   "tipo": "numero",
+   "nome": "Margem bruta",
+   "texto": "32,1%",
+   "valor": 0.3206362437227863,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (108 empresas, corte de 31/08/2026)",
+    "texto": "mediana 30,1%; metade entre 22,7% e 60,8%",
+    "valor": null
+   },
+   "nota": "médio",
+   "nota_texto": "Margem bruta 32,1%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 22,7% e 60,8%.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.margem_ebit",
+   "tipo": "numero",
+   "nome": "Margem EBIT",
+   "texto": "25,3%",
+   "valor": 0.25276861695159836,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (108 empresas, corte de 31/08/2026)",
+    "texto": "mediana 23,5%; metade entre 15,4% e 55,3%",
+    "valor": null
+   },
+   "nota": "médio",
+   "nota_texto": "Margem EBIT 25,3%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 15,4% e 55,3%.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.margem_liquida",
+   "tipo": "numero",
+   "nome": "Margem líquida (lucro consolidado)",
+   "texto": "13,8%",
+   "valor": 0.13787609705651283,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (108 empresas, corte de 31/08/2026)",
+    "texto": "mediana 10,8%; metade entre 1,7% e 27,7%",
+    "valor": null
+   },
+   "nota": "médio",
+   "nota_texto": "Margem líquida (lucro consolidado) 13,8%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 1,7% e 27,7%.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.crescimento_receita",
+   "tipo": "numero",
+   "nome": "Crescimento da receita (5 anos, ao ano)",
+   "texto": "—",
+   "unidade": "fração",
+   "medido_em": "DFP de 2020 a 2025",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "sem_comparacao": "O balanço anterior guardado não tem este número para comparar.",
+   "motivo": "Só há 2 anos de demonstrações guardados; o horizonte pede 6.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.crescimento_lucro",
+   "tipo": "numero",
+   "nome": "Crescimento do lucro (5 anos, ao ano)",
+   "texto": "—",
+   "unidade": "fração",
+   "medido_em": "DFP de 2020 a 2025",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "sem_comparacao": "O balanço anterior guardado não tem este número para comparar.",
+   "motivo": "Só há 2 anos de demonstrações guardados; o horizonte pede 6.",
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.0",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Receita",
+    "valor": 44367780000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.1",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Custo",
+    "valor": -30243584000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.2",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Despesas com vendas",
+    "valor": -985664000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.3",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Despesas administrativas",
+    "valor": -1722798000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.4",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Outras operacionais",
+    "valor": -361263000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.5",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Resultado financeiro, impostos e outros",
+    "valor": -5311918000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "resultado",
+   "id": "resultado.cascata.6",
+   "tipo": "linha",
+   "tabela": "Da receita ao lucro (último ano)",
+   "celulas": {
+    "passo": "Lucro consolidado",
+    "valor": 5742553000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "retorno",
+   "id": "retorno.roe",
+   "tipo": "numero",
+   "nome": "ROE (retorno sobre o patrimônio)",
+   "texto": "26,4%",
+   "valor": 0.26433211371321874,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (105 empresas, corte de 31/08/2026)",
+    "texto": "mediana 11,8%; metade entre 0,6% e 20,1%",
+    "valor": null
+   },
+   "nota": "ótimo",
+   "nota_texto": "ROE 26,4%: ótimo. Padrão: Energia elétrica (105 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,6% e 20,1%.",
+   "so_pro": false
+  },
+  {
+   "secao": "retorno",
+   "id": "retorno.roic",
+   "tipo": "numero",
+   "nome": "ROIC (retorno sobre o capital investido)",
+   "texto": "14,9%",
+   "valor": 0.14850898959058126,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (112 empresas, corte de 31/08/2026)",
+    "texto": "mediana 8,9%; metade entre 4,9% e 12,6%",
+    "valor": null
+   },
+   "nota": "ótimo",
+   "nota_texto": "ROIC 14,9%: ótimo. Padrão: Energia elétrica (112 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 4,9% e 12,6%.",
+   "so_pro": false
+  },
+  {
+   "secao": "retorno",
+   "id": "retorno.dupont_margem",
+   "tipo": "numero",
+   "nome": "Margem líquida dos acionistas (DuPont)",
+   "texto": "13,2%",
+   "valor": 0.13165020166119318,
+   "unidade": "fração",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 12,8%",
+    "valor": 0.12791836692839428
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "retorno",
+   "id": "retorno.dupont_giro",
+   "tipo": "numero",
+   "nome": "Giro do ativo",
+   "texto": "0,55×",
+   "valor": 0.5465445281471469,
+   "unidade": "vezes",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (100 empresas, corte de 31/08/2026)",
+    "texto": "mediana 0,30×; metade entre 0,17× e 0,55×",
+    "valor": null
+   },
+   "nota": "bom",
+   "nota_texto": "Giro do ativo 0,55×: bom. Padrão: Energia elétrica (100 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,17× e 0,55×.",
+   "so_pro": false
+  },
+  {
+   "secao": "retorno",
+   "id": "retorno.dupont_alavancagem",
+   "tipo": "numero",
+   "nome": "Alavancagem (ativo / patrimônio)",
+   "texto": "3,67×",
+   "valor": 3.673692904617619,
+   "unidade": "vezes",
+   "medido_em": "12 meses até 30/06/2026; balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 3,46×",
+    "valor": 3.4567495523828904
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.divida_bruta",
+   "tipo": "numero",
+   "nome": "Dívida bruta",
+   "texto": "R$ 31,6 bi",
+   "valor": 31552149000.0,
+   "unidade": "reais",
+   "medido_em": "balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 31,7 bi",
+    "valor": 31714146000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.caixa",
+   "tipo": "numero",
+   "nome": "Caixa e aplicações",
+   "texto": "R$ 4,0 bi",
+   "valor": 3988266000.0,
+   "unidade": "reais",
+   "medido_em": "balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 5,8 bi",
+    "valor": 5751930000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.divida_liquida",
+   "tipo": "numero",
+   "nome": "Dívida líquida",
+   "texto": "R$ 27,6 bi",
+   "valor": 27563883000.0,
+   "unidade": "reais",
+   "medido_em": "balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 26,0 bi",
+    "valor": 25962216000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.divida_sobre_pl",
+   "tipo": "numero",
+   "nome": "Dívida líquida / patrimônio",
+   "texto": "1,21×",
+   "valor": 1.2133495160909695,
+   "unidade": "vezes",
+   "medido_em": "balanço de 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (105 empresas, corte de 31/08/2026)",
+    "texto": "mediana 0,98×; metade entre 0,45× e 2,15×",
+    "valor": null
+   },
+   "nota": "médio",
+   "nota_texto": "Dívida líquida / patrimônio 1,21×: médio. Padrão: Energia elétrica (105 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,45× e 2,15×.",
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.cobertura_de_juros",
+   "tipo": "numero",
+   "nome": "Cobertura de juros (EBIT / despesas financeiras)",
+   "texto": "2,15×",
+   "valor": 2.1475387942106106,
+   "unidade": "vezes",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (112 empresas, corte de 31/08/2026)",
+    "texto": "mediana 1,54×; metade entre 0,85× e 2,24×",
+    "valor": null
+   },
+   "nota": "bom",
+   "nota_texto": "Cobertura de juros 2,15×: bom. Padrão: Energia elétrica (112 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,85× e 2,24×.",
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.0",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Dívida líquida no começo",
+    "valor": 25241283000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.1",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Caixa operacional",
+    "valor": -7162797000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.2",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Capex",
+    "valor": 390484000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.3",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Dividendos pagos",
+    "valor": 3519769000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.4",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Outros",
+    "valor": 4161906000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "endividamento",
+   "id": "endividamento.ponte.5",
+   "tipo": "linha",
+   "tabela": "Da dívida líquida do ano anterior à de agora",
+   "celulas": {
+    "passo": "Dívida líquida no fim",
+    "valor": 26150645000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.conversao_de_caixa",
+   "tipo": "numero",
+   "nome": "Caixa operacional / lucro",
+   "texto": "1,02×",
+   "valor": 1.0199061546776609,
+   "unidade": "vezes",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "faixa fixa e pública do TickerLab",
+    "texto": "saudável de 0,80× a 1,50×; abaixo, atenção; acima, conferir o lucro",
+    "valor": null
+   },
+   "nota": "saudável",
+   "nota_texto": "Caixa operacional / lucro 1,02×: saudável. Faixa fixa e pública (não compara com o setor): abaixo de 0,80× atenção; de 0,80× a 1,50× saudável; acima de 1,50× conferir o lucro (um número alto costuma vir de lucro pequeno, não de caixa bom).",
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.caixa_livre",
+   "tipo": "numero",
+   "nome": "Caixa livre (operacional − capex)",
+   "texto": "R$ 6,0 bi",
+   "valor": 5999891000.0,
+   "unidade": "reais",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 6,2 bi",
+    "valor": 6222813000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.capex",
+   "tipo": "numero",
+   "nome": "Capex",
+   "texto": "R$ 414,2 mi",
+   "valor": 414155000.0,
+   "unidade": "reais",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era R$ 374,6 mi",
+    "valor": 374617000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.capex_sobre_depreciacao",
+   "tipo": "numero",
+   "nome": "Capex / depreciação",
+   "texto": "0,17×",
+   "valor": 0.1683949147504683,
+   "unidade": "vezes",
+   "medido_em": "12 meses até 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 0,15×",
+    "valor": 0.15462655419257934
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.pmr",
+   "tipo": "numero",
+   "nome": "Prazo médio de recebimento",
+   "texto": "51 dias",
+   "valor": 50.74159458191134,
+   "unidade": "dias",
+   "medido_em": "12 meses até 30/06/2026; saldo do fim, em 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 51 dias",
+    "valor": 51.37632145874072
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.pme",
+   "tipo": "numero",
+   "nome": "Prazo médio de estocagem",
+   "texto": "3 dias",
+   "valor": 3.059754465426731,
+   "unidade": "dias",
+   "medido_em": "12 meses até 30/06/2026; saldo do fim, em 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 3 dias",
+    "valor": 2.9013690271156976
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.pmp",
+   "tipo": "numero",
+   "nome": "Prazo médio de pagamento",
+   "texto": "43 dias",
+   "valor": 42.62007667759756,
+   "unidade": "dias",
+   "medido_em": "12 meses até 30/06/2026; saldo do fim, em 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "balanço de 31/03/2026",
+    "texto": "era 47 dias",
+    "valor": 46.66310928834221
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "caixa",
+   "id": "caixa.ciclo_de_caixa",
+   "tipo": "numero",
+   "nome": "Ciclo de caixa",
+   "texto": "11 dias",
+   "valor": 11.181272369740512,
+   "unidade": "dias",
+   "medido_em": "12 meses até 30/06/2026; saldo do fim, em 30/06/2026",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "setor Energia elétrica (108 empresas, corte de 31/08/2026)",
+    "texto": "mediana 14 dias; metade entre -3 dias e 30 dias",
+    "valor": null
+   },
+   "nota": "médio",
+   "nota_texto": "Ciclo de caixa 11 dias: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre -3 dias e 30 dias.",
+   "so_pro": false
+  },
+  {
+   "secao": "qualidade",
+   "id": "qualidade.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Nenhum número em conferência.",
+   "so_pro": false
+  },
+  {
+   "secao": "dividendos",
+   "id": "dividendos.anos_pagando",
+   "tipo": "numero",
+   "nome": "Anos pagando dividendos",
+   "texto": "2",
+   "valor": 2.0,
+   "unidade": "anos",
+   "medido_em": "DFP de 2024 a 2025",
+   "fonte": "DFP entregues à CVM (fluxo de caixa e composição do capital)",
+   "comparacao": {
+    "contra": "anos com DFP guardada",
+    "texto": "2 de 2",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "dividendos",
+   "id": "dividendos.diluicao",
+   "tipo": "numero",
+   "nome": "Diluição ao ano",
+   "texto": "0,0%",
+   "valor": 0.0,
+   "unidade": "fração",
+   "medido_em": "DFP de 2024 a 2025",
+   "fonte": "DFP entregues à CVM (fluxo de caixa e composição do capital)",
+   "comparacao": {
+    "contra": "ações em circulação em 2024",
+    "texto": "1.152.254.440 em 2024 e 1.152.254.440 em 2025",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "dividendos",
+   "id": "dividendos.historico.0",
+   "tipo": "linha",
+   "tabela": "Ano a ano",
+   "celulas": {
+    "ano": 2024,
+    "acoes": 1152254440.0,
+    "acoes_ajustadas": 1152254440.0,
+    "dividendos_pagos": 3479652000.0,
+    "lucro": 5457652000.0,
+    "payout_caixa": 0.6375730808780039
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "dividendos",
+   "id": "dividendos.historico.1",
+   "tipo": "linha",
+   "tabela": "Ano a ano",
+   "celulas": {
+    "ano": 2025,
+    "acoes": 1152254440.0,
+    "acoes_ajustadas": 1152254440.0,
+    "dividendos_pagos": 3519769000.0,
+    "lucro": 5484324000.0,
+    "payout_caixa": 0.6417872102377613
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas",
+   "tipo": "numero",
+   "nome": "Ofertas registradas na CVM",
+   "texto": "94",
+   "valor": 94.0,
+   "unidade": "ofertas",
+   "medido_em": "09/09/2026",
+   "fonte": "ofertas registradas na CVM (tabelas ofertas_resolucao_160 e ofertas_antigas)",
+   "comparacao": {
+    "contra": "contagem por ano",
+    "texto": "3 em 2026 e 14 em 2025",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_com_a_acao",
+   "tipo": "numero",
+   "nome": "Fundos com a empresa na carteira",
+   "texto": "370",
+   "valor": 370.0,
+   "unidade": "fundos",
+   "medido_em": "31/03/2026",
+   "fonte": "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)",
+   "comparacao": {
+    "contra": "carteiras de mar/2025",
+    "texto": "455 fundos em mar/2025",
+    "valor": 455.0
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.valor_nos_fundos",
+   "tipo": "numero",
+   "nome": "Valor nas carteiras dos fundos",
+   "texto": "R$ 495,2 mi",
+   "valor": 495194775.44,
+   "unidade": "R$",
+   "medido_em": "31/03/2026",
+   "fonte": "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)",
+   "comparacao": {
+    "contra": "carteiras de mar/2025",
+    "texto": "R$ 611,6 mi em mar/2025",
+    "valor": 611626555.1
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.0",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "09/09/2026",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 1,7 bi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.1",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "11/03/2026",
+    "Emissor": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 2,2 bi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.2",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "11/03/2026",
+    "Emissor": "COMPANHIA JAGUARI DE ENERGIA",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 312,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.3",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "29/12/2025",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 1,7 bi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.4",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "29/12/2025",
+    "Emissor": "COMPANHIA JAGUARI DE ENERGIA",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 100,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.5",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "17/12/2025",
+    "Emissor": "CPFL ENERGIAS RENOVÁVEIS S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 625,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.6",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "11/12/2025",
+    "Emissor": "CPFL COMERCIALIZACAO BRASIL S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 380,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.7",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "08/12/2025",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Secundaria",
+    "Valor registrado": "R$ 352,7 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.8",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "24/11/2025",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Secundaria",
+    "Valor registrado": "R$ 450,9 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.9",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "07/10/2025",
+    "Emissor": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 351,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.10",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "07/10/2025",
+    "Emissor": "CIA PIRATININGA DE FORÇA E LUZ",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 106,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.11",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "07/10/2025",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 570,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.12",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "21/05/2025",
+    "Emissor": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 1,1 bi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.13",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "21/05/2025",
+    "Emissor": "CIA PIRATININGA DE FORÇA E LUZ",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 334,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.14",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "28/02/2025",
+    "Emissor": "CIA PIRATININGA DE FORÇA E LUZ",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 300,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.15",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "28/02/2025",
+    "Emissor": "COMPANHIA JAGUARI DE ENERGIA",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 225,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.16",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "28/02/2025",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 3,2 bi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.17",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "14/10/2024",
+    "Emissor": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 603,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.18",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "16/09/2024",
+    "Emissor": "COMPANHIA PAULISTA DE FORCA LUZ - CPFL",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 750,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas.19",
+   "tipo": "linha",
+   "tabela": "Ofertas",
+   "celulas": {
+    "Data": "16/09/2024",
+    "Emissor": "CIA PIRATININGA DE FORÇA E LUZ",
+    "Papel": "Debêntures",
+    "Tipo": "Primaria",
+    "Valor registrado": "R$ 554,0 mi",
+    "Regra": "Res. 160"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.0",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2026",
+    "Ofertas": "3",
+    "Valor registrado": "R$ 4,2 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.1",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2025",
+    "Ofertas": "14",
+    "Valor registrado": "R$ 9,8 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.2",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2024",
+    "Ofertas": "11",
+    "Valor registrado": "R$ 5,5 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.3",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2023",
+    "Ofertas": "4",
+    "Valor registrado": "R$ 1,5 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.4",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2017",
+    "Ofertas": "3",
+    "Valor registrado": "R$ 700,0 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.5",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2013",
+    "Ofertas": "2",
+    "Valor registrado": "R$ 1,0 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.6",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2009",
+    "Ofertas": "2",
+    "Valor registrado": "R$ 350,0 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.7",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2008",
+    "Ofertas": "2",
+    "Valor registrado": "R$ 200,0 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.8",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2007",
+    "Ofertas": "2",
+    "Valor registrado": "R$ 900,0 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.ofertas_por_ano.9",
+   "tipo": "linha",
+   "tabela": "Ofertas por ano",
+   "celulas": {
+    "Ano": "2006",
+    "Ofertas": "2",
+    "Valor registrado": "R$ 1,0 bi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.0",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "abr/2024",
+    "Fundos": "436",
+    "Valor nas carteiras": "R$ 655,8 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.1",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "mai/2024",
+    "Fundos": "428",
+    "Valor nas carteiras": "R$ 637,8 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.2",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jun/2024",
+    "Fundos": "439",
+    "Valor nas carteiras": "R$ 610,1 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.3",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jul/2024",
+    "Fundos": "404",
+    "Valor nas carteiras": "R$ 585,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.4",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "ago/2024",
+    "Fundos": "360",
+    "Valor nas carteiras": "R$ 633,7 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.5",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "set/2024",
+    "Fundos": "390",
+    "Valor nas carteiras": "R$ 593,8 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.6",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "out/2024",
+    "Fundos": "426",
+    "Valor nas carteiras": "R$ 555,1 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.7",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "nov/2024",
+    "Fundos": "427",
+    "Valor nas carteiras": "R$ 594,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.8",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "dez/2024",
+    "Fundos": "424",
+    "Valor nas carteiras": "R$ 522,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.9",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jan/2025",
+    "Fundos": "477",
+    "Valor nas carteiras": "R$ 645,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.10",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "fev/2025",
+    "Fundos": "467",
+    "Valor nas carteiras": "R$ 511,1 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.11",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "mar/2025",
+    "Fundos": "455",
+    "Valor nas carteiras": "R$ 611,6 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.12",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "abr/2025",
+    "Fundos": "437",
+    "Valor nas carteiras": "R$ 615,9 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.13",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "mai/2025",
+    "Fundos": "430",
+    "Valor nas carteiras": "R$ 646,6 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.14",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jun/2025",
+    "Fundos": "441",
+    "Valor nas carteiras": "R$ 627,6 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.15",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jul/2025",
+    "Fundos": "429",
+    "Valor nas carteiras": "R$ 563,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.16",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "ago/2025",
+    "Fundos": "422",
+    "Valor nas carteiras": "R$ 571,2 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.17",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "set/2025",
+    "Fundos": "376",
+    "Valor nas carteiras": "R$ 522,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.18",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "out/2025",
+    "Fundos": "394",
+    "Valor nas carteiras": "R$ 557,6 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.19",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "nov/2025",
+    "Fundos": "404",
+    "Valor nas carteiras": "R$ 597,5 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.20",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "dez/2025",
+    "Fundos": "407",
+    "Valor nas carteiras": "R$ 480,4 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.21",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "jan/2026",
+    "Fundos": "396",
+    "Valor nas carteiras": "R$ 518,4 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.22",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "fev/2026",
+    "Fundos": "366",
+    "Valor nas carteiras": "R$ 481,3 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.fundos_por_mes.23",
+   "tipo": "linha",
+   "tabela": "Fundos por mes",
+   "celulas": {
+    "Mês": "mar/2026",
+    "Fundos": "370",
+    "Valor nas carteiras": "R$ 495,2 mi"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Dados da base do TickerLab de 17/10/2026.",
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Ofertas registradas na CVM (Resolução 160 e as anteriores) da companhia e das controladas do FRE mais recente (o grupo costuma emitir pelas controladas), pelo valor registrado, não o colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem com até 90 dias de atraso: os meses em que as carteiras ainda estão chegando ficam de fora.",
+   "so_pro": true
+  },
+  {
+   "secao": "ofertas_e_fundos",
+   "id": "ofertas_e_fundos.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Fonte: ODbL (dados abertos da CVM; citar a fonte).",
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.auditor_atual",
+   "tipo": "numero",
+   "nome": "Auditor atual",
+   "texto": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA",
+   "unidade": "texto",
+   "medido_em": "01/01/2026",
+   "fonte": "FRE entregue à CVM (tabela auditores)",
+   "comparacao": {
+    "contra": "auditor anterior",
+    "texto": "KPMG Auditores Independentes por 4,8 anos, até 01/01/2022",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.auditor_desde",
+   "tipo": "numero",
+   "nome": "Auditor desde",
+   "texto": "01/01/2022",
+   "unidade": "data",
+   "medido_em": "01/01/2026",
+   "fonte": "FRE entregue à CVM (tabela trocas_de_auditor)",
+   "comparacao": {
+    "contra": "auditor anterior",
+    "texto": "KPMG Auditores Independentes por 4,8 anos, até 01/01/2022",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.sociedades",
+   "tipo": "numero",
+   "nome": "Sociedades no FRE",
+   "texto": "19",
+   "valor": 19.0,
+   "unidade": "empresas",
+   "medido_em": "FRE de 2026",
+   "fonte": "FRE entregue à CVM (tabela controladas)",
+   "sem_comparacao": "A ficha traz só o FRE mais recente: não há o número do ano anterior para comparar.",
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas",
+   "tipo": "numero",
+   "nome": "Controladas",
+   "texto": "18",
+   "valor": 18.0,
+   "unidade": "empresas",
+   "medido_em": "FRE de 2026",
+   "fonte": "FRE entregue à CVM (tabela controladas)",
+   "comparacao": {
+    "contra": "sociedades no FRE",
+    "texto": "18 de 19",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.coligadas_e_outras",
+   "tipo": "numero",
+   "nome": "Coligadas e outras participações",
+   "texto": "1",
+   "valor": 1.0,
+   "unidade": "empresas",
+   "medido_em": "FRE de 2026",
+   "fonte": "FRE entregue à CVM (tabela controladas)",
+   "comparacao": {
+    "contra": "sociedades no FRE",
+    "texto": "1 de 19",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.trocas_de_auditor.0",
+   "tipo": "linha",
+   "tabela": "Trocas de auditor",
+   "celulas": {
+    "Desde": "01/01/2022",
+    "Auditor anterior": "KPMG Auditores Independentes",
+    "Auditor novo": "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES",
+    "Anos com o anterior": "4,8"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.trocas_de_auditor.1",
+   "tipo": "linha",
+   "tabela": "Trocas de auditor",
+   "celulas": {
+    "Desde": "29/03/2017",
+    "Auditor anterior": "Deloitte Touche Tohmatsu Auditores Independentes",
+    "Auditor novo": "KPMG Auditores Independentes",
+    "Anos com o anterior": "5,0"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.trocas_de_auditor.2",
+   "tipo": "linha",
+   "tabela": "Trocas de auditor",
+   "celulas": {
+    "Desde": "12/03/2012",
+    "Auditor anterior": "KPMG Auditores Independentes",
+    "Auditor novo": "Deloitte Touche Tohmatsu Auditores Independentes",
+    "Anos com o anterior": "4,9"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.0",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "Companhia Paulista de Força e Luz (\"CPFL Paulista\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.1",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "Companhia Piratininga de Força e Luz (\"CPFL Piratininga\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.2",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "Companhia Jaguari de Energia (\"CPFL Santa Cruz\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.3",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL Supri",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.4",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "COMPANHIA JAGUARI GERAÇÃO DE ENERGIA (\"CPFL JAGUARI GERAÇÃO\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.5",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL COMERCIALIZAÇÃO BRASIL S.A. (\"CPFL BRASIL\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.6",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL SERVIÇOS, EQUIPAMENTOS, INDÚSTRIA E COMÉRCIO S.A. (\"CPFL SERVIÇOS\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.7",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL PLANALTO LTDA. (\"CPFL PLANALTO\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.8",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL ATENDE CENTRO DE CONTATOS E ATENDIMENTOS LTDA. (\"CPFL ATENDE\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.9",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL Infra",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.10",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL Telecom S.A. (\"CPFL Telecom\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.11",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "Clion Assessoria e Comercialização de Energia Elétrica Ltda. (\"Clion\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.12",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "TI NECT SERVIÇOS DE INFORMÁTICA (\"TI NECT\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.13",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "Nect Serviços Administrativos de Recursos Humanos Ltda. (\"CPFL Pessoas\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.14",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL Finanças",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.15",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "ALESTA SOCIEDADE DE CRÉDITO DIRETO S.A. (\"ALESTA\")",
+    "Participação": "100%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.16",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A. (\"CPFL RGE\")",
+    "Participação": "89,01%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.17",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL ENERGIAS RENOVÁVEIS S.A. (\"CPFL RENOVÁVEIS\")",
+    "Participação": "51%",
+    "Controlada": "sim"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.controladas.18",
+   "tipo": "linha",
+   "tabela": "Controladas",
+   "celulas": {
+    "Sociedade": "CPFL TRANSMISSÃO S.A.",
+    "Participação": "30%",
+    "Controlada": "não"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Dados da base do TickerLab de 17/10/2026.",
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Controladas e coligadas vêm do Formulário de Referência (FRE) mais recente entregue à CVM. Quando o FRE não informa o tipo, conta como controlada a sociedade com mais da metade do capital. A controladora aparece só quando ela também entrega o FRE, com o dos últimos 2 anos ainda listando a companhia. Auditor pessoa física não tem o nome mostrado.",
+   "so_pro": true
+  },
+  {
+   "secao": "auditor_e_controladas",
+   "id": "auditor_e_controladas.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Fonte: ODbL (dados abertos da CVM; citar a fonte).",
+   "so_pro": true
+  },
+  {
+   "secao": "pares",
+   "id": "pares.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Sem pares para comparar.",
+   "so_pro": false
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores",
+   "tipo": "numero",
+   "nome": "Consumidores atendidos pelas distribuidoras (ANEEL)",
+   "texto": "9.743.641",
+   "valor": 9743641.0,
+   "unidade": "consumidores",
+   "medido_em": "dez/2025",
+   "fonte": "dados abertos da ANEEL (tabela aneel_samp)",
+   "comparacao": {
+    "contra": "total da agência no ano",
+    "texto": "11,1% do total da agência em 2025; 9.784.690 em 2024",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.0",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2025",
+    "Consumidores": "9.743.641",
+    "Parte do total": "11,1%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.1",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2024",
+    "Consumidores": "9.784.690",
+    "Parte do total": "11,3%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.2",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2023",
+    "Consumidores": "9.810.633",
+    "Parte do total": "11,3%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.3",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2022",
+    "Consumidores": "9.799.149",
+    "Parte do total": "11,2%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.4",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2021",
+    "Consumidores": "9.819.327",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.5",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2020",
+    "Consumidores": "9.741.640",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.6",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2019",
+    "Consumidores": "9.571.247",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.7",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2018",
+    "Consumidores": "9.439.267",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.8",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2017",
+    "Consumidores": "9.258.601",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.aneel_consumidores.9",
+   "tipo": "linha",
+   "tabela": "Aneel consumidores",
+   "celulas": {
+    "Ano": "2016",
+    "Consumidores": "9.095.518",
+    "Parte do total": "11,4%",
+    "Meses no ano": "12"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.0",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA JAGUARI DE ENERGIA",
+    "Agência": "ANEEL",
+    "Ligada desde": "17/05/2024"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.1",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA LESTE PAULISTA DE ENERGIA",
+    "Agência": "ANEEL",
+    "Ligada desde": "24/05/2021"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.2",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA LUZ E FORCA DE MOCOCA",
+    "Agência": "ANEEL",
+    "Ligada desde": "24/05/2021"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.3",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA LUZ E FORCA SANTA CRUZ",
+    "Agência": "ANEEL",
+    "Ligada desde": "24/05/2021"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.4",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA PAULISTA DE FORCA E LUZ",
+    "Agência": "ANEEL",
+    "Ligada desde": "17/05/2024"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.5",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "COMPANHIA PIRATININGA DE FORCA E LUZ",
+    "Agência": "ANEEL",
+    "Ligada desde": "17/05/2024"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.6",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "Companhia Estadual de Energia Elétrica",
+    "Agência": "ANEEL",
+    "Ligada desde": "31/08/2026"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.7",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "Companhia Sul Paulista de Energia",
+    "Agência": "ANEEL",
+    "Ligada desde": "24/05/2021"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.8",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "RGE SUL DISTRIBUIDORA DE ENERGIA S.A.",
+    "Agência": "ANEEL",
+    "Ligada desde": "31/08/2026"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.entidades_ligadas.9",
+   "tipo": "linha",
+   "tabela": "Entidades ligadas",
+   "celulas": {
+    "Entidade na agência": "RIO GRANDE ENERGIA SA",
+    "Agência": "ANEEL",
+    "Ligada desde": "09/05/2011"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Dados da base do TickerLab de 17/10/2026.",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou controlada, pelo FRE). A participação é sobre o total da agência no ano.",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Fonte: CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas.",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.3",
+   "tipo": "paragrafo",
+   "texto": "Fonte: CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC).",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.4",
+   "tipo": "paragrafo",
+   "texto": "Fonte: CC BY (dados abertos da ANP no dados.gov.br; citar a ANP).",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.5",
+   "tipo": "paragrafo",
+   "texto": "Fonte: CC BY (dados abertos da ANS no dados.gov.br; citar a ANS).",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.6",
+   "tipo": "paragrafo",
+   "texto": "Fonte: CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel).",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.7",
+   "tipo": "paragrafo",
+   "texto": "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
+   "so_pro": true
+  },
+  {
+   "secao": "setor_regulado",
+   "id": "setor_regulado.paragrafos.8",
+   "tipo": "paragrafo",
+   "texto": "Fonte: ODbL (dados abertos da CVM; citar a fonte).",
+   "so_pro": true
+  },
+  {
+   "secao": "eventos",
+   "id": "eventos.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Nenhum acontecimento recente guardado.",
+   "so_pro": false
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios",
+   "tipo": "numero",
+   "nome": "Documentos de negócios na CVM",
+   "texto": "89",
+   "valor": 89.0,
+   "unidade": "documentos",
+   "medido_em": "02/02/2026",
+   "fonte": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
+   "comparacao": {
+    "contra": "contagem por ano",
+    "texto": "1 em 2026 e 2 em 2025",
+    "valor": null
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.0",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "02/02/2026",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Reorganização Societária - Incorporação, Cisão ou Fusão da Companhia"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.1",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "31/10/2025",
+    "Documento": "Comunicado ao mercado",
+    "Assunto, como a empresa escreveu": "Aquisição de lote no Leilão de Transmissão ANEEL nº 4/2025"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.2",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "29/04/2025",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Cisão parcial da CPFL Geração,  com a incorporação do acervo cindido pela  CPFL Energia"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.3",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "28/02/2024",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Incorporação da CPFL Cone Sul pela CPFL Transmissão"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.4",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "18/11/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Resultado do Leilão da OPA da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.5",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "17/11/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Conclusão da aquisição de participação acionária em Enercan, em decorrência do exercício do direito de preferência"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.6",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "16/11/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Preço da OPA - CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.7",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "19/10/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Edital de Oferta Pública de Aquisição de Ações (OPA) da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.8",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "11/10/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Registro da OPA da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.9",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "12/08/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Registro da OPA da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.10",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "06/04/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Resultado do Leilão da OPA"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.11",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "01/04/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Preço da OPA - CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.12",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "07/03/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Edital da Oferta pública de aquisição das ações (OPA) da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.13",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "25/02/2022",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Oferta pública de aquisição das ações (OPA) da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.14",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "12/11/2021",
+    "Documento": "Comunicado ao mercado",
+    "Assunto, como a empresa escreveu": "Pedido de registro de OPA da CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.15",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "14/10/2021",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Conclusão da Aquisição da CEEE-T pela CPFL Cone Sul"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.16",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "01/10/2021",
+    "Documento": "Comunicado ao mercado",
+    "Assunto, como a empresa escreveu": "Aquisição CEEE-T - Aprovação da ANEEL"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.17",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "27/09/2021",
+    "Documento": "Comunicado ao mercado",
+    "Assunto, como a empresa escreveu": "Aquisição CEEE-T - Aprovação do CADE"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.18",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "16/07/2021",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Aquisição CEEE-T"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios.19",
+   "tipo": "linha",
+   "tabela": "Negocios",
+   "celulas": {
+    "Data": "25/02/2021",
+    "Documento": "Fato relevante",
+    "Assunto, como a empresa escreveu": "Decisão judicial favorável nos autos de ação movida pela RGE Sul"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.0",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2026",
+    "Documentos": "1"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.1",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2025",
+    "Documentos": "2"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.2",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2024",
+    "Documentos": "1"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.3",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2022",
+    "Documentos": "10"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.4",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2021",
+    "Documentos": "6"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.5",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2020",
+    "Documentos": "3"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.6",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2019",
+    "Documentos": "2"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.7",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2018",
+    "Documentos": "1"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.8",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2017",
+    "Documentos": "8"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.negocios_por_ano.9",
+   "tipo": "linha",
+   "tabela": "Negocios por ano",
+   "celulas": {
+    "Ano": "2016",
+    "Documentos": "10"
+   },
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Dados da base do TickerLab de 17/10/2026.",
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. O assunto é escrito pela empresa.",
+   "so_pro": true
+  },
+  {
+   "secao": "negocios",
+   "id": "negocios.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Fonte: ODbL (dados abertos da CVM; citar a fonte).",
+   "so_pro": true
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski",
+   "tipo": "numero",
+   "nome": "Piotroski F",
+   "texto": "6,00",
+   "valor": 6.0,
+   "unidade": "vezes",
+   "medido_em": "DFP de 2025 contra 2024; 9 de 9 critérios avaliados",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "escala do artigo",
+    "texto": "de 0 a 9 pontos; o artigo compara as empresas com 8 ou mais com as de 1 ou menos",
+    "valor": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.altman",
+   "tipo": "numero",
+   "nome": "Altman Z''",
+   "texto": "1,89",
+   "valor": 1.8913486529379437,
+   "unidade": "vezes",
+   "medido_em": "DFP de 2025",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "escala do artigo",
+    "texto": "segura acima de 2,60; aflição abaixo de 1,10; cinzenta entre as duas",
+    "valor": null
+   },
+   "nota": "cinzenta",
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish",
+   "tipo": "numero",
+   "nome": "Beneish M",
+   "texto": "-2,50",
+   "valor": -2.497974258897583,
+   "unidade": "vezes",
+   "medido_em": "DFP de 2025 contra 2024",
+   "fonte": "DFP e ITR entregues à CVM (demonstrações consolidadas)",
+   "comparacao": {
+    "contra": "escala do artigo",
+    "texto": "limite de −1,78: acima dele, o artigo separa o caso para uma segunda olhada",
+    "valor": null
+   },
+   "nota": "abaixo do limite do artigo",
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.0",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "ROA positivo",
+    "valor": 0.06762427538470132,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.1",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Caixa operacional positivo",
+    "valor": 7162797000.0,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.2",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "ROA subiu",
+    "valor": 0.06762427538470132,
+    "cumpriu": false
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.3",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Caixa operacional maior que o lucro",
+    "valor": 7162797000.0,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.4",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Alavancagem caiu",
+    "valor": 0.2979043508422264,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.5",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Liquidez corrente subiu",
+    "valor": 0.9295338701733792,
+    "cumpriu": false
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.6",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Não emitiu ações",
+    "valor": 1152254440.0,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.7",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Margem bruta subiu",
+    "valor": 0.3183435366836024,
+    "cumpriu": true
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.piotroski.8",
+   "tipo": "linha",
+   "tabela": "Parcelas do Piotroski",
+   "celulas": {
+    "parcela": "Giro do ativo subiu",
+    "valor": 0.5470754413721443,
+    "cumpriu": false
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.altman.0",
+   "tipo": "linha",
+   "tabela": "Parcelas do Altman Z''",
+   "celulas": {
+    "parcela": "Capital de giro / ativo",
+    "valor": -0.015532072592417774,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.altman.1",
+   "tipo": "linha",
+   "tabela": "Parcelas do Altman Z''",
+   "celulas": {
+    "parcela": "Lucros retidos / ativo",
+    "valor": 0.19900483267988023,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.altman.2",
+   "tipo": "linha",
+   "tabela": "Parcelas do Altman Z''",
+   "celulas": {
+    "parcela": "EBIT / ativo",
+    "valor": 0.13630678842756092,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.altman.3",
+   "tipo": "linha",
+   "tabela": "Parcelas do Altman Z''",
+   "celulas": {
+    "parcela": "Patrimônio / passivo",
+    "valor": 0.40809683464246227,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.0",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "DSRI",
+    "valor": 1.0196695389650274,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.1",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "GMI",
+    "valor": 0.9998789916244194,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.2",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "AQI",
+    "valor": 1.0311702746745595,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.3",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "SGI",
+    "valor": 1.0408079532309709,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.4",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "DEPI",
+    "valor": 0.9382506053612323,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.5",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "SGAI",
+    "valor": 1.0127978976316891,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.6",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "TATA",
+    "valor": -0.017512271588890398,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.beneish.7",
+   "tipo": "linha",
+   "tabela": "Parcelas do Beneish",
+   "celulas": {
+    "parcela": "LVGI",
+    "valor": 0.980909755452975,
+    "cumpriu": null
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Piotroski F: um ponto por critério cumprido, de 0 a 9 (Piotroski (2000), Value Investing: The Use of Historical Financial Statement Information).",
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Altman Z'': Z'' = 6,56·X1 + 3,26·X2 + 6,72·X3 + 1,05·X4 (Altman (2005), Z'' para empresas não industriais e mercados emergentes).",
+   "so_pro": false
+  },
+  {
+   "secao": "notas_classicas",
+   "id": "notas_classicas.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Beneish M: M = −4,84 + 0,920·DSRI + 0,528·GMI + 0,404·AQI + 0,892·SGI + 0,115·DEPI − 0,172·SGAI + 4,679·TATA − 0,327·LVGI (Beneish (1999), The Detection of Earnings Manipulation (8 índices)).",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Margem bruta 32,1%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 22,7% e 60,8%.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Margem EBIT 25,3%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 15,4% e 55,3%.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "Margem líquida (lucro consolidado) 13,8%: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 1,7% e 27,7%.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.3",
+   "tipo": "paragrafo",
+   "texto": "ROE 26,4%: ótimo. Padrão: Energia elétrica (105 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,6% e 20,1%.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.4",
+   "tipo": "paragrafo",
+   "texto": "ROIC 14,9%: ótimo. Padrão: Energia elétrica (112 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 4,9% e 12,6%.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.5",
+   "tipo": "paragrafo",
+   "texto": "Dívida líquida / patrimônio 1,21×: médio. Padrão: Energia elétrica (105 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,45× e 2,15×.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.6",
+   "tipo": "paragrafo",
+   "texto": "Giro do ativo 0,55×: bom. Padrão: Energia elétrica (100 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,17× e 0,55×.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.7",
+   "tipo": "paragrafo",
+   "texto": "Ciclo de caixa 11 dias: médio. Padrão: Energia elétrica (108 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre -3 dias e 30 dias.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.8",
+   "tipo": "paragrafo",
+   "texto": "Cobertura de juros 2,15×: bom. Padrão: Energia elétrica (112 empresas, corte de 31/08/2026, dados abertos da CVM); metade fica entre 0,85× e 2,24×.",
+   "so_pro": false
+  },
+  {
+   "secao": "padroes_e_notas",
+   "id": "padroes_e_notas.paragrafos.9",
+   "tipo": "paragrafo",
+   "texto": "As notas comparam o número da empresa com o das empresas do mesmo grupo de setores, por regras fixas e públicas (página de metodologia). Dizem como o número está em relação aos pares, não o que vai acontecer: não é recomendação de compra ou venda.",
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.contas.0",
+   "tipo": "linha",
+   "tabela": "Contas ano a ano",
+   "celulas": {
+    "ano": 2024,
+    "acoes_tesouraria": 0.0,
+    "acoes_total": 1152254440.0,
+    "aplicacoes": 1573654000.0,
+    "ativo_circulante": 16551548000.0,
+    "ativo_total": 77129194000.0,
+    "caixa": 1973401000.0,
+    "capex": -531044000.0,
+    "contas_a_receber": 5883894000.0,
+    "custo": -29059437000.0,
+    "depreciacao": 2303124000.0,
+    "despesas_administrativas": -1588046000.0,
+    "despesas_com_vendas": -981340000.0,
+    "despesas_financeiras": -4343203000.0,
+    "divida_cp": 5402972000.0,
+    "divida_lp": 23385366000.0,
+    "dividendos_pagos": -3479652000.0,
+    "ebit": 10830228000.0,
+    "estoques": 221573000.0,
+    "fco": 6788942000.0,
+    "fornecedores": 3890827000.0,
+    "imobilizado": 9752282000.0,
+    "intangivel": 7824433000.0,
+    "lpa_basico": 4.74,
+    "lucro_controladores": 5457652000.0,
+    "lucro_liquido": 5761554000.0,
+    "lucros_acumulados": 0.0,
+    "minoritarios": 1063267000.0,
+    "passivo_circulante": 17370535000.0,
+    "patrimonio_liquido": 21795029000.0,
+    "receita": 42628210000.0,
+    "reservas_de_lucro": 13841010000.0,
+    "resultado_bruto": 13568773000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.contas.1",
+   "tipo": "linha",
+   "tabela": "Contas ano a ano",
+   "celulas": {
+    "ano": 2025,
+    "acoes_tesouraria": 0.0,
+    "acoes_total": 1152254440.0,
+    "aplicacoes": 675762000.0,
+    "ativo_circulante": 16616314000.0,
+    "ativo_total": 81099930000.0,
+    "caixa": 2229320000.0,
+    "capex": -390484000.0,
+    "contas_a_receber": 6244460000.0,
+    "custo": -30243584000.0,
+    "depreciacao": 2397217000.0,
+    "despesas_administrativas": -1722798000.0,
+    "despesas_com_vendas": -985664000.0,
+    "despesas_financeiras": -4942969000.0,
+    "divida_cp": 4895705000.0,
+    "divida_lp": 24160022000.0,
+    "dividendos_pagos": -3519769000.0,
+    "ebit": 11054471000.0,
+    "estoques": 236566000.0,
+    "fco": 7162797000.0,
+    "fornecedores": 4098399000.0,
+    "imobilizado": 9375880000.0,
+    "intangivel": 6892838000.0,
+    "lpa_basico": 4.76,
+    "lucro_controladores": 5484324000.0,
+    "lucro_liquido": 5742553000.0,
+    "lucros_acumulados": 0.0,
+    "minoritarios": 1014735000.0,
+    "passivo_circulante": 17875964000.0,
+    "patrimonio_liquido": 23504509000.0,
+    "receita": 44367780000.0,
+    "reservas_de_lucro": 16139278000.0,
+    "resultado_bruto": 14124196000.0
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.vertical.0",
+   "tipo": "linha",
+   "tabela": "Análise vertical (cada conta sobre a receita ou o ativo)",
+   "celulas": {
+    "ano": 2024,
+    "capex": -0.01245757211011206,
+    "custo": -0.6816949855506482,
+    "depreciacao": 0.05402816585542766,
+    "despesas_administrativas": -0.03725340566727996,
+    "despesas_com_vendas": -0.02302090563971605,
+    "despesas_financeiras": -0.10188565271682766,
+    "dividendos_pagos": -0.08162791728763652,
+    "ebit": 0.25406246239286145,
+    "fco": 0.1592593730771243,
+    "lpa_basico": 1.1119397225452347e-10,
+    "lucro_controladores": 0.1280291149921613,
+    "lucro_liquido": 0.13515824380146388,
+    "receita": 1.0,
+    "resultado_bruto": 0.3183050144493517,
+    "acoes_tesouraria": 0.0,
+    "acoes_total": 0.014939277597014692,
+    "aplicacoes": 0.020402832162358654,
+    "ativo_circulante": 0.21459511167716858,
+    "ativo_total": 1.0,
+    "caixa": 0.025585655672740466,
+    "contas_a_receber": 0.07628621141820827,
+    "divida_cp": 0.07005093298394899,
+    "divida_lp": 0.30319733407301,
+    "estoques": 0.0028727513994247105,
+    "fornecedores": 0.05044558095602555,
+    "imobilizado": 0.12644086492074583,
+    "intangivel": 0.10144580273975118,
+    "lucros_acumulados": 0.0,
+    "minoritarios": 0.013785532362752293,
+    "passivo_circulante": 0.22521349049751513,
+    "patrimonio_liquido": 0.2825782024897084,
+    "reservas_de_lucro": 0.17945228365798818
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.vertical.1",
+   "tipo": "linha",
+   "tabela": "Análise vertical (cada conta sobre a receita ou o ativo)",
+   "celulas": {
+    "ano": 2025,
+    "capex": -0.008801071408125445,
+    "custo": -0.6816564633163976,
+    "depreciacao": 0.05403058255337544,
+    "despesas_administrativas": -0.038829934695853614,
+    "despesas_com_vendas": -0.022215761077069893,
+    "despesas_financeiras": -0.11140897741559302,
+    "dividendos_pagos": -0.07933164562211587,
+    "ebit": 0.2491553780694008,
+    "fco": 0.16144141086166583,
+    "lpa_basico": 1.0728506136660433e-10,
+    "lucro_controladores": 0.12361051195259262,
+    "lucro_liquido": 0.12943070399285247,
+    "receita": 1.0,
+    "resultado_bruto": 0.3183435366836024,
+    "acoes_tesouraria": 0.0,
+    "acoes_total": 0.01420783519788488,
+    "aplicacoes": 0.008332460952802302,
+    "ativo_circulante": 0.2048869092735345,
+    "ativo_total": 1.0,
+    "caixa": 0.027488556401959904,
+    "contas_a_receber": 0.0769971071491677,
+    "divida_cp": 0.060366328306325295,
+    "divida_lp": 0.2979043508422264,
+    "estoques": 0.002916969225497482,
+    "fornecedores": 0.05053517308831216,
+    "imobilizado": 0.11560897771428409,
+    "intangivel": 0.08499191059721013,
+    "lucros_acumulados": 0.0,
+    "minoritarios": 0.012512156299025166,
+    "passivo_circulante": 0.2204189818659523,
+    "patrimonio_liquido": 0.28982156951306864,
+    "reservas_de_lucro": 0.19900483267988023
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Crescimento composto da receita: 4,1% ao ano; do lucro: 0,5%.",
+   "so_pro": false
+  },
+  {
+   "secao": "historico",
+   "id": "historico.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Anos com lucro: 2 de 2.",
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.0",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Margem bruta",
+    "hoje": "32,1% (médio)",
+    "se_subir": "a partir de 42,1%: bom",
+    "se_cair": "abaixo de 25,9%: ruim",
+    "comparado_com": "setor Energia elétrica (108 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.1",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Margem EBIT",
+    "hoje": "25,3% (médio)",
+    "se_subir": "a partir de 30,2%: bom",
+    "se_cair": "abaixo de 20,3%: ruim",
+    "comparado_com": "setor Energia elétrica (108 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.2",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Margem líquida (lucro consolidado)",
+    "hoje": "13,8% (médio)",
+    "se_subir": "a partir de 15,8%: bom",
+    "se_cair": "abaixo de 6,8%: ruim",
+    "comparado_com": "setor Energia elétrica (108 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.3",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "ROE (retorno sobre o patrimônio)",
+    "hoje": "26,4% (ótimo)",
+    "se_subir": "—",
+    "se_cair": "abaixo de 26,4% (colado no valor de hoje): bom",
+    "comparado_com": "setor Energia elétrica (105 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.4",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "ROIC (retorno sobre o capital investido)",
+    "hoje": "14,9% (ótimo)",
+    "se_subir": "—",
+    "se_cair": "abaixo de 14,2%: bom",
+    "comparado_com": "setor Energia elétrica (112 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.5",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Dívida líquida / patrimônio",
+    "hoje": "1,21× (médio)",
+    "se_subir": "acima de 1,25×: ruim",
+    "se_cair": "até 0,81×: bom",
+    "comparado_com": "setor Energia elétrica (105 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.6",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Giro do ativo",
+    "hoje": "0,55× (bom)",
+    "se_subir": "a partir de 0,57×: ótimo",
+    "se_cair": "abaixo de 0,36×: médio",
+    "comparado_com": "setor Energia elétrica (100 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.7",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Ciclo de caixa",
+    "hoje": "11 dias (médio)",
+    "se_subir": "acima de 21 dias: ruim",
+    "se_cair": "até 7 dias: bom",
+    "comparado_com": "setor Energia elétrica (108 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.8",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Cobertura de juros (EBIT / despesas financeiras)",
+    "hoje": "2,15× (bom)",
+    "se_subir": "a partir de 2,49×: ótimo",
+    "se_cair": "abaixo de 1,79×: médio",
+    "comparado_com": "setor Energia elétrica (112 empresas, corte de 31/08/2026)"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.9",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Caixa operacional / lucro",
+    "hoje": "1,02× (saudável)",
+    "se_subir": "acima de 1,50×: conferir o lucro",
+    "se_cair": "abaixo de 0,80×: atenção",
+    "comparado_com": "faixa fixa e pública do TickerLab"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.10",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Altman Z''",
+    "hoje": "1,89 (cinzenta)",
+    "se_subir": "acima de 2,60: segura",
+    "se_cair": "abaixo de 1,10: de aflição",
+    "comparado_com": "escala do artigo"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.gatilhos.11",
+   "tipo": "linha",
+   "tabela": "O valor que mudaria cada nota",
+   "celulas": {
+    "indicador": "Beneish M",
+    "hoje": "−2,50 (abaixo do limite do artigo)",
+    "se_subir": "acima de −1,78: acima do limite do artigo",
+    "se_cair": "—",
+    "comparado_com": "escala do artigo"
+   },
+   "so_pro": false
+  },
+  {
+   "secao": "o_que_mudaria",
+   "id": "o_que_mudaria.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Não é previsão: cada linha mostra só o valor que mudaria a nota, pela mesma régua de hoje. Os padrões do setor mudam a cada corte, e com eles os limites.",
+   "so_pro": false
+  },
+  {
+   "secao": "metodologia",
+   "id": "metodologia.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Indicadores de 12 meses: o último DFP mais o acumulado do ano no último ITR, menos o mesmo período do ano anterior.",
+   "so_pro": false
+  },
+  {
+   "secao": "metodologia",
+   "id": "metodologia.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Fórmulas, padrões e notas na página de metodologia: https://tickerlab.com.br/metodologia.html#padroes-notas-e-formulas.",
+   "so_pro": false
+  },
+  {
+   "secao": "metodologia",
+   "id": "metodologia.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.0",
+   "tipo": "paragrafo",
+   "texto": "Nada aqui é recomendação de compra ou venda. As notas comparam números com os de empresas parecidas por regras públicas; não dizem o que vai acontecer.",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.1",
+   "tipo": "paragrafo",
+   "texto": "Os números vêm do que a empresa entregou à CVM e podem ser reapresentados depois; o selo de qualidade mostra os que pediram uma segunda olhada.",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.2",
+   "tipo": "paragrafo",
+   "texto": "O valuation depende das premissas: mudar o desconto ou o crescimento muda o resultado. O TickerLab não dá preço-alvo.",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.3",
+   "tipo": "paragrafo",
+   "texto": "Bancos e seguradoras têm outro plano de contas: vários indicadores não se aplicam a eles.",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.4",
+   "tipo": "paragrafo",
+   "texto": "O que a base ainda não tem: protestos em cartório, processos na Justiça (além dos que a empresa declara nos documentos à CVM) e atrasos de pagamentos a fornecedores e bancos. Esta ficha não diz nada sobre eles; não aparecer aqui não quer dizer que não existam.",
+   "so_pro": false
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.5",
+   "tipo": "paragrafo",
+   "texto": "Os números são da base do TickerLab em 17/10/2026 e mudam quando a companhia reapresenta um documento ou um fundo entrega uma carteira atrasada.",
+   "so_pro": true
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.6",
+   "tipo": "paragrafo",
+   "texto": "As ofertas estão pelo valor registrado na CVM, não pelo colocado. O assunto dos documentos é escrito pela própria companhia, e os documentos de negócios são escolhidos pelas palavras do assunto: pode faltar algum ou sobrar algum.",
+   "so_pro": true
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.7",
+   "tipo": "paragrafo",
+   "texto": "O setor regulado soma as entidades que o FRE liga à companhia hoje, também nos anos anteriores: um ano antigo pode contar uma distribuidora comprada depois.",
+   "so_pro": true
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.8",
+   "tipo": "paragrafo",
+   "texto": "Nomes de pessoas (administradores, conselheiros, sócios) não aparecem.",
+   "so_pro": true
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.9",
+   "tipo": "paragrafo",
+   "texto": "Em aberto: Controlador. A ficha não traz a controladora: ela só aparece quando a controladora também entrega o FRE à CVM (uma controladora de fora do Brasil, por exemplo, não entrega).",
+   "so_pro": true
+  },
+  {
+   "secao": "limites",
+   "id": "limites.paragrafos.10",
+   "tipo": "paragrafo",
+   "texto": "Em aberto: Crescimento da receita (5 anos, ao ano) e Crescimento do lucro (5 anos, ao ano). Só há 2 anos de demonstrações guardados; o horizonte pede 6.",
+   "so_pro": false
+  },
+  {
+   "secao": "lacuna",
+   "id": "lacuna.segmentos",
+   "tipo": "lacuna",
+   "texto": "A base não separa a receita nem o lucro por segmento de negócio: as demonstrações da ficha são as consolidadas da companhia.",
+   "so_pro": false
+  },
+  {
+   "secao": "lacuna",
+   "id": "lacuna.concessao",
+   "tipo": "lacuna",
+   "texto": "A base não separa o investimento na concessão (ativo de contrato e intangível de concessão) do capex: o capex da ficha pode não mostrar todo o investimento na rede.",
+   "so_pro": false
+  }
+ ],
+ "obrigatorias": [
+  "ficha_tecnica.controlador",
+  "lacuna.segmentos",
+  "lacuna.concessao"
+ ]
+}

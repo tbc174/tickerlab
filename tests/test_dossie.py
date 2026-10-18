@@ -126,6 +126,72 @@ def test_serie_somada_no_ano_tem_base_so_com_o_ano(tmp_path: Path) -> None:
     assert secoes["setor_regulado"].itens[0].base == "2025"
 
 
+def _com_a_susep(tmp_path: Path) -> dict:
+    """A ficha de exemplo com o prêmio ganho da SUSEP como no Itaú (ITUB4): 2025 completo, 2026 não."""
+    bruta = _bruta()
+    setor = next(s for s in bruta["secoes"] if s["chave"] == "setor_regulado")
+    setor["itens"].append(
+        {
+            "chave": "susep_premio_ganho",
+            "nome": "Prêmio ganho das seguradoras (SUSEP)",
+            "valor": 8_044_230_358.0,
+            "unidade": "R$",
+            "base": "2025",
+        }
+    )
+    setor["tabelas"]["susep_premio_ganho"] = [
+        {"ano": 2026, "valor": 3_100_000_000.0, "participacao": 0.044, "meses": 8},
+        {"ano": 2025, "valor": 8_044_230_358.0, "participacao": 0.051, "meses": 12},
+        {"ano": 2024, "valor": 7_480_000_000.0, "participacao": 0.049, "meses": 12},
+    ]
+    ficha = dossie.ler_ficha(_gravar(tmp_path, bruta))
+    assert ficha is not None
+    return {s.chave: s for s in dossie.secoes_da_ficha(dossie.cortar(ficha))}
+
+
+def _item_da_susep(tmp_path: Path):
+    setor = _com_a_susep(tmp_path)["setor_regulado"]
+    return next(i for i in setor.itens if i.chave == "susep_premio_ganho")
+
+
+def test_serie_somada_no_ano_compara_a_participacao_do_mesmo_ano(
+    tmp_path: Path,
+) -> None:
+    # regressão (18/10/2026): o item era de 2025 e a participação vinha de 2026, ainda incompleto
+    item = _item_da_susep(tmp_path)
+    assert item.texto == "R$ 8,0 bi"
+    assert item.base == "2025"
+    assert item.comparacao.texto.startswith("5,1% do total da agência em 2025")
+    assert "2026" in item.comparacao.texto and "incompleto" in item.comparacao.texto
+
+
+def test_ano_anterior_da_serie_sai_na_unidade_da_serie(tmp_path: Path) -> None:
+    # regressão (18/10/2026): saía "8.044.230.358 em 2025", sem o "R$" da série
+    item = _item_da_susep(tmp_path)
+    assert "R$ 7,5 bi em 2024" in item.comparacao.texto
+    assert item.comparacao.valor == 7_480_000_000.0
+
+
+def test_tabela_da_serie_em_reais_sai_em_reais(tmp_path: Path) -> None:
+    tabela = _com_a_susep(tmp_path)["setor_regulado"].tabelas["susep_premio_ganho"]
+    assert tabela[1]["R$"] == "R$ 8,0 bi"
+
+
+def test_serie_do_ultimo_mes_compara_com_o_ano_anterior() -> None:
+    item = _secoes()["setor_regulado"].itens[0]
+    assert (
+        item.comparacao.texto == "11,1% do total da agência em 2025; 9.784.690 em 2024"
+    )
+
+
+def test_fontes_do_setor_sao_so_as_das_series_que_ficaram() -> None:
+    # regressão (18/10/2026): a seção listava SUSEP, ANAC, ANP, ANS e Anatel numa empresa só da ANEEL
+    fontes = " ".join(_secoes()["setor_regulado"].paragrafos)
+    assert "ANEEL" in fontes
+    for agencia in ("SUSEP", "ANAC", "ANP", "ANS", "Anatel"):
+        assert agencia not in fontes
+
+
 def test_data_do_fre_no_futuro_vira_ano_de_referencia() -> None:
     # o FRE de 2026 tem a data de referência 31/12/2026, depois do dia da ficha
     itens = {i.chave: i for i in _secoes()["auditor_e_controladas"].itens}
