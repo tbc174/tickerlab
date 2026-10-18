@@ -88,16 +88,12 @@
     padding: .3rem .4rem calc(.3rem + env(safe-area-inset-bottom));
     background: color-mix(in srgb, var(--fundo) 92%, transparent); backdrop-filter: blur(14px);
     border-top: 1px solid var(--linha-forte); }
-  .app-abas :is(a, summary) { flex: 1; display: grid; place-items: center; min-height: 44px; padding: .25rem .3rem;
-    border-radius: 10px; color: var(--apagado); font-size: .78rem; font-weight: 700; line-height: 1.15;
-    text-align: center; text-decoration: none; list-style: none; cursor: pointer; }
-  .app-abas a.active, .app-abas-mais:has(a.active) > summary { color: var(--azul-texto); background: var(--superficie); }
-  .app-abas-mais { flex: 1; display: flex; }
-  .app-abas-mais summary::-webkit-details-marker { display: none; }
-  .app-abas-lista { position: absolute; right: .5rem; bottom: calc(100% + .4rem); display: grid; gap: .15rem;
-    min-width: 14rem; padding: .4rem; border-radius: 14px; background: var(--fundo);
-    border: 1px solid var(--linha-forte); box-shadow: var(--sombra); }
-  .app-abas-lista a { justify-items: start; padding-inline: .8rem; font-size: .95rem; }
+  .app-abas :is(a, button) { flex: 1; min-width: 0; display: grid; place-items: center; gap: .1rem; min-height: 44px;
+    padding: .25rem .2rem; border: 0; border-radius: 10px; background: transparent; color: var(--apagado);
+    font: inherit; font-size: .72rem; font-weight: 700; line-height: 1.15; text-align: center; text-decoration: none;
+    cursor: pointer; }
+  .app-abas .icone { width: 20px; height: 20px; }
+  .app-abas :is(a, button).active { color: var(--azul-texto); background: var(--superficie); }
   /* o fim da página não fica escondido atrás das abas */
   body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
   /* topo compacto: sem o selo e só o ícone da conta (o nome fica para o leitor de tela; o Sair continua) */
@@ -106,6 +102,19 @@
   .topo .faixa { gap: var(--e2); }
 }
 .conta-no-topo { display: inline-flex; align-items: center; gap: var(--e3); font-size: .92rem; color: var(--apagado); }
+/* a folha "Mais" do celular: sobe de baixo, com todas as telas prontas por área e as da Conta */
+.folha-mais { position: fixed; inset: auto 0 0; width: 100%; max-width: none; max-height: 80vh; overflow-y: auto; margin: 0;
+  padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom)); border: 0;
+  border-top: 1px solid var(--linha-forte); border-radius: 16px 16px 0 0; background: var(--fundo); color: var(--texto);
+  box-shadow: var(--sombra); }
+.folha-mais::backdrop { background: rgb(0 0 0 / .45); }
+.cabeca-da-folha { display: flex; align-items: center; justify-content: space-between; gap: var(--e3); }
+.cabeca-da-folha h2 { margin: 0; font-size: var(--t1); }
+.folha-mais h3 { margin: var(--e4) 0 var(--e1); font-size: var(--t-1); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--apagado); }
+.folha-mais a { display: flex; align-items: center; min-height: 44px; padding: 0 var(--e3); border-radius: 10px;
+  color: var(--texto); text-decoration: none; font-weight: 600; }
+.folha-mais a.active { background: var(--superficie); color: var(--azul-texto); }
 /* o menu da pessoa (a área Conta): simulações, dados e plano */
 .menu-da-conta { position: relative; }
 .menu-da-conta summary { display: inline-flex; align-items: center; gap: var(--e2); min-height: 44px; padding: 0 var(--e2);

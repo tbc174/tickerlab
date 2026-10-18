@@ -4,9 +4,9 @@
 // de cada área abrem ao lado, ao passar o mouse ou com o Tab.
 // Favoritos e áreas recolhidas ficam no localStorage do navegador (preferência de tela, sem dado pessoal);
 // se o navegador recusar (navegação privada), valem só nesta visita.
-import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router";
-import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea } from "./areas";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router";
+import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
 import { Icone } from "./Icone";
 
 const FAVORITOS = "tickerlab.menu.favoritos";
@@ -161,5 +161,102 @@ export function MenuPorAreas() {
         );
       })}
     </nav>
+  );
+}
+
+// --- celular (até 760 px, só CSS): 5 abas embaixo, ao alcance do polegar (ADR 0066 e 0096) ---
+
+// na folha "Mais": as telas prontas de cada área e as da Conta
+const AREAS_DA_FOLHA = AREAS.filter((a) => [...AREAS_DO_MENU, "conta"].includes(a.chave)).map((area) => ({
+  area,
+  telas: itensDaArea(area.chave).filter((item) => item.pronta),
+}));
+
+/** Início, uma aba por área (abre a primeira tela pronta dela) e "Mais", que abre a folha com todas. */
+export function AbasDoCelular() {
+  const { pathname } = useLocation();
+  const atual = areaDoEndereco(pathname);
+  const folha = useRef<HTMLDialogElement>(null);
+  const [aberta, setAberta] = useState(false);
+  // o jsdom dos testes (e navegador antigo) não tem showModal: aí a folha abre sem o fundo escuro
+  const abrir = () => {
+    const dialogo = folha.current;
+    if (!dialogo) return;
+    if (typeof dialogo.showModal === "function") dialogo.showModal();
+    else dialogo.open = true;
+    setAberta(true);
+  };
+  const fechar = () => {
+    const dialogo = folha.current;
+    if (!dialogo) return;
+    if (typeof dialogo.close === "function") dialogo.close();
+    else dialogo.open = false;
+    setAberta(false);
+  };
+  return (
+    <>
+      <nav className="app-abas" aria-label="Telas, atalhos">
+        <NavLink to="/" end>
+          <Icone nome="inicio" />
+          <span>Início</span>
+        </NavLink>
+        {AREAS.filter((a) => AREAS_DO_MENU.includes(a.chave)).map((area) => {
+          const destino = primeiraPronta(area.chave);
+          if (!destino) return null;
+          const marcada = atual === area.chave;
+          const endereco = `/${destino.url}`;
+          return (
+            <Link
+              key={area.chave}
+              to={endereco}
+              className={marcada ? "active" : undefined}
+              // "page" só na própria tela; nas outras telas da área, a aba é a atual do conjunto
+              aria-current={marcada ? (pathname.replace(/\/+$/, "") === endereco ? "page" : "true") : undefined}
+            >
+              <Icone nome={area.icone} />
+              <span>{area.rotulo}</span>
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          className={atual === "conta" ? "active" : undefined}
+          aria-haspopup="dialog"
+          aria-expanded={aberta}
+          onClick={abrir}
+        >
+          <Icone nome="mais" />
+          <span>Mais</span>
+        </button>
+      </nav>
+      {/* fora da barra: ela é fixa e borrada (backdrop-filter), e prenderia a folha dentro dela */}
+      <dialog
+        ref={folha}
+        className="folha-mais"
+        aria-labelledby="titulo-da-folha"
+        onClose={() => setAberta(false)}
+        // o fundo escuro em volta da folha é o próprio dialog: tocar nele fecha
+        onClick={(evento) => {
+          if (evento.target === evento.currentTarget) fechar();
+        }}
+      >
+        <div className="cabeca-da-folha">
+          <h2 id="titulo-da-folha">Todas as telas</h2>
+          <button type="button" className="botao pequeno" onClick={fechar}>
+            Fechar
+          </button>
+        </div>
+        {AREAS_DA_FOLHA.map(({ area, telas }) => (
+          <section key={area.chave}>
+            <h3>{area.rotulo}</h3>
+            {telas.map(({ pagina }) => (
+              <NavLink key={pagina.chave} to={`/${pagina.url}`} onClick={fechar}>
+                {pagina.titulo}
+              </NavLink>
+            ))}
+          </section>
+        ))}
+      </dialog>
+    </>
   );
 }
