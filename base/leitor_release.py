@@ -81,7 +81,9 @@ class LeituraConferida:
 
 # --- conferência -----------------------------------------------------------------------------
 
-_NUMERO = re.compile(r"\d[\d.,]*\d|\d")
+# Sinal de menos ou parêntese só vale colado ao número e no começo ou depois de espaço ou "(":
+# "2T24-5.891" é hífen, "-149,4" e "(5.138)" são negativos.
+_NUMERO = re.compile(r"(?:(?<![^\s(])(?P<sinal>[-−–(]))?(?P<numero>\d[\d.,]*\d|\d)")
 
 
 def normalizar(texto: str) -> str:
@@ -90,16 +92,18 @@ def normalizar(texto: str) -> str:
 
 
 def _numeros_do_trecho(trecho: str) -> set[float]:
-    """Cada número do trecho lido nos dois formatos (1.234,5 e 1,234.5): o valor pode estar em
-    qualquer um, e só vale se bater exatamente com algum."""
+    """Cada número do trecho, com o sinal, lido nos dois formatos (1.234,5 e 1,234.5): o valor
+    pode estar em qualquer um, e só vale se bater exatamente com algum, sinal incluído."""
     achados: set[float] = set()
-    for token in _NUMERO.findall(trecho):
+    for achado in _NUMERO.finditer(trecho):
+        token = achado["numero"]
+        sinal = -1.0 if achado["sinal"] else 1.0
         for texto in (
             token.replace(".", "").replace(",", "."),  # brasileiro
             token.replace(",", ""),  # americano
         ):
             try:
-                achados.add(float(texto))
+                achados.add(sinal * float(texto))
             except ValueError:
                 continue
     return achados
