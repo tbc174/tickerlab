@@ -6845,6 +6845,67 @@
       "frequencia": "Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)",
       "atraso": "`divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das baixadas guardadas pelo arquivista"
     },
+    "faostat_cafe": {
+      "tabela": "faostat_cafe",
+      "modulo": "macro",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "codigo_do_pais": {
+          "descricao": "Código M49 do país (ex.: 076 para o Brasil)",
+          "unidade": "texto"
+        },
+        "pais": {
+          "descricao": "Nome do país, como a FAO escreve",
+          "unidade": "texto"
+        },
+        "ano": {
+          "descricao": "Ano civil da produção",
+          "unidade": "número inteiro"
+        },
+        "elemento": {
+          "descricao": "producao, area_colhida ou rendimento",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "Sempre total: o FAOSTAT não separa arábica de robusta",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Valor na unidade da coluna `unidade`",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "t, ha ou kg/ha",
+          "unidade": "texto"
+        },
+        "sinalizador": {
+          "descricao": "Sinalizador da FAO (A oficial, E estimado, I imputado...)",
+          "unidade": "texto"
+        },
+        "divulgado_em": {
+          "descricao": "Dia da baixada que trouxe este número",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "codigo_do_pais",
+        "ano",
+        "elemento",
+        "divulgado_em"
+      ],
+      "datas": {
+        "aconteceu_em": "divulgado_em",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2026-10-19",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Semanal (a FAO atualiza a base algumas vezes por ano)",
+      "atraso": "A FAO não informa a data de cada revisão: `divulgado_em` é o dia da baixada que o arquivista guardou, então um número nunca aparece antes de ter sido visto"
+    },
     "clima_regiao_cafe": {
       "tabela": "clima_regiao_cafe",
       "modulo": "macro",

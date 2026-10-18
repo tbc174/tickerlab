@@ -4620,6 +4620,40 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "faostat_cafe": Tabela(
+        descricao=(
+            "Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares "
+            "e rendimento em kg por hectare, desde 1961. O FAOSTAT não separa arábica de robusta "
+            "(`tipo` é sempre `total`; a separação por tipo está no `usda_psd_cafe`). Cada baixada "
+            "semanal guarda a fotografia do dia, para o 'como era na data'"
+        ),
+        fonte="FAO, FAOSTAT: Crops and livestock products (Production_Crops_Livestock_E_All_Data_(Normalized).zip)",
+        familia_da_fonte="faostat",
+        frequencia="Semanal (a FAO atualiza a base algumas vezes por ano)",
+        atraso="A FAO não informa a data de cada revisão: `divulgado_em` é o dia da baixada que o "
+        "arquivista guardou, então um número nunca aparece antes de ter sido visto",
+        onde="Parquet em `<acervo>/base/commodities/faostat_cafe/<dia da baixada>.parquet`",
+        linhagem=(
+            "Cada parquet nasce de um zip guardado pelo arquivista (SHA-256 no registro de coletas); "
+            "só entram o café verde dos países (os agregados da FAO saem), a unidade da fonte é "
+            "conferida (hg/ha vira kg/ha) e uma unidade desconhecida interrompe a leitura. Crédito: "
+            "FAO, FAOSTAT, CC BY 4.0."
+        ),
+        colunas={
+            "codigo_do_pais": ("Código M49 do país (ex.: 076 para o Brasil)", TEXTO),
+            "pais": ("Nome do país, como a FAO escreve", TEXTO),
+            "ano": ("Ano civil da produção", NUMERO),
+            "elemento": ("producao, area_colhida ou rendimento", TEXTO),
+            "tipo": ("Sempre total: o FAOSTAT não separa arábica de robusta", TEXTO),
+            "valor": ("Valor na unidade da coluna `unidade`", NUMERO_DECIMAL),
+            "unidade": ("t, ha ou kg/ha", TEXTO),
+            "sinalizador": (
+                "Sinalizador da FAO (A oficial, E estimado, I imputado...)",
+                TEXTO,
+            ),
+            "divulgado_em": ("Dia da baixada que trouxe este número", DATA),
+        },
+    ),
     "clima_regiao_cafe": Tabela(
         descricao=(
             "Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): "
@@ -4775,6 +4809,7 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
 )
@@ -4863,6 +4898,7 @@ _CONTRATO = {
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
     "cftc_cot_agro": _contrato(modulo=_ME, chaves=("relatorio", "contrato"), datas={"aconteceu_em": "relatorio", "publico_em": "disponivel_em"}, historico_desde="2006-06-13"),
     "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),
+    "faostat_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano", "elemento", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES_FAO),
     "clima_regiao_cafe": _contrato(modulo="macro", chaves=("regiao", "competencia", "fonte"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="1981-01-31", granularidade_do_publico_em="mes"),
     "area_cafe_municipio": _contrato(modulo="macro", chaves=("codigo", "ano"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde="1985-12-31"),
 }  # fmt: skip

@@ -257,6 +257,8 @@ def test_textos_do_cafe_explicam_florada_bienalidade_e_geada_sem_prometer_previs
 
     textos = carregar_textos_do_cafe()
     assert tuple(textos)[: len(TEXTOS_DO_CAFE)] == TEXTOS_DO_CAFE
+    spread = textos["O que é o spread entre arábica e robusta"]  # PR 14
+    assert "explicativo, não previsão" in spread and "Pink" in spread
     for titulo in TEXTOS_DO_CAFE:
         assert len(textos[titulo]) > 200, titulo
     for titulo in TEXTOS_DO_CAFE[:1] + TEXTOS_DO_CAFE[2:]:

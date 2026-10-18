@@ -47,7 +47,18 @@ class DefinicaoDaRegiao:
     mesorregioes: tuple[int, ...] = ()  # códigos de 4 dígitos do IBGE
     microrregioes: tuple[int, ...] = ()  # códigos de 5 dígitos do IBGE
     descricao: str = ""
+    irrigada: bool = False  # a irrigação é característica da região (não quer dizer que toda a área seja)
 
+
+# Fonte do campo `irrigada`: Incaper, livro "Café conilon" (Mantovani, 2001, citado no capítulo de
+# irrigação): o café irrigado se concentra no norte do Espírito Santo, no Triângulo Mineiro e Alto
+# Paranaíba e no oeste da Bahia. Rondônia, Bahia Atlântico e as demais ficam `False` por não
+# constarem ali (café de sequeiro; sem levantamento que diga o contrário).
+FONTE_DA_IRRIGACAO = (
+    "Incaper, Café conilon (Mantovani, 2001): café irrigado no norte do ES, no Triângulo e Alto "
+    "Paranaíba e no oeste da Bahia; Embrapa Café"
+)
+REGIOES_IRRIGADAS = ("cerrado-mineiro", "oeste-da-bahia", "es-norte")
 
 # fmt: off
 DEFINICOES: tuple[DefinicaoDaRegiao, ...] = (
@@ -142,6 +153,7 @@ class Regiao:
     tipo_predominante: str  # `ARABICA` ou `CONILON`
     municipios: tuple[Municipio, ...]
     descricao: str = ""
+    irrigada: bool = False  # fonte: `FONTE_DA_IRRIGACAO`
 
     @property
     def codigos(self) -> frozenset[str]:
@@ -204,6 +216,7 @@ def montar_regioes(
                 tipo_predominante(municipios),
                 municipios,
                 definicao.descricao,
+                definicao.id in REGIOES_IRRIGADAS,
             )
         )
     return tuple(regioes)

@@ -115,3 +115,61 @@ def test_corte_em_d_nao_muda_o_passado_dos_derivados():
         usda_psd.como_estava_em(tabela, corte.date()), "BR"
     )
     assert antes == depois
+
+
+@pytest.fixture
+def robusta_em_quatro_paises() -> pd.DataFrame:
+    d = "2025-06-30"
+    return _linhas(
+        ("BR", 2024, "producao", "conilon", 20000.0, d),
+        ("VM", 2024, "producao", "conilon", 30000.0, d),
+        ("ID", 2024, "producao", "conilon", 10000.0, d),
+        ("UG", 2024, "producao", "conilon", 5000.0, d),
+        ("CO", 2024, "producao", "conilon", 0.0, d),  # arábica pura: fica fora da conta
+        ("VM", 2024, "estoque_final", "total", 600.0, d),
+        ("VM", 2024, "consumo_domestico", "total", 3000.0, d),
+        ("ID", 2024, "estoque_final", "total", 100.0, d),
+        ("ID", 2024, "consumo_domestico", "total", 5000.0, d),
+        ("UG", 2024, "estoque_final", "total", 50.0, d),
+    )
+
+
+def test_balanco_por_pais_lado_a_lado_com_o_brasil(robusta_em_quatro_paises):
+    pontos = balanco.balanco_por_pais(robusta_em_quatro_paises)
+    por_pais = {p.codigo_do_pais: p for p in pontos}
+    assert set(por_pais) == {"BR", "VM", "ID", "UG"}
+    assert por_pais["VM"].participacao_na_producao == pytest.approx(30000 / 65000)
+    assert por_pais["BR"].participacao_na_producao == pytest.approx(20000 / 65000)
+    assert por_pais["VM"].relacao_estoque_consumo == pytest.approx(0.2)
+    assert por_pais["ID"].relacao_estoque_consumo == pytest.approx(0.02)
+    assert all(p.tipo == "conilon" for p in pontos)
+
+
+def test_balanco_por_pais_sem_consumo_deixa_a_relacao_vazia(robusta_em_quatro_paises):
+    uganda = next(
+        p
+        for p in balanco.balanco_por_pais(robusta_em_quatro_paises)
+        if p.codigo_do_pais == "UG"
+    )
+    assert uganda.relacao_estoque_consumo is None
+
+
+def test_balanco_por_pais_ordena_por_safra_e_ignora_pais_fora_da_lista(
+    robusta_em_quatro_paises,
+):
+    pontos = balanco.balanco_por_pais(robusta_em_quatro_paises, ("VM",))
+    assert [(p.codigo_do_pais, p.ano_safra) for p in pontos] == [("VM", 2024)]
+    # a participação continua sendo sobre o mundo da tabela, não sobre a lista pedida
+    assert pontos[0].participacao_na_producao == pytest.approx(30000 / 65000)
+
+
+def test_balanco_por_pais_recusa_tipo_invalido(robusta_em_quatro_paises):
+    with pytest.raises(ValueError, match="tipo"):
+        balanco.balanco_por_pais(robusta_em_quatro_paises, tipo="robusta")
+
+
+def test_balanco_por_pais_do_duble_do_usda_traz_o_vietna_e_o_brasil():
+    tabela = usda_psd.ler(EXEMPLO.read_bytes(), date(2026, 10, 18))
+    pontos = balanco.balanco_por_pais(tabela)
+    assert {p.codigo_do_pais for p in pontos} >= {"BR", "VM"}
+    assert all(0 < p.participacao_na_producao <= 1 for p in pontos)
