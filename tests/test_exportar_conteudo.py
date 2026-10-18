@@ -1,7 +1,9 @@
 """O conteúdo que o site em React lê (web/conteudo/*.json) vem do Python e não pode ficar velho."""
 
 import json
+import re
 
+from base.contrato import PASTA
 from scripts import exportar_conteudo as exp
 from src import marca, modulos, planos
 
@@ -290,3 +292,38 @@ def test_site_leva_a_fita_e_o_total_de_ativos_da_busca():
     for item in site["fita"]:
         assert set(item) == {"simbolo", "codigo", "nome"}
         assert item["codigo"] == tabela.loc[item["simbolo"], "codigo"]
+
+
+def test_catalogo_do_site_vem_do_contrato():
+    """A página Dados conta as tabelas e as fontes do `catalogo.json`; nada é digitado à mão."""
+    contrato = json.loads((PASTA / "catalogo.json").read_text(encoding="utf-8"))[
+        "tabelas"
+    ]
+    catalogo = exp.conteudo()["catalogo"]
+
+    assert catalogo["totais"]["tabelas"] == len(contrato) == len(catalogo["tabelas"])
+    assert catalogo["totais"]["fontes"] == len(
+        {t["licenca"] for t in contrato.values()}
+    )
+    assert catalogo["totais"]["fontes"] == len(catalogo["fontes"])
+    assert catalogo["totais"]["modulos"] == len(catalogo["modulos"])
+    assert sum(m["tabelas"] for m in catalogo["modulos"]) == len(contrato)
+    assert catalogo["totais"]["fontes_em_consulta"] == sum(
+        f["situacao"] == "em consulta" for f in catalogo["fontes"]
+    )
+    for linha in catalogo["tabelas"]:
+        assert linha["modulo"] and linha["frase"] and linha["orgao"]
+        assert linha["frequencia"] and linha["historico_desde"]
+        assert linha["situacao"] in ("licenciada", "em consulta")
+
+
+def test_catalogo_do_site_nao_leva_conversa_interna():
+    """Servidor, ADR, código e passo de PR ficam no repositório; o site aberto lê só o resultado."""
+    catalogo = exp.conteudo()["catalogo"]
+    for t in catalogo["tabelas"]:
+        for texto in (t["frase"], t["atraso"] or "", t["frequencia"]):
+            assert not re.search(r"servidor|VPS|arquivista|`|bADRb|\w+/\w+\.py", texto), (
+                texto
+            )
+        assert t["frase"].endswith((".", "…"))
+        assert t["frase"].count("(") == t["frase"].count(")"), t["frase"]

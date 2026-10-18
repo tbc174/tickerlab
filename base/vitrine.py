@@ -48,9 +48,11 @@ _INTERNO = re.compile(
     re.IGNORECASE,
 )
 _ENTRE_PARENTESES = re.compile(r"\s*\([^)]*\)")
-_DECISAO_ENTRE_PARENTESES = re.compile(
-    r"\s*\((?:ADR|PR|passo|série)\b[^)]*\)", re.IGNORECASE
+# o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
+_PARENTESES_INTERNO = re.compile(
+    r"\s*\((?:(?:ADR|PR|passo|série)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)", re.IGNORECASE
 )
+_INTERNO_NA_FRASE = re.compile(r"servidor|VPS|\bADR\b|\b\w+/\w+\.py", re.IGNORECASE)
 _FREQUENCIAS = (
     (r"(diária|toda noite)", "Diária"),
     (r"semanal", "Semanal"),
@@ -180,14 +182,37 @@ def frequencia_do_site(texto: str) -> str:
     return SEM_CALENDARIO
 
 
+def _fim_da_primeira_frase(texto: str) -> int:
+    """Onde acaba a primeira frase: o primeiro ponto final **fora** de parênteses."""
+    fundo = 0
+    for i, letra in enumerate(texto):
+        if letra == "(":
+            fundo += 1
+        elif letra == ")":
+            fundo = max(0, fundo - 1)
+        elif letra in ".!?" and fundo == 0 and texto[i + 1 : i + 2] in ("", " "):
+            return i + 1
+    return len(texto)
+
+
 def primeira_frase(texto: str) -> str:
     """A primeira frase da descrição, sem código, sem número de ADR e com até `LIMITE_DA_FRASE` letras."""
-    limpo = _DECISAO_ENTRE_PARENTESES.sub("", texto.replace("`", ""))
-    frase = re.split(r"(?<=[.!?])\s", limpo.strip())[0]
-    if len(frase) <= LIMITE_DA_FRASE:
-        return frase
-    corte = frase[:LIMITE_DA_FRASE].rsplit(" ", 1)[0].rstrip(",;:")
-    return f"{corte}…"
+    limpo = _PARENTESES_INTERNO.sub("", texto.replace("`", "")).strip()
+    frase = limpo[: _fim_da_primeira_frase(limpo)].strip()
+    interno = _INTERNO_NA_FRASE.search(frase)
+    if interno:  # fica o que vem antes da última vírgula que precede o termo interno
+        antes = re.split(r"[,:;]\s", frase[: interno.start()])
+        if len(antes) > 1:
+            frase = ", ".join(antes[:-1]).rstrip(",;:")
+    cortada = len(frase) > LIMITE_DA_FRASE
+    if cortada:
+        frase = frase[:LIMITE_DA_FRASE].rsplit(" ", 1)[0]
+    if frase.count("(") > frase.count(")"):  # nunca deixa um parêntese aberto
+        frase = frase[: frase.rindex("(")]
+    frase = frase.rstrip(",;: ")
+    if cortada:
+        return f"{frase}…"
+    return frase if frase.endswith((".", "!", "?")) else f"{frase}."
 
 
 def atraso_do_site(texto: str) -> str | None:

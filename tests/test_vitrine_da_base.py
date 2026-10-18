@@ -5,7 +5,6 @@ Funções puras sobre o dicionário do `catalogo.json`; nenhum número da págin
 """
 
 import json
-import re
 
 import pytest
 
@@ -202,6 +201,25 @@ def test_primeira_frase_sem_codigo_nem_decisao_interna():
     )
 
 
+def test_primeira_frase_tira_o_parentese_que_cita_arquivo_e_nao_corta_em_ponto_de_parentese():
+    frase = vitrine.primeira_frase(
+        "Os padrões (src/setores.py) do cadastro (atual, histórico, classe... e outros) por setor. Segunda."
+    )
+
+    assert (
+        frase
+        == "Os padrões do cadastro (atual, histórico, classe... e outros) por setor."
+    )
+
+
+def test_primeira_frase_termina_em_ponto_e_corta_antes_do_termo_interno():
+    assert vitrine.primeira_frase("Uma linha por fato") == "Uma linha por fato."
+    frase = vitrine.primeira_frase(
+        "Cada fato, montado no servidor de casa toda noite. Outra."
+    )
+    assert frase == "Cada fato."
+
+
 def test_primeira_frase_longa_corta_numa_palavra():
     frase = vitrine.primeira_frase("palavra " * 100)
 
@@ -220,18 +238,3 @@ def test_atraso_do_site_descarta_o_que_e_conversa_interna():
         is None
     )
     assert vitrine.atraso_do_site("Texto " * 40) is None
-
-
-def test_nada_do_catalogo_real_vaza_conversa_interna():
-    catalogo = _catalogo_real()
-    frases = {
-        nome: vitrine.primeira_frase("Uma linha. Outra.")
-        for nome in catalogo["tabelas"]
-    }
-
-    for t in vitrine.tabelas_do_catalogo(catalogo, frases):
-        for texto in (t.frequencia, t.atraso or ""):
-            assert not re.search(r"servidor|VPS|arquivista|`|ADR|_em\b", texto), (
-                t.tabela,
-                texto,
-            )
