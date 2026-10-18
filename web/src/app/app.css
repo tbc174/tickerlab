@@ -37,7 +37,11 @@
 .titulo-da-area button::after { content: "▾"; margin-left: auto; transition: transform .15s; }
 .titulo-da-area button[aria-expanded="false"]::after { transform: rotate(-90deg); }
 .itens-da-area { display: flex; flex-direction: column; gap: var(--e1); margin: 0; padding: 0; list-style: none; }
+/* o display: flex acima ganharia do atributo hidden: a área recolhida precisa desta regra */
+.itens-da-area[hidden] { display: none; }
 .itens-da-area li { display: flex; align-items: center; gap: var(--e1); }
+/* em breve: nome e selo na mesma linha de texto (em flex, o nome virava uma coluna espremida) */
+.itens-da-area li.em-breve { display: block; }
 .itens-da-area a { flex: 1; min-width: 0; }
 .estrela { display: inline-flex; padding: var(--e1); border: 0; border-radius: 6px; background: transparent;
   color: var(--apagado); cursor: pointer; opacity: .35; }
@@ -51,7 +55,8 @@
    ao lado ao passar o mouse ou com o Tab */
 @media (min-width: 761px) and (max-width: 1100px) {
   .app-corpo { grid-template-columns: 3.5rem 1fr; gap: var(--e5); }
-  .app-menu.trilho { overflow: visible; max-height: none; }
+  /* o menu é sticky (uma camada própria): sem z-index, os gráficos da tela passam por cima das telas ao lado */
+  .app-menu.trilho { overflow: visible; max-height: none; z-index: 7; }
   .app-menu.trilho .rotulo-do-menu { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .app-menu.trilho :is(.inicio-do-menu, .titulo-da-area button, .favoritos-do-menu .titulo-da-area) {
     justify-content: center; padding: var(--e2); }
@@ -96,8 +101,10 @@
   .app-abas :is(a, button).active { color: var(--azul-texto); background: var(--superficie); }
   /* o fim da página não fica escondido atrás das abas */
   body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
-  /* topo compacto: sem o selo e só o ícone da conta (o nome fica para o leitor de tela; o Sair continua) */
+  /* topo compacto: sem o selo e só o ícone da conta (o nome fica para o leitor de tela; o Sair continua);
+     o "App atual" não cabe em 375 px e vai para o fim da folha "Mais" */
   .selo-novo { display: none; }
+  .app-atual-no-topo { display: none; }
   .nome-da-conta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .topo .faixa { gap: var(--e2); }
 }
@@ -115,6 +122,7 @@
 .folha-mais a { display: flex; align-items: center; min-height: 44px; padding: 0 var(--e3); border-radius: 10px;
   color: var(--texto); text-decoration: none; font-weight: 600; }
 .folha-mais a.active { background: var(--superficie); color: var(--azul-texto); }
+.folha-mais .app-atual-na-folha { margin-top: var(--e4); border-top: 1px solid var(--linha); border-radius: 0; color: var(--azul-texto); }
 /* o menu da pessoa (a área Conta): simulações, dados e plano */
 .menu-da-conta { position: relative; }
 .menu-da-conta summary { display: inline-flex; align-items: center; gap: var(--e2); min-height: 44px; padding: 0 var(--e2);

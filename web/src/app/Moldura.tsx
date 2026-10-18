@@ -20,7 +20,7 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
           <span className="selo-novo">Versão nova</span>
           <MenuDoTema />
           <ContaNoTopo />
-          <a className="botao pequeno" href={linkDoApp()}>
+          <a className="botao pequeno app-atual-no-topo" href={linkDoApp()}>
             App atual
           </a>
         </div>
