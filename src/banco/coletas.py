@@ -101,7 +101,7 @@ LICENCAS = {
     "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
     "ico": "Relatório mensal da ICO sem termos localizados: só pesquisa",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
-    "contrapartes": "Notícias e páginas públicas guardadas só como prova; na ficha, fato e link",
+    "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 

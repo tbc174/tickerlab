@@ -2865,8 +2865,8 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 
 Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café (faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), cada um com fonte, veículo e data, ditos com as nossas palavras. Sem nota, cor nem conselho e sem pessoa física: a ficha (`base/contrapartes/cafe.py`) junta a situação especial da Receita e os informes de CRA da CVM e diz o que não sabemos
 
-- **Fonte:** Notícias e documentos públicos (ALMG, Bloomberg Línea, Revista Cultivar, Notícias Agrícolas)
-- **Licença:** Notícias e páginas públicas guardadas só como prova; na ficha, fato e link
+- **Fonte:** Notícias e documentos públicos (ALMG, Bloomberg Línea, Revista Cultivar, Notícias Agrícolas, Compre Rural, AgFeed, Brazil Journal)
+- **Licença:** Página guardada só como prova; na ficha, fato e link (ADR 0102)
 - **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
 - **Frequência:** Quando a conferência anda (assembleias de março, notícias de recuperação judicial)
 - **Atraso de divulgação:** O `divulgado_em` é o dia da publicação da notícia ou do documento
@@ -2876,7 +2876,7 @@ Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings 
 - **Histórico desde:** 2004-07-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** `base/conferidas/contrapartes_cafe.csv` no repositório (Git)
-- **Linhagem:** Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as páginas dos quatro sites autorizados ficam guardadas pelo arquivista (`contrapartes-cafe`) só como prova; a notícia de recuperação judicial só vira fato da ficha depois de guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git.
+- **Linhagem:** Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as páginas de todas as fontes ficam guardadas pelo arquivista (`contrapartes-cafe`) só como prova, nunca mostradas (ADR 0102); a notícia de recuperação judicial ou fechamento só vira fato da ficha depois de guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git.
 
 | Coluna | O que é | Unidade |
 |---|---|---|
