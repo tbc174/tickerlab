@@ -107,6 +107,7 @@ def _paginas() -> list[dict]:
             "url": p.url,
             "grupo": p.grupo,
             "descricao": p.descricao,
+            "area": p.area,
             "e_pro": p.e_pro,
             "no_menu": p.no_menu,
             "somente_admin": p.somente_admin,
@@ -114,6 +115,23 @@ def _paginas() -> list[dict]:
         }
         for p in paginas.PAGINAS
         if not p.somente_admin
+    ]
+
+
+def _areas() -> list[dict]:
+    """As áreas do menu do app novo (ADR 0096), na ordem, com as páginas de cada uma na ordem do
+    menu. As de administração ficam de fora pelo mesmo motivo de `_paginas`."""
+    return [
+        {
+            "chave": chave,
+            "rotulo": area.rotulo,
+            "icone": area.icone,
+            "frase": area.frase,
+            "paginas": [
+                p.chave for p in paginas.paginas_da_area(chave) if not p.somente_admin
+            ],
+        }
+        for chave, area in paginas.AREAS.items()
     ]
 
 
@@ -266,6 +284,7 @@ def _app() -> dict[str, object]:
         ]
     )
     return {
+        "areas": _areas(),
         "painel": {
             "itens": [asdict(i) for i in analises.ITENS_DO_PAINEL],
             "legenda": analises.LEGENDA_DO_PAINEL,

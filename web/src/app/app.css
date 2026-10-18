@@ -18,10 +18,50 @@
 .tema-escolha svg { width: 18px; height: 18px; }
 .pular-leitura { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .app-corpo { display: grid; grid-template-columns: 13rem 1fr; gap: var(--e6); padding-block: var(--e6); }
-.app-menu { display: flex; flex-direction: column; gap: var(--e1); position: sticky; top: 5rem; align-self: start; }
+/* o menu por áreas (ADR 0096): Início, Favoritos e uma seção por área que recolhe */
+.app-menu { display: flex; flex-direction: column; gap: var(--e3); position: sticky; top: 5rem; align-self: start;
+  max-height: calc(100vh - 6rem); overflow-y: auto; }
 .app-menu a { padding: var(--e2) var(--e3); border-radius: 8px; color: var(--apagado); text-decoration: none; font-weight: 600; }
 .app-menu a:hover { color: var(--texto); }
 .app-menu a.active { background: var(--superficie); color: var(--texto); }
+.app-menu .icone { width: 18px; height: 18px; flex: none; }
+.inicio-do-menu { display: flex; align-items: center; gap: var(--e2); }
+.area-do-menu { display: flex; flex-direction: column; gap: var(--e1); }
+.titulo-da-area { display: flex; align-items: center; gap: var(--e2); margin: 0; font-size: var(--t-1); font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--apagado); }
+.favoritos-do-menu .titulo-da-area { padding: var(--e1) var(--e3); }
+.titulo-da-area button { display: flex; align-items: center; gap: var(--e2); width: 100%; padding: var(--e1) var(--e3);
+  border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; letter-spacing: inherit;
+  text-transform: inherit; cursor: pointer; }
+.titulo-da-area button:hover, .area-do-menu.atual .titulo-da-area button { color: var(--texto); }
+.titulo-da-area button::after { content: "▾"; margin-left: auto; transition: transform .15s; }
+.titulo-da-area button[aria-expanded="false"]::after { transform: rotate(-90deg); }
+.itens-da-area { display: flex; flex-direction: column; gap: var(--e1); margin: 0; padding: 0; list-style: none; }
+.itens-da-area li { display: flex; align-items: center; gap: var(--e1); }
+.itens-da-area a { flex: 1; min-width: 0; }
+.estrela { display: inline-flex; padding: var(--e1); border: 0; border-radius: 6px; background: transparent;
+  color: var(--apagado); cursor: pointer; opacity: .35; }
+.itens-da-area li:is(:hover, :focus-within) .estrela { opacity: 1; }
+.estrela[aria-pressed="true"] { opacity: 1; color: var(--azul-texto); }
+.estrela[aria-pressed="true"] .icone { fill: currentColor; }
+.app-menu .estrela .icone { width: 15px; height: 15px; }
+.em-breve { padding: var(--e2) var(--e3); color: var(--apagado); opacity: .6; font-size: .92rem; }
+.selo-em-breve { font-size: var(--t-1); }
+/* trilho de ícones entre 761 e 1.100 px: o nome fica para o leitor de tela e no "title"; as telas abrem
+   ao lado ao passar o mouse ou com o Tab */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .app-corpo { grid-template-columns: 3.5rem 1fr; gap: var(--e5); }
+  .app-menu.trilho { overflow: visible; max-height: none; }
+  .app-menu.trilho .rotulo-do-menu { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .app-menu.trilho :is(.inicio-do-menu, .titulo-da-area button, .favoritos-do-menu .titulo-da-area) {
+    justify-content: center; padding: var(--e2); }
+  .app-menu.trilho .titulo-da-area button::after { content: none; }
+  .app-menu.trilho .area-do-menu { position: relative; }
+  .app-menu.trilho .itens-da-area { display: none; position: absolute; left: 100%; top: 0; z-index: 7; min-width: 15rem;
+    padding: var(--e2); border-radius: 12px; background: var(--fundo); border: 1px solid var(--linha-forte);
+    box-shadow: var(--sombra); }
+  .app-menu.trilho .area-do-menu:is(:hover, :focus-within) .itens-da-area { display: flex; }
+}
 .app-corpo main { min-width: 0; }
 .app-corpo.sem-menu { grid-template-columns: 1fr; }
 /* os títulos de toda tela: h1 da escala, h2 da escala, a legenda menor (--t-1) */
@@ -48,24 +88,45 @@
     padding: .3rem .4rem calc(.3rem + env(safe-area-inset-bottom));
     background: color-mix(in srgb, var(--fundo) 92%, transparent); backdrop-filter: blur(14px);
     border-top: 1px solid var(--linha-forte); }
-  .app-abas :is(a, summary) { flex: 1; display: grid; place-items: center; min-height: 44px; padding: .25rem .3rem;
-    border-radius: 10px; color: var(--apagado); font-size: .78rem; font-weight: 700; line-height: 1.15;
-    text-align: center; text-decoration: none; list-style: none; cursor: pointer; }
-  .app-abas a.active, .app-abas-mais:has(a.active) > summary { color: var(--azul-texto); background: var(--superficie); }
-  .app-abas-mais { flex: 1; display: flex; }
-  .app-abas-mais summary::-webkit-details-marker { display: none; }
-  .app-abas-lista { position: absolute; right: .5rem; bottom: calc(100% + .4rem); display: grid; gap: .15rem;
-    min-width: 14rem; padding: .4rem; border-radius: 14px; background: var(--fundo);
-    border: 1px solid var(--linha-forte); box-shadow: var(--sombra); }
-  .app-abas-lista a { justify-items: start; padding-inline: .8rem; font-size: .95rem; }
+  .app-abas :is(a, button) { flex: 1; min-width: 0; display: grid; place-items: center; gap: .1rem; min-height: 44px;
+    padding: .25rem .2rem; border: 0; border-radius: 10px; background: transparent; color: var(--apagado);
+    font: inherit; font-size: .72rem; font-weight: 700; line-height: 1.15; text-align: center; text-decoration: none;
+    cursor: pointer; }
+  .app-abas .icone { width: 20px; height: 20px; }
+  .app-abas :is(a, button).active { color: var(--azul-texto); background: var(--superficie); }
   /* o fim da página não fica escondido atrás das abas */
   body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
-  /* topo compacto: sem o selo e sem o nome (o botão Sair continua) */
+  /* topo compacto: sem o selo e só o ícone da conta (o nome fica para o leitor de tela; o Sair continua) */
   .selo-novo { display: none; }
-  .conta-no-topo > span { display: none; }
+  .nome-da-conta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .topo .faixa { gap: var(--e2); }
 }
 .conta-no-topo { display: inline-flex; align-items: center; gap: var(--e3); font-size: .92rem; color: var(--apagado); }
+/* a folha "Mais" do celular: sobe de baixo, com todas as telas prontas por área e as da Conta */
+.folha-mais { position: fixed; inset: auto 0 0; width: 100%; max-width: none; max-height: 80vh; overflow-y: auto; margin: 0;
+  padding: var(--e4) var(--e4) calc(var(--e5) + env(safe-area-inset-bottom)); border: 0;
+  border-top: 1px solid var(--linha-forte); border-radius: 16px 16px 0 0; background: var(--fundo); color: var(--texto);
+  box-shadow: var(--sombra); }
+.folha-mais::backdrop { background: rgb(0 0 0 / .45); }
+.cabeca-da-folha { display: flex; align-items: center; justify-content: space-between; gap: var(--e3); }
+.cabeca-da-folha h2 { margin: 0; font-size: var(--t1); }
+.folha-mais h3 { margin: var(--e4) 0 var(--e1); font-size: var(--t-1); letter-spacing: .04em; text-transform: uppercase;
+  color: var(--apagado); }
+.folha-mais a { display: flex; align-items: center; min-height: 44px; padding: 0 var(--e3); border-radius: 10px;
+  color: var(--texto); text-decoration: none; font-weight: 600; }
+.folha-mais a.active { background: var(--superficie); color: var(--azul-texto); }
+/* o menu da pessoa (a área Conta): simulações, dados e plano */
+.menu-da-conta { position: relative; }
+.menu-da-conta summary { display: inline-flex; align-items: center; gap: var(--e2); min-height: 44px; padding: 0 var(--e2);
+  border-radius: 8px; cursor: pointer; list-style: none; }
+.menu-da-conta summary::-webkit-details-marker { display: none; }
+.menu-da-conta summary:hover, .menu-da-conta[open] summary { color: var(--texto); background: var(--superficie); }
+.menu-da-conta .icone { width: 20px; height: 20px; }
+.lista-da-conta { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 8; display: grid; gap: var(--e1);
+  min-width: 14rem; padding: var(--e2); border-radius: 12px; background: var(--fundo); border: 1px solid var(--linha-forte);
+  box-shadow: var(--sombra); }
+.lista-da-conta a { padding: var(--e2) var(--e3); border-radius: 8px; color: var(--texto); text-decoration: none; font-weight: 600; }
+.lista-da-conta a:hover, .lista-da-conta a.active { background: var(--superficie); }
 .erro-do-app { padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
 .botao-do-google { margin-top: var(--e5); min-height: 44px; }
 /* formulário de cada tela (campos do contrato) */

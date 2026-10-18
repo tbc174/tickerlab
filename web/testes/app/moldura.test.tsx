@@ -29,39 +29,80 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("abas embaixo no celular", () => {
-  it("Início e três telas, e o resto em 'Mais': toda tela do app fica a um ou dois toques", async () => {
+describe("abas embaixo no celular (por área, ADR 0096)", () => {
+  const folha = () => document.querySelector<HTMLDialogElement>("dialog.folha-mais")!;
+
+  it("Início, as três áreas e 'Mais': toda tela pronta fica a um ou dois toques", async () => {
     abrirApp("/");
     await noInicio();
     const nav = abas();
-    const diretas = within(nav)
-      .getAllByRole("link")
-      .filter((a) => !a.closest("details"))
-      .map((a) => a.textContent);
-    expect(diretas).toEqual(["Início", "Visão geral", "Backtest", "Comparar"]);
-    const mais = nav.querySelector("details")!;
-    expect(within(mais).getByText("Mais").tagName).toBe("SUMMARY");
-    const todos = within(nav).getAllByRole("link").map((a) => a.getAttribute("href"));
-    for (const pagina of TELAS_DO_APP) expect(todos, pagina.url).toContain(`/${pagina.url}`);
+    const nomes = [...nav.querySelectorAll(":scope > :is(a, button)")].map((el) => el.textContent);
+    expect(nomes).toEqual(["Início", "Ativo", "Estratégias", "Acompanhar", "Mais"]);
+    expect(within(nav).getByRole("button", { name: "Mais" }).getAttribute("aria-haspopup")).toBe("dialog");
+    // a folha fica fora da barra (a barra é fixa e borrada: um filho fixo dela ficaria preso nela)
+    expect(nav.contains(folha())).toBe(false);
+    const alcancaveis = [...nav.querySelectorAll("a"), ...folha().querySelectorAll("a")].map((a) =>
+      a.getAttribute("href"),
+    );
+    // o Pulse é o próprio Início ("/")
+    for (const pagina of TELAS_DO_APP.filter((p) => p.chave !== "pulse"))
+      expect(alcancaveis, pagina.url).toContain(`/${pagina.url}`);
   });
 
-  it("a aba da tela aberta leva aria-current (e só ela)", async () => {
+  it("cada aba de área abre a primeira tela pronta dela", async () => {
     abrirApp("/");
     await noInicio();
-    const atuais = abas().querySelectorAll('[aria-current="page"]');
+    const destino = (nome: string) => within(abas()).getByRole("link", { name: nome }).getAttribute("href");
+    expect(destino("Ativo")).toBe("/visao-geral");
+    expect(destino("Estratégias")).toBe("/backtest");
+    expect(destino("Acompanhar")).toBe("/juros-e-inflacao");
+  });
+
+  it("no início só a aba Início fica marcada", async () => {
+    abrirApp("/");
+    await noInicio();
+    const atuais = abas().querySelectorAll("[aria-current]");
     expect([...atuais].map((a) => a.textContent)).toEqual(["Início"]);
   });
 
-  it("escolher uma tela em 'Mais' fecha a lista", async () => {
+  it("numa tela da área Ativo, a aba Ativo fica marcada (mesmo não sendo a primeira tela dela)", async () => {
+    abrirApp("/risco", { rotas: () => new Promise(() => {}) as never });
+    await screen.findByRole("heading", { level: 1, name: "Risco" });
+    const atuais = abas().querySelectorAll("[aria-current]");
+    expect([...atuais].map((a) => a.textContent)).toEqual(["Ativo"]);
+    expect(within(abas()).getByRole("link", { name: "Ativo" }).classList.contains("active")).toBe(true);
+  });
+
+  it("'Mais' abre a folha com as telas por área e a Conta; escolher uma tela fecha", async () => {
     abrirApp("/", {
       rotas: (endereco) =>
         endereco.startsWith("/api/v1/juros-e-inflacao") ? respostaJson(200, juros.resposta) : undefined,
     });
     await noInicio();
-    const mais = abas().querySelector("details")!;
-    mais.open = true;
-    fireEvent.click(within(mais).getByRole("link", { name: "Juros e inflação" }));
-    expect(mais.open).toBe(false);
+    const botao = within(abas()).getByRole("button", { name: "Mais" });
+    expect(folha().open).toBe(false);
+    fireEvent.click(botao);
+    expect(folha().open).toBe(true);
+    expect(botao.getAttribute("aria-expanded")).toBe("true");
+    const titulos = within(folha())
+      .getAllByRole("heading", { level: 3 })
+      .map((h) => h.textContent);
+    expect(titulos).toEqual(["Ativo", "Estratégias", "Acompanhar", "Conta"]);
+    fireEvent.click(within(folha()).getByRole("link", { name: "Juros e inflação" }));
+    expect(folha().open).toBe(false);
+    expect(botao.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("tocar fora da folha ou no 'Fechar' fecha", async () => {
+    abrirApp("/");
+    await noInicio();
+    const botao = within(abas()).getByRole("button", { name: "Mais" });
+    fireEvent.click(botao);
+    fireEvent.click(folha()); // o clique no fundo escuro chega no próprio dialog
+    expect(folha().open).toBe(false);
+    fireEvent.click(botao);
+    fireEvent.click(within(folha()).getByRole("button", { name: "Fechar" }));
+    expect(folha().open).toBe(false);
   });
 
   it("o CSS: até 760 px as abas ficam fixas embaixo, com toque de 44 px e a margem do iPhone", () => {
@@ -69,7 +110,9 @@ describe("abas embaixo no celular", () => {
     expect(NO_CELULAR).toMatch(/\.app-menu \{ display: none; \}/);
     expect(NO_CELULAR).toMatch(/\.app-abas \{ display: flex; position: fixed;[^}]*bottom: 0;/);
     expect(NO_CELULAR).toContain("env(safe-area-inset-bottom)");
-    expect(NO_CELULAR).toMatch(/\.app-abas :is\(a, summary\) \{[^}]*min-height: 44px;/);
+    expect(NO_CELULAR).toMatch(/\.app-abas :is\(a, button\) \{[^}]*min-height: 44px;/);
+    // na folha "Mais", cada tela também tem toque de 44 px
+    expect(CSS_DO_APP).toMatch(/\.folha-mais a \{[^}]*min-height: 44px;/);
     // o conteúdo não fica escondido atrás das abas
     expect(NO_CELULAR).toMatch(/body \{ padding-bottom: calc\(/);
   });
