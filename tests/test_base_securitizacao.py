@@ -257,3 +257,63 @@ def test_fica_a_maior_versao():
     assert series.to_dict() == {"BRTESTECRA01": "3", "BRTESTECRA02": "5"}
     # a versão 10 vence a 1 pelo número, não pelo texto; as linhas da versão vencida saem todas
     assert tabelas["cedente_devedor"]["Versao"].tolist() == ["10"]
+
+
+@pytest.mark.parametrize("nome", ARQUIVOS)
+def test_disponivel_em_nunca_antes_da_entrega(nome):
+    for quadro, tabela in _ler(nome).tabelas.items():
+        disponivel = securitizacao.disponivel_em(tabela)
+        assert disponivel.notna().all(), quadro
+        entregue = tabela["data_entrega"].notna()
+        assert entregue.any(), quadro
+        assert (disponivel[entregue] >= tabela.loc[entregue, "data_entrega"]).all(), (
+            quadro
+        )
+        # nem antes de o mês informado acabar
+        assert (disponivel >= tabela["competencia"] + pd.DateOffset(months=1)).all(), (
+            quadro
+        )
+
+
+def _informe_entregue_em(data_entrega: str) -> dict[str, pd.DataFrame]:
+    geral = (
+        f"{CABECALHO};Data_Entrega\n"
+        f"02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;{data_entrega}\n"
+    )
+    cedentes = (
+        f"{CABECALHO};Tipo;CNPJ;Percentual\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;Cedente;33000167000101;1\n"
+        "02.773.542/0001-22;BRSEMGERAL01;2026-05-01;1;Cedente;33000167000101;1\n"
+    )
+    return securitizacao.ler_informe(
+        _zip_com({"geral": geral, "cedente_devedor": cedentes}), "cra"
+    ).tabelas
+
+
+def test_entrega_tardia_atrasa_o_publico():
+    # o informe de maio entregue em janeiro do ano seguinte só vale dali em diante, em todo quadro
+    tabelas = _informe_entregue_em("2027-01-15")
+    for quadro in ("geral", "cedente_devedor"):
+        tabela = tabelas[quadro]
+        do_certificado = tabela["codigo_certificado"] == "BRTESTECRA01"
+        disponivel = securitizacao.disponivel_em(tabela)[do_certificado]
+        assert disponivel.tolist() == [pd.Timestamp("2027-01-15")], quadro
+
+
+def test_sem_entrega_usa_o_piso():
+    # certificado fora do quadro geral (sem data de entrega): competência + 120 dias
+    cedentes = _informe_entregue_em("2026-06-20")["cedente_devedor"]
+    sem_geral = cedentes["codigo_certificado"] == "BRSEMGERAL01"
+    disponivel = securitizacao.disponivel_em(cedentes)[sem_geral]
+    assert disponivel.tolist() == [pd.Timestamp("2026-05-01") + pd.Timedelta(days=120)]
+
+
+@pytest.mark.parametrize("nome", ARQUIVOS)
+def test_chaves_do_informe(nome):
+    # um informe por certificado e mês, pelo quadro geral: de cada versão sai o `visto_em`
+    chaves = securitizacao.chaves_do_informe(_bytes(nome), ARQUIVOS[nome])
+    assert list(chaves.columns) == list(securitizacao.CHAVE)
+    assert not chaves.duplicated().any()
+    geral = _ler(nome).tabelas["geral"]
+    esperadas = geral[list(securitizacao.CHAVE)].drop_duplicates()
+    assert len(chaves) == len(esperadas) > 0
