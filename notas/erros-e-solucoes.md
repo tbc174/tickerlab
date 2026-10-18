@@ -585,3 +585,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** ordem das fixtures do pytest. A fixture `no_gratuito` tem `scope="module"` e é montada **antes** das fixtures de cada teste; a que desligava a trava do pré-lançamento era por teste (`monkeypatch`). Então `no_gratuito` foi calculada com tudo liberado.
 - **Solução:** a fixture que desliga a trava passou a valer para a sessão inteira (`scope="session"`, com `pytest.MonkeyPatch.context()`), e assim já está ativa antes de qualquer fixture de módulo. Regra: o que muda uma configuração global para os testes deve ter o escopo mais largo de quem lê essa configuração.
 - **Data:** 17/10/2026
+
+## CI: `Pagina.__init__() missing 1 required positional argument: 'area'` (#402)
+- **Sintoma:** os testes das páginas passavam localmente; no CI, `tests/test_api_v1_acesso.py` nem carregava.
+- **Causa:** o campo obrigatório novo (`area`) entrou na dataclass `Pagina` e em todas as páginas de `src/paginas.py`, mas um teste cria uma página própria (`PAGINA_PAGA`) e ficou sem a área. Só os testes de `paginas` tinham rodado antes do push.
+- **Solução:** dar a área à página do teste. Regra: ao pôr um campo obrigatório numa classe, procurar toda chamada dela no repositório (`Grep "Pagina("`), inclusive nos testes, ou rodar a suíte inteira antes do push.
+- **Data:** 17/10/2026
