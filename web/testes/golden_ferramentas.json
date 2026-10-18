@@ -441,6 +441,33 @@
  },
  {
   "argumentos": [
+   0.1265,
+   "ano",
+   false
+  ],
+  "conta": "juros.taxa_por_mes",
+  "valor": 0.010541666666666666
+ },
+ {
+  "argumentos": [
+   0.01,
+   "mes",
+   false
+  ],
+  "conta": "juros.taxa_por_mes",
+  "valor": 0.01
+ },
+ {
+  "argumentos": [
+   -1,
+   "ano",
+   false
+  ],
+  "conta": "juros.taxa_por_mes",
+  "erro": true
+ },
+ {
+  "argumentos": [
    25937.424601,
    0.04,
    120

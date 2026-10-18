@@ -76,4 +76,18 @@ describe("calculadora de juros v2", () => {
     await abrir();
     expect(screen.getByRole("button", { name: "Copiar resultado" })).toBeTruthy();
   });
+
+  // Regressão da avaliação externa de 16/10: os simples usavam a taxa mensal equivalente dos
+  // compostos (19.568,97) em vez da proporcional (10% ao ano ÷ 12), que dá os R$ 20.000 do livro.
+  it("no modo simples, 10% ao ano por 10 anos dão R$ 20.000,00", async () => {
+    window.history.replaceState(null, "", "/calculadora-de-juros-compostos.html?tipo=simples");
+    await abrir();
+    expect(document.querySelector("[data-resultado]")?.textContent).toBe(formatarReais(20000));
+  });
+
+  it("no modo composto, o campo 'Com juros simples daria' também mostra R$ 20.000,00", async () => {
+    await abrir();
+    const texto = screen.getByText("Com juros simples daria").nextElementSibling?.textContent;
+    expect(texto).toBe(formatarReais(20000));
+  });
 });
