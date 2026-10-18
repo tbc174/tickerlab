@@ -24,7 +24,7 @@ TABELA_DE = {
     "b3-derivativos-posicoes": "OpenPositionsEquities",
     "b3-emprestimo-resumo": "BTBLoanBalance",
 }
-CABECALHO = "Ticker symbol;Segment;Open interest\n"
+CABECALHO = "Descrição do arquivo.\nTicker symbol;Segment;Open interest\n"
 CSV_DO_DIA = CABECALHO + "ICFZ26;AGRIBUSINESS;2944\nBGIV26;AGRIBUSINESS;22259\n"
 
 
@@ -126,6 +126,16 @@ def test_csv_do_dia_e_guardado_e_registrado(banco, tmp_path):
     assert ".csv" in linha.caminho_do_original  # o acervo comprime (.csv.gz)
     guardado = next((tmp_path / "acervo").rglob("*.csv.gz"))
     assert b"ICFZ26;AGRIBUSINESS;2944" in gzip.decompress(guardado.read_bytes())
+
+
+def test_emprestimo_registrado_tem_dois_cabecalhos(banco, tmp_path):
+    dois = "Texto.\n;;;Rate Donor;;\nDate;Ticker;Market\n"
+    vazio = B3Falsa({("BTBLoanBalance", "2026-10-13"): dois})
+    assert _rodar(vazio, tmp_path, "b3-emprestimo-resumo").sem_arquivo == 1
+    cheio = B3Falsa(
+        {("BTBLoanBalance", "2026-10-13"): dois + "13/10/2026;BMIN3;Registro\n"}
+    )
+    assert _rodar(cheio, tmp_path, "b3-emprestimo-resumo", rodada=1).novos == 1
 
 
 @pytest.mark.parametrize("resposta", [CABECALHO, "", None])

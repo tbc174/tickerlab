@@ -55,7 +55,10 @@ from base.arquivo.coleta import (
 
 TAMANHO_DO_TRECHO = 8 * 1024 * 1024  # cada pedido de trecho lê até 8 MB
 HTTP_NAO_ENCONTRADO = 404
-LINHAS_COM_DADOS = 2  # cabeçalho e ao menos uma linha de dados
+# O CSV do BDI abre com 1 a 2 linhas de descrição (sem ";") e traz o cabeçalho; o de empréstimos
+# registrados tem dois cabeçalhos (grupos de taxa e colunas). Dia sem pregão: só os cabeçalhos
+# (verificado com um download real em 18/10/2026).
+LINHAS_DE_CABECALHO = {"BTBLoanBalance": 2}
 # cabeçalho local de cada arquivo dentro do ZIP: 30 bytes fixos, depois o nome e o campo extra
 TAMANHO_DO_CABECALHO_LOCAL = 30
 ASSINATURA_DO_CABECALHO_LOCAL = b"PK\x03\x04"
@@ -347,7 +350,8 @@ def csv_do_bdi_da_b3(url: str, tabela: str, dia: date) -> Obter:
         texto = resposta.conteudo.decode("utf-8-sig", errors="replace")
         if texto.lstrip().startswith("<"):
             raise ValueError(f"{tabela} {dia}: veio HTML no lugar do CSV")
-        if sum(1 for linha in texto.splitlines() if linha.strip()) < LINHAS_COM_DADOS:
+        linhas_de_tabela = sum(1 for linha in texto.splitlines() if ";" in linha)
+        if linhas_de_tabela <= LINHAS_DE_CABECALHO.get(tabela, 1):
             raise SemArquivo("só o cabeçalho (dia sem pregão ou que ainda não saiu)")
         destino.write_bytes(resposta.conteudo)
         return resposta.cabecalhos
