@@ -2724,6 +2724,35 @@ Balanço mundial do café por país e ano-safra (produção, consumo, estoques, 
 | `unidade` | Unidade da fonte, conferida na leitura | texto |
 | `divulgado_em` | Quando a revisão ficou pública (fim do mês da revisão) | data (dia) |
 
+## `faostat_cafe`
+
+Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares e rendimento em kg por hectare, desde 1961. O FAOSTAT não separa arábica de robusta (`tipo` é sempre `total`; a separação por tipo está no `usda_psd_cafe`). Cada baixada semanal guarda a fotografia do dia, para o 'como era na data'
+
+- **Fonte:** FAO, FAOSTAT: Crops and livestock products (Production_Crops_Livestock_E_All_Data_(Normalized).zip)
+- **Licença:** CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Semanal (a FAO atualiza a base algumas vezes por ano)
+- **Atraso de divulgação:** A FAO não informa a data de cada revisão: `divulgado_em` é o dia da baixada que o arquivista guardou, então um número nunca aparece antes de ter sido visto
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `codigo_do_pais`, `ano`, `elemento`, `divulgado_em`
+- **Três datas:** aconteceu_em = `divulgado_em`; publico_em = `divulgado_em`
+- **Histórico desde:** 2026-10-19 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/commodities/faostat_cafe/<dia da baixada>.parquet`
+- **Linhagem:** Cada parquet nasce de um zip guardado pelo arquivista (SHA-256 no registro de coletas); só entram o café verde dos países (os agregados da FAO saem), a unidade da fonte é conferida (hg/ha vira kg/ha) e uma unidade desconhecida interrompe a leitura. Crédito: FAO, FAOSTAT, CC BY 4.0.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_do_pais` | Código M49 do país (ex.: 076 para o Brasil) | texto |
+| `pais` | Nome do país, como a FAO escreve | texto |
+| `ano` | Ano civil da produção | número inteiro |
+| `elemento` | producao, area_colhida ou rendimento | texto |
+| `tipo` | Sempre total: o FAOSTAT não separa arábica de robusta | texto |
+| `valor` | Valor na unidade da coluna `unidade` | número com decimais, na unidade da fonte |
+| `unidade` | t, ha ou kg/ha | texto |
+| `sinalizador` | Sinalizador da FAO (A oficial, E estimado, I imputado...) | texto |
+| `divulgado_em` | Dia da baixada que trouxe este número | data (dia) |
+
 ## `clima_regiao_cafe`
 
 Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET (`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só chuva, média dos municípios ponderada pela área de café da PAM). Região com menos de 3 estações válidas no mês fica com os valores vazios, nunca zero

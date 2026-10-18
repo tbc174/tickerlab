@@ -115,6 +115,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-19",
+      "licenca": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "FAO",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1981-01-31",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "modulos": [
@@ -239,7 +250,7 @@
     {
       "chave": "macro",
       "nome": "Macro",
-      "tabelas": 6
+      "tabelas": 7
     },
     {
       "chave": "ma",
@@ -999,6 +1010,16 @@
       "tabela": "usda_psd_cafe"
     },
     {
+      "atraso": null,
+      "frase": "Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares e rendimento em kg por hectare, desde 1961.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-19",
+      "modulo": "macro",
+      "orgao": "FAO",
+      "situacao": "licenciada",
+      "tabela": "faostat_cafe"
+    },
+    {
       "atraso": "Mensal",
       "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
       "frequencia": "Mensal",
@@ -1020,9 +1041,9 @@
     }
   ],
   "totais": {
-    "fontes": 20,
+    "fontes": 21,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 76
+    "tabelas": 77
   }
 }

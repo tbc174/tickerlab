@@ -174,9 +174,7 @@ DESTINOS: dict[str, Destino] = {
     "conab-cafe-safra": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
     "usda-psd-cafe": _tabela("usda_psd_cafe"),
-    "faostat-cafe": _planejada(
-        "commodities/PR 14", "produção e área por país e ano, em tabela própria"
-    ),
+    "faostat-cafe": _tabela("faostat_cafe"),
     "ico-relatorio-mensal": _pesquisa(
         "relatório mensal da ICO em PDF, sem termos de uso localizados; só pesquisa até a ICO publicar a licença"
     ),
