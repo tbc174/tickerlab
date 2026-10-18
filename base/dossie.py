@@ -202,6 +202,13 @@ SERIES_DAS_AGENCIAS = (
 )
 
 
+def fontes_do_setor(nomes_das_series: Iterable[str]) -> list[str]:
+    """As licenças do setor regulado: a ligação empresa ↔ série e só as agências das séries dadas."""
+    nomes = set(nomes_das_series)
+    tabelas = [serie.tabela for serie in SERIES_DAS_AGENCIAS if serie.nome in nomes]
+    return fontes_das_tabelas(("empresa_serie", *tabelas))
+
+
 @dataclass(frozen=True)
 class SecaoDaBase:
     chave: str
@@ -310,6 +317,7 @@ def _secao(
     itens: list[dict[str, Any]],
     tabelas: Mapping[str, pd.DataFrame],
     paragrafos: list[str] | None = None,
+    fontes: list[str] | None = None,
 ) -> dict[str, Any]:
     registro = _SECAO_POR_CHAVE[chave]
     return {
@@ -318,7 +326,7 @@ def _secao(
         "itens": itens,
         "tabelas": {nome: _registros(t) for nome, t in tabelas.items() if not t.empty},
         "paragrafos": [*(paragrafos or []), LIMITES[chave]],
-        "fontes": fontes_das_tabelas(registro.tabelas),
+        "fontes": fontes_das_tabelas(registro.tabelas) if fontes is None else fontes,
     }
 
 
@@ -747,7 +755,9 @@ def secao_setor_regulado(
     if not tabelas:
         return None
     tabelas["entidades_ligadas"] = _entidades_ligadas(ligacoes_b13)
-    return _secao("setor_regulado", itens, tabelas)
+    return _secao(
+        "setor_regulado", itens, tabelas, fontes=fontes_do_setor(tabelas.keys())
+    )
 
 
 # --- negócios ------------------------------------------------------------------------------------

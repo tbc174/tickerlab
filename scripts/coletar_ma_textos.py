@@ -8,7 +8,7 @@ A lista é a de `ma_candidatos` (`base/ma_ipe.py`), montada dos arquivos anuais 
 acervo. A ordem: os protocolos pedidos, depois os fatos relevantes com tipo e os editais de OPA, os
 fatos genéricos e por fim os comunicados; do mais novo ao mais velho em cada grupo. Cada documento vai
 bruto para o acervo com registro (fonte `cvm-ipe-ma`, com SHA-256) e o texto para
-`<acervo>/ma/textos/<protocolo>.txt` (cada reentrega tem protocolo próprio, como na amostra de ouro). O que já veio, ou que a CVM disse não existir, não é pedido de novo.
+`<acervo>/ma/textos/<protocolo>.txt` (`ma_textos.nome_do_texto`; cada reentrega tem protocolo próprio, como na amostra de ouro). O que já veio, ou que a CVM disse não existir, não é pedido de novo.
 
 A CVM limita os downloads por endereço: uma pausa entre os pedidos e, com duas páginas seguidas no
 lugar do documento, a coleta para sem erro e continua na próxima rodada. Uma página sozinha conta como
@@ -136,7 +136,7 @@ def coletar(fila: pd.DataFrame, maximo: int, pasta_dos_textos: Path) -> Rodada:
         if conteudo is None:
             continue
         texto = mt.texto_do_documento(conteudo, linha.categoria)
-        mt.gravar_texto(pasta_dos_textos, linha.protocolo, texto)
+        mt.gravar_texto(pasta_dos_textos, mt.nome_do_texto(linha.protocolo), texto)
         textos += bool(texto)
         sem_texto += not texto
     return Rodada(pedidos, textos, sem_texto, paginas)

@@ -94,6 +94,44 @@ export interface JurosEInflacaoV1 {
   avisos: string[];
 }
 
+/** Um mês de um preço de referência: o Pink Sheet e, no café e no algodão, o FMI ao lado. */
+export interface PontoDoPrecoV1 {
+  mes: string; // primeiro dia do mês
+  bm: number | null; // Banco Mundial (Pink Sheet)
+  fmi: number | null; // FMI (PCPS); null também quando o item não tem o FMI
+}
+
+export interface PontoDoSpreadV1 {
+  mes: string;
+  valor: number; // arábica menos robusta, US$/kg
+}
+
+/** Um item de Preços de referência, com os textos prontos (src/commodities/painel_de_precos.py). */
+export interface PrecoDeReferenciaV1 {
+  chave: string;
+  nome: string;
+  unidade: string;
+  ultimo_mes: string;
+  ultimo_valor: number;
+  texto: string; // como a tela mostra ("1.234,50")
+  variacao_12_meses: number | null;
+  texto_da_variacao: string | null; // "+3,2% em 12 meses"
+  legenda: string; // o mês e a fonte
+  com_fmi: boolean;
+  nota_das_fontes: string | null;
+  historico: PontoDoPrecoV1[];
+}
+
+export interface PrecosDeReferenciaV1 {
+  dia: string;
+  itens: PrecoDeReferenciaV1[];
+  spread: PontoDoSpreadV1[];
+  titulo_do_spread: string;
+  nota_do_spread: string;
+  aviso_diario: string;
+  atribuicao: string;
+}
+
 /** Um documento na linha do tempo e o ponto da curva (base 100) onde ele fica. */
 export interface MarcoV1 {
   data: string;

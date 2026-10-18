@@ -38,6 +38,9 @@ MESES_DO_HISTORICO = 60
 MESES_NO_ANO = 12
 ARABICA = "cafe-arabica"
 ROBUSTA = "cafe-robusta"
+TITULO_DO_SPREAD = "Spread arábica menos robusta"
+NOTA_DO_SPREAD = "Quando a diferença abre muito, a indústria troca de grão; o conilon do Brasil é robusta."
+SEM_COLETA = "Os preços de referência ainda não foram coletados neste servidor."
 
 _ITEM_PELA_CHAVE = {item.chave: item for item in ITENS}
 
@@ -139,3 +142,23 @@ def montar_painel(conexao: sa.Connection, dia: date) -> PainelDePrecos:
     montados = (_montar_item(conexao, chave, dia) for chave in CHAVES_DO_PAINEL)
     itens = tuple(i for i in montados if i is not None)
     return PainelDePrecos(itens=itens, spread=_montar_spread(itens))
+
+
+# --- Os textos da tela (o Streamlit e a API mostram os mesmos) ---
+
+
+def formatar_valor(valor: float) -> str:
+    """O preço com duas casas no formato brasileiro: 1.234,50."""
+    return f"{valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+def texto_da_variacao(variacao: float | None) -> str | None:
+    """A variação contra o mesmo mês do ano anterior ("+3,2% em 12 meses"), ou None sem o dado."""
+    if variacao is None:
+        return None
+    return f"{variacao:+.1f}% em 12 meses".replace(".", ",")
+
+
+def legenda_do_item(item: PrecoDeReferencia) -> str:
+    """O mês do último valor e a fonte, numa linha."""
+    return f"Média de {item.ultimo_mes:%m/%Y}, Pink Sheet do Banco Mundial."

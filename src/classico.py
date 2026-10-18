@@ -12,7 +12,7 @@ Sem Streamlit aqui: o `HEALTHCHECK` do Dockerfile importa este módulo.
 import os
 from collections.abc import Mapping
 
-from src.paginas import PAGINAS
+from src import paginas
 
 VARIAVEL_DO_CAMINHO_BASE = "STREAMLIT_SERVER_BASE_URL_PATH"
 # o app novo (React) é o principal: está na raiz do mesmo endereço
@@ -49,4 +49,4 @@ def url_da_saude(ambiente: Mapping[str, str] | None = None) -> str:
 def enderecos_das_paginas(ambiente: Mapping[str, str] | None = None) -> list[str]:
     """O endereço de cada página no navegador (o Streamlit guarda o tema por endereço)."""
     base = caminho_base(ambiente)
-    return [f"{base}/", *(f"{base}/{p.url}" for p in PAGINAS)]
+    return [f"{base}/", *(f"{base}/{p.url}" for p in paginas.paginas_do_classico())]

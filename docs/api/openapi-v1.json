@@ -2184,6 +2184,44 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontoDoPrecoV1": {
+        "properties": {
+          "bm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bm"
+          },
+          "fmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fmi"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "bm",
+          "fmi"
+        ],
+        "title": "PontoDoPrecoV1",
+        "type": "object"
+      },
       "PontoDoRelatorioV1": {
         "description": "Um ponto de \"O que os dados mostram\": saiu de uma regra fixa e leva o número, de quando\nele é e a tabela de origem.",
         "properties": {
@@ -2223,6 +2261,25 @@
         "title": "PontoDoRelatorioV1",
         "type": "object"
       },
+      "PontoDoSpreadV1": {
+        "properties": {
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "valor"
+        ],
+        "title": "PontoDoSpreadV1",
+        "type": "object"
+      },
       "PontoMensalV1": {
         "properties": {
           "ipca_12_meses": {
@@ -2259,6 +2316,151 @@
           "ipca_12_meses"
         ],
         "title": "PontoMensalV1",
+        "type": "object"
+      },
+      "PrecoDeReferenciaV1": {
+        "description": "Um item do painel, com os textos prontos (os mesmos do Streamlit).",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "com_fmi": {
+            "title": "Com Fmi",
+            "type": "boolean"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoPrecoV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "legenda": {
+            "title": "Legenda",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota_das_fontes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Das Fontes"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "texto_da_variacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Da Variacao"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "unidade",
+          "ultimo_mes",
+          "ultimo_valor",
+          "texto",
+          "variacao_12_meses",
+          "texto_da_variacao",
+          "legenda",
+          "com_fmi",
+          "nota_das_fontes",
+          "historico"
+        ],
+        "title": "PrecoDeReferenciaV1",
+        "type": "object"
+      },
+      "PrecosDeReferenciaV1": {
+        "description": "O painel de preços de referência mensais como era em `dia`.",
+        "properties": {
+          "atribuicao": {
+            "title": "Atribuicao",
+            "type": "string"
+          },
+          "aviso_diario": {
+            "title": "Aviso Diario",
+            "type": "string"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/PrecoDeReferenciaV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          },
+          "nota_do_spread": {
+            "title": "Nota Do Spread",
+            "type": "string"
+          },
+          "spread": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoSpreadV1"
+            },
+            "title": "Spread",
+            "type": "array"
+          },
+          "titulo_do_spread": {
+            "title": "Titulo Do Spread",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "itens",
+          "spread",
+          "titulo_do_spread",
+          "nota_do_spread",
+          "aviso_diario",
+          "atribuicao"
+        ],
+        "title": "PrecosDeReferenciaV1",
         "type": "object"
       },
       "PulseV1": {
@@ -3736,6 +3938,53 @@
           }
         },
         "summary": "Portal Da Assinatura"
+      }
+    },
+    "/v1/precos-de-referencia": {
+      "get": {
+        "description": "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta.",
+        "operationId": "precos_de_referencia_v1_precos_de_referencia_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrecosDeReferenciaV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Precos De Referencia"
       }
     },
     "/v1/pulse": {

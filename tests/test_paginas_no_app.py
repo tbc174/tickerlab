@@ -3,7 +3,7 @@
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
-from src.paginas import PAGINA_INICIAL, PAGINAS
+from src.paginas import PAGINA_INICIAL, paginas_do_classico
 from tests.ajudantes_da_conta import ir_para
 
 
@@ -20,7 +20,7 @@ def test_o_menu_registra_todas_as_paginas_do_mapa():
     # a página de administração só existe no menu de administradores
     esperados = {
         "" if p.chave == PAGINA_INICIAL else p.url
-        for p in PAGINAS
+        for p in paginas_do_classico()
         if not p.somente_admin
     }
     assert enderecos == esperados
@@ -28,7 +28,7 @@ def test_o_menu_registra_todas_as_paginas_do_mapa():
 
 def test_todas_as_paginas_abrem_sem_erro_no_modo_local():
     app = _app_local()
-    for p in PAGINAS:
+    for p in paginas_do_classico():
         if p.somente_admin:  # testada em test_admin_no_app.py
             continue
         ir_para(app, p.chave)

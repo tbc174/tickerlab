@@ -28,6 +28,7 @@ from src import (
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
+from src.commodities import painel_de_precos
 from src.conteudo import descrever_pior_drawdown
 from src.ficha import Ficha, PedidoDaFicha, Resultado, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
@@ -379,6 +380,84 @@ def de_juros_e_inflacao(
             for p in painel.historico
         ],
         avisos=list(painel.avisos),
+    )
+
+
+# --- Preços de referência (café, algodão e fertilizantes; src/commodities/painel_de_precos.py) ---
+
+
+class PontoDoPrecoV1(BaseModel):
+    mes: date  # o primeiro dia do mês
+    bm: float | None  # Pink Sheet do Banco Mundial
+    fmi: float | None  # FMI (PCPS); null também quando o item não tem o FMI ao lado
+
+
+class PontoDoSpreadV1(BaseModel):
+    mes: date
+    valor: float  # arábica menos robusta, em US$/kg
+
+
+class PrecoDeReferenciaV1(BaseModel):
+    """Um item do painel, com os textos prontos (os mesmos do Streamlit)."""
+
+    chave: str
+    nome: str
+    unidade: str
+    ultimo_mes: date
+    ultimo_valor: float
+    texto: str  # o último valor como a tela mostra ("1.234,50")
+    variacao_12_meses: float | None  # %, contra o mesmo mês do ano anterior
+    texto_da_variacao: str | None  # "+3,2% em 12 meses"
+    legenda: str  # o mês e a fonte
+    com_fmi: bool  # true: o histórico traz o FMI ao lado do Pink Sheet
+    nota_das_fontes: str | None
+    historico: list[PontoDoPrecoV1]
+
+
+class PrecosDeReferenciaV1(BaseModel):
+    """O painel de preços de referência mensais como era em `dia`."""
+
+    dia: date
+    itens: list[PrecoDeReferenciaV1]
+    spread: list[PontoDoSpreadV1]
+    titulo_do_spread: str
+    nota_do_spread: str
+    aviso_diario: str
+    atribuicao: str
+
+
+def de_precos_de_referencia(
+    lido: painel_de_precos.PainelDePrecos, dia: date
+) -> PrecosDeReferenciaV1:
+    return PrecosDeReferenciaV1(
+        dia=dia,
+        itens=[
+            PrecoDeReferenciaV1(
+                chave=i.chave,
+                nome=i.nome,
+                unidade=i.unidade,
+                ultimo_mes=i.ultimo_mes,
+                ultimo_valor=i.ultimo_valor,
+                texto=painel_de_precos.formatar_valor(i.ultimo_valor),
+                variacao_12_meses=numero(i.variacao_12_meses),
+                texto_da_variacao=painel_de_precos.texto_da_variacao(
+                    i.variacao_12_meses
+                ),
+                legenda=painel_de_precos.legenda_do_item(i),
+                com_fmi=i.com_fmi,
+                nota_das_fontes=i.nota_das_fontes,
+                historico=[
+                    PontoDoPrecoV1(mes=p.mes, bm=numero(p.bm), fmi=numero(p.fmi))
+                    for p in i.historico
+                ],
+            )
+            for i in lido.itens
+        ],
+        spread=[PontoDoSpreadV1(mes=s.mes, valor=s.valor) for s in lido.spread],
+        titulo_do_spread=painel_de_precos.TITULO_DO_SPREAD,
+        nota_do_spread=painel_de_precos.NOTA_DO_SPREAD,
+        aviso_diario=lido.aviso_diario,
+        atribuicao=lido.atribuicao,
     )
 
 

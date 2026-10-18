@@ -10,6 +10,8 @@ O texto sai do mesmo jeito que o da amostra de ouro (baixada pela rotulagem por 
 extração (Sonnet 91,5% nos campos-chave) só vale para a base se o texto for igual.
 """
 
+import hashlib
+import re
 from collections.abc import Collection
 from pathlib import Path
 
@@ -87,6 +89,25 @@ def texto_do_documento(conteudo: bytes, categoria: str) -> str:
     if categoria == FATO_RELEVANTE:
         texto = leitura.sem_cabecalho_e_assinatura(texto)
     return " ".join(texto.split())[:MAX_CARACTERES_GUARDADOS]
+
+
+# o nome de arquivo e o `custom_id` da Batch API aceitam só isto
+NOME_SEGURO = re.compile(r"[A-Za-z0-9_-]{1,64}")
+LINK_DO_RAD = re.compile(r"numProtocolo=(\d+)&numSequencia=(\d+)&numVersao=(\d+)")
+
+
+def nome_do_texto(protocolo: str) -> str:
+    """O nome do texto de um documento (arquivo `<nome>.txt` e id no lote da Batch API).
+
+    É o próprio protocolo ("002437IPE100420190104356511-54"). Nos documentos antigos do IPE (até ~2010)
+    o "protocolo" é o link do RAD, com `/`, `?` e `&`: viram os números dele ("cvm-25694-0-0"); o que
+    não for nenhum dos dois vira um resumo SHA-256, para nunca sair um caminho com pastas.
+    """
+    if NOME_SEGURO.fullmatch(protocolo):
+        return protocolo
+    if achado := LINK_DO_RAD.search(protocolo):
+        return "cvm-" + "-".join(achado.groups())
+    return "doc-" + hashlib.sha256(protocolo.encode()).hexdigest()[:32]
 
 
 def gravar_texto(pasta_dos_textos: Path, nome: str, texto: str) -> Path:
