@@ -128,15 +128,15 @@ describe("topo compacto e campos que não dão zoom", () => {
     expect(NO_CELULAR).toMatch(/\.selo-novo \{ display: none; \}/);
   });
 
-  it("no celular o 'App atual' sai do topo (vazava em 375 px) e fica no fim da folha 'Mais'", async () => {
+  it("no celular o 'Versão clássica' sai do topo (vazava em 375 px) e fica no fim da folha 'Mais'", async () => {
     expect(NO_CELULAR).toMatch(/\.app-atual-no-topo \{ display: none; \}/);
     abrirApp("/");
     await noInicio();
-    const noTopo = within(screen.getByRole("banner")).getByRole("link", { name: "App atual" });
+    const noTopo = within(screen.getByRole("banner")).getByRole("link", { name: "Versão clássica" });
     expect(noTopo.classList.contains("app-atual-no-topo")).toBe(true);
     // a folha está fechada: o link existe, mas só aparece quando ela abre
     const naFolha = within(document.querySelector<HTMLDialogElement>("dialog.folha-mais")!).getByRole("link", {
-      name: "App atual",
+      name: "Versão clássica",
       hidden: true,
     });
     expect(naFolha.getAttribute("href")).toBe(noTopo.getAttribute("href"));

@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { type PaginaDoApp, conteudoDoApp } from "../../conteudo";
-import { linkDoApp } from "../../site/textos";
+import { linkDoClassico } from "../classico";
 import { mensagemDe } from "../BaixarMeusDados";
 import { pedir } from "../api";
 import { useConta } from "../conta";
@@ -69,8 +69,8 @@ function Lista({ inicial }: { inicial: MinhasSimulacoesV1 }) {
                     Reabrir
                   </Link>
                 ) : (
-                  <a className="botao pequeno" href={linkDoApp("simulacoes")}>
-                    Reabrir no app atual
+                  <a className="botao pequeno" href={linkDoClassico("simulacoes")}>
+                    Reabrir na versão clássica
                   </a>
                 )}
                 {confirmando === s.id ? (
@@ -118,7 +118,7 @@ export function Simulacoes({ pagina }: { pagina: PaginaDoApp }) {
       )}
       <p className="apagado">
         Para guardar uma simulação, rode um <Link to="/backtest">backtest</Link> e clique em Salvar na minha
-        conta. Carteira e Monte Carlo ainda são guardados no <a href={linkDoApp("simulacoes")}>app atual</a>.
+        conta. Carteira e Monte Carlo ainda são guardados no <a href={linkDoClassico("simulacoes")}>versão clássica</a>.
       </p>
     </section>
   );

@@ -2,7 +2,8 @@
 // As telas ficam no menu por áreas (MenuPorAreas, ADR 0096): ao lado no computador; no celular (até 760 px,
 // só CSS), em 5 abas fixas embaixo, ao alcance do polegar (ADR 0066).
 import type { ReactNode } from "react";
-import { AVISO, linkDoApp } from "../site/textos";
+import { AVISO } from "../site/textos";
+import { linkDoClassico } from "./classico";
 import { ContaNoTopo } from "./conta";
 import { Logo } from "./Logo";
 import { MenuDoTema } from "./MenuDoTema";
@@ -20,8 +21,8 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
           <span className="selo-novo">Versão nova</span>
           <MenuDoTema />
           <ContaNoTopo />
-          <a className="botao pequeno app-atual-no-topo" href={linkDoApp()}>
-            App atual
+          <a className="botao pequeno app-atual-no-topo" href={linkDoClassico()}>
+            Versão clássica
           </a>
         </div>
       </header>

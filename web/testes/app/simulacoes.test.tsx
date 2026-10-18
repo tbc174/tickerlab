@@ -64,13 +64,13 @@ describe("minhas simulações", () => {
     expect(within(antiga).getByText(/^Carteira · criada em 10\/10\/2026$/)).toBeTruthy();
   });
 
-  it("reabre no app novo pelo endereço da API; a do app atual só reabre lá", async () => {
+  it("reabre no app novo pelo endereço da API; a da versão clássica só reabre lá", async () => {
     abrir();
     const lista = await screen.findByRole("list", { name: "Minhas simulações" });
     const [nova, antiga] = within(lista).getAllByRole("listitem");
     expect(within(nova).getByRole("link", { name: "Reabrir" }).getAttribute("href")).toBe(DO_APP_NOVO.endereco);
-    expect(within(antiga).getByRole("link", { name: "Reabrir no app atual" }).getAttribute("href")).toBe(
-      "https://app.tickerlab.com.br/simulacoes",
+    expect(within(antiga).getByRole("link", { name: "Reabrir na versão clássica" }).getAttribute("href")).toBe(
+      "/classico/simulacoes",
     );
   });
 

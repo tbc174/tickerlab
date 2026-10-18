@@ -4,7 +4,8 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { conteudoDoApp, paginasDoApp, planos } from "../conteudo";
-import { URL_DO_SITE, linkDoApp } from "../site/textos";
+import { URL_DO_SITE } from "../site/textos";
+import { linkDoClassico } from "./classico";
 import { ErroDaApi, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
 import { FundoDoApp } from "./FundoDoApp";
@@ -148,14 +149,14 @@ function Entrada({ erro }: { erro: ErroDaApi | null }) {
   return (
     <section className="aviso-do-app">
       <h1>Entre com o Google</h1>
-      <p>Use a mesma conta do Google do app de sempre. Os números são os mesmos.</p>
+      <p>Use a mesma conta do Google da versão clássica. Os números são os mesmos.</p>
       {erro ? (
         <p className="erro-do-app" role="alert">
           {saida ? saida[0] : erro.message}
         </p>
       ) : null}
       {saida?.[1] ? (
-        <a className="botao primario" href={linkDoApp()}>
+        <a className="botao primario" href={linkDoClassico()}>
           {saida[1]}
         </a>
       ) : null}
@@ -224,8 +225,8 @@ function AceiteDosTermos({ conta }: { conta: Conta }) {
         <summary>{sem_o_aceite.titulo}</summary>
         <p className="apagado">{sem_o_aceite.explicacao}</p>
         <BaixarMeusDados token={conta.token} />
-        <a className="botao" href={linkDoApp("meus-dados")}>
-          Apagar a conta (no app atual)
+        <a className="botao" href={linkDoClassico("meus-dados")}>
+          Apagar a conta (na versão clássica)
         </a>
       </details>
     </section>

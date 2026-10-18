@@ -43,11 +43,11 @@ describe("rotas do app novo", () => {
     expect(TELAS_DO_APP.filter((p) => !temTelaPronta(p.chave)).map((p) => p.chave)).toEqual([]);
   });
 
-  it("página com contrato e sem tela nova leva à mesma página no app atual", () => {
+  it("página com contrato e sem tela nova leva à mesma página na versão clássica", () => {
     const pagina = { ...TELAS_DO_APP[0], titulo: "Tela futura", url: "tela-futura" };
     render(<EmConstrucao pagina={pagina} />);
-    const link = screen.getByRole("link", { name: /Abrir no app atual/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/tela-futura");
+    const link = screen.getByRole("link", { name: /Abrir na versão clássica/ });
+    expect(link.getAttribute("href")).toBe("/classico/tela-futura");
   });
 });
 
@@ -63,11 +63,11 @@ describe("a API de leitura", () => {
     expect(await screen.findByText(/login da versão nova ainda não foi ligado/)).toBeTruthy();
   });
 
-  it("desligada: o app novo avisa que está em preparação e leva ao app atual", async () => {
+  it("desligada: o app novo avisa que está em preparação e leva à versão clássica", async () => {
     abrir("/", respostaJson(404, { detail: "Not Found" }));
     expect(await screen.findByText(/em preparação/)).toBeTruthy();
-    const link = screen.getByRole("link", { name: /app atual/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/");
+    const link = screen.getByRole("link", { name: /versão clássica/ });
+    expect(link.getAttribute("href")).toBe("/classico/");
   });
 
   it("sem a rota da API no endereço (resposta que não é JSON) conta como desligada", async () => {

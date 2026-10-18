@@ -1,9 +1,9 @@
 // Meus dados no app novo: baixar a cópia de tudo o que o TickerLab guarda (LGPD, a mesma exportação do
 // Streamlit) e os links compartilhados, com revogar. Apagar a conta, o tema, as Novidades por e-mail e
-// os PDFs guardados continuam no app atual por enquanto (apagar a conta não tem volta: tela própria).
+// os PDFs guardados continuam na versão clássica por enquanto (apagar a conta não tem volta: tela própria).
 import { useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
-import { linkDoApp } from "../../site/textos";
+import { linkDoClassico } from "../classico";
 import { pedir } from "../api";
 import { BaixarMeusDados, mensagemDe } from "../BaixarMeusDados";
 import { useConta } from "../conta";
@@ -75,13 +75,13 @@ export function MeusDados({ pagina }: { pagina: PaginaDoApp }) {
       ) : (
         <Links inicial={pedido.dados} />
       )}
-      <h2>No app atual</h2>
+      <h2>Na versão clássica</h2>
       <p className="apagado">
         Apagar a conta (não tem volta), a aparência, as Novidades por e-mail e o .zip dos PDFs guardados
-        continuam no app atual por enquanto.
+        continuam na versão clássica por enquanto.
       </p>
-      <a className="botao" href={linkDoApp("meus-dados")}>
-        Apagar a conta, tema, Novidades e PDFs (no app atual)
+      <a className="botao" href={linkDoClassico("meus-dados")}>
+        Apagar a conta, tema, Novidades e PDFs (na versão clássica)
       </a>
     </section>
   );

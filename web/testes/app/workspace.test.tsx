@@ -109,8 +109,8 @@ describe("o Início é o Workspace", () => {
     expect(within(igual).getByText(IGUAL.nome)).toBeTruthy();
     expect(within(igual).getByText(/sem mudança/)).toBeTruthy();
     expect(within(igual).queryByText(IGUAL.tese_ligada)).toBeNull(); // a tese só junto do que mudou
-    expect(within(igual).getByRole("link", { name: /app atual/ }).getAttribute("href")).toBe(
-      "https://app.tickerlab.com.br/simulacoes",
+    expect(within(igual).getByRole("link", { name: /versão clássica/ }).getAttribute("href")).toBe(
+      "/classico/simulacoes",
     );
     expect(within(semConferir).getByText(/Não deu para conferir agora/)).toBeTruthy();
     expect(within(c).getByText(PULSE.avisos[0])).toBeTruthy();
