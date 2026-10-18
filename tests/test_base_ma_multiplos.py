@@ -144,3 +144,20 @@ def test_a_alvo_e_a_emissora_de_algum_documento_da_operacao():
     membros = [_leitura("compradora", ANUNCIO, [PRECO]), _leitura("fato", ANUNCIO, [])]
     assert mm.alvo_aberta(membros, emissoras) == (CNPJ, "")
     assert mm.alvo_aberta(membros[:1], emissoras) == (None, mm.ALVO_FECHADA)
+
+
+def test_controlada_com_o_nome_da_emissora_nao_e_a_emissora():
+    # amostra de ouro: a ENERGISA S.A. publicou a venda da Energisa Bioeletricidade
+    assert not mx.nome_cobre("Energisa Bioeletricidade S/A", "ENERGISA SA")
+    assert not mx.nome_cobre("ITAUTEC S.A. – GRUPO ITAUTEC", "ITAUSA S.A.")
+    assert not mx.nome_cobre(
+        "Gol", "GOLDMAN SACHS DO BRASIL"
+    )  # palavra curta não vale colada
+    abreviados = [
+        ("Ingá Agroflorestal S.A.", "INGA AGRO FLORESTAL SA"),
+        ("Usinas Siderúrgicas de Minas Gerais S.A. – USIMINAS", "USINAS SID DE MINAS GERAIS S.A.-USIMINAS"),
+        ("Eucatex S.A. – Indústria e Comércio", "EUCATEX SA IND COM"),
+        ("Pan", "BANCO PAN SA"),
+    ]  # fmt: skip
+    for nome, abreviado in abreviados:
+        assert mx.nome_cobre(nome, abreviado), nome

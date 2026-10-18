@@ -7,8 +7,9 @@ mais nova de cada documento: se ela foi entregue no dia do anúncio ou depois, o
 fora (vale o anterior), em vez de usar um número que ainda não existia.
 
 De onde vem cada parte:
-- **a alvo**: a companhia que entregou um documento da operação e cujo nome é o da alvo
-  (`mesma_empresa`). Alvo que não é companhia aberta não tem DFP nem ITR e fica sem múltiplo;
+- **a alvo**: a companhia que entregou um documento da operação, quando o nome dela cobre o da alvo
+  (`nome_cobre`: "Energisa Bioeletricidade" é a controlada, não a ENERGISA S.A. que publicou). Alvo
+  que não é companhia aberta não tem DFP nem ITR e fica sem múltiplo;
 - **o valor**: o valor da empresa (EV) lido, ou o preço por ação lido × as ações em circulação (o valor
   do patrimônio), do documento mais antigo da operação que o trouxe, só em reais. O valor de uma
   participação fica de fora: a fração comprada não é lida com segurança (quem compra pode já ter parte);
@@ -17,7 +18,7 @@ De onde vem cada parte:
   circulação conferidas pelo lucro por ação declarado (a CVM às vezes as informa em milhares).
 
 Múltiplos: EV/receita, EV/EBIT, P/L e P/VP, com EV = patrimônio + dívida bruta − caixa e aplicações (e o
-contrário quando só o EV foi lido). Denominador zero ou negativo → sem múltiplo. Banco e seguradora
+contrário quando só o EV foi lido). Um lado zero ou negativo → sem múltiplo. Banco e seguradora
 (`e_financeira`) ficam sem EV: a dívida é o negócio deles. O EV/EBITDA do plano fica para depois (a
 depreciação está no fluxo de caixa); o EV/EBIT compara o mesmo preço.
 """
@@ -66,7 +67,7 @@ def alvo_aberta(
         emissora.cnpj
         for d in membros
         if (emissora := emissoras.get(d.protocolo))
-        and any(mx.mesma_empresa(emissora.empresa, alvo) for alvo in alvos)
+        and any(mx.nome_cobre(alvo, emissora.empresa) for alvo in alvos)
     }
     if len(achadas) == 1:
         return achadas.pop(), ""
@@ -108,7 +109,9 @@ def entregues_antes(
 
 
 def _divisao(numerador: float | None, denominador: float | None) -> float | None:
-    if numerador is None or denominador is None or denominador <= 0:
+    """Sem múltiplo quando um dos lados é zero ou negativo (prejuízo, patrimônio a descoberto, ou o
+    valor do patrimônio negativo depois de tirar a dívida do EV)."""
+    if numerador is None or denominador is None or numerador <= 0 or denominador <= 0:
         return None
     return numerador / denominador
 
