@@ -67,6 +67,7 @@ from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
+from src.commodities.cafe import painel as painel_do_cafe
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -1221,3 +1222,30 @@ def pulse_da_conta(
         sem_ativos=pulse.SEM_ATIVOS,
         nota_da_variacao=pulse.NOTA_DA_VARIACAO,
     )
+
+
+TipoDeCafe = Literal["arabica", "conilon"]  # os TIPOS de src/commodities/cafe/painel.py
+
+
+@router.get("/painel-do-cafe")
+def painel_do_cafe_v1(
+    _conta: Conta,
+    tipo: Annotated[
+        TipoDeCafe, Query(description="Arábica ou conilon (robusta).")
+    ] = "arabica",
+    regiao: Annotated[
+        str | None,
+        Query(
+            description="A região do clima e do calendário; vazia, a de maior área do tipo."
+        ),
+    ] = None,
+) -> esquemas.PainelDoCafeV1:
+    """O painel do café de hoje: preço de referência, câmbio, fundos, exportações, balanço, safra,
+    clima, calendário e contrapartes, cada bloco com a fonte e a data (sem dado: o motivo)."""
+    if regiao is not None and regiao not in painel_do_cafe.POR_ID:
+        raise HTTPException(
+            status_code=422, detail=f"Região de café desconhecida: {regiao}."
+        )
+    with obter_engine().connect() as conexao:
+        painel = painel_do_cafe.montar_painel(conexao, tipo, hoje_no_brasil(), regiao)
+    return esquemas.de_painel_do_cafe(painel)

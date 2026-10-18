@@ -72,7 +72,8 @@
         "carteira_research",
         "alertas",
         "parametros",
-        "momentum"
+        "momentum",
+        "painel_do_cafe"
       ],
       "rotulo": "Acompanhar"
     },

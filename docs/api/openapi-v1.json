@@ -304,6 +304,875 @@
         "title": "BacktestV1",
         "type": "object"
       },
+      "BalancoDoCafeV1": {
+        "properties": {
+          "estoque_consumo_brasil": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Estoque Consumo Brasil",
+            "type": "array"
+          },
+          "estoque_consumo_mundo": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Estoque Consumo Mundo",
+            "type": "array"
+          },
+          "paises": {
+            "items": {
+              "$ref": "#/components/schemas/BalancoDoPaisV1"
+            },
+            "title": "Paises",
+            "type": "array"
+          },
+          "participacao_do_brasil": {
+            "items": {
+              "$ref": "#/components/schemas/PontoAnualDoCafeV1"
+            },
+            "title": "Participacao Do Brasil",
+            "type": "array"
+          },
+          "ultima_safra": {
+            "title": "Ultima Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ultima_safra",
+          "estoque_consumo_mundo",
+          "estoque_consumo_brasil",
+          "participacao_do_brasil",
+          "paises"
+        ],
+        "title": "BalancoDoCafeV1",
+        "type": "object"
+      },
+      "BalancoDoPaisV1": {
+        "properties": {
+          "ano_safra": {
+            "title": "Ano Safra",
+            "type": "integer"
+          },
+          "codigo_do_pais": {
+            "title": "Codigo Do Pais",
+            "type": "string"
+          },
+          "participacao_na_producao": {
+            "title": "Participacao Na Producao",
+            "type": "number"
+          },
+          "producao": {
+            "title": "Producao",
+            "type": "number"
+          },
+          "relacao_estoque_consumo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relacao Estoque Consumo"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "codigo_do_pais",
+          "ano_safra",
+          "tipo",
+          "producao",
+          "participacao_na_producao",
+          "relacao_estoque_consumo"
+        ],
+        "title": "BalancoDoPaisV1",
+        "type": "object"
+      },
+      "BienalidadeDoCafeV1": {
+        "properties": {
+          "marcas": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDaSafraV1"
+            },
+            "title": "Marcas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "marcas"
+        ],
+        "title": "BienalidadeDoCafeV1",
+        "type": "object"
+      },
+      "BlocoDaBienalidadeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BienalidadeDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDaBienalidadeV1",
+        "type": "object"
+      },
+      "BlocoDaSafraV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SafraDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDaSafraV1",
+        "type": "object"
+      },
+      "BlocoDasContrapartesV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContrapartesDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDasContrapartesV1",
+        "type": "object"
+      },
+      "BlocoDasExportacoesV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportacoesDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDasExportacoesV1",
+        "type": "object"
+      },
+      "BlocoDoBalancoV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BalancoDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoBalancoV1",
+        "type": "object"
+      },
+      "BlocoDoCalendarioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarioDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoCalendarioV1",
+        "type": "object"
+      },
+      "BlocoDoCambioV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CambioDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoCambioV1",
+        "type": "object"
+      },
+      "BlocoDoClimaV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClimaDaRegiaoV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoClimaV1",
+        "type": "object"
+      },
+      "BlocoDoPrecoDoCafeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrecoDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoPrecoDoCafeV1",
+        "type": "object"
+      },
+      "BlocoDoTermometroV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermometroDaConabV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDoTermometroV1",
+        "type": "object"
+      },
+      "BlocoDosFundosV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "conteudo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FundosDoCafeV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "motivo_sem_dado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Sem Dado"
+          },
+          "o_que_e": {
+            "title": "O Que E",
+            "type": "string"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "o_que_e",
+          "fonte",
+          "data",
+          "motivo_sem_dado",
+          "conteudo"
+        ],
+        "title": "BlocoDosFundosV1",
+        "type": "object"
+      },
+      "CalendarioDoCafeV1": {
+        "properties": {
+          "fase": {
+            "$ref": "#/components/schemas/FaseDoCafeV1"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemDoCalendarioV1"
+            },
+            "title": "Itens",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fase",
+          "itens"
+        ],
+        "title": "CalendarioDoCafeV1",
+        "type": "object"
+      },
+      "CambioDoCafeV1": {
+        "properties": {
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoCambioV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "ultimo_dia": {
+            "format": "date",
+            "title": "Ultimo Dia",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "ultimo_dia",
+          "ultimo_valor",
+          "variacao_12_meses",
+          "historico"
+        ],
+        "title": "CambioDoCafeV1",
+        "type": "object"
+      },
       "ChecagemV1": {
         "properties": {
           "explicacao": {
@@ -325,6 +1194,37 @@
           "explicacao"
         ],
         "title": "ChecagemV1",
+        "type": "object"
+      },
+      "ClimaDaRegiaoV1": {
+        "properties": {
+          "chuva": {
+            "$ref": "#/components/schemas/IndiceDeChuvaV1"
+          },
+          "fonte_dos_dados": {
+            "title": "Fonte Dos Dados",
+            "type": "string"
+          },
+          "nome_da_regiao": {
+            "title": "Nome Da Regiao",
+            "type": "string"
+          },
+          "regiao": {
+            "title": "Regiao",
+            "type": "string"
+          },
+          "temperatura": {
+            "$ref": "#/components/schemas/TemperaturaDoMesV1"
+          }
+        },
+        "required": [
+          "regiao",
+          "nome_da_regiao",
+          "fonte_dos_dados",
+          "chuva",
+          "temperatura"
+        ],
+        "title": "ClimaDaRegiaoV1",
         "type": "object"
       },
       "ComparacaoDoAtivoV1": {
@@ -514,6 +1414,22 @@
         "title": "ContaV1",
         "type": "object"
       },
+      "ContrapartesDoCafeV1": {
+        "properties": {
+          "fichas": {
+            "items": {
+              "$ref": "#/components/schemas/FichaDaContraparteV1"
+            },
+            "title": "Fichas",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fichas"
+        ],
+        "title": "ContrapartesDoCafeV1",
+        "type": "object"
+      },
       "CurvaV1": {
         "description": "Uma série ao longo do tempo: as datas e o valor em cada uma (`null` onde não há).",
         "properties": {
@@ -547,6 +1463,34 @@
         "title": "CurvaV1",
         "type": "object"
       },
+      "DestinoDoCafeV1": {
+        "properties": {
+          "fob_usd": {
+            "title": "Fob Usd",
+            "type": "number"
+          },
+          "fracao": {
+            "title": "Fracao",
+            "type": "number"
+          },
+          "pais": {
+            "title": "Pais",
+            "type": "string"
+          },
+          "sacas": {
+            "title": "Sacas",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pais",
+          "sacas",
+          "fob_usd",
+          "fracao"
+        ],
+        "title": "DestinoDoCafeV1",
+        "type": "object"
+      },
       "EnderecoDoStripeV1": {
         "description": "A página de pagamento ou o portal do Stripe: a tela leva a pessoa até lá.",
         "properties": {
@@ -559,6 +1503,29 @@
           "url"
         ],
         "title": "EnderecoDoStripeV1",
+        "type": "object"
+      },
+      "ErroDaSafraV1": {
+        "properties": {
+          "erro_mil_sacas": {
+            "title": "Erro Mil Sacas",
+            "type": "number"
+          },
+          "erro_pct": {
+            "title": "Erro Pct",
+            "type": "number"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "safra",
+          "erro_pct",
+          "erro_mil_sacas"
+        ],
+        "title": "ErroDaSafraV1",
         "type": "object"
       },
       "EstrategiaAcompanhadaV1": {
@@ -729,6 +1696,231 @@
         "title": "ExpectativaV1",
         "type": "object"
       },
+      "ExportacoesDoCafeV1": {
+        "properties": {
+          "destinos": {
+            "items": {
+              "$ref": "#/components/schemas/DestinoDoCafeV1"
+            },
+            "title": "Destinos",
+            "type": "array"
+          },
+          "fob_usd": {
+            "title": "Fob Usd",
+            "type": "number"
+          },
+          "fracao_do_espirito_santo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fracao Do Espirito Santo"
+          },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
+          "primeiro_mes": {
+            "format": "date",
+            "title": "Primeiro Mes",
+            "type": "string"
+          },
+          "sacas": {
+            "title": "Sacas",
+            "type": "number"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "primeiro_mes",
+          "ultimo_mes",
+          "sacas",
+          "fob_usd",
+          "destinos",
+          "fracao_do_espirito_santo",
+          "nota"
+        ],
+        "title": "ExportacoesDoCafeV1",
+        "type": "object"
+      },
+      "FaseDoCafeV1": {
+        "properties": {
+          "em_colheita": {
+            "title": "Em Colheita",
+            "type": "boolean"
+          },
+          "mes": {
+            "title": "Mes",
+            "type": "integer"
+          },
+          "na_janela_de_geada": {
+            "title": "Na Janela De Geada",
+            "type": "boolean"
+          },
+          "regiao_id": {
+            "title": "Regiao Id",
+            "type": "string"
+          },
+          "safra_em_curso": {
+            "title": "Safra Em Curso",
+            "type": "string"
+          },
+          "safra_seguinte": {
+            "title": "Safra Seguinte",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "regiao_id",
+          "safra_em_curso",
+          "safra_seguinte",
+          "em_colheita",
+          "na_janela_de_geada"
+        ],
+        "title": "FaseDoCafeV1",
+        "type": "object"
+      },
+      "FatoDaContraparteV1": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "descricao": {
+            "title": "Descricao",
+            "type": "string"
+          },
+          "divulgado_em": {
+            "format": "date",
+            "title": "Divulgado Em",
+            "type": "string"
+          },
+          "fato": {
+            "title": "Fato",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "tipo_de_fonte": {
+            "title": "Tipo De Fonte",
+            "type": "string"
+          },
+          "unidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidade"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "veiculo": {
+            "title": "Veiculo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fato",
+          "descricao",
+          "valor",
+          "unidade",
+          "data",
+          "divulgado_em",
+          "fonte",
+          "veiculo",
+          "tipo_de_fonte"
+        ],
+        "title": "FatoDaContraparteV1",
+        "type": "object"
+      },
+      "FichaDaContraparteV1": {
+        "properties": {
+          "cnpj": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnpj"
+          },
+          "fatos": {
+            "items": {
+              "$ref": "#/components/schemas/FatoDaContraparteV1"
+            },
+            "title": "Fatos",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "o_que_nao_sabemos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "O Que Nao Sabemos",
+            "type": "array"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf"
+          }
+        },
+        "required": [
+          "id",
+          "cnpj",
+          "nome",
+          "tipo",
+          "uf",
+          "fatos",
+          "o_que_nao_sabemos"
+        ],
+        "title": "FichaDaContraparteV1",
+        "type": "object"
+      },
       "FichaV1": {
         "description": "A ficha \"Foi sorte?\" do backtest (ADR 0037, D1 e D2), com os textos de `src/ficha.py`.",
         "properties": {
@@ -788,6 +1980,63 @@
         "title": "FichaV1",
         "type": "object"
       },
+      "FundosDoCafeV1": {
+        "properties": {
+          "comprados_lotes": {
+            "title": "Comprados Lotes",
+            "type": "number"
+          },
+          "fracao_do_interesse_aberto": {
+            "title": "Fracao Do Interesse Aberto",
+            "type": "number"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDosFundosV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "interesse_aberto_lotes": {
+            "title": "Interesse Aberto Lotes",
+            "type": "number"
+          },
+          "legenda": {
+            "title": "Legenda",
+            "type": "string"
+          },
+          "liquido_lotes": {
+            "title": "Liquido Lotes",
+            "type": "number"
+          },
+          "liquido_sacas": {
+            "title": "Liquido Sacas",
+            "type": "number"
+          },
+          "relatorio": {
+            "format": "date",
+            "title": "Relatorio",
+            "type": "string"
+          },
+          "vendidos_lotes": {
+            "title": "Vendidos Lotes",
+            "type": "number"
+          }
+        },
+        "required": [
+          "relatorio",
+          "comprados_lotes",
+          "vendidos_lotes",
+          "liquido_lotes",
+          "liquido_sacas",
+          "interesse_aberto_lotes",
+          "fracao_do_interesse_aberto",
+          "historico",
+          "legenda"
+        ],
+        "title": "FundosDoCafeV1",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -799,6 +2048,105 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IndiceDeChuvaV1": {
+        "properties": {
+          "anomalia": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anomalia"
+          },
+          "fim": {
+            "format": "date",
+            "title": "Fim",
+            "type": "string"
+          },
+          "inicio": {
+            "format": "date",
+            "title": "Inicio",
+            "type": "string"
+          },
+          "n_estacoes": {
+            "title": "N Estacoes",
+            "type": "integer"
+          },
+          "normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normal"
+          },
+          "razao_da_normal": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Razao Da Normal"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          }
+        },
+        "required": [
+          "valor",
+          "normal",
+          "anomalia",
+          "razao_da_normal",
+          "n_estacoes",
+          "inicio",
+          "fim"
+        ],
+        "title": "IndiceDeChuvaV1",
+        "type": "object"
+      },
+      "ItemDoCalendarioV1": {
+        "properties": {
+          "indices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Indices",
+            "type": "array"
+          },
+          "tema": {
+            "title": "Tema",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tema",
+          "texto",
+          "indices"
+        ],
+        "title": "ItemDoCalendarioV1",
         "type": "object"
       },
       "ItemDoRelatorioV1": {
@@ -1124,6 +2472,55 @@
         "title": "LinhaDaComparacaoV1",
         "type": "object"
       },
+      "LinhaDaSafraV1": {
+        "properties": {
+          "area_producao_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Producao Ha"
+          },
+          "producao_mil_sacas": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Producao Mil Sacas"
+          },
+          "produtividade_sc_ha": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Produtividade Sc Ha"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uf",
+          "area_producao_ha",
+          "produtividade_sc_ha",
+          "producao_mil_sacas"
+        ],
+        "title": "LinhaDaSafraV1",
+        "type": "object"
+      },
       "LinhaDoTempoDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -1223,6 +2620,30 @@
           "descricao"
         ],
         "title": "LinkV1",
+        "type": "object"
+      },
+      "MarcoDoCafeV1": {
+        "properties": {
+          "data": {
+            "format": "date",
+            "title": "Data",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "texto",
+          "fonte"
+        ],
+        "title": "MarcoDoCafeV1",
         "type": "object"
       },
       "MarcoV1": {
@@ -1548,6 +2969,29 @@
         "title": "NumeroDeJurosV1",
         "type": "object"
       },
+      "OpcaoDeRegiaoV1": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "tipo_predominante": {
+            "title": "Tipo Predominante",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "nome",
+          "tipo_predominante"
+        ],
+        "title": "OpcaoDeRegiaoV1",
+        "type": "object"
+      },
       "PainelDeNumerosV1": {
         "description": "Os números da visão geral (frações: 0.12 = 12%).",
         "properties": {
@@ -1692,6 +3136,93 @@
           "cvar"
         ],
         "title": "PainelDeNumerosV1",
+        "type": "object"
+      },
+      "PainelDoCafeV1": {
+        "description": "O painel do café de um tipo como estava em `dia`: cada bloco com o que é, a fonte e a data.",
+        "properties": {
+          "aviso_diario": {
+            "title": "Aviso Diario",
+            "type": "string"
+          },
+          "balanco": {
+            "$ref": "#/components/schemas/BlocoDoBalancoV1"
+          },
+          "bienalidade": {
+            "$ref": "#/components/schemas/BlocoDaBienalidadeV1"
+          },
+          "calendario": {
+            "$ref": "#/components/schemas/BlocoDoCalendarioV1"
+          },
+          "cambio": {
+            "$ref": "#/components/schemas/BlocoDoCambioV1"
+          },
+          "clima": {
+            "$ref": "#/components/schemas/BlocoDoClimaV1"
+          },
+          "contrapartes": {
+            "$ref": "#/components/schemas/BlocoDasContrapartesV1"
+          },
+          "dia": {
+            "format": "date",
+            "title": "Dia",
+            "type": "string"
+          },
+          "exportacoes": {
+            "$ref": "#/components/schemas/BlocoDasExportacoesV1"
+          },
+          "fundos": {
+            "$ref": "#/components/schemas/BlocoDosFundosV1"
+          },
+          "nome_do_tipo": {
+            "title": "Nome Do Tipo",
+            "type": "string"
+          },
+          "preco": {
+            "$ref": "#/components/schemas/BlocoDoPrecoDoCafeV1"
+          },
+          "regiao": {
+            "title": "Regiao",
+            "type": "string"
+          },
+          "regioes": {
+            "items": {
+              "$ref": "#/components/schemas/OpcaoDeRegiaoV1"
+            },
+            "title": "Regioes",
+            "type": "array"
+          },
+          "safra": {
+            "$ref": "#/components/schemas/BlocoDaSafraV1"
+          },
+          "termometro": {
+            "$ref": "#/components/schemas/BlocoDoTermometroV1"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "dia",
+          "tipo",
+          "nome_do_tipo",
+          "regiao",
+          "regioes",
+          "aviso_diario",
+          "preco",
+          "cambio",
+          "fundos",
+          "exportacoes",
+          "balanco",
+          "safra",
+          "termometro",
+          "bienalidade",
+          "clima",
+          "calendario",
+          "contrapartes"
+        ],
+        "title": "PainelDoCafeV1",
         "type": "object"
       },
       "PedidoDeBacktestV1": {
@@ -1918,6 +3449,148 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontoAnualDoCafeV1": {
+        "properties": {
+          "ano_safra": {
+            "title": "Ano Safra",
+            "type": "integer"
+          },
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ano_safra",
+          "valor",
+          "rotulo"
+        ],
+        "title": "PontoAnualDoCafeV1",
+        "type": "object"
+      },
+      "PontoDaSafraV1": {
+        "properties": {
+          "levantamento": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Levantamento"
+          },
+          "rotulo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rotulo"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          },
+          "serie": {
+            "title": "Serie",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          },
+          "uf": {
+            "title": "Uf",
+            "type": "string"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "safra",
+          "tipo",
+          "uf",
+          "serie",
+          "valor",
+          "unidade",
+          "rotulo",
+          "levantamento"
+        ],
+        "title": "PontoDaSafraV1",
+        "type": "object"
+      },
+      "PontoDoCambioV1": {
+        "properties": {
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "valor": {
+            "title": "Valor",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "valor"
+        ],
+        "title": "PontoDoCambioV1",
+        "type": "object"
+      },
+      "PontoDoPrecoDoCafeV1": {
+        "properties": {
+          "bm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bm"
+          },
+          "fmi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fmi"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mes",
+          "bm",
+          "fmi"
+        ],
+        "title": "PontoDoPrecoDoCafeV1",
+        "type": "object"
+      },
       "PontoDoRelatorioV1": {
         "description": "Um ponto de \"O que os dados mostram\": saiu de uma regra fixa e leva o número, de quando\nele é e a tabela de origem.",
         "properties": {
@@ -1957,6 +3630,64 @@
         "title": "PontoDoRelatorioV1",
         "type": "object"
       },
+      "PontoDoSpreadDoCafeV1": {
+        "properties": {
+          "arabica": {
+            "title": "Arabica",
+            "type": "number"
+          },
+          "mes": {
+            "format": "date",
+            "title": "Mes",
+            "type": "string"
+          },
+          "razao": {
+            "title": "Razao",
+            "type": "number"
+          },
+          "robusta": {
+            "title": "Robusta",
+            "type": "number"
+          },
+          "spread": {
+            "title": "Spread",
+            "type": "number"
+          }
+        },
+        "required": [
+          "mes",
+          "arabica",
+          "robusta",
+          "spread",
+          "razao"
+        ],
+        "title": "PontoDoSpreadDoCafeV1",
+        "type": "object"
+      },
+      "PontoDosFundosV1": {
+        "properties": {
+          "fracao_do_interesse_aberto": {
+            "title": "Fracao Do Interesse Aberto",
+            "type": "number"
+          },
+          "liquido_lotes": {
+            "title": "Liquido Lotes",
+            "type": "number"
+          },
+          "relatorio": {
+            "format": "date",
+            "title": "Relatorio",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relatorio",
+          "liquido_lotes",
+          "fracao_do_interesse_aberto"
+        ],
+        "title": "PontoDosFundosV1",
+        "type": "object"
+      },
       "PontoMensalV1": {
         "properties": {
           "ipca_12_meses": {
@@ -1993,6 +3724,105 @@
           "ipca_12_meses"
         ],
         "title": "PontoMensalV1",
+        "type": "object"
+      },
+      "PrecoDeReferenciaDoCafeV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "com_fmi": {
+            "title": "Com Fmi",
+            "type": "boolean"
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoPrecoDoCafeV1"
+            },
+            "title": "Historico",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "nota_das_fontes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nota Das Fontes"
+          },
+          "ultimo_mes": {
+            "format": "date",
+            "title": "Ultimo Mes",
+            "type": "string"
+          },
+          "ultimo_valor": {
+            "title": "Ultimo Valor",
+            "type": "number"
+          },
+          "unidade": {
+            "title": "Unidade",
+            "type": "string"
+          },
+          "variacao_12_meses": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacao 12 Meses"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "unidade",
+          "ultimo_mes",
+          "ultimo_valor",
+          "variacao_12_meses",
+          "historico",
+          "com_fmi",
+          "nota_das_fontes"
+        ],
+        "title": "PrecoDeReferenciaDoCafeV1",
+        "type": "object"
+      },
+      "PrecoDoCafeV1": {
+        "properties": {
+          "item": {
+            "$ref": "#/components/schemas/PrecoDeReferenciaDoCafeV1"
+          },
+          "marcos": {
+            "items": {
+              "$ref": "#/components/schemas/MarcoDoCafeV1"
+            },
+            "title": "Marcos",
+            "type": "array"
+          },
+          "spread": {
+            "items": {
+              "$ref": "#/components/schemas/PontoDoSpreadDoCafeV1"
+            },
+            "title": "Spread",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item",
+          "spread",
+          "marcos"
+        ],
+        "title": "PrecoDoCafeV1",
         "type": "object"
       },
       "PulseV1": {
@@ -2282,6 +4112,38 @@
         "title": "RiscoV1",
         "type": "object"
       },
+      "SafraDoCafeV1": {
+        "properties": {
+          "divulgado_em": {
+            "format": "date",
+            "title": "Divulgado Em",
+            "type": "string"
+          },
+          "levantamento": {
+            "title": "Levantamento",
+            "type": "integer"
+          },
+          "linhas": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaDaSafraV1"
+            },
+            "title": "Linhas",
+            "type": "array"
+          },
+          "safra": {
+            "title": "Safra",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "safra",
+          "levantamento",
+          "divulgado_em",
+          "linhas"
+        ],
+        "title": "SafraDoCafeV1",
+        "type": "object"
+      },
       "SecaoDoRelatorioV1": {
         "properties": {
           "chave": {
@@ -2453,6 +4315,111 @@
           "linhas"
         ],
         "title": "TabelaDoRelatorioV1",
+        "type": "object"
+      },
+      "TemperaturaDoMesV1": {
+        "properties": {
+          "competencia": {
+            "format": "date",
+            "title": "Competencia",
+            "type": "string"
+          },
+          "dias_tmin_abaixo_de_2c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dias Tmin Abaixo De 2C"
+          },
+          "tmin_anomalia_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Anomalia C"
+          },
+          "tmin_media_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Media C"
+          },
+          "tmin_normal_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tmin Normal C"
+          }
+        },
+        "required": [
+          "competencia",
+          "tmin_media_c",
+          "tmin_normal_c",
+          "tmin_anomalia_c",
+          "dias_tmin_abaixo_de_2c"
+        ],
+        "title": "TemperaturaDoMesV1",
+        "type": "object"
+      },
+      "TermometroDaConabV1": {
+        "properties": {
+          "erros": {
+            "items": {
+              "$ref": "#/components/schemas/ErroDaSafraV1"
+            },
+            "title": "Erros",
+            "type": "array"
+          },
+          "maior_erro_pct": {
+            "title": "Maior Erro Pct",
+            "type": "number"
+          },
+          "menor_erro_pct": {
+            "title": "Menor Erro Pct",
+            "type": "number"
+          },
+          "nota": {
+            "title": "Nota",
+            "type": "string"
+          },
+          "vies_medio_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vies Medio Pct"
+          }
+        },
+        "required": [
+          "erros",
+          "vies_medio_pct",
+          "menor_erro_pct",
+          "maior_erro_pct",
+          "nota"
+        ],
+        "title": "TermometroDaConabV1",
         "type": "object"
       },
       "ValidationError": {
@@ -3318,6 +5285,87 @@
           }
         },
         "summary": "Pagamento Da Assinatura"
+      }
+    },
+    "/v1/painel-do-cafe": {
+      "get": {
+        "description": "O painel do café de hoje: preço de referência, câmbio, fundos, exportações, balanço, safra,\nclima, calendário e contrapartes, cada bloco com a fonte e a data (sem dado: o motivo).",
+        "operationId": "painel_do_cafe_v1_v1_painel_do_cafe_get",
+        "parameters": [
+          {
+            "description": "Arábica ou conilon (robusta).",
+            "in": "query",
+            "name": "tipo",
+            "required": false,
+            "schema": {
+              "default": "arabica",
+              "description": "Arábica ou conilon (robusta).",
+              "enum": [
+                "arabica",
+                "conilon"
+              ],
+              "title": "Tipo",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+            "in": "query",
+            "name": "regiao",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+              "title": "Regiao"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PainelDoCafeV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Painel Do Cafe V1"
       }
     },
     "/v1/portal-da-assinatura": {

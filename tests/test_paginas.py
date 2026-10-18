@@ -20,6 +20,45 @@ def test_todo_grupo_tem_paginas_e_toda_pagina_tem_grupo_conhecido():
     assert {p.grupo for p in paginas.PAGINAS} <= set(paginas.GRUPOS)
 
 
+# --- Páginas só do app novo (ADR 0062, Emenda 2: tela nova nasce só no React) ---
+
+_SO_NO_APP_NOVO = paginas.Pagina(
+    "so_no_react",
+    "Só no React",
+    paginas.GRUPO_RESEARCH,
+    ":material/grain:",
+    "Uma página que só existe no app novo.",
+    area=paginas.AREA_ACOMPANHAR,
+    precisa_do_ativo=False,
+    contrato=paginas.Contrato("GET", "/v1/so-no-react", (), "SoNoReactV1"),
+    so_no_app_novo=True,
+)
+
+
+def test_pagina_so_do_app_novo_fica_fora_do_streamlit(monkeypatch):
+    monkeypatch.setattr(paginas, "PAGINAS", (*paginas.PAGINAS, _SO_NO_APP_NOVO))
+    assert _SO_NO_APP_NOVO not in paginas.paginas_do_grupo(paginas.GRUPO_RESEARCH)
+    assert _SO_NO_APP_NOVO not in paginas.paginas_do_classico()
+    so_no_react = [p for p in paginas.PAGINAS if p.so_no_app_novo]
+    assert len(paginas.paginas_do_classico()) == len(paginas.PAGINAS) - len(so_no_react)
+    # no app novo ela existe como qualquer outra: tem área e entra no menu dela
+    assert _SO_NO_APP_NOVO in paginas.paginas_da_area(paginas.AREA_ACOMPANHAR)
+
+
+def test_pagina_so_do_app_novo_precisa_de_contrato():
+    """Sem contrato o React não tem o que pedir à API, e o Streamlit não tem a tela: a página sumiria."""
+    with pytest.raises(ValueError, match="contrato"):
+        paginas.Pagina(
+            "sem_contrato",
+            "Sem contrato",
+            paginas.GRUPO_RESEARCH,
+            ":material/grain:",
+            "Uma página sem rota na API.",
+            area=paginas.AREA_ACOMPANHAR,
+            so_no_app_novo=True,
+        )
+
+
 def test_pagina_inicial_existe_e_e_a_primeira():
     assert paginas.PAGINAS[0].chave == paginas.PAGINA_INICIAL
     assert not paginas.pagina(paginas.PAGINA_INICIAL).precisa_do_ativo
@@ -139,6 +178,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "juros_e_inflacao",
                 "precos_de_referencia",
                 "parametros",
+                "painel_do_cafe",
             },
         ),
         ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
@@ -212,6 +252,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "meus_dados",
         "simulacoes",
         "pulse",
+        "painel_do_cafe",
     }
 
 

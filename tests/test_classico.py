@@ -6,12 +6,13 @@ novo. Sem a variável (PC, testes, CI) o app continua na raiz, como sempre.
 """
 
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from src import classico
+from src import classico, paginas
 
 RAIZ = Path(__file__).resolve().parents[1]
 VARIAVEL = classico.VARIAVEL_DO_CAMINHO_BASE
@@ -55,6 +56,15 @@ def test_os_enderecos_das_paginas_levam_o_caminho_base():
     assert em_classico[0] == "/classico/" and "/classico/visao-geral" in em_classico
     assert len(em_classico) == len(na_raiz)
     assert all(e.startswith("/classico/") for e in em_classico)
+
+
+def test_pagina_so_do_app_novo_nao_tem_endereco_no_classico(monkeypatch):
+    """ADR 0062, Emenda 2: a página que só existe no React não ganha endereço no Streamlit."""
+    so_no_react = replace(
+        paginas.pagina("juros_e_inflacao"), chave="so_no_react", so_no_app_novo=True
+    )
+    monkeypatch.setattr(paginas, "PAGINAS", (*paginas.PAGINAS, so_no_react))
+    assert "/so-no-react" not in classico.enderecos_das_paginas({})
 
 
 # --- o servidor: compose, imagem e CI ------------------------------------------------------

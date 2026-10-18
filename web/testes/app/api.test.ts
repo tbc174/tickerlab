@@ -13,6 +13,7 @@ import type {
   JurosEInflacaoV1,
   LinhaDoTempoDoAtivoV1,
   MinhasSimulacoesV1,
+  PainelDoCafeV1,
   PulseV1,
   SimulacaoV1,
   VisaoGeralV1,
@@ -22,6 +23,7 @@ import comparacao from "./exemplos/comparacao.json";
 import ficha from "./exemplos/ficha.json";
 import juros from "./exemplos/juros_e_inflacao.json";
 import linha from "./exemplos/linha_do_tempo.json";
+import painelDoCafe from "./exemplos/painel_do_cafe.json";
 import mensal from "./exemplos/retorno_mensal.json";
 import risco from "./exemplos/risco.json";
 import exemplo from "./exemplos/visao_geral.json";
@@ -280,5 +282,49 @@ describe("tipos das respostas", () => {
     expect(Object.keys(f ?? {}).sort()).toEqual(campos("FichaV1"));
     expect(Object.keys(f?.veredito ?? {}).sort()).toEqual(campos("VereditoV1"));
     expect(Object.keys(f?.checagens[0] ?? {}).sort()).toEqual(campos("ChecagemV1"));
+  });
+});
+
+describe("tipos do Painel do café", () => {
+  const esquemas = JSON.parse(
+    readFileSync(join(process.cwd(), "..", "docs", "api", "openapi-v1.json"), "utf8"),
+  ).components.schemas;
+  const campos = (nome: string) => Object.keys(esquemas[nome].properties).sort();
+  const chaves = (objeto: object) => Object.keys(objeto).sort();
+
+  it("PainelDoCafeV1 (exemplo do Python) bate com o OpenAPI, caixa a caixa", () => {
+    const p: PainelDoCafeV1 = painelDoCafe.resposta;
+    expect(chaves(p)).toEqual(campos("PainelDoCafeV1"));
+    expect(chaves(p.regioes[0])).toEqual(campos("OpcaoDeRegiaoV1"));
+    const conteudos: [object | null, string][] = [
+      [p.preco.conteudo, "PrecoDoCafeV1"],
+      [p.preco.conteudo?.item ?? null, "PrecoDeReferenciaDoCafeV1"],
+      [p.preco.conteudo?.spread[0] ?? null, "PontoDoSpreadDoCafeV1"],
+      [p.preco.conteudo?.marcos[0] ?? null, "MarcoDoCafeV1"],
+      [p.cambio.conteudo, "CambioDoCafeV1"],
+      [p.fundos.conteudo, "FundosDoCafeV1"],
+      [p.fundos.conteudo?.historico[0] ?? null, "PontoDosFundosV1"],
+      [p.exportacoes.conteudo, "ExportacoesDoCafeV1"],
+      [p.exportacoes.conteudo?.destinos[0] ?? null, "DestinoDoCafeV1"],
+      [p.balanco.conteudo, "BalancoDoCafeV1"],
+      [p.balanco.conteudo?.estoque_consumo_mundo[0] ?? null, "PontoAnualDoCafeV1"],
+      [p.safra.conteudo, "SafraDoCafeV1"],
+      [p.safra.conteudo?.linhas[0] ?? null, "LinhaDaSafraV1"],
+      [p.termometro.conteudo, "TermometroDaConabV1"],
+      [p.termometro.conteudo?.erros[0] ?? null, "ErroDaSafraV1"],
+      [p.bienalidade.conteudo?.marcas[0] ?? null, "PontoDaSafraV1"],
+      [p.clima.conteudo, "ClimaDaRegiaoV1"],
+      [p.clima.conteudo?.chuva ?? null, "IndiceDeChuvaV1"],
+      [p.clima.conteudo?.temperatura ?? null, "TemperaturaDoMesV1"],
+      [p.calendario.conteudo?.fase ?? null, "FaseDoCafeV1"],
+      [p.calendario.conteudo?.itens[0] ?? null, "ItemDoCalendarioV1"],
+      [p.contrapartes.conteudo?.fichas[0] ?? null, "FichaDaContraparteV1"],
+      [p.contrapartes.conteudo?.fichas[0].fatos[0] ?? null, "FatoDaContraparteV1"],
+    ];
+    for (const [conteudo, nome] of conteudos) {
+      expect(conteudo, `o exemplo tem ${nome}`).not.toBeNull();
+      expect(chaves(conteudo ?? {}), nome).toEqual(campos(nome));
+    }
+    expect(chaves(p.fundos)).toEqual(campos("BlocoDosFundosV1"));
   });
 });

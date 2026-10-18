@@ -12,6 +12,7 @@ import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
 import { MeusDados } from "./telas/MeusDados";
+import { PainelDoCafe } from "./telas/PainelDoCafe";
 import { Planos } from "./telas/Planos";
 import { RelatorioEmpresa } from "./telas/RelatorioEmpresa";
 import { RetornoMensal } from "./telas/RetornoMensal";
@@ -34,6 +35,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
+  painel_do_cafe: (pagina) => <PainelDoCafe pagina={pagina} />,
   // o Pulse é o Workspace: o Início do app novo
   pulse: () => <Navigate to="/" replace />,
 };

@@ -830,5 +830,46 @@
     "somente_admin": false,
     "titulo": "Planos e assinatura",
     "url": "planos"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "painel_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "Arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "regiao",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "PainelDoCafeV1",
+      "rota": "/v1/painel-do-cafe"
+    },
+    "descricao": "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário, cada número com a data e a fonte.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Painel do café",
+    "url": "painel-do-cafe"
   }
 ]
