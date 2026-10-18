@@ -686,32 +686,36 @@ def identificar(
     `<pasta>/identificacao.json` (passe ou não, conta como tentativa)."""
     faltam = _pedidos_de_identificacao(eventos, pasta, ids, so_fatos)
     manifesto = ler_manifesto(pasta)
-    conferir_teto(
-        manifesto,
-        custo_na_hora(cliente, [p for _, p in faltam], SAIDA_POR_IDENTIFICACAO),
-        teto,
-    )
+    # O teto vale para o gasto real, conferido antes de cada envio (ADR 0072, Emenda 2): a estimativa
+    # a preço cheio fica ~2x acima do real (a resposta é curta e o sistema vem do cache), e um envio
+    # a mais não pode passar do teto. O gasto fica no manifesto mesmo se o teto parar a rodada.
+    por_envio = custo_na_hora(
+        cliente, [p for _, p in faltam], SAIDA_POR_IDENTIFICACAO
+    ) / max(len(faltam), 1)
     gasto = 0.0
-    with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
-        for evento, parametros in faltam:
-            mensagem = cliente.messages.create(**parametros)
-            bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
-            palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
-            linha = {
-                "evento_id": evento["id"],
-                "palpite": palpite,
-                "identificou": ar.identificou(palpite, evento.get("empresa") or ""),
-            }
-            arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
-            gasto += _custo_da_resposta(mensagem.usage, lote=False)
-    identificacoes = ler_identificacoes(pasta) or {}
-    anterior = manifesto.get("identificacao", {}).get("gasto", 0.0)
-    manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
-    manifesto["identificacao"] = {
-        "eventos": len(identificacoes),
-        "gasto": anterior + gasto,
-    }
-    gravar_manifesto(pasta, manifesto, eventos)
+    try:
+        with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
+            for evento, parametros in faltam:
+                conferir_teto(manifesto, gasto + por_envio, teto)
+                mensagem = cliente.messages.create(**parametros)
+                bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
+                palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
+                linha = {
+                    "evento_id": evento["id"],
+                    "palpite": palpite,
+                    "identificou": ar.identificou(palpite, evento.get("empresa") or ""),
+                }
+                arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
+                gasto += _custo_da_resposta(mensagem.usage, lote=False)
+    finally:
+        identificacoes = ler_identificacoes(pasta) or {}
+        anterior = manifesto.get("identificacao", {}).get("gasto", 0.0)
+        manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
+        manifesto["identificacao"] = {
+            "eventos": len(identificacoes),
+            "gasto": anterior + gasto,
+        }
+        gravar_manifesto(pasta, manifesto, eventos)
     veredito = ar.veredito_da_identificacao(identificacoes, ids)
     (pasta / ARQUIVO_DA_IDENTIFICACAO).write_text(
         json.dumps(

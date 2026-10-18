@@ -289,6 +289,24 @@ def test_identificar_grava_o_palpite_e_respeita_o_teto(pasta):
     assert len(cliente.criados) == 2  # não repete
 
 
+def test_identificar_confere_o_teto_pelo_gasto_real_antes_de_cada_envio(pasta):
+    """Emenda 2 da ADR 0072: o teto é do gasto real; a estimativa a preço cheio só diz quanto custa
+    um envio a mais. Para no envio que passaria do teto e guarda o gasto no manifesto."""
+    cliente = ClienteDeMentira()
+    um_envio = ri.custo_em_dolares(4_500, rc.SAIDA_POR_IDENTIFICACAO, lote=False)
+    real = ri.custo_em_dolares(4_000, 300, lote=False)  # a resposta de mentira
+    tres = [e["id"] for e in EVENTOS[:3]]
+    with pytest.raises(rc.TetoPassado):
+        rc.identificar(cliente, EVENTOS, pasta, tres, teto=real + um_envio / 2)
+    assert len(cliente.criados) == 1  # o 1º cabia; o 2º passaria do teto
+    manifesto = rc.ler_manifesto(pasta)
+    assert manifesto["gasto_em_dolares"] == pytest.approx(real)
+    assert manifesto["identificacao"] == {"eventos": 1, "gasto": pytest.approx(real)}
+    assert len(rc.ler_identificacoes(pasta)) == 1
+    veredito = rc.identificar(cliente, EVENTOS, pasta, tres, teto=60)  # continua
+    assert len(cliente.criados) == 3 and not veredito.incompleto
+
+
 def test_auditar_grava_o_veredito(pasta, monkeypatch):
     cliente = ClienteDeMentira()
     rc.piloto(cliente, EVENTOS, pasta, n=4, teto=60)
