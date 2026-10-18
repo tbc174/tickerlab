@@ -41,8 +41,8 @@ TickerLab), o emissor, a validade e o e-mail verificado. A conta precisa já exi
 | 503 | login não configurado, o Google fora do ar, ou séries de juros ainda não coletadas |
 
 No 401 e no 403, o cabeçalho `X-TickerLab-Motivo` diz o porquê, para a tela mostrar o caminho certo:
-`sem-token` e `token-invalido` (entrar de novo), `conta-nova` (entrar uma vez pelo app atual) e
-`termos` (aceitar os termos no app atual).
+`sem-token` e `token-invalido` (entrar de novo), `conta-nova` (entrar uma vez pela versão clássica
+do app, em `app.tickerlab.com.br/classico/`) e `termos` (aceitar os termos lá).
 
 ## Rotas
 
