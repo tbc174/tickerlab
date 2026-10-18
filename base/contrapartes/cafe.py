@@ -9,8 +9,9 @@ que **não** sabemos. As regras (testes em `tests/test_base_contrapartes_cafe.py
   ficou público (`divulgado_em`). Fato sem isso não entra; o que falta vira "o que não sabemos", sem
   estimativa.
 - **Fato de risco** (pedido de recuperação judicial, fechamento, apuração pública) só com documento
-  oficial ou notícia de veículo identificado, e a página guardada pelo arquivista
-  (`base/arquivo/contrapartes.py`).
+  oficial ou com notícia de veículo identificado cuja página foi guardada pelo arquivista
+  (`base/arquivo/contrapartes.py`; os endereços guardados entram em `guardadas`). Notícia ainda não
+  guardada fica em "o que não sabemos", com o veículo, a data e o link, e não entre os fatos.
 - **Palavras vedadas** (`VEDADAS`): a ficha descreve, não julga.
 - **Sem olhar o futuro:** `em` corta pelo `divulgado_em` (cortar o futuro não muda o passado).
 
@@ -58,12 +59,14 @@ TIPOS_DE_FONTE = (
     "relatorio_da_entidade",
     "noticia",
 )
-FATOS_DE_RISCO = (
-    "pedido_de_recuperacao_judicial",
-    "situacao_especial_na_receita",
-    "encerramento",
-    "apuracao_publica",
-)
+# fato de risco -> como o texto o escreve
+NOMES_DOS_FATOS_DE_RISCO = {
+    "pedido_de_recuperacao_judicial": "Pedido de recuperação judicial",
+    "situacao_especial_na_receita": "Situação especial na Receita",
+    "encerramento": "Encerramento das atividades",
+    "apuracao_publica": "Apuração pública",
+}
+FATOS_DE_RISCO = tuple(NOMES_DOS_FATOS_DE_RISCO)
 # a ficha descreve, não julga: estas palavras não aparecem em nenhum texto dela (comparação sem
 # acento nem caixa, palavra inteira)
 VEDADAS = (
@@ -105,6 +108,11 @@ SEM_CRA_NOS_INFORMES = (
     "dívida)."
 )
 SITUACAO_CADASTRAL = "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita."
+# o fato de risco noticiado cuja página ainda não foi guardada como prova (sem valor nem estimativa)
+NOTICIA_NAO_GUARDADA = (
+    "{fato}: noticiado por {veiculo} em {divulgado_em:%d/%m/%Y} ({fonte}); fica fora dos fatos "
+    "até a página ser guardada como prova."
+)
 AUSENCIA_NAO_PROVA = (
     "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não "
     "exista."
@@ -219,6 +227,27 @@ def _como_data(valor: object) -> date:
     return pd.Timestamp(valor).date()  # type: ignore[arg-type]
 
 
+def _precisa_de_copia(linha: pd.Series, guardadas: frozenset[str]) -> bool:
+    """Fato de risco dito só por notícia cuja página o arquivista ainda não guardou."""
+    return (
+        linha["fato"] in FATOS_DE_RISCO
+        and linha["tipo_de_fonte"] == "noticia"
+        and linha["fonte"] not in guardadas
+    )
+
+
+def _noticias_nao_guardadas(linhas: pd.DataFrame) -> list[str]:
+    return [
+        NOTICIA_NAO_GUARDADA.format(
+            fato=NOMES_DOS_FATOS_DE_RISCO[linha["fato"]],
+            veiculo=linha["veiculo"],
+            divulgado_em=linha["divulgado_em"],
+            fonte=linha["fonte"],
+        )
+        for _, linha in linhas.iterrows()
+    ]
+
+
 def _fato_da_receita(cnpj: str, situacao: pd.DataFrame, em: date | None) -> list[Fato]:
     """A situação especial da matriz no cadastro aberto do CNPJ (a última, pelo `disponivel_em`)."""
     basico = re.sub(r"\D", "", cnpj)[:8]
@@ -280,6 +309,7 @@ def _o_que_nao_sabemos(
     fatos: list[Fato],
     situacao_especial: pd.DataFrame | None,
     cra: pd.DataFrame | None,
+    pendentes: list[str],
 ) -> list[str]:
     tipos = {f.fato for f in fatos}
     faltas = [frase for do_fato, frase in FALTAS if not tipos.intersection(do_fato)]
@@ -292,7 +322,7 @@ def _o_que_nao_sabemos(
             faltas.append(SEM_CRA)
         elif "cedente_ou_devedor_de_cra" not in tipos:
             faltas.append(SEM_CRA_NOS_INFORMES)
-    return [*faltas, SITUACAO_CADASTRAL, AUSENCIA_NAO_PROVA]
+    return [*pendentes, *faltas, SITUACAO_CADASTRAL, AUSENCIA_NAO_PROVA]
 
 
 def montar_ficha(
@@ -301,11 +331,13 @@ def montar_ficha(
     em: date | None = None,
     situacao_especial: pd.DataFrame | None = None,
     cra: pd.DataFrame | None = None,
+    guardadas: frozenset[str] = frozenset(),
 ) -> FichaDaContraparte | None:
     """A ficha da contraparte `chave` (o `id` da tabela) como estava em `em`; None se nada era público.
 
     `situacao_especial`: a tabela `cnpj_situacao_especial`; `cra`: o quadro `cedente_devedor` dos
     informes de CRA (com `disponivel_em`). Sem elas, a ficha diz que o cruzamento não foi feito.
+    `guardadas`: os endereços das páginas que o arquivista já guardou como prova.
     """
     linhas = fatos[fatos["id"] == chave]
     if linhas.empty:
@@ -314,12 +346,18 @@ def montar_ficha(
     if em is not None:
         linhas = linhas[linhas["divulgado_em"] <= em]
     cnpj = None if _vazio(entidade["cnpj"]) else str(entidade["cnpj"])
-    lista = _fatos_conferidos(linhas)
+    sem_copia = pd.Series(
+        [_precisa_de_copia(linha, guardadas) for _, linha in linhas.iterrows()],
+        index=linhas.index,
+        dtype=bool,
+    )
+    pendentes = _noticias_nao_guardadas(linhas[sem_copia])
+    lista = _fatos_conferidos(linhas[~sem_copia])
     if cnpj is not None and situacao_especial is not None:
         lista += _fato_da_receita(cnpj, situacao_especial, em)
     if cnpj is not None and cra is not None:
         lista += _fato_do_cra(cnpj, cra, em)
-    if not lista:
+    if not lista and not pendentes:
         return None
     lista.sort(key=lambda f: (f.divulgado_em, f.data))
     return FichaDaContraparte(
@@ -329,7 +367,9 @@ def montar_ficha(
         tipo=entidade["tipo"],
         uf=None if _vazio(entidade["uf"]) else entidade["uf"],
         fatos=lista,
-        o_que_nao_sabemos=_o_que_nao_sabemos(cnpj, lista, situacao_especial, cra),
+        o_que_nao_sabemos=_o_que_nao_sabemos(
+            cnpj, lista, situacao_especial, cra, pendentes
+        ),
     )
 
 
@@ -338,10 +378,11 @@ def fichas(
     em: date | None = None,
     situacao_especial: pd.DataFrame | None = None,
     cra: pd.DataFrame | None = None,
+    guardadas: frozenset[str] = frozenset(),
 ) -> list[FichaDaContraparte]:
     """As fichas de todas as contrapartes da tabela, na ordem dela (só as que já tinham fato em `em`)."""
     montadas = (
-        montar_ficha(chave, fatos, em, situacao_especial, cra)
+        montar_ficha(chave, fatos, em, situacao_especial, cra, guardadas)
         for chave in dict.fromkeys(fatos["id"])
     )
     return [ficha for ficha in montadas if ficha is not None]

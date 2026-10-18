@@ -2,8 +2,8 @@
 
 Regras da passagem: só CNPJ e nome da entidade, nada de pessoa física; todo fato com fonte (endereço
 público) e data; palavras vedadas; recuperação judicial ou fechamento só com documento oficial ou
-notícia de veículo identificado guardada pelo arquivista; o que não tem fonte vai para "o que não
-sabemos", nunca estimado.
+notícia de veículo identificado guardada pelo arquivista (enquanto não guardada, fica em "o que não
+sabemos" com o link); o que não tem fonte vai para "o que não sabemos", nunca estimado.
 """
 
 import re
@@ -39,6 +39,13 @@ SITUACAO_ESPECIAL = pd.DataFrame(
         "disponivel_em": [date(2025, 4, 13), date(2025, 4, 13)],
     }
 )
+NOTICIA_DO_PEDIDO = (
+    "https://www.bloomberglinea.com.br/agro/"
+    "gigante-do-cafe-pede-recuperacao-judicial-com-r-21-bilhoes-em-dividas/"
+)
+GUARDADAS = frozenset({NOTICIA_DO_PEDIDO})
+# o que "o que não sabemos" pode ter de algarismo: a data e o link da notícia ainda não guardada
+DATA_OU_LINK = re.compile(r"https://\S+|\d{2}/\d{2}/\d{4}")
 CRA = pd.DataFrame(
     {
         "competencia": pd.to_datetime(["2023-01-01", "2023-02-01", "2024-06-01"]),
@@ -74,8 +81,8 @@ def test_tabela_conferida_tem_as_colunas_do_dicionario_e_esta_na_porta(fatos):
 
 
 def test_ficha_tem_so_fatos_com_fonte_e_data(fatos):
-    for ficha in _todas(fatos):
-        assert ficha.fatos, ficha.id
+    for ficha in _todas(fatos) + cafe.fichas(fatos, guardadas=GUARDADAS):
+        assert ficha.fatos or ficha.o_que_nao_sabemos[0].startswith("Pedido"), ficha.id
         for fato in ficha.fatos:
             assert fato.fonte.startswith("https://"), (ficha.id, fato.fato)
             assert fato.veiculo, (ficha.id, fato.fato)
@@ -124,24 +131,48 @@ def test_isolamento_nenhum_dado_pessoal(fatos):
 def test_fato_de_recuperacao_judicial_ou_fechamento_tem_documento_ou_noticia_guardada(
     fatos,
 ):
-    guardadas = set(contrapartes.paginas_a_guardar(fatos))
     risco = fatos[fatos["fato"].isin(cafe.FATOS_DE_RISCO)]
     assert len(risco) >= 3
+    a_guardar = set(contrapartes.paginas_a_guardar(fatos))
     for _, linha in risco.iterrows():
         assert linha["tipo_de_fonte"] in {"documento_oficial", "noticia"}
-        assert linha["fonte"] in guardadas, linha["fonte"]
+        assert linha["fonte"] in a_guardar, linha["fonte"]  # site cujos termos permitem
+    # sem a página guardada, a notícia do pedido não vira fato: fica em "o que não sabemos"
+    sem_copia = cafe.montar_ficha("atlantica", fatos)
+    assert sem_copia is not None and sem_copia.fatos == []
+    pendente = sem_copia.o_que_nao_sabemos[0]
+    assert pendente.startswith("Pedido de recuperação judicial: noticiado por")
+    assert "Bloomberg Línea" in pendente and "05/03/2025" in pendente
+    assert NOTICIA_DO_PEDIDO in pendente and "2,13" not in pendente
+    # com a página guardada, entra
+    com_copia = cafe.montar_ficha("atlantica", fatos, guardadas=GUARDADAS)
+    assert com_copia is not None
+    assert [f.fato for f in com_copia.fatos] == ["pedido_de_recuperacao_judicial"]
+    assert not any(NOTICIA_DO_PEDIDO in t for t in com_copia.o_que_nao_sabemos)
+    # documento oficial não precisa de cópia
+    coocafeg = cafe.montar_ficha("coocafeg", fatos)
+    assert coocafeg is not None
+    assert [f.fato for f in coocafeg.fatos] == ["apuracao_publica"]
 
 
 def test_corte_em_d_nao_mostra_o_que_ainda_nao_tinha_saido(fatos):
     antes = cafe.montar_ficha("atlantica", fatos, em=date(2025, 3, 4))
     assert antes is None  # a notícia do pedido saiu em 05/03/2025
     depois = cafe.montar_ficha(
-        "atlantica", fatos, em=date(2025, 3, 5), situacao_especial=SITUACAO_ESPECIAL
+        "atlantica",
+        fatos,
+        em=date(2025, 3, 5),
+        situacao_especial=SITUACAO_ESPECIAL,
+        guardadas=GUARDADAS,
     )
     assert depois is not None
     assert [f.fato for f in depois.fatos] == ["pedido_de_recuperacao_judicial"]
     hoje = cafe.montar_ficha(
-        "atlantica", fatos, em=date(2026, 10, 18), situacao_especial=SITUACAO_ESPECIAL
+        "atlantica",
+        fatos,
+        em=date(2026, 10, 18),
+        situacao_especial=SITUACAO_ESPECIAL,
+        guardadas=GUARDADAS,
     )
     assert hoje is not None
     assert [f.fato for f in hoje.fatos] == [
@@ -188,10 +219,10 @@ def test_o_que_nao_sabemos_diz_o_que_falta_sem_estimar(fatos):
     coocafeg = cafe.montar_ficha("coocafeg", fatos)
     assert coocafeg is not None and coocafeg.cnpj is None
     assert any("CNPJ" in t for t in coocafeg.o_que_nao_sabemos)
-    # nenhum número sem fonte: "o que não sabemos" não tem algarismo
+    # nenhum número sem fonte: "o que não sabemos" só tem algarismo na data e no link da notícia
     for ficha in _todas(fatos):
         for texto in ficha.o_que_nao_sabemos:
-            assert not re.search(r"\d", texto), texto
+            assert not re.search(r"\d", DATA_OU_LINK.sub("", texto)), texto
 
 
 def test_ficha_em_dicionario_so_tem_tipos_simples_e_nenhuma_nota(fatos):
@@ -275,10 +306,11 @@ def test_robots_que_proibe_ou_pede_mais_espera_para_a_coleta(robots):
         contrapartes.descobrir(lambda: fatos)(sites, AGORA)
 
 
-def test_fonte_do_arquivista_esta_no_catalogo_com_destino_e_licenca(fatos):
-    fonte = next(f for f in fontes.FONTES if f.id == "contrapartes-cafe")
-    assert fonte.pausa_minima >= 3
-    assert fontes.FONTES[-1].id == "contrapartes-cafe"
+def test_arquivista_fica_desligado_ate_o_tiago_responder(fatos):
+    # guardar cópia de notícia é decisão de licença (nível 1): a fonte existe, mas só entra no
+    # catálogo do servidor (FONTES e DESTINOS) depois do "pode" do Tiago
+    assert "contrapartes-cafe" not in {f.id for f in fontes.FONTES}
+    assert contrapartes.fonte().pausa_minima >= 3
     assert coletas.revenda_da_fonte("contrapartes-cafe") == coletas.A_CONFIRMAR
     assert "contrapartes" in coletas.REVENDA  # escrito, não só o padrão
     assert (

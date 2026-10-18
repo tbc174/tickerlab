@@ -4,6 +4,12 @@ A ficha (`base/contrapartes/cafe.py`) diz o fato com as nossas palavras e o link
 é só prova interna de que a página dizia aquilo naquela data (nunca vai para tela, API ou exportação).
 Fato de recuperação judicial ou fechamento só entra na ficha com a página guardada.
 
+**Ainda desligada:** guardar cópia de notícia é decisão de licença do Tiago (pedido na Central de
+18/10/2026). Até o "pode", a fonte não está em `base/arquivo/fontes.py::FONTES` nem em
+`base/arquivo/destinos.py`, e a ficha mostra essas notícias só em "o que não sabemos". Para ligar:
+`contrapartes.fonte()` no fim de `FONTES` e `"contrapartes-cafe": _tabela("contraparte_cafe")` no fim
+de `DESTINOS`.
+
 Regras (testes em `tests/test_base_contrapartes_cafe.py`):
 - só os sites cujos termos não proíbem cópia nem robô (`SITES_COM_COPIA`, termos lidos em 18–19/10/2026
   e registrados em `licencas-por-fonte.md`); AgFeed e Brazil Journal proíbem, a Compre Rural veda

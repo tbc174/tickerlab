@@ -4710,18 +4710,31 @@ TABELAS: dict[str, Tabela] = {
         onde="`base/conferidas/contrapartes_cafe.csv` no repositório (Git)",
         linhagem=(
             "Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as "
-            "páginas dos sites que permitem ficam guardadas pelo arquivista (`contrapartes-cafe`) "
-            "só como prova; o histórico de cada mudança fica no Git."
+            "páginas dos sites que permitem serão guardadas pelo arquivista (`contrapartes-cafe`) "
+            "só como prova quando a licença for confirmada; até lá, a notícia de recuperação "
+            "judicial fica em 'o que não sabemos'; o histórico de cada mudança fica no Git."
         ),
         colunas={
-            "id": ("Apelido da contraparte (chave quando não há CNPJ conferido)", TEXTO),
-            "cnpj": ("CNPJ da entidade no cadastro aberto da Receita (vazio: não confirmado)", TEXTO),
+            "id": (
+                "Apelido da contraparte (chave quando não há CNPJ conferido)",
+                TEXTO,
+            ),
+            "cnpj": (
+                "CNPJ da entidade no cadastro aberto da Receita (vazio: não confirmado)",
+                TEXTO,
+            ),
             "nome": ("Nome da cooperativa ou empresa", TEXTO),
             "tipo": ("`cooperativa`, `trading` ou `exportadora`", TEXTO),
             "uf": ("UF da sede", TEXTO),
-            "fato": ("Tipo do fato (`faturamento`, `pedido_de_recuperacao_judicial`...)", TEXTO),
-            "descricao": ("O fato com as nossas palavras, \"segundo <veículo>\"", TEXTO),
-            "valor": ("O número do fato, na unidade ao lado (vazio se não há)", NUMERO_DECIMAL),
+            "fato": (
+                "Tipo do fato (`faturamento`, `pedido_de_recuperacao_judicial`...)",
+                TEXTO,
+            ),
+            "descricao": ('O fato com as nossas palavras, "segundo <veículo>"', TEXTO),
+            "valor": (
+                "O número do fato, na unidade ao lado (vazio se não há)",
+                NUMERO_DECIMAL,
+            ),
             "unidade": ("`R$`, `sacas` ou outra", TEXTO),
             "data": ("Quando o fato aconteceu (fim do exercício, dia do pedido)", DATA),
             "divulgado_em": ("Quando ficou público (sem olhar o futuro)", DATA),
