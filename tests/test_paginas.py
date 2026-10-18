@@ -84,6 +84,14 @@ def test_areas_tem_rotulo_icone_frase_e_ordem_unica():
         assert area.rotulo and area.icone and area.frase.endswith(".")
 
 
+def test_frases_das_areas_nao_recomendam_nem_prometem():
+    """A frase de cada área aparece no app: descreve o que há lá, sem chamar para comprar nem prometer."""
+    proibidas = ("recomend", "compre", "garant", "oportunidade", "lucro", "ganhe")
+    for area in paginas.AREAS.values():
+        frase = area.frase.lower()
+        assert not any(p in frase for p in proibidas), area.rotulo
+
+
 def test_paginas_da_area_ativo_na_ordem_das_abas():
     """A ordem das abas da página do ativo (PR 3): as análises, depois "Comparar com…" e o relatório."""
     chaves = [p.chave for p in paginas.paginas_da_area("ativo")]

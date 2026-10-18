@@ -2,11 +2,13 @@
 // nada em localStorage, sessionStorage ou cookie. Recarregar a página pede o login de novo (o Google
 // entra sozinho se a pessoa já autorizou: auto_select).
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { conteudoDoApp, planos } from "../conteudo";
+import { NavLink } from "react-router";
+import { conteudoDoApp, paginasDoApp, planos } from "../conteudo";
 import { URL_DO_SITE, linkDoApp } from "../site/textos";
 import { ErroDaApi, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
 import { FundoDoApp } from "./FundoDoApp";
+import { Icone } from "./Icone";
 import { type GoogleId, carregarGoogle } from "./login";
 import type { EuV1 } from "./tipos";
 
@@ -243,16 +245,38 @@ export function ExigeLogin({ children }: { children: ReactNode }) {
   );
 }
 
-/** O nome e o plano no topo, com o botão de sair. */
+// as telas da área Conta (ADR 0096), na ordem de src/paginas.py: ficam no menu da pessoa, não no lateral
+const TELAS_DA_CONTA = (conteudoDoApp.areas.find((a) => a.chave === "conta")?.paginas ?? []).flatMap((chave) =>
+  paginasDoApp.filter((p) => p.chave === chave && p.no_menu && p.contrato !== null),
+);
+
+/** O nome e o plano no topo: abre o menu da pessoa (simulações, dados, plano). O Sair fica à vista. */
 export function ContaNoTopo() {
   const conta = useConta();
+  const menu = useRef<HTMLDetailsElement>(null);
   if (!conta?.eu) return null;
   const nome = conta.eu.nome ?? "Sua conta";
+  // escolher uma tela fecha o menu (a moldura continua na página; sem isso ele ficaria aberto)
+  const fechar = () => {
+    if (menu.current) menu.current.open = false;
+  };
   return (
     <span className="conta-no-topo">
-      <span>
-        {nome} · {nomeDoPlano(conta.eu.plano)}
-      </span>
+      <details ref={menu} className="menu-da-conta">
+        <summary title="Sua conta">
+          <Icone nome="conta" />
+          <span className="nome-da-conta">
+            {nome} · {nomeDoPlano(conta.eu.plano)}
+          </span>
+        </summary>
+        <div className="lista-da-conta">
+          {TELAS_DA_CONTA.map((pagina) => (
+            <NavLink key={pagina.chave} to={`/${pagina.url}`} onClick={fechar}>
+              {pagina.titulo}
+            </NavLink>
+          ))}
+        </div>
+      </details>
       <button type="button" className="botao pequeno" onClick={conta.sair}>
         Sair
       </button>

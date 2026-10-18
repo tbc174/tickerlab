@@ -1,12 +1,13 @@
 // A moldura de toda tela do app novo: topo com a marca, as telas e o tema; rodapé com o aviso.
-// No computador, as telas ficam num menu ao lado; no celular (até 760 px, só CSS), numa barra de abas
-// fixa embaixo, ao alcance do polegar (ADR 0066).
+// No computador, as telas ficam no menu por áreas, ao lado (MenuPorAreas); no celular (até 760 px, só
+// CSS), numa barra de abas fixa embaixo, ao alcance do polegar (ADR 0066).
 import { type ReactNode, useRef } from "react";
 import { NavLink } from "react-router";
 import { AVISO, linkDoApp } from "../site/textos";
 import { ContaNoTopo } from "./conta";
 import { Logo } from "./Logo";
 import { MenuDoTema } from "./MenuDoTema";
+import { MenuPorAreas } from "./MenuPorAreas";
 import { TELAS_DO_APP } from "./rotas";
 
 // as telas com aba própria no celular, com o nome curto; as outras ficam em "Mais"
@@ -67,15 +68,7 @@ export function Moldura({ comMenu, children }: { comMenu: boolean; children: Rea
         </div>
       </header>
       <div className={comMenu ? "app-corpo faixa" : "app-corpo sem-menu faixa"}>
-        {comMenu ? (
-          <nav className="app-menu" aria-label="Telas">
-            {TELAS_DO_APP.map((pagina) => (
-              <NavLink key={pagina.chave} to={`/${pagina.url}`}>
-                {pagina.titulo}
-              </NavLink>
-            ))}
-          </nav>
-        ) : null}
+        {comMenu ? <MenuPorAreas /> : null}
         <main id="conteudo">{children}</main>
       </div>
       {comMenu ? <AbasDoCelular /> : null}

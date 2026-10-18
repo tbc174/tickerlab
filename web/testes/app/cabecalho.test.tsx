@@ -15,11 +15,11 @@ afterEach(() => {
 });
 
 describe("cabeçalho da tela", () => {
-  it("a tela de Risco abre com o olho, o título como h1 e a descrição da página", async () => {
+  it("a tela de Risco abre com o olho da área (Ativo), o título como h1 e a descrição da página", async () => {
     abrirApp("/risco", { rotas: () => new Promise(() => {}) as never });
     const cabecalho = (await screen.findByRole("heading", { level: 1, name: "Risco" })).closest("header");
     expect(cabecalho?.classList.contains("cabecalho-da-tela")).toBe(true);
-    expect(within(cabecalho as HTMLElement).getByText(RISCO.grupo).classList.contains("olho")).toBe(true);
+    expect(within(cabecalho as HTMLElement).getByText("Ativo").classList.contains("olho")).toBe(true);
     expect(within(cabecalho as HTMLElement).getByText(RISCO.descricao)).toBeTruthy();
   });
 
