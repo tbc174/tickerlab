@@ -410,3 +410,35 @@ def test_meses_recentes_do_fidc_e_do_cda_todo_dia():
     # virada do ano, no fuso de São Paulo (1º/01 às 01h UTC ainda é 31/12)
     janeiro = fidc.descobrir(None, datetime(2027, 1, 1, 1, 0, tzinfo=UTC))  # type: ignore[arg-type]
     assert [a.url[-10:-4] for a in janeiro] == ["202608", "202609", "202610", "202611"]
+
+
+def test_clima_do_cafe_inmet_por_ano_chirps_por_mes_e_malha_por_uf():
+    """Plano do café, PR 8: os zips anuais do INMET (todos, pesados: ETag e Last-Modified evitam a
+    baixa repetida), os GeoTIFFs dos meses recentes do CHIRPS (o que falta é 404, não falha) e a
+    malha municipal das seis UFs com região cafeeira."""
+    agora = datetime(2026, 10, 18, 12, tzinfo=UTC)
+    inmet = fontes.POR_ID["inmet-bdmep"]
+    assert (inmet.grupo, inmet.tipo, inmet.pesada) == ("mensal", "zip", True)
+    anos = inmet.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in anos][:2] == ["2000.zip", "2001.zip"]
+    assert (
+        anos[-1].url == "https://portal.inmet.gov.br/uploads/dadoshistoricos/2026.zip"
+    )
+    chirps = fontes.POR_ID["chirps-mensal"]
+    assert chirps.grupo == "mensal" and chirps.pesada
+    meses = chirps.descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.rsplit("/", 1)[-1] for a in meses] == [
+        f"chirps-v2.0.2026.{m:02d}.tif.gz" for m in (7, 8, 9)
+    ]
+    assert all(a.obter is not None and a.extensao == ".tif.gz" for a in meses)
+    malhas = fontes.POR_ID["ibge-malha-municipal"].descobrir(None, agora)  # type: ignore[arg-type]
+    assert [a.url.split("/estados/")[1][:2] for a in malhas] == [
+        "31",
+        "32",
+        "35",
+        "41",
+        "29",
+        "11",
+    ]
+    assert all("qualidade=minima" in a.url and a.extensao == ".json" for a in malhas)
+    assert fontes.TERMOS["termos-inmet"].startswith("https://portal.inmet.gov.br/")

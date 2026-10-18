@@ -183,6 +183,10 @@ DESTINOS: dict[str, Destino] = {
         "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
         "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
     ),
+    # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
+    "inmet-bdmep": _tabela("clima_regiao_cafe"),
+    "chirps-mensal": _tabela("clima_regiao_cafe"),
+    "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -203,6 +207,7 @@ DESTINOS: dict[str, Destino] = {
             "catalogo-tesouro",
             "catalogo-ibama",
             "termos-cecafe-robots",
+            "termos-inmet",
         )
     },
 }

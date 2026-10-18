@@ -58,6 +58,7 @@ ARQUIVOS: dict[str, str] = {
     "ans_beneficiarios": "setoriais/ans/*.parquet",
     "susep_seguros": "setoriais/susep/*.parquet",
     "setoriais_buracos": "setoriais/buracos.parquet",
+    "clima_regiao_cafe": "commodities/clima_regiao_cafe/*.parquet",
     "fre_conselho": "fre_conselho/*.parquet",
     "fre_comites": "fre_comites/*.parquet",
     "fre_remuneracao": "fre_remuneracao/*.parquet",
