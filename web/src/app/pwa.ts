@@ -1,9 +1,16 @@
 // O app instalável no celular (PWA, ADR 0066): o manifesto e o service worker. O build do app
-// (vite.app.config.ts) grava os dois em novo/. O manifesto se chama manifest.json (e não
-// .webmanifest) porque o nginx do VPS já entrega .json com o tipo certo.
+// (vite.app.config.ts) grava os dois em novo/ (a pasta guarda o nome; o app é servido na raiz de
+// app.tickerlab.com.br). O manifesto se chama manifest.json (e não .webmanifest) porque o nginx do
+// VPS já entrega .json com o tipo certo.
 import { marca } from "../conteudo";
+import { CAMINHO_DO_CLASSICO } from "./classico";
+import { PREFIXO_DA_API } from "./configuracao";
 
-const BASE = "/novo/";
+const BASE = "/";
+// o que mora embaixo da raiz mas não é do app: a versão clássica (o Streamlit, com o /_stcore dela)
+// e a API (toda em /api/; a v1 é PREFIXO_DA_API). O service worker não toca em nada disso.
+const PREFIXO_DA_API_INTEIRA = `/${PREFIXO_DA_API.split("/")[1]}/`;
+export const CAMINHOS_DE_FORA = [`${CAMINHO_DO_CLASSICO}/`, PREFIXO_DA_API_INTEIRA];
 
 /** Os ícones do app instalado (gerados por `python -m scripts.gerar_marca` em static/marca/). */
 export const ICONES: Record<string, { tamanho: number; mascaravel?: boolean }> = {
@@ -45,14 +52,16 @@ export function manifesto() {
 
 /**
  * O service worker: guarda só a casca do app (HTML, CSS, JS, fontes e ícones do build) num cache
- * com a versão do build e nunca guarda mais nada. A API e todo pedido com token vão direto à
- * rede, sem passar por ele. Abrir uma tela vai à rede primeiro; sem internet, mostra a casca.
+ * com a versão do build e nunca guarda mais nada. A API, a versão clássica e todo pedido com token
+ * vão direto à rede, sem passar por ele. Abrir uma tela vai à rede primeiro; sem internet, mostra
+ * a casca.
  */
 export function servicoDaCasca(casca: string[], versao: string): string {
   return `// Service worker do app TickerLab (gerado por web/src/app/pwa.ts; não editar à mão).
 "use strict";
 var VERSAO = "tl-casca-${versao}";
 var CASCA = ${JSON.stringify(casca)};
+var CAMINHOS_DE_FORA = ${JSON.stringify(CAMINHOS_DE_FORA)};
 
 self.addEventListener("install", function (evento) {
   evento.waitUntil(
@@ -75,10 +84,13 @@ self.addEventListener("activate", function (evento) {
 self.addEventListener("fetch", function (evento) {
   var pedido = evento.request;
   var endereco = new URL(pedido.url);
-  // API, token, escrita e outros endereços: direto à rede, nunca pelo cache
+  // API, versão clássica, token, escrita e outros domínios: direto à rede, nunca pelo cache
   if (pedido.method !== "GET" || pedido.headers.has("Authorization")) return;
   if (endereco.origin !== self.location.origin) return;
   if (endereco.pathname.indexOf("${BASE}") !== 0) return;
+  for (var i = 0; i < CAMINHOS_DE_FORA.length; i++) {
+    if (endereco.pathname.indexOf(CAMINHOS_DE_FORA[i]) === 0) return;
+  }
   if (pedido.mode === "navigate") {
     evento.respondWith(fetch(pedido).catch(function () { return caches.match("${BASE}"); }));
     return;

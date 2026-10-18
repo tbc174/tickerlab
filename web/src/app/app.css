@@ -102,7 +102,7 @@
   /* o fim da página não fica escondido atrás das abas */
   body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
   /* topo compacto: sem o selo e só o ícone da conta (o nome fica para o leitor de tela; o Sair continua);
-     o "App atual" não cabe em 375 px e vai para o fim da folha "Mais" */
+     o "Versão clássica" não cabe em 375 px e vai para o fim da folha "Mais" */
   .selo-novo { display: none; }
   .app-atual-no-topo { display: none; }
   .nome-da-conta { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

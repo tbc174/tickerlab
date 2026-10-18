@@ -6,7 +6,7 @@
 // se o navegador recusar (navegação privada), valem só nesta visita.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router";
-import { linkDoApp } from "../site/textos";
+import { linkDoClassico } from "./classico";
 import { AREAS, AREAS_DO_MENU, type ItemDoMenu, areaDoEndereco, itensDaArea, primeiraPronta } from "./areas";
 import { Icone } from "./Icone";
 
@@ -265,9 +265,9 @@ export function AbasDoCelular() {
             ))}
           </section>
         ))}
-        {/* no celular o "App atual" não cabe no topo: fica aqui */}
-        <a className="app-atual-na-folha" href={linkDoApp()}>
-          App atual
+        {/* no celular o "Versão clássica" não cabe no topo: fica aqui */}
+        <a className="app-atual-na-folha" href={linkDoClassico()}>
+          Versão clássica
         </a>
       </dialog>
     </>

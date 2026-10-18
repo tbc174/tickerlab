@@ -271,7 +271,7 @@ export interface SimulacaoV1 {
   dados_ate: string | null; // "dd/mm/aaaa": até quando iam os dados quando foi salva
   numeros: Record<string, string>; // os números como a tela mostrou ("Retorno total": "+12,0%")
   veredito: string | null; // o da ficha "Foi sorte?" ao salvar; null: salva sem ficha
-  endereco: string | null; // reabre no app novo ("/backtest?..."); null: só reabre no app atual
+  endereco: string | null; // reabre no app novo ("/backtest?..."); null: só reabre na versão clássica
 }
 
 export interface MinhasSimulacoesV1 {
@@ -300,7 +300,7 @@ export interface EstrategiaAcompanhadaV1 {
   mudou: boolean;
   conferido_em: string | null; // a visita em que o veredito de agora foi visto (ISO)
   tese_ligada: string | null; // texto da pessoa: mostrar como texto puro
-  endereco: string | null; // o backtest no app novo; null: só reabre no app atual
+  endereco: string | null; // o backtest no app novo; null: só reabre na versão clássica
 }
 
 export interface LimitesDoPulseV1 {

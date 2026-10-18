@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // Meus dados no app novo (conta e planos, PR 5): baixar a cópia dos dados (LGPD) e os links
-// compartilhados, com revogar. Apagar a conta, o tema, as Novidades e os PDFs continuam no app atual.
+// compartilhados, com revogar. Apagar a conta, o tema, as Novidades e os PDFs continuam na versão clássica.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TOKEN, abrirApp, respostaJson } from "./ajudantes";
@@ -81,9 +81,9 @@ describe("meus dados", () => {
     });
   });
 
-  it("apagar a conta continua no app atual", async () => {
+  it("apagar a conta continua na versão clássica", async () => {
     abrir();
     const link = await screen.findByRole("link", { name: /Apagar a conta, tema, Novidades e PDFs/ });
-    expect(link.getAttribute("href")).toBe("https://app.tickerlab.com.br/meus-dados");
+    expect(link.getAttribute("href")).toBe("/classico/meus-dados");
   });
 });

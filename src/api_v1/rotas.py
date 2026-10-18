@@ -231,8 +231,9 @@ def meu_plano(conta: Conta) -> MeuPlanoV1:
     )
 
 
-# o Stripe devolve a pessoa para a página de planos do app novo (o app atual volta para "/")
-CAMINHO_DE_VOLTA_DO_APP_NOVO = "/novo/planos"
+# o Stripe devolve a pessoa para a página de planos do app novo, que é o principal na raiz de
+# app.tickerlab.com.br (a versão clássica volta para cobranca.CAMINHO_DE_VOLTA_DO_CLASSICO)
+CAMINHO_DE_VOLTA_DO_APP_NOVO = "/planos"
 STRIPE_FORA_DO_AR = "O pagamento não está disponível agora. Tente de novo em instantes."
 
 

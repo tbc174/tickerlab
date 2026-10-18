@@ -1,8 +1,11 @@
-// As telas do app novo: as páginas que já têm contrato na API (src/paginas.py), no mesmo endereço do
-// app atual (/visao-geral vira /novo/visao-geral). Página sem tela nova ainda leva ao app atual.
-import type { ReactNode } from "react";
-import { Navigate } from "react-router";
+// As telas do app novo: as páginas que já têm contrato na API (src/paginas.py), no mesmo endereço de
+// sempre (app.tickerlab.com.br/visao-geral). Página que ainda só existe na versão clássica (o Streamlit
+// em /classico) leva à mesma página lá: o link antigo continua funcionando (plano de 18/10).
+import { type ReactNode, useEffect } from "react";
+import { Navigate, useLocation } from "react-router";
 import { type PaginaDoApp, paginasDoApp } from "../conteudo";
+import { linkDoClassico } from "./classico";
+import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
@@ -35,8 +38,50 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   pulse: () => <Navigate to="/" replace />,
 };
 
-/** A página já tem tela em React? (Sem tela, leva à mesma página no app atual.) */
+/** A página já tem tela em React? (Sem tela, leva à mesma página na versão clássica.) */
 export const temTelaPronta = (chave: string) => chave in TELAS_PRONTAS;
+
+// a página inicial da versão clássica (url "inicio", servida na raiz do Streamlit) é o Início do app novo
+const URL_DA_INICIAL_DO_CLASSICO = "inicio";
+// a área de administração fica fora do bundle de propósito (scripts/exportar_conteudo.py): só o
+// endereço entra aqui, para o link antigo chegar lá; quem autoriza continua sendo o servidor
+const ENDERECO_DA_ADMINISTRACAO = "admin";
+
+/** Os endereços das páginas que ainda só existem na versão clássica (sem contrato na API). */
+export const ENDERECOS_SO_DO_CLASSICO: string[] = [
+  ...paginasDoApp
+    .filter((p) => p.contrato === null && p.url !== URL_DA_INICIAL_DO_CLASSICO)
+    .map((p) => p.url),
+  ENDERECO_DA_ADMINISTRACAO,
+];
+
+/** O endereço (sem as barras) se o caminho é de uma página só da versão clássica; senão, null. */
+export function enderecoSoDoClassico(pathname: string): string | null {
+  const endereco = pathname.replace(/^\/+|\/+$/g, "");
+  return ENDERECOS_SO_DO_CLASSICO.includes(endereco) ? endereco : null;
+}
+
+/** A página inicial da versão clássica, pelo endereço antigo, é o Início do app novo. */
+export const eAInicialDoClassico = (pathname: string) =>
+  pathname.replace(/^\/+|\/+$/g, "") === URL_DA_INICIAL_DO_CLASSICO;
+
+/** Leva à mesma página na versão clássica, com os mesmos parâmetros; o link fica à vista caso a
+ * ida automática falhe. Fora do login do app novo: quem tem o link antigo não precisa entrar aqui. */
+export function ParaOClassico({ endereco }: { endereco: string }) {
+  const { search } = useLocation();
+  const destino = linkDoClassico(endereco) + search;
+  useEffect(() => {
+    navegador.trocar(destino);
+  }, [destino]);
+  return (
+    <section className="aviso-do-app">
+      <p>Esta página está na versão clássica do app. Abrindo…</p>
+      <a className="botao primario" href={destino}>
+        Abrir na versão clássica
+      </a>
+    </section>
+  );
+}
 
 export function telaDa(pagina: PaginaDoApp): ReactNode {
   const tela = TELAS_PRONTAS[pagina.chave];

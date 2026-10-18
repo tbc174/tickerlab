@@ -11,6 +11,7 @@ from src import cobranca
 from src.banco.modelo import assinaturas, eventos_stripe, metadata
 from src.banco.usuarios import buscar_por_id, entrar, mudar_plano
 from src.cobranca import (
+    CAMINHO_DE_VOLTA_DO_CLASSICO,
     CobrancaIndisponivelError,
     buscar_assinatura,
     cobranca_esta_configurada,
@@ -94,7 +95,11 @@ def test_pagina_de_pagamento_leva_o_usuario_e_o_preco():
     assert p["subscription_data"]["metadata"]["usuario_id"] == str(usuario)
     # sempre o cliente guardado, nunca customer_email (achado 1b do Codex)
     assert p["customer"] == "cus_1" and "customer_email" not in p
-    assert p["success_url"] == "https://servidor.exemplo.ts.net:8443/?assinatura=ok"
+    # sem caminho pedido, volta para a versão clássica (quem chama daqui é o Streamlit)
+    assert (
+        p["success_url"]
+        == "https://servidor.exemplo.ts.net:8443/classico/?assinatura=ok"
+    )
     assert "payment_method_types" not in p
     assert p["integration_identifier"].startswith("tickerlab-pro-")
     assert len(p["integration_identifier"]) == len("tickerlab-pro-") + 8
@@ -108,7 +113,7 @@ def test_portal_da_assinatura():
     assert url == "https://stripe.exemplo/portal"
     assert cliente.chamadas[0][1] == {
         "customer": "cus_1",
-        "return_url": "https://servidor.exemplo.ts.net:8443/",
+        "return_url": "https://servidor.exemplo.ts.net:8443/classico/",
     }
 
 
@@ -532,16 +537,15 @@ def test_pagina_de_pagamento_volta_para_o_caminho_pedido():
         "cus_1",
         configuracao=ler_configuracao(AMBIENTE),
         cliente=cliente,
-        caminho_de_volta="/novo/planos",
+        caminho_de_volta="/planos",
     )
     _, p = cliente.chamadas[0]
     assert (
-        p["success_url"]
-        == "https://servidor.exemplo.ts.net:8443/novo/planos?assinatura=ok"
+        p["success_url"] == "https://servidor.exemplo.ts.net:8443/planos?assinatura=ok"
     )
     assert (
         p["cancel_url"]
-        == "https://servidor.exemplo.ts.net:8443/novo/planos?assinatura=cancelada"
+        == "https://servidor.exemplo.ts.net:8443/planos?assinatura=cancelada"
     )
 
 
@@ -551,10 +555,37 @@ def test_portal_volta_para_o_caminho_pedido():
         "cus_1",
         configuracao=ler_configuracao(AMBIENTE),
         cliente=cliente,
-        caminho_de_volta="/novo/planos",
+        caminho_de_volta="/planos",
     )
     assert cliente.chamadas[0][1]["return_url"] == (
-        "https://servidor.exemplo.ts.net:8443/novo/planos"
+        "https://servidor.exemplo.ts.net:8443/planos"
+    )
+
+
+def test_sem_caminho_pedido_o_stripe_volta_para_a_versao_classica():
+    """O Streamlit (a versão clássica, em /classico) não passa o caminho: o padrão é o dele.
+
+    O app novo passa o seu (/planos) pela API; o Streamlit está em /classico desde o plano de 18/10.
+    """
+    assert CAMINHO_DE_VOLTA_DO_CLASSICO == "/classico/"
+    cliente = ClienteFalso()
+    criar_pagina_de_pagamento(
+        uuid.uuid4(), "cus_1", configuracao=ler_configuracao(AMBIENTE), cliente=cliente
+    )
+    _, p = cliente.chamadas[0]
+    assert (
+        p["success_url"]
+        == "https://servidor.exemplo.ts.net:8443/classico/?assinatura=ok"
+    )
+    assert p["cancel_url"] == (
+        "https://servidor.exemplo.ts.net:8443/classico/?assinatura=cancelada"
+    )
+    cliente = ClienteFalso()
+    criar_portal_da_assinatura(
+        "cus_1", configuracao=ler_configuracao(AMBIENTE), cliente=cliente
+    )
+    assert cliente.chamadas[0][1]["return_url"] == (
+        "https://servidor.exemplo.ts.net:8443/classico/"
     )
 
 

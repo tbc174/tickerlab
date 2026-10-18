@@ -15,7 +15,8 @@ pessoal versionado, isso é achado grave: descreva onde está, **sem copiar o va
 
 SaaS de análise de ações (B3 e EUA) e teste de estratégias com dados do passado. Python 3.12,
 Pandas, Streamlit (`app.py`, `telas/`), FastAPI (`src/api.py`, `src/api_v1/`), SQLAlchemy 2 +
-Alembic + PostgreSQL, Stripe **só em modo de teste**, React em `web/` (gera `site/` e `novo/`).
+Alembic + PostgreSQL, Stripe **só em modo de teste**, React em `web/` (gera `site/` e `novo/`, o app
+principal em `app.tickerlab.com.br`; o Streamlit é a versão clássica, em `/classico/`).
 `base/` é a base de dados para machine learning (coletas públicas da CVM, Receita, B3 etc.).
 `trader/` é uma pesquisa pausada: fora do escopo.
 

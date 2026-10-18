@@ -60,9 +60,9 @@ números como eles são**.
 | Parte | Estado |
 |---|---|
 | Site público e 14 ferramentas grátis | no ar, em `tickerlab.com.br` |
-| App (37 páginas, login com o Google, 3 planos) | no ar, em `app.tickerlab.com.br`, em fase de testes |
+| App (37 páginas, login com o Google, 3 planos) | no ar, em `app.tickerlab.com.br`, em fase de testes: as telas novas em React na raiz, as demais na versão clássica, em `app.tickerlab.com.br/classico/` |
 | Cobrança | Stripe **só em modo de teste**: nenhum pagamento real é feito. O Plus existe, mas ainda não está à venda |
-| App novo em React (substituto do Streamlit) | começou: 9 telas em `app.tickerlab.com.br/novo/`, fora dos buscadores |
+| App novo em React (substituto do Streamlit) | é o principal desde 18/10/2026, na raiz de `app.tickerlab.com.br`: 9 telas; um link antigo de página que ainda não migrou abre na versão clássica |
 | API de leitura v1 | pronta e documentada (`docs/api/`), **desligada em produção**; no ar só a rota pública da ferramenta "Quanto daria?" |
 | Base de dados | em construção contínua: 35 tabelas com contrato versionado, coletas diárias, âncora no Bitcoin toda noite |
 | Newsletter | pronta, enviada só para administradores até o parecer jurídico |
@@ -115,8 +115,8 @@ Mais de 290 pull requests e 470 commits desde a criação do repositório no Git
 
 | Parte | O que é | Onde fica |
 |---|---|---|
-| **App** (`app.tickerlab.com.br`) | o serviço web: análises, estratégias, research, carteira da B3, relatórios em PDF, contas e planos | `app.py`, `telas/`, `src/` |
-| **App novo** (`app.tickerlab.com.br/novo/`) | a troca do Streamlit por React, uma tela por vez, consumindo a API | `web/src/app/`, gerado em `novo/` |
+| **App** (`app.tickerlab.com.br`) | o serviço web: análises, estratégias, research, carteira da B3, relatórios em PDF, contas e planos. O Streamlit é a **versão clássica**, em `app.tickerlab.com.br/classico/` | `app.py`, `telas/`, `src/` |
+| **App novo** (raiz de `app.tickerlab.com.br`) | a troca do Streamlit por React, uma tela por vez, consumindo a API; é o principal, e manda à versão clássica o que ainda não migrou | `web/src/app/`, gerado em `novo/` |
 | **Site público** (`tickerlab.com.br`) | apresenta o produto, os planos e a metodologia, e oferece as ferramentas grátis | `site/`, gerado pelo React (`web/`) e por `scripts/gerar_site.py` |
 | **API** (`api.tickerlab.com.br`) | saúde, webhook do Stripe, descadastro de e-mails, a rota pública do "Quanto daria?" e a API de leitura v1 (desligada) | `src/api.py`, `src/api_v1/` |
 | **Base de dados** | arquivista dos originais oficiais, tabelas "como eram na data", contratos de dados e âncora no Bitcoin | `base/`, `scripts/` |
@@ -474,7 +474,8 @@ Para uma avaliação justa, o que ainda **não** está pronto:
 - **Newsletter** liberada só para administradores até o parecer jurídico.
 - **API v1** pronta, mas desligada; a documentação (`docs/api/`) ainda não lista as rotas mais
   novas (links compartilhados e ferramentas).
-- **App novo em React** com 9 telas; as demais páginas continuam no Streamlit.
+- **App novo em React** com 9 telas; as demais páginas continuam no Streamlit (a versão clássica,
+  em `/classico/`).
 - **Base de dados** sem carga do histórico completo do COTAHIST da B3; os intradiários são só
   para pesquisa e não aparecem no app.
 - **TickerLab Trade** pausado depois da M2 sem modelo aprovado; não há operação com dinheiro real.
@@ -525,7 +526,7 @@ base/                 a base de dados: arquivista, ponto no tempo, linhagem, con
 trader/               TickerLab Trade: pesquisa de trading, só leitura do MetaTrader 5
 web/                  React + TypeScript: o site, as ferramentas e o app novo
 site/                 site público estático (gerado)
-novo/                 app novo em React (gerado)
+novo/                 app novo em React, servido na raiz de app.tickerlab.com.br (gerado)
 static/               fontes e símbolo servidos pelo próprio site
 conteudo/             glossário, estratégias, catálogo de ativos, termos e privacidade
 migracoes/            migrações do banco (Alembic)

@@ -5,7 +5,7 @@
 import { type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { type PaginaDoApp, conteudoDoApp } from "../../conteudo";
-import { linkDoApp } from "../../site/textos";
+import { linkDoClassico } from "../classico";
 import { Ajuda } from "../Ajuda";
 import { mensagemDe } from "../BaixarMeusDados";
 import { corpoDoPedido, valoresIniciais } from "../Formulario";
@@ -100,7 +100,7 @@ function Resultado({ dados }: { dados: BacktestDoAtivoV1 }) {
       <p className="apagado">
         Resultado no passado, com os custos de cada operação; não é promessa de rentabilidade. Proteções
         (stop, alvo), Monte Carlo e o detalhe técnico da validação estão no{" "}
-        <a href={linkDoApp("backtest")}>app atual</a>.
+        <a href={linkDoClassico("backtest")}>versão clássica</a>.
       </p>
     </section>
   );
