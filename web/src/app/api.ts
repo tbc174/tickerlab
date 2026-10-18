@@ -26,8 +26,9 @@ export class ErroDaApi extends Error {
 
 export type Parametros = Record<string, string | number | string[] | undefined>;
 
-// só caminhos da v1, sem "..": o token nunca vai para outro endereço
-const ROTA_DA_V1 = /^\/v1\/[a-z0-9-]+$/;
+// só caminhos da v1, sem "..": o token nunca vai para outro endereço (cada pedaço só com letras,
+// números e hífen, como em /v1/commodities/cafe/mapa)
+const ROTA_DA_V1 = /^\/v1(\/[a-z0-9-]+)+$/;
 const CAMPOS_FORA_DOS_LIMITES = "Algum campo está fora dos limites. Confira os valores e tente de novo.";
 const SEM_CONEXAO = "Sem conexão com o TickerLab. Confira a internet e tente de novo.";
 

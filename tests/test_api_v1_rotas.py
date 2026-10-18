@@ -41,6 +41,11 @@ from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
 from src.commodities import painel_de_precos
+from src.commodities.cafe.pacote_do_mapa import (
+    gravar_pacote,
+    montar_vista,
+    vista_em_dicionario,
+)
 from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -55,6 +60,7 @@ from tests.ajudantes_da_api import (
     gerar_chave,
     token,
 )
+from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 from tests.test_compartilhamentos import _congelada
 
 TAXA = 0.10
@@ -350,6 +356,40 @@ def test_juros_e_inflacao_sem_series_coletadas_503(cliente, no_dia):
     resposta = cliente.get("/api/v1/juros-e-inflacao")
     assert resposta.status_code == 503
     assert "coletadas" in resposta.json()["detail"]
+
+
+@pytest.fixture
+def pacote_do_mapa_gravado(tmp_path, monkeypatch):
+    caminho = tmp_path / "mapa_do_cafe.json"
+    pacote = pacote_de_exemplo()
+    gravar_pacote(pacote, caminho)
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(caminho))
+    monkeypatch.setattr(rotas, "hoje_no_brasil", lambda: date(2026, 11, 5))
+    return pacote
+
+
+def test_mapa_do_cafe_igual_ao_pacote(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "conilon"})
+    assert resposta.status_code == 200, resposta.text
+    vista = montar_vista(pacote_do_mapa_gravado, "conilon", 11)
+    assert resposta.json() == json.loads(json.dumps(vista_em_dicionario(vista)))
+    assert resposta.json()["malha"]["type"] == "FeatureCollection"
+
+
+def test_mapa_do_cafe_comeca_no_arabica(cliente, pacote_do_mapa_gravado):
+    assert cliente.get("/api/v1/commodities/cafe/mapa").json()["tipo"] == "arabica"
+
+
+def test_mapa_do_cafe_recusa_o_total(cliente, pacote_do_mapa_gravado):
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa", params={"tipo": "total"})
+    assert resposta.status_code == 422
+
+
+def test_mapa_do_cafe_sem_pacote_503(cliente, tmp_path, monkeypatch):
+    monkeypatch.setenv("TICKERLAB_MAPA_DO_CAFE", str(tmp_path / "nao-existe.json"))
+    resposta = cliente.get("/api/v1/commodities/cafe/mapa")
+    assert resposta.status_code == 503
+    assert "mapa do café" in resposta.json()["detail"]
 
 
 def _eventos_no_periodo(fechamento):

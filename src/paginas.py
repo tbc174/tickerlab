@@ -670,6 +670,31 @@ PAGINAS = (
         precisa_do_ativo=False,
         somente_admin=True,
     ),
+    Pagina(
+        "mapa_do_cafe",
+        "Mapa do café",
+        GRUPO_RESEARCH,
+        ":material/map:",
+        "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada "
+        "de cada região contra a normal, com a fonte e a data de cada número.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/commodities/cafe/mapa",
+            (
+                Entrada(
+                    "tipo",
+                    "opcao",
+                    "O café do mapa: arábica ou conilon (robusta).",
+                    padrao="arabica",
+                    opcoes=("arabica", "conilon"),
+                ),
+            ),
+            "MapaDoCafeV1",
+        ),
+        so_no_app_novo=True,
+    ),
 )
 
 POR_CHAVE = {p.chave: p for p in PAGINAS}
