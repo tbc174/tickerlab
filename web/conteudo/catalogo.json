@@ -93,6 +93,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2006-06-13",
+      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "CFTC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
       "modulos": [
@@ -163,7 +174,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 47
+      "tabelas": 48
     },
     {
       "chave": "credito_e_fidc",
@@ -891,12 +902,22 @@
       "orgao": "Assessorias de M&A",
       "situacao": "em consulta",
       "tabela": "ma_regua"
+    },
+    {
+      "atraso": "Divulgado na sexta-feira",
+      "frase": "Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC.",
+      "frequencia": "Semanal",
+      "historico_desde": "2006-06-13",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CFTC",
+      "situacao": "licenciada",
+      "tabela": "cftc_cot_agro"
     }
   ],
   "totais": {
-    "fontes": 14,
+    "fontes": 15,
     "fontes_em_consulta": 4,
     "modulos": 6,
-    "tabelas": 70
+    "tabelas": 71
   }
 }
