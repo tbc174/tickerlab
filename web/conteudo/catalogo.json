@@ -93,6 +93,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2006-06-13",
+      "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "CFTC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-02-05",
       "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
       "modulos": [
@@ -218,7 +229,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 48
+      "tabelas": 49
     },
     {
       "chave": "credito_e_fidc",
@@ -958,6 +969,16 @@
       "tabela": "ma_regua"
     },
     {
+      "atraso": "Divulgado na sexta-feira",
+      "frase": "Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC.",
+      "frequencia": "Semanal",
+      "historico_desde": "2006-06-13",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CFTC",
+      "situacao": "licenciada",
+      "tabela": "cftc_cot_agro"
+    },
+    {
       "atraso": null,
       "frase": "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção.",
       "frequencia": "Sem calendário fixo",
@@ -999,9 +1020,9 @@
     }
   ],
   "totais": {
-    "fontes": 19,
+    "fontes": 20,
     "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 75
+    "tabelas": 76
   }
 }

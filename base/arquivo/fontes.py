@@ -35,6 +35,7 @@ from base.arquivo.obter import (
     versao_do_membro,
     zip_que_pode_faltar,
 )
+from base.commodities import cftc_cot
 from src.commodities.cafe.regioes import CODIGO_DA_UF
 
 PORTAL_DA_CVM = "https://dados.cvm.gov.br"
@@ -494,6 +495,14 @@ def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
         for fluxo in ("EXP", "IMP")
     ]
     return alvos + [Alvo(f"{COMEX}tabelas/{nome}.csv") for nome in TABELAS_DO_COMEX]
+
+
+def descobrir_cot(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """COT Disaggregated da CFTC (posição dos fundos no café e nos outros agro): o histórico
+    2006–2016 e um zip por ano desde 2017; o do ano corrente é refeito toda semana pela CFTC."""
+    return [
+        Alvo(url, ".zip") for url in cftc_cot.enderecos_do_disaggregated(agora.date())
+    ]
 
 
 def descobrir_beneficiarios_ans(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -1057,6 +1066,8 @@ FONTES: list[Fonte] = [
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
+    # posição dos fundos (CFTC COT, domínio público) em café, açúcar, soja, milho, boi e algodão
+    Fonte("cftc-cot-disaggregated", "semanal", descobrir_cot, "zip"),
     # área de commodities, café primeiro (PR 7): os quatro levantamentos de cada safra, como publicados
     Fonte("conab-cafe-safra", "semanal", descobrir_cafe_conab),
     # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)

@@ -1,0 +1,71 @@
+{
+  "tabela": "cftc_cot_agro",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "relatorio": {
+      "descricao": "Terça-feira a que a posição se refere",
+      "unidade": "data (dia)"
+    },
+    "contrato": {
+      "descricao": "cafe-arabica, acucar, soja, milho, boi-gordo ou algodao",
+      "unidade": "texto"
+    },
+    "open_interest": {
+      "descricao": "Contratos em aberto no mercado, total",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "producer_merchant_long": {
+      "descricao": "Produtores e comerciantes: contratos comprados",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "producer_merchant_short": {
+      "descricao": "Produtores e comerciantes: contratos vendidos",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "swap_long": {
+      "descricao": "Operadores de swap: contratos comprados",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "swap_short": {
+      "descricao": "Operadores de swap: contratos vendidos",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "swap_spread": {
+      "descricao": "Operadores de swap: posições em spread",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "managed_money_long": {
+      "descricao": "Fundos (managed money): contratos comprados",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "managed_money_short": {
+      "descricao": "Fundos (managed money): contratos vendidos",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "managed_money_spread": {
+      "descricao": "Fundos (managed money): posições em spread",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (dia seguinte à divulgação)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "relatorio",
+    "contrato"
+  ],
+  "datas": {
+    "aconteceu_em": "relatorio",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2006-06-13",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Obra do governo dos EUA (domínio público; citar a CFTC)",
+  "revenda": "só uso interno (entra em modelo; nunca vender nem exportar o dado)",
+  "pessoa": false,
+  "frequencia": "Semanal (posição de terça-feira)",
+  "atraso": "Divulgado na sexta-feira; a base conta a segunda-feira seguinte, 15h30 de Nova York (regra conservadora do `base/commodities/cftc_cot.py`, com as exceções das paralisações do governo dos EUA em 2018-19 e 2025). `disponivel_em` é o dia seguinte à divulgação"
+}

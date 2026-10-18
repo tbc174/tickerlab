@@ -213,6 +213,8 @@ DESTINOS: dict[str, Destino] = {
             "termos-inmet",
         )
     },
+    # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
+    "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
 }
 
 

@@ -4431,6 +4431,58 @@ TABELAS: dict[str, Tabela] = {
             "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
         },
     ),
+    "cftc_cot_agro": Tabela(
+        descricao=(
+            "Posição dos fundos e dos produtores nos futuros de café (Coffee C), açúcar, soja, milho, "
+            "boi gordo e algodão, por semana, desde 2006, no formato do relatório Disaggregated da CFTC"
+        ),
+        fonte="CFTC: Commitments of Traders, Disaggregated Futures Only (fut_disagg_txt)",
+        familia_da_fonte="cftc",
+        frequencia="Semanal (posição de terça-feira)",
+        atraso="Divulgado na sexta-feira; a base conta a segunda-feira seguinte, 15h30 de Nova York "
+        "(regra conservadora do `base/commodities/cftc_cot.py`, com as exceções das paralisações do "
+        "governo dos EUA em 2018-19 e 2025). `disponivel_em` é o dia seguinte à divulgação",
+        onde="Parquet por ano em `<acervo>/base/setoriais/cftc/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 dos zips da CFTC usados (o histórico de "
+            "2006 a 2016 e um zip por ano desde 2017) e a versão do código."
+        ),
+        colunas={
+            "relatorio": ("Terça-feira a que a posição se refere", DATA),
+            "contrato": (
+                "cafe-arabica, acucar, soja, milho, boi-gordo ou algodao",
+                TEXTO,
+            ),
+            "open_interest": ("Contratos em aberto no mercado, total", NUMERO_DECIMAL),
+            "producer_merchant_long": (
+                "Produtores e comerciantes: contratos comprados",
+                NUMERO_DECIMAL,
+            ),
+            "producer_merchant_short": (
+                "Produtores e comerciantes: contratos vendidos",
+                NUMERO_DECIMAL,
+            ),
+            "swap_long": ("Operadores de swap: contratos comprados", NUMERO_DECIMAL),
+            "swap_short": ("Operadores de swap: contratos vendidos", NUMERO_DECIMAL),
+            "swap_spread": ("Operadores de swap: posições em spread", NUMERO_DECIMAL),
+            "managed_money_long": (
+                "Fundos (managed money): contratos comprados",
+                NUMERO_DECIMAL,
+            ),
+            "managed_money_short": (
+                "Fundos (managed money): contratos vendidos",
+                NUMERO_DECIMAL,
+            ),
+            "managed_money_spread": (
+                "Fundos (managed money): posições em spread",
+                NUMERO_DECIMAL,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (dia seguinte à divulgação)",
+                DATA,
+            ),
+        },
+    ),
     "conab_cafe": Tabela(
         descricao=(
             "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento "
@@ -4735,6 +4787,7 @@ _CONTRATO = {
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05"),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
+    "cftc_cot_agro": _contrato(modulo=_ME, chaves=("relatorio", "contrato"), datas={"aconteceu_em": "relatorio", "publico_em": "disponivel_em"}, historico_desde="2006-06-13"),
     "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),
     "clima_regiao_cafe": _contrato(modulo="macro", chaves=("regiao", "competencia", "fonte"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="1981-01-31", granularidade_do_publico_em="mes"),
     "area_cafe_municipio": _contrato(modulo="macro", chaves=("codigo", "ano"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde="1985-12-31"),

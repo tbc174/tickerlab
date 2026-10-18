@@ -27,6 +27,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da PGFN\b", "PGFN"),
     (r"Tesouro", "Tesouro Nacional"),
     (r"Internet Archive", "Internet Archive"),
+    (r"a CFTC\b", "CFTC"),
     (r"\(CONAB\)", "CONAB"),
     (r"do USDA\b", "USDA"),
     (r"\bMDIC\b", "MDIC"),
