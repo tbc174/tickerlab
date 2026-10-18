@@ -3,7 +3,7 @@
 // mudou, as iguais, as não conferidas); aqui só se mostra. O pedido ao Pulse é do Início (usarPulse).
 import { Link } from "react-router";
 import { conteudoDoApp } from "../../../conteudo";
-import { linkDoApp } from "../../../site/textos";
+import { linkDoClassico } from "../../classico";
 import type { EstrategiaAcompanhadaV1, PulseV1 } from "../../tipos";
 import { Vazio } from "../../Vazio";
 
@@ -50,8 +50,8 @@ function Estrategia({ e }: { e: EstrategiaAcompanhadaV1 }) {
             Abrir o backtest
           </Link>
         ) : (
-          <a className="botao pequeno" href={linkDoApp("simulacoes")}>
-            Abrir no app atual
+          <a className="botao pequeno" href={linkDoClassico("simulacoes")}>
+            Abrir na versão clássica
           </a>
         )}
       </div>

@@ -165,6 +165,11 @@ def tem_assinatura_viva(assinatura: "Assinatura | None") -> bool:
     )
 
 
+# para onde o Stripe devolve a pessoa quando quem chamou não disse: a versão clássica (o Streamlit,
+# em /classico desde o plano de 18/10). O app novo passa o caminho dele pela API (src/api_v1/rotas.py).
+CAMINHO_DE_VOLTA_DO_CLASSICO = "/classico/"
+
+
 # --- falar com o Stripe -------------------------------------------------------------------
 def _cliente(configuracao: ConfiguracaoDaCobranca) -> stripe.StripeClient:
     return stripe.StripeClient(configuracao.chave_secreta)
@@ -182,7 +187,7 @@ def abrir_pagamento(
     email: str,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
-    caminho_de_volta: str = "/",
+    caminho_de_volta: str = CAMINHO_DE_VOLTA_DO_CLASSICO,
 ) -> str:
     """O caminho inteiro até o Checkout: confere, garante o cliente, fecha o pagamento aberto.
 
@@ -261,13 +266,14 @@ def criar_pagina_de_pagamento(
     id_do_cliente: str,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
-    caminho_de_volta: str = "/",
+    caminho_de_volta: str = CAMINHO_DE_VOLTA_DO_CLASSICO,
 ) -> str:
     """Cria a sessão do Checkout para assinar o Pro e devolve o endereço dela.
 
     Quem chama é `abrir_pagamento`, que garante o cliente e fecha o pagamento aberto antes.
-    `caminho_de_volta` é escolhido pelo código (o app atual volta para "/", o app novo para a página
-    de planos), nunca por quem chama a API: assim o Stripe nunca devolve a pessoa para outro site.
+    `caminho_de_volta` é escolhido pelo código (a versão clássica volta para `/classico/`, o app novo
+    para a página de planos), nunca por quem chama a API: assim o Stripe nunca devolve a pessoa para
+    outro site.
     """
     configuracao = configuracao or ler_configuracao()
     volta = f"{configuracao.url_do_app}{caminho_de_volta}"
@@ -292,7 +298,7 @@ def criar_portal_da_assinatura(
     id_do_cliente: str,
     configuracao: ConfiguracaoDaCobranca | None = None,
     cliente: stripe.StripeClient | None = None,
-    caminho_de_volta: str = "/",
+    caminho_de_volta: str = CAMINHO_DE_VOLTA_DO_CLASSICO,
 ) -> str:
     """Endereço do portal onde a pessoa troca o cartão, vê faturas ou cancela."""
     configuracao = configuracao or ler_configuracao()

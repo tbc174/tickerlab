@@ -45,9 +45,8 @@ CUSTO_MAXIMO = 0.2  # 20% por operação: acima disso não é um custo, é um er
 TENTATIVAS_MAXIMAS = 10_000_000
 
 
-ENDERECO_DA_PAGINA = (
-    "https://app.tickerlab.com.br/novo/c"  # a página pública (web/, PR 3)
-)
+# a página pública do app novo (web/src/app/telas/Compartilhado.tsx), na raiz desde o plano de 18/10
+ENDERECO_DA_PAGINA = "https://app.tickerlab.com.br/c"
 NOMES_DOS_TIPOS = {"ficha": 'Ficha "Foi sorte?"', "pdf": "PDF original"}
 O_QUE_FICA_VISIVEL = {
     "ficha": "Quem tiver o link vê esta ficha como está agora, com a data de hoje, sem o seu nome "

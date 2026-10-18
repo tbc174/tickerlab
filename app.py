@@ -5,14 +5,13 @@ As telas ficam em telas/ (uma pasta ou um arquivo por grupo de páginas) e os c�
 
 import streamlit as st
 
-from src import marca, tema_do_app
+from src import classico, marca, tema_do_app
 from src.estilo import CSS_DO_APP
 from src.link import ler_parametros
 from src.logs import configurar_logs
 from src.paginas import (
     GRUPOS,
     PAGINA_INICIAL,
-    PAGINAS,
     motivo_da_pagina,
     paginas_do_grupo,
 )
@@ -57,6 +56,7 @@ from telas.research.minha_carteira import pagina_carteira_research
 from telas.research.newsletter import pagina_newsletter
 from telas.research.parametros import pagina_parametros
 from telas.research.por_dentro import pagina_por_dentro
+from telas.research.precos_de_referencia import pagina_precos_de_referencia
 from telas.research.pulse import pagina_pulse
 from telas.research.relatorio_empresa import pagina_relatorio_empresa
 from telas.trade import pagina_trade
@@ -144,7 +144,12 @@ def manter_estado():
 
 
 def mostrar_topo(usuario):
-    """A conta (ou o aviso de modo local) à direita; a marca fica no canto do menu."""
+    """A conta (ou o aviso de modo local) à direita; a marca fica no canto do menu.
+
+    Em /classico (o servidor), o aviso de que esta é a versão clássica, com a volta ao app novo.
+    """
+    if classico.esta_no_classico():
+        st.markdown(classico.AVISO_DA_VERSAO_CLASSICA)
     _, col_conta = st.columns([5, 2], vertical_alignment="center")
     with col_conta:
         if usuario is not None:
@@ -154,8 +159,8 @@ def mostrar_topo(usuario):
 
 
 # --- Menu: a função de cada página ----------------------------------------------------------
-# endereço de cada página no navegador (o Streamlit guarda o tema por endereço)
-ENDERECOS_DAS_PAGINAS = ["/", *(f"/{p.url}" for p in PAGINAS)]
+# endereço de cada página no navegador (o Streamlit guarda o tema por endereço; em /classico, os de lá)
+ENDERECOS_DAS_PAGINAS = classico.enderecos_das_paginas()
 FUNCOES_DAS_PAGINAS = {
     "inicio": pagina_inicio,
     "relatorio": pagina_relatorio,
@@ -168,6 +173,7 @@ FUNCOES_DAS_PAGINAS = {
     "carteira_b3": pagina_carteira_b3,
     "juros_e_inflacao": pagina_juros_e_inflacao,
     "linha_do_tempo": pagina_linha_do_tempo,
+    "precos_de_referencia": pagina_precos_de_referencia,
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,

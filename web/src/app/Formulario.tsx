@@ -1,6 +1,6 @@
 // Os campos de uma tela, montados a partir do contrato da página (src/paginas.py): nome, tipo,
-// limites e padrão vêm de lá, e os valores ficam no endereço (?ticker=PETR4.SA&periodo=1y), como no
-// app atual. A taxa livre de risco e o custo por operação aparecem em % e vão para a API como fração.
+// limites e padrão vêm de lá, e os valores ficam no endereço (?ticker=PETR4.SA&periodo=1y), como na
+// versão clássica. A taxa livre de risco e o custo por operação aparecem em % e vão para a API como fração.
 import { type FormEvent, useState } from "react";
 import { type EntradaDoContrato, conteudoDoApp } from "../conteudo";
 import { TICKER_DO_EXEMPLO } from "../site/textos";

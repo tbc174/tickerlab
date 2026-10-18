@@ -47,6 +47,13 @@ _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
 
+_B3_BDI_CONTRA_OS_TERMOS = (
+    "só arquivo, só pesquisa: a página da B3 veda a 'coleta automatizada, inclusive por meio de "
+    "ferramentas de inteligência artificial, para quaisquer finalidades' "
+    "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
+    "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
+)
+
 DESTINOS: dict[str, Destino] = {
     # CVM
     "cvm-hist-dfp": _tabela("demonstracoes_como_era"),
@@ -133,10 +140,7 @@ DESTINOS: dict[str, Destino] = {
     "antt-siade": _planejada(
         "serie-T/T8", _SO_LIGA_HOJE + " (desempenho por ferrovia)"
     ),
-    "comexstat": _planejada(
-        "serie-T/T8",
-        _SO_LIGA_HOJE + " (exposição por NCM); falta o preço médio de exportação",
-    ),
+    "comexstat": _tabela("comex_cafe"),
     # governo, sanções e identificadores
     "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
     "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
@@ -146,6 +150,9 @@ DESTINOS: dict[str, Destino] = {
     "cgu-leniencia": _planejada("sinais/PR4", "acordos de leniência"),
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
+    ),
+    "tce-pr-despesa": _planejada(
+        "sinais/PR2-3", "empenhos, liquidações e pagamentos dos municípios do Paraná"
     ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
     "ibama-embargos": _planejada("serie-T/T5", "embargos ambientais por CNPJ"),
@@ -161,22 +168,32 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
+    "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "cecafe-relatorio-mensal": _pesquisa(
+        "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
+        "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
         for id_ in (
             "termos-b3-politica",
             "termos-b3-distribuidores",
+            "termos-b3-coleta-automatizada",
             "termos-finra",
             "termos-fred",
             "termos-datajud",
             "termos-sec",
+            "termos-ibge",
             "termos-igc-robots",
             "termos-igc-privacidade",
             "catalogo-cvm",
             "catalogo-bc",
             "catalogo-tesouro",
             "catalogo-ibama",
+            "termos-cecafe-robots",
         )
     },
 }

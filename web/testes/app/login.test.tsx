@@ -216,7 +216,7 @@ describe("conta recusada pela API", () => {
       headers: { Authorization: `Bearer ${TOKEN}` },
     });
     const apagar = screen.getByRole("link", { name: /Apagar a conta/ });
-    expect(apagar.getAttribute("href")).toBe("https://app.tickerlab.com.br/meus-dados");
+    expect(apagar.getAttribute("href")).toBe("/classico/meus-dados");
   });
 
   it("termos que mudaram com a página aberta: explica e não entra", async () => {

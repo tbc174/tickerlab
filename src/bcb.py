@@ -71,6 +71,10 @@ SERIES = {
     "ibc_br": Serie(24363, "IBC-Br (prévia do PIB)", "índice"),
     "dolar": Serie(1, "Dólar comercial (venda)", "R$ por US$"),
     "euro": Serie(21619, "Euro (venda)", "R$ por €"),
+    # IC-Br (índice de commodities do BC, em reais, mensal): conferidos na API em 18/10/2026 pelas
+    # variações de novembro de 2024 divulgadas pelo BC (geral +3,90%; agropecuária +5,46%)
+    "icbr": Serie(27574, "IC-Br (índice de commodities, geral)", "índice"),
+    "icbr_agro": Serie(27575, "IC-Br agropecuária", "índice"),
 }
 
 COLUNAS_DO_FOCUS = {

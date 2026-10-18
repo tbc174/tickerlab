@@ -43,8 +43,10 @@ USER app
 
 EXPOSE 8501
 
+# a saúde no caminho em que o Streamlit está servido: /classico no servidor (compose.yaml), a raiz
+# sem a variável (src/classico.py)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4)"
+    CMD python -c "import urllib.request; from src.classico import url_da_saude; urllib.request.urlopen(url_da_saude(), timeout=4)"
 
 # aplica as migrações do banco e depois sobe o app (se o banco estiver fora, o contêiner cai e
 # o Docker tenta de novo)

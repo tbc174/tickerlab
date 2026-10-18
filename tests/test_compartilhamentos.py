@@ -204,9 +204,7 @@ def test_ler_ficha_recusa_veredito_que_as_checagens_nao_dao():
 
 def test_endereco_do_link_leva_o_codigo_depois_do_jogo_da_velha():
     codigo = comp.novo_codigo()
-    assert comp.endereco_do_link(codigo) == (
-        f"https://app.tickerlab.com.br/novo/c#{codigo}"
-    )
+    assert comp.endereco_do_link(codigo) == f"https://app.tickerlab.com.br/c#{codigo}"
 
 
 def test_fonte_dos_precos_pela_origem_dos_dados():

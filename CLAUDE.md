@@ -81,8 +81,11 @@ cd web; npm run site                                        # páginas, CSS e JS
 
 - **Nunca** commitar na `main` direto, nem `push --force`, nem reescrever histórico publicado.
   Trabalho em ramos `feat/...`, `fix/...`, `docs/...`, `test/...`; entra na `main` por PR com o
-  CI verde. Push, PR e merge **só com autorização do Tiago**, uma etapa de cada vez.
-- **Merge automático:** com a autorização do Tiago para o merge, ative o auto-merge do PR (ele
+  CI verde. Push e PR são livres. **Merge:** com CI verde, dentro de um plano aceito e fora das áreas
+  sensíveis (login, contas e admins, cobrança, limites dos planos, migração, segredos, apagar dado), a
+  sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta privada); nessas áreas, só com o
+  "pode" do Tiago e depois da revisão de segurança.
+- **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
   não mescla: corrija e faça o push de novo.
 - A `main` vai para produção sozinha (deploy automático só de commits com CI verde). Trate cada

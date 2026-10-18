@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { linkDoApp } from "../../site/textos";
+import { linkDoClassico } from "../classico";
 import { Carregando } from "../Carregando";
 import { FundoDoApp } from "../FundoDoApp";
 import { TELAS_DO_APP } from "../rotas";
@@ -46,8 +46,8 @@ export function Inicio() {
         <p className="olho">Versão nova do app</p>
         <h1>Seu Workspace</h1>
         <p>
-          O que mudou desde a sua última visita, com os mesmos números do app de sempre. As outras telas
-          continuam no <a href={linkDoApp()}>app atual</a>.
+          O que mudou desde a sua última visita, com os mesmos números da versão clássica. As outras telas
+          continuam no <a href={linkDoClassico()}>versão clássica</a>.
         </p>
       </FundoDoApp>
       <OQueMudou />

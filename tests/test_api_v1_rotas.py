@@ -968,7 +968,7 @@ def test_admin_assina_e_volta_para_os_planos_do_app_novo(
     assert resposta.status_code == 200, resposta.text
     assert resposta.json() == {"url": CHECKOUT}
     assert stripe_de_teste == [
-        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", "/novo/planos")
+        ("pagina", _id_da_ana_no(banco), "ana@exemplo.com", "/planos")
     ]
 
 
@@ -983,7 +983,7 @@ def test_rebaixada_com_assinatura_viva_gerencia_e_nao_assina_de_novo(
     assert cliente.get("/api/v1/meu-plano").json()["acao"] == "gerenciar"
     assert cliente.post("/api/v1/pagamento-da-assinatura", json={}).status_code == 409
     assert cliente.post("/api/v1/portal-da-assinatura", json={}).status_code == 200
-    assert stripe_de_teste == [("portal", "cus_ana", "/novo/planos")]
+    assert stripe_de_teste == [("portal", "cus_ana", "/planos")]
 
 
 def test_quem_ja_assinou_e_cancelou_assina_de_novo(cliente, banco, stripe_de_teste):
@@ -1024,7 +1024,7 @@ def test_assinante_abre_o_portal(cliente, banco, stripe_de_teste):
     resposta = cliente.post("/api/v1/portal-da-assinatura", json={})
     assert resposta.status_code == 200, resposta.text
     assert resposta.json() == {"url": PORTAL}
-    assert stripe_de_teste == [("portal", "cus_ana", "/novo/planos")]
+    assert stripe_de_teste == [("portal", "cus_ana", "/planos")]
 
 
 def test_sem_assinatura_nao_ha_portal(cliente, banco, stripe_de_teste):

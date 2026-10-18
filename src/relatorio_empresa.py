@@ -25,6 +25,7 @@ import pandas as pd
 
 from src import fundamentalista, fundamentos, notas, notas_classicas, valuation
 from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
@@ -107,10 +108,13 @@ NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
 }
 MIL = 1_000  # daqui para cima, a célula é dinheiro (R$ mil, mi, bi)
 QUANTOS_EVENTOS = 15
-FONTES = (
-    "CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",
-    "Preço da ação: Yahoo Finance (uso interno, só para os múltiplos)",
-)
+FONTES = ("CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",)
+# as fontes em `src/banco/coletas.py` que a ficha usa: a CVM sempre; o Yahoo quando há preço (os
+# múltiplos, o histórico deles e o P/L e P/VP dos padrões setoriais). A citação do Yahoo vem da
+# lista dos usos sem cobrança (ADR 0008, Emenda 3), e a trava barra a ficha se ele sair dela.
+FONTE_DA_CVM = "cvm"
+FONTE_DO_PRECO = "yahoo"
+ONDE_A_TRAVA_BARRA = "relatório da empresa"
 LIMITES = (
     (
         "Nada aqui é recomendação de compra ou venda. As notas comparam números com os de empresas "
@@ -1288,16 +1292,31 @@ def perguntas_em_aberto(secoes: list[Secao], tranca: str | None) -> list[str]:
     ]
 
 
+def fontes_do_relatorio(e: Entradas) -> tuple[str, ...]:
+    """As fontes (de `coletas.REVENDA`) que a ficha vai mostrar com estas entradas."""
+    com_preco = (
+        e.preco is not None or e.fechamentos is not None or e.padroes is not None
+    )
+    return (FONTE_DA_CVM, *([FONTE_DO_PRECO] if com_preco else []))
+
+
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
 
     `plano` é o de quem vai ver (None vale como Gratuito): só o Pro recebe os números do dossiê.
+    Erro (`LicencaNaoPermiteError`) se uma fonte da ficha não pode ser mostrada (ADR 0008, Emenda 3).
     """
+    usadas = fontes_do_relatorio(entradas)
+    exigir_licenca(MOSTRAR, usadas, onde=ONDE_A_TRAVA_BARRA)
     c = _calcular(entradas)
     do_dossie = _secoes_do_dossie(entradas, plano)
     mostrado = entradas.dossie if any(not s.trancada for s in do_dossie) else None
     limites = [*LIMITES, *(mostrado.limites if mostrado else [])]
-    fontes = (*FONTES, *(mostrado.fontes if mostrado else ()))
+    fontes = (
+        *FONTES,
+        *citacoes_das_fontes(usadas),
+        *(mostrado.fontes if mostrado else ()),
+    )
     secoes = [
         _ficha_tecnica(entradas, c, do_dossie, plano),
         *(

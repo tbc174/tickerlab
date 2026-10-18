@@ -7,8 +7,9 @@ no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só
 **Só entra o que pode ser mostrado a quem paga** (`pode_mostrar`):
 
 - a tabela está no dicionário da base e **não guarda pessoa** (ADR 0075: nomes esperam a LGPD);
-- a fonte é **vendável** (Emenda 1 da ADR 0008). "Só uso interno" pode entrar num modelo, mas mostrar o
-  dado a quem assina é revendê-lo; "a confirmar" e "não comercial", nunca;
+- a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): vendável
+  ou "só uso interno" sempre; "a confirmar" e "não comercial" só nos usos de `USOS_SEM_COBRANCA`,
+  enquanto não há cobrança (ADR 0008, Emenda 3), e nunca a B3 (ADR 0019);
 - não é uma tabela de crise ou de risco com o nome da empresa (insolvência, atraso, situação especial,
   dívida com a União: esperam o parecer, P-44), nem das assessorias de M&A (licença a confirmar).
 
@@ -33,16 +34,11 @@ from typing import Any
 import pandas as pd
 
 from base.dicionario import TABELAS
-from src.banco.coletas import (
-    VENDAVEL_COM_ATRIBUICAO,
-    VENDAVEL_ODBL,
-    licenca_da_fonte,
-    revenda_da_fonte,
-)
+from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
-REVENDAS_QUE_PODEM_SER_MOSTRADAS = frozenset({VENDAVEL_ODBL, VENDAVEL_COM_ATRIBUICAO})
-# vendáveis pela licença, mas fora do app até o parecer (crise com o nome da empresa, P-44)
+# fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
+# (a Emenda 3 da ADR 0008 liberou a da PGFN e a da situação especial; o P-44 ainda as segura)
 TABELAS_PROIBIDAS = frozenset(
     {"insolvencia", "rotulos_atraso", "cnpj_situacao_especial", "pgfn_divida"}
 )
@@ -89,11 +85,11 @@ class PessoaNaFichaError(ValueError):
 
 
 def pode_mostrar(nome_da_tabela: str) -> bool:
-    """A tabela pode aparecer no app para quem assina? (vendável, sem pessoa e fora da lista proibida)"""
+    """A tabela pode aparecer no app? (a trava deixa mostrar, sem pessoa e fora da lista proibida)"""
     tabela = TABELAS.get(nome_da_tabela)
     if tabela is None or tabela.pessoa or nome_da_tabela in TABELAS_PROIBIDAS:
         return False
-    return revenda_da_fonte(tabela.familia_da_fonte) in REVENDAS_QUE_PODEM_SER_MOSTRADAS
+    return pode_usar(MOSTRAR, tabela.familia_da_fonte)
 
 
 def exigir_que_pode_mostrar(tabelas: Iterable[str]) -> None:
