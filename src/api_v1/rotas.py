@@ -865,7 +865,9 @@ def precos_de_referencia(_conta: Conta) -> esquemas.PrecosDeReferenciaV1:
     return esquemas.de_precos_de_referencia(lido, hoje)
 
 
-TipoDeCafe = Literal["arabica", "conilon"]  # os TIPOS_DO_MAPA do pacote do mapa
+TipoDeCafe = Literal[
+    "arabica", "conilon"
+]  # os TIPOS_DO_MAPA do pacote do mapa e os TIPOS do painel
 
 
 @router.get("/commodities/cafe/mapa")
@@ -1263,9 +1265,6 @@ def pulse_da_conta(
         sem_ativos=pulse.SEM_ATIVOS,
         nota_da_variacao=pulse.NOTA_DA_VARIACAO,
     )
-
-
-TipoDeCafe = Literal["arabica", "conilon"]  # os TIPOS de src/commodities/cafe/painel.py
 
 
 @router.get("/painel-do-cafe")
