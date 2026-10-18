@@ -9,11 +9,6 @@
  "fontes": [
   "CVM: dados abertos de DFP, ITR, FRE, cadastro e eventos do IPE (ODbL)",
   "ODbL (dados abertos da CVM; citar a fonte)",
-  "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
-  "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
-  "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
-  "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
-  "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
   "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor"
  ],
  "secoes": {
@@ -2163,7 +2158,7 @@
    "comparacao": {
     "contra": "total da agência no ano",
     "texto": "11,1% do total da agência em 2025; 9.784.690 em 2024",
-    "valor": null
+    "valor": 9784690.0
    },
    "so_pro": true
   },
@@ -2435,47 +2430,12 @@
    "secao": "setor_regulado",
    "id": "setor_regulado.paragrafos.2",
    "tipo": "paragrafo",
-   "texto": "Fonte: CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas.",
-   "so_pro": true
-  },
-  {
-   "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.3",
-   "tipo": "paragrafo",
-   "texto": "Fonte: CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC).",
-   "so_pro": true
-  },
-  {
-   "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.4",
-   "tipo": "paragrafo",
-   "texto": "Fonte: CC BY (dados abertos da ANP no dados.gov.br; citar a ANP).",
-   "so_pro": true
-  },
-  {
-   "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.5",
-   "tipo": "paragrafo",
-   "texto": "Fonte: CC BY (dados abertos da ANS no dados.gov.br; citar a ANS).",
-   "so_pro": true
-  },
-  {
-   "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.6",
-   "tipo": "paragrafo",
-   "texto": "Fonte: CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel).",
-   "so_pro": true
-  },
-  {
-   "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.7",
-   "tipo": "paragrafo",
    "texto": "Fonte: ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor.",
    "so_pro": true
   },
   {
    "secao": "setor_regulado",
-   "id": "setor_regulado.paragrafos.8",
+   "id": "setor_regulado.paragrafos.3",
    "tipo": "paragrafo",
    "texto": "Fonte: ODbL (dados abertos da CVM; citar a fonte).",
    "so_pro": true

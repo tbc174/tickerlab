@@ -35,7 +35,11 @@ def _ler(nome: str) -> dict:
 
 
 def _entrada() -> dict:
-    return _ler("entrada.json")
+    """A entrada contra a qual os textos foram escritos, congelada (o hash das respostas é dela).
+
+    A `entrada.json` acompanha a ficha de hoje (o par do gabarito); a da prova não muda.
+    """
+    return _ler("entrada_da_prova.json")
 
 
 def _texto(modelo: str) -> saida.Analise:
