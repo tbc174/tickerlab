@@ -10,6 +10,7 @@ PASTA_RAIZ = Path(__file__).resolve().parent.parent
 CAMINHO_GLOSSARIO = PASTA_RAIZ / "conteudo" / "glossario.md"
 CAMINHO_ESTRATEGIAS = PASTA_RAIZ / "conteudo" / "estrategias.md"
 CAMINHO_SOBRE = PASTA_RAIZ / "conteudo" / "sobre.md"
+CAMINHO_CAFE = PASTA_RAIZ / "conteudo" / "commodities" / "cafe.md"
 MARCA_DE_TERMO = "## "
 
 
@@ -89,4 +90,10 @@ def carregar_estrategias(caminho: Path = CAMINHO_ESTRATEGIAS) -> dict[str, str]:
 
 def carregar_sobre(caminho: Path = CAMINHO_SOBRE) -> dict[str, str]:
     """As seções da página Sobre, na ordem do arquivo (mesmo formato do glossário)."""
+    return carregar_glossario(caminho)
+
+
+def carregar_textos_do_cafe(caminho: Path = CAMINHO_CAFE) -> dict[str, str]:
+    """Os textos "o que é isto" do café (florada, bienalidade, geada, déficit), no formato do
+    glossário."""
     return carregar_glossario(caminho)

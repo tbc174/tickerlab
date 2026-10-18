@@ -350,3 +350,34 @@ def test_arquivo_que_pode_faltar_404_vira_sem_arquivo_e_outro_erro_sobe(tmp_path
     servidor = ServidorComTrechos({url: b"tif"})
     cabecalhos = obter.arquivo_que_pode_faltar(url)(servidor, tmp_path / "b.tif.gz")
     assert cabecalhos == {"ETag": '"samp"'} and servidor.baixados == [url]
+
+
+PAGINA_DE_CONFIRMACAO_DO_DRIVE = (
+    b"<!DOCTYPE html><html><head><title>Google Drive - Virus scan warning</title></head><body>"
+    b'<form id="download-form" action="https://drive.usercontent.google.com/download" method="get">'
+    b'<input type="submit" id="uc-download-link" value="Download anyway">'
+    b'<input type="hidden" name="id" value="1otO"><input type="hidden" name="export" value="download">'
+    b'<input type="hidden" name="confirm" value="t"><input type="hidden" name="uuid" value="ab-12">'
+    b"</form></body></html>"
+)
+
+
+def test_arquivo_do_google_drive_segue_a_pagina_de_confirmacao(tmp_path):
+    """Arquivo grande no Drive vem atrás de uma página "não foi possível verificar vírus": o obter
+    lê o formulário dela e baixa do endereço certo; arquivo pequeno vem direto; HTML sem formulário
+    (arquivo privado ou removido) é erro, nunca um "zip" com HTML dentro."""
+    url = "https://drive.google.com/uc?id=1otO&export=download"
+    confirmado = "https://drive.usercontent.google.com/download?id=1otO&export=download&confirm=t&uuid=ab-12"
+    destino = tmp_path / "mapbiomas.zip"
+    servidor = ServidorComTrechos(
+        {url: PAGINA_DE_CONFIRMACAO_DO_DRIVE, confirmado: b"PK\x03\x04zip"}
+    )
+    obter.arquivo_do_google_drive(url)(servidor, destino)
+    assert destino.read_bytes() == b"PK\x03\x04zip"
+    assert servidor.baixados == [url, confirmado]
+    direto = ServidorComTrechos({url: b"PK\x03\x04zip"})
+    obter.arquivo_do_google_drive(url)(direto, destino)
+    assert direto.baixados == [url] and destino.read_bytes() == b"PK\x03\x04zip"
+    sem_formulario = ServidorComTrechos({url: b"<html><body>Sem acesso</body></html>"})
+    with pytest.raises(ValueError, match="formul"):
+        obter.arquivo_do_google_drive(url)(sem_formulario, destino)
