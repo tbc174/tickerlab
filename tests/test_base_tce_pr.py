@@ -354,3 +354,145 @@ def test_xml_acima_do_limite_e_falha_e_nao_vai_para_o_acervo(monkeypatch):
     monkeypatch.setattr(tce_pr, "LIMITE_DO_XML", 100)
     with pytest.raises(ValueError, match="acima do limite"):
         tce_pr.regravar(_zip_de_licitacao())
+
+
+# --- PR 2: o tema `Despesa` (empenho, liquidação, pagamento e estornos) ---------------------------
+
+CPF_DO_CREDOR = "00012345678909"
+EMPENHOS = (
+    "<root>"
+    '<Empenho cdIBGE="410740" idPessoa="12277" idEmpenho="901" nrEmpenho="1" nrAnoEmpenho="2025" '
+    'dtEmpenho="2025-03-10T00:00:00" vlEmpenho="5000.00" cdFuncao="12" cdElemento="30" '
+    f'sgDocCredor="CNPJ        " nrDocCredor="{CNPJ_BOM}" nmCredor="Empresa Inventada Ltda" '
+    'nmOrdernador="Beltrano Inventado" sgDocOrdenador="CPF" nrDocOrdernador="00098765432100" '
+    'dsHistorico="Pagamento da consulta do paciente Fulano de Tal" nmOrgao="Saúde Inventada" '
+    'ultimoEnvioSIMAMNesteExercicio="2025/09" DataReferencia="2026/09 "/>'
+    '<Empenho cdIBGE="410740" idPessoa="12277" idEmpenho="902" nrEmpenho="2" nrAnoEmpenho="2025" '
+    'dtEmpenho="2025-03-11T00:00:00" vlEmpenho="80.00" '
+    f'sgDocCredor="CPF         " nrDocCredor="{CPF_DO_CREDOR}" nmCredor="Fulano de Tal"/>'
+    '<Empenho cdIBGE="410740" idPessoa="12277" idEmpenho="903" nrEmpenho="3" nrAnoEmpenho="2025" '
+    'dtEmpenho="2025-03-12T00:00:00" vlEmpenho="70.00" '
+    f'sgDocCredor="CNPJ        " nrDocCredor="{CNPJ_DV_ERRADO}" nmCredor="Outra Ltda"/>'
+    "</root>"
+)
+LIQUIDACOES = (
+    "<root>"
+    '<EmpenhoLiquidacao idEmpenho="901" idLiquidacao="7001" dtLiquidacao="2025-03-20T00:00:00" '
+    'vlLiquidacaoBruto="5000.00" nmLiquidante="Sicrano Inventado" nrDocLiquidante="00011122233" '
+    'DataEnvioParaTCE="2025-04-02T08:00:00"/>'
+    '<EmpenhoLiquidacao idEmpenho="902" idLiquidacao="7002" dtLiquidacao="2025-03-21T00:00:00" '
+    'vlLiquidacaoBruto="80.00" DataEnvioParaTCE="2025-04-02T08:00:00"/>'
+    "</root>"
+)
+PAGAMENTOS = (
+    "<root>"
+    '<EmpenhoPagamento idEmpenho="901" idPagamento="8001" dtOperacao="2025-03-25T00:00:00" '
+    'vlOperacao="5000.00" nmResponsavel="Fulana Inventada" nrDocResponsavel="00044455566"/>'
+    '<EmpenhoPagamento idEmpenho="902" idPagamento="8002" dtOperacao="2025-03-26T00:00:00" '
+    'vlOperacao="80.00" nmResponsavel="Fulana Inventada" nrDocResponsavel="00044455566"/>'
+    "</root>"
+)
+ESTORNO_DE_PAGAMENTO = (
+    '<root><EmpenhoPagamentoEstorno idEmpenho="902" idEstornoPagamento="9001" vlEstorno="80.00" '
+    'dtEstorno="2025-03-30T00:00:00" DataEnvioParaTCE="2025-04-02T08:00:00"/></root>'
+)
+
+
+def _zip_de_despesa(prefixo="2025_410740") -> bytes:
+    return _zip(
+        {
+            f"{prefixo}_Empenho.xml": EMPENHOS.encode("utf-16"),
+            f"{prefixo}_EmpenhoLiquidacao.xml": LIQUIDACOES.encode(),
+            f"{prefixo}_EmpenhoPagamento.xml": PAGAMENTOS.encode(),
+            f"{prefixo}_EmpenhoPagamentoEstorno.xml": ESTORNO_DE_PAGAMENTO.encode(),
+            # fora do escopo do PR 2: nota fiscal da liquidação
+            f"{prefixo}_EmpenhoLiquidacaoDocumentoFiscal.xml": b"<root/>",
+        }
+    )
+
+
+def test_credor_pf_nunca_chega_ao_acervo():
+    xmls = _xmls(tce_pr.regravar(_zip_de_despesa()))
+    empenhos = xmls["2025_410740_Empenho.xml"]
+    assert re.findall(r'idEmpenho="(\d+)"', empenhos) == [
+        "901",
+        "903",
+    ]  # o 902 saiu inteiro
+    assert 'descartadasPorCredorPf="1"' in empenhos  # contada no registro
+    assert (
+        f'nrDocCredor="{CNPJ_BOM}"' in empenhos and 'tipoDocumento="cnpj"' in empenhos
+    )
+    assert (
+        'tipoDocumento="cnpj_dv_errado"' in empenhos and CNPJ_DV_ERRADO not in empenhos
+    )
+    # liquidação e pagamento do empenho de pessoa saem junto (e o estorno), também contados
+    liquidacoes = xmls["2025_410740_EmpenhoLiquidacao.xml"]
+    assert re.findall(r'idLiquidacao="(\d+)"', liquidacoes) == ["7001"]
+    assert 'descartadasPorCredorPf="1"' in liquidacoes
+    pagamentos = xmls["2025_410740_EmpenhoPagamento.xml"]
+    assert re.findall(r'idPagamento="(\d+)"', pagamentos) == ["8001"]
+    assert "idEstornoPagamento" not in xmls["2025_410740_EmpenhoPagamentoEstorno.xml"]
+    tudo = "".join(xmls.values())
+    assert "12345678909" not in tudo and "Fulano" not in tudo
+
+
+def test_despesa_sem_ordenador_liquidante_responsavel_historico():
+    xmls = _xmls(tce_pr.regravar(_zip_de_despesa()))
+    tudo = "".join(xmls.values())
+    for fora in (
+        "nmOrdernador", "nrDocOrdernador", "sgDocOrdenador", "dsHistorico", "nmLiquidante",
+        "nrDocLiquidante", "nmResponsavel", "nrDocResponsavel", "nmCredor", "nmOrgao",
+        "Beltrano", "Sicrano", "Fulana", "paciente",
+    ):  # fmt: skip
+        assert fora not in tudo, fora
+    assert 'dtEmpenho="2025-03-10T00:00:00"' in tudo and 'vlOperacao="5000.00"' in tudo
+    assert 'DataEnvioParaTCE="2025-04-02T08:00:00"' in tudo  # a D1 usa
+    assert "DocumentoFiscal" not in "".join(xmls)  # fora do escopo: não entra
+    assert tce_pr.vestigios_de_pessoa(tce_pr.regravar(_zip_de_despesa())) == []
+
+
+def test_descobre_so_a_despesa_na_fonte_propria():
+    servidor = ServidorDoPit(
+        {a: _zip_do_ano(a, ("410010",)) for a in range(2013, 2027)}
+    )
+    alvos = fontes.descobrir_pit_despesa(servidor, AGORA)
+    assert len(alvos) == 14
+    assert all(a.url.endswith("_Despesa.zip") for a in alvos)
+    fonte = fontes.POR_ID["tce-pr-despesa"]
+    assert fonte.pesada and fonte.grupo == "semanal"
+    assert fontes.POR_ID["tce-pr-pit"].descobrir is not fonte.descobrir
+
+
+def test_xml_partido_em_pedacos_entra_e_o_credor_pf_de_um_pedaco_leva_o_pagamento_do_outro():
+    # Londrina (2025) parte cada XML da Despesa em `_1`, `_2`...: sem isso a cidade inteira ficava de fora
+    pf = (
+        '<root><Empenho idEmpenho="5" sgDocCredor="CPF" '
+        f'nrDocCredor="{CPF_DO_CREDOR}" vlEmpenho="1.00"/></root>'
+    )
+    pj = (
+        f'<root><Empenho idEmpenho="6" sgDocCredor="CNPJ" nrDocCredor="{CNPJ_BOM}" '
+        'vlEmpenho="2.00"/></root>'
+    )
+    pagamento = (
+        '<root><EmpenhoPagamento idEmpenho="5" idPagamento="1" vlOperacao="1.00"/>'
+        '<EmpenhoPagamento idEmpenho="6" idPagamento="2" vlOperacao="2.00"/></root>'
+    )
+    xmls = _xmls(
+        tce_pr.regravar(
+            _zip(
+                {
+                    "2025_411370_Empenho_1.xml": pj.encode(),
+                    "2025_411370_Empenho_2.xml": pf.encode(),
+                    "2025_411370_EmpenhoPagamento_1.xml": pagamento.encode(),
+                }
+            )
+        )
+    )
+    assert set(xmls) == {
+        "2025_411370_Empenho_1.xml",
+        "2025_411370_Empenho_2.xml",
+        "2025_411370_EmpenhoPagamento_1.xml",
+    }
+    assert re.findall(
+        r'idPagamento="(\d+)"', xmls["2025_411370_EmpenhoPagamento_1.xml"]
+    ) == ["2"]

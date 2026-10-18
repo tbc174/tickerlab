@@ -272,6 +272,9 @@ PRIMEIRO_ANO_DO_PIT = 2013
 ZIP_INTERNO_DO_PIT = re.compile(
     r"^\d{4}_\d+_(Licitacao|Contrato|Relacionamentos)\.zip$"
 )
+# a `Despesa` (PR 2) é uma fonte à parte: ~17 GB como vem (1,1 GB só em 2025), então tem a própria
+# hora e nunca roda junto com a do `tce-pr-pit`
+ZIP_INTERNO_DA_DESPESA = re.compile(r"^\d{4}_\d+_Despesa\.zip$")
 
 
 def _json(cliente: Cliente, url: str) -> dict:
@@ -526,9 +529,29 @@ def descobrir_pit(
 ) -> list[Alvo]:
     """Cada ZIP interno de licitação, contrato e ligações de cada ano (o endereço guarda
     `zip#arquivo`), com a versão (CRC) lida no índice: o que não mudou nem é pedido.
-
-    O ano corrente que ainda não saiu (começo de janeiro) fica de fora; um ano fechado que falta é falha.
     """
+    return _descobrir_zips_do_pit(
+        cliente, agora, anos, ZIP_INTERNO_DO_PIT, "licitação ou contrato"
+    )
+
+
+def descobrir_pit_despesa(
+    cliente: Cliente, agora: datetime, anos: Iterable[int] | None = None
+) -> list[Alvo]:
+    """Cada ZIP interno de `Despesa` (empenho, liquidação, pagamento) de cada ano; o resto é como no PIT."""
+    return _descobrir_zips_do_pit(
+        cliente, agora, anos, ZIP_INTERNO_DA_DESPESA, "despesa"
+    )
+
+
+def _descobrir_zips_do_pit(
+    cliente: Cliente,
+    agora: datetime,
+    anos: Iterable[int] | None,
+    padrao: re.Pattern[str],
+    tema: str,
+) -> list[Alvo]:
+    """O ano corrente que ainda não saiu (começo de janeiro) fica de fora; um ano fechado que falta é falha."""
     hoje = agora.astimezone(FUSO_DA_B3).date()
     alvos: list[Alvo] = []
     for ano in anos or range(PRIMEIRO_ANO_DO_PIT, hoje.year + 1):
@@ -540,13 +563,11 @@ def descobrir_pit(
                 continue
             raise
         membros = sorted(
-            (m for m in indice if ZIP_INTERNO_DO_PIT.match(m.filename)),
+            (m for m in indice if padrao.match(m.filename)),
             key=lambda m: m.filename,
         )
         if not membros:
-            raise ErroDeDescoberta(
-                f"TCE-PR: nenhum ZIP de licitação ou contrato em {url}"
-            )
+            raise ErroDeDescoberta(f"TCE-PR: nenhum ZIP de {tema} em {url}")
         alvos += [
             Alvo(
                 f"{url}#{m.filename}",
@@ -930,6 +951,7 @@ FONTES: list[Fonte] = [
     _fonte_do_bdi("b3-emprestimo-resumo", "BTBLoanBalance"),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
+    Fonte("tce-pr-despesa", "semanal", descobrir_pit_despesa, "zip", pesada=True),
     # posts das assessorias independentes de M&A (middle market, ADR 0082)
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
