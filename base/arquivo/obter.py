@@ -31,6 +31,7 @@ pulando o que não mudou (ETag do ZIP inteiro ou do Parquet).
 import codecs
 import csv
 import hashlib
+import html
 import io
 import json
 import re
@@ -41,6 +42,7 @@ import zlib
 from collections.abc import Callable, Mapping
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlencode
 
 import pandas as pd
 import requests
@@ -370,5 +372,49 @@ def csv_do_bdi_da_b3(url: str, tabela: str, dia: date) -> Obter:
             raise SemArquivo("só o cabeçalho (dia sem pregão ou que ainda não saiu)")
         destino.write_bytes(resposta.conteudo)
         return resposta.cabecalhos
+
+    return obter
+
+
+# o Google Drive, num arquivo grande demais para a verificação de vírus, responde uma página HTML
+# com um formulário; o arquivo mesmo vem do `action` dele com os campos ocultos (id, export, confirm, uuid)
+PRIMEIROS_BYTES_QUE_DIZEM_HTML = 512
+_FORMULARIO = re.compile(rb"<form[^>]*\saction=\"([^\"]+)\"", re.IGNORECASE)
+_CAMPO = re.compile(rb"<input[^>]*>", re.IGNORECASE)
+_ATRIBUTO = {
+    nome: re.compile(rb"\s" + nome.encode() + rb"=\"([^\"]*)\"", re.IGNORECASE)
+    for nome in ("name", "value")
+}
+
+
+def endereco_de_confirmacao_do_drive(pagina: bytes) -> str:
+    """O endereço de baixa que a página de confirmação do Google Drive esconde no formulário."""
+    formulario = _FORMULARIO.search(pagina)
+    if formulario is None:
+        raise ValueError(
+            "o Google Drive respondeu HTML sem o formulário de confirmação (arquivo privado ou "
+            "removido?)"
+        )
+    campos = {}
+    for campo in _CAMPO.findall(pagina):
+        nome, valor = (_ATRIBUTO[a].search(campo) for a in ("name", "value"))
+        if nome is not None and valor is not None:
+            campos[nome.group(1).decode()] = valor.group(1).decode()
+    return f"{html.unescape(formulario.group(1).decode())}?{urlencode(campos)}"
+
+
+def arquivo_do_google_drive(url: str) -> Obter:
+    """Baixa um arquivo público do Google Drive; se vier a página de confirmação de arquivo grande
+    no lugar dele, segue o formulário dela e baixa de novo."""
+
+    def obter(cliente: Cliente, destino: Path) -> Mapping[str, str]:
+        cabecalhos = cliente.baixar(url, destino)
+        with destino.open("rb") as arquivo:
+            inicio = arquivo.read(PRIMEIROS_BYTES_QUE_DIZEM_HTML)
+        if b"<html" not in inicio.lower():
+            return cabecalhos
+        return cliente.baixar(
+            endereco_de_confirmacao_do_drive(destino.read_bytes()), destino
+        )
 
     return obter

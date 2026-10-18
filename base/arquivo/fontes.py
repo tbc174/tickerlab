@@ -22,6 +22,7 @@ from base.arquivo import assessorias, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
+    arquivo_do_google_drive,
     arquivo_que_pode_faltar,
     csv_do_bdi_da_b3,
     csv_so_com_colunas,
@@ -827,6 +828,18 @@ def _catalogo(portal: str) -> Descobrir:
     return _um(f"{portal}/api/3/action/package_list", ".json")
 
 
+# cobertura de café por município do MapBiomas (Coleção 11): a planilha de cobertura por bioma,
+# estado e município, num zip no Google Drive (o link público da página de estatísticas do projeto)
+MAPBIOMAS_COBERTURA_MUNICIPAL = (
+    "https://drive.google.com/uc?id=1otOqymHuixvkRGVl65zTTNyfaHo46Gqk&export=download"
+)
+
+
+def _cobertura_do_mapbiomas(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    url = MAPBIOMAS_COBERTURA_MUNICIPAL
+    return [Alvo(url, ".zip", arquivo_do_google_drive(url))]
+
+
 FONTES: list[Fonte] = [
     # CVM: eventos e cadastros que só mostram o último dia útil
     Fonte("cvm-sancionador", "diaria", _ckan(PORTAL_DA_CVM, "processo-sancionador")),
@@ -1063,6 +1076,9 @@ FONTES: list[Fonte] = [
     Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
     Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
+    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
+    # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
+    Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

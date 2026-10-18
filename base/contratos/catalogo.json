@@ -6770,6 +6770,81 @@
       "pessoa": false,
       "frequencia": "Mensal",
       "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 45 dias para o INMET e + 60 dias para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)"
+    },
+    "area_cafe_municipio": {
+      "tabela": "area_cafe_municipio",
+      "modulo": "macro",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "codigo": {
+          "descricao": "Código do município no IBGE (7 dígitos)",
+          "unidade": "texto"
+        },
+        "nome": {
+          "descricao": "Nome do município (PAM); vazio quando só o MapBiomas tem o município",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "Sigla da UF",
+          "unidade": "texto"
+        },
+        "ano": {
+          "descricao": "Ano da safra (PAM) ou do mapa (MapBiomas)",
+          "unidade": "ano"
+        },
+        "referencia": {
+          "descricao": "Último dia do ano",
+          "unidade": "data (dia)"
+        },
+        "area_arabica_ha": {
+          "descricao": "Área colhida de café arábica (PAM)",
+          "unidade": "hectares"
+        },
+        "area_conilon_ha": {
+          "descricao": "Área colhida de café canephora/conilon (PAM)",
+          "unidade": "hectares"
+        },
+        "area_total_ha": {
+          "descricao": "Arábica + conilon, só quando os dois têm número",
+          "unidade": "hectares"
+        },
+        "producao_arabica_t": {
+          "descricao": "Quantidade produzida de arábica (PAM)",
+          "unidade": "toneladas"
+        },
+        "producao_conilon_t": {
+          "descricao": "Quantidade produzida de canephora/conilon (PAM)",
+          "unidade": "toneladas"
+        },
+        "producao_total_t": {
+          "descricao": "Arábica + conilon, só quando os dois têm número",
+          "unidade": "toneladas"
+        },
+        "area_mapbiomas_ha": {
+          "descricao": "Cobertura da classe Café do MapBiomas no município (soma dos biomas)",
+          "unidade": "hectares"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (31/10 do ano seguinte, pela PAM)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "codigo",
+        "ano"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "1985-12-31",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Anual",
+      "atraso": "Anual; a regra de \"como era na data\" usa 31/10 do ano seguinte, quando a PAM já saiu (setembro ou outubro); a coleção do MapBiomas sai uma vez por ano com todos os anos refeitos"
     }
   }
 }

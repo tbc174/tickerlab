@@ -81,6 +81,9 @@ REGRA_POR_UNIDADE: dict[str, Regra] = {
     "mm": _DECIMAL,
     "°C": _DECIMAL,
     "dias": Regra("decimal", (0, None)),
+    # área e produção de café por município (PAM e MapBiomas)
+    "hectares": Regra("decimal", (0, None)),
+    "toneladas": Regra("decimal", (0, None)),
 }
 
 
