@@ -15,7 +15,7 @@ let google: ReturnType<typeof abrirApp>["google"];
 
 // como na vida real, o token só chega depois de o Google ser inicializado (o botão vem depois)
 async function googlePronto() {
-  await screen.findByText(/Entre com o Google/);
+  await screen.findByText(/Entrar no TickerLab/);
   await waitFor(() => expect(google.id.initialize).toHaveBeenCalled());
 }
 
@@ -81,7 +81,7 @@ describe("login", () => {
     abrir(() => respostaJson(200, ANA));
     await entrar();
     fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
-    expect(await screen.findByText(/Entre com o Google/)).toBeTruthy();
+    expect(await screen.findByText(/Entrar no TickerLab/)).toBeTruthy();
     expect(google.id.disableAutoSelect).toHaveBeenCalled();
   });
 });
@@ -93,7 +93,7 @@ describe("conta recusada pela API", () => {
     );
     await entrar();
     expect(await screen.findByText(/Sua sessão terminou/)).toBeTruthy();
-    expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
+    expect(screen.getByText(/Entrar no TickerLab/)).toBeTruthy();
   });
 
   it("primeiro login: cria a conta pela API e entra (sem passar pelo app atual)", async () => {
@@ -130,8 +130,41 @@ describe("conta recusada pela API", () => {
     google = aberto.google;
     await entrar();
     expect(await screen.findByText(/Fora do ar/)).toBeTruthy();
-    expect(screen.getByText(/Entre com o Google/)).toBeTruthy();
+    expect(screen.getByText(/Entrar no TickerLab/)).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Criar a conta no app/ })).toBeNull();
+  });
+
+  it("a entrada é uma página própria: sem o menu do app, sem o rodapé e com os textos legais", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    // o menu e as abas só levam a telas que pedem login; o rodapé falava da fonte de preços
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByText(/Yahoo/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Versão clássica" })).toBeNull();
+    expect(screen.getByText(conteudoDoApp.entrada.explicacao)).toBeTruthy();
+    for (const ponto of conteudoDoApp.entrada.pontos) expect(screen.getByText(ponto)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Termos de uso" }).getAttribute("href")).toBe(
+      "https://tickerlab.com.br/termos.html",
+    );
+    expect(screen.getByRole("link", { name: "Política de privacidade" }).getAttribute("href")).toBe(
+      "https://tickerlab.com.br/privacidade.html",
+    );
+  });
+
+  it("o botão do Google ocupa a largura do cartão, dentro do que o Google aceita (200 a 400 px)", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await googlePronto();
+    await waitFor(() => expect(google.id.renderButton).toHaveBeenCalled());
+    const [, opcoes] = google.id.renderButton.mock.calls[0] as [HTMLElement, { width: number }];
+    expect(opcoes.width).toBeGreaterThanOrEqual(200); // no jsdom a largura medida é 0: fica no mínimo
+    expect(opcoes.width).toBeLessThanOrEqual(400);
+  });
+
+  it("depois de entrar, a moldura do app volta (menu e rodapé)", async () => {
+    abrir(() => respostaJson(200, ANA));
+    await entrar();
+    await screen.findByText(/Ana · Gratuito/);
+    expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
   });
 
   it("a tela de entrada diz o que a conta guarda", async () => {
@@ -240,6 +273,6 @@ describe("conta recusada pela API", () => {
     abrir(() => respostaJson(403, { detail: "Aceite os termos." }, { "X-TickerLab-Motivo": "termos" }));
     await entrar();
     fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
-    expect(await screen.findByText(/Entre com o Google/)).toBeTruthy();
+    expect(await screen.findByText(/Entrar no TickerLab/)).toBeTruthy();
   });
 });

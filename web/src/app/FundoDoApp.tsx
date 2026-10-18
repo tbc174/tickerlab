@@ -22,14 +22,16 @@ function gravarPausa(pausado: boolean) {
   }
 }
 
-export function FundoDoApp({ children }: { children: ReactNode }) {
+/** `telaCheia`: o fundo ocupa a página inteira (a entrada, que não tem a moldura do app). */
+export function FundoDoApp({ children, telaCheia = false }: { children: ReactNode; telaCheia?: boolean }) {
   const [pausado, setPausado] = useState(lerPausa);
   const alternar = () => {
     gravarPausa(!pausado);
     setPausado(!pausado);
   };
+  const classes = ["escura v2-heroi-fundo app-fundo", telaCheia ? "app-fundo-cheio" : "", pausado ? "v2-pausado" : ""];
   return (
-    <div className={`escura v2-heroi-fundo app-fundo${pausado ? " v2-pausado" : ""}`}>
+    <div className={classes.filter(Boolean).join(" ")}>
       <div className="v2-aurora" aria-hidden="true">
         <span />
         <span />

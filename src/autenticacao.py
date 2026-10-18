@@ -76,6 +76,19 @@ AVISO_DA_ENTRADA = (
     "Nada aqui é recomendação de investimento."
 )
 
+# a tela de entrada do app novo: o título e a frase do cartão, o lembrete de quem vem da versão
+# clássica e o que o TickerLab é, ao lado do cartão (o Streamlit tem a dele em telas/conta/entrada.py)
+TITULO_DA_ENTRADA = "Entrar no TickerLab"
+EXPLICACAO_DA_ENTRADA = "Use a sua conta do Google. No primeiro acesso, a conta é criada na hora, no plano gratuito."
+LEMBRETE_DA_VERSAO_CLASSICA = (
+    "Já usa a versão clássica? Entre com a mesma conta do Google."
+)
+PONTOS_DA_ENTRADA = (
+    "A ficha de cada empresa da B3, com a fonte e a data de cada número.",
+    "Relatórios em PDF para levar e compartilhar.",
+    "Fatos e números, nunca recomendação de investimento.",
+)
+
 
 def emails_de_admin(ambiente: Mapping[str, str] | None = None) -> tuple[str, ...]:
     """E-mails que viram administradores ao entrar (`TICKERLAB_ADMINS`, separados por vírgula).

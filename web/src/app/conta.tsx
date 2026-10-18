@@ -8,9 +8,9 @@ import { URL_DO_SITE } from "../site/textos";
 import { linkDoClassico } from "./classico";
 import { ErroDaApi, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
-import { FundoDoApp } from "./FundoDoApp";
 import { Icone } from "./Icone";
 import { type GoogleId, carregarGoogle } from "./login";
+import { PaginaDeEntrada } from "./PaginaDeEntrada";
 import type { EuV1 } from "./tipos";
 
 interface Conta {
@@ -134,22 +134,36 @@ const SAIDA_DE_CADA_ERRO: Partial<Record<ErroDaApi["tipo"], [string, string]>> =
   "conta-nova": ["Não deu para criar a sua conta agora. Tente entrar de novo em instantes.", ""],
 };
 
+// o Google desenha o botão com largura fixa, entre 200 e 400 px: o do cartão ocupa a largura dele
+const LARGURA_DO_BOTAO = { minima: 200, maxima: 400 };
+
 /** O botão do Google e, se a API recusou a conta, o motivo e o caminho para resolver. */
 function Entrada({ erro }: { erro: ErroDaApi | null }) {
   const botao = useRef<HTMLDivElement>(null);
   const google = useConta()?.google ?? null;
+  const { titulo, explicacao, lembrete_da_versao_classica, aviso } = conteudoDoApp.entrada;
   useEffect(() => {
     // só depois do initialize do Provedor (os efeitos do React rodam do filho para o pai): antes
     // disso o Google recusa o botão e não desenha nada; quem não tinha o login automático ficava sem entrar
     if (google && botao.current) {
-      google.renderButton(botao.current, { theme: "outline", size: "large", text: "signin_with", locale: "pt-BR" });
+      const largura = Math.min(
+        LARGURA_DO_BOTAO.maxima,
+        Math.max(LARGURA_DO_BOTAO.minima, botao.current.offsetWidth),
+      );
+      google.renderButton(botao.current, {
+        theme: "outline",
+        size: "large",
+        text: "signin_with",
+        locale: "pt-BR",
+        width: largura,
+      });
     }
   }, [google]);
   const saida = erro ? SAIDA_DE_CADA_ERRO[erro.tipo] : undefined;
   return (
-    <section className="aviso-do-app">
-      <h1>Entre com o Google</h1>
-      <p>Use a mesma conta do Google da versão clássica. Os números são os mesmos.</p>
+    <section className="cartao-de-entrada">
+      <h1>{titulo}</h1>
+      <p className="apagado">{explicacao}</p>
       {erro ? (
         <p className="erro-do-app" role="alert">
           {saida ? saida[0] : erro.message}
@@ -160,8 +174,14 @@ function Entrada({ erro }: { erro: ErroDaApi | null }) {
           {saida[1]}
         </a>
       ) : null}
-      <div ref={botao} className="botao-do-google" />
-      <p className="apagado">{conteudoDoApp.entrada.aviso}</p>
+      {/* vazio até o Google desenhar o botão: o CSS mostra um esqueleto do mesmo tamanho (sem buraco) */}
+      <div ref={botao} className="botao-do-google" aria-busy={google === null} />
+      <p className="lembrete-da-entrada">{lembrete_da_versao_classica}</p>
+      <p className="apagado aviso-da-entrada">{aviso}</p>
+      <p className="textos-legais">
+        <TextoLegal titulo="Termos de uso" pagina="termos" />
+        <TextoLegal titulo="Política de privacidade" pagina="privacidade" />
+      </p>
     </section>
   );
 }
@@ -233,17 +253,21 @@ function AceiteDosTermos({ conta }: { conta: Conta }) {
   );
 }
 
-/** Mostra as telas só para quem entrou e foi aceito pela API. */
+/** Mostra as telas só para quem entrou e foi aceito pela API. Antes disso, a página de entrada, sem a
+ * moldura do app: o login, o "Entrando…" e o aceite dos termos. */
 export function ExigeLogin({ children }: { children: ReactNode }) {
   const conta = useConta();
   if (conta?.eu) return <>{children}</>;
-  if (conta?.token && conta.precisaAceitar) return <AceiteDosTermos conta={conta} />;
-  if (conta?.token) return <p className="apagado" role="status">Entrando…</p>;
-  return (
-    <FundoDoApp>
-      <Entrada erro={conta?.erro ?? null} />
-    </FundoDoApp>
-  );
+  let cartao: ReactNode;
+  if (conta?.token && conta.precisaAceitar) cartao = <AceiteDosTermos conta={conta} />;
+  else if (conta?.token)
+    cartao = (
+      <p className="apagado" role="status">
+        Entrando…
+      </p>
+    );
+  else cartao = <Entrada erro={conta?.erro ?? null} />;
+  return <PaginaDeEntrada>{cartao}</PaginaDeEntrada>;
 }
 
 // as telas da área Conta (ADR 0096), na ordem de src/paginas.py: ficam no menu da pessoa, não no lateral

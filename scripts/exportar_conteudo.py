@@ -38,11 +38,11 @@ from src import (
     qualidade_texto,
     regras_de_imposto,
 )
+from src import autenticacao as aut
 from src import graficos_pdf as gp
 from src import indicadores as ind
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
-from src.autenticacao import AVISO_DA_ENTRADA
 from src.conteudo import carregar_glossario
 from src.envio_novidades import TEXTO_DO_CONSENTIMENTO as TEXTO_DAS_NOVIDADES
 from src.envio_novidades import VERSAO_DO_CONSENTIMENTO as VERSAO_DAS_NOVIDADES
@@ -335,7 +335,13 @@ def _app() -> dict[str, object]:
                 "explicacao": ficha.EXPLICACAO,
             },
         },
-        "entrada": {"aviso": AVISO_DA_ENTRADA},
+        "entrada": {
+            "titulo": aut.TITULO_DA_ENTRADA,
+            "explicacao": aut.EXPLICACAO_DA_ENTRADA,
+            "lembrete_da_versao_classica": aut.LEMBRETE_DA_VERSAO_CLASSICA,
+            "pontos": list(aut.PONTOS_DA_ENTRADA),
+            "aviso": aut.AVISO_DA_ENTRADA,
+        },
         "assinatura": {
             "retorno_ok": cobranca.RETORNO_DO_PAGAMENTO_OK,
             "retorno_cancelado": cobranca.RETORNO_DO_PAGAMENTO_CANCELADO,
