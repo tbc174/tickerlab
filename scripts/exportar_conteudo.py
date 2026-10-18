@@ -16,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
+from base import contrato, vitrine
+from base.dicionario import TABELAS
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
 from src import (
@@ -362,6 +364,27 @@ def _app() -> dict[str, object]:
     }
 
 
+def _catalogo() -> dict:
+    """A página Dados: fontes, módulos e uma linha por tabela, tudo contado do contrato da base."""
+    catalogo = contrato.catalogo()
+    frases = {nome: vitrine.primeira_frase(t.descricao) for nome, t in TABELAS.items()}
+    fontes = vitrine.fontes_do_catalogo(catalogo)
+    modulos_da_base = vitrine.modulos_do_catalogo(catalogo)
+    return {
+        "totais": {
+            "tabelas": len(catalogo["tabelas"]),
+            "fontes": len(fontes),
+            "fontes_em_consulta": sum(
+                f.situacao == vitrine.EM_CONSULTA for f in fontes
+            ),
+            "modulos": len(modulos_da_base),
+        },
+        "fontes": [asdict(f) for f in fontes],
+        "modulos": [asdict(m) for m in modulos_da_base],
+        "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
+    }
+
+
 def conteudo() -> dict[str, object]:
     """{nome do arquivo: dados}."""
     return {
@@ -379,6 +402,7 @@ def conteudo() -> dict[str, object]:
         "exemplo": painel_de_exemplo(),
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
+        "catalogo": _catalogo(),
     }
 
 

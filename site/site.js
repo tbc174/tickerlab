@@ -152,4 +152,24 @@
       });
     }));
   }
+
+  // --- Dados: busca de tabelas pelo nome (sem JavaScript a lista inteira fica à mostra) --------
+  const filtroDeTabelas = document.querySelector("[data-filtro-tabelas]");
+  if (filtroDeTabelas) {
+    filtroDeTabelas.hidden = false;
+    const linhas = document.querySelectorAll("tr[data-tabela]");
+    const blocos = document.querySelectorAll("[data-modulo-da-lista]");
+    const vazio = document.querySelector("[data-filtro-vazio]");
+    filtroDeTabelas.addEventListener("input", () => {
+      const termo = semAcento(filtroDeTabelas.value.trim());
+      linhas.forEach((linha) => { linha.hidden = !semAcento(linha.dataset.tabela).includes(termo); });
+      let achou = false;
+      blocos.forEach((bloco) => {
+        const algum = bloco.querySelector("tr[data-tabela]:not([hidden])") !== null;
+        bloco.hidden = !algum;
+        achou = achou || algum;
+      });
+      if (vazio) vazio.hidden = achou;
+    });
+  }
 })();
