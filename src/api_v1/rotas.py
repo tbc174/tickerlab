@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
@@ -67,6 +68,7 @@ from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
+from src.commodities.cafe import pacote_do_mapa
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -838,6 +840,23 @@ def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
     except CDIIndisponivelError:
         cdi = None  # o painel deixa o CDI e o juro real em branco e avisa
     return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
+
+
+TipoDeCafe = Literal["arabica", "conilon"]  # os TIPOS_DO_MAPA do pacote do mapa
+
+
+@router.get("/commodities/cafe/mapa")
+def mapa_do_cafe(_conta: Conta, tipo: TipoDeCafe = "arabica") -> esquemas.MapaDoCafeV1:
+    """Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia
+    os deixou; 503 se o pacote ainda não chegou a este servidor."""
+    pacote = pacote_do_mapa.ler_pacote()
+    if pacote is None:
+        raise HTTPException(
+            status_code=503,
+            detail="O mapa do café ainda não foi montado neste servidor.",
+        )
+    vista = pacote_do_mapa.montar_vista(pacote, tipo, hoje_no_brasil().month)
+    return esquemas.MapaDoCafeV1.model_validate(asdict(vista))
 
 
 def _eventos_do_ativo(

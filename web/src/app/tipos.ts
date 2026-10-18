@@ -412,3 +412,67 @@ export interface RelatorioDaEmpresaV1 {
   aviso_das_notas: string;
   em_conferencia: boolean;
 }
+
+/** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */
+export interface CamadaDoMapaV1 {
+  chave: string; // "producao", "area", "chuva" ou "geada"
+  titulo: string;
+  unidade: string;
+  o_que_e: string;
+  fonte: string;
+  escala: string; // "sequencial" (mais é mais) ou "divergente" (em torno de `referencia`)
+  referencia: number | null;
+}
+
+export interface MunicipioDoMapaV1 {
+  codigo: string; // o código do IBGE, o mesmo da propriedade `codarea` da malha
+  nome: string;
+  uf: string;
+  regiao: string | null; // null: fora das regiões produtoras do cadastro
+  valores: Record<string, number | null>; // por camada
+  sem_dado: Record<string, string>; // por camada sem valor: por que o município fica cinza
+  area_mapbiomas_ha: number | null;
+}
+
+export interface IndiceDoMapaV1 {
+  valor: number | null;
+  normal: number | null;
+  n_estacoes: number;
+  inicio: string;
+  fim: string;
+  texto: string; // a frase pronta, com o período e de onde veio
+}
+
+export interface ItemDoMesV1 {
+  titulo: string;
+  texto: string;
+}
+
+export interface RegiaoDoMapaV1 {
+  id: string;
+  nome: string;
+  tipo_predominante: string;
+  chuva: IndiceDoMapaV1;
+  geada: IndiceDoMapaV1;
+  fase: string;
+  o_que_o_mercado_olha: ItemDoMesV1[];
+}
+
+/** O GeoJSON simplificado da malha do IBGE (só o que a tela usa). */
+export interface MalhaDoMapa {
+  type: string;
+  features: { properties: { codarea?: string }; geometry: { type: string; coordinates: unknown } }[];
+}
+
+export interface MapaDoCafeV1 {
+  tipo: string;
+  ano: number;
+  gerado_em: string;
+  mes: number;
+  camadas: CamadaDoMapaV1[];
+  municipios: MunicipioDoMapaV1[];
+  regioes: RegiaoDoMapaV1[];
+  malha: MalhaDoMapa;
+  fontes: string[];
+  aviso: string;
+}

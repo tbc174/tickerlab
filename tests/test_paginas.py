@@ -139,6 +139,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "juros_e_inflacao",
                 "precos_de_referencia",
                 "parametros",
+                "mapa_do_cafe",
             },
         ),
         ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
@@ -212,6 +213,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "meus_dados",
         "simulacoes",
         "pulse",
+        "mapa_do_cafe",
     }
 
 

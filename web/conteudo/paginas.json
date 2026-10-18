@@ -830,5 +830,36 @@
     "somente_admin": false,
     "titulo": "Planos e assinatura",
     "url": "planos"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "mapa_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O café do mapa: arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "MapaDoCafeV1",
+      "rota": "/v1/commodities/cafe/mapa"
+    },
+    "descricao": "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada de cada região contra a normal, com a fonte e a data de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Mapa do café",
+    "url": "mapa-do-cafe"
   }
 ]
