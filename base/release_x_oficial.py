@@ -7,8 +7,9 @@ compara é este módulo, em Python puro, e a tabela guarda **só números** (nen
 
 Classes (`classe`):
 - `igual`: bate ao real;
-- `igual (arredondamento)`: a diferença cabe em meia unidade do que o release mostra (R$ 1.234,5
-  milhões cobre qualquer valor de 1.234.450.000 a 1.234.550.000);
+- `igual (arredondamento)`: a diferença cabe em 1 unidade do que o release mostra (R$ 1.234,5
+  milhões cobre qualquer valor de 1.234.400.000 a 1.234.600.000): o release soma parcelas já
+  arredondadas, então o total pode escapar de meia unidade;
 - `diferente`: não bate; vão a diferença em R$ e em % do valor oficial (sem juízo: pode ser ajuste,
   pode ser outro critério da empresa);
 - `release não mostra`: o documento oficial tem a linha e o release não a traz;
@@ -59,6 +60,7 @@ CONTAS = {
 LINHAS = tuple(CONTAS)
 TRIMESTRE_EM_DIAS = (80, 100)
 ANO_EM_DIAS = (350, 380)
+NOVE_MESES_EM_DIAS = (260, 280)
 DIAS_MINIMOS_DO_ACUMULADO = 150
 
 COLUNAS = (
@@ -126,10 +128,41 @@ def _oficiais_por_linha(
         ]
     )
     nomeadas = nomeadas[nomeadas["linha"].notna() & nomeadas["valor"].notna()]
+    nomeadas = pd.concat([nomeadas, _quartos_trimestres(nomeadas)], ignore_index=True)
     return {
         (str(cnpj), str(linha), pd.Timestamp(fim)): grupo
         for (cnpj, linha, fim), grupo in nomeadas.groupby(["cnpj", "linha", "fim"])
     }
+
+
+def _quartos_trimestres(nomeadas: pd.DataFrame) -> pd.DataFrame:
+    """O 4º trimestre não vem pronto: é o ano da DFP menos os nove meses do ITR do 3º trimestre
+    (mesma empresa, mesma linha, mesmo grupo). Usa o ITR mais novo entregue até o dia da DFP; sem ele,
+    não há linha. Vale desde o dia em que as duas pontas existiam e até a primeira das duas trocas."""
+    dias = (nomeadas["fim"] - nomeadas["inicio"]).dt.days
+    anos = nomeadas[dias.between(*ANO_EM_DIAS)]
+    nove = nomeadas[
+        dias.between(*NOVE_MESES_EM_DIAS) & (nomeadas["inicio"].dt.month == 1)
+    ]
+    if anos.empty or nove.empty:
+        return nomeadas.iloc[0:0]
+    chave = ["cnpj", "linha", "grupo", "inicio"]
+    par = anos.merge(nove, on=chave, suffixes=("", "_9m"))
+    par = par[par["divulgado_em_9m"] <= par["divulgado_em"]]
+    par = (
+        par.sort_values(["divulgado_em_9m", "versao_9m"])
+        .groupby(
+            ["cnpj", "linha", "grupo", "fim", "versao", "divulgado_em"], as_index=False
+        )
+        .last()
+    )
+    quarto = par.assign(
+        valor=par["valor"] - par["valor_9m"],
+        inicio=par["fim_9m"] + pd.Timedelta(days=1),
+        documento="DFP-ITR",
+        ate=par[["ate", "ate_9m"]].min(axis=1),
+    )
+    return pd.DataFrame(quarto[list(nomeadas.columns)])
 
 
 def _escolher(
@@ -191,7 +224,7 @@ def _linha_da_tabela(
     if oficial is None:
         saida["classe"] = SEM_ITR
         return saida
-    tolerancia = 0.5 * 10 ** _casas_do_release(float(leitura["valor"])) * reais
+    tolerancia = 10 ** _casas_do_release(float(leitura["valor"])) * reais
     diferenca = valor - float(oficial["valor"])
     saida |= {
         "tolerancia_reais": tolerancia,

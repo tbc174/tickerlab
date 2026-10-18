@@ -24,7 +24,7 @@ import random
 import re
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
@@ -213,12 +213,17 @@ PROVA_ATE = pd.Timestamp("2026-03-31")
 MAXIMO_POR_EMPRESA_NA_PROVA = 2
 
 
-def amostra_da_prova(achados: pd.DataFrame, tamanho: int = 200) -> pd.DataFrame:
+def amostra_da_prova(
+    achados: pd.DataFrame, tamanho: int = 200, fora: Iterable[str] = ()
+) -> pd.DataFrame:
     """A amostra da prova (plano de 17/10/2026): de 01/2024 a 03/2026, no máximo 2 por empresa, os
     quatro trimestres do ano em partes iguais, sorteio com semente fixa (a mesma lista dá sempre os
-    mesmos releases, na ordem que vier)."""
+    mesmos releases, na ordem que vier). `fora`: protocolos que não entram (a 2ª prova não repete
+    os releases da 1ª)."""
     janela = achados[
-        (achados["referencia"] >= PROVA_DE) & (achados["referencia"] <= PROVA_ATE)
+        (achados["referencia"] >= PROVA_DE)
+        & (achados["referencia"] <= PROVA_ATE)
+        & ~achados["protocolo"].astype(str).isin({str(p) for p in fora})
     ]
     sorteio = random.Random(SEMENTE)
     protocolos = sorted(janela["protocolo"].astype(str))
@@ -637,6 +642,11 @@ def _argumentos() -> argparse.ArgumentParser:
             action="store_true",
             help="a amostra da prova do plano (200 releases, 01/2024 a 03/2026)",
         )
+        passo.add_argument(
+            "--prova-2",
+            action="store_true",
+            help="a 2ª prova: outros releases, sem repetir os da --prova",
+        )
         passo.add_argument("--modelo", default=lr.MODELO)
         if nome == "baixar":
             passo.add_argument("--maximo", type=int, default=200)
@@ -649,9 +659,12 @@ def _argumentos() -> argparse.ArgumentParser:
 
 def _passo_com_releases(opcoes: argparse.Namespace) -> int:
     todos = _releases_do_acervo(opcoes.desde)
-    achados = (
-        amostra_da_prova(todos) if opcoes.prova else escolher(todos, opcoes.amostra)
-    )
+    if opcoes.prova_2:
+        achados = amostra_da_prova(todos, fora=amostra_da_prova(todos)["protocolo"])
+    elif opcoes.prova:
+        achados = amostra_da_prova(todos)
+    else:
+        achados = escolher(todos, opcoes.amostra)
     pasta, modelo = opcoes.pasta, opcoes.modelo
     pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "baixar":

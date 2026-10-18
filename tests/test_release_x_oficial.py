@@ -54,12 +54,40 @@ def test_igual_exato_e_diferente_com_a_diferenca():
     assert r["diferenca_pct"] == pytest.approx(65.5 / 1234.5 * 100)
 
 
-def test_unidade_sem_casas_tem_meia_unidade_de_tolerancia():
-    # "R$ 1.235 milhões" arredonda 1.234,5 milhões: a tolerância é meio milhão
-    r = _comparar([_leitura(1235.0)], [_oficial(1_234_700_000)]).iloc[0]
+def test_unidade_sem_casas_tem_uma_unidade_de_tolerancia():
+    # "R$ 1.235 milhões": o release soma parcelas arredondadas, então até 1 milhão de diferença é arredondamento
+    r = _comparar([_leitura(1235.0)], [_oficial(1_234_200_000)]).iloc[0]
     assert r["classe"] == rxo.IGUAL_ARREDONDADO
-    longe = _comparar([_leitura(1235.0)], [_oficial(1_236_000_000)]).iloc[0]
+    longe = _comparar([_leitura(1235.0)], [_oficial(1_236_500_000)]).iloc[0]
     assert longe["classe"] == rxo.DIFERENTE
+
+
+def test_quarto_trimestre_e_o_ano_da_dfp_menos_os_nove_meses_do_itr():
+    oficiais = [
+        _oficial(1_000_000_000, inicio="2025-01-01", fim="2025-12-31", documento="DFP",
+                 divulgado_em="2026-03-10"),
+        _oficial(700_000_000, inicio="2025-01-01", fim="2025-09-30", divulgado_em="2025-11-05"),
+    ]  # fmt: skip
+    release = _leitura(
+        300.0, referencia=pd.Timestamp("2025-12-31"),
+        data_entrega=pd.Timestamp("2026-03-12"),
+    )  # fmt: skip
+    r = _comparar([release], oficiais).iloc[0]
+    assert r["classe"] == rxo.IGUAL
+    assert r["valor_oficial_reais"] == pytest.approx(300_000_000)
+    assert r["documento"] == "DFP-ITR"
+
+
+def test_quarto_trimestre_sem_o_itr_dos_nove_meses_fica_sem_itr():
+    oficiais = [
+        _oficial(1_000_000_000, inicio="2025-01-01", fim="2025-12-31", documento="DFP",
+                 divulgado_em="2026-03-10"),
+    ]  # fmt: skip
+    release = _leitura(
+        300.0, referencia=pd.Timestamp("2025-12-31"),
+        data_entrega=pd.Timestamp("2026-03-12"),
+    )  # fmt: skip
+    assert _comparar([release], oficiais).iloc[0]["classe"] == rxo.SEM_ITR
 
 
 def test_trimestre_contra_3_meses_e_acumulado_contra_9_meses():
