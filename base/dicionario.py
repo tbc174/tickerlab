@@ -4431,6 +4431,39 @@ TABELAS: dict[str, Tabela] = {
             "porte_prova_sha256": ("SHA-256 do ZIP guardado no acervo", TEXTO),
         },
     ),
+    "usda_psd_cafe": Tabela(
+        descricao=(
+            "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, "
+            "importação), em mil sacas de 60 kg, do USDA PSD. Só a produção se separa por tipo "
+            "(arabica, conilon = a Robusta do USDA); os demais atributos são do `total`. Cada baixada "
+            "semanal guarda as revisões do USDA com a data em que apareceram, para o 'como era na data'"
+        ),
+        fonte="USDA FAS, PSD Online: Coffee (psd_coffee_csv.zip)",
+        familia_da_fonte="usda",
+        frequencia="Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)",
+        atraso="`divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia "
+        "da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das "
+        "baixadas guardadas pelo arquivista",
+        onde="Parquet em `<acervo>/base/commodities/usda_psd/<dia da baixada>.parquet`",
+        linhagem=(
+            "Cada parquet nasce de um `psd_coffee_csv.zip` guardado pelo arquivista (SHA-256 no "
+            "registro de coletas); a unidade da fonte é conferida (mil sacas de 60 kg) e uma "
+            "unidade diferente interrompe a leitura."
+        ),
+        colunas={
+            "codigo_do_pais": ("Código do país no USDA (ex.: BR)", TEXTO),
+            "pais": ("Nome do país, como o USDA escreve", TEXTO),
+            "ano_safra": ("Ano de início da safra comercial (2024 = 2024/25)", NUMERO),
+            "atributo": ("Produção, consumo, estoque final, exportação...", TEXTO),
+            "tipo": ("arabica, conilon ou total", TEXTO),
+            "valor": ("Valor em mil sacas de 60 kg", NUMERO_DECIMAL),
+            "unidade": ("Unidade da fonte, conferida na leitura", TEXTO),
+            "divulgado_em": (
+                "Quando a revisão ficou pública (fim do mês da revisão)",
+                DATA,
+            ),
+        },
+    ),
 }
 
 
@@ -4438,6 +4471,9 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_COMMODITIES = (
+    "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
+)
 
 
 # módulo, chaves, apelidos das três datas (`aconteceu_em`: quando o fato ocorreu; `publico_em`: quando
@@ -4519,6 +4555,7 @@ _CONTRATO = {
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
+    "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),
 }  # fmt: skip
 
 

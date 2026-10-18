@@ -89,6 +89,10 @@ LICENCAS = {
     "tce-pr-despesa": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
+    # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
+    "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+    "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
+    "ico": "Relatório mensal da ICO sem termos localizados: só pesquisa",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -165,6 +169,9 @@ REVENDA = {
     "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
     "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
     "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
+    "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem
+    "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
+    "ico": NAO_COMERCIAL,  # PDF sem termos lidos: só pesquisa
 }
 
 

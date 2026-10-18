@@ -6563,6 +6563,64 @@
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"
+    },
+    "usda_psd_cafe": {
+      "tabela": "usda_psd_cafe",
+      "modulo": "macro",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "codigo_do_pais": {
+          "descricao": "Código do país no USDA (ex.: BR)",
+          "unidade": "texto"
+        },
+        "pais": {
+          "descricao": "Nome do país, como o USDA escreve",
+          "unidade": "texto"
+        },
+        "ano_safra": {
+          "descricao": "Ano de início da safra comercial (2024 = 2024/25)",
+          "unidade": "número inteiro"
+        },
+        "atributo": {
+          "descricao": "Produção, consumo, estoque final, exportação...",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "arabica, conilon ou total",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Valor em mil sacas de 60 kg",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "Unidade da fonte, conferida na leitura",
+          "unidade": "texto"
+        },
+        "divulgado_em": {
+          "descricao": "Quando a revisão ficou pública (fim do mês da revisão)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "codigo_do_pais",
+        "ano_safra",
+        "atributo",
+        "tipo",
+        "divulgado_em"
+      ],
+      "datas": {
+        "aconteceu_em": "divulgado_em",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2026-10-18",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)",
+      "atraso": "`divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das baixadas guardadas pelo arquivista"
     }
   }
 }
