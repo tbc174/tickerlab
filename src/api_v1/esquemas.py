@@ -830,6 +830,76 @@ def de_relatorio_da_empresa(
     return RelatorioDaEmpresaV1.model_validate(dados)
 
 
+# --- Mapa do café (plano do café, PR 10) -----------------------------------------------------------
+class CamadaDoMapaV1(BaseModel):
+    """Uma camada do mapa: o que pinta os municípios, com o "o que é isto" e a fonte."""
+
+    chave: str  # "producao", "area", "chuva" ou "geada"
+    titulo: str
+    unidade: str
+    o_que_e: str
+    fonte: str
+    escala: str  # "sequencial" (mais é mais) ou "divergente" (em torno de `referencia`)
+    referencia: float | None
+
+
+class MunicipioDoMapaV1(BaseModel):
+    codigo: (
+        str  # o código do IBGE (7 dígitos), o mesmo da propriedade `codarea` da malha
+    )
+    nome: str
+    uf: str
+    regiao: str | None  # a região produtora do cadastro; null: fora das regiões
+    valores: dict[
+        str, float | None
+    ]  # por camada; null: sem dado (o motivo em `sem_dado`)
+    sem_dado: dict[str, str]  # por camada sem valor: por que o município fica cinza
+    area_mapbiomas_ha: (
+        float | None
+    )  # a área de café vista por satélite, para conferir a PAM
+
+
+class IndiceDoMapaV1(BaseModel):
+    valor: float | None
+    normal: float | None  # a média de 1991–2020; null: sem anos bastantes
+    n_estacoes: int  # 0 no CHIRPS (satélite)
+    inicio: date
+    fim: date
+    texto: str  # a frase pronta, com o período e de onde veio
+
+
+class ItemDoMesV1(BaseModel):
+    titulo: str
+    texto: str
+
+
+class RegiaoDoMapaV1(BaseModel):
+    id: str
+    nome: str
+    tipo_predominante: str  # "arabica" ou "conilon"
+    chuva: IndiceDoMapaV1
+    geada: IndiceDoMapaV1
+    fase: str  # a fase do calendário do café no mês
+    o_que_o_mercado_olha: list[ItemDoMesV1]
+
+
+class MapaDoCafeV1(BaseModel):
+    """O mapa de um tipo de café como o pacote de `gerado_em` o deixou (nada publicado depois)."""
+
+    tipo: str  # "arabica" ou "conilon"
+    ano: int  # o ano da PAM
+    gerado_em: date
+    mes: int  # o mês do calendário da fase (1 a 12)
+    camadas: list[CamadaDoMapaV1]
+    municipios: list[MunicipioDoMapaV1]
+    regioes: list[RegiaoDoMapaV1]
+    malha: dict[
+        str, object
+    ]  # GeoJSON (FeatureCollection) simplificado, propriedade `codarea`
+    fontes: list[str]
+    aviso: str
+
+
 # --- Painel do café (plano do café, PR 11): os tipos de `src/commodities/cafe/painel.py` ------------
 class PontoDoPrecoDoCafeV1(BaseModel):
     mes: date
