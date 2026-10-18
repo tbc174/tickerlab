@@ -162,17 +162,15 @@ def test_pdf_malformado_fica_com_o_motivo():
 
 # --- o OCR de verdade (RapidOCR, modelos dentro do pacote) --------------------------------------
 def test_ocr_de_verdade_le_um_pdf_escaneado():
-    texto = "\n".join(
-        [
-            "FATO RELEVANTE",
-            "A Companhia Exemplo comunica aos seus acionistas e ao mercado em geral",
-            "que o Conselho de Administracao aprovou a recompra de acoes da Companhia",
-            "e o pagamento de dividendos no valor de R$ 1,20 por acao, com base no",
-            "lucro do exercicio. A operacao sera concluida em ate seis meses, depois",
-            "da aprovacao dos acionistas em assembleia, nos termos da lei e do estatuto",
-            "social da Companhia, que manteve o mercado informado sobre o andamento.",
-            "A Companhia reafirma o compromisso com os seus acionistas e com o mercado.",
-        ]
+    texto = (
+        "FATO RELEVANTE\n"
+        "A Companhia Exemplo comunica aos seus acionistas e ao mercado em geral\n"
+        "que o Conselho de Administracao aprovou a recompra de acoes da Companhia\n"
+        "e o pagamento de dividendos no valor de R$ 1,20 por acao, com base no\n"
+        "lucro do exercicio. A operacao sera concluida em ate seis meses, depois\n"
+        "da aprovacao dos acionistas em assembleia, nos termos da lei e do estatuto\n"
+        "social da Companhia, que manteve o mercado informado sobre o andamento.\n"
+        "A Companhia reafirma o compromisso com os seus acionistas e com o mercado."
     )
     conteudo = _pdf_so_imagem(texto)
     assert leitura.texto_do_pdf(conteudo).strip() == ""  # sem camada de texto
