@@ -307,6 +307,30 @@ export interface LimitesDoPulseV1 {
   sem_ficha: number;
   alem_do_maximo: number;
   nao_conferidas: number;
+  alem_dos_ativos: number; // ativos guardados além do máximo que o Pulse acompanha
+}
+
+// --- Pulse, parte 2: acontecimentos novos e variação do preço (Workspace, PR 3) ---
+
+export interface AcontecimentoV1 {
+  id: string; // "<fonte>:<protocolo>"
+  ticker: string; // sem o ".SA"
+  empresa: string;
+  tipo: string; // "Fato Relevante", "Comunicado ao Mercado", "8-K"…
+  titulo: string;
+  publicado_em: string; // "2026-10-08"
+  fonte: string; // "CVM" ou "SEC"
+  link_do_original: string | null; // só https da CVM ou da SEC; null: sem link
+  relevancia: number; // de 0 a 1: a ordem da lista
+  por_que_aparece: string[];
+}
+
+export interface VariacaoV1 {
+  ticker: string;
+  variacao: number; // fração: 0.0115 = +1,15%
+  de: string; // o último fechamento que já existia na hora da visita
+  ate: string; // o último fechamento de hoje
+  por_que_aparece: string[]; // "favoritos", "Minha carteira", "lista Bancos"…
 }
 
 export interface PulseV1 {
@@ -316,6 +340,12 @@ export interface PulseV1 {
   avisos: string[];
   sem_estrategias: string;
   notas: string[];
+  acontecimentos: AcontecimentoV1[] | null; // null: a leitura falhou e a visita não foi marcada
+  variacoes: VariacaoV1[]; // a maior mudança primeiro (pulse.ordenar_variacoes)
+  avisos_dos_ativos: string[];
+  sem_variacao: string[]; // os ativos sem preço para comparar
+  sem_ativos: string; // a frase de quando não há nenhum ativo guardado
+  nota_da_variacao: string;
 }
 
 /** Um número do relatório da empresa, já escrito ("R$ 12,3 bi"), com a base e a nota. */

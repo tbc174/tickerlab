@@ -1,32 +1,48 @@
 /* O que só o app novo usa. Cores, fontes, botões e cartões vêm do CSS do site (estilo.css), que
    sai de src/marca.py: o app e o site têm a mesma cara. */
+/* A escala do app (ADR 0096): espaços de 4 a 48 px e cinco tamanhos de texto. Nenhuma margem, respiro ou
+   vão usa número solto: web/testes/app/escala.test.ts falha se aparecer. */
+:root {
+  --e1: .25rem; --e2: .5rem; --e3: .75rem; --e4: 1rem; --e5: 1.5rem; --e6: 2rem; --e7: 3rem;
+  --t-1: .8rem; --t0: 1rem; --t1: 1.1rem; --t2: 1.25rem; --t3: 1.75rem;
+}
 .marca .simbolo { display: inline-flex; }
 .marca .simbolo svg { width: 28px; height: 28px; color: var(--simbolo-topo); }
-.selo-novo { padding: .1rem .55rem; border-radius: 999px; font-size: .78rem; font-weight: 700;
+.selo-novo { padding: var(--e1) var(--e2); border-radius: 999px; font-size: .78rem; font-weight: 700;
   color: var(--azul-texto); border: 1px solid var(--linha-forte); }
-.tema-escolha { display: inline-flex; gap: .15rem; margin-left: auto; padding: .15rem;
+.tema-escolha { display: inline-flex; gap: var(--e1); margin-left: auto; padding: var(--e1);
   border: 1px solid var(--linha); border-radius: 10px; }
-.tema-escolha button { display: inline-flex; padding: .35rem; border: 0; border-radius: 8px;
+.tema-escolha button { display: inline-flex; padding: var(--e1); border: 0; border-radius: 8px;
   background: transparent; color: var(--apagado); cursor: pointer; }
 .tema-escolha button[aria-checked="true"] { background: var(--superficie); color: var(--texto); }
 .tema-escolha svg { width: 18px; height: 18px; }
 .pular-leitura { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.app-corpo { display: grid; grid-template-columns: 13rem 1fr; gap: 2rem; padding-block: 2rem; }
-.app-menu { display: flex; flex-direction: column; gap: .2rem; position: sticky; top: 5rem; align-self: start; }
-.app-menu a { padding: .45rem .7rem; border-radius: 8px; color: var(--apagado); text-decoration: none; font-weight: 600; }
+.app-corpo { display: grid; grid-template-columns: 13rem 1fr; gap: var(--e6); padding-block: var(--e6); }
+.app-menu { display: flex; flex-direction: column; gap: var(--e1); position: sticky; top: 5rem; align-self: start; }
+.app-menu a { padding: var(--e2) var(--e3); border-radius: 8px; color: var(--apagado); text-decoration: none; font-weight: 600; }
 .app-menu a:hover { color: var(--texto); }
 .app-menu a.active { background: var(--superficie); color: var(--texto); }
 .app-corpo main { min-width: 0; }
 .app-corpo.sem-menu { grid-template-columns: 1fr; }
-.telas-do-app { list-style: none; padding: 0; display: grid; gap: 1rem;
+/* os títulos de toda tela: h1 da escala, h2 da escala, a legenda menor (--t-1) */
+.app-corpo main h1 { margin: 0 0 var(--e2); font-size: var(--t3); }
+.app-corpo main h2 { font-size: var(--t2); }
+.cabecalho-da-tela { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: var(--e3) var(--e4);
+  margin-bottom: var(--e4); }
+.cabecalho-da-tela .olho { margin: 0 0 var(--e1); }
+.cabecalho-da-tela .apagado { margin: 0; max-width: 40rem; }
+.cabecalho-acoes { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.legenda-do-numero { font-size: var(--t-1); color: var(--apagado); }
+.apagado { color: var(--apagado); }
+.telas-do-app { list-style: none; padding: 0; display: grid; gap: var(--e4);
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .telas-do-app a { font-weight: 700; }
 .aviso-do-app { max-width: 40rem; }
-.rodape-do-app { padding-block: 1.5rem 2.5rem; border-top: 1px solid var(--linha); font-size: .88rem; }
+.rodape-do-app { padding-block: var(--e5) var(--e7); border-top: 1px solid var(--linha); font-size: .88rem; }
 /* abas embaixo, só no celular (ADR 0066): ao alcance do polegar, toque de 44 px, acima da barra do iPhone */
 .app-abas { display: none; }
 @media (max-width: 760px) {
-  .app-corpo { grid-template-columns: 1fr; gap: 1rem; padding-block: 1.25rem; }
+  .app-corpo { grid-template-columns: 1fr; gap: var(--e4); padding-block: var(--e5); }
   .app-menu { display: none; }
   .app-abas { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; gap: .2rem;
     padding: .3rem .4rem calc(.3rem + env(safe-area-inset-bottom));
@@ -47,35 +63,41 @@
   /* topo compacto: sem o selo e sem o nome (o botão Sair continua) */
   .selo-novo { display: none; }
   .conta-no-topo > span { display: none; }
-  .topo .faixa { gap: .5rem; }
+  .topo .faixa { gap: var(--e2); }
 }
-.conta-no-topo { display: inline-flex; align-items: center; gap: .6rem; font-size: .92rem; color: var(--apagado); }
-.erro-do-app { padding: .7rem 1rem; border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
-.botao-do-google { margin-top: 1.25rem; min-height: 44px; }
+.conta-no-topo { display: inline-flex; align-items: center; gap: var(--e3); font-size: .92rem; color: var(--apagado); }
+.erro-do-app { padding: var(--e3) var(--e4); border-radius: 10px; border: 1px solid var(--atencao); color: var(--texto); }
+.botao-do-google { margin-top: var(--e5); min-height: 44px; }
 /* formulário de cada tela (campos do contrato) */
-.formulario-do-app { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem 1rem; margin: 1.25rem 0 1.5rem; }
-.formulario-do-app label { display: flex; flex-direction: column; gap: .3rem; font-size: .88rem; color: var(--apagado); }
-.formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: .5rem .65rem; border-radius: 8px;
+/* em caixa (ADR 0096): os campos do dia a dia em grade, "Opções avançadas" recolhidas, o botão à direita */
+.formulario-do-app { display: flex; flex-direction: column; gap: var(--e4); margin: var(--e5) 0; padding: var(--e4) var(--e5);
+  border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.campos-do-formulario { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); align-items: end; gap: var(--e3) var(--e4); }
+.formulario-do-app label { display: flex; flex-direction: column; gap: var(--e1); font-size: .88rem; color: var(--apagado); }
+.formulario-do-app .botao { align-self: flex-end; min-height: 44px; }
+.opcoes-avancadas summary { cursor: pointer; width: fit-content; margin-bottom: var(--e3); font-size: .88rem; font-weight: 700; color: var(--azul-texto); }
+.opcoes-avancadas:not([open]) summary { margin-bottom: 0; }
+.formulario-do-app input, .formulario-do-app select { min-width: 9rem; padding: var(--e2) var(--e3); border-radius: 8px;
   border: 1px solid var(--linha-forte); background: var(--superficie); color: var(--texto); font: inherit;
   font-size: 16px; } /* menos que 16 px, o iPhone dá zoom na página ao tocar no campo */
 /* painel de números */
-.painel-de-numeros h3 { margin-top: 1.25rem; font-size: .95rem; color: var(--apagado); }
-.numeros { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
-.numero-do-painel { display: flex; flex-direction: column; gap: .35rem; padding: .9rem 1rem; border-radius: var(--raio);
+.painel-de-numeros h3 { margin-top: var(--e5); font-size: var(--t0); color: var(--apagado); }
+.numeros { display: grid; gap: var(--e3); grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.numero-do-painel { display: flex; flex-direction: column; gap: var(--e1); padding: var(--e3) var(--e4); border-radius: var(--raio);
   background: var(--superficie); border: 1px solid var(--linha); }
 .numero-do-painel.principal { border-color: var(--linha-forte); }
-.numero-rotulo { display: flex; align-items: start; gap: .4rem; font-size: .86rem; color: var(--apagado); }
+.numero-rotulo { display: flex; align-items: start; gap: var(--e2); font-size: .86rem; color: var(--apagado); }
 .numero-valor { font: 700 1.45rem/1.15 "JetBrains Mono", ui-monospace, monospace; color: var(--texto); }
 .principal .numero-valor { font-size: 1.9rem; }
 .ajuda { position: relative; margin-left: auto; }
 .ajuda summary { list-style: none; cursor: pointer; width: 1.25rem; height: 1.25rem; border-radius: 999px;
   display: grid; place-items: center; font-size: .75rem; font-weight: 700; border: 1px solid var(--linha-forte); }
 .ajuda summary::-webkit-details-marker { display: none; }
-.ajuda-texto { position: absolute; right: 0; z-index: 3; width: min(22rem, 80vw); padding: .75rem .9rem; margin-top: .35rem;
+.ajuda-texto { position: absolute; right: 0; z-index: 3; width: min(22rem, 80vw); padding: var(--e3) var(--e4); margin-top: var(--e1);
   border-radius: 10px; background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
-.ajuda-texto p { margin: 0 0 .5rem; font-size: .86rem; }
+.ajuda-texto p { margin: 0 0 var(--e2); font-size: .86rem; }
 /* gráfico de linha (src/app/graficos) */
-.grafico { position: relative; margin: .75rem 0 1.5rem; }
+.grafico { position: relative; margin: var(--e3) 0 var(--e5); }
 .grafico svg { width: 100%; height: auto; display: block; touch-action: pan-y; }
 .grafico svg:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 4px; border-radius: 6px; }
 .grafico-grade line { stroke: var(--linha); stroke-width: 1; }
@@ -85,60 +107,72 @@
 .grafico-mira line { stroke: var(--apagado); stroke-width: 1; }
 .grafico-mira circle { stroke: var(--fundo); stroke-width: 2; }
 .grafico-dica { position: absolute; top: 0; transform: translateX(-50%); pointer-events: none; display: flex; flex-direction: column;
-  gap: .15rem; padding: .45rem .65rem; border-radius: 8px; font-size: .82rem; white-space: nowrap;
+  gap: var(--e1); padding: var(--e2) var(--e3); border-radius: 8px; font-size: .82rem; white-space: nowrap;
   background: var(--fundo); border: 1px solid var(--linha-forte); box-shadow: var(--sombra); color: var(--texto); }
-.grafico-dica i { display: inline-block; width: .6rem; height: .6rem; margin-right: .35rem; border-radius: 2px; }
-.grafico figcaption { font-size: .82rem; margin-top: .35rem; }
+.grafico-dica i { display: inline-block; width: .6rem; height: .6rem; margin-right: var(--e1); border-radius: 2px; }
+.grafico figcaption { font-size: .82rem; margin-top: var(--e1); }
 .grafico-marco { fill: var(--azul); stroke: var(--fundo); stroke-width: 2; }
 .grafico-dica-marco { max-width: 22rem; white-space: normal; color: var(--apagado); }
-.grafico-legenda { display: flex; flex-wrap: wrap; gap: .4rem 1rem; list-style: none; padding: 0; margin: .5rem 0 0; font-size: .86rem; color: var(--texto); }
-.grafico-legenda i { display: inline-block; width: .8rem; height: .2rem; margin-right: .4rem; vertical-align: middle; border-radius: 2px; }
-.tabela-do-app { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .5rem 0 1rem; }
-.tabela-do-app caption { text-align: left; font-weight: 700; padding-bottom: .4rem; }
-.tabela-do-app th, .tabela-do-app td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--linha); }
+.grafico-legenda { display: flex; flex-wrap: wrap; gap: var(--e2) var(--e4); list-style: none; padding: 0; margin: var(--e2) 0 0; font-size: .86rem; color: var(--texto); }
+.grafico-legenda i { display: inline-block; width: .8rem; height: .2rem; margin-right: var(--e2); vertical-align: middle; border-radius: 2px; }
+.tabela-do-app { width: 100%; border-collapse: collapse; font-size: .9rem; margin: var(--e2) 0 var(--e4); }
+.tabela-do-app caption { text-align: left; font-weight: 700; padding-bottom: var(--e2); }
+.tabela-do-app th, .tabela-do-app td { text-align: left; padding: var(--e2) var(--e3); border-bottom: 1px solid var(--linha); }
 .tabela-do-app td.numero { font-variant-numeric: tabular-nums; }
-.legenda-do-numero { font-size: .78rem; color: var(--apagado); }
 .tabela-rolavel { overflow-x: auto; }
-.mapa-mensal td, .mapa-mensal th { white-space: nowrap; font-size: .84rem; padding: .4rem .5rem; }
-.campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: .5rem 1rem; border: 0; padding: 0; margin: 0; }
-.campo-de-ativos legend { font-size: .88rem; color: var(--apagado); margin-bottom: .3rem; }
-.campo-de-ativos .marcar { flex-direction: row; align-items: center; gap: .35rem; color: var(--texto); }
+.mapa-mensal td, .mapa-mensal th { white-space: nowrap; font-size: .84rem; padding: var(--e2); }
+.campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: var(--e2) var(--e4); border: 0; padding: 0; margin: 0; }
+.campo-de-ativos legend { font-size: .88rem; color: var(--apagado); margin-bottom: var(--e1); }
+.campo-de-ativos .marcar { flex-direction: row; align-items: center; gap: var(--e1); color: var(--texto); }
 /* link compartilhado (onda 4): a ficha "Foi sorte?" congelada ou o PDF original */
 .compartilhado { max-width: 46rem; }
-.cartao-do-veredito { margin: 1.25rem 0; padding: 1rem 1.25rem; border-radius: var(--raio);
+.cartao-do-veredito { margin: var(--e5) 0; padding: var(--e4) var(--e5); border-radius: var(--raio);
   border: 1px solid var(--linha-forte); background: var(--superficie); }
-.cartao-do-veredito :is(h2, h3) { margin: 0 0 .4rem; font-size: 1.2rem; }
+.cartao-do-veredito :is(h2, h3) { margin: 0 0 var(--e2); font-size: var(--t2); }
 /* Meus dados: os links compartilhados, cada um com o botão de revogar ao lado */
-.links-da-conta { list-style: none; padding: 0; display: grid; gap: .6rem; }
-.links-da-conta li { display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-  padding: .6rem .9rem; border: 1px solid var(--linha); border-radius: var(--raio); }
-.links-da-conta li p { margin: .2rem 0 0; }
+.links-da-conta { list-style: none; padding: 0; display: grid; gap: var(--e3); }
+.links-da-conta li { display: flex; justify-content: space-between; align-items: center; gap: var(--e4);
+  padding: var(--e3) var(--e4); border: 1px solid var(--linha); border-radius: var(--raio); }
+.links-da-conta li p { margin: var(--e1) 0 0; }
 /* Minhas simulações (Workspace, PR 1): a mesma lista, com os números e os botões que quebram linha no celular */
 .lista-de-simulacoes li { flex-wrap: wrap; }
 .numeros-da-simulacao { font-size: .86rem; font-variant-numeric: tabular-nums; }
-.acoes-da-simulacao { display: flex; flex-wrap: wrap; gap: .4rem; }
-.salvar-simulacao { margin-top: 2rem; }
+.acoes-da-simulacao { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.salvar-simulacao { margin-top: var(--e6); }
 /* Workspace (PR 2): o cartão das estratégias acompanhadas; o que mudou ganha a borda forte e o selo */
-.cartao-do-workspace { margin: 1.5rem 0 2rem; padding: 1rem 1.25rem; border-radius: var(--raio);
+.cartao-do-workspace { margin: var(--e5) 0 var(--e6); padding: var(--e4) var(--e5); border-radius: var(--raio);
   border: 1px solid var(--linha); background: var(--superficie); }
-.cartao-do-workspace h2 { margin: 0 0 .4rem; font-size: 1.2rem; }
+.cartao-do-workspace h2 { margin: 0 0 var(--e2); }
 .cartao-do-workspace li.mudou { border-color: var(--linha-forte); }
 .selo-da-mudanca { font-weight: 700; }
 .tese-ligada { font-size: .88rem; color: var(--apagado); white-space: pre-line; }
-.salvar-simulacao .formulario-do-app { margin: .75rem 0; }
-.salvar-simulacao input { min-width: min(24rem, 100%); }
+/* o formulário de salvar é só um nome e um botão: sem a caixa, na mesma linha */
+.salvar-simulacao .formulario-do-app { flex-direction: row; flex-wrap: wrap; align-items: end; margin: var(--e3) 0; padding: 0;
+  border: 0; background: none; }
+/* o nome sugerido ("Cruzamento de médias · PETR4.SA · 2 anos") cabe inteiro: o rótulo cresce até 36rem
+   (um min-width em % dentro de um rótulo que encolhe vira zero, e o campo ficava com a largura padrão) */
+.salvar-simulacao label { flex: 1 1 22rem; max-width: 36rem; }
+.salvar-simulacao input { width: 100%; }
+/* Workspace (PR 3): os acontecimentos novos (o documento original e o "por que aparece" à mão) */
+.lista-de-acontecimentos { list-style: none; padding: 0; margin: var(--e2) 0 0; display: grid; gap: var(--e3); }
+.lista-de-acontecimentos > li { padding: var(--e3) var(--e4); border: 1px solid var(--linha); border-radius: var(--raio); }
+.lista-de-acontecimentos > li p { margin: 0 0 var(--e1); }
+.titulo-do-acontecimento { font-weight: 600; overflow-wrap: anywhere; }
+.por-que-aparece { margin-top: var(--e1); font-size: .86rem; color: var(--apagado); }
+.por-que-aparece summary { cursor: pointer; }
+.por-que-aparece ul { margin: var(--e1) 0 0; padding-left: var(--e4); }
 /* o aceite dos termos: os dois textos abrem noutra aba, na página do site */
-.textos-legais { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+.textos-legais { display: flex; gap: var(--e5); flex-wrap: wrap; }
 .texto-legal { font-weight: 600; }
-.botoes-do-aceite { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; }
+.botoes-do-aceite { display: flex; gap: var(--e3); flex-wrap: wrap; margin-top: var(--e3); }
 /* a ficha "Foi sorte?" embaixo do backtest: o título com o "?" do glossário ao lado */
-.ficha-foi-sorte { margin-top: 2rem; }
-.ficha-foi-sorte > h2 { display: flex; align-items: center; gap: .5rem; }
+.ficha-foi-sorte { margin-top: var(--e6); }
+.ficha-foi-sorte > h2 { display: flex; align-items: center; gap: var(--e2); }
 .ficha-foi-sorte > h2 .ajuda { margin-left: 0; }
 .simbolo-da-checagem { display: inline-block; min-width: 1.1rem; font-weight: 700; }
-.checagens { list-style: none; padding: 0; display: grid; gap: .8rem; }
-.checagens li p { margin: .2rem 0 0; }
-.ficha-tecnica { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 1.25rem 0; }
+.checagens { list-style: none; padding: 0; display: grid; gap: var(--e3); }
+.checagens li p { margin: var(--e1) 0 0; }
+.ficha-tecnica { display: grid; grid-template-columns: max-content 1fr; gap: var(--e1) var(--e4); margin: var(--e5) 0; }
 .ficha-tecnica dt { color: var(--apagado); }
 .ficha-tecnica dd { margin: 0; }
 .compartilhado code { overflow-wrap: anywhere; }
@@ -147,10 +181,22 @@
 .app-fundo { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 1.5rem;
   padding: clamp(1.5rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem) 4rem; border-radius: var(--raio); }
 .app-fundo-conteudo { position: relative; max-width: 40rem; }
+/* esqueleto de carregamento e estado vazio (ADR 0096): o tamanho do que vem, sem a página pular */
+.esqueleto-da-tela { display: grid; gap: var(--e3); margin: var(--e4) 0; }
+.esqueleto-painel { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.esqueleto { display: block; height: 4.5rem; border-radius: var(--raio); border: 1px solid var(--linha);
+  background: linear-gradient(90deg, var(--superficie) 30%, var(--linha) 50%, var(--superficie) 70%) 0 0 / 300% 100%;
+  animation: brilho-do-esqueleto 1.4s ease-in-out infinite; }
+.esqueleto-lista .esqueleto { height: 3.25rem; }
+.esqueleto-grafico { height: auto; aspect-ratio: 16 / 9; }
+@keyframes brilho-do-esqueleto { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } }
+.vazio { display: flex; flex-wrap: wrap; align-items: center; gap: var(--e3); }
+.vazio p { margin: 0; }
 /* o assunto do fato relevante (leitor v2, ADR 0069), antes do título que a empresa deu */
-.selo-do-assunto { display: inline-block; margin-right: .5rem; padding: .05rem .5rem; border-radius: 999px;
+.selo-do-assunto { display: inline-block; margin-right: var(--e2); padding: 0 var(--e2); border-radius: 999px;
   font-size: .78rem; font-weight: 700; color: var(--azul-texto); border: 1px solid var(--linha-forte); }
 /* relatório da empresa: as tabelas das seções ficam fechadas até a pessoa abrir */
-.secao-do-relatorio { margin-top: 1.5rem; }
-.tabela-do-relatorio { margin: .6rem 0; }
+.secao-do-relatorio { margin-top: var(--e5); }
+.tabela-do-relatorio { margin: var(--e2) 0; }
 .tabela-do-relatorio > summary { cursor: pointer; font-weight: 600; }

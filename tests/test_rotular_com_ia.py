@@ -289,6 +289,24 @@ def test_identificar_grava_o_palpite_e_respeita_o_teto(pasta):
     assert len(cliente.criados) == 2  # não repete
 
 
+def test_identificar_confere_o_teto_pelo_gasto_real_antes_de_cada_envio(pasta):
+    """Emenda 2 da ADR 0072: o teto é do gasto real; a estimativa a preço cheio só diz quanto custa
+    um envio a mais. Para no envio que passaria do teto e guarda o gasto no manifesto."""
+    cliente = ClienteDeMentira()
+    um_envio = ri.custo_em_dolares(4_500, rc.SAIDA_POR_IDENTIFICACAO, lote=False)
+    real = ri.custo_em_dolares(4_000, 300, lote=False)  # a resposta de mentira
+    tres = [e["id"] for e in EVENTOS[:3]]
+    with pytest.raises(rc.TetoPassado):
+        rc.identificar(cliente, EVENTOS, pasta, tres, teto=real + um_envio / 2)
+    assert len(cliente.criados) == 1  # o 1º cabia; o 2º passaria do teto
+    manifesto = rc.ler_manifesto(pasta)
+    assert manifesto["gasto_em_dolares"] == pytest.approx(real)
+    assert manifesto["identificacao"] == {"eventos": 1, "gasto": pytest.approx(real)}
+    assert len(rc.ler_identificacoes(pasta)) == 1
+    veredito = rc.identificar(cliente, EVENTOS, pasta, tres, teto=60)  # continua
+    assert len(cliente.criados) == 3 and not veredito.incompleto
+
+
 def test_auditar_grava_o_veredito(pasta, monkeypatch):
     cliente = ClienteDeMentira()
     rc.piloto(cliente, EVENTOS, pasta, n=4, teto=60)
@@ -833,3 +851,32 @@ def test_main_vazamento_nao_chama_a_api(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(ri, "cliente", lambda: pytest.fail("vazamento não usa a API"))
     assert rc.main(["vazamento", "--eventos", str(caminho), "--pasta", str(pasta)]) == 0
     assert "palavra que distingue a empresa: 0" in capsys.readouterr().out
+
+
+# --- vazamento (v3, 17/10/2026): quantos documentos ganharam cada marcador do conteúdo ---
+
+
+def test_vazamento_conta_os_marcadores_do_conteudo(tmp_path, monkeypatch):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    (pasta / "textos" / "A.txt").write_text(
+        "São Paulo, 1 de março de 2025. A Cosan e a Cielo S.A. assinaram.",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ri, "OUTRAS_EMPRESAS", ())
+    ri.definir_outras_empresas(e["empresa"] for e in eventos)
+    resultado = rc.vazamento(eventos, pasta, ["A", "B"])
+    assert resultado["documentos_com_marcador"][ri.OUTRA_EMPRESA] == 1
+    assert resultado["documentos_com_marcador"][ri.LOCAL] == 1
+    assert resultado["documentos_com_marcador"][ri.EMPRESA] == 2
+
+
+def test_main_define_as_outras_empresas_pelo_cadastro_inteiro(
+    tmp_path, monkeypatch, capsys
+):
+    eventos, pasta = _fila_com_nomes(tmp_path)
+    caminho = tmp_path / "eventos.json"
+    caminho.write_text(json.dumps({"eventos": eventos}), encoding="utf-8")
+    monkeypatch.setattr(ri, "OUTRAS_EMPRESAS", ())
+    assert rc.main(["vazamento", "--eventos", str(caminho), "--pasta", str(pasta)]) == 0
+    assert set(ri.OUTRAS_EMPRESAS) == {e["empresa"] for e in eventos}
+    assert "[OUTRA EMPRESA]" in capsys.readouterr().out

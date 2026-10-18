@@ -591,6 +591,39 @@ class LimitesDoPulseV1(BaseModel):
     sem_ficha: int  # backtests salvos antes de o Pulse guardar a ficha
     alem_do_maximo: int  # além das 10 conferidas a cada visita
     nao_conferidas: int  # das conferidas, as que não deu para conferir agora
+    alem_dos_ativos: int  # ativos guardados além dos 30 que o Pulse acompanha
+
+
+# --- Pulse, parte 2: acontecimentos novos e variação do preço (Workspace, PR 3) -------------
+
+
+class AcontecimentoV1(BaseModel):
+    """Um documento novo (CVM ou SEC) de uma empresa que a pessoa acompanha."""
+
+    id: str  # "<fonte>:<protocolo>"
+    ticker: str  # sem o ".SA"
+    empresa: str  # texto da fonte: mostrar como texto puro
+    tipo: str  # "Fato Relevante", "Comunicado ao Mercado", "8-K"...
+    titulo: str  # o assunto do cadastro (texto da fonte)
+    publicado_em: date
+    fonte: str  # "CVM" ou "SEC"
+    link_do_original: str | None  # só https da CVM ou da SEC; null: não mostrar o link
+    relevancia: float  # 0 a 1, pelos parâmetros do Research da pessoa
+    por_que_aparece: list[
+        str
+    ]  # o ativo acompanhado primeiro, depois as razões da relevância
+
+
+class VariacaoV1(BaseModel):
+    """Do último fechamento conhecido na hora da visita ao último de hoje, sem os proventos."""
+
+    ticker: str  # sem o ".SA"
+    variacao: float  # fração: 0.012 é +1,2%
+    de: date
+    ate: date
+    por_que_aparece: list[
+        str
+    ]  # "favoritos", "Minha carteira", "lista X", "estratégias salvas"
 
 
 class PulseV1(BaseModel):
@@ -602,6 +635,13 @@ class PulseV1(BaseModel):
     avisos: list[str]  # o que ficou de fora e por quê, como o app atual mostra
     sem_estrategias: str  # a frase de quando não há backtest salvo
     notas: list[str]  # os limites do Pulse que valem para esta parte
+    # null: a leitura falhou agora e a visita não foi marcada (nada se perde)
+    acontecimentos: list[AcontecimentoV1] | None
+    variacoes: list[VariacaoV1]  # a maior mudança (para cima ou para baixo) primeiro
+    avisos_dos_ativos: list[str]  # os ativos que ficaram de fora do Pulse
+    sem_variacao: list[str]  # sem pregão novo ou sem preço desde a visita
+    sem_ativos: str  # a frase de quando não há nenhum ativo guardado
+    nota_da_variacao: str  # de onde a onde a variação é medida
 
 
 # --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------

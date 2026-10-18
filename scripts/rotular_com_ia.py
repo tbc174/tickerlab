@@ -626,6 +626,9 @@ def vazamento(
     rotulos = ler_rotulos(pasta)
     distintas: Counter[str] = Counter()
     comuns: Counter[str] = Counter()
+    com_marcador = Counter(
+        {m: 0 for m in ri.MARCADORES}
+    )  # v3: documentos com cada marcador
     com_distinta, com_comum = [], []
     for i in (i for i in ids if i in por_id):
         evento = por_id[i]
@@ -636,6 +639,7 @@ def vazamento(
         ficam = ri.palavras_comuns_que_ficam(lido, nome)
         distintas.update(achadas)
         comuns.update(ficam)
+        com_marcador.update(ri.marcadores(lido).keys())
         if achadas:
             com_distinta.append(i)
         if ficam:
@@ -647,6 +651,7 @@ def vazamento(
         "palavras_distintas": dict(distintas.most_common(30)),
         "palavras_comuns": dict(comuns.most_common(30)),
         "eventos_com_palavra_distinta": com_distinta[:100],
+        "documentos_com_marcador": dict(com_marcador),
         "versao_do_prompt": ri.VERSAO_DO_PROMPT,
         "medido_em": datetime.now(FUSO).isoformat(timespec="seconds"),
     }
@@ -681,32 +686,36 @@ def identificar(
     `<pasta>/identificacao.json` (passe ou não, conta como tentativa)."""
     faltam = _pedidos_de_identificacao(eventos, pasta, ids, so_fatos)
     manifesto = ler_manifesto(pasta)
-    conferir_teto(
-        manifesto,
-        custo_na_hora(cliente, [p for _, p in faltam], SAIDA_POR_IDENTIFICACAO),
-        teto,
-    )
+    # O teto vale para o gasto real, conferido antes de cada envio (ADR 0072, Emenda 2): a estimativa
+    # a preço cheio fica ~2x acima do real (a resposta é curta e o sistema vem do cache), e um envio
+    # a mais não pode passar do teto. O gasto fica no manifesto mesmo se o teto parar a rodada.
+    por_envio = custo_na_hora(
+        cliente, [p for _, p in faltam], SAIDA_POR_IDENTIFICACAO
+    ) / max(len(faltam), 1)
     gasto = 0.0
-    with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
-        for evento, parametros in faltam:
-            mensagem = cliente.messages.create(**parametros)
-            bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
-            palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
-            linha = {
-                "evento_id": evento["id"],
-                "palpite": palpite,
-                "identificou": ar.identificou(palpite, evento.get("empresa") or ""),
-            }
-            arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
-            gasto += _custo_da_resposta(mensagem.usage, lote=False)
-    identificacoes = ler_identificacoes(pasta) or {}
-    anterior = manifesto.get("identificacao", {}).get("gasto", 0.0)
-    manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
-    manifesto["identificacao"] = {
-        "eventos": len(identificacoes),
-        "gasto": anterior + gasto,
-    }
-    gravar_manifesto(pasta, manifesto, eventos)
+    try:
+        with (pasta / "identificacoes.jsonl").open("a", encoding="utf-8") as arquivo:
+            for evento, parametros in faltam:
+                conferir_teto(manifesto, gasto + por_envio, teto)
+                mensagem = cliente.messages.create(**parametros)
+                bruta = next((b.text for b in mensagem.content if b.type == "text"), "")
+                palpite = ri.palpite_da_identificacao(mensagem.stop_reason, bruta)
+                linha = {
+                    "evento_id": evento["id"],
+                    "palpite": palpite,
+                    "identificou": ar.identificou(palpite, evento.get("empresa") or ""),
+                }
+                arquivo.write(json.dumps(linha, ensure_ascii=False) + "\n")
+                gasto += _custo_da_resposta(mensagem.usage, lote=False)
+    finally:
+        identificacoes = ler_identificacoes(pasta) or {}
+        anterior = manifesto.get("identificacao", {}).get("gasto", 0.0)
+        manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
+        manifesto["identificacao"] = {
+            "eventos": len(identificacoes),
+            "gasto": anterior + gasto,
+        }
+        gravar_manifesto(pasta, manifesto, eventos)
     veredito = ar.veredito_da_identificacao(identificacoes, ids)
     (pasta / ARQUIVO_DA_IDENTIFICACAO).write_text(
         json.dumps(
@@ -1000,6 +1009,8 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
     eventos = ler_eventos(opcoes.eventos)
+    # v3: as outras empresas do cadastro inteiro viram [OUTRA EMPRESA], antes de qualquer filtro
+    ri.definir_outras_empresas(e.get("empresa") or "" for e in eventos)
     opcoes.pasta.mkdir(parents=True, exist_ok=True)
     if opcoes.passo == "comparar":
         veredito = comparar(opcoes.pasta, eventos)
@@ -1025,6 +1036,7 @@ def main(argv: list[str] | None = None) -> int:
             f"Com palavra comum do nome (fica de propósito): {r['com_palavra_comum']}",
             r["palavras_comuns"],
         )
+        print("Documentos com cada marcador (v3):", r["documentos_com_marcador"])
         return 0
     modelo = opcoes.modelo
     if (

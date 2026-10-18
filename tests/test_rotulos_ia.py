@@ -397,3 +397,197 @@ def test_sem_conferir_o_trecho_a_lista_fechada_continua_valendo():
     )
     erro = ri.interpretar(_resposta(nota=9), FATO, TEXTO, conferir_trecho=False)
     assert isinstance(erro, ri.ErroDeRotulo) and "nota" in erro.motivo
+
+
+# --- prompt v3 (17/10/2026, ADR 0072 Emenda 2): o conteúdo também é anonimizado -----------
+
+SABESP = "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO"
+
+
+def test_versao_do_prompt_v3():
+    assert ri.VERSAO_DO_PROMPT == "3" and ri.GUIA == "v2"
+
+
+@pytest.mark.parametrize(
+    "nome, texto, esperado",
+    [
+        # o cadastro abrevia (CIA, IND, COM) e tira os conectivos; o texto escreve por extenso
+        (SABESP, "A Companhia de Saneamento Básico do Estado de São Paulo informa.",
+         "A [EMPRESA] informa."),
+        ("COMPANHIA PARANAENSE DE ENERGIA - COPEL", "A Cia. Paranaense de Energia e a Copel.",
+         "A [EMPRESA] e a [EMPRESA]."),
+        ("METALURGICA GERDAU S.A.", "Metalúrgica Gerdau S.A. comunica.", "[EMPRESA] comunica."),
+        ("IND E COM DE ALIMENTOS ALFA S.A.", "Indústria e Comércio de Alimentos Alfa S/A informa.",
+         "[EMPRESA] informa."),
+    ],
+)  # fmt: skip
+def test_abreviacao_do_cadastro_tambem_e_trocada_por_extenso(nome, texto, esperado):
+    assert ri.anonimizar(texto, [nome]) == esperado
+
+
+def test_apelido_definido_depois_do_nome_e_trocado_no_texto_inteiro():
+    texto = (
+        'A Companhia de Saneamento Básico do Estado de São Paulo ("Sabesp" ou "Companhia") '
+        "informa. A Sabesp pagou; a Companhia segue."
+    )
+    assert ri.anonimizar(texto, [SABESP]) == (
+        'A [EMPRESA] ("[EMPRESA]" ou "Companhia") informa. A [EMPRESA] pagou; a Companhia segue.'
+    )
+    nome = "FERROVIA NORTE SUL S.A."
+    texto = "A Ferrovia Norte Sul S.A. (“FNS”) comunica que a FNS concluiu."
+    assert (
+        ri.anonimizar(texto, [nome])
+        == "A [EMPRESA] (“[EMPRESA]”) comunica que a [EMPRESA] concluiu."
+    )
+
+
+def test_enderecos_eletronicos_somem():
+    texto = (
+        "Mais em ri.bravaenergia.com, www.ri.alfa.com.br/docs e ri@alfa.com.br. Fim."
+    )
+    assert ri.anonimizar(texto, []) == (
+        f"Mais em {ri.ENDERECO}, {ri.ENDERECO} e {ri.ENDERECO}. Fim."
+    )
+
+
+def test_codigos_de_outras_bolsas_e_numeros_de_registro():
+    texto = (
+        "Ações (NYSE: GOL; OTCQX: LZRFY; ADR Nível II: ABCD) e NIRE 33.300.294.597, "
+        "Código CVM nº 1234, processo 1001409-24.2022.8.26.0260."
+    )
+    saida = ri.anonimizar(texto, [])
+    for pedaco in ("GOL", "LZRFY", "ABCD", "33.300.294.597", "1234", "1001409"):
+        assert pedaco not in saida
+    assert saida.count(ri.CODIGO) == 3 and saida.count(ri.NUMERO) == 3
+
+
+@pytest.mark.parametrize(
+    "texto, esperado",
+    [
+        ("Caxias do Sul, 31 de julho de 2024.", "[LOCAL], 31 de julho de 2024."),
+        ("A fábrica de Dias D'Ávila (BA) e a de São Luís/MA param.",
+         "A fábrica de [LOCAL] e a de [LOCAL] param."),
+        ("Sede na Avenida Paulista, 1000, 10º andar, CEP 01310-100, São Paulo.",
+         "Sede na [LOCAL], 10º andar, CEP [LOCAL], [LOCAL]."),
+        ("Com atuação em Minas Gerais e no Estado do Rio de Janeiro.",
+         "Com atuação em [LOCAL] e no Estado do [LOCAL]."),
+        ("A sigla RI e as Relações com Investidores (RI) ficam.",
+         "A sigla RI e as Relações com Investidores (RI) ficam."),
+    ],
+)  # fmt: skip
+def test_lugares_somem_e_a_data_fica(texto, esperado):
+    assert ri.anonimizar(texto, []) == esperado
+
+
+def test_outras_empresas_do_cadastro_viram_outro_marcador():
+    outras = ["GOL LINHAS AEREAS INTELIGENTES S.A.", "VALE S.A.", "COSAN S.A.", SABESP]
+    texto = (
+        "A Gol Linhas Aéreas Inteligentes S.A. e a Cosan assinaram; vale lembrar que a Vale "
+        "não participou. A Companhia de Saneamento Básico do Estado de São Paulo também não."
+    )
+    assert ri.anonimizar(texto, [SABESP], outras) == (
+        "A [OUTRA EMPRESA] e a [OUTRA EMPRESA] assinaram; vale lembrar que a Vale "
+        "não participou. A [EMPRESA] também não."
+    )
+
+
+def test_outras_empresas_pelo_sufixo_e_pelo_grupo():
+    texto = (
+        "Comprou a Metalsur Carrocerias S.R.L. e a 3R Petroleum Óleo e Gás S.A., do Grupo "
+        "Carrefour Brasil, assessorada pela Moelis & Company LLC."
+    )
+    assert ri.anonimizar(texto, []) == (
+        "Comprou a [OUTRA EMPRESA] e a [OUTRA EMPRESA], do [OUTRA EMPRESA], "
+        "assessorada pela [OUTRA EMPRESA]."
+    )
+
+
+def test_caixa_alta_nao_escapa_do_v3():
+    """Os documentos da CVM vêm muitas vezes em caixa alta: conectivos e datação também."""
+    texto = (
+        "BANCO DO BRASIL S.A. e a IND E COM DE ALIMENTOS BOA S.A. assinaram em "
+        "DIAS D'ÁVILA, 21 DE JANEIRO DE 2025."
+    )
+    ri.definir_outras_empresas(["BANCO DO BRASIL S.A."])
+    try:
+        assert ri.anonimizar(texto, ["IND E COM DE ALIMENTOS BOA S.A."]) == (
+            "[OUTRA EMPRESA] e a [EMPRESA] assinaram em [LOCAL], 21 DE JANEIRO DE 2025."
+        )
+    finally:
+        ri.definir_outras_empresas([])
+
+
+def test_apelido_vale_para_quem_o_documento_definiu():
+    """ "GOL" é o apelido da Gol (outra empresa), não da Smiles (a empresa do documento); e
+    "Grupo Ad Hoc" não é apelido de ninguém: não engole "um grupo ad hoc de titulares" (em
+    maiúsculas vira [OUTRA EMPRESA] pela regra do "Grupo", o que só esconde mais)."""
+    texto = (
+        "Smiles Fidelidade S.A. (“Smiles”) informa que a Gol Linhas Aéreas Inteligentes S.A. "
+        "(“GOL”) negocia com um grupo ad hoc de titulares (“Grupo Ad Hoc”). A GOL e a Smiles "
+        "seguem; o Grupo Ad Hoc também."
+    )
+    ri.definir_outras_empresas(["GOL LINHAS AEREAS INTELIGENTES S.A."])
+    try:
+        assert ri.anonimizar(texto, ["SMILES FIDELIDADE S.A."]) == (
+            "[EMPRESA] (“[EMPRESA]”) informa que a [OUTRA EMPRESA] (“[OUTRA EMPRESA]”) negocia "
+            "com um grupo ad hoc de titulares (“[OUTRA EMPRESA]”). A [OUTRA EMPRESA] e a [EMPRESA] "
+            "seguem; o [OUTRA EMPRESA] também."
+        )
+    finally:
+        ri.definir_outras_empresas([])
+
+
+def test_sobrenome_de_pessoa_nao_vira_outra_empresa():
+    """A pessoa é mascarada antes das outras empresas: "José Vale Valiati" não vira
+    "José [OUTRA EMPRESA] Valiati"."""
+    ri.definir_outras_empresas(["VALE S.A."])
+    try:
+        texto = "Comunicado assinado por José Vale Valiati, Diretor de Relações com Investidores."
+        assert ri.anonimizar(texto, []) == (
+            "Comunicado assinado por [pessoa], Diretor de Relações com Investidores."
+        )
+    finally:
+        ri.definir_outras_empresas([])
+
+
+def test_pessoas_junto_do_cargo_viram_marcador():
+    texto = "Comunicado assinado por João da Silva Santos, Diretor de Relações com Investidores."
+    assert ri.anonimizar(texto, []) == (
+        f"Comunicado assinado por {ri.PESSOA}, Diretor de Relações com Investidores."
+    )
+
+
+def test_o_que_a_nota_precisa_fica():
+    texto = (
+        "Em 31 de julho de 2024, nos termos da Lei 11.101/2005 e da Resolução CVM 80, "
+        "a Companhia vendeu 60% por R$ 80 milhões (12,5% da receita), 3 usinas de cobre refinado."
+    )
+    assert ri.anonimizar(texto, [SABESP]) == texto
+
+
+def test_documento_usa_o_cadastro_da_fila_como_outras_empresas(monkeypatch):
+    monkeypatch.setattr(ri, "OUTRAS_EMPRESAS", ())
+    ri.definir_outras_empresas(
+        ["GOL LINHAS AEREAS INTELIGENTES S.A.", FATO["empresa"], ""]
+    )
+    assert (
+        "GOL LINHAS AEREAS INTELIGENTES S.A.",
+        FATO["empresa"],
+    ) == ri.OUTRAS_EMPRESAS
+    evento = {**FATO, "assunto": "Parceria com a Gol Linhas Aéreas Inteligentes"}
+    lido = ri.documento(
+        evento, "A Viver e a Gol Linhas Aéreas Inteligentes S.A. assinaram."
+    )
+    assert "Gol" not in lido and "Viver" not in lido
+    assert lido.count(ri.OUTRA_EMPRESA) == 2 and ri.EMPRESA in lido
+
+
+def test_prompts_explicam_os_marcadores_novos():
+    for sistema in (ri.SISTEMA, ri.SISTEMA_DA_IDENTIFICACAO):
+        for marcador in (ri.OUTRA_EMPRESA, ri.LOCAL, ri.PESSOA, ri.ENDERECO, ri.NUMERO):
+            assert marcador in sistema
+
+
+def test_marcadores_do_documento_sao_contados():
+    texto = f"A {ri.EMPRESA} e a {ri.OUTRA_EMPRESA} em {ri.LOCAL}; {ri.OUTRA_EMPRESA}."
+    assert ri.marcadores(texto) == {ri.EMPRESA: 1, ri.OUTRA_EMPRESA: 2, ri.LOCAL: 1}

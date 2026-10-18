@@ -35,7 +35,7 @@ PRECO_DO_HAIKU = ri.Modelo(0.10, 0.50, 0.1, SAIDA_ESTIMADA_POR_RELEASE)
 
 TRECHO_AUSENTE = "trecho_ausente"
 NUMERO_FORA_DO_TRECHO = "numero_fora_do_trecho"
-PESSOA = "[pessoa]"
+PESSOA = ri.PESSOA
 
 Linha = Literal[
     "receita_liquida", "lucro_liquido_controladores", "resultado_operacional"
@@ -129,29 +129,9 @@ def conferir(leitura: LeituraDoRelease, texto: str) -> LeituraConferida:
     return LeituraConferida(linhas, ajustes, descartes)
 
 
-# --- máscara de pessoas ----------------------------------------------------------------------
+# --- máscara de pessoas (desde o prompt v3 dos rótulos, 17/10/2026, mora em `src/rotulos_ia.py`) ---
 
-_MAIUSCULA = "A-ZÁÉÍÓÚÂÊÔÃÕÇ"
-_MINUSCULA = "a-záéíóúâêôãõç"
-_PALAVRA_DE_NOME = rf"[{_MAIUSCULA}][{_MINUSCULA}]+"
-_NOME = rf"{_PALAVRA_DE_NOME}(?:\s+(?:d[aeo]s?\s+)?{_PALAVRA_DE_NOME})+"
-_CARGO = (
-    r"(?:Vice-Presidente|Presidente|Diretor(?:a)?(?:-\w+)?|CEO|CFO|COO|CIO|Superintendente|"
-    r"Gerente|Head)"
-    rf"(?:\s+d[aeo]s?\s+[{_MAIUSCULA}]\w+(?:\s+(?:com|d[aeo]s?)?\s*[{_MAIUSCULA}]?\w+){{0,3}})?"
-)
-_NOME_DEPOIS_DO_CARGO = re.compile(rf"(?P<cargo>\b{_CARGO})(?P<sep>[\s,:]+){_NOME}")
-_NOME_ANTES_DO_CARGO = re.compile(rf"{_NOME}(?=\s*[,(–-]?\s*{_CARGO})")
-
-
-def mascarar_pessoas(texto: str) -> str:
-    """Troca por "[pessoa]" os nomes escritos junto de um cargo ("CFO Maria Souza", "João Silva,
-    Diretor-Presidente"). Só pessoas: o nome da empresa fica, porque a saída é número e não
-    julgamento (0087, regra 5). É uma heurística; o guia também manda não copiar nomes."""
-    texto = _NOME_DEPOIS_DO_CARGO.sub(
-        lambda m: f"{m['cargo']}{m['sep']}{PESSOA}", texto
-    )
-    return _NOME_ANTES_DO_CARGO.sub(PESSOA, texto)
+mascarar_pessoas = ri.mascarar_pessoas
 
 
 # --- pedido e custo --------------------------------------------------------------------------

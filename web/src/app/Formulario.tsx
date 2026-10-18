@@ -287,85 +287,107 @@ interface Propriedades {
   entradas: EntradaDoContrato[];
   valores: Record<string, string>;
   aoAnalisar(valores: Record<string, string>): void;
+  // campos que a tela já mostra em outro lugar (ex.: a barra do ativo): somem do formulário, mas os valores
+  // continuam indo no envio e no endereço
+  ocultar?: string[];
 }
 
-export function Formulario({ entradas, valores, aoAnalisar }: Propriedades) {
+// Os campos do dia a dia ficam à vista; o resto vai para "Opções avançadas" (ADR 0096). A comparação, os ajustes
+// da estratégia e o filtro da linha do tempo são o assunto da tela: ficam à vista também.
+const A_VISTA = new Set(["ticker", "periodo", "estrategia", "com", "parametros", "materialidade_minima"]);
+
+/** O valor do contrato quando a pessoa não mexe: o que valoresIniciais() devolve sem nada no endereço. */
+const padraoDoCampo = (e: EntradaDoContrato) => (e.padrao === null ? "" : String(e.padrao));
+
+export function Formulario({ entradas, valores, aoAnalisar, ocultar = [] }: Propriedades) {
   const [rascunho, setRascunho] = useState<Record<string, string>>(() => converter(valores, paraOCampo));
   const mudar = (nome: string, valor: string) => setRascunho((r) => ({ ...r, [nome]: valor }));
   const enviar = (evento: FormEvent) => {
     evento.preventDefault();
     aoAnalisar(converter(rascunho, doCampo, reaisDoCampo));
   };
+  const campo = (e: EntradaDoContrato) => {
+    if (e.tipo === LISTA) {
+      return <CampoDeAtivos key={e.nome} valor={rascunho[e.nome] ?? ""} aoMudar={(v) => mudar(e.nome, v)} />;
+    }
+    if (e.tipo === LIVRES) {
+      return (
+        <CampoDosLivres
+          key={e.nome}
+          estrategia={rascunho.estrategia ?? ""}
+          valor={rascunho[e.nome] ?? ""}
+          aoMudar={(v) => mudar(e.nome, v)}
+        />
+      );
+    }
+    if (e.tipo === OBJETO) {
+      return (
+        <CamposDaEstrategia
+          key={e.nome}
+          estrategia={rascunho.estrategia ?? ""}
+          valor={rascunho[e.nome] ?? ""}
+          aoMudar={(v) => mudar(e.nome, v)}
+        />
+      );
+    }
+    return (
+      <label key={e.nome} title={e.descricao}>
+        <span>{NOMES[e.nome] ?? e.nome}</span>
+        {e.nome === "estrategia" ? (
+          <select
+            value={rascunho.estrategia}
+            onChange={(ev) =>
+              setRascunho((r) => ({ ...r, estrategia: ev.target.value, parametros: padroesDa(ev.target.value), livres: "" }))
+            }
+          >
+            {GRUPOS.map((grupo) => (
+              <optgroup key={grupo} label={grupo}>
+                {estrategias
+                  .filter((s) => s.grupo === grupo)
+                  .map((s) => (
+                    <option key={s.nome}>{s.nome}</option>
+                  ))}
+              </optgroup>
+            ))}
+          </select>
+        ) : e.tipo === "opcao" || e.nome === "materialidade_minima" ? (
+          <select value={rascunho[e.nome]} onChange={(ev) => mudar(e.nome, ev.target.value)}>
+            {escolhas(e).map((o) => (
+              <option key={o.valor} value={o.valor}>
+                {o.nome}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={rascunho[e.nome] ?? ""}
+            onChange={(ev) => mudar(e.nome, ev.target.value)}
+            required={e.obrigatoria}
+            inputMode={e.tipo === "texto" ? "text" : "decimal"}
+            placeholder={DICAS[e.nome]}
+            {...(e.tipo === "inteiro" && e.minimo !== null ? { min: e.minimo } : {})}
+            {...(e.tipo === "inteiro" && e.maximo !== null ? { max: e.maximo } : {})}
+            type={e.tipo === "inteiro" ? "number" : "text"}
+            maxLength={e.tipo === "texto" ? 20 : undefined}
+          />
+        )}
+      </label>
+    );
+  };
+  const visiveis = entradas.filter((e) => !ocultar.includes(e.nome));
+  // campo obrigatório nunca fica escondido: o navegador não deixaria enviar sem dizer por quê
+  const avancados = visiveis.filter((e) => !A_VISTA.has(e.nome) && !e.obrigatoria);
+  // um valor fora do padrão no endereço abre a caixa: nada fica ligado sem a pessoa ver
+  const mexido = avancados.some((e) => valores[e.nome] !== undefined && valores[e.nome] !== padraoDoCampo(e));
   return (
     <form className="formulario-do-app" onSubmit={enviar}>
-      {entradas.map((e) => {
-        if (e.tipo === LISTA) {
-          return <CampoDeAtivos key={e.nome} valor={rascunho[e.nome] ?? ""} aoMudar={(v) => mudar(e.nome, v)} />;
-        }
-        if (e.tipo === LIVRES) {
-          return (
-            <CampoDosLivres
-              key={e.nome}
-              estrategia={rascunho.estrategia ?? ""}
-              valor={rascunho[e.nome] ?? ""}
-              aoMudar={(v) => mudar(e.nome, v)}
-            />
-          );
-        }
-        if (e.tipo === OBJETO) {
-          return (
-            <CamposDaEstrategia
-              key={e.nome}
-              estrategia={rascunho.estrategia ?? ""}
-              valor={rascunho[e.nome] ?? ""}
-              aoMudar={(v) => mudar(e.nome, v)}
-            />
-          );
-        }
-        return (
-          <label key={e.nome} title={e.descricao}>
-            <span>{NOMES[e.nome] ?? e.nome}</span>
-            {e.nome === "estrategia" ? (
-              <select
-                value={rascunho.estrategia}
-                onChange={(ev) =>
-                  setRascunho((r) => ({ ...r, estrategia: ev.target.value, parametros: padroesDa(ev.target.value), livres: "" }))
-                }
-              >
-                {GRUPOS.map((grupo) => (
-                  <optgroup key={grupo} label={grupo}>
-                    {estrategias
-                      .filter((s) => s.grupo === grupo)
-                      .map((s) => (
-                        <option key={s.nome}>{s.nome}</option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            ) : e.tipo === "opcao" || e.nome === "materialidade_minima" ? (
-              <select value={rascunho[e.nome]} onChange={(ev) => mudar(e.nome, ev.target.value)}>
-                {escolhas(e).map((o) => (
-                  <option key={o.valor} value={o.valor}>
-                    {o.nome}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                value={rascunho[e.nome] ?? ""}
-                onChange={(ev) => mudar(e.nome, ev.target.value)}
-                required={e.obrigatoria}
-                inputMode={e.tipo === "texto" ? "text" : "decimal"}
-                placeholder={DICAS[e.nome]}
-                {...(e.tipo === "inteiro" && e.minimo !== null ? { min: e.minimo } : {})}
-                {...(e.tipo === "inteiro" && e.maximo !== null ? { max: e.maximo } : {})}
-                type={e.tipo === "inteiro" ? "number" : "text"}
-                maxLength={e.tipo === "texto" ? 20 : undefined}
-              />
-            )}
-          </label>
-        );
-      })}
+      <div className="campos-do-formulario">{visiveis.filter((e) => !avancados.includes(e)).map(campo)}</div>
+      {avancados.length > 0 ? (
+        <details className="opcoes-avancadas" open={mexido || undefined}>
+          <summary>Opções avançadas</summary>
+          <div className="campos-do-formulario">{avancados.map(campo)}</div>
+        </details>
+      ) : null}
       <button className="botao primario" type="submit">
         Analisar
       </button>

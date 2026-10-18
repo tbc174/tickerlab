@@ -53,6 +53,7 @@ export function Risco({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<RiscoDoAtivoV1>
       pagina={pagina}
       carregando="Calculando o risco…"
+      esqueleto="grafico"
       resultado={(dados) => <Resultado dados={dados} />}
     />
   );
