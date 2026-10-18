@@ -317,3 +317,45 @@ export interface PulseV1 {
   sem_estrategias: string;
   notas: string[];
 }
+
+/** Um número do relatório da empresa, já escrito ("R$ 12,3 bi"), com a base e a nota. */
+export interface ItemDoRelatorioV1 {
+  chave: string;
+  nome: string;
+  texto: string;
+  valor: number | null;
+  unidade: string;
+  base: string;
+  motivo: string;
+  nota: string | null;
+  nota_texto: string;
+}
+
+/** Uma tabela com as células já escritas (como na página do Streamlit e no PDF). */
+export interface TabelaDoRelatorioV1 {
+  chave: string;
+  titulo: string;
+  colunas: string[];
+  linhas: string[][];
+}
+
+export interface SecaoDoRelatorioV1 {
+  chave: string;
+  titulo: string;
+  itens: ItemDoRelatorioV1[];
+  paragrafos: string[];
+  tabelas: TabelaDoRelatorioV1[];
+  trancada: boolean; // o plano não inclui a seção: só o título e o convite, sem números
+}
+
+export interface RelatorioDaEmpresaV1 {
+  empresa: string;
+  cnpj: string;
+  ticker: string;
+  setor: string;
+  grupo: string;
+  secoes: SecaoDoRelatorioV1[];
+  fontes: string[];
+  aviso_das_notas: string;
+  em_conferencia: boolean;
+}

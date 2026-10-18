@@ -48,6 +48,7 @@ from src.banco.dados_do_usuario import (
     salvar_simulacao,
 )
 from src.banco.eventos import Evento, eventos_dos_tickers
+from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
 from src.cdi import CDIIndisponivelError
@@ -56,6 +57,7 @@ from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
 from src.eventos import FONTE_IPE
+from src.eventos_sec import PREFIXO_DO_CIK
 from src.formatos import formatar, formato_da_metrica
 from src.indicadores import MOTIVO_SEM_ANUALIZAR
 from src.metricas import resumir_desempenho
@@ -67,6 +69,7 @@ from src.planos import (
     tabela_de_planos,
     texto_do_uso,
 )
+from src.relatorio_empresa import montar as montar_relatorio
 from src.simulacoes import (
     endereco_no_app_novo,
     restaurar_estado,
@@ -863,6 +866,55 @@ def montar_linha_do_tempo(
     return esquemas.LinhaDoTempoDoAtivoV1(
         ativo=esquemas.de_ativo(c), linha_do_tempo=esquemas.de_linha_do_tempo(linha)
     )
+
+
+# --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------
+
+SO_B3 = (
+    "O relatório completo é só das empresas da B3 (os padrões por setor e os proventos do FRE "
+    "vêm da CVM). Para empresas dos EUA, use os fundamentos."
+)
+SEM_DEMONSTRACOES = (
+    "Ainda não há demonstrações coletadas desta empresa. A coleta roda uma vez por dia."
+)
+SEM_COLETA = "As demonstrações ainda não foram coletadas neste servidor."
+PERIODO_DO_PRECO_NO_RELATORIO = "2y"
+
+
+def _preco_e_fechamentos(ticker: str) -> tuple[float | None, pd.Series | None]:
+    """O último preço e a série que o valuation e os múltiplos usam; vazios fora da B3 ou sem
+    cotação (o relatório então deixa esses números em branco)."""
+    if moeda_do_ticker(ticker) != "BRL":
+        return None, None
+    try:
+        fechamento = contexto.carregar_dados(ticker, PERIODO_DO_PRECO_NO_RELATORIO)[
+            "Close"
+        ]
+    except DadosIndisponiveisError:
+        return None, None
+    return float(fechamento.iloc[-1]), fechamento
+
+
+@router.get("/relatorio-empresa")
+def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEmpresaV1:
+    """O relatório da empresa do ticker, montado para o plano da conta: as seções da base de ML
+    só vêm com números para o Pro (as outras vêm trancadas, só com o título e o convite)."""
+    ticker = normalizar_ticker(ticker)
+    preco, fechamentos = _preco_e_fechamentos(ticker)
+    try:
+        with obter_engine().connect() as conexao:
+            entradas = entradas_do_relatorio(
+                conexao, ticker, preco=preco, fechamentos=fechamentos
+            )
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            raise HTTPException(status_code=404, detail=SEM_COLETA) from erro
+        raise
+    if entradas is None or entradas.cnpj.startswith(PREFIXO_DO_CIK):
+        raise HTTPException(status_code=404, detail=SO_B3)
+    if entradas.dados.contas.empty:
+        raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
+    return esquemas.de_relatorio_da_empresa(montar_relatorio(entradas, conta.plano))
 
 
 def openapi_v1() -> dict:

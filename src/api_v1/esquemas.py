@@ -16,7 +16,15 @@ from datetime import date, datetime
 import pandas as pd
 from pydantic import BaseModel
 
-from src import analises, catalogo, juros_e_inflacao, linha_do_tempo, topicos
+from src import (
+    analises,
+    catalogo,
+    dossie,
+    juros_e_inflacao,
+    linha_do_tempo,
+    relatorio_empresa,
+    topicos,
+)
 from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
@@ -594,3 +602,81 @@ class PulseV1(BaseModel):
     avisos: list[str]  # o que ficou de fora e por quê, como o app atual mostra
     sem_estrategias: str  # a frase de quando não há backtest salvo
     notas: list[str]  # os limites do Pulse que valem para esta parte
+
+
+# --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------
+
+
+class ItemDoRelatorioV1(BaseModel):
+    chave: str
+    nome: str
+    texto: str  # o número já escrito ("R$ 12,3 bi", "18,5%")
+    valor: float | None
+    unidade: str
+    base: str
+    motivo: str
+    nota: str | None
+    nota_texto: str
+
+
+class TabelaDoRelatorioV1(BaseModel):
+    """Uma tabela de uma seção, com o título e as células já escritas (como na página e no PDF)."""
+
+    chave: str
+    titulo: str
+    colunas: list[str]
+    linhas: list[list[str]]
+
+
+class SecaoDoRelatorioV1(BaseModel):
+    chave: str
+    titulo: str
+    itens: list[ItemDoRelatorioV1]
+    paragrafos: list[str]
+    tabelas: list[TabelaDoRelatorioV1]
+    trancada: bool  # o plano não inclui a seção: só o título e o convite (sem números)
+
+
+class RelatorioDaEmpresaV1(BaseModel):
+    empresa: str
+    cnpj: str
+    ticker: str
+    setor: str
+    grupo: str
+    secoes: list[SecaoDoRelatorioV1]
+    fontes: list[str]
+    aviso_das_notas: str
+    em_conferencia: bool
+
+
+def _titulo_da_tabela(chave: str) -> str:
+    if chave in dossie.TITULOS_DAS_TABELAS:
+        return dossie.titulo_da_tabela(chave)
+    return relatorio_empresa.nome_da_tabela(chave)
+
+
+def _tabela_do_relatorio(chave: str, linhas: list[dict]) -> TabelaDoRelatorioV1:
+    colunas = list(linhas[0])
+    return TabelaDoRelatorioV1(
+        chave=chave,
+        titulo=_titulo_da_tabela(chave),
+        colunas=[relatorio_empresa.rotulo_da_coluna(c) for c in colunas],
+        linhas=[
+            [relatorio_empresa.escrever_celula(linha.get(c)) for c in colunas]
+            for linha in linhas
+        ],
+    )
+
+
+def de_relatorio_da_empresa(
+    relatorio: relatorio_empresa.Relatorio,
+) -> RelatorioDaEmpresaV1:
+    """O relatório montado (já trancado para o plano de quem vê) no formato da API."""
+    dados = relatorio.como_dict()
+    for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
+        secao["tabelas"] = [
+            _tabela_do_relatorio(chave, linhas).model_dump()
+            for chave, linhas in original.tabelas.items()
+            if linhas
+        ]
+    return RelatorioDaEmpresaV1.model_validate(dados)
