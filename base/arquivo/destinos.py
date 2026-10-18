@@ -154,6 +154,9 @@ DESTINOS: dict[str, Destino] = {
     "tce-pr-pit": _planejada(
         "sinais/PR1-3", "contratos e licitações dos municípios do Paraná"
     ),
+    "tce-pr-despesa": _planejada(
+        "sinais/PR2-3", "empenhos, liquidações e pagamentos dos municípios do Paraná"
+    ),
     "ibama-autos": _planejada("serie-T/T5", "autos de infração ambiental por CNPJ"),
     "ibama-embargos": _planejada("serie-T/T5", "embargos ambientais por CNPJ"),
     "mte-lista-suja": _planejada("serie-T/T5", "cadastro de empregadores (só PJ)"),

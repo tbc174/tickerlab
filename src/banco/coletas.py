@@ -84,6 +84,7 @@ LICENCAS = {
     # finalidade ou atividade, no limite das restrições legais"; sem pessoas (ADR 0075)
     "tce-pr": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-pr-pit": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
+    "tce-pr-despesa": "Livre para qualquer finalidade (regras do TCE-PR; citar). Sem nomes nem CPF",
     "tce-rs-empenhos": "CC BY (empenhos do TCE-RS; citar o TCE-RS)",
     "tce-rs": "LicitaCon do TCE-RS: licença a confirmar com a Ouvidoria (ADR 0085)",
 }
@@ -158,6 +159,7 @@ REVENDA = {
     # o "tce" sozinho não diz qual tribunal
     "tce-pr": VENDAVEL_COM_ATRIBUICAO,
     "tce-pr-pit": VENDAVEL_COM_ATRIBUICAO,
+    "tce-pr-despesa": VENDAVEL_COM_ATRIBUICAO,
     "tce-rs-empenhos": VENDAVEL_COM_ATRIBUICAO,  # CC BY
     "tce-rs": A_CONFIRMAR,  # LicitaCon: esperando a Ouvidoria
 }
