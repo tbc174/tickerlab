@@ -123,16 +123,37 @@ def test_admin_prepara_e_baixa_pela_tela(banco, monkeypatch, pessoas):
         assert auditoria.listar_recentes(c)[0].acao == exp.ACAO_ACERVO_EXPORTADO
 
 
-def test_serie_nao_comercial_sem_a_marca_de_uso_interno_da_erro(banco, pessoas):
-    """A trava das licenças (ADR 0008, Emenda 1): o IGP-M é da FGV, mesmo vindo do SGS do BC. Se a
-    série perder a marca `uso_interno`, a exportação dá erro em vez de sair."""
-    from src.banco.coletas import LicencaNaoPermiteError
-
-    chefe, _ = pessoas
+def _gravar_o_igpm(banco):
     igpm = SerieDoAcervo("bcb-sgs-189", "IGP-M", "% no mês", "mensal")
     with banco.begin() as c:
         acervo_de_series.garantir_serie(c, igpm)
         valores = pd.Series([0.5], index=[pd.Timestamp("2026-09-01")])
         acervo_de_series.gravar(c, igpm.codigo, valores, date(2026, 10, 10))
-    with banco.begin() as c, pytest.raises(LicencaNaoPermiteError, match="bcb-sgs-189"):
+
+
+def test_serie_nao_comercial_sai_com_a_marca_registrada(banco, pessoas):
+    """ADR 0102: o IGP-M é da FGV ("não comercial"), mesmo vindo do SGS do BC; a marca fica
+    registrada e a série sai, com a fonte citada."""
+    from src.banco import coletas
+
+    chefe, _ = pessoas
+    _gravar_o_igpm(banco)
+    assert coletas.marca_da_fonte("bcb-sgs-189") == coletas.Marca.NAO_COMERCIAL
+    with banco.begin() as c:
+        _, conteudo = exp.exportar(c, chefe.id, "series", "csv", AGORA)
+    tabela = pd.read_csv(io.BytesIO(_abrir(conteudo)["tickerlab-series-20261013.csv"]))
+    assert "bcb-sgs-189" in set(tabela["serie"])
+
+
+def test_serie_com_fonte_fora_dos_usos_da_erro(banco, pessoas, monkeypatch):
+    """A trava das licenças segue viva para a lista `FONTES_FORA_DOS_USOS` (hoje só a B3)."""
+    from src.banco import coletas
+
+    chefe, _ = pessoas
+    _gravar_o_igpm(banco)
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "bcb"}))
+    with (
+        banco.begin() as c,
+        pytest.raises(coletas.LicencaNaoPermiteError, match="bcb-sgs-189"),
+    ):
         exp.exportar(c, chefe.id, "series", "csv", AGORA)

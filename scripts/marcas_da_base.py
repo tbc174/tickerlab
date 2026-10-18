@@ -3,8 +3,9 @@
     python -m scripts.marcas_da_base --base <acervo>/base [--so-barradas]
 
 Para cada tabela (a pasta, ou a pasta e o nome quando a pasta guarda várias), a marca mais restrita
-dos arquivos dela, as fontes e os endereços sem fonte conhecida (`base/licenca.py`). As que não podem
-entrar em modelo ("não comercial" e "a confirmar") vêm primeiro. Versões antigas (`.vN`) ficam de fora.
+dos arquivos dela, as fontes e os endereços sem fonte conhecida (`base/licenca.py`). As que ficam
+fora dos usos (fonte da B3, ADR 0102) vêm primeiro; a marca das outras é informação. Versões antigas
+(`.vN`) ficam de fora.
 """
 
 import argparse
@@ -14,7 +15,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from base.licenca import Licenca, licenca_da_tabela
-from src.banco.coletas import PODEM_ENTRAR, marca_mais_restrita
+from src.banco.coletas import fora_dos_usos, marca_mais_restrita
 
 POR_PERIODO = re.compile(r"^\d{4}(-?\d{2}){0,2}$")  # 2024, 2024-09, 200003, 2026-10-13
 VERSAO_ANTIGA = re.compile(r"\.v\d+$")
@@ -41,7 +42,7 @@ def licencas_por_tabela(base: Path) -> dict[str, Licenca]:
 
 def em_texto(licencas: dict[str, Licenca], so_barradas: bool = False) -> str:
     def barrada(licenca: Licenca) -> bool:
-        return licenca.marca not in PODEM_ENTRAR
+        return any(fora_dos_usos(fonte) for fonte in licenca.fontes)
 
     linhas = []
     for nome, licenca in sorted(
@@ -56,8 +57,9 @@ def em_texto(licencas: dict[str, Licenca], so_barradas: bool = False) -> str:
             linha += f"  sem fonte ({len(licenca.sem_fonte)}): {exemplos}"
         linhas.append(linha)
     marcas = [licenca.marca for licenca in licencas.values()]
+    barradas = sum(barrada(licenca) for licenca in licencas.values())
     linhas.append(
-        f"{len(licencas)} tabelas; {sum(m not in PODEM_ENTRAR for m in marcas)} fora dos modelos; "
+        f"{len(licencas)} tabelas; {barradas} fora dos usos (B3); "
         f"a base inteira: {marca_mais_restrita(marcas).value}"
     )
     return "\n".join(linhas)

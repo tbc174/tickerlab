@@ -7,9 +7,8 @@ no servidor de casa (`scripts/gerar_dossies.py`), uma ficha JSON por CNPJ, e só
 **Só entra o que pode ser mostrado a quem paga** (`pode_mostrar`):
 
 - a tabela está no dicionário da base e **não guarda pessoa** (ADR 0075: nomes esperam a LGPD);
-- a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): vendável
-  ou "só uso interno" sempre; "a confirmar" e "não comercial" só nos usos de `USOS_SEM_COBRANCA`,
-  enquanto não há cobrança (ADR 0008, Emenda 3), e nunca a B3 (ADR 0019);
+- a fonte pode ser **mostrada** pela trava das licenças (`coletas.pode_usar("mostrar", ...)`): toda
+  fonte, com a marca registrada e a fonte citada (ADR 0102), menos a B3 (ADR 0019);
 - não é uma tabela de crise ou de risco com o nome da empresa (insolvência, atraso, situação especial,
   dívida com a União: esperam o parecer, P-44), nem das assessorias de M&A (licença a confirmar).
 

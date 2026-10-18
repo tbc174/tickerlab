@@ -13,8 +13,9 @@ das `origens` que o manifesto já guarda:
 Endereço que não casa com nenhuma fonte, tabela de entrada que sumiu ou tabela sem nenhuma origem entra
 em `sem_fonte` e vale como "a confirmar". O manifesto gravado antes desta trava não tem o campo: a marca é calculada na hora.
 
-`exigir_licenca_das_tabelas` e `exigir_licenca_das_origens` dão **erro** ao treinar, rotular ou
-exportar com fonte "não comercial" ou "a confirmar" (`coletas.exigir_licenca`).
+Desde a ADR 0102 a marca é informação: fica gravada e aparece no catálogo e na página Dados, mas
+não barra uso. `exigir_licenca_das_tabelas` e `exigir_licenca_das_origens` dão **erro** só com fonte
+fora dos usos (a B3; `coletas.exigir_licenca`).
 """
 
 import csv
@@ -243,23 +244,18 @@ def licenca_da_tabela(arquivo: Path) -> Licenca:
     return _da_tabela(arquivo, {arquivo})
 
 
-def _exigir(uso: str, licenca: Licenca, modelo: str | None, onde: str) -> None:
-    exigir_licenca(uso, [*licenca.fontes, *licenca.sem_fonte], modelo=modelo, onde=onde)
+def _exigir(uso: str, licenca: Licenca, onde: str) -> None:
+    exigir_licenca(uso, [*licenca.fontes, *licenca.sem_fonte], onde=onde)
 
 
-def exigir_licenca_das_tabelas(
-    uso: str, arquivos: Iterable[Path], modelo: str | None = None
-) -> None:
-    """Erro se alguma tabela tem fonte que não pode `uso` (a mensagem diz a tabela e a fonte)."""
+def exigir_licenca_das_tabelas(uso: str, arquivos: Iterable[Path]) -> None:
+    """Erro se alguma tabela tem fonte fora de `uso` (a mensagem diz a tabela e a fonte)."""
     for arquivo in arquivos:
-        _exigir(uso, licenca_da_tabela(arquivo), modelo, arquivo.as_posix())
+        _exigir(uso, licenca_da_tabela(arquivo), arquivo.as_posix())
 
 
 def exigir_licenca_das_origens(
-    uso: str,
-    origens: Sequence[Mapping[str, str]],
-    destino: Path,
-    modelo: str | None = None,
+    uso: str, origens: Sequence[Mapping[str, str]], destino: Path
 ) -> None:
-    """Erro antes de montar `destino` (ex.: a amostra de treino) com origens que não podem `uso`."""
-    _exigir(uso, _licenca(destino, origens, {destino}), modelo, destino.as_posix())
+    """Erro antes de montar `destino` (ex.: a amostra de treino) com origem fora de `uso`."""
+    _exigir(uso, _licenca(destino, origens, {destino}), destino.as_posix())
