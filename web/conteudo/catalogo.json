@@ -115,6 +115,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-10-18",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
@@ -174,7 +185,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 48
+      "tabelas": 49
     },
     {
       "chave": "credito_e_fidc",
@@ -402,6 +413,16 @@
       "orgao": "ANP",
       "situacao": "licenciada",
       "tabela": "anp_vendas"
+    },
+    {
+      "atraso": "O mês fecha cerca de 60 dias depois",
+      "frase": "Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-18",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "em consulta",
+      "tabela": "comex_cafe"
     },
     {
       "atraso": "O dia seguinte",
@@ -915,9 +936,9 @@
     }
   ],
   "totais": {
-    "fontes": 15,
-    "fontes_em_consulta": 4,
+    "fontes": 16,
+    "fontes_em_consulta": 5,
     "modulos": 6,
-    "tabelas": 71
+    "tabelas": 72
   }
 }

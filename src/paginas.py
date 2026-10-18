@@ -495,6 +495,16 @@ PAGINAS = (
         contrato=Contrato("GET", "/v1/juros-e-inflacao", (), "JurosEInflacaoV1"),
     ),
     Pagina(
+        "precos_de_referencia",
+        "Preços de referência",
+        GRUPO_RESEARCH,
+        ":material/grain:",
+        "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do "
+        "FMI, com a fonte e a data de cada número.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+    ),
+    Pagina(
         "linha_do_tempo",
         "Linha do tempo",
         GRUPO_RESEARCH,
