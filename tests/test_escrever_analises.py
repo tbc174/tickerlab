@@ -23,7 +23,8 @@ RESPOSTA = json.loads((PAR_DA_CPFL / "gabarito.json").read_text(encoding="utf-8"
     "analise"
 ]
 _ROTULO = re.compile(r"^\[([^\]]+)\] \(", re.MULTILINE)
-SEM_STREAMING_ATE = 21_333  # a SDK recusa `create` acima disto (pede streaming): 10 min a 128 mil/h
+# A SDK recusa `create` acima disto e pede streaming (10 minutos a 128 mil tokens por hora).
+SEM_STREAMING_ATE = 21_333
 
 
 def _mensagem(texto: str, stop="end_turn", entrada=30_000, saida_=9_000):
@@ -38,12 +39,15 @@ def _mensagem(texto: str, stop="end_turn", entrada=30_000, saida_=9_000):
 class ClienteDeMentira:
     """Escreve o gabarito e, na porta 2, dá `sustentada` a tudo (menos às frases de `ruins`)."""
 
-    def __init__(self, ruins: frozenset[str] = frozenset(), quebra_na: int | None = None):
+    def __init__(
+        self, ruins: frozenset[str] = frozenset(), quebra_na: int | None = None
+    ):
         self.criados: list[dict] = []
         self.lotes: list[list] = []
         self.estado = "in_progress"
         self.ruins = ruins
-        self.quebra_na = quebra_na  # a chamada (1, 2, ...) que falha, como uma queda da rede
+        # A chamada (1, 2, ...) que falha, como uma queda da rede.
+        self.quebra_na = quebra_na
         self.messages = SimpleNamespace(
             create=self._criar,
             stream=self._fluxo,
@@ -66,7 +70,9 @@ class ClienteDeMentira:
 
     def _criar(self, **params):
         if params["max_tokens"] > SEM_STREAMING_ATE:
-            raise ValueError("Streaming is required for operations that may take longer")
+            raise ValueError(
+                "Streaming is required for operations that may take longer"
+            )
         return self._responder(params)
 
     def _responder(self, params):
@@ -139,7 +145,8 @@ def test_queda_no_meio_guarda_o_que_ja_foi_pago(tmp_path):
     paga = ea.resposta_guardada(tmp_path, ENTRADA, pedido.HAIKU)
     assert paga is not None
     gasto = ea.ler_manifesto(tmp_path)["gasto_em_dolares"]
-    assert gasto == pytest.approx(paga["custo_em_dolares"])  # o teto conta o que já saiu
+    # O teto conta o que já saiu.
+    assert gasto == pytest.approx(paga["custo_em_dolares"])
 
 
 def test_resposta_guardada_nao_paga_de_novo(tmp_path):
@@ -247,3 +254,34 @@ def test_main_estimar_mostra_o_custo_sem_gastar(tmp_path, monkeypatch, capsys):
     assert ea.main([*argumentos, "--pasta", str(tmp_path), "--teto-dolares", "3"]) == 0
     assert "US$" in capsys.readouterr().out
     assert cliente.criados == []
+
+
+def test_teto_usa_o_pior_caso_da_saida(tmp_path):
+    """O raciocínio conta na saída e não aparece no texto: o teto supõe o `max_tokens` inteiro."""
+    preco = pedido.modelo_conhecido(pedido.SONNET)
+    so_a_saida = pedido.MAX_TOKENS_DA_RESPOSTA * preco.saida / 1e6
+    cliente = ClienteDeMentira()
+    with pytest.raises(ea.TetoPassado):
+        ea.piloto(cliente, [ENTRADA], tmp_path, [pedido.SONNET], teto=so_a_saida)
+    assert cliente.criados == []
+
+
+def test_linhagem_guarda_o_limite_e_os_blocos(tmp_path):
+    ea.piloto(ClienteDeMentira(), [ENTRADA], tmp_path, [pedido.SONNET], teto=3)
+    resposta = ea.resposta_guardada(tmp_path, ENTRADA, pedido.SONNET)
+    assert resposta is not None
+    assert resposta["max_tokens"] == pedido.MAX_TOKENS_DA_RESPOSTA
+    assert resposta["blocos"] == {"text": 1}
+
+
+def test_resposta_cortada_escreve_de_novo_quando_o_limite_sobe(tmp_path):
+    ea.piloto(ClienteDeMentira(), [ENTRADA], tmp_path, [pedido.SONNET], teto=3)
+    arquivo = ea.arquivo_da_resposta(tmp_path, ENTRADA, pedido.SONNET)
+    registro = json.loads(arquivo.read_text(encoding="utf-8"))
+    registro["stop_reason"] = "max_tokens"
+    arquivo.write_text(json.dumps(registro), encoding="utf-8")
+    # Com o mesmo limite, cortaria igual: fica a guardada.
+    assert ea.resposta_guardada(tmp_path, ENTRADA, pedido.SONNET) is not None
+    registro["max_tokens"] = pedido.MAX_TOKENS_DA_RESPOSTA // 2
+    arquivo.write_text(json.dumps(registro), encoding="utf-8")
+    assert ea.resposta_guardada(tmp_path, ENTRADA, pedido.SONNET) is None

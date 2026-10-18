@@ -26,9 +26,10 @@ MODELOS = {
     SONNET: ri.Modelo(2.00, 10.00, 0.1, 10_000),
     OPUS: ri.Modelo(4.00, 20.00, 0.05, 16_000),
 }
-MAX_TOKENS_DA_RESPOSTA = (
-    32_000  # 8 partes com notas e contas, mais a folga do raciocínio
-)
+# O raciocínio do modelo conta aqui e não aparece no texto: na 1ª prova da CPFL ele comeu de 20 mil
+# (Opus) a 32 mil (Haiku, que não chegou a escrever) dos 32 mil; as 8 partes ocupam ~9 mil.
+MAX_TOKENS_DA_RESPOSTA = 64_000
+CORTADA = "max_tokens"
 FIM_NORMAL = "end_turn"
 INSTRUCAO = "Escreva a análise completa desta ficha, nas 8 partes, no formato pedido."
 

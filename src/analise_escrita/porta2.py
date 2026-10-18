@@ -18,7 +18,8 @@ SUSTENTADA = "sustentada"
 FORA_DOS_DADOS = "nao_esta_nos_dados"
 JUIZO_DE_VALOR = "juizo_de_valor"
 VEREDITOS = (SUSTENTADA, FORA_DOS_DADOS, JUIZO_DE_VALOR)
-MAX_TOKENS_DO_VEREDITO = 16_000
+# O veredito de ~150 frases e o raciocínio do modelo, que conta aqui.
+MAX_TOKENS_DO_VEREDITO = 32_000
 INSTRUCAO = "Confira cada frase desta análise contra a ficha."
 
 SISTEMA = f"""Você confere, frase por frase, uma análise de uma companhia aberta brasileira escrita \

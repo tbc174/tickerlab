@@ -32,6 +32,7 @@ import json
 import logging
 import re
 import sys
+from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import asdict
 from datetime import datetime
@@ -57,7 +58,6 @@ log = logging.getLogger("tickerlab.analise_escrita")
 __all__ = ["TetoPassado"]
 
 # tokens de saída da porta 2, só para a estimativa: ~200 frases com rótulo, veredito e motivo curto
-SAIDA_ESTIMADA_DO_VEREDITO = 8_000
 LOTE_TERMINADO = "ended"
 SEM_A_PORTA_2 = "a porta 2 não conferiu esta resposta"
 _FORA_DO_NOME = re.compile(r"[^\w .()-]")
@@ -152,7 +152,15 @@ def resposta_guardada(
         return None
     if registro["versao_do_guia"] != pe.VERSAO_DO_GUIA:
         return None
+    if _cortada_com_limite_menor(registro):
+        return None
     return registro
+
+
+def _cortada_com_limite_menor(registro: dict[str, Any]) -> bool:
+    """Resposta cortada no limite vale de novo só se o limite subiu (com o mesmo, cortaria igual)."""
+    limite = registro.get("max_tokens", 0)
+    return registro["stop_reason"] == pe.CORTADA and limite < pe.MAX_TOKENS_DA_RESPOSTA
 
 
 def _sha256(texto: str) -> str:
@@ -180,20 +188,24 @@ def custo_da_resposta(tokens: dict[str, int], modelo: str, lote: bool) -> float:
 
 
 def _custo_estimado(
-    cliente: anthropic.Anthropic, parametros: dict[str, Any], saida_: int, lote: bool
+    cliente: anthropic.Anthropic, parametros: dict[str, Any], lote: bool
 ) -> float:
-    """A entrada contada pela API (não gasta), toda pelo preço de escrever no cache: fica um pouco
-    acima do real, para o teto nunca furar."""
+    """O pior caso, para o teto nunca furar: a entrada contada pela API (não gasta), toda pelo preço
+    de escrever no cache, e a saída do `max_tokens` inteiro (o raciocínio conta nela e não aparece
+    no texto)."""
     contados = cliente.messages.count_tokens(
         model=parametros["model"],
         system=parametros["system"],
         messages=parametros["messages"],
     ).input_tokens
     entrada = round(contados * PESO_DA_ESCRITA_NO_CACHE)
-    return pe.custo_em_dolares(entrada, saida_, parametros["model"], lote)
+    return pe.custo_em_dolares(
+        entrada, parametros["max_tokens"], parametros["model"], lote
+    )
 
 
-def _saida_estimada(modelo: str) -> int:
+def _tamanho_do_texto(modelo: str) -> int:
+    """Os tokens do texto que o escritor deve entregar (só o texto, sem o raciocínio)."""
     return pe.modelo_conhecido(modelo).saida_estimada_por_evento
 
 
@@ -202,10 +214,7 @@ def _estimativa_da_escrita(
     pares: list[tuple[dict[str, Any], str]],
     lote: bool,
 ) -> float:
-    return sum(
-        _custo_estimado(cliente, pe.pedido(e, m), _saida_estimada(m), lote)
-        for e, m in pares
-    )
+    return sum(_custo_estimado(cliente, pe.pedido(e, m), lote) for e, m in pares)
 
 
 def _estimativa_da_cega(
@@ -218,7 +227,7 @@ def _estimativa_da_cega(
     """`texto_a_mais`: antes da escrita, o texto ainda não existe; o molde faz as vezes dele e a
     saída estimada do escritor entra por cima (de novo, acima do real)."""
     parametros = porta2.pedido(analise, entrada, porta2.conferente(escritor))
-    custo = _custo_estimado(cliente, parametros, SAIDA_ESTIMADA_DO_VEREDITO, False)
+    custo = _custo_estimado(cliente, parametros, False)
     preco = pe.modelo_conhecido(parametros["model"])
     return custo + texto_a_mais * PESO_DA_ESCRITA_NO_CACHE * preco.entrada / 1_000_000
 
@@ -235,7 +244,7 @@ def estimar(
     for modelo in modelos:
         pares = _a_escrever(entradas, pasta, [modelo])
         cegas_ = sum(
-            _estimativa_da_cega(cliente, e, molde(e), modelo, _saida_estimada(modelo))
+            _estimativa_da_cega(cliente, e, molde(e), modelo, _tamanho_do_texto(modelo))
             for e, _ in pares
         )
         custos[modelo] = _estimativa_da_escrita(cliente, pares, lote) + cegas_
@@ -279,6 +288,8 @@ def _registro_da_resposta(
         "escrito_em": _agora(),
         "stop_reason": mensagem.stop_reason,
         "resposta_bruta": _texto_da_mensagem(mensagem),
+        "max_tokens": pe.MAX_TOKENS_DA_RESPOSTA,
+        "blocos": dict(Counter(bloco.type for bloco in mensagem.content)),
         "tokens": tokens,
         "custo_em_dolares": custo_da_resposta(tokens, modelo, lote),
     }
