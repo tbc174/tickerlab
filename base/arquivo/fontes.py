@@ -85,6 +85,8 @@ TERMOS = {
     "termos-fred": "https://fred.stlouisfed.org/legal/terms/",
     "termos-datajud": "https://datajud-wiki.cnj.jus.br/api-publica/termo-uso",
     "termos-sec": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+    # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
+    "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {
