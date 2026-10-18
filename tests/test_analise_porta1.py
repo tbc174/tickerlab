@@ -294,6 +294,7 @@ def test_palavra_proibida(texto):
         "A margem deve cair.",
         "A dívida tende a crescer.",
         "Esperamos melhora.",
+        "O lucro não vai cair.",
     ],
 )
 def test_previsao(texto):
@@ -307,11 +308,18 @@ def test_previsao(texto):
         "Nada aqui é recomendação de compra ou venda, preço-alvo ou previsão.",
         "A venda de energia no mercado livre.",
         "O recorde de 26,4% do ROE.",
+        "As notas não dizem o que vai acontecer.",
+        "Isso diz a distância até o limite, não o que vai acontecer com os números.",
     ],
 )
 def test_frases_permitidas(texto):
     notas = ("retorno.roe",) if "26,4%" in texto else ()
     assert _regras(saida.Frase(texto, notas)) == []
+
+
+def test_faixa_com_vai_de_nao_e_previsao():
+    frase = saida.Frase("A margem vai de 1,7% a 27,7% no período.")
+    assert "previsao" not in _regras(frase)
 
 
 def test_lacuna_obrigatoria_omitida_reprova_os_limites():

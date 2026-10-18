@@ -59,12 +59,14 @@ _MILHARES = re.compile(r"\d{1,3}(?:\.\d{3})+(?:,\d+)?")
 _ORDINAL = re.compile(r"\b\d+\s?[ºª°]")
 # "12 meses" é o nome de um período, como "trimestre"
 _PERIODO = re.compile(r"\b12 meses\b", re.IGNORECASE)
+# o guia pede "por cento" para as frações; "%" é o mesmo número
+_PORCENTAGEM = ("%", "por cento")
 _NUMERO = re.compile(
     r"(?<![\w.,])"
     + _SINAL
     + r"(?P<real>R\$\s?)?"
     + r"(?P<numero>\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)"
-    + r"(?P<depois>\s?(?:%|×|x\b)|\s(?:"
+    + r"(?P<depois>\s?(?:%|×|x\b)|\spor cento\b|\s(?:"
     + "|".join(sorted(ESCALAS, key=len, reverse=True))
     + r")\b)?"
     + r"(?![\w])",
@@ -166,7 +168,7 @@ def ler(texto: str) -> tuple[list[NumeroEscrito], list[DataEscrita]]:
             continue
         valor, tolerancia = _valor_e_tolerancia(achado["numero"])
         depois = (achado["depois"] or "").strip().lower()
-        escala = 0.01 if depois == "%" else ESCALAS.get(depois, 1.0)
+        escala = 0.01 if depois in _PORCENTAGEM else ESCALAS.get(depois, 1.0)
         sinal = -1.0 if achado["sinal"] else 1.0
         numeros.append(
             NumeroEscrito(

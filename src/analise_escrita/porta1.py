@@ -62,11 +62,16 @@ _PROIBIDAS_SEM_NEGACAO = re.compile(
 )
 _NEGACAO = re.compile(r"\b(?:nao|nada|nem|nenhum|nenhuma|sem|nunca)\b")
 _RECORDE = re.compile(r"\brecordes?\b")
+# "vai de 1,7% a 27,7%" é uma faixa, não um futuro
 _PREVISAO = re.compile(
-    r"\b(?:vai|vao|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
+    r"\b(?:vai(?! de \d)|vao|irao|tende[m]? a|esperamos|espera-se|prevemos|preve-se|projetamos|"
     r"projeta-se|projecao|projecoes|(?:deve|devem|devera|deverao|deveria|deveriam)\s+"
     r"(?:subir|cair|crescer|aumentar|diminuir|melhorar|piorar|recuar|avancar|voltar|"
     r"continuar|seguir|manter|ficar|chegar))\b"
+)
+# o aviso "as notas não dizem o que vai acontecer" nega a previsão em vez de fazê-la
+_AVISO_SEM_PREVISAO = re.compile(
+    r"\b(?:nao|nem)\b[^.;:]{0,40}\bo que (?:vai|vao) acontecer\b"
 )
 _PALAVRA_COM_MAIUSCULA = re.compile(r"[^\W\d_][\w'’]*")
 _FIM_DE_FRASE = re.compile(r"[.:!?]\s*$")
@@ -401,7 +406,8 @@ def _falhas_de_palavra(texto: str, tem_numero: bool) -> Iterator[tuple[str, str]
         proibidas += _RECORDE.findall(normal)
     if proibidas:
         yield PALAVRA, ", ".join(proibidas)
-    previsoes = [p.group(0) for p in _PREVISAO.finditer(normal)]
+    sem_aviso = _AVISO_SEM_PREVISAO.sub(" ", normal)
+    previsoes = [p.group(0) for p in _PREVISAO.finditer(sem_aviso)]
     if previsoes:
         yield PREVISAO, ", ".join(previsoes)
 
