@@ -3,6 +3,7 @@ dia não duplica, "como estava em D" e o Yahoo só para uso interno."""
 
 import json
 from datetime import date
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -85,6 +86,10 @@ def test_codigos_e_rotulos_das_series():
     assert coletor.serie_sgs("ipca").codigo == "bcb-sgs-433"
     assert coletor.serie_sgs("ipca").frequencia == "mensal"
     assert coletor.serie_sgs("dolar").frequencia == "diária"
+    # IC-Br (índice de commodities do BC): mensal, em índice, ids conferidos em 18/10/2026
+    assert coletor.serie_sgs("icbr").codigo == "bcb-sgs-27574"
+    assert coletor.serie_sgs("icbr_agro").codigo == "bcb-sgs-27575"
+    assert coletor.serie_sgs("icbr").frequencia == "mensal"
     assert coletor.rotulo_do_prazo(0.5) == "6m"
     assert coletor.rotulo_do_prazo(1.5 / 12) == "1.5m"
     assert coletor.rotulo_do_prazo(10.0) == "10a"
@@ -93,12 +98,14 @@ def test_codigos_e_rotulos_das_series():
 
 # --- coleta (BC, Tesouro e Yahoo falsos) --------------------------------------------------------
 class _Resposta:
-    def __init__(self, url: str, corpo: object, status: int = 200) -> None:
+    def __init__(
+        self, url: str, corpo: object, status: int = 200, content: bytes | None = None
+    ) -> None:
         self.url = url
         self.status_code = status
         self.ok = status < 400
         self.text = corpo if isinstance(corpo, str) else json.dumps(corpo)
-        self.content = self.text.encode()
+        self.content = self.text.encode() if content is None else content
         self._corpo = corpo
 
     def raise_for_status(self) -> None:
@@ -107,6 +114,15 @@ class _Resposta:
 
     def json(self) -> object:
         return self._corpo
+
+
+_PASTA = Path(__file__).parent.parent / "dados_de_exemplo" / "commodities"
+_PINK = (_PASTA / "pink_sheet_mensal.xlsx").read_bytes()
+FMI_CSV = (_PASTA / "fmi_pcps_mensal.csv").read_text(encoding="utf-8")
+_PAGINA_DO_PINK = (
+    '<a href="https://thedocs.worldbank.org/en/doc/x-0050012026/related/'
+    'CMO-Historical-Data-Monthly.xlsx">XLS</a>'
+)
 
 
 def _focus(data: str, mediana_2026: float) -> list[dict]:
@@ -139,6 +155,12 @@ def _fonte_falsa(pedidos: list, tesouro_fora: bool = False):
             return (
                 _Resposta(url, "erro", 503) if tesouro_fora else _Resposta(url, CURVA)
             )
+        if "commodity-markets" in url:
+            return _Resposta(url, _PAGINA_DO_PINK)
+        if url.endswith("CMO-Historical-Data-Monthly.xlsx"):
+            return _Resposta(url, "", content=_PINK)
+        if "api.imf.org" in url:
+            return _Resposta(url, FMI_CSV, content=FMI_CSV.encode())
         raise AssertionError(url)
 
     return buscar
@@ -172,7 +194,12 @@ def test_coleta_grava_todas_as_fontes_com_safra(banco):
         )
         assert len(acervo_de_series.como_estava_em(conexao, "yahoo-bvsp", HOJE)) == 2
         registradas = {linha.fonte for linha in ultimas(conexao, quantas=100)}
-    assert registradas == {"bcb-sgs", "bcb-ptax", "bcb-focus", "tesouro-eua"}
+    assert registradas == {
+        "bcb-sgs", "bcb-ptax", "bcb-focus", "tesouro-eua", "bm-pink", "fmi-pcps",
+    }  # fmt: skip
+    with banco.connect() as conexao:
+        assert acervo_de_series.tem_dados(conexao, "bm-pink-cafe-arabica")
+        assert acervo_de_series.tem_dados(conexao, "fmi-cafe-arabica")
 
 
 def test_segunda_coleta_do_dia_nao_grava_nada_e_pede_so_a_janela(banco):
@@ -188,6 +215,26 @@ def test_segunda_coleta_do_dia_nao_grava_nada_e_pede_so_a_janela(banco):
         )
     # já tem dados: o Tesouro pede só os anos da janela de revisão, não desde 2010
     assert sum("treasury" in p for p in pedidos) == 2
+
+
+def test_precos_de_referencia_so_voltam_na_janela_de_cada_fonte(banco):
+    coletor.coletar_tudo(
+        banco, HOJE, _fonte_falsa([]), _yahoo
+    )  # 13/10: vazio, coleta tudo
+    pedidos: list = []
+    assert coletor.coletar_tudo(
+        banco, date(2026, 10, 20), _fonte_falsa(pedidos), _yahoo
+    )
+    assert not any("worldbank" in p or "imf.org" in p for p in pedidos)
+    pedidos = []
+    assert coletor.coletar_tudo(banco, date(2026, 11, 3), _fonte_falsa(pedidos), _yahoo)
+    assert any("CMO-Historical" in p for p in pedidos)
+    assert not any("imf.org" in p for p in pedidos)
+    pedidos = []
+    assert coletor.coletar_tudo(
+        banco, date(2026, 11, 10), _fonte_falsa(pedidos), _yahoo
+    )
+    assert any("imf.org" in p for p in pedidos)
 
 
 def test_uma_fonte_fora_do_ar_nao_impede_as_outras(banco):

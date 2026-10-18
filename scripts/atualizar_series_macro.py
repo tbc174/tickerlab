@@ -21,7 +21,7 @@ import pandas as pd
 import requests
 import sqlalchemy as sa
 
-from src import bcb, dados, tesouro_eua
+from src import bcb, dados, precos_de_referencia, tesouro_eua
 from src.banco import series as acervo_de_series
 from src.banco.coletas import buscar_com_registro
 from src.banco.conexao import criar_engine, migrar_para
@@ -48,11 +48,17 @@ BuscarYahoo = Callable[[str, date], pd.Series | None]
 # séries de terceiros que o SGS só repassa: a licença continua a do dono (o IGP-M é da FGV IBRE,
 # cujos termos pedem autorização para uso comercial; licencas-por-fonte.md, 14/10/2026)
 SGS_DE_TERCEIROS = {"igpm"}
+SGS_MENSAIS_EM_INDICE = {
+    "ibc_br",
+    "icbr",
+    "icbr_agro",
+}  # mensais que não são "% no mês"
 
 
 def serie_sgs(chave: str) -> SerieDoAcervo:
     s = bcb.SERIES[chave]
-    frequencia = "mensal" if s.unidade == "% no mês" or chave == "ibc_br" else "diária"
+    mensal = s.unidade == "% no mês" or chave in SGS_MENSAIS_EM_INDICE
+    frequencia = "mensal" if mensal else "diária"
     return SerieDoAcervo(
         f"bcb-sgs-{s.codigo}",
         s.nome,
@@ -157,6 +163,44 @@ def coletar_tesouro(motor: sa.Engine, hoje: date, buscar: bcb.Buscar) -> int:
     return novas
 
 
+def _tem_precos(motor: sa.Engine, familia: str) -> bool:
+    with motor.connect() as conexao:
+        return acervo_de_series.tem_dados(
+            conexao, precos_de_referencia.SERIE_TESTEMUNHA[familia]
+        )
+
+
+def _gravar_precos(
+    motor: sa.Engine, valores: list[precos_de_referencia.ValorMensal], hoje: date
+) -> int:
+    with motor.begin() as conexao:
+        return precos_de_referencia.gravar_precos(conexao, valores, hoje)
+
+
+def coletar_pink_sheet(motor: sa.Engine, hoje: date, buscar: bcb.Buscar) -> int:
+    """Pink Sheet do Banco Mundial (mensal, sai nos primeiros dias úteis do mês)."""
+    tem = _tem_precos(motor, precos_de_referencia.FAMILIA_BM)
+    if not precos_de_referencia.deve_coletar(
+        precos_de_referencia.FAMILIA_BM, hoje, tem
+    ):
+        return 0
+    conteudo = precos_de_referencia.baixar_pink_sheet(buscar)
+    return _gravar_precos(motor, precos_de_referencia.ler_pink_sheet(conteudo), hoje)
+
+
+def coletar_fmi(motor: sa.Engine, hoje: date, buscar: bcb.Buscar) -> int:
+    """Preços de commodities do FMI (mensal, perto do dia 10): os últimos 14 meses; a primeira
+    vez, desde 2010, como o resto do acervo."""
+    tem = _tem_precos(motor, precos_de_referencia.FAMILIA_FMI)
+    if not precos_de_referencia.deve_coletar(
+        precos_de_referencia.FAMILIA_FMI, hoje, tem
+    ):
+        return 0
+    desde = hoje - timedelta(days=DIAS_DE_REVISAO) if tem else INICIO_DO_ACERVO
+    conteudo = precos_de_referencia.baixar_fmi(desde, buscar)
+    return _gravar_precos(motor, precos_de_referencia.ler_fmi(conteudo), hoje)
+
+
 def _fechamento_do_yahoo(ticker: str, inicio: date) -> pd.Series | None:
     # a mesma consulta ao Yahoo que o app usa (colunas simples, só dias úteis)
     tabela = dados._baixar_do_yahoo(ticker, start=inicio.isoformat())
@@ -188,6 +232,8 @@ def coletar_tudo(
         ("bcb-ptax", lambda: coletar_ptax(motor, hoje, buscar_com_registro("bcb-ptax", buscar))),
         ("bcb-focus", lambda: coletar_focus(motor, hoje, buscar_com_registro("bcb-focus", buscar))),
         ("tesouro-eua", lambda: coletar_tesouro(motor, hoje, buscar_com_registro("tesouro-eua", buscar))),
+        ("bm-pink", lambda: coletar_pink_sheet(motor, hoje, buscar_com_registro("bm-pink", buscar))),
+        ("fmi-pcps", lambda: coletar_fmi(motor, hoje, buscar_com_registro("fmi-pcps", buscar))),
         ("yahoo", lambda: coletar_yahoo(motor, hoje, buscar_yahoo)),
     ]  # fmt: skip
     tudo_certo = True
@@ -196,6 +242,7 @@ def coletar_tudo(
             log.info("%s: %s valores novos ou revistos", nome, etapa())
         except (
             bcb.BcbIndisponivelError,
+            precos_de_referencia.PrecosIndisponiveisError,
             tesouro_eua.TesouroIndisponivelError,
             requests.RequestException,
             RuntimeError,
