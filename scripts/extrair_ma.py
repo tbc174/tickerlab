@@ -31,6 +31,7 @@ import sqlalchemy as sa
 from base import ma_extracao as mx
 from base import ma_multiplos as mm
 from base import ma_operacoes as mo
+from base import ma_textos as mt
 from base.historico import ano_do_arquivo
 from scripts.rotular_com_ia import TetoPassado
 from src import acervo
@@ -70,7 +71,7 @@ def documentos(ouro: Path, textos: Path) -> list[Documento]:
     """Os documentos da amostra com texto guardado (o vazio fica de fora: não há o que ler)."""
     achados = []
     for linha in _ouro(ouro).to_dict("records"):
-        arquivo = textos / f"{linha['Protocolo_Entrega']}.txt"
+        arquivo = textos / f"{mt.nome_do_texto(linha['Protocolo_Entrega'])}.txt"
         texto = arquivo.read_text(encoding="utf-8") if arquivo.exists() else ""
         if texto.strip():
             achados.append(
@@ -170,14 +171,23 @@ def enviar(
     conferir_teto(manifesto, estimativa, teto)
     lote = cliente.messages.batches.create(
         requests=[
-            {"custom_id": d.protocolo, "params": mx.pedido(d.texto, modelo)}
+            {
+                "custom_id": mt.nome_do_texto(d.protocolo),
+                "params": mx.pedido(d.texto, modelo),
+            }
             for d in fila
         ]
     )
+    # o id do lote não aceita o link que é o protocolo dos documentos antigos: guarda a volta
+    protocolos = {
+        mt.nome_do_texto(d.protocolo): d.protocolo
+        for d in fila
+        if mt.nome_do_texto(d.protocolo) != d.protocolo
+    }
     manifesto["lotes"] = [
         *manifesto.get("lotes", []),
         {"id": lote.id, "documentos": len(fila), "estimativa": estimativa, "estado": "enviado",
-         "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+         "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds"), "protocolos": protocolos},
     ]  # fmt: skip
     _gravar_manifesto(saida, modelo, manifesto)
     log.info(
@@ -198,7 +208,10 @@ def buscar(cliente: anthropic.Anthropic, saida: Path, modelo: str) -> int:
             continue
         registros, gasto = [], 0.0
         for resultado in cliente.messages.batches.results(lote["id"]):
-            base = {"protocolo": resultado.custom_id, "modelo": modelo, "lote": lote["id"],
+            protocolo = lote.get("protocolos", {}).get(
+                resultado.custom_id, resultado.custom_id
+            )
+            base = {"protocolo": protocolo, "modelo": modelo, "lote": lote["id"],
                     "versao_do_guia": mx.VERSAO_DO_GUIA,
                     "lido_em": datetime.now(FUSO).isoformat(timespec="seconds")}  # fmt: skip
             if resultado.result.type != "succeeded":
