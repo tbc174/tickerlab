@@ -350,3 +350,66 @@ def test_fechamento_longe_aparece_na_saida_mas_nao_e_falha(
     )
     assert codigo == 0
     assert "1 nao_confere" in capsys.readouterr().out
+
+
+# --- selo dentro do orçamento (18/10/2026: o selo da carga segurou a trava das tarefas por horas) ---
+def _relogio_que_avanca(passo_s: float):
+    """Relógio de mentira: cada leitura anda `passo_s` segundos."""
+    leituras = iter(range(10_000))
+    return lambda: next(leituras) * passo_s
+
+
+def _tres_dias_coletados(pasta):
+    dias = [date(2026, 10, 7), date(2026, 10, 8), SEXTA]
+    for dia in dias:
+        coletor.coletar_dia(dia, {"AAPL"}, pasta, _iex_falsa(_dia_com_dois_negocios()))
+    return dias
+
+
+def test_selo_para_no_prazo_e_a_rodada_seguinte_retoma(tmp_path, monkeypatch, capsys):
+    dias = _tres_dias_coletados(tmp_path)
+    monkeypatch.setattr(coletor.time, "monotonic", _relogio_que_avanca(60.0))
+    pedidos: list = []
+    prazo = 90.0  # 1ª leitura 0 s (sela), 2ª 60 s (sela), 3ª 120 s (passou: para)
+    linhas = coletor.selar_os_que_faltam(
+        tmp_path, _oficiais({"AAPL": 228.0}, pedidos), prazo=prazo
+    )
+    assert pedidos == [SEXTA, date(2026, 10, 8)]  # do mais novo para o mais antigo
+    assert len(linhas) == 2
+    assert "1 dias ficam sem selo" in capsys.readouterr().out
+    assert coletor.dias_sem_selo(tmp_path) == [dias[0]]
+
+    pedidos.clear()
+    [linha] = coletor.selar_os_que_faltam(tmp_path, _oficiais({"AAPL": 228.0}, pedidos))
+    assert pedidos == [dias[0]]  # a rodada seguinte retoma de onde parou
+    assert linha.startswith("2026-10-07: selo")
+    assert coletor.dias_sem_selo(tmp_path) == []
+
+
+def test_selo_no_prazo_grava_o_mesmo_que_sem_prazo(tmp_path):
+    for subpasta, prazo in (("sem_prazo", None), ("com_prazo", float("inf"))):
+        pasta = tmp_path / subpasta
+        _tres_dias_coletados(pasta)
+        coletor.selar_os_que_faltam(pasta, _oficiais({"AAPL": 228.1}), prazo=prazo)
+    for dia in ("2026-10-07", "2026-10-08", "2026-10-09"):
+        pd.testing.assert_frame_equal(
+            pd.read_parquet(tmp_path / "sem_prazo" / "selo" / f"{dia}.parquet"),
+            pd.read_parquet(tmp_path / "com_prazo" / "selo" / f"{dia}.parquet"),
+        )
+
+
+def test_carga_com_minutos_nao_sela_depois_do_prazo(tmp_path, monkeypatch, capsys):
+    """O orçamento `--minutos` vale para a rodada inteira: coleta e selo."""
+    _tres_dias_coletados(tmp_path)
+    monkeypatch.setattr(coletor, "simbolos_do_sp500", lambda: {"AAPL"})
+    monkeypatch.setattr(coletor.time, "monotonic", _relogio_que_avanca(61.0))
+    pedidos: list = []
+    codigo = coletor.main(
+        ["--data", "2026-10-06", "--minutos", "2", "--pasta", str(tmp_path)],
+        _iex_falsa(None),
+        _oficiais({"AAPL": 228.0}, pedidos),
+    )
+    assert codigo == 0
+    # leituras: prazo em 0 s (+120 s), coleta em 61 s, selos em 122 s em diante: já passou
+    assert pedidos == []
+    assert "3 dias ficam sem selo" in capsys.readouterr().out
