@@ -107,8 +107,9 @@ class Cliente(Protocol):
         *,
         metodo: str = "GET",
         cabecalhos: Mapping[str, str] | None = None,
+        corpo: bytes | None = None,
     ) -> Resposta:
-        """Uma página ou um JSON pequeno (descoberta)."""
+        """Uma página ou um JSON pequeno (descoberta); `corpo` é o que vai num POST."""
         ...
 
     def cabecalhos(self, url: str) -> Mapping[str, str]:

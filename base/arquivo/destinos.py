@@ -47,6 +47,13 @@ _B3_FORA_DO_CATALOGO = (
     "barras de 1 minuto em arquivos, fora do catálogo (licença da B3)"
 )
 
+_B3_BDI_CONTRA_OS_TERMOS = (
+    "só arquivo, só pesquisa: a página da B3 veda a 'coleta automatizada, inclusive por meio de "
+    "ferramentas de inteligência artificial, para quaisquer finalidades' "
+    "(www.b3.com.br, Boletim diário do mercado, lida em 18/10/2026); decisão do Tiago em "
+    "18/10/2026 de guardar a cópia até a B3 autorizar por escrito; nada em tela, API ou tabela"
+)
+
 DESTINOS: dict[str, Destino] = {
     # CVM
     "cvm-hist-dfp": _tabela("demonstracoes_como_era"),
@@ -161,12 +168,16 @@ DESTINOS: dict[str, Destino] = {
     "b3-negocios": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-boletim-pr": _pesquisa(_B3_FORA_DO_CATALOGO),
     "b3-cotahist-dia": _pesquisa(_B3_FORA_DO_CATALOGO),
+    "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
         for id_ in (
             "termos-b3-politica",
             "termos-b3-distribuidores",
+            "termos-b3-coleta-automatizada",
             "termos-finra",
             "termos-fred",
             "termos-datajud",
