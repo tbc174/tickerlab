@@ -4946,6 +4946,7 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "pasta": "ma/candidatos",
         "faixas": {"versao": (1.0, None)},
         "nao_nulas": ("cnpj", "publico_em", "protocolo", "link", "evidencia"),
+        "anuncia_o_futuro": True,  # a referência do IPE pode ser a assembleia que vai aprovar
     },
     "ratings": {
         "pasta": "ratings",

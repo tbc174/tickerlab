@@ -109,7 +109,7 @@ def _numeros_do_trecho(trecho: str) -> set[float]:
     return achados
 
 
-def _confere(trecho: str, valor: float, texto_normalizado: str) -> str | None:
+def motivo_do_descarte(trecho: str, valor: float, texto_normalizado: str) -> str | None:
     """O motivo de descartar o par (trecho, valor), ou None se o par está certo."""
     if normalizar(trecho) not in texto_normalizado:
         return TRECHO_AUSENTE
@@ -123,7 +123,7 @@ def conferir(leitura: LeituraDoRelease, texto: str) -> LeituraConferida:
     normalizado = normalizar(texto)
     linhas, ajustes, descartes = [], [], []
     for item in (*leitura.linhas, *leitura.ajustes):
-        motivo = _confere(item.trecho, item.valor, normalizado)
+        motivo = motivo_do_descarte(item.trecho, item.valor, normalizado)
         if motivo:
             descartes.append(Descarte(motivo, item.trecho, item.valor))
         elif isinstance(item, LinhaLida):
