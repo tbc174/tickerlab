@@ -1,6 +1,7 @@
-// O app em React (série 3 da ADR 0048): uma página só, servida em app.tickerlab.com.br/novo/.
-// `npm run app` escreve em ../novo (no repositório, como o site/): o VPS não precisa de Node. O CI
-// refaz o build e falha se a pasta ficar velha.
+// O app em React (série 3 da ADR 0048): uma página só, servida na raiz de app.tickerlab.com.br
+// (o Streamlit é a versão clássica, em /classico). `npm run app` escreve em ../novo (no repositório,
+// como o site/; a pasta guarda o nome antigo): o VPS não precisa de Node. O CI refaz o build e falha
+// se a pasta ficar velha.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,7 @@ import { marca } from "./src/conteudo";
 import { css } from "./src/estilo";
 import { TEMA_SALVO } from "./src/site/tema";
 
-const BASE = "/novo/";
+const BASE = "/";
 // as fontes do site (vêm do Python: scripts/gerar_site.py), com as licenças junto
 const FONTES = [
   "Manrope-VariableFont_wght.ttf",
@@ -28,7 +29,7 @@ const sinal = (p: { alta: string; queda: string }) => `--alta: ${p.alta}; --qued
 const CORES_DAS_SERIES =
   `:root { ${series(marca.paleta_clara.series)} ${sinal(marca.paleta_clara)} }\n` +
   `:root[data-tema="escuro"] { ${series(marca.paleta_escura.series)} ${sinal(marca.paleta_escura)} }\n`;
-// o CSS do site, com as fontes dentro de /novo/ (o app fica em outro endereço que o site)
+// o CSS do site, com as fontes no endereço do app (o build grava uma cópia delas em BASE/fontes/)
 const ESTILO = css().replaceAll('url("/fontes/', `url("${BASE}fontes/`) + CORES_DAS_SERIES;
 
 /** O <head> da página: o tema (antes de pintar) e o CSS da marca. LF sempre: o Git no Windows pode
@@ -73,7 +74,7 @@ function arquivosDaMarca(): Plugin {
       for (const nome of Object.keys(ICONES))
         emitir(`icones/${nome}`, readFileSync(join(RAIZ_DO_REPOSITORIO, "static", "marca", nome)));
       emitir("manifest.json", `${JSON.stringify(manifesto(), null, 2)}\n`);
-      // a casca: tudo o que o build grava (menos a página, que entra como /novo/), com o ?v= de quem
+      // a casca: tudo o que o build grava (menos a página, que entra como a raiz), com o ?v= de quem
       // é pedido assim no HTML; a versão do cache muda quando qualquer arquivo muda de nome
       const comVersao: Record<string, string> = {
         "estilo.css": `estilo.css?v=${versao(ESTILO)}`,
@@ -100,6 +101,6 @@ export default defineConfig({
     outDir: join(RAIZ_DO_REPOSITORIO, "novo"),
     emptyOutDir: true,
   },
-  // `npm run app:dev`: a tela em http://localhost:5173/novo/ falando com a API local (uvicorn na 8000)
+  // `npm run app:dev`: a tela em http://localhost:5173/ falando com a API local (uvicorn na 8000)
   server: { proxy: { "/api": "http://127.0.0.1:8000" } },
 });

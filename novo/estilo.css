@@ -1,6 +1,6 @@
 /* gerado por web/src/estilo.ts a partir de src/marca.py — não editar à mão */
-@font-face { font-family: "Manrope"; src: url("/novo/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
-@font-face { font-family: "JetBrains Mono"; src: url("/novo/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Manrope"; src: url("/fontes/Manrope-VariableFont_wght.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fontes/JetBrainsMono-VariableFont_wght.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
 :root {
   --fundo: #f6f8fb; --superficie: #e8f0ff; --destaque: #ffffff; --linha: rgba(10, 31, 68, 0.12); --linha-forte: rgba(10, 31, 68, 0.22); --texto: #0a1f44; --apagado: #4a5a78; --sutil: #5f6d88; --azul: #2962ff; --azul-texto: #1f55e8; --lab: #2962ff; --simbolo-topo: #0a1f44; --atencao: #9a6700; --sombra: rgba(10, 31, 68, 0.18);
   --largura: 72rem; --raio: 14px;
