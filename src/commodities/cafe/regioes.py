@@ -28,6 +28,8 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
+# código do IBGE de cada UF com região cafeeira (a API de malhas e o SIDRA pedem o número)
+CODIGO_DA_UF = {"MG": 31, "ES": 32, "SP": 35, "PR": 41, "BA": 29, "RO": 11}
 ARABICA, CONILON = "arabica", "conilon"
 # Área colhida de café na PAM abaixo disso não faz o município entrar numa região.
 AREA_MINIMA_HA = 50

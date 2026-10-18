@@ -2603,3 +2603,40 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 | `porte_publico_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
 | `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
 | `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
+
+## `clima_regiao_cafe`
+
+Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia. Duas fontes, uma por linha: as estações automáticas do INMET (`inmet`; `n_estacoes` diz quantas valeram) e a chuva por satélite do CHIRPS (`chirps`; só chuva, média dos municípios ponderada pela área de café da PAM). Região com menos de 3 estações válidas no mês fica com os valores vazios, nunca zero
+
+- **Fonte:** INMET: dados históricos das estações automáticas (BDMEP), um zip por ano; CHIRPS v2.0 (UCSB): GeoTIFF mensal global; IBGE: malha municipal (API de malhas)
+- **Licença:** Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)
+- **Revenda:** vendável com atribuição à fonte
+- **Ressalva de revenda:** As linhas `chirps` são do CHIRPS v2.0 (domínio público; citar Funk et al. 2015); a malha é do IBGE
+- **Frequência:** Mensal
+- **Atraso de divulgação:** Mensal; a regra de "como era na data" usa o fim do mês + 45 dias para o INMET e + 60 dias para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `regiao`, `competencia`, `fonte`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 1981-01-31 (`publico_em` por mes)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/commodities/clima_regiao_cafe/<ano>.parquet` (a carga segue o molde de `scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `regiao` | Id da região produtora (`src/commodities/cafe/regioes.py`) | texto |
+| `competencia` | Mês (último dia) | data (dia) |
+| `fonte` | inmet ou chirps | texto |
+| `chuva_mm` | Chuva acumulada no mês (média das estações, ou do satélite) | mm |
+| `tmin_media_c` | Média das temperaturas mínimas diárias (vazio no chirps) | °C |
+| `dias_tmin_abaixo_de_2c` | Dias do mês com Tmín abaixo de 2 °C (média das estações; vazio no chirps) | dias |
+| `tmax_media_c` | Média das temperaturas máximas diárias (vazio no chirps) | °C |
+| `n_estacoes` | Estações válidas no mês (80% dos dias com 20 horas de leitura); vazio no chirps | número inteiro |
+| `chuva_normal_mm` | Normal 1991–2020 da chuva do mês do ano (10 anos no mínimo) | mm |
+| `chuva_anomalia_mm` | chuva_mm menos a normal | mm |
+| `tmin_normal_c` | Normal 1991–2020 da Tmín média | °C |
+| `tmin_anomalia_c` | tmin_media_c menos a normal | °C |
+| `tmax_normal_c` | Normal 1991–2020 da Tmáx média | °C |
+| `tmax_anomalia_c` | tmax_media_c menos a normal | °C |
+| `anos_na_normal` | Anos que entraram na normal (vazio quando menos de 10) | número inteiro |
+| `disponivel_em` | Desde quando o número era público (fim do mês + a folga da fonte) | data (dia) |

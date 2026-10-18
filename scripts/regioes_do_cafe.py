@@ -25,6 +25,7 @@ import requests
 from src.commodities.cafe.regioes import (
     AREA_MINIMA_HA,
     ARQUIVO_DOS_MUNICIPIOS,
+    CODIGO_DA_UF,
     DEFINICOES,
     DefinicaoDaRegiao,
 )
@@ -71,7 +72,7 @@ def _areas_da_pam(pasta: Path | None) -> tuple[dict[int, dict[str, float]], str]
         lambda: {"arabica": 0.0, "conilon": 0.0}
     )
     ano = ""
-    for codigo_da_uf in UFS_DO_CAFE.values():
+    for codigo_da_uf in CODIGO_DA_UF.values():
         url = montar_url(
             TABELA_DA_PAM,
             (AREA_COLHIDA,),

@@ -171,6 +171,10 @@ DESTINOS: dict[str, Destino] = {
     "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    # clima por região cafeeira (plano do café, PR 8): `base/commodities/clima_regiao.py`
+    "inmet-bdmep": _tabela("clima_regiao_cafe"),
+    "chirps-mensal": _tabela("clima_regiao_cafe"),
+    "ibge-malha-municipal": _tabela("clima_regiao_cafe"),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -189,6 +193,7 @@ DESTINOS: dict[str, Destino] = {
             "catalogo-bc",
             "catalogo-tesouro",
             "catalogo-ibama",
+            "termos-inmet",
         )
     },
 }

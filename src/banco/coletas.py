@@ -29,6 +29,10 @@ LICENCAS = {
     "sec": "Acesso público (EDGAR, SEC)",
     "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
     "ibge": "Domínio público (citar o IBGE)",
+    # clima e geografia do café (lidos em 18/10/2026): o INMET não publica licença escrita
+    "inmet": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+    "chirps": "CHIRPS v2.0 (UCSB): domínio público; citar Funk et al. 2015",
+    "mapbiomas": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
     "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
@@ -110,6 +114,9 @@ REVENDA = {
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
+    "inmet": VENDAVEL_COM_ATRIBUICAO,  # sem licença escrita: confirmar por escrito antes de vender
+    "chirps": VENDAVEL_COM_ATRIBUICAO,  # domínio público
+    "mapbiomas": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
     "fmi": A_CONFIRMAR,  # uso comercial pede permissão por escrito do FMI
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
