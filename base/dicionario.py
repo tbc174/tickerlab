@@ -3379,12 +3379,15 @@ TABELAS: dict[str, Tabela] = {
                 TEXTO,
             ),
             "grupo": ("con (consolidado) ou ind (individual) do valor oficial", TEXTO),
-            "documento": ("ITR ou DFP de onde veio o valor oficial", TEXTO),
+            "documento": (
+                "ITR ou DFP de onde veio o valor oficial; DFP-ITR no 4º trimestre (o ano da DFP menos os nove meses do ITR)",
+                TEXTO,
+            ),
             "documento_versao": ("Versão do ITR ou da DFP usada", "número inteiro"),
             "documento_entregue_em": ("Dia da entrega dessa versão à CVM", DATA),
             "valor_oficial_reais": ("Valor do ITR ou da DFP, em reais", REAIS),
             "tolerancia_reais": (
-                "Meia unidade do que o release mostra, em reais: até aqui é arredondamento",
+                "Uma unidade do que o release mostra, em reais: até aqui é arredondamento (o release soma parcelas arredondadas)",
                 REAIS,
             ),
             "diferenca_reais": ("Valor do release menos o oficial, em reais", REAIS),

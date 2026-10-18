@@ -203,3 +203,12 @@ def test_amostra_da_prova_e_sempre_a_mesma():
     primeira = ler_releases.amostra_da_prova(achados, 100)
     outra_ordem = ler_releases.amostra_da_prova(achados.iloc[::-1], 100)
     assert sorted(primeira["protocolo"]) == sorted(outra_ordem["protocolo"])
+
+
+def test_segunda_amostra_da_prova_nao_repete_a_primeira():
+    achados = _lista_da_prova()
+    primeira = ler_releases.amostra_da_prova(achados, 40)
+    segunda = ler_releases.amostra_da_prova(achados, 40, fora=primeira["protocolo"])
+    assert len(segunda) == 40
+    assert not set(primeira["protocolo"]) & set(segunda["protocolo"])
+    assert segunda.groupby("cnpj").size().max() <= 2

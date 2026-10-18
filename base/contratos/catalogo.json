@@ -5227,7 +5227,7 @@
           "unidade": "texto"
         },
         "documento": {
-          "descricao": "ITR ou DFP de onde veio o valor oficial",
+          "descricao": "ITR ou DFP de onde veio o valor oficial; DFP-ITR no 4º trimestre (o ano da DFP menos os nove meses do ITR)",
           "unidade": "texto"
         },
         "documento_versao": {
@@ -5243,7 +5243,7 @@
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "tolerancia_reais": {
-          "descricao": "Meia unidade do que o release mostra, em reais: até aqui é arredondamento",
+          "descricao": "Uma unidade do que o release mostra, em reais: até aqui é arredondamento (o release soma parcelas arredondadas)",
           "unidade": "reais (R$), já multiplicado pela escala informada"
         },
         "diferenca_reais": {

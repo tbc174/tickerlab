@@ -21,7 +21,7 @@ from src import rotulos_ia as ri
 MODELO = (
     "claude-haiku-5-5"  # quem lê (barato); o Sonnet 5.5 confere às cegas com `--modelo`
 )
-VERSAO_DO_GUIA = "v1"
+VERSAO_DO_GUIA = "v2"
 ARQUIVO_DO_GUIA = Path(__file__).with_name(f"leitor_release_guia_{VERSAO_DO_GUIA}.md")
 MAX_TOKENS_DA_RESPOSTA = 4_000
 SAIDA_ESTIMADA_POR_RELEASE = (

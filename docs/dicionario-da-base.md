@@ -2087,11 +2087,11 @@ O que a empresa disse no press-release de resultado contra o que entregou à CVM
 | `valor_release_reais` | Valor que o release mostra, já em reais (vazio: o release não mostra a linha) | reais (R$), já multiplicado pela escala informada |
 | `unidade_release` | Escala em que o release mostra o valor: unidade, mil, milhoes ou bilhoes | texto |
 | `grupo` | con (consolidado) ou ind (individual) do valor oficial | texto |
-| `documento` | ITR ou DFP de onde veio o valor oficial | texto |
+| `documento` | ITR ou DFP de onde veio o valor oficial; DFP-ITR no 4º trimestre (o ano da DFP menos os nove meses do ITR) | texto |
 | `documento_versao` | Versão do ITR ou da DFP usada | número inteiro |
 | `documento_entregue_em` | Dia da entrega dessa versão à CVM | data (dia) |
 | `valor_oficial_reais` | Valor do ITR ou da DFP, em reais | reais (R$), já multiplicado pela escala informada |
-| `tolerancia_reais` | Meia unidade do que o release mostra, em reais: até aqui é arredondamento | reais (R$), já multiplicado pela escala informada |
+| `tolerancia_reais` | Uma unidade do que o release mostra, em reais: até aqui é arredondamento (o release soma parcelas arredondadas) | reais (R$), já multiplicado pela escala informada |
 | `diferenca_reais` | Valor do release menos o oficial, em reais | reais (R$), já multiplicado pela escala informada |
 | `diferenca_pct` | Diferença em % do valor oficial | pontos percentuais (66,25 = 66,25%) |
 | `classe` | igual, igual (arredondamento), diferente, release não mostra ou sem ITR | texto |
