@@ -1089,7 +1089,10 @@ def test_relatorio_empresa_do_gratuito_vem_trancado_sem_numeros(
     assert resposta.status_code == 200, resposta.text
     dados = resposta.json()
     trancadas = [s for s in dados["secoes"] if s["trancada"]]
-    assert trancadas[0]["titulo"] == "Auditor e controladas"
+    assert [s["titulo"] for s in trancadas][:2] == [
+        "Ofertas e fundos",
+        "Auditor e controladas",
+    ]
     assert trancadas and all(
         not s["itens"] and not s["tabelas"] and s["paragrafos"] for s in trancadas
     )

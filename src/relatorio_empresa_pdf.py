@@ -2,7 +2,8 @@
 
 Lê o mesmo `Relatorio` da página (`src/relatorio_empresa.py`): as mesmas seções, na mesma ordem,
 com os mesmos números já escritos. A cascata do lucro e a ponte da dívida viram gráficos; a seção
-"Limites e cuidados" vem do relatório (obrigatória).
+"Limites e perguntas em aberto" vem do relatório (obrigatória). No papel, a explicação que a
+tela recolhe sai por inteiro.
 """
 
 from datetime import datetime
@@ -11,6 +12,7 @@ from zoneinfo import ZoneInfo
 from fpdf.enums import XPos, YPos
 
 from src import dossie
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
 from src.relatorio_empresa import (
@@ -30,15 +32,23 @@ GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → sub
 LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
 
 
+def _comparacao(item: Item) -> str:
+    if item.comparacao is None:
+        return item.sem_comparacao
+    return f"{item.comparacao.contra}: {item.comparacao.texto}"
+
+
 def _itens(pdf: RelatorioPDF, itens: list[Item]) -> None:
-    """Os números numa tabela (indicador, valor, nota); embaixo, as bases sem repetir, os
-    motivos dos que não saíram e o texto de cada nota."""
-    larguras = [pdf.epw * 0.56, pdf.epw * 0.24, pdf.epw * 0.20]
-    linhas = [[i.nome, i.texto, i.nota or ""] for i in itens]
-    pdf.tabela(["Indicador", "Valor", "Nota"], linhas, larguras)
+    """Os números numa tabela (indicador, valor, comparação, nota); embaixo, as bases e as fontes
+    sem repetir, os motivos dos que não saíram e o texto de cada nota."""
+    linhas = [[i.nome, i.texto, _comparacao(i), i.nota or ""] for i in itens]
+    pdf.tabela_de_texto(["Indicador", "Valor", "Comparado com", "Nota"], linhas)
     bases = list(dict.fromkeys(i.base for i in itens if i.base))
     if bases:
         pdf.paragrafo("Base: " + "; ".join(bases) + ".", apagado=True)
+    fontes = list(dict.fromkeys(i.fonte for i in itens if i.fonte))
+    if fontes:
+        pdf.paragrafo("Fonte: " + "; ".join(fontes) + ".", apagado=True)
     for frase in dict.fromkeys(
         [f"{i.nome}: {i.motivo}" for i in itens if i.motivo]
         + [i.nota_texto for i in itens if i.nota_texto]
@@ -77,6 +87,9 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
     pdf.secao(secao.titulo, reservar=40, numerada=True)
     if secao.itens:
         _itens(pdf, secao.itens)
+    for titulo, pontos in leitura_da_ficha.por_lado(secao.pontos):
+        _titulo_da_tabela(pdf, titulo)
+        pdf.lista([leitura_da_ficha.frase(p) for p in pontos])
     for paragrafo in secao.paragrafos:
         pdf.paragrafo(paragrafo)
     for chave, linhas in secao.tabelas.items():

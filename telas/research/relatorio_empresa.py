@@ -14,6 +14,7 @@ import streamlit as st
 from sqlalchemy import exc as sa_exc
 
 from src import dossie, eventos_sec, graficos, relatorios
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
@@ -86,17 +87,24 @@ def _ler(ticker: str, preco: float | None, fechamentos: pd.Series):
     return entradas
 
 
+def _origem(item: Item) -> str:
+    """De quando é e de onde veio (a ajuda do número), e por que não compara, quando não compara."""
+    partes = [
+        f"Base: {item.base}." if item.base else "",
+        f"Fonte: {item.fonte}." if item.fonte else "",
+    ]
+    return " ".join([p for p in partes if p] + [item.sem_comparacao])
+
+
 def _mostrar_item(coluna, item: Item) -> None:
-    coluna.metric(
-        item.nome, item.texto, help=f"Base: {item.base}" if item.base else None
-    )
+    ajuda = " ".join(p for p in (_origem(item), item.nota_texto) if p)
+    coluna.metric(item.nome, item.texto, help=ajuda or None)  # a explicação fica no (?)
+    if item.comparacao is not None:
+        coluna.caption(f"Contra {item.comparacao.contra}: {item.comparacao.texto}")
     if item.motivo:
         coluna.caption(item.motivo)
     if item.nota:
-        coluna.caption(
-            f"Nota: **{item.nota}**"
-            + (f" · {item.nota_texto}" if item.nota_texto else "")
-        )
+        coluna.caption(f"Nota: **{item.nota}**")
 
 
 def _titulo_da_tabela(chave: str) -> str:
@@ -111,12 +119,24 @@ def _mostrar_secao(secao: Secao) -> None:
         for paragrafo in secao.paragrafos:
             st.info(paragrafo, icon=":material/workspace_premium:")
         return
+    grupos = leitura_da_ficha.por_lado(secao.pontos)
+    if grupos:
+        for coluna, (titulo, pontos) in zip(
+            st.columns(len(grupos)), grupos, strict=True
+        ):
+            coluna.markdown(f"**{titulo}**")
+            coluna.markdown("\n".join(f"- {leitura_da_ficha.frase(p)}" for p in pontos))
     for inicio in range(0, len(secao.itens), ITENS_POR_LINHA):
         linha = secao.itens[inicio : inicio + ITENS_POR_LINHA]
         for coluna, item in zip(st.columns(ITENS_POR_LINHA), linha, strict=False):
             _mostrar_item(coluna, item)
-    for paragrafo in secao.paragrafos:
-        st.markdown(paragrafo)
+    if secao.recolhida:
+        with st.expander("Ver a explicação"):
+            for paragrafo in secao.paragrafos:
+                st.markdown(paragrafo)
+    else:
+        for paragrafo in secao.paragrafos:
+            st.markdown(paragrafo)
     for chave, linhas in secao.tabelas.items():
         if not linhas:
             continue
@@ -183,12 +203,14 @@ def _mostrar(relatorio: Relatorio) -> None:
             "Qualidade dos dados.",
             icon=":material/fact_check:",
         )
+    convidou = False
     for secao, seguinte in zip(
         relatorio.secoes, [*relatorio.secoes[1:], None], strict=True
     ):
         _mostrar_secao(secao)
-        if secao.trancada and not (seguinte and seguinte.trancada):
-            st.page_link(  # um convite depois das seções trancadas, não um por seção
+        if secao.trancada and not (seguinte and seguinte.trancada) and not convidou:
+            convidou = True
+            st.page_link(  # um convite só, depois do 1º bloco de seções trancadas
                 PAGINAS_DO_MENU["planos"],
                 label="Conhecer o plano Pro",
                 icon=":material/workspace_premium:",

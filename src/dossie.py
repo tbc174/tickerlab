@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,7 @@ from pydantic import BaseModel, ValidationError
 from base import dossie as dossie_da_base
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
+from src.numero import Comparacao
 from src.relatorio_empresa import Dossie, Item, Secao
 
 log = logging.getLogger(__name__)
@@ -413,21 +415,157 @@ def links_da_tabela(ficha: Ficha, secao: str, tabela: str) -> list[str]:
     return [str(linha.get("link") or "") for linha in da_secao.tabelas.get(tabela, [])]
 
 
+# --- o contrato do número (relatórios v2, PR 1): de onde veio e contra o quê comparar -------------
+_DO_FRE = "FRE entregue à CVM"
+_DOS_FUNDOS = "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)"
+FONTES_DOS_ITENS = {
+    "auditor_atual": f"{_DO_FRE} (tabela auditores)",
+    "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
+    "sociedades": f"{_DO_FRE} (tabela controladas)",
+    "controladas": f"{_DO_FRE} (tabela controladas)",
+    "coligadas_e_outras": f"{_DO_FRE} (tabela controladas)",
+    "ofertas": "ofertas registradas na CVM (tabelas ofertas_resolucao_160 e ofertas_antigas)",
+    "fundos_com_a_acao": _DOS_FUNDOS,
+    "valor_nos_fundos": _DOS_FUNDOS,
+    "negocios": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
+} | {
+    serie.nome: f"dados abertos da {_NOME_DA_AGENCIA[serie.fonte_b13]} (tabela {serie.tabela})"
+    for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+SO_O_FRE_MAIS_RECENTE = (
+    "A ficha traz só o FRE mais recente: não há o número do ano anterior para comparar."
+)
+SEM_COM_O_QUE_COMPARAR = "A ficha não traz com o quê comparar este número."
+MESES_NO_ANO = 12
+
+Comparado = tuple[Comparacao | None, str]  # a comparação ou o motivo de não haver
+Comparar = Callable[[SecaoDaFicha, ItemDaFicha], Comparado]
+
+
+def _mais_recentes(linhas: list[dict[str, Any]], coluna: str) -> list[dict[str, Any]]:
+    return sorted(linhas, key=lambda linha: str(linha.get(coluna)), reverse=True)
+
+
+def _contra_o_auditor_anterior(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+    trocas = _mais_recentes(secao.tabelas.get("trocas_de_auditor", []), "efetiva_em")
+    if not trocas:
+        return None, "A ficha não registra troca de auditor para comparar."
+    troca = trocas[0]
+    return Comparacao(
+        "auditor anterior",
+        f"{troca['anterior']} por {decimal(troca['anos_com_o_anterior'])} anos, até "
+        f"{dia(troca['efetiva_em'])}",
+    ), ""
+
+
+def _contra_as_sociedades(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    total = next((i.valor for i in secao.itens if i.chave == "sociedades"), None)
+    if total is None or item.valor is None:
+        return None, SO_O_FRE_MAIS_RECENTE
+    return Comparacao(
+        "sociedades no FRE", f"{inteiro(item.valor)} de {inteiro(total)}"
+    ), ""
+
+
+def _contra_os_anos(tabela: str, coluna: str) -> Comparar:
+    """Compara a contagem com a dos dois últimos anos da tabela por ano."""
+
+    def comparar(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+        anos = _mais_recentes(secao.tabelas.get(tabela, []), "ano")[:2]
+        if not anos:
+            return None, SEM_COM_O_QUE_COMPARAR
+        return Comparacao(
+            "contagem por ano",
+            " e ".join(f"{inteiro(a[coluna])} em {_ano(a['ano'])}" for a in anos),
+        ), ""
+
+    return comparar
+
+
+def _um_ano_antes(quando: date) -> date:
+    return quando.replace(year=quando.year - 1)
+
+
+def _contra_o_mesmo_mes(
+    coluna: str, escrever: Callable[[object], str], sufixo: str = ""
+) -> Comparar:
+    """Compara a posição dos fundos com a do mesmo mês do ano anterior (ou a mais antiga)."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        meses = sorted(
+            secao.tabelas.get("fundos_por_mes", []), key=lambda m: str(m["competencia"])
+        )
+        if not meses or not item.base:
+            return None, SEM_COM_O_QUE_COMPARAR
+        alvo = _um_ano_antes(para_data(item.base)).strftime("%Y-%m")
+        linha = next(
+            (m for m in meses if str(m["competencia"]).startswith(alvo)), meses[0]
+        )
+        quando = mes(linha["competencia"])
+        return Comparacao(
+            f"carteiras de {quando}",
+            f"{escrever(linha[coluna])}{sufixo} em {quando}",
+            float(linha[coluna]),
+        ), ""
+
+    return comparar
+
+
+def _contra_o_total_da_agencia(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    anos = _mais_recentes(secao.tabelas.get(item.chave, []), "ano")
+    if not anos:
+        return None, SEM_COM_O_QUE_COMPARAR
+    ultimo = anos[0]
+    texto = (
+        f"{fracao(ultimo['participacao'])} do total da agência em {_ano(ultimo['ano'])}"
+    )
+    if len(anos) > 1:
+        texto += f"; {inteiro(anos[1]['valor'])} em {_ano(anos[1]['ano'])}"
+    return Comparacao("total da agência no ano", texto), ""
+
+
+_COMPARACOES = {
+    "auditor_atual": _contra_o_auditor_anterior,
+    "auditor_desde": _contra_o_auditor_anterior,
+    "controladas": _contra_as_sociedades,
+    "coligadas_e_outras": _contra_as_sociedades,
+    "ofertas": _contra_os_anos("ofertas_por_ano", "ofertas"),
+    "negocios": _contra_os_anos("negocios_por_ano", "documentos"),
+    "fundos_com_a_acao": _contra_o_mesmo_mes("fundos", inteiro, " fundos"),
+    "valor_nos_fundos": _contra_o_mesmo_mes("valor", reais),
+} | {
+    serie.nome: _contra_o_total_da_agencia
+    for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+}
+
+
+def _comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+    if item.chave == "sociedades":
+        return None, SO_O_FRE_MAIS_RECENTE
+    comparar = _COMPARACOES.get(item.chave)
+    return comparar(secao, item) if comparar else (None, SEM_COM_O_QUE_COMPARAR)
+
+
+def _item_da_ficha(ficha: Ficha, secao: SecaoDaFicha, item: ItemDaFicha) -> Item:
+    comparacao, sem_comparacao = _comparar(secao, item)
+    return Item(
+        item.chave,
+        item.nome,
+        _escrever_valor(item.valor, item.unidade),
+        float(item.valor) if isinstance(item.valor, int | float) else None,
+        item.unidade,
+        _escrever_base(item.base, ficha.gerado_em),
+        fonte=FONTES_DOS_ITENS.get(item.chave, ", ".join(secao.fontes)),
+        comparacao=comparacao,
+        sem_comparacao=sem_comparacao,
+    )
+
+
 def secoes_da_ficha(ficha: Ficha) -> list[Secao]:
     """As seções do relatório, com os números escritos e a fonte (a atribuição que a licença pede)."""
     secoes = []
     for secao in ficha.secoes:
-        itens = [
-            Item(
-                item.chave,
-                item.nome,
-                _escrever_valor(item.valor, item.unidade),
-                float(item.valor) if isinstance(item.valor, int | float) else None,
-                item.unidade,
-                _escrever_base(item.base, ficha.gerado_em),
-            )
-            for item in secao.itens
-        ]
+        itens = [_item_da_ficha(ficha, secao, item) for item in secao.itens]
         fontes = [f"Fonte: {fonte}." for fonte in secao.fontes]
         tabelas = {
             chave: _escrever_tabela(chave, linhas)
@@ -447,7 +585,7 @@ def dia_da_ficha(ficha: Ficha) -> date:
 
 
 def limites_da_ficha(ficha: Ficha) -> list[str]:
-    """Os cuidados com os números do dossiê (vão em "Limites e cuidados", no app e na amostra)."""
+    """Os cuidados com os números do dossiê (vão na seção de limites, no app e na amostra)."""
     return [
         (
             f"Os números são da base do TickerLab em {ficha.gerado_em:%d/%m/%Y} e mudam quando a "

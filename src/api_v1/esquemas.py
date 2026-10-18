@@ -647,7 +647,18 @@ class PulseV1(BaseModel):
 # --- Relatório da empresa (dossiê da base, PR 4) -----------------------------------------------
 
 
+class ComparacaoDoNumeroV1(BaseModel):
+    """Contra o quê o número é comparado (o setor, uma faixa, o artigo, o balanço anterior)."""
+
+    contra: str
+    texto: str
+    valor: float | None = None  # o número comparado, quando é um só
+
+
 class ItemDoRelatorioV1(BaseModel):
+    """Um número com o contrato inteiro: de quando é (`base`), de onde veio (`fonte`) e a
+    comparação (ou, em `sem_comparacao`, por que não há com o quê comparar)."""
+
     chave: str
     nome: str
     texto: str  # o número já escrito ("R$ 12,3 bi", "18,5%")
@@ -657,6 +668,9 @@ class ItemDoRelatorioV1(BaseModel):
     motivo: str
     nota: str | None
     nota_texto: str
+    fonte: str
+    comparacao: ComparacaoDoNumeroV1 | None
+    sem_comparacao: str
 
 
 class TabelaDoRelatorioV1(BaseModel):
@@ -668,13 +682,27 @@ class TabelaDoRelatorioV1(BaseModel):
     linhas: list[list[str]]
 
 
+class PontoDoRelatorioV1(BaseModel):
+    """Um ponto de "O que os dados mostram": saiu de uma regra fixa e leva o número, de quando
+    ele é e a tabela de origem."""
+
+    lado: str  # "forte" ou "atenção"
+    texto: str
+    numero: str
+    medido_em: str
+    tabela: str
+    indicador: str
+
+
 class SecaoDoRelatorioV1(BaseModel):
     chave: str
     titulo: str
     itens: list[ItemDoRelatorioV1]
     paragrafos: list[str]
     tabelas: list[TabelaDoRelatorioV1]
+    pontos: list[PontoDoRelatorioV1] = []
     trancada: bool  # o plano não inclui a seção: só o título e o convite (sem números)
+    recolhida: bool = False  # explicação: a tela mostra fechada até a pessoa abrir
 
 
 class RelatorioDaEmpresaV1(BaseModel):

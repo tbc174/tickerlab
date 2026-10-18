@@ -14,7 +14,13 @@ import sqlalchemy as sa
 from src.banco.demonstracoes import dados_da_empresa
 from src.banco.eventos import empresas_dos_tickers
 from src.banco.fre import eventos_de, proventos_de
-from src.banco.modelo import demonstracoes, documentos_financeiros, eventos, setores_cvm
+from src.banco.modelo import (
+    demonstracoes,
+    documentos_financeiros,
+    eventos,
+    setores_cvm,
+    tickers_dos_emissores,
+)
 from src.banco.padroes import padroes_em
 from src.banco.qualidade import achados_de
 from src.demonstracoes import EXERCICIO
@@ -39,6 +45,17 @@ def eventos_da_empresa(conexao: sa.Connection, cnpj: str) -> pd.DataFrame:
         .where(e.c.cnpj == cnpj)
         .order_by(e.c.publicado_em.desc(), e.c.materialidade.desc())
         .limit(QUANTOS_EVENTOS),
+    )
+
+
+def tickers_da_empresa(conexao: sa.Connection, cnpj: str) -> pd.DataFrame:
+    """Os códigos de negociação da empresa no cadastro (código, tipo da ação e data do cadastro)."""
+    t = tickers_dos_emissores
+    return _tabela(
+        conexao,
+        sa.select(t.c.codigo, t.c.valor_mobiliario, t.c.atualizado_em)
+        .where(t.c.cnpj == cnpj)
+        .order_by(t.c.codigo),
     )
 
 
@@ -100,5 +117,6 @@ def entradas_do_relatorio(
         proventos=proventos_de(conexao, cnpj),
         eventos_de_capital=eventos_de(conexao, cnpj),
         pares=pares_do_grupo(conexao, dados.setor),
+        tickers=tickers_da_empresa(conexao, cnpj),
         dossie=None if ficha is None else dossie_da_ficha(ficha, hoje),
     )
