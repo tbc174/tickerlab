@@ -503,7 +503,9 @@ def _contra_o_mesmo_mes(
         )
         quando = mes(linha["competencia"])
         return Comparacao(
-            f"carteiras de {quando}", f"{escrever(linha[coluna])}{sufixo} em {quando}"
+            f"carteiras de {quando}",
+            f"{escrever(linha[coluna])}{sufixo} em {quando}",
+            float(linha[coluna]),
         ), ""
 
     return comparar

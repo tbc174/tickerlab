@@ -353,6 +353,17 @@ export interface PulseV1 {
 export interface ComparacaoDoNumeroV1 {
   contra: string;
   texto: string;
+  valor?: number | null; // o número comparado, quando é um só
+}
+
+/** Um ponto de "O que os dados mostram": de uma regra fixa, com o número, a data e a tabela. */
+export interface PontoDoRelatorioV1 {
+  lado: string; // "forte" ou "atenção"
+  texto: string;
+  numero: string;
+  medido_em: string;
+  tabela: string;
+  indicador: string;
 }
 
 /** Um número com de quando é (base), de onde veio (fonte) e a comparação (ou por que não há). */
@@ -385,6 +396,7 @@ export interface SecaoDoRelatorioV1 {
   itens: ItemDoRelatorioV1[];
   paragrafos: string[];
   tabelas: TabelaDoRelatorioV1[];
+  pontos?: PontoDoRelatorioV1[];
   trancada: boolean; // o plano não inclui a seção: só o título e o convite, sem números
 }
 

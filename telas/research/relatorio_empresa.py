@@ -14,6 +14,7 @@ import streamlit as st
 from sqlalchemy import exc as sa_exc
 
 from src import dossie, eventos_sec, graficos, relatorios
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
@@ -120,6 +121,13 @@ def _mostrar_secao(secao: Secao) -> None:
         for paragrafo in secao.paragrafos:
             st.info(paragrafo, icon=":material/workspace_premium:")
         return
+    grupos = leitura_da_ficha.por_lado(secao.pontos)
+    if grupos:
+        for coluna, (titulo, pontos) in zip(
+            st.columns(len(grupos)), grupos, strict=True
+        ):
+            coluna.markdown(f"**{titulo}**")
+            coluna.markdown("\n".join(f"- {leitura_da_ficha.frase(p)}" for p in pontos))
     for inicio in range(0, len(secao.itens), ITENS_POR_LINHA):
         linha = secao.itens[inicio : inicio + ITENS_POR_LINHA]
         for coluna, item in zip(st.columns(ITENS_POR_LINHA), linha, strict=False):

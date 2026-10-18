@@ -361,6 +361,17 @@
           "texto": {
             "title": "Texto",
             "type": "string"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
           }
         },
         "required": [
@@ -1907,6 +1918,45 @@
         "title": "PiorQuedaV1",
         "type": "object"
       },
+      "PontoDoRelatorioV1": {
+        "description": "Um ponto de \"O que os dados mostram\": saiu de uma regra fixa e leva o número, de quando\nele é e a tabela de origem.",
+        "properties": {
+          "indicador": {
+            "title": "Indicador",
+            "type": "string"
+          },
+          "lado": {
+            "title": "Lado",
+            "type": "string"
+          },
+          "medido_em": {
+            "title": "Medido Em",
+            "type": "string"
+          },
+          "numero": {
+            "title": "Numero",
+            "type": "string"
+          },
+          "tabela": {
+            "title": "Tabela",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lado",
+          "texto",
+          "numero",
+          "medido_em",
+          "tabela",
+          "indicador"
+        ],
+        "title": "PontoDoRelatorioV1",
+        "type": "object"
+      },
       "PontoMensalV1": {
         "properties": {
           "ipca_12_meses": {
@@ -2250,6 +2300,14 @@
               "type": "string"
             },
             "title": "Paragrafos",
+            "type": "array"
+          },
+          "pontos": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/PontoDoRelatorioV1"
+            },
+            "title": "Pontos",
             "type": "array"
           },
           "tabelas": {

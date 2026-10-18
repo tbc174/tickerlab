@@ -652,6 +652,7 @@ class ComparacaoDoNumeroV1(BaseModel):
 
     contra: str
     texto: str
+    valor: float | None = None  # o número comparado, quando é um só
 
 
 class ItemDoRelatorioV1(BaseModel):
@@ -681,12 +682,25 @@ class TabelaDoRelatorioV1(BaseModel):
     linhas: list[list[str]]
 
 
+class PontoDoRelatorioV1(BaseModel):
+    """Um ponto de "O que os dados mostram": saiu de uma regra fixa e leva o número, de quando
+    ele é e a tabela de origem."""
+
+    lado: str  # "forte" ou "atenção"
+    texto: str
+    numero: str
+    medido_em: str
+    tabela: str
+    indicador: str
+
+
 class SecaoDoRelatorioV1(BaseModel):
     chave: str
     titulo: str
     itens: list[ItemDoRelatorioV1]
     paragrafos: list[str]
     tabelas: list[TabelaDoRelatorioV1]
+    pontos: list[PontoDoRelatorioV1] = []
     trancada: bool  # o plano não inclui a seção: só o título e o convite (sem números)
 
 

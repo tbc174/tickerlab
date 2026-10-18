@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from src import fundamentalista, fundamentos, notas, notas_classicas, valuation
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
 from src.negociacoes import formatar_valor
@@ -33,6 +34,7 @@ from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
 SECOES: dict[str, str] = {
     "ficha_tecnica": "Ficha técnica",
+    "o_que_os_dados_mostram": "O que os dados mostram",
     "resumo": "Resumo",
     "resultado": "Resultado",
     "retorno": "Retorno",
@@ -66,6 +68,8 @@ INDICADORES_DO_QUE_MUDOU = (
     "roe",
     "divida_sobre_pl",
 )
+# o sentido de cada indicador do "o que mudou" (os de fora do padrão do setor: maior é melhor)
+MAIOR_E_MELHOR = {chave: maior for chave, (_, maior) in INDICADORES.items()}
 QUANTOS_PARES = 5
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
@@ -174,6 +178,9 @@ class Secao:
     itens: list[Item] = field(default_factory=list)
     paragrafos: list[str] = field(default_factory=list)
     tabelas: dict[str, list[dict]] = field(default_factory=dict)
+    pontos: list[leitura_da_ficha.Ponto] = field(
+        default_factory=list
+    )  # o que os dados mostram
     trancada: bool = False  # só o título e o convite: o plano não inclui a seção
 
 
@@ -312,6 +319,7 @@ def _contra_o_anterior(chave: str, unidade: str, c: "_Calculos") -> Comparacao |
     return Comparacao(
         f"balanço de {c.data_anterior:%d/%m/%Y}",
         f"era {escrever(antes.valor, unidade)}",
+        antes.valor,
     )
 
 
@@ -838,6 +846,46 @@ def _o_que_mudou(e: Entradas, c: _Calculos) -> Secao:
     )
 
 
+def _mudancas(c: _Calculos) -> list[leitura_da_ficha.Mudanca]:
+    """Os indicadores do "o que mudou" com o sentido de cada um, para a leitura."""
+    if c.data_anterior is None:
+        return []
+    mudancas = []
+    for chave in INDICADORES_DO_QUE_MUDOU:
+        agora, antes = c.indicadores.get(chave), c.anterior.get(chave)
+        if agora is None or antes is None or agora.valor is None or antes.valor is None:
+            continue
+        mudancas.append(
+            leitura_da_ficha.Mudanca(
+                chave,
+                agora.nome,
+                antes.valor,
+                agora.valor,
+                escrever(antes.valor, agora.unidade),
+                escrever(agora.valor, agora.unidade),
+                c.data_anterior,
+                _item(agora, c),
+                MAIOR_E_MELHOR.get(chave, True),
+            )
+        )
+    return mudancas
+
+
+def _o_que_os_dados_mostram(secoes: list[Secao], c: _Calculos) -> Secao:
+    pontos = leitura_da_ficha.pontos(secoes, _mudancas(c))
+    vazios = [
+        f"{titulo}: {leitura_da_ficha.SEM_PONTOS}"
+        for lado, titulo in leitura_da_ficha.TITULOS_DOS_LADOS.items()
+        if not any(p.lado == lado for p in pontos)
+    ]
+    return Secao(
+        "o_que_os_dados_mostram",
+        SECOES["o_que_os_dados_mostram"],
+        paragrafos=vazios,
+        pontos=pontos,
+    )
+
+
 def _pares(e: Entradas, c: _Calculos) -> Secao:
     receita = c.indicadores.get("receita")
     if (
@@ -955,8 +1003,12 @@ def ultima_demonstracao(documentos: pd.DataFrame) -> Item:
     primeira = mesmo.iloc[0]
     entregue = _dia(primeira["recebido_em"])
     prazo, regra = _prazo_da_cvm(documento, referencia)
-    dentro = "dentro do prazo" if entregue <= prazo else "depois do prazo"
-    reapresentada = " (reapresentada)" if versao > 1 else ""
+    dentro = (
+        leitura_da_ficha.DENTRO_DO_PRAZO
+        if entregue <= prazo
+        else leitura_da_ficha.DEPOIS_DO_PRAZO
+    )
+    reapresentada = f" {leitura_da_ficha.REAPRESENTADA}" if versao > 1 else ""
     return Item(
         "ultima_demonstracao",
         nome,
@@ -1151,6 +1203,7 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
         Secao("limites", SECOES["limites"], paragrafos=limites),
     ]
     _graficos_de_contas(c, secoes)
+    secoes.insert(1, _o_que_os_dados_mostram(secoes, c))
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,

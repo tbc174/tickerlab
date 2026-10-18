@@ -21,6 +21,7 @@ DATA, FONTE, COMPARACAO = "data", "fonte", "comparação"
 class Comparacao:
     contra: str  # contra o quê ("setor Energia, 108 empresas, corte de 31/08/2026")
     texto: str  # o que a comparação mostra ("mediana 12,4%; metade entre 8,1% e 17,0%")
+    valor: float | None = None  # o número comparado, quando é um só (o do ano anterior)
 
 
 @dataclass(frozen=True)

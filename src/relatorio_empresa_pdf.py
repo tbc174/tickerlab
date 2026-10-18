@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from fpdf.enums import XPos, YPos
 
 from src import dossie
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
 from src.relatorio_empresa import (
@@ -85,6 +86,9 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
     pdf.secao(secao.titulo, reservar=40, numerada=True)
     if secao.itens:
         _itens(pdf, secao.itens)
+    for titulo, pontos in leitura_da_ficha.por_lado(secao.pontos):
+        _titulo_da_tabela(pdf, titulo)
+        pdf.lista([leitura_da_ficha.frase(p) for p in pontos])
     for paragrafo in secao.paragrafos:
         pdf.paragrafo(paragrafo)
     for chave, linhas in secao.tabelas.items():

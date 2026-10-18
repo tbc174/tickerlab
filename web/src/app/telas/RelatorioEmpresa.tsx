@@ -3,7 +3,13 @@
 // tranca é do servidor, esta tela só mostra, com um único link para os Planos depois delas.
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
-import type { ItemDoRelatorioV1, RelatorioDaEmpresaV1, SecaoDoRelatorioV1, TabelaDoRelatorioV1 } from "../tipos";
+import type {
+  ItemDoRelatorioV1,
+  PontoDoRelatorioV1,
+  RelatorioDaEmpresaV1,
+  SecaoDoRelatorioV1,
+  TabelaDoRelatorioV1,
+} from "../tipos";
 import { TelaDoContrato } from "./TelaDoContrato";
 
 function Item({ item }: { item: ItemDoRelatorioV1 }) {
@@ -26,6 +32,34 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
         </span>
       ) : null}
     </div>
+  );
+}
+
+// os títulos dos dois lados de "O que os dados mostram" (iguais aos de src/o_que_os_dados_mostram.py)
+const LADOS: [string, string][] = [
+  ["forte", "Pontos fortes nos dados"],
+  ["atenção", "Pontos de atenção"],
+];
+
+function Pontos({ pontos }: { pontos: PontoDoRelatorioV1[] }) {
+  return (
+    <>
+      {LADOS.map(([lado, titulo]) => {
+        const doLado = pontos.filter((p) => p.lado === lado);
+        return doLado.length > 0 ? (
+          <div key={lado}>
+            <h3>{titulo}</h3>
+            <ul>
+              {doLado.map((p) => (
+                <li key={p.indicador}>
+                  {p.texto} <span className="apagado">Fonte: {p.tabela}.</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null;
+      })}
+    </>
   );
 }
 
@@ -71,6 +105,7 @@ function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
         ))
       ) : (
         <>
+          {secao.pontos && secao.pontos.length > 0 ? <Pontos pontos={secao.pontos} /> : null}
           {secao.itens.length > 0 ? (
             <div className="numeros">
               {secao.itens.map((item) => (

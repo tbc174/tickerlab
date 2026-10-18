@@ -6,6 +6,7 @@ demonstrações de todas as companhias (corte de 31/08/2026) e a ficha do dossi�
 """
 
 import json
+import re
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -14,6 +15,7 @@ import pytest
 
 from src import demonstracoes as dm
 from src import dossie
+from src import o_que_os_dados_mostram as leitura_da_ficha
 from src import relatorio_empresa as re_
 from src.banco.demonstracoes import DadosDaEmpresa
 
@@ -196,3 +198,111 @@ def test_ficha_tecnica_prazo_da_dfp_reapresentada():
     assert item.base == "recebido em 04/05/2026"
     assert "versão 1 recebida em 20/03/2026" in item.comparacao.texto
     assert "31/03/2026" in item.comparacao.texto  # 3 meses depois do exercício
+
+
+# --- o que os dados mostram -----------------------------------------------------------------------
+PROIBIDAS = (
+    "compre",
+    "venda",
+    "alvo",
+    "vai",
+)  # palavras inteiras ("vendas" é conta, passa)
+RAIZ_PROIBIDA = "recomend"  # recomendo, recomendação...
+PROIBIDAS_EM_FRASE = ("deve subir",)
+
+
+def _palavras(texto: str) -> list[str]:
+    return re.findall(r"\w+", texto.lower())
+
+
+def _recomenda(texto: str) -> list[str]:
+    achadas = [
+        p for p in _palavras(texto) if p in PROIBIDAS or p.startswith(RAIZ_PROIBIDA)
+    ]
+    return achadas + [f for f in PROIBIDAS_EM_FRASE if f in texto.lower()]
+
+
+def test_o_que_os_dados_mostram_sem_recomendacao(ficha_da_cpfl):
+    secao = ficha_da_cpfl.secao("o_que_os_dados_mostram")
+    fortes = [p for p in secao.pontos if p.lado == leitura_da_ficha.FORTE]
+    atencao = [p for p in secao.pontos if p.lado == leitura_da_ficha.ATENCAO]
+    assert 3 <= len(fortes) <= 5 and 3 <= len(atencao) <= 5
+    for ponto in secao.pontos:
+        assert ponto.numero and ponto.medido_em and ponto.tabela, ponto
+        assert _recomenda(ponto.texto) == [], ponto.texto
+    textos = " ".join(p.texto for p in secao.pontos)
+    assert "ROE" in textos  # ótimo contra o setor
+    assert "Altman" in textos  # zona cinzenta do artigo
+    assert "fundos" in textos  # 370 contra 455 um ano antes
+
+
+def test_o_que_os_dados_mostram_vem_das_regras(ficha_da_cpfl):
+    """Cada ponto sai de uma regra fixa, com o número, a data e a tabela do item de origem."""
+    secao = ficha_da_cpfl.secao("o_que_os_dados_mostram")
+    roe = next(p for p in secao.pontos if p.indicador == "roe")
+    assert roe.lado == leitura_da_ficha.FORTE
+    assert roe.numero == "26,4%"
+    assert "DFP e ITR" in roe.tabela
+    divida = next(p for p in secao.pontos if p.indicador == "divida_sobre_pl")
+    assert (
+        divida.lado == leitura_da_ficha.ATENCAO
+    )  # subiu de 1,07× para 1,21× (menor é melhor)
+    assert "1,07×" in divida.texto
+
+
+def test_palavras_proibidas_pegam_recomendacao():
+    assert _recomenda("Compre agora: preço-alvo de R$ 40") == ["compre", "alvo"]
+    assert _recomenda("A ação deve subir") == ["deve subir"]
+    assert (
+        _recomenda("Receita de vendas cresceu") == []
+    )  # "vendas" é conta, não conselho
+
+
+def test_sem_numeros_nao_inventa_pontos():
+    vazio = leitura_da_ficha.pontos([], [])
+    assert vazio == []
+
+
+def _secao_com_pontos():
+    from src import o_que_os_dados_mostram as leitura_da_ficha
+    from src.relatorio_empresa import Secao
+    from telas.research.relatorio_empresa import _mostrar_secao
+
+    ponto = leitura_da_ficha.Ponto(
+        leitura_da_ficha.ATENCAO,
+        "Altman Z'' de 1,89.",
+        "1,89",
+        "DFP de 2025",
+        "DFP",
+        "altman",
+    )
+    _mostrar_secao(
+        Secao("o_que_os_dados_mostram", "O que os dados mostram", pontos=[ponto])
+    )
+
+
+def test_tela_mostra_os_pontos_com_a_fonte():
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_function(_secao_com_pontos).run()
+    assert not app.exception
+    textos = [m.value for m in app.markdown]
+    assert "**Pontos de atenção**" in textos
+    assert "- Altman Z'' de 1,89. Fonte: DFP." in textos
+    assert (
+        "**Pontos fortes nos dados**" not in textos
+    )  # lado sem ponto não aparece vazio
+
+
+def test_pdf_mostra_os_pontos(ficha_da_cpfl):
+    from src.relatorio_empresa_pdf import relatorio_da_empresa
+
+    assert relatorio_da_empresa(ficha_da_cpfl).startswith(b"%PDF")
+
+
+def test_api_leva_os_pontos(ficha_da_cpfl):
+    from src.api_v1.esquemas import de_relatorio_da_empresa
+
+    api = de_relatorio_da_empresa(ficha_da_cpfl)
+    secao = next(s for s in api.secoes if s.chave == "o_que_os_dados_mostram")
+    assert len(secao.pontos) >= 6 and all(p.tabela for p in secao.pontos)
