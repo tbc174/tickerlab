@@ -2876,7 +2876,7 @@ Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings 
 - **Histórico desde:** 2004-07-01 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** `base/conferidas/contrapartes_cafe.csv` no repositório (Git)
-- **Linhagem:** Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as páginas dos sites que permitem serão guardadas pelo arquivista (`contrapartes-cafe`) só como prova quando a licença for confirmada; até lá, a notícia de recuperação judicial fica em 'o que não sabemos'; o histórico de cada mudança fica no Git.
+- **Linhagem:** Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as páginas dos quatro sites autorizados ficam guardadas pelo arquivista (`contrapartes-cafe`) só como prova; a notícia de recuperação judicial só vira fato da ficha depois de guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git.
 
 | Coluna | O que é | Unidade |
 |---|---|---|

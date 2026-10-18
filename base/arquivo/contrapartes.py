@@ -4,11 +4,10 @@ A ficha (`base/contrapartes/cafe.py`) diz o fato com as nossas palavras e o link
 é só prova interna de que a página dizia aquilo naquela data (nunca vai para tela, API ou exportação).
 Fato de recuperação judicial ou fechamento só entra na ficha com a página guardada.
 
-**Ainda desligada:** guardar cópia de notícia é decisão de licença do Tiago (pedido na Central de
-18/10/2026). Até o "pode", a fonte não está em `base/arquivo/fontes.py::FONTES` nem em
-`base/arquivo/destinos.py`, e a ficha mostra essas notícias só em "o que não sabemos". Para ligar:
-`contrapartes.fonte()` no fim de `FONTES` e `"contrapartes-cafe": _tabela("contraparte_cafe")` no fim
-de `DESTINOS`.
+Ligada com o "pode" do Tiago de 18/10/2026 (cópia interna, só dos quatro sites de `SITES_COM_COPIA`).
+`paginas_guardadas` diz à ficha quais páginas já estão no acervo; até a primeira coleta, a notícia
+fica em "o que não sabemos", com o veículo, a data e o link. Para desligar: tirar `fonte()` de
+`base/arquivo/fontes.py::FONTES` e o destino de `base/arquivo/destinos.py`.
 
 Regras (testes em `tests/test_base_contrapartes_cafe.py`):
 - só os sites cujos termos não proíbem cópia nem robô (`SITES_COM_COPIA`, termos lidos em 18–19/10/2026
@@ -32,7 +31,9 @@ from base.arquivo import robots
 from base.arquivo.cliente_http import AGENTE
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.contrapartes import cafe
+from src.banco import coletas
 
+ID = "contrapartes-cafe"
 PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS = 3.0
 SITES_COM_COPIA = (
     "www.almg.gov.br",  # termos: reprodução livre citando fonte e autor
@@ -88,9 +89,16 @@ def _ja_guardada(anterior: sa.Row) -> bool:
     return True
 
 
+def paginas_guardadas(conexao: sa.Connection) -> frozenset[str]:
+    """Os endereços que o arquivista já guardou no acervo (o `guardadas` de `cafe.montar_ficha`)."""
+    return frozenset(
+        linha.url for linha in coletas.originais_mais_recentes(conexao, ID)
+    )
+
+
 def fonte(ler_fatos: Callable[[], pd.DataFrame] = cafe.ler) -> Fonte:
     return Fonte(
-        "contrapartes-cafe",
+        ID,
         "semanal",
         descobrir(ler_fatos),
         "html",

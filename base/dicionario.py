@@ -4817,9 +4817,9 @@ TABELAS: dict[str, Tabela] = {
         onde="`base/conferidas/contrapartes_cafe.csv` no repositório (Git)",
         linhagem=(
             "Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as "
-            "páginas dos sites que permitem serão guardadas pelo arquivista (`contrapartes-cafe`) "
-            "só como prova quando a licença for confirmada; até lá, a notícia de recuperação "
-            "judicial fica em 'o que não sabemos'; o histórico de cada mudança fica no Git."
+            "páginas dos quatro sites autorizados ficam guardadas pelo arquivista (`contrapartes-cafe`) "
+            "só como prova; a notícia de recuperação judicial só vira fato da ficha depois de "
+            "guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git."
         ),
         colunas={
             "id": (

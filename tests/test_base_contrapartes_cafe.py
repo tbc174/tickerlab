@@ -15,6 +15,7 @@ import pytest
 
 from base.arquivo import coleta, contrapartes, fontes
 from base.arquivo.coleta import Alvo, ErroDeDescoberta, Resposta
+from base.arquivo.destinos import DESTINOS
 from base.contrapartes import cafe
 from base.porta.duckdb import CONFERIDAS
 from src.banco import coletas
@@ -306,16 +307,31 @@ def test_robots_que_proibe_ou_pede_mais_espera_para_a_coleta(robots):
         contrapartes.descobrir(lambda: fatos)(sites, AGORA)
 
 
-def test_arquivista_fica_desligado_ate_o_tiago_responder(fatos):
-    # guardar cópia de notícia é decisão de licença (nível 1): a fonte existe, mas só entra no
-    # catálogo do servidor (FONTES e DESTINOS) depois do "pode" do Tiago
-    assert "contrapartes-cafe" not in {f.id for f in fontes.FONTES}
-    assert contrapartes.fonte().pausa_minima >= 3
-    assert coletas.revenda_da_fonte("contrapartes-cafe") == coletas.A_CONFIRMAR
+def test_fonte_do_arquivista_esta_no_catalogo_com_destino_e_licenca(fatos):
+    # ligada com o "pode" do Tiago de 18/10/2026 (cópia interna, só dos quatro sites)
+    fonte = next(f for f in fontes.FONTES if f.id == contrapartes.ID)
+    assert fonte.pausa_minima >= 3
+    assert fontes.FONTES[-1].id == contrapartes.ID
+    assert DESTINOS[contrapartes.ID].tabelas == ("contraparte_cafe",)
+    assert coletas.revenda_da_fonte(contrapartes.ID) == coletas.A_CONFIRMAR
     assert "contrapartes" in coletas.REVENDA  # escrito, não só o padrão
     assert (
         coletas.licenca_da_fonte("contrapartes-cafe") != coletas.SEM_LICENCA_CONHECIDA
     )
+
+
+def test_pagina_guardada_leva_o_fato_de_risco_para_a_ficha(fatos, banco, tmp_path):
+    sites = Sites({NOTICIA_DO_PEDIDO: b"<html>pedido</html>"})
+    fonte = contrapartes.fonte(lambda: _fatos_de(NOTICIA_DO_PEDIDO))
+    with banco.connect() as conexao:
+        assert contrapartes.paginas_guardadas(conexao) == frozenset()
+    coleta.arquivar(fonte, sites, AGORA, tmp_path / "t", pausa=0)
+    with banco.connect() as conexao:
+        guardadas = contrapartes.paginas_guardadas(conexao)
+    assert guardadas == GUARDADAS
+    ficha = cafe.montar_ficha("atlantica", fatos, guardadas=guardadas)
+    assert ficha is not None
+    assert [f.fato for f in ficha.fatos] == ["pedido_de_recuperacao_judicial"]
 
 
 def test_pagina_ja_guardada_nao_e_baixada_de_novo(banco, tmp_path):
