@@ -400,6 +400,16 @@ def nomes_batem(a: str, b: str) -> bool:
     return _palavras(a) == _palavras(b)
 
 
+def mesma_empresa(a: str, b: str) -> bool:
+    """Mais estrita que `nomes_batem`, para ligar documentos diferentes: as palavras que distinguem
+    o nome mais curto estão todas no outro ("Sabesp" e "Companhia de Saneamento Básico do Estado de
+    São Paulo (Sabesp)" batem; "Banco BTG Pactual" e "Banco Pan S.A." não, só dividem "Banco")."""
+    distintas_a, distintas_b = _distintas(a), _distintas(b)
+    if distintas_a and distintas_b:
+        return distintas_a <= distintas_b or distintas_b <= distintas_a
+    return _palavras(a) == _palavras(b)
+
+
 def _nomes(leitura: LeituraDaOperacao, papel: str) -> list[str]:
     return [p.nome for p in leitura.partes if p.papel == papel]
 

@@ -27,6 +27,7 @@ import anthropic
 import pandas as pd
 
 from base import ma_extracao as mx
+from base import ma_operacoes as mo
 from scripts.rotular_com_ia import TetoPassado
 
 log = logging.getLogger("tickerlab.extrair_ma")
@@ -249,6 +250,59 @@ def medir_modelo(ouro: Path, textos: Path, saida: Path, modelo: str) -> Medida:
     )
 
 
+def _leitura_do_gabarito(linha: dict) -> mx.LeituraDaOperacao | None:
+    """A resposta conferida à mão no formato da leitura (só o que a ligação usa)."""
+    partes = [
+        {"nome": linha[papel], "papel": papel, "trecho": linha[papel]}
+        for papel in ("alvo", "comprador")
+        if isinstance(linha.get(papel), str) and linha[papel].strip()
+    ]
+    try:
+        return mx.LeituraDaOperacao.model_validate(
+            {"tipo": linha.get("tipo_conferido"), "partes": partes}
+        )
+    except ValueError:
+        return None
+
+
+def operacoes_da_amostra(
+    ouro: Path, textos: Path, saida: Path, modelo: str
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, list[list[str]]]]:
+    """As operações montadas das leituras guardadas (PR 3 do plano) e a comparação com a ligação
+    das respostas do gabarito pela mesma regra: duplicada é par que o gabarito junta e a leitura
+    separa."""
+    datas = {d.protocolo: d.publico_em for d in documentos(ouro, textos)}
+    lidos = [
+        mo.DocumentoLido(protocolo, datas[protocolo], leitura)
+        for protocolo, leitura in medir_modelo(
+            ouro, textos, saida, modelo
+        ).leituras.items()
+    ]
+    tabela, ligacoes = mo.operacoes(lidos)
+    do_gabarito = []
+    for linha in _ouro(ouro).to_dict("records"):
+        protocolo = linha["Protocolo_Entrega"]
+        leitura = _leitura_do_gabarito(linha)
+        if protocolo in datas and leitura is not None:
+            do_gabarito.append(mo.DocumentoLido(protocolo, datas[protocolo], leitura))
+    comparacao = mo.comparar(mo.ligar(lidos), mo.ligar(do_gabarito))
+    return tabela, ligacoes, comparacao
+
+
+def relatorio_das_operacoes(
+    modelo: str, tabela: pd.DataFrame, comparacao: dict[str, list[list[str]]]
+) -> str:
+    varios = tabela[tabela["documentos"] > 1]
+    return (
+        f"## Operações ({modelo})\n\n{sum(tabela['documentos'].tolist())} documentos de operação "
+        f"viraram {len(tabela)} operações; {len(varios)} com mais de um documento.\n\n"
+        f"Pares do gabarito: {comparacao['no_gabarito']}\n\n"
+        f"Duplicadas (o gabarito junta, a leitura separa): {comparacao['separadas'] or 'nenhuma'}"
+        f"\n\nJuntadas por engano: {comparacao['juntadas'] or 'nenhuma'}\n\n"
+        f"{varios.to_string(index=False) if len(varios) else ''}\n"
+    )
+
+
 def relatorio(medidas: list[Medida]) -> str:
     """O placar por modelo, o custo por documento e onde as duas leituras discordam."""
     partes = [
@@ -291,6 +345,10 @@ def _argumentos() -> argparse.ArgumentParser:
         ("enviar", "manda o lote da Batch API (GASTA API)"),
         ("buscar", "grava os lotes que terminaram"),
         ("medir", "compara com a amostra de ouro (sem API)"),
+        (
+            "operacoes",
+            "liga os documentos da mesma operação e confere no gabarito (sem API)",
+        ),
     ):
         passo = sub.add_parser(nome, help=ajuda)
         passo.add_argument("--ouro", type=Path, required=True)
@@ -322,6 +380,13 @@ def main(argv: list[str] | None = None) -> int:
         medidas = [medir_modelo(ouro, textos, saida, nome) for nome in MODELOS]
         texto = relatorio([m for m in medidas if m.lidos])
         (saida / "medida.md").write_text(texto, encoding="utf-8")
+        print(texto)
+    elif opcoes.passo == "operacoes":
+        tabela, ligacoes, comparacao = operacoes_da_amostra(ouro, textos, saida, modelo)
+        tabela.to_csv(saida / f"operacoes-{modelo}.csv", sep=";", index=False)
+        ligacoes.to_csv(saida / f"ligacoes-{modelo}.csv", sep=";", index=False)
+        texto = relatorio_das_operacoes(modelo, tabela, comparacao)
+        (saida / f"operacoes-{modelo}.md").write_text(texto, encoding="utf-8")
         print(texto)
     elif opcoes.passo == "enviar":
         enviar(cliente_de_ma(), ouro, textos, saida, modelo, opcoes.teto_dolares)
