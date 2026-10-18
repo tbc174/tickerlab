@@ -18,7 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, wayback
+from base.arquivo import assessorias, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -77,6 +77,14 @@ PRIMEIRO_ANO_DO_SCR = 2012
 MES_DO_PRIMEIRO_ARQUIVO_DO_SCR = 3
 
 # termos de uso que decidem o que o TickerLab pode fazer (vigia: avisa quando o texto muda)
+# relatório mensal do Cecafé (café, PR 6): só pesquisa; o robots.txt do site proíbe PDF (18/10/2026)
+CECAFE_ROBOTS = "https://www.cecafe.com.br/robots.txt"
+CECAFE_RELATORIOS = "https://www.cecafe.com.br/publicacoes/relatorio-de-exportacoes/"
+PDF_DO_CECAFE = re.compile(
+    rb'href="(https://www\.cecafe\.com\.br/[^"]*Relatorio-Mensal[^"]*\.pdf)"',
+    re.IGNORECASE,
+)
+
 TERMOS = {
     "termos-b3-politica": "https://www.b3.com.br/data/files/0D/97/1F/B7/4CCFF91094DCD8F9AC094EA8/"
     "Politica%20de%20Consumo%20de%20Market%20Data%20B3%20V1.1.pdf",
@@ -92,6 +100,7 @@ TERMOS = {
     # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -426,6 +435,23 @@ def descobrir_links(
     if not links:
         raise ErroDeDescoberta(f"nenhum arquivo linkado em {pagina}")
     return [Alvo(link) for link in links]
+
+
+def descobrir_cecafe(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os PDFs do relatório mensal linkados na página; falha, sem baixar nada, se o robots.txt os proíbe."""
+    robots_txt = cliente.ler(CECAFE_ROBOTS).conteudo.decode("utf-8", errors="replace")
+    alvos = descobrir_links(cliente, CECAFE_RELATORIOS, PDF_DO_CECAFE)
+    proibidos = [
+        a
+        for a in alvos
+        if not robots.pode_buscar(robots_txt, a.url.split(".com.br", 1)[1])
+    ]
+    if proibidos:
+        raise ErroDeDescoberta(
+            f"cecafe-relatorio-mensal: o robots.txt proíbe {len(proibidos)} PDF(s) "
+            f"(ex.: {proibidos[0].url}); nada foi baixado"
+        )
+    return alvos
 
 
 def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -910,6 +936,8 @@ FONTES: list[Fonte] = [
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
+    # relatório mensal do Cecafé (café, PR 6): só pesquisa; falha enquanto o robots.txt proibir PDF
+    Fonte("cecafe-relatorio-mensal", "mensal", descobrir_cecafe, "pdf"),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

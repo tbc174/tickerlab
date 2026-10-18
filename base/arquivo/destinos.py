@@ -168,6 +168,10 @@ DESTINOS: dict[str, Destino] = {
     "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    "cecafe-relatorio-mensal": _pesquisa(
+        "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "
+        "página de termos não traz texto; a coleta falha, sem baixar, até a Cecafé autorizar por escrito"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -186,6 +190,7 @@ DESTINOS: dict[str, Destino] = {
             "catalogo-bc",
             "catalogo-tesouro",
             "catalogo-ibama",
+            "termos-cecafe-robots",
         )
     },
 }
