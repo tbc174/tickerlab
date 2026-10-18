@@ -62,12 +62,12 @@ def test_resposta_valida_vira_analise():
                 contas=[
                     {
                         "operacao": "soma",
-                        "de": [{"id": "a", "valor": 1}],
+                        "de": [{"id": "a", "conta": 0}],
                         "resultado": 1.0,
                     }
                 ]
             ),
-            "um só",
+            "id e valor",
         ),
         (
             lambda r: r["partes"][0]["paragrafos"][0]["frases"][0].update(

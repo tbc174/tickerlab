@@ -33,7 +33,6 @@ FATO, LEITURA = "fato", "leitura"
 TIPOS = (FATO, LEITURA)
 OPERACOES = ("soma", "diferenca", "produto", "razao", "variacao", "contagem")
 ORIGEM_MODELO, ORIGEM_MOLDE = "modelo", "molde"
-CAMPOS_DO_OPERANDO = ("id", "valor", "conta")
 
 
 class RespostaInvalidaError(ValueError):
@@ -42,10 +41,11 @@ class RespostaInvalidaError(ValueError):
 
 @dataclass(frozen=True)
 class Operando:
-    """Um número da conta: um id da entrada, uma constante (100, para %) ou uma conta anterior."""
+    """Um número da conta: o valor tirado de uma linha da entrada (id e valor), uma constante (só
+    valor, como o 100 do "de cada R$ 100") ou o resultado de uma conta anterior da mesma frase."""
 
     id: str | None = None
-    valor: float | None = None
+    valor: float | None = None  # o número da linha usado (uma linha pode ter vários)
     conta: int | None = None  # posição de uma conta anterior da mesma frase
 
 
@@ -89,12 +89,12 @@ class Analise:
 
 
 def _operando(dado: dict[str, Any], posicao: int) -> Operando:
-    preenchidos = [c for c in CAMPOS_DO_OPERANDO if dado.get(c) is not None]
-    if len(preenchidos) != 1:
-        raise RespostaInvalidaError(
-            f"operando precisa de um só entre id, valor e conta: {dado}"
-        )
     conta = dado.get("conta")
+    da_linha = dado.get("id") is not None or dado.get("valor") is not None
+    if da_linha == (conta is not None):
+        raise RespostaInvalidaError(
+            f"operando precisa de id e valor, ou de uma conta anterior: {dado}"
+        )
     if conta is not None and not 0 <= int(conta) < posicao:
         raise RespostaInvalidaError(
             f"operando aponta para uma conta que não é conta anterior: {conta}"

@@ -38,7 +38,7 @@ MESES = {
 }
 _ABREVIADOS = {nome[:3]: numero for nome, numero in MESES.items()}
 PRIMEIRO_ANO, ULTIMO_ANO = 1900, 2099  # um inteiro de 4 algarismos nessa faixa é um ano
-_FOLGA_DO_PONTO_FLUTUANTE = 1e-9
+FOLGA_DO_PONTO_FLUTUANTE = 1e-9
 
 _SINAL = r"(?P<sinal>[-−–])?"
 _DATA_COMPLETA = re.compile(
@@ -80,7 +80,7 @@ class NumeroEscrito:
 
     def bate_com(self, candidato: float, sem_sinal: bool = False) -> bool:
         """O número escrito é o candidato arredondado? `sem_sinal` aceita o valor absoluto."""
-        folga = self.tolerancia + _FOLGA_DO_PONTO_FLUTUANTE * max(1.0, abs(candidato))
+        folga = self.tolerancia + FOLGA_DO_PONTO_FLUTUANTE * max(1.0, abs(candidato))
         if abs(self.valor - candidato) <= folga:
             return True
         return (
