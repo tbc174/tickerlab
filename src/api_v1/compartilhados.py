@@ -1,6 +1,6 @@
 """As rotas públicas do link compartilhado (onda 4 da ADR 0046): abrem sem login, só com o código.
 
-A página `app.tickerlab.com.br/novo/c#<código>` lê o código depois do `#` (que não sai do navegador) e o
+A página `app.tickerlab.com.br/c#<código>` lê o código depois do `#` (que não sai do navegador) e o
 manda aqui **no corpo de um POST**, nunca no endereço: assim ele não fica em log nem em `Referer`.
 
 - Toda falha (código inválido, inexistente, vencido, revogado, PDF apagado) dá o **mesmo 404**.
