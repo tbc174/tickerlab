@@ -201,9 +201,19 @@ def test_o_site_abre_claro_e_tem_o_botao_do_tema_escuro():
 def test_o_site_usa_o_simbolo_e_a_assinatura_do_manual():
     inicio = (SITE / "index.html").read_text(encoding="utf-8")
     assert marca.TRACO_DO_TOPO in inicio and marca.TRACO_DA_HASTE in inicio
-    assert "Menos ruído. Mais inteligência para investir." in inicio
+    assert "Dados auditáveis para quem analisa empresas no Brasil." in inicio
     assert 'content="https://tickerlab.com.br/marca/compartilhamento.png"' in inicio
     assert (SITE / "marca" / "compartilhamento.png").exists()
+
+
+def test_assinatura_antiga_sumiu():
+    """ADR 0099: a assinatura é a nova em toda página; a antiga (para o investidor) não sobra."""
+    paginas = sorted(SITE.glob("*.html"))
+    assert paginas
+    for pagina in paginas:
+        texto = pagina.read_text(encoding="utf-8")
+        assert "Menos ruído" not in texto, pagina.name
+        assert "Mais inteligência para investir" not in texto, pagina.name
 
 
 def test_css_e_js_tem_a_versao_do_conteudo_no_endereco():

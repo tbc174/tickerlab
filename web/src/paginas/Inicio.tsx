@@ -40,7 +40,7 @@ export const DADOS = {
 const ESTILOS = site.estilos_do_relatorio;
 const PDF_DE_EXEMPLO = `/relatorio/exemplo-${exemplo.ticker}.pdf`;
 // o pedaço da assinatura em destaque no título
-const DESTAQUE_DO_TITULO = "Mais inteligência";
+const DESTAQUE_DO_TITULO = "auditáveis";
 
 /** "2021-10-11" → "11/10/2021" (sem Date: nada de fuso mudando o dia). */
 const dataBr = (iso: string) => iso.split("-").reverse().join("/");
@@ -213,9 +213,8 @@ function Heroi() {
             {depois}
           </h1>
           <p className="subtitulo">
-            Pesquise ativos, entenda retorno, risco e os documentos oficiais das empresas, teste
-            estratégias no passado e transforme o estudo em relatórios, com cada número
-            explicado em português.
+            Pesquise empresas, entenda resultado, risco e os documentos oficiais, e transforme o
+            estudo em relatórios, com cada número explicado em português e ligado à fonte.
           </p>
           <Busca />
           <p className="exemplos">

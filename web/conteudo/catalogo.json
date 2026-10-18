@@ -1,0 +1,902 @@
+{
+  "fontes": [
+    {
+      "historico_desde": "2003-01-01",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "modulos": [
+        "credito_e_fidc",
+        "mercado_e_empresas",
+        "rede"
+      ],
+      "orgao": "CVM",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 49
+    },
+    {
+      "historico_desde": "2010-01-01",
+      "licenca": "ODbL (dados abertos do Banco Central; citar a fonte)",
+      "modulos": [
+        "credito_e_fidc",
+        "macro",
+        "mercado_e_empresas"
+      ],
+      "orgao": "Banco Central",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 5
+    },
+    {
+      "historico_desde": "2026-10-16",
+      "licenca": "Posts públicos de assessorias de M&A: só fatos, sem texto",
+      "modulos": [
+        "ma"
+      ],
+      "orgao": "Assessorias de M&A",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 4
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 2
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANAC no dados.gov.br; citar a ANAC)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANAC",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "ODbL (dados abertos da ANEEL; citar). SAMP sem CPF e nome do consumidor",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANEEL",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANS no dados.gov.br; citar a ANS)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "Anatel",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-16",
+      "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
+      "modulos": [
+        "ma"
+      ],
+      "orgao": "Internet Archive",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ONS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "PGFN",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: reuso em consulta)",
+      "modulos": [
+        "governo_e_sancoes"
+      ],
+      "orgao": "Receita Federal",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "SUSEP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2010-01-01",
+      "licenca": "ODbL (Tesouro Transparente, Tesouro Nacional; citar a fonte)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "Tesouro Nacional",
+      "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
+      "situacao": "licenciada",
+      "tabelas": 1
+    }
+  ],
+  "modulos": [
+    {
+      "chave": "mercado_e_empresas",
+      "nome": "Mercado e empresas",
+      "tabelas": 47
+    },
+    {
+      "chave": "credito_e_fidc",
+      "nome": "Crédito e FIDC",
+      "tabelas": 11
+    },
+    {
+      "chave": "ma",
+      "nome": "M&A",
+      "tabelas": 5
+    },
+    {
+      "chave": "rede",
+      "nome": "Rede de entidades",
+      "tabelas": 3
+    },
+    {
+      "chave": "governo_e_sancoes",
+      "nome": "Governo e sanções",
+      "tabelas": 2
+    },
+    {
+      "chave": "macro",
+      "nome": "Macro",
+      "tabelas": 2
+    }
+  ],
+  "tabelas": [
+    {
+      "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "frase": "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior).",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "demonstracoes_como_era"
+    },
+    {
+      "atraso": "O do documento conferido",
+      "frase": "Os achados das regras fixas do selo \"dado em conferência\": o número que chamou a atenção, o esperado e o porquê.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "achados_de_qualidade"
+    },
+    {
+      "atraso": "Dias, entre o ato e a publicação",
+      "frase": "Cada registro de companhia aberta na CVM, inclusive as que saíram, com a data e o motivo.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_das_companhias"
+    },
+    {
+      "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "frase": "Cada código de ação da B3 (bolsa) com a empresa e de quando a quando valeu, juntando todos os anos do formulário cadastral (FCA): código que sumiu continua aqui.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "tickers_no_tempo"
+    },
+    {
+      "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "frase": "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "valores_mobiliarios"
+    },
+    {
+      "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "frase": "Emissor (as 4 letras do ticker e do ISIN: PETR) → CNPJ, com o primeiro e o último ano do FCA em que apareceu.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "emissores"
+    },
+    {
+      "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
+      "frase": "Códigos de negociação informados fora do formato de ticker (a CSN informa \"4030\"): não viram ligação e vão para o relatório de buracos.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "codigos_invalidos"
+    },
+    {
+      "atraso": null,
+      "frase": "As posições em ações de todos os fundos registrados na CVM, por mês, desde 2005 (CDA, bloco de ações): comprado, emprestado e vendido, com o ISIN e o emissor.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "carteiras_dos_fundos"
+    },
+    {
+      "atraso": null,
+      "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "carteiras_bloco_8"
+    },
+    {
+      "atraso": null,
+      "frase": "As cotas de fundos que cada fundo tem, do bloco 2 do CDA (\"cotas de fundos\"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos.",
+      "frequencia": "Mensal",
+      "historico_desde": "2005-01-31",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cda_cotas"
+    },
+    {
+      "atraso": "Entregue em até 15 dias",
+      "frase": "O informe mensal de cada FIDC desde 2013, um Parquet por quadro (tab_I a tab_X_7) e por ano, no formato da fonte: carteira, prazos, inadimplência por faixa, pré-pagamento, recompras, cedentes.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fidc_informe"
+    },
+    {
+      "atraso": "Do dia: é um retrato do cadastro na data da coleta",
+      "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cadastro_de_fundos"
+    },
+    {
+      "atraso": null,
+      "frase": "Quem tinha cada empresa em cada mês desde 2005: as posições dos fundos (CDA) somadas por mês e tipo (comprado, emprestado, vendido), em duas versões: por emissor (sempre) e por empresa (CNPJ).",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "painel_dos_fundos"
+    },
+    {
+      "atraso": "O do CDA",
+      "frase": "Por mês desde 2005, quanto do valor comprado pelos fundos chega a um CNPJ de empresa pela ligação do painel (a meta da tabela conferida é 95% em cada ano).",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "cobertura_dos_fundos"
+    },
+    {
+      "atraso": "O do CDA",
+      "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "buracos_dos_fundos"
+    },
+    {
+      "atraso": "Nenhum",
+      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "emissores_sem_ligacao"
+    },
+    {
+      "atraso": "Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras",
+      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa \"4030\"), ligados ao CNPJ pelo cadastro de companhias da CVM.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "emissores_antigos"
+    },
+    {
+      "atraso": "Nenhum: o código vale do 1º ao último mês em que aparece nas carteiras",
+      "frase": "Tabela conferida à mão: códigos de empresas da bolsa que o FCA traz fora do formato (o BTG informa \"000000\" nas units, a Marisa \"022055\").",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "codigos_fora_do_fca"
+    },
+    {
+      "atraso": "Mensal",
+      "frase": "Estatístico do transporte aéreo da ANAC por empresa, mês e par de aeroportos (passageiros, carga, assentos, ASK, RPK, combustível...), desde 2000, no formato da fonte.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANAC",
+      "situacao": "licenciada",
+      "tabela": "anac_estatistico"
+    },
+    {
+      "atraso": "Mensal",
+      "frase": "Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por mês, agente, produto, origem, destino e mercado, desde 2007, no formato da fonte.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP",
+      "situacao": "licenciada",
+      "tabela": "anp_vendas"
+    },
+    {
+      "atraso": "O dia seguinte",
+      "frase": "Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte.",
+      "frequencia": "Diária",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ONS",
+      "situacao": "licenciada",
+      "tabela": "ons_geracao"
+    },
+    {
+      "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
+      "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANEEL",
+      "situacao": "licenciada",
+      "tabela": "aneel_samp"
+    },
+    {
+      "atraso": "Agosto/2026 estava publicado em 14/10/2026",
+      "frase": "Acessos de banda larga fixa, telefonia móvel e TV por assinatura da Anatel por prestadora (CNPJ), mês e UF, desde 2005 (móvel), 2007 (banda larga) e 2012 (TV), somados os municípios.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Anatel",
+      "situacao": "licenciada",
+      "tabela": "anatel_acessos"
+    },
+    {
+      "atraso": "Medido: o arquivo de 08/08/2026 trazia até junho/2026",
+      "frase": "Beneficiários de planos de saúde por operadora (registro ANS), mês, modalidade, cobertura, vigência do plano, contratação e financiamento, desde 2017, no formato da fonte.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANS",
+      "situacao": "licenciada",
+      "tabela": "ans_beneficiarios"
+    },
+    {
+      "atraso": null,
+      "frase": "Conselho de administração, diretoria e conselho fiscal por companhia e versão do FRE: quantos membros, suplentes, independentes, eleitos pelo controlador e pelos minoritários, desde 2010.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_conselho"
+    },
+    {
+      "atraso": null,
+      "frase": "Comitês (auditoria, risco, remuneração...) por companhia e versão do FRE: quantos membros e suplentes, desde 2010.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_comites"
+    },
+    {
+      "atraso": null,
+      "frase": "Remuneração total da administração por órgão e exercício (salário, benefícios, bônus, participação nos resultados, ações...), como a CVM publica no FRE, desde 2010, sem os textos livres.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_remuneracao"
+    },
+    {
+      "atraso": null,
+      "frase": "A maior, a menor e a média da remuneração individual por órgão e exercício, como a CVM publica no FRE, desde 2010 (sem a observação em texto livre).",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_remuneracao_extremos"
+    },
+    {
+      "atraso": null,
+      "frase": "Gênero, raça e pessoas com deficiência na administração por órgão, como a CVM publica no FRE de 2023 em diante (contagens; vazio nos anos anteriores).",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_diversidade"
+    },
+    {
+      "atraso": "Nenhum além das datas da própria oferta",
+      "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ofertas_antigas"
+    },
+    {
+      "atraso": "Nenhum além das datas da própria oferta",
+      "frase": "Requerimentos de oferta pública pela Resolução CVM 160 (2023 em diante), por CNPJ do emissor, no formato da CVM, sem os textos livres (devedores, garantias, lastro, destinação dos recursos).",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ofertas_resolucao_160"
+    },
+    {
+      "atraso": "Agosto/2026 estava publicado em 16/10/2026",
+      "frase": "Prêmios, sinistros e despesas de seguros por seguradora (código da SUSEP), grupo de ramos, ramo e mês desde 1995 (SES), no formato da fonte.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "SUSEP",
+      "situacao": "licenciada",
+      "tabela": "susep_seguros"
+    },
+    {
+      "atraso": "Nenhum além do de cada fonte: cada coluna vale desde que ficou pública",
+      "frase": "A amostra integrada: uma linha por companhia e fim de mês, desde jan/2010, com só o que se sabia dela naquele dia, de todas as fontes da base.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "amostra_painel"
+    },
+    {
+      "atraso": "Nenhum",
+      "frase": "Os códigos das fontes setoriais.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP",
+      "situacao": "licenciada",
+      "tabela": "setoriais_buracos"
+    },
+    {
+      "atraso": "Jun/2026 estava publicado em 14/10",
+      "frase": "Balanço, resultado, capital, segmentação e carteira de crédito de cada banco e conglomerado, por trimestre desde 2000, no formato longo da fonte (uma linha por instituição, relatório, conta e coluna).",
+      "frequencia": "Trimestral",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "ifdata_valores"
+    },
+    {
+      "atraso": "O dos valores",
+      "frase": "O cadastro de cada data-base do IF.data: nome, tipo de controle, segmento, cidade, conglomerados e CNPJ do líder de cada instituição e conglomerado, com a raiz do CNPJ que liga à bolsa.",
+      "frequencia": "Trimestral",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "ifdata_cadastro"
+    },
+    {
+      "atraso": "O do cadastro do IF.data",
+      "frase": "Instituição do IF.data → CNPJ da empresa da bolsa → tickers que valiam no ano, por data-base.",
+      "frequencia": "Trimestral",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "ligacao_dos_bancos"
+    },
+    {
+      "atraso": "Publicado ~30 dias depois do fim do mês",
+      "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "scr_credito"
+    },
+    {
+      "atraso": "O do balanço mais novo de cada empresa até o corte",
+      "frase": "Os padrões por setor das notas: os percentis de cada indicador entre as empresas de cada grupo de setores, calculados só com os balanços que eram públicos na data de corte.",
+      "frequencia": "Mensal",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "padroes_setoriais"
+    },
+    {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "frase": "Dividendos e juros sobre capital próprio de cada exercício, como a empresa informou no Formulário de Referência (FRE).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_proventos"
+    },
+    {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital informados no FRE, para ajustar a quantidade de ações (sem confundir desdobramento com diluição).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fre_eventos_de_capital"
+    },
+    {
+      "atraso": null,
+      "frase": "Documentos do IPE da CVM desde 2003 (fatos relevantes, comunicados, assembleias, resultados...), com o tema e a materialidade do tipo de documento.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "eventos"
+    },
+    {
+      "atraso": "Até 10 dias depois do fim do mês da negociação",
+      "frase": "Compras e vendas de ações e units por controladores, diretores, conselheiros e pela própria companhia (tesouraria), declaradas à CVM no VLMO desde 2018.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "negociacoes"
+    },
+    {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "proventos"
+    },
+    {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "eventos_de_capital"
+    },
+    {
+      "atraso": null,
+      "frase": "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "insolvencia"
+    },
+    {
+      "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
+      "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "Receita Federal",
+      "situacao": "em consulta",
+      "tabela": "cnpj_situacao_especial"
+    },
+    {
+      "atraso": "O retrato do fim do trimestre sai semanas depois",
+      "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
+      "frequencia": "Trimestral",
+      "historico_desde": "2026-10-14",
+      "modulo": "governo_e_sancoes",
+      "orgao": "PGFN",
+      "situacao": "em consulta",
+      "tabela": "pgfn_divida"
+    },
+    {
+      "atraso": null,
+      "frase": "Assembleias de debenturistas (AGDEB: ata, edital, proposta, instrução de voto), avisos aos debenturistas e notificações do agente fiduciário que as companhias abertas entregam à CVM no IPE desde…",
+      "frequencia": "Diária",
+      "historico_desde": "2003-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "debentures_assembleias"
+    },
+    {
+      "atraso": null,
+      "frase": "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados.",
+      "frequencia": "Diária",
+      "historico_desde": "2003-01-01",
+      "modulo": "credito_e_fidc",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ratings"
+    },
+    {
+      "atraso": null,
+      "frase": "Mandatos de auditor independente de cada companhia pelo FCA desde 2010 (firma, início e fim).",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "auditores"
+    },
+    {
+      "atraso": null,
+      "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
+      "frequencia": "Anual",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "fca_geral"
+    },
+    {
+      "atraso": null,
+      "frase": "Rótulo \"trocou de auditor\": cada troca de firma, montada de todos os anos de auditores na ordem de entrega dos FCAs (uma troca nunca é reescrita depois).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "trocas_de_auditor"
+    },
+    {
+      "atraso": "Um dia útil: o arquivo do Tesouro sai na manhã seguinte",
+      "frase": "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "macro",
+      "orgao": "Tesouro Nacional",
+      "situacao": "licenciada",
+      "tabela": "curva_juros"
+    },
+    {
+      "atraso": null,
+      "frase": "Meta da Selic (SGS 432) e mediana do Focus para a Selic no fim de cada ano, com a safra: cada revisão é uma linha a mais, que passa a valer em divulgado_em.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "macro",
+      "orgao": "Banco Central",
+      "situacao": "licenciada",
+      "tabela": "bcb_selic_focus"
+    },
+    {
+      "atraso": null,
+      "frase": "O que a empresa disse no press-release de resultado contra o que entregou à CVM no ITR ou na DFP do mesmo período: receita líquida, lucro líquido dos controladores e resultado operacional.",
+      "frequencia": "Semanal",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "release_x_oficial"
+    },
+    {
+      "atraso": null,
+      "frase": "Um fato por linha para as notas de dado: resultado trimestral (ITR e DFP), fato relevante (IPE) e reunião do Copom.",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "noticias_fatos"
+    },
+    {
+      "atraso": null,
+      "frase": "Um número por linha de cada fato de noticias_fatos, com a conta, o período, a versão e a data pública de onde saiu, e o cálculo quando o valor não é o publicado (trimestre isolado).",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "noticias_numeros"
+    },
+    {
+      "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
+      "frase": "Controladas e coligadas de cada companhia informadas no FRE desde 2010, com a participação e a data de entrega.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "controladas"
+    },
+    {
+      "atraso": "O rótulo de um documento existe a partir do prazo",
+      "frase": "Rótulo do modelo de atraso na entrega: uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "rotulos_atraso"
+    },
+    {
+      "atraso": "Cada coluna usa só o que era público na véspera da previsão",
+      "frase": "Colunas do modelo de atraso na entrega como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "colunas_atraso"
+    },
+    {
+      "atraso": null,
+      "frase": "De que companhia listada é cada entidade que os reguladores enxergam.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "empresa_serie"
+    },
+    {
+      "atraso": "O da fonte mais lenta de cada entidade",
+      "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "rede",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "entidades"
+    },
+    {
+      "atraso": "O ticker vale da entrega do FCA que o trouxe",
+      "frase": "Os identificadores de cada entidade da rede, com de quando a quando valem: CNPJ (com letras), raiz, LEI, ticker, emissor e códigos dos reguladores (codigo_<fonte>).",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "rede",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "identificadores"
+    },
+    {
+      "atraso": null,
+      "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
+      "frequencia": "Diária",
+      "historico_desde": "2010-01-01",
+      "modulo": "rede",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "ligacoes"
+    },
+    {
+      "atraso": "Desconhecido: a assessoria posta depois de fechar o negócio, sem dizer quando",
+      "frase": "Negócios de M&A do middle market tirados dos posts das assessorias independentes, uma linha por página de negócio: as empresas, o tipo e o sentido.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-16",
+      "modulo": "ma",
+      "orgao": "Assessorias de M&A",
+      "situacao": "em consulta",
+      "tabela": "ma_assessorias"
+    },
+    {
+      "atraso": null,
+      "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-16",
+      "modulo": "ma",
+      "orgao": "Assessorias de M&A",
+      "situacao": "em consulta",
+      "tabela": "ma_partes"
+    },
+    {
+      "atraso": null,
+      "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-16",
+      "modulo": "ma",
+      "orgao": "Assessorias de M&A",
+      "situacao": "em consulta",
+      "tabela": "ma_negocios"
+    },
+    {
+      "atraso": null,
+      "frase": "Quando cada negócio de M&A das assessorias ficou público, provado, e a confirmação por fonte oficial; uma linha por página.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-16",
+      "modulo": "ma",
+      "orgao": "Internet Archive",
+      "situacao": "em consulta",
+      "tabela": "ma_datas"
+    },
+    {
+      "atraso": null,
+      "frase": "Régua do middle market de cada negócio de M&A das assessorias: a receita anual da alvo no último exercício antes do negócio, entre R$ 30 e 500 milhões; uma linha por página.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-16",
+      "modulo": "ma",
+      "orgao": "Assessorias de M&A",
+      "situacao": "em consulta",
+      "tabela": "ma_regua"
+    }
+  ],
+  "totais": {
+    "fontes": 14,
+    "fontes_em_consulta": 4,
+    "modulos": 6,
+    "tabelas": 70
+  }
+}

@@ -400,6 +400,32 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 
 /* no celular o painel some; o botão do PDF de exemplo aparece no lugar dele */
 .acoes.v2-so-no-celular { display: none; }
+/* Dados: a lista de tabelas, as fontes e o "como foi calculado" recolhido */
+.dados-resumo { font-size: 1.35rem; font-weight: 700; margin: .4rem 0 1rem; }
+.dados-regras, .dados-fontes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.v2-texto .dados-fonte h3 { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; padding: 0; border: 0;
+  border-radius: 0; font-size: 1.12rem; color: var(--texto); background: none; }
+.dados-frase { color: var(--apagado); font-size: .88rem; }
+.dados-repasse { font-weight: 600; }
+.dados-contagem { color: var(--apagado); font-size: .85rem; font-weight: 500; margin-left: .4rem; }
+.dados-modulo { margin-top: 2rem; }
+.dados-modulo[hidden], .dados-vazio[hidden], .dados-busca[hidden], tr[data-tabela][hidden] { display: none; }
+.dados-busca { width: 100%; max-width: 28rem; padding: .7rem 1rem; border-radius: var(--raio); border: 1px solid var(--linha);
+  background: var(--destaque); color: var(--texto); font: inherit; }
+.dados-busca:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+.dados-modulo td:first-child { min-width: 16rem; }
+.dados-modulo code { font-size: .88rem; overflow-wrap: anywhere; }
+.dados-aviso { color: var(--apagado); font-size: .9rem; margin-top: 2rem; }
+.como-foi-calculado { border: 1px solid var(--linha); border-radius: var(--raio); padding: .9rem 1.2rem; margin: 1.2rem 0; background: var(--destaque); }
+:root[data-tema="escuro"] .como-foi-calculado { background: var(--superficie); }
+.como-foi-calculado summary { cursor: pointer; font-weight: 700; list-style: none; }
+.como-foi-calculado summary::-webkit-details-marker { display: none; }
+.como-foi-calculado summary::after { content: "+"; float: right; color: var(--azul-texto); font-weight: 800; transition: transform 220ms ease; }
+.como-foi-calculado[open] summary::after { transform: rotate(45deg); }
+.como-foi-calculado[open] { border-color: color-mix(in srgb, var(--azul) 55%, transparent); }
+.como-foi-calculado-texto { color: var(--apagado); margin-top: .7rem; }
+.como-foi-calculado-texto p { margin: 0 0 .6rem; }
+
 @media (max-width: 860px) {
   .v2-painel-pilha { display: none; }
   .heroi { grid-template-columns: 1fr; }
@@ -444,7 +470,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
 .v2-pausado .v2-pausa .pausar { display: none; }
 .v2-pausado .v2-pausa .retomar { display: block; }
 
-/* brilho que passa uma vez pelo "Mais inteligência" */
+/* brilho que passa uma vez pelo "auditáveis" */
 .v2-degrade { background-size: 220% 100%; animation: v2-brilho 2200ms cubic-bezier(.3, .7, .2, 1) 500ms both; }
 @keyframes v2-brilho { from { background-position: 100% 0; } to { background-position: 0 0; } }
 
@@ -741,7 +767,7 @@ body { background: radial-gradient(90rem 40rem at 85% -10%, color-mix(in srgb, v
   background: linear-gradient(90deg, transparent, #2962ff 30%, #6e95ff 50%, #2962ff 70%, transparent); opacity: .7; }
 
 @media (max-width: 860px) {
-  .v2-planos, .v2-promessas, .v2-acreditamos { grid-template-columns: 1fr; }
+  .v2-planos, .v2-promessas, .v2-acreditamos, .dados-regras, .dados-fontes { grid-template-columns: 1fr; }
   .v2-leitura { grid-template-columns: minmax(0, 1fr); }
   .v2-sumario { position: static; padding-bottom: 0; }
   .passos { padding-top: 0; }
