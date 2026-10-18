@@ -92,6 +92,8 @@ TERMOS = {
     # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
+    # a FNC veda robôs e cópia sem autorização escrita: não coletamos, só vigiamos os termos (18/10/2026)
+    "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
 }
 CATALOGOS = {
     "catalogo-cvm": PORTAL_DA_CVM,
@@ -686,6 +688,20 @@ def _meses_recentes(modelo: str, meses: int) -> Descobrir:
     return descobrir
 
 
+# balanço mundial do café (PR 4 do plano de commodities)
+PSD_DO_CAFE = "https://apps.fas.usda.gov/psdonline/downloads/psd_coffee_csv.zip"
+FAOSTAT_PRODUCAO = (
+    "https://bulks-faostat.fao.org/production/"
+    "Production_Crops_Livestock_E_All_Data_(Normalized).zip"
+)
+PAGINA_DO_RELATORIO_DA_ICO = (
+    "https://ico.org/resources/coffee-market-report-statistics-section/"
+)
+PDF_DO_RELATORIO_DA_ICO = re.compile(
+    rb'href="(https?://[^"]*ico\.org/documents/[^"]*cmr-\d{4}-e\.pdf)"'
+)
+
+
 def _um(url: str, extensao: str | None = None) -> Descobrir:
     return lambda cliente, agora: [Alvo(url, extensao)]
 
@@ -910,6 +926,17 @@ FONTES: list[Fonte] = [
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
+    # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)
+    Fonte("usda-psd-cafe", "semanal", _um(PSD_DO_CAFE), "zip"),
+    Fonte("faostat-cafe", "semanal", _um(FAOSTAT_PRODUCAO), "zip", pesada=True),
+    Fonte(
+        "ico-relatorio-mensal",
+        "mensal",
+        lambda cliente, agora: descobrir_links(
+            cliente, PAGINA_DO_RELATORIO_DA_ICO, PDF_DO_RELATORIO_DA_ICO
+        ),
+        "pdf",
+    ),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

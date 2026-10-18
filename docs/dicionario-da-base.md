@@ -2603,3 +2603,31 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 | `porte_publico_em` | Quando o arquivista baixou esse ZIP | data e hora (UTC) |
 | `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
 | `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
+
+## `usda_psd_cafe`
+
+Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD. Só a produção se separa por tipo (arabica, conilon = a Robusta do USDA); os demais atributos são do `total`. Cada baixada semanal guarda as revisões do USDA com a data em que apareceram, para o 'como era na data'
+
+- **Fonte:** USDA FAS, PSD Online: Coffee (psd_coffee_csv.zip)
+- **Licença:** Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)
+- **Atraso de divulgação:** `divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das baixadas guardadas pelo arquivista
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `codigo_do_pais`, `ano_safra`, `atributo`, `tipo`, `divulgado_em`
+- **Três datas:** aconteceu_em = `divulgado_em`; publico_em = `divulgado_em`
+- **Histórico desde:** 2026-10-18 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/commodities/usda_psd/<dia da baixada>.parquet`
+- **Linhagem:** Cada parquet nasce de um `psd_coffee_csv.zip` guardado pelo arquivista (SHA-256 no registro de coletas); a unidade da fonte é conferida (mil sacas de 60 kg) e uma unidade diferente interrompe a leitura.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `codigo_do_pais` | Código do país no USDA (ex.: BR) | texto |
+| `pais` | Nome do país, como o USDA escreve | texto |
+| `ano_safra` | Ano de início da safra comercial (2024 = 2024/25) | número inteiro |
+| `atributo` | Produção, consumo, estoque final, exportação... | texto |
+| `tipo` | arabica, conilon ou total | texto |
+| `valor` | Valor em mil sacas de 60 kg | número com decimais, na unidade da fonte |
+| `unidade` | Unidade da fonte, conferida na leitura | texto |
+| `divulgado_em` | Quando a revisão ficou pública (fim do mês da revisão) | data (dia) |

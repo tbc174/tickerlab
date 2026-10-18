@@ -171,6 +171,14 @@ DESTINOS: dict[str, Destino] = {
     "b3-emprestimo-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
+    # balanço mundial do café (PR 4)
+    "usda-psd-cafe": _tabela("usda_psd_cafe"),
+    "faostat-cafe": _planejada(
+        "commodities/PR 14", "produção e área por país e ano, em tabela própria"
+    ),
+    "ico-relatorio-mensal": _pesquisa(
+        "relatório mensal da ICO em PDF, sem termos de uso localizados; só pesquisa até a ICO publicar a licença"
+    ),
     # vigias (avisam quando o texto muda)
     **{
         id_: _vigia()
@@ -183,6 +191,7 @@ DESTINOS: dict[str, Destino] = {
             "termos-datajud",
             "termos-sec",
             "termos-ibge",
+            "termos-fnc-colombia",
             "termos-igc-robots",
             "termos-igc-privacidade",
             "catalogo-cvm",
