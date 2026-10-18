@@ -73,6 +73,7 @@ DESTINOS: dict[str, Destino] = {
     "cvm-hist-ipe": _tabela(
         "eventos",
         "insolvencia",
+        "ma_candidatos",
         "noticias_fatos",
         "noticias_numeros",
         "release_x_oficial",

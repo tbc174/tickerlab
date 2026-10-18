@@ -2501,6 +2501,43 @@ Negócios de M&A do middle market tirados dos posts das assessorias independente
 | `moeda` | BRL ou USD, a do valor | texto |
 | `conferencia` | assessoria (fonte única: declarado por quem assessorou); a confirmação por fonte oficial, com a prova, fica em `ma_datas` | texto |
 
+## `ma_candidatos`
+
+Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem anunciar uma operação de M&A (série 1 da base de M&A, ADR 0063), uma linha por versão entregue: fatos relevantes escolhidos pelo assunto, comunicados ao mercado com o tipo no assunto e todo edital de OPA. É a lista do que ler, não a lista de operações: favorece a cobertura, e o assunto genérico (o padrão do sistema da CVM, o vazio, o esclarecimento sobre notícia) entra sem tipo, para a leitura do texto decidir. Recompra, proventos, dívida e oferta de ações ficam fora. Cobertura contra as reestruturações declaradas no FRE (2010 a 2015): 80% das operações com algum fato relevante da companhia no ano anterior têm fato relevante candidato na janela (92% com os comunicados); lidas à mão 40 perdidas, 36 não tinham fato relevante sobre a operação (~97% dos que existem). Amostra de ouro: 84 de 85 operações candidatas
+
+- **Fonte:** CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/ma_ipe.py`
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Diária no servidor de casa (`scripts/montar_ma_candidatos.py`), depois do arquivista baixar o IPE do ano
+- **Atraso de divulgação:** O documento vale a partir de `publico_em` (entrega da versão à CVM), nunca da `referencia` informada pela companhia
+- **Módulo:** ma · **Contém dado de pessoa:** não
+- **Chaves:** `link`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `publico_em`; coletado_em = `origem_coletada_em`
+- **Histórico desde:** 2003-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/ma/candidatos/candidatos.parquet` (servidor de casa, `scripts/montar_ma_candidatos.py`)
+- **Linhagem:** Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `codigo_cvm` | Código da companhia na CVM | texto |
+| `categoria` | Categoria do IPE: Fato Relevante, Comunicado ao Mercado ou o edital de OPA | texto |
+| `tipo` | Tipo do IPE (vazio no fato relevante) | texto |
+| `assunto` | Assunto como a companhia preencheu | texto |
+| `tipo_provavel` | Pista do assunto: OPA, INC_ACOES, FUSAO, CISAO, INC_EMPRESA, JV, UPI, PRIVATIZACAO, ALIEN_CONTROLE, VENDA_ATIVO, AQUISICAO (controle ou minoritária) ou NEGOCIACAO (memorando, exclusividade); vazia no assunto genérico. Não é o tipo da operação: quem diz é o texto | texto |
+| `evidencia` | Por que entrou: assunto (o assunto dá o tipo provável), assunto_generico (fato relevante de assunto padrão ou vazio) ou categoria (edital de OPA) | texto |
+| `referencia` | Data de referência informada pela companhia | data (dia) |
+| `publico_em` | Entrega da versão do documento à CVM: quando ficou público para a base | data (dia) |
+| `protocolo` | Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo) | texto |
+| `versao` | Versão do documento (reapresentação) | número inteiro |
+| `link` | Link do documento no sistema da CVM | texto |
+| `origem_sha256` | SHA-256 do arquivo original no acervo | texto |
+| `origem_coletada_em` | Quando o arquivista baixou esse original | data e hora (UTC) |
+| `montado_em` | Quando a tabela foi montada | data e hora (UTC) |
+| `versao_do_codigo` | Commit do código que montou a tabela | texto |
+
 ## `ma_partes`
 
 As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por empresa de cada página, ligadas à rede de entidades (ADR 0077) só por regras exatas: o nome normalizado contra os nomes da rede e a razão social do CNPJ e, se nada casou, contra o nome fantasia. Nome de mais de uma entidade fica na dúvida, nunca escolhido; empresário individual e MEI nunca são ligados (ADR 0075). Série 5 do plano de M&A, passo 3 (ADR 0082)
