@@ -1,0 +1,70 @@
+{
+  "tabela": "comex_cafe",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "competencia": {
+      "descricao": "Mês (último dia)",
+      "unidade": "data (dia)"
+    },
+    "ncm": {
+      "descricao": "NCM do café (8 dígitos)",
+      "unidade": "texto"
+    },
+    "uf_origem": {
+      "descricao": "UF do produtor/exportador",
+      "unidade": "texto"
+    },
+    "codigo_do_pais": {
+      "descricao": "Código do país de destino no Comex",
+      "unidade": "texto"
+    },
+    "pais_destino": {
+      "descricao": "Nome do país de destino",
+      "unidade": "texto"
+    },
+    "vl_fob_usd": {
+      "descricao": "Valor FOB em dólares",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "kg_liquido": {
+      "descricao": "Peso líquido em quilos",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "sacas": {
+      "descricao": "Sacas de 60 kg (quilos líquidos ÷ 60)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "tipo": {
+      "descricao": "Sempre `total`: a NCM não separa arábica de conilon",
+      "unidade": "texto"
+    },
+    "proxy_conilon": {
+      "descricao": "Verdadeiro para o Espírito Santo, pista de conilon (não divide o volume)",
+      "unidade": "verdadeiro ou falso"
+    },
+    "divulgado_em": {
+      "descricao": "Data da coleta do arquivista em que a linha apareceu (sem olhar o futuro)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "competencia",
+    "ncm",
+    "uf_origem",
+    "codigo_do_pais",
+    "divulgado_em"
+  ],
+  "datas": {
+    "aconteceu_em": "competencia",
+    "publico_em": "divulgado_em"
+  },
+  "historico_desde": "2026-10-18",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+  "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+  "pessoa": false,
+  "frequencia": "Mensal",
+  "atraso": "O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, não a do MDIC"
+}

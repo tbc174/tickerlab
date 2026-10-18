@@ -93,12 +93,34 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "1981-01-31",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "INMET",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-16",
       "licenca": "Internet Archive: 'for scholarship and research purposes only'; só datas",
       "modulos": [
         "ma"
       ],
       "orgao": "Internet Archive",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-18",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
       "tabelas": 1
@@ -157,13 +179,24 @@
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
       "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-18",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "USDA",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
     }
   ],
   "modulos": [
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 47
+      "tabelas": 48
     },
     {
       "chave": "credito_e_fidc",
@@ -176,6 +209,11 @@
       "tabelas": 5
     },
     {
+      "chave": "macro",
+      "nome": "Macro",
+      "tabelas": 4
+    },
+    {
       "chave": "rede",
       "nome": "Rede de entidades",
       "tabelas": 3
@@ -183,11 +221,6 @@
     {
       "chave": "governo_e_sancoes",
       "nome": "Governo e sanções",
-      "tabelas": 2
-    },
-    {
-      "chave": "macro",
-      "nome": "Macro",
       "tabelas": 2
     }
   ],
@@ -391,6 +424,16 @@
       "orgao": "ANP",
       "situacao": "licenciada",
       "tabela": "anp_vendas"
+    },
+    {
+      "atraso": "O mês fecha cerca de 60 dias depois",
+      "frase": "Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-18",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "em consulta",
+      "tabela": "comex_cafe"
     },
     {
       "atraso": "O dia seguinte",
@@ -891,12 +934,32 @@
       "orgao": "Assessorias de M&A",
       "situacao": "em consulta",
       "tabela": "ma_regua"
+    },
+    {
+      "atraso": null,
+      "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
+      "frequencia": "Semanal",
+      "historico_desde": "2026-10-18",
+      "modulo": "macro",
+      "orgao": "USDA",
+      "situacao": "licenciada",
+      "tabela": "usda_psd_cafe"
+    },
+    {
+      "atraso": "Mensal",
+      "frase": "Clima do mês por região produtora de café: chuva acumulada, Tmín média, dias com Tmín abaixo de 2 °C e Tmáx média, com a normal de 1991–2020 e a anomalia.",
+      "frequencia": "Mensal",
+      "historico_desde": "1981-01-31",
+      "modulo": "macro",
+      "orgao": "INMET",
+      "situacao": "licenciada",
+      "tabela": "clima_regiao_cafe"
     }
   ],
   "totais": {
-    "fontes": 14,
-    "fontes_em_consulta": 4,
+    "fontes": 17,
+    "fontes_em_consulta": 5,
     "modulos": 6,
-    "tabelas": 70
+    "tabelas": 73
   }
 }

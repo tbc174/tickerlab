@@ -71,6 +71,7 @@ FAMILIA_DO_ENDERECO = {
     "dados.susep.gov.br/": "susep",
     "www2.susep.gov.br/": "susep",
     "balanca.mdic.gov.br/": "comexstat",
+    "www.cecafe.com.br/": "cecafe",
     "www.b3.com.br/": "b3",
     "arquivos.b3.com.br/": "b3",
     "bvmf.bmfbovespa.com.br/": "b3",
@@ -85,6 +86,11 @@ FAMILIA_DO_ENDERECO = {
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
+    "apps.fas.usda.gov/": "usda",
+    "bulks-faostat.fao.org/": "faostat",
+    "www.fao.org/": "faostat",
+    "www.ico.org/": "ico",
+    "ico.org/": "ico",
 }
 # a base de cripto (`<acervo>/cripto/<pasta>/...`, `base/cripto/coleta.py`) grava sem origens
 PASTAS_DA_CRIPTO = {

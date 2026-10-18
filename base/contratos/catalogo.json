@@ -1575,6 +1575,76 @@
       "frequencia": "Mensal",
       "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 60 dias (agosto/2026 estava publicado 44 dias depois, medido em 14/10/2026)"
     },
+    "comex_cafe": {
+      "tabela": "comex_cafe",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ncm": {
+          "descricao": "NCM do café (8 dígitos)",
+          "unidade": "texto"
+        },
+        "uf_origem": {
+          "descricao": "UF do produtor/exportador",
+          "unidade": "texto"
+        },
+        "codigo_do_pais": {
+          "descricao": "Código do país de destino no Comex",
+          "unidade": "texto"
+        },
+        "pais_destino": {
+          "descricao": "Nome do país de destino",
+          "unidade": "texto"
+        },
+        "vl_fob_usd": {
+          "descricao": "Valor FOB em dólares",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "kg_liquido": {
+          "descricao": "Peso líquido em quilos",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "sacas": {
+          "descricao": "Sacas de 60 kg (quilos líquidos ÷ 60)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "tipo": {
+          "descricao": "Sempre `total`: a NCM não separa arábica de conilon",
+          "unidade": "texto"
+        },
+        "proxy_conilon": {
+          "descricao": "Verdadeiro para o Espírito Santo, pista de conilon (não divide o volume)",
+          "unidade": "verdadeiro ou falso"
+        },
+        "divulgado_em": {
+          "descricao": "Data da coleta do arquivista em que a linha apareceu (sem olhar o futuro)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "ncm",
+        "uf_origem",
+        "codigo_do_pais",
+        "divulgado_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2026-10-18",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Mensal",
+      "atraso": "O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, não a do MDIC"
+    },
     "ons_geracao": {
       "tabela": "ons_geracao",
       "modulo": "mercado_e_empresas",
@@ -6493,6 +6563,152 @@
       "pessoa": false,
       "frequencia": "Semanal, junto da extração; versão nova só quando uma entrada muda",
       "atraso": "O da tabela `ma_datas`; a DRE é a já montada na base e o CNPJ é o do mês mais recente guardado"
+    },
+    "usda_psd_cafe": {
+      "tabela": "usda_psd_cafe",
+      "modulo": "macro",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "codigo_do_pais": {
+          "descricao": "Código do país no USDA (ex.: BR)",
+          "unidade": "texto"
+        },
+        "pais": {
+          "descricao": "Nome do país, como o USDA escreve",
+          "unidade": "texto"
+        },
+        "ano_safra": {
+          "descricao": "Ano de início da safra comercial (2024 = 2024/25)",
+          "unidade": "número inteiro"
+        },
+        "atributo": {
+          "descricao": "Produção, consumo, estoque final, exportação...",
+          "unidade": "texto"
+        },
+        "tipo": {
+          "descricao": "arabica, conilon ou total",
+          "unidade": "texto"
+        },
+        "valor": {
+          "descricao": "Valor em mil sacas de 60 kg",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "unidade": {
+          "descricao": "Unidade da fonte, conferida na leitura",
+          "unidade": "texto"
+        },
+        "divulgado_em": {
+          "descricao": "Quando a revisão ficou pública (fim do mês da revisão)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "codigo_do_pais",
+        "ano_safra",
+        "atributo",
+        "tipo",
+        "divulgado_em"
+      ],
+      "datas": {
+        "aconteceu_em": "divulgado_em",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2026-10-18",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Semanal (o USDA revisa o café em junho e dezembro, com ajustes no meio)",
+      "atraso": "`divulgado_em` é o fim do mês da revisão que o USDA informa na linha (no máximo o dia da baixada); o CSV só traz a versão mais recente de cada número, então o passado vem das baixadas guardadas pelo arquivista"
+    },
+    "clima_regiao_cafe": {
+      "tabela": "clima_regiao_cafe",
+      "modulo": "macro",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "regiao": {
+          "descricao": "Id da região produtora (`src/commodities/cafe/regioes.py`)",
+          "unidade": "texto"
+        },
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "fonte": {
+          "descricao": "inmet ou chirps",
+          "unidade": "texto"
+        },
+        "chuva_mm": {
+          "descricao": "Chuva acumulada no mês (média das estações, ou do satélite)",
+          "unidade": "mm"
+        },
+        "tmin_media_c": {
+          "descricao": "Média das temperaturas mínimas diárias (vazio no chirps)",
+          "unidade": "°C"
+        },
+        "dias_tmin_abaixo_de_2c": {
+          "descricao": "Dias do mês com Tmín abaixo de 2 °C (média das estações; vazio no chirps)",
+          "unidade": "dias"
+        },
+        "tmax_media_c": {
+          "descricao": "Média das temperaturas máximas diárias (vazio no chirps)",
+          "unidade": "°C"
+        },
+        "n_estacoes": {
+          "descricao": "Estações válidas no mês (80% dos dias com 20 horas de leitura); vazio no chirps",
+          "unidade": "número inteiro"
+        },
+        "chuva_normal_mm": {
+          "descricao": "Normal 1991–2020 da chuva do mês do ano (10 anos no mínimo)",
+          "unidade": "mm"
+        },
+        "chuva_anomalia_mm": {
+          "descricao": "chuva_mm menos a normal",
+          "unidade": "mm"
+        },
+        "tmin_normal_c": {
+          "descricao": "Normal 1991–2020 da Tmín média",
+          "unidade": "°C"
+        },
+        "tmin_anomalia_c": {
+          "descricao": "tmin_media_c menos a normal",
+          "unidade": "°C"
+        },
+        "tmax_normal_c": {
+          "descricao": "Normal 1991–2020 da Tmáx média",
+          "unidade": "°C"
+        },
+        "tmax_anomalia_c": {
+          "descricao": "tmax_media_c menos a normal",
+          "unidade": "°C"
+        },
+        "anos_na_normal": {
+          "descricao": "Anos que entraram na normal (vazio quando menos de 10)",
+          "unidade": "número inteiro"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + a folga da fonte)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "regiao",
+        "competencia",
+        "fonte"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "1981-01-31",
+      "granularidade_do_publico_em": "mes",
+      "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal",
+      "atraso": "Mensal; a regra de \"como era na data\" usa o fim do mês + 45 dias para o INMET e + 60 dias para o CHIRPS (folga conservadora, não medida: conferir com as baixadas do arquivista)"
     }
   }
 }
