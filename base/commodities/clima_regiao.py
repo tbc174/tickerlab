@@ -84,7 +84,8 @@ CAMPOS_DO_CABECALHO = {
 
 
 # --- INMET: do horário por estação ao mês por região --------------------------------------------
-def _simples(texto: str) -> str:
+def simplificar_nome(texto: str) -> str:
+    """Sem acento, minúsculo e com um espaço só: para casar nome de estação com município."""
     sem_acento = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return " ".join(sem_acento.replace("﻿", "").strip().lower().split())
 
@@ -102,7 +103,7 @@ def _cabecalho(linhas: list[str]) -> dict[str, str]:
     campos = {}
     for linha in linhas[:LINHAS_DE_CABECALHO]:
         rotulo, _, valor = linha.partition(";")
-        chave = _simples(rotulo).rstrip(":").split(" (")[0]
+        chave = simplificar_nome(rotulo).rstrip(":").split(" (")[0]
         if chave in CAMPOS_DO_CABECALHO:
             campos[CAMPOS_DO_CABECALHO[chave]] = valor.strip().rstrip(";")
         elif chave.startswith("codigo"):
@@ -111,7 +112,7 @@ def _cabecalho(linhas: list[str]) -> dict[str, str]:
 
 
 def _coluna_da_base(nome: str) -> str | None:
-    simples = _simples(nome)
+    simples = simplificar_nome(nome)
     return next(
         (
             coluna
@@ -186,7 +187,7 @@ def ler_inmet(zip_bytes: bytes) -> pd.DataFrame:
 
 def _regiao_por_nome_e_uf(regioes: Iterable[Regiao]) -> dict[tuple[str, str], str]:
     return {
-        (_simples(m.nome), m.uf): regiao.id
+        (simplificar_nome(m.nome), m.uf): regiao.id
         for regiao in regioes
         for m in regiao.municipios
     }
@@ -201,7 +202,7 @@ def atribuir_regiao(
     Estação com nome de distrito ou de fazenda fica de fora (limite conhecido).
     """
     por_nome = _regiao_por_nome_e_uf(regioes)
-    chaves = zip(diario["nome"].map(_simples), diario["uf"], strict=True)
+    chaves = zip(diario["nome"].map(simplificar_nome), diario["uf"], strict=True)
     com_regiao = diario.assign(regiao=[por_nome.get(chave) for chave in chaves])
     return com_regiao.dropna(subset=["regiao"]).reset_index(drop=True)
 

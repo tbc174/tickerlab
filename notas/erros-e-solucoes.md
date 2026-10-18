@@ -591,3 +591,15 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o campo obrigatório novo (`area`) entrou na dataclass `Pagina` e em todas as páginas de `src/paginas.py`, mas um teste cria uma página própria (`PAGINA_PAGA`) e ficou sem a área. Só os testes de `paginas` tinham rodado antes do push.
 - **Solução:** dar a área à página do teste. Regra: ao pôr um campo obrigatório numa classe, procurar toda chamada dela no repositório (`Grep "Pagina("`), inclusive nos testes, ou rodar a suíte inteira antes do push.
 - **Data:** 17/10/2026
+
+## CI: check "web (React)" vermelho num PR que só mudou a base (#427)
+- **Sintoma:** o PR mexia só em `base/` e no catálogo da base; o `site.test.tsx` acusou `site/dados.html` diferente do que o React gera.
+- **Causa:** a página Dados do site é gerada a partir de `web/conteudo/catalogo.json`. O catálogo foi refeito (`exportar_conteudo`), mas `site/` não (`npm run site`); o CLAUDE.md só mandava rodar os geradores quando `src/paginas.py`, `src/modulos.py` ou `web/` mudassem.
+- **Solução:** `npm run site` em `web/` depois do `exportar_conteudo` e commit do `site/dados.html` (#428). Regra: tabela nova no dicionário = catálogo novo = site refeito. Cuidado no Windows: o `npm run site` reescreve os 34 arquivos de `site/` com CRLF; confira com `git diff --ignore-cr-at-eol --stat` e descarte os que só mudaram de quebra de linha.
+- **Data:** 19/10/2026
+
+## Conflito falso ao juntar a `main` depois de um squash do próprio PR anterior
+- **Sintoma:** `scripts.juntar_main` parou com conflito em 12 arquivos de código, embora o ramo da parte 2 já contivesse tudo o que a parte 1 tinha.
+- **Causa:** a parte 1 entrou na `main` por squash (um commit novo); o ramo da parte 2 tinha os commits originais da parte 1 e mais os seus. Para o Git, os dois lados mudaram os mesmos trechos.
+- **Solução:** conferir que `git diff <ponta da parte 1> origin/main -- <arquivos>` é vazio e então `git merge --no-commit origin/main` + `git checkout --ours` nesses arquivos (`--theirs` nas pastas geradas, que se refazem). Antes disso, `git checkout -- web/conteudo` nos arquivos que só diferiam na quebra de linha, senão o `juntar_main` nem começa.
+- **Data:** 19/10/2026

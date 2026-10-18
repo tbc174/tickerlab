@@ -86,6 +86,7 @@ FAMILIA_DO_ENDERECO = {
     "pit.tce.pr.gov.br/": "tce-pr",
     "dados.tce.rs.gov.br/dados/municipal/empenhos/": "tce-rs-empenhos",
     "dados.tce.rs.gov.br/": "tce-rs",
+    "www.gov.br/conab/": "conab",
     "apps.fas.usda.gov/": "usda",
     "bulks-faostat.fao.org/": "faostat",
     "www.fao.org/": "faostat",

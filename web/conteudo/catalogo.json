@@ -104,6 +104,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-02-05",
+      "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "CONAB",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1981-01-31",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "modulos": [
@@ -134,6 +145,17 @@
       "orgao": "MDIC",
       "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
       "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "1985-12-31",
+      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "MapBiomas",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 1
     },
     {
@@ -215,14 +237,14 @@
       "tabelas": 11
     },
     {
+      "chave": "macro",
+      "nome": "Macro",
+      "tabelas": 6
+    },
+    {
       "chave": "ma",
       "nome": "M&A",
       "tabelas": 5
-    },
-    {
-      "chave": "macro",
-      "nome": "Macro",
-      "tabelas": 4
     },
     {
       "chave": "rede",
@@ -958,6 +980,16 @@
     },
     {
       "atraso": null,
+      "frase": "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-02-05",
+      "modulo": "macro",
+      "orgao": "CONAB",
+      "situacao": "em consulta",
+      "tabela": "conab_cafe"
+    },
+    {
+      "atraso": null,
       "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-18",
@@ -975,12 +1007,22 @@
       "orgao": "INMET",
       "situacao": "licenciada",
       "tabela": "clima_regiao_cafe"
+    },
+    {
+      "atraso": "Anual",
+      "frase": "Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado.",
+      "frequencia": "Anual",
+      "historico_desde": "1985-12-31",
+      "modulo": "macro",
+      "orgao": "MapBiomas",
+      "situacao": "licenciada",
+      "tabela": "area_cafe_municipio"
     }
   ],
   "totais": {
-    "fontes": 18,
-    "fontes_em_consulta": 5,
+    "fontes": 20,
+    "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 74
+    "tabelas": 76
   }
 }

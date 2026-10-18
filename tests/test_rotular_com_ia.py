@@ -219,11 +219,18 @@ def test_enviar_recusa_sem_texto_baixado(pasta):
     )
 
 
+def _lido(texto: str) -> leitura.TextoDoDocumento:
+    """O que `leitura.ler_documento` devolveria para um PDF com esse texto ("" = sem texto)."""
+    if not texto:
+        return leitura.TextoDoDocumento("", "", "O PDF é só imagem.", 1)
+    return leitura.TextoDoDocumento(texto, leitura.TEXTO, None, 1)
+
+
 def test_baixar_para_no_limite_da_cvm(tmp_path, monkeypatch):
     monkeypatch.setattr(
         leitura,
-        "texto_do_pdf",
-        lambda _: "Texto do documento com várias palavras para ler aqui.",
+        "ler_documento",
+        lambda _: _lido("Texto do documento com várias palavras para ler aqui."),
     )
     respostas = iter(
         [
@@ -244,9 +251,21 @@ def test_baixar_para_no_limite_da_cvm(tmp_path, monkeypatch):
 
 
 def test_pdf_sem_texto_fica_marcado(tmp_path, monkeypatch):
-    monkeypatch.setattr(leitura, "texto_do_pdf", lambda _: "")
+    monkeypatch.setattr(leitura, "ler_documento", lambda _: _lido(""))
     rc.baixar(EVENTOS[:1], tmp_path, maximo=1, obter=lambda _: b"%PDF-%%EOF", pausa=0)
     assert rc.texto_guardado(tmp_path, EVENTOS[0]["id"]) == ""
+
+
+def test_documento_que_nao_e_pdf_fica_sem_texto_e_a_fila_segue(tmp_path):
+    """Um .doc antigo não é o limite da CVM: fica marcado sem texto e o próximo é baixado."""
+    doc_antigo = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 100
+    respostas = iter([doc_antigo, b"<html>limite</html>"])
+    baixados = rc.baixar(
+        EVENTOS[:2], tmp_path, maximo=2, obter=lambda _: next(respostas), pausa=0
+    )
+    assert baixados == 1
+    assert rc.texto_guardado(tmp_path, EVENTOS[0]["id"]) == ""
+    assert rc.texto_guardado(tmp_path, EVENTOS[1]["id"]) is None  # parou no limite
 
 
 def test_script_nao_escreve_na_pagina():
@@ -376,8 +395,8 @@ FATO = {
 def test_baixar_fatos_relevantes_primeiro(tmp_path, monkeypatch):
     monkeypatch.setattr(
         leitura,
-        "texto_do_pdf",
-        lambda _: "Texto do documento com várias palavras para ler aqui.",
+        "ler_documento",
+        lambda _: _lido("Texto do documento com várias palavras para ler aqui."),
     )
     pedidos = []
     rc.baixar(

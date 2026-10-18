@@ -22,6 +22,7 @@ from base.arquivo import assessorias, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
+    arquivo_do_google_drive,
     arquivo_que_pode_faltar,
     csv_do_bdi_da_b3,
     csv_so_com_colunas,
@@ -129,6 +130,18 @@ DADOS_DA_ANP = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/
 VENDAS_DA_ANP = DADOS_DA_ANP + "arquivos/mdpg/{nome}.zip"
 CONCESSIONARIOS_DA_ANP = DADOS_DA_ANP + "arquivos/rc/relacao-concessionarios.csv"
 PAGINA_DA_PRODUCAO_DA_ANP = DADOS_DA_ANP + "fase-de-desenvolvimento-e-producao"
+# CONAB, safra de café (lida em 18/10/2026; rodapé CC BY-ND 3.0): a página lista os levantamentos
+# mais novos e a "safra-de-cafe-1" os antigos; cada levantamento tem uma planilha .xls (nos antigos o
+# link da "tabela de dados" não tem extensão)
+SAFRA_DE_CAFE_DA_CONAB = "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/safra-de-cafe"
+PAGINA_DOS_LEVANTAMENTOS_DA_CONAB = SAFRA_DE_CAFE_DA_CONAB
+PAGINA_ANTIGA_DA_CONAB = SAFRA_DE_CAFE_DA_CONAB + "/safra-de-cafe-1"
+PLANILHA_DA_CONAB = re.compile(
+    rb'href="('
+    + re.escape(SAFRA_DE_CAFE_DA_CONAB.encode())
+    + rb"/\do-levantamento-de-cafe-safra-\d{4}/"
+    + rb'(?:[^"/]+\.xls|tabela-de-dados-estimativas-da-producao-e-colheita))"'
+)
 # produção por poço, um arquivo por ano (mar e terra); o nome muda de padrão (2024 é
 # `producao_por_poco_2024.csv`), por isso os links saem da própria página
 PRODUCAO_POR_POCO = re.compile(
@@ -519,6 +532,18 @@ def descobrir_producao_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return descobrir_links(cliente, PAGINA_DA_PRODUCAO_DA_ANP, PRODUCAO_POR_POCO)
 
 
+def descobrir_cafe_conab(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """A planilha de cada levantamento de safra de café da CONAB (as páginas recente e antiga)."""
+    links: dict[str, None] = {}
+    for pagina in (PAGINA_DOS_LEVANTAMENTOS_DA_CONAB, PAGINA_ANTIGA_DA_CONAB):
+        links |= dict.fromkeys(
+            m.decode() for m in PLANILHA_DA_CONAB.findall(cliente.ler(pagina).conteudo)
+        )
+    if not links:
+        raise ErroDeDescoberta("CONAB: nenhuma planilha de levantamento de café")
+    return [Alvo(link, ".xls") for link in links]
+
+
 def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
     """Os CSVs "_Colunas" e "_Total" de cada ZIP de acessos (o endereço guarda `zip#arquivo`)."""
     alvos: list[Alvo] = []
@@ -812,6 +837,18 @@ def _catalogo(portal: str) -> Descobrir:
     return _um(f"{portal}/api/3/action/package_list", ".json")
 
 
+# cobertura de café por município do MapBiomas (Coleção 11): a planilha de cobertura por bioma,
+# estado e município, num zip no Google Drive (o link público da página de estatísticas do projeto)
+MAPBIOMAS_COBERTURA_MUNICIPAL = (
+    "https://drive.google.com/uc?id=1otOqymHuixvkRGVl65zTTNyfaHo46Gqk&export=download"
+)
+
+
+def _cobertura_do_mapbiomas(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    url = MAPBIOMAS_COBERTURA_MUNICIPAL
+    return [Alvo(url, ".zip", arquivo_do_google_drive(url))]
+
+
 FONTES: list[Fonte] = [
     # CVM: eventos e cadastros que só mostram o último dia útil
     Fonte("cvm-sancionador", "diaria", _ckan(PORTAL_DA_CVM, "processo-sancionador")),
@@ -1031,6 +1068,8 @@ FONTES: list[Fonte] = [
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
     # posição dos fundos (CFTC COT, domínio público) em café, açúcar, soja, milho, boi e algodão
     Fonte("cftc-cot-disaggregated", "semanal", descobrir_cot, "zip"),
+    # área de commodities, café primeiro (PR 7): os quatro levantamentos de cada safra, como publicados
+    Fonte("conab-cafe-safra", "semanal", descobrir_cafe_conab),
     # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)
     Fonte("usda-psd-cafe", "semanal", _um(PSD_DO_CAFE), "zip"),
     Fonte("faostat-cafe", "semanal", _um(FAOSTAT_PRODUCAO), "zip", pesada=True),
@@ -1048,6 +1087,9 @@ FONTES: list[Fonte] = [
     Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
     Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
+    # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
+    # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
+    Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

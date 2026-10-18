@@ -25,6 +25,7 @@ from tests.test_topicos_modelo import ClienteDeMentira
 CIK = 320193
 CHAVE = sec.cik_como_chave(CIK)
 LINK_DA_CVM = "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?numProtocolo="
+OLE = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 100  # um .doc antigo
 RISCO_NOVO = (
     "Tariffs imposed on imported semiconductors could materially increase our costs, and "
     "further tariffs and export restrictions may disrupt our supply chain."
@@ -461,8 +462,43 @@ def test_coleta_da_cvm_para_no_limite_de_downloads(banco, cvm):
 
 
 def test_pdf_ilegivel_guarda_o_motivo():
-    resultado = atualizar_leituras_cvm.ler(b"%PDF-1.4 lixo %%EOF")
-    assert resultado == {"motivo": "PDF ilegível.", "versao": leitura.VERSAO}
+    lido = leitura.ler_documento(b"%PDF-1.4 lixo %%EOF")
+    assert atualizar_leituras_cvm.ler(lido) == {
+        "motivo": "PDF ilegível.",
+        "versao": leitura.VERSAO,
+    }
+
+
+def test_resumo_guarda_de_onde_veio_o_texto():
+    """Auditável: o resumo diz se o texto veio da camada do PDF ou do OCR (e quantas páginas)."""
+    pelo_texto = atualizar_leituras_cvm.ler(leitura.ler_documento(_pdf(FATO)))
+    assert pelo_texto["origem"] == leitura.TEXTO and "paginas_por_ocr" not in pelo_texto
+    pelo_ocr = atualizar_leituras_cvm.ler(
+        leitura.TextoDoDocumento(FATO, leitura.OCR, None, paginas=3, paginas_por_ocr=3)
+    )
+    assert pelo_ocr["origem"] == leitura.OCR and pelo_ocr["paginas_por_ocr"] == 3
+    assert "frases" in pelo_ocr
+
+
+def test_documento_que_nao_e_pdf_nao_para_a_fila(banco, cvm):
+    """Um .doc antigo (2003 a 2014) fica com o motivo e o assunto pelo título; o dia segue."""
+    cvm.extend([OLE, _pdf(" ".join(FATO.split()))])
+    assert atualizar_leituras_cvm.main([]) == 0
+    assert cvm == []  # pediu os dois
+    with banco.connect() as c:
+        guardados = repo.resumos(c, FONTE_IPE, ["f1", "f2"])
+        assert repo.lidos(c, FONTE_IPE, repo.TOPICO, ["f1", "f2"], topicos.VERSAO) == {
+            "f1",
+            "f2",
+        }
+    assert guardados["f1"]["motivo"] == "O documento não é PDF (word): não lido."
+    assert "frases" in guardados["f2"]
+
+
+def test_pdf_cortado_para_a_fila_como_o_limite(banco, cvm):
+    cvm.extend([_pdf("cortado")[:200], _pdf("nunca pedido")])
+    assert atualizar_leituras_cvm.main([]) == 0
+    assert len(cvm) == 1
 
 
 # --- telas ----------------------------------------------------------------------------------------
