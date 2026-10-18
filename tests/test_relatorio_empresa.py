@@ -224,18 +224,27 @@ def test_relatorio_cita_o_yahoo_pela_lista_dos_usos_sem_cobranca(dados_da_weg):
     assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
 
 
-def test_relatorio_barra_fonte_restrita_fora_da_lista(dados_da_weg, monkeypatch):
+def test_relatorio_barra_fonte_fora_dos_usos(dados_da_weg, monkeypatch):
+    """A trava segue no relatório: se o preço viesse da B3, ele não seria montado (ADR 0102)."""
     from src.banco import coletas
 
-    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
-    with pytest.raises(coletas.LicencaNaoPermiteError, match="yahoo"):
+    monkeypatch.setattr(re_, "FONTE_DO_PRECO", "b3")
+    with pytest.raises(coletas.LicencaNaoPermiteError, match="b3"):
         re_.montar(_entradas(dados_da_weg))
 
 
-def test_relatorio_sem_preco_nem_padroes_nao_usa_o_yahoo(dados_da_weg, monkeypatch):
+def test_relatorio_monta_mesmo_sem_a_lista_dos_usos_sem_cobranca(
+    dados_da_weg, monkeypatch
+):
+    """ADR 0102: a lista só guarda a citação; sem ela o relatório sai, sem a frase do Yahoo."""
     from src.banco import coletas
 
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    assert not any("Yahoo" in f for f in relatorio.fontes)
+
+
+def test_relatorio_sem_preco_nem_padroes_nao_usa_o_yahoo(dados_da_weg):
     entradas = _entradas(dados_da_weg, preco=None, padroes=None)
     assert re_.fontes_do_relatorio(entradas) == ("cvm",)
     relatorio = re_.montar(entradas)

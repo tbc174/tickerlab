@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 TABELA = "tabela"  # vira tabela com contrato no catálogo da base
 SO_LIGA = "so_liga"  # hoje só liga nomes (rede de relações), sem tabela própria
-SO_PESQUISA = "so_pesquisa"  # fica no acervo para pesquisa, fora do catálogo (licença)
+SO_PESQUISA = "so_pesquisa"  # cópia de pesquisa fora do catálogo: só a B3 (ADR 0102)
 VIGIA = "vigia"  # só avisa quando o texto (termos, catálogo) muda
 PLANEJADA = "planejada"  # guardada, com tabela prevista em um PR já nomeado
 
@@ -176,8 +176,10 @@ DESTINOS: dict[str, Destino] = {
     # balanço mundial do café (PR 4)
     "usda-psd-cafe": _tabela("usda_psd_cafe"),
     "faostat-cafe": _tabela("faostat_cafe"),
-    "ico-relatorio-mensal": _pesquisa(
-        "relatório mensal da ICO em PDF, sem termos de uso localizados; só pesquisa até a ICO publicar a licença"
+    "ico-relatorio-mensal": _planejada(
+        "cafe/PR4",
+        "balanço mundial do café a partir do relatório mensal da ICO em PDF; marca 'não comercial' "
+        "registrada, coleta e uso citando a ICO e a data (ADR 0102)",
     ),
     "cecafe-relatorio-mensal": _pesquisa(
         "só pesquisa: o robots.txt de www.cecafe.com.br proíbe PDF (lido em 18/10/2026) e a "

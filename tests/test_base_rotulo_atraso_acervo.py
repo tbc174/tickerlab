@@ -111,15 +111,30 @@ def test_mesmos_originais_e_mesmo_dia_dao_o_mesmo_hash(banco, tmp_path, monkeypa
     )  # outro dia, outra montagem (`montado_em`)
 
 
-def test_rotular_com_fonte_nao_comercial_da_erro(banco, tmp_path, monkeypatch):
-    """A trava das licenças (ADR 0008, Emenda 1): se a CVM deixasse de permitir uso comercial, o
-    rótulo não seria montado (erro, não aviso)."""
+def test_rotular_com_fonte_fora_dos_usos_da_erro(banco, tmp_path, monkeypatch):
+    """A trava das licenças: com a fonte fora dos usos (hoje só a B3; aqui a CVM entra na lista
+    de mentira), o rótulo não é montado (erro, não aviso)."""
     import pytest
 
     from src.banco import coletas
 
     _guardar_originais()
-    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "cvm"}))
     with banco.connect() as conexao, pytest.raises(coletas.LicencaNaoPermiteError):
         rotulo.montar(conexao, tmp_path / "base", AGORA)
     assert not (tmp_path / "base").exists()
+
+
+def test_rotular_com_fonte_nao_comercial_monta_e_registra_a_marca(
+    banco, tmp_path, monkeypatch
+):
+    """ADR 0102: a marca não barra; ela fica gravada no manifesto do rótulo."""
+    from src.banco import coletas
+
+    _guardar_originais()
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao:
+        assert rotulo.montar(conexao, tmp_path / "base", AGORA) == 3
+    arquivo = tmp_path / "base" / "rotulos_atraso" / "rotulos_atraso.json"
+    manifesto = json.loads(arquivo.read_text(encoding="utf-8"))
+    assert manifesto["licenca"]["marca"] == "nao_comercial"

@@ -29,12 +29,12 @@ CNPJ = "02429144000193"
         "aneel_samp",
         "anatel_acessos",
         "eventos",
-        # a confirmar, mas na lista dos usos sem cobrança (ADR 0008, Emenda 3)
-        "ma_negocios",  # assessorias de M&A, só fatos
-        "ma_datas",  # datas pelo Wayback
+        # marca restrita, que desde a ADR 0102 é só informação
+        "ma_negocios",  # assessorias de M&A, só fatos (a confirmar)
+        "ma_datas",  # datas pelo Wayback (não comercial)
     ],
 )
-def test_tabela_vendavel_ou_da_lista_sem_cobranca_pode_ser_mostrada(
+def test_tabela_sem_pessoa_e_fora_da_lista_proibida_pode_ser_mostrada(
     tabela: str,
 ) -> None:
     assert dossie.pode_mostrar(tabela)
@@ -43,7 +43,7 @@ def test_tabela_vendavel_ou_da_lista_sem_cobranca_pode_ser_mostrada(
 @pytest.mark.parametrize(
     "tabela",
     [
-        "pgfn_divida",  # licença liberada pela Emenda 3, mas é crise com nome (P-44)
+        "pgfn_divida",  # a licença deixa, mas é crise com nome (P-44)
         "cnpj_situacao_especial",  # idem
         "insolvencia",  # vendável, mas é rótulo de crise com nome (P-44)
         "rotulos_atraso",
@@ -57,7 +57,7 @@ def test_tabela_que_nao_pode_ser_mostrada(tabela: str) -> None:
 def test_so_o_parecer_segura_a_situacao_especial(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A licença não barra mais (Emenda 3); o que segura é a lista do P-44."""
+    """A licença não barra (ADR 0102); o que segura é a lista do P-44."""
     monkeypatch.setattr(dossie, "TABELAS_PROIBIDAS", frozenset())
     assert dossie.pode_mostrar("cnpj_situacao_especial")
 
@@ -72,13 +72,21 @@ def test_a_pgfn_tem_pessoa_e_a_lgpd_segura_mesmo_com_a_licenca_liberada(
     assert not dossie.pode_mostrar("pgfn_divida")
 
 
-def test_fonte_restrita_fora_da_lista_sem_cobranca_nao_pode_ser_mostrada(
+def test_a_lista_dos_usos_sem_cobranca_nao_decide_mais(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    sem_wayback = tuple(u for u in coletas.USOS_SEM_COBRANCA if u.fonte != "wayback")
-    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", sem_wayback)
-    assert not dossie.pode_mostrar("ma_datas")
+    """ADR 0102: a lista só guarda a citação; tirar a fonte dela não esconde a tabela."""
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    assert dossie.pode_mostrar("ma_datas")
     assert dossie.pode_mostrar("ma_negocios")
+
+
+def test_tabela_com_fonte_da_b3_nao_pode_ser_mostrada(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    da_b3 = replace(dossie.TABELAS["ma_datas"], familia_da_fonte="b3")
+    monkeypatch.setitem(dossie.TABELAS, "ma_datas", da_b3)
+    assert not dossie.pode_mostrar("ma_datas")
 
 
 def test_tabela_vendavel_com_pessoa_nao_pode_ser_mostrada(

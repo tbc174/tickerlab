@@ -34,8 +34,10 @@ def test_as_fontes_do_cafe_tem_destino_certo():
     assert faostat.tipo == destinos.TABELA
     assert faostat.tabelas == ("faostat_cafe",)
     ico = destinos.DESTINOS["ico-relatorio-mensal"]
-    assert ico.tipo == destinos.SO_PESQUISA
-    assert "ICO" in ico.porque
+    assert (
+        ico.tipo == destinos.PLANEJADA
+    )  # coleta normal (ADR 0102); a tabela vem no PR 4
+    assert "ICO" in ico.porque and "ADR 0102" in ico.porque
 
 
 def test_fnc_nao_e_coletada_porque_os_termos_vedam_robos():
@@ -89,5 +91,8 @@ def test_licenca_e_revenda_estao_escritas(fonte, familia):
     assert coletas.LICENCAS[familia]
 
 
-def test_ico_fica_so_pesquisa_na_licenca():
+def test_ico_tem_a_marca_registrada_e_entra_em_todos_os_usos():
+    """ADR 0102: a marca "não comercial" fica registrada e não barra coleta, tela nem modelo."""
     assert coletas.revenda_da_fonte("ico-relatorio-mensal") == coletas.NAO_COMERCIAL
+    assert coletas.marca_da_fonte("ico-relatorio-mensal") == coletas.Marca.NAO_COMERCIAL
+    assert all(coletas.pode_usar(uso, "ico-relatorio-mensal") for uso in coletas.USOS)

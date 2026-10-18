@@ -137,14 +137,31 @@ def test_painel_traz_as_demonstracoes_como_eram(base):
     assert "demonstracoes/2014.parquet" in [o["url"] for o in manifesto["origens"]]
 
 
-def test_amostra_com_entrada_nao_comercial_da_erro_e_nao_grava(base):
-    """A trava das licenças (ADR 0008, Emenda 1): a amostra é a entrada do treino; uma tabela com
-    fonte "não comercial" (aqui, datas do Wayback, só para pesquisa) barra a montagem inteira."""
+def _trocar_a_origem_dos_tickers(base, url: str) -> None:
+    tickers = pd.read_parquet(base / "fca" / "tickers.parquet")
+    origem = [{"url": url, "sha256": "b" * 64}]
+    gravar_tabela(tickers, base / "fca" / "tickers", origem, ["codigo"])
+
+
+def test_amostra_com_entrada_da_b3_da_erro_e_nao_grava(base):
+    """A trava das licenças: a amostra é a entrada do treino; uma tabela com fonte fora dos usos
+    (a B3, ADRs 0019 e 0102) barra a montagem inteira."""
     from src.banco.coletas import LicencaNaoPermiteError
 
-    tickers = pd.read_parquet(base / "fca" / "tickers.parquet")
-    wayback = [{"url": "https://web.archive.org/web/2025/x", "sha256": "b" * 64}]
-    gravar_tabela(tickers, base / "fca" / "tickers", wayback, ["codigo"])
-    with pytest.raises(LicencaNaoPermiteError, match="wayback"):
+    _trocar_a_origem_dos_tickers(
+        base, "https://arquivos.b3.com.br/rapinegocios/tickercsv/2016-12-30"
+    )
+    with pytest.raises(LicencaNaoPermiteError, match="b3"):
         montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"])
     assert not (base / montar_amostra.PASTA).exists()
+
+
+def test_amostra_com_entrada_nao_comercial_grava_e_herda_a_marca(base):
+    """ADR 0102: fonte "não comercial" (datas do Wayback) entra; o painel herda a marca."""
+    _trocar_a_origem_dos_tickers(base, "https://web.archive.org/web/2025/x")
+    assert montar_amostra.main(["--base", str(base), "--fim", "2016-12-31"]) == 0
+    manifesto = json.loads(
+        (base / montar_amostra.PASTA / "2015.json").read_text(encoding="utf-8")
+    )
+    assert manifesto["licenca"]["marca"] == "nao_comercial"
+    assert manifesto["licenca"]["fontes"]["wayback"] == "nao_comercial"

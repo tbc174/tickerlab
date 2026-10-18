@@ -200,15 +200,28 @@ def test_remontar_com_o_mesmo_dado_nao_regrava_nem_cria_versao(
     assert (pasta / "2024.parquet").read_bytes() == antes
 
 
-def test_rotulo_de_insolvencia_com_fonte_nao_comercial_da_erro(
+def test_rotulo_de_insolvencia_com_fonte_fora_dos_usos_da_erro(
     banco, tmp_path, monkeypatch
 ):
-    """A trava das licenças (ADR 0008, Emenda 1): rotular pede fonte vendável ou de uso interno; as
-    outras tabelas da base histórica não são rótulos e não passam pela trava de rotular."""
+    """A trava das licenças: rotular com fonte fora dos usos (hoje só a B3; aqui a CVM entra na
+    lista de mentira) dá erro; as outras tabelas da base histórica não são rótulos e não passam
+    pela trava de rotular."""
     from src.banco import coletas
 
-    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "cvm"}))
     with banco.connect() as conexao:
         with pytest.raises(coletas.LicencaNaoPermiteError, match="insolvencia"):
             historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
         assert historico.montar("eventos", conexao, tmp_path / "base", AGORA) == {}
+
+
+def test_rotulo_de_insolvencia_com_fonte_nao_comercial_monta_e_registra_a_marca(
+    banco, tmp_path, monkeypatch
+):
+    """ADR 0102: a marca "não comercial" é informação; o rótulo é montado com ela registrada."""
+    from src.banco import coletas
+
+    monkeypatch.setitem(coletas.REVENDA, "cvm", coletas.NAO_COMERCIAL)
+    with banco.connect() as conexao:
+        historico.montar("insolvencia", conexao, tmp_path / "base", AGORA)
+    assert coletas.marca_da_fonte("cvm-ipe") == coletas.Marca.NAO_COMERCIAL

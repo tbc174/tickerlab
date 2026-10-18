@@ -1,9 +1,8 @@
-"""A trava das licenças (ADR 0008, Emenda 1): quatro marcas, a marca no manifesto de cada tabela (a
-derivada herda a mais restrita) e erro ao treinar, rotular ou exportar com fonte "não comercial" ou
-"a confirmar"."""
+"""A trava das licenças (ADR 0008, Emenda 1; ADR 0102): quatro marcas, a marca no manifesto de cada
+tabela (a derivada herda a mais restrita) e, desde a ADR 0102, erro só com fonte fora dos usos (a B3):
+a marca das outras fontes fica registrada e não barra treinar, rotular, exportar nem mostrar."""
 
 import json
-from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -13,20 +12,29 @@ from base import licenca
 from base.parquet import gravar_se_mudou, gravar_tabela, origem_de_tabela
 from src.banco import coletas
 from src.banco.coletas import (
-    MODELO_CLIMA_DE_RISCO,
     LicencaNaoPermiteError,
     Marca,
     exigir_licenca,
+    fora_dos_usos,
     marca_da_fonte,
     marca_mais_restrita,
+    pode_usar,
 )
 
 URL_CVM = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
+URL_B3 = "https://arquivos.b3.com.br/rapinegocios/tickercsv/2026-10-15"
 URL_WAYBACK = "https://web.archive.org/web/20251101000000/https://www.igcp.com.br/x"
 URL_CNPJ = (
     "https://arquivos.receitafederal.gov.br/public.php/dav/files/abc/Empresas0.zip"
 )
-USOS = ("treinar", "rotular", "exportar")
+USOS = ("treinar", "rotular", "exportar", "mostrar")
+FONTES_COM_MARCA_RESTRITA = (
+    "yahoo-bvsp",  # não comercial, na lista dos usos sem cobrança
+    "rfb-cnpj",  # a confirmar, na lista
+    "tce-rs",  # a confirmar, fora da lista
+    "kraken",  # não comercial, antes só na exceção da ADR 0045
+    "fonte-que-ninguem-conhece",  # sem resposta escrita: a confirmar
+)
 
 
 def _tabela() -> pd.DataFrame:
@@ -91,14 +99,30 @@ def test_a_mais_restrita_vence():
     assert marca_mais_restrita([]) == Marca.A_CONFIRMAR  # sem fonte conhecida
 
 
-# --- o erro -------------------------------------------------------------------------------------
+# --- o erro: só a B3 (ADR 0102) ----------------------------------------------------------------
+
+
+def test_so_a_b3_fica_fora_dos_usos():
+    assert set(coletas.FONTES_FORA_DOS_USOS) == {"b3"}
+    assert fora_dos_usos("b3") and fora_dos_usos("b3-negocios")
+    assert not any(fora_dos_usos(f) for f in FONTES_COM_MARCA_RESTRITA)
 
 
 @pytest.mark.parametrize("uso", USOS)
-@pytest.mark.parametrize("fonte", ["yahoo-bvsp", "rfb-cnpj", "b3-negocios"])
-def test_fonte_nao_comercial_ou_a_confirmar_da_erro(uso, fonte):
-    with pytest.raises(LicencaNaoPermiteError, match=fonte):
-        exigir_licenca(uso, ["cvm-ipe", fonte])
+def test_b3_da_erro_em_todos_os_usos_e_diz_a_adr(uso):
+    with pytest.raises(LicencaNaoPermiteError, match="b3-negocios") as erro:
+        exigir_licenca(uso, ["cvm-ipe", "b3-negocios"], onde="teste")
+    assert "ADR 0019" in str(erro.value) and "(teste)" in str(erro.value)
+    assert not pode_usar(uso, "b3-negocios")
+
+
+@pytest.mark.parametrize("uso", USOS)
+@pytest.mark.parametrize("fonte", FONTES_COM_MARCA_RESTRITA)
+def test_marca_restrita_nao_barra_mas_fica_registrada(uso, fonte):
+    """ADR 0102: "não comercial" e "a confirmar" são informação; a fonte entra, com a marca gravada."""
+    exigir_licenca(uso, ["cvm-ipe", fonte])
+    assert pode_usar(uso, fonte)
+    assert marca_da_fonte(fonte) in {Marca.NAO_COMERCIAL, Marca.A_CONFIRMAR}
 
 
 @pytest.mark.parametrize("uso", USOS)
@@ -109,19 +133,21 @@ def test_vendavel_e_uso_interno_passam(uso):
 def test_uso_que_nao_existe_da_erro():
     with pytest.raises(ValueError, match="uso"):
         exigir_licenca("vender", ["cvm-ipe"])
+    with pytest.raises(ValueError, match="uso"):
+        pode_usar("vender", "cvm-ipe")
 
 
-def test_excecao_da_adr_0045_so_no_clima_de_risco_e_nunca_na_exportacao():
-    exigir_licenca("treinar", ["kraken", "mb", "btc"], modelo=MODELO_CLIMA_DE_RISCO)
-    exigir_licenca("rotular", ["kraken"], modelo=MODELO_CLIMA_DE_RISCO)
-    with pytest.raises(LicencaNaoPermiteError):
-        exigir_licenca("treinar", ["kraken"])
-    with pytest.raises(LicencaNaoPermiteError):
-        exigir_licenca("treinar", ["kraken"], modelo="outro-modelo")
-    with pytest.raises(LicencaNaoPermiteError):
-        exigir_licenca("exportar", ["kraken"], modelo=MODELO_CLIMA_DE_RISCO)
-    with pytest.raises(LicencaNaoPermiteError):  # a exceção não cobre o Yahoo
-        exigir_licenca("treinar", ["yahoo"], modelo=MODELO_CLIMA_DE_RISCO)
+def test_kraken_e_mb_entram_em_qualquer_modelo_e_na_exportacao():
+    """A exceção da ADR 0045 (só o clima de risco) perdeu o sentido: a marca não barra mais."""
+    for uso in USOS:
+        exigir_licenca(uso, ["kraken", "mb", "btc", "yahoo"])
+
+
+def test_a_trava_segue_funcionando_para_quem_entrar_na_lista(monkeypatch):
+    monkeypatch.setattr(coletas, "FONTES_FORA_DOS_USOS", frozenset({"b3", "cvm"}))
+    with pytest.raises(LicencaNaoPermiteError, match="cvm-ipe"):
+        exigir_licenca("treinar", ["cvm-ipe", "sec-13f"])
+    assert not pode_usar("mostrar", "cvm-ipe") and pode_usar("mostrar", "sec-13f")
 
 
 # --- a marca no manifesto -----------------------------------------------------------------------
@@ -230,47 +256,48 @@ def test_cripto_sem_origens_tem_a_fonte_pela_pasta(tmp_path):
         gravar_se_mudou(_tabela(), arquivo, [], [], versoes=False)
     assert _manifesto(kraken)["licenca"]["fontes"] == {"kraken": "nao_comercial"}
     assert _manifesto(cftc)["licenca"]["fontes"] == {"cftc": "uso_interno"}
-    licenca.exigir_licenca_das_tabelas(
-        "treinar", [kraken, cftc], modelo=MODELO_CLIMA_DE_RISCO
-    )
-    with pytest.raises(LicencaNaoPermiteError, match="kraken"):
-        licenca.exigir_licenca_das_tabelas("treinar", [kraken, cftc])
+    licenca.exigir_licenca_das_tabelas("treinar", [kraken, cftc])  # ADR 0102: só marca
 
 
 # --- o erro pelas tabelas -----------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("uso", USOS)
-def test_tabela_nao_comercial_da_erro_e_diz_qual(uso, tmp_path):
+def test_tabela_da_b3_da_erro_e_diz_qual(uso, tmp_path):
     base = tmp_path / "base"
     boa = _gravar(base / "cadastro" / "cadastro", URL_CVM)
-    ruim = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
-    licenca.exigir_licenca_das_tabelas(uso, [boa])
-    with pytest.raises(LicencaNaoPermiteError, match="ma_datas"):
-        licenca.exigir_licenca_das_tabelas(uso, [boa, ruim])
+    restrita = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
+    da_b3 = _gravar(base / "b3_negocios" / "b3_negocios", URL_B3)
+    licenca.exigir_licenca_das_tabelas(
+        uso, [boa, restrita]
+    )  # a marca só fica registrada
+    assert _manifesto(restrita)["licenca"]["marca"] == "nao_comercial"
+    with pytest.raises(LicencaNaoPermiteError, match="b3_negocios"):
+        licenca.exigir_licenca_das_tabelas(uso, [boa, da_b3])
 
 
-def test_origens_nao_comerciais_dao_erro_antes_de_gravar(tmp_path):
+def test_origens_da_b3_dao_erro_antes_de_gravar(tmp_path):
     base = tmp_path / "base"
-    ruim = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
+    restrita = _gravar(base / "ma_datas" / "ma_datas", URL_WAYBACK)
+    da_b3 = _gravar(base / "b3_negocios" / "b3_negocios", URL_B3)
     origens = [
         {"url": URL_CVM, "sha256": "a" * 64},
-        origem_de_tabela(ruim, base),
+        origem_de_tabela(restrita, base),
+        origem_de_tabela(da_b3, base),
     ]
-    with pytest.raises(LicencaNaoPermiteError, match="wayback"):
+    with pytest.raises(LicencaNaoPermiteError, match="b3"):
         licenca.exigir_licenca_das_origens("treinar", origens, base / "amostra" / "x")
-    licenca.exigir_licenca_das_origens("treinar", origens[:1], base / "amostra" / "x")
+    licenca.exigir_licenca_das_origens("treinar", origens[:2], base / "amostra" / "x")
 
 
-def test_tabela_sem_origens_fica_a_confirmar_e_da_erro(tmp_path):
+def test_tabela_sem_origens_fica_a_confirmar_e_passa(tmp_path):
     arquivo = gravar_tabela(_tabela(), tmp_path / "base" / "x" / "x", [], ["cnpj"])
     assert _manifesto(arquivo)["licenca"] == {
         "marca": "a_confirmar",
         "fontes": {},
         "sem_fonte": [licenca.SEM_ORIGENS],
     }
-    with pytest.raises(LicencaNaoPermiteError, match="sem origens"):
-        licenca.exigir_licenca_das_tabelas("treinar", [arquivo])
+    licenca.exigir_licenca_das_tabelas("treinar", [arquivo])  # ADR 0102: informação
 
 
 def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeypatch):
@@ -303,7 +330,7 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
     assert _manifesto(emissores)["licenca"]["fontes"] == {"cvm": "vendavel"}
 
 
-# --- Emenda 3: os usos sem cobrança -------------------------------------------------------------
+# --- Emenda 3: a lista dos usos em tela e as citações (não decide mais; ADR 0102) ---------------
 
 FONTES_DA_EMENDA_3 = (
     "yahoo",  # múltiplos p_l e p_vp dos padrões setoriais
@@ -340,53 +367,20 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
         "gdelt",
     ],
 )
-def test_mostrar_aceita_fonte_restrita_da_lista_enquanto_nao_ha_cobranca(fonte):
+def test_mostrar_aceita_fonte_restrita_da_lista(fonte):
     exigir_licenca("mostrar", ["cvm-ipe", fonte], onde="relatório")
     assert coletas.pode_usar("mostrar", fonte)
+    assert coletas.uso_sem_cobranca(fonte) is not None
 
 
-@pytest.mark.parametrize(
-    "fonte", ["tce-rs", "rfb", "kraken", "fonte-que-ninguem-conhece"]
-)
-def test_mostrar_barra_fonte_restrita_fora_da_lista(fonte):
-    with pytest.raises(LicencaNaoPermiteError, match=fonte):
-        exigir_licenca("mostrar", [fonte])
-
-
-def test_tirar_a_fonte_da_lista_volta_a_barrar(monkeypatch):
-    sem_yahoo = tuple(u for u in coletas.USOS_SEM_COBRANCA if u.fonte != "yahoo")
-    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", sem_yahoo)
-    with pytest.raises(LicencaNaoPermiteError, match="yahoo-bvsp"):
-        exigir_licenca("mostrar", ["yahoo-bvsp"])
-    exigir_licenca("mostrar", ["rfb-cnpj"])  # as outras seguem na lista
-
-
-def test_b3_fica_fora_mesmo_sem_cobranca(monkeypatch):
-    with pytest.raises(LicencaNaoPermiteError, match="b3-negocios"):
-        exigir_licenca("mostrar", ["b3-negocios"])
-    com_b3 = (
-        *coletas.USOS_SEM_COBRANCA,
-        coletas.UsoSemCobranca("b3", "teste", "teste", "teste"),
-    )
+def test_a_lista_nao_decide_mais_o_que_aparece(monkeypatch):
+    """ADR 0102: tirar a fonte da lista não barra; a B3 fica fora mesmo se alguém a puser lá."""
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    exigir_licenca("mostrar", ["yahoo-bvsp", "rfb-cnpj"])
+    com_b3 = (coletas.UsoSemCobranca("b3", "teste", "teste", "teste"),)
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", com_b3)
     with pytest.raises(LicencaNaoPermiteError, match="ADR 0019"):
         exigir_licenca("mostrar", ["b3-negocios"])
-
-
-@pytest.mark.parametrize("uso", ["treinar", "rotular", "exportar"])
-@pytest.mark.parametrize("fonte", ["yahoo-bvsp", "gdelt", "assessoria-igc"])
-def test_a_lista_nao_libera_treinar_rotular_nem_exportar(uso, fonte):
-    with pytest.raises(LicencaNaoPermiteError, match=fonte):
-        exigir_licenca(uso, [fonte])
-
-
-def test_a_emenda_3_expira_no_dia_da_primeira_cobranca(monkeypatch):
-    monkeypatch.setattr(coletas, "PRIMEIRA_COBRANCA", date(2099, 1, 1))
-    exigir_licenca("mostrar", ["yahoo-bvsp"])
-    monkeypatch.setattr(coletas, "PRIMEIRA_COBRANCA", date(2026, 1, 1))
-    with pytest.raises(LicencaNaoPermiteError, match="cobrança"):
-        exigir_licenca("mostrar", ["yahoo-bvsp"])
-    exigir_licenca("mostrar", ["cvm-ipe", "sec-13f"])  # vendável e uso interno seguem
 
 
 def test_citacoes_das_fontes_restritas_e_a_frase_da_iex():
