@@ -18,6 +18,7 @@ from src import (
     ficha,
     paginas,
     planos,
+    precos_de_referencia,
     topicos,
 )
 from src import indicadores as ind
@@ -39,6 +40,7 @@ from src.banco.dados_do_usuario import (
 from src.banco.eventos import Evento
 from src.banco.modelo import PLANOS, assinaturas
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
+from src.commodities import painel_de_precos
 from src.conformidade import exportar_meus_dados, registrar_aceite
 from src.dados import DadosIndisponiveisError, baixar_dados
 from src.estrategias import gerar_posicao
@@ -1177,3 +1179,45 @@ def test_painel_do_cafe_exige_login(banco, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
     cliente_sem_login = TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
     assert cliente_sem_login.get("/api/v1/painel-do-cafe").status_code == 401
+
+
+# --- Preços de referência (ADR 0062, Emenda 2: a tela vai para o React) -------------------
+
+
+def _semear_precos_de_referencia(banco):
+    meses = pd.date_range("2025-08-01", "2026-09-01", freq="MS")
+    valores = pd.Series([float(v) for v in range(1, len(meses) + 1)], index=meses)
+    codigos = [f"bm-pink-{c}" for c in painel_de_precos.CHAVES_DO_PAINEL]
+    codigos += [f"fmi-{c}" for c in precos_de_referencia.COMPARAVEIS]
+    with banco.begin() as conexao:
+        for codigo in codigos:
+            acervo.garantir_serie(conexao, precos_de_referencia.serie_do_acervo(codigo))
+            acervo.gravar(conexao, codigo, valores, date(2026, 10, 5))
+
+
+def test_precos_de_referencia_igual_a_tela(cliente, banco, no_dia):
+    _semear_precos_de_referencia(banco)
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = painel_de_precos.montar_painel(conexao, HOJE)
+    assert resposta.json() == _json(esquemas.de_precos_de_referencia(lido, HOJE))
+    dados = resposta.json()
+    assert dados["aviso_diario"] == painel_de_precos.AVISO_DIARIO
+    assert dados["atribuicao"] == painel_de_precos.ATRIBUICAO
+    itens = {i["chave"]: i for i in dados["itens"]}
+    assert list(itens) == list(painel_de_precos.CHAVES_DO_PAINEL)
+    assert itens["ureia"]["texto"] == "14,00"
+    assert itens["ureia"]["legenda"] == "Média de 09/2026, Pink Sheet do Banco Mundial."
+    assert itens["ureia"]["nota_das_fontes"] == painel_de_precos.NOTA_FONTES_DIFEREM
+    assert itens["cafe-arabica"]["com_fmi"] is True
+    assert dados["spread"], "arábica e robusta semeados: o spread existe"
+
+
+def test_precos_de_referencia_sem_series_coletadas_503(cliente, no_dia):
+    resposta = cliente.get("/api/v1/precos-de-referencia")
+    assert resposta.status_code == 503
+    assert "coletados" in resposta.json()["detail"]
+    assert (
+        "python -m" not in resposta.json()["detail"]
+    )  # comando interno não vai a quem usa

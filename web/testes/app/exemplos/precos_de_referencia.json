@@ -1,0 +1,329 @@
+{
+ "na_tela": {
+  "Café arábica (US$/kg)": "8,30",
+  "Café robusta (US$/kg)": "4,80",
+  "Ureia (US$/kg)": "1,70"
+ },
+ "resposta": {
+  "atribuicao": "Fonte: Banco Mundial, Pink Sheet, CC BY 4.0; FMI PCPS.",
+  "aviso_diario": "Preço de referência mensal; o diário depende de licença.",
+  "dia": "2026-10-18",
+  "itens": [
+   {
+    "chave": "cafe-arabica",
+    "com_fmi": true,
+    "historico": [
+     {
+      "bm": 7.0,
+      "fmi": 7.02,
+      "mes": "2025-08-01"
+     },
+     {
+      "bm": 7.1,
+      "fmi": 7.119999999999999,
+      "mes": "2025-09-01"
+     },
+     {
+      "bm": 7.2,
+      "fmi": 7.22,
+      "mes": "2025-10-01"
+     },
+     {
+      "bm": 7.3,
+      "fmi": 7.319999999999999,
+      "mes": "2025-11-01"
+     },
+     {
+      "bm": 7.4,
+      "fmi": 7.42,
+      "mes": "2025-12-01"
+     },
+     {
+      "bm": 7.5,
+      "fmi": 7.52,
+      "mes": "2026-01-01"
+     },
+     {
+      "bm": 7.6,
+      "fmi": 7.619999999999999,
+      "mes": "2026-02-01"
+     },
+     {
+      "bm": 7.7,
+      "fmi": 7.72,
+      "mes": "2026-03-01"
+     },
+     {
+      "bm": 7.8,
+      "fmi": 7.819999999999999,
+      "mes": "2026-04-01"
+     },
+     {
+      "bm": 7.9,
+      "fmi": 7.92,
+      "mes": "2026-05-01"
+     },
+     {
+      "bm": 8.0,
+      "fmi": 8.02,
+      "mes": "2026-06-01"
+     },
+     {
+      "bm": 8.1,
+      "fmi": 8.12,
+      "mes": "2026-07-01"
+     },
+     {
+      "bm": 8.2,
+      "fmi": 8.219999999999999,
+      "mes": "2026-08-01"
+     },
+     {
+      "bm": 8.3,
+      "fmi": 8.32,
+      "mes": "2026-09-01"
+     }
+    ],
+    "legenda": "Média de 09/2026, Pink Sheet do Banco Mundial.",
+    "nome": "Café arábica",
+    "nota_das_fontes": null,
+    "texto": "8,30",
+    "texto_da_variacao": "+16,9% em 12 meses",
+    "ultimo_mes": "2026-09-01",
+    "ultimo_valor": 8.3,
+    "unidade": "US$/kg",
+    "variacao_12_meses": 16.901408450704245
+   },
+   {
+    "chave": "cafe-robusta",
+    "com_fmi": true,
+    "historico": [
+     {
+      "bm": 3.5,
+      "fmi": 3.52,
+      "mes": "2025-08-01"
+     },
+     {
+      "bm": 3.6,
+      "fmi": 3.62,
+      "mes": "2025-09-01"
+     },
+     {
+      "bm": 3.7,
+      "fmi": 3.72,
+      "mes": "2025-10-01"
+     },
+     {
+      "bm": 3.8,
+      "fmi": 3.82,
+      "mes": "2025-11-01"
+     },
+     {
+      "bm": 3.9,
+      "fmi": 3.92,
+      "mes": "2025-12-01"
+     },
+     {
+      "bm": 4.0,
+      "fmi": 4.02,
+      "mes": "2026-01-01"
+     },
+     {
+      "bm": 4.1,
+      "fmi": 4.119999999999999,
+      "mes": "2026-02-01"
+     },
+     {
+      "bm": 4.2,
+      "fmi": 4.22,
+      "mes": "2026-03-01"
+     },
+     {
+      "bm": 4.3,
+      "fmi": 4.319999999999999,
+      "mes": "2026-04-01"
+     },
+     {
+      "bm": 4.4,
+      "fmi": 4.42,
+      "mes": "2026-05-01"
+     },
+     {
+      "bm": 4.5,
+      "fmi": 4.52,
+      "mes": "2026-06-01"
+     },
+     {
+      "bm": 4.6,
+      "fmi": 4.619999999999999,
+      "mes": "2026-07-01"
+     },
+     {
+      "bm": 4.7,
+      "fmi": 4.72,
+      "mes": "2026-08-01"
+     },
+     {
+      "bm": 4.8,
+      "fmi": 4.819999999999999,
+      "mes": "2026-09-01"
+     }
+    ],
+    "legenda": "Média de 09/2026, Pink Sheet do Banco Mundial.",
+    "nome": "Café robusta",
+    "nota_das_fontes": null,
+    "texto": "4,80",
+    "texto_da_variacao": "+33,3% em 12 meses",
+    "ultimo_mes": "2026-09-01",
+    "ultimo_valor": 4.8,
+    "unidade": "US$/kg",
+    "variacao_12_meses": 33.33333333333333
+   },
+   {
+    "chave": "ureia",
+    "com_fmi": false,
+    "historico": [
+     {
+      "bm": 0.4,
+      "fmi": null,
+      "mes": "2025-08-01"
+     },
+     {
+      "bm": 0.5,
+      "fmi": null,
+      "mes": "2025-09-01"
+     },
+     {
+      "bm": 0.6000000000000001,
+      "fmi": null,
+      "mes": "2025-10-01"
+     },
+     {
+      "bm": 0.7,
+      "fmi": null,
+      "mes": "2025-11-01"
+     },
+     {
+      "bm": 0.8,
+      "fmi": null,
+      "mes": "2025-12-01"
+     },
+     {
+      "bm": 0.9,
+      "fmi": null,
+      "mes": "2026-01-01"
+     },
+     {
+      "bm": 1.0,
+      "fmi": null,
+      "mes": "2026-02-01"
+     },
+     {
+      "bm": 1.1,
+      "fmi": null,
+      "mes": "2026-03-01"
+     },
+     {
+      "bm": 1.2000000000000002,
+      "fmi": null,
+      "mes": "2026-04-01"
+     },
+     {
+      "bm": 1.3,
+      "fmi": null,
+      "mes": "2026-05-01"
+     },
+     {
+      "bm": 1.4,
+      "fmi": null,
+      "mes": "2026-06-01"
+     },
+     {
+      "bm": 1.5,
+      "fmi": null,
+      "mes": "2026-07-01"
+     },
+     {
+      "bm": 1.6,
+      "fmi": null,
+      "mes": "2026-08-01"
+     },
+     {
+      "bm": 1.7000000000000002,
+      "fmi": null,
+      "mes": "2026-09-01"
+     }
+    ],
+    "legenda": "Média de 09/2026, Pink Sheet do Banco Mundial.",
+    "nome": "Ureia",
+    "nota_das_fontes": "Só o Pink Sheet: os indicadores do Banco Mundial e do FMI diferem para este item, então as duas fontes não são postas lado a lado.",
+    "texto": "1,70",
+    "texto_da_variacao": "+240,0% em 12 meses",
+    "ultimo_mes": "2026-09-01",
+    "ultimo_valor": 1.7000000000000002,
+    "unidade": "US$/kg",
+    "variacao_12_meses": 240.00000000000003
+   }
+  ],
+  "nota_do_spread": "Quando a diferença abre muito, a indústria troca de grão; o conilon do Brasil é robusta.",
+  "spread": [
+   {
+    "mes": "2025-08-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2025-09-01",
+    "valor": 3.4999999999999996
+   },
+   {
+    "mes": "2025-10-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2025-11-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2025-12-01",
+    "valor": 3.5000000000000004
+   },
+   {
+    "mes": "2026-01-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-02-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-03-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-04-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-05-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-06-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-07-01",
+    "valor": 3.5
+   },
+   {
+    "mes": "2026-08-01",
+    "valor": 3.499999999999999
+   },
+   {
+    "mes": "2026-09-01",
+    "valor": 3.500000000000001
+   }
+  ],
+  "titulo_do_spread": "Spread arábica menos robusta"
+ }
+}

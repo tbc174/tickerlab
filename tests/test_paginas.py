@@ -246,6 +246,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "comparar",
         "backtest",
         "juros_e_inflacao",
+        "precos_de_referencia",
         "linha_do_tempo",
         "relatorio_empresa",
         "planos",

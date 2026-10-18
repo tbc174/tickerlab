@@ -199,3 +199,41 @@ def test_texto_do_fato_sem_cabecalho_e_cortado_no_maximo():
     assert len(texto) == mt.MAX_CARACTERES_GUARDADOS
     assert mt.MAX_CARACTERES_GUARDADOS == rotular_com_ia.MAX_CARACTERES_GUARDADOS
     assert mt.texto_do_documento(PAGINA_DE_LIMITE, "Fato Relevante") == ""
+
+
+# --- documentos antigos: o "protocolo" é o link do RAD ---------------------------------------------
+LINK_ANTIGO = (
+    "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE"
+    "&CodigoInstituicao=1&numProtocolo=25694&numSequencia=0&numVersao=0"
+)
+
+
+@pytest.mark.parametrize(
+    ("protocolo", "nome"),
+    [
+        ("002437IPE100420190104356511-54", "002437IPE100420190104356511-54"),
+        (LINK_ANTIGO, "cvm-25694-0-0"),
+    ],
+)
+def test_nome_do_texto_e_o_protocolo_ou_os_numeros_do_link(protocolo, nome):
+    assert mt.nome_do_texto(protocolo) == nome
+
+
+def test_nome_do_texto_nunca_tem_pasta():
+    nome = mt.nome_do_texto("https://outro.endereco/doc?id=7")
+    assert mt.NOME_SEGURO.fullmatch(nome) and nome.startswith("doc-")
+
+
+def test_documento_antigo_grava_o_texto_com_o_nome_seguro(tmp_path, monkeypatch):
+    # até ~2010 o IPE traz o link no lugar do protocolo: gravar com ele criaria pastas "https:/..."
+    monkeypatch.setattr(coletor, "baixar", lambda _link: _pdf())
+    fila = pd.DataFrame(
+        {
+            "protocolo": [LINK_ANTIGO],
+            "link": [LINK_ANTIGO],
+            "categoria": [mt.FATO_RELEVANTE],
+        }
+    )
+    rodada = coletor.coletar(fila, 1, tmp_path)
+    assert (rodada.pedidos, rodada.textos) == (1, 1)
+    assert [p.name for p in tmp_path.iterdir()] == ["cvm-25694-0-0.txt"]

@@ -512,6 +512,9 @@ PAGINAS = (
         "FMI, com a fonte e a data de cada número.",
         area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET", "/v1/precos-de-referencia", (), "PrecosDeReferenciaV1"
+        ),
     ),
     Pagina(
         "linha_do_tempo",
