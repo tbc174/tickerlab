@@ -208,3 +208,35 @@ def test_margens_liquidas_tem_nomes_e_bases_diferentes(dados_da_weg):
     retorno = {i.chave: i.nome for i in relatorio.secao("retorno").itens}
     assert resultado["margem_liquida"] == "Margem líquida (lucro consolidado)"
     assert retorno["dupont_margem"] == "Margem líquida dos acionistas (DuPont)"
+
+
+# --- a fonte restrita citada (ADR 0008, Emenda 3) --------------------------------------------------
+
+
+def test_relatorio_cita_o_yahoo_pela_lista_dos_usos_sem_cobranca(dados_da_weg):
+    from src.banco import coletas
+
+    relatorio = re_.montar(_entradas(dados_da_weg))
+    citacao = next(u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo")
+    assert re_.fontes_do_relatorio(_entradas(dados_da_weg)) == ("cvm", "yahoo")
+    assert citacao in relatorio.fontes
+    assert "Yahoo" in citacao
+    assert relatorio.fontes.index(citacao) > 0  # a CVM vem primeiro
+
+
+def test_relatorio_barra_fonte_restrita_fora_da_lista(dados_da_weg, monkeypatch):
+    from src.banco import coletas
+
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    with pytest.raises(coletas.LicencaNaoPermiteError, match="yahoo"):
+        re_.montar(_entradas(dados_da_weg))
+
+
+def test_relatorio_sem_preco_nem_padroes_nao_usa_o_yahoo(dados_da_weg, monkeypatch):
+    from src.banco import coletas
+
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
+    entradas = _entradas(dados_da_weg, preco=None, padroes=None)
+    assert re_.fontes_do_relatorio(entradas) == ("cvm",)
+    relatorio = re_.montar(entradas)
+    assert not any("Yahoo" in f for f in relatorio.fontes)

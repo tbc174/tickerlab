@@ -20,10 +20,9 @@ from typing import BinaryIO
 
 import pandas as pd
 
-ATRIBUICAO = (
-    "Data provided for free by IEX. By accessing or using IEX Historical Data, "
-    "you agree to the IEX Historical Data Terms of Use."
-)
+from src.banco.coletas import FRASE_DA_IEX
+
+ATRIBUICAO = FRASE_DA_IEX  # a frase fica em `coletas` (ADR 0008, Emenda 2, item 6)
 
 # pcapng: blocos com tipo e tamanho total (https://www.ietf.org/archive/id/draft-ietf-opsawg-pcapng-02.html)
 BLOCO_PACOTE_APRIMORADO = 6

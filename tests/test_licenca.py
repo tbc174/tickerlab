@@ -3,6 +3,7 @@ derivada herda a mais restrita) e erro ao treinar, rotular ou exportar com fonte
 "a confirmar"."""
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -300,3 +301,101 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
         "fontes": {"ans": "vendavel", "comexstat": "a_confirmar", "cvm": "vendavel"},
     }
     assert _manifesto(emissores)["licenca"]["fontes"] == {"cvm": "vendavel"}
+
+
+# --- Emenda 3: os usos sem cobrança -------------------------------------------------------------
+
+FONTES_DA_EMENDA_3 = (
+    "yahoo",  # múltiplos p_l e p_vp dos padrões setoriais
+    "rfb-cnpj",  # situação cadastral e especial da Receita
+    "pgfn",  # dívida ativa
+    "comexstat",  # B13 e rede
+    "assessoria",  # negócios de M&A (só fatos, ADR 0082)
+    "bcb-sgs-189",  # IGP-M da FGV
+    "wayback",  # datas das cópias
+    "gdelt",
+)
+
+
+def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
+    por_fonte = {uso.fonte: uso for uso in coletas.USOS_SEM_COBRANCA}
+    assert set(FONTES_DA_EMENDA_3) <= set(por_fonte)
+    for uso in coletas.USOS_SEM_COBRANCA:
+        assert uso.fonte in coletas.REVENDA, uso.fonte  # fonte conhecida, com marca
+        assert marca_da_fonte(uso.fonte) != Marca.VENDAVEL, uso.fonte  # senão sobra
+        assert uso.onde and uso.substituto and uso.citacao, uso.fonte
+    assert "b3" not in por_fonte  # opção (a): a B3 fica fora
+
+
+@pytest.mark.parametrize(
+    "fonte",
+    [
+        "yahoo-bvsp",
+        "rfb-cnpj",
+        "pgfn-divida",
+        "comexstat",
+        "assessoria-igc",
+        "bcb-sgs-189",
+        "wayback-igc",
+        "gdelt",
+    ],
+)
+def test_mostrar_aceita_fonte_restrita_da_lista_enquanto_nao_ha_cobranca(fonte):
+    exigir_licenca("mostrar", ["cvm-ipe", fonte], onde="relatório")
+    assert coletas.pode_usar("mostrar", fonte)
+
+
+@pytest.mark.parametrize(
+    "fonte", ["tce-rs", "rfb", "kraken", "fonte-que-ninguem-conhece"]
+)
+def test_mostrar_barra_fonte_restrita_fora_da_lista(fonte):
+    with pytest.raises(LicencaNaoPermiteError, match=fonte):
+        exigir_licenca("mostrar", [fonte])
+
+
+def test_tirar_a_fonte_da_lista_volta_a_barrar(monkeypatch):
+    sem_yahoo = tuple(u for u in coletas.USOS_SEM_COBRANCA if u.fonte != "yahoo")
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", sem_yahoo)
+    with pytest.raises(LicencaNaoPermiteError, match="yahoo-bvsp"):
+        exigir_licenca("mostrar", ["yahoo-bvsp"])
+    exigir_licenca("mostrar", ["rfb-cnpj"])  # as outras seguem na lista
+
+
+def test_b3_fica_fora_mesmo_sem_cobranca(monkeypatch):
+    with pytest.raises(LicencaNaoPermiteError, match="b3-negocios"):
+        exigir_licenca("mostrar", ["b3-negocios"])
+    com_b3 = (
+        *coletas.USOS_SEM_COBRANCA,
+        coletas.UsoSemCobranca("b3", "teste", "teste", "teste"),
+    )
+    monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", com_b3)
+    with pytest.raises(LicencaNaoPermiteError, match="ADR 0019"):
+        exigir_licenca("mostrar", ["b3-negocios"])
+
+
+@pytest.mark.parametrize("uso", ["treinar", "rotular", "exportar"])
+@pytest.mark.parametrize("fonte", ["yahoo-bvsp", "gdelt", "assessoria-igc"])
+def test_a_lista_nao_libera_treinar_rotular_nem_exportar(uso, fonte):
+    with pytest.raises(LicencaNaoPermiteError, match=fonte):
+        exigir_licenca(uso, [fonte])
+
+
+def test_a_emenda_3_expira_no_dia_da_primeira_cobranca(monkeypatch):
+    monkeypatch.setattr(coletas, "PRIMEIRA_COBRANCA", date(2099, 1, 1))
+    exigir_licenca("mostrar", ["yahoo-bvsp"])
+    monkeypatch.setattr(coletas, "PRIMEIRA_COBRANCA", date(2026, 1, 1))
+    with pytest.raises(LicencaNaoPermiteError, match="cobrança"):
+        exigir_licenca("mostrar", ["yahoo-bvsp"])
+    exigir_licenca("mostrar", ["cvm-ipe", "sec-13f"])  # vendável e uso interno seguem
+
+
+def test_citacoes_das_fontes_restritas_e_a_frase_da_iex():
+    citacao_do_yahoo = next(
+        u.citacao for u in coletas.USOS_SEM_COBRANCA if u.fonte == "yahoo"
+    )
+    assert coletas.citacoes_das_fontes(["cvm-ipe", "yahoo-bvsp", "yahoo", "iex"]) == [
+        citacao_do_yahoo,
+        coletas.FRASE_DA_IEX,
+    ]
+    assert coletas.citacoes_das_fontes(["cvm-ipe", "bcb-sgs-433"]) == []
+    assert "Data provided for free by IEX" in coletas.FRASE_DA_IEX
