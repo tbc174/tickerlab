@@ -74,6 +74,8 @@ LICENCAS = {
     "susep": "CC BY (SES da SUSEP no dados.gov.br; citar a SUSEP). Só os CSVs sem pessoas",
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+    # relatório mensal do Cecafé: robots.txt proíbe PDF e a página de termos veio vazia (18/10/2026)
+    "cecafe": "Cecafé: sem termos legíveis e robots.txt veda PDF; só pesquisa",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
@@ -152,6 +154,7 @@ REVENDA = {
     "aneel": VENDAVEL_ODBL,
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
+    "cecafe": NAO_COMERCIAL,  # só pesquisa até a Cecafé autorizar por escrito
     "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
     "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
     "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"
