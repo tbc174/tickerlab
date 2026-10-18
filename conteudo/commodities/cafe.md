@@ -53,3 +53,27 @@ fevereiro de 2014 em Minas Gerais e o verão de 2020/21 são os casos recentes.
 
 O **déficit** aqui é a chuva acumulada de dezembro a março contra a normal de 1991–2020 da região:
 anomalia negativa é déficit. Como os outros, é um índice **explicativo, não previsão**.
+
+## Os dois lados do risco de travar
+
+Travar o preço é fechar hoje o preço de um café que só vai ser entregue e pago depois (contrato a
+termo, com a cooperativa ou a trading). A trava protege o produtor de uma queda do preço, mas cria
+outro risco: depender de que o outro lado cumpra o contrato. E esse risco tem **dois lados**.
+
+**Quando o preço sobe**, quem vendeu travado deixa de ganhar a diferença entre o preço de hoje e o da
+trava. Quanto maior a diferença, maior a tentação de não entregar o café ou de entregar só uma parte,
+e quem fica exposto é o comprador, que já vendeu esse café para fora. Em dezembro de 2024, cerca de
+900 mil sacas vendidas a termo ainda não tinham sido entregues ao grupo dono da
+Atlântica e da Cafebras, segundo o [Brazil Journal](https://braziljournal.com/mo1v) (03/12/2024).
+
+**Quando o preço cai**, ou quando o comprador não aguenta, o risco vira para o produtor: quem comprou
+travado paga acima do mercado e pode não pagar, ou não receber o café. Em 25/02/2025 a Atlântica e a
+Cafebras, do grupo Montesanto Tavares, pediram recuperação judicial com dívidas de R$ 2,13 bilhões,
+segundo a [Bloomberg Línea](https://www.bloomberglinea.com.br/agro/gigante-do-cafe-pede-recuperacao-judicial-com-r-21-bilhoes-em-dividas/)
+(05/03/2025); quem tinha café ou dinheiro a receber delas passou a esperar pelo processo.
+
+A **simulação do risco de travar** faz uma conta só: (preço de hoje − preço da trava) × sacas. Se der
+positivo, é quanto quem vendeu travado deixa de ganhar; se der negativo, é quanto quem comprou paga
+acima do mercado. Não é nota, previsão nem conselho. A **ficha da contraparte** mostra só fatos
+públicos, com a fonte e a data (faturamento, sobras, pedido de recuperação judicial), e diz o que não
+sabemos; ela não diz com quem negociar. Nada aqui é recomendação de investimento.

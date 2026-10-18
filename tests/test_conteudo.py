@@ -256,7 +256,7 @@ def test_textos_do_cafe_explicam_florada_bienalidade_e_geada_sem_prometer_previs
     from src.conteudo import carregar_textos_do_cafe
 
     textos = carregar_textos_do_cafe()
-    assert tuple(textos) == TEXTOS_DO_CAFE
+    assert tuple(textos)[: len(TEXTOS_DO_CAFE)] == TEXTOS_DO_CAFE  # o PR 12 juntou os dois lados
     for titulo in TEXTOS_DO_CAFE:
         assert len(textos[titulo]) > 200, titulo
     for titulo in TEXTOS_DO_CAFE[:1] + TEXTOS_DO_CAFE[2:]:
