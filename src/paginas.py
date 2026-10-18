@@ -539,6 +539,9 @@ PAGINAS = (
         "clássicas, comparação com o setor, valuation, dividendos e limites, com a fonte de cada "
         "número.",
         area=AREA_ATIVO,
+        contrato=Contrato(
+            "GET", "/v1/relatorio-empresa", (ATIVO,), "RelatorioDaEmpresaV1"
+        ),
     ),
     Pagina(
         "por_dentro",

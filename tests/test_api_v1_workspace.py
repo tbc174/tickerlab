@@ -34,7 +34,7 @@ from src.banco.modelo import eventos
 from src.banco.usuarios import buscar_por_google_sub, entrar, mudar_plano
 from src.carteira_research import Fotografia
 from src.conformidade import registrar_aceite
-from src.dados import baixar_dados
+from src.dados import DadosIndisponiveisError, baixar_dados
 from src.exemplos import carregar_exemplo
 from src.simulacoes import restaurar_estado
 from tests.ajudantes_da_api import (
@@ -714,3 +714,30 @@ def test_textos_da_parte_2_nao_recomendam(cliente, banco, relogio, monkeypatch):
     for texto in textos:
         for palavra in PALAVRAS_DE_RECOMENDACAO:
             assert palavra not in texto.lower(), texto
+
+
+def test_ativo_sem_preco_nao_e_perguntado_de_novo_por_uma_hora(monkeypatch):
+    """O Yahoo leva segundos para dizer que um código antigo não tem preço (medido no VPS: 1,6 a
+    3,2 s cada); o Pulse lembra a resposta por uma hora e não paga esse tempo a cada abertura."""
+    relogio = [1000.0]
+    monkeypatch.setattr(rotas.time, "monotonic", lambda: relogio[0])
+    pedidos = []
+
+    def carregar(ticker, periodo):
+        pedidos.append(ticker)
+        if ticker == "VELHO3.SA":
+            raise DadosIndisponiveisError("sem dados")
+        return baixar_dados(ticker, periodo, forcar_exemplo=True)
+
+    ativos = tuple(
+        pulse.AtivoDaPessoa(t, ("favoritos",)) for t in ("PETR4.SA", "VELHO3.SA")
+    )
+    janela = pulse.Janela(VISITA, AGORA_DO_PULSE, primeira_vez=False)
+    for _ in range(2):
+        _, sem = rotas.montar_variacoes(ativos, janela, carregar)
+        assert sem == ["VELHO3"]
+    assert pedidos.count("VELHO3.SA") == 1
+    assert pedidos.count("PETR4.SA") == 2  # quem tem preço é consultado sempre
+    relogio[0] += rotas.VALIDADE_DO_SEM_PRECO + 1
+    rotas.montar_variacoes(ativos, janela, carregar)
+    assert pedidos.count("VELHO3.SA") == 2
