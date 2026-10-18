@@ -275,7 +275,7 @@ def regravar_xml(
     ):
         if raiz is None:
             raiz = elemento
-            saida = Element(raiz.tag)
+            saida = Element(elemento.tag)
             continue
         if evento == "start" or elemento is raiz:
             continue
