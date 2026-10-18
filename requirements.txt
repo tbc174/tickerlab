@@ -114,6 +114,10 @@ pyparsing==3.3.3
 pypdf==6.20.0
 # prévia do Report Studio: páginas do PDF viram imagens (PDFium; BSD-3 e Apache-2.0)
 pypdfium2==5.14.0
+# rapidocr + onnxruntime: OCR de reserva do leitor de fatos relevantes, só quando o PDF volta
+# vazio ou embaralhado (plano B leve, 18/10/2026); os modelos vêm dentro do pacote (sem download).
+rapidocr==3.10.0
+onnxruntime==1.31.0
 openpyxl==3.1.5
 et_xmlfile==2.0.0
 # base de cripto: lê a planilha .xls antiga da Receita (criptoativos); fora da imagem do app (BSD)
