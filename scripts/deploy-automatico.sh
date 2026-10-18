@@ -72,8 +72,19 @@ flock -n 8 || { avisar "esperando as tarefas agendadas terminarem"; exit 0; }
 registrar "${atual:0:8} -> ${novo:0:8}: testes passaram, implantando"
 git merge --ff-only -q "$novo"
 
+# O Streamlit é a versão clássica, em /classico (18/10/2026; src/classico.py): o caminho vem da
+# variável que o compose.yaml do commit implantado dá ao serviço. Sem ela, a raiz. Lido a cada
+# conferência: na volta para a versão anterior, vale o compose dela.
+caminho_do_streamlit() {
+  local valor
+  valor="$(sed -n 's/^ *STREAMLIT_SERVER_BASE_URL_PATH: *\([^ #]*\).*/\1/p' compose.yaml | head -n 1)"
+  valor="${valor#/}"
+  valor="${valor%/}"
+  if [ -n "$valor" ]; then printf '/%s' "$valor"; fi
+}
+
 saudavel() {
-  curl -fsS --max-time 5 http://127.0.0.1:8501/_stcore/health >/dev/null 2>&1 \
+  curl -fsS --max-time 5 "http://127.0.0.1:8501$(caminho_do_streamlit)/_stcore/health" >/dev/null 2>&1 \
     && curl -fsS --max-time 5 http://127.0.0.1:8000/saude >/dev/null 2>&1
 }
 

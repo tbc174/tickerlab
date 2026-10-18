@@ -97,6 +97,70 @@ def test_script_de_deploy_espera_as_tarefas_agendadas():
     assert texto.index("flock -n 8") < texto.index("git merge --ff-only")
 
 
+def test_script_de_deploy_confere_a_saude_no_caminho_do_streamlit():
+    """O Streamlit está em /classico no servidor (18/10/2026; src/classico.py): a saúde fica em
+    /classico/_stcore/health, e o caminho vem do compose.yaml do commit implantado. Um deploy que
+    conferisse a raiz reverteria toda versão com o Streamlit fora dela."""
+    texto = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
+    assert "STREAMLIT_SERVER_BASE_URL_PATH" in texto
+    assert "8501/_stcore/health" not in texto  # o caminho fixo na raiz
+    assert "$(caminho_do_streamlit)/_stcore/health" in texto
+    # o compose do repositório põe o Streamlit em /classico: é o que o script vai ler no servidor
+    compose = (RAIZ / "compose.yaml").read_text(encoding="utf-8")
+    assert "STREAMLIT_SERVER_BASE_URL_PATH: classico" in compose
+
+
+def _bash_funciona() -> bool:
+    try:
+        return (
+            subprocess.run(
+                ["bash", "-c", "echo ok"], capture_output=True, timeout=20, check=False
+            ).returncode
+            == 0
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+@pytest.mark.parametrize(
+    ("linha_do_compose", "caminho"),
+    [
+        ("      STREAMLIT_SERVER_BASE_URL_PATH: classico\n", "/classico"),
+        (
+            "      STREAMLIT_SERVER_BASE_URL_PATH: /classico/  # comentário\n",
+            "/classico",
+        ),
+        ("", ""),
+    ],
+)
+def test_a_funcao_do_caminho_le_o_compose(tmp_path, linha_do_compose, caminho):
+    """A função do script, rodada no bash de verdade, sobre um compose de mentira."""
+    if not _bash_funciona():
+        pytest.skip("sem bash")
+    script = (RAIZ / "scripts" / "deploy-automatico.sh").read_text(encoding="utf-8")
+    funcao = script[script.index("caminho_do_streamlit() {") :]
+    funcao = funcao[: funcao.index("\n}\n") + 3]
+    (tmp_path / "compose.yaml").write_text(
+        "services:\n  tickerlab:\n    environment:\n"
+        + linha_do_compose
+        + "      OUTRA: x\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "f.sh").write_text(
+        funcao + "\ncaminho_do_streamlit\n", encoding="utf-8"
+    )
+    saida = subprocess.run(
+        ["bash", "f.sh"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert saida.returncode == 0, saida.stderr
+    assert saida.stdout == caminho
+
+
 # --- escolher o commit a implantar (13/10/2026: com várias sessões mesclando, o último commit da
 # main quase nunca tinha o teste terminado, e o deploy ficava parado) --------------------------
 
