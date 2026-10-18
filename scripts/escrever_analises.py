@@ -126,6 +126,21 @@ def _somar_gasto(manifesto: dict[str, Any], gasto: float) -> None:
     manifesto["gasto_em_dolares"] = manifesto.get("gasto_em_dolares", 0.0) + gasto
 
 
+def _pagar(pasta: Path, manifesto: dict[str, Any], custo: float) -> None:
+    """Grava o gasto a cada resposta: se a próxima chamada cair, o teto já conta esta."""
+    _somar_gasto(manifesto, custo)
+    gravar_manifesto(pasta, manifesto)
+
+
+def _mensagem_completa(
+    cliente: anthropic.Anthropic, parametros: dict[str, Any]
+) -> anthropic.types.Message:
+    """A resposta inteira por streaming: com o `max_tokens` da análise, a SDK recusa o `create`
+    (o pedido poderia passar de 10 minutos)."""
+    with cliente.messages.stream(**parametros) as fluxo:
+        return fluxo.get_final_message()
+
+
 def resposta_guardada(
     pasta: Path, entrada: dict[str, Any], modelo: str
 ) -> dict[str, Any] | None:
@@ -284,11 +299,11 @@ def piloto(
     conferir_teto(manifesto, _estimativa_da_escrita(cliente, pares, False), teto)
     gasto = 0.0
     for entrada, modelo in pares:
-        mensagem = cliente.messages.create(**pe.pedido(entrada, modelo))
+        mensagem = _mensagem_completa(cliente, pe.pedido(entrada, modelo))
         registro = _registro_da_resposta(entrada, modelo, mensagem, "piloto", False)
         _gravar(arquivo_da_resposta(pasta, entrada, modelo), registro)
+        _pagar(pasta, manifesto, registro["custo_em_dolares"])
         gasto += registro["custo_em_dolares"]
-    _somar_gasto(manifesto, gasto)
     manifesto["pilotos"] = [
         *manifesto.get("pilotos", []),
         {"respostas": len(pares), "gasto": gasto, "em": _agora()},
@@ -451,11 +466,11 @@ def cegas(
     gasto = 0.0
     for entrada, modelo, analise, registro in pendentes:
         parametros = porta2.pedido(analise, entrada, porta2.conferente(modelo))
-        mensagem = cliente.messages.create(**parametros)
+        mensagem = _mensagem_completa(cliente, parametros)
         cega = _registro_da_cega(analise, modelo, registro, mensagem)
         _gravar(arquivo_da_cega(pasta, entrada, modelo), cega)
+        _pagar(pasta, manifesto, cega["custo_em_dolares"])
         gasto += cega["custo_em_dolares"]
-    _somar_gasto(manifesto, gasto)
     gravar_manifesto(pasta, manifesto)
     log.info("Porta 2: %s respostas, US$ %.4f", len(pendentes), gasto)
     return len(pendentes)

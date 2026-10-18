@@ -8,6 +8,7 @@ modelo vai ao ar; a porta 3 é uma nota no Obsidian e o veredito conta para o cr
 import copy
 import json
 import re
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
@@ -22,6 +23,7 @@ RESPOSTA = json.loads((PAR_DA_CPFL / "gabarito.json").read_text(encoding="utf-8"
     "analise"
 ]
 _ROTULO = re.compile(r"^\[([^\]]+)\] \(", re.MULTILINE)
+SEM_STREAMING_ATE = 21_333  # a SDK recusa `create` acima disto (pede streaming): 10 min a 128 mil/h
 
 
 def _mensagem(texto: str, stop="end_turn", entrada=30_000, saida_=9_000):
@@ -36,13 +38,15 @@ def _mensagem(texto: str, stop="end_turn", entrada=30_000, saida_=9_000):
 class ClienteDeMentira:
     """Escreve o gabarito e, na porta 2, dá `sustentada` a tudo (menos às frases de `ruins`)."""
 
-    def __init__(self, ruins: frozenset[str] = frozenset()):
+    def __init__(self, ruins: frozenset[str] = frozenset(), quebra_na: int | None = None):
         self.criados: list[dict] = []
         self.lotes: list[list] = []
         self.estado = "in_progress"
         self.ruins = ruins
+        self.quebra_na = quebra_na  # a chamada (1, 2, ...) que falha, como uma queda da rede
         self.messages = SimpleNamespace(
             create=self._criar,
+            stream=self._fluxo,
             count_tokens=lambda **_: SimpleNamespace(input_tokens=30_000),
             batches=SimpleNamespace(
                 create=self._lote, retrieve=self._ver, results=self._resultados
@@ -61,8 +65,19 @@ class ClienteDeMentira:
         return json.dumps(RESPOSTA, ensure_ascii=False)
 
     def _criar(self, **params):
+        if params["max_tokens"] > SEM_STREAMING_ATE:
+            raise ValueError("Streaming is required for operations that may take longer")
+        return self._responder(params)
+
+    def _responder(self, params):
         self.criados.append(params)
+        if len(self.criados) == self.quebra_na:
+            raise ConnectionError("a rede caiu")
         return _mensagem(self._texto(params))
+
+    @contextmanager
+    def _fluxo(self, **params):
+        yield SimpleNamespace(get_final_message=lambda: self._responder(params))
 
     def _lote(self, requests):
         self.lotes.append(list(requests))
@@ -115,6 +130,16 @@ def test_teto_conta_o_que_ja_foi_gasto(tmp_path):
     (tmp_path / "manifesto.json").write_text(json.dumps({"gasto_em_dolares": 2.99}))
     with pytest.raises(ea.TetoPassado):
         ea.piloto(ClienteDeMentira(), [ENTRADA], tmp_path, [pedido.SONNET], teto=3)
+
+
+def test_queda_no_meio_guarda_o_que_ja_foi_pago(tmp_path):
+    cliente = ClienteDeMentira(quebra_na=2)
+    with pytest.raises(ConnectionError):
+        ea.piloto(cliente, [ENTRADA], tmp_path, [pedido.HAIKU, pedido.SONNET], teto=3)
+    paga = ea.resposta_guardada(tmp_path, ENTRADA, pedido.HAIKU)
+    assert paga is not None
+    gasto = ea.ler_manifesto(tmp_path)["gasto_em_dolares"]
+    assert gasto == pytest.approx(paga["custo_em_dolares"])  # o teto conta o que já saiu
 
 
 def test_resposta_guardada_nao_paga_de_novo(tmp_path):
