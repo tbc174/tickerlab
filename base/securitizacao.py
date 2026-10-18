@@ -10,6 +10,11 @@
   uma vez. Num certificado e mês, mais de uma linha é normal em `classe` (uma por série) e em
   `cedente_devedor`; o OTS de 2026 tem até um informe entregue duas vezes com conteúdo diferente, e os
   dois ficam (não há como saber qual vale).
+- **Sem dado pessoal:** o quadro `responsavel` (nome e cargo de quem assina, CRI até 2019) fica fora;
+  nas colunas de documento (`CNPJ` dos cedentes e devedores, `Retentor_Risco`, `CNPJ_*`, `CPF_*`) só
+  fica CNPJ válido, formatado (`base.fidc.documento_de_empresa`: na dúvida entre CPF e CNPJ, sai); os
+  campos de texto livre (garantias, contingências, impactos de pré-pagamento...), que podem citar
+  avalista ou devedor pessoa física, também saem. Tudo continua bruto no acervo.
 """
 
 import io
@@ -26,6 +31,35 @@ CHAVE = ("competencia", "cnpj_securitizadora", "codigo_certificado")
 COLUNAS_DA_SECURITIZADORA = ("CNPJ_Emissora", "CNPJ_Securitizadora")  # o OTS usa a 2ª
 COLUNA_DO_CERTIFICADO = "Codigo_Identificacao_Certificado"
 COLUNA_DA_REFERENCIA = "Data_Referencia"
+QUADROS_DE_PESSOAS = ("responsavel",)
+PREFIXOS_DE_DOCUMENTO = ("CNPJ", "CPF")
+COLUNAS_DE_DOCUMENTO = ("Retentor_Risco",)  # documento sem o prefixo no nome
+# texto livre (META da CVM: varchar de 255, preenchido à mão); categorias curtas (agência de
+# rating, segmento, periodicidade) e taxas ficam
+TEXTOS_LIVRES = (
+    "Analise_Impacto_Demais_Fatos",
+    "Analise_Impacto_Eventos_Pre_Pagamento",
+    "Analise_Impacto_Outros_Eventos",
+    "Contingencias_Principais_Fatos",
+    "Contingencias_Valores_Envolvidos",
+    "Descricao_Outros_Valores",
+    "Desempenho_Emissao",
+    "Detalhamento_Lastro",
+    "Especificacao_Tipo_Segmento",
+    "Impacto_Eventos_Pre_Pagamento",
+    "Justificativa",
+    "Outras_Caracteristicas",
+    "Outras_Caracteristicas_Emissao",
+    "Outras_Consideracoes",
+    "Outras_Contigencias_Relevantes",
+    "Pre_Pagamento_Impacto",
+    "Principais_Caracteristicas_Lastro",
+    "Recomposicao_Indice",
+    "Sobrecolateralizacao",
+    "Tipo_Retencao_Risco",
+    "Tipos_Garantias_Coobrigacao_Securitizadora",
+    "Tipos_Garantias_Coobrigacao_Terceiros",
+)
 
 
 @dataclass(frozen=True)
@@ -46,9 +80,10 @@ def quadros_do_arquivo(conteudo_do_zip: bytes, produto: str) -> set[str]:
     """Os quadros (`geral`, `classe`...) que um arquivo do informe traz, sem ler os dados."""
     nome_do_quadro = _nome_do_quadro(produto)
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
-        return {
+        quadros = {
             a.group(1) for n in arquivo.namelist() if (a := nome_do_quadro.search(n))
         }
+    return quadros - set(QUADROS_DE_PESSOAS)
 
 
 def _ler_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
@@ -56,6 +91,17 @@ def _ler_csv(arquivo: zipfile.ZipFile, nome: str) -> pd.DataFrame:
         arquivo.open(nome), sep=";", encoding=CODIFICACAO_DA_CVM, encoding_errors="replace",
         dtype=str, keep_default_na=False, engine="python", on_bad_lines="skip",
     ).replace("", None)  # fmt: skip
+
+
+def _e_documento(coluna: str) -> bool:
+    return coluna.startswith(PREFIXOS_DE_DOCUMENTO) or coluna in COLUNAS_DE_DOCUMENTO
+
+
+def _sem_pessoas(tabela: pd.DataFrame) -> pd.DataFrame:
+    tabela = tabela.drop(columns=[c for c in TEXTOS_LIVRES if c in tabela.columns])
+    for coluna in [c for c in tabela.columns if _e_documento(c)]:
+        tabela[coluna] = tabela[coluna].map(documento_de_empresa)
+    return tabela
 
 
 def _com_chave(tabela: pd.DataFrame) -> pd.DataFrame:
@@ -74,11 +120,13 @@ def _com_chave(tabela: pd.DataFrame) -> pd.DataFrame:
 
 
 def ler_informe(conteudo_do_zip: bytes, produto: str) -> Leitura:
-    """Uma tabela por quadro do informe, com a chave na frente."""
+    """Uma tabela por quadro do informe, com a chave na frente e sem dado pessoal."""
     nome_do_quadro = _nome_do_quadro(produto)
     tabelas = {}
     with zipfile.ZipFile(io.BytesIO(conteudo_do_zip)) as arquivo:
         for nome in sorted(arquivo.namelist()):
-            if achado := nome_do_quadro.search(nome):
-                tabelas[achado.group(1)] = _com_chave(_ler_csv(arquivo, nome))
+            achado = nome_do_quadro.search(nome)
+            if achado and achado.group(1) not in QUADROS_DE_PESSOAS:
+                tabela = _com_chave(_ler_csv(arquivo, nome))
+                tabelas[achado.group(1)] = _sem_pessoas(tabela)
     return Leitura(tabelas, {})

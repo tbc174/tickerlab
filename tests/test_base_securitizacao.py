@@ -7,12 +7,15 @@ livres por um texto neutro. Ficam os casos que o leitor precisa tratar: a linha 
 cargo de pessoa) e valores que não são CNPJ no campo `CNPJ` dos cedentes e devedores.
 """
 
+import io
 import re
 import zipfile
 from pathlib import Path
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from base import securitizacao
 
@@ -112,3 +115,102 @@ def test_competencia_do_ots_e_o_primeiro_dia_do_mes():
 def test_produto_desconhecido_recusa():
     with pytest.raises(ValueError, match="fiagro"):
         securitizacao.ler_informe(_bytes("inf_mensal_cri_2026.zip"), "fiagro")
+
+
+def test_quadro_responsavel_nao_entra():
+    # nome e cargo de quem assina o informe (CRI até 2019): dado pessoal, fica só no acervo
+    conteudo = _bytes("inf_mensal_cri_2019.zip")
+    assert "responsavel" not in securitizacao.quadros_do_arquivo(conteudo, "cri")
+    tabelas = securitizacao.ler_informe(conteudo, "cri").tabelas
+    assert "responsavel" not in tabelas
+    for quadro, tabela in tabelas.items():
+        assert not {"Nome", "Cargo"} & set(tabela.columns), quadro
+
+
+def _cpf(nove: str) -> str:
+    """Os 11 dígitos de um CPF com dígitos verificadores certos, a partir dos 9 primeiros."""
+    digitos = nove
+    for tamanho in (9, 10):
+        pesos = range(tamanho + 1, 1, -1)
+        resto = sum(int(d) * p for d, p in zip(digitos, pesos, strict=True)) % 11
+        digitos += str(0 if resto < 2 else 11 - resto)
+    return digitos
+
+
+def _digitos_de_cpf_valido(digitos: str) -> bool:
+    return digitos != digitos[0] * 11 and _cpf(digitos[:9]) == digitos
+
+
+def _e_documento(coluna: str) -> bool:
+    return coluna.startswith(("CNPJ", "CPF", "cnpj")) or coluna == "Retentor_Risco"
+
+
+@pytest.mark.parametrize("nome", ARQUIVOS)
+def test_nenhum_cpf_valido_sobra(nome):
+    tabelas = _ler(nome).tabelas
+    for quadro, tabela in tabelas.items():
+        for coluna in tabela.columns:
+            valores = tabela[coluna].dropna().astype(str)
+            assert not valores.str.contains(CPF_FICTICIO).any(), (quadro, coluna)
+            if not _e_documento(coluna):  # valor em dinheiro pode fechar como CPF
+                continue
+            documentos = valores.map(lambda v: re.sub(r"\D", "", v))
+            curtos = documentos[documentos.str.len().between(1, 11)]
+            assert not curtos.map(
+                lambda d: _digitos_de_cpf_valido(d.zfill(11))
+            ).any(), (
+                quadro,
+                coluna,
+            )
+    if "cedente_devedor" in tabelas:  # o CNPJ de empresa fica, formatado
+        cnpjs = tabelas["cedente_devedor"]["CNPJ"].dropna()
+        assert len(cnpjs) > 0
+        assert cnpjs.str.fullmatch(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}").all()
+
+
+def _cabecalhos(nome: str) -> set[str]:
+    with zipfile.ZipFile(PASTA / nome) as arquivo:
+        return {
+            coluna
+            for n in arquivo.namelist()
+            for coluna in arquivo.read(n).decode("latin-1").splitlines()[0].split(";")
+        }
+
+
+@pytest.mark.parametrize("nome", ARQUIVOS)
+def test_textos_livres_saem(nome):
+    # campo de texto livre pode trazer nome de pessoa (avalista, devedor): fica só no acervo
+    presentes = _cabecalhos(nome) & set(securitizacao.TEXTOS_LIVRES)
+    assert presentes  # a amostra tem textos livres para tirar
+    for quadro, tabela in _ler(nome).tabelas.items():
+        assert not presentes & set(tabela.columns), quadro
+
+
+FORMATOS_DE_CPF = (
+    lambda c: c,
+    lambda c: c.lstrip("0") or "0",  # a CVM tira os zeros da esquerda
+    lambda c: f"{c[:3]}.{c[3:6]}.{c[6:9]}-{c[9:]}",
+    lambda c: f"{c} -",
+)
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    nove=st.text("0123456789", min_size=9, max_size=9),
+    formato=st.sampled_from(FORMATOS_DE_CPF),
+    coluna=st.sampled_from(["CNPJ", "Retentor_Risco"]),
+)
+def test_documento_de_empresa_nas_colunas(nove, formato, coluna):
+    cpf = _cpf(nove)
+    if cpf == cpf[0] * 11:
+        return
+    quadro = "cedente_devedor" if coluna == "CNPJ" else "geral"
+    texto = (
+        f"CNPJ_Emissora;Codigo_Identificacao_Certificado;Data_Referencia;Versao;{coluna}\n"
+        f"02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;{formato(cpf)}\n"
+    )
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        arquivo.writestr(f"inf_mensal_cra_{quadro}_2026.csv", texto.encode("latin-1"))
+    tabela = securitizacao.ler_informe(conteudo.getvalue(), "cra").tabelas[quadro]
+    assert tabela[coluna].isna().all()
