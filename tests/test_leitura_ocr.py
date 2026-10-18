@@ -53,6 +53,17 @@ def _ocr_de_mentira(texto: str):
         (b"PK\x03\x04" + b"\x00" * 50, leitura.ZIP),
         (b"\x00\x01\x02 nada", leitura.DESCONHECIDO),
     ],
+    # ids fixos: o PDF traz a hora de criação, e um id tirado dos bytes mudaria entre os
+    # processos do xdist ("Different tests were collected"; visto no CI em 18/10/2026)
+    ids=[
+        "pdf",
+        "pdf cortado",
+        "html",
+        "html com doctype",
+        "word",
+        "zip",
+        "desconhecido",
+    ],
 )
 def test_formato_do_documento(conteudo, formato):
     assert leitura.formato_do_documento(conteudo) == formato
