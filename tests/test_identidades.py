@@ -11,6 +11,7 @@ import uuid
 import pytest
 import sqlalchemy as sa
 
+from src.banco import usuarios as repo
 from src.banco.conexao import criar_engine, desfazer_ate, migrar_para
 from src.banco.modelo import favoritos, identidades, usuarios
 
@@ -196,3 +197,153 @@ def test_migracao_0039_nao_volta_com_conta_sem_google(url):
             == 1
         )
     motor.dispose()
+
+
+# --- entrar por identidade: a regra de juntar contas ---------------------------------------
+
+
+def _microsoft(sub="ms-1", email="ana@exemplo.com", confirmado=True, **extra):
+    return repo.IdentidadeDoProvedor("microsoft", sub, email, confirmado, **extra)
+
+
+def _pelo_email(email="ana@exemplo.com"):
+    # o e-mail com código prova o e-mail: o identificador é o próprio e-mail
+    return repo.IdentidadeDoProvedor("email", email, email, True)
+
+
+def _identidades_da_conta(conexao, usuario_id):
+    return conexao.execute(
+        sa.select(identidades.c.provedor, identidades.c.sub)
+        .where(identidades.c.usuario_id == usuario_id)
+        .order_by(identidades.c.provedor)
+    ).all()
+
+
+def test_primeira_vez_pela_microsoft_cria_conta_sem_google_sub(motor):
+    with motor.begin() as conexao:
+        conta, primeira = repo.entrar_por_identidade(conexao, _microsoft(nome="Ana"))
+        assert primeira and conta.google_sub is None
+        assert (conta.email, conta.nome, conta.plano) == (
+            "ana@exemplo.com",
+            "Ana",
+            "gratuito",
+        )
+        assert _identidades_da_conta(conexao, conta.id) == [("microsoft", "ms-1")]
+
+
+def test_mesma_identidade_entra_na_mesma_conta(motor):
+    with motor.begin() as conexao:
+        primeira, _ = repo.entrar_por_identidade(conexao, _microsoft())
+        de_novo, nova = repo.entrar_por_identidade(conexao, _microsoft())
+    assert de_novo.id == primeira.id and not nova
+
+
+def test_email_confirmado_junta_com_a_conta_do_google(motor):
+    with motor.begin() as conexao:
+        do_google, _ = repo.entrar(
+            conexao, "g-ana", "Ana@Exemplo.com", email_confirmado=True
+        )
+        pelo_email, nova = repo.entrar_por_identidade(conexao, _pelo_email())
+        assert pelo_email.id == do_google.id and not nova
+        assert _identidades_da_conta(conexao, do_google.id) == [
+            ("email", "ana@exemplo.com"),
+            ("google", "g-ana"),
+        ]
+
+
+def test_email_nao_confirmado_nao_junta(motor):
+    """A Microsoft de empresa não prova o e-mail: quem o declara não entra na conta de quem o tem."""
+    with motor.begin() as conexao:
+        do_google, _ = repo.entrar(
+            conexao, "g-ana", "ana@exemplo.com", email_confirmado=True
+        )
+        invasor, nova = repo.entrar_por_identidade(
+            conexao, _microsoft(confirmado=False)
+        )
+    assert nova and invasor.id != do_google.id
+
+
+def test_conta_com_email_nao_confirmado_nao_captura_quem_chega_depois(motor):
+    """Quem declarou o e-mail sem prova antes não fica com a conta de quem prova o e-mail depois."""
+    with motor.begin() as conexao:
+        invasor, _ = repo.entrar_por_identidade(conexao, _microsoft(confirmado=False))
+        dona, nova = repo.entrar_por_identidade(conexao, _pelo_email())
+    assert nova and dona.id != invasor.id
+
+
+def test_juntar_pelo_google_preenche_o_google_sub(motor):
+    """A versão clássica acha a conta pelo google_sub: a conta criada por e-mail ganha o dela."""
+    with motor.begin() as conexao:
+        pelo_email, _ = repo.entrar_por_identidade(conexao, _pelo_email())
+        do_google, nova = repo.entrar(
+            conexao, "g-ana", "ana@exemplo.com", email_confirmado=True
+        )
+    assert do_google.id == pelo_email.id and not nova
+    assert do_google.google_sub == "g-ana"
+
+
+def test_entrar_do_google_grava_a_identidade(motor):
+    with motor.begin() as conexao:
+        conta, _ = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
+        assert _identidades_da_conta(conexao, conta.id) == [("google", "g-ana")]
+
+
+def test_conta_antiga_do_google_sem_identidade_ganha_a_dela(motor):
+    """Conta criada pela versão clássica entre a migração e esta versão: achada pelo google_sub."""
+    with motor.begin() as conexao:
+        antiga = _conta(conexao)
+        conexao.execute(
+            sa.update(usuarios)
+            .where(usuarios.c.id == antiga)
+            .values(google_sub="g-ana")
+        )
+        conta, nova = repo.entrar(conexao, "g-ana", "ana@exemplo.com")
+        assert conta.id == antiga and not nova
+        assert _identidades_da_conta(conexao, antiga) == [("google", "g-ana")]
+
+
+def test_admin_so_pelo_google_com_email_confirmado(motor):
+    admins = ("ana@exemplo.com",)
+    with motor.begin() as conexao:
+        pela_microsoft, _ = repo.entrar_por_identidade(
+            conexao, _microsoft(), emails_de_admin=admins
+        )
+        assert not pela_microsoft.e_admin
+        pelo_google, _ = repo.entrar(
+            conexao, "g-ana", "ana@exemplo.com", emails_de_admin=admins
+        )
+        assert not pelo_google.e_admin  # o Google não confirmou o e-mail
+        confirmado, _ = repo.entrar(
+            conexao,
+            "g-ana",
+            "ana@exemplo.com",
+            emails_de_admin=admins,
+            email_confirmado=True,
+        )
+        assert confirmado.e_admin
+        # e a conta da Microsoft continua sem o papel (o Google sem confirmação não se juntou a ela)
+        assert not repo.buscar_por_id(conexao, pela_microsoft.id).e_admin
+
+
+def test_identidades_de_contas_diferentes_nao_se_misturam(motor):
+    with motor.begin() as conexao:
+        ana, _ = repo.entrar_por_identidade(conexao, _microsoft())
+        bia, _ = repo.entrar_por_identidade(
+            conexao, _microsoft(sub="ms-2", email="bia@exemplo.com")
+        )
+        assert ana.id != bia.id
+        assert _identidades_da_conta(conexao, bia.id) == [("microsoft", "ms-2")]
+
+
+@pytest.mark.parametrize(
+    "identidade",
+    [
+        repo.IdentidadeDoProvedor("github", "x", "ana@exemplo.com", True),
+        repo.IdentidadeDoProvedor("microsoft", " ", "ana@exemplo.com", True),
+        repo.IdentidadeDoProvedor("microsoft", "x" * 256, "ana@exemplo.com", True),
+        repo.IdentidadeDoProvedor("microsoft", "x", "sem-arroba", True),
+    ],
+)
+def test_identidade_invalida_recusada(motor, identidade):
+    with pytest.raises(ValueError), motor.begin() as conexao:
+        repo.entrar_por_identidade(conexao, identidade)

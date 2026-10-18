@@ -145,8 +145,9 @@ def registrar_login(
                 email=identidade.email,
                 nome=identidade.nome,
                 foto_url=identidade.foto_url,
-                # o e-mail só dá o papel de administrador se o Google o confirmou
+                # o e-mail só dá o papel de administrador (e só junta contas) se o Google o confirmou
                 emails_de_admin=admins if identidade.email_verificado else (),
+                email_confirmado=identidade.email_verificado,
             )
             if primeira_vez and origem is not None:
                 gravar_origem(conexao, usuario.id, origem)

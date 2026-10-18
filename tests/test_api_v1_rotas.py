@@ -966,7 +966,13 @@ def stripe_de_teste(monkeypatch):
 
 def _ana_admin(banco):
     with banco.begin() as conexao:
-        entrar(conexao, "ana", "ana@exemplo.com", emails_de_admin=("ana@exemplo.com",))
+        entrar(
+            conexao,
+            "ana",
+            "ana@exemplo.com",
+            emails_de_admin=("ana@exemplo.com",),
+            email_confirmado=True,
+        )
 
 
 def _assinatura_da_ana(banco, cliente="cus_ana"):
