@@ -223,13 +223,12 @@ def _baixar_da_cvm(url: str) -> bytes:
 
 
 def texto_do_conteudo(conteudo: bytes, evento: dict) -> str:
-    """O texto do PDF ("" se for só imagem ou ilegível), sem cabeçalho e assinatura nos fatos."""
-    try:
-        texto = leitura.texto_do_pdf(conteudo)
-    except Exception:  # noqa: BLE001 (PDF malformado: fica sem texto e o modelo julga pelo assunto)
+    """O texto do documento ("" se não é PDF, é só imagem sem OCR legível, ou está ilegível:
+    o modelo julga pelo assunto), sem cabeçalho e assinatura nos fatos."""
+    lido = leitura.ler_documento(conteudo)
+    if not lido.legivel:
         return ""
-    if len(texto.split()) < leitura.MIN_PALAVRAS_POR_FRASE:
-        return ""
+    texto = lido.texto
     if ri.e_fato_relevante(evento):
         texto = leitura.sem_cabecalho_e_assinatura(texto)
     return " ".join(texto.split())[:MAX_CARACTERES_GUARDADOS]
@@ -253,7 +252,7 @@ def baixar(
         if i:
             time.sleep(pausa)
         conteudo = obter(evento["link"])
-        if not leitura.e_pdf(conteudo):
+        if leitura.parece_limite_da_cvm(leitura.formato_do_documento(conteudo)):
             log.warning(
                 "A CVM devolveu uma página no lugar do PDF (limite): para e continua depois."
             )
