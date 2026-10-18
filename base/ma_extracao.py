@@ -186,6 +186,20 @@ def _data(texto: str) -> date | None:
         return None
 
 
+def _nome_provado(nome: str, trecho: str, normalizado: str) -> bool:
+    """O nome inteiro está no trecho; ou o trecho usa o nome curto que o documento definiu ("a
+    Duane", "a SABER"): toda palavra que distingue o nome aparece no documento e o trecho tem ao
+    menos uma delas. Palavra genérica ("Companhia", "Participações") não prova nada."""
+    if lr.normalizar(nome) in lr.normalizar(trecho):
+        return True
+    distintas = _distintas(nome)
+    return (
+        bool(distintas)
+        and distintas <= set(_palavras(normalizado))
+        and bool(distintas & set(_palavras(trecho)))
+    )
+
+
 def _conferir_partes(
     partes: list[Parte], normalizado: str, descartes: list[Descarte]
 ) -> list[Parte]:
@@ -194,7 +208,7 @@ def _conferir_partes(
         if lr.normalizar(parte.trecho) not in normalizado:
             descartes.append(Descarte(TRECHO_AUSENTE, parte.papel, parte.trecho))
             continue
-        if lr.normalizar(parte.nome) not in lr.normalizar(parte.trecho):
+        if not _nome_provado(parte.nome, parte.trecho, normalizado):
             descartes.append(Descarte(NOME_FORA_DO_TRECHO, parte.papel, parte.trecho))
             continue
         if parte.participacao_depois is not None and lr.motivo_do_descarte(
@@ -339,7 +353,8 @@ _GENERICAS = frozenset(
 
 
 def _palavras(nome: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", _sem_acento(nome).casefold())
+    sem_apostrofo = re.sub(r"['’]", "", nome)  # L'Oréal e L’Oréal são o mesmo nome
+    return re.findall(r"[a-z0-9]+", _sem_acento(sem_apostrofo).casefold())
 
 
 def _distintas(nome: str) -> set[str]:
