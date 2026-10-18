@@ -189,15 +189,45 @@ def _data(texto: str) -> date | None:
 def _nome_provado(nome: str, trecho: str, normalizado: str) -> bool:
     """O nome inteiro está no trecho; ou o trecho usa o nome curto que o documento definiu ("a
     Duane", "a SABER"): toda palavra que distingue o nome aparece no documento e o trecho tem ao
-    menos uma delas. Palavra genérica ("Companhia", "Participações") não prova nada."""
+    menos uma delas; ou o trecho usa o apelido que o documento define logo depois do nome ("a
+    Eletrobras", "a 3R"). Palavra genérica ("Companhia", "Participações") não prova nada."""
     if lr.normalizar(nome) in lr.normalizar(trecho):
         return True
     distintas = _distintas(nome)
-    return (
-        bool(distintas)
+    if (
+        distintas
         and distintas <= set(_palavras(normalizado))
-        and bool(distintas & set(_palavras(trecho)))
+        and distintas & set(_palavras(trecho))
+    ):
+        return True
+    palavras_do_trecho = f" {' '.join(_palavras(trecho))} "
+    return any(
+        f" {apelido} " in palavras_do_trecho for apelido in _apelidos(nome, normalizado)
     )
+
+
+# Logo depois do nome, um ou dois parênteses: a definição e o código na bolsa, em qualquer ordem
+# ('(“Eletrobras”) (B3: ELET3)').
+_DEFINICAO = re.compile(r"\s*,?\s*((?:\([^()]{1,150}\)\s*){1,2})")
+_ENTRE_ASPAS = re.compile(r"[“\"]([^”\"]{1,60})[”\"]")
+
+
+def _apelidos(nome: str, normalizado: str) -> set[str]:
+    """Os apelidos entre aspas que o documento define logo depois do nome inteiro: "eletrobras"
+    em 'Centrais Elétricas Brasileiras S.A. (“Companhia” ou “Eletrobras”)'. Apelido só de
+    palavra genérica ("Companhia") fica de fora."""
+    procurado = lr.normalizar(nome)
+    apelidos: set[str] = set()
+    inicio = normalizado.find(procurado)
+    while inicio >= 0:
+        definicao = _DEFINICAO.match(normalizado, inicio + len(procurado))
+        if definicao:
+            for termo in _ENTRE_ASPAS.findall(definicao[1]):
+                palavras = _palavras(termo)
+                if palavras and not set(palavras) <= _GENERICAS:
+                    apelidos.add(" ".join(palavras))
+        inicio = normalizado.find(procurado, inicio + 1)
+    return apelidos
 
 
 def _conferir_partes(
