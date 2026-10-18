@@ -8,7 +8,7 @@ import pytest
 
 from base.commodities import usda_psd
 from src.commodities.cafe import balanco
-from src.commodities.cafe.balanco import PontoDaSafra
+from src.commodities.cafe.balanco import PontoAnual
 
 EXEMPLO = Path("dados_de_exemplo/commodities/psd_coffee_pequeno.csv")
 
@@ -53,8 +53,8 @@ def balanco_de_dois_paises() -> pd.DataFrame:
 def test_relacao_estoque_consumo_por_pais(balanco_de_dois_paises):
     pontos = balanco.relacao_estoque_consumo(balanco_de_dois_paises, "BR")
     assert pontos == [
-        PontoDaSafra(2023, pytest.approx(0.10), "BR"),
-        PontoDaSafra(2024, pytest.approx(0.20), "BR"),
+        PontoAnual(2023, pytest.approx(0.10), "BR"),
+        PontoAnual(2024, pytest.approx(0.20), "BR"),
     ]
 
 
@@ -72,7 +72,7 @@ def test_relacao_estoque_consumo_sem_consumo_nao_inventa_numero():
 
 def test_participacao_do_brasil_total_e_por_tipo(balanco_de_dois_paises):
     total = balanco.participacao_do_brasil(balanco_de_dois_paises, "total")
-    assert total == [PontoDaSafra(2024, pytest.approx(60000 / 72000), "total")]
+    assert total == [PontoAnual(2024, pytest.approx(60000 / 72000), "total")]
     arabica = balanco.participacao_do_brasil(balanco_de_dois_paises, "arabica")
     assert arabica[0].valor == pytest.approx(40000 / 52000)
     assert arabica[0].rotulo == "arabica"
