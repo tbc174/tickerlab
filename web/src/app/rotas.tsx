@@ -13,6 +13,7 @@ import { JurosEInflacao } from "./telas/JurosEInflacao";
 import { LinhaDoTempo } from "./telas/LinhaDoTempo";
 import { MeusDados } from "./telas/MeusDados";
 import { Planos } from "./telas/Planos";
+import { PrecosDeReferencia } from "./telas/PrecosDeReferencia";
 import { RelatorioEmpresa } from "./telas/RelatorioEmpresa";
 import { RetornoMensal } from "./telas/RetornoMensal";
 import { Risco } from "./telas/Risco";
@@ -25,6 +26,7 @@ export const TELAS_DO_APP: PaginaDoApp[] = paginasDoApp.filter((p) => p.contrato
 const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   visao_geral: (pagina) => <VisaoGeral pagina={pagina} />,
   juros_e_inflacao: (pagina) => <JurosEInflacao pagina={pagina} />,
+  precos_de_referencia: (pagina) => <PrecosDeReferencia pagina={pagina} />,
   linha_do_tempo: (pagina) => <LinhaDoTempo pagina={pagina} />,
   risco: (pagina) => <Risco pagina={pagina} />,
   retorno_mensal: (pagina) => <RetornoMensal pagina={pagina} />,

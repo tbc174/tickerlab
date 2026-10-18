@@ -40,20 +40,13 @@ def _ler_painel(hoje: date) -> painel.PainelDePrecos | None:
     return lido
 
 
-def _formatar(valor: float) -> str:
-    return f"{valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
-
-
 def _mostrar_item(item: painel.PrecoDeReferencia) -> None:
-    variacao = item.variacao_12_meses
     st.metric(
         f"{item.nome} ({item.unidade})",
-        _formatar(item.ultimo_valor),
-        delta=None
-        if variacao is None
-        else f"{variacao:+.1f}% em 12 meses".replace(".", ","),
+        painel.formatar_valor(item.ultimo_valor),
+        delta=painel.texto_da_variacao(item.variacao_12_meses),
     )
-    st.caption(f"Média de {item.ultimo_mes:%m/%Y}, Pink Sheet do Banco Mundial.")
+    st.caption(painel.legenda_do_item(item))
     mostrar_grafico(graficos.criar_grafico_preco_de_referencia(item))
     if item.nota_das_fontes:
         st.caption(item.nota_das_fontes)
@@ -62,10 +55,8 @@ def _mostrar_item(item: painel.PrecoDeReferencia) -> None:
 def _mostrar_spread(spread: tuple[painel.PontoDoSpread, ...]) -> None:
     if not spread:
         return
-    st.markdown("**Spread arábica menos robusta**")
-    st.caption(
-        "Quando a diferença abre muito, a indústria troca de grão; o conilon do Brasil é robusta."
-    )
+    st.markdown(f"**{painel.TITULO_DO_SPREAD}**")
+    st.caption(painel.NOTA_DO_SPREAD)
     mostrar_grafico(graficos.criar_grafico_spread_do_cafe(spread))
 
 

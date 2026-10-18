@@ -157,6 +157,15 @@ class Pagina:
         True  # False: fora do menu, mas com endereço (Termos e Privacidade, no rodapé)
     )
     contrato: Contrato | None = None  # páginas que já têm rota na API de leitura
+    # True: a tela existe só no app em React; o Streamlit (/classico) não a mostra nem lhe dá endereço.
+    # Toda tela nova nasce assim (ADR 0062, Emenda 2); o `grupo` fica só porque o campo é obrigatório.
+    so_no_app_novo: bool = False
+
+    def __post_init__(self) -> None:
+        if self.so_no_app_novo and self.contrato is None:
+            raise ValueError(
+                f"{self.chave}: página só do app novo precisa de contrato (é a rota que o React pede)"
+            )
 
     @property
     def url(self) -> str:
@@ -503,6 +512,9 @@ PAGINAS = (
         "FMI, com a fonte e a data de cada número.",
         area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET", "/v1/precos-de-referencia", (), "PrecosDeReferenciaV1"
+        ),
     ),
     Pagina(
         "linha_do_tempo",
@@ -664,8 +676,14 @@ POR_CHAVE = {p.chave: p for p in PAGINAS}
 PAGINA_INICIAL = "inicio"
 
 
+def paginas_do_classico() -> list[Pagina]:
+    """As páginas que o Streamlit mostra: todas menos as que só existem no app em React."""
+    return [p for p in PAGINAS if not p.so_no_app_novo]
+
+
 def paginas_do_grupo(grupo: str) -> list[Pagina]:
-    return [p for p in PAGINAS if p.grupo == grupo]
+    """As páginas do grupo no menu do Streamlit (os grupos só existem lá)."""
+    return [p for p in paginas_do_classico() if p.grupo == grupo]
 
 
 def paginas_da_area(area: str) -> list[Pagina]:

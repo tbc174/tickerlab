@@ -138,3 +138,30 @@ def test_grafico_do_spread(banco):
     assert len(figura.data) == 1
     with pytest.raises(ValueError):
         graficos.criar_grafico_spread_do_cafe(())
+
+
+# --- Os textos da tela, num lugar só: o Streamlit e o app em React mostram os mesmos ---------
+
+
+@pytest.mark.parametrize(
+    ("valor", "texto"),
+    [(1234.5, "1.234,50"), (7.0, "7,00"), (0.125, "0,12"), (-3.456, "-3,46")],
+)
+def test_valor_no_formato_brasileiro(valor, texto):
+    assert painel.formatar_valor(valor) == texto
+
+
+@pytest.mark.parametrize(
+    ("variacao", "texto"),
+    [(3.21, "+3,2% em 12 meses"), (-10.0, "-10,0% em 12 meses"), (None, None)],
+)
+def test_texto_da_variacao_em_12_meses(variacao, texto):
+    assert painel.texto_da_variacao(variacao) == texto
+
+
+def test_legenda_do_item_diz_o_mes_e_a_fonte(banco):
+    _gravar(banco, "bm-pink-ureia", [400.0])
+    item = _item(_montar(banco), "ureia")
+    assert (
+        painel.legenda_do_item(item) == "Média de 09/2026, Pink Sheet do Banco Mundial."
+    )

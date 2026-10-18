@@ -594,7 +594,12 @@
   {
     "area": "acompanhar",
     "chave": "precos_de_referencia",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "PrecosDeReferenciaV1",
+      "rota": "/v1/precos-de-referencia"
+    },
     "descricao": "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data de cada número.",
     "e_pro": false,
     "grupo": "Research",
