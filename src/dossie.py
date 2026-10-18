@@ -61,6 +61,9 @@ MESES = (
     "nov",
     "dez",
 )
+TAMANHO_DO_ANO = (
+    4  # "2025": a série de agência somada no ano (base/dossie.py, `_item_da_serie`)
+)
 TAMANHO_DO_MES = 7  # "2025-12"
 
 TITULOS_DAS_TABELAS = {
@@ -315,9 +318,12 @@ def _escrever_valor(valor: str | float | None, unidade: str) -> str:
 
 
 def _escrever_base(base: str | None, gerado_em: datetime) -> str:
-    """De quando é o número: dia, mês ("dez/2025") ou, se a data é depois da ficha, o ano do FRE."""
+    """De quando é o número: dia, mês ("dez/2025"), ano ("2025") ou, se a data é depois da ficha, o
+    ano do FRE."""
     if not base:
         return ""
+    if len(base) == TAMANHO_DO_ANO:
+        return base
     if len(base) == TAMANHO_DO_MES:
         return mes(f"{base}-01")
     quando = para_data(base)

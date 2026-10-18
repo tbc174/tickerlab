@@ -114,6 +114,18 @@ def test_numero_grande_que_nao_e_dinheiro_nao_vira_reais() -> None:
     assert linha["Parte do total"] == "11,1%"
 
 
+def test_serie_somada_no_ano_tem_base_so_com_o_ano(tmp_path: Path) -> None:
+    # regressão (18/10/2026): a série de agência somada no ano (base/dossie.py, `_item_da_serie`)
+    # grava a base "2025"; a ficha do Itaú derrubava o relatório da empresa com ValueError
+    bruta = _bruta()
+    setor = next(s for s in bruta["secoes"] if s["chave"] == "setor_regulado")
+    setor["itens"][0]["base"] = "2025"
+    ficha = dossie.ler_ficha(_gravar(tmp_path, bruta))
+    assert ficha is not None
+    secoes = {s.chave: s for s in dossie.secoes_da_ficha(dossie.cortar(ficha))}
+    assert secoes["setor_regulado"].itens[0].base == "2025"
+
+
 def test_data_do_fre_no_futuro_vira_ano_de_referencia() -> None:
     # o FRE de 2026 tem a data de referência 31/12/2026, depois do dia da ficha
     itens = {i.chave: i for i in _secoes()["auditor_e_controladas"].itens}
