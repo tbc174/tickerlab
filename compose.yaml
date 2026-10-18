@@ -23,6 +23,10 @@ services:
       - .env   # TICKERLAB_DATABASE_URL e os outros segredos (permissão 600, fora do Git)
     environment:
       TICKERLAB_LOG_FORMATO: json   # uma linha de JSON por registro: docker logs ... | jq
+      # o Streamlit é a versão clássica, em app.tickerlab.com.br/classico/ (o app em React está na
+      # raiz, servido pelo nginx do site). O login do Google precisa do redirect_uri com /classico
+      # no secrets.toml e no Google Auth Platform (src/classico.py)
+      STREAMLIT_SERVER_BASE_URL_PATH: classico
     volumes:
       - ./dados_locais:/app/dados_locais
       # login do Google: o secrets.toml fica só no servidor (permissão 600, fora do Git). Crie o

@@ -266,14 +266,16 @@ jobs:
       - name: As migrações do banco rodam dentro da imagem
         run: docker run --rm tickerlab:ci python -m alembic upgrade head
 
-      - name: O servidor responde no teste de saúde
+      - name: O servidor responde no teste de saúde (na raiz e em /classico, como no servidor)
         run: |
           docker run -d --name tickerlab -p 127.0.0.1:8501:8501 tickerlab:ci
+          docker run -d --name tickerlab-classico -p 127.0.0.1:8502:8501 -e STREAMLIT_SERVER_BASE_URL_PATH=classico tickerlab:ci
           for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:8501/_stcore/health && exit 0
+            curl -fsS http://127.0.0.1:8501/_stcore/health && curl -fsS http://127.0.0.1:8502/classico/_stcore/health && exit 0
             sleep 2
           done
           docker logs tickerlab
+          docker logs tickerlab-classico
           exit 1
 
       - name: A API abre dentro da imagem
