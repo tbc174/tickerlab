@@ -22,6 +22,7 @@ from base.arquivo import assessorias, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
+    csv_do_bdi_da_b3,
     csv_so_com_colunas,
     extrair_do_zip_remoto,
     indice_do_zip_remoto,
@@ -85,6 +86,11 @@ TERMOS = {
     "termos-fred": "https://fred.stlouisfed.org/legal/terms/",
     "termos-datajud": "https://datajud-wiki.cnj.jus.br/api-publica/termo-uso",
     "termos-sec": "https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data",
+    # a página do Boletim Diário traz a vedação de "coleta automatizada" (lida em 18/10/2026)
+    "termos-b3-coleta-automatizada": "https://www.b3.com.br/pt_br/market-data-e-indices/"
+    "servicos-de-dados/market-data/consultas/boletim-diario/boletim-diario-do-mercado/",
+    # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
+    "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {
@@ -200,6 +206,50 @@ BOLETIM_PR_DA_B3 = (
 COTAHIST_DO_DIA = (
     "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_D{ddmmaaaa}.ZIP"
 )
+
+# arquivos diários do BDI (boletim diário do mercado, `arquivos.b3.com.br/bdi`): só pesquisa, e contra
+# a vedação de "coleta automatizada" das páginas da B3 (decisão do Tiago em 18/10/2026; ADR 0094,
+# Emenda 1). A página de onde vieram os nomes: Boletim diário do mercado, aba "Derivativos de bolsa"
+# (`OpenPositionsEquities`, inclui café ICF, boi BGI, etanol ETH) e "Empréstimos de ativos"
+# (`BTBLendingOpenPosition`, posições em aberto do aluguel; `BTBLoanBalance`, empréstimos
+# registrados), lidas em 18/10/2026. Janela D-21 (21 pregões); o pedido é o do botão "Informações
+# em arquivo" (POST com tabela e dia). Sem mostrar nada em tela, API ou tabela do catálogo.
+CSV_DO_BDI_DA_B3 = "https://arquivos.b3.com.br/bdi/table/export/csv?lang=en-us"
+PAUSA_ENTRE_PEDIDOS_DO_BDI = 1.0  # segundos: um pedido por vez
+
+
+def _alvo_do_bdi(tabela: str, dia: date) -> Alvo:
+    # o corpo do POST leva a tabela e o dia; o fragmento só dá a cada (tabela, dia) um endereço
+    # próprio no registro de coletas (o servidor nunca o recebe)
+    url = f"{CSV_DO_BDI_DA_B3}#tabela={tabela}&data={dia.isoformat()}"
+    return Alvo(url, ".csv", csv_do_bdi_da_b3(url.split("#")[0], tabela, dia))
+
+
+def _descobrir_bdi(tabela: str) -> Descobrir:
+    def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
+        return [_alvo_do_bdi(tabela, dia) for dia in _dias_da_janela_da_b3(agora)]
+
+    return descobrir
+
+
+def _dia_do_bdi_ja_guardado(anterior: sa.Row) -> bool:
+    """Baixado depois do dia do pregão: já é a versão final (o do próprio dia pode estar parcial)."""
+    baixado = anterior.baixado_em
+    if baixado.tzinfo is None:  # o SQLite dos testes devolve sem fuso
+        baixado = baixado.replace(tzinfo=UTC)
+    pregao = date.fromisoformat(anterior.url.rsplit("data=", 1)[-1])
+    return baixado.astimezone(FUSO_DA_B3).date() > pregao
+
+
+def _fonte_do_bdi(id_: str, tabela: str) -> Fonte:
+    return Fonte(
+        id_,
+        "diaria",
+        _descobrir_bdi(tabela),
+        guardado_vale=_dia_do_bdi_ja_guardado,
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_DO_BDI,
+    )
+
 
 # PIT do TCE-PR (sinais de risco em compras públicas, ADR 0085): um ZIP por ano desde 2013, com um ZIP
 # por município e tema dentro (399 × 9). Só licitação, contrato e ligações (a `Despesa` é o PR 2);
@@ -850,6 +900,10 @@ FONTES: list[Fonte] = [
         "zip",
         guardado_vale=_boletim_final_ja_guardado,
     ),
+    # arquivos diários do BDI (aluguel e posições em aberto dos derivativos, só pesquisa)
+    _fonte_do_bdi("b3-emprestimo-posicoes", "BTBLendingOpenPosition"),
+    _fonte_do_bdi("b3-derivativos-posicoes", "OpenPositionsEquities"),
+    _fonte_do_bdi("b3-emprestimo-resumo", "BTBLoanBalance"),
     # PIT do TCE-PR, só com os atributos da lista (sem pessoas): `base/tce_pr.py`
     Fonte("tce-pr-pit", "semanal", descobrir_pit, "zip", pesada=True),
     # posts das assessorias independentes de M&A (middle market, ADR 0082)
