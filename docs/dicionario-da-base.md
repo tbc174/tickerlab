@@ -2860,3 +2860,38 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 | `producao_total_t` | Arábica + conilon, só quando os dois têm número | toneladas |
 | `area_mapbiomas_ha` | Cobertura da classe Café do MapBiomas no município (soma dos biomas) | hectares |
 | `disponivel_em` | Desde quando o número era público (31/10 do ano seguinte, pela PAM) | data (dia) |
+
+## `contraparte_cafe`
+
+Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café (faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), cada um com fonte, veículo e data, ditos com as nossas palavras. Sem nota, cor nem conselho e sem pessoa física: a ficha (`base/contrapartes/cafe.py`) junta a situação especial da Receita e os informes de CRA da CVM e diz o que não sabemos
+
+- **Fonte:** Notícias e documentos públicos (ALMG, Bloomberg Línea, Revista Cultivar, Notícias Agrícolas)
+- **Licença:** Notícias e páginas públicas guardadas só como prova; na ficha, fato e link
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Quando a conferência anda (assembleias de março, notícias de recuperação judicial)
+- **Atraso de divulgação:** O `divulgado_em` é o dia da publicação da notícia ou do documento
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `id`, `fato`, `data`
+- **Três datas:** aconteceu_em = `data`; publico_em = `divulgado_em`; coletado_em = `conferido_em`
+- **Histórico desde:** 2004-07-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** `base/conferidas/contrapartes_cafe.csv` no repositório (Git)
+- **Linhagem:** Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as páginas dos quatro sites autorizados ficam guardadas pelo arquivista (`contrapartes-cafe`) só como prova; a notícia de recuperação judicial só vira fato da ficha depois de guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id` | Apelido da contraparte (chave quando não há CNPJ conferido) | texto |
+| `cnpj` | CNPJ da entidade no cadastro aberto da Receita (vazio: não confirmado) | texto |
+| `nome` | Nome da cooperativa ou empresa | texto |
+| `tipo` | `cooperativa`, `trading` ou `exportadora` | texto |
+| `uf` | UF da sede | texto |
+| `fato` | Tipo do fato (`faturamento`, `pedido_de_recuperacao_judicial`...) | texto |
+| `descricao` | O fato com as nossas palavras, "segundo <veículo>" | texto |
+| `valor` | O número do fato, na unidade ao lado (vazio se não há) | número com decimais, na unidade da fonte |
+| `unidade` | `R$`, `sacas` ou outra | texto |
+| `data` | Quando o fato aconteceu (fim do exercício, dia do pedido) | data (dia) |
+| `divulgado_em` | Quando ficou público (sem olhar o futuro) | data (dia) |
+| `fonte` | Endereço público da notícia ou do documento | texto |
+| `veiculo` | Quem publicou | texto |
+| `tipo_de_fonte` | `documento_oficial`, `demonstracao_financeira`, `relatorio_da_entidade` ou `noticia` | texto |
+| `conferido_em` | Dia da conferência | data (dia) |
