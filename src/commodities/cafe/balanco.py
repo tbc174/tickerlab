@@ -136,7 +136,9 @@ def balanco_por_pais(
         for safra in sorted(producao.index.intersection(mundo.index)):
             if producao[safra] <= 0 or mundo[safra] <= 0:
                 continue
-            tem_relacao = safra in estoque.index and consumo.get(safra, 0) > 0
+            tem_relacao = (
+                safra in estoque.index and safra in consumo.index and consumo[safra] > 0
+            )
             pontos.append(
                 BalancoDoPais(
                     codigo_do_pais=pais,
