@@ -89,6 +89,8 @@ TERMOS = {
     # a página do Boletim Diário traz a vedação de "coleta automatizada" (lida em 18/10/2026)
     "termos-b3-coleta-automatizada": "https://www.b3.com.br/pt_br/market-data-e-indices/"
     "servicos-de-dados/market-data/consultas/boletim-diario/boletim-diario-do-mercado/",
+    # termo de uso do portal do IBGE (ele não publica licença escrita dos dados; 18/10/2026)
+    "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
 }
 CATALOGOS = {

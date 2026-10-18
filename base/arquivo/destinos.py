@@ -182,6 +182,7 @@ DESTINOS: dict[str, Destino] = {
             "termos-fred",
             "termos-datajud",
             "termos-sec",
+            "termos-ibge",
             "termos-igc-robots",
             "termos-igc-privacidade",
             "catalogo-cvm",
