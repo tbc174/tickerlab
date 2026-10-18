@@ -2635,6 +2635,35 @@ Régua do middle market de cada negócio de M&A das assessorias: a receita anual
 | `porte_prova_url` | Endereço do ZIP `Empresas` da Receita | texto |
 | `porte_prova_sha256` | SHA-256 do ZIP guardado no acervo | texto |
 
+## `conab_cafe`
+
+Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção, a produtividade e a produção em mil sacas. Cada levantamento é uma linha a mais, nunca sobrescreve o anterior. Licença CC BY-ND 3.0: só como publicado, citando a CONAB
+
+- **Fonte:** CONAB: Acompanhamento da Safra Brasileira de Café (planilha de cada levantamento)
+- **Licença:** CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista
+- **Atraso de divulgação:** O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento
+- **Módulo:** macro · **Contém dado de pessoa:** não
+- **Chaves:** `safra`, `levantamento`, `tipo`, `uf`, `divulgado_em`
+- **Três datas:** publico_em = `divulgado_em`
+- **Histórico desde:** 2026-02-05 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)
+- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `safra` | Ano em que a safra começa (2026 é a safra 2026/27) | número inteiro |
+| `levantamento` | Número do levantamento da safra, de 1 a 4 | número inteiro |
+| `tipo` | `arabica`, `conilon` ou `total` | texto |
+| `uf` | Sigla da UF, `OUTROS` (agrupamento da CONAB) ou `BRASIL` | texto |
+| `area_formacao_ha` | Área em formação, em hectares | número com decimais, na unidade da fonte |
+| `area_producao_ha` | Área em produção, em hectares | número com decimais, na unidade da fonte |
+| `produtividade_sc_ha` | Produtividade, em sacas de 60 kg por hectare | número com decimais, na unidade da fonte |
+| `producao_mil_sacas` | Produção, em mil sacas de 60 kg | número com decimais, na unidade da fonte |
+| `divulgado_em` | Dia em que a CONAB divulgou o levantamento | data (dia) |
+
 ## `usda_psd_cafe`
 
 Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD. Só a produção se separa por tipo (arabica, conilon = a Robusta do USDA); os demais atributos são do `total`. Cada baixada semanal guarda as revisões do USDA com a data em que apareceram, para o 'como era na data'

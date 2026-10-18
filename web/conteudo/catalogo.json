@@ -93,6 +93,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "2026-02-05",
+      "licenca": "CC BY-ND 3.0 (CONAB): só como publicado, citando a CONAB; derivado pede aval",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "CONAB",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "1981-01-31",
       "licenca": "Dados históricos do INMET: públicos e gratuitos, sem licença escrita (citar)",
       "modulos": [
@@ -215,13 +226,13 @@
       "tabelas": 11
     },
     {
-      "chave": "ma",
-      "nome": "M&A",
-      "tabelas": 5
-    },
-    {
       "chave": "macro",
       "nome": "Macro",
+      "tabelas": 6
+    },
+    {
+      "chave": "ma",
+      "nome": "M&A",
       "tabelas": 5
     },
     {
@@ -948,6 +959,16 @@
     },
     {
       "atraso": null,
+      "frase": "Os levantamentos de safra de café da CONAB, como publicados: por safra, levantamento (1 a 4), tipo (arábica, conilon, total) e UF, a área em formação e em produção.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2026-02-05",
+      "modulo": "macro",
+      "orgao": "CONAB",
+      "situacao": "em consulta",
+      "tabela": "conab_cafe"
+    },
+    {
+      "atraso": null,
       "frase": "Balanço mundial do café por país e ano-safra (produção, consumo, estoques, exportação, importação), em mil sacas de 60 kg, do USDA PSD.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-18",
@@ -978,9 +999,9 @@
     }
   ],
   "totais": {
-    "fontes": 18,
-    "fontes_em_consulta": 5,
+    "fontes": 19,
+    "fontes_em_consulta": 6,
     "modulos": 6,
-    "tabelas": 74
+    "tabelas": 75
   }
 }

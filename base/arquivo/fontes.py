@@ -129,6 +129,18 @@ DADOS_DA_ANP = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/
 VENDAS_DA_ANP = DADOS_DA_ANP + "arquivos/mdpg/{nome}.zip"
 CONCESSIONARIOS_DA_ANP = DADOS_DA_ANP + "arquivos/rc/relacao-concessionarios.csv"
 PAGINA_DA_PRODUCAO_DA_ANP = DADOS_DA_ANP + "fase-de-desenvolvimento-e-producao"
+# CONAB, safra de café (lida em 18/10/2026; rodapé CC BY-ND 3.0): a página lista os levantamentos
+# mais novos e a "safra-de-cafe-1" os antigos; cada levantamento tem uma planilha .xls (nos antigos o
+# link da "tabela de dados" não tem extensão)
+SAFRA_DE_CAFE_DA_CONAB = "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/safra-de-cafe"
+PAGINA_DOS_LEVANTAMENTOS_DA_CONAB = SAFRA_DE_CAFE_DA_CONAB
+PAGINA_ANTIGA_DA_CONAB = SAFRA_DE_CAFE_DA_CONAB + "/safra-de-cafe-1"
+PLANILHA_DA_CONAB = re.compile(
+    rb'href="('
+    + re.escape(SAFRA_DE_CAFE_DA_CONAB.encode())
+    + rb"/\do-levantamento-de-cafe-safra-\d{4}/"
+    + rb'(?:[^"/]+\.xls|tabela-de-dados-estimativas-da-producao-e-colheita))"'
+)
 # produção por poço, um arquivo por ano (mar e terra); o nome muda de padrão (2024 é
 # `producao_por_poco_2024.csv`), por isso os links saem da própria página
 PRODUCAO_POR_POCO = re.compile(
@@ -509,6 +521,18 @@ def descobrir_vendas_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
 
 def descobrir_producao_anp(cliente: Cliente, agora: datetime) -> list[Alvo]:
     return descobrir_links(cliente, PAGINA_DA_PRODUCAO_DA_ANP, PRODUCAO_POR_POCO)
+
+
+def descobrir_cafe_conab(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """A planilha de cada levantamento de safra de café da CONAB (as páginas recente e antiga)."""
+    links: dict[str, None] = {}
+    for pagina in (PAGINA_DOS_LEVANTAMENTOS_DA_CONAB, PAGINA_ANTIGA_DA_CONAB):
+        links |= dict.fromkeys(
+            m.decode() for m in PLANILHA_DA_CONAB.findall(cliente.ler(pagina).conteudo)
+        )
+    if not links:
+        raise ErroDeDescoberta("CONAB: nenhuma planilha de levantamento de café")
+    return [Alvo(link, ".xls") for link in links]
 
 
 def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -1033,6 +1057,8 @@ FONTES: list[Fonte] = [
     *(assessorias.fonte(a) for a in assessorias.ASSESSORIAS),
     # a primeira cópia de cada página no Internet Archive, depois da coleta da assessoria (passo 4)
     *(wayback.fonte(a) for a in assessorias.ASSESSORIAS),
+    # área de commodities, café primeiro (PR 7): os quatro levantamentos de cada safra, como publicados
+    Fonte("conab-cafe-safra", "semanal", descobrir_cafe_conab),
     # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)
     Fonte("usda-psd-cafe", "semanal", _um(PSD_DO_CAFE), "zip"),
     Fonte("faostat-cafe", "semanal", _um(FAOSTAT_PRODUCAO), "zip", pesada=True),
