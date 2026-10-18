@@ -126,6 +126,17 @@
       "tabelas": 1
     },
     {
+      "historico_desde": "1985-12-31",
+      "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
+      "modulos": [
+        "macro"
+      ],
+      "orgao": "MapBiomas",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
       "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
@@ -211,7 +222,7 @@
     {
       "chave": "macro",
       "nome": "Macro",
-      "tabelas": 4
+      "tabelas": 5
     },
     {
       "chave": "rede",
@@ -954,12 +965,22 @@
       "orgao": "INMET",
       "situacao": "licenciada",
       "tabela": "clima_regiao_cafe"
+    },
+    {
+      "atraso": "Anual",
+      "frase": "Área e produção de café por município e ano, pela PAM do IBGE e pela cobertura de café do MapBiomas, lado a lado.",
+      "frequencia": "Anual",
+      "historico_desde": "1985-12-31",
+      "modulo": "macro",
+      "orgao": "MapBiomas",
+      "situacao": "licenciada",
+      "tabela": "area_cafe_municipio"
     }
   ],
   "totais": {
-    "fontes": 17,
+    "fontes": 18,
     "fontes_em_consulta": 5,
     "modulos": 6,
-    "tabelas": 73
+    "tabelas": 74
   }
 }
