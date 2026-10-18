@@ -6,7 +6,7 @@ demonstrações de todas as companhias (corte de 31/08/2026) e a ficha do dossi�
 """
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -27,6 +27,13 @@ ARQUIVOS = (
 )
 PRECO = 35.0  # um preço fixo, só para os múltiplos saírem
 DIA_DA_FICHA = date(2026, 10, 17)
+TICKERS = pd.DataFrame(
+    {
+        "codigo": ["CPFE3"],
+        "valor_mobiliario": ["Ações Ordinárias"],
+        "atualizado_em": [datetime(2026, 10, 17, 9, tzinfo=UTC)],
+    }
+)
 # as seções feitas das demonstrações: todo número delas compara com algo (nunca "sem comparação")
 SECOES_DAS_DEMONSTRACOES = (
     "resultado",
@@ -65,6 +72,7 @@ def entradas_da_cpfl() -> re_.Entradas:
         ticker="CPFE3.SA",
         preco=PRECO,
         padroes=_padroes(),
+        tickers=TICKERS,
         dossie=dossie.dossie_da_ficha(dossie.cortar(ficha), DIA_DA_FICHA),
     )
 
@@ -122,3 +130,69 @@ def test_numero_do_dossie_compara_com_o_ano_ou_o_mes_anterior(ficha_da_cpfl):
     fundos = next(i for i in ofertas.itens if i.chave == "fundos_com_a_acao")
     assert fundos.comparacao is not None and "mar/2025" in fundos.comparacao.texto
     assert "CDA" in fundos.fonte
+
+
+def _itens(relatorio: re_.Relatorio, secao: str) -> dict[str, re_.Item]:
+    return {i.chave: i for i in relatorio.secao(secao).itens}
+
+
+def test_ficha_tecnica_cpfl(ficha_da_cpfl):
+    """Quem é a empresa, com de quando e de onde vem cada linha."""
+    ficha = _itens(ficha_da_cpfl, "ficha_tecnica")
+    assert ficha["nome"].texto == "CPFL ENERGIA S.A."
+    assert ficha["nome"].comparacao is not None  # o nome nos documentos mais antigos
+    assert ficha["cnpj"].texto == CPFL
+    assert ficha["tickers"].texto == "CPFE3 (Ações Ordinárias)"
+    assert ficha["tickers"].base == "cadastro de 17/10/2026"
+    assert (
+        "desde quando" in ficha["tickers"].sem_comparacao
+    )  # o que a base ainda não traz
+    assert ficha["setor"].texto == SETOR
+    assert "Energia elétrica" in ficha["setor"].comparacao.texto
+    assert ficha["auditor"].texto == (
+        "PRICEWATERHOUSECOOPERS AUDITORES INDEPENDENTES LTDA, desde 01/01/2022"
+    )
+    assert "KPMG" in ficha["auditor"].comparacao.texto
+    assert ficha["controlador"].texto == "—"
+    assert "FRE" in ficha["controlador"].motivo
+    ultima = ficha["ultima_demonstracao"]
+    assert ultima.texto == "ITR de 30/06/2026, versão 1"
+    assert ultima.base == "recebido em 13/08/2026"
+    assert "44 dias" in ultima.comparacao.texto
+    assert "14/08/2026" in ultima.comparacao.texto  # 45 dias depois do trimestre
+    datas = {
+        linha["fonte"]: linha["data"]
+        for linha in ficha_da_cpfl.secao("ficha_tecnica").tabelas["datas_das_fontes"]
+    }
+    assert datas == {
+        "Demonstrações (DFP e ITR na CVM)": "13/08/2026",
+        "Padrões do setor": "31/08/2026",
+        "Dossiê da base": "17/10/2026",
+        "Cadastro de tickers": "17/10/2026",
+    }
+
+
+def test_ficha_tecnica_sem_o_pro_nao_mostra_o_auditor(entradas_da_cpfl):
+    ficha = _itens(re_.montar(entradas_da_cpfl), "ficha_tecnica")
+    assert ficha["auditor"].texto == "—"
+    assert "Pro" in ficha["auditor"].motivo
+    assert "Dossiê da base" not in str(
+        re_.montar(entradas_da_cpfl).secao("ficha_tecnica").tabelas
+    )
+
+
+def test_ficha_tecnica_prazo_da_dfp_reapresentada():
+    documentos = pd.DataFrame(
+        {
+            "empresa": ["X S.A.", "X S.A."],
+            "documento": ["DFP", "DFP"],
+            "referencia": [date(2025, 12, 31), date(2025, 12, 31)],
+            "versao": [1, 2],
+            "recebido_em": [date(2026, 3, 20), date(2026, 5, 4)],
+        }
+    )
+    item = re_.ultima_demonstracao(documentos)
+    assert item.texto == "DFP de 31/12/2025, versão 2 (reapresentada)"
+    assert item.base == "recebido em 04/05/2026"
+    assert "versão 1 recebida em 20/03/2026" in item.comparacao.texto
+    assert "31/03/2026" in item.comparacao.texto  # 3 meses depois do exercício

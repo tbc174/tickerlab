@@ -96,6 +96,11 @@ def test_carrega_tudo_da_empresa_pelo_ticker(conexao):
     assert pares is not None
     assert set(pares["cnpj"]) == {WEG, PETROBRAS}  # o banco é de outro grupo
     assert (pares["receita"] > 0).all() and pares["empresa"].str.len().min() > 0
+    tickers = entradas.tickers
+    assert tickers is not None  # só os da WEG, para a ficha técnica
+    assert list(tickers["codigo"]) == ["WEGE3"]
+    assert list(tickers["valor_mobiliario"]) == ["Ações Ordinárias"]
+    assert pd.Timestamp(tickers["atualizado_em"].iloc[0]).date() == AGORA.date()
 
 
 def test_sem_padrao_gravado_fica_sem_padroes(conexao):

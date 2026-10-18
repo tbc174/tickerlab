@@ -106,7 +106,8 @@ def test_plano_pro_registra_guarda_o_original_e_reabre_na_pagina(banco, monkeypa
     ir_para(app, "relatorio")
     app.button(key=f"estudio_reabrir_{item.id}").click().run()
     assert not app.exception
-    assert [s.value for s in app.subheader][:1] == [SECOES["resumo"]]  # voltou à página
+    primeira = next(iter(SECOES.values()))
+    assert [s.value for s in app.subheader][:1] == [primeira]  # voltou à página
 
 
 # --- dossiê da base (plano do dossiê da empresa no app, PR 3) ---------------------------------------

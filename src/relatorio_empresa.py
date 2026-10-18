@@ -16,7 +16,8 @@ Premissas padrão do valuation (a pessoa troca na página): desconto de 12% ao a
 
 import math
 from dataclasses import asdict, dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -31,6 +32,7 @@ from src.qualidade_texto import texto_do_selo
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
 SECOES: dict[str, str] = {
+    "ficha_tecnica": "Ficha técnica",
     "resumo": "Resumo",
     "resultado": "Resultado",
     "retorno": "Retorno",
@@ -66,6 +68,7 @@ INDICADORES_DO_QUE_MUDOU = (
 )
 QUANTOS_PARES = 5
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
+    "datas_das_fontes": "Última data de cada fonte",
     "cascata": "Da receita ao lucro (último ano)",
     "ponte": "Da dívida líquida do ano anterior à de agora",
     "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
@@ -220,6 +223,9 @@ class Entradas:
     eventos_de_capital: pd.DataFrame | None = None  # do FRE
     pares: pd.DataFrame | None = None  # cnpj, empresa, receita (do mesmo grupo)
     dossie: Dossie | None = None  # a ficha da base do CNPJ (`src/dossie.py`)
+    tickers: pd.DataFrame | None = (
+        None  # codigo, valor_mobiliario, atualizado_em (do FCA)
+    )
     premissas: Premissas = field(default_factory=Premissas)
 
 
@@ -892,6 +898,228 @@ def _secoes_do_dossie(e: Entradas, plano: str | None) -> list[Secao]:
     return [replace(s, paragrafos=[data, *s.paragrafos]) for s in e.dossie.secoes]
 
 
+# --- ficha técnica: quem é a empresa, com de quando e de onde vem cada linha -----------------------
+TEXTO = "texto"  # a unidade de um item que é uma frase (nome, auditor), não um número
+FUSO = ZoneInfo("America/Sao_Paulo")
+FONTE_DOS_DOCUMENTOS = "DFP e ITR entregues à CVM (tabela documentos)"
+FONTE_DO_SETOR = "cadastro de companhias da CVM (setor de atividade)"
+FONTE_DOS_TICKERS = "FCA entregue à CVM (valores mobiliários negociados na B3)"
+FONTE_DO_CONTROLADOR = "FRE entregue à CVM pela controladora (tabela controladas)"
+MEDIDO_NO_CADASTRO = "cadastro atual da CVM"
+IDENTIFICACAO = "Identificação: não há com o quê comparar."
+SEM_DESDE_QUANDO = (
+    "Falta saber desde quando o ticker negocia: a base guarda o histórico dos tickers, mas a "
+    "ficha ainda não o traz ao app."
+)
+SEM_CONTROLADORA = (
+    "A ficha não traz a controladora: ela só aparece quando a controladora também entrega o FRE "
+    "à CVM (uma controladora de fora do Brasil, por exemplo, não entrega)."
+)
+SEM_FICHA_DA_BASE = "A ficha da base desta empresa ainda não chegou ao app."
+DIAS_DO_ITR = 45  # prazo da CVM: o ITR sai até 45 dias depois do fim do trimestre
+MESES_DA_DFP = 3  # e a DFP até 3 meses depois do fim do exercício
+
+
+def _dia(valor: object) -> date:
+    """O dia de uma data em qualquer formato (um momento com fuso vira o dia no Brasil)."""
+    momento = pd.Timestamp(valor)  # type: ignore[arg-type]
+    if momento.tzinfo is not None:
+        momento = momento.tz_convert(FUSO)
+    return momento.date()
+
+
+def _prazo_da_cvm(documento: str, referencia: date) -> tuple[date, str]:
+    if documento == "ITR":
+        return referencia + timedelta(
+            days=DIAS_DO_ITR
+        ), f"{DIAS_DO_ITR} dias depois do trimestre"
+    prazo = (pd.Timestamp(referencia) + pd.DateOffset(months=MESES_DA_DFP)).date()
+    return prazo, f"{MESES_DA_DFP} meses depois do exercício"
+
+
+def ultima_demonstracao(documentos: pd.DataFrame) -> Item:
+    """A demonstração mais recente e a versão, comparada com o prazo da CVM pela 1ª entrega
+    (reapresentar depois do prazo é normal; atrasar a primeira, não)."""
+    nome = "Última demonstração"
+    if documentos.empty:
+        return Item("ultima_demonstracao", nome, "—", None, TEXTO, "",
+                    "Nenhuma demonstração guardada.")  # fmt: skip
+    ordenados = documentos.sort_values(["referencia", "versao", "recebido_em"])
+    ultimo = ordenados.iloc[-1]
+    documento, referencia = str(ultimo["documento"]), _dia(ultimo["referencia"])
+    versao = int(ultimo["versao"])
+    mesmo = ordenados[
+        (ordenados["documento"] == documento)
+        & (ordenados["referencia"] == ultimo["referencia"])
+    ]
+    primeira = mesmo.iloc[0]
+    entregue = _dia(primeira["recebido_em"])
+    prazo, regra = _prazo_da_cvm(documento, referencia)
+    dentro = "dentro do prazo" if entregue <= prazo else "depois do prazo"
+    reapresentada = " (reapresentada)" if versao > 1 else ""
+    return Item(
+        "ultima_demonstracao",
+        nome,
+        f"{documento} de {referencia:%d/%m/%Y}, versão {versao}{reapresentada}",
+        None,
+        TEXTO,
+        f"recebido em {_dia(ultimo['recebido_em']):%d/%m/%Y}",
+        fonte=FONTE_DOS_DOCUMENTOS,
+        comparacao=Comparacao(
+            "prazo da CVM",
+            f"versão {int(primeira['versao'])} recebida em {entregue:%d/%m/%Y}, "
+            f"{(entregue - referencia).days} dias depois do fim do período, {dentro} "
+            f"(até {prazo:%d/%m/%Y}, {regra})",
+        ),
+    )
+
+
+def _nome_e_cnpj(e: Entradas) -> list[Item]:
+    documentos = e.dados.documentos
+    if documentos.empty:
+        return [
+            Item("nome", "Nome", e.empresa, None, TEXTO, MEDIDO_NO_CADASTRO,
+                 fonte=FONTE_DOS_TICKERS, sem_comparacao=IDENTIFICACAO),
+            Item("cnpj", "CNPJ", e.cnpj, None, TEXTO, MEDIDO_NO_CADASTRO,
+                 fonte=FONTE_DOS_TICKERS, sem_comparacao=IDENTIFICACAO),
+        ]  # fmt: skip
+    ordenados = documentos.sort_values(["referencia", "versao"])
+    primeiro, ultimo = ordenados.iloc[0], ordenados.iloc[-1]
+    base = f"{ultimo['documento']} de {_dia(ultimo['referencia']):%d/%m/%Y}"
+    antes = f"{primeiro['documento']} de {_dia(primeiro['referencia']):%d/%m/%Y}"
+    nome_antes = str(primeiro["empresa"])
+    mudou = nome_antes != str(ultimo["empresa"])
+    return [
+        Item("nome", "Nome", str(ultimo["empresa"]), None, TEXTO, base,
+             fonte=FONTE_DOS_DOCUMENTOS,
+             comparacao=Comparacao(antes, f"era {nome_antes}" if mudou else "o mesmo nome")),
+        Item("cnpj", "CNPJ", e.cnpj, None, TEXTO, base, fonte=FONTE_DOS_DOCUMENTOS,
+             sem_comparacao=IDENTIFICACAO),
+    ]  # fmt: skip
+
+
+def _tickers(e: Entradas) -> Item:
+    if e.tickers is None or e.tickers.empty:
+        return Item("tickers", "Tickers", e.ticker.removesuffix(".SA"), None, TEXTO,
+                    "o ticker pedido nesta página", fonte=FONTE_DOS_TICKERS,
+                    sem_comparacao=SEM_DESDE_QUANDO)  # fmt: skip
+    texto = "; ".join(
+        f"{linha.codigo} ({linha.valor_mobiliario})"
+        for linha in e.tickers.sort_values("codigo").itertuples(index=False)
+    )
+    quando = _dia(e.tickers["atualizado_em"].max())
+    return Item("tickers", "Tickers", texto, None, TEXTO, f"cadastro de {quando:%d/%m/%Y}",
+                fonte=FONTE_DOS_TICKERS, sem_comparacao=SEM_DESDE_QUANDO)  # fmt: skip
+
+
+def _empresas_no_padrao(e: Entradas, grupo: str) -> int:
+    if e.padroes is None:
+        return 0
+    padroes = e.padroes[1]
+    do_grupo = padroes.loc[padroes["grupo"] == grupo, "empresas"]
+    return int(do_grupo.max()) if not do_grupo.empty else 0
+
+
+def _setor(e: Entradas, c: _Calculos) -> Item:
+    if not e.dados.setor:
+        return Item("setor", "Setor", "—", None, TEXTO, "",
+                    "O cadastro da CVM não informa o setor.")  # fmt: skip
+    texto = f"grupo {NOMES.get(c.grupo, c.grupo)}"
+    empresas = _empresas_no_padrao(e, c.grupo)
+    if e.padroes is not None and empresas:
+        texto += f", com {empresas} empresas nos padrões de {e.padroes[0]:%d/%m/%Y}"
+    return Item("setor", "Setor", e.dados.setor, None, TEXTO, MEDIDO_NO_CADASTRO,
+                fonte=FONTE_DO_SETOR,
+                comparacao=Comparacao("grupos de setores do TickerLab", texto))  # fmt: skip
+
+
+def _sem_o_dossie(chave: str, nome: str, e: Entradas, plano: str | None) -> Item:
+    motivo = motivo_sem_acesso(plano, DOSSIE_DA_BASE)
+    if e.dossie is None or motivo is None:
+        return Item(chave, nome, "—", None, TEXTO, "", SEM_FICHA_DA_BASE)
+    return Item(chave, nome, "—", None, TEXTO, "", f"{motivo} Vem do dossiê da base.")
+
+
+def _controlador(secao: Secao, base: str) -> Item:
+    controladoras = secao.tabelas.get("controladoras", [])
+    if not controladoras:
+        return Item(
+            "controlador", "Controlador", "—", None, TEXTO, "", SEM_CONTROLADORA
+        )
+    texto = "; ".join(
+        f"{c['Controladora']} ({c['Participação']})" for c in controladoras
+    )
+    return Item("controlador", "Controlador", texto, None, TEXTO, base,
+                fonte=FONTE_DO_CONTROLADOR, sem_comparacao=IDENTIFICACAO)  # fmt: skip
+
+
+def _auditor_e_controlador(
+    e: Entradas, do_dossie: list[Secao], plano: str | None
+) -> list[Item]:
+    secao = next(
+        (s for s in do_dossie if s.chave == "auditor_e_controladas" and not s.trancada),
+        None,
+    )
+    if secao is None:
+        return [
+            _sem_o_dossie("auditor", "Auditor", e, plano),
+            _sem_o_dossie("controlador", "Controlador", e, plano),
+        ]
+    itens = {i.chave: i for i in secao.itens}
+    atual, desde = itens.get("auditor_atual"), itens.get("auditor_desde")
+    if atual is None:
+        auditor = Item(
+            "auditor", "Auditor", "—", None, TEXTO, "", "A ficha não traz o auditor."
+        )
+        return [auditor, _controlador(secao, "")]
+    texto = f"{atual.texto}, desde {desde.texto}" if desde else atual.texto
+    auditor = replace(atual, chave="auditor", nome="Auditor", texto=texto)
+    return [auditor, _controlador(secao, atual.base)]
+
+
+def _ultimo_dia(tabela: pd.DataFrame | None, coluna: str) -> date | None:
+    if tabela is None or tabela.empty:
+        return None
+    return _dia(tabela[coluna].max())
+
+
+def _datas_das_fontes(e: Entradas, do_dossie: list[Secao]) -> list[dict]:
+    """A última data de cada fonte que o relatório usa (só as que chegaram e aparecem)."""
+    dossie_aberto = e.dossie is not None and any(not s.trancada for s in do_dossie)
+    datas: list[tuple[str, date | None]] = [
+        (
+            "Demonstrações (DFP e ITR na CVM)",
+            _ultimo_dia(e.dados.documentos, "recebido_em"),
+        ),
+        ("Padrões do setor", e.padroes[0] if e.padroes is not None else None),
+        (
+            "Dossiê da base",
+            e.dossie.dia if e.dossie is not None and dossie_aberto else None,
+        ),
+        ("Acontecimentos (IPE na CVM)", _ultimo_dia(e.eventos, "publicado_em")),
+        ("Cadastro de tickers", _ultimo_dia(e.tickers, "atualizado_em")),
+    ]
+    return [{"fonte": f, "data": f"{d:%d/%m/%Y}"} for f, d in datas if d is not None]
+
+
+def _ficha_tecnica(
+    e: Entradas, c: _Calculos, do_dossie: list[Secao], plano: str | None
+) -> Secao:
+    itens = [
+        *_nome_e_cnpj(e),
+        _tickers(e),
+        _setor(e, c),
+        *_auditor_e_controlador(e, do_dossie, plano),
+        ultima_demonstracao(e.dados.documentos),
+    ]
+    return Secao(
+        "ficha_tecnica",
+        SECOES["ficha_tecnica"],
+        itens,
+        tabelas={"datas_das_fontes": _datas_das_fontes(e, do_dossie)},
+    )
+
+
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
 
@@ -903,6 +1131,7 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     limites = [*LIMITES, *(mostrado.limites if mostrado else [])]
     fontes = (*FONTES, *(mostrado.fontes if mostrado else ()))
     secoes = [
+        _ficha_tecnica(entradas, c, do_dossie, plano),
         _resumo(c),
         *(
             _secao_de_itens(chave, c)
