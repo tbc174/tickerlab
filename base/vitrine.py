@@ -54,9 +54,15 @@ _INTERNO = re.compile(
 _ENTRE_PARENTESES = re.compile(r"\s*\([^)]*\)")
 # o parêntese que cita uma decisão (ADR 0075, PR 2) ou um arquivo do repositório (base/regras.py)
 _PARENTESES_INTERNO = re.compile(
-    r"\s*\((?:(?:ADR|PR|passo|série)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)", re.IGNORECASE
+    r"\s*\((?:(?:ADR|PR|passo|série|modelo)\b[^)]*|[^)]*\b\w+/\w+\.py[^)]*)\)",
+    re.IGNORECASE,
 )
-_INTERNO_NA_FRASE = re.compile(r"servidor|VPS|\bADR\b|\b\w+/\w+\.py", re.IGNORECASE)
+_INTERNO_NA_FRASE = re.compile(
+    r"servidor|VPS|\bADR\b|\b\w+/\w+\.py|lista de trabalho|\bdo app\b|\bdo Capital\b|\bB13\b",
+    re.IGNORECASE,
+)
+# a frase acabou numa palavra que pede continuação (o código entre crases foi tirado do texto)
+_FIM_PENDURADO = {"de", "da", "do", "desde", "a", "o", "em", "até", "com", "por"}
 _FREQUENCIAS = (
     (r"(diária|toda noite)", "Diária"),
     (r"semanal", "Semanal"),
@@ -222,7 +228,14 @@ def primeira_frase(texto: str) -> str:
             frase = ", ".join(antes[:-1]).rstrip(",;:")
     cortada = len(frase) > LIMITE_DA_FRASE
     if cortada:
-        frase = frase[:LIMITE_DA_FRASE].rsplit(" ", 1)[0]
+        corte = frase[:LIMITE_DA_FRASE]
+        ultima = max(corte.rfind(separador) for separador in (", ", "; ", ": "))
+        if (
+            ultima >= LIMITE_DA_FRASE // 2
+        ):  # prefere acabar numa vírgula a cortar no meio
+            frase, cortada = corte[:ultima], False
+        else:
+            frase = corte.rsplit(" ", 1)[0]
     if frase.count("(") > frase.count(")"):  # nunca deixa um parêntese aberto
         frase = frase[: frase.rindex("(")]
     frase = frase.rstrip(",;: ")
@@ -236,5 +249,7 @@ def atraso_do_site(texto: str) -> str | None:
     limpo = _ENTRE_PARENTESES.sub("", texto.replace("`", ""))
     curto = re.split(r";|\.\s", limpo.strip())[0].strip().rstrip(".:,")
     if not curto or len(curto) > LIMITE_DO_ATRASO or _INTERNO.search(curto):
+        return None
+    if curto.split()[-1].lower() in _FIM_PENDURADO:
         return None
     return curto

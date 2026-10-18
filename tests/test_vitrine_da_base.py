@@ -246,6 +246,31 @@ def test_primeira_frase_termina_em_ponto_e_corta_antes_do_termo_interno():
     assert frase == "Cada fato."
 
 
+def test_primeira_frase_corta_o_que_fala_de_produto_ou_de_trabalho_interno():
+    capital = vitrine.primeira_frase(
+        "O cadastro de fundos da CVM, com o gestor de cada FIDC: a lista de clientes possíveis do Capital."
+    )
+    assert capital == "O cadastro de fundos da CVM, com o gestor de cada FIDC."
+    trabalho = vitrine.primeira_frase(
+        "Os emissores sem CNPJ, do maior valor para o menor: a lista de trabalho para a próxima conferência."
+    )
+    assert trabalho == "Os emissores sem CNPJ, do maior valor para o menor."
+    modelo = vitrine.primeira_frase(
+        "Colunas do modelo de atraso (modelo 8) como eram na data da previsão."
+    )
+    assert "modelo 8" not in modelo
+
+
+def test_primeira_frase_longa_prefere_terminar_numa_virgula():
+    inicio = (
+        "Uma linha por valor diferente que cada conta de cada período já teve, "
+        "com o dia em que ficou público e o dia em que a empresa reapresentou"
+    )
+    frase = vitrine.primeira_frase(inicio + ", " + "texto sem fim " * 15)
+
+    assert frase == f"{inicio}."
+
+
 def test_primeira_frase_longa_corta_numa_palavra():
     frase = vitrine.primeira_frase("palavra " * 100)
 
@@ -264,3 +289,8 @@ def test_atraso_do_site_descarta_o_que_e_conversa_interna():
         is None
     )
     assert vitrine.atraso_do_site("Texto " * 40) is None
+
+
+def test_atraso_que_termina_sem_o_fim_da_frase_nao_sai():
+    """O código entre crases some do texto e deixa a frase pendurada ("a partir de desde")."""
+    assert vitrine.atraso_do_site("A ligação vale a partir de `desde`") is None

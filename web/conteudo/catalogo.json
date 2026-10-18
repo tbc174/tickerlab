@@ -194,7 +194,7 @@
   "tabelas": [
     {
       "atraso": "DFP: até 3 meses depois do fim do exercício",
-      "frase": "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior), com o dia em que ficou público e o dia em que foi…",
+      "frase": "Uma linha por valor diferente que cada conta de cada período já teve (versão 1, reapresentações e o balanço seguinte refazendo o ano anterior).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -234,7 +234,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
-      "frase": "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão: a mais nova de cada documento…",
+      "frase": "Todos os valores mobiliários de cada companhia em cada FCA (ações, units, BDRs, debêntures, notas comerciais...), com a data de entrega de cada versão.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -254,7 +254,7 @@
     },
     {
       "atraso": "Até meses: a empresa atualiza o FCA quando muda algo",
-      "frase": "Códigos de negociação informados fora do formato de ticker (a CSN informa \"4030\"): não viram ligação e vão para o relatório de buracos; os da bolsa que aparecem nas carteiras dos fundos são…",
+      "frase": "Códigos de negociação informados fora do formato de ticker (a CSN informa \"4030\"): não viram ligação e vão para o relatório de buracos.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -274,7 +274,7 @@
     },
     {
       "atraso": null,
-      "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa: em…",
+      "frase": "As ações e os certificados de depósito que os fundos informam no bloco 8 do CDA (\"demais ativos não codificados\"), sem o código estruturado, com o CNPJ do emissor que o próprio fundo informa.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
       "modulo": "credito_e_fidc",
@@ -284,7 +284,7 @@
     },
     {
       "atraso": null,
-      "frase": "As cotas de fundos que cada fundo tem, do bloco 2 do CDA (\"cotas de fundos\"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos, com o CNPJ do fundo investido e o tipo dele…",
+      "frase": "As cotas de fundos que cada fundo tem, do bloco 2 do CDA (\"cotas de fundos\"): quem compra cotas de FIDC, de FIP, de FII e de outros fundos.",
       "frequencia": "Mensal",
       "historico_desde": "2005-01-31",
       "modulo": "credito_e_fidc",
@@ -304,7 +304,7 @@
     },
     {
       "atraso": "Do dia: é um retrato do cadastro na data da coleta",
-      "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC: a lista de clientes possíveis do Capital.",
+      "frase": "O cadastro de fundos da CVM (atual, histórico de administrador, auditor, classe... e o registro de fundos e classes da CVM 175), com o gestor de cada FIDC.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
       "modulo": "credito_e_fidc",
@@ -334,7 +334,7 @@
     },
     {
       "atraso": "O do CDA",
-      "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor: a lista de trabalho para a próxima conferência (nada some calado).",
+      "frase": "Os emissores das carteiras dos fundos que ficaram sem CNPJ, do maior valor comprado para o menor.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
       "modulo": "credito_e_fidc",
@@ -344,7 +344,7 @@
     },
     {
       "atraso": "Nenhum",
-      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo…",
+      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que ficam sem empresa de propósito, cada um com o motivo.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -354,7 +354,7 @@
     },
     {
       "atraso": "Nenhum: a ligação vale para o período em que o emissor aparece nas carteiras",
-      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa \"4030\"), ligados ao CNPJ pelo cadastro de companhias da CVM, um…",
+      "frase": "Tabela conferida à mão: emissores das carteiras dos fundos que saíram da bolsa ou mudaram de código antes de 2018 (e a CSN, que informa \"4030\"), ligados ao CNPJ pelo cadastro de companhias da CVM.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -404,7 +404,7 @@
     },
     {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
-      "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da…",
+      "frase": "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
       "modulo": "mercado_e_empresas",
@@ -484,7 +484,7 @@
     },
     {
       "atraso": "Nenhum além das datas da própria oferta",
-      "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo…",
+      "frase": "Ofertas públicas registradas na CVM até a Resolução 160 (ICVM 400, 476 e 555), desde 1989, por CNPJ do emissor, no formato da CVM, uma linha por série ou ativo.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -524,7 +524,7 @@
     },
     {
       "atraso": "Nenhum",
-      "frase": "Os códigos das fontes setoriais (sigla da ANAC, agente da ANP) que a B13 não liga a uma empresa, do maior volume para o menor: a lista de trabalho da próxima conferência.",
+      "frase": "Os códigos das fontes setoriais.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2026-10-14",
       "modulo": "mercado_e_empresas",
@@ -564,7 +564,7 @@
     },
     {
       "atraso": "Publicado ~30 dias depois do fim do mês",
-      "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade, origem dos recursos e…",
+      "frase": "Carteira de crédito do sistema financeiro por mês desde jul/2012 (SCR.data versão 2): por UF, segmento da instituição, PF ou PJ, CNAE (PJ) ou ocupação (PF), porte, modalidade.",
       "frequencia": "Mensal",
       "historico_desde": "2010-01-01",
       "modulo": "credito_e_fidc",
@@ -624,7 +624,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
-      "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados (a versão de longo prazo de fre_proventos, do app).",
+      "frase": "Dividendos e JCP de cada exercício pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -634,7 +634,7 @@
     },
     {
       "atraso": "O FRE é entregue até 5 meses depois do fim do exercício e reapresentado a cada mudança",
-      "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados (a versão de longo prazo de fre_eventos_de_capital, do app).",
+      "frase": "Desdobramentos, grupamentos, bonificações e aumentos de capital pelo FRE de todos os anos guardados.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -644,7 +644,7 @@
     },
     {
       "atraso": null,
-      "frase": "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um: documento da categoria própria da CVM (categoria_ipe)…",
+      "frase": "Rótulos de recuperação judicial ou extrajudicial, pedido de falência, falência e liquidação lidos do IPE desde 2003, com a evidência de cada um.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -654,7 +654,7 @@
     },
     {
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15",
-      "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado: o histórico \"como era na data\" nasce da sequência dos…",
+      "frase": "Estabelecimentos com \"situação especial\" no CNPJ da Receita (falido, em recuperação, em liquidação, intervenção...), um retrato por mês guardado.",
       "frequencia": "Mensal",
       "historico_desde": "2026-10-14",
       "modulo": "governo_e_sancoes",
@@ -664,7 +664,7 @@
     },
     {
       "atraso": "O retrato do fim do trimestre sai semanas depois",
-      "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor…",
+      "frase": "Dívida ativa da União (PGFN) por CNPJ de empresa, um retrato por trimestre guardado: uma linha por CNPJ, tipo de dívida (não previdenciária, previdenciária, FGTS), região da PGFN, tipo de devedor.",
       "frequencia": "Trimestral",
       "historico_desde": "2026-10-14",
       "modulo": "governo_e_sancoes",
@@ -684,7 +684,7 @@
     },
     {
       "atraso": null,
-      "frase": "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados, fatos relevantes e editais que…",
+      "frase": "Ratings de crédito das companhias abertas lidos dos documentos que elas entregam à CVM no IPE desde 2003: o relatório da agência (tipo próprio do IPE) e os comunicados.",
       "frequencia": "Diária",
       "historico_desde": "2003-01-01",
       "modulo": "credito_e_fidc",
@@ -704,7 +704,7 @@
     },
     {
       "atraso": null,
-      "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício, como a companhia informou…",
+      "frase": "Cadastro de cada companhia como era em cada FCA desde 2010: categoria do registro (A ou B), setor de atividade, espécie do controle acionário e mês de fim do exercício.",
       "frequencia": "Anual",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -724,7 +724,7 @@
     },
     {
       "atraso": "Um dia útil: o arquivo do Tesouro sai na manhã seguinte",
-      "frase": "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom, interpolação…",
+      "frase": "Curva de juros própria, sem B3 nem ANBIMA: nominal (Tesouro Prefixado), real (Tesouro IPCA+) e inflação implícita, nos vértices de 6 meses a 20 anos, só com os títulos sem cupom.",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
       "modulo": "macro",
@@ -784,7 +784,7 @@
     },
     {
       "atraso": "O rótulo de um documento existe a partir do prazo",
-      "frase": "Rótulo do modelo de atraso na entrega.",
+      "frase": "Rótulo do modelo de atraso na entrega: uma linha por companhia, documento (DFP ou ITR) e data-base, com o prazo da CVM, a primeira entrega e se atrasou.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -794,7 +794,7 @@
     },
     {
       "atraso": "Cada coluna usa só o que era público na véspera da previsão",
-      "frase": "Colunas do modelo de atraso na entrega (modelo 8) como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave), só com fatos públicos antes de data_da_previsao…",
+      "frase": "Colunas do modelo de atraso na entrega como eram na data da previsão: uma linha por exemplo de rotulos_atraso (mesma chave).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -803,8 +803,8 @@
       "tabela": "colunas_atraso"
     },
     {
-      "atraso": "A ligação vale a partir de desde",
-      "frase": "De que companhia listada é cada entidade que os reguladores enxergam…",
+      "atraso": null,
+      "frase": "De que companhia listada é cada entidade que os reguladores enxergam.",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "mercado_e_empresas",
@@ -814,7 +814,7 @@
     },
     {
       "atraso": "O da fonte mais lenta de cada entidade",
-      "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14), valor mobiliário (pelo ISIN das carteiras dos fundos) ou firma de auditoria…",
+      "frase": "Uma linha por entidade da rede: empresa (pela raiz do CNPJ; a filial é a mesma empresa), fundo (pelo CNPJ de 14).",
       "frequencia": "Sem calendário fixo",
       "historico_desde": "2010-01-01",
       "modulo": "rede",
@@ -834,7 +834,7 @@
     },
     {
       "atraso": null,
-      "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE), entidade do regulador que opera para a companhia…",
+      "frase": "Uma linha por relação entre duas entidades da rede, com as três datas: sociedade controlada, coligada ou participada da companhia (FRE).",
       "frequencia": "Diária",
       "historico_desde": "2010-01-01",
       "modulo": "rede",
@@ -854,7 +854,7 @@
     },
     {
       "atraso": null,
-      "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas: o nome normalizado contra os nomes da rede…",
+      "frase": "As empresas de cada negócio de M&A das assessorias (ma_assessorias), uma linha por empresa de cada página, ligadas à rede de entidades só por regras exatas.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
       "modulo": "ma",
@@ -864,7 +864,7 @@
     },
     {
       "atraso": null,
-      "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes…",
+      "frase": "Uma linha por página de negócio de M&A com o id_negocio, o mesmo para as páginas do mesmo negócio em sites diferentes (as assessorias dos dois lados postam o mesmo negócio): mesmas partes.",
       "frequencia": "Semanal",
       "historico_desde": "2026-10-16",
       "modulo": "ma",
