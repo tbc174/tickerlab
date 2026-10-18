@@ -140,10 +140,7 @@ DESTINOS: dict[str, Destino] = {
     "antt-siade": _planejada(
         "serie-T/T8", _SO_LIGA_HOJE + " (desempenho por ferrovia)"
     ),
-    "comexstat": _planejada(
-        "serie-T/T8",
-        _SO_LIGA_HOJE + " (exposição por NCM); falta o preço médio de exportação",
-    ),
+    "comexstat": _tabela("comex_cafe"),
     # governo, sanções e identificadores
     "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
     "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),
