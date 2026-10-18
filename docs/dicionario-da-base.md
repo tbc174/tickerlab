@@ -682,6 +682,37 @@ Vendas de combustíveis pelas distribuidoras (líquidos, GLP e aviação) por m�
 | `arquivo` | O CSV do zip de onde veio a linha | texto |
 | `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
 
+## `comex_cafe`
+
+Exportações de café por mês, NCM, UF de origem e país de destino, recortadas do Comex Stat (NCMs 09011110, 09011190, 09012100 e 21011110). A NCM não separa arábica de conilon: o `tipo` é sempre `total` e o Espírito Santo (quase só conilon) vai marcado em `proxy_conilon`, sem dividir o volume. Cada coleta do arquivista vira linhas novas (`divulgado_em`), porque o MDIC revisa meses antigos
+
+- **Fonte:** MDIC: Comex Stat, exportação por NCM (EXP_AAAA.csv) e tabela de países
+- **Licença:** Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal
+- **Atraso de divulgação:** O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, não a do MDIC
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `ncm`, `uf_origem`, `codigo_do_pais`, `divulgado_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `divulgado_em`
+- **Histórico desde:** 2026-10-18 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/commodities/comex_cafe/` (carga em PR seguinte; `base/commodities/comex_cafe.py`)
+- **Linhagem:** Recorte do `EXP_AAAA.csv` guardado pelo arquivista (fonte `comexstat`); as vias e unidades da aduana são somadas por mês, NCM, UF e país.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `ncm` | NCM do café (8 dígitos) | texto |
+| `uf_origem` | UF do produtor/exportador | texto |
+| `codigo_do_pais` | Código do país de destino no Comex | texto |
+| `pais_destino` | Nome do país de destino | texto |
+| `vl_fob_usd` | Valor FOB em dólares | número com decimais, na unidade da fonte |
+| `kg_liquido` | Peso líquido em quilos | número com decimais, na unidade da fonte |
+| `sacas` | Sacas de 60 kg (quilos líquidos ÷ 60) | número com decimais, na unidade da fonte |
+| `tipo` | Sempre `total`: a NCM não separa arábica de conilon | texto |
+| `proxy_conilon` | Verdadeiro para o Espírito Santo, pista de conilon (não divide o volume) | verdadeiro ou falso |
+| `divulgado_em` | Data da coleta do arquivista em que a linha apareceu (sem olhar o futuro) | data (dia) |
+
 ## `ons_geracao`
 
 Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. A chave da usina é o `id_ons` (o CEG falta em 41% da geração de 09/2026). Sem ligação à empresa: o dono da usina só existe no cadastro de hoje, e aplicá-lo ao passado olharia o futuro
