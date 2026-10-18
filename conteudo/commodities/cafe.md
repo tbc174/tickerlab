@@ -53,3 +53,15 @@ fevereiro de 2014 em Minas Gerais e o verão de 2020/21 são os casos recentes.
 
 O **déficit** aqui é a chuva acumulada de dezembro a março contra a normal de 1991–2020 da região:
 anomalia negativa é déficit. Como os outros, é um índice **explicativo, não previsão**.
+
+## O que é o spread entre arábica e robusta
+
+O **spread** é a diferença entre o preço do arábica e o do robusta (o conilon, no Brasil), em centavos
+de dólar por libra-peso. A indústria de café solúvel e de blends usa os dois tipos: quando o arábica
+fica muito mais caro que o robusta, ela põe mais robusta na mistura; quando a diferença aperta, volta
+para o arábica. Por isso o spread se move com a oferta de cada tipo e com o gosto da indústria.
+
+Os marcos do gráfico (seca de 2014, geadas de 2021, robusta em máxima em 2024 e 2025) mostram o que
+acontecia no campo e no mercado, cada um com a sua fonte. Os preços vêm das médias mensais do Pink
+Sheet do Banco Mundial desde 1960. Gráfico **explicativo, não previsão**: ele
+mostra o que houve, não para onde o spread vai.

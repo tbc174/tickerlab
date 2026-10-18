@@ -247,6 +247,7 @@ TEXTOS_DO_CAFE = (
     "O que é a bienalidade",
     "Por que a geada é do ano seguinte",
     "O que é o déficit hídrico na granação",
+    "O que é o spread entre arábica e robusta",
 )
 
 
