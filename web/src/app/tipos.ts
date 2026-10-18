@@ -662,7 +662,7 @@ export interface PainelDoCafeV1 {
   regiao: string;
   regioes: OpcaoDeRegiaoV1[];
   aviso_diario: string;
-  preco: BlocoDoCafeV1<PrecoDoCafeV1>;
+  preco_de_referencia: BlocoDoCafeV1<PrecoDoCafeV1>;
   cambio: BlocoDoCafeV1<CambioDoCafeV1>;
   fundos: BlocoDoCafeV1<FundosDoCafeV1>;
   exportacoes: BlocoDoCafeV1<ExportacoesDoCafeV1>;

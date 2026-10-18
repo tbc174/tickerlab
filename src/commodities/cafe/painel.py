@@ -89,7 +89,7 @@ SEM_FUNDOS_NO_CONILON = (
 SEM_BIENALIDADE_NO_CONILON = "O conilon não tem o ciclo de safra cheia e vazia do arábica; por isso não há marcação."
 
 O_QUE_E = {
-    "preco": "O preço de referência mensal do café verde no mercado internacional, em dólar por quilo, "
+    "preco_de_referencia": "O preço de referência mensal do café verde no mercado internacional, em dólar por quilo, "
     "e o spread: quanto o arábica custa a mais que o robusta.",
     "cambio": "Quantos reais compram um dólar (PTAX de venda). O café é cotado em dólar: o câmbio muda o "
     "preço em reais para quem produz e para quem compra.",
@@ -112,7 +112,7 @@ O_QUE_E = {
     "torrefadoras) e o que ainda não sabemos de cada uma. Sem nota e sem selo.",
 }
 TITULO = {
-    "preco": "Preço de referência e spread",
+    "preco_de_referencia": "Preço de referência e spread",
     "cambio": "Câmbio",
     "fundos": "Posição dos fundos",
     "exportacoes": "Exportações",
@@ -299,7 +299,7 @@ class PainelDoCafe:
     regiao: str
     regioes: tuple[OpcaoDeRegiao, ...]
     aviso_diario: str
-    preco: Bloco[PrecoDoCafe]
+    preco_de_referencia: Bloco[PrecoDoCafe]
     cambio: Bloco[Cambio]
     fundos: Bloco[Fundos]
     exportacoes: Bloco[Exportacoes]
@@ -314,7 +314,7 @@ class PainelDoCafe:
     @property
     def blocos(self) -> tuple[Bloco, ...]:
         return (
-            self.preco, self.cambio, self.fundos, self.exportacoes, self.balanco, self.safra,
+            self.preco_de_referencia, self.cambio, self.fundos, self.exportacoes, self.balanco, self.safra,
             self.termometro, self.bienalidade, self.clima, self.calendario, self.contrapartes,
         )  # fmt: skip
 
@@ -353,7 +353,7 @@ class TabelasDoCafe:
         return self.motivos.get(nome) or motivo_sem_tabela(TABELAS_DA_BASE[nome])
 
 
-def ler_tabelas_da_base() -> TabelasDoCafe:
+def tabelas_pela_porta() -> TabelasDoCafe:
     """Lê as tabelas do café pela porta da base; a que não está neste servidor vira motivo."""
     filtros = {"cftc": {"contrato": CONTRATO_DO_ARABICA}}
     tabelas: dict[str, pd.DataFrame] = {}
@@ -383,11 +383,11 @@ def _preco(conexao: sa.Connection, tipo: str, dia: date) -> Bloco[PrecoDoCafe]:
     item = next((i for i in painel.itens if i.chave == chave), None)
     if item is None:
         motivo = "O preço de referência do Banco Mundial ainda não foi coletado neste servidor."
-        return _sem_dado("preco", precos.ATRIBUICAO, motivo)
+        return _sem_dado("preco_de_referencia", precos.ATRIBUICAO, motivo)
     pontos = spread_do_cafe.spread_como_estava_em(conexao, dia)[-MESES_DO_HISTORICO:]
     marcos = tuple(spread_do_cafe.marcos_ate(dia))
     conteudo = PrecoDoCafe(item, tuple(pontos), marcos)
-    return _bloco("preco", precos.ATRIBUICAO, item.ultimo_mes, conteudo)
+    return _bloco("preco_de_referencia", precos.ATRIBUICAO, item.ultimo_mes, conteudo)
 
 
 def _cambio(conexao: sa.Connection, dia: date) -> Bloco[Cambio]:
@@ -696,7 +696,7 @@ def montar_painel(
     if regiao is not None and regiao not in POR_ID:
         raise ValueError(f"região de café desconhecida: {regiao!r}")
     escolhida = POR_ID[regiao] if regiao is not None else regiao_padrao(tipo)
-    tabelas = tabelas if tabelas is not None else ler_tabelas_da_base()
+    tabelas = tabelas if tabelas is not None else tabelas_pela_porta()
     return PainelDoCafe(
         dia=dia,
         tipo=tipo,
@@ -706,7 +706,7 @@ def montar_painel(
             OpcaoDeRegiao(r.id, r.nome, r.tipo_predominante) for r in REGIOES
         ),
         aviso_diario=AVISO_DIARIO,
-        preco=_preco(conexao, tipo, dia),
+        preco_de_referencia=_preco(conexao, tipo, dia),
         cambio=_cambio(conexao, dia),
         fundos=_fundos(tabelas, tipo, dia),
         exportacoes=_exportacoes(tabelas, dia),

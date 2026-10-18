@@ -1133,7 +1133,7 @@ def cafe_semeado(banco, monkeypatch):
 
     with banco.begin() as conexao:
         semear_acervo(conexao)
-    monkeypatch.setattr(painel_do_cafe, "ler_tabelas_da_base", tabelas_de_exemplo)
+    monkeypatch.setattr(painel_do_cafe, "tabelas_pela_porta", tabelas_de_exemplo)
     return painel_do_cafe
 
 
@@ -1145,13 +1145,13 @@ def test_painel_do_cafe_igual_ao_montar_painel(
     assert resposta.status_code == 200, resposta.text
     with banco.connect() as conexao:
         lido = cafe_semeado.montar_painel(
-            conexao, tipo, HOJE, tabelas=cafe_semeado.ler_tabelas_da_base()
+            conexao, tipo, HOJE, tabelas=cafe_semeado.tabelas_pela_porta()
         )
     assert resposta.json() == _json(esquemas.de_painel_do_cafe(lido))
     dados = resposta.json()
     assert dados["tipo"] == tipo
     assert dados["aviso_diario"] == cafe_semeado.AVISO_DIARIO
-    assert dados["preco"]["conteudo"] is not None
+    assert dados["preco_de_referencia"]["conteudo"] is not None
 
 
 def test_painel_do_cafe_com_regiao_escolhida(cliente, no_dia, cafe_semeado):

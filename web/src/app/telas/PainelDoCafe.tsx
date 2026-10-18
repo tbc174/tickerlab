@@ -492,7 +492,7 @@ function Resultado({ dados }: { dados: PainelDoCafeV1 }) {
         {dados.nome_do_tipo}, como estava em {formatarData(dados.dia)}.
       </p>
       <div className="blocos-do-cafe">
-        <Caixa bloco={dados.preco}>{(c) => <Preco dados={c} />}</Caixa>
+        <Caixa bloco={dados.preco_de_referencia}>{(c) => <Preco dados={c} />}</Caixa>
         <Caixa bloco={dados.cambio}>{(c) => <Cambio dados={c} />}</Caixa>
         <Caixa bloco={dados.fundos}>{(c) => <Fundos dados={c} />}</Caixa>
         <Caixa bloco={dados.exportacoes}>{(c) => <Exportacoes dados={c} />}</Caixa>

@@ -297,10 +297,10 @@ describe("tipos do Painel do café", () => {
     expect(chaves(p)).toEqual(campos("PainelDoCafeV1"));
     expect(chaves(p.regioes[0])).toEqual(campos("OpcaoDeRegiaoV1"));
     const conteudos: [object | null, string][] = [
-      [p.preco.conteudo, "PrecoDoCafeV1"],
-      [p.preco.conteudo?.item ?? null, "PrecoDeReferenciaDoCafeV1"],
-      [p.preco.conteudo?.spread[0] ?? null, "PontoDoSpreadDoCafeV1"],
-      [p.preco.conteudo?.marcos[0] ?? null, "MarcoDoCafeV1"],
+      [p.preco_de_referencia.conteudo, "PrecoDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.item ?? null, "PrecoDeReferenciaDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.spread[0] ?? null, "PontoDoSpreadDoCafeV1"],
+      [p.preco_de_referencia.conteudo?.marcos[0] ?? null, "MarcoDoCafeV1"],
       [p.cambio.conteudo, "CambioDoCafeV1"],
       [p.fundos.conteudo, "FundosDoCafeV1"],
       [p.fundos.conteudo?.historico[0] ?? null, "PontoDosFundosV1"],

@@ -9,7 +9,7 @@ import exemplo from "./exemplos/painel_do_cafe.json";
 
 const resposta: PainelDoCafeV1 = exemplo.resposta;
 const CHAVES_DOS_BLOCOS = [
-  "preco",
+  "preco_de_referencia",
   "cambio",
   "fundos",
   "exportacoes",
@@ -45,7 +45,7 @@ afterEach(() => {
 describe("painel do café", () => {
   it("pede o arábica por padrão e mostra o aviso do preço mensal", async () => {
     const { buscar } = abrir();
-    await screen.findByRole("region", { name: resposta.preco.titulo });
+    await screen.findByRole("region", { name: resposta.preco_de_referencia.titulo });
     expect(pedidos(buscar)).toContain("/api/v1/painel-do-cafe?tipo=arabica");
     // o aviso fica fixo na tela (até antes da resposta) e é o mesmo texto do Python
     expect(screen.getByText(resposta.aviso_diario).closest('[role="note"]')).not.toBeNull();
@@ -53,7 +53,7 @@ describe("painel do café", () => {
 
   it("cada caixa tem o que é, a fonte e a data do número mais novo", async () => {
     abrir();
-    await screen.findByRole("region", { name: resposta.preco.titulo });
+    await screen.findByRole("region", { name: resposta.preco_de_referencia.titulo });
     for (const chave of CHAVES_DOS_BLOCOS) {
       const bloco = resposta[chave];
       const caixa = screen.getByRole("region", { name: bloco.titulo });
@@ -68,8 +68,8 @@ describe("painel do café", () => {
 
   it("os números com vírgula e ponto de milhar, e os gráficos de preço, câmbio e fundos", async () => {
     abrir();
-    const preco = await screen.findByRole("region", { name: resposta.preco.titulo });
-    expect(valorDo(preco, `${resposta.preco.conteudo?.item.nome} (US$/kg)`)).toBe("8,59");
+    const preco = await screen.findByRole("region", { name: resposta.preco_de_referencia.titulo });
+    expect(valorDo(preco, `${resposta.preco_de_referencia.conteudo?.item.nome} (US$/kg)`)).toBe("8,59");
     expect(within(preco).getByRole("img", { name: /média mensal/ })).toBeTruthy();
     expect(within(preco).getByRole("img", { name: /Spread arábica menos robusta/ })).toBeTruthy();
     const fundos = screen.getByRole("region", { name: resposta.fundos.titulo });
@@ -104,7 +104,7 @@ describe("painel do café", () => {
 
   it("trocar para conilon pede o conilon e volta à região padrão", async () => {
     const { buscar } = abrir("/painel-do-cafe?tipo=arabica&regiao=cerrado-mineiro");
-    await screen.findByRole("region", { name: resposta.preco.titulo });
+    await screen.findByRole("region", { name: resposta.preco_de_referencia.titulo });
     fireEvent.click(screen.getByRole("button", { name: "Conilon (robusta)" }));
     await waitFor(() => expect(pedidos(buscar)).toContain("/api/v1/painel-do-cafe?tipo=conilon"));
   });

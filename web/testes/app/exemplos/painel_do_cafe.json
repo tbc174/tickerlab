@@ -1067,8 +1067,8 @@
    "titulo": "Posição dos fundos"
   },
   "nome_do_tipo": "Arábica",
-  "preco": {
-   "chave": "preco",
+  "preco_de_referencia": {
+   "chave": "preco_de_referencia",
    "conteudo": {
     "item": {
      "chave": "cafe-arabica",

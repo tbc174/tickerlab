@@ -3178,7 +3178,7 @@
             "title": "Nome Do Tipo",
             "type": "string"
           },
-          "preco": {
+          "preco_de_referencia": {
             "$ref": "#/components/schemas/BlocoDoPrecoDoCafeV1"
           },
           "regiao": {
@@ -3210,7 +3210,7 @@
           "regiao",
           "regioes",
           "aviso_diario",
-          "preco",
+          "preco_de_referencia",
           "cambio",
           "fundos",
           "exportacoes",

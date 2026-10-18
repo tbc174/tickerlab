@@ -1046,7 +1046,7 @@ class PainelDoCafeV1(BaseModel):
     regiao: str
     regioes: list[OpcaoDeRegiaoV1]
     aviso_diario: str
-    preco: BlocoDoPrecoDoCafeV1
+    preco_de_referencia: BlocoDoPrecoDoCafeV1
     cambio: BlocoDoCambioV1
     fundos: BlocoDosFundosV1
     exportacoes: BlocoDasExportacoesV1

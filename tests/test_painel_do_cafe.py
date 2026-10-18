@@ -209,8 +209,8 @@ def test_painel_como_estava_em_d(conexao):
     assert ultima.ano_safra == 2025 and ultima.valor == pytest.approx(0.5)
     assert p.exportacoes.data == date(2026, 3, 31)
     assert p.clima.data == date(2026, 2, 28)
-    assert p.preco.conteudo is not None
-    assert p.preco.conteudo.item.ultimo_mes == date(2026, 3, 1)
+    assert p.preco_de_referencia.conteudo is not None
+    assert p.preco_de_referencia.conteudo.item.ultimo_mes == date(2026, 3, 1)
     assert p.cambio.conteudo is not None
     assert p.cambio.conteudo.ultimo_valor == 5.0
     for ficha in p.contrapartes.conteudo.fichas if p.contrapartes.conteudo else ():
@@ -246,7 +246,8 @@ def test_conilon_sem_fundos_e_sem_bienalidade_com_o_motivo(conexao):
         p.bienalidade.motivo_sem_dado or ""
     )
     assert (
-        p.preco.conteudo is not None and p.preco.conteudo.item.chave == "cafe-robusta"
+        p.preco_de_referencia.conteudo is not None
+        and p.preco_de_referencia.conteudo.item.chave == "cafe-robusta"
     )
     assert p.balanco.conteudo is not None
     assert {pais.codigo_do_pais for pais in p.balanco.conteudo.paises} == {"BR", "VM"}
@@ -293,8 +294,8 @@ def test_sem_as_tabelas_da_base_cada_bloco_diz_o_motivo(banco):
                           ("safra", "conab_cafe"), ("clima", "clima_regiao_cafe")):  # fmt: skip
         bloco = getattr(p, chave)
         assert bloco.conteudo is None and tabela in (bloco.motivo_sem_dado or ""), chave
-    assert p.preco.conteudo is None and "Banco Mundial" in (
-        p.preco.motivo_sem_dado or ""
+    assert p.preco_de_referencia.conteudo is None and "Banco Mundial" in (
+        p.preco_de_referencia.motivo_sem_dado or ""
     )
     assert p.cambio.conteudo is None and "PTAX" in (p.cambio.motivo_sem_dado or "")
     assert (
@@ -306,7 +307,7 @@ def test_acervo_desligado_vira_motivo_e_nao_erro(monkeypatch):
     from src import acervo as acervo_de_arquivos
 
     monkeypatch.setattr(acervo_de_arquivos, "pasta_do_acervo", lambda: None)
-    tabelas = painel.ler_tabelas_da_base()
+    tabelas = painel.tabelas_pela_porta()
     assert not tabelas.tabelas
     assert "ainda não chega a este servidor" in tabelas.motivo("conab")
 
@@ -316,7 +317,7 @@ def test_base_sem_as_tabelas_do_cafe_vira_motivo_por_tabela(tmp_path, monkeypatc
 
     (tmp_path / "base").mkdir()
     monkeypatch.setattr(acervo_de_arquivos, "pasta_do_acervo", lambda: tmp_path)
-    tabelas = painel.ler_tabelas_da_base()
+    tabelas = painel.tabelas_pela_porta()
     assert not tabelas.tabelas
     assert tabelas.motivo("cftc") == painel.motivo_sem_tabela("cftc_cot_agro")
 
