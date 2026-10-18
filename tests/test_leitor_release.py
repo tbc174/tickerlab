@@ -86,3 +86,26 @@ def test_preco_do_haiku_esta_cadastrado():
         lr.custo_em_dolares(1_000_000, 1_000_000, lote=False, modelo=lr.MODELO) == 0.6
     )
     assert lr.custo_em_dolares(1_000_000, 1_000_000, lote=True, modelo=lr.MODELO) == 0.3
+
+
+def _confere_sinal(trecho, valor):
+    texto = trecho
+    leitura = _leitura(_linha(trecho, valor=valor))
+    return lr.conferir(leitura, texto)
+
+
+def test_aceita_prejuizo_com_sinal_de_menos_ou_parenteses():
+    assert len(_confere_sinal("Prejuízo do período -149,4 -69,0", -149.4).linhas) == 1
+    assert (
+        len(_confere_sinal("Lucro (Prejuízo) 476 (5.138) -109%", -5138.0).linhas) == 1
+    )
+    assert len(_confere_sinal("Resultado −2,6 88,9", -2.6).linhas) == 1
+
+
+def test_descarta_sinal_trocado():
+    assert _confere_sinal("Lucro (Prejuízo) 476 (5.138)", 5138.0).descartes
+    assert _confere_sinal("Lucro do período 5.138 3.280", -5138.0).descartes
+
+
+def test_hifen_no_meio_de_palavra_nao_e_sinal_de_menos():
+    assert len(_confere_sinal("Período 2T24-5.891 receita", 5891.0).linhas) == 1
