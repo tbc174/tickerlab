@@ -197,3 +197,17 @@ def test_comando_monta_e_nao_regrava_o_igual(ambiente, tmp_path):
     assert montar_ma_candidatos.main(["--pasta", str(tmp_path / "b")]) == 0
     assert (tmp_path / "b" / "ma" / "candidatos" / "candidatos.parquet").exists()
     assert montar_ma_candidatos.main(["--pasta", str(tmp_path / "b")]) == 0
+
+
+def test_referencia_depois_da_entrega_nao_tira_a_tabela_do_contrato(tmp_path):
+    # o fato relevante anuncia a assembleia que vai aprovar a operação: a data de referência que a
+    # companhia informa ao IPE vem depois da entrega (479 linhas na primeira carga, 18/10/2026)
+    from base.conferencia import conferir
+
+    tabela = _candidatos(
+        _linha(
+            *FATO, "Incorporação da Beta", entrega="2024-03-05", referencia="2024-04-10"
+        )
+    )
+    problemas = conferir(tabela, "ma_candidatos").problemas
+    assert not [p for p in problemas if p.startswith("datas")]
