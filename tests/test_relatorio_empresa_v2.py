@@ -14,10 +14,11 @@ import pandas as pd
 import pytest
 
 from src import demonstracoes as dm
-from src import dossie
+from src import dossie, notas
 from src import o_que_os_dados_mostram as leitura_da_ficha
 from src import relatorio_empresa as re_
 from src.banco.demonstracoes import DadosDaEmpresa
+from src.padroes import INDICADORES
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "cpfl"
 CPFL = "02.429.144/0001-93"
@@ -306,3 +307,74 @@ def test_api_leva_os_pontos(ficha_da_cpfl):
     api = de_relatorio_da_empresa(ficha_da_cpfl)
     secao = next(s for s in api.secoes if s.chave == "o_que_os_dados_mostram")
     assert len(secao.pontos) >= 6 and all(p.tabela for p in secao.pontos)
+
+
+# --- o que mudaria esta leitura -------------------------------------------------------------------
+PERCENTIS = {
+    "20": 0.05,
+    "25": 0.06,
+    "40": 0.09,
+    "50": 0.11,
+    "60": 0.14,
+    "75": 0.18,
+    "80": 0.20,
+}
+
+
+def _nota(valor: float, indicador: str = "roe") -> notas.Nota:
+    maior = INDICADORES[indicador][1]
+    return notas.Nota(
+        indicador, indicador, valor, notas.qualidade(valor, PERCENTIS, maior), "energia", 100,
+        PERCENTIS, date(2026, 8, 31),
+    )  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("valor", "indicador", "sobe", "cai"),
+    [
+        (0.10, "roe", (0.14, "bom"), (0.09, "ruim")),  # médio: entre p40 e p60
+        (0.26, "roe", None, (0.20, "bom")),  # ótimo: só pode cair
+        (0.01, "roe", (0.05, "ruim"), None),  # péssimo: só pode subir
+    ],
+)
+def test_gatilhos_das_notas(valor, indicador, sobe, cai):
+    """Para cada nota, o valor que muda a faixa (o quintil vizinho do setor), sem previsão."""
+    gatilhos = notas.gatilhos(_nota(valor, indicador), INDICADORES[indicador][1])
+    por_sentido = {g.sentido: (g.limite, g.nota) for g in gatilhos}
+    assert por_sentido.get(notas.SOBE) == sobe
+    assert por_sentido.get(notas.CAI) == cai
+    for g in gatilhos:  # cruzar o limite dá mesmo a nota anunciada
+        passo = 1e-9 if g.sentido == notas.SOBE else -1e-9
+        cruzado = g.limite if g.inclusive else g.limite + passo
+        assert notas.qualidade(cruzado, PERCENTIS, INDICADORES[indicador][1]) == g.nota
+
+
+def test_gatilhos_quando_menor_e_melhor():
+    """Dívida / patrimônio: subir piora a nota e cair melhora."""
+    gatilhos = notas.gatilhos(_nota(0.10, "divida_sobre_pl"), False)  # médio
+    por_sentido = {g.sentido: (g.limite, g.nota) for g in gatilhos}
+    assert por_sentido == {notas.SOBE: (0.14, "ruim"), notas.CAI: (0.09, "bom")}
+    for g in gatilhos:
+        passo = 1e-9 if g.sentido == notas.SOBE else -1e-9
+        cruzado = g.limite if g.inclusive else g.limite + passo
+        assert notas.qualidade(cruzado, PERCENTIS, False) == g.nota
+
+
+def test_o_que_mudaria_esta_leitura_cpfl(ficha_da_cpfl):
+    secao = ficha_da_cpfl.secao("o_que_mudaria")
+    linhas = {linha["indicador"]: linha for linha in secao.tabelas["gatilhos"]}
+    roe = linhas["ROE (retorno sobre o patrimônio)"]
+    assert roe["hoje"] == "26,4% (ótimo)"
+    assert roe["se_subir"] == "—"  # já está no topo
+    assert re.fullmatch(
+        r"abaixo de \d+,\d%( \(colado no valor de hoje\))?: bom", roe["se_cair"]
+    )
+    assert "Energia elétrica" in roe["comparado_com"]
+    altman = linhas["Altman Z''"]
+    assert altman["se_subir"] == "acima de 2,60: segura"
+    assert altman["se_cair"] == "abaixo de 1,10: de aflição"
+    assert "não é previsão" in " ".join(secao.paragrafos).lower()
+    assert all(
+        _recomenda(" ".join(linha.values())) == []
+        for linha in secao.tabelas["gatilhos"]
+    )

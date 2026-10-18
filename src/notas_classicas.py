@@ -23,9 +23,23 @@ import pandas as pd
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.demonstracoes import e_financeira
 from src.fundamentos import NAO_SE_APLICA_A_FINANCEIRAS, anuais
+from src.notas import Regua
 
 ALTMAN_SEGURA, ALTMAN_AFLICAO = 2.60, 1.10
 BENEISH_LIMITE = -1.78
+AFLICAO, CINZENTA, SEGURA = "de aflição", "cinzenta", "segura"
+ABAIXO_DO_LIMITE, ACIMA_DO_LIMITE = (
+    "abaixo do limite do artigo",
+    "acima do limite do artigo",
+)
+# as faixas do artigo em ordem de valor: o Altman é "segura" só acima de 2,60 e "de aflição" só
+# abaixo de 1,10; o Beneish passa do limite só acima de −1,78 (`Regua`, para "o que mudaria")
+REGUAS = {
+    "altman": Regua(
+        (AFLICAO, CINZENTA, SEGURA), (ALTMAN_AFLICAO, ALTMAN_SEGURA), (True, False)
+    ),
+    "beneish": Regua((ABAIXO_DO_LIMITE, ACIMA_DO_LIMITE), (BENEISH_LIMITE,), (False,)),
+}
 PIOTROSKI_ALTO, PIOTROSKI_BAIXO = 8, 1  # os grupos das pontas no artigo: 8 e 9; 0 e 1
 PESOS_DO_ALTMAN = (6.56, 3.26, 6.72, 1.05)
 BENEISH_CONSTANTE = -4.84
@@ -114,13 +128,7 @@ def _altman(ano: pd.Series, base: str) -> NotaClassica:
             motivo=f"Sem dado para: {', '.join(falta)}.",
         )  # fmt: skip
     z = sum(peso * p.valor for peso, p in zip(PESOS_DO_ALTMAN, parcelas, strict=True))  # type: ignore[operator]
-    faixa = (
-        "segura"
-        if z > ALTMAN_SEGURA
-        else "de aflição"
-        if z < ALTMAN_AFLICAO
-        else "cinzenta"
-    )
+    faixa = SEGURA if z > ALTMAN_SEGURA else AFLICAO if z < ALTMAN_AFLICAO else CINZENTA
     return NotaClassica(
         "altman",
         "Altman Z''",
@@ -218,11 +226,7 @@ def _beneish(t: pd.Series, a: pd.Series | None, base: str) -> NotaClassica:
             motivo=f"Sem dado para: {', '.join(falta)}.",
         )  # fmt: skip
     m = BENEISH_CONSTANTE + sum(PESOS_DO_BENEISH[n] * v for n, v in indices.items())  # type: ignore[operator]
-    faixa = (
-        "acima do limite do artigo"
-        if m > BENEISH_LIMITE
-        else "abaixo do limite do artigo"
-    )
+    faixa = ACIMA_DO_LIMITE if m > BENEISH_LIMITE else ABAIXO_DO_LIMITE
     return NotaClassica(
         "beneish",
         "Beneish M",

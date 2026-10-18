@@ -15,6 +15,7 @@ Premissas padrão do valuation (a pessoa troca na página): desconto de 12% ao a
 """
 
 import math
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
@@ -49,6 +50,7 @@ SECOES: dict[str, str] = {
     "qualidade": "Qualidade dos dados",
     "o_que_mudou": "O que mudou desde o balanço anterior",
     "pares": "Pares do mesmo setor",
+    "o_que_mudaria": "O que mudaria esta leitura",
     "metodologia": "Metodologia e fontes",
     "limites": "Limites e cuidados",
 }
@@ -73,6 +75,7 @@ MAIOR_E_MELHOR = {chave: maior for chave, (_, maior) in INDICADORES.items()}
 QUANTOS_PARES = 5
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
+    "gatilhos": "O valor que mudaria cada nota",
     "cascata": "Da receita ao lucro (último ano)",
     "ponte": "Da dívida líquida do ano anterior à de agora",
     "sensibilidade": "Valor por ação conforme o desconto e o crescimento",
@@ -913,6 +916,89 @@ def _pares(e: Entradas, c: _Calculos) -> Secao:
     ], tabelas={"pares": tabela})  # fmt: skip
 
 
+NAO_E_PREVISAO = (
+    "Não é previsão: cada linha mostra só o valor que mudaria a nota, pela mesma régua de hoje. "
+    "Os padrões do setor mudam a cada corte, e com eles os limites."
+)
+FAIXA_FIXA = "faixa fixa e pública do TickerLab"
+PERTO_DE_HOJE = "colado no valor de hoje"
+ESCALA_DO_ARTIGO = "escala do artigo"
+PREFIXOS_DOS_GATILHOS = {  # (sentido, o limite já dá a nota nova?) → como escrever
+    (notas.SOBE, True): "a partir de",
+    (notas.SOBE, False): "acima de",
+    (notas.CAI, True): "até",
+    (notas.CAI, False): "abaixo de",
+}
+
+
+def _linha_de_gatilhos(
+    nome: str,
+    hoje: str,
+    nota: str,
+    regua: notas.Regua,
+    escrever_limite: Callable[[float], str],
+    comparado_com: str,
+) -> dict:
+    por_sentido = {}
+    for g in regua.gatilhos(nota):
+        limite = escrever_limite(g.limite)
+        if limite == hoje:  # o limite arredonda para o número de hoje: está colado nele
+            limite += f" ({PERTO_DE_HOJE})"
+        por_sentido[g.sentido] = (
+            f"{PREFIXOS_DOS_GATILHOS[g.sentido, g.inclusive]} {limite}: {g.nota}"
+        )
+    return {
+        "indicador": nome,
+        "hoje": f"{hoje} ({nota})",
+        "se_subir": por_sentido.get(notas.SOBE, "—"),
+        "se_cair": por_sentido.get(notas.CAI, "—"),
+        "comparado_com": comparado_com,
+    }
+
+
+def _gatilhos_das_notas(c: _Calculos) -> list[dict]:
+    linhas = []
+    for chave, nota in c.notas_por_indicador.items():
+        indicador = c.indicadores[chave]
+        unidade = indicador.unidade
+
+        def no_formato(valor: float, unidade: str = unidade) -> str:
+            return escrever(valor, unidade)
+
+        if isinstance(nota, notas.Nota):
+            regua = notas.regua_do_setor(nota, MAIOR_E_MELHOR.get(chave, True))
+            contra = _o_setor(nota.grupo, nota.empresas, nota.data_de_corte)
+        else:
+            regua, contra = notas.regua_da_faixa(chave), FAIXA_FIXA
+        hoje = escrever(indicador.valor, unidade)
+        linhas.append(
+            _linha_de_gatilhos(
+                indicador.nome, hoje, nota.nota, regua, no_formato, contra
+            )
+        )
+    for chave, regua in notas_classicas.REGUAS.items():
+        classica = c.classicas.get(chave)
+        if classica is not None and classica.valor is not None and classica.faixa:
+            linhas.append(
+                _linha_de_gatilhos(classica.nome, _dec(classica.valor), classica.faixa, regua, _dec,
+                                   ESCALA_DO_ARTIGO)
+            )  # fmt: skip
+    return linhas
+
+
+def _o_que_mudaria(c: _Calculos) -> Secao:
+    """Para cada nota, o valor que a faria mudar (o limite vizinho da régua), sem previsão."""
+    linhas = _gatilhos_das_notas(c)
+    if not linhas:
+        return Secao("o_que_mudaria", SECOES["o_que_mudaria"], paragrafos=["Sem notas para esta empresa."])  # fmt: skip
+    return Secao(
+        "o_que_mudaria",
+        SECOES["o_que_mudaria"],
+        paragrafos=[NAO_E_PREVISAO],
+        tabelas={"gatilhos": linhas},
+    )
+
+
 def _metodologia() -> Secao:
     return Secao("metodologia", SECOES["metodologia"], paragrafos=[
         ("Indicadores de 12 meses: o último DFP mais o acumulado do ano no último ITR, menos o mesmo "
@@ -1199,6 +1285,7 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
         _qualidade(entradas),
         _o_que_mudou(entradas, c),
         _pares(entradas, c),
+        _o_que_mudaria(c),
         _metodologia(),
         Secao("limites", SECOES["limites"], paragrafos=limites),
     ]
