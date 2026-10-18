@@ -29,6 +29,10 @@ LICENCAS = {
     "sec": "Acesso público (EDGAR, SEC)",
     "bcb": "ODbL (dados abertos do Banco Central; citar a fonte)",
     "ibge": "Domínio público (citar o IBGE)",
+    # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
+    # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
+    "bm": "CC BY 4.0 (Banco Mundial, Pink Sheet); fontes de terceiros (Bloomberg, S&P, ICO) só com consentimento delas",
+    "fmi": "© FMI: uso comercial e coleta automática em massa pedem permissão (copyright@imf.org)",
     "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
@@ -106,6 +110,8 @@ REVENDA = {
     "cvm": VENDAVEL_ODBL,
     "bcb": VENDAVEL_ODBL,
     "ibge": VENDAVEL_COM_ATRIBUICAO,
+    "bm": SO_USO_INTERNO,  # CC BY 4.0, mas o Pink Sheet repassa preços de terceiros
+    "fmi": A_CONFIRMAR,  # uso comercial pede permissão por escrito do FMI
     "tesouro": VENDAVEL_COM_ATRIBUICAO,
     # treino de ML permitido por escrito (licencas-por-fonte.md, 13/10/2026); revenda ainda sem resposta
     "sec": SO_USO_INTERNO,  # os arquivos são escritos pelas empresas
