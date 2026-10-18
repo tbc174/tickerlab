@@ -25,7 +25,7 @@ from src import rotulos_ia as ri
 
 MODELO = "claude-haiku-5-5"  # a primeira leitura (barata)
 CONFERENTE = "claude-sonnet-5-5"  # a segunda leitura, independente
-VERSAO_DO_GUIA = "v1"
+VERSAO_DO_GUIA = "v2"  # v2: regras para escolher o tipo (18/10, medida da amostra)
 ARQUIVO_DO_GUIA = Path(__file__).with_name(f"ma_extracao_guia_{VERSAO_DO_GUIA}.md")
 MAX_CARACTERES_DO_TEXTO = (
     15_000  # o p95 da amostra tem ~20 mil; o anúncio está no começo

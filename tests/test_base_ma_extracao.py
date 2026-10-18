@@ -1,6 +1,7 @@
 """Extração de M&A por modelo de linguagem (série 1, PR 2): o modelo copia, o código confere."""
 
 from datetime import date
+from typing import get_args
 
 import pandas as pd
 import pytest
@@ -304,6 +305,13 @@ def test_pedido_tem_guia_em_cache_esquema_e_texto_cortado():
     assert "AQ_CONTROLE" in pedido["system"][0]["text"]
     assert pedido["output_config"]["format"]["schema"] == mx.ESQUEMA_DA_RESPOSTA
     assert len(pedido["messages"][0]["content"]) <= mx.MAX_CARACTERES_DO_TEXTO
+
+
+def test_guia_explica_todo_tipo_e_traz_as_regras_de_escolha():
+    guia = mx.pedido("x", mx.MODELO)["system"][0]["text"]
+    assert all(f"{tipo}:" in guia or f"{tipo}," in guia for tipo in get_args(mx.Tipo))
+    assert "Ponto de vista de quem publicou" in guia  # v2: medida da amostra, 18/10
+    assert "OPA só com oferta" in guia
 
 
 def test_esquema_lista_os_codigos_do_dicionario():
