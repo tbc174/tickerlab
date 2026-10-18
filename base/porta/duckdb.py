@@ -112,6 +112,7 @@ CONFERIDAS: dict[str, str] = {
     "emissores_sem_ligacao": "base/conferidas/emissores_sem_ligacao.csv",
     "emissores_antigos": "base/conferidas/emissores_antigos.csv",
     "codigos_fora_do_fca": "base/conferidas/codigos_fora_do_fca.csv",
+    "contraparte_cafe": "base/conferidas/contrapartes_cafe.csv",
 }
 _NO_BANCO = "mora no banco do app (VPS), não no acervo: entra só por `extras`"
 FORA_DA_PORTA: dict[str, str] = {

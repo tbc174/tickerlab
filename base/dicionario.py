@@ -4802,6 +4802,58 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "contraparte_cafe": Tabela(
+        descricao=(
+            "Tabela conferida à mão: fatos públicos e datados das cooperativas e tradings de café "
+            "(faturamento, sobras, sacas recebidas, pedido de recuperação judicial, apuração pública), "
+            "cada um com fonte, veículo e data, ditos com as nossas palavras. Sem nota, cor nem "
+            "conselho e sem pessoa física: a ficha (`base/contrapartes/cafe.py`) junta a situação "
+            "especial da Receita e os informes de CRA da CVM e diz o que não sabemos"
+        ),
+        fonte="Notícias e documentos públicos (ALMG, Bloomberg Línea, Revista Cultivar, Notícias Agrícolas)",
+        familia_da_fonte="contrapartes",
+        frequencia="Quando a conferência anda (assembleias de março, notícias de recuperação judicial)",
+        atraso="O `divulgado_em` é o dia da publicação da notícia ou do documento",
+        onde="`base/conferidas/contrapartes_cafe.csv` no repositório (Git)",
+        linhagem=(
+            "Cada linha diz a fonte, o veículo e quando foi conferida (`fonte`, `conferido_em`); as "
+            "páginas dos quatro sites autorizados ficam guardadas pelo arquivista (`contrapartes-cafe`) "
+            "só como prova; a notícia de recuperação judicial só vira fato da ficha depois de "
+            "guardada (antes, fica em 'o que não sabemos'); o histórico de cada mudança fica no Git."
+        ),
+        colunas={
+            "id": (
+                "Apelido da contraparte (chave quando não há CNPJ conferido)",
+                TEXTO,
+            ),
+            "cnpj": (
+                "CNPJ da entidade no cadastro aberto da Receita (vazio: não confirmado)",
+                TEXTO,
+            ),
+            "nome": ("Nome da cooperativa ou empresa", TEXTO),
+            "tipo": ("`cooperativa`, `trading` ou `exportadora`", TEXTO),
+            "uf": ("UF da sede", TEXTO),
+            "fato": (
+                "Tipo do fato (`faturamento`, `pedido_de_recuperacao_judicial`...)",
+                TEXTO,
+            ),
+            "descricao": ('O fato com as nossas palavras, "segundo <veículo>"', TEXTO),
+            "valor": (
+                "O número do fato, na unidade ao lado (vazio se não há)",
+                NUMERO_DECIMAL,
+            ),
+            "unidade": ("`R$`, `sacas` ou outra", TEXTO),
+            "data": ("Quando o fato aconteceu (fim do exercício, dia do pedido)", DATA),
+            "divulgado_em": ("Quando ficou público (sem olhar o futuro)", DATA),
+            "fonte": ("Endereço público da notícia ou do documento", TEXTO),
+            "veiculo": ("Quem publicou", TEXTO),
+            "tipo_de_fonte": (
+                "`documento_oficial`, `demonstracao_financeira`, `relatorio_da_entidade` ou `noticia`",
+                TEXTO,
+            ),
+            "conferido_em": ("Dia da conferência", DATA),
+        },
+    ),
 }
 
 
@@ -4901,6 +4953,7 @@ _CONTRATO = {
     "faostat_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano", "elemento", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES_FAO),
     "clima_regiao_cafe": _contrato(modulo="macro", chaves=("regiao", "competencia", "fonte"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="1981-01-31", granularidade_do_publico_em="mes"),
     "area_cafe_municipio": _contrato(modulo="macro", chaves=("codigo", "ano"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde="1985-12-31"),
+    "contraparte_cafe": _contrato(modulo="macro", chaves=("id", "fato", "data"), datas={"aconteceu_em": "data", "publico_em": "divulgado_em", "coletado_em": "conferido_em"}, historico_desde="2004-07-01"),
 }  # fmt: skip
 
 

@@ -18,7 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, robots, wayback
+from base.arquivo import assessorias, contrapartes, robots, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -1090,6 +1090,9 @@ FONTES: list[Fonte] = [
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
     Fonte("mapbiomas-cafe", "mensal", _cobertura_do_mapbiomas, "zip", pesada=True),
+    # as páginas dos fatos da ficha das contrapartes do café, guardadas só como prova (PR 12; "pode"
+    # do Tiago de 18/10/2026 para os quatro sites de `contrapartes.SITES_COM_COPIA`)
+    contrapartes.fonte(),
 ]
 
 POR_ID = {fonte.id: fonte for fonte in FONTES}

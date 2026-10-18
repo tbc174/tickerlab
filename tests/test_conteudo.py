@@ -256,6 +256,7 @@ def test_textos_do_cafe_explicam_florada_bienalidade_e_geada_sem_prometer_previs
     from src.conteudo import carregar_textos_do_cafe
 
     textos = carregar_textos_do_cafe()
+    # os PRs 12 e 14 juntaram textos depois dos que já havia
     assert tuple(textos)[: len(TEXTOS_DO_CAFE)] == TEXTOS_DO_CAFE
     spread = textos["O que é o spread entre arábica e robusta"]  # PR 14
     assert "explicativo, não previsão" in spread and "Pink" in spread

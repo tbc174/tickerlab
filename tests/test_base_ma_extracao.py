@@ -87,6 +87,31 @@ def test_parte_cujo_nome_nao_esta_no_trecho_e_descartada():
     assert conferida.descartes[0].motivo == mx.NOME_FORA_DO_TRECHO
 
 
+def test_nome_curto_no_trecho_vale_se_o_nome_inteiro_esta_no_documento():
+    # o documento define "Beta" uma vez e depois só usa o nome curto (série 1: Duane, SABER, LPP)
+    partes = [{"nome": "Beta Geração Ltda.", "papel": "alvo", "participacao_depois": None,
+               "trecho": "A Companhia passará a deter 100% das ações da Beta"}]  # fmt: skip
+    conferida = _conferir(_leitura(partes=partes))
+    assert conferida.descartes == []
+    assert conferida.leitura.partes[0].nome == "Beta Geração Ltda."
+
+
+def test_nome_curto_com_palavra_que_nao_esta_no_documento_e_descartado():
+    partes = [{"nome": "Beta Mineração S.A.", "papel": "alvo", "participacao_depois": None,
+               "trecho": "A Companhia passará a deter 100% das ações da Beta"}]  # fmt: skip
+    conferida = _conferir(_leitura(partes=partes))
+    assert conferida.leitura.partes == []
+    assert conferida.descartes[0].motivo == mx.NOME_FORA_DO_TRECHO
+
+
+def test_trecho_so_com_palavra_generica_nao_prova_o_nome():
+    partes = [{"nome": "Alfa Energia S.A.", "papel": "comprador", "participacao_depois": None,
+               "trecho": "A Companhia passará a deter 100% das ações da Beta"}]  # fmt: skip
+    conferida = _conferir(_leitura(partes=partes))
+    assert conferida.leitura.partes == []
+    assert conferida.descartes[0].motivo == mx.NOME_FORA_DO_TRECHO
+
+
 def test_participacao_sem_o_numero_no_trecho_perde_so_o_numero():
     partes = [{"nome": "Beta Geração Ltda.", "papel": "alvo", "participacao_depois": 60,
                "trecho": "capital social da Beta Geração Ltda."}]  # fmt: skip
@@ -205,6 +230,7 @@ def test_nomes_batem_pela_palavra_que_distingue():
     assert mx.nomes_batem(
         "ALL – América Latina Logística S.A.", "América Latina Logística"
     )
+    assert mx.nomes_batem("L’oréal S.A.", "L'Oréal S.A.")  # apóstrofo curvo e reto
     assert not mx.nomes_batem("Energisa S.A.", "Equatorial Energia S.A.")
     assert not mx.nomes_batem(
         "Brasil Participações S.A.", "Grupo Participações Brasil Ltda."

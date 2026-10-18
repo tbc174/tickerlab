@@ -100,6 +100,8 @@ LICENCAS = {
     "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
     "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
     "ico": "Relatório mensal da ICO sem termos localizados: só pesquisa",
+    # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
+    "contrapartes": "Notícias e páginas públicas guardadas só como prova; na ficha, fato e link",
 }
 SEM_LICENCA_CONHECIDA = "Desconhecida: conferir antes de guardar"
 
@@ -183,6 +185,7 @@ REVENDA = {
     "usda": VENDAVEL_COM_ATRIBUICAO,  # domínio público ou CC BY: as duas permitem
     "faostat": VENDAVEL_COM_ATRIBUICAO,  # CC BY 4.0
     "ico": NAO_COMERCIAL,  # PDF sem termos lidos: só pesquisa
+    "contrapartes": A_CONFIRMAR,  # cópia é prova interna; esperando o Tiago (esperando/ do PR 12)
 }
 
 

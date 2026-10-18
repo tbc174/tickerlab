@@ -214,6 +214,8 @@ DESTINOS: dict[str, Destino] = {
     },
     # commodities: posição dos fundos no café e nos outros agro (CFTC, domínio público)
     "cftc-cot-disaggregated": _tabela("cftc_cot_agro"),
+    # ficha das contrapartes do café (PR 12): a prova dos fatos de `base/conferidas/contrapartes_cafe.csv`
+    "contrapartes-cafe": _tabela("contraparte_cafe"),
 }
 
 
