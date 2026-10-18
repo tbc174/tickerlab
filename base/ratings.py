@@ -18,7 +18,7 @@ import logging
 import re
 import unicodedata
 import zipfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -98,13 +98,22 @@ def evidencias(bruto: pd.DataFrame) -> pd.Series:
 def documentos_com_rating(bruto: pd.DataFrame) -> pd.DataFrame:
     """Os documentos do IPE que trazem rating, um por versão entregue, com a data pública."""
     escolha = evidencias(bruto)
-    linhas = bruto[escolha.notna()]
+    return tabela_do_ipe(
+        bruto[escolha.notna()], COLUNAS, evidencia=escolha[escolha.notna()]
+    )
+
+
+def tabela_do_ipe(
+    linhas: pd.DataFrame, colunas: Sequence[str], **extras: pd.Series
+) -> pd.DataFrame:
+    """Linhas escolhidas do IPE cru → uma linha por versão entregue, com a data pública. `extras`
+    são colunas a mais, alinhadas a `linhas`; `colunas` dá a ordem final."""
     tabela = pd.DataFrame(
         {
             "cnpj": linhas["CNPJ_Companhia"].str.strip(),
             "empresa": linhas["Nome_Companhia"].str.strip(),
             "codigo_cvm": linhas["Codigo_CVM"].str.strip(),
-            "evidencia": escolha[escolha.notna()],
+            **extras,
             "categoria": linhas["Categoria"].str.strip(),
             "tipo": linhas["Tipo"].str.strip(),
             "assunto": linhas["Assunto"].str.strip(),
@@ -123,7 +132,7 @@ def documentos_com_rating(bruto: pd.DataFrame) -> pd.DataFrame:
             "versao": pd.to_numeric(linhas["Versao"], errors="coerce").astype("Int64"),
             "link": linhas["Link_Download"].map(link_da_fonte),
         },
-        columns=list(COLUNAS),
+        columns=list(colunas),
     )
     tabela = tabela.dropna(subset=["publico_em", "link"])
     tabela = tabela.drop_duplicates("link")

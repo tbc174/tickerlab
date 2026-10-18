@@ -99,6 +99,7 @@ ARQUIVOS: dict[str, str] = {
     "identificadores": "rede/identificadores.parquet",
     "ligacoes": "rede/ligacoes.parquet",
     "ma_assessorias": "ma/assessorias/*.parquet",
+    "ma_candidatos": "ma/candidatos/candidatos.parquet",
     "ma_partes": "ma/ligacao/partes.parquet",
     "ma_negocios": "ma/ligacao/negocios.parquet",
     "ma_datas": "ma/datas/negocios.parquet",
