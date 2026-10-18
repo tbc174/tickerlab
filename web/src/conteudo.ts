@@ -238,3 +238,42 @@ export const amostraRelatorio: {
   limites: string[];
   fontes: string[];
 } = amostraJson;
+import catalogoJson from "../conteudo/catalogo.json";
+
+/** Uma fonte pública de dados (`Fonte` de base/vitrine.py): uma por texto de licença. */
+export interface FonteDaBase {
+  orgao: string;
+  licenca: string;
+  repasse: string; // o que pode ser repassado
+  situacao: "licenciada" | "em consulta";
+  modulos: string[]; // chaves dos módulos
+  tabelas: number;
+  historico_desde: string; // AAAA-MM-DD
+}
+
+/** Um módulo da base com a contagem de tabelas (`Modulo` de base/vitrine.py). */
+export interface ModuloDaBase {
+  chave: string;
+  nome: string;
+  tabelas: number;
+}
+
+/** Uma linha da lista de tabelas (`TabelaDoSite` de base/vitrine.py). */
+export interface TabelaDaBase {
+  tabela: string;
+  modulo: string;
+  frase: string;
+  orgao: string;
+  situacao: "licenciada" | "em consulta";
+  frequencia: string;
+  atraso: string | null;
+  historico_desde: string;
+}
+
+/** O catálogo de contratos da base, contado pelo Python: a página Dados não digita número. */
+export const catalogo: {
+  totais: { tabelas: number; fontes: number; fontes_em_consulta: number; modulos: number };
+  fontes: FonteDaBase[];
+  modulos: ModuloDaBase[];
+  tabelas: TabelaDaBase[];
+} = catalogoJson as never;
