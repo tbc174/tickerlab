@@ -11,7 +11,7 @@ e a frase da tabela e o atraso perdem o que é conversa interna (código, ADR, s
 import re
 from dataclasses import dataclass
 
-# o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 15 em 18/10/2026)
+# o texto da licença → o órgão que o site mostra; uma linha por fonte do catálogo (são 16 em 19/10/2026)
 ORGAOS: tuple[tuple[str, str], ...] = (
     (r"da CVM", "CVM"),
     (r"do Banco Central", "Banco Central"),
@@ -30,6 +30,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"a CFTC\b", "CFTC"),
     (r"\(CONAB\)", "CONAB"),
     (r"do USDA\b", "USDA"),
+    (r"\(FAO;", "FAO"),
     (r"\bMDIC\b", "MDIC"),
     (r"do INMET\b", "INMET"),
     (r"\bMapBiomas\b", "MapBiomas"),

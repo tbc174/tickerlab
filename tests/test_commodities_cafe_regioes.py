@@ -17,6 +17,7 @@ from src.commodities.cafe.regioes import (
     AREA_MINIMA_HA,
     CONILON,
     DEFINICOES,
+    POR_ID,
     REGIOES,
     Municipio,
     regiao_do_municipio,
@@ -128,3 +129,20 @@ def test_tipo_predominante_e_montar_regioes_com_dados_proprios():
 
 def test_sem_o_csv_as_regioes_ficam_vazias(tmp_path):
     assert regioes.ler_municipios(tmp_path / "nao-existe.csv") == {}
+
+
+def test_irrigacao_e_caracteristica_do_es_norte_cerrado_e_oeste_da_bahia():
+    """PR 14: `irrigada` vem do Incaper (café irrigado no norte do ES, Triângulo/Alto Paranaíba e
+    oeste da Bahia); Rondônia, o outro polo de conilon, é de sequeiro."""
+    from src.commodities.cafe.regioes import FONTE_DA_IRRIGACAO
+
+    irrigadas = {r.id for r in REGIOES if r.irrigada}
+    assert irrigadas == {"es-norte", "cerrado-mineiro", "oeste-da-bahia"}
+    assert not POR_ID["rondonia"].irrigada
+    assert "Incaper" in FONTE_DA_IRRIGACAO
+
+
+def test_conilon_tem_regioes_proprias_com_rondonia():
+    conilon = {r.id for r in REGIOES if r.tipo_predominante == CONILON}
+    assert conilon == REGIOES_DE_CONILON
+    assert POR_ID["rondonia"].ufs == ("RO",)

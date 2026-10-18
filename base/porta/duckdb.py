@@ -99,11 +99,13 @@ ARQUIVOS: dict[str, str] = {
     "identificadores": "rede/identificadores.parquet",
     "ligacoes": "rede/ligacoes.parquet",
     "ma_assessorias": "ma/assessorias/*.parquet",
+    "ma_candidatos": "ma/candidatos/candidatos.parquet",
     "ma_partes": "ma/ligacao/partes.parquet",
     "ma_negocios": "ma/ligacao/negocios.parquet",
     "ma_datas": "ma/datas/negocios.parquet",
     "ma_regua": "ma/regua/negocios.parquet",
     "usda_psd_cafe": "commodities/usda_psd/*.parquet",
+    "faostat_cafe": "commodities/faostat_cafe/*.parquet",
 }
 # tabela conferida à mão → CSV no repositório (separado por `;`)
 CONFERIDAS: dict[str, str] = {

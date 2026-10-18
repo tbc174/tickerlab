@@ -10,7 +10,7 @@ from base import cda, conselhos, fca, ligacoes, ofertas
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
-from base.commodities import cftc_cot, comex_cafe, usda_psd
+from base.commodities import cftc_cot, comex_cafe, faostat_cafe, usda_psd
 from base.contrapartes import cafe as contrapartes_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
@@ -104,6 +104,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "anac_estatistico": list(setoriais_anac.COLUNAS),
         "anp_vendas": list(setoriais_anp.COLUNAS),
         "usda_psd_cafe": list(usda_psd.COLUNAS),
+        "faostat_cafe": list(faostat_cafe.COLUNAS),
         "comex_cafe": list(comex_cafe.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),

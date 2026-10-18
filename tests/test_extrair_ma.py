@@ -1,0 +1,129 @@
+"""O comando que roda a extração de M&A na amostra de ouro: teto antes de gastar, lote, medida."""
+
+import json
+from types import SimpleNamespace
+
+import pandas as pd
+import pytest
+
+from base import ma_extracao as mx
+from scripts import extrair_ma
+from scripts.rotular_com_ia import TetoPassado
+
+TEXTO = "A Alfa S.A. comunica a aquisição da Beta Ltda. pelo valor de R$ 10 milhões."
+RESPOSTA = {
+    "tipo": "AQ_CONTROLE", "etapa": "ASSINATURA", "trecho_do_tipo": "comunica a aquisição da Beta",
+    "partes": [{"nome": "Beta Ltda.", "papel": "alvo", "participacao_depois": None,
+                "trecho": "aquisição da Beta Ltda."}],
+    "valores": [{"campo": "valor_participacao", "valor": 10, "unidade": "milhoes",
+                 "moeda": "BRL", "trecho": "pelo valor de R$ 10 milhões"}],
+    "datas": [], "forma_pagamento": "nao_informado",
+}  # fmt: skip
+
+
+class _ClienteFalso:
+    """Guarda o lote enviado e devolve a mesma resposta para cada pedido."""
+
+    def __init__(self):
+        self.enviados: list[dict] = []
+        usage = SimpleNamespace(
+            input_tokens=3000, output_tokens=500,
+            cache_creation_input_tokens=0, cache_read_input_tokens=0,
+        )  # fmt: skip
+        mensagem = SimpleNamespace(
+            stop_reason="end_turn", usage=usage,
+            content=[SimpleNamespace(type="text", text=json.dumps(RESPOSTA))],
+        )  # fmt: skip
+
+        def criar(requests):
+            self.enviados = requests
+            return SimpleNamespace(id="lote_1")
+
+        def resultados(_id):
+            return [
+                SimpleNamespace(
+                    custom_id=r["custom_id"],
+                    result=SimpleNamespace(type="succeeded", message=mensagem),
+                )
+                for r in self.enviados
+            ]
+
+        self.messages = SimpleNamespace(
+            batches=SimpleNamespace(
+                create=criar,
+                retrieve=lambda _id: SimpleNamespace(processing_status="ended"),
+                results=resultados,
+            )
+        )
+
+
+@pytest.fixture
+def amostra(tmp_path):
+    textos = tmp_path / "textos"
+    textos.mkdir()
+    (textos / "P-1.txt").write_text(TEXTO, encoding="utf-8")
+    (textos / "P-2.txt").write_text(
+        "", encoding="utf-8"
+    )  # documento sem texto: fica de fora
+    ouro = pd.DataFrame(
+        {"Protocolo_Entrega": ["P-1", "P-2", "P-3"], "Data_Entrega": ["2024-05-02"] * 3,
+         "confere_tiago": ["ok"] * 3, "tipo_conferido": ["AQ_CONTROLE"] * 3,
+         "alvo": ["Beta", None, None], "comprador": [None] * 3, "vendedor": [None] * 3,
+         "valor": ["R$ 10 milhões", None, None]}
+    )  # fmt: skip
+    arquivo = tmp_path / "ouro.csv"
+    ouro.to_csv(arquivo, sep=";", index=False, encoding="utf-8-sig")
+    return SimpleNamespace(textos=textos, ouro=arquivo, saida=tmp_path / "saida")
+
+
+def test_documentos_sao_os_da_amostra_com_texto(amostra):
+    documentos = extrair_ma.documentos(amostra.ouro, amostra.textos)
+    assert [d.protocolo for d in documentos] == ["P-1"]
+    assert str(documentos[0].publico_em) == "2024-05-02"
+
+
+def test_enviar_recusa_quando_a_estimativa_passa_do_teto(amostra):
+    cliente = _ClienteFalso()
+    with pytest.raises(TetoPassado):
+        extrair_ma.enviar(
+            cliente, amostra.ouro, amostra.textos, amostra.saida, mx.MODELO, teto=0.0
+        )
+    assert cliente.enviados == []
+
+
+def test_enviar_buscar_e_medir_sem_repetir_o_que_ja_foi_lido(amostra):
+    cliente = _ClienteFalso()
+    args = (amostra.ouro, amostra.textos, amostra.saida, mx.MODELO)
+    assert extrair_ma.enviar(cliente, *args, teto=1.0) == "lote_1"
+    assert [r["custom_id"] for r in cliente.enviados] == ["P-1"]
+    with pytest.raises(RuntimeError):  # lote ainda não gravado
+        extrair_ma.enviar(cliente, *args, teto=1.0)
+    assert extrair_ma.buscar(cliente, amostra.saida, mx.MODELO) == 1
+    assert extrair_ma.enviar(cliente, *args, teto=1.0) is None  # nada pendente
+
+    manifesto = extrair_ma.ler_manifesto(amostra.saida, mx.MODELO)
+    assert manifesto["gasto_em_dolares"] == pytest.approx(
+        mx.custo_em_dolares(3000, 500, modelo=mx.MODELO)
+    )
+    resultado = extrair_ma.medir_modelo(
+        amostra.ouro, amostra.textos, amostra.saida, mx.MODELO
+    )
+    placar = resultado.placar.set_index("campo")
+    assert placar.loc["tipo", ["casos", "acertos"]].tolist() == [3, 1]
+    assert placar.loc["valor", ["casos", "acertos"]].tolist() == [1, 1]
+    assert resultado.lidos == 1
+    assert resultado.custo_por_documento == pytest.approx(manifesto["gasto_em_dolares"])
+
+
+def test_estimar_nao_precisa_de_chave(amostra, monkeypatch, capsys):
+    monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
+    assert extrair_ma.main(["estimar", "--ouro", str(amostra.ouro), "--textos",
+                            str(amostra.textos), "--saida", str(amostra.saida)]) == 0  # fmt: skip
+    assert "1 documentos" in capsys.readouterr().out
+
+
+def test_enviar_sem_a_chave_propria_para_antes_de_chamar(amostra, monkeypatch):
+    monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
+    with pytest.raises(SystemExit):
+        extrair_ma.main(["enviar", "--ouro", str(amostra.ouro), "--textos", str(amostra.textos),
+                         "--saida", str(amostra.saida), "--teto-dolares", "1"])  # fmt: skip

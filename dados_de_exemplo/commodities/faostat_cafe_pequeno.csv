@@ -1,0 +1,12 @@
+Area Code,Area Code (M49),Area,Item Code,Item Code (CPC),Item,Element Code,Element,Year Code,Year,Unit,Value,Flag,Note
+21,'076,Brazil,656,'01610,"Coffee, green",5312,Area harvested,2023,2023,ha,1850000,A,
+21,'076,Brazil,656,'01610,"Coffee, green",5510,Production,2023,2023,t,3406000,A,
+21,'076,Brazil,656,'01610,"Coffee, green",5412,Yield,2023,2023,hg/ha,18411,C,
+21,'076,Brazil,656,'01610,"Coffee, green",5510,Production,2022,2022,t,3000000,A,
+237,'704,Viet Nam,656,'01610,"Coffee, green",5510,Production,2023,2023,t,1850000,A,
+237,'704,Viet Nam,656,'01610,"Coffee, green",5312,Area harvested,2023,2023,ha,650000,A,
+237,'704,Viet Nam,656,'01610,"Coffee, green",5510,Production,2022,2022,t,1790000,A,
+101,'360,Indonesia,656,'01610,"Coffee, green",5510,Production,2023,2023,t,760000,A,
+101,'360,Indonesia,656,'01610,"Coffee, green",5510,Production,2022,2022,t,,M,
+5000,'001,World,656,'01610,"Coffee, green",5510,Production,2023,2023,t,10800000,A,
+21,'076,Brazil,56,'0115,Maize (corn),5510,Production,2023,2023,t,131000000,A,

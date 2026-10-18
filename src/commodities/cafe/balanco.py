@@ -15,6 +15,8 @@ import pandas as pd
 TIPOS = ("arabica", "conilon", "total")
 BRASIL = "BR"
 MUNDO = "mundo"
+# os grandes do robusta (conilon) no PSD: Vietnã, Brasil, Indonésia e Uganda (códigos do USDA)
+PAISES_DO_ROBUSTA = ("VM", BRASIL, "ID", "UG")
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,20 @@ class SurpresaDoUsda:
     depois: float
     diferenca: float  # em mil sacas de 60 kg
     percentual: float  # fração do número de antes (0,05 = 5%)
+
+
+@dataclass(frozen=True)
+class BalancoDoPais:
+    """Um país numa safra, lado a lado com os outros: quanto produz do tipo e quanto sobra em estoque."""
+
+    codigo_do_pais: str
+    ano_safra: int
+    tipo: str
+    producao: float  # mil sacas de 60 kg
+    participacao_na_producao: float  # fração da produção do tipo nos países da tabela
+    relacao_estoque_consumo: (
+        float | None
+    )  # None quando a tabela não traz consumo do país
 
 
 def _por_safra(
@@ -97,3 +113,42 @@ def surpresa_do_usda(
         for safra in sorted(a.index.intersection(d.index))
         if a[safra] != 0
     ]
+
+
+def balanco_por_pais(
+    tabela: pd.DataFrame,
+    paises: tuple[str, ...] = PAISES_DO_ROBUSTA,
+    tipo: str = "conilon",
+) -> list[BalancoDoPais]:
+    """Participação na produção do `tipo` e relação estoque/consumo dos `paises`, por safra.
+
+    A participação é sobre todos os países da tabela (o "mundo" do PSD), não só sobre `paises`,
+    para que Vietnã, Indonésia, Uganda e Brasil somem menos de 100% e a conta diga a verdade.
+    """
+    if tipo not in TIPOS:
+        raise ValueError(f"tipo {tipo!r} inválido: use um de {TIPOS}")
+    mundo = _por_safra(tabela, "producao", tipo, None)
+    pontos = []
+    for pais in paises:
+        producao = _por_safra(tabela, "producao", tipo, pais)
+        estoque = _por_safra(tabela, "estoque_final", "total", pais)
+        consumo = _por_safra(tabela, "consumo_domestico", "total", pais)
+        for safra in sorted(producao.index.intersection(mundo.index)):
+            if producao[safra] <= 0 or mundo[safra] <= 0:
+                continue
+            tem_relacao = (
+                safra in estoque.index and safra in consumo.index and consumo[safra] > 0
+            )
+            pontos.append(
+                BalancoDoPais(
+                    codigo_do_pais=pais,
+                    ano_safra=int(safra),
+                    tipo=tipo,
+                    producao=float(producao[safra]),
+                    participacao_na_producao=float(producao[safra] / mundo[safra]),
+                    relacao_estoque_consumo=(
+                        float(estoque[safra] / consumo[safra]) if tem_relacao else None
+                    ),
+                )
+            )
+    return sorted(pontos, key=lambda p: (p.ano_safra, p.codigo_do_pais))

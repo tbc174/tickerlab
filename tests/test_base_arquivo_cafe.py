@@ -31,8 +31,8 @@ def test_as_fontes_do_cafe_tem_destino_certo():
     assert destinos.DESTINOS["usda-psd-cafe"].tipo == destinos.TABELA
     assert destinos.DESTINOS["usda-psd-cafe"].tabelas == ("usda_psd_cafe",)
     faostat = destinos.DESTINOS["faostat-cafe"]
-    assert faostat.tipo == destinos.PLANEJADA
-    assert "PR 14" in faostat.onde or "pr14" in faostat.onde.lower()
+    assert faostat.tipo == destinos.TABELA
+    assert faostat.tabelas == ("faostat_cafe",)
     ico = destinos.DESTINOS["ico-relatorio-mensal"]
     assert ico.tipo == destinos.SO_PESQUISA
     assert "ICO" in ico.porque

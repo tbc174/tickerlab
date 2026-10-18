@@ -4149,6 +4149,79 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ma_candidatos": Tabela(
+        descricao=(
+            "Documentos que as companhias abertas entregam à CVM no IPE desde 2003 e que podem "
+            "anunciar uma operação de M&A (série 1 da base de M&A, ADR 0063), uma linha por versão "
+            "entregue: fatos relevantes escolhidos pelo assunto, comunicados ao mercado com o tipo no "
+            "assunto e todo edital de OPA. É a lista do que ler, não a lista de operações: favorece "
+            "a cobertura, e o assunto genérico (o padrão do sistema da CVM, o vazio, o esclarecimento "
+            "sobre notícia) entra sem tipo, para a leitura do texto decidir. Recompra, proventos, "
+            "dívida e oferta de ações ficam fora. Cobertura contra as reestruturações declaradas no "
+            "FRE (2010 a 2015): 80% das operações com algum fato relevante da companhia no ano "
+            "anterior têm fato relevante candidato na janela (92% com os comunicados); lidas à mão 40 perdidas, 36 não tinham fato relevante "
+            "sobre a operação (~97% dos que existem). Amostra de ouro: 84 de 85 operações candidatas"
+        ),
+        fonte="CVM: arquivos anuais do IPE (`cvm-hist-ipe`), lidos por `base/ma_ipe.py`",
+        familia_da_fonte="cvm",
+        frequencia=(
+            "Diária no servidor de casa (`scripts/montar_ma_candidatos.py`), depois do arquivista "
+            "baixar o IPE do ano"
+        ),
+        atraso=(
+            "O documento vale a partir de `publico_em` (entrega da versão à CVM), nunca da "
+            "`referencia` informada pela companhia"
+        ),
+        onde=(
+            "Parquet em `<acervo>/base/ma/candidatos/candidatos.parquet` (servidor de casa, "
+            "`scripts/montar_ma_candidatos.py`)"
+        ),
+        linhagem=(
+            "Cada linha guarda o SHA-256 do arquivo anual do IPE de onde veio (`origem_sha256`, que "
+            "leva ao registro de coletas) e quando ele foi coletado (`origem_coletada_em`); o "
+            "manifesto lista os arquivos anuais lidos. `montado_em` diz quando a tabela foi montada. "
+            + COM_VERSAO_DO_CODIGO
+        ),
+        colunas={
+            "cnpj": _EMPRESA["cnpj"],
+            "empresa": _EMPRESA["empresa"],
+            "codigo_cvm": ("Código da companhia na CVM", TEXTO),
+            "categoria": (
+                "Categoria do IPE: Fato Relevante, Comunicado ao Mercado ou o edital de OPA",
+                TEXTO,
+            ),
+            "tipo": ("Tipo do IPE (vazio no fato relevante)", TEXTO),
+            "assunto": ("Assunto como a companhia preencheu", TEXTO),
+            "tipo_provavel": (
+                (
+                    "Pista do assunto: OPA, INC_ACOES, FUSAO, CISAO, INC_EMPRESA, JV, UPI, "
+                    "PRIVATIZACAO, ALIEN_CONTROLE, VENDA_ATIVO, AQUISICAO (controle ou minoritária) "
+                    "ou NEGOCIACAO (memorando, exclusividade); vazia no assunto genérico. Não é o "
+                    "tipo da operação: quem diz é o texto"
+                ),
+                TEXTO,
+            ),
+            "evidencia": (
+                (
+                    "Por que entrou: assunto (o assunto dá o tipo provável), assunto_generico (fato "
+                    "relevante de assunto padrão ou vazio) ou categoria (edital de OPA)"
+                ),
+                TEXTO,
+            ),
+            "referencia": ("Data de referência informada pela companhia", DATA),
+            "publico_em": (
+                "Entrega da versão do documento à CVM: quando ficou público para a base",
+                DATA,
+            ),
+            "protocolo": (
+                "Protocolo de entrega na CVM (de 2003 a 2014, o link, que a CVM não dá protocolo)",
+                TEXTO,
+            ),
+            "versao": ("Versão do documento (reapresentação)", NUMERO),
+            "link": ("Link do documento no sistema da CVM", TEXTO),
+            **_ORIGEM_SEM_ANO,
+        },
+    ),
     "ma_partes": Tabela(
         descricao=(
             "As empresas de cada negócio de M&A das assessorias (`ma_assessorias`), uma linha por "
@@ -4547,6 +4620,40 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "faostat_cafe": Tabela(
+        descricao=(
+            "Café verde por país e ano da FAO (FAOSTAT): produção em toneladas, área colhida em hectares "
+            "e rendimento em kg por hectare, desde 1961. O FAOSTAT não separa arábica de robusta "
+            "(`tipo` é sempre `total`; a separação por tipo está no `usda_psd_cafe`). Cada baixada "
+            "semanal guarda a fotografia do dia, para o 'como era na data'"
+        ),
+        fonte="FAO, FAOSTAT: Crops and livestock products (Production_Crops_Livestock_E_All_Data_(Normalized).zip)",
+        familia_da_fonte="faostat",
+        frequencia="Semanal (a FAO atualiza a base algumas vezes por ano)",
+        atraso="A FAO não informa a data de cada revisão: `divulgado_em` é o dia da baixada que o "
+        "arquivista guardou, então um número nunca aparece antes de ter sido visto",
+        onde="Parquet em `<acervo>/base/commodities/faostat_cafe/<dia da baixada>.parquet`",
+        linhagem=(
+            "Cada parquet nasce de um zip guardado pelo arquivista (SHA-256 no registro de coletas); "
+            "só entram o café verde dos países (os agregados da FAO saem), a unidade da fonte é "
+            "conferida (hg/ha vira kg/ha) e uma unidade desconhecida interrompe a leitura. Crédito: "
+            "FAO, FAOSTAT, CC BY 4.0."
+        ),
+        colunas={
+            "codigo_do_pais": ("Código M49 do país (ex.: 076 para o Brasil)", TEXTO),
+            "pais": ("Nome do país, como a FAO escreve", TEXTO),
+            "ano": ("Ano civil da produção", NUMERO),
+            "elemento": ("producao, area_colhida ou rendimento", TEXTO),
+            "tipo": ("Sempre total: o FAOSTAT não separa arábica de robusta", TEXTO),
+            "valor": ("Valor na unidade da coluna `unidade`", NUMERO_DECIMAL),
+            "unidade": ("t, ha ou kg/ha", TEXTO),
+            "sinalizador": (
+                "Sinalizador da FAO (A oficial, E estimado, I imputado...)",
+                TEXTO,
+            ),
+            "divulgado_em": ("Dia da baixada que trouxe este número", DATA),
+        },
+    ),
     "clima_regiao_cafe": Tabela(
         descricao=(
             "Clima do mês por região produtora de café (13 regiões de `src/commodities/cafe/regioes.py`): "
@@ -4754,6 +4861,7 @@ _ME = "mercado_e_empresas"
 _FIDC = "credito_e_fidc"
 _CVM = "2010-01-01"  # primeiro arquivo da CVM que a base lê (FRE, ITR e DFP de 2010)
 _GOVERNO = "2026-10-14"  # as fontes de governo só passaram a ser guardadas neste dia
+_COMMODITIES_FAO = "2026-10-19"  # o FAOSTAT só passou a ser guardado em tabela neste dia (PR 14 do café)
 _COMMODITIES = (
     "2026-10-18"  # o USDA PSD só passou a ser guardado neste dia (PR 4 do café)
 )
@@ -4834,6 +4942,7 @@ _CONTRATO = {
     "identificadores": _contrato(modulo="rede", chaves=("id_entidade", "sistema", "valor", "desde"), datas={"aconteceu_em": "desde", "publico_em": "publico_em"}, historico_desde=_CVM),
     "ligacoes": _contrato(modulo="rede", chaves=("de", "para", "tipo", "papel", "aconteceu_em", "fonte"), datas={"aconteceu_em": "aconteceu_em", "publico_em": "publico_em", "coletado_em": "coletado_em"}, historico_desde=_CVM, versao_do_contrato="1.1.0"),
     "ma_assessorias": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
+    "ma_candidatos": _contrato(modulo="ma", chaves=("link",), datas={"aconteceu_em": "referencia", "publico_em": "publico_em", "coletado_em": "origem_coletada_em"}, historico_desde="2003-01-01"),
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
@@ -4841,6 +4950,7 @@ _CONTRATO = {
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
     "cftc_cot_agro": _contrato(modulo=_ME, chaves=("relatorio", "contrato"), datas={"aconteceu_em": "relatorio", "publico_em": "disponivel_em"}, historico_desde="2006-06-13"),
     "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),
+    "faostat_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano", "elemento", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES_FAO),
     "clima_regiao_cafe": _contrato(modulo="macro", chaves=("regiao", "competencia", "fonte"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde="1981-01-31", granularidade_do_publico_em="mes"),
     "area_cafe_municipio": _contrato(modulo="macro", chaves=("codigo", "ano"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde="1985-12-31"),
     "contraparte_cafe": _contrato(modulo="macro", chaves=("id", "fato", "data"), datas={"aconteceu_em": "data", "publico_em": "divulgado_em", "coletado_em": "conferido_em"}, historico_desde="2004-07-01"),
@@ -4884,6 +4994,12 @@ _CONFERENCIA: dict[str, dict[str, object]] = {
         "faixas": {"emissao": (1.0, None), "versao": (1.0, None)},
         "nao_nulas": ("cnpj", "documento", "publico_em", "protocolo", "link", "estresse", "generico"),
         "anuncia_o_futuro": True,  # o edital sai antes da assembleia
+    },
+    "ma_candidatos": {
+        "pasta": "ma/candidatos",
+        "faixas": {"versao": (1.0, None)},
+        "nao_nulas": ("cnpj", "publico_em", "protocolo", "link", "evidencia"),
+        "anuncia_o_futuro": True,  # a referência do IPE pode ser a assembleia que vai aprovar
     },
     "ratings": {
         "pasta": "ratings",
