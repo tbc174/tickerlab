@@ -702,6 +702,7 @@ class SecaoDoRelatorioV1(BaseModel):
     tabelas: list[TabelaDoRelatorioV1]
     pontos: list[PontoDoRelatorioV1] = []
     trancada: bool  # o plano não inclui a seção: só o título e o convite (sem números)
+    recolhida: bool = False  # explicação: a tela mostra fechada até a pessoa abrir
 
 
 class RelatorioDaEmpresaV1(BaseModel):

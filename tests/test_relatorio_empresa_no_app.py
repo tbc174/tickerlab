@@ -134,9 +134,13 @@ def test_no_modo_local_mostra_o_dossie_da_base(banco, tmp_path, monkeypatch):
     app = _abrir("PETR4.SA")
     assert not app.exception
     titulos = [s.value for s in app.subheader]
-    assert (
-        titulos.index("Auditor e controladas") == titulos.index(SECOES["eventos"]) + 1
-    )
+    capital = titulos.index(
+        SECOES["dividendos"]
+    )  # capital e acionistas, depois governança
+    assert titulos[capital + 1 : capital + 3] == [
+        "Ofertas e fundos",
+        "Auditor e controladas",
+    ]
     assert "R$ 495,2 mi" in [m.value for m in app.metric]
     assert "Fundos com a empresa, mês a mês" in [e.label for e in app.expander]
 

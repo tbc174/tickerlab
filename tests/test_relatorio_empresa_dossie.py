@@ -17,9 +17,9 @@ from src import relatorio_empresa as re_
 from src.relatorio_empresa_pdf import relatorio_da_empresa
 from tests.test_relatorio_empresa import _entradas, dados_da_weg  # noqa: F401
 
-CHAVES_DA_BASE = [
-    "auditor_e_controladas",
+CHAVES_DA_BASE = [  # na ordem do molde A: capital, governança, setor, negócios
     "ofertas_e_fundos",
+    "auditor_e_controladas",
     "setor_regulado",
     "negocios",
 ]
@@ -50,12 +50,13 @@ def _da_base(relatorio: re_.Relatorio) -> list[re_.Secao]:
     return [s for s in relatorio.secoes if s.chave in CHAVES_DA_BASE]
 
 
-def test_pro_ve_as_secoes_depois_de_eventos(entradas):
+def test_pro_ve_as_secoes_da_base_no_lugar_do_molde(entradas):
     relatorio = re_.montar(entradas, "pro")
     chaves = [s.chave for s in relatorio.secoes]
-    depois = chaves.index("eventos") + 1
-    assert chaves[depois : depois + 4] == CHAVES_DA_BASE
-    assert chaves[depois + 4] == "qualidade"
+    assert [c for c in chaves if c in CHAVES_DA_BASE] == CHAVES_DA_BASE
+    assert chaves.index("ofertas_e_fundos") == chaves.index("dividendos") + 1
+    assert chaves.index("setor_regulado") == chaves.index("pares") + 1
+    assert chaves.index("negocios") == chaves.index("eventos") + 1
     fundos = relatorio.secao("ofertas_e_fundos")
     assert not fundos.trancada
     assert {i.texto for i in fundos.itens} >= {"370", "R$ 495,2 mi"}

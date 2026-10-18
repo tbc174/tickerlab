@@ -378,3 +378,114 @@ def test_o_que_mudaria_esta_leitura_cpfl(ficha_da_cpfl):
         _recomenda(" ".join(linha.values())) == []
         for linha in secao.tabelas["gatilhos"]
     )
+
+
+# --- Tarefa 5: a ordem do molde A e os limites ------------------------------------------------------
+ORDEM_V2 = [
+    "ficha_tecnica",
+    "o_que_os_dados_mostram",
+    "o_que_mudou",
+    "resultado",
+    "retorno",
+    "endividamento",
+    "caixa",
+    "qualidade",
+    "dividendos",
+    "ofertas_e_fundos",
+    "auditor_e_controladas",
+    "pares",
+    "setor_regulado",
+    "eventos",
+    "negocios",
+    "notas_classicas",
+    "padroes_e_notas",
+    "valuation",
+    "historico",
+    "o_que_mudaria",
+    "metodologia",
+    "limites",
+]
+
+
+@pytest.mark.parametrize("plano", ["pro", None])
+def test_ordem_das_secoes_v2(entradas_da_cpfl, plano):
+    """A ordem do molde A (pesquisa de mercado de 10/2026): quem é, o que os dados mostram e o que
+    mudou no topo; as contas; capital, governança, setor e eventos; notas, valuation e histórico;
+    o que mudaria, metodologia e limites no fim. Com ou sem o Pro, a mesma ordem."""
+    relatorio = re_.montar(entradas_da_cpfl, plano)
+    assert [s.chave for s in relatorio.secoes] == ORDEM_V2
+    assert list(re_.SECOES) == [c for c in ORDEM_V2 if c in re_.SECOES]
+    assert "resumo" not in re_.SECOES  # "O que os dados mostram" tomou o lugar dele
+
+
+def test_secao_da_base_desconhecida_vai_com_os_eventos():
+    secoes = [re_.Secao(c, c) for c in ("limites", "nova_da_base", "ficha_tecnica")]
+    assert [s.chave for s in re_.na_ordem(secoes)] == [
+        "ficha_tecnica",
+        "nova_da_base",
+        "limites",
+    ]
+
+
+def test_limites_dizem_o_que_nao_temos(ficha_da_cpfl):
+    secao = ficha_da_cpfl.secao("limites")
+    assert secao.titulo == "Limites e perguntas em aberto"
+    texto = " ".join(secao.paragrafos)
+    for falta in ("protestos", "processos", "pagamentos"):
+        assert falta in texto
+    assert "Nada aqui é recomendação" in texto  # os cuidados de antes continuam
+    abertas = [p for p in secao.paragrafos if p.startswith(re_.EM_ABERTO)]
+    # o que a ficha mostrou como "—" vira pergunta, uma por motivo e sem repetir
+    assert any("Controlador" in p and "FRE" in p for p in abertas)
+    crescimento = [p for p in abertas if "Crescimento da receita" in p]
+    assert len(crescimento) == 1 and "Crescimento do lucro" in crescimento[0]
+    assert len(abertas) == len(set(abertas))
+
+
+def test_perguntas_em_aberto_nao_repetem_a_tranca_do_plano(entradas_da_cpfl):
+    limites = re_.montar(entradas_da_cpfl, None).secao("limites")
+    assert not any(
+        "Pro" in p for p in limites.paragrafos if p.startswith(re_.EM_ABERTO)
+    )
+
+
+def test_metodologia_vem_recolhida(ficha_da_cpfl):
+    assert ficha_da_cpfl.secao("metodologia").recolhida
+    assert not ficha_da_cpfl.secao("resultado").recolhida
+
+
+def _secao_recolhida():
+    from src.relatorio_empresa import Item, Secao
+    from telas.research.relatorio_empresa import _mostrar_secao
+
+    nota = Item("roe", "ROE", "26,4%", 0.264, "%", "12 meses", nota="ótimo",
+                nota_texto="Acima de 80% das empresas do setor.")  # fmt: skip
+    _mostrar_secao(Secao("resultado", "Resultado", itens=[nota]))
+    _mostrar_secao(
+        Secao(
+            "metodologia",
+            "Metodologia e fontes",
+            paragrafos=["Fórmulas."],
+            recolhida=True,
+        )
+    )
+
+
+def test_tela_recolhe_as_explicacoes():
+    """O corpo fica sóbrio: a explicação da nota vai no (?) do número e a metodologia, fechada."""
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_function(_secao_recolhida).run()
+    assert not app.exception
+    assert "Acima de 80%" in app.metric[0].help
+    assert not any("Acima de 80%" in c.value for c in app.caption)
+    assert [e.label for e in app.expander] == ["Ver a explicação"]
+    assert app.expander[0].markdown[0].value == "Fórmulas."
+
+
+def test_api_leva_a_ordem_e_a_secao_recolhida(ficha_da_cpfl):
+    from src.api_v1.esquemas import de_relatorio_da_empresa
+
+    api = de_relatorio_da_empresa(ficha_da_cpfl)
+    assert [s.chave for s in api.secoes] == ORDEM_V2
+    assert [s.chave for s in api.secoes if s.recolhida] == ["metodologia"]

@@ -585,7 +585,7 @@ def dia_da_ficha(ficha: Ficha) -> date:
 
 
 def limites_da_ficha(ficha: Ficha) -> list[str]:
-    """Os cuidados com os números do dossiê (vão em "Limites e cuidados", no app e na amostra)."""
+    """Os cuidados com os números do dossiê (vão na seção de limites, no app e na amostra)."""
     return [
         (
             f"Os números são da base do TickerLab em {ficha.gerado_em:%d/%m/%Y} e mudam quando a "

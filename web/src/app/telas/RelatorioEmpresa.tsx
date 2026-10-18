@@ -28,8 +28,13 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
       {item.nota ? (
         <span className="legenda-do-numero">
           Nota: <strong>{item.nota}</strong>
-          {item.nota_texto ? ` · ${item.nota_texto}` : ""}
         </span>
+      ) : null}
+      {item.nota_texto ? (
+        <details className="legenda-do-numero">
+          <summary>Como ler a nota</summary>
+          {item.nota_texto}
+        </details>
       ) : null}
     </div>
   );
@@ -113,9 +118,16 @@ function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
               ))}
             </div>
           ) : null}
-          {secao.paragrafos.map((p) => (
-            <p key={p}>{p}</p>
-          ))}
+          {secao.recolhida ? (
+            <details>
+              <summary>Ver a explicação</summary>
+              {secao.paragrafos.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+            </details>
+          ) : (
+            secao.paragrafos.map((p) => <p key={p}>{p}</p>)
+          )}
           {secao.tabelas.map((t) => (
             <Tabela key={t.chave} tabela={t} />
           ))}
@@ -133,7 +145,16 @@ function ConviteDoPro() {
   );
 }
 
+// a última seção do 1º bloco de seções trancadas (−1 quando não há nenhuma)
+function fimDoPrimeiroBloco(secoes: SecaoDoRelatorioV1[]): number {
+  const inicio = secoes.findIndex((s) => s.trancada);
+  if (inicio < 0) return -1;
+  const depois = secoes.findIndex((s, i) => i > inicio && !s.trancada);
+  return (depois < 0 ? secoes.length : depois) - 1;
+}
+
 function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
+  const fimDoBloco = fimDoPrimeiroBloco(relatorio.secoes);
   return (
     <>
       <p>
@@ -147,8 +168,8 @@ function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
       {relatorio.secoes.map((secao, i) => (
         <div key={secao.chave}>
           <Secao secao={secao} />
-          {/* um convite depois das seções trancadas, não um por seção */}
-          {secao.trancada && !relatorio.secoes[i + 1]?.trancada ? <ConviteDoPro /> : null}
+          {/* um convite só, depois do 1º bloco de seções trancadas */}
+          {i === fimDoBloco ? <ConviteDoPro /> : null}
         </div>
       ))}
       <p className="apagado">Fontes: {relatorio.fontes.join("; ")}. Nada aqui é recomendação.</p>

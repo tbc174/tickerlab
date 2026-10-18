@@ -2,7 +2,8 @@
 
 Lê o mesmo `Relatorio` da página (`src/relatorio_empresa.py`): as mesmas seções, na mesma ordem,
 com os mesmos números já escritos. A cascata do lucro e a ponte da dívida viram gráficos; a seção
-"Limites e cuidados" vem do relatório (obrigatória).
+"Limites e perguntas em aberto" vem do relatório (obrigatória). No papel, a explicação que a
+tela recolhe sai por inteiro.
 """
 
 from datetime import datetime

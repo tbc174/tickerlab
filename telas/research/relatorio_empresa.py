@@ -97,16 +97,14 @@ def _origem(item: Item) -> str:
 
 
 def _mostrar_item(coluna, item: Item) -> None:
-    coluna.metric(item.nome, item.texto, help=_origem(item) or None)
+    ajuda = " ".join(p for p in (_origem(item), item.nota_texto) if p)
+    coluna.metric(item.nome, item.texto, help=ajuda or None)  # a explicação fica no (?)
     if item.comparacao is not None:
         coluna.caption(f"Contra {item.comparacao.contra}: {item.comparacao.texto}")
     if item.motivo:
         coluna.caption(item.motivo)
     if item.nota:
-        coluna.caption(
-            f"Nota: **{item.nota}**"
-            + (f" · {item.nota_texto}" if item.nota_texto else "")
-        )
+        coluna.caption(f"Nota: **{item.nota}**")
 
 
 def _titulo_da_tabela(chave: str) -> str:
@@ -132,8 +130,13 @@ def _mostrar_secao(secao: Secao) -> None:
         linha = secao.itens[inicio : inicio + ITENS_POR_LINHA]
         for coluna, item in zip(st.columns(ITENS_POR_LINHA), linha, strict=False):
             _mostrar_item(coluna, item)
-    for paragrafo in secao.paragrafos:
-        st.markdown(paragrafo)
+    if secao.recolhida:
+        with st.expander("Ver a explicação"):
+            for paragrafo in secao.paragrafos:
+                st.markdown(paragrafo)
+    else:
+        for paragrafo in secao.paragrafos:
+            st.markdown(paragrafo)
     for chave, linhas in secao.tabelas.items():
         if not linhas:
             continue
@@ -200,12 +203,14 @@ def _mostrar(relatorio: Relatorio) -> None:
             "Qualidade dos dados.",
             icon=":material/fact_check:",
         )
+    convidou = False
     for secao, seguinte in zip(
         relatorio.secoes, [*relatorio.secoes[1:], None], strict=True
     ):
         _mostrar_secao(secao)
-        if secao.trancada and not (seguinte and seguinte.trancada):
-            st.page_link(  # um convite depois das seções trancadas, não um por seção
+        if secao.trancada and not (seguinte and seguinte.trancada) and not convidou:
+            convidou = True
+            st.page_link(  # um convite só, depois do 1º bloco de seções trancadas
                 PAGINAS_DO_MENU["planos"],
                 label="Conhecer o plano Pro",
                 icon=":material/workspace_premium:",

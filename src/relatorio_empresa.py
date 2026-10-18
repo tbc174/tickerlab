@@ -7,8 +7,9 @@ há achado aberto. Junta o que já existe: indicadores da tela (`src/fundamentos
 (`src/fundamentalista.py`), as notas clássicas, os padrões e as notas, o valuation e o FRE.
 
 As seções do dossiê da base (auditor, ofertas, setor regulado, negócios; plano do dossiê da empresa no
-app, 17/10/2026) vêm depois de "Acontecimentos recentes" e são **trancadas aqui, no servidor**: quem não
-é Pro recebe só os títulos e o convite, sem nenhum número, na página, no PDF e na API.
+app, 17/10/2026) entram no lugar delas na ordem do molde A (relatórios v2, `ORDEM_DAS_SECOES`) e são
+**trancadas aqui, no servidor**: quem não é Pro recebe só os títulos e o convite, sem nenhum número, na
+página, no PDF e na API. A ordem é decidida aqui; os desenhos (PDF, página, React) só a seguem.
 
 Premissas padrão do valuation (a pessoa troca na página): desconto de 12% ao ano, perpetuidade de 3%,
 10 anos de projeção e crescimento de 5% no DCF. São um ponto de partida declarado, não uma opinião.
@@ -33,27 +34,42 @@ from src.planos import DOSSIE_DA_BASE, motivo_sem_acesso
 from src.qualidade_texto import texto_do_selo
 from src.setores import NOMES, SEM_GRUPO, grupo_do_setor, grupo_para_comparar
 
+# as seções na ordem do molde A (relatórios v2): quem é, o que os dados mostram e o que mudou no
+# topo; as contas e a qualidade delas; capital, setor e acontecimentos; as notas, o valuation e o
+# histórico; o que mudaria a leitura, a metodologia e os limites no fim
 SECOES: dict[str, str] = {
     "ficha_tecnica": "Ficha técnica",
     "o_que_os_dados_mostram": "O que os dados mostram",
-    "resumo": "Resumo",
+    "o_que_mudou": "O que mudou desde o balanço anterior",
     "resultado": "Resultado",
     "retorno": "Retorno",
     "endividamento": "Endividamento",
     "caixa": "Caixa e capital de giro",
+    "qualidade": "Qualidade dos dados",
+    "dividendos": "Dividendos e diluição",
+    "pares": "Pares do mesmo setor",
+    "eventos": "Acontecimentos recentes",
     "notas_classicas": "Notas clássicas",
     "padroes_e_notas": "Notas contra o setor",
     "valuation": "Valuation",
-    "dividendos": "Dividendos e diluição",
     "historico": "Histórico de até 10 anos",
-    "eventos": "Acontecimentos recentes",
-    "qualidade": "Qualidade dos dados",
-    "o_que_mudou": "O que mudou desde o balanço anterior",
-    "pares": "Pares do mesmo setor",
     "o_que_mudaria": "O que mudaria esta leitura",
     "metodologia": "Metodologia e fontes",
-    "limites": "Limites e cuidados",
+    "limites": "Limites e perguntas em aberto",
 }
+# onde entram as seções do dossiê da base (`base/dossie.py`), entre as do relatório
+ORDEM_DAS_SECOES = (
+    *list(SECOES)[: list(SECOES).index("dividendos") + 1],
+    "ofertas_e_fundos",  # capital e acionistas
+    "auditor_e_controladas",  # governança
+    "pares",
+    "setor_regulado",  # setor e pares
+    "eventos",
+    "negocios",  # negócios e acontecimentos
+    *list(SECOES)[list(SECOES).index("notas_classicas") :],
+)
+# uma seção nova da base, que a ordem ainda não conhece, vai com os negócios e acontecimentos
+POSICAO_DA_SECAO_NOVA = ORDEM_DAS_SECOES.index("negocios") + 0.5
 CHAVES_DAS_SECOES = {
     "resultado": ("receita", "lucro", "margem_bruta", "margem_ebit", "margem_liquida",
                   "crescimento_receita", "crescimento_lucro"),
@@ -109,7 +125,13 @@ LIMITES = (
         "TickerLab não dá preço-alvo."
     ),
     "Bancos e seguradoras têm outro plano de contas: vários indicadores não se aplicam a eles.",
+    (
+        "O que a base ainda não tem: protestos em cartório, processos na Justiça (além dos que a "
+        "empresa declara nos documentos à CVM) e atrasos de pagamentos a fornecedores e bancos. Esta "
+        "ficha não diz nada sobre eles; não aparecer aqui não quer dizer que não existam."
+    ),
 )
+EM_ABERTO = "Em aberto:"  # o começo de cada pergunta que a ficha não respondeu
 CONVITE_DO_DOSSIE = (
     "Com ele, esta seção mostra o que a base do TickerLab reuniu da companhia nos dados abertos da "
     "CVM e das agências reguladoras, com a fonte de cada número."
@@ -185,6 +207,7 @@ class Secao:
         default_factory=list
     )  # o que os dados mostram
     trancada: bool = False  # só o título e o convite: o plano não inclui a seção
+    recolhida: bool = False  # explicação: a tela mostra fechada (o PDF, por inteiro)
 
 
 @dataclass(frozen=True)
@@ -442,26 +465,6 @@ def _secao_de_itens(chave: str, c: _Calculos) -> Secao:
         if i in c.indicadores
     ]
     return Secao(chave, SECOES[chave], itens)
-
-
-def _resumo(c: _Calculos) -> Secao:
-    frases = []
-    for chave in ("receita", "margem_liquida", "roe", "divida_sobre_pl"):
-        indicador = c.indicadores.get(chave)
-        if indicador and indicador.disponivel:
-            nota = c.notas_por_indicador.get(chave)
-            sufixo = f" ({nota.nota} contra o setor)" if nota else ""
-            frases.append(
-                f"{indicador.nome}: {escrever(indicador.valor, indicador.unidade)}{sufixo}."
-            )
-    altman = c.classicas["altman"]
-    if altman.valor is not None:
-        frases.append(
-            f"Altman Z'': {altman.valor:.2f}, faixa {altman.faixa} do artigo.".replace(
-                ".", ",", 1
-            )
-        )
-    return Secao("resumo", SECOES["resumo"], paragrafos=frases)
 
 
 def _notas_classicas(c: _Calculos) -> Secao:
@@ -1000,7 +1003,7 @@ def _o_que_mudaria(c: _Calculos) -> Secao:
 
 
 def _metodologia() -> Secao:
-    return Secao("metodologia", SECOES["metodologia"], paragrafos=[
+    return Secao("metodologia", SECOES["metodologia"], recolhida=True, paragrafos=[
         ("Indicadores de 12 meses: o último DFP mais o acumulado do ano no último ITR, menos o mesmo "
         "período do ano anterior."),
         f"Fórmulas, padrões e notas na página de metodologia: {URL_DA_METODOLOGIA}.",
@@ -1258,6 +1261,33 @@ def _ficha_tecnica(
     )
 
 
+def na_ordem(secoes: list[Secao]) -> list[Secao]:
+    """As seções na ordem do molde A (`ORDEM_DAS_SECOES`); a ordem que todos os desenhos seguem."""
+    posicoes = {chave: i for i, chave in enumerate(ORDEM_DAS_SECOES)}
+    return sorted(secoes, key=lambda s: posicoes.get(s.chave, POSICAO_DA_SECAO_NOVA))
+
+
+def perguntas_em_aberto(secoes: list[Secao], tranca: str | None) -> list[str]:
+    """O que a ficha mostrou como "—": uma pergunta por motivo, com os números que ele explica.
+
+    Fica de fora o que só falta pelo plano (`tranca`): isso é convite, não pergunta sobre a empresa.
+    """
+    por_motivo: dict[str, list[str]] = {}
+    for secao in secoes:
+        if secao.trancada:
+            continue
+        for item in secao.itens:
+            if item.texto != "—" or not item.motivo:
+                continue
+            if tranca and tranca in item.motivo:
+                continue
+            por_motivo.setdefault(item.motivo, []).append(item.nome)
+    return [
+        f"{EM_ABERTO} {' e '.join(dict.fromkeys(nomes))}. {motivo}"
+        for motivo, nomes in por_motivo.items()
+    ]
+
+
 def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     """O relatório completo de uma empresa, pronto para a página, o PDF e a API.
 
@@ -1270,7 +1300,6 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
     fontes = (*FONTES, *(mostrado.fontes if mostrado else ()))
     secoes = [
         _ficha_tecnica(entradas, c, do_dossie, plano),
-        _resumo(c),
         *(
             _secao_de_itens(chave, c)
             for chave in ("resultado", "retorno", "endividamento", "caixa")
@@ -1287,10 +1316,14 @@ def montar(entradas: Entradas, plano: str | None = None) -> Relatorio:
         _pares(entradas, c),
         _o_que_mudaria(c),
         _metodologia(),
-        Secao("limites", SECOES["limites"], paragrafos=limites),
     ]
     _graficos_de_contas(c, secoes)
-    secoes.insert(1, _o_que_os_dados_mostram(secoes, c))
+    secoes.append(_o_que_os_dados_mostram(secoes, c))
+    em_aberto = perguntas_em_aberto(secoes, motivo_sem_acesso(plano, DOSSIE_DA_BASE))
+    secoes.append(
+        Secao("limites", SECOES["limites"], paragrafos=[*limites, *em_aberto])
+    )
+    secoes = na_ordem(secoes)
     return Relatorio(
         empresa=entradas.empresa,
         cnpj=entradas.cnpj,

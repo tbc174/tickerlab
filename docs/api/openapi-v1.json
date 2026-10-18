@@ -2310,6 +2310,11 @@
             "title": "Pontos",
             "type": "array"
           },
+          "recolhida": {
+            "default": false,
+            "title": "Recolhida",
+            "type": "boolean"
+          },
           "tabelas": {
             "items": {
               "$ref": "#/components/schemas/TabelaDoRelatorioV1"

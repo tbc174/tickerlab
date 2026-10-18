@@ -1,5 +1,5 @@
 """PDF do relatório completo de empresa (série 2 da base de ML, PR 7): as mesmas seções e números da
-página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e cuidados" e os gráficos."""
+página (a mesma estrutura de `src/relatorio_empresa.py`), com "Limites e perguntas em aberto" e os gráficos."""
 
 from io import BytesIO
 

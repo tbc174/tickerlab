@@ -398,6 +398,7 @@ export interface SecaoDoRelatorioV1 {
   tabelas: TabelaDoRelatorioV1[];
   pontos?: PontoDoRelatorioV1[];
   trancada: boolean; // o plano não inclui a seção: só o título e o convite, sem números
+  recolhida?: boolean; // explicação: a tela mostra fechada até a pessoa abrir
 }
 
 export interface RelatorioDaEmpresaV1 {
