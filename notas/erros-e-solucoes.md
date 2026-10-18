@@ -609,3 +609,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** a data de referência que a companhia informa ao IPE pode ser o evento anunciado (a assembleia que ainda vai aprovar a operação). Os dados de teste só tinham referência igual à entrega.
 - **Solução:** `"anuncia_o_futuro": True` na entrada da tabela em `_CONFERENCIA` (`base/dicionario.py`), como `eventos` e `debentures_assembleias`, e um teste com referência depois da entrega. Regra: tabela que vem do IPE (ou de qualquer documento que anuncia algo) precisa de um caso de teste com data futura.
 - **Data:** 18/10/2026
+
+## Extração de M&A descarta o nome certo porque o trecho usa o nome curto
+- **Sintoma:** na amostra de ouro, o Sonnet "não leu" o comprador ou o alvo em 11 documentos, mas a resposta bruta tinha o nome certo; o descarte era `nome_fora_do_trecho`.
+- **Causa:** a conferência exigia o nome inteiro dentro do trecho. O documento define o nome uma vez ("Duane do Brasil S.A. (“Duane”)") e depois só usa o curto; o modelo copia o trecho que prova o papel ("passou a ser detida totalmente pela Duane"), sem o nome inteiro.
+- **Solução:** `_nome_provado` em `base/ma_extracao.py`: vale o nome inteiro no trecho **ou** toda palavra que distingue o nome está no documento e o trecho tem uma delas (palavra genérica como "Companhia" não conta). Achado comparando o descarte com a resposta bruta, antes de culpar o modelo.
+- **Data:** 18/10/2026
