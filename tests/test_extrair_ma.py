@@ -157,6 +157,10 @@ def test_operacoes_da_amostra_sem_duplicadas(tmp_path):
         {"operacao": "P-1", "documentos": 2}
     ]
     assert ligacoes["operacao"].tolist() == ["P-1", "P-1"]
-    assert comparacao == {"no_gabarito": [["P-1", "P-4"]], "separadas": [], "juntadas": []}
+    assert comparacao == {
+        "no_gabarito": [["P-1", "P-4"]],
+        "separadas": [],
+        "juntadas": [],
+    }
     texto = extrair_ma.relatorio_das_operacoes(mx.CONFERENTE, tabela, comparacao)
     assert "2 documentos de operação viraram 1 operações" in texto
