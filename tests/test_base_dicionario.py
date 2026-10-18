@@ -10,8 +10,7 @@ from base import cda, conselhos, fca, ligacoes, ofertas
 from base.amostra import demonstracoes as amostra_demonstracoes
 from base.amostra import universo as amostra_universo
 from base.cadastro import ler_cadastro, tickers_no_tempo
-from base.commodities import cftc_cot
-from base.commodities import comex_cafe
+from base.commodities import cftc_cot, comex_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
