@@ -214,3 +214,46 @@ def test_documento_de_empresa_nas_colunas(nove, formato, coluna):
         arquivo.writestr(f"inf_mensal_cra_{quadro}_2026.csv", texto.encode("latin-1"))
     tabela = securitizacao.ler_informe(conteudo.getvalue(), "cra").tabelas[quadro]
     assert tabela[coluna].isna().all()
+
+
+def _zip_com(quadros: dict[str, str], produto: str = "cra") -> bytes:
+    conteudo = io.BytesIO()
+    with zipfile.ZipFile(conteudo, "w") as arquivo:
+        for quadro, texto in quadros.items():
+            nome = f"inf_mensal_{produto}_{quadro}_2026.csv"
+            arquivo.writestr(nome, texto.encode("latin-1"))
+    return conteudo.getvalue()
+
+
+def test_linha_quebrada_conta_e_avisa(caplog):
+    # um ";" dentro de um campo do CRA de 2026: a linha sai, contada e avisada (vai para o manifesto)
+    with caplog.at_level("WARNING", logger="base.securitizacao"):
+        leitura = _ler("inf_mensal_cra_2026.zip")
+    assert leitura.linhas_quebradas == {"cedente_devedor": 1}
+    assert "cedente_devedor" in caplog.text
+    assert _ler("inf_mensal_cri_2026.zip").linhas_quebradas == {}
+
+
+CABECALHO = "CNPJ_Emissora;Codigo_Identificacao_Certificado;Data_Referencia;Versao"
+
+
+def test_fica_a_maior_versao():
+    geral = (
+        f"{CABECALHO};Data_Entrega;Quantidade_Series\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;2026-06-20;1\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;2;2026-08-03;3\n"
+        "02.773.542/0001-22;BRTESTECRA02;2026-05-01;1;2026-06-21;5\n"
+    )
+    cedentes = (
+        f"{CABECALHO};Tipo;CNPJ;Percentual\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;Cedente;33000167000101;0.5\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;1;Cedente;07526557000100;0.5\n"
+        "02.773.542/0001-22;BRTESTECRA01;2026-05-01;10;Cedente;33000167000101;1\n"
+    )
+    tabelas = securitizacao.ler_informe(
+        _zip_com({"geral": geral, "cedente_devedor": cedentes}), "cra"
+    ).tabelas
+    series = tabelas["geral"].set_index("codigo_certificado")["Quantidade_Series"]
+    assert series.to_dict() == {"BRTESTECRA01": "3", "BRTESTECRA02": "5"}
+    # a versão 10 vence a 1 pelo número, não pelo texto; as linhas da versão vencida saem todas
+    assert tabelas["cedente_devedor"]["Versao"].tolist() == ["10"]
