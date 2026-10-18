@@ -137,6 +137,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "newsletter",
                 "momentum",
                 "juros_e_inflacao",
+                "precos_de_referencia",
                 "parametros",
             },
         ),

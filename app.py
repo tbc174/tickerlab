@@ -56,6 +56,7 @@ from telas.research.minha_carteira import pagina_carteira_research
 from telas.research.newsletter import pagina_newsletter
 from telas.research.parametros import pagina_parametros
 from telas.research.por_dentro import pagina_por_dentro
+from telas.research.precos_de_referencia import pagina_precos_de_referencia
 from telas.research.pulse import pagina_pulse
 from telas.research.relatorio_empresa import pagina_relatorio_empresa
 from telas.trade import pagina_trade
@@ -172,6 +173,7 @@ FUNCOES_DAS_PAGINAS = {
     "carteira_b3": pagina_carteira_b3,
     "juros_e_inflacao": pagina_juros_e_inflacao,
     "linha_do_tempo": pagina_linha_do_tempo,
+    "precos_de_referencia": pagina_precos_de_referencia,
     "por_dentro": pagina_por_dentro,
     "donos": pagina_donos,
     "newsletter": pagina_newsletter,
