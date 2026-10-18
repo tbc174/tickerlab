@@ -31,8 +31,8 @@ LICENCAS = {
     "ibge": "Domínio público (citar o IBGE)",
     # preços mensais de referência (lidos em 18/10/2026): Pink Sheet sob CC BY 4.0 por padrão, mas
     # com fontes de terceiros; FMI com todos os direitos reservados e uso comercial sob permissão
-    "bm": "CC BY 4.0 (Banco Mundial, Pink Sheet); fontes de terceiros (Bloomberg, S&P, ICO) só com consentimento delas",
-    "fmi": "© FMI: uso comercial e coleta automática em massa pedem permissão (copyright@imf.org)",
+    "bm": "CC BY 4.0 (Pink Sheet); preços de terceiros só com o consentimento deles",
+    "fmi": "© FMI: uso comercial e coleta em massa pedem permissão (copyright@imf.org)",
     "tesouro": "Sem restrição (Fiscal Data, Tesouro dos EUA)",
     "iex": "Termos do IEX HIST (com atribuição)",
     "yahoo": "Uso pessoal: só interno, nunca exportar",
