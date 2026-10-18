@@ -621,3 +621,9 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** o guia v2 manda olhar do ponto de vista de quem publicou, e o modelo copiou o trecho da ação ("a Eletrobras transferiu…"). O apelido "Eletrobras" não é palavra do nome inteiro ("Centrais Elétricas Brasileiras S/A"), e "3R" tem só 2 letras (a regra do #435 ignora palavras curtas).
 - **Solução:** `_apelidos` em `base/ma_extracao.py`: vale o apelido entre aspas que o documento define logo depois do nome inteiro, em um ou dois parênteses e em qualquer ordem ('(“Eletrobras”) (B3: ELET3)'); apelido só de palavra genérica ("Companhia") continua sem valer. A 1ª versão aceitava só o código da bolsa antes da definição e não pegava a Eletrobras: o teste agora tem as duas ordens.
 - **Data:** 18/10/2026
+
+## Tela nova da API cai nas travas do CI: campo `preco` e nome com `ler_tabela` (Painel do café, #452)
+- **Sintoma:** no CI, `test_nenhum_esquema_entrega_preco_bruto` acusou `('PainelDoCafeV1', {'preco'})` e `test_codigo_novo_so_le_a_base_pela_porta` acusou `src/commodities/cafe/painel.py`, embora a leitura já fosse pela `base.porta`.
+- **Causa:** as duas travas olham nomes, não o que o código faz. A da licença (ADR 0008) recusa campo de esquema chamado `preco`, `close`, `fechamento` etc. A da porta procura o texto `ler_tabela` no arquivo, e a função se chamava `ler_tabelas_da_base`.
+- **Solução:** o bloco virou `preco_de_referencia` (como o #451, que usa `ultimo_valor`, `bm` e `fmi`) e a função virou `tabelas_pela_porta`. Antes de abrir um PR com esquema novo ou leitura da base, rode `pytest tests/test_api_v1_esquemas.py tests/test_porta_unica.py`.
+- **Data:** 18/10/2026

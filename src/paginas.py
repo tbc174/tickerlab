@@ -695,6 +695,36 @@ PAGINAS = (
         ),
         so_no_app_novo=True,
     ),
+    Pagina(
+        "painel_do_cafe",
+        "Painel do café",
+        GRUPO_RESEARCH,
+        ":material/coffee:",
+        "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, "
+        "clima e calendário, cada número com a data e a fonte.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/painel-do-cafe",
+            (
+                Entrada(
+                    "tipo",
+                    "opcao",
+                    "Arábica ou conilon (robusta).",
+                    padrao="arabica",
+                    opcoes=("arabica", "conilon"),
+                ),
+                Entrada(
+                    "regiao",
+                    "texto",
+                    "A região do clima e do calendário; vazia, a de maior área do tipo.",
+                ),
+            ),
+            "PainelDoCafeV1",
+        ),
+        so_no_app_novo=True,
+    ),
 )
 
 POR_CHAVE = {p.chave: p for p in PAGINAS}

@@ -1165,6 +1165,62 @@ def test_relatorio_empresa_exige_ticker(cliente):
     assert cliente.get("/api/v1/relatorio-empresa").status_code == 422
 
 
+# --- Painel do café (PR 11 do plano do café; a tela só existe no React) ---------------------
+
+
+@pytest.fixture
+def cafe_semeado(banco, monkeypatch):
+    from src.commodities.cafe import painel as painel_do_cafe
+    from tests.test_painel_do_cafe import semear_acervo, tabelas_de_exemplo
+
+    with banco.begin() as conexao:
+        semear_acervo(conexao)
+    monkeypatch.setattr(painel_do_cafe, "tabelas_pela_porta", tabelas_de_exemplo)
+    return painel_do_cafe
+
+
+@pytest.mark.parametrize("tipo", ["arabica", "conilon"])
+def test_painel_do_cafe_igual_ao_montar_painel(
+    cliente, banco, no_dia, cafe_semeado, tipo
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params={"tipo": tipo})
+    assert resposta.status_code == 200, resposta.text
+    with banco.connect() as conexao:
+        lido = cafe_semeado.montar_painel(
+            conexao, tipo, HOJE, tabelas=cafe_semeado.tabelas_pela_porta()
+        )
+    assert resposta.json() == _json(esquemas.de_painel_do_cafe(lido))
+    dados = resposta.json()
+    assert dados["tipo"] == tipo
+    assert dados["aviso_diario"] == cafe_semeado.AVISO_DIARIO
+    assert dados["preco_de_referencia"]["conteudo"] is not None
+
+
+def test_painel_do_cafe_com_regiao_escolhida(cliente, no_dia, cafe_semeado):
+    regiao = cafe_semeado.regiao_padrao("conilon").id
+    resposta = cliente.get(
+        "/api/v1/painel-do-cafe", params={"tipo": "conilon", "regiao": regiao}
+    )
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["regiao"] == regiao
+
+
+@pytest.mark.parametrize(
+    "params", [{"tipo": "robusta"}, {"regiao": "nao-existe"}], ids=["tipo", "regiao"]
+)
+def test_painel_do_cafe_recusa_tipo_ou_regiao_desconhecidos_422(
+    cliente, no_dia, params
+):
+    resposta = cliente.get("/api/v1/painel-do-cafe", params=params)
+    assert resposta.status_code == 422
+
+
+def test_painel_do_cafe_exige_login(banco, monkeypatch):
+    monkeypatch.setenv(VARIAVEL_DA_CHAVE, "1")
+    cliente_sem_login = TestClient(api.criar_app({VARIAVEL_DA_CHAVE: "1"}))
+    assert cliente_sem_login.get("/api/v1/painel-do-cafe").status_code == 401
+
+
 # --- Preços de referência (ADR 0062, Emenda 2: a tela vai para o React) -------------------
 
 

@@ -29,6 +29,7 @@ from src.api_v1.contexto import ContextoDoAtivo
 from src.backtest import ResultadoBacktest
 from src.banco.dados_do_usuario import Simulacao
 from src.commodities import painel_de_precos
+from src.commodities.cafe import painel as painel_do_cafe
 from src.conteudo import descrever_pior_drawdown
 from src.ficha import Ficha, PedidoDaFicha, Resultado, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
@@ -897,3 +898,316 @@ class MapaDoCafeV1(BaseModel):
     ]  # GeoJSON (FeatureCollection) simplificado, propriedade `codarea`
     fontes: list[str]
     aviso: str
+
+
+# --- Painel do café (plano do café, PR 11): os tipos de `src/commodities/cafe/painel.py` ------------
+class PontoDoPrecoDoCafeV1(BaseModel):
+    mes: date
+    bm: float | None  # Pink Sheet do Banco Mundial
+    fmi: float | None
+
+
+class PrecoDeReferenciaDoCafeV1(BaseModel):
+    chave: str
+    nome: str
+    unidade: str
+    ultimo_mes: date
+    ultimo_valor: float
+    variacao_12_meses: float | None  # em %
+    historico: list[PontoDoPrecoDoCafeV1]
+    com_fmi: bool
+    nota_das_fontes: str | None
+
+
+class PontoDoSpreadDoCafeV1(BaseModel):
+    mes: date
+    arabica: float  # centavos de dólar por libra-peso
+    robusta: float
+    spread: float
+    razao: float
+
+
+class MarcoDoCafeV1(BaseModel):
+    data: date
+    texto: str
+    fonte: str
+
+
+class PrecoDoCafeV1(BaseModel):
+    item: PrecoDeReferenciaDoCafeV1
+    spread: list[PontoDoSpreadDoCafeV1]
+    marcos: list[MarcoDoCafeV1]
+
+
+class PontoDoCambioV1(BaseModel):
+    mes: date
+    valor: float  # média do mês, R$ por US$
+
+
+class CambioDoCafeV1(BaseModel):
+    ultimo_dia: date
+    ultimo_valor: float
+    variacao_12_meses: float | None
+    historico: list[PontoDoCambioV1]
+
+
+class PontoDosFundosV1(BaseModel):
+    relatorio: date
+    liquido_lotes: float
+    fracao_do_interesse_aberto: float
+
+
+class FundosDoCafeV1(BaseModel):
+    relatorio: date
+    comprados_lotes: float
+    vendidos_lotes: float
+    liquido_lotes: float
+    liquido_sacas: float
+    interesse_aberto_lotes: float
+    fracao_do_interesse_aberto: float
+    historico: list[PontoDosFundosV1]
+    legenda: str
+
+
+class DestinoDoCafeV1(BaseModel):
+    pais: str
+    sacas: float
+    fob_usd: float
+    fracao: float
+
+
+class ExportacoesDoCafeV1(BaseModel):
+    primeiro_mes: date
+    ultimo_mes: date
+    sacas: float
+    fob_usd: float
+    destinos: list[DestinoDoCafeV1]
+    fracao_do_espirito_santo: float | None
+    nota: str
+
+
+class PontoAnualDoCafeV1(BaseModel):
+    ano_safra: int
+    valor: float
+    rotulo: str
+
+
+class BalancoDoPaisV1(BaseModel):
+    codigo_do_pais: str
+    ano_safra: int
+    tipo: str
+    producao: float
+    participacao_na_producao: float
+    relacao_estoque_consumo: float | None
+
+
+class BalancoDoCafeV1(BaseModel):
+    ultima_safra: int
+    estoque_consumo_mundo: list[PontoAnualDoCafeV1]
+    estoque_consumo_brasil: list[PontoAnualDoCafeV1]
+    participacao_do_brasil: list[PontoAnualDoCafeV1]
+    paises: list[BalancoDoPaisV1]
+
+
+class LinhaDaSafraV1(BaseModel):
+    uf: str
+    area_producao_ha: float | None
+    produtividade_sc_ha: float | None
+    producao_mil_sacas: float | None
+
+
+class SafraDoCafeV1(BaseModel):
+    safra: int
+    levantamento: int
+    divulgado_em: date
+    linhas: list[LinhaDaSafraV1]
+
+
+class ErroDaSafraV1(BaseModel):
+    safra: int
+    erro_pct: float
+    erro_mil_sacas: float
+
+
+class TermometroDaConabV1(BaseModel):
+    erros: list[ErroDaSafraV1]
+    vies_medio_pct: float | None
+    menor_erro_pct: float
+    maior_erro_pct: float
+    nota: str
+
+
+class PontoDaSafraV1(BaseModel):
+    safra: int
+    tipo: str
+    uf: str
+    serie: str
+    valor: float
+    unidade: str
+    rotulo: str | None
+    levantamento: int | None
+
+
+class BienalidadeDoCafeV1(BaseModel):
+    marcas: list[PontoDaSafraV1]
+
+
+class IndiceDeChuvaV1(BaseModel):
+    valor: float | None  # mm somados nos três meses
+    normal: float | None
+    anomalia: float | None
+    razao_da_normal: float | None
+    n_estacoes: int
+    inicio: date
+    fim: date
+
+
+class TemperaturaDoMesV1(BaseModel):
+    competencia: date
+    tmin_media_c: float | None
+    tmin_normal_c: float | None
+    tmin_anomalia_c: float | None
+    dias_tmin_abaixo_de_2c: float | None
+
+
+class ClimaDaRegiaoV1(BaseModel):
+    regiao: str
+    nome_da_regiao: str
+    fonte_dos_dados: str
+    chuva: IndiceDeChuvaV1
+    temperatura: TemperaturaDoMesV1
+
+
+class FaseDoCafeV1(BaseModel):
+    mes: int
+    regiao_id: str
+    safra_em_curso: str
+    safra_seguinte: str
+    em_colheita: bool
+    na_janela_de_geada: bool
+
+
+class ItemDoCalendarioV1(BaseModel):
+    tema: str
+    texto: str
+    indices: list[str]
+
+
+class CalendarioDoCafeV1(BaseModel):
+    fase: FaseDoCafeV1
+    itens: list[ItemDoCalendarioV1]
+
+
+class FatoDaContraparteV1(BaseModel):
+    fato: str
+    descricao: str
+    valor: float | None
+    unidade: str | None
+    data: date
+    divulgado_em: date
+    fonte: str
+    veiculo: str
+    tipo_de_fonte: str
+
+
+class FichaDaContraparteV1(BaseModel):
+    id: str
+    cnpj: str | None
+    nome: str
+    tipo: str
+    uf: str | None
+    fatos: list[FatoDaContraparteV1]
+    o_que_nao_sabemos: list[str]
+
+
+class ContrapartesDoCafeV1(BaseModel):
+    fichas: list[FichaDaContraparteV1]
+
+
+class BlocoDoCafeV1(BaseModel):
+    """O que toda caixa do painel tem: o que é, a fonte, a data do número mais novo e, sem dado, o
+    motivo (`conteudo` vazio)."""
+
+    chave: str
+    titulo: str
+    o_que_e: str
+    fonte: str
+    data: date | None
+    motivo_sem_dado: str | None
+
+
+class BlocoDoPrecoDoCafeV1(BlocoDoCafeV1):
+    conteudo: PrecoDoCafeV1 | None
+
+
+class BlocoDoCambioV1(BlocoDoCafeV1):
+    conteudo: CambioDoCafeV1 | None
+
+
+class BlocoDosFundosV1(BlocoDoCafeV1):
+    conteudo: FundosDoCafeV1 | None
+
+
+class BlocoDasExportacoesV1(BlocoDoCafeV1):
+    conteudo: ExportacoesDoCafeV1 | None
+
+
+class BlocoDoBalancoV1(BlocoDoCafeV1):
+    conteudo: BalancoDoCafeV1 | None
+
+
+class BlocoDaSafraV1(BlocoDoCafeV1):
+    conteudo: SafraDoCafeV1 | None
+
+
+class BlocoDoTermometroV1(BlocoDoCafeV1):
+    conteudo: TermometroDaConabV1 | None
+
+
+class BlocoDaBienalidadeV1(BlocoDoCafeV1):
+    conteudo: BienalidadeDoCafeV1 | None
+
+
+class BlocoDoClimaV1(BlocoDoCafeV1):
+    conteudo: ClimaDaRegiaoV1 | None
+
+
+class BlocoDoCalendarioV1(BlocoDoCafeV1):
+    conteudo: CalendarioDoCafeV1 | None
+
+
+class BlocoDasContrapartesV1(BlocoDoCafeV1):
+    conteudo: ContrapartesDoCafeV1 | None
+
+
+class OpcaoDeRegiaoV1(BaseModel):
+    id: str
+    nome: str
+    tipo_predominante: str
+
+
+class PainelDoCafeV1(BaseModel):
+    """O painel do café de um tipo como estava em `dia`: cada bloco com o que é, a fonte e a data."""
+
+    dia: date
+    tipo: str
+    nome_do_tipo: str
+    regiao: str
+    regioes: list[OpcaoDeRegiaoV1]
+    aviso_diario: str
+    preco_de_referencia: BlocoDoPrecoDoCafeV1
+    cambio: BlocoDoCambioV1
+    fundos: BlocoDosFundosV1
+    exportacoes: BlocoDasExportacoesV1
+    balanco: BlocoDoBalancoV1
+    safra: BlocoDaSafraV1
+    termometro: BlocoDoTermometroV1
+    bienalidade: BlocoDaBienalidadeV1
+    clima: BlocoDoClimaV1
+    calendario: BlocoDoCalendarioV1
+    contrapartes: BlocoDasContrapartesV1
+
+
+def de_painel_do_cafe(painel: painel_do_cafe.PainelDoCafe) -> PainelDoCafeV1:
+    """O painel montado no formato da API (os campos têm os mesmos nomes das dataclasses)."""
+    return PainelDoCafeV1.model_validate(painel_do_cafe.em_dicionario(painel))

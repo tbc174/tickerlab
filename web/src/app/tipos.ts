@@ -514,3 +514,265 @@ export interface MapaDoCafeV1 {
   fontes: string[];
   aviso: string;
 }
+
+// --- Painel do café (src/api_v1/esquemas.py, PainelDoCafeV1): cada caixa com o que é, fonte e data ---
+
+export interface PontoDoPrecoDoCafeV1 {
+  mes: string;
+  bm: number | null; // Pink Sheet do Banco Mundial
+  fmi: number | null;
+}
+
+export interface PrecoDeReferenciaDoCafeV1 {
+  chave: string;
+  nome: string;
+  unidade: string;
+  ultimo_mes: string;
+  ultimo_valor: number;
+  variacao_12_meses: number | null; // em %
+  historico: PontoDoPrecoDoCafeV1[];
+  com_fmi: boolean;
+  nota_das_fontes: string | null;
+}
+
+export interface PontoDoSpreadDoCafeV1 {
+  mes: string;
+  arabica: number; // centavos de dólar por libra-peso
+  robusta: number;
+  spread: number;
+  razao: number;
+}
+
+export interface MarcoDoCafeV1 {
+  data: string;
+  texto: string;
+  fonte: string;
+}
+
+export interface PrecoDoCafeV1 {
+  item: PrecoDeReferenciaDoCafeV1;
+  spread: PontoDoSpreadDoCafeV1[];
+  marcos: MarcoDoCafeV1[];
+}
+
+export interface PontoDoCambioV1 {
+  mes: string;
+  valor: number; // média do mês, R$ por US$
+}
+
+export interface CambioDoCafeV1 {
+  ultimo_dia: string;
+  ultimo_valor: number;
+  variacao_12_meses: number | null; // em %
+  historico: PontoDoCambioV1[];
+}
+
+export interface PontoDosFundosV1 {
+  relatorio: string;
+  liquido_lotes: number;
+  fracao_do_interesse_aberto: number;
+}
+
+export interface FundosDoCafeV1 {
+  relatorio: string;
+  comprados_lotes: number;
+  vendidos_lotes: number;
+  liquido_lotes: number;
+  liquido_sacas: number;
+  interesse_aberto_lotes: number;
+  fracao_do_interesse_aberto: number;
+  historico: PontoDosFundosV1[];
+  legenda: string;
+}
+
+export interface DestinoDoCafeV1 {
+  pais: string;
+  sacas: number;
+  fob_usd: number;
+  fracao: number;
+}
+
+export interface ExportacoesDoCafeV1 {
+  primeiro_mes: string;
+  ultimo_mes: string;
+  sacas: number;
+  fob_usd: number;
+  destinos: DestinoDoCafeV1[];
+  fracao_do_espirito_santo: number | null;
+  nota: string;
+}
+
+export interface PontoAnualDoCafeV1 {
+  ano_safra: number;
+  valor: number;
+  rotulo: string;
+}
+
+export interface BalancoDoPaisV1 {
+  codigo_do_pais: string;
+  ano_safra: number;
+  tipo: string;
+  producao: number;
+  participacao_na_producao: number;
+  relacao_estoque_consumo: number | null;
+}
+
+export interface BalancoDoCafeV1 {
+  ultima_safra: number;
+  estoque_consumo_mundo: PontoAnualDoCafeV1[];
+  estoque_consumo_brasil: PontoAnualDoCafeV1[];
+  participacao_do_brasil: PontoAnualDoCafeV1[];
+  paises: BalancoDoPaisV1[];
+}
+
+export interface LinhaDaSafraV1 {
+  uf: string;
+  area_producao_ha: number | null;
+  produtividade_sc_ha: number | null;
+  producao_mil_sacas: number | null;
+}
+
+export interface SafraDoCafeV1 {
+  safra: number;
+  levantamento: number;
+  divulgado_em: string;
+  linhas: LinhaDaSafraV1[];
+}
+
+export interface ErroDaSafraV1 {
+  safra: number;
+  erro_pct: number;
+  erro_mil_sacas: number;
+}
+
+export interface TermometroDaConabV1 {
+  erros: ErroDaSafraV1[];
+  vies_medio_pct: number | null;
+  menor_erro_pct: number;
+  maior_erro_pct: number;
+  nota: string;
+}
+
+export interface PontoDaSafraV1 {
+  safra: number;
+  tipo: string;
+  uf: string;
+  serie: string;
+  valor: number;
+  unidade: string;
+  rotulo: string | null;
+  levantamento: number | null;
+}
+
+export interface BienalidadeDoCafeV1 {
+  marcas: PontoDaSafraV1[];
+}
+
+export interface IndiceDeChuvaV1 {
+  valor: number | null; // mm somados nos três meses
+  normal: number | null;
+  anomalia: number | null;
+  razao_da_normal: number | null;
+  n_estacoes: number;
+  inicio: string;
+  fim: string;
+}
+
+export interface TemperaturaDoMesV1 {
+  competencia: string;
+  tmin_media_c: number | null;
+  tmin_normal_c: number | null;
+  tmin_anomalia_c: number | null;
+  dias_tmin_abaixo_de_2c: number | null;
+}
+
+export interface ClimaDaRegiaoV1 {
+  regiao: string;
+  nome_da_regiao: string;
+  fonte_dos_dados: string;
+  chuva: IndiceDeChuvaV1;
+  temperatura: TemperaturaDoMesV1;
+}
+
+export interface FaseDoCafeV1 {
+  mes: number;
+  regiao_id: string;
+  safra_em_curso: string;
+  safra_seguinte: string;
+  em_colheita: boolean;
+  na_janela_de_geada: boolean;
+}
+
+export interface ItemDoCalendarioV1 {
+  tema: string;
+  texto: string;
+  indices: string[];
+}
+
+export interface CalendarioDoCafeV1 {
+  fase: FaseDoCafeV1;
+  itens: ItemDoCalendarioV1[];
+}
+
+export interface FatoDaContraparteV1 {
+  fato: string;
+  descricao: string;
+  valor: number | null;
+  unidade: string | null;
+  data: string;
+  divulgado_em: string;
+  fonte: string; // o link
+  veiculo: string;
+  tipo_de_fonte: string;
+}
+
+export interface FichaDaContraparteV1 {
+  id: string;
+  cnpj: string | null;
+  nome: string;
+  tipo: string;
+  uf: string | null;
+  fatos: FatoDaContraparteV1[];
+  o_que_nao_sabemos: string[];
+}
+
+export interface ContrapartesDoCafeV1 {
+  fichas: FichaDaContraparteV1[];
+}
+
+/** Uma caixa do painel: sem dado, `conteudo` vem vazio e `motivo_sem_dado` diz por quê. */
+export interface BlocoDoCafeV1<T> {
+  chave: string;
+  titulo: string;
+  o_que_e: string;
+  fonte: string;
+  data: string | null; // o número mais novo da caixa
+  motivo_sem_dado: string | null;
+  conteudo: T | null;
+}
+
+export interface OpcaoDeRegiaoV1 {
+  id: string;
+  nome: string;
+  tipo_predominante: string;
+}
+
+export interface PainelDoCafeV1 {
+  dia: string;
+  tipo: string; // "arabica" ou "conilon"
+  nome_do_tipo: string;
+  regiao: string;
+  regioes: OpcaoDeRegiaoV1[];
+  aviso_diario: string;
+  preco_de_referencia: BlocoDoCafeV1<PrecoDoCafeV1>;
+  cambio: BlocoDoCafeV1<CambioDoCafeV1>;
+  fundos: BlocoDoCafeV1<FundosDoCafeV1>;
+  exportacoes: BlocoDoCafeV1<ExportacoesDoCafeV1>;
+  balanco: BlocoDoCafeV1<BalancoDoCafeV1>;
+  safra: BlocoDoCafeV1<SafraDoCafeV1>;
+  termometro: BlocoDoCafeV1<TermometroDaConabV1>;
+  bienalidade: BlocoDoCafeV1<BienalidadeDoCafeV1>;
+  clima: BlocoDoCafeV1<ClimaDaRegiaoV1>;
+  calendario: BlocoDoCafeV1<CalendarioDoCafeV1>;
+  contrapartes: BlocoDoCafeV1<ContrapartesDoCafeV1>;
+}
