@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { linkDoApp } from "../../site/textos";
+import { Carregando } from "../Carregando";
 import { FundoDoApp } from "../FundoDoApp";
 import { TELAS_DO_APP } from "../rotas";
 import { ErroDaTela } from "./ErroDaTela";
@@ -19,9 +20,7 @@ function OQueMudou() {
       <section className="cartao-do-workspace" aria-labelledby="titulo-do-que-mudou">
         <h2 id="titulo-do-que-mudou">O que mudou</h2>
         {pedido.estado === "carregando" ? (
-          <p className="apagado" role="status">
-            Lendo os acontecimentos e conferindo as suas estratégias com os preços de hoje…
-          </p>
+          <Carregando tipo="lista" rotulo="Lendo os acontecimentos e conferindo as suas estratégias com os preços de hoje…" />
         ) : (
           <ErroDaTela erro={pedido.erro} />
         )}

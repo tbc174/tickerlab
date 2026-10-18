@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { conteudoDoApp } from "../../../conteudo";
 import { linkDoApp } from "../../../site/textos";
 import type { EstrategiaAcompanhadaV1, PulseV1 } from "../../tipos";
+import { Vazio } from "../../Vazio";
 
 const TERMO_DA_FICHA = conteudoDoApp.backtest.ficha.termo;
 const SIMBOLO_DO_VEREDITO: Record<string, string> = { passou: "✓", "não passou": "✕", inconclusivo: "?" };
@@ -63,12 +64,7 @@ export function EstrategiasAcompanhadas({ dados }: { dados: PulseV1 }) {
     <section className="cartao-do-workspace" aria-labelledby="titulo-das-estrategias">
       <h2 id="titulo-das-estrategias">Estratégias acompanhadas</h2>
       {dados.estrategias.length === 0 ? (
-        <p>
-          {dados.sem_estrategias}{" "}
-          <Link className="botao pequeno" to="/backtest">
-            Rodar um backtest
-          </Link>
-        </p>
+        <Vazio frase={dados.sem_estrategias} acao={{ texto: "Rodar um backtest", para: "/backtest" }} />
       ) : (
         <ul className="links-da-conta lista-de-simulacoes" aria-label="Estratégias">
           {dados.estrategias.map((e) => (

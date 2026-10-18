@@ -110,6 +110,7 @@ export function Comparar({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<ComparacaoDoAtivoV1>
       pagina={pagina}
       carregando="Comparando…"
+      esqueleto="grafico"
       resultado={(dados) => <Resultado dados={dados} />}
       ajustar={limitar}
     />

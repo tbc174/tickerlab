@@ -1,7 +1,7 @@
 // Service worker do app TickerLab (gerado por web/src/app/pwa.ts; não editar à mão).
 "use strict";
-var VERSAO = "tl-casca-84cb81525b54";
-var CASCA = ["/novo/","/novo/assets/index-B5iHb0t9.css","/novo/assets/index-NYrnKwpD.js","/novo/estilo.css?v=8c22169a0313","/novo/fontes/JetBrainsMono-VariableFont_wght.ttf","/novo/fontes/Manrope-VariableFont_wght.ttf","/novo/icones/apple-touch-icon.png","/novo/icones/icone-192.png","/novo/icones/icone-512.png","/novo/icones/icone-mascaravel-512.png","/novo/manifest.json","/novo/simbolo.svg","/novo/tema/sol.js?v=e36a88f10cf8"];
+var VERSAO = "tl-casca-9b834f5cf436";
+var CASCA = ["/novo/","/novo/assets/index-Cg-_nAR8.css","/novo/assets/index-Dqagt497.js","/novo/estilo.css?v=8c22169a0313","/novo/fontes/JetBrainsMono-VariableFont_wght.ttf","/novo/fontes/Manrope-VariableFont_wght.ttf","/novo/icones/apple-touch-icon.png","/novo/icones/icone-192.png","/novo/icones/icone-512.png","/novo/icones/icone-mascaravel-512.png","/novo/manifest.json","/novo/simbolo.svg","/novo/tema/sol.js?v=e36a88f10cf8"];
 
 self.addEventListener("install", function (evento) {
   evento.waitUntil(

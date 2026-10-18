@@ -103,6 +103,7 @@ export function RetornoMensal({ pagina }: { pagina: PaginaDoApp }) {
     <TelaDoContrato<RetornoMensalDoAtivoV1>
       pagina={pagina}
       carregando="Calculando os meses…"
+      esqueleto="lista"
       resultado={(dados) => <Resultado dados={dados} />}
     />
   );
