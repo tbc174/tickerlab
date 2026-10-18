@@ -17,14 +17,16 @@ Conexão que cai no meio do arquivo: o dia é baixado de novo uma vez; se cair d
 
 Carga do passado (`--desde`): os pregões que faltam desde a data, do mais novo para o mais
 antigo, até `--maximo` dias coletados (dia ainda sem arquivo não conta) ou até acabar o tempo (`--minutos`),
-para a rodada da madrugada não encostar no backup. Cada dia baixa ~9 GB (cabe com folga nos 8 TB
+para a rodada da madrugada não encostar no backup. O orçamento vale para a rodada inteira, coleta e
+selo: a carga segura a trava das tarefas do VPS, e o deploy automático espera por ela (18/10/2026: o
+selo, fora do orçamento, segurou a trava por horas). Cada dia baixa ~9 GB (cabe com folga nos 8 TB
 mensais do VPS, conferido em 13/10/2026).
 
 Selo por ativo (plano dos intradiários grátis, PR 5): no fim de cada rodada, os dias com barras e
 sem selo ganham `selo/AAAA-MM-DD.parquet` (o fechamento das barras contra o oficial do dia,
 `src.barras_intradiarias.selo_dos_fechamentos`) e o resumo `.json` ganha a contagem. O oficial vem
-do Yahoo e só serve para conferir: o preço dele não é guardado. Sem resposta do Yahoo, o dia fica
-para a rodada seguinte. `nao_confere` aparece na saída, mas não é falha (na carga antiga, um
+do Yahoo e só serve para conferir: o preço dele não é guardado. Sem resposta do Yahoo, ou com o
+tempo da rodada (`--minutos`) acabado, o dia fica para a rodada seguinte. `nao_confere` aparece na saída, mas não é falha (na carga antiga, um
 desdobramento depois do dia muda o preço do Yahoo).
 
 Atribuição obrigatória ao mostrar estes dados: `iex_tops.ATRIBUICAO` (termos da IEX, ADR 0019).
@@ -253,14 +255,31 @@ def selar_dia(
     return resumo
 
 
+def _passou_do_prazo(prazo: float | None) -> bool:
+    """Se o instante `prazo` (no relógio de `time.monotonic`) já passou; sem prazo, nunca."""
+    return prazo is not None and time.monotonic() > prazo
+
+
 def selar_os_que_faltam(
     pasta: Path,
     oficiais: Callable[[date, list[str]], pd.Series],
     maximo: int = MAXIMO_DE_SELOS_POR_RODADA,
+    prazo: float | None = None,
 ) -> list[str]:
-    """Sela até `maximo` dias sem selo; devolve uma linha por dia selado."""
+    """Sela até `maximo` dias sem selo, parando quando passa o `prazo` (instante no relógio de
+    `time.monotonic`; None = sem prazo). Devolve uma linha por dia selado.
+
+    O prazo é conferido antes de cada dia: o dia já começado termina (um pedido ao Yahoo).
+    """
     linhas = []
-    for dia in dias_sem_selo(pasta)[:maximo]:
+    fila = dias_sem_selo(pasta)[:maximo]
+    for posicao, dia in enumerate(fila):
+        if _passou_do_prazo(prazo):
+            print(
+                f"Tempo da rodada acabou; {len(fila) - posicao} dias ficam sem selo "
+                "para a próxima rodada."
+            )
+            break
         resumo = selar_dia(dia, pasta, oficiais)
         if resumo is None:
             print(
@@ -325,14 +344,16 @@ def main(
 ) -> int:
     """0 = tudo certo (inclusive sem nada a coletar); 1 = algum dia falhou."""
     opcoes = _opcoes(argumentos)
-    codigo = _coletar(opcoes, buscar)
-    for linha in selar_os_que_faltam(opcoes.pasta, oficiais or fechamentos_oficiais):
+    prazo = time.monotonic() + opcoes.minutos * 60 if opcoes.minutos else None
+    codigo = _coletar(opcoes, buscar, prazo)
+    for linha in selar_os_que_faltam(
+        opcoes.pasta, oficiais or fechamentos_oficiais, prazo=prazo
+    ):
         print(linha)
     return codigo
 
 
-def _coletar(opcoes: argparse.Namespace, buscar: Callable) -> int:
-    inicio = time.monotonic()
+def _coletar(opcoes: argparse.Namespace, buscar: Callable, prazo: float | None) -> int:
     dias = _dias_da_rodada(opcoes, datetime.now(FUSO_NY).date())
     if not dias:
         print("Nada a coletar: os pregões pedidos já estão guardados.")
@@ -342,7 +363,7 @@ def _coletar(opcoes: argparse.Namespace, buscar: Callable) -> int:
     for dia in dias:
         if coletados >= opcoes.maximo:
             break
-        if opcoes.minutos and time.monotonic() - inicio > opcoes.minutos * 60:
+        if _passou_do_prazo(prazo):
             print(
                 f"Tempo da rodada acabou; {coletados} dias coletados, o resto fica para a próxima."
             )
