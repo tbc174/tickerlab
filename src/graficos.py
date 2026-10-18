@@ -9,6 +9,7 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 
 if TYPE_CHECKING:  # só para os tipos: o módulo de gráficos não depende do acervo
+    from src.commodities.painel_de_precos import PontoDoSpread, PrecoDeReferencia
     from src.juros_e_inflacao import PontoMensal
     from src.linha_do_tempo import LinhaDoTempo
 
@@ -1446,4 +1447,50 @@ def criar_grafico_linha_do_tempo(linha: "LinhaDoTempo") -> go.Figure:
             )
         )
     figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_preco_de_referencia(item: "PrecoDeReferencia") -> go.Figure:
+    """O preço mensal de referência: uma linha do Pink Sheet e, no café e no algodão, outra do FMI
+    ao lado (`item`: `painel_de_precos.PrecoDeReferencia`)."""
+    if not item.historico:
+        raise ValueError("Não há meses para mostrar.")
+    meses = pd.to_datetime([p.mes for p in item.historico])
+    figura = _figura_base(f"{item.nome} ({item.unidade}, média mensal)")
+    figura.update_yaxes(tickformat=",.2f")
+    fontes = [("Banco Mundial (Pink Sheet)", [p.bm for p in item.historico], COR_AZUL)]
+    if item.com_fmi:
+        fontes.append(("FMI (PCPS)", [p.fmi for p in item.historico], COR_INDICE))
+    for nome, valores, cor in fontes:
+        figura.add_trace(
+            go.Scatter(
+                x=meses,
+                y=valores,
+                mode="lines",
+                line={"color": cor, "width": 2.2},
+                hovertemplate="%{y:,.2f}",
+                connectgaps=False,
+                name=nome,
+            )
+        )
+    figura.update_layout(showlegend=True, legend={"orientation": "h", "y": -0.12})
+    return figura
+
+
+def criar_grafico_spread_do_cafe(spread: "tuple[PontoDoSpread, ...]") -> go.Figure:
+    """A diferença entre o arábica e o robusta (US$/kg), mês a mês."""
+    if not spread:
+        raise ValueError("Não há meses para mostrar.")
+    figura = _figura_base("Spread arábica menos robusta (US$/kg)")
+    figura.update_yaxes(tickformat=",.2f")
+    figura.add_trace(
+        go.Scatter(
+            x=pd.to_datetime([p.mes for p in spread]),
+            y=[p.valor for p in spread],
+            mode="lines",
+            line={"color": COR_AZUL, "width": 2.2},
+            hovertemplate="%{y:,.2f}",
+            name="Arábica menos robusta",
+        )
+    )
     return figura

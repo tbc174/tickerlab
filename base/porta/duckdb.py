@@ -51,6 +51,7 @@ ARQUIVOS: dict[str, str] = {
     "buracos_dos_fundos": "fundos/buracos.parquet",
     "anac_estatistico": "setoriais/anac/*.parquet",
     "anp_vendas": "setoriais/anp/*.parquet",
+    "comex_cafe": "commodities/comex_cafe/*.parquet",
     "ons_geracao": "setoriais/ons/*.parquet",
     "aneel_samp": "setoriais/aneel/*.parquet",
     "anatel_acessos": "setoriais/anatel/*.parquet",
@@ -99,6 +100,7 @@ ARQUIVOS: dict[str, str] = {
     "ma_negocios": "ma/ligacao/negocios.parquet",
     "ma_datas": "ma/datas/negocios.parquet",
     "ma_regua": "ma/regua/negocios.parquet",
+    "usda_psd_cafe": "commodities/usda_psd/*.parquet",
 }
 # tabela conferida à mão → CSV no repositório (separado por `;`)
 CONFERIDAS: dict[str, str] = {
