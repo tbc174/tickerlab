@@ -426,6 +426,12 @@ def _falhas_da_frase(
     return falhas, permitido
 
 
+def falhas_da_frase(frase: saida.Frase, ficha: _Ficha) -> list[tuple[str, str]]:
+    """As (regra, trecho) que reprovam a frase sozinha, sem o fato acima: o molde usa para deixar
+    de fora a frase da ficha que a porta reprovaria ("não dizem o que vai acontecer")."""
+    return _falhas_da_frase(frase, _Permitido([], []), ficha)[0]
+
+
 def _juntar(falhas: list[tuple[str, str]]) -> dict[str, str]:
     """Uma reprovação por regra em cada frase, com todos os trechos."""
     por_regra: dict[str, list[str]] = {}
