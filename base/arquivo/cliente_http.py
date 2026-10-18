@@ -48,12 +48,14 @@ class ClienteHttp:
         *,
         metodo: str = "GET",
         cabecalhos: Mapping[str, str] | None = None,
+        corpo: bytes | None = None,
     ) -> Resposta:
         resposta = self.sessao.request(
             metodo,
             url,
             headers=dict(cabecalhos or {}),
             timeout=TEMPO_LIMITE_EM_SEGUNDOS,
+            data=corpo,
         )
         resposta.raise_for_status()
         return Resposta(resposta.url, resposta.content, dict(resposta.headers))
