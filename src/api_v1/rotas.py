@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 import uuid
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
@@ -110,6 +111,12 @@ MOTIVO_SEM_CONTAGEM = (
 )
 
 log = logging.getLogger(__name__)
+
+# ativo sem preço (código antigo, fora da bolsa): o Yahoo leva de 1,6 a 3,2 s para dizer que não tem
+# (medido no VPS em 17/10/2026); o Pulse lembra a resposta e não pergunta de novo nesse prazo
+VALIDADE_DO_SEM_PRECO = 3600  # segundos
+# ticker -> quando o Yahoo disse que não tem (time.monotonic)
+_sem_preco: dict[str, float] = {}
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(exigir_api_ligada)])
 
@@ -1100,9 +1107,17 @@ def montar_variacoes(
     periodo = pulse.periodo_de_precos(j)
     variacoes, sem_variacao = [], []
     for ativo in ativos:
+        visto = _sem_preco.get(ativo.ticker)
+        if visto is not None and time.monotonic() - visto < VALIDADE_DO_SEM_PRECO:
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
         try:
             fechamentos = carregar(ativo.ticker, periodo)["Close"]
-        except (DadosIndisponiveisError, ValueError, KeyError):
+        except DadosIndisponiveisError:
+            _sem_preco[ativo.ticker] = time.monotonic()
+            sem_variacao.append(ativo.ticker.removesuffix(".SA"))
+            continue
+        except (ValueError, KeyError):
             sem_variacao.append(ativo.ticker.removesuffix(".SA"))
             continue
         v = pulse.variacao(ativo.ticker, fechamentos, j.desde)
