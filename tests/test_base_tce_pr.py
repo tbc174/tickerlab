@@ -461,3 +461,38 @@ def test_descobre_so_a_despesa_na_fonte_propria():
     fonte = fontes.POR_ID["tce-pr-despesa"]
     assert fonte.pesada and fonte.grupo == "semanal"
     assert fontes.POR_ID["tce-pr-pit"].descobrir is not fonte.descobrir
+
+
+def test_xml_partido_em_pedacos_entra_e_o_credor_pf_de_um_pedaco_leva_o_pagamento_do_outro():
+    # Londrina (2025) parte cada XML da Despesa em `_1`, `_2`...: sem isso a cidade inteira ficava de fora
+    pf = (
+        '<root><Empenho idEmpenho="5" sgDocCredor="CPF" '
+        f'nrDocCredor="{CPF_DO_CREDOR}" vlEmpenho="1.00"/></root>'
+    )
+    pj = (
+        f'<root><Empenho idEmpenho="6" sgDocCredor="CNPJ" nrDocCredor="{CNPJ_BOM}" '
+        'vlEmpenho="2.00"/></root>'
+    )
+    pagamento = (
+        '<root><EmpenhoPagamento idEmpenho="5" idPagamento="1" vlOperacao="1.00"/>'
+        '<EmpenhoPagamento idEmpenho="6" idPagamento="2" vlOperacao="2.00"/></root>'
+    )
+    xmls = _xmls(
+        tce_pr.regravar(
+            _zip(
+                {
+                    "2025_411370_Empenho_1.xml": pj.encode(),
+                    "2025_411370_Empenho_2.xml": pf.encode(),
+                    "2025_411370_EmpenhoPagamento_1.xml": pagamento.encode(),
+                }
+            )
+        )
+    )
+    assert set(xmls) == {
+        "2025_411370_Empenho_1.xml",
+        "2025_411370_Empenho_2.xml",
+        "2025_411370_EmpenhoPagamento_1.xml",
+    }
+    assert re.findall(
+        r'idPagamento="(\d+)"', xmls["2025_411370_EmpenhoPagamento_1.xml"]
+    ) == ["2"]

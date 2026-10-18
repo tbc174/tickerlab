@@ -31,7 +31,7 @@ import zipfile
 from collections.abc import Mapping
 from xml.etree.ElementTree import Element, SubElement, tostring
 
-from defusedxml.ElementTree import fromstring
+from defusedxml.ElementTree import fromstring, iterparse
 
 from base import cnpj
 from base.arquivo.obter import decodificar_xml
@@ -49,9 +49,12 @@ DATA_FIXA_NO_ZIP = (
 )  # a menor que o ZIP aceita: o regravado não muda com o dia
 SISTEMA_UNIX = 3  # o mesmo "criado em" no PC e no servidor (senão o SHA-256 muda)
 PERMISSOES_NO_ZIP = 0o644 << 16
-# o maior XML visto (vencedores de um município em 2013) tem ~8 MB; o XML vira árvore na memória
-LIMITE_DO_XML = 128 * 1024**2
-NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)\.xml$")
+# o XML é lido linha a linha, mas o texto decodificado fica inteiro na memória (~2,5× o XML, com a
+# entrada): o maior da Despesa de 2025 tem 228 MB (Londrina); a carga roda com memória para isso
+LIMITE_DO_XML = 1024**3
+# município grande parte o XML em pedaços (`Empenho_1.xml`, `Empenho_2.xml`, medido na Despesa de 2025):
+# o tipo é o mesmo, e o pedaço não pode ficar de fora
+NOME_DO_XML = re.compile(r"^\d{4}_\d+_([A-Za-z]+)(?:_\d+)?\.xml$")
 ATRIBUTOS_DE_PESSOA = ("nm",)
 TEXTO_LIVRE = ("dsObjeto", "dsHistorico", "dsItem")
 # atributos com números que não são documentos (códigos, valores, datas): fora da varredura de CPF
@@ -262,10 +265,20 @@ def regravar_xml(
     saíram vai na raiz (`descartadasPorCredorPf`).
     """
     descartados = empenhos_descartados if empenhos_descartados is not None else set()
-    raiz = fromstring(decodificar_xml(conteudo))
-    saida = Element(raiz.tag)
+    saida: Element | None = None
+    raiz: Element | None = None
     fora = 0
-    for elemento in raiz:
+    # linha a linha, descartando o que já foi lido: o XML de Londrina em 2025 tem 228 MB, e a árvore
+    # inteira de um XML desse tamanho passa de vários GB
+    for evento, elemento in iterparse(
+        io.StringIO(decodificar_xml(conteudo)), events=("start", "end")
+    ):
+        if raiz is None:
+            raiz = elemento
+            saida = Element(raiz.tag)
+            continue
+        if evento == "start" or elemento is raiz:
+            continue
         if elemento.tag != tipo:
             log.info(
                 "TCE-PR: linha <%s> fora do tipo %s, fica de fora", elemento.tag, tipo
@@ -277,6 +290,9 @@ def regravar_xml(
         elif not _regravar_linha(tipo, elemento.attrib, saida):
             descartados.add(elemento.get("idEmpenho", ""))
             fora += 1
+        raiz.clear()
+    if saida is None:
+        raise ValueError("TCE-PR: XML vazio")
     if fora:
         saida.set(DESCARTADAS, str(fora))
     return tostring(saida, encoding="utf-8", xml_declaration=True)
