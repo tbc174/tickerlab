@@ -153,6 +153,19 @@ def test_conab_usa_a_primeira_coleta_como_data(ambiente):
     assert set(tabela["divulgado_em"]) == {pd.Timestamp("2026-01-20")}
 
 
+def test_planilha_antiga_ilegivel_da_conab_e_pulada_e_as_outras_entram(
+    ambiente, caplog
+):
+    base, motor = ambiente
+    antiga = CONAB.replace("safra-2026", "safra-2019")
+    _guardar(motor, conab_cafe.FONTE, antiga, b"nao e uma planilha")
+    _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026))
+    assert carga_cafe.main(["conab", "--base", str(base)]) == 0
+    assert "pulada" in caplog.text
+    tabela = ler_tabela(base / "commodities" / "conab_cafe" / "levantamentos.parquet")
+    assert len(tabela) > 0
+
+
 def test_fonte_sem_original_avisa_com_falhas_e_as_outras_seguem(ambiente, capsys):
     base, motor = ambiente
     _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026))
