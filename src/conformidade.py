@@ -20,12 +20,14 @@ from src.banco.modelo import (
     envios_da_newsletter,
     envios_de_novidades,
     favoritos,
+    identidades,
     inscricoes_da_newsletter,
     inscricoes_de_novidades,
     pdfs_originais,
     preferencias,
     presets,
     relatorios,
+    sessoes_de_login,
     simulacoes,
     usuarios,
     watchlists,
@@ -324,6 +326,36 @@ def exportar_meus_dados(conexao: sa.Connection, usuario_id: uuid.UUID) -> dict:
                 )
                 .where(relatorios.c.usuario_id == usuario_id)
                 .order_by(relatorios.c.criado_em)
+            )
+        ],
+        # o identificador que o provedor dá à pessoa e o hash do token da sessão ficam de fora:
+        # não dizem nada a ela e só serviriam para alguém se passar por ela
+        "formas_de_entrar": [
+            {
+                "provedor": l.provedor,
+                "email": l.email,
+                "email_confirmado": l.email_confirmado,
+                "criada_em": _texto(l.criada_em),
+                "ultimo_uso": _texto(l.ultimo_uso),
+            }
+            for l in conexao.execute(
+                sa.select(identidades)
+                .where(identidades.c.usuario_id == usuario_id)
+                .order_by(identidades.c.criada_em)
+            )
+        ],
+        "sessoes_de_login": [
+            {
+                "provedor": l.provedor,
+                "criada_em": _texto(l.criada_em),
+                "expira_em": _texto(l.expira_em),
+                "ultimo_uso": _texto(l.ultimo_uso),
+                "encerrada_em": _texto(l.encerrada_em),
+            }
+            for l in conexao.execute(
+                sa.select(sessoes_de_login)
+                .where(sessoes_de_login.c.usuario_id == usuario_id)
+                .order_by(sessoes_de_login.c.criada_em)
             )
         ],
         "assinatura": (

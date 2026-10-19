@@ -27,7 +27,9 @@ import sqlalchemy as sa
 from base import cnpj as cnpj_
 from base.contrato import catalogo as catalogo_do_contrato
 from base.dicionario import TABELAS, Tabela
+from base.dmpl import FORMATO_DMPL
 from base.linhagem import Linhagem, linhagem_da_linha, linhagem_da_tabela
+from base.ponto_no_tempo import DEMONSTRACOES, Formato
 from base.porta.duckdb import (
     ARQUIVOS,
     FORA_DA_PORTA,
@@ -44,9 +46,11 @@ from src import acervo
 
 __all__ = ["Porta", "Rede", "abrir", "carteira", "catalogo", "ler", "linhagem", "rede"]
 
-POR_ANO_DE_BALANCO = (
-    "demonstracoes_como_era"  # manifesto por ano (`base/ponto_no_tempo.py`)
-)
+# tabelas com manifesto por ano (`base/ponto_no_tempo.py`) → o formato de cada uma
+POR_ANO_DE_BALANCO: dict[str, Formato] = {
+    "demonstracoes_como_era": DEMONSTRACOES,
+    "dmpl_como_era": FORMATO_DMPL,
+}
 
 
 def _valor(valor: object) -> object:
@@ -304,8 +308,13 @@ class Porta:
                 f"{tabela}: a linha com {chaves} está em {len(achados)} arquivos (precisa de 1)"
             )
         arquivo = Path(achados[0][0])
-        if tabela == POR_ANO_DE_BALANCO:
-            return linhagem_da_linha(self.banco, arquivo.parent, pd.Series(valores))
+        if tabela in POR_ANO_DE_BALANCO:
+            return linhagem_da_linha(
+                self.banco,
+                arquivo.parent,
+                pd.Series(valores),
+                POR_ANO_DE_BALANCO[tabela],
+            )
         return linhagem_da_tabela(self.banco, arquivo)
 
     def carteira(self, cnpjs: Iterable[str], desde: object) -> pd.DataFrame:

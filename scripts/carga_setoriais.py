@@ -32,7 +32,23 @@ import sqlalchemy as sa
 
 from base.commodities import cftc_cot
 from base.parquet import gravar_com_versoes, gravar_se_mudou
-from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes, susep
+from base.setoriais import (
+    anac,
+    anatel,
+    aneel,
+    anp,
+    anp_concessionarios,
+    ans,
+    antt_siade,
+    ccee,
+    comex_preco_medio,
+    ligacao,
+    ons,
+    ons_capacidade,
+    ons_restricao,
+    revisoes,
+    susep,
+)
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -50,6 +66,7 @@ TABELAS = {
     anp.FONTE: ("anp", ["competencia", "grupo", "agente", "codigo_do_produto"], "competencia"),
     ons.FONTE: ("ons", ["instante", "id_ons"], "instante"),
     cftc_cot.FONTE: ("cftc", ["relatorio", "contrato"], "relatorio"),
+    ccee.FONTE: ("ccee", list(ccee.CHAVE), "referencia"),
 }  # fmt: skip
 # fonte → (coluna da chave na tabela, coluna do volume) para os buracos da ligação
 CHAVES = {
@@ -77,6 +94,9 @@ class Revisada(NamedTuple):
     volume: Callable[[pd.DataFrame], pd.Series]
     por_ano: bool = (
         False  # um arquivo com muitos anos: um Parquet por ano da competência
+    )
+    foto: bool = (
+        False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
     )
 
 
@@ -114,6 +134,29 @@ REVISADAS = {
         lambda c, _: susep.ler(c), susep.FONTE, "coenti", lambda t: t["premio_direto"],
         por_ano=True,
     ),
+    ons_restricao.FONTE: Revisada(
+        "ons_restricao", list(ons_restricao.CHAVE), ons_restricao.CARIMBOS, ons_restricao.destino,
+        ons_restricao.ler, ons_restricao.FONTE_DA_LIGACAO, "agente_operador",
+        lambda t: t["geracao_mwmed"],
+    ),
+    ons_capacidade.FONTE: Revisada(
+        "ons_capacidade", list(ons_capacidade.CHAVE), ons_capacidade.CARIMBOS, ons_capacidade.destino,
+        lambda c, _: ons_capacidade.ler(c), ons_capacidade.FONTE, "proprietario",
+        lambda t: t["potencia_efetiva_mw"],
+    ),
+    anp_concessionarios.FONTE: Revisada(
+        "anp_concessionarios", list(anp_concessionarios.CHAVE), anp_concessionarios.CARIMBOS,
+        anp_concessionarios.destino, lambda c, _: anp_concessionarios.ler(c),
+        anp_concessionarios.FONTE, "cnpj", lambda t: t["participacao_pct"], foto=True,
+    ),
+    antt_siade.FONTE: Revisada(
+        "antt_siade", list(antt_siade.CHAVE), antt_siade.CARIMBOS, antt_siade.destino,
+        lambda c, _: antt_siade.ler(c), antt_siade.FONTE, "ferrovia", lambda t: t["tku"],
+    ),
+    comex_preco_medio.FONTE: Revisada(
+        "comex_preco_medio", list(comex_preco_medio.CHAVE), comex_preco_medio.CARIMBOS,
+        comex_preco_medio.destino, comex_preco_medio.ler, "", "", lambda t: t["kg_liquido"],
+    ),
 }  # fmt: skip
 
 
@@ -137,6 +180,8 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
         return ons.ler
     if fonte == cftc_cot.FONTE and linha.url.endswith(".zip"):
         return cftc_cot.ler_disaggregated
+    if fonte == ccee.FONTE and ".csv" in linha.url.lower():
+        return ccee.ler
     return None
 
 
@@ -200,13 +245,13 @@ def _coletas(
     origens = [{"url": url, "sha256": sha256} for _, sha256, _ in guardadas]
 
     def montar() -> pd.DataFrame:
-        coletas = [
-            (
-                pd.Timestamp(dia).tz_localize(None).normalize(),
-                revisada.ler(conteudo, url),
-            )
-            for dia, _, conteudo in guardadas
-        ]
+        coletas = []
+        for dia, _, conteudo in guardadas:
+            coleta = pd.Timestamp(dia).tz_localize(None).normalize()
+            tabela = revisada.ler(conteudo, url)
+            if revisada.foto:
+                tabela["disponivel_em"] = coleta
+            coletas.append((coleta, tabela))
         return revisoes.juntar_coletas(coletas, revisada.chave, revisada.carimbos)
 
     return origens, montar
@@ -219,7 +264,7 @@ def _buracos_da_revisada(
     empresa_serie: pd.DataFrame | None,
 ) -> pd.DataFrame | None:
     """Os buracos de um arquivo, sobre o valor mais novo de cada chave (a revisão não soma duas vezes)."""
-    if empresa_serie is None or tabela.empty:
+    if empresa_serie is None or tabela.empty or not revisada.coluna_da_ligacao:
         return None
     atual = revisoes.como_era_em(tabela, pd.Timestamp.max, revisada.chave)
     atual = atual.assign(volume=revisada.volume(atual))

@@ -1,7 +1,14 @@
-// O cliente da API de leitura (v1): monta o endereço, manda o token só para /api/v1 e transforma
-// cada erro num tipo que a tela sabe mostrar (entrar de novo, entrar pelo app, aceitar os termos,
-// conhecer os planos...).
+// O cliente da API de leitura (v1): monta o endereço, fala só com /api/v1 e transforma cada erro num
+// tipo que a tela sabe mostrar (entrar de novo, entrar pelo app, aceitar os termos, conhecer os
+// planos...). Depois do login, quem identifica a pessoa é o cookie da sessão (HttpOnly: o app não o
+// vê; o navegador o manda sozinho). O token do Google só vai no pedido que abre a sessão.
 import { PREFIXO_DA_API } from "./configuracao";
+
+/** O "token" de quem entrou: a sessão do cookie. Com ele, o pedido não leva Authorization. */
+export const SESSAO = "sessao";
+// prova à API que o pedido saiu do próprio app: um site de fora não consegue pôr este cabeçalho
+// (src/api_v1/sessao.py, proteção contra CSRF)
+const CABECALHO_DO_APP = { "X-TickerLab-Pedido": "1" };
 
 export type TipoDeErro =
   | "sessao-vencida" // 401: sem token ou token vencido/inválido → entrar de novo
@@ -30,6 +37,7 @@ export type Parametros = Record<string, string | number | string[] | undefined>;
 // números e hífen, como em /v1/commodities/cafe/mapa)
 const ROTA_DA_V1 = /^\/v1(\/[a-z0-9-]+)+$/;
 const CAMPOS_FORA_DOS_LIMITES = "Algum campo está fora dos limites. Confira os valores e tente de novo.";
+const SEM_CORPO = 204;
 const SEM_CONEXAO = "Sem conexão com o TickerLab. Confira a internet e tente de novo.";
 
 function consulta(parametros: Parametros): string {
@@ -44,7 +52,11 @@ function consulta(parametros: Parametros): string {
 
 function tipoDoErro(status: number, motivo: string | null): TipoDeErro {
   if (status === 401) return motivo === "conta-nova" ? "conta-nova" : "sessao-vencida";
-  if (status === 403) return motivo === "plano" ? "plano" : "termos";
+  if (status === 403) {
+    if (motivo === "plano") return "plano";
+    // a API não reconheceu o pedido como do app (não deveria acontecer): não é caso de aceitar termos
+    return motivo === "pedido-de-fora" ? "indisponivel" : "termos";
+  }
   if (status === 404) return "nao-encontrado";
   if (status === 422) return "pedido-invalido";
   if (status === 429) return "limite";
@@ -68,14 +80,19 @@ async function erroDaResposta(resposta: Response): Promise<ErroDaApi> {
   return new ErroDaApi(tipo, mensagem);
 }
 
-/** Um arquivo de uma rota da v1 (a exportação dos dados), com o token do Google. */
+function cabecalhosPara(token: string): Record<string, string> {
+  return token === SESSAO ? { ...CABECALHO_DO_APP } : { ...CABECALHO_DO_APP, Authorization: `Bearer ${token}` };
+}
+
+/** Um arquivo de uma rota da v1 (a exportação dos dados), com a sessão. */
 export async function baixar(rota: string, token: string): Promise<Blob> {
   if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
   let resposta: Response;
   try {
     resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: cabecalhosPara(token),
+      credentials: "same-origin",
     });
   } catch {
     throw new ErroDaApi("rede", SEM_CONEXAO);
@@ -84,7 +101,8 @@ export async function baixar(rota: string, token: string): Promise<Blob> {
   return resposta.blob();
 }
 
-/** GET (ou POST, com `corpo`) numa rota da v1 (`/v1/visao-geral`), com o token do Google. */
+/** GET (ou POST, com `corpo`) numa rota da v1 (`/v1/visao-geral`), com a sessão (`SESSAO`) ou, só
+ * para abrir a sessão, com o token do Google. Resposta sem corpo (204) vira `undefined`. */
 export async function pedir<T>(
   rota: string,
   token: string,
@@ -92,14 +110,15 @@ export async function pedir<T>(
   corpo?: unknown,
 ): Promise<T> {
   if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
-  const cabecalhos: Record<string, string> = { Authorization: `Bearer ${token}` };
+  const cabecalhos = cabecalhosPara(token);
   const pedido: RequestInit =
     corpo === undefined
-      ? { method: "GET", headers: cabecalhos }
+      ? { method: "GET", headers: cabecalhos, credentials: "same-origin" }
       : {
           method: "POST",
           headers: { ...cabecalhos, "Content-Type": "application/json" },
           body: JSON.stringify(corpo),
+          credentials: "same-origin",
         };
   let resposta: Response;
   try {
@@ -108,5 +127,6 @@ export async function pedir<T>(
     throw new ErroDaApi("rede", SEM_CONEXAO);
   }
   if (!resposta.ok) throw await erroDaResposta(resposta);
+  if (resposta.status === SEM_CORPO) return undefined as T;
   return (await resposta.json()) as T;
 }

@@ -14,6 +14,13 @@ def _ligadas(fonte: str, empresa_serie: pd.DataFrame) -> pd.DataFrame:
     return linhas.drop_duplicates("chave")[["chave", "cnpj_companhia"]]
 
 
+COLUNAS_DE_TEMPO = (
+    "competencia",
+    "instante",
+    "disponivel_em",
+)  # a 1ª que a tabela tiver
+
+
 def ligar(
     tabela: pd.DataFrame, coluna: str, fonte: str, empresa_serie: pd.DataFrame
 ) -> pd.DataFrame:
@@ -32,7 +39,7 @@ def buracos(
     """As chaves sem ligação, do maior volume para o menor (chave, valor, primeira, última, fonte)."""
     ligada = ligar(tabela, coluna, fonte, empresa_serie)
     sem = ligada[ligada["cnpj_companhia"].isna()]
-    tempo = "competencia" if "competencia" in sem else "instante"
+    tempo = next(c for c in COLUNAS_DE_TEMPO if c in sem)
     return (
         sem.groupby(coluna)
         .agg(valor=(volume, "sum"), primeira=(tempo, "min"), ultima=(tempo, "max"))

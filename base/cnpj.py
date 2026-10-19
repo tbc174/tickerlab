@@ -62,6 +62,13 @@ def _digito(base: str, pesos: tuple[int, ...]) -> int:
     return 0 if resto < 2 else 11 - resto  # resto 0 ou 1 vira 0
 
 
+def digitos_verificadores(primeiros_12: str) -> str:
+    """Os 2 DVs dos 12 primeiros caracteres (raiz + filial): '330001670001' -> '01'."""
+    primeiro = _digito(primeiros_12, PESOS)
+    segundo = _digito(primeiros_12 + str(primeiro), (6, *PESOS))
+    return f"{primeiro}{segundo}"
+
+
 def dv_confere(cnpj: str) -> bool:
     """True se os dois dígitos verificadores conferem (com ou sem letras)."""
     if not FORMA.match(cnpj) or cnpj == cnpj[0] * TAMANHO:

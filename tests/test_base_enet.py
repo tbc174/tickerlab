@@ -12,7 +12,7 @@ from base.contas_cvm import COLUNAS
 from base.enet import DocumentoEnet, ler_xml_enet, limpar_xml
 from base.regras import r5_reapresentado
 
-PDF_FALSO = base64.b64encode(b"%PDF-1.7 " + b"x" * 5000).decode()
+PDF_FALSO = base64.b64encode(b"%PDF-1.7 " + b"x" * 12000).decode()
 NOME_DE_QUEM_ENTREGOU = "Fulana de Tal"
 EMAIL_DE_QUEM_ENTREGOU = "fulana@empresa.com.br"
 
@@ -59,6 +59,53 @@ def _anexo(raiz, dados):
     )
 
 
+def _dfc_conta(codigo, descricao, metodo, ultimo, penultimo="0"):
+    """Conta da DFC: o ENET diz o método (direto ou indireto) em cada conta."""
+    return _dfp_conta(codigo, descricao, ultimo, penultimo).replace(
+        "</Conta>", f"<Metodo>{metodo}</Metodo></Conta>"
+    )
+
+
+def _dmpl(inicio, fim, contas):
+    return (
+        f"<DMPL><Periodo><DtInicio>{inicio}</DtInicio><DtFim>{fim}</DtFim></Periodo>"
+        f"<Contas>{contas}</Contas></DMPL>"
+    )
+
+
+# a DMPL vem de dois jeitos no ENET: uma tag por coluna ou a lista de campos com a descrição
+DMPL_COM_TAGS = _conta(
+    "5.01",
+    "Saldos Iniciais",
+    {
+        "CapitalSocialIntegralizado": "1.000",
+        "LucroPrejuizoAcumulado": "-200",
+        "PatrimonioLiquido": "800",
+        "PatrimonioLiquidoAcionistasNaoControl": "",
+    },
+) + _conta(  # conta do modelo que a empresa não usa: sem descrição e sem valor
+    "5.02.01",
+    "",
+    {"CapitalSocialIntegralizado": "", "PatrimonioLiquido": ""},
+    fixa=False,
+)
+DMPL_COM_CAMPOS = (
+    "<Conta><ContaFixa>True</ContaFixa><CodigoConta>5.01</CodigoConta>"
+    "<DescricaoConta>Saldos Iniciais</DescricaoConta><DadosContas>"
+    + "".join(
+        f"<CamposDadosContas><Descricao>{descricao}</Descricao><Valor>{valor}</Valor>"
+        "</CamposDadosContas>"
+        for descricao, valor in (
+            ("Capital Social Integralizado", "900"),
+            ("Participação dos Não controladores", "50"),
+            ("Patrimônio líquido Consolidado", "950"),
+            ("Reservas de Lucro", ""),
+        )
+    )
+    + "</DadosContas></Conta>"
+)
+
+
 EMPRESA = (
     "<DadosEmpresa><CnpjEmpresa>00000208000100</CnpjEmpresa><CodigoCvm>014206</CodigoCvm>"
     "<RazaoSocialEmpresa>BRB BCO DE BRASILIA S.A.</RazaoSocialEmpresa>"
@@ -78,17 +125,27 @@ def _dfp(versao=1, motivo="", escala="2", lucro="512.345", consolidado_ultimo=""
             "3.01", "Receitas de Intermediação Financeira", "5.528.457", "2.968.650"
         )
         + _dfp_conta("3.11", "Lucro/Prejuízo do Período", lucro, "-1.234")
-        + "</DemonstracaoResultado><DemonstracaoValorAdicionado>"
+        + "</DemonstracaoResultado><DemonstracaoResultadoAbrangente>"
+        + _dfp_conta("4.03", "Resultado Abrangente do Período", "500.000", "-1.000")
+        + "</DemonstracaoResultadoAbrangente><DemonstracaoFluxoCaixa>"
+        + _dfc_conta("6.01", "Caixa Líquido Atividades Operacionais", "Indireto", "300")
+        + _dfc_conta("6.05.02", "Saldo Final de Caixa", "Indireto", "1.300")
+        + "</DemonstracaoFluxoCaixa><DemonstracaoValorAdicionado>"
         + _dfp_conta("7.01", "Receitas", "5.081.911", "2.473.503")
+        + _dfp_conta("7.04.01", "Depreciação, Amortização e Exaustão", "-70", "-60")
         + "</DemonstracaoValorAdicionado></DfIndividuais>"
     )
     consolidadas = (
         "<DfConsolidadas><BalancoPatrimonialAtivo>"
         + _dfp_conta("1", "Ativo Total", consolidado_ultimo, "31751760,0000000000")
-        + "</BalancoPatrimonialAtivo><DemonstracaoMutacoesPatrimonioLiquido><DMPL>"
-        + "<Contas>"
-        + _conta("5.01", "Saldos Iniciais", {"PatrimonioLiquido": "2.364.833"})
-        + "</Contas></DMPL></DemonstracaoMutacoesPatrimonioLiquido></DfConsolidadas>"
+        + "</BalancoPatrimonialAtivo><DemonstracaoFluxoCaixa>"
+        + _dfc_conta("6.01", "Caixa Líquido Atividades Operacionais", "Direto", "310")
+        + "</DemonstracaoFluxoCaixa><DemonstracaoMutacoesPatrimonioLiquido>"
+        + _dmpl("01/01/2022", "31/12/2022", DMPL_COM_TAGS)
+        + _dmpl("01/01/2021", "31/12/2021", DMPL_COM_CAMPOS)
+        # o DFP traz o antepenúltimo exercício, que os dados abertos não trazem: fica de fora
+        + _dmpl("01/01/2020", "31/12/2020", DMPL_COM_TAGS)
+        + "</DemonstracaoMutacoesPatrimonioLiquido></DfConsolidadas>"
     )
     return (
         '<?xml version="1.0" encoding="utf-8"?>\r\n<XmlDemonstracoesFinanceiras>'
@@ -191,7 +248,11 @@ def test_le_contas_individuais_e_consolidadas_no_formato_dos_dados_abertos():
         "BPA",
         "BPP",
         "DRE",
-    }  # DVA e DMPL ficam de fora
+        "DRA",
+        "DFC_MI",
+        "DFC_MD",
+        "DVA",
+    }  # a DMPL tem uma coluna a mais e vai para `documento.dmpl`
     assert set(contas["ordem"]) == {"ultimo", "penultimo"}
     assert set(contas["versao"]) == {1} and set(contas["documento"]) == {"DFP"}
 
@@ -254,6 +315,88 @@ def test_r5_compara_a_versao_1_com_a_2():
     assert "Despesa digitada em duplicidade." in achados[0].porque
 
 
+def test_a_dfc_e_separada_pelo_metodo_como_nos_dados_abertos():
+    contas = ler_xml_enet(_dfp()).contas
+    dfc = contas[contas["conta"] == "6.01"]
+    assert set(dfc.loc[dfc["grupo"] == "ind", "demonstracao"]) == {"DFC_MI"}
+    assert set(dfc.loc[dfc["grupo"] == "con", "demonstracao"]) == {"DFC_MD"}
+    assert _valor(contas, "ind", "6.05.02") == 1_300_000
+    assert _valor(contas, "ind", "6.01", inicio="2022-01-01") == 300_000
+
+
+def test_dfc_sem_metodo_conhecido_fica_de_fora_sem_quebrar_a_leitura():
+    """Método novo no ENET não pode virar DFC de outro método nem parar a coleta."""
+    xml = _dfp().replace(b"<Metodo>Direto</Metodo>", b"<Metodo>Misto</Metodo>")
+    contas = ler_xml_enet(xml).contas
+    assert "DFC_MD" not in set(contas["demonstracao"])
+    assert "DFC_MI" in set(contas["demonstracao"])
+
+
+def test_dva_e_dra_com_os_periodos_do_resultado():
+    contas = ler_xml_enet(_dfp()).contas
+    assert _valor(contas, "ind", "7.04.01") == -70_000
+    assert _valor(contas, "ind", "4.03", "penultimo") == -1_000_000
+    dva = contas[contas["demonstracao"] == "DVA"]
+    assert set(dva.loc[dva["ordem"] == "ultimo", "inicio"]) == {
+        pd.Timestamp("2022-01-01")
+    }
+
+
+def test_dmpl_le_as_duas_formas_com_a_coluna_canonica():
+    dmpl = ler_xml_enet(_dfp()).dmpl
+    assert list(dmpl.columns) == [*COLUNAS, "coluna"]
+    assert set(dmpl["demonstracao"]) == {"DMPL"} and set(dmpl["grupo"]) == {"con"}
+    ultimo = dmpl[dmpl["ordem"] == "ultimo"].set_index("coluna")["valor"]
+    assert (
+        ultimo.to_dict()
+        == {
+            "capital_social": 1_000_000,
+            "lucros_acumulados": -200_000,
+            "patrimonio_liquido": 800_000,
+        }
+    )  # o valor em branco e a conta do modelo sem uso ficam de fora, como nos dados abertos
+    penultimo = dmpl[dmpl["ordem"] == "penultimo"].set_index("coluna")["valor"]
+    assert penultimo.to_dict() == {
+        "capital_social": 900_000,
+        "nao_controladores": 50_000,
+        "patrimonio_liquido_consolidado": 950_000,
+    }
+
+
+def test_dmpl_com_o_periodo_de_cada_bloco_sem_o_antepenultimo():
+    dmpl = ler_xml_enet(_dfp()).dmpl
+    periodos = dmpl.groupby("ordem")[["inicio", "fim"]].first()
+    assert periodos.loc["ultimo"].tolist() == [
+        pd.Timestamp("2022-01-01"),
+        pd.Timestamp("2022-12-31"),
+    ]
+    assert periodos.loc["penultimo", "fim"] == pd.Timestamp("2021-12-31")
+    assert dmpl["fim"].dt.year.min() == 2021  # 2020 é o antepenúltimo
+
+
+def test_itr_sem_dmpl_devolve_tabela_vazia_com_as_colunas():
+    dmpl = ler_xml_enet(_itr()).dmpl
+    assert dmpl.empty and list(dmpl.columns) == [*COLUNAS, "coluna"]
+
+
+def test_dmpl_do_itr_usa_o_fim_do_trimestre():
+    xml = _itr().replace(
+        b"</DfConsolidadas>",
+        b"<DemonstracaoMutacoesPatrimonioLiquido>"
+        + _dmpl("01/01/2026", "30/06/2026", DMPL_COM_TAGS).encode()
+        + _dmpl("01/01/2025", "30/06/2025", DMPL_COM_CAMPOS).encode()
+        + b"</DemonstracaoMutacoesPatrimonioLiquido></DfConsolidadas>",
+    )
+    dmpl = ler_xml_enet(xml).dmpl
+    assert set(dmpl.loc[dmpl["ordem"] == "ultimo", "fim"]) == {
+        pd.Timestamp("2026-06-30")
+    }
+    assert set(dmpl.loc[dmpl["ordem"] == "penultimo", "inicio"]) == {
+        pd.Timestamp("2025-01-01")
+    }
+    assert {1000.0, 50.0} <= set(dmpl["valor"])  # escala 1 = unidade
+
+
 # --- limpeza ------------------------------------------------------------------------------------------
 def test_limpar_tira_o_pdf_e_os_dados_de_quem_entregou_sem_mudar_as_contas():
     original = _dfp(versao=2, motivo="Ajuste.")
@@ -264,6 +407,7 @@ def test_limpar_tira_o_pdf_e_os_dados_de_quem_entregou_sem_mudar_as_contas():
     assert len(limpo) < len(original) / 2
     antes, depois = ler_xml_enet(original), ler_xml_enet(limpo)
     pd.testing.assert_frame_equal(antes.contas, depois.contas)
+    pd.testing.assert_frame_equal(antes.dmpl, depois.dmpl)
     assert (depois.versao, depois.motivo) == (2, "Ajuste.")
 
 

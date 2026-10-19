@@ -1,0 +1,101 @@
+{
+  "tabela": "ons_restricao",
+  "modulo": "mercado_e_empresas",
+  "dono": "Dados",
+  "versao": "1.0.0",
+  "colunas": {
+    "instante": {
+      "descricao": "Hora (início)",
+      "unidade": "data e hora (UTC)"
+    },
+    "tipo": {
+      "descricao": "`eolica` ou `fotovoltaica`",
+      "unidade": "texto"
+    },
+    "id_subsistema": {
+      "descricao": "Subsistema (N, NE, S, SE)",
+      "unidade": "texto"
+    },
+    "uf": {
+      "descricao": "UF da usina",
+      "unidade": "texto"
+    },
+    "usina": {
+      "descricao": "Nome da usina ou do conjunto, como o ONS escreve",
+      "unidade": "texto"
+    },
+    "id_ons": {
+      "descricao": "Código da usina ou conjunto no ONS (a chave)",
+      "unidade": "texto"
+    },
+    "ceg": {
+      "descricao": "Código na ANEEL (vazio nos conjuntos)",
+      "unidade": "texto"
+    },
+    "agente_operador": {
+      "descricao": "Agente operador (liga à empresa pela B13)",
+      "unidade": "texto"
+    },
+    "geracao_mwmed": {
+      "descricao": "Geração verificada, em MWmed (numa hora, igual a MWh)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "referencia_mwmed": {
+      "descricao": "Geração de referência (o que a usina geraria sem a restrição), MWmed",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "referencia_final_mwmed": {
+      "descricao": "Referência final, depois do fechamento da apuração, MWmed",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "disponibilidade_mwmed": {
+      "descricao": "Potência disponível, MWmed",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "nao_realizada_mwmed": {
+      "descricao": "Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição)",
+      "unidade": "número com decimais, na unidade da fonte"
+    },
+    "minutos_restricao": {
+      "descricao": "Minutos de restrição na hora (soma das leituras; vazio sem restrição)",
+      "unidade": "número inteiro"
+    },
+    "razao_da_restricao": {
+      "descricao": "Código da razão da restrição (a primeira da hora)",
+      "unidade": "texto"
+    },
+    "origem_da_restricao": {
+      "descricao": "Código da origem da restrição (a primeira da hora)",
+      "unidade": "texto"
+    },
+    "leituras": {
+      "descricao": "Quantas leituras da fonte entraram na linha",
+      "unidade": "número inteiro"
+    },
+    "disponivel_em": {
+      "descricao": "Desde quando o número era público (instante + 2 dias)",
+      "unidade": "data (dia)"
+    },
+    "visto_em": {
+      "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+      "unidade": "data (dia)"
+    }
+  },
+  "chaves": [
+    "instante",
+    "tipo",
+    "id_ons",
+    "visto_em"
+  ],
+  "datas": {
+    "aconteceu_em": "instante",
+    "publico_em": "disponivel_em"
+  },
+  "historico_desde": "2026-10-14",
+  "granularidade_do_publico_em": "dia",
+  "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+  "revenda": "vendável com atribuição à fonte",
+  "pessoa": false,
+  "frequencia": "Mensal (o ONS acrescenta e revisa os arquivos de meses passados)",
+  "atraso": "O instante + 2 dias (o mesmo da geração por usina)"
+}

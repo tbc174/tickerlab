@@ -1,7 +1,9 @@
-"""Quem pode chamar a API de leitura: a conta do TickerLab, pelo login do Google.
+"""Quem pode chamar a API de leitura: a conta do TickerLab, pela sessão ou pelo login do Google.
 
 A interface nova faz o login com o Google no navegador e manda o token (um "ID token", assinado pelo
-Google) no cabeçalho `Authorization: Bearer ...`. Aqui ele é conferido: assinatura com as chaves
+Google) uma vez, para `POST /v1/conta`, que abre a sessão de 30 dias num cookie (src/api_v1/sessao.py);
+daí em diante vale o cookie. O token no cabeçalho `Authorization: Bearer ...` ainda vale nas outras
+rotas, para as abas abertas antes da sessão (sai no PR 2 do login). O token é conferido: assinatura com as chaves
 públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`), dentro da validade e
 com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
 aceitado os termos atuais (menos para baixar os próprios dados: LGPD). Por último, o plano da conta precisa abrir a página da rota (o contrato da
@@ -23,14 +25,21 @@ from joserfc.errors import JoseError
 from joserfc.jwk import KeySet
 
 from src.api_v1 import api_v1_ligada
+from src.api_v1.sessao import (
+    pedido_do_proprio_site,
+    precisa_provar_a_origem,
+    token_do_cookie,
+)
 from src.autenticacao import IdentidadeDoGoogle, LoginInvalidoError, ler_identidade
 from src.banco.conexao import obter_engine
-from src.banco.usuarios import Usuario, buscar_por_google_sub
+from src.banco.sessoes import conta_da_sessao
+from src.banco.usuarios import Usuario, buscar_por_identidade
 from src.conformidade import precisa_aceitar_os_termos
 from src.paginas import PREFIXO_DA_API, motivo_da_pagina, pagina_da_rota
 
 # o motivo de um 401 ou 403, para a tela mostrar o caminho certo (entrar de novo, entrar pelo app
-# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova" ou "termos"
+# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova", "sessao" (a do cookie
+# acabou), "termos", "plano" ou "pedido-de-fora" (POST com o cookie que não saiu do próprio app)
 CABECALHO_DO_MOTIVO = "X-TickerLab-Motivo"
 
 
@@ -165,14 +174,13 @@ def exigir_api_ligada() -> None:
         raise HTTPException(status_code=404, detail="Not Found")
 
 
+MENSAGEM_SEM_LOGIN = "Entre no TickerLab (o login com o Google abre a sessão)."
+
+
 def _token_do_cabecalho(authorization: str | None) -> str:
     tipo, _, token = (authorization or "").partition(" ")
     if tipo.lower() != "bearer" or not token.strip():
-        raise _recusa(
-            401,
-            "Faça o login com o Google e mande o token (Authorization: Bearer).",
-            "sem-token",
-        )
+        raise _recusa(401, MENSAGEM_SEM_LOGIN, "sem-token")
     return token.strip()
 
 
@@ -191,14 +199,51 @@ def identidade_logada(
         raise _recusa(401, str(erro), "token-invalido") from erro
 
 
-def conta_sem_o_aceite(
-    identidade: Annotated[IdentidadeDoGoogle, Depends(identidade_logada)],
-) -> Usuario:
-    """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa)."""
+def recusar_pedido_de_fora(request: Request) -> None:
+    """403 para o pedido que muda algo, chega com o cookie da sessão e não saiu do próprio app."""
+    if precisa_provar_a_origem(request) and not pedido_do_proprio_site(request):
+        raise _recusa(
+            403, "Pedido recusado: ele não saiu do próprio TickerLab.", "pedido-de-fora"
+        )
+
+
+def _conta_pelo_cookie(token: str) -> Usuario | None:
+    with obter_engine().begin() as conexao:  # begin: grava o último uso da sessão
+        return conta_da_sessao(conexao, token)
+
+
+def _conta_pelo_google(request: Request, authorization: str) -> Usuario:
+    # as chaves só são baixadas quando há um token do Google: quem usa o cookie não depende do
+    # Google estar no ar. O `dependency_overrides` é o caminho dos testes (sai com o Bearer, no PR 2)
+    baixar_chaves = request.app.dependency_overrides.get(
+        chaves_do_google, chaves_do_google
+    )
+    identidade = identidade_logada(baixar_chaves(), authorization)
     with obter_engine().connect() as conexao:
-        usuario = buscar_por_google_sub(conexao, identidade.sub)
+        usuario = buscar_por_identidade(conexao, "google", identidade.sub)
     if usuario is None:
         raise _recusa(401, "Conta não encontrada: entre de novo.", "conta-nova")
+    return usuario
+
+
+def conta_sem_o_aceite(
+    request: Request,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Usuario:
+    """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa).
+
+    Vale a sessão do cookie; sem ela, o token do Google no cabeçalho (a transição das abas abertas
+    antes da sessão; sai no PR 2 do login). Sem nenhum dos dois, 401.
+    """
+    recusar_pedido_de_fora(request)
+    token_da_sessao = token_do_cookie(request)
+    usuario = _conta_pelo_cookie(token_da_sessao) if token_da_sessao else None
+    if usuario is None and authorization:
+        usuario = _conta_pelo_google(request, authorization)
+    if usuario is None and token_da_sessao:
+        raise _recusa(401, "A sessão acabou: entre de novo.", "sessao")
+    if usuario is None:
+        raise _recusa(401, MENSAGEM_SEM_LOGIN, "sem-token")
     if not LIMITE.permitir(str(usuario.id), agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")
     return usuario
@@ -231,6 +276,9 @@ ROTAS_DA_CONTA = frozenset(
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        # molde B: pede login; o plano só decide se as seções da base vêm trancadas (ainda sem a
+        # página "Busca por CNPJ", que chega no PR 3 do plano e leva a rota para o contrato dela)
+        "/v1/busca-por-cnpj",
     }
 )
 

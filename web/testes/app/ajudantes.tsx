@@ -44,22 +44,49 @@ export function googleDeMentira(entraSozinho: boolean) {
 interface Opcoes {
   configuracao?: Response;
   eu?: () => Response;
+  // o POST /v1/conta (com o token do Google): cria a conta na primeira vez e abre a sessão
+  conta?: () => Response;
   // as outras rotas da API (as telas): endereço → resposta
   rotas?: (endereco: string, pedido?: RequestInit) => Response | undefined;
   entraSozinho?: boolean;
+  // a pessoa já tem a sessão (o cookie de um login anterior): o app entra sem o Google
+  comSessao?: boolean;
 }
 
-/** Abre o app em `caminho` com a API e o Google de mentira; devolve o `fetch` espiado e o Google. */
+// os cabeçalhos que todo pedido do app manda (a prova de que saiu do próprio app, contra CSRF)
+export const DO_APP = { "X-TickerLab-Pedido": "1" };
+
+const SEM_SESSAO = () => respostaJson(401, { detail: "Entre para continuar." }, { "X-TickerLab-Motivo": "sem-token" });
+
+function temAutorizacao(pedido?: RequestInit): boolean {
+  return "Authorization" in ((pedido?.headers as Record<string, string> | undefined) ?? {});
+}
+
+/** Abre o app em `caminho` com a API e o Google de mentira; devolve o `fetch` espiado e o Google.
+ * A API de mentira guarda a sessão como o navegador guardaria o cookie: o `POST /v1/conta` que dá
+ * certo abre, o `/v1/sair` fecha, e `/v1/eu` sem sessão (nem token) responde 401. */
 export function abrirApp(caminho: string, opcoes: Opcoes = {}) {
   const {
     configuracao = respostaJson(200, { google_client_id: "id-de-teste" }),
     eu = () => respostaJson(200, ANA),
     rotas = () => undefined,
+    conta = () => respostaJson(200, { ...ANA, primeira_vez: false }),
     entraSozinho = true,
+    comSessao = false,
   } = opcoes;
+  let sessao = comSessao;
   const buscar = vi.fn(async (endereco: string, pedido?: RequestInit) => {
     if (endereco === "/api/v1/configuracao") return configuracao;
-    if (endereco === "/api/v1/eu") return eu();
+    if (endereco === "/api/v1/eu") return sessao || temAutorizacao(pedido) ? eu() : SEM_SESSAO();
+    if (endereco === "/api/v1/sair") {
+      sessao = false;
+      return new Response(null, { status: 204 });
+    }
+    if (endereco === "/api/v1/conta") {
+      const resposta = conta();
+      if (resposta.ok) sessao = true;
+      return resposta;
+    }
     return rotas(endereco, pedido) ?? respostaJson(404, { detail: "Rota sem resposta no teste." });
   });
   const google = googleDeMentira(entraSozinho);

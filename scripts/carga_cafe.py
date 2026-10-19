@@ -152,8 +152,17 @@ def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame
         baixado_em, _, conteudo = coletas[
             0
         ]  # a 1ª: uma planilha republicada não adianta o dado
-        nova = conab_cafe.ler_levantamento(conteudo, identificado[0], _dia(baixado_em))
+        try:
+            nova = conab_cafe.ler_levantamento(
+                conteudo, identificado[0], _dia(baixado_em)
+            )
+        except conab_cafe.ErroDeLeitura as erro:
+            # safras antigas têm outro desenho de planilha: pula essa e segue com as lidas
+            log.warning("conab_cafe: %s pulada (%s)", linha.url, erro)
+            continue
         guardada = conab_cafe.acrescentar(guardada, nova)
+    if guardada.empty:
+        raise SemOriginalError("nenhuma planilha da CONAB pôde ser lida")
     return guardada
 
 

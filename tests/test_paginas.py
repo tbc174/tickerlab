@@ -282,10 +282,11 @@ def test_cada_contrato_bate_com_a_rota_de_verdade():
 
 def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     usadas = {c.rota for c in _contratos().values()}
-    # /eu, /conta e o aceite são da conta e /configuracao é do login, não de uma página
+    # /eu, /conta, /sair e o aceite são da conta e /configuracao é do login, não de uma página
     assert set(_openapi()["paths"]) - usadas == {
         "/v1/eu",
         "/v1/conta",
+        "/v1/sair",
         "/v1/aceite-dos-termos",
         "/v1/revogar-link",
         "/v1/salvar-simulacao",
@@ -293,6 +294,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        "/v1/busca-por-cnpj",  # até a página "Busca por CNPJ" (PR 3 do molde B)
         "/v1/configuracao",
     }
 

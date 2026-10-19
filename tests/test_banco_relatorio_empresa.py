@@ -103,6 +103,26 @@ def test_carrega_tudo_da_empresa_pelo_ticker(conexao):
     assert pd.Timestamp(tickers["atualizado_em"].iloc[0]).date() == AGORA.date()
 
 
+def test_relatorio_le_a_ficha_sem_as_secoes_do_molde_b(conexao, monkeypatch):
+    """Uma ficha só com a seção da rede (molde B) não vira dossiê no relatório da empresa."""
+    from src import dossie
+    from tests.test_dossie_no_app import SECAO_DA_REDE, _bruta
+
+    so_a_rede = dossie.Ficha.model_validate(_bruta() | {"secoes": [SECAO_DA_REDE]})
+    monkeypatch.setattr(repo, "ficha_do", lambda _cnpj: so_a_rede)
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.dossie is None
+
+
+def test_pares_leem_a_geracao_de_caixa_pela_ficha_de_cada_um(conexao):
+    from src import dossie
+
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.caixa_do_par is dossie.caixa_do_par
+
+
 def test_sem_padrao_gravado_fica_sem_padroes(conexao):
     entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
     assert entradas is not None and entradas.padroes is None

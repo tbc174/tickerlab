@@ -61,9 +61,17 @@ SECOES: dict[str, str] = {
 }
 # onde entram as seções do dossiê da base (`base/dossie.py`), entre as do relatório
 ORDEM_DAS_SECOES = (
-    *list(SECOES)[: list(SECOES).index("dividendos") + 1],
-    "ofertas_e_fundos",  # capital e acionistas
-    "auditor_e_controladas",  # governança
+    *list(SECOES)[: list(SECOES).index("endividamento") + 1],
+    "credito",  # a dívida e o crédito
+    "caixa",
+    "geracao_de_caixa",  # EBITDA, capex e FCF da DFP (série T1)
+    "qualidade",
+    "qualidade_do_lucro",  # as contas e a qualidade delas
+    "dividendos",
+    "ofertas_e_fundos",
+    "capital_e_acionistas",  # capital e acionistas
+    "auditor_e_controladas",
+    "governanca",  # governança
     "pares",
     "setor_regulado",  # setor e pares
     "eventos",
@@ -91,6 +99,18 @@ INDICADORES_DO_QUE_MUDOU = (
 # o sentido de cada indicador do "o que mudou" (os de fora do padrão do setor: maior é melhor)
 MAIOR_E_MELHOR = {chave: maior for chave, (_, maior) in INDICADORES.items()}
 QUANTOS_PARES = 5
+AINDA_SEM_DADO = (
+    "ainda sem dado"  # o par ainda não tem a geração de caixa na ficha da noite
+)
+SOBRE_O_CAIXA_DOS_PARES = (
+    "Margem EBITDA e FCF do último exercício (DFP) de cada par, da geração de caixa da ficha dele; "
+    f'"{AINDA_SEM_DADO}" quando a ficha ainda não tem a DFC ou a linha.'
+)
+ROTULOS_DAS_COLUNAS = {  # o cabeçalho que a regra geral (`rotulo_da_coluna`) escreveria errado
+    "margem_ebitda": "Margem EBITDA",
+    "fcf": "FCF",
+    "exercicio_do_caixa": "Exercício da margem e do FCF",
+}
 NOMES_DAS_TABELAS = {  # o título de cada tabela, igual na página e no PDF
     "datas_das_fontes": "Última data de cada fonte",
     "gatilhos": "O valor que mudaria cada nota",
@@ -244,7 +264,7 @@ class Relatorio:
 
     def como_dict(self) -> dict:
         """Para a API: datas em texto ISO e números que faltam como None."""
-        return _para_json(asdict(self))
+        return para_json(asdict(self))
 
 
 @dataclass(frozen=True)
@@ -261,6 +281,8 @@ class Entradas:
     proventos: pd.DataFrame | None = None  # do FRE
     eventos_de_capital: pd.DataFrame | None = None  # do FRE
     pares: pd.DataFrame | None = None  # cnpj, empresa, receita (do mesmo grupo)
+    # a geração de caixa de um par pela ficha da noite dele (`src.dossie.caixa_do_par`)
+    caixa_do_par: Callable[[str], dict | None] | None = None
     dossie: Dossie | None = None  # a ficha da base do CNPJ (`src/dossie.py`)
     tickers: pd.DataFrame | None = (
         None  # codigo, valor_mobiliario, atualizado_em (do FCA)
@@ -269,11 +291,11 @@ class Entradas:
 
 
 # --- números escritos ------------------------------------------------------------------------------
-def _para_json(valor: object) -> object:
+def para_json(valor: object) -> object:
     if isinstance(valor, dict):
-        return {str(k): _para_json(v) for k, v in valor.items()}
+        return {str(k): para_json(v) for k, v in valor.items()}
     if isinstance(valor, list | tuple):
-        return [_para_json(v) for v in valor]
+        return [para_json(v) for v in valor]
     if isinstance(valor, date | pd.Timestamp):
         return valor.isoformat()
     if isinstance(valor, float) and not math.isfinite(valor):
@@ -300,7 +322,9 @@ def nome_da_tabela(chave: str) -> str:
 
 
 def rotulo_da_coluna(coluna: str) -> str:
-    """`dividendo_total` → "Dividendo total" (cabeçalho das tabelas)."""
+    """`dividendo_total` → "Dividendo total" (cabeçalho das tabelas); siglas e acentos pelo mapa."""
+    if coluna in ROTULOS_DAS_COLUNAS:
+        return ROTULOS_DAS_COLUNAS[coluna]
     return str(coluna).replace("_", " ").capitalize()
 
 
@@ -387,7 +411,7 @@ def _tabela(tabela: pd.DataFrame, indice: str = "ano") -> list[dict]:
     registros = (
         tabela.reset_index().rename(columns={"index": indice}).to_dict("records")
     )
-    return [_para_json(r) for r in registros]  # type: ignore[misc]
+    return [para_json(r) for r in registros]  # type: ignore[misc]
 
 
 # --- seções ----------------------------------------------------------------------------------------
@@ -898,6 +922,23 @@ def _o_que_os_dados_mostram(secoes: list[Secao], c: _Calculos) -> Secao:
     )
 
 
+def _caixa_do_par(e: Entradas, cnpj: str) -> dict[str, str]:
+    """A margem EBITDA e o FCF do último exercício do par ("ainda sem dado" se a ficha não os tem)."""
+    if e.caixa_do_par is None:
+        return {}
+    caixa = e.caixa_do_par(cnpj) or {}
+    exercicio, margem, fcf = (
+        caixa.get(c) for c in ("exercicio", "margem_ebitda", "fcf")
+    )
+    return {
+        "margem_ebitda": AINDA_SEM_DADO
+        if margem is None
+        else escrever(margem, fundamentos.FRACAO),
+        "fcf": AINDA_SEM_DADO if fcf is None else escrever(fcf, fundamentos.REAIS),
+        "exercicio_do_caixa": AINDA_SEM_DADO if exercicio is None else str(exercicio),
+    }
+
+
 def _pares(e: Entradas, c: _Calculos) -> Secao:
     receita = c.indicadores.get("receita")
     if (
@@ -917,12 +958,18 @@ def _pares(e: Entradas, c: _Calculos) -> Secao:
         {
             "empresa": linha.empresa,
             "receita": escrever(linha.receita, fundamentos.REAIS),
+            **_caixa_do_par(e, str(linha.cnpj)),
         }
         for linha in perto.itertuples(index=False)
     ]
-    return Secao("pares", SECOES["pares"], paragrafos=[
+    paragrafos = [
         f"As {len(tabela)} empresas do grupo {NOMES.get(c.grupo, c.grupo)} com a receita mais parecida."
-    ], tabelas={"pares": tabela})  # fmt: skip
+    ]
+    if e.caixa_do_par is not None:
+        paragrafos.append(SOBRE_O_CAIXA_DOS_PARES)
+    return Secao(
+        "pares", SECOES["pares"], paragrafos=paragrafos, tabelas={"pares": tabela}
+    )
 
 
 NAO_E_PREVISAO = (
@@ -1017,7 +1064,7 @@ def _metodologia() -> Secao:
     ])  # fmt: skip
 
 
-def _data_do_dossie(d: Dossie) -> str:
+def data_do_dossie(d: Dossie) -> str:
     if d.velha:
         return (
             f"Dados da base do TickerLab de {d.dia:%d/%m/%Y}: a atualização das últimas noites não "
@@ -1037,7 +1084,7 @@ def _secoes_do_dossie(e: Entradas, plano: str | None) -> list[Secao]:
             Secao(s.chave, s.titulo, paragrafos=convite, trancada=True)
             for s in e.dossie.secoes
         ]
-    data = _data_do_dossie(e.dossie)
+    data = data_do_dossie(e.dossie)
     return [replace(s, paragrafos=[data, *s.paragrafos]) for s in e.dossie.secoes]
 
 

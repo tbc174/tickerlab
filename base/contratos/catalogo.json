@@ -4,7 +4,7 @@
       "tabela": "demonstracoes_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -19,11 +19,11 @@
           "unidade": "texto"
         },
         "demonstracao": {
-          "descricao": "BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado)",
+          "descricao": "BPA (ativo), BPP (passivo e patrimônio), DRE (resultado, só o primeiro nível), DRA (resultado abrangente), DFC_MI ou DFC_MD (fluxo de caixa pelo método indireto ou direto) ou DVA (valor adicionado); as quatro últimas inteiras, desde a série T1 (contrato 2.0.0). A DMPL fica em `dmpl_como_era`",
           "unidade": "texto"
         },
         "conta": {
-          "descricao": "Código da conta no plano da CVM (1, 1.01, 3.01...)",
+          "descricao": "Código da conta no plano da CVM (1, 1.01, 3.01, 6.01, 7.04.01...)",
           "unidade": "texto"
         },
         "descricao": {
@@ -90,6 +90,102 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano",
+      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+    },
+    "dmpl_como_era": {
+      "tabela": "dmpl_como_era",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "grupo": {
+          "descricao": "con (consolidado) ou ind (individual)",
+          "unidade": "texto"
+        },
+        "demonstracao": {
+          "descricao": "Sempre DMPL",
+          "unidade": "texto"
+        },
+        "conta": {
+          "descricao": "Código da linha da DMPL no plano da CVM (5.01, 5.04.06...)",
+          "unidade": "texto"
+        },
+        "coluna": {
+          "descricao": "Coluna do patrimônio, com nome único entre empresas (`base/dmpl.py`): capital_social, reservas_de_capital, reservas_de_lucro, lucros_acumulados, outros_resultados_abrangentes, ajustes_de_avaliacao_patrimonial, reservas_de_reavaliacao, patrimonio_liquido, patrimonio_liquido_consolidado e nao_controladores; outra coluna fica com o nome da empresa sem acento; sem_coluna quando veio sem nome",
+          "unidade": "texto"
+        },
+        "descricao": {
+          "descricao": "Nome da linha como a empresa informou",
+          "unidade": "texto"
+        },
+        "inicio": {
+          "descricao": "Começo do período",
+          "unidade": "data (dia)"
+        },
+        "fim": {
+          "descricao": "Fim do período",
+          "unidade": "data (dia)"
+        },
+        "valor": {
+          "descricao": "Valor da célula; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "documento": {
+          "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do documento que publicou este valor (1, 2, 3...)",
+          "unidade": "número"
+        },
+        "ordem": {
+          "descricao": "ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito)",
+          "unidade": "texto"
+        },
+        "origem": {
+          "descricao": "dados_abertos ou enet",
+          "unidade": "texto"
+        },
+        "divulgado_em": {
+          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive); as mesmas regras de `demonstracoes_como_era`",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Dia em que outro valor tomou o lugar (vazio: vale até hoje)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "documento",
+        "referencia",
+        "versao",
+        "grupo",
+        "conta",
+        "coluna"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)",
       "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
     },
     "achados_de_qualidade": {
@@ -1715,6 +1811,464 @@
       "pessoa": false,
       "frequencia": "Diária (um arquivo por ano até 2021, por mês depois)",
       "atraso": "O dia seguinte; a regra usa o instante + 2 dias"
+    },
+    "ccee_pld": {
+      "tabela": "ccee_pld",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "granularidade": {
+          "descricao": "`hora`, `dia`, `mes` ou `semana_por_patamar`",
+          "unidade": "texto"
+        },
+        "submercado": {
+          "descricao": "Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Início do período a que o preço se refere (hora, dia, mês ou semana)",
+          "unidade": "data e hora (UTC)"
+        },
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ordem": {
+          "descricao": "Posição entre as linhas da fonte que repetem a mesma referência (1 se única)",
+          "unidade": "número inteiro"
+        },
+        "periodo_de_comercializacao": {
+          "descricao": "Hora do mês (1 a 744) na fonte; vazio nas outras granularidades",
+          "unidade": "número inteiro"
+        },
+        "pld": {
+          "descricao": "Preço em R$/MWh",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (ver o atraso)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "granularidade",
+        "submercado",
+        "referencia",
+        "ordem"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Diária (a CCEE republica o arquivo do ano a cada dia útil)",
+      "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de 2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca"
+    },
+    "ons_restricao": {
+      "tabela": "ons_restricao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "instante": {
+          "descricao": "Hora (início)",
+          "unidade": "data e hora (UTC)"
+        },
+        "tipo": {
+          "descricao": "`eolica` ou `fotovoltaica`",
+          "unidade": "texto"
+        },
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina ou do conjunto, como o ONS escreve",
+          "unidade": "texto"
+        },
+        "id_ons": {
+          "descricao": "Código da usina ou conjunto no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código na ANEEL (vazio nos conjuntos)",
+          "unidade": "texto"
+        },
+        "agente_operador": {
+          "descricao": "Agente operador (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "geracao_mwmed": {
+          "descricao": "Geração verificada, em MWmed (numa hora, igual a MWh)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "referencia_mwmed": {
+          "descricao": "Geração de referência (o que a usina geraria sem a restrição), MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "referencia_final_mwmed": {
+          "descricao": "Referência final, depois do fechamento da apuração, MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponibilidade_mwmed": {
+          "descricao": "Potência disponível, MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nao_realizada_mwmed": {
+          "descricao": "Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "minutos_restricao": {
+          "descricao": "Minutos de restrição na hora (soma das leituras; vazio sem restrição)",
+          "unidade": "número inteiro"
+        },
+        "razao_da_restricao": {
+          "descricao": "Código da razão da restrição (a primeira da hora)",
+          "unidade": "texto"
+        },
+        "origem_da_restricao": {
+          "descricao": "Código da origem da restrição (a primeira da hora)",
+          "unidade": "texto"
+        },
+        "leituras": {
+          "descricao": "Quantas leituras da fonte entraram na linha",
+          "unidade": "número inteiro"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (instante + 2 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "instante",
+        "tipo",
+        "id_ons",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "instante",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ONS acrescenta e revisa os arquivos de meses passados)",
+      "atraso": "O instante + 2 dias (o mesmo da geração por usina)"
+    },
+    "ons_capacidade": {
+      "tabela": "ons_capacidade",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "modalidade_de_operacao": {
+          "descricao": "Modalidade de operação (tipo I, II...)",
+          "unidade": "texto"
+        },
+        "proprietario": {
+          "descricao": "Agente proprietário, como o ONS escreve (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "operador": {
+          "descricao": "Agente operador",
+          "unidade": "texto"
+        },
+        "tipo_de_usina": {
+          "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código na ANEEL",
+          "unidade": "texto"
+        },
+        "unidade_geradora": {
+          "descricao": "Nome da unidade geradora",
+          "unidade": "texto"
+        },
+        "cod_equipamento": {
+          "descricao": "Código do equipamento no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "numero_da_unidade": {
+          "descricao": "Número da unidade na usina",
+          "unidade": "texto"
+        },
+        "combustivel": {
+          "descricao": "Combustível ou fonte",
+          "unidade": "texto"
+        },
+        "entrada_em_teste": {
+          "descricao": "Data da entrada em teste",
+          "unidade": "data (dia)"
+        },
+        "entrada_em_operacao": {
+          "descricao": "Data da entrada em operação",
+          "unidade": "data (dia)"
+        },
+        "desativada_em": {
+          "descricao": "Data da desativação (vazio: em operação)",
+          "unidade": "data (dia)"
+        },
+        "potencia_efetiva_mw": {
+          "descricao": "Potência efetiva da unidade, em MW",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a unidade existe para quem pergunta (entrada em operação)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cod_equipamento",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "entrada_em_operacao",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ONS regera o cadastro inteiro)",
+      "atraso": "A regra usa a data de entrada em operação (ou em teste, quando falta)"
+    },
+    "anp_concessionarios": {
+      "tabela": "anp_concessionarios",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "bid": {
+          "descricao": "Código da rodada de licitação (BID) do contrato",
+          "unidade": "texto"
+        },
+        "numero_do_contrato": {
+          "descricao": "Número do contrato na ANP (a chave, com o CNPJ)",
+          "unidade": "texto"
+        },
+        "fase": {
+          "descricao": "Exploração, Avaliação ou Produção",
+          "unidade": "texto"
+        },
+        "nome_fantasia": {
+          "descricao": "Nome do campo ou bloco",
+          "unidade": "texto"
+        },
+        "bacia": {
+          "descricao": "Bacia sedimentar",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ do sócio, com 14 dígitos (liga à empresa)",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome do sócio, sem o prefixo de operador",
+          "unidade": "texto"
+        },
+        "operador": {
+          "descricao": "Verdadeiro na linha de quem opera o contrato",
+          "unidade": "verdadeiro ou falso"
+        },
+        "participacao_pct": {
+          "descricao": "Participação do sócio no contrato, em pontos percentuais (0 a 100)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ambiente": {
+          "descricao": "Terra ou Mar",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (o dia da coleta que o trouxe)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a mudança vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "numero_do_contrato",
+        "cnpj",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a ANP regera o arquivo inteiro)",
+      "atraso": "Sem data própria: vale desde o dia da coleta do arquivista"
+    },
+    "antt_siade": {
+      "tabela": "antt_siade",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ferrovia": {
+          "descricao": "Sigla da ferrovia na ANTT (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "mercadoria": {
+          "descricao": "Mercadoria, como a ANTT escreve",
+          "unidade": "texto"
+        },
+        "estacao_de_origem": {
+          "descricao": "Estação de origem",
+          "unidade": "texto"
+        },
+        "uf_de_origem": {
+          "descricao": "UF da estação de origem",
+          "unidade": "texto"
+        },
+        "estacao_de_destino": {
+          "descricao": "Estação de destino",
+          "unidade": "texto"
+        },
+        "uf_de_destino": {
+          "descricao": "UF da estação de destino",
+          "unidade": "texto"
+        },
+        "toneladas_uteis": {
+          "descricao": "Toneladas úteis transportadas (TU)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "tku": {
+          "descricao": "Tonelada-quilômetro útil (TKU)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "ferrovia",
+        "mercadoria",
+        "estacao_de_origem",
+        "estacao_de_destino",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (um CSV por ano)",
+      "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só uma captura, 14/10/2026); pode atrasar um número, nunca adiantar"
+    },
+    "comex_preco_medio": {
+      "tabela": "comex_preco_medio",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "fluxo": {
+          "descricao": "`exportacao` ou `importacao`",
+          "unidade": "texto"
+        },
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ncm": {
+          "descricao": "NCM (8 dígitos)",
+          "unidade": "texto"
+        },
+        "urf": {
+          "descricao": "Código da URF (unidade da Receita: porto, aeroporto ou posto)",
+          "unidade": "texto"
+        },
+        "vl_fob_usd": {
+          "descricao": "Valor FOB somado, em US$",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "kg_liquido": {
+          "descricao": "Quilo líquido somado",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "preco_usd_por_kg": {
+          "descricao": "Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "fluxo",
+        "competencia",
+        "ncm",
+        "urf",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Mensal (um CSV por ano e por fluxo)",
+      "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar"
     },
     "aneel_samp": {
       "tabela": "aneel_samp",
