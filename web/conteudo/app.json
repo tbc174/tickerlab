@@ -68,6 +68,7 @@
         "carteira_b3",
         "juros_e_inflacao",
         "precos_de_referencia",
+        "busca_por_cnpj",
         "newsletter",
         "carteira_research",
         "alertas",

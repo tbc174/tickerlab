@@ -702,6 +702,34 @@
     "url": "relatorio-empresa"
   },
   {
+    "area": "acompanhar",
+    "chave": "busca_por_cnpj",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O CNPJ da empresa, com ou sem pontuação (aceita as letras do CNPJ novo).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cnpj",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "BuscaPorCnpjV1",
+      "rota": "/v1/busca-por-cnpj"
+    },
+    "descricao": "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Busca por CNPJ",
+    "url": "busca-por-cnpj"
+  },
+  {
     "area": "ativo",
     "chave": "por_dentro",
     "contrato": null,

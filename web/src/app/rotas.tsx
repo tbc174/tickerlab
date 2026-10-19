@@ -7,6 +7,7 @@ import { type PaginaDoApp, paginasDoApp } from "../conteudo";
 import { linkDoClassico } from "./classico";
 import { navegador } from "./navegador";
 import { Backtest } from "./telas/Backtest";
+import { BuscaPorCnpj } from "./telas/BuscaPorCnpj";
 import { Comparar } from "./telas/Comparar";
 import { EmConstrucao } from "./telas/EmConstrucao";
 import { JurosEInflacao } from "./telas/JurosEInflacao";
@@ -36,6 +37,7 @@ const TELAS_PRONTAS: Record<string, (pagina: PaginaDoApp) => ReactNode> = {
   backtest: (pagina) => <Backtest pagina={pagina} />,
   planos: (pagina) => <Planos pagina={pagina} />,
   relatorio_empresa: (pagina) => <RelatorioEmpresa pagina={pagina} />,
+  busca_por_cnpj: (pagina) => <BuscaPorCnpj pagina={pagina} />,
   meus_dados: (pagina) => <MeusDados pagina={pagina} />,
   simulacoes: (pagina) => <Simulacoes pagina={pagina} />,
   mapa_do_cafe: (pagina) => <MapaDoCafe pagina={pagina} />,

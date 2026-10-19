@@ -108,7 +108,7 @@ function Tabela({ tabela }: { tabela: TabelaDoRelatorioV1 }) {
   );
 }
 
-function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
+export function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
   return (
     <section
       className="secao-do-relatorio"
@@ -228,7 +228,7 @@ function Analise({ analise }: { analise: AnaliseDaEmpresaV1 }) {
   );
 }
 
-function ConviteDoPro() {
+export function ConviteDoPro() {
   return (
     <p>
       <Link to="/planos">Conhecer o plano Pro</Link>
@@ -237,7 +237,7 @@ function ConviteDoPro() {
 }
 
 // a última seção do 1º bloco de seções trancadas (−1 quando não há nenhuma)
-function fimDoPrimeiroBloco(secoes: SecaoDoRelatorioV1[]): number {
+export function fimDoPrimeiroBloco(secoes: SecaoDoRelatorioV1[]): number {
   const inicio = secoes.findIndex((s) => s.trancada);
   if (inicio < 0) return -1;
   const depois = secoes.findIndex((s, i) => i > inicio && !s.trancada);

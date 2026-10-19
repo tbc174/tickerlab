@@ -276,9 +276,6 @@ ROTAS_DA_CONTA = frozenset(
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
-        # molde B: pede login; o plano só decide se as seções da base vêm trancadas (ainda sem a
-        # página "Busca por CNPJ", que chega no PR 3 do plano e leva a rota para o contrato dela)
-        "/v1/busca-por-cnpj",
     }
 )
 
