@@ -28,12 +28,26 @@ import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 import pandas as pd
 
+from base import concentracao
+from base import indicadores_de_caixa as t1
+from base.cnpj import formatar, raiz
 from base.dicionario import TABELAS
+from base.rede.ligacoes_das_fontes import (
+    AUDITA,
+    COLIGADA_DE,
+    CONTROLADA_DE,
+    DO_CONGLOMERADO_DE,
+    EMITE,
+    PARTICIPADA_DE,
+)
+from base.rede.vistas import vista_publicada
+from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
+from src.negociacoes import CARGOS
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
 # fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
@@ -120,6 +134,9 @@ class SerieDaAgencia:
     # filtros de igualdade da porta: `(coluna, valor)` ou `(coluna, (valores aceitos))`
     filtros: tuple[tuple[str, str | tuple[str, ...]], ...] = ()
     chave_em_digitos: bool = False  # CNPJ: casa formatado ou não
+    grupo: str | None = (
+        None  # a coluna do grupo econômico, quando a agência o informa (molde D)
+    )
 
 
 SERIES_DAS_AGENCIAS = (
@@ -151,6 +168,7 @@ SERIES_DAS_AGENCIAS = (
             # a móvel vem por modalidade e por tecnologia (o mesmo acesso duas vezes): só a 1ª
             (("servico", servico), ("recorte", ("completo", "modalidade"))),
             chave_em_digitos=True,
+            grupo="grupo_economico",
         )
         for servico, texto in (
             ("telefonia_movel", "telefonia móvel"),
@@ -202,6 +220,49 @@ SERIES_DAS_AGENCIAS = (
 )
 
 
+_SERIE_POR_NOME = {serie.nome: serie for serie in SERIES_DAS_AGENCIAS}
+
+
+@dataclass(frozen=True)
+class SetorDoLancamento:
+    """Um setor do relatório do setor (molde D): quem está nele e sobre o que se mede a concentração.
+
+    Entra no setor a companhia com ticker ligada à agência pela tabela empresa ↔ série (B13). As que
+    entram pelo setor da CVM (geradoras, transmissoras) são somadas no app, que tem o cadastro.
+    """
+
+    chave: str
+    nome: str
+    agencia: str  # para o motivo de cada membro ("ligada à ANS por 2 entidades")
+    series: tuple[str, ...]  # `SerieDaAgencia.nome`: a base da concentração
+    mercado_regional: bool = False  # competem por região: o total nacional mede escala
+
+    @property
+    def fontes_b13(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(_SERIE_POR_NOME[n].fonte_b13 for n in self.series))
+
+
+SETORES_DO_LANCAMENTO = (
+    SetorDoLancamento("eletricas", "Elétricas", "ANEEL", ("aneel_consumidores",)),
+    SetorDoLancamento("seguros", "Seguros", "SUSEP", ("susep_premio_ganho",)),
+    SetorDoLancamento(
+        "saude_suplementar",
+        "Saúde suplementar",
+        "ANS",
+        ("ans_beneficiarios",),
+        mercado_regional=True,
+    ),
+    SetorDoLancamento(
+        "telecom",
+        "Telecomunicações",
+        "Anatel",
+        ("anatel_telefonia_movel", "anatel_banda_larga_fixa"),
+        mercado_regional=True,
+    ),
+    SetorDoLancamento("aviacao", "Aviação", "ANAC", ("anac_passageiros",)),
+)
+
+
 def fontes_do_setor(nomes_das_series: Iterable[str]) -> list[str]:
     """As licenças do setor regulado: a ligação empresa ↔ série e só as agências das séries dadas."""
     nomes = set(nomes_das_series)
@@ -235,11 +296,53 @@ SECOES = (
         ("ofertas_resolucao_160", "ofertas_antigas", "painel_dos_fundos"),
     ),
     SecaoDaBase(
+        "qualidade_do_lucro",
+        "Qualidade do lucro",
+        ("demonstracoes_como_era", "release_x_oficial", "trocas_de_auditor"),
+    ),
+    SecaoDaBase(
+        "geracao_de_caixa",
+        "Geração de caixa (EBITDA, capex e FCF)",
+        ("demonstracoes_como_era",),
+    ),
+    SecaoDaBase(
+        "capital_e_acionistas",
+        "Capital e acionistas",
+        ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
+    ),
+    SecaoDaBase(
+        "governanca",
+        "Governança",
+        (
+            "fre_conselho",
+            "fre_comites",
+            "fre_remuneracao",
+            "fre_remuneracao_extremos",
+            "fre_diversidade",
+        ),
+    ),
+    SecaoDaBase("credito", "Crédito", ("ratings", "debentures_assembleias")),
+    SecaoDaBase(
         "setor_regulado",
         "Setor regulado",
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
     ),
+    SecaoDaBase(
+        "setor",
+        "Setor",
+        (
+            "empresa_serie",
+            *dict.fromkeys(
+                _SERIE_POR_NOME[nome].tabela
+                for setor in SETORES_DO_LANCAMENTO
+                for nome in setor.series
+            ),
+        ),
+    ),
     SecaoDaBase("negocios", "Negócios (M&A pela CVM)", ("eventos",)),
+    SecaoDaBase(
+        "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
+    ),
 )
 _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
@@ -257,14 +360,74 @@ LIMITES = {
         "colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem "
         "com até 90 dias de atraso: os meses em que as carteiras ainda estão chegando ficam de fora."
     ),
+    "geracao_de_caixa": (
+        "Contas da DFP de cada exercício, como eram públicas no dia da ficha (uma reapresentação "
+        "entra a partir do dia em que saiu). EBITDA = resultado antes do resultado financeiro (DRE "
+        "3.05) + depreciação e amortização (DVA 7.04.01; sem DVA, as linhas de depreciação da DFC). "
+        "Capex = compras de imobilizado e intangível na DFC de investimento. FCF = caixa operacional "
+        "(DFC 6.01) − capex. No consolidado, quando a empresa o publica. Sem a linha, o número fica "
+        "vazio: em bancos e seguradoras a DRE 3.05 não é o EBIT, e o EBITDA não sai."
+    ),
+    "qualidade_do_lucro": (
+        "Reapresentação: o lucro do período ou a receita de um dos últimos 10 exercícios que mudou "
+        "mais de R$ 1 mil (o arredondamento da CVM) depois de publicado na DFP, pela própria DFP "
+        "reapresentada ou pela do ano seguinte; no consolidado, quando a empresa o publica. O "
+        "release é o que a empresa disse no press-release de resultado contra o ITR ou a DFP do "
+        "mesmo período (receita, lucro dos controladores e resultado operacional): o número do "
+        "release foi lido por um modelo de IA e conferido no texto do PDF, e diferença não é erro, "
+        "pode ser outro critério da empresa. O atraso de entrega está na ficha técnica (o prazo da "
+        "CVM contra a entrega)."
+    ),
+    "capital_e_acionistas": (
+        "Insiders: compras e vendas de ações declaradas à CVM (VLMO) por controladores, diretores, "
+        "conselheiros e acionistas com 10% ou mais, somadas por tipo de cargo nos 12 meses até a "
+        "data da ficha, só com as declarações já entregues; sem nomes. A recompra é a própria "
+        "empresa comprando (tesouraria), à parte. Eventos de capital (desdobramentos, grupamentos, "
+        "bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos "
+        "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
+        "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos."
+    ),
+    "governanca": (
+        "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da "
+        "ficha; só contagens e somas, sem nomes. O conselho conta quem está só nele e quem é também "
+        "diretor; independente e eleito por minoritários seguem o cargo que a empresa informa. A "
+        "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
+        "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. "
+        "Diversidade só existe no FRE de 2023 em diante."
+    ),
+    "credito": (
+        "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos "
+        "pelo TickerLab (documento que não deu para ler fica de fora); o mesmo rating em dois "
+        "documentos conta uma vez, na data do primeiro. Assembleias de debenturistas: editais, atas "
+        "e propostas entregues à CVM, na versão mais nova; o tema sai das palavras do assunto, que "
+        "a empresa escreve, e pode deixar escapar ou incluir algum. Assembleia não quer dizer "
+        "problema: muitas só aprovam mudanças de rotina."
+    ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
+    ),
+    "setor": (
+        "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
+        "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
+        "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
+        "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
+        "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
+        "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
+        "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
+        "entidade. A variação do HHI só compara dois anos seguidos e completos."
     ),
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
         "O assunto é escrito pela empresa."
+    ),
+    "rede": (
+        "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
+        "Formulário Cadastral e as carteiras dos fundos entregues à CVM e com o IF.data do Banco "
+        "Central. Uma ligação do FRE só aparece quando o FRE mais recente da companhia que a informa é "
+        "dos últimos 2 anos e ainda a lista. A data é a do primeiro documento que mostrou a ligação. "
+        "Pessoas (sócios, administradores) e sinais negativos (sanções, dívidas) não aparecem."
     ),
 }
 
@@ -669,6 +832,782 @@ def secao_ofertas_e_fundos(
     return _secao("ofertas_e_fundos", itens, tabelas)
 
 
+# --- geração de caixa (série T1) -----------------------------------------------------------------
+
+DOCUMENTO_ANUAL = "DFP"
+NUMEROS_DO_CAIXA = {  # coluna da T1 → nome do item (só os que existem no último exercício)
+    "ebitda": "EBITDA do último exercício",
+    "capex": "Capex do último exercício",
+    "fcf": "Fluxo de caixa livre (FCF) do último exercício",
+}
+COLUNAS_DO_CAIXA = [
+    "exercicio",
+    "fim",
+    "receita",
+    "ebitda",
+    "margem_ebitda",
+    "depreciacao_amortizacao",
+    "caixa_operacional",
+    "capex",
+    "fcf",
+    "divulgado_em",
+]
+
+
+def _publicas_no_dia(como_era: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """As linhas da DFP já divulgadas no dia, do consolidado (ou do individual, se não há)."""
+    anuais = como_era[
+        (como_era["documento"] == DOCUMENTO_ANUAL)
+        & (pd.to_datetime(como_era["divulgado_em"]) <= hoje)
+    ]
+    grupo = "con" if (anuais["grupo"] == "con").any() else "ind"
+    return anuais[anuais["grupo"] == grupo].assign(
+        divulgado_em=lambda t: pd.to_datetime(t["divulgado_em"])
+    )
+
+
+def _receitas(linhas: pd.DataFrame) -> pd.DataFrame:
+    """A receita (DRE 3.01) de cada período, na versão mais nova já divulgada."""
+    receitas = linhas[(linhas["demonstracao"] == "DRE") & (linhas["conta"] == RECEITA)]
+    receitas = receitas.sort_values("divulgado_em").drop_duplicates(
+        t1.PERIODO, keep="last"
+    )
+    return receitas.set_index(t1.PERIODO)[["valor"]].rename(
+        columns={"valor": "receita"}
+    )
+
+
+def _caixa_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por exercício (o mais novo primeiro), com a margem sobre a receita da mesma DRE."""
+    numeros = t1.indicadores_de_caixa(linhas)
+    if numeros.empty:
+        return numeros
+    tabela = numeros.join(_receitas(linhas), on=t1.PERIODO)
+    receita = tabela["receita"].where(tabela["receita"] > 0)
+    tabela = tabela.assign(
+        exercicio=pd.to_datetime(tabela["fim"]).dt.year,
+        margem_ebitda=tabela["ebitda"] / receita,
+    )
+    tabela = tabela.sort_values("exercicio", ascending=False)
+    return tabela[COLUNAS_DO_CAIXA].head(ANOS_NAS_SERIES).reset_index(drop=True)
+
+
+def secao_geracao_de_caixa(
+    como_era: pd.DataFrame, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """EBITDA, capex e FCF de cada DFP, como eram públicos no dia (None: a base não tem a DFC).
+
+    `como_era`: as linhas da DFP (DRE, DFC e DVA) de `demonstracoes_como_era`, de todas as versões; a
+    seção fica com a mais nova já divulgada em `hoje`. Número sem a linha fica vazio e não vira item.
+    """
+    if como_era.empty:
+        return None
+    tabela = _caixa_por_exercicio(_publicas_no_dia(como_era, hoje))
+    if tabela.empty:
+        return None
+    ultimo = tabela.iloc[0]
+    base = _data(ultimo["fim"])
+    itens = [
+        _item(chave, nome, float(ultimo[chave]), "R$", base)
+        for chave, nome in NUMEROS_DO_CAIXA.items()
+        if pd.notna(ultimo[chave])
+    ]
+    tabelas = {"caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None)}
+    return _secao("geracao_de_caixa", itens, tabelas)
+
+
+# --- qualidade do lucro --------------------------------------------------------------------------
+
+LINHAS_DO_RELEASE = {
+    "receita_liquida": "Receita líquida",
+    "lucro_liquido_controladores": "Lucro dos controladores",
+    "resultado_operacional": "Resultado operacional",
+}
+CLASSES_COMPARADAS = ("igual", "igual (arredondamento)", "diferente")
+CLASSES_DO_RELEASE = (*CLASSES_COMPARADAS, "release não mostra", "sem ITR")
+LUCRO_DO_PERIODO, RECEITA_DA_DRE = "Lucro do período", "Receita"
+# a receita e as contas onde o lucro costuma ficar (ele é achado pela descrição, `regras.LINHA_DO_LUCRO`)
+CONTAS_DA_DRE = (RECEITA, "3.09", "3.11", "3.13")
+PORCENTO = 100.0
+
+
+def _linhas_da_dre(como_era: pd.DataFrame) -> pd.DataFrame:
+    """O lucro do período e a receita da DFP, no consolidado (ou no individual, se não há)."""
+    dfp = como_era[
+        (como_era["demonstracao"] == "DRE") & (como_era["documento"] == "DFP")
+    ]
+    grupo = "con" if (dfp["grupo"] == "con").any() else "ind"
+    dfp = dfp[dfp["grupo"] == grupo]
+    descricao = dfp["descricao"].fillna("").astype(str).str.strip()
+    lucro = descricao.str.match(LINHA_DO_LUCRO)
+    receita = dfp["conta"] == RECEITA
+    escolhidas = dfp[lucro | receita]
+    return escolhidas.assign(
+        linha=lucro[lucro | receita].map(
+            {True: LUCRO_DO_PERIODO, False: RECEITA_DA_DRE}
+        ),
+        exercicio=pd.to_datetime(escolhidas["fim"]).dt.year,
+        divulgado_em=pd.to_datetime(escolhidas["divulgado_em"]),
+    )
+
+
+def _refeita(
+    exercicio: int, linha: str, versoes: pd.DataFrame
+) -> dict[str, Any] | None:
+    """A primeira e a última versão de uma linha de um exercício, se mudou mais que o arredondamento."""
+    versoes = versoes.sort_values("divulgado_em")
+    primeira, atual = versoes.iloc[0], versoes.iloc[-1]
+    primeiro_valor, valor_atual = float(primeira["valor"]), float(atual["valor"])
+    diferenca = valor_atual - primeiro_valor
+    if abs(diferenca) <= TOLERANCIA_EM_REAIS:
+        return None
+    return {
+        "exercicio": exercicio,
+        "linha": linha,
+        "primeiro_valor": primeiro_valor,
+        "primeiro_em": primeira["divulgado_em"],
+        "valor_atual": valor_atual,
+        "trocado_em": atual["divulgado_em"],
+        "diferenca": diferenca,
+        "diferenca_pct": (
+            PORCENTO * diferenca / abs(primeiro_valor) if primeiro_valor else None
+        ),
+    }
+
+
+def _reapresentacoes(
+    como_era: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Quantos exercícios a ficha olhou e quais tiveram o lucro ou a receita refeitos depois.
+
+    Sem olhar o futuro: só o que já tinha sido divulgado até `hoje`; o valor "de hoje" é o último
+    divulgado até lá, não o que a base sabe agora.
+    """
+    if como_era.empty:
+        return [], pd.DataFrame()
+    linhas = _linhas_da_dre(como_era)
+    linhas = linhas[linhas["divulgado_em"] <= hoje]
+    if linhas.empty:
+        return [], pd.DataFrame()
+    linhas = linhas[linhas["exercicio"] > linhas["exercicio"].max() - ANOS_NAS_SERIES]
+    refeitas = [
+        _refeita(int(exercicio), str(linha), versoes)
+        for (exercicio, linha, _), versoes in linhas.groupby(
+            ["exercicio", "linha", "conta"], sort=False
+        )
+    ]
+    tabela = pd.DataFrame([r for r in refeitas if r is not None])
+    if not tabela.empty:
+        tabela = tabela.sort_values(
+            ["trocado_em", "exercicio"], ascending=False, ignore_index=True
+        )
+    base = (
+        tabela["trocado_em"].max() if not tabela.empty else linhas["divulgado_em"].max()
+    )
+    itens = [
+        _item(
+            "exercicios_reapresentados",
+            "Exercícios com o lucro ou a receita refeitos depois de publicados",
+            int(tabela["exercicio"].nunique()) if not tabela.empty else 0,
+            "exercícios",
+            _data(base),
+        ),
+        _item(
+            "exercicios_olhados",
+            "Exercícios olhados (DFP)",
+            int(linhas["exercicio"].nunique()),
+            "exercícios",
+            _data(linhas["divulgado_em"].max()),
+        ),
+    ]
+    return itens, tabela
+
+
+def _releases(
+    releases: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """O release de resultado contra o ITR ou a DFP: quantos valores deu para comparar e os diferentes."""
+    if releases.empty:
+        return [], {}
+    releases = releases[pd.to_datetime(releases["publico_em"]) <= hoje]
+    if releases.empty:
+        return [], {}
+    # o release reentregue (versão nova) substitui o anterior do mesmo período
+    releases = releases.sort_values(["data_entrega", "versao"]).drop_duplicates(
+        ["periodo", "linha", "periodo_lido", "leitura"], keep="last"
+    )
+    comparados = releases[releases["classe"].isin(CLASSES_COMPARADAS)]
+    diferentes = comparados[comparados["classe"] == "diferente"]
+    base = _data(pd.to_datetime(releases["publico_em"]).max())
+    itens = [
+        _item(
+            "releases_comparados",
+            "Valores do release comparados com o ITR ou a DFP",
+            len(comparados),
+            "valores",
+            base,
+        ),
+        _item(
+            "releases_diferentes",
+            "Valores do release diferentes do oficial",
+            len(diferentes),
+            "valores",
+            base,
+        ),
+    ]
+    por_classe = releases["classe"].value_counts().reindex(CLASSES_DO_RELEASE).dropna()
+    colunas = [
+        "periodo",
+        "referencia",
+        "linha",
+        "valor_release_reais",
+        "valor_oficial_reais",
+        "diferenca_pct",
+        "link",
+    ]
+    tabelas = {
+        "releases_diferentes": diferentes.assign(
+            linha=diferentes["linha"].map(LINHAS_DO_RELEASE)
+        )
+        .sort_values("referencia", ascending=False)[colunas]
+        .head(LINHAS_NAS_LISTAS),
+        "releases_por_classe": pd.DataFrame(
+            {"classe": por_classe.index, "valores": por_classe.astype(int).to_numpy()}
+        ),
+    }
+    return itens, tabelas
+
+
+def _trocas_recentes(trocas: pd.DataFrame, hoje: pd.Timestamp) -> list[dict[str, Any]]:
+    """Quantas vezes a empresa trocou de auditor nos últimos 10 anos (a lista está no auditor)."""
+    if trocas.empty:
+        return []
+    conhecidas = trocas[pd.to_datetime(trocas["conhecido_em"]) <= hoje]
+    efetiva = pd.to_datetime(conhecidas["efetiva_em"])
+    recentes = efetiva[efetiva > hoje - pd.DateOffset(years=ANOS_NAS_SERIES)]
+    if recentes.empty:
+        return []
+    return [
+        _item(
+            "trocas_de_auditor_10_anos",
+            "Trocas de auditor nos últimos 10 anos",
+            len(recentes),
+            "trocas",
+            _data(recentes.max()),
+        )
+    ]
+
+
+def secao_qualidade_do_lucro(
+    como_era: pd.DataFrame,
+    releases: pd.DataFrame,
+    trocas: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Reapresentações, o release contra o oficial e as trocas de auditor (None: nada disso)."""
+    itens_da_dre, reapresentacoes = _reapresentacoes(como_era, hoje)
+    itens_do_release, tabelas_do_release = _releases(releases, hoje)
+    itens = [*itens_da_dre, *itens_do_release, *_trocas_recentes(trocas, hoje)]
+    if not itens:
+        return None
+    tabelas = {"reapresentacoes": reapresentacoes, **tabelas_do_release}
+    return _secao("qualidade_do_lucro", itens, tabelas)
+
+
+# --- capital e acionistas ------------------------------------------------------------------------
+
+TESOURARIA = "companhia"  # o cargo da própria empresa no VLMO: recompra, não insider
+JANELAS = ("últimos 12 meses", "12 meses anteriores")
+
+
+def _janela(datas: pd.Series, ate: pd.Timestamp, anos_antes: int = 0) -> pd.Series:
+    """As datas dentro dos 12 meses que terminam em `ate` (ou `anos_antes` anos antes)."""
+    fim = ate - pd.DateOffset(years=anos_antes)
+    return (datas > fim - pd.DateOffset(years=1)) & (datas <= fim)
+
+
+def _soma(negociacoes: pd.DataFrame, operacao: str) -> float:
+    return float(negociacoes.loc[negociacoes["operacao"] == operacao, "valor"].sum())
+
+
+def _somas_dos_insiders(negociacoes: pd.DataFrame) -> dict[str, float | int]:
+    insiders = negociacoes[negociacoes["cargo"] != TESOURARIA]
+    tesouraria = negociacoes[negociacoes["cargo"] == TESOURARIA]
+    return {
+        "compras": _soma(insiders, "compra"),
+        "vendas": _soma(insiders, "venda"),
+        "recompras": _soma(tesouraria, "compra"),
+        "negociacoes": len(insiders),
+    }
+
+
+def _por_cargo(negociacoes: pd.DataFrame) -> pd.DataFrame:
+    """Compras e vendas somadas por tipo de cargo: nunca por pessoa (ADRs 0018 e 0075)."""
+    if negociacoes.empty:
+        return pd.DataFrame()
+    linhas = [
+        {
+            "cargo": CARGOS.get(str(cargo), str(cargo)),
+            "compras": _soma(do_cargo, "compra"),
+            "vendas": _soma(do_cargo, "venda"),
+            "negociacoes": len(do_cargo),
+        }
+        for cargo, do_cargo in negociacoes.groupby("cargo", sort=False)
+    ]
+    return pd.DataFrame(linhas).sort_values(
+        ["compras", "vendas"], ascending=False, ignore_index=True
+    )
+
+
+def _insiders(
+    negociacoes: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Compras e vendas declaradas nos 12 meses até hoje, por cargo, e as dos 12 meses anteriores.
+
+    Só as declarações já entregues até hoje: a negociação do mês ainda sem formulário fica de fora.
+    """
+    if negociacoes.empty:
+        return [], {}
+    entregues = negociacoes[pd.to_datetime(negociacoes["entregue_em"]) <= hoje]
+    datas = pd.to_datetime(entregues["data"])
+    do_ano = entregues[_janela(datas, hoje)]
+    somas = _somas_dos_insiders(do_ano)
+    base = _data(hoje)
+    itens = [
+        _item("insiders_compras_12m", "Compras de insiders em 12 meses", somas["compras"], "R$", base),
+        _item("insiders_vendas_12m", "Vendas de insiders em 12 meses", somas["vendas"], "R$", base),
+        _item("recompras_12m", "Recompras da própria empresa em 12 meses", somas["recompras"], "R$", base),
+    ]  # fmt: skip
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+            }
+            | _somas_dos_insiders(entregues[_janela(datas, hoje, anos_antes)])
+            for anos_antes in range(len(JANELAS))
+        ]
+    )
+    tabelas = {"insiders_por_cargo": _por_cargo(do_ano), "insiders_janelas": janelas}
+    return itens, tabelas
+
+
+def _eventos_de_capital(
+    eventos: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Os eventos de capital dos últimos 10 anos, cada um uma vez (o FRE de cada ano os repete)."""
+    if eventos.empty:
+        return [], pd.DataFrame()
+    eventos = eventos.assign(data=pd.to_datetime(eventos["data"]))
+    eventos = eventos[
+        (eventos["data"] <= hoje)
+        & (eventos["data"] > hoje - pd.DateOffset(years=ANOS_NAS_SERIES))
+    ]
+    if eventos.empty:
+        return [], pd.DataFrame()
+    unicos = eventos.sort_values(["referencia", "versao"]).drop_duplicates(
+        ["tipo", "data"], keep="last"
+    )
+    tabela = unicos.sort_values("data", ascending=False, ignore_index=True)[
+        ["data", "tipo", "fator", "acoes_novas", "valor"]
+    ]
+    item = _item(
+        "eventos_de_capital",
+        "Eventos de capital nos últimos 10 anos",
+        len(tabela),
+        "eventos",
+        _data(tabela["data"].max()),
+    )
+    return [item], tabela.head(LINHAS_NAS_LISTAS)
+
+
+def _movimento_dos_fundos(
+    painel: pd.DataFrame, ultimo_mes: pd.Timestamp | None
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """O que os fundos compraram e venderam nos 12 últimos meses completos e nos 12 anteriores."""
+    if painel.empty or not {"compras", "vendas"} <= set(painel.columns):
+        return [], pd.DataFrame()
+    comprado = painel[painel["tipo"] == "comprado"]
+    comprado = comprado.assign(competencia=pd.to_datetime(comprado["competencia"]))
+    if ultimo_mes is not None:
+        comprado = comprado[comprado["competencia"] <= ultimo_mes]
+    if comprado.empty:
+        return [], pd.DataFrame()
+    ate = comprado["competencia"].max()
+    linhas = []
+    for anos_antes in range(len(JANELAS)):
+        no_ano = comprado[_janela(comprado["competencia"], ate, anos_antes)]
+        linhas.append(
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": ate - pd.DateOffset(years=anos_antes),
+                "compras": float(no_ano["compras"].sum()),
+                "vendas": float(no_ano["vendas"].sum()),
+            }
+        )
+    base = _data(ate)
+    itens = [
+        _item("compras_dos_fundos_12m", "Compras dos fundos em 12 meses", linhas[0]["compras"], "R$", base),
+        _item("vendas_dos_fundos_12m", "Vendas dos fundos em 12 meses", linhas[0]["vendas"], "R$", base),
+    ]  # fmt: skip
+    return itens, pd.DataFrame(linhas)
+
+
+def secao_capital_e_acionistas(
+    negociacoes: pd.DataFrame,
+    eventos: pd.DataFrame,
+    painel: pd.DataFrame,
+    hoje: pd.Timestamp,
+    ultimo_mes_completo: pd.Timestamp | None = None,
+) -> dict[str, Any] | None:
+    """Insiders, eventos de capital e o movimento dos fundos (None: nada disso)."""
+    itens_dos_insiders, tabelas_dos_insiders = _insiders(negociacoes, hoje)
+    itens_dos_eventos, eventos_de_capital = _eventos_de_capital(eventos, hoje)
+    itens_dos_fundos, fundos_janelas = _movimento_dos_fundos(
+        painel, ultimo_mes_completo
+    )
+    itens = [*itens_dos_insiders, *itens_dos_eventos, *itens_dos_fundos]
+    if not itens:
+        return None
+    tabelas = {
+        **tabelas_dos_insiders,
+        "eventos_de_capital": eventos_de_capital,
+        "fundos_janelas": fundos_janelas,
+    }
+    return _secao("capital_e_acionistas", itens, tabelas)
+
+
+# --- governança ----------------------------------------------------------------------------------
+
+# no FRE o conselheiro que também é diretor vem como "Pertence à Diretoria e ao Conselho de Administração"
+DO_CONSELHO = re.compile(r"conselho de administra", re.IGNORECASE)
+ANOS_DA_GOVERNANCA = 5  # quantos FREs (e exercícios da remuneração) as tabelas mostram
+ITENS_DA_GOVERNANCA = (  # chave do item, coluna de `governanca_por_ano`, nome, unidade
+    ("conselho_membros", "conselho", "Membros do conselho de administração", "pessoas"),
+    ("conselho_independentes", "independentes", "Conselheiros independentes", "pessoas"),
+    ("conselho_eleitos_por_minoritarios", "eleitos_por_minoritarios",
+     "Conselheiros eleitos por minoritários", "pessoas"),
+    ("comites", "comites", "Comitês informados no FRE", "comitês"),
+    ("mulheres_no_conselho", "mulheres_no_conselho", "Mulheres no conselho de administração",
+     "pessoas"),
+)  # fmt: skip
+
+
+def _entregues(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """As linhas dos FREs já entregues até hoje, na versão mais nova de cada referência."""
+    if tabela.empty:
+        return tabela
+    entregues = tabela[pd.to_datetime(tabela["conhecido_em"]) <= hoje]
+    ultima = entregues.groupby("referencia")["versao"].transform("max")
+    return entregues[entregues["versao"] == ultima]
+
+
+def _do_conselho(tabela: pd.DataFrame) -> pd.DataFrame:
+    return tabela[tabela["orgao"].fillna("").astype(str).str.contains(DO_CONSELHO)]
+
+
+def _governanca_por_ano(
+    conselho: pd.DataFrame, comites: pd.DataFrame, diversidade: pd.DataFrame
+) -> pd.DataFrame:
+    """Um FRE por linha (o mais novo primeiro): o tamanho do conselho, os comitês e as mulheres."""
+    if conselho.empty:
+        return pd.DataFrame()
+    por_ano = (
+        _do_conselho(conselho)
+        .groupby("referencia")
+        .agg(
+            entregue_em=("conhecido_em", "max"),
+            conselho=("membros", "sum"),
+            independentes=("independentes", "sum"),
+            eleitos_por_minoritarios=("eleitos_por_minoritarios", "sum"),
+        )
+    )
+    if not comites.empty:
+        por_ano["comites"] = comites.groupby("referencia")["tipo_de_comite"].nunique()
+    if not diversidade.empty:
+        mulheres = (
+            _do_conselho(diversidade).groupby("referencia")["genero_feminino"].sum()
+        )
+        por_ano["mulheres_no_conselho"] = mulheres
+    por_ano = por_ano.sort_index(ascending=False).head(ANOS_DA_GOVERNANCA).reset_index()
+    por_ano.insert(0, "ano", pd.to_datetime(por_ano.pop("referencia")).dt.year)
+    por_ano["entregue_em"] = pd.to_datetime(por_ano["entregue_em"])
+    return por_ano
+
+
+def _itens_da_governanca(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
+    if por_ano.empty:
+        return []
+    mais_novo = por_ano.iloc[0]
+    base = _data(mais_novo["entregue_em"])
+    return [
+        _item(chave, nome, int(mais_novo[coluna]), unidade, base)
+        for chave, coluna, nome, unidade in ITENS_DA_GOVERNANCA
+        if coluna in por_ano.columns and pd.notna(mais_novo[coluna])
+    ]
+
+
+def _comites_do_fre(comites: pd.DataFrame) -> pd.DataFrame:
+    """Os comitês do FRE mais novo, só o tipo e quantos membros."""
+    if comites.empty:
+        return pd.DataFrame()
+    do_fre = comites[comites["referencia"] == comites["referencia"].max()]
+    tabela = do_fre.rename(columns={"tipo_de_comite": "comite"})[["comite", "membros"]]
+    return tabela.sort_values("comite", ignore_index=True)
+
+
+def _por_exercicio(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada exercício já encerrado como o FRE mais novo entregue até hoje o informa (sem a prevista)."""
+    entregues = _entregues(tabela, hoje)
+    if entregues.empty:
+        return entregues
+    encerrados = entregues[pd.to_datetime(entregues["fim_do_exercicio"]) <= hoje]
+    mais_novo = encerrados.groupby("fim_do_exercicio")["referencia"].transform("max")
+    return encerrados[encerrados["referencia"] == mais_novo]
+
+
+def _remuneracao(
+    remuneracao: pd.DataFrame, extremos: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """O total pago à administração em cada exercício e, no último, por órgão com os extremos."""
+    exercicios = _por_exercicio(remuneracao, hoje)
+    if exercicios.empty:
+        return [], {}
+    totais = (
+        exercicios.groupby("fim_do_exercicio")["total_remuneracao"]
+        .sum()
+        .sort_index(ascending=False)
+    )
+    ultimo = totais.index[0]
+    itens = [
+        _item(
+            "remuneracao_da_administracao",
+            "Remuneração da administração no último exercício",
+            float(totais.iloc[0]),
+            "R$",
+            _data(ultimo),
+        )
+    ]
+    por_exercicio = pd.DataFrame(
+        {"exercicio": pd.to_datetime(totais.index).year, "total": totais.to_numpy()}
+    ).head(ANOS_DA_GOVERNANCA)
+    do_ultimo = exercicios[exercicios["fim_do_exercicio"] == ultimo]
+    por_orgao = do_ultimo[["orgao", "membros_remunerados", "total_remuneracao"]].rename(
+        columns={"total_remuneracao": "total"}
+    )
+    extremos = _por_exercicio(extremos, hoje)
+    if not extremos.empty:
+        do_ano = extremos[extremos["fim_do_exercicio"] == ultimo]
+        por_orgao = por_orgao.merge(
+            do_ano[["orgao", "maior", "media", "menor"]], on="orgao", how="left"
+        )
+    tabelas = {
+        "remuneracao_por_exercicio": por_exercicio,
+        "remuneracao_por_orgao": por_orgao.reset_index(drop=True),
+    }
+    return itens, tabelas
+
+
+def secao_governanca(
+    conselho: pd.DataFrame,
+    comites: pd.DataFrame,
+    remuneracao: pd.DataFrame,
+    extremos: pd.DataFrame,
+    diversidade: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Conselho, comitês, remuneração e diversidade pelo FRE, só contagens e somas (None: nada)."""
+    conselho, comites, diversidade = (
+        _entregues(tabela, hoje) for tabela in (conselho, comites, diversidade)
+    )
+    por_ano = _governanca_por_ano(conselho, comites, diversidade)
+    itens_da_remuneracao, tabelas_da_remuneracao = _remuneracao(
+        remuneracao, extremos, hoje
+    )
+    itens = [*_itens_da_governanca(por_ano), *itens_da_remuneracao]
+    if not itens:
+        return None
+    tabelas = {
+        "governanca_por_ano": por_ano,
+        "comites": _comites_do_fre(comites),
+        **tabelas_da_remuneracao,
+    }
+    return _secao("governanca", itens, tabelas)
+
+
+# --- crédito -------------------------------------------------------------------------------------
+
+EXTRAIDO = (
+    "extraido"  # rating lido do documento (`base.ratings`): os outros não têm nota
+)
+MESMO_RATING = [
+    "agencia",
+    "escala",
+    "nota",
+    "data_acao",
+]  # o relatório e o fato relevante
+ASSEMBLEIA = (
+    "assembleia"  # o aviso de pagamento e a notificação do agente não são assembleia
+)
+TEMAS_DAS_ASSEMBLEIAS = {  # coluna `tema_*` de `debentures_assembleias` → nome na ficha
+    "vencimento_antecipado": "Vencimento antecipado",
+    "waiver": "Waiver",
+    "covenant": "Covenant",
+    "repactuacao": "Repactuação",
+    "inadimplemento": "Inadimplemento",
+    "garantia": "Garantia",
+    "resgate": "Resgate antecipado",
+    "reorganizacao": "Reorganização",
+}
+
+
+def _ratings_publicos(ratings: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada ação de agência já pública até hoje, uma vez (o mesmo evento em dois documentos)."""
+    if ratings.empty:
+        return ratings
+    publicos = ratings[
+        (pd.to_datetime(ratings["publico_em"]) <= hoje)
+        & (ratings["situacao_extracao"] == EXTRAIDO)
+    ]
+    publicos = publicos.sort_values("publico_em", kind="stable")
+    com_data = publicos[publicos["data_acao"].notna()]
+    sem_data = publicos[publicos["data_acao"].isna()]
+    unicos = pd.concat([com_data.drop_duplicates(MESMO_RATING), sem_data])
+    return unicos.assign(publico_em=pd.to_datetime(unicos["publico_em"]))
+
+
+def _acoes_de_rating(ratings: pd.DataFrame) -> dict[str, int]:
+    return {
+        "acoes": len(ratings),
+        "rebaixamentos": int((ratings["acao"] == "rebaixamento").sum()),
+        "elevacoes": int((ratings["acao"] == "elevacao").sum()),
+    }
+
+
+def _ratings(
+    ratings: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """A última ação de cada agência e as ações dos 12 meses até hoje contra as dos 12 anteriores."""
+    publicos = _ratings_publicos(ratings, hoje)
+    if publicos.empty:
+        return [], {}
+    ultimas = (
+        publicos.sort_values("publico_em", kind="stable")
+        .drop_duplicates(["agencia", "escala"], keep="last")
+        .sort_values("publico_em", ascending=False, ignore_index=True)
+    )
+    por_agencia = ultimas.drop(columns="nota").rename(
+        columns={"nota_original": "nota"}
+    )[["agencia", "escala", "nota", "perspectiva", "acao", "publico_em", "link"]]
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+            }
+            | _acoes_de_rating(
+                publicos[_janela(publicos["publico_em"], hoje, anos_antes)]
+            )
+            for anos_antes in range(len(JANELAS))
+        ]
+    )
+    do_ano = janelas.iloc[0]
+    base = _data(hoje)
+    itens = [
+        _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base),
+        _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base),
+    ]  # fmt: skip
+    return itens, {"ratings": por_agencia, "ratings_janelas": janelas}
+
+
+def _assembleias_publicas(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """As assembleias de debenturistas já públicas até hoje, na versão mais nova de cada documento."""
+    if assembleias.empty:
+        return assembleias
+    publicas = assembleias[
+        (pd.to_datetime(assembleias["publico_em"]) <= hoje)
+        & (assembleias["documento"] == ASSEMBLEIA)
+    ]
+    ultimas = publicas.sort_values(["protocolo", "versao"]).drop_duplicates(
+        "protocolo", keep="last"
+    )
+    return ultimas.assign(publico_em=pd.to_datetime(ultimas["publico_em"]))
+
+
+def _com_o_tema(documentos: pd.DataFrame, tema: str) -> int:
+    return int(documentos[f"tema_{tema}"].fillna(False).astype(bool).sum())
+
+
+def _por_tema(do_ano: pd.DataFrame, do_ano_anterior: pd.DataFrame) -> pd.DataFrame:
+    """Quantos documentos falam de cada tema (pelo assunto que a empresa escreveu), nas 2 janelas."""
+    colunas = ["tema", "ultimos_12_meses", "12_meses_anteriores"]
+    linhas = [
+        (nome, _com_o_tema(do_ano, tema), _com_o_tema(do_ano_anterior, tema))
+        for tema, nome in TEMAS_DAS_ASSEMBLEIAS.items()
+        if f"tema_{tema}" in do_ano.columns
+    ]
+    tabela = pd.DataFrame(linhas, columns=colunas)
+    tabela = tabela[
+        (tabela["ultimos_12_meses"] > 0) | (tabela["12_meses_anteriores"] > 0)
+    ]
+    return tabela.sort_values(
+        colunas[1:], ascending=False, kind="stable", ignore_index=True
+    )
+
+
+def _assembleias(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Assembleias de debenturistas nos 12 meses até hoje e nos 12 anteriores, por tema."""
+    publicas = _assembleias_publicas(assembleias, hoje)
+    if publicas.empty:
+        return [], {}
+    do_ano, do_ano_anterior = (
+        publicas[_janela(publicas["publico_em"], hoje, anos_antes)]
+        for anos_antes in range(len(JANELAS))
+    )
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+                "documentos": len(janela),
+            }
+            for anos_antes, janela in enumerate((do_ano, do_ano_anterior))
+        ]
+    )
+    recentes = publicas.sort_values("publico_em", ascending=False, ignore_index=True)
+    item = _item(
+        "assembleias_de_debenturistas_12m",
+        "Documentos de assembleias de debenturistas em 12 meses",
+        len(do_ano),
+        "documentos",
+        _data(hoje),
+    )
+    tabelas = {
+        "assembleias_janelas": janelas,
+        "assembleias_por_tema": _por_tema(do_ano, do_ano_anterior),
+        "assembleias_recentes": recentes[
+            ["publico_em", "especie", "assunto", "link"]
+        ].head(LINHAS_NAS_LISTAS),
+    }
+    return [item], tabelas
+
+
+def secao_credito(
+    ratings: pd.DataFrame, assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """Ratings e assembleias de debenturistas, só fatos com data e fonte (None: nada disso)."""
+    itens_dos_ratings, tabelas_dos_ratings = _ratings(ratings, hoje)
+    itens_das_assembleias, tabelas_das_assembleias = _assembleias(assembleias, hoje)
+    itens = [*itens_dos_ratings, *itens_das_assembleias]
+    if not itens:
+        return None
+    return _secao("credito", itens, {**tabelas_dos_ratings, **tabelas_das_assembleias})
+
+
 # --- setor regulado ------------------------------------------------------------------------------
 
 
@@ -719,15 +1658,21 @@ def _entidades_ligadas(ligacoes: pd.DataFrame) -> pd.DataFrame:
     return principais[["fonte", "nome", "via", "desde"]].sort_values(["fonte", "nome"])
 
 
-def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
-    """O número do item: o último mês (estoque) ou o último ano completo (soma; o corrente engana)."""
+def _linha_do_item(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> tuple[pd.Series, str]:
+    """A linha do item e a base: o último mês (estoque) ou o último ano completo (soma; o corrente
+    engana). `tabela` vem do ano mais novo para o mais velho."""
     if serie.modo == ULTIMO_MES:
         linha = tabela.iloc[0]
-        base = pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
-    else:
-        completos = tabela[tabela["meses"] == MESES_NO_ANO]
-        linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
-        base = str(int(linha["ano"]))
+        return linha, pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
+    return linha, str(int(linha["ano"]))
+
+
+def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
+    linha, base = _linha_do_item(serie, tabela)
     return _item(serie.nome, serie.medida, float(linha["valor"]), serie.unidade, base)
 
 
@@ -758,6 +1703,253 @@ def secao_setor_regulado(
     return _secao(
         "setor_regulado", itens, tabelas, fontes=fontes_do_setor(tabelas.keys())
     )
+
+
+# --- setor (molde D) ------------------------------------------------------------------------------
+
+POR_GRUPO, POR_COMPANHIA, POR_ENTIDADE = "grupo", "companhia", "entidade"
+AVISO_POR_ENTIDADE = (
+    "Parte do mercado está contada por entidade: as que a base não liga a uma companhia aberta e de "
+    "que a agência não informa o grupo. Um grupo fechado com várias entidades aparece partido, e elas "
+    "parecem menores do que o grupo é: a concentração real é maior ou igual à mostrada."
+)
+AVISO_DE_MERCADO_REGIONAL = (
+    "As empresas deste setor competem por região (estado, cidade, tipo de contratação): o total "
+    "nacional mede a escala de cada uma, não a competição no mercado relevante, que pode ser bem "
+    "mais concentrado."
+)
+_SEM_MEMBROS = pd.DataFrame(columns=["cnpj", "empresa", "motivo"])
+
+
+def _ligacoes_principais(
+    empresa_serie: pd.DataFrame, fontes: Iterable[str]
+) -> pd.DataFrame:
+    """As ligações principais das fontes, com a chave limpa e o CNPJ da companhia só em dígitos."""
+    if empresa_serie.empty:
+        return pd.DataFrame(columns=["fonte", "chave", "cnpj"])
+    ligacoes = empresa_serie[
+        empresa_serie["fonte"].isin(list(fontes))
+        & empresa_serie["principal"].fillna(False).astype(bool)
+    ]
+    return ligacoes.assign(
+        chave=ligacoes["chave"].astype(str).str.strip(),
+        cnpj=digitos(ligacoes["cnpj_companhia"]),
+    )
+
+
+def membros_do_setor(
+    setor: SetorDoLancamento, empresas: pd.DataFrame, empresa_serie: pd.DataFrame
+) -> pd.DataFrame:
+    """As companhias com ticker (`empresas`: cnpj em dígitos, empresa) ligadas à agência do setor,
+    com o motivo; vazia se nenhuma."""
+    ligacoes = _ligacoes_principais(empresa_serie, setor.fontes_b13)
+    if ligacoes.empty or empresas.empty:
+        return _SEM_MEMBROS
+    entidades = ligacoes.groupby("cnpj")["chave"].nunique()
+    membros = empresas[empresas["cnpj"].isin(entidades.index)]
+    motivo = [
+        f"ligada à {setor.agencia} por {n} {'entidade' if n == 1 else 'entidades'}"
+        for n in membros["cnpj"].map(entidades)
+    ]
+    return (
+        membros.assign(motivo=motivo)[["cnpj", "empresa", "motivo"]]
+        .sort_values("empresa")
+        .reset_index(drop=True)
+    )
+
+
+def _companhia_de_cada_entidade(
+    serie: SerieDaAgencia, empresa_serie: pd.DataFrame
+) -> dict[str, str]:
+    """Entidade → companhia aberta. Ligada a duas (a holding e a controlada, ambas abertas), fica com
+    a que junta mais entidades da fonte: a entidade conta uma vez só."""
+    ligacoes = _ligacoes_principais(empresa_serie, (serie.fonte_b13,))
+    if ligacoes.empty:
+        return {}
+    if serie.chave_em_digitos:
+        ligacoes = ligacoes.assign(chave=digitos(ligacoes["chave"]))
+    tamanho = ligacoes.groupby("cnpj")["chave"].transform("nunique")
+    escolhidas = (
+        ligacoes.assign(tamanho=tamanho)
+        .sort_values(["tamanho", "cnpj"], ascending=[False, True])
+        .drop_duplicates("chave")
+    )
+    return dict(zip(escolhidas["chave"], escolhidas["cnpj"], strict=True))
+
+
+def grupos_por_ano(mensais: pd.DataFrame) -> pd.DataFrame:
+    """De (competencia, chave, grupo, valor) por mês para (ano, chave, grupo): o grupo que a agência
+    informa no último mês de cada entidade no ano (com dois, o de mais valor); sem grupo, fica de fora."""
+    if mensais.empty:
+        return pd.DataFrame(columns=["ano", "chave", "grupo"])
+    mensais = mensais.assign(
+        ano=mensais["competencia"].dt.year,
+        grupo=mensais["grupo"].fillna("").astype(str).str.strip(),
+    )
+    ultimo = mensais.groupby(["ano", "chave"])["competencia"].transform("max")
+    do_ultimo = mensais[(mensais["competencia"] == ultimo) & (mensais["grupo"] != "")]
+    escolhidos = do_ultimo.sort_values(
+        ["ano", "chave", "valor"], ascending=[True, True, False]
+    ).drop_duplicates(["ano", "chave"])
+    return escolhidos[["ano", "chave", "grupo"]].reset_index(drop=True)
+
+
+def _grupo_da_agencia(dados: pd.DataFrame, grupos: pd.DataFrame | None) -> pd.Series:
+    """O grupo econômico que a agência informa para cada linha (vazio quando não informa)."""
+    if grupos is None or grupos.empty:
+        return pd.Series(pd.NA, index=dados.index, dtype="object")
+    grupo = dados[["ano", "chave"]].merge(
+        grupos.assign(chave=grupos["chave"].astype(str).str.strip()),
+        on=["ano", "chave"],
+        how="left",
+    )["grupo"]
+    grupo.index = dados.index
+    return grupo.where(grupo.astype(str).str.strip() != "")
+
+
+def participantes(
+    serie: SerieDaAgencia,
+    dados: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+    grupos: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """De (ano, chave, valor, meses, ultimo_mes) por entidade para (ano, participante, por, valor,
+    meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade."""
+    dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
+    companhia = dados["chave"].map(_companhia_de_cada_entidade(serie, empresa_serie))
+    grupo = _grupo_da_agencia(dados, grupos)
+    participante = ("entidade:" + dados["chave"]).mask(
+        companhia.notna(), "companhia:" + companhia.astype(str)
+    )
+    participante = participante.mask(grupo.notna(), "grupo:" + grupo.astype(str))
+    por = pd.Series(POR_ENTIDADE, index=dados.index)
+    por = por.mask(companhia.notna(), POR_COMPANHIA).mask(grupo.notna(), POR_GRUPO)
+    periodo = dados.groupby("ano")[["meses", "ultimo_mes"]].first()
+    somados = (
+        dados.assign(participante=participante, por=por)
+        .groupby(["ano", "participante", "por"], as_index=False)["valor"]
+        .sum()
+    )
+    return somados.join(periodo, on="ano")
+
+
+def _concentracao_da_serie(quem: pd.DataFrame) -> pd.DataFrame:
+    """A concentração por ano, com a fração do mercado contada por entidade solta."""
+    tabela = concentracao.concentracao_por_ano(quem)
+    soltas = quem[quem["por"] == POR_ENTIDADE].groupby("ano")["valor"].sum()
+    tabela["por_entidade"] = tabela["ano"].map(soltas).fillna(0.0) / tabela["total"]
+    return tabela.head(ANOS_NAS_SERIES)
+
+
+def _itens_da_concentracao(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> list[dict[str, Any]]:
+    linha, base = _linha_do_item(serie, tabela)
+    nome = serie.nome
+    return [
+        _item(
+            f"mercado_{nome}",
+            f"Mercado: {serie.medida}",
+            float(linha["total"]),
+            serie.unidade,
+            base,
+        ),
+        _item(
+            f"hhi_{nome}", f"HHI: {serie.medida}", float(linha["hhi"]), "pontos", base
+        ),
+        _item(
+            f"cr4_{nome}",
+            f"Participação das 4 maiores (CR4): {serie.medida}",
+            float(linha["cr4"]),
+            "fração",
+            base,
+        ),
+    ]
+
+
+def _participacao_dos_membros(
+    serie: SerieDaAgencia,
+    dados: pd.DataFrame,
+    membros: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+) -> pd.DataFrame:
+    """A participação de cada membro por ano, com a mesma conta do setor regulado da ficha dele."""
+    ligacoes = empresa_serie.assign(cnpj=digitos(empresa_serie["cnpj_companhia"]))
+    partes = []
+    for membro in membros.itertuples(index=False):
+        chaves = _chaves(ligacoes[ligacoes["cnpj"] == membro.cnpj], serie)
+        tabela = _participacao_por_ano(dados, chaves) if chaves else pd.DataFrame()
+        if not tabela.empty:
+            partes.append(
+                tabela.assign(
+                    serie=serie.nome, cnpj=membro.cnpj, empresa=membro.empresa
+                )
+            )
+    if not partes:
+        return pd.DataFrame()
+    colunas = [
+        "serie",
+        "cnpj",
+        "empresa",
+        "ano",
+        "valor",
+        "participacao",
+        "meses",
+        "ultimo_mes",
+    ]
+    return pd.concat(partes, ignore_index=True)[colunas]
+
+
+def secao_setor(
+    setor: SetorDoLancamento,
+    membros: pd.DataFrame,
+    series: Mapping[str, pd.DataFrame],
+    empresa_serie: pd.DataFrame,
+    grupos: Mapping[str, pd.DataFrame],
+) -> dict[str, Any] | None:
+    """O mercado do setor: tamanho, CR4 e HHI por ano, a participação dos membros e quem são
+    (None: setor sem membros ou sem série).
+
+    `series` e `grupos` são de todo o mercado, por `SerieDaAgencia.nome`; `grupos` (ano, chave,
+    grupo) só das agências que informam o grupo econômico.
+    """
+    if membros.empty:
+        return None
+    itens = [
+        _item("setor", "Setor", setor.nome, "", None),
+        _item(
+            "membros",
+            "Companhias abertas da base ligadas à agência",
+            len(membros),
+            "companhias",
+            None,
+        ),
+    ]
+    tabelas: dict[str, pd.DataFrame] = {}
+    participacoes, usadas, tem_entidade_solta = [], [], False
+    for nome in setor.series:
+        dados = series.get(nome)
+        if dados is None or dados.empty:
+            continue
+        serie = _SERIE_POR_NOME[nome]
+        quem = participantes(serie, dados, empresa_serie, grupos.get(nome))
+        tabela = _concentracao_da_serie(quem)
+        tabelas[f"concentracao_{nome}"] = tabela
+        tem_entidade_solta |= bool(tabela["por_entidade"].iloc[0] > 0)
+        itens += _itens_da_concentracao(serie, tabela)
+        participacoes.append(
+            _participacao_dos_membros(serie, dados, membros, empresa_serie)
+        )
+        usadas.append(nome)
+    if not usadas:
+        return None
+    tabelas["participacao_dos_membros"] = pd.concat(participacoes, ignore_index=True)
+    tabelas["membros"] = membros
+    paragrafos = [
+        *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
+        *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
+    ]
+    return _secao("setor", itens, tabelas, paragrafos, fontes=fontes_do_setor(usadas))
 
 
 # --- negócios ------------------------------------------------------------------------------------
@@ -801,6 +1993,344 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
         "negocios_por_ano": por_ano,
     }
     return _secao("negocios", itens, tabelas)
+
+
+# --- ligações na rede (molde B: a busca por CNPJ, plano de 19/10/2026) ---------------------------
+
+
+class Relacao(NamedTuple):
+    """O que a outra ponta de uma ligação é para a empresa da ficha."""
+
+    chave: str  # do item com a contagem
+    tipo: str
+    empresa_em_de: bool  # a empresa da ficha é a ponta `de` da ligação
+    nome: str
+
+
+RELACOES = (
+    Relacao("controladas", CONTROLADA_DE, False, "Controlada"),
+    Relacao("controladoras", CONTROLADA_DE, True, "Controladora"),
+    Relacao("coligadas", COLIGADA_DE, False, "Coligada"),
+    Relacao("coligada_de", COLIGADA_DE, True, "Tem a companhia como coligada"),
+    Relacao("participacoes", PARTICIPADA_DE, False, "Participação da companhia"),
+    Relacao("participam", PARTICIPADA_DE, True, "Tem participação na companhia"),
+    Relacao("auditor", AUDITA, False, "Auditor"),
+    Relacao(
+        "instituicoes_do_conglomerado",
+        DO_CONGLOMERADO_DE,
+        False,
+        "Instituição do conglomerado",
+    ),
+    Relacao("lider_do_conglomerado", DO_CONGLOMERADO_DE, True, "Líder do conglomerado"),
+)
+_RELACAO = {(r.tipo, r.empresa_em_de): r for r in RELACOES}
+TIPOS_DO_FRE = frozenset({CONTROLADA_DE, COLIGADA_DE, PARTICIPADA_DE})
+# só estes tipos saem (nenhum de pessoa nem negativo); `emite` entra só como contagem
+TIPOS_DA_REDE = frozenset({*(r.tipo for r in RELACOES), EMITE})
+# a família da licença e o documento de cada fonte de ligação; fonte fora daqui não sai (`opera_para`
+# já está no setor regulado; uma fonte nova só entra quando alguém a põe aqui)
+FONTES_DA_REDE = {
+    "cvm-fre": ("cvm", "Formulário de Referência (CVM)"),
+    "cvm-fca": ("cvm", "Formulário Cadastral (CVM)"),
+    "cvm-cda": ("cvm", "Carteiras dos fundos (CVM)"),
+    "bcb-ifdata": ("bcb", "IF.data (Banco Central)"),
+}
+# os identificadores públicos da empresa que saem: a família da licença e o nome na tela
+IDENTIFICADORES_DA_EMPRESA = {
+    "cnpj": ("cvm", "CNPJ"),
+    "ticker": ("cvm", "Ticker"),
+    "emissor": ("cvm", "Código do emissor"),
+    "lei": ("gleif", "LEI (GLEIF)"),
+    "codigo_bcb_ifdata": ("bcb", "Código no IF.data (Banco Central)"),
+}
+SISTEMAS_DA_REDE = (*IDENTIFICADORES_DA_EMPRESA, "cnpj_raiz")  # o que a noite lê
+SECOES_DO_MOLDE_B = frozenset(
+    {"rede"}
+)  # o relatório da empresa (molde A) não as mostra
+SECOES_DO_MOLDE_D = frozenset({"setor"})  # idem: quem as lê é o relatório do setor
+SECOES_FORA_DO_MOLDE_A = SECOES_DO_MOLDE_B | SECOES_DO_MOLDE_D
+
+
+@dataclass(frozen=True)
+class RedeDaNoite:
+    """A rede pronta para as fichas: só o que pode sair, já separado por entidade."""
+
+    centros: dict[str, str]  # raiz do CNPJ → id_entidade
+    ligacoes: dict[str, pd.DataFrame]  # id_entidade → as ligações dele que podem sair
+    identificadores: dict[
+        str, pd.DataFrame
+    ]  # id_entidade → os identificadores que saem
+    nomes: dict[str, str]
+    cnpjs: dict[str, str]
+
+
+def _sem_fuso(quando: pd.Timestamp) -> pd.Timestamp:
+    return quando.tz_localize(None) if quando.tzinfo else quando
+
+
+def _pode_mostrar_a_familia(familia: object) -> bool:
+    return isinstance(familia, str) and pode_usar(MOSTRAR, familia)  # sem família: NaN
+
+
+def raizes_do_fre_em_dia(
+    controladas: pd.DataFrame, hoje: pd.Timestamp
+) -> set[tuple[str, str]]:
+    """(raiz da companhia, raiz da sociedade) de cada FRE mais recente dos últimos anos, público hoje.
+
+    A rede guarda a ligação do FRE como vigente enquanto ninguém a encerra: a companhia que parou de
+    entregar (a VBC Energia, que deixou a CPFL em 2011) continuaria dona hoje.
+    """
+    if controladas.empty or "conhecido_em" not in controladas.columns:
+        return set()  # sem a data de entrega não dá para saber o que já era público
+    hoje = _sem_fuso(hoje)
+    publicos = controladas[pd.to_datetime(controladas["conhecido_em"]) <= hoje]
+    limite = hoje - pd.DateOffset(years=ANOS_DO_FRE_EM_DIA)
+    pares: set[tuple[str, str]] = set()
+    for companhia, fres in publicos.groupby(publicos["cnpj_companhia"].map(raiz)):
+        ultimo = _mais_recente(fres)
+        if ultimo.empty or pd.Timestamp(ultimo["referencia"].iloc[0]) < limite:
+            continue
+        pares |= {(str(companhia), r) for r in ultimo["cnpj"].dropna().map(raiz) if r}
+    return pares
+
+
+def _raizes(identificadores: pd.DataFrame) -> pd.Series:
+    """A raiz do CNPJ de cada entidade (pela raiz da rede ou pelo CNPJ inteiro)."""
+    pela_raiz = identificadores[identificadores["sistema"] == "cnpj_raiz"]
+    pelo_cnpj = identificadores[identificadores["sistema"] == "cnpj"]
+    juntas = pd.concat(
+        [
+            pela_raiz.assign(raiz=pela_raiz["valor"]),
+            pelo_cnpj.assign(raiz=pelo_cnpj["valor"].map(raiz)),
+        ]
+    ).dropna(subset=["raiz"])
+    return juntas.drop_duplicates("id_entidade").set_index("id_entidade")["raiz"]
+
+
+def _centros(identificadores: pd.DataFrame) -> dict[str, str]:
+    """Raiz → entidade, só quando a raiz aponta para uma entidade só."""
+    raizes = identificadores[identificadores["sistema"] == "cnpj_raiz"]
+    unicas = raizes.drop_duplicates(["valor", "id_entidade"])
+    unicas = unicas[~unicas["valor"].duplicated(keep=False)]
+    return dict(zip(unicas["valor"], unicas["id_entidade"], strict=True))
+
+
+def _ligacoes_que_podem_sair(
+    ligacoes: pd.DataFrame, empresas: set[str]
+) -> pd.DataFrame:
+    """Os tipos da rede, de fonte conhecida que pode ser mostrada, entre empresas (nunca pessoas)."""
+    familias = ligacoes["fonte"].map(lambda f: FONTES_DA_REDE.get(f, (None, ""))[0])
+    entre_empresas = ligacoes["de"].isin(empresas) & (
+        ligacoes["para"].isin(empresas) | (ligacoes["tipo"] == EMITE)
+    )
+    return ligacoes[
+        ligacoes["tipo"].isin(TIPOS_DA_REDE)
+        & familias.map(_pode_mostrar_a_familia).astype(bool)
+        & entre_empresas
+    ]
+
+
+def _do_fre_em_dia(
+    ligacoes: pd.DataFrame, raizes: pd.Series, pares: set[tuple[str, str]]
+) -> pd.Series:
+    """A ligação não é do FRE, ou o FRE em dia da companhia (`para`) ainda lista a sociedade (`de`)."""
+    par = zip(ligacoes["para"].map(raizes), ligacoes["de"].map(raizes), strict=True)
+    listada = pd.Series([p in pares for p in par], index=ligacoes.index, dtype=bool)
+    return ~ligacoes["tipo"].isin(TIPOS_DO_FRE) | listada
+
+
+def _por_entidade(ligacoes: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """As ligações de cada entidade, como `de` ou como `para`."""
+    por_de = {str(e): g for e, g in ligacoes.groupby("de")}
+    por_para = {str(e): g for e, g in ligacoes.groupby("para")}
+    vazia = ligacoes.iloc[0:0]
+    return {
+        e: pd.concat([por_de.get(e, vazia), por_para.get(e, vazia)])
+        for e in por_de.keys() | por_para.keys()
+    }
+
+
+def _identificadores_que_saem(
+    identificadores: pd.DataFrame,
+) -> dict[str, pd.DataFrame]:
+    familias = identificadores["sistema"].map(
+        lambda s: IDENTIFICADORES_DA_EMPRESA.get(s, (None, ""))[0]
+    )
+    saem = identificadores[familias.map(_pode_mostrar_a_familia).astype(bool)]
+    return {str(e): g for e, g in saem.groupby("id_entidade")}
+
+
+def preparar_rede(
+    ligacoes: pd.DataFrame,
+    entidades: pd.DataFrame,
+    identificadores: pd.DataFrame,
+    controladas: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> RedeDaNoite:
+    """A rede como era em `hoje` (a porta já cortou o futuro), sem pessoa nem tipo negativo.
+
+    Montada uma vez por noite. Entidade fora da rede conta como pessoa (o conservador); a ligação do
+    FRE só fica se o FRE em dia ainda a mostra (`raizes_do_fre_em_dia`).
+    """
+    if ligacoes.empty or entidades.empty or identificadores.empty:
+        return RedeDaNoite(
+            {}, {}, {}, {}, {}
+        )  # a rede ainda não foi montada nesta base
+    publicadas, _ = vista_publicada(ligacoes, entidades)
+    empresas = entidades[~entidades["trata_como_pessoa"].fillna(True).astype(bool)]
+    nomes = {
+        str(e): str(n)
+        for e, n in zip(empresas["id_entidade"], empresas["nome"], strict=True)
+    }
+    podem = _ligacoes_que_podem_sair(publicadas, set(nomes))
+    pares = raizes_do_fre_em_dia(controladas, hoje)
+    podem = podem[_do_fre_em_dia(podem, _raizes(identificadores), pares)]
+    cnpjs = identificadores[identificadores["sistema"] == "cnpj"].drop_duplicates(
+        "id_entidade"
+    )
+    return RedeDaNoite(
+        centros=_centros(identificadores),
+        ligacoes=_por_entidade(podem),
+        identificadores=_identificadores_que_saem(identificadores),
+        nomes=nomes,
+        cnpjs=dict(zip(cnpjs["id_entidade"], cnpjs["valor"], strict=True)),
+    )
+
+
+def _cnpj_formatado(cnpj: str | None) -> str | None:
+    return formatar(cnpj) if cnpj and len(cnpj) == DIGITOS_DO_CNPJ else None
+
+
+_COLUNAS_DAS_LIGACOES = (
+    "ordem",
+    "chave",
+    "relacao",
+    "entidade",
+    "cnpj",
+    "participacao",
+    "desde",
+    "documento",
+    "familia",
+)
+_COLUNAS_DOS_IDENTIFICADORES = ("identificador", "valor", "desde", "familia")
+
+
+def _linhas_da_rede(
+    centro: str, ligacoes: pd.DataFrame, rede: RedeDaNoite
+) -> pd.DataFrame:
+    """Uma linha por ligação: o que a outra ponta é para a empresa, com o documento que a mostra."""
+    linhas = []
+    for ligacao in ligacoes.itertuples(index=False):
+        em_de = ligacao.de == centro
+        relacao = _RELACAO.get((str(ligacao.tipo), em_de))
+        outra = str(ligacao.para if em_de else ligacao.de)
+        if relacao is None or outra == centro:
+            continue
+        familia, documento = FONTES_DA_REDE[str(ligacao.fonte)]
+        linhas.append(
+            {
+                "ordem": RELACOES.index(relacao),
+                "chave": relacao.chave,
+                "relacao": relacao.nome,
+                "entidade": rede.nomes[outra],
+                "cnpj": _cnpj_formatado(rede.cnpjs.get(outra)),
+                "participacao": ligacao.participacao,
+                "desde": ligacao.aconteceu_em,
+                "documento": documento,
+                "familia": familia,
+            }
+        )
+    return pd.DataFrame(linhas, columns=list(_COLUNAS_DAS_LIGACOES))
+
+
+def _mostradas(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Até `LINHAS_NAS_LISTAS` por relação, as de maior participação primeiro."""
+    if linhas.empty:
+        return linhas
+    ordenadas = linhas.sort_values(
+        ["ordem", "participacao", "entidade"],
+        ascending=[True, False, True],
+        na_position="last",
+    )
+    return (
+        ordenadas.groupby("chave", sort=False)
+        .head(LINHAS_NAS_LISTAS)
+        .drop(columns=["ordem", "chave", "familia"])
+    )
+
+
+def _tabela_dos_identificadores(identificadores: pd.DataFrame | None) -> pd.DataFrame:
+    if identificadores is None:
+        return pd.DataFrame(columns=list(_COLUNAS_DOS_IDENTIFICADORES))
+    ordem = list(IDENTIFICADORES_DA_EMPRESA)
+    tabela = identificadores.assign(
+        ordem=identificadores["sistema"].map(ordem.index)
+    ).sort_values(["ordem", "valor"])
+    return pd.DataFrame(
+        {
+            "identificador": tabela["sistema"].map(
+                lambda s: IDENTIFICADORES_DA_EMPRESA[s][1]
+            ),
+            "valor": [
+                _cnpj_formatado(v) if s == "cnpj" else v
+                for s, v in zip(tabela["sistema"], tabela["valor"], strict=True)
+            ],
+            "desde": tabela["desde"],
+            "familia": tabela["sistema"].map(
+                lambda s: IDENTIFICADORES_DA_EMPRESA[s][0]
+            ),
+        }
+    )
+
+
+def _itens_da_rede(linhas: pd.DataFrame, emitidos: int) -> list[dict[str, Any]]:
+    itens = [_item("ligacoes", "Ligações na rede", len(linhas), "empresas", None)]
+    contagem = linhas["chave"].value_counts() if not linhas.empty else pd.Series()
+    itens += [
+        _item(r.chave, r.nome, int(contagem[r.chave]), "empresas", None)
+        for r in RELACOES
+        if r.chave in contagem
+    ]
+    if emitidos:
+        itens.append(
+            _item(
+                "valores_mobiliarios",
+                "Valores mobiliários nas carteiras dos fundos",
+                emitidos,
+                "valores mobiliários",
+                None,
+            )
+        )
+    return itens
+
+
+def secao_rede(cnpj: str, rede: RedeDaNoite) -> dict[str, Any] | None:
+    """O que a companhia é na rede: controladas, donas, coligadas, auditor e conglomerado (None: nada).
+
+    Cada relação mostra até `LINHAS_NAS_LISTAS` entidades; a contagem é toda. Os valores mobiliários
+    entram só como contagem.
+    """
+    centro = rede.centros.get(raiz(cnpj) or "")
+    if centro is None or centro not in rede.ligacoes:
+        return None
+    ligacoes = rede.ligacoes[centro]
+    emite = (ligacoes["tipo"] == EMITE) & (ligacoes["de"] == centro)
+    emitidos = int(ligacoes.loc[emite, "para"].nunique())
+    linhas = _linhas_da_rede(centro, ligacoes[ligacoes["tipo"] != EMITE], rede)
+    if linhas.empty and not emitidos:
+        return None
+    identificadores = _tabela_dos_identificadores(rede.identificadores.get(centro))
+    familias = {*linhas["familia"], *identificadores["familia"]}
+    if emitidos:
+        familias.add(FONTES_DA_REDE["cvm-cda"][0])
+    tabelas = {
+        "ligacoes_da_rede": _mostradas(linhas),
+        "identificadores_da_empresa": identificadores.drop(
+            columns="familia", errors="ignore"
+        ),
+    }
+    fontes = sorted({licenca_da_fonte(f) for f in familias})
+    return _secao("rede", _itens_da_rede(linhas, emitidos), tabelas, fontes=fontes)
 
 
 # --- a ficha e o filtro de pessoas ---------------------------------------------------------------

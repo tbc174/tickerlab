@@ -1,12 +1,15 @@
 """Montagem da base "como era na data" (série 1 da base de ML, PR 6): junta os dados abertos de dois
 anos e as versões antigas do ENET que estiverem no acervo, e grava um Parquet por ano. Sem internet."""
 
-from datetime import UTC, datetime
+import io
+import zipfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
+from base.dmpl import FORMATO_DMPL
 from base.enet_coleta import guardar
 from base.ponto_no_tempo import como_era_em, ler_parquet
 from scripts import montar_base_como_era as montar
@@ -163,3 +166,88 @@ def test_versao_do_enet_sem_cnpj_no_xml_fica_com_o_do_indice(url):
     motor.dispose()
     assert documentos[0].cnpj == "00.000.208/0001-00"
     assert set(documentos[0].contas["cnpj"]) == {"00.000.208/0001-00"}
+    assert set(documentos[0].dmpl["cnpj"]) == {"00.000.208/0001-00"}
+
+
+# --- série T1 -----------------------------------------------------------------------------------------
+CABECALHO_DA_DMPL = (
+    "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;"
+    "DT_INI_EXERC;DT_FIM_EXERC;COLUNA_DF;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA"
+)
+LINHA_DA_DMPL = (
+    "00.000.000/0001-91;2024-12-31;1;BCO BRASIL S.A.;001023;DF Consolidado - Demonstração das "
+    "Mutações do Patrimônio Líquido;REAL;MIL;ÚLTIMO;2024-01-01;2024-12-31;Patrimônio Líquido;"
+    "5.07;Saldos Finais;200000.0000000000;S"
+)
+
+
+def _com_dmpl(conteudo: bytes) -> bytes:
+    """O zip de teste com uma DMPL do Banco do Brasil (os arquivos de teste não trazem a DMPL)."""
+    saida = io.BytesIO()
+    with (
+        zipfile.ZipFile(io.BytesIO(conteudo)) as entrada,
+        zipfile.ZipFile(saida, "w") as z,
+    ):
+        for nome in entrada.namelist():
+            z.writestr(nome, entrada.read(nome))
+        z.writestr(
+            "dfp_cia_aberta_DMPL_con_2024.csv",
+            f"{CABECALHO_DA_DMPL}\n{LINHA_DA_DMPL}".encode("latin-1"),
+        )
+    return saida.getvalue()
+
+
+@pytest.fixture
+def com_dmpl_no_acervo(url):
+    """Um DFP 2024 mais novo no acervo, com a DMPL."""
+    conteudo = _com_dmpl((PASTA / "dfp_cia_aberta_2024.zip").read_bytes())
+    endereco = dm.URL_DO_DFP.format(ano=2024)
+    depois = datetime.now(UTC) + timedelta(
+        minutes=1
+    )  # mais novo que o da fixture `url`
+    motor = criar_engine(url)
+    with motor.begin() as c:
+        caminho = acervo.guardar_original("cvm-dfp-itr", endereco, conteudo, depois)
+        registrar(
+            c,
+            "cvm-dfp-itr",
+            endereco,
+            conteudo,
+            "ok",
+            caminho_do_original=caminho,
+            agora=depois,
+        )
+    motor.dispose()
+    return url
+
+
+def test_sem_a_serie_t1_a_montagem_e_a_de_antes(
+    com_dmpl_no_acervo, sem_internet, tmp_path
+):
+    """O cron semanal do servidor não muda o formato da tabela antes da remontagem autorizada."""
+    saida = tmp_path / "base" / "demonstracoes"
+    assert montar.main(["--anos", "2024", "--pasta", str(saida)]) == 0
+    base = ler_parquet(saida)
+    assert set(base["demonstracao"]) == {"BPA", "BPP", "DRE"}
+    assert not (tmp_path / "base" / "dmpl").exists()
+
+
+def test_serie_t1_traz_a_dfc_e_grava_a_dmpl_ao_lado(
+    com_dmpl_no_acervo, sem_internet, tmp_path, capsys
+):
+    saida = tmp_path / "base" / "demonstracoes"
+    argumentos = ["--anos", "2024", "--pasta", str(saida), "--serie-t1"]
+    assert montar.main(argumentos) == 0
+    base = ler_parquet(saida)
+    assert "DFC_MI" in set(base["demonstracao"])
+    dfc = base[base["demonstracao"] == "DFC_MI"]
+    assert dfc["divulgado_em"].notna().all()
+    pasta_dmpl = tmp_path / "base" / "dmpl"
+    dmpl = ler_parquet(pasta_dmpl, formato=FORMATO_DMPL)
+    assert dmpl[["coluna", "valor"]].values.tolist() == [
+        ["patrimonio_liquido", 200_000_000.0]
+    ]
+    assert dmpl["divulgado_em"].tolist() == [pd.Timestamp("2025-02-19")]
+    assert montar.main(["--conferir", "--pasta", str(saida), "--serie-t1"]) == 0
+    saida_do_conferir = capsys.readouterr().out
+    assert saida_do_conferir.count("2024: ok") == 2  # as demonstrações e a DMPL

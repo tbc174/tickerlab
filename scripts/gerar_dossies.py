@@ -21,7 +21,7 @@ import json
 import logging
 import shutil
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from base import dossie
+from base import indicadores_de_caixa as t1
 from base.porta import Porta
 from src import acervo
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -87,6 +88,10 @@ class Leitor:
             return VAZIA
         return self.porta.somar(tabela, por, valor, filtros)
 
+    def tem_coluna(self, tabela: str, coluna: str) -> bool:
+        """A tabela existe nesta base e tem a coluna (a da Anatel antiga não tem o grupo)."""
+        return self._existe(tabela) and coluna in self.porta.colunas(tabela)
+
 
 @dataclass(frozen=True)
 class Entradas:
@@ -103,8 +108,76 @@ class Entradas:
     ultimo_mes_do_cda: pd.Timestamp | None
     empresa_serie: pd.DataFrame
     eventos: pd.DataFrame
+    como_era: pd.DataFrame  # a DRE anual da DFP, todas as versões (as reapresentações)
+    caixa: pd.DataFrame  # a DFC e a DVA anuais da DFP, todas as versões (a série T1)
+    releases: pd.DataFrame
+    negociacoes: pd.DataFrame
+    eventos_de_capital: pd.DataFrame
+    fre: dict[str, pd.DataFrame]  # as tabelas fre_* da governança, pelo nome
+    ratings: pd.DataFrame
+    assembleias: pd.DataFrame  # debentures_assembleias
     series: dict[str, pd.DataFrame]
+    grupos: dict[
+        str, pd.DataFrame
+    ]  # (ano, chave, grupo) das séries cuja agência informa o grupo
     pessoas: set[str]
+    rede: dossie.RedeDaNoite
+    hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
+
+
+# só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
+# todo o mercado é grande)
+COLUNAS_DA_DRE = (
+    "cnpj",
+    "grupo",
+    "demonstracao",
+    "documento",
+    "conta",
+    "descricao",
+    "inicio",
+    "fim",
+    "valor",
+    "divulgado_em",
+)
+COLUNAS_DO_RELEASE = (
+    "cnpj",
+    "versao",
+    "periodo",
+    "referencia",
+    "data_entrega",
+    "link",
+    "linha",
+    "periodo_lido",
+    "leitura",
+    "valor_release_reais",
+    "valor_oficial_reais",
+    "diferenca_pct",
+    "classe",
+    "publico_em",
+)
+COLUNAS_DAS_NEGOCIACOES = ("cnpj", "cargo", "operacao", "data", "entregue_em", "valor")
+COLUNAS_DOS_EVENTOS = (
+    "cnpj", "referencia", "versao", "tipo", "data", "fator", "acoes_novas", "valor",
+)  # fmt: skip
+_DO_FRE = ("cnpj", "referencia", "versao", "conhecido_em")
+COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nunca nomes)
+    "fre_conselho": (*_DO_FRE, "orgao", "membros", "independentes", "eleitos_por_minoritarios"),
+    "fre_comites": (*_DO_FRE, "tipo_de_comite", "membros"),
+    "fre_remuneracao": (
+        *_DO_FRE, "fim_do_exercicio", "orgao", "membros_remunerados", "total_remuneracao",
+    ),
+    "fre_remuneracao_extremos": (*_DO_FRE, "fim_do_exercicio", "orgao", "maior", "media", "menor"),
+    "fre_diversidade": (*_DO_FRE, "orgao", "genero_feminino"),
+}  # fmt: skip
+COLUNAS_DOS_RATINGS = (
+    "cnpj", "agencia", "escala", "nota", "nota_original", "perspectiva", "acao", "data_acao",
+    "publico_em", "protocolo", "link", "situacao_extracao",
+)  # fmt: skip
+# sem a coluna `estresse`: é um rótulo nosso, e a ficha mostra só os fatos (os temas do assunto)
+COLUNAS_DAS_ASSEMBLEIAS = (
+    "cnpj", "documento", "especie", "assunto", "publico_em", "protocolo", "versao", "link",
+    *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
+)  # fmt: skip
 
 
 def _empresas(tickers: pd.DataFrame) -> pd.DataFrame:
@@ -151,13 +224,37 @@ def ler_serie(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
     return dossie.serie_anual(mensais, serie.modo)
 
 
-def _controladoras(leitor: Leitor, hoje: pd.Timestamp) -> tuple[pd.DataFrame, set[str]]:
-    """Quem controla cada companhia hoje (a rede como era hoje) e os nomes das pessoas da rede.
+def ler_grupos(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
+    """(ano, chave, grupo) do grupo econômico que a agência informa (vazia: a série não tem grupo)."""
+    if serie.grupo is None or not leitor.tem_coluna(serie.tabela, serie.grupo):
+        return VAZIA
+    somada = leitor.somar(
+        serie.tabela,
+        ["competencia", serie.chave, serie.grupo],
+        serie.valor,
+        {coluna: valor for coluna, valor in serie.filtros},
+    )
+    if somada.empty:
+        return VAZIA
+    chave = somada[serie.chave].astype(str).str.strip()
+    mensais = pd.DataFrame(
+        {
+            "competencia": pd.to_datetime(somada["competencia"]),
+            "chave": dossie.digitos(chave) if serie.chave_em_digitos else chave,
+            "grupo": somada[serie.grupo],
+            "valor": somada[serie.valor],
+        }
+    )
+    mensais = mensais.groupby(
+        ["competencia", "chave", "grupo"], as_index=False, dropna=False
+    )["valor"].sum()
+    return dossie.grupos_por_ano(mensais)
 
-    As pessoas vêm de todas as entidades, sem data: o filtro de pessoas da ficha erra para o lado
-    de tirar demais.
-    """
-    entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
+
+def _controladoras(
+    leitor: Leitor, hoje: pd.Timestamp, entidades: pd.DataFrame
+) -> pd.DataFrame:
+    """Quem controla cada companhia hoje (a rede como era hoje)."""
     ligacoes = leitor.ler(
         "ligacoes",
         ["de", "para", "tipo", "situacao", "fonte", "participacao"],
@@ -170,15 +267,43 @@ def _controladoras(leitor: Leitor, hoje: pd.Timestamp) -> tuple[pd.DataFrame, se
         filtros={"sistema": "cnpj"},
         como_era_em=hoje,
     )
-    pessoas = _pessoas(entidades)
     if ligacoes.empty or entidades.empty or identificadores.empty:
-        return VAZIA, pessoas
-    return dossie.controladoras(ligacoes, entidades, identificadores), pessoas
+        return VAZIA
+    return dossie.controladoras(ligacoes, entidades, identificadores)
+
+
+def _rede(
+    leitor: Leitor,
+    hoje: pd.Timestamp,
+    entidades: pd.DataFrame,
+    controladas: pd.DataFrame,
+) -> dossie.RedeDaNoite:
+    """A rede como era hoje, só com os tipos e os identificadores que a seção da rede mostra."""
+    ligacoes = leitor.ler(
+        "ligacoes", filtros={"tipo": sorted(dossie.TIPOS_DA_REDE)}, como_era_em=hoje
+    )
+    identificadores = leitor.ler(
+        "identificadores",
+        ["id_entidade", "sistema", "valor", "desde", "ate"],
+        filtros={"sistema": list(dossie.SISTEMAS_DA_REDE)},
+        como_era_em=hoje,
+    )
+    return dossie.preparar_rede(ligacoes, entidades, identificadores, controladas, hoje)
+
+
+def _dia(agora: pd.Timestamp) -> pd.Timestamp:
+    """O dia de `agora`, sem fuso: as datas da base (entrega, publicação) não têm fuso."""
+    return (agora.tz_localize(None) if agora.tzinfo else agora).normalize()
 
 
 def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
-    """Tudo o que o dossiê lê da base, uma vez, para todas as empresas."""
-    controladoras, pessoas = _controladoras(leitor, hoje)
+    """Tudo o que o dossiê lê da base, uma vez, para todas as empresas.
+
+    As pessoas vêm de todas as entidades, sem data: o filtro de pessoas da ficha erra para o lado
+    de tirar demais.
+    """
+    entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
+    controladoras = _controladoras(leitor, hoje, entidades)
     controladas = leitor.ler("controladas")
     return Entradas(
         empresas=_empresas(
@@ -199,8 +324,37 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         eventos=leitor.ler(
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
         ),
+        como_era=leitor.ler(
+            "demonstracoes_como_era",
+            [*COLUNAS_DA_DRE],
+            filtros={
+                "demonstracao": "DRE",
+                "documento": "DFP",
+                # o EBIT (3.05) é da geração de caixa; a qualidade do lucro não o lê
+                "conta": [*dossie.CONTAS_DA_DRE, t1.EBIT],
+            },
+        ),
+        caixa=leitor.ler(
+            "demonstracoes_como_era",
+            [*COLUNAS_DA_DRE],
+            filtros={"documento": "DFP", "demonstracao": [*t1.DFC, t1.DVA]},
+        ),
+        releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
+        negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
+        eventos_de_capital=leitor.ler("eventos_de_capital", [*COLUNAS_DOS_EVENTOS]),
+        fre={
+            tabela: leitor.ler(tabela, [*colunas])
+            for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
+        },
+        ratings=leitor.ler("ratings", [*COLUNAS_DOS_RATINGS]),
+        assembleias=leitor.ler("debentures_assembleias", [*COLUNAS_DAS_ASSEMBLEIAS]),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
-        pessoas=pessoas,
+        grupos={
+            s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
+        },
+        pessoas=_pessoas(entidades),
+        rede=_rede(leitor, hoje, entidades, controladas),
+        hoje=_dia(hoje),
     )
 
 
@@ -220,8 +374,11 @@ def _do_grupo(tabelas: dict[str, pd.DataFrame], cnpjs: set[str]) -> pd.DataFrame
 Secao = Callable[[str], dict | None]
 
 
-def _secoes(entradas: Entradas) -> dict[str, Secao]:
-    """Cada seção como uma função do CNPJ, com as tabelas já separadas por empresa."""
+def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]:
+    """Cada seção como uma função do CNPJ, com as tabelas já separadas por empresa.
+
+    `setores`: a seção do setor de cada CNPJ que a leva (`distribuir_setores`), já pronta.
+    """
     auditores = _por_cnpj(entradas.auditores, "cnpj")
     trocas = _por_cnpj(entradas.trocas, "cnpj")
     controladas = _por_cnpj(entradas.controladas, "cnpj_companhia")
@@ -231,6 +388,26 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
     painel = _por_cnpj(entradas.painel, "cnpj")
     empresa_serie = _por_cnpj(entradas.empresa_serie, "cnpj_companhia")
     eventos = _por_cnpj(entradas.eventos, "cnpj")
+    como_era = _por_cnpj(entradas.como_era, "cnpj")
+    caixa = _por_cnpj(entradas.caixa, "cnpj")
+    releases = _por_cnpj(entradas.releases, "cnpj")
+    negociacoes = _por_cnpj(entradas.negociacoes, "cnpj")
+    eventos_de_capital = _por_cnpj(entradas.eventos_de_capital, "cnpj")
+    fre = {nome: _por_cnpj(tabela, "cnpj") for nome, tabela in entradas.fre.items()}
+    ratings = _por_cnpj(entradas.ratings, "cnpj")
+    assembleias = _por_cnpj(entradas.assembleias, "cnpj")
+    hoje = entradas.hoje
+
+    def governanca(cnpj: str) -> dict | None:
+        do_fre = {nome: fre[nome].get(cnpj, VAZIA) for nome in COLUNAS_DA_GOVERNANCA}
+        return dossie.secao_governanca(
+            do_fre["fre_conselho"],
+            do_fre["fre_comites"],
+            do_fre["fre_remuneracao"],
+            do_fre["fre_remuneracao_extremos"],
+            do_fre["fre_diversidade"],
+            hoje,
+        )
 
     def ofertas_e_fundos(cnpj: str) -> dict | None:
         grupo = dossie.cnpjs_do_grupo(cnpj, controladas.get(cnpj, VAZIA))
@@ -249,11 +426,30 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
             controladoras.get(c, VAZIA),
             entradas.pessoas,
         ),
+        "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
+            como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
+        ),
+        "geracao_de_caixa": lambda c: dossie.secao_geracao_de_caixa(
+            pd.concat([como_era.get(c, VAZIA), caixa.get(c, VAZIA)]), hoje
+        ),
         "ofertas_e_fundos": ofertas_e_fundos,
+        "capital_e_acionistas": lambda c: dossie.secao_capital_e_acionistas(
+            negociacoes.get(c, VAZIA),
+            eventos_de_capital.get(c, VAZIA),
+            painel.get(c, VAZIA),
+            hoje,
+            entradas.ultimo_mes_do_cda,
+        ),
+        "governanca": governanca,
+        "credito": lambda c: dossie.secao_credito(
+            ratings.get(c, VAZIA), assembleias.get(c, VAZIA), hoje
+        ),
         "setor_regulado": lambda c: dossie.secao_setor_regulado(
             empresa_serie.get(c, VAZIA), entradas.series
         ),
+        "setor": setores.get,
         "negocios": lambda c: dossie.secao_negocios(eventos.get(c, VAZIA)),
+        "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
 
 
@@ -262,6 +458,53 @@ class Resumo:
     empresas: int = 0
     fichas: int = 0
     falhas: list[str] = field(default_factory=list)
+    # setor → a ficha que leva a seção e os membros (vai no manifesto: o app acha o setor por ele)
+    setores: dict[str, dict] = field(default_factory=dict)
+
+
+SetorMontado = tuple[str, list[str], dict]  # chave do setor, CNPJs dos membros, a seção
+
+
+def montar_setores(entradas: Entradas) -> tuple[list[SetorMontado], list[str]]:
+    """A seção de cada setor do lançamento, uma vez para todo o mercado; um setor que quebra fica de
+    fora e vai nas falhas, sem derrubar os outros nem a noite."""
+    montados, falhas = [], []
+    for setor in dossie.SETORES_DO_LANCAMENTO:
+        try:
+            membros = dossie.membros_do_setor(
+                setor, entradas.empresas, entradas.empresa_serie
+            )
+            if membros.empty:  # nenhuma companhia da base no setor: nada a montar
+                continue
+            secao = dossie.secao_setor(
+                setor, membros, entradas.series, entradas.empresa_serie, entradas.grupos
+            )
+        except Exception as erro:  # noqa: BLE001 (um setor não derruba a noite)
+            falhas.append(f"setor {setor.chave}: {type(erro).__name__}: {erro}")
+            continue
+        if secao is not None:
+            montados.append((setor.chave, membros["cnpj"].tolist(), secao))
+    return montados, falhas
+
+
+def distribuir_setores(
+    montados: list[SetorMontado],
+) -> tuple[dict[str, tuple[str, dict]], list[str]]:
+    """CNPJ → (setor, seção): cada setor vai na ficha do 1º membro que ainda não leva outro.
+
+    O recebedor do servidor só aceita a ficha de um CNPJ e o manifesto: o setor viaja dentro da ficha
+    de um membro, e uma ficha tem uma seção de cada chave. Quem está em dois setores (seguros e
+    saúde) leva o primeiro e passa o segundo para outro membro.
+    """
+    fichas: dict[str, tuple[str, dict]] = {}
+    falhas = []
+    for chave, membros, secao in montados:
+        livre = next((cnpj for cnpj in membros if cnpj not in fichas), None)
+        if livre is None:
+            falhas.append(f"setor {chave}: todos os membros já levam outro setor")
+            continue
+        fichas[livre] = (chave, secao)
+    return fichas, falhas
 
 
 def _ficha(
@@ -288,7 +531,10 @@ def _gravar_json(destino: Path, conteudo: dict) -> None:
 def _gravar_fichas(
     entradas: Entradas, pasta: Path, gerado_em: str, resumo: Resumo
 ) -> None:
-    secoes = _secoes(entradas)
+    montados, falhas_dos_setores = montar_setores(entradas)
+    setores, sem_ficha = distribuir_setores(montados)
+    membros = {chave: cnpjs for chave, cnpjs, _ in montados}
+    secoes = _secoes(entradas, {cnpj: secao for cnpj, (_, secao) in setores.items()})
     quebras: Counter = Counter()
     for linha in entradas.empresas.itertuples(index=False):
         ficha = _ficha(str(linha.cnpj), str(linha.empresa), secoes, gerado_em, quebras)
@@ -301,7 +547,14 @@ def _gravar_fichas(
             resumo.falhas.append(f"{linha.cnpj}: {type(erro).__name__}")
             continue
         resumo.fichas += 1
-    resumo.falhas += [f"{quebra} ({n} empresas)" for quebra, n in quebras.items()]
+        if linha.cnpj in setores:
+            chave = setores[linha.cnpj][0]
+            resumo.setores[chave] = {"ficha": linha.cnpj, "membros": membros[chave]}
+    resumo.falhas += [
+        *falhas_dos_setores,
+        *sem_ficha,
+        *(f"{quebra} ({n} empresas)" for quebra, n in quebras.items()),
+    ]
 
 
 def _trocar_pasta(montando: Path, destino: Path) -> None:
@@ -338,6 +591,7 @@ def montar(
             "tabelas": dict(sorted(leitor.tabelas.items())),
             "faltando": sorted(set(leitor.faltando)),
             "falhas": resumo.falhas,
+            "setores": dict(sorted(resumo.setores.items())),
         },
     )
     _trocar_pasta(montando, saida / dia)

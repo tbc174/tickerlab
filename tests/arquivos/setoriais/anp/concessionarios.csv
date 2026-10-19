@@ -1,0 +1,28 @@
+BID;Número Contrato;Fase;Nome Fantasia;Bacia;CNPJ;Nome;% Participação;Ambiente
+AM1            ;48610009275200571;Produção;Carapitanga;Sergipe;11210501000119;(Operador) - EPG Brasil;100,00;Terra
+AM1            ;48610009278200511;Produção;Foz do Vaza Barris;Sergipe;4054366000102;(Operador) - Guto & Cacal;100,00;Terra
+AM1            ;48610009279200558;Produção;Tigre;Sergipe;15596829000176;(Operador) - Petroil;100,00;Terra
+AM1            ;48610009282200571;Produção;Jiribatuba;Camamu;8839018000193;(Operador) - Brasil Refinarias;100,00;Terra
+AM1            ;48610009283200516;Produção;Morro do Barro;Camamu;33400769000156;(Operador) - Creative Energy;100,00;Terra
+AM1            ;48610009284200561;Produção;Cidade de Aracaju;Sergipe;11210501000119;(Operador) - EPG Brasil;100,00;Terra
+AM1            ;48610009285200513;Produção;Bom Lugar;Recôncavo;15240822000117;(Operador) - Alvopetro;100,00;Terra
+AM1            ;48610009288200549;Produção;Sempre Viva;Tucano Sul;12432261000160;(Operador) - Oceania;100,00;Terra
+AM1            ;48610009289200593;Produção;Araças Leste;Recôncavo;17186461000101;(Operador) - Egesa;100,00;Terra
+AM2            ;48610007479200657;Avaliação;RIO DO CARMO;Potiguar;32528443000146;(Operador) - Phoenix Óleo & Gás;100,00;Terra
+AM2            ;48610007481200626;Avaliação;CHAUÁ;Potiguar;8270816000147;(Operador) - Allpetro;100,00;Terra
+AM2            ;48610007482200671;Produção;RIO IPIRANGA;Espírito Santo;271847000100;(Operador) - Imetame;50,00;Terra
+AM2            ;48610007482200671;Produção;RIO IPIRANGA;Espírito Santo;19285411000107;IPI;50,00;Terra
+AM4            ;48610007063201791;Exploração;Vale do Quiricó;Recôncavo;25315943000134;(Operador) - Energizzi Energias;100,00;Terra
+AM4            ;48610007065201781;Exploração;Rio Mariricu;Espírito Santo;5002889000160;(Operador) - Mandacaru Energia;100,00;Terra
+AM4            ;48610007069201769;Exploração;Itaparica;Recôncavo;55372111000110;Rubicão;60,00;Terra
+BID0           ;480000036309722;Produção;APR;Recôncavo;3342704000130;(Operador) - PetroRecôncavo;100,00;Terra
+BID0           ;480000036459708;Produção;DJM       ;Recôncavo;23018639000108;(Operador) - 3R Bahia;100,00;Mar
+BID0           ;480000037099781;Produção;BJ        ;Campos;33000167000101;Petrobras;20,00;Mar
+BID0           ;480000037119722;Produção;CRP       ;Campos;9309027000135;(Operador) - Perenco Brasil;100,00;Mar
+BID0           ;480000037859769;Produção;BAL;Potiguar;3342704000130;PetroRecôncavo;50,00;Terra
+BID0           ;480000038959767;Produção;ABL       ;Campos;2270689000108;Repsol Sinopec;10,00;Mar
+BID10          ;48610001558200905;Exploração;SF-T-104_R10;São Francisco;271847000100;(Operador) - Imetame;51,00;Terra
+BID11          ;48610005428201310;Exploração;FZA-M-90_R11;Foz do Amazonas;12091809000155;(Operador) - Brava Energia S.A.;100,00;Mar
+BID11          ;48610005447201346;Exploração;BAR-M-344_R11;Barreirinhas;16974249000138;Galp Energia Brasil;10,00;Mar
+BID11          ;48610005487201398;Exploração;FZA-M-254_R11;Foz do Amazonas;8926302000105;(Operador) - Prio Forte S.A;100,00;Mar
+BID16          ;48610221672201913;Exploração;C-M-477_R16;Campos;2873528000109;BP Energy;30,00;Mar

@@ -14,6 +14,8 @@ import pytest
 from base import dossie
 from base.porta import Porta
 from scripts import gerar_dossies
+from tests import test_dossie_geracao_de_caixa as geracao_de_caixa
+from tests import test_dossie_governanca_e_credito as governanca_e_credito
 from tests.test_porta import _entidades, _identificadores, _ligacoes
 
 D = pd.Timestamp
@@ -130,7 +132,7 @@ def test_grava_uma_ficha_por_empresa_com_dados(tmp_path: Path) -> None:
         (pasta_do_dia / f"{CPFL_DIGITOS}.json").read_text(encoding="utf-8")
     )
     chaves = [s["chave"] for s in ficha["secoes"]]
-    assert chaves == ["auditor_e_controladas", "setor_regulado", "negocios"]
+    assert chaves == ["auditor_e_controladas", "setor_regulado", "setor", "negocios"]
     setor = ficha["secoes"][1]["tabelas"]["aneel_consumidores"][0]
     assert setor == {
         "ano": 2025,
@@ -271,6 +273,141 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
     }
 
 
+def _lucro_e_capital(pasta: Path) -> None:
+    """O lucro de 2023 refeito na DFP de 2024, um release diferente, insiders e um desdobramento."""
+    dre = {
+        "cnpj": [CPFL] * 3,
+        "grupo": ["con"] * 3,
+        "demonstracao": ["DRE"] * 3,
+        "documento": ["DFP"] * 3,
+        "conta": ["3.11", "3.11", "3.04"],
+        "descricao": ["Lucro/Prejuízo Consolidado do Período"] * 2 + ["Despesas"],
+        "inicio": [D("2023-01-01")] * 3,
+        "fim": [D("2023-12-31")] * 3,
+        "valor": [100e6, 80e6, -5e6],
+        "divulgado_em": [D("2024-03-10"), D("2025-03-12"), D("2024-03-10")],
+    }
+    _gravar(pasta, "demonstracoes/2023.parquet", pd.DataFrame(dre))
+    _gravar(
+        pasta,
+        "release_x_oficial/release_x_oficial.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL],
+                "protocolo": ["p1"],
+                "versao": [1],
+                "periodo": ["3T25"],
+                "referencia": [D("2025-09-30")],
+                "data_entrega": [D("2025-11-10")],
+                "link": ["l"],
+                "linha": ["receita_liquida"],
+                "periodo_lido": ["3T25"],
+                "leitura": [1],
+                "valor_release_reais": [110e6],
+                "valor_oficial_reais": [100e6],
+                "diferenca_pct": [10.0],
+                "classe": ["diferente"],
+                "publico_em": [D("2025-11-10")],
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "negociacoes/2026.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL] * 2,
+                "cargo": ["diretoria"] * 2,
+                "operacao": ["compra"] * 2,
+                "data": [D("2026-05-10"), D("2026-10-02")],
+                "entregue_em": [
+                    D("2026-06-10"),
+                    D("2026-11-10"),
+                ],  # a 2ª ainda não entregue
+                "valor": [2e6, 9e6],
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "eventos_de_capital/2025.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL],
+                "referencia": [D("2025-01-01")],
+                "versao": [1],
+                "tipo": ["desdobramento"],
+                "data": [D("2021-04-30")],
+                "fator": [2.0],
+                "acoes_novas": [1e9],
+                "valor": [None],
+            }
+        ),
+    )
+
+
+def test_ficha_traz_qualidade_do_lucro_e_capital(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _lucro_e_capital(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    lucro = {i["chave"]: i["valor"] for i in secoes["qualidade_do_lucro"]["itens"]}
+    assert lucro["exercicios_reapresentados"] == 1
+    assert lucro["releases_diferentes"] == 1
+    capital = {i["chave"]: i["valor"] for i in secoes["capital_e_acionistas"]["itens"]}
+    assert (
+        capital["insiders_compras_12m"] == 2e6
+    )  # a declaração entregue depois de hoje fica fora
+    assert capital["eventos_de_capital"] == 1
+
+
+def _governanca_e_credito(pasta: Path) -> None:
+    """O FRE da CPFL (conselho, comitês, remuneração), os ratings e as assembleias de debenturistas."""
+    _gravar(pasta, "fre_conselho/2026.parquet", governanca_e_credito._conselho())
+    _gravar(pasta, "fre_comites/2026.parquet", governanca_e_credito._comites())
+    _gravar(pasta, "fre_remuneracao/2026.parquet", governanca_e_credito._remuneracao())
+    _gravar(pasta, "ratings/ratings.parquet", governanca_e_credito._ratings())
+    assembleias = governanca_e_credito._assembleias().assign(estresse=True)
+    _gravar(pasta, "debentures_assembleias/assembleias.parquet", assembleias)
+
+
+def test_ficha_traz_governanca_e_credito(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _governanca_e_credito(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    governanca = {i["chave"]: i["valor"] for i in secoes["governanca"]["itens"]}
+    assert (
+        governanca["conselho_membros"] == 10
+    )  # o FRE de 2027, entregue depois de hoje, fica fora
+    assert governanca["remuneracao_da_administracao"] == 51e6
+    assert "mulheres_no_conselho" not in governanca  # sem fre_diversidade na base
+    credito = {i["chave"]: i["valor"] for i in secoes["credito"]["itens"]}
+    assert credito["ratings_rebaixamentos_12m"] == 1
+    assert credito["assembleias_de_debenturistas_12m"] == 2
+    # o rótulo de aperto de crédito da base não sai na ficha: só os temas do assunto
+    assert "estresse" not in json.dumps(secoes["credito"])
+
+
+def test_ficha_traz_a_geracao_de_caixa_da_dfc(tmp_path: Path) -> None:
+    """A noite lê a DRE, a DFC e a DVA da DFP e grava EBITDA, capex e FCF, sem a DFP de depois de hoje."""
+    _mini_base(tmp_path / "base")
+    _gravar(
+        tmp_path / "base",
+        "demonstracoes/2025.parquet",
+        geracao_de_caixa._como_era().assign(cnpj=CPFL),
+    )
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    caixa = {i["chave"]: i["valor"] for i in secoes["geracao_de_caixa"]["itens"]}
+    assert caixa == {"ebitda": 2_500e6, "capex": 900e6, "fcf": 1_300e6}
+    exercicios = secoes["geracao_de_caixa"]["tabelas"]["caixa_por_exercicio"]
+    assert [linha["exercicio"] for linha in exercicios] == [2025, 2024]
+
+
 def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:
     """A situação de hoje vem do `como_era_em` da porta: a ligação que só fica pública depois não entra."""
     pasta = tmp_path / "base"
@@ -303,8 +440,10 @@ def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:
         ),
     )
     with Porta(pasta) as porta:
-        controladoras, _ = gerar_dossies._controladoras(
-            gerar_dossies.Leitor(porta), D("2026-10-17 07:00")
+        controladoras = gerar_dossies._controladoras(
+            gerar_dossies.Leitor(porta),
+            D("2026-10-17 07:00"),
+            _entidades("EA", "EDONA", "ENOVA"),
         )
     assert controladoras["cnpj_controladora"].tolist() == ["33333333000133"]
 
@@ -339,3 +478,247 @@ def test_le_a_base_so_pela_porta() -> None:
     from tests.test_porta_unica import _montador
 
     assert not _montador("scripts/gerar_dossies.py")
+
+
+def _rede_da_cpfl(pasta: Path, com_o_futuro: bool) -> None:
+    """A CPFL (EA) com uma controlada pública desde 2015; `com_o_futuro`: mais uma, pública só em
+    dezembro de 2026, e um FRE entregue em 2027 (depois do dia da ficha)."""
+    controladas = ["EC"] + (["ENOVA"] if com_o_futuro else [])
+    _gravar(pasta, "rede/entidades.parquet", _entidades("EA", *controladas))
+    _gravar(
+        pasta,
+        "rede/identificadores.parquet",
+        _identificadores(
+            ("EA", "cnpj_raiz", CPFL_DIGITOS[:8], None, None, "2010-01-01"),
+            ("EA", "cnpj", CPFL_DIGITOS, None, None, "2010-01-01"),
+            ("EC", "cnpj", DISTRIBUIDORA, None, None, "2010-01-01"),
+            ("ENOVA", "cnpj", "44444444000144", None, None, "2026-12-01"),
+        ),
+    )
+    ligacoes = [
+        {"de": "EC", "para": "EA", "tipo": "controlada_de", "publico_em": "2016-05-31"}
+    ]
+    if com_o_futuro:
+        ligacoes.append(
+            {
+                "de": "ENOVA",
+                "para": "EA",
+                "tipo": "controlada_de",
+                "publico_em": "2026-12-01",
+            }
+        )
+    _gravar(pasta, "rede/ligacoes.parquet", _ligacoes(*ligacoes))
+    fres = [("2025-12-31", D("2026-05-31"), DISTRIBUIDORA)]
+    if com_o_futuro:
+        fres.append(("2026-09-30", D("2027-01-15"), "44444444000144"))
+    _gravar(
+        pasta,
+        "controladas/2025.parquet",
+        pd.DataFrame(
+            {
+                "cnpj_companhia": [CPFL_DIGITOS] * len(fres),
+                "referencia": [D(r) for r, _, _ in fres],
+                "versao": [1] * len(fres),
+                "conhecido_em": [c for _, c, _ in fres],
+                "cnpj": [s for _, _, s in fres],
+                "razao_social": ["CPFL Paulista", "Nova"][: len(fres)],
+                "tipo": ["Controlada"] * len(fres),
+                "participacao": [100.0] * len(fres),
+            }
+        ),
+    )
+
+
+def _ficha_da_cpfl(saida: Path) -> dict:
+    return json.loads(
+        (saida / "2026-10-17" / f"{CPFL_DIGITOS}.json").read_text(encoding="utf-8")
+    )
+
+
+def test_ficha_traz_a_secao_da_rede_por_ultimo(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _rede_da_cpfl(tmp_path / "base", com_o_futuro=False)
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = _ficha_da_cpfl(tmp_path / "dossies")["secoes"]
+    assert secoes[-1]["chave"] == "rede"
+    linhas = secoes[-1]["tabelas"]["ligacoes_da_rede"]
+    assert [(linha["relacao"], linha["cnpj"]) for linha in linhas] == [
+        ("Controlada", "33.050.196/0001-88")
+    ]
+
+
+def test_rede_cortar_o_futuro_nao_muda_o_passado(tmp_path: Path) -> None:
+    """A ficha de um dia é a mesma com ou sem o que só ficou público depois dele."""
+    fichas = []
+    for com_o_futuro in (False, True):
+        pasta = tmp_path / f"base-{com_o_futuro}"
+        _mini_base(pasta)
+        _rede_da_cpfl(pasta, com_o_futuro)
+        _montar(pasta, tmp_path / f"dossies-{com_o_futuro}")
+        ficha = _ficha_da_cpfl(tmp_path / f"dossies-{com_o_futuro}")
+        fichas.append([s for s in ficha["secoes"] if s["chave"] == "rede"])
+    assert fichas[0] == fichas[1]
+    assert fichas[0]  # a seção existe nas duas
+
+
+# --- setor (molde D, plano de 19/10/2026, PR 1, tarefa 1.5) -----------------------------------------
+
+
+def _manifesto(saida: Path) -> dict:
+    return json.loads(
+        (saida / "2026-10-17" / "manifesto.json").read_text(encoding="utf-8")
+    )
+
+
+def test_ficha_do_membro_traz_a_secao_setor(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    setor = next(
+        s
+        for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]
+        if s["chave"] == "setor"
+    )
+    (linha,) = setor["tabelas"]["concentracao_aneel_consumidores"]
+    # dezembro de 2025: a distribuidora da CPFL com 110 e uma fora da base com 890
+    assert linha["hhi"] == pytest.approx(11**2 + 89**2)
+    assert linha["delta_hhi"] is None  # um ano só: nada a comparar
+    assert [m["cnpj"] for m in setor["tabelas"]["membros"]] == [CPFL_DIGITOS]
+
+
+def test_manifesto_lista_os_setores(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert _manifesto(tmp_path / "dossies")["setores"] == {
+        "eletricas": {"ficha": CPFL_DIGITOS, "membros": [CPFL_DIGITOS]}
+    }
+
+
+def test_setor_da_ficha_que_nao_foi_gravada_nao_vai_no_manifesto(
+    tmp_path: Path,
+) -> None:
+    _mini_base(tmp_path / "base")
+    _gravar(  # a ficha da CPFL cai no filtro de pessoas (como em test_ficha_com_pessoa_nao_e_gravada)
+        tmp_path / "base",
+        "controladas/2025.parquet",
+        pd.DataFrame(
+            {
+                "cnpj_companhia": [CPFL_DIGITOS],
+                "referencia": [D("2025-01-01")],
+                "versao": [1],
+                "cnpj": [""],
+                "razao_social": ["Fulano de Tal"],
+                "tipo": ["controlada"],
+                "participacao": [100.0],
+            }
+        ),
+    )
+    _montar(tmp_path / "base", tmp_path / "dossies")
+    assert _manifesto(tmp_path / "dossies")["setores"] == {}
+
+
+def test_setor_que_quebra_nao_derruba_a_noite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _mini_base(tmp_path / "base")
+
+    def quebra(*_: object) -> None:
+        raise ValueError("coluna sumiu")
+
+    monkeypatch.setattr(gerar_dossies.dossie, "secao_setor", quebra)
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.fichas == 1
+    assert resumo.falhas == ["setor eletricas: ValueError: coluna sumiu"]
+    chaves = [s["chave"] for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]]
+    assert "setor" not in chaves
+
+
+def test_membro_de_dois_setores_leva_so_um() -> None:
+    """Cada setor vai na ficha de um membro só; quem já leva um setor passa o outro adiante."""
+    seguros = {"chave": "setor", "titulo": "seguros"}
+    saude = {"chave": "setor", "titulo": "saúde"}
+    fichas, falhas = gerar_dossies.distribuir_setores(
+        [("seguros", ["A", "B"], seguros), ("saude_suplementar", ["A"], saude)]
+    )
+    assert fichas == {"A": ("seguros", seguros)}
+    assert falhas == ["setor saude_suplementar: todos os membros já levam outro setor"]
+    fichas, _ = gerar_dossies.distribuir_setores(
+        [("saude_suplementar", ["A"], saude), ("seguros", ["A", "B"], seguros)]
+    )
+    assert fichas == {"A": ("saude_suplementar", saude), "B": ("seguros", seguros)}
+
+
+def test_grupos_da_anatel_saem_do_ultimo_mes_do_ano(tmp_path: Path) -> None:
+    _gravar(
+        tmp_path / "base",
+        "setoriais/anatel/Acessos_Telefonia_Movel_2025.parquet",
+        pd.DataFrame(
+            {
+                "competencia": [D("2025-11-30"), D("2025-12-31"), D("2025-12-31")],
+                "servico": ["telefonia_movel"] * 3,
+                "recorte": ["modalidade"] * 3,
+                "cnpj": ["02.558.157/0001-62", "02558157000162", "33.000.118/0001-79"],
+                "grupo_economico": ["Antigo", "Telefônica", ""],
+                "acessos": [10.0, 5.0, 3.0],
+            }
+        ),
+    )
+    serie = next(
+        s for s in dossie.SERIES_DAS_AGENCIAS if s.nome == "anatel_telefonia_movel"
+    )
+    with Porta(tmp_path / "base") as porta:
+        grupos = gerar_dossies.ler_grupos(gerar_dossies.Leitor(porta), serie)
+    assert grupos.to_dict("records") == [
+        {"ano": 2025, "chave": "02558157000162", "grupo": "Telefônica"}
+    ]
+
+
+def test_serie_sem_coluna_de_grupo_nao_tem_grupos(tmp_path: Path) -> None:
+    _gravar(
+        tmp_path / "base",
+        "setoriais/anatel/Acessos_Telefonia_Movel_2025.parquet",
+        pd.DataFrame(
+            {
+                "competencia": [D("2025-12-31")],
+                "servico": ["telefonia_movel"],
+                "recorte": ["modalidade"],
+                "cnpj": ["02558157000162"],
+                "acessos": [5.0],
+            }
+        ),
+    )
+    serie = next(
+        s for s in dossie.SERIES_DAS_AGENCIAS if s.nome == "anatel_telefonia_movel"
+    )
+    with Porta(tmp_path / "base") as porta:
+        assert gerar_dossies.ler_grupos(gerar_dossies.Leitor(porta), serie).empty
+
+
+def test_setor_cortar_o_futuro_nao_muda_o_passado_na_noite(tmp_path: Path) -> None:
+    """Um mês de 2026 na ANEEL não muda a linha de 2025 da concentração."""
+    linhas = []
+    for com_o_futuro in (False, True):
+        pasta = tmp_path / f"base-{com_o_futuro}"
+        _mini_base(pasta)
+        if com_o_futuro:
+            _gravar(
+                pasta,
+                "setoriais/aneel/2026.parquet",
+                pd.DataFrame(
+                    {
+                        "competencia": [D("2026-01-31")] * 2,
+                        "cnpj": [DISTRIBUIDORA, "99999999000199"],
+                        "valor": [500.0, 500.0],
+                        "detalhe_do_mercado": ["Número de consumidores"] * 2,
+                        "tipo_de_mercado": ["Regular"] * 2,
+                    }
+                ),
+            )
+        _montar(pasta, tmp_path / f"dossies-{com_o_futuro}")
+        ficha = _ficha_da_cpfl(tmp_path / f"dossies-{com_o_futuro}")
+        setor = next(s for s in ficha["secoes"] if s["chave"] == "setor")
+        tabela = setor["tabelas"]["concentracao_aneel_consumidores"]
+        linhas.append([linha for linha in tabela if linha["ano"] == 2025])
+    assert linhas[0] == linhas[1]
+    assert linhas[0]

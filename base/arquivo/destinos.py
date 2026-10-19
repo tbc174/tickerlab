@@ -56,8 +56,8 @@ _B3_BDI_CONTRA_OS_TERMOS = (
 
 DESTINOS: dict[str, Destino] = {
     # CVM
-    "cvm-hist-dfp": _tabela("demonstracoes_como_era"),
-    "cvm-hist-itr": _tabela("demonstracoes_como_era"),
+    "cvm-hist-dfp": _tabela("demonstracoes_como_era", "dmpl_como_era"),
+    "cvm-hist-itr": _tabela("demonstracoes_como_era", "dmpl_como_era"),
     "cvm-hist-fre": _tabela(
         "fre_comites",
         "fre_conselho",
@@ -114,17 +114,11 @@ DESTINOS: dict[str, Destino] = {
     # setoriais
     "anp-vendas-distribuidora": _tabela("anp_vendas"),
     "anp-producao-poco": _planejada("serie-5/PR3", "produção por poço, com o operador"),
-    "anp-concessionarios": _planejada(
-        "serie-T/T8", "quem opera cada bloco e campo; liga a produção à empresa"
-    ),
+    "anp-concessionarios": _tabela("anp_concessionarios"),
     "ons-geracao-usina": _tabela("ons_geracao"),
-    "ons-capacidade-geracao": _planejada(
-        "serie-T/T6", _SO_LIGA_HOJE + " (capacidade por usina)"
-    ),
-    "ons-restricao-eolica-solar": _planejada(
-        "serie-T/T6", "corte de geração (curtailment) por usina"
-    ),
-    "ccee-pld": _planejada("serie-T/T6", "PLD horário, diário e mensal por submercado"),
+    "ons-capacidade-geracao": _tabela("ons_capacidade"),
+    "ons-restricao-eolica-solar": _tabela("ons_restricao"),
+    "ccee-pld": _tabela("ccee_pld"),
     "aneel-samp": _tabela("aneel_samp"),
     "anatel-acessos": _tabela("anatel_acessos"),
     "anac-estatistico": _tabela("anac_estatistico"),
@@ -138,10 +132,8 @@ DESTINOS: dict[str, Destino] = {
         "serie-T/T9", _SO_LIGA_HOJE + " (entidades supervisionadas)"
     ),
     "antt-pedagio": _planejada("serie-5/PR1", "praças de pedágio e tráfego"),
-    "antt-siade": _planejada(
-        "serie-T/T8", _SO_LIGA_HOJE + " (desempenho por ferrovia)"
-    ),
-    "comexstat": _tabela("comex_cafe"),
+    "antt-siade": _tabela("antt_siade"),
+    "comexstat": _tabela("comex_cafe", "comex_preco_medio"),
     # governo, sanções e identificadores
     "cgu-ceis": _planejada("sinais/PR4", "sanções administrativas da CGU"),
     "cgu-cnep": _planejada("sinais/PR4", "sanções da Lei Anticorrupção"),

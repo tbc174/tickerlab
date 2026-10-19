@@ -13,6 +13,7 @@ from fpdf.enums import XPos, YPos
 
 from src import dossie
 from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
 from src.relatorio_empresa import (
@@ -121,6 +122,26 @@ def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
         pdf.tabela(*_cabecalho_e_linhas(linhas))
 
 
+def _sem_marcas_de_markdown(texto: str) -> str:
+    return texto.replace("*", "")
+
+
+def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela) -> None:
+    """A análise escrita antes da ficha: cada parte com o texto e, embaixo, as notas dela."""
+    pdf.secao("A análise", reservar=40, numerada=True)
+    pdf.aviso_destacado(analise.aviso)
+    if analise.motivo:
+        pdf.aviso_destacado(f"Texto de reserva por regras: {analise.motivo}.")
+    for parte in analise.partes:
+        _titulo_da_tabela(pdf, parte.titulo)
+        for paragrafo in parte.paragrafos:
+            frases = " ".join(f.com_marcas() for f in paragrafo.frases)
+            rotulo = f"{paragrafo.rotulo}: " if paragrafo.rotulo else ""
+            pdf.paragrafo(_sem_marcas_de_markdown(rotulo + frases))
+        for nota in analise.notas_da_parte(parte):
+            pdf.paragrafo(f"[{nota.numero}] {nota.legenda()}", apagado=True)
+
+
 def relatorio_da_empresa(
     relatorio: Relatorio,
     gerado_em: datetime | None = None,
@@ -144,7 +165,10 @@ def relatorio_da_empresa(
             ("Gerado em", f"{gerado_em:%d/%m/%Y às %H:%M}"),
             ("Fontes", "; ".join(relatorio.fontes)),
         ],
-        [s.titulo for s in relatorio.secoes],
+        [
+            *(["A análise"] if relatorio.analise else []),
+            *(s.titulo for s in relatorio.secoes),
+        ],
     )
     pdf.add_page()
     if relatorio.em_conferencia:
@@ -153,6 +177,8 @@ def relatorio_da_empresa(
             "Qualidade dos dados."
         )
     pdf.aviso_destacado(relatorio.aviso_das_notas)
+    if relatorio.analise:
+        _analise(pdf, relatorio.analise)
     for secao in relatorio.secoes:
         _secao(pdf, secao, estilo)
     return pdf.para_bytes()

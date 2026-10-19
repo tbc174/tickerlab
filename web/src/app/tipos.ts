@@ -439,6 +439,43 @@ export interface SecaoDoRelatorioV1 {
   recolhida?: boolean; // explicação: a tela mostra fechada até a pessoa abrir
 }
 
+/** A nota numerada de uma frase da análise: abre o número de onde a frase saiu. */
+export interface NotaDaAnaliseV1 {
+  numero: number;
+  id: string;
+  nome: string;
+  texto: string; // o valor já escrito, ou a linha da tabela
+  medido_em: string;
+  fonte: string;
+  comparacao: string; // "Contra X: texto"; vazio quando não compara
+}
+
+export interface FraseDaAnaliseV1 {
+  texto: string;
+  notas: number[]; // os números das notas (AnaliseDaEmpresaV1.notas)
+}
+
+export interface ParagrafoDaAnaliseV1 {
+  tipo: "fato" | "leitura";
+  rotulo: string; // "Leitura" no parágrafo de leitura; vazio no de fato
+  frases: FraseDaAnaliseV1[];
+}
+
+export interface ParteDaAnaliseV1 {
+  chave: string;
+  titulo: string;
+  origem: "modelo" | "molde"; // molde: texto de reserva por regras
+  paragrafos: ParagrafoDaAnaliseV1[];
+}
+
+/** A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100). */
+export interface AnaliseDaEmpresaV1 {
+  partes: ParteDaAnaliseV1[];
+  notas: NotaDaAnaliseV1[];
+  aviso: string;
+  motivo?: string | null; // por que saiu o molde no lugar do texto do modelo, se saiu
+}
+
 export interface RelatorioDaEmpresaV1 {
   empresa: string;
   cnpj: string;
@@ -449,6 +486,7 @@ export interface RelatorioDaEmpresaV1 {
   fontes: string[];
   aviso_das_notas: string;
   em_conferencia: boolean;
+  analise?: AnaliseDaEmpresaV1 | null; // null: sem análise aprovada para a empresa
 }
 
 /** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */

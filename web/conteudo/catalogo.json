@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 50
+      "tabelas": 51
     },
     {
       "historico_desde": "2010-01-01",
@@ -47,6 +47,28 @@
       "orgao": "ANP",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ONS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "MDIC",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 2
     },
     {
@@ -84,11 +106,33 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANTT",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da Anatel no dados.gov.br; citar a Anatel)",
       "modulos": [
         "mercado_e_empresas"
       ],
       "orgao": "Anatel",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "CCEE",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -160,34 +204,12 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-18",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "MDIC",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
       "modulos": [
         "macro"
       ],
       "orgao": "MapBiomas",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
-      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ONS",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -252,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 49
+      "tabelas": 56
     },
     {
       "chave": "credito_e_fidc",
@@ -290,6 +312,16 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "demonstracoes_como_era"
+    },
+    {
+      "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "frase": "A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "dmpl_como_era"
     },
     {
       "atraso": "O do documento conferido",
@@ -500,6 +532,66 @@
       "orgao": "ONS",
       "situacao": "licenciada",
       "tabela": "ons_geracao"
+    },
+    {
+      "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1",
+      "frase": "PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020.",
+      "frequencia": "Diária",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CCEE",
+      "situacao": "licenciada",
+      "tabela": "ccee_pld"
+    },
+    {
+      "atraso": "O instante + 2 dias",
+      "frase": "Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ONS",
+      "situacao": "licenciada",
+      "tabela": "ons_restricao"
+    },
+    {
+      "atraso": "A regra usa a data de entrada em operação",
+      "frase": "Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ONS",
+      "situacao": "licenciada",
+      "tabela": "ons_capacidade"
+    },
+    {
+      "atraso": null,
+      "frase": "Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP",
+      "situacao": "licenciada",
+      "tabela": "anp_concessionarios"
+    },
+    {
+      "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido",
+      "frase": "Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_siade"
+    },
+    {
+      "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC",
+      "frase": "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "em consulta",
+      "tabela": "comex_preco_medio"
     },
     {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
@@ -1073,9 +1165,9 @@
     }
   ],
   "totais": {
-    "fontes": 22,
+    "fontes": 24,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 79
+    "tabelas": 86
   }
 }
