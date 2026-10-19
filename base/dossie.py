@@ -305,6 +305,18 @@ SECOES = (
         ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
     ),
     SecaoDaBase(
+        "governanca",
+        "Governança",
+        (
+            "fre_conselho",
+            "fre_comites",
+            "fre_remuneracao",
+            "fre_remuneracao_extremos",
+            "fre_diversidade",
+        ),
+    ),
+    SecaoDaBase("credito", "Crédito", ("ratings", "debentures_assembleias")),
+    SecaoDaBase(
         "setor_regulado",
         "Setor regulado",
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
@@ -360,6 +372,22 @@ LIMITES = {
         "bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos "
         "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
         "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos."
+    ),
+    "governanca": (
+        "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da "
+        "ficha; só contagens e somas, sem nomes. O conselho conta quem está só nele e quem é também "
+        "diretor; independente e eleito por minoritários seguem o cargo que a empresa informa. A "
+        "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
+        "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. "
+        "Diversidade só existe no FRE de 2023 em diante."
+    ),
+    "credito": (
+        "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos "
+        "pelo TickerLab (documento que não deu para ler fica de fora); o mesmo rating em dois "
+        "documentos conta uma vez, na data do primeiro. Assembleias de debenturistas: editais, atas "
+        "e propostas entregues à CVM, na versão mais nova; o tema sai das palavras do assunto, que "
+        "a empresa escreve, e pode deixar escapar ou incluir algum. Assembleia não quer dizer "
+        "problema: muitas só aprovam mudanças de rotina."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -1149,6 +1177,337 @@ def secao_capital_e_acionistas(
         "fundos_janelas": fundos_janelas,
     }
     return _secao("capital_e_acionistas", itens, tabelas)
+
+
+# --- governança ----------------------------------------------------------------------------------
+
+# no FRE o conselheiro que também é diretor vem como "Pertence à Diretoria e ao Conselho de Administração"
+DO_CONSELHO = re.compile(r"conselho de administra", re.IGNORECASE)
+ANOS_DA_GOVERNANCA = 5  # quantos FREs (e exercícios da remuneração) as tabelas mostram
+ITENS_DA_GOVERNANCA = (  # chave do item, coluna de `governanca_por_ano`, nome, unidade
+    ("conselho_membros", "conselho", "Membros do conselho de administração", "pessoas"),
+    ("conselho_independentes", "independentes", "Conselheiros independentes", "pessoas"),
+    ("conselho_eleitos_por_minoritarios", "eleitos_por_minoritarios",
+     "Conselheiros eleitos por minoritários", "pessoas"),
+    ("comites", "comites", "Comitês informados no FRE", "comitês"),
+    ("mulheres_no_conselho", "mulheres_no_conselho", "Mulheres no conselho de administração",
+     "pessoas"),
+)  # fmt: skip
+
+
+def _entregues(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """As linhas dos FREs já entregues até hoje, na versão mais nova de cada referência."""
+    if tabela.empty:
+        return tabela
+    entregues = tabela[pd.to_datetime(tabela["conhecido_em"]) <= hoje]
+    ultima = entregues.groupby("referencia")["versao"].transform("max")
+    return entregues[entregues["versao"] == ultima]
+
+
+def _do_conselho(tabela: pd.DataFrame) -> pd.DataFrame:
+    return tabela[tabela["orgao"].fillna("").astype(str).str.contains(DO_CONSELHO)]
+
+
+def _governanca_por_ano(
+    conselho: pd.DataFrame, comites: pd.DataFrame, diversidade: pd.DataFrame
+) -> pd.DataFrame:
+    """Um FRE por linha (o mais novo primeiro): o tamanho do conselho, os comitês e as mulheres."""
+    if conselho.empty:
+        return pd.DataFrame()
+    por_ano = (
+        _do_conselho(conselho)
+        .groupby("referencia")
+        .agg(
+            entregue_em=("conhecido_em", "max"),
+            conselho=("membros", "sum"),
+            independentes=("independentes", "sum"),
+            eleitos_por_minoritarios=("eleitos_por_minoritarios", "sum"),
+        )
+    )
+    if not comites.empty:
+        por_ano["comites"] = comites.groupby("referencia")["tipo_de_comite"].nunique()
+    if not diversidade.empty:
+        mulheres = (
+            _do_conselho(diversidade).groupby("referencia")["genero_feminino"].sum()
+        )
+        por_ano["mulheres_no_conselho"] = mulheres
+    por_ano = por_ano.sort_index(ascending=False).head(ANOS_DA_GOVERNANCA).reset_index()
+    por_ano.insert(0, "ano", pd.to_datetime(por_ano.pop("referencia")).dt.year)
+    por_ano["entregue_em"] = pd.to_datetime(por_ano["entregue_em"])
+    return por_ano
+
+
+def _itens_da_governanca(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
+    if por_ano.empty:
+        return []
+    mais_novo = por_ano.iloc[0]
+    base = _data(mais_novo["entregue_em"])
+    return [
+        _item(chave, nome, int(mais_novo[coluna]), unidade, base)
+        for chave, coluna, nome, unidade in ITENS_DA_GOVERNANCA
+        if coluna in por_ano.columns and pd.notna(mais_novo[coluna])
+    ]
+
+
+def _comites_do_fre(comites: pd.DataFrame) -> pd.DataFrame:
+    """Os comitês do FRE mais novo, só o tipo e quantos membros."""
+    if comites.empty:
+        return pd.DataFrame()
+    do_fre = comites[comites["referencia"] == comites["referencia"].max()]
+    tabela = do_fre.rename(columns={"tipo_de_comite": "comite"})[["comite", "membros"]]
+    return tabela.sort_values("comite", ignore_index=True)
+
+
+def _por_exercicio(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada exercício já encerrado como o FRE mais novo entregue até hoje o informa (sem a prevista)."""
+    entregues = _entregues(tabela, hoje)
+    if entregues.empty:
+        return entregues
+    encerrados = entregues[pd.to_datetime(entregues["fim_do_exercicio"]) <= hoje]
+    mais_novo = encerrados.groupby("fim_do_exercicio")["referencia"].transform("max")
+    return encerrados[encerrados["referencia"] == mais_novo]
+
+
+def _remuneracao(
+    remuneracao: pd.DataFrame, extremos: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """O total pago à administração em cada exercício e, no último, por órgão com os extremos."""
+    exercicios = _por_exercicio(remuneracao, hoje)
+    if exercicios.empty:
+        return [], {}
+    totais = (
+        exercicios.groupby("fim_do_exercicio")["total_remuneracao"]
+        .sum()
+        .sort_index(ascending=False)
+    )
+    ultimo = totais.index[0]
+    itens = [
+        _item(
+            "remuneracao_da_administracao",
+            "Remuneração da administração no último exercício",
+            float(totais.iloc[0]),
+            "R$",
+            _data(ultimo),
+        )
+    ]
+    por_exercicio = pd.DataFrame(
+        {"exercicio": pd.to_datetime(totais.index).year, "total": totais.to_numpy()}
+    ).head(ANOS_DA_GOVERNANCA)
+    do_ultimo = exercicios[exercicios["fim_do_exercicio"] == ultimo]
+    por_orgao = do_ultimo[["orgao", "membros_remunerados", "total_remuneracao"]].rename(
+        columns={"total_remuneracao": "total"}
+    )
+    extremos = _por_exercicio(extremos, hoje)
+    if not extremos.empty:
+        do_ano = extremos[extremos["fim_do_exercicio"] == ultimo]
+        por_orgao = por_orgao.merge(
+            do_ano[["orgao", "maior", "media", "menor"]], on="orgao", how="left"
+        )
+    tabelas = {
+        "remuneracao_por_exercicio": por_exercicio,
+        "remuneracao_por_orgao": por_orgao.reset_index(drop=True),
+    }
+    return itens, tabelas
+
+
+def secao_governanca(
+    conselho: pd.DataFrame,
+    comites: pd.DataFrame,
+    remuneracao: pd.DataFrame,
+    extremos: pd.DataFrame,
+    diversidade: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Conselho, comitês, remuneração e diversidade pelo FRE, só contagens e somas (None: nada)."""
+    conselho, comites, diversidade = (
+        _entregues(tabela, hoje) for tabela in (conselho, comites, diversidade)
+    )
+    por_ano = _governanca_por_ano(conselho, comites, diversidade)
+    itens_da_remuneracao, tabelas_da_remuneracao = _remuneracao(
+        remuneracao, extremos, hoje
+    )
+    itens = [*_itens_da_governanca(por_ano), *itens_da_remuneracao]
+    if not itens:
+        return None
+    tabelas = {
+        "governanca_por_ano": por_ano,
+        "comites": _comites_do_fre(comites),
+        **tabelas_da_remuneracao,
+    }
+    return _secao("governanca", itens, tabelas)
+
+
+# --- crédito -------------------------------------------------------------------------------------
+
+EXTRAIDO = (
+    "extraido"  # rating lido do documento (`base.ratings`): os outros não têm nota
+)
+MESMO_RATING = [
+    "agencia",
+    "escala",
+    "nota",
+    "data_acao",
+]  # o relatório e o fato relevante
+ASSEMBLEIA = (
+    "assembleia"  # o aviso de pagamento e a notificação do agente não são assembleia
+)
+TEMAS_DAS_ASSEMBLEIAS = {  # coluna `tema_*` de `debentures_assembleias` → nome na ficha
+    "vencimento_antecipado": "Vencimento antecipado",
+    "waiver": "Waiver",
+    "covenant": "Covenant",
+    "repactuacao": "Repactuação",
+    "inadimplemento": "Inadimplemento",
+    "garantia": "Garantia",
+    "resgate": "Resgate antecipado",
+    "reorganizacao": "Reorganização",
+}
+
+
+def _ratings_publicos(ratings: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada ação de agência já pública até hoje, uma vez (o mesmo evento em dois documentos)."""
+    if ratings.empty:
+        return ratings
+    publicos = ratings[
+        (pd.to_datetime(ratings["publico_em"]) <= hoje)
+        & (ratings["situacao_extracao"] == EXTRAIDO)
+    ]
+    publicos = publicos.sort_values("publico_em", kind="stable")
+    com_data = publicos[publicos["data_acao"].notna()]
+    sem_data = publicos[publicos["data_acao"].isna()]
+    unicos = pd.concat([com_data.drop_duplicates(MESMO_RATING), sem_data])
+    return unicos.assign(publico_em=pd.to_datetime(unicos["publico_em"]))
+
+
+def _acoes_de_rating(ratings: pd.DataFrame) -> dict[str, int]:
+    return {
+        "acoes": len(ratings),
+        "rebaixamentos": int((ratings["acao"] == "rebaixamento").sum()),
+        "elevacoes": int((ratings["acao"] == "elevacao").sum()),
+    }
+
+
+def _ratings(
+    ratings: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """A última ação de cada agência e as ações dos 12 meses até hoje contra as dos 12 anteriores."""
+    publicos = _ratings_publicos(ratings, hoje)
+    if publicos.empty:
+        return [], {}
+    ultimas = (
+        publicos.sort_values("publico_em", kind="stable")
+        .drop_duplicates(["agencia", "escala"], keep="last")
+        .sort_values("publico_em", ascending=False, ignore_index=True)
+    )
+    por_agencia = ultimas.drop(columns="nota").rename(
+        columns={"nota_original": "nota"}
+    )[["agencia", "escala", "nota", "perspectiva", "acao", "publico_em", "link"]]
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+            }
+            | _acoes_de_rating(
+                publicos[_janela(publicos["publico_em"], hoje, anos_antes)]
+            )
+            for anos_antes in range(len(JANELAS))
+        ]
+    )
+    do_ano = janelas.iloc[0]
+    base = _data(hoje)
+    itens = [
+        _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base),
+        _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base),
+    ]  # fmt: skip
+    return itens, {"ratings": por_agencia, "ratings_janelas": janelas}
+
+
+def _assembleias_publicas(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """As assembleias de debenturistas já públicas até hoje, na versão mais nova de cada documento."""
+    if assembleias.empty:
+        return assembleias
+    publicas = assembleias[
+        (pd.to_datetime(assembleias["publico_em"]) <= hoje)
+        & (assembleias["documento"] == ASSEMBLEIA)
+    ]
+    ultimas = publicas.sort_values(["protocolo", "versao"]).drop_duplicates(
+        "protocolo", keep="last"
+    )
+    return ultimas.assign(publico_em=pd.to_datetime(ultimas["publico_em"]))
+
+
+def _com_o_tema(documentos: pd.DataFrame, tema: str) -> int:
+    return int(documentos[f"tema_{tema}"].fillna(False).astype(bool).sum())
+
+
+def _por_tema(do_ano: pd.DataFrame, do_ano_anterior: pd.DataFrame) -> pd.DataFrame:
+    """Quantos documentos falam de cada tema (pelo assunto que a empresa escreveu), nas 2 janelas."""
+    colunas = ["tema", "ultimos_12_meses", "12_meses_anteriores"]
+    linhas = [
+        (nome, _com_o_tema(do_ano, tema), _com_o_tema(do_ano_anterior, tema))
+        for tema, nome in TEMAS_DAS_ASSEMBLEIAS.items()
+        if f"tema_{tema}" in do_ano.columns
+    ]
+    tabela = pd.DataFrame(linhas, columns=colunas)
+    tabela = tabela[
+        (tabela["ultimos_12_meses"] > 0) | (tabela["12_meses_anteriores"] > 0)
+    ]
+    return tabela.sort_values(
+        colunas[1:], ascending=False, kind="stable", ignore_index=True
+    )
+
+
+def _assembleias(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Assembleias de debenturistas nos 12 meses até hoje e nos 12 anteriores, por tema."""
+    publicas = _assembleias_publicas(assembleias, hoje)
+    if publicas.empty:
+        return [], {}
+    do_ano, do_ano_anterior = (
+        publicas[_janela(publicas["publico_em"], hoje, anos_antes)]
+        for anos_antes in range(len(JANELAS))
+    )
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+                "documentos": len(janela),
+            }
+            for anos_antes, janela in enumerate((do_ano, do_ano_anterior))
+        ]
+    )
+    recentes = publicas.sort_values("publico_em", ascending=False, ignore_index=True)
+    item = _item(
+        "assembleias_de_debenturistas_12m",
+        "Documentos de assembleias de debenturistas em 12 meses",
+        len(do_ano),
+        "documentos",
+        _data(hoje),
+    )
+    tabelas = {
+        "assembleias_janelas": janelas,
+        "assembleias_por_tema": _por_tema(do_ano, do_ano_anterior),
+        "assembleias_recentes": recentes[
+            ["publico_em", "especie", "assunto", "link"]
+        ].head(LINHAS_NAS_LISTAS),
+    }
+    return [item], tabelas
+
+
+def secao_credito(
+    ratings: pd.DataFrame, assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """Ratings e assembleias de debenturistas, só fatos com data e fonte (None: nada disso)."""
+    itens_dos_ratings, tabelas_dos_ratings = _ratings(ratings, hoje)
+    itens_das_assembleias, tabelas_das_assembleias = _assembleias(assembleias, hoje)
+    itens = [*itens_dos_ratings, *itens_das_assembleias]
+    if not itens:
+        return None
+    return _secao("credito", itens, {**tabelas_dos_ratings, **tabelas_das_assembleias})
 
 
 # --- setor regulado ------------------------------------------------------------------------------

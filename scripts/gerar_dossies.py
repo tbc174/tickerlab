@@ -111,6 +111,9 @@ class Entradas:
     releases: pd.DataFrame
     negociacoes: pd.DataFrame
     eventos_de_capital: pd.DataFrame
+    fre: dict[str, pd.DataFrame]  # as tabelas fre_* da governança, pelo nome
+    ratings: pd.DataFrame
+    assembleias: pd.DataFrame  # debentures_assembleias
     series: dict[str, pd.DataFrame]
     grupos: dict[
         str, pd.DataFrame
@@ -151,6 +154,25 @@ COLUNAS_DO_RELEASE = (
 COLUNAS_DAS_NEGOCIACOES = ("cnpj", "cargo", "operacao", "data", "entregue_em", "valor")
 COLUNAS_DOS_EVENTOS = (
     "cnpj", "referencia", "versao", "tipo", "data", "fator", "acoes_novas", "valor",
+)  # fmt: skip
+_DO_FRE = ("cnpj", "referencia", "versao", "conhecido_em")
+COLUNAS_DA_GOVERNANCA = {  # tabela do FRE → as colunas que a seção usa (nunca nomes)
+    "fre_conselho": (*_DO_FRE, "orgao", "membros", "independentes", "eleitos_por_minoritarios"),
+    "fre_comites": (*_DO_FRE, "tipo_de_comite", "membros"),
+    "fre_remuneracao": (
+        *_DO_FRE, "fim_do_exercicio", "orgao", "membros_remunerados", "total_remuneracao",
+    ),
+    "fre_remuneracao_extremos": (*_DO_FRE, "fim_do_exercicio", "orgao", "maior", "media", "menor"),
+    "fre_diversidade": (*_DO_FRE, "orgao", "genero_feminino"),
+}  # fmt: skip
+COLUNAS_DOS_RATINGS = (
+    "cnpj", "agencia", "escala", "nota", "nota_original", "perspectiva", "acao", "data_acao",
+    "publico_em", "protocolo", "link", "situacao_extracao",
+)  # fmt: skip
+# sem a coluna `estresse`: é um rótulo nosso, e a ficha mostra só os fatos (os temas do assunto)
+COLUNAS_DAS_ASSEMBLEIAS = (
+    "cnpj", "documento", "especie", "assunto", "publico_em", "protocolo", "versao", "link",
+    *(f"tema_{tema}" for tema in dossie.TEMAS_DAS_ASSEMBLEIAS),
 )  # fmt: skip
 
 
@@ -310,6 +332,12 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
         negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
         eventos_de_capital=leitor.ler("eventos_de_capital", [*COLUNAS_DOS_EVENTOS]),
+        fre={
+            tabela: leitor.ler(tabela, [*colunas])
+            for tabela, colunas in COLUNAS_DA_GOVERNANCA.items()
+        },
+        ratings=leitor.ler("ratings", [*COLUNAS_DOS_RATINGS]),
+        assembleias=leitor.ler("debentures_assembleias", [*COLUNAS_DAS_ASSEMBLEIAS]),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
         grupos={
             s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
@@ -354,7 +382,21 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     releases = _por_cnpj(entradas.releases, "cnpj")
     negociacoes = _por_cnpj(entradas.negociacoes, "cnpj")
     eventos_de_capital = _por_cnpj(entradas.eventos_de_capital, "cnpj")
+    fre = {nome: _por_cnpj(tabela, "cnpj") for nome, tabela in entradas.fre.items()}
+    ratings = _por_cnpj(entradas.ratings, "cnpj")
+    assembleias = _por_cnpj(entradas.assembleias, "cnpj")
     hoje = entradas.hoje
+
+    def governanca(cnpj: str) -> dict | None:
+        do_fre = {nome: fre[nome].get(cnpj, VAZIA) for nome in COLUNAS_DA_GOVERNANCA}
+        return dossie.secao_governanca(
+            do_fre["fre_conselho"],
+            do_fre["fre_comites"],
+            do_fre["fre_remuneracao"],
+            do_fre["fre_remuneracao_extremos"],
+            do_fre["fre_diversidade"],
+            hoje,
+        )
 
     def ofertas_e_fundos(cnpj: str) -> dict | None:
         grupo = dossie.cnpjs_do_grupo(cnpj, controladas.get(cnpj, VAZIA))
@@ -383,6 +425,10 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             painel.get(c, VAZIA),
             hoje,
             entradas.ultimo_mes_do_cda,
+        ),
+        "governanca": governanca,
+        "credito": lambda c: dossie.secao_credito(
+            ratings.get(c, VAZIA), assembleias.get(c, VAZIA), hoje
         ),
         "setor_regulado": lambda c: dossie.secao_setor_regulado(
             empresa_serie.get(c, VAZIA), entradas.series

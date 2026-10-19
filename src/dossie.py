@@ -81,6 +81,15 @@ TITULOS_DAS_TABELAS = {
     "insiders_janelas": "Insiders: 12 meses contra os 12 anteriores",
     "eventos_de_capital": "Eventos de capital dos últimos 10 anos",
     "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
+    "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
+    "comites": "Comitês no FRE mais recente",
+    "remuneracao_por_exercicio": "Remuneração da administração por exercício",
+    "remuneracao_por_orgao": "Remuneração no último exercício, por órgão",
+    "ratings": "Último rating de cada agência",
+    "ratings_janelas": "Ações de rating: 12 meses contra os 12 anteriores",
+    "assembleias_janelas": "Assembleias de debenturistas: 12 meses contra os 12 anteriores",
+    "assembleias_por_tema": "Assembleias de debenturistas por tema do assunto",
+    "assembleias_recentes": "Últimos documentos de assembleias de debenturistas",
     "negocios": "Últimos documentos de negócios",
     "negocios_por_ano": "Documentos de negócios por ano",
     "ligacoes_da_rede": "Ligações da companhia na rede",
@@ -334,6 +343,36 @@ def _agencia(valor: object) -> str:
     return _NOME_DA_AGENCIA.get(str(valor), str(valor))
 
 
+# os códigos da tabela `ratings` (`base/ratings.py`) como a ficha os escreve
+_AGENCIA_DE_RATING = {
+    "fitch": "Fitch",
+    "sp": "S&P",
+    "moodys": "Moody's",
+    "austin": "Austin Rating",
+    "liberum": "Liberum Ratings",
+    "sr_rating": "SR Rating",
+    "lf_rating": "LF Rating",
+    "am_best": "AM Best",
+}
+_PALAVRAS_COM_ACENTO = {
+    "afirmacao": "afirmação",
+    "elevacao": "elevação",
+    "atribuicao": "atribuição",
+    "estavel": "estável",
+    "observacao": "observação",
+}
+
+
+def _agencia_de_rating(valor: object) -> str:
+    return _AGENCIA_DE_RATING.get(str(valor), str(valor))
+
+
+def _codigo(valor: object) -> str:
+    """Um código da base ("em_observacao_negativa") em português ("Em observação negativa")."""
+    palavras = [_PALAVRAS_COM_ACENTO.get(p, p) for p in str(valor).split("_")]
+    return " ".join(palavras).capitalize()
+
+
 def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
     """Como escrever um número da série: em reais ("R$ 8,0 bi") ou inteiro ("9.743.641")."""
     return reais if unidade == "R$" else inteiro
@@ -448,6 +487,61 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("compras", "Compras dos fundos", reais),
         ("vendas", "Vendas dos fundos", reais),
     ],
+    "governanca_por_ano": [
+        ("ano", "FRE", _ano),
+        ("entregue_em", "Entregue em", dia),
+        ("conselho", "Conselho", inteiro),
+        ("independentes", "Independentes", inteiro),
+        ("eleitos_por_minoritarios", "Eleitos por minoritários", inteiro),
+        ("comites", "Comitês", inteiro),
+        ("mulheres_no_conselho", "Mulheres no conselho", inteiro),
+    ],
+    "comites": [
+        ("comite", "Comitê", _texto),
+        ("membros", "Membros", inteiro),
+    ],
+    "remuneracao_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("total", "Total pago", reais),
+    ],
+    "remuneracao_por_orgao": [
+        ("orgao", "Órgão", _texto),
+        ("membros_remunerados", "Membros remunerados", decimal),
+        ("total", "Total", reais),
+        ("maior", "Maior individual", reais),
+        ("media", "Média", reais),
+        ("menor", "Menor individual", reais),
+    ],
+    "ratings": [
+        ("agencia", "Agência", _agencia_de_rating),
+        ("escala", "Escala", _codigo),
+        ("nota", "Nota", _texto),
+        ("perspectiva", "Perspectiva", _codigo),
+        ("acao", "Ação", _codigo),
+        ("publico_em", "Publicado em", dia),
+    ],
+    "ratings_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("acoes", "Ações das agências", inteiro),
+        ("rebaixamentos", "Rebaixamentos", inteiro),
+        ("elevacoes", "Elevações", inteiro),
+    ],
+    "assembleias_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("documentos", "Documentos", inteiro),
+    ],
+    "assembleias_por_tema": [
+        ("tema", "Tema do assunto", _texto),
+        ("ultimos_12_meses", "Últimos 12 meses", inteiro),
+        ("12_meses_anteriores", "12 meses anteriores", inteiro),
+    ],
+    "assembleias_recentes": [
+        ("publico_em", "Data", dia),
+        ("especie", "Documento", _texto),
+        ("assunto", "Assunto, como a empresa escreveu", _texto),
+    ],
     "entidades_ligadas": [
         ("nome", "Entidade na agência", _texto),
         ("fonte", "Agência", _agencia),
@@ -529,6 +623,7 @@ _DOS_INSIDERS = (
     "negociações de controladores, administradores e da companhia declaradas à CVM "
     "(VLMO, tabela negociacoes)"
 )
+_DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
 FONTES_DOS_ITENS = {
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
     "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
@@ -550,6 +645,18 @@ FONTES_DOS_ITENS = {
     "recompras_12m": _DOS_INSIDERS,
     "eventos_de_capital": f"{_DO_FRE} (tabela eventos_de_capital)",
     "negocios": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
+    "conselho_membros": f"{_DO_FRE} (tabela fre_conselho)",
+    "conselho_independentes": f"{_DO_FRE} (tabela fre_conselho)",
+    "conselho_eleitos_por_minoritarios": f"{_DO_FRE} (tabela fre_conselho)",
+    "comites": f"{_DO_FRE} (tabela fre_comites)",
+    "mulheres_no_conselho": f"{_DO_FRE} (tabela fre_diversidade)",
+    "remuneracao_da_administracao": f"{_DO_FRE} (tabelas fre_remuneracao e fre_remuneracao_extremos)",
+    "ratings_rebaixamentos_12m": _DOS_RATINGS,
+    "ratings_elevacoes_12m": _DOS_RATINGS,
+    "assembleias_de_debenturistas_12m": (
+        "editais, atas e propostas de assembleias de debenturistas entregues à CVM "
+        "(tabela debentures_assembleias)"
+    ),
 } | {
     serie.nome: f"dados abertos da {_NOME_DA_AGENCIA[serie.fonte_b13]} (tabela {serie.tabela})"
     for serie in dossie_da_base.SERIES_DAS_AGENCIAS
@@ -678,7 +785,9 @@ def _contra_o_item(total: str, contra: str, unidade: str) -> Comparar:
     return comparar
 
 
-def _contra_os_12_meses_anteriores(tabela: str, coluna: str) -> Comparar:
+def _contra_os_12_meses_anteriores(
+    tabela: str, coluna: str, escrever: Callable[[object], str] = reais
+) -> Comparar:
     """Uma soma de 12 meses contra a dos 12 meses anteriores (a segunda linha da tabela de janelas)."""
 
     def comparar(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
@@ -689,41 +798,86 @@ def _contra_os_12_meses_anteriores(tabela: str, coluna: str) -> Comparar:
         quando = dia(anterior["ate"])
         return Comparacao(
             f"12 meses até {quando}",
-            f"{reais(anterior[coluna])} nos 12 meses até {quando}",
+            f"{escrever(anterior[coluna])} nos 12 meses até {quando}",
             _numero(anterior[coluna]),
         ), ""
 
     return comparar
 
 
-_COMPARACOES = {
-    "exercicios_reapresentados": _contra_o_item(
-        "exercicios_olhados", "exercícios olhados", "exercícios olhados (DFP)"
-    ),
-    "releases_diferentes": _contra_o_item(
-        "releases_comparados", "valores comparados", "valores comparados"
-    ),
-    "insiders_compras_12m": _contra_os_12_meses_anteriores(
-        "insiders_janelas", "compras"
-    ),
-    "insiders_vendas_12m": _contra_os_12_meses_anteriores("insiders_janelas", "vendas"),
-    "recompras_12m": _contra_os_12_meses_anteriores("insiders_janelas", "recompras"),
-    "compras_dos_fundos_12m": _contra_os_12_meses_anteriores(
-        "fundos_janelas", "compras"
-    ),
-    "vendas_dos_fundos_12m": _contra_os_12_meses_anteriores("fundos_janelas", "vendas"),
-    "auditor_atual": _contra_o_auditor_anterior,
-    "auditor_desde": _contra_o_auditor_anterior,
-    "controladas": _contra_as_sociedades,
-    "coligadas_e_outras": _contra_as_sociedades,
-    "ofertas": _contra_os_anos("ofertas_por_ano", "ofertas"),
-    "negocios": _contra_os_anos("negocios_por_ano", "documentos"),
-    "fundos_com_a_acao": _contra_o_mesmo_mes("fundos", inteiro, " fundos"),
-    "valor_nos_fundos": _contra_o_mesmo_mes("valor", reais),
-} | {
-    serie.nome: _contra_o_total_da_agencia
-    for serie in dossie_da_base.SERIES_DAS_AGENCIAS
-}
+def _contra_o_ano_anterior(
+    tabela: str, coluna: str, chave_do_ano: str, antes_do_ano: str = "em"
+) -> Comparar:
+    """O número do ano mais novo da tabela contra o do ano antes dele (FRE ou exercício)."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        anos = _mais_recentes(secao.tabelas.get(tabela, []), chave_do_ano)
+        if len(anos) < JANELAS_PARA_COMPARAR or anos[1].get(coluna) is None:
+            return None, SEM_COM_O_QUE_COMPARAR
+        anterior, quando = anos[1][coluna], _ano(anos[1][chave_do_ano])
+        escrever = _escritor_da_unidade(item.unidade)
+        return Comparacao(
+            f"{antes_do_ano} {quando}",
+            f"{escrever(anterior)} {antes_do_ano} {quando}",
+            _numero(anterior),
+        ), ""
+
+    return comparar
+
+
+_COMPARACOES = (
+    {
+        "exercicios_reapresentados": _contra_o_item(
+            "exercicios_olhados", "exercícios olhados", "exercícios olhados (DFP)"
+        ),
+        "releases_diferentes": _contra_o_item(
+            "releases_comparados", "valores comparados", "valores comparados"
+        ),
+        "insiders_compras_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "compras"
+        ),
+        "insiders_vendas_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "vendas"
+        ),
+        "recompras_12m": _contra_os_12_meses_anteriores(
+            "insiders_janelas", "recompras"
+        ),
+        "compras_dos_fundos_12m": _contra_os_12_meses_anteriores(
+            "fundos_janelas", "compras"
+        ),
+        "vendas_dos_fundos_12m": _contra_os_12_meses_anteriores(
+            "fundos_janelas", "vendas"
+        ),
+        "ratings_rebaixamentos_12m": _contra_os_12_meses_anteriores(
+            "ratings_janelas", "rebaixamentos", inteiro
+        ),
+        "ratings_elevacoes_12m": _contra_os_12_meses_anteriores(
+            "ratings_janelas", "elevacoes", inteiro
+        ),
+        "assembleias_de_debenturistas_12m": _contra_os_12_meses_anteriores(
+            "assembleias_janelas", "documentos", inteiro
+        ),
+        "remuneracao_da_administracao": _contra_o_ano_anterior(
+            "remuneracao_por_exercicio", "total", "exercicio"
+        ),
+        "auditor_atual": _contra_o_auditor_anterior,
+        "auditor_desde": _contra_o_auditor_anterior,
+        "controladas": _contra_as_sociedades,
+        "coligadas_e_outras": _contra_as_sociedades,
+        "ofertas": _contra_os_anos("ofertas_por_ano", "ofertas"),
+        "negocios": _contra_os_anos("negocios_por_ano", "documentos"),
+        "fundos_com_a_acao": _contra_o_mesmo_mes("fundos", inteiro, " fundos"),
+        "valor_nos_fundos": _contra_o_mesmo_mes("valor", reais),
+    }
+    | {
+        serie.nome: _contra_o_total_da_agencia
+        for serie in dossie_da_base.SERIES_DAS_AGENCIAS
+    }
+    | {
+        chave: _contra_o_ano_anterior("governanca_por_ano", coluna, "ano", "no FRE de")
+        for chave, coluna, *_ in dossie_da_base.ITENS_DA_GOVERNANCA
+    }
+)
 
 
 def _comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
