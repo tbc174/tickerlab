@@ -68,6 +68,8 @@ def entrar(
     tl_origem: Annotated[str | None, Cookie(alias=NOME_DO_COOKIE)] = None,
 ) -> ContaV1:
     """Cria a conta de quem o token prova ser (ou só registra o acesso) e abre a sessão."""
+    # o token no Authorization já barra outro site; com o cookie, vale a mesma prova das outras rotas
+    recusar_pedido_de_fora(request)
     # a conta ainda pode não existir: o limite fica pelo identificador do Google
     if not LIMITE.permitir(f"google:{identidade.sub}", agora()):
         raise HTTPException(status_code=429, detail="Muitos pedidos: espere um minuto.")

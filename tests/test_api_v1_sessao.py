@@ -105,6 +105,28 @@ def test_o_token_do_cookie_abre_a_conta_e_o_banco_so_tem_o_hash(
     assert eu.status_code == 200 and eu.json()["nome"] == "Ana"
 
 
+def test_entrar_de_novo_troca_a_sessao_e_exige_o_pedido_do_site(
+    cliente, ana, chave, banco
+):
+    antiga = _sessao_da(banco, ana)
+    de_fora = cliente.post(
+        "/api/v1/conta", headers=_com_cookie(antiga, **com_token(token(chave)))
+    )
+    assert de_fora.status_code == 403
+    resposta = cliente.post(
+        "/api/v1/conta",
+        headers=_com_cookie(antiga, **com_token(token(chave)), **DO_SITE),
+    )
+    assert resposta.status_code == 200
+    # a sessão que o navegador tinha acaba; fica só a nova
+    assert cliente.get("/api/v1/eu", headers=_com_cookie(antiga)).status_code == 401
+    with banco.connect() as conexao:
+        abertas = conexao.execute(
+            sa.select(sessoes_de_login).where(sessoes_de_login.c.encerrada_em.is_(None))
+        ).all()
+    assert len(abertas) == 1
+
+
 def test_conta_nova_pelo_google_ja_sai_com_a_sessao(cliente, chave, banco):
     resposta = cliente.post(
         "/api/v1/conta",
