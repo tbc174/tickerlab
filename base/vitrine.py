@@ -18,6 +18,7 @@ ORGAOS: tuple[tuple[str, str], ...] = (
     (r"assessorias de M&A", "Assessorias de M&A"),
     (r"da ANP\b", "ANP"),
     (r"da ANAC\b", "ANAC"),
+    (r"da ANTT\b", "ANTT"),
     (r"da CCEE\b", "CCEE"),
     (r"do ONS\b", "ONS"),
     (r"da ANEEL\b", "ANEEL"),
