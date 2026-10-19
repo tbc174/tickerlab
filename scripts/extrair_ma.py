@@ -5,11 +5,11 @@
     python -m scripts.extrair_ma buscar  --ouro CSV --textos P --saida S [--modelo M]
     python -m scripts.extrair_ma medir   --ouro CSV --textos P --saida S                (sem API)
     python -m scripts.extrair_ma operacoes|multiplos --ouro CSV --textos P --saida S    (sem API)
-    python -m scripts.extrair_ma base-estimar --candidatos PARQUET --textos P --saida S --limite N [--teto-dolares T]
-    python -m scripts.extrair_ma base-enviar  --candidatos PARQUET --textos P --saida S --limite N --teto-dolares T
+    python -m scripts.extrair_ma base-estimar --textos P --saida S --limite N [--teto-dolares T]
+    python -m scripts.extrair_ma base-enviar  --textos P --saida S --limite N --teto-dolares T
 
 Os passos `base-*` são o modo "base inteira": em vez da amostra de ouro, os candidatos de
-`ma_candidatos` com texto já coletado (`<acervo>/ma/candidatos/candidatos.parquet`), na ordem da
+`ma_candidatos` (lidos pela `base.porta`) com texto já coletado, na ordem da
 coleta (`base.ma_textos.grupo`), sem repetir o que o manifesto já tem. Sempre com `--limite` de
 documentos e `--teto-dolares` (o `base-enviar` recusa se a estimativa do lote passa do teto).
 
@@ -40,8 +40,8 @@ from base import ma_extracao as mx
 from base import ma_multiplos as mm
 from base import ma_operacoes as mo
 from base import ma_textos as mt
+from base import porta
 from base.historico import ano_do_arquivo
-from base.parquet import ler_tabela
 from scripts.rotular_com_ia import TetoPassado
 from src import acervo
 from src import demonstracoes as dm
@@ -262,10 +262,10 @@ def buscar(cliente: anthropic.Anthropic, saida: Path, modelo: str) -> int:
 # --- modo base inteira (sem API) ---------------------------------------------------------------------
 
 
-def documentos_da_base(candidatos: Path, textos: Path) -> list[Documento]:
+def documentos_da_base(candidatos: pd.DataFrame, textos: Path) -> list[Documento]:
     """Os candidatos da base com texto guardado, na ordem da coleta (o grupo que mais rende primeiro,
     do mais novo ao mais velho). Reentregas com o mesmo protocolo dividem o texto: fica a mais nova."""
-    tabela = ler_tabela(candidatos)
+    tabela = candidatos.copy()
     tabela["_grupo"] = mt.grupo(tabela)
     tabela = tabela.sort_values(
         ["_grupo", "publico_em", "protocolo", "versao"],
@@ -284,7 +284,7 @@ def documentos_da_base(candidatos: Path, textos: Path) -> list[Documento]:
 
 
 def pendentes_da_base(
-    candidatos: Path, textos: Path, saida: Path, modelo: str, limite: int
+    candidatos: pd.DataFrame, textos: Path, saida: Path, modelo: str, limite: int
 ) -> list[Documento]:
     """Os primeiros `limite` documentos da base sem leitura boa deste modelo (os com erro entram de
     novo)."""
@@ -521,7 +521,6 @@ def _argumentos() -> argparse.ArgumentParser:
         ("base-enviar", "manda um lote da base inteira (GASTA API)"),
     ):
         passo = sub.add_parser(nome, help=ajuda)
-        passo.add_argument("--candidatos", type=Path, required=True)
         passo.add_argument("--textos", type=Path, required=True)
         passo.add_argument("--saida", type=Path, required=True)
         passo.add_argument("--modelo", default=mx.MODELO, choices=MODELOS)
@@ -532,7 +531,11 @@ def _argumentos() -> argparse.ArgumentParser:
 
 def _passo_da_base(opcoes: argparse.Namespace) -> int:
     fila = pendentes_da_base(
-        opcoes.candidatos, opcoes.textos, opcoes.saida, opcoes.modelo, opcoes.limite
+        porta.ler("ma_candidatos"),
+        opcoes.textos,
+        opcoes.saida,
+        opcoes.modelo,
+        opcoes.limite,
     )
     if opcoes.passo == "base-estimar":
         custo = mx.estimar_custo([d.texto for d in fila], opcoes.modelo)

@@ -248,9 +248,9 @@ def base(tmp_path):
         linhas, columns=["protocolo", "versao", "categoria", "evidencia", "publico_em"]
     )
     candidatos["publico_em"] = pd.to_datetime(candidatos["publico_em"])
-    arquivo = tmp_path / "candidatos.parquet"
-    candidatos.to_parquet(arquivo)
-    return SimpleNamespace(textos=textos, candidatos=arquivo, saida=tmp_path / "saida")
+    return SimpleNamespace(
+        textos=textos, candidatos=candidatos, saida=tmp_path / "saida"
+    )
 
 
 def test_documentos_da_base_seguem_a_ordem_da_coleta_e_pulam_o_sem_texto(base):
@@ -324,8 +324,8 @@ def test_base_estimar_nao_precisa_de_chave_e_mostra_quantos_cabem(
     base, monkeypatch, capsys
 ):
     monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
-    assert extrair_ma.main(["base-estimar", "--candidatos", str(base.candidatos), "--textos",
-                            str(base.textos), "--saida", str(base.saida), "--limite", "2",
+    monkeypatch.setattr(extrair_ma.porta, "ler", lambda _tabela: base.candidatos)
+    assert extrair_ma.main(["base-estimar", "--textos", str(base.textos), "--saida", str(base.saida), "--limite", "2",
                             "--teto-dolares", "30"]) == 0  # fmt: skip
     saida = capsys.readouterr().out
     assert "2 documentos" in saida and "Cabem 2 no teto" in saida
@@ -333,8 +333,8 @@ def test_base_estimar_nao_precisa_de_chave_e_mostra_quantos_cabem(
 
 def test_base_enviar_exige_limite_e_teto_e_a_chave_propria(base, monkeypatch):
     monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
-    comum = ["base-enviar", "--candidatos", str(base.candidatos), "--textos",
-             str(base.textos), "--saida", str(base.saida)]  # fmt: skip
+    monkeypatch.setattr(extrair_ma.porta, "ler", lambda _tabela: base.candidatos)
+    comum = ["base-enviar", "--textos", str(base.textos), "--saida", str(base.saida)]  # fmt: skip
     with pytest.raises(SystemExit):  # sem limite e sem teto: o argparse recusa
         extrair_ma.main(comum)
     with pytest.raises(
