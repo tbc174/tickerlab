@@ -12,9 +12,9 @@ import stripe
 from src import auditoria, conformidade
 from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
-from src.banco import origens, pulse, tentativas
+from src.banco import origens, pulse, sessoes, tentativas
 from src.banco import teses as diario
-from src.banco.modelo import assinaturas, metadata
+from src.banco.modelo import assinaturas, identidades, metadata, sessoes_de_login
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
 from src.origem import Origem
@@ -220,6 +220,44 @@ def test_exportar_nao_vaza_ids_do_stripe(conexao, ana):
     dados = conformidade.exportar_meus_dados(conexao, ana.id)
     assert dados["assinatura"]["status"] == "active"
     assert "SECRETO" not in json.dumps(dados)
+
+
+def test_exportar_traz_as_formas_de_entrar_e_as_sessoes_sem_segredo(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    dados = conformidade.exportar_meus_dados(conexao, ana.id)
+    (forma,) = dados["formas_de_entrar"]
+    assert forma["provedor"] == "google" and forma["email"] == "ana@exemplo.com"
+    assert set(forma) == {
+        "provedor",
+        "email",
+        "email_confirmado",
+        "criada_em",
+        "ultimo_uso",
+    }
+    (sessao,) = dados["sessoes_de_login"]
+    assert sessao["provedor"] == "google" and sessao["encerrada_em"] is None
+    assert set(sessao) == {
+        "provedor",
+        "criada_em",
+        "expira_em",
+        "ultimo_uso",
+        "encerrada_em",
+    }
+    texto = json.dumps(dados)
+    # nem o hash do token nem o identificador do provedor saem no arquivo
+    hashes = conexao.execute(sa.select(sessoes_de_login.c.hash_do_token)).scalars()
+    assert all(h not in texto for h in hashes)
+    assert '"ana"' not in texto and "bia@exemplo.com" not in texto
+
+
+def test_apagar_conta_apaga_as_formas_de_entrar_e_as_sessoes(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    for tabela in (identidades, sessoes_de_login):
+        donos = conexao.execute(sa.select(tabela.c.usuario_id)).scalars().all()
+        assert donos == [bia.id]
 
 
 def test_exportar_de_quem_nao_existe(conexao):

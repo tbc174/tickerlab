@@ -5762,7 +5762,7 @@
     },
     "/v1/conta": {
       "post": {
-        "description": "Cria a conta de quem o token prova ser (ou só registra o acesso, se ela já existe).",
+        "description": "Cria a conta de quem o token prova ser (ou só registra o acesso) e abre a sessão.",
         "operationId": "entrar_v1_conta_post",
         "parameters": [
           {
@@ -6736,6 +6736,18 @@
           }
         },
         "summary": "Risco"
+      }
+    },
+    "/v1/sair": {
+      "post": {
+        "description": "Encerra a sessão do cookie (neste aparelho) e apaga o cookie. Sem sessão, não é erro.",
+        "operationId": "sair_v1_sair_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sair"
       }
     },
     "/v1/salvar-simulacao": {

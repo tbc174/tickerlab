@@ -29,6 +29,7 @@ def chefe(conexao):
         "chefe@exemplo.com",
         "Chefe",
         emails_de_admin=("chefe@exemplo.com",),
+        email_confirmado=True,
     )[0]
 
 
@@ -66,7 +67,11 @@ def test_ator_inexistente_ou_nulo_nao_passa(conexao):
 def test_a_permissao_vem_do_banco_e_nao_do_que_a_tela_diz(conexao, chefe):
     """Se o administrador perde o papel, o próximo pedido dele já falha."""
     outro = entrar(
-        conexao, "outro", "outro@exemplo.com", emails_de_admin=("outro@exemplo.com",)
+        conexao,
+        "outro",
+        "outro@exemplo.com",
+        emails_de_admin=("outro@exemplo.com",),
+        email_confirmado=True,
     )[0]
     adm.alterar_papel(conexao, chefe.id, outro.id, "usuario")
     with pytest.raises(adm.PermissaoNegadaError):
@@ -176,21 +181,35 @@ def test_quem_esta_na_lista_de_admins_nao_e_rebaixado_pelo_painel(conexao, chefe
     da lista no servidor; assim o rebaixamento nunca parece feito sem estar.
     """
     lista = ("chefe@exemplo.com", "outro@exemplo.com")
-    outro = entrar(conexao, "outro", "outro@exemplo.com", emails_de_admin=lista)[0]
+    outro = entrar(
+        conexao,
+        "outro",
+        "outro@exemplo.com",
+        emails_de_admin=lista,
+        email_confirmado=True,
+    )[0]
     with pytest.raises(adm.OperacaoInvalidaError, match="TICKERLAB_ADMINS"):
         adm.alterar_papel(conexao, chefe.id, outro.id, "usuario", emails_de_admin=lista)
     assert buscar_por_id(conexao, outro.id).e_admin
     # quem não está na lista continua podendo ser rebaixado, e o login não o promove de novo
     adm.alterar_papel(conexao, chefe.id, outro.id, "usuario", emails_de_admin=lista[:1])
-    de_novo = entrar(conexao, "outro", "outro@exemplo.com", emails_de_admin=lista[:1])[
-        0
-    ]
+    de_novo = entrar(
+        conexao,
+        "outro",
+        "outro@exemplo.com",
+        emails_de_admin=lista[:1],
+        email_confirmado=True,
+    )[0]
     assert not de_novo.e_admin
 
 
 def test_sem_a_lista_explicita_o_painel_le_a_do_servidor(conexao, chefe, monkeypatch):
     outro = entrar(
-        conexao, "outro", "outro@exemplo.com", emails_de_admin=("outro@exemplo.com",)
+        conexao,
+        "outro",
+        "outro@exemplo.com",
+        emails_de_admin=("outro@exemplo.com",),
+        email_confirmado=True,
     )[0]
     monkeypatch.setenv("TICKERLAB_ADMINS", "Outro@Exemplo.com")
     with pytest.raises(adm.OperacaoInvalidaError, match="TICKERLAB_ADMINS"):

@@ -53,7 +53,8 @@ usuarios = sa.Table(
     "usuarios",
     metadata,
     sa.Column("id", sa.Uuid, primary_key=True),
-    sa.Column("google_sub", sa.String(64), nullable=False, unique=True),
+    # vazio na conta criada pela Microsoft ou por e-mail (0039); a fonte é a tabela identidades
+    sa.Column("google_sub", sa.String(64), unique=True),
     sa.Column("email", sa.String(320), nullable=False),
     sa.Column("nome", sa.String(200)),
     sa.Column("foto_url", sa.String(1000)),
@@ -69,6 +70,59 @@ usuarios = sa.Table(
     sa.CheckConstraint("plano IN ('gratuito', 'plus', 'pro')", name="plano"),
 )
 sa.Index("ix_usuarios_email", usuarios.c.email)
+
+PROVEDORES_DE_LOGIN = ("google", "microsoft", "email")
+_REGRA_DOS_PROVEDORES = "provedor IN ('google', 'microsoft', 'email')"
+
+# Formas de entrar (0039): cada uma é um provedor + o identificador dele, ligada a uma conta. O e-mail
+# confirmado é o que permite juntar duas formas de entrar na mesma conta (src/banco/usuarios.py)
+identidades = sa.Table(
+    "identidades",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("provedor", sa.String(20), nullable=False),
+    sa.Column("sub", sa.String(255), nullable=False),
+    sa.Column("email", sa.String(320), nullable=False),
+    sa.Column("email_confirmado", sa.Boolean, nullable=False),
+    _momento("criada_em"),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    sa.UniqueConstraint("provedor", "sub"),
+    sa.CheckConstraint(_REGRA_DOS_PROVEDORES, name="provedor"),
+)
+sa.Index("ix_identidades_usuario_id", identidades.c.usuario_id)
+sa.Index("ix_identidades_email", identidades.c.email)
+
+# Sessões do app novo (0039): o cookie leva um código aleatório; aqui fica só o hash dele
+sessoes_de_login = sa.Table(
+    "sessoes_de_login",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    _chave_do_usuario(),
+    sa.Column("hash_do_token", sa.String(64), nullable=False, unique=True),
+    sa.Column("provedor", sa.String(20), nullable=False),
+    _momento("criada_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("ultimo_uso", sa.DateTime(timezone=True)),
+    sa.Column("encerrada_em", sa.DateTime(timezone=True)),
+    sa.CheckConstraint(_REGRA_DOS_PROVEDORES, name="provedor"),
+)
+sa.Index("ix_sessoes_de_login_usuario_id", sessoes_de_login.c.usuario_id)
+
+# Códigos de entrada por e-mail (0039): só hashes, sem chave para a conta (o primeiro acesso ainda
+# não tem conta). Uso no PR 2 do login
+codigos_de_entrada = sa.Table(
+    "codigos_de_entrada",
+    metadata,
+    sa.Column("id", sa.Uuid, primary_key=True),
+    sa.Column("hash_do_email", sa.String(64), nullable=False),
+    sa.Column("hash_do_codigo", sa.String(64), nullable=False),
+    _momento("criado_em"),
+    sa.Column("expira_em", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("tentativas", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("usado_em", sa.DateTime(timezone=True)),
+)
+sa.Index("ix_codigos_de_entrada_hash_do_email", codigos_de_entrada.c.hash_do_email)
 
 preferencias = sa.Table(
     "preferencias",

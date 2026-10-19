@@ -3,7 +3,7 @@
 // compartilhados, com revogar. Apagar a conta, o tema, as Novidades e os PDFs continuam na versão clássica.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TOKEN, abrirApp, respostaJson } from "./ajudantes";
+import { DO_APP, abrirApp, respostaJson } from "./ajudantes";
 
 const ATIVO = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -63,7 +63,8 @@ describe("meus dados", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: /Revogar/ })).toBeNull(), { timeout: 5000 });
     const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/revogar-link");
     expect(JSON.parse(String(pedido?.[1]?.body))).toEqual({ id: ATIVO.id });
-    expect(pedido?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+    // com a sessão (o cookie): sem token no pedido, com a prova de que saiu do app
+    expect(pedido?.[1]?.headers).toEqual({ ...DO_APP, "Content-Type": "application/json" });
   });
 
   it("sem links, a frase de quando a lista está vazia", async () => {
@@ -71,13 +72,14 @@ describe("meus dados", () => {
     expect(await screen.findByText(LINKS.sem_links)).toBeTruthy();
   });
 
-  it("baixar meus dados pede a exportação com o token e entrega um arquivo", async () => {
+  it("baixar meus dados pede a exportação com a sessão e entrega um arquivo", async () => {
     const { buscar } = abrir();
     fireEvent.click(await screen.findByRole("button", { name: "Baixar meus dados (JSON)" }));
     await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled());
     expect(buscar).toHaveBeenCalledWith("/api/v1/meus-dados", {
       method: "GET",
-      headers: { Authorization: `Bearer ${TOKEN}` },
+      headers: DO_APP,
+      credentials: "same-origin",
     });
   });
 

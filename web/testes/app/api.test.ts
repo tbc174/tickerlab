@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ErroDaApi, pedir } from "../../src/app/api";
+import { ErroDaApi, SESSAO, pedir } from "../../src/app/api";
 import type {
   BacktestDoAtivoV1,
   MeuPlanoV1,
@@ -57,23 +57,41 @@ async function erroDe(promessa: Promise<unknown>): Promise<ErroDaApi> {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("pedir", () => {
-  it("chama /api/v1 no próprio endereço, com o token e os parâmetros", async () => {
+  it("com a sessão, chama /api/v1 no próprio endereço com os parâmetros, sem token nenhum", async () => {
     const buscar = comResposta(respostaJson(200, { ok: true }));
-    await pedir("/v1/comparacao", "tok", { ticker: "PETR4", com: ["VALE3", "AAPL"], taxa: undefined });
+    await pedir("/v1/comparacao", SESSAO, { ticker: "PETR4", com: ["VALE3", "AAPL"], taxa: undefined });
     expect(buscar).toHaveBeenCalledWith("/api/v1/comparacao?ticker=PETR4&com=VALE3&com=AAPL", {
       method: "GET",
-      headers: { Authorization: "Bearer tok" },
+      headers: { "X-TickerLab-Pedido": "1" },
+      credentials: "same-origin",
     });
   });
 
-  it("POST manda o corpo em JSON", async () => {
+  it("POST manda o corpo em JSON e a prova de que saiu do app (contra CSRF)", async () => {
     const buscar = comResposta(respostaJson(200, {}));
-    await pedir("/v1/backtest", "tok", {}, { ticker: "PETR4" });
+    await pedir("/v1/backtest", SESSAO, {}, { ticker: "PETR4" });
     expect(buscar).toHaveBeenCalledWith("/api/v1/backtest", {
       method: "POST",
-      headers: { Authorization: "Bearer tok", "Content-Type": "application/json" },
+      headers: { "X-TickerLab-Pedido": "1", "Content-Type": "application/json" },
       body: '{"ticker":"PETR4"}',
+      credentials: "same-origin",
     });
+  });
+
+  it("o token do Google (só para abrir a sessão) vai no Authorization", async () => {
+    const buscar = comResposta(respostaJson(200, {}));
+    await pedir("/v1/conta", "tok", {}, {});
+    expect(buscar).toHaveBeenCalledWith(
+      "/api/v1/conta",
+      expect.objectContaining({
+        headers: { "X-TickerLab-Pedido": "1", Authorization: "Bearer tok", "Content-Type": "application/json" },
+      }),
+    );
+  });
+
+  it("resposta sem corpo (204, o sair) não é erro", async () => {
+    comResposta(new Response(null, { status: 204 }));
+    await expect(pedir("/v1/sair", SESSAO, {}, {})).resolves.toBeUndefined();
   });
 
   it("recusa rota que não seja da API v1 (o token nunca sai para outro endereço)", async () => {
@@ -92,6 +110,8 @@ describe("erros", () => {
     [401, "conta-nova", "conta-nova"],
     [403, "termos", "termos"],
     [403, "plano", "plano"], // a página não abre no plano da conta (ADR 0062)
+    [401, "sessao", "sessao-vencida"], // o cookie da sessão venceu ou foi encerrado
+    [403, "pedido-de-fora", "indisponivel"], // a API não reconheceu o pedido como do app: não são os termos
   ])("%i com motivo %s vira %s", async (status, motivo, tipo) => {
     comResposta(respostaJson(status, { detail: "Texto da API." }, { "X-TickerLab-Motivo": motivo }));
     const erro = await erroDe(pedir("/v1/eu", "tok"));

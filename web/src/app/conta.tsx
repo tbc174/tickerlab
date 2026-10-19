@@ -1,12 +1,13 @@
-// A conta de quem está usando o app novo. O ID token do Google fica só na memória (estado do React):
-// nada em localStorage, sessionStorage ou cookie. Recarregar a página pede o login de novo (o Google
-// entra sozinho se a pessoa já autorizou: auto_select).
+// A conta de quem está usando o app novo. Ao abrir, o app pergunta à API se já há uma sessão (o cookie
+// HttpOnly `__Host-tl_sessao`, que vale 30 dias e que o app não vê). Sem sessão, entra pelo Google: o
+// ID token vai uma vez só, no `POST /v1/conta`, que abre a sessão; daí em diante nenhum pedido leva
+// token. Nada fica em localStorage nem em sessionStorage.
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router";
 import { conteudoDoApp, paginasDoApp, planos } from "../conteudo";
 import { URL_DO_SITE } from "../site/textos";
 import { linkDoClassico } from "./classico";
-import { ErroDaApi, pedir } from "./api";
+import { ErroDaApi, SESSAO, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
 import { Icone } from "./Icone";
 import { type GoogleId, carregarGoogle } from "./login";
@@ -14,8 +15,9 @@ import { PaginaDeEntrada } from "./PaginaDeEntrada";
 import type { EuV1 } from "./tipos";
 
 interface Conta {
-  token: string | null;
+  token: string | null; // `SESSAO` depois de entrar (o que as telas passam ao `pedir`), null antes
   eu: EuV1 | null;
+  entrando: boolean; // conferindo a sessão ao abrir, ou abrindo a sessão depois do Google
   erro: ErroDaApi | null;
   google: GoogleId | null; // o Google já iniciado (initialize): só então dá para desenhar o botão
   precisaAceitar: boolean; // a conta existe, mas ainda não aceitou os termos atuais
@@ -41,6 +43,35 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
   const [erro, setErro] = useState<ErroDaApi | null>(null);
   const [precisaAceitar, setPrecisaAceitar] = useState(false);
   const [google, setGoogle] = useState<GoogleId | null>(null);
+  const [entrando, setEntrando] = useState(true);
+  const [sessaoConferida, setSessaoConferida] = useState(false);
+  const jaPediuAoGoogle = useRef(false);
+
+  // lê a conta da sessão; `acabouDeEntrar`: a sessão foi aberta agora, então uma recusa é erro a
+  // mostrar (ao abrir a página, a falta de sessão é o normal: segue para o login, sem aviso)
+  const lerAConta = useCallback(async (acabouDeEntrar: boolean) => {
+    try {
+      const lida = await pedir<EuV1>("/v1/eu", SESSAO);
+      setToken(SESSAO);
+      setEu(lida);
+    } catch (falha: unknown) {
+      if (falha instanceof ErroDaApi && falha.tipo === "termos") {
+        setToken(SESSAO); // a sessão continua: a tela do aceite usa
+        setPrecisaAceitar(true);
+        return;
+      }
+      setToken(null);
+      setEu(null);
+      if (acabouDeEntrar) setErro(comoErroDaApi(falha));
+    }
+  }, []);
+
+  useEffect(() => {
+    lerAConta(false).finally(() => {
+      setEntrando(false);
+      setSessaoConferida(true);
+    });
+  }, [lerAConta]);
 
   useEffect(() => {
     let valendo = true;
@@ -51,12 +82,16 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
           client_id: clientId,
           callback: (resposta) => {
             setErro(null);
-            setToken(resposta.credential);
+            setEntrando(true);
+            // cria a conta na primeira vez (as regras do app atual) e abre a sessão (o cookie)
+            pedir<unknown>("/v1/conta", resposta.credential, {}, {})
+              .then(() => lerAConta(true))
+              .catch((falha: unknown) => setErro(comoErroDaApi(falha)))
+              .finally(() => setEntrando(false));
           },
           auto_select: true,
           use_fedcm_for_prompt: true,
         });
-        id.prompt();
         setGoogle(id);
       })
       .catch(() => {
@@ -65,34 +100,14 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
     return () => {
       valendo = false;
     };
-  }, [clientId]);
+  }, [clientId, lerAConta]);
 
+  // o login automático do Google só quando não há sessão (e uma vez: depois do Sair, não volta sozinho)
   useEffect(() => {
-    if (token === null) return;
-    let valendo = true;
-    pedir<EuV1>("/v1/eu", token)
-      .catch((falha: unknown) => {
-        // primeiro login: a API cria a conta com o mesmo token (as regras do app atual) e lê de novo
-        if (!(falha instanceof ErroDaApi) || falha.tipo !== "conta-nova") throw falha;
-        return pedir<EuV1>("/v1/conta", token, {}, {}).then(() => pedir<EuV1>("/v1/eu", token));
-      })
-      .then((lida) => {
-        if (valendo) setEu(lida);
-      })
-      .catch((falha: unknown) => {
-        if (!valendo) return;
-        if (falha instanceof ErroDaApi && falha.tipo === "termos") {
-          setPrecisaAceitar(true); // o token continua: a tela do aceite usa
-          return;
-        }
-        setToken(null);
-        setEu(null);
-        setErro(falha instanceof ErroDaApi ? falha : new ErroDaApi("indisponivel", String(falha)));
-      });
-    return () => {
-      valendo = false;
-    };
-  }, [token]);
+    if (google === null || !sessaoConferida || token !== null || jaPediuAoGoogle.current) return;
+    jaPediuAoGoogle.current = true;
+    google.prompt();
+  }, [google, sessaoConferida, token]);
 
   const aceitar = useCallback(
     async (querNovidades: boolean) => {
@@ -115,18 +130,26 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
   }, []);
 
   const sair = useCallback(() => {
+    // encerra a sessão no servidor (e o cookie); se a rede falhar, a tela sai do mesmo jeito
+    if (token !== null) pedir<undefined>("/v1/sair", token, {}, {}).catch(() => undefined);
     google?.disableAutoSelect();
     setToken(null);
     setEu(null);
     setErro(null);
     setPrecisaAceitar(false);
-  }, [google]);
+  }, [google, token]);
 
   return (
-    <ContextoDaConta.Provider value={{ token, eu, erro, google, precisaAceitar, aceitar, pedirAceite, sair }}>
+    <ContextoDaConta.Provider
+      value={{ token, eu, entrando, erro, google, precisaAceitar, aceitar, pedirAceite, sair }}
+    >
       {children}
     </ContextoDaConta.Provider>
   );
+}
+
+function comoErroDaApi(falha: unknown): ErroDaApi {
+  return falha instanceof ErroDaApi ? falha : new ErroDaApi("indisponivel", String(falha));
 }
 
 const SAIDA_DE_CADA_ERRO: Partial<Record<ErroDaApi["tipo"], [string, string]>> = {
@@ -260,7 +283,7 @@ export function ExigeLogin({ children }: { children: ReactNode }) {
   if (conta?.eu) return <>{children}</>;
   let cartao: ReactNode;
   if (conta?.token && conta.precisaAceitar) cartao = <AceiteDosTermos conta={conta} />;
-  else if (conta?.token)
+  else if (conta?.token || conta?.entrando)
     cartao = (
       <p className="apagado" role="status">
         Entrando…
