@@ -125,6 +125,21 @@ def test_valores_mobiliarios_emitidos_entram_so_como_contagem() -> None:
     assert _item(secao, "valores_mobiliarios") == 2
 
 
+def test_empresa_que_so_emite_tem_a_secao_sem_lista_de_ligacoes() -> None:
+    secao = _secao(
+        _ligacoes({"de": "EA", "para": "EV1", "tipo": "emite", "fonte": "cvm-cda"}),
+        _entidades("EA", "EV1"),
+        identificadores=_identificadores(
+            ("EA", "cnpj_raiz", RAIZ, None, None, "2010-01-01")
+        ),
+    )
+    assert secao is not None
+    assert _relacoes(secao) == []
+    assert _item(secao, "valores_mobiliarios") == 1
+    assert "identificadores_da_empresa" not in secao["tabelas"]  # tabela vazia não vai
+    assert secao["fontes"] == [dossie.licenca_da_fonte("cvm")]
+
+
 def test_conglomerado_do_banco_central_traz_a_licenca_dele() -> None:
     secao = _secao(
         _ligacoes(
