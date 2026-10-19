@@ -2951,9 +2951,9 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 - **Chaves:** `safra`, `levantamento`, `tipo`, `uf`, `divulgado_em`
 - **Três datas:** publico_em = `divulgado_em`
 - **Histórico desde:** 2026-02-05 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)
-- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256; o dia da divulgação vem do 'Publicado em' da página do levantamento (fonte `conab-cafe-publicacao`). `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -2966,6 +2966,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 | `produtividade_sc_ha` | Produtividade, em sacas de 60 kg por hectare | número com decimais, na unidade da fonte |
 | `producao_mil_sacas` | Produção, em mil sacas de 60 kg | número com decimais, na unidade da fonte |
 | `divulgado_em` | Dia em que a CONAB divulgou o levantamento | data (dia) |
+| `divulgado_aproximado` | Verdadeiro quando a data da CONAB não foi achada e `divulgado_em` é o dia da coleta | verdadeiro ou falso |
 
 ## `usda_psd_cafe`
 
