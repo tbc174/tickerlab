@@ -9,8 +9,9 @@ manifesto e versões (`gravar_com_versoes`: com as mesmas origens, nada é lido 
 
 - `comex`: `comex_cafe/<ano>.parquet`, uma linha nova a cada revisão do MDIC (`divulgado_em` é a 1ª
   coleta em que o número apareceu);
-- `conab`: `conab_cafe/levantamentos.parquet`, nunca sobrescreve um levantamento; `divulgado_em` é a 1ª
-  coleta que viu a planilha (o dia da CONAB não vem no arquivo: o dia da coleta nunca adianta o dado);
+- `conab`: `conab_cafe/levantamentos.parquet`, nunca sobrescreve um levantamento; `divulgado_em` é o
+  "Publicado em" da página do levantamento (fonte `conab-cafe-publicacao`); sem ele, a 1ª coleta que viu a
+  planilha, com `divulgado_aproximado` verdadeiro;
 - `usda`: `usda_psd/<dia da baixada>.parquet`, uma fotografia por baixada;
 - `clima`: `clima_regiao_cafe/<ano>.parquet`, INMET (estações) e CHIRPS (satélite) por região, com a
   normal de 1991–2020;
@@ -144,9 +145,32 @@ def carregar_comex(conexao: sa.Connection, base: Path) -> None:
 
 
 # --- CONAB ------------------------------------------------------------------------------------------
+def _datas_de_publicacao(
+    conexao: sa.Connection, linhas: list[sa.Row]
+) -> dict[tuple[int, int], date | None]:
+    """(safra, levantamento) → o "Publicado em" da página da CONAB, já sem a data fora de ordem."""
+    datas: dict[tuple[int, int], date | None] = {}
+    for linha in linhas:
+        if (identificado := conab_cafe.identificar(linha.url)) is None:
+            continue
+        levantamento, safra = identificado
+        pagina = coletas_guardadas(
+            conexao, conab_cafe.pagina_do_levantamento(levantamento, safra)
+        )
+        datas[(safra, levantamento)] = (
+            conab_cafe.data_de_publicacao(pagina[0][2]) if pagina else None
+        )
+    return conab_cafe.datas_em_ordem(datas)
+
+
 def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame:
-    """Cada planilha guardada vira um levantamento, com a data em que o arquivista a viu pela 1ª vez."""
+    """Cada planilha guardada vira um levantamento, com a data que a CONAB publicou.
+
+    Sem a página do levantamento (ou com a data fora de ordem), vale o dia em que o arquivista viu a
+    planilha pela 1ª vez, e a linha fica marcada como aproximada.
+    """
     guardada = pd.DataFrame()
+    publicadas = _datas_de_publicacao(conexao, linhas)
     for linha in linhas:
         identificado = conab_cafe.identificar(linha.url)
         coletas = coletas_guardadas(conexao, linha.url)
@@ -155,9 +179,13 @@ def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame
         baixado_em, _, conteudo = coletas[
             0
         ]  # a 1ª: uma planilha republicada não adianta o dado
+        publicada = publicadas.get((identificado[1], identificado[0]))
         try:
             nova = conab_cafe.ler_levantamento(
-                conteudo, identificado[0], _dia(baixado_em)
+                conteudo,
+                identificado[0],
+                publicada or _dia(baixado_em),
+                aproximada=publicada is None,
             )
         except conab_cafe.ErroDeLeitura as erro:
             # safras antigas têm outro desenho de planilha: pula essa e segue com as lidas

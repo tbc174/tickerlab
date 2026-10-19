@@ -165,6 +165,7 @@ DESTINOS: dict[str, Destino] = {
     "b3-derivativos-posicoes": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "b3-emprestimo-resumo": _pesquisa(_B3_BDI_CONTRA_OS_TERMOS),
     "conab-cafe-safra": _tabela("conab_cafe"),
+    "conab-cafe-publicacao": _tabela("conab_cafe"),
     # balanço mundial do café (PR 4)
     "usda-psd-cafe": _tabela("usda_psd_cafe"),
     "faostat-cafe": _tabela("faostat_cafe"),

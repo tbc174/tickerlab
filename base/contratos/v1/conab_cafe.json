@@ -2,7 +2,7 @@
   "tabela": "conab_cafe",
   "modulo": "commodities",
   "dono": "Dados",
-  "versao": "1.0.0",
+  "versao": "1.1.0",
   "colunas": {
     "safra": {
       "descricao": "Ano em que a safra começa (2026 é a safra 2026/27)",
@@ -39,6 +39,10 @@
     "divulgado_em": {
       "descricao": "Dia em que a CONAB divulgou o levantamento",
       "unidade": "data (dia)"
+    },
+    "divulgado_aproximado": {
+      "descricao": "Verdadeiro quando a data da CONAB não foi achada e `divulgado_em` é o dia da coleta",
+      "unidade": "verdadeiro ou falso"
     }
   },
   "chaves": [
