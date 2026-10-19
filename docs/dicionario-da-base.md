@@ -3040,7 +3040,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 - **Histórico desde:** 1981-01-31 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/commodities/clima_regiao_cafe/<ano>.parquet` (a carga segue o molde de `scripts/carga_setoriais.py`)
-- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha.
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha. A normal do CHIRPS (v2.0, média de 1991–2020 por região e mês do ano, 30 anos) é calculada na carga e fica no Parquet; a data da conta é a da versão gravada. **Sem olhar o futuro:** vale para os meses (cada `chuva_mm` só usa o que a fonte tinha na `disponivel_em`), não para a normal: ela é fixa, só muda se o período de referência mudar (e o que chega depois de 2020 não a altera). Para os meses de 1991–2020 a anomalia é contra uma normal que inclui anos posteriores a eles: serve para descrever, não para simular uma decisão da época
 
 | Coluna | O que é | Unidade |
 |---|---|---|

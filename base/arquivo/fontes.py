@@ -799,6 +799,7 @@ CHIRPS_MENSAL = (
     "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
     "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
 )
+PRIMEIRO_ANO_DO_CHIRPS = 1991  # início da normal climatológica de 1991–2020 (OMM)
 MESES_RECENTES_DO_CHIRPS = (
     3  # o definitivo do mês sai ao longo do mês seguinte; o que falta é 404
 )
@@ -817,15 +818,29 @@ def _anos_do_inmet(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
-def _meses_do_chirps(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """Os GeoTIFFs dos meses recentes, do mais antigo ao mais novo; o que ainda não saiu é 404."""
+def _meses_do_chirps_de(agora: datetime, atras: range) -> list[Alvo]:
+    """Os GeoTIFFs dos meses `atras` (1 = o mês passado), do mais antigo ao mais novo."""
     hoje = agora.astimezone(FUSO_DA_B3).date()
     alvos = []
-    for atras in range(MESES_RECENTES_DO_CHIRPS, 0, -1):
-        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
+    for n in reversed(atras):
+        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - n, 12)
         url = CHIRPS_MENSAL.format(ano=ano, mes=mes + 1)
         alvos.append(Alvo(url, ".tif.gz", arquivo_que_pode_faltar(url)))
     return alvos
+
+
+def _meses_do_chirps(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os GeoTIFFs dos meses recentes, do mais antigo ao mais novo; o que ainda não saiu é 404."""
+    return _meses_do_chirps_de(agora, range(1, MESES_RECENTES_DO_CHIRPS + 1))
+
+
+def _meses_do_chirps_historico(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """De janeiro de 1991 até o mês anterior aos recentes (que são de `chirps-mensal`)."""
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    desde_1991 = (hoje.year - PRIMEIRO_ANO_DO_CHIRPS) * 12 + hoje.month - 1
+    return _meses_do_chirps_de(
+        agora, range(MESES_RECENTES_DO_CHIRPS + 1, desde_1991 + 1)
+    )
 
 
 def _malhas_do_ibge(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -1103,6 +1118,9 @@ FONTES: list[Fonte] = [
     # clima por região cafeeira: estações do INMET, chuva do CHIRPS e a malha municipal do IBGE
     Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
     Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
+    # a carga única da normal (1991 em diante, ~6 GB): grupo fora do cron, só roda pelo id
+    # (`python -m scripts.arquivar_fontes chirps-historico`); depois o `chirps-mensal` segue sozinho
+    Fonte("chirps-historico", "carga-unica", _meses_do_chirps_historico, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande
