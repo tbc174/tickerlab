@@ -194,9 +194,11 @@ def test_primeira_coleta_vai_desde_2010_e_as_seguintes_pegam_so_a_janela_recente
     assert "/p/201001-202610" in lspa
     pam = [u for u in primeira if "/t/1613/" in u and "n3%2031/" in u]
     assert [u.split("/p/")[1].split("/")[0] for u in pam] == [
-        "2010-2015",
-        "2016-2021",
-        "2022-2026",
+        "2010-2013",
+        "2014-2017",
+        "2018-2021",
+        "2022-2025",
+        "2026-2026",
     ]
     _, segunda = _coletar(banco, date(2026, 10, 19))
     lspa = next(u for u in segunda if "/t/6588/" in u)
@@ -249,3 +251,13 @@ def test_o_codigo_do_ibge_nao_importa_streamlit():
     # src/ não importa o Streamlit (regra do repositório)
     codigo = Path(ibge_sidra.__file__).read_text(encoding="utf-8")
     assert "streamlit" not in codigo
+
+
+def test_pedido_da_pam_municipal_cabe_no_limite_do_sidra():
+    """Regressão (19/10/2026): 6 anos de MG somavam 61.344 valores e o SIDRA respondia 400."""
+    coleta = ibge_sidra.COLETAS_POR_NOME["pam-municipal"]
+    classes = sum(len(c) for c in coleta.classificacoes.values())
+    por_ano = ibge_sidra.MUNICIPIOS_DE_MG * len(coleta.variaveis) * classes
+    blocos = coleta._blocos("2010-2026")
+    maior = max(int(b.split("-")[1]) - int(b.split("-")[0]) + 1 for b in blocos)
+    assert maior * por_ano <= ibge_sidra.VALORES_POR_PEDIDO_NO_SIDRA
