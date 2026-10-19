@@ -29,6 +29,7 @@ from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src import presets as research_presets
+from src.analise_escrita.exibicao import com_analise
 from src.api_v1 import contexto, esquemas
 from src.api_v1.acesso import (
     VARIAVEL_DO_CLIENT_ID,
@@ -982,7 +983,10 @@ def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEm
         raise HTTPException(status_code=404, detail=SO_B3)
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
-    return esquemas.de_relatorio_da_empresa(montar_relatorio(entradas, conta.plano))
+    relatorio = montar_relatorio(entradas, conta.plano)
+    return esquemas.de_relatorio_da_empresa(
+        com_analise(relatorio, entradas, conta.plano)
+    )
 
 
 def openapi_v1() -> dict:
