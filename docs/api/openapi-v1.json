@@ -1155,6 +1155,91 @@
         "title": "BlocoDosFundosV1",
         "type": "object"
       },
+      "BuscaPorCnpjV1": {
+        "description": "O relatório do CNPJ (molde B): as seções no formato do relatório da empresa.",
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "desligado": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Desligado",
+            "type": "array"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "situacao": {
+            "title": "Situacao",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "situacao",
+          "cnpj",
+          "empresa",
+          "tickers",
+          "como_era_em",
+          "secoes",
+          "fontes",
+          "limites",
+          "desligado",
+          "avisos"
+        ],
+        "title": "BuscaPorCnpjV1",
+        "type": "object"
+      },
       "CalendarioDoCafeV1": {
         "properties": {
           "fase": {
@@ -3759,6 +3844,19 @@
         "title": "PedidoDeBacktestV1",
         "type": "object"
       },
+      "PedidoDeBuscaPorCnpjV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cnpj"
+        ],
+        "title": "PedidoDeBuscaPorCnpjV1",
+        "type": "object"
+      },
       "PedidoDeRevogarV1": {
         "properties": {
           "id": {
@@ -5418,6 +5516,63 @@
           }
         },
         "summary": "Backtest"
+      }
+    },
+    "/v1/busca-por-cnpj": {
+      "post": {
+        "description": "O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.",
+        "operationId": "busca_por_cnpj_v1_busca_por_cnpj_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBuscaPorCnpjV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuscaPorCnpjV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Busca Por Cnpj"
       }
     },
     "/v1/commodities/cafe/mapa": {
