@@ -233,6 +233,25 @@ def test_normal_e_por_fonte_e_precisa_de_10_anos():
     assert com_normal(pd.DataFrame(columns=list(COLUNAS))).empty
 
 
+def test_normal_do_chirps_e_fixa_depois_de_2020_e_vazia_sem_o_historico():
+    """Item 10 do café: sem os anos 1991–2020 (só os meses recentes) a anomalia fica vazia, nunca zero;
+    com eles, o que chega depois de 2020 não mexe na normal (30 anos já fechados)."""
+    recentes = _mensal(
+        "sul-de-minas", range(2026, 2027), 7, lambda ano: 80.0, FONTE_CHIRPS
+    )
+    assert com_normal(recentes)["chuva_anomalia_mm"].isna().all()
+    historia = _mensal(
+        "sul-de-minas", range(1991, 2021), 7, lambda ano: 30.0, FONTE_CHIRPS
+    )
+    ate_2021 = com_normal(pd.concat([historia, _mensal("sul-de-minas", range(2021, 2022), 7, lambda ano: 500.0, FONTE_CHIRPS)]))  # fmt: skip
+    ate_2026 = com_normal(pd.concat([historia, recentes]))
+    normal = lambda t: t.set_index("competencia").loc["2020-07-31", "chuva_normal_mm"]
+    assert normal(ate_2021) == normal(ate_2026) == pytest.approx(30.0)
+    julho_2026 = ate_2026.set_index("competencia").loc["2026-07-31"]
+    assert julho_2026["chuva_anomalia_mm"] == pytest.approx(50.0)
+    assert julho_2026["anos_na_normal"] == 30
+
+
 # --- CHIRPS ---------------------------------------------------------------------------------------
 GRADE_PEQUENA = Grade(lon_oeste=-50.0, lat_norte=-20.0, passo=0.5, colunas=4, linhas=4)
 

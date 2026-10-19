@@ -9,8 +9,9 @@ manifesto e versões (`gravar_com_versoes`: com as mesmas origens, nada é lido 
 
 - `comex`: `comex_cafe/<ano>.parquet`, uma linha nova a cada revisão do MDIC (`divulgado_em` é a 1ª
   coleta em que o número apareceu);
-- `conab`: `conab_cafe/levantamentos.parquet`, nunca sobrescreve um levantamento; `divulgado_em` é a 1ª
-  coleta que viu a planilha (o dia da CONAB não vem no arquivo: o dia da coleta nunca adianta o dado);
+- `conab`: `conab_cafe/levantamentos.parquet`, nunca sobrescreve um levantamento; `divulgado_em` é o
+  "Publicado em" da página do levantamento (fonte `conab-cafe-publicacao`); sem ele, a 1ª coleta que viu a
+  planilha, com `divulgado_aproximado` verdadeiro;
 - `usda`: `usda_psd/<dia da baixada>.parquet`, uma fotografia por baixada;
 - `clima`: `clima_regiao_cafe/<ano>.parquet`, INMET (estações) e CHIRPS (satélite) por região, com a
   normal de 1991–2020;
@@ -60,7 +61,10 @@ TABELA_DA_PAM = "/t/1613/"
 FONTE_DO_MAPBIOMAS = "mapbiomas-cafe"
 FONTE_DA_MALHA = "ibge-malha-municipal"
 FONTE_DO_INMET = "inmet-bdmep"
-FONTE_DO_CHIRPS = "chirps-mensal"
+FONTES_DO_CHIRPS = (
+    "chirps-mensal",
+    "chirps-historico",
+)  # recentes + a carga única da normal
 ANO_DO_COMEX = re.compile(r"/ncm/EXP_(\d{4})\.csv$")
 PAIS_DO_COMEX = "/tabelas/PAIS.csv"
 ANO_DO_INMET = re.compile(r"/(\d{4})\.zip$")
@@ -141,9 +145,32 @@ def carregar_comex(conexao: sa.Connection, base: Path) -> None:
 
 
 # --- CONAB ------------------------------------------------------------------------------------------
+def _datas_de_publicacao(
+    conexao: sa.Connection, linhas: list[sa.Row]
+) -> dict[tuple[int, int], date | None]:
+    """(safra, levantamento) → o "Publicado em" da página da CONAB, já sem a data fora de ordem."""
+    datas: dict[tuple[int, int], date | None] = {}
+    for linha in linhas:
+        if (identificado := conab_cafe.identificar(linha.url)) is None:
+            continue
+        levantamento, safra = identificado
+        pagina = coletas_guardadas(
+            conexao, conab_cafe.pagina_do_levantamento(levantamento, safra)
+        )
+        datas[(safra, levantamento)] = (
+            conab_cafe.data_de_publicacao(pagina[0][2]) if pagina else None
+        )
+    return conab_cafe.datas_em_ordem(datas)
+
+
 def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame:
-    """Cada planilha guardada vira um levantamento, com a data em que o arquivista a viu pela 1ª vez."""
+    """Cada planilha guardada vira um levantamento, com a data que a CONAB publicou.
+
+    Sem a página do levantamento (ou com a data fora de ordem), vale o dia em que o arquivista viu a
+    planilha pela 1ª vez, e a linha fica marcada como aproximada.
+    """
     guardada = pd.DataFrame()
+    publicadas = _datas_de_publicacao(conexao, linhas)
     for linha in linhas:
         identificado = conab_cafe.identificar(linha.url)
         coletas = coletas_guardadas(conexao, linha.url)
@@ -152,9 +179,13 @@ def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame
         baixado_em, _, conteudo = coletas[
             0
         ]  # a 1ª: uma planilha republicada não adianta o dado
+        publicada = publicadas.get((identificado[1], identificado[0]))
         try:
             nova = conab_cafe.ler_levantamento(
-                conteudo, identificado[0], _dia(baixado_em)
+                conteudo,
+                identificado[0],
+                publicada or _dia(baixado_em),
+                aproximada=publicada is None,
             )
         except conab_cafe.ErroDeLeitura as erro:
             # safras antigas têm outro desenho de planilha: pula essa e segue com as lidas
@@ -245,10 +276,20 @@ def _origens_do_ano(
     return [{"url": lin.url, "sha256": lin.sha256} for lin in [*do_ano, *malha]]
 
 
+def _sem_repetir(linhas: list[sa.Row]) -> list[sa.Row]:
+    """Uma linha por endereço (a primeira): o mesmo mês não entra duas vezes se as fontes se tocarem."""
+    por_endereco: dict[str, sa.Row] = {}
+    for lin in linhas:
+        por_endereco.setdefault(lin.url, lin)
+    return list(por_endereco.values())
+
+
 def carregar_clima(conexao: sa.Connection, base: Path) -> None:
     """Um Parquet por ano; o ano só é refeito se um original dele (ou a malha) mudou."""
     inmet = originais_mais_recentes(conexao, FONTE_DO_INMET)
-    chirps = originais_mais_recentes(conexao, FONTE_DO_CHIRPS)
+    chirps = _sem_repetir(
+        [lin for f in FONTES_DO_CHIRPS for lin in originais_mais_recentes(conexao, f)]
+    )
     if not inmet and not chirps:
         raise SemOriginalError("nenhum original do INMET nem do CHIRPS no acervo")
     malha = originais_mais_recentes(conexao, FONTE_DA_MALHA) if chirps else []

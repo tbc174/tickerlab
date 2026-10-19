@@ -172,7 +172,7 @@ def test_cnpj_sem_token_e_falha():
 def test_catalogo_tem_ids_unicos_e_grupos_conhecidos():
     ids = [f.id for f in fontes.FONTES]
     assert len(ids) == len(set(ids))
-    assert {f.grupo for f in fontes.FONTES} <= {"diaria", "semanal", "mensal"}
+    assert {f.grupo for f in fontes.FONTES} <= {*fontes.GRUPOS, "carga-unica"}
     pesadas = {f.id for f in fontes.FONTES if f.pesada}
     assert {"rfb-cnpj", "pgfn-divida"} <= pesadas
     vigias = {f.id for f in fontes.FONTES if f.vigia}
@@ -453,3 +453,19 @@ def test_mapbiomas_cafe_e_um_zip_pesado_no_google_drive_atras_da_confirmacao():
     (alvo,) = fonte.descobrir(None, datetime(2026, 10, 18, tzinfo=UTC))  # type: ignore[arg-type]
     assert alvo.url.startswith("https://drive.google.com/uc?id=")
     assert alvo.extensao == ".zip" and alvo.obter is not None
+
+
+def test_chirps_historico_e_a_carga_unica_de_1991_ate_antes_dos_meses_recentes():
+    """Item 10 do café: a normal 1991–2020 pede 30 anos de GeoTIFFs. A fonte `chirps-historico` fica
+    fora dos grupos do cron (só roda pelo id, uma vez) e termina onde `chirps-mensal` começa."""
+    agora = datetime(2026, 10, 18, 12, tzinfo=UTC)
+    historico = fontes.POR_ID["chirps-historico"]
+    assert historico.pesada and historico.grupo not in fontes.GRUPOS
+    assert all(f.id != "chirps-historico" for g in fontes.GRUPOS for f in fontes.FONTES if f.grupo == g)  # fmt: skip
+    meses = historico.descobrir(None, agora)  # type: ignore[arg-type]
+    nomes = [a.url.rsplit("/", 1)[-1] for a in meses]
+    assert nomes[0] == "chirps-v2.0.1991.01.tif.gz" and nomes[-1] == "chirps-v2.0.2026.06.tif.gz"  # fmt: skip
+    assert len(nomes) == len(set(nomes)) == (2026 - 1991) * 12 + 6
+    recentes = {a.url for a in fontes.POR_ID["chirps-mensal"].descobrir(None, agora)}  # type: ignore[arg-type]
+    assert recentes.isdisjoint(a.url for a in meses)
+    assert all(a.obter is not None and a.extensao == ".tif.gz" for a in meses)

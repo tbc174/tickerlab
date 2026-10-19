@@ -144,13 +144,30 @@ def test_coleta_repetida_do_comex_nao_gera_linha_nova_e_guarda_a_primeira_data(
     assert set(tabela["divulgado_em"]) == {pd.Timestamp("2026-01-20")}
 
 
-def test_conab_usa_a_primeira_coleta_como_data(ambiente):
+def test_conab_sem_a_pagina_usa_a_primeira_coleta_e_marca_aproximada(ambiente):
     base, motor = ambiente
     _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026))
     _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026, 1.1), SEGUNDA)
     assert carga_cafe.main(["conab", "--base", str(base)]) == 0
     tabela = ler_tabela(base / "commodities" / "conab_cafe" / "levantamentos.parquet")
     assert set(tabela["divulgado_em"]) == {pd.Timestamp("2026-01-20")}
+    assert tabela["divulgado_aproximado"].all()
+
+
+def test_conab_com_a_pagina_usa_o_publicado_em_e_nao_marca(ambiente):
+    base, motor = ambiente
+    _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026))
+    pagina = b'<span class="documentPublished"><span class="value">24/09/2026 09h00</span></span>'
+    _guardar(
+        motor,
+        "conab-cafe-publicacao",
+        conab_cafe.pagina_do_levantamento(3, 2026),
+        pagina,
+    )
+    assert carga_cafe.main(["conab", "--base", str(base)]) == 0
+    tabela = ler_tabela(base / "commodities" / "conab_cafe" / "levantamentos.parquet")
+    assert set(tabela["divulgado_em"]) == {pd.Timestamp("2026-09-24")}
+    assert not tabela["divulgado_aproximado"].any()
 
 
 def test_planilha_antiga_ilegivel_da_conab_e_pulada_e_as_outras_entram(
@@ -223,3 +240,15 @@ def test_chirps_do_mes_le_o_mes_do_endereco(monkeypatch):
     assert set(pd.to_datetime(mensal["competencia"])) == {pd.Timestamp("2026-09-30")}
     outra = type("L", (), {"url": "https://x/sem-mes.tif"})()
     assert carga_cafe._chirps_do_mes(outra, {}) is None
+
+
+def test_a_carga_do_clima_junta_o_chirps_recente_e_o_historico_sem_repetir_endereco():
+    """O CHIRPS vem de duas fontes do arquivista (`chirps-mensal` e `chirps-historico`)."""
+    assert carga_cafe.FONTES_DO_CHIRPS == ("chirps-mensal", "chirps-historico")
+
+    class Linha:
+        def __init__(self, url):
+            self.url = url
+
+    a, b = Linha("u1"), Linha("u2")
+    assert carga_cafe._sem_repetir([a, b, Linha("u1")]) == [a, b]

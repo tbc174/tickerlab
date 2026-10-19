@@ -1,5 +1,16 @@
 [
   {
+    "correcoes": [],
+    "data": "2026-10-19",
+    "novidades": [
+      "Busca por CNPJ: digite o CNPJ de uma companhia aberta e veja de que grupo ela faz parte e os fatos públicos, com a data e a fonte de cada linha.",
+      "O login com o Google agora mantém a sua sessão por 30 dias.",
+      "Termos de uso e Política de privacidade atualizados para refletir o que o produto faz hoje."
+    ],
+    "resumo": "Uma página nova para começar a pesquisa pelo CNPJ da empresa, um login que não pede para entrar toda hora e os textos legais revistos.",
+    "titulo": "Busca por CNPJ, login que dura 30 dias e termos de uso atualizados"
+  },
+  {
     "correcoes": [
       "P/L e P/VP de empresas cuja primeira classe de ação não existe (como a Vale) saíam muito errados: o lucro por ação agora é o da classe que a empresa tem.",
       "A depreciação deixou de somar juros e custos de empréstimos que alguns balanços escrevem com a palavra amortização.",

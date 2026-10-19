@@ -2951,9 +2951,9 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 - **Chaves:** `safra`, `levantamento`, `tipo`, `uf`, `divulgado_em`
 - **Três datas:** publico_em = `divulgado_em`
 - **Histórico desde:** 2026-02-05 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 1.1.0
 - **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)
-- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256; o dia da divulgação vem do 'Publicado em' da página do levantamento (fonte `conab-cafe-publicacao`). `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -2966,6 +2966,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 | `produtividade_sc_ha` | Produtividade, em sacas de 60 kg por hectare | número com decimais, na unidade da fonte |
 | `producao_mil_sacas` | Produção, em mil sacas de 60 kg | número com decimais, na unidade da fonte |
 | `divulgado_em` | Dia em que a CONAB divulgou o levantamento | data (dia) |
+| `divulgado_aproximado` | Verdadeiro quando a data da CONAB não foi achada e `divulgado_em` é o dia da coleta | verdadeiro ou falso |
 
 ## `usda_psd_cafe`
 
@@ -3040,7 +3041,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 - **Histórico desde:** 1981-01-31 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/commodities/clima_regiao_cafe/<ano>.parquet` (a carga segue o molde de `scripts/carga_setoriais.py`)
-- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha.
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha. A normal do CHIRPS (v2.0, média de 1991–2020 por região e mês do ano, 30 anos) é calculada na carga e fica no Parquet; a data da conta é a da versão gravada. **Sem olhar o futuro:** vale para os meses (cada `chuva_mm` só usa o que a fonte tinha na `disponivel_em`), não para a normal: ela é fixa, só muda se o período de referência mudar (e o que chega depois de 2020 não a altera). Para os meses de 1991–2020 a anomalia é contra uma normal que inclui anos posteriores a eles: serve para descrever, não para simular uma decisão da época
 
 | Coluna | O que é | Unidade |
 |---|---|---|

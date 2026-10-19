@@ -13,6 +13,9 @@ Regras (testes em `tests/test_base_conab_cafe.py`):
 - **Como publicado:** os números ficam como na planilha (licença CC BY-ND 3.0: nada de recorte, soma ou
   gráfico sai daqui sem a resposta da CONAB; os derivados de `src/commodities/cafe` ficam sem tela).
 - **Sem olhar o futuro:** `como_estava_em(tabela, dia)` só usa o que já tinha sido divulgado em `dia`.
+- **A data é a da CONAB:** vem do "Publicado em" da página de cada levantamento (o arquivista guarda a página).
+  Sem a página, ou com uma data fora de ordem na safra, a linha usa o dia da coleta e fica marcada em
+  `divulgado_aproximado` (o dia da coleta nunca adianta o dado, mas pode atrasá-lo).
 - **Arábica e conilon separados:** `tipo` em {arabica, conilon, total} em toda linha.
 """
 
@@ -27,7 +30,7 @@ FONTE = "conab-cafe-safra"
 LEVANTAMENTOS = (1, 2, 3, 4)
 COLUNAS = (
     "safra", "levantamento", "tipo", "uf", "area_formacao_ha", "area_producao_ha",
-    "produtividade_sc_ha", "producao_mil_sacas", "divulgado_em",
+    "produtividade_sc_ha", "producao_mil_sacas", "divulgado_em", "divulgado_aproximado",
 )  # fmt: skip
 CHAVE = ("safra", "levantamento", "tipo", "uf", "divulgado_em")
 TIPOS = {"total": "total", "arabica": "arabica", "conilon": "conilon"}
@@ -71,6 +74,10 @@ BLOCOS_DE_PRODUCAO = {
 BLOCOS_DE_AREA = {"AREA EM FORMACAO": "area_formacao_ha"}
 ABA = re.compile(r"^(\d+)\s+cafe\s+(total|arabica|conilon)(\s+-\s+area)?\s*$")
 SAFRA_NO_ENDERECO = re.compile(r"/(\d)o-levantamento-de-cafe-safra-(\d{4})/")
+PAGINA_DOS_LEVANTAMENTOS = "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/safra-de-cafe"
+PUBLICADO_EM = re.compile(
+    rb'documentPublished.*?class="value">\s*(\d{2})/(\d{2})/(\d{4})', re.DOTALL
+)
 LINHAS_DE_CABECALHO = 3  # títulos, safras e letras (a), (b)...
 
 
@@ -89,6 +96,48 @@ def identificar(url: str) -> tuple[int, int] | None:
     """(levantamento, safra) pelo endereço da planilha; None se o endereço não diz."""
     achado = SAFRA_NO_ENDERECO.search(url)
     return (int(achado.group(1)), int(achado.group(2))) if achado else None
+
+
+def pagina_do_levantamento(levantamento: int, safra: int) -> str:
+    """Endereço da página do levantamento, onde a CONAB escreve o "Publicado em"."""
+    nome = f"{levantamento}o-levantamento-de-cafe-safra-{safra}"
+    return f"{PAGINA_DOS_LEVANTAMENTOS}/{nome}/{nome}"
+
+
+def data_de_publicacao(pagina: bytes) -> date | None:
+    """O dia do "Publicado em" da página de um levantamento; None se a página não o traz."""
+    achado = PUBLICADO_EM.search(pagina)
+    if achado is None:
+        return None
+    try:
+        return date(int(achado.group(3)), int(achado.group(2)), int(achado.group(1)))
+    except ValueError:
+        return None
+
+
+def datas_em_ordem(
+    datas: dict[tuple[int, int], date | None],
+) -> dict[tuple[int, int], date | None]:
+    """Tira a data que contraria os outros levantamentos da mesma safra (virou None).
+
+    Dentro de uma safra o levantamento 2 não sai antes do 1. Uma página reeditada pode trazer outra data
+    (a CONAB mostra o 1º de 2024 publicado depois do 3º): fica a maior sequência em ordem, o resto vira
+    None, e a linha usa o dia da coleta marcado como aproximado.
+    """
+    boas: dict[tuple[int, int], date | None] = {}
+    for safra in {s for s, _ in datas}:
+        itens = sorted((lev, d) for (s, lev), d in datas.items() if s == safra and d)
+        melhor: list[tuple[int, date]] = []
+        cadeias: list[list[tuple[int, date]]] = []
+        for i, item in enumerate(itens):
+            anteriores = [c for c in cadeias[:i] if c[-1][1] <= item[1]]
+            cadeias.append(max(anteriores, key=len, default=[]) + [item])
+            melhor = max(melhor, cadeias[-1], key=len)
+        certas = {lev for lev, _ in melhor}
+        for (s, lev), d in datas.items():
+            if s == safra:
+                boas[(s, lev)] = d if lev in certas else None
+    return boas
 
 
 def _uf_da_linha(rotulo: object) -> str | None:
@@ -161,9 +210,15 @@ def _abas_por_tipo(
 
 
 def ler_levantamento(
-    conteudo: bytes, levantamento: int, divulgado_em: date
+    conteudo: bytes,
+    levantamento: int,
+    divulgado_em: date,
+    aproximada: bool = False,
 ) -> pd.DataFrame:
-    """Um levantamento (.xls ou .xlsx) como tabela de `COLUNAS`: uma linha por tipo e UF da safra em curso."""
+    """Um levantamento (.xls ou .xlsx) como tabela de `COLUNAS`: uma linha por tipo e UF da safra em curso.
+
+    `aproximada`: `divulgado_em` é o dia da coleta, porque a data da CONAB não foi achada.
+    """
     if levantamento not in LEVANTAMENTOS:
         raise ValueError(f"levantamento deve ser 1 a 4, veio {levantamento}")
     try:
@@ -188,6 +243,7 @@ def ler_levantamento(
     tabela = pd.concat(partes, ignore_index=True)
     tabela["levantamento"] = levantamento
     tabela["divulgado_em"] = pd.Timestamp(divulgado_em)
+    tabela["divulgado_aproximado"] = aproximada
     return tabela.reindex(columns=list(COLUNAS))
 
 

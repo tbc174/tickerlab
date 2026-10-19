@@ -4944,7 +4944,8 @@ TABELAS: dict[str, Tabela] = {
         onde="Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)",
         linhagem=(
             "A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da "
-            "coleta e SHA-256. " + COM_VERSAO_DO_CODIGO
+            "coleta e SHA-256; o dia da divulgação vem do 'Publicado em' da página do levantamento "
+            "(fonte `conab-cafe-publicacao`). " + COM_VERSAO_DO_CODIGO
         ),
         colunas={
             "safra": ("Ano em que a safra começa (2026 é a safra 2026/27)", NUMERO),
@@ -4959,6 +4960,10 @@ TABELAS: dict[str, Tabela] = {
             ),
             "producao_mil_sacas": ("Produção, em mil sacas de 60 kg", NUMERO_DECIMAL),
             "divulgado_em": ("Dia em que a CONAB divulgou o levantamento", DATA),
+            "divulgado_aproximado": (
+                "Verdadeiro quando a data da CONAB não foi achada e `divulgado_em` é o dia da coleta",
+                SIM_OU_NAO,
+            ),
         },
     ),
     "usda_psd_cafe": Tabela(
@@ -5057,7 +5062,14 @@ TABELAS: dict[str, Tabela] = {
         ),
         linhagem=(
             "O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da "
-            "malha usados e a versão do código; `fonte` diz de qual fonte veio a linha."
+            "malha usados e a versão do código; `fonte` diz de qual fonte veio a linha. A normal do CHIRPS "
+            "(v2.0, média de 1991–2020 por região e mês do ano, 30 anos) é calculada na carga e fica no "
+            "Parquet; a data da conta é a da versão gravada. "
+            "**Sem olhar o futuro:** vale para os meses (cada `chuva_mm` só usa o que a fonte tinha na "
+            "`disponivel_em`), não para a normal: ela é fixa, só muda se o período de referência mudar "
+            "(e o que chega depois de 2020 não a altera). Para os meses de 1991–2020 a anomalia é "
+            "contra uma normal que inclui anos posteriores a eles: serve para descrever, não para "
+            "simular uma decisão da época"
         ),
         colunas={
             "regiao": (
@@ -5328,7 +5340,7 @@ _CONTRATO = {
     "ma_partes": _contrato(modulo="ma", chaves=("assessoria", "url", "nome"), historico_desde="2026-10-16"),
     "ma_negocios": _contrato(modulo="ma", chaves=("assessoria", "url"), historico_desde="2026-10-16"),
     "ma_datas": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em", "coletado_em": "coletado_em"}, historico_desde="2026-10-16"),
-    "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05"),
+    "conab_cafe": _contrato(modulo="macro", chaves=("safra", "levantamento", "tipo", "uf", "divulgado_em"), datas={"publico_em": "divulgado_em"}, historico_desde="2026-02-05", versao_do_contrato="1.1.0"),
     "ma_regua": _contrato(modulo="ma", chaves=("assessoria", "url"), datas={"aconteceu_em": "fechamento_em", "publico_em": "conhecido_em_do_negocio"}, historico_desde="2026-10-16"),
     "cftc_cot_agro": _contrato(modulo=_ME, chaves=("relatorio", "contrato"), datas={"aconteceu_em": "relatorio", "publico_em": "disponivel_em"}, historico_desde="2006-06-13"),
     "usda_psd_cafe": _contrato(modulo="macro", chaves=("codigo_do_pais", "ano_safra", "atributo", "tipo", "divulgado_em"), datas={"aconteceu_em": "divulgado_em", "publico_em": "divulgado_em"}, historico_desde=_COMMODITIES),

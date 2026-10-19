@@ -67,3 +67,11 @@ def test_sem_nenhuma_planilha_e_erro_de_descoberta():
 def test_a_fonte_esta_na_lista_e_vira_tabela():
     assert "conab-cafe-safra" in fontes.POR_ID
     assert destinos.DESTINOS["conab-cafe-safra"].tabelas == ("conab_cafe",)
+
+
+def test_descobre_a_pagina_de_cada_levantamento_para_ler_a_data():
+    alvos = fontes.descobrir_data_do_cafe_conab(PAGINAS, AGORA)
+    nome = "3o-levantamento-de-cafe-safra-2026"
+    assert [a.url for a in alvos] == [SAFRA + f"{nome}/{nome}"]
+    assert fontes.POR_ID["conab-cafe-publicacao"].tipo == "html"
+    assert destinos.DESTINOS["conab-cafe-publicacao"].tabelas == ("conab_cafe",)

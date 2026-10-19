@@ -130,3 +130,50 @@ def test_como_estava_em_d_antes_do_primeiro_devolve_vazio():
         pd.DataFrame(columns=list(conab_cafe.COLUNAS)), _ler()
     )
     assert conab_cafe.como_estava_em(guardada, date(2026, 1, 1)).empty
+
+
+def _pagina(publicado: str) -> bytes:
+    return (
+        f'<span class="documentPublished"><span>Publicado em</span> <!-- c --> '
+        f'<span class="value">{publicado}</span></span>'
+    ).encode()
+
+
+def test_data_de_publicacao_vem_do_publicado_em_da_pagina():
+    assert conab_cafe.data_de_publicacao(_pagina("04/09/2025 09h00")) == date(
+        2025, 9, 4
+    )
+    assert conab_cafe.data_de_publicacao(b"<html></html>") is None
+    assert conab_cafe.data_de_publicacao(_pagina("31/02/2025 09h00")) is None
+
+
+def test_data_fora_de_ordem_na_safra_vira_none_e_as_outras_ficam():
+    datas = {
+        (2024, 1): date(2025, 1, 24),  # a página reeditada: depois do 3º e do 4º
+        (2024, 3): date(2024, 9, 19),
+        (2024, 4): date(2025, 1, 21),
+        (2026, 1): date(2026, 2, 5),
+        (2026, 2): None,
+        (2026, 3): date(2026, 9, 24),
+    }
+    em_ordem = conab_cafe.datas_em_ordem(datas)
+    assert em_ordem[(2024, 1)] is None
+    assert em_ordem[(2024, 3)] == date(2024, 9, 19)
+    assert em_ordem[(2024, 4)] == date(2025, 1, 21)
+    assert em_ordem[(2026, 1)] == date(2026, 2, 5)
+    assert em_ordem[(2026, 2)] is None and em_ordem[(2026, 3)] == date(2026, 9, 24)
+
+
+def test_a_marca_de_data_aproximada_acompanha_a_linha():
+    assert not _ler()["divulgado_aproximado"].any()
+    aproximada = conab_cafe.ler_levantamento(planilha(2026), 3, D3, aproximada=True)
+    assert aproximada["divulgado_aproximado"].all()
+
+
+def test_corte_por_data_nao_mostra_levantamento_antes_da_publicacao():
+    # o 3º foi coletado em out/2026, mas a CONAB o publicou em 24/09: vale desde 24/09, não desde a coleta
+    tabela = pd.concat([_ler(1, D1), _ler(3, D3)], ignore_index=True)
+    assert set(
+        conab_cafe.como_estava_em(tabela, date(2026, 9, 23))["levantamento"]
+    ) == {1}
+    assert set(conab_cafe.como_estava_em(tabela, D3)["levantamento"]) == {3}
