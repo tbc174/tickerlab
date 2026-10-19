@@ -4,7 +4,7 @@
       "tabela": "demonstracoes_como_era",
       "modulo": "mercado_e_empresas",
       "dono": "Dados",
-      "versao": "1.0.0",
+      "versao": "2.0.0",
       "colunas": {
         "cnpj": {
           "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
@@ -19,11 +19,11 @@
           "unidade": "texto"
         },
         "demonstracao": {
-          "descricao": "BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado)",
+          "descricao": "BPA (ativo), BPP (passivo e patrimônio), DRE (resultado, só o primeiro nível), DRA (resultado abrangente), DFC_MI ou DFC_MD (fluxo de caixa pelo método indireto ou direto) ou DVA (valor adicionado); as quatro últimas inteiras, desde a série T1 (contrato 2.0.0). A DMPL fica em `dmpl_como_era`",
           "unidade": "texto"
         },
         "conta": {
-          "descricao": "Código da conta no plano da CVM (1, 1.01, 3.01...)",
+          "descricao": "Código da conta no plano da CVM (1, 1.01, 3.01, 6.01, 7.04.01...)",
           "unidade": "texto"
         },
         "descricao": {
@@ -90,6 +90,102 @@
       "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
       "pessoa": false,
       "frequencia": "Diária no servidor de casa (carga do ENET às 0h30); a base é remontada por ano",
+      "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+    },
+    "dmpl_como_era": {
+      "tabela": "dmpl_como_era",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "cnpj": {
+          "descricao": "CNPJ da companhia, no formato 00.000.000/0000-00",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome da companhia como a fonte informa",
+          "unidade": "texto"
+        },
+        "grupo": {
+          "descricao": "con (consolidado) ou ind (individual)",
+          "unidade": "texto"
+        },
+        "demonstracao": {
+          "descricao": "Sempre DMPL",
+          "unidade": "texto"
+        },
+        "conta": {
+          "descricao": "Código da linha da DMPL no plano da CVM (5.01, 5.04.06...)",
+          "unidade": "texto"
+        },
+        "coluna": {
+          "descricao": "Coluna do patrimônio, com nome único entre empresas (`base/dmpl.py`): capital_social, reservas_de_capital, reservas_de_lucro, lucros_acumulados, outros_resultados_abrangentes, ajustes_de_avaliacao_patrimonial, reservas_de_reavaliacao, patrimonio_liquido, patrimonio_liquido_consolidado e nao_controladores; outra coluna fica com o nome da empresa sem acento; sem_coluna quando veio sem nome",
+          "unidade": "texto"
+        },
+        "descricao": {
+          "descricao": "Nome da linha como a empresa informou",
+          "unidade": "texto"
+        },
+        "inicio": {
+          "descricao": "Começo do período",
+          "unidade": "data (dia)"
+        },
+        "fim": {
+          "descricao": "Fim do período",
+          "unidade": "data (dia)"
+        },
+        "valor": {
+          "descricao": "Valor da célula; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0)",
+          "unidade": "reais (R$), já multiplicado pela escala informada"
+        },
+        "documento": {
+          "descricao": "DFP (demonstrações anuais) ou ITR (informações trimestrais)",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Data a que o documento se refere (fim do exercício ou do trimestre)",
+          "unidade": "data (dia)"
+        },
+        "versao": {
+          "descricao": "Versão do documento que publicou este valor (1, 2, 3...)",
+          "unidade": "número"
+        },
+        "ordem": {
+          "descricao": "ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito)",
+          "unidade": "texto"
+        },
+        "origem": {
+          "descricao": "dados_abertos ou enet",
+          "unidade": "texto"
+        },
+        "divulgado_em": {
+          "descricao": "Dia da entrega à CVM (vale a partir dele, inclusive); as mesmas regras de `demonstracoes_como_era`",
+          "unidade": "data (dia)"
+        },
+        "ate": {
+          "descricao": "Dia em que outro valor tomou o lugar (vazio: vale até hoje)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cnpj",
+        "documento",
+        "referencia",
+        "versao",
+        "grupo",
+        "conta",
+        "coluna"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "divulgado_em"
+      },
+      "historico_desde": "2010-01-01",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "ODbL (dados abertos da CVM; citar a fonte)",
+      "revenda": "vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)",
+      "pessoa": false,
+      "frequencia": "Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)",
       "atraso": "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
     },
     "achados_de_qualidade": {

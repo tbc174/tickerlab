@@ -169,7 +169,7 @@ def test_so_as_contas_das_regras_deixa_a_dfc_e_o_detalhe_da_dre_de_fora():
         }
     )
     completa = ler_contas(zip_bytes, "DFP").contas
-    das_regras = ler_contas(zip_bytes, "DFP", so_as_das_regras=True).contas
+    das_regras = ler_contas(zip_bytes, "DFP", recorte="regras").contas
     assert len(completa) == 5
     assert sorted(das_regras["conta"]) == ["1", "3.01", "3.11"]
     assert list(das_regras.columns) == list(completa.columns)
@@ -178,7 +178,7 @@ def test_so_as_contas_das_regras_deixa_a_dfc_e_o_detalhe_da_dre_de_fora():
 def test_so_as_contas_das_regras_ainda_conta_as_repetidas():
     linha = _dre_na_conta("3.04.02")
     zip_bytes = _zip({"dfp_cia_aberta_DRE_con_2022.csv": [CABECALHO_DRE, linha, linha]})
-    leitura = ler_contas(zip_bytes, "DFP", so_as_das_regras=True)
+    leitura = ler_contas(zip_bytes, "DFP", recorte="regras")
     assert leitura.contas.empty
     assert leitura.repetidas["linhas"].tolist() == [1]
 
@@ -203,3 +203,86 @@ def test_so_as_contas_das_regras_tambem_filtra_contas_ja_lidas():
     )
     completa = ler_contas(zip_bytes, "DFP").contas
     assert sorted(so_as_contas_das_regras(completa)["conta"]) == ["1", "3.01"]
+
+
+def _zip_com_as_sete_demonstracoes() -> bytes:
+    return _zip(
+        {
+            "dfp_cia_aberta_DRE_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("3.05"),
+                _dre_na_conta("3.04.02"),
+            ],
+            "dfp_cia_aberta_BPA_ind_2022.csv": [CABECALHO_BPA, _bpa()],
+            "dfp_cia_aberta_DFC_MI_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("6.01.01.01"),
+            ],
+            "dfp_cia_aberta_DFC_MD_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("6.02"),
+            ],
+            "dfp_cia_aberta_DVA_con_2022.csv": [
+                CABECALHO_DRE,
+                _dre_na_conta("7.04.01"),
+            ],
+            "dfp_cia_aberta_DRA_con_2022.csv": [CABECALHO_DRE, _dre_na_conta("4.01")],
+            # a DMPL tem a coluna COLUNA_DF a mais: vai para a tabela própria (base/dmpl.py)
+            "dfp_cia_aberta_DMPL_con_2022.csv": [CABECALHO_DRE, _dre_na_conta("5.01")],
+        }
+    )
+
+
+def test_le_a_dva_e_a_dra_mas_nao_a_dmpl():
+    contas = ler_contas(_zip_com_as_sete_demonstracoes(), "DFP").contas
+    assert set(contas["demonstracao"]) == {
+        "BPA",
+        "DRE",
+        "DFC_MI",
+        "DFC_MD",
+        "DVA",
+        "DRA",
+    }
+
+
+def test_recorte_das_regras_nao_le_a_dva_nem_a_dra():
+    """As regras rodam no VPS com pouca memória: a série T1 não muda o que elas leem."""
+    contas = ler_contas(
+        _zip_com_as_sete_demonstracoes(), "DFP", recorte="regras"
+    ).contas
+    assert sorted(contas["conta"]) == ["1", "3.05"]
+
+
+def test_recorte_das_regras_ainda_conta_as_repetidas_da_dfc():
+    linha = _dre_na_conta("6.01")
+    zip_bytes = _zip(
+        {"dfp_cia_aberta_DFC_MI_con_2022.csv": [CABECALHO_DRE, linha, linha]}
+    )
+    leitura = ler_contas(zip_bytes, "DFP", recorte="regras")
+    assert leitura.contas.empty
+    assert leitura.repetidas["linhas"].tolist() == [1]
+
+
+def test_recorte_da_base_traz_dfc_dva_e_dra_inteiras_e_o_primeiro_nivel_da_dre():
+    contas = ler_contas(_zip_com_as_sete_demonstracoes(), "DFP", recorte="base").contas
+    assert sorted(contas["conta"]) == [
+        "1",
+        "3.05",
+        "4.01",
+        "6.01.01.01",
+        "6.02",
+        "7.04.01",
+    ]
+
+
+def test_recorte_da_base_tambem_filtra_contas_ja_lidas():
+    from base.contas_cvm import so_as_contas_da_base
+
+    completa = ler_contas(_zip_com_as_sete_demonstracoes(), "DFP").contas
+    assert "3.04.02" not in set(so_as_contas_da_base(completa)["conta"])
+    assert len(so_as_contas_da_base(completa)) == len(completa) - 1
+
+
+def test_recorte_desconhecido_e_recusado():
+    with pytest.raises(ValueError, match="recorte"):
+        ler_contas(_zip_com_as_sete_demonstracoes(), "DFP", recorte="quase tudo")  # type: ignore[arg-type]
