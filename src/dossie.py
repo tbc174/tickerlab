@@ -76,6 +76,8 @@ TITULOS_DAS_TABELAS = {
     "entidades_ligadas": "Entidades da agência ligadas à companhia",
     "negocios": "Últimos documentos de negócios",
     "negocios_por_ano": "Documentos de negócios por ano",
+    "ligacoes_da_rede": "Ligações da companhia na rede",
+    "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
 _UNIDADE_DA_SERIE = {
     serie.nome: serie.unidade for serie in dossie_da_base.SERIES_DAS_AGENCIAS
@@ -161,6 +163,20 @@ def ficha_do(cnpj: str, pasta: Path | None = None) -> Ficha | None:
         log.warning("ficha do dossiê barrada (%s): %s", erro, caminho)
         return None
     return cortar(ficha)
+
+
+def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
+    """A ficha sem as seções do molde B (a busca por CNPJ); None se não sobra seção.
+
+    O relatório da empresa (molde A) fica como era: a análise escrita confere o hash dele, e uma
+    seção nova da noite mudaria o hash de todas as empresas.
+    """
+    if ficha is None:
+        return None
+    secoes = [
+        s for s in ficha.secoes if s.chave not in dossie_da_base.SECOES_DO_MOLDE_B
+    ]
+    return ficha.model_copy(update={"secoes": secoes}) if secoes else None
 
 
 _REGISTRO = {secao.chave: secao for secao in dossie_da_base.SECOES}
@@ -387,6 +403,19 @@ COLUNAS: dict[str, list[Coluna]] = {
     "negocios_por_ano": [
         ("ano", "Ano", _ano),
         ("documentos", "Documentos", inteiro),
+    ],
+    "ligacoes_da_rede": [
+        ("relacao", "Relação", _texto),
+        ("entidade", "Entidade", _texto),
+        ("cnpj", "CNPJ", _texto),
+        ("participacao", "Participação", _porcentagem),
+        ("desde", "Desde", dia),
+        ("documento", "Documento", _texto),
+    ],
+    "identificadores_da_empresa": [
+        ("identificador", "Identificador", _texto),
+        ("valor", "Valor", _texto),
+        ("desde", "Desde", dia),
     ],
 }
 

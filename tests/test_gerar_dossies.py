@@ -303,8 +303,10 @@ def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:
         ),
     )
     with Porta(pasta) as porta:
-        controladoras, _ = gerar_dossies._controladoras(
-            gerar_dossies.Leitor(porta), D("2026-10-17 07:00")
+        controladoras = gerar_dossies._controladoras(
+            gerar_dossies.Leitor(porta),
+            D("2026-10-17 07:00"),
+            _entidades("EA", "EDONA", "ENOVA"),
         )
     assert controladoras["cnpj_controladora"].tolist() == ["33333333000133"]
 
@@ -339,3 +341,85 @@ def test_le_a_base_so_pela_porta() -> None:
     from tests.test_porta_unica import _montador
 
     assert not _montador("scripts/gerar_dossies.py")
+
+
+def _rede_da_cpfl(pasta: Path, com_o_futuro: bool) -> None:
+    """A CPFL (EA) com uma controlada pública desde 2015; `com_o_futuro`: mais uma, pública só em
+    dezembro de 2026, e um FRE entregue em 2027 (depois do dia da ficha)."""
+    controladas = ["EC"] + (["ENOVA"] if com_o_futuro else [])
+    _gravar(pasta, "rede/entidades.parquet", _entidades("EA", *controladas))
+    _gravar(
+        pasta,
+        "rede/identificadores.parquet",
+        _identificadores(
+            ("EA", "cnpj_raiz", CPFL_DIGITOS[:8], None, None, "2010-01-01"),
+            ("EA", "cnpj", CPFL_DIGITOS, None, None, "2010-01-01"),
+            ("EC", "cnpj", DISTRIBUIDORA, None, None, "2010-01-01"),
+            ("ENOVA", "cnpj", "44444444000144", None, None, "2026-12-01"),
+        ),
+    )
+    ligacoes = [
+        {"de": "EC", "para": "EA", "tipo": "controlada_de", "publico_em": "2016-05-31"}
+    ]
+    if com_o_futuro:
+        ligacoes.append(
+            {
+                "de": "ENOVA",
+                "para": "EA",
+                "tipo": "controlada_de",
+                "publico_em": "2026-12-01",
+            }
+        )
+    _gravar(pasta, "rede/ligacoes.parquet", _ligacoes(*ligacoes))
+    fres = [("2025-12-31", D("2026-05-31"), DISTRIBUIDORA)]
+    if com_o_futuro:
+        fres.append(("2026-09-30", D("2027-01-15"), "44444444000144"))
+    _gravar(
+        pasta,
+        "controladas/2025.parquet",
+        pd.DataFrame(
+            {
+                "cnpj_companhia": [CPFL_DIGITOS] * len(fres),
+                "referencia": [D(r) for r, _, _ in fres],
+                "versao": [1] * len(fres),
+                "conhecido_em": [c for _, c, _ in fres],
+                "cnpj": [s for _, _, s in fres],
+                "razao_social": ["CPFL Paulista", "Nova"][: len(fres)],
+                "tipo": ["Controlada"] * len(fres),
+                "participacao": [100.0] * len(fres),
+            }
+        ),
+    )
+
+
+def _ficha_da_cpfl(saida: Path) -> dict:
+    return json.loads(
+        (saida / "2026-10-17" / f"{CPFL_DIGITOS}.json").read_text(encoding="utf-8")
+    )
+
+
+def test_ficha_traz_a_secao_da_rede_por_ultimo(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _rede_da_cpfl(tmp_path / "base", com_o_futuro=False)
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = _ficha_da_cpfl(tmp_path / "dossies")["secoes"]
+    assert secoes[-1]["chave"] == "rede"
+    linhas = secoes[-1]["tabelas"]["ligacoes_da_rede"]
+    assert [(linha["relacao"], linha["cnpj"]) for linha in linhas] == [
+        ("Controlada", "33.050.196/0001-88")
+    ]
+
+
+def test_rede_cortar_o_futuro_nao_muda_o_passado(tmp_path: Path) -> None:
+    """A ficha de um dia é a mesma com ou sem o que só ficou público depois dele."""
+    fichas = []
+    for com_o_futuro in (False, True):
+        pasta = tmp_path / f"base-{com_o_futuro}"
+        _mini_base(pasta)
+        _rede_da_cpfl(pasta, com_o_futuro)
+        _montar(pasta, tmp_path / f"dossies-{com_o_futuro}")
+        ficha = _ficha_da_cpfl(tmp_path / f"dossies-{com_o_futuro}")
+        fichas.append([s for s in ficha["secoes"] if s["chave"] == "rede"])
+    assert fichas[0] == fichas[1]
+    assert fichas[0]  # a seção existe nas duas

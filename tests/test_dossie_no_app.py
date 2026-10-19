@@ -143,3 +143,67 @@ def test_dossie_tem_as_secoes_as_fontes_e_os_limites() -> None:
 )
 def test_mais_de_3_dias_e_ficha_velha(hoje: date, velha: bool) -> None:
     assert dossie.dossie_da_ficha(_ficha(), hoje).velha is velha
+
+
+SECAO_DA_REDE = {
+    "chave": "rede",
+    "titulo": "Ligações na rede",
+    "itens": [
+        {
+            "chave": "ligacoes",
+            "nome": "Ligações na rede",
+            "valor": 1,
+            "unidade": "empresas",
+        }
+    ],
+    "tabelas": {
+        "ligacoes_da_rede": [
+            {
+                "relacao": "Controlada",
+                "entidade": "CPFL Paulista",
+                "cnpj": "33.050.196/0001-88",
+                "participacao": 100.0,
+                "desde": "2015-01-01",
+                "documento": "Formulário de Referência (CVM)",
+            }
+        ],
+        "identificadores_da_empresa": [
+            {"identificador": "Ticker", "valor": "CPFE3", "desde": "2010-01-01"}
+        ],
+    },
+    "paragrafos": [],
+    "fontes": ["ODbL (dados abertos da CVM; citar a fonte)"],
+}
+
+
+def _com_a_rede(tmp_path: Path) -> Path:
+    bruta = _bruta()
+    bruta["secoes"].append(SECAO_DA_REDE)
+    return _pasta(tmp_path, bruta)
+
+
+def test_secao_da_rede_chega_ao_app_com_as_tabelas(tmp_path: Path) -> None:
+    ficha = dossie.ficha_do(CPFL, _com_a_rede(tmp_path))
+    assert ficha is not None
+    rede = next(s for s in ficha.secoes if s.chave == "rede")
+    assert set(rede.tabelas) == {"ligacoes_da_rede", "identificadores_da_empresa"}
+    escrita = next(s for s in dossie.secoes_da_ficha(ficha) if s.chave == "rede")
+    assert escrita.tabelas["ligacoes_da_rede"][0]["Participação"] == "100%"
+
+
+def test_relatorio_da_empresa_ignora_as_secoes_do_molde_b(tmp_path: Path) -> None:
+    """O molde A fica igual (a análise escrita confere o hash dele): a seção da rede é do molde B."""
+    sem_a_rede = dossie.ficha_do(CPFL, _pasta(tmp_path))
+    outra = tmp_path / "outra"
+    outra.mkdir()
+    com_a_rede = dossie.ficha_do(CPFL, _com_a_rede(outra))
+    assert sem_a_rede is not None and com_a_rede is not None
+    assert dossie.ficha_do_molde_a(com_a_rede) == dossie.ficha_do_molde_a(sem_a_rede)
+
+
+def test_ficha_so_com_o_molde_b_nao_da_dossie_ao_molde_a(tmp_path: Path) -> None:
+    bruta = _bruta() | {"secoes": [SECAO_DA_REDE]}
+    ficha = dossie.ficha_do(CPFL, _pasta(tmp_path, bruta))
+    assert ficha is not None
+    assert dossie.ficha_do_molde_a(ficha) is None
+    assert dossie.ficha_do_molde_a(None) is None

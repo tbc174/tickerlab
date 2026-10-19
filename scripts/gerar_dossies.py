@@ -105,6 +105,7 @@ class Entradas:
     eventos: pd.DataFrame
     series: dict[str, pd.DataFrame]
     pessoas: set[str]
+    rede: dossie.RedeDaNoite
 
 
 def _empresas(tickers: pd.DataFrame) -> pd.DataFrame:
@@ -151,13 +152,10 @@ def ler_serie(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
     return dossie.serie_anual(mensais, serie.modo)
 
 
-def _controladoras(leitor: Leitor, hoje: pd.Timestamp) -> tuple[pd.DataFrame, set[str]]:
-    """Quem controla cada companhia hoje (a rede como era hoje) e os nomes das pessoas da rede.
-
-    As pessoas vêm de todas as entidades, sem data: o filtro de pessoas da ficha erra para o lado
-    de tirar demais.
-    """
-    entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
+def _controladoras(
+    leitor: Leitor, hoje: pd.Timestamp, entidades: pd.DataFrame
+) -> pd.DataFrame:
+    """Quem controla cada companhia hoje (a rede como era hoje)."""
     ligacoes = leitor.ler(
         "ligacoes",
         ["de", "para", "tipo", "situacao", "fonte", "participacao"],
@@ -170,15 +168,38 @@ def _controladoras(leitor: Leitor, hoje: pd.Timestamp) -> tuple[pd.DataFrame, se
         filtros={"sistema": "cnpj"},
         como_era_em=hoje,
     )
-    pessoas = _pessoas(entidades)
     if ligacoes.empty or entidades.empty or identificadores.empty:
-        return VAZIA, pessoas
-    return dossie.controladoras(ligacoes, entidades, identificadores), pessoas
+        return VAZIA
+    return dossie.controladoras(ligacoes, entidades, identificadores)
+
+
+def _rede(
+    leitor: Leitor,
+    hoje: pd.Timestamp,
+    entidades: pd.DataFrame,
+    controladas: pd.DataFrame,
+) -> dossie.RedeDaNoite:
+    """A rede como era hoje, só com os tipos e os identificadores que a seção da rede mostra."""
+    ligacoes = leitor.ler(
+        "ligacoes", filtros={"tipo": sorted(dossie.TIPOS_DA_REDE)}, como_era_em=hoje
+    )
+    identificadores = leitor.ler(
+        "identificadores",
+        ["id_entidade", "sistema", "valor", "desde", "ate"],
+        filtros={"sistema": list(dossie.SISTEMAS_DA_REDE)},
+        como_era_em=hoje,
+    )
+    return dossie.preparar_rede(ligacoes, entidades, identificadores, controladas, hoje)
 
 
 def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
-    """Tudo o que o dossiê lê da base, uma vez, para todas as empresas."""
-    controladoras, pessoas = _controladoras(leitor, hoje)
+    """Tudo o que o dossiê lê da base, uma vez, para todas as empresas.
+
+    As pessoas vêm de todas as entidades, sem data: o filtro de pessoas da ficha erra para o lado
+    de tirar demais.
+    """
+    entidades = leitor.ler("entidades", ["id_entidade", "nome", "trata_como_pessoa"])
+    controladoras = _controladoras(leitor, hoje, entidades)
     controladas = leitor.ler("controladas")
     return Entradas(
         empresas=_empresas(
@@ -200,7 +221,8 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
         ),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
-        pessoas=pessoas,
+        pessoas=_pessoas(entidades),
+        rede=_rede(leitor, hoje, entidades, controladas),
     )
 
 
@@ -254,6 +276,7 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
             empresa_serie.get(c, VAZIA), entradas.series
         ),
         "negocios": lambda c: dossie.secao_negocios(eventos.get(c, VAZIA)),
+        "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
 
 
