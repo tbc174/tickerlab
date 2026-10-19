@@ -166,7 +166,25 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     texto = conformidade.carregar_texto("privacidade")
     assert "Links compartilhados" in texto and "Quem tiver um link" in texto
     assert "os links compartilhados e a assinatura" in texto
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-13.7"
+
+
+def test_versao_8_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
+    """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-19.8"
+    privacidade = conformidade.carregar_texto("privacidade")
+    for trecho in (
+        "privacidade@tickerlab.com.br",
+        "Encarregado",
+        "__Host-tl_sessao",
+        "Base legal",
+        "tl_origem",
+        "Transferência internacional",
+        "Registros técnicos de acesso",
+    ):
+        assert trecho in privacidade, trecho
+    termos = conformidade.carregar_texto("termos")
+    assert "Pré-lançamento" in termos and "30 dias" in termos
+    assert "modelo de linguagem" in termos and "nunca são acusação" in termos
 
 
 def test_politica_de_privacidade_cita_o_pulse():
