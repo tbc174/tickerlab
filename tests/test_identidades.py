@@ -21,14 +21,33 @@ URL_DE_TESTE = os.environ.get("TICKERLAB_TEST_DATABASE_URL")
 pytestmark = pytest.mark.xdist_group("postgres")
 
 
+def _voltar_ao_zero(url: str) -> None:
+    """Desfaz tudo no banco compartilhado.
+
+    A 0039 recusa voltar com conta sem google_sub (decisão de uma pessoa); no teste, as contas da
+    Microsoft e do e-mail que o teste anterior criou são apagadas antes, senão a descida falha e
+    derruba também o teste seguinte.
+    """
+    motor = criar_engine(url)
+    try:
+        if "usuarios" in sa.inspect(motor).get_table_names():
+            with motor.begin() as conexao:
+                conexao.execute(
+                    sa.text("DELETE FROM usuarios WHERE google_sub IS NULL")
+                )
+    finally:
+        motor.dispose()
+    migrar_para("base", url)
+
+
 @pytest.fixture
 def url(tmp_path):
     url = URL_DE_TESTE or f"sqlite:///{(tmp_path / 'saas.sqlite').as_posix()}"
     if URL_DE_TESTE:
-        migrar_para("base", url)
+        _voltar_ao_zero(url)
     yield url
     if URL_DE_TESTE:
-        migrar_para("base", url)
+        _voltar_ao_zero(url)
 
 
 @pytest.fixture
