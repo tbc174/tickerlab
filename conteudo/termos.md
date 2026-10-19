@@ -30,7 +30,7 @@ Os relatórios sobre empresas são análises em texto escritas por um **modelo d
 ## Sua conta
 
 - Qualquer pessoa **maior de 18 anos** pode criar uma conta, entrando com o Google, com a Microsoft ou com um código enviado ao seu e-mail (as formas disponíveis aparecem na tela de entrada). Você é responsável por manter seguro o acesso à sua conta e ao e-mail dela.
-- Depois de entrar, a sessão dura até **30 dias** neste navegador. Em Meus dados você pode encerrar todas as sessões ("sair de todos os aparelhos").
+- Depois de entrar, a sessão dura até **30 dias** neste navegador; "Sair" encerra a sessão na hora. Se desconfiar que alguém usou a sua conta, saia e troque o acesso no Google ou na Microsoft; a opção de encerrar todas as sessões de uma vez chega em Meus dados.
 - Você pode **exportar** os seus dados e **apagar** a sua conta a qualquer momento na página "Meus dados e privacidade".
 - Podemos suspender contas usadas para abusar do serviço, como acesso automatizado em excesso, cópia em massa dos dados, tentativas de invadir o sistema ou de acessar dados de outras pessoas.
 

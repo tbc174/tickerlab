@@ -19,7 +19,7 @@ A base legal é o artigo 7º da LGPD: **contrato** (inciso V: o que é preciso p
 | Nome, **e-mail** e foto da conta que você usa para entrar (Google ou Microsoft) | Login | Criar e identificar a sua conta | Contrato |
 | Formas de entrar: o identificador da sua conta no Google ou na Microsoft, o e-mail de cada forma e se ele foi confirmado, quando cada forma foi ligada à conta e a última vez que foi usada | Login | Reconhecer você nos próximos acessos e mostrar, em Meus dados, por onde você entra | Contrato |
 | Código de entrada por e-mail: enquanto o código vale, guardamos só uma impressão (SHA-256) do e-mail, outra do código, a validade e o número de tentativas. Nada disso fica ligado à sua conta, e some quando o código vence ou é usado | Você, ao pedir um código | Entrar sem senha, pelo e-mail | Contrato |
-| Sessões de login: uma impressão (SHA-256) do cookie de sessão, a forma de entrar, quando a sessão começou, quando vence (30 dias), a última vez usada (com precisão de 1 hora) e quando foi encerrada. **Nunca** o endereço IP nem o aparelho | O app, quando você entra | Manter você conectado por até 30 dias e deixar você sair de todos os aparelhos em Meus dados | Contrato; segurança |
+| Sessões de login: uma impressão (SHA-256) do cookie de sessão, a forma de entrar, quando a sessão começou, quando vence (30 dias), a última vez usada (com precisão de 1 hora) e quando foi encerrada. **Nunca** o endereço IP nem o aparelho | O app, quando você entra | Manter você conectado por até 30 dias e mostrar as suas sessões em Meus dados (com a opção de encerrar todas, quando ela estiver na tela) | Contrato; segurança |
 | Origem do cadastro: a campanha pela qual você chegou (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content` e o código `ref` de um parceiro) e a data da primeira visita, lidos do cookie próprio `tl_origem` no seu primeiro login. Só a primeira origem fica. Nada disso vai para o Google, a Meta ou o parceiro: ele recebe só números somados ("12 cadastros") | O site, quando você chega por um link de campanha | Medir a campanha de lançamento e pagar comissão a parceiros sem rastrear você | Legítimo interesse |
 | Ativo, período e opções que você escolhe (inclusive a configuração salva do estúdio de relatórios e se você já viu o tutorial) | Você, no app | Lembrar as suas preferências | Contrato |
 | Parâmetros de análise do Research (o seu padrão e os de cada ativo), com o histórico de versões | Você, na página Parâmetros | Calcular as análises do jeito que você escolheu e permitir voltar a uma versão anterior | Contrato |
@@ -102,7 +102,7 @@ Você pode, a qualquer momento:
 - **Corrigir** dados incorretos (o nome e a foto vêm do Google ou da Microsoft; atualize lá e entre de novo);
 - **Apagar** a sua conta e os seus dados, na mesma página;
 - **Revogar** o consentimento: o da carteira, o da Newsletter e o das Novidades, a qualquer momento, sem perder a conta; o do uso da conta em si equivale a apagá-la;
-- **Sair de todos os aparelhos**, encerrando todas as sessões de login, em Meus dados;
+- **Encerrar a sessão** neste aparelho ("Sair") e, quando a opção estiver em Meus dados, em todos os aparelhos de uma vez; até lá, apagar a conta encerra todas;
 - Pedir informações sobre o compartilhamento de dados e sobre a base legal de cada tratamento;
 - **Reclamar à ANPD** (Autoridade Nacional de Proteção de Dados) se achar que não cumprimos a lei.
 
