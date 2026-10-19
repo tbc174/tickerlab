@@ -28,11 +28,21 @@ import unicodedata
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 import pandas as pd
 
+from base.cnpj import formatar, raiz
 from base.dicionario import TABELAS
+from base.rede.ligacoes_das_fontes import (
+    AUDITA,
+    COLIGADA_DE,
+    CONTROLADA_DE,
+    DO_CONGLOMERADO_DE,
+    EMITE,
+    PARTICIPADA_DE,
+)
+from base.rede.vistas import vista_publicada
 from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
@@ -240,6 +250,9 @@ SECOES = (
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
     ),
     SecaoDaBase("negocios", "Negócios (M&A pela CVM)", ("eventos",)),
+    SecaoDaBase(
+        "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
+    ),
 )
 _SECAO_POR_CHAVE = {secao.chave: secao for secao in SECOES}
 
@@ -265,6 +278,13 @@ LIMITES = {
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
         "reorganização. A escolha é pelas palavras do assunto: pode deixar escapar ou incluir algum. "
         "O assunto é escrito pela empresa."
+    ),
+    "rede": (
+        "Ligações da rede de entidades do TickerLab, montada com o Formulário de Referência (FRE), o "
+        "Formulário Cadastral e as carteiras dos fundos entregues à CVM e com o IF.data do Banco "
+        "Central. Uma ligação do FRE só aparece quando o FRE mais recente da companhia que a informa é "
+        "dos últimos 2 anos e ainda a lista. A data é a do primeiro documento que mostrou a ligação. "
+        "Pessoas (sócios, administradores) e sinais negativos (sanções, dívidas) não aparecem."
     ),
 }
 
@@ -801,6 +821,342 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
         "negocios_por_ano": por_ano,
     }
     return _secao("negocios", itens, tabelas)
+
+
+# --- ligações na rede (molde B: a busca por CNPJ, plano de 19/10/2026) ---------------------------
+
+
+class Relacao(NamedTuple):
+    """O que a outra ponta de uma ligação é para a empresa da ficha."""
+
+    chave: str  # do item com a contagem
+    tipo: str
+    empresa_em_de: bool  # a empresa da ficha é a ponta `de` da ligação
+    nome: str
+
+
+RELACOES = (
+    Relacao("controladas", CONTROLADA_DE, False, "Controlada"),
+    Relacao("controladoras", CONTROLADA_DE, True, "Controladora"),
+    Relacao("coligadas", COLIGADA_DE, False, "Coligada"),
+    Relacao("coligada_de", COLIGADA_DE, True, "Tem a companhia como coligada"),
+    Relacao("participacoes", PARTICIPADA_DE, False, "Participação da companhia"),
+    Relacao("participam", PARTICIPADA_DE, True, "Tem participação na companhia"),
+    Relacao("auditor", AUDITA, False, "Auditor"),
+    Relacao(
+        "instituicoes_do_conglomerado",
+        DO_CONGLOMERADO_DE,
+        False,
+        "Instituição do conglomerado",
+    ),
+    Relacao("lider_do_conglomerado", DO_CONGLOMERADO_DE, True, "Líder do conglomerado"),
+)
+_RELACAO = {(r.tipo, r.empresa_em_de): r for r in RELACOES}
+TIPOS_DO_FRE = frozenset({CONTROLADA_DE, COLIGADA_DE, PARTICIPADA_DE})
+# só estes tipos saem (nenhum de pessoa nem negativo); `emite` entra só como contagem
+TIPOS_DA_REDE = frozenset({*(r.tipo for r in RELACOES), EMITE})
+# a família da licença e o documento de cada fonte de ligação; fonte fora daqui não sai (`opera_para`
+# já está no setor regulado; uma fonte nova só entra quando alguém a põe aqui)
+FONTES_DA_REDE = {
+    "cvm-fre": ("cvm", "Formulário de Referência (CVM)"),
+    "cvm-fca": ("cvm", "Formulário Cadastral (CVM)"),
+    "cvm-cda": ("cvm", "Carteiras dos fundos (CVM)"),
+    "bcb-ifdata": ("bcb", "IF.data (Banco Central)"),
+}
+# os identificadores públicos da empresa que saem: a família da licença e o nome na tela
+IDENTIFICADORES_DA_EMPRESA = {
+    "cnpj": ("cvm", "CNPJ"),
+    "ticker": ("cvm", "Ticker"),
+    "emissor": ("cvm", "Código do emissor"),
+    "lei": ("gleif", "LEI (GLEIF)"),
+    "codigo_bcb_ifdata": ("bcb", "Código no IF.data (Banco Central)"),
+}
+SISTEMAS_DA_REDE = (*IDENTIFICADORES_DA_EMPRESA, "cnpj_raiz")  # o que a noite lê
+SECOES_DO_MOLDE_B = frozenset(
+    {"rede"}
+)  # o relatório da empresa (molde A) não as mostra
+
+
+@dataclass(frozen=True)
+class RedeDaNoite:
+    """A rede pronta para as fichas: só o que pode sair, já separado por entidade."""
+
+    centros: dict[str, str]  # raiz do CNPJ → id_entidade
+    ligacoes: dict[str, pd.DataFrame]  # id_entidade → as ligações dele que podem sair
+    identificadores: dict[
+        str, pd.DataFrame
+    ]  # id_entidade → os identificadores que saem
+    nomes: dict[str, str]
+    cnpjs: dict[str, str]
+
+
+def _sem_fuso(quando: pd.Timestamp) -> pd.Timestamp:
+    return quando.tz_localize(None) if quando.tzinfo else quando
+
+
+def _pode_mostrar_a_familia(familia: object) -> bool:
+    return isinstance(familia, str) and pode_usar(MOSTRAR, familia)  # sem família: NaN
+
+
+def raizes_do_fre_em_dia(
+    controladas: pd.DataFrame, hoje: pd.Timestamp
+) -> set[tuple[str, str]]:
+    """(raiz da companhia, raiz da sociedade) de cada FRE mais recente dos últimos anos, público hoje.
+
+    A rede guarda a ligação do FRE como vigente enquanto ninguém a encerra: a companhia que parou de
+    entregar (a VBC Energia, que deixou a CPFL em 2011) continuaria dona hoje.
+    """
+    if controladas.empty or "conhecido_em" not in controladas.columns:
+        return set()  # sem a data de entrega não dá para saber o que já era público
+    hoje = _sem_fuso(hoje)
+    publicos = controladas[pd.to_datetime(controladas["conhecido_em"]) <= hoje]
+    limite = hoje - pd.DateOffset(years=ANOS_DO_FRE_EM_DIA)
+    pares: set[tuple[str, str]] = set()
+    for companhia, fres in publicos.groupby(publicos["cnpj_companhia"].map(raiz)):
+        ultimo = _mais_recente(fres)
+        if ultimo.empty or pd.Timestamp(ultimo["referencia"].iloc[0]) < limite:
+            continue
+        pares |= {(str(companhia), r) for r in ultimo["cnpj"].dropna().map(raiz) if r}
+    return pares
+
+
+def _raizes(identificadores: pd.DataFrame) -> pd.Series:
+    """A raiz do CNPJ de cada entidade (pela raiz da rede ou pelo CNPJ inteiro)."""
+    pela_raiz = identificadores[identificadores["sistema"] == "cnpj_raiz"]
+    pelo_cnpj = identificadores[identificadores["sistema"] == "cnpj"]
+    juntas = pd.concat(
+        [
+            pela_raiz.assign(raiz=pela_raiz["valor"]),
+            pelo_cnpj.assign(raiz=pelo_cnpj["valor"].map(raiz)),
+        ]
+    ).dropna(subset=["raiz"])
+    return juntas.drop_duplicates("id_entidade").set_index("id_entidade")["raiz"]
+
+
+def _centros(identificadores: pd.DataFrame) -> dict[str, str]:
+    """Raiz → entidade, só quando a raiz aponta para uma entidade só."""
+    raizes = identificadores[identificadores["sistema"] == "cnpj_raiz"]
+    unicas = raizes.drop_duplicates(["valor", "id_entidade"])
+    unicas = unicas[~unicas["valor"].duplicated(keep=False)]
+    return dict(zip(unicas["valor"], unicas["id_entidade"], strict=True))
+
+
+def _ligacoes_que_podem_sair(
+    ligacoes: pd.DataFrame, empresas: set[str]
+) -> pd.DataFrame:
+    """Os tipos da rede, de fonte conhecida que pode ser mostrada, entre empresas (nunca pessoas)."""
+    familias = ligacoes["fonte"].map(lambda f: FONTES_DA_REDE.get(f, (None, ""))[0])
+    entre_empresas = ligacoes["de"].isin(empresas) & (
+        ligacoes["para"].isin(empresas) | (ligacoes["tipo"] == EMITE)
+    )
+    return ligacoes[
+        ligacoes["tipo"].isin(TIPOS_DA_REDE)
+        & familias.map(_pode_mostrar_a_familia).astype(bool)
+        & entre_empresas
+    ]
+
+
+def _do_fre_em_dia(
+    ligacoes: pd.DataFrame, raizes: pd.Series, pares: set[tuple[str, str]]
+) -> pd.Series:
+    """A ligação não é do FRE, ou o FRE em dia da companhia (`para`) ainda lista a sociedade (`de`)."""
+    par = zip(ligacoes["para"].map(raizes), ligacoes["de"].map(raizes), strict=True)
+    listada = pd.Series([p in pares for p in par], index=ligacoes.index, dtype=bool)
+    return ~ligacoes["tipo"].isin(TIPOS_DO_FRE) | listada
+
+
+def _por_entidade(ligacoes: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """As ligações de cada entidade, como `de` ou como `para`."""
+    por_de = {str(e): g for e, g in ligacoes.groupby("de")}
+    por_para = {str(e): g for e, g in ligacoes.groupby("para")}
+    vazia = ligacoes.iloc[0:0]
+    return {
+        e: pd.concat([por_de.get(e, vazia), por_para.get(e, vazia)])
+        for e in por_de.keys() | por_para.keys()
+    }
+
+
+def _identificadores_que_saem(
+    identificadores: pd.DataFrame,
+) -> dict[str, pd.DataFrame]:
+    familias = identificadores["sistema"].map(
+        lambda s: IDENTIFICADORES_DA_EMPRESA.get(s, (None, ""))[0]
+    )
+    saem = identificadores[familias.map(_pode_mostrar_a_familia).astype(bool)]
+    return {str(e): g for e, g in saem.groupby("id_entidade")}
+
+
+def preparar_rede(
+    ligacoes: pd.DataFrame,
+    entidades: pd.DataFrame,
+    identificadores: pd.DataFrame,
+    controladas: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> RedeDaNoite:
+    """A rede como era em `hoje` (a porta já cortou o futuro), sem pessoa nem tipo negativo.
+
+    Montada uma vez por noite. Entidade fora da rede conta como pessoa (o conservador); a ligação do
+    FRE só fica se o FRE em dia ainda a mostra (`raizes_do_fre_em_dia`).
+    """
+    if ligacoes.empty or entidades.empty or identificadores.empty:
+        return RedeDaNoite(
+            {}, {}, {}, {}, {}
+        )  # a rede ainda não foi montada nesta base
+    publicadas, _ = vista_publicada(ligacoes, entidades)
+    empresas = entidades[~entidades["trata_como_pessoa"].fillna(True).astype(bool)]
+    nomes = {
+        str(e): str(n)
+        for e, n in zip(empresas["id_entidade"], empresas["nome"], strict=True)
+    }
+    podem = _ligacoes_que_podem_sair(publicadas, set(nomes))
+    pares = raizes_do_fre_em_dia(controladas, hoje)
+    podem = podem[_do_fre_em_dia(podem, _raizes(identificadores), pares)]
+    cnpjs = identificadores[identificadores["sistema"] == "cnpj"].drop_duplicates(
+        "id_entidade"
+    )
+    return RedeDaNoite(
+        centros=_centros(identificadores),
+        ligacoes=_por_entidade(podem),
+        identificadores=_identificadores_que_saem(identificadores),
+        nomes=nomes,
+        cnpjs=dict(zip(cnpjs["id_entidade"], cnpjs["valor"], strict=True)),
+    )
+
+
+def _cnpj_formatado(cnpj: str | None) -> str | None:
+    return formatar(cnpj) if cnpj and len(cnpj) == DIGITOS_DO_CNPJ else None
+
+
+_COLUNAS_DAS_LIGACOES = (
+    "ordem",
+    "chave",
+    "relacao",
+    "entidade",
+    "cnpj",
+    "participacao",
+    "desde",
+    "documento",
+    "familia",
+)
+_COLUNAS_DOS_IDENTIFICADORES = ("identificador", "valor", "desde", "familia")
+
+
+def _linhas_da_rede(
+    centro: str, ligacoes: pd.DataFrame, rede: RedeDaNoite
+) -> pd.DataFrame:
+    """Uma linha por ligação: o que a outra ponta é para a empresa, com o documento que a mostra."""
+    linhas = []
+    for ligacao in ligacoes.itertuples(index=False):
+        em_de = ligacao.de == centro
+        relacao = _RELACAO.get((str(ligacao.tipo), em_de))
+        outra = str(ligacao.para if em_de else ligacao.de)
+        if relacao is None or outra == centro:
+            continue
+        familia, documento = FONTES_DA_REDE[str(ligacao.fonte)]
+        linhas.append(
+            {
+                "ordem": RELACOES.index(relacao),
+                "chave": relacao.chave,
+                "relacao": relacao.nome,
+                "entidade": rede.nomes[outra],
+                "cnpj": _cnpj_formatado(rede.cnpjs.get(outra)),
+                "participacao": ligacao.participacao,
+                "desde": ligacao.aconteceu_em,
+                "documento": documento,
+                "familia": familia,
+            }
+        )
+    return pd.DataFrame(linhas, columns=list(_COLUNAS_DAS_LIGACOES))
+
+
+def _mostradas(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Até `LINHAS_NAS_LISTAS` por relação, as de maior participação primeiro."""
+    if linhas.empty:
+        return linhas
+    ordenadas = linhas.sort_values(
+        ["ordem", "participacao", "entidade"],
+        ascending=[True, False, True],
+        na_position="last",
+    )
+    return (
+        ordenadas.groupby("chave", sort=False)
+        .head(LINHAS_NAS_LISTAS)
+        .drop(columns=["ordem", "chave", "familia"])
+    )
+
+
+def _tabela_dos_identificadores(identificadores: pd.DataFrame | None) -> pd.DataFrame:
+    if identificadores is None:
+        return pd.DataFrame(columns=list(_COLUNAS_DOS_IDENTIFICADORES))
+    ordem = list(IDENTIFICADORES_DA_EMPRESA)
+    tabela = identificadores.assign(
+        ordem=identificadores["sistema"].map(ordem.index)
+    ).sort_values(["ordem", "valor"])
+    return pd.DataFrame(
+        {
+            "identificador": tabela["sistema"].map(
+                lambda s: IDENTIFICADORES_DA_EMPRESA[s][1]
+            ),
+            "valor": [
+                _cnpj_formatado(v) if s == "cnpj" else v
+                for s, v in zip(tabela["sistema"], tabela["valor"], strict=True)
+            ],
+            "desde": tabela["desde"],
+            "familia": tabela["sistema"].map(
+                lambda s: IDENTIFICADORES_DA_EMPRESA[s][0]
+            ),
+        }
+    )
+
+
+def _itens_da_rede(linhas: pd.DataFrame, emitidos: int) -> list[dict[str, Any]]:
+    itens = [_item("ligacoes", "Ligações na rede", len(linhas), "empresas", None)]
+    contagem = linhas["chave"].value_counts() if not linhas.empty else pd.Series()
+    itens += [
+        _item(r.chave, r.nome, int(contagem[r.chave]), "empresas", None)
+        for r in RELACOES
+        if r.chave in contagem
+    ]
+    if emitidos:
+        itens.append(
+            _item(
+                "valores_mobiliarios",
+                "Valores mobiliários nas carteiras dos fundos",
+                emitidos,
+                "valores mobiliários",
+                None,
+            )
+        )
+    return itens
+
+
+def secao_rede(cnpj: str, rede: RedeDaNoite) -> dict[str, Any] | None:
+    """O que a companhia é na rede: controladas, donas, coligadas, auditor e conglomerado (None: nada).
+
+    Cada relação mostra até `LINHAS_NAS_LISTAS` entidades; a contagem é toda. Os valores mobiliários
+    entram só como contagem.
+    """
+    centro = rede.centros.get(raiz(cnpj) or "")
+    if centro is None or centro not in rede.ligacoes:
+        return None
+    ligacoes = rede.ligacoes[centro]
+    emite = (ligacoes["tipo"] == EMITE) & (ligacoes["de"] == centro)
+    emitidos = int(ligacoes.loc[emite, "para"].nunique())
+    linhas = _linhas_da_rede(centro, ligacoes[ligacoes["tipo"] != EMITE], rede)
+    if linhas.empty and not emitidos:
+        return None
+    identificadores = _tabela_dos_identificadores(rede.identificadores.get(centro))
+    familias = {*linhas["familia"], *identificadores["familia"]}
+    if emitidos:
+        familias.add(FONTES_DA_REDE["cvm-cda"][0])
+    tabelas = {
+        "ligacoes_da_rede": _mostradas(linhas),
+        "identificadores_da_empresa": identificadores.drop(
+            columns="familia", errors="ignore"
+        ),
+    }
+    fontes = sorted({licenca_da_fonte(f) for f in familias})
+    return _secao("rede", _itens_da_rede(linhas, emitidos), tabelas, fontes=fontes)
 
 
 # --- a ficha e o filtro de pessoas ---------------------------------------------------------------

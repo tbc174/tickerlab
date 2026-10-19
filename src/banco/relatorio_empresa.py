@@ -24,7 +24,7 @@ from src.banco.modelo import (
 from src.banco.padroes import padroes_em
 from src.banco.qualidade import achados_de
 from src.demonstracoes import EXERCICIO
-from src.dossie import dossie_da_ficha, ficha_do
+from src.dossie import dossie_da_ficha, ficha_do, ficha_do_molde_a
 from src.relatorio_empresa import QUANTOS_EVENTOS, Entradas
 from src.setores import SEM_GRUPO, grupo_do_setor
 
@@ -103,7 +103,9 @@ def entradas_do_relatorio(
     dados = dados_da_empresa(conexao, cnpj)
     hoje = hoje or datetime.now(FUSO).date()
     corte, padroes = padroes_em(conexao, hoje)
-    ficha = ficha_do(cnpj)  # o plano tranca na montagem (`montar`), não aqui
+    ficha = ficha_do_molde_a(
+        ficha_do(cnpj)
+    )  # o plano tranca na montagem (`montar`), não aqui
     return Entradas(
         dados=dados,
         cnpj=cnpj,
