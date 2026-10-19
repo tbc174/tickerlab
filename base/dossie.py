@@ -305,6 +305,17 @@ SECOES = (
         ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
     ),
     SecaoDaBase(
+        "governanca",
+        "Governança",
+        (
+            "fre_conselho",
+            "fre_comites",
+            "fre_remuneracao",
+            "fre_remuneracao_extremos",
+            "fre_diversidade",
+        ),
+    ),
+    SecaoDaBase(
         "setor_regulado",
         "Setor regulado",
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
@@ -360,6 +371,14 @@ LIMITES = {
         "bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos "
         "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
         "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos."
+    ),
+    "governanca": (
+        "Do Formulário de Referência (FRE) entregue à CVM, na versão mais nova já entregue na data da "
+        "ficha; só contagens e somas, sem nomes. O conselho conta quem está só nele e quem é também "
+        "diretor; independente e eleito por minoritários seguem o cargo que a empresa informa. A "
+        "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
+        "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. "
+        "Diversidade só existe no FRE de 2023 em diante."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -1149,6 +1168,164 @@ def secao_capital_e_acionistas(
         "fundos_janelas": fundos_janelas,
     }
     return _secao("capital_e_acionistas", itens, tabelas)
+
+
+# --- governança ----------------------------------------------------------------------------------
+
+# no FRE o conselheiro que também é diretor vem como "Pertence à Diretoria e ao Conselho de Administração"
+DO_CONSELHO = re.compile(r"conselho de administra", re.IGNORECASE)
+ANOS_DA_GOVERNANCA = 5  # quantos FREs (e exercícios da remuneração) as tabelas mostram
+ITENS_DA_GOVERNANCA = (  # chave do item, coluna de `governanca_por_ano`, nome, unidade
+    ("conselho_membros", "conselho", "Membros do conselho de administração", "pessoas"),
+    ("conselho_independentes", "independentes", "Conselheiros independentes", "pessoas"),
+    ("conselho_eleitos_por_minoritarios", "eleitos_por_minoritarios",
+     "Conselheiros eleitos por minoritários", "pessoas"),
+    ("comites", "comites", "Comitês informados no FRE", "comitês"),
+    ("mulheres_no_conselho", "mulheres_no_conselho", "Mulheres no conselho de administração",
+     "pessoas"),
+)  # fmt: skip
+
+
+def _entregues(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """As linhas dos FREs já entregues até hoje, na versão mais nova de cada referência."""
+    if tabela.empty:
+        return tabela
+    entregues = tabela[pd.to_datetime(tabela["conhecido_em"]) <= hoje]
+    ultima = entregues.groupby("referencia")["versao"].transform("max")
+    return entregues[entregues["versao"] == ultima]
+
+
+def _do_conselho(tabela: pd.DataFrame) -> pd.DataFrame:
+    return tabela[tabela["orgao"].fillna("").astype(str).str.contains(DO_CONSELHO)]
+
+
+def _governanca_por_ano(
+    conselho: pd.DataFrame, comites: pd.DataFrame, diversidade: pd.DataFrame
+) -> pd.DataFrame:
+    """Um FRE por linha (o mais novo primeiro): o tamanho do conselho, os comitês e as mulheres."""
+    if conselho.empty:
+        return pd.DataFrame()
+    por_ano = (
+        _do_conselho(conselho)
+        .groupby("referencia")
+        .agg(
+            entregue_em=("conhecido_em", "max"),
+            conselho=("membros", "sum"),
+            independentes=("independentes", "sum"),
+            eleitos_por_minoritarios=("eleitos_por_minoritarios", "sum"),
+        )
+    )
+    if not comites.empty:
+        por_ano["comites"] = comites.groupby("referencia")["tipo_de_comite"].nunique()
+    if not diversidade.empty:
+        mulheres = (
+            _do_conselho(diversidade).groupby("referencia")["genero_feminino"].sum()
+        )
+        por_ano["mulheres_no_conselho"] = mulheres
+    por_ano = por_ano.sort_index(ascending=False).head(ANOS_DA_GOVERNANCA).reset_index()
+    por_ano.insert(0, "ano", pd.to_datetime(por_ano.pop("referencia")).dt.year)
+    por_ano["entregue_em"] = pd.to_datetime(por_ano["entregue_em"])
+    return por_ano
+
+
+def _itens_da_governanca(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
+    if por_ano.empty:
+        return []
+    mais_novo = por_ano.iloc[0]
+    base = _data(mais_novo["entregue_em"])
+    return [
+        _item(chave, nome, int(mais_novo[coluna]), unidade, base)
+        for chave, coluna, nome, unidade in ITENS_DA_GOVERNANCA
+        if coluna in por_ano.columns and pd.notna(mais_novo[coluna])
+    ]
+
+
+def _comites_do_fre(comites: pd.DataFrame) -> pd.DataFrame:
+    """Os comitês do FRE mais novo, só o tipo e quantos membros."""
+    if comites.empty:
+        return pd.DataFrame()
+    do_fre = comites[comites["referencia"] == comites["referencia"].max()]
+    tabela = do_fre.rename(columns={"tipo_de_comite": "comite"})[["comite", "membros"]]
+    return tabela.sort_values("comite", ignore_index=True)
+
+
+def _por_exercicio(tabela: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada exercício já encerrado como o FRE mais novo entregue até hoje o informa (sem a prevista)."""
+    entregues = _entregues(tabela, hoje)
+    if entregues.empty:
+        return entregues
+    encerrados = entregues[pd.to_datetime(entregues["fim_do_exercicio"]) <= hoje]
+    mais_novo = encerrados.groupby("fim_do_exercicio")["referencia"].transform("max")
+    return encerrados[encerrados["referencia"] == mais_novo]
+
+
+def _remuneracao(
+    remuneracao: pd.DataFrame, extremos: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """O total pago à administração em cada exercício e, no último, por órgão com os extremos."""
+    exercicios = _por_exercicio(remuneracao, hoje)
+    if exercicios.empty:
+        return [], {}
+    totais = (
+        exercicios.groupby("fim_do_exercicio")["total_remuneracao"]
+        .sum()
+        .sort_index(ascending=False)
+    )
+    ultimo = totais.index[0]
+    itens = [
+        _item(
+            "remuneracao_da_administracao",
+            "Remuneração da administração no último exercício",
+            float(totais.iloc[0]),
+            "R$",
+            _data(ultimo),
+        )
+    ]
+    por_exercicio = pd.DataFrame(
+        {"exercicio": pd.to_datetime(totais.index).year, "total": totais.to_numpy()}
+    ).head(ANOS_DA_GOVERNANCA)
+    do_ultimo = exercicios[exercicios["fim_do_exercicio"] == ultimo]
+    por_orgao = do_ultimo[["orgao", "membros_remunerados", "total_remuneracao"]].rename(
+        columns={"total_remuneracao": "total"}
+    )
+    extremos = _por_exercicio(extremos, hoje)
+    if not extremos.empty:
+        do_ano = extremos[extremos["fim_do_exercicio"] == ultimo]
+        por_orgao = por_orgao.merge(
+            do_ano[["orgao", "maior", "media", "menor"]], on="orgao", how="left"
+        )
+    tabelas = {
+        "remuneracao_por_exercicio": por_exercicio,
+        "remuneracao_por_orgao": por_orgao.reset_index(drop=True),
+    }
+    return itens, tabelas
+
+
+def secao_governanca(
+    conselho: pd.DataFrame,
+    comites: pd.DataFrame,
+    remuneracao: pd.DataFrame,
+    extremos: pd.DataFrame,
+    diversidade: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Conselho, comitês, remuneração e diversidade pelo FRE, só contagens e somas (None: nada)."""
+    conselho, comites, diversidade = (
+        _entregues(tabela, hoje) for tabela in (conselho, comites, diversidade)
+    )
+    por_ano = _governanca_por_ano(conselho, comites, diversidade)
+    itens_da_remuneracao, tabelas_da_remuneracao = _remuneracao(
+        remuneracao, extremos, hoje
+    )
+    itens = [*_itens_da_governanca(por_ano), *itens_da_remuneracao]
+    if not itens:
+        return None
+    tabelas = {
+        "governanca_por_ano": por_ano,
+        "comites": _comites_do_fre(comites),
+        **tabelas_da_remuneracao,
+    }
+    return _secao("governanca", itens, tabelas)
 
 
 # --- setor regulado ------------------------------------------------------------------------------
