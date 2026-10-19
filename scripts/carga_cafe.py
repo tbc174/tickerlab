@@ -60,7 +60,10 @@ TABELA_DA_PAM = "/t/1613/"
 FONTE_DO_MAPBIOMAS = "mapbiomas-cafe"
 FONTE_DA_MALHA = "ibge-malha-municipal"
 FONTE_DO_INMET = "inmet-bdmep"
-FONTE_DO_CHIRPS = "chirps-mensal"
+FONTES_DO_CHIRPS = (
+    "chirps-mensal",
+    "chirps-historico",
+)  # recentes + a carga única da normal
 ANO_DO_COMEX = re.compile(r"/ncm/EXP_(\d{4})\.csv$")
 PAIS_DO_COMEX = "/tabelas/PAIS.csv"
 ANO_DO_INMET = re.compile(r"/(\d{4})\.zip$")
@@ -245,10 +248,20 @@ def _origens_do_ano(
     return [{"url": lin.url, "sha256": lin.sha256} for lin in [*do_ano, *malha]]
 
 
+def _sem_repetir(linhas: list[sa.Row]) -> list[sa.Row]:
+    """Uma linha por endereço (a primeira): o mesmo mês não entra duas vezes se as fontes se tocarem."""
+    por_endereco: dict[str, sa.Row] = {}
+    for lin in linhas:
+        por_endereco.setdefault(lin.url, lin)
+    return list(por_endereco.values())
+
+
 def carregar_clima(conexao: sa.Connection, base: Path) -> None:
     """Um Parquet por ano; o ano só é refeito se um original dele (ou a malha) mudou."""
     inmet = originais_mais_recentes(conexao, FONTE_DO_INMET)
-    chirps = originais_mais_recentes(conexao, FONTE_DO_CHIRPS)
+    chirps = _sem_repetir(
+        [lin for f in FONTES_DO_CHIRPS for lin in originais_mais_recentes(conexao, f)]
+    )
     if not inmet and not chirps:
         raise SemOriginalError("nenhum original do INMET nem do CHIRPS no acervo")
     malha = originais_mais_recentes(conexao, FONTE_DA_MALHA) if chirps else []
