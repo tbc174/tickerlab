@@ -73,6 +73,22 @@ def test_site_leva_os_estilos_do_relatorio_e_os_exemplos():
     assert site["exemplos"][0]["rotulo"] == catalogo.rotulo("PETR4.SA").split(" · ")[0]
 
 
+def test_ativos_levam_o_catalogo_inteiro_da_busca_com_o_rotulo_do_python():
+    """A busca do campo Ativo do app novo usa o mesmo catálogo e o mesmo rótulo da versão clássica."""
+    from src import catalogo
+
+    ativos = exp.conteudo()["ativos"]
+    assert [a["simbolo"] for a in ativos] == catalogo.simbolos()
+    petrobras = next(a for a in ativos if a["simbolo"] == "PETR4.SA")
+    assert petrobras == {
+        "simbolo": "PETR4.SA",
+        "codigo": "PETR4",
+        "nome": catalogo.carregar().loc["PETR4.SA", "nome"],
+        "tipo": "Ação",
+        "rotulo": catalogo.rotulo("PETR4.SA"),
+    }
+
+
 def test_planos_levam_os_nomes_para_a_tabela_e_a_cobranca():
     p = exp.conteudo()["planos"]
     assert p["nomes"] == [planos.limites_do(x).nome for x in planos.PLANOS]

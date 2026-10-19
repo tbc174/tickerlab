@@ -222,6 +222,12 @@ def test_resposta_de_erro_com_status_200_conta_como_falha(banco):
     assert coletor.coletar_tudo(banco, HOJE, buscar) is False
 
 
+def test_so_a_pam_municipal_busca_so_a_tabela_1613(banco):
+    pedidos: list[str] = []
+    assert coletor.coletar_tudo(banco, HOJE, _fonte_falsa(pedidos), so="pam-municipal")
+    assert pedidos and all("/t/1613/" in pedido for pedido in pedidos)
+
+
 def test_series_do_ibge_levam_a_licenca_do_ibge_e_podem_sair(banco):
     _coletar(banco, HOJE)
     assert "IBGE" in licenca_da_fonte(LSPA_MG_ARABICA_PRODUCAO)
