@@ -41,9 +41,8 @@ from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
     chaves_publicas,
-    com_token,
+    da_sessao,
     gerar_chave,
-    token,
 )
 
 
@@ -72,8 +71,10 @@ def app(banco, monkeypatch, chave):
 
 
 @pytest.fixture
-def cliente(app, chave):
-    return TestClient(app, headers=com_token(token(chave)))
+def cliente(app, banco):
+    with banco.connect() as conexao:
+        ana = buscar_por_google_sub(conexao, "ana")
+    return TestClient(app, headers=da_sessao(banco, ana))
 
 
 # --- Tarefa 1.1: o limite do plano vira 403 com o motivo "plano" ----------------------------

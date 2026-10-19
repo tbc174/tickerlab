@@ -1,13 +1,13 @@
-"""Quem pode chamar a API de leitura: a conta do TickerLab, pela sessão ou pelo login do Google.
+"""Quem pode chamar a API de leitura: a conta do TickerLab, pela sessão (o cookie).
 
 A interface nova faz o login com o Google no navegador e manda o token (um "ID token", assinado pelo
 Google) uma vez, para `POST /v1/conta`, que abre a sessão de 30 dias num cookie (src/api_v1/sessao.py);
-daí em diante vale o cookie. O token no cabeçalho `Authorization: Bearer ...` ainda vale nas outras
-rotas, para as abas abertas antes da sessão (sai no PR 2 do login). O token é conferido: assinatura com as chaves
-públicas do Google, feito para o TickerLab (`aud`), emitido pelo Google (`iss`), dentro da validade e
-com o e-mail verificado. Depois, a conta precisa já existir (o primeiro login é pelo app) e ter
-aceitado os termos atuais (menos para baixar os próprios dados: LGPD). Por último, o plano da conta precisa abrir a página da rota (o contrato da
-página em src/paginas.py diz qual é; a regra é a mesma do Streamlit, ADR 0062).
+daí em diante vale só o cookie (o Bearer das outras rotas saiu no PR 2 do login). O token do Google é
+conferido: assinatura com as chaves públicas do Google, feito para o TickerLab (`aud`), emitido pelo
+Google (`iss`), dentro da validade e com o e-mail verificado. Depois, a conta precisa ter aceitado os
+termos atuais (menos para baixar os próprios dados: LGPD). Por último, o plano da conta precisa abrir a
+página da rota (o contrato da página em src/paginas.py diz qual é; a regra é a mesma do Streamlit,
+ADR 0062).
 
 A chave liga/desliga fica em `src/api_v1/__init__.py`; aqui ela é conferida de novo a cada pedido.
 """
@@ -33,12 +33,12 @@ from src.api_v1.sessao import (
 from src.autenticacao import IdentidadeDoGoogle, LoginInvalidoError, ler_identidade
 from src.banco.conexao import obter_engine
 from src.banco.sessoes import conta_da_sessao
-from src.banco.usuarios import Usuario, buscar_por_identidade
+from src.banco.usuarios import Usuario
 from src.conformidade import precisa_aceitar_os_termos
 from src.paginas import PREFIXO_DA_API, motivo_da_pagina, pagina_da_rota
 
 # o motivo de um 401 ou 403, para a tela mostrar o caminho certo (entrar de novo, entrar pelo app
-# uma vez ou aceitar os termos): "sem-token", "token-invalido", "conta-nova", "sessao" (a do cookie
+# uma vez ou aceitar os termos): "sem-token", "token-invalido", "sessao" (a do cookie
 # acabou), "termos", "plano" ou "pedido-de-fora" (POST com o cookie que não saiu do próprio app)
 CABECALHO_DO_MOTIVO = "X-TickerLab-Motivo"
 
@@ -102,7 +102,7 @@ def verificar_token(
 
 
 class LimiteDePedidos:
-    """No máximo `por_minuto` pedidos por conta numa janela de 60 segundos.
+    """No máximo `por_minuto` pedidos por chave numa janela (60 segundos, se não disserem outra).
 
     Fica na memória do processo: com um processo só da API (como hoje), vale para todos os pedidos.
     """
@@ -111,7 +111,9 @@ class LimiteDePedidos:
         self,
         por_minuto: int = PEDIDOS_POR_MINUTO,
         maximo_de_chaves: int = MAXIMO_DE_CHAVES,
+        janela: int = 60,
     ) -> None:
+        self.janela = janela  # segundos
         self.por_minuto = por_minuto
         self.maximo_de_chaves = maximo_de_chaves
         self._pedidos: dict[str, deque[float]] = {}
@@ -120,7 +122,9 @@ class LimiteDePedidos:
     def _esquecer_quem_parou(self, momento: float) -> None:
         """Tira as chaves sem pedido no último minuto (com chave por IP, a lista não para de crescer)."""
         paradas = [
-            c for c, f in self._pedidos.items() if not f or f[-1] <= momento - 60
+            c
+            for c, f in self._pedidos.items()
+            if not f or f[-1] <= momento - self.janela
         ]
         for chave in paradas:
             del self._pedidos[chave]
@@ -137,7 +141,7 @@ class LimiteDePedidos:
             ):
                 self._esquecer_quem_parou(momento)
             fila = self._pedidos.setdefault(conta, deque())
-            while fila and fila[0] <= momento - 60:
+            while fila and fila[0] <= momento - self.janela:
                 fila.popleft()
             if len(fila) >= self.por_minuto:
                 return False
@@ -212,34 +216,15 @@ def _conta_pelo_cookie(token: str) -> Usuario | None:
         return conta_da_sessao(conexao, token)
 
 
-def _conta_pelo_google(request: Request, authorization: str) -> Usuario:
-    # as chaves só são baixadas quando há um token do Google: quem usa o cookie não depende do
-    # Google estar no ar. O `dependency_overrides` é o caminho dos testes (sai com o Bearer, no PR 2)
-    baixar_chaves = request.app.dependency_overrides.get(
-        chaves_do_google, chaves_do_google
-    )
-    identidade = identidade_logada(baixar_chaves(), authorization)
-    with obter_engine().connect() as conexao:
-        usuario = buscar_por_identidade(conexao, "google", identidade.sub)
-    if usuario is None:
-        raise _recusa(401, "Conta não encontrada: entre de novo.", "conta-nova")
-    return usuario
-
-
-def conta_sem_o_aceite(
-    request: Request,
-    authorization: Annotated[str | None, Header()] = None,
-) -> Usuario:
+def conta_sem_o_aceite(request: Request) -> Usuario:
     """A conta de quem chamou, mesmo sem os termos atuais aceitos (só a rota do aceite usa).
 
-    Vale a sessão do cookie; sem ela, o token do Google no cabeçalho (a transição das abas abertas
-    antes da sessão; sai no PR 2 do login). Sem nenhum dos dois, 401.
+    Vale só a sessão do cookie. O token do Google no cabeçalho `Authorization` só serve para abrir a
+    sessão (`POST /v1/conta`); nas outras rotas ele é ignorado. Sem sessão, 401.
     """
     recusar_pedido_de_fora(request)
     token_da_sessao = token_do_cookie(request)
     usuario = _conta_pelo_cookie(token_da_sessao) if token_da_sessao else None
-    if usuario is None and authorization:
-        usuario = _conta_pelo_google(request, authorization)
     if usuario is None and token_da_sessao:
         raise _recusa(401, "A sessão acabou: entre de novo.", "sessao")
     if usuario is None:

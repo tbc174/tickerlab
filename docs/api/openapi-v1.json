@@ -1552,6 +1552,26 @@
         "title": "ConfiguracaoV1",
         "type": "object"
       },
+      "ConfirmacaoV1": {
+        "properties": {
+          "codigo": {
+            "maxLength": 20,
+            "title": "Codigo",
+            "type": "string"
+          },
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "codigo"
+        ],
+        "title": "ConfirmacaoV1",
+        "type": "object"
+      },
       "ContaV1": {
         "properties": {
           "administrador": {
@@ -1666,6 +1686,19 @@
           "fracao"
         ],
         "title": "DestinoDoCafeV1",
+        "type": "object"
+      },
+      "EncerradasV1": {
+        "properties": {
+          "encerradas": {
+            "title": "Encerradas",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "encerradas"
+        ],
+        "title": "EncerradasV1",
         "type": "object"
       },
       "EnderecoDoStripeV1": {
@@ -3857,6 +3890,20 @@
         "title": "PedidoDeBuscaPorCnpjV1",
         "type": "object"
       },
+      "PedidoDeCodigoV1": {
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PedidoDeCodigoV1",
+        "type": "object"
+      },
       "PedidoDeRevogarV1": {
         "properties": {
           "id": {
@@ -4761,6 +4808,19 @@
         "title": "RelatorioDaEmpresaV1",
         "type": "object"
       },
+      "RespostaDoPedidoV1": {
+        "properties": {
+          "mensagem": {
+            "title": "Mensagem",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mensagem"
+        ],
+        "title": "RespostaDoPedidoV1",
+        "type": "object"
+      },
       "RetornoMensalDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -5351,24 +5411,6 @@
       "post": {
         "description": "Grava o aceite dos termos atuais para a conta do token (como o botão do Streamlit).",
         "operationId": "registrar_o_aceite_v1_aceite_dos_termos_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5408,24 +5450,6 @@
       "post": {
         "description": "Apaga uma simulação da própria conta; a de outra conta (ou já apagada) dá 404, sem dizer\nqual é o caso.",
         "operationId": "apagar_simulacao_da_conta_v1_apagar_simulacao_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5465,24 +5489,6 @@
       "post": {
         "description": "O backtest simples (sem proteções, Monte Carlo nem grade) e, embaixo, a ficha \"Foi sorte?\".\n\nComo no Streamlit, todo backtest é uma tentativa: a configuração fica contada na conta (a mesma\nconfiguração não conta duas vezes) e entra na checagem do acaso.",
         "operationId": "backtest_v1_backtest_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5522,24 +5528,6 @@
       "post": {
         "description": "O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.\n\nÉ POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log\nde acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.",
         "operationId": "busca_por_cnpj_v1_busca_por_cnpj_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5592,22 +5580,6 @@
               ],
               "title": "Tipo",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -5697,22 +5669,6 @@
                 }
               ],
               "title": "Taxa"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -5823,33 +5779,26 @@
         "summary": "Entrar"
       }
     },
-    "/v1/eu": {
-      "get": {
-        "operationId": "eu_v1_eu_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
+    "/v1/entrada/codigo": {
+      "post": {
+        "description": "Manda um código de entrada para o e-mail (ou finge que mandou: a resposta é sempre igual).",
+        "operationId": "pedir_o_codigo_v1_entrada_codigo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeCodigoV1"
+              }
             }
-          }
-        ],
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EuV1"
+                  "$ref": "#/components/schemas/RespostaDoPedidoV1"
                 }
               }
             },
@@ -5866,17 +5815,17 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Eu"
+        "summary": "Pedir O Codigo"
       }
     },
-    "/v1/juros-e-inflacao": {
-      "get": {
-        "description": "Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas.",
-        "operationId": "juros_e_inflacao_v1_juros_e_inflacao_get",
+    "/v1/entrada/confirmar": {
+      "post": {
+        "description": "Confere o código e abre a sessão. Código errado, vencido, usado ou nunca pedido: 401 igual.",
+        "operationId": "confirmar_o_codigo_v1_entrada_confirmar_post",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
+            "in": "cookie",
+            "name": "tl_origem",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5887,16 +5836,26 @@
                   "type": "null"
                 }
               ],
-              "title": "Authorization"
+              "title": "Tl Origem"
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmacaoV1"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JurosEInflacaoV1"
+                  "$ref": "#/components/schemas/ContaV1"
                 }
               }
             },
@@ -5911,6 +5870,43 @@
               }
             },
             "description": "Validation Error"
+          }
+        },
+        "summary": "Confirmar O Codigo"
+      }
+    },
+    "/v1/eu": {
+      "get": {
+        "operationId": "eu_v1_eu_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EuV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Eu"
+      }
+    },
+    "/v1/juros-e-inflacao": {
+      "get": {
+        "description": "Selic, CDI, IPCA, juro real e o Focus de hoje; 503 se as séries não foram coletadas.",
+        "operationId": "juros_e_inflacao_v1_juros_e_inflacao_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JurosEInflacaoV1"
+                }
+              }
+            },
+            "description": "Successful Response"
           }
         },
         "summary": "Juros E Inflacao"
@@ -5959,22 +5955,6 @@
               "title": "Materialidade Minima",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -6006,24 +5986,6 @@
       "get": {
         "description": "Meus dados › Links compartilhados: só os da conta do token.",
         "operationId": "links_compartilhados_v1_links_compartilhados_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6034,16 +5996,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Links Compartilhados"
@@ -6053,24 +6005,6 @@
       "get": {
         "description": "Só leitura do banco: nenhuma chamada ao Stripe (assinar continua no app atual).",
         "operationId": "meu_plano_v1_meu_plano_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6081,16 +6015,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Meu Plano"
@@ -6100,24 +6024,6 @@
       "get": {
         "description": "Tudo o que o TickerLab guarda sobre a conta (LGPD), a mesma exportação do Streamlit.",
         "operationId": "meus_dados_v1_meus_dados_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6126,16 +6032,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Meus Dados"
@@ -6145,24 +6041,6 @@
       "post": {
         "description": "A página de pagamento do Stripe para assinar o Pro (só modo de teste; só admins, ADR 0029).\n\nA rota confere tudo de novo, mesmo com o botão escondido: chamar direto não fura a trava.",
         "operationId": "pagamento_da_assinatura_v1_pagamento_da_assinatura_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6173,16 +6051,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Pagamento Da Assinatura"
@@ -6226,22 +6094,6 @@
               "description": "A região do clima e do calendário; vazia, a de maior área do tipo.",
               "title": "Regiao"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -6273,24 +6125,6 @@
       "post": {
         "description": "O portal do Stripe para trocar o cartão, ver faturas ou cancelar a própria assinatura.",
         "operationId": "portal_da_assinatura_v1_portal_da_assinatura_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6301,16 +6135,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Portal Da Assinatura"
@@ -6320,24 +6144,6 @@
       "get": {
         "description": "Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta.",
         "operationId": "precos_de_referencia_v1_precos_de_referencia_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6348,16 +6154,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Precos De Referencia"
@@ -6385,22 +6181,6 @@
               ],
               "description": "O início da janela que a aba já mostrava (ISO, com fuso).",
               "title": "Desde"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -6443,22 +6223,6 @@
               "pattern": "^[A-Za-z0-9^][A-Za-z0-9.^=\\-]{0,19}$",
               "title": "Ticker",
               "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -6535,22 +6299,6 @@
               ],
               "title": "Taxa"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -6582,24 +6330,6 @@
       "post": {
         "description": "Revoga um link da própria conta; o de outra conta (ou já revogado) dá 404, sem dizer qual.",
         "operationId": "revogar_link_v1_revogar_link_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6695,22 +6425,6 @@
               "title": "Janela",
               "type": "integer"
             }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -6750,28 +6464,29 @@
         "summary": "Sair"
       }
     },
+    "/v1/sair-de-todos": {
+      "post": {
+        "description": "Encerra as sessões da conta em todos os aparelhos (a pessoa perdeu um celular, por exemplo).\n\nVale mesmo sem os termos atuais aceitos: sair não depende de aceitar nada.",
+        "operationId": "sair_de_todos_v1_sair_de_todos_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncerradasV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sair De Todos"
+      }
+    },
     "/v1/salvar-simulacao": {
       "post": {
         "description": "Guarda o backtest da tela como o Streamlit guarda (telas/dados_da_conta.py): o retrato\ndas escolhas, os números formatados, até quando iam os dados e a ficha \"Foi sorte?\" (o\npedido e o veredito), que o Pulse recalcula depois.\n\nO backtest roda de novo aqui (é barato) em vez de confiar nos números que a tela mandar; só\no veredito vem da tela, porque a ficha custa caro e ele serve só de \"antes\" na comparação do\nPulse. Além do limite do plano: 403 com o motivo \"plano\" (src/api.py).",
         "operationId": "salvar_simulacao_da_tela_v1_salvar_simulacao_post",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6811,24 +6526,6 @@
       "get": {
         "description": "Minhas simulações: as guardadas na conta do token (as do app atual também), a mais nova\nprimeiro, com quantas o plano ainda deixa.",
         "operationId": "minhas_simulacoes_v1_simulacoes_get",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "content": {
@@ -6839,16 +6536,6 @@
               }
             },
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
         "summary": "Minhas Simulacoes"
@@ -6913,22 +6600,6 @@
               "minimum": 90,
               "title": "Confianca Do Var",
               "type": "integer"
-            }
-          },
-          {
-            "in": "header",
-            "name": "authorization",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],

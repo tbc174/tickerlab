@@ -34,3 +34,20 @@ def token(chave: RSAKey, **mudancas) -> str:
 
 def com_token(valor: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {valor}"}
+
+
+def da_sessao(banco, usuario) -> dict[str, str]:
+    """Os cabeçalhos do app novo logado como `usuario`: o cookie da sessão e a prova de origem.
+
+    O token do Google só abre a sessão (`POST /v1/conta`); nas outras rotas vale o cookie, e todo
+    pedido que muda algo leva o cabeçalho do app e a origem do próprio site (CSRF)."""
+    from src.api_v1.sessao import NOME_DO_COOKIE
+    from src.banco import sessoes
+
+    with banco.begin() as conexao:
+        valor = sessoes.abrir(conexao, usuario.id, "google")
+    return {
+        "Cookie": f"{NOME_DO_COOKIE}={valor}",
+        "X-TickerLab-Pedido": "1",
+        "Origin": "http://testserver",
+    }

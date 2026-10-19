@@ -45,10 +45,9 @@ def token_do_cookie(pedido: Request) -> str | None:
 
 
 def _endereco_publico(pedido: Request) -> str:
-    # atrás do proxy, o X-Forwarded-Host leva o endereço que o navegador usou (um site de fora não
-    # consegue pôr esse cabeçalho num pedido do navegador da pessoa)
-    encaminhado = pedido.headers.get("x-forwarded-host", "").split(",")[0].strip()
-    return (encaminhado or pedido.headers.get("host", "")).lower()
+    # só o Host: a API não fica atrás do nginx (o túnel da Cloudflare entrega o endereço que o navegador
+    # usou). O X-Forwarded-Host não vale: quem chega direto à API poderia mandar o que quisesse nele
+    return pedido.headers.get("host", "").lower()
 
 
 def pedido_do_proprio_site(pedido: Request) -> bool:
