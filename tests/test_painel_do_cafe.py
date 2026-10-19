@@ -303,10 +303,14 @@ def test_sem_as_tabelas_da_base_cada_bloco_diz_o_motivo(banco):
     )  # o calendário não depende de dado coletado
 
 
-def test_acervo_desligado_vira_motivo_e_nao_erro(monkeypatch):
+def test_acervo_desligado_vira_motivo_e_nao_erro(tmp_path, monkeypatch):
     from src import acervo as acervo_de_arquivos
+    from src.commodities.cafe import pacote_do_painel
 
     monkeypatch.setattr(acervo_de_arquivos, "pasta_do_acervo", lambda: None)
+    monkeypatch.setenv(
+        pacote_do_painel.VARIAVEL_DO_ARQUIVO, str(tmp_path / "sem_pacote.json")
+    )
     tabelas = painel.tabelas_pela_porta()
     assert not tabelas.tabelas
     assert "ainda não chega a este servidor" in tabelas.motivo("conab")
