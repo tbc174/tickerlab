@@ -40,6 +40,17 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANP",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
       "modulos": [
         "mercado_e_empresas"
@@ -51,13 +62,13 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
       "modulos": [
         "mercado_e_empresas"
       ],
-      "orgao": "ANP",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
+      "orgao": "MDIC",
+      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
+      "situacao": "em consulta",
       "tabelas": 2
     },
     {
@@ -89,6 +100,17 @@
         "mercado_e_empresas"
       ],
       "orgao": "ANS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ANTT",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -182,17 +204,6 @@
       "tabelas": 1
     },
     {
-      "historico_desde": "2026-10-18",
-      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "MDIC",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
-      "tabelas": 1
-    },
-    {
       "historico_desde": "1985-12-31",
       "licenca": "MapBiomas Coleção 11: CC BY 4.0 (citar Souza et al. 2020)",
       "modulos": [
@@ -263,7 +274,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 53
+      "tabelas": 56
     },
     {
       "chave": "credito_e_fidc",
@@ -551,6 +562,36 @@
       "orgao": "ONS",
       "situacao": "licenciada",
       "tabela": "ons_capacidade"
+    },
+    {
+      "atraso": null,
+      "frase": "Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANP",
+      "situacao": "licenciada",
+      "tabela": "anp_concessionarios"
+    },
+    {
+      "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido",
+      "frase": "Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ANTT",
+      "situacao": "licenciada",
+      "tabela": "antt_siade"
+    },
+    {
+      "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC",
+      "frase": "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira).",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "MDIC",
+      "situacao": "em consulta",
+      "tabela": "comex_preco_medio"
     },
     {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
@@ -1124,9 +1165,9 @@
     }
   ],
   "totais": {
-    "fontes": 23,
+    "fontes": 24,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 83
+    "tabelas": 86
   }
 }

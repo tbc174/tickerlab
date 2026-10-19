@@ -37,8 +37,11 @@ from base.setoriais import (
     anatel,
     aneel,
     anp,
+    anp_concessionarios,
     ans,
+    antt_siade,
     ccee,
+    comex_preco_medio,
     ligacao,
     ons,
     ons_capacidade,
@@ -92,6 +95,9 @@ class Revisada(NamedTuple):
     por_ano: bool = (
         False  # um arquivo com muitos anos: um Parquet por ano da competência
     )
+    foto: bool = (
+        False  # sem data própria: o 1º valor vale desde o dia da coleta que o trouxe
+    )
 
 
 def _ano_do_samp(url: str) -> str | None:
@@ -137,6 +143,19 @@ REVISADAS = {
         "ons_capacidade", list(ons_capacidade.CHAVE), ons_capacidade.CARIMBOS, ons_capacidade.destino,
         lambda c, _: ons_capacidade.ler(c), ons_capacidade.FONTE, "proprietario",
         lambda t: t["potencia_efetiva_mw"],
+    ),
+    anp_concessionarios.FONTE: Revisada(
+        "anp_concessionarios", list(anp_concessionarios.CHAVE), anp_concessionarios.CARIMBOS,
+        anp_concessionarios.destino, lambda c, _: anp_concessionarios.ler(c),
+        anp_concessionarios.FONTE, "cnpj", lambda t: t["participacao_pct"], foto=True,
+    ),
+    antt_siade.FONTE: Revisada(
+        "antt_siade", list(antt_siade.CHAVE), antt_siade.CARIMBOS, antt_siade.destino,
+        lambda c, _: antt_siade.ler(c), antt_siade.FONTE, "ferrovia", lambda t: t["tku"],
+    ),
+    comex_preco_medio.FONTE: Revisada(
+        "comex_preco_medio", list(comex_preco_medio.CHAVE), comex_preco_medio.CARIMBOS,
+        comex_preco_medio.destino, comex_preco_medio.ler, "", "", lambda t: t["kg_liquido"],
     ),
 }  # fmt: skip
 
@@ -226,13 +245,13 @@ def _coletas(
     origens = [{"url": url, "sha256": sha256} for _, sha256, _ in guardadas]
 
     def montar() -> pd.DataFrame:
-        coletas = [
-            (
-                pd.Timestamp(dia).tz_localize(None).normalize(),
-                revisada.ler(conteudo, url),
-            )
-            for dia, _, conteudo in guardadas
-        ]
+        coletas = []
+        for dia, _, conteudo in guardadas:
+            coleta = pd.Timestamp(dia).tz_localize(None).normalize()
+            tabela = revisada.ler(conteudo, url)
+            if revisada.foto:
+                tabela["disponivel_em"] = coleta
+            coletas.append((coleta, tabela))
         return revisoes.juntar_coletas(coletas, revisada.chave, revisada.carimbos)
 
     return origens, montar
@@ -245,7 +264,7 @@ def _buracos_da_revisada(
     empresa_serie: pd.DataFrame | None,
 ) -> pd.DataFrame | None:
     """Os buracos de um arquivo, sobre o valor mais novo de cada chave (a revisão não soma duas vezes)."""
-    if empresa_serie is None or tabela.empty:
+    if empresa_serie is None or tabela.empty or not revisada.coluna_da_ligacao:
         return None
     atual = revisoes.como_era_em(tabela, pd.Timestamp.max, revisada.chave)
     atual = atual.assign(volume=revisada.volume(atual))

@@ -1508,6 +1508,133 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "anp_concessionarios": Tabela(
+        descricao=(
+            "Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e "
+            "por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente "
+            "(terra ou mar), o CNPJ do sócio, a participação em pontos percentuais e a marca de quem "
+            "opera. É a foto do dia da coleta, sem data própria: o primeiro valor vale desde a coleta que "
+            "o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia "
+            "em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte "
+            "(o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes"
+        ),
+        fonte="ANP: relação de concessionários (dados abertos)",
+        familia_da_fonte="anp",
+        frequencia="Mensal (a ANP regera o arquivo inteiro)",
+        atraso="Sem data própria: vale desde o dia da coleta do arquivista",
+        onde="Parquet em `<acervo>/base/setoriais/anp_concessionarios/concessionarios.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `concessionarios.json` guarda o endereço e o SHA-256 de cada baixada do arquivo e a versão do código."
+        ),
+        colunas={
+            "bid": ("Código da rodada de licitação (BID) do contrato", TEXTO),
+            "numero_do_contrato": (
+                "Número do contrato na ANP (a chave, com o CNPJ)",
+                TEXTO,
+            ),
+            "fase": ("Exploração, Avaliação ou Produção", TEXTO),
+            "nome_fantasia": ("Nome do campo ou bloco", TEXTO),
+            "bacia": ("Bacia sedimentar", TEXTO),
+            "cnpj": ("CNPJ do sócio, com 14 dígitos (liga à empresa)", TEXTO),
+            "empresa": ("Nome do sócio, sem o prefixo de operador", TEXTO),
+            "operador": ("Verdadeiro na linha de quem opera o contrato", SIM_OU_NAO),
+            "participacao_pct": (
+                "Participação do sócio no contrato, em pontos percentuais (0 a 100)",
+                NUMERO_DECIMAL,
+            ),
+            "ambiente": ("Terra ou Mar", TEXTO),
+            "disponivel_em": (
+                "Desde quando o número era público (o dia da coleta que o trouxe)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a mudança vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
+    "antt_siade": Tabela(
+        descricao=(
+            "Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) "
+            "por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante. A "
+            "ferrovia vem como sigla (EFC, MRS, RMS...) e liga à empresa pela B13, na chave exata. A ANTT "
+            "pode revisar um mês passado: a revisão vira linha nova, desde o dia em que foi vista"
+        ),
+        fonte="ANTT: SIADE, produção por origem e destino (dados abertos)",
+        familia_da_fonte="antt",
+        frequencia="Mensal (um CSV por ano)",
+        atraso=(
+            "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só "
+            "uma captura, 14/10/2026); pode atrasar um número, nunca adiantar"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/antt_siade/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do CSV do ano e a versão do código."
+        ),
+        colunas={
+            "competencia": ("Mês (último dia)", DATA),
+            "ferrovia": ("Sigla da ferrovia na ANTT (liga à empresa pela B13)", TEXTO),
+            "mercadoria": ("Mercadoria, como a ANTT escreve", TEXTO),
+            "estacao_de_origem": ("Estação de origem", TEXTO),
+            "uf_de_origem": ("UF da estação de origem", TEXTO),
+            "estacao_de_destino": ("Estação de destino", TEXTO),
+            "uf_de_destino": ("UF da estação de destino", TEXTO),
+            "toneladas_uteis": ("Toneladas úteis transportadas (TU)", NUMERO_DECIMAL),
+            "tku": ("Tonelada-quilômetro útil (TKU)", NUMERO_DECIMAL),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
+    "comex_preco_medio": Tabela(
+        descricao=(
+            "Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo "
+            "líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto "
+            "de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, "
+            "países e UFs de cada linha. Quilo zero deixa o preço vazio. **Uso interno até a licença do "
+            "MDIC**: fora da exportação e do app público. O MDIC revisa meses passados: a revisão vira linha "
+            "nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte"
+        ),
+        fonte="MDIC: Comex Stat, exportação e importação por NCM (EXP_AAAA.csv e IMP_AAAA.csv)",
+        familia_da_fonte="comexstat",
+        frequencia="Mensal (um CSV por ano e por fluxo)",
+        atraso=(
+            "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês "
+            "seguinte); pode atrasar um número, nunca adiantar"
+        ),
+        onde="Parquet por fluxo e ano em `<acervo>/base/setoriais/comex_preco_medio/<fluxo>_<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código."
+        ),
+        colunas={
+            "fluxo": ("`exportacao` ou `importacao`", TEXTO),
+            "competencia": ("Mês (último dia)", DATA),
+            "ncm": ("NCM (8 dígitos)", TEXTO),
+            "urf": (
+                "Código da URF (unidade da Receita: porto, aeroporto ou posto)",
+                TEXTO,
+            ),
+            "vl_fob_usd": ("Valor FOB somado, em US$", NUMERO_DECIMAL),
+            "kg_liquido": ("Quilo líquido somado", NUMERO_DECIMAL),
+            "preco_usd_por_kg": (
+                "Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero)",
+                NUMERO_DECIMAL,
+            ),
+            "disponivel_em": (
+                "Desde quando o número era público (fim do mês + 60 dias)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
     "aneel_samp": Tabela(
         descricao=(
             "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de "
@@ -5149,6 +5276,9 @@ _CONTRATO = {
     "ccee_pld": _contrato(modulo=_ME, chaves=("granularidade", "submercado", "referencia", "ordem"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ons_restricao": _contrato(modulo=_ME, chaves=("instante", "tipo", "id_ons", "visto_em"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ons_capacidade": _contrato(modulo=_ME, chaves=("cod_equipamento", "visto_em"), datas={"aconteceu_em": "entrada_em_operacao", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "anp_concessionarios": _contrato(modulo=_ME, chaves=("numero_do_contrato", "cnpj", "visto_em"), datas={"aconteceu_em": "disponivel_em", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "antt_siade": _contrato(modulo=_ME, chaves=("competencia", "ferrovia", "mercadoria", "estacao_de_origem", "estacao_de_destino", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "comex_preco_medio": _contrato(modulo=_ME, chaves=("fluxo", "competencia", "ncm", "urf", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),

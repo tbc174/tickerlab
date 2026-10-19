@@ -2065,6 +2065,211 @@
       "frequencia": "Mensal (o ONS regera o cadastro inteiro)",
       "atraso": "A regra usa a data de entrada em operação (ou em teste, quando falta)"
     },
+    "anp_concessionarios": {
+      "tabela": "anp_concessionarios",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "bid": {
+          "descricao": "Código da rodada de licitação (BID) do contrato",
+          "unidade": "texto"
+        },
+        "numero_do_contrato": {
+          "descricao": "Número do contrato na ANP (a chave, com o CNPJ)",
+          "unidade": "texto"
+        },
+        "fase": {
+          "descricao": "Exploração, Avaliação ou Produção",
+          "unidade": "texto"
+        },
+        "nome_fantasia": {
+          "descricao": "Nome do campo ou bloco",
+          "unidade": "texto"
+        },
+        "bacia": {
+          "descricao": "Bacia sedimentar",
+          "unidade": "texto"
+        },
+        "cnpj": {
+          "descricao": "CNPJ do sócio, com 14 dígitos (liga à empresa)",
+          "unidade": "texto"
+        },
+        "empresa": {
+          "descricao": "Nome do sócio, sem o prefixo de operador",
+          "unidade": "texto"
+        },
+        "operador": {
+          "descricao": "Verdadeiro na linha de quem opera o contrato",
+          "unidade": "verdadeiro ou falso"
+        },
+        "participacao_pct": {
+          "descricao": "Participação do sócio no contrato, em pontos percentuais (0 a 100)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "ambiente": {
+          "descricao": "Terra ou Mar",
+          "unidade": "texto"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (o dia da coleta que o trouxe)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a mudança vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "numero_do_contrato",
+        "cnpj",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "disponivel_em",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (a ANP regera o arquivo inteiro)",
+      "atraso": "Sem data própria: vale desde o dia da coleta do arquivista"
+    },
+    "antt_siade": {
+      "tabela": "antt_siade",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ferrovia": {
+          "descricao": "Sigla da ferrovia na ANTT (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "mercadoria": {
+          "descricao": "Mercadoria, como a ANTT escreve",
+          "unidade": "texto"
+        },
+        "estacao_de_origem": {
+          "descricao": "Estação de origem",
+          "unidade": "texto"
+        },
+        "uf_de_origem": {
+          "descricao": "UF da estação de origem",
+          "unidade": "texto"
+        },
+        "estacao_de_destino": {
+          "descricao": "Estação de destino",
+          "unidade": "texto"
+        },
+        "uf_de_destino": {
+          "descricao": "UF da estação de destino",
+          "unidade": "texto"
+        },
+        "toneladas_uteis": {
+          "descricao": "Toneladas úteis transportadas (TU)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "tku": {
+          "descricao": "Tonelada-quilômetro útil (TKU)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "competencia",
+        "ferrovia",
+        "mercadoria",
+        "estacao_de_origem",
+        "estacao_de_destino",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY (dados abertos da ANTT; citar a ANTT)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (um CSV por ano)",
+      "atraso": "Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só uma captura, 14/10/2026); pode atrasar um número, nunca adiantar"
+    },
+    "comex_preco_medio": {
+      "tabela": "comex_preco_medio",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "fluxo": {
+          "descricao": "`exportacao` ou `importacao`",
+          "unidade": "texto"
+        },
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ncm": {
+          "descricao": "NCM (8 dígitos)",
+          "unidade": "texto"
+        },
+        "urf": {
+          "descricao": "Código da URF (unidade da Receita: porto, aeroporto ou posto)",
+          "unidade": "texto"
+        },
+        "vl_fob_usd": {
+          "descricao": "Valor FOB somado, em US$",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "kg_liquido": {
+          "descricao": "Quilo líquido somado",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "preco_usd_por_kg": {
+          "descricao": "Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (fim do mês + 60 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "fluxo",
+        "competencia",
+        "ncm",
+        "urf",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "competencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
+      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "pessoa": false,
+      "frequencia": "Mensal (um CSV por ano e por fluxo)",
+      "atraso": "Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar"
+    },
     "aneel_samp": {
       "tabela": "aneel_samp",
       "modulo": "mercado_e_empresas",

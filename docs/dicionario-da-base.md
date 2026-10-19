@@ -887,6 +887,98 @@ Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (
 | `disponivel_em` | Desde quando a unidade existe para quem pergunta (entrada em operação) | data (dia) |
 | `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
 
+## `anp_concessionarios`
+
+Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar), o CNPJ do sócio, a participação em pontos percentuais e a marca de quem opera. É a foto do dia da coleta, sem data própria: o primeiro valor vale desde a coleta que o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte (o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes
+
+- **Fonte:** ANP: relação de concessionários (dados abertos)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a ANP regera o arquivo inteiro)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `numero_do_contrato`, `cnpj`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/anp_concessionarios/concessionarios.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `concessionarios.json` guarda o endereço e o SHA-256 de cada baixada do arquivo e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `bid` | Código da rodada de licitação (BID) do contrato | texto |
+| `numero_do_contrato` | Número do contrato na ANP (a chave, com o CNPJ) | texto |
+| `fase` | Exploração, Avaliação ou Produção | texto |
+| `nome_fantasia` | Nome do campo ou bloco | texto |
+| `bacia` | Bacia sedimentar | texto |
+| `cnpj` | CNPJ do sócio, com 14 dígitos (liga à empresa) | texto |
+| `empresa` | Nome do sócio, sem o prefixo de operador | texto |
+| `operador` | Verdadeiro na linha de quem opera o contrato | verdadeiro ou falso |
+| `participacao_pct` | Participação do sócio no contrato, em pontos percentuais (0 a 100) | número com decimais, na unidade da fonte |
+| `ambiente` | Terra ou Mar | texto |
+| `disponivel_em` | Desde quando o número era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a mudança vale desde aí) | data (dia) |
+
+## `antt_siade`
+
+Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante. A ferrovia vem como sigla (EFC, MRS, RMS...) e liga à empresa pela B13, na chave exata. A ANTT pode revisar um mês passado: a revisão vira linha nova, desde o dia em que foi vista
+
+- **Fonte:** ANTT: SIADE, produção por origem e destino (dados abertos)
+- **Licença:** CC BY (dados abertos da ANTT; citar a ANTT)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (um CSV por ano)
+- **Atraso de divulgação:** Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só uma captura, 14/10/2026); pode atrasar um número, nunca adiantar
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `ferrovia`, `mercadoria`, `estacao_de_origem`, `estacao_de_destino`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/antt_siade/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do CSV do ano e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `ferrovia` | Sigla da ferrovia na ANTT (liga à empresa pela B13) | texto |
+| `mercadoria` | Mercadoria, como a ANTT escreve | texto |
+| `estacao_de_origem` | Estação de origem | texto |
+| `uf_de_origem` | UF da estação de origem | texto |
+| `estacao_de_destino` | Estação de destino | texto |
+| `uf_de_destino` | UF da estação de destino | texto |
+| `toneladas_uteis` | Toneladas úteis transportadas (TU) | número com decimais, na unidade da fonte |
+| `tku` | Tonelada-quilômetro útil (TKU) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `comex_preco_medio`
+
+Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, países e UFs de cada linha. Quilo zero deixa o preço vazio. **Uso interno até a licença do MDIC**: fora da exportação e do app público. O MDIC revisa meses passados: a revisão vira linha nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte
+
+- **Fonte:** MDIC: Comex Stat, exportação e importação por NCM (EXP_AAAA.csv e IMP_AAAA.csv)
+- **Licença:** Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (um CSV por ano e por fluxo)
+- **Atraso de divulgação:** Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `fluxo`, `competencia`, `ncm`, `urf`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por fluxo e ano em `<acervo>/base/setoriais/comex_preco_medio/<fluxo>_<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `fluxo` | `exportacao` ou `importacao` | texto |
+| `competencia` | Mês (último dia) | data (dia) |
+| `ncm` | NCM (8 dígitos) | texto |
+| `urf` | Código da URF (unidade da Receita: porto, aeroporto ou posto) | texto |
+| `vl_fob_usd` | Valor FOB somado, em US$ | número com decimais, na unidade da fonte |
+| `kg_liquido` | Quilo líquido somado | número com decimais, na unidade da fonte |
+| `preco_usd_por_kg` | Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
 ## `aneel_samp`
 
 Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece

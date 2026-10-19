@@ -17,8 +17,11 @@ from base.setoriais import (
     anatel,
     aneel,
     anp,
+    anp_concessionarios,
     ans,
+    antt_siade,
     ccee,
+    comex_preco_medio,
     ons,
     ons_capacidade,
     ons_restricao,
@@ -68,6 +71,25 @@ ENDERECOS = {
         ("https://ons-aws-prod-opendata.s3.amazonaws.com/capacidade_geracao/CAPACIDADE_GERACAO.parquet",
          "ons_energia/CAPACIDADE_GERACAO.parquet"),
     ],
+    anp_concessionarios.FONTE: [
+        ("https://www.gov.br/anp/arquivos/rc/relacao-concessionarios.csv", "anp/concessionarios.csv"),
+    ],
+    antt_siade.FONTE: [
+        (f"https://x.gov.br/siade/producao_origem_destino_{ano}.csv", f"antt/producao_{ano}.csv")
+        for ano in (2006, 2026)
+    ],
+    comex_preco_medio.FONTE: [
+        ("https://x.gov.br/comexstat-bd/ncm/EXP_2026.csv", "comex/EXP_2026.csv"),
+        ("https://x.gov.br/comexstat-bd/ncm/IMP_2026.csv", "comex/IMP_2026.csv"),
+        ("https://x.gov.br/comexstat-bd/tabelas/URF.csv", "comex/URF.csv"),  # fica fora: não é de NCM
+    ],
+}  # fmt: skip
+CNPJS_SEM_B13 = {
+    "00271847000100", "02270689000108", "02873528000109", "03342704000130", "04054366000102",
+    "05002889000160", "08270816000147", "08839018000193", "08926302000105", "09309027000135",
+    "11210501000119", "12091809000155", "12432261000160", "15240822000117", "15596829000176",
+    "16974249000138", "17186461000101", "19285411000107", "23018639000108", "25315943000134",
+    "32528443000146", "33400769000156", "55372111000110",
 }  # fmt: skip
 ANATEL = {"Acessos_Banda_Larga_Fixa_2024_Colunas", "Acessos_Telefonia_Movel_200902-2018_Modalidade_Colunas",
           "Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas"}  # fmt: skip
@@ -90,11 +112,14 @@ def ambiente(tmp_path, monkeypatch):
                           caminho_do_original=caminho)  # fmt: skip
     raiz = tmp_path / "acervo" / "base"
     empresa_serie = pd.DataFrame(
-        {"fonte": [anp.FONTE, anac.FONTE, aneel.FONTE, anatel.FONTE, ans.FONTE_DA_LIGACAO],
-         "chave": ["RAIZEN S.A.", "GLO", "06840748000189", "02558157000162", "368253"],
+        {"fonte": [anp.FONTE, anac.FONTE, aneel.FONTE, anatel.FONTE, ans.FONTE_DA_LIGACAO,
+                   anp_concessionarios.FONTE, antt_siade.FONTE],
+         "chave": ["RAIZEN S.A.", "GLO", "06840748000189", "02558157000162", "368253",
+                   "33000167000101", "EFC"],
          "cnpj_companhia": ["33.453.598/0001-23", "06.164.253/0001-87", "06.272.793/0001-84",
-                            "02.558.157/0001-62", "05.197.443/0001-38"],
-         "principal": [True] * 5}
+                            "02.558.157/0001-62", "05.197.443/0001-38", "33.000.167/0001-01",
+                            "33.592.510/0001-54"],
+         "principal": [True] * 7}
     )  # fmt: skip
     gravar_tabela(
         empresa_serie, raiz / "empresa_serie" / "empresa_serie", [], ["fonte", "chave"]
@@ -119,6 +144,9 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
         "ccee": {"2001", "2021", "2025"},
         "ons_restricao": {"eolica_2026_09", "fotovoltaica_2024_04"},
         "ons_capacidade": {"capacidade"},
+        "anp_concessionarios": {"concessionarios"},
+        "antt_siade": {"2006", "2026"},
+        "comex_preco_medio": {"exportacao_2026", "importacao_2026"},
     }
     with criar_engine().connect() as c:
         for fonte, anos in esperados.items():
@@ -167,6 +195,8 @@ def test_buracos_da_ligacao_pela_b13(ambiente):
             "GEBRA",
         },  # a B13 do teste não tem energia
         ons_restricao.FONTE: {"SIMM", "VISUS ENGENHARIA", "AUREN OPERAÇÕES"},
+        anp_concessionarios.FONTE: CNPJS_SEM_B13,  # só a Petrobras está na B13 do teste
+        antt_siade.FONTE: {"EFPO", "EFVM"},  # só a EFC está na B13 do teste
     }
 
 
@@ -246,3 +276,24 @@ def test_sem_a_versao_do_codigo_nao_grava(ambiente, monkeypatch):
     with pytest.raises(vc.VersaoDesconhecidaError):
         carga_setoriais.main(["--base", str(ambiente)])
     assert not (ambiente / "setoriais").exists()
+
+
+def test_concessionarios_sem_data_valem_desde_o_dia_da_coleta(ambiente):
+    carga_setoriais.main(["--base", str(ambiente)])
+    tabela = pd.read_parquet(
+        ambiente / "setoriais" / "anp_concessionarios" / "concessionarios.parquet"
+    )
+    assert set(tabela["disponivel_em"]) == {pd.Timestamp("2026-10-14")}
+    assert set(tabela["visto_em"]) == {pd.Timestamp("2026-10-14")}
+    assert len(tabela) == 27
+
+
+def test_preco_medio_do_comex_soma_os_dois_fluxos_sem_ligar_a_empresa(ambiente):
+    carga_setoriais.main(["--base", str(ambiente)])
+    pasta = ambiente / "setoriais" / "comex_preco_medio"
+    exportacao = pd.read_parquet(pasta / "exportacao_2026.parquet")
+    assert set(exportacao["fluxo"]) == {"exportacao"}
+    assert not (
+        pd.read_parquet(ambiente / "setoriais" / "buracos.parquet")["fonte"]
+        == comex_preco_medio.FONTE
+    ).any()
