@@ -9,8 +9,10 @@ import logging
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from base import dossie as dossie_da_base
 from src import dossie
 
 EXEMPLO = dossie.FICHA_DE_EXEMPLO
@@ -207,3 +209,52 @@ def test_ficha_so_com_o_molde_b_nao_da_dossie_ao_molde_a(tmp_path: Path) -> None
     assert ficha is not None
     assert dossie.ficha_do_molde_a(ficha) is None
     assert dossie.ficha_do_molde_a(None) is None
+
+
+def _secao_do_setor() -> dict:
+    """A seção `setor` como a noite a grava (molde D, plano de 19/10/2026, PR 1)."""
+    setor = next(
+        s for s in dossie_da_base.SETORES_DO_LANCAMENTO if s.chave == "eletricas"
+    )
+    ligacoes = pd.DataFrame(
+        {
+            "fonte": ["aneel-samp"],
+            "chave": ["33050196000188"],
+            "nome": ["CPFL Paulista"],
+            "cnpj_companhia": [CPFL],
+            "via": ["controlada"],
+            "principal": [True],
+            "desde": [pd.Timestamp("2010-05-01")],
+        }
+    )
+    consumidores = pd.DataFrame(
+        {
+            "ano": [2025, 2025],
+            "chave": ["33050196000188", "99999999000199"],
+            "valor": [110.0, 890.0],
+            "meses": [12, 12],
+            "ultimo_mes": [pd.Timestamp("2025-12-31")] * 2,
+        }
+    )
+    membros = dossie_da_base.membros_do_setor(
+        setor,
+        pd.DataFrame({"cnpj": [CPFL], "empresa": ["CPFL ENERGIA S.A."]}),
+        ligacoes,
+    )
+    secao = dossie_da_base.secao_setor(
+        setor, membros, {"aneel_consumidores": consumidores}, ligacoes, {}
+    )
+    assert secao is not None
+    return json.loads(json.dumps(secao, allow_nan=False))
+
+
+def test_relatorio_da_empresa_ignora_a_secao_do_setor(tmp_path: Path) -> None:
+    """A ficha que leva o setor abre no app, e o molde A dela fica como era (o setor é do molde D)."""
+    sem_o_setor = dossie.ficha_do(CPFL, _pasta(tmp_path))
+    outra = tmp_path / "outra"
+    outra.mkdir()
+    bruta = _bruta()
+    bruta["secoes"].append(_secao_do_setor())
+    com_o_setor = dossie.ficha_do(CPFL, _pasta(outra, bruta))
+    assert sem_o_setor is not None and com_o_setor is not None
+    assert dossie.ficha_do_molde_a(com_o_setor) == dossie.ficha_do_molde_a(sem_o_setor)

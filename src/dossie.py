@@ -166,7 +166,7 @@ def ficha_do(cnpj: str, pasta: Path | None = None) -> Ficha | None:
 
 
 def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
-    """A ficha sem as seções do molde B (a busca por CNPJ); None se não sobra seção.
+    """A ficha sem as seções dos outros moldes (B: a busca por CNPJ; D: o setor); None se não sobra.
 
     O relatório da empresa (molde A) fica como era: a análise escrita confere o hash dele, e uma
     seção nova da noite mudaria o hash de todas as empresas.
@@ -174,7 +174,7 @@ def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
     if ficha is None:
         return None
     secoes = [
-        s for s in ficha.secoes if s.chave not in dossie_da_base.SECOES_DO_MOLDE_B
+        s for s in ficha.secoes if s.chave not in dossie_da_base.SECOES_FORA_DO_MOLDE_A
     ]
     return ficha.model_copy(update={"secoes": secoes}) if secoes else None
 

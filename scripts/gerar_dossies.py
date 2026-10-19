@@ -21,7 +21,7 @@ import json
 import logging
 import shutil
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -87,6 +87,10 @@ class Leitor:
             return VAZIA
         return self.porta.somar(tabela, por, valor, filtros)
 
+    def tem_coluna(self, tabela: str, coluna: str) -> bool:
+        """A tabela existe nesta base e tem a coluna (a da Anatel antiga não tem o grupo)."""
+        return self._existe(tabela) and coluna in self.porta.colunas(tabela)
+
 
 @dataclass(frozen=True)
 class Entradas:
@@ -104,6 +108,9 @@ class Entradas:
     empresa_serie: pd.DataFrame
     eventos: pd.DataFrame
     series: dict[str, pd.DataFrame]
+    grupos: dict[
+        str, pd.DataFrame
+    ]  # (ano, chave, grupo) das séries cuja agência informa o grupo
     pessoas: set[str]
     rede: dossie.RedeDaNoite
 
@@ -150,6 +157,33 @@ def ler_serie(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
     )
     mensais = mensais.groupby(["competencia", "chave"], as_index=False)["valor"].sum()
     return dossie.serie_anual(mensais, serie.modo)
+
+
+def ler_grupos(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:
+    """(ano, chave, grupo) do grupo econômico que a agência informa (vazia: a série não tem grupo)."""
+    if serie.grupo is None or not leitor.tem_coluna(serie.tabela, serie.grupo):
+        return VAZIA
+    somada = leitor.somar(
+        serie.tabela,
+        ["competencia", serie.chave, serie.grupo],
+        serie.valor,
+        {coluna: valor for coluna, valor in serie.filtros},
+    )
+    if somada.empty:
+        return VAZIA
+    chave = somada[serie.chave].astype(str).str.strip()
+    mensais = pd.DataFrame(
+        {
+            "competencia": pd.to_datetime(somada["competencia"]),
+            "chave": dossie.digitos(chave) if serie.chave_em_digitos else chave,
+            "grupo": somada[serie.grupo],
+            "valor": somada[serie.valor],
+        }
+    )
+    mensais = mensais.groupby(
+        ["competencia", "chave", "grupo"], as_index=False, dropna=False
+    )["valor"].sum()
+    return dossie.grupos_por_ano(mensais)
 
 
 def _controladoras(
@@ -221,6 +255,9 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
         ),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
+        grupos={
+            s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
+        },
         pessoas=_pessoas(entidades),
         rede=_rede(leitor, hoje, entidades, controladas),
     )
@@ -242,8 +279,11 @@ def _do_grupo(tabelas: dict[str, pd.DataFrame], cnpjs: set[str]) -> pd.DataFrame
 Secao = Callable[[str], dict | None]
 
 
-def _secoes(entradas: Entradas) -> dict[str, Secao]:
-    """Cada seção como uma função do CNPJ, com as tabelas já separadas por empresa."""
+def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]:
+    """Cada seção como uma função do CNPJ, com as tabelas já separadas por empresa.
+
+    `setores`: a seção do setor de cada CNPJ que a leva (`distribuir_setores`), já pronta.
+    """
     auditores = _por_cnpj(entradas.auditores, "cnpj")
     trocas = _por_cnpj(entradas.trocas, "cnpj")
     controladas = _por_cnpj(entradas.controladas, "cnpj_companhia")
@@ -275,6 +315,7 @@ def _secoes(entradas: Entradas) -> dict[str, Secao]:
         "setor_regulado": lambda c: dossie.secao_setor_regulado(
             empresa_serie.get(c, VAZIA), entradas.series
         ),
+        "setor": setores.get,
         "negocios": lambda c: dossie.secao_negocios(eventos.get(c, VAZIA)),
         "rede": lambda c: dossie.secao_rede(c, entradas.rede),
     }
@@ -285,6 +326,53 @@ class Resumo:
     empresas: int = 0
     fichas: int = 0
     falhas: list[str] = field(default_factory=list)
+    # setor → a ficha que leva a seção e os membros (vai no manifesto: o app acha o setor por ele)
+    setores: dict[str, dict] = field(default_factory=dict)
+
+
+SetorMontado = tuple[str, list[str], dict]  # chave do setor, CNPJs dos membros, a seção
+
+
+def montar_setores(entradas: Entradas) -> tuple[list[SetorMontado], list[str]]:
+    """A seção de cada setor do lançamento, uma vez para todo o mercado; um setor que quebra fica de
+    fora e vai nas falhas, sem derrubar os outros nem a noite."""
+    montados, falhas = [], []
+    for setor in dossie.SETORES_DO_LANCAMENTO:
+        try:
+            membros = dossie.membros_do_setor(
+                setor, entradas.empresas, entradas.empresa_serie
+            )
+            if membros.empty:  # nenhuma companhia da base no setor: nada a montar
+                continue
+            secao = dossie.secao_setor(
+                setor, membros, entradas.series, entradas.empresa_serie, entradas.grupos
+            )
+        except Exception as erro:  # noqa: BLE001 (um setor não derruba a noite)
+            falhas.append(f"setor {setor.chave}: {type(erro).__name__}: {erro}")
+            continue
+        if secao is not None:
+            montados.append((setor.chave, membros["cnpj"].tolist(), secao))
+    return montados, falhas
+
+
+def distribuir_setores(
+    montados: list[SetorMontado],
+) -> tuple[dict[str, tuple[str, dict]], list[str]]:
+    """CNPJ → (setor, seção): cada setor vai na ficha do 1º membro que ainda não leva outro.
+
+    O recebedor do servidor só aceita a ficha de um CNPJ e o manifesto: o setor viaja dentro da ficha
+    de um membro, e uma ficha tem uma seção de cada chave. Quem está em dois setores (seguros e
+    saúde) leva o primeiro e passa o segundo para outro membro.
+    """
+    fichas: dict[str, tuple[str, dict]] = {}
+    falhas = []
+    for chave, membros, secao in montados:
+        livre = next((cnpj for cnpj in membros if cnpj not in fichas), None)
+        if livre is None:
+            falhas.append(f"setor {chave}: todos os membros já levam outro setor")
+            continue
+        fichas[livre] = (chave, secao)
+    return fichas, falhas
 
 
 def _ficha(
@@ -311,7 +399,10 @@ def _gravar_json(destino: Path, conteudo: dict) -> None:
 def _gravar_fichas(
     entradas: Entradas, pasta: Path, gerado_em: str, resumo: Resumo
 ) -> None:
-    secoes = _secoes(entradas)
+    montados, falhas_dos_setores = montar_setores(entradas)
+    setores, sem_ficha = distribuir_setores(montados)
+    membros = {chave: cnpjs for chave, cnpjs, _ in montados}
+    secoes = _secoes(entradas, {cnpj: secao for cnpj, (_, secao) in setores.items()})
     quebras: Counter = Counter()
     for linha in entradas.empresas.itertuples(index=False):
         ficha = _ficha(str(linha.cnpj), str(linha.empresa), secoes, gerado_em, quebras)
@@ -324,7 +415,14 @@ def _gravar_fichas(
             resumo.falhas.append(f"{linha.cnpj}: {type(erro).__name__}")
             continue
         resumo.fichas += 1
-    resumo.falhas += [f"{quebra} ({n} empresas)" for quebra, n in quebras.items()]
+        if linha.cnpj in setores:
+            chave = setores[linha.cnpj][0]
+            resumo.setores[chave] = {"ficha": linha.cnpj, "membros": membros[chave]}
+    resumo.falhas += [
+        *falhas_dos_setores,
+        *sem_ficha,
+        *(f"{quebra} ({n} empresas)" for quebra, n in quebras.items()),
+    ]
 
 
 def _trocar_pasta(montando: Path, destino: Path) -> None:
@@ -361,6 +459,7 @@ def montar(
             "tabelas": dict(sorted(leitor.tabelas.items())),
             "faltando": sorted(set(leitor.faltando)),
             "falhas": resumo.falhas,
+            "setores": dict(sorted(resumo.setores.items())),
         },
     )
     _trocar_pasta(montando, saida / dia)
