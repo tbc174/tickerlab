@@ -32,6 +32,7 @@ from typing import Any, NamedTuple
 
 import pandas as pd
 
+from base import concentracao
 from base.cnpj import formatar, raiz
 from base.dicionario import TABELAS
 from base.rede.ligacoes_das_fontes import (
@@ -130,6 +131,9 @@ class SerieDaAgencia:
     # filtros de igualdade da porta: `(coluna, valor)` ou `(coluna, (valores aceitos))`
     filtros: tuple[tuple[str, str | tuple[str, ...]], ...] = ()
     chave_em_digitos: bool = False  # CNPJ: casa formatado ou não
+    grupo: str | None = (
+        None  # a coluna do grupo econômico, quando a agência o informa (molde D)
+    )
 
 
 SERIES_DAS_AGENCIAS = (
@@ -161,6 +165,7 @@ SERIES_DAS_AGENCIAS = (
             # a móvel vem por modalidade e por tecnologia (o mesmo acesso duas vezes): só a 1ª
             (("servico", servico), ("recorte", ("completo", "modalidade"))),
             chave_em_digitos=True,
+            grupo="grupo_economico",
         )
         for servico, texto in (
             ("telefonia_movel", "telefonia móvel"),
@@ -212,6 +217,49 @@ SERIES_DAS_AGENCIAS = (
 )
 
 
+_SERIE_POR_NOME = {serie.nome: serie for serie in SERIES_DAS_AGENCIAS}
+
+
+@dataclass(frozen=True)
+class SetorDoLancamento:
+    """Um setor do relatório do setor (molde D): quem está nele e sobre o que se mede a concentração.
+
+    Entra no setor a companhia com ticker ligada à agência pela tabela empresa ↔ série (B13). As que
+    entram pelo setor da CVM (geradoras, transmissoras) são somadas no app, que tem o cadastro.
+    """
+
+    chave: str
+    nome: str
+    agencia: str  # para o motivo de cada membro ("ligada à ANS por 2 entidades")
+    series: tuple[str, ...]  # `SerieDaAgencia.nome`: a base da concentração
+    mercado_regional: bool = False  # competem por região: o total nacional mede escala
+
+    @property
+    def fontes_b13(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(_SERIE_POR_NOME[n].fonte_b13 for n in self.series))
+
+
+SETORES_DO_LANCAMENTO = (
+    SetorDoLancamento("eletricas", "Elétricas", "ANEEL", ("aneel_consumidores",)),
+    SetorDoLancamento("seguros", "Seguros", "SUSEP", ("susep_premio_ganho",)),
+    SetorDoLancamento(
+        "saude_suplementar",
+        "Saúde suplementar",
+        "ANS",
+        ("ans_beneficiarios",),
+        mercado_regional=True,
+    ),
+    SetorDoLancamento(
+        "telecom",
+        "Telecomunicações",
+        "Anatel",
+        ("anatel_telefonia_movel", "anatel_banda_larga_fixa"),
+        mercado_regional=True,
+    ),
+    SetorDoLancamento("aviacao", "Aviação", "ANAC", ("anac_passageiros",)),
+)
+
+
 def fontes_do_setor(nomes_das_series: Iterable[str]) -> list[str]:
     """As licenças do setor regulado: a ligação empresa ↔ série e só as agências das séries dadas."""
     nomes = set(nomes_das_series)
@@ -249,6 +297,18 @@ SECOES = (
         "Setor regulado",
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
     ),
+    SecaoDaBase(
+        "setor",
+        "Setor",
+        (
+            "empresa_serie",
+            *dict.fromkeys(
+                _SERIE_POR_NOME[nome].tabela
+                for setor in SETORES_DO_LANCAMENTO
+                for nome in setor.series
+            ),
+        ),
+    ),
     SecaoDaBase("negocios", "Negócios (M&A pela CVM)", ("eventos",)),
     SecaoDaBase(
         "rede", "Ligações na rede", ("ligacoes", "entidades", "identificadores")
@@ -273,6 +333,16 @@ LIMITES = {
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
         "controlada, pelo FRE). A participação é sobre o total da agência no ano."
+    ),
+    "setor": (
+        "Concentração pelo HHI (a soma dos quadrados das participações em %, de 0 a 10.000) e pela "
+        "CR4 (a participação somada das 4 maiores), sobre o total nacional que a agência publica no "
+        "ano (o estoque do último mês ou a soma dos meses). Faixas do Guia para Análise de Atos de "
+        "Concentração Horizontal do CADE (2016): abaixo de 1.500 pontos, não concentrado; de 1.500 a "
+        "2.500, moderadamente concentrado; acima de 2.500, altamente concentrado. Cada participante é "
+        "o grupo econômico quando a agência o informa; senão a companhia aberta a que a entidade está "
+        "ligada pela base, com a estrutura de hoje também nos anos passados; senão a própria "
+        "entidade. A variação do HHI só compara dois anos seguidos e completos."
     ),
     "negocios": (
         "Fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão, incorporação ou "
@@ -739,15 +809,21 @@ def _entidades_ligadas(ligacoes: pd.DataFrame) -> pd.DataFrame:
     return principais[["fonte", "nome", "via", "desde"]].sort_values(["fonte", "nome"])
 
 
-def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
-    """O número do item: o último mês (estoque) ou o último ano completo (soma; o corrente engana)."""
+def _linha_do_item(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> tuple[pd.Series, str]:
+    """A linha do item e a base: o último mês (estoque) ou o último ano completo (soma; o corrente
+    engana). `tabela` vem do ano mais novo para o mais velho."""
     if serie.modo == ULTIMO_MES:
         linha = tabela.iloc[0]
-        base = pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
-    else:
-        completos = tabela[tabela["meses"] == MESES_NO_ANO]
-        linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
-        base = str(int(linha["ano"]))
+        return linha, pd.Timestamp(linha["ultimo_mes"]).strftime("%Y-%m")
+    completos = tabela[tabela["meses"] == MESES_NO_ANO]
+    linha = completos.iloc[0] if not completos.empty else tabela.iloc[0]
+    return linha, str(int(linha["ano"]))
+
+
+def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
+    linha, base = _linha_do_item(serie, tabela)
     return _item(serie.nome, serie.medida, float(linha["valor"]), serie.unidade, base)
 
 
@@ -778,6 +854,253 @@ def secao_setor_regulado(
     return _secao(
         "setor_regulado", itens, tabelas, fontes=fontes_do_setor(tabelas.keys())
     )
+
+
+# --- setor (molde D) ------------------------------------------------------------------------------
+
+POR_GRUPO, POR_COMPANHIA, POR_ENTIDADE = "grupo", "companhia", "entidade"
+AVISO_POR_ENTIDADE = (
+    "Parte do mercado está contada por entidade: as que a base não liga a uma companhia aberta e de "
+    "que a agência não informa o grupo. Um grupo fechado com várias entidades aparece partido, e elas "
+    "parecem menores do que o grupo é: a concentração real é maior ou igual à mostrada."
+)
+AVISO_DE_MERCADO_REGIONAL = (
+    "As empresas deste setor competem por região (estado, cidade, tipo de contratação): o total "
+    "nacional mede a escala de cada uma, não a competição no mercado relevante, que pode ser bem "
+    "mais concentrado."
+)
+_SEM_MEMBROS = pd.DataFrame(columns=["cnpj", "empresa", "motivo"])
+
+
+def _ligacoes_principais(
+    empresa_serie: pd.DataFrame, fontes: Iterable[str]
+) -> pd.DataFrame:
+    """As ligações principais das fontes, com a chave limpa e o CNPJ da companhia só em dígitos."""
+    if empresa_serie.empty:
+        return pd.DataFrame(columns=["fonte", "chave", "cnpj"])
+    ligacoes = empresa_serie[
+        empresa_serie["fonte"].isin(list(fontes))
+        & empresa_serie["principal"].fillna(False).astype(bool)
+    ]
+    return ligacoes.assign(
+        chave=ligacoes["chave"].astype(str).str.strip(),
+        cnpj=digitos(ligacoes["cnpj_companhia"]),
+    )
+
+
+def membros_do_setor(
+    setor: SetorDoLancamento, empresas: pd.DataFrame, empresa_serie: pd.DataFrame
+) -> pd.DataFrame:
+    """As companhias com ticker (`empresas`: cnpj em dígitos, empresa) ligadas à agência do setor,
+    com o motivo; vazia se nenhuma."""
+    ligacoes = _ligacoes_principais(empresa_serie, setor.fontes_b13)
+    if ligacoes.empty or empresas.empty:
+        return _SEM_MEMBROS
+    entidades = ligacoes.groupby("cnpj")["chave"].nunique()
+    membros = empresas[empresas["cnpj"].isin(entidades.index)]
+    motivo = [
+        f"ligada à {setor.agencia} por {n} {'entidade' if n == 1 else 'entidades'}"
+        for n in membros["cnpj"].map(entidades)
+    ]
+    return (
+        membros.assign(motivo=motivo)[["cnpj", "empresa", "motivo"]]
+        .sort_values("empresa")
+        .reset_index(drop=True)
+    )
+
+
+def _companhia_de_cada_entidade(
+    serie: SerieDaAgencia, empresa_serie: pd.DataFrame
+) -> dict[str, str]:
+    """Entidade → companhia aberta. Ligada a duas (a holding e a controlada, ambas abertas), fica com
+    a que junta mais entidades da fonte: a entidade conta uma vez só."""
+    ligacoes = _ligacoes_principais(empresa_serie, (serie.fonte_b13,))
+    if ligacoes.empty:
+        return {}
+    if serie.chave_em_digitos:
+        ligacoes = ligacoes.assign(chave=digitos(ligacoes["chave"]))
+    tamanho = ligacoes.groupby("cnpj")["chave"].transform("nunique")
+    escolhidas = (
+        ligacoes.assign(tamanho=tamanho)
+        .sort_values(["tamanho", "cnpj"], ascending=[False, True])
+        .drop_duplicates("chave")
+    )
+    return dict(zip(escolhidas["chave"], escolhidas["cnpj"], strict=True))
+
+
+def grupos_por_ano(mensais: pd.DataFrame) -> pd.DataFrame:
+    """De (competencia, chave, grupo, valor) por mês para (ano, chave, grupo): o grupo que a agência
+    informa no último mês de cada entidade no ano (com dois, o de mais valor); sem grupo, fica de fora."""
+    if mensais.empty:
+        return pd.DataFrame(columns=["ano", "chave", "grupo"])
+    mensais = mensais.assign(
+        ano=mensais["competencia"].dt.year,
+        grupo=mensais["grupo"].fillna("").astype(str).str.strip(),
+    )
+    ultimo = mensais.groupby(["ano", "chave"])["competencia"].transform("max")
+    do_ultimo = mensais[(mensais["competencia"] == ultimo) & (mensais["grupo"] != "")]
+    escolhidos = do_ultimo.sort_values(
+        ["ano", "chave", "valor"], ascending=[True, True, False]
+    ).drop_duplicates(["ano", "chave"])
+    return escolhidos[["ano", "chave", "grupo"]].reset_index(drop=True)
+
+
+def _grupo_da_agencia(dados: pd.DataFrame, grupos: pd.DataFrame | None) -> pd.Series:
+    """O grupo econômico que a agência informa para cada linha (vazio quando não informa)."""
+    if grupos is None or grupos.empty:
+        return pd.Series(pd.NA, index=dados.index, dtype="object")
+    grupo = dados[["ano", "chave"]].merge(
+        grupos.assign(chave=grupos["chave"].astype(str).str.strip()),
+        on=["ano", "chave"],
+        how="left",
+    )["grupo"]
+    grupo.index = dados.index
+    return grupo.where(grupo.astype(str).str.strip() != "")
+
+
+def participantes(
+    serie: SerieDaAgencia,
+    dados: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+    grupos: pd.DataFrame | None,
+) -> pd.DataFrame:
+    """De (ano, chave, valor, meses, ultimo_mes) por entidade para (ano, participante, por, valor,
+    meses, ultimo_mes): o grupo da agência, senão a companhia aberta, senão a própria entidade."""
+    dados = dados.assign(chave=dados["chave"].astype(str).str.strip())
+    companhia = dados["chave"].map(_companhia_de_cada_entidade(serie, empresa_serie))
+    grupo = _grupo_da_agencia(dados, grupos)
+    participante = ("entidade:" + dados["chave"]).mask(
+        companhia.notna(), "companhia:" + companhia.astype(str)
+    )
+    participante = participante.mask(grupo.notna(), "grupo:" + grupo.astype(str))
+    por = pd.Series(POR_ENTIDADE, index=dados.index)
+    por = por.mask(companhia.notna(), POR_COMPANHIA).mask(grupo.notna(), POR_GRUPO)
+    periodo = dados.groupby("ano")[["meses", "ultimo_mes"]].first()
+    somados = (
+        dados.assign(participante=participante, por=por)
+        .groupby(["ano", "participante", "por"], as_index=False)["valor"]
+        .sum()
+    )
+    return somados.join(periodo, on="ano")
+
+
+def _concentracao_da_serie(quem: pd.DataFrame) -> pd.DataFrame:
+    """A concentração por ano, com a fração do mercado contada por entidade solta."""
+    tabela = concentracao.concentracao_por_ano(quem)
+    soltas = quem[quem["por"] == POR_ENTIDADE].groupby("ano")["valor"].sum()
+    tabela["por_entidade"] = tabela["ano"].map(soltas).fillna(0.0) / tabela["total"]
+    return tabela.head(ANOS_NAS_SERIES)
+
+
+def _itens_da_concentracao(
+    serie: SerieDaAgencia, tabela: pd.DataFrame
+) -> list[dict[str, Any]]:
+    linha, base = _linha_do_item(serie, tabela)
+    nome = serie.nome
+    return [
+        _item(
+            f"mercado_{nome}",
+            f"Mercado: {serie.medida}",
+            float(linha["total"]),
+            serie.unidade,
+            base,
+        ),
+        _item(
+            f"hhi_{nome}", f"HHI: {serie.medida}", float(linha["hhi"]), "pontos", base
+        ),
+        _item(
+            f"cr4_{nome}",
+            f"Participação das 4 maiores (CR4): {serie.medida}",
+            float(linha["cr4"]),
+            "fração",
+            base,
+        ),
+    ]
+
+
+def _participacao_dos_membros(
+    serie: SerieDaAgencia,
+    dados: pd.DataFrame,
+    membros: pd.DataFrame,
+    empresa_serie: pd.DataFrame,
+) -> pd.DataFrame:
+    """A participação de cada membro por ano, com a mesma conta do setor regulado da ficha dele."""
+    ligacoes = empresa_serie.assign(cnpj=digitos(empresa_serie["cnpj_companhia"]))
+    partes = []
+    for membro in membros.itertuples(index=False):
+        chaves = _chaves(ligacoes[ligacoes["cnpj"] == membro.cnpj], serie)
+        tabela = _participacao_por_ano(dados, chaves) if chaves else pd.DataFrame()
+        if not tabela.empty:
+            partes.append(
+                tabela.assign(
+                    serie=serie.nome, cnpj=membro.cnpj, empresa=membro.empresa
+                )
+            )
+    if not partes:
+        return pd.DataFrame()
+    colunas = [
+        "serie",
+        "cnpj",
+        "empresa",
+        "ano",
+        "valor",
+        "participacao",
+        "meses",
+        "ultimo_mes",
+    ]
+    return pd.concat(partes, ignore_index=True)[colunas]
+
+
+def secao_setor(
+    setor: SetorDoLancamento,
+    membros: pd.DataFrame,
+    series: Mapping[str, pd.DataFrame],
+    empresa_serie: pd.DataFrame,
+    grupos: Mapping[str, pd.DataFrame],
+) -> dict[str, Any] | None:
+    """O mercado do setor: tamanho, CR4 e HHI por ano, a participação dos membros e quem são
+    (None: setor sem membros ou sem série).
+
+    `series` e `grupos` são de todo o mercado, por `SerieDaAgencia.nome`; `grupos` (ano, chave,
+    grupo) só das agências que informam o grupo econômico.
+    """
+    if membros.empty:
+        return None
+    itens = [
+        _item("setor", "Setor", setor.nome, "", None),
+        _item(
+            "membros",
+            "Companhias abertas da base ligadas à agência",
+            len(membros),
+            "companhias",
+            None,
+        ),
+    ]
+    tabelas: dict[str, pd.DataFrame] = {}
+    participacoes, usadas, tem_entidade_solta = [], [], False
+    for nome in setor.series:
+        dados = series.get(nome)
+        if dados is None or dados.empty:
+            continue
+        serie = _SERIE_POR_NOME[nome]
+        quem = participantes(serie, dados, empresa_serie, grupos.get(nome))
+        tabela = _concentracao_da_serie(quem)
+        tabelas[f"concentracao_{nome}"] = tabela
+        tem_entidade_solta |= bool(tabela["por_entidade"].iloc[0] > 0)
+        itens += _itens_da_concentracao(serie, tabela)
+        participacoes.append(
+            _participacao_dos_membros(serie, dados, membros, empresa_serie)
+        )
+        usadas.append(nome)
+    if not usadas:
+        return None
+    tabelas["participacao_dos_membros"] = pd.concat(participacoes, ignore_index=True)
+    tabelas["membros"] = membros
+    paragrafos = [
+        *([AVISO_POR_ENTIDADE] if tem_entidade_solta else []),
+        *([AVISO_DE_MERCADO_REGIONAL] if setor.mercado_regional else []),
+    ]
+    return _secao("setor", itens, tabelas, paragrafos, fontes=fontes_do_setor(usadas))
 
 
 # --- negócios ------------------------------------------------------------------------------------
@@ -875,6 +1198,8 @@ SISTEMAS_DA_REDE = (*IDENTIFICADORES_DA_EMPRESA, "cnpj_raiz")  # o que a noite l
 SECOES_DO_MOLDE_B = frozenset(
     {"rede"}
 )  # o relatório da empresa (molde A) não as mostra
+SECOES_DO_MOLDE_D = frozenset({"setor"})  # idem: quem as lê é o relatório do setor
+SECOES_FORA_DO_MOLDE_A = SECOES_DO_MOLDE_B | SECOES_DO_MOLDE_D
 
 
 @dataclass(frozen=True)
