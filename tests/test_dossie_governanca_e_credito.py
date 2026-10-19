@@ -274,3 +274,217 @@ def test_secao_governanca_esta_no_registro_e_pode_mostrar() -> None:
     governanca = registro["governanca"]
     dossie.exigir_que_pode_mostrar(governanca.tabelas)
     assert governanca.chave in dossie.LIMITES
+
+
+# --- crédito -------------------------------------------------------------------------------------
+
+
+def _rating(
+    agencia: str | None,
+    escala: str,
+    nota_original: str,
+    perspectiva: str,
+    acao: str,
+    publico_em: str,
+    protocolo: str,
+    situacao: str = "extraido",
+    data_acao: str | None = None,
+) -> dict[str, object]:
+    return {
+        "cnpj": "02.429.144/0001-93",
+        "agencia": agencia,
+        "escala": escala,
+        "nota": nota_original.split("(")[0],
+        "nota_original": nota_original,
+        "perspectiva": perspectiva,
+        "acao": acao,
+        "data_acao": D(data_acao)
+        if data_acao
+        else D(publico_em) - pd.Timedelta(days=1),
+        "publico_em": D(publico_em),
+        "protocolo": protocolo,
+        "link": f"https://cvm/{protocolo}",
+        "situacao_extracao": situacao,
+    }
+
+
+def _ratings() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            _rating("fitch", "nacional", "AA+(bra)", "positiva", "elevacao", "2014-05-02", "p0"),
+            _rating("fitch", "nacional", "AA(bra)", "estavel", "afirmacao", "2024-09-11", "p1"),
+            _rating("fitch", "nacional", "AA-(bra)", "negativa", "rebaixamento", "2026-03-03", "p2"),
+            # o mesmo rebaixamento de novo (mesma data da ação), no fato relevante do dia seguinte
+            _rating("fitch", "nacional", "AA-(bra)", "negativa", "rebaixamento", "2026-03-04", "p3",
+                    data_acao="2026-03-02"),
+            _rating("sp", "nacional", "brAAA", "estavel", "afirmacao", "2025-06-02", "p4"),
+            _rating("moodys", "global", "Ba2", "estavel", "retirada", "2026-05-11", "p5"),
+            _rating(None, "nacional", "", "", "", "2026-08-01", "p6", "nao_extraido"),
+            _rating("sp", "nacional", "brAAA", "positiva", "elevacao", "2026-11-01", "p7"),
+        ]
+    )  # fmt: skip
+
+
+def _assembleia(
+    documento: str,
+    especie: str,
+    assunto: str,
+    publico_em: str,
+    protocolo: str,
+    versao: int = 1,
+    **temas: bool,
+) -> dict[str, object]:
+    return {
+        "cnpj": "02.429.144/0001-93",
+        "documento": documento,
+        "especie": especie,
+        "assunto": assunto,
+        "publico_em": D(publico_em),
+        "protocolo": protocolo,
+        "versao": versao,
+        "link": f"https://cvm/{protocolo}/{versao}",
+        **{
+            f"tema_{tema}": temas.get(tema, False)
+            for tema in (
+                "vencimento_antecipado",
+                "waiver",
+                "covenant",
+                "repactuacao",
+                "inadimplemento",
+            )
+        },
+    }
+
+
+def _assembleias() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            _assembleia("assembleia", "Edital de Convocação", "AGD 5ª emissão: waiver de covenant",
+                        "2026-02-10", "a1", waiver=True, covenant=True),
+            _assembleia("assembleia", "Ata", "AGD 5ª emissão: waiver", "2026-03-01", "a2",
+                        waiver=True),
+            # a mesma ata reentregue: conta uma vez
+            _assembleia("assembleia", "Ata", "AGD 5ª emissão: waiver", "2026-03-05", "a2", 2,
+                        waiver=True),
+            _assembleia("aviso", "", "Pagamento de juros da 5ª emissão", "2026-04-01", "a3"),
+            _assembleia("assembleia", "Edital de Convocação",
+                        "AGD 4ª emissão: não declarar o vencimento antecipado", "2025-05-05", "a4",
+                        vencimento_antecipado=True),
+            _assembleia("assembleia", "Edital de Convocação", "AGD 6ª emissão", "2026-11-02", "a5"),
+        ]
+    )  # fmt: skip
+
+
+def _credito(hoje: pd.Timestamp = HOJE, **tabelas: pd.DataFrame) -> dict | None:
+    vazia = pd.DataFrame()
+    return dossie.secao_credito(
+        tabelas.get("ratings", vazia), tabelas.get("assembleias", vazia), hoje
+    )
+
+
+def _credito_completo(hoje: pd.Timestamp = HOJE) -> dict | None:
+    return _credito(hoje, ratings=_ratings(), assembleias=_assembleias())
+
+
+def test_ratings_trazem_a_ultima_acao_de_cada_agencia_ja_publica() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    assert [
+        (r["agencia"], r["escala"], r["nota"], r["acao"], r["publico_em"])
+        for r in secao["tabelas"]["ratings"]
+    ] == [
+        ("moodys", "global", "Ba2", "retirada", "2026-05-11"),
+        ("fitch", "nacional", "AA-(bra)", "rebaixamento", "2026-03-03"),
+        ("sp", "nacional", "brAAA", "afirmacao", "2025-06-02"),
+    ]
+
+
+def test_rebaixamentos_e_elevacoes_em_12_meses_contra_os_12_anteriores() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    itens = _itens(secao)
+    assert (
+        itens["ratings_rebaixamentos_12m"]["valor"] == 1
+    )  # o fato relevante repetido não conta
+    assert (
+        itens["ratings_elevacoes_12m"]["valor"] == 0
+    )  # a de novembro ainda não é pública
+    assert itens["ratings_rebaixamentos_12m"]["base"] == "2026-10-17"
+    assert secao["tabelas"]["ratings_janelas"] == [
+        {
+            "janela": "últimos 12 meses",
+            "ate": "2026-10-17",
+            "acoes": 2,
+            "rebaixamentos": 1,
+            "elevacoes": 0,
+        },
+        {
+            "janela": "12 meses anteriores",
+            "ate": "2025-10-17",
+            "acoes": 1,
+            "rebaixamentos": 0,
+            "elevacoes": 0,
+        },
+    ]
+
+
+def test_assembleias_de_debenturistas_em_12_meses_por_tema() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    item = _itens(secao)["assembleias_de_debenturistas_12m"]
+    assert (
+        item["valor"] == 2
+    )  # edital e ata, a ata reentregue conta uma vez; o aviso fica fora
+    assert secao["tabelas"]["assembleias_janelas"] == [
+        {"janela": "últimos 12 meses", "ate": "2026-10-17", "documentos": 2},
+        {"janela": "12 meses anteriores", "ate": "2025-10-17", "documentos": 1},
+    ]
+    assert secao["tabelas"]["assembleias_por_tema"] == [
+        {"tema": "Waiver", "ultimos_12_meses": 2, "12_meses_anteriores": 0},
+        {"tema": "Covenant", "ultimos_12_meses": 1, "12_meses_anteriores": 0},
+        {
+            "tema": "Vencimento antecipado",
+            "ultimos_12_meses": 0,
+            "12_meses_anteriores": 1,
+        },
+    ]
+
+
+def test_assembleias_recentes_trazem_o_assunto_e_o_link() -> None:
+    secao = _credito_completo()
+    assert secao is not None
+    recentes = secao["tabelas"]["assembleias_recentes"]
+    assert [(a["publico_em"], a["especie"], a["link"]) for a in recentes] == [
+        ("2026-03-05", "Ata", "https://cvm/a2/2"),
+        ("2026-02-10", "Edital de Convocação", "https://cvm/a1/1"),
+        ("2025-05-05", "Edital de Convocação", "https://cvm/a4/1"),
+    ]
+
+
+def test_credito_cortar_o_futuro_nao_muda_o_passado() -> None:
+    dia = D("2026-03-03")
+
+    def ate(tabela: pd.DataFrame) -> pd.DataFrame:
+        return tabela[tabela["publico_em"] <= dia]
+
+    cortada = _credito(dia, ratings=ate(_ratings()), assembleias=ate(_assembleias()))
+    assert cortada == _credito_completo(dia)
+
+
+def test_credito_sem_nenhuma_tabela_nao_tem_secao() -> None:
+    assert _credito() is None
+
+
+def test_secao_credito_esta_no_registro_e_pode_mostrar() -> None:
+    registro = {secao.chave: secao for secao in dossie.SECOES}
+    credito = registro["credito"]
+    dossie.exigir_que_pode_mostrar(credito.tabelas)
+    assert set(credito.tabelas) == {"ratings", "debentures_assembleias"}
+    assert credito.chave in dossie.LIMITES
+
+
+def test_ficha_com_governanca_e_credito_passa_pelo_filtro_de_pessoas() -> None:
+    secoes = [_governanca_completa(), _credito_completo()]
+    ficha = dossie.montar_ficha(CNPJ, "CPFL Energia", secoes, "2026-10-17")
+    dossie.conferir_sem_pessoas(ficha, {"fulano de tal"})
+    assert [s["chave"] for s in ficha["secoes"]] == ["governanca", "credito"]

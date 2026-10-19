@@ -315,6 +315,7 @@ SECOES = (
             "fre_diversidade",
         ),
     ),
+    SecaoDaBase("credito", "Crédito", ("ratings", "debentures_assembleias")),
     SecaoDaBase(
         "setor_regulado",
         "Setor regulado",
@@ -379,6 +380,14 @@ LIMITES = {
         "remuneração é a do último exercício encerrado, como a empresa a informa por órgão (o total e "
         "a maior, a média e a menor individual); a prevista para o ano corrente fica de fora. "
         "Diversidade só existe no FRE de 2023 em diante."
+    ),
+    "credito": (
+        "Ratings: os relatórios das agências e os comunicados da companhia entregues à CVM, lidos "
+        "pelo TickerLab (documento que não deu para ler fica de fora); o mesmo rating em dois "
+        "documentos conta uma vez, na data do primeiro. Assembleias de debenturistas: editais, atas "
+        "e propostas entregues à CVM, na versão mais nova; o tema sai das palavras do assunto, que "
+        "a empresa escreve, e pode deixar escapar ou incluir algum. Assembleia não quer dizer "
+        "problema: muitas só aprovam mudanças de rotina."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -1326,6 +1335,179 @@ def secao_governanca(
         **tabelas_da_remuneracao,
     }
     return _secao("governanca", itens, tabelas)
+
+
+# --- crédito -------------------------------------------------------------------------------------
+
+EXTRAIDO = (
+    "extraido"  # rating lido do documento (`base.ratings`): os outros não têm nota
+)
+MESMO_RATING = [
+    "agencia",
+    "escala",
+    "nota",
+    "data_acao",
+]  # o relatório e o fato relevante
+ASSEMBLEIA = (
+    "assembleia"  # o aviso de pagamento e a notificação do agente não são assembleia
+)
+TEMAS_DAS_ASSEMBLEIAS = {  # coluna `tema_*` de `debentures_assembleias` → nome na ficha
+    "vencimento_antecipado": "Vencimento antecipado",
+    "waiver": "Waiver",
+    "covenant": "Covenant",
+    "repactuacao": "Repactuação",
+    "inadimplemento": "Inadimplemento",
+    "garantia": "Garantia",
+    "resgate": "Resgate antecipado",
+    "reorganizacao": "Reorganização",
+}
+
+
+def _ratings_publicos(ratings: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """Cada ação de agência já pública até hoje, uma vez (o mesmo evento em dois documentos)."""
+    if ratings.empty:
+        return ratings
+    publicos = ratings[
+        (pd.to_datetime(ratings["publico_em"]) <= hoje)
+        & (ratings["situacao_extracao"] == EXTRAIDO)
+    ]
+    publicos = publicos.sort_values("publico_em", kind="stable")
+    com_data = publicos[publicos["data_acao"].notna()]
+    sem_data = publicos[publicos["data_acao"].isna()]
+    unicos = pd.concat([com_data.drop_duplicates(MESMO_RATING), sem_data])
+    return unicos.assign(publico_em=pd.to_datetime(unicos["publico_em"]))
+
+
+def _acoes_de_rating(ratings: pd.DataFrame) -> dict[str, int]:
+    return {
+        "acoes": len(ratings),
+        "rebaixamentos": int((ratings["acao"] == "rebaixamento").sum()),
+        "elevacoes": int((ratings["acao"] == "elevacao").sum()),
+    }
+
+
+def _ratings(
+    ratings: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """A última ação de cada agência e as ações dos 12 meses até hoje contra as dos 12 anteriores."""
+    publicos = _ratings_publicos(ratings, hoje)
+    if publicos.empty:
+        return [], {}
+    ultimas = (
+        publicos.sort_values("publico_em", kind="stable")
+        .drop_duplicates(["agencia", "escala"], keep="last")
+        .sort_values("publico_em", ascending=False, ignore_index=True)
+    )
+    por_agencia = ultimas.drop(columns="nota").rename(
+        columns={"nota_original": "nota"}
+    )[["agencia", "escala", "nota", "perspectiva", "acao", "publico_em", "link"]]
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+            }
+            | _acoes_de_rating(
+                publicos[_janela(publicos["publico_em"], hoje, anos_antes)]
+            )
+            for anos_antes in range(len(JANELAS))
+        ]
+    )
+    do_ano = janelas.iloc[0]
+    base = _data(hoje)
+    itens = [
+        _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base),
+        _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base),
+    ]  # fmt: skip
+    return itens, {"ratings": por_agencia, "ratings_janelas": janelas}
+
+
+def _assembleias_publicas(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> pd.DataFrame:
+    """As assembleias de debenturistas já públicas até hoje, na versão mais nova de cada documento."""
+    if assembleias.empty:
+        return assembleias
+    publicas = assembleias[
+        (pd.to_datetime(assembleias["publico_em"]) <= hoje)
+        & (assembleias["documento"] == ASSEMBLEIA)
+    ]
+    ultimas = publicas.sort_values(["protocolo", "versao"]).drop_duplicates(
+        "protocolo", keep="last"
+    )
+    return ultimas.assign(publico_em=pd.to_datetime(ultimas["publico_em"]))
+
+
+def _com_o_tema(documentos: pd.DataFrame, tema: str) -> int:
+    return int(documentos[f"tema_{tema}"].fillna(False).astype(bool).sum())
+
+
+def _por_tema(do_ano: pd.DataFrame, do_ano_anterior: pd.DataFrame) -> pd.DataFrame:
+    """Quantos documentos falam de cada tema (pelo assunto que a empresa escreveu), nas 2 janelas."""
+    colunas = ["tema", "ultimos_12_meses", "12_meses_anteriores"]
+    linhas = [
+        (nome, _com_o_tema(do_ano, tema), _com_o_tema(do_ano_anterior, tema))
+        for tema, nome in TEMAS_DAS_ASSEMBLEIAS.items()
+        if f"tema_{tema}" in do_ano.columns
+    ]
+    tabela = pd.DataFrame(linhas, columns=colunas)
+    tabela = tabela[
+        (tabela["ultimos_12_meses"] > 0) | (tabela["12_meses_anteriores"] > 0)
+    ]
+    return tabela.sort_values(
+        colunas[1:], ascending=False, kind="stable", ignore_index=True
+    )
+
+
+def _assembleias(
+    assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Assembleias de debenturistas nos 12 meses até hoje e nos 12 anteriores, por tema."""
+    publicas = _assembleias_publicas(assembleias, hoje)
+    if publicas.empty:
+        return [], {}
+    do_ano, do_ano_anterior = (
+        publicas[_janela(publicas["publico_em"], hoje, anos_antes)]
+        for anos_antes in range(len(JANELAS))
+    )
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+                "documentos": len(janela),
+            }
+            for anos_antes, janela in enumerate((do_ano, do_ano_anterior))
+        ]
+    )
+    recentes = publicas.sort_values("publico_em", ascending=False, ignore_index=True)
+    item = _item(
+        "assembleias_de_debenturistas_12m",
+        "Documentos de assembleias de debenturistas em 12 meses",
+        len(do_ano),
+        "documentos",
+        _data(hoje),
+    )
+    tabelas = {
+        "assembleias_janelas": janelas,
+        "assembleias_por_tema": _por_tema(do_ano, do_ano_anterior),
+        "assembleias_recentes": recentes[
+            ["publico_em", "especie", "assunto", "link"]
+        ].head(LINHAS_NAS_LISTAS),
+    }
+    return [item], tabelas
+
+
+def secao_credito(
+    ratings: pd.DataFrame, assembleias: pd.DataFrame, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """Ratings e assembleias de debenturistas, só fatos com data e fonte (None: nada disso)."""
+    itens_dos_ratings, tabelas_dos_ratings = _ratings(ratings, hoje)
+    itens_das_assembleias, tabelas_das_assembleias = _assembleias(assembleias, hoje)
+    itens = [*itens_dos_ratings, *itens_das_assembleias]
+    if not itens:
+        return None
+    return _secao("credito", itens, {**tabelas_dos_ratings, **tabelas_das_assembleias})
 
 
 # --- setor regulado ------------------------------------------------------------------------------
