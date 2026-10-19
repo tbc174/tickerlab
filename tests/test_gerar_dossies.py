@@ -14,6 +14,7 @@ import pytest
 from base import dossie
 from base.porta import Porta
 from scripts import gerar_dossies
+from tests import test_dossie_geracao_de_caixa as geracao_de_caixa
 from tests import test_dossie_governanca_e_credito as governanca_e_credito
 from tests.test_porta import _entidades, _identificadores, _ligacoes
 
@@ -388,6 +389,23 @@ def test_ficha_traz_governanca_e_credito(tmp_path: Path) -> None:
     assert credito["assembleias_de_debenturistas_12m"] == 2
     # o rótulo de aperto de crédito da base não sai na ficha: só os temas do assunto
     assert "estresse" not in json.dumps(secoes["credito"])
+
+
+def test_ficha_traz_a_geracao_de_caixa_da_dfc(tmp_path: Path) -> None:
+    """A noite lê a DRE, a DFC e a DVA da DFP e grava EBITDA, capex e FCF, sem a DFP de depois de hoje."""
+    _mini_base(tmp_path / "base")
+    _gravar(
+        tmp_path / "base",
+        "demonstracoes/2025.parquet",
+        geracao_de_caixa._como_era().assign(cnpj=CPFL),
+    )
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    caixa = {i["chave"]: i["valor"] for i in secoes["geracao_de_caixa"]["itens"]}
+    assert caixa == {"ebitda": 2_500e6, "capex": 900e6, "fcf": 1_300e6}
+    exercicios = secoes["geracao_de_caixa"]["tabelas"]["caixa_por_exercicio"]
+    assert [linha["exercicio"] for linha in exercicios] == [2025, 2024]
 
 
 def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:

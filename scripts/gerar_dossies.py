@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from base import dossie
+from base import indicadores_de_caixa as t1
 from base.porta import Porta
 from src import acervo
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -108,6 +109,7 @@ class Entradas:
     empresa_serie: pd.DataFrame
     eventos: pd.DataFrame
     como_era: pd.DataFrame  # a DRE anual da DFP, todas as versões (as reapresentações)
+    caixa: pd.DataFrame  # a DFC e a DVA anuais da DFP, todas as versões (a série T1)
     releases: pd.DataFrame
     negociacoes: pd.DataFrame
     eventos_de_capital: pd.DataFrame
@@ -123,7 +125,8 @@ class Entradas:
     hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
 
 
-# só as colunas que as seções de qualidade do lucro e de capital usam (a DRE de todo o mercado é grande)
+# só as colunas que as seções de qualidade do lucro, de geração de caixa e de capital usam (a DRE de
+# todo o mercado é grande)
 COLUNAS_DA_DRE = (
     "cnpj",
     "grupo",
@@ -131,6 +134,7 @@ COLUNAS_DA_DRE = (
     "documento",
     "conta",
     "descricao",
+    "inicio",
     "fim",
     "valor",
     "divulgado_em",
@@ -326,8 +330,14 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
             filtros={
                 "demonstracao": "DRE",
                 "documento": "DFP",
-                "conta": list(dossie.CONTAS_DA_DRE),
+                # o EBIT (3.05) é da geração de caixa; a qualidade do lucro não o lê
+                "conta": [*dossie.CONTAS_DA_DRE, t1.EBIT],
             },
+        ),
+        caixa=leitor.ler(
+            "demonstracoes_como_era",
+            [*COLUNAS_DA_DRE],
+            filtros={"documento": "DFP", "demonstracao": [*t1.DFC, t1.DVA]},
         ),
         releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
         negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
@@ -379,6 +389,7 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     empresa_serie = _por_cnpj(entradas.empresa_serie, "cnpj_companhia")
     eventos = _por_cnpj(entradas.eventos, "cnpj")
     como_era = _por_cnpj(entradas.como_era, "cnpj")
+    caixa = _por_cnpj(entradas.caixa, "cnpj")
     releases = _por_cnpj(entradas.releases, "cnpj")
     negociacoes = _por_cnpj(entradas.negociacoes, "cnpj")
     eventos_de_capital = _por_cnpj(entradas.eventos_de_capital, "cnpj")
@@ -417,6 +428,9 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
         ),
         "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
             como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
+        ),
+        "geracao_de_caixa": lambda c: dossie.secao_geracao_de_caixa(
+            pd.concat([como_era.get(c, VAZIA), caixa.get(c, VAZIA)]), hoje
         ),
         "ofertas_e_fundos": ofertas_e_fundos,
         "capital_e_acionistas": lambda c: dossie.secao_capital_e_acionistas(

@@ -81,6 +81,7 @@ TITULOS_DAS_TABELAS = {
     "insiders_janelas": "Insiders: 12 meses contra os 12 anteriores",
     "eventos_de_capital": "Eventos de capital dos últimos 10 anos",
     "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
+    "caixa_por_exercicio": "EBITDA, capex e FCF de cada exercício (DFP)",
     "governanca_por_ano": "Conselho, comitês e diversidade em cada FRE",
     "comites": "Comitês no FRE mais recente",
     "remuneracao_por_exercicio": "Remuneração da administração por exercício",
@@ -179,6 +180,24 @@ def ficha_do(cnpj: str, pasta: Path | None = None) -> Ficha | None:
         log.warning("ficha do dossiê barrada (%s): %s", erro, caminho)
         return None
     return cortar(ficha)
+
+
+def caixa_da_ficha(ficha: Ficha | None) -> dict[str, Any] | None:
+    """O último exercício da geração de caixa (exercício, margem EBITDA e FCF); None sem a seção."""
+    secao = next(
+        (s for s in (ficha.secoes if ficha else []) if s.chave == "geracao_de_caixa"),
+        None,
+    )
+    linhas = secao.tabelas.get("caixa_por_exercicio", []) if secao else []
+    if not linhas:
+        return None
+    ultimo = linhas[0]  # a ficha guarda o exercício mais novo primeiro
+    return {chave: ultimo.get(chave) for chave in ("exercicio", "margem_ebitda", "fcf")}
+
+
+def caixa_do_par(cnpj: str, pasta: Path | None = None) -> dict[str, Any] | None:
+    """A geração de caixa de um par, pela ficha da noite dele (None: sem ficha ou sem a seção)."""
+    return caixa_da_ficha(ficha_do(cnpj, pasta))
 
 
 def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
@@ -487,6 +506,17 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("compras", "Compras dos fundos", reais),
         ("vendas", "Vendas dos fundos", reais),
     ],
+    "caixa_por_exercicio": [
+        ("exercicio", "Exercício", _ano),
+        ("receita", "Receita", reais),
+        ("ebitda", "EBITDA", reais),
+        ("margem_ebitda", "Margem EBITDA", fracao),
+        ("depreciacao_amortizacao", "Depreciação e amortização", reais),
+        ("caixa_operacional", "Caixa operacional", reais),
+        ("capex", "Capex", reais),
+        ("fcf", "FCF", reais),
+        ("divulgado_em", "Público desde", dia),
+    ],
     "governanca_por_ano": [
         ("ano", "FRE", _ano),
         ("entregue_em", "Entregue em", dia),
@@ -623,6 +653,7 @@ _DOS_INSIDERS = (
     "negociações de controladores, administradores e da companhia declaradas à CVM "
     "(VLMO, tabela negociacoes)"
 )
+_DA_DFP = "DFP entregue à CVM: DRE, DFC e DVA, como eram públicas no dia (tabela demonstracoes_como_era)"
 _DOS_RATINGS = "relatórios das agências de rating e comunicados da companhia entregues à CVM (tabela ratings)"
 FONTES_DOS_ITENS = {
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
@@ -651,6 +682,9 @@ FONTES_DOS_ITENS = {
     "comites": f"{_DO_FRE} (tabela fre_comites)",
     "mulheres_no_conselho": f"{_DO_FRE} (tabela fre_diversidade)",
     "remuneracao_da_administracao": f"{_DO_FRE} (tabelas fre_remuneracao e fre_remuneracao_extremos)",
+    "ebitda": _DA_DFP,
+    "capex": _DA_DFP,
+    "fcf": _DA_DFP,
     "ratings_rebaixamentos_12m": _DOS_RATINGS,
     "ratings_elevacoes_12m": _DOS_RATINGS,
     "assembleias_de_debenturistas_12m": (
@@ -857,6 +891,9 @@ _COMPARACOES = (
         "assembleias_de_debenturistas_12m": _contra_os_12_meses_anteriores(
             "assembleias_janelas", "documentos", inteiro
         ),
+        "ebitda": _contra_o_ano_anterior("caixa_por_exercicio", "ebitda", "exercicio"),
+        "capex": _contra_o_ano_anterior("caixa_por_exercicio", "capex", "exercicio"),
+        "fcf": _contra_o_ano_anterior("caixa_por_exercicio", "fcf", "exercicio"),
         "remuneracao_da_administracao": _contra_o_ano_anterior(
             "remuneracao_por_exercicio", "total", "exercicio"
         ),

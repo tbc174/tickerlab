@@ -33,6 +33,7 @@ from typing import Any, NamedTuple
 import pandas as pd
 
 from base import concentracao
+from base import indicadores_de_caixa as t1
 from base.cnpj import formatar, raiz
 from base.dicionario import TABELAS
 from base.rede.ligacoes_das_fontes import (
@@ -300,6 +301,11 @@ SECOES = (
         ("demonstracoes_como_era", "release_x_oficial", "trocas_de_auditor"),
     ),
     SecaoDaBase(
+        "geracao_de_caixa",
+        "Geração de caixa (EBITDA, capex e FCF)",
+        ("demonstracoes_como_era",),
+    ),
+    SecaoDaBase(
         "capital_e_acionistas",
         "Capital e acionistas",
         ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
@@ -353,6 +359,14 @@ LIMITES = {
         "FRE mais recente (o grupo costuma emitir pelas controladas), pelo valor registrado, não o "
         "colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem "
         "com até 90 dias de atraso: os meses em que as carteiras ainda estão chegando ficam de fora."
+    ),
+    "geracao_de_caixa": (
+        "Contas da DFP de cada exercício, como eram públicas no dia da ficha (uma reapresentação "
+        "entra a partir do dia em que saiu). EBITDA = resultado antes do resultado financeiro (DRE "
+        "3.05) + depreciação e amortização (DVA 7.04.01; sem DVA, as linhas de depreciação da DFC). "
+        "Capex = compras de imobilizado e intangível na DFC de investimento. FCF = caixa operacional "
+        "(DFC 6.01) − capex. No consolidado, quando a empresa o publica. Sem a linha, o número fica "
+        "vazio: em bancos e seguradoras a DRE 3.05 não é o EBIT, e o EBITDA não sai."
     ),
     "qualidade_do_lucro": (
         "Reapresentação: o lucro do período ou a receita de um dos últimos 10 exercícios que mudou "
@@ -816,6 +830,90 @@ def secao_ofertas_e_fundos(
         "fundos_por_mes": fundos_por_mes,
     }
     return _secao("ofertas_e_fundos", itens, tabelas)
+
+
+# --- geração de caixa (série T1) -----------------------------------------------------------------
+
+DOCUMENTO_ANUAL = "DFP"
+NUMEROS_DO_CAIXA = {  # coluna da T1 → nome do item (só os que existem no último exercício)
+    "ebitda": "EBITDA do último exercício",
+    "capex": "Capex do último exercício",
+    "fcf": "Fluxo de caixa livre (FCF) do último exercício",
+}
+COLUNAS_DO_CAIXA = [
+    "exercicio",
+    "fim",
+    "receita",
+    "ebitda",
+    "margem_ebitda",
+    "depreciacao_amortizacao",
+    "caixa_operacional",
+    "capex",
+    "fcf",
+    "divulgado_em",
+]
+
+
+def _publicas_no_dia(como_era: pd.DataFrame, hoje: pd.Timestamp) -> pd.DataFrame:
+    """As linhas da DFP já divulgadas no dia, do consolidado (ou do individual, se não há)."""
+    anuais = como_era[
+        (como_era["documento"] == DOCUMENTO_ANUAL)
+        & (pd.to_datetime(como_era["divulgado_em"]) <= hoje)
+    ]
+    grupo = "con" if (anuais["grupo"] == "con").any() else "ind"
+    return anuais[anuais["grupo"] == grupo].assign(
+        divulgado_em=lambda t: pd.to_datetime(t["divulgado_em"])
+    )
+
+
+def _receitas(linhas: pd.DataFrame) -> pd.DataFrame:
+    """A receita (DRE 3.01) de cada período, na versão mais nova já divulgada."""
+    receitas = linhas[(linhas["demonstracao"] == "DRE") & (linhas["conta"] == RECEITA)]
+    receitas = receitas.sort_values("divulgado_em").drop_duplicates(
+        t1.PERIODO, keep="last"
+    )
+    return receitas.set_index(t1.PERIODO)[["valor"]].rename(
+        columns={"valor": "receita"}
+    )
+
+
+def _caixa_por_exercicio(linhas: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha por exercício (o mais novo primeiro), com a margem sobre a receita da mesma DRE."""
+    numeros = t1.indicadores_de_caixa(linhas)
+    if numeros.empty:
+        return numeros
+    tabela = numeros.join(_receitas(linhas), on=t1.PERIODO)
+    receita = tabela["receita"].where(tabela["receita"] > 0)
+    tabela = tabela.assign(
+        exercicio=pd.to_datetime(tabela["fim"]).dt.year,
+        margem_ebitda=tabela["ebitda"] / receita,
+    )
+    tabela = tabela.sort_values("exercicio", ascending=False)
+    return tabela[COLUNAS_DO_CAIXA].head(ANOS_NAS_SERIES).reset_index(drop=True)
+
+
+def secao_geracao_de_caixa(
+    como_era: pd.DataFrame, hoje: pd.Timestamp
+) -> dict[str, Any] | None:
+    """EBITDA, capex e FCF de cada DFP, como eram públicos no dia (None: a base não tem a DFC).
+
+    `como_era`: as linhas da DFP (DRE, DFC e DVA) de `demonstracoes_como_era`, de todas as versões; a
+    seção fica com a mais nova já divulgada em `hoje`. Número sem a linha fica vazio e não vira item.
+    """
+    if como_era.empty:
+        return None
+    tabela = _caixa_por_exercicio(_publicas_no_dia(como_era, hoje))
+    if tabela.empty:
+        return None
+    ultimo = tabela.iloc[0]
+    base = _data(ultimo["fim"])
+    itens = [
+        _item(chave, nome, float(ultimo[chave]), "R$", base)
+        for chave, nome in NUMEROS_DO_CAIXA.items()
+        if pd.notna(ultimo[chave])
+    ]
+    tabelas = {"caixa_por_exercicio": tabela.astype(object).where(tabela.notna(), None)}
+    return _secao("geracao_de_caixa", itens, tabelas)
 
 
 # --- qualidade do lucro --------------------------------------------------------------------------
