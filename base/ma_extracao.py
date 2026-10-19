@@ -258,6 +258,11 @@ def _conferir_valores(
     aceitos = []
     for valor in valores:
         motivo = lr.motivo_do_descarte(valor.trecho, valor.valor, normalizado)
+        if motivo == NUMERO_FORA_DO_TRECHO:
+            # o texto pode trazer o número por extenso ("R$ 1.030.000.000,00") e o modelo, em
+            # bilhões (1,03); em centavos, o arredondamento tira o resto do ponto flutuante
+            em_unidades = round(valor.em_unidades, 2)
+            motivo = lr.motivo_do_descarte(valor.trecho, em_unidades, normalizado)
         moedas = _moedas_do_trecho(valor.trecho)
         if motivo is None and moedas and valor.moeda not in moedas:
             motivo = MOEDA_FORA_DO_TRECHO
