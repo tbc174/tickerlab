@@ -67,6 +67,7 @@ from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
+from src.busca_por_cnpj import PedidoInvalidoError, buscar_por_cnpj
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
 from src.commodities import painel_de_precos
@@ -987,6 +988,28 @@ def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEm
     return esquemas.de_relatorio_da_empresa(
         com_analise(relatorio, entradas, conta.plano)
     )
+
+
+class PedidoDeBuscaPorCnpjV1(BaseModel):
+    cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
+
+
+@router.post("/busca-por-cnpj")
+def busca_por_cnpj(
+    conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
+) -> esquemas.BuscaPorCnpjV1:
+    """O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.
+
+    É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
+    de acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.
+    """
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = buscar_por_cnpj(conexao, pedido.cnpj, conta.plano)
+    except PedidoInvalidoError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    log.info("busca por cnpj: %s", relatorio.situacao)
+    return esquemas.de_busca_por_cnpj(relatorio)
 
 
 def openapi_v1() -> dict:

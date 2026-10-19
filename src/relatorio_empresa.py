@@ -264,7 +264,7 @@ class Relatorio:
 
     def como_dict(self) -> dict:
         """Para a API: datas em texto ISO e números que faltam como None."""
-        return _para_json(asdict(self))
+        return para_json(asdict(self))
 
 
 @dataclass(frozen=True)
@@ -291,11 +291,11 @@ class Entradas:
 
 
 # --- números escritos ------------------------------------------------------------------------------
-def _para_json(valor: object) -> object:
+def para_json(valor: object) -> object:
     if isinstance(valor, dict):
-        return {str(k): _para_json(v) for k, v in valor.items()}
+        return {str(k): para_json(v) for k, v in valor.items()}
     if isinstance(valor, list | tuple):
-        return [_para_json(v) for v in valor]
+        return [para_json(v) for v in valor]
     if isinstance(valor, date | pd.Timestamp):
         return valor.isoformat()
     if isinstance(valor, float) and not math.isfinite(valor):
@@ -411,7 +411,7 @@ def _tabela(tabela: pd.DataFrame, indice: str = "ano") -> list[dict]:
     registros = (
         tabela.reset_index().rename(columns={"index": indice}).to_dict("records")
     )
-    return [_para_json(r) for r in registros]  # type: ignore[misc]
+    return [para_json(r) for r in registros]  # type: ignore[misc]
 
 
 # --- seções ----------------------------------------------------------------------------------------
@@ -1064,7 +1064,7 @@ def _metodologia() -> Secao:
     ])  # fmt: skip
 
 
-def _data_do_dossie(d: Dossie) -> str:
+def data_do_dossie(d: Dossie) -> str:
     if d.velha:
         return (
             f"Dados da base do TickerLab de {d.dia:%d/%m/%Y}: a atualização das últimas noites não "
@@ -1084,7 +1084,7 @@ def _secoes_do_dossie(e: Entradas, plano: str | None) -> list[Secao]:
             Secao(s.chave, s.titulo, paragrafos=convite, trancada=True)
             for s in e.dossie.secoes
         ]
-    data = _data_do_dossie(e.dossie)
+    data = data_do_dossie(e.dossie)
     return [replace(s, paragrafos=[data, *s.paragrafos]) for s in e.dossie.secoes]
 
 

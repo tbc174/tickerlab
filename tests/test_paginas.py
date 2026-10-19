@@ -293,6 +293,7 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        "/v1/busca-por-cnpj",  # até a página "Busca por CNPJ" (PR 3 do molde B)
         "/v1/configuracao",
     }
 

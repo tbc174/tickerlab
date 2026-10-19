@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from src import (
     analises,
+    busca_por_cnpj,
     catalogo,
     dossie,
     juros_e_inflacao,
@@ -872,6 +873,33 @@ def de_relatorio_da_empresa(
             if linhas
         ]
     return RelatorioDaEmpresaV1.model_validate(dados)
+
+
+class BuscaPorCnpjV1(BaseModel):
+    """O relatório do CNPJ (molde B): as seções no formato do relatório da empresa."""
+
+    situacao: str  # "encontrada" ou "fora_da_base_aberta"
+    cnpj: str
+    empresa: str
+    tickers: list[str]
+    como_era_em: date | None  # o dia da ficha da noite
+    secoes: list[SecaoDoRelatorioV1]
+    fontes: list[str]
+    limites: list[str]
+    desligado: list[str]  # o que ainda não aparece e por quê
+    avisos: list[str]
+
+
+def de_busca_por_cnpj(relatorio: busca_por_cnpj.RelatorioDoCnpj) -> BuscaPorCnpjV1:
+    """O relatório do CNPJ (já trancado para o plano de quem vê) no formato da API."""
+    dados = relatorio.como_dict()
+    for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
+        secao["tabelas"] = [
+            _tabela_do_relatorio(chave, linhas).model_dump()
+            for chave, linhas in original.tabelas.items()
+            if linhas
+        ]
+    return BuscaPorCnpjV1.model_validate(dados)
 
 
 # --- Mapa do café (plano do café, PR 10) -----------------------------------------------------------
