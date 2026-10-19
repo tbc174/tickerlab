@@ -336,6 +336,11 @@ def gravar_buracos(partes: list[pd.DataFrame], base: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--base", type=Path, default=None)
+    argumentos.add_argument(
+        "--fonte",
+        choices=list(TABELAS),
+        help="carrega só esta fonte (o café usa cftc-cot-disaggregated); sem ela, todas",
+    )
     opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
@@ -352,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
     partes = []
     try:
         with motor.connect() as conexao:
-            for fonte in TABELAS:
+            for fonte in [opcoes.fonte] if opcoes.fonte else TABELAS:
                 tabela = carregar_fonte(conexao, fonte, base)
                 if (
                     buracos := buracos_da_fonte(tabela, fonte, empresa_serie)
@@ -361,12 +366,15 @@ def main(argv: list[str] | None = None) -> int:
                 del tabela
             revisadas = (
                 carregar_revisada(conexao, fonte, base, empresa_serie)
-                for fonte in REVISADAS
+                for fonte in ([] if opcoes.fonte else REVISADAS)
             )
             partes.extend(b for b in revisadas if b is not None)
     finally:
         motor.dispose()
-    gravar_buracos(partes, base)
+    if (
+        not opcoes.fonte
+    ):  # a lista de buracos é de todas as fontes: parcial, apagaria as outras
+        gravar_buracos(partes, base)
     return 0
 
 

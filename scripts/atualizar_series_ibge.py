@@ -12,6 +12,7 @@ Roda fora do app (no servidor de casa, uma vez por dia). Uma tabela fora do ar n
 outras; a tarefa sai com erro para o alarme avisar, e o dia seguinte tenta de novo.
 """
 
+import argparse
 import logging
 import sys
 from collections import defaultdict
@@ -116,11 +117,14 @@ def coletar_tudo(
     motor: sa.Engine,
     hoje: date,
     buscar: Callable[..., requests.Response] = requests.get,
+    so: str | None = None,
 ) -> bool:
-    """Roda cada tabela; devolve False se alguma falhou (as outras seguem)."""
+    """Roda cada tabela (ou só a de nome `so`); devolve False se alguma falhou (as outras seguem)."""
     buscar = buscar_com_registro(FONTE, buscar)
     tudo_certo = True
     for coleta in COLETAS:
+        if so is not None and coleta.nome != so:
+            continue
         try:
             log.info(
                 "%s: %s valores novos ou revistos",
@@ -138,7 +142,13 @@ def coletar_tudo(
 
 
 def main(argv: list[str] | None = None) -> int:
-    del argv  # sem opções por enquanto
+    argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
+    argumentos.add_argument(
+        "--so",
+        choices=[coleta.nome for coleta in COLETAS],
+        help="coleta só esta tabela (o café usa pam-municipal)",
+    )
+    opcoes = argumentos.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
@@ -146,7 +156,9 @@ def main(argv: list[str] | None = None) -> int:
     migrar_para("head", url=url)
     motor = criar_engine(url)
     try:
-        return 0 if coletar_tudo(motor, datetime.now(bcb.FUSO).date()) else 1
+        return (
+            0 if coletar_tudo(motor, datetime.now(bcb.FUSO).date(), so=opcoes.so) else 1
+        )
     finally:
         motor.dispose()
 

@@ -696,7 +696,7 @@ Exportações de café por mês, NCM, UF de origem e país de destino, recortada
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2026-10-18 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/commodities/comex_cafe/` (carga em PR seguinte; `base/commodities/comex_cafe.py`)
+- **Onde fica:** Parquet em `<acervo>/base/commodities/comex_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/comex_cafe.py`)
 - **Linhagem:** Recorte do `EXP_AAAA.csv` guardado pelo arquivista (fonte `comexstat`); as vias e unidades da aduana são somadas por mês, NCM, UF e país.
 
 | Coluna | O que é | Unidade |
@@ -2718,7 +2718,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 - **Três datas:** publico_em = `divulgado_em`
 - **Histórico desde:** 2026-02-05 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)
+- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)
 - **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
