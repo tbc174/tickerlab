@@ -103,6 +103,47 @@
         "title": "AcontecimentoV1",
         "type": "object"
       },
+      "AnaliseDaEmpresaV1": {
+        "description": "A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100).",
+        "properties": {
+          "aviso": {
+            "title": "Aviso",
+            "type": "string"
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo"
+          },
+          "notas": {
+            "items": {
+              "$ref": "#/components/schemas/NotaDaAnaliseV1"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "partes": {
+            "items": {
+              "$ref": "#/components/schemas/ParteDaAnaliseV1"
+            },
+            "title": "Partes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "partes",
+          "notas",
+          "aviso"
+        ],
+        "title": "AnaliseDaEmpresaV1",
+        "type": "object"
+      },
       "AnoV1": {
         "properties": {
           "ano": {
@@ -2031,6 +2072,27 @@
         "title": "FichaV1",
         "type": "object"
       },
+      "FraseDaAnaliseV1": {
+        "properties": {
+          "notas": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Notas",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "notas"
+        ],
+        "title": "FraseDaAnaliseV1",
+        "type": "object"
+      },
       "FundosDoCafeV1": {
         "properties": {
           "comprados_lotes": {
@@ -3158,6 +3220,50 @@
         "title": "MunicipioDoMapaV1",
         "type": "object"
       },
+      "NotaDaAnaliseV1": {
+        "description": "A nota numerada de uma frase da análise: abre o número de onde a frase saiu.",
+        "properties": {
+          "comparacao": {
+            "title": "Comparacao",
+            "type": "string"
+          },
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "medido_em": {
+            "title": "Medido Em",
+            "type": "string"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "numero": {
+            "title": "Numero",
+            "type": "integer"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "numero",
+          "id",
+          "nome",
+          "texto",
+          "medido_em",
+          "fonte",
+          "comparacao"
+        ],
+        "title": "NotaDaAnaliseV1",
+        "type": "object"
+      },
       "NumeroDeJurosV1": {
         "description": "Um número do painel (em %, como o Banco Central publica), com a data e a fonte.",
         "properties": {
@@ -3489,6 +3595,63 @@
           "contrapartes"
         ],
         "title": "PainelDoCafeV1",
+        "type": "object"
+      },
+      "ParagrafoDaAnaliseV1": {
+        "properties": {
+          "frases": {
+            "items": {
+              "$ref": "#/components/schemas/FraseDaAnaliseV1"
+            },
+            "title": "Frases",
+            "type": "array"
+          },
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "tipo": {
+            "title": "Tipo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tipo",
+          "rotulo",
+          "frases"
+        ],
+        "title": "ParagrafoDaAnaliseV1",
+        "type": "object"
+      },
+      "ParteDaAnaliseV1": {
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "origem": {
+            "title": "Origem",
+            "type": "string"
+          },
+          "paragrafos": {
+            "items": {
+              "$ref": "#/components/schemas/ParagrafoDaAnaliseV1"
+            },
+            "title": "Paragrafos",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "titulo",
+          "origem",
+          "paragrafos"
+        ],
+        "title": "ParteDaAnaliseV1",
         "type": "object"
       },
       "PedidoDeBacktestV1": {
@@ -4433,6 +4596,16 @@
       },
       "RelatorioDaEmpresaV1": {
         "properties": {
+          "analise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnaliseDaEmpresaV1"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "aviso_das_notas": {
             "title": "Aviso Das Notas",
             "type": "string"

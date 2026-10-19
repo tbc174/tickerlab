@@ -1123,6 +1123,16 @@ def test_relatorio_empresa_do_pro_traz_as_secoes_da_base(
     assert secoes["limites"]["paragrafos"]
 
 
+def test_relatorio_empresa_sem_analise_gerada_devolve_analise_nula(
+    cliente, banco, tmp_path, monkeypatch
+):
+    _com_a_petrobras_coletada(banco, tmp_path, monkeypatch)
+    monkeypatch.setenv("TICKERLAB_ANALISES", str(tmp_path / "sem-analises"))
+    resposta = cliente.get("/api/v1/relatorio-empresa", params={"ticker": "PETR4.SA"})
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["analise"] is None
+
+
 def test_relatorio_empresa_do_gratuito_vem_trancado_sem_numeros(
     cliente, banco, tmp_path, monkeypatch
 ):

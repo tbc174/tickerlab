@@ -37,7 +37,13 @@ SEM_NUMERO = {"X", "..", "...", ""}  # sigilo, não se aplica, não disponível
 ZERO_ABSOLUTO = "-"
 TAMANHO_DO_MES = 6  # AAAAMM
 TAMANHO_DO_ANO = 4  # AAAA
-ANOS_POR_PEDIDO_MUNICIPAL = 6  # o SIDRA recusa pedidos com mais de 100 mil valores
+VALORES_POR_PEDIDO_NO_SIDRA = (
+    50_000  # acima disso o SIDRA responde 400 (visto em 19/10/2026)
+)
+MUNICIPIOS_DE_MG = 853  # a maior UF cafeeira: ela decide o tamanho do pedido
+ANOS_POR_PEDIDO_MUNICIPAL = (
+    4  # 853 municípios x 4 variáveis x 3 classes x 4 anos = 40.944 valores
+)
 
 # café: as categorias de cada tabela → o tipo que vai no id (canephora é o conilon dos produtores)
 CAFE_ARABICA, CAFE_CONILON, CAFE_TOTAL = "arabica", "conilon", "total"
