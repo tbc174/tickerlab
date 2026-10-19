@@ -223,3 +223,121 @@ def test_documento_antigo_vai_ao_lote_com_o_nome_seguro_e_volta_com_o_link(tmp_p
     assert extrair_ma.buscar(cliente, saida, mx.MODELO) == 1
     assert list(extrair_ma.ler_leituras(saida, mx.MODELO)) == [link]
     assert extrair_ma.enviar(cliente, ouro, textos, saida, mx.MODELO, teto=1.0) is None
+
+
+# --- modo base inteira ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def base(tmp_path):
+    """Três candidatos (um fato relevante com tipo, um genérico, um comunicado), um sem texto e uma
+    reentrega do mesmo protocolo."""
+    textos = tmp_path / "textos"
+    textos.mkdir()
+    for nome in ("B-1", "B-2", "B-3"):
+        (textos / f"{nome}.txt").write_text(TEXTO, encoding="utf-8")
+    (textos / "B-4.sem_texto").write_text("", encoding="utf-8")
+    linhas = [
+        ("B-1", 1, "Fato Relevante", "assunto", "2024-05-02"),
+        ("B-2", 1, "Fato Relevante", "assunto_generico", "2025-01-10"),
+        ("B-3", 1, "Comunicado ao Mercado", "assunto", "2025-06-01"),
+        ("B-4", 1, "Fato Relevante", "assunto", "2025-07-01"),
+        ("B-1", 2, "Fato Relevante", "assunto", "2024-05-09"),
+    ]
+    candidatos = pd.DataFrame(
+        linhas, columns=["protocolo", "versao", "categoria", "evidencia", "publico_em"]
+    )
+    candidatos["publico_em"] = pd.to_datetime(candidatos["publico_em"])
+    return SimpleNamespace(
+        textos=textos, candidatos=candidatos, saida=tmp_path / "saida"
+    )
+
+
+def test_documentos_da_base_seguem_a_ordem_da_coleta_e_pulam_o_sem_texto(base):
+    documentos = extrair_ma.documentos_da_base(base.candidatos, base.textos)
+    # com tipo (B-1, reentrega única) → genérico (B-2) → comunicado (B-3); B-4 não tem texto
+    assert [d.protocolo for d in documentos] == ["B-1", "B-2", "B-3"]
+    assert str(documentos[0].publico_em) == "2024-05-09"  # a reentrega mais nova
+
+
+def test_pendentes_da_base_respeitam_o_limite_e_o_que_ja_foi_lido(base):
+    args = (base.candidatos, base.textos, base.saida, mx.MODELO)
+    assert [d.protocolo for d in extrair_ma.pendentes_da_base(*args, limite=2)] == [
+        "B-1",
+        "B-2",
+    ]
+    cliente = _ClienteFalso()
+    extrair_ma.enviar_documentos(
+        cliente,
+        extrair_ma.pendentes_da_base(*args, limite=1),
+        base.saida,
+        mx.MODELO,
+        1.0,
+    )
+    extrair_ma.buscar(cliente, base.saida, mx.MODELO)
+    assert [d.protocolo for d in extrair_ma.pendentes_da_base(*args, limite=2)] == [
+        "B-2",
+        "B-3",
+    ]
+
+
+def test_base_enviar_recusa_quando_o_lote_passa_do_teto(base):
+    cliente = _ClienteFalso()
+    fila = extrair_ma.pendentes_da_base(
+        base.candidatos, base.textos, base.saida, mx.MODELO, limite=3
+    )
+    with pytest.raises(TetoPassado):
+        extrair_ma.enviar_documentos(cliente, fila, base.saida, mx.MODELO, teto=0.0)
+    assert cliente.enviados == []
+
+
+def test_teto_conta_o_que_o_manifesto_ja_gastou(base):
+    cliente = _ClienteFalso()
+    args = (base.candidatos, base.textos, base.saida, mx.MODELO)
+    extrair_ma.enviar_documentos(
+        cliente,
+        extrair_ma.pendentes_da_base(*args, limite=1),
+        base.saida,
+        mx.MODELO,
+        1.0,
+    )
+    extrair_ma.buscar(cliente, base.saida, mx.MODELO)
+    gasto = extrair_ma.ler_manifesto(base.saida, mx.MODELO)["gasto_em_dolares"]
+    seguinte = extrair_ma.pendentes_da_base(*args, limite=1)
+    with pytest.raises(
+        TetoPassado
+    ):  # o teto cobre o que já foi gasto, não só o lote novo
+        extrair_ma.enviar_documentos(
+            cliente, seguinte, base.saida, mx.MODELO, teto=gasto
+        )
+
+
+def test_quantos_cabem_na_verba(base):
+    fila = extrair_ma.documentos_da_base(base.candidatos, base.textos)
+    um = mx.estimar_custo([fila[0].texto], mx.MODELO)
+    assert extrair_ma.quantos_cabem(fila, mx.MODELO, 0.0) == 0
+    assert extrair_ma.quantos_cabem(fila, mx.MODELO, um) == 1
+    assert extrair_ma.quantos_cabem(fila, mx.MODELO, 100.0) == 3
+
+
+def test_base_estimar_nao_precisa_de_chave_e_mostra_quantos_cabem(
+    base, monkeypatch, capsys
+):
+    monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
+    monkeypatch.setattr(extrair_ma.porta, "ler", lambda _tabela: base.candidatos)
+    assert extrair_ma.main(["base-estimar", "--textos", str(base.textos), "--saida", str(base.saida), "--limite", "2",
+                            "--teto-dolares", "30"]) == 0  # fmt: skip
+    saida = capsys.readouterr().out
+    assert "2 documentos" in saida and "Cabem 2 no teto" in saida
+
+
+def test_base_enviar_exige_limite_e_teto_e_a_chave_propria(base, monkeypatch):
+    monkeypatch.delenv(extrair_ma.VARIAVEL_DA_CHAVE, raising=False)
+    monkeypatch.setattr(extrair_ma.porta, "ler", lambda _tabela: base.candidatos)
+    comum = ["base-enviar", "--textos", str(base.textos), "--saida", str(base.saida)]  # fmt: skip
+    with pytest.raises(SystemExit):  # sem limite e sem teto: o argparse recusa
+        extrair_ma.main(comum)
+    with pytest.raises(
+        SystemExit
+    ):  # com os dois, mas sem a chave: para antes de chamar a API
+        extrair_ma.main([*comum, "--limite", "1", "--teto-dolares", "1"])

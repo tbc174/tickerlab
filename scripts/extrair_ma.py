@@ -5,6 +5,13 @@
     python -m scripts.extrair_ma buscar  --ouro CSV --textos P --saida S [--modelo M]
     python -m scripts.extrair_ma medir   --ouro CSV --textos P --saida S                (sem API)
     python -m scripts.extrair_ma operacoes|multiplos --ouro CSV --textos P --saida S    (sem API)
+    python -m scripts.extrair_ma base-estimar --textos P --saida S --limite N [--teto-dolares T]
+    python -m scripts.extrair_ma base-enviar  --textos P --saida S --limite N --teto-dolares T
+
+Os passos `base-*` são o modo "base inteira": em vez da amostra de ouro, os candidatos de
+`ma_candidatos` (lidos pela `base.porta`) com texto já coletado, na ordem da
+coleta (`base.ma_textos.grupo`), sem repetir o que o manifesto já tem. Sempre com `--limite` de
+documentos e `--teto-dolares` (o `base-enviar` recusa se a estimativa do lote passa do teto).
 
 `--ouro` é a amostra de ouro (`tickerlab-fontes/ma/amostra_de_ouro_candidatas.csv`); `--textos`, a
 pasta com o texto de cada documento (`<protocolo>.txt`). `enviar` manda um lote da Batch API (Haiku
@@ -21,6 +28,7 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime
+from itertools import islice
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -32,6 +40,7 @@ from base import ma_extracao as mx
 from base import ma_multiplos as mm
 from base import ma_operacoes as mo
 from base import ma_textos as mt
+from base import porta
 from base.historico import ano_do_arquivo
 from scripts.rotular_com_ia import TetoPassado
 from src import acervo
@@ -157,13 +166,25 @@ def _custo(usage: anthropic.types.Usage, modelo: str) -> float:
 def enviar(
     cliente: anthropic.Anthropic, ouro: Path, textos: Path, saida: Path, modelo: str, teto: float
 ) -> str | None:  # fmt: skip
-    """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote."""
+    """Manda os pendentes da amostra de ouro num lote da Batch API, se o teto permitir."""
+    return enviar_documentos(
+        cliente, pendentes(ouro, textos, saida, modelo), saida, modelo, teto
+    )
+
+
+def enviar_documentos(
+    cliente: anthropic.Anthropic,
+    fila: list[Documento],
+    saida: Path,
+    modelo: str,
+    teto: float,
+) -> str | None:
+    """Manda a `fila` num lote da Batch API, se o teto permitir. Devolve o id do lote."""
     manifesto = ler_manifesto(saida, modelo)
     if any(lote["estado"] != "gravado" for lote in manifesto.get("lotes", [])):
         raise RuntimeError(
             "Há um lote enviado e ainda não gravado: rode `buscar` primeiro."
         )
-    fila = pendentes(ouro, textos, saida, modelo)
     if not fila:
         log.info("Nada pendente para %s.", modelo)
         return None
@@ -236,6 +257,54 @@ def buscar(cliente: anthropic.Anthropic, saida: Path, modelo: str) -> int:
         gravadas += len(registros)
     _gravar_manifesto(saida, modelo, manifesto)
     return gravadas
+
+
+# --- modo base inteira (sem API) ---------------------------------------------------------------------
+
+
+def documentos_da_base(candidatos: pd.DataFrame, textos: Path) -> list[Documento]:
+    """Os candidatos da base com texto guardado, na ordem da coleta (o grupo que mais rende primeiro,
+    do mais novo ao mais velho). Reentregas com o mesmo protocolo dividem o texto: fica a mais nova."""
+    tabela = candidatos.copy()
+    tabela["_grupo"] = mt.grupo(tabela)
+    tabela = tabela.sort_values(
+        ["_grupo", "publico_em", "protocolo", "versao"],
+        ascending=[True, False, False, False],
+        kind="stable",
+    ).drop_duplicates("protocolo")
+    achados = []
+    for linha in tabela.itertuples(index=False):
+        arquivo = textos / f"{mt.nome_do_texto(linha.protocolo)}.txt"
+        texto = arquivo.read_text(encoding="utf-8") if arquivo.exists() else ""
+        if texto.strip():
+            achados.append(
+                Documento(linha.protocolo, pd.Timestamp(linha.publico_em).date(), texto)
+            )
+    return achados
+
+
+def pendentes_da_base(
+    candidatos: pd.DataFrame, textos: Path, saida: Path, modelo: str, limite: int
+) -> list[Documento]:
+    """Os primeiros `limite` documentos da base sem leitura boa deste modelo (os com erro entram de
+    novo)."""
+    feitas = ler_leituras(saida, modelo)
+    sem_leitura = (
+        d
+        for d in documentos_da_base(candidatos, textos)
+        if d.protocolo not in feitas or "erro" in feitas[d.protocolo]
+    )
+    return list(islice(sem_leitura, limite))
+
+
+def quantos_cabem(fila: list[Documento], modelo: str, verba: float) -> int:
+    """Quantos documentos do começo da `fila` cabem na `verba` (US$), pela mesma estimativa do envio."""
+    cabem = 0
+    for fim in range(1, len(fila) + 1):
+        if mx.estimar_custo([d.texto for d in fila[:fim]], modelo) > verba:
+            break
+        cabem = fim
+    return cabem
 
 
 # --- medida (sem API) -------------------------------------------------------------------------------
@@ -447,7 +516,45 @@ def _argumentos() -> argparse.ArgumentParser:
         passo.add_argument("--modelo", default=mx.MODELO, choices=MODELOS)
         if nome == "enviar":
             passo.add_argument("--teto-dolares", type=float, required=True)
+    for nome, ajuda in (
+        ("base-estimar", "custo projetado de um lote da base inteira (sem API)"),
+        ("base-enviar", "manda um lote da base inteira (GASTA API)"),
+    ):
+        passo = sub.add_parser(nome, help=ajuda)
+        passo.add_argument("--textos", type=Path, required=True)
+        passo.add_argument("--saida", type=Path, required=True)
+        passo.add_argument("--modelo", default=mx.MODELO, choices=MODELOS)
+        passo.add_argument("--limite", type=int, required=True)
+        passo.add_argument("--teto-dolares", type=float, required=nome == "base-enviar")
     return argumentos
+
+
+def _passo_da_base(opcoes: argparse.Namespace) -> int:
+    fila = pendentes_da_base(
+        porta.ler("ma_candidatos"),
+        opcoes.textos,
+        opcoes.saida,
+        opcoes.modelo,
+        opcoes.limite,
+    )
+    if opcoes.passo == "base-estimar":
+        custo = mx.estimar_custo([d.texto for d in fila], opcoes.modelo)
+        print(
+            f"{opcoes.modelo}: {len(fila)} documentos, estimativa US$ {custo:.2f} (lote)"
+        )
+        if opcoes.teto_dolares is not None:
+            gasto = ler_manifesto(opcoes.saida, opcoes.modelo).get(
+                "gasto_em_dolares", 0.0
+            )
+            verba = max(opcoes.teto_dolares - gasto, 0.0)
+            print(
+                f"Cabem {quantos_cabem(fila, opcoes.modelo, verba)} no teto (US$ {verba:.2f} livres)"
+            )
+    else:
+        enviar_documentos(
+            cliente_de_ma(), fila, opcoes.saida, opcoes.modelo, opcoes.teto_dolares
+        )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -455,6 +562,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
+    if opcoes.passo.startswith("base-"):
+        return _passo_da_base(opcoes)
     ouro, textos, saida, modelo = (
         opcoes.ouro,
         opcoes.textos,
