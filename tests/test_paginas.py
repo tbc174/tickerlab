@@ -180,6 +180,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "parametros",
                 "mapa_do_cafe",
                 "painel_do_cafe",
+                "busca_por_cnpj",
             },
         ),
         ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
@@ -250,6 +251,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "precos_de_referencia",
         "linha_do_tempo",
         "relatorio_empresa",
+        "busca_por_cnpj",
         "planos",
         "meus_dados",
         "simulacoes",
@@ -294,7 +296,6 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
-        "/v1/busca-por-cnpj",  # até a página "Busca por CNPJ" (PR 3 do molde B)
         "/v1/configuracao",
     }
 

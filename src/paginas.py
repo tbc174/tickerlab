@@ -566,6 +566,30 @@ PAGINAS = (
         ),
     ),
     Pagina(
+        "busca_por_cnpj",
+        "Busca por CNPJ",
+        GRUPO_RESEARCH,
+        ":material/manage_search:",
+        "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a "
+        "rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/busca-por-cnpj",
+            (
+                Entrada(
+                    "cnpj",
+                    "texto",
+                    "O CNPJ da empresa, com ou sem pontuação (aceita as letras do CNPJ novo).",
+                    obrigatoria=True,
+                ),
+            ),
+            "BuscaPorCnpjV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
         "por_dentro",
         "Pessoas de dentro",
         GRUPO_RESEARCH,

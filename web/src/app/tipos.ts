@@ -489,6 +489,20 @@ export interface RelatorioDaEmpresaV1 {
   analise?: AnaliseDaEmpresaV1 | null; // null: sem análise aprovada para a empresa
 }
 
+/** O relatório do CNPJ (molde B): as seções no formato do relatório da empresa. */
+export interface BuscaPorCnpjV1 {
+  situacao: "encontrada" | "fora_da_base_aberta";
+  cnpj: string;
+  empresa: string;
+  tickers: string[];
+  como_era_em: string | null; // o dia da ficha da noite (AAAA-MM-DD)
+  secoes: SecaoDoRelatorioV1[];
+  fontes: string[];
+  limites: string[]; // "Limites e cuidados": sempre presentes
+  desligado: string[]; // o que ainda não aparece e por quê: sempre presente
+  avisos: string[];
+}
+
 /** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */
 export interface CamadaDoMapaV1 {
   chave: string; // "producao", "area", "chuva" ou "geada"
