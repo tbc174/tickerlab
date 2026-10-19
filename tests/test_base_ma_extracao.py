@@ -72,6 +72,21 @@ def test_numero_sem_o_trecho_de_origem_e_descartado():
     ]
 
 
+def test_valor_escrito_por_extenso_no_texto_passa_lido_em_bilhoes():
+    # caso real (conferência dos 40, Oi): o texto diz "R$ 1.030.000.000,00" e o modelo lê 1,03 bilhão
+    trecho = (
+        "no montante total de R$ 1.030.000.000,00 (um bilhão e trinta milhões de reais)"
+    )
+    lido = {"campo": "valor_participacao", "valor": 1.03, "unidade": "bilhoes", "moeda": "BRL",
+            "trecho": trecho}  # fmt: skip
+    inventado = lido | {"valor": 1.3}
+    conferida = mx.conferir(
+        _leitura(valores=[lido, inventado]), f"{TEXTO} Proposta {trecho}.", PUBLICO_EM
+    )
+    assert [v.em_unidades for v in conferida.leitura.valores] == [pytest.approx(1.03e9)]
+    assert [d.motivo for d in conferida.descartes] == [mx.NUMERO_FORA_DO_TRECHO]
+
+
 def test_moeda_diferente_do_simbolo_do_trecho_e_descartada():
     dolar = {"campo": "preco_por_acao", "valor": 3.10, "unidade": "unidade", "moeda": "BRL",
              "trecho": "O preço por ação é de US$ 3,10"}  # fmt: skip

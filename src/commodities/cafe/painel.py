@@ -30,7 +30,13 @@ from base.commodities import cftc_cot, clima_regiao, comex_cafe, conab_cafe, usd
 from base.contrapartes import cafe as contrapartes_cafe
 from src.banco import series as acervo
 from src.commodities import painel_de_precos as precos
-from src.commodities.cafe import balanco, bienalidade, calendario, termometro
+from src.commodities.cafe import (
+    balanco,
+    bienalidade,
+    calendario,
+    pacote_do_painel,
+    termometro,
+)
 from src.commodities.cafe import indices_de_clima as clima
 from src.commodities.cafe import spread as spread_do_cafe
 from src.commodities.cafe.pontos import PontoDaSafra
@@ -134,6 +140,9 @@ TABELAS_DA_BASE = {
     "conab": "conab_cafe",
     "clima": "clima_regiao_cafe",
 }
+FILTROS_DA_BASE = {
+    "cftc": {"contrato": CONTRATO_DO_ARABICA}
+}  # a tabela da CFTC tem todo o agro
 
 
 def motivo_sem_tabela(tabela: str) -> str:
@@ -353,9 +362,17 @@ class TabelasDoCafe:
         return self.motivos.get(nome) or motivo_sem_tabela(TABELAS_DA_BASE[nome])
 
 
+def tabelas_do_pacote() -> TabelasDoCafe:
+    """As tabelas do pacote montado no servidor de casa (`pacote_do_painel`); sem pacote, o motivo."""
+    pacote = pacote_do_painel.ler_pacote()
+    if pacote is None:
+        return TabelasDoCafe(motivos=dict.fromkeys(TABELAS_DA_BASE, SEM_A_BASE))
+    return TabelasDoCafe(pacote.tabelas, pacote.motivos)
+
+
 def tabelas_pela_porta() -> TabelasDoCafe:
-    """Lê as tabelas do café pela porta da base; a que não está neste servidor vira motivo."""
-    filtros = {"cftc": {"contrato": CONTRATO_DO_ARABICA}}
+    """Lê as tabelas do café pela porta da base; a que não está neste servidor vira motivo. Onde a
+    base não está (o servidor do app), lê o pacote que o servidor de casa monta."""
     tabelas: dict[str, pd.DataFrame] = {}
     motivos: dict[str, str] = {}
     try:
@@ -366,11 +383,11 @@ def tabelas_pela_porta() -> TabelasDoCafe:
 
         aberta = porta.abrir()
     except (ImportError, ValueError, OSError):
-        return TabelasDoCafe(motivos=dict.fromkeys(TABELAS_DA_BASE, SEM_A_BASE))
+        return tabelas_do_pacote()
     with aberta as p:
         for nome, tabela in TABELAS_DA_BASE.items():
             try:
-                tabelas[nome] = p.ler(tabela, filtros=filtros.get(nome))
+                tabelas[nome] = p.ler(tabela, filtros=FILTROS_DA_BASE.get(nome))
             except (KeyError, ValueError, OSError, duckdb.Error):
                 motivos[nome] = motivo_sem_tabela(tabela)
     return TabelasDoCafe(tabelas, motivos)
