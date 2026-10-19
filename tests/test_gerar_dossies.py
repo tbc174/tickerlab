@@ -271,6 +271,95 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
     }
 
 
+def _lucro_e_capital(pasta: Path) -> None:
+    """O lucro de 2023 refeito na DFP de 2024, um release diferente, insiders e um desdobramento."""
+    dre = {
+        "cnpj": [CPFL] * 3,
+        "grupo": ["con"] * 3,
+        "demonstracao": ["DRE"] * 3,
+        "documento": ["DFP"] * 3,
+        "conta": ["3.11", "3.11", "3.04"],
+        "descricao": ["Lucro/Prejuízo Consolidado do Período"] * 2 + ["Despesas"],
+        "inicio": [D("2023-01-01")] * 3,
+        "fim": [D("2023-12-31")] * 3,
+        "valor": [100e6, 80e6, -5e6],
+        "divulgado_em": [D("2024-03-10"), D("2025-03-12"), D("2024-03-10")],
+    }
+    _gravar(pasta, "demonstracoes/2023.parquet", pd.DataFrame(dre))
+    _gravar(
+        pasta,
+        "release_x_oficial/release_x_oficial.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL],
+                "protocolo": ["p1"],
+                "versao": [1],
+                "periodo": ["3T25"],
+                "referencia": [D("2025-09-30")],
+                "data_entrega": [D("2025-11-10")],
+                "link": ["l"],
+                "linha": ["receita_liquida"],
+                "periodo_lido": ["3T25"],
+                "leitura": [1],
+                "valor_release_reais": [110e6],
+                "valor_oficial_reais": [100e6],
+                "diferenca_pct": [10.0],
+                "classe": ["diferente"],
+                "publico_em": [D("2025-11-10")],
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "negociacoes/2026.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL] * 2,
+                "cargo": ["diretoria"] * 2,
+                "operacao": ["compra"] * 2,
+                "data": [D("2026-05-10"), D("2026-10-02")],
+                "entregue_em": [
+                    D("2026-06-10"),
+                    D("2026-11-10"),
+                ],  # a 2ª ainda não entregue
+                "valor": [2e6, 9e6],
+            }
+        ),
+    )
+    _gravar(
+        pasta,
+        "eventos_de_capital/2025.parquet",
+        pd.DataFrame(
+            {
+                "cnpj": [CPFL],
+                "referencia": [D("2025-01-01")],
+                "versao": [1],
+                "tipo": ["desdobramento"],
+                "data": [D("2021-04-30")],
+                "fator": [2.0],
+                "acoes_novas": [1e9],
+                "valor": [None],
+            }
+        ),
+    )
+
+
+def test_ficha_traz_qualidade_do_lucro_e_capital(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _lucro_e_capital(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    lucro = {i["chave"]: i["valor"] for i in secoes["qualidade_do_lucro"]["itens"]}
+    assert lucro["exercicios_reapresentados"] == 1
+    assert lucro["releases_diferentes"] == 1
+    capital = {i["chave"]: i["valor"] for i in secoes["capital_e_acionistas"]["itens"]}
+    assert (
+        capital["insiders_compras_12m"] == 2e6
+    )  # a declaração entregue depois de hoje fica fora
+    assert capital["eventos_de_capital"] == 1
+
+
 def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:
     """A situação de hoje vem do `como_era_em` da porta: a ligação que só fica pública depois não entra."""
     pasta = tmp_path / "base"

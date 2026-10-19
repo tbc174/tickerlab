@@ -74,6 +74,13 @@ TITULOS_DAS_TABELAS = {
     "ofertas_por_ano": "Ofertas do grupo por ano",
     "fundos_por_mes": "Fundos com a empresa, mês a mês",
     "entidades_ligadas": "Entidades da agência ligadas à companhia",
+    "reapresentacoes": "Lucro e receita refeitos depois de publicados",
+    "releases_diferentes": "Release diferente do ITR ou da DFP",
+    "releases_por_classe": "Release contra o ITR ou a DFP, por resultado",
+    "insiders_por_cargo": "Insiders nos últimos 12 meses, por cargo",
+    "insiders_janelas": "Insiders: 12 meses contra os 12 anteriores",
+    "eventos_de_capital": "Eventos de capital dos últimos 10 anos",
+    "fundos_janelas": "Compras e vendas dos fundos: 12 meses contra os 12 anteriores",
     "negocios": "Últimos documentos de negócios",
     "negocios_por_ano": "Documentos de negócios por ano",
     "ligacoes_da_rede": "Ligações da companhia na rede",
@@ -289,6 +296,11 @@ def _porcentagem(valor: object) -> str:
     return f"{numero:.0f}%" if numero.is_integer() else f"{decimal(numero, 2)}%"
 
 
+def _variacao(valor: object) -> str:
+    """-20.0 → "-20,0%" (uma diferença já em pontos percentuais)."""
+    return f"{decimal(valor)}%"
+
+
 def fracao(valor: object) -> str:
     return f"{decimal(_numero(valor) * 100)}%"
 
@@ -390,6 +402,52 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("fundos", "Fundos", inteiro),
         ("valor", "Valor nas carteiras", reais),
     ],
+    "reapresentacoes": [
+        ("exercicio", "Exercício", _ano),
+        ("linha", "Linha", _texto),
+        ("primeiro_valor", "Primeiro valor", reais),
+        ("primeiro_em", "Publicado em", dia),
+        ("valor_atual", "Valor atual", reais),
+        ("trocado_em", "Refeito em", dia),
+        ("diferenca_pct", "Diferença", _variacao),
+    ],
+    "releases_diferentes": [
+        ("periodo", "Trimestre", _texto),
+        ("linha", "Linha", _texto),
+        ("valor_release_reais", "No release", reais),
+        ("valor_oficial_reais", "No ITR ou na DFP", reais),
+        ("diferenca_pct", "Diferença", _variacao),
+    ],
+    "releases_por_classe": [
+        ("classe", "Resultado da comparação", _texto),
+        ("valores", "Valores", inteiro),
+    ],
+    "insiders_por_cargo": [
+        ("cargo", "Cargo", _texto),
+        ("compras", "Compras", reais),
+        ("vendas", "Vendas", reais),
+        ("negociacoes", "Negociações", inteiro),
+    ],
+    "insiders_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("compras", "Compras de insiders", reais),
+        ("vendas", "Vendas de insiders", reais),
+        ("recompras", "Recompras", reais),
+    ],
+    "eventos_de_capital": [
+        ("data", "Data", dia),
+        ("tipo", "Evento", lambda v: str(v).capitalize()),
+        ("fator", "Fator", lambda v: decimal(v, 2)),
+        ("acoes_novas", "Ações novas", inteiro),
+        ("valor", "Valor", reais),
+    ],
+    "fundos_janelas": [
+        ("janela", "Período", _texto),
+        ("ate", "Até", dia),
+        ("compras", "Compras dos fundos", reais),
+        ("vendas", "Vendas dos fundos", reais),
+    ],
     "entidades_ligadas": [
         ("nome", "Entidade na agência", _texto),
         ("fonte", "Agência", _agencia),
@@ -463,6 +521,14 @@ def links_da_tabela(ficha: Ficha, secao: str, tabela: str) -> list[str]:
 # --- o contrato do número (relatórios v2, PR 1): de onde veio e contra o quê comparar -------------
 _DO_FRE = "FRE entregue à CVM"
 _DOS_FUNDOS = "carteiras dos fundos entregues à CVM (CDA, tabela painel_dos_fundos)"
+_DAS_REAPRESENTACOES = (
+    "DFP entregues à CVM, com cada versão reapresentada (tabela demonstracoes_como_era)"
+)
+_DOS_RELEASES = "press-releases de resultado e ITR ou DFP entregues à CVM (tabela release_x_oficial)"
+_DOS_INSIDERS = (
+    "negociações de controladores, administradores e da companhia declaradas à CVM "
+    "(VLMO, tabela negociacoes)"
+)
 FONTES_DOS_ITENS = {
     "auditor_atual": f"{_DO_FRE} (tabela auditores)",
     "auditor_desde": f"{_DO_FRE} (tabela trocas_de_auditor)",
@@ -472,6 +538,17 @@ FONTES_DOS_ITENS = {
     "ofertas": "ofertas registradas na CVM (tabelas ofertas_resolucao_160 e ofertas_antigas)",
     "fundos_com_a_acao": _DOS_FUNDOS,
     "valor_nos_fundos": _DOS_FUNDOS,
+    "compras_dos_fundos_12m": _DOS_FUNDOS,
+    "vendas_dos_fundos_12m": _DOS_FUNDOS,
+    "exercicios_reapresentados": _DAS_REAPRESENTACOES,
+    "exercicios_olhados": _DAS_REAPRESENTACOES,
+    "releases_comparados": _DOS_RELEASES,
+    "releases_diferentes": _DOS_RELEASES,
+    "trocas_de_auditor_10_anos": "FCA entregue à CVM (tabela trocas_de_auditor)",
+    "insiders_compras_12m": _DOS_INSIDERS,
+    "insiders_vendas_12m": _DOS_INSIDERS,
+    "recompras_12m": _DOS_INSIDERS,
+    "eventos_de_capital": f"{_DO_FRE} (tabela eventos_de_capital)",
     "negocios": "fatos relevantes e comunicados do IPE na CVM (tabela eventos)",
 } | {
     serie.nome: f"dados abertos da {_NOME_DA_AGENCIA[serie.fonte_b13]} (tabela {serie.tabela})"
@@ -482,6 +559,7 @@ SO_O_FRE_MAIS_RECENTE = (
 )
 SEM_COM_O_QUE_COMPARAR = "A ficha não traz com o quê comparar este número."
 MESES_NO_ANO = 12
+JANELAS_PARA_COMPARAR = 2  # a dos últimos 12 meses e a dos 12 anteriores
 
 Comparado = tuple[Comparacao | None, str]  # a comparação ou o motivo de não haver
 Comparar = Callable[[SecaoDaFicha, ItemDaFicha], Comparado]
@@ -584,7 +662,56 @@ def _contra_o_total_da_agencia(secao: SecaoDaFicha, item: ItemDaFicha) -> Compar
     ), ""
 
 
+def _contra_o_item(total: str, contra: str, unidade: str) -> Comparar:
+    """Uma contagem contra o total de onde ela saiu ("1 de 4 valores comparados")."""
+
+    def comparar(secao: SecaoDaFicha, item: ItemDaFicha) -> Comparado:
+        do_total = next((i for i in secao.itens if i.chave == total), None)
+        if do_total is None or do_total.valor is None or item.valor is None:
+            return None, SEM_COM_O_QUE_COMPARAR
+        return Comparacao(
+            contra,
+            f"{inteiro(item.valor)} de {inteiro(do_total.valor)} {unidade}",
+            _numero(do_total.valor),
+        ), ""
+
+    return comparar
+
+
+def _contra_os_12_meses_anteriores(tabela: str, coluna: str) -> Comparar:
+    """Uma soma de 12 meses contra a dos 12 meses anteriores (a segunda linha da tabela de janelas)."""
+
+    def comparar(secao: SecaoDaFicha, _: ItemDaFicha) -> Comparado:
+        janelas = _mais_recentes(secao.tabelas.get(tabela, []), "ate")
+        if len(janelas) < JANELAS_PARA_COMPARAR:
+            return None, SEM_COM_O_QUE_COMPARAR
+        anterior = janelas[1]
+        quando = dia(anterior["ate"])
+        return Comparacao(
+            f"12 meses até {quando}",
+            f"{reais(anterior[coluna])} nos 12 meses até {quando}",
+            _numero(anterior[coluna]),
+        ), ""
+
+    return comparar
+
+
 _COMPARACOES = {
+    "exercicios_reapresentados": _contra_o_item(
+        "exercicios_olhados", "exercícios olhados", "exercícios olhados (DFP)"
+    ),
+    "releases_diferentes": _contra_o_item(
+        "releases_comparados", "valores comparados", "valores comparados"
+    ),
+    "insiders_compras_12m": _contra_os_12_meses_anteriores(
+        "insiders_janelas", "compras"
+    ),
+    "insiders_vendas_12m": _contra_os_12_meses_anteriores("insiders_janelas", "vendas"),
+    "recompras_12m": _contra_os_12_meses_anteriores("insiders_janelas", "recompras"),
+    "compras_dos_fundos_12m": _contra_os_12_meses_anteriores(
+        "fundos_janelas", "compras"
+    ),
+    "vendas_dos_fundos_12m": _contra_os_12_meses_anteriores("fundos_janelas", "vendas"),
     "auditor_atual": _contra_o_auditor_anterior,
     "auditor_desde": _contra_o_auditor_anterior,
     "controladas": _contra_as_sociedades,
