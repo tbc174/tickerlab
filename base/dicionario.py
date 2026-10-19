@@ -1346,6 +1346,168 @@ TABELAS: dict[str, Tabela] = {
             ),
         },
     ),
+    "ccee_pld": Tabela(
+        descricao=(
+            "PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por "
+            "dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020, por semana e patamar de carga "
+            "(`semana_por_patamar`: o arquivo horário da CCEE desses anos não é horário, e a fonte "
+            "não rotula o patamar; a posição entre as linhas repetidas vai em `ordem`). A média do dia e "
+            "a do mês são as que a CCEE publica, não recalculadas aqui. Sem ligação à empresa: é o preço "
+            "de um mercado, não de um agente"
+        ),
+        fonte="CCEE: PLD horário, média diária e média mensal (dados abertos)",
+        familia_da_fonte="ccee",
+        frequencia="Diária (a CCEE republica o arquivo do ano a cada dia útil)",
+        atraso=(
+            "O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de "
+            "2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca"
+        ),
+        onde="Parquet por ano em `<acervo>/base/setoriais/ccee/<ano>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo da CCEE lido e a versão do código."
+        ),
+        colunas={
+            "granularidade": ("`hora`, `dia`, `mes` ou `semana_por_patamar`", TEXTO),
+            "submercado": (
+                "Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve",
+                TEXTO,
+            ),
+            "referencia": (
+                "Início do período a que o preço se refere (hora, dia, mês ou semana)",
+                MOMENTO,
+            ),
+            "competencia": ("Mês (último dia)", DATA),
+            "ordem": (
+                "Posição entre as linhas da fonte que repetem a mesma referência (1 se única)",
+                NUMERO,
+            ),
+            "periodo_de_comercializacao": (
+                "Hora do mês (1 a 744) na fonte; vazio nas outras granularidades",
+                NUMERO,
+            ),
+            "pld": ("Preço em R$/MWh", NUMERO_DECIMAL),
+            "disponivel_em": ("Desde quando o número era público (ver o atraso)", DATA),
+        },
+    ),
+    "ons_restricao": Tabela(
+        descricao=(
+            "Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto "
+            "deixou de gerar por ordem do operador, uma linha por usina e hora (a fonte traz uma leitura "
+            "a cada 30 minutos; aqui, a média das duas). Eólica desde 10/2021, fotovoltaica desde "
+            "04/2024. Hora sem restrição fica com a energia não realizada vazia (vazio não é zero). O ONS "
+            "fecha a apuração depois: a revisão de uma hora passada vira linha nova, que só vale desde o "
+            "dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O dono da usina não vem no "
+            "arquivo: a ligação à empresa é pelo agente operador, pelo nome exato do agente na B13"
+        ),
+        fonte="ONS: restrição de operação por constrained-off de usinas eólicas e fotovoltaicas (dados abertos)",
+        familia_da_fonte="ons",
+        frequencia="Mensal (o ONS acrescenta e revisa os arquivos de meses passados)",
+        atraso="O instante + 2 dias (o mesmo da geração por usina)",
+        onde="Parquet por tipo e mês em `<acervo>/base/setoriais/ons_restricao/<tipo>_<ano>_<mês>.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada (uma por revisão) e a "
+            "versão do código."
+        ),
+        colunas={
+            "instante": ("Hora (início)", MOMENTO),
+            "tipo": ("`eolica` ou `fotovoltaica`", TEXTO),
+            "id_subsistema": ("Subsistema (N, NE, S, SE)", TEXTO),
+            "uf": ("UF da usina", TEXTO),
+            "usina": ("Nome da usina ou do conjunto, como o ONS escreve", TEXTO),
+            "id_ons": ("Código da usina ou conjunto no ONS (a chave)", TEXTO),
+            "ceg": ("Código na ANEEL (vazio nos conjuntos)", TEXTO),
+            "agente_operador": ("Agente operador (liga à empresa pela B13)", TEXTO),
+            "geracao_mwmed": (
+                "Geração verificada, em MWmed (numa hora, igual a MWh)",
+                NUMERO_DECIMAL,
+            ),
+            "referencia_mwmed": (
+                "Geração de referência (o que a usina geraria sem a restrição), MWmed",
+                NUMERO_DECIMAL,
+            ),
+            "referencia_final_mwmed": (
+                "Referência final, depois do fechamento da apuração, MWmed",
+                NUMERO_DECIMAL,
+            ),
+            "disponibilidade_mwmed": ("Potência disponível, MWmed", NUMERO_DECIMAL),
+            "nao_realizada_mwmed": (
+                "Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição)",
+                NUMERO_DECIMAL,
+            ),
+            "minutos_restricao": (
+                "Minutos de restrição na hora (soma das leituras; vazio sem restrição)",
+                NUMERO,
+            ),
+            "razao_da_restricao": (
+                "Código da razão da restrição (a primeira da hora)",
+                TEXTO,
+            ),
+            "origem_da_restricao": (
+                "Código da origem da restrição (a primeira da hora)",
+                TEXTO,
+            ),
+            "leituras": ("Quantas leituras da fonte entraram na linha", NUMERO),
+            "disponivel_em": (
+                "Desde quando o número era público (instante + 2 dias)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
+    "ons_capacidade": Tabela(
+        descricao=(
+            "Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), "
+            "proprietário, operador, entrada em teste, entrada em operação e desativação. É a foto do "
+            "cadastro de hoje (captura de 14/10/2026), não uma série: a unidade vale desde a entrada em "
+            "operação, e a potência de hoje vale desde a entrada (mudanças de potência anteriores à "
+            "primeira coleta não aparecem; cada coleta que traz outro valor entra como revisão). A "
+            "desativação é só uma data na linha: a unidade não some do passado. O proprietário liga à "
+            "empresa pelo nome exato do agente na B13"
+        ),
+        fonte="ONS: capacidade instalada de geração (dados abertos)",
+        familia_da_fonte="ons",
+        frequencia="Mensal (o ONS regera o cadastro inteiro)",
+        atraso="A regra usa a data de entrada em operação (ou em teste, quando falta)",
+        onde="Parquet em `<acervo>/base/setoriais/ons_capacidade/capacidade.parquet` (`scripts/carga_setoriais.py`)",
+        linhagem=(
+            "O `capacidade.json` guarda o endereço e o SHA-256 de cada baixada do cadastro e a versão do código."
+        ),
+        colunas={
+            "id_subsistema": ("Subsistema (N, NE, S, SE)", TEXTO),
+            "uf": ("UF da usina", TEXTO),
+            "modalidade_de_operacao": ("Modalidade de operação (tipo I, II...)", TEXTO),
+            "proprietario": (
+                "Agente proprietário, como o ONS escreve (liga à empresa pela B13)",
+                TEXTO,
+            ),
+            "operador": ("Agente operador", TEXTO),
+            "tipo_de_usina": ("Hidrelétrica, térmica, eólica, fotovoltaica...", TEXTO),
+            "usina": ("Nome da usina", TEXTO),
+            "ceg": ("Código na ANEEL", TEXTO),
+            "unidade_geradora": ("Nome da unidade geradora", TEXTO),
+            "cod_equipamento": ("Código do equipamento no ONS (a chave)", TEXTO),
+            "numero_da_unidade": ("Número da unidade na usina", TEXTO),
+            "combustivel": ("Combustível ou fonte", TEXTO),
+            "entrada_em_teste": ("Data da entrada em teste", DATA),
+            "entrada_em_operacao": ("Data da entrada em operação", DATA),
+            "desativada_em": ("Data da desativação (vazio: em operação)", DATA),
+            "potencia_efetiva_mw": (
+                "Potência efetiva da unidade, em MW",
+                NUMERO_DECIMAL,
+            ),
+            "disponivel_em": (
+                "Desde quando a unidade existe para quem pergunta (entrada em operação)",
+                DATA,
+            ),
+            "visto_em": (
+                "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+                DATA,
+            ),
+        },
+    ),
     "aneel_samp": Tabela(
         descricao=(
             "Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de "
@@ -4984,6 +5146,9 @@ _CONTRATO = {
     "anp_vendas": _contrato(modulo=_ME, chaves=("competencia", "grupo", "agente", "codigo_do_produto", "uf_origem", "uf_destino", "mercado_destino"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "comex_cafe": _contrato(modulo=_ME, chaves=("competencia", "ncm", "uf_origem", "codigo_do_pais", "divulgado_em"), datas={"aconteceu_em": "competencia", "publico_em": "divulgado_em"}, historico_desde="2026-10-18"),
     "ons_geracao": _contrato(modulo=_ME, chaves=("instante", "id_ons"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ccee_pld": _contrato(modulo=_ME, chaves=("granularidade", "submercado", "referencia", "ordem"), datas={"aconteceu_em": "referencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ons_restricao": _contrato(modulo=_ME, chaves=("instante", "tipo", "id_ons", "visto_em"), datas={"aconteceu_em": "instante", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
+    "ons_capacidade": _contrato(modulo=_ME, chaves=("cod_equipamento", "visto_em"), datas={"aconteceu_em": "entrada_em_operacao", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "aneel_samp": _contrato(modulo=_ME, chaves=("competencia", "cnpj", "tipo_de_mercado", "modalidade_tarifaria", "subgrupo_tarifario", "classe_de_consumo", "subclasse_de_consumo", "detalhe_do_consumidor", "nucleo_ceg", "posto_tarifario", "opcao_de_energia", "detalhe_do_mercado", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "anatel_acessos": _contrato(modulo=_ME, chaves=("competencia", "servico", "recorte", "cnpj", "uf", "regiao_pgo", "codigo_nacional", "modalidade_de_cobranca", "tecnologia", "geracao", "tipo_de_pessoa", "tipo_de_produto", "faixa_de_velocidade", "meio_de_acesso", "tipo_de_acesso_tv", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),
     "ans_beneficiarios": _contrato(modulo=_ME, chaves=("competencia", "cd_operadora", "modalidade", "cobertura", "vigencia_do_plano", "contratacao", "financiamento", "visto_em"), datas={"aconteceu_em": "competencia", "publico_em": "disponivel_em"}, historico_desde=_GOVERNO),

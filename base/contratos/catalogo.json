@@ -1812,6 +1812,259 @@
       "frequencia": "Diária (um arquivo por ano até 2021, por mês depois)",
       "atraso": "O dia seguinte; a regra usa o instante + 2 dias"
     },
+    "ccee_pld": {
+      "tabela": "ccee_pld",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "granularidade": {
+          "descricao": "`hora`, `dia`, `mes` ou `semana_por_patamar`",
+          "unidade": "texto"
+        },
+        "submercado": {
+          "descricao": "Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve",
+          "unidade": "texto"
+        },
+        "referencia": {
+          "descricao": "Início do período a que o preço se refere (hora, dia, mês ou semana)",
+          "unidade": "data e hora (UTC)"
+        },
+        "competencia": {
+          "descricao": "Mês (último dia)",
+          "unidade": "data (dia)"
+        },
+        "ordem": {
+          "descricao": "Posição entre as linhas da fonte que repetem a mesma referência (1 se única)",
+          "unidade": "número inteiro"
+        },
+        "periodo_de_comercializacao": {
+          "descricao": "Hora do mês (1 a 744) na fonte; vazio nas outras granularidades",
+          "unidade": "número inteiro"
+        },
+        "pld": {
+          "descricao": "Preço em R$/MWh",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (ver o atraso)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "granularidade",
+        "submercado",
+        "referencia",
+        "ordem"
+      ],
+      "datas": {
+        "aconteceu_em": "referencia",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Diária (a CCEE republica o arquivo do ano a cada dia útil)",
+      "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de 2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca"
+    },
+    "ons_restricao": {
+      "tabela": "ons_restricao",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "instante": {
+          "descricao": "Hora (início)",
+          "unidade": "data e hora (UTC)"
+        },
+        "tipo": {
+          "descricao": "`eolica` ou `fotovoltaica`",
+          "unidade": "texto"
+        },
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina ou do conjunto, como o ONS escreve",
+          "unidade": "texto"
+        },
+        "id_ons": {
+          "descricao": "Código da usina ou conjunto no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código na ANEEL (vazio nos conjuntos)",
+          "unidade": "texto"
+        },
+        "agente_operador": {
+          "descricao": "Agente operador (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "geracao_mwmed": {
+          "descricao": "Geração verificada, em MWmed (numa hora, igual a MWh)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "referencia_mwmed": {
+          "descricao": "Geração de referência (o que a usina geraria sem a restrição), MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "referencia_final_mwmed": {
+          "descricao": "Referência final, depois do fechamento da apuração, MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponibilidade_mwmed": {
+          "descricao": "Potência disponível, MWmed",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "nao_realizada_mwmed": {
+          "descricao": "Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição)",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "minutos_restricao": {
+          "descricao": "Minutos de restrição na hora (soma das leituras; vazio sem restrição)",
+          "unidade": "número inteiro"
+        },
+        "razao_da_restricao": {
+          "descricao": "Código da razão da restrição (a primeira da hora)",
+          "unidade": "texto"
+        },
+        "origem_da_restricao": {
+          "descricao": "Código da origem da restrição (a primeira da hora)",
+          "unidade": "texto"
+        },
+        "leituras": {
+          "descricao": "Quantas leituras da fonte entraram na linha",
+          "unidade": "número inteiro"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando o número era público (instante + 2 dias)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "instante",
+        "tipo",
+        "id_ons",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "instante",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ONS acrescenta e revisa os arquivos de meses passados)",
+      "atraso": "O instante + 2 dias (o mesmo da geração por usina)"
+    },
+    "ons_capacidade": {
+      "tabela": "ons_capacidade",
+      "modulo": "mercado_e_empresas",
+      "dono": "Dados",
+      "versao": "1.0.0",
+      "colunas": {
+        "id_subsistema": {
+          "descricao": "Subsistema (N, NE, S, SE)",
+          "unidade": "texto"
+        },
+        "uf": {
+          "descricao": "UF da usina",
+          "unidade": "texto"
+        },
+        "modalidade_de_operacao": {
+          "descricao": "Modalidade de operação (tipo I, II...)",
+          "unidade": "texto"
+        },
+        "proprietario": {
+          "descricao": "Agente proprietário, como o ONS escreve (liga à empresa pela B13)",
+          "unidade": "texto"
+        },
+        "operador": {
+          "descricao": "Agente operador",
+          "unidade": "texto"
+        },
+        "tipo_de_usina": {
+          "descricao": "Hidrelétrica, térmica, eólica, fotovoltaica...",
+          "unidade": "texto"
+        },
+        "usina": {
+          "descricao": "Nome da usina",
+          "unidade": "texto"
+        },
+        "ceg": {
+          "descricao": "Código na ANEEL",
+          "unidade": "texto"
+        },
+        "unidade_geradora": {
+          "descricao": "Nome da unidade geradora",
+          "unidade": "texto"
+        },
+        "cod_equipamento": {
+          "descricao": "Código do equipamento no ONS (a chave)",
+          "unidade": "texto"
+        },
+        "numero_da_unidade": {
+          "descricao": "Número da unidade na usina",
+          "unidade": "texto"
+        },
+        "combustivel": {
+          "descricao": "Combustível ou fonte",
+          "unidade": "texto"
+        },
+        "entrada_em_teste": {
+          "descricao": "Data da entrada em teste",
+          "unidade": "data (dia)"
+        },
+        "entrada_em_operacao": {
+          "descricao": "Data da entrada em operação",
+          "unidade": "data (dia)"
+        },
+        "desativada_em": {
+          "descricao": "Data da desativação (vazio: em operação)",
+          "unidade": "data (dia)"
+        },
+        "potencia_efetiva_mw": {
+          "descricao": "Potência efetiva da unidade, em MW",
+          "unidade": "número com decimais, na unidade da fonte"
+        },
+        "disponivel_em": {
+          "descricao": "Desde quando a unidade existe para quem pergunta (entrada em operação)",
+          "unidade": "data (dia)"
+        },
+        "visto_em": {
+          "descricao": "Dia da coleta em que este valor apareceu (a revisão vale desde aí)",
+          "unidade": "data (dia)"
+        }
+      },
+      "chaves": [
+        "cod_equipamento",
+        "visto_em"
+      ],
+      "datas": {
+        "aconteceu_em": "entrada_em_operacao",
+        "publico_em": "disponivel_em"
+      },
+      "historico_desde": "2026-10-14",
+      "granularidade_do_publico_em": "dia",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "revenda": "vendável com atribuição à fonte",
+      "pessoa": false,
+      "frequencia": "Mensal (o ONS regera o cadastro inteiro)",
+      "atraso": "A regra usa a data de entrada em operação (ou em teste, quando falta)"
+    },
     "aneel_samp": {
       "tabela": "aneel_samp",
       "modulo": "mercado_e_empresas",

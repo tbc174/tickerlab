@@ -12,7 +12,18 @@ import pytest
 from base.arquivo.fontes import SES_DA_SUSEP
 from base.commodities import cftc_cot
 from base.parquet import conferir_tabela, gravar_tabela
-from base.setoriais import anac, anatel, aneel, anp, ans, ons, susep
+from base.setoriais import (
+    anac,
+    anatel,
+    aneel,
+    anp,
+    ans,
+    ccee,
+    ons,
+    ons_capacidade,
+    ons_restricao,
+    susep,
+)
 from scripts import carga_setoriais
 from src import acervo
 from src import versao_do_codigo as vc
@@ -43,6 +54,20 @@ ENDERECOS = {
     cftc_cot.FONTE: [(cftc_cot.ENDERECO_DO_ANO.format(ano=2026), "cftc/fut_disagg_txt_2026.zip")],
     ans.FONTE: [(ans.URL, "ans/Beneficiarios_operadora_e_carteira.csv")],
     susep.FONTE: [(f"{SES_DA_SUSEP}#{susep.ARQUIVO}", "susep/Ses_seguros.csv")],
+    ccee.FONTE: [
+        (f"https://dadosabertos.ccee.org.br/dataset/x/resource/{nome}/download/{nome}.csv", f"ccee/{nome}.csv")
+        for nome in ("hora_2021", "dia_2025", "mes_2001", "hora_2001_2020")
+    ],
+    ons_restricao.FONTE: [
+        ("https://ons-aws-prod-opendata.s3.amazonaws.com/restricao_coff_eolica_usi/RESTRICAO_COFF_EOLICA_2026_09.parquet",
+         "ons_energia/RESTRICAO_COFF_EOLICA_2026_09.parquet"),
+        ("https://ons-aws-prod-opendata.s3.amazonaws.com/restricao_coff_fotovoltaica/RESTRICAO_COFF_FOTOVOLTAICA_2024_04.parquet",
+         "ons_energia/RESTRICAO_COFF_FOTOVOLTAICA_2024_04.parquet"),
+    ],
+    ons_capacidade.FONTE: [
+        ("https://ons-aws-prod-opendata.s3.amazonaws.com/capacidade_geracao/CAPACIDADE_GERACAO.parquet",
+         "ons_energia/CAPACIDADE_GERACAO.parquet"),
+    ],
 }  # fmt: skip
 ANATEL = {"Acessos_Banda_Larga_Fixa_2024_Colunas", "Acessos_Telefonia_Movel_200902-2018_Modalidade_Colunas",
           "Acessos_Telefonia_Movel_200902-2018_Tecnologia_Colunas"}  # fmt: skip
@@ -91,6 +116,9 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
         "ans": {"2017", "2026"},
         "susep": {"2000", "2015", "2026"},
         "cftc": {"2026"},
+        "ccee": {"2001", "2021", "2025"},
+        "ons_restricao": {"eolica_2026_09", "fotovoltaica_2024_04"},
+        "ons_capacidade": {"capacidade"},
     }
     with criar_engine().connect() as c:
         for fonte, anos in esperados.items():
@@ -134,6 +162,11 @@ def test_buracos_da_ligacao_pela_b13(ambiente):
             "06033",
             "06785",
         },  # a B13 não liga a SUSEP (ainda)
+        ons_capacidade.FONTE: {
+            "AXIA NORDESTE",
+            "GEBRA",
+        },  # a B13 do teste não tem energia
+        ons_restricao.FONTE: {"SIMM", "VISUS ENGENHARIA", "AUREN OPERAÇÕES"},
     }
 
 

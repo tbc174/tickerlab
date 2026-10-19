@@ -21,7 +21,10 @@ from base.setoriais import anatel as setoriais_anatel
 from base.setoriais import aneel as setoriais_aneel
 from base.setoriais import anp as setoriais_anp
 from base.setoriais import ans as setoriais_ans
+from base.setoriais import ccee as setoriais_ccee
 from base.setoriais import ons as setoriais_ons
+from base.setoriais import ons_capacidade as setoriais_ons_capacidade
+from base.setoriais import ons_restricao as setoriais_ons_restricao
 from base.setoriais import susep as setoriais_susep
 from src.banco.coletas import (
     A_CONFIRMAR,
@@ -109,6 +112,9 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
         "faostat_cafe": list(faostat_cafe.COLUNAS),
         "comex_cafe": list(comex_cafe.COLUNAS),
         "ons_geracao": list(setoriais_ons.COLUNAS),
+        "ccee_pld": list(setoriais_ccee.COLUNAS),
+        "ons_restricao": [*setoriais_ons_restricao.COLUNAS, "visto_em"],
+        "ons_capacidade": [*setoriais_ons_capacidade.COLUNAS, "visto_em"],
         "cftc_cot_agro": list(cftc_cot.COLUNAS_AGRO),
         "amostra_painel": [
             *amostra_universo.COLUNAS,

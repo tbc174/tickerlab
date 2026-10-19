@@ -32,7 +32,20 @@ import sqlalchemy as sa
 
 from base.commodities import cftc_cot
 from base.parquet import gravar_com_versoes, gravar_se_mudou
-from base.setoriais import anac, anatel, aneel, anp, ans, ligacao, ons, revisoes, susep
+from base.setoriais import (
+    anac,
+    anatel,
+    aneel,
+    anp,
+    ans,
+    ccee,
+    ligacao,
+    ons,
+    ons_capacidade,
+    ons_restricao,
+    revisoes,
+    susep,
+)
 from src import acervo
 from src.banco.coletas import coletas_guardadas, originais_mais_recentes
 from src.banco.conexao import criar_engine, migrar_para
@@ -50,6 +63,7 @@ TABELAS = {
     anp.FONTE: ("anp", ["competencia", "grupo", "agente", "codigo_do_produto"], "competencia"),
     ons.FONTE: ("ons", ["instante", "id_ons"], "instante"),
     cftc_cot.FONTE: ("cftc", ["relatorio", "contrato"], "relatorio"),
+    ccee.FONTE: ("ccee", list(ccee.CHAVE), "referencia"),
 }  # fmt: skip
 # fonte → (coluna da chave na tabela, coluna do volume) para os buracos da ligação
 CHAVES = {
@@ -114,6 +128,16 @@ REVISADAS = {
         lambda c, _: susep.ler(c), susep.FONTE, "coenti", lambda t: t["premio_direto"],
         por_ano=True,
     ),
+    ons_restricao.FONTE: Revisada(
+        "ons_restricao", list(ons_restricao.CHAVE), ons_restricao.CARIMBOS, ons_restricao.destino,
+        ons_restricao.ler, ons_restricao.FONTE_DA_LIGACAO, "agente_operador",
+        lambda t: t["geracao_mwmed"],
+    ),
+    ons_capacidade.FONTE: Revisada(
+        "ons_capacidade", list(ons_capacidade.CHAVE), ons_capacidade.CARIMBOS, ons_capacidade.destino,
+        lambda c, _: ons_capacidade.ler(c), ons_capacidade.FONTE, "proprietario",
+        lambda t: t["potencia_efetiva_mw"],
+    ),
 }  # fmt: skip
 
 
@@ -137,6 +161,8 @@ def _leitor(fonte: str, linha: sa.Row) -> Callable[[bytes], pd.DataFrame] | None
         return ons.ler
     if fonte == cftc_cot.FONTE and linha.url.endswith(".zip"):
         return cftc_cot.ler_disaggregated
+    if fonte == ccee.FONTE and ".csv" in linha.url.lower():
+        return ccee.ler
     return None
 
 
