@@ -78,6 +78,13 @@ afterEach(() => {
 });
 
 describe("o Início é o Workspace", () => {
+  it("manda as outras telas para a versão clássica, com a concordância certa", async () => {
+    abrir();
+    await cartao();
+    const link = screen.getByRole("link", { name: "versão clássica" });
+    expect(link.parentElement?.textContent).toMatch(/continuam na versão clássica\./);
+  });
+
   it("pede o Pulse uma vez e mostra o texto da janela", async () => {
     const { buscar } = abrir();
     await cartao();

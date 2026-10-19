@@ -353,5 +353,5 @@
 .sem-dado-do-cafe { padding: var(--e3) var(--e4); border-radius: 8px; border: 1px dashed var(--linha-forte); }
 .fonte-do-bloco { margin-bottom: 0; font-size: .82rem; }
 .lista-do-cafe { padding-left: var(--e5); }
-.lista-do-cafe li { margin-bottom: var(--e1); }
+.lista-do-cafe li { margin-bottom: var(--e1); overflow-wrap: anywhere; }
 .ficha-do-cafe + .ficha-do-cafe { margin-top: var(--e5); padding-top: var(--e4); border-top: 1px solid var(--linha); }
