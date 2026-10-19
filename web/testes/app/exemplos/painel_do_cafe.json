@@ -1,0 +1,1989 @@
+{
+ "resposta": {
+  "aviso_diario": "Preço de referência mensal; o diário depende de licença.",
+  "balanco": {
+   "chave": "balanco",
+   "conteudo": {
+    "estoque_consumo_brasil": [
+     {
+      "ano_safra": 2015,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2016,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2017,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2018,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2019,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2020,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2021,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2022,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2023,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2024,
+      "rotulo": "BR",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2025,
+      "rotulo": "BR",
+      "valor": 0.5
+     }
+    ],
+    "estoque_consumo_mundo": [
+     {
+      "ano_safra": 2015,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2016,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2017,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2018,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2019,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2020,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2021,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2022,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2023,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2024,
+      "rotulo": "mundo",
+      "valor": 0.5
+     },
+     {
+      "ano_safra": 2025,
+      "rotulo": "mundo",
+      "valor": 0.5
+     }
+    ],
+    "paises": [],
+    "participacao_do_brasil": [
+     {
+      "ano_safra": 2015,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2016,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2017,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2018,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2019,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2020,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2021,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2022,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2023,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2024,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     },
+     {
+      "ano_safra": 2025,
+      "rotulo": "arabica",
+      "valor": 0.6666666666666666
+     }
+    ],
+    "ultima_safra": 2025
+   },
+   "data": "2025-12-31",
+   "fonte": "USDA, PSD Online (Production, Supply and Distribution).",
+   "motivo_sem_dado": null,
+   "o_que_e": "O balanço mundial do USDA: estoque final dividido pelo consumo de cada safra. Quanto menor, menos café sobra no fim da safra para cada saca consumida.",
+   "titulo": "Balanço mundial"
+  },
+  "bienalidade": {
+   "chave": "bienalidade",
+   "conteudo": {
+    "marcas": [
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2019,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2020,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2021,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2022,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2023,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2024,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "vazio",
+      "safra": 2025,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 48000.0
+     },
+     {
+      "levantamento": null,
+      "rotulo": "cheio",
+      "safra": 2026,
+      "serie": "ano_cheio_ou_vazio",
+      "tipo": "arabica",
+      "uf": "BRASIL",
+      "unidade": "mil sacas de 60 kg",
+      "valor": 55000.0
+     }
+    ]
+   },
+   "data": "2026-02-05",
+   "fonte": "CONAB, Acompanhamento da safra brasileira de café.",
+   "motivo_sem_dado": null,
+   "o_que_e": "O arábica alterna safras cheias e vazias: a planta que produz muito num ano se poupa no seguinte. Cada safra marcada como cheia ou vazia pela produção final da CONAB.",
+   "titulo": "Bienalidade"
+  },
+  "calendario": {
+   "chave": "calendario",
+   "conteudo": {
+    "fase": {
+     "em_colheita": true,
+     "mes": 5,
+     "na_janela_de_geada": false,
+     "regiao_id": "sul-de-minas",
+     "safra_em_curso": "maturacao",
+     "safra_seguinte": "inducao"
+    },
+    "itens": [
+     {
+      "indices": [],
+      "tema": "maturacao",
+      "texto": "Em abril e maio os frutos amadurecem e começam a ser colhidos nas regiões mais precoces. O mercado\nolha o andamento da maturação e a estimativa de safra que a CONAB e as cooperativas publicam nos\nlevantamentos, que mudam de um levantamento para outro. Fonte da fase: Camargo & Camargo (2001) e\nCONAB; contexto, não previsão."
+     },
+     {
+      "indices": [],
+      "tema": "colheita",
+      "texto": "A colheita vai de maio a setembro no Brasil e começa antes, em abril, no Espírito Santo, onde o\nconilon amadurece cedo. Chuva na colheita costuma mexer mais na qualidade do grão e no ritmo do\ntrabalho do que no volume. O mercado olha o ritmo da colheita, o que os levantamentos da CONAB\nmostram e o que sai pelos portos. Fonte: CONAB e Embrapa Café; contexto, não previsão."
+     },
+     {
+      "indices": [],
+      "tema": "inducao",
+      "texto": "De abril a agosto as gemas dos ramos novos amadurecem, e o frio e a falta de água moderada do\ninverno as preparam para florir em setembro. É por isso que a geada e a seca do inverno pesam na\nflorada seguinte. Fonte da fase: Camargo & Camargo (2001) e Embrapa Café; contexto, não previsão."
+     }
+    ]
+   },
+   "data": "2026-05-01",
+   "fonte": "Camargo & Camargo (2001, Bragantia), CONAB e Embrapa Café.",
+   "motivo_sem_dado": null,
+   "o_que_e": "Em que fase o café está neste mês na região e o que o mercado costuma acompanhar nessa época. É contexto, não previsão.",
+   "titulo": "Calendário"
+  },
+  "cambio": {
+   "chave": "cambio",
+   "conteudo": {
+    "historico": [
+     {
+      "mes": "2025-01-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-02-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-03-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-04-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-05-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-06-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-07-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-08-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-09-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-10-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-11-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2025-12-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2026-01-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2026-02-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2026-03-01",
+      "valor": 5.0
+     },
+     {
+      "mes": "2026-04-01",
+      "valor": 5.0
+     }
+    ],
+    "ultimo_dia": "2026-04-30",
+    "ultimo_valor": 5.0,
+    "variacao_12_meses": 0.0
+   },
+   "data": "2026-04-30",
+   "fonte": "Banco Central do Brasil, PTAX (venda).",
+   "motivo_sem_dado": null,
+   "o_que_e": "Quantos reais compram um dólar (PTAX de venda). O café é cotado em dólar: o câmbio muda o preço em reais para quem produz e para quem compra.",
+   "titulo": "Câmbio"
+  },
+  "clima": {
+   "chave": "clima",
+   "conteudo": {
+    "chuva": {
+     "anomalia": -60.0,
+     "fim": "2026-02-28",
+     "inicio": "2025-12-01",
+     "n_estacoes": 5,
+     "normal": 360.0,
+     "razao_da_normal": 0.8333333333333334,
+     "valor": 300.0
+    },
+    "fonte_dos_dados": "inmet",
+    "nome_da_regiao": "Sul de Minas",
+    "regiao": "sul-de-minas",
+    "temperatura": {
+     "competencia": "2026-02-28",
+     "dias_tmin_abaixo_de_2c": 0.0,
+     "tmin_anomalia_c": 1.0,
+     "tmin_media_c": 15.0,
+     "tmin_normal_c": 14.0
+    }
+   },
+   "data": "2026-02-28",
+   "fonte": "INMET, estações automáticas; normal de 1991 a 2020.",
+   "motivo_sem_dado": null,
+   "o_que_e": "A chuva dos últimos três meses e a temperatura mínima do último mês na região, contra a normal de 1991 a 2020.",
+   "titulo": "Clima da região"
+  },
+  "contrapartes": {
+   "chave": "contrapartes",
+   "conteudo": {
+    "fichas": [
+     {
+      "cnpj": "20.770.566/0001-00",
+      "fatos": [
+       {
+        "data": "2025-12-31",
+        "descricao": "Faturamento de R$ 16,99 bilhões no exercício de 2025, segundo os números da assembleia de 27/03/2026 publicados pela Revista Cultivar",
+        "divulgado_em": "2026-03-30",
+        "fato": "faturamento",
+        "fonte": "https://revistacultivar.com.br/noticias/cooxupe-alcanca-faturamento-de-rdollar-16-99-bilhoes-em-2025",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 16990000000.0,
+        "veiculo": "Revista Cultivar"
+       },
+       {
+        "data": "2025-12-31",
+        "descricao": "Resultado de R$ 470,3 milhões em 2025, segundo a Revista Cultivar",
+        "divulgado_em": "2026-03-30",
+        "fato": "resultado",
+        "fonte": "https://revistacultivar.com.br/noticias/cooxupe-alcanca-faturamento-de-rdollar-16-99-bilhoes-em-2025",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 470300000.0,
+        "veiculo": "Revista Cultivar"
+       },
+       {
+        "data": "2025-12-31",
+        "descricao": "Sobras de R$ 185,6 milhões em 2025, segundo a Revista Cultivar",
+        "divulgado_em": "2026-03-30",
+        "fato": "sobras",
+        "fonte": "https://revistacultivar.com.br/noticias/cooxupe-alcanca-faturamento-de-rdollar-16-99-bilhoes-em-2025",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 185600000.0,
+        "veiculo": "Revista Cultivar"
+       },
+       {
+        "data": "2025-12-31",
+        "descricao": "Recebeu 6,07 milhões de sacas em 2025, das quais 4,8 milhões vieram do quadro de associados, segundo a Revista Cultivar",
+        "divulgado_em": "2026-03-30",
+        "fato": "sacas_recebidas",
+        "fonte": "https://revistacultivar.com.br/noticias/cooxupe-alcanca-faturamento-de-rdollar-16-99-bilhoes-em-2025",
+        "tipo_de_fonte": "noticia",
+        "unidade": "sacas",
+        "valor": 6070000.0,
+        "veiculo": "Revista Cultivar"
+       }
+      ],
+      "id": "cooxupe",
+      "nome": "Cooxupé (Cooperativa Regional de Cafeicultores em Guaxupé)",
+      "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "MG"
+     },
+     {
+      "cnpj": "25.863.341/0001-11",
+      "fatos": [
+       {
+        "data": "2020-12-31",
+        "descricao": "Destinou cerca de R$ 27,2 milhões ao quadro de associados pelo exercício de 2020 (R$ 2 milhões em dinheiro, R$ 8,888 milhões em cota capital e R$ 16,286 milhões a distribuir, do FunRural recuperado), segundo o Notícias Agrícolas",
+        "divulgado_em": "2021-03-29",
+        "fato": "sobras_distribuidas",
+        "fonte": "https://www.noticiasagricolas.com.br/noticia/283997",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 27174000.0,
+        "veiculo": "Notícias Agrícolas"
+       }
+      ],
+      "id": "minasul",
+      "nome": "Minasul (Cooperativa Agroindustrial de Varginha)",
+      "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "MG"
+     },
+     {
+      "cnpj": "54.772.017/0001-96",
+      "fatos": [
+       {
+        "data": "2021-12-31",
+        "descricao": "Sobras de R$ 20.078.137 no exercício de 2021, segundo o Notícias Agrícolas",
+        "divulgado_em": "2022-03-21",
+        "fato": "sobras",
+        "fonte": "https://www.noticiasagricolas.com.br/noticias/cafe/312407-cocapec-elege-nova-diretoria-para-o-quadrienio-2022-2026.html",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 20078137.0,
+        "veiculo": "Notícias Agrícolas"
+       },
+       {
+        "data": "2021-12-31",
+        "descricao": "Distribuiu R$ 2 milhões dessas sobras ao quadro de associados, segundo o Notícias Agrícolas",
+        "divulgado_em": "2022-03-21",
+        "fato": "sobras_distribuidas",
+        "fonte": "https://www.noticiasagricolas.com.br/noticias/cafe/312407-cocapec-elege-nova-diretoria-para-o-quadrienio-2022-2026.html",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 2000000.0,
+        "veiculo": "Notícias Agrícolas"
+       }
+      ],
+      "id": "cocapec",
+      "nome": "Cocapec (Cooperativa de Cafeicultores e Agropecuaristas)",
+      "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "SP"
+     },
+     {
+      "cnpj": "71.352.553/0001-51",
+      "fatos": [
+       {
+        "data": "2024-12-31",
+        "descricao": "Receita líquida acima de R$ 1,9 bilhão em 2024, segundo os números da assembleia de 25/02/2025 publicados pela Revista Cultivar",
+        "divulgado_em": "2025-02-26",
+        "fato": "receita_liquida",
+        "fonte": "https://revistacultivar.com.br/noticias/expocacer-registra-recorde-financeiro-e-renova-conselhos",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 1900000000.0,
+        "veiculo": "Revista Cultivar"
+       },
+       {
+        "data": "2024-12-31",
+        "descricao": "Resultado líquido de R$ 33 milhões em 2024, segundo a Revista Cultivar",
+        "divulgado_em": "2025-02-26",
+        "fato": "resultado",
+        "fonte": "https://revistacultivar.com.br/noticias/expocacer-registra-recorde-financeiro-e-renova-conselhos",
+        "tipo_de_fonte": "noticia",
+        "unidade": "R$",
+        "valor": 33000000.0,
+        "veiculo": "Revista Cultivar"
+       },
+       {
+        "data": "2024-12-31",
+        "descricao": "Comercializou mais de 1,4 milhão de sacas em 2024 (sacas vendidas, não recebidas), segundo a Revista Cultivar",
+        "divulgado_em": "2025-02-26",
+        "fato": "sacas_comercializadas",
+        "fonte": "https://revistacultivar.com.br/noticias/expocacer-registra-recorde-financeiro-e-renova-conselhos",
+        "tipo_de_fonte": "noticia",
+        "unidade": "sacas",
+        "valor": 1400000.0,
+        "veiculo": "Revista Cultivar"
+       }
+      ],
+      "id": "expocacer",
+      "nome": "Expocacer (Cooperativa dos Cafeicultores do Cerrado)",
+      "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "MG"
+     },
+     {
+      "cnpj": "03.936.815/0001-75",
+      "fatos": [],
+      "id": "atlantica",
+      "nome": "Atlântica Exportação e Importação S.A.",
+      "o_que_nao_sabemos": [
+       "Pedido de recuperação judicial: noticiado por Bloomberg Línea em 05/03/2025 (https://www.bloomberglinea.com.br/agro/gigante-do-cafe-pede-recuperacao-judicial-com-r-21-bilhoes-em-dividas/); fica fora dos fatos até a página ser guardada como prova.",
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "trading",
+      "uf": "MG"
+     },
+     {
+      "cnpj": "17.611.589/0001-67",
+      "fatos": [],
+      "id": "cafebras",
+      "nome": "Cafebras Comércio de Cafés do Brasil S.A.",
+      "o_que_nao_sabemos": [
+       "Pedido de recuperação judicial: noticiado por Bloomberg Línea em 05/03/2025 (https://www.bloomberglinea.com.br/agro/gigante-do-cafe-pede-recuperacao-judicial-com-r-21-bilhoes-em-dividas/); fica fora dos fatos até a página ser guardada como prova.",
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "Situação especial na Receita: o cadastro aberto do CNPJ não foi cruzado nesta ficha.",
+       "CRA: os informes das securitizadoras na CVM não foram cruzados nesta ficha.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "trading",
+      "uf": "MG"
+     },
+     {
+      "cnpj": null,
+      "fatos": [
+       {
+        "data": "2004-07-01",
+        "descricao": "A CPI do Café da Assembleia de Minas fez reunião em Guapé, em 01/07/2004, sobre a falta de cerca de 30 mil sacas no armazém da cooperativa (havia 39.525), constatada em abril de 2003 e que atingiu cerca de 540 produtores, segundo a ALMG",
+        "divulgado_em": "2004-07-01",
+        "fato": "apuracao_publica",
+        "fonte": "https://www.almg.gov.br/acompanhe/noticias/arquivos/2004/07/Not467238.html",
+        "tipo_de_fonte": "documento_oficial",
+        "unidade": "sacas",
+        "valor": 30000.0,
+        "veiculo": "Assembleia Legislativa de Minas Gerais"
+       }
+      ],
+      "id": "coocafeg",
+      "nome": "Coocafeg (cooperativa de cafeicultores de Guapé)",
+      "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "CNPJ: não confirmado no cadastro aberto da Receita.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "MG"
+     }
+    ]
+   },
+   "data": "2026-03-30",
+   "fonte": "Notícias e documentos públicos lidos à mão, ditos com as nossas palavras, com o link de cada fato.",
+   "motivo_sem_dado": null,
+   "o_que_e": "Fatos públicos e datados sobre empresas do café (cooperativas, exportadoras, torrefadoras) e o que ainda não sabemos de cada uma. Sem nota e sem selo.",
+   "titulo": "Contrapartes"
+  },
+  "dia": "2026-05-01",
+  "exportacoes": {
+   "chave": "exportacoes",
+   "conteudo": {
+    "destinos": [
+     {
+      "fob_usd": 900000.0,
+      "fracao": 0.5,
+      "pais": "Estados Unidos",
+      "sacas": 3600.0
+     },
+     {
+      "fob_usd": 600000.0,
+      "fracao": 0.3333333333333333,
+      "pais": "Alemanha",
+      "sacas": 2400.0
+     },
+     {
+      "fob_usd": 300000.0,
+      "fracao": 0.16666666666666666,
+      "pais": "Bélgica",
+      "sacas": 1200.0
+     }
+    ],
+    "fob_usd": 1800000.0,
+    "fracao_do_espirito_santo": 0.16666666666666666,
+    "nota": "A NCM não separa arábica de conilon e soma o café torrado e o solúvel em peso do produto. A fatia do Espírito Santo (quase só conilon) é uma pista do conilon, não a conta dele.",
+    "primeiro_mes": "2025-04-01",
+    "sacas": 7200.0,
+    "ultimo_mes": "2026-03-31"
+   },
+   "data": "2026-03-31",
+   "fonte": "Comex Stat (MDIC/Secex), NCMs 0901.11.10, 0901.11.90, 0901.21.00 e 2101.11.10.",
+   "motivo_sem_dado": null,
+   "o_que_e": "Quanto café o Brasil exportou nos últimos 12 meses publicados e para quais países.",
+   "titulo": "Exportações"
+  },
+  "fundos": {
+   "chave": "fundos",
+   "conteudo": {
+    "comprados_lotes": 60000.0,
+    "fracao_do_interesse_aberto": 0.2,
+    "historico": [
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-01-07"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-01-14"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-01-21"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-01-28"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-02-04"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-02-11"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-02-18"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-02-25"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-03-04"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-03-11"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-03-18"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-03-25"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-04-01"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-04-08"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-04-15"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-04-22"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-04-29"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-05-06"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-05-13"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-05-20"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-05-27"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-06-03"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-06-10"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-06-17"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-06-24"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-07-01"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-07-08"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-07-15"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-07-22"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-07-29"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-08-05"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-08-12"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-08-19"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-08-26"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-09-02"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-09-09"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-09-16"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-09-23"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-09-30"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-10-07"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-10-14"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-10-21"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-10-28"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-11-04"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-11-11"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-11-18"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-11-25"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-12-02"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-12-09"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-12-16"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-12-23"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2025-12-30"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-01-06"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-01-13"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-01-20"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-01-27"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-02-03"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-02-10"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-02-17"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-02-24"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-03-03"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-03-10"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-03-17"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-03-24"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-03-31"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-04-07"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-04-14"
+     },
+     {
+      "fracao_do_interesse_aberto": 0.2,
+      "liquido_lotes": 40000.0,
+      "relatorio": "2026-04-21"
+     }
+    ],
+    "interesse_aberto_lotes": 200000.0,
+    "legenda": "Fundos (managed money) costumam ampliar movimentos de preço que já começaram; não os criam sozinhos. Quanto o câmbio do real pesa no preço do café não é consenso: a CEPAL (2021) e a Organização Internacional do Café (2025) chegam a conclusões diferentes.",
+    "liquido_lotes": 40000.0,
+    "liquido_sacas": 11339809.25,
+    "relatorio": "2026-04-21",
+    "vendidos_lotes": 20000.0
+   },
+   "data": "2026-04-21",
+   "fonte": "CFTC, Commitments of Traders (disaggregated), Coffee C na ICE Futures U.S.",
+   "motivo_sem_dado": null,
+   "o_que_e": "A posição dos fundos (managed money) no contrato futuro de arábica de Nova York: compras menos vendas, em lotes, em sacas e em fração de todos os contratos em aberto.",
+   "titulo": "Posição dos fundos"
+  },
+  "nome_do_tipo": "Arábica",
+  "preco_de_referencia": {
+   "chave": "preco_de_referencia",
+   "conteudo": {
+    "item": {
+     "chave": "cafe-arabica",
+     "com_fmi": true,
+     "historico": [
+      {
+       "bm": 8.0,
+       "fmi": null,
+       "mes": "2021-04-01"
+      },
+      {
+       "bm": 8.01,
+       "fmi": null,
+       "mes": "2021-05-01"
+      },
+      {
+       "bm": 8.02,
+       "fmi": null,
+       "mes": "2021-06-01"
+      },
+      {
+       "bm": 8.03,
+       "fmi": null,
+       "mes": "2021-07-01"
+      },
+      {
+       "bm": 8.04,
+       "fmi": null,
+       "mes": "2021-08-01"
+      },
+      {
+       "bm": 8.05,
+       "fmi": null,
+       "mes": "2021-09-01"
+      },
+      {
+       "bm": 8.06,
+       "fmi": null,
+       "mes": "2021-10-01"
+      },
+      {
+       "bm": 8.07,
+       "fmi": null,
+       "mes": "2021-11-01"
+      },
+      {
+       "bm": 8.08,
+       "fmi": null,
+       "mes": "2021-12-01"
+      },
+      {
+       "bm": 8.09,
+       "fmi": null,
+       "mes": "2022-01-01"
+      },
+      {
+       "bm": 8.1,
+       "fmi": null,
+       "mes": "2022-02-01"
+      },
+      {
+       "bm": 8.11,
+       "fmi": null,
+       "mes": "2022-03-01"
+      },
+      {
+       "bm": 8.12,
+       "fmi": null,
+       "mes": "2022-04-01"
+      },
+      {
+       "bm": 8.13,
+       "fmi": null,
+       "mes": "2022-05-01"
+      },
+      {
+       "bm": 8.14,
+       "fmi": null,
+       "mes": "2022-06-01"
+      },
+      {
+       "bm": 8.15,
+       "fmi": null,
+       "mes": "2022-07-01"
+      },
+      {
+       "bm": 8.16,
+       "fmi": null,
+       "mes": "2022-08-01"
+      },
+      {
+       "bm": 8.17,
+       "fmi": null,
+       "mes": "2022-09-01"
+      },
+      {
+       "bm": 8.18,
+       "fmi": null,
+       "mes": "2022-10-01"
+      },
+      {
+       "bm": 8.19,
+       "fmi": null,
+       "mes": "2022-11-01"
+      },
+      {
+       "bm": 8.2,
+       "fmi": null,
+       "mes": "2022-12-01"
+      },
+      {
+       "bm": 8.21,
+       "fmi": null,
+       "mes": "2023-01-01"
+      },
+      {
+       "bm": 8.22,
+       "fmi": null,
+       "mes": "2023-02-01"
+      },
+      {
+       "bm": 8.23,
+       "fmi": null,
+       "mes": "2023-03-01"
+      },
+      {
+       "bm": 8.24,
+       "fmi": null,
+       "mes": "2023-04-01"
+      },
+      {
+       "bm": 8.25,
+       "fmi": null,
+       "mes": "2023-05-01"
+      },
+      {
+       "bm": 8.26,
+       "fmi": null,
+       "mes": "2023-06-01"
+      },
+      {
+       "bm": 8.27,
+       "fmi": null,
+       "mes": "2023-07-01"
+      },
+      {
+       "bm": 8.28,
+       "fmi": null,
+       "mes": "2023-08-01"
+      },
+      {
+       "bm": 8.29,
+       "fmi": null,
+       "mes": "2023-09-01"
+      },
+      {
+       "bm": 8.3,
+       "fmi": null,
+       "mes": "2023-10-01"
+      },
+      {
+       "bm": 8.31,
+       "fmi": null,
+       "mes": "2023-11-01"
+      },
+      {
+       "bm": 8.32,
+       "fmi": null,
+       "mes": "2023-12-01"
+      },
+      {
+       "bm": 8.33,
+       "fmi": null,
+       "mes": "2024-01-01"
+      },
+      {
+       "bm": 8.34,
+       "fmi": null,
+       "mes": "2024-02-01"
+      },
+      {
+       "bm": 8.35,
+       "fmi": null,
+       "mes": "2024-03-01"
+      },
+      {
+       "bm": 8.36,
+       "fmi": null,
+       "mes": "2024-04-01"
+      },
+      {
+       "bm": 8.37,
+       "fmi": null,
+       "mes": "2024-05-01"
+      },
+      {
+       "bm": 8.38,
+       "fmi": null,
+       "mes": "2024-06-01"
+      },
+      {
+       "bm": 8.39,
+       "fmi": null,
+       "mes": "2024-07-01"
+      },
+      {
+       "bm": 8.4,
+       "fmi": null,
+       "mes": "2024-08-01"
+      },
+      {
+       "bm": 8.41,
+       "fmi": null,
+       "mes": "2024-09-01"
+      },
+      {
+       "bm": 8.42,
+       "fmi": null,
+       "mes": "2024-10-01"
+      },
+      {
+       "bm": 8.43,
+       "fmi": null,
+       "mes": "2024-11-01"
+      },
+      {
+       "bm": 8.44,
+       "fmi": null,
+       "mes": "2024-12-01"
+      },
+      {
+       "bm": 8.45,
+       "fmi": null,
+       "mes": "2025-01-01"
+      },
+      {
+       "bm": 8.46,
+       "fmi": null,
+       "mes": "2025-02-01"
+      },
+      {
+       "bm": 8.47,
+       "fmi": null,
+       "mes": "2025-03-01"
+      },
+      {
+       "bm": 8.48,
+       "fmi": null,
+       "mes": "2025-04-01"
+      },
+      {
+       "bm": 8.49,
+       "fmi": null,
+       "mes": "2025-05-01"
+      },
+      {
+       "bm": 8.5,
+       "fmi": null,
+       "mes": "2025-06-01"
+      },
+      {
+       "bm": 8.51,
+       "fmi": null,
+       "mes": "2025-07-01"
+      },
+      {
+       "bm": 8.52,
+       "fmi": null,
+       "mes": "2025-08-01"
+      },
+      {
+       "bm": 8.53,
+       "fmi": null,
+       "mes": "2025-09-01"
+      },
+      {
+       "bm": 8.54,
+       "fmi": null,
+       "mes": "2025-10-01"
+      },
+      {
+       "bm": 8.55,
+       "fmi": null,
+       "mes": "2025-11-01"
+      },
+      {
+       "bm": 8.56,
+       "fmi": null,
+       "mes": "2025-12-01"
+      },
+      {
+       "bm": 8.57,
+       "fmi": null,
+       "mes": "2026-01-01"
+      },
+      {
+       "bm": 8.58,
+       "fmi": null,
+       "mes": "2026-02-01"
+      },
+      {
+       "bm": 8.59,
+       "fmi": null,
+       "mes": "2026-03-01"
+      }
+     ],
+     "nome": "Café arábica (indicador ICO, outros suaves)",
+     "nota_das_fontes": null,
+     "ultimo_mes": "2026-03-01",
+     "ultimo_valor": 8.59,
+     "unidade": "US$/kg",
+     "variacao_12_meses": 1.416765053128688
+    },
+    "marcos": [
+     {
+      "data": "2014-02-01",
+      "fonte": "CONAB, 3º levantamento da safra 2014 (16/09/2014): arábica −16,82%, conilon +21,18%",
+      "texto": "Seca de janeiro e fevereiro em Minas Gerais: a safra de arábica 2014 cai e a de conilon sobe, e o arábica se afasta do robusta."
+     },
+     {
+      "data": "2021-07-20",
+      "fonte": "USDA, Coffee: World Markets and Trade (dez/2021); USDA GAIN BR2022-0060 (nov/2022)",
+      "texto": "Geadas de 30/06, 20/07 e 30/07 em áreas de arábica no Brasil; o dano em folhas e galhos pesou na safra seguinte."
+     },
+     {
+      "data": "2024-04-16",
+      "fonte": "StoneX, relatório de mercado (23/03/2026)",
+      "texto": "Robusta em Londres passa de US$ 4.000 por tonelada, o que aproxima o preço dele do arábica."
+     },
+     {
+      "data": "2025-02-01",
+      "fonte": "StoneX, relatório de mercado (23/03/2026); imprensa de mercado",
+      "texto": "Robusta chega perto de US$ 5.800 por tonelada, o recorde da série; o pico exato varia por fonte. Desde 2023 há reformulações de blends que ficaram."
+     }
+    ],
+    "spread": [
+     {
+      "arabica": 362.873896,
+      "mes": "2021-04-01",
+      "razao": 2.0,
+      "robusta": 181.436948,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 363.32748836999997,
+      "mes": "2021-05-01",
+      "razao": 1.9975062344139651,
+      "robusta": 181.89054037,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 363.78108074,
+      "mes": "2021-06-01",
+      "razao": 1.9950248756218907,
+      "robusta": 182.34413274,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 364.23467310999996,
+      "mes": "2021-07-01",
+      "razao": 1.9925558312655085,
+      "robusta": 182.79772511000002,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 364.68826548,
+      "mes": "2021-08-01",
+      "razao": 1.9900990099009899,
+      "robusta": 183.25131748,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 365.14185785,
+      "mes": "2021-09-01",
+      "razao": 1.9876543209876545,
+      "robusta": 183.70490985,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 365.59545022000003,
+      "mes": "2021-10-01",
+      "razao": 1.9852216748768476,
+      "robusta": 184.15850221999997,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 366.04904259,
+      "mes": "2021-11-01",
+      "razao": 1.9828009828009827,
+      "robusta": 184.61209459000003,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 366.50263496,
+      "mes": "2021-12-01",
+      "razao": 1.9803921568627452,
+      "robusta": 185.06568696,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 366.95622733,
+      "mes": "2022-01-01",
+      "razao": 1.97799511002445,
+      "robusta": 185.51927933,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 367.4098197,
+      "mes": "2022-02-01",
+      "razao": 1.975609756097561,
+      "robusta": 185.97287169999998,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 367.86341207,
+      "mes": "2022-03-01",
+      "razao": 1.9732360097323598,
+      "robusta": 186.42646407,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 368.31700443999995,
+      "mes": "2022-04-01",
+      "razao": 1.9708737864077668,
+      "robusta": 186.88005644,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 368.77059681000003,
+      "mes": "2022-05-01",
+      "razao": 1.9685230024213078,
+      "robusta": 187.33364881,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 369.22418918000005,
+      "mes": "2022-06-01",
+      "razao": 1.9661835748792273,
+      "robusta": 187.78724118,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 369.67778155,
+      "mes": "2022-07-01",
+      "razao": 1.963855421686747,
+      "robusta": 188.24083355000002,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 370.13137392,
+      "mes": "2022-08-01",
+      "razao": 1.9615384615384615,
+      "robusta": 188.69442592000001,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 370.58496629,
+      "mes": "2022-09-01",
+      "razao": 1.959232613908873,
+      "robusta": 189.14801829,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 371.03855866,
+      "mes": "2022-10-01",
+      "razao": 1.9569377990430623,
+      "robusta": 189.60161065999998,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 371.49215103,
+      "mes": "2022-11-01",
+      "razao": 1.9546539379474936,
+      "robusta": 190.05520303000003,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 371.94574339999997,
+      "mes": "2022-12-01",
+      "razao": 1.952380952380952,
+      "robusta": 190.5087954,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 372.39933577000005,
+      "mes": "2023-01-01",
+      "razao": 1.950118764845606,
+      "robusta": 190.96238777,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 372.85292814,
+      "mes": "2023-02-01",
+      "razao": 1.9478672985781993,
+      "robusta": 191.41598014,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 373.30652051000004,
+      "mes": "2023-03-01",
+      "razao": 1.945626477541371,
+      "robusta": 191.86957251,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 373.76011288,
+      "mes": "2023-04-01",
+      "razao": 1.9433962264150944,
+      "robusta": 192.32316488,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 374.21370525,
+      "mes": "2023-05-01",
+      "razao": 1.9411764705882353,
+      "robusta": 192.77675725,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 374.66729762,
+      "mes": "2023-06-01",
+      "razao": 1.9389671361502347,
+      "robusta": 193.23034962,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 375.12088998999997,
+      "mes": "2023-07-01",
+      "razao": 1.9367681498829041,
+      "robusta": 193.68394199,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 375.57448236,
+      "mes": "2023-08-01",
+      "razao": 1.934579439252336,
+      "robusta": 194.13753436000002,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 376.02807472999996,
+      "mes": "2023-09-01",
+      "razao": 1.9324009324009321,
+      "robusta": 194.59112673,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 376.48166710000004,
+      "mes": "2023-10-01",
+      "razao": 1.9302325581395352,
+      "robusta": 195.04471909999998,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 376.93525947,
+      "mes": "2023-11-01",
+      "razao": 1.9280742459396754,
+      "robusta": 195.49831146999998,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 377.38885184000003,
+      "mes": "2023-12-01",
+      "razao": 1.9259259259259258,
+      "robusta": 195.95190384,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 377.84244421,
+      "mes": "2024-01-01",
+      "razao": 1.9237875288683604,
+      "robusta": 196.40549621,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 378.29603658,
+      "mes": "2024-02-01",
+      "razao": 1.9216589861751152,
+      "robusta": 196.85908858,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 378.74962895,
+      "mes": "2024-03-01",
+      "razao": 1.9195402298850575,
+      "robusta": 197.31268095,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 379.20322131999995,
+      "mes": "2024-04-01",
+      "razao": 1.9174311926605503,
+      "robusta": 197.76627332,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 379.65681369,
+      "mes": "2024-05-01",
+      "razao": 1.91533180778032,
+      "robusta": 198.21986569,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 380.11040606000006,
+      "mes": "2024-06-01",
+      "razao": 1.9132420091324203,
+      "robusta": 198.67345806,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 380.56399843,
+      "mes": "2024-07-01",
+      "razao": 1.9111617312072895,
+      "robusta": 199.12705043,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 381.0175908,
+      "mes": "2024-08-01",
+      "razao": 1.909090909090909,
+      "robusta": 199.58064280000002,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 381.47118317,
+      "mes": "2024-09-01",
+      "razao": 1.90702947845805,
+      "robusta": 200.03423517000002,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 381.92477554,
+      "mes": "2024-10-01",
+      "razao": 1.904977375565611,
+      "robusta": 200.48782754,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 382.37836791,
+      "mes": "2024-11-01",
+      "razao": 1.9029345372460498,
+      "robusta": 200.94141990999998,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 382.83196028,
+      "mes": "2024-12-01",
+      "razao": 1.9009009009009006,
+      "robusta": 201.39501228000003,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 383.28555264999994,
+      "mes": "2025-01-01",
+      "razao": 1.8988764044943818,
+      "robusta": 201.84860465,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 383.73914502,
+      "mes": "2025-02-01",
+      "razao": 1.8968609865470853,
+      "robusta": 202.30219702,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 384.19273739000005,
+      "mes": "2025-03-01",
+      "razao": 1.894854586129754,
+      "robusta": 202.75578939,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 384.64632976,
+      "mes": "2025-04-01",
+      "razao": 1.8928571428571428,
+      "robusta": 203.20938176,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 385.09992213000004,
+      "mes": "2025-05-01",
+      "razao": 1.8908685968819599,
+      "robusta": 203.66297413,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 385.5535145,
+      "mes": "2025-06-01",
+      "razao": 1.8888888888888888,
+      "robusta": 204.1165665,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 386.00710687,
+      "mes": "2025-07-01",
+      "razao": 1.8869179600886918,
+      "robusta": 204.57015887,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 386.46069924,
+      "mes": "2025-08-01",
+      "razao": 1.8849557522123894,
+      "robusta": 205.02375124,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 386.91429160999996,
+      "mes": "2025-09-01",
+      "razao": 1.8830022075055186,
+      "robusta": 205.47734361000002,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 387.36788398,
+      "mes": "2025-10-01",
+      "razao": 1.8810572687224667,
+      "robusta": 205.93093598000002,
+      "spread": 181.43694799999997
+     },
+     {
+      "arabica": 387.82147635,
+      "mes": "2025-11-01",
+      "razao": 1.8791208791208793,
+      "robusta": 206.38452834999998,
+      "spread": 181.43694800000003
+     },
+     {
+      "arabica": 388.27506872000004,
+      "mes": "2025-12-01",
+      "razao": 1.8771929824561402,
+      "robusta": 206.83812072000003,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 388.72866109,
+      "mes": "2026-01-01",
+      "razao": 1.8752735229759299,
+      "robusta": 207.29171309,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 389.18225346,
+      "mes": "2026-02-01",
+      "razao": 1.8733624454148472,
+      "robusta": 207.74530546,
+      "spread": 181.436948
+     },
+     {
+      "arabica": 389.63584583,
+      "mes": "2026-03-01",
+      "razao": 1.8714596949891067,
+      "robusta": 208.19889783,
+      "spread": 181.436948
+     }
+    ]
+   },
+   "data": "2026-03-01",
+   "fonte": "Fonte: Banco Mundial, Pink Sheet, CC BY 4.0; FMI PCPS.",
+   "motivo_sem_dado": null,
+   "o_que_e": "O preço de referência mensal do café verde no mercado internacional, em dólar por quilo, e o spread: quanto o arábica custa a mais que o robusta.",
+   "titulo": "Preço de referência e spread"
+  },
+  "regiao": "sul-de-minas",
+  "regioes": [
+   {
+    "id": "sul-de-minas",
+    "nome": "Sul de Minas",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "cerrado-mineiro",
+    "nome": "Cerrado Mineiro",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "matas-de-minas",
+    "nome": "Matas de Minas",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "chapada-de-minas",
+    "nome": "Chapada de Minas",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "mogiana",
+    "nome": "Mogiana",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "alta-paulista",
+    "nome": "Alta Paulista",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "norte-do-parana",
+    "nome": "Norte do Paraná",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "oeste-da-bahia",
+    "nome": "Oeste da Bahia",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "planalto-da-bahia",
+    "nome": "Planalto da Bahia",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "es-montanhas",
+    "nome": "Espírito Santo, montanhas",
+    "tipo_predominante": "arabica"
+   },
+   {
+    "id": "es-norte",
+    "nome": "Espírito Santo, norte",
+    "tipo_predominante": "conilon"
+   },
+   {
+    "id": "rondonia",
+    "nome": "Rondônia",
+    "tipo_predominante": "conilon"
+   },
+   {
+    "id": "bahia-atlantico",
+    "nome": "Bahia, Atlântico",
+    "tipo_predominante": "conilon"
+   }
+  ],
+  "safra": {
+   "chave": "safra",
+   "conteudo": {
+    "divulgado_em": "2026-02-05",
+    "levantamento": 1,
+    "linhas": [
+     {
+      "area_producao_ha": null,
+      "producao_mil_sacas": 55000.0,
+      "produtividade_sc_ha": null,
+      "uf": "BRASIL"
+     },
+     {
+      "area_producao_ha": null,
+      "producao_mil_sacas": 30000.0,
+      "produtividade_sc_ha": null,
+      "uf": "MG"
+     }
+    ],
+    "safra": 2026
+   },
+   "data": "2026-02-05",
+   "fonte": "CONAB, Acompanhamento da safra brasileira de café.",
+   "motivo_sem_dado": null,
+   "o_que_e": "A estimativa oficial da safra brasileira em curso, por estado, no levantamento mais novo da CONAB (são quatro por safra).",
+   "titulo": "Safra em curso (CONAB)"
+  },
+  "termometro": {
+   "chave": "termometro",
+   "conteudo": {
+    "erros": [
+     {
+      "erro_mil_sacas": 2000.0,
+      "erro_pct": 4.166666666666667,
+      "safra": 2018
+     },
+     {
+      "erro_mil_sacas": 3000.0,
+      "erro_pct": 6.25,
+      "safra": 2019
+     },
+     {
+      "erro_mil_sacas": 2000.0,
+      "erro_pct": 4.166666666666667,
+      "safra": 2020
+     },
+     {
+      "erro_mil_sacas": 3000.0,
+      "erro_pct": 6.25,
+      "safra": 2021
+     },
+     {
+      "erro_mil_sacas": 2000.0,
+      "erro_pct": 4.166666666666667,
+      "safra": 2022
+     },
+     {
+      "erro_mil_sacas": 3000.0,
+      "erro_pct": 6.25,
+      "safra": 2023
+     },
+     {
+      "erro_mil_sacas": 2000.0,
+      "erro_pct": 4.166666666666667,
+      "safra": 2024
+     },
+     {
+      "erro_mil_sacas": 3000.0,
+      "erro_pct": 6.25,
+      "safra": 2025
+     }
+    ],
+    "maior_erro_pct": 6.25,
+    "menor_erro_pct": 4.166666666666667,
+    "nota": "Erro positivo: o 1º levantamento da CONAB veio acima do número final (o 4º). É o histórico das safras já fechadas; a safra em curso não tem erro conhecido.",
+    "vies_medio_pct": 5.208333333333334
+   },
+   "data": "2026-02-05",
+   "fonte": "CONAB, Acompanhamento da safra brasileira de café.",
+   "motivo_sem_dado": null,
+   "o_que_e": "Quanto o 1º levantamento da CONAB errou em relação ao número final, safra a safra, em porcentagem.",
+   "titulo": "Termômetro da CONAB"
+  },
+  "tipo": "arabica"
+ }
+}

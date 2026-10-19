@@ -1,7 +1,7 @@
 // Service worker do app TickerLab (gerado por web/src/app/pwa.ts; não editar à mão).
 "use strict";
-var VERSAO = "tl-casca-16b385a94b13";
-var CASCA = ["/","/assets/index-BY_1vdGQ.css","/assets/index-DEIQM9H3.js","/estilo.css?v=1e9e0e1d84ef","/fontes/JetBrainsMono-VariableFont_wght.ttf","/fontes/Manrope-VariableFont_wght.ttf","/icones/apple-touch-icon.png","/icones/icone-192.png","/icones/icone-512.png","/icones/icone-mascaravel-512.png","/manifest.json","/simbolo.svg","/tema/sol.js?v=e36a88f10cf8"];
+var VERSAO = "tl-casca-833de0593c35";
+var CASCA = ["/","/assets/index-Cv6psPr6.js","/assets/index-DURBOKio.css","/estilo.css?v=1e9e0e1d84ef","/fontes/JetBrainsMono-VariableFont_wght.ttf","/fontes/Manrope-VariableFont_wght.ttf","/icones/apple-touch-icon.png","/icones/icone-192.png","/icones/icone-512.png","/icones/icone-mascaravel-512.png","/manifest.json","/simbolo.svg","/tema/sol.js?v=e36a88f10cf8"];
 var CAMINHOS_DE_FORA = ["/classico/","/api/"];
 
 self.addEventListener("install", function (evento) {

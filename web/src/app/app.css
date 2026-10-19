@@ -192,7 +192,8 @@
 .tabela-do-app { width: 100%; border-collapse: collapse; font-size: .9rem; margin: var(--e2) 0 var(--e4); }
 .tabela-do-app caption { text-align: left; font-weight: 700; padding-bottom: var(--e2); }
 .tabela-do-app th, .tabela-do-app td { text-align: left; padding: var(--e2) var(--e3); border-bottom: 1px solid var(--linha); }
-.tabela-do-app td.numero { font-variant-numeric: tabular-nums; }
+/* .numero do site (estilo.ts) é inline-block: a célula volta a ser célula, senão a coluna desalinha */
+.tabela-do-app td.numero { display: table-cell; margin: 0; font-variant-numeric: tabular-nums; }
 .tabela-rolavel { overflow-x: auto; }
 .mapa-mensal td, .mapa-mensal th { white-space: nowrap; font-size: .84rem; padding: var(--e2); }
 .campo-de-ativos { display: flex; flex-wrap: wrap; align-items: end; gap: var(--e2) var(--e4); border: 0; padding: 0; margin: 0; }
@@ -327,3 +328,16 @@
 .numeros-da-ficha dd:first-of-type { font-size: var(--t1); font-weight: 700; }
 .item-do-mes { margin: var(--e2) 0; }
 .item-do-mes > summary { cursor: pointer; font-weight: 600; }
+
+/* Painel do café (telas/PainelDoCafe.tsx): uma caixa por assunto, cada uma com a fonte e a data no pé */
+.seletores-do-cafe { flex-direction: row; flex-wrap: wrap; align-items: end; }
+.tipos-do-cafe { display: flex; flex-wrap: wrap; gap: var(--e2); }
+.tipos-do-cafe .botao { min-height: 44px; }
+.blocos-do-cafe { display: flex; flex-direction: column; gap: var(--e5); margin-top: var(--e4); }
+.bloco-do-cafe { padding: var(--e4) var(--e5); border: 1px solid var(--linha); border-radius: var(--raio); background: var(--superficie); }
+.bloco-do-cafe h2 { margin-top: 0; }
+.sem-dado-do-cafe { padding: var(--e3) var(--e4); border-radius: 8px; border: 1px dashed var(--linha-forte); }
+.fonte-do-bloco { margin-bottom: 0; font-size: .82rem; }
+.lista-do-cafe { padding-left: var(--e5); }
+.lista-do-cafe li { margin-bottom: var(--e1); }
+.ficha-do-cafe + .ficha-do-cafe { margin-top: var(--e5); padding-top: var(--e4); border-top: 1px solid var(--linha); }

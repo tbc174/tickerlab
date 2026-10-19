@@ -91,7 +91,8 @@ export const PERGUNTAS: [string, string][] = [
   [
     "O que fica guardado sobre mim?",
     "Seu perfil do Google (nome, e-mail), preferências, favoritos, simulações salvas e o " +
-      "registro dos relatórios gerados (não o PDF). Detalhes na Política de privacidade.",
+      "registro dos relatórios gerados, com o PDF original por 1 ano (menos o de \"Minha carteira\", " +
+      "que nunca fica guardado). Detalhes na Política de privacidade.",
   ],
   [
     "Preciso pagar?",
