@@ -41,7 +41,7 @@ A base legal é o artigo 7º da LGPD: **contrato** (inciso V: o que é preciso p
 | Registro de ações importantes (ids, sem nome nem e-mail) | O app | Segurança e prestação de contas | Segurança |
 | Registros técnicos de acesso: cada pedido ao site e ao app passa pela Cloudflare e pelo servidor, que registram o endereço IP, a hora, a página pedida e o navegador, sem o seu nome. Ficam por tempo limitado, e por 6 meses quando a lei exigir (Marco Civil da Internet, art. 15) | A Cloudflare e o servidor | Segurança e investigação de falhas e ataques | Segurança; obrigação legal |
 
-**Não coletamos** a sua senha do Google ou da Microsoft (o login acontece lá), nem dados de cartão. Não montamos perfil de navegação, não usamos pixel de publicidade e não vendemos dados. O seu e-mail só recebe propaganda do próprio TickerLab se você pedir (Novidades e ofertas, acima).
+**Não coletamos** a sua senha do Google ou da Microsoft (o login acontece lá), nem dados de cartão. Não montamos perfil de navegação, não usamos pixel de publicidade, não vendemos dados e não os usamos para publicidade de terceiros. O seu e-mail só recebe propaganda do próprio TickerLab se você pedir (Novidades e ofertas, acima).
 
 ## Inteligência artificial nos relatórios
 
