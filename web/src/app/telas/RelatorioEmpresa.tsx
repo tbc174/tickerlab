@@ -1,10 +1,14 @@
 // Relatório da empresa no app novo: as seções que a API monta (a mesma ordem da página do Streamlit
 // e do PDF). Quem não é Pro recebe as seções da base de ML trancadas (só o título e o convite): a
 // tranca é do servidor, esta tela só mostra, com um único link para os Planos depois delas.
+import { useState } from "react";
 import { Link } from "react-router";
 import type { PaginaDoApp } from "../../conteudo";
 import type {
+  AnaliseDaEmpresaV1,
   ItemDoRelatorioV1,
+  NotaDaAnaliseV1,
+  ParteDaAnaliseV1,
   PontoDoRelatorioV1,
   RelatorioDaEmpresaV1,
   SecaoDoRelatorioV1,
@@ -22,9 +26,15 @@ function Item({ item }: { item: ItemDoRelatorioV1 }) {
           Contra {item.comparacao.contra}: {item.comparacao.texto}
         </span>
       ) : null}
-      {item.base ? <span className="legenda-do-numero">Base: {item.base}</span> : null}
-      {item.fonte ? <span className="legenda-do-numero">Fonte: {item.fonte}</span> : null}
-      {item.motivo ? <span className="legenda-do-numero">{item.motivo}</span> : null}
+      {item.base ? (
+        <span className="legenda-do-numero">Base: {item.base}</span>
+      ) : null}
+      {item.fonte ? (
+        <span className="legenda-do-numero">Fonte: {item.fonte}</span>
+      ) : null}
+      {item.motivo ? (
+        <span className="legenda-do-numero">{item.motivo}</span>
+      ) : null}
       {item.nota ? (
         <span className="legenda-do-numero">
           Nota: <strong>{item.nota}</strong>
@@ -100,7 +110,10 @@ function Tabela({ tabela }: { tabela: TabelaDoRelatorioV1 }) {
 
 function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
   return (
-    <section className="secao-do-relatorio" aria-labelledby={`secao-${secao.chave}`}>
+    <section
+      className="secao-do-relatorio"
+      aria-labelledby={`secao-${secao.chave}`}
+    >
       <h2 id={`secao-${secao.chave}`}>{secao.titulo}</h2>
       {secao.trancada ? (
         secao.paragrafos.map((p) => (
@@ -110,7 +123,9 @@ function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
         ))
       ) : (
         <>
-          {secao.pontos && secao.pontos.length > 0 ? <Pontos pontos={secao.pontos} /> : null}
+          {secao.pontos && secao.pontos.length > 0 ? (
+            <Pontos pontos={secao.pontos} />
+          ) : null}
           {secao.itens.length > 0 ? (
             <div className="numeros">
               {secao.itens.map((item) => (
@@ -137,6 +152,82 @@ function Secao({ secao }: { secao: SecaoDoRelatorioV1 }) {
   );
 }
 
+// a nota aberta: o número de origem, com de quando é, de onde veio e contra o que se compara
+function NotaAberta({ nota }: { nota: NotaDaAnaliseV1 }) {
+  return (
+    <aside id={`nota-${nota.numero}`} className="legenda-do-numero" role="note">
+      <strong>
+        [{nota.numero}] {nota.nome}:
+      </strong>{" "}
+      {nota.texto}
+      {nota.medido_em ? <span> Medido em {nota.medido_em}.</span> : null}
+      {nota.fonte ? <span> Fonte: {nota.fonte}.</span> : null}
+      {nota.comparacao ? <span> {nota.comparacao}.</span> : null}
+    </aside>
+  );
+}
+
+function ParteDaAnalise({
+  parte,
+  notas,
+}: {
+  parte: ParteDaAnaliseV1;
+  notas: Map<number, NotaDaAnaliseV1>;
+}) {
+  const [aberta, setAberta] = useState<number | null>(null);
+  const notaAberta = aberta === null ? undefined : notas.get(aberta);
+  return (
+    <section aria-labelledby={`analise-${parte.chave}`}>
+      <h3 id={`analise-${parte.chave}`}>{parte.titulo}</h3>
+      {parte.paragrafos.map((paragrafo, i) => (
+        <p key={i}>
+          {paragrafo.rotulo ? <strong>{paragrafo.rotulo}: </strong> : null}
+          {paragrafo.frases.map((frase, j) => (
+            <span key={j}>
+              {frase.texto}
+              {frase.notas.map((numero) => (
+                <button
+                  key={numero}
+                  type="button"
+                  className="nota-da-analise"
+                  aria-expanded={aberta === numero}
+                  aria-controls={`nota-${numero}`}
+                  aria-label={`Nota ${numero}`}
+                  onClick={() => setAberta(aberta === numero ? null : numero)}
+                >
+                  [{numero}]
+                </button>
+              ))}{" "}
+            </span>
+          ))}
+        </p>
+      ))}
+      {notaAberta ? <NotaAberta nota={notaAberta} /> : null}
+    </section>
+  );
+}
+
+function Analise({ analise }: { analise: AnaliseDaEmpresaV1 }) {
+  const notas = new Map(analise.notas.map((n) => [n.numero, n]));
+  return (
+    <>
+      <section className="secao-do-relatorio" aria-labelledby="secao-analise">
+        <h2 id="secao-analise">A análise</h2>
+        <p className="apagado">{analise.aviso}</p>
+        {analise.motivo ? (
+          <p className="erro-do-app" role="note">
+            Texto de reserva por regras: {analise.motivo}.
+          </p>
+        ) : null}
+        {analise.partes.map((parte) => (
+          <ParteDaAnalise key={parte.chave} parte={parte} notas={notas} />
+        ))}
+      </section>
+      <h2>Os dados</h2>
+    </>
+  );
+}
+
 function ConviteDoPro() {
   return (
     <p>
@@ -158,13 +249,16 @@ function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
   return (
     <>
       <p>
-        <strong>{relatorio.empresa}</strong> · {relatorio.setor || "setor não informado"} · CNPJ {relatorio.cnpj}
+        <strong>{relatorio.empresa}</strong> ·{" "}
+        {relatorio.setor || "setor não informado"} · CNPJ {relatorio.cnpj}
       </p>
       {relatorio.em_conferencia ? (
         <p className="erro-do-app" role="note">
-          Há números desta empresa em conferência pelas regras de qualidade: veja a seção Qualidade dos dados.
+          Há números desta empresa em conferência pelas regras de qualidade:
+          veja a seção Qualidade dos dados.
         </p>
       ) : null}
+      {relatorio.analise ? <Analise analise={relatorio.analise} /> : null}
       {relatorio.secoes.map((secao, i) => (
         <div key={secao.chave}>
           <Secao secao={secao} />
@@ -172,7 +266,9 @@ function Resultado({ relatorio }: { relatorio: RelatorioDaEmpresaV1 }) {
           {i === fimDoBloco ? <ConviteDoPro /> : null}
         </div>
       ))}
-      <p className="apagado">Fontes: {relatorio.fontes.join("; ")}. Nada aqui é recomendação.</p>
+      <p className="apagado">
+        Fontes: {relatorio.fontes.join("; ")}. Nada aqui é recomendação.
+      </p>
     </>
   );
 }
