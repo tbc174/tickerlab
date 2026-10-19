@@ -37,6 +37,7 @@ APELIDOS = ("aconteceu_em", "publico_em", "coletado_em")
 # tabela → arquivos dentro de `<acervo>/base` (o `onde` do dicionário diz o mesmo; um teste confere)
 ARQUIVOS: dict[str, str] = {
     "demonstracoes_como_era": "demonstracoes/*.parquet",
+    "dmpl_como_era": "dmpl/*.parquet",
     "tickers_no_tempo": "fca/tickers.parquet",
     "valores_mobiliarios": "fca/valores_mobiliarios.parquet",
     "emissores": "fca/emissores.parquet",

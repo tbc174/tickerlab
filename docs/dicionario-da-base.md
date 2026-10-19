@@ -18,7 +18,7 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 - **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `demonstracao`, `grupo`, `conta`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/demonstracoes/<ano>.parquet` (servidor de casa)
 - **Linhagem:** `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega à CVM publicou o valor; `origem` diz se veio dos dados abertos ou do XML do ENET. Ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base e o endereço e o SHA-256 de cada original, que está no acervo e no registro de coletas (com a data da coleta), e a `versao_do_codigo` (o commit que montou o ano; os anos montados antes da série 3 ficam sem ela até serem remontados). `base/linhagem.py` refaz o caminho de qualquer linha e diz se está completo.
 
@@ -27,8 +27,8 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `grupo` | con (consolidado) ou ind (individual) | texto |
-| `demonstracao` | BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado) | texto |
-| `conta` | Código da conta no plano da CVM (1, 1.01, 3.01...) | texto |
+| `demonstracao` | BPA (ativo), BPP (passivo e patrimônio), DRE (resultado, só o primeiro nível), DRA (resultado abrangente), DFC_MI ou DFC_MD (fluxo de caixa pelo método indireto ou direto) ou DVA (valor adicionado); as quatro últimas inteiras, desde a série T1 (contrato 2.0.0). A DMPL fica em `dmpl_como_era` | texto |
+| `conta` | Código da conta no plano da CVM (1, 1.01, 3.01, 6.01, 7.04.01...) | texto |
 | `descricao` | Nome da conta como a empresa informou | texto |
 | `inicio` | Começo do período (vazio no balanço, que é um saldo numa data) | data (dia) |
 | `fim` | Fim do período ou data do saldo | data (dia) |
@@ -39,6 +39,43 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
 | `origem` | dados_abertos ou enet | texto |
 | `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro | data (dia) |
+| `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
+
+## `dmpl_como_era`
+
+A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve, com o dia em que ficou público e o dia em que foi trocado. É a `demonstracoes_como_era` com uma coluna a mais no fato (`coluna`); `como_era_em(base, data, formato=FORMATO_DMPL)` dá a foto (série T1).
+
+- **Fonte:** CVM: dados abertos de DFP e ITR (arquivos `_DMPL_con` e `_DMPL_ind`, versão mais nova) e ENET (versões anteriores, XML de cada entrega)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)
+- **Atraso de divulgação:** DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `grupo`, `conta`, `coluna`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/dmpl/<ano>.parquet` (servidor de casa)
+- **Linhagem:** A mesma de `demonstracoes_como_era`: `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega publicou o valor e `origem` se veio dos dados abertos ou do ENET; ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base, cada original e a `versao_do_codigo`.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `grupo` | con (consolidado) ou ind (individual) | texto |
+| `demonstracao` | Sempre DMPL | texto |
+| `conta` | Código da linha da DMPL no plano da CVM (5.01, 5.04.06...) | texto |
+| `coluna` | Coluna do patrimônio, com nome único entre empresas (`base/dmpl.py`): capital_social, reservas_de_capital, reservas_de_lucro, lucros_acumulados, outros_resultados_abrangentes, ajustes_de_avaliacao_patrimonial, reservas_de_reavaliacao, patrimonio_liquido, patrimonio_liquido_consolidado e nao_controladores; outra coluna fica com o nome da empresa sem acento; sem_coluna quando veio sem nome | texto |
+| `descricao` | Nome da linha como a empresa informou | texto |
+| `inicio` | Começo do período | data (dia) |
+| `fim` | Fim do período | data (dia) |
+| `valor` | Valor da célula; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0) | reais (R$), já multiplicado pela escala informada |
+| `documento` | DFP (demonstrações anuais) ou ITR (informações trimestrais) | texto |
+| `referencia` | Data a que o documento se refere (fim do exercício ou do trimestre) | data (dia) |
+| `versao` | Versão do documento que publicou este valor (1, 2, 3...) | número |
+| `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
+| `origem` | dados_abertos ou enet | texto |
+| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive); as mesmas regras de `demonstracoes_como_era` | data (dia) |
 | `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
 
 ## `achados_de_qualidade`

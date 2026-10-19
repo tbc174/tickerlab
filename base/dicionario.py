@@ -209,10 +209,18 @@ TABELAS: dict[str, Tabela] = {
             **_EMPRESA,
             "grupo": ("con (consolidado) ou ind (individual)", TEXTO),
             "demonstracao": (
-                "BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado)",
+                (
+                    "BPA (ativo), BPP (passivo e patrimônio), DRE (resultado, só o primeiro "
+                    "nível), DRA (resultado abrangente), DFC_MI ou DFC_MD (fluxo de caixa pelo "
+                    "método indireto ou direto) ou DVA (valor adicionado); as quatro últimas "
+                    "inteiras, desde a série T1 (contrato 2.0.0). A DMPL fica em `dmpl_como_era`"
+                ),
                 TEXTO,
             ),
-            "conta": ("Código da conta no plano da CVM (1, 1.01, 3.01...)", TEXTO),
+            "conta": (
+                "Código da conta no plano da CVM (1, 1.01, 3.01, 6.01, 7.04.01...)",
+                TEXTO,
+            ),
             "descricao": ("Nome da conta como a empresa informou", TEXTO),
             "inicio": (
                 "Começo do período (vazio no balanço, que é um saldo numa data)",
@@ -242,6 +250,83 @@ TABELAS: dict[str, Tabela] = {
                     "hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de "
                     "registro) vale a partir do registro seguinte: o público só viu o documento "
                     "perto do registro"
+                ),
+                DATA,
+            ),
+            "ate": (
+                "Dia em que outro valor tomou o lugar (vazio: vale até hoje)",
+                DATA,
+            ),
+        },
+    ),
+    "dmpl_como_era": Tabela(
+        descricao=(
+            "A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma "
+            "linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada "
+            "período já teve, com o dia em que ficou público e o dia em que foi trocado. É a "
+            "`demonstracoes_como_era` com uma coluna a mais no fato (`coluna`); "
+            "`como_era_em(base, data, formato=FORMATO_DMPL)` dá a foto (série T1)."
+        ),
+        fonte=(
+            "CVM: dados abertos de DFP e ITR (arquivos `_DMPL_con` e `_DMPL_ind`, versão mais "
+            "nova) e ENET (versões anteriores, XML de cada entrega)"
+        ),
+        familia_da_fonte="cvm",
+        frequencia="Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)",
+        atraso=(
+            "DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre "
+            "(prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento"
+        ),
+        onde="Parquet por ano em `<acervo>/base/dmpl/<ano>.parquet` (servidor de casa)",
+        linhagem=(
+            "A mesma de `demonstracoes_como_era`: `cnpj`, `documento`, `referencia` e `versao` "
+            "dizem qual entrega publicou o valor e `origem` se veio dos dados abertos ou do ENET; "
+            "ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base, cada original e a "
+            "`versao_do_codigo`."
+        ),
+        colunas={
+            **_EMPRESA,
+            "grupo": ("con (consolidado) ou ind (individual)", TEXTO),
+            "demonstracao": ("Sempre DMPL", TEXTO),
+            "conta": (
+                "Código da linha da DMPL no plano da CVM (5.01, 5.04.06...)",
+                TEXTO,
+            ),
+            "coluna": (
+                (
+                    "Coluna do patrimônio, com nome único entre empresas (`base/dmpl.py`): "
+                    "capital_social, reservas_de_capital, reservas_de_lucro, lucros_acumulados, "
+                    "outros_resultados_abrangentes, ajustes_de_avaliacao_patrimonial, "
+                    "reservas_de_reavaliacao, patrimonio_liquido, patrimonio_liquido_consolidado e "
+                    "nao_controladores; outra coluna "
+                    "fica com o nome da empresa sem acento; sem_coluna quando veio sem nome"
+                ),
+                TEXTO,
+            ),
+            "descricao": ("Nome da linha como a empresa informou", TEXTO),
+            "inicio": ("Começo do período", DATA),
+            "fim": ("Fim do período", DATA),
+            "valor": (
+                (
+                    "Valor da célula; vazio quando a empresa deixou em branco na versão lida do "
+                    "ENET (nos dados abertos da CVM, a linha em branco vem como 0)"
+                ),
+                REAIS,
+            ),
+            **_DOCUMENTO,
+            "versao": (
+                "Versão do documento que publicou este valor (1, 2, 3...)",
+                "número",
+            ),
+            "ordem": (
+                "ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito)",
+                TEXTO,
+            ),
+            "origem": ("dados_abertos ou enet", TEXTO),
+            "divulgado_em": (
+                (
+                    "Dia da entrega à CVM (vale a partir dele, inclusive); as mesmas regras de "
+                    "`demonstracoes_como_era`"
                 ),
                 DATA,
             ),
@@ -4875,7 +4960,9 @@ def _contrato(**campos: object) -> dict[str, object]:
 
 
 _CONTRATO = {
-    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM),
+    # 2.0.0: a série T1 pôs a DFC, a DVA e a DRA na tabela (quem não filtra `demonstracao` muda)
+    "demonstracoes_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "demonstracao", "grupo", "conta"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM, versao_do_contrato="2.0.0"),
+    "dmpl_como_era": _contrato(modulo=_ME, chaves=("cnpj", "documento", "referencia", "versao", "grupo", "conta", "coluna"), datas={"aconteceu_em": "referencia", "publico_em": "divulgado_em"}, historico_desde=_CVM),
     "achados_de_qualidade": _contrato(modulo=_ME, chaves=("id",), datas={"aconteceu_em": "referencia", "publico_em": "valido_desde", "coletado_em": "calculado_em"}, historico_desde=_CVM),
     "cadastro_das_companhias": _contrato(modulo=_ME, chaves=("cnpj",), datas={"aconteceu_em": "registro"}, historico_desde=_CVM),
     "tickers_no_tempo": _contrato(modulo=_ME, chaves=("codigo", "cnpj"), datas={"aconteceu_em": "inicio_negociacao", "publico_em": "primeiro_visto"}, historico_desde=_CVM),

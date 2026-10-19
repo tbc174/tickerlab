@@ -13,6 +13,7 @@ from base.cadastro import ler_cadastro, tickers_no_tempo
 from base.commodities import cftc_cot, comex_cafe, faostat_cafe, usda_psd
 from base.contrapartes import cafe as contrapartes_cafe
 from base.dicionario import ARQUIVO_DO_DOCUMENTO, TABELAS, documento_em_markdown
+from base.dmpl import FORMATO_DMPL
 from base.modelos.atraso import rotulo
 from base.ponto_no_tempo import COLUNAS_DA_BASE
 from base.setoriais import anac as setoriais_anac
@@ -94,6 +95,7 @@ def _colunas_de_verdade() -> dict[str, list[str]]:
     tickers, emissores = _tickers_e_emissores_da_carga()
     return {
         "demonstracoes_como_era": list(COLUNAS_DA_BASE),
+        "dmpl_como_era": list(FORMATO_DMPL.colunas_da_base),
         "achados_de_qualidade": [c.name for c in achados_de_qualidade.columns],
         "cadastro_das_companhias": list(cadastro.columns),
         "rotulos_atraso": [*rotulo.COLUNAS, "montado_em", "versao_do_codigo"],
@@ -366,10 +368,13 @@ def test_contrato_comeca_na_versao_1():
     (17/10/2026), a chave ganhou o `inicio` (a mesma firma tem mandatos seguidos no mesmo FCA), e
     `debentures_assembleias` 2.0.0 (17/10/2026), a chave passou a ser o `link` (a CVM põe vários
     arquivos numa entrega e, de 2003 a 2015, não dá a versão), e `cnpj_situacao_especial` 2.0.0
-    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`."""
+    (17/10/2026), o `publico_em` passou do mês do arquivo para `disponivel_em`, e
+    `demonstracoes_como_era` 2.0.0 (19/10/2026, série T1), a tabela ganhou a DFC, a DVA e a DRA
+    (quem lia todas as linhas sem filtrar `demonstracao` passa a ver contas novas)."""
     maiores = {nome: t.versao_do_contrato.split(".")[0] for nome, t in TABELAS.items()}
     assert maiores.pop("insolvencia") == "3"
     assert maiores.pop("auditores") == "2"
     assert maiores.pop("debentures_assembleias") == "2"
     assert maiores.pop("cnpj_situacao_especial") == "2"
+    assert maiores.pop("demonstracoes_como_era") == "2"
     assert set(maiores.values()) == {"1"}

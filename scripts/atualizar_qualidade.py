@@ -121,7 +121,7 @@ def _ler_arquivo(
     if conteudo is None:
         log.info("%s %s ainda não existe na CVM: pulado", documento, ano)
         return None, False
-    leitura = ler_contas(conteudo, documento, so_as_das_regras=True)
+    leitura = ler_contas(conteudo, documento, recorte="regras")
     indice = ler_indice(conteudo, documento)
     falhou = _gravar(
         motor, regras_de_um_documento(leitura, documento, indice, hoje), agora

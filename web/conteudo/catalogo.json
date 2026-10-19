@@ -12,7 +12,7 @@
       "orgao": "CVM",
       "repasse": "Pode ser repassado, citando a fonte e compartilhando igual (ODbL).",
       "situacao": "licenciada",
-      "tabelas": 50
+      "tabelas": 51
     },
     {
       "historico_desde": "2010-01-01",
@@ -252,7 +252,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 49
+      "tabelas": 50
     },
     {
       "chave": "credito_e_fidc",
@@ -290,6 +290,16 @@
       "orgao": "CVM",
       "situacao": "licenciada",
       "tabela": "demonstracoes_como_era"
+    },
+    {
+      "atraso": "DFP: até 3 meses depois do fim do exercício",
+      "frase": "A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve.",
+      "frequencia": "Sem calendário fixo",
+      "historico_desde": "2010-01-01",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CVM",
+      "situacao": "licenciada",
+      "tabela": "dmpl_como_era"
     },
     {
       "atraso": "O do documento conferido",
@@ -1076,6 +1086,6 @@
     "fontes": 22,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 79
+    "tabelas": 80
   }
 }
