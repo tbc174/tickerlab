@@ -14,6 +14,7 @@ import pytest
 from base import dossie
 from base.porta import Porta
 from scripts import gerar_dossies
+from tests import test_dossie_governanca_e_credito as governanca_e_credito
 from tests.test_porta import _entidades, _identificadores, _ligacoes
 
 D = pd.Timestamp
@@ -358,6 +359,35 @@ def test_ficha_traz_qualidade_do_lucro_e_capital(tmp_path: Path) -> None:
         capital["insiders_compras_12m"] == 2e6
     )  # a declaração entregue depois de hoje fica fora
     assert capital["eventos_de_capital"] == 1
+
+
+def _governanca_e_credito(pasta: Path) -> None:
+    """O FRE da CPFL (conselho, comitês, remuneração), os ratings e as assembleias de debenturistas."""
+    _gravar(pasta, "fre_conselho/2026.parquet", governanca_e_credito._conselho())
+    _gravar(pasta, "fre_comites/2026.parquet", governanca_e_credito._comites())
+    _gravar(pasta, "fre_remuneracao/2026.parquet", governanca_e_credito._remuneracao())
+    _gravar(pasta, "ratings/ratings.parquet", governanca_e_credito._ratings())
+    assembleias = governanca_e_credito._assembleias().assign(estresse=True)
+    _gravar(pasta, "debentures_assembleias/assembleias.parquet", assembleias)
+
+
+def test_ficha_traz_governanca_e_credito(tmp_path: Path) -> None:
+    _mini_base(tmp_path / "base")
+    _governanca_e_credito(tmp_path / "base")
+    resumo = _montar(tmp_path / "base", tmp_path / "dossies")
+    assert resumo.falhas == []
+    secoes = {s["chave"]: s for s in _ficha_da_cpfl(tmp_path / "dossies")["secoes"]}
+    governanca = {i["chave"]: i["valor"] for i in secoes["governanca"]["itens"]}
+    assert (
+        governanca["conselho_membros"] == 10
+    )  # o FRE de 2027, entregue depois de hoje, fica fora
+    assert governanca["remuneracao_da_administracao"] == 51e6
+    assert "mulheres_no_conselho" not in governanca  # sem fre_diversidade na base
+    credito = {i["chave"]: i["valor"] for i in secoes["credito"]["itens"]}
+    assert credito["ratings_rebaixamentos_12m"] == 1
+    assert credito["assembleias_de_debenturistas_12m"] == 2
+    # o rótulo de aperto de crédito da base não sai na ficha: só os temas do assunto
+    assert "estresse" not in json.dumps(secoes["credito"])
 
 
 def test_controladoras_saem_da_rede_como_era_hoje(tmp_path: Path) -> None:

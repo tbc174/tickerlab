@@ -61,12 +61,15 @@ SECOES: dict[str, str] = {
 }
 # onde entram as seções do dossiê da base (`base/dossie.py`), entre as do relatório
 ORDEM_DAS_SECOES = (
-    *list(SECOES)[: list(SECOES).index("qualidade") + 1],
+    *list(SECOES)[: list(SECOES).index("endividamento") + 1],
+    "credito",  # a dívida e o crédito
+    *list(SECOES)[list(SECOES).index("caixa") : list(SECOES).index("qualidade") + 1],
     "qualidade_do_lucro",  # as contas e a qualidade delas
     "dividendos",
     "ofertas_e_fundos",
     "capital_e_acionistas",  # capital e acionistas
-    "auditor_e_controladas",  # governança
+    "auditor_e_controladas",
+    "governanca",  # governança
     "pares",
     "setor_regulado",  # setor e pares
     "eventos",
