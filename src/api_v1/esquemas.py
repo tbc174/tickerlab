@@ -785,6 +785,47 @@ class SecaoDoRelatorioV1(BaseModel):
     recolhida: bool = False  # explicação: a tela mostra fechada até a pessoa abrir
 
 
+class NotaDaAnaliseV1(BaseModel):
+    """A nota numerada de uma frase da análise: abre o número de onde a frase saiu."""
+
+    numero: int
+    id: str
+    nome: str
+    texto: str  # o valor já escrito, ou a linha da tabela
+    medido_em: str
+    fonte: str
+    comparacao: str  # "Contra X: texto"; vazio quando não compara
+
+
+class FraseDaAnaliseV1(BaseModel):
+    texto: str
+    notas: list[int]  # os números das notas (`AnaliseDaEmpresaV1.notas`)
+
+
+class ParagrafoDaAnaliseV1(BaseModel):
+    tipo: str  # "fato" ou "leitura"
+    rotulo: str  # "Leitura" no parágrafo de leitura; vazio no de fato
+    frases: list[FraseDaAnaliseV1]
+
+
+class ParteDaAnaliseV1(BaseModel):
+    chave: str
+    titulo: str
+    origem: str  # "modelo" ou "molde" (texto de reserva por regras)
+    paragrafos: list[ParagrafoDaAnaliseV1]
+
+
+class AnaliseDaEmpresaV1(BaseModel):
+    """A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100)."""
+
+    partes: list[ParteDaAnaliseV1]
+    notas: list[NotaDaAnaliseV1]
+    aviso: str
+    motivo: str | None = (
+        None  # por que saiu o molde no lugar do texto do modelo, se saiu
+    )
+
+
 class RelatorioDaEmpresaV1(BaseModel):
     empresa: str
     cnpj: str
@@ -795,6 +836,9 @@ class RelatorioDaEmpresaV1(BaseModel):
     fontes: list[str]
     aviso_das_notas: str
     em_conferencia: bool
+    analise: AnaliseDaEmpresaV1 | None = (
+        None  # null: sem análise aprovada para a empresa
+    )
 
 
 def _titulo_da_tabela(chave: str) -> str:

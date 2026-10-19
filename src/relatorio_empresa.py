@@ -25,6 +25,7 @@ import pandas as pd
 
 from src import fundamentalista, fundamentos, notas, notas_classicas, valuation
 from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.banco.coletas import MOSTRAR, citacoes_das_fontes, exigir_licenca
 from src.banco.demonstracoes import DadosDaEmpresa
 from src.metodologia_das_notas import URL_NO_SITE as URL_DA_METODOLOGIA
@@ -236,6 +237,7 @@ class Relatorio:
     fontes: tuple[str, ...]
     aviso_das_notas: str
     em_conferencia: bool
+    analise: AnaliseDaTela | None = None  # a análise escrita, quando há texto aprovado
 
     def secao(self, chave: str) -> Secao:
         return next(s for s in self.secoes if s.chave == chave)

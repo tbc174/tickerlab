@@ -15,6 +15,8 @@ from sqlalchemy import exc as sa_exc
 
 from src import dossie, eventos_sec, graficos, relatorios
 from src import o_que_os_dados_mostram as leitura_da_ficha
+from src.analise_escrita.exibicao import com_analise
+from src.analise_escrita.modelo_da_tela import AnaliseDaTela, ParteDaTela
 from src.banco.conexao import obter_engine, tabela_inexistente
 from src.banco.dados_do_usuario import registrar_relatorio
 from src.banco.pdfs_originais import guardar_pdf_original
@@ -160,6 +162,38 @@ def _tabela_escrita(linhas: list[dict]) -> pd.DataFrame:
     )
 
 
+def _texto_do_markdown(texto: str) -> str:
+    """O texto da frase sem que o `$` do "R$" vire fórmula no Markdown da página."""
+    return texto.replace("$", r"\$")
+
+
+def _mostrar_parte_da_analise(analise: AnaliseDaTela, parte: ParteDaTela) -> None:
+    st.subheader(parte.titulo)
+    for paragrafo in parte.paragrafos:
+        frases = " ".join(f.com_marcas() for f in paragrafo.frases)
+        rotulo = f"**{paragrafo.rotulo}:** " if paragrafo.rotulo else ""
+        st.markdown(_texto_do_markdown(rotulo + frases))
+    notas = analise.notas_da_parte(parte)
+    if notas:
+        with st.expander(f"Notas desta parte ({len(notas)})"):
+            for nota in notas:
+                st.markdown(_texto_do_markdown(f"**[{nota.numero}]** {nota.legenda()}"))
+
+
+def _mostrar_analise(analise: AnaliseDaTela) -> None:
+    """A análise escrita pelo modelo, parte por parte; cada nota numerada abre o número de origem."""
+    st.header("A análise")
+    st.caption(analise.aviso)
+    if analise.motivo:
+        st.info(
+            f"Texto de reserva por regras: {analise.motivo}.",
+            icon=":material/edit_note:",
+        )
+    for parte in analise.partes:
+        _mostrar_parte_da_analise(analise, parte)
+    st.header("Os dados")
+
+
 def _premissas() -> Premissas:
     """As premissas do DCF, que a pessoa pode trocar (o texto do valuation diz quais valeram)."""
     padrao = Premissas()
@@ -203,6 +237,8 @@ def _mostrar(relatorio: Relatorio) -> None:
             "Qualidade dos dados.",
             icon=":material/fact_check:",
         )
+    if relatorio.analise:
+        _mostrar_analise(relatorio.analise)
     convidou = False
     for secao, seguinte in zip(
         relatorio.secoes, [*relatorio.secoes[1:], None], strict=True
@@ -295,7 +331,8 @@ def pagina_relatorio_empresa():
     entradas = _ler(ticker, preco, c.fechamento if preco is not None else None)
     if entradas is None:
         return
-    relatorio = montar(replace(entradas, premissas=_premissas()), plano_atual())
+    entradas = replace(entradas, premissas=_premissas())
+    relatorio = com_analise(montar(entradas, plano_atual()), entradas, plano_atual())
     _oferecer_o_pdf(relatorio)
     _mostrar(relatorio)
     st.page_link(
