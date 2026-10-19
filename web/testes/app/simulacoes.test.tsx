@@ -3,7 +3,7 @@
 // no atual) e apagar com confirmação.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TOKEN, abrirApp, respostaJson } from "./ajudantes";
+import { DO_APP, abrirApp, respostaJson } from "./ajudantes";
 
 const DO_APP_NOVO = {
   id: "11111111-1111-1111-1111-111111111111",
@@ -74,7 +74,7 @@ describe("minhas simulações", () => {
     );
   });
 
-  it("apagar pede confirmação, manda o id com o token e atualiza a lista", async () => {
+  it("apagar pede confirmação, manda o id com a sessão e atualiza a lista", async () => {
     const { buscar } = abrir();
     const lista = await screen.findByRole("list", { name: "Minhas simulações" });
     const [nova] = within(lista).getAllByRole("listitem");
@@ -85,7 +85,8 @@ describe("minhas simulações", () => {
     expect(screen.queryByText(DO_APP_NOVO.nome)).toBeNull();
     const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/apagar-simulacao");
     expect(JSON.parse(String(pedido?.[1]?.body))).toEqual({ id: DO_APP_NOVO.id });
-    expect(pedido?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+    // com a sessão (o cookie): sem token no pedido, com a prova de que saiu do app
+    expect(pedido?.[1]?.headers).toEqual({ ...DO_APP, "Content-Type": "application/json" });
   });
 
   it("cancelar a confirmação não apaga nada", async () => {

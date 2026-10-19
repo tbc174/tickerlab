@@ -382,7 +382,12 @@ def test_segundo_login_atualiza_em_vez_de_duplicar(motor):
         primeiro, _ = repo.entrar(conexao, "google-1", "ana@exemplo.com", "Ana")
     with motor.begin() as conexao:
         segundo, novo = repo.entrar(
-            conexao, "google-1", "ana@novo.com", "Ana Maria", "http://f/2"
+            conexao,
+            "google-1",
+            "ana@novo.com",
+            "Ana Maria",
+            "http://f/2",
+            email_confirmado=True,  # o e-mail de contato só muda para um e-mail provado
         )
         assert repo.contar(conexao) == 1
     assert not novo and segundo.id == primeiro.id
@@ -394,10 +399,18 @@ def test_email_de_administrador_vira_admin_no_cadastro_e_depois(motor):
     admins = ("chefe@exemplo.com",)
     with motor.begin() as conexao:
         chefe, _ = repo.entrar(
-            conexao, "g-chefe", "Chefe@Exemplo.com", emails_de_admin=admins
+            conexao,
+            "g-chefe",
+            "Chefe@Exemplo.com",
+            emails_de_admin=admins,
+            email_confirmado=True,  # sem o e-mail confirmado pelo Google, não vira admin
         )
         comum, _ = repo.entrar(
-            conexao, "g-comum", "comum@exemplo.com", emails_de_admin=admins
+            conexao,
+            "g-comum",
+            "comum@exemplo.com",
+            emails_de_admin=admins,
+            email_confirmado=True,
         )
     assert chefe.e_admin and not comum.e_admin
     with (
@@ -408,6 +421,7 @@ def test_email_de_administrador_vira_admin_no_cadastro_e_depois(motor):
             "g-comum",
             "comum@exemplo.com",
             emails_de_admin=(*admins, "comum@exemplo.com"),
+            email_confirmado=True,
         )
     assert promovido.e_admin
 
@@ -527,7 +541,11 @@ def test_erros_do_banco_nao_citam_os_valores_da_consulta(motor):
     with pytest.raises(sa.exc.IntegrityError) as erro, motor.begin() as conexao:
         conexao.execute(
             sa.insert(usuarios).values(
-                id=uuid.uuid4(), google_sub=None, email=segredo, papel="usuario"
+                # papel fora da regra (o google_sub vazio deixou de ser erro na 0039)
+                id=uuid.uuid4(),
+                google_sub="g",
+                email=segredo,
+                papel="intruso",
             )
         )
     assert segredo not in str(erro.value)

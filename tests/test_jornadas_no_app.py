@@ -35,6 +35,7 @@ def _conta(banco, plano="gratuito", admin=False):
             "ana",
             "ana@exemplo.com",
             emails_de_admin=("ana@exemplo.com",) if admin else (),
+            email_confirmado=True,
         )
         contas.mudar_plano(c, usuario.id, plano)
         registrar_aceite(c, usuario.id)
