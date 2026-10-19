@@ -108,6 +108,16 @@ def test_grava_cada_fonte_por_ano_com_manifesto_e_linhagem(ambiente):
     assert set(ons_2010["instante"].dt.year) == {2010}
 
 
+def test_so_uma_fonte_carrega_so_ela_e_nao_mexe_nos_buracos(ambiente):
+    assert (
+        carga_setoriais.main(["--base", str(ambiente), "--fonte", cftc_cot.FONTE]) == 0
+    )
+    pasta = ambiente / "setoriais"
+    assert {p.stem for p in (pasta / "cftc").glob("*.parquet")} == {"2026"}
+    assert not (pasta / "anp").exists()
+    assert not (pasta / "buracos").exists()
+
+
 def test_buracos_da_ligacao_pela_b13(ambiente):
     carga_setoriais.main(["--base", str(ambiente)])
     buracos = pd.read_parquet(ambiente / "setoriais" / "buracos.parquet")

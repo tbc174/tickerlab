@@ -1203,7 +1203,7 @@ TABELAS: dict[str, Tabela] = {
         frequencia="Mensal",
         atraso="O mês fecha cerca de 60 dias depois; o `divulgado_em` é a data da coleta do arquivista, "
         "não a do MDIC",
-        onde="Parquet em `<acervo>/base/commodities/comex_cafe/` (carga em PR seguinte; `base/commodities/comex_cafe.py`)",
+        onde="Parquet em `<acervo>/base/commodities/comex_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/comex_cafe.py`)",
         linhagem=(
             "Recorte do `EXP_AAAA.csv` guardado pelo arquivista (fonte `comexstat`); as vias e unidades "
             "da aduana são somadas por mês, NCM, UF e país."
@@ -4567,7 +4567,7 @@ TABELAS: dict[str, Tabela] = {
         familia_da_fonte="conab",
         frequencia="Quatro levantamentos por safra (jan/fev, mai, set e dez), coletados pelo arquivista",
         atraso="O número vale a partir de `divulgado_em`, o dia em que a CONAB publicou o levantamento",
-        onde="Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)",
+        onde="Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)",
         linhagem=(
             "A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da "
             "coleta e SHA-256. " + COM_VERSAO_DO_CODIGO
