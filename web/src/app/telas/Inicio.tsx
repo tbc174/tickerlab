@@ -47,7 +47,7 @@ export function Inicio() {
         <h1>Seu Workspace</h1>
         <p>
           O que mudou desde a sua última visita, com os mesmos números da versão clássica. As outras telas
-          continuam no <a href={linkDoClassico()}>versão clássica</a>.
+          continuam na <a href={linkDoClassico()}>versão clássica</a>.
         </p>
       </FundoDoApp>
       <OQueMudou />
