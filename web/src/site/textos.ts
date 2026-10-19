@@ -62,7 +62,7 @@ export const CONFIANCA: [string, string][] = [
   ],
   [
     "Privacidade",
-    "Login com o Google; você exporta ou apaga a sua conta quando quiser. O site não usa " +
+    "Login com o Google, com sessão de 30 dias; você exporta ou apaga a sua conta quando quiser. O site não usa " +
       "Google Fonts nem ferramentas de rastreamento.",
   ],
   [
