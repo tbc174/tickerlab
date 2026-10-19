@@ -40,6 +40,17 @@
     },
     {
       "historico_desde": "2026-10-14",
+      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "ONS",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 3
+    },
+    {
+      "historico_desde": "2026-10-14",
       "licenca": "CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)",
       "modulos": [
         "mercado_e_empresas"
@@ -89,6 +100,17 @@
         "mercado_e_empresas"
       ],
       "orgao": "Anatel",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
+      "tabelas": 1
+    },
+    {
+      "historico_desde": "2026-10-14",
+      "licenca": "CC BY 4.0 (dados abertos da CCEE; citar a CCEE)",
+      "modulos": [
+        "mercado_e_empresas"
+      ],
+      "orgao": "CCEE",
       "repasse": "Pode ser repassado, citando a fonte.",
       "situacao": "licenciada",
       "tabelas": 1
@@ -183,17 +205,6 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "CC BY 4.0 (dados abertos do ONS; citar o ONS)",
-      "modulos": [
-        "mercado_e_empresas"
-      ],
-      "orgao": "ONS",
-      "repasse": "Pode ser repassado, citando a fonte.",
-      "situacao": "licenciada",
-      "tabelas": 1
-    },
-    {
-      "historico_desde": "2026-10-14",
       "licenca": "Dados abertos da PGFN (rodapé CC BY-ND do site: reuso em consulta)",
       "modulos": [
         "governo_e_sancoes"
@@ -252,7 +263,7 @@
     {
       "chave": "mercado_e_empresas",
       "nome": "Mercado e empresas",
-      "tabelas": 50
+      "tabelas": 53
     },
     {
       "chave": "credito_e_fidc",
@@ -510,6 +521,36 @@
       "orgao": "ONS",
       "situacao": "licenciada",
       "tabela": "ons_geracao"
+    },
+    {
+      "atraso": "O preço do dia sai no dia anterior e a regra usa o dia + 1",
+      "frase": "PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020.",
+      "frequencia": "Diária",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "CCEE",
+      "situacao": "licenciada",
+      "tabela": "ccee_pld"
+    },
+    {
+      "atraso": "O instante + 2 dias",
+      "frase": "Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ONS",
+      "situacao": "licenciada",
+      "tabela": "ons_restricao"
+    },
+    {
+      "atraso": "A regra usa a data de entrada em operação",
+      "frase": "Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação.",
+      "frequencia": "Mensal",
+      "historico_desde": "2026-10-14",
+      "modulo": "mercado_e_empresas",
+      "orgao": "ONS",
+      "situacao": "licenciada",
+      "tabela": "ons_capacidade"
     },
     {
       "atraso": "Medido: o SAMP de 15/09/2026 tinha julho completo e agosto pela metade",
@@ -1083,9 +1124,9 @@
     }
   ],
   "totais": {
-    "fontes": 22,
+    "fontes": 23,
     "fontes_em_consulta": 7,
     "modulos": 6,
-    "tabelas": 80
+    "tabelas": 83
   }
 }

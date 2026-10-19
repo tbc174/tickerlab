@@ -782,6 +782,111 @@ Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. 
 | `geracao_mwmed` | Geração na hora, em MWmed | número com decimais, na unidade da fonte |
 | `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
 
+## `ccee_pld`
+
+PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020, por semana e patamar de carga (`semana_por_patamar`: o arquivo horário da CCEE desses anos não é horário, e a fonte não rotula o patamar; a posição entre as linhas repetidas vai em `ordem`). A média do dia e a do mês são as que a CCEE publica, não recalculadas aqui. Sem ligação à empresa: é o preço de um mercado, não de um agente
+
+- **Fonte:** CCEE: PLD horário, média diária e média mensal (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos da CCEE; citar a CCEE)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Diária (a CCEE republica o arquivo do ano a cada dia útil)
+- **Atraso de divulgação:** O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de 2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `granularidade`, `submercado`, `referencia`, `ordem`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ccee/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo da CCEE lido e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `granularidade` | `hora`, `dia`, `mes` ou `semana_por_patamar` | texto |
+| `submercado` | Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve | texto |
+| `referencia` | Início do período a que o preço se refere (hora, dia, mês ou semana) | data e hora (UTC) |
+| `competencia` | Mês (último dia) | data (dia) |
+| `ordem` | Posição entre as linhas da fonte que repetem a mesma referência (1 se única) | número inteiro |
+| `periodo_de_comercializacao` | Hora do mês (1 a 744) na fonte; vazio nas outras granularidades | número inteiro |
+| `pld` | Preço em R$/MWh | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (ver o atraso) | data (dia) |
+
+## `ons_restricao`
+
+Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora (a fonte traz uma leitura a cada 30 minutos; aqui, a média das duas). Eólica desde 10/2021, fotovoltaica desde 04/2024. Hora sem restrição fica com a energia não realizada vazia (vazio não é zero). O ONS fecha a apuração depois: a revisão de uma hora passada vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O dono da usina não vem no arquivo: a ligação à empresa é pelo agente operador, pelo nome exato do agente na B13
+
+- **Fonte:** ONS: restrição de operação por constrained-off de usinas eólicas e fotovoltaicas (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o ONS acrescenta e revisa os arquivos de meses passados)
+- **Atraso de divulgação:** O instante + 2 dias (o mesmo da geração por usina)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `instante`, `tipo`, `id_ons`, `visto_em`
+- **Três datas:** aconteceu_em = `instante`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por tipo e mês em `<acervo>/base/setoriais/ons_restricao/<tipo>_<ano>_<mês>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada (uma por revisão) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `instante` | Hora (início) | data e hora (UTC) |
+| `tipo` | `eolica` ou `fotovoltaica` | texto |
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `uf` | UF da usina | texto |
+| `usina` | Nome da usina ou do conjunto, como o ONS escreve | texto |
+| `id_ons` | Código da usina ou conjunto no ONS (a chave) | texto |
+| `ceg` | Código na ANEEL (vazio nos conjuntos) | texto |
+| `agente_operador` | Agente operador (liga à empresa pela B13) | texto |
+| `geracao_mwmed` | Geração verificada, em MWmed (numa hora, igual a MWh) | número com decimais, na unidade da fonte |
+| `referencia_mwmed` | Geração de referência (o que a usina geraria sem a restrição), MWmed | número com decimais, na unidade da fonte |
+| `referencia_final_mwmed` | Referência final, depois do fechamento da apuração, MWmed | número com decimais, na unidade da fonte |
+| `disponibilidade_mwmed` | Potência disponível, MWmed | número com decimais, na unidade da fonte |
+| `nao_realizada_mwmed` | Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição) | número com decimais, na unidade da fonte |
+| `minutos_restricao` | Minutos de restrição na hora (soma das leituras; vazio sem restrição) | número inteiro |
+| `razao_da_restricao` | Código da razão da restrição (a primeira da hora) | texto |
+| `origem_da_restricao` | Código da origem da restrição (a primeira da hora) | texto |
+| `leituras` | Quantas leituras da fonte entraram na linha | número inteiro |
+| `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `ons_capacidade`
+
+Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação. É a foto do cadastro de hoje (captura de 14/10/2026), não uma série: a unidade vale desde a entrada em operação, e a potência de hoje vale desde a entrada (mudanças de potência anteriores à primeira coleta não aparecem; cada coleta que traz outro valor entra como revisão). A desativação é só uma data na linha: a unidade não some do passado. O proprietário liga à empresa pelo nome exato do agente na B13
+
+- **Fonte:** ONS: capacidade instalada de geração (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o ONS regera o cadastro inteiro)
+- **Atraso de divulgação:** A regra usa a data de entrada em operação (ou em teste, quando falta)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cod_equipamento`, `visto_em`
+- **Três datas:** aconteceu_em = `entrada_em_operacao`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/ons_capacidade/capacidade.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `capacidade.json` guarda o endereço e o SHA-256 de cada baixada do cadastro e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `uf` | UF da usina | texto |
+| `modalidade_de_operacao` | Modalidade de operação (tipo I, II...) | texto |
+| `proprietario` | Agente proprietário, como o ONS escreve (liga à empresa pela B13) | texto |
+| `operador` | Agente operador | texto |
+| `tipo_de_usina` | Hidrelétrica, térmica, eólica, fotovoltaica... | texto |
+| `usina` | Nome da usina | texto |
+| `ceg` | Código na ANEEL | texto |
+| `unidade_geradora` | Nome da unidade geradora | texto |
+| `cod_equipamento` | Código do equipamento no ONS (a chave) | texto |
+| `numero_da_unidade` | Número da unidade na usina | texto |
+| `combustivel` | Combustível ou fonte | texto |
+| `entrada_em_teste` | Data da entrada em teste | data (dia) |
+| `entrada_em_operacao` | Data da entrada em operação | data (dia) |
+| `desativada_em` | Data da desativação (vazio: em operação) | data (dia) |
+| `potencia_efetiva_mw` | Potência efetiva da unidade, em MW | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando a unidade existe para quem pergunta (entrada em operação) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
 ## `aneel_samp`
 
 Mercado das distribuidoras de energia (SAMP da ANEEL) por distribuidora, mês, classe de consumo, modalidade e posto tarifário: consumidores, energia (kWh) e receita (R$), desde 2003, no formato da fonte. As linhas de cada consumidor livre vêm somadas (sem CPF nem nome). Uma linha por valor diferente de cada chave: a revisão de um mês passado vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O que mudou antes da primeira coleta (10/2026) não aparece

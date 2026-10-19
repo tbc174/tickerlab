@@ -38,3 +38,22 @@ def disponivel_ans(competencia: pd.Series) -> pd.Series:
 
 def disponivel_ons(instante: pd.Series) -> pd.Series:
     return instante + pd.Timedelta(days=DIAS_ATE_PUBLICAR_ONS)
+
+
+# PLD da CCEE (série T, PR T6). Só há uma captura (14/10/2026): o preço do dia 14/10 já estava no arquivo
+# das 5h UTC, ou seja, sai no dia anterior; a regra conta o fim do dia + 1 dia (nunca adianta). A média
+# do mês sai depois do mês (2 dias de folga), e o preço semanal de antes de 2021 tem 7 dias de folga.
+DIAS_ATE_PUBLICAR_PLD_DIARIO = 1
+DIAS_ATE_PUBLICAR_PLD_SEMANAL = 7
+DIAS_ATE_PUBLICAR_PLD_MENSAL = 2
+
+
+def disponivel_pld(
+    referencia: pd.Series, competencia: pd.Series, granularidade: str
+) -> pd.Series:
+    """Desde quando o preço era público: hora e dia pelo dia, semana pelo início, mês pelo fim do mês."""
+    if granularidade == "mes":
+        return competencia + pd.Timedelta(days=DIAS_ATE_PUBLICAR_PLD_MENSAL)
+    if granularidade == "semana_por_patamar":
+        return referencia + pd.Timedelta(days=DIAS_ATE_PUBLICAR_PLD_SEMANAL)
+    return referencia.dt.normalize() + pd.Timedelta(days=DIAS_ATE_PUBLICAR_PLD_DIARIO)

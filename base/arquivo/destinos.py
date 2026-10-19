@@ -118,13 +118,9 @@ DESTINOS: dict[str, Destino] = {
         "serie-T/T8", "quem opera cada bloco e campo; liga a produção à empresa"
     ),
     "ons-geracao-usina": _tabela("ons_geracao"),
-    "ons-capacidade-geracao": _planejada(
-        "serie-T/T6", _SO_LIGA_HOJE + " (capacidade por usina)"
-    ),
-    "ons-restricao-eolica-solar": _planejada(
-        "serie-T/T6", "corte de geração (curtailment) por usina"
-    ),
-    "ccee-pld": _planejada("serie-T/T6", "PLD horário, diário e mensal por submercado"),
+    "ons-capacidade-geracao": _tabela("ons_capacidade"),
+    "ons-restricao-eolica-solar": _tabela("ons_restricao"),
+    "ccee-pld": _tabela("ccee_pld"),
     "aneel-samp": _tabela("aneel_samp"),
     "anatel-acessos": _tabela("anatel_acessos"),
     "anac-estatistico": _tabela("anac_estatistico"),
