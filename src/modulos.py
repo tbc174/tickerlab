@@ -84,6 +84,21 @@ MODULOS = (
                 "por-dentro",
             ),
             Funcionalidade(
+                "Relatório da empresa",
+                "Resultado, dívida, caixa, notas clássicas e valuation de uma empresa da B3, com a fonte de cada número.",
+                "relatorio-empresa",
+            ),
+            Funcionalidade(
+                "Donos e fundos",
+                "Quais fundos e grandes gestores têm a ação, quem entrou e quem saiu.",
+                "donos",
+            ),
+            Funcionalidade(
+                "Busca por CNPJ",
+                "Digite o CNPJ de uma companhia aberta e veja de que grupo ela faz parte e os fatos públicos, com data e fonte.",
+                "busca-por-cnpj",
+            ),
+            Funcionalidade(
                 "Pulse",
                 "O resumo do que mudou nos seus ativos desde a última visita.",
                 "pulse",
