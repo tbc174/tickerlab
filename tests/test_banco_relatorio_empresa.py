@@ -115,6 +115,14 @@ def test_relatorio_le_a_ficha_sem_as_secoes_do_molde_b(conexao, monkeypatch):
     assert entradas.dossie is None
 
 
+def test_pares_leem_a_geracao_de_caixa_pela_ficha_de_cada_um(conexao):
+    from src import dossie
+
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.caixa_do_par is dossie.caixa_do_par
+
+
 def test_sem_padrao_gravado_fica_sem_padroes(conexao):
     entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
     assert entradas is not None and entradas.padroes is None
