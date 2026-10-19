@@ -160,7 +160,7 @@ def test_conab_com_a_pagina_usa_o_publicado_em_e_nao_marca(ambiente):
     pagina = b'<span class="documentPublished"><span class="value">24/09/2026 09h00</span></span>'
     _guardar(
         motor,
-        "conab-cafe-publicacao",
+        conab_cafe.FONTE_DA_PAGINA,
         conab_cafe.pagina_do_levantamento(3, 2026),
         pagina,
     )
@@ -252,3 +252,20 @@ def test_a_carga_do_clima_junta_o_chirps_recente_e_o_historico_sem_repetir_ender
 
     a, b = Linha("u1"), Linha("u2")
     assert carga_cafe._sem_repetir([a, b, Linha("u1")]) == [a, b]
+
+
+def test_conab_pagina_que_chega_depois_remonta_a_tabela(ambiente):
+    base, motor = ambiente
+    _guardar(motor, conab_cafe.FONTE, CONAB, planilha(2026))
+    assert carga_cafe.main(["conab", "--base", str(base)]) == 0
+    pagina = b'<span class="documentPublished"><span class="value">24/09/2026 09h00</span></span>'
+    _guardar(
+        motor,
+        conab_cafe.FONTE_DA_PAGINA,
+        conab_cafe.pagina_do_levantamento(3, 2026),
+        pagina,
+        SEGUNDA,
+    )
+    assert carga_cafe.main(["conab", "--base", str(base)]) == 0
+    tabela = ler_tabela(base / "commodities" / "conab_cafe" / "levantamentos.parquet")
+    assert set(tabela["divulgado_em"]) == {pd.Timestamp("2026-09-24")}

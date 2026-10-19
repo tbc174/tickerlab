@@ -200,7 +200,9 @@ def _levantamentos(conexao: sa.Connection, linhas: list[sa.Row]) -> pd.DataFrame
 def carregar_conab(conexao: sa.Connection, base: Path) -> None:
     """Todos os levantamentos de safra num Parquet só."""
     linhas = _da_fonte(conexao, conab_cafe.FONTE)
-    origens = [{"url": lin.url, "sha256": lin.sha256} for lin in linhas]
+    # as páginas do "Publicado em" também são origem: página nova (ou data que mudou) remonta a tabela
+    paginas = originais_mais_recentes(conexao, conab_cafe.FONTE_DA_PAGINA)
+    origens = [{"url": lin.url, "sha256": lin.sha256} for lin in linhas + paginas]
     resultado = gravar_com_versoes(
         lambda: _levantamentos(conexao, linhas),
         base / PASTA / "conab_cafe" / "levantamentos", origens, list(conab_cafe.CHAVE),
