@@ -627,3 +627,10 @@ Todo erro resolvido vira uma entrada aqui. Formato: **sintoma, causa, solução*
 - **Causa:** as duas travas olham nomes, não o que o código faz. A da licença (ADR 0008) recusa campo de esquema chamado `preco`, `close`, `fechamento` etc. A da porta procura o texto `ler_tabela` no arquivo, e a função se chamava `ler_tabelas_da_base`.
 - **Solução:** o bloco virou `preco_de_referencia` (como o #451, que usa `ultimo_valor`, `bm` e `fmi`) e a função virou `tabelas_pela_porta`. Antes de abrir um PR com esquema novo ou leitura da base, rode `pytest tests/test_api_v1_esquemas.py tests/test_porta_unica.py`.
 - **Data:** 18/10/2026
+
+## Cargas do café na casa: quatro tropeços (SIDRA, xlrd, CRLF, planilhas da CONAB)
+- **SIDRA devolve 400 na PAM municipal:** a primeira coleta pedia 61.344 valores e o limite é 50.000 por pedido. **Solução:** blocos de 4 anos (`ANOS_POR_PEDIDO_MUNICIPAL` em `src/ibge_sidra.py`, com teste que confere a conta).
+- **`Import xlrd failed` ao ler a CONAB:** a imagem de produção não traz o xlrd (nem o DuckDB). **Solução:** camada à parte (`tickerlab-base:cafe`) montada pelo `carga-cafe.sh` com a versão do `requirements.txt`.
+- **`/bin/bash^M: bad interpreter` no servidor:** script gravado por Python no Windows saiu com CRLF. **Solução:** `sed -i 's/\r$//'` na casa e gravar com LF.
+- **CONAB: 4 de 10 planilhas ilegíveis (`aba sem colunas Safra AAAA`):** safras antigas têm outro desenho. **Solução provisória:** `carga_cafe.py` pula a planilha com aviso e segue com as lidas; ler as antigas está na fila.
+- **Data:** 19/10/2026
