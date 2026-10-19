@@ -44,7 +44,9 @@ from base.rede.ligacoes_das_fontes import (
     PARTICIPADA_DE,
 )
 from base.rede.vistas import vista_publicada
+from base.regras import LINHA_DO_LUCRO, RECEITA, TOLERANCIA_EM_REAIS
 from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
+from src.negociacoes import CARGOS
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
 # fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
@@ -293,6 +295,16 @@ SECOES = (
         ("ofertas_resolucao_160", "ofertas_antigas", "painel_dos_fundos"),
     ),
     SecaoDaBase(
+        "qualidade_do_lucro",
+        "Qualidade do lucro",
+        ("demonstracoes_como_era", "release_x_oficial", "trocas_de_auditor"),
+    ),
+    SecaoDaBase(
+        "capital_e_acionistas",
+        "Capital e acionistas",
+        ("negociacoes", "eventos_de_capital", "painel_dos_fundos"),
+    ),
+    SecaoDaBase(
         "setor_regulado",
         "Setor regulado",
         ("empresa_serie", *dict.fromkeys(s.tabela for s in SERIES_DAS_AGENCIAS)),
@@ -329,6 +341,25 @@ LIMITES = {
         "FRE mais recente (o grupo costuma emitir pelas controladas), pelo valor registrado, não o "
         "colocado. Fundos: a posição comprada somada das carteiras entregues à CVM (CDA), que saem "
         "com até 90 dias de atraso: os meses em que as carteiras ainda estão chegando ficam de fora."
+    ),
+    "qualidade_do_lucro": (
+        "Reapresentação: o lucro do período ou a receita de um dos últimos 10 exercícios que mudou "
+        "mais de R$ 1 mil (o arredondamento da CVM) depois de publicado na DFP, pela própria DFP "
+        "reapresentada ou pela do ano seguinte; no consolidado, quando a empresa o publica. O "
+        "release é o que a empresa disse no press-release de resultado contra o ITR ou a DFP do "
+        "mesmo período (receita, lucro dos controladores e resultado operacional): o número do "
+        "release foi lido por um modelo de IA e conferido no texto do PDF, e diferença não é erro, "
+        "pode ser outro critério da empresa. O atraso de entrega está na ficha técnica (o prazo da "
+        "CVM contra a entrega)."
+    ),
+    "capital_e_acionistas": (
+        "Insiders: compras e vendas de ações declaradas à CVM (VLMO) por controladores, diretores, "
+        "conselheiros e acionistas com 10% ou mais, somadas por tipo de cargo nos 12 meses até a "
+        "data da ficha, só com as declarações já entregues; sem nomes. A recompra é a própria "
+        "empresa comprando (tesouraria), à parte. Eventos de capital (desdobramentos, grupamentos, "
+        "bonificações e aumentos) vêm do Formulário de Referência (FRE). Compras e vendas dos "
+        "fundos: o que as carteiras entregues à CVM (CDA) informam no mês, até o último mês "
+        "completo; nem todo fundo preenche, e quantos fundos têm a ação está em Ofertas e fundos."
     ),
     "setor_regulado": (
         "Soma das entidades ligadas à companhia pela tabela empresa ↔ série da base (própria ou "
@@ -757,6 +788,367 @@ def secao_ofertas_e_fundos(
         "fundos_por_mes": fundos_por_mes,
     }
     return _secao("ofertas_e_fundos", itens, tabelas)
+
+
+# --- qualidade do lucro --------------------------------------------------------------------------
+
+LINHAS_DO_RELEASE = {
+    "receita_liquida": "Receita líquida",
+    "lucro_liquido_controladores": "Lucro dos controladores",
+    "resultado_operacional": "Resultado operacional",
+}
+CLASSES_COMPARADAS = ("igual", "igual (arredondamento)", "diferente")
+CLASSES_DO_RELEASE = (*CLASSES_COMPARADAS, "release não mostra", "sem ITR")
+LUCRO_DO_PERIODO, RECEITA_DA_DRE = "Lucro do período", "Receita"
+# a receita e as contas onde o lucro costuma ficar (ele é achado pela descrição, `regras.LINHA_DO_LUCRO`)
+CONTAS_DA_DRE = (RECEITA, "3.09", "3.11", "3.13")
+PORCENTO = 100.0
+
+
+def _linhas_da_dre(como_era: pd.DataFrame) -> pd.DataFrame:
+    """O lucro do período e a receita da DFP, no consolidado (ou no individual, se não há)."""
+    dfp = como_era[
+        (como_era["demonstracao"] == "DRE") & (como_era["documento"] == "DFP")
+    ]
+    grupo = "con" if (dfp["grupo"] == "con").any() else "ind"
+    dfp = dfp[dfp["grupo"] == grupo]
+    descricao = dfp["descricao"].fillna("").astype(str).str.strip()
+    lucro = descricao.str.match(LINHA_DO_LUCRO)
+    receita = dfp["conta"] == RECEITA
+    escolhidas = dfp[lucro | receita]
+    return escolhidas.assign(
+        linha=lucro[lucro | receita].map(
+            {True: LUCRO_DO_PERIODO, False: RECEITA_DA_DRE}
+        ),
+        exercicio=pd.to_datetime(escolhidas["fim"]).dt.year,
+        divulgado_em=pd.to_datetime(escolhidas["divulgado_em"]),
+    )
+
+
+def _refeita(
+    exercicio: int, linha: str, versoes: pd.DataFrame
+) -> dict[str, Any] | None:
+    """A primeira e a última versão de uma linha de um exercício, se mudou mais que o arredondamento."""
+    versoes = versoes.sort_values("divulgado_em")
+    primeira, atual = versoes.iloc[0], versoes.iloc[-1]
+    primeiro_valor, valor_atual = float(primeira["valor"]), float(atual["valor"])
+    diferenca = valor_atual - primeiro_valor
+    if abs(diferenca) <= TOLERANCIA_EM_REAIS:
+        return None
+    return {
+        "exercicio": exercicio,
+        "linha": linha,
+        "primeiro_valor": primeiro_valor,
+        "primeiro_em": primeira["divulgado_em"],
+        "valor_atual": valor_atual,
+        "trocado_em": atual["divulgado_em"],
+        "diferenca": diferenca,
+        "diferenca_pct": (
+            PORCENTO * diferenca / abs(primeiro_valor) if primeiro_valor else None
+        ),
+    }
+
+
+def _reapresentacoes(
+    como_era: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Quantos exercícios a ficha olhou e quais tiveram o lucro ou a receita refeitos depois.
+
+    Sem olhar o futuro: só o que já tinha sido divulgado até `hoje`; o valor "de hoje" é o último
+    divulgado até lá, não o que a base sabe agora.
+    """
+    if como_era.empty:
+        return [], pd.DataFrame()
+    linhas = _linhas_da_dre(como_era)
+    linhas = linhas[linhas["divulgado_em"] <= hoje]
+    if linhas.empty:
+        return [], pd.DataFrame()
+    linhas = linhas[linhas["exercicio"] > linhas["exercicio"].max() - ANOS_NAS_SERIES]
+    refeitas = [
+        _refeita(int(exercicio), str(linha), versoes)
+        for (exercicio, linha, _), versoes in linhas.groupby(
+            ["exercicio", "linha", "conta"], sort=False
+        )
+    ]
+    tabela = pd.DataFrame([r for r in refeitas if r is not None])
+    if not tabela.empty:
+        tabela = tabela.sort_values(
+            ["trocado_em", "exercicio"], ascending=False, ignore_index=True
+        )
+    base = (
+        tabela["trocado_em"].max() if not tabela.empty else linhas["divulgado_em"].max()
+    )
+    itens = [
+        _item(
+            "exercicios_reapresentados",
+            "Exercícios com o lucro ou a receita refeitos depois de publicados",
+            int(tabela["exercicio"].nunique()) if not tabela.empty else 0,
+            "exercícios",
+            _data(base),
+        ),
+        _item(
+            "exercicios_olhados",
+            "Exercícios olhados (DFP)",
+            int(linhas["exercicio"].nunique()),
+            "exercícios",
+            _data(linhas["divulgado_em"].max()),
+        ),
+    ]
+    return itens, tabela
+
+
+def _releases(
+    releases: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """O release de resultado contra o ITR ou a DFP: quantos valores deu para comparar e os diferentes."""
+    if releases.empty:
+        return [], {}
+    releases = releases[pd.to_datetime(releases["publico_em"]) <= hoje]
+    if releases.empty:
+        return [], {}
+    # o release reentregue (versão nova) substitui o anterior do mesmo período
+    releases = releases.sort_values(["data_entrega", "versao"]).drop_duplicates(
+        ["periodo", "linha", "periodo_lido", "leitura"], keep="last"
+    )
+    comparados = releases[releases["classe"].isin(CLASSES_COMPARADAS)]
+    diferentes = comparados[comparados["classe"] == "diferente"]
+    base = _data(pd.to_datetime(releases["publico_em"]).max())
+    itens = [
+        _item(
+            "releases_comparados",
+            "Valores do release comparados com o ITR ou a DFP",
+            len(comparados),
+            "valores",
+            base,
+        ),
+        _item(
+            "releases_diferentes",
+            "Valores do release diferentes do oficial",
+            len(diferentes),
+            "valores",
+            base,
+        ),
+    ]
+    por_classe = releases["classe"].value_counts().reindex(CLASSES_DO_RELEASE).dropna()
+    colunas = [
+        "periodo",
+        "referencia",
+        "linha",
+        "valor_release_reais",
+        "valor_oficial_reais",
+        "diferenca_pct",
+        "link",
+    ]
+    tabelas = {
+        "releases_diferentes": diferentes.assign(
+            linha=diferentes["linha"].map(LINHAS_DO_RELEASE)
+        )
+        .sort_values("referencia", ascending=False)[colunas]
+        .head(LINHAS_NAS_LISTAS),
+        "releases_por_classe": pd.DataFrame(
+            {"classe": por_classe.index, "valores": por_classe.astype(int).to_numpy()}
+        ),
+    }
+    return itens, tabelas
+
+
+def _trocas_recentes(trocas: pd.DataFrame, hoje: pd.Timestamp) -> list[dict[str, Any]]:
+    """Quantas vezes a empresa trocou de auditor nos últimos 10 anos (a lista está no auditor)."""
+    if trocas.empty:
+        return []
+    conhecidas = trocas[pd.to_datetime(trocas["conhecido_em"]) <= hoje]
+    efetiva = pd.to_datetime(conhecidas["efetiva_em"])
+    recentes = efetiva[efetiva > hoje - pd.DateOffset(years=ANOS_NAS_SERIES)]
+    if recentes.empty:
+        return []
+    return [
+        _item(
+            "trocas_de_auditor_10_anos",
+            "Trocas de auditor nos últimos 10 anos",
+            len(recentes),
+            "trocas",
+            _data(recentes.max()),
+        )
+    ]
+
+
+def secao_qualidade_do_lucro(
+    como_era: pd.DataFrame,
+    releases: pd.DataFrame,
+    trocas: pd.DataFrame,
+    hoje: pd.Timestamp,
+) -> dict[str, Any] | None:
+    """Reapresentações, o release contra o oficial e as trocas de auditor (None: nada disso)."""
+    itens_da_dre, reapresentacoes = _reapresentacoes(como_era, hoje)
+    itens_do_release, tabelas_do_release = _releases(releases, hoje)
+    itens = [*itens_da_dre, *itens_do_release, *_trocas_recentes(trocas, hoje)]
+    if not itens:
+        return None
+    tabelas = {"reapresentacoes": reapresentacoes, **tabelas_do_release}
+    return _secao("qualidade_do_lucro", itens, tabelas)
+
+
+# --- capital e acionistas ------------------------------------------------------------------------
+
+TESOURARIA = "companhia"  # o cargo da própria empresa no VLMO: recompra, não insider
+JANELAS = ("últimos 12 meses", "12 meses anteriores")
+
+
+def _janela(datas: pd.Series, ate: pd.Timestamp, anos_antes: int = 0) -> pd.Series:
+    """As datas dentro dos 12 meses que terminam em `ate` (ou `anos_antes` anos antes)."""
+    fim = ate - pd.DateOffset(years=anos_antes)
+    return (datas > fim - pd.DateOffset(years=1)) & (datas <= fim)
+
+
+def _soma(negociacoes: pd.DataFrame, operacao: str) -> float:
+    return float(negociacoes.loc[negociacoes["operacao"] == operacao, "valor"].sum())
+
+
+def _somas_dos_insiders(negociacoes: pd.DataFrame) -> dict[str, float | int]:
+    insiders = negociacoes[negociacoes["cargo"] != TESOURARIA]
+    tesouraria = negociacoes[negociacoes["cargo"] == TESOURARIA]
+    return {
+        "compras": _soma(insiders, "compra"),
+        "vendas": _soma(insiders, "venda"),
+        "recompras": _soma(tesouraria, "compra"),
+        "negociacoes": len(insiders),
+    }
+
+
+def _por_cargo(negociacoes: pd.DataFrame) -> pd.DataFrame:
+    """Compras e vendas somadas por tipo de cargo: nunca por pessoa (ADRs 0018 e 0075)."""
+    if negociacoes.empty:
+        return pd.DataFrame()
+    linhas = [
+        {
+            "cargo": CARGOS.get(str(cargo), str(cargo)),
+            "compras": _soma(do_cargo, "compra"),
+            "vendas": _soma(do_cargo, "venda"),
+            "negociacoes": len(do_cargo),
+        }
+        for cargo, do_cargo in negociacoes.groupby("cargo", sort=False)
+    ]
+    return pd.DataFrame(linhas).sort_values(
+        ["compras", "vendas"], ascending=False, ignore_index=True
+    )
+
+
+def _insiders(
+    negociacoes: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], dict[str, pd.DataFrame]]:
+    """Compras e vendas declaradas nos 12 meses até hoje, por cargo, e as dos 12 meses anteriores.
+
+    Só as declarações já entregues até hoje: a negociação do mês ainda sem formulário fica de fora.
+    """
+    if negociacoes.empty:
+        return [], {}
+    entregues = negociacoes[pd.to_datetime(negociacoes["entregue_em"]) <= hoje]
+    datas = pd.to_datetime(entregues["data"])
+    do_ano = entregues[_janela(datas, hoje)]
+    somas = _somas_dos_insiders(do_ano)
+    base = _data(hoje)
+    itens = [
+        _item("insiders_compras_12m", "Compras de insiders em 12 meses", somas["compras"], "R$", base),
+        _item("insiders_vendas_12m", "Vendas de insiders em 12 meses", somas["vendas"], "R$", base),
+        _item("recompras_12m", "Recompras da própria empresa em 12 meses", somas["recompras"], "R$", base),
+    ]  # fmt: skip
+    janelas = pd.DataFrame(
+        [
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": hoje - pd.DateOffset(years=anos_antes),
+            }
+            | _somas_dos_insiders(entregues[_janela(datas, hoje, anos_antes)])
+            for anos_antes in range(len(JANELAS))
+        ]
+    )
+    tabelas = {"insiders_por_cargo": _por_cargo(do_ano), "insiders_janelas": janelas}
+    return itens, tabelas
+
+
+def _eventos_de_capital(
+    eventos: pd.DataFrame, hoje: pd.Timestamp
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Os eventos de capital dos últimos 10 anos, cada um uma vez (o FRE de cada ano os repete)."""
+    if eventos.empty:
+        return [], pd.DataFrame()
+    eventos = eventos.assign(data=pd.to_datetime(eventos["data"]))
+    eventos = eventos[
+        (eventos["data"] <= hoje)
+        & (eventos["data"] > hoje - pd.DateOffset(years=ANOS_NAS_SERIES))
+    ]
+    if eventos.empty:
+        return [], pd.DataFrame()
+    unicos = eventos.sort_values(["referencia", "versao"]).drop_duplicates(
+        ["tipo", "data"], keep="last"
+    )
+    tabela = unicos.sort_values("data", ascending=False, ignore_index=True)[
+        ["data", "tipo", "fator", "acoes_novas", "valor"]
+    ]
+    item = _item(
+        "eventos_de_capital",
+        "Eventos de capital nos últimos 10 anos",
+        len(tabela),
+        "eventos",
+        _data(tabela["data"].max()),
+    )
+    return [item], tabela.head(LINHAS_NAS_LISTAS)
+
+
+def _movimento_dos_fundos(
+    painel: pd.DataFrame, ultimo_mes: pd.Timestamp | None
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """O que os fundos compraram e venderam nos 12 últimos meses completos e nos 12 anteriores."""
+    if painel.empty or not {"compras", "vendas"} <= set(painel.columns):
+        return [], pd.DataFrame()
+    comprado = painel[painel["tipo"] == "comprado"]
+    comprado = comprado.assign(competencia=pd.to_datetime(comprado["competencia"]))
+    if ultimo_mes is not None:
+        comprado = comprado[comprado["competencia"] <= ultimo_mes]
+    if comprado.empty:
+        return [], pd.DataFrame()
+    ate = comprado["competencia"].max()
+    linhas = []
+    for anos_antes in range(len(JANELAS)):
+        no_ano = comprado[_janela(comprado["competencia"], ate, anos_antes)]
+        linhas.append(
+            {
+                "janela": JANELAS[anos_antes],
+                "ate": ate - pd.DateOffset(years=anos_antes),
+                "compras": float(no_ano["compras"].sum()),
+                "vendas": float(no_ano["vendas"].sum()),
+            }
+        )
+    base = _data(ate)
+    itens = [
+        _item("compras_dos_fundos_12m", "Compras dos fundos em 12 meses", linhas[0]["compras"], "R$", base),
+        _item("vendas_dos_fundos_12m", "Vendas dos fundos em 12 meses", linhas[0]["vendas"], "R$", base),
+    ]  # fmt: skip
+    return itens, pd.DataFrame(linhas)
+
+
+def secao_capital_e_acionistas(
+    negociacoes: pd.DataFrame,
+    eventos: pd.DataFrame,
+    painel: pd.DataFrame,
+    hoje: pd.Timestamp,
+    ultimo_mes_completo: pd.Timestamp | None = None,
+) -> dict[str, Any] | None:
+    """Insiders, eventos de capital e o movimento dos fundos (None: nada disso)."""
+    itens_dos_insiders, tabelas_dos_insiders = _insiders(negociacoes, hoje)
+    itens_dos_eventos, eventos_de_capital = _eventos_de_capital(eventos, hoje)
+    itens_dos_fundos, fundos_janelas = _movimento_dos_fundos(
+        painel, ultimo_mes_completo
+    )
+    itens = [*itens_dos_insiders, *itens_dos_eventos, *itens_dos_fundos]
+    if not itens:
+        return None
+    tabelas = {
+        **tabelas_dos_insiders,
+        "eventos_de_capital": eventos_de_capital,
+        "fundos_janelas": fundos_janelas,
+    }
+    return _secao("capital_e_acionistas", itens, tabelas)
 
 
 # --- setor regulado ------------------------------------------------------------------------------

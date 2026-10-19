@@ -107,12 +107,51 @@ class Entradas:
     ultimo_mes_do_cda: pd.Timestamp | None
     empresa_serie: pd.DataFrame
     eventos: pd.DataFrame
+    como_era: pd.DataFrame  # a DRE anual da DFP, todas as versões (as reapresentações)
+    releases: pd.DataFrame
+    negociacoes: pd.DataFrame
+    eventos_de_capital: pd.DataFrame
     series: dict[str, pd.DataFrame]
     grupos: dict[
         str, pd.DataFrame
     ]  # (ano, chave, grupo) das séries cuja agência informa o grupo
     pessoas: set[str]
     rede: dossie.RedeDaNoite
+    hoje: pd.Timestamp  # o dia da ficha, sem fuso, para comparar com as datas da base
+
+
+# só as colunas que as seções de qualidade do lucro e de capital usam (a DRE de todo o mercado é grande)
+COLUNAS_DA_DRE = (
+    "cnpj",
+    "grupo",
+    "demonstracao",
+    "documento",
+    "conta",
+    "descricao",
+    "fim",
+    "valor",
+    "divulgado_em",
+)
+COLUNAS_DO_RELEASE = (
+    "cnpj",
+    "versao",
+    "periodo",
+    "referencia",
+    "data_entrega",
+    "link",
+    "linha",
+    "periodo_lido",
+    "leitura",
+    "valor_release_reais",
+    "valor_oficial_reais",
+    "diferenca_pct",
+    "classe",
+    "publico_em",
+)
+COLUNAS_DAS_NEGOCIACOES = ("cnpj", "cargo", "operacao", "data", "entregue_em", "valor")
+COLUNAS_DOS_EVENTOS = (
+    "cnpj", "referencia", "versao", "tipo", "data", "fator", "acoes_novas", "valor",
+)  # fmt: skip
 
 
 def _empresas(tickers: pd.DataFrame) -> pd.DataFrame:
@@ -226,6 +265,11 @@ def _rede(
     return dossie.preparar_rede(ligacoes, entidades, identificadores, controladas, hoje)
 
 
+def _dia(agora: pd.Timestamp) -> pd.Timestamp:
+    """O dia de `agora`, sem fuso: as datas da base (entrega, publicação) não têm fuso."""
+    return (agora.tz_localize(None) if agora.tzinfo else agora).normalize()
+
+
 def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
     """Tudo o que o dossiê lê da base, uma vez, para todas as empresas.
 
@@ -254,12 +298,25 @@ def ler_entradas(leitor: Leitor, hoje: pd.Timestamp) -> Entradas:
         eventos=leitor.ler(
             "eventos", ["cnpj", "rotulo", "assunto", "publicado_em", "link"]
         ),
+        como_era=leitor.ler(
+            "demonstracoes_como_era",
+            [*COLUNAS_DA_DRE],
+            filtros={
+                "demonstracao": "DRE",
+                "documento": "DFP",
+                "conta": list(dossie.CONTAS_DA_DRE),
+            },
+        ),
+        releases=leitor.ler("release_x_oficial", [*COLUNAS_DO_RELEASE]),
+        negociacoes=leitor.ler("negociacoes", [*COLUNAS_DAS_NEGOCIACOES]),
+        eventos_de_capital=leitor.ler("eventos_de_capital", [*COLUNAS_DOS_EVENTOS]),
         series={s.nome: ler_serie(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS},
         grupos={
             s.nome: ler_grupos(leitor, s) for s in dossie.SERIES_DAS_AGENCIAS if s.grupo
         },
         pessoas=_pessoas(entidades),
         rede=_rede(leitor, hoje, entidades, controladas),
+        hoje=_dia(hoje),
     )
 
 
@@ -293,6 +350,11 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
     painel = _por_cnpj(entradas.painel, "cnpj")
     empresa_serie = _por_cnpj(entradas.empresa_serie, "cnpj_companhia")
     eventos = _por_cnpj(entradas.eventos, "cnpj")
+    como_era = _por_cnpj(entradas.como_era, "cnpj")
+    releases = _por_cnpj(entradas.releases, "cnpj")
+    negociacoes = _por_cnpj(entradas.negociacoes, "cnpj")
+    eventos_de_capital = _por_cnpj(entradas.eventos_de_capital, "cnpj")
+    hoje = entradas.hoje
 
     def ofertas_e_fundos(cnpj: str) -> dict | None:
         grupo = dossie.cnpjs_do_grupo(cnpj, controladas.get(cnpj, VAZIA))
@@ -311,7 +373,17 @@ def _secoes(entradas: Entradas, setores: Mapping[str, dict]) -> dict[str, Secao]
             controladoras.get(c, VAZIA),
             entradas.pessoas,
         ),
+        "qualidade_do_lucro": lambda c: dossie.secao_qualidade_do_lucro(
+            como_era.get(c, VAZIA), releases.get(c, VAZIA), trocas.get(c, VAZIA), hoje
+        ),
         "ofertas_e_fundos": ofertas_e_fundos,
+        "capital_e_acionistas": lambda c: dossie.secao_capital_e_acionistas(
+            negociacoes.get(c, VAZIA),
+            eventos_de_capital.get(c, VAZIA),
+            painel.get(c, VAZIA),
+            hoje,
+            entradas.ultimo_mes_do_cda,
+        ),
         "setor_regulado": lambda c: dossie.secao_setor_regulado(
             empresa_serie.get(c, VAZIA), entradas.series
         ),
