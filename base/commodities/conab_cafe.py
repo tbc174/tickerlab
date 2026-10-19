@@ -27,6 +27,7 @@ from datetime import date
 import pandas as pd
 
 FONTE = "conab-cafe-safra"
+FONTE_DA_PAGINA = "conab-cafe-publicacao"
 LEVANTAMENTOS = (1, 2, 3, 4)
 COLUNAS = (
     "safra", "levantamento", "tipo", "uf", "area_formacao_ha", "area_producao_ha",
