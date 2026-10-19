@@ -192,6 +192,25 @@ def _site() -> dict:
     }
 
 
+def _ativos() -> list[dict[str, str]]:
+    """O catálogo da busca do campo Ativo (o mesmo do Streamlit), com o rótulo que a lista mostra.
+
+    Vai num JSON à parte que o app carrega só quando o campo aparece (ADR 0048): é estático, muda
+    só quando `scripts/gerar_catalogo.py` roda, e não precisa de rota na API.
+    """
+    tabela = catalogo.carregar()
+    return [
+        {
+            "simbolo": simbolo,
+            "codigo": linha["codigo"],
+            "nome": linha["nome"],
+            "tipo": linha["tipo"],
+            "rotulo": catalogo.rotulo(simbolo),
+        }
+        for simbolo, linha in tabela.iterrows()
+    ]
+
+
 def _variacao(valor: float) -> dict[str, float | str]:
     """Um retorno como o PDF mostra: com sinal e a seta (a cor sozinha não basta)."""
     return {
@@ -409,6 +428,7 @@ def conteudo() -> dict[str, object]:
         "amostra_relatorio": amostra_do_relatorio.para_o_site(),
         "regras_de_imposto": regras_de_imposto.para_o_site(),
         "catalogo": _catalogo(),
+        "ativos": _ativos(),
     }
 
 
