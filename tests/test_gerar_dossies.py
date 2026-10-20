@@ -264,6 +264,7 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
     )
     fundos = next(s for s in ficha["secoes"] if s["chave"] == "ofertas_e_fundos")
     itens = {i["chave"]: i for i in fundos["itens"]}
+    rastro = itens["fundos_com_a_acao"].pop("rastro")
     assert itens["fundos_com_a_acao"] == {
         "chave": "fundos_com_a_acao",
         "nome": "Fundos com a empresa na carteira",
@@ -271,6 +272,8 @@ def test_fundos_da_ficha_param_no_ultimo_mes_completo_do_cda(tmp_path: Path) -> 
         "unidade": "fundos",
         "base": "2026-01-31",
     }
+    # o painel deste teste não tem a coluna da publicação: o rastro sai sem o dia, nunca inventado
+    assert (rastro["fonte_id"], rastro["publicado_em"]) == ("cvm", None)
 
 
 def _lucro_e_capital(pasta: Path) -> None:
