@@ -84,7 +84,7 @@ def _titulo_da_tabela(pdf: RelatorioPDF, titulo: str) -> None:
     pdf.cell(0, 6, titulo, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
 
-def _secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
+def escrever_secao(pdf: RelatorioPDF, secao: Secao, estilo: Estilo) -> None:
     pdf.secao(secao.titulo, reservar=40, numerada=True)
     if secao.itens:
         _itens(pdf, secao.itens)
@@ -180,5 +180,5 @@ def relatorio_da_empresa(
     if relatorio.analise:
         _analise(pdf, relatorio.analise)
     for secao in relatorio.secoes:
-        _secao(pdf, secao, estilo)
+        escrever_secao(pdf, secao, estilo)
     return pdf.para_bytes()

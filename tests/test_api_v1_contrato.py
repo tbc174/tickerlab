@@ -50,6 +50,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/portal-da-assinatura",
         "/v1/painel-do-cafe",
         "/v1/busca-por-cnpj",
+        "/v1/busca-por-cnpj/pdf",
     }
 
 

@@ -5,13 +5,16 @@
 import { type FormEvent, useState } from "react";
 import type { PaginaDoApp } from "../../conteudo";
 import { CabecalhoDaTela } from "../CabecalhoDaTela";
+import { ErroDaApi, baixar } from "../api";
 import { Carregando } from "../Carregando";
+import { useConta } from "../conta";
 import { formatarData } from "../formatar";
 import type { BuscaPorCnpjV1 } from "../tipos";
 import { usarPedido } from "../usarPedido";
 import { ErroDaTela } from "./ErroDaTela";
 import { ConviteDoPro, Secao, fimDoPrimeiroBloco } from "./RelatorioEmpresa";
 
+const NOME_DO_PDF = "relatorio-do-cnpj-tickerlab.pdf"; // sem o CNPJ: o nome do arquivo não carrega dado
 const TAMANHO_MAXIMO_DO_CNPJ = 20; // com a pontuação cabem 18; sobra folga para espaços colados
 
 function Lista({ titulo, itens, id }: { titulo: string; itens: string[]; id: string }) {
@@ -56,12 +59,49 @@ function Relatorio({ dados }: { dados: BuscaPorCnpjV1 }) {
   );
 }
 
+function BaixarPdf({ rota, cnpj }: { rota: string; cnpj: string }) {
+  const token = useConta()?.token ?? null;
+  const [baixando, setBaixando] = useState(false);
+  const [falha, setFalha] = useState<string | null>(null);
+  const baixarAgora = () => {
+    if (token === null) return;
+    setBaixando(true);
+    setFalha(null);
+    baixar(`${rota}/pdf`, token, { cnpj })
+      .then((arquivo) => {
+        const endereco = URL.createObjectURL(arquivo);
+        const ancora = document.createElement("a");
+        ancora.href = endereco;
+        ancora.download = NOME_DO_PDF;
+        ancora.click();
+        URL.revokeObjectURL(endereco);
+      })
+      .catch((erro: unknown) =>
+        setFalha(erro instanceof ErroDaApi ? erro.message : "Não deu agora. Tente de novo em instantes."),
+      )
+      .finally(() => setBaixando(false));
+  };
+  return (
+    <>
+      <button type="button" className="botao" disabled={baixando} onClick={baixarAgora}>
+        Baixar PDF
+      </button>
+      {falha ? (
+        <p className="erro-do-app" role="alert">
+          {falha}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function Resultado({ pagina, cnpj }: { pagina: PaginaDoApp; cnpj: string }) {
   const pedido = usarPedido<BuscaPorCnpjV1>(pagina.contrato?.rota ?? "", {}, { cnpj });
   if (pedido.estado === "carregando") return <Carregando tipo="painel" rotulo="Montando o relatório do CNPJ…" />;
   if (pedido.estado === "erro") return <ErroDaTela erro={pedido.erro} />;
   return (
     <>
+      <BaixarPdf rota={pagina.contrato?.rota ?? ""} cnpj={cnpj} />
       <Relatorio dados={pedido.dados} />
       <Lista id="limites-do-cnpj" titulo="Limites e cuidados" itens={pedido.dados.limites} />
       <Lista id="desligado-do-cnpj" titulo="O que ainda não aparece" itens={pedido.dados.desligado} />

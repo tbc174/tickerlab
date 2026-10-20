@@ -602,7 +602,11 @@ def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
         caminho = rota.path  # type: ignore[attr-defined]
         if caminho in ROTAS_PUBLICAS:
             continue
-        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        assert (
+            caminho in paginas.POR_ROTA
+            or caminho in acesso.ROTAS_DA_CONTA
+            or acesso.ROTAS_DE_ARQUIVO.get(caminho) in paginas.POR_ROTA
+        ), caminho
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
         assert acesso.conta_com_acesso in dependencias, caminho
 
