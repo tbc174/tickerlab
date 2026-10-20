@@ -590,31 +590,6 @@ PAGINAS = (
         so_no_app_novo=True,
     ),
     Pagina(
-        "relatorio_setor",
-        "Relatório do setor",
-        GRUPO_RESEARCH,
-        ":material/factory:",
-        "Quem são as companhias abertas de um setor regulado, o tamanho e a concentração do "
-        "mercado, a parte de cada uma e o que ainda não temos, com a data e a fonte de cada número.",
-        area=AREA_ACOMPANHAR,
-        precisa_do_ativo=False,
-        no_menu=False,  # a tela chega no PR 4 do molde D; até lá, só a rota
-        contrato=Contrato(
-            "GET",
-            "/v1/relatorio-setor",
-            (
-                Entrada(
-                    "setor",
-                    "texto",
-                    "A chave do setor, uma das de /v1/setores (eletricas, bancos...).",
-                    obrigatoria=True,
-                ),
-            ),
-            "RelatorioDoSetorV1",
-        ),
-        so_no_app_novo=True,
-    ),
-    Pagina(
         "por_dentro",
         "Pessoas de dentro",
         GRUPO_RESEARCH,
