@@ -285,3 +285,18 @@ def test_resposta_cortada_escreve_de_novo_quando_o_limite_sobe(tmp_path):
     registro["max_tokens"] = pedido.MAX_TOKENS_DA_RESPOSTA // 2
     arquivo.write_text(json.dumps(registro), encoding="utf-8")
     assert ea.resposta_guardada(tmp_path, ENTRADA, pedido.SONNET) is None
+
+
+def test_d4_entrada_com_nome_junto_do_cargo_nao_vai_a_api(tmp_path):
+    entrada = copy.deepcopy(ENTRADA)
+    entrada["linhas"][0]["texto"] = "O CFO Maria Souza informou a mudança."
+    arquivo = tmp_path / "entrada.json"
+    arquivo.write_text(json.dumps(entrada), encoding="utf-8")
+    with pytest.raises(ValueError, match="nome de pessoa"):
+        ea.ler_entradas([arquivo])
+
+
+def test_d4_entrada_sem_pessoa_passa(tmp_path):
+    arquivo = tmp_path / "entrada.json"
+    arquivo.write_text(json.dumps(ENTRADA), encoding="utf-8")
+    assert ea.ler_entradas([arquivo])[0] == ENTRADA
