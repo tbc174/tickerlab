@@ -67,7 +67,7 @@ from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
-from src.busca_por_cnpj import PedidoInvalidoError, buscar_por_cnpj
+from src.busca_por_cnpj import PedidoInvalidoError, RelatorioDoCnpj, buscar_por_cnpj
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
 from src.commodities import painel_de_precos
@@ -92,6 +92,7 @@ from src.planos import (
     tabela_de_planos,
     texto_do_uso,
 )
+from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_empresa import montar as montar_relatorio
 from src.simulacoes import (
     endereco_no_app_novo,
@@ -994,6 +995,19 @@ class PedidoDeBuscaPorCnpjV1(BaseModel):
     cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
 
 
+def _relatorio_do_pedido(
+    conta: Usuario, pedido: PedidoDeBuscaPorCnpjV1
+) -> RelatorioDoCnpj:
+    """O relatório do CNPJ pedido (a rota JSON e a do PDF respondem do mesmo objeto, com as mesmas regras)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = buscar_por_cnpj(conexao, pedido.cnpj, conta.plano)
+    except PedidoInvalidoError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    log.info("busca por cnpj: %s", relatorio.situacao)  # só a contagem, nunca o CNPJ
+    return relatorio
+
+
 @router.post("/busca-por-cnpj")
 def busca_por_cnpj(
     conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
@@ -1003,13 +1017,26 @@ def busca_por_cnpj(
     É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
     de acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.
     """
-    try:
-        with obter_engine().connect() as conexao:
-            relatorio = buscar_por_cnpj(conexao, pedido.cnpj, conta.plano)
-    except PedidoInvalidoError as erro:
-        raise HTTPException(status_code=422, detail=str(erro)) from erro
-    log.info("busca por cnpj: %s", relatorio.situacao)
-    return esquemas.de_busca_por_cnpj(relatorio)
+    return esquemas.de_busca_por_cnpj(_relatorio_do_pedido(conta, pedido))
+
+
+NOME_DO_PDF_DO_CNPJ = (
+    "relatorio-do-cnpj-tickerlab.pdf"  # sem o CNPJ: o nome não vai para o disco alheio
+)
+
+
+@router.post("/busca-por-cnpj/pdf", response_class=Response)
+def busca_por_cnpj_em_pdf(conta: Conta, pedido: PedidoDeBuscaPorCnpjV1) -> Response:
+    """O mesmo relatório da rota acima em PDF, com "Limites e cuidados" (mesmo acesso, mesmo plano)."""
+    conteudo = relatorio_do_cnpj(_relatorio_do_pedido(conta, pedido))
+    return Response(
+        content=conteudo,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DO_PDF_DO_CNPJ}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 def openapi_v1() -> dict:
@@ -1017,10 +1044,12 @@ def openapi_v1() -> dict:
     from fastapi import FastAPI
 
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.entrada import router as router_da_entrada
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
     app.include_router(router_da_conta)
+    app.include_router(router_da_entrada)
     return app.openapi()
 
 

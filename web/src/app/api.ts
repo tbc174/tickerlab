@@ -84,16 +84,22 @@ function cabecalhosPara(token: string): Record<string, string> {
   return token === SESSAO ? { ...CABECALHO_DO_APP } : { ...CABECALHO_DO_APP, Authorization: `Bearer ${token}` };
 }
 
-/** Um arquivo de uma rota da v1 (a exportação dos dados), com a sessão. */
-export async function baixar(rota: string, token: string): Promise<Blob> {
+/** Um arquivo de uma rota da v1 (a exportação dos dados, um PDF), com a sessão. Com `corpo`, o
+ * pedido é um POST (o CNPJ de uma busca não pode ir no endereço). */
+export async function baixar(rota: string, token: string, corpo?: unknown): Promise<Blob> {
   if (!ROTA_DA_V1.test(rota)) throw new Error(`rota fora da API v1: ${rota}`);
+  const pedido: RequestInit =
+    corpo === undefined
+      ? { method: "GET", headers: cabecalhosPara(token), credentials: "same-origin" }
+      : {
+          method: "POST",
+          headers: { ...cabecalhosPara(token), "Content-Type": "application/json" },
+          body: JSON.stringify(corpo),
+          credentials: "same-origin",
+        };
   let resposta: Response;
   try {
-    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, {
-      method: "GET",
-      headers: cabecalhosPara(token),
-      credentials: "same-origin",
-    });
+    resposta = await fetch(`${PREFIXO_DA_API}${rota.slice("/v1".length)}`, pedido);
   } catch {
     throw new ErroDaApi("rede", SEM_CONEXAO);
   }

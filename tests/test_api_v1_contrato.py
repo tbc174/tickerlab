@@ -23,6 +23,9 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/configuracao",
         "/v1/conta",
         "/v1/sair",
+        "/v1/sair-de-todos",
+        "/v1/entrada/codigo",
+        "/v1/entrada/confirmar",
         "/v1/aceite-dos-termos",
         "/v1/eu",
         "/v1/visao-geral",
@@ -47,6 +50,7 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/portal-da-assinatura",
         "/v1/painel-do-cafe",
         "/v1/busca-por-cnpj",
+        "/v1/busca-por-cnpj/pdf",
     }
 
 

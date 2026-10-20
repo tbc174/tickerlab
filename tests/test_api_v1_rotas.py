@@ -56,9 +56,8 @@ from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
     chaves_publicas,
-    com_token,
+    da_sessao,
     gerar_chave,
-    token,
 )
 from tests.test_commodities_cafe_pacote_do_mapa import pacote_de_exemplo
 from tests.test_compartilhamentos import _congelada
@@ -87,7 +86,7 @@ def cliente(banco, monkeypatch, chave):
     with banco.begin() as conexao:
         ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
         registrar_aceite(conexao, ana.id)
-    cliente = TestClient(app, headers=com_token(token(chave)))
+    cliente = TestClient(app, headers=da_sessao(banco, ana))
     yield cliente
 
 
@@ -603,7 +602,11 @@ def test_toda_rota_da_v1_tem_contrato_ou_e_da_conta():
         caminho = rota.path  # type: ignore[attr-defined]
         if caminho in ROTAS_PUBLICAS:
             continue
-        assert caminho in paginas.POR_ROTA or caminho in acesso.ROTAS_DA_CONTA, caminho
+        assert (
+            caminho in paginas.POR_ROTA
+            or caminho in acesso.ROTAS_DA_CONTA
+            or acesso.ROTAS_DE_ARQUIVO.get(caminho) in paginas.POR_ROTA
+        ), caminho
         dependencias = {d.call for d in rota.dependant.dependencies}  # type: ignore[attr-defined]
         assert acesso.conta_com_acesso in dependencias, caminho
 
@@ -711,7 +714,7 @@ def test_as_tentativas_de_uma_conta_nao_contam_na_outra(cliente, banco, chave):
     da_bia = cliente.post(
         "/api/v1/backtest",
         json=PEDIDO_DA_FICHA,
-        headers=com_token(token(chave, sub="bia", email="bia@exemplo.com")),
+        headers=da_sessao(banco, bia),
     )
     assert da_bia.status_code == 200, da_bia.text
     assert da_bia.json()["ficha"]["tentativas_da_pessoa"] == 1

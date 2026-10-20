@@ -77,7 +77,7 @@ def entrar(
         usuario, primeira_vez = _registrar(identidade, tl_origem)
     except LoginInvalidoError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
-    _abrir_a_sessao(request, response, usuario)
+    abrir_a_sessao(request, response, usuario)
     return ContaV1(**eu_da_conta(usuario).model_dump(), primeira_vez=primeira_vez)
 
 
@@ -93,13 +93,15 @@ def _registrar(
         return registrar_login(identidade, admins=admins, origem=origem)
 
 
-def _abrir_a_sessao(request: Request, response: Response, usuario: Usuario) -> None:
+def abrir_a_sessao(
+    request: Request, response: Response, usuario: Usuario, provedor: str = "google"
+) -> None:
     """Abre a sessão nova e põe o cookie; a sessão que o navegador ainda tinha é encerrada."""
     antiga = token_do_cookie(request)
     with obter_engine().begin() as conexao:
         if antiga:
             sessoes.encerrar(conexao, antiga)
-        token = sessoes.abrir(conexao, usuario.id, "google")
+        token = sessoes.abrir(conexao, usuario.id, provedor)
     por_o_cookie(response, token)
 
 
@@ -112,6 +114,23 @@ def sair(request: Request, response: Response) -> None:
         with obter_engine().begin() as conexao:
             sessoes.encerrar(conexao, token)
     tirar_o_cookie(response)
+
+
+class EncerradasV1(BaseModel):
+    encerradas: int  # quantas sessões estavam abertas (este aparelho e os outros)
+
+
+@router.post("/sair-de-todos")
+def sair_de_todos(
+    response: Response, conta: Annotated[Usuario, Depends(conta_sem_o_aceite)]
+) -> EncerradasV1:
+    """Encerra as sessões da conta em todos os aparelhos (a pessoa perdeu um celular, por exemplo).
+
+    Vale mesmo sem os termos atuais aceitos: sair não depende de aceitar nada."""
+    with obter_engine().begin() as conexao:
+        quantas = sessoes.encerrar_todas(conexao, conta.id)
+    tirar_o_cookie(response)
+    return EncerradasV1(encerradas=quantas)
 
 
 @router.post("/aceite-dos-termos")

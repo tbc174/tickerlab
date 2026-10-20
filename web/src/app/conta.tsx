@@ -11,6 +11,7 @@ import { ErroDaApi, SESSAO, pedir } from "./api";
 import { BaixarMeusDados } from "./BaixarMeusDados";
 import { Icone } from "./Icone";
 import { type GoogleId, carregarGoogle } from "./login";
+import { EntradaPorEmail } from "./EntradaPorEmail";
 import { PaginaDeEntrada } from "./PaginaDeEntrada";
 import type { EuV1 } from "./tipos";
 
@@ -24,6 +25,9 @@ interface Conta {
   aceitar(querNovidades: boolean): Promise<void>;
   pedirAceite(): void; // os termos mudaram no meio do uso: volta para a tela do aceite
   sair(): void;
+  pedirCodigo(email: string): Promise<string>; // manda o código por e-mail; devolve o aviso da API
+  confirmarCodigo(email: string, codigo: string): Promise<void>; // abre a sessão e lê a conta
+  sairDeTodos(): Promise<void>; // encerra a sessão em todos os aparelhos
 }
 
 const ContextoDaConta = createContext<Conta | null>(null);
@@ -139,9 +143,36 @@ export function ProvedorDaConta({ clientId, children }: { clientId: string; chil
     setPrecisaAceitar(false);
   }, [google, token]);
 
+  const pedirCodigo = useCallback(async (email: string) => {
+    const resposta = await pedir<{ mensagem: string }>("/v1/entrada/codigo", SESSAO, {}, { email });
+    return resposta.mensagem;
+  }, []);
+
+  const confirmarCodigo = useCallback(
+    async (email: string, codigo: string) => {
+      // abre a sessão (o cookie); a conta é lida por ele, como depois do Google
+      await pedir<unknown>("/v1/entrada/confirmar", SESSAO, {}, { email, codigo });
+      await lerAConta(true);
+    },
+    [lerAConta],
+  );
+
+  const sairDeTodos = useCallback(async () => {
+    if (token === null) return;
+    await pedir<unknown>("/v1/sair-de-todos", token, {}, {});
+    google?.disableAutoSelect();
+    setToken(null);
+    setEu(null);
+    setErro(null);
+    setPrecisaAceitar(false);
+  }, [google, token]);
+
   return (
     <ContextoDaConta.Provider
-      value={{ token, eu, entrando, erro, google, precisaAceitar, aceitar, pedirAceite, sair }}
+      value={{
+        token, eu, entrando, erro, google, precisaAceitar,
+        aceitar, pedirAceite, sair, pedirCodigo, confirmarCodigo, sairDeTodos,
+      }}
     >
       {children}
     </ContextoDaConta.Provider>
@@ -199,6 +230,7 @@ function Entrada({ erro }: { erro: ErroDaApi | null }) {
       ) : null}
       {/* vazio até o Google desenhar o botão: o CSS mostra um esqueleto do mesmo tamanho (sem buraco) */}
       <div ref={botao} className="botao-do-google" aria-busy={google === null} />
+      <EntradaPorEmail />
       <p className="lembrete-da-entrada">{lembrete_da_versao_classica}</p>
       <p className="apagado aviso-da-entrada">{aviso}</p>
       <p className="textos-legais">

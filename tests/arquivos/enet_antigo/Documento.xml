@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<Documento>
+  <CompanhiaAberta>
+    <NomeRazaoSocialCompanhiaAberta>EMPRESA DE TESTE S.A.</NomeRazaoSocialCompanhiaAberta>
+    <NumeroCnpjCompanhiaAberta>08493364000162</NumeroCnpjCompanhiaAberta>
+  </CompanhiaAberta>
+  <DataReferenciaDocumento>2015-03-31T00:00:00</DataReferenciaDocumento>
+  <NumeroVersaoDocumento>2</NumeroVersaoDocumento>
+  <CodigoEscalaMoeda>2</CodigoEscalaMoeda>
+  <MotivosReapresentacaoDocumento>
+    <MotivoReapresentacaoDocumento>
+      <VersaoDocumento>2</VersaoDocumento>
+      <Descricao>Alterar o DFC</Descricao>
+    </MotivoReapresentacaoDocumento>
+  </MotivosReapresentacaoDocumento>
+</Documento>
