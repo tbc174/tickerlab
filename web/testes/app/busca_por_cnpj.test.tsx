@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 // Busca por CNPJ no app novo (molde B, PR 3): os quatro estados da rota POST /v1/busca-por-cnpj, com
 // dados de mentira. O CNPJ vai no corpo do pedido, nunca no endereço (ADR 0077, item 1).
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BuscaPorCnpjV1, SecaoDoRelatorioV1 } from "../../src/app/tipos";
 import { abrirApp, respostaJson } from "./ajudantes";
 
@@ -126,5 +126,46 @@ describe("busca por CNPJ", () => {
     const alerta = await screen.findByRole("alert");
     expect(alerta.textContent).toContain("CNPJ inválido: confira os dígitos.");
     expect(screen.queryByText("12.345.678/0001-00")).toBeNull();
+  });
+
+  it("Baixar PDF: pede o PDF por POST com o CNPJ no corpo, nunca no endereço, e entrega o arquivo", async () => {
+    const criar = vi.fn(() => "blob:pdf");
+    const revogar = vi.fn();
+    Object.assign(URL, { createObjectURL: criar, revokeObjectURL: revogar });
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { buscar } = abrirApp("/busca-por-cnpj", {
+      rotas: (endereco) => {
+        if (endereco === "/api/v1/busca-por-cnpj/pdf") {
+          return new Response("%PDF-1.7", { status: 200, headers: { "content-type": "application/pdf" } });
+        }
+        return endereco.startsWith("/api/v1/busca-por-cnpj") ? respostaJson(200, ENCONTRADA) : undefined;
+      },
+    });
+    await buscarPor(CNPJ);
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar PDF" }));
+    await waitFor(() => expect(clicar).toHaveBeenCalled());
+    const [[endereco, pedido]] = buscar.mock.calls.filter(([e]) => String(e).endsWith("/pdf"));
+    expect(String(endereco)).toBe("/api/v1/busca-por-cnpj/pdf");
+    expect(pedido?.method).toBe("POST");
+    expect(JSON.parse(String(pedido?.body))).toEqual({ cnpj: CNPJ });
+    expect(criar).toHaveBeenCalled();
+    clicar.mockRestore();
+  });
+
+  it("Baixar PDF: se a API recusar, mostra a mensagem e não baixa nada", async () => {
+    const clicar = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    abrirApp("/busca-por-cnpj", {
+      rotas: (endereco) =>
+        endereco === "/api/v1/busca-por-cnpj/pdf"
+          ? respostaJson(422, { detail: "CNPJ inválido: confira os dígitos." })
+          : endereco.startsWith("/api/v1/busca-por-cnpj")
+            ? respostaJson(200, ENCONTRADA)
+            : undefined,
+    });
+    await buscarPor(CNPJ);
+    fireEvent.click(await screen.findByRole("button", { name: "Baixar PDF" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("CNPJ inválido");
+    expect(clicar).not.toHaveBeenCalled();
+    clicar.mockRestore();
   });
 });
