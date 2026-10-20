@@ -5,7 +5,8 @@
 - **Retomável** (`baixar_em_fila`): o que já está guardado é pulado; o que falhou fica para a
   próxima vez, sem parar a fila.
 - **O que vai para o acervo é o XML limpo** (`base.enet.limpar_xml`: sem o PDF e sem os dados de
-  quem entregou), registrado pelo SHA-256 dele. O SHA-256 do pacote não serve: o ENET monta o zip
+  quem entregou), registrado pelo SHA-256 dele. Nos pacotes de formato antigo (`.dfp`,
+  `base/enet_antigo.py`) é um zip enxuto com os três XMLs que importam. O SHA-256 do pacote não serve: o ENET monta o zip
   na hora (o PDF leva a data e a hora no nome), e o mesmo documento baixado duas vezes deu dois
   pacotes diferentes com o XML idêntico (conferido em 13/10/2026).
 """
@@ -25,6 +26,14 @@ import sqlalchemy as sa
 from defusedxml import DefusedXmlException
 
 from base.enet import DocumentoEnet, ler_xml_enet, limpar_xml
+from base.enet_antigo import (
+    FormatoNaoLido,
+    eh_pacote_enxuto,
+    enxugar,
+    ler_dfp_antigo,
+    tem_dfp_antigo,
+    tem_itr_antigo,
+)
 from src import acervo
 from src.banco.coletas import registrar
 from src.banco.modelo import coletas
@@ -83,6 +92,9 @@ class Baixador:
 class ResultadoDaFila:
     baixados: list[str] = field(default_factory=list)
     falhas: dict[str, str] = field(default_factory=dict)  # link → erro
+    falhas_de_formato: set[str] = field(
+        default_factory=set
+    )  # as que são de formato, não de rede
     pulados: int = 0
     interrompida: bool = False  # parou porque `continuar` disse não (a janela acabou)
 
@@ -111,37 +123,72 @@ def baixar_em_fila(
             ao_baixar(link, baixar(link))
         except ERROS_DE_UM_PACOTE as erro:  # um pacote ruim não pode parar os outros
             log.warning("ENET: %s falhou (%s)", link, type(erro).__name__)
+            if isinstance(erro, FormatoNaoLido):
+                resultado.falhas_de_formato.add(link)
             resultado.falhas[link] = f"{type(erro).__name__}: {erro}"[:300]
             continue
         resultado.baixados.append(link)
     return resultado
 
 
+def _nomes_do_pacote(pacote: bytes) -> list[str]:
+    with zipfile.ZipFile(io.BytesIO(pacote)) as arquivo:
+        return [n.rsplit("/", 1)[-1] for n in arquivo.namelist()]
+
+
 def xml_do_pacote(pacote: bytes) -> bytes:
-    """O XML do documento (DFP ou ITR) dentro do zip do ENET."""
+    """O XML do documento (DFP ou ITR) dentro do zip do ENET (formato novo)."""
     with zipfile.ZipFile(io.BytesIO(pacote)) as arquivo:
         nomes = [
             n for n in arquivo.namelist() if NOME_DO_XML.match(n.rsplit("/", 1)[-1])
         ]
         if not nomes:
-            raise ValueError("o pacote do ENET não tem o XML do documento")
+            raise FormatoNaoLido(
+                "o pacote do ENET não tem o XML do documento "
+                f"(arquivos: {', '.join(_nomes_do_pacote(pacote)[:6])})"
+            )
         return arquivo.read(nomes[0])
+
+
+def original_do_pacote(pacote: bytes) -> tuple[bytes, str]:
+    """O que vai para o acervo e a extensão: o XML limpo (novo) ou o zip enxuto (`.dfp` antigo).
+
+    Reconhece o formato pelo que o pacote tem, não pelo ano.
+    """
+    if any(NOME_DO_XML.match(n) for n in _nomes_do_pacote(pacote)):
+        return limpar_xml(xml_do_pacote(pacote)), ".xml"
+    if tem_dfp_antigo(pacote):
+        return enxugar(pacote), ".zip"
+    if tem_itr_antigo(pacote):
+        raise FormatoNaoLido("pacote do ITR no formato antigo (.itr): ainda não é lido")
+    return limpar_xml(
+        xml_do_pacote(pacote)
+    ), ".xml"  # sobe o erro de formato desconhecido
+
+
+def ler_documento_guardado(original: bytes) -> DocumentoEnet:
+    """O documento de um original do acervo: o XML limpo ou o zip enxuto do formato antigo."""
+    return (
+        ler_dfp_antigo(original)
+        if eh_pacote_enxuto(original)
+        else ler_xml_enet(original)
+    )
 
 
 def guardar(
     conexao: sa.Connection, link: str, pacote: bytes, agora: datetime
 ) -> DocumentoEnet:
-    """Lê o documento, guarda o XML limpo no acervo e registra a coleta. Devolve o documento."""
-    limpo = limpar_xml(xml_do_pacote(pacote))
-    documento = ler_xml_enet(limpo)  # só guarda o que dá para ler
-    caminho = acervo.guardar_original(FONTE, link, limpo, agora, extensao=".xml")
+    """Lê o documento, guarda o original limpo no acervo e registra a coleta. Devolve o documento."""
+    limpo, extensao = original_do_pacote(pacote)
+    documento = ler_documento_guardado(limpo)  # só guarda o que dá para ler
+    caminho = acervo.guardar_original(FONTE, link, limpo, agora, extensao=extensao)
     registrar(
         conexao,
         FONTE,
         link,
         limpo,
         "ok",
-        detalhe=f"XML sem o PDF; pacote de {len(pacote)} bytes",
+        detalhe=f"original sem o PDF; pacote de {len(pacote)} bytes",
         agora=agora,
         caminho_do_original=caminho,
     )
