@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from base import contrato, vitrine
+from base.arquivo import registro
 from base.dicionario import TABELAS
 from scripts import gerar_site
 from scripts.markdown_simples import markdown_para_html
@@ -405,6 +406,7 @@ def _catalogo() -> dict:
             "modulos": len(modulos_da_base),
         },
         "fontes": [asdict(f) for f in fontes],
+        "registro_de_fontes": registro.para_o_site(),
         "modulos": [asdict(m) for m in modulos_da_base],
         "tabelas": [asdict(t) for t in vitrine.tabelas_do_catalogo(catalogo, frases)],
     }

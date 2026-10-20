@@ -2,7 +2,7 @@
 // Nenhum número é digitado aqui: tabelas, fontes e módulos vêm de `catalogo` (ADRs 0048, 0065 e 0099).
 // A comparação com qualquer outra base é só pelo rigor: linhagem, "como era na data", licença por
 // tabela e explicação recolhida. Nada aqui é recomendação de investimento.
-import { type FonteDaBase, type TabelaDaBase, catalogo } from "../conteudo";
+import { type FonteDaBase, type RegistroDeFonte, type TabelaDaBase, catalogo } from "../conteudo";
 import { ComoFoiCalculado } from "../site/ComoFoiCalculado";
 import { PaginaDeLeitura, ancora } from "../site/Leitura";
 
@@ -20,6 +20,7 @@ const SECOES = [
   "Quatro regras que valem para toda tabela",
   "O que há na base",
   "De onde vêm os dados",
+  "Cada fonte que coletamos, uma a uma",
   "O que ainda não está na base",
   "Como auditar um número",
 ];
@@ -45,6 +46,20 @@ const REGRAS: [string, string][] = [
       "conferir abre, quem só quer o resultado não é atrapalhado.",
   ],
 ];
+
+const MARCAS: Record<RegistroDeFonte["marca"], string> = {
+  vendavel: "Pode ser repassada, citando a fonte",
+  uso_interno: "Só uso interno",
+  nao_comercial: "Não comercial",
+  a_confirmar: "A confirmar",
+};
+
+const RITMOS: Record<RegistroDeFonte["ritmo"], string> = {
+  diaria: "Diária",
+  semanal: "Semanal",
+  mensal: "Mensal",
+  "carga-unica": "Carga única",
+};
 
 const SEM_RESPOSTA = "licença em consulta";
 
@@ -133,6 +148,20 @@ function CartaoDaFonte({ f }: { f: FonteDaBase }) {
   );
 }
 
+function LinhaDaFonte({ r }: { r: RegistroDeFonte }) {
+  return (
+    <tr>
+      <td>
+        <code>{r.id}</code>
+      </td>
+      <td>{r.licenca}</td>
+      <td>{MARCAS[r.marca]}</td>
+      <td>{RITMOS[r.ritmo]}</td>
+      <td>{r.termos_lidos_em ? dataPorExtenso(r.termos_lidos_em) : "Termos ainda não lidos"}</td>
+    </tr>
+  );
+}
+
 export function Dados() {
   const { totais, fontes, modulos } = catalogo;
   const emConsulta = fontes.filter((f) => f.situacao === "em consulta");
@@ -195,6 +224,33 @@ export function Dados() {
       </div>
 
       <h2 id={ancora(SECOES[4])}>{SECOES[4]}</h2>
+      <p>
+        Para cada uma mostramos a licença que ela publica, se o dado pode ser repassado (a marca),
+        com que frequência coletamos e o dia em que lemos os termos dela pela última vez. "Termos
+        ainda não lidos" significa exatamente isso: ainda não anotamos a leitura. Marca "a
+        confirmar" quer dizer que não há resposta escrita da fonte sobre uso comercial; até lá,
+        tratamos como não comercial. Isto não é parecer jurídico.
+      </p>
+      <div className="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Fonte</th>
+              <th>Licença</th>
+              <th>Marca</th>
+              <th>Coleta</th>
+              <th>Termos lidos em</th>
+            </tr>
+          </thead>
+          <tbody>
+            {catalogo.registro_de_fontes.map((r) => (
+              <LinhaDaFonte key={r.id} r={r} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id={ancora(SECOES[5])}>{SECOES[5]}</h2>
       <ul>
         <li>
           <strong>Cotações com licença comercial da bolsa.</strong> Os preços do app vêm de dados
@@ -216,7 +272,7 @@ export function Dados() {
         </li>
       </ul>
 
-      <h2 id={ancora(SECOES[5])}>{SECOES[5]}</h2>
+      <h2 id={ancora(SECOES[6])}>{SECOES[6]}</h2>
       <p>
         Pegue uma conta de uma empresa, a CPFL, por exemplo. O caminho para conferir o número é
         sempre o mesmo:
