@@ -1,4 +1,4 @@
-"""Bienalidade do arábica: ano cheio ou vazio e a surpresa de ciclo (sem tela, sem API)."""
+"""Bienalidade do arábica: ano cheio ou vazio e a surpresa de ciclo (em tela e API com a data citada)."""
 
 from datetime import date
 
@@ -61,6 +61,19 @@ def test_corte_em_d_nao_muda_o_passado():
     antes = _rotulos(marcar(inteira, "arabica", ate=date(2021, 12, 31)))
     depois = _rotulos(marcar(inteira, "arabica", ate=date(2023, 12, 31)))
     assert all(depois[s] == r for s, r in antes.items())
+
+
+def test_a_marca_cita_o_dia_do_levantamento_que_usou():
+    # ADR 0102: fonte e data citadas; aqui a data é a do levantamento mais novo até o corte
+    t = tabela({2019: {1: 52.0, 4: 50.0}, 2020: {1: 49.0, 3: 53.0}})
+    [pelo_primeiro] = marcar(t, "arabica", ate=date(2020, 6, 30))
+    assert pelo_primeiro.divulgado_em == t["divulgado_em"].iloc[2].date().isoformat()
+    [pelo_terceiro] = marcar(t, "arabica", ate=date(2020, 12, 31))
+    assert pelo_terceiro.divulgado_em == t["divulgado_em"].iloc[3].date().isoformat()
+    quebras = {
+        p.safra: p.divulgado_em for p in ciclo_quebrado(tabela(PRODUCOES), "arabica")
+    }
+    assert quebras[2023] == "2023-12-04"
 
 
 def test_so_o_arabica_tem_bienalidade():

@@ -687,3 +687,10 @@ def test_nome_de_pessoa_e_pego_com_qualquer_caixa_e_acento(nome: str) -> None:
     ficha["secoes"][0]["tabelas"]["negocios"][0]["assunto"] = nome.upper()
     with pytest.raises(dossie.PessoaNaFichaError):
         dossie.conferir_sem_pessoas(ficha, {normalizado})
+
+
+def test_as_tabelas_do_cafe_podem_ser_mostradas():
+    # PR 3 da ADR 0102: CONAB (CC BY-ND, marca "a confirmar") e FAOSTAT (CC BY) vão para tela e API
+    assert dossie.pode_mostrar("conab_cafe")
+    assert dossie.pode_mostrar("faostat_cafe")
+    dossie.exigir_que_pode_mostrar(["conab_cafe", "faostat_cafe"])

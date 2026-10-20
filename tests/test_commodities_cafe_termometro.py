@@ -1,4 +1,4 @@
-"""Termômetro da CONAB: quanto o 1º levantamento errou em relação ao 4º (sem tela, sem API)."""
+"""Termômetro da CONAB: quanto o 1º levantamento errou em relação ao 4º (em tela e API com a data citada)."""
 
 import json
 from dataclasses import asdict
@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from src.commodities.cafe.pontos import PontoDaSafra
+from src.commodities.cafe.pontos import PontoDaSafra, citacao
 from src.commodities.cafe.termometro import erro_do_primeiro_levantamento, vies_medio
 from tests.ajudantes_do_cafe import tabela
 
@@ -94,3 +94,31 @@ def test_pontos_viram_json():
     pontos = erro_do_primeiro_levantamento(tabela(PRODUCOES), "arabica")
     assert all(isinstance(p, PontoDaSafra) for p in pontos)
     assert json.loads(json.dumps([asdict(p) for p in pontos]))[0]["tipo"] == "arabica"
+
+
+def test_cada_ponto_cita_a_data_do_quarto_levantamento_que_usa():
+    # ADR 0102: o número vai para tela e API com a CONAB e a data citadas; o erro só existe quando
+    # o 4º levantamento sai, então é essa a data
+    t = tabela(PRODUCOES)
+    quarto_de_2021 = t[(t["safra"] == 2021) & (t["levantamento"] == 4)]["divulgado_em"]
+    pontos = erro_do_primeiro_levantamento(t, "arabica")
+    datas = {p.safra: p.divulgado_em for p in pontos}
+    assert datas[2021] == quarto_de_2021.iloc[0].date().isoformat()
+    assert citacao(pontos[-1]) == (
+        "CONAB, Acompanhamento da Safra Brasileira de Café, levantamentos divulgados até "
+        f"{quarto_de_2021.iloc[0]:%d/%m/%Y} (CC BY-ND 3.0)"
+    )
+
+
+def test_vies_medio_cita_a_data_da_ultima_safra_que_entra():
+    producoes = {2000 + i: {1: 110.0, 4: 100.0} for i in range(5)}
+    [ponto] = vies_medio(tabela(producoes), "arabica")
+    assert ponto.divulgado_em == "2004-12-04"
+    assert "até 04/12/2004" in citacao(ponto)
+
+
+def test_ponto_sem_data_cita_so_a_fonte_e_a_licenca():
+    ponto = PontoDaSafra(2020, "arabica", "BRASIL", "x", 1.0, "u")
+    assert citacao(ponto) == (
+        "CONAB, Acompanhamento da Safra Brasileira de Café (CC BY-ND 3.0)"
+    )

@@ -2,14 +2,15 @@
 
 A CONAB "costuma dar uma erradinha, mas não pode ser desconsiderada": aqui o erro vira número, por
 tipo (arábica e conilon nunca se misturam). Erro positivo = o 1º levantamento previu mais que o final.
-Funções puras sobre a tabela `conab_cafe`; sem tela e sem API (licença CC BY-ND 3.0 da CONAB).
+Funções puras sobre a tabela `conab_cafe`. Vão para tela e API com a CONAB e a data do levantamento
+citadas (`pontos.citacao`; ADR 0102).
 """
 
 from datetime import date
 
 import pandas as pd
 
-from src.commodities.cafe.pontos import PontoDaSafra, levantamentos_ate
+from src.commodities.cafe.pontos import PontoDaSafra, dia_iso, levantamentos_ate
 
 PRIMEIRO, FINAL = 1, 4
 SAFRAS_DO_VIES = 10  # "viés médio dos últimos 10 anos"
@@ -20,14 +21,18 @@ PCT, MIL_SACAS = "% do final", "mil sacas de 60 kg"
 def _primeiro_e_final(
     tabela: pd.DataFrame, tipo: str, uf: str, ate: date | None
 ) -> pd.DataFrame:
-    """Uma linha por safra que já tem o 4º levantamento: colunas `primeiro` e `final` (mil sacas)."""
-    por_levantamento = levantamentos_ate(tabela, tipo, uf, ate).pivot(
+    """Uma linha por safra que já tem o 4º levantamento: `primeiro` e `final` (mil sacas) e
+    `divulgado_em`, o dia do 4º levantamento (a data que o ponto cita)."""
+    ultimos = levantamentos_ate(tabela, tipo, uf, ate)
+    por_levantamento = ultimos.pivot(
         index="safra", columns="levantamento", values="producao_mil_sacas"
     )
     if PRIMEIRO not in por_levantamento or FINAL not in por_levantamento:
-        return pd.DataFrame(columns=["primeiro", "final"], dtype=float)
+        return pd.DataFrame(columns=["primeiro", "final", "divulgado_em"])
     pares = por_levantamento[[PRIMEIRO, FINAL]].dropna()
     pares.columns = ["primeiro", "final"]
+    finais = ultimos[ultimos["levantamento"] == FINAL].set_index("safra")
+    pares["divulgado_em"] = finais["divulgado_em"].reindex(pares.index)
     return pares[pares["final"] != 0]
 
 
@@ -38,6 +43,7 @@ def erro_do_primeiro_levantamento(
     pontos: list[PontoDaSafra] = []
     for safra, linha in _primeiro_e_final(tabela, tipo, uf, ate).iterrows():
         erro = float(linha["primeiro"] - linha["final"])
+        divulgado_em = dia_iso(linha["divulgado_em"])
         pontos.append(
             PontoDaSafra(
                 int(safra),
@@ -47,6 +53,7 @@ def erro_do_primeiro_levantamento(
                 100 * erro / float(linha["final"]),
                 PCT,
                 levantamento=PRIMEIRO,
+                divulgado_em=divulgado_em,
             )
         )
         pontos.append(
@@ -58,6 +65,7 @@ def erro_do_primeiro_levantamento(
                 erro,
                 MIL_SACAS,
                 levantamento=PRIMEIRO,
+                divulgado_em=divulgado_em,
             )
         )
     return pontos
@@ -79,5 +87,13 @@ def vies_medio(
         return []
     media = sum(p.valor for p in erros) / len(erros)
     return [
-        PontoDaSafra(erros[-1].safra, tipo, uf, "vies_medio_10_safras_pct", media, PCT)
+        PontoDaSafra(
+            erros[-1].safra,
+            tipo,
+            uf,
+            "vies_medio_10_safras_pct",
+            media,
+            PCT,
+            divulgado_em=erros[-1].divulgado_em,
+        )
     ]
