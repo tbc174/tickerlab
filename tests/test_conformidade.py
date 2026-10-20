@@ -12,9 +12,9 @@ import stripe
 from src import auditoria, conformidade
 from src.banco import compartilhamentos as links
 from src.banco import dados_do_usuario as repo
-from src.banco import origens, pulse, tentativas
+from src.banco import origens, pulse, sessoes, tentativas
 from src.banco import teses as diario
-from src.banco.modelo import assinaturas, metadata
+from src.banco.modelo import assinaturas, identidades, metadata, sessoes_de_login
 from src.banco.usuarios import buscar_por_id, entrar
 from src.cobranca import Assinatura, encerrar_cobranca
 from src.origem import Origem
@@ -166,7 +166,25 @@ def test_politica_de_privacidade_cita_os_links_compartilhados():
     texto = conformidade.carregar_texto("privacidade")
     assert "Links compartilhados" in texto and "Quem tiver um link" in texto
     assert "os links compartilhados e a assinatura" in texto
-    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-13.7"
+
+
+def test_versao_8_dos_termos_pede_novo_aceite_e_cobre_o_login_e_o_encarregado():
+    """Versão 8 (19/10): sessão de 30 dias (#461), encarregado e privacidade@, base legal."""
+    assert conformidade.VERSAO_DOS_TERMOS == "2026-10-19.8"
+    privacidade = conformidade.carregar_texto("privacidade")
+    for trecho in (
+        "privacidade@tickerlab.com.br",
+        "Encarregado",
+        "__Host-tl_sessao",
+        "Base legal",
+        "tl_origem",
+        "Transferência internacional",
+        "Registros técnicos de acesso",
+    ):
+        assert trecho in privacidade, trecho
+    termos = conformidade.carregar_texto("termos")
+    assert "Pré-lançamento" in termos and "30 dias" in termos
+    assert "modelo de linguagem" in termos and "nunca são acusação" in termos
 
 
 def test_politica_de_privacidade_cita_o_pulse():
@@ -220,6 +238,44 @@ def test_exportar_nao_vaza_ids_do_stripe(conexao, ana):
     dados = conformidade.exportar_meus_dados(conexao, ana.id)
     assert dados["assinatura"]["status"] == "active"
     assert "SECRETO" not in json.dumps(dados)
+
+
+def test_exportar_traz_as_formas_de_entrar_e_as_sessoes_sem_segredo(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    dados = conformidade.exportar_meus_dados(conexao, ana.id)
+    (forma,) = dados["formas_de_entrar"]
+    assert forma["provedor"] == "google" and forma["email"] == "ana@exemplo.com"
+    assert set(forma) == {
+        "provedor",
+        "email",
+        "email_confirmado",
+        "criada_em",
+        "ultimo_uso",
+    }
+    (sessao,) = dados["sessoes_de_login"]
+    assert sessao["provedor"] == "google" and sessao["encerrada_em"] is None
+    assert set(sessao) == {
+        "provedor",
+        "criada_em",
+        "expira_em",
+        "ultimo_uso",
+        "encerrada_em",
+    }
+    texto = json.dumps(dados)
+    # nem o hash do token nem o identificador do provedor saem no arquivo
+    hashes = conexao.execute(sa.select(sessoes_de_login.c.hash_do_token)).scalars()
+    assert all(h not in texto for h in hashes)
+    assert '"ana"' not in texto and "bia@exemplo.com" not in texto
+
+
+def test_apagar_conta_apaga_as_formas_de_entrar_e_as_sessoes(conexao, ana, bia):
+    sessoes.abrir(conexao, ana.id, "google")
+    sessoes.abrir(conexao, bia.id, "google")
+    assert conformidade.apagar_conta(conexao, ana.id) is True
+    for tabela in (identidades, sessoes_de_login):
+        donos = conexao.execute(sa.select(tabela.c.usuario_id)).scalars().all()
+        assert donos == [bia.id]
 
 
 def test_exportar_de_quem_nao_existe(conexao):

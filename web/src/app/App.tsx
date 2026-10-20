@@ -57,8 +57,9 @@ export function App() {
   }
   return (
     <ProvedorDaConta clientId={api.googleClientId}>
-      <Moldura comMenu>
-        <ExigeLogin>
+      {/* a moldura (menu, topo e rodapé) só depois de entrar: antes, a página de entrada */}
+      <ExigeLogin>
+        <Moldura comMenu>
           <Routes>
             <Route index element={<Inicio />} />
             {TELAS_DO_APP.map((pagina) => (
@@ -66,8 +67,8 @@ export function App() {
             ))}
             <Route path="*" element={<NaoEncontrada />} />
           </Routes>
-        </ExigeLogin>
-      </Moldura>
+        </Moldura>
+      </ExigeLogin>
     </ProvedorDaConta>
   );
 }

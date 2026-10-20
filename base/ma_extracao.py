@@ -25,7 +25,7 @@ from src import rotulos_ia as ri
 
 MODELO = "claude-haiku-5-5"  # a primeira leitura (barata)
 CONFERENTE = "claude-sonnet-5-5"  # a segunda leitura, independente
-VERSAO_DO_GUIA = "v1"
+VERSAO_DO_GUIA = "v2"  # v2: regras para escolher o tipo (18/10, medida da amostra)
 ARQUIVO_DO_GUIA = Path(__file__).with_name(f"ma_extracao_guia_{VERSAO_DO_GUIA}.md")
 MAX_CARACTERES_DO_TEXTO = (
     15_000  # o p95 da amostra tem ~20 mil; o anúncio está no começo
@@ -189,15 +189,45 @@ def _data(texto: str) -> date | None:
 def _nome_provado(nome: str, trecho: str, normalizado: str) -> bool:
     """O nome inteiro está no trecho; ou o trecho usa o nome curto que o documento definiu ("a
     Duane", "a SABER"): toda palavra que distingue o nome aparece no documento e o trecho tem ao
-    menos uma delas. Palavra genérica ("Companhia", "Participações") não prova nada."""
+    menos uma delas; ou o trecho usa o apelido que o documento define logo depois do nome ("a
+    Eletrobras", "a 3R"). Palavra genérica ("Companhia", "Participações") não prova nada."""
     if lr.normalizar(nome) in lr.normalizar(trecho):
         return True
     distintas = _distintas(nome)
-    return (
-        bool(distintas)
+    if (
+        distintas
         and distintas <= set(_palavras(normalizado))
-        and bool(distintas & set(_palavras(trecho)))
+        and distintas & set(_palavras(trecho))
+    ):
+        return True
+    palavras_do_trecho = f" {' '.join(_palavras(trecho))} "
+    return any(
+        f" {apelido} " in palavras_do_trecho for apelido in _apelidos(nome, normalizado)
     )
+
+
+# Logo depois do nome, um ou dois parênteses: a definição e o código na bolsa, em qualquer ordem
+# ('(“Eletrobras”) (B3: ELET3)').
+_DEFINICAO = re.compile(r"\s*,?\s*((?:\([^()]{1,150}\)\s*){1,2})")
+_ENTRE_ASPAS = re.compile(r"[“\"]([^”\"]{1,60})[”\"]")
+
+
+def _apelidos(nome: str, normalizado: str) -> set[str]:
+    """Os apelidos entre aspas que o documento define logo depois do nome inteiro: "eletrobras"
+    em 'Centrais Elétricas Brasileiras S.A. (“Companhia” ou “Eletrobras”)'. Apelido só de
+    palavra genérica ("Companhia") fica de fora."""
+    procurado = lr.normalizar(nome)
+    apelidos: set[str] = set()
+    inicio = normalizado.find(procurado)
+    while inicio >= 0:
+        definicao = _DEFINICAO.match(normalizado, inicio + len(procurado))
+        if definicao:
+            for termo in _ENTRE_ASPAS.findall(definicao[1]):
+                palavras = _palavras(termo)
+                if palavras and not set(palavras) <= _GENERICAS:
+                    apelidos.add(" ".join(palavras))
+        inicio = normalizado.find(procurado, inicio + 1)
+    return apelidos
 
 
 def _conferir_partes(
@@ -228,6 +258,11 @@ def _conferir_valores(
     aceitos = []
     for valor in valores:
         motivo = lr.motivo_do_descarte(valor.trecho, valor.valor, normalizado)
+        if motivo == NUMERO_FORA_DO_TRECHO:
+            # o texto pode trazer o número por extenso ("R$ 1.030.000.000,00") e o modelo, em
+            # bilhões (1,03); em centavos, o arredondamento tira o resto do ponto flutuante
+            em_unidades = round(valor.em_unidades, 2)
+            motivo = lr.motivo_do_descarte(valor.trecho, em_unidades, normalizado)
         moedas = _moedas_do_trecho(valor.trecho)
         if motivo is None and moedas and valor.moeda not in moedas:
             motivo = MOEDA_FORA_DO_TRECHO
@@ -368,6 +403,35 @@ def nomes_batem(a: str, b: str) -> bool:
     if distintas_a and distintas_b:
         return bool(distintas_a & distintas_b)
     return _palavras(a) == _palavras(b)
+
+
+def mesma_empresa(a: str, b: str) -> bool:
+    """Mais estrita que `nomes_batem`, para ligar documentos diferentes: as palavras que distinguem
+    o nome mais curto estão todas no outro ("Sabesp" e "Companhia de Saneamento Básico do Estado de
+    São Paulo (Sabesp)" batem; "Banco BTG Pactual" e "Banco Pan S.A." não, só dividem "Banco")."""
+    distintas_a, distintas_b = _distintas(a), _distintas(b)
+    if distintas_a and distintas_b:
+        return distintas_a <= distintas_b or distintas_b <= distintas_a
+    return _palavras(a) == _palavras(b)
+
+
+COLADA = 6  # palavra que pode estar colada a outra no nome abreviado ("AGRO FLORESTAL"): a curta, não
+
+
+def nome_cobre(nome: str, abreviado: str) -> bool:
+    """Num sentido só, para dizer se a alvo é a companhia que entregou o documento: toda palavra que
+    distingue `nome` está no `abreviado` (o nome curto do cadastro da CVM), inteira, abreviada ("SID"
+    de "Siderúrgicas", "IND" de "Indústria") ou, se longa, colada ("Agroflorestal" em "AGRO
+    FLORESTAL"). "Energisa Bioeletricidade" não cabe em "ENERGISA S.A.": é a controlada."""
+    distintas = _distintas(nome)
+    if not distintas:
+        return _palavras(nome) == _palavras(abreviado)
+    palavras = [p for p in _palavras(abreviado) if len(p) >= 3]
+    colado = "".join(_palavras(abreviado))
+    return all(
+        any(p.startswith(q) for q in palavras) or (len(p) >= COLADA and p in colado)
+        for p in distintas
+    )
 
 
 def _nomes(leitura: LeituraDaOperacao, papel: str) -> list[str]:

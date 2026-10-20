@@ -79,7 +79,9 @@ LICENCAS = {
     # licença aberta sem nome no dados.gov.br; confirmação pedida pelo Fala.BR em 14/10/2026
     "comexstat": "Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC",
     # relatório mensal do Cecafé: robots.txt proíbe PDF e a página de termos veio vazia (18/10/2026)
-    "cecafe": "Cecafé: sem termos legíveis e robots.txt veda PDF; só pesquisa",
+    "cecafe": "Cecafé: robots.txt veda PDF; coleta com ritmo, uso citando a fonte (ADR 0102)",
+    # termos lidos em 18/10/2026: uso pessoal e não comercial, vedam robô; coleta pela ADR 0102
+    "fnc": "FNC: só uso pessoal, veda robô; coleta com ritmo, cita a fonte (ADR 0102)",
     # negócios do pregão (ADR 0073): só pesquisa até a B3 autorizar por escrito (ADR 0019)
     "b3": "Política de Consumo de Market Data B3 V1.1: só pesquisa (ADRs 0019 e 0073)",
     # middle market de M&A: robots.txt e termos lidos antes; parecer jurídico depois (ADR 0060)
@@ -99,7 +101,7 @@ LICENCAS = {
     # balanço mundial do café (termos lidos em 18/10/2026, licencas-por-fonte.md)
     "usda": "Domínio público do USDA (citar o USDA FAS, PSD Online); no data.gov consta CC BY",
     "faostat": "CC BY 4.0 (FAO; crédito no formato da FAO e sem sugerir aval da FAO)",
-    "ico": "Relatório mensal da ICO sem termos localizados: só pesquisa",
+    "ico": "ICO: relatório mensal sem termos achados; uso citando a fonte (ADR 0102)",
     # páginas dos fatos da ficha das contrapartes do café (termos lidos em 18-19/10/2026)
     "contrapartes": "Página guardada só como prova; na ficha, fato e link (ADR 0102)",
 }
@@ -173,6 +175,7 @@ REVENDA = {
     "susep": VENDAVEL_COM_ATRIBUICAO,
     "comexstat": A_CONFIRMAR,
     "cecafe": NAO_COMERCIAL,  # o robots.txt veda PDF; coleta com ritmo e uso com a fonte citada (ADR 0102)
+    "fnc": NAO_COMERCIAL,  # termos só para uso pessoal; coleta com ritmo e uso com a fonte citada (ADR 0102)
     "b3": NAO_COMERCIAL,  # só pesquisa até a B3 autorizar por escrito (ADRs 0019 e 0073)
     "assessoria": A_CONFIRMAR,  # vender, mostrar ou treinar só com o parecer (ADRs 0063 e 0082)
     "wayback": NAO_COMERCIAL,  # "for scholarship and research purposes only"

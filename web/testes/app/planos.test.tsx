@@ -62,6 +62,8 @@ describe("planos", () => {
     ]);
     expect(within(tabela).getAllByRole("row")).toHaveLength(planos.tabela.length + 1);
     expect(within(tabela).getByText("Simulações salvas")).toBeTruthy();
+    // no celular a tabela passa da largura do cartão: rola dentro dele, sem estourar a margem da tela
+    expect(tabela.parentElement?.className).toBe("tabela-rolavel");
   });
 
   it("conta comum: sem botão, com a frase que explica (só admins assinam, ADR 0029)", async () => {

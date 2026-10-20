@@ -94,6 +94,44 @@ export interface JurosEInflacaoV1 {
   avisos: string[];
 }
 
+/** Um mês de um preço de referência: o Pink Sheet e, no café e no algodão, o FMI ao lado. */
+export interface PontoDoPrecoV1 {
+  mes: string; // primeiro dia do mês
+  bm: number | null; // Banco Mundial (Pink Sheet)
+  fmi: number | null; // FMI (PCPS); null também quando o item não tem o FMI
+}
+
+export interface PontoDoSpreadV1 {
+  mes: string;
+  valor: number; // arábica menos robusta, US$/kg
+}
+
+/** Um item de Preços de referência, com os textos prontos (src/commodities/painel_de_precos.py). */
+export interface PrecoDeReferenciaV1 {
+  chave: string;
+  nome: string;
+  unidade: string;
+  ultimo_mes: string;
+  ultimo_valor: number;
+  texto: string; // como a tela mostra ("1.234,50")
+  variacao_12_meses: number | null;
+  texto_da_variacao: string | null; // "+3,2% em 12 meses"
+  legenda: string; // o mês e a fonte
+  com_fmi: boolean;
+  nota_das_fontes: string | null;
+  historico: PontoDoPrecoV1[];
+}
+
+export interface PrecosDeReferenciaV1 {
+  dia: string;
+  itens: PrecoDeReferenciaV1[];
+  spread: PontoDoSpreadV1[];
+  titulo_do_spread: string;
+  nota_do_spread: string;
+  aviso_diario: string;
+  atribuicao: string;
+}
+
 /** Um documento na linha do tempo e o ponto da curva (base 100) onde ele fica. */
 export interface MarcoV1 {
   data: string;
@@ -401,6 +439,43 @@ export interface SecaoDoRelatorioV1 {
   recolhida?: boolean; // explicação: a tela mostra fechada até a pessoa abrir
 }
 
+/** A nota numerada de uma frase da análise: abre o número de onde a frase saiu. */
+export interface NotaDaAnaliseV1 {
+  numero: number;
+  id: string;
+  nome: string;
+  texto: string; // o valor já escrito, ou a linha da tabela
+  medido_em: string;
+  fonte: string;
+  comparacao: string; // "Contra X: texto"; vazio quando não compara
+}
+
+export interface FraseDaAnaliseV1 {
+  texto: string;
+  notas: number[]; // os números das notas (AnaliseDaEmpresaV1.notas)
+}
+
+export interface ParagrafoDaAnaliseV1 {
+  tipo: "fato" | "leitura";
+  rotulo: string; // "Leitura" no parágrafo de leitura; vazio no de fato
+  frases: FraseDaAnaliseV1[];
+}
+
+export interface ParteDaAnaliseV1 {
+  chave: string;
+  titulo: string;
+  origem: "modelo" | "molde"; // molde: texto de reserva por regras
+  paragrafos: ParagrafoDaAnaliseV1[];
+}
+
+/** A análise escrita pelo modelo, frase por frase, com fonte em cada uma (ADR 0100). */
+export interface AnaliseDaEmpresaV1 {
+  partes: ParteDaAnaliseV1[];
+  notas: NotaDaAnaliseV1[];
+  aviso: string;
+  motivo?: string | null; // por que saiu o molde no lugar do texto do modelo, se saiu
+}
+
 export interface RelatorioDaEmpresaV1 {
   empresa: string;
   cnpj: string;
@@ -411,4 +486,345 @@ export interface RelatorioDaEmpresaV1 {
   fontes: string[];
   aviso_das_notas: string;
   em_conferencia: boolean;
+  analise?: AnaliseDaEmpresaV1 | null; // null: sem análise aprovada para a empresa
+}
+
+/** O relatório do CNPJ (molde B): as seções no formato do relatório da empresa. */
+export interface BuscaPorCnpjV1 {
+  situacao: "encontrada" | "fora_da_base_aberta";
+  cnpj: string;
+  empresa: string;
+  tickers: string[];
+  como_era_em: string | null; // o dia da ficha da noite (AAAA-MM-DD)
+  secoes: SecaoDoRelatorioV1[];
+  fontes: string[];
+  limites: string[]; // "Limites e cuidados": sempre presentes
+  desligado: string[]; // o que ainda não aparece e por quê: sempre presente
+  avisos: string[];
+}
+
+/** Uma camada do Mapa do café: o que pinta os municípios, com o "o que é isto" e a fonte. */
+export interface CamadaDoMapaV1 {
+  chave: string; // "producao", "area", "chuva" ou "geada"
+  titulo: string;
+  unidade: string;
+  o_que_e: string;
+  fonte: string;
+  escala: string; // "sequencial" (mais é mais) ou "divergente" (em torno de `referencia`)
+  referencia: number | null;
+}
+
+export interface MunicipioDoMapaV1 {
+  codigo: string; // o código do IBGE, o mesmo da propriedade `codarea` da malha
+  nome: string;
+  uf: string;
+  regiao: string | null; // null: fora das regiões produtoras do cadastro
+  valores: Record<string, number | null>; // por camada
+  sem_dado: Record<string, string>; // por camada sem valor: por que o município fica cinza
+  area_mapbiomas_ha: number | null;
+}
+
+export interface IndiceDoMapaV1 {
+  valor: number | null;
+  normal: number | null;
+  n_estacoes: number;
+  inicio: string;
+  fim: string;
+  texto: string; // a frase pronta, com o período e de onde veio
+}
+
+export interface ItemDoMesV1 {
+  titulo: string;
+  texto: string;
+}
+
+export interface RegiaoDoMapaV1 {
+  id: string;
+  nome: string;
+  tipo_predominante: string;
+  chuva: IndiceDoMapaV1;
+  geada: IndiceDoMapaV1;
+  fase: string;
+  o_que_o_mercado_olha: ItemDoMesV1[];
+}
+
+/** O GeoJSON simplificado da malha do IBGE (só o que a tela usa). */
+export interface MalhaDoMapa {
+  type: string;
+  features: { properties: { codarea?: string }; geometry: { type: string; coordinates: unknown } }[];
+}
+
+export interface MapaDoCafeV1 {
+  tipo: string;
+  ano: number;
+  gerado_em: string;
+  mes: number;
+  camadas: CamadaDoMapaV1[];
+  municipios: MunicipioDoMapaV1[];
+  regioes: RegiaoDoMapaV1[];
+  malha: MalhaDoMapa;
+  fontes: string[];
+  aviso: string;
+}
+
+// --- Painel do café (src/api_v1/esquemas.py, PainelDoCafeV1): cada caixa com o que é, fonte e data ---
+
+export interface PontoDoPrecoDoCafeV1 {
+  mes: string;
+  bm: number | null; // Pink Sheet do Banco Mundial
+  fmi: number | null;
+}
+
+export interface PrecoDeReferenciaDoCafeV1 {
+  chave: string;
+  nome: string;
+  unidade: string;
+  ultimo_mes: string;
+  ultimo_valor: number;
+  variacao_12_meses: number | null; // em %
+  historico: PontoDoPrecoDoCafeV1[];
+  com_fmi: boolean;
+  nota_das_fontes: string | null;
+}
+
+export interface PontoDoSpreadDoCafeV1 {
+  mes: string;
+  arabica: number; // centavos de dólar por libra-peso
+  robusta: number;
+  spread: number;
+  razao: number;
+}
+
+export interface MarcoDoCafeV1 {
+  data: string;
+  texto: string;
+  fonte: string;
+}
+
+export interface PrecoDoCafeV1 {
+  item: PrecoDeReferenciaDoCafeV1;
+  spread: PontoDoSpreadDoCafeV1[];
+  marcos: MarcoDoCafeV1[];
+}
+
+export interface PontoDoCambioV1 {
+  mes: string;
+  valor: number; // média do mês, R$ por US$
+}
+
+export interface CambioDoCafeV1 {
+  ultimo_dia: string;
+  ultimo_valor: number;
+  variacao_12_meses: number | null; // em %
+  historico: PontoDoCambioV1[];
+}
+
+export interface PontoDosFundosV1 {
+  relatorio: string;
+  liquido_lotes: number;
+  fracao_do_interesse_aberto: number;
+}
+
+export interface FundosDoCafeV1 {
+  relatorio: string;
+  comprados_lotes: number;
+  vendidos_lotes: number;
+  liquido_lotes: number;
+  liquido_sacas: number;
+  interesse_aberto_lotes: number;
+  fracao_do_interesse_aberto: number;
+  historico: PontoDosFundosV1[];
+  legenda: string;
+}
+
+export interface DestinoDoCafeV1 {
+  pais: string;
+  sacas: number;
+  fob_usd: number;
+  fracao: number;
+}
+
+export interface ExportacoesDoCafeV1 {
+  primeiro_mes: string;
+  ultimo_mes: string;
+  sacas: number;
+  fob_usd: number;
+  destinos: DestinoDoCafeV1[];
+  fracao_do_espirito_santo: number | null;
+  nota: string;
+}
+
+export interface PontoAnualDoCafeV1 {
+  ano_safra: number;
+  valor: number;
+  rotulo: string;
+}
+
+export interface BalancoDoPaisV1 {
+  codigo_do_pais: string;
+  ano_safra: number;
+  tipo: string;
+  producao: number;
+  participacao_na_producao: number;
+  relacao_estoque_consumo: number | null;
+}
+
+export interface BalancoDoCafeV1 {
+  ultima_safra: number;
+  estoque_consumo_mundo: PontoAnualDoCafeV1[];
+  estoque_consumo_brasil: PontoAnualDoCafeV1[];
+  participacao_do_brasil: PontoAnualDoCafeV1[];
+  paises: BalancoDoPaisV1[];
+}
+
+export interface LinhaDaSafraV1 {
+  uf: string;
+  area_producao_ha: number | null;
+  produtividade_sc_ha: number | null;
+  producao_mil_sacas: number | null;
+}
+
+export interface SafraDoCafeV1 {
+  safra: number;
+  levantamento: number;
+  divulgado_em: string;
+  linhas: LinhaDaSafraV1[];
+}
+
+export interface ErroDaSafraV1 {
+  safra: number;
+  erro_pct: number;
+  erro_mil_sacas: number;
+}
+
+export interface TermometroDaConabV1 {
+  erros: ErroDaSafraV1[];
+  vies_medio_pct: number | null;
+  menor_erro_pct: number;
+  maior_erro_pct: number;
+  nota: string;
+}
+
+export interface PontoDaSafraV1 {
+  safra: number;
+  tipo: string;
+  uf: string;
+  serie: string;
+  valor: number;
+  unidade: string;
+  rotulo: string | null;
+  levantamento: number | null;
+}
+
+export interface BienalidadeDoCafeV1 {
+  marcas: PontoDaSafraV1[];
+}
+
+export interface IndiceDeChuvaV1 {
+  valor: number | null; // mm somados nos três meses
+  normal: number | null;
+  anomalia: number | null;
+  razao_da_normal: number | null;
+  n_estacoes: number;
+  inicio: string;
+  fim: string;
+}
+
+export interface TemperaturaDoMesV1 {
+  competencia: string;
+  tmin_media_c: number | null;
+  tmin_normal_c: number | null;
+  tmin_anomalia_c: number | null;
+  dias_tmin_abaixo_de_2c: number | null;
+}
+
+export interface ClimaDaRegiaoV1 {
+  regiao: string;
+  nome_da_regiao: string;
+  fonte_dos_dados: string;
+  chuva: IndiceDeChuvaV1;
+  temperatura: TemperaturaDoMesV1;
+}
+
+export interface FaseDoCafeV1 {
+  mes: number;
+  regiao_id: string;
+  safra_em_curso: string;
+  safra_seguinte: string;
+  em_colheita: boolean;
+  na_janela_de_geada: boolean;
+}
+
+export interface ItemDoCalendarioV1 {
+  tema: string;
+  texto: string;
+  indices: string[];
+}
+
+export interface CalendarioDoCafeV1 {
+  fase: FaseDoCafeV1;
+  itens: ItemDoCalendarioV1[];
+}
+
+export interface FatoDaContraparteV1 {
+  fato: string;
+  descricao: string;
+  valor: number | null;
+  unidade: string | null;
+  data: string;
+  divulgado_em: string;
+  fonte: string; // o link
+  veiculo: string;
+  tipo_de_fonte: string;
+}
+
+export interface FichaDaContraparteV1 {
+  id: string;
+  cnpj: string | null;
+  nome: string;
+  tipo: string;
+  uf: string | null;
+  fatos: FatoDaContraparteV1[];
+  o_que_nao_sabemos: string[];
+}
+
+export interface ContrapartesDoCafeV1 {
+  fichas: FichaDaContraparteV1[];
+}
+
+/** Uma caixa do painel: sem dado, `conteudo` vem vazio e `motivo_sem_dado` diz por quê. */
+export interface BlocoDoCafeV1<T> {
+  chave: string;
+  titulo: string;
+  o_que_e: string;
+  fonte: string;
+  data: string | null; // o número mais novo da caixa
+  motivo_sem_dado: string | null;
+  conteudo: T | null;
+}
+
+export interface OpcaoDeRegiaoV1 {
+  id: string;
+  nome: string;
+  tipo_predominante: string;
+}
+
+export interface PainelDoCafeV1 {
+  dia: string;
+  tipo: string; // "arabica" ou "conilon"
+  nome_do_tipo: string;
+  regiao: string;
+  regioes: OpcaoDeRegiaoV1[];
+  aviso_diario: string;
+  preco_de_referencia: BlocoDoCafeV1<PrecoDoCafeV1>;
+  cambio: BlocoDoCafeV1<CambioDoCafeV1>;
+  fundos: BlocoDoCafeV1<FundosDoCafeV1>;
+  exportacoes: BlocoDoCafeV1<ExportacoesDoCafeV1>;
+  balanco: BlocoDoCafeV1<BalancoDoCafeV1>;
+  safra: BlocoDoCafeV1<SafraDoCafeV1>;
+  termometro: BlocoDoCafeV1<TermometroDaConabV1>;
+  bienalidade: BlocoDoCafeV1<BienalidadeDoCafeV1>;
+  clima: BlocoDoCafeV1<ClimaDaRegiaoV1>;
+  calendario: BlocoDoCafeV1<CalendarioDoCafeV1>;
+  contrapartes: BlocoDoCafeV1<ContrapartesDoCafeV1>;
 }

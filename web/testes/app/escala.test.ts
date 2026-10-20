@@ -55,3 +55,10 @@ describe("escala de espaçamento e tipos do app novo", () => {
     expect(tamanho(".legenda-do-numero")).toBe("var(--t-1)");
   });
 });
+
+describe("texto longo no celular (conferência de 19/10)", () => {
+  it("a lista do painel do café quebra um endereço comprido em vez de passar da tela", () => {
+    const bloco = blocos().find((b) => b.seletor === ".lista-do-cafe li");
+    expect(bloco?.declaracoes).toContainEqual(["overflow-wrap", "anywhere"]);
+  });
+});

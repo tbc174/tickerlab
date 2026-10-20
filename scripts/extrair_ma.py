@@ -4,6 +4,14 @@
     python -m scripts.extrair_ma enviar  --ouro CSV --textos P --saida S --teto-dolares 3 [--modelo M]
     python -m scripts.extrair_ma buscar  --ouro CSV --textos P --saida S [--modelo M]
     python -m scripts.extrair_ma medir   --ouro CSV --textos P --saida S                (sem API)
+    python -m scripts.extrair_ma operacoes|multiplos --ouro CSV --textos P --saida S    (sem API)
+    python -m scripts.extrair_ma base-estimar --textos P --saida S --limite N [--teto-dolares T]
+    python -m scripts.extrair_ma base-enviar  --textos P --saida S --limite N --teto-dolares T
+
+Os passos `base-*` são o modo "base inteira": em vez da amostra de ouro, os candidatos de
+`ma_candidatos` (lidos pela `base.porta`) com texto já coletado, na ordem da
+coleta (`base.ma_textos.grupo`), sem repetir o que o manifesto já tem. Sempre com `--limite` de
+documentos e `--teto-dolares` (o `base-enviar` recusa se a estimativa do lote passa do teto).
 
 `--ouro` é a amostra de ouro (`tickerlab-fontes/ma/amostra_de_ouro_candidatas.csv`); `--textos`, a
 pasta com o texto de cada documento (`<protocolo>.txt`). `enviar` manda um lote da Batch API (Haiku
@@ -20,14 +28,25 @@ import os
 import sys
 from dataclasses import dataclass
 from datetime import date, datetime
+from itertools import islice
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
 import pandas as pd
+import sqlalchemy as sa
 
 from base import ma_extracao as mx
+from base import ma_multiplos as mm
+from base import ma_operacoes as mo
+from base import ma_textos as mt
+from base import porta
+from base.historico import ano_do_arquivo
 from scripts.rotular_com_ia import TetoPassado
+from src import acervo
+from src import demonstracoes as dm
+from src.banco.coletas import originais_mais_recentes
+from src.banco.conexao import obter_engine
 
 log = logging.getLogger("tickerlab.extrair_ma")
 FUSO = ZoneInfo("America/Sao_Paulo")
@@ -61,7 +80,7 @@ def documentos(ouro: Path, textos: Path) -> list[Documento]:
     """Os documentos da amostra com texto guardado (o vazio fica de fora: não há o que ler)."""
     achados = []
     for linha in _ouro(ouro).to_dict("records"):
-        arquivo = textos / f"{linha['Protocolo_Entrega']}.txt"
+        arquivo = textos / f"{mt.nome_do_texto(linha['Protocolo_Entrega'])}.txt"
         texto = arquivo.read_text(encoding="utf-8") if arquivo.exists() else ""
         if texto.strip():
             achados.append(
@@ -147,13 +166,25 @@ def _custo(usage: anthropic.types.Usage, modelo: str) -> float:
 def enviar(
     cliente: anthropic.Anthropic, ouro: Path, textos: Path, saida: Path, modelo: str, teto: float
 ) -> str | None:  # fmt: skip
-    """Manda os pendentes num lote da Batch API, se o teto permitir. Devolve o id do lote."""
+    """Manda os pendentes da amostra de ouro num lote da Batch API, se o teto permitir."""
+    return enviar_documentos(
+        cliente, pendentes(ouro, textos, saida, modelo), saida, modelo, teto
+    )
+
+
+def enviar_documentos(
+    cliente: anthropic.Anthropic,
+    fila: list[Documento],
+    saida: Path,
+    modelo: str,
+    teto: float,
+) -> str | None:
+    """Manda a `fila` num lote da Batch API, se o teto permitir. Devolve o id do lote."""
     manifesto = ler_manifesto(saida, modelo)
     if any(lote["estado"] != "gravado" for lote in manifesto.get("lotes", [])):
         raise RuntimeError(
             "Há um lote enviado e ainda não gravado: rode `buscar` primeiro."
         )
-    fila = pendentes(ouro, textos, saida, modelo)
     if not fila:
         log.info("Nada pendente para %s.", modelo)
         return None
@@ -161,14 +192,23 @@ def enviar(
     conferir_teto(manifesto, estimativa, teto)
     lote = cliente.messages.batches.create(
         requests=[
-            {"custom_id": d.protocolo, "params": mx.pedido(d.texto, modelo)}
+            {
+                "custom_id": mt.nome_do_texto(d.protocolo),
+                "params": mx.pedido(d.texto, modelo),
+            }
             for d in fila
         ]
     )
+    # o id do lote não aceita o link que é o protocolo dos documentos antigos: guarda a volta
+    protocolos = {
+        mt.nome_do_texto(d.protocolo): d.protocolo
+        for d in fila
+        if mt.nome_do_texto(d.protocolo) != d.protocolo
+    }
     manifesto["lotes"] = [
         *manifesto.get("lotes", []),
         {"id": lote.id, "documentos": len(fila), "estimativa": estimativa, "estado": "enviado",
-         "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds")},
+         "enviado_em": datetime.now(FUSO).isoformat(timespec="seconds"), "protocolos": protocolos},
     ]  # fmt: skip
     _gravar_manifesto(saida, modelo, manifesto)
     log.info(
@@ -189,7 +229,10 @@ def buscar(cliente: anthropic.Anthropic, saida: Path, modelo: str) -> int:
             continue
         registros, gasto = [], 0.0
         for resultado in cliente.messages.batches.results(lote["id"]):
-            base = {"protocolo": resultado.custom_id, "modelo": modelo, "lote": lote["id"],
+            protocolo = lote.get("protocolos", {}).get(
+                resultado.custom_id, resultado.custom_id
+            )
+            base = {"protocolo": protocolo, "modelo": modelo, "lote": lote["id"],
                     "versao_do_guia": mx.VERSAO_DO_GUIA,
                     "lido_em": datetime.now(FUSO).isoformat(timespec="seconds")}  # fmt: skip
             if resultado.result.type != "succeeded":
@@ -214,6 +257,54 @@ def buscar(cliente: anthropic.Anthropic, saida: Path, modelo: str) -> int:
         gravadas += len(registros)
     _gravar_manifesto(saida, modelo, manifesto)
     return gravadas
+
+
+# --- modo base inteira (sem API) ---------------------------------------------------------------------
+
+
+def documentos_da_base(candidatos: pd.DataFrame, textos: Path) -> list[Documento]:
+    """Os candidatos da base com texto guardado, na ordem da coleta (o grupo que mais rende primeiro,
+    do mais novo ao mais velho). Reentregas com o mesmo protocolo dividem o texto: fica a mais nova."""
+    tabela = candidatos.copy()
+    tabela["_grupo"] = mt.grupo(tabela)
+    tabela = tabela.sort_values(
+        ["_grupo", "publico_em", "protocolo", "versao"],
+        ascending=[True, False, False, False],
+        kind="stable",
+    ).drop_duplicates("protocolo")
+    achados = []
+    for linha in tabela.itertuples(index=False):
+        arquivo = textos / f"{mt.nome_do_texto(linha.protocolo)}.txt"
+        texto = arquivo.read_text(encoding="utf-8") if arquivo.exists() else ""
+        if texto.strip():
+            achados.append(
+                Documento(linha.protocolo, pd.Timestamp(linha.publico_em).date(), texto)
+            )
+    return achados
+
+
+def pendentes_da_base(
+    candidatos: pd.DataFrame, textos: Path, saida: Path, modelo: str, limite: int
+) -> list[Documento]:
+    """Os primeiros `limite` documentos da base sem leitura boa deste modelo (os com erro entram de
+    novo)."""
+    feitas = ler_leituras(saida, modelo)
+    sem_leitura = (
+        d
+        for d in documentos_da_base(candidatos, textos)
+        if d.protocolo not in feitas or "erro" in feitas[d.protocolo]
+    )
+    return list(islice(sem_leitura, limite))
+
+
+def quantos_cabem(fila: list[Documento], modelo: str, verba: float) -> int:
+    """Quantos documentos do começo da `fila` cabem na `verba` (US$), pela mesma estimativa do envio."""
+    cabem = 0
+    for fim in range(1, len(fila) + 1):
+        if mx.estimar_custo([d.texto for d in fila[:fim]], modelo) > verba:
+            break
+        cabem = fim
+    return cabem
 
 
 # --- medida (sem API) -------------------------------------------------------------------------------
@@ -246,6 +337,124 @@ def medir_modelo(ouro: Path, textos: Path, saida: Path, modelo: str) -> Medida:
         leituras,
         com_descarte,
         para_revisao,
+    )
+
+
+def _leitura_do_gabarito(linha: dict) -> mx.LeituraDaOperacao | None:
+    """A resposta conferida à mão no formato da leitura (só o que a ligação usa)."""
+    partes = [
+        {"nome": linha[papel], "papel": papel, "trecho": linha[papel]}
+        for papel in ("alvo", "comprador")
+        if isinstance(linha.get(papel), str) and linha[papel].strip()
+    ]
+    try:
+        return mx.LeituraDaOperacao.model_validate(
+            {"tipo": linha.get("tipo_conferido"), "partes": partes}
+        )
+    except ValueError:
+        return None
+
+
+def operacoes_da_amostra(
+    ouro: Path, textos: Path, saida: Path, modelo: str
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, list[list[str]]]]:
+    """As operações montadas das leituras guardadas (PR 3 do plano) e a comparação com a ligação
+    das respostas do gabarito pela mesma regra: duplicada é par que o gabarito junta e a leitura
+    separa."""
+    datas = {d.protocolo: d.publico_em for d in documentos(ouro, textos)}
+    lidos = [
+        mo.DocumentoLido(protocolo, datas[protocolo], leitura)
+        for protocolo, leitura in medir_modelo(
+            ouro, textos, saida, modelo
+        ).leituras.items()
+    ]
+    tabela, ligacoes = mo.operacoes(lidos)
+    do_gabarito = []
+    for linha in _ouro(ouro).to_dict("records"):
+        protocolo = linha["Protocolo_Entrega"]
+        leitura = _leitura_do_gabarito(linha)
+        if protocolo in datas and leitura is not None:
+            do_gabarito.append(mo.DocumentoLido(protocolo, datas[protocolo], leitura))
+    comparacao = mo.comparar(mo.ligar(lidos), mo.ligar(do_gabarito))
+    return tabela, ligacoes, comparacao
+
+
+def emissoras_do_ouro(ouro: Path) -> dict[str, mm.Emissora]:
+    """Quem entregou cada documento da amostra (as colunas do IPE)."""
+    return {
+        linha["Protocolo_Entrega"]: mm.Emissora(
+            linha["CNPJ_Companhia"], linha["Nome_Companhia"]
+        )
+        for linha in _ouro(ouro).to_dict("records")
+    }
+
+
+def demonstracoes_do_acervo(
+    conexao: sa.Connection, cnpjs: set[str], anos: set[int]
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(contas, documentos) dos DFP e ITR guardados pelo arquivista (`cvm-hist-dfp`, `cvm-hist-itr`),
+    só das companhias e dos anos pedidos (não baixa nada)."""
+    contas, indices = [], []
+    for documento, fonte in (("DFP", "cvm-hist-dfp"), ("ITR", "cvm-hist-itr")):
+        for original in originais_mais_recentes(conexao, fonte):
+            if ano_do_arquivo(original.url) not in anos:
+                continue
+            conteudo = acervo.ler_original(original.caminho_do_original)
+            if conteudo is None:
+                continue
+            do_ano, indice = dm.ler_demonstracoes(conteudo, documento)
+            contas.append(do_ano[do_ano["cnpj"].isin(cnpjs)])
+            indices.append(indice[indice["cnpj"].isin(cnpjs)])
+    if not contas:
+        return pd.DataFrame(columns=dm.COLUNAS), pd.DataFrame(
+            columns=["cnpj", "documento", "referencia", "versao", "recebido_em"]
+        )
+    return pd.concat(contas, ignore_index=True), pd.concat(indices, ignore_index=True)
+
+
+def multiplos_da_amostra(
+    conexao: sa.Connection, ouro: Path, textos: Path, saida: Path, modelo: str
+) -> pd.DataFrame:
+    """Os múltiplos implícitos das operações da amostra (PR 4 do plano), das leituras guardadas."""
+    datas = {d.protocolo: d.publico_em for d in documentos(ouro, textos)}
+    lidos = [
+        mo.DocumentoLido(protocolo, datas[protocolo], leitura)
+        for protocolo, leitura in medir_modelo(
+            ouro, textos, saida, modelo
+        ).leituras.items()
+    ]
+    emissoras = emissoras_do_ouro(ouro)
+    # o ano do anúncio e o anterior: o DFP do ano passado e o ITR deste dão os 12 meses
+    anos = {ano for dia in datas.values() for ano in (dia.year - 1, dia.year)}
+    contas, entregues = demonstracoes_do_acervo(
+        conexao, {e.cnpj for e in emissoras.values()}, anos
+    )
+    return mm.multiplos(lidos, emissoras, contas, entregues)
+
+
+def relatorio_dos_multiplos(modelo: str, tabela: pd.DataFrame) -> str:
+    com = tabela[tabela[["ev_receita", "ev_ebit", "p_l", "p_vp"]].notna().any(axis=1)]
+    motivos = tabela.loc[tabela["motivo"].fillna("") != "", "motivo"].value_counts()
+    colunas = ["alvo", "anuncio", "valor_campo", "base_12m", "entregue_ate",
+               "ev_receita", "ev_ebit", "p_l", "p_vp"]  # fmt: skip
+    return (
+        f"## Múltiplos implícitos ({modelo})\n\n{len(com)} de {len(tabela)} operações com algum "
+        f"múltiplo; todos de documentos entregues antes do anúncio.\n\nSem múltiplo, por "
+        f"motivo:\n\n{motivos.to_string()}\n\n{com.loc[:, colunas].to_string(index=False)}\n"
+    )
+
+
+def relatorio_das_operacoes(
+    modelo: str, tabela: pd.DataFrame, comparacao: dict[str, list[list[str]]]
+) -> str:
+    varios = tabela[tabela["documentos"] > 1]
+    return (
+        f"## Operações ({modelo})\n\n{sum(tabela['documentos'].tolist())} documentos de operação "
+        f"viraram {len(tabela)} operações; {len(varios)} com mais de um documento.\n\n"
+        f"Pares do gabarito: {comparacao['no_gabarito']}\n\n"
+        f"Duplicadas (o gabarito junta, a leitura separa): {comparacao['separadas'] or 'nenhuma'}"
+        f"\n\nJuntadas por engano: {comparacao['juntadas'] or 'nenhuma'}\n\n"
+        f"{varios.to_string(index=False) if len(varios) else ''}\n"
     )
 
 
@@ -291,6 +500,14 @@ def _argumentos() -> argparse.ArgumentParser:
         ("enviar", "manda o lote da Batch API (GASTA API)"),
         ("buscar", "grava os lotes que terminaram"),
         ("medir", "compara com a amostra de ouro (sem API)"),
+        (
+            "operacoes",
+            "liga os documentos da mesma operação e confere no gabarito (sem API)",
+        ),
+        (
+            "multiplos",
+            "múltiplos implícitos com o balanço de antes do anúncio (sem API)",
+        ),
     ):
         passo = sub.add_parser(nome, help=ajuda)
         passo.add_argument("--ouro", type=Path, required=True)
@@ -299,7 +516,45 @@ def _argumentos() -> argparse.ArgumentParser:
         passo.add_argument("--modelo", default=mx.MODELO, choices=MODELOS)
         if nome == "enviar":
             passo.add_argument("--teto-dolares", type=float, required=True)
+    for nome, ajuda in (
+        ("base-estimar", "custo projetado de um lote da base inteira (sem API)"),
+        ("base-enviar", "manda um lote da base inteira (GASTA API)"),
+    ):
+        passo = sub.add_parser(nome, help=ajuda)
+        passo.add_argument("--textos", type=Path, required=True)
+        passo.add_argument("--saida", type=Path, required=True)
+        passo.add_argument("--modelo", default=mx.MODELO, choices=MODELOS)
+        passo.add_argument("--limite", type=int, required=True)
+        passo.add_argument("--teto-dolares", type=float, required=nome == "base-enviar")
     return argumentos
+
+
+def _passo_da_base(opcoes: argparse.Namespace) -> int:
+    fila = pendentes_da_base(
+        porta.ler("ma_candidatos"),
+        opcoes.textos,
+        opcoes.saida,
+        opcoes.modelo,
+        opcoes.limite,
+    )
+    if opcoes.passo == "base-estimar":
+        custo = mx.estimar_custo([d.texto for d in fila], opcoes.modelo)
+        print(
+            f"{opcoes.modelo}: {len(fila)} documentos, estimativa US$ {custo:.2f} (lote)"
+        )
+        if opcoes.teto_dolares is not None:
+            gasto = ler_manifesto(opcoes.saida, opcoes.modelo).get(
+                "gasto_em_dolares", 0.0
+            )
+            verba = max(opcoes.teto_dolares - gasto, 0.0)
+            print(
+                f"Cabem {quantos_cabem(fila, opcoes.modelo, verba)} no teto (US$ {verba:.2f} livres)"
+            )
+    else:
+        enviar_documentos(
+            cliente_de_ma(), fila, opcoes.saida, opcoes.modelo, opcoes.teto_dolares
+        )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -307,6 +562,8 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
     )
+    if opcoes.passo.startswith("base-"):
+        return _passo_da_base(opcoes)
     ouro, textos, saida, modelo = (
         opcoes.ouro,
         opcoes.textos,
@@ -322,6 +579,20 @@ def main(argv: list[str] | None = None) -> int:
         medidas = [medir_modelo(ouro, textos, saida, nome) for nome in MODELOS]
         texto = relatorio([m for m in medidas if m.lidos])
         (saida / "medida.md").write_text(texto, encoding="utf-8")
+        print(texto)
+    elif opcoes.passo == "operacoes":
+        tabela, ligacoes, comparacao = operacoes_da_amostra(ouro, textos, saida, modelo)
+        tabela.to_csv(saida / f"operacoes-{modelo}.csv", sep=";", index=False)
+        ligacoes.to_csv(saida / f"ligacoes-{modelo}.csv", sep=";", index=False)
+        texto = relatorio_das_operacoes(modelo, tabela, comparacao)
+        (saida / f"operacoes-{modelo}.md").write_text(texto, encoding="utf-8")
+        print(texto)
+    elif opcoes.passo == "multiplos":
+        with obter_engine().connect() as conexao:
+            tabela = multiplos_da_amostra(conexao, ouro, textos, saida, modelo)
+        tabela.to_csv(saida / f"multiplos-{modelo}.csv", sep=";", index=False)
+        texto = relatorio_dos_multiplos(modelo, tabela)
+        (saida / f"multiplos-{modelo}.md").write_text(texto, encoding="utf-8")
         print(texto)
     elif opcoes.passo == "enviar":
         enviar(cliente_de_ma(), ouro, textos, saida, modelo, opcoes.teto_dolares)

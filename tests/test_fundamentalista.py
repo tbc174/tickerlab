@@ -192,6 +192,28 @@ def test_payout_pelo_caixa_e_proventos_do_fre_lado_a_lado():
     assert resultado.anos_pagando == 2
 
 
+def test_dois_exercicios_do_fre_no_mesmo_ano_valem_pelo_mais_tarde():
+    """Regressão (lote das 412, 18/10/2026): o FRE do Banco do Brasil tem um exercício parcial
+    (31/03/2010) ao lado do cheio (31/12/2010), e o `reindex` por ano quebrava em 45 empresas."""
+    proventos = pd.DataFrame(
+        {
+            "exercicio": [
+                pd.Timestamp("2010-03-31"),
+                pd.Timestamp("2010-12-31"),
+                pd.Timestamp("2010-12-31"),
+            ],
+            "versao": [11, 19, 20],
+            "dividendo_total": [9.0, 40.0, 47.0],
+            "payout": [0.4, 0.37, 0.371],
+        }
+    )
+    resultado = fa.dividendos_e_diluicao(
+        _com_acoes({2010: 100.0, 2011: 100.0}), proventos
+    )
+    assert resultado.historico.loc[2010, "dividendo_fre"] == pytest.approx(47.0)
+    assert resultado.historico.loc[2010, "payout_fre"] == pytest.approx(0.371)
+
+
 def test_desdobramento_do_fre_nao_conta_como_diluicao():
     eventos = pd.DataFrame(
         {

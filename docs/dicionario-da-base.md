@@ -18,7 +18,7 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 - **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `demonstracao`, `grupo`, `conta`
 - **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2010-01-01 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
+- **Versão do contrato:** 2.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/demonstracoes/<ano>.parquet` (servidor de casa)
 - **Linhagem:** `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega à CVM publicou o valor; `origem` diz se veio dos dados abertos ou do XML do ENET. Ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base e o endereço e o SHA-256 de cada original, que está no acervo e no registro de coletas (com a data da coleta), e a `versao_do_codigo` (o commit que montou o ano; os anos montados antes da série 3 ficam sem ela até serem remontados). `base/linhagem.py` refaz o caminho de qualquer linha e diz se está completo.
 
@@ -27,8 +27,8 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
 | `empresa` | Nome da companhia como a fonte informa | texto |
 | `grupo` | con (consolidado) ou ind (individual) | texto |
-| `demonstracao` | BPA (ativo), BPP (passivo e patrimônio) ou DRE (resultado) | texto |
-| `conta` | Código da conta no plano da CVM (1, 1.01, 3.01...) | texto |
+| `demonstracao` | BPA (ativo), BPP (passivo e patrimônio), DRE (resultado, só o primeiro nível), DRA (resultado abrangente), DFC_MI ou DFC_MD (fluxo de caixa pelo método indireto ou direto) ou DVA (valor adicionado); as quatro últimas inteiras, desde a série T1 (contrato 2.0.0). A DMPL fica em `dmpl_como_era` | texto |
+| `conta` | Código da conta no plano da CVM (1, 1.01, 3.01, 6.01, 7.04.01...) | texto |
 | `descricao` | Nome da conta como a empresa informou | texto |
 | `inicio` | Começo do período (vazio no balanço, que é um saldo numa data) | data (dia) |
 | `fim` | Fim do período ou data do saldo | data (dia) |
@@ -39,6 +39,43 @@ Uma linha por valor diferente que cada conta de cada período já teve (versão 
 | `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
 | `origem` | dados_abertos ou enet | texto |
 | `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive; a CVM não informa a hora). Entrega com a empresa fora de qualquer registro na CVM (pedido de registro) vale a partir do registro seguinte: o público só viu o documento perto do registro | data (dia) |
+| `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
+
+## `dmpl_como_era`
+
+A demonstração das mutações do patrimônio líquido (DMPL) como era em cada data: uma linha por valor diferente que cada célula (conta × coluna do patrimônio) de cada período já teve, com o dia em que ficou público e o dia em que foi trocado. É a `demonstracoes_como_era` com uma coluna a mais no fato (`coluna`); `como_era_em(base, data, formato=FORMATO_DMPL)` dá a foto (série T1).
+
+- **Fonte:** CVM: dados abertos de DFP e ITR (arquivos `_DMPL_con` e `_DMPL_ind`, versão mais nova) e ENET (versões anteriores, XML de cada entrega)
+- **Licença:** ODbL (dados abertos da CVM; citar a fonte)
+- **Revenda:** vendável com atribuição, sob a ODbL (compartilhar igual: quem compra pode repassar; o valor está na curadoria, nas versões e na qualidade)
+- **Frequência:** Montada junto com `demonstracoes_como_era`, por ano (opção `--serie-t1`)
+- **Atraso de divulgação:** DFP: até 3 meses depois do fim do exercício; ITR: até 45 dias depois do trimestre (prazos da CVM, `src/prazos.py`); reapresentações a qualquer momento
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cnpj`, `documento`, `referencia`, `versao`, `grupo`, `conta`, `coluna`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `divulgado_em`
+- **Histórico desde:** 2010-01-01 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/dmpl/<ano>.parquet` (servidor de casa)
+- **Linhagem:** A mesma de `demonstracoes_como_era`: `cnpj`, `documento`, `referencia` e `versao` dizem qual entrega publicou o valor e `origem` se veio dos dados abertos ou do ENET; ao lado de cada Parquet, `<ano>.json` guarda o SHA-256 da base, cada original e a `versao_do_codigo`.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `cnpj` | CNPJ da companhia, no formato 00.000.000/0000-00 | texto |
+| `empresa` | Nome da companhia como a fonte informa | texto |
+| `grupo` | con (consolidado) ou ind (individual) | texto |
+| `demonstracao` | Sempre DMPL | texto |
+| `conta` | Código da linha da DMPL no plano da CVM (5.01, 5.04.06...) | texto |
+| `coluna` | Coluna do patrimônio, com nome único entre empresas (`base/dmpl.py`): capital_social, reservas_de_capital, reservas_de_lucro, lucros_acumulados, outros_resultados_abrangentes, ajustes_de_avaliacao_patrimonial, reservas_de_reavaliacao, patrimonio_liquido, patrimonio_liquido_consolidado e nao_controladores; outra coluna fica com o nome da empresa sem acento; sem_coluna quando veio sem nome | texto |
+| `descricao` | Nome da linha como a empresa informou | texto |
+| `inicio` | Começo do período | data (dia) |
+| `fim` | Fim do período | data (dia) |
+| `valor` | Valor da célula; vazio quando a empresa deixou em branco na versão lida do ENET (nos dados abertos da CVM, a linha em branco vem como 0) | reais (R$), já multiplicado pela escala informada |
+| `documento` | DFP (demonstrações anuais) ou ITR (informações trimestrais) | texto |
+| `referencia` | Data a que o documento se refere (fim do exercício ou do trimestre) | data (dia) |
+| `versao` | Versão do documento que publicou este valor (1, 2, 3...) | número |
+| `ordem` | ultimo (período do próprio documento) ou penultimo (o ano anterior, refeito) | texto |
+| `origem` | dados_abertos ou enet | texto |
+| `divulgado_em` | Dia da entrega à CVM (vale a partir dele, inclusive); as mesmas regras de `demonstracoes_como_era` | data (dia) |
 | `ate` | Dia em que outro valor tomou o lugar (vazio: vale até hoje) | data (dia) |
 
 ## `achados_de_qualidade`
@@ -696,7 +733,7 @@ Exportações de café por mês, NCM, UF de origem e país de destino, recortada
 - **Três datas:** aconteceu_em = `competencia`; publico_em = `divulgado_em`
 - **Histórico desde:** 2026-10-18 (`publico_em` por dia)
 - **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/commodities/comex_cafe/` (carga em PR seguinte; `base/commodities/comex_cafe.py`)
+- **Onde fica:** Parquet em `<acervo>/base/commodities/comex_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/comex_cafe.py`)
 - **Linhagem:** Recorte do `EXP_AAAA.csv` guardado pelo arquivista (fonte `comexstat`); as vias e unidades da aduana são somadas por mês, NCM, UF e país.
 
 | Coluna | O que é | Unidade |
@@ -744,6 +781,203 @@ Geração por usina do ONS, em MWmed por hora, desde 2000, no formato da fonte. 
 | `ceg` | Código da usina na ANEEL (vazio quando o ONS não informa) | texto |
 | `geracao_mwmed` | Geração na hora, em MWmed | número com decimais, na unidade da fonte |
 | `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
+
+## `ccee_pld`
+
+PLD (preço de liquidação das diferenças) da CCEE, em R$/MWh, por submercado: por hora e por dia desde 01/2021, por mês desde 2001 e, de 06/2001 a 12/2020, por semana e patamar de carga (`semana_por_patamar`: o arquivo horário da CCEE desses anos não é horário, e a fonte não rotula o patamar; a posição entre as linhas repetidas vai em `ordem`). A média do dia e a do mês são as que a CCEE publica, não recalculadas aqui. Sem ligação à empresa: é o preço de um mercado, não de um agente
+
+- **Fonte:** CCEE: PLD horário, média diária e média mensal (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos da CCEE; citar a CCEE)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Diária (a CCEE republica o arquivo do ano a cada dia útil)
+- **Atraso de divulgação:** O preço do dia sai no dia anterior e a regra usa o dia + 1; a média do mês vale a partir de 2 dias depois do fim do mês; a semana, 7 dias depois do dia que a fonte marca
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `granularidade`, `submercado`, `referencia`, `ordem`
+- **Três datas:** aconteceu_em = `referencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/ccee/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada arquivo da CCEE lido e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `granularidade` | `hora`, `dia`, `mes` ou `semana_por_patamar` | texto |
+| `submercado` | Sudeste, Sul, Nordeste ou Norte, como a CCEE escreve | texto |
+| `referencia` | Início do período a que o preço se refere (hora, dia, mês ou semana) | data e hora (UTC) |
+| `competencia` | Mês (último dia) | data (dia) |
+| `ordem` | Posição entre as linhas da fonte que repetem a mesma referência (1 se única) | número inteiro |
+| `periodo_de_comercializacao` | Hora do mês (1 a 744) na fonte; vazio nas outras granularidades | número inteiro |
+| `pld` | Preço em R$/MWh | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (ver o atraso) | data (dia) |
+
+## `ons_restricao`
+
+Restrição de geração eólica e solar do ONS (curtailment): quanto cada usina ou conjunto deixou de gerar por ordem do operador, uma linha por usina e hora (a fonte traz uma leitura a cada 30 minutos; aqui, a média das duas). Eólica desde 10/2021, fotovoltaica desde 04/2024. Hora sem restrição fica com a energia não realizada vazia (vazio não é zero). O ONS fecha a apuração depois: a revisão de uma hora passada vira linha nova, que só vale desde o dia em que foi vista (`base/setoriais/revisoes.py::como_era_em`). O dono da usina não vem no arquivo: a ligação à empresa é pelo agente operador, pelo nome exato do agente na B13
+
+- **Fonte:** ONS: restrição de operação por constrained-off de usinas eólicas e fotovoltaicas (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o ONS acrescenta e revisa os arquivos de meses passados)
+- **Atraso de divulgação:** O instante + 2 dias (o mesmo da geração por usina)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `instante`, `tipo`, `id_ons`, `visto_em`
+- **Três datas:** aconteceu_em = `instante`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por tipo e mês em `<acervo>/base/setoriais/ons_restricao/<tipo>_<ano>_<mês>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada (uma por revisão) e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `instante` | Hora (início) | data e hora (UTC) |
+| `tipo` | `eolica` ou `fotovoltaica` | texto |
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `uf` | UF da usina | texto |
+| `usina` | Nome da usina ou do conjunto, como o ONS escreve | texto |
+| `id_ons` | Código da usina ou conjunto no ONS (a chave) | texto |
+| `ceg` | Código na ANEEL (vazio nos conjuntos) | texto |
+| `agente_operador` | Agente operador (liga à empresa pela B13) | texto |
+| `geracao_mwmed` | Geração verificada, em MWmed (numa hora, igual a MWh) | número com decimais, na unidade da fonte |
+| `referencia_mwmed` | Geração de referência (o que a usina geraria sem a restrição), MWmed | número com decimais, na unidade da fonte |
+| `referencia_final_mwmed` | Referência final, depois do fechamento da apuração, MWmed | número com decimais, na unidade da fonte |
+| `disponibilidade_mwmed` | Potência disponível, MWmed | número com decimais, na unidade da fonte |
+| `nao_realizada_mwmed` | Energia que deixou de ser gerada por ordem do operador, MWmed (vazio sem restrição) | número com decimais, na unidade da fonte |
+| `minutos_restricao` | Minutos de restrição na hora (soma das leituras; vazio sem restrição) | número inteiro |
+| `razao_da_restricao` | Código da razão da restrição (a primeira da hora) | texto |
+| `origem_da_restricao` | Código da origem da restrição (a primeira da hora) | texto |
+| `leituras` | Quantas leituras da fonte entraram na linha | número inteiro |
+| `disponivel_em` | Desde quando o número era público (instante + 2 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `ons_capacidade`
+
+Capacidade instalada do ONS, uma linha por unidade geradora: potência efetiva (MW), proprietário, operador, entrada em teste, entrada em operação e desativação. É a foto do cadastro de hoje (captura de 14/10/2026), não uma série: a unidade vale desde a entrada em operação, e a potência de hoje vale desde a entrada (mudanças de potência anteriores à primeira coleta não aparecem; cada coleta que traz outro valor entra como revisão). A desativação é só uma data na linha: a unidade não some do passado. O proprietário liga à empresa pelo nome exato do agente na B13
+
+- **Fonte:** ONS: capacidade instalada de geração (dados abertos)
+- **Licença:** CC BY 4.0 (dados abertos do ONS; citar o ONS)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (o ONS regera o cadastro inteiro)
+- **Atraso de divulgação:** A regra usa a data de entrada em operação (ou em teste, quando falta)
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `cod_equipamento`, `visto_em`
+- **Três datas:** aconteceu_em = `entrada_em_operacao`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/ons_capacidade/capacidade.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `capacidade.json` guarda o endereço e o SHA-256 de cada baixada do cadastro e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `id_subsistema` | Subsistema (N, NE, S, SE) | texto |
+| `uf` | UF da usina | texto |
+| `modalidade_de_operacao` | Modalidade de operação (tipo I, II...) | texto |
+| `proprietario` | Agente proprietário, como o ONS escreve (liga à empresa pela B13) | texto |
+| `operador` | Agente operador | texto |
+| `tipo_de_usina` | Hidrelétrica, térmica, eólica, fotovoltaica... | texto |
+| `usina` | Nome da usina | texto |
+| `ceg` | Código na ANEEL | texto |
+| `unidade_geradora` | Nome da unidade geradora | texto |
+| `cod_equipamento` | Código do equipamento no ONS (a chave) | texto |
+| `numero_da_unidade` | Número da unidade na usina | texto |
+| `combustivel` | Combustível ou fonte | texto |
+| `entrada_em_teste` | Data da entrada em teste | data (dia) |
+| `entrada_em_operacao` | Data da entrada em operação | data (dia) |
+| `desativada_em` | Data da desativação (vazio: em operação) | data (dia) |
+| `potencia_efetiva_mw` | Potência efetiva da unidade, em MW | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando a unidade existe para quem pergunta (entrada em operação) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `anp_concessionarios`
+
+Concessionários da ANP: uma linha por contrato de exploração e produção de petróleo e gás e por sócio do consórcio, com a fase (exploração, avaliação ou produção), a bacia, o ambiente (terra ou mar), o CNPJ do sócio, a participação em pontos percentuais e a marca de quem opera. É a foto do dia da coleta, sem data própria: o primeiro valor vale desde a coleta que o trouxe e uma mudança de sócio, de fase ou de participação entra como linha nova, desde o dia em que foi vista (o que mudou antes da primeira coleta não aparece). O CNPJ vem na fonte (o leitor recoloca o zero à esquerda): a ligação à empresa é por ele, sem comparar nomes
+
+- **Fonte:** ANP: relação de concessionários (dados abertos)
+- **Licença:** CC BY (dados abertos da ANP no dados.gov.br; citar a ANP)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (a ANP regera o arquivo inteiro)
+- **Atraso de divulgação:** Sem data própria: vale desde o dia da coleta do arquivista
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `numero_do_contrato`, `cnpj`, `visto_em`
+- **Três datas:** aconteceu_em = `disponivel_em`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet em `<acervo>/base/setoriais/anp_concessionarios/concessionarios.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `concessionarios.json` guarda o endereço e o SHA-256 de cada baixada do arquivo e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `bid` | Código da rodada de licitação (BID) do contrato | texto |
+| `numero_do_contrato` | Número do contrato na ANP (a chave, com o CNPJ) | texto |
+| `fase` | Exploração, Avaliação ou Produção | texto |
+| `nome_fantasia` | Nome do campo ou bloco | texto |
+| `bacia` | Bacia sedimentar | texto |
+| `cnpj` | CNPJ do sócio, com 14 dígitos (liga à empresa) | texto |
+| `empresa` | Nome do sócio, sem o prefixo de operador | texto |
+| `operador` | Verdadeiro na linha de quem opera o contrato | verdadeiro ou falso |
+| `participacao_pct` | Participação do sócio no contrato, em pontos percentuais (0 a 100) | número com decimais, na unidade da fonte |
+| `ambiente` | Terra ou Mar | texto |
+| `disponivel_em` | Desde quando o número era público (o dia da coleta que o trouxe) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a mudança vale desde aí) | data (dia) |
+
+## `antt_siade`
+
+Produção ferroviária da ANTT (SIADE): toneladas úteis (TU) e tonelada-quilômetro útil (TKU) por mês, ferrovia, mercadoria e par de estações (origem e destino), de 2006 em diante. A ferrovia vem como sigla (EFC, MRS, RMS...) e liga à empresa pela B13, na chave exata. A ANTT pode revisar um mês passado: a revisão vira linha nova, desde o dia em que foi vista
+
+- **Fonte:** ANTT: SIADE, produção por origem e destino (dados abertos)
+- **Licença:** CC BY (dados abertos da ANTT; citar a ANTT)
+- **Revenda:** vendável com atribuição à fonte
+- **Frequência:** Mensal (um CSV por ano)
+- **Atraso de divulgação:** Fim do mês + 60 dias, com folga: a ANTT não diz quando publica e ainda não foi medido (só uma captura, 14/10/2026); pode atrasar um número, nunca adiantar
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `competencia`, `ferrovia`, `mercadoria`, `estacao_de_origem`, `estacao_de_destino`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por ano em `<acervo>/base/setoriais/antt_siade/<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 de cada baixada do CSV do ano e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `competencia` | Mês (último dia) | data (dia) |
+| `ferrovia` | Sigla da ferrovia na ANTT (liga à empresa pela B13) | texto |
+| `mercadoria` | Mercadoria, como a ANTT escreve | texto |
+| `estacao_de_origem` | Estação de origem | texto |
+| `uf_de_origem` | UF da estação de origem | texto |
+| `estacao_de_destino` | Estação de destino | texto |
+| `uf_de_destino` | UF da estação de destino | texto |
+| `toneladas_uteis` | Toneladas úteis transportadas (TU) | número com decimais, na unidade da fonte |
+| `tku` | Tonelada-quilômetro útil (TKU) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
+
+## `comex_preco_medio`
+
+Preço médio de comércio exterior do Comex Stat, em US$ por quilo (valor FOB ÷ quilo líquido), por fluxo (exportação ou importação), mês, NCM e URF (porto, aeroporto ou posto de fronteira). A fonte não publica preço: é conta nossa sobre os CSVs de NCM, somando vias, países e UFs de cada linha. Quilo zero deixa o preço vazio. **Uso interno até a licença do MDIC**: fora da exportação e do app público. O MDIC revisa meses passados: a revisão vira linha nova, desde o dia em que foi vista. O nome da URF está em `URF.csv`, outra tabela da fonte
+
+- **Fonte:** MDIC: Comex Stat, exportação e importação por NCM (EXP_AAAA.csv e IMP_AAAA.csv)
+- **Licença:** Aberta sem nome ('Other (Open)', dados.gov.br); a confirmar com o MDIC
+- **Revenda:** a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)
+- **Frequência:** Mensal (um CSV por ano e por fluxo)
+- **Atraso de divulgação:** Fim do mês + 60 dias, com folga sobre a divulgação do MDIC (nos primeiros dias úteis do mês seguinte); pode atrasar um número, nunca adiantar
+- **Módulo:** mercado_e_empresas · **Contém dado de pessoa:** não
+- **Chaves:** `fluxo`, `competencia`, `ncm`, `urf`, `visto_em`
+- **Três datas:** aconteceu_em = `competencia`; publico_em = `disponivel_em`
+- **Histórico desde:** 2026-10-14 (`publico_em` por dia)
+- **Versão do contrato:** 1.0.0
+- **Onde fica:** Parquet por fluxo e ano em `<acervo>/base/setoriais/comex_preco_medio/<fluxo>_<ano>.parquet` (`scripts/carga_setoriais.py`)
+- **Linhagem:** O `.json` de cada arquivo guarda o endereço e o SHA-256 de cada baixada do CSV e a versão do código.
+
+| Coluna | O que é | Unidade |
+|---|---|---|
+| `fluxo` | `exportacao` ou `importacao` | texto |
+| `competencia` | Mês (último dia) | data (dia) |
+| `ncm` | NCM (8 dígitos) | texto |
+| `urf` | Código da URF (unidade da Receita: porto, aeroporto ou posto) | texto |
+| `vl_fob_usd` | Valor FOB somado, em US$ | número com decimais, na unidade da fonte |
+| `kg_liquido` | Quilo líquido somado | número com decimais, na unidade da fonte |
+| `preco_usd_por_kg` | Valor FOB ÷ quilo líquido, em US$ por quilo (vazio com quilo zero) | número com decimais, na unidade da fonte |
+| `disponivel_em` | Desde quando o número era público (fim do mês + 60 dias) | data (dia) |
+| `visto_em` | Dia da coleta em que este valor apareceu (a revisão vale desde aí) | data (dia) |
 
 ## `aneel_samp`
 
@@ -2717,9 +2951,9 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 - **Chaves:** `safra`, `levantamento`, `tipo`, `uf`, `divulgado_em`
 - **Três datas:** publico_em = `divulgado_em`
 - **Histórico desde:** 2026-02-05 (`publico_em` por dia)
-- **Versão do contrato:** 1.0.0
-- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (carga em PR seguinte; `base/commodities/conab_cafe.py`)
-- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256. `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
+- **Versão do contrato:** 1.1.0
+- **Onde fica:** Parquet em `<acervo>/base/commodities/conab_cafe/` (`scripts/carga_cafe.py`; leitor `base/commodities/conab_cafe.py`)
+- **Linhagem:** A planilha original fica no acervo do arquivista (fonte `conab-cafe-safra`), com data da coleta e SHA-256; o dia da divulgação vem do 'Publicado em' da página do levantamento (fonte `conab-cafe-publicacao`). `versao_do_codigo` diz o commit que montou a linha (o comando recusa rodar sem saber o commit ou com mudanças não salvas).
 
 | Coluna | O que é | Unidade |
 |---|---|---|
@@ -2732,6 +2966,7 @@ Os levantamentos de safra de café da CONAB, como publicados: por safra, levanta
 | `produtividade_sc_ha` | Produtividade, em sacas de 60 kg por hectare | número com decimais, na unidade da fonte |
 | `producao_mil_sacas` | Produção, em mil sacas de 60 kg | número com decimais, na unidade da fonte |
 | `divulgado_em` | Dia em que a CONAB divulgou o levantamento | data (dia) |
+| `divulgado_aproximado` | Verdadeiro quando a data da CONAB não foi achada e `divulgado_em` é o dia da coleta | verdadeiro ou falso |
 
 ## `usda_psd_cafe`
 
@@ -2806,7 +3041,7 @@ Clima do mês por região produtora de café (13 regiões de `src/commodities/ca
 - **Histórico desde:** 1981-01-31 (`publico_em` por mes)
 - **Versão do contrato:** 1.0.0
 - **Onde fica:** Parquet por ano em `<acervo>/base/commodities/clima_regiao_cafe/<ano>.parquet` (a carga segue o molde de `scripts/carga_setoriais.py`)
-- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha.
+- **Linhagem:** O `<ano>.json` guarda o endereço e o SHA-256 dos zips do INMET, dos GeoTIFFs do CHIRPS e da malha usados e a versão do código; `fonte` diz de qual fonte veio a linha. A normal do CHIRPS (v2.0, média de 1991–2020 por região e mês do ano, 30 anos) é calculada na carga e fica no Parquet; a data da conta é a da versão gravada. **Sem olhar o futuro:** vale para os meses (cada `chuva_mm` só usa o que a fonte tinha na `disponivel_em`), não para a normal: ela é fixa, só muda se o período de referência mudar (e o que chega depois de 2020 não a altera). Para os meses de 1991–2020 a anomalia é contra uma normal que inclui anos posteriores a eles: serve para descrever, não para simular uma decisão da época
 
 | Coluna | O que é | Unidade |
 |---|---|---|

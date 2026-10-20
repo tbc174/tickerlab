@@ -18,7 +18,7 @@ import requests
 import sqlalchemy as sa
 
 from base import intradiario_b3, tce_pr
-from base.arquivo import assessorias, contrapartes, robots, wayback
+from base.arquivo import assessorias, contrapartes, wayback
 from base.arquivo.coleta import Alvo, Cliente, Descobrir, ErroDeDescoberta, Fonte
 from base.arquivo.obter import (
     HTTP_NAO_ENCONTRADO,
@@ -81,13 +81,23 @@ PRIMEIRO_ANO_DO_SCR = 2012
 MES_DO_PRIMEIRO_ARQUIVO_DO_SCR = 3
 
 # termos de uso que decidem o que o TickerLab pode fazer (vigia: avisa quando o texto muda)
-# relatório mensal do Cecafé (café, PR 6): só pesquisa; o robots.txt do site proíbe PDF (18/10/2026)
+# relatório mensal do Cecafé (café, PR 6): coleta com ritmo e uso citando a fonte (ADR 0102); o
+# robots.txt do site, que proíbe PDF (lido em 18/10/2026), fica vigiado e registrado na marca
 CECAFE_ROBOTS = "https://www.cecafe.com.br/robots.txt"
 CECAFE_RELATORIOS = "https://www.cecafe.com.br/publicacoes/relatorio-de-exportacoes/"
 PDF_DO_CECAFE = re.compile(
     rb'href="(https://www\.cecafe\.com\.br/[^"]*Relatorio-Mensal[^"]*\.pdf)"',
     re.IGNORECASE,
 )
+# estatísticas da FNC (Colômbia; café, PR 4): planilhas de preço, área, produção e exportação
+# linkadas na página; os termos só para uso pessoal ficam vigiados e registrados na marca (ADR 0102)
+FNC_ESTADISTICAS = "https://federaciondecafeteros.org/estadisticas-cafeteras/"
+PLANILHA_DA_FNC = re.compile(
+    rb'href="(https://federaciondecafeteros\.org/wp-content/uploads/[^"]*\.xlsx)"',
+    re.IGNORECASE,
+)
+# site pequeno de terceiros: um pedido por vez, com folga entre eles (como as assessorias, ADR 0082)
+PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS = 3.0
 
 TERMOS = {
     "termos-b3-politica": "https://www.b3.com.br/data/files/0D/97/1F/B7/4CCFF91094DCD8F9AC094EA8/"
@@ -105,7 +115,8 @@ TERMOS = {
     "termos-ibge": "https://www.ibge.gov.br/acesso-informacao/acoes-e-programas/politica-de-privacidade.html",
     "termos-inmet": "https://portal.inmet.gov.br/dadoshistoricos",  # sem licença escrita: vigiar a página
     **assessorias.termos(),  # robots.txt e política de cada assessoria de M&A (ADR 0082)
-    # a FNC veda robôs e cópia sem autorização escrita: não coletamos, só vigiamos os termos (18/10/2026)
+    # a FNC veda robôs e cópia sem autorização escrita (lido em 18/10/2026): a coleta vai pela ADR
+    # 0102 com a marca registrada; os termos ficam vigiados
     "termos-fnc-colombia": "https://federaciondecafeteros.org/terminos-y-condiciones-de-uso-contenido-web/",
     "termos-cecafe-robots": CECAFE_ROBOTS,  # proíbe PDF e /wp-*/ (lido em 18/10/2026)
 }
@@ -141,6 +152,11 @@ PLANILHA_DA_CONAB = re.compile(
     + re.escape(SAFRA_DE_CAFE_DA_CONAB.encode())
     + rb"/\do-levantamento-de-cafe-safra-\d{4}/"
     + rb'(?:[^"/]+\.xls|tabela-de-dados-estimativas-da-producao-e-colheita))"'
+)
+PAGINA_DE_LEVANTAMENTO_DA_CONAB = re.compile(
+    rb'href="('
+    + re.escape(SAFRA_DE_CAFE_DA_CONAB.encode())
+    + rb'/(\do-levantamento-de-cafe-safra-\d{4})/\2)"'
 )
 # produção por poço, um arquivo por ano (mar e terra); o nome muda de padrão (2024 é
 # `producao_por_poco_2024.csv`), por isso os links saem da própria página
@@ -460,20 +476,13 @@ def descobrir_links(
 
 
 def descobrir_cecafe(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """Os PDFs do relatório mensal linkados na página; falha, sem baixar nada, se o robots.txt os proíbe."""
-    robots_txt = cliente.ler(CECAFE_ROBOTS).conteudo.decode("utf-8", errors="replace")
-    alvos = descobrir_links(cliente, CECAFE_RELATORIOS, PDF_DO_CECAFE)
-    proibidos = [
-        a
-        for a in alvos
-        if not robots.pode_buscar(robots_txt, a.url.split(".com.br", 1)[1])
-    ]
-    if proibidos:
-        raise ErroDeDescoberta(
-            f"cecafe-relatorio-mensal: o robots.txt proíbe {len(proibidos)} PDF(s) "
-            f"(ex.: {proibidos[0].url}); nada foi baixado"
-        )
-    return alvos
+    """Os PDFs do relatório mensal linkados na página (o robots.txt não decide mais; ADR 0102)."""
+    return descobrir_links(cliente, CECAFE_RELATORIOS, PDF_DO_CECAFE)
+
+
+def descobrir_fnc(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """As planilhas (.xlsx) de estatísticas cafeteiras linkadas na página da FNC; PDFs ficam de fora."""
+    return descobrir_links(cliente, FNC_ESTADISTICAS, PLANILHA_DA_FNC)
 
 
 def descobrir_comex(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -542,6 +551,21 @@ def descobrir_cafe_conab(cliente: Cliente, agora: datetime) -> list[Alvo]:
     if not links:
         raise ErroDeDescoberta("CONAB: nenhuma planilha de levantamento de café")
     return [Alvo(link, ".xls") for link in links]
+
+
+def descobrir_data_do_cafe_conab(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """A página de cada levantamento de café da CONAB: o "Publicado em" dela é a data de divulgação."""
+    paginas: dict[str, None] = {}
+    for pagina in (PAGINA_DOS_LEVANTAMENTOS_DA_CONAB, PAGINA_ANTIGA_DA_CONAB):
+        paginas |= dict.fromkeys(
+            m[0].decode()
+            for m in PAGINA_DE_LEVANTAMENTO_DA_CONAB.findall(
+                cliente.ler(pagina).conteudo
+            )
+        )
+    if not paginas:
+        raise ErroDeDescoberta("CONAB: nenhuma página de levantamento de café")
+    return [Alvo(link, ".html") for link in paginas]
 
 
 def descobrir_anatel(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -758,12 +782,14 @@ MESES_RECENTES_DO_CDA = 5
 
 
 def _meses_recentes(modelo: str, meses: int) -> Descobrir:
-    """Os `meses` meses antes do atual (no fuso de São Paulo), do mais antigo ao mais novo."""
+    """Os `meses` meses antes do atual e o próprio mês atual (no fuso de São Paulo), do mais antigo
+    ao mais novo. O atual entra para registrar o "não encontrado" antes de a CVM publicar a 1ª versão:
+    sem isso, os fundos dela ficariam sem `visto_em`."""
 
     def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
         hoje = agora.astimezone(FUSO_DA_B3).date()
         alvos = []
-        for atras in range(meses, 0, -1):
+        for atras in range(meses, -1, -1):
             ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
             url = modelo.format(aaaamm=f"{ano}{mes + 1:02d}")
             alvos.append(Alvo(url, ".zip", zip_que_pode_faltar(url)))
@@ -795,6 +821,7 @@ CHIRPS_MENSAL = (
     "https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_monthly/tifs/"
     "chirps-v2.0.{ano}.{mes:02d}.tif.gz"
 )
+PRIMEIRO_ANO_DO_CHIRPS = 1991  # início da normal climatológica de 1991–2020 (OMM)
 MESES_RECENTES_DO_CHIRPS = (
     3  # o definitivo do mês sai ao longo do mês seguinte; o que falta é 404
 )
@@ -813,15 +840,29 @@ def _anos_do_inmet(cliente: Cliente, agora: datetime) -> list[Alvo]:
     ]
 
 
-def _meses_do_chirps(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """Os GeoTIFFs dos meses recentes, do mais antigo ao mais novo; o que ainda não saiu é 404."""
+def _meses_do_chirps_de(agora: datetime, atras: range) -> list[Alvo]:
+    """Os GeoTIFFs dos meses `atras` (1 = o mês passado), do mais antigo ao mais novo."""
     hoje = agora.astimezone(FUSO_DA_B3).date()
     alvos = []
-    for atras in range(MESES_RECENTES_DO_CHIRPS, 0, -1):
-        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
+    for n in reversed(atras):
+        ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - n, 12)
         url = CHIRPS_MENSAL.format(ano=ano, mes=mes + 1)
         alvos.append(Alvo(url, ".tif.gz", arquivo_que_pode_faltar(url)))
     return alvos
+
+
+def _meses_do_chirps(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os GeoTIFFs dos meses recentes, do mais antigo ao mais novo; o que ainda não saiu é 404."""
+    return _meses_do_chirps_de(agora, range(1, MESES_RECENTES_DO_CHIRPS + 1))
+
+
+def _meses_do_chirps_historico(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """De janeiro de 1991 até o mês anterior aos recentes (que são de `chirps-mensal`)."""
+    hoje = agora.astimezone(FUSO_DA_B3).date()
+    desde_1991 = (hoje.year - PRIMEIRO_ANO_DO_CHIRPS) * 12 + hoje.month - 1
+    return _meses_do_chirps_de(
+        agora, range(MESES_RECENTES_DO_CHIRPS + 1, desde_1991 + 1)
+    )
 
 
 def _malhas_do_ibge(cliente: Cliente, agora: datetime) -> list[Alvo]:
@@ -1070,7 +1111,10 @@ FONTES: list[Fonte] = [
     Fonte("cftc-cot-disaggregated", "semanal", descobrir_cot, "zip"),
     # área de commodities, café primeiro (PR 7): os quatro levantamentos de cada safra, como publicados
     Fonte("conab-cafe-safra", "semanal", descobrir_cafe_conab),
-    # balanço mundial do café (USDA PSD é tabela; FAOSTAT fica para o PR 14; ICO só pesquisa)
+    # a página de cada levantamento: o "Publicado em" é o `divulgado_em` de `conab_cafe`
+    Fonte("conab-cafe-publicacao", "semanal", descobrir_data_do_cafe_conab, "html"),
+    # balanço mundial do café (USDA PSD e FAOSTAT são tabelas; ICO e FNC coleta normal com a marca
+    # registrada, ADR 0102)
     Fonte("usda-psd-cafe", "semanal", _um(PSD_DO_CAFE), "zip"),
     Fonte("faostat-cafe", "semanal", _um(FAOSTAT_PRODUCAO), "zip", pesada=True),
     Fonte(
@@ -1081,11 +1125,26 @@ FONTES: list[Fonte] = [
         ),
         "pdf",
     ),
-    # relatório mensal do Cecafé (café, PR 6): só pesquisa; falha enquanto o robots.txt proibir PDF
-    Fonte("cecafe-relatorio-mensal", "mensal", descobrir_cecafe, "pdf"),
+    Fonte(
+        "fnc-estadisticas",
+        "mensal",
+        descobrir_fnc,
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS,
+    ),
+    # relatório mensal do Cecafé (café, PR 6): um PDF por vez, com folga, citando a fonte (ADR 0102)
+    Fonte(
+        "cecafe-relatorio-mensal",
+        "mensal",
+        descobrir_cecafe,
+        "pdf",
+        pausa_minima=PAUSA_ENTRE_PEDIDOS_A_TERCEIROS_EM_SEGUNDOS,
+    ),
     # clima por região cafeeira: estações do INMET, chuva do CHIRPS e a malha municipal do IBGE
     Fonte("inmet-bdmep", "mensal", _anos_do_inmet, "zip", pesada=True),
     Fonte("chirps-mensal", "mensal", _meses_do_chirps, pesada=True),
+    # a carga única da normal (1991 em diante, ~6 GB): grupo fora do cron, só roda pelo id
+    # (`python -m scripts.arquivar_fontes chirps-historico`); depois o `chirps-mensal` segue sozinho
+    Fonte("chirps-historico", "carga-unica", _meses_do_chirps_historico, pesada=True),
     Fonte("ibge-malha-municipal", "mensal", _malhas_do_ibge, "json"),
     # área de café por município vista por satélite (MapBiomas, Coleção 11; CC BY 4.0, lida em
     # 18/10/2026): a planilha mora no Google Drive, atrás da página de confirmação de arquivo grande

@@ -594,7 +594,12 @@
   {
     "area": "acompanhar",
     "chave": "precos_de_referencia",
-    "contrato": null,
+    "contrato": {
+      "entradas": [],
+      "metodo": "GET",
+      "resposta": "PrecosDeReferenciaV1",
+      "rota": "/v1/precos-de-referencia"
+    },
     "descricao": "Café (arábica e robusta), algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI, com a fonte e a data de cada número.",
     "e_pro": false,
     "grupo": "Research",
@@ -695,6 +700,34 @@
     "somente_admin": false,
     "titulo": "Relatório da empresa",
     "url": "relatorio-empresa"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "busca_por_cnpj",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O CNPJ da empresa, com ou sem pontuação (aceita as letras do CNPJ novo).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "cnpj",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "POST",
+      "resposta": "BuscaPorCnpjV1",
+      "rota": "/v1/busca-por-cnpj"
+    },
+    "descricao": "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Busca por CNPJ",
+    "url": "busca-por-cnpj"
   },
   {
     "area": "ativo",
@@ -830,5 +863,77 @@
     "somente_admin": false,
     "titulo": "Planos e assinatura",
     "url": "planos"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "mapa_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "O café do mapa: arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "MapaDoCafeV1",
+      "rota": "/v1/commodities/cafe/mapa"
+    },
+    "descricao": "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada de cada região contra a normal, com a fonte e a data de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Mapa do café",
+    "url": "mapa-do-cafe"
+  },
+  {
+    "area": "acompanhar",
+    "chave": "painel_do_cafe",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "Arábica ou conilon (robusta).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "tipo",
+          "obrigatoria": false,
+          "opcoes": [
+            "arabica",
+            "conilon"
+          ],
+          "padrao": "arabica",
+          "tipo": "opcao"
+        },
+        {
+          "descricao": "A região do clima e do calendário; vazia, a de maior área do tipo.",
+          "maximo": null,
+          "minimo": null,
+          "nome": "regiao",
+          "obrigatoria": false,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "PainelDoCafeV1",
+      "rota": "/v1/painel-do-cafe"
+    },
+    "descricao": "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, clima e calendário, cada número com a data e a fonte.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": true,
+    "somente_admin": false,
+    "titulo": "Painel do café",
+    "url": "painel-do-cafe"
   }
 ]

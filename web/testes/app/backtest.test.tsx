@@ -3,7 +3,7 @@
 // Streamlit): os números têm de sair iguais, e o pedido vai por POST com os parâmetros da estratégia.
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TOKEN, abrirApp, respostaJson } from "./ajudantes";
+import { DO_APP, abrirApp, respostaJson } from "./ajudantes";
 import exemplo from "./exemplos/backtest.json";
 import comFicha from "./exemplos/ficha.json";
 
@@ -152,7 +152,8 @@ describe("salvar na minha conta", () => {
     expect(screen.getByRole("link", { name: "Ver minhas simulações" }).getAttribute("href")).toBe("/simulacoes");
     const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/salvar-simulacao");
     expect(pedido?.[1]?.method).toBe("POST");
-    expect(pedido?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+    // com a sessão (o cookie): sem token no pedido, com a prova de que saiu do app
+    expect(pedido?.[1]?.headers).toEqual({ ...DO_APP, "Content-Type": "application/json" });
     expect(JSON.parse(String(pedido?.[1]?.body))).toEqual({
       nome: "Minha regra de médias",
       backtest: corposDosPedidos(buscar)[0], // exatamente o que a tela mandou a /v1/backtest

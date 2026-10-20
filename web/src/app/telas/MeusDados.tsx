@@ -59,6 +59,33 @@ function Links({ inicial }: { inicial: MeusLinksV1 }) {
   );
 }
 
+/** Encerra a sessão em todos os aparelhos (perdeu o celular, usou um computador alheio). */
+function EncerrarSessoes() {
+  const conta = useConta();
+  const [falha, setFalha] = useState<string | null>(null);
+  const encerrar = () => {
+    setFalha(null);
+    conta?.sairDeTodos().catch((erro: unknown) => setFalha(mensagemDe(erro)));
+  };
+  return (
+    <section aria-label="Sessões abertas">
+      <h2>Sessões abertas</h2>
+      <p className="apagado">
+        Você fica conectado por 30 dias em cada aparelho. Se perdeu um aparelho ou entrou num computador de
+        outra pessoa, encerre todas as sessões: você precisará entrar de novo em todos.
+      </p>
+      <button type="button" className="botao" onClick={encerrar}>
+        Encerrar todas as sessões
+      </button>
+      {falha ? (
+        <p className="erro-do-app" role="alert">
+          {falha}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 export function MeusDados({ pagina }: { pagina: PaginaDoApp }) {
   const pedido = usarPedido<MeusLinksV1>(pagina.contrato?.rota ?? "", SEM_PARAMETROS);
   return (
@@ -75,6 +102,7 @@ export function MeusDados({ pagina }: { pagina: PaginaDoApp }) {
       ) : (
         <Links inicial={pedido.dados} />
       )}
+      <EncerrarSessoes />
       <h2>Na versão clássica</h2>
       <p className="apagado">
         Apagar a conta (não tem volta), a aparência, as Novidades por e-mail e o .zip dos PDFs guardados

@@ -22,6 +22,10 @@ def test_o_esquema_tem_as_rotas_de_leitura():
     assert caminhos == {
         "/v1/configuracao",
         "/v1/conta",
+        "/v1/sair",
+        "/v1/sair-de-todos",
+        "/v1/entrada/codigo",
+        "/v1/entrada/confirmar",
         "/v1/aceite-dos-termos",
         "/v1/eu",
         "/v1/visao-geral",
@@ -30,6 +34,8 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/comparacao",
         "/v1/backtest",
         "/v1/juros-e-inflacao",
+        "/v1/precos-de-referencia",
+        "/v1/commodities/cafe/mapa",
         "/v1/linha-do-tempo",
         "/v1/relatorio-empresa",
         "/v1/meu-plano",
@@ -42,6 +48,9 @@ def test_o_esquema_tem_as_rotas_de_leitura():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        "/v1/painel-do-cafe",
+        "/v1/busca-por-cnpj",
+        "/v1/busca-por-cnpj/pdf",
     }
 
 

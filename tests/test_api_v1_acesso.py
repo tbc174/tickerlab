@@ -19,6 +19,7 @@ from tests.ajudantes_da_api import (
     AGORA,
     CLIENT_ID,
     com_token,
+    da_sessao,
     gerar_chave,
     token,
 )
@@ -133,8 +134,8 @@ def ana(banco):
     return usuario
 
 
-def test_eu_mostra_o_plano_da_conta(cliente, ana, chave):
-    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+def test_eu_mostra_o_plano_da_conta(cliente, banco, ana):
+    resposta = cliente.get("/api/v1/eu", headers=da_sessao(banco, ana))
     assert resposta.status_code == 200
     dados = resposta.json()
     assert dados["plano"] == "gratuito"
@@ -142,9 +143,9 @@ def test_eu_mostra_o_plano_da_conta(cliente, ana, chave):
     assert "email" not in dados  # o e-mail não precisa sair (LGPD)
 
 
-def test_eu_tambem_sem_o_prefixo_api(cliente, ana, chave):
+def test_eu_tambem_sem_o_prefixo_api(cliente, banco, ana):
     """Como as outras rotas, funciona se o proxy tirar ou repassar o /api."""
-    assert cliente.get("/v1/eu", headers=com_token(token(chave))).status_code == 200
+    assert cliente.get("/v1/eu", headers=da_sessao(banco, ana)).status_code == 200
 
 
 def test_sem_token_401(cliente, ana):
@@ -155,32 +156,37 @@ def test_sem_token_401(cliente, ana):
     )
 
 
-def test_conta_que_nunca_entrou_no_app_401(cliente, banco, chave):
-    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave, sub="bia")))
-    assert resposta.status_code == 401
-
-
-def test_conta_sem_os_termos_atuais_403(cliente, banco, chave):
-    with banco.begin() as conexao:
-        entrar(conexao, "ana", "ana@exemplo.com")
+def test_token_do_google_nao_abre_as_rotas_so_a_sessao(cliente, ana, chave):
+    """R5: o Bearer saiu; o token do Google só serve para `POST /v1/conta`."""
     resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "sem-token"
+
+
+def test_conta_sem_os_termos_atuais_403(cliente, banco):
+    with banco.begin() as conexao:
+        ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
+    resposta = cliente.get("/api/v1/eu", headers=da_sessao(banco, ana))
     assert resposta.status_code == 403
 
 
-def test_desligada_responde_404_e_o_resto_continua(cliente, ana, chave, monkeypatch):
+def test_desligada_responde_404_e_o_resto_continua(cliente, banco, ana, monkeypatch):
     monkeypatch.setenv(VARIAVEL_DA_CHAVE, "0")
-    assert cliente.get("/api/v1/eu", headers=com_token(token(chave))).status_code == 404
+    assert cliente.get("/api/v1/eu", headers=da_sessao(banco, ana)).status_code == 404
     assert cliente.get("/api/saude").status_code in (200, 503)
 
 
 def test_sem_client_id_configurado_503(cliente, ana, chave, monkeypatch):
     monkeypatch.delenv(acesso.VARIAVEL_DO_CLIENT_ID)
-    assert cliente.get("/api/v1/eu", headers=com_token(token(chave))).status_code == 503
+    assert (
+        cliente.post("/api/v1/conta", headers=com_token(token(chave))).status_code
+        == 503
+    )
 
 
-def test_passou_do_limite_429(cliente, ana, chave, monkeypatch):
+def test_passou_do_limite_429(cliente, banco, ana, monkeypatch):
     monkeypatch.setattr(acesso, "LIMITE", acesso.LimiteDePedidos(por_minuto=2))
-    cabecalho = com_token(token(chave))
+    cabecalho = da_sessao(banco, ana)
     assert [
         cliente.get("/api/v1/eu", headers=cabecalho).status_code for _ in range(3)
     ] == [
@@ -205,7 +211,7 @@ def test_google_fora_do_ar_responde_503(banco, ana, chave, monkeypatch):
     monkeypatch.setattr(acesso, "_chaves_em_cache", None)
     monkeypatch.setattr(acesso.httpx, "get", falhar)
     app = api.criar_app({VARIAVEL_DA_CHAVE: "1"})
-    resposta = TestClient(app).get("/api/v1/eu", headers=com_token(token(chave)))
+    resposta = TestClient(app).post("/api/v1/conta", headers=com_token(token(chave)))
     assert resposta.status_code == 503
 
 
@@ -241,7 +247,7 @@ def test_configuracao_com_a_api_desligada_404(cliente, monkeypatch):
 
 @pytest.mark.parametrize(
     ("cabecalho", "motivo"),
-    [({}, "sem-token"), ({"Authorization": "Bearer lixo"}, "token-invalido")],
+    [({}, "sem-token"), ({"Authorization": "Bearer lixo"}, "sem-token")],
 )
 def test_401_diz_o_motivo(cliente, ana, cabecalho, motivo):
     resposta = cliente.get("/api/v1/eu", headers=cabecalho)
@@ -249,12 +255,10 @@ def test_401_diz_o_motivo(cliente, ana, cabecalho, motivo):
     assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == motivo
 
 
-def test_conta_nova_e_termos_dizem_o_motivo(cliente, banco, chave):
-    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave, sub="bia")))
-    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "conta-nova"
+def test_termos_dizem_o_motivo(cliente, banco):
     with banco.begin() as conexao:
-        entrar(conexao, "ana", "ana@exemplo.com")
-    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+        ana = entrar(conexao, "ana", "ana@exemplo.com")[0]
+    resposta = cliente.get("/api/v1/eu", headers=da_sessao(banco, ana))
     assert resposta.status_code == 403
     assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "termos"
 
@@ -305,9 +309,9 @@ def _virar(banco, usuario, plano):
 
 @pytest.mark.parametrize("caminho", ["/api/v1/pago-de-teste", "/v1/pago-de-teste"])
 def test_rota_paga_recusa_quem_nao_tem_o_plano_com_o_motivo(
-    cliente, ana, chave, chamadas, caminho
+    cliente, banco, ana, chamadas, caminho
 ):
-    resposta = cliente.get(caminho, headers=com_token(token(chave)))
+    resposta = cliente.get(caminho, headers=da_sessao(banco, ana))
     assert resposta.status_code == 403
     assert resposta.json()["detail"] == paginas.motivo_da_pagina(
         "gratuito", "pago_de_teste"
@@ -316,22 +320,18 @@ def test_rota_paga_recusa_quem_nao_tem_o_plano_com_o_motivo(
 
 
 @pytest.mark.parametrize("plano", ["gratuito", "plus"])
-def test_rota_paga_nao_calcula_quando_recusa(
-    cliente, banco, ana, chave, chamadas, plano
-):
+def test_rota_paga_nao_calcula_quando_recusa(cliente, banco, ana, chamadas, plano):
     _virar(banco, ana, plano)
     assert (
-        cliente.get(
-            "/api/v1/pago-de-teste", headers=com_token(token(chave))
-        ).status_code
+        cliente.get("/api/v1/pago-de-teste", headers=da_sessao(banco, ana)).status_code
         == 403
     )
     assert chamadas == []
 
 
-def test_rota_paga_responde_a_quem_tem_o_plano(cliente, banco, ana, chave, chamadas):
+def test_rota_paga_responde_a_quem_tem_o_plano(cliente, banco, ana, chamadas):
     _virar(banco, ana, "pro")
-    resposta = cliente.get("/api/v1/pago-de-teste", headers=com_token(token(chave)))
+    resposta = cliente.get("/api/v1/pago-de-teste", headers=da_sessao(banco, ana))
     assert resposta.status_code == 200
     assert chamadas == ["pago"]
 
@@ -342,22 +342,22 @@ def test_rota_paga_confere_o_login_antes_do_plano(cliente, ana, chamadas):
     assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "sem-token"
 
 
-def test_rota_sem_contrato_fecha(cliente, banco, ana, chave, chamadas):
+def test_rota_sem_contrato_fecha(cliente, banco, ana, chamadas):
     """Rota nova sem contrato de página nunca fica livre por esquecimento, nem para o Pro."""
     _virar(banco, ana, "pro")
-    resposta = cliente.get("/api/v1/sem-contrato", headers=com_token(token(chave)))
+    resposta = cliente.get("/api/v1/sem-contrato", headers=da_sessao(banco, ana))
     assert resposta.status_code == 500
     assert chamadas == []
 
 
-def test_termos_novos_nao_bloqueiam_baixar_os_meus_dados(cliente, banco, chave):
+def test_termos_novos_nao_bloqueiam_baixar_os_meus_dados(cliente, banco):
     """Achado 6c do Codex (LGPD): sem aceitar os termos novos, a pessoa ainda baixa os dados dela;
     o resto da API continua pedindo o aceite."""
     with banco.begin() as conexao:
-        entrar(
-            conexao, "ana", "ana@exemplo.com"
-        )  # conta sem o aceite dos termos atuais
-    cabecalho = com_token(token(chave))
+        ana = entrar(conexao, "ana", "ana@exemplo.com")[
+            0
+        ]  # conta sem o aceite dos termos atuais
+    cabecalho = da_sessao(banco, ana)
     assert cliente.get("/api/v1/eu", headers=cabecalho).status_code == 403
     resposta = cliente.get("/api/v1/meus-dados", headers=cabecalho)
     assert resposta.status_code == 200, resposta.text

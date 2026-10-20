@@ -9,8 +9,10 @@ import logging
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
+from base import dossie as dossie_da_base
 from src import dossie
 
 EXEMPLO = dossie.FICHA_DE_EXEMPLO
@@ -143,3 +145,116 @@ def test_dossie_tem_as_secoes_as_fontes_e_os_limites() -> None:
 )
 def test_mais_de_3_dias_e_ficha_velha(hoje: date, velha: bool) -> None:
     assert dossie.dossie_da_ficha(_ficha(), hoje).velha is velha
+
+
+SECAO_DA_REDE = {
+    "chave": "rede",
+    "titulo": "Ligações na rede",
+    "itens": [
+        {
+            "chave": "ligacoes",
+            "nome": "Ligações na rede",
+            "valor": 1,
+            "unidade": "empresas",
+        }
+    ],
+    "tabelas": {
+        "ligacoes_da_rede": [
+            {
+                "relacao": "Controlada",
+                "entidade": "CPFL Paulista",
+                "cnpj": "33.050.196/0001-88",
+                "participacao": 100.0,
+                "desde": "2015-01-01",
+                "documento": "Formulário de Referência (CVM)",
+            }
+        ],
+        "identificadores_da_empresa": [
+            {"identificador": "Ticker", "valor": "CPFE3", "desde": "2010-01-01"}
+        ],
+    },
+    "paragrafos": [],
+    "fontes": ["ODbL (dados abertos da CVM; citar a fonte)"],
+}
+
+
+def _com_a_rede(tmp_path: Path) -> Path:
+    bruta = _bruta()
+    bruta["secoes"].append(SECAO_DA_REDE)
+    return _pasta(tmp_path, bruta)
+
+
+def test_secao_da_rede_chega_ao_app_com_as_tabelas(tmp_path: Path) -> None:
+    ficha = dossie.ficha_do(CPFL, _com_a_rede(tmp_path))
+    assert ficha is not None
+    rede = next(s for s in ficha.secoes if s.chave == "rede")
+    assert set(rede.tabelas) == {"ligacoes_da_rede", "identificadores_da_empresa"}
+    escrita = next(s for s in dossie.secoes_da_ficha(ficha) if s.chave == "rede")
+    assert escrita.tabelas["ligacoes_da_rede"][0]["Participação"] == "100%"
+
+
+def test_relatorio_da_empresa_ignora_as_secoes_do_molde_b(tmp_path: Path) -> None:
+    """O molde A fica igual (a análise escrita confere o hash dele): a seção da rede é do molde B."""
+    sem_a_rede = dossie.ficha_do(CPFL, _pasta(tmp_path))
+    outra = tmp_path / "outra"
+    outra.mkdir()
+    com_a_rede = dossie.ficha_do(CPFL, _com_a_rede(outra))
+    assert sem_a_rede is not None and com_a_rede is not None
+    assert dossie.ficha_do_molde_a(com_a_rede) == dossie.ficha_do_molde_a(sem_a_rede)
+
+
+def test_ficha_so_com_o_molde_b_nao_da_dossie_ao_molde_a(tmp_path: Path) -> None:
+    bruta = _bruta() | {"secoes": [SECAO_DA_REDE]}
+    ficha = dossie.ficha_do(CPFL, _pasta(tmp_path, bruta))
+    assert ficha is not None
+    assert dossie.ficha_do_molde_a(ficha) is None
+    assert dossie.ficha_do_molde_a(None) is None
+
+
+def _secao_do_setor() -> dict:
+    """A seção `setor` como a noite a grava (molde D, plano de 19/10/2026, PR 1)."""
+    setor = next(
+        s for s in dossie_da_base.SETORES_DO_LANCAMENTO if s.chave == "eletricas"
+    )
+    ligacoes = pd.DataFrame(
+        {
+            "fonte": ["aneel-samp"],
+            "chave": ["33050196000188"],
+            "nome": ["CPFL Paulista"],
+            "cnpj_companhia": [CPFL],
+            "via": ["controlada"],
+            "principal": [True],
+            "desde": [pd.Timestamp("2010-05-01")],
+        }
+    )
+    consumidores = pd.DataFrame(
+        {
+            "ano": [2025, 2025],
+            "chave": ["33050196000188", "99999999000199"],
+            "valor": [110.0, 890.0],
+            "meses": [12, 12],
+            "ultimo_mes": [pd.Timestamp("2025-12-31")] * 2,
+        }
+    )
+    membros = dossie_da_base.membros_do_setor(
+        setor,
+        pd.DataFrame({"cnpj": [CPFL], "empresa": ["CPFL ENERGIA S.A."]}),
+        ligacoes,
+    )
+    secao = dossie_da_base.secao_setor(
+        setor, membros, {"aneel_consumidores": consumidores}, ligacoes, {}
+    )
+    assert secao is not None
+    return json.loads(json.dumps(secao, allow_nan=False))
+
+
+def test_relatorio_da_empresa_ignora_a_secao_do_setor(tmp_path: Path) -> None:
+    """A ficha que leva o setor abre no app, e o molde A dela fica como era (o setor é do molde D)."""
+    sem_o_setor = dossie.ficha_do(CPFL, _pasta(tmp_path))
+    outra = tmp_path / "outra"
+    outra.mkdir()
+    bruta = _bruta()
+    bruta["secoes"].append(_secao_do_setor())
+    com_o_setor = dossie.ficha_do(CPFL, _pasta(outra, bruta))
+    assert sem_o_setor is not None and com_o_setor is not None
+    assert dossie.ficha_do_molde_a(com_o_setor) == dossie.ficha_do_molde_a(sem_o_setor)

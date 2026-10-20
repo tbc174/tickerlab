@@ -500,6 +500,16 @@ def test_setor_regulado_soma_as_entidades_principais_e_a_participacao() -> None:
     assert secao["tabelas"]["entidades_ligadas"][0]["nome"] == "CPFL Paulista"
 
 
+def test_fontes_do_setor_sao_so_as_das_series_da_empresa() -> None:
+    # regressão (18/10/2026): a seção listava as licenças de todas as agências (SUSEP, ANAC, ANP...)
+    secao = dossie.secao_setor_regulado(
+        _ligacoes_b13(), {"aneel_consumidores": _serie_aneel()}
+    )
+    assert secao is not None
+    assert secao["fontes"] == dossie.fontes_das_tabelas(("empresa_serie", "aneel_samp"))
+    assert not any("SUSEP" in fonte or "ANAC" in fonte for fonte in secao["fontes"])
+
+
 def test_ano_sem_numero_da_empresa_fica_fora_da_serie() -> None:
     # 2026: a agência tem dado, a empresa ainda não; o item fica com 2025
     serie = pd.concat(

@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 from collections.abc import Callable
+from dataclasses import asdict
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal, TypeVar
 
@@ -28,6 +29,7 @@ from src import compartilhamentos as comp
 from src import juros_e_inflacao as ji
 from src import linha_do_tempo as ldt
 from src import presets as research_presets
+from src.analise_escrita.exibicao import com_analise
 from src.api_v1 import contexto, esquemas
 from src.api_v1.acesso import (
     VARIAVEL_DO_CLIENT_ID,
@@ -65,8 +67,12 @@ from src.banco.eventos import Evento, eventos_dos_tickers
 from src.banco.relatorio_empresa import entradas_do_relatorio
 from src.banco.usuarios import Usuario
 from src.bcb import FUSO
+from src.busca_por_cnpj import PedidoInvalidoError, RelatorioDoCnpj, buscar_por_cnpj
 from src.cdi import CDIIndisponivelError
 from src.cobranca import Assinatura, buscar_assinatura
+from src.commodities import painel_de_precos
+from src.commodities.cafe import pacote_do_mapa
+from src.commodities.cafe import painel as painel_do_cafe
 from src.comparacao import MAX_ATIVOS, interpretar_tickers
 from src.dados import DadosIndisponiveisError, normalizar_ticker
 from src.estrategias import ESTRATEGIAS, gerar_posicao
@@ -86,6 +92,7 @@ from src.planos import (
     tabela_de_planos,
     texto_do_uso,
 )
+from src.relatorio_do_cnpj_pdf import relatorio_do_cnpj
 from src.relatorio_empresa import montar as montar_relatorio
 from src.simulacoes import (
     endereco_no_app_novo,
@@ -840,6 +847,46 @@ def juros_e_inflacao(_conta: Conta) -> esquemas.JurosEInflacaoV1:
     return esquemas.de_juros_e_inflacao(ji.montar_painel(lidas, cdi, hoje), hoje)
 
 
+def _painel_de_precos(dia: date) -> painel_de_precos.PainelDePrecos:
+    """O painel de preços de referência do acervo; vazio se o banco ainda não tem a tabela."""
+    try:
+        with obter_engine().connect() as conexao:
+            return painel_de_precos.montar_painel(conexao, dia)
+    except Exception as erro:
+        if tabela_inexistente(erro):
+            return painel_de_precos.PainelDePrecos(itens=(), spread=())
+        raise
+
+
+@router.get("/precos-de-referencia")
+def precos_de_referencia(_conta: Conta) -> esquemas.PrecosDeReferenciaV1:
+    """Café, algodão e fertilizantes: o preço mensal do Banco Mundial e do FMI; 503 sem coleta."""
+    hoje = hoje_no_brasil()
+    lido = _painel_de_precos(hoje)
+    if not lido.itens:
+        raise HTTPException(status_code=503, detail=painel_de_precos.SEM_COLETA)
+    return esquemas.de_precos_de_referencia(lido, hoje)
+
+
+TipoDeCafe = Literal[
+    "arabica", "conilon"
+]  # os TIPOS_DO_MAPA do pacote do mapa e os TIPOS do painel
+
+
+@router.get("/commodities/cafe/mapa")
+def mapa_do_cafe(_conta: Conta, tipo: TipoDeCafe = "arabica") -> esquemas.MapaDoCafeV1:
+    """Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia
+    os deixou; 503 se o pacote ainda não chegou a este servidor."""
+    pacote = pacote_do_mapa.ler_pacote()
+    if pacote is None:
+        raise HTTPException(
+            status_code=503,
+            detail="O mapa do café ainda não foi montado neste servidor.",
+        )
+    vista = pacote_do_mapa.montar_vista(pacote, tipo, hoje_no_brasil().month)
+    return esquemas.MapaDoCafeV1.model_validate(asdict(vista))
+
+
 def _eventos_do_ativo(
     ticker: str, desde: date
 ) -> tuple[list[Evento], dict[str, topicos.LeituraDoTopico]]:
@@ -938,7 +985,58 @@ def relatorio_da_empresa(conta: Conta, ticker: Ticker) -> esquemas.RelatorioDaEm
         raise HTTPException(status_code=404, detail=SO_B3)
     if entradas.dados.contas.empty:
         raise HTTPException(status_code=404, detail=SEM_DEMONSTRACOES)
-    return esquemas.de_relatorio_da_empresa(montar_relatorio(entradas, conta.plano))
+    relatorio = montar_relatorio(entradas, conta.plano)
+    return esquemas.de_relatorio_da_empresa(
+        com_analise(relatorio, entradas, conta.plano)
+    )
+
+
+class PedidoDeBuscaPorCnpjV1(BaseModel):
+    cnpj: str  # com ou sem pontuação, com letras; sem limite aqui para o 422 não repetir o texto
+
+
+def _relatorio_do_pedido(
+    conta: Usuario, pedido: PedidoDeBuscaPorCnpjV1
+) -> RelatorioDoCnpj:
+    """O relatório do CNPJ pedido (a rota JSON e a do PDF respondem do mesmo objeto, com as mesmas regras)."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = buscar_por_cnpj(conexao, pedido.cnpj, conta.plano)
+    except PedidoInvalidoError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+    log.info("busca por cnpj: %s", relatorio.situacao)  # só a contagem, nunca o CNPJ
+    return relatorio
+
+
+@router.post("/busca-por-cnpj")
+def busca_por_cnpj(
+    conta: Conta, pedido: PedidoDeBuscaPorCnpjV1
+) -> esquemas.BuscaPorCnpjV1:
+    """O relatório do CNPJ de uma companhia aberta: cadastro, grupo, rede e fatos públicos, com fonte.
+
+    É POST porque o CNPJ de MEI é dado pessoal (ADR 0077, item 1): no corpo ele não vai para o log
+    de acesso. O app também não o grava no log, só a contagem de encontradas e de fora da base.
+    """
+    return esquemas.de_busca_por_cnpj(_relatorio_do_pedido(conta, pedido))
+
+
+NOME_DO_PDF_DO_CNPJ = (
+    "relatorio-do-cnpj-tickerlab.pdf"  # sem o CNPJ: o nome não vai para o disco alheio
+)
+
+
+@router.post("/busca-por-cnpj/pdf", response_class=Response)
+def busca_por_cnpj_em_pdf(conta: Conta, pedido: PedidoDeBuscaPorCnpjV1) -> Response:
+    """O mesmo relatório da rota acima em PDF, com "Limites e cuidados" (mesmo acesso, mesmo plano)."""
+    conteudo = relatorio_do_cnpj(_relatorio_do_pedido(conta, pedido))
+    return Response(
+        content=conteudo,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{NOME_DO_PDF_DO_CNPJ}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 def openapi_v1() -> dict:
@@ -946,10 +1044,12 @@ def openapi_v1() -> dict:
     from fastapi import FastAPI
 
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.entrada import router as router_da_entrada
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
     app.include_router(router_da_conta)
+    app.include_router(router_da_entrada)
     return app.openapi()
 
 
@@ -1221,3 +1321,27 @@ def pulse_da_conta(
         sem_ativos=pulse.SEM_ATIVOS,
         nota_da_variacao=pulse.NOTA_DA_VARIACAO,
     )
+
+
+@router.get("/painel-do-cafe")
+def painel_do_cafe_v1(
+    _conta: Conta,
+    tipo: Annotated[
+        TipoDeCafe, Query(description="Arábica ou conilon (robusta).")
+    ] = "arabica",
+    regiao: Annotated[
+        str | None,
+        Query(
+            description="A região do clima e do calendário; vazia, a de maior área do tipo."
+        ),
+    ] = None,
+) -> esquemas.PainelDoCafeV1:
+    """O painel do café de hoje: preço de referência, câmbio, fundos, exportações, balanço, safra,
+    clima, calendário e contrapartes, cada bloco com a fonte e a data (sem dado: o motivo)."""
+    if regiao is not None and regiao not in painel_do_cafe.POR_ID:
+        raise HTTPException(
+            status_code=422, detail=f"Região de café desconhecida: {regiao}."
+        )
+    with obter_engine().connect() as conexao:
+        painel = painel_do_cafe.montar_painel(conexao, tipo, hoje_no_brasil(), regiao)
+    return esquemas.de_painel_do_cafe(painel)

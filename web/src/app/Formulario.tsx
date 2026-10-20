@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 import { type EntradaDoContrato, conteudoDoApp } from "../conteudo";
 import { TICKER_DO_EXEMPLO } from "../site/textos";
 import type { Parametros } from "./api";
+import { CampoDoAtivo } from "./CampoDoAtivo";
 
 const NOMES: Record<string, string> = {
   ticker: "Ativo",
@@ -316,6 +317,18 @@ export function Formulario({ entradas, valores, aoAnalisar, ocultar = [] }: Prop
           key={e.nome}
           estrategia={rascunho.estrategia ?? ""}
           valor={rascunho[e.nome] ?? ""}
+          aoMudar={(v) => mudar(e.nome, v)}
+        />
+      );
+    }
+    if (e.nome === "ticker") {
+      return (
+        <CampoDoAtivo
+          key={e.nome}
+          rotulo={NOMES.ticker}
+          descricao={e.descricao}
+          obrigatorio={e.obrigatoria}
+          valor={rascunho.ticker ?? ""}
           aoMudar={(v) => mudar(e.nome, v)}
         />
       );

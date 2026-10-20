@@ -281,6 +281,53 @@ def test_sem_preco_e_com_prejuizo_os_multiplos_explicam(banco):
     assert not f["conversao_de_caixa"].disponivel
 
 
+def test_dy_valor_de_mercado_e_multiplos_da_firma_pelas_formulas(banco):
+    """D3 mudada em 20/10/2026: DY e múltiplos de mercado com o preço do Yahoo."""
+    dados = _empresa(banco, PETROBRAS)
+    f = fu.calcular(dados, preco=37.5)
+    ttm, base_12m, _ = fu.doze_meses(dados.contas)
+    acoes = f["lucro"].valor / f["lpa"].valor
+    mercado = 37.5 * acoes
+    firma = mercado + f["divida_liquida"].valor
+    assert f["valor_de_mercado"].valor == pytest.approx(mercado)
+    assert f["valor_da_firma"].valor == pytest.approx(firma)
+    assert f["dividend_yield"].valor == pytest.approx(
+        abs(ttm["dividendos_pagos"]) / mercado
+    )
+    assert f["dividend_yield"].unidade == fu.FRACAO
+    assert f["dividend_yield"].base == base_12m
+    ebitda = ttm["ebit"] + ttm["depreciacao"]
+    assert f["ev_ebitda"].valor == pytest.approx(firma / ebitda)
+    assert f["ev_ebit"].valor == pytest.approx(firma / ttm["ebit"])
+    assert f["p_receita"].valor == pytest.approx(mercado / ttm["receita"])
+
+
+def test_banco_tem_dy_mas_nao_os_multiplos_da_firma(banco):
+    f = fu.calcular(_empresa(banco, ITAU), preco=38.0)
+    assert f["dividend_yield"].disponivel and f["valor_de_mercado"].disponivel
+    for chave in ("valor_da_firma", "ev_ebitda", "ev_ebit", "p_receita"):
+        assert not f[chave].disponivel and "bancos" in f[chave].motivo
+
+
+def test_sem_preco_os_de_mercado_explicam(banco):
+    f = fu.calcular(_empresa(banco, WEG), preco=None)
+    for chave in fu.DE_MERCADO:
+        assert not f[chave].disponivel and "preço" in f[chave].motivo
+
+
+def test_ebitda_negativo_ou_sem_dividendos_explicam(banco):
+    dados = _empresa(banco, WEG)
+    contas = dados.contas.copy()
+    contas.loc[contas["conta"] == "ebit", "valor"] = -1e12
+    contas = contas[contas["conta"] != "dividendos_pagos"]
+    f = fu.calcular(replace(dados, contas=contas), preco=50.0)
+    assert not f["ev_ebitda"].disponivel and "EBITDA" in f["ev_ebitda"].motivo
+    assert not f["ev_ebit"].disponivel and "EBIT" in f["ev_ebit"].motivo
+    # sem a linha no caixa não dá para saber se não pagou ou se a linha tem outro nome
+    assert not f["dividend_yield"].disponivel
+    assert "dividendos" in f["dividend_yield"].motivo
+
+
 def test_crescimento_pede_anos_suficientes(banco):
     dados = _empresa(banco, WEG)
     curto = fu.calcular(dados, preco=50.0, anos=5)["crescimento_receita"]

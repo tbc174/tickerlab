@@ -432,6 +432,22 @@ def _coluna_anual(tabela: pd.DataFrame, nome: str) -> pd.Series:
     return tabela[nome].astype(float)
 
 
+def _proventos_por_ano(proventos: pd.DataFrame) -> pd.DataFrame:
+    """Uma linha do FRE por ano: a do exercício mais tarde no ano e, nele, a versão mais recente.
+
+    O FRE de algumas empresas (o Banco do Brasil, por exemplo) traz um exercício parcial
+    (31/03/2010) ao lado do cheio (31/12/2010); dois no mesmo ano quebravam o `reindex` por ano.
+    """
+    exercicio = pd.to_datetime(proventos["exercicio"])
+    ordem = ["ano", "exercicio_"] + (["versao"] if "versao" in proventos else [])
+    return (
+        proventos.assign(ano=exercicio.dt.year, exercicio_=exercicio)
+        .sort_values(ordem)
+        .drop_duplicates("ano", keep="last")
+        .set_index("ano")
+    )
+
+
 def dividendos_e_diluicao(
     dados: DadosDaEmpresa,
     proventos: pd.DataFrame | None = None,
@@ -465,9 +481,7 @@ def dividendos_e_diluicao(
         }
     )
     if proventos is not None and not proventos.empty:
-        do_fre = proventos.assign(
-            ano=pd.to_datetime(proventos["exercicio"]).dt.year
-        ).set_index("ano")
+        do_fre = _proventos_por_ano(proventos)
         historico["dividendo_fre"] = do_fre["dividendo_total"].reindex(historico.index)
         historico["payout_fre"] = do_fre["payout"].reindex(historico.index)
     ajustadas = historico["acoes_ajustadas"].dropna()

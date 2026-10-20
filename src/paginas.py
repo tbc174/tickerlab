@@ -157,6 +157,15 @@ class Pagina:
         True  # False: fora do menu, mas com endereço (Termos e Privacidade, no rodapé)
     )
     contrato: Contrato | None = None  # páginas que já têm rota na API de leitura
+    # True: a tela existe só no app em React; o Streamlit (/classico) não a mostra nem lhe dá endereço.
+    # Toda tela nova nasce assim (ADR 0062, Emenda 2); o `grupo` fica só porque o campo é obrigatório.
+    so_no_app_novo: bool = False
+
+    def __post_init__(self) -> None:
+        if self.so_no_app_novo and self.contrato is None:
+            raise ValueError(
+                f"{self.chave}: página só do app novo precisa de contrato (é a rota que o React pede)"
+            )
 
     @property
     def url(self) -> str:
@@ -503,6 +512,9 @@ PAGINAS = (
         "FMI, com a fonte e a data de cada número.",
         area=AREA_ACOMPANHAR,
         precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET", "/v1/precos-de-referencia", (), "PrecosDeReferenciaV1"
+        ),
     ),
     Pagina(
         "linha_do_tempo",
@@ -552,6 +564,30 @@ PAGINAS = (
         contrato=Contrato(
             "GET", "/v1/relatorio-empresa", (ATIVO,), "RelatorioDaEmpresaV1"
         ),
+    ),
+    Pagina(
+        "busca_por_cnpj",
+        "Busca por CNPJ",
+        GRUPO_RESEARCH,
+        ":material/manage_search:",
+        "Digite o CNPJ de uma companhia aberta e veja quem é, de que grupo faz parte, com quem a "
+        "rede de empresas a liga e os fatos públicos, com a data e a fonte de cada linha.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "POST",
+            "/v1/busca-por-cnpj",
+            (
+                Entrada(
+                    "cnpj",
+                    "texto",
+                    "O CNPJ da empresa, com ou sem pontuação (aceita as letras do CNPJ novo).",
+                    obrigatoria=True,
+                ),
+            ),
+            "BuscaPorCnpjV1",
+        ),
+        so_no_app_novo=True,
     ),
     Pagina(
         "por_dentro",
@@ -658,14 +694,75 @@ PAGINAS = (
         precisa_do_ativo=False,
         somente_admin=True,
     ),
+    Pagina(
+        "mapa_do_cafe",
+        "Mapa do café",
+        GRUPO_RESEARCH,
+        ":material/map:",
+        "Onde se produz café arábica e conilon, município a município (IBGE), e a chuva e a geada "
+        "de cada região contra a normal, com a fonte e a data de cada número.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/commodities/cafe/mapa",
+            (
+                Entrada(
+                    "tipo",
+                    "opcao",
+                    "O café do mapa: arábica ou conilon (robusta).",
+                    padrao="arabica",
+                    opcoes=("arabica", "conilon"),
+                ),
+            ),
+            "MapaDoCafeV1",
+        ),
+        so_no_app_novo=True,
+    ),
+    Pagina(
+        "painel_do_cafe",
+        "Painel do café",
+        GRUPO_RESEARCH,
+        ":material/coffee:",
+        "Café arábica ou conilon: preço de referência, câmbio, fundos, exportações, safra da CONAB, "
+        "clima e calendário, cada número com a data e a fonte.",
+        area=AREA_ACOMPANHAR,
+        precisa_do_ativo=False,
+        contrato=Contrato(
+            "GET",
+            "/v1/painel-do-cafe",
+            (
+                Entrada(
+                    "tipo",
+                    "opcao",
+                    "Arábica ou conilon (robusta).",
+                    padrao="arabica",
+                    opcoes=("arabica", "conilon"),
+                ),
+                Entrada(
+                    "regiao",
+                    "texto",
+                    "A região do clima e do calendário; vazia, a de maior área do tipo.",
+                ),
+            ),
+            "PainelDoCafeV1",
+        ),
+        so_no_app_novo=True,
+    ),
 )
 
 POR_CHAVE = {p.chave: p for p in PAGINAS}
 PAGINA_INICIAL = "inicio"
 
 
+def paginas_do_classico() -> list[Pagina]:
+    """As páginas que o Streamlit mostra: todas menos as que só existem no app em React."""
+    return [p for p in PAGINAS if not p.so_no_app_novo]
+
+
 def paginas_do_grupo(grupo: str) -> list[Pagina]:
-    return [p for p in PAGINAS if p.grupo == grupo]
+    """As páginas do grupo no menu do Streamlit (os grupos só existem lá)."""
+    return [p for p in paginas_do_classico() if p.grupo == grupo]
 
 
 def paginas_da_area(area: str) -> list[Pagina]:

@@ -14,21 +14,31 @@ Regras (testes em `tests/test_base_conab_cafe.py`):
   (`src/commodities/cafe`) vão para tela e API citando a CONAB e a data do levantamento (ADR 0102; a
   licença CC BY-ND 3.0 fica registrada na marca da fonte).
 - **Sem olhar o futuro:** `como_estava_em(tabela, dia)` só usa o que já tinha sido divulgado em `dia`.
+- **A data é a da CONAB:** vem do "Publicado em" da página de cada levantamento (o arquivista guarda a página).
+  Sem a página, ou com uma data fora de ordem na safra, a linha usa o dia da coleta e fica marcada em
+  `divulgado_aproximado` (o dia da coleta nunca adianta o dado, mas pode atrasá-lo).
 - **Arábica e conilon separados:** `tipo` em {arabica, conilon, total} em toda linha.
+- **Dois desenhos de planilha, a mesma saída:** o atual ("Safra 2026" nas colunas, "REGIÃO/UF" no canto) e o
+  das planilhas da safra 2024 e do 2º levantamento de 2025, que a CONAB escreveu com as letras junto do ano
+  ("Safra 2024 (b)") e, numa aba, sem o texto do canto. O leitor atual vale primeiro; só se ele não reconhece
+  a planilha entra o antigo, escolhido pelo que a aba tem (não pelo ano). Desenho desconhecido segue pulado.
 """
 
 import io
 import re
 import unicodedata
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 
 import pandas as pd
 
 FONTE = "conab-cafe-safra"
+FONTE_DA_PAGINA = "conab-cafe-publicacao"
 LEVANTAMENTOS = (1, 2, 3, 4)
 COLUNAS = (
     "safra", "levantamento", "tipo", "uf", "area_formacao_ha", "area_producao_ha",
-    "produtividade_sc_ha", "producao_mil_sacas", "divulgado_em",
+    "produtividade_sc_ha", "producao_mil_sacas", "divulgado_em", "divulgado_aproximado",
 )  # fmt: skip
 CHAVE = ("safra", "levantamento", "tipo", "uf", "divulgado_em")
 TIPOS = {"total": "total", "arabica": "arabica", "conilon": "conilon"}
@@ -72,7 +82,13 @@ BLOCOS_DE_PRODUCAO = {
 BLOCOS_DE_AREA = {"AREA EM FORMACAO": "area_formacao_ha"}
 ABA = re.compile(r"^(\d+)\s+cafe\s+(total|arabica|conilon)(\s+-\s+area)?\s*$")
 SAFRA_NO_ENDERECO = re.compile(r"/(\d)o-levantamento-de-cafe-safra-(\d{4})/")
+PAGINA_DOS_LEVANTAMENTOS = "https://www.gov.br/conab/pt-br/atuacao/informacoes-agropecuarias/safras/safra-de-cafe"
+PUBLICADO_EM = re.compile(
+    rb'documentPublished.*?class="value">\s*(\d{2})/(\d{2})/(\d{4})', re.DOTALL
+)
 LINHAS_DE_CABECALHO = 3  # títulos, safras e letras (a), (b)...
+SAFRA_ATUAL = re.compile(r"\s*Safra\s+(\d{4})\s*")
+SAFRA_COM_LETRA = re.compile(r"\s*Safra\s+(\d{4})(?:\s*\([a-z]\))?\s*")
 
 
 class ErroDeLeitura(ValueError):
@@ -92,6 +108,56 @@ def identificar(url: str) -> tuple[int, int] | None:
     return (int(achado.group(1)), int(achado.group(2))) if achado else None
 
 
+def pagina_do_levantamento(levantamento: int, safra: int) -> str:
+    """Endereço da página do levantamento, onde a CONAB escreve o "Publicado em"."""
+    nome = f"{levantamento}o-levantamento-de-cafe-safra-{safra}"
+    return f"{PAGINA_DOS_LEVANTAMENTOS}/{nome}/{nome}"
+
+
+def data_de_publicacao(pagina: bytes) -> date | None:
+    """O dia do "Publicado em" da página de um levantamento; None se a página não o traz."""
+    achado = PUBLICADO_EM.search(pagina)
+    if achado is None:
+        return None
+    try:
+        return date(int(achado.group(3)), int(achado.group(2)), int(achado.group(1)))
+    except ValueError:
+        return None
+
+
+def datas_em_ordem(
+    datas: dict[tuple[int, int], date | None],
+) -> dict[tuple[int, int], date | None]:
+    """Tira a data que contraria os outros levantamentos da mesma safra (virou None).
+
+    Dentro de uma safra o levantamento 2 não sai antes do 1. Uma página reeditada pode trazer outra data
+    (a CONAB mostra o 1º de 2024 publicado depois do 3º): fica a maior sequência em ordem, o resto vira
+    None, e a linha usa o dia da coleta marcado como aproximado.
+    """
+    boas: dict[tuple[int, int], date | None] = {}
+    for safra in {s for s, _ in datas}:
+        itens = sorted((lev, d) for (s, lev), d in datas.items() if s == safra and d)
+        melhor: list[tuple[int, date]] = []
+        cadeias: list[list[tuple[int, date]]] = []
+        for i, item in enumerate(itens):
+            anteriores = [c for c in cadeias[:i] if c[-1][1] <= item[1]]
+            cadeias.append(max(anteriores, key=len, default=[]) + [item])
+            melhor = max(melhor, cadeias[-1], key=len)
+        certas = {lev for lev, _ in melhor}
+        for (s, lev), d in datas.items():
+            if s == safra:
+                boas[(s, lev)] = d if lev in certas else None
+    return boas
+
+
+@dataclass(frozen=True)
+class Desenho:
+    """Como achar a linha de safras de uma aba: o padrão do rótulo "Safra AAAA" e onde fica o cabeçalho."""
+
+    safra: re.Pattern[str]
+    cabecalho: Callable[[pd.DataFrame, re.Pattern[str]], int]
+
+
 def _uf_da_linha(rotulo: object) -> str | None:
     texto = str(rotulo).strip()
     if texto in UFS or texto == "BRASIL":
@@ -99,25 +165,39 @@ def _uf_da_linha(rotulo: object) -> str | None:
     return "OUTROS" if texto.startswith("OUTROS") else None
 
 
-def _linha_do_cabecalho(aba: pd.DataFrame) -> int:
+def _linha_do_cabecalho(aba: pd.DataFrame, _safra: re.Pattern[str]) -> int:
     for i in range(len(aba)):
         if _simples(aba.iat[i, 0]).startswith("regi"):
             return i
     raise ErroDeLeitura("aba sem a linha de cabeçalho 'REGIÃO/UF'")
 
 
-def _safra_da_aba(aba: pd.DataFrame, cabecalho: int) -> int:
+def _linha_do_cabecalho_pelas_safras(aba: pd.DataFrame, safra: re.Pattern[str]) -> int:
+    """A linha logo acima da primeira com "Safra AAAA": não depende do texto do canto (que a CONAB já errou)."""
+    for i in range(1, len(aba)):
+        if any(safra.fullmatch(str(v)) for v in aba.iloc[i]):
+            return i - 1
+    raise ErroDeLeitura("aba sem colunas 'Safra AAAA'")
+
+
+DESENHO_ATUAL = Desenho(SAFRA_ATUAL, _linha_do_cabecalho)
+DESENHO_ANTIGO = Desenho(SAFRA_COM_LETRA, _linha_do_cabecalho_pelas_safras)
+
+
+def _safra_da_aba(aba: pd.DataFrame, cabecalho: int, padrao: re.Pattern[str]) -> int:
     anos = [
         int(m.group(1))
         for v in aba.iloc[cabecalho + 1]
-        if (m := re.fullmatch(r"\s*Safra\s+(\d{4})\s*", str(v)))
+        if (m := padrao.fullmatch(str(v)))
     ]
     if not anos:
         raise ErroDeLeitura("aba sem colunas 'Safra AAAA'")
     return max(anos)
 
 
-def _colunas_da_safra(aba: pd.DataFrame, cabecalho: int, safra: int) -> dict[str, int]:
+def _colunas_da_safra(
+    aba: pd.DataFrame, cabecalho: int, safra: int, padrao: re.Pattern[str]
+) -> dict[str, int]:
     """Título normalizado de cada bloco → índice da coluna da safra do levantamento."""
     achadas: dict[str, int] = {}
     titulos = aba.iloc[cabecalho]
@@ -127,16 +207,19 @@ def _colunas_da_safra(aba: pd.DataFrame, cabecalho: int, safra: int) -> dict[str
         if not titulo or titulo == "NAN":
             continue
         for k in range(c, min(c + 3, aba.shape[1])):
-            if re.fullmatch(rf"\s*Safra\s+{safra}\s*", str(anos.iat[k])):
+            achado = padrao.fullmatch(str(anos.iat[k]))
+            if achado and int(achado.group(1)) == safra:
                 achadas[titulo] = k
                 break
     return achadas
 
 
-def _ler_aba(aba: pd.DataFrame, blocos: dict[str, str]) -> tuple[int, pd.DataFrame]:
-    cabecalho = _linha_do_cabecalho(aba)
-    safra = _safra_da_aba(aba, cabecalho)
-    colunas = _colunas_da_safra(aba, cabecalho, safra)
+def _ler_aba(
+    aba: pd.DataFrame, blocos: dict[str, str], desenho: Desenho
+) -> tuple[int, pd.DataFrame]:
+    cabecalho = desenho.cabecalho(aba, desenho.safra)
+    safra = _safra_da_aba(aba, cabecalho, desenho.safra)
+    colunas = _colunas_da_safra(aba, cabecalho, safra, desenho.safra)
     faltam = [t for t in blocos if t not in colunas]
     if faltam:
         raise ErroDeLeitura(f"aba sem o bloco {faltam[0]!r}")
@@ -161,23 +244,16 @@ def _abas_por_tipo(
     return abas
 
 
-def ler_levantamento(
-    conteudo: bytes, levantamento: int, divulgado_em: date
+def _ler_abas(
+    abas: dict[tuple[str, bool], pd.DataFrame], desenho: Desenho
 ) -> pd.DataFrame:
-    """Um levantamento (.xls ou .xlsx) como tabela de `COLUNAS`: uma linha por tipo e UF da safra em curso."""
-    if levantamento not in LEVANTAMENTOS:
-        raise ValueError(f"levantamento deve ser 1 a 4, veio {levantamento}")
-    try:
-        livro = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None)
-    except Exception as erro:
-        raise ErroDeLeitura(f"planilha da CONAB ilegível: {erro}") from erro
-    abas = _abas_por_tipo(livro)
+    """Os três tipos (produção e área) de um livro, num desenho só; ErroDeLeitura se algo não bate."""
     partes = []
     for tipo in TIPOS:
         if (tipo, False) not in abas or (tipo, True) not in abas:
             raise ErroDeLeitura(f"faltam as abas de {tipo} (produção e área)")
-        safra, producao = _ler_aba(abas[(tipo, False)], BLOCOS_DE_PRODUCAO)
-        safra_da_area, area = _ler_aba(abas[(tipo, True)], BLOCOS_DE_AREA)
+        safra, producao = _ler_aba(abas[(tipo, False)], BLOCOS_DE_PRODUCAO, desenho)
+        safra_da_area, area = _ler_aba(abas[(tipo, True)], BLOCOS_DE_AREA, desenho)
         if safra != safra_da_area:
             raise ErroDeLeitura(
                 f"safras diferentes nas abas de {tipo}: {safra} e {safra_da_area}"
@@ -186,9 +262,36 @@ def ler_levantamento(
         parte.insert(0, "tipo", tipo)
         parte.insert(0, "safra", safra)
         partes.append(parte)
-    tabela = pd.concat(partes, ignore_index=True)
+    return pd.concat(partes, ignore_index=True)
+
+
+def ler_levantamento(
+    conteudo: bytes,
+    levantamento: int,
+    divulgado_em: date,
+    aproximada: bool = False,
+) -> pd.DataFrame:
+    """Um levantamento (.xls ou .xlsx) como tabela de `COLUNAS`: uma linha por tipo e UF da safra em curso.
+
+    `aproximada`: `divulgado_em` é o dia da coleta, porque a data da CONAB não foi achada.
+    """
+    if levantamento not in LEVANTAMENTOS:
+        raise ValueError(f"levantamento deve ser 1 a 4, veio {levantamento}")
+    try:
+        livro = pd.read_excel(io.BytesIO(conteudo), sheet_name=None, header=None)
+    except Exception as erro:
+        raise ErroDeLeitura(f"planilha da CONAB ilegível: {erro}") from erro
+    abas = _abas_por_tipo(livro)
+    try:
+        tabela = _ler_abas(abas, DESENHO_ATUAL)
+    except ErroDeLeitura as erro_atual:
+        try:
+            tabela = _ler_abas(abas, DESENHO_ANTIGO)
+        except ErroDeLeitura:
+            raise erro_atual from None  # desenho desconhecido: o aviso é o do desenho atual
     tabela["levantamento"] = levantamento
     tabela["divulgado_em"] = pd.Timestamp(divulgado_em)
+    tabela["divulgado_aproximado"] = aproximada
     return tabela.reindex(columns=list(COLUNAS))
 
 

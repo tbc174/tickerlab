@@ -34,6 +34,16 @@ def test_taxa_anual_e_mensal_dao_o_mesmo():
     )
 
 
+def test_taxa_por_mes_dos_juros_simples_e_a_proporcional():
+    # 10% ao ano por 10 anos em juros simples dão R$ 20.000 (a equivalente dava R$ 19.568,97)
+    taxa = juros.taxa_por_mes(0.10, "ano", composto=False)
+    assert taxa == pytest.approx(0.10 / 12)
+    assert juros.montante(10000, taxa, 120, composto=False) == pytest.approx(20000)
+    assert juros.taxa_por_mes(0.01, "mes", composto=False) == 0.01
+    with pytest.raises(ValueError):
+        juros.taxa_por_mes(-1, "ano", composto=False)
+
+
 def test_taxa_por_mes_aceita_ao_mes_e_ao_ano():
     assert juros.taxa_por_mes(0.01, "mes") == 0.01
     assert juros.taxa_por_mes(0.12682503013196977, "ano") == pytest.approx(0.01)

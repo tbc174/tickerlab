@@ -80,7 +80,7 @@ describe("link compartilhado", () => {
     });
     for (const [endereco] of buscar.mock.calls) expect(String(endereco)).not.toContain(CODIGO);
     expect(google.id.prompt).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Entre com o Google/)).toBeNull();
+    expect(screen.queryByText(/Entrar no TickerLab/)).toBeNull();
   });
 
   it("mostra o veredito, as checagens, a data do cálculo, a fonte e o aviso", async () => {

@@ -103,6 +103,44 @@ def test_carrega_tudo_da_empresa_pelo_ticker(conexao):
     assert pd.Timestamp(tickers["atualizado_em"].iloc[0]).date() == AGORA.date()
 
 
+def test_trava_desligada_tira_o_preco_do_relatorio(conexao, monkeypatch):
+    """D3 mudada em 20/10/2026: TICKERLAB_PRECO_NO_RELATORIO=0 tira o preço do Yahoo da tela, do
+    PDF e da API de uma vez (todos leem por aqui), sem deploy."""
+    fechamentos = pd.Series([49.0, 50.0])
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "0")
+    desligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, fechamentos=fechamentos
+    )
+    assert desligada is not None
+    assert desligada.preco is None and desligada.fechamentos is None
+    monkeypatch.setenv("TICKERLAB_PRECO_NO_RELATORIO", "1")
+    ligada = repo.entradas_do_relatorio(
+        conexao, "WEGE3.SA", preco=50.0, fechamentos=fechamentos
+    )
+    assert ligada is not None and ligada.preco == 50.0
+    assert ligada.fechamentos is fechamentos
+
+
+def test_relatorio_le_a_ficha_sem_as_secoes_do_molde_b(conexao, monkeypatch):
+    """Uma ficha só com a seção da rede (molde B) não vira dossiê no relatório da empresa."""
+    from src import dossie
+    from tests.test_dossie_no_app import SECAO_DA_REDE, _bruta
+
+    so_a_rede = dossie.Ficha.model_validate(_bruta() | {"secoes": [SECAO_DA_REDE]})
+    monkeypatch.setattr(repo, "ficha_do", lambda _cnpj: so_a_rede)
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.dossie is None
+
+
+def test_pares_leem_a_geracao_de_caixa_pela_ficha_de_cada_um(conexao):
+    from src import dossie
+
+    entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
+    assert entradas is not None
+    assert entradas.caixa_do_par is dossie.caixa_do_par
+
+
 def test_sem_padrao_gravado_fica_sem_padroes(conexao):
     entradas = repo.entradas_do_relatorio(conexao, "WEGE3.SA", hoje=date(2026, 10, 13))
     assert entradas is not None and entradas.padroes is None

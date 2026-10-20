@@ -138,7 +138,13 @@ export const conteudoDoApp: {
   painel: { itens: ItemDoPainel[]; legenda: string; frase_do_cvar: string };
   glossario: Record<string, ParteDaAjuda[]>;
   juros: { termos: Record<string, string>; fonte_focus: string; nota_do_focus: string };
-  entrada: { aviso: string };
+  entrada: {
+    titulo: string;
+    explicacao: string;
+    lembrete_da_versao_classica: string;
+    pontos: string[];
+    aviso: string;
+  };
   assinatura: { retorno_ok: string; retorno_cancelado: string };
   aceite: {
     versao: string;
