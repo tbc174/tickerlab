@@ -602,7 +602,19 @@
      },
      {
       "cnpj": "03.936.815/0001-75",
-      "fatos": [],
+      "fatos": [
+       {
+        "data": "2024-12-03",
+        "descricao": "Tinha cerca de 900 mil sacas a receber de produtores em contratos a termo, somadas com a Cafebras (mesmo grupo), segundo o Brazil Journal",
+        "divulgado_em": "2024-12-03",
+        "fato": "sacas_a_receber_a_termo",
+        "fonte": "https://braziljournal.com/mo1v",
+        "tipo_de_fonte": "noticia",
+        "unidade": "sacas",
+        "valor": 900000.0,
+        "veiculo": "Brazil Journal"
+       }
+      ],
       "id": "atlantica",
       "nome": "Atlântica Exportação e Importação S.A.",
       "o_que_nao_sabemos": [
@@ -619,7 +631,19 @@
      },
      {
       "cnpj": "17.611.589/0001-67",
-      "fatos": [],
+      "fatos": [
+       {
+        "data": "2024-12-03",
+        "descricao": "Tinha cerca de 900 mil sacas a receber de produtores em contratos a termo, somadas com a Atlântica (mesmo grupo), segundo o Brazil Journal",
+        "divulgado_em": "2024-12-03",
+        "fato": "sacas_a_receber_a_termo",
+        "fonte": "https://braziljournal.com/mo1v",
+        "tipo_de_fonte": "noticia",
+        "unidade": "sacas",
+        "valor": 900000.0,
+        "veiculo": "Brazil Journal"
+       }
+      ],
       "id": "cafebras",
       "nome": "Cafebras Comércio de Cafés do Brasil S.A.",
       "o_que_nao_sabemos": [
@@ -652,6 +676,22 @@
       "id": "coocafeg",
       "nome": "Coocafeg (cooperativa de cafeicultores de Guapé)",
       "o_que_nao_sabemos": [
+       "Patrimônio líquido: não lemos demonstração financeira publicada.",
+       "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
+       "CNPJ: não confirmado no cadastro aberto da Receita.",
+       "Situação cadastral (ativa ou baixada): a base ainda não lê essa coluna do cadastro da Receita.",
+       "A falta de registro de recuperação judicial ou de fechamento nas fontes lidas não prova que não exista."
+      ],
+      "tipo": "cooperativa",
+      "uf": "MG"
+     },
+     {
+      "cnpj": null,
+      "fatos": [],
+      "id": "coocem",
+      "nome": "Coocem (cooperativa de café de Muzambinho)",
+      "o_que_nao_sabemos": [
+       "Encerramento das atividades: noticiado por Compre Rural em 18/02/2025 (https://www.comprerural.com/cooperativa-mineira-encerra-atividades-e-deixa-cafeicultores-no-prejuizo/); fica fora dos fatos até a página ser guardada como prova.",
        "Patrimônio líquido: não lemos demonstração financeira publicada.",
        "Sacas recebidas dos produtores: sem número publicado nas fontes lidas.",
        "CNPJ: não confirmado no cadastro aberto da Receita.",
