@@ -23,6 +23,7 @@ from src.banco.modelo import (
 )
 from src.banco.padroes import padroes_em
 from src.banco.qualidade import achados_de
+from src.configuracao import preco_no_relatorio_ligado
 from src.demonstracoes import EXERCICIO
 from src.dossie import caixa_do_par, dossie_da_ficha, ficha_do, ficha_do_molde_a
 from src.relatorio_empresa import QUANTOS_EVENTOS, Entradas
@@ -95,10 +96,13 @@ def entradas_do_relatorio(
     fechamentos: pd.Series | None = None,
     hoje: date | None = None,
 ) -> Entradas | None:
-    """Tudo o que o relatório do ticker usa; None se o ticker não tem empresa cadastrada."""
+    """Tudo o que o relatório do ticker usa; None se o ticker não tem empresa cadastrada. Com a
+    trava do preço desligada, o preço e os fechamentos ficam de fora (tela, PDF e API leem daqui)."""
     empresa = empresas_dos_tickers(conexao, [ticker]).get(ticker)
     if empresa is None:
         return None
+    if not preco_no_relatorio_ligado():
+        preco, fechamentos = None, None
     cnpj, nome = empresa
     dados = dados_da_empresa(conexao, cnpj)
     hoje = hoje or datetime.now(FUSO).date()

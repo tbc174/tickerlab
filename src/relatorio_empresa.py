@@ -166,6 +166,14 @@ FONTE_DAS_DEMONSTRACOES = "DFP e ITR entregues à CVM (demonstrações consolida
 FONTE_DOS_MULTIPLOS = "preço da ação (Yahoo Finance) e DFP e ITR entregues à CVM"
 FONTE_DAS_ACOES = "DFP entregues à CVM (fluxo de caixa e composição do capital)"
 SEM_O_ANTERIOR = "O balanço anterior guardado não tem este número para comparar."
+# os múltiplos de mercado além de P/L e P/VP (D3 mudada em 20/10/2026); o DY fica nos dividendos
+MULTIPLOS_DE_MERCADO = tuple(m for m in fundamentos.DE_MERCADO if m != "dividend_yield")
+COMO_SAI_O_DY = (
+    "Dividend yield: dividendos e JCP pagos em caixa nos últimos 12 meses (fluxo de caixa da "
+    "DFP e do ITR), divididos pelo valor de mercado de hoje. O caixa pago pode incluir o que as "
+    "controladas pagaram aos acionistas minoritários delas, e o mesmo preço vale para todas as "
+    "classes de ação."
+)
 SEM_DILUICAO = (
     "Sem dois anos de ações em circulação, ou com um salto sem desdobramento explicado."
 )
@@ -584,18 +592,20 @@ def _padrao_do_multiplo(
     )
 
 
+def _item_com_o_preco(indicador: fundamentos.Indicador, c: _Calculos) -> Item:
+    """O item de um número que usa o preço: cita o Yahoo, e o balanço anterior usa o preço de hoje."""
+    item = replace(_item(indicador, c), fonte=FONTE_DOS_MULTIPLOS)
+    if item.comparacao is None:
+        return item
+    contra = f"{item.comparacao.contra}, com o preço de hoje"
+    return replace(item, comparacao=replace(item.comparacao, contra=contra))
+
+
 def _item_de_preco(
     c: _Calculos, e: Entradas, chave: str, historico: pd.DataFrame
 ) -> Item:
     indicador = c.indicadores[chave]
-    item = replace(_item(indicador, c), fonte=FONTE_DOS_MULTIPLOS)
-    if item.comparacao is not None:  # o balanço anterior, com o mesmo preço de hoje
-        item = replace(
-            item,
-            comparacao=replace(
-                item.comparacao, contra=f"{item.comparacao.contra}, com o preço de hoje"
-            ),
-        )
+    item = _item_com_o_preco(indicador, c)
     padrao = _padrao_do_multiplo(e, c.grupo, chave)
     if indicador.valor is None or padrao is None:
         return item
@@ -627,7 +637,9 @@ def _valuation(c: _Calculos, e: Entradas) -> Secao:
         else pd.DataFrame()
     )
     itens = [
-        _item_de_preco(c, e, m, historico) for m in MULTIPLOS if m in c.indicadores
+        _item_de_preco(c, e, m, historico)
+        for m in (*MULTIPLOS, *MULTIPLOS_DE_MERCADO)
+        if m in c.indicadores
     ]
     p = e.premissas
     origem = (
@@ -706,7 +718,9 @@ def _dividendos(c: _Calculos) -> Secao:
         if len(ajustadas) > 1
         else None
     )
-    itens = [
+    dy = c.indicadores.get("dividend_yield")
+    itens = [] if dy is None else [_item_com_o_preco(dy, c)]
+    itens += [
         Item("anos_pagando", "Anos pagando dividendos", str(d.anos_pagando), float(d.anos_pagando),
              "anos", base, fonte=FONTE_DAS_ACOES,
              comparacao=Comparacao("anos com DFP guardada", f"{d.anos_pagando} de {len(anos)}")),
@@ -719,7 +733,8 @@ def _dividendos(c: _Calculos) -> Secao:
         "dividendos",
         SECOES["dividendos"],
         itens,
-        list(d.avisos),
+        # no fim: os avisos guardam a posição (o id deles na análise escrita)
+        [*d.avisos, *([COMO_SAI_O_DY] if dy is not None else [])],
         {"historico": _tabela(d.historico)},
     )
 
