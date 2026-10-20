@@ -249,3 +249,32 @@ def test_relatorio_sem_preco_nem_padroes_nao_usa_o_yahoo(dados_da_weg):
     assert re_.fontes_do_relatorio(entradas) == ("cvm",)
     relatorio = re_.montar(entradas)
     assert not any("Yahoo" in f for f in relatorio.fontes)
+
+
+# --- DY e múltiplos de mercado (D3 mudada em 20/10/2026) -------------------------------------------
+
+
+def test_dividendos_abrem_com_o_dy_citando_o_preco(dados_da_weg):
+    dividendos = re_.montar(_entradas(dados_da_weg)).secao("dividendos")
+    dy = dividendos.itens[0]
+    assert dy.chave == "dividend_yield" and dy.valor and dy.valor > 0
+    assert dy.texto.endswith("%") and dy.fonte == re_.FONTE_DOS_MULTIPLOS
+    assert any("minoritários" in p for p in dividendos.paragrafos)
+
+
+def test_valuation_traz_valor_de_mercado_ev_e_multiplos(dados_da_weg):
+    valuation = re_.montar(_entradas(dados_da_weg)).secao("valuation")
+    itens = {i.chave: i for i in valuation.itens}
+    for chave in ("p_l", "p_vp", *re_.MULTIPLOS_DE_MERCADO):
+        assert itens[chave].valor is not None, chave
+        assert itens[chave].fonte == re_.FONTE_DOS_MULTIPLOS
+    assert itens["valor_de_mercado"].texto.startswith("R$ ")
+    assert itens["ev_ebitda"].texto.endswith("×")
+
+
+def test_sem_preco_dy_e_multiplos_ficam_com_o_motivo(dados_da_weg):
+    relatorio = re_.montar(_entradas(dados_da_weg, preco=None))
+    dy = relatorio.secao("dividendos").itens[0]
+    assert dy.valor is None and "preço" in dy.motivo
+    for item in relatorio.secao("valuation").itens:
+        assert item.valor is None and "preço" in item.motivo
