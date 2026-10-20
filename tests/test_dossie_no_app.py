@@ -258,3 +258,97 @@ def test_relatorio_da_empresa_ignora_a_secao_do_setor(tmp_path: Path) -> None:
     com_o_setor = dossie.ficha_do(CPFL, _pasta(outra, bruta))
     assert sem_o_setor is not None and com_o_setor is not None
     assert dossie.ficha_do_molde_a(com_o_setor) == dossie.ficha_do_molde_a(sem_o_setor)
+
+
+# --- a seção do setor pelo manifesto da noite (molde D, PR 3) --------------------------------------
+
+
+def _com_o_manifesto(pasta: Path, manifesto: dict | str) -> Path:
+    bruta = _bruta()
+    bruta["secoes"].append(_secao_do_setor())
+    _pasta(pasta, bruta)
+    texto = manifesto if isinstance(manifesto, str) else json.dumps(manifesto)
+    (pasta / "atual" / dossie.NOME_DO_MANIFESTO).write_text(texto, encoding="utf-8")
+    return pasta
+
+
+MANIFESTO = {
+    "dia": "2026-10-17",
+    "setores": {"eletricas": {"ficha": CPFL, "membros": [CPFL]}},
+}
+
+
+def test_secao_do_setor_vem_pelo_manifesto(tmp_path: Path) -> None:
+    secao = dossie.secao_do_setor("eletricas", _com_o_manifesto(tmp_path, MANIFESTO))
+    assert secao is not None
+    assert set(secao.secao.tabelas) == {
+        "concentracao_aneel_consumidores",
+        "participacao_dos_membros",
+        "membros",
+    }
+    assert secao.itens["cr4_aneel_consumidores"].texto == "100,0%"
+    assert secao.dia == date(2026, 10, 17)
+
+
+@pytest.mark.parametrize(
+    "manifesto",
+    [
+        "{nao e json",
+        {"setores": {"eletricas": {"ficha": "../../etc/passwd"}}},
+        {"setores": {"eletricas": {"ficha": CPFL, "membros": ["abc"]}}},
+        {"setores": {"inventado": {"ficha": CPFL}}},
+        {"setores": []},
+    ],
+)
+def test_manifesto_estranho_nao_da_setor(tmp_path: Path, manifesto) -> None:
+    pasta = _com_o_manifesto(tmp_path, manifesto)
+    assert dossie.secao_do_setor("eletricas", pasta) is None
+
+
+def test_sem_manifesto_nao_ha_setor(tmp_path: Path) -> None:
+    assert dossie.setores_da_noite(_pasta(tmp_path)) == {}
+
+
+def test_secao_de_outro_setor_nao_vale(tmp_path: Path) -> None:
+    manifesto = {"setores": {"bancos": {"ficha": CPFL, "membros": [CPFL]}}}
+    assert (
+        dossie.secao_do_setor("bancos", _com_o_manifesto(tmp_path, manifesto)) is None
+    )
+
+
+def test_tabelas_do_setor_saem_escritas(tmp_path: Path) -> None:
+    secao = dossie.secao_do_setor("eletricas", _com_o_manifesto(tmp_path, MANIFESTO))
+    assert secao is not None
+    concentracao = dossie.escrever_linhas(
+        dossie.colunas_da_tabela("concentracao_aneel_consumidores") or [],
+        secao.secao.tabelas["concentracao_aneel_consumidores"],
+    )
+    assert concentracao[0]["Faixa do CADE"] == "altamente concentrado"
+    assert dossie.titulo_da_tabela("concentracao_aneel_consumidores").startswith(
+        "Concentração"
+    )
+    membros = dossie.escrever_linhas(
+        dossie.COLUNAS["membros"], secao.secao.tabelas["membros"]
+    )
+    assert membros == [
+        {
+            "Companhia": "CPFL ENERGIA S.A.",
+            "CNPJ": "02.429.144/0001-93",
+            "Por que está no setor": "ligada à ANEEL por 1 entidade",
+        }
+    ]
+
+
+def test_participacao_de_serie_sem_licenca_some(tmp_path: Path) -> None:
+    secao = _secao_do_setor()
+    secao["tabelas"]["participacao_dos_membros"].append(
+        secao["tabelas"]["participacao_dos_membros"][0] | {"serie": "inventada"}
+    )
+    bruta = _bruta()
+    bruta["secoes"].append(secao)
+    ficha = dossie.ficha_do(CPFL, _pasta(tmp_path, bruta))
+    assert ficha is not None
+    setor = next(s for s in ficha.secoes if s.chave == "setor")
+    assert {l["serie"] for l in setor.tabelas["participacao_dos_membros"]} == {
+        "aneel_consumidores"
+    }

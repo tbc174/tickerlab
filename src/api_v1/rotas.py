@@ -22,6 +22,7 @@ from src import (
     conformidade,
     ficha,
     pulse,
+    relatorio_setor,
     research,
     topicos,
 )
@@ -1037,6 +1038,32 @@ def busca_por_cnpj_em_pdf(conta: Conta, pedido: PedidoDeBuscaPorCnpjV1) -> Respo
             "Cache-Control": "no-store",
         },
     )
+
+
+SETOR_DESCONHECIDO = "Setor fora da lista do relatório do setor (veja /v1/setores)."
+TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR = 40
+
+
+@router.get("/setores")
+def setores(_conta: Conta) -> esquemas.SetoresV1:
+    """Os setores do relatório do setor, com quantas companhias abertas cada um tem."""
+    with obter_engine().connect() as conexao:
+        return esquemas.de_setores(relatorio_setor.setores_disponiveis(conexao))
+
+
+@router.get("/relatorio-setor")
+def relatorio_do_setor(
+    conta: Conta,
+    setor: Annotated[str, Query(max_length=TAMANHO_MAXIMO_DA_CHAVE_DO_SETOR)],
+) -> esquemas.RelatorioDoSetorV1:
+    """O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos
+    vêm sempre; os números da base vêm trancados sem o dossiê da base no plano."""
+    try:
+        with obter_engine().connect() as conexao:
+            relatorio = relatorio_setor.relatorio_do_setor(conexao, setor, conta.plano)
+    except relatorio_setor.SetorDesconhecidoError as erro:
+        raise HTTPException(status_code=404, detail=SETOR_DESCONHECIDO) from erro
+    return esquemas.de_relatorio_do_setor(relatorio)
 
 
 def openapi_v1() -> dict:

@@ -267,6 +267,9 @@ ROTAS_DA_CONTA = frozenset(
 
 # o arquivo de uma página (o PDF) abre com as mesmas regras de plano da rota JSON dela
 ROTAS_DE_ARQUIVO = {"/v1/busca-por-cnpj/pdf": "/v1/busca-por-cnpj"}
+# a rota de apoio de uma página (a lista de opções) abre com as mesmas regras de plano da página
+ROTAS_DE_APOIO = {"/v1/setores": "/v1/relatorio-setor"}
+ROTA_DA_PAGINA = ROTAS_DE_ARQUIVO | ROTAS_DE_APOIO
 
 
 def conta_com_acesso(
@@ -280,9 +283,7 @@ def conta_com_acesso(
     rota: str = request.scope["route"].path
     if rota.removeprefix(PREFIXO_DA_API) in ROTAS_DA_CONTA:
         return conta
-    pagina = pagina_da_rota(
-        ROTAS_DE_ARQUIVO.get(rota.removeprefix(PREFIXO_DA_API), rota)
-    )
+    pagina = pagina_da_rota(ROTA_DA_PAGINA.get(rota.removeprefix(PREFIXO_DA_API), rota))
     if pagina is None:
         raise HTTPException(status_code=500, detail="Rota sem contrato de página.")
     motivo = motivo_da_pagina(conta.plano, pagina.chave)

@@ -730,6 +730,34 @@
     "url": "busca-por-cnpj"
   },
   {
+    "area": "acompanhar",
+    "chave": "relatorio_setor",
+    "contrato": {
+      "entradas": [
+        {
+          "descricao": "A chave do setor, uma das de /v1/setores (eletricas, bancos...).",
+          "maximo": null,
+          "minimo": null,
+          "nome": "setor",
+          "obrigatoria": true,
+          "opcoes": [],
+          "padrao": null,
+          "tipo": "texto"
+        }
+      ],
+      "metodo": "GET",
+      "resposta": "RelatorioDoSetorV1",
+      "rota": "/v1/relatorio-setor"
+    },
+    "descricao": "Quem são as companhias abertas de um setor regulado, o tamanho e a concentração do mercado, a parte de cada uma e o que ainda não temos, com a data e a fonte de cada número.",
+    "e_pro": false,
+    "grupo": "Research",
+    "no_menu": false,
+    "somente_admin": false,
+    "titulo": "Relatório do setor",
+    "url": "relatorio-setor"
+  },
+  {
     "area": "ativo",
     "chave": "por_dentro",
     "contrato": null,

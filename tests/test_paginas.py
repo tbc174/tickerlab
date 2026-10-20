@@ -181,6 +181,7 @@ def test_paginas_da_area_ativo_na_ordem_das_abas():
                 "mapa_do_cafe",
                 "painel_do_cafe",
                 "busca_por_cnpj",
+                "relatorio_setor",
             },
         ),
         ("conta", {"simulacoes", "meus_dados", "planos", "admin"}),
@@ -252,6 +253,7 @@ def test_as_paginas_de_analise_tem_contrato():
         "linha_do_tempo",
         "relatorio_empresa",
         "busca_por_cnpj",
+        "relatorio_setor",
         "planos",
         "meus_dados",
         "simulacoes",
@@ -285,9 +287,11 @@ def test_cada_contrato_bate_com_a_rota_de_verdade():
 def test_toda_rota_de_leitura_pertence_a_uma_pagina():
     usadas = {c.rota for c in _contratos().values()}
     # /eu, /conta, /sair e o aceite são da conta e /configuracao é do login, não de uma página;
-    # o PDF da busca por CNPJ herda o contrato da rota JSON (acesso.ROTAS_DE_ARQUIVO)
+    # o PDF da busca por CNPJ herda o contrato da rota JSON, e a lista de setores, o do relatório
+    # do setor (acesso.ROTA_DA_PAGINA)
     assert set(_openapi()["paths"]) - usadas == {
         "/v1/busca-por-cnpj/pdf",
+        "/v1/setores",
         "/v1/eu",
         "/v1/conta",
         "/v1/sair",

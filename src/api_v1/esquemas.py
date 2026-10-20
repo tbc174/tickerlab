@@ -24,6 +24,7 @@ from src import (
     juros_e_inflacao,
     linha_do_tempo,
     relatorio_empresa,
+    relatorio_setor,
     topicos,
 )
 from src.api_v1.contexto import ContextoDoAtivo
@@ -900,6 +901,95 @@ def de_busca_por_cnpj(relatorio: busca_por_cnpj.RelatorioDoCnpj) -> BuscaPorCnpj
             if linhas
         ]
     return BuscaPorCnpjV1.model_validate(dados)
+
+
+# --- Relatório do setor (molde D, plano de 19/10/2026, PR 3) ---------------------------------------
+
+
+class SetorV1(BaseModel):
+    """Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias."""
+
+    chave: str
+    nome: str
+    empresas: int  # companhias abertas com ticker no setor
+    como_era_em: (
+        date | None
+    )  # o dia da ficha da noite (null: a noite ainda não trouxe o setor)
+
+
+class SetoresV1(BaseModel):
+    setores: list[SetorV1]  # na ordem da lista do lançamento
+
+
+def de_setores(disponiveis: list[relatorio_setor.SetorDisponivel]) -> SetoresV1:
+    return SetoresV1(setores=[SetorV1.model_validate(asdict(s)) for s in disponiveis])
+
+
+class MembroDoSetorV1(BaseModel):
+    cnpj: str  # só os 14 caracteres
+    empresa: str
+    tickers: list[str]
+    motivo: str  # por que está no setor (a ligação com a agência, o setor da CVM ou os dois)
+
+
+class FraseDoSetorV1(BaseModel):
+    """Uma frase de "O que os dados mostram": saiu de uma regra fixa e leva o id de cada número."""
+
+    texto: str
+    ids: list[
+        str
+    ]  # "hhi_<série>", "concentracao_<série>/<ano>", "participacao_dos_membros/..."
+
+
+class FaltaNoSetorV1(BaseModel):
+    kpi: str
+    motivo: str
+    fonte: str  # de onde viria (ou a tabela da base que já o tem)
+
+
+class RelatorioDoSetorV1(BaseModel):
+    """O relatório do setor (molde D): as seções no formato do relatório da empresa."""
+
+    setor: str
+    nome: str
+    como_era_em: (
+        date | None
+    )  # o dia da ficha da noite (null: a noite ainda não trouxe o setor)
+    membros: list[MembroDoSetorV1]
+    secoes: list[SecaoDoRelatorioV1]
+    frases: list[FraseDoSetorV1]  # vazia quando a seção vem trancada
+    nao_temos: list[
+        FaltaNoSetorV1
+    ]  # sempre: o que um analista procuraria e não está aqui
+    fontes: list[str]
+    limites: list[str]
+    avisos: list[str]
+
+
+def _tabela_ja_escrita(chave: str, linhas: list[dict[str, str]]) -> TabelaDoRelatorioV1:
+    """As tabelas do setor já saem com os rótulos e as células escritas (siglas como HHI e CR4
+    ficam como estão, sem a regra geral de rótulo)."""
+    colunas = list(linhas[0])
+    return TabelaDoRelatorioV1(
+        chave=chave,
+        titulo=relatorio_setor.titulo_da_tabela(chave),
+        colunas=colunas,
+        linhas=[[str(linha.get(c, "—")) for c in colunas] for linha in linhas],
+    )
+
+
+def de_relatorio_do_setor(
+    relatorio: relatorio_setor.RelatorioDoSetor,
+) -> RelatorioDoSetorV1:
+    """O relatório do setor (já trancado para o plano de quem vê) no formato da API."""
+    dados = relatorio.como_dict()
+    for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
+        secao["tabelas"] = [
+            _tabela_ja_escrita(chave, linhas).model_dump()
+            for chave, linhas in original.tabelas.items()
+            if linhas
+        ]
+    return RelatorioDoSetorV1.model_validate(dados)
 
 
 # --- Mapa do café (plano do café, PR 10) -----------------------------------------------------------
