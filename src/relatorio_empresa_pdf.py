@@ -16,6 +16,8 @@ from src import o_que_os_dados_mostram as leitura_da_ficha
 from src.analise_escrita.modelo_da_tela import AnaliseDaTela
 from src.estilos_pdf import PADRAO, Estilo
 from src.graficos_pdf import grafico_de_cascata
+from src.rastro import DOCUMENTO as DOCUMENTO_DO_RASTRO
+from src.rastro import FONTE, FORMULA, PUBLICADO_EM, VERSAO, como_foi_calculado
 from src.relatorio_empresa import (
     Item,
     Relatorio,
@@ -31,6 +33,9 @@ ESPACO_MINIMO_DA_TABELA = 50  # mm: o título não fica sozinho no pé da págin
 MAX_COLUNAS = 7  # mais que isso não cabe na largura de uma página A4
 GRAFICOS = {"cascata": True, "ponte": False}  # tabela que vira gráfico → subir é bom?
 LISTA = "lista"  # tabela de itens (título, texto, nota, link): os destaques da amostra
+TITULO_DO_ANEXO = "Como cada número foi calculado"
+COLUNAS_DO_ANEXO = tuple(r.capitalize() for r in (FORMULA, VERSAO, FONTE, PUBLICADO_EM))
+DOCUMENTO = DOCUMENTO_DO_RASTRO.capitalize()
 
 
 def _comparacao(item: Item) -> str:
@@ -142,13 +147,37 @@ def _analise(pdf: RelatorioPDF, analise: AnaliseDaTela) -> None:
             pdf.paragrafo(f"[{nota.numero}] {nota.legenda()}", apagado=True)
 
 
+def _como_foi_calculado(pdf: RelatorioPDF, relatorio: Relatorio) -> None:
+    """O anexo com o rastro de cada número (item 7 do lançamento): a fórmula, a versão do
+    cálculo, a fonte e a publicação numa tabela; embaixo, cada documento usado, com o link."""
+    rastros = [
+        (i.nome, i.rastro) for s in relatorio.secoes for i in s.itens if i.rastro
+    ]
+    if not rastros:
+        return
+    linhas, documentos = [], {}
+    for nome, rastro in rastros:
+        partes = como_foi_calculado(rastro)
+        textos = {p.rotulo: p.texto for p in partes}
+        linhas.append([nome, *(textos[c] for c in COLUNAS_DO_ANEXO)])
+        documentos |= {(p.texto, p.url): None for p in partes if p.rotulo == DOCUMENTO}
+    pdf.secao(TITULO_DO_ANEXO, reservar=40)
+    pdf.tabela_de_texto(["Indicador", *COLUNAS_DO_ANEXO], linhas)
+    if documentos:
+        _titulo_da_tabela(pdf, "Documentos usados")
+        for texto, url in documentos:
+            pdf.item(texto, "", url)
+
+
 def relatorio_da_empresa(
     relatorio: Relatorio,
     gerado_em: datetime | None = None,
     estilo: Estilo = PADRAO,
     aviso: str = AVISO,
+    com_rastro: bool = True,
 ) -> bytes:
-    """Os bytes do PDF do relatório (`aviso`: o rodapé, que diz de onde vêm os dados)."""
+    """Os bytes do PDF do relatório (`aviso`: o rodapé, que diz de onde vêm os dados). Com
+    `com_rastro`, o anexo "como cada número foi calculado" fecha o relatório."""
     gerado_em = gerado_em or datetime.now(FUSO)
     pdf = RelatorioPDF(
         f"Relatório da empresa: {relatorio.empresa}",
@@ -181,4 +210,6 @@ def relatorio_da_empresa(
         _analise(pdf, relatorio.analise)
     for secao in relatorio.secoes:
         escrever_secao(pdf, secao, estilo)
+    if com_rastro:
+        _como_foi_calculado(pdf, relatorio)
     return pdf.para_bytes()

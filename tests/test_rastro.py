@@ -4,6 +4,7 @@ licença) e quando o documento usado ficou público; o gabarito fixa cada indica
 amostras, para que mudar uma fórmula sem subir a versão quebre aqui."""
 
 import json
+from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
@@ -16,7 +17,15 @@ from src import relatorio_empresa as re_
 from src.api_v1.esquemas import de_relatorio_da_empresa
 from src.banco.coletas import LICENCAS
 from src.banco.demonstracoes import DadosDaEmpresa
-from src.rastro import FONTE, FORMULA, PUBLICADO_EM, VERSAO, DocumentoUsado, Rastro
+from src.rastro import (
+    FONTE,
+    FORMULA,
+    PUBLICADO_EM,
+    VERSAO,
+    DocumentoUsado,
+    Rastro,
+    como_foi_calculado,
+)
 
 PASTA = Path(__file__).parent / "arquivos" / "cvm" / "fundamentos"
 GABARITO = Path(__file__).parent / "arquivos" / "rastro" / "weg.json"
@@ -89,6 +98,32 @@ def test_publicado_em_e_o_documento_mais_recente():
     rastro = Rastro.dos_documentos("x", "fundamentos 2", "cvm", documentos)
     assert rastro.publicado_em == date(2026, 8, 1)
     assert Rastro.dos_documentos("x", "v", "cvm", ()).publicado_em is None
+
+
+# --- o "como foi calculado" para quem lê ------------------------------------------------------------
+def test_como_foi_calculado_mostra_cada_parte_e_o_documento_com_link():
+    linhas = como_foi_calculado(_completo(outras_fontes=("yahoo",)))
+    assert [(linha.rotulo, linha.texto, linha.url) for linha in linhas] == [
+        ("Fórmula", "lucro ÷ receita", ""),
+        ("Versão do cálculo", "fundamentos 2", ""),
+        ("Fonte", "cvm (também yahoo)", ""),
+        ("Publicado em", "25/02/2026", ""),
+        (
+            "Documento",
+            "DFP de 31/12/2025, versão 1, publicado em 25/02/2026",
+            "https://x",
+        ),
+    ]
+
+
+def test_como_foi_calculado_diz_quando_o_dia_nao_e_conhecido():
+    sem_dia = DocumentoUsado("fechamento de WEGE3.SA (Yahoo Finance)", None)
+    linhas = como_foi_calculado(_completo(publicado_em=None, documentos=(sem_dia,)))
+    textos = {linha.rotulo: linha.texto for linha in linhas}
+    assert textos["Publicado em"] == "dia não conhecido"
+    assert textos["Documento"] == (
+        "fechamento de WEGE3.SA (Yahoo Finance) (dia da publicação não conhecido)"
+    )
 
 
 # --- as fórmulas ficam ao lado do código que calcula -----------------------------------------------
@@ -183,6 +218,13 @@ def test_rastro_vai_no_json_e_na_api(dados_da_weg):
     api = de_relatorio_da_empresa(relatorio)
     receita = next(i for s in api.secoes for i in s.itens if i.chave == "receita")
     assert receita.rastro is not None and receita.rastro.fonte_id == "cvm"
+    original = next(
+        i for s in relatorio.secoes for i in s.itens if i.chave == "receita"
+    )
+    assert original.rastro is not None
+    assert [linha.model_dump() for linha in receita.rastro.linhas] == [
+        asdict(linha) for linha in como_foi_calculado(original.rastro)
+    ]  # o app novo mostra o mesmo texto da página e do PDF
 
 
 def test_metricas_do_relatorio(dados_da_weg):

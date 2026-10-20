@@ -173,4 +173,8 @@ def pdf(amostra: Amostra | None = None) -> bytes:
     """O PDF da amostra, com a data da ficha (o arquivo não muda a cada geração)."""
     amostra = amostra or montar()
     gerado_em: datetime = amostra.ficha.gerado_em
-    return relatorio_da_empresa(amostra.relatorio, gerado_em, aviso=RODAPE)
+    # sem o anexo do rastro por enquanto: o PDF da amostra é texto público (nível 1 da ADR 0101) e
+    # espera o "pode" do Tiago (B-02, PR 3)
+    return relatorio_da_empresa(
+        amostra.relatorio, gerado_em, aviso=RODAPE, com_rastro=False
+    )

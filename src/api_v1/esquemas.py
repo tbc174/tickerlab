@@ -36,6 +36,7 @@ from src.conteudo import descrever_pior_drawdown
 from src.ficha import Ficha, PedidoDaFicha, Resultado, nota_das_tentativas
 from src.indicadores import calcular_media_por_mes
 from src.links_das_fontes import link_da_fonte
+from src.rastro import como_foi_calculado
 from src.simulacoes import endereco_no_app_novo
 
 BASE = 100.0  # as curvas de valor começam aqui
@@ -745,6 +746,14 @@ class DocumentoUsadoV1(BaseModel):
     url: str  # o documento original ("" quando não há link)
 
 
+class LinhaDoRastroV1(BaseModel):
+    """Uma linha do "como foi calculado" (`src/rastro.py`, `como_foi_calculado`)."""
+
+    rotulo: str  # "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento"
+    texto: str
+    url: str  # o documento original ("" quando não há link)
+
+
 class RastroDoNumeroV1(BaseModel):
     """Como o número foi calculado e de onde veio (`src/rastro.py`): a conta, a versão dela, a
     fonte (o id da coleta, com a licença) e quando o insumo mais novo ficou público."""
@@ -755,6 +764,20 @@ class RastroDoNumeroV1(BaseModel):
     publicado_em: date | None
     documentos: list[DocumentoUsadoV1]
     outras_fontes: list[str]  # ["yahoo"] nos números que usam o preço
+    linhas: list[
+        LinhaDoRastroV1
+    ] = []  # o "como foi calculado" já escrito, como na página
+
+
+def _rastro_com_linhas(dados: dict, secoes: list) -> None:
+    """Põe em cada número, dentro do dicionário já montado, as linhas do "como foi calculado" de
+    `src/rastro.py` (o mesmo texto da página e do PDF)."""
+    for secao, original in zip(dados["secoes"], secoes, strict=True):
+        for item, item_original in zip(secao["itens"], original.itens, strict=True):
+            if item_original.rastro is not None:
+                item["rastro"]["linhas"] = [
+                    asdict(linha) for linha in como_foi_calculado(item_original.rastro)
+                ]
 
 
 class ItemDoRelatorioV1(BaseModel):
@@ -890,6 +913,7 @@ def de_relatorio_da_empresa(
 ) -> RelatorioDaEmpresaV1:
     """O relatório montado (já trancado para o plano de quem vê) no formato da API."""
     dados = relatorio.como_dict()
+    _rastro_com_linhas(dados, relatorio.secoes)
     for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
         secao["tabelas"] = [
             _tabela_do_relatorio(chave, linhas).model_dump()
@@ -917,6 +941,7 @@ class BuscaPorCnpjV1(BaseModel):
 def de_busca_por_cnpj(relatorio: busca_por_cnpj.RelatorioDoCnpj) -> BuscaPorCnpjV1:
     """O relatório do CNPJ (já trancado para o plano de quem vê) no formato da API."""
     dados = relatorio.como_dict()
+    _rastro_com_linhas(dados, relatorio.secoes)
     for secao, original in zip(dados["secoes"], relatorio.secoes, strict=True):
         secao["tabelas"] = [
             _tabela_do_relatorio(chave, linhas).model_dump()

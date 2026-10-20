@@ -404,6 +404,31 @@ export interface PontoDoRelatorioV1 {
   indicador: string;
 }
 
+/** Um documento que entrou na conta: a demonstração da CVM ou o fechamento do preço. */
+export interface DocumentoUsadoV1 {
+  nome: string;
+  publicado_em: string | null; // ISO; null: o dia não é conhecido
+  url: string; // "" quando não há link
+}
+
+/** Uma linha do "como foi calculado", já escrita como na página e no PDF (src/rastro.py). */
+export interface LinhaDoRastroV1 {
+  rotulo: string; // "Fórmula", "Versão do cálculo", "Fonte", "Publicado em", "Documento"
+  texto: string;
+  url: string; // o documento original ("" quando não há link)
+}
+
+/** Como o número foi calculado e de onde veio: a conta, a versão, a fonte e a publicação. */
+export interface RastroDoNumeroV1 {
+  formula: string;
+  versao_do_calculo: string;
+  fonte_id: string;
+  publicado_em: string | null;
+  documentos: DocumentoUsadoV1[];
+  outras_fontes: string[];
+  linhas: LinhaDoRastroV1[];
+}
+
 /** Um número com de quando é (base), de onde veio (fonte) e a comparação (ou por que não há). */
 export interface ItemDoRelatorioV1 {
   chave: string;
@@ -418,6 +443,7 @@ export interface ItemDoRelatorioV1 {
   fonte: string;
   comparacao: ComparacaoDoNumeroV1 | null;
   sem_comparacao: string;
+  rastro?: RastroDoNumeroV1 | null; // null: frase (nome, auditor) ou ficha antiga da base
 }
 
 /** Uma tabela com as células já escritas (como na página do Streamlit e no PDF). */

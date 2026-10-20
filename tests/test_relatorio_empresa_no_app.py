@@ -40,6 +40,32 @@ def test_pagina_mostra_as_secoes_e_o_aviso(banco):
     assert receita.startswith("R$ ")
 
 
+def test_cada_numero_diz_como_foi_calculado(banco):
+    """Item 7 do lançamento: o rastro do número em um clique, com a fórmula, a versão, a fonte,
+    a publicação e o documento original."""
+    _coletar(banco)
+    app = _abrir("PETR4.SA")
+    linhas = [m.value for m in app.markdown]
+    assert any(
+        linha.startswith("**Fórmula:** EBIT ÷ receita") for linha in linhas
+    )  # a margem EBIT
+    assert any(
+        linha.startswith("**Versão do cálculo:** fundamentos") for linha in linhas
+    )
+    assert any(linha.startswith("**Fonte:** cvm") for linha in linhas)
+    assert any(linha.startswith("**Publicado em:** ") for linha in linhas)
+    assert any(
+        linha.startswith("**Documento:** DFP") and "abrir o original" in linha
+        for linha in linhas
+    )
+
+
+def test_formula_com_cifrao_nao_vira_latex():
+    from telas.research.relatorio_empresa import _literal
+
+    assert _literal("R$ 1 * 2 $") == r"R\$ 1 \* 2 \$"
+
+
 def test_banco_mostra_nao_se_aplica(banco):
     _coletar(banco)
     app = _abrir("ITUB4.SA")

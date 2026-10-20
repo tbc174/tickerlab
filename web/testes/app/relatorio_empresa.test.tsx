@@ -2,8 +2,11 @@
 // Relatório da empresa no app novo: seções, tabelas, seção trancada e convite para os Planos.
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type {
   AnaliseDaEmpresaV1,
+  RastroDoNumeroV1,
   RelatorioDaEmpresaV1,
   SecaoDoRelatorioV1,
 } from "../../src/app/tipos";
@@ -24,6 +27,27 @@ const secao = (
 });
 
 const CONVITE = "Esta seção faz parte do plano Pro.";
+
+const DFP = "https://www.rad.cvm.gov.br/exemplo";
+const RASTRO: RastroDoNumeroV1 = {
+  formula: "receita de vendas (12 meses)",
+  versao_do_calculo: "fundamentos 2",
+  fonte_id: "cvm",
+  publicado_em: "2026-02-25",
+  documentos: [{ nome: "DFP de 31/12/2025, versão 1", publicado_em: "2026-02-25", url: DFP }],
+  outras_fontes: [],
+  linhas: [
+    { rotulo: "Fórmula", texto: "receita de vendas (12 meses)", url: "" },
+    { rotulo: "Versão do cálculo", texto: "fundamentos 2", url: "" },
+    { rotulo: "Fonte", texto: "cvm", url: "" },
+    { rotulo: "Publicado em", texto: "25/02/2026", url: "" },
+    {
+      rotulo: "Documento",
+      texto: "DFP de 31/12/2025, versão 1, publicado em 25/02/2026",
+      url: DFP,
+    },
+  ],
+};
 
 const relatorio = (trancado: boolean): RelatorioDaEmpresaV1 => ({
   empresa: "Petróleo Brasileiro S.A.",
@@ -50,6 +74,7 @@ const relatorio = (trancado: boolean): RelatorioDaEmpresaV1 => ({
           fonte: "DFP",
           comparacao: null,
           sem_comparacao: "",
+          rastro: RASTRO,
         },
       ],
     }),
@@ -176,6 +201,33 @@ describe("relatório da empresa", () => {
       links[0].compareDocumentPosition(pares) &
       Node.DOCUMENT_POSITION_FOLLOWING;
     expect(antesDosPares).toBeTruthy();
+  });
+
+  it("cada número diz como foi calculado, com o link do documento original", async () => {
+    abrir(relatorio(false));
+    const resumo = await screen.findByText("Como foi calculado");
+    const rastro = resumo.closest("details");
+    expect(rastro?.open).toBe(false); // um clique abre
+    expect(rastro?.textContent).toContain("Fórmula: receita de vendas (12 meses)");
+    expect(rastro?.textContent).toContain("Versão do cálculo: fundamentos 2");
+    expect(rastro?.textContent).toContain("Publicado em: 25/02/2026");
+    const link = within(rastro as HTMLElement).getByRole("link", {
+      name: "abrir o original",
+      hidden: true,
+    });
+    expect(link.getAttribute("href")).toBe(DFP);
+    // só o número com rastro: o auditor (frase da base, sem rastro) não ganha o "como foi calculado"
+    expect(screen.getAllByText("Como foi calculado")).toHaveLength(1);
+  });
+
+  it("o rastro tem os mesmos campos do esquema da API", () => {
+    const esquemas = JSON.parse(
+      readFileSync(join(process.cwd(), "..", "docs", "api", "openapi-v1.json"), "utf8"),
+    ).components.schemas;
+    const campos = (nome: string) => Object.keys(esquemas[nome].properties).sort();
+    expect(Object.keys(RASTRO).sort()).toEqual(campos("RastroDoNumeroV1"));
+    expect(Object.keys(RASTRO.linhas[0]).sort()).toEqual(campos("LinhaDoRastroV1"));
+    expect(Object.keys(RASTRO.documentos[0]).sort()).toEqual(campos("DocumentoUsadoV1"));
   });
 
   it("mostra o aviso de conferência e as fontes", async () => {

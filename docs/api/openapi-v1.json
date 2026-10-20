@@ -2911,6 +2911,30 @@
         "title": "LinhaDaSafraV1",
         "type": "object"
       },
+      "LinhaDoRastroV1": {
+        "description": "Uma linha do \"como foi calculado\" (`src/rastro.py`, `como_foi_calculado`).",
+        "properties": {
+          "rotulo": {
+            "title": "Rotulo",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rotulo",
+          "texto",
+          "url"
+        ],
+        "title": "LinhaDoRastroV1",
+        "type": "object"
+      },
       "LinhaDoTempoDoAtivoV1": {
         "properties": {
           "ativo": {
@@ -4830,6 +4854,14 @@
           "formula": {
             "title": "Formula",
             "type": "string"
+          },
+          "linhas": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LinhaDoRastroV1"
+            },
+            "title": "Linhas",
+            "type": "array"
           },
           "outras_fontes": {
             "items": {
