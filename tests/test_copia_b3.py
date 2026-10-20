@@ -322,6 +322,12 @@ def _fixar_relogio_do_script(monkeypatch, agora: datetime) -> None:
     monkeypatch.setattr(copiar_b3_negocios, "agora", lambda: agora)
 
 
+def _fixar_relogio_da_reconciliacao(monkeypatch, agora: datetime) -> None:
+    from scripts import reconciliar_b3_vps
+
+    monkeypatch.setattr(reconciliar_b3_vps, "agora", lambda: agora)
+
+
 @pytest.mark.parametrize("agora", MOMENTOS)
 def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch, agora):
     from scripts import copiar_b3_negocios
@@ -371,7 +377,7 @@ def _trabalho_da_reconciliacao(tmp_path: Path, lista: str) -> Path:
     return trabalho
 
 
-def _guardar_dia_em_casa(dia: date, conteudo: bytes) -> None:
+def _guardar_dia_em_casa(dia: date, conteudo: bytes, agora: datetime) -> None:
     temporario = Path(os.environ[acervo.VARIAVEL_DA_PASTA]) / "t.parcial"
     temporario.parent.mkdir(parents=True, exist_ok=True)
     temporario.write_bytes(conteudo)
@@ -380,27 +386,35 @@ def _guardar_dia_em_casa(dia: date, conteudo: bytes) -> None:
         fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat()),
         temporario,
         _sha(conteudo),
-        datetime.now(UTC),
+        agora,
         origem="teste",
         extensao=".zip",
     )
 
 
-def test_reconciliacao_sem_diferenca_sai_com_zero(banco, tmp_path, capsys):
+@pytest.mark.parametrize("agora", MOMENTOS)
+def test_reconciliacao_sem_diferenca_sai_com_zero(
+    banco, tmp_path, capsys, monkeypatch, agora
+):
     from scripts import reconciliar_b3_vps
 
-    dia, conteudo = _hoje_util(datetime.now(UTC)), _zip()
-    _guardar_dia_em_casa(dia, conteudo)
+    _fixar_relogio_da_reconciliacao(monkeypatch, agora)
+    dia, conteudo = _hoje_util(agora), _zip()
+    _guardar_dia_em_casa(dia, conteudo, agora)
     sha = _sha(conteudo)
     trabalho = _trabalho_da_reconciliacao(tmp_path, f"{dia} {sha} {sha} 100 1000\n")
     assert reconciliar_b3_vps.main(["--trabalho", str(trabalho)]) == 0
     assert "FALHAS" not in capsys.readouterr().out
 
 
-def test_reconciliacao_traz_o_dia_que_faltava_e_acusa(banco, tmp_path, capsys):
+@pytest.mark.parametrize("agora", MOMENTOS)
+def test_reconciliacao_traz_o_dia_que_faltava_e_acusa(
+    banco, tmp_path, capsys, monkeypatch, agora
+):
     from scripts import reconciliar_b3_vps
 
-    dia, conteudo = _hoje_util(datetime.now(UTC)), _zip()
+    _fixar_relogio_da_reconciliacao(monkeypatch, agora)
+    dia, conteudo = _hoje_util(agora), _zip()
     sha = _sha(conteudo)
     trabalho = _trabalho_da_reconciliacao(tmp_path, f"{dia} {sha} {sha} 100 1000\n")
     (trabalho / "recebidos" / dia.isoformat()).mkdir()
@@ -412,11 +426,15 @@ def test_reconciliacao_traz_o_dia_que_faltava_e_acusa(banco, tmp_path, capsys):
     assert reconciliar_b3_vps.main(["--trabalho", str(trabalho)]) == 0
 
 
-def test_reconciliacao_acusa_dia_que_falta_no_vps(banco, tmp_path, capsys):
+@pytest.mark.parametrize("agora", MOMENTOS)
+def test_reconciliacao_acusa_dia_que_falta_no_vps(
+    banco, tmp_path, capsys, monkeypatch, agora
+):
     from scripts import reconciliar_b3_vps
 
-    dia = _hoje_util(datetime.now(UTC))
-    _guardar_dia_em_casa(dia, _zip())
+    _fixar_relogio_da_reconciliacao(monkeypatch, agora)
+    dia = _hoje_util(agora)
+    _guardar_dia_em_casa(dia, _zip(), agora)
     trabalho = _trabalho_da_reconciliacao(tmp_path, "")
     assert reconciliar_b3_vps.main(["--trabalho", str(trabalho)]) == 1
     assert f"{dia}: falta no VPS" in capsys.readouterr().out
