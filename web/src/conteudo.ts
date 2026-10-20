@@ -257,6 +257,15 @@ export interface FonteDaBase {
   historico_desde: string; // AAAA-MM-DD
 }
 
+/** Uma fonte do arquivista, uma linha (`para_o_site` de base/arquivo/registro.py). */
+export interface RegistroDeFonte {
+  id: string;
+  licenca: string;
+  marca: "vendavel" | "uso_interno" | "nao_comercial" | "a_confirmar";
+  ritmo: "diaria" | "semanal" | "mensal" | "carga-unica";
+  termos_lidos_em: string | null; // AAAA-MM-DD
+}
+
 /** Um módulo da base com a contagem de tabelas (`Modulo` de base/vitrine.py). */
 export interface ModuloDaBase {
   chave: string;
@@ -280,6 +289,7 @@ export interface TabelaDaBase {
 export const catalogo: {
   totais: { tabelas: number; fontes: number; fontes_em_consulta: number; modulos: number };
   fontes: FonteDaBase[];
+  registro_de_fontes: RegistroDeFonte[];
   modulos: ModuloDaBase[];
   tabelas: TabelaDaBase[];
 } = catalogoJson as never;
