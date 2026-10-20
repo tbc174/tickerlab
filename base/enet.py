@@ -333,7 +333,7 @@ def _linhas_da_dmpl(
     return linhas
 
 
-def _tabela(
+def montar_tabela(
     linhas: list[dict[str, object]],
     colunas: tuple[str, ...],
     identidade: dict[str, object],
@@ -383,6 +383,6 @@ def ler_xml_enet(conteudo: bytes) -> DocumentoEnet:
         referencia=referencia,
         versao=versao,
         motivo=campos.get("MotivoReapresentacao", ""),
-        contas=_tabela(linhas, COLUNAS, identidade, versao),
-        dmpl=_tabela(linhas_da_dmpl, COLUNAS_DA_DMPL, identidade, versao),
+        contas=montar_tabela(linhas, COLUNAS, identidade, versao),
+        dmpl=montar_tabela(linhas_da_dmpl, COLUNAS_DA_DMPL, identidade, versao),
     )

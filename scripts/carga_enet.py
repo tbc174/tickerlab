@@ -11,8 +11,10 @@ acervo e no registro de coletas.
 - **Janela:** não começa um pacote depois de `--parar-as` (6h): a noite seguinte retoma de onde
   parou, porque o que já está guardado é pulado.
 - **Falha passageira** (pacote cortado, a CVM devolvendo outra coisa) fica para a noite seguinte e
-  não derruba a tarefa. A tarefa devolve 1 (o Kuma avisa) só se nada veio e algo falhou: sinal de
-  que a fonte está fora do ar ou mudou.
+  não derruba a tarefa. A tarefa devolve 1 (o Kuma avisa) só se nada veio e algo falhou. A
+  mensagem diz de que tipo: pacote em formato que o leitor não conhece (`FormatoNaoLido`) ou
+  falha de rede/pacote cortado (aí sim, a fonte pode estar fora do ar).
+- Os pacotes do formato antigo (`.dfp` até ~2020) são lidos por `base/enet_antigo.py`.
 - Depois da carga inicial, a tarefa continua útil: as empresas reapresentam documentos o tempo
   todo, e cada reapresentação nova torna antiga a versão de antes.
 """
@@ -20,6 +22,7 @@ acervo e no registro de coletas.
 import argparse
 import logging
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
@@ -115,25 +118,55 @@ def _carregar_arquivo(
     return resultado
 
 
-def carregar(motor: sa.Engine, desde: int, ate: int, parar_as: str) -> tuple[int, int]:
-    """Baixa o que falta, DFP do ano mais novo ao mais velho e depois ITR. (baixadas, falhas)"""
+@dataclass
+class ResumoDaCarga:
+    baixadas: int = 0
+    falhas_de_formato: int = 0  # o leitor não conhece o pacote
+    falhas_de_rede: int = 0  # rede, pacote cortado ou outra falha passageira
+
+    @property
+    def falhas(self) -> int:
+        return self.falhas_de_formato + self.falhas_de_rede
+
+
+def carregar(motor: sa.Engine, desde: int, ate: int, parar_as: str) -> ResumoDaCarga:
+    """Baixa o que falta, DFP do ano mais novo ao mais velho e depois ITR."""
     fim = fim_da_janela(agora(), parar_as)
     baixador = Baixador()
-    baixadas = falhas = 0
+    resumo = ResumoDaCarga()
     for documento in URLS:
         for ano in range(ate, desde - 1, -1):
             resultado = _carregar_arquivo(motor, documento, ano, baixador, fim)
             if resultado is None:
                 continue
-            baixadas += len(resultado.baixados)
-            falhas += len(resultado.falhas)
+            resumo.baixadas += len(resultado.baixados)
+            resumo.falhas_de_formato += len(resultado.falhas_de_formato)
+            resumo.falhas_de_rede += len(resultado.falhas) - len(
+                resultado.falhas_de_formato
+            )
             if resultado.interrompida:
                 log.info(
-                    "Janela acabou (%s): %s baixadas nesta noite", parar_as, baixadas
+                    "Janela acabou (%s): %s baixadas nesta noite",
+                    parar_as,
+                    resumo.baixadas,
                 )
-                return baixadas, falhas
-    log.info("Carga em dia: %s baixadas nesta noite", baixadas)
-    return baixadas, falhas
+                return resumo
+    log.info("Carga em dia: %s baixadas nesta noite", resumo.baixadas)
+    return resumo
+
+
+def _avisar_que_nada_veio(resumo: ResumoDaCarga) -> None:
+    """Diz de que tipo foram as falhas: 'fora do ar' só vale para falha de rede."""
+    if resumo.falhas_de_formato:
+        log.error(
+            "Nada veio: %s pacotes em formato que o leitor não conhece (veja os avisos acima)",
+            resumo.falhas_de_formato,
+        )
+    if resumo.falhas_de_rede:
+        log.error(
+            "Nada veio: %s pacotes falharam por rede ou pacote cortado: a fonte pode estar fora do ar",
+            resumo.falhas_de_rede,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -151,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     migrar_para("head", url=url)
     motor = criar_engine(url)
     try:
-        baixadas, falhas = carregar(
+        resumo = carregar(
             motor, opcoes.desde, opcoes.ate or agora().year, opcoes.parar_as
         )
     except (requests.RequestException, ValueError, sa.exc.SQLAlchemyError) as erro:
@@ -159,10 +192,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         motor.dispose()
-    if falhas and not baixadas:
-        log.error(
-            "Nada veio e %s pacotes falharam: a fonte pode estar fora do ar", falhas
-        )
+    if resumo.falhas and not resumo.baixadas:
+        _avisar_que_nada_veio(resumo)
         return 1
     return 0
 

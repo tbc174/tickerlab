@@ -42,8 +42,14 @@ import sqlalchemy as sa
 from base import dmpl
 from base.cadastro import ler_cadastro
 from base.contas_cvm import Recorte, ler_contas, ler_indice
-from base.enet import DocumentoEnet, ler_xml_enet
-from base.enet_coleta import Baixador, baixar_em_fila, guardar, ja_guardados
+from base.enet import DocumentoEnet
+from base.enet_coleta import (
+    Baixador,
+    baixar_em_fila,
+    guardar,
+    ja_guardados,
+    ler_documento_guardado,
+)
 from base.ponto_no_tempo import (
     DEMONSTRACOES,
     Formato,
@@ -103,7 +109,9 @@ def documentos_do_enet(
         if xml is None:
             faltando.append(versao.link)
         else:
-            documentos.append(_com_o_cnpj_do_indice(ler_xml_enet(xml), versao.cnpj))
+            documentos.append(
+                _com_o_cnpj_do_indice(ler_documento_guardado(xml), versao.cnpj)
+            )
             origens.append(_origem(versao.link, xml))
     return documentos, faltando, origens
 

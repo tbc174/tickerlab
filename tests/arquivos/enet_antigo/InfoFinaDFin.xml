@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<ArrayOfInfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>2</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroConta>1</NumeroConta>
+    <DescricaoConta1>Ativo Total</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>85832.5000000000</ValorConta1>
+    <ValorConta2>70000.0000000000</ValorConta2>
+    <ValorConta3>9</ValorConta3>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>3</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroConta>1</NumeroConta>
+    <DescricaoConta1>Passivo Total</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>85832.5000000000</ValorConta1>
+    <ValorConta2>70000.0000000000</ValorConta2>
+    <ValorConta3>9</ValorConta3>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>4</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>2</CodigoTipoInformacaoFinanceira>
+    <NumeroConta>3.01</NumeroConta>
+    <DescricaoConta1>Receita</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>1200.0000000000</ValorConta1>
+    <ValorConta2>0.0000000000</ValorConta2>
+    <ValorConta3>9</ValorConta3>
+  </InfoFinaDFin>
+  <InfoFinaDFin>
+    <CodigoTipoDemonstracaoFinanceira>8</CodigoTipoDemonstracaoFinanceira>
+    <CodigoTipoInformacaoFinanceira>1</CodigoTipoInformacaoFinanceira>
+    <NumeroConta>5.01</NumeroConta>
+    <DescricaoConta1>DMPL sem nome</DescricaoConta1>
+    <IndicadorContaFixa>true</IndicadorContaFixa>
+    <ValorConta1>1</ValorConta1>
+    <ValorConta2>2</ValorConta2>
+    <ValorConta3>9</ValorConta3>
+  </InfoFinaDFin>
+</ArrayOfInfoFinaDFin>

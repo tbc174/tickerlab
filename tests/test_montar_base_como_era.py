@@ -251,3 +251,26 @@ def test_serie_t1_traz_a_dfc_e_grava_a_dmpl_ao_lado(
     assert montar.main(["--conferir", "--pasta", str(saida), "--serie-t1"]) == 0
     saida_do_conferir = capsys.readouterr().out
     assert saida_do_conferir.count("2024: ok") == 2  # as demonstrações e a DMPL
+
+
+def test_versao_antiga_no_formato_dfp_do_acervo_entra_na_montagem(url):
+    from tests.test_base_enet_antigo import _pacote_antigo
+
+    motor = criar_engine(url)
+    indice = pd.DataFrame(
+        {
+            "cnpj": ["08.493.364/0001-62"] * 3,
+            "referencia": [pd.Timestamp("2015-03-31")] * 3,
+            "versao": pd.array([1, 2, 3], dtype="Int64"),  # a 3 vem dos dados abertos
+            "recebido_em": pd.to_datetime(["2015-04-10", "2015-05-10", "2015-06-01"]),
+            "link": [f"http://enet/antigo/{v}" for v in (1, 2, 3)],
+        }
+    )
+    with motor.begin() as c:
+        guardar(c, "http://enet/antigo/2", _pacote_antigo(), COLETADO_EM)
+    with motor.connect() as c:
+        documentos, faltando, _ = montar.documentos_do_enet(c, indice)
+    motor.dispose()
+    assert [d.versao for d in documentos] == [2]
+    assert faltando == ["http://enet/antigo/1"]
+    assert documentos[0].contas["fim"].max() <= documentos[0].referencia
