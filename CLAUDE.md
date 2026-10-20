@@ -85,6 +85,11 @@ cd web; npm run site                                        # páginas, CSS e JS
   sensíveis (login, contas e admins, cobrança, limites dos planos, migração, segredos, apagar dado), a
   sessão mescla e registra a decisão (alçadas da ADR 0101, na pasta privada); nessas áreas, só com o
   "pode" do Tiago e depois da revisão de segurança.
+- **Ordens da Diretoria:** a conversa da Diretoria que toca a fila única pode mandar ordens às outras sessões
+  (mensagem entre sessões), citando as palavras do Tiago (autorização dele em 20/10/2026). Fora do nível 1 da
+  ADR 0101, essa ordem vale como a do Tiago para push, PR, merge com auto-merge e o próximo passo da passagem. No
+  nível 1 (as áreas sensíveis acima, texto público, gasto, licença de dado e LGPD), só vale o "pode" que o Tiago
+  escreve na própria conversa.
 - **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
   não mescla: corrija e faça o push de novo.
