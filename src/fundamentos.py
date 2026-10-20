@@ -33,7 +33,7 @@ from src.demonstracoes import (
     e_financeira,
 )
 
-VERSAO_DOS_FUNDAMENTOS = "1"  # sobe quando uma fórmula abaixo mudar
+VERSAO_DOS_FUNDAMENTOS = "2"  # sobe quando uma fórmula abaixo mudar
 ALIQUOTA_DE_IR_CS = 0.34  # hipótese do ROIC (alíquota nominal de IR + CSLL no Brasil)
 ALIQUOTA_DOS_EUA = (
     0.21  # imposto federal sobre o lucro das empresas nos EUA (sem os estaduais)
@@ -49,6 +49,24 @@ NAO_SE_APLICA_A_FINANCEIRAS = (
     "(não há margem bruta, EBIT nem dívida comparáveis)."
 )
 REAIS, FRACAO, VEZES, REAIS_POR_ACAO = "reais", "fração", "vezes", "reais por ação"
+SEM_RECEITA = "Sem receita positiva no período."
+SEM_DIVIDENDOS_NO_CAIXA = (
+    "O fluxo de caixa não traz linha de dividendos ou JCP pagos: não dá para saber se a "
+    "empresa não pagou ou se a linha tem outro nome."
+)
+# os de mercado que não servem a bancos (sem dívida nem receita comparáveis às das outras)
+DA_FIRMA = (
+    ("valor_da_firma", "Valor da firma (valor de mercado + dívida líquida)", REAIS),
+    ("ev_ebitda", "Valor da firma / EBITDA (12 meses)", VEZES),
+    ("ev_ebit", "Valor da firma / EBIT (12 meses)", VEZES),
+    ("p_receita", "Preço / receita (12 meses)", VEZES),
+)
+# os que pedem o preço do ativo, além de P/L e P/VP (D3 mudada em 20/10/2026)
+DE_MERCADO = (
+    "valor_de_mercado",
+    "dividend_yield",
+    *(chave for chave, _, _ in DA_FIRMA),
+)
 
 
 @dataclass(frozen=True)
@@ -250,7 +268,7 @@ def _resultado(lista: _Lista, ttm: dict, base: str, financeira: bool) -> None:
     receita, lucro_total = ttm.get("receita"), ttm.get("lucro_liquido")
     lista.add("receita", "Receita (12 meses)", receita, REAIS, base)
     lista.add("lucro", "Lucro dos acionistas (12 meses)", _lucro(ttm), REAIS, base)
-    sem_receita = "" if _positivo(receita) else "Sem receita positiva no período."
+    sem_receita = "" if _positivo(receita) else SEM_RECEITA
     for chave, nome, conta in (
         ("margem_bruta", "Margem bruta", "resultado_bruto"),
         ("margem_ebit", "Margem EBIT", "ebit"),
@@ -439,6 +457,65 @@ def _por_acao(
     )
 
 
+def _razao_positiva(
+    numerador: float | None, denominador: float | None, sem_denominador: str
+) -> tuple[float | None, str]:
+    """(numerador ÷ denominador, motivo): denominador ausente, zero ou negativo vira o motivo."""
+    if numerador is None or denominador is None:
+        return None, ""
+    if denominador <= 0:
+        return None, sem_denominador
+    return numerador / denominador, ""
+
+
+def _de_mercado(
+    lista: _Lista,
+    ttm: dict,
+    acoes: tuple,
+    preco: float | None,
+    bases: tuple[str, str],
+    financeira: bool,
+) -> None:
+    """Valor de mercado, valor da firma, dividend yield e múltiplos da firma (D3 mudada em
+    20/10/2026). O mesmo preço vale para todas as classes de ação; o DY usa o caixa pago em
+    dividendos e JCP nos 12 meses (DFC), que pode incluir o pago aos minoritários."""
+    quantidade, _, sem_acoes = acoes
+    base_12m, base_balanco = bases
+    sem_preco = "" if _positivo(preco) else "Sem o preço do ativo."
+    motivo = sem_preco or sem_acoes
+    mercado = None if motivo or preco is None else preco * quantidade
+    lista.add(
+        "valor_de_mercado", "Valor de mercado", mercado, REAIS, base_balanco, motivo
+    )
+    pagos = ttm.get("dividendos_pagos")
+    lista.add(
+        "dividend_yield", "Dividend yield (12 meses)",
+        None if mercado is None or pagos is None else abs(pagos) / mercado, FRACAO, base_12m,
+        motivo or ("" if pagos is not None else SEM_DIVIDENDOS_NO_CAIXA),
+    )  # fmt: skip
+    if financeira:
+        for chave, nome, unidade in DA_FIRMA:
+            lista.add(chave, nome, None, unidade, base_12m, NAO_SE_APLICA_A_FINANCEIRAS)
+        return
+    liquida = lista.itens["divida_liquida"].valor
+    firma = None if mercado is None or liquida is None else mercado + liquida
+    ebit, depreciacao = ttm.get("ebit"), ttm.get("depreciacao")
+    ebitda = None if ebit is None or depreciacao is None else ebit + depreciacao
+    contas = (
+        ("valor_da_firma", firma, ""),
+        ("ev_ebitda", *_razao_positiva(firma, ebitda, "EBITDA negativo ou zero.")),
+        ("ev_ebit", *_razao_positiva(firma, ebit, "EBIT negativo ou zero.")),
+        ("p_receita", *_razao_positiva(mercado, ttm.get("receita"), SEM_RECEITA)),
+    )
+    for (chave, nome, unidade), (_, valor, sem_conta) in zip(
+        DA_FIRMA, contas, strict=True
+    ):
+        base = (
+            base_balanco if chave == "valor_da_firma" else f"{base_12m}; {base_balanco}"
+        )
+        lista.add(chave, nome, valor, unidade, base, motivo or sem_conta)
+
+
 def _tabela_anual(tabela: pd.DataFrame) -> pd.DataFrame:
     """Receita, lucro, margem líquida, patrimônio e dívida líquida de cada ano (vazio = NaN)."""
     if tabela.empty:
@@ -512,6 +589,7 @@ def calcular(
     _retornos_e_divida(lista, ttm, saldo, base_12m, base_balanco, financeira, aliquota)
     _crescimento(lista, tabela, anos)
     _por_acao(lista, ttm, saldo, acoes, preco, (base_12m, base_balanco))
+    _de_mercado(lista, ttm, acoes, preco, (base_12m, base_balanco), financeira)
     docs = dados.documentos
     if not docs.empty:
         usados_set = set(usados)

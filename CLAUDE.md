@@ -93,6 +93,9 @@ cd web; npm run site                                        # páginas, CSS e JS
 - **Merge automático:** quando o merge está autorizado (pela alçada ou pelo Tiago), ative o auto-merge do PR (ele
   mescla sozinho quando o CI fica verde), em vez de esperar o CI para voltar e mesclar. CI vermelho
   não mescla: corrija e faça o push de novo.
+- **O PR é de quem abriu até o merge:** o auto-merge não acorda ninguém quando o CI fica vermelho. Ao abrir o
+  PR, ligue o Auto-fix do app (`mcp__ccd_pr__set_monitor` com `auto_fix` e `address_comments`), e não feche a
+  conversa nem dê a tarefa por pronta antes do merge.
 - A `main` vai para produção sozinha (deploy automático só de commits com CI verde). Trate cada
   merge como uma publicação.
 - Mensagens de commit em português, no formato `tipo: o que mudou` (`feat`, `fix`, `docs`,
