@@ -393,23 +393,33 @@ def test_meses_recentes_do_fidc_e_do_cda_todo_dia():
     assert (fidc.grupo, cda.grupo) == ("diaria", "diaria")
     assert not (fidc.pesada or cda.pesada)  # a CVM regrava sem mudar os cabeçalhos
     alvos_fidc = fidc.descobrir(None, agora)  # type: ignore[arg-type]
-    assert [a.url.rsplit("_", 1)[-1] for a in alvos_fidc] == [
-        "202606.zip",
-        "202607.zip",
-        "202608.zip",
-        "202609.zip",
-    ]
+    assert (
+        [a.url.rsplit("_", 1)[-1] for a in alvos_fidc]
+        == [
+            "202606.zip",
+            "202607.zip",
+            "202608.zip",
+            "202609.zip",
+            "202610.zip",  # o mês corrente: o 404 dele registra o "não encontrado" (visto_em)
+        ]
+    )
     assert alvos_fidc[0].url.startswith(
         "https://dados.cvm.gov.br/dados/FIDC/DOC/INF_MENSAL/DADOS/inf_mensal_fidc_"
     )
     assert all(a.obter is not None for a in alvos_fidc)  # 404 vira "nao_encontrado"
     alvos_cda = cda.descobrir(None, agora)  # type: ignore[arg-type]
     assert [a.url.rsplit("/", 1)[-1] for a in alvos_cda] == [
-        f"cda_fi_2026{m:02d}.zip" for m in range(5, 10)
+        f"cda_fi_2026{m:02d}.zip" for m in range(5, 11)
     ]
     # virada do ano, no fuso de São Paulo (1º/01 às 01h UTC ainda é 31/12)
     janeiro = fidc.descobrir(None, datetime(2027, 1, 1, 1, 0, tzinfo=UTC))  # type: ignore[arg-type]
-    assert [a.url[-10:-4] for a in janeiro] == ["202608", "202609", "202610", "202611"]
+    assert [a.url[-10:-4] for a in janeiro] == [
+        "202608",
+        "202609",
+        "202610",
+        "202611",
+        "202612",
+    ]
 
 
 def test_clima_do_cafe_inmet_por_ano_chirps_por_mes_e_malha_por_uf():
