@@ -733,7 +733,8 @@ def _dividendos(c: _Calculos) -> Secao:
         "dividendos",
         SECOES["dividendos"],
         itens,
-        [*([COMO_SAI_O_DY] if dy is not None else []), *d.avisos],
+        # no fim: os avisos guardam a posição (o id deles na análise escrita)
+        [*d.avisos, *([COMO_SAI_O_DY] if dy is not None else [])],
         {"historico": _tabela(d.historico)},
     )
 
