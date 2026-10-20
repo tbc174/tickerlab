@@ -158,9 +158,8 @@ LINHAGEM_DA_REDE = (
     "coleta de cada um. " + COM_VERSAO_DO_CODIGO
 )
 RESSALVA_DA_REDE = (
-    "A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita, que "
-    "está como a confirmar (não entra em modelo) até a licença ser confirmada; o LEI é do GLEIF "
-    "(CC0, citar); os "
+    "A natureza jurídica e o MEI com `natureza_fonte` = receita vêm do CNPJ aberto da Receita "
+    "(CC BY, citar a Receita); o LEI é do GLEIF (CC0, citar); os "
     "códigos dos reguladores seguem a licença de cada um (ver `empresa_serie`)."
 )
 

@@ -5042,8 +5042,8 @@
       },
       "historico_desde": "2026-10-14",
       "granularidade_do_publico_em": "mes",
-      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
-      "revenda": "a confirmar (sem resposta escrita sobre uso comercial ou treino de ML: vale como não comercial até a resposta)",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "revenda": "vendável com atribuição à fonte",
       "pessoa": false,
       "frequencia": "Mensal (a Receita publica um retrato por mês; cada mês guardado vira um arquivo)",
       "atraso": "A Receita publica o retrato do mês por volta do dia 10 a 15; ele vale desde `disponivel_em` (o fim do mês ou, se depois, o dia em que foi baixado). `data_situacao_especial` é a data que a Receita informa, que pode ser anterior ao retrato em que a linha apareceu pela primeira vez"

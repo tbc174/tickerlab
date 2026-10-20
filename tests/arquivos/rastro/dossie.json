@@ -1,0 +1,314 @@
+{
+  "auditor_e_controladas.auditor_atual": {
+    "valor": "Deloitte",
+    "formula": "a firma do mandato sem fim no FRE mais recente",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-05-20"
+  },
+  "auditor_e_controladas.auditor_desde": {
+    "valor": "2025-04-01",
+    "formula": "o início do mandato sem fim no FRE mais recente",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-05-20"
+  },
+  "auditor_e_controladas.coligadas_e_outras": {
+    "valor": 0,
+    "formula": "sociedades no FRE mais recente menos as controladas",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-05-31"
+  },
+  "auditor_e_controladas.controladas": {
+    "valor": 1,
+    "formula": "sociedades no FRE mais recente do tipo controlada (sem tipo: participação acima de 50%)",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-05-31"
+  },
+  "auditor_e_controladas.sociedades": {
+    "valor": 1,
+    "formula": "número de sociedades listadas no FRE mais recente",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-05-31"
+  },
+  "capital_e_acionistas.compras_dos_fundos_12m": {
+    "valor": 1200000000.0,
+    "formula": "soma das compras dos fundos nos 12 meses até o último mês completo",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-12"
+  },
+  "capital_e_acionistas.eventos_de_capital": {
+    "valor": 1,
+    "formula": "eventos de capital dos últimos 10 anos, cada um uma vez",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": null
+  },
+  "capital_e_acionistas.insiders_compras_12m": {
+    "valor": 2000000.0,
+    "formula": "soma das compras declaradas (todo cargo fora a tesouraria) nos 12 meses até o dia, das declarações já entregues",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-06-10"
+  },
+  "capital_e_acionistas.insiders_vendas_12m": {
+    "valor": 0.0,
+    "formula": "soma das vendas declaradas (todo cargo fora a tesouraria) nos 12 meses até o dia, das declarações já entregues",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-06-10"
+  },
+  "capital_e_acionistas.recompras_12m": {
+    "valor": 0.0,
+    "formula": "soma das compras da própria companhia (tesouraria) nos 12 meses até o dia",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-06-10"
+  },
+  "capital_e_acionistas.vendas_dos_fundos_12m": {
+    "valor": 600000000.0,
+    "formula": "soma das vendas dos fundos nos 12 meses até o último mês completo",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-12"
+  },
+  "credito.assembleias_de_debenturistas_12m": {
+    "valor": 2,
+    "formula": "documentos de assembleia de debenturistas públicos nos 12 meses até o dia (versão mais nova)",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-05"
+  },
+  "credito.ratings_elevacoes_12m": {
+    "valor": 0,
+    "formula": "elevações de rating públicas nos 12 meses até o dia, cada ação uma vez",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-05-11"
+  },
+  "credito.ratings_rebaixamentos_12m": {
+    "valor": 1,
+    "formula": "rebaixamentos de rating públicos nos 12 meses até o dia, cada ação uma vez",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-05-11"
+  },
+  "geracao_de_caixa.capex": {
+    "valor": 900000000.0,
+    "formula": "saídas para comprar imobilizado e intangível (DFC 6.02), na DFP mais nova já divulgada",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-20"
+  },
+  "geracao_de_caixa.ebitda": {
+    "valor": 2500000000.0,
+    "formula": "EBIT (DRE 3.05) + depreciação e amortização (DVA 7.04.01; sem DVA, os ajustes da DFC), na DFP mais nova já divulgada",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-20"
+  },
+  "geracao_de_caixa.fcf": {
+    "valor": 1300000000.0,
+    "formula": "caixa operacional (DFC 6.01) − capex, na DFP mais nova já divulgada",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-20"
+  },
+  "governanca.comites": {
+    "valor": 3,
+    "formula": "tipos de comitê distintos no FRE mais novo entregue",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-07-10"
+  },
+  "governanca.conselho_eleitos_por_minoritarios": {
+    "valor": 2,
+    "formula": "conselheiros eleitos por minoritários no FRE mais novo entregue",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-07-10"
+  },
+  "governanca.conselho_independentes": {
+    "valor": 4,
+    "formula": "conselheiros independentes no FRE mais novo entregue",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-07-10"
+  },
+  "governanca.conselho_membros": {
+    "valor": 10,
+    "formula": "membros dos órgãos do conselho de administração no FRE mais novo entregue",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-07-10"
+  },
+  "governanca.remuneracao_da_administracao": {
+    "valor": 51000000.0,
+    "formula": "soma da remuneração total dos órgãos no último exercício encerrado, no FRE mais novo que o informa",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-07-10"
+  },
+  "negocios.negocios": {
+    "valor": 1,
+    "formula": "fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão ou reorganização",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-03-01"
+  },
+  "ofertas_e_fundos.fundos_com_a_acao": {
+    "valor": 400,
+    "formula": "número de fundos com a ação comprada no último mês completo do CDA",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-12"
+  },
+  "ofertas_e_fundos.ofertas": {
+    "valor": 1,
+    "formula": "número de ofertas registradas na CVM pela companhia e pelas controladas do FRE mais recente (Resolução 160 e as anteriores)",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-06-02"
+  },
+  "ofertas_e_fundos.valor_nos_fundos": {
+    "valor": 9000000000.0,
+    "formula": "soma do valor da ação nas carteiras no último mês completo do CDA",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-12"
+  },
+  "qualidade_do_lucro.exercicios_olhados": {
+    "valor": 3,
+    "formula": "exercícios dos últimos 10 com DFP divulgada",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-20"
+  },
+  "qualidade_do_lucro.exercicios_reapresentados": {
+    "valor": 1,
+    "formula": "exercícios dos últimos 10 em que o lucro ou a receita da DFP mudaram mais que o arredondamento entre a primeira e a última versão divulgada",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-03-20"
+  },
+  "qualidade_do_lucro.releases_comparados": {
+    "valor": 1,
+    "formula": "valores do release que deu para comparar com o ITR ou a DFP (versão mais nova de cada release)",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-11-10"
+  },
+  "qualidade_do_lucro.releases_diferentes": {
+    "valor": 1,
+    "formula": "valores do release diferentes do ITR ou da DFP além do arredondamento",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-11-10"
+  },
+  "qualidade_do_lucro.trocas_de_auditor_10_anos": {
+    "valor": 1,
+    "formula": "trocas de auditor com efeito nos últimos 10 anos, já conhecidas",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2025-05-20"
+  },
+  "rede.controladas": {
+    "valor": 1,
+    "formula": "empresas que são 'Controlada' da companhia na rede, como era no dia",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2016-05-31"
+  },
+  "rede.ligacoes": {
+    "valor": 1,
+    "formula": "empresas ligadas à companhia na rede, como era no dia",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2016-05-31"
+  },
+  "setor.cr4_aneel_consumidores": {
+    "valor": 1.0,
+    "formula": "Consumidores atendidos pelas distribuidoras (ANEEL) (último mês do ano): fração do mercado somada pelos 4 maiores (participante: o grupo econômico quando se sabe, senão a entidade)",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "aneel",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-15"
+  },
+  "setor.hhi_aneel_consumidores": {
+    "valor": 8042.0,
+    "formula": "Consumidores atendidos pelas distribuidoras (ANEEL) (último mês do ano): soma dos quadrados das participações (em %) de cada participante: o grupo econômico quando se sabe, senão a entidade",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "aneel",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-15"
+  },
+  "setor.membros": {
+    "valor": 1,
+    "formula": "companhias abertas da base com entidade ligada à agência do setor",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": null
+  },
+  "setor.mercado_aneel_consumidores": {
+    "valor": 1000.0,
+    "formula": "Consumidores atendidos pelas distribuidoras (ANEEL) (último mês do ano): soma de todo o mercado",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "aneel",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-15"
+  },
+  "setor.setor": {
+    "valor": "Elétricas",
+    "formula": "o setor da agência que regula as entidades da companhia",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": null
+  },
+  "setor_regulado.aneel_consumidores": {
+    "valor": 110.0,
+    "formula": "Consumidores atendidos pelas distribuidoras (ANEEL) (último mês do ano): soma das entidades ligadas à companhia",
+    "versao_do_calculo": "dossiê 1",
+    "fonte_id": "aneel",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-15"
+  }
+}

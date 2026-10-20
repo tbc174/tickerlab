@@ -30,7 +30,6 @@ URL_CNPJ = (
 USOS = ("treinar", "rotular", "exportar", "mostrar")
 FONTES_COM_MARCA_RESTRITA = (
     "yahoo-bvsp",  # não comercial, na lista dos usos sem cobrança
-    "rfb-cnpj",  # a confirmar, na lista
     "tce-rs",  # a confirmar, fora da lista
     "kraken",  # não comercial, antes só na exceção da ADR 0045
     "fonte-que-ninguem-conhece",  # sem resposta escrita: a confirmar
@@ -72,7 +71,10 @@ def _manifesto(arquivo: Path) -> dict:
         ),  # "for scholarship and research purposes only"
         ("kraken", Marca.NAO_COMERCIAL),  # fora da exceção da ADR 0045
         ("mb", Marca.NAO_COMERCIAL),
-        ("rfb-cnpj", Marca.A_CONFIRMAR),  # perguntar a licença do conjunto
+        (
+            "rfb-cnpj",
+            Marca.VENDAVEL,
+        ),  # CC BY na ficha do dados.gov.br (Pode, 20/10/2026)
         ("pgfn-divida", Marca.A_CONFIRMAR),
         (
             "fonte-que-ninguem-conhece",
@@ -224,10 +226,10 @@ def test_derivada_de_derivada_herda_ate_o_original(tmp_path):
     amostra = _gravar(
         base / "amostra" / "painel", URL_CVM, origens=[origem_de_tabela(rede, base)]
     )
-    assert licenca.licenca_da_tabela(amostra).marca == Marca.A_CONFIRMAR
+    assert licenca.licenca_da_tabela(amostra).marca == Marca.VENDAVEL
     assert licenca.licenca_da_tabela(amostra).fontes == {
         "cvm": Marca.VENDAVEL,
-        "rfb-cnpj": Marca.A_CONFIRMAR,
+        "rfb-cnpj": Marca.VENDAVEL,
     }
 
 
@@ -334,7 +336,6 @@ def test_conferida_com_a_fonte_de_cada_linha_traz_a_marca_dela(tmp_path, monkeyp
 
 FONTES_DA_EMENDA_3 = (
     "yahoo",  # múltiplos p_l e p_vp dos padrões setoriais
-    "rfb-cnpj",  # situação cadastral e especial da Receita
     "pgfn",  # dívida ativa
     "comexstat",  # B13 e rede
     "assessoria",  # negócios de M&A (só fatos, ADR 0082)
@@ -358,7 +359,6 @@ def test_a_lista_tem_os_usos_da_emenda_3_com_onde_e_substituto():
     "fonte",
     [
         "yahoo-bvsp",
-        "rfb-cnpj",
         "pgfn-divida",
         "comexstat",
         "assessoria-igc",
@@ -376,7 +376,7 @@ def test_mostrar_aceita_fonte_restrita_da_lista(fonte):
 def test_a_lista_nao_decide_mais_o_que_aparece(monkeypatch):
     """ADR 0102: tirar a fonte da lista não barra; a B3 fica fora mesmo se alguém a puser lá."""
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", ())
-    exigir_licenca("mostrar", ["yahoo-bvsp", "rfb-cnpj"])
+    exigir_licenca("mostrar", ["yahoo-bvsp", "pgfn-divida"])
     com_b3 = (coletas.UsoSemCobranca("b3", "teste", "teste", "teste"),)
     monkeypatch.setattr(coletas, "USOS_SEM_COBRANCA", com_b3)
     with pytest.raises(LicencaNaoPermiteError, match="ADR 0019"):
@@ -407,3 +407,29 @@ def test_citacoes_das_fontes_restritas_e_a_frase_da_iex():
     ]
     assert coletas.citacoes_das_fontes(["cvm-ipe", "bcb-sgs-433"]) == []
     assert "Data provided for free by IEX" in coletas.FRASE_DA_IEX
+
+
+def test_rfb_cnpj_vendavel_com_atribuicao():
+    # a ficha do conjunto no dados.gov.br declara CC BY; Tiago, "Pode", 20/10/2026 (ADR 0106, item 2)
+    assert coletas.REVENDA["rfb-cnpj"] == coletas.VENDAVEL_COM_ATRIBUICAO
+    assert marca_da_fonte("rfb-cnpj") == Marca.VENDAVEL
+    assert (
+        "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026"
+        in coletas.LICENCAS["rfb-cnpj"]
+    )
+    # a planilha de cripto da Receita não muda
+    assert marca_da_fonte("rfb-cripto") == Marca.A_CONFIRMAR
+    assert coletas.citacoes_das_fontes(["rfb-cnpj", "rfb-cnpj-estabelecimentos"]) == [
+        coletas.FRASE_DA_RECEITA
+    ]
+    assert coletas.citacoes_das_fontes(["rfb-cripto"]) == []
+    assert "Fonte: Receita Federal, dados abertos do CNPJ" in coletas.FRASE_DA_RECEITA
+
+
+def test_cnpj_fora_dos_usos_sem_cobranca():
+    por_fonte = {uso.fonte for uso in coletas.USOS_SEM_COBRANCA}
+    assert "rfb-cnpj" not in por_fonte
+    assert coletas.uso_sem_cobranca("rfb-cnpj") is None
+    assert "pgfn" in por_fonte  # o da PGFN fica
+    for uso in ("treinar", "rotular", "exportar", "mostrar"):
+        assert coletas.pode_usar(uso, "rfb-cnpj")

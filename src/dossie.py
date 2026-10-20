@@ -31,6 +31,7 @@ from base import dossie as dossie_da_base
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
 from src.numero import Comparacao
+from src.rastro import Rastro
 from src.relatorio_empresa import Dossie, Item, Secao
 
 log = logging.getLogger(__name__)
@@ -130,12 +131,34 @@ _NOME_DA_AGENCIA = {
 }
 
 
+class RastroDaFicha(BaseModel):
+    """Como o item foi calculado e de onde veio, como a base escreve (`base.dossie._rastro`)."""
+
+    formula: str
+    versao_do_calculo: str
+    fonte_id: str
+    outras_fontes: list[str] = []
+    publicado_em: date | None = None
+
+    def como_rastro(self) -> Rastro:
+        return Rastro(
+            self.formula,
+            self.versao_do_calculo,
+            self.fonte_id,
+            self.publicado_em,
+            outras_fontes=tuple(self.outras_fontes),
+        )
+
+
 class ItemDaFicha(BaseModel):
     chave: str
     nome: str
     valor: str | int | float | None
     unidade: str
     base: str | None = None
+    rastro: RastroDaFicha | None = (
+        None  # None: ficha de antes do rastro (B-02, 20/10/2026)
+    )
 
 
 class SecaoDaFicha(BaseModel):
@@ -1152,6 +1175,7 @@ def _item_da_ficha(ficha: Ficha, secao: SecaoDaFicha, item: ItemDaFicha) -> Item
         fonte=FONTES_DOS_ITENS.get(item.chave, ", ".join(secao.fontes)),
         comparacao=comparacao,
         sem_comparacao=sem_comparacao,
+        rastro=item.rastro.como_rastro() if item.rastro else None,
     )
 
 
