@@ -5563,6 +5563,38 @@
         "summary": "Busca Por Cnpj"
       }
     },
+    "/v1/busca-por-cnpj/pdf": {
+      "post": {
+        "description": "O mesmo relatório da rota acima em PDF, com \"Limites e cuidados\" (mesmo acesso, mesmo plano).",
+        "operationId": "busca_por_cnpj_em_pdf_v1_busca_por_cnpj_pdf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PedidoDeBuscaPorCnpjV1"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Busca Por Cnpj Em Pdf"
+      }
+    },
     "/v1/commodities/cafe/mapa": {
       "get": {
         "description": "Produção e área de café por município (PAM) e o clima de cada região, como o pacote do dia\nos deixou; 503 se o pacote ainda não chegou a este servidor.",
