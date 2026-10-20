@@ -235,7 +235,7 @@ def _entradas_da_rota(operacao: dict, esquemas: dict) -> dict[str, tuple[bool, d
         }
     return {
         p["name"]: (p["required"], _faixa(p["schema"]))
-        for p in operacao["parameters"]
+        for p in operacao.get("parameters", [])
         if p["in"] == "query"
     }
 
@@ -289,6 +289,9 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/eu",
         "/v1/conta",
         "/v1/sair",
+        "/v1/sair-de-todos",
+        "/v1/entrada/codigo",
+        "/v1/entrada/confirmar",
         "/v1/aceite-dos-termos",
         "/v1/revogar-link",
         "/v1/salvar-simulacao",

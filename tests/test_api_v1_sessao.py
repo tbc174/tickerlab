@@ -187,9 +187,11 @@ def test_sessao_de_uma_conta_nao_abre_outra(cliente, ana, banco):
     )
 
 
-def test_o_bearer_do_google_ainda_vale(cliente, ana, chave):
-    """Transição: abas abertas antes da versão nova ainda mandam o token (sai no PR 2)."""
-    assert cliente.get("/api/v1/eu", headers=com_token(token(chave))).status_code == 200
+def test_o_bearer_do_google_nao_vale_mais_fora_do_login(cliente, ana, chave):
+    """R5: o token do Google só abre a sessão (`POST /v1/conta`); nas outras rotas não vale."""
+    resposta = cliente.get("/api/v1/eu", headers=com_token(token(chave)))
+    assert resposta.status_code == 401
+    assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "sem-token"
 
 
 def test_apagar_conta_encerra_as_sessoes(cliente, ana, banco):
@@ -241,17 +243,27 @@ def test_post_de_outra_origem_recusado(cliente, ana, banco, origem):
     assert resposta.headers[acesso.CABECALHO_DO_MOTIVO] == "pedido-de-fora"
 
 
-def test_atras_do_proxy_vale_o_endereco_que_o_navegador_usou(cliente, ana, banco):
-    """O proxy pode trocar o Host; o X-Forwarded-Host leva o endereço público."""
-    cabecalhos = _com_cookie(
-        _sessao_da(banco, ana),
+def test_vale_o_host_do_pedido_e_nao_o_x_forwarded_host(cliente, ana, banco):
+    """R4 (revisão de 19/10): a origem se compara com o Host; o X-Forwarded-Host é ignorado."""
+    valor = _sessao_da(banco, ana)
+    do_host = _com_cookie(
+        valor,
         **{
             "X-TickerLab-Pedido": "1",
             "Origin": "https://app.tickerlab.com.br",
-            "X-Forwarded-Host": "app.tickerlab.com.br",
+            "Host": "app.tickerlab.com.br",
         },
     )
-    assert _aceitar(cliente, cabecalhos).status_code == 200
+    assert _aceitar(cliente, do_host).status_code == 200
+    forjado = _com_cookie(
+        valor,
+        **{
+            "X-TickerLab-Pedido": "1",
+            "Origin": "https://atacante.exemplo",
+            "X-Forwarded-Host": "atacante.exemplo",
+        },
+    )
+    assert _aceitar(cliente, forjado).status_code == 403
 
 
 def test_get_com_o_cookie_nao_precisa_do_cabecalho(cliente, ana, banco):

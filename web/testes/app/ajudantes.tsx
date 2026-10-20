@@ -46,6 +46,8 @@ interface Opcoes {
   eu?: () => Response;
   // o POST /v1/conta (com o token do Google): cria a conta na primeira vez e abre a sessão
   conta?: () => Response;
+  // o POST /v1/entrada/confirmar (e-mail e código): se der certo, abre a sessão
+  confirmar?: () => Response;
   // as outras rotas da API (as telas): endereço → resposta
   rotas?: (endereco: string, pedido?: RequestInit) => Response | undefined;
   entraSozinho?: boolean;
@@ -71,6 +73,7 @@ export function abrirApp(caminho: string, opcoes: Opcoes = {}) {
     eu = () => respostaJson(200, ANA),
     rotas = () => undefined,
     conta = () => respostaJson(200, { ...ANA, primeira_vez: false }),
+    confirmar = () => respostaJson(200, { ...ANA, primeira_vez: false }),
     entraSozinho = true,
     comSessao = false,
   } = opcoes;
@@ -81,6 +84,15 @@ export function abrirApp(caminho: string, opcoes: Opcoes = {}) {
     if (endereco === "/api/v1/sair") {
       sessao = false;
       return new Response(null, { status: 204 });
+    }
+    if (endereco === "/api/v1/sair-de-todos") {
+      sessao = false;
+      return respostaJson(200, { encerradas: 2 });
+    }
+    if (endereco === "/api/v1/entrada/confirmar") {
+      const resposta = confirmar();
+      if (resposta.ok) sessao = true;
+      return resposta;
     }
     if (endereco === "/api/v1/conta") {
       const resposta = conta();

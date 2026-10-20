@@ -1017,10 +1017,12 @@ def openapi_v1() -> dict:
     from fastapi import FastAPI
 
     from src.api_v1.conta import router as router_da_conta
+    from src.api_v1.entrada import router as router_da_entrada
 
     app = FastAPI(title="TickerLab API (leitura)", version="1")
     app.include_router(router)
     app.include_router(router_da_conta)
+    app.include_router(router_da_entrada)
     return app.openapi()
 
 

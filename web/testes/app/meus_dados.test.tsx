@@ -67,6 +67,14 @@ describe("meus dados", () => {
     expect(pedido?.[1]?.headers).toEqual({ ...DO_APP, "Content-Type": "application/json" });
   });
 
+  it("encerrar todas as sessões chama a API e volta para a entrada", async () => {
+    const { buscar } = abrir();
+    fireEvent.click(await screen.findByRole("button", { name: "Encerrar todas as sessões" }));
+    expect(await screen.findByText(/Entrar no TickerLab/)).toBeTruthy();
+    const pedido = buscar.mock.calls.find(([e]) => e === "/api/v1/sair-de-todos");
+    expect(pedido?.[1]?.method).toBe("POST");
+  });
+
   it("sem links, a frase de quando a lista está vazia", async () => {
     abrir({ ...LINKS, links: [] });
     expect(await screen.findByText(LINKS.sem_links)).toBeTruthy();
