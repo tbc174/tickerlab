@@ -235,7 +235,7 @@ def _entradas_da_rota(operacao: dict, esquemas: dict) -> dict[str, tuple[bool, d
         }
     return {
         p["name"]: (p["required"], _faixa(p["schema"]))
-        for p in operacao["parameters"]
+        for p in operacao.get("parameters", [])
         if p["in"] == "query"
     }
 

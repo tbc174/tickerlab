@@ -71,9 +71,8 @@ def test_api_sem_corpo_422(cliente) -> None:
 
 
 def test_api_sem_login_401(cliente) -> None:
-    resposta = cliente.post(
-        ROTA, json={"cnpj": PETROBRAS}, headers={"Authorization": ""}
-    )
+    cliente.headers.pop("Cookie")  # sem a sessão, só o cabeçalho do app
+    resposta = cliente.post(ROTA, json={"cnpj": PETROBRAS})
     assert resposta.status_code == 401
 
 
