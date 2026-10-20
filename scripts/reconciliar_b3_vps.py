@@ -32,6 +32,11 @@ log = logging.getLogger("reconciliar_b3_vps")
 TAMANHO_MAXIMO_DO_RESUMO = 300  # o resumo vai no endereço do push do Kuma
 
 
+def agora() -> datetime:
+    """O relógio do script; um ponto só para os testes fixarem o momento."""
+    return datetime.now(UTC)
+
+
 def main(argv: list[str] | None = None) -> int:
     argumentos = argparse.ArgumentParser(description=str(__doc__).splitlines()[0])
     argumentos.add_argument("--trabalho", required=True, type=Path)
@@ -44,8 +49,8 @@ def main(argv: list[str] | None = None) -> int:
         print("FALHAS: B3 casa x VPS: o acervo está desligado")
         return 1
 
-    agora = datetime.now(UTC)
-    dias = dias_da_janela(agora)
+    momento = agora()
+    dias = dias_da_janela(momento)
     # a comparação olha o estado de antes de trazer: o dia trazido agora ainda é alarme hoje
     casa = ultimas_da_casa(pasta, dias)
     problemas = conferir_casa(pasta, casa)
@@ -53,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         (opcoes.trabalho / "lista.txt").read_text(encoding="utf-8")
     )
     problemas += do_vps + comparar(casa, vps, dias)
-    trazidos, na_chegada = guardar_recebidos(opcoes.trabalho / "recebidos", agora)
+    trazidos, na_chegada = guardar_recebidos(opcoes.trabalho / "recebidos", momento)
     problemas += na_chegada
 
     log.info(
