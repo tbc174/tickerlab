@@ -303,15 +303,31 @@ def test_recebido_estragado_no_caminho_nao_entra(banco, tmp_path):
 # --- os scripts: `copiar_b3_negocios` (VPS) e `reconciliar_b3_vps` (casa) --------------------------
 
 
-def _hoje_util() -> date:
-    """O último dia útil da janela de agora (os scripts usam o relógio de verdade)."""
-    return copia_b3.dias_da_janela(datetime.now(UTC))[-1]
+# Três momentos: dia útil, sábado e domingo 23h em Brasília (já segunda em UTC).
+MOMENTOS = [
+    pytest.param(datetime(2026, 10, 14, 15, tzinfo=UTC), id="dia-util"),
+    pytest.param(datetime(2026, 10, 17, 15, tzinfo=UTC), id="sabado"),
+    pytest.param(datetime(2026, 10, 19, 2, tzinfo=UTC), id="domingo-a-noite"),
+]
 
 
-def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch):
+def _hoje_util(agora: datetime) -> date:
+    """O último dia útil da janela do momento dado (o script usa o mesmo relógio)."""
+    return copia_b3.dias_da_janela(agora)[-1]
+
+
+def _fixar_relogio_do_script(monkeypatch, agora: datetime) -> None:
     from scripts import copiar_b3_negocios
 
-    dia = _hoje_util()
+    monkeypatch.setattr(copiar_b3_negocios, "agora", lambda: agora)
+
+
+@pytest.mark.parametrize("agora", MOMENTOS)
+def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch, agora):
+    from scripts import copiar_b3_negocios
+
+    _fixar_relogio_do_script(monkeypatch, agora)
+    dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(
         copiar_b3_negocios, "ClienteHttp", lambda: B3Falsa({url: _zip()})
@@ -321,10 +337,12 @@ def test_script_do_vps_guarda_e_sai_com_zero(tmp_path, monkeypatch):
     assert len(_versoes(tmp_path, dia)) == 1
 
 
-def test_script_do_vps_avisa_a_falha_numa_linha(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize("agora", MOMENTOS)
+def test_script_do_vps_avisa_a_falha_numa_linha(tmp_path, monkeypatch, capsys, agora):
     from scripts import copiar_b3_negocios
 
-    dia = _hoje_util()
+    _fixar_relogio_do_script(monkeypatch, agora)
+    dia = _hoje_util(agora)
     url = fontes.NEGOCIOS_DA_B3.format(dia=dia.isoformat())
     monkeypatch.setattr(
         copiar_b3_negocios, "ClienteHttp", lambda: B3Falsa({url: _zip()[:-200]})
@@ -371,7 +389,7 @@ def _guardar_dia_em_casa(dia: date, conteudo: bytes) -> None:
 def test_reconciliacao_sem_diferenca_sai_com_zero(banco, tmp_path, capsys):
     from scripts import reconciliar_b3_vps
 
-    dia, conteudo = _hoje_util(), _zip()
+    dia, conteudo = _hoje_util(datetime.now(UTC)), _zip()
     _guardar_dia_em_casa(dia, conteudo)
     sha = _sha(conteudo)
     trabalho = _trabalho_da_reconciliacao(tmp_path, f"{dia} {sha} {sha} 100 1000\n")
@@ -382,7 +400,7 @@ def test_reconciliacao_sem_diferenca_sai_com_zero(banco, tmp_path, capsys):
 def test_reconciliacao_traz_o_dia_que_faltava_e_acusa(banco, tmp_path, capsys):
     from scripts import reconciliar_b3_vps
 
-    dia, conteudo = _hoje_util(), _zip()
+    dia, conteudo = _hoje_util(datetime.now(UTC)), _zip()
     sha = _sha(conteudo)
     trabalho = _trabalho_da_reconciliacao(tmp_path, f"{dia} {sha} {sha} 100 1000\n")
     (trabalho / "recebidos" / dia.isoformat()).mkdir()
@@ -397,7 +415,7 @@ def test_reconciliacao_traz_o_dia_que_faltava_e_acusa(banco, tmp_path, capsys):
 def test_reconciliacao_acusa_dia_que_falta_no_vps(banco, tmp_path, capsys):
     from scripts import reconciliar_b3_vps
 
-    dia = _hoje_util()
+    dia = _hoje_util(datetime.now(UTC))
     _guardar_dia_em_casa(dia, _zip())
     trabalho = _trabalho_da_reconciliacao(tmp_path, "")
     assert reconciliar_b3_vps.main(["--trabalho", str(trabalho)]) == 1
