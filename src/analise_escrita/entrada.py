@@ -206,17 +206,6 @@ def entrada_da_ficha(
     return entrada
 
 
-def _textos(valor: object) -> Iterator[str]:
-    if isinstance(valor, dict):
-        for dentro in valor.values():
-            yield from _textos(dentro)
-    elif isinstance(valor, list):
-        for dentro in valor:
-            yield from _textos(dentro)
-    elif isinstance(valor, str):
-        yield valor
-
-
 def conferir_sem_nome_com_cargo(entrada: dict[str, Any]) -> None:
     """D4 (parecer de privacidade, ADR 0088): nome de pessoa escrito junto de um cargo não vai à API.
 
