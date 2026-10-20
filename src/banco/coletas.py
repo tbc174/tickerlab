@@ -49,7 +49,7 @@ LICENCAS = {
     "kraken": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     "mb": "Sem termo de dados de mercado: uso sem autorização (ADR 0045); só interno",
     # arquivo das fontes que só mostram o "agora" (plano dos coletores em modo arquivo, 14/10/2026)
-    "rfb-cnpj": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: perguntar a licença)",
+    "rfb-cnpj": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
     "cgu": "Dados abertos da CGU (Decreto 8.777/2016; citar a CGU)",
     "pgfn": "Dados abertos da PGFN (rodapé CC BY-ND do site: perguntar a licença)",
     "ibama": "Dados abertos do IBAMA ('Outra (Aberta)'; citar o IBAMA)",
@@ -149,8 +149,9 @@ REVENDA = {
     # o sentido com a ADR 0102: a marca não barra mais)
     "kraken": NAO_COMERCIAL,
     "mb": NAO_COMERCIAL,
-    # o conjunto só tem o rodapé CC BY-ND do site: perguntar a licença (e há dado pessoal)
-    "rfb-cnpj": A_CONFIRMAR,
+    # a ficha do conjunto no dados.gov.br declara CC BY (o CC BY-ND é do rodapé do site gov.br
+    # inteiro); Tiago, "Pode", 20/10/2026 (ADR 0106, item 2). Sócio pessoa física segue fora do app.
+    "rfb-cnpj": VENDAVEL_COM_ATRIBUICAO,
     "pgfn": A_CONFIRMAR,
     # dado pessoal (autuados, empregadores pessoa física): só interno
     "cgu": SO_USO_INTERNO,
@@ -241,14 +242,6 @@ USOS_SEM_COBRANCA: tuple[UsoSemCobranca, ...] = (
         "TickerLab não cobra, ADR 0008 Emenda 3)",
     ),
     UsoSemCobranca(
-        "rfb-cnpj",
-        "situação cadastral e situação especial da Receita na ficha da empresa",
-        "resposta escrita da Receita sobre a licença do conjunto (Fala.BR, série 6); sem ela, "
-        "desligar",
-        "Situação cadastral e especial: dados abertos do CNPJ, Receita Federal (licença a "
-        "confirmar; mostrado com a fonte citada enquanto o TickerLab não cobra)",
-    ),
-    UsoSemCobranca(
         "pgfn",
         "dívida ativa da União na ficha da empresa",
         "resposta escrita da PGFN sobre a licença (pedido LAI da ADR 0086); sem ela, desligar",
@@ -310,7 +303,13 @@ FRASE_DA_FAO = (
     "FAO, FAOSTAT: Crops and livestock products (CC BY 4.0; acessado na data de cada número; "
     "a FAO não endossa o TickerLab)"
 )
-FRASES_DAS_FONTES = {"iex": FRASE_DA_IEX, "faostat": FRASE_DA_FAO}
+# crédito que a Receita pede (CC BY), em toda tela, API ou PDF com dado do CNPJ aberto
+FRASE_DA_RECEITA = "Fonte: Receita Federal, dados abertos do CNPJ (CC BY)"
+FRASES_DAS_FONTES = {
+    "iex": FRASE_DA_IEX,
+    "faostat": FRASE_DA_FAO,
+    "rfb-cnpj": FRASE_DA_RECEITA,
+}
 
 
 class LicencaNaoPermiteError(Exception):
@@ -398,7 +397,7 @@ def citacoes_das_fontes(fontes: Iterable[str]) -> list[str]:
     repetir: a citação de cada uso sem cobrança (Emenda 3) e a frase da IEX (Emenda 2, item 6)."""
     citacoes: dict[str, None] = {}
     for fonte in fontes:
-        frase = FRASES_DAS_FONTES.get(_familia(fonte))
+        frase = FRASES_DAS_FONTES.get(fonte) or FRASES_DAS_FONTES.get(_familia(fonte))
         uso = uso_sem_cobranca(fonte)
         if frase:
             citacoes[frase] = None

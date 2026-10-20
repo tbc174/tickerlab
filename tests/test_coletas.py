@@ -122,8 +122,8 @@ def test_familias_do_arquivo_tem_licenca_e_as_com_dado_pessoal_sao_so_internas()
     for fonte in ("cgu-ceis", "ibama-autos", "mte-lista-suja"):
         assert coletas.revenda_da_fonte(fonte) == coletas.SO_USO_INTERNO, fonte
     # só o rodapé CC BY-ND do site: perguntar a licença (ADR 0008, Emenda 1: não entra em modelo)
-    for fonte in ("pgfn-divida", "rfb-cnpj"):
-        assert coletas.revenda_da_fonte(fonte) == coletas.A_CONFIRMAR, fonte
+    assert coletas.revenda_da_fonte("pgfn-divida") == coletas.A_CONFIRMAR
+    assert coletas.revenda_da_fonte("rfb-cnpj") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("gleif-br") == coletas.VENDAVEL_COM_ATRIBUICAO
     assert coletas.revenda_da_fonte("termos-b3") == coletas.SO_USO_INTERNO
 

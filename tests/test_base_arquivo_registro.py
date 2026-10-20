@@ -46,7 +46,7 @@ def test_marca_e_licenca_batem_com_as_funcoes_da_coleta():
     por_id = {r.id: r for r in registro.registro_de_fontes()}
     assert por_id["cvm-fidc"].marca == "vendavel"
     assert "ODbL" in por_id["cvm-fidc"].licenca
-    assert por_id["rfb-cnpj"].marca == "a_confirmar"
+    assert por_id["rfb-cnpj"].marca == "vendavel"
 
 
 def test_a_data_da_leitura_dos_termos_e_uma_data_ou_nada():

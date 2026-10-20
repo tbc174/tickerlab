@@ -227,13 +227,13 @@
     },
     {
       "historico_desde": "2026-10-14",
-      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: reuso em consulta)",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
       "modulos": [
         "governo_e_sancoes"
       ],
       "orgao": "Receita Federal",
-      "repasse": "Sem resposta escrita da fonte sobre uso comercial: tratado como não comercial até a resposta.",
-      "situacao": "em consulta",
+      "repasse": "Pode ser repassado, citando a fonte.",
+      "situacao": "licenciada",
       "tabelas": 1
     },
     {
@@ -557,8 +557,8 @@
     },
     {
       "id": "rfb-cnpj",
-      "licenca": "Dados abertos do CNPJ (Receita; rodapé CC BY-ND do site: reuso em consulta)",
-      "marca": "a_confirmar",
+      "licenca": "CC BY, ficha do CNPJ no dados.gov.br lida em 20/10/2026 (citar a Receita)",
+      "marca": "vendavel",
       "ritmo": "mensal",
       "termos_lidos_em": null
     },
@@ -1496,7 +1496,7 @@
       "historico_desde": "2026-10-14",
       "modulo": "governo_e_sancoes",
       "orgao": "Receita Federal",
-      "situacao": "em consulta",
+      "situacao": "licenciada",
       "tabela": "cnpj_situacao_especial"
     },
     {
@@ -1812,7 +1812,7 @@
   ],
   "totais": {
     "fontes": 24,
-    "fontes_em_consulta": 7,
+    "fontes_em_consulta": 6,
     "modulos": 6,
     "tabelas": 86
   }
