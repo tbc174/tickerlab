@@ -31,6 +31,7 @@ import pandas as pd
 
 from base import dossie
 from base import indicadores_de_caixa as t1
+from base.dicionario import TABELAS
 from base.porta import Porta
 from src import acervo
 from src.versao_do_codigo import exigir_versao_do_codigo
@@ -214,11 +215,14 @@ def ler_serie(
     A porta soma por data e chave como a fonte escreve; aqui a chave é limpa (o mesmo CNPJ formatado e
     em dígitos vira um só) e somada de novo, o que dá o mesmo que limpar antes de somar. A série
     `como_era` (o IF.data) é lida como era em `hoje`: a data-base ainda não pública fica de fora.
+    A soma também abre pela coluna de publicação da tabela (quando ela tem uma), para o rastro dizer
+    quando cada mês ficou público; abrir por mais uma coluna não muda a soma.
     """
     abertura = [serie.abertura] if serie.abertura else []
+    publicacao = _coluna_de_publicacao(leitor, serie.tabela)
     somada = leitor.somar(
         serie.tabela,
-        [serie.data, serie.chave, *abertura],
+        [serie.data, serie.chave, *abertura, *publicacao],
         serie.valor,
         {coluna: valor for coluna, valor in serie.filtros},
         como_era_em=hoje if serie.como_era else None,
@@ -235,8 +239,21 @@ def ler_serie(
         }
     )
     por = ["competencia", "chave", *(["abertura"] if serie.abertura else [])]
+    publicado = (
+        pd.to_datetime(somada[publicacao[0]]).groupby(mensais["competencia"]).max()
+        if publicacao
+        else None
+    )
     mensais = mensais.groupby(por, as_index=False)["valor"].sum()
+    if publicado is not None:
+        mensais["publicado_em"] = mensais["competencia"].map(publicado)
     return dossie.serie_anual(mensais, serie.modo, serie.meses_por_periodo)
+
+
+def _coluna_de_publicacao(leitor: Leitor, tabela: str) -> list[str]:
+    """A coluna de quando a linha ficou pública, se a tabela tem uma (lista vazia: não tem)."""
+    coluna = TABELAS[tabela].datas.get("publico_em")
+    return [coluna] if coluna and leitor.tem_coluna(tabela, coluna) else []
 
 
 def ler_grupos(leitor: Leitor, serie: dossie.SerieDaAgencia) -> pd.DataFrame:

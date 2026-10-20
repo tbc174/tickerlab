@@ -19,6 +19,10 @@ Por último, `conferir_sem_pessoas` passa pela ficha inteira: nenhum CPF, nenhum
 como pessoa e nenhuma coluna de pessoa. Os textos livres (o assunto de um fato relevante) só são
 conferidos contra os nomes que a rede conhece: é um limite, escrito na seção.
 
+Cada item leva o seu rastro (`src/rastro.py`, B-02 de 20/10/2026): a fórmula e a tabela de cada chave
+ficam em `ORIGEM_DOS_ITENS`, a versão do cálculo em `VERSAO_DO_DOSSIE`, e `publicado_em` é o dia em que
+a linha mais nova usada ficou pública (a coluna `publico_em` do dicionário da tabela).
+
 Funções puras: as tabelas chegam já só com a empresa da ficha; ler e gravar fica no script.
 """
 
@@ -51,6 +55,9 @@ from src.banco.coletas import MOSTRAR, licenca_da_fonte, pode_usar
 from src.negociacoes import CARGOS
 
 VERSAO_DO_ESQUEMA = 1  # muda quando o app precisa ler a ficha de outro jeito
+# sobe quando a conta de um item muda (o gabarito de `tests/test_dossie_rastro.py` quebra se não subir)
+VERSAO_DO_DOSSIE = "1"
+CALCULO_DO_DOSSIE = f"dossiê {VERSAO_DO_DOSSIE}"
 # fora do app até o parecer (crise ou risco com o nome da empresa, P-44), mesmo que a licença deixe
 # (a Emenda 3 da ADR 0008 liberou a da PGFN e a da situação especial; o P-44 ainda as segura)
 TABELAS_PROIBIDAS = frozenset(
@@ -604,15 +611,56 @@ def _registros(tabela: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def _item(
-    chave: str, nome: str, valor: str | float | None, unidade: str, base: str | None
+    chave: str,
+    nome: str,
+    valor: str | float | None,
+    unidade: str,
+    base: str | None,
+    *,
+    publicado_em: str | None,
+    fontes: Iterable[str] = (),
+    origem: "Origem | None" = None,
 ) -> dict[str, Any]:
+    """Um item da ficha com o rastro; `publicado_em` é obrigatório para ninguém esquecer de pensar nele
+    (None só nos `ITENS_SEM_DATA_DE_PUBLICACAO`, ou quando as linhas não trazem a data). `origem`: só
+    quando a chave repete a de outra seção (as relações da rede); senão, a de `ORIGEM_DOS_ITENS`."""
     return {
         "chave": chave,
         "nome": nome,
         "valor": valor,
         "unidade": unidade,
         "base": base,
+        "rastro": _rastro(origem or ORIGEM_DOS_ITENS[chave], publicado_em, fontes),
     }
+
+
+def _rastro(
+    origem: "Origem", publicado_em: str | None, fontes: Iterable[str]
+) -> dict[str, Any]:
+    """O rastro do item como vai no JSON. `fontes`: as famílias, quando o item junta mais de uma (a
+    rede); sem elas, a da tabela. Chave sem origem é erro de código (a seção quebra no teste)."""
+    familias = list(dict.fromkeys(fontes)) or [TABELAS[origem.tabela].familia_da_fonte]
+    return {
+        "formula": origem.formula,
+        "versao_do_calculo": CALCULO_DO_DOSSIE,
+        "fonte_id": familias[0],
+        "outras_fontes": familias[1:],
+        "publicado_em": publicado_em,
+    }
+
+
+def _publicado(linhas: pd.DataFrame, tabela: str) -> str | None:
+    """O dia em que a linha mais nova de `linhas` ficou pública, pela coluna `publico_em` que o
+    dicionário dá à `tabela` (None: sem linhas ou sem a coluna)."""
+    coluna = TABELAS[tabela].datas.get("publico_em")
+    if linhas.empty or coluna is None or coluna not in linhas.columns:
+        return None
+    return _data(pd.to_datetime(linhas[coluna]).max())
+
+
+def _mais_novo(*dias: str | None) -> str | None:
+    """O mais novo dos dias ISO (None: nenhum)."""
+    return max((d for d in dias if d), default=None)
 
 
 def _secao(
@@ -671,6 +719,7 @@ def _itens_do_auditor(
         return []
     atual = em_curso.iloc[-1]
     base = _data(atual["referencia"])
+    publicado = _publicado(em_curso.iloc[[-1]], "auditores")
     return [
         _item(
             "auditor_atual",
@@ -678,8 +727,16 @@ def _itens_do_auditor(
             _nome_do_auditor(atual, pessoas),
             "texto",
             base,
+            publicado_em=publicado,
         ),
-        _item("auditor_desde", "Auditor desde", _data(atual["inicio"]), "data", base),
+        _item(
+            "auditor_desde",
+            "Auditor desde",
+            _data(atual["inicio"]),
+            "data",
+            base,
+            publicado_em=publicado,
+        ),
     ]
 
 
@@ -739,17 +796,19 @@ def secao_auditor_e_controladas(
     if not tabela_de_controladas.empty:
         sao_controladas = int(tabela_de_controladas["controlada"].sum())
         total = len(tabela_de_controladas)
+        publicado = _publicado(_mais_recente(controladas), "controladas")
         itens += [
-            _item("sociedades", "Sociedades no FRE", total, "empresas", base),
-            _item("controladas", "Controladas", sao_controladas, "empresas", base),
+            _item("sociedades", "Sociedades no FRE", total, "empresas", base, publicado_em=publicado),
+            _item("controladas", "Controladas", sao_controladas, "empresas", base, publicado_em=publicado),
             _item(
                 "coligadas_e_outras",
                 "Coligadas e outras participações",
                 total - sao_controladas,
                 "empresas",
                 base,
+                publicado_em=publicado,
             ),
-        ]
+        ]  # fmt: skip
     tabelas = {
         "trocas_de_auditor": _trocas_sem_pessoas(trocas, pessoas),
         "controladas": tabela_de_controladas,
@@ -922,6 +981,7 @@ def _fundos(
         return [], comprado
     ultimo = comprado.iloc[-1]
     base = _data(ultimo["competencia"])
+    publicado = _publicado(comprado.iloc[[-1]], "painel_dos_fundos")
     itens = [
         _item(
             "fundos_com_a_acao",
@@ -929,6 +989,7 @@ def _fundos(
             int(ultimo["fundos"]),
             "fundos",
             base,
+            publicado_em=publicado,
         ),
         _item(
             "valor_nos_fundos",
@@ -936,6 +997,7 @@ def _fundos(
             float(ultimo["valor"]),
             "R$",
             base,
+            publicado_em=publicado,
         ),
     ]
     serie = comprado[["competencia", "fundos", "valor"]].tail(MESES_DOS_FUNDOS)
@@ -954,6 +1016,10 @@ def secao_ofertas_e_fundos(
     if ofertas.empty and not itens:
         return None
     if not ofertas.empty:
+        publicado = _mais_novo(
+            _publicado(ofertas_160, "ofertas_resolucao_160"),
+            _publicado(ofertas_antigas, "ofertas_antigas"),
+        )
         itens.insert(
             0,
             _item(
@@ -962,6 +1028,7 @@ def secao_ofertas_e_fundos(
                 len(ofertas),
                 "ofertas",
                 _data(ofertas["data"].max()),
+                publicado_em=publicado,
             ),
         )
     tabelas = {
@@ -1047,8 +1114,9 @@ def secao_geracao_de_caixa(
         return None
     ultimo = tabela.iloc[0]
     base = _data(ultimo["fim"])
+    publicado = _publicado(tabela.iloc[[0]], "demonstracoes_como_era")
     itens = [
-        _item(chave, nome, float(ultimo[chave]), "R$", base)
+        _item(chave, nome, float(ultimo[chave]), "R$", base, publicado_em=publicado)
         for chave, nome in NUMEROS_DO_CAIXA.items()
         if pd.notna(ultimo[chave])
     ]
@@ -1144,6 +1212,7 @@ def _reapresentacoes(
     base = (
         tabela["trocado_em"].max() if not tabela.empty else linhas["divulgado_em"].max()
     )
+    publicado = _publicado(linhas, "demonstracoes_como_era")
     itens = [
         _item(
             "exercicios_reapresentados",
@@ -1151,6 +1220,7 @@ def _reapresentacoes(
             int(tabela["exercicio"].nunique()) if not tabela.empty else 0,
             "exercícios",
             _data(base),
+            publicado_em=publicado,
         ),
         _item(
             "exercicios_olhados",
@@ -1158,6 +1228,7 @@ def _reapresentacoes(
             int(linhas["exercicio"].nunique()),
             "exercícios",
             _data(linhas["divulgado_em"].max()),
+            publicado_em=publicado,
         ),
     ]
     return itens, tabela
@@ -1179,6 +1250,7 @@ def _releases(
     comparados = releases[releases["classe"].isin(CLASSES_COMPARADAS)]
     diferentes = comparados[comparados["classe"] == "diferente"]
     base = _data(pd.to_datetime(releases["publico_em"]).max())
+    publicado = _publicado(releases, "release_x_oficial")
     itens = [
         _item(
             "releases_comparados",
@@ -1186,6 +1258,7 @@ def _releases(
             len(comparados),
             "valores",
             base,
+            publicado_em=publicado,
         ),
         _item(
             "releases_diferentes",
@@ -1193,6 +1266,7 @@ def _releases(
             len(diferentes),
             "valores",
             base,
+            publicado_em=publicado,
         ),
     ]
     por_classe = releases["classe"].value_counts().reindex(CLASSES_DO_RELEASE).dropna()
@@ -1234,6 +1308,9 @@ def _trocas_recentes(trocas: pd.DataFrame, hoje: pd.Timestamp) -> list[dict[str,
             len(recentes),
             "trocas",
             _data(recentes.max()),
+            publicado_em=_publicado(
+                conhecidas.loc[recentes.index], "trocas_de_auditor"
+            ),
         )
     ]
 
@@ -1313,10 +1390,12 @@ def _insiders(
     do_ano = entregues[_janela(datas, hoje)]
     somas = _somas_dos_insiders(do_ano)
     base = _data(hoje)
+    # a declaração mais nova já entregue: também a que diz "nada nos 12 meses"
+    publicado = _publicado(entregues, "negociacoes")
     itens = [
-        _item("insiders_compras_12m", "Compras de insiders em 12 meses", somas["compras"], "R$", base),
-        _item("insiders_vendas_12m", "Vendas de insiders em 12 meses", somas["vendas"], "R$", base),
-        _item("recompras_12m", "Recompras da própria empresa em 12 meses", somas["recompras"], "R$", base),
+        _item("insiders_compras_12m", "Compras de insiders em 12 meses", somas["compras"], "R$", base, publicado_em=publicado),
+        _item("insiders_vendas_12m", "Vendas de insiders em 12 meses", somas["vendas"], "R$", base, publicado_em=publicado),
+        _item("recompras_12m", "Recompras da própria empresa em 12 meses", somas["recompras"], "R$", base, publicado_em=publicado),
     ]  # fmt: skip
     janelas = pd.DataFrame(
         [
@@ -1357,6 +1436,7 @@ def _eventos_de_capital(
         len(tabela),
         "eventos",
         _data(tabela["data"].max()),
+        publicado_em=None,  # a tabela não guarda a entrega do FRE (`ITENS_SEM_DATA_DE_PUBLICACAO`)
     )
     return [item], tabela.head(LINHAS_NAS_LISTAS)
 
@@ -1386,9 +1466,10 @@ def _movimento_dos_fundos(
             }
         )
     base = _data(ate)
+    publicado = _publicado(comprado, "painel_dos_fundos")
     itens = [
-        _item("compras_dos_fundos_12m", "Compras dos fundos em 12 meses", linhas[0]["compras"], "R$", base),
-        _item("vendas_dos_fundos_12m", "Vendas dos fundos em 12 meses", linhas[0]["vendas"], "R$", base),
+        _item("compras_dos_fundos_12m", "Compras dos fundos em 12 meses", linhas[0]["compras"], "R$", base, publicado_em=publicado),
+        _item("vendas_dos_fundos_12m", "Vendas dos fundos em 12 meses", linhas[0]["vendas"], "R$", base, publicado_em=publicado),
     ]  # fmt: skip
     return itens, pd.DataFrame(linhas)
 
@@ -1480,8 +1561,8 @@ def _itens_da_governanca(por_ano: pd.DataFrame) -> list[dict[str, Any]]:
         return []
     mais_novo = por_ano.iloc[0]
     base = _data(mais_novo["entregue_em"])
-    return [
-        _item(chave, nome, int(mais_novo[coluna]), unidade, base)
+    return [  # a data-base já é a entrega do FRE: o dia em que ficou público
+        _item(chave, nome, int(mais_novo[coluna]), unidade, base, publicado_em=base)
         for chave, coluna, nome, unidade in ITENS_DA_GOVERNANCA
         if coluna in por_ano.columns and pd.notna(mais_novo[coluna])
     ]
@@ -1519,6 +1600,7 @@ def _remuneracao(
         .sort_index(ascending=False)
     )
     ultimo = totais.index[0]
+    do_ultimo = exercicios[exercicios["fim_do_exercicio"] == ultimo]
     itens = [
         _item(
             "remuneracao_da_administracao",
@@ -1526,12 +1608,12 @@ def _remuneracao(
             float(totais.iloc[0]),
             "R$",
             _data(ultimo),
+            publicado_em=_publicado(do_ultimo, "fre_remuneracao"),
         )
     ]
     por_exercicio = pd.DataFrame(
         {"exercicio": pd.to_datetime(totais.index).year, "total": totais.to_numpy()}
     ).head(ANOS_DA_GOVERNANCA)
-    do_ultimo = exercicios[exercicios["fim_do_exercicio"] == ultimo]
     por_orgao = do_ultimo[["orgao", "membros_remunerados", "total_remuneracao"]].rename(
         columns={"total_remuneracao": "total"}
     )
@@ -1653,9 +1735,10 @@ def _ratings(
     )
     do_ano = janelas.iloc[0]
     base = _data(hoje)
+    publicado = _publicado(publicos, "ratings")
     itens = [
-        _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base),
-        _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base),
+        _item("ratings_rebaixamentos_12m", "Rebaixamentos de rating em 12 meses", int(do_ano["rebaixamentos"]), "ações", base, publicado_em=publicado),
+        _item("ratings_elevacoes_12m", "Elevações de rating em 12 meses", int(do_ano["elevacoes"]), "ações", base, publicado_em=publicado),
     ]  # fmt: skip
     return itens, {"ratings": por_agencia, "ratings_janelas": janelas}
 
@@ -1725,6 +1808,7 @@ def _assembleias(
         len(do_ano),
         "documentos",
         _data(hoje),
+        publicado_em=_publicado(publicas, "debentures_assembleias"),
     )
     tabelas = {
         "assembleias_janelas": janelas,
@@ -1760,11 +1844,14 @@ def serie_anual(
     `SOMA_DO_ANO` soma os meses (passageiros, prêmios); `ULTIMO_MES` fica com o último mês que a fonte
     tem em cada ano (consumidores, acessos: um estoque, que não se soma). `meses_por_periodo`: quanto
     cada data vale (a data-base trimestral do IF.data vale 3, e as 4 do ano fazem o ano completo).
+    Com a coluna `publicado_em` (quando cada mês ficou público), cada ano leva a mais nova.
     """
     ano = tabela["competencia"].dt.year
     # quantos meses a fonte tem em cada ano e qual o último: o ano corrente ainda está pela metade
     meses = tabela.groupby(ano)["competencia"].agg(meses="nunique", ultimo_mes="max")
     meses["meses"] *= meses_por_periodo
+    if "publicado_em" in tabela.columns:  # o mês mais novo do ano que já ficou público
+        meses["publicado_em"] = tabela.groupby(ano)["publicado_em"].max()
     if modo == ULTIMO_MES:
         ultimo = tabela.groupby(ano)["competencia"].transform("max")
         tabela, ano = (
@@ -1818,9 +1905,25 @@ def _linha_do_item(
     return linha, str(int(linha["ano"]))
 
 
-def _item_da_serie(serie: SerieDaAgencia, tabela: pd.DataFrame) -> dict[str, Any]:
+def _publicado_no_ano(dados: pd.DataFrame, ano: object) -> str | None:
+    """Quando o mês mais novo do `ano` ficou público, de todo o mercado (`serie_anual`)."""
+    if "publicado_em" not in dados.columns:
+        return None
+    return _data(pd.to_datetime(dados.loc[dados["ano"] == ano, "publicado_em"]).max())
+
+
+def _item_da_serie(
+    serie: SerieDaAgencia, tabela: pd.DataFrame, dados: pd.DataFrame
+) -> dict[str, Any]:
     linha, base = _linha_do_item(serie, tabela)
-    return _item(serie.nome, serie.medida, float(linha["valor"]), serie.unidade, base)
+    return _item(
+        serie.nome,
+        serie.medida,
+        float(linha["valor"]),
+        serie.unidade,
+        base,
+        publicado_em=_publicado_no_ano(dados, linha["ano"]),
+    )
 
 
 def secao_setor_regulado(
@@ -1843,7 +1946,7 @@ def secao_setor_regulado(
         if tabela.empty:
             continue
         tabelas[serie.nome] = tabela
-        itens.append(_item_da_serie(serie, tabela))
+        itens.append(_item_da_serie(serie, tabela, dados))
     if not tabelas:
         return None
     tabelas["entidades_ligadas"] = _entidades_ligadas(ligacoes_b13)
@@ -2041,29 +2144,22 @@ def _concentracao_da_serie(quem: pd.DataFrame) -> pd.DataFrame:
 
 
 def _itens_da_concentracao(
-    serie: SerieDaAgencia, tabela: pd.DataFrame
+    serie: SerieDaAgencia, tabela: pd.DataFrame, dados: pd.DataFrame
 ) -> list[dict[str, Any]]:
     linha, base = _linha_do_item(serie, tabela)
-    nome = serie.nome
+    nome, publicado = serie.nome, _publicado_no_ano(dados, linha["ano"])
     return [
-        _item(
-            f"mercado_{nome}",
-            f"Mercado: {serie.medida}",
-            float(linha["total"]),
-            serie.unidade,
-            base,
-        ),
-        _item(
-            f"hhi_{nome}", f"HHI: {serie.medida}", float(linha["hhi"]), "pontos", base
-        ),
+        _item(f"mercado_{nome}", f"Mercado: {serie.medida}", float(linha["total"]), serie.unidade, base, publicado_em=publicado),
+        _item(f"hhi_{nome}", f"HHI: {serie.medida}", float(linha["hhi"]), "pontos", base, publicado_em=publicado),
         _item(
             f"cr4_{nome}",
             f"Participação das 4 maiores (CR4): {serie.medida}",
             float(linha["cr4"]),
             "fração",
             base,
+            publicado_em=publicado,
         ),
-    ]
+    ]  # fmt: skip
 
 
 def _participacao_dos_membros(
@@ -2163,14 +2259,15 @@ def secao_setor(
     """
     if membros.empty:
         return None
-    itens = [
-        _item("setor", "Setor", setor.nome, "", None),
+    itens = [  # a ligação à agência não guarda quando ficou pública (`ITENS_SEM_DATA_DE_PUBLICACAO`)
+        _item("setor", "Setor", setor.nome, "", None, publicado_em=None),
         _item(
             "membros",
             "Companhias abertas da base ligadas à agência",
             len(membros),
             "companhias",
             None,
+            publicado_em=None,
         ),
     ]
     tabelas: dict[str, pd.DataFrame] = {}
@@ -2184,7 +2281,7 @@ def secao_setor(
         tabela = _concentracao_da_serie(quem)
         tabelas[f"concentracao_{nome}"] = tabela
         tem_entidade_solta |= bool(tabela["por_entidade"].iloc[0] > 0)
-        itens += _itens_da_concentracao(serie, tabela)
+        itens += _itens_da_concentracao(serie, tabela, dados)
         participacoes.append(
             _participacao_dos_membros(serie, dados, membros, empresa_serie)
         )
@@ -2235,6 +2332,7 @@ def secao_negocios(eventos: pd.DataFrame) -> dict[str, Any] | None:
             len(negocios),
             "documentos",
             base,
+            publicado_em=base,  # a data-base já é a publicação do documento mais novo
         )
     ]
     tabelas = {
@@ -2462,7 +2560,9 @@ _COLUNAS_DAS_LIGACOES = (
     "desde",
     "documento",
     "familia",
+    "publicado_em",
 )
+_PUBLICO_EM_DAS_LIGACOES = TABELAS["ligacoes"].datas["publico_em"]
 _COLUNAS_DOS_IDENTIFICADORES = ("identificador", "valor", "desde", "familia")
 
 
@@ -2489,6 +2589,7 @@ def _linhas_da_rede(
                 "desde": ligacao.aconteceu_em,
                 "documento": documento,
                 "familia": familia,
+                "publicado_em": getattr(ligacao, _PUBLICO_EM_DAS_LIGACOES, None),
             }
         )
     return pd.DataFrame(linhas, columns=list(_COLUNAS_DAS_LIGACOES))
@@ -2506,7 +2607,7 @@ def _mostradas(linhas: pd.DataFrame) -> pd.DataFrame:
     return (
         ordenadas.groupby("chave", sort=False)
         .head(LINHAS_NAS_LISTAS)
-        .drop(columns=["ordem", "chave", "familia"])
+        .drop(columns=["ordem", "chave", "familia", "publicado_em"])
     )
 
 
@@ -2534,22 +2635,56 @@ def _tabela_dos_identificadores(identificadores: pd.DataFrame | None) -> pd.Data
     )
 
 
-def _itens_da_rede(linhas: pd.DataFrame, emitidos: int) -> list[dict[str, Any]]:
-    itens = [_item("ligacoes", "Ligações na rede", len(linhas), "empresas", None)]
-    contagem = linhas["chave"].value_counts() if not linhas.empty else pd.Series()
-    itens += [
-        _item(r.chave, r.nome, int(contagem[r.chave]), "empresas", None)
-        for r in RELACOES
-        if r.chave in contagem
+def _publicada(linhas: pd.DataFrame) -> str | None:
+    """A ligação mais nova das `linhas` (de `_linhas_da_rede`): quando ficou pública."""
+    return _data(pd.to_datetime(linhas["publicado_em"]).max()) if len(linhas) else None
+
+
+def _item_da_relacao(relacao: Relacao, linhas: pd.DataFrame) -> dict[str, Any]:
+    da_relacao = linhas[linhas["chave"] == relacao.chave]
+    return _item(
+        relacao.chave,
+        relacao.nome,
+        len(da_relacao),
+        "empresas",
+        None,
+        publicado_em=_publicada(da_relacao),
+        fontes=sorted(da_relacao["familia"].unique()),
+        origem=ORIGEM_DAS_RELACOES[relacao.chave],
+    )
+
+
+def _itens_da_rede(
+    linhas: pd.DataFrame, emitidos: pd.DataFrame
+) -> list[dict[str, Any]]:
+    """A contagem de ligações, a de cada relação e a dos valores mobiliários (`emitidos`: as ligações
+    `emite` da companhia), cada uma com a fonte das linhas que conta."""
+    itens = [
+        _item(
+            "ligacoes",
+            "Ligações na rede",
+            len(linhas),
+            "empresas",
+            None,
+            publicado_em=_publicada(linhas),
+            fontes=sorted(linhas["familia"].unique()),
+        )
     ]
-    if emitidos:
+    itens += [
+        _item_da_relacao(r, linhas)
+        for r in RELACOES
+        if (linhas["chave"] == r.chave).any()
+    ]
+    if not emitidos.empty:
         itens.append(
             _item(
                 "valores_mobiliarios",
                 "Valores mobiliários nas carteiras dos fundos",
-                emitidos,
+                int(emitidos["para"].nunique()),
                 "valores mobiliários",
                 None,
+                publicado_em=_publicado(emitidos, "ligacoes"),
+                fontes=[FONTES_DA_REDE["cvm-cda"][0]],
             )
         )
     return itens
@@ -2565,14 +2700,13 @@ def secao_rede(cnpj: str, rede: RedeDaNoite) -> dict[str, Any] | None:
     if centro is None or centro not in rede.ligacoes:
         return None
     ligacoes = rede.ligacoes[centro]
-    emite = (ligacoes["tipo"] == EMITE) & (ligacoes["de"] == centro)
-    emitidos = int(ligacoes.loc[emite, "para"].nunique())
+    emitidos = ligacoes[(ligacoes["tipo"] == EMITE) & (ligacoes["de"] == centro)]
     linhas = _linhas_da_rede(centro, ligacoes[ligacoes["tipo"] != EMITE], rede)
-    if linhas.empty and not emitidos:
+    if linhas.empty and emitidos.empty:
         return None
     identificadores = _tabela_dos_identificadores(rede.identificadores.get(centro))
     familias = {*linhas["familia"], *identificadores["familia"]}
-    if emitidos:
+    if not emitidos.empty:
         familias.add(FONTES_DA_REDE["cvm-cda"][0])
     tabelas = {
         "ligacoes_da_rede": _mostradas(linhas),
@@ -2582,6 +2716,179 @@ def secao_rede(cnpj: str, rede: RedeDaNoite) -> dict[str, Any] | None:
     }
     fontes = sorted({licenca_da_fonte(f) for f in familias})
     return _secao("rede", _itens_da_rede(linhas, emitidos), tabelas, fontes=fontes)
+
+
+# --- o rastro de cada item (B-02, 20/10/2026) ----------------------------------------------------
+
+
+class Origem(NamedTuple):
+    """De onde sai um item: a tabela da porta (a fonte é a família dela) e a conta, em português."""
+
+    tabela: str
+    formula: str
+
+
+_DO_FRE_MAIS_RECENTE = "no FRE mais recente"
+_ORIGENS_FIXAS = {
+    "auditor_atual": Origem("auditores", f"a firma do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
+    "auditor_desde": Origem("auditores", f"o início do mandato sem fim {_DO_FRE_MAIS_RECENTE}"),
+    "sociedades": Origem("controladas", f"número de sociedades listadas {_DO_FRE_MAIS_RECENTE}"),
+    "controladas": Origem(
+        "controladas",
+        f"sociedades {_DO_FRE_MAIS_RECENTE} do tipo controlada (sem tipo: participação acima de "
+        f"{PARTICIPACAO_DE_CONTROLE:.0f}%)",
+    ),
+    "coligadas_e_outras": Origem(
+        "controladas", f"sociedades {_DO_FRE_MAIS_RECENTE} menos as controladas"
+    ),
+    "ofertas": Origem(
+        "ofertas_resolucao_160",
+        "número de ofertas registradas na CVM pela companhia e pelas controladas do FRE mais "
+        "recente (Resolução 160 e as anteriores)",
+    ),
+    "fundos_com_a_acao": Origem(
+        "painel_dos_fundos", "número de fundos com a ação comprada no último mês completo do CDA"
+    ),
+    "valor_nos_fundos": Origem(
+        "painel_dos_fundos", "soma do valor da ação nas carteiras no último mês completo do CDA"
+    ),
+    "ebitda": Origem(
+        "demonstracoes_como_era",
+        "EBIT (DRE 3.05) + depreciação e amortização (DVA 7.04.01; sem DVA, os ajustes da DFC), "
+        "na DFP mais nova já divulgada",
+    ),
+    "capex": Origem(
+        "demonstracoes_como_era",
+        "saídas para comprar imobilizado e intangível (DFC 6.02), na DFP mais nova já divulgada",
+    ),
+    "fcf": Origem(
+        "demonstracoes_como_era",
+        "caixa operacional (DFC 6.01) − capex, na DFP mais nova já divulgada",
+    ),
+    "exercicios_reapresentados": Origem(
+        "demonstracoes_como_era",
+        f"exercícios dos últimos {ANOS_NAS_SERIES} em que o lucro ou a receita da DFP mudaram mais "
+        "que o arredondamento entre a primeira e a última versão divulgada",
+    ),
+    "exercicios_olhados": Origem(
+        "demonstracoes_como_era", f"exercícios dos últimos {ANOS_NAS_SERIES} com DFP divulgada"
+    ),
+    "releases_comparados": Origem(
+        "release_x_oficial",
+        "valores do release que deu para comparar com o ITR ou a DFP (versão mais nova de cada release)",
+    ),
+    "releases_diferentes": Origem(
+        "release_x_oficial",
+        "valores do release diferentes do ITR ou da DFP além do arredondamento",
+    ),
+    "trocas_de_auditor_10_anos": Origem(
+        "trocas_de_auditor",
+        f"trocas de auditor com efeito nos últimos {ANOS_NAS_SERIES} anos, já conhecidas",
+    ),
+    "insiders_compras_12m": Origem(
+        "negociacoes",
+        "soma das compras declaradas (todo cargo fora a tesouraria) nos 12 meses até o dia, das "
+        "declarações já entregues",
+    ),
+    "insiders_vendas_12m": Origem(
+        "negociacoes",
+        "soma das vendas declaradas (todo cargo fora a tesouraria) nos 12 meses até o dia, das "
+        "declarações já entregues",
+    ),
+    "recompras_12m": Origem(
+        "negociacoes",
+        "soma das compras da própria companhia (tesouraria) nos 12 meses até o dia",
+    ),
+    "eventos_de_capital": Origem(
+        "eventos_de_capital",
+        f"eventos de capital dos últimos {ANOS_NAS_SERIES} anos, cada um uma vez",
+    ),
+    "compras_dos_fundos_12m": Origem(
+        "painel_dos_fundos", "soma das compras dos fundos nos 12 meses até o último mês completo"
+    ),
+    "vendas_dos_fundos_12m": Origem(
+        "painel_dos_fundos", "soma das vendas dos fundos nos 12 meses até o último mês completo"
+    ),
+    "conselho_membros": Origem(
+        "fre_conselho", "membros dos órgãos do conselho de administração no FRE mais novo entregue"
+    ),
+    "conselho_independentes": Origem(
+        "fre_conselho", "conselheiros independentes no FRE mais novo entregue"
+    ),
+    "conselho_eleitos_por_minoritarios": Origem(
+        "fre_conselho", "conselheiros eleitos por minoritários no FRE mais novo entregue"
+    ),
+    "comites": Origem("fre_comites", "tipos de comitê distintos no FRE mais novo entregue"),
+    "mulheres_no_conselho": Origem(
+        "fre_diversidade", "mulheres no conselho de administração no FRE mais novo entregue"
+    ),
+    "remuneracao_da_administracao": Origem(
+        "fre_remuneracao",
+        "soma da remuneração total dos órgãos no último exercício encerrado, no FRE mais novo que "
+        "o informa",
+    ),
+    "ratings_rebaixamentos_12m": Origem(
+        "ratings", "rebaixamentos de rating públicos nos 12 meses até o dia, cada ação uma vez"
+    ),
+    "ratings_elevacoes_12m": Origem(
+        "ratings", "elevações de rating públicas nos 12 meses até o dia, cada ação uma vez"
+    ),
+    "assembleias_de_debenturistas_12m": Origem(
+        "debentures_assembleias",
+        "documentos de assembleia de debenturistas públicos nos 12 meses até o dia (versão mais nova)",
+    ),
+    "setor": Origem("empresa_serie", "o setor da agência que regula as entidades da companhia"),
+    "membros": Origem(
+        "empresa_serie", "companhias abertas da base com entidade ligada à agência do setor"
+    ),
+    "negocios": Origem(
+        "eventos",
+        "fatos relevantes e comunicados cujo assunto fala de compra, venda, fusão ou reorganização",
+    ),
+    "ligacoes": Origem("ligacoes", "empresas ligadas à companhia na rede, como era no dia"),
+    "valores_mobiliarios": Origem(
+        "ligacoes", "valores mobiliários da companhia nas carteiras dos fundos (CDA), como era no dia"
+    ),
+}  # fmt: skip
+
+
+_PARTICIPANTE = "participante: o grupo econômico quando se sabe, senão a entidade"
+
+
+def _origens_das_series() -> dict[str, Origem]:
+    """A série da companhia (setor regulado) e o mercado, o HHI e o CR4 de cada série (setor)."""
+    origens = {}
+    for s in (*SERIES_DAS_AGENCIAS, *SERIES_DOS_BANCOS):
+        medida = f"{s.medida} ({s.modo})"
+        origens |= {
+            s.nome: Origem(
+                s.tabela, f"{medida}: soma das entidades ligadas à companhia"
+            ),
+            f"mercado_{s.nome}": Origem(s.tabela, f"{medida}: soma de todo o mercado"),
+            f"hhi_{s.nome}": Origem(
+                s.tabela,
+                f"{medida}: soma dos quadrados das participações (em %) de cada {_PARTICIPANTE}",
+            ),
+            f"cr4_{s.nome}": Origem(
+                s.tabela,
+                f"{medida}: fração do mercado somada pelos 4 maiores ({_PARTICIPANTE})",
+            ),
+        }
+    return origens
+
+
+ORIGEM_DOS_ITENS: dict[str, Origem] = _ORIGENS_FIXAS | _origens_das_series()
+# a contagem de cada relação da rede; à parte porque "controladas" também é chave da seção do FRE
+ORIGEM_DAS_RELACOES = {
+    r.chave: Origem("ligacoes", f"empresas que são '{r.nome}' da companhia na rede, como era no dia")
+    for r in RELACOES
+}  # fmt: skip
+# itens cuja tabela não guarda quando o dado ficou público: o rastro sai sem `publicado_em`, com o motivo
+ITENS_SEM_DATA_DE_PUBLICACAO = {
+    "eventos_de_capital": "a tabela de eventos de capital não guarda a entrega do FRE que os informa",
+    "setor": "a ligação das entidades da agência às companhias não guarda quando ficou pública",
+    "membros": "a ligação das entidades da agência às companhias não guarda quando ficou pública",
+}
 
 
 # --- a ficha e o filtro de pessoas ---------------------------------------------------------------
