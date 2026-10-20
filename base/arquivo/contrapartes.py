@@ -4,15 +4,15 @@ A ficha (`base/contrapartes/cafe.py`) diz o fato com as nossas palavras e o link
 é só prova interna de que a página dizia aquilo naquela data (nunca vai para tela, API ou exportação).
 Fato de recuperação judicial ou fechamento só entra na ficha com a página guardada.
 
-Ligada com o "pode" do Tiago de 18/10/2026 (cópia interna, só dos quatro sites de `SITES_COM_COPIA`).
-`paginas_guardadas` diz à ficha quais páginas já estão no acervo; até a primeira coleta, a notícia
-fica em "o que não sabemos", com o veículo, a data e o link. Para desligar: tirar `fonte()` de
-`base/arquivo/fontes.py::FONTES` e o destino de `base/arquivo/destinos.py`.
+Ligada com o "pode" do Tiago de 18/10/2026 (cópia interna dos quatro primeiros sites) e ampliada pela
+ADR 0102 a toda página da tabela: a cópia é prova interna, e os termos de cada site (lidos em 18–19/10/2026)
+ficam registrados como marca em `licencas-por-fonte.md`, não como filtro. `paginas_guardadas` diz à ficha
+quais páginas já estão no acervo; até a primeira coleta, a notícia fica em "o que não sabemos", com o
+veículo, a data e o link. Para desligar: tirar `fonte()` de `base/arquivo/fontes.py::FONTES` e o destino
+de `base/arquivo/destinos.py`.
 
 Regras (testes em `tests/test_base_contrapartes_cafe.py`):
-- só os sites cujos termos não proíbem cópia nem robô (`SITES_COM_COPIA`, termos lidos em 18–19/10/2026
-  e registrados em `licencas-por-fonte.md`); AgFeed e Brazil Journal proíbem, a Compre Rural veda
-  reprodução: ficam de fora;
+- toda página da coluna `fonte` é guardada uma vez, na ordem da tabela;
 - o `robots.txt` de cada site é lido antes, a cada coleta; se ele proibir uma página ao nosso robô ou
   pedir mais espera que a nossa, a coleta inteira para (falha com aviso);
 - página já guardada não é baixada de novo (notícia publicada quase não muda);
@@ -35,18 +35,11 @@ from src.banco import coletas
 
 ID = "contrapartes-cafe"
 PAUSA_ENTRE_PAGINAS_EM_SEGUNDOS = 3.0
-SITES_COM_COPIA = (
-    "www.almg.gov.br",  # termos: reprodução livre citando fonte e autor
-    "www.bloomberglinea.com.br",  # termos da assinatura: uso pessoal e interno
-    "revistacultivar.com.br",  # sem termos publicados
-    "www.noticiasagricolas.com.br",  # sem termos publicados
-)
 
 
 def paginas_a_guardar(fatos: pd.DataFrame) -> list[str]:
-    """Os endereços da coluna `fonte` nos sites com cópia, sem repetição e na ordem da tabela."""
-    enderecos = dict.fromkeys(str(f) for f in fatos["fonte"].dropna())
-    return [e for e in enderecos if urlsplit(e).netloc in SITES_COM_COPIA]
+    """Os endereços da coluna `fonte`, sem repetição e na ordem da tabela (ADR 0102: todos)."""
+    return list(dict.fromkeys(str(f) for f in fatos["fonte"].dropna()))
 
 
 def _conferir_robots(site: str, texto: str, paginas: list[str]) -> None:

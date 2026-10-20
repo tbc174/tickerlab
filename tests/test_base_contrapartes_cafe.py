@@ -82,8 +82,9 @@ def test_tabela_conferida_tem_as_colunas_do_dicionario_e_esta_na_porta(fatos):
 
 
 def test_ficha_tem_so_fatos_com_fonte_e_data(fatos):
+    riscos = tuple(cafe.NOMES_DOS_FATOS_DE_RISCO.values())
     for ficha in _todas(fatos) + cafe.fichas(fatos, guardadas=GUARDADAS):
-        assert ficha.fatos or ficha.o_que_nao_sabemos[0].startswith("Pedido"), ficha.id
+        assert ficha.fatos or ficha.o_que_nao_sabemos[0].startswith(riscos), ficha.id
         for fato in ficha.fatos:
             assert fato.fonte.startswith("https://"), (ficha.id, fato.fato)
             assert fato.veiculo, (ficha.id, fato.fato)
@@ -137,10 +138,12 @@ def test_fato_de_recuperacao_judicial_ou_fechamento_tem_documento_ou_noticia_gua
     a_guardar = set(contrapartes.paginas_a_guardar(fatos))
     for _, linha in risco.iterrows():
         assert linha["tipo_de_fonte"] in {"documento_oficial", "noticia"}
-        assert linha["fonte"] in a_guardar, linha["fonte"]  # site cujos termos permitem
+        assert linha["fonte"] in a_guardar, linha["fonte"]  # a página vira prova
     # sem a página guardada, a notícia do pedido não vira fato: fica em "o que não sabemos"
+    # (as sacas a receber, do Brazil Journal, não são fato de risco: entram sem cópia)
     sem_copia = cafe.montar_ficha("atlantica", fatos)
-    assert sem_copia is not None and sem_copia.fatos == []
+    assert sem_copia is not None
+    assert [f.fato for f in sem_copia.fatos] == ["sacas_a_receber_a_termo"]
     pendente = sem_copia.o_que_nao_sabemos[0]
     assert pendente.startswith("Pedido de recuperação judicial: noticiado por")
     assert "Bloomberg Línea" in pendente and "05/03/2025" in pendente
@@ -148,7 +151,10 @@ def test_fato_de_recuperacao_judicial_ou_fechamento_tem_documento_ou_noticia_gua
     # com a página guardada, entra
     com_copia = cafe.montar_ficha("atlantica", fatos, guardadas=GUARDADAS)
     assert com_copia is not None
-    assert [f.fato for f in com_copia.fatos] == ["pedido_de_recuperacao_judicial"]
+    assert [f.fato for f in com_copia.fatos] == [
+        "sacas_a_receber_a_termo",
+        "pedido_de_recuperacao_judicial",
+    ]
     assert not any(NOTICIA_DO_PEDIDO in t for t in com_copia.o_que_nao_sabemos)
     # documento oficial não precisa de cópia
     coocafeg = cafe.montar_ficha("coocafeg", fatos)
@@ -157,8 +163,11 @@ def test_fato_de_recuperacao_judicial_ou_fechamento_tem_documento_ou_noticia_gua
 
 
 def test_corte_em_d_nao_mostra_o_que_ainda_nao_tinha_saido(fatos):
+    nada = cafe.montar_ficha("atlantica", fatos, em=date(2024, 12, 2))
+    assert nada is None  # a primeira notícia (Brazil Journal) saiu em 03/12/2024
     antes = cafe.montar_ficha("atlantica", fatos, em=date(2025, 3, 4))
-    assert antes is None  # a notícia do pedido saiu em 05/03/2025
+    assert antes is not None  # a notícia do pedido saiu em 05/03/2025
+    assert [f.fato for f in antes.fatos] == ["sacas_a_receber_a_termo"]
     depois = cafe.montar_ficha(
         "atlantica",
         fatos,
@@ -167,7 +176,10 @@ def test_corte_em_d_nao_mostra_o_que_ainda_nao_tinha_saido(fatos):
         guardadas=GUARDADAS,
     )
     assert depois is not None
-    assert [f.fato for f in depois.fatos] == ["pedido_de_recuperacao_judicial"]
+    assert [f.fato for f in depois.fatos] == [
+        "sacas_a_receber_a_termo",
+        "pedido_de_recuperacao_judicial",
+    ]
     hoje = cafe.montar_ficha(
         "atlantica",
         fatos,
@@ -177,11 +189,12 @@ def test_corte_em_d_nao_mostra_o_que_ainda_nao_tinha_saido(fatos):
     )
     assert hoje is not None
     assert [f.fato for f in hoje.fatos] == [
+        "sacas_a_receber_a_termo",
         "pedido_de_recuperacao_judicial",
         "situacao_especial_na_receita",
     ]
     # cortar o futuro não muda o passado
-    assert hoje.fatos[0] == depois.fatos[0]
+    assert hoje.fatos[:2] == depois.fatos[:2]
 
 
 def test_situacao_especial_da_receita_vira_fato_oficial_so_da_matriz(fatos):
@@ -269,7 +282,8 @@ def _fatos_de(*fontes_: str) -> pd.DataFrame:
     return pd.DataFrame({"fonte": list(fontes_)})
 
 
-def test_so_guarda_sites_cujos_termos_permitem():
+def test_guarda_a_pagina_de_todo_fato_uma_vez_so_e_na_ordem():
+    # ADR 0102 (PR 4): os termos de cada site viram marca registrada, não filtro
     fatos = _fatos_de(
         "https://www.almg.gov.br/a.html",
         "https://agfeed.com.br/?p=1",
@@ -277,7 +291,36 @@ def test_so_guarda_sites_cujos_termos_permitem():
         "https://www.comprerural.com/y/",
         "https://www.almg.gov.br/a.html",
     )
-    assert contrapartes.paginas_a_guardar(fatos) == ["https://www.almg.gov.br/a.html"]
+    assert contrapartes.paginas_a_guardar(fatos) == [
+        "https://www.almg.gov.br/a.html",
+        "https://agfeed.com.br/?p=1",
+        "https://braziljournal.com/x",
+        "https://www.comprerural.com/y/",
+    ]
+
+
+def test_coocem_e_expocacer_entram_pela_adr_0102(fatos):
+    # Coocem: fechamento noticiado pela Compre Rural; sem a página guardada fica em "o que não sabemos"
+    sem_copia = cafe.montar_ficha("coocem", fatos)
+    assert sem_copia is not None and sem_copia.fatos == [] and sem_copia.cnpj is None
+    pendente = sem_copia.o_que_nao_sabemos[0]
+    assert pendente.startswith(
+        "Encerramento das atividades: noticiado por Compre Rural em 18/02/2025"
+    )
+    noticia = fatos[fatos["id"] == "coocem"]["fonte"].iloc[0]
+    com_copia = cafe.montar_ficha("coocem", fatos, guardadas=frozenset({noticia}))
+    assert com_copia is not None
+    assert [f.fato for f in com_copia.fatos] == ["encerramento"]
+    assert "11/02/2025" in com_copia.fatos[0].descricao
+    # Expocacer: as sacas recebidas de 2025 vêm do AgFeed, com as nossas palavras
+    expocacer = cafe.montar_ficha("expocacer", fatos)
+    assert expocacer is not None
+    sacas = next(f for f in expocacer.fatos if f.fato == "sacas_recebidas")
+    assert sacas.veiculo == "AgFeed" and sacas.valor == 1_100_000
+    assert not any("Sacas recebidas" in t for t in expocacer.o_que_nao_sabemos)
+    # Brazil Journal: as sacas a receber das tradings; toda página da tabela vai para o arquivista
+    assert {"Compre Rural", "AgFeed", "Brazil Journal"} <= set(fatos["veiculo"])
+    assert set(fatos["fonte"]) == set(contrapartes.paginas_a_guardar(fatos))
 
 
 def test_descobrir_le_o_robots_de_cada_site_antes():
@@ -308,7 +351,7 @@ def test_robots_que_proibe_ou_pede_mais_espera_para_a_coleta(robots):
 
 
 def test_fonte_do_arquivista_esta_no_catalogo_com_destino_e_licenca(fatos):
-    # ligada com o "pode" do Tiago de 18/10/2026 (cópia interna, só dos quatro sites)
+    # ligada com o "pode" do Tiago de 18/10/2026 e ampliada a toda página pela ADR 0102
     fonte = next(f for f in fontes.FONTES if f.id == contrapartes.ID)
     assert fonte.pausa_minima >= 3
     assert fontes.FONTES[-1].id == contrapartes.ID
@@ -331,7 +374,10 @@ def test_pagina_guardada_leva_o_fato_de_risco_para_a_ficha(fatos, banco, tmp_pat
     assert guardadas == GUARDADAS
     ficha = cafe.montar_ficha("atlantica", fatos, guardadas=guardadas)
     assert ficha is not None
-    assert [f.fato for f in ficha.fatos] == ["pedido_de_recuperacao_judicial"]
+    assert [f.fato for f in ficha.fatos] == [
+        "sacas_a_receber_a_termo",
+        "pedido_de_recuperacao_judicial",
+    ]
 
 
 def test_pagina_ja_guardada_nao_e_baixada_de_novo(banco, tmp_path):
