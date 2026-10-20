@@ -301,6 +301,8 @@ def test_toda_rota_de_leitura_pertence_a_uma_pagina():
         "/v1/meus-dados",
         "/v1/pagamento-da-assinatura",
         "/v1/portal-da-assinatura",
+        "/v1/setores",  # até a página "Relatório do setor" (PR 4 do molde D)
+        "/v1/relatorio-setor",
         "/v1/configuracao",
     }
 

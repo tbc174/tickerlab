@@ -1961,6 +1961,29 @@
         "title": "ExportacoesDoCafeV1",
         "type": "object"
       },
+      "FaltaNoSetorV1": {
+        "properties": {
+          "fonte": {
+            "title": "Fonte",
+            "type": "string"
+          },
+          "kpi": {
+            "title": "Kpi",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kpi",
+          "motivo",
+          "fonte"
+        ],
+        "title": "FaltaNoSetorV1",
+        "type": "object"
+      },
       "FaseDoCafeV1": {
         "properties": {
           "em_colheita": {
@@ -2209,6 +2232,28 @@
           "notas"
         ],
         "title": "FraseDaAnaliseV1",
+        "type": "object"
+      },
+      "FraseDoSetorV1": {
+        "description": "Uma frase de \"O que os dados mostram\": saiu de uma regra fixa e leva o id de cada número.",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ids",
+            "type": "array"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          }
+        },
+        "required": [
+          "texto",
+          "ids"
+        ],
+        "title": "FraseDoSetorV1",
         "type": "object"
       },
       "FundosDoCafeV1": {
@@ -3086,6 +3131,37 @@
           "topico_nome"
         ],
         "title": "MarcoV1",
+        "type": "object"
+      },
+      "MembroDoSetorV1": {
+        "properties": {
+          "cnpj": {
+            "title": "Cnpj",
+            "type": "string"
+          },
+          "empresa": {
+            "title": "Empresa",
+            "type": "string"
+          },
+          "motivo": {
+            "title": "Motivo",
+            "type": "string"
+          },
+          "tickers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tickers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cnpj",
+          "empresa",
+          "tickers",
+          "motivo"
+        ],
+        "title": "MembroDoSetorV1",
         "type": "object"
       },
       "MesV1": {
@@ -4808,6 +4884,94 @@
         "title": "RelatorioDaEmpresaV1",
         "type": "object"
       },
+      "RelatorioDoSetorV1": {
+        "description": "O relatório do setor (molde D): as seções no formato do relatório da empresa.",
+        "properties": {
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avisos",
+            "type": "array"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "fontes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fontes",
+            "type": "array"
+          },
+          "frases": {
+            "items": {
+              "$ref": "#/components/schemas/FraseDoSetorV1"
+            },
+            "title": "Frases",
+            "type": "array"
+          },
+          "limites": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limites",
+            "type": "array"
+          },
+          "membros": {
+            "items": {
+              "$ref": "#/components/schemas/MembroDoSetorV1"
+            },
+            "title": "Membros",
+            "type": "array"
+          },
+          "nao_temos": {
+            "items": {
+              "$ref": "#/components/schemas/FaltaNoSetorV1"
+            },
+            "title": "Nao Temos",
+            "type": "array"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          },
+          "secoes": {
+            "items": {
+              "$ref": "#/components/schemas/SecaoDoRelatorioV1"
+            },
+            "title": "Secoes",
+            "type": "array"
+          },
+          "setor": {
+            "title": "Setor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "setor",
+          "nome",
+          "como_era_em",
+          "membros",
+          "secoes",
+          "frases",
+          "nao_temos",
+          "fontes",
+          "limites",
+          "avisos"
+        ],
+        "title": "RelatorioDoSetorV1",
+        "type": "object"
+      },
       "RespostaDoPedidoV1": {
         "properties": {
           "mensagem": {
@@ -5045,6 +5209,59 @@
           "trancada"
         ],
         "title": "SecaoDoRelatorioV1",
+        "type": "object"
+      },
+      "SetorV1": {
+        "description": "Um setor do relatório: a chave que vai em `/v1/relatorio-setor?setor=` e quantas companhias.",
+        "properties": {
+          "chave": {
+            "title": "Chave",
+            "type": "string"
+          },
+          "como_era_em": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Como Era Em"
+          },
+          "empresas": {
+            "title": "Empresas",
+            "type": "integer"
+          },
+          "nome": {
+            "title": "Nome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chave",
+          "nome",
+          "empresas",
+          "como_era_em"
+        ],
+        "title": "SetorV1",
+        "type": "object"
+      },
+      "SetoresV1": {
+        "properties": {
+          "setores": {
+            "items": {
+              "$ref": "#/components/schemas/SetorV1"
+            },
+            "title": "Setores",
+            "type": "array"
+          }
+        },
+        "required": [
+          "setores"
+        ],
+        "title": "SetoresV1",
         "type": "object"
       },
       "SimulacaoV1": {
@@ -6283,6 +6500,47 @@
         "summary": "Relatorio Da Empresa"
       }
     },
+    "/v1/relatorio-setor": {
+      "get": {
+        "description": "O relatório do setor, montado para o plano da conta: quem está no setor e o que não temos\nvêm sempre; os números da base vêm trancados sem o dossiê da base no plano.",
+        "operationId": "relatorio_do_setor_v1_relatorio_setor_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "setor",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Setor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatorioDoSetorV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relatorio Do Setor"
+      }
+    },
     "/v1/retorno-mensal": {
       "get": {
         "operationId": "retorno_mensal_v1_retorno_mensal_get",
@@ -6552,6 +6810,25 @@
           }
         },
         "summary": "Salvar Simulacao Da Tela"
+      }
+    },
+    "/v1/setores": {
+      "get": {
+        "description": "Os setores do relatório do setor, com quantas companhias abertas cada um tem.",
+        "operationId": "setores_v1_setores_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetoresV1"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setores"
       }
     },
     "/v1/simulacoes": {

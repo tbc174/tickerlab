@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ValidationError
 
+from base import cnpj as cnpj_da_base
 from base import dossie as dossie_da_base
 from src.configuracao import PASTA_RAIZ
 from src.negociacoes import formatar_valor
@@ -65,6 +67,7 @@ TAMANHO_DO_ANO = (
     4  # "2025": a série de agência somada no ano (base/dossie.py, `_item_da_serie`)
 )
 TAMANHO_DO_MES = 7  # "2025-12"
+FRACAO = "fração"  # a unidade de um número entre 0 e 1 (o índice de Basileia, a CR4)
 
 TITULOS_DAS_TABELAS = {
     "trocas_de_auditor": "Trocas de auditor",
@@ -96,6 +99,28 @@ TITULOS_DAS_TABELAS = {
     "ligacoes_da_rede": "Ligações da companhia na rede",
     "identificadores_da_empresa": "Identificadores públicos da companhia",
 } | {serie.nome: serie.medida for serie in dossie_da_base.SERIES_DAS_AGENCIAS}
+# as séries que a seção `setor` (molde D) usa: as das agências e as do IF.data dos bancos
+SERIES_DO_SETOR = {
+    serie.nome: serie
+    for serie in (
+        *dossie_da_base.SERIES_DAS_AGENCIAS,
+        *dossie_da_base.SERIES_DOS_BANCOS,
+    )
+}
+PREFIXO_DA_CONCENTRACAO = "concentracao_"
+PREFIXO_DO_LADO_A_LADO = "lado_a_lado_"
+TITULOS_DAS_TABELAS |= {
+    "participacao_dos_membros": "Participação de cada companhia aberta no mercado",
+    "membros": "Companhias abertas do setor",
+    **{
+        f"{PREFIXO_DA_CONCENTRACAO}{nome}": f"Concentração: {serie.medida}"
+        for nome, serie in SERIES_DO_SETOR.items()
+    },
+    **{
+        f"{PREFIXO_DO_LADO_A_LADO}{nome}": f"Lado a lado: {serie.medida}"
+        for nome, serie in SERIES_DO_SETOR.items()
+    },
+}
 _UNIDADE_DA_SERIE = {
     serie.nome: serie.unidade for serie in dossie_da_base.SERIES_DAS_AGENCIAS
 }
@@ -214,17 +239,109 @@ def ficha_do_molde_a(ficha: Ficha | None) -> Ficha | None:
     return ficha.model_copy(update={"secoes": secoes}) if secoes else None
 
 
+# --- o setor (molde D, plano de 19/10/2026, PR 3) ---------------------------------------------------
+# a noite grava a seção `setor` dentro da ficha de um membro e diz no manifesto qual é a ficha
+NOME_DO_MANIFESTO = "manifesto.json"
+_NOME_DO_SETOR = {s.chave: s.nome for s in dossie_da_base.SETORES_DO_LANCAMENTO}
+
+
+class SetorDaNoite(BaseModel):
+    """Um setor no manifesto da noite: o CNPJ da ficha que leva a seção e os dos membros."""
+
+    ficha: str
+    membros: list[str] = []
+
+
+class _Manifesto(BaseModel):
+    setores: dict[str, SetorDaNoite] = {}  # o resto do manifesto o app não lê
+
+
+@dataclass(frozen=True)
+class SecaoDoSetor:
+    secao: SecaoDaFicha  # já conferida pelas regras da base, como as outras da ficha
+    itens: dict[str, Item]  # os itens da seção já escritos, pela chave
+    dia: date  # o dia da ficha da noite: os números são como eram nele
+
+
+def _e_cnpj_da_ficha(texto: str) -> bool:
+    return len(texto) == TAMANHO_DO_CNPJ and texto.isdigit()
+
+
+def setores_da_noite(pasta: Path | None = None) -> dict[str, SetorDaNoite]:
+    """Os setores do lançamento que a última noite gravou ({}: sem manifesto ou fora do esquema)."""
+    caminho = (pasta or pasta_das_fichas()) / "atual" / NOME_DO_MANIFESTO
+    try:
+        if caminho.stat().st_size > TAMANHO_MAXIMO:
+            log.warning("manifesto do dossiê grande demais: %s", caminho)
+            return {}
+        manifesto = _Manifesto.model_validate_json(caminho.read_bytes())
+    except OSError:
+        return {}  # a noite ainda não chegou
+    except ValidationError:
+        log.warning("manifesto do dossiê fora do esquema: %s", caminho)
+        return {}
+    return {
+        chave: setor
+        for chave, setor in manifesto.setores.items()
+        if chave in _NOME_DO_SETOR
+        and _e_cnpj_da_ficha(setor.ficha)
+        and all(_e_cnpj_da_ficha(m) for m in setor.membros)
+    }
+
+
+def secao_do_setor(chave: str, pasta: Path | None = None) -> SecaoDoSetor | None:
+    """A seção `setor` da noite para o setor (None: a noite não a gravou ou ela é de outro setor)."""
+    setor = setores_da_noite(pasta).get(chave)
+    ficha = ficha_do(setor.ficha, pasta) if setor else None
+    secao = (
+        next((s for s in ficha.secoes if s.chave == "setor"), None) if ficha else None
+    )
+    if ficha is None or secao is None:
+        return None
+    nome = next((i.valor for i in secao.itens if i.chave == "setor"), None)
+    if nome != _NOME_DO_SETOR[chave]:
+        log.warning("seção do setor com outro setor dentro: %s", chave)
+        return None
+    itens = {i.chave: _item_da_ficha(ficha, secao, i) for i in secao.itens}
+    return SecaoDoSetor(secao, itens, dia_da_ficha(ficha))
+
+
 _REGISTRO = {secao.chave: secao for secao in dossie_da_base.SECOES}
 _TABELA_DA_SERIE = {
     serie.nome: serie.tabela for serie in dossie_da_base.SERIES_DAS_AGENCIAS
 }
 
 
+def serie_da_tabela_do_setor(chave: str) -> dossie_da_base.SerieDaAgencia | None:
+    """A série de uma tabela `concentracao_<série>` ou `lado_a_lado_<série>` da seção setor."""
+    for prefixo in (PREFIXO_DA_CONCENTRACAO, PREFIXO_DO_LADO_A_LADO):
+        if chave.startswith(prefixo):
+            return SERIES_DO_SETOR.get(chave.removeprefix(prefixo))
+    return None
+
+
 def _tabela_pode_sair(chave: str) -> bool:
     """A tabela da ficha tem colunas declaradas e, se é série de agência, a fonte é vendável."""
     if chave in _TABELA_DA_SERIE:
         return dossie_da_base.pode_mostrar(_TABELA_DA_SERIE[chave])
+    serie = serie_da_tabela_do_setor(chave)
+    if serie is not None:
+        return dossie_da_base.pode_mostrar(serie.tabela)
     return chave in COLUNAS
+
+
+def _linhas_que_podem_sair(
+    chave: str, linhas: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """A participação dos membros mistura séries: sai só a linha de série com fonte vendável."""
+    if chave != "participacao_dos_membros":
+        return linhas
+    return [
+        linha
+        for linha in linhas
+        if (serie := SERIES_DO_SETOR.get(str(linha.get("serie")))) is not None
+        and dossie_da_base.pode_mostrar(serie.tabela)
+    ]
 
 
 def _so_o_que_pode_mostrar(ficha: Ficha) -> Ficha:
@@ -241,7 +358,11 @@ def _so_o_que_pode_mostrar(ficha: Ficha) -> Ficha:
         if registrada is None or not all(dossie_da_base.pode_mostrar(t) for t in lidas):
             log.warning("seção do dossiê que não pode ser mostrada: %s", secao.chave)
             continue
-        tabelas = {k: v for k, v in secao.tabelas.items() if _tabela_pode_sair(k)}
+        tabelas = {
+            k: _linhas_que_podem_sair(k, v)
+            for k, v in secao.tabelas.items()
+            if _tabela_pode_sair(k)
+        }
         if len(tabelas) < len(secao.tabelas):
             log.warning(
                 "tabelas do dossiê que não podem ser mostradas: %s",
@@ -393,8 +514,25 @@ def _codigo(valor: object) -> str:
 
 
 def _escritor_da_unidade(unidade: str) -> Callable[[object], str]:
-    """Como escrever um número da série: em reais ("R$ 8,0 bi") ou inteiro ("9.743.641")."""
-    return reais if unidade == "R$" else inteiro
+    """Como escrever um número da série: em reais ("R$ 8,0 bi"), fração ("15,2%", o índice de
+    Basileia) ou inteiro ("9.743.641")."""
+    if unidade == "R$":
+        return reais
+    return fracao if unidade == FRACAO else inteiro
+
+
+def _pontos(valor: object) -> str:
+    """A variação do HHI com o sinal: "+120", "-35", "+0"."""
+    return f"{_numero(valor):+,.0f}".replace(",", ".")
+
+
+def _medida_da_serie(valor: object) -> str:
+    serie = SERIES_DO_SETOR.get(str(valor))
+    return serie.medida if serie else str(valor)
+
+
+def _cnpj(valor: object) -> str:
+    return cnpj_da_base.formatar(str(valor))
 
 
 def _escrever_valor(valor: str | float | None, unidade: str) -> str:
@@ -404,6 +542,8 @@ def _escrever_valor(valor: str | float | None, unidade: str) -> str:
         return reais(valor)
     if unidade == "data":
         return dia(valor)
+    if unidade == FRACAO:
+        return fracao(valor)
     if isinstance(valor, int | float):
         return inteiro(valor)
     return str(valor)
@@ -599,6 +739,21 @@ COLUNAS: dict[str, list[Coluna]] = {
         ("valor", "Valor", _texto),
         ("desde", "Desde", dia),
     ],
+    # sem o valor: cada linha é de uma série, com a unidade dela (o relatório do setor escreve o
+    # valor série a série, por `colunas_da_participacao`)
+    "participacao_dos_membros": [
+        ("serie", "Série", _medida_da_serie),
+        ("empresa", "Companhia", _texto),
+        ("ano", "Ano", _ano),
+        ("participacao", "Parte do mercado", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ],
+    "membros": [
+        ("empresa", "Companhia", _texto),
+        ("cnpj", "CNPJ", _cnpj),
+        ("motivo", "Por que está no setor", _texto),
+    ],
 }
 
 
@@ -615,16 +770,66 @@ def _colunas_da_serie(nome: str) -> list[Coluna]:
     ]
 
 
-def titulo_da_tabela(chave: str) -> str:
-    return TITULOS_DAS_TABELAS.get(chave, chave.replace("_", " ").capitalize())
+def colunas_da_participacao(nome: str) -> list[Coluna]:
+    """As colunas da participação de cada companhia numa série, com o valor na unidade dela."""
+    serie = SERIES_DO_SETOR[nome]
+    return [
+        ("empresa", "Companhia", _texto),
+        ("ano", "Ano", _ano),
+        ("valor", serie.unidade.capitalize(), _escritor_da_unidade(serie.unidade)),
+        ("participacao", "Parte do mercado", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ]
 
 
-def _escrever_tabela(chave: str, linhas: list[dict[str, Any]]) -> list[dict[str, str]]:
-    colunas = (
-        _colunas_da_serie(chave) if chave in _UNIDADE_DA_SERIE else COLUNAS.get(chave)
-    )
-    if colunas is None:
-        raise KeyError(f"tabela do dossiê sem colunas declaradas: {chave}")
+def _colunas_da_concentracao(serie: dossie_da_base.SerieDaAgencia) -> list[Coluna]:
+    return [
+        ("ano", "Ano", _ano),
+        ("participantes", "Participantes", inteiro),
+        (
+            "total",
+            f"Mercado ({serie.unidade})",
+            _escritor_da_unidade(serie.unidade),
+        ),
+        ("cr4", "CR4 (4 maiores)", fracao),
+        ("hhi", "HHI (pontos)", inteiro),
+        ("faixa", "Faixa do CADE", _texto),
+        ("delta_hhi", "Variação do HHI", _pontos),
+        ("por_entidade", "Contado por entidade", fracao),
+        ("meses", "Meses no ano", inteiro),
+        ("ultimo_mes", "Até", mes),
+    ]
+
+
+def _colunas_do_lado_a_lado(serie: dossie_da_base.SerieDaAgencia) -> list[Coluna]:
+    abertura = [("abertura", "Modalidade", _texto)] if serie.abertura else []
+    return [
+        ("empresa", "Companhia", _texto),
+        ("entidade", "Entidade na agência", _texto),
+        ("ano", "Ano", _ano),
+        *abertura,
+        ("valor", serie.unidade.capitalize(), _escritor_da_unidade(serie.unidade)),
+        ("ultimo_mes", "Até", mes),
+    ]
+
+
+def colunas_da_tabela(chave: str) -> list[Coluna] | None:
+    """As colunas declaradas de uma tabela da ficha (None: a tabela não sai)."""
+    if chave in _UNIDADE_DA_SERIE:
+        return _colunas_da_serie(chave)
+    serie = serie_da_tabela_do_setor(chave)
+    if serie is None:
+        return COLUNAS.get(chave)
+    if chave.startswith(PREFIXO_DA_CONCENTRACAO):
+        return _colunas_da_concentracao(serie)
+    return _colunas_do_lado_a_lado(serie)
+
+
+def escrever_linhas(
+    colunas: list[Coluna], linhas: list[dict[str, Any]]
+) -> list[dict[str, str]]:
+    """As linhas com cada célula já escrita, pelo rótulo da coluna ("—" onde falta o número)."""
     return [
         {
             rotulo: "—" if linha.get(coluna) is None else escrever(linha[coluna])
@@ -632,6 +837,17 @@ def _escrever_tabela(chave: str, linhas: list[dict[str, Any]]) -> list[dict[str,
         }
         for linha in linhas
     ]
+
+
+def titulo_da_tabela(chave: str) -> str:
+    return TITULOS_DAS_TABELAS.get(chave, chave.replace("_", " ").capitalize())
+
+
+def _escrever_tabela(chave: str, linhas: list[dict[str, Any]]) -> list[dict[str, str]]:
+    colunas = colunas_da_tabela(chave)
+    if colunas is None:
+        raise KeyError(f"tabela do dossiê sem colunas declaradas: {chave}")
+    return escrever_linhas(colunas, linhas)
 
 
 def links_da_tabela(ficha: Ficha, secao: str, tabela: str) -> list[str]:
