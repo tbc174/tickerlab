@@ -4,10 +4,12 @@ Licença CC BY-ND: a tabela guarda e devolve os números como a CONAB publicou; 
 a regra de nunca sobrescrever e o "como estava em D" (sem olhar o futuro).
 """
 
+import io
 from datetime import date
 
 import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 from base.commodities import conab_cafe
 from tests.ajudantes_da_conab import planilha
@@ -177,3 +179,56 @@ def test_corte_por_data_nao_mostra_levantamento_antes_da_publicacao():
         conab_cafe.como_estava_em(tabela, date(2026, 9, 23))["levantamento"]
     ) == {1}
     assert set(conab_cafe.como_estava_em(tabela, D3)["levantamento"]) == {3}
+
+
+# --- planilhas de desenho antigo (4 das 10 guardadas em 20/10/2026) ---------------------------------------
+@pytest.mark.parametrize("desenho", ["com_letras", "canto_solto"])
+def test_desenho_antigo_da_a_mesma_saida_que_o_atual(desenho):
+    atual = conab_cafe.ler_levantamento(planilha(2024), 3, D3)
+    antigo = conab_cafe.ler_levantamento(planilha(2024, desenho=desenho), 3, D3)
+    pd.testing.assert_frame_equal(antigo, atual)
+    assert list(antigo.columns) == list(conab_cafe.COLUNAS)
+    assert set(antigo.safra) == {2024}  # a coluna "Safra 2023 (a)" não entra
+
+
+def test_desenho_antigo_mantem_ufs_totais_e_unidades_da_planilha():
+    tabela = conab_cafe.ler_levantamento(planilha(2024, desenho="com_letras"), 1, D1)
+    assert set(tabela.uf) == {"MG", "ES", "OUTROS", "BRASIL"}
+    mg = tabela[(tabela.tipo == "arabica") & (tabela.uf == "MG")].iloc[0]
+    assert mg.producao_mil_sacas == pytest.approx(3000.0)
+    assert mg.area_formacao_ha == pytest.approx(8000.0)
+    brasil = tabela[(tabela.tipo == "total") & (tabela.uf == "BRASIL")].iloc[0]
+    assert brasil.producao_mil_sacas == pytest.approx(3510.0 * 1.3)
+
+
+def test_desenho_atual_nao_passa_pelo_leitor_antigo(monkeypatch):
+    lidos = []
+    original = conab_cafe._ler_abas
+    monkeypatch.setattr(
+        conab_cafe,
+        "_ler_abas",
+        lambda abas, desenho: lidos.append(desenho) or original(abas, desenho),
+    )
+    conab_cafe.ler_levantamento(planilha(2026), 3, D3)
+    assert lidos == [conab_cafe.DESENHO_ATUAL]
+
+
+def test_desenho_desconhecido_continua_com_erro_claro():
+    livro = Workbook()
+    livro.remove(livro.active)
+    for nome in ("1 Café Total", "4 Café Total - Área"):
+        livro.create_sheet(nome).append(["tabela que a CONAB mudou"])
+    saida = io.BytesIO()
+    livro.save(saida)
+    with pytest.raises(conab_cafe.ErroDeLeitura):
+        conab_cafe.ler_levantamento(saida.getvalue(), 1, D1)
+
+
+def test_corte_por_data_com_planilha_antiga_nao_olha_o_futuro():
+    antiga = conab_cafe.ler_levantamento(planilha(2024, desenho="com_letras"), 1, D1)
+    nova = conab_cafe.ler_levantamento(planilha(2024, 2.0), 3, D3)
+    tabela = conab_cafe.acrescentar(antiga, nova)
+    antes = conab_cafe.como_estava_em(tabela, date(2026, 6, 1))
+    assert set(antes.levantamento) == {1}
+    depois = conab_cafe.como_estava_em(tabela, D3)
+    assert set(depois.levantamento) == {3}
