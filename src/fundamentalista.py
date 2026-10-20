@@ -46,6 +46,35 @@ ANOS_DO_HISTORICO = 10
 SEM_RECEITA = "Sem receita no período."
 SEM_CUSTO = "Sem custo das vendas informado (empresa de serviços ou holding)."
 SEM_DESPESA_FINANCEIRA = "Sem despesa financeira no período: não se aplica."
+VERSAO_DO_FUNDAMENTALISTA = "1"  # sobe quando uma fórmula de `FORMULAS` mudar
+# a conta de cada indicador, para o rastro do número (`src/rastro.py`)
+_SALDO_MEDIO = (
+    "saldo médio entre o balanço mais recente e o de um ano antes (sem ele, o do fim)"
+)
+_PL = "(patrimônio líquido − participação dos minoritários)"
+DOS_DIVIDENDOS = (
+    "anos_pagando",
+    "diluicao",
+)  # de `dividendos_e_diluicao`, não de `calcular`
+FORMULAS = {
+    "dupont_margem": "lucro dos controladores ÷ receita (12 meses)",
+    "dupont_giro": "receita (12 meses) ÷ ativo total (balanço mais recente)",
+    "dupont_alavancagem": f"ativo total ÷ {_PL} (balanço mais recente)",
+    "dupont_roe": "margem líquida dos acionistas × giro do ativo × alavancagem",
+    "pmr": f"contas a receber ({_SALDO_MEDIO}) ÷ receita (12 meses) × {DIAS_NO_ANO}",
+    "pme": f"estoques ({_SALDO_MEDIO}) ÷ custo das vendas (12 meses) × {DIAS_NO_ANO}",
+    "pmp": f"fornecedores ({_SALDO_MEDIO}) ÷ custo das vendas (12 meses) × {DIAS_NO_ANO}",
+    "ciclo_de_caixa": "prazo médio de recebimento + de estocagem − de pagamento",
+    "caixa_livre": "caixa operacional − capex (12 meses, fluxo de caixa)",
+    "capex": "capex do fluxo de caixa (12 meses), em valor absoluto",
+    "capex_sobre_depreciacao": "capex ÷ depreciação e amortização (12 meses)",
+    "cobertura_de_juros": "EBIT ÷ despesas financeiras (12 meses)",
+    "anos_pagando": "anos com dividendos ou JCP pagos no fluxo de caixa da DFP (acima de zero)",
+    "diluicao": (
+        "(ações em circulação do último ano ÷ as do primeiro) ^ (1 ÷ anos) − 1, ajustadas por "
+        "desdobramentos, grupamentos e bonificações do FRE"
+    ),
+}
 
 
 @dataclass(frozen=True)

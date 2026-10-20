@@ -25,6 +25,7 @@ from src.demonstracoes import e_financeira
 from src.fundamentos import NAO_SE_APLICA_A_FINANCEIRAS, anuais
 from src.notas import Regua
 
+VERSAO_DAS_NOTAS_CLASSICAS = "1"  # sobe quando uma fórmula ou um peso abaixo mudar
 ALTMAN_SEGURA, ALTMAN_AFLICAO = 2.60, 1.10
 BENEISH_LIMITE = -1.78
 AFLICAO, CINZENTA, SEGURA = "de aflição", "cinzenta", "segura"

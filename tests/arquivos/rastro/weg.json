@@ -1,0 +1,450 @@
+{
+  "altman": {
+    "valor": 3.7310914438364096,
+    "formula": "Z'' = 6,56·X1 + 3,26·X2 + 6,72·X3 + 1,05·X4",
+    "versao_do_calculo": "notas clássicas 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "anos_pagando": {
+    "valor": 2.0,
+    "formula": "anos com dividendos ou JCP pagos no fluxo de caixa da DFP (acima de zero)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "beneish": {
+    "valor": -2.45947230360491,
+    "formula": "M = −4,84 + 0,920·DSRI + 0,528·GMI + 0,404·AQI + 0,892·SGI + 0,115·DEPI − 0,172·SGAI + 4,679·TATA − 0,327·LVGI",
+    "versao_do_calculo": "notas clássicas 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "caixa": {
+    "valor": 7279865000.0,
+    "formula": "caixa e equivalentes + aplicações financeiras (balanço mais recente)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "caixa_livre": {
+    "valor": 3759712000.0,
+    "formula": "caixa operacional − capex (12 meses, fluxo de caixa)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "capex": {
+    "valor": 2691321000.0,
+    "formula": "capex do fluxo de caixa (12 meses), em valor absoluto",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "capex_sobre_depreciacao": {
+    "valor": 2.6878375625189754,
+    "formula": "capex ÷ depreciação e amortização (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "ciclo_de_caixa": {
+    "valor": 157.263135666786,
+    "formula": "prazo médio de recebimento + de estocagem − de pagamento",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "cobertura_de_juros": {
+    "valor": 3.680326661998051,
+    "formula": "EBIT ÷ despesas financeiras (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "conversao_de_caixa": {
+    "valor": 0.9520473710138109,
+    "formula": "caixa operacional (12 meses) ÷ lucro líquido consolidado (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "crescimento_lucro": {
+    "valor": null,
+    "formula": "(lucro dos controladores (sem a divisão, o lucro consolidado) do último DFP ÷ o do DFP de 5 anos antes) ^ (1 ÷ 5) − 1",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "crescimento_receita": {
+    "valor": null,
+    "formula": "(receita do último DFP ÷ receita do DFP de 5 anos antes) ^ (1 ÷ 5) − 1",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "diluicao": {
+    "valor": 3.780087881755101e-05,
+    "formula": "(ações em circulação do último ano ÷ as do primeiro) ^ (1 ÷ anos) − 1, ajustadas por desdobramentos, grupamentos e bonificações do FRE",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "divida_bruta": {
+    "valor": 4590822000.0,
+    "formula": "empréstimos e financiamentos de curto prazo + de longo prazo (balanço mais recente)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "divida_liquida": {
+    "valor": -2689043000.0,
+    "formula": "dívida bruta − caixa e aplicações (balanço mais recente)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "divida_sobre_pl": {
+    "valor": -0.15439021862602942,
+    "formula": "dívida líquida ÷ (patrimônio líquido − participação dos minoritários)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "dividend_yield": {
+    "valor": 0.0256680609589059,
+    "formula": "dividendos e JCP pagos em caixa (12 meses, fluxo de caixa) ÷ valor de mercado",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "dupont_alavancagem": {
+    "valor": 2.448445601284019,
+    "formula": "ativo total ÷ (patrimônio líquido − participação dos minoritários) (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "dupont_giro": {
+    "valor": 0.9568315463724613,
+    "formula": "receita (12 meses) ÷ ativo total (balanço mais recente)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "dupont_margem": {
+    "valor": 0.15626413613726656,
+    "formula": "lucro dos controladores ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "ev_ebit": {
+    "valor": 25.891044059308832,
+    "formula": "valor da firma ÷ EBIT (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "ev_ebitda": {
+    "valor": 23.010544917759784,
+    "formula": "valor da firma ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "lucro": {
+    "valor": 6376219000.0,
+    "formula": "lucro dos controladores (sem a divisão, o lucro consolidado) (12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "margem_bruta": {
+    "valor": 0.3353003655759187,
+    "formula": "resultado bruto ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "margem_ebit": {
+    "valor": 0.1960278266086431,
+    "formula": "EBIT ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "margem_liquida": {
+    "valor": 0.1660606737899687,
+    "formula": "lucro líquido consolidado ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "p_l": {
+    "valor": 32.90112818427347,
+    "formula": "preço da ação ÷ lucro por ação (o mesmo preço para todas as classes de ação)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "p_receita": {
+    "valor": 5.1412663736569675,
+    "formula": "valor de mercado ÷ receita (12 meses)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "p_vp": {
+    "valor": 12.04470175002447,
+    "formula": "preço da ação ÷ patrimônio por ação (o mesmo preço para todas as classes de ação)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "piotroski": {
+    "valor": 6.0,
+    "formula": "um ponto por critério cumprido, de 0 a 9",
+    "versao_do_calculo": "notas clássicas 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2024, versão 1",
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "pme": {
+    "valor": 133.32993996086714,
+    "formula": "estoques (saldo médio entre o balanço mais recente e o de um ano antes (sem ele, o do fim)) ÷ custo das vendas (12 meses) × 365",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "pmp": {
+    "valor": 44.190721039232514,
+    "formula": "fornecedores (saldo médio entre o balanço mais recente e o de um ano antes (sem ele, o do fim)) ÷ custo das vendas (12 meses) × 365",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "pmr": {
+    "valor": 68.1239167451514,
+    "formula": "contas a receber (saldo médio entre o balanço mais recente e o de um ano antes (sem ele, o do fim)) ÷ receita (12 meses) × 365",
+    "versao_do_calculo": "fundamentalista 1",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "receita": {
+    "valor": 40804110000.0,
+    "formula": "receita líquida (12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "roe": {
+    "valor": 0.3660878035113022,
+    "formula": "lucro dos controladores (sem a divisão, o lucro consolidado) (12 meses) ÷ (patrimônio líquido − participação dos minoritários) no balanço mais recente",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "roic": {
+    "valor": 0.33276993449640857,
+    "formula": "EBIT (12 meses) × (1 − alíquota de IR e CSLL: 34% no Brasil, 21% nos EUA) ÷ (patrimônio líquido + dívida bruta − caixa e aplicações) no balanço mais recente",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [],
+    "publicado_em": "2026-02-25",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1"
+    ]
+  },
+  "valor_da_firma": {
+    "valor": 207095755650.0,
+    "formula": "valor de mercado + dívida líquida",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  },
+  "valor_de_mercado": {
+    "valor": 209784798650.0,
+    "formula": "preço da ação × ações em circulação (total − tesouraria, conferidas com o lucro por ação da DRE)",
+    "versao_do_calculo": "fundamentos 2",
+    "fonte_id": "cvm",
+    "outras_fontes": [
+      "yahoo"
+    ],
+    "publicado_em": "2026-10-16",
+    "documentos": [
+      "DFP de 31/12/2025, versão 1",
+      "fechamento de WEGE3.SA (Yahoo Finance)"
+    ]
+  }
+}

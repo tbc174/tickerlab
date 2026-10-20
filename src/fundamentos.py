@@ -67,6 +67,52 @@ DE_MERCADO = (
     "dividend_yield",
     *(chave for chave, _, _ in DA_FIRMA),
 )
+ANOS_DO_CRESCIMENTO = 5  # o horizonte padrão do crescimento composto
+# a conta de cada indicador abaixo, para o rastro do número (`src/rastro.py`): mudou uma conta aqui,
+# suba `VERSAO_DOS_FUNDAMENTOS` (o gabarito de `tests/test_rastro.py` cobra)
+_12M = "(12 meses: último DFP + acumulado do ano no último ITR − o mesmo período do ano anterior)"
+_LUCRO = "lucro dos controladores (sem a divisão, o lucro consolidado)"
+_PL = "(patrimônio líquido − participação dos minoritários)"
+_ACOES = (
+    "ações em circulação (total − tesouraria, conferidas com o lucro por ação da DRE)"
+)
+FORMULAS = {
+    "receita": f"receita líquida {_12M}",
+    "lucro": f"{_LUCRO} {_12M}",
+    "margem_bruta": "resultado bruto ÷ receita (12 meses)",
+    "margem_ebit": "EBIT ÷ receita (12 meses)",
+    "margem_liquida": "lucro líquido consolidado ÷ receita (12 meses)",
+    "roe": f"{_LUCRO} (12 meses) ÷ {_PL} no balanço mais recente",
+    "roic": (
+        "EBIT (12 meses) × (1 − alíquota de IR e CSLL: 34% no Brasil, 21% nos EUA) ÷ (patrimônio "
+        "líquido + dívida bruta − caixa e aplicações) no balanço mais recente"
+    ),
+    "divida_bruta": "empréstimos e financiamentos de curto prazo + de longo prazo (balanço mais recente)",
+    "caixa": "caixa e equivalentes + aplicações financeiras (balanço mais recente)",
+    "divida_liquida": "dívida bruta − caixa e aplicações (balanço mais recente)",
+    "divida_sobre_pl": f"dívida líquida ÷ {_PL}",
+    "conversao_de_caixa": "caixa operacional (12 meses) ÷ lucro líquido consolidado (12 meses)",
+    "crescimento_receita": (
+        f"(receita do último DFP ÷ receita do DFP de {ANOS_DO_CRESCIMENTO} anos antes) ^ "
+        f"(1 ÷ {ANOS_DO_CRESCIMENTO}) − 1"
+    ),
+    "crescimento_lucro": (
+        f"({_LUCRO} do último DFP ÷ o do DFP de {ANOS_DO_CRESCIMENTO} anos antes) ^ "
+        f"(1 ÷ {ANOS_DO_CRESCIMENTO}) − 1"
+    ),
+    "lpa": f"{_LUCRO} (12 meses) ÷ {_ACOES}",
+    "vpa": f"{_PL} ÷ {_ACOES}",
+    "p_l": "preço da ação ÷ lucro por ação (o mesmo preço para todas as classes de ação)",
+    "p_vp": "preço da ação ÷ patrimônio por ação (o mesmo preço para todas as classes de ação)",
+    "valor_de_mercado": f"preço da ação × {_ACOES}",
+    "dividend_yield": (
+        "dividendos e JCP pagos em caixa (12 meses, fluxo de caixa) ÷ valor de mercado"
+    ),
+    "valor_da_firma": "valor de mercado + dívida líquida",
+    "ev_ebitda": "valor da firma ÷ (EBIT + depreciação e amortização) (12 meses)",
+    "ev_ebit": "valor da firma ÷ EBIT (12 meses)",
+    "p_receita": "valor de mercado ÷ receita (12 meses)",
+}
 
 
 @dataclass(frozen=True)
@@ -566,7 +612,7 @@ def _filtros(
 def calcular(
     dados: DadosDaEmpresa,
     preco: float | None,
-    anos: int = 5,
+    anos: int = ANOS_DO_CRESCIMENTO,
     roic_minimo: float | None = None,
     pl_maximo: float | None = None,
     aliquota: float = ALIQUOTA_DE_IR_CS,
