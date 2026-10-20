@@ -782,12 +782,14 @@ MESES_RECENTES_DO_CDA = 5
 
 
 def _meses_recentes(modelo: str, meses: int) -> Descobrir:
-    """Os `meses` meses antes do atual (no fuso de São Paulo), do mais antigo ao mais novo."""
+    """Os `meses` meses antes do atual e o próprio mês atual (no fuso de São Paulo), do mais antigo
+    ao mais novo. O atual entra para registrar o "não encontrado" antes de a CVM publicar a 1ª versão:
+    sem isso, os fundos dela ficariam sem `visto_em`."""
 
     def descobrir(cliente: Cliente, agora: datetime) -> list[Alvo]:
         hoje = agora.astimezone(FUSO_DA_B3).date()
         alvos = []
-        for atras in range(meses, 0, -1):
+        for atras in range(meses, -1, -1):
             ano, mes = divmod(hoje.year * 12 + hoje.month - 1 - atras, 12)
             url = modelo.format(aaaamm=f"{ano}{mes + 1:02d}")
             alvos.append(Alvo(url, ".zip", zip_que_pode_faltar(url)))
