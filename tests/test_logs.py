@@ -95,6 +95,17 @@ def test_json_leva_os_logs_do_uvicorn_pelo_mesmo_caminho():
         assert logging.getLogger(nome).propagate is False
 
 
+def test_texto_depois_de_json_devolve_os_logs_do_uvicorn_para_a_raiz(capsys):
+    # sem isso o log de acesso ficava preso ao handler (e ao stderr) da chamada em JSON
+    logs.configurar_logs({"TICKERLAB_LOG_FORMATO": "json"})
+    logs.configurar_logs({"TICKERLAB_LOG_FORMATO": "texto"})
+    for nome in logs.LOGGERS_DO_UVICORN:
+        assert logging.getLogger(nome).handlers == []
+        assert logging.getLogger(nome).propagate is True
+    _acesso_do_uvicorn("/saude")
+    assert "/saude" in capsys.readouterr().err
+
+
 def _acesso_do_uvicorn(caminho):
     """Um registro como o do `uvicorn.access`: o caminho vem com a query string."""
     return logging.getLogger("uvicorn.access").info(

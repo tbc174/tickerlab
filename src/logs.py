@@ -81,10 +81,10 @@ def configurar_logs(ambiente: Mapping[str, str] | None = None) -> logging.Handle
     acesso = logging.getLogger("uvicorn.access")
     if not any(isinstance(f, SemQueryString) for f in acesso.filters):
         acesso.addFilter(SemQueryString())
-    if em_json:
-        # o uvicorn tem logs próprios; manda tudo pelo mesmo formato
-        for nome in LOGGERS_DO_UVICORN:
-            logger = logging.getLogger(nome)
-            logger.handlers = [handler]
-            logger.propagate = False
+    # o uvicorn tem logs próprios: em JSON vão pelo mesmo formato; em texto voltam para a raiz
+    # (senão ficariam presos ao handler, e ao stderr, de uma chamada anterior em JSON)
+    for nome in LOGGERS_DO_UVICORN:
+        logger = logging.getLogger(nome)
+        logger.handlers = [handler] if em_json else []
+        logger.propagate = not em_json
     return handler
