@@ -51,6 +51,18 @@ CREATE TABLE IF NOT EXISTS ajustes (
     registrado_em TEXT NOT NULL
 );
 """
+# Quem escreveu cada hipótese (ideia "proveniência" do Vibe-Trading, 20/10/2026). Fica numa tabela à
+# parte, de propósito: a identidade da tentativa é o hash da especificação, e anotar o autor não pode
+# fazer a mesma configuração contar de novo. Bancos antigos ganham a tabela vazia ao abrir.
+ESQUEMA_DA_PROVENIENCIA = """
+CREATE TABLE IF NOT EXISTS proveniencia (
+    tentativa_id INTEGER PRIMARY KEY REFERENCES tentativas (id),
+    autor TEXT NOT NULL,
+    modelo TEXT,
+    commit_do_codigo TEXT NOT NULL,
+    registrada_em TEXT NOT NULL
+);
+"""
 
 
 def especificacao_canonica(spec: dict) -> str:
@@ -104,6 +116,7 @@ class Registro:
         self.caminho.parent.mkdir(parents=True, exist_ok=True)
         with self._conectar() as c:
             c.executescript(ESQUEMA)
+            c.executescript(ESQUEMA_DA_PROVENIENCIA)
 
     def _conectar(self) -> sqlite3.Connection:
         c = sqlite3.connect(self.caminho)
@@ -157,6 +170,39 @@ class Registro:
         if not alteradas:
             raise KeyError(f"Não existe a tentativa {tentativa_id}.")
 
+    def registrar_proveniencia(
+        self, tentativa_id: int, autor: str, modelo: str | None = None
+    ) -> None:
+        """Anota quem escreveu a hipótese: a pessoa (`autor`) e, se veio de um LLM, o `modelo`.
+
+        É um fato do passado: repetir a mesma anotação não faz nada, e uma anotação diferente
+        para a mesma tentativa é recusada (não se reescreve quem escreveu).
+        """
+        if not autor.strip():
+            raise ValueError("A proveniência precisa de um autor.")
+        modelo = modelo.strip() if modelo and modelo.strip() else None
+        self.obter(tentativa_id)  # KeyError se a tentativa não existe
+        anterior = self.obter_proveniencia(tentativa_id)
+        if anterior is not None:
+            if (anterior["autor"], anterior["modelo"]) != (autor.strip(), modelo):
+                raise ValueError(
+                    f"A tentativa {tentativa_id} já tem autor ({anterior['autor']}); "
+                    "a proveniência não se reescreve."
+                )
+            return
+        with self._conectar() as c:
+            c.execute(
+                "INSERT INTO proveniencia (tentativa_id, autor, modelo, commit_do_codigo,"
+                " registrada_em) VALUES (?, ?, ?, ?, ?)",
+                (
+                    tentativa_id,
+                    autor.strip(),
+                    modelo,
+                    self._commit_fn(),
+                    self._agora_fn().isoformat(),
+                ),
+            )
+
     def registrar_ajuste_do_criterio(self, versao: str, motivo: str) -> None:
         """Mudar o critério depois de aprovado é permitido, mas custa tentativas (seção 7)."""
         with self._conectar() as c:
@@ -179,6 +225,16 @@ class Registro:
         bruto = dados.pop("resultado_json")
         dados["resultado"] = json.loads(bruto) if bruto else None
         return dados
+
+    def obter_proveniencia(self, tentativa_id: int) -> dict | None:
+        """Quem escreveu a tentativa, ou `None` se ninguém anotou (nunca se adivinha)."""
+        with self._conectar() as c:
+            linha = c.execute(
+                "SELECT autor, modelo, commit_do_codigo, registrada_em FROM proveniencia"
+                " WHERE tentativa_id = ?",
+                (tentativa_id,),
+            ).fetchone()
+        return dict(linha) if linha else None
 
     def contar(self, fase: str = "desenvolvimento") -> int:
         """Configurações distintas testadas na fase (sem os ajustes do critério)."""

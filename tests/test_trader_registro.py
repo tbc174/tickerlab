@@ -129,3 +129,65 @@ def test_commit_atual_devolve_texto_mesmo_sem_git(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", quebra)
     assert reg.commit_atual() == "desconhecido"
+
+
+# --- proveniência: quem escreveu cada tentativa (ideia 11 do Vibe-Trading) -------------------
+
+
+def test_proveniencia_nao_muda_o_hash_nem_a_contagem(r):
+    sem = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(sem, autor="Tiago", modelo="claude-opus-5-5")
+    de_novo = r.registrar("H1", "logistica_v1", SPEC)
+    assert de_novo == sem
+    assert r.obter(sem)["hash"] == reg.hash_da_especificacao(SPEC)
+    assert r.contar() == 1
+
+
+def test_proveniencia_guarda_autor_modelo_e_commit(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago", modelo="claude-opus-5-5")
+    assert r.obter_proveniencia(tid) == {
+        "autor": "Tiago",
+        "modelo": "claude-opus-5-5",
+        "commit_do_codigo": "abc1234",
+        "registrada_em": "2026-10-11T12:00:00+00:00",
+    }
+
+
+def test_hipotese_escrita_por_pessoa_fica_sem_modelo(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago")
+    assert r.obter_proveniencia(tid)["modelo"] is None
+
+
+def test_proveniencia_ausente_e_none_e_nunca_inventada(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    assert r.obter_proveniencia(tid) is None
+
+
+def test_proveniencia_exige_autor_e_tentativa_existente(r):
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    with pytest.raises(ValueError):
+        r.registrar_proveniencia(tid, autor="  ")
+    with pytest.raises(KeyError):
+        r.registrar_proveniencia(999, autor="Tiago")
+
+
+def test_proveniencia_nao_se_reescreve(r):
+    """Quem escreveu é um fato do passado: a segunda anotação diferente é recusada."""
+    tid = r.registrar("H1", "logistica_v1", SPEC)
+    r.registrar_proveniencia(tid, autor="Tiago")
+    r.registrar_proveniencia(tid, autor="Tiago")  # a mesma de novo não é erro
+    with pytest.raises(ValueError):
+        r.registrar_proveniencia(tid, autor="Outra pessoa")
+
+
+def test_banco_antigo_ganha_a_tabela_de_proveniencia(tmp_path):
+    import sqlite3
+
+    caminho = tmp_path / "antigo.db"
+    with sqlite3.connect(caminho) as c:
+        c.executescript(reg.ESQUEMA)  # o esquema de antes, sem a tabela nova
+    velho = Registro(caminho, commit_fn=lambda: "abc1234")
+    tid = velho.registrar("H1", "logistica_v1", SPEC)
+    assert velho.obter_proveniencia(tid) is None
