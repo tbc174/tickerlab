@@ -434,24 +434,57 @@ def _propfind(cliente: Cliente, token: str, caminho: str) -> list[str]:
     ]
 
 
-def descobrir_cnpj(cliente: Cliente, agora: datetime) -> list[Alvo]:
-    """Os ZIPs do mês mais recente do CNPJ (Empresas, Estabelecimentos, Sócios, Simples...)."""
+def _token_do_cnpj(cliente: Cliente) -> str:
     final = cliente.ler(RAIZ_DO_CNPJ).url
     achado = TOKEN_DO_COMPARTILHAMENTO.search(final)
     if not achado:
         raise ErroDeDescoberta(f"CNPJ: sem o token do compartilhamento em {final}")
-    token = achado.group(1)
+    return achado.group(1)
+
+
+def _meses_do_cnpj(cliente: Cliente, token: str) -> list[str]:
     meses = sorted(n for n in _propfind(cliente, token, PASTA_DO_CNPJ) if MES.match(n))
     if not meses:
         raise ErroDeDescoberta("CNPJ: nenhuma pasta AAAA-MM no compartilhamento")
-    pasta = f"{PASTA_DO_CNPJ}/{meses[-1]}"
+    return meses
+
+
+def _alvos_do_mes(
+    cliente: Cliente, token: str, mes: str, nomes: tuple[str, ...] | None
+) -> list[Alvo]:
+    pasta = f"{PASTA_DO_CNPJ}/{mes}"
     arquivos = [
         n for n in _propfind(cliente, token, pasta) if n.lower().endswith(".zip")
     ]
+    if nomes is not None:
+        arquivos = [n for n in arquivos if n.startswith(nomes)]
     return [
         Alvo(DOWNLOAD_DA_RECEITA.format(token=token, caminho=f"{pasta}/{n}"))
         for n in arquivos
     ]
+
+
+def meses_do_cnpj(cliente: Cliente) -> list[str]:
+    """Todas as pastas `AAAA-MM` do CNPJ no compartilhamento da Receita, da mais antiga à nova."""
+    return _meses_do_cnpj(cliente, _token_do_cnpj(cliente))
+
+
+def arquivos_do_mes(
+    cliente: Cliente, mes: str, nomes: tuple[str, ...] | None = None
+) -> list[Alvo]:
+    """Os ZIPs de um mês do CNPJ; `nomes` são prefixos (`Socios`, `Simples`...), vazio traz todos."""
+    if not MES.match(mes):
+        raise ErroDeDescoberta(f"CNPJ: mês inválido {mes!r}")
+    token = _token_do_cnpj(cliente)
+    if mes not in _meses_do_cnpj(cliente, token):
+        raise ErroDeDescoberta(f"CNPJ: o mês {mes} não existe no compartilhamento")
+    return _alvos_do_mes(cliente, token, mes, nomes)
+
+
+def descobrir_cnpj(cliente: Cliente, agora: datetime) -> list[Alvo]:
+    """Os ZIPs do mês mais recente do CNPJ (Empresas, Estabelecimentos, Sócios, Simples...)."""
+    token = _token_do_cnpj(cliente)
+    return _alvos_do_mes(cliente, token, _meses_do_cnpj(cliente, token)[-1], None)
 
 
 def descobrir_scr(cliente: Cliente, agora: datetime) -> list[Alvo]:
